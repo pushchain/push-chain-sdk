@@ -1,0 +1,11 @@
+syntax = "proto3";
+package push;
+
+message InitDid {
+    string did = 1;
+    string masterPubKey = 2;
+    uint32 derivedKeyIndex = 3;
+    string derivedPubKey = 4;
+    string encDerivedPrivKey = 5;
+}
+ 

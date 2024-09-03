@@ -1,0 +1,65 @@
+syntax = "proto3";
+package push;
+import "tx.proto";
+
+// BLOCK ---------------------------------------------------------------------------------------------------------------
+
+enum Role {
+    ROLE_UNSPECIFIED = 0;
+    VALIDATOR = 1;
+    ATTESTER = 2;
+}
+
+enum Vote {
+    VOTE_UNSPECIFIED = 0;
+    ACCEPTED = 1;
+    REJECTED = 2;
+}
+
+message DidMapping {
+    map<string, string> didMapping = 1;
+}
+
+
+// section added by a block producer (we call him Validator in the context of the block)
+message TxValidatorData {
+    // any validator can vote if he supports the tx or not
+    Vote vote = 1;
+    // additional context goes below.
+    // if it is signed = all attestors agree with this context of tx processing
+    DidMapping didMapping = 2;
+}
+
+// section added by a block attester
+// offset0 = block producer vote
+// offset1..N = block attestor votes
+message TxAttestorData {
+    // any attestor can vote if he supports the tx or not
+    Vote vote = 1;
+    // any additional fields below, that attestor wants to add for the 'storage' layer
+    // i.e. repeated string spam
+}
+
+// transaction with voting data
+message TransactionObj {
+    // raw bytes: you need to decode this based on category into a Transaciton
+    Transaction tx = 1;
+    // validator(block producer) processes 'data' field and fills this output
+    TxValidatorData validatorData = 2;
+    // attestors process 'data' and 'metaData' and fill this output
+    repeated TxAttestorData attestorData = 3;
+}
+
+message Signer {
+    string node = 1;
+    Role role = 2;
+    string sig = 3;
+}
+
+message Block {
+    // block timestamp in millis;
+    uint64 ts = 1;
+    repeated TransactionObj txObj = 2;
+    repeated Signer signers = 3;
+    bytes attestToken = 4;
+}
