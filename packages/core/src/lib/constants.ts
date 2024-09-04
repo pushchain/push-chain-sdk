@@ -10,3 +10,7 @@ export enum ENV {
    */
   LOCAL = 'local',
 }
+
+export const CONSTANTS = {
+  ENV: ENV,
+};
