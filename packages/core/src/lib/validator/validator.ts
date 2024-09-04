@@ -16,8 +16,8 @@ import { ENV } from '../constants';
  * - Get token to interact with a random validator node
  * - Ping a random validator node to check if it is alive
  */
-export class PushValidator {
-  private static instance: PushValidator;
+export class Validator {
+  private static instance: Validator;
   private static idCounter = 0;
 
   private constructor(
@@ -29,9 +29,7 @@ export class PushValidator {
     private validatorContractClient: ValidatorContract
   ) {}
 
-  static initalize = async (options?: {
-    env?: ENV;
-  }): Promise<PushValidator> => {
+  static initalize = async (options?: { env?: ENV }): Promise<Validator> => {
     const settings = {
       env: options?.env || ENV.STAGING,
     };
@@ -39,22 +37,20 @@ export class PushValidator {
     /**
      * @dev - If instance is not created or env is different, create a new instance
      */
-    if (
-      !PushValidator.instance ||
-      PushValidator.instance.env !== settings.env
-    ) {
-      const validatorContractClient =
-        PushValidator.createValidatorContractClient(settings.env);
-      const activeValidator = await PushValidator.getActiveValidator(
+    if (!Validator.instance || Validator.instance.env !== settings.env) {
+      const validatorContractClient = Validator.createValidatorContractClient(
+        settings.env
+      );
+      const activeValidator = await Validator.getActiveValidator(
         validatorContractClient
       );
-      PushValidator.instance = new PushValidator(
+      Validator.instance = new Validator(
         activeValidator.nodeApiBaseUrl,
         settings.env,
         validatorContractClient
       );
     }
-    return PushValidator.instance;
+    return Validator.instance;
   };
 
   /**
@@ -152,6 +148,6 @@ export class PushValidator {
     params?: any,
     url: string = this.activeValidatorURL
   ): Promise<T> => {
-    return await PushValidator.sendJsonRpcRequest<T>(url, fnName, params);
+    return await Validator.sendJsonRpcRequest<T>(url, fnName, params);
   };
 }
