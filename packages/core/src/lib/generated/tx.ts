@@ -15,7 +15,7 @@ export interface Transaction {
   type: number;
   /** INIT_DID, INIT_SESSION_KEY, NOTIF, EMAIL */
   category: string;
-  source: string;
+  sender: string;
   recipients: string[];
   /** data is also a protobuf message, depending on tx_type */
   data: Uint8Array;
@@ -31,7 +31,7 @@ function createBaseTransaction(): Transaction {
   return {
     type: 0,
     category: "",
-    source: "",
+    sender: "",
     recipients: [],
     data: new Uint8Array(0),
     salt: new Uint8Array(0),
@@ -49,8 +49,8 @@ export const Transaction = {
     if (message.category !== "") {
       writer.uint32(18).string(message.category);
     }
-    if (message.source !== "") {
-      writer.uint32(26).string(message.source);
+    if (message.sender !== "") {
+      writer.uint32(26).string(message.sender);
     }
     for (const v of message.recipients) {
       writer.uint32(34).string(v!);
@@ -99,7 +99,7 @@ export const Transaction = {
             break;
           }
 
-          message.source = reader.string();
+          message.sender = reader.string();
           continue;
         case 4:
           if (tag !== 34) {
@@ -156,7 +156,7 @@ export const Transaction = {
     return {
       type: isSet(object.type) ? globalThis.Number(object.type) : 0,
       category: isSet(object.category) ? globalThis.String(object.category) : "",
-      source: isSet(object.source) ? globalThis.String(object.source) : "",
+      sender: isSet(object.sender) ? globalThis.String(object.sender) : "",
       recipients: globalThis.Array.isArray(object?.recipients)
         ? object.recipients.map((e: any) => globalThis.String(e))
         : [],
@@ -176,8 +176,8 @@ export const Transaction = {
     if (message.category !== "") {
       obj.category = message.category;
     }
-    if (message.source !== "") {
-      obj.source = message.source;
+    if (message.sender !== "") {
+      obj.sender = message.sender;
     }
     if (message.recipients?.length) {
       obj.recipients = message.recipients;
@@ -207,7 +207,7 @@ export const Transaction = {
     const message = createBaseTransaction();
     message.type = object.type ?? 0;
     message.category = object.category ?? "";
-    message.source = object.source ?? "";
+    message.sender = object.sender ?? "";
     message.recipients = object.recipients?.map((e) => e) || [];
     message.data = object.data ?? new Uint8Array(0);
     message.salt = object.salt ?? new Uint8Array(0);
