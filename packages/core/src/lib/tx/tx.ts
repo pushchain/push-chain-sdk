@@ -17,6 +17,53 @@ export class Tx {
     return new Tx(validator);
   };
 
+  static serialize = (tx: Transaction): Uint8Array => {
+    const transaction = Transaction.create(tx);
+    return Transaction.encode(transaction).finish();
+  };
+
+  static deserialize = (tx: Uint8Array): Transaction => {
+    return Transaction.decode(tx);
+  };
+
+  static serializeData = (
+    txData: InitDid | InitSessionKey,
+    category: TxCategory
+  ): Uint8Array => {
+    switch (category) {
+      case TxCategory.INIT_DID: {
+        const data = txData as InitDid;
+        const initTxData = InitDid.create(data);
+        return InitDid.encode(initTxData).finish();
+      }
+      case TxCategory.INIT_SESSION_KEY: {
+        const data = txData as InitSessionKey;
+        const initTxData = InitSessionKey.create(data);
+        return InitSessionKey.encode(initTxData).finish();
+      }
+      default: {
+        throw new Error('Serialization Not Supported for given TxCateory');
+      }
+    }
+  };
+
+  static deserializeData = (
+    txData: Uint8Array,
+    category: TxCategory
+  ): InitDid | InitSessionKey => {
+    switch (category) {
+      case TxCategory.INIT_DID: {
+        return InitDid.decode(txData);
+      }
+      case TxCategory.INIT_SESSION_KEY: {
+        return InitSessionKey.decode(txData);
+      }
+      default: {
+        throw new Error('Deserialization Not Supported for given TxCateory');
+      }
+    }
+  };
+
   /**
    * Create an Unsigned Tx
    * @dev Unsigned Tx has empty sender & signature
@@ -43,80 +90,31 @@ export class Tx {
     });
   };
 
-  serialize = (tx: Transaction): Uint8Array => {
-    const transaction = Transaction.create(tx);
-    return Transaction.encode(transaction).finish();
-  };
-
-  deserialize = (tx: Uint8Array): Transaction => {
-    return Transaction.decode(tx);
-  };
-
-  serializeData = (
-    txData: InitDid | InitSessionKey,
-    category: TxCategory
-  ): Uint8Array => {
-    switch (category) {
-      case TxCategory.INIT_DID: {
-        const data = txData as InitDid;
-        const initTxData = InitDid.create(data);
-        return InitDid.encode(initTxData).finish();
-      }
-      case TxCategory.INIT_SESSION_KEY: {
-        const data = txData as InitSessionKey;
-        const initTxData = InitSessionKey.create(data);
-        return InitSessionKey.encode(initTxData).finish();
-      }
-      default: {
-        throw new Error('Serialization Not Supported for given TxCateory');
-      }
-    }
-  };
-
-  deserializeData = (
-    txData: Uint8Array,
-    category: TxCategory
-  ): InitDid | InitSessionKey => {
-    switch (category) {
-      case TxCategory.INIT_DID: {
-        return InitDid.decode(txData);
-      }
-      case TxCategory.INIT_SESSION_KEY: {
-        return InitSessionKey.decode(txData);
-      }
-      default: {
-        throw new Error('Deserialization Not Supported for given TxCateory');
-      }
-    }
-  };
-
   /**
    * Get Transactions
    */
-  get = (
+  get = async (
     startTime: number = Math.floor(Date.now() / 1000), // Current Local Time
     direction: 'ASC' | 'DESC' = 'ASC',
     pageSize = 30,
     page = 1,
     category?: string
   ) => {
-    return this.validator.call<TxWithBlockHash[]>('push_getTransactions', [
-      startTime,
-      direction,
-      pageSize,
-      page,
-      category,
-    ]);
+    return await this.validator.call<TxWithBlockHash[]>(
+      'push_getTransactions',
+      [startTime, direction, pageSize, page, category]
+    );
   };
 
   /**
    * Search Transaction with a given hash
    * @param txHash
    */
-  search = (txHash: string) => {
-    return this.validator.call<TxWithBlockHash>('push_getTransactionByHash', [
-      txHash,
-    ]);
+  search = async (txHash: string) => {
+    return await this.validator.call<TxWithBlockHash>(
+      'push_getTransactionByHash',
+      [txHash]
+    );
   };
 
   /**
@@ -149,7 +147,7 @@ export class Tx {
     }
     return await this.validator.call<string>(
       'push_sendTransaction',
-      [this.serialize(signedTx)],
+      [Tx.serialize(signedTx)],
       validatorUrl
     );
   };
