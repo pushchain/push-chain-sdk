@@ -91,15 +91,33 @@ export class Validator {
       id: this.idCounter++,
     };
 
+    // TODO: Remove local config changes
+    const vUrl = () => {
+      switch (url) {
+        case 'http://vnode1:4001': {
+          return 'http://localhost:4001';
+        }
+        case 'http://vnode2:4001': {
+          return 'http://localhost:4002';
+        }
+        case 'http://vnode3:4001': {
+          return 'http://localhost:4003';
+        }
+        default: {
+          return url;
+        }
+      }
+    };
+
     try {
       const response = await axios.post<JsonRpcResponse<T>>(
-        `${url}/api/v1/rpc`,
+        `${vUrl()}/api/v1/rpc`,
         requestBody
       );
 
       if (response.data.error) {
         console.error('JSON-RPC Error:', response.data.error);
-        throw new Error(response.data.error.message);
+        throw Error(response.data.error.message);
       }
       return response.data.result;
     } catch (error) {
@@ -148,7 +166,7 @@ export class Validator {
   public call = async <T>(
     fnName: string,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    params?: any,
+    params: any[] = [],
     url: string = this.activeValidatorURL
   ): Promise<T> => {
     return await Validator.sendJsonRpcRequest<T>(url, fnName, params);

@@ -133,7 +133,7 @@ export class Tx {
     let signedTx: Transaction;
     const validatorUrl: string = (
       JSON.parse(bytesToString(unsignedTx.apiToken)) as TokenReply
-    ).validatorUrl;
+    ).apiUrl;
     if (session) {
       // TODO: sign the tx with sessionPrivKey
       const tx = Transaction.create({

@@ -1,4 +1,4 @@
-export type TokenReply = { validatorToken: string; validatorUrl: string };
+export type TokenReply = { apiToken: string; apiUrl: string };
 
 export type PingReply = {
   nodeId: string;

@@ -29,7 +29,7 @@ export class Block {
     pageSize = 30,
     page = 1
   ) => {
-    return await this.validator.call<BlockType[]>('push_getTransactions', [
+    return await this.validator.call<BlockType[]>('push_getBlocks', [
       startTime,
       direction,
       showDetails,
