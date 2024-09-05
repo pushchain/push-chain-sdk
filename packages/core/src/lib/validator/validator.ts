@@ -92,7 +92,10 @@ export class Validator {
     };
 
     try {
-      const response = await axios.post<JsonRpcResponse<T>>(url, requestBody);
+      const response = await axios.post<JsonRpcResponse<T>>(
+        `${url}/api/v1/rpc`,
+        requestBody
+      );
 
       if (response.data.error) {
         console.error('JSON-RPC Error:', response.data.error);
