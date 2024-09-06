@@ -15,7 +15,10 @@
   "type": "commonjs",
   "main": "./src/index.js",
   "typings": "./src/index.d.ts",
-  "private": true,
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
     "@types/uuid": "^10.0.0",
     "protobufjs-cli": "^1.1.3",
