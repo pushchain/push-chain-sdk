@@ -38,7 +38,6 @@ describe('Tx', () => {
       fee: '0',
     });
   });
-
   it('should serialize an unsigned transaction', async () => {
     const txInstance = await Tx.initialize(env);
     const unsignedTx = await txInstance.createUnsigned(
@@ -50,7 +49,6 @@ describe('Tx', () => {
     expect(serializedTx).toBeInstanceOf(Uint8Array);
     expect(unsignedTx).toEqual(Tx.deserialize(serializedTx));
   });
-
   it('should serialize a signed transaction', async () => {
     const txInstance = await Tx.initialize(env);
     const unsignedTx = await txInstance.createUnsigned(
@@ -66,5 +64,45 @@ describe('Tx', () => {
     const serializedTx = Tx.serialize(signedTx);
     expect(serializedTx).toBeInstanceOf(Uint8Array);
     expect(signedTx).toEqual(Tx.deserialize(serializedTx));
+  });
+  it('should serialize a Tx data into a Uint8Array', () => {
+    const serializedTxData = Tx.serializeData(
+      mockInitDidTxData,
+      TxCategory.INIT_DID
+    );
+    expect(serializedTxData).toBeInstanceOf(Uint8Array);
+    expect(serializedTxData.length).toBeGreaterThan(0);
+  });
+  it('should deserialize a Uint8Array into a Tx Data object', () => {
+    const serializedTxData = Tx.serializeData(
+      mockInitDidTxData,
+      TxCategory.INIT_DID
+    );
+    const deserializedTxData = Tx.deserializeData(
+      serializedTxData,
+      TxCategory.INIT_DID
+    );
+    expect(deserializedTxData).toEqual(mockInitDidTxData);
+  });
+  it('should get transactions with default parameters', async () => {
+    const txInstance = await Tx.initialize(env);
+    const transactions = await txInstance.get();
+    expect(transactions).toBeInstanceOf(Array);
+  });
+  it('should get transactions with custom parameters', async () => {
+    const txInstance = await Tx.initialize(env);
+    const transactions = await txInstance.get(
+      Math.floor(Date.now() / 1000),
+      'DESC',
+      10,
+      2
+    );
+    expect(transactions).toBeInstanceOf(Array);
+  });
+  it('should search for a tx by hash', async () => {
+    const txInstance = await Tx.initialize(env);
+    const txHash = 'sample-tx-hash';
+    const tx = await txInstance.search(txHash);
+    expect(tx).toBeInstanceOf(Object);
   });
 });
