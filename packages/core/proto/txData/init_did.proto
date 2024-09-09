@@ -6,6 +6,7 @@ message InitDid {
     string masterPubKey = 2;
     uint32 derivedKeyIndex = 3;
     string derivedPubKey = 4;
-    string encDerivedPrivKey = 5;
+    // Map to store wallet address and corresponding encrypted derived key
+    // Note:- There will always be altest 1 mapping
+    map<string, string> walletToEncDerivedKey = 6;
 }
- 
