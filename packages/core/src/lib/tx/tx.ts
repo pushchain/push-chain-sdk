@@ -1,5 +1,5 @@
 import { v4 as uuidv4, parse } from 'uuid';
-import { utf8ToBytes } from '@noble/hashes/utils';
+import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
 import { TxCategory, TxWithBlockHash } from './tx.types';
 import { Transaction } from '../generated/tx';
 import { InitDid } from '../generated/txData/init_did';
@@ -7,7 +7,8 @@ import { InitSessionKey } from '../generated/txData/init_session_key';
 import { ENV } from '../constants';
 import { Validator } from '../validator/validator';
 import { TokenReply } from '../validator/validator.types';
-import { bytesToString } from 'viem';
+import { hexToBytes } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 
 export class Tx {
   private constructor(private validator: Validator) {}
@@ -72,20 +73,17 @@ export class Tx {
    * @param data Tx payload data in serialized form
    * @returns Unsigned Tx
    */
-  createUnsigned = async (
+  createUnsigned = (
     category: string,
     recipients: string[],
     data: Uint8Array
-  ): Promise<Transaction> => {
-    // TODO: Finalize token encoding
-    const token = await this.validator.call<TokenReply>('push_getApiToken');
+  ): Transaction => {
     return Transaction.create({
       type: 0, // Phase 0 only has non-value transfers
       category,
       recipients,
       data,
       salt: parse(uuidv4()),
-      apiToken: utf8ToBytes(JSON.stringify(token)),
       fee: '0', // Fee is 0 as of now
     });
   };
@@ -127,28 +125,40 @@ export class Tx {
     unsignedTx: Transaction,
     session?: {
       sender: string;
-      privKey: string;
+      privKey: `0x${string}`;
     }
   ): Promise<string> => {
-    let signedTx: Transaction;
-    const validatorUrl: string = (
-      JSON.parse(bytesToString(unsignedTx.apiToken)) as TokenReply
-    ).apiUrl;
+    const token = await this.validator.call<TokenReply>('push_getApiToken');
+    let serializedSignedTx: Uint8Array;
     if (session) {
-      // TODO: sign the tx with sessionPrivKey
-      const tx = Transaction.create({
+      const serializedUnsignedTx = Tx.serialize({
         ...unsignedTx,
         sender: session.sender,
+        signature: new Uint8Array(0),
+        apiToken: utf8ToBytes(
+          Buffer.from(token.apiToken, 'base64').toString('utf-8')
+        ),
       });
-      signedTx = unsignedTx;
+      const account = privateKeyToAccount(session.privKey);
+      const signature = await account.signMessage({
+        message: { raw: serializedUnsignedTx },
+      });
+      serializedSignedTx = Tx.serialize({
+        ...unsignedTx,
+        sender: session.sender,
+        signature: hexToBytes(signature),
+        apiToken: utf8ToBytes(
+          Buffer.from(token.apiToken, 'base64').toString('utf-8')
+        ),
+      });
     } else {
       // TODO: connect with push Wallet and sign the tx
-      signedTx = unsignedTx;
+      serializedSignedTx = Tx.serialize(unsignedTx);
     }
     return await this.validator.call<string>(
       'push_sendTransaction',
-      [Tx.serialize(signedTx)],
-      validatorUrl
+      [bytesToHex(serializedSignedTx)],
+      token.apiUrl
     );
   };
 }

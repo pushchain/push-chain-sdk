@@ -9,7 +9,9 @@ const mockInitDidTxData: InitDid = {
   masterPubKey: 'master_pub_key',
   derivedKeyIndex: 0,
   derivedPubKey: 'derived_pub_key',
-  encDerivedPrivKey: 'enc_derived_priv_key',
+  walletToEncDerivedKey: {
+    push10222n3232mwdeicej3: 'stringified_encrypted_pk',
+  },
 };
 const mockRecipients = [
   'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4',
@@ -104,5 +106,27 @@ describe('Tx', () => {
     const txHash = 'sample-tx-hash';
     const tx = await txInstance.search(txHash);
     expect(tx).toBeInstanceOf(Object);
+  });
+  it('should send for a tx with sessionKey', async () => {
+    const txInstance = await Tx.initialize(env);
+    const tx = txInstance.createUnsigned(
+      TxCategory.INIT_DID,
+      mockRecipients,
+      Tx.serializeData(mockInitDidTxData, TxCategory.INIT_DID)
+    );
+    await txInstance.send(tx, {
+      sender: 'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4',
+      privKey:
+        '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+    });
+  });
+  it('should send for a tx by connecting to Push Wallet', async () => {
+    const txInstance = await Tx.initialize(env);
+    const tx = txInstance.createUnsigned(
+      TxCategory.INIT_DID,
+      mockRecipients,
+      Tx.serializeData(mockInitDidTxData, TxCategory.INIT_DID)
+    );
+    await txInstance.send(tx);
   });
 });
