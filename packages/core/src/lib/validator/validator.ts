@@ -91,22 +91,12 @@ export class Validator {
       id: this.idCounter++,
     };
 
-    // TODO: Remove local config changes
+    // Local Docker URL Mapping Changes
     const vUrl = () => {
-      switch (url) {
-        case 'http://vnode1:4001': {
-          return 'http://localhost:4001';
-        }
-        case 'http://vnode2:4001': {
-          return 'http://localhost:4002';
-        }
-        case 'http://vnode3:4001': {
-          return 'http://localhost:4003';
-        }
-        default: {
-          return url;
-        }
+      if (url.includes('.local')) {
+        return url.replace('.local', '.localh');
       }
+      return url;
     };
 
     try {

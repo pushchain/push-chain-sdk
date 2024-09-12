@@ -135,9 +135,7 @@ export class Tx {
         ...unsignedTx,
         sender: session.sender,
         signature: new Uint8Array(0),
-        apiToken: utf8ToBytes(
-          Buffer.from(token.apiToken, 'base64').toString('utf-8')
-        ),
+        apiToken: new Uint8Array(Buffer.from(token.apiToken, 'base64')),
       });
       const account = privateKeyToAccount(session.privKey);
       const signature = await account.signMessage({
