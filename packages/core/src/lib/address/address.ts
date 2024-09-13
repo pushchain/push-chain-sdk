@@ -1,6 +1,8 @@
 import { hexToBytes, bytesToHex } from '@noble/hashes/utils';
 import { getAddress } from 'viem';
 import { bech32m } from 'bech32';
+import { ENV } from '../constants';
+import { PUSH_NETWORK } from './address.types';
 
 const PUSH_PREFIX = 'push';
 
@@ -38,5 +40,33 @@ export class Address {
     } catch (e) {
       throw new Error('Invalid Push address');
     }
+  };
+
+  /**
+   * Converts an EVM address in Push CAIP format
+   * @param address
+   * @param env
+   */
+  static toPushCAIP = (address: `0x${string}`, env: ENV = ENV.STAGING) => {
+    let network: PUSH_NETWORK;
+    switch (env) {
+      case ENV.LOCAL:
+      case ENV.DEV: {
+        network = PUSH_NETWORK.DEVNET;
+        break;
+      }
+      case ENV.STAGING: {
+        network = PUSH_NETWORK.TESTNET;
+        break;
+      }
+      case ENV.PROD: {
+        network = PUSH_NETWORK.MAINNET;
+        break;
+      }
+      default: {
+        throw Error('Invalid ENV');
+      }
+    }
+    return `push:${network}:${address}`;
   };
 }

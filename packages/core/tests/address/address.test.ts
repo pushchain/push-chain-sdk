@@ -1,4 +1,5 @@
 import { Address } from '../../src/lib/address/address'; // Adjust the import path accordingly
+import { ENV } from '../../src/lib/constants';
 
 describe('Address', () => {
   const evmAddress = '0x35B84d6848D16415177c64D64504663b998A6ab4';
@@ -25,6 +26,23 @@ describe('Address', () => {
     it('should throw an error for invalid Push addresses', () => {
       const invalidPushAddress = 'pushinvalidaddress';
       expect(() => Address.pushToEvm(invalidPushAddress)).toThrow();
+    });
+  });
+
+  describe('toPushCAIP', () => {
+    it('should convert evm address to Push Devnet CAIP', () => {
+      const result1 = Address.toPushCAIP(evmAddress, ENV.LOCAL);
+      const result2 = Address.toPushCAIP(evmAddress, ENV.DEV);
+      expect(result1).toEqual(result2);
+      expect(result1).toEqual(`push:devnet:${evmAddress}`);
+    });
+    it('should convert evm address to Push Testnet CAIP', () => {
+      const result = Address.toPushCAIP(evmAddress, ENV.STAGING);
+      expect(result).toEqual(`push:testnet:${evmAddress}`);
+    });
+    it('should convert evm address to Push Mainnet CAIP', () => {
+      const result = Address.toPushCAIP(evmAddress, ENV.PROD);
+      expect(result).toEqual(`push:mainnet:${evmAddress}`);
     });
   });
 });
