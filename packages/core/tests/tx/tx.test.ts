@@ -1,4 +1,4 @@
-import { Tx } from '../../src';
+import { Address, Tx } from '../../src';
 import { TxCategory } from '../../src/lib/tx/tx.types';
 import { InitDid } from '../../src/lib/generated/txData/init_did';
 import { config } from '../config';
@@ -115,7 +115,7 @@ describe('Tx', () => {
       Tx.serializeData(mockInitDidTxData, TxCategory.INIT_DID)
     );
     await txInstance.send(tx, {
-      sender: 'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4',
+      sender: Address.toPushCAIP('0x35B84d6848D16415177c64D64504663b998A6ab4'),
       privKey:
         '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
     });
