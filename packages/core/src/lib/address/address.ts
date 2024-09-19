@@ -47,7 +47,10 @@ export class Address {
    * @param address
    * @param env
    */
-  static toPushCAIP = (address: `0x${string}`, env: ENV = ENV.STAGING) => {
+  static toPushCAIP = (
+    address: `0x${string}` | `push${string}`,
+    env: ENV = ENV.STAGING
+  ) => {
     let network: PUSH_NETWORK;
     switch (env) {
       case ENV.LOCAL:
@@ -67,6 +70,9 @@ export class Address {
         throw Error('Invalid ENV');
       }
     }
-    return `push:${network}:${address}`;
+    const pushAddress = address.startsWith(PUSH_PREFIX)
+      ? address
+      : Address.evmToPush(address as `0x${string}`);
+    return `push:${network}:${pushAddress}`;
   };
 }

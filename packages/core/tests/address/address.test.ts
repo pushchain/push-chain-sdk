@@ -34,15 +34,27 @@ describe('Address', () => {
       const result1 = Address.toPushCAIP(evmAddress, ENV.LOCAL);
       const result2 = Address.toPushCAIP(evmAddress, ENV.DEV);
       expect(result1).toEqual(result2);
-      expect(result1).toEqual(`push:devnet:${evmAddress}`);
+      expect(result1).toEqual(`push:devnet:${pushAddress}`);
     });
     it('should convert evm address to Push Testnet CAIP', () => {
       const result = Address.toPushCAIP(evmAddress, ENV.STAGING);
-      expect(result).toEqual(`push:testnet:${evmAddress}`);
+      expect(result).toEqual(`push:testnet:${pushAddress}`);
     });
     it('should convert evm address to Push Mainnet CAIP', () => {
       const result = Address.toPushCAIP(evmAddress, ENV.PROD);
-      expect(result).toEqual(`push:mainnet:${evmAddress}`);
+      expect(result).toEqual(`push:mainnet:${pushAddress}`);
+    });
+    it('should convert push address to Push Devnet CAIP', () => {
+      const result = Address.toPushCAIP(pushAddress, ENV.DEV);
+      expect(result).toEqual(`push:devnet:${pushAddress}`);
+    });
+    it('should convert evm address to Push Testnet CAIP', () => {
+      const result = Address.toPushCAIP(pushAddress, ENV.STAGING);
+      expect(result).toEqual(`push:testnet:${pushAddress}`);
+    });
+    it('should convert evm address to Push Mainnet CAIP', () => {
+      const result = Address.toPushCAIP(pushAddress, ENV.PROD);
+      expect(result).toEqual(`push:mainnet:${pushAddress}`);
     });
   });
 });
