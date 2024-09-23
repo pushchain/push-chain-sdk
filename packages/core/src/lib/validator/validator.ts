@@ -70,7 +70,8 @@ export class Validator {
       abi: config.ABIS.VALIDATOR,
       address: config.VALIDATOR[env].VALIDATOR_CONTRACT as `0x${string}`,
       client: {
-        public: client,
+        // Viem type causes issue with some codebases
+        public: client as never,
       },
     }) as unknown as ValidatorContract;
   };
@@ -91,19 +92,8 @@ export class Validator {
       id: this.idCounter++,
     };
 
-    // Local Docker URL Mapping Changes
-    const vUrl = () => {
-      if (url.includes('.local')) {
-        return url.replace('.local', '.localh');
-      }
-      return url;
-    };
-
     try {
-      const response = await axios.post<JsonRpcResponse<T>>(
-        `${vUrl()}/api/v1/rpc`,
-        requestBody
-      );
+      const response = await axios.post<JsonRpcResponse<T>>(url, requestBody);
 
       if (response.data.error) {
         console.error('JSON-RPC Error:', response.data.error);
@@ -122,7 +112,7 @@ export class Validator {
    */
   private static ping = async (validatorUrl: string): Promise<boolean> => {
     return await this.sendJsonRpcRequest<boolean>(
-      validatorUrl,
+      Validator.vNodeUrlModifier(validatorUrl),
       'push_listening'
     );
   };
@@ -149,6 +139,44 @@ export class Validator {
     }
   };
 
+  private static vNodeUrlModifier = (url: string) => {
+    let modifiedUrl = url;
+    if (url.includes('.local')) {
+      modifiedUrl = url.replace('.local', '.localh');
+    }
+    return `${modifiedUrl}/api/v1/rpc`;
+  };
+
+  /**
+   * @dev - This is a Temp Function which will be removed in the future
+   */
+  private ReqModifier = (url: string, fnName: string) => {
+    let modifiedUrl = Validator.vNodeUrlModifier(url);
+    let modifiedFnName = fnName;
+    if (
+      fnName === 'push_getBlocks' ||
+      fnName === 'push_getBlockByHash' ||
+      fnName === 'push_getTransactions' ||
+      fnName === 'push_getTransactionByHash'
+    ) {
+      if (this.env === ENV.LOCAL) {
+        modifiedUrl = 'http://localhost:5001/rpc';
+      }
+      if (this.env === ENV.DEV) {
+        modifiedUrl = 'https://anode1.push.org/rpc';
+      }
+      modifiedFnName = `RpcService.${fnName.replace('push_', '')}`;
+
+      if (fnName === 'push_getTransactions') {
+        modifiedFnName = 'RpcService.getTxs';
+      }
+      if (fnName === 'push_getTransactionByHash') {
+        modifiedFnName = 'RpcService.getTxByHash';
+      }
+    }
+    return { url: modifiedUrl, fnName: modifiedFnName };
+  };
+
   /**
    * @description Get calls to validator
    * @returns Reply of the call
@@ -159,6 +187,10 @@ export class Validator {
     params: any[] = [],
     url: string = this.activeValidatorURL
   ): Promise<T> => {
-    return await Validator.sendJsonRpcRequest<T>(url, fnName, params);
+    return await Validator.sendJsonRpcRequest<T>(
+      this.ReqModifier(url, fnName).url,
+      this.ReqModifier(url, fnName).fnName,
+      params
+    );
   };
 }

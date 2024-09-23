@@ -1,6 +1,6 @@
 import { v4 as uuidv4, parse } from 'uuid';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
-import { TxCategory, TxWithBlockHash } from './tx.types';
+import { TxCategory } from './tx.types';
 import { Transaction } from '../generated/tx';
 import { InitDid } from '../generated/txData/init_did';
 import { InitSessionKey } from '../generated/txData/init_session_key';
@@ -9,6 +9,7 @@ import { Validator } from '../validator/validator';
 import { TokenReply } from '../validator/validator.types';
 import { hexToBytes } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { BlockResponse } from '../block/block.types';
 
 export class Tx {
   private constructor(private validator: Validator) {}
@@ -98,10 +99,13 @@ export class Tx {
     page = 1,
     category?: string
   ) => {
-    return await this.validator.call<TxWithBlockHash[]>(
-      'push_getTransactions',
-      [startTime, direction, pageSize, page, category]
-    );
+    return await this.validator.call<BlockResponse>('push_getTransactions', [
+      startTime,
+      direction,
+      pageSize,
+      page,
+      category,
+    ]);
   };
 
   /**
@@ -109,7 +113,7 @@ export class Tx {
    * @param txHash
    */
   search = async (txHash: string) => {
-    return await this.validator.call<TxWithBlockHash>(
+    return await this.validator.call<BlockResponse>(
       'push_getTransactionByHash',
       [txHash]
     );

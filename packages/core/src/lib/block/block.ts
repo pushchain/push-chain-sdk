@@ -1,6 +1,7 @@
 import { ENV } from '../constants';
 import { Validator } from '../validator/validator';
 import { Block as BlockType } from '../generated/block';
+import { BlockResponse } from './block.types';
 
 export class Block {
   private constructor(private validator: Validator) {}
@@ -29,7 +30,7 @@ export class Block {
     pageSize = 30,
     page = 1
   ) => {
-    return await this.validator.call<BlockType[]>('push_getBlocks', [
+    return await this.validator.call<BlockResponse>('push_getBlocks', [
       startTime,
       direction,
       showDetails,
@@ -43,7 +44,7 @@ export class Block {
    * @param txHash
    */
   search = async (blockHash: string) => {
-    return await this.validator.call<BlockType>('push_getBlockByHash', [
+    return await this.validator.call<BlockResponse>('push_getBlockByHash', [
       blockHash,
     ]);
   };
