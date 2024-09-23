@@ -2,6 +2,7 @@ import { Address, Tx } from '../../src';
 import { TxCategory } from '../../src/lib/tx/tx.types';
 import { InitDid } from '../../src/lib/generated/txData/init_did';
 import { config } from '../config';
+import { TxResponse } from '../../src/lib/tx/tx.types';
 
 // Mock data for testing
 const mockInitDidTxData: InitDid = {
@@ -20,6 +21,17 @@ const mockRecipients = [
 
 describe('Tx', () => {
   const env = config.ENV;
+  const txChecker = (tx: TxResponse) => {
+    expect(tx).toHaveProperty('txnHash');
+    expect(tx).toHaveProperty('ts');
+    expect(tx).toHaveProperty('blockHash');
+    expect(tx).toHaveProperty('category');
+    expect(tx).toHaveProperty('sender');
+    expect(tx).toHaveProperty('status');
+    expect(tx).toHaveProperty('recipients');
+    expect(tx).toHaveProperty('txnData');
+    expect(tx).toHaveProperty('sig');
+  };
   it('should create an unsigned transaction', async () => {
     const txInstance = await Tx.initialize(env);
     const tx = await txInstance.createUnsigned(
@@ -88,24 +100,36 @@ describe('Tx', () => {
   });
   it('should get transactions with default parameters', async () => {
     const txInstance = await Tx.initialize(env);
-    const transactions = await txInstance.get();
-    expect(transactions).toBeInstanceOf(Array);
+    const res = await txInstance.get();
+    expect(res.blocks).toBeInstanceOf(Array);
+    res.blocks.forEach((block) => {
+      block.transactions.forEach((tx) => txChecker(tx));
+    });
   });
   it('should get transactions with custom parameters', async () => {
     const txInstance = await Tx.initialize(env);
-    const transactions = await txInstance.get(
+    const res = await txInstance.get(
       Math.floor(Date.now() / 1000),
       'DESC',
       10,
       2
     );
-    expect(transactions).toBeInstanceOf(Array);
+    expect(res.blocks).toBeInstanceOf(Array);
+    res.blocks.forEach((block) => {
+      block.transactions.forEach((tx) => txChecker(tx));
+    });
   });
   it('should search for a tx by hash', async () => {
     const txInstance = await Tx.initialize(env);
-    const txHash = 'sample-tx-hash';
-    const tx = await txInstance.search(txHash);
-    expect(tx).toBeInstanceOf(Object);
+    const txHash = '9f636ac0faa040a74ae49410528c5634';
+    const res = await txInstance.search(txHash);
+    if (res.blocks.length > 0) {
+      expect(res.blocks.length).toEqual(1);
+      expect(res.blocks[0].transactions.length).toEqual(1);
+    }
+    res.blocks.forEach((block) => {
+      block.transactions.forEach((tx) => txChecker(tx));
+    });
   });
   it('should send for a tx with sessionKey', async () => {
     const txInstance = await Tx.initialize(env);
@@ -114,11 +138,12 @@ describe('Tx', () => {
       mockRecipients,
       Tx.serializeData(mockInitDidTxData, TxCategory.INIT_DID)
     );
-    await txInstance.send(tx, {
+    const res = await txInstance.send(tx, {
       sender: Address.toPushCAIP('0x35B84d6848D16415177c64D64504663b998A6ab4'),
       privKey:
         '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
     });
+    expect(typeof res).toEqual('string');
   });
   it('should send for a tx by connecting to Push Wallet', async () => {
     const txInstance = await Tx.initialize(env);

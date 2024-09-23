@@ -1,16 +1,26 @@
 import { Block } from '../../src';
 import { config } from '../config';
 import { Block as BlockType } from '../../src/lib/generated/block';
+import { BlockType as NodeBlockType } from '../../src/lib/block/block.types';
 
 describe('Block Class', () => {
   const env = config.ENV;
 
-  // TODO : @Shoaib to add a valid sample block data
   const sampleBlock: BlockType = {
     ts: Date.now(),
     txObj: [],
     signers: [],
     attestToken: new Uint8Array([1, 2, 3, 4]),
+  };
+
+  const blockChecker = (block: NodeBlockType) => {
+    expect(block).toHaveProperty('blockHash');
+    expect(block).toHaveProperty('blockData');
+    expect(block).toHaveProperty('blockDataAsJson');
+    expect(block).toHaveProperty('blockSize');
+    expect(block).toHaveProperty('ts');
+    expect(block).toHaveProperty('transactions');
+    expect(block).toHaveProperty('totalNumberOfTxns');
   };
 
   it('should initialize a Block instance', async () => {
@@ -32,39 +42,43 @@ describe('Block Class', () => {
 
   it('should get blocks with default parameters', async () => {
     const blockInstance = await Block.initialize(env);
-    const blocks = await blockInstance.get();
-    expect(blocks).toBeInstanceOf(Array);
-    if (blocks.length > 0) {
-      expect(blocks[0]).toHaveProperty('ts');
-      expect(blocks[0]).toHaveProperty('txObj');
-      expect(blocks[0]).toHaveProperty('signers');
-    }
+    const res = await blockInstance.get();
+    expect(res.blocks).toBeInstanceOf(Array);
+    res.blocks.forEach((block) => {
+      blockChecker(block);
+    });
   });
 
   it('should get blocks with custom parameters', async () => {
     const blockInstance = await Block.initialize(env);
-    const blocks = await blockInstance.get(
+    const res = await blockInstance.get(
       Math.floor(Date.now() / 1000),
       'DESC',
       true,
       10,
       2
     );
-    expect(blocks).toBeInstanceOf(Array);
-    if (blocks.length > 0) {
-      expect(blocks[0]).toHaveProperty('ts');
-      expect(blocks[0]).toHaveProperty('txObj');
-      expect(blocks[0]).toHaveProperty('signers');
-    }
+    expect(res.blocks).toBeInstanceOf(Array);
+    res.blocks.forEach((block) => {
+      blockChecker(block);
+    });
   });
 
   it('should search for a block by hash', async () => {
     const blockInstance = await Block.initialize(env);
-    const blockHash = 'sample-block-hash';
-    const block = await blockInstance.search(blockHash);
-    expect(block).toBeInstanceOf(Object);
-    expect(block).toHaveProperty('ts');
-    expect(block).toHaveProperty('txObj');
-    expect(block).toHaveProperty('signers');
+    const res = await blockInstance.get(
+      Math.floor(Date.now() / 1000),
+      'DESC',
+      true,
+      1,
+      2
+    );
+    const blockHash = res.blocks[0].blockHash;
+    const searchRes = await blockInstance.search(blockHash);
+    expect(searchRes.blocks).toBeInstanceOf(Array);
+    expect(searchRes.blocks.length).toEqual(1);
+    res.blocks.forEach((block) => {
+      blockChecker(block);
+    });
   });
 });
