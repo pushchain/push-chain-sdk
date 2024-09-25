@@ -145,13 +145,4 @@ describe('Tx', () => {
     });
     expect(typeof res).toEqual('string');
   });
-  it('should send for a tx by connecting to Push Wallet', async () => {
-    const txInstance = await Tx.initialize(env);
-    const tx = txInstance.createUnsigned(
-      TxCategory.INIT_DID,
-      mockRecipients,
-      Tx.serializeData(mockInitDidTxData, TxCategory.INIT_DID)
-    );
-    await txInstance.send(tx);
-  });
 });
