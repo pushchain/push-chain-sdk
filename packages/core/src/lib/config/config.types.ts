@@ -17,4 +17,10 @@ export interface Config {
     [ENV.DEV]: NetworkConfig;
     [ENV.LOCAL]: NetworkConfig;
   };
+  WALLET_URL: {
+    [ENV.PROD]: string;
+    [ENV.STAGING]: string;
+    [ENV.DEV]: string;
+    [ENV.LOCAL]: string;
+  };
 }
