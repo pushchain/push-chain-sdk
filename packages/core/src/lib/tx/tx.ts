@@ -280,18 +280,18 @@ export class Tx {
   ): Promise<string> => {
     const { isPending, isConnected } = await this.requestAppConnectionStatus();
 
-    // if (!isConnected) {
-    //   if (isPending) {
-    //     throw Error(
-    //       'App Connection Request is Pending. Accept App Connection Request in Push Wallet to enable signing !!!'
-    //     );
-    //   } else {
-    //     await this.requestWalletConnection();
-    //     throw Error(
-    //       'App not Connected. Accept App Connection Request in Push Wallet to enable signing !!!'
-    //     );
-    //   }
-    // }
+    if (!isConnected) {
+      if (isPending) {
+        throw Error(
+          'App Connection Request is Pending. Accept App Connection Request in Push Wallet to enable signing !!!'
+        );
+      } else {
+        await this.requestWalletConnection();
+        throw Error(
+          'App not Connected. Accept App Connection Request in Push Wallet to enable signing !!!'
+        );
+      }
+    }
 
     return new Promise((resolve, reject) => {
       // Listen for wallet response

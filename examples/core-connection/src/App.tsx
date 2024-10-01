@@ -24,6 +24,7 @@ const mockRecipients = [
 const App: React.FC = () => {
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
   const [mockTx, setMockTx] = useState<Transaction | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
     const setNetwork = async () => {
@@ -45,23 +46,31 @@ const App: React.FC = () => {
   }, []);
 
   const sendTransaction = async () => {
+    setLoading(true);
     try {
       if (pushNetwork && mockTx) {
         const txHash = await pushNetwork.tx.send(mockTx);
         console.log('Transaction sent, hash:', txHash);
+        alert(`Tx Sent - ${txHash}`);
       } else {
         console.error('Push Network or Transaction not initialized');
       }
     } catch (error) {
+      alert(error);
       console.error('Transaction error:', error);
     }
+    setLoading(false);
   };
 
   return (
     <div className="app-container">
       <h1>Send Transaction to Push Network</h1>
-      <button className="send-button" onClick={sendTransaction}>
-        Send Transaction
+      <button
+        className="send-button"
+        onClick={sendTransaction}
+        disabled={loading}
+      >
+        {loading ? 'Sending' : 'Send'} Transaction
       </button>
       {mockTx && (
         <div className="transaction-card">
