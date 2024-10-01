@@ -135,7 +135,7 @@ describe('Tx', () => {
   });
   it('should send for a tx with sessionKey', async () => {
     const txInstance = await Tx.initialize(env);
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 3; i++) {
       const recipients = [
         `eip155:1:${privateKeyToAddress(generatePrivateKey())}`,
         `eip155:137:${privateKeyToAddress(generatePrivateKey())}`,

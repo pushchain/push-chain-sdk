@@ -66,13 +66,7 @@ describe('Block Class', () => {
 
   it('should search for a block by hash', async () => {
     const blockInstance = await Block.initialize(env);
-    const res = await blockInstance.get(
-      Math.floor(Date.now() / 1000),
-      'DESC',
-      true,
-      1,
-      2
-    );
+    const res = await blockInstance.get();
     const blockHash = res.blocks[0].blockHash;
     const searchRes = await blockInstance.search(blockHash);
     expect(searchRes.blocks).toBeInstanceOf(Array);
