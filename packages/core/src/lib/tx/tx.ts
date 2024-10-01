@@ -137,63 +137,43 @@ export class Tx {
     }
   ): Promise<string> => {
     const token = await this.validator.call<TokenReply>('push_getApiToken');
-    let serializedSignedTx: Uint8Array;
+    let txSender: string;
+    let signature: `0x${string}`;
 
     if (session) {
-      // Session available, proceed with normal flow
+      txSender = session.sender;
       const serializedUnsignedTx = Tx.serialize({
         ...unsignedTx,
-        sender: session.sender,
+        sender: txSender,
         signature: new Uint8Array(0),
         apiToken: new Uint8Array(Buffer.from(token.apiToken, 'base64')),
       });
       const account = privateKeyToAccount(session.privKey);
-      const signature = await account.signMessage({
+      signature = await account.signMessage({
         message: { raw: serializedUnsignedTx },
       });
-      serializedSignedTx = Tx.serialize({
-        ...unsignedTx,
-        sender: session.sender,
-        signature: hexToBytes(signature),
-        apiToken: utf8ToBytes(
-          Buffer.from(token.apiToken, 'base64').toString('utf-8')
-        ),
-      });
     } else {
-      this.openWalletWindow();
-      if (!this.walletWindow) {
-        throw new Error('Wallet Window Not Found');
-      }
-      // Request the wallet to provide the connected address
-      const loggedInAddress = await this.requestWalletAddress(
-        this.walletWindow
-      );
-      console.log('Got here too');
-      return '';
+      await this.openWalletWindow();
+      txSender = await this.requestWalletAddress();
       const serializedUnsignedTx = Tx.serialize({
         ...unsignedTx,
-        sender: loggedInAddress,
+        sender: txSender,
         signature: new Uint8Array(0),
         apiToken: new Uint8Array(Buffer.from(token.apiToken, 'base64')),
       });
-
-      // Request the wallet to sign the transaction
-      const signature = await this.requestWalletSignature(
-        this.walletWindow,
+      signature = (await this.requestWalletSignature(
+        this.walletWindow as Window,
         serializedUnsignedTx
-      );
-
-      // Build the signed transaction
-      serializedSignedTx = Tx.serialize({
-        ...unsignedTx,
-        sender: loggedInAddress,
-        signature: hexToBytes(signature as `0x${string}`),
-        apiToken: utf8ToBytes(
-          Buffer.from(token.apiToken, 'base64').toString('utf-8')
-        ),
-      });
+      )) as `0x${string}`;
     }
-    // Send the signed transaction
+    const serializedSignedTx = Tx.serialize({
+      ...unsignedTx,
+      sender: txSender,
+      signature: hexToBytes(signature),
+      apiToken: utf8ToBytes(
+        Buffer.from(token.apiToken, 'base64').toString('utf-8')
+      ),
+    });
     return await this.validator.call<string>(
       'push_sendTransaction',
       [bytesToHex(serializedSignedTx)],
@@ -201,28 +181,25 @@ export class Tx {
     );
   };
 
-  private openWalletWindow = () => {
+  private openWalletWindow = async () => {
     // Check if the wallet window is already open
     if (!this.walletWindow || this.walletWindow.closed) {
       this.walletWindow = window.open(config.WALLET_URL[this.env], '_blank');
       if (!this.walletWindow) {
         throw new Error('Failed to open wallet window');
       }
+      // Time Given for tab to Load
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   };
 
-  // Function to request wallet address
-  private requestWalletAddress = (walletWindow: Window): Promise<string> => {
-    const env = this.env;
+  /**
+   * Request Logged In Address from Push Wallet
+   */
+  private requestWalletAddress = (): Promise<string> => {
     return new Promise((resolve, reject) => {
       // Listen for wallet response
       window.addEventListener('message', function listener(event) {
-        console.log(event);
-        if (event.origin !== (config.WALLET_URL[env] as string)) {
-          console.log(event);
-          return; // Only accept messages from wallet domain
-        }
-
         if (event.data.action === ACTION.WALLET_DETAILS) {
           window.removeEventListener('message', listener);
           resolve(event.data.address); // Wallet address returned
@@ -231,24 +208,94 @@ export class Tx {
           reject(event.data.error); // Handle error
         }
       });
-
-      // Request wallet details
-      walletWindow.postMessage({ action: ACTION.REQ_WALLET_DETAILS }, '*');
+      this.walletWindow?.postMessage(
+        { action: ACTION.REQ_WALLET_DETAILS },
+        config.WALLET_URL[this.env]
+      );
     });
   };
 
-  // Function to request wallet signature
-  private requestWalletSignature = (
-    walletWindow: Window,
-    serializedUnsignedTx: Uint8Array
-  ): Promise<string> => {
+  /**
+   * Request connection to Push Wallet
+   */
+  private requestAppConnectionStatus = (): Promise<{
+    isConnected: boolean;
+    isPending: boolean;
+  }> => {
     return new Promise((resolve, reject) => {
       // Listen for wallet response
       window.addEventListener('message', function listener(event) {
-        if (event.origin !== '<WALLET_DOMAIN>') {
-          return; // Only accept messages from wallet domain
+        if (event.data.action === ACTION.CONNECTION_STATUS) {
+          window.removeEventListener('message', listener);
+          resolve(event.data);
+        } else if (event.data.action === ACTION.ERROR) {
+          window.removeEventListener('message', listener);
+          reject(event.data.error); // Handle error
         }
+      });
 
+      // Request wallet to sign data
+      this.walletWindow?.postMessage(
+        {
+          action: ACTION.IS_CONNECTED,
+        },
+        config.WALLET_URL[this.env]
+      );
+    });
+  };
+
+  /**
+   * Request connection to Push Wallet
+   */
+  private requestWalletConnection = (): Promise<{
+    isConnected: boolean;
+    isPending: boolean;
+  }> => {
+    return new Promise((resolve, reject) => {
+      // Listen for wallet response
+      window.addEventListener('message', function listener(event) {
+        if (event.data.action === ACTION.CONNECTION_STATUS) {
+          window.removeEventListener('message', listener);
+          resolve(event.data);
+        } else if (event.data.action === ACTION.ERROR) {
+          window.removeEventListener('message', listener);
+          reject(event.data.error); // Handle error
+        }
+      });
+      this.walletWindow?.postMessage(
+        {
+          action: ACTION.REQ_TO_CONNECT,
+        },
+        config.WALLET_URL[this.env]
+      );
+    });
+  };
+
+  /**
+   * Request Signature from Push Wallet
+   */
+  private requestWalletSignature = async (
+    walletWindow: Window,
+    serializedUnsignedTx: Uint8Array
+  ): Promise<string> => {
+    const { isPending, isConnected } = await this.requestAppConnectionStatus();
+
+    // if (!isConnected) {
+    //   if (isPending) {
+    //     throw Error(
+    //       'App Connection Request is Pending. Accept App Connection Request in Push Wallet to enable signing !!!'
+    //     );
+    //   } else {
+    //     await this.requestWalletConnection();
+    //     throw Error(
+    //       'App not Connected. Accept App Connection Request in Push Wallet to enable signing !!!'
+    //     );
+    //   }
+    // }
+
+    return new Promise((resolve, reject) => {
+      // Listen for wallet response
+      window.addEventListener('message', function listener(event) {
         if (event.data.action === ACTION.SIGNATURE) {
           window.removeEventListener('message', listener);
           resolve(event.data.signature); // Signature returned
@@ -264,7 +311,7 @@ export class Tx {
           action: ACTION.REQ_TO_SIGN,
           data: serializedUnsignedTx,
         },
-        '*'
+        config.WALLET_URL[this.env]
       );
     });
   };

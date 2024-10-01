@@ -29,7 +29,7 @@ const config: Config = {
     [ENV.PROD]: 'TODO',
     [ENV.STAGING]: 'TODO',
     [ENV.DEV]: 'https://push-protocol.github.io/push-keys/',
-    [ENV.LOCAL]: 'http://localhost:5173',
+    [ENV.LOCAL]: 'http://localhost:5174/push-keys/',
   },
 };
 
