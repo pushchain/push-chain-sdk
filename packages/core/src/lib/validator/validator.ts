@@ -83,7 +83,7 @@ export class Validator {
     url: string,
     method: string,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    params?: any
+    params: any = []
   ): Promise<T> => {
     const requestBody: JsonRpcRequest = {
       jsonrpc: '2.0',
@@ -127,10 +127,6 @@ export class Validator {
     const activeValidators =
       await validatorContractClient.read.getActiveVNodes();
     const validator = getRandomElement(activeValidators);
-
-    // TODO: REMOVE RETURN STATEMENT
-    return validator;
-
     const isListening = await this.ping(validator.nodeApiBaseUrl);
     if (isListening) {
       return validator;
