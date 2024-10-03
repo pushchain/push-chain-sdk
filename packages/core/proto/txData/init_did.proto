@@ -1,12 +1,14 @@
 syntax = "proto3";
 package push;
 
+message WalletToEncDerivedKey {
+    string encDerivedPrivKey = 1;
+    string signature = 2;
+}
+
 message InitDid {
-    string did = 1;
-    string masterPubKey = 2;
-    uint32 derivedKeyIndex = 3;
-    string derivedPubKey = 4;
-    // Map to store wallet address and corresponding encrypted derived key
-    // Note:- There will always be altest 1 mapping
-    map<string, string> walletToEncDerivedKey = 6;
+    string masterPubKey = 1;
+    uint32 derivedKeyIndex = 2;
+    string derivedPubKey = 3;
+    map<string, WalletToEncDerivedKey> walletToEncDerivedKey = 4;
 }
