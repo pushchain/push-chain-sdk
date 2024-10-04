@@ -9,9 +9,20 @@ import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
 
 export const protobufPackage = "push";
 
+export interface EncryptedText {
+  ciphertext: string;
+  salt: string;
+  nonce: string;
+  version: string;
+  preKey: string;
+}
+
 export interface WalletToEncDerivedKey {
-  encDerivedPrivKey: string;
-  signature: string;
+  encDerivedPrivKey:
+    | EncryptedText
+    | undefined;
+  /** Helps Vnode to proof that encryptedData is indeed signed by account */
+  signature: Uint8Array;
 }
 
 export interface InitDid {
@@ -26,17 +37,136 @@ export interface InitDid_WalletToEncDerivedKeyEntry {
   value: WalletToEncDerivedKey | undefined;
 }
 
+function createBaseEncryptedText(): EncryptedText {
+  return { ciphertext: "", salt: "", nonce: "", version: "", preKey: "" };
+}
+
+export const EncryptedText = {
+  encode(message: EncryptedText, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.ciphertext !== "") {
+      writer.uint32(10).string(message.ciphertext);
+    }
+    if (message.salt !== "") {
+      writer.uint32(18).string(message.salt);
+    }
+    if (message.nonce !== "") {
+      writer.uint32(26).string(message.nonce);
+    }
+    if (message.version !== "") {
+      writer.uint32(34).string(message.version);
+    }
+    if (message.preKey !== "") {
+      writer.uint32(42).string(message.preKey);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): EncryptedText {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseEncryptedText();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag !== 10) {
+            break;
+          }
+
+          message.ciphertext = reader.string();
+          continue;
+        case 2:
+          if (tag !== 18) {
+            break;
+          }
+
+          message.salt = reader.string();
+          continue;
+        case 3:
+          if (tag !== 26) {
+            break;
+          }
+
+          message.nonce = reader.string();
+          continue;
+        case 4:
+          if (tag !== 34) {
+            break;
+          }
+
+          message.version = reader.string();
+          continue;
+        case 5:
+          if (tag !== 42) {
+            break;
+          }
+
+          message.preKey = reader.string();
+          continue;
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): EncryptedText {
+    return {
+      ciphertext: isSet(object.ciphertext) ? globalThis.String(object.ciphertext) : "",
+      salt: isSet(object.salt) ? globalThis.String(object.salt) : "",
+      nonce: isSet(object.nonce) ? globalThis.String(object.nonce) : "",
+      version: isSet(object.version) ? globalThis.String(object.version) : "",
+      preKey: isSet(object.preKey) ? globalThis.String(object.preKey) : "",
+    };
+  },
+
+  toJSON(message: EncryptedText): unknown {
+    const obj: any = {};
+    if (message.ciphertext !== "") {
+      obj.ciphertext = message.ciphertext;
+    }
+    if (message.salt !== "") {
+      obj.salt = message.salt;
+    }
+    if (message.nonce !== "") {
+      obj.nonce = message.nonce;
+    }
+    if (message.version !== "") {
+      obj.version = message.version;
+    }
+    if (message.preKey !== "") {
+      obj.preKey = message.preKey;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<EncryptedText>, I>>(base?: I): EncryptedText {
+    return EncryptedText.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<EncryptedText>, I>>(object: I): EncryptedText {
+    const message = createBaseEncryptedText();
+    message.ciphertext = object.ciphertext ?? "";
+    message.salt = object.salt ?? "";
+    message.nonce = object.nonce ?? "";
+    message.version = object.version ?? "";
+    message.preKey = object.preKey ?? "";
+    return message;
+  },
+};
+
 function createBaseWalletToEncDerivedKey(): WalletToEncDerivedKey {
-  return { encDerivedPrivKey: "", signature: "" };
+  return { encDerivedPrivKey: undefined, signature: new Uint8Array(0) };
 }
 
 export const WalletToEncDerivedKey = {
   encode(message: WalletToEncDerivedKey, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.encDerivedPrivKey !== "") {
-      writer.uint32(10).string(message.encDerivedPrivKey);
+    if (message.encDerivedPrivKey !== undefined) {
+      EncryptedText.encode(message.encDerivedPrivKey, writer.uint32(10).fork()).join();
     }
-    if (message.signature !== "") {
-      writer.uint32(18).string(message.signature);
+    if (message.signature.length !== 0) {
+      writer.uint32(18).bytes(message.signature);
     }
     return writer;
   },
@@ -53,14 +183,14 @@ export const WalletToEncDerivedKey = {
             break;
           }
 
-          message.encDerivedPrivKey = reader.string();
+          message.encDerivedPrivKey = EncryptedText.decode(reader, reader.uint32());
           continue;
         case 2:
           if (tag !== 18) {
             break;
           }
 
-          message.signature = reader.string();
+          message.signature = reader.bytes();
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -73,18 +203,18 @@ export const WalletToEncDerivedKey = {
 
   fromJSON(object: any): WalletToEncDerivedKey {
     return {
-      encDerivedPrivKey: isSet(object.encDerivedPrivKey) ? globalThis.String(object.encDerivedPrivKey) : "",
-      signature: isSet(object.signature) ? globalThis.String(object.signature) : "",
+      encDerivedPrivKey: isSet(object.encDerivedPrivKey) ? EncryptedText.fromJSON(object.encDerivedPrivKey) : undefined,
+      signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(0),
     };
   },
 
   toJSON(message: WalletToEncDerivedKey): unknown {
     const obj: any = {};
-    if (message.encDerivedPrivKey !== "") {
-      obj.encDerivedPrivKey = message.encDerivedPrivKey;
+    if (message.encDerivedPrivKey !== undefined) {
+      obj.encDerivedPrivKey = EncryptedText.toJSON(message.encDerivedPrivKey);
     }
-    if (message.signature !== "") {
-      obj.signature = message.signature;
+    if (message.signature.length !== 0) {
+      obj.signature = base64FromBytes(message.signature);
     }
     return obj;
   },
@@ -94,8 +224,10 @@ export const WalletToEncDerivedKey = {
   },
   fromPartial<I extends Exact<DeepPartial<WalletToEncDerivedKey>, I>>(object: I): WalletToEncDerivedKey {
     const message = createBaseWalletToEncDerivedKey();
-    message.encDerivedPrivKey = object.encDerivedPrivKey ?? "";
-    message.signature = object.signature ?? "";
+    message.encDerivedPrivKey = (object.encDerivedPrivKey !== undefined && object.encDerivedPrivKey !== null)
+      ? EncryptedText.fromPartial(object.encDerivedPrivKey)
+      : undefined;
+    message.signature = object.signature ?? new Uint8Array(0);
     return message;
   },
 };
@@ -307,6 +439,31 @@ export const InitDid_WalletToEncDerivedKeyEntry = {
     return message;
   },
 };
+
+function bytesFromBase64(b64: string): Uint8Array {
+  if ((globalThis as any).Buffer) {
+    return Uint8Array.from(globalThis.Buffer.from(b64, "base64"));
+  } else {
+    const bin = globalThis.atob(b64);
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; ++i) {
+      arr[i] = bin.charCodeAt(i);
+    }
+    return arr;
+  }
+}
+
+function base64FromBytes(arr: Uint8Array): string {
+  if ((globalThis as any).Buffer) {
+    return globalThis.Buffer.from(arr).toString("base64");
+  } else {
+    const bin: string[] = [];
+    arr.forEach((byte) => {
+      bin.push(globalThis.String.fromCharCode(byte));
+    });
+    return globalThis.btoa(bin.join(""));
+  }
+}
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 

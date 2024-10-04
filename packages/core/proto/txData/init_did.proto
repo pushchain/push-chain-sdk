@@ -1,9 +1,18 @@
 syntax = "proto3";
 package push;
 
+message EncryptedText {
+    string ciphertext = 1;
+    string salt = 2;
+    string nonce = 3;
+    string version = 4; 
+    string preKey = 5;
+  }
+
 message WalletToEncDerivedKey {
-    string encDerivedPrivKey = 1;
-    string signature = 2;
+    EncryptedText encDerivedPrivKey = 1;
+    // Helps Vnode to proof that encryptedData is indeed signed by account
+    bytes signature = 2;
 }
 
 message InitDid {

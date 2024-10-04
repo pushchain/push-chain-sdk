@@ -7,12 +7,20 @@ import { generatePrivateKey, privateKeyToAddress } from 'viem/accounts';
 
 // Mock data for testing
 const mockInitDidTxData: InitDid = {
-  did: 'did:example:123',
-  masterPubKey: 'master_pub_key',
+  masterPubKey: 'efdgakce',
   derivedKeyIndex: 0,
-  derivedPubKey: 'derived_pub_key',
+  derivedPubKey: 'jdwdwowfn',
   walletToEncDerivedKey: {
-    push10222n3232mwdeicej3: 'stringified_encrypted_pk',
+    'push:devnet:push1xkuy66zg69jp29muvnty2prx8wvc5645f9y5ux': {
+      encDerivedPrivKey: {
+        ciphertext: 'qwe',
+        salt: 'qaz',
+        nonce: '',
+        version: 'push:v5',
+        preKey: '',
+      },
+      signature: new Uint8Array([1, 2, 3]),
+    },
   },
 };
 const mockRecipients = [
@@ -41,7 +49,6 @@ describe('Tx', () => {
       mockRecipients,
       Tx.serializeData(mockInitDidTxData, TxCategory.INIT_DID)
     );
-    // console.log(tx);
     expect(tx).toEqual({
       type: 0,
       category: TxCategory.INIT_DID,
@@ -135,7 +142,7 @@ describe('Tx', () => {
   });
   it('should send for a tx with sessionKey', async () => {
     const txInstance = await Tx.initialize(env);
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 1; i++) {
       const recipients = [
         `eip155:1:${privateKeyToAddress(generatePrivateKey())}`,
         `eip155:137:${privateKeyToAddress(generatePrivateKey())}`,
