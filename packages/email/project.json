@@ -1,0 +1,19 @@
+{
+  "name": "email",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/email/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/email",
+        "main": "packages/email/src/index.ts",
+        "tsConfig": "packages/email/tsconfig.lib.json",
+        "assets": ["packages/email/*.md"]
+      }
+    }
+  }
+}

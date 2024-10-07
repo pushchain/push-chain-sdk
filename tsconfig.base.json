@@ -15,7 +15,8 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "core": ["packages/core/src/index.ts"]
+      "core": ["packages/core/src/index.ts"],
+      "email": ["packages/email/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
