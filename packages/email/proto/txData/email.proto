@@ -1,0 +1,31 @@
+syntax = "proto3";
+package email;
+
+message Attachment {
+    string filename = 1;
+    string type = 2;
+    string content = 3;  // base64 encoded
+}
+
+message EmailHeader {
+    string key = 1;
+    string value = 2;
+}
+
+enum BodyFormat {
+    PLAIN_TEXT = 0;
+    HTML = 1;
+    MARKDOWN = 2;
+}
+
+message EmailBody {
+    string content = 1;
+    BodyFormat format = 2;  // Indicates whether it's plain text or HTML
+}
+
+message Email {
+    string subject = 1;
+    EmailBody body = 2;  // Includes both the content and format
+    repeated Attachment attachments = 3;  // List of attachments
+    repeated EmailHeader headers = 4;  // Optional/custom headers like priority
+}
