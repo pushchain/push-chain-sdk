@@ -12,7 +12,16 @@ const mockInitDidTxData = {
   derivedKeyIndex: 0,
   derivedPubKey: 'derived_pub_key',
   walletToEncDerivedKey: {
-    push10222n3232mwdeicej3: 'stringified_encrypted_pk',
+    'push:devnet:push1xkuy66zg69jp29muvnty2prx8wvc5645f9y5ux': {
+      encDerivedPrivKey: {
+        ciphertext: 'qwe',
+        salt: 'qaz',
+        nonce: '',
+        version: 'push:v5',
+        preKey: '',
+      },
+      signature: new Uint8Array([1, 2, 3]),
+    },
   },
 };
 
