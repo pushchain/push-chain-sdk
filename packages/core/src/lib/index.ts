@@ -10,6 +10,4 @@ import { CONSTANTS } from './constants';
  * serialization / deserialization capabilities for block & tx
  * Validator calls
  */
-export { CONSTANTS, Block, Tx, Validator, Address };
-
-export default PushNetwork;
+export { CONSTANTS, Block, Tx, Validator, Address, PushNetwork };
