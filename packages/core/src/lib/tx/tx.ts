@@ -159,7 +159,7 @@ export class Tx {
         ...unsignedTx,
         sender: txSender,
         signature: new Uint8Array(0),
-        apiToken: new Uint8Array(Buffer.from(token.apiToken, 'base64')),
+        apiToken: utf8ToBytes(token.apiToken),
       });
       signature = (await this.requestWalletSignature(
         this.walletWindow as Window,
@@ -170,9 +170,7 @@ export class Tx {
       ...unsignedTx,
       sender: txSender,
       signature: hexToBytes(signature),
-      apiToken: utf8ToBytes(
-        Buffer.from(token.apiToken, 'base64').toString('utf-8')
-      ),
+      apiToken: utf8ToBytes(token.apiToken),
     });
     return await this.validator.call<string>(
       'push_sendTransaction',
