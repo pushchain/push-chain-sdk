@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import PushNetwork, { Tx } from '@pushprotocol/node-core/src/lib';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
-import { TxCategory } from '@pushprotocol/node-core/src/lib/tx/tx.types';
 import './App.css';
 import { Transaction } from '@pushprotocol/node-core/src/lib/generated/tx';
+
+enum TxCategory {
+  INIT_DID = 'INIT_DID',
+  INIT_SESSION_KEY = 'INIT_SESSION_KEY',
+}
 
 // Mock data for testing
 const mockInitDidTxData = {
@@ -74,18 +78,21 @@ const App: React.FC = () => {
   return (
     <div className="app-container">
       <h1>Send Transaction to Push Network</h1>
-      <button
-        className="send-button"
-        onClick={sendTransaction}
-        disabled={loading}
-      >
-        {loading ? 'Sending' : 'Send'} Transaction
-      </button>
       {mockTx && (
-        <div className="transaction-card">
-          <h2>Mock Unsigned Transaction Data:</h2>
-          <pre>{JSON.stringify(mockTx, null, 2)}</pre>
-        </div>
+        <>
+          <button
+            className="send-button"
+            onClick={sendTransaction}
+            disabled={loading}
+          >
+            {loading ? 'Sending' : 'Send'} Transaction
+          </button>
+
+          <div className="transaction-card">
+            <h2>Mock Unsigned Transaction Data:</h2>
+            <pre>{JSON.stringify(mockTx, null, 2)}</pre>
+          </div>
+        </>
       )}
     </div>
   );
