@@ -38,6 +38,7 @@ const App: React.FC = () => {
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
   const [mockTx, setMockTx] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [account, setAccount] = useState<string>('');
 
   useEffect(() => {
     const setNetwork = async () => {
@@ -58,12 +59,27 @@ const App: React.FC = () => {
     setNetwork();
   }, []);
 
+  const connectWallet = async () => {
+    try {
+      if (pushNetwork) {
+        const acc = await pushNetwork.wallet.connect();
+        setAccount(acc);
+      }
+    } catch (err) {
+      alert(err);
+    }
+  };
+
   const sendTransaction = async () => {
     setLoading(true);
     try {
       if (pushNetwork && mockTx) {
-        const txHash = await pushNetwork.tx.send(mockTx);
-        console.log('Transaction sent, hash:', txHash);
+        const txHash = await pushNetwork.tx.send(mockTx, {
+          account,
+          signMessage: async (data: Uint8Array) => {
+            return await pushNetwork.wallet.sign(data);
+          },
+        });
         alert(`Tx Sent - ${txHash}`);
       } else {
         console.error('Push Network or Transaction not initialized');
@@ -78,7 +94,16 @@ const App: React.FC = () => {
   return (
     <div className="app-container">
       <h1>Send Transaction to Push Network</h1>
-      {mockTx && (
+      {pushNetwork && account === '' && (
+        <button
+          className="send-button"
+          onClick={connectWallet}
+          disabled={loading}
+        >
+          Connect Push Wallet
+        </button>
+      )}
+      {mockTx && account !== '' && (
         <>
           <button
             className="send-button"
