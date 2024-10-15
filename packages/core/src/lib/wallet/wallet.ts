@@ -19,7 +19,7 @@ export class Wallet {
   /**
    * Request Signature from Push Wallet
    */
-  sign = async (data: Uint8Array): Promise<string> => {
+  sign = async (data: Uint8Array): Promise<Uint8Array> => {
     await this.openWalletWindow();
 
     const { isPending, isConnected } = await this.appConnectionStatus();
