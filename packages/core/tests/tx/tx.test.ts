@@ -3,7 +3,12 @@ import { TxCategory } from '../../src/lib/tx/tx.types';
 import { InitDid } from '../../src/lib/generated/txData/init_did';
 import { config } from '../config';
 import { TxResponse } from '../../src/lib/tx/tx.types';
-import { generatePrivateKey, privateKeyToAddress } from 'viem/accounts';
+import {
+  generatePrivateKey,
+  privateKeyToAccount,
+  privateKeyToAddress,
+} from 'viem/accounts';
+import { hexToBytes } from 'viem';
 
 // Mock data for testing
 const mockInitDidTxData: InitDid = {
@@ -140,7 +145,7 @@ describe('Tx', () => {
       block.transactions.forEach((tx) => txChecker(tx));
     });
   });
-  it('should send for a tx with sessionKey', async () => {
+  it('should send for a tx', async () => {
     const txInstance = await Tx.initialize(env);
     for (let i = 0; i < 1; i++) {
       const recipients = [
@@ -153,13 +158,19 @@ describe('Tx', () => {
         recipients,
         Tx.serializeData(mockInitDidTxData, TxCategory.INIT_DID)
       );
-      const res = await txInstance.send(tx, {
-        sender: Address.toPushCAIP(
-          privateKeyToAddress(generatePrivateKey()),
-          config.ENV
-        ),
-        privKey: generatePrivateKey(),
-      });
+
+      const pk = generatePrivateKey();
+      const account = privateKeyToAccount(pk);
+      const signer = {
+        account: Address.toPushCAIP(account.address),
+        signMessage: async (data: Uint8Array) => {
+          const signature = await account.signMessage({
+            message: { raw: data },
+          });
+          return hexToBytes(signature);
+        },
+      };
+      const res = await txInstance.send(tx, signer);
       expect(typeof res).toEqual('string');
     }
   });
