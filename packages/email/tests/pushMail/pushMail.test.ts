@@ -1,11 +1,13 @@
 import PushMail from '../../src';
 import {
-  Email,
   EmailBody,
   EmailHeader,
   Attachment,
 } from '../../src/lib/generated/txData/email';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+import { hexToBytes } from 'viem';
+import { Address } from '@pushprotocol/node-core';
 
 describe('PushMail Integration Tests', () => {
   let pushMail: PushMail;
@@ -50,7 +52,7 @@ describe('PushMail Integration Tests', () => {
       const pageSize = 30;
       const page = 1;
 
-      const res = await pushMail.get(startTime, direction, pageSize, page);
+      const res = await pushMail.get('', startTime, direction, pageSize, page);
 
       // Assuming that the test environment might have data, adjust this assertion accordingly
       expect(res).toBeDefined();
@@ -76,17 +78,25 @@ describe('PushMail Integration Tests', () => {
         `eip155:137:0x605b930c2E3EF55B93f530ac5bF22D68e5D4ED42`,
       ];
 
+      const pk = generatePrivateKey();
+      const account = privateKeyToAccount(pk);
+      const signer = {
+        account: Address.toPushCAIP(account.address, ENV.DEV),
+        signMessage: async (data: Uint8Array) => {
+          const signature = await account.signMessage({
+            message: { raw: data },
+          });
+          return hexToBytes(signature);
+        },
+      };
+
       const txHash = await pushMail.send(
         subject,
         body,
         attachments,
         headers,
         to,
-        {
-          sender: 'eip55:1:0x35B84d6848D16415177c64D64504663b998A6ab4',
-          privKey:
-            '0x6679bfa4bbc9a12235f6c2c4b6af1adb3066b0dabf540b44d90f4a1bfeb210b8',
-        }
+        signer
       );
       expect(typeof txHash).toEqual('string');
     });

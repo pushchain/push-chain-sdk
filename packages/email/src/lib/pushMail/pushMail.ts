@@ -25,6 +25,7 @@ export class PushMail {
    * Get Push Mails
    */
   get = async (
+    account: string,
     startTime: number = Math.floor(Date.now() / 1000), // Current Local Time
     direction: 'ASC' | 'DESC' = 'ASC',
     pageSize = 30,
@@ -52,9 +53,9 @@ export class PushMail {
     attachments: Attachment[],
     headers: EmailHeader[],
     to: string[],
-    session?: {
-      sender: string;
-      privKey: `0x${string}`;
+    signer: {
+      account: string;
+      signMessage: (dataToBeSigned: Uint8Array) => Promise<Uint8Array>;
     }
   ): Promise<string> => {
     const serializedData = PushMail.serializeData({
@@ -68,6 +69,6 @@ export class PushMail {
       to,
       serializedData
     );
-    return await this.pushNetwork.tx.send(unsignedTx, session);
+    return await this.pushNetwork.tx.send(unsignedTx, signer);
   };
 }
