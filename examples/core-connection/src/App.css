@@ -18,6 +18,7 @@ h1 {
 }
 
 .send-button {
+  margin: 40px;
   padding: 10px 20px;
   background-color: #3498db; /* Bright blue */
   color: white;

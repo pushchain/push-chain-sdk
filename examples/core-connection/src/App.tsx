@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import PushNetwork, { Tx } from '@pushprotocol/node-core/src/lib';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
-import { TxCategory } from '@pushprotocol/node-core/src/lib/tx/tx.types';
 import './App.css';
 import { Transaction } from '@pushprotocol/node-core/src/lib/generated/tx';
+
+enum TxCategory {
+  INIT_DID = 'INIT_DID',
+  INIT_SESSION_KEY = 'INIT_SESSION_KEY',
+}
 
 // Mock data for testing
 const mockInitDidTxData = {
@@ -12,7 +16,16 @@ const mockInitDidTxData = {
   derivedKeyIndex: 0,
   derivedPubKey: 'derived_pub_key',
   walletToEncDerivedKey: {
-    push10222n3232mwdeicej3: 'stringified_encrypted_pk',
+    'push:devnet:push1xkuy66zg69jp29muvnty2prx8wvc5645f9y5ux': {
+      encDerivedPrivKey: {
+        ciphertext: 'qwe',
+        salt: 'qaz',
+        nonce: '',
+        version: 'push:v5',
+        preKey: '',
+      },
+      signature: new Uint8Array([1, 2, 3]),
+    },
   },
 };
 
@@ -25,6 +38,7 @@ const App: React.FC = () => {
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
   const [mockTx, setMockTx] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [account, setAccount] = useState<string>('');
 
   useEffect(() => {
     const setNetwork = async () => {
@@ -45,12 +59,27 @@ const App: React.FC = () => {
     setNetwork();
   }, []);
 
+  const connectWallet = async () => {
+    try {
+      if (pushNetwork) {
+        const acc = await pushNetwork.wallet.connect();
+        setAccount(acc);
+      }
+    } catch (err) {
+      alert(err);
+    }
+  };
+
   const sendTransaction = async () => {
     setLoading(true);
     try {
       if (pushNetwork && mockTx) {
-        const txHash = await pushNetwork.tx.send(mockTx);
-        console.log('Transaction sent, hash:', txHash);
+        const txHash = await pushNetwork.tx.send(mockTx, {
+          account,
+          signMessage: async (data: Uint8Array) => {
+            return await pushNetwork.wallet.sign(data);
+          },
+        });
         alert(`Tx Sent - ${txHash}`);
       } else {
         console.error('Push Network or Transaction not initialized');
@@ -65,18 +94,30 @@ const App: React.FC = () => {
   return (
     <div className="app-container">
       <h1>Send Transaction to Push Network</h1>
-      <button
-        className="send-button"
-        onClick={sendTransaction}
-        disabled={loading}
-      >
-        {loading ? 'Sending' : 'Send'} Transaction
-      </button>
-      {mockTx && (
-        <div className="transaction-card">
-          <h2>Mock Unsigned Transaction Data:</h2>
-          <pre>{JSON.stringify(mockTx, null, 2)}</pre>
-        </div>
+      {pushNetwork && account === '' && (
+        <button
+          className="send-button"
+          onClick={connectWallet}
+          disabled={loading}
+        >
+          Connect Push Wallet
+        </button>
+      )}
+      {mockTx && account !== '' && (
+        <>
+          <button
+            className="send-button"
+            onClick={sendTransaction}
+            disabled={loading}
+          >
+            {loading ? 'Sending' : 'Send'} Transaction
+          </button>
+
+          <div className="transaction-card">
+            <h2>Mock Unsigned Transaction Data:</h2>
+            <pre>{JSON.stringify(mockTx, null, 2)}</pre>
+          </div>
+        </>
       )}
     </div>
   );
