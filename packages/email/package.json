@@ -1,5 +1,5 @@
 {
-  "name": "@aman0035/push-mail",
+  "name": "push-mail",
   "version": "0.0.1",
   "peerDependencies": {
     "@pushprotocol/node-core": "^0.0.15",
