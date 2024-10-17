@@ -1,6 +1,6 @@
 {
   "name": "push-mail",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "peerDependencies": {
     "@pushprotocol/node-core": "^0.0.16",
     "viem": "^2"
