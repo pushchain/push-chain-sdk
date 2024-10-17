@@ -9,6 +9,7 @@ import {
   privateKeyToAddress,
 } from 'viem/accounts';
 import { hexToBytes } from 'viem';
+import { ENV } from '../../src/lib/constants';
 
 // Mock data for testing
 const mockInitDidTxData: InitDid = {
@@ -116,6 +117,7 @@ describe('Tx', () => {
     const txInstance = await Tx.initialize(env);
     const res = await txInstance.get();
     expect(res.blocks).toBeInstanceOf(Array);
+    expect(res.blocks.length).toBeGreaterThan(0);
     res.blocks.forEach((block) => {
       block.transactions.forEach((tx) => txChecker(tx));
     });
@@ -129,6 +131,67 @@ describe('Tx', () => {
       2
     );
     expect(res.blocks).toBeInstanceOf(Array);
+    res.blocks.forEach((block) => {
+      block.transactions.forEach((tx) => txChecker(tx));
+    });
+  });
+  it('should get transactions for a specific user', async () => {
+    const txInstance = await Tx.initialize(env);
+    const res = await txInstance.get(
+      Math.floor(Date.now()),
+      'DESC',
+      10,
+      1,
+      'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4'
+    );
+    expect(res.blocks).toBeInstanceOf(Array);
+    expect(res.blocks.length).toBeGreaterThan(0);
+    res.blocks.forEach((block) => {
+      block.transactions.forEach((tx) => txChecker(tx));
+    });
+  });
+  it('should get transactions with a specific Category', async () => {
+    const txInstance = await Tx.initialize(env);
+    const res = await txInstance.get(
+      Math.floor(Date.now()),
+      'DESC',
+      10,
+      1,
+      undefined,
+      'CUSTOM:PUSH_MAIL'
+    );
+    expect(res.blocks).toBeInstanceOf(Array);
+    expect(res.blocks.length).toBeGreaterThan(0);
+    res.blocks.forEach((block) => {
+      block.transactions.forEach((tx) => txChecker(tx));
+    });
+  });
+  it('should get transactions with a specific Sender', async () => {
+    const txInstance = await Tx.initialize(env);
+    const res = await txInstance.getBySender(
+      'push:devnet:push18zc5t7jjnzyvzjs0707gy5axtntzqgv5w6lnuh',
+      Math.floor(Date.now()),
+      'DESC',
+      10,
+      1
+    );
+    expect(res.blocks).toBeInstanceOf(Array);
+    expect(res.blocks.length).toBeGreaterThan(0);
+    res.blocks.forEach((block) => {
+      block.transactions.forEach((tx) => txChecker(tx));
+    });
+  });
+  it('should get transactions with a specific Recipient', async () => {
+    const txInstance = await Tx.initialize(env);
+    const res = await txInstance.getByRecipient(
+      'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4',
+      Math.floor(Date.now()),
+      'DESC',
+      10,
+      1
+    );
+    expect(res.blocks).toBeInstanceOf(Array);
+    expect(res.blocks.length).toBeGreaterThan(0);
     res.blocks.forEach((block) => {
       block.transactions.forEach((tx) => txChecker(tx));
     });
@@ -162,7 +225,7 @@ describe('Tx', () => {
       const pk = generatePrivateKey();
       const account = privateKeyToAccount(pk);
       const signer = {
-        account: Address.toPushCAIP(account.address),
+        account: Address.toPushCAIP(account.address, ENV.DEV),
         signMessage: async (data: Uint8Array) => {
           const signature = await account.signMessage({
             message: { raw: data },
