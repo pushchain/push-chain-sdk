@@ -91,19 +91,66 @@ export class Tx {
    * Get Transactions
    */
   get = async (
+    startTime: number = Math.floor(Date.now()), // Current Local Time
+    direction: 'ASC' | 'DESC' = 'DESC',
+    pageSize = 30,
+    page = 1,
+    // caip10 address
+    userAddress?: string,
+    category?: string
+  ) => {
+    return userAddress === undefined
+      ? await this.validator.call<BlockResponse>('push_getTransactions', [
+          startTime,
+          direction,
+          pageSize,
+          page,
+          category,
+        ])
+      : await this.validator.call<BlockResponse>('push_getTransactionsByUser', [
+          userAddress,
+          startTime,
+          direction,
+          pageSize,
+          page,
+          category,
+        ]);
+  };
+
+  /**
+   * Get Transactions by Sender
+   */
+  getBySender = async (
+    // caip10 address
+    senderAddress: string,
     startTime: number = Math.floor(Date.now() / 1000), // Current Local Time
     direction: 'ASC' | 'DESC' = 'ASC',
     pageSize = 30,
     page = 1,
     category?: string
   ) => {
-    return await this.validator.call<BlockResponse>('push_getTransactions', [
-      startTime,
-      direction,
-      pageSize,
-      page,
-      category,
-    ]);
+    return await this.validator.call<BlockResponse>(
+      'push_getTransactionsBySender',
+      [senderAddress, startTime, direction, pageSize, page, category]
+    );
+  };
+
+  /**
+   * Get Transactions by Recipient
+   */
+  getByRecipient = async (
+    // caip10 address
+    recipientAddress: string,
+    startTime: number = Math.floor(Date.now() / 1000), // Current Local Time
+    direction: 'ASC' | 'DESC' = 'ASC',
+    pageSize = 30,
+    page = 1,
+    category?: string
+  ) => {
+    return await this.validator.call<BlockResponse>(
+      'push_getTransactionsByRecipient',
+      [recipientAddress, startTime, direction, pageSize, page, category]
+    );
   };
 
   /**

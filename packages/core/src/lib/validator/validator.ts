@@ -153,7 +153,10 @@ export class Validator {
       fnName === 'push_getBlocks' ||
       fnName === 'push_getBlockByHash' ||
       fnName === 'push_getTransactions' ||
-      fnName === 'push_getTransactionByHash'
+      fnName === 'push_getTransactionByHash' ||
+      fnName === 'push_getTransactionsByUser' ||
+      fnName === 'push_getTransactionsBySender' ||
+      fnName === 'push_getTransactionsByRecipient'
     ) {
       if (this.env === ENV.LOCAL) {
         modifiedUrl = 'http://localhost:5001/rpc';
@@ -165,6 +168,15 @@ export class Validator {
 
       if (fnName === 'push_getTransactions') {
         modifiedFnName = 'RpcService.getTxs';
+      }
+      if (fnName === 'push_getTransactionsByUser') {
+        modifiedFnName = 'RpcService.getTransactionsByUser';
+      }
+      if (fnName === 'push_getTransactionsBySender') {
+        modifiedFnName = 'RpcService.getTxsBySender';
+      }
+      if (fnName === 'push_getTransactionsByRecipient') {
+        modifiedFnName = 'RpcService.getTxsByRecipient';
       }
       if (fnName === 'push_getTransactionByHash') {
         modifiedFnName = 'RpcService.getTxByHash';
