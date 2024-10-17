@@ -6,6 +6,7 @@ import {
 } from '../generated/txData/email';
 import PushNetwork from '@pushprotocol/node-core';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
+import { Transaction } from 'packages/core/src/lib/generated/tx';
 
 export class PushMail {
   TX_CATEGORY = 'CUSTOM:PUSH_MAIL';
@@ -25,20 +26,147 @@ export class PushMail {
    * Get Push Mails
    */
   get = async (
-    account: string,
-    startTime: number = Math.floor(Date.now() / 1000), // Current Local Time
-    direction: 'ASC' | 'DESC' = 'ASC',
+    userAddress: string,
+    startTime: number = Math.floor(Date.now()), // Current Local Time
+    direction: 'ASC' | 'DESC' = 'DESC',
     pageSize = 30,
     page = 1
-  ) => {
-    const tx = await this.pushNetwork.tx.get(
+  ): Promise<Email[]> => {
+    // Fetch data from the network
+    const res = await this.pushNetwork.tx.get(
+      startTime,
+      direction,
+      pageSize,
+      page,
+      userAddress,
+      this.TX_CATEGORY
+    );
+
+    const pushMail: Email[] = [];
+    res.blocks.forEach((block) => {
+      // Use map instead of forEach to transform data
+      const mails: Email[] = block.blockDataAsJson.txobjList.map(
+        (txObj: { tx: Transaction }, index: number) => {
+          const mailTxData = PushMail.deserializeData(
+            new Uint8Array(Buffer.from(txObj.tx.data as any, 'base64'))
+          );
+          // Return the transformed mail object
+          return {
+            txHash: block.transactions[index].txnHash,
+            ts: block.ts,
+            subject: mailTxData.subject,
+            from: txObj.tx.sender,
+            to: (txObj.tx as any).recipientsList,
+            body: mailTxData.body,
+            attachments: mailTxData.attachments,
+            headers: mailTxData.headers,
+          };
+        }
+      );
+
+      // Spread the transformed mails into pushMail array
+      pushMail.push(...mails);
+    });
+
+    // Return the final email list
+    return pushMail;
+  };
+
+  /**
+   * Get Push Mails By sender
+   */
+  getBySender = async (
+    senderAddress: string,
+    startTime: number = Math.floor(Date.now()), // Current Local Time
+    direction: 'ASC' | 'DESC' = 'DESC',
+    pageSize = 30,
+    page = 1
+  ): Promise<Email[]> => {
+    const res = await this.pushNetwork.tx.getBySender(
+      senderAddress,
       startTime,
       direction,
       pageSize,
       page,
       this.TX_CATEGORY
     );
-    return tx;
+
+    const pushMail: Email[] = [];
+    res.blocks.forEach((block) => {
+      // Use map instead of forEach to transform data
+      const mails: Email[] = block.blockDataAsJson.txobjList.map(
+        (txObj: { tx: Transaction }, index: number) => {
+          const mailTxData = PushMail.deserializeData(
+            new Uint8Array(Buffer.from(txObj.tx.data as any, 'base64'))
+          );
+          // Return the transformed mail object
+          return {
+            txHash: block.transactions[index].txnHash,
+            ts: block.ts,
+            subject: mailTxData.subject,
+            from: txObj.tx.sender,
+            to: (txObj.tx as any).recipientsList,
+            body: mailTxData.body,
+            attachments: mailTxData.attachments,
+            headers: mailTxData.headers,
+          };
+        }
+      );
+
+      // Spread the transformed mails into pushMail array
+      pushMail.push(...mails);
+    });
+
+    // Return the final email list
+    return pushMail;
+  };
+
+  /**
+   * Get Push Mails By recipient
+   */
+  getByRecipient = async (
+    recipientAddress: string,
+    startTime: number = Math.floor(Date.now()), // Current Local Time
+    direction: 'ASC' | 'DESC' = 'DESC',
+    pageSize = 30,
+    page = 1
+  ): Promise<Email[]> => {
+    const res = await this.pushNetwork.tx.getByRecipient(
+      recipientAddress,
+      startTime,
+      direction,
+      pageSize,
+      page,
+      this.TX_CATEGORY
+    );
+    const pushMail: Email[] = [];
+    res.blocks.forEach((block) => {
+      // Use map instead of forEach to transform data
+      const mails: Email[] = block.blockDataAsJson.txobjList.map(
+        (txObj: { tx: Transaction }, index: number) => {
+          const mailTxData = PushMail.deserializeData(
+            new Uint8Array(Buffer.from(txObj.tx.data as any, 'base64'))
+          );
+          // Return the transformed mail object
+          return {
+            txHash: block.transactions[index].txnHash,
+            ts: block.ts,
+            subject: mailTxData.subject,
+            from: txObj.tx.sender,
+            to: (txObj.tx as any).recipientsList,
+            body: mailTxData.body,
+            attachments: mailTxData.attachments,
+            headers: mailTxData.headers,
+          };
+        }
+      );
+
+      // Spread the transformed mails into pushMail array
+      pushMail.push(...mails);
+    });
+
+    // Return the final email list
+    return pushMail;
   };
 
   /**

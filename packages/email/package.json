@@ -2,12 +2,12 @@
   "name": "push-mail",
   "version": "0.0.1",
   "peerDependencies": {
-    "@pushprotocol/node-core": "^0.0.15",
-    "viem" : "^2"
+    "@pushprotocol/node-core": "^0.0.16",
+    "viem": "^2"
   },
   "dependencies": {
-    "tslib": "^2.3.0",
-    "@bufbuild/protobuf": "^2.0.0"
+    "@bufbuild/protobuf": "^2.0.0",
+    "tslib": "^2.3.0"
   },
   "scripts": {
     "build:proto": "scripts/protoc-generate.sh"
@@ -15,5 +15,8 @@
   "type": "commonjs",
   "main": "./src/index.js",
   "typings": "./src/index.d.ts",
-  "private": false
+  "private": false,
+  "devDependencies": {
+    "@types/object-hash": "^3.0.6"
+  }
 }
