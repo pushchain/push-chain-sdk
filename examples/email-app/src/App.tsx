@@ -1,7 +1,8 @@
 import { usePrivy } from '@privy-io/react-auth';
-import LoggedInView from './components/ui/logged-in-view';
-import Login from './components/ui/login';
+
 import { useAppContext } from './context/app-context';
+import LoggedInView from './components/logged-in-view';
+import Login from './components/login';
 
 function App() {
   const { ready, authenticated } = usePrivy();
