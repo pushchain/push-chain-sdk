@@ -1,4 +1,4 @@
-import React, { ChangeEvent, useState, useCallback } from 'react';
+import React, { ChangeEvent, useState, useCallback, useEffect } from 'react';
 import {
   Popover,
   PopoverContent,
@@ -6,16 +6,16 @@ import {
 } from '@/components/ui/popover';
 import PushMail from 'push-mail';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from './ui/select';
+} from '@/components/ui/select';
 import { useAppContext } from '@/context/app-context';
 import { usePrivy, useSolanaWallets } from '@privy-io/react-auth';
 import { useSignMessage } from 'wagmi';
@@ -23,8 +23,8 @@ import { TokenETH, TokenPUSH, TokenSOL } from '@web3icons/react';
 import { hexToBytes } from 'viem';
 import { IEmail } from '@/types';
 import { X } from 'lucide-react';
-import { Badge } from './ui/badge';
-import { trimAddress } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { trimAddress, formatTimestamp } from '@/lib/utils';
 
 interface FileData {
   filename: string;
@@ -37,7 +37,11 @@ interface Recipient {
   chain: string;
 }
 
-const NewEmail: React.FC = () => {
+interface NewEmailProps {
+  replyTo?: IEmail;
+}
+
+const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
   const [emailData, setEmailData] = useState({
     subject: '',
     message: '',
@@ -48,6 +52,7 @@ const NewEmail: React.FC = () => {
     chain: 'eth',
   });
   const [fileAttachment, setFileAttachment] = useState<FileData | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   const { pushAccount, pushNetwork, setEmails } = useAppContext();
   const { signMessageAsync } = useSignMessage();
@@ -59,6 +64,43 @@ const NewEmail: React.FC = () => {
     : user?.wallet?.chainType === 'solana'
     ? `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:${user?.wallet?.address}`
     : `${user?.wallet?.chainId}:${user?.wallet?.address}`;
+
+  useEffect(() => {
+    if (replyTo) {
+      setIsOpen(true);
+      setEmailData({
+        subject: `Re: ${replyTo.subject}`,
+        message: formatReplyBody(replyTo),
+      });
+      setRecipients([
+        {
+          address: replyTo.from.split(':')[2],
+          chain: getChainFromCAIP(replyTo.from),
+        },
+      ]);
+    }
+  }, [replyTo]);
+
+  const formatReplyBody = (email: IEmail) => {
+    return `
+
+On ${formatTimestamp(email.timestamp.toString())}, ${
+      email.from.split(':')[2]
+    } wrote:
+
+${email.body
+  .split('\n')
+  .map((line) => `> ${line}`)
+  .join('\n')}
+`;
+  };
+
+  const getChainFromCAIP = (caip: string) => {
+    const chainId = caip.split(':')[1];
+    if (chainId === '1') return 'eth';
+    if (chainId === '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp') return 'sol';
+    return 'push';
+  };
 
   const handleInputChange = useCallback(
     (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -170,6 +212,7 @@ const NewEmail: React.FC = () => {
       setEmailData({ subject: '', message: '' });
       setRecipients([]);
       setFileAttachment(null);
+      setIsOpen(false);
     } catch (error) {
       console.error('Failed to send email:', error);
     }
@@ -187,7 +230,7 @@ const NewEmail: React.FC = () => {
 
   return (
     <div className="absolute bottom-5 right-5">
-      <Popover>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button className="rounded-full">Compose new Email</Button>
         </PopoverTrigger>

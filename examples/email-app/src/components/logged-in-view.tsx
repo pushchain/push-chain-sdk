@@ -10,6 +10,7 @@ import EmailViewer from './email-viewer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import NewEmail from './new-email';
 import { EMAIL_BOX } from '@/constants';
+import EmailLayout from './email-layout';
 
 const LoggedInView = () => {
   return (
@@ -44,7 +45,7 @@ const LoggedInView = () => {
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel className="p-2 h-full">
-          <EmailViewer />
+          <EmailLayout />
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
