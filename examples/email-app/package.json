@@ -13,7 +13,7 @@
   "dependencies": {
     "@privy-io/react-auth": "^1.91.0",
     "@privy-io/wagmi": "^0.2.12",
-    "@pushprotocol/node-core": "^0.0.17",
+    "@pushprotocol/node-core": "^0.0.19",
     "@radix-ui/react-icons": "^1.3.0",
     "@radix-ui/react-popover": "^1.1.2",
     "@radix-ui/react-scroll-area": "^1.2.0",
