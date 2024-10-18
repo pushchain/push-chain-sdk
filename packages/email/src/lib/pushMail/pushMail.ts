@@ -6,7 +6,7 @@ import {
 } from '../generated/txData/email';
 import PushNetwork from '@pushprotocol/node-core';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
-import { Transaction } from 'packages/core/src/lib/generated/tx';
+import { Transaction } from '@pushprotocol/node-core/src/lib/generated/tx';
 
 export class PushMail {
   TX_CATEGORY = 'CUSTOM:PUSH_MAIL';
