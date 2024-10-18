@@ -1,9 +1,11 @@
 'use client';
 import { AppContext } from '@/context/app-context';
 import { IEmail } from '@/types';
+import { usePrivy } from '@privy-io/react-auth';
 import PushNetwork from '@pushprotocol/node-core/src/lib';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
-// import {ENV} from "@pushprotocol/node-core/src/lib/constants";
+import PushMail from 'push-mail';
+
 import { ReactNode, useEffect, useState } from 'react';
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -11,6 +13,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedEmail, setSelectedEmail] = useState<IEmail | null>(null);
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
   const [pushAccount, setPushAccount] = useState<any>(null);
+  const [emails, setEmails] = useState<{
+    sent: IEmail[];
+    inbox: IEmail[];
+  }>({
+    sent: [],
+    inbox: [],
+  });
+
+  const { user } = usePrivy();
+
+  const getEmails = async () => {
+    const address = pushAccount
+      ? pushAccount
+      : user?.wallet?.chainType === 'solana'
+      ? `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:${user?.wallet?.address}`
+      : `${user?.wallet?.chainId}:${user?.wallet?.address}`;
+
+    const pushMail = await PushMail.initialize(ENV.DEV);
+    const [sent, received] = await Promise.all([
+      pushMail.getBySender(address),
+      pushMail.getByRecipient(address),
+    ]);
+
+    setEmails({
+      sent: sent.map((email: any) => ({
+        from: email.from,
+        to: email.to,
+        subject: email.subject,
+        timestamp: email.ts,
+        body: email.body.content,
+        attachments: email.attachments,
+      })),
+      inbox: received.map((email: any) => ({
+        from: email.from,
+        to: email.to,
+        subject: email.subject,
+        timestamp: email.ts,
+        body: email.body.content,
+        attachments: email.attachments,
+      })),
+    });
+  };
+
+  useEffect(() => {
+    getEmails();
+  }, [pushNetwork, pushAccount, user]);
 
   useEffect(() => {
     const setNetwork = async () => {
@@ -35,6 +83,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setPushNetwork,
         pushAccount,
         setPushAccount,
+        emails,
+        setEmails,
       }}
     >
       {children}

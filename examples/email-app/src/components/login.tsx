@@ -1,6 +1,6 @@
 import { usePrivy } from '@privy-io/react-auth';
 import { useAppContext } from '@/context/app-context';
-import { Button } from './button';
+import { Button } from './ui/button';
 
 const Login = () => {
   const { login } = usePrivy();
