@@ -14,4 +14,4 @@ interface FileAttachment {
 }
 
 type FileAttachments = FileAttachment[];
-export type { IEmail, FileAttachments };
+export type { IEmail, FileAttachments, FileAttachment };

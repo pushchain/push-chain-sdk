@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { useAppContext } from '@/context/app-context';
 import {
   Card,
@@ -6,7 +7,20 @@ import {
   CardHeader,
   CardTitle,
 } from './ui/card';
+
+import {
+  File,
+  FileText,
+  Image,
+  Music,
+  Video,
+  Archive,
+  Code,
+} from 'lucide-react';
+
 import { formatTimestamp } from '@/lib/utils';
+import { Badge } from './ui/badge';
+import { FileAttachment, FileAttachments } from '@/types';
 
 const EmailViewer = () => {
   const { selectedEmail } = useAppContext();
@@ -24,12 +38,22 @@ const EmailViewer = () => {
                 </p>
               </div>
               <Card className="flex flex-col gap-2 p-2 w-full">
-                <p className="text-sm text-muted-foreground">
-                  From: {selectedEmail.from}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  To: {selectedEmail.to.join(', ')}
-                </p>
+                <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                  <span>Sender</span>
+                  <Badge className="mr-1">
+                    {selectedEmail.from.split(':')[2]}
+                  </Badge>
+                </div>
+                <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                  <span>Recipients</span>
+                  <div className="flex flex-col gap-1">
+                    {selectedEmail.to.map((to) => (
+                      <Badge key={to} className="mr-1">
+                        {to.split(':')[2]}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               </Card>
             </CardTitle>
             <CardDescription className="py-2">
@@ -47,29 +71,13 @@ const EmailViewer = () => {
     </>
   );
 };
-import React, { useState } from 'react';
-import {
-  File,
-  FileText,
-  Image,
-  Music,
-  Video,
-  Archive,
-  Code,
-} from 'lucide-react';
 
-interface Attachment {
-  filename: string;
-  type: string;
-  content: string;
-}
-
-const AttachmentList: React.FC<{ attachments: Attachment[] }> = ({
+const AttachmentList: React.FC<{ attachments: FileAttachments }> = ({
   attachments,
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const handleDownload = (attachment: Attachment) => {
+  const handleDownload = (attachment: FileAttachment) => {
     const decodedContent = atob(attachment.content);
     const blob = new Blob([decodedContent], { type: attachment.type });
     const url = URL.createObjectURL(blob);
