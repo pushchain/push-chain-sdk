@@ -1,4 +1,4 @@
-import SearchBar from './search-bar';
+import SearchBar from './ui/search-bar';
 import EmailList from './email-list';
 import {
   ResizableHandle,
@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/resizable';
 import ConnectedWalletInfo from './connected-wallet-info';
 import EmailViewer from './email-viewer';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import NewEmail from './new-email';
 import { EMAIL_BOX } from '@/constants';
 

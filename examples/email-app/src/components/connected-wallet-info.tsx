@@ -2,7 +2,7 @@ import { TokenETH, TokenPUSH, TokenSOL } from '@web3icons/react';
 import { usePrivy } from '@privy-io/react-auth';
 import { trimAddress } from '@/lib/utils';
 import { useAppContext } from '@/context/app-context';
-import { Button } from './button';
+import { Button } from './ui/button';
 const ConnectedWalletInfo = () => {
   const { user, authenticated, logout } = usePrivy();
   const { pushAccount, setPushAccount, setSelectedEmail } = useAppContext();

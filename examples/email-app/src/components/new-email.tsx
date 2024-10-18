@@ -6,16 +6,16 @@ import {
 } from '@/components/ui/popover';
 import PushMail from 'push-mail';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
-import { Button } from './button';
-import { Input } from './input';
-import { Textarea } from './textarea';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Textarea } from './ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from './select';
+} from './ui/select';
 import { useAppContext } from '@/context/app-context';
 import { usePrivy, useSolanaWallets } from '@privy-io/react-auth';
 import { useSignMessage } from 'wagmi';

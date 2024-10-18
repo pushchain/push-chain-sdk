@@ -1,5 +1,5 @@
 import EmailCard from './email-card';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea } from './ui/scroll-area';
 import { useAppContext } from '@/context/app-context';
 import { EMAIL_BOX } from '@/constants';
 

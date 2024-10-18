@@ -1,16 +1,9 @@
 import React from 'react';
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { FileAttachments, IEmail } from '@/types';
+import { Card, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { IEmail } from '@/types';
 import { useAppContext } from '@/context/app-context';
 import { formatTimestamp, trimAddress } from '@/lib/utils';
 import { EMAIL_BOX } from '@/constants';
-import { Attachment } from 'push-mail/src/lib/generated/txData/email';
 
 const EmailCard: React.FC<IEmail> = ({
   from,
