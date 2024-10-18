@@ -5,7 +5,7 @@ import { useAppContext } from '@/context/app-context';
 import { Button } from './button';
 const ConnectedWalletInfo = () => {
   const { user, authenticated, logout } = usePrivy();
-  const { pushAccount, setPushAccount } = useAppContext();
+  const { pushAccount, setPushAccount, setSelectedEmail } = useAppContext();
 
   const logoutHandler = () => {
     if (pushAccount) {
@@ -13,6 +13,7 @@ const ConnectedWalletInfo = () => {
     } else if (authenticated) {
       logout();
     }
+    setSelectedEmail(null);
   };
   return (
     <div className="flex flex-row gap-2 items-center">

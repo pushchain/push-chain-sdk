@@ -1,32 +1,52 @@
-import React from "react";
+import React from 'react';
 import {
   Card,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import {IEmail} from "@/types";
-import {useAppContext} from "@/context/app-context";
+} from '@/components/ui/card';
+import { FileAttachments, IEmail } from '@/types';
+import { useAppContext } from '@/context/app-context';
+import { formatTimestamp, trimAddress } from '@/lib/utils';
+import { EMAIL_BOX } from '@/constants';
+import { Attachment } from 'push-mail/src/lib/generated/txData/email';
 
-const EmailCard: React.FC<IEmail> = ({from, to, subject, timestamp, body}) => {
-  const {setSelectedEmail, selectedEmail} = useAppContext();
+const EmailCard: React.FC<IEmail> = ({
+  from,
+  to,
+  subject,
+  timestamp,
+  body,
+  type,
+  attachments,
+}) => {
+  const { setSelectedEmail, selectedEmail } = useAppContext();
   return (
     <Card
       onClick={() => {
-        setSelectedEmail({from, to, subject, timestamp, body});
+        setSelectedEmail({ from, to, subject, timestamp, body, attachments });
       }}
       className={`cursor-pointer ${
-        selectedEmail?.from === from ? "bg-primary-foreground" : ""
+        type === EMAIL_BOX.INBOX
+          ? selectedEmail?.from === from && 'bg-primary-foreground'
+          : selectedEmail?.to === to && 'bg-primary-foreground'
       }`}
     >
       <CardHeader>
         <CardTitle>
           <div className="flex flex-row justify-between items-center">
             <p>{subject}</p>
-            <p className="text-sm font-light">{timestamp}</p>
+            <p className="text-sm font-light min-w-12">
+              {formatTimestamp(timestamp.toString())}
+            </p>
           </div>
         </CardTitle>
-        <CardDescription>{from}</CardDescription>
+        <CardDescription>
+          {type === EMAIL_BOX.INBOX
+            ? trimAddress(from.split(':')[2])
+            : to.map((t) => trimAddress(t.split(':')[2])).join(', ')}
+        </CardDescription>
       </CardHeader>
     </Card>
   );

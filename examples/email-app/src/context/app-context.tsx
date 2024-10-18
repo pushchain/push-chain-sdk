@@ -12,6 +12,16 @@ interface AppContextType {
   setPushNetwork: React.Dispatch<React.SetStateAction<PushNetwork | null>>;
   pushAccount: any;
   setPushAccount: React.Dispatch<React.SetStateAction<any>>;
+  emails: {
+    sent: IEmail[];
+    inbox: IEmail[];
+  };
+  setEmails: React.Dispatch<
+    React.SetStateAction<{
+      sent: IEmail[];
+      inbox: IEmail[];
+    }>
+  >;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);

@@ -1,9 +1,17 @@
 interface IEmail {
   from: string;
-  to: string;
+  to: string[];
   subject: string;
-  timestamp: string;
+  timestamp: number;
   body: string;
+  type?: string;
+  attachments?: FileAttachments;
+}
+interface FileAttachment {
+  filename: string;
+  type: string;
+  content: string;
 }
 
-export type {IEmail};
+type FileAttachments = FileAttachment[];
+export type { IEmail, FileAttachments };

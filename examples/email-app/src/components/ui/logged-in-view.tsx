@@ -25,7 +25,7 @@ const LoggedInView = () => {
           <h2 className="text-muted-for border-b p-2 text-3xl font-semibold tracking-tight">
             Emails
           </h2>
-          <Tabs defaultValue="inbox" className="w-full h-full">
+          <Tabs defaultValue="inbox" className="w-full flex-1 h-full">
             <TabsList className="w-full">
               <TabsTrigger value="inbox" className="w-1/2">
                 Inbox
@@ -34,10 +34,10 @@ const LoggedInView = () => {
                 Sent
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="inbox" className="h-full overflow-auto">
+            <TabsContent value="inbox" className="flex-1 h-[85%] overflow-auto">
               <EmailList type={EMAIL_BOX.INBOX} />
             </TabsContent>
-            <TabsContent value="sent" className="h-full overflow-auto">
+            <TabsContent value="sent" className="flex-1 h-[85%]  overflow-auto">
               <EmailList type={EMAIL_BOX.SENT} />
             </TabsContent>
           </Tabs>
