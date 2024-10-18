@@ -9,6 +9,7 @@ import { Validator } from '../validator/validator';
 import { TokenReply } from '../validator/validator.types';
 import { BlockResponse } from '../block/block.types';
 import { sha256 } from '@noble/hashes/sha256';
+import { toHex } from 'viem';
 export class Tx {
   private constructor(private validator: Validator, private env: ENV) {}
 
@@ -184,7 +185,12 @@ export class Tx {
       signature: new Uint8Array(0),
       apiToken: utf8ToBytes(token.apiToken),
     });
-    const signature = await signer.signMessage(sha256(serializedUnsignedTx));
+
+    // Convert 32 byte data to 64 byte data ( UTF-8 encoded )
+    const dataToBeSigned = new TextEncoder().encode(
+      toHex(sha256(serializedUnsignedTx))
+    );
+    const signature = await signer.signMessage(dataToBeSigned);
     const serializedSignedTx = Tx.serialize({
       ...Tx.deserialize(serializedUnsignedTx),
       signature,
