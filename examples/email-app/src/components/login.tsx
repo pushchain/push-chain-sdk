@@ -9,6 +9,8 @@ const Login = () => {
     try {
       if (pushNetwork) {
         const acc = await pushNetwork.wallet.connect();
+        // Allow Connection only when DApp is whitelisted
+        await pushNetwork.wallet.sign('Accept Connection Request From DApp');
         setPushAccount(acc);
       }
     } catch (err) {

@@ -7,7 +7,7 @@ import { http } from 'wagmi';
 import { WagmiProvider } from '@privy-io/wagmi';
 
 const solanaConnectors = toSolanaWalletConnectors({
-  shouldAutoConnect: true,
+  shouldAutoConnect: false,
 });
 const config = createConfig({
   chains: [mainnet as any],

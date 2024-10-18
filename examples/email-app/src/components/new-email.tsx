@@ -20,11 +20,12 @@ import { useAppContext } from '@/context/app-context';
 import { usePrivy, useSolanaWallets } from '@privy-io/react-auth';
 import { useSignMessage } from 'wagmi';
 import { TokenETH, TokenPUSH, TokenSOL } from '@web3icons/react';
-import { hexToBytes } from 'viem';
+import { hexToBytes, toBytes } from 'viem';
 import { IEmail } from '@/types';
 import { X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { trimAddress, formatTimestamp } from '@/lib/utils';
+import { Tx } from '@pushprotocol/node-core';
 
 interface FileData {
   filename: string;
@@ -58,6 +59,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
   const { signMessageAsync } = useSignMessage();
   const { user } = usePrivy();
   const { wallets } = useSolanaWallets();
+  const [sendingMail, setSendingMail] = useState(false);
 
   const address = pushAccount
     ? pushAccount
@@ -150,6 +152,7 @@ ${email.body
   );
 
   const sendHandler = useCallback(async () => {
+    setSendingMail(true);
     try {
       const pushMail = await PushMail.initialize(ENV.DEV);
       const { subject, message } = emailData;
@@ -216,6 +219,7 @@ ${email.body
     } catch (error) {
       console.error('Failed to send email:', error);
     }
+    setSendingMail(false);
   }, [
     emailData,
     recipients,
@@ -309,7 +313,9 @@ ${email.body
             onChange={handleInputChange}
           />
           <Input type="file" onChange={handleFileUpload} />
-          <Button onClick={sendHandler}>Send</Button>
+          <Button onClick={sendHandler} disabled={sendingMail}>
+            {sendingMail ? 'Sending' : 'Send'}
+          </Button>
         </PopoverContent>
       </Popover>
     </div>
