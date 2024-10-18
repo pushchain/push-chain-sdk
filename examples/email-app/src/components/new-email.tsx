@@ -20,12 +20,12 @@ import { useAppContext } from '@/context/app-context';
 import { usePrivy, useSolanaWallets } from '@privy-io/react-auth';
 import { useSignMessage } from 'wagmi';
 import { TokenETH, TokenPUSH, TokenSOL } from '@web3icons/react';
-import { hexToBytes, toBytes } from 'viem';
+import { hexToBytes } from 'viem';
 import { IEmail } from '@/types';
 import { X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { trimAddress, formatTimestamp } from '@/lib/utils';
-import { Tx } from '@pushprotocol/node-core';
+import PushNetwork from '@pushprotocol/node-core';
 
 interface FileData {
   filename: string;
@@ -170,12 +170,12 @@ ${email.body
 
       const signer = {
         account: address,
-        signMessage: async (data: Uint8Array) => {
+        signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
           if (!user?.wallet?.address && !pushAccount)
             throw new Error('No account connected');
 
           return pushAccount
-            ? pushNetwork?.wallet.sign(data)
+            ? (pushNetwork as PushNetwork).wallet.sign(data)
             : user?.wallet?.chainType === 'solana'
             ? await wallets[0].signMessage(data)
             : hexToBytes(await signMessageAsync({ message: { raw: data } }));

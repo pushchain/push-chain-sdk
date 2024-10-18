@@ -6,13 +6,11 @@ import {
   ResizablePanelGroup,
 } from '@/components/ui/resizable';
 import ConnectedWalletInfo from './connected-wallet-info';
-import EmailViewer from './email-viewer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import NewEmail from './new-email';
 import { EMAIL_BOX } from '@/constants';
 import EmailLayout from './email-layout';
 import { Inbox, Send } from 'lucide-react';
-import { Button } from './ui/button';
 
 const LoggedInView = () => {
   return (
