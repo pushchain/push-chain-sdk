@@ -8,7 +8,7 @@ import { ENV } from '../constants';
 import { Validator } from '../validator/validator';
 import { TokenReply } from '../validator/validator.types';
 import { BlockResponse } from '../block/block.types';
-
+import { sha256 } from '@noble/hashes/sha256';
 export class Tx {
   private constructor(private validator: Validator, private env: ENV) {}
 
@@ -184,7 +184,7 @@ export class Tx {
       signature: new Uint8Array(0),
       apiToken: utf8ToBytes(token.apiToken),
     });
-    const signature = await signer.signMessage(serializedUnsignedTx);
+    const signature = await signer.signMessage(sha256(serializedUnsignedTx));
     const serializedSignedTx = Tx.serialize({
       ...Tx.deserialize(serializedUnsignedTx),
       signature,
