@@ -6,10 +6,11 @@ import {
   ResizablePanelGroup,
 } from '@/components/ui/resizable';
 import ConnectedWalletInfo from './connected-wallet-info';
-import EmailViewer from './email-viewer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import NewEmail from './new-email';
 import { EMAIL_BOX } from '@/constants';
+import EmailLayout from './email-layout';
+import { Inbox, Send } from 'lucide-react';
 
 const LoggedInView = () => {
   return (
@@ -22,15 +23,23 @@ const LoggedInView = () => {
       <NewEmail />
       <ResizablePanelGroup direction="horizontal" className="flex-1 h-full">
         <ResizablePanel className="flex flex-col h-full overflow-y-auto">
-          <h2 className="text-muted-for border-b p-2 text-3xl font-semibold tracking-tight">
+          <h2 className="text-muted-foreground p-2 text-3xl font-semibold tracking-tight">
             Emails
           </h2>
           <Tabs defaultValue="inbox" className="w-full flex-1 h-full">
-            <TabsList className="w-full">
-              <TabsTrigger value="inbox" className="w-1/2">
+            <TabsList className="w-full ">
+              <TabsTrigger
+                value="inbox"
+                className="w-1/2 flex flex-row items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                <Inbox className="w-6 h-6" />
                 Inbox
               </TabsTrigger>
-              <TabsTrigger value="sent" className="w-1/2">
+              <TabsTrigger
+                value="sent"
+                className="w-1/2 flex flex-row items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                <Send className="w-6 h-6" />
                 Sent
               </TabsTrigger>
             </TabsList>
@@ -44,7 +53,7 @@ const LoggedInView = () => {
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel className="p-2 h-full">
-          <EmailViewer />
+          <EmailLayout />
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>

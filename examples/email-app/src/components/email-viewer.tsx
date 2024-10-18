@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from './ui/card';
-
+import { Button } from './ui/button';
 import {
   File,
   FileText,
@@ -16,14 +16,54 @@ import {
   Video,
   Archive,
   Code,
+  Reply,
 } from 'lucide-react';
-
 import { formatTimestamp } from '@/lib/utils';
 import { Badge } from './ui/badge';
-import { FileAttachment, FileAttachments } from '@/types';
+import { FileAttachment, FileAttachments, IEmail } from '@/types';
 
-const EmailViewer = () => {
+interface EmailViewerProps {
+  onReply: (email: IEmail) => void;
+}
+
+const EmailViewer: React.FC<EmailViewerProps> = ({ onReply }) => {
   const { selectedEmail } = useAppContext();
+
+  const handleReply = () => {
+    if (selectedEmail) {
+      onReply(selectedEmail);
+    }
+  };
+
+  const formatEmailBody = (body: string) => {
+    const lines = body.split('\n');
+    let formattedBody = [];
+    let inQuote = false;
+
+    for (let line of lines) {
+      if (line.startsWith('On') && line.includes('wrote:')) {
+        inQuote = true;
+        formattedBody.push(
+          <div key={formattedBody.length} className="text-gray-500 mt-4">
+            {line}
+          </div>
+        );
+      } else if (inQuote) {
+        formattedBody.push(
+          <div
+            key={formattedBody.length}
+            className="text-gray-500 border-l-4 border-gray-300 pl-2"
+          >
+            {line}
+          </div>
+        );
+      } else {
+        formattedBody.push(<div key={formattedBody.length}>{line}</div>);
+      }
+    }
+
+    return formattedBody;
+  };
 
   return (
     <>
@@ -57,7 +97,7 @@ const EmailViewer = () => {
               </Card>
             </CardTitle>
             <CardDescription className="py-2">
-              {selectedEmail.body}
+              {formatEmailBody(selectedEmail.body)}
             </CardDescription>
             {selectedEmail.attachments &&
               selectedEmail.attachments.length > 0 && (
@@ -66,6 +106,12 @@ const EmailViewer = () => {
                 </CardFooter>
               )}
           </CardHeader>
+          <CardFooter>
+            <Button onClick={handleReply} className="flex items-center gap-2">
+              <Reply className="w-4 h-4" />
+              Reply
+            </Button>
+          </CardFooter>
         </Card>
       )}
     </>
@@ -142,5 +188,4 @@ const AttachmentList: React.FC<{ attachments: FileAttachments }> = ({
     </div>
   );
 };
-
 export default EmailViewer;

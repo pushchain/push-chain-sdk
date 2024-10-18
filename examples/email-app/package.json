@@ -7,12 +7,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "vercel build --prod && vercel deploy --prebuilt --prod"
   },
   "dependencies": {
     "@privy-io/react-auth": "^1.91.0",
     "@privy-io/wagmi": "^0.2.12",
-    "@pushprotocol/node-core": "^0.0.16",
+    "@pushprotocol/node-core": "^0.0.19",
     "@radix-ui/react-icons": "^1.3.0",
     "@radix-ui/react-popover": "^1.1.2",
     "@radix-ui/react-scroll-area": "^1.2.0",
@@ -24,7 +25,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.453.0",
-    "push-mail": "^0.0.2",
+    "push-mail": "^0.0.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-resizable-panels": "^2.1.4",
