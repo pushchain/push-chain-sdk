@@ -1,9 +1,10 @@
 import './App.css';
+import Login from './components/login';
 
 function App() {
   return (
-    <div className="flex justify-center items-center h-screen bg-red-500">
-      <h1 className="text-8xl font-bold underline">Hello world!</h1>
+    <div className="flex justify-center items-center h-screen">
+      <Login />
     </div>
   );
 }
