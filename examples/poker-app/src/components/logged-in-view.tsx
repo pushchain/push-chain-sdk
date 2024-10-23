@@ -1,3 +1,9 @@
+import Navbar from './navbar';
+
 export default function LoggedInView() {
-  return <div>LoggedInView</div>;
+  return (
+    <div>
+      <Navbar />
+    </div>
+  );
 }
