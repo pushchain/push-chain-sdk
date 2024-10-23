@@ -5,7 +5,9 @@
   "scripts": {},
   "private": true,
   "dependencies": {
-    "tslib": "^2.3.0"
+    "bs58": "^6.0.0",
+    "tslib": "^2.3.0",
+    "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
     "@nx/eslint": "19.6.4",
