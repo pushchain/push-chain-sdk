@@ -26,7 +26,7 @@ export default function Navbar() {
         </button>
       )}
       {(pushAccount || (authenticated && user)) && (
-        <div className="flex flex-row items-center justify-center gap-2 border-2 border-secondary p-2 rounded-md">
+        <div className="flex flex-row items-center justify-center gap-2 border-2 border-secondary p-2 rounded-md bg-gray-100 shadow-md">
           {pushAccount ? (
             <TokenPUSH className="w-6 h-6" />
           ) : user?.wallet?.chainType === 'solana' ? (
@@ -34,7 +34,7 @@ export default function Navbar() {
           ) : (
             <TokenETH className="w-6 h-6" />
           )}
-          <span>
+          <span className="text-gray-800 font-medium">
             {pushAccount
               ? trimAddress(pushAccount.split(':')[2])
               : user?.wallet?.address && trimAddress(user.wallet.address)}
