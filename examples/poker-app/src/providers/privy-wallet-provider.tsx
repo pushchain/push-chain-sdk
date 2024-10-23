@@ -17,7 +17,7 @@ const config = createConfig({
   },
 });
 
-export default function PrivyWalletProvider({
+export function PrivyWalletProvider({
   children,
 }: {
   children: React.ReactNode;
