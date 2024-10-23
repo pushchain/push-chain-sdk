@@ -1,11 +1,17 @@
 import { useState } from 'react';
 import Navbar from './navbar';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export default function LoggedInView() {
   const [friendsWallets, setFriendsWallets] = useState<string[]>([]);
   const [walletInput, setWalletInput] = useState<string>('');
 
   const handleAddFriend = () => {
+    if (friendsWallets.length >= 4) {
+      toast.error('Only a maximum of 4 players can be added.');
+      return;
+    }
     if (walletInput) {
       setFriendsWallets([...friendsWallets, walletInput]);
       setWalletInput('');
@@ -15,6 +21,7 @@ export default function LoggedInView() {
   return (
     <div>
       <Navbar />
+      <ToastContainer />
       <div className="flex flex-col items-center justify-center h-full w-full">
         <h1 className="text-4xl font-bold">Poker App</h1>
         <p className="text-gray-500 mt-2">
