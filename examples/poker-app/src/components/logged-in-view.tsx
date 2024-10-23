@@ -48,6 +48,11 @@ export default function LoggedInView() {
             <div key={wallet}>{wallet}</div>
           ))}
         </div>
+        {friendsWallets.length > 0 && (
+          <button className="bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full shadow-lg mt-32 transition-transform transform hover:scale-105">
+            Send Invite
+          </button>
+        )}
       </div>
     </div>
   );
