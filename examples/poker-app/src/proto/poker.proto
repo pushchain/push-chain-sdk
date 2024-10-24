@@ -1,0 +1,57 @@
+syntax = "proto3";
+package poker;
+
+message PokerGame {
+  repeated Player players = 1;
+  repeated Phase phases = 2;
+  repeated Card cards = 3;
+  uint64 pot = 4;
+}
+
+message Player {
+  string address = 1;
+  uint64 chips = 2;
+  repeated Card cards = 3;
+  bool isDealer = 4;
+}
+
+message Card {
+  Rank rank = 1;
+  Suit suit = 2;
+}
+
+message Phase {
+  PhaseType type = 1;
+  map<string, uint64> bets = 2;
+}
+
+enum PhaseType {
+  PREFLOP = 0;
+  FLOP = 1;
+  TURN = 2;
+  RIVER = 3;
+  SHOWDOWN = 4;
+}
+
+enum Rank {
+  ACE = 0;
+  TWO = 1;
+  THREE = 2;
+  FOUR = 3;
+  FIVE = 4;
+  SIX = 5;
+  SEVEN = 6;
+  EIGHT = 7;
+  NINE = 8;
+  TEN = 9;
+  JACK = 10;
+  QUEEN = 11;
+  KING = 12;
+}
+
+enum Suit {
+  SPADES = 0;
+  HEARTS = 1;
+  DIAMONDS = 2;
+  CLUBS = 3;
+}
