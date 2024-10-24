@@ -6,6 +6,8 @@ interface AppContextType {
   setPushNetwork: React.Dispatch<React.SetStateAction<PushNetwork | null>>;
   pushAccount: any;
   setPushAccount: React.Dispatch<React.SetStateAction<any>>;
+  gameStarted: boolean;
+  setGameStarted: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);

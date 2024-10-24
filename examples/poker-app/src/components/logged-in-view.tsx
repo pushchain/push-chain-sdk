@@ -11,6 +11,7 @@ import PushNetwork from '@pushprotocol/node-core';
 import { useSignMessage } from 'wagmi';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import ConfettiExplosion from 'react-confetti-explosion';
+import Game from './game';
 
 export default function LoggedInView() {
   const [friendsWallets, setFriendsWallets] = useState<string[]>([]);
@@ -19,7 +20,8 @@ export default function LoggedInView() {
   const [walletInput, setWalletInput] = useState<string>('');
   const [recommendedWallets, setRecommendedWallets] = useState<string[]>([]);
   const { user } = usePrivy();
-  const { pushAccount, pushNetwork } = useAppContext();
+  const { pushAccount, pushNetwork, setGameStarted, gameStarted } =
+    useAppContext();
   const { wallets } = useSolanaWallets();
   const { signMessageAsync } = useSignMessage();
 
@@ -138,6 +140,7 @@ export default function LoggedInView() {
         },
       });
       setShowConfetti(true);
+      setGameStarted(true);
     } catch (error) {
       console.error(error);
     } finally {
@@ -149,126 +152,130 @@ export default function LoggedInView() {
     <div>
       <Navbar />
       <ToastContainer />
-      <div className="flex flex-col items-center justify-center h-full w-full">
-        <h1 className="text-4xl font-bold">Poker App</h1>
-        <p className="text-gray-500 mt-2">
-          Poker is better when you play with friends!
-        </p>
-        <div className="flex flex-row items-center justify-center gap-2 w-full mt-8">
-          <input
-            type="text"
-            placeholder="Enter friend's wallet address"
-            className="border-2 border-gray-300 rounded-md p-2 w-1/3"
-            value={walletInput}
-            onChange={(e) => setWalletInput(e.target.value)}
-          />
-          <button
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            onClick={() => handleAddFriend()}
-            disabled={!walletInput}
-          >
-            Add Friend
-          </button>
-        </div>
+      {gameStarted ? (
+        <Game />
+      ) : (
+        <div className="flex flex-col items-center justify-center h-full w-full">
+          <h1 className="text-4xl font-bold">Poker App</h1>
+          <p className="text-gray-500 mt-2">
+            Poker is better when you play with friends!
+          </p>
+          <div className="flex flex-row items-center justify-center gap-2 w-full mt-8">
+            <input
+              type="text"
+              placeholder="Enter friend's wallet address"
+              className="border-2 border-gray-300 rounded-md p-2 w-1/3"
+              value={walletInput}
+              onChange={(e) => setWalletInput(e.target.value)}
+            />
+            <button
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              onClick={() => handleAddFriend()}
+              disabled={!walletInput}
+            >
+              Add Friend
+            </button>
+          </div>
 
-        {recommendedWallets.length > 0 && (
-          <div className="flex flex-col items-center justify-center gap-1 w-full mt-8">
-            <h2 className="text-2xl font-bold text-gray-500">
-              Previously added friends
-            </h2>
-            <h3 className="text-gray-500">
-              Select one of those to start a game faster ;P
-            </h3>
-            {recommendedWallets.map((wallet) => (
+          {recommendedWallets.length > 0 && (
+            <div className="flex flex-col items-center justify-center gap-1 w-full mt-8">
+              <h2 className="text-2xl font-bold text-gray-500">
+                Previously added friends
+              </h2>
+              <h3 className="text-gray-500">
+                Select one of those to start a game faster ;P
+              </h3>
+              {recommendedWallets.map((wallet) => (
+                <div
+                  className="flex flex-row items-center justify-center gap-2"
+                  key={wallet}
+                >
+                  <span
+                    className="bg-gray-200 rounded-md p-2 cursor-pointer text-sm"
+                    onClick={() => handleAddFriend(wallet)}
+                  >
+                    {wallet}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-col items-center justify-center gap-2 w-full mt-8">
+            {friendsWallets.map((wallet) => (
               <div
                 className="flex flex-row items-center justify-center gap-2"
                 key={wallet}
               >
-                <span
-                  className="bg-gray-200 rounded-md p-2 cursor-pointer text-sm"
-                  onClick={() => handleAddFriend(wallet)}
+                <span>{wallet}</span>
+                <button
+                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-1 rounded"
+                  onClick={() => handleRemoveFriend(wallet)}
                 >
-                  {wallet}
-                </span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-6 h-6"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
               </div>
             ))}
           </div>
-        )}
-
-        <div className="flex flex-col items-center justify-center gap-2 w-full mt-8">
-          {friendsWallets.map((wallet) => (
-            <div
-              className="flex flex-row items-center justify-center gap-2"
-              key={wallet}
+          {friendsWallets.length > 0 && (
+            <button
+              className="bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full shadow-lg mt-32 transition-transform transform hover:scale-105"
+              onClick={handleStartGame}
+              disabled={loadingStartGame}
             >
-              <span>{wallet}</span>
-              <button
-                className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-1 rounded"
-                onClick={() => handleRemoveFriend(wallet)}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="w-6 h-6"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-          ))}
+              {showConfetti && (
+                <ConfettiExplosion
+                  force={0.8}
+                  duration={3000}
+                  particleCount={200}
+                  width={window.innerWidth}
+                  height={window.innerHeight}
+                />
+              )}
+              {loadingStartGame ? (
+                <div className="flex flex-row items-center justify-center">
+                  <svg
+                    className="animate-spin h-5 w-5 mr-3 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                    ></path>
+                  </svg>
+                  Starting Game...
+                </div>
+              ) : (
+                'Start Game'
+              )}
+            </button>
+          )}
         </div>
-        {friendsWallets.length > 0 && (
-          <button
-            className="bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full shadow-lg mt-32 transition-transform transform hover:scale-105"
-            onClick={handleStartGame}
-            disabled={loadingStartGame}
-          >
-            {showConfetti && (
-              <ConfettiExplosion
-                force={0.8}
-                duration={3000}
-                particleCount={200}
-                width={window.innerWidth}
-                height={window.innerHeight}
-              />
-            )}
-            {loadingStartGame ? (
-              <div className="flex flex-row items-center justify-center">
-                <svg
-                  className="animate-spin h-5 w-5 mr-3 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                  ></path>
-                </svg>
-                Starting Game...
-              </div>
-            ) : (
-              'Start Game'
-            )}
-          </button>
-        )}
-      </div>
+      )}
     </div>
   );
 }

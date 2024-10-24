@@ -7,6 +7,7 @@ import { ReactNode, useEffect, useState } from 'react';
 export function AppProvider({ children }: { children: ReactNode }) {
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
   const [pushAccount, setPushAccount] = useState<string | null>(null);
+  const [gameStarted, setGameStarted] = useState<boolean>(false);
 
   useEffect(() => {
     const setNetwork = async () => {
@@ -27,6 +28,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setPushNetwork,
         pushAccount,
         setPushAccount,
+        gameStarted,
+        setGameStarted,
       }}
     >
       {children}
