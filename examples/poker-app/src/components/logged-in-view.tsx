@@ -10,13 +10,11 @@ import { PokerGame } from '../temp_types/types';
 import PushNetwork from '@pushprotocol/node-core';
 import { useSignMessage } from 'wagmi';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
-import ConfettiExplosion from 'react-confetti-explosion';
 import Game from './game';
 
 export default function LoggedInView() {
   const [friendsWallets, setFriendsWallets] = useState<string[]>([]);
   const [loadingStartGame, setLoadingStartGame] = useState<boolean>(false);
-  const [showConfetti, setShowConfetti] = useState<boolean>(false);
   const [walletInput, setWalletInput] = useState<string>('');
   const [recommendedWallets, setRecommendedWallets] = useState<string[]>([]);
   const { user } = usePrivy();
@@ -139,7 +137,6 @@ export default function LoggedInView() {
             : hexToBytes(await signMessageAsync({ message: { raw: data } }));
         },
       });
-      setShowConfetti(true);
       setGameStarted(true);
     } catch (error) {
       console.error(error);
@@ -236,15 +233,6 @@ export default function LoggedInView() {
               onClick={handleStartGame}
               disabled={loadingStartGame}
             >
-              {showConfetti && (
-                <ConfettiExplosion
-                  force={0.8}
-                  duration={3000}
-                  particleCount={200}
-                  width={window.innerWidth}
-                  height={window.innerHeight}
-                />
-              )}
               {loadingStartGame ? (
                 <div className="flex flex-row items-center justify-center">
                   <svg

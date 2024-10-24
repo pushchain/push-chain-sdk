@@ -1,8 +1,16 @@
+import ConfettiExplosion from 'react-confetti-explosion';
 import { cardBackImageURL, cardImageURL } from '../lib/cards';
 
 export default function Game() {
   return (
     <div className="flex flex-col h-full w-full items-end">
+      <ConfettiExplosion
+        force={0.8}
+        duration={4000}
+        particleCount={400}
+        width={window.innerWidth}
+        height={window.innerHeight}
+      />
       <OpponentHand position="top" />
       <div className="flex flex-row w-full">
         <OpponentHand position="left" />
