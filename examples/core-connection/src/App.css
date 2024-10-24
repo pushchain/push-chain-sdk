@@ -54,3 +54,29 @@ pre {
   font-size: 14px;
   color: #333; /* Dark text for preformatted content */
 }
+
+input {
+  margin: 10px 0;
+  padding: 10px;
+  width: 200px;
+  border: 1px solid #bdc3c7; /* Lighter border */
+  border-radius: 5px;
+  box-sizing: border-box; /* Include padding in width */
+  background-color: white;
+  color: black;
+}
+
+.sign-message-container {
+  display: flex;
+  width: 200px;
+  margin: auto;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sign-message-container :first-child {
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
