@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { hexToBytes } from 'viem';
 import Navbar from './navbar';
 import { ToastContainer, toast } from 'react-toastify';
@@ -17,10 +17,18 @@ export default function LoggedInView() {
   const [loadingStartGame, setLoadingStartGame] = useState<boolean>(false);
   const [showConfetti, setShowConfetti] = useState<boolean>(false);
   const [walletInput, setWalletInput] = useState<string>('');
+  const [recommendedWallets, setRecommendedWallets] = useState<string[]>([]);
   const { user } = usePrivy();
   const { pushAccount, pushNetwork } = useAppContext();
   const { wallets } = useSolanaWallets();
   const { signMessageAsync } = useSignMessage();
+
+  useEffect(() => {
+    const storedAddresses = localStorage.getItem('poker-friends-wallets');
+    if (storedAddresses) {
+      setRecommendedWallets(JSON.parse(storedAddresses));
+    }
+  }, []);
 
   const address: string = pushAccount
     ? pushAccount
@@ -28,7 +36,7 @@ export default function LoggedInView() {
     ? `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:${user?.wallet?.address}`
     : `${user?.wallet?.chainId}:${user?.wallet?.address}`;
 
-  const handleAddFriend = () => {
+  const handleAddFriend = (recommendedWallet?: string) => {
     if (friendsWallets.length >= 4) {
       toast.error('Only a maximum of 4 players can be added.');
       return;
@@ -40,6 +48,44 @@ export default function LoggedInView() {
       ) {
         setFriendsWallets([...friendsWallets, walletInput]);
         setWalletInput('');
+
+        // Save to local storage for recommended wallets
+        if (!recommendedWallets.includes(walletInput)) {
+          const updatedRecommendedWallets = [
+            ...recommendedWallets,
+            walletInput,
+          ];
+          localStorage.setItem(
+            'poker-friends-wallets',
+            JSON.stringify(updatedRecommendedWallets)
+          );
+        }
+      } else {
+        toast.error(
+          `Wallet should be in CAIP10 format or PUSH format (e.g. eip155:1:0x1234567890)`
+        );
+      }
+    } else if (recommendedWallet) {
+      if (
+        recommendedWallet.startsWith('solana:') ||
+        recommendedWallet.startsWith('eip155:')
+      ) {
+        setFriendsWallets([...friendsWallets, recommendedWallet]);
+        setRecommendedWallets(
+          recommendedWallets.filter((w) => w !== recommendedWallet)
+        );
+
+        // Save to local storage for recommended wallets
+        if (!recommendedWallets.includes(recommendedWallet)) {
+          const updatedRecommendedWallets = [
+            ...recommendedWallets,
+            recommendedWallet,
+          ];
+          localStorage.setItem(
+            'poker-friends-wallets',
+            JSON.stringify(updatedRecommendedWallets)
+          );
+        }
       } else {
         toast.error(
           `Wallet should be in CAIP10 format or PUSH format (e.g. eip155:1:0x1234567890)`
@@ -78,7 +124,7 @@ export default function LoggedInView() {
         creator: address,
       };
 
-      const txHash = await poker.send(pokerGame, [address, ...friendsWallets], {
+      await poker.send(pokerGame, [address, ...friendsWallets], {
         account: address,
         signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
           if (!user?.wallet?.address && !pushAccount)
@@ -118,12 +164,37 @@ export default function LoggedInView() {
           />
           <button
             className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            onClick={handleAddFriend}
+            onClick={() => handleAddFriend()}
             disabled={!walletInput}
           >
             Add Friend
           </button>
         </div>
+
+        {recommendedWallets.length > 0 && (
+          <div className="flex flex-col items-center justify-center gap-1 w-full mt-8">
+            <h2 className="text-2xl font-bold text-gray-500">
+              Previously added friends
+            </h2>
+            <h3 className="text-gray-500">
+              Select one of those to start a game faster ;P
+            </h3>
+            {recommendedWallets.map((wallet) => (
+              <div
+                className="flex flex-row items-center justify-center gap-2"
+                key={wallet}
+              >
+                <span
+                  className="bg-gray-200 rounded-md p-2 cursor-pointer text-sm"
+                  onClick={() => handleAddFriend(wallet)}
+                >
+                  {wallet}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="flex flex-col items-center justify-center gap-2 w-full mt-8">
           {friendsWallets.map((wallet) => (
             <div
