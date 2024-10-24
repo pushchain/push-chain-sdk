@@ -1,4 +1,4 @@
-import { cardImageURL } from '../lib/cards';
+import { cardBackImageURL, cardImageURL } from '../lib/cards';
 
 export default function Game() {
   return (
@@ -6,9 +6,22 @@ export default function Game() {
       <OpponentHand position="top" />
       <div className="flex flex-row w-full">
         <OpponentHand position="left" />
+        <Board />
         <OpponentHand position="right" />
       </div>
       <MyHand />
+    </div>
+  );
+}
+
+function Board() {
+  return (
+    <div className="flex flex-row items-center w-full gap-0 mt-40 justify-center">
+      <img className="w-12" src={cardBackImageURL()} />
+      <img className="w-12" src={cardBackImageURL()} />
+      <img className="w-12" src={cardBackImageURL()} />
+      <img className="w-12" src={cardBackImageURL()} />
+      <img className="w-12" src={cardBackImageURL()} />
     </div>
   );
 }
@@ -37,8 +50,8 @@ function OpponentHand({ position }: { position: 'left' | 'right' | 'top' }) {
     <div className="flex flex-col items-center w-full gap-0">
       <div className={`flex flex-row items-center w-full ${positionClass}`}>
         {position === 'right' && <Chips />}
-        <img className="w-36" src={cardImageURL({ suit: 'C', rank: 'K' })} />
-        <img className="w-36" src={cardImageURL({ suit: 'C', rank: 'K' })} />
+        <img className="w-12" src={cardBackImageURL()} />
+        <img className="w-12" src={cardBackImageURL()} />
         {position === 'left' && <Chips />}
       </div>
       {position === 'top' && <Chips />}
