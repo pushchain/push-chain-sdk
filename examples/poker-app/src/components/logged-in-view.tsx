@@ -165,9 +165,24 @@ export default function LoggedInView() {
       ) : (
         <div className="flex flex-col items-center justify-center h-full w-full">
           <h1 className="text-4xl font-bold">Poker App</h1>
-          <p className="text-gray-500 mt-2">
-            Poker is better when you play with friends!
-          </p>
+          <div className="flex flex-row justify-center items-center w-full gap-4 mt-8">
+            <div className="relative group">
+              <button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transform transition-transform hover:scale-105">
+                Create public game
+              </button>
+              <span className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2">
+                Any one can join
+              </span>
+            </div>
+            <div className="relative group">
+              <button className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-700 hover:to-teal-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transform transition-transform hover:scale-105">
+                Create game with friends
+              </button>
+              <span className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2">
+                Only your invited friends can join
+              </span>
+            </div>
+          </div>
           <div className="flex flex-row items-center justify-center gap-2 w-full mt-8">
             <input
               type="text"
