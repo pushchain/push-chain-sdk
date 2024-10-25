@@ -13,7 +13,7 @@ import { ENV } from '../../src/lib/constants';
 import { sha256 } from '@noble/hashes/sha256';
 import * as nacl from 'tweetnacl';
 import bs58 from 'bs58';
-import { INIT_DID_TX } from '../data';
+import { INIT_DID_TX, INIT_DID_TX_2 } from '../data';
 
 const test_pk = generatePrivateKey();
 const test_account = privateKeyToAccount(test_pk);
@@ -216,7 +216,7 @@ describe('Tx', () => {
   });
   it('should send for a INIT_DID tx', async () => {
     const account = privateKeyToAccount(
-      INIT_DID_TX.masterPrivateKey as `0x${string}`
+      INIT_DID_TX_2.masterPrivateKey as `0x${string}`
     );
     const signer = {
       account: Address.toPushCAIP(account.address, ENV.DEV),
@@ -228,12 +228,12 @@ describe('Tx', () => {
       },
     };
     const txInstance = await Tx.initialize(env);
-    const res = await txInstance.send(INIT_DID_TX.unsignedInitDIDTx, signer);
+    const res = await txInstance.send(INIT_DID_TX_2.unsignedInitDIDTx, signer);
     expect(typeof res).toEqual('string');
   });
   it('should reject for a INIT_DID tx with different signer', async () => {
     const account = privateKeyToAccount(
-      INIT_DID_TX.masterPrivateKey as `0x${string}`
+      INIT_DID_TX_2.masterPrivateKey as `0x${string}`
     );
     const randomPk = generatePrivateKey();
     const randomAccount = privateKeyToAccount(randomPk);
@@ -250,10 +250,32 @@ describe('Tx', () => {
     };
     const txInstance = await Tx.initialize(env);
     await expect(
-      txInstance.send(INIT_DID_TX.unsignedInitDIDTx, signer)
+      txInstance.send(INIT_DID_TX_2.unsignedInitDIDTx, signer)
     ).rejects.toThrow();
   });
   it('should reject for a INIT_DID tx with different sender Address', async () => {
+    const account = privateKeyToAccount(
+      INIT_DID_TX_2.masterPrivateKey as `0x${string}`
+    );
+    const randomPk = generatePrivateKey();
+    const randomAccount = privateKeyToAccount(randomPk);
+    // Signer is correct but account is different
+    const signer = {
+      account: Address.toPushCAIP(randomAccount.address, ENV.DEV),
+
+      signMessage: async (data: Uint8Array) => {
+        const signature = await account.signMessage({
+          message: { raw: data },
+        });
+        return hexToBytes(signature);
+      },
+    };
+    const txInstance = await Tx.initialize(env);
+    await expect(
+      txInstance.send(INIT_DID_TX_2.unsignedInitDIDTx, signer)
+    ).rejects.toThrow();
+  });
+  it('should reject for a INIT_DID tx with wrong signature in walletToEncDerivedKey', async () => {
     const account = privateKeyToAccount(
       INIT_DID_TX.masterPrivateKey as `0x${string}`
     );
@@ -275,7 +297,6 @@ describe('Tx', () => {
       txInstance.send(INIT_DID_TX.unsignedInitDIDTx, signer)
     ).rejects.toThrow();
   });
-  // TODO: Should reject INIT_DID tx with wrong signature in walletToEncDerivedKey mapping
   it('should send for a custom tx', async () => {
     const txInstance = await Tx.initialize(env);
     const recipients = [
