@@ -11,12 +11,16 @@ import PushNetwork from '@pushprotocol/node-core';
 import { useSignMessage } from 'wagmi';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import Game from './game';
+import PublicGames from './public-games';
 
 export default function LoggedInView() {
   const [friendsWallets, setFriendsWallets] = useState<string[]>([]);
   const [loadingStartGame, setLoadingStartGame] = useState<boolean>(false);
   const [walletInput, setWalletInput] = useState<string>('');
   const [recommendedWallets, setRecommendedWallets] = useState<string[]>([]);
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [createPrivateGameLoading, setCreatePrivateGameLoading] =
+    useState<boolean>(false);
   const { user } = usePrivy();
   const { pushAccount, pushNetwork, setGameStarted, gameStarted } =
     useAppContext();
@@ -156,6 +160,58 @@ export default function LoggedInView() {
     }
   };
 
+  const handleCreatePublicGame = async () => {
+    try {
+      setLoadingStartGame(true);
+      const poker = await Poker.initialize(ENV.DEV);
+      const tx = await poker.createGame({ type: 'public' }, [address], {
+        account: address,
+        signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
+          if (!user?.wallet?.address && !pushAccount)
+            throw new Error('No account connected');
+
+          return pushAccount
+            ? (pushNetwork as PushNetwork).wallet.sign(data)
+            : user?.wallet?.chainType === 'solana'
+            ? await wallets[0].signMessage(data)
+            : hexToBytes(await signMessageAsync({ message: { raw: data } }));
+        },
+      });
+
+      setTxHash(tx);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingStartGame(false);
+    }
+  };
+
+  const handleCreatePrivateGame = async () => {
+    try {
+      setLoadingStartGame(true);
+      const poker = await Poker.initialize(ENV.DEV);
+      const tx = await poker.createGame({ type: 'private' }, [address], {
+        account: address,
+        signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
+          if (!user?.wallet?.address && !pushAccount)
+            throw new Error('No account connected');
+
+          return pushAccount
+            ? (pushNetwork as PushNetwork).wallet.sign(data)
+            : user?.wallet?.chainType === 'solana'
+            ? await wallets[0].signMessage(data)
+            : hexToBytes(await signMessageAsync({ message: { raw: data } }));
+        },
+      });
+
+      setTxHash(tx);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingStartGame(false);
+    }
+  };
+
   return (
     <div>
       <Navbar />
@@ -167,15 +223,48 @@ export default function LoggedInView() {
           <h1 className="text-4xl font-bold">Poker App</h1>
           <div className="flex flex-row justify-center items-center w-full gap-4 mt-8">
             <div className="relative group">
-              <button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transform transition-transform hover:scale-105">
-                Create public game
+              <button
+                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transform transition-transform hover:scale-105"
+                onClick={handleCreatePublicGame}
+                disabled={loadingStartGame}
+              >
+                {loadingStartGame ? (
+                  <div className="flex flex-row items-center justify-center">
+                    <svg
+                      className="animate-spin h-5 w-5 mr-3 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                      ></path>
+                    </svg>
+                    Creating Game...
+                  </div>
+                ) : (
+                  'Create public game'
+                )}
               </button>
               <span className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2">
                 Any one can join
               </span>
             </div>
             <div className="relative group">
-              <button className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-700 hover:to-teal-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transform transition-transform hover:scale-105">
+              <button
+                className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-700 hover:to-teal-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transform transition-transform hover:scale-105"
+                disabled={loadingStartGame}
+              >
                 Create game with friends
               </button>
               <span className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2">
@@ -183,6 +272,11 @@ export default function LoggedInView() {
               </span>
             </div>
           </div>
+          {txHash && (
+            <div className="flex flex-row items-center justify-center gap-2 w-full mt-8">
+              <span>Transaction hash: {txHash}</span>
+            </div>
+          )}
           <div className="flex flex-row items-center justify-center gap-2 w-full mt-8">
             <input
               type="text"
@@ -199,6 +293,8 @@ export default function LoggedInView() {
               Add Friend
             </button>
           </div>
+
+          <PublicGames />
 
           {recommendedWallets.length > 0 && (
             <div className="flex flex-col items-center justify-center gap-1 w-full mt-8">
