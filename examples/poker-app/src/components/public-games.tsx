@@ -11,7 +11,6 @@ export default function PublicGames() {
     const fetchGames = async () => {
       const poker = await Poker.initialize(ENV.DEV);
       const games = await poker.get({ type: 'public' });
-      console.log('games', games);
       setPublicGames(games);
     };
     fetchGames();
