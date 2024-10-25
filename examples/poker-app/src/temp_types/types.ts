@@ -1,6 +1,6 @@
 // PokerGame.ts
 
-enum PhaseType {
+export enum PhaseType {
   PREFLOP = 0,
   FLOP = 1,
   TURN = 2,
@@ -36,16 +36,16 @@ interface Card {
   suit: Suit;
 }
 
-interface Player {
+export interface Player {
   address: string;
   chips: number;
   cards: Card[];
   isDealer: boolean;
 }
 
-interface Phase {
+export interface Phase {
   type: PhaseType;
-  bets: Map<string, number>;
+  bets: Record<string, number>;
 }
 
 export interface PokerGame {

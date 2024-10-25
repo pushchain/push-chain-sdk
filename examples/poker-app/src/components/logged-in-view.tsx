@@ -6,7 +6,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Poker } from '../services/poker';
 import { useAppContext } from '../context/app-context';
 import { usePrivy, useSolanaWallets } from '@privy-io/react-auth';
-import { PokerGame } from '../temp_types/types';
+import { PokerGame, PhaseType } from '../temp_types/types';
 import PushNetwork from '@pushprotocol/node-core';
 import { useSignMessage } from 'wagmi';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
@@ -118,7 +118,18 @@ export default function LoggedInView() {
             isDealer: true,
           },
         ],
-        phases: [],
+        phases: [
+          {
+            type: PhaseType.PREFLOP,
+            bets: {
+              [address]: 0,
+              ...friendsWallets.reduce((acc, wallet) => {
+                acc[wallet] = 0;
+                return acc;
+              }, {} as Record<string, number>),
+            },
+          },
+        ],
         cards: [],
         pot: 0,
         creator: address,
