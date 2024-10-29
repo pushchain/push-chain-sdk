@@ -3,42 +3,124 @@ import { Poker } from '../services/poker';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import { GamesTable } from '../temp_types/new-types';
 import { trimAddress } from '../lib/utils';
+import PushNetwork from '@pushprotocol/node-core';
+import { useAppContext } from '../context/app-context';
+import { useSignMessage } from 'wagmi';
+import { usePrivy, useSolanaWallets } from '@privy-io/react-auth';
+import { hexToBytes } from 'viem';
 
 export default function PublicGames() {
   const [publicGames, setPublicGames] = useState<GamesTable[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { pushAccount, pushNetwork } = useAppContext();
+  const { signMessageAsync } = useSignMessage();
+  const { wallets } = useSolanaWallets();
+  const { user } = usePrivy();
+
+  const address = pushAccount
+    ? pushAccount
+    : user?.wallet?.chainType === 'solana'
+    ? `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:${user?.wallet?.address}`
+    : `${user?.wallet?.chainId}:${user?.wallet?.address}`;
 
   useEffect(() => {
     const fetchGames = async () => {
-      const poker = await Poker.initialize(ENV.DEV);
-      const games = await poker.get({ type: 'public' });
-      setPublicGames(games);
+      try {
+        setLoading(true);
+        const poker = await Poker.initialize(ENV.DEV);
+        const games = await poker.get({ type: 'public' });
+        const gamesToShow: GamesTable[] = [];
+        for (const game of games) {
+          // if (game.creator === address) continue; // Skip the user's own wallet
+          const isGameStarted = await poker.checkIfGameStarted({
+            txHash: game.txHash,
+            creator: game.creator,
+          });
+          if (!isGameStarted) {
+            gamesToShow.push(game);
+          }
+        }
+        for (const game of gamesToShow) {
+          const numberOfPlayers = await poker.getNumberOfPlayers({
+            txHash: game.txHash,
+            creator: game.creator,
+          });
+          game.numberOfPlayers = numberOfPlayers;
+        }
+        setPublicGames(gamesToShow);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchGames();
   }, []);
 
+  const handleJoinGame = async (txHash: string) => {
+    const poker = await Poker.initialize(ENV.DEV);
+    const signer = {
+      account: address,
+      signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
+        if (!user?.wallet?.address && !pushAccount)
+          throw new Error('No account connected');
+
+        return pushAccount
+          ? (pushNetwork as PushNetwork).wallet.sign(data)
+          : user?.wallet?.chainType === 'solana'
+          ? await wallets[0].signMessage(data)
+          : hexToBytes(await signMessageAsync({ message: { raw: data } }));
+      },
+    };
+
+    await poker.joinGame({ txHash, tos: [address], signer });
+  };
+
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Creator</th>
-          <th>Transaction Hash</th>
-        </tr>
-      </thead>
-      <tbody>
-        {publicGames.map((game, index) => (
-          <tr key={index}>
-            <td style={{ paddingRight: '20px' }}>
-              {trimAddress(game.creator)}
-            </td>
-            <td>{trimAddress(game.txHash)}</td>
-            <td>
-              <button className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-                Join
-              </button>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div>
+      {loading && (
+        <div className="flex flex-col items-center justify-center space-y-2">
+          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
+          <div className="text-md">Fetching public games...</div>
+        </div>
+      )}
+      {!loading && (
+        <table>
+          <thead>
+            <tr>
+              <th className="text-center">Creator</th>
+              <th className="text-center pr-5">Transaction Hash</th>
+              <th className="text-center">Number of players</th>
+            </tr>
+          </thead>
+          <tbody>
+            {publicGames.map((game, index) => (
+              <tr key={index}>
+                <td className="text-center pr-5">
+                  {trimAddress(game.creator)}
+                </td>
+                <td className="text-center">{trimAddress(game.txHash)}</td>
+                <td className="text-center">{game.numberOfPlayers}</td>
+                <td className="text-center">
+                  <button
+                    className={`${
+                      game.creator === address
+                        ? 'bg-gray-500 hover:bg-gray-600'
+                        : 'bg-green-500 hover:bg-green-600'
+                    } text-white font-bold py-2 px-4 rounded transition duration-300`}
+                    onClick={() => handleJoinGame(game.txHash)}
+                    disabled={game.creator === address}
+                  >
+                    {game.creator === address
+                      ? 'You created this game'
+                      : 'Join'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }

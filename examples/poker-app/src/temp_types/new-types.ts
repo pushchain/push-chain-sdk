@@ -6,4 +6,5 @@ export interface GamesTable {
   txHash: string;
   creator: string;
   type: 'public' | 'private';
+  numberOfPlayers: number;
 }

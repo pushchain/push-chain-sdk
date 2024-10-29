@@ -6,7 +6,11 @@ import { CreateGame, GamesTable } from '../temp_types/new-types';
 
 export class Poker {
   TX_CATEGORY_PREFIX = 'CUSTOM:POKER:';
+
   TX_CATEGORY_PREFIX_CREATE_GAME_PUBLIC = 'CUSTOM:POKER:CREATE_GAME_PUBLIC';
+  TX_CATEGORY_PREFIX_JOIN_GAME_PUBLIC = 'CUSTOM:POKER:JOIN_GAME_PUBLIC:'; // Then add the txHash
+  TX_CATEGORY_PREFIX_START_GAME_PUBLIC = 'CUSTOM:POKER:START_GAME_PUBLIC:'; // Then add the txHash
+
   TX_CATEGORY_PREFIX_CREATE_GAME_PRIVATE = 'CUSTOM:POKER:CREATE_GAME_PRIVATE';
 
   private constructor(private pushNetwork: PushNetwork) {}
@@ -57,9 +61,6 @@ export class Poker {
       throw new Error('Public games must have exactly one recipient');
 
     const serializeGame = new TextEncoder().encode(JSON.stringify(game));
-    console.log('@@@@@');
-    console.log('serializeGame', serializeGame);
-    console.log('@@@@@');
     const unsignedTx = this.pushNetwork.tx.createUnsigned(
       game.type === 'public'
         ? this.TX_CATEGORY_PREFIX_CREATE_GAME_PUBLIC
@@ -70,6 +71,9 @@ export class Poker {
     return await this.pushNetwork.tx.send(unsignedTx, signer);
   };
 
+  /**
+   * @param type - The type of games to get. 'public' or 'private'.
+   */
   get = async ({ type }: { type: 'public' | 'private' }) => {
     const response = await this.pushNetwork.tx.get(
       Math.floor(Date.now()),
@@ -89,7 +93,7 @@ export class Poker {
           const decodedGame = new TextDecoder().decode(
             new Uint8Array(Buffer.from(txObj.tx.data as any, 'base64'))
           );
-          const gameObject = JSON.parse(decodedGame);
+          const gameObject: CreateGame = JSON.parse(decodedGame);
 
           return {
             txHash: block.transactions[index].txnHash,
@@ -103,5 +107,64 @@ export class Poker {
     });
 
     return gamesTable;
+  };
+
+  checkIfGameStarted = async ({
+    txHash,
+    creator,
+  }: {
+    txHash: string;
+    creator: string;
+  }) => {
+    const response = await this.pushNetwork.tx.get(
+      Math.floor(Date.now()),
+      'DESC',
+      30,
+      1,
+      creator,
+      this.TX_CATEGORY_PREFIX_START_GAME_PUBLIC + txHash
+    );
+
+    if (response.blocks.length === 0) return false;
+    else return true;
+  };
+
+  joinGame = async ({
+    txHash,
+    tos,
+    signer,
+  }: {
+    txHash: string;
+    tos: string[];
+    signer: {
+      account: string;
+      signMessage: (dataToBeSigned: Uint8Array) => Promise<Uint8Array>;
+    };
+  }) => {
+    const unsignedTx = this.pushNetwork.tx.createUnsigned(
+      this.TX_CATEGORY_PREFIX_JOIN_GAME_PUBLIC + txHash,
+      tos,
+      new TextEncoder().encode(JSON.stringify({}))
+    );
+    await this.pushNetwork.tx.send(unsignedTx, signer);
+  };
+
+  getNumberOfPlayers = async ({
+    txHash,
+    creator,
+  }: {
+    txHash: string;
+    creator: string;
+  }) => {
+    const response = await this.pushNetwork.tx.get(
+      Math.floor(Date.now()),
+      'DESC',
+      30,
+      1,
+      creator,
+      this.TX_CATEGORY_PREFIX_JOIN_GAME_PUBLIC + txHash
+    );
+
+    return response.blocks.length + 1; // +1 because the creator is also a player
   };
 }

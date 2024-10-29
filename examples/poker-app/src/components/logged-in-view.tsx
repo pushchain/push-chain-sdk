@@ -277,6 +277,11 @@ export default function LoggedInView() {
               <span>Transaction hash: {txHash}</span>
             </div>
           )}
+
+          <div className="flex flex-row items-center justify-center w-full mt-8">
+            <PublicGames />
+          </div>
+
           <div className="flex flex-row items-center justify-center gap-2 w-full mt-8">
             <input
               type="text"
@@ -293,8 +298,6 @@ export default function LoggedInView() {
               Add Friend
             </button>
           </div>
-
-          <PublicGames />
 
           {recommendedWallets.length > 0 && (
             <div className="flex flex-col items-center justify-center gap-1 w-full mt-8">
