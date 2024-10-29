@@ -12,7 +12,7 @@ import { hexToBytes } from 'viem';
 export default function PublicGames() {
   const [publicGames, setPublicGames] = useState<GamesTable[]>([]);
   const [loading, setLoading] = useState(true);
-  const { pushAccount, pushNetwork } = useAppContext();
+  const { pushAccount, pushNetwork, setGameStarted } = useAppContext();
   const { signMessageAsync } = useSignMessage();
   const { wallets } = useSolanaWallets();
   const { user } = usePrivy();
@@ -80,6 +80,16 @@ export default function PublicGames() {
     });
   };
 
+  function displayButtonText(game: GamesTable) {
+    if (game.creator === address) {
+      if (game.numberOfPlayers === 1) {
+        return 'Waiting for players to join your game';
+      } else {
+        return 'Start game';
+      }
+    } else return 'Join';
+  }
+
   return (
     <div>
       {loading && (
@@ -108,16 +118,29 @@ export default function PublicGames() {
                 <td className="text-center">
                   <button
                     className={`${
-                      game.creator === address
+                      game.numberOfPlayers === 1
                         ? 'bg-gray-500 hover:bg-gray-600'
+                        : game.numberOfPlayers > 1
+                        ? 'bg-purple-500 hover:bg-purple-600' // Beautiful color for more than 1 player
                         : 'bg-green-500 hover:bg-green-600'
                     } text-white font-bold py-2 px-4 rounded transition duration-300`}
-                    onClick={() => handleJoinGame(game)}
-                    disabled={game.creator === address}
+                    onClick={() => {
+                      if (game.creator === address) {
+                        if (game.numberOfPlayers === 1) {
+                          return;
+                        } else {
+                          console.log('Starting game');
+                          setGameStarted(true);
+                        }
+                      } else {
+                        handleJoinGame(game);
+                      }
+                    }}
+                    disabled={
+                      game.creator === address && game.numberOfPlayers === 1
+                    }
                   >
-                    {game.creator === address
-                      ? 'You created this game'
-                      : 'Join'}
+                    {displayButtonText(game)}
                   </button>
                 </td>
               </tr>
