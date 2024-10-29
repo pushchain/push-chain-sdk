@@ -19,8 +19,6 @@ export default function LoggedInView() {
   const [walletInput, setWalletInput] = useState<string>('');
   const [recommendedWallets, setRecommendedWallets] = useState<string[]>([]);
   const [txHash, setTxHash] = useState<string | null>(null);
-  const [createPrivateGameLoading, setCreatePrivateGameLoading] =
-    useState<boolean>(false);
   const { user } = usePrivy();
   const { pushAccount, pushNetwork, setGameStarted, gameStarted } =
     useAppContext();
