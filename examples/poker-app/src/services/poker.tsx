@@ -5,13 +5,13 @@ import { PokerGame } from '../temp_types/types';
 import { CreateGame, GamesTable } from '../temp_types/new-types';
 
 export class Poker {
-  TX_CATEGORY_PREFIX = 'CUSTOM:POKER:';
+  TX_CATEGORY_PREFIX = 'POKER:';
 
-  TX_CATEGORY_PREFIX_CREATE_GAME_PUBLIC = 'CUSTOM:POKER:CREATE_GAME_PUBLIC';
-  TX_CATEGORY_PREFIX_JOIN_GAME_PUBLIC = 'CUSTOM:POKER:JOIN_GAME_PUBLIC:'; // Then add the txHash
-  TX_CATEGORY_PREFIX_START_GAME_PUBLIC = 'CUSTOM:POKER:START_GAME_PUBLIC:'; // Then add the txHash
+  TX_CATEGORY_PREFIX_CREATE_GAME_PUBLIC = 'POKER:CREATE_GAME_PUBLIC';
+  TX_CATEGORY_PREFIX_JOIN_GAME_PUBLIC = 'POKER:JOIN_GAME_PUBLIC:'; // Then add the txHash
+  TX_CATEGORY_PREFIX_START_GAME_PUBLIC = 'POKER:START_GAME_PUBLIC:'; // Then add the txHash
 
-  TX_CATEGORY_PREFIX_CREATE_GAME_PRIVATE = 'CUSTOM:POKER:CREATE_GAME_PRIVATE';
+  TX_CATEGORY_PREFIX_CREATE_GAME_PRIVATE = 'POKER:CREATE_GAME_PRIVATE';
 
   private constructor(private pushNetwork: PushNetwork) {}
 
@@ -142,29 +142,45 @@ export class Poker {
     };
   }) => {
     const unsignedTx = this.pushNetwork.tx.createUnsigned(
-      this.TX_CATEGORY_PREFIX_JOIN_GAME_PUBLIC + txHash,
+      (this.TX_CATEGORY_PREFIX_JOIN_GAME_PUBLIC + txHash).slice(0, 30),
       tos,
-      new TextEncoder().encode(JSON.stringify({}))
+      new TextEncoder().encode(JSON.stringify({ txHash }))
+      // new Uint8Array(10)
     );
-    await this.pushNetwork.tx.send(unsignedTx, signer);
+    const resulst = await this.pushNetwork.tx.send(unsignedTx, signer);
+    console.log(resulst);
   };
 
-  getNumberOfPlayers = async ({
+  // TODO: Not working. Always returns response.blocks as []
+  getNumberOfPlayersForTable = async ({
     txHash,
     creator,
   }: {
     txHash: string;
     creator: string;
   }) => {
-    const response = await this.pushNetwork.tx.get(
+    const response = await this.pushNetwork.tx.getByRecipient(
+      creator,
       Math.floor(Date.now()),
       'DESC',
-      30,
+      50,
       1,
-      creator,
-      this.TX_CATEGORY_PREFIX_JOIN_GAME_PUBLIC + txHash
+      (this.TX_CATEGORY_PREFIX_JOIN_GAME_PUBLIC + txHash).slice(0, 30)
     );
 
-    return response.blocks.length + 1; // +1 because the creator is also a player
+    let numberOfPlayers = 0;
+    const senders: string[] = [];
+
+    response.blocks.forEach((block) => {
+      block.blockDataAsJson.txobjList.forEach((txObj: { tx: Transaction }) => {
+        console.log(txObj.tx.sender);
+        if (!senders.includes(txObj.tx.sender)) {
+          senders.push(txObj.tx.sender);
+          numberOfPlayers++;
+        }
+      });
+    });
+
+    return numberOfPlayers + 1; // +1 because the creator is also a player
   };
 }

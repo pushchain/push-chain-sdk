@@ -41,7 +41,7 @@ export default function PublicGames() {
           }
         }
         for (const game of gamesToShow) {
-          const numberOfPlayers = await poker.getNumberOfPlayers({
+          const numberOfPlayers = await poker.getNumberOfPlayersForTable({
             txHash: game.txHash,
             creator: game.creator,
           });
@@ -57,7 +57,7 @@ export default function PublicGames() {
     fetchGames();
   }, []);
 
-  const handleJoinGame = async (txHash: string) => {
+  const handleJoinGame = async (game: GamesTable) => {
     const poker = await Poker.initialize(ENV.DEV);
     const signer = {
       account: address,
@@ -73,7 +73,11 @@ export default function PublicGames() {
       },
     };
 
-    await poker.joinGame({ txHash, tos: [address], signer });
+    await poker.joinGame({
+      txHash: game.txHash,
+      tos: [game.creator],
+      signer,
+    });
   };
 
   return (
@@ -108,7 +112,7 @@ export default function PublicGames() {
                         ? 'bg-gray-500 hover:bg-gray-600'
                         : 'bg-green-500 hover:bg-green-600'
                     } text-white font-bold py-2 px-4 rounded transition duration-300`}
-                    onClick={() => handleJoinGame(game.txHash)}
+                    onClick={() => handleJoinGame(game)}
                     disabled={game.creator === address}
                   >
                     {game.creator === address
