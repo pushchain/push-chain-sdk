@@ -16,12 +16,13 @@ export class Address {
   /**
    * Converts an EVM address to a Push (bech32m) address
    * @param address EVM address
+   * @param prefix Push prefix (default: 'push')
    * @returns Push address
    */
-  static evmToPush = (address: `0x${string}`): string => {
+  static evmToPush = (address: `0x${string}`, prefix = PUSH_PREFIX): string => {
     try {
       const words = bech32m.toWords(hexToBytes(getAddress(address).slice(2)));
-      return bech32m.encode(PUSH_PREFIX, words);
+      return bech32m.encode(prefix, words);
     } catch (e) {
       throw new Error('Invalid EVM address');
     }
@@ -32,7 +33,7 @@ export class Address {
    * @param address Push address
    * @returns EVM address in checksum format
    */
-  static pushToEvm = (address: `push${string}`): string => {
+  static pushToEvm = (address: string): string => {
     try {
       const decoded = bech32m.decode(address);
       const bytes = new Uint8Array(bech32m.fromWords(decoded.words));
@@ -74,5 +75,49 @@ export class Address {
       ? address
       : Address.evmToPush(address as `0x${string}`);
     return `push:${network}:${pushAddress}`;
+  };
+
+  /**
+   * Converts an address to CAIP10 format
+   * @param address
+   * @param network - Chain ID for EIP155 address, 'mainnet' | 'testnet' | 'devnet' for Solana & Push address
+   * @dev - This method does not verify the address
+   * @dev - Address not starting with 'push' & '0x' will be treated as SOL address
+   */
+  static toCAIP = (
+    address: string,
+    network: number | `${PUSH_NETWORK}`
+  ): string => {
+    const namespace = address.startsWith(PUSH_PREFIX)
+      ? 'push'
+      : address.startsWith('0x')
+      ? 'eip155'
+      : 'solana';
+
+    // Validate network
+    if (namespace === 'eip155' && typeof network !== 'number') {
+      throw new Error('Invalid network for EIP155 address');
+    }
+    if (
+      (namespace === 'push' || namespace === 'solana') &&
+      typeof network === 'number'
+    ) {
+      throw new Error(`Invalid network for ${namespace} address`);
+    }
+
+    // Modify network for sol
+    // Reference: https://namespaces.chainagnostic.org/solana/caip10
+    const networkToSolChainId = {
+      mainnet: '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+      devnet: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
+      testnet: '4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z',
+    };
+    const solChainId = networkToSolChainId[network as `${PUSH_NETWORK}`];
+
+    // Return CAIP10 address
+    if (namespace === 'solana') {
+      return `${namespace}:${solChainId}:${address}`;
+    }
+    return `${namespace}:${network}:${address}`;
   };
 }

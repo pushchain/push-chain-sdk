@@ -2,7 +2,7 @@
   "name": "push-mail",
   "version": "0.0.4",
   "peerDependencies": {
-    "@pushprotocol/node-core": "^0.0.19",
+    "@pushprotocol/node-core": "^0.0.22",
     "viem": "^2"
   },
   "dependencies": {

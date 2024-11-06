@@ -64,7 +64,9 @@ export class Validator {
   ): ValidatorContract => {
     const client = createPublicClient({
       chain: config.VALIDATOR[env].NETWORK,
-      transport: http(),
+      transport: http(
+        'https://proportionate-multi-sanctuary.ethereum-sepolia.quiknode.pro/fe3638bd884a34c0aa6c85ce2cd62ef54b0d8442/'
+      ),
     });
     return getContract({
       abi: config.ABIS.VALIDATOR,
