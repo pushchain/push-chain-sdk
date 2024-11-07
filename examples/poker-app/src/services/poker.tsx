@@ -144,6 +144,9 @@ export class Poker {
     const unsignedTx = this.pushNetwork.tx.createUnsigned(
       (this.TX_CATEGORY_PREFIX_JOIN_GAME_PUBLIC + txHash).slice(0, 30),
       tos,
+      // TODO: Later do `new Uint8Array(0)` to pass 0 uint8 array.
+      // The txHash below is being passed only because before is was throwing an error when there was nothing on the data, so passed the txHash just to
+      // the transaction to be inserted
       new TextEncoder().encode(JSON.stringify({ txHash }))
       // new Uint8Array(10)
     );

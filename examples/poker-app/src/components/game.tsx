@@ -1,7 +1,14 @@
 import ConfettiExplosion from 'react-confetti-explosion';
 import { cardBackImageURL, cardImageURL } from '../lib/cards';
+import { useEffect, useState } from 'react';
 
 export default function Game() {
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    setMessage('Dealing cards...');
+  }, []);
+
   return (
     <div className="flex flex-col h-full w-full items-end">
       <ConfettiExplosion
@@ -14,7 +21,11 @@ export default function Game() {
       <OpponentHand position="top" />
       <div className="flex flex-row w-full">
         <OpponentHand position="left" />
-        <Board />
+        {message ? (
+          <div className="text-4xl font-bold">{message}</div>
+        ) : (
+          <Board />
+        )}
         <OpponentHand position="right" />
       </div>
       <MyHand />
