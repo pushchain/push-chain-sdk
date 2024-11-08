@@ -3,7 +3,7 @@ import { hexToBytes } from 'viem';
 import Navbar from './navbar';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { Poker } from '../services/poker';
+import { Poker } from '../services/poker.ts';
 import { useAppContext } from '../context/app-context';
 import { usePrivy, useSolanaWallets } from '@privy-io/react-auth';
 import { PokerGame, PhaseType } from '../temp_types/types';
@@ -184,31 +184,31 @@ export default function LoggedInView() {
     }
   };
 
-  const handleCreatePrivateGame = async () => {
-    try {
-      setLoadingStartGame(true);
-      const poker = await Poker.initialize(ENV.DEV);
-      const tx = await poker.createGame({ type: 'private' }, [address], {
-        account: address,
-        signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
-          if (!user?.wallet?.address && !pushAccount)
-            throw new Error('No account connected');
-
-          return pushAccount
-            ? (pushNetwork as PushNetwork).wallet.sign(data)
-            : user?.wallet?.chainType === 'solana'
-            ? await wallets[0].signMessage(data)
-            : hexToBytes(await signMessageAsync({ message: { raw: data } }));
-        },
-      });
-
-      setTxHash(tx);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoadingStartGame(false);
-    }
-  };
+  // const handleCreatePrivateGame = async () => {
+  //   try {
+  //     setLoadingStartGame(true);
+  //     const poker = await Poker.initialize(ENV.DEV);
+  //     const tx = await poker.createGame({ type: 'private' }, [address], {
+  //       account: address,
+  //       signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
+  //         if (!user?.wallet?.address && !pushAccount)
+  //           throw new Error('No account connected');
+  //
+  //         return pushAccount
+  //           ? (pushNetwork as PushNetwork).wallet.sign(data)
+  //           : user?.wallet?.chainType === 'solana'
+  //           ? await wallets[0].signMessage(data)
+  //           : hexToBytes(await signMessageAsync({ message: { raw: data } }));
+  //       },
+  //     });
+  //
+  //     setTxHash(tx);
+  //   } catch (error) {
+  //     console.error(error);
+  //   } finally {
+  //     setLoadingStartGame(false);
+  //   }
+  // };
 
   return (
     <div>

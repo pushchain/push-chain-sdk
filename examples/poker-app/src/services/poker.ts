@@ -150,11 +150,10 @@ export class Poker {
       new TextEncoder().encode(JSON.stringify({ txHash }))
       // new Uint8Array(10)
     );
-    const resulst = await this.pushNetwork.tx.send(unsignedTx, signer);
-    console.log(resulst);
+    const tx = await this.pushNetwork.tx.send(unsignedTx, signer);
+    console.log('txHash', tx);
   };
 
-  // TODO: Not working. Always returns response.blocks as []
   getNumberOfPlayersForTable = async ({
     txHash,
     creator,
@@ -162,6 +161,17 @@ export class Poker {
     txHash: string;
     creator: string;
   }) => {
+    const players = await this.getPlayerOrderForTable({ txHash, creator });
+    return players.size;
+  };
+
+  getPlayerOrderForTable = async ({
+    txHash,
+    creator,
+  }: {
+    txHash: string;
+    creator: string;
+  }): Promise<Set<string>> => {
     const response = await this.pushNetwork.tx.getByRecipient(
       creator,
       Math.floor(Date.now()),
@@ -170,20 +180,16 @@ export class Poker {
       1,
       (this.TX_CATEGORY_PREFIX_JOIN_GAME_PUBLIC + txHash).slice(0, 30)
     );
-
-    let numberOfPlayers = 0;
-    const senders: string[] = [];
-
+    const players = new Set<string>();
     response.blocks.forEach((block) => {
       block.blockDataAsJson.txobjList.forEach((txObj: { tx: Transaction }) => {
-        console.log(txObj.tx.sender);
-        if (!senders.includes(txObj.tx.sender)) {
-          senders.push(txObj.tx.sender);
-          numberOfPlayers++;
+        if (!players.has(txObj.tx.sender)) {
+          players.add(txObj.tx.sender);
         }
       });
     });
 
-    return numberOfPlayers + 1; // +1 because the creator is also a player
+    players.add(creator);
+    return players;
   };
 }

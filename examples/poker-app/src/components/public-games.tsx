@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Poker } from '../services/poker';
+import { Poker } from '../services/poker.ts';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import { GamesTable } from '../temp_types/new-types';
 import { trimAddress } from '../lib/utils';
@@ -41,11 +41,10 @@ export default function PublicGames() {
           }
         }
         for (const game of gamesToShow) {
-          const numberOfPlayers = await poker.getNumberOfPlayersForTable({
+          game.numberOfPlayers = await poker.getNumberOfPlayersForTable({
             txHash: game.txHash,
             creator: game.creator,
           });
-          game.numberOfPlayers = numberOfPlayers;
         }
         setPublicGames(gamesToShow);
       } catch (error) {
