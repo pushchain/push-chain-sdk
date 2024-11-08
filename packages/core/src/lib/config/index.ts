@@ -28,8 +28,8 @@ const config: Config = {
   WALLET_URL: {
     [ENV.PROD]: 'TODO',
     [ENV.STAGING]: 'TODO',
-    [ENV.DEV]: 'https://push-protocol.github.io/push-keys/',
-    [ENV.LOCAL]: 'http://localhost:5174/push-keys/',
+    [ENV.DEV]: 'https://push-protocol.github.io/push-wallet/',
+    [ENV.LOCAL]: 'http://localhost:5174/',
   },
 };
 
