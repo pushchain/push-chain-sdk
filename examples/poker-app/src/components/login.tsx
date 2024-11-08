@@ -1,6 +1,6 @@
 import { usePrivy } from '@privy-io/react-auth';
-import { useAppContext } from '../context/app-context';
 import { toBytes } from 'viem';
+import { useAppContext } from '../hooks/useAppContext.tsx';
 
 const Login = () => {
   const { login } = usePrivy();

@@ -5,23 +5,20 @@ import { createConfig } from '@privy-io/wagmi';
 import { mainnet } from 'viem/chains';
 import { http } from 'wagmi';
 import { WagmiProvider } from '@privy-io/wagmi';
+import { ReactNode } from 'react';
 
 const solanaConnectors = toSolanaWalletConnectors({
   shouldAutoConnect: false,
 });
 
 const config = createConfig({
-  chains: [mainnet as any],
+  chains: [mainnet],
   transports: {
     [mainnet.id]: http(),
   },
 });
 
-export function PrivyWalletProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function PrivyWalletProvider({ children }: { children: ReactNode }) {
   const queryClient = new QueryClient();
   return (
     <PrivyProvider

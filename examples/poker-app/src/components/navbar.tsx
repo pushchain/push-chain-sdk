@@ -1,17 +1,21 @@
 import { usePrivy } from '@privy-io/react-auth';
-import { useAppContext } from '../context/app-context';
 import { trimAddress } from '../lib/utils';
 import { TokenETH, TokenPUSH, TokenSOL } from '@web3icons/react';
+import { useAppContext } from '../hooks/useAppContext.tsx';
 
 export default function Navbar() {
   const { user, authenticated, logout } = usePrivy();
   const { pushAccount, setPushAccount } = useAppContext();
 
-  const logoutHandler = () => {
-    if (pushAccount) {
-      setPushAccount(null);
-    } else if (authenticated) {
-      logout();
+  const logoutHandler = async () => {
+    try {
+      if (pushAccount) {
+        setPushAccount(null);
+      } else if (authenticated) {
+        await logout();
+      }
+    } catch (error) {
+      console.log(error);
     }
   };
 

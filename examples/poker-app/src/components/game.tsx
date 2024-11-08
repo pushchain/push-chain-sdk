@@ -1,13 +1,34 @@
 import ConfettiExplosion from 'react-confetti-explosion';
 import { cardBackImageURL, cardImageURL } from '../lib/cards';
 import { useEffect, useState } from 'react';
+import { usePrivy } from '@privy-io/react-auth';
+import { useAppContext } from '../hooks/useAppContext.tsx';
 
 export default function Game() {
   const [message, setMessage] = useState('');
+  const { user } = usePrivy();
+  const { game } = useAppContext();
 
   useEffect(() => {
     setMessage('Dealing cards...');
   }, []);
+
+  useEffect(() => {
+    (async function () {
+      try {
+        if (!game) return;
+        if (
+          user?.wallet?.address.toLowerCase() === game.creator.toLowerCase()
+        ) {
+          // Begin shuffling cards
+          // const poker = await Poker.initialize(ENV.DEV);
+          // const encryptedShuffleDeck = poker.beginShuffleDeck();
+        }
+      } catch (e) {
+        console.log(e);
+      }
+    })();
+  }, [user, game]);
 
   return (
     <div className="flex flex-col h-full w-full items-end">
@@ -36,11 +57,11 @@ export default function Game() {
 function Board() {
   return (
     <div className="flex flex-row items-center w-full gap-0 mt-40 justify-center">
-      <img className="w-12" src={cardBackImageURL()} />
-      <img className="w-12" src={cardBackImageURL()} />
-      <img className="w-12" src={cardBackImageURL()} />
-      <img className="w-12" src={cardBackImageURL()} />
-      <img className="w-12" src={cardBackImageURL()} />
+      <img className="w-12" src={cardBackImageURL()} alt={'card'} />
+      <img className="w-12" src={cardBackImageURL()} alt={'card'} />
+      <img className="w-12" src={cardBackImageURL()} alt={'card'} />
+      <img className="w-12" src={cardBackImageURL()} alt={'card'} />
+      <img className="w-12" src={cardBackImageURL()} alt={'card'} />
     </div>
   );
 }
@@ -50,8 +71,16 @@ function MyHand() {
     <div className="flex flex-col items-center w-full gap-0 mt-40">
       <Chips />
       <div className="flex flex-row justify-center items-center w-full">
-        <img className="w-36" src={cardImageURL({ suit: 'H', rank: '6' })} />
-        <img className="w-36" src={cardImageURL({ suit: 'C', rank: 'K' })} />
+        <img
+          className="w-36"
+          src={cardImageURL({ suit: 'H', rank: '6' })}
+          alt={'card'}
+        />
+        <img
+          className="w-36"
+          src={cardImageURL({ suit: 'C', rank: 'K' })}
+          alt={'card'}
+        />
       </div>
       <input
         type="number"

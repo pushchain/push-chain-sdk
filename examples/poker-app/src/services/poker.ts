@@ -1,8 +1,13 @@
 import PushNetwork from '@pushprotocol/node-core';
+import { curve } from 'elliptic';
+import BasePoint = curve.base.BasePoint;
 import { Transaction } from '@pushprotocol/node-core/src/lib/generated/tx';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import { PokerGame } from '../temp_types/types';
 import { CreateGame, GamesTable } from '../temp_types/new-types';
+import { deckOfCards, shuffleCards } from '../lib/cards.ts';
+import BN from 'bn.js';
+import { commutativeEncrypt } from '../encryption';
 
 export class Poker {
   TX_CATEGORY_PREFIX = 'POKER:';
@@ -91,7 +96,9 @@ export class Poker {
       const games: GamesTable[] = block.blockDataAsJson.txobjList.map(
         (txObj: { tx: Transaction }, index: number) => {
           const decodedGame = new TextDecoder().decode(
-            new Uint8Array(Buffer.from(txObj.tx.data as any, 'base64'))
+            new Uint8Array(
+              Buffer.from(txObj.tx.data as unknown as string, 'base64')
+            )
           );
           const gameObject: CreateGame = JSON.parse(decodedGame);
 
@@ -125,8 +132,7 @@ export class Poker {
       this.TX_CATEGORY_PREFIX_START_GAME_PUBLIC + txHash
     );
 
-    if (response.blocks.length === 0) return false;
-    else return true;
+    return response.blocks.length !== 0;
   };
 
   joinGame = async ({
@@ -189,7 +195,18 @@ export class Poker {
       });
     });
 
-    players.add(creator);
-    return players;
+    return new Set<string>([creator, ...players]); // We do this so we add creator as first element of array
+  };
+
+  beginShuffleDeck = (publicKey: BasePoint, privateKey: BN): Set<BN> => {
+    const cards = deckOfCards();
+    const shuffledCards = shuffleCards(cards);
+    const encryptedShuffledCards = new Set<BN>();
+    shuffledCards.forEach((card) => {
+      const message = new BN(card);
+      const encryptedCard = commutativeEncrypt(message, publicKey, privateKey);
+      encryptedShuffledCards.add(encryptedCard);
+    });
+    return encryptedShuffledCards;
   };
 }

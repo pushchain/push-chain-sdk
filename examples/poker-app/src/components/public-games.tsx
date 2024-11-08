@@ -3,25 +3,16 @@ import { Poker } from '../services/poker.ts';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import { GamesTable } from '../temp_types/new-types';
 import { trimAddress } from '../lib/utils';
-import PushNetwork from '@pushprotocol/node-core';
-import { useAppContext } from '../context/app-context';
-import { useSignMessage } from 'wagmi';
-import { usePrivy, useSolanaWallets } from '@privy-io/react-auth';
-import { hexToBytes } from 'viem';
+import useConnectedPushAddress from '../hooks/useConnectedPushAddress.tsx';
+import usePushWalletSigner from '../hooks/usePushSigner.tsx';
+import { useAppContext } from '../hooks/useAppContext.tsx';
 
 export default function PublicGames() {
   const [publicGames, setPublicGames] = useState<GamesTable[]>([]);
   const [loading, setLoading] = useState(true);
-  const { pushAccount, pushNetwork, setGameStarted } = useAppContext();
-  const { signMessageAsync } = useSignMessage();
-  const { wallets } = useSolanaWallets();
-  const { user } = usePrivy();
-
-  const address = pushAccount
-    ? pushAccount
-    : user?.wallet?.chainType === 'solana'
-    ? `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:${user?.wallet?.address}`
-    : `${user?.wallet?.chainId}:${user?.wallet?.address}`;
+  const { setGameStarted } = useAppContext();
+  const { address } = useConnectedPushAddress();
+  const { pushWalletSigner } = usePushWalletSigner();
 
   useEffect(() => {
     const fetchGames = async () => {
@@ -58,24 +49,12 @@ export default function PublicGames() {
 
   const handleJoinGame = async (game: GamesTable) => {
     const poker = await Poker.initialize(ENV.DEV);
-    const signer = {
-      account: address,
-      signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
-        if (!user?.wallet?.address && !pushAccount)
-          throw new Error('No account connected');
-
-        return pushAccount
-          ? (pushNetwork as PushNetwork).wallet.sign(data)
-          : user?.wallet?.chainType === 'solana'
-          ? await wallets[0].signMessage(data)
-          : hexToBytes(await signMessageAsync({ message: { raw: data } }));
-      },
-    };
+    if (!address || !pushWalletSigner) return;
 
     await poker.joinGame({
       txHash: game.txHash,
       tos: [game.creator],
-      signer,
+      signer: pushWalletSigner,
     });
   };
 

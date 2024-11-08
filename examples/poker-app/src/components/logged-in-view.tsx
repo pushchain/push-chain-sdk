@@ -1,17 +1,15 @@
 import { useEffect, useState } from 'react';
-import { hexToBytes } from 'viem';
 import Navbar from './navbar';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Poker } from '../services/poker.ts';
-import { useAppContext } from '../context/app-context';
-import { usePrivy, useSolanaWallets } from '@privy-io/react-auth';
 import { PokerGame, PhaseType } from '../temp_types/types';
-import PushNetwork from '@pushprotocol/node-core';
-import { useSignMessage } from 'wagmi';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import Game from './game';
 import PublicGames from './public-games';
+import useConnectedPushAddress from '../hooks/useConnectedPushAddress.tsx';
+import usePushWalletSigner from '../hooks/usePushSigner.tsx';
+import { useAppContext } from '../hooks/useAppContext.tsx';
 
 export default function LoggedInView() {
   const [friendsWallets, setFriendsWallets] = useState<string[]>([]);
@@ -19,11 +17,9 @@ export default function LoggedInView() {
   const [walletInput, setWalletInput] = useState<string>('');
   const [recommendedWallets, setRecommendedWallets] = useState<string[]>([]);
   const [txHash, setTxHash] = useState<string | null>(null);
-  const { user } = usePrivy();
-  const { pushAccount, pushNetwork, setGameStarted, gameStarted } =
-    useAppContext();
-  const { wallets } = useSolanaWallets();
-  const { signMessageAsync } = useSignMessage();
+  const { setGameStarted, gameStarted, setGame } = useAppContext();
+  const { address } = useConnectedPushAddress();
+  const { pushWalletSigner } = usePushWalletSigner();
 
   useEffect(() => {
     const storedAddresses = localStorage.getItem('poker-friends-wallets');
@@ -31,12 +27,6 @@ export default function LoggedInView() {
       setRecommendedWallets(JSON.parse(storedAddresses));
     }
   }, []);
-
-  const address: string = pushAccount
-    ? pushAccount
-    : user?.wallet?.chainType === 'solana'
-    ? `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:${user?.wallet?.address}`
-    : `${user?.wallet?.chainId}:${user?.wallet?.address}`;
 
   const handleAddFriend = (recommendedWallet?: string) => {
     if (friendsWallets.length >= 4) {
@@ -102,6 +92,7 @@ export default function LoggedInView() {
 
   const handleStartGame = async () => {
     try {
+      if (!address || !pushWalletSigner) return;
       setLoadingStartGame(true);
       const poker = await Poker.initialize(ENV.DEV);
 
@@ -137,20 +128,13 @@ export default function LoggedInView() {
         creator: address,
       };
 
-      await poker.send(pokerGame, [address, ...friendsWallets], {
-        account: address,
-        signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
-          if (!user?.wallet?.address && !pushAccount)
-            throw new Error('No account connected');
-
-          return pushAccount
-            ? (pushNetwork as PushNetwork).wallet.sign(data)
-            : user?.wallet?.chainType === 'solana'
-            ? await wallets[0].signMessage(data)
-            : hexToBytes(await signMessageAsync({ message: { raw: data } }));
-        },
-      });
+      await poker.send(
+        pokerGame,
+        [address, ...friendsWallets],
+        pushWalletSigner
+      );
       setGameStarted(true);
+      setGame(pokerGame);
     } catch (error) {
       console.error(error);
     } finally {
@@ -161,20 +145,13 @@ export default function LoggedInView() {
   const handleCreatePublicGame = async () => {
     try {
       setLoadingStartGame(true);
+      if (!address || !pushWalletSigner) return;
       const poker = await Poker.initialize(ENV.DEV);
-      const tx = await poker.createGame({ type: 'public' }, [address], {
-        account: address,
-        signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
-          if (!user?.wallet?.address && !pushAccount)
-            throw new Error('No account connected');
-
-          return pushAccount
-            ? (pushNetwork as PushNetwork).wallet.sign(data)
-            : user?.wallet?.chainType === 'solana'
-            ? await wallets[0].signMessage(data)
-            : hexToBytes(await signMessageAsync({ message: { raw: data } }));
-        },
-      });
+      const tx = await poker.createGame(
+        { type: 'public' },
+        [address],
+        pushWalletSigner
+      );
 
       setTxHash(tx);
     } catch (error) {
@@ -183,32 +160,6 @@ export default function LoggedInView() {
       setLoadingStartGame(false);
     }
   };
-
-  // const handleCreatePrivateGame = async () => {
-  //   try {
-  //     setLoadingStartGame(true);
-  //     const poker = await Poker.initialize(ENV.DEV);
-  //     const tx = await poker.createGame({ type: 'private' }, [address], {
-  //       account: address,
-  //       signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
-  //         if (!user?.wallet?.address && !pushAccount)
-  //           throw new Error('No account connected');
-  //
-  //         return pushAccount
-  //           ? (pushNetwork as PushNetwork).wallet.sign(data)
-  //           : user?.wallet?.chainType === 'solana'
-  //           ? await wallets[0].signMessage(data)
-  //           : hexToBytes(await signMessageAsync({ message: { raw: data } }));
-  //       },
-  //     });
-  //
-  //     setTxHash(tx);
-  //   } catch (error) {
-  //     console.error(error);
-  //   } finally {
-  //     setLoadingStartGame(false);
-  //   }
-  // };
 
   return (
     <div>
