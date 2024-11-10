@@ -1,4 +1,4 @@
-export interface CreateGame {
+export interface GameType {
   type: 'public' | 'private';
 }
 
@@ -6,5 +6,5 @@ export interface GamesTable {
   txHash: string;
   creator: string;
   type: 'public' | 'private';
-  numberOfPlayers: number;
+  players: Set<string>;
 }

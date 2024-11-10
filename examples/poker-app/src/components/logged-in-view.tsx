@@ -3,13 +3,11 @@ import Navbar from './navbar';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Poker } from '../services/poker.ts';
-import { PokerGame, PhaseType } from '../temp_types/types';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import Game from './game';
 import PublicGames from './public-games';
 import useConnectedPushAddress from '../hooks/useConnectedPushAddress.tsx';
 import usePushWalletSigner from '../hooks/usePushSigner.tsx';
-import { useAppContext } from '../hooks/useAppContext.tsx';
 
 export default function LoggedInView() {
   const [friendsWallets, setFriendsWallets] = useState<string[]>([]);
@@ -17,7 +15,6 @@ export default function LoggedInView() {
   const [walletInput, setWalletInput] = useState<string>('');
   const [recommendedWallets, setRecommendedWallets] = useState<string[]>([]);
   const [txHash, setTxHash] = useState<string | null>(null);
-  const { setGameStarted, gameStarted, setGame } = useAppContext();
   const { address } = useConnectedPushAddress();
   const { pushWalletSigner } = usePushWalletSigner();
 
@@ -90,69 +87,13 @@ export default function LoggedInView() {
     setFriendsWallets(friendsWallets.filter((w) => w !== wallet));
   };
 
-  const handleStartGame = async () => {
-    try {
-      if (!address || !pushWalletSigner) return;
-      setLoadingStartGame(true);
-      const poker = await Poker.initialize(ENV.DEV);
-
-      const pokerGame: PokerGame = {
-        players: [
-          ...friendsWallets.map((walletAddress) => ({
-            address: walletAddress,
-            chips: 100,
-            cards: [],
-            isDealer: false,
-          })),
-          {
-            address: address,
-            chips: 100,
-            cards: [],
-            isDealer: true,
-          },
-        ],
-        phases: [
-          {
-            type: PhaseType.PREFLOP,
-            bets: {
-              [address]: 0,
-              ...friendsWallets.reduce((acc, wallet) => {
-                acc[wallet] = 0;
-                return acc;
-              }, {} as Record<string, number>),
-            },
-          },
-        ],
-        cards: [],
-        pot: 0,
-        creator: address,
-      };
-
-      await poker.send(
-        pokerGame,
-        [address, ...friendsWallets],
-        pushWalletSigner
-      );
-      setGameStarted(true);
-      setGame(pokerGame);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoadingStartGame(false);
-    }
-  };
-
-  const handleCreatePublicGame = async () => {
+  const handleCreateGame = async (type: 'public' | 'private') => {
     try {
       setLoadingStartGame(true);
+      console.log('address', address, 'pushSigner', pushWalletSigner);
       if (!address || !pushWalletSigner) return;
       const poker = await Poker.initialize(ENV.DEV);
-      const tx = await poker.createGame(
-        { type: 'public' },
-        [address],
-        pushWalletSigner
-      );
-
+      const tx = await poker.createGame({ type }, [address], pushWalletSigner);
       setTxHash(tx);
     } catch (error) {
       console.error(error);
@@ -165,8 +106,8 @@ export default function LoggedInView() {
     <div>
       <Navbar />
       <ToastContainer />
-      {gameStarted ? (
-        <Game />
+      {txHash ? (
+        <Game txHash={txHash} />
       ) : (
         <div className="flex flex-col items-center justify-center h-full w-full">
           <h1 className="text-4xl font-bold">Poker App</h1>
@@ -174,7 +115,7 @@ export default function LoggedInView() {
             <div className="relative group">
               <button
                 className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transform transition-transform hover:scale-105"
-                onClick={handleCreatePublicGame}
+                onClick={() => handleCreateGame('public')}
                 disabled={loadingStartGame}
               >
                 {loadingStartGame ? (
@@ -304,7 +245,7 @@ export default function LoggedInView() {
           {friendsWallets.length > 0 && (
             <button
               className="bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full shadow-lg mt-32 transition-transform transform hover:scale-105"
-              onClick={handleStartGame}
+              onClick={() => handleCreateGame('private')}
               disabled={loadingStartGame}
             >
               {loadingStartGame ? (

@@ -2,16 +2,21 @@ import ConfettiExplosion from 'react-confetti-explosion';
 import { cardBackImageURL, cardImageURL } from '../lib/cards';
 import { useEffect, useState } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-import { useAppContext } from '../hooks/useAppContext.tsx';
+import { Poker } from '../services/poker.ts';
+import { ENV } from '@pushprotocol/node-core/src/lib/constants';
+import { generateKeyPair } from '../encryption';
+import { usePokerGameContext } from '../hooks/usePokerGameContext.tsx';
 
-export default function Game() {
+export default function Game({ txHash }: { txHash: string }) {
   const [message, setMessage] = useState('');
   const { user } = usePrivy();
-  const { game } = useAppContext();
+  const { game, setEncryptionKeys } = usePokerGameContext();
 
   useEffect(() => {
     setMessage('Dealing cards...');
   }, []);
+
+  useEffect(() => {}, []);
 
   useEffect(() => {
     (async function () {
@@ -20,8 +25,11 @@ export default function Game() {
         if (
           user?.wallet?.address.toLowerCase() === game.creator.toLowerCase()
         ) {
-          // Begin shuffling cards
-          // const poker = await Poker.initialize(ENV.DEV);
+          const keys = generateKeyPair();
+          setEncryptionKeys(keys);
+          const poker = await Poker.initialize(ENV.DEV);
+          // We need to get all players public keys so we can start the game.
+          // We need them so we can encrypt the cards
           // const encryptedShuffleDeck = poker.beginShuffleDeck();
         }
       } catch (e) {
@@ -109,8 +117,8 @@ function OpponentHand({ position }: { position: 'left' | 'right' | 'top' }) {
     <div className="flex flex-col items-center w-full gap-0">
       <div className={`flex flex-row items-center w-full ${positionClass}`}>
         {position === 'right' && <Chips />}
-        <img className="w-12" src={cardBackImageURL()} />
-        <img className="w-12" src={cardBackImageURL()} />
+        <img className="w-12" src={cardBackImageURL()} alt={'card'} />
+        <img className="w-12" src={cardBackImageURL()} alt={'card'} />
         {position === 'left' && <Chips />}
       </div>
       {position === 'top' && <Chips />}
@@ -125,6 +133,7 @@ const Chips = () => {
       src={
         'https://i.pinimg.com/originals/64/36/44/643644be80473b0570920700e80fd36f.png'
       }
+      alt={'chips'}
     />
   );
 };

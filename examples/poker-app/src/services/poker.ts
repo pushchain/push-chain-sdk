@@ -4,7 +4,7 @@ import BasePoint = curve.base.BasePoint;
 import { Transaction } from '@pushprotocol/node-core/src/lib/generated/tx';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import { PokerGame } from '../temp_types/types';
-import { CreateGame, GamesTable } from '../temp_types/new-types';
+import { GameType, GamesTable } from '../temp_types/new-types';
 import { deckOfCards, shuffleCards } from '../lib/cards.ts';
 import BN from 'bn.js';
 import { commutativeEncrypt } from '../encryption';
@@ -28,9 +28,17 @@ export class Poker {
     return new Poker(pushNetwork);
   };
 
-  send = async (
+  /**
+   * Update game status, for example whenever someone places a bet, checks and folds.
+   * @param txHash
+   * @param pokerGame
+   * @param tos
+   * @param signer
+   */
+  updateGame = async (
+    txHash: string,
     pokerGame: PokerGame,
-    tos: string[],
+    tos: Set<string>,
     signer: {
       account: string;
       signMessage: (dataToBeSigned: Uint8Array) => Promise<Uint8Array>;
@@ -40,10 +48,9 @@ export class Poker {
     const serializePokerGame = new TextEncoder().encode(
       JSON.stringify(pokerGame)
     );
-    const randomString = Math.random().toString(36).substring(2, 12);
     const unsignedTx = this.pushNetwork.tx.createUnsigned(
-      this.TX_CATEGORY_PREFIX + randomString,
-      tos,
+      this.TX_CATEGORY_PREFIX + txHash,
+      [...tos],
       serializePokerGame
     );
     return await this.pushNetwork.tx.send(unsignedTx, signer);
@@ -55,7 +62,7 @@ export class Poker {
    * @param signer - The signer to sign the transaction.
    */
   createGame = async (
-    game: CreateGame,
+    game: GameType,
     tos: string[],
     signer: {
       account: string;
@@ -100,7 +107,7 @@ export class Poker {
               Buffer.from(txObj.tx.data as unknown as string, 'base64')
             )
           );
-          const gameObject: CreateGame = JSON.parse(decodedGame);
+          const gameObject: GameType = JSON.parse(decodedGame);
 
           return {
             txHash: block.transactions[index].txnHash,
@@ -158,17 +165,6 @@ export class Poker {
     );
     const tx = await this.pushNetwork.tx.send(unsignedTx, signer);
     console.log('txHash', tx);
-  };
-
-  getNumberOfPlayersForTable = async ({
-    txHash,
-    creator,
-  }: {
-    txHash: string;
-    creator: string;
-  }) => {
-    const players = await this.getPlayerOrderForTable({ txHash, creator });
-    return players.size;
   };
 
   getPlayerOrderForTable = async ({

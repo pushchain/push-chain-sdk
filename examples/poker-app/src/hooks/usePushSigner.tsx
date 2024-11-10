@@ -35,15 +35,7 @@ export default function usePushWalletSigner() {
       },
     };
     setPushWalletSigner(signer);
-  }, [
-    address,
-    pushAccount,
-    pushNetwork,
-    signMessageAsync,
-    user?.wallet?.address,
-    user?.wallet?.chainType,
-    wallets,
-  ]);
+  }, [address, pushAccount, pushNetwork]);
 
   return { pushWalletSigner };
 }

@@ -37,20 +37,18 @@ interface Card {
 }
 
 export interface Player {
-  address: string;
   chips: number;
   cards: Card[];
   isDealer: boolean;
 }
 
 export interface Phase {
-  type: PhaseType;
-  bets: Record<string, number>;
+  bets: Map<string, number>;
 }
 
 export interface PokerGame {
-  players: Player[];
-  phases: Phase[];
+  players: Map<string, Player>;
+  phases: Map<PhaseType, Phase>;
   cards: Card[];
   pot: number;
   creator: string;

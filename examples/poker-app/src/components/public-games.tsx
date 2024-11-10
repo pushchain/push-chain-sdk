@@ -6,18 +6,22 @@ import { trimAddress } from '../lib/utils';
 import useConnectedPushAddress from '../hooks/useConnectedPushAddress.tsx';
 import usePushWalletSigner from '../hooks/usePushSigner.tsx';
 import { useAppContext } from '../hooks/useAppContext.tsx';
+import { Phase, PhaseType, Player, PokerGame } from '../temp_types/types.ts';
+import { usePokerGameContext } from '../hooks/usePokerGameContext.tsx';
 
 export default function PublicGames() {
   const [publicGames, setPublicGames] = useState<GamesTable[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingFetchingGames, setLoadingFetchingGames] = useState(true);
+  const [loadingStartGame, setLoadingStartGame] = useState(false);
   const { setGameStarted } = useAppContext();
+  const { setGame } = usePokerGameContext();
   const { address } = useConnectedPushAddress();
   const { pushWalletSigner } = usePushWalletSigner();
 
   useEffect(() => {
     const fetchGames = async () => {
       try {
-        setLoading(true);
+        setLoadingFetchingGames(true);
         const poker = await Poker.initialize(ENV.DEV);
         const games = await poker.get({ type: 'public' });
         const gamesToShow: GamesTable[] = [];
@@ -32,7 +36,7 @@ export default function PublicGames() {
           }
         }
         for (const game of gamesToShow) {
-          game.numberOfPlayers = await poker.getNumberOfPlayersForTable({
+          game.players = await poker.getPlayerOrderForTable({
             txHash: game.txHash,
             creator: game.creator,
           });
@@ -41,10 +45,10 @@ export default function PublicGames() {
       } catch (error) {
         console.error(error);
       } finally {
-        setLoading(false);
+        setLoadingFetchingGames(false);
       }
     };
-    fetchGames();
+    void fetchGames();
   }, []);
 
   const handleJoinGame = async (game: GamesTable) => {
@@ -60,23 +64,73 @@ export default function PublicGames() {
 
   function displayButtonText(game: GamesTable) {
     if (game.creator === address) {
-      if (game.numberOfPlayers === 1) {
+      if (game.players.size === 1) {
         return 'Waiting for players to join your game';
       } else {
-        return 'Start game';
+        return loadingStartGame ? 'Starting Game...' : 'Start game';
       }
     } else return 'Join';
   }
 
+  /**
+   * We will START a game. The game has already been previously created.
+   * The group creator will first CREATE a game then will wait for others to join the table.
+   * Once enough participants are there, the group creator can then START the game.
+   * @param game
+   */
+  const handleStartAlreadyCreatedGame = async (game: GamesTable) => {
+    try {
+      if (!address || !pushWalletSigner) return;
+      setGameStarted(true);
+      setLoadingStartGame(true);
+      const poker = await Poker.initialize(ENV.DEV);
+      const players = new Map<string, Player>();
+      const playersBet: Phase = { bets: new Map<string, number>() };
+      game.players.forEach((playerAddress) => {
+        players.set(playerAddress, {
+          chips: 100, // Every player starts with 100 chips
+          cards: [], // Cards will be dealt after game started
+          isDealer: playerAddress === game.creator, // Dealer at first is the group creator
+        });
+        playersBet.bets.set(playerAddress, 0);
+      });
+
+      const phases = new Map<PhaseType, Phase>([
+        [PhaseType.PREFLOP, playersBet],
+      ]);
+
+      const pokerGame: PokerGame = {
+        players,
+        phases,
+        cards: [],
+        pot: 0,
+        creator: address,
+      };
+
+      await poker.updateGame(
+        game.txHash,
+        pokerGame,
+        game.players,
+        pushWalletSigner
+      );
+      setGameStarted(true);
+      setGame(pokerGame);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingStartGame(false);
+    }
+  };
+
   return (
     <div>
-      {loading && (
+      {loadingFetchingGames && (
         <div className="flex flex-col items-center justify-center space-y-2">
           <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
           <div className="text-md">Fetching public games...</div>
         </div>
       )}
-      {!loading && (
+      {!loadingFetchingGames && (
         <table>
           <thead>
             <tr>
@@ -92,30 +146,29 @@ export default function PublicGames() {
                   {trimAddress(game.creator)}
                 </td>
                 <td className="text-center">{trimAddress(game.txHash)}</td>
-                <td className="text-center">{game.numberOfPlayers}</td>
+                <td className="text-center">{game.players.size}</td>
                 <td className="text-center">
                   <button
                     className={`${
-                      game.numberOfPlayers === 1
+                      game.players.size === 1
                         ? 'bg-gray-500 hover:bg-gray-600'
-                        : game.numberOfPlayers > 1
+                        : game.players.size > 1
                         ? 'bg-purple-500 hover:bg-purple-600' // Beautiful color for more than 1 player
                         : 'bg-green-500 hover:bg-green-600'
                     } text-white font-bold py-2 px-4 rounded transition duration-300`}
                     onClick={() => {
                       if (game.creator === address) {
-                        if (game.numberOfPlayers === 1) {
+                        if (game.players.size === 1) {
                           return;
                         } else {
-                          console.log('Starting game');
-                          setGameStarted(true);
+                          void handleStartAlreadyCreatedGame(game); // Can only create game if table owner and at least 2 people on the table (creator + 1 person)
                         }
                       } else {
-                        handleJoinGame(game);
+                        void handleJoinGame(game);
                       }
                     }}
                     disabled={
-                      game.creator === address && game.numberOfPlayers === 1
+                      game.creator === address && game.players.size === 1
                     }
                   >
                     {displayButtonText(game)}
