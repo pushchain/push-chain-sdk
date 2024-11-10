@@ -1,22 +1,34 @@
 import PushNetwork from '@pushprotocol/node-core';
 import { curve } from 'elliptic';
-import BasePoint = curve.base.BasePoint;
 import { Transaction } from '@pushprotocol/node-core/src/lib/generated/tx';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import { PokerGame } from '../temp_types/types';
-import { GameType, GamesTable } from '../temp_types/new-types';
+import {
+  GamesTable,
+  GameType,
+  PushWalletSigner,
+} from '../temp_types/new-types';
 import { deckOfCards, shuffleCards } from '../lib/cards.ts';
 import BN from 'bn.js';
-import { commutativeEncrypt } from '../encryption';
+import {
+  commutativeEncrypt,
+  publicKeyToString,
+  stringToPublicKey,
+} from '../encryption';
+import BasePoint = curve.base.BasePoint;
 
+/**
+ * The `Poker` class is a service for managing poker games on a blockchain network using the Push Network protocol.
+ * It allows for the creation, joining public and private poker games, player management, and card shuffling with encryption for added security.
+ */
 export class Poker {
   TX_CATEGORY_PREFIX = 'POKER:';
 
-  TX_CATEGORY_PREFIX_CREATE_GAME_PUBLIC = 'POKER:CREATE_GAME_PUBLIC';
-  TX_CATEGORY_PREFIX_JOIN_GAME_PUBLIC = 'POKER:JOIN_GAME_PUBLIC:'; // Then add the txHash
-  TX_CATEGORY_PREFIX_START_GAME_PUBLIC = 'POKER:START_GAME_PUBLIC:'; // Then add the txHash
-
-  TX_CATEGORY_PREFIX_CREATE_GAME_PRIVATE = 'POKER:CREATE_GAME_PRIVATE';
+  TX_CATEGORY_PREFIX_CREATE_GAME_PUBLIC = `${this.TX_CATEGORY_PREFIX}CREATE_GAME_PUBLIC`;
+  TX_CATEGORY_PREFIX_JOIN_GAME_PUBLIC = `${this.TX_CATEGORY_PREFIX}JOIN_GAME_PUBLIC:`; // Then add the txHash
+  TX_CATEGORY_PREFIX_START_GAME_PUBLIC = `${this.TX_CATEGORY_PREFIX}START_GAME_PUBLIC:`; // Then add the txHash
+  TX_CATEGORY_PREFIX_CREATE_GAME_PRIVATE = `${this.TX_CATEGORY_PREFIX}CREATE_GAME_PRIVATE`;
+  TX_CATEGORY_PREFIX_PLAYER_PUBLIC_KEY = `${this.TX_CATEGORY_PREFIX}PLAYER_PUBLIC_KEY`;
 
   private constructor(private pushNetwork: PushNetwork) {}
 
@@ -29,7 +41,7 @@ export class Poker {
   };
 
   /**
-   * Update game status, for example whenever someone places a bet, checks and folds.
+   * Update game status, for example whenever someone places a bet, checks and folds or even **start** a game.
    * @param txHash
    * @param pokerGame
    * @param tos
@@ -39,10 +51,7 @@ export class Poker {
     txHash: string,
     pokerGame: PokerGame,
     tos: Set<string>,
-    signer: {
-      account: string;
-      signMessage: (dataToBeSigned: Uint8Array) => Promise<Uint8Array>;
-    }
+    signer: PushWalletSigner
   ) => {
     // TODO: Use protobuf instead of JSON
     const serializePokerGame = new TextEncoder().encode(
@@ -57,18 +66,19 @@ export class Poker {
   };
 
   /**
+   * The most important function of this Poker Class. This function will return a txHash. This txHash will be the identifier
+   * of this particular game. Whenever a user wants to join, submit their public key etc., they will be doing that
+   * by using this txHash as reference in the category
    * @param game - The game to create.
    * @param tos - The addresses to send the game to. If public, must be one address. If private, can be multiple addresses.
    * @param signer - The signer to sign the transaction.
+   * @returns {Promise<string>} A promise that resolves to a string representing the txHash for the game.
    */
   createGame = async (
     game: GameType,
     tos: string[],
-    signer: {
-      account: string;
-      signMessage: (dataToBeSigned: Uint8Array) => Promise<Uint8Array>;
-    }
-  ) => {
+    signer: PushWalletSigner
+  ): Promise<string> => {
     if (game.type === 'public' && tos.length !== 1)
       throw new Error('Public games must have exactly one recipient');
 
@@ -142,6 +152,13 @@ export class Poker {
     return response.blocks.length !== 0;
   };
 
+  /**
+   * Joins an existing poker game using the provided `txHash` as a reference to the game created in the `createGame` function.
+   * This `txHash` serves as the unique identifier for the game, allowing participants to join and submit their public keys.
+   * @param txHash
+   * @param tos
+   * @param signer
+   */
   joinGame = async ({
     txHash,
     tos,
@@ -149,10 +166,7 @@ export class Poker {
   }: {
     txHash: string;
     tos: string[];
-    signer: {
-      account: string;
-      signMessage: (dataToBeSigned: Uint8Array) => Promise<Uint8Array>;
-    };
+    signer: PushWalletSigner;
   }) => {
     const unsignedTx = this.pushNetwork.tx.createUnsigned(
       (this.TX_CATEGORY_PREFIX_JOIN_GAME_PUBLIC + txHash).slice(0, 30),
@@ -204,5 +218,53 @@ export class Poker {
       encryptedShuffledCards.add(encryptedCard);
     });
     return encryptedShuffledCards;
+  };
+
+  /**
+   * This function is called at the beginning of each match. Each user will submit their public key to the network so we
+   * can use for the card's encryption
+   */
+  submitPublicKey = async (
+    publicKey: BasePoint,
+    tos: string[],
+    signer: PushWalletSigner
+  ): Promise<string> => {
+    const unsignedTx = this.pushNetwork.tx.createUnsigned(
+      this.TX_CATEGORY_PREFIX_PLAYER_PUBLIC_KEY,
+      tos,
+      new TextEncoder().encode(
+        JSON.stringify({ publicKey: publicKeyToString(publicKey) })
+      )
+    );
+    return await this.pushNetwork.tx.send(unsignedTx, signer);
+  };
+
+  /**
+   * Get the `playerAddress` public key for the `txHash` game. Returns `null` if transaction not found
+   * @param txHash
+   * @param playerAddress
+   */
+  getPlayerPublicKey = async (
+    txHash: string,
+    playerAddress: string
+  ): Promise<BasePoint | null> => {
+    const response = await this.pushNetwork.tx.getBySender(
+      playerAddress,
+      Math.floor(Date.now()),
+      'DESC',
+      30,
+      1,
+      (this.TX_CATEGORY_PREFIX_PLAYER_PUBLIC_KEY + txHash).slice(0, 30)
+    );
+    // We get the first publicKey submitted by that player. We will have only 1 transaction that the user will
+    // submit with his public key. There will be more than 1 transaction submitted only in case of a bug
+    const block = response.blocks[0];
+    const transaction = block.blockDataAsJson.txobjList as { tx: Transaction };
+    const decodedData = new TextDecoder().decode(
+      new Uint8Array(
+        Buffer.from(transaction.tx.data as unknown as string, 'base64')
+      )
+    );
+    return stringToPublicKey(JSON.parse(decodedData).publicKey);
   };
 }

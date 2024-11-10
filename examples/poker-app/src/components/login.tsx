@@ -14,6 +14,7 @@ const Login = () => {
         await pushNetwork.wallet.sign(
           toBytes('Accept Connection Request From DApp')
         );
+        console.log('Connected account: ', acc);
         setPushAccount(acc);
       }
     } catch (err) {

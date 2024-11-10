@@ -2,12 +2,11 @@ import { useEffect, useState } from 'react';
 import Navbar from './navbar';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { Poker } from '../services/poker.ts';
-import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import Game from './game';
 import PublicGames from './public-games';
 import useConnectedPushAddress from '../hooks/useConnectedPushAddress.tsx';
 import usePushWalletSigner from '../hooks/usePushSigner.tsx';
+import { usePokerGameContext } from '../hooks/usePokerGameContext.tsx';
 
 export default function LoggedInView() {
   const [friendsWallets, setFriendsWallets] = useState<string[]>([]);
@@ -15,8 +14,9 @@ export default function LoggedInView() {
   const [walletInput, setWalletInput] = useState<string>('');
   const [recommendedWallets, setRecommendedWallets] = useState<string[]>([]);
   const [txHash, setTxHash] = useState<string | null>(null);
-  const { address } = useConnectedPushAddress();
+  const { connectedPushAddressFormat } = useConnectedPushAddress();
   const { pushWalletSigner } = usePushWalletSigner();
+  const { pokerService } = usePokerGameContext();
 
   useEffect(() => {
     const storedAddresses = localStorage.getItem('poker-friends-wallets');
@@ -90,10 +90,13 @@ export default function LoggedInView() {
   const handleCreateGame = async (type: 'public' | 'private') => {
     try {
       setLoadingStartGame(true);
-      console.log('address', address, 'pushSigner', pushWalletSigner);
-      if (!address || !pushWalletSigner) return;
-      const poker = await Poker.initialize(ENV.DEV);
-      const tx = await poker.createGame({ type }, [address], pushWalletSigner);
+      if (!connectedPushAddressFormat || !pushWalletSigner || !pokerService)
+        return;
+      const tx = await pokerService.createGame(
+        { type },
+        [connectedPushAddressFormat],
+        pushWalletSigner
+      );
       setTxHash(tx);
     } catch (error) {
       console.error(error);
@@ -273,7 +276,7 @@ export default function LoggedInView() {
                   Starting Game...
                 </div>
               ) : (
-                'Start Game'
+                'Create Private Game'
               )}
             </button>
           )}

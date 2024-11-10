@@ -8,3 +8,8 @@ export interface GamesTable {
   type: 'public' | 'private';
   players: Set<string>;
 }
+
+export interface PushWalletSigner {
+  account: string;
+  signMessage: (dataToBeSigned: Uint8Array) => Promise<Uint8Array>;
+}

@@ -5,24 +5,21 @@ import { useEffect, useState } from 'react';
 import { usePrivy, useSolanaWallets } from '@privy-io/react-auth';
 import { useSignMessage } from 'wagmi';
 import { useAppContext } from './useAppContext.tsx';
-
-interface Signer {
-  account: string;
-  signMessage: (dataToBeSigned: Uint8Array) => Promise<Uint8Array>;
-}
+import { PushWalletSigner } from '../temp_types/new-types.ts';
 
 export default function usePushWalletSigner() {
-  const { address } = useConnectedPushAddress();
+  const { connectedPushAddressFormat } = useConnectedPushAddress();
   const { pushAccount, pushNetwork } = useAppContext();
   const { wallets } = useSolanaWallets();
   const { user } = usePrivy();
   const { signMessageAsync } = useSignMessage();
-  const [pushWalletSigner, setPushWalletSigner] = useState<Signer | null>(null);
+  const [pushWalletSigner, setPushWalletSigner] =
+    useState<PushWalletSigner | null>(null);
 
   useEffect(() => {
-    if (!address || !pushAccount || !pushNetwork) return;
-    const signer: Signer = {
-      account: address,
+    if (!connectedPushAddressFormat || !pushNetwork) return;
+    const signer: PushWalletSigner = {
+      account: connectedPushAddressFormat,
       signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
         if (!user?.wallet?.address && !pushAccount)
           throw new Error('No account connected');
@@ -35,7 +32,7 @@ export default function usePushWalletSigner() {
       },
     };
     setPushWalletSigner(signer);
-  }, [address, pushAccount, pushNetwork]);
+  }, [connectedPushAddressFormat, pushAccount, pushNetwork]);
 
   return { pushWalletSigner };
 }

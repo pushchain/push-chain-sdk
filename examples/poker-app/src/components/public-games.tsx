@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Poker } from '../services/poker.ts';
-import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import { GamesTable } from '../temp_types/new-types';
 import { trimAddress } from '../lib/utils';
 import useConnectedPushAddress from '../hooks/useConnectedPushAddress.tsx';
@@ -14,20 +12,20 @@ export default function PublicGames() {
   const [loadingFetchingGames, setLoadingFetchingGames] = useState(true);
   const [loadingStartGame, setLoadingStartGame] = useState(false);
   const { setGameStarted } = useAppContext();
-  const { setGame } = usePokerGameContext();
-  const { address } = useConnectedPushAddress();
+  const { setGame, pokerService } = usePokerGameContext();
+  const { connectedPushAddressFormat } = useConnectedPushAddress();
   const { pushWalletSigner } = usePushWalletSigner();
 
   useEffect(() => {
     const fetchGames = async () => {
       try {
         setLoadingFetchingGames(true);
-        const poker = await Poker.initialize(ENV.DEV);
-        const games = await poker.get({ type: 'public' });
+        if (!pokerService) return;
+        const games = await pokerService.get({ type: 'public' });
         const gamesToShow: GamesTable[] = [];
         for (const game of games) {
           // if (game.creator === address) continue; // Skip the user's own wallet
-          const isGameStarted = await poker.checkIfGameStarted({
+          const isGameStarted = await pokerService.checkIfGameStarted({
             txHash: game.txHash,
             creator: game.creator,
           });
@@ -36,7 +34,7 @@ export default function PublicGames() {
           }
         }
         for (const game of gamesToShow) {
-          game.players = await poker.getPlayerOrderForTable({
+          game.players = await pokerService.getPlayerOrderForTable({
             txHash: game.txHash,
             creator: game.creator,
           });
@@ -49,13 +47,13 @@ export default function PublicGames() {
       }
     };
     void fetchGames();
-  }, []);
+  }, [pokerService]);
 
   const handleJoinGame = async (game: GamesTable) => {
-    const poker = await Poker.initialize(ENV.DEV);
-    if (!address || !pushWalletSigner) return;
+    if (!connectedPushAddressFormat || !pushWalletSigner || !pokerService)
+      return;
 
-    await poker.joinGame({
+    await pokerService.joinGame({
       txHash: game.txHash,
       tos: [game.creator],
       signer: pushWalletSigner,
@@ -63,7 +61,7 @@ export default function PublicGames() {
   };
 
   function displayButtonText(game: GamesTable) {
-    if (game.creator === address) {
+    if (game.creator === connectedPushAddressFormat) {
       if (game.players.size === 1) {
         return 'Waiting for players to join your game';
       } else {
@@ -80,10 +78,10 @@ export default function PublicGames() {
    */
   const handleStartAlreadyCreatedGame = async (game: GamesTable) => {
     try {
-      if (!address || !pushWalletSigner) return;
+      if (!connectedPushAddressFormat || !pushWalletSigner || !pokerService)
+        return;
       setGameStarted(true);
       setLoadingStartGame(true);
-      const poker = await Poker.initialize(ENV.DEV);
       const players = new Map<string, Player>();
       const playersBet: Phase = { bets: new Map<string, number>() };
       game.players.forEach((playerAddress) => {
@@ -104,10 +102,10 @@ export default function PublicGames() {
         phases,
         cards: [],
         pot: 0,
-        creator: address,
+        creator: connectedPushAddressFormat,
       };
 
-      await poker.updateGame(
+      await pokerService.updateGame(
         game.txHash,
         pokerGame,
         game.players,
@@ -157,7 +155,7 @@ export default function PublicGames() {
                         : 'bg-green-500 hover:bg-green-600'
                     } text-white font-bold py-2 px-4 rounded transition duration-300`}
                     onClick={() => {
-                      if (game.creator === address) {
+                      if (game.creator === connectedPushAddressFormat) {
                         if (game.players.size === 1) {
                           return;
                         } else {
@@ -168,7 +166,8 @@ export default function PublicGames() {
                       }
                     }}
                     disabled={
-                      game.creator === address && game.players.size === 1
+                      game.creator === connectedPushAddressFormat &&
+                      game.players.size === 1
                     }
                   >
                     {displayButtonText(game)}

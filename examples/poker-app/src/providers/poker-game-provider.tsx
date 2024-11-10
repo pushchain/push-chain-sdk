@@ -1,16 +1,34 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { PokerGame } from '../temp_types/types.ts';
 import BN from 'bn.js';
 import { curve } from 'elliptic';
 import BasePoint = curve.base.BasePoint;
 import { PokerGameContext } from '../context/poker-game-context.tsx';
+import { Poker } from '../services/poker.ts';
+import { useAppContext } from '../hooks/useAppContext.tsx';
+import { ENV } from '@pushprotocol/node-core/src/lib/constants.ts';
 
 export function PokerGameProvider({ children }: { children: ReactNode }) {
+  const [pokerService, setPokerService] = useState<Poker | null>(null);
   const [game, setGame] = useState<PokerGame | null>(null);
   const [encryptionKeys, setEncryptionKeys] = useState<{
     privateKey: BN;
     publicKey: BasePoint;
   } | null>(null);
+  const [playersPublicKey, setPlayersPublicKey] = useState<
+    Map<string, BasePoint>
+  >(new Map<string, BasePoint>());
+
+  const { pushNetwork } = useAppContext();
+
+  useEffect(() => {
+    (async function () {
+      if (pushNetwork) {
+        const poker = await Poker.initialize(ENV.DEV);
+        setPokerService(poker);
+      }
+    })();
+  }, [pushNetwork]);
 
   return (
     <PokerGameContext.Provider
@@ -19,6 +37,10 @@ export function PokerGameProvider({ children }: { children: ReactNode }) {
         setGame,
         encryptionKeys,
         setEncryptionKeys,
+        playersPublicKey,
+        setPlayersPublicKey,
+        pokerService,
+        setPokerService,
       }}
     >
       {children}

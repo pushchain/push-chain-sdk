@@ -2,32 +2,57 @@ import ConfettiExplosion from 'react-confetti-explosion';
 import { cardBackImageURL, cardImageURL } from '../lib/cards';
 import { useEffect, useState } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-import { Poker } from '../services/poker.ts';
-import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import { generateKeyPair } from '../encryption';
 import { usePokerGameContext } from '../hooks/usePokerGameContext.tsx';
+import usePushWalletSigner from '../hooks/usePushSigner.tsx';
 
 export default function Game({ txHash }: { txHash: string }) {
   const [message, setMessage] = useState('');
   const { user } = usePrivy();
-  const { game, setEncryptionKeys } = usePokerGameContext();
+  const {
+    game,
+    setEncryptionKeys,
+    playersPublicKey,
+    setPlayersPublicKey,
+    pokerService,
+  } = usePokerGameContext();
+  const { pushWalletSigner } = usePushWalletSigner();
 
   useEffect(() => {
     setMessage('Dealing cards...');
   }, []);
 
-  useEffect(() => {}, []);
+  useEffect(() => {
+    if (!game || !pokerService) return;
+    const intervalId = setInterval(async () => {
+      for (const playerAddress of game.players.keys()) {
+        if (![...playersPublicKey.keys()].includes(playerAddress)) {
+          const publicKey = await pokerService.getPlayerPublicKey(
+            txHash,
+            playerAddress
+          );
+          if (!publicKey) continue;
+          setPlayersPublicKey((p) => p.set(playerAddress, publicKey));
+        }
+      }
+    }, 2000);
+    return () => clearInterval(intervalId);
+  }, [game, pokerService]);
 
   useEffect(() => {
     (async function () {
       try {
-        if (!game) return;
+        if (!game || !pushWalletSigner || !pokerService) return;
         if (
           user?.wallet?.address.toLowerCase() === game.creator.toLowerCase()
         ) {
           const keys = generateKeyPair();
           setEncryptionKeys(keys);
-          const poker = await Poker.initialize(ENV.DEV);
+          await pokerService.submitPublicKey(
+            keys.publicKey,
+            [...game.players.keys()],
+            pushWalletSigner
+          );
           // We need to get all players public keys so we can start the game.
           // We need them so we can encrypt the cards
           // const encryptedShuffleDeck = poker.beginShuffleDeck();

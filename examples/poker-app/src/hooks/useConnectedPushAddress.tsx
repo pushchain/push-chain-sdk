@@ -2,10 +2,28 @@ import { usePrivy } from '@privy-io/react-auth';
 import { useEffect, useState } from 'react';
 import { useAppContext } from './useAppContext.tsx';
 
-export default function useConnectedPushAddress() {
+interface ConnectedPushAddress {
+  /**
+   * PUSH address format.
+   * The address should follow the CAIP-10 standard format, such as `eip155:1:0x1234567890abcdef`.
+   * If no address is connected, this value can be `null`.
+   *
+   * @example "eip155:1:0x1234567890abcdef" // Ethereum mainnet
+   * @example "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:4TfXTVmQJPa8m9" // Solana mainnet
+   *
+   */
+  connectedPushAddressFormat: string | null;
+}
+
+/**
+ * This hook will return the connected address in the PUSH Format
+ */
+export default function useConnectedPushAddress(): ConnectedPushAddress {
   const { user } = usePrivy();
   const { pushAccount } = useAppContext();
-  const [address, setAddress] = useState<string | null>(null);
+  const [connectedPushAddressFormat, setConnectedPushAddressFormat] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     if (user) {
@@ -14,9 +32,9 @@ export default function useConnectedPushAddress() {
         : user?.wallet?.chainType === 'solana'
         ? `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:${user?.wallet?.address}`
         : `${user?.wallet?.chainId}:${user?.wallet?.address}`;
-      setAddress(pushAddress);
+      setConnectedPushAddressFormat(pushAddress);
     }
   }, [user, pushAccount]);
 
-  return { address };
+  return { connectedPushAddressFormat };
 }
