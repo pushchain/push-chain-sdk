@@ -6,7 +6,7 @@ import { generateKeyPair } from '../encryption';
 import { usePokerGameContext } from '../hooks/usePokerGameContext.tsx';
 import usePushWalletSigner from '../hooks/usePushSigner.tsx';
 
-export default function Game({ txHash }: { txHash: string }) {
+export default function Game() {
   const [message, setMessage] = useState('');
   const { user } = usePrivy();
   const {
@@ -15,6 +15,7 @@ export default function Game({ txHash }: { txHash: string }) {
     playersPublicKey,
     setPlayersPublicKey,
     pokerService,
+    gameTransactionHash,
   } = usePokerGameContext();
   const { pushWalletSigner } = usePushWalletSigner();
 
@@ -23,12 +24,12 @@ export default function Game({ txHash }: { txHash: string }) {
   }, []);
 
   useEffect(() => {
-    if (!game || !pokerService) return;
+    if (!game || !pokerService || !gameTransactionHash) return;
     const intervalId = setInterval(async () => {
       for (const playerAddress of game.players.keys()) {
         if (![...playersPublicKey.keys()].includes(playerAddress)) {
           const publicKey = await pokerService.getPlayerPublicKey(
-            txHash,
+            gameTransactionHash,
             playerAddress
           );
           if (!publicKey) continue;

@@ -21,6 +21,8 @@ interface PokerGameContext {
   >;
   pokerService: Poker | null;
   setPokerService: React.Dispatch<React.SetStateAction<Poker | null>>;
+  gameTransactionHash: string | null;
+  setGameTransactionHash: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 export const PokerGameContext = createContext<PokerGameContext | undefined>(

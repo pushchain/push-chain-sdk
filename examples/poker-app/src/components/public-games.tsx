@@ -80,7 +80,6 @@ export default function PublicGames() {
     try {
       if (!connectedPushAddressFormat || !pushWalletSigner || !pokerService)
         return;
-      setGameStarted(true);
       setLoadingStartGame(true);
       const players = new Map<string, Player>();
       const playersBet: Phase = { bets: new Map<string, number>() };
@@ -113,6 +112,7 @@ export default function PublicGames() {
       );
       setGameStarted(true);
       setGame(pokerGame);
+      setGameStarted(true);
     } catch (error) {
       console.error(error);
     } finally {

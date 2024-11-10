@@ -18,6 +18,9 @@ export function PokerGameProvider({ children }: { children: ReactNode }) {
   const [playersPublicKey, setPlayersPublicKey] = useState<
     Map<string, BasePoint>
   >(new Map<string, BasePoint>());
+  const [gameTransactionHash, setGameTransactionHash] = useState<string | null>(
+    null
+  );
 
   const { pushNetwork } = useAppContext();
 
@@ -41,6 +44,8 @@ export function PokerGameProvider({ children }: { children: ReactNode }) {
         setPlayersPublicKey,
         pokerService,
         setPokerService,
+        gameTransactionHash,
+        setGameTransactionHash,
       }}
     >
       {children}

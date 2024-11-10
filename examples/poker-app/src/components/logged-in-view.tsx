@@ -7,16 +7,18 @@ import PublicGames from './public-games';
 import useConnectedPushAddress from '../hooks/useConnectedPushAddress.tsx';
 import usePushWalletSigner from '../hooks/usePushSigner.tsx';
 import { usePokerGameContext } from '../hooks/usePokerGameContext.tsx';
+import { useAppContext } from '../hooks/useAppContext.tsx';
 
 export default function LoggedInView() {
   const [friendsWallets, setFriendsWallets] = useState<string[]>([]);
   const [loadingStartGame, setLoadingStartGame] = useState<boolean>(false);
   const [walletInput, setWalletInput] = useState<string>('');
   const [recommendedWallets, setRecommendedWallets] = useState<string[]>([]);
-  const [txHash, setTxHash] = useState<string | null>(null);
   const { connectedPushAddressFormat } = useConnectedPushAddress();
   const { pushWalletSigner } = usePushWalletSigner();
-  const { pokerService } = usePokerGameContext();
+  const { pokerService, gameTransactionHash, setGameTransactionHash } =
+    usePokerGameContext();
+  const { gameStarted } = useAppContext();
 
   useEffect(() => {
     const storedAddresses = localStorage.getItem('poker-friends-wallets');
@@ -97,7 +99,7 @@ export default function LoggedInView() {
         [connectedPushAddressFormat],
         pushWalletSigner
       );
-      setTxHash(tx);
+      setGameTransactionHash(tx);
     } catch (error) {
       console.error(error);
     } finally {
@@ -109,8 +111,8 @@ export default function LoggedInView() {
     <div>
       <Navbar />
       <ToastContainer />
-      {txHash ? (
-        <Game txHash={txHash} />
+      {gameStarted ? (
+        <Game />
       ) : (
         <div className="flex flex-col items-center justify-center h-full w-full">
           <h1 className="text-4xl font-bold">Poker App</h1>
@@ -165,9 +167,9 @@ export default function LoggedInView() {
               </span>
             </div>
           </div>
-          {txHash && (
+          {gameTransactionHash && (
             <div className="flex flex-row items-center justify-center gap-2 w-full mt-8">
-              <span>Transaction hash: {txHash}</span>
+              <span>Transaction hash: {gameTransactionHash}</span>
             </div>
           )}
 
