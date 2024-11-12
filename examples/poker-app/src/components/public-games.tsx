@@ -87,7 +87,6 @@ export default function PublicGames() {
         players.set(playerAddress, {
           chips: 100, // Every player starts with 100 chips
           cards: [], // Cards will be dealt after game started
-          isDealer: playerAddress === game.creator, // Dealer at first is the group creator
         });
         playersBet.bets.set(playerAddress, 0);
       });
@@ -102,6 +101,7 @@ export default function PublicGames() {
         cards: [],
         pot: 0,
         creator: connectedPushAddressFormat,
+        dealer: connectedPushAddressFormat, // Dealer at first is the group creator
       };
 
       await pokerService.updateGame(

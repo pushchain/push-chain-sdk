@@ -11,12 +11,16 @@ interface PokerGameContext {
    */
   game: PokerGame | null;
   setGame: React.Dispatch<React.SetStateAction<PokerGame | null>>;
-  encryptionKeys: { privateKey: BN; publicKey: BasePoint } | null;
-  setEncryptionKeys: React.Dispatch<
+  myEncryptionKeys: { privateKey: BN; publicKey: BasePoint } | null;
+  setMyEncryptionKeys: React.Dispatch<
     React.SetStateAction<{ privateKey: BN; publicKey: BasePoint } | null>
   >;
-  playersPublicKey: Map<string, BasePoint>;
-  setPlayersPublicKey: React.Dispatch<
+  /**
+   * Map of other players address to their public key. The current player public key will be
+   * store on `myEncryptionKeys`
+   */
+  otherPlayersPublicKey: Map<string, BasePoint>;
+  setOtherPlayersPublicKey: React.Dispatch<
     React.SetStateAction<Map<string, BasePoint>>
   >;
   pokerService: Poker | null;

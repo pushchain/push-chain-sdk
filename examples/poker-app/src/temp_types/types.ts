@@ -39,17 +39,24 @@ interface Card {
 export interface Player {
   chips: number;
   cards: Card[];
-  isDealer: boolean;
 }
 
 export interface Phase {
   bets: Map<string, number>;
 }
 
+/**
+ * This is the Poker State. After every play (bet, check or fold), we update this object.
+ */
 export interface PokerGame {
   players: Map<string, Player>;
   phases: Map<PhaseType, Phase>;
   cards: Card[];
   pot: number;
+  /**
+   * At first the dealer is the game creator. After each round, the dealer is changed to the
+   * next address on the `players` map key.
+   */
+  dealer: string;
   creator: string;
 }

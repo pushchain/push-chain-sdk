@@ -11,11 +11,11 @@ import { ENV } from '@pushprotocol/node-core/src/lib/constants.ts';
 export function PokerGameProvider({ children }: { children: ReactNode }) {
   const [pokerService, setPokerService] = useState<Poker | null>(null);
   const [game, setGame] = useState<PokerGame | null>(null);
-  const [encryptionKeys, setEncryptionKeys] = useState<{
+  const [myEncryptionKeys, setMyEncryptionKeys] = useState<{
     privateKey: BN;
     publicKey: BasePoint;
   } | null>(null);
-  const [playersPublicKey, setPlayersPublicKey] = useState<
+  const [otherPlayersPublicKey, setOtherPlayersPublicKey] = useState<
     Map<string, BasePoint>
   >(new Map<string, BasePoint>());
   const [gameTransactionHash, setGameTransactionHash] = useState<string | null>(
@@ -38,10 +38,10 @@ export function PokerGameProvider({ children }: { children: ReactNode }) {
       value={{
         game,
         setGame,
-        encryptionKeys,
-        setEncryptionKeys,
-        playersPublicKey,
-        setPlayersPublicKey,
+        myEncryptionKeys,
+        setMyEncryptionKeys,
+        otherPlayersPublicKey,
+        setOtherPlayersPublicKey,
         pokerService,
         setPokerService,
         gameTransactionHash,

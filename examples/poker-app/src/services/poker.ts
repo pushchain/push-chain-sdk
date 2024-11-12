@@ -1,20 +1,15 @@
 import PushNetwork from '@pushprotocol/node-core';
 import { curve } from 'elliptic';
 import { Transaction } from '@pushprotocol/node-core/src/lib/generated/tx';
-import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import { PokerGame } from '../temp_types/types';
 import {
   GamesTable,
   GameType,
   PushWalletSigner,
 } from '../temp_types/new-types';
-import { deckOfCards, shuffleCards } from '../lib/cards.ts';
+import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import BN from 'bn.js';
-import {
-  commutativeEncrypt,
-  publicKeyToString,
-  stringToPublicKey,
-} from '../encryption';
+import { publicKeyToString, stringToPublicKey } from '../encryption';
 import BasePoint = curve.base.BasePoint;
 
 /**
@@ -28,7 +23,8 @@ export class Poker {
   TX_CATEGORY_PREFIX_JOIN_GAME_PUBLIC = `${this.TX_CATEGORY_PREFIX}JOIN_GAME_PUBLIC:`; // Then add the txHash
   TX_CATEGORY_PREFIX_START_GAME_PUBLIC = `${this.TX_CATEGORY_PREFIX}START_GAME_PUBLIC:`; // Then add the txHash
   TX_CATEGORY_PREFIX_CREATE_GAME_PRIVATE = `${this.TX_CATEGORY_PREFIX}CREATE_GAME_PRIVATE`;
-  TX_CATEGORY_PREFIX_PLAYER_PUBLIC_KEY = `${this.TX_CATEGORY_PREFIX}PLAYER_PUBLIC_KEY`;
+  TX_CATEGORY_PREFIX_PLAYER_PUBLIC_KEY = `${this.TX_CATEGORY_PREFIX}PLAYER_PUBLIC_KEY:`; // Then add the txHash
+  TX_CATEGORY_PREFIX_DECK_ENCRYPT = `${this.TX_CATEGORY_PREFIX}CARDS_ENCRYPT:`; // Then add the txHash
 
   private constructor(private pushNetwork: PushNetwork) {}
 
@@ -82,6 +78,7 @@ export class Poker {
     if (game.type === 'public' && tos.length !== 1)
       throw new Error('Public games must have exactly one recipient');
 
+    // TODO: Do we need to have this body on the transaction? Because the category already convey the info if `public` or `private`
     const serializeGame = new TextEncoder().encode(JSON.stringify(game));
     const unsignedTx = this.pushNetwork.tx.createUnsigned(
       game.type === 'public'
@@ -177,10 +174,14 @@ export class Poker {
       new TextEncoder().encode(JSON.stringify({ txHash }))
       // new Uint8Array(10)
     );
-    const tx = await this.pushNetwork.tx.send(unsignedTx, signer);
-    console.log('txHash', tx);
+    await this.pushNetwork.tx.send(unsignedTx, signer);
   };
 
+  /**
+   * Get Player address order by time they joined the game
+   * @param txHash
+   * @param creator
+   */
   getPlayerOrderForTable = async ({
     txHash,
     creator,
@@ -206,18 +207,6 @@ export class Poker {
     });
 
     return new Set<string>([creator, ...players]); // We do this so we add creator as first element of array
-  };
-
-  beginShuffleDeck = (publicKey: BasePoint, privateKey: BN): Set<BN> => {
-    const cards = deckOfCards();
-    const shuffledCards = shuffleCards(cards);
-    const encryptedShuffledCards = new Set<BN>();
-    shuffledCards.forEach((card) => {
-      const message = new BN(card);
-      const encryptedCard = commutativeEncrypt(message, publicKey, privateKey);
-      encryptedShuffledCards.add(encryptedCard);
-    });
-    return encryptedShuffledCards;
   };
 
   /**
@@ -266,5 +255,48 @@ export class Poker {
       )
     );
     return stringToPublicKey(JSON.parse(decodedData).publicKey);
+  };
+
+  publishEncryptedShuffledCards = async (
+    txHash: string,
+    creator: string,
+    encryptedShuffledCards: Set<BN>,
+    signer: PushWalletSigner
+  ): Promise<string> => {
+    const unsignedTx = this.pushNetwork.tx.createUnsigned(
+      (this.TX_CATEGORY_PREFIX_DECK_ENCRYPT + txHash).slice(0, 30),
+      [creator],
+      new TextEncoder().encode(JSON.stringify({ deck: encryptedShuffledCards }))
+    );
+    return await this.pushNetwork.tx.send(unsignedTx, signer);
+  };
+
+  /**
+   * Get the latest deck from particular user. Returns `null` if there is none
+   * @param gameTransactionHash game identifier
+   * @param previousAddress the address of the last player who have submitted the encrypted deck.
+   */
+  getLatestEncryptedShuffledCards = async (
+    gameTransactionHash: string,
+    previousAddress: string
+  ): Promise<Set<BN> | null> => {
+    const response = await this.pushNetwork.tx.getBySender(
+      previousAddress,
+      Math.floor(Date.now()),
+      'DESC',
+      30,
+      1,
+      (this.TX_CATEGORY_PREFIX_DECK_ENCRYPT + gameTransactionHash).slice(0, 30)
+    );
+
+    if (response.blocks.length === 0) return null;
+    const block = response.blocks[0];
+    const transaction = block.blockDataAsJson.txobjList as { tx: Transaction };
+    const decodedData = new TextDecoder().decode(
+      new Uint8Array(
+        Buffer.from(transaction.tx.data as unknown as string, 'base64')
+      )
+    );
+    return JSON.parse(decodedData) as Set<BN>;
   };
 }
