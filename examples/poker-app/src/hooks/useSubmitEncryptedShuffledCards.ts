@@ -15,7 +15,7 @@ import BasePoint = curve.base.BasePoint;
  * order of player from the player's array until the last player encrypts and shuffles the deck of cards.
  */
 export default function useSubmitEncryptedShuffledCards() {
-  const [hasDealtCards, setHasDealtCards] = useState(false);
+  const [hasEncryptedCards, setHasEncryptedCards] = useState(false);
   const {
     game,
     myEncryptionKeys,
@@ -100,7 +100,7 @@ export default function useSubmitEncryptedShuffledCards() {
           return;
         }
 
-        if (hasDealtCards) return;
+        if (hasEncryptedCards) return;
 
         // Only Dealer can **start** shuffling the deck
         if (connectedPushAddressFormat == game.dealer) {
@@ -199,12 +199,12 @@ export default function useSubmitEncryptedShuffledCards() {
           gameTransactionHash,
           lastAddressToEncrypt
         );
-        if (cards) setHasDealtCards(true);
+        if (cards) setHasEncryptedCards(true);
       }, 2000);
 
       return () => clearInterval(intervalId);
     }
   }, [pokerService, gameTransactionHash, game]);
 
-  return { hasDealtCards };
+  return { hasEncryptedCards };
 }

@@ -13,11 +13,11 @@ export default function Game() {
   useFetchPlayersPublicKeys();
 
   // Dealing cards
-  const { hasDealtCards } = useSubmitEncryptedShuffledCards();
+  const { hasEncryptedCards } = useSubmitEncryptedShuffledCards();
 
   useEffect(() => {
-    if (hasDealtCards) console.log('Finished Dealing cards!');
-  }, [hasDealtCards]);
+    if (hasEncryptedCards) console.log('Finished Dealing cards!');
+  }, [hasEncryptedCards]);
 
   return (
     <div className="flex flex-col h-full w-full items-end">
