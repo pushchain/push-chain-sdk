@@ -214,6 +214,8 @@ describe('Tx', () => {
       block.transactions.forEach((tx) => txChecker(tx));
     });
   });
+
+
   it('should send for a INIT_DID tx', async () => {
     const account = privateKeyToAccount(
       INIT_DID_TX_2.masterPrivateKey as `0x${string}`

@@ -9,6 +9,7 @@ import axios from 'axios';
 import { createPublicClient, getContract, http } from 'viem';
 import config from '../config';
 import { ENV } from '../constants';
+import { URL } from 'url';
 
 /**
  * @description Push validator class is used for the following:
@@ -38,17 +39,9 @@ export class Validator {
      * @dev - If instance is not created or env is different, create a new instance
      */
     if (!Validator.instance || Validator.instance.env !== settings.env) {
-      const validatorContractClient = Validator.createValidatorContractClient(
-        settings.env
-      );
-      const activeValidator = await Validator.getActiveValidator(
-        validatorContractClient
-      );
-      Validator.instance = new Validator(
-        activeValidator.nodeApiBaseUrl,
-        settings.env,
-        validatorContractClient
-      );
+      const validatorContractClient = Validator.createValidatorContractClient(settings.env);
+      const activeValidator = await Validator.getActiveValidator(validatorContractClient);
+      Validator.instance = new Validator(activeValidator.nodeApiBaseUrl, settings.env, validatorContractClient);
     }
     return Validator.instance;
   };
@@ -59,9 +52,7 @@ export class Validator {
    * @dev - Currently only supports public client
    * @returns Validator contract client
    */
-  private static createValidatorContractClient = (
-    env: ENV
-  ): ValidatorContract => {
+  private static createValidatorContractClient = (env: ENV): ValidatorContract => {
     const client = createPublicClient({
       chain: config.VALIDATOR[env].NETWORK,
       transport: http(),
@@ -93,7 +84,8 @@ export class Validator {
     };
 
     try {
-      const response = await axios.post<JsonRpcResponse<T>>(url, requestBody);
+      const config = { timeout: 5000 };
+      const response = await axios.post<JsonRpcResponse<T>>(url, requestBody, config);
 
       if (response.data.error) {
         console.error('JSON-RPC Error:', response.data.error);
@@ -111,21 +103,15 @@ export class Validator {
    * @param validatorUrl - Validator URL to ping
    */
   private static ping = async (validatorUrl: string): Promise<boolean> => {
-    return await this.sendJsonRpcRequest<boolean>(
-      Validator.vNodeUrlModifier(validatorUrl),
-      'push_listening'
-    );
+    return await this.sendJsonRpcRequest<boolean>(Validator.vNodeUrlModifier(validatorUrl), 'push_listening');
   };
 
   /**
    * @description Get active validator
    * @returns Active validator object
    */
-  private static getActiveValidator = async (
-    validatorContractClient: ValidatorContract
-  ): Promise<ActiveValidator> => {
-    const activeValidators =
-      await validatorContractClient.read.getActiveVNodes();
+  private static getActiveValidator = async (validatorContractClient: ValidatorContract): Promise<ActiveValidator> => {
+    const activeValidators = await validatorContractClient.read.getActiveVNodes();
     const validator = getRandomElement(activeValidators);
     const isListening = await this.ping(validator.nodeApiBaseUrl);
     if (isListening) {
@@ -135,13 +121,35 @@ export class Validator {
     }
   };
 
-  private static vNodeUrlModifier = (url: string) => {
-    let modifiedUrl = url;
-    if (url.includes('.local')) {
-      modifiedUrl = url.replace('.local', '.localh');
+  /**
+   * Applies 4 rules to url
+   * 1) .local -> replace everything with localhost
+   * 2) http -> replace with https
+   * 3) domain.com -> appends /api/v1/rpc path
+   * 4) domain.com/api/ -> replace with domain.com/api
+   *
+   * @param url - url to fix
+   */
+  private static vNodeUrlModifier(url: string) {
+    if (url == null || url.length == 0) {
+      return url;
     }
-    return `${modifiedUrl}/api/v1/rpc`;
-  };
+    const urlObj = new URL(url);
+    const isLocal = urlObj.hostname.endsWith('.local');
+    if (isLocal) {
+      urlObj.hostname = 'localhost';
+      urlObj.protocol = 'http:';
+    } else {
+      urlObj.protocol = 'https:';
+    }
+    if (urlObj.pathname.trim().length == 0 || urlObj.pathname.trim() === '/') {
+      urlObj.pathname = '/api/v1/rpc';
+    }
+    if (urlObj.pathname.endsWith('/')) {
+      urlObj.pathname = urlObj.pathname.slice(0, -1);
+    }
+    return urlObj.toString();
+  }
 
   /**
    * @dev - This is a Temp Function which will be removed in the future
@@ -201,4 +209,27 @@ export class Validator {
       params
     );
   };
+
+
+  private vNodeReqModifier(url: string, fnName: string) {
+    const modifiedUrl = Validator.vNodeUrlModifier(url);
+    const modifiedFnName = fnName;
+    return { url: modifiedUrl, fnName: modifiedFnName };
+  }
+
+  /**
+   * @description Get calls to validator without any modifications
+   * @returns Reply of the call
+   */
+  public async callEx<T>(
+    fnName: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    params: any[] = [],
+    url: string = this.activeValidatorURL
+  ): Promise<T> {
+    return await Validator.sendJsonRpcRequest<T>(
+      this.vNodeReqModifier(url, fnName).url,
+      fnName,
+      params);
+  }
 }
