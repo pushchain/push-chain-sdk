@@ -18,7 +18,7 @@ const config: Config = {
     },
     [ENV.DEV]: {
       NETWORK: sepolia,
-      VALIDATOR_CONTRACT: '0x18Fa54e372e7F5993b2233449e8ab2086eCA3fAE',
+      VALIDATOR_CONTRACT: '0x98dBfb001cB2623cF7BfE2A17755592E151f0779',
     },
     [ENV.LOCAL]: {
       NETWORK: localhost,
