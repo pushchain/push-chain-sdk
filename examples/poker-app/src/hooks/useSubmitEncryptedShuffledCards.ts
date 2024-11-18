@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { usePokerGameContext } from './usePokerGameContext.tsx';
 import usePushWalletSigner from './usePushSigner.tsx';
 import useConnectedPushAddress from './useConnectedPushAddress.tsx';
-import { PokerGame } from '../temp_types/types.ts';
 import BN from 'bn.js';
 import { deckOfCards, shuffleCards } from '../lib/cards.ts';
 import { commutativeEncrypt } from '../encryption';
 import { curve } from 'elliptic';
 import BasePoint = curve.base.BasePoint;
+import { usePlayerAddressUtils } from './usePlayerAddressUtils.tsx';
 
 /**
  * This hook is responsible for the initial card dealing algorithm.
@@ -15,7 +15,8 @@ import BasePoint = curve.base.BasePoint;
  * order of player from the player's array until the last player encrypts and shuffles the deck of cards.
  */
 export default function useSubmitEncryptedShuffledCards() {
-  const [hasEncryptedCards, setHasEncryptedCards] = useState(false);
+  const [hasFinishedEncryptingCards, setHasFinishedEncryptingCards] =
+    useState(false);
   const {
     game,
     myEncryptionKeys,
@@ -25,27 +26,7 @@ export default function useSubmitEncryptedShuffledCards() {
   } = usePokerGameContext();
   const { pushWalletSigner } = usePushWalletSigner();
   const { connectedPushAddressFormat } = useConnectedPushAddress();
-
-  function getNextPlayerAddress(
-    game: PokerGame,
-    connectedPushAddressFormat: string
-  ): string {
-    // The order we encrypt is from the `game.players` starting from the Dealer.
-    const playersArray = Array.from(game.players.keys());
-    const connectedUserIndex = playersArray.indexOf(connectedPushAddressFormat);
-
-    // The public key we use to encrypt will be the **next** address from the dealer.
-    // Example1: players array = [0xA, 0xB, 0xC] and Dealer is 0xC, then we will use 0xA public key to encrypt
-    // Example2: players array = [0xA, 0xB, 0xC] and Dealer is 0xB, then we will use 0xC public key to encrypt
-    let nextPlayer: string;
-    if (connectedUserIndex === playersArray.length - 1)
-      nextPlayer = playersArray[0];
-    else {
-      nextPlayer = playersArray[connectedUserIndex + 1];
-    }
-
-    return nextPlayer;
-  }
+  const { getNextPlayerAddress } = usePlayerAddressUtils();
 
   /**
    * Function called only once when starting the deck shuffling. Function can only
@@ -59,6 +40,7 @@ export default function useSubmitEncryptedShuffledCards() {
     const encryptedShuffledCards = new Set<BN>();
     shuffledCards.forEach((card) => {
       const message = new BN(card);
+      // TODO: Add proof
       const encryptedCard = commutativeEncrypt(message, publicKey, privateKey);
       encryptedShuffledCards.add(encryptedCard);
     });
@@ -100,7 +82,7 @@ export default function useSubmitEncryptedShuffledCards() {
           return;
         }
 
-        if (hasEncryptedCards) return;
+        if (hasFinishedEncryptingCards) return;
 
         // Only Dealer can **start** shuffling the deck
         if (connectedPushAddressFormat == game.dealer) {
@@ -144,7 +126,7 @@ export default function useSubmitEncryptedShuffledCards() {
           }
 
           const encryptedDeckFromPreviousPlayer =
-            await pokerService.getLatestEncryptedShuffledCards(
+            await pokerService.getEncryptedShuffledCards(
               gameTransactionHash,
               previousPlayerAddress
             );
@@ -195,16 +177,16 @@ export default function useSubmitEncryptedShuffledCards() {
           lastAddressToEncrypt = playersAddress[indexOfDealer - 1];
         }
 
-        const cards = await pokerService.getLatestEncryptedShuffledCards(
+        const cards = await pokerService.getEncryptedShuffledCards(
           gameTransactionHash,
           lastAddressToEncrypt
         );
-        if (cards) setHasEncryptedCards(true);
+        if (cards) setHasFinishedEncryptingCards(true);
       }, 2000);
 
       return () => clearInterval(intervalId);
     }
   }, [pokerService, gameTransactionHash, game]);
 
-  return { hasEncryptedCards };
+  return { hasFinishedEncryptingCards };
 }

@@ -19,8 +19,8 @@ export function generateKeyPair(): { privateKey: BN; publicKey: BasePoint } {
 /**
  * Commutative encryption function
  * @param message
- * @param publicKey
- * @param privateKey
+ * @param publicKey for the next player in players array
+ * @param privateKey connected user private key
  */
 export function commutativeEncrypt(
   message: BN,
@@ -36,7 +36,7 @@ export function commutativeEncrypt(
 /**
  * Commutative decryption function
  * @param encryptedMessage
- * @param publicKey
+ * @param publicKey for the next player in players array
  * @param privateKey
  */
 export function commutativeDecrypt(

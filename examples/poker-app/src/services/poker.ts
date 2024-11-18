@@ -25,6 +25,7 @@ export class Poker {
   TX_CATEGORY_PREFIX_CREATE_GAME_PRIVATE = `${this.TX_CATEGORY_PREFIX}CREATE_GAME_PRIVATE`;
   TX_CATEGORY_PREFIX_PLAYER_PUBLIC_KEY = `${this.TX_CATEGORY_PREFIX}PLAYER_PUBLIC_KEY:`; // Then add the txHash
   TX_CATEGORY_PREFIX_DECK_ENCRYPT = `${this.TX_CATEGORY_PREFIX}CARDS_ENCRYPT:`; // Then add the txHash
+  TX_CATEGORY_PREFIX_DECK_DECRYPT = `${this.TX_CATEGORY_PREFIX}CARDS_DECRYPT:`; // Then add the txHash
 
   private constructor(private pushNetwork: PushNetwork) {}
 
@@ -274,19 +275,57 @@ export class Poker {
   /**
    * Get the latest deck from particular user. Returns `null` if there is none
    * @param gameTransactionHash game identifier
-   * @param previousAddress the address of the last player who have submitted the encrypted deck.
+   * @param address the address of the last player who have submitted the encrypted deck.
    */
-  getLatestEncryptedShuffledCards = async (
+  getEncryptedShuffledCards = async (
     gameTransactionHash: string,
-    previousAddress: string
+    address: string
   ): Promise<Set<BN> | null> => {
     const response = await this.pushNetwork.tx.getBySender(
-      previousAddress,
+      address,
       Math.floor(Date.now()),
       'DESC',
       30,
       1,
       (this.TX_CATEGORY_PREFIX_DECK_ENCRYPT + gameTransactionHash).slice(0, 30)
+    );
+
+    if (response.blocks.length === 0) return null;
+    const block = response.blocks[0];
+    const transaction = block.blockDataAsJson.txobjList as { tx: Transaction };
+    const decodedData = new TextDecoder().decode(
+      new Uint8Array(
+        Buffer.from(transaction.tx.data as unknown as string, 'base64')
+      )
+    );
+    return JSON.parse(decodedData) as Set<BN>;
+  };
+
+  publishDecryptedShuffledCards = async (
+    txHash: string,
+    creator: string,
+    decryptedShuffledCards: Set<BN>,
+    signer: PushWalletSigner
+  ): Promise<string> => {
+    const unsignedTx = this.pushNetwork.tx.createUnsigned(
+      (this.TX_CATEGORY_PREFIX_DECK_DECRYPT + txHash).slice(0, 30),
+      [creator],
+      new TextEncoder().encode(JSON.stringify({ deck: decryptedShuffledCards }))
+    );
+    return await this.pushNetwork.tx.send(unsignedTx, signer);
+  };
+
+  getDecryptedShuffledCards = async (
+    gameTransactionHash: string,
+    address: string
+  ): Promise<Set<BN> | null> => {
+    const response = await this.pushNetwork.tx.getBySender(
+      address,
+      Math.floor(Date.now()),
+      'DESC',
+      30,
+      1,
+      (this.TX_CATEGORY_PREFIX_DECK_DECRYPT + gameTransactionHash).slice(0, 30)
     );
 
     if (response.blocks.length === 0) return null;

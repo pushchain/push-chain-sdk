@@ -3,21 +3,26 @@ import { cardBackImageURL, cardImageURL } from '../lib/cards';
 import useFetchPlayersPublicKeys from '../hooks/useFetchPlayersPublicKeys.tsx';
 import useSubmitPlayerPublicKey from '../hooks/useSubmitPlayerPublicKey.tsx';
 import useSubmitEncryptedShuffledCards from '../hooks/useSubmitEncryptedShuffledCards.ts';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function Game() {
+  const [cards, setCards] = useState<Set<string> | null>(null);
+
   // Custom hook to submit current player public key to the network so other players can use it to encrypt the deck
   useSubmitPlayerPublicKey();
 
   // Fetch other players public keys
   useFetchPlayersPublicKeys();
 
-  // Dealing cards
-  const { hasEncryptedCards } = useSubmitEncryptedShuffledCards();
+  // Deal cards
+  const { hasFinishedEncryptingCards } = useSubmitEncryptedShuffledCards();
 
   useEffect(() => {
-    if (hasEncryptedCards) console.log('Finished Dealing cards!');
-  }, [hasEncryptedCards]);
+    if (hasFinishedEncryptingCards) {
+      console.log('Finished Encrypting Cards');
+      console.log('Now starting to decrypt and dealing cards');
+    }
+  }, [hasFinishedEncryptingCards]);
 
   return (
     <div className="flex flex-col h-full w-full items-end">
