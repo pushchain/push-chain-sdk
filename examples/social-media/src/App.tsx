@@ -1,6 +1,8 @@
 import { usePrivy } from '@privy-io/react-auth';
 import { usePushContext } from './usePushContext.tsx';
 import { Login } from './components/login.tsx';
+import { LoggedIn } from './components/logged-in.tsx';
+import { Navbar } from './components/navbar.tsx';
 
 function App() {
   const { ready, authenticated } = usePrivy();
@@ -16,7 +18,12 @@ function App() {
   }
 
   if (authenticated || pushAccount) {
-    return <div>you are logged in</div>;
+    return (
+      <div>
+        <Navbar />
+        <LoggedIn />
+      </div>
+    );
   } else {
     return <Login />;
   }

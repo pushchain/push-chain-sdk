@@ -6,9 +6,19 @@ export function Login() {
   const { pushWalletLoginHandler } = usePushContext();
 
   return (
-    <div>
-      <button onClick={login}>Login with any wallet</button>
-      <button onClick={pushWalletLoginHandler}>Login with Push Wallet</button>
+    <div className="flex h-screen justify-center items-center gap-2">
+      <button
+        className="bg-blue-500 h-fit p-2 rounded text-white hover:bg-blue-600"
+        onClick={login}
+      >
+        Login with any wallet
+      </button>
+      <button
+        className="bg-green-500 h-fit p-2 rounded text-white hover:bg-green-600"
+        onClick={pushWalletLoginHandler}
+      >
+        Login with Push Wallet
+      </button>
     </div>
   );
 }
