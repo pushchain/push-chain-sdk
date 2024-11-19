@@ -1,14 +1,14 @@
-import PushNetwork from '@pushprotocol/node-core';
 import { createContext } from 'react';
+import { Social } from '../services/social.ts';
 
 interface PushContextType {
-  pushNetwork: PushNetwork | null;
   /**
-   * This is the PUSH Address. If user connects with any wallet such as metamask, this will be `null`
-   * Only set when user connects with Push Wallet.
+   * This will have value of PUSH address if user connects with Push Wallet, else, it will have
+   * user's address in partial CAIP10 format
    */
-  pushAccount: string | null;
+  connectedAddress: string | null;
   pushWalletLoginHandler: () => Promise<void>;
+  socialSDK: Social | null;
 }
 
 export const PushContext = createContext<PushContextType | undefined>(
