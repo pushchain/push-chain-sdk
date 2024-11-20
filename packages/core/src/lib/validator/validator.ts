@@ -39,7 +39,7 @@ export class Validator {
     private env: ENV,
     private validatorContractClient: ValidatorContract
   ) {
-    if(this.env === ENV.DEV || this.env === ENV.LOCAL) {
+    if (this.env === ENV.DEV || this.env === ENV.LOCAL) {
       Validator.printTraces = true;
     }
   }
@@ -111,20 +111,25 @@ export class Validator {
 
     try {
       if (this.printTraces) {
-        console.log(`>> Calling RPC POST ${url} (req${requestBody.id}) with body %o`, requestBody);
+        console.log(
+          `>> Calling RPC POST ${url} (req${requestBody.id}) with body %o`,
+          requestBody
+        );
       }
-      const response = await axios.post<JsonRpcResponse<T>>(url, requestBody,
-        {
-          timeout: 5000,
-          headers: { 'Content-Type': 'application/json' }
-        });
+      const response = await axios.post<JsonRpcResponse<T>>(url, requestBody, {
+        timeout: 5000,
+        headers: { 'Content-Type': 'application/json' },
+      });
 
       if (response.data.error) {
         console.error('JSON-RPC Error:', response.data.error);
         throw Error(response.data.error.message);
       }
       if (this.printTraces) {
-        console.log(`<< RPC Reply POST ${url} (req${requestBody.id}) code: ${response.status} with body: %o`, response?.data);
+        console.log(
+          `<< RPC Reply POST ${url} (req${requestBody.id}) code: ${response.status} with body: %o`,
+          response?.data
+        );
       }
       return response.data.result;
     } catch (error) {
@@ -189,7 +194,7 @@ export class Validator {
         modifiedUrl = 'http://localhost:5001/rpc';
       }
       if (this.env === ENV.DEV) {
-        modifiedUrl = 'https://anode1.push.org/rpc';
+        modifiedUrl = 'https://aa1.dev.push.org/rpc';
       }
       modifiedFnName = `RpcService.${fnName.replace('push_', '')}`;
 
@@ -231,7 +236,6 @@ export class Validator {
     );
   };
 
-
   /**
    * @description Get calls to validator without any modifications
    * @returns Reply of the call
@@ -244,12 +248,8 @@ export class Validator {
   ): Promise<T> {
     // url = "https://vv1.dev.push.org/api/v1/rpc/"
     const apiUrl = Validator.fixVNodeUrl(vNodeUrl);
-    return await Validator.sendJsonRpcRequest<T>(
-      apiUrl,
-      fnName,
-      params);
+    return await Validator.sendJsonRpcRequest<T>(apiUrl, fnName, params);
   }
-
 
   /**
    * Applies 4 rules to url
@@ -280,5 +280,4 @@ export class Validator {
     }
     return urlObj.toString();
   }
-
 }
