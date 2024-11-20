@@ -1,6 +1,6 @@
 'use client';
 import { IEmail } from '@/types';
-import PushNetwork from '@pushprotocol/node-core';
+import { PushNetwork } from '@pushprotocol/node-core';
 import React, { createContext, useContext } from 'react';
 
 interface AppContextType {
