@@ -4,7 +4,7 @@ import {
   EmailBody,
   EmailHeader,
 } from '../generated/txData/email';
-import PushNetwork from '@pushprotocol/node-core';
+import { PushNetwork } from '@pushprotocol/node-core';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import { Transaction } from '@pushprotocol/node-core/src/lib/generated/tx';
 
