@@ -175,7 +175,7 @@ describe('Tx', () => {
   it('should get transactions with a specific Sender', async () => {
     const txInstance = await Tx.initialize(env);
     const res = await txInstance.getBySender(
-      'push:devnet:push18zc5t7jjnzyvzjs0707gy5axtntzqgv5w6lnuh',
+      'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4',
       Math.floor(Date.now()),
       'DESC',
       10,
