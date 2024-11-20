@@ -12,7 +12,26 @@
         "outputPath": "dist/packages/core",
         "main": "packages/core/src/index.ts",
         "tsConfig": "packages/core/tsconfig.lib.json",
-        "assets": ["packages/core/*.md"]
+        "assets": ["packages/core/*.md"],
+        "updateBuildableProjectDepsInPackageJson": true,
+        "buildableProjectDepsInPackageJsonType": "dependencies"
+      }
+    },
+    "publish": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx run core:build && npm publish dist/packages/core --access public --otp=${args.otp}"
+      },
+      "optionsDescription": "Pass OTP as an argument with --otp",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "otp": {
+            "type": "string",
+            "description": "One-time password for 2FA"
+          }
+        },
+        "required": ["otp"]
       }
     }
   }
