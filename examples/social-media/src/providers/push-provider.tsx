@@ -1,16 +1,22 @@
-import { usePrivy } from '@privy-io/react-auth';
+import { usePrivy, useSolanaWallets } from '@privy-io/react-auth';
 import PushNetwork from '@pushprotocol/node-core';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import { PushContext } from '../context/push-context.tsx';
 import { ReactNode, useEffect, useState } from 'react';
-import { toBytes } from 'viem';
+import { hexToBytes, toBytes } from 'viem';
 import { Social } from '../services/social.ts';
+import { PushWalletSigner } from '../types';
+import { useSignMessage } from 'wagmi';
+
 
 export function PushProvider({ children }: { children: ReactNode }) {
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
   const [socialSDK, setSocialSDK] = useState<Social | null>(null);
   const [pushAccount, setPushAccount] = useState<string | null>(null);
   const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
+  const [pushSigner, setPushSigner] = useState<PushWalletSigner | null>(null);
+  const { wallets } = useSolanaWallets();
+  const { signMessageAsync } = useSignMessage();
 
   const { user } = usePrivy();
 
@@ -26,6 +32,9 @@ export function PushProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
+  /**
+   * Set connected address to the application. It can be the Push address or the normal address connected from a wallet
+   */
   useEffect(() => {
     let address: string | null;
     if (pushAccount) address = pushAccount;
@@ -39,6 +48,25 @@ export function PushProvider({ children }: { children: ReactNode }) {
 
     setConnectedAddress(address);
   }, [user, pushAccount]);
+
+  /**
+   * Create Signer type that will be used to sign messages
+   */
+  useEffect(() => {
+    if (!connectedAddress) return;
+    const signer: PushWalletSigner = {
+      account: connectedAddress,
+      signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
+        if (!connectedAddress) throw new Error('User not connected');
+        if (!pushNetwork) throw new Error('Not connected to Push Network');
+
+        if (pushAccount) return pushNetwork.wallet.sign(data);
+        else if (user?.wallet?.chainType === 'solana') return await wallets[0].signMessage(data);
+        else return hexToBytes(await signMessageAsync({ message: { raw: data } }));
+      }
+    };
+    setPushSigner(signer);
+  }, [connectedAddress]);
 
   async function pushWalletLoginHandler(): Promise<void> {
     try {
@@ -60,7 +88,8 @@ export function PushProvider({ children }: { children: ReactNode }) {
       value={{
         connectedAddress,
         pushWalletLoginHandler,
-        socialSDK
+        socialSDK,
+        pushSigner
       }}
     >
       {children}

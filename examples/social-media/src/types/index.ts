@@ -5,8 +5,15 @@ export interface PushWalletSigner {
 
 export interface Profile {
   address: string;
-  encryptedProfilePrivateKey: string;
-  pfp: string;
+  encryptedProfilePrivateKey: CipherText;
   bio: string;
-  signature: string;
+  handle: string;
+  signature: `0x${string}`;
+}
+
+export interface CipherText {
+  cipherText: string;
+  salt: string;
+  nonce: string;
+  version: string;
 }

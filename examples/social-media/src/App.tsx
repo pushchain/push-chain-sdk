@@ -5,7 +5,7 @@ import { LoggedIn } from './components/logged-in.tsx';
 import { Navbar } from './components/navbar.tsx';
 
 function App() {
-  const { ready, authenticated } = usePrivy();
+  const { ready } = usePrivy();
   const { connectedAddress } = usePushContext();
 
   if (!ready) {
@@ -17,7 +17,7 @@ function App() {
     );
   }
 
-  if (authenticated || connectedAddress) {
+  if (connectedAddress) {
     return (
       <div>
         <Navbar/>

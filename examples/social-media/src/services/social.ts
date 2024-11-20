@@ -7,8 +7,8 @@ import { Profile, PushWalletSigner } from '../types';
  * Contains all utilities to interact with the Push Chain for this application
  */
 export class Social {
-  TX_CATEGORY_PREFIX = 'SOCIAL:';
-  CREATE_PROFILE = `${this.TX_CATEGORY_PREFIX}CREATE_PROFILE`;
+  private TX_CATEGORY_PREFIX = 'SOCIAL:';
+  private CREATE_PROFILE = `${this.TX_CATEGORY_PREFIX}CREATE_PROFILE`;
 
   private constructor(private pushNetwork: PushNetwork) {
   }
@@ -22,12 +22,12 @@ export class Social {
   }
 
   async getProfile(address: string): Promise<Profile | undefined> {
-    const response = await this.pushNetwork.tx.getBySender(
-      address,
+    const response = await this.pushNetwork.tx.get(
       Math.floor(Date.now()),
       'DESC',
       5,
       1,
+      address,
       this.CREATE_PROFILE
     );
 
@@ -50,31 +50,27 @@ export class Social {
     }
   }
 
-  async createProfile(
-    handle: string,
-    encryptedProfilePrivateKey: string,
-    pfp: string,
-    bio: string,
-    signature: string,
-    signer: PushWalletSigner
+  async createProfile({ address, bio, encryptedProfilePrivateKey, signature, handle, signer }: Profile & {
+                        signer: PushWalletSigner
+                      }
   ): Promise<string> {
     if (
-      handle ||
+      !handle ||
       !encryptedProfilePrivateKey ||
-      !pfp ||
       !bio ||
       !signer ||
-      !signature
+      !signature ||
+      !address
     ) {
       throw new Error('Invalid function input for createProfile function');
     }
 
-    const data = {
-      address: signer.account,
+    const data: Profile = {
+      address,
       encryptedProfilePrivateKey,
-      pfp,
       bio,
-      signature
+      signature,
+      handle
     };
     const serializedData = new TextEncoder().encode(JSON.stringify(data));
     const unsignedTx = this.pushNetwork.tx.createUnsigned(
@@ -82,6 +78,7 @@ export class Social {
       [signer.account],
       serializedData
     );
-    return await this.pushNetwork.tx.send(unsignedTx, signer);
+    const txHash = await this.pushNetwork.tx.send(unsignedTx, signer);
+    return txHash;
   }
 }

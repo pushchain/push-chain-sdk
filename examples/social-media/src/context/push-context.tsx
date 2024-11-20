@@ -1,5 +1,6 @@
 import { createContext } from 'react';
 import { Social } from '../services/social.ts';
+import { PushWalletSigner } from '../types';
 
 interface PushContextType {
   /**
@@ -9,6 +10,7 @@ interface PushContextType {
   connectedAddress: string | null;
   pushWalletLoginHandler: () => Promise<void>;
   socialSDK: Social | null;
+  pushSigner: PushWalletSigner | null;
 }
 
 export const PushContext = createContext<PushContextType | undefined>(
