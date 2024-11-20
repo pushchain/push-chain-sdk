@@ -15,10 +15,21 @@ import { ENV } from '../constants';
  * - Interact with validator.sol ( Only Read calls )
  * - Get token to interact with a random validator node
  * - Ping a random validator node to check if it is alive
+ *
+ *
+ * todo rename to transport
+ * we're talking to 3 very different entities
+ * Validator.sol
+ * anodes
+ * vnodes
+ * !
+ * the 'validator' name does not represent the right thing here
+ *
  */
 export class Validator {
   private static instance: Validator;
   private static idCounter = 0;
+  private static printTraces = false;
 
   private constructor(
     /**
@@ -27,7 +38,11 @@ export class Validator {
     private activeValidatorURL: string,
     private env: ENV,
     private validatorContractClient: ValidatorContract
-  ) {}
+  ) {
+    if(this.env === ENV.DEV || this.env === ENV.LOCAL) {
+      Validator.printTraces = true;
+    }
+  }
 
   static initalize = async (options?: { env?: ENV }): Promise<Validator> => {
     const settings = {
@@ -95,11 +110,21 @@ export class Validator {
     };
 
     try {
-      const response = await axios.post<JsonRpcResponse<T>>(url, requestBody);
+      if (this.printTraces) {
+        console.log(`>> Calling RPC POST ${url} (req${requestBody.id}) with body %o`, requestBody);
+      }
+      const response = await axios.post<JsonRpcResponse<T>>(url, requestBody,
+        {
+          timeout: 5000,
+          headers: { 'Content-Type': 'application/json' }
+        });
 
       if (response.data.error) {
         console.error('JSON-RPC Error:', response.data.error);
         throw Error(response.data.error.message);
+      }
+      if (this.printTraces) {
+        console.log(`<< RPC Reply POST ${url} (req${requestBody.id}) code: ${response.status} with body: %o`, response?.data);
       }
       return response.data.result;
     } catch (error) {
@@ -190,6 +215,8 @@ export class Validator {
   /**
    * @description Get calls to validator
    * @returns Reply of the call
+   *
+   * todo rename to callANode
    */
   public call = async <T>(
     fnName: string,
@@ -203,4 +230,55 @@ export class Validator {
       params
     );
   };
+
+
+  /**
+   * @description Get calls to validator without any modifications
+   * @returns Reply of the call
+   */
+  public async callVNode<T>(
+    fnName: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    params: any[] = [],
+    vNodeUrl: string = this.activeValidatorURL
+  ): Promise<T> {
+    // url = "https://vv1.dev.push.org/api/v1/rpc/"
+    const apiUrl = Validator.fixVNodeUrl(vNodeUrl);
+    return await Validator.sendJsonRpcRequest<T>(
+      apiUrl,
+      fnName,
+      params);
+  }
+
+
+  /**
+   * Applies 4 rules to url
+   * 1) .local -> replace everything with localhost
+   * 2) http -> replace with https
+   * 3) domain.com -> appends /api/v1/rpc path
+   * 4) domain.com/api/ -> replace with domain.com/api
+   *
+   * @param url - url to fix
+   */
+  private static fixVNodeUrl(url: string) {
+    if (url == null || url.length == 0) {
+      return url;
+    }
+    const urlObj = new URL(url);
+    const isLocal = urlObj.hostname.endsWith('.local');
+    if (isLocal) {
+      urlObj.hostname = 'localhost';
+      urlObj.protocol = 'http:';
+    } else {
+      urlObj.protocol = 'https:';
+    }
+    if (urlObj.pathname.trim().length == 0 || urlObj.pathname.trim() === '/') {
+      urlObj.pathname = '/api/v1/rpc';
+    }
+    if (urlObj.pathname.endsWith('/')) {
+      urlObj.pathname = urlObj.pathname.slice(0, -1);
+    }
+    return urlObj.toString();
+  }
+
 }
