@@ -33,6 +33,18 @@ jobs:
           mkdir -p ../../gh-pages/${{ matrix.app }}
           cp -R dist/* ../../gh-pages/${{ matrix.app }}
 
+      - name: Checkout existing gh-pages
+        uses: actions/checkout@v3
+        with:
+          ref: gh-pages
+          path: gh-pages-existing
+
+      - name: Merge new builds with existing
+        run: |
+          cp -R gh-pages-existing/* gh-pages || true
+          cp -R gh-pages/* gh-pages-existing
+          mv gh-pages-existing gh-pages
+
       - name: Deploy to GitHub Pages
         if: ${{ matrix.app == 'core-connection' }} # Deploy after the last app
         uses: peaceiris/actions-gh-pages@v3
