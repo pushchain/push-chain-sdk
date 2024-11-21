@@ -4,12 +4,15 @@ export interface PushWalletSigner {
 }
 
 export interface Profile {
+  owner: string;
   address: string;
   encryptedProfilePrivateKey: CipherText;
   bio: string;
   handle: string;
   signature: `0x${string}`;
 }
+
+export type SignPayload = Omit<Profile, 'signature'>;
 
 export interface CipherText {
   cipherText: string;

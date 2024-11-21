@@ -53,7 +53,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
    * Create Signer type that will be used to sign messages
    */
   useEffect(() => {
-    if (!connectedAddress) return;
+    if (!connectedAddress || !pushNetwork) return;
     const signer: PushWalletSigner = {
       account: connectedAddress,
       signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
@@ -66,7 +66,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
       }
     };
     setPushSigner(signer);
-  }, [connectedAddress]);
+  }, [connectedAddress, pushAccount, pushNetwork]);
 
   async function pushWalletLoginHandler(): Promise<void> {
     try {

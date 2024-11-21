@@ -7,7 +7,7 @@ import { Profile, PushWalletSigner } from '../types';
  * Contains all utilities to interact with the Push Chain for this application
  */
 export class Social {
-  private TX_CATEGORY_PREFIX = 'SOCIAL:';
+  private TX_CATEGORY_PREFIX = 'v0_SOCIAL:';
   private CREATE_PROFILE = `${this.TX_CATEGORY_PREFIX}CREATE_PROFILE`;
 
   private constructor(private pushNetwork: PushNetwork) {
@@ -33,10 +33,10 @@ export class Social {
 
     if (response.blocks.length === 0) return undefined;
     const block = response.blocks[0];
-    const transaction = block.blockDataAsJson.txobjList as { tx: Transaction };
+    const transactions = block.blockDataAsJson.txobjList as { tx: Transaction }[];
     const decodedData = new TextDecoder().decode(
       new Uint8Array(
-        Buffer.from(transaction.tx.data as unknown as string, 'base64')
+        Buffer.from(transactions[0].tx.data as unknown as string, 'base64')
       )
     );
 
@@ -50,7 +50,7 @@ export class Social {
     }
   }
 
-  async createProfile({ address, bio, encryptedProfilePrivateKey, signature, handle, signer }: Profile & {
+  async createProfile({ owner, address, bio, encryptedProfilePrivateKey, signature, handle, signer }: Profile & {
                         signer: PushWalletSigner
                       }
   ): Promise<string> {
@@ -60,12 +60,14 @@ export class Social {
       !bio ||
       !signer ||
       !signature ||
-      !address
+      !address ||
+      !owner
     ) {
       throw new Error('Invalid function input for createProfile function');
     }
 
     const data: Profile = {
+      owner,
       address,
       encryptedProfilePrivateKey,
       bio,
@@ -78,7 +80,6 @@ export class Social {
       [signer.account],
       serializedData
     );
-    const txHash = await this.pushNetwork.tx.send(unsignedTx, signer);
-    return txHash;
+    return await this.pushNetwork.tx.send(unsignedTx, signer);
   }
 }

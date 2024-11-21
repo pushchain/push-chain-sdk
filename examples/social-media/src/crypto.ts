@@ -1,5 +1,5 @@
-import { toHex } from 'viem';
-import { CipherText, PushWalletSigner } from './types';
+import { keccak256, toHex } from 'viem';
+import { CipherText, PushWalletSigner, SignPayload } from './types';
 
 export class Crypto {
   public constructor(private signer: PushWalletSigner) {
@@ -58,4 +58,15 @@ export class Crypto {
     );
   };
 
+  public getSignPayload(profile: SignPayload): Uint8Array {
+    const payload: SignPayload = {
+      owner: profile.owner,
+      address: profile.address,
+      encryptedProfilePrivateKey: profile.encryptedProfilePrivateKey,
+      bio: profile.bio,
+      handle: profile.handle
+    };
+    const hexPayload = toHex(new TextEncoder().encode(JSON.stringify(payload)));
+    return keccak256(hexPayload, 'bytes');
+  }
 }

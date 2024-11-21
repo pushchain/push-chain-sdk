@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { randomBytes } from 'crypto';
 import React from 'react';
-import { keccak256, toHex } from 'viem';
+import { toHex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { Crypto } from '../crypto.ts';
 import { usePushContext } from '../usePushContext.tsx';
@@ -17,7 +17,11 @@ export function LoggedIn() {
 
   return (<div className="flex flex-col w-full justify-center items-center">
     {isLoading && <div className={'text-center'}>Fetching your profile...</div>}
-    {profile && <div className={'text-center'}>Here is your profile data: {JSON.stringify(profile)}</div>}
+    {profile && <div>
+      <h1>Welcome: {profile.handle}!</h1>
+      <h2>Bio: {profile.bio}</h2>
+      <div className={'text-center'}>Here is your profile data: {JSON.stringify(profile)}</div>
+    </div>}
     {!profile && !isLoading && <div>
       <CreateProfile/>
     </div>}
@@ -25,11 +29,11 @@ export function LoggedIn() {
 }
 
 function CreateProfile() {
-  const { socialSDK, pushSigner } = usePushContext();
+  const { socialSDK, pushSigner, connectedAddress } = usePushContext();
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault(); // Prevent the default form submission behavior
-    if (!socialSDK) return;
+    if (!socialSDK || !connectedAddress) return;
     const formData = new FormData(event.target as HTMLFormElement);
 
     // Extracting form data
@@ -42,16 +46,22 @@ function CreateProfile() {
     const privateKey = toHex(new Uint8Array(randomBytes(32)));
     const account = privateKeyToAccount(privateKey);
 
-    const encryptedSecret = await new Crypto(pushSigner).encrypt(privateKey);
+    const encryptedProfilePrivateKey = await new Crypto(pushSigner).encrypt(privateKey);
 
     // Sign message
-    const hexPayload = toHex(JSON.stringify({ handle, bio, encryptedSecret, account }));
-    const hashPayload = keccak256(hexPayload, 'bytes');
-    const signature = toHex(await pushSigner.signMessage(hashPayload));
+    const signPayload = new Crypto(pushSigner).getSignPayload({
+      owner: connectedAddress,
+      handle,
+      bio,
+      encryptedProfilePrivateKey,
+      address: account.address
+    });
+    const signature = toHex(await pushSigner.signMessage(signPayload));
 
     await socialSDK.createProfile({
+      owner: connectedAddress,
       address: account.address,
-      encryptedProfilePrivateKey: encryptedSecret,
+      encryptedProfilePrivateKey,
       bio,
       handle,
       signature,
@@ -73,6 +83,9 @@ function CreateProfile() {
               id="handle"
               name="handle"
               placeholder="Enter your handle"
+              pattern="^[^\s]+\.push$"
+              minLength={8}
+              title="Handle must end with '.push' and can't contain white spaces"
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               required
             />
@@ -84,6 +97,7 @@ function CreateProfile() {
               id="bio"
               name="bio"
               placeholder="Tell us about yourself"
+              minLength={20}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               rows={3}
               required
