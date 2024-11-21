@@ -13,7 +13,7 @@ const EmailLayout: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full w-full flex-1">
+    <div className="flex flex-col h-full w-full flex-1 ">
       <EmailViewer onReply={handleReply} />
 
       <NewEmail replyTo={replyTo} />
