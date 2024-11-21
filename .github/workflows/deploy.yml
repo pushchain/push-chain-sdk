@@ -1,0 +1,36 @@
+name: Deploy Email App
+
+on:
+  push:
+    branches:
+      - main # Update if your default branch is different
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20 # Ensure this matches your project requirements
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install # Or pnpm/yarn if you are using a different package manager
+
+      - name: Build Email App
+        run: |
+          cd examples/email
+          npm run build
+          mkdir -p ../../gh-pages/email
+          cp -R dist/* ../../gh-pages/email
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: gh-pages
