@@ -36,7 +36,7 @@ jobs:
           mkdir -p ../../gh-pages/email
           cp -R dist/* ../../gh-pages/email
 
-      - name: Build Core Connection App
+      - name: Build Wallet Connection App
         run: |
           cd examples/core-connection
           npm install
