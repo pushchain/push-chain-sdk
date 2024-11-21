@@ -1,6 +1,6 @@
 import { v4 as uuidv4, parse } from 'uuid';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
-import { TxCategory } from './tx.types';
+import { ReplyGrouped, TxCategory } from './tx.types';
 import { Transaction } from '../generated/tx';
 import { InitDid } from '../generated/txData/init_did';
 import { InitSessionKey } from '../generated/txData/init_session_key';
@@ -201,4 +201,11 @@ export class Tx {
       token.apiUrl
     );
   };
+
+  /**
+   * Get Transactions
+   */
+  async getTransactionsFromVNode(accountInCaip: string, category: string, ts: string = '' + Math.floor(Date.now()/1000), direction: 'ASC' | 'DESC' = 'DESC') {
+    return await this.validator.callVNode<ReplyGrouped>('push_getTransactions', [accountInCaip, category, ts, direction]);
+  }
 }

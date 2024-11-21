@@ -10,4 +10,6 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  // This is the base path for the email app
+  base: '/push-network-sdk/email/',
 });
