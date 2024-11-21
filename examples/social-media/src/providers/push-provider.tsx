@@ -1,5 +1,5 @@
 import { usePrivy, useSolanaWallets } from '@privy-io/react-auth';
-import PushNetwork from '@pushprotocol/node-core';
+import { PushNetwork } from '@pushprotocol/node-core';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import { PushContext } from '../context/push-context.tsx';
 import { ReactNode, useEffect, useState } from 'react';

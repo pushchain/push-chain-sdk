@@ -1,5 +1,5 @@
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
-import PushNetwork from '@pushprotocol/node-core';
+import { PushNetwork } from '@pushprotocol/node-core';
 import { Transaction } from '@pushprotocol/node-core/src/lib/generated/tx';
 import { Profile, PushWalletSigner } from '../types';
 
