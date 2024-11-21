@@ -16,3 +16,34 @@ export type TxResponse = {
   txnData: string;
   sig: string;
 };
+
+
+export class ReplyGrouped {
+  items: TxInfo[] = [];
+  summary: ResultMeta = new ResultMeta();
+}
+
+export class ResultMeta {
+  quorumResult!: QuorumResult;
+  itemCount!: number;
+  lastTs!: string;
+  keysWithoutQuorumCount!: number;
+  keysWithoutQuorum!: string[];
+}
+
+export enum QuorumResult {
+  QUORUM_OK = 'QUORUM_OK',
+  QUORUM_OK_PARTIAL = 'QUORUM_OK_PARTIAL',
+  QUORUM_FAILED_NODE_REPLIES = 'QUORUM_FAILED_NODE_REPLIES',
+  QUORUM_FAILED_BY_MIN_ITEMS = 'QUORUM_FAILED_BY_MIN_ITEMS',
+}
+
+export type TxInfo = {
+  type: number;
+  category: string;
+  sender: string;
+  recipients: string[];
+  data: string;
+  ts: string;
+  salt: string;
+};

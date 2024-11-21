@@ -25,7 +25,7 @@ import { IEmail } from '@/types';
 import { X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { trimAddress, formatTimestamp } from '@/lib/utils';
-import PushNetwork from '@pushprotocol/node-core';
+import { PushNetwork } from '@pushprotocol/node-core';
 
 interface FileData {
   filename: string;
