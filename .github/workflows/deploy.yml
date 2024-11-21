@@ -1,13 +1,19 @@
-name: Deploy Email App
+name: Deploy Apps
 
 on:
   push:
     branches:
-      - main # Update if your default branch is different
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        app:
+          - email
+          - core-connection
 
     steps:
       - name: Checkout repository
@@ -16,22 +22,19 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 20 # Ensure this matches your project requirements
+          node-version: 20
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: Install dependencies and build
         run: |
-          cd examples/email
+          cd examples/${{ matrix.app }}
           npm install
-
-      - name: Build Email App
-        run: |
-          cd examples/email
           npm run build
-          mkdir -p ../../gh-pages/email
-          cp -R dist/* ../../gh-pages/email
+          mkdir -p ../../gh-pages/${{ matrix.app }}
+          cp -R dist/* ../../gh-pages/${{ matrix.app }}
 
       - name: Deploy to GitHub Pages
+        if: ${{ matrix.app == 'core-connection' }} # Deploy after the last app
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
