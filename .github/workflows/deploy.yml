@@ -9,12 +9,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        app:
-          - email
-          - core-connection
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -25,28 +19,32 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Install dependencies and build
-        run: |
-          cd examples/${{ matrix.app }}
-          npm install
-          npm run build
-          mkdir -p ../../gh-pages/${{ matrix.app }}
-          cp -R dist/* ../../gh-pages/${{ matrix.app }}
+      - name: Prepare gh-pages directory
+        run: mkdir -p gh-pages
 
-      - name: Checkout existing gh-pages
+      - name: Checkout existing gh-pages branch
         uses: actions/checkout@v3
         with:
           ref: gh-pages
-          path: gh-pages-existing
+          path: gh-pages
 
-      - name: Merge new builds with existing
+      - name: Build Email App
         run: |
-          cp -R gh-pages-existing/* gh-pages || true
-          cp -R gh-pages/* gh-pages-existing
-          mv gh-pages-existing gh-pages
+          cd examples/email
+          npm install
+          npm run build
+          mkdir -p ../../gh-pages/email
+          cp -R dist/* ../../gh-pages/email
+
+      - name: Build Core Connection App
+        run: |
+          cd examples/core-connection
+          npm install
+          npm run build
+          mkdir -p ../../gh-pages/core-connection
+          cp -R dist/* ../../gh-pages/core-connection
 
       - name: Deploy to GitHub Pages
-        if: ${{ matrix.app == 'core-connection' }} # Deploy after the last app
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
