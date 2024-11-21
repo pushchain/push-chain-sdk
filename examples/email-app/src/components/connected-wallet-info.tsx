@@ -1,4 +1,4 @@
-import { TokenETH, TokenPUSH, TokenSOL } from '@web3icons/react';
+import { TokenBNB, TokenETH, TokenPUSH, TokenSOL } from '@web3icons/react';
 import { usePrivy } from '@privy-io/react-auth';
 import { trimAddress } from '@/lib/utils';
 import { useAppContext } from '@/context/app-context';
@@ -15,6 +15,7 @@ const ConnectedWalletInfo = () => {
     }
     setSelectedEmail(null);
   };
+
   return (
     <div className="flex flex-row gap-2 items-center">
       {(pushAccount || authenticated) && (
@@ -28,6 +29,8 @@ const ConnectedWalletInfo = () => {
             <TokenPUSH className="w-6 h-6" />
           ) : user?.wallet?.chainType === 'solana' ? (
             <TokenSOL className="w-6 h-6" />
+          ) : user?.wallet?.chainId === 'eip155:56' ? (
+            <TokenBNB className="w-6 h-6" />
           ) : (
             <TokenETH className="w-6 h-6" />
           )}

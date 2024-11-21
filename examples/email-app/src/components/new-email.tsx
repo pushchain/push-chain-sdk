@@ -19,7 +19,7 @@ import {
 import { useAppContext } from '@/context/app-context';
 import { usePrivy, useSolanaWallets } from '@privy-io/react-auth';
 import { useSignMessage } from 'wagmi';
-import { TokenETH, TokenPUSH, TokenSOL } from '@web3icons/react';
+import { TokenBNB, TokenETH, TokenPUSH, TokenSOL } from '@web3icons/react';
 import { hexToBytes } from 'viem';
 import { IEmail } from '@/types';
 import { X } from 'lucide-react';
@@ -164,6 +164,8 @@ ${email.body
               ? 'eip155:1'
               : recipient.chain === 'sol'
               ? 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
+              : recipient.chain === 'bnb'
+              ? 'eip155:56'
               : 'push:devnet'
           }:${recipient.address}`
       );
@@ -252,6 +254,8 @@ ${email.body
                       <TokenETH className="w-6 h-6" />
                     ) : recipient.chain === 'sol' ? (
                       <TokenSOL className="w-6 h-6" />
+                    ) : recipient.chain === 'bnb' ? (
+                      <TokenBNB className="w-6 h-6" />
                     ) : (
                       <TokenPUSH className="w-6 h-6" />
                     )}
@@ -288,6 +292,9 @@ ${email.body
                   </SelectItem>
                   <SelectItem value="push">
                     <TokenPUSH className="w-6 h-6" />
+                  </SelectItem>
+                  <SelectItem value="bnb">
+                    <TokenBNB className="w-6 h-6" />
                   </SelectItem>
                 </SelectContent>
               </Select>
