@@ -26,6 +26,7 @@ jobs:
 
       - name: Build Email App
         run: |
+          cd examples/email
           npm run build
           mkdir -p ../../gh-pages/email
           cp -R dist/* ../../gh-pages/email
