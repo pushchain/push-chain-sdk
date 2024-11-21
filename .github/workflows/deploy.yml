@@ -33,6 +33,7 @@ jobs:
           cd examples/email
           npm install
           npm run build
+          echo "email.push.org" > dist/CNAME
           mkdir -p ../../gh-pages/email
           cp -R dist/* ../../gh-pages/email
 
