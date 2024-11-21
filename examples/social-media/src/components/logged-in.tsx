@@ -20,7 +20,6 @@ export function LoggedIn() {
     {profile && <div>
       <h1>Welcome: {profile.handle}!</h1>
       <h2>Bio: {profile.bio}</h2>
-      <div className={'text-center'}>Here is your profile data: {JSON.stringify(profile)}</div>
     </div>}
     {!profile && !isLoading && <div>
       <CreateProfile/>

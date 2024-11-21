@@ -66,6 +66,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
       }
     };
     setPushSigner(signer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectedAddress, pushAccount, pushNetwork]);
 
   async function pushWalletLoginHandler(): Promise<void> {
