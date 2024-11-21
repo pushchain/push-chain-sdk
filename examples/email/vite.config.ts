@@ -11,4 +11,5 @@ export default defineConfig({
     },
   },
   // This is the base path for the email app
+  base: '/push-network-sdk/email/',
 });
