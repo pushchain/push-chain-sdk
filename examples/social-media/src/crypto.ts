@@ -58,7 +58,7 @@ export class Crypto {
     );
   };
 
-  public getSignPayload(profile: SignPayload): Uint8Array {
+  public static getSignPayload(profile: SignPayload): Uint8Array {
     const payload: SignPayload = {
       owner: profile.owner,
       address: profile.address,

@@ -3,11 +3,10 @@ import { PushNetwork } from '@pushprotocol/node-core';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import { PushContext } from '../context/push-context.tsx';
 import { ReactNode, useEffect, useState } from 'react';
-import { hexToBytes, toBytes } from 'viem';
+import { hexToBytes, recoverAddress, toBytes } from 'viem';
 import { Social } from '../services/social.ts';
 import { PushWalletSigner } from '../types';
 import { useSignMessage } from 'wagmi';
-
 
 export function PushProvider({ children }: { children: ReactNode }) {
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
@@ -63,6 +62,17 @@ export function PushProvider({ children }: { children: ReactNode }) {
         if (pushAccount) return pushNetwork.wallet.sign(data);
         else if (user?.wallet?.chainType === 'solana') return await wallets[0].signMessage(data);
         else return hexToBytes(await signMessageAsync({ message: { raw: data } }));
+      },
+      verifySignature: async (expectedAddress: string, hashedPayload: Uint8Array, signature: Uint8Array): Promise<boolean> => {
+        if (!pushNetwork) throw new Error('Not connected to Push Network');
+        // TODO: Currently we can't verify signature from Push Wallet
+        if (pushAccount) return false;
+        // TODO: Implement for Solana
+        else if (user?.wallet?.chainType === 'solana') return false;
+        else {
+          const recoveredAddress = await recoverAddress({ hash: hashedPayload, signature });
+          return toCaip10(recoveredAddress) === expectedAddress;
+        }
       }
     };
     setPushSigner(signer);
@@ -81,6 +91,15 @@ export function PushProvider({ children }: { children: ReactNode }) {
       }
     } catch (err) {
       alert(err);
+    }
+  }
+
+  function toCaip10(address: string): string {
+    if (address.toLowerCase().startsWith('push'))
+      throw new Error('For now we are not checking for push wallet addresses');
+    else if (address.length === 44) throw new Error('We are not checking solana signatures for now');
+    else {
+      return `${user?.wallet?.chainId}:${user?.wallet?.address}`;
     }
   }
 
