@@ -31,13 +31,14 @@ export function Feed() {
   );
 
   return <>
-    posts && (
-    {posts?.map(p => <div>{p.from}</div>)}
-    )
+    {posts && (
+      posts?.map(p => <div>{p.from}</div>)
+    )}
+    <MakePost/>
   </>;
 }
 
-function MakePost() {
+export function MakePost() {
   const [openModal, setOpenModal] = useState(false);
   const { socialSDK, connectedAddress, pushSigner } = usePushContext();
   const { loggedInProfile } = useSocialContext();
