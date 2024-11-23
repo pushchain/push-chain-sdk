@@ -1,23 +1,19 @@
-import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { usePushContext } from '../usePushContext.tsx';
+import { useGetProfile } from '../hooks/useGetProfile.tsx';
+import { usePushContext } from '../hooks/usePushContext.tsx';
 import { CreateProfile } from './create-profile.tsx';
 import { Feed } from './feed.tsx';
 
 export function LoggedIn() {
   const { connectedAddress, socialSDK, pushSigner } = usePushContext();
 
-  const { data: profile, isLoading } = useQuery({
-    queryKey: ['profile'],
-    queryFn: async () => socialSDK?.getProfile(connectedAddress!),
-    enabled: !!connectedAddress && !!socialSDK
-  });
+  const { data: profile, isLoading } = useGetProfile(connectedAddress, socialSDK);
 
   useEffect(() => {
     (async () => {
       if (profile && pushSigner) {
         // TODO: Verify signature
-        // const validProfile = await pushSigner.verifySignature(profile.owner, Crypto.getSignPayload(profile), toBytes(profile.signature));
+        // const validProfile = await pushSigner.verifySignature(profile.owner, Crypto.getSignPayloadProfile(profile), toBytes(profile.signature));
       }
     })();
   }, [profile, pushSigner]);

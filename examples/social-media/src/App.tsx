@@ -1,5 +1,5 @@
 import { usePrivy } from '@privy-io/react-auth';
-import { usePushContext } from './usePushContext.tsx';
+import { usePushContext } from './hooks/usePushContext.tsx';
 import { Login } from './components/login.tsx';
 import { LoggedIn } from './components/logged-in.tsx';
 import { Navbar } from './components/navbar.tsx';

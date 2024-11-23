@@ -1,49 +1,62 @@
 import { randomBytes } from 'crypto';
-import React from 'react';
+import React, { useState } from 'react';
 import { toHex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { Crypto } from '../crypto.ts';
-import { usePushContext } from '../usePushContext.tsx';
+import { usePushContext } from '../hooks/usePushContext.tsx';
+import { useSocialContext } from '../hooks/useSocialContext.tsx';
 
 export function CreateProfile() {
   const { socialSDK, pushSigner, connectedAddress } = usePushContext();
+  const { setLoggedInProfile } = useSocialContext();
+  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault(); // Prevent the default form submission behavior
-    if (!socialSDK || !connectedAddress) return;
-    const formData = new FormData(event.target as HTMLFormElement);
+    try {
+      event.preventDefault(); // Prevent the default form submission behavior
+      setLoading(true);
+      if (!socialSDK || !connectedAddress) return;
+      const formData = new FormData(event.target as HTMLFormElement);
 
-    // Extracting form data
-    const handle = formData.get('handle')?.toString();
-    const bio = formData.get('bio')?.toString();
+      // Extracting form data
+      const handle = formData.get('handle')?.toString();
+      const bio = formData.get('bio')?.toString();
 
-    if (!handle || !bio || !pushSigner) return;
+      if (!handle || !bio || !pushSigner) return;
 
-    // Generate profile keys
-    const privateKey = toHex(new Uint8Array(randomBytes(32)));
-    const account = privateKeyToAccount(privateKey);
+      // Generate profile keys
+      const privateKey = toHex(new Uint8Array(randomBytes(32)));
+      const account = privateKeyToAccount(privateKey);
 
-    const encryptedProfilePrivateKey = await new Crypto(pushSigner).encrypt(privateKey);
+      const encryptedProfilePrivateKey = await new Crypto(pushSigner).encrypt(privateKey);
 
-    // Sign message
-    const signPayload = Crypto.getSignPayload({
-      owner: connectedAddress,
-      handle,
-      bio,
-      encryptedProfilePrivateKey,
-      address: account.address
-    });
-    const signature = toHex(await pushSigner.signMessage(signPayload));
+      // Sign message
+      const signPayload = Crypto.getSignPayloadProfile({
+        owner: connectedAddress,
+        handle,
+        bio,
+        encryptedProfilePrivateKey,
+        address: account.address
+      });
+      const signature = toHex(await pushSigner.signMessage(signPayload));
 
-    await socialSDK.createProfile({
-      owner: connectedAddress,
-      address: account.address,
-      encryptedProfilePrivateKey,
-      bio,
-      handle,
-      signature,
-      signer: pushSigner
-    });
+      const profile = {
+        owner: connectedAddress,
+        address: account.address,
+        encryptedProfilePrivateKey,
+        bio,
+        handle,
+        signature,
+        signer: pushSigner
+      };
+
+      await socialSDK.createProfile(profile);
+      setLoggedInProfile({ ...profile, decryptedProfilePrivateKey: privateKey });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -86,7 +99,7 @@ export function CreateProfile() {
               type="submit"
               className="w-full bg-blue-600 text-white py-2 px-4 rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              Submit
+              {loading ? 'Loading...' : 'Submit'}
             </button>
           </div>
         </form>

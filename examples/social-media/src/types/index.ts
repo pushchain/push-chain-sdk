@@ -13,12 +13,13 @@ export interface Profile {
   signature: `0x${string}`;
 }
 
-export type SignPayload = Omit<Profile, 'signature'>;
+export type SignPayloadProfile = Omit<Profile, 'signature'>;
 
 export interface CipherText {
   cipherText: string;
   salt: string;
   nonce: string;
+  preKey: string;
   version: string;
 }
 
@@ -27,11 +28,18 @@ export interface Post {
   message: string;
   timestamp: number;
   messageType: string;
+  /**
+   * Signature from profile address
+   */
   signature: string;
 }
+
+export type SignPayloadPost = Omit<Post, 'signature'>
 
 export interface Friend {
   from: string;
   to: string;
   signature: string;
 }
+
+export type LoggedInProfile = Profile & { decryptedProfilePrivateKey: `0x${string}` };

@@ -1,5 +1,5 @@
 import { usePrivy } from '@privy-io/react-auth';
-import { usePushContext } from '../usePushContext.tsx';
+import { usePushContext } from '../hooks/usePushContext.tsx';
 
 export function Login() {
   const { login } = usePrivy();

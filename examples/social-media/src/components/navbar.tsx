@@ -1,5 +1,5 @@
 import { usePrivy } from '@privy-io/react-auth';
-import { usePushContext } from '../usePushContext.tsx';
+import { usePushContext } from '../hooks/usePushContext.tsx';
 
 /**
  * Navbar only shows when user authenticated, so no need to check if user has connected
