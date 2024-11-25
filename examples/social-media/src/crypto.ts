@@ -1,5 +1,5 @@
 import { keccak256, toBytes, toHex } from 'viem';
-import { CipherText, PushWalletSigner, SignPayloadPost, SignPayloadProfile } from './types';
+import { CipherText, PushWalletSigner, SignPayloadFriend, SignPayloadPost, SignPayloadProfile } from './types';
 
 export class Crypto {
   public constructor(private signer: PushWalletSigner) {
@@ -117,6 +117,15 @@ export class Crypto {
       message: post.message,
       messageType: post.messageType,
       timestamp: post.timestamp
+    };
+    const bytesPayload = new TextEncoder().encode(JSON.stringify(payload));
+    return keccak256(bytesPayload, 'bytes');
+  }
+
+  public static getSignPayloadFriendRequest(friend: SignPayloadFriend): Uint8Array {
+    const payload: SignPayloadFriend = {
+      from: friend.from,
+      to: friend.to
     };
     const bytesPayload = new TextEncoder().encode(JSON.stringify(payload));
     return keccak256(bytesPayload, 'bytes');

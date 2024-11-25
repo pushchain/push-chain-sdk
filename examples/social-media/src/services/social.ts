@@ -88,6 +88,22 @@ export class Social {
     return await this.pushNetwork.tx.send(unsignedTx, signer);
   }
 
+  async follow(friend: Friend, signer: PushWalletSigner): Promise<string> {
+    if (
+      !friend.from || !friend.to || !friend.signature
+    ) {
+      throw new Error('Invalid input to Follow method');
+    }
+
+    const serializedData = new TextEncoder().encode(JSON.stringify(friend));
+    const unsignedTx = this.pushNetwork.tx.createUnsigned(
+      this.FRIENDS,
+      [signer.account],
+      serializedData
+    );
+    return await this.pushNetwork.tx.send(unsignedTx, signer);
+  }
+
   /**
    * This will return all addresses that you follow or that follow you.
    * Used to display the feed.

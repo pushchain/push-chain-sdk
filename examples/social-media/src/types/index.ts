@@ -42,4 +42,6 @@ export interface Friend {
   signature: string;
 }
 
+export type SignPayloadFriend = Omit<Friend, 'signature'>;
+
 export type LoggedInProfile = Profile & { decryptedProfilePrivateKey: `0x${string}` };
