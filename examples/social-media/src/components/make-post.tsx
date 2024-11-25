@@ -57,7 +57,7 @@ export function MakePost() {
   return (
     <>
       <button
-        className="bg-blue-500 p-2 text-white text-xl rounded hover:bg-blue-700 mt-2"
+        className="bg-blue-500 px-2 text-white text-md rounded hover:bg-blue-700 mt-2 h-fit"
         onClick={() => setOpenModal(!openModal)}
       >
         Create post

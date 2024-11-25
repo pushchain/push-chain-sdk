@@ -47,13 +47,15 @@ export function Feed() {
     </div>
   );
 
-  return <>
-    {posts && (
-      posts?.map((p, id) => <SinglePost post={p} key={id}/>)
-    )}
+  return <div className="flex flex-row gap-2">
+    <div className="w-full">
+      {posts && (
+        posts?.map((p, id) => <SinglePost post={p} key={id}/>)
+      )}
+    </div>
     <MakePost/>
     <ToastContainer/>
-  </>;
+  </div>;
 }
 
 function SinglePost({ post }: { post: Post }) {

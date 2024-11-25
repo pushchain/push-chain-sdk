@@ -20,7 +20,7 @@ export function Navbar() {
 
   const query = useQuery({
     queryKey: ['friends', connectedAddress],
-    queryFn: () => socialSDK?.getFriends(friendsAddress),
+    queryFn: () => socialSDK?.getFriends(connectedAddress!),
     enabled: !!connectedAddress && !!socialSDK
   });
 
