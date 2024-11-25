@@ -30,7 +30,7 @@ export function Feed() {
 
   return <>
     {posts && (
-      posts?.map(p => <SinglePost post={p}/>)
+      posts?.map((p, id) => <SinglePost post={p} key={id}/>)
     )}
     <MakePost/>
   </>;
