@@ -1,4 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { toast, ToastContainer } from 'react-toastify';
+import { usePostMessage } from '../hooks/usePostMessage.tsx';
 import { usePushContext } from '../hooks/usePushContext.tsx';
 import { Post } from '../types';
 import { convertMillisecondsToDate } from '../utils/convert-date.ts';
@@ -12,6 +15,22 @@ export function Feed() {
     queryFn: async () => socialSDK?.getFeed(connectedAddress!),
     enabled: !!connectedAddress && !!socialSDK
   });
+
+  const sendPost = usePostMessage();
+
+  // TODO: Fix: This is not getting called
+  useEffect(() => {
+    if (sendPost.isSuccess)
+      toast.success('Submitted post');
+  }, [sendPost.isSuccess]);
+
+  // TODO: Fix: This is not getting called
+  useEffect(() => {
+    if (sendPost.isError) {
+      toast.error('Error submitting your post, please try again');
+    }
+  }, [sendPost.isError]);
+
 
   if (isLoadingPosts) {
     return (
@@ -33,6 +52,7 @@ export function Feed() {
       posts?.map((p, id) => <SinglePost post={p} key={id}/>)
     )}
     <MakePost/>
+    <ToastContainer/>
   </>;
 }
 

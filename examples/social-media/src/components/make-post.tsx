@@ -1,49 +1,21 @@
 import React, { useState } from 'react';
-import { privateKeyToAccount } from 'viem/accounts';
-import { Crypto } from '../crypto.ts';
-import { usePushContext } from '../hooks/usePushContext.tsx';
-import { useSocialContext } from '../hooks/useSocialContext.tsx';
-import { SignPayloadPost } from '../types';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { usePostMessage } from '../hooks/usePostMessage.tsx';
 
 export function MakePost() {
   const [openModal, setOpenModal] = useState(false);
-  const { socialSDK, connectedAddress, pushSigner } = usePushContext();
-  const { loggedInProfile } = useSocialContext();
-  const queryClient = useQueryClient();
-  const [isSendingPost, setIsSendingPost] = useState(false);
-
-  const { mutateAsync } = useMutation({
-    mutationFn: async (message: string) => {
-      if (!message || !socialSDK || !loggedInProfile || !connectedAddress || !pushSigner) return;
-      // Sign Payload
-      const account = privateKeyToAccount(loggedInProfile.decryptedProfilePrivateKey);
-      const post: SignPayloadPost = {
-        from: connectedAddress,
-        message,
-        timestamp: Date.now(),
-        messageType: 'text'
-      };
-      const signaturePayload = Crypto.getSignPayloadPost(post);
-      const signature = await account.signMessage({ message: { raw: signaturePayload } });
-      await socialSDK.postMessage({ ...post, signature }, pushSigner);
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['posts'] })
-  });
+  const sendPost = usePostMessage();
 
   async function handleSubmitPost(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     try {
       event.preventDefault();
-      setIsSendingPost(true);
       const formData = new FormData(event.target as HTMLFormElement);
       const message = formData.get('message')?.toString();
       if (message) {
-        await mutateAsync(message);
+        await sendPost.mutateAsync(message);
       }
     } catch (error) {
       console.error(error);
     } finally {
-      setIsSendingPost(false);
       setOpenModal(false);
     }
   }
@@ -72,9 +44,9 @@ export function MakePost() {
             <button
               type="submit"
               className="bg-blue-500 text-white p-2 rounded hover:bg-blue-700 w-full"
-              disabled={isSendingPost}
+              disabled={sendPost.isPending}
             >
-              {isSendingPost ? 'Sending...' : 'Send'}
+              {sendPost.isPending ? 'Sending...' : 'Send'}
             </button>
           </form>
         </div>

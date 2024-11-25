@@ -164,7 +164,7 @@ export class Social {
     const response = await this.pushNetwork.tx.get(
       Math.floor(Date.now()),
       'DESC',
-      5,
+      30,
       1,
       address,
       this.POST
