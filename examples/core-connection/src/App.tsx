@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import PushNetwork from '@pushprotocol/node-core';
+import { PushNetwork } from '@pushprotocol/node-core';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import './App.css';
 import { Transaction } from '@pushprotocol/node-core/src/lib/generated/tx';

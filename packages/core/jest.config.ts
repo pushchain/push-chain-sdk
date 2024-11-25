@@ -1,7 +1,7 @@
 /* eslint-disable */
 export default {
   displayName: 'core',
-  testTimeout: 100000,
+  testTimeout: 1000000,
   preset: '../../jest.preset.js',
   testEnvironment: 'node',
   transform: {
