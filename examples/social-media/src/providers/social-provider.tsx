@@ -8,6 +8,8 @@ import { LoggedInProfile } from '../types';
 export function SocialProvider({ children }: { children: ReactNode }) {
   const [loggedInProfile, setLoggedInProfile] = useState<LoggedInProfile | null>(null);
   const { connectedAddress, socialSDK, pushSigner } = usePushContext();
+  const [showSignToaster, setShowSignToaster] = useState(false);
+  const [showErrorToaster, setShowErrorToaster] = useState(false);
 
   const { data: profile } = useGetProfile(connectedAddress, socialSDK);
 
@@ -17,16 +19,23 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       if (profile && !loggedInProfile) {
-        if (!pushSigner) return;
-        const decryptedProfilePrivateKey = await new Crypto(pushSigner).decrypt(profile.encryptedProfilePrivateKey);
-        setLoggedInProfile({ ...profile, decryptedProfilePrivateKey });
+        try {
+          if (!pushSigner) return;
+          setShowSignToaster(true);
+          const decryptedProfilePrivateKey = await new Crypto(pushSigner).decrypt(profile.encryptedProfilePrivateKey);
+          setLoggedInProfile({ ...profile, decryptedProfilePrivateKey });
+          setShowSignToaster(false);
+        } catch (error) {
+          console.error(error);
+          setShowErrorToaster(true);
+        }
       }
     })();
   }, [profile, loggedInProfile]);
 
   return (
     <SocialContext.Provider
-      value={{ loggedInProfile, setLoggedInProfile }}
+      value={{ loggedInProfile, setLoggedInProfile, showSignToaster, showErrorToaster }}
     >
       {children}
     </SocialContext.Provider>
