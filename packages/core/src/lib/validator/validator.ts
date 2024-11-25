@@ -117,7 +117,6 @@ export class Validator {
         );
       }
       const response = await axios.post<JsonRpcResponse<T>>(url, requestBody, {
-        timeout: 5000,
         headers: { 'Content-Type': 'application/json' },
       });
 
