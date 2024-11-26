@@ -25,9 +25,9 @@
     <img src="https://res.cloudinary.com/drdjegqln/image/upload/v1686230764/1500x500_bhmpkc.jpg" alt="dashboard"/>
 </p>
 
-## PUSH-NETWORK-SDK
+## PUSH-CHAIN-SDK
 
-#### Push Network SDK provides an abstraction layer to integrate Push chain features with your Frontend as well as Backend
+#### Push Chain SDK provides an abstraction layer to integrate Push chain features with your Frontend as well as Backend
 
 PUSH Chain SDK is a Javascript based Monorepo of packages that helps developers to interact with the Push Network without having to write a lot of boilerplate code. All the heavy lifting is done by the SDK, so that you the developer can focus on building features and bootstrap a DApp with PUSH features in no time!
 
