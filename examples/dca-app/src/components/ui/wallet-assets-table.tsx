@@ -17,21 +17,43 @@ import {
 import { format } from 'date-fns';
 
 import { Loader2, MoveDownLeft, MoveUpRight } from 'lucide-react';
-
-// Helper function to format balance using contract decimals
-const formatBalance = (balance: bigint, decimals: number): string => {
-  const divisor = BigInt(10 ** decimals);
+import { BalancesResponse, Transaction } from '@covalenthq/client-sdk';
+import { AssetTransactionHistoryProps } from '@/types';
+const formatBalance = (
+  balance: bigint | null,
+  decimals: number | null
+): string => {
+  if (balance === null) {
+    return '';
+  }
+  const divisor = BigInt(10 ** (decimals ?? 0));
   const integerPart = balance / divisor;
   const fractionalPart = balance % divisor;
   const paddedFractionalPart = fractionalPart
     .toString()
-    .padStart(decimals, '0');
+    .padStart(decimals ?? 0, '0');
   return `${integerPart}.${paddedFractionalPart}`;
 };
 
-const AssetTransactionHistory = ({ asset, allTransactions, walletAddress }) => {
+const AssetTransactionHistory: React.FC<AssetTransactionHistoryProps> = ({
+  asset,
+  allTransactions,
+  walletAddress,
+}) => {
   const [loading, setLoading] = useState(true);
-  const [assetTransactions, setAssetTransactions] = useState([]);
+  const [assetTransactions, setAssetTransactions] = useState<
+    {
+      timestamp: Date;
+      hash: string;
+      amount: bigint;
+      type: string;
+      from: string;
+      to: string;
+      successful: boolean;
+      value_quote: number;
+      pretty_value_quote: string;
+    }[]
+  >([]);
 
   useEffect(() => {
     if (!allTransactions || !asset) return;
@@ -64,26 +86,29 @@ const AssetTransactionHistory = ({ asset, allTransactions, walletAddress }) => {
             (event) =>
               event.decoded?.name === 'Transfer' &&
               event.sender_address?.toLowerCase() ===
-                asset.contract_address.toLowerCase() &&
-              (event.decoded.params[0].value.toLowerCase() ===
+                asset.contract_address!.toLowerCase() &&
+              (event.decoded?.params[0].value.toLowerCase() ===
                 walletAddress.toLowerCase() ||
-                event.decoded.params[1].value.toLowerCase() ===
+                event.decoded?.params[1].value.toLowerCase() ===
                   walletAddress.toLowerCase())
           );
 
           transfers.forEach((transfer) => {
             const isIncoming =
+              transfer.decoded &&
               transfer.decoded.params[1].value.toLowerCase() ===
-              walletAddress.toLowerCase();
-            changes.push({
-              timestamp: tx.block_signed_at,
-              hash: tx.tx_hash,
-              amount: transfer.decoded.params[2].value,
-              type: isIncoming ? 'receive' : 'send',
-              from: transfer.decoded.params[0].value,
-              to: transfer.decoded.params[1].value,
-              successful: tx.successful,
-            });
+                walletAddress.toLowerCase();
+            if (transfer.decoded) {
+              changes.push({
+                timestamp: tx.block_signed_at,
+                hash: tx.tx_hash,
+                amount: transfer.decoded.params[2].value,
+                type: isIncoming ? 'receive' : 'send',
+                from: transfer.decoded.params[0].value,
+                to: transfer.decoded.params[1].value,
+                successful: tx.successful,
+              });
+            }
           });
         }
 
@@ -178,12 +203,14 @@ const AssetTransactionHistory = ({ asset, allTransactions, walletAddress }) => {
 const WalletAssetsTable = ({
   balances,
   showSmallHoldings = false,
-  allTransactions, // Changed from transactions to allTransactions to be more explicit
+  allTransactions,
   walletAddress,
+}: {
+  balances: BalancesResponse;
+  showSmallHoldings?: boolean;
+  allTransactions: Transaction[];
+  walletAddress: string;
 }) => {
-  console.log('balances:', balances);
-  console.log('allTransactions:', allTransactions);
-
   if (!balances || !balances.items || balances.items.length === 0) {
     return (
       <Card className="w-full">
@@ -200,7 +227,7 @@ const WalletAssetsTable = ({
   // Filter items based on showSmallHoldings
   const filteredItems = showSmallHoldings
     ? balances.items
-    : balances.items.filter((item) => item.quote >= 1);
+    : balances.items.filter((item) => item.quote && item.quote >= 1);
 
   return (
     <Card className="w-full">
@@ -231,11 +258,13 @@ const WalletAssetsTable = ({
                     <div>
                       <span
                         className={
-                          item.quote > item.quote_24h
-                            ? 'text-green-600'
-                            : item.quote < item.quote_24h
-                              ? 'text-red-600'
-                              : 'text-gray-600'
+                          item.quote && item.quote_24h
+                            ? item.quote > item.quote_24h
+                              ? 'text-green-600'
+                              : item.quote < item.quote_24h
+                                ? 'text-red-600'
+                                : 'text-gray-600'
+                            : 'text-gray-600'
                         }
                       >
                         {item.quote_24h && item.quote
@@ -249,7 +278,7 @@ const WalletAssetsTable = ({
               <AccordionContent>
                 <AssetTransactionHistory
                   asset={item}
-                  allTransactions={allTransactions}
+                  allTransactions={allTransactions as any}
                   walletAddress={walletAddress}
                 />
               </AccordionContent>

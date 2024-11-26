@@ -1,30 +1,61 @@
 import { useEffect, useState } from 'react';
-
 import { Card } from './ui/card';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
 import PortfolioChart from './portfolio-chart';
 import WalletAssetsTable from './ui/wallet-assets-table';
-
 import { goldrushClient } from '@/lib/utils';
-
-import { useAccount } from 'wagmi';
+import { useAccount, useChainId } from 'wagmi';
+import { Chain } from '@covalenthq/client-sdk';
+import type {
+  BalancesResponse,
+  Transaction,
+  GoldRushResponse,
+  TransactionsResponse,
+} from '@covalenthq/client-sdk';
 
 export default function PortfolioTracker() {
   const [showSmallHoldings, setShowSmallHoldings] = useState(false);
-  const [balances, setBalances] = useState<any>(null);
-  const [allTransactions, setAllTransactions] = useState<any>([]);
+  const [balances, setBalances] = useState<BalancesResponse | null>(null);
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const { address: walletAddress } = useAccount();
+  const chaindId = useChainId();
   useEffect(() => {
-    const fetchAllTransactions = async () => {
+    const fetchBalances = async (chainName: Chain) => {
+      setLoading(true);
+      try {
+        const response: GoldRushResponse<BalancesResponse> =
+          await goldrushClient.BalanceService.getTokenBalancesForWalletAddress(
+            chainName,
+            walletAddress as string,
+            { quoteCurrency: 'USD' }
+          );
+
+        if (response.data) {
+          setBalances(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching balances:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (walletAddress) {
+      fetchBalances(chaindId);
+    }
+  }, [walletAddress]);
+
+  useEffect(() => {
+    const fetchTransactions = async (chainName: Chain) => {
       let page = 1;
-      let allTx: any[] = [];
-      let hasMore = true;
-      const chainName = 'base-mainnet';
-      while (hasMore) {
+      const maxPages = 15;
+      setAllTransactions([]);
+
+      const fetchPage = async (chainName: Chain) => {
         try {
-          const response =
+          const response: GoldRushResponse<TransactionsResponse> =
             await goldrushClient.TransactionService.getTransactionsForAddressV3(
               chainName,
               walletAddress as string,
@@ -36,51 +67,32 @@ export default function PortfolioTracker() {
             );
 
           if (
+            response &&
             response.data &&
             response.data.items &&
-            response.data.items.length > 0
+            response.data?.items?.length > 0
           ) {
-            allTx = [...allTx, ...response.data.items];
-            page++;
-          } else {
-            hasMore = false;
+            setAllTransactions((prevTx: Transaction[]) => [
+              ...prevTx,
+              ...(response.data?.items || []),
+            ]);
+
+            if (page < maxPages) {
+              page++;
+              await fetchPage(chainName);
+            }
           }
-
-          // Optional: Add a reasonable limit to prevent infinite loops
-          if (page > 15) hasMore = false; // Adjust limit as needed
         } catch (error) {
-          console.error('Error fetching transactions:', error);
-          hasMore = false;
+          console.error(`Error fetching transactions page ${page}:`, error);
         }
-      }
+      };
 
-      return allTx;
+      fetchPage(chainName);
     };
 
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // Fetch balances
-        const chainName = 'base-mainnet';
-        const balancesResponse =
-          await goldrushClient.BalanceService.getTokenBalancesForWalletAddress(
-            chainName,
-            walletAddress as string,
-            { quoteCurrency: 'USD' }
-          );
-        if (balancesResponse.data) setBalances(balancesResponse.data);
-
-        // Fetch all transactions
-        const transactions = await fetchAllTransactions();
-        setAllTransactions(transactions);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    if (walletAddress) {
+      fetchTransactions(chaindId);
+    }
   }, [walletAddress]);
 
   return (
@@ -103,9 +115,9 @@ export default function PortfolioTracker() {
       </div>
       {!loading && (
         <WalletAssetsTable
-          balances={balances}
+          balances={balances!}
           allTransactions={allTransactions}
-          walletAddress={walletAddress}
+          walletAddress={walletAddress as string}
           showSmallHoldings={showSmallHoldings}
         />
       )}

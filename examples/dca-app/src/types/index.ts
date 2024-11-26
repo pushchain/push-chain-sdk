@@ -1,4 +1,5 @@
 import {
+  BalanceItem,
   DexReport,
   GoldRushResponse,
   LendingReport,
@@ -139,3 +140,22 @@ export type GetTransactionsForAddressV3Function = (
   page: number,
   queryParamOpts?: GetTransactionsForAddressV3QueryParamOpts
 ) => Promise<GetTransactionsForAddressV3Response>;
+
+export interface ProcessedTransaction {
+  timestamp: Date;
+  hash: string;
+  amount: bigint;
+  type: 'receive' | 'send';
+  from: string;
+  to: string;
+  successful: boolean;
+  value_quote?: number;
+  pretty_value_quote?: string;
+}
+
+// Props interface for the AssetTransactionHistory component
+export interface AssetTransactionHistoryProps {
+  asset: BalanceItem;
+  allTransactions: Transaction[];
+  walletAddress: string;
+}
