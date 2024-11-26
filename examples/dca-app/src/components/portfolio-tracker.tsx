@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Card, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-import { alchemy, TimeRange, timeRanges } from '@/lib/utils';
-import { TimeRangeSelector } from './ui/time-range-selector';
-import { CryptoChart } from './ui/crypto-chart';
+import { goldrushClient } from '@/lib/utils';
 
 import { TransactionsTable } from './ui/transactions-table';
-import { AssetsTable } from './ui/sets-table';
-import fetchTokenPrices from '@/lib/getTokenPrice';
+
 import { useAccount } from 'wagmi';
-import { Asset, Transaction } from '@/types';
+import { Transaction } from '@/types';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
+import PortfolioChart from './portfolio-chart';
+import WalletAssetsTable from './ui/wallet-assets-table';
+import WalletTransactions from './wallet-transactions';
+import WalletTokenTransfers from './wallet-transactions';
 
 const mockTransactions: Transaction[] = [
   {
@@ -50,97 +51,29 @@ const mockTransactions: Transaction[] = [
 ];
 
 export default function PortfolioTracker() {
-  const [selectedRange, setSelectedRange] = useState<TimeRange>('7d');
-  const [accountAssets, setAccountAssets] = useState<Asset[]>([]);
   const [showSmallHoldings, setShowSmallHoldings] = useState(false);
-  const [fetchingAssets, setFetchingAssets] = useState(false);
+
+  const [balances, setBalances] = useState<any>(null);
   const { address } = useAccount();
-  const handleRangeChange = (range: TimeRange) => {
-    setSelectedRange(range);
-  };
-
-  const fetchAssets = async () => {
-    setFetchingAssets(true);
-    try {
-      const balances = await alchemy.core.getTokenBalances(address!);
-
-      if (balances) {
-        const nonZeroBalances = balances.tokenBalances.filter(
-          (balance) => Number(balance.tokenBalance) > 0
-        );
-
-        const promises = nonZeroBalances.map(async (balance) => {
-          const [price, metadata] = await Promise.all([
-            fetchTokenPrices([
-              {
-                network: 'base-mainnet',
-                address: balance.contractAddress,
-              },
-            ]),
-            alchemy.core.getTokenMetadata(balance.contractAddress),
-          ]);
-
-          return { price, metadata, balance: Number(balance.tokenBalance) };
-        });
-
-        const results = await Promise.all(promises);
-        const assets = results.filter((result) => result.price != null);
-
-        const assetsData = [];
-        for (const asset of assets) {
-          const value =
-            asset.price! *
-            (asset.balance / 10 ** (asset.metadata?.decimals ?? 0));
-          const assetData = {
-            coin: asset.metadata?.symbol ?? 'Unknown',
-            amount: asset.balance / 10 ** (asset.metadata?.decimals ?? 0),
-            price: asset.price!,
-            value,
-          };
-          assetsData.push(assetData);
-        }
-
-        //  Get ETH balance and add it to the assets
-        const ethBalance = await alchemy.core.getBalance(address!, 'latest');
-        const ethPrice = await fetchTokenPrices([
-          {
-            network: 'base-mainnet',
-            address: '0x4200000000000000000000000000000000000006',
-          },
-        ]);
-
-        const ethHolding = {
-          coin: 'ETH',
-          amount: Number(ethBalance._hex) / 10 ** 18,
-          price: ethPrice ?? 0,
-          value: (Number(ethBalance._hex) / 10 ** 18) * (ethPrice ?? 0),
-        };
-        assetsData.push(ethHolding);
-        setAccountAssets(assetsData.sort((a, b) => b.value - a.value));
-        setFetchingAssets(false);
-      }
-    } catch (error) {
-      alert('Error fetching assets');
-      setFetchingAssets(false);
-    }
-  };
-
   useEffect(() => {
-    fetchAssets();
+    const fetchBalances = async () => {
+      if (!address) return;
+      const response =
+        await goldrushClient.BalanceService.getTokenBalancesForWalletAddress(
+          'base-mainnet',
+          address as string,
+          { quoteCurrency: 'USD' }
+        );
+      setBalances(response.data || null);
+    };
+    fetchBalances();
   }, [address]);
 
   return (
     <div className="w-full mx-auto">
-      <div className="my-4 flex flex-col gap-2">
-        <CardTitle>Portfolio</CardTitle>
-      </div>
-      <div className="flex flex-col  gap-4">
+      {/* <div className="flex flex-col  gap-4">
         <Card className="p-4 flex flex-col gap-2">
-          <TimeRangeSelector
-            selectedRange={selectedRange}
-            onRangeChange={handleRangeChange}
-          />
-          <CryptoChart data={timeRanges[selectedRange]} />
+          <PortfolioChart />
         </Card>
         <Tabs
           defaultValue="assets"
@@ -174,25 +107,36 @@ export default function PortfolioTracker() {
             <Label htmlFor="hide-small-assets">Show Small Holdings</Label>
           </div>
           <TabsContent value="transactions">
-            <TransactionsTable transactions={mockTransactions} />
+            <WalletTokenTransfers chainName={'base-mainnet'} />
           </TabsContent>
           <TabsContent value="assets">
-            {fetchingAssets ? (
-              <div className="flex justify-center items-center h-32">
-                <p>Loading...</p>
-              </div>
-            ) : (
-              <AssetsTable
-                assets={
-                  showSmallHoldings
-                    ? accountAssets
-                    : accountAssets.filter((asset) => asset.value > 1)
-                }
-              />
-            )}
+            <WalletAssetsTable
+              balances={balances}
+              showSmallHoldings={showSmallHoldings}
+            />
           </TabsContent>
         </Tabs>
+      </div> */}
+      <Card className="px-2 py-4 flex flex-col gap-2">
+        <PortfolioChart />
+      </Card>
+      <div className="flex justify-end py-4 items-center space-x-2">
+        <Switch
+          id="hide-small-assets"
+          onCheckedChange={(e) => {
+            if (e) {
+              setShowSmallHoldings(true);
+            } else {
+              setShowSmallHoldings(false);
+            }
+          }}
+        />
+        <Label htmlFor="hide-small-assets">Show Small Holdings</Label>
       </div>
+      <WalletAssetsTable
+        balances={balances}
+        showSmallHoldings={showSmallHoldings}
+      />
     </div>
   );
 }

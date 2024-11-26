@@ -5,6 +5,7 @@ import type { Address } from 'viem';
 import { mainnet } from 'viem/chains';
 import { subDays, format } from 'date-fns';
 import { Alchemy, Network } from 'alchemy-sdk';
+import { GoldRushClient } from '@covalenthq/client-sdk';
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -68,6 +69,10 @@ const config = {
   apiKey: import.meta.env.VITE_ALCHEMY_API_KEY,
   network: Network.BASE_MAINNET,
 };
+
+export const goldrushClient = new GoldRushClient(
+  import.meta.env.VITE_GOLDRUSH_API_KEY
+);
 export const alchemy = new Alchemy(config);
 
 export type TimeRange = keyof typeof timeRanges;
