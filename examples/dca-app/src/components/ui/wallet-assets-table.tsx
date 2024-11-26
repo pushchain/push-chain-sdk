@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -7,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './card';
 import {
   Accordion,
   AccordionContent,
@@ -15,8 +15,8 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { format } from 'date-fns';
-import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
+
+import { Loader2, MoveDownLeft, MoveUpRight } from 'lucide-react';
 
 // Helper function to format balance using contract decimals
 const formatBalance = (balance: bigint, decimals: number): string => {
@@ -126,16 +126,11 @@ const AssetTransactionHistory = ({ asset, allTransactions, walletAddress }) => {
               {format(new Date(transfer.timestamp), 'MMM dd, yyyy HH:mm')}
             </TableCell>
             <TableCell>
-              <Badge
-                variant={transfer.type === 'receive' ? 'success' : 'secondary'}
-                className={
-                  transfer.type === 'receive'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-gray-100 text-gray-800'
-                }
-              >
-                {transfer.type === 'receive' ? 'Received' : 'Sent'}
-              </Badge>
+              {transfer.type === 'receive' ? (
+                <MoveDownLeft color={'green'} />
+              ) : (
+                <MoveUpRight color="red" />
+              )}
             </TableCell>
             <TableCell>
               <span
@@ -186,6 +181,9 @@ const WalletAssetsTable = ({
   allTransactions, // Changed from transactions to allTransactions to be more explicit
   walletAddress,
 }) => {
+  console.log('balances:', balances);
+  console.log('allTransactions:', allTransactions);
+
   if (!balances || !balances.items || balances.items.length === 0) {
     return (
       <Card className="w-full">
