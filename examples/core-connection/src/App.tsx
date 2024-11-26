@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { PushNetwork } from '@pushprotocol/node-core';
-import { ENV } from '@pushprotocol/node-core/src/lib/constants';
+import { PushNetwork } from '@pushprotocol/push-chain';
+import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
 import './App.css';
-import { Transaction } from '@pushprotocol/node-core/src/lib/generated/tx';
+import { Transaction } from '@pushprotocol/push-chain/src/lib/generated/tx';
 import { toHex } from 'viem';
 
 // Mock data for testing
