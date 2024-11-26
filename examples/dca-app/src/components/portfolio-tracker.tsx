@@ -53,67 +53,75 @@ export default function PortfolioTracker() {
   const [selectedRange, setSelectedRange] = useState<TimeRange>('7d');
   const [accountAssets, setAccountAssets] = useState<Asset[]>([]);
   const [showSmallHoldings, setShowSmallHoldings] = useState(false);
+  const [fetchingAssets, setFetchingAssets] = useState(false);
   const { address } = useAccount();
   const handleRangeChange = (range: TimeRange) => {
     setSelectedRange(range);
   };
 
   const fetchAssets = async () => {
-    const balances = await alchemy.core.getTokenBalances(address!);
+    setFetchingAssets(true);
+    try {
+      const balances = await alchemy.core.getTokenBalances(address!);
 
-    if (balances) {
-      const nonZeroBalances = balances.tokenBalances.filter(
-        (balance) => Number(balance.tokenBalance) > 0
-      );
+      if (balances) {
+        const nonZeroBalances = balances.tokenBalances.filter(
+          (balance) => Number(balance.tokenBalance) > 0
+        );
 
-      const promises = nonZeroBalances.map(async (balance) => {
-        const [price, metadata] = await Promise.all([
-          fetchTokenPrices([
-            {
-              network: 'base-mainnet',
-              address: balance.contractAddress,
-            },
-          ]),
-          alchemy.core.getTokenMetadata(balance.contractAddress),
+        const promises = nonZeroBalances.map(async (balance) => {
+          const [price, metadata] = await Promise.all([
+            fetchTokenPrices([
+              {
+                network: 'base-mainnet',
+                address: balance.contractAddress,
+              },
+            ]),
+            alchemy.core.getTokenMetadata(balance.contractAddress),
+          ]);
+
+          return { price, metadata, balance: Number(balance.tokenBalance) };
+        });
+
+        const results = await Promise.all(promises);
+        const assets = results.filter((result) => result.price != null);
+
+        const assetsData = [];
+        for (const asset of assets) {
+          const value =
+            asset.price! *
+            (asset.balance / 10 ** (asset.metadata?.decimals ?? 0));
+          const assetData = {
+            coin: asset.metadata?.symbol ?? 'Unknown',
+            amount: asset.balance / 10 ** (asset.metadata?.decimals ?? 0),
+            price: asset.price!,
+            value,
+          };
+          assetsData.push(assetData);
+        }
+
+        //  Get ETH balance and add it to the assets
+        const ethBalance = await alchemy.core.getBalance(address!, 'latest');
+        const ethPrice = await fetchTokenPrices([
+          {
+            network: 'base-mainnet',
+            address: '0x4200000000000000000000000000000000000006',
+          },
         ]);
 
-        return { price, metadata, balance: Number(balance.tokenBalance) };
-      });
-
-      const results = await Promise.all(promises);
-      const assets = results.filter((result) => result.price != null);
-
-      const assetsData = [];
-      for (const asset of assets) {
-        const value =
-          asset.price! *
-          (asset.balance / 10 ** (asset.metadata?.decimals ?? 0));
-        const assetData = {
-          coin: asset.metadata?.symbol ?? 'Unknown',
-          amount: asset.balance / 10 ** (asset.metadata?.decimals ?? 0),
-          price: asset.price!,
-          value,
+        const ethHolding = {
+          coin: 'ETH',
+          amount: Number(ethBalance._hex) / 10 ** 18,
+          price: ethPrice ?? 0,
+          value: (Number(ethBalance._hex) / 10 ** 18) * (ethPrice ?? 0),
         };
-        assetsData.push(assetData);
+        assetsData.push(ethHolding);
+        setAccountAssets(assetsData.sort((a, b) => b.value - a.value));
+        setFetchingAssets(false);
       }
-
-      //  Get ETH balance and add it to the assets
-      const ethBalance = await alchemy.core.getBalance(address!, 'latest');
-      const ethPrice = await fetchTokenPrices([
-        {
-          network: 'base-mainnet',
-          address: '0x4200000000000000000000000000000000000006',
-        },
-      ]);
-
-      const ethHolding = {
-        coin: 'ETH',
-        amount: Number(ethBalance._hex) / 10 ** 18,
-        price: ethPrice ?? 0,
-        value: (Number(ethBalance._hex) / 10 ** 18) * (ethPrice ?? 0),
-      };
-      assetsData.push(ethHolding);
-      setAccountAssets(assetsData.sort((a, b) => b.value - a.value));
+    } catch (error) {
+      alert('Error fetching assets');
+      setFetchingAssets(false);
     }
   };
 
@@ -169,13 +177,19 @@ export default function PortfolioTracker() {
             <TransactionsTable transactions={mockTransactions} />
           </TabsContent>
           <TabsContent value="assets">
-            <AssetsTable
-              assets={
-                showSmallHoldings
-                  ? accountAssets
-                  : accountAssets.filter((asset) => asset.value > 1)
-              }
-            />
+            {fetchingAssets ? (
+              <div className="flex justify-center items-center h-32">
+                <p>Loading...</p>
+              </div>
+            ) : (
+              <AssetsTable
+                assets={
+                  showSmallHoldings
+                    ? accountAssets
+                    : accountAssets.filter((asset) => asset.value > 1)
+                }
+              />
+            )}
           </TabsContent>
         </Tabs>
       </div>
