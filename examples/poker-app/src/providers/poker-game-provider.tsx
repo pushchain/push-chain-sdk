@@ -6,7 +6,7 @@ import BasePoint = curve.base.BasePoint;
 import { PokerGameContext } from '../context/poker-game-context.tsx';
 import { Poker } from '../services/poker.ts';
 import { useAppContext } from '../hooks/useAppContext.tsx';
-import { ENV } from '@pushprotocol/node-core/src/lib/constants.ts';
+import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 
 export function PokerGameProvider({ children }: { children: ReactNode }) {
   const [pokerService, setPokerService] = useState<Poker | null>(null);

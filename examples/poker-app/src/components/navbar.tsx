@@ -1,50 +1,28 @@
-import { usePrivy } from '@privy-io/react-auth';
-import { trimAddress } from '../lib/utils';
-import { TokenETH, TokenPUSH, TokenSOL } from '@web3icons/react';
-import { useAppContext } from '../hooks/useAppContext.tsx';
+import { usePrivy } from '@privy-io/react-auth'
+import { Button } from './ui/button'
+import { LogOut } from 'lucide-react'
 
-export default function Navbar() {
-  const { user, authenticated, logout } = usePrivy();
-  const { pushAccount, setPushAccount } = useAppContext();
-
-  const logoutHandler = async () => {
-    try {
-      if (pushAccount) {
-        setPushAccount(null);
-      } else if (authenticated) {
-        await logout();
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
+const Navbar = () => {
+  const { logout } = usePrivy()
 
   return (
-    <div className="flex flex-row gap-2 items-center justify-end p-4">
-      {(pushAccount || authenticated) && (
-        <button
-          onClick={logoutHandler}
-          className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-        >
-          Logout
-        </button>
-      )}
-      {(pushAccount || (authenticated && user)) && (
-        <div className="flex flex-row items-center justify-center gap-2 border-2 border-secondary p-2 rounded-md bg-gray-100 shadow-md">
-          {pushAccount ? (
-            <TokenPUSH className="w-6 h-6" />
-          ) : user?.wallet?.chainType === 'solana' ? (
-            <TokenSOL className="w-6 h-6" />
-          ) : (
-            <TokenETH className="w-6 h-6" />
-          )}
-          <span className="text-gray-800 font-medium">
-            {pushAccount
-              ? trimAddress(pushAccount.split(':')[2])
-              : user?.wallet?.address && trimAddress(user.wallet.address)}
-          </span>
+    <nav className="relative z-20 backdrop-blur-md bg-black/20 border-b border-white/10">
+      <div className="container mx-auto flex justify-between items-center p-4">
+        <div className="text-2xl font-bold bg-gradient-to-r from-[#FFD700] to-white bg-clip-text text-transparent">
+          ♠️ Poker App
         </div>
-      )}
-    </div>
-  );
+        <Button 
+          onClick={logout} 
+          variant="ghost" 
+          className="text-white hover:bg-white/10 gap-2"
+        >
+          <LogOut className="h-4 w-4" />
+          Logout
+        </Button>
+      </div>
+    </nav>
+  )
 }
+
+export default Navbar
+

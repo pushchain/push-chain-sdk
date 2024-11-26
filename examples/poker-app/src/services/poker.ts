@@ -1,4 +1,4 @@
-import PushNetwork from '@pushprotocol/node-core';
+import { PushNetwork } from '@pushprotocol/node-core';
 import { curve } from 'elliptic';
 import { Transaction } from '@pushprotocol/node-core/src/lib/generated/tx';
 import { PokerGame } from '../temp_types/types';

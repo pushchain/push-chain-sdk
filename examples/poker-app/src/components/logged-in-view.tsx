@@ -1,13 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from './navbar';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Game from './game';
 import PublicGames from './public-games';
-import useConnectedPushAddress from '../hooks/useConnectedPushAddress.tsx';
-import usePushWalletSigner from '../hooks/usePushSigner.tsx';
-import { usePokerGameContext } from '../hooks/usePokerGameContext.tsx';
-import { useAppContext } from '../hooks/useAppContext.tsx';
+import useConnectedPushAddress from '../hooks/useConnectedPushAddress';
+import usePushWalletSigner from '../hooks/usePushSigner';
+import { usePokerGameContext } from '../hooks/usePokerGameContext';
+import { useAppContext } from '../hooks/useAppContext';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Separator } from './ui/seperator';
+import { ChevronRight, Plus, Users, Trophy } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function LoggedInView() {
   const [friendsWallets, setFriendsWallets] = useState<string[]>([]);
@@ -16,14 +22,13 @@ export default function LoggedInView() {
   const [recommendedWallets, setRecommendedWallets] = useState<string[]>([]);
   const { connectedPushAddressFormat } = useConnectedPushAddress();
   const { pushWalletSigner } = usePushWalletSigner();
-  const { pokerService, gameTransactionHash, setGameTransactionHash } =
-    usePokerGameContext();
-  const { gameStarted } = useAppContext();
+  const { pokerService, gameTransactionHash, setGameTransactionHash } = usePokerGameContext();
+  const { gameStarted, setGameStarted } = useAppContext();
 
   useEffect(() => {
-    const storedAddresses = localStorage.getItem('poker-friends-wallets');
-    if (storedAddresses) {
-      setRecommendedWallets(JSON.parse(storedAddresses));
+    const storedWallets = localStorage.getItem('poker-friends-wallets');
+    if (storedWallets) {
+      setRecommendedWallets(JSON.parse(storedWallets));
     }
   }, []);
 
@@ -32,56 +37,17 @@ export default function LoggedInView() {
       toast.error('Only a maximum of 4 players can be added.');
       return;
     }
-    if (walletInput) {
-      if (
-        walletInput.startsWith('solana:') ||
-        walletInput.startsWith('eip155:')
-      ) {
-        setFriendsWallets([...friendsWallets, walletInput]);
-        setWalletInput('');
-
-        // Save to local storage for recommended wallets
-        if (!recommendedWallets.includes(walletInput)) {
-          const updatedRecommendedWallets = [
-            ...recommendedWallets,
-            walletInput,
-          ];
-          localStorage.setItem(
-            'poker-friends-wallets',
-            JSON.stringify(updatedRecommendedWallets)
-          );
-        }
-      } else {
-        toast.error(
-          `Wallet should be in CAIP10 format or PUSH format (e.g. eip155:1:0x1234567890)`
-        );
+    const walletToAdd = recommendedWallet || walletInput;
+    if (walletToAdd.startsWith('solana:') || walletToAdd.startsWith('eip155:')) {
+      setFriendsWallets([...friendsWallets, walletToAdd]);
+      setWalletInput('');
+      if (!recommendedWallets.includes(walletToAdd)) {
+        const updatedRecommendedWallets = [...recommendedWallets, walletToAdd];
+        localStorage.setItem('poker-friends-wallets', JSON.stringify(updatedRecommendedWallets));
+        setRecommendedWallets(updatedRecommendedWallets);
       }
-    } else if (recommendedWallet) {
-      if (
-        recommendedWallet.startsWith('solana:') ||
-        recommendedWallet.startsWith('eip155:')
-      ) {
-        setFriendsWallets([...friendsWallets, recommendedWallet]);
-        setRecommendedWallets(
-          recommendedWallets.filter((w) => w !== recommendedWallet)
-        );
-
-        // Save to local storage for recommended wallets
-        if (!recommendedWallets.includes(recommendedWallet)) {
-          const updatedRecommendedWallets = [
-            ...recommendedWallets,
-            recommendedWallet,
-          ];
-          localStorage.setItem(
-            'poker-friends-wallets',
-            JSON.stringify(updatedRecommendedWallets)
-          );
-        }
-      } else {
-        toast.error(
-          `Wallet should be in CAIP10 format or PUSH format (e.g. eip155:1:0x1234567890)`
-        );
-      }
+    } else {
+      toast.error('Wallet should be in CAIP10 format or PUSH format (e.g. eip155:1:0x1234567890)');
     }
   };
 
@@ -92,198 +58,227 @@ export default function LoggedInView() {
   const handleCreateGame = async (type: 'public' | 'private') => {
     try {
       setLoadingStartGame(true);
-      if (!connectedPushAddressFormat || !pushWalletSigner || !pokerService)
-        return;
+      if (!connectedPushAddressFormat || !pushWalletSigner || !pokerService) return;
       const tx = await pokerService.createGame(
         { type },
-        [connectedPushAddressFormat],
+        [connectedPushAddressFormat, ...friendsWallets],
         pushWalletSigner
       );
       setGameTransactionHash(tx);
+      setGameStarted(true);
     } catch (error) {
       console.error(error);
+      toast.error('Failed to create game');
     } finally {
       setLoadingStartGame(false);
     }
   };
 
+  if (gameStarted) {
+    return <Game />;
+  }
+
   return (
-    <div>
+    <div 
+      className="min-h-screen relative overflow-hidden"
+      style={{
+        backgroundImage: 'url("https://cdn.dribbble.com/userupload/16376163/file/original-c975441fa1b24ea143580792b6f81deb.png?resize=752x&vertical=center")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
+      {/* Glass overlay */}
+      <div className="absolute inset-0 backdrop-blur-[2px] bg-black/70" />
+      
+      {/* Animated poker chips */}
+      <motion.div 
+        className="absolute top-20 -left-20 w-40 h-40 opacity-80"
+        animate={{ 
+          rotate: 360,
+          y: [0, -20, 0],
+        }}
+        transition={{ 
+          rotate: { duration: 20, repeat: Infinity, ease: "linear" },
+          y: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+        }}
+      >
+        <img src="/src/assets/poker-red.jpg" alt="" className="w-full h-full object-contain" />
+      </motion.div>
+      
+      <motion.div 
+        className="absolute bottom-20 -right-20 w-40 h-40 opacity-80"
+        animate={{ 
+          rotate: -360,
+          y: [0, 20, 0],
+        }}
+        transition={{ 
+          rotate: { duration: 20, repeat: Infinity, ease: "linear" },
+          y: { duration: 2.5, repeat: Infinity, ease: "easeInOut" }
+        }}
+      >
+        <img src="/src/assets/poker-red.jpg" alt="" className="w-full h-full object-contain" />
+      </motion.div>
+
       <Navbar />
       <ToastContainer />
-      {gameStarted ? (
-        <Game />
-      ) : (
-        <div className="flex flex-col items-center justify-center h-full w-full">
-          <h1 className="text-4xl font-bold">Poker App</h1>
-          <div className="flex flex-row justify-center items-center w-full gap-4 mt-8">
-            <div className="relative group">
-              <button
-                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transform transition-transform hover:scale-105"
-                onClick={() => handleCreateGame('public')}
-                disabled={loadingStartGame}
-              >
-                {loadingStartGame ? (
-                  <div className="flex flex-row items-center justify-center">
-                    <svg
-                      className="animate-spin h-5 w-5 mr-3 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                      ></path>
-                    </svg>
-                    Creating Game...
+      
+      <div className="container mx-auto px-4 py-8 relative z-10">
+        <motion.h1 
+          className="text-5xl font-bold mb-12 text-center bg-gradient-to-r from-[#FFD700] via-white to-[#FFD700] bg-clip-text text-transparent"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          ♠️ Poker App ♥️
+        </motion.h1>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <Card className="backdrop-blur-xl bg-white/10 border-2 border-white/20 shadow-[0_0_15px_rgba(0,0,0,0.2)]">
+              <CardHeader>
+                <CardTitle className="text-2xl font-bold text-white flex items-center gap-2">
+                  <Trophy className="h-6 w-6 text-[#FFD700]" /> Create Game
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button
+                    onClick={() => handleCreateGame('public')}
+                    disabled={loadingStartGame}
+                    className="w-full bg-gradient-to-r from-[#FFD700] to-[#FDB931] text-gray-900 transition-all duration-300 py-6 text-lg font-bold shadow-xl hover:shadow-2xl hover:from-[#FDB931] hover:to-[#FFD700] group"
+                  >
+                    {loadingStartGame ? 'Creating...' : 'Create public game'}
+                    <ChevronRight className="ml-auto h-5 w-5 transform group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </motion.div>
+
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button
+                    onClick={() => handleCreateGame('private')}
+                    disabled={loadingStartGame || friendsWallets.length === 0}
+                    className="w-full bg-gradient-to-r from-[#9333EA] to-[#7E22CE] text-white transition-all duration-300 py-6 text-lg font-bold shadow-xl hover:shadow-2xl hover:from-[#7E22CE] hover:to-[#9333EA] group"
+                  >
+                    {loadingStartGame ? 'Creating...' : 'Create game with friends'}
+                    <ChevronRight className="ml-auto h-5 w-5 transform group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </motion.div>
+
+                {gameTransactionHash && (
+                  <div className="text-sm text-white/60 bg-black/20 p-3 rounded-lg backdrop-blur-sm">
+                    Transaction hash: {gameTransactionHash}
                   </div>
-                ) : (
-                  'Create public game'
                 )}
-              </button>
-              <span className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2">
-                Any one can join
-              </span>
-            </div>
-            <div className="relative group">
-              <button
-                className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-700 hover:to-teal-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transform transition-transform hover:scale-105"
-                disabled={loadingStartGame}
-              >
-                Create game with friends
-              </button>
-              <span className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2">
-                Only your invited friends can join
-              </span>
-            </div>
-          </div>
-          {gameTransactionHash && (
-            <div className="flex flex-row items-center justify-center gap-2 w-full mt-8">
-              <span>Transaction hash: {gameTransactionHash}</span>
-            </div>
-          )}
+              </CardContent>
+            </Card>
+          </motion.div>
 
-          <div className="flex flex-row items-center justify-center w-full mt-8">
-            <PublicGames />
-          </div>
-
-          <div className="flex flex-row items-center justify-center gap-2 w-full mt-8">
-            <input
-              type="text"
-              placeholder="Enter friend's wallet address"
-              className="border-2 border-gray-300 rounded-md p-2 w-1/3"
-              value={walletInput}
-              onChange={(e) => setWalletInput(e.target.value)}
-            />
-            <button
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-              onClick={() => handleAddFriend()}
-              disabled={!walletInput}
-            >
-              Add Friend
-            </button>
-          </div>
-
-          {recommendedWallets.length > 0 && (
-            <div className="flex flex-col items-center justify-center gap-1 w-full mt-8">
-              <h2 className="text-2xl font-bold text-gray-500">
-                Previously added friends
-              </h2>
-              <h3 className="text-gray-500">
-                Select one of those to start a game faster ;P
-              </h3>
-              {recommendedWallets.map((wallet) => (
-                <div
-                  className="flex flex-row items-center justify-center gap-2"
-                  key={wallet}
-                >
-                  <span
-                    className="bg-gray-200 rounded-md p-2 cursor-pointer text-sm"
-                    onClick={() => handleAddFriend(wallet)}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          >
+            <Card className="backdrop-blur-xl bg-white/10 border-2 border-white/20 shadow-[0_0_15px_rgba(0,0,0,0.2)]">
+              <CardHeader>
+                <CardTitle className="text-2xl font-bold text-white flex items-center gap-2">
+                  <Users className="h-6 w-6 text-[#FFD700]" /> Add Friends
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder="Enter friend's wallet address"
+                    value={walletInput}
+                    onChange={(e) => setWalletInput(e.target.value)}
+                    className="flex-grow bg-white/10 border-white/20 text-white placeholder:text-white/60"
+                  />
+                  <Button 
+                    onClick={() => handleAddFriend()} 
+                    disabled={!walletInput}
+                    className="bg-[#FFD700] hover:bg-[#FDB931] text-gray-900"
                   >
-                    {wallet}
-                  </span>
+                    <Plus className="h-5 w-5" />
+                  </Button>
                 </div>
-              ))}
-            </div>
-          )}
 
-          <div className="flex flex-col items-center justify-center gap-2 w-full mt-8">
-            {friendsWallets.map((wallet) => (
-              <div
-                className="flex flex-row items-center justify-center gap-2"
-                key={wallet}
-              >
-                <span>{wallet}</span>
-                <button
-                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-1 rounded"
-                  onClick={() => handleRemoveFriend(wallet)}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-6 h-6"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-            ))}
-          </div>
-          {friendsWallets.length > 0 && (
-            <button
-              className="bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full shadow-lg mt-32 transition-transform transform hover:scale-105"
-              onClick={() => handleCreateGame('private')}
-              disabled={loadingStartGame}
-            >
-              {loadingStartGame ? (
-                <div className="flex flex-row items-center justify-center">
-                  <svg
-                    className="animate-spin h-5 w-5 mr-3 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                    ></path>
-                  </svg>
-                  Starting Game...
-                </div>
-              ) : (
-                'Create Private Game'
-              )}
-            </button>
-          )}
+                {recommendedWallets.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <Separator className="w-full bg-white/20" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-transparent px-2 text-white/60 font-medium">Previously added friends</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {recommendedWallets.map((wallet) => (
+                        <Button
+                          key={wallet}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAddFriend(wallet)}
+                          className="border-white/20 text-white hover:bg-white/10"
+                        >
+                          {wallet.slice(0, 6)}...{wallet.slice(-4)}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {friendsWallets.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <Separator className="w-full bg-white/20" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-transparent px-2 text-white/60 font-medium">Added Friends</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {friendsWallets.map((wallet) => (
+                        <motion.div
+                          key={wallet}
+                          className="flex justify-between items-center p-3 rounded-lg bg-white/10 backdrop-blur-sm"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                        >
+                          <span className="text-white">{wallet.slice(0, 6)}...{wallet.slice(-4)}</span>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleRemoveFriend(wallet)}
+                            className="bg-red-500/80 hover:bg-red-600/80"
+                          >
+                            Remove
+                          </Button>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
-      )}
+
+        <motion.div 
+          className="mt-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+        >
+          <PublicGames />
+        </motion.div>
+      </div>
     </div>
   );
 }
+

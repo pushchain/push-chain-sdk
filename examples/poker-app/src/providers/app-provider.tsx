@@ -1,5 +1,5 @@
 import { AppContext } from '../context/app-context';
-import PushNetwork from '@pushprotocol/node-core';
+import { PushNetwork } from '@pushprotocol/node-core';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
 import { ReactNode, useEffect, useState } from 'react';
 
