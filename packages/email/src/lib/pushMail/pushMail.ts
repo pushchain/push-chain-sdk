@@ -4,9 +4,9 @@ import {
   EmailBody,
   EmailHeader,
 } from '../generated/txData/email';
-import { PushNetwork } from '@pushprotocol/node-core';
-import { ENV } from '@pushprotocol/node-core/src/lib/constants';
-import { Transaction } from '@pushprotocol/node-core/src/lib/generated/tx';
+import { PushNetwork } from '@pushprotocol/push-chain';
+import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
+import { Transaction } from '@pushprotocol/push-chain/src/lib/generated/tx';
 
 export class PushMail {
   TX_CATEGORY = 'CUSTOM:PUSH_MAIL';

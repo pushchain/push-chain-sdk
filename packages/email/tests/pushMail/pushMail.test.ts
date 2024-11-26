@@ -4,10 +4,10 @@ import {
   EmailHeader,
   Attachment,
 } from '../../src/lib/generated/txData/email';
-import { ENV } from '@pushprotocol/node-core/src/lib/constants';
+import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { hexToBytes } from 'viem';
-import { Address } from '@pushprotocol/node-core';
+import { Address } from '@pushprotocol/push-chain';
 
 describe('PushMail Integration Tests', () => {
   let pushMail: PushMail;
