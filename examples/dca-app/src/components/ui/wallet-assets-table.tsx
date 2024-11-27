@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import { Loader2, MoveDownLeft, MoveUpRight } from 'lucide-react';
 import { BalancesResponse, Transaction } from '@covalenthq/client-sdk';
 import { AssetTransactionHistoryProps } from '@/types';
+import fetchTokenPrice from '@/lib/getTokenPrice';
 const formatBalance = (
   balance: bigint | null,
   decimals: number | null
@@ -58,67 +59,79 @@ const AssetTransactionHistory: React.FC<AssetTransactionHistoryProps> = ({
   useEffect(() => {
     if (!allTransactions || !asset) return;
 
-    // Filter and process transactions for this specific asset
-    const filteredTx = allTransactions
-      .flatMap((tx) => {
-        const changes = [];
+    const processTransactions = async () => {
+      try {
+        const processedTx = allTransactions
+          .flatMap((tx) => {
+            const changes = [];
 
-        // Handle native token transfers
-        if (asset.native_token && BigInt(tx.value) > 0) {
-          const isIncoming =
-            tx.to_address.toLowerCase() === walletAddress.toLowerCase();
-          changes.push({
-            timestamp: tx.block_signed_at,
-            hash: tx.tx_hash,
-            amount: tx.value,
-            type: isIncoming ? 'receive' : 'send',
-            from: tx.from_address,
-            to: tx.to_address,
-            successful: tx.successful,
-            value_quote: tx.value_quote,
-            pretty_value_quote: tx.pretty_value_quote,
-          });
-        }
-
-        // Handle ERC20 transfers
-        if (!asset.native_token && tx.log_events) {
-          const transfers = tx.log_events.filter(
-            (event) =>
-              event.decoded?.name === 'Transfer' &&
-              event.sender_address?.toLowerCase() ===
-                asset.contract_address!.toLowerCase() &&
-              (event.decoded?.params[0].value.toLowerCase() ===
-                walletAddress.toLowerCase() ||
-                event.decoded?.params[1].value.toLowerCase() ===
-                  walletAddress.toLowerCase())
-          );
-
-          transfers.forEach((transfer) => {
-            const isIncoming =
-              transfer.decoded &&
-              transfer.decoded.params[1].value.toLowerCase() ===
-                walletAddress.toLowerCase();
-            if (transfer.decoded) {
+            // Handle native token transfers
+            if (asset.native_token && BigInt(tx.value) > 0) {
+              const isIncoming =
+                tx.to_address.toLowerCase() === walletAddress.toLowerCase();
               changes.push({
                 timestamp: tx.block_signed_at,
                 hash: tx.tx_hash,
-                amount: transfer.decoded.params[2].value,
+                amount: tx.value,
                 type: isIncoming ? 'receive' : 'send',
-                from: transfer.decoded.params[0].value,
-                to: transfer.decoded.params[1].value,
+                from: tx.from_address,
+                to: tx.to_address,
                 successful: tx.successful,
+                value_quote: tx.value_quote,
+                pretty_value_quote: tx.pretty_value_quote,
               });
             }
-          });
-        }
 
-        return changes;
-      })
-      .filter((tx) => tx.successful);
+            // Handle ERC20 transfers
+            if (!asset.native_token && tx.log_events) {
+              const transfers = tx.log_events.filter(
+                (event) =>
+                  event.decoded?.name === 'Transfer' &&
+                  event.sender_address?.toLowerCase() ===
+                    asset.contract_address!.toLowerCase() &&
+                  (event.decoded?.params[0].value.toLowerCase() ===
+                    walletAddress.toLowerCase() ||
+                    event.decoded?.params[1].value.toLowerCase() ===
+                      walletAddress.toLowerCase())
+              );
 
-    setAssetTransactions(filteredTx);
-    setLoading(false);
+              transfers.forEach((transfer) => {
+                const isIncoming =
+                  transfer.decoded &&
+                  transfer.decoded.params[1].value.toLowerCase() ===
+                    walletAddress.toLowerCase();
+                if (transfer.decoded) {
+                  changes.push({
+                    timestamp: tx.block_signed_at,
+                    hash: tx.tx_hash,
+                    amount: transfer.decoded.params[2].value,
+                    type: isIncoming ? 'receive' : 'send',
+                    from: transfer.decoded.params[0].value,
+                    to: transfer.decoded.params[1].value,
+                    successful: tx.successful,
+                    value_quote: tx.value_quote,
+                    pretty_value_quote: tx.pretty_value_quote,
+                  });
+                }
+              });
+            }
+
+            return changes;
+          })
+          .filter((tx) => tx.successful);
+
+        setAssetTransactions(processedTx);
+      } catch (error) {
+        console.error('Error processing transactions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    processTransactions();
   }, [asset, allTransactions, walletAddress]);
+
+  // Rest of the component remains the same...
 
   if (loading) {
     return (
@@ -128,7 +141,7 @@ const AssetTransactionHistory: React.FC<AssetTransactionHistoryProps> = ({
     );
   }
 
-  if (assetTransactions.length === 0) {
+  if (assetTransactions.length === 0 && !loading) {
     return <p className="text-sm text-gray-500 p-4">No transfers found</p>;
   }
 
@@ -140,7 +153,6 @@ const AssetTransactionHistory: React.FC<AssetTransactionHistoryProps> = ({
           <TableHead>Type</TableHead>
           <TableHead>Amount</TableHead>
           <TableHead>Value</TableHead>
-          <TableHead>From/To</TableHead>
           <TableHead>Tx Hash</TableHead>
         </TableRow>
       </TableHeader>
@@ -173,16 +185,6 @@ const AssetTransactionHistory: React.FC<AssetTransactionHistoryProps> = ({
               </span>
             </TableCell>
             <TableCell>{transfer.pretty_value_quote || 'N/A'}</TableCell>
-            <TableCell>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs">
-                  From: {transfer.from.slice(0, 6)}...{transfer.from.slice(-4)}
-                </span>
-                <span className="text-xs">
-                  To: {transfer.to.slice(0, 6)}...{transfer.to.slice(-4)}
-                </span>
-              </div>
-            </TableCell>
             <TableCell>
               <a
                 href={`https://etherscan.io/tx/${transfer.hash}`}

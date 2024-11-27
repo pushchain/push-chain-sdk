@@ -3,7 +3,7 @@ import { PrivyProvider } from '@privy-io/react-auth';
 import { toSolanaWalletConnectors } from '@privy-io/react-auth/solana';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createConfig } from '@privy-io/wagmi';
-import { mainnet } from 'viem/chains';
+import { base, bsc, mainnet } from 'viem/chains';
 import { http } from 'wagmi';
 import { WagmiProvider } from '@privy-io/wagmi';
 
@@ -11,9 +11,11 @@ const solanaConnectors = toSolanaWalletConnectors({
   shouldAutoConnect: false,
 });
 const config = createConfig({
-  chains: [mainnet],
+  chains: [mainnet, bsc, base],
   transports: {
     [mainnet.id]: http(),
+    [bsc.id]: http(),
+    [base.id]: http(),
   },
 });
 

@@ -6,7 +6,7 @@ import { useAppContext } from './context/app-context';
 
 function App() {
   const { ready, authenticated } = usePrivy();
-  const { pushAccount } = useAppContext();
+  const { pushAccount, watchAccount } = useAppContext();
 
   return (
     <>
@@ -15,8 +15,12 @@ function App() {
           <LoadingSpinner size="lg" />
         </div>
       )}
-      {ready && !pushAccount && !authenticated && <LoggedOutView />}
-      {ready && (pushAccount || authenticated) && <LoggedInView />}
+      {ready && !pushAccount && !authenticated && !watchAccount && (
+        <LoggedOutView />
+      )}
+      {ready && (pushAccount || authenticated || watchAccount) && (
+        <LoggedInView />
+      )}
     </>
   );
 }

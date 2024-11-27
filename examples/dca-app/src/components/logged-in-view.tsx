@@ -1,5 +1,7 @@
+import { useAccount, useChainId } from 'wagmi';
 import PortfolioTracker from './portfolio-tracker';
 import ConnectedWalletCard from './ui/connected-wallet-card';
+import { useAppContext } from '@/context/app-context';
 
 const Header = () => {
   return (
@@ -13,9 +15,24 @@ const Header = () => {
 };
 
 const MainContent = () => {
+  const { address } = useAccount();
+  const { watchAccount } = useAppContext();
+
+  const chainId = useChainId();
+
+  if (watchAccount) {
+    return (
+      <div>
+        <PortfolioTracker
+          walletAddress={watchAccount}
+          chainId={'base-mainnet'}
+        />
+      </div>
+    );
+  }
   return (
     <div>
-      <PortfolioTracker />
+      <PortfolioTracker walletAddress={address!} chainId={'base-mainnet'} />
     </div>
   );
 };

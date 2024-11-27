@@ -7,7 +7,7 @@ import { ReactNode, useEffect, useState } from 'react';
 export function AppProvider({ children }: { children: ReactNode }) {
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
   const [pushAccount, setPushAccount] = useState<any>(null);
-
+  const [watchAccount, setWatchAccount] = useState<string>('');
   useEffect(() => {
     const setNetwork = async () => {
       try {
@@ -27,6 +27,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setPushNetwork,
         pushAccount,
         setPushAccount,
+        watchAccount,
+        setWatchAccount,
       }}
     >
       {children}

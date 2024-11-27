@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { format } from 'date-fns';
-import { useAccount, useChainId } from 'wagmi';
+import { useChainId } from 'wagmi';
 import { goldrushClient } from '@/lib/utils';
 import { Chain, PortfolioResponse } from '@covalenthq/client-sdk';
 
@@ -28,11 +28,16 @@ interface TooltipProps {
 
 type TimeFrame = '7d' | '30d';
 
-const PortfolioChart: React.FC = () => {
+const PortfolioChart = ({
+  walletAddress,
+  chainId,
+}: {
+  walletAddress: string;
+  chainId: number;
+}) => {
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('30d');
   const [data, setData] = useState<PortfolioResponse | null>(null);
-  const { address } = useAccount();
-  const chainId = useChainId();
+
   // Format data for the chart
   const chartData = useMemo(() => {
     if (!data?.items?.length) return [];
@@ -99,11 +104,11 @@ const PortfolioChart: React.FC = () => {
   useEffect(() => {
     const fetchHistoricalData = async (chainName: Chain) => {
       try {
-        if (!address) return;
+        if (!walletAddress) return;
         const response =
           await goldrushClient.BalanceService.getHistoricalPortfolioForWalletAddress(
             chainName,
-            address as string,
+            walletAddress,
             {
               days: 30, // Request 30 days of data
             }
@@ -122,10 +127,10 @@ const PortfolioChart: React.FC = () => {
       }
     };
 
-    if (address) {
+    if (walletAddress) {
       fetchHistoricalData(chainId);
     }
-  }, [address]);
+  }, [walletAddress, chainId]);
 
   // If no data, show loading or empty state
   if (!data?.items?.length) {

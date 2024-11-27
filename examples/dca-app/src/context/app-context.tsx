@@ -6,6 +6,8 @@ interface AppContextType {
   setPushNetwork: React.Dispatch<React.SetStateAction<PushNetwork | null>>;
   pushAccount: any;
   setPushAccount: React.Dispatch<React.SetStateAction<any>>;
+  watchAccount: string;
+  setWatchAccount: React.Dispatch<React.SetStateAction<string>>;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);

@@ -5,30 +5,34 @@ import { Label } from './ui/label';
 import PortfolioChart from './portfolio-chart';
 import WalletAssetsTable from './ui/wallet-assets-table';
 import { goldrushClient } from '@/lib/utils';
-import { useAccount, useChainId } from 'wagmi';
+
 import { Chain } from '@covalenthq/client-sdk';
 import type {
   BalancesResponse,
   Transaction,
   GoldRushResponse,
-  TransactionsResponse,
 } from '@covalenthq/client-sdk';
 
-export default function PortfolioTracker() {
+export default function PortfolioTracker({
+  walletAddress,
+  chainId,
+}: {
+  walletAddress: string;
+  chainId: number;
+}) {
   const [showSmallHoldings, setShowSmallHoldings] = useState(false);
   const [balances, setBalances] = useState<BalancesResponse | null>(null);
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
-  const { address: walletAddress } = useAccount();
-  const chaindId = useChainId();
+
   useEffect(() => {
-    const fetchBalances = async (chainName: Chain) => {
+    const fetchBalances = async (chainName: Chain, walletAddress: string) => {
       setLoading(true);
       try {
         const response: GoldRushResponse<BalancesResponse> =
           await goldrushClient.BalanceService.getTokenBalancesForWalletAddress(
             chainName,
-            walletAddress as string,
+            walletAddress,
             { quoteCurrency: 'USD' }
           );
 
@@ -43,62 +47,61 @@ export default function PortfolioTracker() {
     };
 
     if (walletAddress) {
-      fetchBalances(chaindId);
+      fetchBalances(chainId, walletAddress);
     }
-  }, [walletAddress]);
+  }, [walletAddress, chainId]);
 
   useEffect(() => {
-    const fetchTransactions = async (chainName: Chain) => {
-      let page = 1;
+    const fetchTransactions = async (
+      chainName: Chain,
+      walletAddress: string
+    ) => {
+      const allFetchedTransactions: Transaction[] = [];
+      let currentPage = 1;
       const maxPages = 15;
-      setAllTransactions([]);
 
-      const fetchPage = async (chainName: Chain) => {
-        try {
-          const response: GoldRushResponse<TransactionsResponse> =
-            await goldrushClient.TransactionService.getTransactionsForAddressV3(
-              chainName,
-              walletAddress as string,
-              page,
-              {
-                quoteCurrency: 'USD',
-                noLogs: false,
-              }
-            );
-
-          if (
-            response &&
-            response.data &&
-            response.data.items &&
-            response.data?.items?.length > 0
-          ) {
-            setAllTransactions((prevTx: Transaction[]) => [
-              ...prevTx,
-              ...(response.data?.items || []),
-            ]);
-
-            if (page < maxPages) {
-              page++;
-              await fetchPage(chainName);
+      try {
+        // Fetch first page
+        let response =
+          await goldrushClient.TransactionService.getAllTransactionsForAddressByPage(
+            chainName,
+            walletAddress,
+            {
+              quoteCurrency: 'USD',
+              noLogs: false,
             }
-          }
-        } catch (error) {
-          console.error(`Error fetching transactions page ${page}:`, error);
-        }
-      };
+          );
 
-      fetchPage(chainName);
+        // Process first page
+        if (response?.data?.items) {
+          allFetchedTransactions.push(...response.data.items);
+        }
+
+        // Continue fetching while there's a next page and we haven't hit max pages
+        while (response?.data?.next && currentPage < maxPages) {
+          currentPage++;
+          response = await response.data.next();
+
+          if (response?.data?.items) {
+            allFetchedTransactions.push(...response.data.items);
+          }
+        }
+
+        // Set state once with all collected transactions
+        setAllTransactions(allFetchedTransactions);
+      } catch (error) {
+        console.error('Error fetching transactions:', error);
+      }
     };
 
     if (walletAddress) {
-      fetchTransactions(chaindId);
+      fetchTransactions(chainId, walletAddress);
     }
-  }, [walletAddress]);
-
+  }, [walletAddress, chainId]);
   return (
     <div className="w-full mx-auto">
       <Card className="px-2 py-4 flex flex-col gap-2">
-        <PortfolioChart />
+        <PortfolioChart walletAddress={walletAddress} chainId={chainId} />
       </Card>
       <div className="flex justify-end py-4 items-center space-x-2">
         <Switch
