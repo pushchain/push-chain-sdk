@@ -190,7 +190,7 @@ const AssetTransactionHistory: React.FC<AssetTransactionHistoryProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+      <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
         <div>
           <p className="text-sm text-gray-500">Average Cost Per Token</p>
           <p className="font-medium">${costAnalysis.avgCost.toFixed(2)}</p>
@@ -203,6 +203,16 @@ const AssetTransactionHistory: React.FC<AssetTransactionHistoryProps> = ({
               currentValue /
               Number(formatBalance(currentBalance, asset.contract_decimals))
             ).toFixed(2)}
+          </p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-500">PnL</p>
+          <p
+            className={`font-medium ${
+              unrealizedPnL >= 0 ? 'text-green-600' : 'text-red-600'
+            }`}
+          >
+            {unrealizedPnL.toFixed(2)}%
           </p>
         </div>
       </div>
