@@ -23,16 +23,13 @@ const MainContent = () => {
   if (watchAccount) {
     return (
       <div>
-        <PortfolioTracker
-          walletAddress={watchAccount}
-          chainId={'base-mainnet'}
-        />
+        <PortfolioTracker walletAddress={watchAccount} chainId={1} />
       </div>
     );
   }
   return (
     <div>
-      <PortfolioTracker walletAddress={address!} chainId={'base-mainnet'} />
+      <PortfolioTracker walletAddress={address!} chainId={chainId} />
     </div>
   );
 };

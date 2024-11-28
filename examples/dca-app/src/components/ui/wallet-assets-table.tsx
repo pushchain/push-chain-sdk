@@ -19,7 +19,7 @@ import { format } from 'date-fns';
 import { Loader2, MoveDownLeft, MoveUpRight } from 'lucide-react';
 import { BalancesResponse, Transaction } from '@covalenthq/client-sdk';
 import { AssetTransactionHistoryProps } from '@/types';
-import fetchTokenPrice from '@/lib/getTokenPrice';
+
 const formatBalance = (
   balance: bigint | null,
   decimals: number | null
@@ -55,6 +55,15 @@ const AssetTransactionHistory: React.FC<AssetTransactionHistoryProps> = ({
       pretty_value_quote: string;
     }[]
   >([]);
+  const [costAnalysis, setCostAnalysis] = useState<{
+    avgCost: number;
+    totalInvested: number;
+    totalTokens: bigint;
+  }>({
+    avgCost: 0,
+    totalInvested: 0,
+    totalTokens: BigInt(0),
+  });
 
   useEffect(() => {
     if (!allTransactions || !asset) return;
@@ -95,7 +104,7 @@ const AssetTransactionHistory: React.FC<AssetTransactionHistoryProps> = ({
                       walletAddress.toLowerCase())
               );
 
-              transfers.forEach((transfer) => {
+              transfers.forEach(async (transfer) => {
                 const isIncoming =
                   transfer.decoded &&
                   transfer.decoded.params[1].value.toLowerCase() ===
@@ -120,7 +129,38 @@ const AssetTransactionHistory: React.FC<AssetTransactionHistoryProps> = ({
           })
           .filter((tx) => tx.successful);
 
-        setAssetTransactions(processedTx);
+        // Sort transactions by timestamp
+        const sortedTx = processedTx.sort(
+          (a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+
+        let totalTokens = BigInt(0);
+        let totalInvested = 0;
+
+        // Process only incoming transfers as "buys"
+        sortedTx.forEach((tx) => {
+          const amount = BigInt(tx.amount);
+          if (tx.type === 'receive') {
+            const valueAtTime = tx.value_quote || 0;
+            totalTokens += amount;
+            totalInvested += valueAtTime;
+          }
+        });
+
+        // Calculate average cost
+        const avgCost =
+          totalTokens > BigInt(0)
+            ? totalInvested /
+              Number(formatBalance(totalTokens, asset.contract_decimals))
+            : 0;
+
+        setCostAnalysis({
+          avgCost,
+          totalInvested,
+          totalTokens,
+        });
+        setAssetTransactions(sortedTx);
       } catch (error) {
         console.error('Error processing transactions:', error);
       } finally {
@@ -131,8 +171,6 @@ const AssetTransactionHistory: React.FC<AssetTransactionHistoryProps> = ({
     processTransactions();
   }, [asset, allTransactions, walletAddress]);
 
-  // Rest of the component remains the same...
-
   if (loading) {
     return (
       <div className="flex justify-center p-4">
@@ -141,67 +179,101 @@ const AssetTransactionHistory: React.FC<AssetTransactionHistoryProps> = ({
     );
   }
 
-  if (assetTransactions.length === 0 && !loading) {
-    return <p className="text-sm text-gray-500 p-4">No transfers found</p>;
-  }
+  const currentValue = asset.quote || 0;
+  const currentBalance = asset.balance || BigInt(0);
+  const unrealizedPnL =
+    currentBalance > BigInt(0)
+      ? currentValue -
+        costAnalysis.avgCost *
+          Number(formatBalance(currentBalance, asset.contract_decimals))
+      : 0;
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Date</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead>Amount</TableHead>
-          <TableHead>Value</TableHead>
-          <TableHead>Tx Hash</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {assetTransactions.map((transfer, index) => (
-          <TableRow key={`${transfer.hash}-${index}`}>
-            <TableCell>
-              {format(new Date(transfer.timestamp), 'MMM dd, yyyy HH:mm')}
-            </TableCell>
-            <TableCell>
-              {transfer.type === 'receive' ? (
-                <MoveDownLeft color={'green'} />
-              ) : (
-                <MoveUpRight color="red" />
-              )}
-            </TableCell>
-            <TableCell>
-              <span
-                className={
-                  transfer.type === 'receive'
-                    ? 'text-green-600'
-                    : 'text-red-600'
-                }
-              >
-                {transfer.type === 'receive' ? '+' : '-'}
-                {formatBalance(
-                  BigInt(transfer.amount),
-                  asset.contract_decimals
-                )}
-              </span>
-            </TableCell>
-            <TableCell>{transfer.pretty_value_quote || 'N/A'}</TableCell>
-            <TableCell>
-              <a
-                href={`https://etherscan.io/tx/${transfer.hash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 text-sm"
-              >
-                {transfer.hash.slice(0, 6)}...{transfer.hash.slice(-4)}
-              </a>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+        <div>
+          <p className="text-sm text-gray-500">Average Cost Per Token</p>
+          <p className="font-medium">${costAnalysis.avgCost.toFixed(2)}</p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-500">Current Price</p>
+          <p className="font-medium">
+            $
+            {(
+              currentValue /
+              Number(formatBalance(currentBalance, asset.contract_decimals))
+            ).toFixed(2)}
+          </p>
+        </div>
+      </div>
+
+      {assetTransactions.length === 0 ? (
+        <p className="text-sm text-gray-500 p-4">No transfers found</p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Amount</TableHead>
+              <TableHead>Price at Time</TableHead>
+              <TableHead>Value</TableHead>
+              <TableHead>Tx Hash</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {assetTransactions.map((transfer, index) => {
+              const amount = BigInt(transfer.amount);
+              const formattedAmount = Number(
+                formatBalance(amount, asset.contract_decimals)
+              );
+              const priceAtTime = transfer.value_quote / formattedAmount;
+
+              return (
+                <TableRow key={`${transfer.hash}-${index}`}>
+                  <TableCell>
+                    {format(new Date(transfer.timestamp), 'MMM dd, yyyy HH:mm')}
+                  </TableCell>
+                  <TableCell>
+                    {transfer.type === 'receive' ? (
+                      <MoveDownLeft color={'green'} />
+                    ) : (
+                      <MoveUpRight color="red" />
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={
+                        transfer.type === 'receive'
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                      }
+                    >
+                      {transfer.type === 'receive' ? '+' : '-'}
+                      {formatBalance(amount, asset.contract_decimals)}
+                    </span>
+                  </TableCell>
+                  <TableCell>${priceAtTime.toFixed(2)}</TableCell>
+                  <TableCell>{transfer.pretty_value_quote || 'N/A'}</TableCell>
+                  <TableCell>
+                    <a
+                      href={`https://etherscan.io/tx/${transfer.hash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 text-sm"
+                    >
+                      {transfer.hash.slice(0, 6)}...{transfer.hash.slice(-4)}
+                    </a>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      )}
+    </div>
   );
 };
-
 const WalletAssetsTable = ({
   balances,
   showSmallHoldings = false,
