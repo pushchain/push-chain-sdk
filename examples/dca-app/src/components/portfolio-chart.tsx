@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { format } from 'date-fns';
-import { useChainId } from 'wagmi';
+
 import { goldrushClient } from '@/lib/utils';
 import { Chain, PortfolioResponse } from '@covalenthq/client-sdk';
 
