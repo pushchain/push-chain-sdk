@@ -21,6 +21,7 @@ export class Wallet {
     if (!connectionStatus.isConnected) {
       await this.requestAppConnection();
     }
+    return await this.requestWalletAddress();
   };
 
   /**
