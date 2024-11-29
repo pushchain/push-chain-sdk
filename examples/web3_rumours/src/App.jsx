@@ -7,6 +7,8 @@ import ProfilePage from './pages/ProfilePage/ProfilePage.jsx';
 import SentConfessions from './pages/SentConfessions/SentConfessions.jsx';
 import ReceivedConfessions from './pages/ReceivedConfessions/ReceivedConfessions.jsx';
 import PostConfession from './pages/PostConfession/PostConfession.jsx';
+import RumoursFeed from './pages/RumoursFeed/RumoursFeed.jsx';
+import AboutPage from "./pages/AboutPage/AboutPage";
 
 function App() {
   return (
@@ -26,6 +28,10 @@ function App() {
 
         {/* Post Confession */}
         <Route path="/post" element={<PostConfession />} />
+
+        <Route path="/feed" element={<RumoursFeed />} />
+        <Route path="/about" element={<AboutPage />} />
+
       </Routes>
     </Router>
   );

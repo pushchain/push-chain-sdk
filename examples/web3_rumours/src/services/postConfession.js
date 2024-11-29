@@ -65,13 +65,6 @@ export const postConfession = async (wallet, confessionDetails) => {
     );
     const address = `eip155:1:${normalizedAddress}`;
 
-    // const wallet = new ethers.Wallet(pk);
-    // Message to sign
-    // const message = "You are posting a confession!";
-    // const signature = await metamaskSigner.signMessage(message);
-
-    // console.log("Posting confession signature: ", signature);
-
     const signer = {
       account: address,
       signMessage: async (data) => {
@@ -82,7 +75,7 @@ export const postConfession = async (wallet, confessionDetails) => {
 
     // Send a transaction
     const txHash = await userAlice.tx.send(unsignedTx, signer);
-    console.log("Transaction Hash:", txHash);
+    console.log("Confession Transaction Hash:", txHash);
   } catch (error) {
     console.error(error);
   }
