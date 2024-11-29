@@ -25,7 +25,7 @@ export default function Game() {
     progress: 0
   });
 
-  const { game, otherPlayersPublicKey, pokerService, gameTransactionHash } = usePokerGameContext();
+  const { game, otherPlayersPublicKey, pokerService, gameTransactionHash,setGame } = usePokerGameContext();
   const { connectedPushAddressFormat } = useConnectedPushAddress();
 
   // Initialize hooks
@@ -74,12 +74,17 @@ export default function Game() {
     return () => clearInterval(intervalId);
   }, [gameTransactionHash, pokerService, game]);
 
+  
+  
+
   // Monitor key exchange progress
   useEffect(() => {
     if (!game || game.players.size < 3) return;
 
     const totalPlayers = game.players.size;
+    console.log("totalplayer",totalPlayers)
     const keysCollected = otherPlayersPublicKey.size;
+    console.log("keysCollected",keysCollected)
     
     const keyProgress = Math.min((keysCollected / (totalPlayers - 1)) * 100, 100);
     

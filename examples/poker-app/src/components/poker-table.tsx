@@ -8,6 +8,9 @@ import { cn } from "../lib/utils";
 import { usePokerGameContext } from "../hooks/usePokerGameContext";
 import { cardImageURL, cardBackImageURL } from "../lib/cards";
 import useConnectedPushAddress from "../hooks/useConnectedPushAddress";
+import usePushWalletSigner from '../hooks/usePushSigner';
+import { generateKeyPair } from '../encryption';
+import { Button } from './ui/button';
 
 interface Player {
   id: string;
@@ -43,14 +46,81 @@ const getPlayerPosition = (index: number, totalPlayers: number) => {
 };
 
 export default function PokerTable({ dealingPhase, isDealer }: PokerTableProps) {
-  const { game } = usePokerGameContext();
+  const { game,pokerService,gameTransactionHash ,setGame} = usePokerGameContext();
   const { connectedPushAddressFormat } = useConnectedPushAddress();
   const [communityCards, setCommunityCards] = useState<string[]>([]);
   const [showCards, setShowCards] = useState(false);
   const [sessionTime, setSessionTime] = useState(0);
+  const { pushWalletSigner } = usePushWalletSigner(); 
+
+
+  useEffect(() => {
+    if (!game || !pokerService || !gameTransactionHash) {
+      console.log("Missing dependencies for polling: game, pokerService, or gameTransactionHash");
+      return;
+    }
+
+    const pollPlayers = async () => {
+      try {
+        const updatedPlayers = await pokerService.getPlayerOrderForTable({
+          txHash: gameTransactionHash,
+          creator: game.creator,
+        });
+
+        if (updatedPlayers) {
+          // Clone current game state
+          const updatedGame = { ...game };
+
+          // Update players in the cloned game state
+          updatedGame.players = new Map(game.players); // Ensure a new map is used
+          updatedPlayers.forEach((playerAddress) => {
+            if (!updatedGame.players.has(playerAddress)) {
+              updatedGame.players.set(playerAddress, {
+                chips: 100,
+                cards: [],
+              });
+            }
+          });
+
+          // Update the game state using setGame
+          setGame(updatedGame);
+        }
+      } catch (error) {
+        console.error("Error fetching player order:", error);
+      }
+    };
+
+    // Set an interval to poll every 3 seconds
+    const intervalId = setInterval(() => {
+      pollPlayers();
+    }, 5000);
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(intervalId);
+  }, [game, pokerService, gameTransactionHash, setGame]);
+
+  const handleEncryption = async () => {
+    if (!pokerService || !game || !pushWalletSigner) {
+      console.error('Missing pokerService, game, or wallet signer');
+      return;
+    }
+
+    try {
+      const keys = generateKeyPair(); // Generate encryption keys
+      await pokerService.submitPublicKey(
+        keys.publicKey,
+        [...game.players.keys()], // Pass player addresses
+        pushWalletSigner
+      );
+      console.log('Public key successfully submitted');
+    } catch (error) {
+      console.error('Error submitting public key:', error);
+    }
+  };
 
   // Memoized players array
   const players = useMemo(() => {
+    
     if (!game) return [];
     
     return Array.from(game.players.entries()).map(([address, player], index) => ({
@@ -201,6 +271,8 @@ export default function PokerTable({ dealingPhase, isDealer }: PokerTableProps) 
                 <Shield className="w-12 h-12 mb-4 mx-auto text-blue-500 animate-pulse" />
                 <h3 className="text-xl font-bold mb-2">Setting Up Encryption</h3>
                 <p className="text-white/70">Securing the card dealing process...</p>
+                <Button onClick={handleEncryption}>Submit Encryption Key</Button>
+
               </div>
             </Card>
           </motion.div>

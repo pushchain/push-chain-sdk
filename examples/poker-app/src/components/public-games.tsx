@@ -15,7 +15,7 @@ export default function PublicGames() {
   const [loadingFetchingGames, setLoadingFetchingGames] = useState(true);
   const [loadingStartGame, setLoadingStartGame] = useState(false);
   const { setGameStarted } = useAppContext();
-  const { setGame, pokerService } = usePokerGameContext();
+  const { setGame, pokerService ,setGameTransactionHash} = usePokerGameContext();
   const { connectedPushAddressFormat } = useConnectedPushAddress();
   const { pushWalletSigner } = usePushWalletSigner();
 
@@ -102,7 +102,7 @@ export default function PublicGames() {
           creator: game.creator,
           dealer: game.creator,
         };
-  
+        setGameTransactionHash(game.txHash);
         setGame(pokerGame);
       } else {
         toast.error('Failed to join the game. Please try again.');
@@ -165,6 +165,7 @@ export default function PublicGames() {
         game.players,
         pushWalletSigner
       );
+      setGameTransactionHash(game.txHash);
       setGameStarted(true);
       setGame(pokerGame);
     } catch (error) {

@@ -17,13 +17,20 @@ export default function useFetchPlayersPublicKeys() {
   useEffect(() => {
     if (!game || !pokerService || !gameTransactionHash) return;
     const intervalId = setInterval(async () => {
+      
       for (const playerAddress of game.players.keys()) {
+        console.log("player address",playerAddress)
+        console.log("transaction hash", gameTransactionHash)
+        console.log("cond",[...otherPlayersPublicKey.keys()].includes(playerAddress))
+        console.log("key",otherPlayersPublicKey)
         if (![...otherPlayersPublicKey.keys()].includes(playerAddress)) {
           const publicKey = await pokerService.getPlayerPublicKey(
             gameTransactionHash,
             playerAddress
           );
+          console.log("public key",publicKey)
           if (!publicKey) continue;
+          console.log("publ",publicKey)
           setOtherPlayersPublicKey((p) => p.set(playerAddress, publicKey));
         }
       }

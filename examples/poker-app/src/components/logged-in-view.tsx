@@ -14,6 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Separator } from './ui/seperator';
 import { ChevronRight, Plus, Users, Trophy } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Phase, PhaseType, Player, PokerGame } from '../temp_types/types.ts';
+
 
 export default function LoggedInView() {
   const [friendsWallets, setFriendsWallets] = useState<string[]>([]);
@@ -22,7 +24,7 @@ export default function LoggedInView() {
   const [recommendedWallets, setRecommendedWallets] = useState<string[]>([]);
   const { connectedPushAddressFormat } = useConnectedPushAddress();
   const { pushWalletSigner } = usePushWalletSigner();
-  const { pokerService, gameTransactionHash, setGameTransactionHash } = usePokerGameContext();
+  const { setGame,pokerService, gameTransactionHash, setGameTransactionHash } = usePokerGameContext();
   const { gameStarted, setGameStarted } = useAppContext();
 
   useEffect(() => {
@@ -59,11 +61,32 @@ export default function LoggedInView() {
     try {
       setLoadingStartGame(true);
       if (!connectedPushAddressFormat || !pushWalletSigner || !pokerService) return;
+  
+      // Create game data locally and set it in context
+      const pokerGame: PokerGame = {
+        players: new Map<string, Player>([
+          [connectedPushAddressFormat, { chips: 100, cards: [] }],
+        ]),
+        phases: new Map<PhaseType, Phase>(),
+        cards: [],
+        pot: 0,
+        creator: connectedPushAddressFormat,
+        dealer: connectedPushAddressFormat,
+      };
+  
+      // Update the context with the initial game data
+      
+  
+      // Call the API to create the game on the backend
       const tx = await pokerService.createGame(
         { type },
         [connectedPushAddressFormat, ...friendsWallets],
         pushWalletSigner
       );
+
+      setGame(pokerGame);
+  
+      // Store the transaction hash in context
       setGameTransactionHash(tx);
       setGameStarted(true);
     } catch (error) {
@@ -73,6 +96,7 @@ export default function LoggedInView() {
       setLoadingStartGame(false);
     }
   };
+  
 
   if (gameStarted) {
     return <Game />;

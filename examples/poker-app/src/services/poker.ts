@@ -248,6 +248,7 @@ export class Poker {
     );
     // We get the first publicKey submitted by that player. We will have only 1 transaction that the user will
     // submit with his public key. There will be more than 1 transaction submitted only in case of a bug
+    console.log("response",response)
     const block = response.blocks[0];
     const transaction = block.blockDataAsJson.txobjList as { tx: Transaction };
     const decodedData = new TextDecoder().decode(
