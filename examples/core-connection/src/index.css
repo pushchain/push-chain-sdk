@@ -65,3 +65,38 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+.loader-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loader {
+  border: 4px solid #e0e0e0; /* Light gray */
+  border-top: 4px solid #3498db; /* Blue */
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loader-text {
+  margin-left: 10px;
+  color: #3498db;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.account-info {
+  text-align: center;
+}

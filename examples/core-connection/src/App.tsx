@@ -16,6 +16,8 @@ const App: React.FC = () => {
   const [mockTx, setMockTx] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [account, setAccount] = useState<string>('');
+  const [walletConnectionLoading, setWalletConnectionLoading] =
+    useState<boolean>(false);
 
   // For signing message
   const [userInput, setUserInput] = useState<string>('');
@@ -40,14 +42,25 @@ const App: React.FC = () => {
     setNetwork();
   }, []);
 
-  const connectWallet = async () => {
-    try {
-      if (pushNetwork) {
+  const connectWallet = async (tryCount: number = 1) => {
+    setWalletConnectionLoading(true);
+    if (pushNetwork) {
+      try {
         const acc = await pushNetwork.wallet.connect();
         setAccount(acc);
+        setWalletConnectionLoading(false);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (err) {
+        if (tryCount < 30 && err === 'PushWallet Not Logged In') {
+          // wait for 5 seconds and try again
+          setTimeout(() => {
+            connectWallet(tryCount + 1);
+          }, 2000);
+        } else {
+          alert(err);
+          setWalletConnectionLoading(false);
+        }
       }
-    } catch (err) {
-      alert(err);
     }
   };
 
@@ -89,14 +102,37 @@ const App: React.FC = () => {
   return (
     <div className="app-container">
       <h1>Send Transaction to Push Network</h1>
-      {pushNetwork && account === '' && (
-        <button
-          className="send-button"
-          onClick={connectWallet}
-          disabled={loading}
-        >
-          Connect Push Wallet
-        </button>
+      {pushNetwork &&
+        account === '' &&
+        (walletConnectionLoading ? (
+          <div className="loader-container">
+            <div className="loader"></div>
+            <p className="loader-text">Connecting Wallet...</p>
+          </div>
+        ) : (
+          <button
+            className="send-button"
+            onClick={() => connectWallet(1)}
+            disabled={loading}
+            style={{
+              backgroundColor: '#3498db',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '5px',
+              padding: '10px 20px',
+              cursor: 'pointer',
+              fontSize: '1rem',
+            }}
+          >
+            Connect Push Wallet
+          </button>
+        ))}
+
+      {account !== '' && (
+        <div className="account-info">
+          <h2>Connected Account:</h2>
+          <p>{account}</p>
+        </div>
       )}
 
       {account !== '' && (
