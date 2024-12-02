@@ -176,9 +176,14 @@ export class Tx {
     signer: {
       account: string;
       signMessage: (dataToBeSigned: Uint8Array) => Promise<Uint8Array>;
-    }
+    },
+    url: string = this.validator['activeValidatorURL']
   ): Promise<string> => {
-    const token = await this.validator.call<TokenReply>('push_getApiToken');
+    const token = await this.validator.call<TokenReply>(
+      'push_getApiToken',
+      [],
+      url
+    );
     const serializedUnsignedTx = Tx.serialize({
       ...unsignedTx,
       sender: signer.account,
@@ -205,7 +210,15 @@ export class Tx {
   /**
    * Get Transactions
    */
-  async getTransactionsFromVNode(accountInCaip: string, category: string, ts: string = '' + Math.floor(Date.now()/1000), direction: 'ASC' | 'DESC' = 'DESC') {
-    return await this.validator.callVNode<ReplyGrouped>('push_getTransactions', [accountInCaip, category, ts, direction]);
+  async getTransactionsFromVNode(
+    accountInCaip: string,
+    category: string,
+    ts: string = '' + Math.floor(Date.now() / 1000),
+    direction: 'ASC' | 'DESC' = 'DESC'
+  ) {
+    return await this.validator.callVNode<ReplyGrouped>(
+      'push_getTransactions',
+      [accountInCaip, category, ts, direction]
+    );
   }
 }
