@@ -1,4 +1,4 @@
-import { Address, Tx } from '../../src';
+import { Address, CONSTANTS, Tx } from '../../src';
 import { TxCategory } from '../../src/lib/tx/tx.types';
 import { InitDid } from '../../src/lib/generated/txData/init_did';
 import { config } from '../config';
@@ -44,7 +44,7 @@ const mockRecipients = [
 // add .skip if needed
 describe('validator smoke test', () => {
 
-  // switch to ENV.LOCAL or ENV.DEV
+  // NOTE: you can switch manually to CONSTANTS.ENV.LOCAL or CONSTANTS.ENV.DEV
   const env = config.ENV;
 
   it('write :: itx :: send INIT_DID tx', async () => {
@@ -73,8 +73,9 @@ describe('validator smoke test', () => {
       `eip155:137:${privateKeyToAddress(generatePrivateKey())}`,
       `eip155:97:${privateKeyToAddress(generatePrivateKey())}`,
     ];
+    const category = 'CUSTOM:NETWORK_BENCH';
     const sampleTx = txInstance.createUnsigned(
-      'CUSTOM:CORE_SDK',
+      category,
       recipients,
       new Uint8Array([1, 2, 3, 4, 5])
     );
@@ -95,7 +96,7 @@ describe('validator smoke test', () => {
 
     // read
     for (const recipient of recipients) {
-      const res = await txInstance.getTransactionsFromVNode(recipient, "CUSTOM:CORE_SDK");
+      const res = await txInstance.getTransactionsFromVNode(recipient, category);
       expect(res.items).toBeInstanceOf(Array);
       const item0 = res.items[0];
       expect(item0.sender).toEqual(signer.account);
@@ -116,5 +117,14 @@ describe('validator smoke test', () => {
     console.log("%o", res);
   });
 
+  it('read :: should get transactions with custom parameters2', async () => {
+    const txInstance = await Tx.initialize(env);
+    const res = await txInstance.getTransactionsFromVNode(
+      'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4',
+      'CUSTOM:NETWORK_BENCH'
+    );
+    expect(res.items).toBeInstanceOf(Array);
+    console.log('%o', res);
+  });
 
 });

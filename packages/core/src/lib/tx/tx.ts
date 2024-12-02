@@ -1,4 +1,4 @@
-import { v4 as uuidv4, parse } from 'uuid';
+import { parse, v4 as uuidv4 } from 'uuid';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
 import { ReplyGrouped, TxCategory } from './tx.types';
 import { Transaction } from '../generated/tx';
@@ -10,6 +10,7 @@ import { TokenReply } from '../validator/validator.types';
 import { BlockResponse } from '../block/block.types';
 import { sha256 } from '@noble/hashes/sha256';
 import { toHex } from 'viem';
+
 export class Tx {
   private constructor(private validator: Validator, private env: ENV) {}
 
@@ -78,10 +79,12 @@ export class Tx {
     recipients: string[],
     data: Uint8Array
   ): Transaction => {
+    Tx.checkCategoryOrFail(category);
+    const fixedRecipients:string[] = recipients.map(value => Tx.normalizeCaip(value));
     return Transaction.create({
       type: 0, // Phase 0 only has non-value transfers
       category,
-      recipients,
+      recipients: recipients.map(value => Tx.normalizeCaip(value)),
       data,
       salt: parse(uuidv4()),
       fee: '0', // Fee is 0 as of now
@@ -178,10 +181,12 @@ export class Tx {
       signMessage: (dataToBeSigned: Uint8Array) => Promise<Uint8Array>;
     }
   ): Promise<string> => {
+    const senderLowerCase = signer.account.toLowerCase();
+    console.log('send() accound: %s', senderLowerCase);
     const token = await this.validator.call<TokenReply>('push_getApiToken');
     const serializedUnsignedTx = Tx.serialize({
       ...unsignedTx,
-      sender: signer.account,
+      sender: senderLowerCase,
       signature: new Uint8Array(0),
       apiToken: utf8ToBytes(token.apiToken),
     });
@@ -206,6 +211,20 @@ export class Tx {
    * Get Transactions
    */
   async getTransactionsFromVNode(accountInCaip: string, category: string, ts: string = '' + Math.floor(Date.now()/1000), direction: 'ASC' | 'DESC' = 'DESC') {
-    return await this.validator.callVNode<ReplyGrouped>('push_getTransactions', [accountInCaip, category, ts, direction]);
+    Tx.checkCategoryOrFail(category);
+    return await this.validator.callVNode<ReplyGrouped>('push_getTransactions', [Tx.normalizeCaip(accountInCaip), category, ts, direction]);
+  }
+
+  static normalizeCaip(accountInCaip:string) {
+    if(accountInCaip.startsWith("eip155")) {
+      return accountInCaip.toLowerCase();
+    }
+    return accountInCaip;
+  }
+
+  static checkCategoryOrFail(category:string) {
+    if(category==null || category == "" || category.length > 20) {
+      throw new Error('Invalid category, max size is 20 ascii chars');
+    }
   }
 }

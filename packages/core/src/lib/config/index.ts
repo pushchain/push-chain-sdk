@@ -2,7 +2,9 @@ import { ENV } from '../constants';
 import { mainnet, localhost, sepolia } from 'viem/chains';
 import { validatorABI } from './abis/validator';
 import { Config } from './config.types';
+import * as process from 'node:process';
 
+// ENV CONFIGS
 const config: Config = {
   ABIS: {
     VALIDATOR: validatorABI,
