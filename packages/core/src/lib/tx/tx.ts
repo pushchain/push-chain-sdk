@@ -188,12 +188,11 @@ export class Tx {
       signMessage: (dataToBeSigned: Uint8Array) => Promise<Uint8Array>;
     }
   ): Promise<string> => {
-    const senderLowerCase = signer.account.toLowerCase();
-    console.log('send() accound: %s', senderLowerCase);
+    console.log('send() accound: %s', Tx.normalizeCaip(signer.account));
     const token = await this.validator.call<TokenReply>('push_getApiToken');
     const serializedUnsignedTx = Tx.serialize({
       ...unsignedTx,
-      sender: senderLowerCase,
+      sender: Tx.normalizeCaip(signer.account),
       signature: new Uint8Array(0),
       apiToken: utf8ToBytes(token.apiToken),
     });
