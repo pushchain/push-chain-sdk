@@ -17,6 +17,10 @@ export class Wallet {
   connect = async (walletURL: string = this.walletUrl) => {
     this.walletUrl = walletURL;
     await this.openWalletWindow();
+    const connectionStatus = await this.appConnectionStatus();
+    if (!connectionStatus.isConnected) {
+      await this.requestAppConnection();
+    }
     return await this.requestWalletAddress();
   };
 
