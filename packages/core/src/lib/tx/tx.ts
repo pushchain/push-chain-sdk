@@ -125,7 +125,7 @@ export class Tx {
    * Get Transactions
    */
   async getFromVNode(accountInCaip: string, category: string, ts: string = '' + Math.floor(Date.now()/1000), direction: 'ASC' | 'DESC' = 'DESC') {
-    return await this.validator.callEx<ReplyGrouped>('push_getTransactions', [accountInCaip, category, ts, direction]);
+    return await this.validator.callVNode<ReplyGrouped>('push_getTransactions', [accountInCaip, category, ts, direction]);
   }
 
   /**
@@ -235,33 +235,3 @@ export class Tx {
     }
   }
 }
-
-export class ReplyGrouped {
-  items: TxInfo[] = [];
-  summary: ResultMeta = new ResultMeta();
-}
-
-export class ResultMeta {
-  quorumResult!: QuorumResult;
-  itemCount!: number;
-  lastTs!: string;
-  keysWithoutQuorumCount!: number;
-  keysWithoutQuorum!: string[];
-}
-
-export enum QuorumResult {
-  QUORUM_OK = 'QUORUM_OK',
-  QUORUM_OK_PARTIAL = 'QUORUM_OK_PARTIAL',
-  QUORUM_FAILED_NODE_REPLIES = 'QUORUM_FAILED_NODE_REPLIES',
-  QUORUM_FAILED_BY_MIN_ITEMS = 'QUORUM_FAILED_BY_MIN_ITEMS',
-}
-
-export type TxInfo = {
-  type: number;
-  category: string;
-  sender: string;
-  recipients: string[];
-  data: string;
-  ts: string;
-  salt: string;
-};
