@@ -72,7 +72,7 @@ describe('validator smoke test', () => {
       `eip155:1:${privateKeyToAddress(generatePrivateKey())}`,
       `eip155:137:${privateKeyToAddress(generatePrivateKey())}`,
       `eip155:97:${privateKeyToAddress(generatePrivateKey())}`,
-    ];
+    ].map(value => Tx.normalizeCaip(value));
     const category = 'CUSTOM:NETWORK_BENCH';
     const sampleTx = txInstance.createUnsigned(
       category,
@@ -82,8 +82,9 @@ describe('validator smoke test', () => {
 
     const pk = generatePrivateKey();
     const account = privateKeyToAccount(pk);
+    const senderInCaip = Address.toPushCAIP(account.address, ENV.DEV);
     const signer = {
-      account: Address.toPushCAIP(account.address, ENV.DEV),
+      account: senderInCaip,
       signMessage: async (data: Uint8Array) => {
         const signature = await account.signMessage({
           message: { raw: data },
@@ -94,13 +95,16 @@ describe('validator smoke test', () => {
     const res = await txInstance.send(sampleTx, signer);
     expect(typeof res).toEqual('string');
 
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
     // read
-    for (const recipient of recipients) {
+    for (const recipient of [senderInCaip, ...recipients]) {
+      console.log('checking %s', recipient)
       const res = await txInstance.getTransactionsFromVNode(recipient, category);
       expect(res.items).toBeInstanceOf(Array);
       const item0 = res.items[0];
       expect(item0.sender).toEqual(signer.account);
-      expect(item0.recipients).toEqual(sampleTx.recipients);
+      expect(item0.recipientsList).toEqual(sampleTx.recipients);
       const sampleDataBase16 = toHex(sampleTx.data).substring(2);
       expect(item0.data).toEqual(sampleDataBase16);
       console.log("OK %o", res);

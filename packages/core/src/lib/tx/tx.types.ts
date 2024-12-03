@@ -42,7 +42,7 @@ export type TxInfo = {
   type: number;
   category: string;
   sender: string;
-  recipients: string[];
+  recipientsList: string[];
   data: string;
   ts: string;
   salt: string;

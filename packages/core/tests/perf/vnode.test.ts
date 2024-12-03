@@ -99,7 +99,7 @@ describe.skip('validator smoke test', () => {
       expect(res.items).toBeInstanceOf(Array);
       const item0 = res.items[0];
       expect(item0.sender).toEqual(signer.account);
-      expect(item0.recipients).toEqual(sampleTx.recipients);
+      expect(item0.recipientsList).toEqual(sampleTx.recipients);
       const sampleDataBase16 = toHex(sampleTx.data).substring(2);
       expect(item0.data).toEqual(sampleDataBase16);
       console.log("OK %o", res);
