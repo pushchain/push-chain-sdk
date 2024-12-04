@@ -1,35 +1,107 @@
+import { useEffect, useState } from 'react';
 import { useAccount, useChainId } from 'wagmi';
 import PortfolioTracker from './portfolio-tracker';
 import ConnectedWalletCard from './ui/connected-wallet-card';
 import { useAppContext } from '@/context/app-context';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
+import { isAddress } from 'viem';
+import { usePrivy } from '@privy-io/react-auth';
 
 const Header = () => {
+  const { logout } = usePrivy();
+
   return (
-    <div className="flex flex-row justify-between my-6 md:my-8">
-      <h2 className="scroll-m-20 pb-2 text-3xl font-semibold tracking-tight first:mt-0 bg-gradient-to-r from-blue-600 to-blue-400 text-transparent bg-clip-text">
-        Dashboard
-      </h2>
-      <ConnectedWalletCard />
+    <div className="flex flex-row justify-between items-center my-6 md:my-8">
+      <h2 className="text-2xl font-bold text-[#3B82F6]">Dashboard</h2>
+      <div className="flex items-center gap-4">
+        <ConnectedWalletCard />
+      </div>
     </div>
   );
 };
 
 const MainContent = () => {
   const { address } = useAccount();
-  const { watchAccount } = useAppContext();
-
   const chainId = useChainId();
+  const { watchAccount, setWatchAccount } = useAppContext();
+  const [watchAddresses, setWatchAddresses] = useState<string[]>([]);
+  const [newWatchAddress, setNewWatchAddress] = useState('');
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
 
-  if (watchAccount) {
-    return (
-      <div>
-        <PortfolioTracker walletAddress={watchAccount} chainId={1} />
-      </div>
-    );
-  }
+  useEffect(() => {
+    // Load watched addresses from local storage
+    const savedAddresses = localStorage.getItem('watchedAddresses');
+    if (savedAddresses) {
+      setWatchAddresses(JSON.parse(savedAddresses));
+    }
+    // Set the connected wallet as the initial selected address
+    setSelectedAddress(address || null);
+  }, [address]);
+
+  const addWatchAddress = () => {
+    if (isAddress(newWatchAddress) && !watchAddresses.includes(newWatchAddress)) {
+      const updatedAddresses = [...watchAddresses, newWatchAddress];
+      setWatchAddresses(updatedAddresses);
+      localStorage.setItem('watchedAddresses', JSON.stringify(updatedAddresses));
+      setNewWatchAddress('');
+      setWatchAccount(newWatchAddress);
+      setSelectedAddress(newWatchAddress);
+    }
+  };
+
+  const selectAddress = (addr: string | null) => {
+    setSelectedAddress(addr);
+    setWatchAccount(addr || '');
+  };
+
   return (
     <div>
-      <PortfolioTracker walletAddress={address!} chainId={chainId} />
+      <div className="flex items-center gap-2 mb-6">
+        <Input
+          value={newWatchAddress}
+          onChange={(e) => setNewWatchAddress(e.target.value)}
+          placeholder="Add a wallet to watch"
+          className="flex-1"
+        />
+        <Button 
+          onClick={addWatchAddress} 
+          disabled={!isAddress(newWatchAddress)}
+          className="bg-[#3B82F6] text-white hover:bg-[#2563EB]"
+        >
+          Add
+        </Button>
+      </div>
+      
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Button
+          variant="ghost"
+          className={`text-sm ${selectedAddress === address ? 'bg-[#3B82F6] text-white' : 'text-gray-600'}`}
+          onClick={() => selectAddress(address || null)}
+        >
+          Your Wallet
+        </Button>
+        {watchAddresses.map((addr) => (
+          <Button
+            key={addr}
+            variant="ghost"
+            className={`text-sm ${addr === selectedAddress ? 'bg-[#3B82F6] text-white' : 'text-gray-600'}`}
+            onClick={() => selectAddress(addr)}
+          >
+            {addr.slice(0, 6)}...{addr.slice(-4)}
+          </Button>
+        ))}
+      </div>
+
+      <div>
+        <h3 className="text-lg font-semibold mb-4">
+          {selectedAddress === address ? 'Your Portfolio:' : 'Watched Portfolio:'}
+        </h3>
+        <PortfolioTracker 
+          walletAddress={selectedAddress || address!} 
+          chainId={selectedAddress === address ? chainId : 1} 
+        />
+      </div>
     </div>
   );
 };
@@ -42,4 +114,6 @@ const LoggedInView = () => {
     </div>
   );
 };
+
 export default LoggedInView;
+

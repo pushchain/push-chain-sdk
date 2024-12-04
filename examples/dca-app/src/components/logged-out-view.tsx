@@ -1,12 +1,11 @@
 import { usePrivy } from '@privy-io/react-auth';
 import { useAppContext } from '@/context/app-context';
 import { Button } from './ui/button';
-import { isAddress, toBytes } from 'viem';
-import { Input } from './ui/input';
+import { toBytes } from 'viem';
 
 const LoggedOutView = () => {
   const { login } = usePrivy();
-  const { pushNetwork, setPushAccount, watchAccount, setWatchAccount } =
+  const { pushNetwork, setPushAccount } =
     useAppContext();
   const pushWalletLoginHandler = async () => {
     try {
@@ -31,17 +30,9 @@ const LoggedOutView = () => {
         </Button>
         <Button onClick={pushWalletLoginHandler}>Login w/ Push Wallet</Button>
       </div>
-      <span className="bg-gray-300 rounded-full p-4 text-gray-700">OR</span>
-      <Input
-        value={watchAccount}
-        onChange={(e) => {
-          if (isAddress(e.target.value)) setWatchAccount(e.target.value);
-        }}
-        placeholder="just watch a wallet"
-        className="w-80 border-primary"
-      />
     </div>
   );
 };
+
 
 export default LoggedOutView;
