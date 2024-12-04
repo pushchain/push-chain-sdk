@@ -13,10 +13,10 @@ import { ethers, BrowserProvider } from "ethers";
   };
 */
 
-export const postConfession = async (wallet, confessionDetails) => {
+export const postConfession = async (userAlice, wallet, confessionDetails) => {
   try {
     // Initialize PushNetwork class instance
-    const userAlice = await PushNetwork.initialize("dev");
+    // const userAlice = await PushNetwork.initialize("dev");
 
     // Define the schema
     const schema = `
@@ -54,28 +54,37 @@ export const postConfession = async (wallet, confessionDetails) => {
     );
     console.log("Unsigned Transaction:", unsignedTx);
 
-    // Initialize BrowserProvider for the wallet provider
-    const provider = new BrowserProvider(wallet.provider);
-    const metamaskSigner = await provider.getSigner();
+    if (typeof wallet == "string") {
+      const txHash = await userAlice.tx.send(unsignedTx, {
+        account: wallet,
+        signMessage: async (data) => {
+          return await userAlice.wallet.sign(data);
+        },
+      });
 
-    // const pk = "0xafcd280386cd585959b642d9e5aefa86890c0af0b1eec0ff4fd0fe4884f3e6d9";
-    // const address = "eip155:1:0x76F1AE0d7E6bB39bFE4784627D3575c7397ad6eA";
-    const normalizedAddress = ethers.getAddress(
-      wallet.accounts[0]?.address
-    );
-    const address = `eip155:1:${normalizedAddress}`;
+      console.log("🪙🪙Push Transaction: ", txHash);
+    } else {
+      // Initialize BrowserProvider for the wallet provider
+      const provider = new BrowserProvider(wallet.provider);
+      const metamaskSigner = await provider.getSigner();
 
-    const signer = {
-      account: address,
-      signMessage: async (data) => {
-        const signature = await metamaskSigner.signMessage(data);
-        return ethers.getBytes(signature);
-      },
-    };
+      // const pk = "0xafcd280386cd585959b642d9e5aefa86890c0af0b1eec0ff4fd0fe4884f3e6d9";
+      // const address = "eip155:1:0x76F1AE0d7E6bB39bFE4784627D3575c7397ad6eA";
+      const normalizedAddress = ethers.getAddress(wallet.accounts[0]?.address);
+      const address = `eip155:1:${normalizedAddress}`;
 
-    // Send a transaction
-    const txHash = await userAlice.tx.send(unsignedTx, signer);
-    console.log("Confession Transaction Hash:", txHash);
+      const signer = {
+        account: address,
+        signMessage: async (data) => {
+          const signature = await metamaskSigner.signMessage(data);
+          return ethers.getBytes(signature);
+        },
+      };
+
+      // Send a transaction
+      const txHash = await userAlice.tx.send(unsignedTx, signer);
+      console.log("Confession Transaction Hash:", txHash);
+    }
   } catch (error) {
     console.error(error);
   }

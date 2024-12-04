@@ -1,9 +1,14 @@
 import { PushNetwork } from '@pushprotocol/push-chain';
 
-export const connectPushWallet = async () => {
+// let userAlice = null
+
+export const connectPushWallet = async (userAlice) => {
   try {
+    // if (!userAlice) {
+    //   userAlice = await PushNetwork.initialize('dev');
+    // }
     // Initialize Push Network
-    const userAlice = await PushNetwork.initialize('dev');
+    console.log(userAlice)
     const wallet = userAlice.wallet;
 
     // Connect to Push Wallet

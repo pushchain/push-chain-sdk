@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import { useConnectWallet } from "@web3-onboard/react";
@@ -7,12 +7,16 @@ import { motion } from "framer-motion";
 import { getConfessions } from "../../services/getConfessions";
 import { performUpVote } from "../../services/performUpVote";
 
+import { ConfessionContext } from "../../context/ConfessionContext";
+
 const ProfilePage = () => {
   const [{ wallet }, , disconnect] = useConnectWallet();
   const [confessions, setConfessions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+
+  const { pushWalletAddress, user } = useContext(ConfessionContext);
 
   const confessionsCacheKey = "confessionsCache";
 
@@ -63,12 +67,14 @@ const ProfilePage = () => {
 
   // Handle upvote action
   const handleUpvote = async (wallet, upVoteCount, txnHash) => {
-    await performUpVote(wallet, upVoteCount, txnHash);
+    if (pushWalletAddress.length > 0) {
+      await performUpVote(user, pushWalletAddress, upVoteCount, txnHash);
+    } else {
+      await performUpVote(user, wallet, upVoteCount, txnHash);
+    }
     setConfessions((prev) =>
       prev.map((c) =>
-        c.txnHash === txnHash
-          ? { ...c, upVoteCount: c.upVoteCount + 1 }
-          : c
+        c.txnHash === txnHash ? { ...c, upVoteCount: c.upVoteCount + 1 } : c
       )
     );
   };
@@ -81,8 +87,12 @@ const ProfilePage = () => {
           <Highlighted>Web3</Highlighted> Rumours
         </Logo>
         <Nav>
-          <NavButton onClick={() => navigate("/sent")}>📤 Sent Rumours</NavButton>
-          <NavButton onClick={() => navigate("/post")}>✍️ Post a Rumour</NavButton>
+          <NavButton onClick={() => navigate("/sent")}>
+            📤 Sent Rumours
+          </NavButton>
+          <NavButton onClick={() => navigate("/post")}>
+            ✍️ Post a Rumour
+          </NavButton>
         </Nav>
         <SearchBar
           type="text"
@@ -92,8 +102,12 @@ const ProfilePage = () => {
         />
         <WalletInfo>
           <WalletAddress>
-            {wallet
-              ? `Connected: ${truncateAddress(wallet.accounts[0]?.address)}`
+            {wallet || pushWalletAddress
+              ? `Connected: ${
+                  pushWalletAddress
+                    ? truncateAddress(pushWalletAddress)
+                    : truncateAddress(wallet.accounts[0]?.address)
+                }`
               : "Not Connected"}
           </WalletAddress>
           <DisconnectButton
@@ -103,7 +117,7 @@ const ProfilePage = () => {
               navigate("/");
             }}
           >
-            {wallet ? "Disconnect" : "Connect Wallet"}
+            {wallet || pushWalletAddress ? "Disconnect" : "Connect Wallet"}
           </DisconnectButton>
         </WalletInfo>
       </Header>
@@ -141,7 +155,9 @@ const ProfilePage = () => {
                     <ReactMarkdown>{confession.post}</ReactMarkdown>
                   </ConfessionText>
                   <Details>
-                    <Address>{`By: ${truncateAddress(confession.address)}`}</Address>
+                    <Address>{`By: ${truncateAddress(
+                      confession.address
+                    )}`}</Address>
                     <UpvoteButton
                       onClick={() =>
                         handleUpvote(

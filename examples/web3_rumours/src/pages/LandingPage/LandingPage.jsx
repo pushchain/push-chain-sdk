@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import styled from "styled-components";
 import { useConnectWallet } from "@web3-onboard/react";
 import { ethers, BrowserProvider } from "ethers";
@@ -6,12 +6,22 @@ import { useNavigate } from "react-router-dom";
 import { connectPushWallet } from "../../services/pushWalletService"; // Importing Push Wallet service
 import RumoursImage from "../../assets/ho.gif"; // Example image
 import ChainAnimation from "../../assets/confession-bg.jpg"; // Example animation
+import { PushNetwork } from "@pushprotocol/push-chain";
+
+import { ConfessionContext } from "../../context/ConfessionContext";
 
 const LandingPage = () => {
   const [{ wallet, connecting }, connect, disconnect] = useConnectWallet();
   const [network, setNetwork] = useState("");
-  const [pushWalletAddress, setPushWalletAddress] = useState("");
   const navigate = useNavigate();
+  const {
+    isPushWallet,
+    setIsPushWallet,
+    pushWalletAddress,
+    setPushWalletAddress,
+    setUser,
+    user,
+  } = useContext(ConfessionContext);
 
   useEffect(() => {
     if (wallet) {
@@ -19,9 +29,23 @@ const LandingPage = () => {
     }
   }, [wallet]);
 
+  useEffect(() => {
+    const initUserAlice = async () => {
+      const userAlice = await PushNetwork.initialize("dev");
+      setUser(userAlice);
+    };
+    initUserAlice();
+  }, []);
+
   const handleConnect = async () => {
     try {
+      let userAlice = user;
+      if (!user) {
+        userAlice = await PushNetwork.initialize("dev");
+        setUser(userAlice);
+      }
       await connect();
+      setIsPushWallet(false);
     } catch (error) {
       console.error("Wallet connection failed:", error);
     }
@@ -34,13 +58,25 @@ const LandingPage = () => {
     }
   };
 
-  const handlePushWalletConnect = async () => {
-    const result = await connectPushWallet();
-    if (result.success) {
-      setPushWalletAddress(result.walletAddress);
-      alert(`Push Wallet Connected: ${result.walletAddress}`);
-    } else {
-      alert("Failed to connect Push Wallet. Please try again.");
+  const handlePushWalletConnect = async (tryCount) => {
+    if (user) {
+      try {
+        // const result = await connectPushWallet(userAlice);
+        const walletAddress = await user.wallet.connect();
+        console.log("Connect to wallet address: " + walletAddress);
+        setIsPushWallet(true);
+
+        setPushWalletAddress(walletAddress);
+      } catch (err) {
+        if (tryCount < 30 && err === "PushWallet Not Logged In") {
+          // wait for 5 seconds and try again
+          setTimeout(() => {
+            handlePushWalletConnect(tryCount + 1);
+          }, 2000);
+        } else {
+          alert(err);
+        }
+      }
     }
   };
 
@@ -66,7 +102,7 @@ const LandingPage = () => {
                 <CTAButton onClick={handleConnect} blue>
                   {connecting ? "Connecting..." : "Connect Wallet"}
                 </CTAButton>
-                <CTAButton onClick={handlePushWalletConnect} purple>
+                <CTAButton onClick={() => handlePushWalletConnect(1)} purple>
                   Connect with Push Wallet
                 </CTAButton>
               </>
@@ -80,7 +116,9 @@ const LandingPage = () => {
         <HeroText>
           <HeroTitle>Discover the Latest Web3 Rumours</HeroTitle>
           <HeroSubtitle>
-            Powered by decentralized technology, Web3 Rumours ensures the fastest and most secure way to explore the buzzing world of blockchain!
+            Powered by decentralized technology, Web3 Rumours ensures the
+            fastest and most secure way to explore the buzzing world of
+            blockchain!
           </HeroSubtitle>
         </HeroText>
         <HeroImage>
@@ -99,13 +137,15 @@ const LandingPage = () => {
         <FeatureCard>
           <FeatureTitle>🚀 Scalable Discussions</FeatureTitle>
           <FeatureDescription>
-            From whispers to bold claims, Web3 Rumours handles it all with unmatched scalability.
+            From whispers to bold claims, Web3 Rumours handles it all with
+            unmatched scalability.
           </FeatureDescription>
         </FeatureCard>
         <FeatureCard>
           <FeatureTitle>💬 Anonymous Participation</FeatureTitle>
           <FeatureDescription>
-            Your privacy is our priority. Share rumours without revealing your identity.
+            Your privacy is our priority. Share rumours without revealing your
+            identity.
           </FeatureDescription>
         </FeatureCard>
       </Features>
@@ -115,7 +155,8 @@ const LandingPage = () => {
         <GraphicText>
           <h2>Embrace the Future of Rumour Sharing</h2>
           <p>
-            Web3 Rumours is a hub for discovering, verifying, and debating the latest in blockchain and crypto. Stay connected, stay informed.
+            Web3 Rumours is a hub for discovering, verifying, and debating the
+            latest in blockchain and crypto. Stay connected, stay informed.
           </p>
         </GraphicText>
         <Animation src={ChainAnimation} alt="Blockchain Animation" />

@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import styled, { keyframes } from "styled-components";
 import ReactMarkdown from "react-markdown";
 import { postConfession } from "../../services/postConfession";
 import { useConnectWallet } from "@web3-onboard/react";
 import { useNavigate } from "react-router-dom";
+
+import { ConfessionContext } from "../../context/ConfessionContext";
 
 const PostRumour = () => {
   const [text, setText] = useState("");
@@ -11,6 +13,8 @@ const PostRumour = () => {
   const [loading, setLoading] = useState(false);
   const [{ wallet }, , disconnect] = useConnectWallet();
   const navigate = useNavigate();
+
+  const { pushWalletAddress, user } = useContext(ConfessionContext);
 
   // Preserve wallet state on page reload
   useEffect(() => {
@@ -40,15 +44,31 @@ const PostRumour = () => {
   const handlePost = async () => {
     if (text.trim()) {
       setLoading(true);
-      const rumourDetails = {
-        post: text,
-        address: wallet.accounts[0]?.address,
-        upvotes: 0,
-        isVisible: true,
-      };
+
+      let rumourDetails = {};
+
+      if (pushWalletAddress.length > 0) {
+        rumourDetails = {
+          post: text,
+          address: pushWalletAddress,
+          upvotes: 0,
+          isVisible: true,
+        };
+      } else {
+        rumourDetails = {
+          post: text,
+          address: wallet.accounts[0]?.address,
+          upvotes: 0,
+          isVisible: true,
+        };
+      }
 
       try {
-        await postConfession(wallet, rumourDetails);
+        if (pushWalletAddress.length > 0) {
+          await postConfession(user, pushWalletAddress, rumourDetails);
+        } else {
+          await postConfession(user, wallet, rumourDetails);
+        }
         setIsCardVisible(true);
         setText("");
       } catch (error) {
@@ -78,7 +98,10 @@ const PostRumour = () => {
           {wallet ? (
             <>
               <WalletButton>
-                {`Wallet: ${wallet.accounts[0]?.address.slice(0, 6)}...${wallet.accounts[0]?.address.slice(-4)}`}
+                {`Wallet: ${wallet.accounts[0]?.address.slice(
+                  0,
+                  6
+                )}...${wallet.accounts[0]?.address.slice(-4)}`}
               </WalletButton>
               <ActionButton onClick={() => navigate("/profile")}>
                 Profile
@@ -97,11 +120,19 @@ const PostRumour = () => {
       <PostContainer>
         <HeaderTitle>✍️ Post a Rumour</HeaderTitle>
         <MarkdownToolbar>
-          <ToolbarButton onClick={() => insertText("**", "**")}>Bold</ToolbarButton>
-          <ToolbarButton onClick={() => insertText("_", "_")}>Italic</ToolbarButton>
-          <ToolbarButton onClick={() => insertText("~~", "~~")}>Strikethrough</ToolbarButton>
+          <ToolbarButton onClick={() => insertText("**", "**")}>
+            Bold
+          </ToolbarButton>
+          <ToolbarButton onClick={() => insertText("_", "_")}>
+            Italic
+          </ToolbarButton>
+          <ToolbarButton onClick={() => insertText("~~", "~~")}>
+            Strikethrough
+          </ToolbarButton>
           <ToolbarButton onClick={() => insertText("> ")}>Quote</ToolbarButton>
-          <ToolbarButton onClick={() => insertText("[", "](url)")}>Link</ToolbarButton>
+          <ToolbarButton onClick={() => insertText("[", "](url)")}>
+            Link
+          </ToolbarButton>
         </MarkdownToolbar>
         <PostBox>
           <Textarea

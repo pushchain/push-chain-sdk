@@ -4,10 +4,10 @@ import protobuf from "protobufjs";
 
 import { ethers, BrowserProvider } from "ethers";
 
-export const performUpVote = async (wallet, upVote, txnHash) => {
+export const performUpVote = async (userAlice, wallet, upVote, txnHash) => {
   try {
     // Initialize PushNetwork class instance
-    const userAlice = await PushNetwork.initialize("dev");
+    // const userAlice = await PushNetwork.initialize("dev");
 
     // Define the schema
     const schema = `
@@ -42,26 +42,39 @@ export const performUpVote = async (wallet, upVote, txnHash) => {
       buffer
     );
 
-    // Initialize BrowserProvider for the wallet provider
-    const provider = new BrowserProvider(wallet.provider);
-    const metamaskSigner = await provider.getSigner();
+    console.log("🛠️🛠️PUSH wallet address: ", wallet)
 
-    const normalizedAddress = ethers.getAddress(wallet.accounts[0]?.address);
-    const address = `eip155:1:${normalizedAddress}`;
+    if (typeof wallet == "string") {
+      const txHash = await userAlice.tx.send(unsignedTx, {
+        account: wallet,
+        signMessage: async (data) => {
+          return await userAlice.wallet.sign(data);
+        },
+      });
 
-    const signer = {
-      account: address,
-      signMessage: async (data) => {
-        const signature = await metamaskSigner.signMessage(data);
-        return ethers.getBytes(signature);
-      },
-    };
+      console.log("🪙🪙Push Transaction: ", txHash);
+    } else {
+      // Initialize BrowserProvider for the wallet provider
+      const provider = new BrowserProvider(wallet.provider);
+      const metamaskSigner = await provider.getSigner();
 
-    // Send a transaction
-    const txHash = await userAlice.tx.send(unsignedTx, signer);
-    console.log("Upvote Transaction Hash:", txHash);
+      const normalizedAddress = ethers.getAddress(wallet.accounts[0]?.address);
+      const address = `eip155:1:${normalizedAddress}`;
 
-    return true;
+      const signer = {
+        account: address,
+        signMessage: async (data) => {
+          const signature = await metamaskSigner.signMessage(data);
+          return ethers.getBytes(signature);
+        },
+      };
+
+      // Send a transaction
+      const txHash = await userAlice.tx.send(unsignedTx, signer);
+      console.log("🪙🪙Upvote Transaction Hash:", txHash);
+
+      return true;
+    }
   } catch (error) {
     console.log(error);
   }

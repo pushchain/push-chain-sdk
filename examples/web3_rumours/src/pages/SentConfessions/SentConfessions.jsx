@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import styled, { keyframes } from "styled-components";
 import { useConnectWallet } from "@web3-onboard/react";
 import ReactMarkdown from "react-markdown";
 import { getSentConfessions } from "../../services/getSentConfessions";
 import { useNavigate } from "react-router-dom";
+import { ConfessionContext } from "../../context/ConfessionContext";
 
 const SentConfessionsPage = () => {
   const [sentConfessions, setSentConfessions] = useState([]);
@@ -11,6 +12,7 @@ const SentConfessionsPage = () => {
   const [selectedRumor, setSelectedRumor] = useState(null);
   const [{ wallet }, connect, disconnect] = useConnectWallet();
   const navigate = useNavigate();
+  const { pushWalletAddress, user } = useContext(ConfessionContext);
 
   const web3Facts = [
     "Web3 ensures decentralized data ownership!",
@@ -27,12 +29,11 @@ const SentConfessionsPage = () => {
     const fetchSentConfessions = async () => {
       try {
         setLoading(true);
-
-        if (!wallet?.accounts?.[0]?.address) {
+        const address = pushWalletAddress || wallet?.accounts?.[0]?.address;
+        if (!address) {
           throw new Error("No wallet connected");
         }
-
-        const data = await getSentConfessions(wallet);
+        const data = await getSentConfessions(address);
         setSentConfessions(data || []);
       } catch (error) {
         console.error("Error fetching sent confessions:", error.message);
@@ -42,7 +43,10 @@ const SentConfessionsPage = () => {
     };
 
     fetchSentConfessions();
-  }, [wallet]);
+
+    const interval = setInterval(fetchSentConfessions, 60000); // Polling every 60 seconds
+    return () => clearInterval(interval);
+  }, [wallet, pushWalletAddress]);
 
   const handleConnect = async () => {
     try {
@@ -90,12 +94,13 @@ const SentConfessionsPage = () => {
         </HeaderButtons>
       </Header>
 
+      {/* Back Button */}
+      <BackButton onClick={() => navigate("/profile")}>⬅ Back to Profile</BackButton>
+
       <Content>
         <Title>📤 Sent Rumours</Title>
         {loading ? (
-          <Loader>
-            ⏳ Loading... Did you know? {randomFact}
-          </Loader>
+          <Loader>⏳ Loading... Did you know? {randomFact}</Loader>
         ) : sentConfessions.length === 0 ? (
           <EmptyState>No rumors sent yet. Start the buzz now!</EmptyState>
         ) : (
@@ -104,10 +109,14 @@ const SentConfessionsPage = () => {
               <ConfessionCard key={index}>
                 <ReactMarkdown>{confession.post}</ReactMarkdown>
                 <CardActions>
-                  <ActionButton onClick={() => setSelectedRumor(confession.post)}>
+                  <ActionButton
+                    onClick={() => setSelectedRumor(confession.post)}
+                  >
                     Open
                   </ActionButton>
-                  <ActionButton onClick={() => copyToClipboard(confession.post)}>
+                  <ActionButton
+                    onClick={() => copyToClipboard(confession.post)}
+                  >
                     Copy
                   </ActionButton>
                 </CardActions>
@@ -121,7 +130,9 @@ const SentConfessionsPage = () => {
       {selectedRumor && (
         <Modal>
           <ModalContent>
-            <ModalCloseButton onClick={() => setSelectedRumor(null)}>×</ModalCloseButton>
+            <ModalCloseButton onClick={() => setSelectedRumor(null)}>
+              ×
+            </ModalCloseButton>
             <ReactMarkdown>{selectedRumor}</ReactMarkdown>
           </ModalContent>
         </Modal>
@@ -133,6 +144,7 @@ const SentConfessionsPage = () => {
 export default SentConfessionsPage;
 
 // Styled Components
+
 const gradientAnimation = keyframes`
   0% { background-color: #007aff; }
   50% { background-color: #ff3b57; }
@@ -192,6 +204,22 @@ const DisconnectButton = styled(WalletButton)`
 
   &:hover {
     background: #e0354e;
+  }
+`;
+
+const BackButton = styled.button`
+  background: linear-gradient(120deg, #ff3b57, #6c63ff);
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  margin: 20px;
+
+  &:hover {
+    background: linear-gradient(120deg, #6c63ff, #ff3b57);
   }
 `;
 

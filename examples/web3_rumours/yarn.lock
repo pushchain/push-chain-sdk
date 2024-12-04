@@ -2107,10 +2107,10 @@
   resolved "https://registry.yarnpkg.com/@protobufjs/utf8/-/utf8-1.1.0.tgz#a777360b5b39a1a2e5106f8e858f2fd2d060c570"
   integrity sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==
 
-"@pushprotocol/push-chain@^0.1.4":
-  version "0.1.4"
-  resolved "https://registry.yarnpkg.com/@pushprotocol/push-chain/-/push-chain-0.1.4.tgz#d3e6eb80492849509d5c6f01759e964a588c2cbf"
-  integrity sha512-0rijotiShP5CYUXPruX/YCd0CV52qYJvBLTlzfqrAhD9gbMRQLkBdOBzS+TiAx42D0kPc7TLOmWtq3GhXv0zSA==
+"@pushprotocol/push-chain@^0.1.7":
+  version "0.1.7"
+  resolved "https://registry.yarnpkg.com/@pushprotocol/push-chain/-/push-chain-0.1.7.tgz#8c39d16c2b902b5469585e232645eee5a3a49ea2"
+  integrity sha512-pWOdpZ5PTJGfsSsQ8lizvZn1YydrUwjbmgBim+fFNJSW0WETMA/PGvRWW9qHijdkxgt4AuPUaHEVHtysSRiYwA==
   dependencies:
     "@bufbuild/protobuf" "^2.0.0"
     "@noble/hashes" "^1.5.0"
@@ -2123,7 +2123,7 @@
     tslib "^2.3.0"
     tweetnacl "^1.0.3"
     uuid "^10.0.0"
-    viem "^2.21.1"
+    viem "^2.21.5"
 
 "@rollup/plugin-babel@^5.2.0":
   version "5.3.1"
@@ -11390,10 +11390,10 @@ viem@2.12.0:
     isows "1.0.4"
     ws "8.13.0"
 
-viem@^2.21.1:
-  version "2.21.51"
-  resolved "https://registry.yarnpkg.com/viem/-/viem-2.21.51.tgz#2d548bce12cd019647165787bd69f133d3c4b5b2"
-  integrity sha512-IBZTFoo9cZvMBkFqaJq5G8Ori4IeEDe9AHE5CmOlvNw7ytkC3vdVrJ/APL+V3H4d/5i1FiV331UsckIqQLIM0w==
+viem@^2.21.5:
+  version "2.21.53"
+  resolved "https://registry.yarnpkg.com/viem/-/viem-2.21.53.tgz#a5ba6da48e5edded27dde286e431ae97034f4fc4"
+  integrity sha512-0pY8clBacAwzc59iV1vY4a6U4xvRlA5tAuhClJCKvqA6rXJzmNMMvxQ0EG79lkHr7WtBEruXz8nAmONXwnq4EQ==
   dependencies:
     "@noble/curves" "1.6.0"
     "@noble/hashes" "1.5.0"
