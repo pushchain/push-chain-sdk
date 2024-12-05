@@ -1,6 +1,6 @@
 import config from '../config';
 import { ENV } from '../constants';
-import { ACTION } from './wallet.types';
+import { ACTION, AppConnection } from './wallet.types';
 
 export class Wallet {
   private walletWindow: Window | null = null;
@@ -18,10 +18,7 @@ export class Wallet {
     this.walletUrl = walletURL;
     await this.openWalletWindow();
     const connectionStatus = await this.appConnectionStatus();
-    if (!connectionStatus.isConnected) {
-      await this.requestAppConnection();
-    }
-    return await this.requestWalletAddress();
+    return connectionStatus;
   };
 
   /**
@@ -30,18 +27,13 @@ export class Wallet {
   sign = async (data: Uint8Array): Promise<Uint8Array> => {
     await this.openWalletWindow();
 
-    const { isPending, isConnected } = await this.appConnectionStatus();
-    if (!isConnected) {
-      if (isPending) {
-        throw Error(
-          'App Connection Request is Pending. Accept App Connection Request in Push Wallet to enable signing !!!'
-        );
-      } else {
-        await this.requestAppConnection();
-        throw Error(
-          'App not Connected. Accept App Connection Request in Push Wallet to enable signing !!!'
-        );
-      }
+    const { appConnectionStatus } = await this.appConnectionStatus();
+
+    if (appConnectionStatus !== 'connected') {
+      await this.requestAppConnection();
+      throw Error(
+        'App not Connected. Accept App Connection Request in Push Wallet to enable signing !!!'
+      );
     }
 
     return new Promise((resolve, reject) => {
@@ -71,8 +63,8 @@ export class Wallet {
    * Get Dapp connection status to Push Wallet
    */
   appConnectionStatus = (): Promise<{
-    isConnected: boolean;
-    isPending: boolean;
+    authStatus: AppConnection['authStatus'];
+    appConnectionStatus: AppConnection['appConnectionStatus'];
   }> => {
     return new Promise((resolve, reject) => {
       // Listen for wallet response
@@ -99,10 +91,12 @@ export class Wallet {
   /**
    * Request connection to Push Wallet
    */
-  requestAppConnection = (): Promise<{
+  requestAppConnection = async (): Promise<{
     isConnected: boolean;
     isPending: boolean;
   }> => {
+    // await this.openWalletWindow();
+
     return new Promise((resolve, reject) => {
       // Listen for wallet response
       window.addEventListener('message', function listener(event) {
@@ -124,9 +118,18 @@ export class Wallet {
   };
 
   private openWalletWindow = async () => {
+    const width = 600;
+    const height = 800;
+    const left = screen.width - width - 100;
+    const top = 150;
+
     // Check if the wallet window is already open
     if (!this.walletWindow || this.walletWindow.closed) {
-      this.walletWindow = window.open(this.walletUrl, '_blank');
+      this.walletWindow = window.open(
+        this.walletUrl,
+        '_blank',
+        `width=${width},height=${height},left=${left},top=${top}`
+      );
       if (!this.walletWindow) {
         throw new Error('Failed to open wallet window');
       }
@@ -138,7 +141,7 @@ export class Wallet {
   /**
    * Request Logged In Address from Push Wallet
    */
-  private requestWalletAddress = (): Promise<string> => {
+  requestWalletAddress = (): Promise<string> => {
     return new Promise((resolve, reject) => {
       // Listen for wallet response
       window.addEventListener('message', function listener(event) {

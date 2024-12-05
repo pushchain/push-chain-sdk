@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { PushNetwork } from '@pushprotocol/push-chain';
+import { PushNetwork } from '../../../packages/core/src/index';
 import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
 import './App.css';
 import { Transaction } from '@pushprotocol/push-chain/src/lib/generated/tx';
 import { toHex } from 'viem';
+import { ConnectPushWallet } from './ConnectWallet';
 
 // Mock data for testing
 const mockRecipients = [
@@ -27,6 +28,7 @@ const App: React.FC = () => {
     const setNetwork = async () => {
       try {
         const pushNetworkInstance = await PushNetwork.initialize(ENV.DEV);
+        console.log("Push Network", pushNetworkInstance);
         setPushNetwork(pushNetworkInstance);
 
         const unsignedTx = pushNetworkInstance.tx.createUnsigned(
@@ -45,12 +47,19 @@ const App: React.FC = () => {
   const connectWallet = async (tryCount: number = 1) => {
     setWalletConnectionLoading(true);
     if (pushNetwork) {
+      console.log("Trying to fetch wallet", tryCount, pushNetwork);
       try {
-        const acc = await pushNetwork.wallet.connect();
+        const appConnectionOrigin = window.location.origin
+        console.log("App Connection origin", appConnectionOrigin);
+        const acc = await pushNetwork.wallet.connect(`http://localhost:5173/wallet?app=${encodeURIComponent(appConnectionOrigin)}`);
+        console.log("Acc", acc);
+
         setAccount(acc);
         setWalletConnectionLoading(false);
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (err) {
+        console.log("Err", err);
+
         if (tryCount < 30 && err === 'PushWallet Not Logged In') {
           // wait for 5 seconds and try again
           setTimeout(() => {
@@ -88,6 +97,8 @@ const App: React.FC = () => {
   const signMessage = async () => {
     try {
       if (pushNetwork) {
+        console.log("Push network", pushNetwork);
+
         const signedData = await pushNetwork.wallet.sign(
           new TextEncoder().encode(userInput)
         );
@@ -102,6 +113,9 @@ const App: React.FC = () => {
   return (
     <div className="app-container">
       <h1>Send Transaction to Push Network</h1>
+
+      {pushNetwork && <ConnectPushWallet setAccount={setAccount} pushNetwork={pushNetwork} />}
+
       {pushNetwork &&
         account === '' &&
         (walletConnectionLoading ? (

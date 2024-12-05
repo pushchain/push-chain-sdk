@@ -29,7 +29,7 @@ const config: Config = {
     [ENV.PROD]: 'TODO',
     [ENV.STAGING]: 'TODO',
     [ENV.DEV]: 'https://wallet.push.org',
-    [ENV.LOCAL]: 'http://localhost:5174/',
+    [ENV.LOCAL]: 'http://localhost:5173/',
   },
 };
 
