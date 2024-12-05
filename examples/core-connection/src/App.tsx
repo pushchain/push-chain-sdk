@@ -4,7 +4,7 @@ import './App.css';
 import { Transaction } from '@pushprotocol/push-chain/src/lib/generated/tx';
 import { toHex } from 'viem';
 import { PushNetwork } from '../../../packages/core/src';
-import { ConnectPushWallet, PushWallet } from '../../../packages/ui-kit/src';
+import { ConnectPushWallet, PushWallet } from '@pushprotocol/pushchain-ui-kit';
 
 // Mock data for testing
 const mockRecipients = [
@@ -20,8 +20,6 @@ const App: React.FC = () => {
   const [mockTx, setMockTx] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [account, setAccount] = useState<string>('');
-  const [walletConnectionLoading, setWalletConnectionLoading] =
-    useState<boolean>(false);
 
   // For signing message
   const [userInput, setUserInput] = useState<string>('');
@@ -50,39 +48,6 @@ const App: React.FC = () => {
     };
     setNetwork();
   }, []);
-
-  const connectWallet = async (tryCount: number = 1) => {
-    setWalletConnectionLoading(true);
-    if (pushNetwork) {
-      console.log('Trying to fetch wallet', tryCount, pushNetwork);
-      try {
-        const appConnectionOrigin = window.location.origin;
-        console.log('App Connection origin', appConnectionOrigin);
-        const acc = await pushNetwork.wallet.connect(
-          `http://localhost:5173/wallet?app=${encodeURIComponent(
-            appConnectionOrigin
-          )}`
-        );
-        console.log('Acc', acc);
-
-        setAccount(acc);
-        setWalletConnectionLoading(false);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (err) {
-        console.log('Err', err);
-
-        if (tryCount < 30 && err === 'PushWallet Not Logged In') {
-          // wait for 5 seconds and try again
-          setTimeout(() => {
-            connectWallet(tryCount + 1);
-          }, 2000);
-        } else {
-          alert(err);
-          setWalletConnectionLoading(false);
-        }
-      }
-    }
-  };
 
   const sendTransaction = async () => {
     setLoading(true);
