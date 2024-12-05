@@ -3,7 +3,6 @@ import { Wallet as PushWallet } from './wallet';
 import { ENV } from '../constants';
 import config from '../config';
 import { ButtonStatus, IConnectPushWalletProps } from './wallet.types';
-import '../style.css';
 
 /**
  * ConnectPushWallet component handles the connection to a Push Wallet.
@@ -163,8 +162,23 @@ export const ConnectPushWallet: React.FC<IConnectPushWalletProps> = ({
         >
           {(buttonStatus === 'Connecting' ||
             buttonStatus === 'Authenticating') && (
-            <div className="loader-container">
-              <div className="loader"></div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <div
+                style={{
+                  border: '4px solid #e0e0e0',
+                  borderTop: '4px solid #d548ec',
+                  borderRadius: '50%',
+                  width: '16px',
+                  height: '16px',
+                  animation: 'spin 1s linear infinite',
+                }}
+              ></div>
             </div>
           )}
           {buttonStatus}{' '}
