@@ -7,6 +7,8 @@ export class Wallet {
   private walletUrl: string;
 
   constructor(private env: ENV) {
+    console.log('Env', env);
+
     this.walletUrl = config.WALLET_URL[this.env];
   }
 

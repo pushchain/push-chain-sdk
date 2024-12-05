@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@pushprotocol/push-chain": "^0.1.7",
+    "@pushprotocol/pushchain-ui-kit": "^0.0.2",
     "gh-pages": "^6.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -30,6 +31,6 @@
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
     "vite": "^5.4.1",
-    "vite-plugin-node-polyfills": "^0.22.0"
+    "vite-plugin-node-polyfills": "0.17.0"
   }
 }
