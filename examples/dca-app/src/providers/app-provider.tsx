@@ -1,6 +1,5 @@
 import { AppContext } from '@/context/app-context';
-import { PushNetwork } from '@pushprotocol/node-core';
-import { ENV } from '@pushprotocol/node-core/src/lib/constants';
+import { PushNetwork } from '@pushprotocol/push-chain';
 
 import { ReactNode, useEffect, useState } from 'react';
 
@@ -11,7 +10,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const setNetwork = async () => {
       try {
-        const pushNetworkInstance = await PushNetwork.initialize(ENV.DEV);
+        const pushNetworkInstance = await PushNetwork.initialize('dev');
         console.log('Push Network initialized:', pushNetworkInstance);
         setPushNetwork(pushNetworkInstance);
       } catch (error) {

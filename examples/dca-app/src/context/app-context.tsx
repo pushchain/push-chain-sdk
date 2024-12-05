@@ -1,4 +1,4 @@
-import { PushNetwork } from '@pushprotocol/node-core';
+import { PushNetwork } from '@pushprotocol/push-chain';
 import React, { createContext, useContext } from 'react';
 
 interface AppContextType {

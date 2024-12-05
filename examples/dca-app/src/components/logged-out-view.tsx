@@ -1,24 +1,32 @@
 import { usePrivy } from '@privy-io/react-auth';
 import { useAppContext } from '@/context/app-context';
 import { Button } from './ui/button';
-import { toBytes } from 'viem';
+import { PushNetwork } from '@pushprotocol/push-chain';
 
 const LoggedOutView = () => {
   const { login } = usePrivy();
-  const { pushNetwork, setPushAccount } =
-    useAppContext();
-  const pushWalletLoginHandler = async () => {
+  const { pushAccount, setPushAccount, pushNetwork } = useAppContext();
+
+  const connectPushWallet = async () => {
     try {
-      if (pushNetwork) {
-        const acc = await pushNetwork.wallet.connect();
-        // Allow Connection only when DApp is whitelisted
-        await pushNetwork.wallet.sign(
-          toBytes('Accept Connection Request From DApp')
-        );
-        setPushAccount(acc);
-      }
+      const wallet = pushNetwork?.wallet;
+      const walletAddress = await wallet?.connect();
+      console.log("Push Wallet Address: ", walletAddress);
+
+      return { success: true, walletAddress };
     } catch (err) {
-      alert(err);
+      console.error("Push Wallet Connection Error: ", err);
+      return { success: false, err};
+    }
+  };
+
+  const handlePushWalletConnect = async () => {
+    const result = await connectPushWallet();
+    if (result.success) {
+      setPushAccount(result.walletAddress);
+      alert(`Push Wallet Connected: ${result.walletAddress}`);
+    } else {
+      alert("Failed to connect Push Wallet. Please try again.");
     }
   };
 
@@ -28,7 +36,7 @@ const LoggedOutView = () => {
         <Button onClick={login} variant={'secondary'}>
           Login w/ any wallet
         </Button>
-        <Button onClick={pushWalletLoginHandler}>Login w/ Push Wallet</Button>
+        <Button onClick={handlePushWalletConnect}>Login w/ Push Wallet</Button>
       </div>
     </div>
   );

@@ -16,9 +16,11 @@ import type {
 export default function PortfolioTracker({
   walletAddress,
   chainId,
+  onUpdate,
 }: {
   walletAddress: string;
   chainId: number;
+  onUpdate: (data: any) => void;
 }) {
   const [showSmallHoldings, setShowSmallHoldings] = useState(false);
   const [balances, setBalances] = useState<BalancesResponse | null>(null);
@@ -38,6 +40,15 @@ export default function PortfolioTracker({
 
         if (response.data) {
           setBalances(response.data);
+          onUpdate({
+            address: walletAddress,
+            totalValue: response.data.items?.reduce((sum, item) => sum + (item.quote || 0), 0),
+            assets: response.data.items?.map(item => ({
+              symbol: item.contract_ticker_symbol,
+              balance: item.balance,
+              value: item.quote || 0,
+            })),
+          });
         }
       } catch (error) {
         console.error('Error fetching balances:', error);
