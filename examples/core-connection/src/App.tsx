@@ -3,9 +3,8 @@ import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
 import './App.css';
 import { Transaction } from '@pushprotocol/push-chain/src/lib/generated/tx';
 import { toHex } from 'viem';
-import { PushNetwork } from '../../../packages/core/src';
-// import { ConnectPushWallet, PushWallet } from '@pushprotocol/pushchain-ui-kit';
-import { ConnectPushWallet, PushWallet } from '../../../packages/ui-kit/src';
+import { PushNetwork } from '@pushprotocol/push-chain';
+import { ConnectPushWallet, PushWallet } from '@pushprotocol/pushchain-ui-kit';
 
 // Mock data for testing
 const mockRecipients = [
@@ -30,11 +29,9 @@ const App: React.FC = () => {
     const setNetwork = async () => {
       try {
         const pushNetworkInstance = await PushNetwork.initialize(ENV.DEV);
-        console.log('Push Network', pushNetworkInstance);
         setPushNetwork(pushNetworkInstance);
 
         const pushWalletInstance = new PushWallet(ENV.DEV);
-        console.log('pushWalletInstance', pushWalletInstance);
         setPushWallet(pushWalletInstance);
 
         const unsignedTx = pushNetworkInstance.tx.createUnsigned(
@@ -74,9 +71,6 @@ const App: React.FC = () => {
   const signMessage = async () => {
     try {
       if (pushNetwork && pushWallet) {
-        console.log('Push network', pushNetwork);
-        console.log('Push wallet', pushWallet);
-
         const signedData = await pushWallet.sign(
           new TextEncoder().encode(userInput)
         );
