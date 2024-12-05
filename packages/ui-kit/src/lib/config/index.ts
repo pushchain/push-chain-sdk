@@ -4,9 +4,9 @@ import { Config } from './config.types';
 const config: Config = {
   WALLET_URL: {
     [ENV.PROD]: 'https://wallet.push.org',
-    [ENV.STAGING]: 'https://wallet.push.org',
+    [ENV.STAGING]: 'https://push-protocol.github.io/push-wallet',
     [ENV.DEV]: 'https://push-protocol.github.io/push-wallet',
-    [ENV.LOCAL]: 'http://localhost:5173/',
+    [ENV.LOCAL]: 'http://localhost:5173',
   },
 };
 

@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { Wallet as PushWallet } from './wallet';
 import { ENV } from '../constants';
 import config from '../config';
 import { ButtonStatus, IConnectPushWalletProps } from './wallet.types';
@@ -16,9 +15,7 @@ import { ButtonStatus, IConnectPushWalletProps } from './wallet.types';
 export const ConnectPushWallet: React.FC<IConnectPushWalletProps> = ({
   setAccount,
   pushWallet,
-}: {
-  setAccount: (account: string) => void;
-  pushWallet: PushWallet;
+  env = ENV.PROD,
 }) => {
   const [buttonStatus, setButtonStatus] =
     React.useState<ButtonStatus>('Connect');
@@ -80,7 +77,7 @@ export const ConnectPushWallet: React.FC<IConnectPushWalletProps> = ({
         setButtonStatus('Connecting');
         const appConnectionOrigin = window.location.origin;
         const connectionStatus = await pushWallet.connect(
-          `${config.WALLET_URL[ENV.LOCAL]}wallet?app=${encodeURIComponent(
+          `${config.WALLET_URL[env]}/wallet?app=${encodeURIComponent(
             appConnectionOrigin
           )}`
         );

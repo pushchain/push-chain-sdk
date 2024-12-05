@@ -1,3 +1,4 @@
+import { ENV } from '../constants';
 import { Wallet as PushWallet } from './wallet';
 
 export enum ACTION {
@@ -21,6 +22,7 @@ export type AppConnection = {
 export type IConnectPushWalletProps = {
   setAccount: (account: string) => void;
   pushWallet: PushWallet;
+  env?: ENV;
 };
 export type ButtonStatus =
   | 'Connect'
