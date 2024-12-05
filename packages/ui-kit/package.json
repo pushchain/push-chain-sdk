@@ -6,5 +6,9 @@
   },
   "type": "commonjs",
   "main": "./src/index.js",
-  "typings": "./src/index.d.ts"
+  "typings": "./src/index.d.ts",
+  "devDependencies": {
+    "@types/react": "^18.3.13",
+    "react": "^18.3.1"
+  }
 }

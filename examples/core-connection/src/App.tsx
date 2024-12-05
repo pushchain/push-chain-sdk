@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { PushNetwork } from '@pushprotocol/push-chain';
 import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
 import './App.css';
 import { Transaction } from '@pushprotocol/push-chain/src/lib/generated/tx';
 import { toHex } from 'viem';
+import { PushNetwork } from '../../../packages/core/src';
+import { ConnectPushWallet, PushWallet } from '../../../packages/ui-kit/src';
 
 // Mock data for testing
 const mockRecipients = [
@@ -13,6 +14,9 @@ const mockRecipients = [
 
 const App: React.FC = () => {
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
+
+  const [pushWallet, setPushWallet] = useState<PushWallet | null>(null);
+
   const [mockTx, setMockTx] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [account, setAccount] = useState<string>('');
@@ -27,7 +31,12 @@ const App: React.FC = () => {
     const setNetwork = async () => {
       try {
         const pushNetworkInstance = await PushNetwork.initialize(ENV.DEV);
+        console.log('Push Network', pushNetworkInstance);
         setPushNetwork(pushNetworkInstance);
+
+        const pushWalletInstance = new PushWallet(ENV.LOCAL);
+        console.log('pushWalletInstance', pushWalletInstance);
+        setPushWallet(pushWalletInstance);
 
         const unsignedTx = pushNetworkInstance.tx.createUnsigned(
           'CUSTOM:SAMPLE_TX',
@@ -45,12 +54,23 @@ const App: React.FC = () => {
   const connectWallet = async (tryCount: number = 1) => {
     setWalletConnectionLoading(true);
     if (pushNetwork) {
+      console.log('Trying to fetch wallet', tryCount, pushNetwork);
       try {
-        const acc = await pushNetwork.wallet.connect();
+        const appConnectionOrigin = window.location.origin;
+        console.log('App Connection origin', appConnectionOrigin);
+        const acc = await pushNetwork.wallet.connect(
+          `http://localhost:5173/wallet?app=${encodeURIComponent(
+            appConnectionOrigin
+          )}`
+        );
+        console.log('Acc', acc);
+
         setAccount(acc);
         setWalletConnectionLoading(false);
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (err) {
+        console.log('Err', err);
+
         if (tryCount < 30 && err === 'PushWallet Not Logged In') {
           // wait for 5 seconds and try again
           setTimeout(() => {
@@ -67,11 +87,11 @@ const App: React.FC = () => {
   const sendTransaction = async () => {
     setLoading(true);
     try {
-      if (pushNetwork && mockTx) {
+      if (pushNetwork && mockTx && pushWallet) {
         const txHash = await pushNetwork.tx.send(mockTx, {
           account,
           signMessage: async (data: Uint8Array) => {
-            return await pushNetwork.wallet.sign(data);
+            return await pushWallet.sign(data);
           },
         });
 
@@ -87,8 +107,11 @@ const App: React.FC = () => {
   };
   const signMessage = async () => {
     try {
-      if (pushNetwork) {
-        const signedData = await pushNetwork.wallet.sign(
+      if (pushNetwork && pushWallet) {
+        console.log('Push network', pushNetwork);
+        console.log('Push wallet', pushWallet);
+
+        const signedData = await pushWallet.sign(
           new TextEncoder().encode(userInput)
         );
         setSignedData(signedData);
@@ -102,31 +125,10 @@ const App: React.FC = () => {
   return (
     <div className="app-container">
       <h1>Send Transaction to Push Network</h1>
-      {pushNetwork &&
-        account === '' &&
-        (walletConnectionLoading ? (
-          <div className="loader-container">
-            <div className="loader"></div>
-            <p className="loader-text">Connecting Wallet...</p>
-          </div>
-        ) : (
-          <button
-            className="send-button"
-            onClick={() => connectWallet(1)}
-            disabled={loading}
-            style={{
-              backgroundColor: '#3498db',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '5px',
-              padding: '10px 20px',
-              cursor: 'pointer',
-              fontSize: '1rem',
-            }}
-          >
-            Connect Push Wallet
-          </button>
-        ))}
+
+      {pushWallet && (
+        <ConnectPushWallet setAccount={setAccount} pushWallet={pushWallet} />
+      )}
 
       {account !== '' && (
         <div className="account-info">

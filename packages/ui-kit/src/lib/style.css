@@ -1,0 +1,14 @@
+.loader-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loader {
+  border: 4px solid #e0e0e0;
+  border-top: 4px solid #d548ec;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  animation: spin 1s linear infinite;
+}
