@@ -24,8 +24,20 @@
       }
     },
     "nx-release-publish": {
+      "executor": "nx:run-commands",
       "options": {
-        "packageRoot": "dist/{projectRoot}"
+        "command": "nx run ui-kit:build && npm publish dist/packages/ui-kit --access public --otp=${args.otp}"
+      },
+      "optionsDescription": "Pass OTP as an argument with --otp",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "otp": {
+            "type": "string",
+            "description": "One-time password for 2FA"
+          }
+        },
+        "required": ["otp"]
       }
     }
   }
