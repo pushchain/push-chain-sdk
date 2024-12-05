@@ -4,7 +4,8 @@ import './App.css';
 import { Transaction } from '@pushprotocol/push-chain/src/lib/generated/tx';
 import { toHex } from 'viem';
 import { PushNetwork } from '../../../packages/core/src';
-import { ConnectPushWallet, PushWallet } from '@pushprotocol/pushchain-ui-kit';
+// import { ConnectPushWallet, PushWallet } from '@pushprotocol/pushchain-ui-kit';
+import { ConnectPushWallet, PushWallet } from '../../../packages/ui-kit/src';
 
 // Mock data for testing
 const mockRecipients = [
@@ -32,7 +33,7 @@ const App: React.FC = () => {
         console.log('Push Network', pushNetworkInstance);
         setPushNetwork(pushNetworkInstance);
 
-        const pushWalletInstance = new PushWallet(ENV.LOCAL);
+        const pushWalletInstance = new PushWallet(ENV.DEV);
         console.log('pushWalletInstance', pushWalletInstance);
         setPushWallet(pushWalletInstance);
 
