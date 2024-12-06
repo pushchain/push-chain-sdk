@@ -4,7 +4,7 @@ import './App.css';
 import { Transaction } from '@pushprotocol/push-chain/src/lib/generated/tx';
 import { toHex } from 'viem';
 import { PushNetwork } from '@pushprotocol/push-chain';
-import { ConnectPushWallet, PushWallet } from '@pushprotocol/pushchain-ui-kit';
+import { ConnectPushWallet, PushWallet } from './lib/index';
 
 // Mock data for testing
 const mockRecipients = [
