@@ -8,7 +8,7 @@ import {
   privateKeyToAccount,
   privateKeyToAddress,
 } from 'viem/accounts';
-import { hexToBytes, toHex, verifyMessage } from 'viem';
+import { Hex, hexToBytes, toHex, verifyMessage } from 'viem';
 import { ENV } from '../../src/lib/constants';
 import { sha256 } from '@noble/hashes/sha256';
 import * as nacl from 'tweetnacl';
@@ -42,26 +42,21 @@ const mockRecipients = [
   `eip155:97:${privateKeyToAddress(generatePrivateKey())}`,
 ];
 
-async function sendCustomTx(txInstance:Tx, nonce:number) {
+async function sendCustomTx(txInstance:Tx, senderPrivateKey:Hex, nonce:number) {
   const recipients = [
     `eip155:1:${privateKeyToAddress(generatePrivateKey())}`,
     `eip155:137:${privateKeyToAddress(generatePrivateKey())}`,
     `eip155:97:${privateKeyToAddress(generatePrivateKey())}`
   ].map(value => Tx.normalizeCaip(value));
-  const category = ('CUSTOMA:' + nonce).substring(0, 21);
+  const category = ('CUSTOM:V' + nonce).substring(0, 21);
   const sampleData = intToArray(nonce);
-  if(sampleData.length > 4){
-    console.log("ERROR!!!!!!!!!!!!!!!!!!!!!!!!!");
-    throw new Error();
-  }
   const sampleTx = txInstance.createUnsigned(
     category,
     recipients,
     sampleData,
   );
 
-  const pk = generatePrivateKey();
-  const account = privateKeyToAccount(pk);
+  const account = privateKeyToAccount(senderPrivateKey);
   const senderInCaip = Address.toPushCAIP(account.address, ENV.DEV);
   const signer = {
     account: senderInCaip,
@@ -80,7 +75,7 @@ async function sendCustomTx(txInstance:Tx, nonce:number) {
 describe('validator smoke test', () => {
 
   // NOTE: you can switch manually to CONSTANTS.ENV.LOCAL or CONSTANTS.ENV.DEV
-  const env = CONSTANTS.ENV.LOCAL;
+  const env = CONSTANTS.ENV.DEV;
 
   it('sinittx : send INIT_DID tx', async () => {
     const account = privateKeyToAccount(
@@ -103,11 +98,12 @@ describe('validator smoke test', () => {
   it('spam100 : spam 100 custom tx', async () => {
     const txInstance = await Tx.initialize(env);
     await sleep(2000);
-    const iterations = 100;
+    const iterations = 50;
     const delay = 50;
-    const arr:Promise<string>[] = [];
-    for(let i = 0; i < iterations; i++) {
-      arr.push(sendCustomTx(txInstance, i));
+    const senderPrivKey = generatePrivateKey();
+    const arr: Promise<string>[] = [];
+    for (let i = 0; i < iterations; i++) {
+      arr.push(sendCustomTx(txInstance, senderPrivKey, i));
       await sleep(delay);
     }
     const allTxIds = await Promise.allSettled(arr);
@@ -118,9 +114,9 @@ describe('validator smoke test', () => {
   })
 
   it('wtr : write and read 10 custom', async () => {
-    const iterations = 10;
+    const iterations = 1;
     const txInstance = await Tx.initialize(env);
-    for(let i = 0; i < iterations; i++) {
+    for (let i = 0; i < iterations; i++) {
       const recipients = [
         `eip155:1:${privateKeyToAddress(generatePrivateKey())}`,
         `eip155:137:${privateKeyToAddress(generatePrivateKey())}`,

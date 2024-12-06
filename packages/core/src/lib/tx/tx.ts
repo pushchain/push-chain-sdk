@@ -195,7 +195,7 @@ export class Tx {
       signMessage: (dataToBeSigned: Uint8Array) => Promise<Uint8Array>;
     }
   ): Promise<string> => {
-    console.log('send() accound: %s', Tx.normalizeCaip(signer.account));
+    console.log('send() account: %s', Tx.normalizeCaip(signer.account));
 
     const token = await this.tokenCache.getCachedApiToken();
     if (token == null) {
