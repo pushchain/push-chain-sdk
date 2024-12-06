@@ -12,7 +12,13 @@ import { sha256 } from '@noble/hashes/sha256';
 import { toHex } from 'viem';
 
 export class Tx {
-  private constructor(private validator: Validator, private env: ENV) {}
+  private tokenCache:TokenCache;
+
+  private constructor(private validator: Validator, private env: ENV) {
+    this.tokenCache = new TokenCache(validator);
+    // get a token async
+    this.tokenCache.getCachedApiToken();
+  }
 
   static initialize = async (env: ENV) => {
     const validator = await Validator.initalize({ env });
@@ -175,6 +181,7 @@ export class Tx {
     );
   };
 
+
   /**
    * Send Tx to Push Network
    * @param tx Unsigned Push Tx
@@ -189,7 +196,11 @@ export class Tx {
     }
   ): Promise<string> => {
     console.log('send() accound: %s', Tx.normalizeCaip(signer.account));
-    const token = await this.validator.call<TokenReply>('push_getApiToken');
+
+    const token = await this.tokenCache.getCachedApiToken();
+    if (token == null) {
+      throw new Error('failed to obtain token for push network');
+    }
     const serializedUnsignedTx = Tx.serialize({
       ...unsignedTx,
       sender: Tx.normalizeCaip(signer.account),
@@ -232,5 +243,32 @@ export class Tx {
     if(category==null || category == "" || category.length > 20) {
       throw new Error('Invalid category, max size is 20 ascii chars');
     }
+  }
+}
+
+// todo ? add online checks between token renewals (if vnode goes offline in-between)
+class TokenCache {
+  private readonly TOKEN_EXPIRE_SECONDS = 60;
+  private cachedToken: TokenReply | null = null;
+  private cachedTokenTs = 0;
+
+  constructor(private validator: Validator){}
+
+
+
+  async getCachedApiToken(): Promise<TokenReply | null> {
+    if (TokenCache.isExpired(this.cachedTokenTs, this.TOKEN_EXPIRE_SECONDS)) {
+      console.log('token refresh started');
+      this.cachedToken = await this.validator.call<TokenReply>('push_getApiToken');
+      this.cachedTokenTs = new Date().getTime();
+      console.log('token refresh finished');
+    } else {
+      console.log('returning cached token');
+    }
+    return this.cachedToken;
+  }
+
+  private static isExpired(ts:number, maxDelayInSec:number) {
+    return ts == 0 || Math.abs(new Date().getTime() - ts) > maxDelayInSec * 1000;
   }
 }

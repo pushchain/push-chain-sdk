@@ -151,7 +151,7 @@ export class Validator {
    * @description Ping a validator
    * @param validatorUrl - Validator URL to ping
    */
-  private static ping = async (validatorUrl: string): Promise<boolean> => {
+  public static ping = async (validatorUrl: string): Promise<boolean> => {
     return await this.sendJsonRpcRequest<boolean>(
       Validator.vNodeUrlModifier(validatorUrl),
       'push_listening'
