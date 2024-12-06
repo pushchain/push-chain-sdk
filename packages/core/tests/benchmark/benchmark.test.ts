@@ -12,7 +12,11 @@ import {
 } from 'viem/accounts';
 import { hexToBytes } from 'viem';
 
-describe('Network Benchmark Tests', () => {
+/**
+ * @dev - This test is for benchmarking the network performance of validators and
+ * should be skipped in CI
+ */
+describe.skip('Network Benchmark Tests', () => {
   const THREAD_COUNTS = [10, 50, 100, 250, 500, 1000, 2000, 5000, 10000, 20000];
 
   const env = config.ENV;
