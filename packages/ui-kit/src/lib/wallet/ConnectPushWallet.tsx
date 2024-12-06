@@ -20,6 +20,29 @@ export const ConnectPushWallet: React.FC<IConnectPushWalletProps> = ({
   const [buttonStatus, setButtonStatus] =
     React.useState<ButtonStatus>('Connect');
 
+  React.useEffect(() => {
+    const messageListener = (event: MessageEvent) => {
+      // Validate the origin of the message to ensure security
+      if (event.origin !== config.WALLET_URL[env]) {
+        console.warn('Message from untrusted origin:', event.origin);
+        return;
+      }
+
+      // Handle the message
+      if (event.data === 'walletClosed' || event.data === 'walletLoggedOut') {
+        console.log('wallet tab was closed or logged Out!');
+        setButtonStatus('Connect');
+      }
+    };
+
+    // Add the event listener
+    window.addEventListener('message', messageListener);
+
+    return () => {
+      // Cleanup: remove the event listener when the component is unmounted
+      window.removeEventListener('message', messageListener);
+    };
+  }, []);
   /**
    * Polls the app connection status at regular intervals.
    * Updates the button status based on the connection status.
