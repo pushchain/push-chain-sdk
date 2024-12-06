@@ -151,8 +151,122 @@ export const ConnectPushWallet: React.FC<IConnectPushWalletProps> = ({
     }
   };
 
+  const appConnectionStatus = async () => {
+    console.log('Asking for app connection');
+
+    try {
+      const status = await pushWallet.checkAuthStatus();
+
+      console.log('Status', status);
+
+      // if (status.appConnectionStatus === 'rejected') {
+      //   setButtonStatus('Retry');
+      // }
+
+      // if (status.appConnectionStatus === 'connected') {
+      //   await getWalletAddress();
+      // }
+    } catch (error) {
+      console.error('Error fetching app connection status:', error);
+      // setButtonStatus('Connect');
+    }
+  };
+
+  /**
+   * Opens a new tab for the Push Wallet and sets up an event listener for communication.
+   */
+  // ... existing code ...
+
+  /**
+   * Opens a new tab for the Push Wallet and sets up an event listener for communication.
+   */
+
+  const [newTab, setNewTab] = React.useState<Window>();
+  const openWalletTab = () => {
+    const width = 600;
+    const height = 800;
+    const left = screen.width - width - 100;
+    const top = 150;
+    const walletUrl = 'http://localhost:5173';
+    const newTab = window.open(
+      walletUrl,
+      '_blank',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+
+    if (newTab) {
+      setNewTab(newTab);
+      // Set up a single event listener to receive messages from the new tab
+      const handleMessage = (event) => {
+        if (event.origin === walletUrl) {
+          // Handle the message received from the wallet tab
+          console.log('Message from wallet tab:', event.data);
+          // You can perform actions based on the received message here
+          // For example, you can call different functions based on the message type
+          switch (event.data.type) {
+            case 'connectionStatus':
+              console.log('Connection status case', event.data);
+              break;
+            case 'walletAddress':
+              console.log('walletAddress status case', event.data);
+              break;
+            case 'someAction':
+              console.log('Action received:', event.data.action);
+              // Handle the action received from the wallet tab
+              break;
+            case 'statusResponse':
+              console.log('Status Response:', event.data.status);
+              // Handle the status response here
+              break;
+            default:
+              console.warn('Unknown message type:', event.data.type);
+          }
+        }
+      };
+
+      window.addEventListener('message', handleMessage);
+
+      // Example function to send data to the new tab
+      const sendDataToNewTab = (data) => {
+        if (newTab) {
+          newTab.postMessage(data, walletUrl);
+        }
+      };
+
+      sendDataToNewTab({ type: 'requestData', payload: 'Some data' });
+    } else {
+      console.error(
+        'Failed to open new tab. Please allow popups for this site.'
+      );
+    }
+  };
+
+  const requestStatusFromWallet = () => {
+    console.log('requesting StatusFromWallet', newTab);
+
+    if (newTab) {
+      console.log('posting message');
+
+      newTab.postMessage({ type: 'requestStatus' }, 'http://localhost:5173');
+    }
+  };
+
+  /**
+   * Actions:
+   * -> IS_LOGGED_IN : user logged in h ya nhi
+   * -> Send Connection Request: sends a new connection request
+   * ->
+   *
+   */
+
   return (
     <div>
+      <button onClick={appConnectionStatus}>Connection Status</button>
+      <button onClick={openWalletTab}>Open Wallet Tab</button>{' '}
+      <button onClick={requestStatusFromWallet}>
+        request Status FromWallet
+      </button>{' '}
+      {/* New button to open wallet tab */}
       <button
         className="send-button"
         onClick={() => connectWallet(1)}

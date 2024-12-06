@@ -68,17 +68,30 @@ export class Wallet {
     authStatus: AppConnection['authStatus'];
     appConnectionStatus: AppConnection['appConnectionStatus'];
   }> => {
+    console.log('App Connection status is called from 1');
+
     return new Promise((resolve, reject) => {
+      console.log('after app connection status', window);
+
       // Listen for wallet response
       window.addEventListener('message', function listener(event) {
+        console.log('New Listener added', event);
+
         if (event.data.action === ACTION.CONNECTION_STATUS) {
-          window.removeEventListener('message', listener);
+          // window.removeEventListener('message', listener);
+          console.log('Connection statys response', event);
           resolve(event.data);
         } else if (event.data.action === ACTION.ERROR) {
+          console.log('Listener removing');
+
           window.removeEventListener('message', listener);
+          console.log('Connection statys error', event);
+
           reject(event.data.error); // Handle error
         }
       });
+
+      console.log('Message posted');
 
       // Request wallet to sign data
       this.walletWindow?.postMessage(
@@ -157,6 +170,31 @@ export class Wallet {
       });
       this.walletWindow?.postMessage(
         { action: ACTION.REQ_WALLET_DETAILS },
+        this.walletUrl
+      );
+    });
+  };
+
+  checkAuthStatus = async () => {
+    console.log('Checking auth status');
+
+    await this.openWalletWindow();
+
+    return new Promise((resolve, reject) => {
+      // Listen for wallet response
+      window.addEventListener('message', function listener(event) {
+        if (event.data.action === ACTION.AUTH_STATUS) {
+          window.removeEventListener('message', listener);
+          console.log('Auth Status >>>', event);
+          resolve(event.data.address); // Wallet address returned
+        } else if (event.data.action === ACTION.ERROR) {
+          window.removeEventListener('message', listener);
+          console.log('Got Error >>>', event);
+          reject(event.data.error); // Handle error
+        }
+      });
+      this.walletWindow?.postMessage(
+        { action: ACTION.AUTH_STATUS },
         this.walletUrl
       );
     });

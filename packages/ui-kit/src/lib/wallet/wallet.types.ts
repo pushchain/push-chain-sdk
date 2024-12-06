@@ -7,6 +7,8 @@ export enum ACTION {
   REQ_TO_SIGN = 'reqToSign',
   REQ_WALLET_DETAILS = 'reqWalletDetails',
 
+  AUTH_STATUS = 'authStatus',
+
   ERROR = 'error',
   CONNECTION_STATUS = 'connectionStatus',
   WALLET_DETAILS = 'walletDetails',
