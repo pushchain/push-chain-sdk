@@ -1,14 +1,14 @@
 import React from 'react';
-import { ButtonStatus, IConnectPushWalletProps } from './wallet.types';
-import { ENV } from '../constants';
+import { ENV } from '../../constants';
 import {
   WALLET_TO_APP_ACTION,
   APP_TO_WALLET_ACTION,
-} from './ConnectWalletButton.types';
+  ButtonStatus,
+  IConnectPushWalletProps,
+} from '../wallet.types';
 
-const ConnectWalletButton: React.FC<IConnectPushWalletProps> = ({
+const ConnectPushWallet: React.FC<IConnectPushWalletProps> = ({
   setAccount,
-  pushWallet,
   env = ENV.PROD,
 }) => {
   const [buttonStatus, setButtonStatus] =
@@ -38,7 +38,7 @@ const ConnectWalletButton: React.FC<IConnectPushWalletProps> = ({
     const walletUrl = 'http://localhost:5173';
     if (newTab) {
       setButtonStatus('Connecting');
-      const handleMessage = (event) => {
+      const handleMessage = (event: MessageEvent) => {
         if (event.origin === walletUrl) {
           // Handle the message received from the wallet tab
           console.log('Message from child Tab: ', event.data);
@@ -165,4 +165,4 @@ const ConnectWalletButton: React.FC<IConnectPushWalletProps> = ({
   );
 };
 
-export { ConnectWalletButton };
+export { ConnectPushWallet };

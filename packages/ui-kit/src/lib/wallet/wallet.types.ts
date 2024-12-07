@@ -1,31 +1,26 @@
 import { ENV } from '../constants';
-import { Wallet as PushWallet } from './wallet';
 
-export enum ACTION {
-  IS_CONNECTED = 'isConnected',
-  REQ_TO_CONNECT = 'reqToConnect',
-  REQ_TO_SIGN = 'reqToSign',
-  REQ_WALLET_DETAILS = 'reqWalletDetails',
-
+export enum WALLET_TO_APP_ACTION {
   AUTH_STATUS = 'authStatus',
+  IS_LOGGED_IN = 'isLoggedIn',
 
-  ERROR = 'error',
-  CONNECTION_STATUS = 'connectionStatus',
-  WALLET_DETAILS = 'walletDetails',
-  SIGNATURE = 'signature',
+  APP_CONNECTION_REJECTED = 'appConnectionRejected',
+  APP_CONNECTION_SUCCESS = 'appConnectionSuccess',
+
+  IS_LOGGED_OUT = 'loggedOut',
+  TAB_CLOSED = 'tabClosed',
 }
 
-export type AppConnection = {
-  origin: string;
-  authStatus?: 'loggedIn' | 'notLoggedIn';
-  appConnectionStatus: 'rejected' | 'notReceived' | 'connected' | 'pending';
-};
+export enum APP_TO_WALLET_ACTION {
+  NEW_CONNECTION_REQUEST = 'newConnectionRequest',
+  SIGN_MESSAGE = 'signMessage',
+}
 
 export type IConnectPushWalletProps = {
   setAccount: (account: string) => void;
-  pushWallet: PushWallet;
   env?: ENV;
 };
+
 export type ButtonStatus =
   | 'Connect'
   | 'Connecting'
