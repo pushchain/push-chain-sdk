@@ -98,11 +98,13 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
   };
 
   const handleUserLogOutEvent = () => {
+    // TODO: Fix this case
     setConnectionStatus('notConnected');
     setAccount(null);
   };
 
   const handleWalletTabClosed = () => {
+    // TODO: Fix this case
     setConnectionStatus('notConnected');
     setAccount(null);
     tabRef.current = null;
@@ -141,53 +143,49 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
     });
   };
 
-  const messageHandler = (event: MessageEvent) => {
-    if (event.origin === config.WALLET_URL[env]) {
-      console.log('Message from child Tab: ', event.data);
-
-      switch (event.data.type) {
-        case WALLET_TO_APP_ACTION.IS_LOGGED_IN:
-          console.log('User has logged In', event.data.data);
-          handleIsLoggedInAction(event.data.data);
-          break;
-        case WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS:
-          console.log('App Connection Success', event.data.data);
-          handleAppConnectionSuccess(event.data.data);
-          break;
-        case WALLET_TO_APP_ACTION.APP_CONNECTION_REJECTED:
-          console.log('App Connection Rejected', event.data.data);
-          handleAppConnectionRejection();
-          break;
-        case WALLET_TO_APP_ACTION.SIGNATURE:
-          console.log('Signature received', event.data.data);
-          if (signatureResolverRef.current) {
-            signatureResolverRef.current(event.data.data); // Resolve the promise with the data
-          }
-          break;
-        case WALLET_TO_APP_ACTION.IS_LOGGED_OUT:
-          console.log('User loggged out', event.data.data);
-          handleUserLogOutEvent();
-          break;
-        case WALLET_TO_APP_ACTION.TAB_CLOSED:
-          console.log('User closed the tab', event.data.data);
-          handleWalletTabClosed();
-          break;
-
-        default:
-          console.warn('Unknown message type:', event.data.type);
-      }
-    }
-  };
-
   useEffect(() => {
-    if (tabRef.current) {
-      window.addEventListener('message', messageHandler);
-    } else {
-      window.removeEventListener('message', messageHandler);
-    }
+    const messageHandler = (event: MessageEvent) => {
+      if (event.origin === config.WALLET_URL[env]) {
+        console.log('Message from child Tab: ', event.data);
+
+        switch (event.data.type) {
+          case WALLET_TO_APP_ACTION.IS_LOGGED_IN:
+            console.log('User has logged In', event.data.data);
+            handleIsLoggedInAction(event.data.data);
+            break;
+          case WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS:
+            console.log('App Connection Success', event.data.data);
+            handleAppConnectionSuccess(event.data.data);
+            break;
+          case WALLET_TO_APP_ACTION.APP_CONNECTION_REJECTED:
+            console.log('App Connection Rejected', event.data.data);
+            handleAppConnectionRejection();
+            break;
+          case WALLET_TO_APP_ACTION.SIGNATURE:
+            console.log('Signature received', event.data.data);
+            if (signatureResolverRef.current) {
+              signatureResolverRef.current(event.data.data); // Resolve the promise with the data
+            }
+            break;
+          case WALLET_TO_APP_ACTION.IS_LOGGED_OUT:
+            console.log('User loggged out', event.data.data);
+            handleUserLogOutEvent();
+            break;
+          case WALLET_TO_APP_ACTION.TAB_CLOSED:
+            console.log('User closed the tab', event.data.data);
+            handleWalletTabClosed();
+            break;
+
+          default:
+            console.warn('Unknown message type:', event.data.type);
+        }
+      }
+    };
+
+    window.addEventListener('message', messageHandler);
 
     return () => window.removeEventListener('message', messageHandler);
-  }, [tabRef.current]);
+  }, []);
 
   return (
     <WalletContext.Provider
