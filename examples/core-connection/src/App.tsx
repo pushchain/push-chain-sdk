@@ -5,7 +5,7 @@ import { ENV } from '../../../packages/ui-kit/src';
 
 const App: React.FC = () => {
   return (
-    <WalletProvider env={ENV.LOCAL}>
+    <WalletProvider env={ENV.PROD}>
       <HomePage />
     </WalletProvider>
   );
