@@ -77,9 +77,14 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
     });
   };
 
-  const handleIsLoggedInAction = () => {
-    setConnectionStatus('authenticating');
-    handleNewConnectionRequest();
+  const handleIsLoggedInAction = (response: WalletEventRespoonse) => {
+    if (response?.account) {
+      setConnectionStatus('connected');
+      setAccount(response.account);
+    } else {
+      setConnectionStatus('authenticating');
+      handleNewConnectionRequest();
+    }
   };
 
   const handleAppConnectionSuccess = (response: WalletEventRespoonse) => {
@@ -151,7 +156,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
           break;
         case WALLET_TO_APP_ACTION.APP_CONNECTION_REJECTED:
           console.log('App Connection Rejected', event.data.data);
-          handleAppConnectionRejection(event.data.data);
+          handleAppConnectionRejection();
           break;
         case WALLET_TO_APP_ACTION.SIGNATURE:
           console.log('Signature received', event.data.data);
@@ -161,11 +166,11 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
           break;
         case WALLET_TO_APP_ACTION.IS_LOGGED_OUT:
           console.log('User loggged out', event.data.data);
-          handleUserLogOutEvent(event.data.data);
+          handleUserLogOutEvent();
           break;
         case WALLET_TO_APP_ACTION.TAB_CLOSED:
           console.log('User closed the tab', event.data.data);
-          handleWalletTabClosed(event.data.data);
+          handleWalletTabClosed();
           break;
 
         default:
