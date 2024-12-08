@@ -146,7 +146,7 @@ describe.skip('Network Benchmark Tests', () => {
       const timeTaken = await measureExecutionTime(threads, async () => {
         const txInstance = await Tx.initialize(env);
         const tx = txInstance.createUnsigned(
-          'CUSTOM:NETWORK_BENCHMARK',
+          'CUSTOM:BENCHMARK',
           recipients,
           new Uint8Array([1, 2, 3, 4, 5])
         );
@@ -176,7 +176,7 @@ describe.skip('Network Benchmark Tests', () => {
         const txInstance = await Tx.initialize(env);
         await txInstance.getTransactionsFromVNode(
           `eip155:1:${privateKeyToAddress(generatePrivateKey())}`,
-          'CUSTOM:NETWORK_BENCHMARK'
+          'CUSTOM:BENCHMARK'
         );
       });
       console.log(

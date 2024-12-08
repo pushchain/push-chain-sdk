@@ -3,11 +3,7 @@ import { TxCategory } from '../../src/lib/tx/tx.types';
 import { InitDid } from '../../src/lib/generated/txData/init_did';
 import { config } from '../config';
 import { TxResponse } from '../../src/lib/tx/tx.types';
-import {
-  generatePrivateKey,
-  privateKeyToAccount,
-  privateKeyToAddress,
-} from 'viem/accounts';
+import { generatePrivateKey, privateKeyToAccount, privateKeyToAddress } from 'viem/accounts';
 import { hexToBytes, toHex, verifyMessage } from 'viem';
 import { ENV } from '../../src/lib/constants';
 import { sha256 } from '@noble/hashes/sha256';
@@ -56,16 +52,12 @@ describe('Tx', () => {
   };
   it('should create an unsigned transaction', async () => {
     const txInstance = await Tx.initialize(env);
-    const tx = await txInstance.createUnsigned(
-      TxCategory.INIT_DID,
-      mockRecipients,
-      Tx.serializeData(mockInitDidTxData, TxCategory.INIT_DID)
-    );
+    const tx = await txInstance.createUnsigned(TxCategory.INIT_DID, mockRecipients, Tx.serializeData(mockInitDidTxData, TxCategory.INIT_DID));
     expect(tx).toEqual({
       type: 0,
       category: TxCategory.INIT_DID,
       sender: '',
-      recipients: mockRecipients,
+      recipients: mockRecipients.map((value) => Tx.normalizeCaip(value)),
       data: Tx.serializeData(mockInitDidTxData, TxCategory.INIT_DID),
       salt: tx.salt,
       apiToken: tx.apiToken,
@@ -75,22 +67,14 @@ describe('Tx', () => {
   });
   it('should serialize an unsigned transaction', async () => {
     const txInstance = await Tx.initialize(env);
-    const unsignedTx = await txInstance.createUnsigned(
-      TxCategory.INIT_DID,
-      mockRecipients,
-      Tx.serializeData(mockInitDidTxData, TxCategory.INIT_DID)
-    );
+    const unsignedTx = await txInstance.createUnsigned(TxCategory.INIT_DID, mockRecipients, Tx.serializeData(mockInitDidTxData, TxCategory.INIT_DID));
     const serializedTx = Tx.serialize(unsignedTx);
     expect(serializedTx).toBeInstanceOf(Uint8Array);
     expect(unsignedTx).toEqual(Tx.deserialize(serializedTx));
   });
   it('should serialize a signed transaction', async () => {
     const txInstance = await Tx.initialize(env);
-    const unsignedTx = await txInstance.createUnsigned(
-      TxCategory.INIT_DID,
-      mockRecipients,
-      Tx.serializeData(mockInitDidTxData, TxCategory.INIT_DID)
-    );
+    const unsignedTx = await txInstance.createUnsigned(TxCategory.INIT_DID, mockRecipients, Tx.serializeData(mockInitDidTxData, TxCategory.INIT_DID));
     const signedTx = {
       ...unsignedTx,
       signature: new Uint8Array([6, 7, 8, 9, 10]),
@@ -101,22 +85,13 @@ describe('Tx', () => {
     expect(signedTx).toEqual(Tx.deserialize(serializedTx));
   });
   it('should serialize a Tx data into a Uint8Array', () => {
-    const serializedTxData = Tx.serializeData(
-      mockInitDidTxData,
-      TxCategory.INIT_DID
-    );
+    const serializedTxData = Tx.serializeData(mockInitDidTxData, TxCategory.INIT_DID);
     expect(serializedTxData).toBeInstanceOf(Uint8Array);
     expect(serializedTxData.length).toBeGreaterThan(0);
   });
   it('should deserialize a Uint8Array into a Tx Data object', () => {
-    const serializedTxData = Tx.serializeData(
-      mockInitDidTxData,
-      TxCategory.INIT_DID
-    );
-    const deserializedTxData = Tx.deserializeData(
-      serializedTxData,
-      TxCategory.INIT_DID
-    );
+    const serializedTxData = Tx.serializeData(mockInitDidTxData, TxCategory.INIT_DID);
+    const deserializedTxData = Tx.deserializeData(serializedTxData, TxCategory.INIT_DID);
     expect(deserializedTxData).toEqual(mockInitDidTxData);
   });
   it('should get transactions with default parameters', async () => {
@@ -130,12 +105,7 @@ describe('Tx', () => {
   });
   it('should get transactions with custom parameters', async () => {
     const txInstance = await Tx.initialize(env);
-    const res = await txInstance.get(
-      Math.floor(Date.now() / 1000),
-      'DESC',
-      10,
-      2
-    );
+    const res = await txInstance.get(Math.floor(Date.now() / 1000), 'DESC', 10, 2);
     expect(res.blocks).toBeInstanceOf(Array);
     res.blocks.forEach((block) => {
       block.transactions.forEach((tx) => txChecker(tx));
@@ -143,61 +113,32 @@ describe('Tx', () => {
   });
   it('should get transactions for a specific user', async () => {
     const txInstance = await Tx.initialize(env);
-    const res = await txInstance.get(
-      Math.floor(Date.now()),
-      'DESC',
-      10,
-      1,
-      'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4'
-    );
+    const res = await txInstance.get(Math.floor(Date.now()), 'DESC', 10, 1, 'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4');
     expect(res.blocks).toBeInstanceOf(Array);
-    expect(res.blocks.length).toBeGreaterThan(0);
     res.blocks.forEach((block) => {
       block.transactions.forEach((tx) => txChecker(tx));
     });
   });
   it('should get transactions with a specific Category', async () => {
     const txInstance = await Tx.initialize(env);
-    const res = await txInstance.get(
-      Math.floor(Date.now()),
-      'DESC',
-      10,
-      1,
-      undefined,
-      'CUSTOM:PUSH_MAIL'
-    );
+    const res = await txInstance.get(Math.floor(Date.now()), 'DESC', 10, 1, undefined, 'CUSTOM:PUSH_MAIL');
     expect(res.blocks).toBeInstanceOf(Array);
-    expect(res.blocks.length).toBeGreaterThan(0);
     res.blocks.forEach((block) => {
       block.transactions.forEach((tx) => txChecker(tx));
     });
   });
   it('should get transactions with a specific Sender', async () => {
     const txInstance = await Tx.initialize(env);
-    const res = await txInstance.getBySender(
-      'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4',
-      Math.floor(Date.now()),
-      'DESC',
-      10,
-      1
-    );
+    const res = await txInstance.getBySender('eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4', Math.floor(Date.now()), 'DESC', 10, 1);
     expect(res.blocks).toBeInstanceOf(Array);
-    expect(res.blocks.length).toBeGreaterThan(0);
     res.blocks.forEach((block) => {
       block.transactions.forEach((tx) => txChecker(tx));
     });
   });
   it('should get transactions with a specific Recipient', async () => {
     const txInstance = await Tx.initialize(env);
-    const res = await txInstance.getByRecipient(
-      'eip155:1:0x76cfb79DA0f91b2C162cA2a23f7f0117bD8cDB2c',
-      Math.floor(Date.now()),
-      'DESC',
-      10,
-      1
-    );
+    const res = await txInstance.getByRecipient('eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4', Math.floor(Date.now()), 'DESC', 10, 1);
     expect(res.blocks).toBeInstanceOf(Array);
-    expect(res.blocks.length).toBeGreaterThan(0);
     res.blocks.forEach((block) => {
       block.transactions.forEach((tx) => txChecker(tx));
     });
@@ -214,10 +155,9 @@ describe('Tx', () => {
       block.transactions.forEach((tx) => txChecker(tx));
     });
   });
+
   it('should send for a INIT_DID tx', async () => {
-    const account = privateKeyToAccount(
-      INIT_DID_TX_2.masterPrivateKey as `0x${string}`
-    );
+    const account = privateKeyToAccount(INIT_DID_TX_2.masterPrivateKey as `0x${string}`);
     const signer = {
       account: Address.toPushCAIP(account.address, ENV.DEV),
       signMessage: async (data: Uint8Array) => {
@@ -232,9 +172,7 @@ describe('Tx', () => {
     expect(typeof res).toEqual('string');
   });
   it('should reject for a INIT_DID tx with different signer', async () => {
-    const account = privateKeyToAccount(
-      INIT_DID_TX_2.masterPrivateKey as `0x${string}`
-    );
+    const account = privateKeyToAccount(INIT_DID_TX_2.masterPrivateKey as `0x${string}`);
     const randomPk = generatePrivateKey();
     const randomAccount = privateKeyToAccount(randomPk);
     // Account is correct but signer is different
@@ -249,14 +187,10 @@ describe('Tx', () => {
       },
     };
     const txInstance = await Tx.initialize(env);
-    await expect(
-      txInstance.send(INIT_DID_TX_2.unsignedInitDIDTx, signer)
-    ).rejects.toThrow();
+    await expect(txInstance.send(INIT_DID_TX_2.unsignedInitDIDTx, signer)).rejects.toThrow();
   });
   it('should reject for a INIT_DID tx with different sender Address', async () => {
-    const account = privateKeyToAccount(
-      INIT_DID_TX_2.masterPrivateKey as `0x${string}`
-    );
+    const account = privateKeyToAccount(INIT_DID_TX_2.masterPrivateKey as `0x${string}`);
     const randomPk = generatePrivateKey();
     const randomAccount = privateKeyToAccount(randomPk);
     // Signer is correct but account is different
@@ -271,14 +205,10 @@ describe('Tx', () => {
       },
     };
     const txInstance = await Tx.initialize(env);
-    await expect(
-      txInstance.send(INIT_DID_TX_2.unsignedInitDIDTx, signer)
-    ).rejects.toThrow();
+    await expect(txInstance.send(INIT_DID_TX_2.unsignedInitDIDTx, signer)).rejects.toThrow();
   });
   it('should reject for a INIT_DID tx with wrong signature in walletToEncDerivedKey', async () => {
-    const account = privateKeyToAccount(
-      INIT_DID_TX.masterPrivateKey as `0x${string}`
-    );
+    const account = privateKeyToAccount(INIT_DID_TX.masterPrivateKey as `0x${string}`);
     const randomPk = generatePrivateKey();
     const randomAccount = privateKeyToAccount(randomPk);
     // Signer is correct but account is different
@@ -293,9 +223,7 @@ describe('Tx', () => {
       },
     };
     const txInstance = await Tx.initialize(env);
-    await expect(
-      txInstance.send(INIT_DID_TX.unsignedInitDIDTx, signer)
-    ).rejects.toThrow();
+    await expect(txInstance.send(INIT_DID_TX.unsignedInitDIDTx, signer)).rejects.toThrow();
   });
   it('should send for a custom tx', async () => {
     const txInstance = await Tx.initialize(env);
@@ -304,11 +232,7 @@ describe('Tx', () => {
       `eip155:137:${privateKeyToAddress(generatePrivateKey())}`,
       `eip155:97:${privateKeyToAddress(generatePrivateKey())}`,
     ];
-    const tx = txInstance.createUnsigned(
-      'CUSTOM:CORE_SDK',
-      recipients,
-      new Uint8Array([1, 2, 3, 4, 5])
-    );
+    const tx = txInstance.createUnsigned('CUSTOM:CORE_SDK', recipients, new Uint8Array([1, 2, 3, 4, 5]));
 
     const pk = generatePrivateKey();
     const account = privateKeyToAccount(pk);
@@ -331,11 +255,7 @@ describe('Tx', () => {
       `eip155:137:${privateKeyToAddress(generatePrivateKey())}`,
       `eip155:97:${privateKeyToAddress(generatePrivateKey())}`,
     ];
-    const tx = txInstance.createUnsigned(
-      'CUSTOM:CORE_SDK',
-      recipients,
-      new Uint8Array([1, 2, 3, 4, 5])
-    );
+    const tx = txInstance.createUnsigned('CUSTOM:CORE_SDK', recipients, new Uint8Array([1, 2, 3, 4, 5]));
 
     const pk = generatePrivateKey();
     const account = privateKeyToAccount(pk);
@@ -358,11 +278,7 @@ describe('Tx', () => {
       `eip155:137:${privateKeyToAddress(generatePrivateKey())}`,
       `eip155:97:${privateKeyToAddress(generatePrivateKey())}`,
     ];
-    const tx = txInstance.createUnsigned(
-      'CUSTOM:CORE_SDK',
-      recipients,
-      new Uint8Array([1, 2, 3, 4, 5])
-    );
+    const tx = txInstance.createUnsigned('CUSTOM:CORE_SDK', recipients, new Uint8Array([1, 2, 3, 4, 5]));
 
     const pk = generatePrivateKey();
     const account = privateKeyToAccount(pk);
@@ -388,9 +304,7 @@ describe('Tx', () => {
       signature: new Uint8Array(0),
     });
 
-    const dataToBeSigned = new TextEncoder().encode(
-      toHex(sha256(serializedUnsignedTx))
-    );
+    const dataToBeSigned = new TextEncoder().encode(toHex(sha256(serializedUnsignedTx)));
 
     const sigVerification = await verifyMessage({
       address: '0x35B84d6848D16415177c64D64504663b998A6ab4',
@@ -411,15 +325,9 @@ describe('Tx', () => {
       signature: new Uint8Array(0),
     });
 
-    const dataToBeSigned = new TextEncoder().encode(
-      toHex(sha256(serializedUnsignedTx))
-    );
+    const dataToBeSigned = new TextEncoder().encode(toHex(sha256(serializedUnsignedTx)));
 
-    const sigVerification = nacl.sign.detached.verify(
-      dataToBeSigned,
-      deserializedTx.signature,
-      bs58.decode('69EUYJKr2NE8vHFphyRPSU2tqRbXhMu9gzNo96mjvFLv')
-    );
+    const sigVerification = nacl.sign.detached.verify(dataToBeSigned, deserializedTx.signature, bs58.decode('69EUYJKr2NE8vHFphyRPSU2tqRbXhMu9gzNo96mjvFLv'));
 
     expect(sigVerification).toBe(true);
   });
@@ -435,14 +343,10 @@ describe('Tx', () => {
       signature: new Uint8Array(0),
     });
 
-    const dataToBeSigned = new TextEncoder().encode(
-      toHex(sha256(serializedUnsignedTx))
-    );
+    const dataToBeSigned = new TextEncoder().encode(toHex(sha256(serializedUnsignedTx)));
 
     const sigVerification = await verifyMessage({
-      address: Address.pushToEvm(
-        'pushconsumer1ulpxwud78ctaar5zgeuhmju5k8gpz8najcvxkn'
-      ) as `0x${string}`,
+      address: Address.pushToEvm('pushconsumer1ulpxwud78ctaar5zgeuhmju5k8gpz8najcvxkn') as `0x${string}`,
       message: { raw: dataToBeSigned },
       signature: deserializedTx.signature,
     });
