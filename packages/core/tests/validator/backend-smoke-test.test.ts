@@ -42,19 +42,19 @@ const mockRecipients = [
   `eip155:97:${privateKeyToAddress(generatePrivateKey())}`,
 ];
 
-async function sendCustomTx(txInstance:Tx, senderPrivateKey:Hex, nonce:number) {
+async function sendCustomTx(
+  txInstance: Tx,
+  senderPrivateKey: Hex,
+  nonce: number
+) {
   const recipients = [
     `eip155:1:${privateKeyToAddress(generatePrivateKey())}`,
     `eip155:137:${privateKeyToAddress(generatePrivateKey())}`,
-    `eip155:97:${privateKeyToAddress(generatePrivateKey())}`
-  ].map(value => Tx.normalizeCaip(value));
+    `eip155:97:${privateKeyToAddress(generatePrivateKey())}`,
+  ].map((value) => Tx.normalizeCaip(value));
   const category = ('CUSTOM:V' + nonce).substring(0, 21);
   const sampleData = intToArray(nonce);
-  const sampleTx = txInstance.createUnsigned(
-    category,
-    recipients,
-    sampleData,
-  );
+  const sampleTx = txInstance.createUnsigned(category, recipients, sampleData);
 
   const account = privateKeyToAccount(senderPrivateKey);
   const senderInCaip = Address.toPushCAIP(account.address, ENV.DEV);
@@ -62,10 +62,10 @@ async function sendCustomTx(txInstance:Tx, senderPrivateKey:Hex, nonce:number) {
     account: senderInCaip,
     signMessage: async (data: Uint8Array) => {
       const signature = await account.signMessage({
-        message: { raw: data }
+        message: { raw: data },
       });
       return hexToBytes(signature);
-    }
+    },
   };
   const res = await txInstance.send(sampleTx, signer);
   return res;
@@ -73,9 +73,8 @@ async function sendCustomTx(txInstance:Tx, senderPrivateKey:Hex, nonce:number) {
 
 // add .skip if needed
 describe('validator smoke test', () => {
-
   // NOTE: you can switch manually to CONSTANTS.ENV.LOCAL or CONSTANTS.ENV.DEV
-  const env = CONSTANTS.ENV.DEV;
+  const env = config.ENV;
 
   it('sinittx : send INIT_DID tx', async () => {
     const account = privateKeyToAccount(
@@ -111,7 +110,7 @@ describe('validator smoke test', () => {
     for (const res of allTxIds) {
       console.log('res %o', res);
     }
-  })
+  });
 
   it('wtr : write and read 10 custom', async () => {
     const iterations = 1;
@@ -120,8 +119,8 @@ describe('validator smoke test', () => {
       const recipients = [
         `eip155:1:${privateKeyToAddress(generatePrivateKey())}`,
         `eip155:137:${privateKeyToAddress(generatePrivateKey())}`,
-        `eip155:97:${privateKeyToAddress(generatePrivateKey())}`
-      ].map(value => Tx.normalizeCaip(value));
+        `eip155:97:${privateKeyToAddress(generatePrivateKey())}`,
+      ].map((value) => Tx.normalizeCaip(value));
       const category = 'CUSTOM:NETWORK_BENCH';
       const sampleTx = txInstance.createUnsigned(
         category,
@@ -136,10 +135,10 @@ describe('validator smoke test', () => {
         account: senderInCaip,
         signMessage: async (data: Uint8Array) => {
           const signature = await account.signMessage({
-            message: { raw: data }
+            message: { raw: data },
           });
           return hexToBytes(signature);
-        }
+        },
       };
       const res = await txInstance.send(sampleTx, signer);
       expect(typeof res).toEqual('string');
@@ -149,7 +148,10 @@ describe('validator smoke test', () => {
       // read
       for (const recipient of [senderInCaip, ...recipients]) {
         console.log('checking %s', recipient);
-        const res = await txInstance.getTransactionsFromVNode(recipient, category);
+        const res = await txInstance.getTransactionsFromVNode(
+          recipient,
+          category
+        );
         expect(res.items).toBeInstanceOf(Array);
         const item0 = res.items[0];
         expect(item0.sender).toEqual(signer.account);
@@ -161,14 +163,14 @@ describe('validator smoke test', () => {
     }
   });
 
-
   it('read :: should get transactions with custom parameters', async () => {
     const txInstance = await Tx.initialize(env);
     const res = await txInstance.getTransactionsFromVNode(
-      "eip155:1:0x76cfb79DA0f91b2C162cA2a23f7f0117bD8cDB2c",
-      "CUSTOM:CORE_SDK");
+      'eip155:1:0x76cfb79DA0f91b2C162cA2a23f7f0117bD8cDB2c',
+      'CUSTOM:CORE_SDK'
+    );
     expect(res.items).toBeInstanceOf(Array);
-    console.log("%o", res);
+    console.log('%o', res);
   });
 
   it('read :: should get transactions with custom parameters2', async () => {
@@ -180,17 +182,17 @@ describe('validator smoke test', () => {
     expect(res.items).toBeInstanceOf(Array);
     console.log('%o', res);
   });
-
 });
 
 async function sleep(ms: number) {
-  await new Promise(resolve => setTimeout(resolve, ms));
+  await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function intToArray(i:number) {
+function intToArray(i: number) {
   return Uint8Array.of(
-    (i&0xff000000)>>24,
-    (i&0x00ff0000)>>16,
-    (i&0x0000ff00)>> 8,
-    (i&0x000000ff)>> 0);
+    (i & 0xff000000) >> 24,
+    (i & 0x00ff0000) >> 16,
+    (i & 0x0000ff00) >> 8,
+    (i & 0x000000ff) >> 0
+  );
 }
