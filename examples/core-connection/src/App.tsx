@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { PushNetwork } from '@pushprotocol/push-chain';
 import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
 import './App.css';
 import { Transaction } from '@pushprotocol/push-chain/src/lib/generated/tx';
 import { toHex } from 'viem';
+import { PushNetwork } from '@pushprotocol/push-chain';
+import { ConnectPushWallet, PushWallet } from '@pushprotocol/pushchain-ui-kit';
 
 // Mock data for testing
 const mockRecipients = [
@@ -13,11 +14,12 @@ const mockRecipients = [
 
 const App: React.FC = () => {
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
+
+  const [pushWallet, setPushWallet] = useState<PushWallet | null>(null);
+
   const [mockTx, setMockTx] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [account, setAccount] = useState<string>('');
-  const [walletConnectionLoading, setWalletConnectionLoading] =
-    useState<boolean>(false);
 
   // For signing message
   const [userInput, setUserInput] = useState<string>('');
@@ -28,6 +30,9 @@ const App: React.FC = () => {
       try {
         const pushNetworkInstance = await PushNetwork.initialize(ENV.DEV);
         setPushNetwork(pushNetworkInstance);
+
+        const pushWalletInstance = new PushWallet(ENV.DEV);
+        setPushWallet(pushWalletInstance);
 
         const unsignedTx = pushNetworkInstance.tx.createUnsigned(
           'CUSTOM:SAMPLE_TX',
@@ -42,36 +47,14 @@ const App: React.FC = () => {
     setNetwork();
   }, []);
 
-  const connectWallet = async (tryCount: number = 1) => {
-    setWalletConnectionLoading(true);
-    if (pushNetwork) {
-      try {
-        const acc = await pushNetwork.wallet.connect();
-        setAccount(acc);
-        setWalletConnectionLoading(false);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (err) {
-        if (tryCount < 30 && err === 'PushWallet Not Logged In') {
-          // wait for 5 seconds and try again
-          setTimeout(() => {
-            connectWallet(tryCount + 1);
-          }, 2000);
-        } else {
-          alert(err);
-          setWalletConnectionLoading(false);
-        }
-      }
-    }
-  };
-
   const sendTransaction = async () => {
     setLoading(true);
     try {
-      if (pushNetwork && mockTx) {
+      if (pushNetwork && mockTx && pushWallet) {
         const txHash = await pushNetwork.tx.send(mockTx, {
           account,
           signMessage: async (data: Uint8Array) => {
-            return await pushNetwork.wallet.sign(data);
+            return await pushWallet.sign(data);
           },
         });
 
@@ -87,8 +70,8 @@ const App: React.FC = () => {
   };
   const signMessage = async () => {
     try {
-      if (pushNetwork) {
-        const signedData = await pushNetwork.wallet.sign(
+      if (pushNetwork && pushWallet) {
+        const signedData = await pushWallet.sign(
           new TextEncoder().encode(userInput)
         );
         setSignedData(signedData);
@@ -102,31 +85,10 @@ const App: React.FC = () => {
   return (
     <div className="app-container">
       <h1>Send Transaction to Push Network</h1>
-      {pushNetwork &&
-        account === '' &&
-        (walletConnectionLoading ? (
-          <div className="loader-container">
-            <div className="loader"></div>
-            <p className="loader-text">Connecting Wallet...</p>
-          </div>
-        ) : (
-          <button
-            className="send-button"
-            onClick={() => connectWallet(1)}
-            disabled={loading}
-            style={{
-              backgroundColor: '#3498db',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '5px',
-              padding: '10px 20px',
-              cursor: 'pointer',
-              fontSize: '1rem',
-            }}
-          >
-            Connect Push Wallet
-          </button>
-        ))}
+
+      {pushWallet && (
+        <ConnectPushWallet setAccount={setAccount} pushWallet={pushWallet} />
+      )}
 
       {account !== '' && (
         <div className="account-info">

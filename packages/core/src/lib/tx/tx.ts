@@ -12,7 +12,7 @@ import { sha256 } from '@noble/hashes/sha256';
 import { toHex } from 'viem';
 
 export class Tx {
-  private tokenCache:TokenCache;
+  private tokenCache: TokenCache;
 
   private constructor(private validator: Validator, private env: ENV) {
     this.tokenCache = new TokenCache(validator);
@@ -86,11 +86,13 @@ export class Tx {
     data: Uint8Array
   ): Transaction => {
     Tx.checkCategoryOrFail(category);
-    const fixedRecipients:string[] = recipients.map(value => Tx.normalizeCaip(value));
+    const fixedRecipients: string[] = recipients.map((value) =>
+      Tx.normalizeCaip(value)
+    );
     return Transaction.create({
       type: 0, // Phase 0 only has non-value transfers
       category,
-      recipients: recipients.map(value => Tx.normalizeCaip(value)),
+      recipients: recipients.map((value) => Tx.normalizeCaip(value)),
       data,
       salt: parse(uuidv4()),
       fee: '0', // Fee is 0 as of now
@@ -130,8 +132,16 @@ export class Tx {
   /**
    * Get Transactions
    */
-  async getFromVNode(accountInCaip: string, category: string, ts: string = '' + Math.floor(Date.now()/1000), direction: 'ASC' | 'DESC' = 'DESC') {
-    return await this.validator.callVNode<ReplyGrouped>('push_getTransactions', [accountInCaip, category, ts, direction]);
+  async getFromVNode(
+    accountInCaip: string,
+    category: string,
+    ts: string = '' + Math.floor(Date.now() / 1000),
+    direction: 'ASC' | 'DESC' = 'DESC'
+  ) {
+    return await this.validator.callVNode<ReplyGrouped>(
+      'push_getTransactions',
+      [accountInCaip, category, ts, direction]
+    );
   }
 
   /**
@@ -181,7 +191,6 @@ export class Tx {
     );
   };
 
-
   /**
    * Send Tx to Push Network
    * @param tx Unsigned Push Tx
@@ -193,7 +202,8 @@ export class Tx {
     signer: {
       account: string;
       signMessage: (dataToBeSigned: Uint8Array) => Promise<Uint8Array>;
-    }
+    },
+    url: string = this.validator['activeValidatorURL']
   ): Promise<string> => {
     console.log('send() account: %s', Tx.normalizeCaip(signer.account));
 
@@ -227,20 +237,28 @@ export class Tx {
   /**
    * Get Transactions
    */
-  async getTransactionsFromVNode(accountInCaip: string, category: string, ts: string = '' + Math.floor(Date.now()/1000), direction: 'ASC' | 'DESC' = 'DESC') {
+  async getTransactionsFromVNode(
+    accountInCaip: string,
+    category: string,
+    ts: string = '' + Math.floor(Date.now() / 1000),
+    direction: 'ASC' | 'DESC' = 'DESC'
+  ) {
     Tx.checkCategoryOrFail(category);
-    return await this.validator.callVNode<ReplyGrouped>('push_getTransactions', [Tx.normalizeCaip(accountInCaip), category, ts, direction]);
+    return await this.validator.callVNode<ReplyGrouped>(
+      'push_getTransactions',
+      [Tx.normalizeCaip(accountInCaip), category, ts, direction]
+    );
   }
 
-  static normalizeCaip(accountInCaip:string) {
-    if(accountInCaip.startsWith("eip155")) {
+  static normalizeCaip(accountInCaip: string) {
+    if (accountInCaip.startsWith('eip155')) {
       return accountInCaip.toLowerCase();
     }
     return accountInCaip;
   }
 
-  static checkCategoryOrFail(category:string) {
-    if(category==null || category == "" || category.length > 20) {
+  static checkCategoryOrFail(category: string) {
+    if (category == null || category == '' || category.length > 20) {
       throw new Error('Invalid category, max size is 20 ascii chars');
     }
   }
@@ -252,14 +270,14 @@ class TokenCache {
   private cachedToken: TokenReply | null = null;
   private cachedTokenTs = 0;
 
-  constructor(private validator: Validator){}
-
-
+  constructor(private validator: Validator) {}
 
   async getCachedApiToken(): Promise<TokenReply | null> {
     if (TokenCache.isExpired(this.cachedTokenTs, this.TOKEN_EXPIRE_SECONDS)) {
       console.log('token refresh started');
-      this.cachedToken = await this.validator.call<TokenReply>('push_getApiToken');
+      this.cachedToken = await this.validator.call<TokenReply>(
+        'push_getApiToken'
+      );
       this.cachedTokenTs = new Date().getTime();
       console.log('token refresh finished');
     } else {
@@ -268,7 +286,9 @@ class TokenCache {
     return this.cachedToken;
   }
 
-  private static isExpired(ts:number, maxDelayInSec:number) {
-    return ts == 0 || Math.abs(new Date().getTime() - ts) > maxDelayInSec * 1000;
+  private static isExpired(ts: number, maxDelayInSec: number) {
+    return (
+      ts == 0 || Math.abs(new Date().getTime() - ts) > maxDelayInSec * 1000
+    );
   }
 }
