@@ -101,6 +101,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
     // TODO: Fix this case
     setConnectionStatus('notConnected');
     setAccount(null);
+
+    // TODO: Fix this afterwards
+    window.location.reload();
   };
 
   const handleWalletTabClosed = () => {
