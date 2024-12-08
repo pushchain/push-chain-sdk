@@ -78,20 +78,11 @@ export class Validator {
   private static createValidatorContractClient = (
     env: ENV
   ): ValidatorContract => {
-    let client;
-    if(env=='dev') {
-      client = createPublicClient({
-        chain: config.VALIDATOR[env].NETWORK,
-        transport: http(
-          'https://proportionate-multi-sanctuary.ethereum-sepolia.quiknode.pro/fe3638bd884a34c0aa6c85ce2cd62ef54b0d8442/'
-        ),
-      });
-    } else {
-      client = createPublicClient({
-        chain: config.VALIDATOR[env].NETWORK,
-        transport: http(),
-      });
-    }
+    const client = createPublicClient({
+      chain: config.VALIDATOR[env].NETWORK,
+      transport: http(),
+    });
+
     return getContract({
       abi: config.ABIS.VALIDATOR,
       address: config.VALIDATOR[env].VALIDATOR_CONTRACT as `0x${string}`,
@@ -127,7 +118,7 @@ export class Validator {
       }
       const response = await axios.post<JsonRpcResponse<T>>(url, requestBody, {
         headers: { 'Content-Type': 'application/json' },
-        timeout: 30000
+        timeout: 30000,
       });
 
       if (response.data.error) {
@@ -181,7 +172,7 @@ export class Validator {
     if (url.includes('.local')) {
       const urlObj = new URL(url);
       urlObj.hostname = 'localhost';
-      urlObj.protocol = "http:";
+      urlObj.protocol = 'http:';
       fixedUrl = urlObj.toString();
     }
     if (fixedUrl.endsWith('/')) {
