@@ -1,5 +1,3 @@
-import { ENV } from '../constants';
-
 export enum WALLET_TO_APP_ACTION {
   AUTH_STATUS = 'authStatus',
   IS_LOGGED_IN = 'isLoggedIn',
@@ -19,14 +17,13 @@ export enum APP_TO_WALLET_ACTION {
   SIGN_MESSAGE = 'signMessage',
 }
 
-export type IConnectPushWalletProps = {
-  setAccount: (account: string) => void;
-  env?: ENV;
-};
+export type ConnectionStatus =
+  | 'notConnected'
+  | 'connecting'
+  | 'authenticating'
+  | 'connected';
 
-export type ButtonStatus =
-  | 'Connect'
-  | 'Connecting'
-  | 'Retry'
-  | 'Authenticating'
-  | 'Connected';
+export type WalletEventRespoonse = {
+  signature?: Uint8Array;
+  account?: string;
+};
