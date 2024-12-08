@@ -4,7 +4,7 @@ import './App.css';
 import { Transaction } from '@pushprotocol/push-chain/src/lib/generated/tx';
 import { toHex } from 'viem';
 import { PushNetwork } from '@pushprotocol/push-chain';
-import { ConnectPushWallet, PushWallet } from '@pushprotocol/pushchain-ui-kit';
+import { ConnectPushWallet } from '../../../packages/ui-kit/src';
 
 // Mock data for testing
 const mockRecipients = [
@@ -14,8 +14,6 @@ const mockRecipients = [
 
 const App: React.FC = () => {
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
-
-  const [pushWallet, setPushWallet] = useState<PushWallet | null>(null);
 
   const [mockTx, setMockTx] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -30,9 +28,6 @@ const App: React.FC = () => {
       try {
         const pushNetworkInstance = await PushNetwork.initialize(ENV.DEV);
         setPushNetwork(pushNetworkInstance);
-
-        const pushWalletInstance = new PushWallet(ENV.DEV);
-        setPushWallet(pushWalletInstance);
 
         const unsignedTx = pushNetworkInstance.tx.createUnsigned(
           'CUSTOM:SAMPLE_TX',
@@ -70,11 +65,11 @@ const App: React.FC = () => {
   };
   const signMessage = async () => {
     try {
-      if (pushNetwork && pushWallet) {
-        const signedData = await pushWallet.sign(
-          new TextEncoder().encode(userInput)
-        );
-        setSignedData(signedData);
+      if (pushNetwork) {
+        // const signedData = await pushWallet.sign(
+        //   new TextEncoder().encode(userInput)
+        // );
+        // setSignedData(signedData);
       }
     } catch (error) {
       alert(error);
@@ -93,13 +88,7 @@ const App: React.FC = () => {
           env={ENV.LOCAL}
         />
       )} */}
-      {pushWallet && (
-        <ConnectPushWallet
-          setAccount={setAccount}
-          pushWallet={pushWallet}
-          env={ENV.LOCAL}
-        />
-      )}
+      <ConnectPushWallet setAccount={setAccount} env={ENV.LOCAL} />
 
       {account !== '' && (
         <div className="account-info">

@@ -7,14 +7,11 @@ import {
   IConnectPushWalletProps,
 } from '../wallet.types';
 
-const ConnectPushWallet: React.FC<IConnectPushWalletProps> = ({
-  setAccount,
-  env = ENV.PROD,
-}) => {
+const ConnectPushWallet = () => {
   const [buttonStatus, setButtonStatus] =
     React.useState<ButtonStatus>('Connect');
 
-  const [newTab, setNewTab] = React.useState<Window | null>();
+  const [newTab, setNewTab] = React.useState<Window | null>(null);
 
   const openNewWindowTab = () => {
     const width = 600;
@@ -31,12 +28,20 @@ const ConnectPushWallet: React.FC<IConnectPushWalletProps> = ({
       setNewTab(newTab);
       return newTab;
     }
+    return null;
   };
 
+  console.log('newTab', newTab);
+
   const handleConnectWallet = async () => {
-    const newTab = openNewWindowTab();
+    console.log('New Tab', newTab);
+    let openedNewTab = newTab;
+    if (!newTab) {
+      openedNewTab = openNewWindowTab();
+    }
+
     const walletUrl = 'http://localhost:5173';
-    if (newTab) {
+    if (openedNewTab) {
       setButtonStatus('Connecting');
       const handleMessage = (event: MessageEvent) => {
         if (event.origin === walletUrl) {
@@ -50,16 +55,7 @@ const ConnectPushWallet: React.FC<IConnectPushWalletProps> = ({
               break;
             case WALLET_TO_APP_ACTION.IS_LOGGED_IN:
               console.log('User has logged In', event.data);
-              // handleIsLoggedInAction();
-              setButtonStatus('Authenticating');
-              console.log('posting message');
-              newTab.postMessage(
-                {
-                  type: APP_TO_WALLET_ACTION.NEW_CONNECTION_REQUEST,
-                },
-                'http://localhost:5173'
-              );
-
+              handleIsLoggedInAction(openedNewTab);
               break;
             case WALLET_TO_APP_ACTION.APP_CONNECTION_REJECTED:
               console.log('App Connection Rejected', event.data);
@@ -76,6 +72,9 @@ const ConnectPushWallet: React.FC<IConnectPushWalletProps> = ({
               console.log('User closed the tab', event.data);
               setButtonStatus('Connect');
               break;
+            case WALLET_TO_APP_ACTION.SIGNATURE:
+              console.log('Signature received', event.data);
+              break;
             default:
               console.warn('Unknown message type:', event.data.type);
           }
@@ -86,17 +85,17 @@ const ConnectPushWallet: React.FC<IConnectPushWalletProps> = ({
     }
   };
 
-  const handleIsLoggedInAction = () => {
+  const handleIsLoggedInAction = (openedNewTab: Window) => {
     setButtonStatus('Authenticating');
-    handleSendNewConnectionReq();
+    handleSendNewConnectionReq(openedNewTab);
   };
 
-  const handleSendNewConnectionReq = () => {
-    console.log('requesting StatusFromWallet', newTab);
+  const handleSendNewConnectionReq = (openedNewTab: Window) => {
+    console.log('requesting StatusFromWallet', openedNewTab);
 
-    if (newTab) {
+    if (openedNewTab) {
       console.log('posting message');
-      newTab.postMessage(
+      openedNewTab.postMessage(
         {
           type: APP_TO_WALLET_ACTION.NEW_CONNECTION_REQUEST,
         },
@@ -105,9 +104,27 @@ const ConnectPushWallet: React.FC<IConnectPushWalletProps> = ({
     }
   };
 
+  const handleSignRequestFromPushWallet = () => {
+    console.log('requesting sign FromWallet', newTab);
+
+    if (newTab) {
+      console.log('posting message');
+
+      newTab.postMessage(
+        {
+          type: APP_TO_WALLET_ACTION.SIGN_MESSAGE,
+          data: 'Hello world',
+        },
+        'http://localhost:5173'
+      );
+    }
+  };
+
   return (
     <div>
-      <button onClick={handleSendNewConnectionReq}>Send New Connection</button>
+      <button onClick={handleSignRequestFromPushWallet}>
+        Request Signature
+      </button>
       <button
         className="send-button"
         onClick={handleConnectWallet}
