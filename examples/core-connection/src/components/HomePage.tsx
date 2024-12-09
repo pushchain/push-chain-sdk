@@ -7,7 +7,7 @@ import { PushNetwork } from '@pushprotocol/push-chain';
 import {
   ConnectPushWalletButton,
   usePushWalletContext,
-} from '../../../../packages/ui-kit/src';
+} from '@pushprotocol/pushchain-ui-kit';
 
 // Mock data for testing
 const mockRecipients = [
