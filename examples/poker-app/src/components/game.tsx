@@ -32,6 +32,7 @@ export default function Game() {
   useSubmitPlayerPublicKey();
   useFetchPlayersPublicKeys();
   const { hasFinishedEncryptingCards } = useSubmitEncryptedShuffledCards();
+  console.log("hasFinishedEncryptingCards,Game",hasFinishedEncryptingCards)
   useDecryptPlayersCards({ hasFinishedEncryptingCards });
 
   // Poll for player updates
@@ -45,31 +46,28 @@ export default function Game() {
           creator: game.creator,
         });
 
-        if (updatedPlayers.size < 3) {
-          setGameState(prev => ({
-            ...prev,
-            dealingPhase: 'WAITING_FOR_PLAYERS',
-            progress: (updatedPlayers.size / 3) * 100
-          }));
-        } else if (updatedPlayers.size !== game.players.size) {
-          // Update local game state with new players
-          const updatedPlayerMap = new Map(game.players);
-          updatedPlayers.forEach(playerAddress => {
-            if (!updatedPlayerMap.has(playerAddress)) {
-              updatedPlayerMap.set(playerAddress, {
+        if (updatedPlayers) {
+          // Clone current game state
+          const updatedGame = { ...game };
+
+          // Update players in the cloned game state
+          updatedGame.players = new Map(game.players); // Ensure a new map is used
+          updatedPlayers.forEach((playerAddress) => {
+            if (!updatedGame.players.has(playerAddress)) {
+              updatedGame.players.set(playerAddress, {
                 chips: 100,
-                cards: []
+                cards: [],
               });
             }
           });
 
-          // This will trigger a re-render with updated player list
-          game.players = updatedPlayerMap;
+          // Update the game state using setGame
+          setGame(updatedGame);
         }
       } catch (error) {
         console.error('Error updating player list:', error);
       }
-    }, 2000);
+    }, 4000);
 
     return () => clearInterval(intervalId);
   }, [gameTransactionHash, pokerService, game]);
@@ -79,16 +77,16 @@ export default function Game() {
 
   // Monitor key exchange progress
   useEffect(() => {
-    if (!game || game.players.size < 3) return;
-
+    if (!game || game.players.size < 2) return;
+    if(!hasFinishedEncryptingCards){
     const totalPlayers = game.players.size;
-    console.log("totalplayer",totalPlayers)
+    // console.log("totalplayer",totalPlayers)
     const keysCollected = otherPlayersPublicKey.size;
-    console.log("keysCollected",keysCollected)
+    // console.log("keysCollected",keysCollected)
     
     const keyProgress = Math.min((keysCollected / (totalPlayers - 1)) * 100, 100);
     
-    if (keysCollected === totalPlayers - 1) {
+    if (keysCollected === totalPlayers) {
       setGameState(prev => ({
         ...prev,
         dealingPhase: 'ENCRYPTING',
@@ -101,12 +99,13 @@ export default function Game() {
         dealingPhase: 'KEY_EXCHANGE',
         progress: keyProgress
       }));
-    }
+    }}
   }, [game, otherPlayersPublicKey]);
 
   // Monitor encryption/decryption progress
   useEffect(() => {
     if (hasFinishedEncryptingCards) {
+      console.log("!!!!!!!!!!!!!!!!!!!!!!!!1")
       setGameState(prev => ({
         ...prev,
         dealingPhase: 'DECRYPTING'

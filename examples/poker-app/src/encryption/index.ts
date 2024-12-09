@@ -57,5 +57,5 @@ export function publicKeyToString(publicKey: BasePoint): string {
 }
 
 export function stringToPublicKey(publicKeyString: string): BasePoint {
-  return ec.curve.decodePoint(publicKeyString);
+  return ec.curve.decodePoint(publicKeyString,'hex');
 }

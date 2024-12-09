@@ -132,7 +132,7 @@ import usePushWalletSigner from './usePushSigner.tsx';
  * Submit current player public key to the network so other players can use it to encrypt the deck.
  */
 export default function useSubmitPlayerPublicKey() {
-  const { game, myEncryptionKeys, setMyEncryptionKeys, pokerService } =
+  const { game, myEncryptionKeys, setMyEncryptionKeys, pokerService, gameTransactionHash } =
     usePokerGameContext();
   const { pushWalletSigner } = usePushWalletSigner();
   const [isTrying, setIsTrying] = useState(false); // Tracks if the process is ongoing
@@ -146,12 +146,13 @@ export default function useSubmitPlayerPublicKey() {
         setIsSubmitting(true); // Set submission status
 
         try {
-          console.log("Submitting public key...");
+          // console.log("Submitting public key...");
           const keys = generateKeyPair();
-          console.log("Generated keys:", keys.publicKey);
-          console.log("Players:", [...game.players.keys()]);
-          console.log("Push wallet signer:", pushWalletSigner);
+          // console.log("Generated keys:", keys.publicKey);
+          // console.log("Players:", [...game.players.keys()]);
+          // console.log("Push wallet signer:", pushWalletSigner);
           await pokerService.submitPublicKey(
+            gameTransactionHash,
             keys.publicKey,
             [...game.players.keys()],
             pushWalletSigner

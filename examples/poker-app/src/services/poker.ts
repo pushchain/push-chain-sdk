@@ -215,17 +215,19 @@ export class Poker {
    * can use for the card's encryption
    */
   submitPublicKey = async (
+    txHash: string,
     publicKey: BasePoint,
     tos: string[],
     signer: PushWalletSigner
   ): Promise<string> => {
     const unsignedTx = this.pushNetwork.tx.createUnsigned(
-      this.TX_CATEGORY_PREFIX_PLAYER_PUBLIC_KEY,
+      (this.TX_CATEGORY_PREFIX_PLAYER_PUBLIC_KEY + txHash).slice(0, 30),
       tos,
       new TextEncoder().encode(
         JSON.stringify({ publicKey: publicKeyToString(publicKey) })
       )
     );
+    console.log("beforesub",JSON.stringify({ publicKey: publicKeyToString(publicKey) }))
     return await this.pushNetwork.tx.send(unsignedTx, signer);
   };
 
@@ -248,14 +250,17 @@ export class Poker {
     );
     // We get the first publicKey submitted by that player. We will have only 1 transaction that the user will
     // submit with his public key. There will be more than 1 transaction submitted only in case of a bug
-    console.log("response",response)
+   
     const block = response.blocks[0];
-    const transaction = block.blockDataAsJson.txobjList as { tx: Transaction };
+    const transaction = block.blockDataAsJson.txobjList[0] as { tx: Transaction };
+
     const decodedData = new TextDecoder().decode(
       new Uint8Array(
         Buffer.from(transaction.tx.data as unknown as string, 'base64')
       )
     );
+    console.log("decodedData",decodedData)
+    console.log("parsed",JSON.parse(decodedData).publicKey)
     return stringToPublicKey(JSON.parse(decodedData).publicKey);
   };
 
@@ -290,15 +295,18 @@ export class Poker {
       1,
       (this.TX_CATEGORY_PREFIX_DECK_ENCRYPT + gameTransactionHash).slice(0, 30)
     );
+    console.log("response",response)
 
     if (response.blocks.length === 0) return null;
     const block = response.blocks[0];
-    const transaction = block.blockDataAsJson.txobjList as { tx: Transaction };
+    const transaction = block.blockDataAsJson.txobjList[0] as { tx: Transaction };
+    console.log("transaction",transaction.tx.data)
     const decodedData = new TextDecoder().decode(
       new Uint8Array(
         Buffer.from(transaction.tx.data as unknown as string, 'base64')
       )
     );
+    console.log("decodedData",decodedData)
     return JSON.parse(decodedData) as Set<BN>;
   };
 

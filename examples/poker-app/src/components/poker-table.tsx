@@ -54,50 +54,50 @@ export default function PokerTable({ dealingPhase, isDealer }: PokerTableProps) 
   const { pushWalletSigner } = usePushWalletSigner(); 
 
 
-  useEffect(() => {
-    if (!game || !pokerService || !gameTransactionHash) {
-      console.log("Missing dependencies for polling: game, pokerService, or gameTransactionHash");
-      return;
-    }
+  // useEffect(() => {
+  //   if (!game || !pokerService || !gameTransactionHash) {
+  //     console.log("Missing dependencies for polling: game, pokerService, or gameTransactionHash");
+  //     return;
+  //   }
 
-    const pollPlayers = async () => {
-      try {
-        const updatedPlayers = await pokerService.getPlayerOrderForTable({
-          txHash: gameTransactionHash,
-          creator: game.creator,
-        });
+  //   const pollPlayers = async () => {
+  //     try {
+  //       const updatedPlayers = await pokerService.getPlayerOrderForTable({
+  //         txHash: gameTransactionHash,
+  //         creator: game.creator,
+  //       });
 
-        if (updatedPlayers) {
-          // Clone current game state
-          const updatedGame = { ...game };
+  //       if (updatedPlayers) {
+  //         // Clone current game state
+  //         const updatedGame = { ...game };
 
-          // Update players in the cloned game state
-          updatedGame.players = new Map(game.players); // Ensure a new map is used
-          updatedPlayers.forEach((playerAddress) => {
-            if (!updatedGame.players.has(playerAddress)) {
-              updatedGame.players.set(playerAddress, {
-                chips: 100,
-                cards: [],
-              });
-            }
-          });
+  //         // Update players in the cloned game state
+  //         updatedGame.players = new Map(game.players); // Ensure a new map is used
+  //         updatedPlayers.forEach((playerAddress) => {
+  //           if (!updatedGame.players.has(playerAddress)) {
+  //             updatedGame.players.set(playerAddress, {
+  //               chips: 100,
+  //               cards: [],
+  //             });
+  //           }
+  //         });
 
-          // Update the game state using setGame
-          setGame(updatedGame);
-        }
-      } catch (error) {
-        console.error("Error fetching player order:", error);
-      }
-    };
+  //         // Update the game state using setGame
+  //         setGame(updatedGame);
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching player order:", error);
+  //     }
+  //   };
 
-    // Set an interval to poll every 3 seconds
-    const intervalId = setInterval(() => {
-      pollPlayers();
-    }, 5000);
+  //   // Set an interval to poll every 3 seconds
+  //   const intervalId = setInterval(() => {
+  //     pollPlayers();
+  //   }, 5000);
 
-    // Cleanup interval on component unmount
-    return () => clearInterval(intervalId);
-  }, [game, pokerService, gameTransactionHash, setGame]);
+  //   // Cleanup interval on component unmount
+  //   return () => clearInterval(intervalId);
+  // }, [game, pokerService, gameTransactionHash, setGame]);
 
   const handleEncryption = async () => {
     if (!pokerService || !game || !pushWalletSigner) {
@@ -108,6 +108,7 @@ export default function PokerTable({ dealingPhase, isDealer }: PokerTableProps) 
     try {
       const keys = generateKeyPair(); // Generate encryption keys
       await pokerService.submitPublicKey(
+        gameTransactionHash,
         keys.publicKey,
         [...game.players.keys()], // Pass player addresses
         pushWalletSigner

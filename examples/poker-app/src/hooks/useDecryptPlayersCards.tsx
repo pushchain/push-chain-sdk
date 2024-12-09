@@ -31,6 +31,13 @@ export default function useDecryptPlayersCards({
 
   useEffect(() => {
     const intervalId = setInterval(async () => {
+      console.log("connectedPushAddressFormat, decrypt",connectedPushAddressFormat)
+      console.log("hasFinishedEncryptingCards, decrypt",hasFinishedEncryptingCards)
+      console.log("game, decrypt",game)
+      console.log("pokerService, decrypt",pokerService)
+      console.log("gameTransactionHash, decrypt",gameTransactionHash)
+      console.log("myEncryptionKeys, decrypt",myEncryptionKeys)
+      console.log("pushWalletSigner, decrypt",pushWalletSigner)
       if (
         !connectedPushAddressFormat ||
         !hasFinishedEncryptingCards ||
@@ -47,12 +54,14 @@ export default function useDecryptPlayersCards({
         game,
         connectedPushAddressFormat
       );
+      console.log("previousAddress",previousAddress)
       if (previousAddress === game.dealer) {
         const decryptedCard = await pokerService.getDecryptedShuffledCards(
           gameTransactionHash,
           connectedPushAddressFormat
         );
         if (decryptedCard) return;
+        console.log("decryptedCard, decrypt",decryptedCard);
         // Get deck from push chain
         const lastAddressToEncrypt = getPreviousPlayerAddress(
           game,
@@ -62,12 +71,17 @@ export default function useDecryptPlayersCards({
           gameTransactionHash,
           lastAddressToEncrypt
         );
-        if (!encryptedDeck) return;
+        
+        if (!encryptedDeck) {
+          console.error("Failed to retrieve encrypted deck.");
+          return};
 
         const nextAddress = getNextPlayerAddress(
           game,
           connectedPushAddressFormat
         );
+        console.log("nextAddress, decrypt",nextAddress)
+        console.log("encryptedDeck, decrypt",encryptedDeck)
         if (!nextAddress) return;
 
         const decryptedDeck = new Set<BN>();
