@@ -101,7 +101,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
   const handleUserLogOutEvent = () => {
     setConnectionStatus('notConnected');
     setAccount(null);
-
   };
 
   const handleWalletTabClosed = () => {
@@ -175,6 +174,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
           case WALLET_TO_APP_ACTION.TAB_CLOSED:
             console.log('User closed the tab', event.data.data);
             handleWalletTabClosed();
+            break;
+          case WALLET_TO_APP_ACTION.ERROR:
+            console.log('Error from the child tab', event.data);
+            // handleWalletTabClosed();
             break;
 
           default:
