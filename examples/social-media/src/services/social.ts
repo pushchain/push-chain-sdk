@@ -1,7 +1,9 @@
 import { BlockResponse } from '@pushprotocol/node-core/src/lib/block/block.types';
 import { ENV } from '@pushprotocol/node-core/src/lib/constants';
-import { PushNetwork } from '@pushprotocol/node-core';
+import { PushNetwork, CONSTANTS } from '@pushprotocol/node-core';
 import { Transaction } from '@pushprotocol/node-core/src/lib/generated/tx';
+import { hexToBytes } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 import { Friend, Post, Profile, PushWalletSigner } from '../types';
 
 /**
@@ -20,7 +22,7 @@ export class Social {
    * @param env - The environment to use. Defaults to `ENV.DEV`.
    */
   static async initialize(env: ENV = ENV.DEV) {
-    const pushNetwork = await PushNetwork.initialize(env);
+    const pushNetwork = await PushNetwork.initialize(CONSTANTS.ENV.STAGING);
     return new Social(pushNetwork);
   }
 
@@ -37,7 +39,9 @@ export class Social {
 
     if (response.blocks.length === 0) return null;
     const block = response.blocks[0];
-    const transactions = block.blockDataAsJson.txobjList as { tx: Transaction }[];
+    const transactions = block.blockDataAsJson.txobjList as {
+      tx: Transaction;
+    }[];
     const decodedData = new TextDecoder().decode(
       new Uint8Array(
         Buffer.from(transactions[0].tx.data as unknown as string, 'base64')
@@ -55,10 +59,17 @@ export class Social {
   }
 
   // TODO: Verify if handle is **unique**
-  async createProfile({ owner, address, bio, encryptedProfilePrivateKey, signature, handle, signer }: Profile & {
-                        signer: PushWalletSigner
-                      }
-  ): Promise<string> {
+  async createProfile({
+                        owner,
+                        address,
+                        bio,
+                        encryptedProfilePrivateKey,
+                        signature,
+                        handle,
+                        signer
+                      }: Profile & {
+    signer: PushWalletSigner;
+  }): Promise<string> {
     if (
       !handle ||
       !encryptedProfilePrivateKey ||
@@ -89,9 +100,7 @@ export class Social {
   }
 
   async follow(friend: Friend, signer: PushWalletSigner): Promise<string> {
-    if (
-      !friend.from || !friend.to || !friend.signature
-    ) {
+    if (!friend.from || !friend.to || !friend.signature) {
       throw new Error('Invalid input to Follow method');
     }
 
@@ -111,27 +120,33 @@ export class Social {
    * TODO: Take into account when user follows, unfollows and follows again
    * @param profileAddress
    */
-  async getFriends(profileAddress: string): Promise<{ iFollow: string[], followMe: string[] }> {
+  async getFriends(
+    profileAddress: string
+  ): Promise<{ iFollow: string[]; followMe: string[] }> {
     // If I follow someone, then `from` is my address
     // If someone follow me, then `to` is my address
 
     const promises: Promise<BlockResponse>[] = [];
-    promises.push(this.pushNetwork.tx.getBySender(
-      profileAddress,
-      Math.floor(Date.now()),
-      'DESC',
-      10,
-      1,
-      this.FRIENDS
-    ));
-    promises.push(this.pushNetwork.tx.getByRecipient(
-      profileAddress,
-      Math.floor(Date.now()),
-      'DESC',
-      10,
-      1,
-      this.FRIENDS
-    ));
+    promises.push(
+      this.pushNetwork.tx.getBySender(
+        profileAddress,
+        Math.floor(Date.now()),
+        'DESC',
+        10,
+        1,
+        this.FRIENDS
+      )
+    );
+    promises.push(
+      this.pushNetwork.tx.getByRecipient(
+        profileAddress,
+        Math.floor(Date.now()),
+        'DESC',
+        10,
+        1,
+        this.FRIENDS
+      )
+    );
 
     const [resultIFollow, resultFollowMe] = await Promise.all(promises);
 
@@ -139,12 +154,16 @@ export class Social {
     const followMe: string[] = [];
 
     if (resultIFollow.blocks.length !== 0) {
-      resultIFollow.blocks.forEach(block => {
-        const transactions = block.blockDataAsJson.txobjList as { tx: Transaction }[];
-        transactions.forEach(t => {
+      resultIFollow.blocks.forEach((block) => {
+        const transactions = block.blockDataAsJson.txobjList as {
+          tx: Transaction;
+        }[];
+        transactions.forEach((t) => {
           const decodedData = new TextDecoder().decode(
-            new Uint8Array(Buffer.from(t.tx.data as unknown as string, 'base64')
-            ));
+            new Uint8Array(
+              Buffer.from(t.tx.data as unknown as string, 'base64')
+            )
+          );
           if (!decodedData) return;
           try {
             const friend = JSON.parse(decodedData) as Friend;
@@ -157,12 +176,16 @@ export class Social {
     }
 
     if (resultFollowMe.blocks.length !== 0) {
-      resultFollowMe.blocks.forEach(block => {
-        const transactions = block.blockDataAsJson.txobjList as { tx: Transaction }[];
-        transactions.forEach(t => {
+      resultFollowMe.blocks.forEach((block) => {
+        const transactions = block.blockDataAsJson.txobjList as {
+          tx: Transaction;
+        }[];
+        transactions.forEach((t) => {
           const decodedData = new TextDecoder().decode(
-            new Uint8Array(Buffer.from(t.tx.data as unknown as string, 'base64')
-            ));
+            new Uint8Array(
+              Buffer.from(t.tx.data as unknown as string, 'base64')
+            )
+          );
           if (!decodedData) return;
           try {
             const friend = JSON.parse(decodedData) as Friend;
@@ -190,13 +213,13 @@ export class Social {
     const posts: Post[] = [];
     const blocks = response.blocks;
     if (blocks.length === 0) return [];
-    blocks.forEach(block => {
-      const transactions = block.blockDataAsJson.txobjList as { tx: Transaction }[];
-      transactions.forEach(t => {
+    blocks.forEach((block) => {
+      const transactions = block.blockDataAsJson.txobjList as {
+        tx: Transaction;
+      }[];
+      transactions.forEach((t) => {
         const decodedData = new TextDecoder().decode(
-          new Uint8Array(
-            Buffer.from(t.tx.data as unknown as string, 'base64')
-          )
+          new Uint8Array(Buffer.from(t.tx.data as unknown as string, 'base64'))
         );
         if (!decodedData) return [];
         try {
@@ -213,10 +236,54 @@ export class Social {
   }
 
   async postMessage(post: Post, signer: PushWalletSigner): Promise<void> {
-    if (!post.message || post.message.length > 140) throw new Error('Invalid message format');
+    if (!post.message || post.message.length > 140)
+      throw new Error('Invalid message format');
     if (!post.signature) throw new Error('Only signed posts can be sent');
     const serializedData = new TextEncoder().encode(JSON.stringify(post));
-    const unsignedTx = this.pushNetwork.tx.createUnsigned(this.POST, [signer.account], serializedData);
+    const unsignedTx = this.pushNetwork.tx.createUnsigned(
+      this.POST,
+      [signer.account],
+      serializedData
+    );
     await this.pushNetwork.tx.send(unsignedTx, signer);
+  }
+
+  async test() {
+    interface PushSigner {
+      account: string;
+      signMessage: (dataToBeSigned: Uint8Array) => Promise<Uint8Array>;
+    }
+
+    const email = {
+      title: 'Hello old friend from Solana!',
+      message: 'Greetings from Ethereum world.'
+    };
+    const senderEthereumPrivateKey =
+      '0x2cc7ff24e3a54467808896cb82a3bec18adf415420bc50c5d965e6dff06b73f2';
+    const ethereumSenderAccount = privateKeyToAccount(
+      senderEthereumPrivateKey as `0x${string}`
+    );
+    const receiverSolanaAddress =
+      'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:ySYrGNLLJSK9hvGGpoxg8TzWfRe8ftBtDSMECtx2eJR';
+    const signer: PushSigner = {
+      account: `eip155:1:${ethereumSenderAccount.address}`,
+      signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
+        return hexToBytes(
+          await ethereumSenderAccount.signMessage({ message: { raw: data } })
+        );
+      }
+    };
+    const unsignedTransaction = this.pushNetwork.tx.createUnsigned(
+      'MY_EMAIL_APP',
+      [receiverSolanaAddress],
+      new TextEncoder().encode(JSON.stringify(email))
+    );
+
+
+    const transactionHash = await this.pushNetwork.tx.send(
+      unsignedTransaction,
+      signer
+    );
+    console.log(transactionHash);
   }
 }

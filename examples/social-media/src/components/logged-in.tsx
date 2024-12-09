@@ -9,7 +9,10 @@ import { FriendList } from './friend-list.tsx';
 
 export function LoggedIn() {
   const { connectedAddress, socialSDK, pushSigner } = usePushContext();
-  const { data: profile, isLoading } = useGetProfile(connectedAddress, socialSDK);
+  const { data: profile, isLoading } = useGetProfile(
+    connectedAddress,
+    socialSDK
+  );
   const { showSignToaster, showErrorToaster } = useSocialContext();
 
   useEffect(() => {
@@ -34,7 +37,7 @@ export function LoggedIn() {
           closeOnClick: false,
           draggable: false,
           className: 'custom-toast',
-          transition: Slide
+          transition: Slide,
         }
       );
     }
@@ -48,27 +51,29 @@ export function LoggedIn() {
 
   return (
     <div className="flex flex-col w-full justify-center items-center">
-      <ToastContainer/>
-      {isLoading && <div className={'text-center'}>Fetching your profile...</div>}
-      {!profile && !isLoading &&
+      <ToastContainer />
+      {isLoading && (
+        <div className={'text-center'}>Fetching your profile...</div>
+      )}
+      {!profile && !isLoading && (
         <div>
-          <CreateProfile/>
+          <CreateProfile />
         </div>
-      }
-      {profile &&
+      )}
+      {profile && (
         <div className="flex flex-col items-center w-full">
           <h1>Welcome: {profile.handle}!</h1>
           <h2>Bio: {profile.bio}</h2>
           <div className="flex flex-row w-full justify-center p-3">
             <div className="w-1/3">
-              <FriendList/>
+              <FriendList />
             </div>
             <div className="w-2/3 max-w-4xl">
-              <Feed/>
+              <Feed />
             </div>
           </div>
         </div>
-      }
+      )}
     </div>
   );
 }
