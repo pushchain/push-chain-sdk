@@ -21,7 +21,8 @@ export type ConnectionStatus =
   | 'notConnected'
   | 'connecting'
   | 'authenticating'
-  | 'connected';
+  | 'connected'
+  | 'retry';
 
 export type WalletEventRespoonse = {
   signature?: Uint8Array;

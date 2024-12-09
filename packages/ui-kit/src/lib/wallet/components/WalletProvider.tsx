@@ -20,6 +20,7 @@ export type WalletContextType = {
   account: string | null;
   connectionStatus: ConnectionStatus;
   handleConnectToPushWallet: () => void;
+  handleNewConnectionRequest: () => void;
   handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>;
 };
 
@@ -72,6 +73,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
   };
 
   const handleNewConnectionRequest = () => {
+    setConnectionStatus('authenticating');
     sendMessageToPushWallet({
       type: APP_TO_WALLET_ACTION.NEW_CONNECTION_REQUEST,
     });
@@ -82,7 +84,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
       setConnectionStatus('connected');
       setAccount(response.account);
     } else {
-      setConnectionStatus('authenticating');
       handleNewConnectionRequest();
     }
   };
@@ -93,17 +94,14 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
   };
 
   const handleAppConnectionRejection = () => {
-    setConnectionStatus('notConnected');
+    setConnectionStatus('retry');
     setAccount(null);
   };
 
   const handleUserLogOutEvent = () => {
-    // TODO: Fix this case
     setConnectionStatus('notConnected');
     setAccount(null);
 
-    // TODO: Fix this afterwards
-    window.location.reload();
   };
 
   const handleWalletTabClosed = () => {
@@ -197,6 +195,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
         connectionStatus,
         handleConnectToPushWallet,
         handleSendSignRequestToPushWallet,
+        handleNewConnectionRequest,
       }}
     >
       {children}

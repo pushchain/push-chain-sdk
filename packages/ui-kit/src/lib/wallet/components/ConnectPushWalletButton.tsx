@@ -7,7 +7,7 @@ export type ConnectPushWalletButtonProps = {
 };
 
 const ConnectPushWalletButton: FC<ConnectPushWalletButtonProps> = () => {
-  const { connectionStatus, handleConnectToPushWallet } =
+  const { connectionStatus, handleConnectToPushWallet, handleNewConnectionRequest } =
     usePushWalletContext();
 
   const isConnectButtonDisbaled =
@@ -18,11 +18,15 @@ const ConnectPushWalletButton: FC<ConnectPushWalletButtonProps> = () => {
   const isLoading =
     connectionStatus === 'connecting' || connectionStatus === 'authenticating';
 
+  const handleConnectWalletButton = () => {
+    connectionStatus === 'retry' ? handleNewConnectionRequest() : handleConnectToPushWallet()
+  }
+
   return (
     <div>
       <button
         className="send-button"
-        onClick={handleConnectToPushWallet}
+        onClick={handleConnectWalletButton}
         disabled={isConnectButtonDisbaled}
         style={{
           backgroundColor: '#d548ec',
