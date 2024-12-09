@@ -1,26 +1,32 @@
 body {
   margin: 0;
   font-family: Arial, sans-serif;
-  background-color: #f0f4f8; /* Light background color */
-  color: #333; /* Dark text for readability */
+  background-color: #f0f4f8;
+  /* Light background color */
+  color: #333;
+  /* Dark text for readability */
+  min-height: 100vh;
 }
 
 .app-container {
   display: flex;
   flex-direction: column;
-  align-items: center; /* Center the title and button */
+  align-items: center;
+  /* Center the title and button */
   padding: 20px;
 }
 
 h1 {
   margin-bottom: 20px;
-  color: #2c3e50; /* Darker shade for heading */
+  color: #2c3e50;
+  /* Darker shade for heading */
 }
 
 .send-button {
   margin: 40px;
   padding: 10px 20px;
-  background-color: #3498db; /* Bright blue */
+  background-color: #3498db;
+  /* Bright blue */
   color: white;
   border: none;
   border-radius: 5px;
@@ -29,39 +35,49 @@ h1 {
 }
 
 .send-button:hover {
-  background-color: #2980b9; /* Darker blue on hover */
+  background-color: #2980b9;
+  /* Darker blue on hover */
 }
 
 .transaction-card {
   margin-top: 20px;
   padding: 15px;
-  border: 1px solid #bdc3c7; /* Lighter border */
+  border: 1px solid #bdc3c7;
+  /* Lighter border */
   border-radius: 5px;
-  background-color: #ffffff; /* White card background */
+  background-color: #ffffff;
+  /* White card background */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 600px; /* Max width for better readability */
+  max-width: 600px;
+  /* Max width for better readability */
 }
 
 .transaction-card h2 {
   margin-bottom: 10px;
-  color: #34495e; /* Darker shade for subheading */
+  color: #34495e;
+  /* Darker shade for subheading */
 }
 
 pre {
-  white-space: pre-wrap; /* Allow wrapping */
-  word-wrap: break-word; /* Break long words */
+  white-space: pre-wrap;
+  /* Allow wrapping */
+  word-wrap: break-word;
+  /* Break long words */
   font-size: 14px;
-  color: #333; /* Dark text for preformatted content */
+  color: #333;
+  /* Dark text for preformatted content */
 }
 
 input {
   margin: 10px 0;
   padding: 10px;
   width: 200px;
-  border: 1px solid #bdc3c7; /* Lighter border */
+  border: 1px solid #bdc3c7;
+  /* Lighter border */
   border-radius: 5px;
-  box-sizing: border-box; /* Include padding in width */
+  box-sizing: border-box;
+  /* Include padding in width */
   background-color: white;
   color: black;
 }
