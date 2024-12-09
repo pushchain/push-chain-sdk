@@ -1,8 +1,16 @@
-import { createTheme } from "./Theme.utils";
+import { createTheme } from './Theme.utils';
 
 const blocksTheme = {
-  light: createTheme("light"),
-  dark: createTheme("dark"),
+  light: createTheme('light'),
+  dark: createTheme('dark'),
 };
 
-export { blocksTheme };
+const themeConfig = {
+  dark: {
+    blocksTheme: blocksTheme.dark,
+    scheme: 'dark',
+  },
+  light: { blocksTheme: blocksTheme.light, scheme: 'light' },
+};
+
+export { blocksTheme, themeConfig };
