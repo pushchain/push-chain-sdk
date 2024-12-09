@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@pushprotocol/push-chain": "^0.1.7",
-    "@pushprotocol/pushchain-ui-kit": "^0.0.6",
+    "@pushprotocol/pushchain-ui-kit": "^0.0.7",
     "gh-pages": "^6.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
