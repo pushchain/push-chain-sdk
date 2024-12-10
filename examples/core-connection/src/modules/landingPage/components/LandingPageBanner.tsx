@@ -1,13 +1,14 @@
 import React from 'react';
-import { Box } from 'shared-components';
 import SimulateTxBanner from '/public/SimulateTxBanner.png';
 
-const LandingPageBanner = () => {
-  return (
-    <Box>
-      <img src={SimulateTxBanner} />
-    </Box>
-  );
+const LandingPageBanner = ({
+  width,
+  height,
+}: {
+  width: string;
+  height: string;
+}) => {
+  return <img src={SimulateTxBanner} style={{ height, width }} />;
 };
 
 export { LandingPageBanner };

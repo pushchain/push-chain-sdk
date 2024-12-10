@@ -16,7 +16,7 @@ const ContentLayout: FC<ContentLayoutProps> = ({ children }) => {
       backgroundColor="surface-transparent"
       display="flex"
       flexDirection="column"
-      // justifyContent="center"
+      justifyContent="center"
       maxWidth="1200px"
       width="calc(100% - (var(--spacing-sm) * 2))"
       css={css`

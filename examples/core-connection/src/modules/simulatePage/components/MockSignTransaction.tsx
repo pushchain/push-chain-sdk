@@ -30,7 +30,7 @@ const MockSignTransaction = () => {
     <Box
       display="flex"
       flexDirection="column"
-      gap="spacing-xxs"
+      gap="spacing-sm"
       padding="spacing-lg"
       justifyContent="center"
       alignItems="center"
@@ -52,7 +52,7 @@ const MockSignTransaction = () => {
         </Box>
       )}
 
-      <Box display="flex" flexDirection="row" width="100%">
+      <Box display="flex" flexDirection="row" width="100%" gap="spacing-xxs">
         <TextInput
           placeholder="Enter message to send"
           value={textInput}

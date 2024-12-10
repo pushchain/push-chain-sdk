@@ -13,7 +13,9 @@ const LandingPageScreen = () => {
       alignItems="center"
     >
       <LandingPageLeftComponent />
-      <LandingPageBanner />
+      <Box display={{ initial: 'block', ml: 'none' }}>
+        <LandingPageBanner height="702px" width="425px" />
+      </Box>
     </Box>
   );
 };

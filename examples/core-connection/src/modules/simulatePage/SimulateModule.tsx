@@ -14,7 +14,7 @@ const SimulateModule = () => {
       gap="spacing-lg"
     >
       <Box alignSelf="center">
-        <img src={SimulareTxText} width={256} height={67} />
+        <img src={SimulareTxText} width={300} height={70} />
       </Box>
 
       <Box

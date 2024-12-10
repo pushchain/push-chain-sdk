@@ -4,6 +4,7 @@ import { Box, Button, Front, Text } from 'shared-components';
 import SimulareTxText from '/public/SimulateTxText.png';
 import { ConnectPushWalletButton } from '../../../../../../packages/ui-kit/src';
 import { useGlobalContext } from '../../../context/GlobalContext';
+import { LandingPageBanner } from './LandingPageBanner';
 
 const LandingPageLeftComponent = () => {
   const { pushNetwork, mockTx } = useGlobalContext();
@@ -58,6 +59,10 @@ const LandingPageLeftComponent = () => {
 
         <img src={SimulareTxText} />
 
+        <Box display={{ initial: 'none', ml: 'block' }}>
+          <LandingPageBanner height="290px" width="175px" />
+        </Box>
+
         <Text variant="h4-regular">
           An app that lets you simulate transactions on the Push chain, test
           signing, and send mock data with ease.
@@ -66,7 +71,12 @@ const LandingPageLeftComponent = () => {
 
       <Box display="flex" flexDirection="column" gap="spacing-sm">
         <Box display="flex" flexDirection="column" gap="spacing-sm">
-          {pushNetwork && mockTx && <ConnectPushWalletButton />}
+          {pushNetwork && mockTx && (
+            <Box display="flex" alignItems="center" justifyContent="center">
+              <ConnectPushWalletButton />
+            </Box>
+          )}
+
           <Box
             display="flex"
             flexDirection="row"

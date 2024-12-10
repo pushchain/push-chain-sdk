@@ -35,7 +35,7 @@ const MockSendTransaction = () => {
 
   const handleViewOnScan = () => {
     if (txnHash) {
-      window.open(`https://scan.push.org/transactions`, '_blank');
+      window.open(`https://scan.push.org/transactions/${txnHash}`, '_blank');
     }
   };
 
@@ -63,7 +63,6 @@ const MockSendTransaction = () => {
               console.log('Closed');
               setTxnHash(null);
             }}
-            showIcon
           />
         </Box>
       )}

@@ -22,23 +22,6 @@ h1 {
   /* Darker shade for heading */
 }
 
-.send-button {
-  margin: 40px;
-  padding: 10px 20px;
-  background-color: #3498db;
-  /* Bright blue */
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.send-button:hover {
-  background-color: #2980b9;
-  /* Darker blue on hover */
-}
-
 .transaction-card {
   margin-top: 20px;
   padding: 15px;
