@@ -41,7 +41,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
 
   const tabRef = useRef<Window | null>(null);
 
-  const signatureResolverRef = useRef<((data: any) => void) | null>(null);
+  const signatureResolverRef = useRef<{
+    success?: (data: WalletEventRespoonse) => void;
+    error?: (data: WalletEventRespoonse) => void;
+  } | null>(null);
 
   const handleConnectToPushWallet = () => {
     setConnectionStatus('connecting');
@@ -119,27 +122,22 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
         return;
       }
 
-      // Set the resolver to be used when a message is received
-      signatureResolverRef.current = resolve;
-
-      // Timeout for safety (optional)
-      const timeout = setTimeout(() => {
-        signatureResolverRef.current = null; // Clean up
-        reject(new Error('Signature request timed out'));
-      }, 10000);
+      signatureResolverRef.current = {
+        success: (response: WalletEventRespoonse) => {
+          resolve(response.signature!);
+          signatureResolverRef.current = null; // Clean up
+        },
+        error: (response: WalletEventRespoonse) => {
+          signatureResolverRef.current = null; // Clean up
+          reject(new Error('Signature request failed'));
+        },
+      };
 
       // Send the sign request to the wallet tab
       sendMessageToPushWallet({
         type: APP_TO_WALLET_ACTION.SIGN_MESSAGE,
         data,
       });
-
-      // Clear timeout when resolved
-      signatureResolverRef.current = (response: WalletEventRespoonse) => {
-        clearTimeout(timeout);
-        resolve(response.signature!);
-        signatureResolverRef.current = null; // Clean up
-      };
     });
   };
 
@@ -164,7 +162,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
           case WALLET_TO_APP_ACTION.SIGNATURE:
             console.log('Signature received', event.data.data);
             if (signatureResolverRef.current) {
-              signatureResolverRef.current(event.data.data); // Resolve the promise with the data
+              signatureResolverRef?.current?.success?.(event.data.data); // Resolve the promise with the data
             }
             break;
           case WALLET_TO_APP_ACTION.IS_LOGGED_OUT:
@@ -177,7 +175,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
             break;
           case WALLET_TO_APP_ACTION.ERROR:
             console.log('Error from the child tab', event.data);
-            // handleWalletTabClosed();
+            signatureResolverRef?.current?.error?.(event.data.data); // Resolve the promise with the data
             break;
 
           default:

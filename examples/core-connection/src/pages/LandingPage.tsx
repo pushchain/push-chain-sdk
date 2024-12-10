@@ -1,4 +1,3 @@
-import React from 'react';
 import { ContentLayout } from '../common/components/ContentLayout';
 import { LandingPageScreen } from '../modules/landingPage/LandingPageScreen';
 

@@ -1,6 +1,3 @@
-import React from 'react';
-import SimulareTxTextLogo from '/public/SimulateTxText.png';
-
 const SimulateTxText = ({
   height,
   width,
@@ -8,7 +5,7 @@ const SimulateTxText = ({
   height: string;
   width: string;
 }) => {
-  return <img src={SimulareTxTextLogo} style={{ height, width }} />;
+  return <img src={"/SimulateTxText.png"} style={{ height, width }} />;
 };
 
 export { SimulateTxText };

@@ -1,6 +1,3 @@
-import React from 'react';
-import SimulateTxBanner from '/public/SimulateTxBanner.png';
-
 const LandingPageBanner = ({
   width,
   height,
@@ -8,7 +5,7 @@ const LandingPageBanner = ({
   width: string;
   height: string;
 }) => {
-  return <img src={SimulateTxBanner} style={{ height, width }} />;
+  return <img src={"/SimulateTxBanner.png"} style={{ height, width }} />;
 };
 
 export { LandingPageBanner };

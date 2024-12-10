@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Alert, Box, Button, TextInput } from 'shared-components';
 import { TransactionSnippet } from '../../../common/components';
 import { toHex } from 'viem';
@@ -19,6 +19,13 @@ const MockSignTransaction = () => {
           new TextEncoder().encode(textInput)
         );
         setSignedData(signedData);
+        setSignatureError(null);
+        setTimeout(() => {
+          window.scrollTo({
+            top: document.body.scrollHeight,
+            behavior: 'smooth',
+          });
+        }, 1500);
       }
     } catch (error) {
       setSignatureError(error);

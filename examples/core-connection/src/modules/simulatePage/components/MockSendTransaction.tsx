@@ -23,12 +23,15 @@ const MockSendTransaction = () => {
             return await handleSendSignRequestToPushWallet(data);
           },
         });
+
         setTxnHash(txHash);
         setIsSendingTxn(false);
+        setTxnError(null);
       }
     } catch (error) {
       setIsSendingTxn(false);
       setTxnError(error);
+      setTxnHash(null);
       console.log('Error in sending Transaction', error);
     }
   };
