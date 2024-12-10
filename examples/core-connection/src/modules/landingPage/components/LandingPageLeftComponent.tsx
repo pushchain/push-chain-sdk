@@ -2,7 +2,7 @@ import React from 'react';
 import { css } from 'styled-components';
 import { Box, Button, Front, Text } from 'shared-components';
 import SimulareTxText from '/public/SimulateTxText.png';
-import { ConnectPushWalletButton } from '../../../../../../packages/ui-kit/src';
+import { ConnectPushWalletButton } from '@pushprotocol/pushchain-ui-kit';
 import { useGlobalContext } from '../../../context/GlobalContext';
 import { LandingPageBanner } from './LandingPageBanner';
 
