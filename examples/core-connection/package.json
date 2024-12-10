@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "deploy:vercel": "vercel build --prod && vercel deploy --prebuilt --prod",
@@ -13,11 +13,15 @@
   },
   "dependencies": {
     "@pushprotocol/push-chain": "^0.1.7",
-    "@pushprotocol/pushchain-ui-kit": "^0.0.7",
+    "@pushprotocol/pushchain-ui-kit": "^0.0.8",
+    "formik": "^2.4.6",
     "gh-pages": "^6.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "viem": "^2.21.34"
+    "react-router-dom": "^7.0.2",
+    "shared-components": "../../packages/shared-components",
+    "viem": "^2.21.34",
+    "yup": "^1.5.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",

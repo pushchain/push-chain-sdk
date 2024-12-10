@@ -41,6 +41,7 @@ const StyledButton = styled.button<ButtonProps>`
   justify-content: center;
   white-space: nowrap;
   flex-shrink: 0;
+  border: none;
 
   /* Common icon css added through CSS class */
   .icon {
@@ -49,15 +50,18 @@ const StyledButton = styled.button<ButtonProps>`
     justify-content: center;
   }
   /* Button variant CSS styles */
-  ${({ variant, loading }) => getButtonVariantStyles(variant || 'primary', loading!)}
+  ${({ variant, loading }) =>
+    getButtonVariantStyles(variant || 'primary', loading!)}
 
   ${({ loading }) => loading && 'opacity: var(--opacity-80);'}
 
   /* Button and font size CSS styles */
-  ${({ iconOnly, size }) => getButtonSizeStyles({ iconOnly: !!iconOnly, size: size || 'medium' })}
+  ${({ iconOnly, size }) =>
+    getButtonSizeStyles({ iconOnly: !!iconOnly, size: size || 'medium' })}
 
   /* Circular CSS for rounded icon only buttons */
-  ${({ circular, iconOnly }) => circular && iconOnly && `border-radius: var(--r10);`}
+  ${({ circular, iconOnly }) =>
+    circular && iconOnly && `border-radius: var(--r10);`}
 
   /* Prop specific CSS */
   ${({ block }) => block && 'width: 100%;'}
@@ -105,7 +109,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       {leadingIcon && <span className="icon icon-text">{leadingIcon}</span>}
       {!iconOnly && children}
       {trailingIcon && <span className="icon icon-text">{trailingIcon}</span>}
-      {iconOnly && !loading && !children && <span className="icon icon-only">{iconOnly}</span>}
+      {iconOnly && !loading && !children && (
+        <span className="icon icon-only">{iconOnly}</span>
+      )}
     </StyledButton>
   )
 );
