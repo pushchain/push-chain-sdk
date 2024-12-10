@@ -31,7 +31,7 @@ const MockSignTransaction = () => {
       display="flex"
       flexDirection="column"
       gap="spacing-sm"
-      padding="spacing-lg"
+      padding={{ initial: 'spacing-lg', ml: 'spacing-lg spacing-sm' }}
       justifyContent="center"
       alignItems="center"
       alignSelf="stretch"
@@ -52,7 +52,12 @@ const MockSignTransaction = () => {
         </Box>
       )}
 
-      <Box display="flex" flexDirection="row" width="100%" gap="spacing-xxs">
+      <Box
+        display="flex"
+        flexDirection={{ initial: 'row', ml: 'column' }}
+        width="100%"
+        gap="spacing-xxs"
+      >
         <TextInput
           placeholder="Enter message to send"
           value={textInput}
@@ -66,12 +71,11 @@ const MockSignTransaction = () => {
       </Box>
 
       {signedData !== null && (
-        <Box>
-          <TransactionSnippet
-            heading="Signed Data"
-            signature={toHex(signedData)}
-          />
-        </Box>
+        <TransactionSnippet
+          heading="Signed Data"
+          signature={toHex(signedData)}
+          transactionData={null}
+        />
       )}
     </Box>
   );

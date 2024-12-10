@@ -1,16 +1,17 @@
 import React, { FC } from 'react';
-import { Box, Text } from 'shared-components';
-import styled from 'styled-components';
+import { Box, Text, TextArea } from 'shared-components';
+import { css } from 'styled-components';
+import { Transaction } from '@pushprotocol/push-chain/src/lib/generated/tx';
 
 type TransactionSnippetProps = {
   heading: string;
-  transactionData?: string;
+  transactionData: Transaction | null;
   signature?: string;
 };
 
 const TransactionSnippet: FC<TransactionSnippetProps> = ({
   heading,
-  transactionData,
+  transactionData = null,
   signature,
 }) => {
   return (
@@ -23,10 +24,20 @@ const TransactionSnippet: FC<TransactionSnippetProps> = ({
       justifyContent="center"
       gap="spacing-xs"
       alignSelf="stretch"
-      maxWidth="650px"
+      maxWidth={{ initial: '650px', ml: 'auto' }}
     >
       <Text variant="h4-semibold">{heading}:</Text>
-      {transactionData && <TxContainer>{transactionData}</TxContainer>}
+      {transactionData !== null && (
+        <TextArea
+          value={JSON.stringify(transactionData, null, 2)}
+          onChange={() => {}}
+          resizable={false}
+          numberOfLines={38}
+          css={css`
+            height: auto;
+          `}
+        />
+      )}
       {signature && (
         <Text variant="bs-regular" wrap color="text-tertiary">
           {signature}
@@ -37,8 +48,3 @@ const TransactionSnippet: FC<TransactionSnippetProps> = ({
 };
 
 export { TransactionSnippet };
-
-const TxContainer = styled.pre`
-  color: #8c93a0;
-  word-break: break-word;
-`;

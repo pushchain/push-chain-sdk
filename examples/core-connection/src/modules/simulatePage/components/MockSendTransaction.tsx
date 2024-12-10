@@ -50,7 +50,7 @@ const MockSendTransaction = () => {
       alignSelf="stretch"
       alignItems="center"
       justifyContent="center"
-      padding="spacing-lg"
+      padding={{ initial: 'spacing-lg', ml: 'spacing-sm' }}
     >
       {txnHash && (
         <Box width="100%">
@@ -82,9 +82,9 @@ const MockSendTransaction = () => {
 
       <TransactionSnippet
         heading="Mock Unsigned Transaction Data"
-        transactionData={JSON.stringify(mockTx, null, 2)}
+        transactionData={mockTx}
       />
-      <Box minWidth="350px">
+      <Box width={{ initial: '350px', ml: '300px' }}>
         {mockTx && (
           <Button
             variant="primary"

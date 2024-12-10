@@ -18,7 +18,7 @@ const ContentLayout: FC<ContentLayoutProps> = ({ children }) => {
       flexDirection="column"
       justifyContent="center"
       maxWidth="1200px"
-      width="calc(100% - (var(--spacing-sm) * 2))"
+      width={{ initial: 'calc(100% - (var(--spacing-sm) * 2))', ml: 'auto' }}
       css={css`
         flex: initial;
         margin: 0;

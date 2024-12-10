@@ -11,6 +11,7 @@ const LandingPageScreen = () => {
       justifyContent="space-between"
       width="100%"
       alignItems="center"
+      margin="spacing-xl spacing-none"
     >
       <LandingPageLeftComponent />
       <Box display={{ initial: 'block', ml: 'none' }}>
