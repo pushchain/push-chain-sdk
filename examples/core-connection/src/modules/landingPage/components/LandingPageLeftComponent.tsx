@@ -11,11 +11,20 @@ const LandingPageLeftComponent = () => {
   const featuresCard = [
     {
       id: 1,
-      text: 'Test and simulate transactions on the Push chain.',
+      text: (
+        <>
+          Simulate transactions on the Push chain and see them on{' '}
+          <a href="https://scan.push.org/" target="_blank">
+            <Text variant="h4-regular" color="text-brand-medium" as="span">
+              Push Scan
+            </Text>
+          </a>
+        </>
+      ),
     },
     {
       id: 2,
-      text: 'Send tx from any chain of your choice(ETH, Solana, Push).',
+      text: 'Send tx from any chain of your choice(ETH, Solana, Push)',
     },
     {
       id: 3,
@@ -53,12 +62,14 @@ const LandingPageLeftComponent = () => {
           </Box>
         </a>
 
-        <Box display={{ initial: 'flex', ml: 'none' }}>
-          <SimulateTxText height="80px" width="400px" />
-        </Box>
-        <Box display={{ initial: 'none', ml: 'flex' }}>
-          <SimulateTxText height="80px" width="300px" />
-        </Box>
+        <a href="https://push.org/chain" target="_blank">
+          <Box display={{ initial: 'flex', ml: 'none' }}>
+            <SimulateTxText height="80px" width="400px" />
+          </Box>
+          <Box display={{ initial: 'none', ml: 'flex' }}>
+            <SimulateTxText height="80px" width="300px" />
+          </Box>
+        </a>
 
         <Box display={{ initial: 'flex', ml: 'none' }}>
           <Text variant="h4-regular">
@@ -137,7 +148,9 @@ const LandingPageLeftComponent = () => {
               `}
             >
               <Sale size={28} color="icon-brand-medium" />
-              <Text variant="h4-regular">{item.text}</Text>
+              <Text variant="h4-regular" as="span">
+                {item.text}
+              </Text>
             </Box>
           ))}
         </Box>

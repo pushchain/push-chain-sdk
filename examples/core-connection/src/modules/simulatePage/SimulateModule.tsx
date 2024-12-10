@@ -1,4 +1,3 @@
-import React from 'react';
 import { Box, Text } from 'shared-components';
 import { MockSendTransaction } from './components/MockSendTransaction';
 import { MockSignTransaction } from './components/MockSignTransaction';
@@ -13,7 +12,9 @@ const SimulateModule = () => {
       gap="spacing-lg"
     >
       <Box alignSelf="center">
-        <SimulateTxText height="70px" width="300px" />
+        <a href="https://push.org/chain" target="_blank">
+          <SimulateTxText height="70px" width="300px" />
+        </a>
       </Box>
 
       <Box
