@@ -270,11 +270,16 @@ export class Poker {
     encryptedShuffledCards: Set<BN>,
     signer: PushWalletSigner
   ): Promise<string> => {
+    // Convert Set<BN> to an array of strings
+    const deckArray = Array.from(encryptedShuffledCards, (card) => card.toString(10));
+    const dataToStore = JSON.stringify({ deck: deckArray });
+  
     const unsignedTx = this.pushNetwork.tx.createUnsigned(
       (this.TX_CATEGORY_PREFIX_DECK_ENCRYPT + txHash).slice(0, 30),
       [creator],
-      new TextEncoder().encode(JSON.stringify({ deck: encryptedShuffledCards }))
+      new TextEncoder().encode(dataToStore)
     );
+  
     return await this.pushNetwork.tx.send(unsignedTx, signer);
   };
 
@@ -295,19 +300,19 @@ export class Poker {
       1,
       (this.TX_CATEGORY_PREFIX_DECK_ENCRYPT + gameTransactionHash).slice(0, 30)
     );
-    console.log("response",response)
-
+  
     if (response.blocks.length === 0) return null;
     const block = response.blocks[0];
     const transaction = block.blockDataAsJson.txobjList[0] as { tx: Transaction };
-    console.log("transaction",transaction.tx.data)
+  
     const decodedData = new TextDecoder().decode(
-      new Uint8Array(
-        Buffer.from(transaction.tx.data as unknown as string, 'base64')
-      )
+      new Uint8Array(Buffer.from(transaction.tx.data as unknown as string, 'base64'))
     );
-    console.log("decodedData",decodedData)
-    return JSON.parse(decodedData) as Set<BN>;
+  
+    const parsed = JSON.parse(decodedData); // { deck: string[] }
+    const deckSet = new Set<BN>(parsed.deck.map((cardStr: string) => new BN(cardStr, 10)));
+  
+    return deckSet;
   };
 
   publishDecryptedShuffledCards = async (
@@ -316,13 +321,18 @@ export class Poker {
     decryptedShuffledCards: Set<BN>,
     signer: PushWalletSigner
   ): Promise<string> => {
+    const deckArray = Array.from(decryptedShuffledCards, (card) => card.toString(10));
+    const dataToStore = JSON.stringify({ deck: deckArray });
+  
     const unsignedTx = this.pushNetwork.tx.createUnsigned(
       (this.TX_CATEGORY_PREFIX_DECK_DECRYPT + txHash).slice(0, 30),
       [creator],
-      new TextEncoder().encode(JSON.stringify({ deck: decryptedShuffledCards }))
+      new TextEncoder().encode(dataToStore)
     );
+  
     return await this.pushNetwork.tx.send(unsignedTx, signer);
   };
+  
 
   getDecryptedShuffledCards = async (
     gameTransactionHash: string,
@@ -336,15 +346,18 @@ export class Poker {
       1,
       (this.TX_CATEGORY_PREFIX_DECK_DECRYPT + gameTransactionHash).slice(0, 30)
     );
-
+  
     if (response.blocks.length === 0) return null;
     const block = response.blocks[0];
-    const transaction = block.blockDataAsJson.txobjList as { tx: Transaction };
+    const transaction = block.blockDataAsJson.txobjList[0] as { tx: Transaction };
+  
     const decodedData = new TextDecoder().decode(
-      new Uint8Array(
-        Buffer.from(transaction.tx.data as unknown as string, 'base64')
-      )
+      new Uint8Array(Buffer.from(transaction.tx.data as unknown as string, 'base64'))
     );
-    return JSON.parse(decodedData) as Set<BN>;
+  
+    const parsed = JSON.parse(decodedData); // { deck: string[] }
+    const deckSet = new Set<BN>(parsed.deck.map((cardStr: string) => new BN(cardStr, 10)));
+  
+    return deckSet;
   };
 }

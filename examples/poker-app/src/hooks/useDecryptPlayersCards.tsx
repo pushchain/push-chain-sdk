@@ -98,7 +98,7 @@ export default function useDecryptPlayersCards({
         await pokerService.publishDecryptedShuffledCards(
           gameTransactionHash,
           game.creator,
-          decryptedCard,
+          decryptedDeck,
           pushWalletSigner
         );
       }
