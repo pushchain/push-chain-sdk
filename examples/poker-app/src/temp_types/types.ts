@@ -1,4 +1,4 @@
-// PokerGame.ts
+// types.ts
 
 export enum PhaseType {
   PREFLOP = 0,
@@ -8,7 +8,7 @@ export enum PhaseType {
   SHOWDOWN = 4,
 }
 
-enum Rank {
+export enum Rank {
   ACE = 0,
   TWO = 1,
   THREE = 2,
@@ -24,14 +24,14 @@ enum Rank {
   KING = 12,
 }
 
-enum Suit {
+export enum Suit {
   SPADES = 0,
   HEARTS = 1,
   DIAMONDS = 2,
   CLUBS = 3,
 }
 
-interface Card {
+export interface Card {
   rank: Rank;
   suit: Suit;
 }
@@ -45,18 +45,35 @@ export interface Phase {
   bets: Map<string, number>;
 }
 
-/**
- * This is the Poker State. After every play (bet, check or fold), we update this object.
- */
 export interface PokerGame {
   players: Map<string, Player>;
   phases: Map<PhaseType, Phase>;
   cards: Card[];
   pot: number;
-  /**
-   * At first the dealer is the game creator. After each round, the dealer is changed to the
-   * next address on the `players` map key.
-   */
   dealer: string;
   creator: string;
+
+  /**
+   * New fields for dealing and decryption phases:
+   */
+  phase?: 'WAITING_FOR_PLAYERS' | 'KEY_EXCHANGE' | 'ENCRYPTING' | 'DEALING' | 'DECRYPTING' | 'READY';
+  /**
+   * playerHoleCards: 
+   * Store each player's hole cards as encrypted strings during DEALING/DECRYPTING phases.
+   * Once the player decrypts them privately, they update their local state.
+   */
+  playerHoleCards?: Record<string, string[]>;
+
+  /**
+   * communityCardsEncrypted: 
+   * Encrypted community cards as strings (BN.toString(10)).
+   * Each player in turn removes their layer and publishes the partially decrypted result.
+   */
+  communityCardsEncrypted?: string[];
+
+  /**
+   * turnIndex:
+   * Indicates which player's turn it is to partially decrypt the community cards.
+   */
+  turnIndex?: number;
 }

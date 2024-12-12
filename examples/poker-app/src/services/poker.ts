@@ -121,6 +121,7 @@ export class Poker {
             txHash: block.transactions[index].txnHash,
             creator: txObj.tx.sender,
             type: gameObject.type,
+            players: new Set<string>()
           };
         }
       );
@@ -360,4 +361,24 @@ export class Poker {
   
     return deckSet;
   };
+
+  async getGameState(txHash: string): Promise<PokerGame | null> {
+    const response = await this.pushNetwork.tx.get(
+      Math.floor(Date.now()),
+      'DESC',
+      30,
+      1,
+      undefined,
+      (this.TX_CATEGORY_PREFIX + txHash).slice(0, 30)
+    );
+  
+    if (response.blocks.length === 0) return null;
+  
+    const block = response.blocks[0];
+    const transaction = block.blockDataAsJson.txobjList[0] as { tx: Transaction };
+    const decodedData = new TextDecoder().decode(
+      new Uint8Array(Buffer.from(transaction.tx.data as unknown as string, 'base64'))
+    );
+    return JSON.parse(decodedData) as PokerGame;
+  }
 }

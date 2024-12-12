@@ -4,15 +4,24 @@ import useFetchPlayersPublicKeys from '../hooks/useFetchPlayersPublicKeys';
 import useSubmitPlayerPublicKey from '../hooks/useSubmitPlayerPublicKey';
 import useSubmitEncryptedShuffledCards from '../hooks/useSubmitEncryptedShuffledCards';
 import useDecryptPlayersCards from '../hooks/useDecryptPlayersCards';
+import useFetchGameState from '../hooks/useFetchGameState';
 import { usePokerGameContext } from '../hooks/usePokerGameContext';
 import useConnectedPushAddress from '../hooks/useConnectedPushAddress';
+import usePushWalletSigner from '../hooks/usePushSigner';
 import PokerTable from './poker-table';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Progress } from './ui/progress';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { PokerGame } from '../temp_types/types';
 
-type DealingPhase = 'WAITING_FOR_PLAYERS' | 'KEY_EXCHANGE' | 'ENCRYPTING' | 'DECRYPTING' | 'READY';
+type DealingPhase = 
+  | 'WAITING_FOR_PLAYERS' 
+  | 'KEY_EXCHANGE' 
+  | 'ENCRYPTING' 
+  | 'DEALING' 
+  | 'DECRYPTING' 
+  | 'READY';
 
 interface GameState {
   dealingPhase: DealingPhase;
@@ -22,20 +31,21 @@ interface GameState {
 export default function Game() {
   const [gameState, setGameState] = useState<GameState>({
     dealingPhase: 'WAITING_FOR_PLAYERS',
-    progress: 0
+    progress: 0,
   });
 
-  const { game, otherPlayersPublicKey, pokerService, gameTransactionHash,setGame } = usePokerGameContext();
+  const { game, otherPlayersPublicKey, pokerService, gameTransactionHash, setGame } = usePokerGameContext();
   const { connectedPushAddressFormat } = useConnectedPushAddress();
+  const { pushWalletSigner } = usePushWalletSigner();
 
   // Initialize hooks
   useSubmitPlayerPublicKey();
   useFetchPlayersPublicKeys();
   const { hasFinishedEncryptingCards } = useSubmitEncryptedShuffledCards();
-  console.log("hasFinishedEncryptingCards,Game",hasFinishedEncryptingCards)
   useDecryptPlayersCards({ hasFinishedEncryptingCards });
+  useFetchGameState(); // Continuously fetch latest game state
 
-  // Poll for player updates
+  // Poll for player updates (This updates player info like chips/cards)
   useEffect(() => {
     if (!gameTransactionHash || !pokerService || !game) return;
 
@@ -47,11 +57,8 @@ export default function Game() {
         });
 
         if (updatedPlayers) {
-          // Clone current game state
           const updatedGame = { ...game };
-
-          // Update players in the cloned game state
-          updatedGame.players = new Map(game.players); // Ensure a new map is used
+          updatedGame.players = new Map(game.players);
           updatedPlayers.forEach((playerAddress) => {
             if (!updatedGame.players.has(playerAddress)) {
               updatedGame.players.set(playerAddress, {
@@ -60,8 +67,6 @@ export default function Game() {
               });
             }
           });
-
-          // Update the game state using setGame
           setGame(updatedGame);
         }
       } catch (error) {
@@ -70,62 +75,97 @@ export default function Game() {
     }, 4000);
 
     return () => clearInterval(intervalId);
-  }, [gameTransactionHash, pokerService, game]);
-
-  
-  
+  }, [gameTransactionHash, pokerService, game, setGame]);
 
   // Monitor key exchange progress
   useEffect(() => {
     if (!game || game.players.size < 2) return;
-    if(!hasFinishedEncryptingCards){
-    const totalPlayers = game.players.size;
-    // console.log("totalplayer",totalPlayers)
-    const keysCollected = otherPlayersPublicKey.size;
-    // console.log("keysCollected",keysCollected)
-    
-    const keyProgress = Math.min((keysCollected / (totalPlayers - 1)) * 100, 100);
-    
-    if (keysCollected === totalPlayers) {
-      setGameState(prev => ({
-        ...prev,
-        dealingPhase: 'ENCRYPTING',
-        progress: 100
-      }));
-      toast.success('All players have submitted their keys. Starting encryption...');
-    } else {
-      setGameState(prev => ({
-        ...prev,
-        dealingPhase: 'KEY_EXCHANGE',
-        progress: keyProgress
-      }));
-    }}
-  }, [game, otherPlayersPublicKey]);
+    if (!hasFinishedEncryptingCards) {
+      const totalPlayers = game.players.size;
+      const keysCollected = otherPlayersPublicKey.size;
+      const keyProgress = Math.min((keysCollected / (totalPlayers - 1)) * 100, 100);
 
-  // Monitor encryption/decryption progress
-  useEffect(() => {
-    if (hasFinishedEncryptingCards) {
-      console.log("!!!!!!!!!!!!!!!!!!!!!!!!1")
-      setGameState(prev => ({
-        ...prev,
-        dealingPhase: 'DECRYPTING'
-      }));
-      toast.info('Cards encrypted. Starting decryption...');
+      if (keysCollected === totalPlayers) {
+        setGameState(prev => ({
+          ...prev,
+          dealingPhase: 'ENCRYPTING',
+          progress: 100,
+        }));
+        toast.success('All players have submitted their keys. Starting encryption...');
+      } else {
+        setGameState(prev => ({
+          ...prev,
+          dealingPhase: 'KEY_EXCHANGE',
+          progress: keyProgress,
+        }));
+      }
     }
-  }, [hasFinishedEncryptingCards]);
+  }, [game, otherPlayersPublicKey, hasFinishedEncryptingCards]);
 
-  // Check when cards are fully dealt
+  // Once encryption is done, deal cards
   useEffect(() => {
-    if (game?.cards?.length > 0) {
-      setGameState(prev => ({
-        ...prev,
-        dealingPhase: 'READY'
-      }));
-      toast.success('Cards dealt successfully!');
-    }
-  }, [game?.cards]);
+    if (!game || !pokerService || !gameTransactionHash) return;
+    if (hasFinishedEncryptingCards && gameState.dealingPhase === 'ENCRYPTING') {
+      setGameState(prev => ({ ...prev, dealingPhase: 'DEALING' }));
+      toast.info('All encryption done. Dealing cards...');
 
-  // Render phase-specific content
+      (async () => {
+        const playersArr = Array.from(game.players.keys());
+        const dealerIndex = playersArr.indexOf(game.dealer);
+        const lastEncrypterIndex = (dealerIndex === 0) ? playersArr.length - 1 : dealerIndex - 1;
+        const lastEncrypter = playersArr[lastEncrypterIndex];
+
+        const finalEncryptedDeck = await pokerService.getEncryptedShuffledCards(gameTransactionHash, lastEncrypter);
+        if (!finalEncryptedDeck) {
+          console.error('Failed to retrieve final encrypted deck');
+          return;
+        }
+
+        const deckArray = Array.from(finalEncryptedDeck);
+        const playerCount = game.players.size;
+        const holeCardsPerPlayer = 2;
+        const totalHoleCards = holeCardsPerPlayer * playerCount;
+        const communityCardCount = 5;
+
+        const playerHoleCards: Record<string, string[]> = {};
+        const playerAddresses = Array.from(game.players.keys());
+        for (let i = 0; i < playerCount; i++) {
+          const holeSegment = deckArray.slice(i*2, i*2+2);
+          playerHoleCards[playerAddresses[i]] = holeSegment.map(cardBN => cardBN.toString(10));
+        }
+
+        const communityCardsEncrypted = deckArray.slice(totalHoleCards, totalHoleCards + communityCardCount).map(c => c.toString(10));
+
+        const updatedGame: PokerGame = {
+          ...game,
+          phase: 'DECRYPTING',
+          playerHoleCards,
+          communityCardsEncrypted,
+          turnIndex: 0 // first player in array to decrypt
+        };
+
+        await pokerService.updateGame(
+          gameTransactionHash,
+          updatedGame,
+          new Set(playerAddresses),
+          pushWalletSigner!
+        );
+
+        setGame(updatedGame);
+        setGameState(prev => ({ ...prev, dealingPhase: 'DECRYPTING' }));
+        toast.info('Cards dealt. Starting partial decryption...');
+      })();
+    }
+  }, [hasFinishedEncryptingCards, gameState.dealingPhase, game, pokerService, gameTransactionHash, setGame]);
+
+  // Move to READY once final cards are revealed
+  useEffect(() => {
+    if (game?.cards?.length > 0 && game.phase === 'READY') {
+      setGameState(prev => ({ ...prev, dealingPhase: 'READY' }));
+      toast.success('Cards dealt and revealed!');
+    }
+  }, [game?.cards, game?.phase]);
+
   const renderPhaseContent = () => {
     if (!game) return null;
 
@@ -140,7 +180,6 @@ export default function Game() {
             </AlertDescription>
           </Alert>
         );
-
       case 'KEY_EXCHANGE':
         return (
           <Alert className="mb-4">
@@ -152,7 +191,6 @@ export default function Game() {
             </AlertDescription>
           </Alert>
         );
-
       case 'ENCRYPTING':
         return (
           <Alert className="mb-4">
@@ -165,18 +203,26 @@ export default function Game() {
             </AlertDescription>
           </Alert>
         );
-
+      case 'DEALING':
+        return (
+          <Alert className="mb-4">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <AlertTitle>Dealing Cards</AlertTitle>
+            <AlertDescription>
+              Distributing hole cards and community cards...
+            </AlertDescription>
+          </Alert>
+        );
       case 'DECRYPTING':
         return (
           <Alert className="mb-4">
             <Loader2 className="h-4 w-4 animate-spin" />
             <AlertTitle>Revealing Cards</AlertTitle>
             <AlertDescription>
-              Decrypting your cards...
+              Players are partially decrypting community cards...
             </AlertDescription>
           </Alert>
         );
-
       case 'READY':
         return (
           <ConfettiExplosion
@@ -186,7 +232,6 @@ export default function Game() {
             width={1600}
           />
         );
-
       default:
         return null;
     }
