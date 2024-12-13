@@ -62,6 +62,11 @@ Not sure where to start? Join our discord and we will help you get started!
 
 <a href="https://discord.com/invite/pushprotocol" title="Join Our Community"><img src="https://www.freepnglogos.com/uploads/discord-logo-png/playerunknown-battlegrounds-bgparty-15.png" width="200" alt="Discord" /></a>
 
-## License
+## Licenses
 
-Check out our License <a href='https://github.com/push-protocol/push-network-sdk/blob/main/LICENSE.md'>HERE </a>
+All crates of this repository are licensed under either of
+
+- Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
