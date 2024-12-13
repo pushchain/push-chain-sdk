@@ -1,6 +1,6 @@
 import { css } from 'styled-components';
 import { Box, Button, Front, Sale, Text } from 'shared-components';
-import { ConnectPushWalletButton } from '@pushprotocol/pushchain-ui-kit';
+import { ConnectPushWalletButton } from '../../../../../../packages/ui-kit';
 import { useGlobalContext } from '../../../context/GlobalContext';
 import { LandingPageBanner } from './LandingPageBanner';
 import { SimulateTxText } from './SimulateTxText';
@@ -97,27 +97,14 @@ const LandingPageLeftComponent = () => {
       <Box display="flex" flexDirection="column" gap="spacing-sm">
         <Box display="flex" flexDirection="column" gap="spacing-sm">
           {pushNetwork && mockTx && (
-            // <Box
-            //   display="flex"
-            //   alignItems="center"
-            //   justifyContent="center"
-            //   width="-webkit-fill-available"
-            // >
-            //   <ConnectPushWalletButton />
-            // </Box>
-            <iframe
-              src={`http://localhost:5173/wallet?app=${window.location.origin}`}
-              // src={`http://localhost:5173/`}
-              // allow="publickey-credentials-get"
-              //TODO : Here only one is working either create or get. Find a solution
-              allow="publickey-credentials-create; publickey-credentials-get"
-              width="600px"
-              height="800px"
-              style={{
-                border: 'none',
-                borderRadius: '8px',
-              }}
-            />
+            <Box
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              width="-webkit-fill-available"
+            >
+              <ConnectPushWalletButton />
+            </Box>
           )}
 
           <a href="https://push.org/chain" target="_blank">
