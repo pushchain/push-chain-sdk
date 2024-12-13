@@ -27,7 +27,7 @@ const App: React.FC = () => {
   return (
     <ThemeProvider theme={isDarkMode ? themeConfig.dark : themeConfig.light}>
       <GlobalStyle />
-      <WalletProvider env={ENV.PROD}>
+      <WalletProvider env={ENV.LOCAL}>
         <GlobalProvider>
           <Router>
             <RouterContainer />
