@@ -17,5 +17,5 @@ cd examples/email
 2. Add shared-components as a dependency:
 
 ```bash
-npm install ../../packages/shared-components
+yarn add ../../packages/shared-components
 ```
