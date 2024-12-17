@@ -1,6 +1,6 @@
 import { css } from 'styled-components';
 import { Box, Button, Front, Sale, Text } from 'shared-components';
-import { ConnectPushWalletButton } from '@pushprotocol/pushchain-ui-kit';
+import { ConnectPushWalletButton } from '../../../../../../packages/ui-kit';
 import { useGlobalContext } from '../../../context/GlobalContext';
 import { LandingPageBanner } from './LandingPageBanner';
 import { SimulateTxText } from './SimulateTxText';
@@ -96,7 +96,7 @@ const LandingPageLeftComponent = () => {
 
       <Box display="flex" flexDirection="column" gap="spacing-sm">
         <Box display="flex" flexDirection="column" gap="spacing-sm">
-          {pushNetwork && mockTx && (
+          {/* {pushNetwork && mockTx && (
             <Box
               display="flex"
               alignItems="center"
@@ -105,7 +105,7 @@ const LandingPageLeftComponent = () => {
             >
               <ConnectPushWalletButton />
             </Box>
-          )}
+          )} */}
 
           <a href="https://push.org/chain" target="_blank">
             <Box
