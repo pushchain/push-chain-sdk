@@ -1,7 +1,7 @@
 import React from 'react';
 import { useGlobalContext } from '../context/GlobalContext';
 import { Box } from 'shared-components';
-import { ConnectPushWalletButton } from '../../../../packages/ui-kit/src';
+import { ConnectPushWalletButton } from '@pushprotocol/pushchain-ui-kit';
 
 const Navbar = () => {
   const { pushNetwork, mockTx } = useGlobalContext();
