@@ -4,6 +4,10 @@ import '../App.css';
 import { Transaction } from '@pushprotocol/push-chain/src/lib/generated/tx';
 import { toHex } from 'viem';
 import { PushNetwork } from '@pushprotocol/push-chain';
+// import {
+//   ConnectPushWalletButton,
+//   usePushWalletContext,
+// } from '@pushprotocol/pushchain-ui-kit';
 import {
   ConnectPushWalletButton,
   usePushWalletContext,

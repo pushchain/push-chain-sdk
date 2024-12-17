@@ -5,7 +5,9 @@ import { getBlocksCSSVariables, themeConfig } from 'shared-components';
 import { useDarkMode } from './common/hooks';
 import { RouterContainer } from './common/components';
 import { GlobalProvider } from './context/GlobalContext';
+// import { ENV, WalletProvider } from '@pushprotocol/pushchain-ui-kit';
 import { ENV, WalletProvider } from '../../../packages/ui-kit';
+import { Navbar } from './components/Navbar';
 
 const GlobalStyle = createGlobalStyle`
   :root{
@@ -30,6 +32,7 @@ const App: React.FC = () => {
       <WalletProvider env={ENV.LOCAL}>
         <GlobalProvider>
           <Router>
+            <Navbar />
             <RouterContainer />
           </Router>
         </GlobalProvider>

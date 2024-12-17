@@ -76,6 +76,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
   };
 
   const sendMessageToPushWallet = (message: any) => {
+    console.log('sendMessageToPushWallet', iframeRef?.current?.contentWindow);
+
     if (iframeRef?.current?.contentWindow) {
       try {
         iframeRef.current.contentWindow.postMessage(
@@ -152,47 +154,50 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
 
   useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
-      if (event.origin === config.WALLET_URL[env]) {
-        console.log('Message from child Tab: ', event.data);
+      console.log('Message from child Tab: ', event.data);
+      // if (event.origin === config.WALLET_URL[env]) {
+      console.log('Message from child Tab: ', event.data);
 
-        switch (event.data.type) {
-          case WALLET_TO_APP_ACTION.IS_LOGGED_IN:
-            console.log('User has logged In', event.data.data);
-            handleIsLoggedInAction(event.data.data);
-            break;
-          case WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS:
-            console.log('App Connection Success', event.data.data);
-            handleAppConnectionSuccess(event.data.data);
-            break;
-          case WALLET_TO_APP_ACTION.APP_CONNECTION_REJECTED:
-            console.log('App Connection Rejected', event.data.data);
-            handleAppConnectionRejection();
-            break;
-          case WALLET_TO_APP_ACTION.SIGNATURE:
-            console.log('Signature received', event.data.data);
-            if (signatureResolverRef.current) {
-              signatureResolverRef?.current?.success?.(event.data.data); // Resolve the promise with the data
-            }
-            break;
-          case WALLET_TO_APP_ACTION.IS_LOGGED_OUT:
-            console.log('User loggged out', event.data.data);
-            handleUserLogOutEvent();
-            break;
-          case WALLET_TO_APP_ACTION.ERROR:
-            console.log('Error from the child tab', event.data);
-            signatureResolverRef?.current?.error?.(event.data.data); // Resolve the promise with the data
-            break;
+      switch (event.data.type) {
+        case WALLET_TO_APP_ACTION.IS_LOGGED_IN:
+          console.log('User has logged In', event.data.data);
+          handleIsLoggedInAction(event.data.data);
+          break;
+        case WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS:
+          console.log('App Connection Success', event.data.data);
+          handleAppConnectionSuccess(event.data.data);
+          break;
+        case WALLET_TO_APP_ACTION.APP_CONNECTION_REJECTED:
+          console.log('App Connection Rejected', event.data.data);
+          handleAppConnectionRejection();
+          break;
+        case WALLET_TO_APP_ACTION.SIGNATURE:
+          console.log('Signature received', event.data.data);
+          if (signatureResolverRef.current) {
+            signatureResolverRef?.current?.success?.(event.data.data); // Resolve the promise with the data
+          }
+          break;
+        case WALLET_TO_APP_ACTION.IS_LOGGED_OUT:
+          console.log('User loggged out', event.data.data);
+          handleUserLogOutEvent();
+          break;
+        case WALLET_TO_APP_ACTION.ERROR:
+          console.log('Error from the child tab', event.data);
+          signatureResolverRef?.current?.error?.(event.data.data); // Resolve the promise with the data
+          break;
 
-          default:
-            console.warn('Unknown message type:', event.data.type);
-        }
+        default:
+          console.warn('Unknown message type:', event.data.type);
       }
+      // }
     };
 
     window.addEventListener('message', messageHandler);
 
     return () => window.removeEventListener('message', messageHandler);
   }, []);
+
+  console.log('This is running in wallet provider');
 
   return (
     <WalletContext.Provider
