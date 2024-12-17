@@ -1,12 +1,12 @@
 import config from '../config';
-import { ENV } from '../constants';
+import { PushChainEnvironment } from '../constants';
 import { ACTION, AppConnection } from './wallet.types';
 
 export class Wallet {
   private walletWindow: Window | null = null;
   private walletUrl: string;
 
-  constructor(private env: ENV) {
+  constructor(private env: PushChainEnvironment) {
     this.walletUrl = config.WALLET_URL[this.env];
   }
 
@@ -62,6 +62,8 @@ export class Wallet {
   /**
    * Get Dapp connection status to Push Wallet
    */
+  // TODO: CHECK IF RETURN TYPE HERE IS CORRECT!
+  // TODO: It says it returns this JSON but in reality is returning a string
   appConnectionStatus = (): Promise<{
     authStatus: AppConnection['authStatus'];
     appConnectionStatus: AppConnection['appConnectionStatus'];

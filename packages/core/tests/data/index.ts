@@ -743,7 +743,7 @@ export const INIT_DID_TX = {
 };
 
 /**
- * Attched Wallets in walletToEncryptedDerivedKey map -
+ * Attached Wallets in walletToEncryptedDerivedKey map -
  * push:devnet:push1rgf3na7kqk5nphvv0rqvpvrg9wt6rkuakeuat8
  * eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4
  * solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:69EUYJKr2NE8vHFphyRPSU2tqRbXhMu9gzNo96mjvFLv

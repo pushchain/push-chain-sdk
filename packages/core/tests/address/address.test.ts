@@ -1,5 +1,5 @@
 import { Address } from '../../src/lib/address/address'; // Adjust the import path accordingly
-import { ENV } from '../../src/lib/constants';
+import { PushChainEnvironment } from '../../src/lib/constants';
 
 describe('Address', () => {
   const evmAddress = '0x35B84d6848D16415177c64D64504663b998A6ab4';
@@ -39,29 +39,55 @@ describe('Address', () => {
 
   describe('toPushCAIP', () => {
     it('should convert evm address to Push Devnet CAIP', () => {
-      const result1 = Address.toPushCAIP(evmAddress, ENV.LOCAL);
-      const result2 = Address.toPushCAIP(evmAddress, ENV.DEV);
+      const result1 = Address.toPushCAIP(
+        evmAddress,
+        PushChainEnvironment.local
+      );
+      const result2 = Address.toPushCAIP(
+        evmAddress,
+        PushChainEnvironment.devnet
+      );
       expect(result1).toEqual(result2);
       expect(result1).toEqual(`push:devnet:${pushAddress}`);
     });
+
     it('should convert evm address to Push Testnet CAIP', () => {
-      const result = Address.toPushCAIP(evmAddress, ENV.STAGING);
+      const result = Address.toPushCAIP(
+        evmAddress,
+        PushChainEnvironment.testnet
+      );
       expect(result).toEqual(`push:testnet:${pushAddress}`);
     });
+
     it('should convert evm address to Push Mainnet CAIP', () => {
-      const result = Address.toPushCAIP(evmAddress, ENV.PROD);
+      const result = Address.toPushCAIP(
+        evmAddress,
+        PushChainEnvironment.mainnet
+      );
       expect(result).toEqual(`push:mainnet:${pushAddress}`);
     });
+
     it('should convert push address to Push Devnet CAIP', () => {
-      const result = Address.toPushCAIP(pushAddress, ENV.DEV);
+      const result = Address.toPushCAIP(
+        pushAddress,
+        PushChainEnvironment.devnet
+      );
       expect(result).toEqual(`push:devnet:${pushAddress}`);
     });
+
     it('should convert evm address to Push Testnet CAIP', () => {
-      const result = Address.toPushCAIP(pushAddress, ENV.STAGING);
+      const result = Address.toPushCAIP(
+        pushAddress,
+        PushChainEnvironment.testnet
+      );
       expect(result).toEqual(`push:testnet:${pushAddress}`);
     });
+
     it('should convert evm address to Push Mainnet CAIP', () => {
-      const result = Address.toPushCAIP(pushAddress, ENV.PROD);
+      const result = Address.toPushCAIP(
+        pushAddress,
+        PushChainEnvironment.mainnet
+      );
       expect(result).toEqual(`push:mainnet:${pushAddress}`);
     });
   });
@@ -71,22 +97,27 @@ describe('Address', () => {
       const result1 = Address.toCAIP(evmAddress, 1);
       expect(result1).toEqual(`eip155:1:${evmAddress}`);
     });
+
     it('should convert push address to CAIP', () => {
       const result1 = Address.toCAIP(pushAddress, 'devnet');
       expect(result1).toEqual(`push:devnet:${pushAddress}`);
     });
+
     it('should convert solana address to CAIP', () => {
       const result = Address.toCAIP(solanaAddress, 'devnet');
       expect(result).toEqual(
         `solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:${solanaAddress}`
       );
     });
+
     it('should throw an error for invalid network for EIP155 address', () => {
       expect(() => Address.toCAIP(evmAddress, 'devnet')).toThrow();
     });
+
     it('should throw an error for invalid network for push address', () => {
       expect(() => Address.toCAIP(pushAddress, 1)).toThrow();
     });
+
     it('should throw an error for invalid network for solana address', () => {
       expect(() => Address.toCAIP(solanaAddress, 1)).toThrow();
     });

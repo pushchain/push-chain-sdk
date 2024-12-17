@@ -1,7 +1,7 @@
-import { hexToBytes, bytesToHex } from '@noble/hashes/utils';
-import { getAddress } from 'viem';
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
 import { bech32m } from 'bech32';
-import { ENV } from '../constants';
+import { getAddress } from 'viem';
+import { PushChainEnvironment } from '../constants';
 import { PUSH_NETWORK } from './address.types';
 
 const PUSH_PREFIX = 'push';
@@ -50,20 +50,19 @@ export class Address {
    */
   static toPushCAIP = (
     address: `0x${string}` | `push${string}`,
-    env: ENV = ENV.STAGING
+    env: PushChainEnvironment = PushChainEnvironment.devnet
   ) => {
     let network: PUSH_NETWORK;
     switch (env) {
-      case ENV.LOCAL:
-      case ENV.DEV: {
+      case PushChainEnvironment.local:
+      case PushChainEnvironment.devnet: {
         network = PUSH_NETWORK.DEVNET;
         break;
       }
-      case ENV.STAGING: {
+      case PushChainEnvironment.testnet:
         network = PUSH_NETWORK.TESTNET;
         break;
-      }
-      case ENV.PROD: {
+      case PushChainEnvironment.mainnet: {
         network = PUSH_NETWORK.MAINNET;
         break;
       }

@@ -1,5 +1,5 @@
 import { CONSTANTS } from '../src';
 
 export const config = {
-  ENV: CONSTANTS.ENV.DEV,
+  ENV: CONSTANTS.PushChainEnvironment.devnet,
 };

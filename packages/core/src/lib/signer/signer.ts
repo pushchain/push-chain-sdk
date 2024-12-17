@@ -1,12 +1,13 @@
-export type UniversalAccount = {
-  chain: string;
-  chainId: string;
-  /**
-   * Not in CAIP-10 format
-   */
-  account: string;
-};
+import { UniversalSigner, ValidatedUniversalSigner } from './signer.types';
 
-type UniversalSigner = UniversalAccount & {
-  signMessage: (data: Uint8Array) => Promise<Uint8Array>;
-};
+export class Signer {
+  static create(universalSigner: UniversalSigner): ValidatedUniversalSigner {
+    const { chain, chainId, account, signMessage } = universalSigner;
+    return {
+      chain,
+      chainId,
+      account,
+      signMessage,
+    };
+  }
+}

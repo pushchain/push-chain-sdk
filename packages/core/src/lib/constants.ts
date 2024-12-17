@@ -1,16 +1,35 @@
+export enum PushChainEnvironment {
+  mainnet,
+  devnet,
+  testnet,
+  local,
+}
+
 /**
- * SUPPORTED ENVIRONEMENTS
+ * Chain types
  */
-export enum ENV {
-  PROD = 'prod',
-  STAGING = 'staging',
-  DEV = 'dev',
-  /**
-   * **This is for local development only**
-   */
-  LOCAL = 'local',
+export enum Chain {
+  Push = 'Push Chain',
+  Solana = 'Solana',
+  Evm = 'EVM',
 }
 
 export const CONSTANTS = {
-  ENV: ENV,
+  PushChainEnvironment,
+  Chain: {
+    Push: {
+      mainnet: { name: Chain.Push, chainId: 'mainnet' },
+      devnet: { name: Chain.Push, chainId: 'devnet' },
+    },
+    Solana: {
+      devnet: {
+        name: Chain.Solana,
+        chainId: '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+      },
+    },
+    Ethereum: {
+      mainnet: { name: Chain.Evm, chainId: '1' },
+      sepolia: { name: Chain.Evm, chainId: '11155111' },
+    },
+  },
 };

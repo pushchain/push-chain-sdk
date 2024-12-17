@@ -1,4 +1,4 @@
-import { ENV } from '../constants';
+import { PushChainEnvironment } from '../constants';
 import { Validator } from '../validator/validator';
 import { Block as BlockType } from '../generated/block';
 import { BlockResponse } from './block.types';
@@ -6,7 +6,7 @@ import { BlockResponse } from './block.types';
 export class Block {
   private constructor(private validator: Validator) {}
 
-  static initialize = async (env: ENV) => {
+  static initialize = async (env: PushChainEnvironment) => {
     const validator = await Validator.initalize({ env });
     return new Block(validator);
   };
@@ -41,7 +41,7 @@ export class Block {
 
   /**
    * Search Block with a given hash
-   * @param txHash
+   * @param blockHash
    */
   search = async (blockHash: string) => {
     return await this.validator.call<BlockResponse>('push_getBlockByHash', [

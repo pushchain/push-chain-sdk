@@ -1,19 +1,14 @@
-import { Address, Tx } from '../../src';
-import { TxCategory } from '../../src/lib/tx/tx.types';
-import { InitDid } from '../../src/lib/generated/txData/init_did';
-import { config } from '../config';
-import { TxResponse } from '../../src/lib/tx/tx.types';
+import { hexToBytes, toHex } from 'viem';
 import {
   generatePrivateKey,
   privateKeyToAccount,
   privateKeyToAddress,
 } from 'viem/accounts';
-import { hexToBytes, toHex, verifyMessage } from 'viem';
-import { ENV } from '../../src/lib/constants';
-import { sha256 } from '@noble/hashes/sha256';
-import * as nacl from 'tweetnacl';
-import bs58 from 'bs58';
-import { INIT_DID_TX, INIT_DID_TX_2 } from '../data';
+import { Address, Tx } from '../../src';
+import { PushChainEnvironment } from '../../src/lib/constants';
+import { InitDid } from '../../src/lib/generated/txData/init_did';
+import { config } from '../config';
+import { INIT_DID_TX_2 } from '../data';
 
 const test_pk = generatePrivateKey();
 const test_account = privateKeyToAccount(test_pk);
@@ -43,7 +38,6 @@ const mockRecipients = [
 
 // remove .skip to run
 describe.skip('validator smoke test', () => {
-
   // switch to ENV.LOCAL or ENV.DEV
   const env = config.ENV;
 
@@ -52,7 +46,7 @@ describe.skip('validator smoke test', () => {
       INIT_DID_TX_2.masterPrivateKey as `0x${string}`
     );
     const signer = {
-      account: Address.toPushCAIP(account.address, ENV.DEV),
+      account: Address.toPushCAIP(account.address, PushChainEnvironment.devnet),
       signMessage: async (data: Uint8Array) => {
         const signature = await account.signMessage({
           message: { raw: data },
@@ -64,7 +58,6 @@ describe.skip('validator smoke test', () => {
     const res = await txInstance.send(INIT_DID_TX_2.unsignedInitDIDTx, signer);
     expect(typeof res).toEqual('string');
   });
-
 
   it('write :: ctx :: write custom tx THEN read', async () => {
     const txInstance = await Tx.initialize(env);
@@ -82,7 +75,7 @@ describe.skip('validator smoke test', () => {
     const pk = generatePrivateKey();
     const account = privateKeyToAccount(pk);
     const signer = {
-      account: Address.toPushCAIP(account.address, ENV.DEV),
+      account: Address.toPushCAIP(account.address, PushChainEnvironment.devnet),
       signMessage: async (data: Uint8Array) => {
         const signature = await account.signMessage({
           message: { raw: data },
@@ -95,26 +88,24 @@ describe.skip('validator smoke test', () => {
 
     // read
     for (const recipient of recipients) {
-      const res = await txInstance.getFromVNode(recipient, "CUSTOM:CORE_SDK");
+      const res = await txInstance.getFromVNode(recipient, 'CUSTOM:CORE_SDK');
       expect(res.items).toBeInstanceOf(Array);
       const item0 = res.items[0];
       expect(item0.sender).toEqual(signer.account);
       expect(item0.recipientsList).toEqual(sampleTx.recipients);
       const sampleDataBase16 = toHex(sampleTx.data).substring(2);
       expect(item0.data).toEqual(sampleDataBase16);
-      console.log("OK %o", res);
+      console.log('OK %o', res);
     }
   });
-
 
   it('read :: should get transactions with custom parameters', async () => {
     const txInstance = await Tx.initialize(env);
     const res = await txInstance.getFromVNode(
-      "push:devnet:push1lrl2apatdv6l6q8lyarvc5p4j6uxfa65g8n3r9",
-      "CUSTOM:CORE_SDK");
+      'push:devnet:push1lrl2apatdv6l6q8lyarvc5p4j6uxfa65g8n3r9',
+      'CUSTOM:CORE_SDK'
+    );
     expect(res.items).toBeInstanceOf(Array);
-    console.log("%o", res);
+    console.log('%o', res);
   });
-
-
 });

@@ -1,10 +1,15 @@
 import { parse, v4 as uuidv4 } from 'uuid';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
+import { PushChainEnvironment } from '../constants';
+import { PushChain } from '../pushChain';
+import {
+  UniversalAccount,
+  ValidatedUniversalSigner,
+} from '../signer/signer.types';
 import { ReplyGrouped, TxCategory } from './tx.types';
 import { Transaction } from '../generated/tx';
 import { InitDid } from '../generated/txData/init_did';
 import { InitSessionKey } from '../generated/txData/init_session_key';
-import { ENV } from '../constants';
 import { Validator } from '../validator/validator';
 import { TokenReply } from '../validator/validator.types';
 import { BlockResponse } from '../block/block.types';
@@ -14,15 +19,22 @@ import { toHex } from 'viem';
 export class Tx {
   private tokenCache: TokenCache;
 
-  private constructor(private validator: Validator, private env: ENV) {
+  private constructor(
+    private validator: Validator,
+    private env: PushChainEnvironment,
+    private signer: ValidatedUniversalSigner | null
+  ) {
     this.tokenCache = new TokenCache(validator);
     // get a token async
     this.tokenCache.getCachedApiToken();
   }
 
-  static initialize = async (env: ENV) => {
+  static initialize = async (
+    env: PushChainEnvironment,
+    validatedUniversalSigner: ValidatedUniversalSigner | null = null
+  ) => {
     const validator = await Validator.initalize({ env });
-    return new Tx(validator, env);
+    return new Tx(validator, env, validatedUniversalSigner);
   };
 
   static serialize = (tx: Transaction): Uint8Array => {
@@ -50,7 +62,7 @@ export class Tx {
         return InitSessionKey.encode(initTxData).finish();
       }
       default: {
-        throw new Error('Serialization Not Supported for given TxCateory');
+        throw new Error('Serialization Not Supported for given TxCategory');
       }
     }
   };
@@ -67,36 +79,9 @@ export class Tx {
         return InitSessionKey.decode(txData);
       }
       default: {
-        throw new Error('Deserialization Not Supported for given TxCateory');
+        throw new Error('Deserialization Not Supported for given TxCategory');
       }
     }
-  };
-
-  /**
-   * Create an Unsigned Tx
-   * @dev Unsigned Tx has empty sender & signature
-   * @param category Tx category
-   * @param recipients Tx recipients
-   * @param data Tx payload data in serialized form
-   * @returns Unsigned Tx
-   */
-  createUnsigned = (
-    category: string,
-    recipients: string[],
-    data: Uint8Array
-  ): Transaction => {
-    Tx.checkCategoryOrFail(category);
-    const fixedRecipients: string[] = recipients.map((value) =>
-      Tx.normalizeCaip(value)
-    );
-    return Transaction.create({
-      type: 0, // Phase 0 only has non-value transfers
-      category,
-      recipients: recipients.map((value) => Tx.normalizeCaip(value)),
-      data,
-      salt: parse(uuidv4()),
-      fee: '0', // Fee is 0 as of now
-    });
   };
 
   /**
@@ -132,7 +117,7 @@ export class Tx {
   /**
    * Get Transactions
    */
-  async getFromVNode(
+  private async getFromVNode(
     accountInCaip: string,
     category: string,
     ts: string = '' + Math.floor(Date.now() / 1000),
@@ -193,36 +178,52 @@ export class Tx {
 
   /**
    * Send Tx to Push Network
-   * @param tx Unsigned Push Tx
-   * @param signer Signer obj to sign the Tx
+   * @param recipients
+   * @param options
    * @returns Tx Hash
    */
   send = async (
-    unsignedTx: Transaction,
-    signer: {
-      account: string;
-      signMessage: (dataToBeSigned: Uint8Array) => Promise<Uint8Array>;
-    },
-    url: string = this.validator['activeValidatorURL']
+    recipients: UniversalAccount[],
+    options: {
+      category: string;
+      data: Uint8Array;
+    }
   ): Promise<string> => {
-    console.log('send() account: %s', Tx.normalizeCaip(signer.account));
+    if (!this.signer) throw new Error('Signer not defined');
+
+    console.log('send() account: %s', Tx.normalizeCaip(this.signer.account));
+
+    Tx.checkCategoryOrFail(options.category);
+
+    const recipientsCAIP10Address: string[] = recipients.map(
+      (value: UniversalAccount) => PushChain.utils.toChainAgnostic(value)
+    );
+
+    const tx = Transaction.create({
+      type: 0, // Phase 0 only has non-value transfers
+      category: options.category,
+      recipients: recipientsCAIP10Address,
+      data: options.data,
+      salt: parse(uuidv4()),
+      fee: '0', // Fee is 0 as of now
+    });
 
     const token = await this.tokenCache.getCachedApiToken();
     if (token == null) {
       throw new Error('failed to obtain token for push network');
     }
     const serializedUnsignedTx = Tx.serialize({
-      ...unsignedTx,
-      sender: Tx.normalizeCaip(signer.account),
+      ...tx,
+      sender: PushChain.utils.toChainAgnostic(this.signer),
       signature: new Uint8Array(0),
       apiToken: utf8ToBytes(token.apiToken),
     });
 
-    // Convert 32 byte data to 64 byte data ( UTF-8 encoded )
+    // Convert 32 byte data to 64 byte data (UTF-8 encoded)
     const dataToBeSigned = new TextEncoder().encode(
       toHex(sha256(serializedUnsignedTx))
     );
-    const signature = await signer.signMessage(dataToBeSigned);
+    const signature = await this.signer.signMessage(dataToBeSigned);
     const serializedSignedTx = Tx.serialize({
       ...Tx.deserialize(serializedUnsignedTx),
       signature,
@@ -237,7 +238,7 @@ export class Tx {
   /**
    * Get Transactions
    */
-  async getTransactionsFromVNode(
+  private async getTransactionsFromVNode(
     accountInCaip: string,
     category: string,
     ts: string = '' + Math.floor(Date.now() / 1000),
