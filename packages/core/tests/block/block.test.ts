@@ -51,13 +51,7 @@ describe('Block Class', () => {
 
   it('should get blocks with custom parameters', async () => {
     const blockInstance = await Block.initialize(env);
-    const res = await blockInstance.get(
-      Math.floor(Date.now() / 1000),
-      'DESC',
-      true,
-      10,
-      2
-    );
+    const res = await blockInstance.get();
     expect(res.blocks).toBeInstanceOf(Array);
     res.blocks.forEach((block) => {
       blockChecker(block);
@@ -68,7 +62,7 @@ describe('Block Class', () => {
     const blockInstance = await Block.initialize(env);
     const res = await blockInstance.get();
     const blockHash = res.blocks[0].blockHash;
-    const searchRes = await blockInstance.search(blockHash);
+    const searchRes = await blockInstance.get(blockHash);
     expect(searchRes.blocks).toBeInstanceOf(Array);
     expect(searchRes.blocks.length).toEqual(1);
     res.blocks.forEach((block) => {

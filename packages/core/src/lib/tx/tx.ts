@@ -4,7 +4,7 @@ import { PushChainEnvironment, Order } from '../constants';
 import { PushChain } from '../pushChain';
 import {
   UniversalAccount,
-  ValidatedUniversalSigner
+  ValidatedUniversalSigner,
 } from '../signer/signer.types';
 import { ReplyGrouped, TxCategory } from './tx.types';
 import { Transaction } from '../generated/tx';
@@ -94,7 +94,7 @@ export class Tx {
       startTime = Math.floor(Date.now()),
       order = Order.DESC,
       page = 1,
-      limit = 30
+      limit = 30,
     }: {
       category?: string;
       startTime?: number;
@@ -114,7 +114,7 @@ export class Tx {
         order,
         limit,
         page,
-        category
+        category,
       ]);
     } else {
       const userAddress = PushChain.utils.toChainAgnostic(reference);
@@ -150,7 +150,7 @@ export class Tx {
       startTime = Math.floor(Date.now()),
       order = Order.DESC,
       page = 1,
-      limit = 30
+      limit = 30,
     }: {
       category?: string;
       startTime?: number;
@@ -167,7 +167,7 @@ export class Tx {
         order,
         limit,
         page,
-        category
+        category,
       ]
     );
   };
@@ -182,7 +182,7 @@ export class Tx {
       startTime = Math.floor(Date.now()),
       order = Order.DESC,
       page = 1,
-      limit = 30
+      limit = 30,
     }: {
       category?: string;
       startTime?: number;
@@ -199,7 +199,7 @@ export class Tx {
         order,
         limit,
         page,
-        category
+        category,
       ]
     );
   };
@@ -233,7 +233,7 @@ export class Tx {
       recipients: recipientsCAIP10Address,
       data: options.data,
       salt: parse(uuidv4()),
-      fee: '0' // Fee is 0 as of now
+      fee: '0', // Fee is 0 as of now
     });
 
     const token = await this.tokenCache.getCachedApiToken();
@@ -244,7 +244,7 @@ export class Tx {
       ...tx,
       sender: PushChain.utils.toChainAgnostic(this.signer),
       signature: new Uint8Array(0),
-      apiToken: utf8ToBytes(token.apiToken)
+      apiToken: utf8ToBytes(token.apiToken),
     });
 
     // Convert 32 byte data to 64 byte data (UTF-8 encoded)
@@ -254,7 +254,7 @@ export class Tx {
     const signature = await this.signer.signMessage(dataToBeSigned);
     const serializedSignedTx = Tx.serialize({
       ...Tx.deserialize(serializedUnsignedTx),
-      signature
+      signature,
     });
     return await this.validator.call<string>(
       'push_sendTransaction',
@@ -269,7 +269,7 @@ export class Tx {
   private async getTransactionsFromVNode(
     accountInCaip: string,
     category: string,
-    ts: string = '' + Math.floor(Date.now() / 1000),
+    ts: string = '' + Math.floor(Date.now()),
     direction: 'ASC' | 'DESC' = 'DESC'
   ) {
     Tx.checkCategoryOrFail(category);
@@ -299,8 +299,7 @@ class TokenCache {
   private cachedToken: TokenReply | null = null;
   private cachedTokenTs = 0;
 
-  constructor(private validator: Validator) {
-  }
+  constructor(private validator: Validator) {}
 
   async getCachedApiToken(): Promise<TokenReply | null> {
     if (TokenCache.isExpired(this.cachedTokenTs, this.TOKEN_EXPIRE_SECONDS)) {

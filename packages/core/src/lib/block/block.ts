@@ -1,4 +1,5 @@
-import { PushChainEnvironment } from '../constants';
+import { Order, PushChainEnvironment } from '../constants';
+import { UniversalAccount } from '../signer/signer.types';
 import { Validator } from '../validator/validator';
 import { Block as BlockType } from '../generated/block';
 import { BlockResponse } from './block.types';
@@ -24,28 +25,33 @@ export class Block {
    * Get Blocks
    */
   get = async (
-    startTime: number = Math.floor(Date.now() / 1000), // Current Local Time
-    direction: 'ASC' | 'DESC' = 'ASC',
-    showDetails = false,
-    pageSize = 30,
-    page = 1
-  ) => {
-    return await this.validator.call<BlockResponse>('push_getBlocks', [
-      startTime,
-      direction,
-      showDetails,
-      pageSize,
-      page,
-    ]);
-  };
-
-  /**
-   * Search Block with a given hash
-   * @param blockHash
-   */
-  search = async (blockHash: string) => {
-    return await this.validator.call<BlockResponse>('push_getBlockByHash', [
-      blockHash,
-    ]);
+    reference: string | '*' = '*',
+    {
+      startTime = Math.floor(Date.now() / 1000),
+      order = Order.ASC,
+      showDetails = false,
+      page = 1,
+      limit = 30,
+    }: {
+      startTime?: number;
+      order?: Order;
+      showDetails?: boolean;
+      page?: number;
+      limit?: number;
+    } = {}
+  ): Promise<BlockResponse> => {
+    if (reference === '*') {
+      return await this.validator.call<BlockResponse>('push_getBlocks', [
+        startTime,
+        order,
+        showDetails,
+        limit,
+        page,
+      ]);
+    } else {
+      return await this.validator.call<BlockResponse>('push_getBlockByHash', [
+        reference,
+      ]);
+    }
   };
 }
