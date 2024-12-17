@@ -1,10 +1,10 @@
 import { parse, v4 as uuidv4 } from 'uuid';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
-import { PushChainEnvironment } from '../constants';
+import { PushChainEnvironment, Order } from '../constants';
 import { PushChain } from '../pushChain';
 import {
   UniversalAccount,
-  ValidatedUniversalSigner,
+  ValidatedUniversalSigner
 } from '../signer/signer.types';
 import { ReplyGrouped, TxCategory } from './tx.types';
 import { Transaction } from '../generated/tx';
@@ -26,7 +26,7 @@ export class Tx {
   ) {
     this.tokenCache = new TokenCache(validator);
     // get a token async
-    this.tokenCache.getCachedApiToken();
+    void this.tokenCache.getCachedApiToken();
   }
 
   static initialize = async (
@@ -88,30 +88,41 @@ export class Tx {
    * Get Transactions
    */
   get = async (
-    startTime: number = Math.floor(Date.now()), // Current Local Time
-    direction: 'ASC' | 'DESC' = 'DESC',
-    pageSize = 30,
-    page = 1,
-    // caip10 address
-    userAddress?: string,
-    category?: string
-  ) => {
-    return userAddress === undefined
-      ? await this.validator.call<BlockResponse>('push_getTransactions', [
-          startTime,
-          direction,
-          pageSize,
-          page,
-          category,
-        ])
-      : await this.validator.call<BlockResponse>('push_getTransactionsByUser', [
-          userAddress,
-          startTime,
-          direction,
-          pageSize,
-          page,
-          category,
-        ]);
+    reference: UniversalAccount | string | '*' = '*',
+    {
+      category = undefined,
+      startTime = Math.floor(Date.now()),
+      order = Order.DESC,
+      page = 1,
+      limit = 30
+    }: {
+      category?: string;
+      startTime?: number;
+      order?: Order;
+      page?: number;
+      limit?: number;
+    } = {}
+  ): Promise<BlockResponse> => {
+    if (typeof reference === 'string' && reference !== '*') {
+      return await this.validator.call<BlockResponse>(
+        'push_getTransactionByHash',
+        [reference]
+      );
+    } else if (typeof reference === 'string' && reference === '*') {
+      return await this.validator.call<BlockResponse>('push_getTransactions', [
+        startTime,
+        order,
+        limit,
+        page,
+        category
+      ]);
+    } else {
+      const userAddress = PushChain.utils.toChainAgnostic(reference);
+      return await this.validator.call<BlockResponse>(
+        'push_getTransactionsByUser',
+        [userAddress, startTime, order, limit, page, category]
+      );
+    }
   };
 
   /**
@@ -133,17 +144,31 @@ export class Tx {
    * Get Transactions by Sender
    */
   getBySender = async (
-    // caip10 address
-    senderAddress: string,
-    startTime: number = Math.floor(Date.now() / 1000), // Current Local Time
-    direction: 'ASC' | 'DESC' = 'ASC',
-    pageSize = 30,
-    page = 1,
-    category?: string
-  ) => {
+    address: UniversalAccount,
+    {
+      category = undefined,
+      startTime = Math.floor(Date.now()),
+      order = Order.DESC,
+      page = 1,
+      limit = 30
+    }: {
+      category?: string;
+      startTime?: number;
+      order?: Order;
+      page?: number;
+      limit?: number;
+    } = {}
+  ): Promise<BlockResponse> => {
     return await this.validator.call<BlockResponse>(
       'push_getTransactionsBySender',
-      [senderAddress, startTime, direction, pageSize, page, category]
+      [
+        PushChain.utils.toChainAgnostic(address),
+        startTime,
+        order,
+        limit,
+        page,
+        category
+      ]
     );
   };
 
@@ -151,28 +176,31 @@ export class Tx {
    * Get Transactions by Recipient
    */
   getByRecipient = async (
-    // caip10 address
-    recipientAddress: string,
-    startTime: number = Math.floor(Date.now() / 1000), // Current Local Time
-    direction: 'ASC' | 'DESC' = 'ASC',
-    pageSize = 30,
-    page = 1,
-    category?: string
-  ) => {
+    address: UniversalAccount,
+    {
+      category = undefined,
+      startTime = Math.floor(Date.now()),
+      order = Order.DESC,
+      page = 1,
+      limit = 30
+    }: {
+      category?: string;
+      startTime?: number;
+      order?: Order;
+      page?: number;
+      limit?: number;
+    } = {}
+  ): Promise<BlockResponse> => {
     return await this.validator.call<BlockResponse>(
       'push_getTransactionsByRecipient',
-      [recipientAddress, startTime, direction, pageSize, page, category]
-    );
-  };
-
-  /**
-   * Search Transaction with a given hash
-   * @param txHash
-   */
-  search = async (txHash: string) => {
-    return await this.validator.call<BlockResponse>(
-      'push_getTransactionByHash',
-      [txHash]
+      [
+        PushChain.utils.toChainAgnostic(address),
+        startTime,
+        order,
+        limit,
+        page,
+        category
+      ]
     );
   };
 
@@ -205,7 +233,7 @@ export class Tx {
       recipients: recipientsCAIP10Address,
       data: options.data,
       salt: parse(uuidv4()),
-      fee: '0', // Fee is 0 as of now
+      fee: '0' // Fee is 0 as of now
     });
 
     const token = await this.tokenCache.getCachedApiToken();
@@ -216,7 +244,7 @@ export class Tx {
       ...tx,
       sender: PushChain.utils.toChainAgnostic(this.signer),
       signature: new Uint8Array(0),
-      apiToken: utf8ToBytes(token.apiToken),
+      apiToken: utf8ToBytes(token.apiToken)
     });
 
     // Convert 32 byte data to 64 byte data (UTF-8 encoded)
@@ -226,7 +254,7 @@ export class Tx {
     const signature = await this.signer.signMessage(dataToBeSigned);
     const serializedSignedTx = Tx.serialize({
       ...Tx.deserialize(serializedUnsignedTx),
-      signature,
+      signature
     });
     return await this.validator.call<string>(
       'push_sendTransaction',
@@ -271,7 +299,8 @@ class TokenCache {
   private cachedToken: TokenReply | null = null;
   private cachedTokenTs = 0;
 
-  constructor(private validator: Validator) {}
+  constructor(private validator: Validator) {
+  }
 
   async getCachedApiToken(): Promise<TokenReply | null> {
     if (TokenCache.isExpired(this.cachedTokenTs, this.TOKEN_EXPIRE_SECONDS)) {

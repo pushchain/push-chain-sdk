@@ -8,7 +8,7 @@ import {
   privateKeyToAddress,
 } from 'viem/accounts';
 import { Address, PushChain, Tx } from '../../src';
-import { CONSTANTS } from '../../src/lib/constants';
+import { CONSTANTS, Order } from '../../src/lib/constants';
 import { InitDid } from '../../src/lib/generated/txData/init_did';
 import {
   UniversalAccount,
@@ -87,12 +87,12 @@ describe('Tx', () => {
 
   it('should get transactions with custom parameters', async () => {
     const txInstance = await Tx.initialize(env);
-    const res = await txInstance.get(
-      Math.floor(Date.now() / 1000),
-      'DESC',
-      10,
-      2
-    );
+    const res = await txInstance.get('*', {
+      startTime: Math.floor(Date.now() / 1000),
+      order: Order.DESC,
+      limit: 30,
+      page: 1,
+    });
     expect(res.blocks).toBeInstanceOf(Array);
     res.blocks.forEach((block) => {
       block.transactions.forEach((tx) => txChecker(tx));
@@ -102,11 +102,14 @@ describe('Tx', () => {
   it('should get transactions for a specific user', async () => {
     const txInstance = await Tx.initialize(env);
     const res = await txInstance.get(
-      Math.floor(Date.now()),
-      'DESC',
-      10,
-      1,
-      'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4'
+      {
+        account: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+        chainId: CONSTANTS.Chain.Ethereum.mainnet.chainId,
+        chain: CONSTANTS.Chain.Ethereum.mainnet.name,
+      },
+      {
+        order: Order.DESC,
+      }
     );
     expect(res.blocks).toBeInstanceOf(Array);
     res.blocks.forEach((block) => {
@@ -116,14 +119,9 @@ describe('Tx', () => {
 
   it('should get transactions with a specific Category', async () => {
     const txInstance = await Tx.initialize(env);
-    const res = await txInstance.get(
-      Math.floor(Date.now()),
-      'DESC',
-      10,
-      1,
-      undefined,
-      'CUSTOM:PUSH_MAIL'
-    );
+    const res = await txInstance.get('*', {
+      category: 'CUSTOM:PUSH_MAIL',
+    });
     expect(res.blocks).toBeInstanceOf(Array);
     res.blocks.forEach((block) => {
       block.transactions.forEach((tx) => txChecker(tx));
@@ -133,11 +131,9 @@ describe('Tx', () => {
   it('should get transactions with a specific Sender', async () => {
     const txInstance = await Tx.initialize(env);
     const res = await txInstance.getBySender(
-      'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4',
-      Math.floor(Date.now()),
-      'DESC',
-      10,
-      1
+      PushChain.utils.toUniversal(
+        'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4'
+      )
     );
     expect(res.blocks).toBeInstanceOf(Array);
     res.blocks.forEach((block) => {
@@ -148,11 +144,9 @@ describe('Tx', () => {
   it('should get transactions with a specific Recipient', async () => {
     const txInstance = await Tx.initialize(env);
     const res = await txInstance.getByRecipient(
-      'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4',
-      Math.floor(Date.now()),
-      'DESC',
-      10,
-      1
+      PushChain.utils.toUniversal(
+        'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4'
+      )
     );
     expect(res.blocks).toBeInstanceOf(Array);
     res.blocks.forEach((block) => {
@@ -163,7 +157,7 @@ describe('Tx', () => {
   it('should search for a tx by hash', async () => {
     const txInstance = await Tx.initialize(env);
     const txHash = '9f636ac0faa040a74ae49410528c5634';
-    const res = await txInstance.search(txHash);
+    const res = await txInstance.get(txHash);
     if (res.blocks.length > 0) {
       expect(res.blocks.length).toEqual(1);
       expect(res.blocks[0].transactions.length).toEqual(1);
