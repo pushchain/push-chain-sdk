@@ -58,21 +58,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
   const handleConnectToPushWallet = () => {
     setWalletVisibility(true);
     setConnectionStatus('connecting');
-
-    // if (!tabRef.current) {
-    //   const width = 600;
-    //   const height = 800;
-    //   const left = screen.width - width - 100;
-    //   const top = 150;
-
-    //   const newTab = window.open(
-    //     `${config.WALLET_URL[env]}/wallet?app=${window.location.origin}`,
-    //     '_blank',
-    //     `width=${width},height=${height},left=${left},top=${top}`
-    //   );
-
-    //   tabRef.current = newTab;
-    // }
   };
 
   const sendMessageToPushWallet = (message: any) => {
@@ -174,7 +159,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
         case WALLET_TO_APP_ACTION.SIGNATURE:
           console.log('Signature received', event.data.data);
           if (signatureResolverRef.current) {
-            signatureResolverRef?.current?.success?.(event.data.data); // Resolve the promise with the data
+            signatureResolverRef?.current?.success?.(event.data.data);
           }
           break;
         case WALLET_TO_APP_ACTION.IS_LOGGED_OUT:
@@ -183,7 +168,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
           break;
         case WALLET_TO_APP_ACTION.ERROR:
           console.log('Error from the child tab', event.data);
-          signatureResolverRef?.current?.error?.(event.data.data); // Resolve the promise with the data
+          signatureResolverRef?.current?.error?.(event.data.data);
           break;
 
         default:
