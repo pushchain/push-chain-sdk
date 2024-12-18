@@ -24,21 +24,7 @@ const featuresCard = [
 
 const Template = () => {
   const { login } = usePrivy();
-  const { pushNetwork, setPushAccount } = useAppContext();
-  const pushWalletLoginHandler = async () => {
-    try {
-      if (pushNetwork) {
-        const acc = await pushNetwork.wallet.connect();
-        // Allow Connection only when DApp is whitelisted
-        await pushNetwork.wallet.sign(
-          toBytes('Accept Connection Request From DApp')
-        );
-        setPushAccount(acc);
-      }
-    } catch (err) {
-      alert(err);
-    }
-  };
+  const { pushNetwork } = useAppContext();
 
   const StarIcon = () => {
     return (
@@ -85,19 +71,19 @@ const Template = () => {
               handango empressr.
             </TextSpan>
 
-            {pushNetwork && (
+            {/* {pushNetwork && (
               <Box
                 display="flex"
                 alignItems="center"
                 justifyContent="center"
                 width="-webkit-fill-available"
-                padding="spacing-xxl spacing-none spacing-lg spacing-none"
+                padding='spacing-xxl spacing-none spacing-lg spacing-none'
               >
                 <ConnectPushWalletButton />
               </Box>
-            )}
+            )} */}
 
-            {/* <Button onClick={login}>Launch App</Button> */}
+            <Button onClick={login}>Launch App</Button>
 
             {featuresCard.map((item) => (
               <Features>
