@@ -1,9 +1,9 @@
-import React from 'react';
+import { FC, useState } from 'react';
 import { usePushWalletContext } from './WalletProvider';
-import { Box, Cross, CrossFilled, css, Dash } from 'shared-components';
+import { Box, Cross, css, Dash, Spinner, Text } from 'shared-components';
 import config from '../../config';
 
-const PushWalletIFrame = () => {
+const PushWalletIFrame: FC = () => {
   const {
     env,
     account,
@@ -11,16 +11,18 @@ const PushWalletIFrame = () => {
     isWalletMinimised,
     isWalletVisible,
     setMinimiseWallet,
-    setWalletVisibility,
+    handleUserLogOutEvent,
   } = usePushWalletContext();
+
+  const [isLoading, setIsLoading] = useState(true);
 
   return (
     <>
       {isWalletVisible ? (
         <Box
           position="fixed"
-          width={account ? (isWalletMinimised ? '0px' : '450px') : '100%'}
-          height={account ? (isWalletMinimised ? '0px' : '710px') : '100%'}
+          width={isWalletMinimised ? '0px' : account ? '450px' : '100%'}
+          height={isWalletMinimised ? '0px' : account ? '710px' : '100%'}
           display="flex"
           flexDirection="column"
           css={css`
@@ -29,8 +31,32 @@ const PushWalletIFrame = () => {
             z-index: 99;
           `}
         >
+          {isLoading && (
+            <Box
+              width="-webkit-fill-available"
+              height="-webkit-fill-available"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              css={css`
+                background-color: #17181b;
+              `}
+            >
+              <Box
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                gap="spacing-sm"
+              >
+                <Text variant="bl-semibold" color="text-primary-inverse">
+                  Loading...
+                </Text>
+                <Spinner size="medium" variant="primary" />
+              </Box>
+            </Box>
+          )}
           <Box
-            display={isWalletMinimised ? 'none' : 'flex'}
+            display={isWalletMinimised || isLoading ? 'none' : 'flex'}
             width="-webkit-fill-available"
             height="-webkit-fill-available"
             flexDirection="column"
@@ -71,7 +97,7 @@ const PushWalletIFrame = () => {
                   cursor="pointer"
                   padding="spacing-none spacing-sm"
                   onClick={() => {
-                    setWalletVisibility(false);
+                    handleUserLogOutEvent();
                   }}
                 >
                   <Cross size={20} color="icon-secondary" />
@@ -89,6 +115,7 @@ const PushWalletIFrame = () => {
                 borderBottomRightRadius: account ? '10px' : '0px',
                 borderBottomLeftRadius: account ? '10px' : '0px',
               }}
+              onLoad={() => setIsLoading(false)}
             />
           </Box>
         </Box>

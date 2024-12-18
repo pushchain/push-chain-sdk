@@ -4,6 +4,7 @@ export enum WALLET_TO_APP_ACTION {
 
   APP_CONNECTION_REJECTED = 'appConnectionRejected',
   APP_CONNECTION_SUCCESS = 'appConnectionSuccess',
+  APP_CONNECTION_RETRY = 'appConnectionRetry',
 
   IS_LOGGED_OUT = 'loggedOut',
   TAB_CLOSED = 'tabClosed',

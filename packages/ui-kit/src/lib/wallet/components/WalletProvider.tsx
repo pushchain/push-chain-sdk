@@ -28,6 +28,7 @@ export type WalletContextType = {
   handleNewConnectionRequest: () => void;
   handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>;
   setMinimiseWallet: React.Dispatch<React.SetStateAction<boolean>>;
+  handleUserLogOutEvent: () => void;
 };
 
 export type WalletProviderProps = { children: ReactNode; env: ENV };
@@ -56,12 +57,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
     error?: (data: WalletEventRespoonse) => void;
   } | null>(null);
 
-  // const closeWalletVisibility = () => {
-  //   setMinimiseWallet(true);
-  // };
-
   const handleConnectToPushWallet = () => {
-    // setMinimiseWallet(false);
     setWalletVisibility(true);
     setConnectionStatus('connecting');
   };
@@ -92,6 +88,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
   const handleIsLoggedInAction = (response: WalletEventRespoonse) => {
     if (response?.account) {
       setConnectionStatus('connected');
+      setMinimiseWallet(true);
       setAccount(response.account);
     } else {
       handleNewConnectionRequest();
@@ -100,6 +97,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
 
   const handleAppConnectionSuccess = (response: WalletEventRespoonse) => {
     setConnectionStatus('connected');
+    setMinimiseWallet(true);
     setAccount(response.account!);
   };
 
@@ -108,10 +106,15 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
     setAccount(null);
   };
 
+  const handleAppConnectionRetry = () => {
+    setMinimiseWallet(true);
+  };
+
   const handleUserLogOutEvent = () => {
     setConnectionStatus('notConnected');
     setAccount(null);
-    setMinimiseWallet(true);
+    setMinimiseWallet(false);
+    setWalletVisibility(false);
   };
 
   const handleSendSignRequestToPushWallet = (
@@ -163,6 +166,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
           console.log('App Connection Rejected', event.data.data);
           handleAppConnectionRejection();
           break;
+        case WALLET_TO_APP_ACTION.APP_CONNECTION_RETRY:
+          console.log('App Connection Retry', event.data.data);
+          handleAppConnectionRetry();
+          break;
         case WALLET_TO_APP_ACTION.SIGNATURE:
           console.log('Signature received', event.data.data);
           if (signatureResolverRef.current) {
@@ -177,7 +184,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
           console.log('Error from the child tab', event.data);
           signatureResolverRef?.current?.error?.(event.data.data);
           break;
-
         default:
           console.warn('Unknown message type:', event.data.type);
       }
@@ -205,6 +211,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
         handleNewConnectionRequest,
         handleSendSignRequestToPushWallet,
         setMinimiseWallet,
+        handleUserLogOutEvent,
       }}
     >
       {children}
