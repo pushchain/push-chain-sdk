@@ -6,7 +6,11 @@ import { getBlocksCSSVariables, Spinner, themeConfig } from 'shared-components';
 import { createGlobalStyle, ThemeProvider } from 'styled-components';
 import AppRoutes from './routes';
 import { BrowserRouter } from 'react-router-dom';
-import { ENV, WalletProvider } from '@pushprotocol/pushchain-ui-kit';
+import {
+  ENV,
+  usePushWalletContext,
+  WalletProvider,
+} from '@pushprotocol/pushchain-ui-kit';
 
 const GlobalStyle = createGlobalStyle`
   :root{
@@ -28,6 +32,7 @@ function App() {
       <BrowserRouter>
         <GlobalStyle />
         <WalletProvider env={ENV.PROD}>
+          {/* <AppRoutes account={account} /> */}
           {ready ? (
             <main className="h-screen w-screen">
               <AppRoutes
