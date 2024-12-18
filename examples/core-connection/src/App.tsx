@@ -5,8 +5,9 @@ import { getBlocksCSSVariables, themeConfig } from 'shared-components';
 import { useDarkMode } from './common/hooks';
 import { RouterContainer } from './common/components';
 import { GlobalProvider } from './context/GlobalContext';
-import { ENV, WalletProvider } from '@pushprotocol/pushchain-ui-kit';
-import { Navbar } from './components/Navbar';
+// import { ENV, WalletProvider } from '@pushprotocol/pushchain-ui-kit';
+import { ENV, WalletProvider } from '../../../packages/ui-kit/src';
+import { PushWalletIFrame } from '../../../packages/ui-kit/src';
 
 const GlobalStyle = createGlobalStyle`
   :root{
@@ -28,10 +29,11 @@ const App: React.FC = () => {
   return (
     <ThemeProvider theme={isDarkMode ? themeConfig.dark : themeConfig.light}>
       <GlobalStyle />
-      <WalletProvider env={ENV.PROD}>
+      <WalletProvider env={ENV.LOCAL}>
         <GlobalProvider>
           <Router>
-            <Navbar />
+            {/* <Navbar /> */}
+            <PushWalletIFrame />
             <RouterContainer />
           </Router>
         </GlobalProvider>

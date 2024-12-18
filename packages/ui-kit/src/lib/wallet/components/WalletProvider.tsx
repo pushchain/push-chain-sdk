@@ -23,6 +23,7 @@ export type WalletContextType = {
   iframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
   isWalletVisible: boolean;
   isWalletMinimised: boolean;
+  setWalletVisibility: (isWalletVisible: boolean) => void;
   handleConnectToPushWallet: () => void;
   handleNewConnectionRequest: () => void;
   handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>;
@@ -55,7 +56,12 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
     error?: (data: WalletEventRespoonse) => void;
   } | null>(null);
 
+  // const closeWalletVisibility = () => {
+  //   setMinimiseWallet(true);
+  // };
+
   const handleConnectToPushWallet = () => {
+    // setMinimiseWallet(false);
     setWalletVisibility(true);
     setConnectionStatus('connecting');
   };
@@ -105,6 +111,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
   const handleUserLogOutEvent = () => {
     setConnectionStatus('notConnected');
     setAccount(null);
+    setMinimiseWallet(true);
   };
 
   const handleSendSignRequestToPushWallet = (
@@ -191,8 +198,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
         connectionStatus,
         env,
         iframeRef,
-        isWalletVisible,
         isWalletMinimised,
+        isWalletVisible,
+        setWalletVisibility,
         handleConnectToPushWallet,
         handleNewConnectionRequest,
         handleSendSignRequestToPushWallet,

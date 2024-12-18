@@ -96,7 +96,7 @@ const LandingPageLeftComponent = () => {
 
       <Box display="flex" flexDirection="column" gap="spacing-sm">
         <Box display="flex" flexDirection="column" gap="spacing-sm">
-          {/* {pushNetwork && mockTx && (
+          {pushNetwork && mockTx && (
             <Box
               display="flex"
               alignItems="center"
@@ -105,7 +105,7 @@ const LandingPageLeftComponent = () => {
             >
               <ConnectPushWalletButton />
             </Box>
-          )} */}
+          )}
 
           <a href="https://push.org/chain" target="_blank">
             <Box
