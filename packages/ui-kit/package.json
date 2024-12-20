@@ -1,6 +1,6 @@
 {
   "name": "@pushprotocol/pushchain-ui-kit",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "dependencies": {
     "tslib": "^2.3.0"
   },
