@@ -63,7 +63,6 @@ const MockSendTransaction = () => {
             actionText="View on Scan"
             onAction={handleViewOnScan}
             onClose={() => {
-              console.log('Closed');
               setTxnHash(null);
             }}
           />
@@ -76,7 +75,6 @@ const MockSendTransaction = () => {
             variant="error"
             heading="Error in sending Transaction"
             onClose={() => {
-              console.log('Closed');
               setTxnError(null);
             }}
           />

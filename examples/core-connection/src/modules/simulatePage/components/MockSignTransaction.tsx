@@ -52,7 +52,6 @@ const MockSignTransaction = () => {
             variant="error"
             heading="Error in signing Message"
             onClose={() => {
-              console.log('Closed');
               setSignatureError(null);
             }}
           />

@@ -1,7 +1,6 @@
-import React from 'react';
 import { Box } from 'shared-components';
 import { useGlobalContext } from '../../../context/GlobalContext';
-import { TogglePushWalletButton } from '../../../../../../packages/ui-kit/src';
+import { TogglePushWalletButton } from '@pushprotocol/pushchain-ui-kit';
 
 const SimulateHeader = () => {
   const { account } = useGlobalContext();

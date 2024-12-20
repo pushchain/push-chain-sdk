@@ -70,8 +70,6 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
   };
 
   const sendMessageToPushWallet = (message: any) => {
-    console.log('sendMessageToPushWallet', iframeRef?.current?.contentWindow);
-
     if (iframeRef?.current?.contentWindow) {
       try {
         iframeRef.current.contentWindow.postMessage(

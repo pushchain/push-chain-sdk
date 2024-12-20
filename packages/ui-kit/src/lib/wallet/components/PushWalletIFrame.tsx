@@ -1,6 +1,14 @@
-import { FC, useState } from 'react';
+import { FC } from 'react';
 import { usePushWalletContext } from './PushWalletProvider';
-import { Box, Cross, css, Dash, Spinner, Text } from 'shared-components';
+import {
+  Box,
+  Cross,
+  css,
+  Dash,
+  deviceMediaQ,
+  Spinner,
+  Text,
+} from 'shared-components';
 import config from '../../config';
 
 const PushWalletIFrame: FC = () => {
@@ -21,7 +29,10 @@ const PushWalletIFrame: FC = () => {
       {isWalletVisible ? (
         <Box
           position="fixed"
-          width={isWalletMinimised ? '0px' : account ? '450px' : '100%'}
+          width={{
+            initial: isWalletMinimised ? '0px' : account ? '450px' : '100%',
+            ml: isWalletMinimised ? '0px' : account ? '96%' : '100%',
+          }}
           height={isWalletMinimised ? '0px' : account ? '710px' : '100%'}
           display="flex"
           flexDirection="column"
@@ -31,6 +42,11 @@ const PushWalletIFrame: FC = () => {
             z-index: 99;
             background-color: #17181b;
             border-radius: 10px;
+
+            @media (${deviceMediaQ.mobileL}) {
+              right: ${account ? '2%' : '0'};
+              top: ${account ? '8%' : '0'};
+            }
           `}
         >
           {isIframeLoading && (
