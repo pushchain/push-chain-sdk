@@ -12,9 +12,9 @@ const PushWalletIFrame: FC = () => {
     isWalletVisible,
     setMinimiseWallet,
     handleUserLogOutEvent,
+    isIframeLoading,
+    setIframeLoading,
   } = usePushWalletContext();
-
-  const [isLoading, setIsLoading] = useState(true);
 
   return (
     <>
@@ -29,15 +29,17 @@ const PushWalletIFrame: FC = () => {
             right: ${account ? '24px' : '0'};
             top: ${account ? '24px' : '0'};
             z-index: 99;
+            background-color: #17181b;
+            border-radius: 10px;
           `}
         >
-          {isLoading && (
+          {isIframeLoading && (
             <Box
               width="-webkit-fill-available"
               height="-webkit-fill-available"
+              flexDirection="column"
               display="flex"
-              alignItems="center"
-              justifyContent="center"
+              padding="spacing-xxs spacing-xxs"
               css={css`
                 background-color: #17181b;
               `}
@@ -45,8 +47,22 @@ const PushWalletIFrame: FC = () => {
               <Box
                 display="flex"
                 alignItems="center"
+                justifyContent="flex-end"
+                cursor="pointer"
+                padding="spacing-none spacing-sm"
+                onClick={() => {
+                  handleUserLogOutEvent();
+                }}
+              >
+                <Cross size={20} color="icon-secondary" />
+              </Box>
+              <Box
+                display="flex"
+                alignItems="center"
                 justifyContent="center"
                 gap="spacing-sm"
+                width="-webkit-fill-available"
+                height="-webkit-fill-available"
               >
                 <Text variant="bl-semibold" color="text-primary-inverse">
                   Loading...
@@ -56,7 +72,7 @@ const PushWalletIFrame: FC = () => {
             </Box>
           )}
           <Box
-            display={isWalletMinimised || isLoading ? 'none' : 'flex'}
+            display={isWalletMinimised || isIframeLoading ? 'none' : 'flex'}
             width="-webkit-fill-available"
             height="-webkit-fill-available"
             flexDirection="column"
@@ -105,7 +121,7 @@ const PushWalletIFrame: FC = () => {
               )}
             </Box>
             <iframe
-              src={`${config.WALLET_URL[env]}/wallet?app=${window.location.origin}`}
+              src={`${config.WALLET_URL[env]}/auth?app=${window.location.origin}`}
               allow="publickey-credentials-create; publickey-credentials-get"
               ref={iframeRef}
               style={{
@@ -115,7 +131,7 @@ const PushWalletIFrame: FC = () => {
                 borderBottomRightRadius: account ? '10px' : '0px',
                 borderBottomLeftRadius: account ? '10px' : '0px',
               }}
-              onLoad={() => setIsLoading(false)}
+              onLoad={() => setIframeLoading(false)}
             />
           </Box>
         </Box>

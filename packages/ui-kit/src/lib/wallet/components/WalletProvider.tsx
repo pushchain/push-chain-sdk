@@ -29,6 +29,8 @@ export type WalletContextType = {
   handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>;
   setMinimiseWallet: React.Dispatch<React.SetStateAction<boolean>>;
   handleUserLogOutEvent: () => void;
+  isIframeLoading: boolean;
+  setIframeLoading: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 export type WalletProviderProps = { children: ReactNode; env: ENV };
@@ -46,6 +48,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
   const [isWalletVisible, setWalletVisibility] = useState(false);
 
   const [isWalletMinimised, setMinimiseWallet] = useState(false);
+
+  const [isIframeLoading, setIframeLoading] = useState(true);
 
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus>('notConnected');
@@ -115,6 +119,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
     setAccount(null);
     setMinimiseWallet(false);
     setWalletVisibility(false);
+    setIframeLoading(true);
   };
 
   const handleSendSignRequestToPushWallet = (
@@ -149,10 +154,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
 
   useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
-      console.log('Message from child Tab: ', event.data);
-      // if (event.origin === config.WALLET_URL[env]) {
-      console.log('Message from child Tab: ', event.data);
-
       switch (event.data.type) {
         case WALLET_TO_APP_ACTION.IS_LOGGED_IN:
           console.log('User has logged In', event.data.data);
@@ -187,7 +188,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
         default:
           console.warn('Unknown message type:', event.data.type);
       }
-      // }
     };
 
     window.addEventListener('message', messageHandler);
@@ -204,13 +204,16 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
         connectionStatus,
         env,
         iframeRef,
-        isWalletMinimised,
         isWalletVisible,
         setWalletVisibility,
+        isWalletMinimised,
+        setMinimiseWallet,
+        isIframeLoading,
+        setIframeLoading,
         handleConnectToPushWallet,
         handleNewConnectionRequest,
         handleSendSignRequestToPushWallet,
-        setMinimiseWallet,
+
         handleUserLogOutEvent,
       }}
     >

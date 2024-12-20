@@ -1,7 +1,7 @@
 import { PushNetwork } from '@pushprotocol/push-chain';
 import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
 import { Transaction } from '@pushprotocol/push-chain/src/lib/generated/tx';
-import React, {
+import {
   createContext,
   ReactNode,
   useContext,
@@ -31,8 +31,6 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
 
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
   const [mockTx, setMockTx] = useState<Transaction | null>(null);
-
-  console.log('Account changed >>>', account);
 
   useEffect(() => {
     const setNetwork = async () => {
