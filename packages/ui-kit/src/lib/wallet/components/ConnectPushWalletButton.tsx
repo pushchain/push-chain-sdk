@@ -1,5 +1,5 @@
 import { FC } from 'react';
-import { usePushWalletContext } from './WalletProvider';
+import { usePushWalletContext } from './PushWalletProvider';
 import { walletConnectionButtonStatusMapper } from '../wallet.constants';
 import { Button } from 'shared-components';
 
@@ -29,14 +29,16 @@ const ConnectPushWalletButton: FC<ConnectPushWalletButtonProps> = () => {
   };
 
   return (
-    <Button
-      block
-      onClick={handleConnectWalletButton}
-      disabled={isConnectButtonDisbaled}
-      loading={isLoading}
-    >
-      {walletConnectionButtonStatusMapper[connectionStatus]}
-    </Button>
+    <>
+      <Button
+        block
+        onClick={handleConnectWalletButton}
+        disabled={isConnectButtonDisbaled}
+        loading={isLoading}
+      >
+        {walletConnectionButtonStatusMapper[connectionStatus]}
+      </Button>
+    </>
   );
 };
 
