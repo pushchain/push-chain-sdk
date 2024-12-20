@@ -16,7 +16,7 @@ import { ENV } from '../../constants';
 import config from '../../config';
 
 // Define the context shape
-export type WalletContextType = {
+export type PushWalletContextType = {
   account: string | null;
   connectionStatus: ConnectionStatus;
   env: ENV;
@@ -36,14 +36,17 @@ export type WalletContextType = {
 export type WalletProviderProps = { children: ReactNode; env: ENV };
 
 // Create the WalletContext
-const WalletContext = createContext<WalletContextType | undefined>(undefined);
+const PushWalletContext = createContext<PushWalletContextType | undefined>(
+  undefined
+);
 
 // WalletProvider component
-export const WalletProvider: React.FC<WalletProviderProps> = ({
+export const PushWalletProvider: React.FC<WalletProviderProps> = ({
   children,
   env,
 }) => {
-  const [account, setAccount] = useState<WalletContextType['account']>(null);
+  const [account, setAccount] =
+    useState<PushWalletContextType['account']>(null);
 
   const [isWalletVisible, setWalletVisibility] = useState(false);
 
@@ -156,33 +159,33 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
     const messageHandler = (event: MessageEvent) => {
       switch (event.data.type) {
         case WALLET_TO_APP_ACTION.IS_LOGGED_IN:
-          console.log('User has logged In', event.data.data);
+          console.log('User has logged In');
           handleIsLoggedInAction(event.data.data);
           break;
         case WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS:
-          console.log('App Connection Success', event.data.data);
+          console.log('App Connection Success');
           handleAppConnectionSuccess(event.data.data);
           break;
         case WALLET_TO_APP_ACTION.APP_CONNECTION_REJECTED:
-          console.log('App Connection Rejected', event.data.data);
+          console.log('App Connection Rejected');
           handleAppConnectionRejection();
           break;
         case WALLET_TO_APP_ACTION.APP_CONNECTION_RETRY:
-          console.log('App Connection Retry', event.data.data);
+          console.log('App Connection Retry');
           handleAppConnectionRetry();
           break;
         case WALLET_TO_APP_ACTION.SIGNATURE:
-          console.log('Signature received', event.data.data);
+          console.log('Signature received');
           if (signatureResolverRef.current) {
             signatureResolverRef?.current?.success?.(event.data.data);
           }
           break;
         case WALLET_TO_APP_ACTION.IS_LOGGED_OUT:
-          console.log('User loggged out', event.data.data);
+          console.log('User loggged out');
           handleUserLogOutEvent();
           break;
         case WALLET_TO_APP_ACTION.ERROR:
-          console.log('Error from the child tab', event.data);
+          console.log('Error from the child tab');
           signatureResolverRef?.current?.error?.(event.data.data);
           break;
         default:
@@ -195,10 +198,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
     return () => window.removeEventListener('message', messageHandler);
   }, []);
 
-  console.log('This is running in wallet provider');
-
   return (
-    <WalletContext.Provider
+    <PushWalletContext.Provider
       value={{
         account,
         connectionStatus,
@@ -213,18 +214,17 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({
         handleConnectToPushWallet,
         handleNewConnectionRequest,
         handleSendSignRequestToPushWallet,
-
         handleUserLogOutEvent,
       }}
     >
       {children}
-    </WalletContext.Provider>
+    </PushWalletContext.Provider>
   );
 };
 
 // Custom hook to use WalletContext
-export const usePushWalletContext = (): WalletContextType => {
-  const context = useContext(WalletContext);
+export const usePushWalletContext = (): PushWalletContextType => {
+  const context = useContext(PushWalletContext);
   if (!context) {
     throw new Error('useWallet must be used within a WalletProvider');
   }

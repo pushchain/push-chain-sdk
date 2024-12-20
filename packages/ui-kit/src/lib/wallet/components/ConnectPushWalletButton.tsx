@@ -1,5 +1,5 @@
 import { FC } from 'react';
-import { usePushWalletContext } from './WalletProvider';
+import { usePushWalletContext } from './PushWalletProvider';
 import { walletConnectionButtonStatusMapper } from '../wallet.constants';
 import { Button } from 'shared-components';
 

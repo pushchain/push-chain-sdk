@@ -1,5 +1,5 @@
 import { FC, useState } from 'react';
-import { usePushWalletContext } from './WalletProvider';
+import { usePushWalletContext } from './PushWalletProvider';
 import { Box, Cross, css, Dash, Spinner, Text } from 'shared-components';
 import config from '../../config';
 

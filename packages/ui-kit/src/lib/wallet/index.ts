@@ -1,5 +1,6 @@
-export * from './components/WalletProvider';
+export * from './components/PushWalletProvider';
 export * from './components/ConnectPushWalletButton';
-export * from './wallet.types';
 export * from './components/PushWalletIFrame';
 export * from './components/TogglePushWalletButton';
+
+export * from './wallet.types';

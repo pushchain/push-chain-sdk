@@ -5,7 +5,7 @@ import {
   getWalletDataFromAccount,
 } from '../../config/config.types';
 import { CHAIN_LOGO } from '../../constants';
-import { usePushWalletContext } from './WalletProvider';
+import { usePushWalletContext } from './PushWalletProvider';
 
 type TogglePushWalletButtonProps = {
   account: string;

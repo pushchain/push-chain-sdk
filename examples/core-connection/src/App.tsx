@@ -7,7 +7,7 @@ import { RouterContainer } from './common/components';
 import { GlobalProvider } from './context/GlobalContext';
 import {
   ENV,
-  WalletProvider,
+  PushWalletProvider,
   PushWalletIFrame,
 } from '../../../packages/ui-kit';
 
@@ -31,14 +31,14 @@ const App: React.FC = () => {
   return (
     <ThemeProvider theme={isDarkMode ? themeConfig.dark : themeConfig.light}>
       <GlobalStyle />
-      <WalletProvider env={ENV.LOCAL}>
+      <PushWalletProvider env={ENV.LOCAL}>
         <GlobalProvider>
           <Router>
             <PushWalletIFrame />
             <RouterContainer />
           </Router>
         </GlobalProvider>
-      </WalletProvider>
+      </PushWalletProvider>
     </ThemeProvider>
   );
 };
