@@ -1,9 +1,6 @@
 import React from 'react';
 import { Box, Button, PushLogo, PushMonotone } from 'shared-components';
-import {
-  centerMaskString,
-  getWalletDataFromAccount,
-} from '../../config/config.types';
+import { centerMaskString, getWalletDataFromAccount } from '../wallet.utils';
 import { CHAIN_LOGO } from '../../constants';
 import { usePushWalletContext } from './PushWalletProvider';
 
