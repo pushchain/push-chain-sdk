@@ -3,6 +3,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { useAppContext } from '@/context/app-context';
 import { EMAIL_BOX } from '@/constants';
 import { Box } from 'shared-components';
+import { dummyEmail } from '@/lib/utils';
 
 const EmailList = ({ type }: { type: EMAIL_BOX.INBOX | EMAIL_BOX.SENT }) => {
   const { searchInput, emails } = useAppContext();
@@ -28,6 +29,7 @@ const EmailList = ({ type }: { type: EMAIL_BOX.INBOX | EMAIL_BOX.SENT }) => {
   return (
     <ScrollArea className="h-full w-full">
       <Box display="flex" flexDirection="column">
+        {type === EMAIL_BOX.INBOX && <EmailCard {...dummyEmail} />}
         {filteredEmails.map((email, index) => (
           <EmailCard key={index} {...email} />
         ))}

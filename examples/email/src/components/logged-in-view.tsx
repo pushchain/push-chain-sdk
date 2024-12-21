@@ -8,6 +8,7 @@ import { EMAIL_BOX } from '@/constants';
 import EmailList from './email-list';
 import { useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { dummyEmail } from '@/lib/utils';
 
 const LoggedInView = () => {
   const navigate = useNavigate();
@@ -40,7 +41,9 @@ const LoggedInView = () => {
   useEffect(() => {
     if (id) {
       const emailList = emails[currTab];
-      if (emailList && emailList.length > 0) {
+      if (id === 'welcome') {
+        setSelectedEmail(dummyEmail);
+      } else if (emailList && emailList.length > 0) {
         const email = emailList.find((email) => email.txHash === id);
 
         if (email) {
@@ -53,8 +56,6 @@ const LoggedInView = () => {
       setSelectedEmail(null);
     }
   }, [id, emails, currTab, navigate]);
-
-  console.log(selectedEmail);
 
   return (
     <div className="relative w-full h-[100vh] flex flex-col">

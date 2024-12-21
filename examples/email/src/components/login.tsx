@@ -5,20 +5,20 @@ import { toBytes } from 'viem';
 // @ts-nocheck
 import React from 'react';
 import styled from 'styled-components';
-import { Box } from 'shared-components';
+import { Box, Front, Text } from 'shared-components';
 import { ConnectPushWalletButton } from '@pushprotocol/pushchain-ui-kit';
 
 import ChainAlertBar from './ui/alert-bar';
 
 const featuresCard = [
   {
-    text: 'Webtwo ipsum unigo. Elgg skype woopra fleck ifttt imvu, hipmunk handango.',
+    text: 'Send and receive emails across multiple blockchain networks without barriers.',
   },
   {
-    text: 'Webtwo ipsum unigo. Elgg skype woopra fleck ifttt imvu, hipmunk handango.',
+    text: 'Push Mail brings a seamless web2 experience to web3.',
   },
   {
-    text: 'Webtwo ipsum unigo. Elgg skype woopra fleck ifttt imvu, hipmunk handango.',
+    text: 'Maintain a unified inbox across chains for an effortless user experience.',
   },
 ];
 
@@ -31,15 +31,15 @@ const Template = () => {
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="28"
-        height="29"
-        viewBox="0 0 28 29"
+        height="28"
+        viewBox="0 0 28 28"
         fill="none"
       >
         <path
           fill-rule="evenodd"
           clip-rule="evenodd"
           d="M15.3524 1.31893C14.8155 0.0899936 13.0473 0.103007 12.529 1.33972L10.7439 5.59859C9.57977 8.37604 7.3245 10.5676 4.49458 11.6714L0.970016 13.0461C-0.32334 13.5506 -0.323339 15.3593 0.970021 15.8637L4.52088 17.2487C7.33613 18.3468 9.58332 20.5217 10.7527 23.2801L12.5313 27.4753C13.0524 28.7044 14.8101 28.7175 15.3498 27.4962L17.2695 23.1523C18.4543 20.4715 20.6628 18.3617 23.4143 17.2823L27.0328 15.8626C28.3224 15.3567 28.3224 13.5532 27.0328 13.0473L23.4411 11.6382C20.6746 10.5528 18.4576 8.42604 17.2778 5.72569L15.3524 1.31893Z"
-          fill="#202124"
+          fill="#E21D48"
         />
       </svg>
     );
@@ -67,33 +67,65 @@ const Template = () => {
             </Box>
 
             <TextSpan>
-              Webtwo ipsum unigo. Elgg skype woopra fleck ifttt imvu, hipmunk
-              handango empressr.
+              Push Mail enables seamless communication across any chain. Shared
+              state email ensures secure, transparent, and interoperable
+              messaging.
             </TextSpan>
 
-            {/* {pushNetwork && (
-              <Box
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                width="-webkit-fill-available"
-                padding='spacing-xxl spacing-none spacing-lg spacing-none'
-              >
-                <ConnectPushWalletButton />
-              </Box>
-            )} */}
+            {/* <Box display="flex" flexDirection="column" gap="spacing-sm">
+              {pushNetwork && (
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  width="-webkit-fill-available"
+                >
+                  <ConnectPushWalletButton />
+                </Box>
+              )}
+
+              <a href="https://push.org/chain" target="_blank">
+                <Box
+                  display={{ initial: 'flex', ml: 'none' }}
+                  flexDirection="row"
+                  gap="spacing-xxs"
+                  width="100%"
+                  justifyContent="center"
+                >
+                  <Text variant="bl-semibold" color="text-brand-medium">
+                    Learn more about Push Chain
+                  </Text>
+                  <Front color="icon-brand-medium" size={24} />
+                </Box>
+                <Box
+                  flexDirection="row"
+                  gap="spacing-xxs"
+                  width="100%"
+                  justifyContent="center"
+                  display={{ initial: 'none', ml: 'flex' }}
+                >
+                  <Text variant="bl-semibold" color="text-brand-medium">
+                    Learn more about Push Chain
+                  </Text>
+                  <Front color="icon-brand-medium" size={24} />
+                </Box>
+              </a>
+            </Box> */}
 
             <Button onClick={login}>Launch App</Button>
 
             {featuresCard.map((item) => (
               <Features>
-                <StarIcon />
+                <StarIconContainer>
+                  <StarIcon />
+                </StarIconContainer>
                 <FeaturesSpan>{item.text}</FeaturesSpan>
               </Features>
             ))}
           </TextContainer>
-
-          <DesktopImageItem>{/* add image here */}</DesktopImageItem>
+          <DesktopImageItem>
+            <img src="/EmailBanner.png" style={{ maxHeight: '100%' }} />
+          </DesktopImageItem>
         </ItemContainer>
       </TemplateContent>
     </TemplateWrapper>
@@ -145,7 +177,7 @@ const ItemContainer = styled.div`
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 150px;
+  justify-content: space-between;
   width: 100%;
 
   @media (max-width: 768px) {
@@ -157,6 +189,11 @@ const TextContainer = styled.div`
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  width: 40%;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
 `;
 
 const TextTitle = styled.span`
@@ -207,6 +244,12 @@ const Features = styled.div`
   width: 100%;
 `;
 
+const StarIconContainer = styled.div`
+  flex-shrink: 0; /* Prevent the icon from shrinking */
+  width: 28px;
+  height: 28px; /* Maintain the icon's size */
+`;
+
 const FeaturesSpan = styled.span`
   color: #313338;
   font-family: N27;
@@ -241,11 +284,11 @@ const Button = styled.button`
 `;
 
 const DesktopImageItem = styled.div`
-  height: 700px;
-  background: #202020;
+  height: 756px;
   border-radius: 32px;
-  width: 500px;
-  display: block;
+  width: fit-content;
+  display: flex;
+  align-items: center;
 
   @media (max-width: 768px) {
     display: none;

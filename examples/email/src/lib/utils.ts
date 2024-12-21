@@ -86,3 +86,12 @@ export function formatTimestamp(
     }) + (showAgo ? ` ${agoText}` : '')
   );
 }
+
+export const dummyEmail = {
+  txHash: 'welcome',
+  to: [],
+  from: 'push.fam',
+  subject: 'GM! Web3 Email',
+  timestamp: 0,
+  body: `Hello Degen, <br />Welcome to the future of email, where web3 meets seamless unified across all chains! With this app, you can easily connect with your fellow Solana, Ethereum, Polygon, Optimism and other blockchain users.`,
+};

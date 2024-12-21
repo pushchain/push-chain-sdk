@@ -1,22 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useAppContext } from '@/context/app-context';
 import { Card, CardFooter } from './ui/card';
-import {
-  File,
-  FileText,
-  Image,
-  Music,
-  Video,
-  Archive,
-  Code,
-  ReplyIcon,
-} from 'lucide-react';
+import { ReplyIcon } from 'lucide-react';
 import { formatTimestamp, trimAddress } from '@/lib/utils';
 import { FileAttachment, FileAttachments, IEmail } from '@/types';
 import { Box, Text, Button, Back } from 'shared-components';
 import BlockiesSvg from 'blockies-react-svg';
 import { useNavigate } from 'react-router-dom';
 import { css } from 'styled-components';
+import { DownloadIcon } from '@radix-ui/react-icons';
+import DummyEmail from './dummy-email';
 
 interface EmailViewerProps {
   onReply: (email: IEmail) => void;
@@ -67,9 +60,17 @@ const EmailViewer: React.FC<EmailViewerProps> = ({ onReply }) => {
     setSelectedEmail(null);
   };
 
+  if (!selectedEmail) {
+    return <></>;
+  }
+
+  console.log('welcome');
+
   return (
     <>
-      {selectedEmail && (
+      {selectedEmail.txHash === 'welcome' ? (
+        <DummyEmail handleBack={handleBack} />
+      ) : (
         <Card className="w-full h-fit flex-1 py-6 px-4 md:px-8 gap-6">
           <Box cursor="pointer" onClick={handleBack}>
             <Back size={24} />
@@ -139,13 +140,13 @@ const EmailViewer: React.FC<EmailViewerProps> = ({ onReply }) => {
             <Text variant="bs-regular">
               {formatEmailBody(selectedEmail.body)}
             </Text>
-            {selectedEmail.attachments &&
-              selectedEmail.attachments.length > 0 && (
-                <CardFooter>
-                  <AttachmentList attachments={selectedEmail.attachments!} />
-                </CardFooter>
-              )}
           </Box>
+          {selectedEmail.attachments &&
+            selectedEmail.attachments.length > 0 && (
+              <CardFooter>
+                <AttachmentList attachments={selectedEmail.attachments!} />
+              </CardFooter>
+            )}
           <Box
             gap="spacing-xxs"
             css={css`
@@ -173,8 +174,6 @@ const EmailViewer: React.FC<EmailViewerProps> = ({ onReply }) => {
 const AttachmentList: React.FC<{ attachments: FileAttachments }> = ({
   attachments,
 }) => {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-
   const handleDownload = (attachment: FileAttachment) => {
     const decodedContent = atob(attachment.content);
     const blob = new Blob([decodedContent], { type: attachment.type });
@@ -188,56 +187,57 @@ const AttachmentList: React.FC<{ attachments: FileAttachments }> = ({
     URL.revokeObjectURL(url);
   };
 
-  const getFileIcon = (type: string) => {
-    if (type.startsWith('image/'))
-      return <Image className="w-6 h-6 text-blue-500" />;
-    if (type.startsWith('audio/'))
-      return <Music className="w-6 h-6 text-green-500" />;
-    if (type.startsWith('video/'))
-      return <Video className="w-6 h-6 text-red-500" />;
-    if (
-      type.startsWith('application/zip') ||
-      type.startsWith('application/x-rar-compressed')
-    )
-      return <Archive className="w-6 h-6 text-yellow-500" />;
-    if (type === 'text/plain')
-      return <FileText className="w-6 h-6 text-gray-500" />;
-    if (type === 'application/pdf')
-      return <File className="w-6 h-6 text-red-500" />;
-    if (type.startsWith('application/'))
-      return <Code className="w-6 h-6 text-purple-500" />;
-    return <File className="w-6 h-6 text-gray-500" />;
-  };
-
   return (
-    <div className="p-4 bg-gray-100 rounded-lg">
-      <h2 className="text-lg font-semibold mb-4 text-gray-700">Attachments</h2>
-      <ul className="space-y-2">
-        {attachments.map((attachment, index) => (
-          <li
-            key={index}
-            className={`flex items-center p-2 rounded-md transition-colors duration-200 ${
-              hoveredIndex === index ? 'bg-blue-100' : 'bg-white'
-            }`}
-            onMouseEnter={() => setHoveredIndex(index)}
-            onMouseLeave={() => setHoveredIndex(null)}
+    <Box
+      display="flex"
+      alignItems="center"
+      gap="spacing-xs"
+      css={css`
+        flex-wrap: wrap;
+      `}
+    >
+      {attachments.map((attachment, index) => (
+        <Box
+          key={index}
+          display="flex"
+          flexDirection="column"
+          padding="spacing-xxs spacing-xs"
+          gap="spacing-xxs"
+          width="200px"
+          borderRadius="radius-xxxs"
+          backgroundColor="surface-secondary"
+        >
+          <Box height="122px" overflow="hidden">
+            <img
+              src={`data:${attachment.type};base64,${attachment.content}`}
+              alt="attachment"
+            />
+          </Box>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
           >
-            <div className="flex items-center flex-grow">
-              {getFileIcon(attachment.type)}
-              <span className="ml-3 text-sm font-medium text-gray-700">
-                {attachment.filename}
-              </span>
-            </div>
-            <button
-              onClick={() => handleDownload(attachment)}
-              className="ml-2 text-sm text-blue-600 hover:text-blue-800 focus:outline-none"
+            <Text
+              variant="bes-semibold"
+              css={css`
+                overflow: hidden;
+                text-overflow: ellipsis;
+                text-wrap: nowrap;
+              `}
             >
-              Download
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
+              {attachment.filename}
+            </Text>
+            <DownloadIcon
+              cursor="pointer"
+              height={28}
+              width={28}
+              onClick={() => handleDownload(attachment)}
+            />
+          </Box>
+        </Box>
+      ))}
+    </Box>
   );
 };
 export default EmailViewer;

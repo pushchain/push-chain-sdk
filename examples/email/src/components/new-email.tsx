@@ -22,12 +22,12 @@ import {
   Text,
   TextArea,
   TextInput,
+  FileUpload,
 } from 'shared-components';
 import { css } from 'styled-components';
 import Select from './ui/select';
 import { Cross1Icon } from '@radix-ui/react-icons';
 import styled from 'styled-components';
-import { FileUpload } from './fileUpload';
 
 interface FileData {
   filename: string;
@@ -54,7 +54,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
     address: '',
     chain: 'eth',
   });
-  const [fileAttachment, setFileAttachment] = useState<FileData | null>(null);
+  const [fileAttachment, setFileAttachment] = useState<FileData[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
   const { pushAccount, pushNetwork, setEmails, setReplyTo } = useAppContext();
@@ -150,17 +150,26 @@ ${email.body
       reader.onload = (e: ProgressEvent<FileReader>) => {
         const result = e.target?.result;
         if (typeof result === 'string') {
-          setFileAttachment({
-            filename: file.name,
-            type: file.type,
-            content: result.split(',')[1],
-          });
+          setFileAttachment((prevAttachments) => [
+            ...prevAttachments,
+            {
+              filename: file.name,
+              type: file.type,
+              content: result.split(',')[1],
+            },
+          ]);
         }
       };
       reader.readAsDataURL(file);
     },
     []
   );
+
+  const handleFileRemove = useCallback((filename: string) => {
+    setFileAttachment((prevAttachments) =>
+      prevAttachments.filter((attachment) => attachment.filename !== filename)
+    );
+  }, []);
 
   const sendHandler = useCallback(async () => {
     setSendingMail(true);
@@ -198,7 +207,7 @@ ${email.body
       const txHash = await pushMail.send(
         subject,
         { content: message, format: 0 },
-        fileAttachment ? [fileAttachment] : [],
+        fileAttachment,
         [{ key: 'Priority', value: 'High' }],
         toInCAIP,
         signer
@@ -217,7 +226,7 @@ ${email.body
                 subject,
                 timestamp: Date.now(),
                 body: message,
-                attachments: fileAttachment ? [fileAttachment] : [],
+                attachments: fileAttachment,
                 txHash: txHash,
               },
             ],
@@ -228,7 +237,7 @@ ${email.body
       console.log('Email sent:', txHash);
       setEmailData({ subject: '', message: '' });
       setRecipients([]);
-      setFileAttachment(null);
+      setFileAttachment([]);
       setIsOpen(false);
     } catch (error) {
       console.error('Failed to send email:', error);
@@ -260,7 +269,7 @@ ${email.body
   };
 
   return (
-    <div className="absolute bottom-5 right-5 z-10">
+    <div className="fixed bottom-5 right-5 z-10">
       <Popover open={isOpen} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button
@@ -410,11 +419,46 @@ ${email.body
               placeholder="Message"
               value={emailData.message}
               onChange={handleMessageChange}
-              numberOfLines={10}
+              numberOfLines={
+                10 -
+                (fileAttachment.length === 0
+                  ? 0
+                  : fileAttachment.length > 5
+                  ? 4
+                  : fileAttachment.length - 1)
+              }
               css={css`
                 width: 100%;
               `}
             />
+            <Box
+              display="flex"
+              flexDirection="column"
+              alignItems="flex-start"
+              width="100%"
+              gap="spacing-xxxs"
+              maxHeight="146px"
+              overflow="scroll"
+            >
+              {fileAttachment.map((file) => (
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  backgroundColor="surface-secondary"
+                  padding="spacing-xxxs spacing-xxs"
+                  width="100%"
+                >
+                  <Text variant="bes-semibold">{file.filename}</Text>
+                  <Cross1Icon
+                    width={16}
+                    height={16}
+                    cursor="pointer"
+                    onClick={() => handleFileRemove(file.filename)}
+                  />
+                </Box>
+              ))}
+            </Box>
             <FileUpload id="file-upload" onChange={handleFileUpload}>
               <Button variant="outline" size="extraSmall">
                 <PaperclipIcon width={16} height={16} />
