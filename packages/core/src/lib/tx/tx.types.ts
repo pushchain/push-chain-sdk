@@ -12,11 +12,25 @@ export type TxResponse = {
   category: string;
   sender: string;
   status: 'SUCCESS' | 'REJECTED';
+  from: string;
+  recipients: string[];
+  txnData: string;
+  txnDataAsJson: any;
+  sig: string;
+};
+
+export type SimplifiedTxResponse = {
+  txnHash: string;
+  ts: number;
+  /**@dev - Null In case of rejected Tx */
+  blockHash: string | null;
+  category: string;
+  status: 'SUCCESS' | 'REJECTED';
+  from: string;
   recipients: string[];
   txnData: string;
   sig: string;
 };
-
 
 export class ReplyGrouped {
   items: TxInfo[] = [];

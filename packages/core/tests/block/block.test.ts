@@ -1,7 +1,7 @@
-import { Block } from '../../src';
+import { Block, PushChain } from '../../src';
 import { config } from '../config';
 import { Block as BlockType } from '../../src/lib/generated/block';
-import { BlockType as NodeBlockType } from '../../src/lib/block/block.types';
+import { SimplifiedBlockType as SimplifiedNodeBlockType } from '../../src/lib/block/block.types';
 
 describe('Block Class', () => {
   const env = config.ENV;
@@ -13,11 +13,8 @@ describe('Block Class', () => {
     attestToken: new Uint8Array([1, 2, 3, 4]),
   };
 
-  const blockChecker = (block: NodeBlockType) => {
+  const blockChecker = (block: SimplifiedNodeBlockType) => {
     expect(block).toHaveProperty('blockHash');
-    expect(block).toHaveProperty('blockData');
-    expect(block).toHaveProperty('blockDataAsJson');
-    expect(block).toHaveProperty('blockSize');
     expect(block).toHaveProperty('ts');
     expect(block).toHaveProperty('transactions');
     expect(block).toHaveProperty('totalNumberOfTxns');
@@ -29,14 +26,15 @@ describe('Block Class', () => {
   });
 
   it('should serialize a BlockType object into a Uint8Array', () => {
-    const serializedBlock = Block.serialize(sampleBlock);
+    const serializedBlock = PushChain.utils.block.serialize(sampleBlock);
     expect(serializedBlock).toBeInstanceOf(Uint8Array);
     expect(serializedBlock.length).toBeGreaterThan(0);
   });
 
   it('should deserialize a Uint8Array into a BlockType object', () => {
-    const serializedBlock = Block.serialize(sampleBlock);
-    const deserializedBlock = Block.deserialize(serializedBlock);
+    const serializedBlock = PushChain.utils.block.serialize(sampleBlock);
+    const deserializedBlock =
+      PushChain.utils.block.deserialize(serializedBlock);
     expect(deserializedBlock).toEqual(sampleBlock);
   });
 

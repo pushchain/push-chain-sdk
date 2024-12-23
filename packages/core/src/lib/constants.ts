@@ -46,7 +46,7 @@ export type ConstantsChain = {
   Solana: {
     devnet: ChainInfo<Chain.Solana, SolanaChainId.devnet>;
   };
-  Ethereum: {
+  EVM: {
     mainnet: ChainInfo<Chain.Evm, EvmChainId.mainnet>;
     sepolia: ChainInfo<Chain.Evm, EvmChainId.sepolia>;
   };
@@ -65,7 +65,7 @@ export const CONSTANTS = {
         chainId: SolanaChainId.devnet,
       },
     },
-    Ethereum: {
+    EVM: {
       mainnet: { name: Chain.Evm, chainId: EvmChainId.mainnet },
       sepolia: { name: Chain.Evm, chainId: EvmChainId.sepolia },
     },

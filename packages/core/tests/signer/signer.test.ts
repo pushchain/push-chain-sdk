@@ -13,8 +13,8 @@ describe('Signer Class', () => {
     const account = privateKeyToAccount(privateKey);
 
     const universalSigner: UniversalSigner = {
-      chain: CONSTANTS.Chain.Ethereum.sepolia.name,
-      chainId: CONSTANTS.Chain.Ethereum.sepolia.chainId,
+      chain: CONSTANTS.Chain.EVM.sepolia.name,
+      chainId: CONSTANTS.Chain.EVM.sepolia.chainId,
       account: account.address,
       signMessage: async (data: Uint8Array) => {
         const signature = await account.signMessage({
@@ -24,8 +24,7 @@ describe('Signer Class', () => {
       },
     };
 
-    const signer = PushChain.signer.create(universalSigner);
-    const pushChain = await PushChain.initialize(signer, {
+    const pushChain = await PushChain.initialize(universalSigner, {
       network: CONSTANTS.PushChainEnvironment.devnet,
     });
 
@@ -36,13 +35,13 @@ describe('Signer Class', () => {
 
     const recipients: UniversalAccount[] = [
       {
-        chain: CONSTANTS.Chain.Ethereum.sepolia.name,
-        chainId: CONSTANTS.Chain.Ethereum.sepolia.chainId,
+        chain: CONSTANTS.Chain.EVM.sepolia.name,
+        chainId: CONSTANTS.Chain.EVM.sepolia.chainId,
         account: recipientAddresses[0],
       },
       {
-        chain: CONSTANTS.Chain.Ethereum.sepolia.name,
-        chainId: CONSTANTS.Chain.Ethereum.sepolia.chainId,
+        chain: CONSTANTS.Chain.EVM.sepolia.name,
+        chainId: CONSTANTS.Chain.EVM.sepolia.chainId,
         account: recipientAddresses[1],
       },
     ];

@@ -1,8 +1,7 @@
 import { Order, PushChainEnvironment } from '../constants';
-import { UniversalAccount } from '../signer/signer.types';
+import { toSimplifiedBlockResponse } from '../utils';
 import { Validator } from '../validator/validator';
-import { Block as BlockType } from '../generated/block';
-import { BlockResponse } from './block.types';
+import { BlockResponse, SimplifiedBlockResponse } from './block.types';
 
 export class Block {
   private constructor(private validator: Validator) {}
@@ -12,46 +11,41 @@ export class Block {
     return new Block(validator);
   };
 
-  static serialize = (block: BlockType): Uint8Array => {
-    const parsedBlock = BlockType.create(block);
-    return BlockType.encode(parsedBlock).finish();
-  };
-
-  static deserialize = (block: Uint8Array): BlockType => {
-    return BlockType.decode(block);
-  };
-
   /**
    * Get Blocks
    */
   get = async (
     reference: string | '*' = '*',
     {
-      startTime = Math.floor(Date.now() / 1000),
-      order = Order.ASC,
+      raw = false,
+      startTime = Math.floor(Date.now()),
+      order = Order.DESC,
       showDetails = false,
       page = 1,
       limit = 30,
     }: {
+      raw?: boolean;
       startTime?: number;
       order?: Order;
       showDetails?: boolean;
       page?: number;
       limit?: number;
     } = {}
-  ): Promise<BlockResponse> => {
+  ): Promise<BlockResponse | SimplifiedBlockResponse> => {
     if (reference === '*') {
-      return await this.validator.call<BlockResponse>('push_getBlocks', [
-        startTime,
-        order,
-        showDetails,
-        limit,
-        page,
-      ]);
+      const response = await this.validator.call<BlockResponse>(
+        'push_getBlocks',
+        [startTime, order, showDetails, limit, page]
+      );
+      if (raw) return response;
+      else return toSimplifiedBlockResponse(response);
     } else {
-      return await this.validator.call<BlockResponse>('push_getBlockByHash', [
-        reference,
-      ]);
+      const response = await this.validator.call<BlockResponse>(
+        'push_getBlockByHash',
+        [reference]
+      );
+      if (raw) return response;
+      else return toSimplifiedBlockResponse(response);
     }
   };
 }

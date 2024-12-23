@@ -19,18 +19,18 @@ const recipientAddresses = [
 
 const recipients: UniversalAccount[] = [
   {
-    chain: CONSTANTS.Chain.Ethereum.sepolia.name,
-    chainId: CONSTANTS.Chain.Ethereum.sepolia.chainId,
+    chain: CONSTANTS.Chain.EVM.sepolia.name,
+    chainId: CONSTANTS.Chain.EVM.sepolia.chainId,
     account: recipientAddresses[0],
   },
   {
-    chain: CONSTANTS.Chain.Ethereum.mainnet.name,
-    chainId: CONSTANTS.Chain.Ethereum.mainnet.chainId,
+    chain: CONSTANTS.Chain.EVM.mainnet.name,
+    chainId: CONSTANTS.Chain.EVM.mainnet.chainId,
     account: recipientAddresses[1],
   },
   {
-    chain: CONSTANTS.Chain.Ethereum.sepolia.name,
-    chainId: CONSTANTS.Chain.Ethereum.sepolia.chainId,
+    chain: CONSTANTS.Chain.EVM.sepolia.name,
+    chainId: CONSTANTS.Chain.EVM.sepolia.chainId,
     account: recipientAddresses[2],
   },
 ];
