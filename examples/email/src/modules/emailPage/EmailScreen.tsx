@@ -60,14 +60,7 @@ const EmailScreen = () => {
   return (
     <div className="relative w-full h-[100vh] flex flex-col">
       <Header />
-      <Box
-        width="100%"
-        height="105%"
-        display="flex"
-        css={css`
-          margin-top: 70px;
-        `}
-      >
+      <Box width="100%" height="calc(100% - 74px)" display="flex">
         <Box
           display={{ initial: 'flex', tb: selectedEmail ? 'none' : 'flex' }}
           width={{
@@ -77,13 +70,14 @@ const EmailScreen = () => {
           }}
           flexDirection="column"
           height="100%"
-          padding="spacing-md spacing-none"
+          padding="spacing-md spacing-none spacing-none spacing-none"
           css={css`
             border-right: 1px solid #eaebf2;
           `}
         >
           <NewEmail replyTo={replyTo} />
           <Box
+            position="sticky"
             display="flex"
             flexDirection="column"
             padding="spacing-none spacing-sm"

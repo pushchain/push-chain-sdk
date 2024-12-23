@@ -10,6 +10,7 @@ import {
 import { ConnectPushWalletButton } from '@pushprotocol/pushchain-ui-kit';
 import { SimulateTxText } from './SimulateTxText';
 import { useAppContext } from '@/context/AppContext';
+import { LandingPageBanner } from './LandingPageBanner';
 
 const LandingPageLeftComponent = () => {
   const { pushNetwork } = useAppContext();
@@ -34,24 +35,25 @@ const LandingPageLeftComponent = () => {
       display="flex"
       flexDirection="column"
       gap="spacing-xxl"
-      maxWidth={{ initial: '475px', ml: 'auto' }}
+      maxWidth={{ initial: '475px', tb: 'auto' }}
+      margin="spacing-xxs"
     >
       <Box
         display="flex"
         flexDirection="column"
         gap="spacing-md"
-        alignItems={{ ml: 'center' }}
+        alignItems={{ tb: 'center' }}
       >
         <a
           href="https://snapshot.box/#/s:pushdao.eth/proposal/0xa4a301c9a346356326d59e425245459d9fbde71b02aabc49a4ce191f0504f66a"
           target="_blank"
         >
-          <Box display={{ initial: 'flex', ml: 'none' }}>
+          <Box display={{ initial: 'flex', tb: 'none' }}>
             <Button trailingIcon={<Front />} variant="outline" size="small">
               Push Chain proposal has successfully passed
             </Button>
           </Box>
-          <Box display={{ initial: 'none', ml: 'flex' }}>
+          <Box display={{ initial: 'none', tb: 'flex' }}>
             <Button
               trailingIcon={<Front />}
               variant="outline"
@@ -63,15 +65,15 @@ const LandingPageLeftComponent = () => {
         </a>
 
         <a href="https://push.org/chain" target="_blank">
-          <Box display={{ initial: 'flex', ml: 'none' }}>
+          <Box display={{ initial: 'flex', tb: 'none' }}>
             <SimulateTxText height="124px" width="343px" />
           </Box>
-          <Box display={{ initial: 'none', ml: 'flex' }}>
+          <Box display={{ initial: 'none', tb: 'flex' }}>
             <SimulateTxText height="124px" width="343px" />
           </Box>
         </a>
 
-        <Box display={{ initial: 'flex', ml: 'none' }}>
+        <Box display={{ initial: 'flex', tb: 'none' }}>
           <Text variant="h4-regular">
             Push Mail enables seamless communication across any chain. Shared
             state email ensures secure, transparent, and interoperable
@@ -79,12 +81,19 @@ const LandingPageLeftComponent = () => {
           </Text>
         </Box>
 
-        <Box display={{ initial: 'none', ml: 'flex' }}>
+        <Box display={{ initial: 'none', tb: 'flex' }}>
           <Text variant="h4-regular" textAlign="center">
             Push Mail enables seamless communication across any chain. Shared
             state email ensures secure, transparent, and interoperable
             messaging.
           </Text>
+        </Box>
+        <Box
+          display={{ initial: 'none', tb: 'flex' }}
+          alignItems="center"
+          justifyContent="center"
+        >
+          <LandingPageBanner height="343px" />
         </Box>
       </Box>
 
@@ -105,7 +114,7 @@ const LandingPageLeftComponent = () => {
 
           <a href="https://push.org/chain" target="_blank">
             <Box
-              display={{ initial: 'flex', ml: 'none' }}
+              display={{ initial: 'flex', tb: 'none' }}
               flexDirection="row"
               gap="spacing-xxs"
               width="100%"
@@ -121,7 +130,7 @@ const LandingPageLeftComponent = () => {
               gap="spacing-xxs"
               width="100%"
               justifyContent="center"
-              display={{ initial: 'none', ml: 'flex' }}
+              display={{ initial: 'none', tb: 'flex' }}
             >
               <Text variant="bl-semibold" color="text-brand-medium">
                 Learn more about Push Chain

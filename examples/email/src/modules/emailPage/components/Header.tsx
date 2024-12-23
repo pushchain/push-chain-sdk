@@ -10,7 +10,7 @@ const Header: FC = () => {
 
   return (
     <Box
-      position="fixed"
+      position="sticky"
       width="100%"
       display="flex"
       padding="spacing-xs spacing-xs"
