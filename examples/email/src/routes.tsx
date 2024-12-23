@@ -1,30 +1,41 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import Login from './components/login';
-import LoggedInView from './components/logged-in-view';
 import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
+import { Box } from 'shared-components';
+import EmailPage from './pages/EmailPage';
+import LandingPage from './pages/LandingPage';
 
 const AppRoutes = () => {
   const { account } = usePushWalletContext();
+  const isTablet = window.matchMedia('(max-width: 768px)').matches;
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={account ? <Navigate to="/inbox/welcome" /> : <Login />}
-      />
+    <Box display="flex" justifyContent="center" minHeight="100vh">
+      <Routes>
+        <Route
+          path="/"
+          element={
+            account ? (
+              isTablet ? (
+                <Navigate to="/inbox" />
+              ) : (
+                <Navigate to="/inbox/welcome" />
+              )
+            ) : (
+              <LandingPage />
+            )
+          }
+        />
 
-      <Route
-        path="/"
-        element={account ? <LoggedInView /> : <Navigate to="/" />}
-      >
-        <Route path="inbox" element={<LoggedInView />} />
-        <Route path="inbox/:id" element={<LoggedInView />} />
-        <Route path="sent" element={<LoggedInView />} />
-        <Route path="sent/:id" element={<LoggedInView />} />
-      </Route>
+        <Route path="/" element={account ? <EmailPage /> : <Navigate to="/" />}>
+          <Route path="inbox" element={<EmailPage />} />
+          <Route path="inbox/:id" element={<EmailPage />} />
+          <Route path="sent" element={<EmailPage />} />
+          <Route path="sent/:id" element={<EmailPage />} />
+        </Route>
 
-      <Route path="*" element={<Navigate to="/" />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </Box>
   );
 };
 

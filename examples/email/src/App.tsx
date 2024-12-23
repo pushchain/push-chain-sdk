@@ -7,7 +7,7 @@ import {
   PushWalletIFrame,
   PushWalletProvider,
 } from '@pushprotocol/pushchain-ui-kit';
-import { AppProvider } from './providers/app-provider.tsx';
+import { AppProvider } from './context/AppContext';
 
 const GlobalStyle = createGlobalStyle`
   :root{
