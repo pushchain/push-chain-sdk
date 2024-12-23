@@ -8,13 +8,10 @@ import PushMail from 'push-mail';
 import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
 import { useAppContext } from '@/context/app-context';
 import { usePrivy, useSolanaWallets } from '@privy-io/react-auth';
-import { useSignMessage } from 'wagmi';
 import { TokenBNB, TokenETH, TokenPUSH, TokenSOL } from '@web3icons/react';
-import { hexToBytes } from 'viem';
 import { IEmail } from '@/types';
 import { PaperclipIcon } from 'lucide-react';
 import { trimAddress, formatTimestamp } from '@/lib/utils';
-import { PushNetwork } from '@pushprotocol/push-chain';
 import {
   Box,
   Button,
@@ -57,17 +54,16 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
   const [fileAttachment, setFileAttachment] = useState<FileData[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
-  const { pushAccount, pushNetwork, setEmails, setReplyTo } = useAppContext();
-  const { signMessageAsync } = useSignMessage();
+  const {
+    pushNetwork,
+    setEmails,
+    setReplyTo,
+    account,
+    handleSendSignRequestToPushWallet,
+  } = useAppContext();
   const { user } = usePrivy();
   const { wallets } = useSolanaWallets();
   const [sendingMail, setSendingMail] = useState(false);
-
-  const address = pushAccount
-    ? pushAccount
-    : user?.wallet?.chainType === 'solana'
-    ? `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:${user?.wallet?.address}`
-    : `${user?.wallet?.chainId}:${user?.wallet?.address}`;
 
   useEffect(() => {
     if (replyTo) {
@@ -172,6 +168,7 @@ ${email.body
   }, []);
 
   const sendHandler = useCallback(async () => {
+    if (!account) throw new Error('No account connected');
     setSendingMail(true);
     try {
       const pushMail = await PushMail.initialize(ENV.DEV);
@@ -191,17 +188,8 @@ ${email.body
       );
 
       const signer = {
-        account: address,
-        signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
-          if (!user?.wallet?.address && !pushAccount)
-            throw new Error('No account connected');
-
-          return pushAccount
-            ? (pushNetwork as PushNetwork).wallet.sign(data)
-            : user?.wallet?.chainType === 'solana'
-            ? await wallets[0].signMessage(data)
-            : hexToBytes(await signMessageAsync({ message: { raw: data } }));
-        },
+        account,
+        signMessage: handleSendSignRequestToPushWallet,
       };
 
       const txHash = await pushMail.send(
@@ -219,9 +207,8 @@ ${email.body
             inbox: IEmail[];
           }): { sent: IEmail[]; inbox: IEmail[] } => ({
             sent: [
-              ...prevEmails.sent,
               {
-                from: address,
+                from: account,
                 to: toInCAIP,
                 subject,
                 timestamp: Date.now(),
@@ -229,6 +216,7 @@ ${email.body
                 attachments: fileAttachment,
                 txHash: txHash,
               },
+              ...prevEmails.sent,
             ],
             inbox: prevEmails.inbox,
           })
@@ -247,12 +235,11 @@ ${email.body
     emailData,
     recipients,
     fileAttachment,
-    address,
+    account,
     user,
-    pushAccount,
     pushNetwork,
     wallets,
-    signMessageAsync,
+    handleSendSignRequestToPushWallet,
   ]);
 
   const handleOpenChange = (open: boolean) => {

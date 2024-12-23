@@ -48,7 +48,13 @@ const EmailCard: React.FC<IEmail> = ({
         justifyContent="space-between"
         width="100%"
       >
-        <Box display="flex" alignItems="center" gap="spacing-xs">
+        <Box
+          display="flex"
+          alignItems="center"
+          gap="spacing-xs"
+          width="70%"
+          overflow="hidden"
+        >
           {from === 'push.fam' ? (
             <PushLogo height={30} width={32} />
           ) : (
@@ -63,16 +69,44 @@ const EmailCard: React.FC<IEmail> = ({
             </Box>
           )}
 
-          <Box>
-            <Text variant="h5-bold">{subject}</Text>
+          <Box
+            css={css`
+              flex: 1;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            `}
+          >
+            <Text
+              variant="h5-bold"
+              css={css`
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              `}
+            >
+              {subject}
+            </Text>
             <Text variant="bes-semibold" color="text-tertiary">
               {from === 'push.fam' ? from : trimAddress(from)}
             </Text>
           </Box>
         </Box>
-        <Text variant="c-regular">
-          {timestamp === 0 ? 'now' : formatTimestamp(timestamp.toString())}
-        </Text>
+        <Box
+          width="30%"
+          display="flex"
+          justifyContent="flex-end"
+          overflow="hidden"
+        >
+          <Text
+            variant="c-regular"
+            css={css`
+              white-space: nowrap;
+            `}
+          >
+            {timestamp === 0 ? 'now' : formatTimestamp(timestamp.toString())}
+          </Text>
+        </Box>
       </Box>
       <Box>
         <Text

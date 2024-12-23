@@ -2,25 +2,20 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/login';
 import LoggedInView from './components/logged-in-view';
+import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 
-const AppRoutes: React.FC<{ authenticated: boolean; pushAccount: boolean }> = ({
-  authenticated,
-  pushAccount,
-}) => {
+const AppRoutes = () => {
+  const { account } = usePushWalletContext();
   return (
     <Routes>
       <Route
         path="/"
-        element={
-          authenticated || pushAccount ? <Navigate to="/inbox" /> : <Login />
-        }
+        element={account ? <Navigate to="/inbox/welcome" /> : <Login />}
       />
 
       <Route
         path="/"
-        element={
-          authenticated || pushAccount ? <LoggedInView /> : <Navigate to="/" />
-        }
+        element={account ? <LoggedInView /> : <Navigate to="/" />}
       >
         <Route path="inbox" element={<LoggedInView />} />
         <Route path="inbox/:id" element={<LoggedInView />} />

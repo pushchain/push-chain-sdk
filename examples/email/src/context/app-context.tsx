@@ -10,8 +10,6 @@ interface AppContextType {
   setSelectedEmail: React.Dispatch<React.SetStateAction<IEmail | null>>;
   pushNetwork: PushNetwork | null;
   setPushNetwork: React.Dispatch<React.SetStateAction<PushNetwork | null>>;
-  pushAccount: any;
-  setPushAccount: React.Dispatch<React.SetStateAction<any>>;
   emails: {
     sent: IEmail[];
     inbox: IEmail[];
@@ -26,6 +24,8 @@ interface AppContextType {
   setCurrTab: React.Dispatch<React.SetStateAction<'inbox' | 'sent'>>;
   replyTo: IEmail | undefined;
   setReplyTo: React.Dispatch<React.SetStateAction<IEmail | undefined>>;
+  account: string | null;
+  handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);

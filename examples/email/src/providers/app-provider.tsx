@@ -1,18 +1,16 @@
 'use client';
 import { AppContext } from '@/context/app-context';
 import { IEmail } from '@/types';
-import { usePrivy } from '@privy-io/react-auth';
 import { PushNetwork } from '@pushprotocol/push-chain';
 import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
+import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 import PushMail from 'push-mail';
-
 import { ReactNode, useEffect, useState } from 'react';
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [searchInput, setSearchInput] = useState<string>('');
   const [selectedEmail, setSelectedEmail] = useState<IEmail | null>(null);
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
-  const [pushAccount, setPushAccount] = useState<any>(null);
   const [currTab, setCurrTab] = useState<'inbox' | 'sent'>('inbox');
   const [emails, setEmails] = useState<{
     sent: IEmail[];
@@ -23,22 +21,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   });
   const [replyTo, setReplyTo] = useState<IEmail | undefined>(undefined);
 
-  const { user } = usePrivy();
+  const { account, handleSendSignRequestToPushWallet } = usePushWalletContext();
 
-  const getEmails = async () => {
-    const address = pushAccount
-      ? pushAccount
-      : user?.wallet?.chainType === 'solana'
-      ? `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:${user?.wallet?.address}`
-      : `${user?.wallet?.chainId}:${user?.wallet?.address}`;
-
+  const getEmails = async (account: string) => {
     const pushMail = await PushMail.initialize(ENV.DEV);
     const [sent, received] = await Promise.all([
-      pushMail.getBySender(address),
-      pushMail.getByRecipient(address),
+      pushMail.getBySender(account),
+      pushMail.getByRecipient(account),
     ]);
-
-    console.log(received);
 
     setEmails({
       sent: sent.map((email: any) => ({
@@ -63,8 +53,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    getEmails();
-  }, [pushNetwork, pushAccount, user]);
+    if (account) {
+      getEmails(account);
+    }
+  }, [pushNetwork, account]);
 
   useEffect(() => {
     const setNetwork = async () => {
@@ -87,14 +79,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSelectedEmail,
         pushNetwork,
         setPushNetwork,
-        pushAccount,
-        setPushAccount,
         emails,
         setEmails,
         currTab,
         setCurrTab,
         replyTo,
         setReplyTo,
+        account,
+        handleSendSignRequestToPushWallet,
       }}
     >
       {children}

@@ -117,7 +117,7 @@ const DummyEmail: React.FC<EmailViewerProps> = ({ handleBack }) => {
               }
             `}
           >
-            <img src="/DummyBot.png" height={75} width={75} />
+            <img src="/DummyDiscord.png" height={75} width={75} />
             <Box>
               <Text variant="bm-bold">No Frens? No Problem!</Text>
               <Text variant="bs-regular">

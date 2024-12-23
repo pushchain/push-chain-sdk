@@ -1,11 +1,6 @@
-import { usePrivy } from '@privy-io/react-auth';
 import { useAppContext } from '@/context/app-context';
-import { toBytes } from 'viem';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-import React from 'react';
 import styled from 'styled-components';
-import { Box, Front, Text } from 'shared-components';
+import { Box, Front, Spinner, Text } from 'shared-components';
 import { ConnectPushWalletButton } from '@pushprotocol/pushchain-ui-kit';
 
 import ChainAlertBar from './ui/alert-bar';
@@ -23,7 +18,6 @@ const featuresCard = [
 ];
 
 const Template = () => {
-  const { login } = usePrivy();
   const { pushNetwork } = useAppContext();
 
   const StarIcon = () => {
@@ -39,7 +33,7 @@ const Template = () => {
           fill-rule="evenodd"
           clip-rule="evenodd"
           d="M15.3524 1.31893C14.8155 0.0899936 13.0473 0.103007 12.529 1.33972L10.7439 5.59859C9.57977 8.37604 7.3245 10.5676 4.49458 11.6714L0.970016 13.0461C-0.32334 13.5506 -0.323339 15.3593 0.970021 15.8637L4.52088 17.2487C7.33613 18.3468 9.58332 20.5217 10.7527 23.2801L12.5313 27.4753C13.0524 28.7044 14.8101 28.7175 15.3498 27.4962L17.2695 23.1523C18.4543 20.4715 20.6628 18.3617 23.4143 17.2823L27.0328 15.8626C28.3224 15.3567 28.3224 13.5532 27.0328 13.0473L23.4411 11.6382C20.6746 10.5528 18.4576 8.42604 17.2778 5.72569L15.3524 1.31893Z"
-          fill="#E21D48"
+          fill="#D548EC"
         />
       </svg>
     );
@@ -72,17 +66,25 @@ const Template = () => {
               messaging.
             </TextSpan>
 
-            {/* <Box display="flex" flexDirection="column" gap="spacing-sm">
-              {pushNetwork && (
-                <Box
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  width="-webkit-fill-available"
-                >
+            <Box
+              display="flex"
+              flexDirection="column"
+              gap="spacing-sm"
+              width="100%"
+              padding="spacing-xxl spacing-none spacing-sm spacing-none"
+            >
+              <Box
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                width="-webkit-fill-available"
+              >
+                {pushNetwork ? (
                   <ConnectPushWalletButton />
-                </Box>
-              )}
+                ) : (
+                  <Spinner size="medium" variant="primary" />
+                )}
+              </Box>
 
               <a href="https://push.org/chain" target="_blank">
                 <Box
@@ -110,9 +112,7 @@ const Template = () => {
                   <Front color="icon-brand-medium" size={24} />
                 </Box>
               </a>
-            </Box> */}
-
-            <Button onClick={login}>Launch App</Button>
+            </Box>
 
             {featuresCard.map((item) => (
               <Features>
@@ -135,7 +135,6 @@ const Template = () => {
 export default Template;
 
 const TemplateWrapper = styled.div`
-  height: 100vh;
   background: #fff;
 
   @media (max-width: 768px) {
@@ -159,6 +158,11 @@ const TemplateContent = styled.div`
   }
 
   @media (max-width: 1548px) {
+    width: 100%;
+    padding: 0 96px;
+  }
+
+  @media (max-width: 1048px) {
     width: 100%;
     padding: 0 48px;
   }
@@ -261,26 +265,6 @@ const FeaturesSpan = styled.span`
   @media (max-width: 470px) {
     font-size: 15px;
   }
-`;
-
-const Button = styled.button`
-  background: #e21d48;
-  width: 100%;
-  margin: 48px 0 32px 0;
-  height: 58px;
-  padding: 16px 32px;
-  justify-content: center;
-  align-items: center;
-  align-self: stretch;
-  color: #fff;
-  font-family: N27;
-  font-size: 18px;
-  font-style: normal;
-  font-weight: 500;
-  border-radius: 1000px;
-  border: none;
-  line-height: 16px;
-  cursor: pointer;
 `;
 
 const DesktopImageItem = styled.div`

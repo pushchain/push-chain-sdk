@@ -60,11 +60,7 @@ const LoggedInView = () => {
   return (
     <div className="relative w-full h-[100vh] flex flex-col">
       <Header />
-
-      {/* <div className="hidden md:block">
-        <NewEmail />
-      </div> */}
-      <Box width="100%" height="100%" display="flex">
+      <Box width="100%" height="105%" display="flex">
         <Box
           display="flex"
           flexDirection="column"
