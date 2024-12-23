@@ -8,7 +8,6 @@ import {
 import PushMail from 'push-mail';
 import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
 import { useAppContext } from '@/context/AppContext';
-import { usePrivy, useSolanaWallets } from '@privy-io/react-auth';
 import { TokenBNB, TokenETH, TokenPUSH, TokenSOL } from '@web3icons/react';
 import { PaperclipIcon } from 'lucide-react';
 import { trimAddress, formatTimestamp } from '@/helpers/utils';
@@ -62,8 +61,6 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
     handleSendSignRequestToPushWallet,
     getEmails,
   } = useAppContext();
-  const { user } = usePrivy();
-  const { wallets } = useSolanaWallets();
   const [sendingMail, setSendingMail] = useState(false);
 
   useEffect(() => {
@@ -254,6 +251,7 @@ ${email.body
       setIsOpen(false);
     } catch (error) {
       console.error('Failed to send email:', error);
+      alert('Failed to send email');
     } finally {
       setSendingMail(false);
     }
@@ -262,15 +260,13 @@ ${email.body
     recipients,
     fileAttachment,
     account,
-    user,
     pushNetwork,
-    wallets,
     handleSendSignRequestToPushWallet,
   ]);
 
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    if (!open) {
+  const handleOpenChange = () => {
+    setIsOpen(!isOpen);
+    if (isOpen && replyTo) {
       console.log('Popover closed');
       setEmailData({
         subject: '',
@@ -278,12 +274,19 @@ ${email.body
       });
       setRecipients([]);
       setReplyTo(undefined);
+      setFileAttachment([]);
     }
   };
 
   return (
     <div className="fixed bottom-5 right-5 z-10">
-      <Popover open={isOpen} onOpenChange={handleOpenChange}>
+      <Popover
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open) return;
+          handleOpenChange();
+        }}
+      >
         <PopoverTrigger asChild>
           <Button
             size="large"
@@ -319,7 +322,7 @@ ${email.body
             <Cross1Icon
               width={18}
               height={18}
-              onClick={() => setIsOpen(false)}
+              onClick={handleOpenChange}
               cursor="pointer"
             />
           </Box>

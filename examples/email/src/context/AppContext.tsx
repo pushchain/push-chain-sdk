@@ -64,6 +64,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pushMail.getByRecipient(account),
     ]);
 
+    console.log(sent, received);
+
     setEmails({
       sent: sent.map((email: any) => ({
         from: email.from,

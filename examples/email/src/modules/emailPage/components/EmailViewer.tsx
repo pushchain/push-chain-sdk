@@ -206,12 +206,15 @@ const AttachmentList: React.FC<{ attachments: FileAttachments }> = ({
             <img
               src={`data:${attachment.type};base64,${attachment.content}`}
               alt="attachment"
+              height="100%"
+              width="auto"
             />
           </Box>
           <Box
             display="flex"
             alignItems="center"
             justifyContent="space-between"
+            gap="spacing-xxxs"
           >
             <Text
               variant="bes-semibold"
@@ -225,8 +228,8 @@ const AttachmentList: React.FC<{ attachments: FileAttachments }> = ({
             </Text>
             <DownloadIcon
               cursor="pointer"
-              height={28}
-              width={28}
+              height={32}
+              width={32}
               onClick={() => handleDownload(attachment)}
             />
           </Box>

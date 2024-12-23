@@ -42,10 +42,13 @@ const LandingPageLeftComponent = () => {
         gap="spacing-md"
         alignItems={{ ml: 'center' }}
       >
-        <a href="https://gov.push.org/" target="_blank">
+        <a
+          href="https://snapshot.box/#/s:pushdao.eth/proposal/0xa4a301c9a346356326d59e425245459d9fbde71b02aabc49a4ce191f0504f66a"
+          target="_blank"
+        >
           <Box display={{ initial: 'flex', ml: 'none' }}>
             <Button trailingIcon={<Front />} variant="outline" size="small">
-              Push Chain Governance Proposal is Live
+              Push Chain proposal has successfully passed
             </Button>
           </Box>
           <Box display={{ initial: 'none', ml: 'flex' }}>
@@ -54,7 +57,7 @@ const LandingPageLeftComponent = () => {
               variant="outline"
               size="extraSmall"
             >
-              Push Chain Governance Proposal is Live
+              Push Chain proposal has successfully passed
             </Button>
           </Box>
         </a>
@@ -139,8 +142,11 @@ const LandingPageLeftComponent = () => {
               css={css`
                 border-bottom: 1px solid #000;
               `}
+              alignItems="center"
             >
-              <Sale size={28} color="icon-brand-medium" />
+              <Box height="28px" width="28px">
+                <Sale size={28} color="icon-brand-medium" />
+              </Box>
               <Text variant="h4-regular" as="span">
                 {item.text}
               </Text>
