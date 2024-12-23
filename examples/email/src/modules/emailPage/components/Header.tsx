@@ -28,7 +28,7 @@ const Header: FC = () => {
             Push
           </Text>
         </Box>
-        <Text variant="h4-semibold" display={{ initial: 'block', ml: 'none' }}>
+        <Text variant="h4-semibold" display={{ initial: 'block', tb: 'none' }}>
           Email
         </Text>
       </Box>
