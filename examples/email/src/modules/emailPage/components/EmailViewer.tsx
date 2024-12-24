@@ -2,7 +2,11 @@ import React from 'react';
 import { useAppContext } from '@/context/AppContext';
 import { Card, CardFooter } from '../../../common/components/Card';
 import { ReplyIcon } from 'lucide-react';
-import { formatTimestamp, trimAddress } from '@/helpers/utils';
+import {
+  extractWalletAddress,
+  formatTimestamp,
+  trimAddress,
+} from '@/helpers/utils';
 import { Box, Text, Button, Back, css } from 'shared-components';
 import BlockiesSvg from 'blockies-react-svg';
 import { useNavigate } from 'react-router-dom';
@@ -116,12 +120,14 @@ const EmailViewer: React.FC<EmailViewerProps> = ({ onReply }) => {
                 </Box>
                 <Box display="flex" flexDirection="column" gap="spacing-xxxs">
                   <Text variant="bes-semibold">
-                    {trimAddress(selectedEmail.from)}
+                    {trimAddress(extractWalletAddress(selectedEmail.from))}
                   </Text>
                   <Text variant="bes-semibold" color="text-tertiary">
                     To:{' '}
                     {selectedEmail.to
-                      .map((address) => trimAddress(address))
+                      .map((address) =>
+                        trimAddress(extractWalletAddress(address))
+                      )
                       .join(', ')}
                   </Text>
                 </Box>

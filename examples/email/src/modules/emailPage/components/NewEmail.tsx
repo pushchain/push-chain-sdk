@@ -10,7 +10,13 @@ import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
 import { useAppContext } from '@/context/AppContext';
 import { TokenBNB, TokenETH, TokenPUSH, TokenSOL } from '@web3icons/react';
 import { PaperclipIcon } from 'lucide-react';
-import { trimAddress, formatTimestamp } from '@/helpers/utils';
+import {
+  trimAddress,
+  getChainFromCAIP,
+  extractWalletAddress,
+  getInCAIP,
+  formatReplyBody,
+} from '@/helpers/utils';
 import {
   Box,
   Button,
@@ -60,6 +66,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
     account,
     handleSendSignRequestToPushWallet,
     getEmails,
+    currTab,
   } = useAppContext();
   const [sendingMail, setSendingMail] = useState(false);
 
@@ -70,35 +77,23 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
         subject: `Re: ${replyTo.subject}`,
         message: formatReplyBody(replyTo),
       });
-      setRecipients([
-        {
-          address: replyTo.from.split(':')[2],
-          chain: getChainFromCAIP(replyTo.from),
-        },
-      ]);
+      if (currTab === 'sent') {
+        setRecipients(
+          replyTo.to.map((recipient) => ({
+            address: extractWalletAddress(recipient),
+            chain: getChainFromCAIP(recipient),
+          }))
+        );
+      } else {
+        setRecipients([
+          {
+            address: extractWalletAddress(replyTo.from),
+            chain: getChainFromCAIP(replyTo.from),
+          },
+        ]);
+      }
     }
   }, [replyTo]);
-
-  const formatReplyBody = (email: IEmail) => {
-    return `
-
-On ${formatTimestamp(email.timestamp.toString())}, ${
-      email.from.split(':')[2]
-    } wrote:
-
-${email.body
-  .split('\n')
-  .map((line) => `> ${line}`)
-  .join('\n')}
-`;
-  };
-
-  const getChainFromCAIP = (caip: string) => {
-    const chainId = caip.split(':')[1];
-    if (chainId === '1') return 'eth';
-    if (chainId === '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp') return 'sol';
-    return 'push';
-  };
 
   const handleSubjectChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
@@ -195,17 +190,8 @@ ${email.body
       const pushMail = await PushMail.initialize(ENV.DEV);
       const { subject, message } = emailData;
 
-      const toInCAIP = recipients.map(
-        (recipient) =>
-          `${
-            recipient.chain === 'eth'
-              ? 'eip155:1'
-              : recipient.chain === 'sol'
-              ? 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
-              : recipient.chain === 'bnb'
-              ? 'eip155:56'
-              : 'push:devnet'
-          }:${recipient.address}`
+      const toInCAIP = recipients.map((recipient) =>
+        getInCAIP(recipient.address, recipient.chain)
       );
 
       const signer = {

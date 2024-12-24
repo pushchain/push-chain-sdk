@@ -1,6 +1,10 @@
 import React from 'react';
 import { useAppContext } from '@/context/AppContext';
-import { formatTimestamp, trimAddress } from '@/helpers/utils';
+import {
+  extractWalletAddress,
+  formatTimestamp,
+  trimAddress,
+} from '@/helpers/utils';
 import BlockiesSvg from 'blockies-react-svg';
 import { Box, PushLogo, Text, css } from 'shared-components';
 import { useNavigate } from 'react-router-dom';
@@ -87,8 +91,12 @@ const EmailCard: React.FC<IEmail> = ({
               {type === EMAIL_BOX.INBOX
                 ? from === 'push.fam'
                   ? from
-                  : trimAddress(from)
-                : to.map((address) => trimAddress(address)).join(', ')}
+                  : trimAddress(extractWalletAddress(from))
+                : to
+                    .map((address) =>
+                      trimAddress(extractWalletAddress(address))
+                    )
+                    .join(', ')}
             </Text>
           </Box>
         </Box>

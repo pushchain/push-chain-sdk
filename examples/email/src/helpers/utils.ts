@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { EMAIL_BOX } from './types';
+import { EMAIL_BOX, IEmail } from './types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -98,10 +98,43 @@ export const dummyEmail = {
   type: EMAIL_BOX.INBOX,
 };
 
+export const formatReplyBody = (email: IEmail) => {
+  return `
+  
+On ${formatTimestamp(email.timestamp.toString())}, ${
+    email.from.split(':')[2]
+  } wrote:
+
+${email.body
+  .split('\n')
+  .map((line) => `> ${line}`)
+  .join('\n')}
+`;
+};
+
 export const extractWalletAddress = (address: string) => {
   if (address.includes(':')) {
     const parts = address.split(':');
     return parts[parts.length - 1];
   }
   return address;
+};
+
+export const getChainFromCAIP = (caip: string) => {
+  const chainId = caip.split(':')[1];
+  if (chainId === '1') return 'eth';
+  if (chainId === '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp') return 'sol';
+  return 'push';
+};
+
+export const getInCAIP = (address: string, chain: string) => {
+  return `${
+    chain === 'eth'
+      ? 'eip155:1'
+      : chain === 'sol'
+      ? 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
+      : chain === 'bnb'
+      ? 'eip155:56'
+      : 'push:devnet'
+  }:${address}`;
 };
