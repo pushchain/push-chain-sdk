@@ -35,7 +35,10 @@ const recipients: UniversalAccount[] = [
   },
 ];
 
-async function sendCustomTx(txInstance: Tx, nonce: number): Promise<string> {
+async function sendCustomTx(
+  txInstance: Tx,
+  nonce: number
+): Promise<{ txHash: string }> {
   const category = ('CUSTOM:V' + nonce).substring(0, 21);
   const sampleData = intToArray(nonce);
 
@@ -72,7 +75,7 @@ describe('validator smoke test', () => {
     await sleep(2000);
     const iterations = 50;
     const delay = 50;
-    const arr: Promise<string>[] = [];
+    const arr: Promise<{ txHash: string }>[] = [];
     for (let i = 0; i < iterations; i++) {
       arr.push(sendCustomTx(txInstance, i));
       await sleep(delay);

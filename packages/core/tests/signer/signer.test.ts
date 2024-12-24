@@ -51,6 +51,8 @@ describe('Signer Class', () => {
       data: new TextEncoder().encode('Hello world!'),
     });
 
-    expect(typeof txHash).toBe('string');
+    expect(typeof txHash).toBe('object');
+    expect(txHash).toHaveProperty('txHash');
+    expect(typeof txHash.txHash).toBe('string');
   });
 });
