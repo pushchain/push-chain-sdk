@@ -212,7 +212,13 @@ const AttachmentList: React.FC<{ attachments: FileAttachments }> = ({
             <img
               src={`data:${attachment.type};base64,${attachment.content}`}
               alt="attachment"
-              style={{ height: '100%', width: 'auto', maxWidth: 'unset' }}
+              style={{
+                height: '100%',
+                width: '100%',
+                maxWidth: 'unset',
+                objectFit: 'cover',
+                objectPosition: 'top',
+              }}
             />
           </Box>
           <Box
