@@ -1,11 +1,14 @@
 import { useAppContext } from '@/context/AppContext';
 import { Box } from 'shared-components';
-import { dummyEmail } from '@/helpers/utils';
-import { EMAIL_BOX } from '@/helpers/types';
+import { dummyEmail, EMAIL_BOX } from '@/common';
+
 import { ScrollArea } from '@/common/components';
 import EmailCard from '@/components/EmailCard';
+import { FC } from 'react';
 
-const EmailList = ({ type }: { type: EMAIL_BOX.INBOX | EMAIL_BOX.SENT }) => {
+export type EmailListProps = { type: EMAIL_BOX.INBOX | EMAIL_BOX.SENT };
+
+const EmailList: FC<EmailListProps> = ({ type }) => {
   const { searchInput, emails } = useAppContext();
 
   const filterEmails = (emails: any[], searchInput: string) => {

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Box } from 'shared-components';
 import { LandingPageLeftComponent } from './components/LandingPageLeftComponent';
 import { LandingPageBanner } from './components/LandingPageBanner';

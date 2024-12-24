@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
-import { CaretDown } from 'shared-components';
-import { Text } from 'shared-components';
+import { CaretDown, Text } from 'shared-components';
 
-interface DropdownItem {
+type DropdownItem = {
   label: string;
   icon: React.ReactNode;
   value: string;
-}
+};
 
-interface SelectProps {
+type SelectProps = {
   value: string;
   onSelect: (value: string) => void;
   options: DropdownItem[];
-}
+};
 
 const Select: React.FC<SelectProps> = ({ value, onSelect, options }) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);

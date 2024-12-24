@@ -2,12 +2,12 @@ import React from 'react';
 
 import EmailViewer from '../modules/emailPage/components/EmailViewer';
 import { useAppContext } from '@/context/AppContext';
-import { IEmail } from '@/helpers/types';
+import { Email } from '../common';
 
 const EmailLayout: React.FC = () => {
   const { setReplyTo } = useAppContext();
 
-  const handleReply = (email: IEmail) => {
+  const handleReply = (email: Email) => {
     setReplyTo(email);
   };
 

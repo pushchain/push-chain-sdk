@@ -12,7 +12,7 @@ import { AppProvider } from './context/AppContext';
 const GlobalStyle = createGlobalStyle`
   :root{
     /* Font Family */
-      --font-family: 'FK Grotesk Neu', Helvetica, sans-serif;
+      --font-family: 'FK Grotesk Neu';
 
     /* New blocks theme css variables*/
     

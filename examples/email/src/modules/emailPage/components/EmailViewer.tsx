@@ -2,21 +2,17 @@ import React from 'react';
 import { useAppContext } from '@/context/AppContext';
 import { Card, CardFooter } from '../../../common/components/Card';
 import { ReplyIcon } from 'lucide-react';
-import {
-  extractWalletAddress,
-  formatTimestamp,
-  trimAddress,
-} from '@/helpers/utils';
+import { extractWalletAddress, formatTimestamp, trimAddress } from '@/common';
 import { Box, Text, Button, Back, css } from 'shared-components';
 import BlockiesSvg from 'blockies-react-svg';
 import { useNavigate } from 'react-router-dom';
 import { DownloadIcon } from '@radix-ui/react-icons';
 import DummyEmail from './DummyEmail';
-import { FileAttachment, FileAttachments, IEmail } from '@/helpers/types';
+import { FileAttachment, FileAttachments, Email } from '@/common';
 
-interface EmailViewerProps {
-  onReply: (email: IEmail) => void;
-}
+export type EmailViewerProps = {
+  onReply: (email: Email) => void;
+};
 
 const EmailViewer: React.FC<EmailViewerProps> = ({ onReply }) => {
   const { currTab, selectedEmail, setSelectedEmail } = useAppContext();

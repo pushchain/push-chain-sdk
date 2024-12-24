@@ -1,11 +1,10 @@
-import { Card } from '@/common/components';
 import { useAppContext } from '@/context/AppContext';
-import { trimAddress } from '@/helpers/utils';
+import { trimAddress, Card } from '@/common';
 import { Back, Box, PushLogo, Text, css } from 'shared-components';
 
-interface EmailViewerProps {
+export type EmailViewerProps = {
   handleBack: () => void;
-}
+};
 
 const DummyEmail: React.FC<EmailViewerProps> = ({ handleBack }) => {
   const { wallet } = useAppContext();

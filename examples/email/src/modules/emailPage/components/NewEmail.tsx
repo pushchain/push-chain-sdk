@@ -16,7 +16,8 @@ import {
   extractWalletAddress,
   getInCAIP,
   formatReplyBody,
-} from '@/helpers/utils';
+  Email,
+} from '@/common';
 import {
   Box,
   Button,
@@ -29,22 +30,23 @@ import {
 } from 'shared-components';
 import { Cross1Icon } from '@radix-ui/react-icons';
 import styled from 'styled-components';
-import { IEmail } from '@/helpers/types';
 
-interface FileData {
+import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
+
+type FileData = {
   filename: string;
   type: string;
   content: string;
-}
+};
 
-interface Recipient {
+type Recipient = {
   address: string;
   chain: string;
-}
+};
 
-interface NewEmailProps {
-  replyTo?: IEmail;
-}
+type NewEmailProps = {
+  replyTo?: Email;
+};
 
 const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
   const [emailData, setEmailData] = useState({
@@ -69,6 +71,8 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
     currTab,
   } = useAppContext();
   const [sendingMail, setSendingMail] = useState(false);
+
+  const { setMinimiseWallet } = usePushWalletContext();
 
   useEffect(() => {
     if (replyTo) {
@@ -217,9 +221,9 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
       if (txHash) {
         setEmails(
           (prevEmails: {
-            sent: IEmail[];
-            inbox: IEmail[];
-          }): { sent: IEmail[]; inbox: IEmail[] } => ({
+            sent: Email[];
+            inbox: Email[];
+          }): { sent: Email[]; inbox: Email[] } => ({
             sent: [
               {
                 from: account,
@@ -244,6 +248,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
       setRecipients([]);
       setFileAttachment([]);
       setIsOpen(false);
+      setMinimiseWallet(true);
     } catch (error) {
       console.error('Failed to send email:', error);
       alert('Failed to send email');

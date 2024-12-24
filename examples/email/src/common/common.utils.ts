@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { EMAIL_BOX, IEmail } from './types';
+import { EMAIL_BOX, Email } from './common.types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -98,7 +98,7 @@ export const dummyEmail = {
   type: EMAIL_BOX.INBOX,
 };
 
-export const formatReplyBody = (email: IEmail) => {
+export const formatReplyBody = (email: Email) => {
   return `
 
 On ${formatTimestamp(email.timestamp.toString())}, ${

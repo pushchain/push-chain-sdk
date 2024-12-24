@@ -1,17 +1,13 @@
 import React from 'react';
 import { useAppContext } from '@/context/AppContext';
-import {
-  extractWalletAddress,
-  formatTimestamp,
-  trimAddress,
-} from '@/helpers/utils';
+import { extractWalletAddress, formatTimestamp, trimAddress } from '@/common';
 import BlockiesSvg from 'blockies-react-svg';
 import { Box, PushLogo, Text, css } from 'shared-components';
 import { useNavigate } from 'react-router-dom';
-import { EMAIL_BOX, IEmail } from '@/helpers/types';
+import { EMAIL_BOX, Email } from '../common';
 import { Card } from '@/common/components';
 
-const EmailCard: React.FC<IEmail> = ({
+const EmailCard: React.FC<Email> = ({
   from,
   to,
   subject,

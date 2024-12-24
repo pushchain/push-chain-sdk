@@ -1,4 +1,4 @@
-interface IEmail {
+type Email = {
   from: string;
   to: string[];
   subject: string;
@@ -7,19 +7,19 @@ interface IEmail {
   type?: string;
   attachments?: FileAttachments;
   txHash: string;
-}
+};
 
-interface FileAttachment {
+type FileAttachment = {
   filename: string;
   type: string;
   content: string;
-}
+};
 
-interface Wallet {
+type Wallet = {
   address: string;
   chainId: string | null;
   chain: string | null;
-}
+};
 
 enum EMAIL_BOX {
   INBOX = 'inbox',
@@ -27,5 +27,5 @@ enum EMAIL_BOX {
 }
 
 type FileAttachments = FileAttachment[];
-export type { IEmail, FileAttachments, FileAttachment, Wallet };
+export type { Email, FileAttachments, FileAttachment, Wallet };
 export { EMAIL_BOX };

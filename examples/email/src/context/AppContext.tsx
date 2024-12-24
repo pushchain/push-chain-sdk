@@ -8,29 +8,29 @@ import {
 } from '@pushprotocol/pushchain-ui-kit';
 import PushMail from 'push-mail';
 import { ReactNode, useEffect, useState } from 'react';
-import { IEmail, Wallet } from '@/helpers/types';
+import { Email, Wallet } from '../common';
 
 interface AppContextType {
   searchInput: string;
   setSearchInput: React.Dispatch<React.SetStateAction<string>>;
-  selectedEmail: IEmail | null; // this is the email that is currently selected by the user
-  setSelectedEmail: React.Dispatch<React.SetStateAction<IEmail | null>>;
+  selectedEmail: Email | null; // this is the email that is currently selected by the user
+  setSelectedEmail: React.Dispatch<React.SetStateAction<Email | null>>;
   pushNetwork: PushNetwork | null;
   setPushNetwork: React.Dispatch<React.SetStateAction<PushNetwork | null>>;
   emails: {
-    sent: IEmail[];
-    inbox: IEmail[];
+    sent: Email[];
+    inbox: Email[];
   };
   setEmails: React.Dispatch<
     React.SetStateAction<{
-      sent: IEmail[];
-      inbox: IEmail[];
+      sent: Email[];
+      inbox: Email[];
     }>
   >;
   currTab: 'inbox' | 'sent';
   setCurrTab: React.Dispatch<React.SetStateAction<'inbox' | 'sent'>>;
-  replyTo: IEmail | undefined;
-  setReplyTo: React.Dispatch<React.SetStateAction<IEmail | undefined>>;
+  replyTo: Email | undefined;
+  setReplyTo: React.Dispatch<React.SetStateAction<Email | undefined>>;
   account: string | null;
   handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>;
   wallet: Wallet | null;
@@ -41,17 +41,17 @@ export const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [searchInput, setSearchInput] = useState<string>('');
-  const [selectedEmail, setSelectedEmail] = useState<IEmail | null>(null);
+  const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
   const [currTab, setCurrTab] = useState<'inbox' | 'sent'>('inbox');
   const [emails, setEmails] = useState<{
-    sent: IEmail[];
-    inbox: IEmail[];
+    sent: Email[];
+    inbox: Email[];
   }>({
     sent: [],
     inbox: [],
   });
-  const [replyTo, setReplyTo] = useState<IEmail | undefined>(undefined);
+  const [replyTo, setReplyTo] = useState<Email | undefined>(undefined);
   const [wallet, setWallet] = useState<Wallet | null>(null);
 
   const { account, handleSendSignRequestToPushWallet } = usePushWalletContext();
