@@ -239,8 +239,8 @@ const AttachmentList: React.FC<{ attachments: FileAttachments }> = ({
             </Text>
             <DownloadIcon
               cursor="pointer"
-              height={32}
-              width={32}
+              height={24}
+              width={24}
               onClick={() => handleDownload(attachment)}
             />
           </Box>
