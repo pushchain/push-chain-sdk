@@ -64,7 +64,9 @@ const EmailCard: React.FC<IEmail> = ({
               overflow="hidden"
               alignSelf="center"
             >
-              <BlockiesSvg address={from} />
+              <BlockiesSvg
+                address={currTab === EMAIL_BOX.INBOX ? from : to[0]}
+              />
             </Box>
           )}
 
