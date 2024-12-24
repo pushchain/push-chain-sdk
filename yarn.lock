@@ -11242,7 +11242,7 @@ __metadata:
 
 "shared-components@file:../shared-components::locator=%40pushprotocol%2Fpushchain-ui-kit%40workspace%3Apackages%2Fui-kit":
   version: 0.1.0
-  resolution: "shared-components@file:../shared-components#../shared-components::hash=670f2b&locator=%40pushprotocol%2Fpushchain-ui-kit%40workspace%3Apackages%2Fui-kit"
+  resolution: "shared-components@file:../shared-components#../shared-components::hash=498aac&locator=%40pushprotocol%2Fpushchain-ui-kit%40workspace%3Apackages%2Fui-kit"
   dependencies:
     "@emotion/react": "npm:^11.13.0"
     "@radix-ui/react-dialog": "npm:^1.1.1"
@@ -11263,7 +11263,7 @@ __metadata:
   peerDependencies:
     react: ^18.3.1
     react-dom: ^18.3.1
-  checksum: 10/e00a7df4d142b15e1b08b7d94aacd38d70f57fd84dea03f8bcfa1babd407d9d205481231b11df77d154ba7d1a3e082affc3198b98109a175c1757aae3531447c
+  checksum: 10/f9032d46c349f59ae84062f96110e8c1df66b69f8aabd583eb25aeb826c9bc383f017a32f4fd9e016f3abcfbab507a86e09b80ec0bfa9703516305eea5e8247e
   languageName: node
   linkType: hard
 
