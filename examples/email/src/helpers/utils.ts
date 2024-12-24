@@ -100,7 +100,7 @@ export const dummyEmail = {
 
 export const formatReplyBody = (email: IEmail) => {
   return `
-  
+
 On ${formatTimestamp(email.timestamp.toString())}, ${
     email.from.split(':')[2]
   } wrote:

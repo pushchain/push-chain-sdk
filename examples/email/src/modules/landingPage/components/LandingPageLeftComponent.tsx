@@ -50,7 +50,7 @@ const LandingPageLeftComponent = () => {
         >
           <Box display={{ initial: 'flex', tb: 'none' }}>
             <Button trailingIcon={<Front />} variant="outline" size="small">
-              Push Chain proposal has successfully passed
+              Push Chain proposal has successfully passed.
             </Button>
           </Box>
           <Box display={{ initial: 'none', tb: 'flex' }}>

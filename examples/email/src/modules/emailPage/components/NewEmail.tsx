@@ -150,6 +150,13 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
       const file = event.target.files?.[0];
       if (!file) return;
 
+      const MAX_FILE_SIZE = 0.5 * 1024 * 1024; // 0.5MB
+
+      if (file.size > MAX_FILE_SIZE) {
+        alert('File size exceeds 0.5MB. Please select a smaller file.');
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (e: ProgressEvent<FileReader>) => {
         const result = e.target?.result;
@@ -230,7 +237,9 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
         );
       }
       console.log('Email sent:', txHash);
-      getEmails();
+      setTimeout(() => {
+        getEmails();
+      }, 5000);
       setEmailData({ subject: '', message: '' });
       setRecipients([]);
       setFileAttachment([]);
@@ -349,6 +358,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
                 </Text>
                 {recipients.map((recipient, index) => (
                   <Box
+                    key={index}
                     display="flex"
                     padding="spacing-xxxs spacing-xxs"
                     gap="spacing-xxs"
@@ -440,6 +450,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
             >
               {fileAttachment.map((file) => (
                 <Box
+                  key={file.content}
                   display="flex"
                   alignItems="center"
                   justifyContent="space-between"
@@ -458,7 +469,11 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
               ))}
             </Box>
             <FileUpload id="file-upload" onChange={handleFileUpload}>
-              <Button variant="outline" size="extraSmall">
+              <Button
+                disabled={fileAttachment.length === 1}
+                variant="outline"
+                size="extraSmall"
+              >
                 <PaperclipIcon width={16} height={16} />
                 <Text>Choose File</Text>
               </Button>

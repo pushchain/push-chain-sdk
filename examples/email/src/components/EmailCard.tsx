@@ -17,7 +17,6 @@ const EmailCard: React.FC<IEmail> = ({
   subject,
   timestamp,
   body,
-  type,
   attachments,
   txHash,
 }) => {
@@ -88,7 +87,7 @@ const EmailCard: React.FC<IEmail> = ({
               {subject}
             </Text>
             <Text variant="bes-semibold" color="text-tertiary">
-              {type === EMAIL_BOX.INBOX
+              {currTab === EMAIL_BOX.INBOX
                 ? from === 'push.fam'
                   ? from
                   : trimAddress(extractWalletAddress(from))
