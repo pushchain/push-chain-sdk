@@ -1,9 +1,17 @@
 import { hexToBytes } from 'viem';
-import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
-import { Address, Tx } from '../../src';
-import { PushChainEnvironment } from '../../src/lib/constants';
+import {
+  generatePrivateKey,
+  privateKeyToAccount,
+  privateKeyToAddress,
+} from 'viem/accounts';
+import { PushChain, Tx } from '../../src';
+import { CONSTANTS } from '../../src/lib/constants';
 import { config } from '../config';
 import { INIT_DID_TX_2 } from '../data';
+import {
+  UniversalAccount,
+  UniversalSigner,
+} from '../../src/lib/signer/signer.types';
 
 // remove .skip to run
 describe.skip('validator smoke test', () => {
@@ -14,18 +22,50 @@ describe.skip('validator smoke test', () => {
     const account = privateKeyToAccount(
       INIT_DID_TX_2.masterPrivateKey as `0x${string}`
     );
-    const signer = {
-      account: Address.toPushCAIP(account.address, PushChainEnvironment.devnet),
-      signMessage: async (data: Uint8Array) => {
+    const universalSigner: UniversalSigner = {
+      chain: CONSTANTS.Chain.Push.devnet.name,
+      chainId: CONSTANTS.Chain.Push.devnet.chainId,
+      account: account.address,
+      signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
         const signature = await account.signMessage({
           message: { raw: data },
         });
         return hexToBytes(signature);
       },
     };
-    const txInstance = await Tx.initialize(env);
-    const res = await txInstance.send(INIT_DID_TX_2.unsignedInitDIDTx, signer);
-    expect(typeof res).toEqual('string');
+    const signer = PushChain.signer.create(universalSigner);
+    const txInstance = await Tx.initialize(env, signer);
+    const recipientAddresses = [
+      privateKeyToAddress(generatePrivateKey()),
+      privateKeyToAddress(generatePrivateKey()),
+      privateKeyToAddress(generatePrivateKey()),
+    ];
+
+    const recipients: UniversalAccount[] = [
+      {
+        chain: CONSTANTS.Chain.EVM.sepolia.name,
+        chainId: CONSTANTS.Chain.EVM.sepolia.chainId,
+        account: recipientAddresses[0],
+      },
+      {
+        chain: CONSTANTS.Chain.EVM.mainnet.name,
+        chainId: CONSTANTS.Chain.EVM.mainnet.chainId,
+        account: recipientAddresses[1],
+      },
+      {
+        chain: CONSTANTS.Chain.EVM.sepolia.name,
+        chainId: CONSTANTS.Chain.EVM.sepolia.chainId,
+        account: recipientAddresses[2],
+      },
+    ];
+
+    const res = await txInstance.send(recipients, {
+      category: 'INIT_DID',
+      data: INIT_DID_TX_2.unsignedInitDIDTx.data,
+    });
+    expect(typeof res).toEqual('object');
+    expect(res).toHaveProperty('txHash');
+    expect(typeof res.txHash).toBe('string');
   });
 
   // it('write :: ctx :: write custom tx THEN read', async () => {
