@@ -20,14 +20,12 @@ export class Block {
       raw = false,
       startTime = Math.floor(Date.now()),
       order = Order.DESC,
-      showDetails = false,
       page = 1,
       limit = 30,
     }: {
       raw?: boolean;
       startTime?: number;
       order?: Order;
-      showDetails?: boolean;
       page?: number;
       limit?: number;
     } = {}
@@ -35,7 +33,7 @@ export class Block {
     if (reference === '*') {
       const response = await this.validator.call<BlockResponse>(
         'push_getBlocks',
-        [startTime, order, showDetails, limit, page]
+        [startTime, order, false, limit, page]
       );
       if (raw) return response;
       else return toSimplifiedBlockResponse(response);

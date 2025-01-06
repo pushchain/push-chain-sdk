@@ -20,7 +20,7 @@ export class PushChain {
   ) {}
 
   static initialize = async (
-    universalSigner: UniversalSigner | null,
+    universalSigner: UniversalSigner | null = null,
     options: {
       network: PushChainEnvironment;
     } = {
