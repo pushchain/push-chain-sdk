@@ -25,8 +25,8 @@ import {
   Text,
   TextArea,
   TextInput,
-  FileUpload,
   css,
+  FileUpload,
 } from 'shared-components';
 import { Cross1Icon } from '@radix-ui/react-icons';
 import styled from 'styled-components';

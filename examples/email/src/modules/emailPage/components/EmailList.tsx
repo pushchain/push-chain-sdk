@@ -1,5 +1,5 @@
 import { useAppContext } from '@/context/AppContext';
-import { Box } from 'shared-components';
+import { Box, Spinner } from 'shared-components';
 import { dummyEmail, EMAIL_BOX } from '@/common';
 
 import { ScrollArea } from '@/common/components';
@@ -9,7 +9,7 @@ import { FC } from 'react';
 export type EmailListProps = { type: EMAIL_BOX.INBOX | EMAIL_BOX.SENT };
 
 const EmailList: FC<EmailListProps> = ({ type }) => {
-  const { searchInput, emails } = useAppContext();
+  const { searchInput, emails, isLoading } = useAppContext();
 
   const filterEmails = (emails: any[], searchInput: string) => {
     if (searchInput === '') {
@@ -36,8 +36,12 @@ const EmailList: FC<EmailListProps> = ({ type }) => {
         {filteredEmails.map((email, index) => (
           <EmailCard key={index} {...email} />
         ))}
+        {isLoading && (
+          <Box display="flex" justifyContent="center" margin="spacing-lg">
+            <Spinner size="medium" variant="primary" />
+          </Box>
+        )}
       </Box>
-      <div className="flex flex-col gap-2"></div>
     </ScrollArea>
   );
 };

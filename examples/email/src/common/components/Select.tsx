@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CaretDown, Text } from 'shared-components';
+import { Box, CaretDown, css, Text } from 'shared-components';
 
 type DropdownItem = {
   label: string;
@@ -22,32 +22,64 @@ const Select: React.FC<SelectProps> = ({ value, onSelect, options }) => {
   };
 
   return (
-    <div className="relative w-[20%]">
-      <button
-        className={`w-full flex items-center justify-between p-3 gap-2 border-[1.5px] rounded-xl ${
-          isOpen ? 'border-[#F3AEFF]' : 'border-[#EAEBF2]'
-        } focus:border-[#F3AEFF] hover:border-[#C4CBD5]`}
-        onClick={() => setIsOpen((prev) => !prev)}
-      >
-        <span>{options.find((i) => i.value === value)?.icon}</span>
-        <CaretDown />
-      </button>
-
-      {isOpen && (
-        <ul className="absolute flex flex-col w-40 z-10 p-2 gap-2 bg-white border border-[#C4CBD5] rounded-xl shadow-lg mt-3 right-0">
-          {options.map((item) => (
-            <li
-              key={item.label}
-              onClick={() => handleSelect(item.value)}
-              className="flex items-center px-1 py-2 rounded-[6px] hover:bg-gray-100 cursor-pointer"
-            >
-              <span className="mr-2">{item.icon}</span>
-              <Text variant="bs-regular">{item.label}</Text>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <>
+      <Box position="relative" width="20%">
+        <Box
+          width="100%"
+          display="flex"
+          alignItems="center"
+          justifyContent="space-between"
+          padding="spacing-xs"
+          gap="spacing-xxs"
+          border={`border-xmd solid ${
+            isOpen ? 'stroke-brand-subtle' : 'stroke-secondary'
+          }`}
+          borderRadius="radius-xs"
+          cursor="pointer"
+          className="hover:border-[var(--stroke-tertiary)]"
+          onClick={() => setIsOpen((prev) => !prev)}
+        >
+          {options.find((i) => i.value === value)?.icon}
+          <CaretDown />
+        </Box>
+        {isOpen && (
+          <Box
+            position="absolute"
+            display="flex"
+            flexDirection="column"
+            width="10rem"
+            padding="spacing-xxs"
+            gap="spacing-xs"
+            backgroundColor="surface-primary"
+            border="border-sm solid stroke-tertiary"
+            borderRadius="radius-xs"
+            margin="spacing-xs spacing-none spacing-none spacing-none"
+            className="shadow-lg"
+            css={css`
+              right: 0px;
+            `}
+          >
+            {options.map((item) => (
+              <Box
+                key={item.label}
+                display="flex"
+                alignItems="center"
+                padding="spacing-xxs"
+                borderRadius="radius-xs"
+                cursor="pointer"
+                className="hover:bg-gray-100"
+                onClick={() => handleSelect(item.value)}
+              >
+                <Box margin="spacing-none spacing-xxs spacing-none spacing-none">
+                  {item.icon}
+                </Box>
+                <Text variant="bs-regular">{item.label}</Text>
+              </Box>
+            ))}
+          </Box>
+        )}
+      </Box>
+    </>
   );
 };
 

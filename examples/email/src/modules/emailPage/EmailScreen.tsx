@@ -57,7 +57,13 @@ const EmailScreen = () => {
   }, []);
 
   return (
-    <div className="relative w-full h-[100vh] flex flex-col">
+    <Box
+      position="relative"
+      width="100%"
+      height="100vh"
+      display="flex"
+      flexDirection="column"
+    >
       <Header />
       <Box width="100%" height="calc(100% - 74px)" display="flex">
         <Box
@@ -128,7 +134,7 @@ const EmailScreen = () => {
           <EmailLayout />
         </Box>
       </Box>
-    </div>
+    </Box>
   );
 };
 
