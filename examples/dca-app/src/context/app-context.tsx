@@ -2,6 +2,8 @@ import { PushNetwork } from '@pushprotocol/push-chain';
 import React, { createContext, useContext } from 'react';
 
 interface AppContextType {
+  account: string | null;
+  handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>;
   pushNetwork: PushNetwork | null;
   setPushNetwork: React.Dispatch<React.SetStateAction<PushNetwork | null>>;
   pushAccount: any;

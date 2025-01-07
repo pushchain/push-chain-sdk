@@ -9,17 +9,32 @@ import {
   PushWalletProvider,
   PushWalletIFrame,
 } from '@pushprotocol/pushchain-ui-kit';
+import { getBlocksCSSVariables, themeConfig } from 'shared-components';
+import { createGlobalStyle, ThemeProvider } from 'styled-components';
 
+const GlobalStyle = createGlobalStyle`
+  :root{
+    /* Font Family */
+      --font-family: 'FK Grotesk Neu';
+
+    /* New blocks theme css variables*/
+    
+    ${(props) => getBlocksCSSVariables(props.theme.blocksTheme)}
+  }
+`;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <PushWalletProvider env={ENV.DEV}>
-    <PrivyWalletProvider>
-      <AppProvider>
-      <PushWalletIFrame />
-        <App />
-      </AppProvider>
-    </PrivyWalletProvider>
-  </PushWalletProvider>
+    <ThemeProvider theme={themeConfig.light}>
+      <GlobalStyle />
+      <PushWalletProvider env={ENV.PROD}>
+        <PrivyWalletProvider>
+          <AppProvider>
+            <PushWalletIFrame />
+            <App />
+          </AppProvider>
+        </PrivyWalletProvider>
+      </PushWalletProvider>
+    </ThemeProvider>
   </StrictMode>
 );
