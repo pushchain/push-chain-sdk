@@ -2,7 +2,9 @@ import { ENV } from '../constants';
 import { mainnet, localhost, sepolia } from 'viem/chains';
 import { validatorABI } from './abis/validator';
 import { Config } from './config.types';
+import * as process from 'node:process';
 
+// ENV CONFIGS
 const config: Config = {
   ABIS: {
     VALIDATOR: validatorABI,
@@ -28,8 +30,8 @@ const config: Config = {
   WALLET_URL: {
     [ENV.PROD]: 'TODO',
     [ENV.STAGING]: 'TODO',
-    [ENV.DEV]: 'https://push-protocol.github.io/push-wallet/',
-    [ENV.LOCAL]: 'http://localhost:5174/',
+    [ENV.DEV]: 'https://wallet.push.org',
+    [ENV.LOCAL]: 'http://localhost:5173/',
   },
 };
 

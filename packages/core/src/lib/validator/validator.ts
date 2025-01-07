@@ -9,6 +9,7 @@ import axios from 'axios';
 import { createPublicClient, getContract, http } from 'viem';
 import config from '../config';
 import { ENV } from '../constants';
+import { URL } from 'url';
 
 /**
  * @description Push validator class is used for the following:
@@ -79,10 +80,9 @@ export class Validator {
   ): ValidatorContract => {
     const client = createPublicClient({
       chain: config.VALIDATOR[env].NETWORK,
-      transport: http(
-        'https://proportionate-multi-sanctuary.ethereum-sepolia.quiknode.pro/fe3638bd884a34c0aa6c85ce2cd62ef54b0d8442/'
-      ),
+      transport: http(),
     });
+
     return getContract({
       abi: config.ABIS.VALIDATOR,
       address: config.VALIDATOR[env].VALIDATOR_CONTRACT as `0x${string}`,
@@ -118,6 +118,7 @@ export class Validator {
       }
       const response = await axios.post<JsonRpcResponse<T>>(url, requestBody, {
         headers: { 'Content-Type': 'application/json' },
+        timeout: 30000,
       });
 
       if (response.data.error) {
@@ -141,7 +142,7 @@ export class Validator {
    * @description Ping a validator
    * @param validatorUrl - Validator URL to ping
    */
-  private static ping = async (validatorUrl: string): Promise<boolean> => {
+  public static ping = async (validatorUrl: string): Promise<boolean> => {
     return await this.sendJsonRpcRequest<boolean>(
       Validator.vNodeUrlModifier(validatorUrl),
       'push_listening'
@@ -167,11 +168,17 @@ export class Validator {
   };
 
   private static vNodeUrlModifier = (url: string) => {
-    let modifiedUrl = url;
+    let fixedUrl = url;
     if (url.includes('.local')) {
-      modifiedUrl = url.replace('.local', '.localh');
+      const urlObj = new URL(url);
+      urlObj.hostname = 'localhost';
+      urlObj.protocol = 'http:';
+      fixedUrl = urlObj.toString();
     }
-    return `${modifiedUrl}/api/v1/rpc`;
+    if (fixedUrl.endsWith('/')) {
+      fixedUrl = fixedUrl.slice(0, -1);
+    }
+    return `${fixedUrl}/api/v1/rpc`;
   };
 
   /**

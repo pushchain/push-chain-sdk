@@ -33,7 +33,7 @@ describe('Validator Class', () => {
         [],
         each.nodeApiBaseUrl
       );
-      expect(pingReply === 'true' || pingReply === 'false').toBe(true);
+      expect(pingReply === 'true').toBe(true);
       // expect(pingReply).not.toBeNull();
       // expect(pingReply?.nodeId).toBe(each.nodeWallet);
       // expect(pingReply?.status).toBe(1);
