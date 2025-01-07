@@ -2,6 +2,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import { useAppContext } from '@/context/app-context';
 import { Button } from './ui/button';
 import { PushNetwork } from '@pushprotocol/push-chain';
+import { ConnectPushWalletButton } from '@pushprotocol/pushchain-ui-kit';
 
 const LoggedOutView = () => {
   const { login } = usePrivy();
@@ -37,6 +38,7 @@ const LoggedOutView = () => {
           Login w/ any wallet
         </Button>
         <Button onClick={handlePushWalletConnect}>Login w/ Push Wallet</Button>
+        <ConnectPushWalletButton />
       </div>
     </div>
   );
