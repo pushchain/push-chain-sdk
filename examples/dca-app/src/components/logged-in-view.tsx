@@ -10,8 +10,8 @@ import { useAppContext } from '@/context/app-context';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { isAddress } from 'viem';
+import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 
-// Define the protobuf schema for portfolio data
 const portfolioSchema = `
   syntax = "proto3";
 
@@ -51,6 +51,7 @@ const MainContent = () => {
   const { address } = useAccount();
   const chainId = useChainId();
   const { watchAccount, setWatchAccount, pushAccount, pushNetwork } = useAppContext();
+  const { handleSendSignRequestToPushWallet, connectionStatus } = usePushWalletContext();
   const [watchAddresses, setWatchAddresses] = useState<string[]>([]);
   const [newWatchAddress, setNewWatchAddress] = useState('');
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
@@ -85,33 +86,38 @@ const MainContent = () => {
       console.log("Push Wallet not connected. Skipping on-chain storage.");
       return;
     }
+
+    if (connectionStatus !== "connected") {
+      console.log("Push Wallet not connected. Current status:", connectionStatus);
+      return;
+    }
   
     try {
+      console.log("Starting portfolio data storage...");
+      
       // Create a protobuf root and load the schema
       const root = await protobuf.parse(portfolioSchema).root;
-  
-      // Obtain a message type
       const PortfolioData = root.lookupType("PortfolioData");
   
-      // Format the data to ensure all numeric values are properly converted
+      // Format the data
       const formattedData = {
         address: data.address,
-        totalValue: Number(data.totalValue || 0), // Ensure it's a number, default to 0
+        totalValue: Number(data.totalValue || 0),
         assets: data.assets.map((asset: any) => ({
           symbol: asset.symbol,
-          // Convert BigInt or numeric values to Number, with fallback to 0
           balance: Number(asset.balance || 0),
           value: Number(asset.value || 0)
         }))
       };
   
-      // Verify the data against the schema
+      // Verify the data
       const errMsg = PortfolioData.verify(formattedData);
       if (errMsg) throw Error(errMsg);
   
-      // Encode the object into a binary format
+      // Encode the data
       const buffer = PortfolioData.encode(PortfolioData.create(formattedData)).finish();
   
+      console.log("Creating unsigned transaction...");
       // Create an unsigned transaction
       const unsignedTx = pushNetwork.tx.createUnsigned(
         "CUSTOM:PORTFOLIO_DATA",
@@ -119,21 +125,30 @@ const MainContent = () => {
         buffer
       );
   
+      console.log("Setting up signer...");
       const signer = {
         account: `${pushAccount}`,
         signMessage: async (data: any) => {
-          const signature = await pushNetwork.wallet.sign(data);
-          return ethers.getBytes(signature);
+          console.log("Signing message...");
+          try {
+            const signature = await handleSendSignRequestToPushWallet(new Uint8Array(data));
+            return signature;
+          } catch (error) {
+            console.error("Error signing message:", error);
+            throw error;
+          }
         },
       };
   
-      // Send a transaction
+      console.log("Sending transaction...");
+      // Send transaction
       const txHash = await pushNetwork.tx.send(unsignedTx, signer);
       console.log("Portfolio data stored on Push Chain. Transaction Hash:", txHash);
     } catch (error) {
       console.error("Error storing portfolio data on Push Chain:", error);
     }
   };
+
   const onPortfolioUpdate = (newData: any) => {
     setPortfolioData(newData);
     storePortfolioData(newData);
@@ -201,4 +216,3 @@ const LoggedInView = () => {
 };
 
 export default LoggedInView;
-

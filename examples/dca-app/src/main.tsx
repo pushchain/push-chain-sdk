@@ -9,7 +9,7 @@ import {
   PushWalletProvider,
   PushWalletIFrame,
 } from '@pushprotocol/pushchain-ui-kit';
-import { getBlocksCSSVariables, themeConfig } from 'shared-components';
+import { getBlocksCSSVariables, themeConfig } from 'shared-components'
 import { createGlobalStyle, ThemeProvider } from 'styled-components';
 
 const GlobalStyle = createGlobalStyle`
