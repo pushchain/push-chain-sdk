@@ -14,11 +14,9 @@ export class Wallet {
    * @returns The connected CAIP wallet address
    * @dev - Errors out if user is not logged in
    */
-  connect = async (walletURL: string = this.walletUrl) => {
-    this.walletUrl = walletURL;
+  connect = async () => {
     await this.openWalletWindow();
-    const connectionStatus = await this.appConnectionStatus();
-    return connectionStatus;
+    return await this.appConnectionStatus();
   };
 
   /**
@@ -64,7 +62,7 @@ export class Wallet {
    */
   // TODO: CHECK IF RETURN TYPE HERE IS CORRECT!
   // TODO: It says it returns this JSON but in reality is returning a string
-  appConnectionStatus = (): Promise<{
+  private appConnectionStatus = (): Promise<{
     authStatus: AppConnection['authStatus'];
     appConnectionStatus: AppConnection['appConnectionStatus'];
   }> => {
@@ -93,7 +91,7 @@ export class Wallet {
   /**
    * Request connection to Push Wallet
    */
-  requestAppConnection = async (): Promise<{
+  private requestAppConnection = async (): Promise<{
     isConnected: boolean;
     isPending: boolean;
   }> => {
