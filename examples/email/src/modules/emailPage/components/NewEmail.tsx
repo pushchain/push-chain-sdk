@@ -1,10 +1,4 @@
 import React, { ChangeEvent, useState, useCallback, useEffect } from 'react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Select,
-} from '@/common/components';
 import PushMail from 'push-mail';
 import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
 import { useAppContext } from '@/context/AppContext';
@@ -27,6 +21,7 @@ import {
   TextInput,
   css,
   FileUpload,
+  Select,
 } from 'shared-components';
 import { Cross1Icon } from '@radix-ui/react-icons';
 import styled from 'styled-components';
@@ -279,35 +274,31 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
   };
 
   return (
-    <Box position="fixed" className="fixed bottom-5 right-5 z-10">
-      <Popover
-        open={isOpen}
-        onOpenChange={(open) => {
-          if (!open) return;
-          handleOpenChange();
-        }}
+    <Box position="fixed" className="z-10 right-5 bottom-5 ml-5">
+      <Button
+        size="large"
+        leadingIcon={<SendNotification width={24} height={24} />}
+        css={css`
+          border-radius: var(--radius-md);
+          background: #e21d48 !important;
+        `}
+        onClick={() => setIsOpen(true)}
       >
-        <PopoverTrigger asChild>
-          <Button
-            size="large"
-            leadingIcon={<SendNotification width={24} height={24} />}
-            css={css`
-              border-radius: var(--radius-md);
-              background: #e21d48 !important;
-            `}
-          >
-            <Text
-              variant="h5-regular"
-              color="text-primary-inverse"
-              display={{ initial: 'block', ml: 'none' }}
-            >
-              Compose
-            </Text>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="end"
-          className="flex flex-col gap-2 p-0 border-0 bg-white rounded-[12px] translate-y-[60px]"
+        <Text
+          variant="h5-regular"
+          color="text-primary-inverse"
+          display={{ initial: 'block', ml: 'none' }}
+        >
+          Compose
+        </Text>
+      </Button>
+      {isOpen && (
+        <Box
+          backgroundColor="surface-primary"
+          boxShadow="-2px 2px 7.8px 0px rgba(0, 0, 0, 0.25)"
+          borderRadius="radius-sm"
+          position="fixed"
+          className="z-[999] right-5 bottom-5"
         >
           <Box
             display="flex"
@@ -348,7 +339,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
                 gap="spacing-xs"
                 border="border-xmd solid stroke-secondary"
                 borderRadius="radius-xs"
-                width="80%"
+                width="100%"
                 css={css`
                   flex-wrap: wrap;
                 `}
@@ -388,37 +379,39 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
                   onChange={handleNewRecipientChange}
                   onKeyDown={handleAddRecipientOnEnter}
                   onBlur={handleAddRecipientOnBlur}
-                  className="outline-none focus:outline-none w-[90%]"
+                  className="outline-none focus:outline-none w-[80%]"
                 />
               </Box>
-              <Select
-                value={newRecipient.chain}
-                onSelect={(value) =>
-                  setNewRecipient((prev) => ({ ...prev, chain: value }))
-                }
-                options={[
-                  {
-                    icon: <TokenETH className="w-6 h-6" />,
-                    label: 'Ethereum',
-                    value: 'eth',
-                  },
-                  {
-                    icon: <TokenSOL className="w-6 h-6" />,
-                    label: 'Solana',
-                    value: 'sol',
-                  },
-                  {
-                    icon: <TokenPUSH className="w-6 h-6" />,
-                    label: 'Push',
-                    value: 'push',
-                  },
-                  {
-                    icon: <TokenBNB className="w-6 h-6" />,
-                    label: 'BNB',
-                    value: 'bnb',
-                  },
-                ]}
-              />
+              <Box>
+                <Select
+                  value={newRecipient.chain}
+                  onSelect={(value) =>
+                    setNewRecipient((prev) => ({ ...prev, chain: value }))
+                  }
+                  options={[
+                    {
+                      icon: <TokenETH className="w-6 h-6" />,
+                      label: 'Ethereum',
+                      value: 'eth',
+                    },
+                    {
+                      icon: <TokenSOL className="w-6 h-6" />,
+                      label: 'Solana',
+                      value: 'sol',
+                    },
+                    {
+                      icon: <TokenPUSH className="w-6 h-6" />,
+                      label: 'Push',
+                      value: 'push',
+                    },
+                    {
+                      icon: <TokenBNB className="w-6 h-6" />,
+                      label: 'BNB',
+                      value: 'bnb',
+                    },
+                  ]}
+                />
+              </Box>
             </Box>
             <TextInput
               placeholder="Subject"
@@ -495,9 +488,28 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
               {sendingMail ? 'Sending' : 'Send'}
             </Button>
           </Box>
-        </PopoverContent>
-      </Popover>
+        </Box>
+      )}
     </Box>
+    // <Box position="fixed" className="fixed bottom-5 right-5 z-10">
+    //   <Popover
+    //     open={isOpen}
+    //     onOpenChange={(open) => {
+    //       if (!open) return;
+    //       handleOpenChange();
+    //     }}
+    //   >
+    //     <PopoverTrigger asChild>
+
+    //     </PopoverTrigger>
+    //     <PopoverContent
+    //       align="end"
+    //       className="flex flex-col gap-2 !p-0 border-0 bg-white rounded-[12px] translate-y-[60px]"
+    //     >
+
+    //     </PopoverContent>
+    //   </Popover>
+    // </Box>
   );
 };
 
