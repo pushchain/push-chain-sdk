@@ -1,5 +1,5 @@
 import { useAppContext } from '@/context/AppContext';
-import { trimAddress, Card } from '@/common';
+import { trimAddress } from '@/common';
 import { Back, Box, PushLogo, Text, css } from 'shared-components';
 
 export type EmailViewerProps = {
@@ -10,7 +10,16 @@ const DummyEmail: React.FC<EmailViewerProps> = ({ handleBack }) => {
   const { wallet } = useAppContext();
 
   return (
-    <Card className="w-full h-fit flex-1 py-6 px-4 md:px-8 gap-6">
+    <Box
+      width="100%"
+      padding={{
+        initial: 'spacing-md spacing-lg',
+        tb: 'spacing-md spacing-sm',
+      }}
+      gap="spacing-md"
+      display="flex"
+      flexDirection="column"
+    >
       <Box
         cursor="pointer"
         onClick={handleBack}
@@ -139,7 +148,7 @@ const DummyEmail: React.FC<EmailViewerProps> = ({ handleBack }) => {
           <Text variant="bs-bold">Push Fam</Text>
         </Box>
       </Box>
-    </Card>
+    </Box>
   );
 };
 

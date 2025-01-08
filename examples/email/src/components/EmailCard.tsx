@@ -5,7 +5,6 @@ import BlockiesSvg from 'blockies-react-svg';
 import { Box, PushLogo, Text, css } from 'shared-components';
 import { useNavigate } from 'react-router-dom';
 import { EMAIL_BOX, Email } from '../common';
-import { Card } from '@/common/components';
 
 const EmailCard: React.FC<Email> = ({
   from,
@@ -20,7 +19,15 @@ const EmailCard: React.FC<Email> = ({
   const { currTab, setSelectedEmail, selectedEmail } = useAppContext();
 
   return (
-    <Card
+    <Box
+      display="flex"
+      flexDirection="column"
+      alignItems="flex-start"
+      gap="spacing-xs"
+      padding="spacing-sm spacing-md"
+      css={css`
+        border-bottom: 1px solid var(--stroke-secondary);
+      `}
       onClick={() => {
         setSelectedEmail({
           from,
@@ -127,7 +134,7 @@ const EmailCard: React.FC<Email> = ({
           `}
         />
       </Box>
-    </Card>
+    </Box>
   );
 };
 

@@ -35,6 +35,7 @@ interface AppContextType {
   handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>;
   wallet: Wallet | null;
   getEmails: () => Promise<void>;
+  isLoading: boolean;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -53,18 +54,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   });
   const [replyTo, setReplyTo] = useState<Email | undefined>(undefined);
   const [wallet, setWallet] = useState<Wallet | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const { account, handleSendSignRequestToPushWallet } = usePushWalletContext();
 
   const getEmails = async () => {
     if (!account) return;
+    setIsLoading(true);
     const pushMail = await PushMail.initialize(ENV.DEV);
     const [sent, received] = await Promise.all([
       pushMail.getBySender(account),
       pushMail.getByRecipient(account),
     ]);
 
-    console.log(sent, received);
+    setIsLoading(false);
 
     setEmails({
       sent: sent.map((email: any) => ({
@@ -130,6 +133,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         handleSendSignRequestToPushWallet,
         wallet,
         getEmails,
+        isLoading,
       }}
     >
       {children}

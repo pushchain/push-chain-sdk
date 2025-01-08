@@ -12,8 +12,6 @@
     "deploy:dev": "npm run build && echo 'email.push.org' > ./dist/CNAME && gh-pages -d dist -r https://github.com/push-protocol/email-dev-deployment"
   },
   "dependencies": {
-    "@privy-io/react-auth": "^1.91.0",
-    "@privy-io/wagmi": "^0.2.12",
     "@pushprotocol/node-core": "^0.0.29",
     "@pushprotocol/push-chain": "^0.1.7",
     "@pushprotocol/pushchain-ui-kit": "^1.0.1",
@@ -23,7 +21,6 @@
     "@radix-ui/react-select": "^2.1.2",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-tabs": "^1.1.1",
-    "@solana/web3.js": "^1.95.5",
     "@tanstack/react-query": "^5.59.15",
     "@web3icons/react": "^3.7.1",
     "blockies-react-svg": "^0.0.13",
@@ -36,10 +33,7 @@
     "react-resizable-panels": "^2.1.4",
     "react-router-dom": "^7.0.2",
     "shared-components": "file:../../packages/shared-components",
-    "tailwind-merge": "^2.5.4",
-    "tailwindcss-animate": "^1.0.7",
-    "viem": "^2.21.28",
-    "wagmi": "^2.12.19"
+    "viem": "^2.21.28"
   },
   "devDependencies": {
     "@eslint/js": "^9.11.1",

@@ -1,6 +1,5 @@
 import React from 'react';
 import { useAppContext } from '@/context/AppContext';
-import { Card, CardFooter } from '../../../common/components/Card';
 import { ReplyIcon } from 'lucide-react';
 import { extractWalletAddress, formatTimestamp, trimAddress } from '@/common';
 import { Box, Text, Button, Back, css } from 'shared-components';
@@ -33,21 +32,21 @@ const EmailViewer: React.FC<EmailViewerProps> = ({ onReply }) => {
       if (line.startsWith('On') && line.includes('wrote:')) {
         inQuote = true;
         formattedBody.push(
-          <div key={formattedBody.length} className="text-gray-500 mt-4">
+          <Box key={formattedBody.length} className="text-gray-500 mt-4">
             {line}
-          </div>
+          </Box>
         );
       } else if (inQuote) {
         formattedBody.push(
-          <div
+          <Box
             key={formattedBody.length}
             className="text-gray-500 border-l-4 border-gray-300 pl-2"
           >
             {line}
-          </div>
+          </Box>
         );
       } else {
-        formattedBody.push(<div key={formattedBody.length}>{line}</div>);
+        formattedBody.push(<Box key={formattedBody.length}>{line}</Box>);
       }
     }
 
@@ -68,7 +67,16 @@ const EmailViewer: React.FC<EmailViewerProps> = ({ onReply }) => {
       {selectedEmail.txHash === 'welcome' ? (
         <DummyEmail handleBack={handleBack} />
       ) : (
-        <Card className="w-full h-fit flex-1 py-6 px-4 md:px-8 gap-6">
+        <Box
+          width="100%"
+          padding={{
+            initial: 'spacing-md spacing-lg',
+            tb: 'spacing-md spacing-sm',
+          }}
+          gap="spacing-md"
+          display="flex"
+          flexDirection="column"
+        >
           <Box
             cursor="pointer"
             onClick={handleBack}
@@ -142,9 +150,9 @@ const EmailViewer: React.FC<EmailViewerProps> = ({ onReply }) => {
           </Box>
           {selectedEmail.attachments &&
             selectedEmail.attachments.length > 0 && (
-              <CardFooter>
+              <Box display="flex" alignItems="center">
                 <AttachmentList attachments={selectedEmail.attachments!} />
-              </CardFooter>
+              </Box>
             )}
           <Box
             gap="spacing-xxs"
@@ -162,7 +170,7 @@ const EmailViewer: React.FC<EmailViewerProps> = ({ onReply }) => {
               Reply
             </Button>
           </Box>
-        </Card>
+        </Box>
       )}
     </>
   );

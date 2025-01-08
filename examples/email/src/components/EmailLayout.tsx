@@ -3,6 +3,7 @@ import React from 'react';
 import EmailViewer from '../modules/emailPage/components/EmailViewer';
 import { useAppContext } from '@/context/AppContext';
 import { Email } from '../common';
+import { Box } from 'shared-components';
 
 const EmailLayout: React.FC = () => {
   const { setReplyTo } = useAppContext();
@@ -12,9 +13,15 @@ const EmailLayout: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full w-full flex-1 ">
+    <Box
+      display="flex"
+      flexDirection="column"
+      height="100%"
+      width="100%"
+      overflow="scroll"
+    >
       <EmailViewer onReply={handleReply} />
-    </div>
+    </Box>
   );
 };
 

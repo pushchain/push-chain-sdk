@@ -1,9 +1,8 @@
 import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
 import { EMAIL_BOX, Email } from './common.types';
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+  return clsx(inputs);
 }
 export function trimAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
