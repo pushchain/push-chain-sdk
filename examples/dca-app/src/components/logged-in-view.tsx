@@ -32,13 +32,15 @@ const Header = () => {
   const { logout } = usePrivy();
 
   return (
-    <div className="flex flex-row justify-between items-center my-6 md:my-8">
-      <h2 className="text-2xl font-bold text-[#3B82F6]">Dashboard</h2>
+    <div className="flex flex-row justify-between items-center py-6 md:py-8">
+      <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-blue-600">
+        Dashboard
+      </h2>
       <div className="flex items-center gap-4">
         <ConnectedWalletCard />
         <Button 
           onClick={logout}
-          className="bg-[#3B82F6] text-white hover:bg-[#2563EB]"
+          className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
         >
           Logout
         </Button>
@@ -155,27 +157,31 @@ const MainContent = () => {
   };
 
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-6">
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
         <Input
           value={newWatchAddress}
           onChange={(e) => setNewWatchAddress(e.target.value)}
           placeholder="Add a wallet to watch"
-          className="flex-1"
+          className="flex-1 bg-white/5 border-gray-700 text-white placeholder:text-gray-400"
         />
         <Button 
           onClick={addWatchAddress} 
           disabled={!isAddress(newWatchAddress)}
-          className="bg-[#3B82F6] text-white hover:bg-[#2563EB]"
+          className="bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:bg-blue-800 disabled:text-gray-300"
         >
           Add
         </Button>
       </div>
       
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button
           variant="ghost"
-          className={`text-sm ${selectedAddress === address ? 'bg-[#3B82F6] text-white' : 'text-gray-600'}`}
+          className={`text-sm transition-colors ${
+            selectedAddress === address 
+              ? 'bg-blue-600 text-white hover:bg-blue-700' 
+              : 'text-gray-300 hover:bg-white/5'
+          }`}
           onClick={() => selectAddress(address || null)}
         >
           Your Wallet
@@ -184,7 +190,11 @@ const MainContent = () => {
           <Button
             key={addr}
             variant="ghost"
-            className={`text-sm ${addr === selectedAddress ? 'bg-[#3B82F6] text-white' : 'text-gray-600'}`}
+            className={`text-sm transition-colors ${
+              addr === selectedAddress 
+                ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                : 'text-gray-300 hover:bg-white/5'
+            }`}
             onClick={() => selectAddress(addr)}
           >
             {addr.slice(0, 6)}...{addr.slice(-4)}
@@ -193,7 +203,7 @@ const MainContent = () => {
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold mb-4">
+        <h3 className="text-lg font-semibold mb-4 text-blue-400">
           {selectedAddress === address ? 'Your Portfolio:' : 'Watched Portfolio:'}
         </h3>
         <PortfolioTracker 
@@ -208,9 +218,11 @@ const MainContent = () => {
 
 const LoggedInView = () => {
   return (
-    <div className="w-[90vw] md:w-[96vw] m-auto">
-      <Header />
-      <MainContent />
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+      <div className="max-w-6xl mx-auto px-4">
+        <Header />
+        <MainContent />
+      </div>
     </div>
   );
 };

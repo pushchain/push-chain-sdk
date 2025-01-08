@@ -88,11 +88,11 @@ const PortfolioChart = ({
   const CustomTooltip: React.FC<TooltipProps> = ({ active, payload }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-lg">
-          <p className="text-gray-600">
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg">
+          <p className="text-gray-400">
             {format(payload[0].payload.date, 'MMM d, yyyy')}
           </p>
-          <p className="text-lg font-semibold text-blue-600">
+          <p className="text-lg font-semibold text-blue-400">
             {formatValue(payload[0].value)}
           </p>
         </div>
@@ -135,23 +135,23 @@ const PortfolioChart = ({
   // If no data, show loading or empty state
   if (!data?.items?.length) {
     return (
-      <div className="w-full h-96 p-4 bg-white rounded-xl shadow-md flex items-center justify-center">
-        <p className="text-gray-500">No portfolio data available</p>
+      <div className="w-full h-96 p-4 bg-gray-800/50 rounded-xl border border-gray-700 flex items-center justify-center">
+        <p className="text-gray-400">No portfolio data available</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-96 px-4 py-6 bg-white">
+    <div className="w-full h-96 px-4 py-6 bg-gray-800/50 border border-gray-700 rounded-xl">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-800">Portfolio Value</h2>
+        <h2 className="text-xl font-semibold text-blue-400">Portfolio Value</h2>
         <div className="flex gap-2">
           <button
             onClick={() => setTimeFrame('7d')}
             className={`px-4 py-2 rounded-lg transition-colors ${
               timeFrame === '7d'
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
             }`}
           >
             7D
@@ -161,7 +161,7 @@ const PortfolioChart = ({
             className={`px-4 py-2 rounded-lg transition-colors ${
               timeFrame === '30d'
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
             }`}
           >
             30D
@@ -184,12 +184,12 @@ const PortfolioChart = ({
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
-              stroke="#E5E7EB"
+              stroke="#374151"
             />
             <XAxis
               dataKey="date"
               tickFormatter={(date: Date) => format(date, 'MMM d')}
-              stroke="#6B7280"
+              stroke="#9CA3AF"
               tickLine={false}
               axisLine={false}
               interval="preserveStartEnd"
@@ -197,7 +197,7 @@ const PortfolioChart = ({
             />
             <YAxis
               tickFormatter={formatValue}
-              stroke="#6B7280"
+              stroke="#9CA3AF"
               tickLine={false}
               axisLine={false}
               width={80}

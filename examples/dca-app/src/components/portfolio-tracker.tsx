@@ -110,10 +110,11 @@ export default function PortfolioTracker({
     }
   }, [walletAddress, chainId]);
   return (
-    <div className="w-full mx-auto">
-      <Card className="px-2 py-4 flex flex-col gap-2">
+    <div className="w-full mx-auto space-y-4">
+      <div className="bg-gray-800/50 border border-gray-700 rounded-xl overflow-hidden">
         <PortfolioChart walletAddress={walletAddress} chainId={chainId} />
-      </Card>
+      </div>
+      
       <div className="flex justify-end py-4 items-center space-x-2">
         <Switch
           id="hide-small-assets"
@@ -124,20 +125,27 @@ export default function PortfolioTracker({
               setShowSmallHoldings(false);
             }
           }}
+          className="data-[state=checked]:bg-blue-600"
         />
-        <Label htmlFor="hide-small-assets">Show Small Holdings</Label>
+        <Label htmlFor="hide-small-assets" className="text-gray-300">
+          Show Small Holdings
+        </Label>
       </div>
+      
       {!loading && (
-        <WalletAssetsTable
-          balances={balances!}
-          allTransactions={allTransactions}
-          walletAddress={walletAddress as string}
-          showSmallHoldings={showSmallHoldings}
-        />
+        <div className="bg-gray-800/50 border border-gray-700 rounded-xl overflow-hidden">
+          <WalletAssetsTable
+            balances={balances!}
+            allTransactions={allTransactions}
+            walletAddress={walletAddress as string}
+            showSmallHoldings={showSmallHoldings}
+          />
+        </div>
       )}
+      
       {loading && (
-        <div className="flex justify-center items-center h-12">
-          <p className="text-gray-500">Loading...</p>
+        <div className="flex justify-center items-center h-12 bg-gray-800/50 border border-gray-700 rounded-xl">
+          <p className="text-gray-400">Loading...</p>
         </div>
       )}
     </div>
