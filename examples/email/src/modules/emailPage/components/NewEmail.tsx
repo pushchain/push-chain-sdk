@@ -279,7 +279,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
   };
 
   return (
-    <div className="fixed bottom-5 right-5 z-10">
+    <Box position="fixed" className="fixed bottom-5 right-5 z-10">
       <Popover
         open={isOpen}
         onOpenChange={(open) => {
@@ -497,7 +497,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
           </Box>
         </PopoverContent>
       </Popover>
-    </div>
+    </Box>
   );
 };
 

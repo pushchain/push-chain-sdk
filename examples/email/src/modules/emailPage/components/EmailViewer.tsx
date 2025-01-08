@@ -32,21 +32,21 @@ const EmailViewer: React.FC<EmailViewerProps> = ({ onReply }) => {
       if (line.startsWith('On') && line.includes('wrote:')) {
         inQuote = true;
         formattedBody.push(
-          <div key={formattedBody.length} className="text-gray-500 mt-4">
+          <Box key={formattedBody.length} className="text-gray-500 mt-4">
             {line}
-          </div>
+          </Box>
         );
       } else if (inQuote) {
         formattedBody.push(
-          <div
+          <Box
             key={formattedBody.length}
             className="text-gray-500 border-l-4 border-gray-300 pl-2"
           >
             {line}
-          </div>
+          </Box>
         );
       } else {
-        formattedBody.push(<div key={formattedBody.length}>{line}</div>);
+        formattedBody.push(<Box key={formattedBody.length}>{line}</Box>);
       }
     }
 

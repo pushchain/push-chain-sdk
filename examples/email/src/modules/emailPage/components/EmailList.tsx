@@ -1,8 +1,6 @@
 import { useAppContext } from '@/context/AppContext';
 import { Box, Spinner } from 'shared-components';
 import { dummyEmail, EMAIL_BOX } from '@/common';
-
-import { ScrollArea } from '@/common/components';
 import EmailCard from '@/components/EmailCard';
 import { FC } from 'react';
 
@@ -30,7 +28,7 @@ const EmailList: FC<EmailListProps> = ({ type }) => {
   const filteredEmails = filterEmails(emails[type], searchInput);
 
   return (
-    <ScrollArea className="h-full w-full">
+    <Box height="100%" width="100%" overflow="scroll">
       <Box display="flex" flexDirection="column">
         {type === EMAIL_BOX.INBOX && <EmailCard {...dummyEmail} />}
         {filteredEmails.map((email, index) => (
@@ -42,7 +40,7 @@ const EmailList: FC<EmailListProps> = ({ type }) => {
           </Box>
         )}
       </Box>
-    </ScrollArea>
+    </Box>
   );
 };
 
