@@ -41,7 +41,7 @@ Thumbs.db
 .nx/cache
 .nx/workspace-data
 
-.yarn/*
+**/.yarn/*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases

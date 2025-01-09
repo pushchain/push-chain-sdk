@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:dev": "npm run build && echo 'dca.push.org' > ./dist/CNAME && gh-pages -d dist -r https://github.com/push-protocol/dca-dev-deployment"
   },
   "dependencies": {
     "@covalenthq/client-sdk": "^2.2.1",
@@ -20,12 +21,14 @@
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-switch": "^1.1.1",
     "@radix-ui/react-tabs": "^1.1.1",
+    "@solana/web3.js": "^1.98.0",
     "@tanstack/react-query": "^5.61.3",
     "alchemy-sdk": "^3.5.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "ethers": "^6.13.4",
+    "gh-pages": "^6.3.0",
     "lucide-react": "^0.461.0",
     "protobufjs": "^7.4.0",
     "react": "^18.3.1",
@@ -36,11 +39,12 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "viem": "^2.21.51",
-    "vite-plugin-node-polyfills": "^0.22.0",
+    "vite-plugin-node-polyfills": "^0.17.0",
     "wagmi": "^2.13.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
+    "@types/gh-pages": "^6",
     "@types/node": "^22.10.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
