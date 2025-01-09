@@ -23,8 +23,8 @@ describe.skip('validator smoke test', () => {
       INIT_DID_TX_2.masterPrivateKey as `0x${string}`
     );
     const universalSigner: UniversalSigner = {
-      chain: CONSTANTS.Chain.Push.devnet.name,
-      chainId: CONSTANTS.Chain.Push.devnet.chainId,
+      chain: CONSTANTS.CHAIN.PUSH,
+      chainId: CONSTANTS.CHAIN_ID.PUSH.DEVNET,
       account: account.address,
       signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
         const signature = await account.signMessage({
@@ -43,25 +43,27 @@ describe.skip('validator smoke test', () => {
 
     const recipients: UniversalAccount[] = [
       {
-        chain: CONSTANTS.Chain.EVM.sepolia.name,
-        chainId: CONSTANTS.Chain.EVM.sepolia.chainId,
+        chain: CONSTANTS.CHAIN.ETHEREUM,
+        chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
         account: recipientAddresses[0],
       },
       {
-        chain: CONSTANTS.Chain.EVM.mainnet.name,
-        chainId: CONSTANTS.Chain.EVM.mainnet.chainId,
+        chain: CONSTANTS.CHAIN.ETHEREUM,
+        chainId: CONSTANTS.CHAIN_ID.ETHEREUM.MAINNET,
         account: recipientAddresses[1],
       },
       {
-        chain: CONSTANTS.Chain.EVM.sepolia.name,
-        chainId: CONSTANTS.Chain.EVM.sepolia.chainId,
+        chain: CONSTANTS.CHAIN.ETHEREUM,
+        chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
         account: recipientAddresses[2],
       },
     ];
 
     const res = await txInstance.send(recipients, {
       category: 'INIT_DID',
-      data: INIT_DID_TX_2.unsignedInitDIDTx.data,
+      data: Buffer.from(INIT_DID_TX_2.unsignedInitDIDTx.data).toString(
+        'base64'
+      ),
     });
     expect(typeof res).toEqual('object');
     expect(res).toHaveProperty('txHash');
@@ -84,7 +86,7 @@ describe.skip('validator smoke test', () => {
   //   const pk = generatePrivateKey();
   //   const account = privateKeyToAccount(pk);
   //   const signer = {
-  //     account: Address.toPushCAIP(account.address, PushChainEnvironment.devnet),
+  //     account: Address.toPushCAIP(account.address, ENV.DEVNET),
   //     signMessage: async (data: Uint8Array) => {
   //       const signature = await account.signMessage({
   //         message: { raw: data },
