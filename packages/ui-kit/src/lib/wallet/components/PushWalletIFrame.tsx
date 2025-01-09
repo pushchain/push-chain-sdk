@@ -1,15 +1,8 @@
-import { FC } from 'react';
+import React, { FC } from 'react';
 import { usePushWalletContext } from './PushWalletProvider';
-import {
-  Box,
-  Cross,
-  css,
-  Dash,
-  deviceMediaQ,
-  Spinner,
-  Text,
-} from 'shared-components';
 import config from '../../config';
+import styled from 'styled-components';
+import { CrossIcon, DashIcon, Spinner } from '../../common';
 
 const PushWalletIFrame: FC = () => {
   const {
@@ -27,115 +20,51 @@ const PushWalletIFrame: FC = () => {
   return (
     <>
       {isWalletVisible ? (
-        <Box
-          position="fixed"
-          width={{
-            initial: isWalletMinimised ? '0px' : account ? '450px' : '100%',
-            ml: isWalletMinimised ? '0px' : account ? '96%' : '100%',
-          }}
-          height={isWalletMinimised ? '0px' : account ? '710px' : '100%'}
-          display="flex"
-          flexDirection="column"
-          css={css`
-            right: ${account ? '24px' : '0'};
-            top: ${account ? '24px' : '0'};
-            z-index: 99;
-            background-color: #17181b;
-            border-radius: 10px;
-
-            @media (${deviceMediaQ.mobileL}) {
-              right: ${account ? '2%' : '0'};
-              top: ${account ? '8%' : '0'};
-            }
-          `}
+        <FrameContainer
+          isWalletMinimised={isWalletMinimised}
+          account={account}
         >
           {isIframeLoading && (
-            <Box
-              width="-webkit-fill-available"
-              height="-webkit-fill-available"
-              flexDirection="column"
-              display="flex"
-              padding="spacing-xxs spacing-xxs"
-              css={css`
-                background-color: #17181b;
-              `}
-            >
-              <Box
-                display="flex"
-                alignItems="center"
-                justifyContent="flex-end"
-                cursor="pointer"
-                padding="spacing-none spacing-sm"
+            <FrameLoadingContainer>
+              <CloseButtonContainer
                 onClick={() => {
                   handleUserLogOutEvent();
                 }}
               >
-                <Cross size={20} color="icon-secondary" />
-              </Box>
-              <Box
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                gap="spacing-sm"
-                width="-webkit-fill-available"
-                height="-webkit-fill-available"
-              >
-                <Text variant="bl-semibold" color="text-primary-inverse">
+                <CrossIcon />
+              </CloseButtonContainer>
+              <LoadingTextContainer>
+                <LoadingText>
                   Loading...
-                </Text>
-                <Spinner size="medium" variant="primary" />
-              </Box>
-            </Box>
+                </LoadingText>
+                <Spinner />
+              </LoadingTextContainer>
+            </FrameLoadingContainer>
           )}
-          <Box
-            display={isWalletMinimised || isIframeLoading ? 'none' : 'flex'}
-            width="-webkit-fill-available"
-            height="-webkit-fill-available"
-            flexDirection="column"
+
+          <FrameSubContainer
+            isWalletMinimised={isWalletMinimised}
+            isIframeLoading={isIframeLoading}
           >
-            <Box
-              width="-webkit-fill-available"
-              display="flex"
-              alignItems="center"
-              justifyContent="flex-end"
-              padding="spacing-xxs spacing-xxs"
-              css={css`
-                border-top-right-radius: ${account ? '10px' : '0px'};
-                border-top-left-radius: ${account ? '10px' : '0px'};
-                background-color: ${account ? '#e3e3e3' : '#17181B'};
-              `}
+            <AccountContainer
+              account={account}
             >
               {account ? (
-                <Box
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  cursor="pointer"
+                <DashButtonContainer
                   onClick={() => setMinimiseWallet(true)}
-                  borderRadius="radius-round"
-                  height="14px"
-                  width="14px"
-                  css={css`
-                    background-color: #ffbb16;
-                  `}
                 >
-                  <Dash color="icon-primary" size={12} />
-                </Box>
+                  <DashIcon />
+                </DashButtonContainer>
               ) : (
-                <Box
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="flex-end"
-                  cursor="pointer"
-                  padding="spacing-none spacing-sm"
+                <CloseButtonContainer
                   onClick={() => {
                     handleUserLogOutEvent();
                   }}
                 >
-                  <Cross size={20} color="icon-secondary" />
-                </Box>
+                  <CrossIcon />
+                </CloseButtonContainer>
               )}
-            </Box>
+            </AccountContainer>
             <iframe
               src={`${config.WALLET_URL[env]}/auth?app=${window.location.origin}`}
               allow="publickey-credentials-create; publickey-credentials-get"
@@ -143,17 +72,107 @@ const PushWalletIFrame: FC = () => {
               style={{
                 border: 'none',
                 width: '-webkit-fill-available',
-                height: '-webkit-fill-available',
+                height: '100vh',
                 borderBottomRightRadius: account ? '10px' : '0px',
                 borderBottomLeftRadius: account ? '10px' : '0px',
               }}
               onLoad={() => setIframeLoading(false)}
             />
-          </Box>
-        </Box>
+          </FrameSubContainer>
+        </FrameContainer>
       ) : null}
+
     </>
+
   );
 };
 
 export { PushWalletIFrame };
+
+const FrameContainer = styled.div`
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  background-color: #17181b;
+  border-radius: 10px;
+  z-index: 99;
+
+  width:${({ account, isWalletMinimised }) => isWalletMinimised ? '0px' : account ? '450px' : '100%'};
+  height:${({ account, isWalletMinimised }) => isWalletMinimised ? '0px' : account ? '710px' : '100%'};
+  right:${({ account }) => account ? '24px' : '0'};
+  top:${({ account }) => account ? '24px' : '0'};
+
+  @media (max-width:425px){
+    width:${({ account, isWalletMinimised }) => isWalletMinimised ? '0px' : account ? '96%' : '100%'};
+    right:${({ account }) => account ? '2%' : '0'};
+    top:${({ account }) => account ? '8%' : '0'};
+  }
+`
+
+const CloseButtonContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  cursor: pointer;
+  padding: 0 16px;
+`
+
+const DashButtonContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius:1000px;
+  height:14px;
+  width:14px;
+  background-color:#ffbb16;
+
+`
+
+const LoadingTextContainer = styled.div`
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:16px;
+  width:-webkit-fill-available;
+  height:-webkit-fill-available;
+`
+
+const LoadingText = styled.p`
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 27px;
+  color: rgba(255, 255, 255, 1);
+  font-family: FK Grotesk Neu;
+  margin: 0px;
+  width: auto;
+`
+
+const FrameLoadingContainer = styled.div`
+  height:-webkit-fill-available;
+  width:-webkit-fill-available;
+  flex-direction:column;
+  display:flex;
+  padding:8px;
+  background-color:#17181b;
+`
+
+const FrameSubContainer = styled.div`
+  display: ${({ isWalletMinimised, isIframeLoading }) =>
+    isWalletMinimised || isIframeLoading ? 'none' : 'flex'};
+  width: -webkit-fill-available;
+  height: -webkit-fill-available;
+  flex-direction: column;
+`
+
+const AccountContainer = styled.div`
+ width: -webkit-fill-available;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: var(--spacing-xxs) var(--spacing-xxs);
+  border-top-right-radius:${({ account }) => account ? '10px' : '0px'};
+  border-top-left-radius:${({ account }) => account ? '10px' : '0px'};
+  background-color:${({ account }) => account ? '#e3e3e3' : '#17181B'};
+
+`

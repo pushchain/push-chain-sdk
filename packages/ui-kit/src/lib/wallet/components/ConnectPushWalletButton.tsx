@@ -1,7 +1,8 @@
 import { FC } from 'react';
 import { usePushWalletContext } from './PushWalletProvider';
 import { walletConnectionButtonStatusMapper } from '../wallet.constants';
-import { Button } from 'shared-components';
+import styled from 'styled-components'
+import { Spinner } from '../../common';
 
 export type ConnectPushWalletButtonProps = {
   showLogOutButton?: boolean;
@@ -30,16 +31,44 @@ const ConnectPushWalletButton: FC<ConnectPushWalletButtonProps> = () => {
 
   return (
     <>
-      <Button
-        block
+      <ConnectButton
         onClick={handleConnectWalletButton}
-        disabled={isConnectButtonDisbaled}
-        loading={isLoading}
+        disabled={isConnectButtonDisbaled || isLoading}
       >
         {walletConnectionButtonStatusMapper[connectionStatus]}
-      </Button>
+        {isLoading && (<SpinnerContainer><Spinner /></SpinnerContainer>)}
+      </ConnectButton>
     </>
   );
 };
 
 export { ConnectPushWalletButton };
+
+const ConnectButton = styled.button`
+    align-items: center;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    white-space: nowrap;
+    flex-shrink: 0;
+    border: none;
+    background-color: #D548EC;
+    color: rgba(255,255,255,1);
+    border-radius: 12px;
+    gap: 4px;
+    height: 48px;
+    padding: 16px 24px;
+    min-width: 100px;
+    leading-trim: both;
+    text-edge: cap;
+    font-family:FK Grotesk Neu;
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: 16px;
+    width:inherit;
+
+`
+const SpinnerContainer = styled.div`
+  padding:5px;
+`
