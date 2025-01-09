@@ -1,7 +1,7 @@
 import { Block, PushChain } from '../../src';
 import { config } from '../config';
 import { Block as BlockType } from '../../src/lib/generated/block';
-import { SimplifiedBlockType as SimplifiedNodeBlockType } from '../../src/lib/block/block.types';
+import { BlockType as SimplifiedNodeBlockType } from '../../src/lib/block/block.types';
 
 describe('Block Class', () => {
   const env = config.ENV;

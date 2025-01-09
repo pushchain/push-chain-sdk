@@ -1,13 +1,19 @@
-import { SimplifiedTxResponse, TxResponse } from '../tx/tx.types';
+import { TxResponse, CompleteTxResponse } from '../tx/tx.types';
 
-export type BlockType = {
+export type CompleteBlockType = {
   blockHash: string;
   blockData: string;
   blockDataAsJson: any;
   blockSize: number;
   ts: number;
-  transactions: TxResponse[];
+  transactions: CompleteTxResponse[];
   totalNumberOfTxns: number;
+};
+
+export type CompleteBlockResponse = {
+  blocks: CompleteBlockType[];
+  lastTs: number;
+  totalPages: number;
 };
 
 export type BlockResponse = {
@@ -16,15 +22,9 @@ export type BlockResponse = {
   totalPages: number;
 };
 
-export type SimplifiedBlockResponse = {
-  blocks: SimplifiedBlockType[];
-  lastTs: number;
-  totalPages: number;
-};
-
-export type SimplifiedBlockType = {
+export type BlockType = {
   blockHash: string;
   ts: number;
-  transactions: SimplifiedTxResponse[];
+  transactions: TxResponse[];
   totalNumberOfTxns: number;
 };

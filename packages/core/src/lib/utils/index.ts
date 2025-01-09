@@ -1,17 +1,17 @@
 import { Address } from '../address/address';
-import { Block as GeneratedBlock } from '../generated/block';
 import {
   BlockResponse,
   BlockType,
-  SimplifiedBlockResponse,
-  SimplifiedBlockType,
+  CompleteBlockResponse,
+  CompleteBlockType,
 } from '../block/block.types';
-import { Chain, EvmChainId, PushChainId, SolanaChainId } from '../constants';
+import { CHAIN } from '../constants';
+import { Block as GeneratedBlock } from '../generated/block';
 import { Transaction } from '../generated/tx';
 import { InitDid } from '../generated/txData/init_did';
 import { InitSessionKey } from '../generated/txData/init_session_key';
 import { UniversalAccount } from '../signer/signer.types';
-import { SimplifiedTxResponse, TxCategory, TxResponse } from '../tx/tx.types';
+import { CompleteTxResponse, TxCategory, TxResponse } from '../tx/tx.types';
 
 export const getRandomElement = <T>(array: T[]): T => {
   if (array.length === 0) {
@@ -22,18 +22,18 @@ export const getRandomElement = <T>(array: T[]): T => {
 };
 
 export function toSimplifiedBlockResponse(
-  blockResponse: BlockResponse
-): SimplifiedBlockResponse {
+  blockResponse: CompleteBlockResponse
+): BlockResponse {
   return {
     totalPages: blockResponse.totalPages,
     lastTs: blockResponse.lastTs,
     blocks: blockResponse.blocks.map(
-      (b: BlockType): SimplifiedBlockType => ({
+      (b: CompleteBlockType): BlockType => ({
         blockHash: b.blockHash,
         ts: b.ts,
         totalNumberOfTxns: b.totalNumberOfTxns,
         transactions: b.transactions.map(
-          (t: TxResponse): SimplifiedTxResponse => ({
+          (t: CompleteTxResponse): TxResponse => ({
             txnHash: t.txnHash,
             ts: t.ts,
             blockHash: t.blockHash,
@@ -41,7 +41,9 @@ export function toSimplifiedBlockResponse(
             status: t.status,
             from: t.from,
             recipients: t.recipients,
-            txnData: t.txnData,
+            txnData: new TextDecoder().decode(
+              new Uint8Array(Buffer.from(t.txnData as unknown as string, 'hex'))
+            ),
             sig: t.sig,
           })
         ),
@@ -95,56 +97,39 @@ export class Utils {
    */
   private static toUniversal(chainAgnosticAddress: string): UniversalAccount {
     const [chain, chainId, address] = chainAgnosticAddress.split(':');
-
-    switch (chain) {
-      case 'eip155':
-        if (!Object.values(EvmChainId).includes(chainId as EvmChainId)) {
-          throw new Error(`Invalid chainId "${chainId}" for EVM chain`);
-        }
-        return {
-          chain: Chain.Evm,
-          chainId: chainId as EvmChainId,
-          account: address,
-        };
-
-      case 'solana':
-        if (!Object.values(SolanaChainId).includes(chainId as SolanaChainId)) {
-          throw new Error(`Invalid chainId "${chainId}" for Solana chain`);
-        }
-        return {
-          chain: Chain.Solana,
-          chainId: chainId as SolanaChainId,
-          account: address,
-        };
-
-      case 'push':
-        if (!Object.values(PushChainId).includes(chainId as PushChainId)) {
-          throw new Error(`Invalid chainId "${chainId}" for Push chain`);
-        }
-        return {
-          chain: Chain.Push,
-          chainId: chainId as PushChainId,
-          account: address,
-        };
-
-      default:
-        throw new Error('Invalid Chain');
-    }
+    return {
+      chain: chain,
+      chainId: chainId,
+      account: address,
+    };
   }
 
   private static toChainAgnostic(universalAccount: UniversalAccount): string {
     let chain = '';
     let address = universalAccount.account;
 
-    if (universalAccount.chain === Chain.Evm) {
+    if (
+      universalAccount.chain.toLocaleLowerCase() ===
+      CHAIN.ETHEREUM.toLocaleLowerCase()
+    ) {
       chain = 'eip155';
-    } else if (universalAccount.chain === Chain.Solana) chain = 'solana';
-    else if (universalAccount.chain === Chain.Push) {
+    } else if (
+      universalAccount.chain.toLocaleLowerCase() ===
+      CHAIN.SOLANA.toLocaleLowerCase()
+    )
+      chain = 'solana';
+    else if (
+      universalAccount.chain.toLocaleLowerCase() ===
+      CHAIN.PUSH.toLocaleLowerCase()
+    ) {
       address = universalAccount.account.startsWith('push')
         ? universalAccount.account
         : Address.evmToPush(universalAccount.account as `0x${string}`);
       chain = 'push';
-    } else throw new Error('Invalid chain');
+    } else {
+      chain = universalAccount.chain.toLocaleLowerCase();
+      console.log('Chain not in constants');
+    }
 
     return `${chain}:${universalAccount.chainId}:${address}`;
   }

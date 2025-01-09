@@ -2,7 +2,7 @@ import axios from 'axios';
 import { URL } from 'url';
 import { createPublicClient, getContract, http } from 'viem';
 import config from '../config';
-import { PushChainEnvironment } from '../constants';
+import { ENV } from '../constants';
 import { getRandomElement } from '../utils';
 import {
   ActiveValidator,
@@ -37,23 +37,21 @@ export class Validator {
      * @dev - active validator URL (Used for Get calls to a validator node)
      */
     private activeValidatorURL: string,
-    private env: PushChainEnvironment,
+    private env: ENV,
     private validatorContractClient: ValidatorContract
   ) {
     if (
-      this.env === PushChainEnvironment.devnet ||
-      this.env === PushChainEnvironment.testnet ||
-      this.env === PushChainEnvironment.local
+      this.env === ENV.DEVNET ||
+      this.env === ENV.TESTNET ||
+      this.env === ENV.LOCAL
     ) {
       Validator.printTraces = true;
     }
   }
 
-  static initalize = async (options?: {
-    env?: PushChainEnvironment;
-  }): Promise<Validator> => {
+  static initalize = async (options?: { env?: ENV }): Promise<Validator> => {
     const settings = {
-      env: options?.env || PushChainEnvironment.devnet,
+      env: options?.env || ENV.DEVNET,
     };
 
     /**
@@ -82,7 +80,7 @@ export class Validator {
    * @returns Validator contract client
    */
   private static createValidatorContractClient = (
-    env: PushChainEnvironment
+    env: ENV
   ): ValidatorContract => {
     const client = createPublicClient({
       chain: config.VALIDATOR[env].NETWORK,
@@ -202,10 +200,10 @@ export class Validator {
       fnName === 'push_getTransactionsBySender' ||
       fnName === 'push_getTransactionsByRecipient'
     ) {
-      if (this.env === PushChainEnvironment.local) {
+      if (this.env === ENV.LOCAL) {
         modifiedUrl = 'http://localhost:5001/rpc';
       }
-      if (this.env === PushChainEnvironment.devnet) {
+      if (this.env === ENV.DEVNET) {
         modifiedUrl = 'https://aa1.dev.push.org/rpc';
       }
       modifiedFnName = `RpcService.${fnName.replace('push_', '')}`;

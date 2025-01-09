@@ -14,7 +14,7 @@ import {
   UniversalAccount,
   UniversalSigner,
 } from '../../src/lib/signer/signer.types';
-import { SimplifiedTxResponse, TxCategory } from '../../src/lib/tx/tx.types';
+import { TxResponse, TxCategory } from '../../src/lib/tx/tx.types';
 import { config } from '../config';
 import { INIT_DID_TX_2 } from '../data';
 
@@ -42,7 +42,7 @@ const mockInitDidTxData: InitDid = {
 
 describe('Tx', () => {
   const env = config.ENV;
-  const txChecker = (tx: SimplifiedTxResponse) => {
+  const txChecker = (tx: TxResponse) => {
     expect(tx).toHaveProperty('txnHash');
     expect(tx).toHaveProperty('ts');
     expect(tx).toHaveProperty('blockHash');
@@ -104,8 +104,8 @@ describe('Tx', () => {
     const res = await txInstance.get(
       {
         account: '0x35B84d6848D16415177c64D64504663b998A6ab4',
-        chainId: CONSTANTS.Chain.EVM.mainnet.chainId,
-        chain: CONSTANTS.Chain.EVM.mainnet.name,
+        chain: CONSTANTS.CHAIN.ETHEREUM,
+        chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
       },
       {
         order: Order.DESC,
@@ -176,8 +176,8 @@ describe('Tx', () => {
       INIT_DID_TX_2.masterPrivateKey as `0x${string}`
     );
     const universalSigner: UniversalSigner = {
-      chain: CONSTANTS.Chain.Push.devnet.name,
-      chainId: CONSTANTS.Chain.Push.devnet.chainId,
+      chain: CONSTANTS.CHAIN.PUSH,
+      chainId: CONSTANTS.CHAIN_ID.PUSH.DEVNET,
       account: account.address,
       signMessage: async (data: Uint8Array) => {
         const signature = await account.signMessage({
@@ -190,7 +190,9 @@ describe('Tx', () => {
     const txInstance = await Tx.initialize(env, signer);
     const res = await txInstance.send([], {
       category: INIT_DID_TX_2.unsignedInitDIDTx.category,
-      data: INIT_DID_TX_2.unsignedInitDIDTx.data,
+      data: Buffer.from(INIT_DID_TX_2.unsignedInitDIDTx.data).toString(
+        'base64'
+      ),
     });
     expect(typeof res.txHash).toEqual('string');
   });
@@ -204,8 +206,8 @@ describe('Tx', () => {
 
     // Account is correct but signer is different
     const universalSigner: UniversalSigner = {
-      chain: CONSTANTS.Chain.Push.devnet.name,
-      chainId: CONSTANTS.Chain.Push.devnet.chainId,
+      chain: CONSTANTS.CHAIN.PUSH,
+      chainId: CONSTANTS.CHAIN_ID.PUSH.DEVNET,
       account: account.address,
       signMessage: async (data: Uint8Array) => {
         const signature = await randomAccount.signMessage({
@@ -219,7 +221,9 @@ describe('Tx', () => {
     await expect(
       txInstance.send([], {
         category: INIT_DID_TX_2.unsignedInitDIDTx.category,
-        data: INIT_DID_TX_2.unsignedInitDIDTx.data,
+        data: Buffer.from(INIT_DID_TX_2.unsignedInitDIDTx.data).toString(
+          'base64'
+        ),
       })
     ).rejects.toThrow();
   });
@@ -233,8 +237,8 @@ describe('Tx', () => {
 
     // Signer is correct but the account is different
     const universalSigner: UniversalSigner = {
-      chain: CONSTANTS.Chain.Push.devnet.name,
-      chainId: CONSTANTS.Chain.Push.devnet.chainId,
+      chain: CONSTANTS.CHAIN.PUSH,
+      chainId: CONSTANTS.CHAIN_ID.PUSH.DEVNET,
       account: randomAccount.address,
       signMessage: async (data: Uint8Array) => {
         const signature = await account.signMessage({
@@ -248,7 +252,9 @@ describe('Tx', () => {
     await expect(
       txInstance.send([], {
         category: INIT_DID_TX_2.unsignedInitDIDTx.category,
-        data: INIT_DID_TX_2.unsignedInitDIDTx.data,
+        data: Buffer.from(INIT_DID_TX_2.unsignedInitDIDTx.data).toString(
+          'base64'
+        ),
       })
     ).rejects.toThrow();
   });
@@ -257,10 +263,9 @@ describe('Tx', () => {
     const account = privateKeyToAccount(
       INIT_DID_TX_2.masterPrivateKey as `0x${string}`
     );
-    // Vitalik
     const universalSigner: UniversalSigner = {
-      chain: CONSTANTS.Chain.Push.devnet.name,
-      chainId: CONSTANTS.Chain.Push.devnet.chainId,
+      chain: CONSTANTS.CHAIN.ETHEREUM,
+      chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
       account: account.address,
       signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
         const signature = await account.signMessage({
@@ -279,25 +284,26 @@ describe('Tx', () => {
 
     const recipients: UniversalAccount[] = [
       {
-        chain: CONSTANTS.Chain.EVM.sepolia.name,
-        chainId: CONSTANTS.Chain.EVM.sepolia.chainId,
+        chain: CONSTANTS.CHAIN.ETHEREUM,
+        chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
         account: recipientAddresses[0],
       },
       {
-        chain: CONSTANTS.Chain.EVM.mainnet.name,
-        chainId: CONSTANTS.Chain.EVM.mainnet.chainId,
+        chain: CONSTANTS.CHAIN.ETHEREUM,
+        chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
         account: recipientAddresses[1],
       },
       {
-        chain: CONSTANTS.Chain.EVM.sepolia.name,
-        chainId: CONSTANTS.Chain.EVM.sepolia.chainId,
+        chain: CONSTANTS.CHAIN.ETHEREUM,
+        chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
         account: recipientAddresses[2],
       },
     ];
 
     const res = await txInstance.send(recipients, {
       category: 'CUSTOM:CORE_SDK',
-      data: new Uint8Array([1, 2, 3, 4, 5]),
+      // data: new Uint8Array([1, 2, 3, 4, 5]),
+      data: JSON.stringify({ hi: 1 }),
     });
 
     expect(typeof res.txHash).toEqual('string');
@@ -309,8 +315,8 @@ describe('Tx', () => {
 
     // Sign message function is wrong
     const universalSigner: UniversalSigner = {
-      chain: CONSTANTS.Chain.Push.devnet.name,
-      chainId: CONSTANTS.Chain.Push.devnet.chainId,
+      chain: CONSTANTS.CHAIN.ETHEREUM,
+      chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
       account: account.address,
       signMessage: async (data: Uint8Array) => {
         const signature = '0x00';
@@ -329,18 +335,18 @@ describe('Tx', () => {
 
     const recipients: UniversalAccount[] = [
       {
-        chain: CONSTANTS.Chain.EVM.sepolia.name,
-        chainId: CONSTANTS.Chain.EVM.sepolia.chainId,
+        chain: CONSTANTS.CHAIN.ETHEREUM,
+        chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
         account: recipientAddresses[0],
       },
       {
-        chain: CONSTANTS.Chain.EVM.mainnet.name,
-        chainId: CONSTANTS.Chain.EVM.mainnet.chainId,
+        chain: CONSTANTS.CHAIN.ETHEREUM,
+        chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
         account: recipientAddresses[1],
       },
       {
-        chain: CONSTANTS.Chain.EVM.sepolia.name,
-        chainId: CONSTANTS.Chain.EVM.sepolia.chainId,
+        chain: CONSTANTS.CHAIN.ETHEREUM,
+        chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
         account: recipientAddresses[2],
       },
     ];
@@ -348,7 +354,7 @@ describe('Tx', () => {
     await expect(
       txInstance.send(recipients, {
         category: 'CUSTOM:CORE_SDK',
-        data: new Uint8Array([1, 2, 3, 4, 5]),
+        data: JSON.stringify({ key: new Uint8Array([1, 2, 3, 4, 5]) }),
       })
     ).rejects.toThrow();
   });
@@ -407,7 +413,7 @@ describe('Tx', () => {
   });
 
   it('should verify a tx sign by push address', async () => {
-    // signed by `push:devnet:pushconsumer1ulpxwud78ctaar5zgeuhmju5k8gpz8najcvxkn`
+    // signed by `push:DEVNET:pushconsumer1ulpxwud78ctaar5zgeuhmju5k8gpz8najcvxkn`
     const sentTx =
       '1210435553544f4d3a505553485f4d41494c1a3f707573683a6465766e65743a70757368636f6e73756d657231756c707877756437386374616172357a676575686d6a75356b3867707a386e616a6376786b6e2a200a047465737412060a047465737422100a085072696f72697479120448696768321083f01bffe4ff45f6acb525a54dc7277e3a9f0f56543165794a756232526c6379493657337369626d396b5a556c6b496a6f694d4867345a5445795a4555784d6b4d7a4e575642516d597a4e5749314e6d49774e4555314d304d30525451324f4755304e6a63794e3055344969776964484e4e6157787361584d694f6a45334d6a6b324e7a45324d4441774e7a4173496e4a68626d52766255686c65434936496d45324d6a41324f5459314e7a51314d4445324e4449794e47526a4d444e6b4f545a6c5a5467774d4459304f54686b4d7a45304d6a45694c434a776157356e556d567a645778306379493657337369626d396b5a556c6b496a6f694d48686d524546465957593359575a44526d4a694e4755305a44453252454d324e6d4a454d6a417a4f575a6b4e6a41774e454e47593255344969776964484e4e6157787361584d694f6a45334d6a6b324e7a45314e7a41774f446773496e4e3059585231637949364d58307365794a756232526c535751694f69497765446b34526a6c454f5445775157566d4f55497a516a6c424e4455784d7a64685a6a4644515463324e7a566c52446b775954557a4e5455694c434a306330317062477870637949364d5463794f5459334d5455334d4441324e437769633352686448567a496a6f7866563073496e4e705a323568644856795a534936496a42345a57566d4f445a694d5759314d4759324f574d794e4445314f57457a5a4449794f474d795a6a4e6c4d324579597a417a4d4749784f5449785a544a6a4e6a426b5a6a5179595745334f5467775a6a4d355a4463354e6a517a4d32566a4e324e6a4e6d49344e57497a597a64684d6a51345a6d4d7a4e7a426b5a6a67784e6a646a4e4463774f5468694d7a517a4e4751324e4745784d6d5530596a526b595745355a4749344e6a55334f44677859794a394c487369626d396b5a556c6b496a6f694d48686d524546465957593359575a44526d4a694e4755305a44453252454d324e6d4a454d6a417a4f575a6b4e6a41774e454e47593255344969776964484e4e6157787361584d694f6a45334d6a6b324e7a45324d4441774e546373496e4a68626d52766255686c65434936496a6b794d5455334d5468684e324d7a4e6d49304d6d5a6d4e325530593259334e325977593256684e6d49344e7a526b4e6a49355a6d55694c434a776157356e556d567a645778306379493657337369626d396b5a556c6b496a6f694d4867345a5445795a4555784d6b4d7a4e575642516d597a4e5749314e6d49774e4555314d304d30525451324f4755304e6a63794e3055344969776964484e4e6157787361584d694f6a45334d6a6b324e7a45314e7a41774e6a4d73496e4e3059585231637949364d58307365794a756232526c535751694f69497765446b34526a6c454f5445775157566d4f55497a516a6c424e4455784d7a64685a6a4644515463324e7a566c52446b775954557a4e5455694c434a306330317062477870637949364d5463794f5459334d5455334d4441304e437769633352686448567a496a6f7866563073496e4e705a323568644856795a534936496a42344e545a6a4e7a466b5a44426c4d4751315a47466d4d54557a5a44686d596a686b596a646b4f5459325a6a4d355a44466c4f4467334f445a6a4e6a4178596d49794d446b785a44497759574a6c4f5755324d3246695a54426a5a44413359324a6a4e6d46694e57466a4e6d4d7a596d5a6a4d445534596a566a59324a6a4e6a67784e7a5977597a566b4d4749324e544e684f4442684d6a55304d54497a4e4746694f5751325a54517a597a557859794a394c487369626d396b5a556c6b496a6f694d4867354f45593552446b784d45466c5a6a6c434d304935515451314d544d3359575978513045334e6a63315a5551354d4745314d7a55314969776964484e4e6157787361584d694f6a45334d6a6b324e7a45324d4441774f446773496e4a68626d52766255686c65434936496a45314f474d31597a41325a4459334e5751304d44417a4e546b774f4445774e6a686a597a5130596a457a4d444e6c4d54566c4e6d51694c434a776157356e556d567a645778306379493657337369626d396b5a556c6b496a6f694d4867345a5445795a4555784d6b4d7a4e575642516d597a4e5749314e6d49774e4555314d304d30525451324f4755304e6a63794e3055344969776964484e4e6157787361584d694f6a45334d6a6b324e7a45314e7a41774e7a4173496e4e3059585231637949364d58307365794a756232526c535751694f69497765475a45515556685a6a64685a6b4e47596d49305a54526b4d545a45517a5932596b51794d444d355a6d51324d44413051305a6a5a5467694c434a306330317062477870637949364d5463794f5459334d5455334d4441314d797769633352686448567a496a6f7866563073496e4e705a323568644856795a534936496a42344e4455324d47526a4d5459774d7a5132597a457a4e54526a4f444d344f54686a4e7a63314d324a6a4d546378595459794d4455775a546379597a466a4d5456684f5455784d6a63785a6a56694d444d78596a426c597a5133596d59324e325a684e6a5577596a426c4d7a4a68596a4d774d6d5535597a6b344d546b775a444a6a597a55795a474a6b4e44566d5a4445324d3245335954646c4f574e6d596a6c6a59546b354d7a63345a47517859794a395858303d424129e393b87724b2d2b677d94a6b574f811b053b4033c3a81cac80f1f19cc9f1f723b0901d1327d2418c33a6b8647f80ee850f8c2ee477caaafb34e28c45ee13c01b4a0130';
 

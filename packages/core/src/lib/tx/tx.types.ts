@@ -4,7 +4,7 @@ export enum TxCategory {
   INIT_SESSION_KEY = 'INIT_SESSION_KEY',
 }
 
-export type TxResponse = {
+export type CompleteTxResponse = {
   txnHash: string;
   ts: number;
   /**@dev - Null In case of rejected Tx */
@@ -19,7 +19,7 @@ export type TxResponse = {
   sig: string;
 };
 
-export type SimplifiedTxResponse = {
+export type TxResponse = {
   txnHash: string;
   ts: number;
   /**@dev - Null In case of rejected Tx */

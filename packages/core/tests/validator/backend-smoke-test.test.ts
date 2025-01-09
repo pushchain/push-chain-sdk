@@ -24,8 +24,8 @@
 //     account: recipientAddresses[0],
 //   },
 //   {
-//     chain: CONSTANTS.Chain.EVM.mainnet.name,
-//     chainId: CONSTANTS.Chain.EVM.mainnet.chainId,
+//     chain: CONSTANTS.Chain.EVM.MAINNET.name,
+//     chainId: CONSTANTS.Chain.EVM.MAINNET.chainId,
 //     account: recipientAddresses[1],
 //   },
 //   {
@@ -54,8 +54,8 @@
 //     const senderPrivateKey = generatePrivateKey();
 //     const account = privateKeyToAccount(senderPrivateKey);
 //     const universalSigner: UniversalSigner = {
-//       chain: CONSTANTS.Chain.Push.devnet.name,
-//       chainId: CONSTANTS.Chain.Push.devnet.chainId,
+//       chain: CONSTANTS.Chain.Push.DEVNET.name,
+//       chainId: CONSTANTS.Chain.Push.DEVNET.chainId,
 //       account: account.address,
 //       signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
 //         const signature = await account.signMessage({

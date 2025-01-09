@@ -2,11 +2,10 @@ import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
 import { parse, v4 as uuidv4 } from 'uuid';
 import { toHex } from 'viem';
-import { BlockResponse, SimplifiedBlockResponse } from '../block/block.types';
-import { Order, PushChainEnvironment } from '../constants';
+import { BlockResponse, CompleteBlockResponse } from '../block/block.types';
+import { Order, ENV } from '../constants';
 import { Transaction } from '../generated/tx';
 import { InitDid } from '../generated/txData/init_did';
-import { InitSessionKey } from '../generated/txData/init_session_key';
 import { PushChain } from '../pushChain';
 import {
   UniversalAccount,
@@ -22,7 +21,7 @@ export class Tx {
 
   private constructor(
     private validator: Validator,
-    private env: PushChainEnvironment,
+    private env: ENV,
     private signer: ValidatedUniversalSigner | null
   ) {
     this.tokenCache = new TokenCache(validator);
@@ -31,7 +30,7 @@ export class Tx {
   }
 
   static initialize = async (
-    env: PushChainEnvironment,
+    env: ENV,
     validatedUniversalSigner: ValidatedUniversalSigner | null = null
   ) => {
     const validator = await Validator.initalize({ env });
@@ -73,16 +72,16 @@ export class Tx {
       limit?: number;
       filterMode?: 'both' | 'sender' | 'recipient';
     } = {}
-  ): Promise<BlockResponse | SimplifiedBlockResponse> => {
-    let response: BlockResponse;
+  ): Promise<BlockResponse | CompleteBlockResponse> => {
+    let response: CompleteBlockResponse;
 
     if (typeof reference === 'string' && reference !== '*') {
-      response = await this.validator.call<BlockResponse>(
+      response = await this.validator.call<CompleteBlockResponse>(
         'push_getTransactionByHash',
         [reference]
       );
     } else if (typeof reference === 'string' && reference === '*') {
-      response = await this.validator.call<BlockResponse>(
+      response = await this.validator.call<CompleteBlockResponse>(
         'push_getTransactions',
         [startTime, order, limit, page, category]
       );
@@ -121,20 +120,20 @@ export class Tx {
       page: number;
       filterMode: 'both' | 'sender' | 'recipient';
     }
-  ): Promise<BlockResponse> {
+  ): Promise<CompleteBlockResponse> {
     if (filterMode === 'sender') {
-      return await this.validator.call<BlockResponse>(
+      return await this.validator.call<CompleteBlockResponse>(
         'push_getTransactionsBySender',
         [userAddress, startTime, order, limit, page, category]
       );
     } else if (filterMode === 'recipient') {
-      return await this.validator.call<BlockResponse>(
+      return await this.validator.call<CompleteBlockResponse>(
         'push_getTransactionsByRecipient',
         [userAddress, startTime, order, limit, page, category]
       );
     } else {
       // Default: both (transactions to and from address)
-      return await this.validator.call<BlockResponse>(
+      return await this.validator.call<CompleteBlockResponse>(
         'push_getTransactionsByUser',
         [userAddress, startTime, order, limit, page, category]
       );
@@ -166,15 +165,19 @@ export class Tx {
     recipients: UniversalAccount[],
     options: {
       category: string;
-      data: Uint8Array;
+      data: string;
     }
   ): Promise<{ txHash: string }> => {
     if (!this.signer) throw new Error('Signer not defined');
 
-    console.log('send() account: %s', Tx.normalizeCaip(this.signer.account));
-
     Tx.checkCategoryOrFail(options.category);
 
+    let dataBytes: Uint8Array;
+    if (options.category === TxCategory.INIT_DID) {
+      dataBytes = new Uint8Array(Buffer.from(options.data, 'base64'));
+    } else {
+      dataBytes = new TextEncoder().encode(options.data);
+    }
     const recipientsCAIP10Address: string[] = recipients.map(
       (value: UniversalAccount) =>
         PushChain.utils.account.toChainAgnostic(value)
@@ -184,7 +187,7 @@ export class Tx {
       type: 0, // Phase 0 only has non-value transfers
       category: options.category,
       recipients: recipientsCAIP10Address,
-      data: options.data,
+      data: dataBytes,
       salt: parse(uuidv4()),
       fee: '0', // Fee is 0 as of now
     });

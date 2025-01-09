@@ -1,5 +1,5 @@
 import { Block } from './block/block';
-import { PushChainEnvironment } from './constants';
+import { ENV } from './constants';
 import { Signer } from './signer/signer';
 import {
   UniversalSigner,
@@ -22,9 +22,9 @@ export class PushChain {
   static initialize = async (
     universalSigner: UniversalSigner | null = null,
     options: {
-      network: PushChainEnvironment;
+      network: ENV;
     } = {
-      network: PushChainEnvironment.devnet,
+      network: ENV.DEVNET,
     }
   ): Promise<PushChain> => {
     let validatedUniversalSigner: ValidatedUniversalSigner | null = null;

@@ -1,5 +1,5 @@
 import { mainnet, localhost, sepolia } from 'viem/chains';
-import { PushChainEnvironment } from '../constants';
+import { ENV } from '../constants';
 import { validatorABI } from './abis/validator';
 import { Config } from './config.types';
 
@@ -9,28 +9,28 @@ const config: Config = {
     VALIDATOR: validatorABI,
   },
   VALIDATOR: {
-    [PushChainEnvironment.mainnet]: {
+    [ENV.MAINNET]: {
       NETWORK: mainnet,
       VALIDATOR_CONTRACT: 'TODO',
     },
-    [PushChainEnvironment.testnet]: {
+    [ENV.TESTNET]: {
       NETWORK: sepolia,
       VALIDATOR_CONTRACT: 'TODO',
     },
-    [PushChainEnvironment.devnet]: {
+    [ENV.DEVNET]: {
       NETWORK: sepolia,
       VALIDATOR_CONTRACT: '0x98dBfb001cB2623cF7BfE2A17755592E151f0779',
     },
-    [PushChainEnvironment.local]: {
+    [ENV.LOCAL]: {
       NETWORK: localhost,
       VALIDATOR_CONTRACT: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9',
     },
   },
   WALLET_URL: {
-    [PushChainEnvironment.mainnet]: 'TODO',
-    [PushChainEnvironment.testnet]: 'TODO',
-    [PushChainEnvironment.devnet]: 'https://wallet.push.org',
-    [PushChainEnvironment.local]: 'http://localhost:5173/',
+    [ENV.MAINNET]: 'TODO',
+    [ENV.TESTNET]: 'TODO',
+    [ENV.DEVNET]: 'https://wallet.push.org',
+    [ENV.LOCAL]: 'http://localhost:5173/',
   },
 };
 

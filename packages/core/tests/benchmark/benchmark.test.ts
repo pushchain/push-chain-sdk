@@ -126,7 +126,7 @@ describe.skip('Network Benchmark Tests', () => {
   //   const pk = generatePrivateKey();
   //   const account = privateKeyToAccount(pk);
   //   const signer = {
-  //     account: Address.toPushCAIP(account.address, PushChainEnvironment.devnet),
+  //     account: Address.toPushCAIP(account.address, ENV.DEVNET),
   //     signMessage: async (data: Uint8Array) => {
   //       const signature = await account.signMessage({
   //         message: { raw: data },

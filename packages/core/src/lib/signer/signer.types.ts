@@ -1,19 +1,28 @@
-import { Chain, EvmChainId, PushChainId, SolanaChainId } from '../constants';
+import { CHAIN, CHAIN_ID } from '../constants';
+
+type PushChainObject = (typeof CHAIN_ID)[CHAIN.PUSH]; // { MAINNET: 'MAINNET'; DEVNET: 'DEVNET'; }
+export type PushChainId = PushChainObject[keyof PushChainObject]; // Get the union of its property values: "MAINNET" | "DEVNET"
+
+type SolanaChainObject = (typeof CHAIN_ID)[CHAIN.SOLANA];
+export type SolanaChainId = SolanaChainObject[keyof SolanaChainObject];
+
+type EthereumObject = (typeof CHAIN_ID)[CHAIN.ETHEREUM];
+export type EthereumChainId = EthereumObject[keyof EthereumObject];
 
 export type UniversalAccount =
   | {
-      chain: Chain.Push;
+      chain: CHAIN.PUSH;
       chainId: PushChainId;
       account: string;
     }
   | {
-      chain: Chain.Solana;
+      chain: CHAIN.SOLANA;
       chainId: SolanaChainId;
       account: string;
     }
   | {
-      chain: Chain.Evm;
-      chainId: EvmChainId;
+      chain: CHAIN.ETHEREUM;
+      chainId: EthereumChainId;
       account: string;
     }
   | {
@@ -21,15 +30,6 @@ export type UniversalAccount =
       chainId: string;
       account: string;
     };
-
-// export type UniversalSigner = UniversalAccount & {
-//   signMessage: (
-//     data:
-//       | Uint8Array
-//       | string
-//       | { message: string | { raw: `0x${string}` | Uint8Array } }
-//   ) => Promise<Uint8Array | string>;
-// };
 
 // Framework-dependent
 export type UniversalSigner = UniversalAccount & {

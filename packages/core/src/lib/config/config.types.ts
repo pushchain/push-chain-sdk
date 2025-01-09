@@ -1,5 +1,5 @@
 import type { Chain } from 'viem';
-import { PushChainEnvironment } from '../constants';
+import { ENV } from '../constants';
 import { validatorABI } from './abis/validator';
 
 interface NetworkConfig {
@@ -12,15 +12,15 @@ export interface Config {
     VALIDATOR: typeof validatorABI;
   };
   VALIDATOR: {
-    [PushChainEnvironment.mainnet]: NetworkConfig;
-    [PushChainEnvironment.devnet]: NetworkConfig;
-    [PushChainEnvironment.testnet]: NetworkConfig;
-    [PushChainEnvironment.local]: NetworkConfig;
+    [ENV.MAINNET]: NetworkConfig;
+    [ENV.DEVNET]: NetworkConfig;
+    [ENV.TESTNET]: NetworkConfig;
+    [ENV.LOCAL]: NetworkConfig;
   };
   WALLET_URL: {
-    [PushChainEnvironment.mainnet]: string;
-    [PushChainEnvironment.devnet]: string;
-    [PushChainEnvironment.testnet]: string;
-    [PushChainEnvironment.local]: string;
+    [ENV.MAINNET]: string;
+    [ENV.DEVNET]: string;
+    [ENV.TESTNET]: string;
+    [ENV.LOCAL]: string;
   };
 }

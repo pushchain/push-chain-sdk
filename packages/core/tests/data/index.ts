@@ -1,8 +1,8 @@
-// Attached wallet in walletToEncryptedDerivedKey - push:devnet:push13lssnm7ps9acuf05erf7tmw78jy29hpkwgs7jh
+// Attached wallet in walletToEncryptedDerivedKey - push:DEVNET:push13lssnm7ps9acuf05erf7tmw78jy29hpkwgs7jh
 
 /**
  * Attched Wallets in walletToEncryptedDerivedKey map -
- * push:devnet:push13lssnm7ps9acuf05erf7tmw78jy29hpkwgs7jh - WITH WRONG SIGNATURE
+ * push:DEVNET:push13lssnm7ps9acuf05erf7tmw78jy29hpkwgs7jh - WITH WRONG SIGNATURE
  */
 export const INIT_DID_TX = {
   // The Public Key of this private key is present in the Tx Data as master Public Key
@@ -744,7 +744,7 @@ export const INIT_DID_TX = {
 
 /**
  * Attached Wallets in walletToEncryptedDerivedKey map -
- * push:devnet:push1rgf3na7kqk5nphvv0rqvpvrg9wt6rkuakeuat8
+ * push:DEVNET:push1rgf3na7kqk5nphvv0rqvpvrg9wt6rkuakeuat8
  * eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4
  * solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:69EUYJKr2NE8vHFphyRPSU2tqRbXhMu9gzNo96mjvFLv
  */

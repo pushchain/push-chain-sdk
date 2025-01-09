@@ -1,12 +1,12 @@
 import config from '../config';
-import { PushChainEnvironment } from '../constants';
+import { ENV } from '../constants';
 import { ACTION, AppConnection } from './wallet.types';
 
 export class Wallet {
   private walletWindow: Window | null = null;
   private walletUrl: string;
 
-  constructor(private env: PushChainEnvironment) {
+  constructor(private env: ENV) {
     this.walletUrl = config.WALLET_URL[this.env];
   }
 

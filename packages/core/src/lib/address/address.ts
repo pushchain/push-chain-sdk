@@ -1,7 +1,7 @@
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
 import { bech32m } from 'bech32';
 import { getAddress } from 'viem';
-import { PushChainEnvironment } from '../constants';
+import { ENV } from '../constants';
 import { PUSH_NETWORK } from './address.types';
 
 const PUSH_PREFIX = 'push';
@@ -50,19 +50,19 @@ export class Address {
    */
   static toPushCAIP = (
     address: `0x${string}` | `push${string}`,
-    env: PushChainEnvironment = PushChainEnvironment.devnet
+    env: ENV = ENV.DEVNET
   ) => {
     let network: PUSH_NETWORK;
     switch (env) {
-      case PushChainEnvironment.local:
-      case PushChainEnvironment.devnet: {
+      case ENV.LOCAL:
+      case ENV.DEVNET: {
         network = PUSH_NETWORK.DEVNET;
         break;
       }
-      case PushChainEnvironment.testnet:
+      case ENV.TESTNET:
         network = PUSH_NETWORK.TESTNET;
         break;
-      case PushChainEnvironment.mainnet: {
+      case ENV.MAINNET: {
         network = PUSH_NETWORK.MAINNET;
         break;
       }
@@ -79,7 +79,7 @@ export class Address {
   /**
    * Converts an address to CAIP10 format
    * @param address
-   * @param network - Chain ID for EIP155 address, 'mainnet' | 'testnet' | 'devnet' for Solana & Push address
+   * @param network - Chain ID for EIP155 address, 'MAINNET' | 'TESTNET' | 'DEVNET' for Solana & Push address
    * @dev - This method does not verify the address
    * @dev - Address not starting with 'push' & '0x' will be treated as SOL address
    */
