@@ -10802,7 +10802,7 @@ __metadata:
 
 "shared-components@file:../../packages/shared-components::locator=dca-app%40workspace%3A.":
   version: 0.1.0
-  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=f32dc1&locator=dca-app%40workspace%3A."
+  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=1d770a&locator=dca-app%40workspace%3A."
   dependencies:
     "@emotion/react": "npm:^11.13.0"
     "@radix-ui/react-dialog": "npm:^1.1.1"
@@ -10823,7 +10823,7 @@ __metadata:
   peerDependencies:
     react: ^18.3.1
     react-dom: ^18.3.1
-  checksum: 10/4ac640571de1e075381714a335da28eae9b70939176ff38f57589d95f3a148e7ca73b6d797e04f4890b34099088ba4a25bb677476e30311756613a53ea9ce2e7
+  checksum: 10/a999ad7550b9d27c1306dabe436c0a70098459446fe4d46092d8a5a0f3a2fcc696c042fc7345ec2adb5fe7109f3742fdcd1c3ffa8ed249d20ca24a2b18c81669
   languageName: node
   linkType: hard
 

@@ -3,12 +3,11 @@ import { useAccount, useChainId } from 'wagmi';
 import { usePrivy } from '@privy-io/react-auth';
 import { PushNetwork } from '@pushprotocol/push-chain';
 import protobuf from 'protobufjs';
-import { ethers } from 'ethers';
 import PortfolioTracker from './portfolio-tracker';
 import ConnectedWalletCard from './ui/connected-wallet-card';
 import { useAppContext } from '@/context/app-context';
-import { Input } from './ui/input';
-import { Button } from './ui/button';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { isAddress } from 'viem';
 import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 
@@ -30,16 +29,22 @@ const portfolioSchema = `
 
 const Header = () => {
   const { logout } = usePrivy();
+  const { setPushAccount } = useAppContext();
+
+  const handleLogout = () => {
+    setPushAccount(null);
+    logout();
+  };
 
   return (
     <div className="flex flex-row justify-between items-center py-6 md:py-8">
       <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-blue-600">
-        Dashboard
+        DCA Portfolio Tracker
       </h2>
       <div className="flex items-center gap-4">
         <ConnectedWalletCard />
         <Button 
-          onClick={logout}
+          onClick={handleLogout}
           className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
         >
           Logout
@@ -59,13 +64,23 @@ const MainContent = () => {
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [portfolioData, setPortfolioData] = useState(null);
 
+  // Extract the actual address from pushAccount (it's in format 'eip155:1:0x...')
+  const pushAccountAddress = pushAccount ? pushAccount.split(':').pop() : null;
+
+  // Set selectedAddress to pushAccountAddress if nothing else is selected
+  useEffect(() => {
+    if (!selectedAddress && pushAccountAddress) {
+      setSelectedAddress(pushAccountAddress);
+    }
+  }, [pushAccountAddress]);
+
   useEffect(() => {
     const savedAddresses = localStorage.getItem('watchedAddresses');
     if (savedAddresses) {
       setWatchAddresses(JSON.parse(savedAddresses));
     }
-    setSelectedAddress(address || null);
-  }, [address]);
+    setSelectedAddress(address || pushAccountAddress || null);
+  }, [address, pushAccountAddress]);
 
   const addWatchAddress = () => {
     if (isAddress(newWatchAddress) && !watchAddresses.includes(newWatchAddress)) {
@@ -97,11 +112,9 @@ const MainContent = () => {
     try {
       console.log("Starting portfolio data storage...");
       
-      // Create a protobuf root and load the schema
       const root = await protobuf.parse(portfolioSchema).root;
       const PortfolioData = root.lookupType("PortfolioData");
   
-      // Format the data
       const formattedData = {
         address: data.address,
         totalValue: Number(data.totalValue || 0),
@@ -112,15 +125,12 @@ const MainContent = () => {
         }))
       };
   
-      // Verify the data
       const errMsg = PortfolioData.verify(formattedData);
       if (errMsg) throw Error(errMsg);
   
-      // Encode the data
       const buffer = PortfolioData.encode(PortfolioData.create(formattedData)).finish();
   
       console.log("Creating unsigned transaction...");
-      // Create an unsigned transaction
       const unsignedTx = pushNetwork.tx.createUnsigned(
         "CUSTOM:PORTFOLIO_DATA",
         [`${pushAccount}`],
@@ -143,7 +153,6 @@ const MainContent = () => {
       };
   
       console.log("Sending transaction...");
-      // Send transaction
       const txHash = await pushNetwork.tx.send(unsignedTx, signer);
       console.log("Portfolio data stored on Push Chain. Transaction Hash:", txHash);
     } catch (error) {
@@ -175,17 +184,19 @@ const MainContent = () => {
       </div>
       
       <div className="flex flex-wrap gap-2">
-        <Button
-          variant="ghost"
-          className={`text-sm transition-colors ${
-            selectedAddress === address 
-              ? 'bg-blue-600 text-white hover:bg-blue-700' 
-              : 'text-gray-300 hover:bg-white/5'
-          }`}
-          onClick={() => selectAddress(address || null)}
-        >
-          Your Wallet
-        </Button>
+        {(address || pushAccountAddress) && (
+          <Button
+            variant="ghost"
+            className={`text-sm transition-colors ${
+              selectedAddress === (address || pushAccountAddress) 
+                ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                : 'text-gray-300 hover:bg-white/5'
+            }`}
+            onClick={() => selectAddress(address || pushAccountAddress)}
+          >
+            Your Wallet
+          </Button>
+        )}
         {watchAddresses.map((addr) => (
           <Button
             key={addr}
@@ -204,13 +215,23 @@ const MainContent = () => {
 
       <div>
         <h3 className="text-lg font-semibold mb-4 text-blue-400">
-          {selectedAddress === address ? 'Your Portfolio:' : 'Watched Portfolio:'}
+          {selectedAddress === (address || pushAccountAddress) 
+            ? 'Your Portfolio:' 
+            : 'Watched Portfolio:'}
         </h3>
-        <PortfolioTracker 
-          walletAddress={selectedAddress || address!} 
-          chainId={selectedAddress === address ? chainId : 1}
-          onUpdate={onPortfolioUpdate}
-        />
+        {(selectedAddress || pushAccountAddress || address) ? (
+          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
+            <PortfolioTracker 
+              walletAddress={selectedAddress || pushAccountAddress || address!} 
+              chainId={selectedAddress === (address || pushAccountAddress) ? chainId : 1}
+              onUpdate={onPortfolioUpdate}
+            />
+          </div>
+        ) : (
+          <div className="p-4 bg-gray-800/50 border border-gray-700 rounded-xl">
+            <p className="text-gray-400">Please connect a wallet to view portfolio</p>
+          </div>
+        )}
       </div>
     </div>
   );
