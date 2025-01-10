@@ -13,6 +13,7 @@
     "@privy-io/react-auth": "^1.91.0",
     "@privy-io/wagmi": "^0.2.12",
     "@pushprotocol/node-core": "^0.0.29",
+    "@solana/web3.js": "^1.98.0",
     "@tanstack/react-query": "^5.59.15",
     "@web3icons/react": "^3.10.1",
     "bn.js": "^5.2.1",
@@ -25,7 +26,8 @@
     "react-confetti-explosion": "^2.1.2",
     "react-dom": "^18.3.1",
     "react-toastify": "^10.0.6",
-    "tailwind-merge": "^2.5.5"
+    "tailwind-merge": "^2.5.5",
+    "wagmi": "^2.14.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",

@@ -362,11 +362,33 @@ export class Poker {
     return deckSet;
   };
 
+  async publishPartialDecryption(
+    txHash: string, 
+    updatedGame: PokerGame,
+    signer: PushWalletSigner
+  ): Promise<string> {
+    const dataToStore = JSON.stringify(updatedGame);
+    console.log('[Poker Service] Publishing partial decryption:', {
+      phase: updatedGame.phase,
+      turnIndex: updatedGame.turnIndex,
+      hasHoleCards: !!updatedGame.playerHoleCards,
+      hasCommunityCards: !!updatedGame.communityCardsEncrypted
+    });
+  
+    const unsignedTx = this.pushNetwork.tx.createUnsigned(
+      (this.TX_CATEGORY_PREFIX + txHash).slice(0, 30),
+      Array.from(updatedGame.players.keys()),
+      new TextEncoder().encode(dataToStore)
+    );
+  
+    return await this.pushNetwork.tx.send(unsignedTx, signer);
+  }
+
   async getGameState(txHash: string): Promise<PokerGame | null> {
     const response = await this.pushNetwork.tx.get(
       Math.floor(Date.now()),
       'DESC',
-      30,
+      1,  // Get just the latest state
       1,
       undefined,
       (this.TX_CATEGORY_PREFIX + txHash).slice(0, 30)
@@ -376,9 +398,32 @@ export class Poker {
   
     const block = response.blocks[0];
     const transaction = block.blockDataAsJson.txobjList[0] as { tx: Transaction };
-    const decodedData = new TextDecoder().decode(
-      new Uint8Array(Buffer.from(transaction.tx.data as unknown as string, 'base64'))
-    );
-    return JSON.parse(decodedData) as PokerGame;
+    
+    try {
+      const decodedData = new TextDecoder().decode(
+        new Uint8Array(Buffer.from(transaction.tx.data as unknown as string, 'base64'))
+      );
+      const gameState = JSON.parse(decodedData) as PokerGame;
+      
+      // Convert plain objects to Maps where needed
+      gameState.players = new Map(Object.entries(gameState.players));
+      gameState.phases = new Map();
+      
+      // Initialize empty phase if needed
+      if (!gameState.phases.has(0)) {
+        gameState.phases.set(0, { bets: new Map() });
+      }
+      
+      console.log('[Poker Service] Retrieved game state:', {
+        phase: gameState.phase,
+        turnIndex: gameState.turnIndex,
+        playerCount: gameState.players.size
+      });
+      
+      return gameState;
+    } catch (error) {
+      console.error('[Poker Service] Error parsing game state:', error);
+      return null;
+    }
   }
 }
