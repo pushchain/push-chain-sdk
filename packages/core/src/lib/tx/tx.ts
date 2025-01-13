@@ -3,15 +3,15 @@ import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
 import { parse, v4 as uuidv4 } from 'uuid';
 import { toHex } from 'viem';
 import { BlockResponse, CompleteBlockResponse } from '../block/block.types';
+import { ValidatorCompleteBlockResponse } from '../block/validatorBlock.types';
 import { Order, ENV } from '../constants';
 import { Transaction } from '../generated/tx';
-import { InitDid } from '../generated/txData/init_did';
 import { PushChain } from '../pushChain';
 import {
   UniversalAccount,
   ValidatedUniversalSigner,
 } from '../signer/signer.types';
-import { toSimplifiedBlockResponse } from '../utils';
+import { toSDKResponse, toSimplifiedBlockResponse } from '../utils';
 import { Validator } from '../validator/validator';
 import { TokenReply } from '../validator/validator.types';
 import { ReplyGrouped, TxCategory } from './tx.types';
@@ -73,15 +73,15 @@ export class Tx {
       filterMode?: 'both' | 'sender' | 'recipient';
     } = {}
   ): Promise<BlockResponse | CompleteBlockResponse> => {
-    let response: CompleteBlockResponse;
+    let response: ValidatorCompleteBlockResponse;
 
     if (typeof reference === 'string' && reference !== '*') {
-      response = await this.validator.call<CompleteBlockResponse>(
+      response = await this.validator.call<ValidatorCompleteBlockResponse>(
         'push_getTransactionByHash',
         [reference]
       );
     } else if (typeof reference === 'string' && reference === '*') {
-      response = await this.validator.call<CompleteBlockResponse>(
+      response = await this.validator.call<ValidatorCompleteBlockResponse>(
         'push_getTransactions',
         [startTime, order, limit, page, category]
       );
@@ -96,8 +96,10 @@ export class Tx {
         filterMode,
       });
     }
-    if (raw) return response;
-    else return toSimplifiedBlockResponse(response);
+
+    const sdkResponse = toSDKResponse(response);
+    if (raw) return sdkResponse;
+    else return toSimplifiedBlockResponse(sdkResponse);
   };
 
   /**
@@ -120,20 +122,20 @@ export class Tx {
       page: number;
       filterMode: 'both' | 'sender' | 'recipient';
     }
-  ): Promise<CompleteBlockResponse> {
+  ): Promise<ValidatorCompleteBlockResponse> {
     if (filterMode === 'sender') {
-      return await this.validator.call<CompleteBlockResponse>(
+      return await this.validator.call<ValidatorCompleteBlockResponse>(
         'push_getTransactionsBySender',
         [userAddress, startTime, order, limit, page, category]
       );
     } else if (filterMode === 'recipient') {
-      return await this.validator.call<CompleteBlockResponse>(
+      return await this.validator.call<ValidatorCompleteBlockResponse>(
         'push_getTransactionsByRecipient',
         [userAddress, startTime, order, limit, page, category]
       );
     } else {
       // Default: both (transactions to and from address)
-      return await this.validator.call<CompleteBlockResponse>(
+      return await this.validator.call<ValidatorCompleteBlockResponse>(
         'push_getTransactionsByUser',
         [userAddress, startTime, order, limit, page, category]
       );

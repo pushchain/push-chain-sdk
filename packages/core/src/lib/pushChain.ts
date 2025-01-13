@@ -7,17 +7,12 @@ import {
 } from './signer/signer.types';
 import { Tx } from './tx/tx';
 import { Utils } from './utils';
-import { Wallet } from './wallet/wallet';
 
 export class PushChain {
   public static utils = Utils;
   public static signer = Signer;
 
-  private constructor(
-    public block: Block,
-    public tx: Tx,
-    public wallet: Wallet
-  ) {}
+  private constructor(public block: Block, public tx: Tx) {}
 
   static initialize = async (
     universalSigner: UniversalSigner | null = null,
@@ -33,7 +28,6 @@ export class PushChain {
     }
     const block = await Block.initialize(options.network);
     const tx = await Tx.initialize(options.network, validatedUniversalSigner);
-    const wallet = new Wallet(options.network);
-    return new PushChain(block, tx, wallet);
+    return new PushChain(block, tx);
   };
 }

@@ -15,7 +15,7 @@ describe('Block Class', () => {
 
   const blockChecker = (block: SimplifiedNodeBlockType) => {
     expect(block).toHaveProperty('blockHash');
-    expect(block).toHaveProperty('ts');
+    expect(block).toHaveProperty('timestamp');
     expect(block).toHaveProperty('transactions');
     expect(block).toHaveProperty('totalNumberOfTxns');
   };

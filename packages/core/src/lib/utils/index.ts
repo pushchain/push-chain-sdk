@@ -5,6 +5,10 @@ import {
   CompleteBlockResponse,
   CompleteBlockType,
 } from '../block/block.types';
+import {
+  ValidatorCompleteBlockResponse,
+  ValidatorCompleteBlockType,
+} from '../block/validatorBlock.types';
 import { CHAIN } from '../constants';
 import { Block as GeneratedBlock } from '../generated/block';
 import { Transaction } from '../generated/tx';
@@ -12,6 +16,7 @@ import { InitDid } from '../generated/txData/init_did';
 import { InitSessionKey } from '../generated/txData/init_session_key';
 import { UniversalAccount } from '../signer/signer.types';
 import { CompleteTxResponse, TxCategory, TxResponse } from '../tx/tx.types';
+import { ValidatorCompleteTxResponse } from '../tx/validatorTx.types';
 
 export const getRandomElement = <T>(array: T[]): T => {
   if (array.length === 0) {
@@ -21,30 +26,59 @@ export const getRandomElement = <T>(array: T[]): T => {
   return array[randomIndex];
 };
 
+export function toSDKResponse(
+  block: ValidatorCompleteBlockResponse
+): CompleteBlockResponse {
+  return {
+    lastTimestamp: block.lastTs,
+    totalPages: block.totalPages,
+    blocks: block.blocks.map(
+      (b: ValidatorCompleteBlockType): CompleteBlockType => ({
+        blockHash: b.blockHash,
+        timestamp: b.ts,
+        totalNumberOfTxns: b.totalNumberOfTxns,
+        transactions: b.transactions.map(
+          (t: ValidatorCompleteTxResponse): CompleteTxResponse => ({
+            hash: t.txnHash,
+            fee: t.txnDataAsJson.tx.fee,
+            salt: t.txnDataAsJson.tx.salt,
+            apiToken: t.txnDataAsJson.tx.apitoken,
+            timestamp: +t.ts,
+            category: t.category,
+            from: t.from,
+            recipients: t.recipients.recipients.map((r) => r.address),
+            data: new TextDecoder().decode(
+              new Uint8Array(Buffer.from(t.txnData, 'hex'))
+            ),
+            signature: t.sig,
+          })
+        ),
+      })
+    ),
+  };
+}
+
 export function toSimplifiedBlockResponse(
   blockResponse: CompleteBlockResponse
 ): BlockResponse {
   return {
     totalPages: blockResponse.totalPages,
-    lastTs: blockResponse.lastTs,
+    lastTimestamp: blockResponse.lastTimestamp,
     blocks: blockResponse.blocks.map(
       (b: CompleteBlockType): BlockType => ({
         blockHash: b.blockHash,
-        ts: b.ts,
+        timestamp: b.timestamp,
         totalNumberOfTxns: b.totalNumberOfTxns,
         transactions: b.transactions.map(
           (t: CompleteTxResponse): TxResponse => ({
-            txnHash: t.txnHash,
-            ts: t.ts,
-            blockHash: t.blockHash,
+            hash: t.hash,
+            fee: t.fee,
+            timestamp: t.timestamp,
             category: t.category,
-            status: t.status,
             from: t.from,
             recipients: t.recipients,
-            txnData: new TextDecoder().decode(
-              new Uint8Array(Buffer.from(t.txnData as unknown as string, 'hex'))
-            ),
-            sig: t.sig,
+            data: t.data,
+            signature: t.signature,
           })
         ),
       })

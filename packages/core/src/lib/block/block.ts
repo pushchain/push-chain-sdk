@@ -1,7 +1,8 @@
 import { Order, ENV } from '../constants';
-import { toSimplifiedBlockResponse } from '../utils';
+import { toSDKResponse, toSimplifiedBlockResponse } from '../utils';
 import { Validator } from '../validator/validator';
 import { BlockResponse, CompleteBlockResponse } from './block.types';
+import { ValidatorCompleteBlockResponse } from './validatorBlock.types';
 
 export class Block {
   private constructor(private validator: Validator) {}
@@ -30,20 +31,22 @@ export class Block {
       limit?: number;
     } = {}
   ): Promise<BlockResponse | CompleteBlockResponse> => {
+    let response: ValidatorCompleteBlockResponse;
+
     if (reference === '*') {
-      const response = await this.validator.call<CompleteBlockResponse>(
+      response = await this.validator.call<ValidatorCompleteBlockResponse>(
         'push_getBlocks',
         [startTime, order, false, limit, page]
       );
-      if (raw) return response;
-      else return toSimplifiedBlockResponse(response);
     } else {
-      const response = await this.validator.call<CompleteBlockResponse>(
+      response = await this.validator.call<ValidatorCompleteBlockResponse>(
         'push_getBlockByHash',
         [reference]
       );
-      if (raw) return response;
-      else return toSimplifiedBlockResponse(response);
     }
+
+    const sdkResponse = toSDKResponse(response);
+    if (raw) return sdkResponse;
+    else return toSimplifiedBlockResponse(sdkResponse);
   };
 }

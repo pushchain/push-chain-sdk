@@ -43,15 +43,15 @@ const mockInitDidTxData: InitDid = {
 describe('Tx', () => {
   const env = config.ENV;
   const txChecker = (tx: TxResponse) => {
-    expect(tx).toHaveProperty('txnHash');
-    expect(tx).toHaveProperty('ts');
+    expect(tx).toHaveProperty('hash');
+    expect(tx).toHaveProperty('timestamp');
     expect(tx).toHaveProperty('blockHash');
     expect(tx).toHaveProperty('category');
     expect(tx).toHaveProperty('status');
     expect(tx).toHaveProperty('from');
     expect(tx).toHaveProperty('recipients');
-    expect(tx).toHaveProperty('txnData');
-    expect(tx).toHaveProperty('sig');
+    expect(tx).toHaveProperty('data');
+    expect(tx).toHaveProperty('signature');
   };
 
   it('should serialize a Tx data into a Uint8Array', () => {
