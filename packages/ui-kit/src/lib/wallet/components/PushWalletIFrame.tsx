@@ -1,4 +1,4 @@
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { usePushWalletContext } from './PushWalletProvider';
 import config from '../../config';
 import styled from 'styled-components';
@@ -20,10 +20,7 @@ const PushWalletIFrame: FC = () => {
   return (
     <>
       {isWalletVisible ? (
-        <FrameContainer
-          isWalletMinimised={isWalletMinimised}
-          account={account}
-        >
+        <FrameContainer isWalletMinimised={isWalletMinimised} account={account}>
           {isIframeLoading && (
             <FrameLoadingContainer>
               <CloseButtonContainer
@@ -34,9 +31,7 @@ const PushWalletIFrame: FC = () => {
                 <CrossIcon />
               </CloseButtonContainer>
               <LoadingTextContainer>
-                <LoadingText>
-                  Loading...
-                </LoadingText>
+                <LoadingText>Loading...</LoadingText>
                 <Spinner />
               </LoadingTextContainer>
             </FrameLoadingContainer>
@@ -46,13 +41,9 @@ const PushWalletIFrame: FC = () => {
             isWalletMinimised={isWalletMinimised}
             isIframeLoading={isIframeLoading}
           >
-            <AccountContainer
-              account={account}
-            >
+            <AccountContainer account={account}>
               {account ? (
-                <DashButtonContainer
-                  onClick={() => setMinimiseWallet(true)}
-                >
+                <DashButtonContainer onClick={() => setMinimiseWallet(true)}>
                   <DashIcon />
                 </DashButtonContainer>
               ) : (
@@ -81,15 +72,16 @@ const PushWalletIFrame: FC = () => {
           </FrameSubContainer>
         </FrameContainer>
       ) : null}
-
     </>
-
   );
 };
 
 export { PushWalletIFrame };
 
-const FrameContainer = styled.div`
+const FrameContainer = styled.div<{
+  account: string | null;
+  isWalletMinimised: boolean;
+}>`
   position: fixed;
   display: flex;
   flex-direction: column;
@@ -97,17 +89,20 @@ const FrameContainer = styled.div`
   border-radius: 10px;
   z-index: 99;
 
-  width:${({ account, isWalletMinimised }) => isWalletMinimised ? '0px' : account ? '450px' : '100%'};
-  height:${({ account, isWalletMinimised }) => isWalletMinimised ? '0px' : account ? '710px' : '100%'};
-  right:${({ account }) => account ? '24px' : '0'};
-  top:${({ account }) => account ? '24px' : '0'};
+  width: ${({ account, isWalletMinimised }) =>
+    isWalletMinimised ? '0px' : account ? '450px' : '100%'};
+  height: ${({ account, isWalletMinimised }) =>
+    isWalletMinimised ? '0px' : account ? '710px' : '100%'};
+  right: ${({ account }) => (account ? '24px' : '0')};
+  top: ${({ account }) => (account ? '24px' : '0')};
 
-  @media (max-width:425px){
-    width:${({ account, isWalletMinimised }) => isWalletMinimised ? '0px' : account ? '96%' : '100%'};
-    right:${({ account }) => account ? '2%' : '0'};
-    top:${({ account }) => account ? '8%' : '0'};
+  @media (max-width: 425px) {
+    width: ${({ account, isWalletMinimised }) =>
+      isWalletMinimised ? '0px' : account ? '96%' : '100%'};
+    right: ${({ account }) => (account ? '2%' : '0')};
+    top: ${({ account }) => (account ? '8%' : '0')};
   }
-`
+`;
 
 const CloseButtonContainer = styled.div`
   display: flex;
@@ -115,28 +110,27 @@ const CloseButtonContainer = styled.div`
   justify-content: flex-end;
   cursor: pointer;
   padding: 0 16px;
-`
+`;
 
 const DashButtonContainer = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border-radius:1000px;
-  height:14px;
-  width:14px;
-  background-color:#ffbb16;
-
-`
+  border-radius: 1000px;
+  height: 14px;
+  width: 14px;
+  background-color: #ffbb16;
+`;
 
 const LoadingTextContainer = styled.div`
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:16px;
-  width:-webkit-fill-available;
-  height:-webkit-fill-available;
-`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: -webkit-fill-available;
+  height: -webkit-fill-available;
+`;
 
 const LoadingText = styled.p`
   font-size: 18px;
@@ -146,33 +140,35 @@ const LoadingText = styled.p`
   font-family: FK Grotesk Neu;
   margin: 0px;
   width: auto;
-`
+`;
 
 const FrameLoadingContainer = styled.div`
-  height:-webkit-fill-available;
-  width:-webkit-fill-available;
-  flex-direction:column;
-  display:flex;
-  padding:8px;
-  background-color:#17181b;
-`
+  height: -webkit-fill-available;
+  width: -webkit-fill-available;
+  flex-direction: column;
+  display: flex;
+  padding: 8px;
+  background-color: #17181b;
+`;
 
-const FrameSubContainer = styled.div`
+const FrameSubContainer = styled.div<{
+  isWalletMinimised: boolean;
+  isIframeLoading: boolean;
+}>`
   display: ${({ isWalletMinimised, isIframeLoading }) =>
     isWalletMinimised || isIframeLoading ? 'none' : 'flex'};
   width: -webkit-fill-available;
   height: -webkit-fill-available;
   flex-direction: column;
-`
+`;
 
-const AccountContainer = styled.div`
- width: -webkit-fill-available;
+const AccountContainer = styled.div<{ account: string | null }>`
+  width: -webkit-fill-available;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   padding: var(--spacing-xxs) var(--spacing-xxs);
-  border-top-right-radius:${({ account }) => account ? '10px' : '0px'};
-  border-top-left-radius:${({ account }) => account ? '10px' : '0px'};
-  background-color:${({ account }) => account ? '#e3e3e3' : '#17181B'};
-
-`
+  border-top-right-radius: ${({ account }) => (account ? '10px' : '0px')};
+  border-top-left-radius: ${({ account }) => (account ? '10px' : '0px')};
+  background-color: ${({ account }) => (account ? '#e3e3e3' : '#17181B')};
+`;

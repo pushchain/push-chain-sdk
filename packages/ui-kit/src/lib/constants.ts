@@ -1,4 +1,3 @@
-import { FC, ReactNode } from 'react';
 import {
   ArbitrumMonotone,
   BnbMonotone,
@@ -23,9 +22,7 @@ export const CONSTANTS = {
   ENV: ENV,
 };
 
-export const CHAIN_LOGO: {
-  [x: number | string]: FC<ReactNode>;
-} = {
+export const CHAIN_LOGO: Record<string, React.FC | React.ComponentType> = {
   1: EthereumMonotone,
   11155111: EthereumMonotone,
   137: PolygonMonotone,
