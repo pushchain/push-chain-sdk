@@ -1,14 +1,12 @@
-import { FC } from 'react';
 import {
   ArbitrumMonotone,
   BnbMonotone,
   EthereumMonotone,
-  IconProps,
   OptimismMonotone,
   PolygonMonotone,
   PushMonotone,
   SolanaMonotone,
-} from 'shared-components';
+} from './common';
 
 /**
  * SUPPORTED ENVIRONEMENTS
@@ -24,9 +22,7 @@ export const CONSTANTS = {
   ENV: ENV,
 };
 
-export const CHAIN_LOGO: {
-  [x: number | string]: FC<IconProps>;
-} = {
+export const CHAIN_LOGO: Record<string, React.FC | React.ComponentType> = {
   1: EthereumMonotone,
   11155111: EthereumMonotone,
   137: PolygonMonotone,
