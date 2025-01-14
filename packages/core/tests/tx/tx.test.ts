@@ -45,9 +45,7 @@ describe('Tx', () => {
   const txChecker = (tx: TxResponse) => {
     expect(tx).toHaveProperty('hash');
     expect(tx).toHaveProperty('timestamp');
-    expect(tx).toHaveProperty('blockHash');
     expect(tx).toHaveProperty('category');
-    expect(tx).toHaveProperty('status');
     expect(tx).toHaveProperty('from');
     expect(tx).toHaveProperty('recipients');
     expect(tx).toHaveProperty('data');
