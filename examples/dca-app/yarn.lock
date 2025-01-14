@@ -6198,7 +6198,7 @@ __metadata:
     clsx: "npm:^2.1.1"
     date-fns: "npm:^4.1.0"
     eslint: "npm:^9.13.0"
-    eslint-plugin-react-hooks: "npm:^5.0.0"
+    eslint-plugin-react-hooks: "npm:^5.1.0"
     eslint-plugin-react-refresh: "npm:^0.4.14"
     ethers: "npm:^6.13.4"
     gh-pages: "npm:^6.3.0"
@@ -6823,7 +6823,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-react-hooks@npm:^5.0.0":
+"eslint-plugin-react-hooks@npm:^5.1.0":
   version: 5.1.0
   resolution: "eslint-plugin-react-hooks@npm:5.1.0"
   peerDependencies:
@@ -10802,7 +10802,7 @@ __metadata:
 
 "shared-components@file:../../packages/shared-components::locator=dca-app%40workspace%3A.":
   version: 0.1.0
-  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=1d770a&locator=dca-app%40workspace%3A."
+  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=4270f6&locator=dca-app%40workspace%3A."
   dependencies:
     "@emotion/react": "npm:^11.13.0"
     "@radix-ui/react-dialog": "npm:^1.1.1"
@@ -10823,7 +10823,7 @@ __metadata:
   peerDependencies:
     react: ^18.3.1
     react-dom: ^18.3.1
-  checksum: 10/a999ad7550b9d27c1306dabe436c0a70098459446fe4d46092d8a5a0f3a2fcc696c042fc7345ec2adb5fe7109f3742fdcd1c3ffa8ed249d20ca24a2b18c81669
+  checksum: 10/8ba8d4af0295c9192d4df2d2f96fdfb6eba69d3400588450d9c6c3e658877d4b613de32365e83ddc4cad0213427727b8b075299b353e079e8e42cd34105044d1
   languageName: node
   linkType: hard
 
