@@ -4,30 +4,39 @@ import ReactMarkdown from "react-markdown";
 import { postConfession } from "../../services/postConfession";
 import { useConnectWallet } from "@web3-onboard/react";
 import { useNavigate } from "react-router-dom";
-
+import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 import { ConfessionContext } from "../../context/ConfessionContext";
 
 const PostRumour = () => {
   const [text, setText] = useState("");
   const [isCardVisible, setIsCardVisible] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [{ wallet }, , disconnect] = useConnectWallet();
+  const [{ wallet }, connect, disconnect] = useConnectWallet();
   const navigate = useNavigate();
 
+  const { handleSendSignRequestToPushWallet, connectionStatus } = usePushWalletContext();
   const { pushWalletAddress, user } = useContext(ConfessionContext);
 
   // Preserve wallet state on page reload
   useEffect(() => {
     const storedWallet = sessionStorage.getItem("walletConnected");
-    if (storedWallet && !wallet) {
+    if (storedWallet && !wallet && !pushWalletAddress) {
       connectWallet();
     }
   }, []);
 
+  useEffect(() => {
+    if (connectionStatus === "connected") {
+      console.log("Push Wallet connected successfully");
+    }
+  }, [connectionStatus]);
+
   const connectWallet = async () => {
     try {
-      await connect();
-      sessionStorage.setItem("walletConnected", "true");
+      if (!pushWalletAddress) {
+        await connect();
+        sessionStorage.setItem("walletConnected", "true");
+      }
     } catch (error) {
       console.error("Wallet connection failed:", error);
     }
@@ -42,43 +51,34 @@ const PostRumour = () => {
   };
 
   const handlePost = async () => {
-    if (text.trim()) {
-      setLoading(true);
-
-      let rumourDetails = {};
-
-      if (pushWalletAddress.length > 0) {
-        rumourDetails = {
-          post: text,
-          address: pushWalletAddress,
-          upvotes: 0,
-          isVisible: true,
-        };
-      } else {
-        rumourDetails = {
-          post: text,
-          address: wallet.accounts[0]?.address,
-          upvotes: 0,
-          isVisible: true,
-        };
-      }
-
-      try {
-        if (pushWalletAddress.length > 0) {
-          await postConfession(user, pushWalletAddress, rumourDetails);
-        } else {
-          await postConfession(user, wallet, rumourDetails);
-        }
-        setIsCardVisible(true);
-        setText("");
-      } catch (error) {
-        console.error("Error posting rumour:", error);
-        alert("Failed to post your rumour. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    } else {
+    if (!text.trim()) {
       alert("Please write something to post your rumour.");
+      return;
+    }
+  
+    setLoading(true);
+  
+    const rumourDetails = {
+      post: text,
+      address: pushWalletAddress || wallet?.accounts[0]?.address,
+      upvotes: 0,
+      isVisible: true,
+    };
+  
+    try {
+      if (pushWalletAddress) {
+        await postConfession(user, pushWalletAddress, rumourDetails, handleSendSignRequestToPushWallet);
+      } else {
+        await postConfession(user, wallet, rumourDetails);
+      }
+  
+      setIsCardVisible(true);
+      setText("");
+    } catch (error) {
+      console.error("Error posting rumour:", error);
+      alert("Failed to post your rumour. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -89,19 +89,20 @@ const PostRumour = () => {
     setText(`${start}${before}${end}${after}`);
   };
 
+  // Get the display address
+  const displayAddress = pushWalletAddress || (wallet?.accounts[0]?.address 
+    ? `${wallet.accounts[0].address.slice(0, 6)}...${wallet.accounts[0].address.slice(-4)}`
+    : null);
+
   return (
     <Container>
-      {/* Header */}
       <Header>
         <Logo>🔗 Web3 Rumours</Logo>
         <HeaderButtons>
-          {wallet ? (
+          {displayAddress ? (
             <>
               <WalletButton>
-                {`Wallet: ${wallet.accounts[0]?.address.slice(
-                  0,
-                  6
-                )}...${wallet.accounts[0]?.address.slice(-4)}`}
+                {`Wallet: ${displayAddress}`}
               </WalletButton>
               <ActionButton onClick={() => navigate("/profile")}>
                 Profile
@@ -111,28 +112,27 @@ const PostRumour = () => {
               </DisconnectButton>
             </>
           ) : (
-            <ActionButton onClick={connectWallet}>Connect Wallet</ActionButton>
+            <>
+              <ActionButton onClick={connectWallet}>Connect Metamask</ActionButton>
+              <ActionButton 
+                onClick={handleSendSignRequestToPushWallet}
+                disabled={connectionStatus === "connected"}
+              >
+                {connectionStatus === "connected" ? "Push Connected" : "Connect Push"}
+              </ActionButton>
+            </>
           )}
         </HeaderButtons>
       </Header>
 
-      {/* Rumour Posting Section */}
       <PostContainer>
         <HeaderTitle>✍️ Post a Rumour</HeaderTitle>
         <MarkdownToolbar>
-          <ToolbarButton onClick={() => insertText("**", "**")}>
-            Bold
-          </ToolbarButton>
-          <ToolbarButton onClick={() => insertText("_", "_")}>
-            Italic
-          </ToolbarButton>
-          <ToolbarButton onClick={() => insertText("~~", "~~")}>
-            Strikethrough
-          </ToolbarButton>
+          <ToolbarButton onClick={() => insertText("**", "**")}>Bold</ToolbarButton>
+          <ToolbarButton onClick={() => insertText("_", "_")}>Italic</ToolbarButton>
+          <ToolbarButton onClick={() => insertText("~~", "~~")}>Strikethrough</ToolbarButton>
           <ToolbarButton onClick={() => insertText("> ")}>Quote</ToolbarButton>
-          <ToolbarButton onClick={() => insertText("[", "](url)")}>
-            Link
-          </ToolbarButton>
+          <ToolbarButton onClick={() => insertText("[", "](url)")}>Link</ToolbarButton>
         </MarkdownToolbar>
         <PostBox>
           <Textarea
@@ -146,12 +146,11 @@ const PostRumour = () => {
             <ReactMarkdown>{text}</ReactMarkdown>
           </MarkdownPreview>
         </PostBox>
-        <PostButton onClick={handlePost} disabled={loading}>
+        <PostButton onClick={handlePost} disabled={loading || (!wallet && !pushWalletAddress)}>
           {loading ? "Posting..." : "Post Rumour"}
         </PostButton>
       </PostContainer>
 
-      {/* Success Card */}
       {isCardVisible && (
         <Card>
           <CardHeader>🎉 Rumour Posted Successfully!</CardHeader>
