@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useContext } from "react";
 import styled from "styled-components";
 import { useConnectWallet } from "@web3-onboard/react";
-import { ethers, BrowserProvider } from "ethers";
 import { useNavigate } from "react-router-dom";
-import { connectPushWallet } from "../../services/pushWalletService"; // Importing Push Wallet service
-import RumoursImage from "../../assets/ho.gif"; // Example image
-import ChainAnimation from "../../assets/confession-bg.jpg"; // Example animation
+import RumoursImage from "../../assets/ho.gif";
+import ChainAnimation from "../../assets/confession-bg.jpg";
 import { PushNetwork } from "@pushprotocol/push-chain";
-
+import { ConnectPushWalletButton } from '@pushprotocol/pushchain-ui-kit';
+import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 import { ConfessionContext } from "../../context/ConfessionContext";
 
 const LandingPage = () => {
@@ -22,6 +21,8 @@ const LandingPage = () => {
     setUser,
     user,
   } = useContext(ConfessionContext);
+  
+  const { account: pushWalletAccount } = usePushWalletContext();
 
   useEffect(() => {
     if (wallet) {
@@ -36,6 +37,13 @@ const LandingPage = () => {
     };
     initUserAlice();
   }, []);
+
+  useEffect(() => {
+    if (pushWalletAccount) {
+      setPushWalletAddress(pushWalletAccount);
+      setIsPushWallet(true);
+    }
+  }, [pushWalletAccount, setPushWalletAddress, setIsPushWallet]);
 
   const handleConnect = async () => {
     try {
@@ -58,35 +66,12 @@ const LandingPage = () => {
     }
   };
 
-  const handlePushWalletConnect = async (tryCount) => {
-    if (user) {
-      try {
-        // const result = await connectPushWallet(userAlice);
-        const walletAddress = await user.wallet.connect();
-        console.log("Connect to wallet address: " + walletAddress);
-        setIsPushWallet(true);
-
-        setPushWalletAddress(walletAddress);
-      } catch (err) {
-        if (tryCount < 30 && err === "PushWallet Not Logged In") {
-          // wait for 5 seconds and try again
-          setTimeout(() => {
-            handlePushWalletConnect(tryCount + 1);
-          }, 2000);
-        } else {
-          alert(err);
-        }
-      }
-    }
-  };
-
   const navigateToProfile = () => {
     navigate("/profile");
   };
 
   return (
     <Container>
-      {/* Header */}
       <Header>
         <Logo>🔗 Web3 Rumours</Logo>
         <Nav>
@@ -102,16 +87,15 @@ const LandingPage = () => {
                 <CTAButton onClick={handleConnect} blue>
                   {connecting ? "Connecting..." : "Connect Wallet"}
                 </CTAButton>
-                <CTAButton onClick={() => handlePushWalletConnect(1)} purple>
-                  Connect with Push Wallet
-                </CTAButton>
+                <PushWalletWrapper>
+                  <ConnectPushWalletButton showLogOutButton />
+                </PushWalletWrapper>
               </>
             )}
           </HeaderButtons>
         </Nav>
       </Header>
 
-      {/* Hero Section */}
       <Hero>
         <HeroText>
           <HeroTitle>Discover the Latest Web3 Rumours</HeroTitle>
@@ -126,7 +110,6 @@ const LandingPage = () => {
         </HeroImage>
       </Hero>
 
-      {/* Features Section */}
       <Features>
         <FeatureCard>
           <FeatureTitle>🔒 Decentralized Truth</FeatureTitle>
@@ -150,7 +133,6 @@ const LandingPage = () => {
         </FeatureCard>
       </Features>
 
-      {/* Graphics Section */}
       <GraphicsSection>
         <GraphicText>
           <h2>Embrace the Future of Rumour Sharing</h2>
@@ -164,8 +146,6 @@ const LandingPage = () => {
     </Container>
   );
 };
-
-export default LandingPage;
 
 // Styled Components
 const Container = styled.div`
@@ -229,6 +209,23 @@ const CTAButton = styled.button`
 
   &:hover {
     background-color: ${({ blue }) => (blue ? "#005bb5" : "#e0354e")};
+  }
+`;
+
+const PushWalletWrapper = styled.div`
+  button {
+    background-color: #ff3b57;
+    color: #ffffff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #e0354e;
+    }
   }
 `;
 
@@ -347,3 +344,5 @@ const Animation = styled.img`
     margin-top: 20px;
   }
 `;
+
+export default LandingPage;

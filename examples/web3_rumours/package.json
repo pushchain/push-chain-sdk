@@ -13,6 +13,7 @@
   "dependencies": {
     "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
     "@pushprotocol/push-chain": "^0.1.7",
+    "@pushprotocol/pushchain-ui-kit": "^1.0.2",
     "@web3-onboard/injected-wallets": "^2.11.2",
     "@web3-onboard/react": "^2.10.0",
     "buffer": "^6.0.3",

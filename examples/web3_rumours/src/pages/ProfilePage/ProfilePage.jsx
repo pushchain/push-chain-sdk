@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import { useConnectWallet } from "@web3-onboard/react";
@@ -6,15 +6,17 @@ import ReactMarkdown from "react-markdown";
 import { motion } from "framer-motion";
 import { getConfessions } from "../../services/getConfessions";
 import { performUpVote } from "../../services/performUpVote";
-
 import { ConfessionContext } from "../../context/ConfessionContext";
+import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 
 const ProfilePage = () => {
   const [{ wallet }, , disconnect] = useConnectWallet();
   const [confessions, setConfessions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { handleSendSignRequestToPushWallet } = usePushWalletContext();
 
   const { pushWalletAddress, user } = useContext(ConfessionContext);
 
@@ -30,58 +32,76 @@ const ProfilePage = () => {
   useEffect(() => {
     const walletConnected = sessionStorage.getItem("walletConnected");
     if (walletConnected && !wallet) {
-      navigate("/"); // Ensure user is redirected to landing if wallet is not connected
+      navigate("/");
     }
   }, [wallet, navigate]);
 
   // Fetch confessions (with caching)
   useEffect(() => {
     const fetchConfessions = async () => {
-      setIsLoading(true);
+      try {
+        setIsLoading(true);
+        setError(null);
 
-      // Load cached data
-      const cachedConfessions = localStorage.getItem(confessionsCacheKey);
-      if (cachedConfessions) {
-        setConfessions(JSON.parse(cachedConfessions));
+        // Load cached data
+        const cachedConfessions = localStorage.getItem(confessionsCacheKey);
+        if (cachedConfessions) {
+          const parsed = JSON.parse(cachedConfessions);
+          if (Array.isArray(parsed)) {
+            setConfessions(parsed);
+            setIsLoading(false);
+          }
+        }
+
+        // Fetch new data
+        const newConfessions = await getConfessions();
+        if (Array.isArray(newConfessions)) {
+          setConfessions(newConfessions);
+          localStorage.setItem(confessionsCacheKey, JSON.stringify(newConfessions));
+        } else {
+          throw new Error('Invalid confessions data received');
+        }
+      } catch (err) {
+        setError('Failed to fetch confessions. Please try again later.');
+        console.error('Error fetching confessions:', err);
+      } finally {
         setIsLoading(false);
       }
-
-      // Fetch new data
-      const newConfessions = await getConfessions();
-      setConfessions(newConfessions);
-      localStorage.setItem(confessionsCacheKey, JSON.stringify(newConfessions));
-      setIsLoading(false);
     };
 
     fetchConfessions();
 
-    // Poll for real-time updates
-    const interval = setInterval(fetchConfessions, 15000); // Poll every 15 seconds
-    return () => clearInterval(interval); // Clear interval on unmount
+    const interval = setInterval(fetchConfessions, 15000);
+    return () => clearInterval(interval);
   }, []);
 
-  // Filter confessions based on search
-  const filteredConfessions = confessions.filter((confession) =>
-    confession.post.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter confessions based on search with validation
+  const filteredConfessions = confessions.filter((confession) => {
+    if (!confession || typeof confession !== 'object') return false;
+    if (!confession.post || typeof confession.post !== 'string') return false;
+    return confession.post.toLowerCase().includes((searchQuery || '').toLowerCase());
+  });
 
-  // Handle upvote action
   const handleUpvote = async (wallet, upVoteCount, txnHash) => {
-    if (pushWalletAddress.length > 0) {
-      await performUpVote(user, pushWalletAddress, upVoteCount, txnHash);
-    } else {
-      await performUpVote(user, wallet, upVoteCount, txnHash);
+    try {
+      if (pushWalletAddress) {
+        await performUpVote(user, pushWalletAddress, upVoteCount, txnHash, handleSendSignRequestToPushWallet);
+      } else {
+        await performUpVote(user, wallet, upVoteCount, txnHash);
+      }
+      setConfessions((prev) =>
+        prev.map((c) =>
+          c.txnHash === txnHash ? { ...c, upVoteCount: c.upVoteCount + 1 } : c
+        )
+      );
+    } catch (error) {
+      console.error('Error performing upvote:', error);
+      // You might want to show this error to the user via a toast or alert
     }
-    setConfessions((prev) =>
-      prev.map((c) =>
-        c.txnHash === txnHash ? { ...c, upVoteCount: c.upVoteCount + 1 } : c
-      )
-    );
   };
 
   return (
     <Container>
-      {/* Header */}
       <Header>
         <Logo>
           <Highlighted>Web3</Highlighted> Rumours
@@ -103,18 +123,18 @@ const ProfilePage = () => {
         <WalletInfo>
           <WalletAddress>
             {wallet || pushWalletAddress
-              ? `Connected: ${
-                  pushWalletAddress
-                    ? truncateAddress(pushWalletAddress)
-                    : truncateAddress(wallet.accounts[0]?.address)
-                }`
+              ? `Connected: ${pushWalletAddress
+                  ? truncateAddress(pushWalletAddress)
+                  : truncateAddress(wallet?.accounts?.[0]?.address)}`
               : "Not Connected"}
           </WalletAddress>
           <DisconnectButton
             onClick={async () => {
-              await disconnect(wallet);
-              sessionStorage.clear();
-              navigate("/");
+              if (wallet) {
+                await disconnect(wallet);
+                sessionStorage.clear();
+                navigate("/");
+              }
             }}
           >
             {wallet || pushWalletAddress ? "Disconnect" : "Connect Wallet"}
@@ -122,7 +142,6 @@ const ProfilePage = () => {
         </WalletInfo>
       </Header>
 
-      {/* Feed Section */}
       <FeedContainer>
         {isLoading ? (
           <Loader>
@@ -139,6 +158,8 @@ const ProfilePage = () => {
             </motion.div>
             <WittyText>Loading your personalized buzz...</WittyText>
           </Loader>
+        ) : error ? (
+          <ErrorMessage>{error}</ErrorMessage>
         ) : filteredConfessions.length === 0 ? (
           <EmptyState>No rumours match your search. Try again!</EmptyState>
         ) : (
@@ -146,28 +167,26 @@ const ProfilePage = () => {
             {filteredConfessions.map((confession, index) => (
               <FeedItem
                 as={motion.div}
-                key={index}
+                key={confession.txnHash || index}
                 whileHover={{ scale: 1.02 }}
                 transition={{ type: "spring", stiffness: 300 }}
               >
                 <ConfessionContent>
                   <ConfessionText>
-                    <ReactMarkdown>{confession.post}</ReactMarkdown>
+                    <ReactMarkdown>{confession.post || 'No content available'}</ReactMarkdown>
                   </ConfessionText>
                   <Details>
-                    <Address>{`By: ${truncateAddress(
-                      confession.address
-                    )}`}</Address>
+                    <Address>{`By: ${truncateAddress(confession.address)}`}</Address>
                     <UpvoteButton
                       onClick={() =>
                         handleUpvote(
                           wallet,
-                          confession.upVoteCount,
+                          confession.upVoteCount || 0,
                           confession.txnHash
                         )
                       }
                     >
-                      👍 {confession.upVoteCount}
+                      👍 {confession.upVoteCount || 0}
                     </UpvoteButton>
                   </Details>
                 </ConfessionContent>
@@ -181,6 +200,17 @@ const ProfilePage = () => {
 };
 
 export default ProfilePage;
+
+// Add new styled component for error message
+const ErrorMessage = styled.div`
+  text-align: center;
+  color: #dc3545;
+  padding: 20px;
+  margin: 20px 0;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+`;
 
 // Styled Components
 const Container = styled.div`
