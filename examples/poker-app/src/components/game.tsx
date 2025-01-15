@@ -13,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Progress } from './ui/progress';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { PokerGame } from '../temp_types/types';
+import { PokerGame, PhaseType } from '../temp_types/types';
 
 type DealingPhase = 
   | 'WAITING_FOR_PLAYERS' 
@@ -21,7 +21,8 @@ type DealingPhase =
   | 'ENCRYPTING' 
   | 'DEALING' 
   | 'DECRYPTING' 
-  | 'READY';
+  | 'READY'
+  | 'PLAYING';
 
 interface GameState {
   dealingPhase: DealingPhase;
@@ -166,6 +167,44 @@ export default function Game() {
     }
   }, [game?.cards, game?.phase]);
 
+useEffect(() => {
+  // Check if we just entered READY phase and haven't started transition
+  if (game?.phase === 'READY' && game.cards?.length > 0 && gameState.dealingPhase === 'READY') {
+    const timer = setTimeout(async () => {
+      try {
+        // Check if still in READY phase to prevent multiple transitions
+        if (game.phase !== 'READY') return;
+
+        const updatedGame: PokerGame = {
+          ...game,
+          phase: 'PLAYING',
+          gamePhase: PhaseType.PREFLOP,
+          currentBet: 0,
+          pot: 0,
+          activePlayers: Array.from(game.players.keys()),
+          turnIndex: (Array.from(game.players.keys()).indexOf(game.dealer) + 1) % game.players.size
+        };
+
+        if (pokerService && gameTransactionHash && pushWalletSigner) {
+          await pokerService.updateGame(
+            gameTransactionHash,
+            updatedGame,
+            new Set(game.players.keys()),
+            pushWalletSigner
+          );
+          setGame(updatedGame);
+          setGameState(prev => ({ ...prev, dealingPhase: 'PLAYING' }));
+          toast.success('Game started! Place your bets.');
+        }
+      } catch (error) {
+        console.error('Error transitioning to playing phase:', error);
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }
+}, [game?.phase, game?.cards, gameState.dealingPhase]);
+
   const renderPhaseContent = () => {
     if (!game) return null;
 
@@ -232,6 +271,18 @@ export default function Game() {
             width={1600}
           />
         );
+        case 'PLAYING':
+          return (
+            <Alert className="mb-4">
+              <AlertTitle>Game in Progress</AlertTitle>
+              <AlertDescription>
+                {game?.turnIndex !== undefined && 
+                 Array.from(game.players.keys())[game.turnIndex] === connectedPushAddressFormat
+                 ? "It's your turn!"
+                 : "Waiting for other players..."}
+              </AlertDescription>
+            </Alert>
+          );
       default:
         return null;
     }

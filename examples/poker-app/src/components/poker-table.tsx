@@ -11,20 +11,69 @@ import useConnectedPushAddress from "../hooks/useConnectedPushAddress";
 import usePushWalletSigner from '../hooks/usePushSigner';
 import { generateKeyPair } from '../encryption';
 import { Button } from './ui/button';
+import { Card as CardType, PokerAction } from '../temp_types/types';
 
 interface Player {
   id: string;
   name: string;
   chips: number;
-  cards?: string[];
+  cards?: (string | CardType)[];  // Allow both string and Card types
   position?: string;
   isDealer?: boolean;
 }
 
 interface PokerTableProps {
-  dealingPhase: 'WAITING_FOR_PLAYERS' | 'KEY_EXCHANGE' | 'ENCRYPTING' | 'DECRYPTING' | 'READY';
+  dealingPhase: 'WAITING_FOR_PLAYERS' | 'KEY_EXCHANGE' | 'ENCRYPTING' | 'DECRYPTING' | 'READY' | 'PLAYING';
   isDealer: boolean;
 }
+
+function cardToString(card: CardType | string | undefined): string {
+  // Handle undefined or null
+  if (!card) return '';
+  
+  // If it's already a string, validate and return it
+  if (typeof card === 'string') {
+    // Check if it's a valid card string (e.g., "AS", "2H", etc.)
+    const isValidCardString = /^([AKQJ]|10|[2-9])[SHDC]$/.test(card);
+    return isValidCardString ? card : '';
+  }
+  
+  // Handle Card object
+  try {
+    const rankToString = (rank: number): string => {
+      const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+      return ranks[rank] || '';
+    };
+    
+    const suitToString = (suit: number): string => {
+      const suits = ['S', 'H', 'D', 'C'];
+      return suits[suit] || '';
+    };
+    
+    const rankStr = rankToString(card.rank);
+    const suitStr = suitToString(card.suit);
+    
+    return rankStr && suitStr ? `${rankStr}${suitStr}` : '';
+  } catch (error) {
+    console.error('Error converting card:', card, error);
+    return '';
+  }
+}
+
+const renderCard = (cardStr: string, isVisible: boolean) => {
+  if (!cardStr) {
+    // Return empty card or placeholder
+    return cardBackImageURL();
+  }
+  
+  return isVisible ? 
+    cardImageURL({ 
+      suit: cardStr.slice(-1) as 'S' | 'H' | 'D' | 'C',
+      rank: cardStr.slice(0, -1) as 'A' | 'K' | 'Q' | 'J' | '10' | '9' | '8' | '7' | '6' | '5' | '4' | '3' | '2'
+    }) 
+    : cardBackImageURL();
+};
+  
 
 // Helper function for player positioning based on number of players
 const getPlayerPosition = (index: number, totalPlayers: number) => {
@@ -44,6 +93,8 @@ const getPlayerPosition = (index: number, totalPlayers: number) => {
   const positions = ['bottom', 'right', 'top-right', 'top', 'top-left', 'left'];
   return positions[index % positions.length];
 };
+
+
 
 export default function PokerTable({ dealingPhase, isDealer }: PokerTableProps) {
   const { game,pokerService,gameTransactionHash ,setGame} = usePokerGameContext();
@@ -144,12 +195,95 @@ export default function PokerTable({ dealingPhase, isDealer }: PokerTableProps) 
 
   // Card visibility management
   useEffect(() => {
-    if (dealingPhase === 'READY') {
+    if (dealingPhase === 'READY' || dealingPhase === 'PLAYING') {
       setShowCards(true);
     } else {
       setShowCards(false);
     }
   }, [dealingPhase]);
+  
+
+  // Add this to your existing poker-table.tsx
+const renderBettingControls = () => {
+  if (dealingPhase !== 'PLAYING') return null;
+
+  const isMyTurn = game?.turnIndex !== undefined && 
+    Array.from(game.players.keys())[game.turnIndex] === connectedPushAddressFormat;
+
+  if (!isMyTurn) return null;
+
+  return (
+    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-4">
+      <Button 
+        onClick={() => handleAction('fold')}
+        variant="destructive"
+      >
+        Fold
+      </Button>
+      {game?.currentBet === 0 && (
+        <Button onClick={() => handleAction('check')}>
+          Check
+        </Button>
+      )}
+      {game?.currentBet > 0 && (
+        <Button onClick={() => handleAction('call')}>
+          Call ${game.currentBet}
+        </Button>
+      )}
+      <Button onClick={() => handleAction('raise')}>
+        Raise
+      </Button>
+    </div>
+  );
+};
+
+// Add action handler
+const handleAction = async (action: PokerAction) => {
+  if (!game || !pokerService || !gameTransactionHash || !pushWalletSigner) return;
+
+  try {
+    const updatedGame = { ...game };
+    const currentPlayer = Array.from(game.players.keys())[game.turnIndex!];
+    const playerData = updatedGame.players.get(currentPlayer);
+
+    if (!playerData) return;
+
+    switch(action) {
+      case 'fold':
+        updatedGame.activePlayers = updatedGame.activePlayers?.filter(p => p !== currentPlayer);
+        break;
+      case 'check':
+        // No changes needed
+        break;
+      case 'call':
+        if (updatedGame.currentBet) {
+          playerData.chips -= updatedGame.currentBet;
+          updatedGame.pot += updatedGame.currentBet;
+        }
+        break;
+      case 'raise':
+        // For now, hardcode raise amount to currentBet + 10
+        const raiseAmount = (updatedGame.currentBet || 0) + 10;
+        playerData.chips -= raiseAmount;
+        updatedGame.pot += raiseAmount;
+        updatedGame.currentBet = raiseAmount;
+        break;
+    }
+
+    // Move to next player
+    updatedGame.turnIndex = (updatedGame.turnIndex! + 1) % updatedGame.players.size;
+    
+    await pokerService.updateGame(
+      gameTransactionHash,
+      updatedGame,
+      new Set(updatedGame.players.keys()),
+      pushWalletSigner
+    );
+    setGame(updatedGame);
+  } catch (error) {
+    console.error('Error handling action:', error);
+  }
+};
 
   // Update community cards when game state changes
   useEffect(() => {
@@ -173,33 +307,34 @@ export default function PokerTable({ dealingPhase, isDealer }: PokerTableProps) 
           animate={{ scale: 1 }}
           exit={{ scale: 0 }}
         >
-          {player.cards.map((card, index) => (
-            <motion.div
-              key={index}
-              className="w-12 h-16 bg-white rounded-lg flex items-center justify-center shadow-lg overflow-hidden"
-              initial={{ rotateY: 180 }}
-              animate={{ 
-                rotateY: showCards && player.id === connectedPushAddressFormat ? 0 : 180 
-              }}
-              transition={{ 
-                duration: 0.5, 
-                delay: index * 0.2 
-              }}
-            >
-              <img 
-                src={player.id === connectedPushAddressFormat && showCards 
-                  ? cardImageURL({ 
-                      suit: card.slice(-1) as 'S' | 'H' | 'D' | 'C',
-                      rank: card.slice(0, -1) as 'A' | 'K' | 'Q' | 'J' | '10' | '9' | '8' | '7' | '6' | '5' | '4' | '3' | '2'
-                    }) 
-                  : cardBackImageURL()} 
-                alt={player.id === connectedPushAddressFormat && showCards 
-                  ? card 
-                  : 'Card back'} 
-                className="w-full h-full object-contain"
-              />
-            </motion.div>
-          ))}
+          {player.cards.map((card, index) => {
+            // Add this type checking and conversion
+            const cardStr = cardToString(card);
+            return (
+              <motion.div
+                key={index}
+                className="w-12 h-16 bg-white rounded-lg flex items-center justify-center shadow-lg overflow-hidden"
+                initial={{ rotateY: 180 }}
+                animate={{ 
+                  rotateY: showCards && player.id === connectedPushAddressFormat ? 0 : 180 
+                }}
+                transition={{ 
+                  duration: 0.5, 
+                  delay: index * 0.2 
+                }}
+              >
+                <img 
+        src={player.id === connectedPushAddressFormat && showCards 
+          ? renderCard(cardStr, true)
+          : cardBackImageURL()} 
+        alt={player.id === connectedPushAddressFormat && showCards 
+          ? cardStr || 'Card back'
+          : 'Card back'} 
+        className="w-full h-full object-contain"
+      />
+    </motion.div>
+            );
+          })}
         </motion.div>
       )}
     </AnimatePresence>
@@ -208,32 +343,33 @@ export default function PokerTable({ dealingPhase, isDealer }: PokerTableProps) 
   const renderCommunityCards = () => (
     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-2 mt-12">
       <AnimatePresence>
-        {communityCards.map((card, index) => (
-          <motion.div
-            key={index}
-            className="w-14 h-20 bg-white rounded-lg flex items-center justify-center shadow-lg"
-            initial={{ scale: 0, rotateY: 180 }}
-            animate={{ 
-              scale: 1, 
-              rotateY: dealingPhase === 'READY' ? 0 : 180 
-            }}
-            transition={{ 
-              duration: 0.5, 
-              delay: index * 0.2 + 0.5 
-            }}
-          >
-            <img 
-              src={dealingPhase === 'READY' 
-                ? cardImageURL({ 
-                    suit: card.slice(-1) as 'S' | 'H' | 'D' | 'C',
-                    rank: card.slice(0, -1) as 'A' | 'K' | 'Q' | 'J' | '10' | '9' | '8' | '7' | '6' | '5' | '4' | '3' | '2'
-                  }) 
-                : cardBackImageURL()} 
-              alt={dealingPhase === 'READY' ? card : 'Card back'} 
-              className="w-full h-full object-contain" 
-            />
-          </motion.div>
-        ))}
+        {communityCards.map((card, index) => {
+          // Add this type checking and conversion
+          const cardStr = cardToString(card);
+          return (
+            <motion.div
+              key={index}
+              className="w-14 h-20 bg-white rounded-lg flex items-center justify-center shadow-lg"
+              initial={{ scale: 0, rotateY: 180 }}
+              animate={{ 
+                scale: 1, 
+                rotateY: (dealingPhase === 'READY' || dealingPhase === 'PLAYING') ? 0 : 180
+              }}
+              transition={{ 
+                duration: 0.5, 
+                delay: index * 0.2 + 0.5 
+              }}
+            >
+              <img 
+        src={dealingPhase === 'READY' || dealingPhase === 'PLAYING' 
+          ? renderCard(cardStr, true) 
+          : cardBackImageURL()}
+        alt={dealingPhase === 'READY' ? cardStr || 'Card back' : 'Card back'} 
+        className="w-full h-full object-contain" 
+      />
+    </motion.div>
+          );
+        })}
       </AnimatePresence>
     </div>
   );
@@ -374,6 +510,7 @@ export default function PokerTable({ dealingPhase, isDealer }: PokerTableProps) 
           <div>Cards Dealt: {game?.cards?.length || 0}</div>
         </div>
       )}
+      {renderBettingControls()}
     </div>
   );
 }

@@ -38,25 +38,34 @@ export interface Card {
 
 export interface Player {
   chips: number;
-  cards: Card[];
+  cards: (Card | string)[];  // Allow both encrypted strings and decrypted Card objects
 }
 
 export interface Phase {
   bets: Map<string, number>;
+  currentPlayer?: string;  // Address of player whose turn it is
+  lastRaisePlayer?: string;  // Address of last player who raised
+  minimumRaise?: number;  // Minimum amount that can be raised
 }
 
 export interface PokerGame {
   players: Map<string, Player>;
   phases: Map<PhaseType, Phase>;
-  cards: Card[];
+  cards: (Card | string)[];  // Allow both encrypted strings and decrypted Card objects
   pot: number;
   dealer: string;
   creator: string;
 
   /**
-   * New fields for dealing and decryption phases:
+   * Current state of the game
    */
-  phase?: 'WAITING_FOR_PLAYERS' | 'KEY_EXCHANGE' | 'ENCRYPTING' | 'DEALING' | 'DECRYPTING' | 'READY';
+  phase?: 'WAITING_FOR_PLAYERS' | 'KEY_EXCHANGE' | 'ENCRYPTING' | 'DEALING' | 'DECRYPTING' | 'READY' | 'PLAYING';
+
+  /**
+   * Store game phase for poker rounds after cards are dealt
+   */
+  gamePhase?: PhaseType;
+
   /**
    * playerHoleCards: 
    * Store each player's hole cards as encrypted strings during DEALING/DECRYPTING phases.
@@ -73,7 +82,39 @@ export interface PokerGame {
 
   /**
    * turnIndex:
-   * Indicates which player's turn it is to partially decrypt the community cards.
+   * Indicates which player's turn it is to partially decrypt the community cards
+   * or to play during the game phase.
    */
   turnIndex?: number;
+
+  /**
+   * currentBet:
+   * The current bet amount that players need to match
+   */
+  currentBet?: number;
+
+  /**
+   * lastAction:
+   * Records the last action taken by a player
+   */
+  lastAction?: {
+    player: string;
+    action: PokerAction;
+    amount?: number;
+  };
+
+  /**
+   * activePlayers:
+   * Array of players still in the current hand (not folded)
+   */
+  activePlayers?: string[];
+}
+
+// Additional type definitions for game actions
+export type PokerAction = 'fold' | 'check' | 'call' | 'raise';
+
+export interface PokerActionPayload {
+  action: PokerAction;
+  amount?: number;  // Required for 'raise'
+  player: string;
 }
