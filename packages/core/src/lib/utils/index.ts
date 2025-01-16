@@ -13,7 +13,6 @@ import { CHAIN, CHAIN_ID } from '../constants';
 import { Block as GeneratedBlock } from '../generated/block';
 import { Transaction } from '../generated/tx';
 import { InitDid } from '../generated/txData/init_did';
-import { InitSessionKey } from '../generated/txData/init_session_key';
 import { UniversalAccount } from '../signer/signer.types';
 import { CompleteTxResponse, TxCategory, TxResponse } from '../tx/tx.types';
 import { ValidatorCompleteTxResponse } from '../tx/validatorTx.types';
@@ -112,16 +111,10 @@ export class Utils {
     deserialize(tx: Uint8Array): Transaction {
       return Utils.deserialize(tx);
     },
-    serializeData(
-      txData: InitDid | InitSessionKey,
-      category: TxCategory
-    ): Uint8Array {
+    serializeData(txData: InitDid, category: TxCategory): Uint8Array {
       return Utils.serializeData(txData, category);
     },
-    deserializeData(
-      txData: Uint8Array,
-      category: TxCategory
-    ): InitDid | InitSessionKey {
+    deserializeData(txData: Uint8Array, category: TxCategory): InitDid {
       return Utils.deserializeData(txData, category);
     },
   };
@@ -256,7 +249,7 @@ export class Utils {
   };
 
   private static serializeData = (
-    txData: InitDid | InitSessionKey,
+    txData: InitDid,
     category: TxCategory
   ): Uint8Array => {
     switch (category) {
@@ -264,11 +257,6 @@ export class Utils {
         const data = txData as InitDid;
         const initTxData = InitDid.create(data);
         return InitDid.encode(initTxData).finish();
-      }
-      case TxCategory.INIT_SESSION_KEY: {
-        const data = txData as InitSessionKey;
-        const initTxData = InitSessionKey.create(data);
-        return InitSessionKey.encode(initTxData).finish();
       }
       default: {
         throw new Error('Serialization Not Supported for given TxCategory');
@@ -279,13 +267,10 @@ export class Utils {
   private static deserializeData = (
     txData: Uint8Array,
     category: TxCategory
-  ): InitDid | InitSessionKey => {
+  ): InitDid => {
     switch (category) {
       case TxCategory.INIT_DID: {
         return InitDid.decode(txData);
-      }
-      case TxCategory.INIT_SESSION_KEY: {
-        return InitSessionKey.decode(txData);
       }
       default: {
         throw new Error('Deserialization Not Supported for given TxCategory');

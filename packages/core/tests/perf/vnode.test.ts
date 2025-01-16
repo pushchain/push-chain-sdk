@@ -4,7 +4,7 @@ import {
   privateKeyToAccount,
   privateKeyToAddress,
 } from 'viem/accounts';
-import { PushChain, Tx } from '../../src';
+import { PushChain } from '../../src';
 import { CONSTANTS } from '../../src/lib/constants';
 import { config } from '../config';
 import { INIT_DID_TX_2 } from '../data';
@@ -25,7 +25,7 @@ describe.skip('validator smoke test', () => {
     const universalSigner: UniversalSigner = {
       chain: CONSTANTS.CHAIN.PUSH,
       chainId: CONSTANTS.CHAIN_ID.PUSH.DEVNET,
-      account: account.address,
+      address: account.address,
       signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
         const signature = await account.signMessage({
           message: { raw: data },
@@ -33,8 +33,9 @@ describe.skip('validator smoke test', () => {
         return hexToBytes(signature);
       },
     };
-    const signer = PushChain.signer.create(universalSigner);
-    const txInstance = await Tx.initialize(env, signer);
+    const pushChain = await PushChain.initialize(universalSigner, {
+      network: env,
+    });
     const recipientAddresses = [
       privateKeyToAddress(generatePrivateKey()),
       privateKeyToAddress(generatePrivateKey()),
@@ -45,21 +46,21 @@ describe.skip('validator smoke test', () => {
       {
         chain: CONSTANTS.CHAIN.ETHEREUM,
         chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
-        account: recipientAddresses[0],
+        address: recipientAddresses[0],
       },
       {
         chain: CONSTANTS.CHAIN.ETHEREUM,
         chainId: CONSTANTS.CHAIN_ID.ETHEREUM.MAINNET,
-        account: recipientAddresses[1],
+        address: recipientAddresses[1],
       },
       {
         chain: CONSTANTS.CHAIN.ETHEREUM,
         chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
-        account: recipientAddresses[2],
+        address: recipientAddresses[2],
       },
     ];
 
-    const res = await txInstance.send(recipients, {
+    const res = await pushChain.tx.send(recipients, {
       category: 'INIT_DID',
       data: Buffer.from(INIT_DID_TX_2.unsignedInitDIDTx.data).toString(
         'base64'

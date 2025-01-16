@@ -1,6 +1,5 @@
 import { Validator } from '../../src';
 import {
-  PingReply,
   TokenReply,
   ActiveValidator,
 } from '../../src/lib/validator/validator.types';

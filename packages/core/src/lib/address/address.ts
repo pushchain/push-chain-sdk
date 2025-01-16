@@ -51,7 +51,7 @@ export class Address {
   static toPushCAIP = (
     address: `0x${string}` | `push${string}`,
     env: ENV = ENV.DEVNET
-  ) => {
+  ): string => {
     let network: PUSH_NETWORK;
     switch (env) {
       case ENV.LOCAL:

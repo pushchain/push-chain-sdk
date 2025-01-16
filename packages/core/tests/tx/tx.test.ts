@@ -7,7 +7,7 @@ import {
   privateKeyToAccount,
   privateKeyToAddress,
 } from 'viem/accounts';
-import { Address, PushChain, Tx } from '../../src';
+import { Address, PushChain } from '../../src';
 import { CONSTANTS, Order } from '../../src/lib/constants';
 import { InitDid } from '../../src/lib/generated/txData/init_did';
 import {
@@ -74,8 +74,8 @@ describe('Tx', () => {
   });
 
   it('should get transactions with default parameters', async () => {
-    const txInstance = await Tx.initialize(env);
-    const res = await txInstance.get();
+    const pushChain = await PushChain.initialize(null, { network: env });
+    const res = await pushChain.tx.get();
     expect(res.blocks).toBeInstanceOf(Array);
     expect(res.blocks.length).toBeGreaterThan(0);
     res.blocks.forEach((block) => {
@@ -84,8 +84,8 @@ describe('Tx', () => {
   });
 
   it('should get transactions with custom parameters', async () => {
-    const txInstance = await Tx.initialize(env);
-    const res = await txInstance.get('*', {
+    const pushChain = await PushChain.initialize(null, { network: env });
+    const res = await pushChain.tx.get('*', {
       startTime: Math.floor(Date.now() / 1000),
       order: Order.DESC,
       limit: 30,
@@ -98,8 +98,8 @@ describe('Tx', () => {
   });
 
   it('should get transactions for a specific user', async () => {
-    const txInstance = await Tx.initialize(env);
-    const res = await txInstance.get(
+    const pushChain = await PushChain.initialize(null, { network: env });
+    const res = await pushChain.tx.get(
       {
         address: '0x35B84d6848D16415177c64D64504663b998A6ab4',
         chain: CONSTANTS.CHAIN.ETHEREUM,
@@ -116,8 +116,8 @@ describe('Tx', () => {
   });
 
   it('should get transactions with a specific Category', async () => {
-    const txInstance = await Tx.initialize(env);
-    const res = await txInstance.get('*', {
+    const pushChain = await PushChain.initialize(null, { network: env });
+    const res = await pushChain.tx.get('*', {
       category: 'CUSTOM:PUSH_MAIL',
     });
     expect(res.blocks).toBeInstanceOf(Array);
@@ -127,8 +127,8 @@ describe('Tx', () => {
   });
 
   it('should get transactions with a specific Sender', async () => {
-    const txInstance = await Tx.initialize(env);
-    const res = await txInstance.get(
+    const pushChain = await PushChain.initialize(null, { network: env });
+    const res = await pushChain.tx.get(
       PushChain.utils.account.toUniversal(
         'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4'
       ),
@@ -143,8 +143,8 @@ describe('Tx', () => {
   });
 
   it('should get transactions with a specific Recipient', async () => {
-    const txInstance = await Tx.initialize(env);
-    const res = await txInstance.get(
+    const pushChain = await PushChain.initialize(null, { network: env });
+    const res = await pushChain.tx.get(
       PushChain.utils.account.toUniversal(
         'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4'
       ),
@@ -157,9 +157,9 @@ describe('Tx', () => {
   });
 
   it('should search for a tx by hash', async () => {
-    const txInstance = await Tx.initialize(env);
+    const pushChain = await PushChain.initialize(null, { network: env });
     const txHash = '9f636ac0faa040a74ae49410528c5634';
-    const res = await txInstance.get(txHash);
+    const res = await pushChain.tx.get(txHash);
     if (res.blocks.length > 0) {
       expect(res.blocks.length).toEqual(1);
       expect(res.blocks[0].transactions.length).toEqual(1);
@@ -184,9 +184,10 @@ describe('Tx', () => {
         return hexToBytes(signature);
       },
     };
-    const signer = PushChain.signer.create(universalSigner);
-    const txInstance = await Tx.initialize(env, signer);
-    const res = await txInstance.send([], {
+    const pushChain = await PushChain.initialize(universalSigner, {
+      network: env,
+    });
+    const res = await pushChain.tx.send([], {
       category: INIT_DID_TX_2.unsignedInitDIDTx.category,
       data: Buffer.from(INIT_DID_TX_2.unsignedInitDIDTx.data).toString(
         'base64'
@@ -214,10 +215,11 @@ describe('Tx', () => {
         return hexToBytes(signature);
       },
     };
-    const signer = PushChain.signer.create(universalSigner);
-    const txInstance = await Tx.initialize(env, signer);
+    const pushChain = await PushChain.initialize(universalSigner, {
+      network: env,
+    });
     await expect(
-      txInstance.send([], {
+      pushChain.tx.send([], {
         category: INIT_DID_TX_2.unsignedInitDIDTx.category,
         data: Buffer.from(INIT_DID_TX_2.unsignedInitDIDTx.data).toString(
           'base64'
@@ -245,10 +247,11 @@ describe('Tx', () => {
         return hexToBytes(signature);
       },
     };
-    const signer = PushChain.signer.create(universalSigner);
-    const txInstance = await Tx.initialize(env, signer);
+    const pushChain = await PushChain.initialize(universalSigner, {
+      network: env,
+    });
     await expect(
-      txInstance.send([], {
+      pushChain.tx.send([], {
         category: INIT_DID_TX_2.unsignedInitDIDTx.category,
         data: Buffer.from(INIT_DID_TX_2.unsignedInitDIDTx.data).toString(
           'base64'
@@ -272,8 +275,9 @@ describe('Tx', () => {
         return hexToBytes(signature);
       },
     };
-    const signer = PushChain.signer.create(universalSigner);
-    const txInstance = await Tx.initialize(env, signer);
+    const pushChain = await PushChain.initialize(universalSigner, {
+      network: env,
+    });
     const recipientAddresses = [
       privateKeyToAddress(generatePrivateKey()),
       privateKeyToAddress(generatePrivateKey()),
@@ -298,9 +302,8 @@ describe('Tx', () => {
       },
     ];
 
-    const res = await txInstance.send(recipients, {
+    const res = await pushChain.tx.send(recipients, {
       category: 'CUSTOM:CORE_SDK',
-      // data: new Uint8Array([1, 2, 3, 4, 5]),
       data: JSON.stringify({ hi: 1 }),
     });
 
@@ -322,8 +325,9 @@ describe('Tx', () => {
       },
     };
 
-    const signer = PushChain.signer.create(universalSigner);
-    const txInstance = await Tx.initialize(env, signer);
+    const pushChain = await PushChain.initialize(universalSigner, {
+      network: env,
+    });
 
     const recipientAddresses = [
       privateKeyToAddress(generatePrivateKey()),
@@ -350,7 +354,7 @@ describe('Tx', () => {
     ];
 
     await expect(
-      txInstance.send(recipients, {
+      pushChain.tx.send(recipients, {
         category: 'CUSTOM:CORE_SDK',
         data: JSON.stringify({ key: new Uint8Array([1, 2, 3, 4, 5]) }),
       })

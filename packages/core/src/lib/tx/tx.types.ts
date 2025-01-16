@@ -1,7 +1,6 @@
 // TxCategory supported for Serialization / Deserialization by core
 export enum TxCategory {
   INIT_DID = 'INIT_DID',
-  INIT_SESSION_KEY = 'INIT_SESSION_KEY',
 }
 
 export type CompleteTxResponse = TxResponse & {

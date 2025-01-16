@@ -1,4 +1,5 @@
-import { Block, PushChain } from '../../src';
+import { PushChain } from '../../src';
+import { Block } from '../../src/lib/block/block';
 import { config } from '../config';
 import { Block as BlockType } from '../../src/lib/generated/block';
 import { BlockType as SimplifiedNodeBlockType } from '../../src/lib/block/block.types';
@@ -21,8 +22,8 @@ describe('Block Class', () => {
   };
 
   it('should initialize a Block instance', async () => {
-    const blockInstance = await Block.initialize(env);
-    expect(blockInstance).toBeInstanceOf(Block);
+    const pushChain = await PushChain.initialize(null, { network: env });
+    expect(pushChain.block).toBeInstanceOf(Block);
   });
 
   it('should serialize a BlockType object into a Uint8Array', () => {
@@ -39,8 +40,8 @@ describe('Block Class', () => {
   });
 
   it('should get blocks with default parameters', async () => {
-    const blockInstance = await Block.initialize(env);
-    const res = await blockInstance.get();
+    const pushChain = await PushChain.initialize(null, { network: env });
+    const res = await pushChain.block.get();
     expect(res.blocks).toBeInstanceOf(Array);
     res.blocks.forEach((block) => {
       blockChecker(block);
@@ -48,8 +49,8 @@ describe('Block Class', () => {
   });
 
   it('should get blocks with custom parameters', async () => {
-    const blockInstance = await Block.initialize(env);
-    const res = await blockInstance.get();
+    const pushChain = await PushChain.initialize(null, { network: env });
+    const res = await pushChain.block.get();
     expect(res.blocks).toBeInstanceOf(Array);
     res.blocks.forEach((block) => {
       blockChecker(block);
@@ -57,10 +58,10 @@ describe('Block Class', () => {
   });
 
   it('should search for a block by hash', async () => {
-    const blockInstance = await Block.initialize(env);
-    const res = await blockInstance.get();
+    const pushChain = await PushChain.initialize(null, { network: env });
+    const res = await pushChain.block.get();
     const blockHash = res.blocks[0].blockHash;
-    const searchRes = await blockInstance.get(blockHash);
+    const searchRes = await pushChain.block.get(blockHash);
     expect(searchRes.blocks).toBeInstanceOf(Array);
     expect(searchRes.blocks.length).toEqual(1);
     res.blocks.forEach((block) => {

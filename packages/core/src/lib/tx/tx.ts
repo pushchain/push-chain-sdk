@@ -7,10 +7,7 @@ import { ValidatorCompleteBlockResponse } from '../block/validatorBlock.types';
 import { Order, ENV } from '../constants';
 import { Transaction } from '../generated/tx';
 import { PushChain } from '../pushChain';
-import {
-  UniversalAccount,
-  ValidatedUniversalSigner,
-} from '../signer/signer.types';
+import { UniversalAccount, UniversalSigner } from '../signer/signer.types';
 import { toSDKResponse, toSimplifiedBlockResponse } from '../utils';
 import { Validator } from '../validator/validator';
 import { TokenReply } from '../validator/validator.types';
@@ -21,8 +18,7 @@ export class Tx {
 
   private constructor(
     private validator: Validator,
-    private env: ENV,
-    private signer: ValidatedUniversalSigner | null
+    private signer: UniversalSigner | null
   ) {
     this.tokenCache = new TokenCache(validator);
     // get a token async
@@ -31,10 +27,10 @@ export class Tx {
 
   static initialize = async (
     env: ENV,
-    validatedUniversalSigner: ValidatedUniversalSigner | null = null
+    universalSigner: UniversalSigner | null = null
   ) => {
     const validator = await Validator.initalize({ env });
-    return new Tx(validator, env, validatedUniversalSigner);
+    return new Tx(validator, universalSigner);
   };
 
   /**

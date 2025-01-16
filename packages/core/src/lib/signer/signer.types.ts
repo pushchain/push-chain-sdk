@@ -31,12 +31,6 @@ export type UniversalAccount =
       address: string;
     };
 
-// Framework-dependent
 export type UniversalSigner = UniversalAccount & {
-  signMessage: (data: Uint8Array) => Promise<Uint8Array>;
-};
-
-// Framework-agnostic
-export type ValidatedUniversalSigner = UniversalAccount & {
   signMessage: (data: Uint8Array) => Promise<Uint8Array>;
 };
