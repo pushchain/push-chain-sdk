@@ -21,17 +21,17 @@
 //   {
 //     chain: CONSTANTS.Chain.EVM.sepolia.name,
 //     chainId: CONSTANTS.Chain.EVM.sepolia.chainId,
-//     account: recipientAddresses[0],
+//     address: recipientAddresses[0],
 //   },
 //   {
 //     chain: CONSTANTS.Chain.EVM.MAINNET.name,
 //     chainId: CONSTANTS.Chain.EVM.MAINNET.chainId,
-//     account: recipientAddresses[1],
+//     address: recipientAddresses[1],
 //   },
 //   {
 //     chain: CONSTANTS.Chain.EVM.sepolia.name,
 //     chainId: CONSTANTS.Chain.EVM.sepolia.chainId,
-//     account: recipientAddresses[2],
+//     address: recipientAddresses[2],
 //   },
 // ];
 //
@@ -52,13 +52,13 @@
 //
 //   beforeEach(async () => {
 //     const senderPrivateKey = generatePrivateKey();
-//     const account = privateKeyToAccount(senderPrivateKey);
+//     const address = privateKeyToAccount(senderPrivateKey);
 //     const universalSigner: UniversalSigner = {
 //       chain: CONSTANTS.Chain.Push.DEVNET.name,
 //       chainId: CONSTANTS.Chain.Push.DEVNET.chainId,
-//       account: account.address,
+//       address: address.address,
 //       signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
-//         const signature = await account.signMessage({
+//         const signature = await address.signMessage({
 //           message: { raw: data },
 //         });
 //         return hexToBytes(signature);
@@ -96,12 +96,12 @@
 //       );
 //
 //       const pk = generatePrivateKey();
-//       const account = privateKeyToAccount(pk);
-//       const senderInCaip = Address.toPushCAIP(account.address, ENV.DEV);
+//       const address = privateKeyToAccount(pk);
+//       const senderInCaip = Address.toPushCAIP(address.address, ENV.DEV);
 //       const signer = {
-//         account: senderInCaip,
+//         address: senderInCaip,
 //         signMessage: async (data: Uint8Array) => {
-//           const signature = await account.signMessage({
+//           const signature = await address.signMessage({
 //             message: { raw: data },
 //           });
 //           return hexToBytes(signature);
@@ -121,7 +121,7 @@
 //         );
 //         expect(res.items).toBeInstanceOf(Array);
 //         const item0 = res.items[0];
-//         expect(item0.sender).toEqual(signer.account);
+//         expect(item0.sender).toEqual(signer.address);
 //         expect(item0.recipientsList).toEqual(sampleTx.recipients);
 //         const sampleDataBase16 = toHex(sampleTx.data).substring(2);
 //         expect(item0.data).toEqual(sampleDataBase16);

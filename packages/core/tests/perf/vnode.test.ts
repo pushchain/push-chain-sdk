@@ -84,11 +84,11 @@ describe.skip('validator smoke test', () => {
   //   );
   //
   //   const pk = generatePrivateKey();
-  //   const account = privateKeyToAccount(pk);
+  //   const address = privateKeyToAccount(pk);
   //   const signer = {
-  //     account: Address.toPushCAIP(account.address, ENV.DEVNET),
+  //     address: Address.toPushCAIP(address.address, ENV.DEVNET),
   //     signMessage: async (data: Uint8Array) => {
-  //       const signature = await account.signMessage({
+  //       const signature = await address.signMessage({
   //         message: { raw: data },
   //       });
   //       return hexToBytes(signature);
@@ -102,7 +102,7 @@ describe.skip('validator smoke test', () => {
   //     const res = await txInstance.getFromVNode(recipient, 'CUSTOM:CORE_SDK');
   //     expect(res.items).toBeInstanceOf(Array);
   //     const item0 = res.items[0];
-  //     expect(item0.sender).toEqual(signer.account);
+  //     expect(item0.sender).toEqual(signer.address);
   //     expect(item0.recipientsList).toEqual(sampleTx.recipients);
   //     const sampleDataBase16 = toHex(sampleTx.data).substring(2);
   //     expect(item0.data).toEqual(sampleDataBase16);

@@ -137,45 +137,45 @@ export class Utils {
         return {
           chain: CHAIN.ETHEREUM,
           chainId: CHAIN_ID.ETHEREUM.MAINNET,
-          account: address,
+          address,
         };
       } else if (chainId === '11155111') {
         return {
           chain: CHAIN.ETHEREUM,
           chainId: CHAIN_ID.ETHEREUM.SEPOLIA,
-          account: address,
+          address,
         };
       } else
         return {
           chain: CHAIN.ETHEREUM,
           chainId,
-          account: address,
+          address,
         };
     } else if (chain.toLocaleLowerCase() === 'push') {
       if (chainId.toLocaleLowerCase() === 'mainnet') {
         return {
           chain: CHAIN.PUSH,
           chainId: CHAIN_ID.PUSH.MAINNET,
-          account: address,
+          address,
         };
       } else if (chainId.toLocaleLowerCase() === 'devnet') {
         return {
           chain: CHAIN.PUSH,
           chainId: CHAIN_ID.PUSH.DEVNET,
-          account: address,
+          address,
         };
       } else
         return {
           chain: CHAIN.PUSH,
           chainId,
-          account: address,
+          address,
         };
     } else if (chain.toLocaleLowerCase() === 'solana') {
       if (chainId.toLocaleLowerCase() === '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp') {
         return {
           chain: CHAIN.SOLANA,
           chainId: CHAIN_ID.SOLANA.MAINNET,
-          account: address,
+          address,
         };
       } else if (
         chainId.toLocaleLowerCase() === 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1'
@@ -183,7 +183,7 @@ export class Utils {
         return {
           chain: CHAIN.SOLANA,
           chainId: CHAIN_ID.SOLANA.DEVNET,
-          account: address,
+          address,
         };
       } else if (
         chainId.toLocaleLowerCase() === '4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z'
@@ -191,25 +191,25 @@ export class Utils {
         return {
           chain: CHAIN.SOLANA,
           chainId: CHAIN_ID.SOLANA.TESTNET,
-          account: address,
+          address,
         };
       } else
         return {
           chain: CHAIN.SOLANA,
           chainId: chainId,
-          account: address,
+          address,
         };
     } else
       return {
         chain: chain,
         chainId: chainId,
-        account: address,
+        address,
       };
   }
 
   private static toChainAgnostic(universalAccount: UniversalAccount): string {
     let chain = '';
-    let address = universalAccount.account;
+    let address = universalAccount.address;
 
     if (
       universalAccount.chain.toLocaleLowerCase() ===
@@ -225,9 +225,9 @@ export class Utils {
       universalAccount.chain.toLocaleLowerCase() ===
       CHAIN.PUSH.toLocaleLowerCase()
     ) {
-      address = universalAccount.account.startsWith('push')
-        ? universalAccount.account
-        : Address.evmToPush(universalAccount.account as `0x${string}`);
+      address = universalAccount.address.startsWith('push')
+        ? universalAccount.address
+        : Address.evmToPush(universalAccount.address as `0x${string}`);
       chain = 'push';
     } else {
       chain = universalAccount.chain.toLocaleLowerCase();

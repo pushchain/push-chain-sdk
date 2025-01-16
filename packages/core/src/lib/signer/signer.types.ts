@@ -13,22 +13,22 @@ export type UniversalAccount =
   | {
       chain: CHAIN.PUSH;
       chainId: PushChainId;
-      account: string;
+      address: string;
     }
   | {
       chain: CHAIN.SOLANA;
       chainId: SolanaChainId;
-      account: string;
+      address: string;
     }
   | {
       chain: CHAIN.ETHEREUM;
       chainId: EthereumChainId;
-      account: string;
+      address: string;
     }
   | {
       chain: string;
       chainId: string;
-      account: string;
+      address: string;
     };
 
 // Framework-dependent

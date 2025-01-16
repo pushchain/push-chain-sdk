@@ -17,10 +17,4 @@ export interface Config {
     [ENV.TESTNET]: NetworkConfig;
     [ENV.LOCAL]: NetworkConfig;
   };
-  WALLET_URL: {
-    [ENV.MAINNET]: string;
-    [ENV.DEVNET]: string;
-    [ENV.TESTNET]: string;
-    [ENV.LOCAL]: string;
-  };
 }

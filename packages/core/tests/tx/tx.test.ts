@@ -101,7 +101,7 @@ describe('Tx', () => {
     const txInstance = await Tx.initialize(env);
     const res = await txInstance.get(
       {
-        account: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+        address: '0x35B84d6848D16415177c64D64504663b998A6ab4',
         chain: CONSTANTS.CHAIN.ETHEREUM,
         chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
       },
@@ -176,7 +176,7 @@ describe('Tx', () => {
     const universalSigner: UniversalSigner = {
       chain: CONSTANTS.CHAIN.PUSH,
       chainId: CONSTANTS.CHAIN_ID.PUSH.DEVNET,
-      account: account.address,
+      address: account.address,
       signMessage: async (data: Uint8Array) => {
         const signature = await account.signMessage({
           message: { raw: data },
@@ -206,7 +206,7 @@ describe('Tx', () => {
     const universalSigner: UniversalSigner = {
       chain: CONSTANTS.CHAIN.PUSH,
       chainId: CONSTANTS.CHAIN_ID.PUSH.DEVNET,
-      account: account.address,
+      address: account.address,
       signMessage: async (data: Uint8Array) => {
         const signature = await randomAccount.signMessage({
           message: { raw: data },
@@ -233,11 +233,11 @@ describe('Tx', () => {
     const randomPk = generatePrivateKey();
     const randomAccount = privateKeyToAccount(randomPk);
 
-    // Signer is correct but the account is different
+    // Signer is correct but the address is different
     const universalSigner: UniversalSigner = {
       chain: CONSTANTS.CHAIN.PUSH,
       chainId: CONSTANTS.CHAIN_ID.PUSH.DEVNET,
-      account: randomAccount.address,
+      address: randomAccount.address,
       signMessage: async (data: Uint8Array) => {
         const signature = await account.signMessage({
           message: { raw: data },
@@ -264,7 +264,7 @@ describe('Tx', () => {
     const universalSigner: UniversalSigner = {
       chain: CONSTANTS.CHAIN.ETHEREUM,
       chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
-      account: account.address,
+      address: account.address,
       signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
         const signature = await account.signMessage({
           message: { raw: data },
@@ -284,17 +284,17 @@ describe('Tx', () => {
       {
         chain: CONSTANTS.CHAIN.ETHEREUM,
         chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
-        account: recipientAddresses[0],
+        address: recipientAddresses[0],
       },
       {
         chain: CONSTANTS.CHAIN.ETHEREUM,
         chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
-        account: recipientAddresses[1],
+        address: recipientAddresses[1],
       },
       {
         chain: CONSTANTS.CHAIN.ETHEREUM,
         chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
-        account: recipientAddresses[2],
+        address: recipientAddresses[2],
       },
     ];
 
@@ -315,7 +315,7 @@ describe('Tx', () => {
     const universalSigner: UniversalSigner = {
       chain: CONSTANTS.CHAIN.ETHEREUM,
       chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
-      account: account.address,
+      address: account.address,
       signMessage: async (data: Uint8Array) => {
         const signature = '0x00';
         return hexToBytes(signature);
@@ -335,17 +335,17 @@ describe('Tx', () => {
       {
         chain: CONSTANTS.CHAIN.ETHEREUM,
         chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
-        account: recipientAddresses[0],
+        address: recipientAddresses[0],
       },
       {
         chain: CONSTANTS.CHAIN.ETHEREUM,
         chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
-        account: recipientAddresses[1],
+        address: recipientAddresses[1],
       },
       {
         chain: CONSTANTS.CHAIN.ETHEREUM,
         chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
-        account: recipientAddresses[2],
+        address: recipientAddresses[2],
       },
     ];
 

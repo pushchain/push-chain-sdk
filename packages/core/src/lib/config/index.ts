@@ -26,12 +26,6 @@ const config: Config = {
       VALIDATOR_CONTRACT: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9',
     },
   },
-  WALLET_URL: {
-    [ENV.MAINNET]: 'TODO',
-    [ENV.TESTNET]: 'TODO',
-    [ENV.DEVNET]: 'https://wallet.push.org',
-    [ENV.LOCAL]: 'http://localhost:5173/',
-  },
 };
 
 export default config;

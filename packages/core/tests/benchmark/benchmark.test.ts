@@ -124,11 +124,11 @@ describe.skip('Network Benchmark Tests', () => {
   //     `eip155:97:${privateKeyToAddress(generatePrivateKey())}`,
   //   ];
   //   const pk = generatePrivateKey();
-  //   const account = privateKeyToAccount(pk);
+  //   const address = privateKeyToAccount(pk);
   //   const signer = {
-  //     account: Address.toPushCAIP(account.address, ENV.DEVNET),
+  //     address: Address.toPushCAIP(address.address, ENV.DEVNET),
   //     signMessage: async (data: Uint8Array) => {
-  //       const signature = await account.signMessage({
+  //       const signature = await address.signMessage({
   //         message: { raw: data },
   //       });
   //       return hexToBytes(signature);
