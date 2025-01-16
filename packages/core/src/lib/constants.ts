@@ -26,7 +26,9 @@ export const CHAIN_ID = {
     SEPOLIA: '11155111',
   },
   [CHAIN.SOLANA]: {
-    DEVNET: '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+    MAINNET: '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+    DEVNET: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
+    TESTNET: '4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z',
   },
 } as const;
 

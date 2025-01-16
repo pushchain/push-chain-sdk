@@ -9,7 +9,7 @@ import {
   ValidatorCompleteBlockResponse,
   ValidatorCompleteBlockType,
 } from '../block/validatorBlock.types';
-import { CHAIN } from '../constants';
+import { CHAIN, CHAIN_ID } from '../constants';
 import { Block as GeneratedBlock } from '../generated/block';
 import { Transaction } from '../generated/tx';
 import { InitDid } from '../generated/txData/init_did';
@@ -131,11 +131,80 @@ export class Utils {
    */
   private static toUniversal(chainAgnosticAddress: string): UniversalAccount {
     const [chain, chainId, address] = chainAgnosticAddress.split(':');
-    return {
-      chain: chain,
-      chainId: chainId,
-      account: address,
-    };
+
+    if (chain.toLocaleLowerCase() === 'eip155') {
+      if (chainId === '1') {
+        return {
+          chain: CHAIN.ETHEREUM,
+          chainId: CHAIN_ID.ETHEREUM.MAINNET,
+          account: address,
+        };
+      } else if (chainId === '11155111') {
+        return {
+          chain: CHAIN.ETHEREUM,
+          chainId: CHAIN_ID.ETHEREUM.SEPOLIA,
+          account: address,
+        };
+      } else
+        return {
+          chain: CHAIN.ETHEREUM,
+          chainId,
+          account: address,
+        };
+    } else if (chain.toLocaleLowerCase() === 'push') {
+      if (chainId.toLocaleLowerCase() === 'mainnet') {
+        return {
+          chain: CHAIN.PUSH,
+          chainId: CHAIN_ID.PUSH.MAINNET,
+          account: address,
+        };
+      } else if (chainId.toLocaleLowerCase() === 'devnet') {
+        return {
+          chain: CHAIN.PUSH,
+          chainId: CHAIN_ID.PUSH.DEVNET,
+          account: address,
+        };
+      } else
+        return {
+          chain: CHAIN.PUSH,
+          chainId,
+          account: address,
+        };
+    } else if (chain.toLocaleLowerCase() === 'solana') {
+      if (chainId.toLocaleLowerCase() === '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp') {
+        return {
+          chain: CHAIN.SOLANA,
+          chainId: CHAIN_ID.SOLANA.MAINNET,
+          account: address,
+        };
+      } else if (
+        chainId.toLocaleLowerCase() === 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1'
+      ) {
+        return {
+          chain: CHAIN.SOLANA,
+          chainId: CHAIN_ID.SOLANA.DEVNET,
+          account: address,
+        };
+      } else if (
+        chainId.toLocaleLowerCase() === '4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z'
+      ) {
+        return {
+          chain: CHAIN.SOLANA,
+          chainId: CHAIN_ID.SOLANA.TESTNET,
+          account: address,
+        };
+      } else
+        return {
+          chain: CHAIN.SOLANA,
+          chainId: chainId,
+          account: address,
+        };
+    } else
+      return {
+        chain: chain,
+        chainId: chainId,
+        account: address,
+      };
   }
 
   private static toChainAgnostic(universalAccount: UniversalAccount): string {
