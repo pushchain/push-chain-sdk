@@ -8,8 +8,6 @@ import { commutativeEncrypt } from '../encryption';
 import { curve } from 'elliptic';
 import BasePoint = curve.base.BasePoint;
 import { usePlayerAddressUtils } from './usePlayerAddressUtils.tsx';
-import { CodeSquare } from 'lucide-react';
-import { Console } from 'console';
 
 
 /**

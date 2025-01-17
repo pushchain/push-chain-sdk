@@ -14,6 +14,7 @@ import { Progress } from './ui/progress';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { PokerGame, PhaseType } from '../temp_types/types';
+import { Button } from './ui/button';
 
 type DealingPhase = 
   | 'WAITING_FOR_PLAYERS' 
@@ -159,51 +160,17 @@ export default function Game() {
     }
   }, [hasFinishedEncryptingCards, gameState.dealingPhase, game, pokerService, gameTransactionHash, setGame]);
 
-  // Move to READY once final cards are revealed
   useEffect(() => {
-    if (game?.cards?.length > 0 && game.phase === 'READY') {
+    if (!game) return;
+  
+    // Synchronize game.phase with dealingPhase
+    if (game.phase === 'READY' && gameState.dealingPhase !== 'READY') {
       setGameState(prev => ({ ...prev, dealingPhase: 'READY' }));
       toast.success('Cards dealt and revealed!');
+    } else if (game.phase === 'PLAYING' && gameState.dealingPhase !== 'PLAYING') {
+      setGameState(prev => ({ ...prev, dealingPhase: 'PLAYING' }));
     }
-  }, [game?.cards, game?.phase]);
-
-useEffect(() => {
-  // Check if we just entered READY phase and haven't started transition
-  if (game?.phase === 'READY' && game.cards?.length > 0 && gameState.dealingPhase === 'READY') {
-    const timer = setTimeout(async () => {
-      try {
-        // Check if still in READY phase to prevent multiple transitions
-        if (game.phase !== 'READY') return;
-
-        const updatedGame: PokerGame = {
-          ...game,
-          phase: 'PLAYING',
-          gamePhase: PhaseType.PREFLOP,
-          currentBet: 0,
-          pot: 0,
-          activePlayers: Array.from(game.players.keys()),
-          turnIndex: (Array.from(game.players.keys()).indexOf(game.dealer) + 1) % game.players.size
-        };
-
-        if (pokerService && gameTransactionHash && pushWalletSigner) {
-          await pokerService.updateGame(
-            gameTransactionHash,
-            updatedGame,
-            new Set(game.players.keys()),
-            pushWalletSigner
-          );
-          setGame(updatedGame);
-          setGameState(prev => ({ ...prev, dealingPhase: 'PLAYING' }));
-          toast.success('Game started! Place your bets.');
-        }
-      } catch (error) {
-        console.error('Error transitioning to playing phase:', error);
-      }
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }
-}, [game?.phase, game?.cards, gameState.dealingPhase]);
+  }, [game?.phase]);  
 
   const renderPhaseContent = () => {
     if (!game) return null;
@@ -262,15 +229,67 @@ useEffect(() => {
             </AlertDescription>
           </Alert>
         );
-      case 'READY':
-        return (
-          <ConfettiExplosion
-            force={0.8}
-            duration={3000}
-            particleCount={100}
-            width={1600}
-          />
-        );
+        case 'READY':
+          return (
+            <>
+              <ConfettiExplosion
+                force={0.8}
+                duration={3000}
+                particleCount={100}
+                width={1600}
+              />
+              {game.dealer === connectedPushAddressFormat && (
+                <Alert className="mb-4">
+                  <AlertTitle>All Cards Revealed!</AlertTitle>
+                  <AlertDescription className="flex flex-col gap-2">
+                    <p>You are the dealer. Click below to start the game.</p>
+                    <Button
+                      onClick={async () => {
+                        try {
+                          if (!game || !pokerService || !gameTransactionHash || !pushWalletSigner) {
+                            toast.error('Missing required game dependencies');
+                            return;
+                          }
+    
+                          const updatedGame: PokerGame = {
+                            ...game,
+                            phase: 'PLAYING',
+                            gamePhase: PhaseType.PREFLOP,
+                            currentBet: 0,
+                            pot: 0,
+                            activePlayers: Array.from(game.players.keys()),
+                            turnIndex: (Array.from(game.players.keys()).indexOf(game.dealer) + 1) % game.players.size,
+                            players: game.players,
+                            cards: game.cards,
+                            dealer: game.dealer,
+                            creator: game.creator,
+                            playerHoleCards: game.playerHoleCards
+                          };
+    
+                          await pokerService.updateGame(
+                            gameTransactionHash,
+                            updatedGame,
+                            new Set(game.players.keys()),
+                            pushWalletSigner
+                          );
+                          
+                          setGame(updatedGame);
+                          setGameState(prev => ({ ...prev, dealingPhase: 'PLAYING' }));
+                          toast.success('Game started! Place your bets.');
+                        } catch (error) {
+                          console.error('Error starting game:', error);
+                          toast.error('Failed to start game. Please try again.');
+                        }
+                      }}
+                    >
+                      Start Game
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </>
+          );
+    
         case 'PLAYING':
           return (
             <Alert className="mb-4">
@@ -283,10 +302,11 @@ useEffect(() => {
               </AlertDescription>
             </Alert>
           );
-      default:
-        return null;
-    }
-  };
+    
+        default:
+          return null;
+      }
+    };
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">

@@ -106,7 +106,7 @@ export default function useDecryptPlayersCards({
 */
 
 import { usePokerGameContext } from './usePokerGameContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import useConnectedPushAddress from './useConnectedPushAddress';
 import BN from 'bn.js';
 import { commutativeDecrypt } from '../encryption';
@@ -129,10 +129,10 @@ export default function useDecryptPlayersCards({
   const { pushWalletSigner } = usePushWalletSigner();
   const { connectedPushAddressFormat } = useConnectedPushAddress();
   const [hasDecrypted, setHasDecrypted] = useState(false);
+  const processingRef = useRef(false);
   const maxCardRange = new BN(56);
 
   function numberToCard(cardNumber: number): Card {
-    // Same card conversion as in the existing code
     const suitValue = Math.floor(cardNumber / 14);
     const rankValue = cardNumber % 14;
     const rank = rankValue === 14 ? Rank.ACE : (rankValue - 2) as Rank;
@@ -142,16 +142,19 @@ export default function useDecryptPlayersCards({
   }
 
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
+    let timeoutId: NodeJS.Timeout;
     
     const decryptCards = async () => {
       if (!game || !pokerService || !gameTransactionHash || !myEncryptionKeys || 
           !pushWalletSigner || !connectedPushAddressFormat || hasDecrypted || 
-          !hasFinishedEncryptingCards || game.phase !== 'DECRYPTING') {
+          !hasFinishedEncryptingCards || game.phase !== 'DECRYPTING' || 
+          processingRef.current) {
         return;
       }
 
       try {
+        processingRef.current = true;
         const playersArr = Array.from(game.players.keys());
         const currentTurnIndex = game.turnIndex ?? 0;
         const currentPlayer = playersArr[currentTurnIndex];
@@ -160,17 +163,32 @@ export default function useDecryptPlayersCards({
           currentTurnIndex,
           currentPlayer,
           myAddress: connectedPushAddressFormat,
-          phase: game.phase
+          phase: game.phase,
+          hasDecrypted,
+          isProcessing: processingRef.current
         });
 
         if (currentPlayer !== connectedPushAddressFormat) {
+          processingRef.current = false;
           return;
         }
 
-        // Create a new game state to update
+        // Get existing transaction to prevent duplicates
+        const existingDecryption = await pokerService.getDecryptedShuffledCards(
+          gameTransactionHash,
+          connectedPushAddressFormat
+        );
+
+        if (existingDecryption) {
+          console.log('[Decryption] Already processed this turn');
+          setHasDecrypted(true);
+          processingRef.current = false;
+          return;
+        }
+
         const updatedGame = { ...game };
         
-        // 1. First decrypt my hole cards if they exist
+        // Process hole cards
         if (game.playerHoleCards?.[connectedPushAddressFormat]) {
           console.log('[Decryption] Processing hole cards');
           const myHoleCards = game.playerHoleCards[connectedPushAddressFormat]
@@ -191,7 +209,7 @@ export default function useDecryptPlayersCards({
           }
         }
 
-        // 2. Then process community cards
+        // Process community cards
         if (game.communityCardsEncrypted?.length) {
           console.log('[Decryption] Processing community cards');
           const nextPlayerIndex = (currentTurnIndex + 1) % playersArr.length;
@@ -208,7 +226,6 @@ export default function useDecryptPlayersCards({
               return decrypted.toString(10);
             });
 
-          // If I'm the last player, convert to final card objects
           if (currentTurnIndex === playersArr.length - 1) {
             const finalCards = decryptedCommunity
               .map(cardStr => new BN(cardStr, 10))
@@ -222,42 +239,41 @@ export default function useDecryptPlayersCards({
           }
         }
 
-        // Increment turn index
         updatedGame.turnIndex = currentTurnIndex + 1;
 
-        // Initialize phases if needed
         if (!updatedGame.phases) {
           updatedGame.phases = new Map();
           updatedGame.phases.set(0, { bets: new Map() });
         }
 
-        console.log('[Decryption] Publishing updated game state:', {
+        console.log('[Decryption] Publishing update:', {
           turnIndex: updatedGame.turnIndex,
           phase: updatedGame.phase
         });
 
-        // Use the new publishPartialDecryption method
         await pokerService.publishPartialDecryption(
           gameTransactionHash,
           updatedGame,
           pushWalletSigner
         );
 
-        if (isMounted) {
+        if (mounted) {
           setGame(updatedGame);
           setHasDecrypted(true);
         }
 
       } catch (error) {
-        console.error('[Decryption] Error during decryption:', error);
+        console.error('[Decryption] Error:', error);
+      } finally {
+        processingRef.current = false;
       }
     };
 
-    const intervalId = setInterval(decryptCards, 3000);
+    timeoutId = setTimeout(decryptCards, 3000);
 
     return () => {
-      isMounted = false;
-      clearInterval(intervalId);
+      mounted = false;
+      clearTimeout(timeoutId);
     };
   }, [
     game,
@@ -272,4 +288,4 @@ export default function useDecryptPlayersCards({
   ]);
 
   return { hasDecrypted };
-}
+}``

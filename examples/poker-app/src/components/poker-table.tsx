@@ -11,7 +11,7 @@ import useConnectedPushAddress from "../hooks/useConnectedPushAddress";
 import usePushWalletSigner from '../hooks/usePushSigner';
 import { generateKeyPair } from '../encryption';
 import { Button } from './ui/button';
-import { Card as CardType, PokerAction } from '../temp_types/types';
+import { Card as CardType, PokerAction, PhaseType } from '../temp_types/types';
 
 interface Player {
   id: string;
@@ -454,13 +454,21 @@ const handleAction = async (action: PokerAction) => {
         >
           {/* Table Center */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-center">
-            <div className="text-sm opacity-80 mb-1">Waiting to Start</div>
-            {isDealer && dealingPhase === 'WAITING_FOR_PLAYERS' && (
-              <div className="text-xs opacity-60 mt-2">
-                Game will start automatically when 3 players join
-              </div>
-            )}
-          </div>
+  {dealingPhase === 'PLAYING' ? (
+    <>
+      <div className="text-xl font-bold">Pot: ${game?.pot || 0}</div>
+      {game?.currentBet ? (
+        <div className="text-sm opacity-80">Current Bet: ${game.currentBet}</div>
+      ) : null}
+    </>
+  ) : (
+    <div className="text-sm opacity-80 mb-1">
+      {isDealer && dealingPhase === 'WAITING_FOR_PLAYERS' 
+        ? "Game will start automatically when players join"
+        : "Waiting to Start"}
+    </div>
+  )}
+</div>
 
           {/* Community Cards */}
           {renderCommunityCards()}
@@ -502,14 +510,19 @@ const handleAction = async (action: PokerAction) => {
 
       {/* Development Debug Panel */}
       {process.env.NODE_ENV === 'development' && (
-        <div className="fixed bottom-4 left-4 bg-black/80 text-white text-xs p-2 rounded">
-          <div>Phase: {dealingPhase}</div>
-          <div>Players: {players.length}</div>
-          <div>Is Dealer: {isDealer ? 'Yes' : 'No'}</div>
-          <div>Your Address: {connectedPushAddressFormat?.slice(0, 6)}...</div>
-          <div>Cards Dealt: {game?.cards?.length || 0}</div>
-        </div>
-      )}
+  <div className="fixed bottom-4 left-4 bg-black/80 text-white text-xs p-2 rounded">
+    <div>Phase: {dealingPhase}</div>
+    <div>Game Phase: {game?.gamePhase !== undefined ? PhaseType[game.gamePhase] : 'N/A'}</div>
+    <div>Players: {players.length}</div>
+    <div>Is Dealer: {isDealer ? 'Yes' : 'No'}</div>
+    <div>Your Address: {connectedPushAddressFormat?.slice(0, 6)}...</div>
+    <div>Your Turn: {game?.turnIndex !== undefined && 
+      Array.from(game.players.keys())[game.turnIndex] === connectedPushAddressFormat ? 'Yes' : 'No'}</div>
+    <div>Current Bet: ${game?.currentBet || 0}</div>
+    <div>Pot: ${game?.pot || 0}</div>
+    <div>Cards Dealt: {game?.cards?.length || 0}</div>
+  </div>
+)}
       {renderBettingControls()}
     </div>
   );
