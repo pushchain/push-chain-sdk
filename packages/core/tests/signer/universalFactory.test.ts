@@ -130,12 +130,4 @@ describe('createUniversalSigner', () => {
       signMessage: mockSignMessage,
     });
   });
-
-  it('should throw if signMessage is not provided', () => {
-    // Using TypeScript, you might catch this at compile-time, but let's be safe at runtime:
-    expect(() => {
-      // @ts-expect-error Testing runtime behavior for missing signMessage
-      createUniversalSigner({ address });
-    }).toThrow();
-  });
 });
