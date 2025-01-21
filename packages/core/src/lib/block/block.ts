@@ -1,7 +1,8 @@
-import { ENV } from '../constants';
+import { Order, ENV } from '../constants';
+import { toSDKResponse, toSimplifiedBlockResponse } from '../utils';
 import { Validator } from '../validator/validator';
-import { Block as BlockType } from '../generated/block';
-import { BlockResponse } from './block.types';
+import { BlockResponse, CompleteBlockResponse } from './block.types';
+import { ValidatorCompleteBlockResponse } from './validatorBlock.types';
 
 export class Block {
   private constructor(private validator: Validator) {}
@@ -11,41 +12,41 @@ export class Block {
     return new Block(validator);
   };
 
-  static serialize = (block: BlockType): Uint8Array => {
-    const parsedBlock = BlockType.create(block);
-    return BlockType.encode(parsedBlock).finish();
-  };
-
-  static deserialize = (block: Uint8Array): BlockType => {
-    return BlockType.decode(block);
-  };
-
   /**
    * Get Blocks
    */
   get = async (
-    startTime: number = Math.floor(Date.now() / 1000), // Current Local Time
-    direction: 'ASC' | 'DESC' = 'ASC',
-    showDetails = false,
-    pageSize = 30,
-    page = 1
-  ) => {
-    return await this.validator.call<BlockResponse>('push_getBlocks', [
-      startTime,
-      direction,
-      showDetails,
-      pageSize,
-      page,
-    ]);
-  };
+    reference: string | '*' = '*',
+    {
+      raw = false,
+      startTime = Math.floor(Date.now()),
+      order = Order.DESC,
+      page = 1,
+      limit = 30,
+    }: {
+      raw?: boolean;
+      startTime?: number;
+      order?: Order;
+      page?: number;
+      limit?: number;
+    } = {}
+  ): Promise<BlockResponse | CompleteBlockResponse> => {
+    let response: ValidatorCompleteBlockResponse;
 
-  /**
-   * Search Block with a given hash
-   * @param txHash
-   */
-  search = async (blockHash: string) => {
-    return await this.validator.call<BlockResponse>('push_getBlockByHash', [
-      blockHash,
-    ]);
+    if (reference === '*') {
+      response = await this.validator.call<ValidatorCompleteBlockResponse>(
+        'push_getBlocks',
+        [startTime, order, false, limit, page]
+      );
+    } else {
+      response = await this.validator.call<ValidatorCompleteBlockResponse>(
+        'push_getBlockByHash',
+        [reference]
+      );
+    }
+
+    const sdkResponse = toSDKResponse(response);
+    if (raw) return sdkResponse;
+    else return toSimplifiedBlockResponse(sdkResponse);
   };
 }

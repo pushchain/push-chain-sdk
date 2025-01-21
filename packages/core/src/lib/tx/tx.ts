@@ -1,138 +1,147 @@
-import { parse, v4 as uuidv4 } from 'uuid';
+import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
-import { ReplyGrouped, TxCategory } from './tx.types';
+import { parse, v4 as uuidv4 } from 'uuid';
+import { toHex } from 'viem';
+import { BlockResponse, CompleteBlockResponse } from '../block/block.types';
+import { ValidatorCompleteBlockResponse } from '../block/validatorBlock.types';
+import { Order, ENV } from '../constants';
 import { Transaction } from '../generated/tx';
-import { InitDid } from '../generated/txData/init_did';
-import { InitSessionKey } from '../generated/txData/init_session_key';
-import { ENV } from '../constants';
+import { PushChain } from '../pushChain';
+import { UniversalAccount, UniversalSigner } from '../signer/signer.types';
+import { toSDKResponse, toSimplifiedBlockResponse } from '../utils';
 import { Validator } from '../validator/validator';
 import { TokenReply } from '../validator/validator.types';
-import { BlockResponse } from '../block/block.types';
-import { sha256 } from '@noble/hashes/sha256';
-import { toHex } from 'viem';
+import { ReplyGrouped, TxCategory } from './tx.types';
 
 export class Tx {
   private tokenCache: TokenCache;
 
-  private constructor(private validator: Validator, private env: ENV) {
+  private constructor(
+    private validator: Validator,
+    private signer: UniversalSigner | null
+  ) {
     this.tokenCache = new TokenCache(validator);
     // get a token async
-    this.tokenCache.getCachedApiToken();
+    void this.tokenCache.getCachedApiToken();
   }
 
-  static initialize = async (env: ENV) => {
+  static initialize = async (
+    env: ENV,
+    universalSigner: UniversalSigner | null = null
+  ) => {
     const validator = await Validator.initalize({ env });
-    return new Tx(validator, env);
-  };
-
-  static serialize = (tx: Transaction): Uint8Array => {
-    const transaction = Transaction.create(tx);
-    return Transaction.encode(transaction).finish();
-  };
-
-  static deserialize = (tx: Uint8Array): Transaction => {
-    return Transaction.decode(tx);
-  };
-
-  static serializeData = (
-    txData: InitDid | InitSessionKey,
-    category: TxCategory
-  ): Uint8Array => {
-    switch (category) {
-      case TxCategory.INIT_DID: {
-        const data = txData as InitDid;
-        const initTxData = InitDid.create(data);
-        return InitDid.encode(initTxData).finish();
-      }
-      case TxCategory.INIT_SESSION_KEY: {
-        const data = txData as InitSessionKey;
-        const initTxData = InitSessionKey.create(data);
-        return InitSessionKey.encode(initTxData).finish();
-      }
-      default: {
-        throw new Error('Serialization Not Supported for given TxCateory');
-      }
-    }
-  };
-
-  static deserializeData = (
-    txData: Uint8Array,
-    category: TxCategory
-  ): InitDid | InitSessionKey => {
-    switch (category) {
-      case TxCategory.INIT_DID: {
-        return InitDid.decode(txData);
-      }
-      case TxCategory.INIT_SESSION_KEY: {
-        return InitSessionKey.decode(txData);
-      }
-      default: {
-        throw new Error('Deserialization Not Supported for given TxCateory');
-      }
-    }
+    return new Tx(validator, universalSigner);
   };
 
   /**
-   * Create an Unsigned Tx
-   * @dev Unsigned Tx has empty sender & signature
-   * @param category Tx category
-   * @param recipients Tx recipients
-   * @param data Tx payload data in serialized form
-   * @returns Unsigned Tx
-   */
-  createUnsigned = (
-    category: string,
-    recipients: string[],
-    data: Uint8Array
-  ): Transaction => {
-    Tx.checkCategoryOrFail(category);
-    const fixedRecipients: string[] = recipients.map((value) =>
-      Tx.normalizeCaip(value)
-    );
-    return Transaction.create({
-      type: 0, // Phase 0 only has non-value transfers
-      category,
-      recipients: recipients.map((value) => Tx.normalizeCaip(value)),
-      data,
-      salt: parse(uuidv4()),
-      fee: '0', // Fee is 0 as of now
-    });
-  };
-
-  /**
-   * Get Transactions
+   * Get transactions from the Push Network.
+   *
+   * - If `reference = '*'`, fetches all transactions.
+   * - If `reference` is a string (tx hash), fetch that specific transaction.
+   * - Otherwise, `reference` is treated as a UniversalAccount.
+   *   In that case, `filterMode` determines the type of query:
+   *   - 'both': fetches all transactions from and to the given address
+   *   - 'sender': fetches all transactions sent by the given address
+   *   - 'recipient': fetches all transactions received by the given address
+   *
+   * @param reference The reference for the query.
+   * Can be `'*'` (all), a transaction hash, or a UniversalAccount.
+   * @param options Optional parameters to refine the query.
+   * @returns A BlockResponse or SimplifiedBlockResponse
    */
   get = async (
-    startTime: number = Math.floor(Date.now()), // Current Local Time
-    direction: 'ASC' | 'DESC' = 'DESC',
-    pageSize = 30,
-    page = 1,
-    // caip10 address
-    userAddress?: string,
-    category?: string
-  ) => {
-    return userAddress === undefined
-      ? await this.validator.call<BlockResponse>('push_getTransactions', [
-          startTime,
-          direction,
-          pageSize,
-          page,
-          category,
-        ])
-      : await this.validator.call<BlockResponse>('push_getTransactionsByUser', [
-          userAddress,
-          startTime,
-          direction,
-          pageSize,
-          page,
-          category,
-        ]);
+    reference: UniversalAccount | string | '*' = '*',
+    {
+      raw = false,
+      category = undefined,
+      startTime = Math.floor(Date.now()),
+      order = Order.DESC,
+      page = 1,
+      limit = 30,
+      filterMode = 'both' as 'both' | 'sender' | 'recipient',
+    }: {
+      raw?: boolean;
+      category?: string;
+      startTime?: number;
+      order?: Order;
+      page?: number;
+      limit?: number;
+      filterMode?: 'both' | 'sender' | 'recipient';
+    } = {}
+  ): Promise<BlockResponse | CompleteBlockResponse> => {
+    let response: ValidatorCompleteBlockResponse;
+
+    if (typeof reference === 'string' && reference !== '*') {
+      response = await this.validator.call<ValidatorCompleteBlockResponse>(
+        'push_getTransactionByHash',
+        [reference]
+      );
+    } else if (typeof reference === 'string' && reference === '*') {
+      response = await this.validator.call<ValidatorCompleteBlockResponse>(
+        'push_getTransactions',
+        [startTime, order, limit, page, category]
+      );
+    } else {
+      const userAddress = PushChain.utils.account.toChainAgnostic(reference);
+      response = await this.fetchByFilterMode(userAddress, {
+        category,
+        startTime,
+        order,
+        limit,
+        page,
+        filterMode,
+      });
+    }
+
+    const sdkResponse = toSDKResponse(response);
+    if (raw) return sdkResponse;
+    else return toSimplifiedBlockResponse(sdkResponse);
   };
+
+  /**
+   * Helper function to call the appropriate RPC method based on filterMode.
+   */
+  private async fetchByFilterMode(
+    userAddress: string,
+    {
+      category,
+      startTime,
+      order,
+      limit,
+      page,
+      filterMode,
+    }: {
+      category?: string;
+      startTime: number;
+      order: Order;
+      limit: number;
+      page: number;
+      filterMode: 'both' | 'sender' | 'recipient';
+    }
+  ): Promise<ValidatorCompleteBlockResponse> {
+    if (filterMode === 'sender') {
+      return await this.validator.call<ValidatorCompleteBlockResponse>(
+        'push_getTransactionsBySender',
+        [userAddress, startTime, order, limit, page, category]
+      );
+    } else if (filterMode === 'recipient') {
+      return await this.validator.call<ValidatorCompleteBlockResponse>(
+        'push_getTransactionsByRecipient',
+        [userAddress, startTime, order, limit, page, category]
+      );
+    } else {
+      // Default: both (transactions to and from address)
+      return await this.validator.call<ValidatorCompleteBlockResponse>(
+        'push_getTransactionsByUser',
+        [userAddress, startTime, order, limit, page, category]
+      );
+    }
+  }
 
   /**
    * Get Transactions
    */
-  async getFromVNode(
+  private async getFromVNode(
     accountInCaip: string,
     category: string,
     ts: string = '' + Math.floor(Date.now() / 1000),
@@ -145,119 +154,102 @@ export class Tx {
   }
 
   /**
-   * Get Transactions by Sender
-   */
-  getBySender = async (
-    // caip10 address
-    senderAddress: string,
-    startTime: number = Math.floor(Date.now() / 1000), // Current Local Time
-    direction: 'ASC' | 'DESC' = 'ASC',
-    pageSize = 30,
-    page = 1,
-    category?: string
-  ) => {
-    return await this.validator.call<BlockResponse>(
-      'push_getTransactionsBySender',
-      [senderAddress, startTime, direction, pageSize, page, category]
-    );
-  };
-
-  /**
-   * Get Transactions by Recipient
-   */
-  getByRecipient = async (
-    // caip10 address
-    recipientAddress: string,
-    startTime: number = Math.floor(Date.now() / 1000), // Current Local Time
-    direction: 'ASC' | 'DESC' = 'ASC',
-    pageSize = 30,
-    page = 1,
-    category?: string
-  ) => {
-    return await this.validator.call<BlockResponse>(
-      'push_getTransactionsByRecipient',
-      [recipientAddress, startTime, direction, pageSize, page, category]
-    );
-  };
-
-  /**
-   * Search Transaction with a given hash
-   * @param txHash
-   */
-  search = async (txHash: string) => {
-    return await this.validator.call<BlockResponse>(
-      'push_getTransactionByHash',
-      [txHash]
-    );
-  };
-
-  /**
    * Send Tx to Push Network
-   * @param tx Unsigned Push Tx
-   * @param signer Signer obj to sign the Tx
+   * @param recipients
+   * @param options
    * @returns Tx Hash
    */
   send = async (
-    unsignedTx: Transaction,
-    signer: {
-      account: string;
-      signMessage: (dataToBeSigned: Uint8Array) => Promise<Uint8Array>;
-    },
-    url: string = this.validator['activeValidatorURL']
-  ): Promise<string> => {
-    console.log('send() account: %s', Tx.normalizeCaip(signer.account));
+    recipients: UniversalAccount[],
+    options: {
+      category: string;
+      data: string;
+    }
+  ): Promise<{ txHash: string }> => {
+    if (!this.signer) throw new Error('Signer not defined');
+
+    Tx.checkCategoryOrFail(options.category);
+
+    let dataBytes: Uint8Array;
+    if (options.category === TxCategory.INIT_DID) {
+      dataBytes = new Uint8Array(Buffer.from(options.data, 'base64'));
+    } else {
+      dataBytes = new TextEncoder().encode(options.data);
+    }
+    const recipientsCAIP10Address: string[] = recipients.map(
+      (value: UniversalAccount) =>
+        PushChain.utils.account.toChainAgnostic(value)
+    );
+
+    const tx = Transaction.create({
+      type: 0, // Phase 0 only has non-value transfers
+      category: options.category,
+      recipients: recipientsCAIP10Address,
+      data: dataBytes,
+      salt: parse(uuidv4()),
+      fee: '0', // Fee is 0 as of now
+    });
 
     const token = await this.tokenCache.getCachedApiToken();
     if (token == null) {
       throw new Error('failed to obtain token for push network');
     }
-    const serializedUnsignedTx = Tx.serialize({
-      ...unsignedTx,
-      sender: Tx.normalizeCaip(signer.account),
+    const serializedUnsignedTx = PushChain.utils.tx.serialize({
+      ...tx,
+      sender: PushChain.utils.account.toChainAgnostic(this.signer),
       signature: new Uint8Array(0),
       apiToken: utf8ToBytes(token.apiToken),
     });
 
-    // Convert 32 byte data to 64 byte data ( UTF-8 encoded )
+    // Convert 32 byte data to 64 byte data (UTF-8 encoded)
     const dataToBeSigned = new TextEncoder().encode(
       toHex(sha256(serializedUnsignedTx))
     );
-    const signature = await signer.signMessage(dataToBeSigned);
-    const serializedSignedTx = Tx.serialize({
-      ...Tx.deserialize(serializedUnsignedTx),
+    const signature = await this.signer.signMessage(dataToBeSigned);
+    const serializedSignedTx = PushChain.utils.tx.serialize({
+      ...PushChain.utils.tx.deserialize(serializedUnsignedTx),
       signature,
     });
-    return await this.validator.call<string>(
+    const txHash = await this.validator.call<string>(
       'push_sendTransaction',
       [bytesToHex(serializedSignedTx)],
       token.apiUrl
     );
+    return { txHash };
   };
 
   /**
    * Get Transactions
    */
-  async getTransactionsFromVNode(
+  private async getTransactionsFromVNode(
     accountInCaip: string,
     category: string,
     ts: string = '' + Math.floor(Date.now() / 1000),
     direction: 'ASC' | 'DESC' = 'DESC'
-  ) {
+  ): Promise<ReplyGrouped> {
     Tx.checkCategoryOrFail(category);
-    return await this.validator.callVNode<ReplyGrouped>(
+    const result = await this.validator.callVNode<ReplyGrouped>(
       'push_getTransactions',
       [Tx.normalizeCaip(accountInCaip), category, ts, direction]
     );
+    result.items.forEach((item) => {
+      if (item.data) {
+        item.data = new TextDecoder().decode(
+          new Uint8Array(Buffer.from(item.data, 'hex'))
+        );
+      }
+    });
+    return result;
   }
 
-  static normalizeCaip(accountInCaip: string) {
+  private static normalizeCaip(accountInCaip: string) {
     if (accountInCaip.startsWith('eip155')) {
       return accountInCaip.toLowerCase();
     }
     return accountInCaip;
   }
 
-  static checkCategoryOrFail(category: string) {
+  private static checkCategoryOrFail(category: string) {
     if (category == null || category == '' || category.length > 20) {
       throw new Error('Invalid category, max size is 20 ascii chars');
     }

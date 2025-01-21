@@ -1,3 +1,8 @@
+import axios from 'axios';
+import { URL } from 'url';
+import { createPublicClient, getContract, http } from 'viem';
+import config from '../config';
+import { ENV } from '../constants';
 import { getRandomElement } from '../utils';
 import {
   ActiveValidator,
@@ -5,11 +10,6 @@ import {
   JsonRpcResponse,
   ValidatorContract,
 } from './validator.types';
-import axios from 'axios';
-import { createPublicClient, getContract, http } from 'viem';
-import config from '../config';
-import { ENV } from '../constants';
-import { URL } from 'url';
 
 /**
  * @description Push validator class is used for the following:
@@ -34,20 +34,24 @@ export class Validator {
 
   private constructor(
     /**
-     * @dev - active validator URL ( Used for Get calls to a validator node )
+     * @dev - active validator URL (Used for Get calls to a validator node)
      */
     private activeValidatorURL: string,
     private env: ENV,
     private validatorContractClient: ValidatorContract
   ) {
-    if (this.env === ENV.DEV || this.env === ENV.LOCAL) {
+    if (
+      this.env === ENV.DEVNET ||
+      this.env === ENV.TESTNET ||
+      this.env === ENV.LOCAL
+    ) {
       Validator.printTraces = true;
     }
   }
 
   static initalize = async (options?: { env?: ENV }): Promise<Validator> => {
     const settings = {
-      env: options?.env || ENV.STAGING,
+      env: options?.env || ENV.DEVNET,
     };
 
     /**
@@ -199,7 +203,7 @@ export class Validator {
       if (this.env === ENV.LOCAL) {
         modifiedUrl = 'http://localhost:5001/rpc';
       }
-      if (this.env === ENV.DEV) {
+      if (this.env === ENV.DEVNET) {
         modifiedUrl = 'https://aa1.dev.push.org/rpc';
       }
       modifiedFnName = `RpcService.${fnName.replace('push_', '')}`;
