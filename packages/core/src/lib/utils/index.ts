@@ -1,4 +1,8 @@
-import { Address } from '../address/address';
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
+import { bech32m } from 'bech32';
+import { PushChain } from 'core';
+import { getAddress } from 'viem';
+// import { Address } from '../address/address';
 import {
   BlockResponse,
   BlockType,
@@ -17,6 +21,21 @@ import { UniversalAccount } from '../signer/signer.types';
 import { CompleteTxResponse, TxCategory, TxResponse } from '../tx/tx.types';
 import { ValidatorCompleteTxResponse } from '../tx/validatorTx.types';
 
+const PUSH_PREFIX = 'push';
+
+/**
+ * Returns a random element from a non-empty array.
+ *
+ * @template T - The type of elements in the array.
+ * @param {T[]} array - An array from which to pick a random element.
+ * @returns {T} A randomly selected element of the given array.
+ * @throws {Error} If the provided array is empty.
+ *
+ * @example
+ * const myArray = [1, 2, 3, 4];
+ * const randomItem = getRandomElement(myArray);
+ * // randomItem could be any of 1, 2, 3, or 4
+ */
 export const getRandomElement = <T>(array: T[]): T => {
   if (array.length === 0) {
     throw new Error('Array cannot be empty');
@@ -85,35 +104,188 @@ export function toSimplifiedBlockResponse(
   };
 }
 
+/**
+ * A collection of utility functions for handling
+ * - Account/address conversions
+ * - Block (de)serialization
+ * - Transaction (de)serialization
+ * - Data (de)serialization for different transaction categories
+ *
+ * @example
+ * // Example usage of Utils.account
+ * const chainAgnostic = Utils.account.toChainAgnostic({
+ *   chain: 'ETHEREUM',
+ *   chainId: '1',
+ *   address: '0xabc123...',
+ * });
+ * // => 'eip155:1:0xabc123...'
+ */
 export class Utils {
+  /**
+   * A namespace for converting addresses and handling UniversalAccount mappings.
+   */
   static account = {
+    /**
+     * Converts a chain-agnostic address (e.g. `eip155:1:0xabc...`) into a UniversalAccount.
+     *
+     * @param {string} chainAgnosticAddress - A CAIP-formatted string, e.g. 'eip155:1:0xabc...'.
+     * @returns {UniversalAccount} A UniversalAccount that identifies the chain, chainId, and address.
+     *
+     * @example
+     * const universalAccount = Utils.account.toUniversal('push:devnet:push1xkuy...');
+     * // => { chain: 'PUSH', chainId: 'DEVNET', address: 'push1xkuy...' }
+     */
     toUniversal(chainAgnosticAddress: string): UniversalAccount {
       return Utils.toUniversal(chainAgnosticAddress);
     },
+
+    /**
+     * Converts a UniversalAccount into a chain-agnostic address (CAIP) string.
+     *
+     * @param {UniversalAccount} universalAccount - The universal account to convert.
+     * @returns {string} A CAIP-formatted string, e.g. 'eip155:1:0xabc...'.
+     *
+     * @example
+     * const chainAgnosticStr = Utils.account.toChainAgnostic({
+     *   chain: 'ETHEREUM',
+     *   chainId: '1',
+     *   address: '0xabc123...'
+     * });
+     * // => 'eip155:1:0xabc123...'
+     */
     toChainAgnostic(universalAccount: UniversalAccount): string {
       return Utils.toChainAgnostic(universalAccount);
     },
+
+    /**
+     * Converts an EVM (Ethereum) address to a Push (bech32m) address.
+     *
+     * @param {`0x${string}`} address - A valid EVM address (checksummed or not).
+     * @returns {string} A Push (bech32m) address string.
+     * @throws {Error} Throws an error if the EVM address is invalid.
+     *
+     * @example
+     * const pushAddr = Address.evmToPush('0x35B84d6848D16415177c64D64504663b998A6ab4');
+     * // => 'push1xkuy66zg69jp29muvnty2prx8wvc5645f9y5ux'
+     */
+    evmToPushAddress(address: `0x${string}`): string {
+      try {
+        const words = bech32m.toWords(hexToBytes(getAddress(address).slice(2)));
+        return bech32m.encode(PUSH_PREFIX, words);
+      } catch (e) {
+        throw new Error('Invalid EVM address');
+      }
+    },
+
+    /**
+     * Converts a Push (bech32m) address back to an EVM (Ethereum) address in checksum format.
+     *
+     * @param {string} address - A valid Push (bech32m) address, e.g. 'push1xkuy66...'
+     * @returns {string} The corresponding checksummed EVM address, e.g. '0x35B84d...'
+     * @throws {Error} If the Push address is invalid.
+     *
+     * @example
+     * const evmAddr = Utils.account.pushToEvmAddress('push1xkuy66zg69jp29muvnty2prx8wvc5645f9y5ux');
+     * // => '0x35B84d6848D16415177c64D64504663b998A6ab4'
+     */
+    pushToEvmAddress(address: string): string {
+      try {
+        const decoded = bech32m.decode(address);
+        const bytes = new Uint8Array(bech32m.fromWords(decoded.words));
+        return getAddress(`0x${bytesToHex(bytes)}`);
+      } catch (e) {
+        throw new Error('Invalid Push address');
+      }
+    },
   };
 
+  /**
+   * A namespace for block (de)serialization.
+   */
   static block = {
+    /**
+     * Serializes a GeneratedBlock into a Uint8Array.
+     *
+     * @param {GeneratedBlock} block - The block data to encode.
+     * @returns {Uint8Array} The serialized block in binary format.
+     *
+     * @example
+     * const encodedBlock = PushChain.utils.block.serialize(myBlock);
+     */
     serialize(block: GeneratedBlock): Uint8Array {
       return Utils.serializeBlock(block);
     },
+
+    /**
+     * Deserializes a Uint8Array back into a GeneratedBlock object.
+     *
+     * @param {Uint8Array} block - The raw serialized block data.
+     * @returns {GeneratedBlock} The decoded block object.
+     *
+     * @example
+     * const decodedBlock = PushChain.utils.block.deserialize(encodedBlock);
+     */
     deserialize(block: Uint8Array): GeneratedBlock {
       return Utils.deserializeBlock(block);
     },
   };
 
+  /**
+   * A namespace for transaction (de)serialization and handling transaction data.
+   */
   static tx = {
+    /**
+     * Serializes a Transaction into a Uint8Array.
+     *
+     * @param {Transaction} tx - The transaction object to encode.
+     * @returns {Uint8Array} The serialized transaction.
+     *
+     * @example
+     * const serializedTx = PushChain.utils.tx.serialize(myTx);
+     */
     serialize(tx: Transaction): Uint8Array {
       return Utils.serialize(tx);
     },
+
+    /**
+     * Deserializes a Uint8Array back into a Transaction object.
+     *
+     * @param {Uint8Array} tx - The raw serialized transaction data.
+     * @returns {Transaction} The decoded transaction object.
+     *
+     * @example
+     * const deserializedTx = PushChain.utils.tx.deserialize(serializedTx);
+     */
     deserialize(tx: Uint8Array): Transaction {
       return Utils.deserialize(tx);
     },
+    /**
+     * Serializes transaction data (e.g. `InitDid`) based on the transaction category.
+     *
+     * @param {InitDid} txData - The transaction data object (e.g., `InitDid`).
+     * @param {TxCategory} category - The category of the transaction (e.g. `INIT_DID`).
+     * @returns {Uint8Array} The serialized transaction data.
+     * @throws {Error} If the category is unsupported for serialization.
+     *
+     * @example
+     * const initDidData = { /* ...  };
+     * const serializedData = PushChain.utils.tx.serializeData(initDidData, TxCategory.INIT_DID);
+     */
     serializeData(txData: InitDid, category: TxCategory): Uint8Array {
       return Utils.serializeData(txData, category);
     },
+
+    /**
+     * Deserializes transaction data (e.g. `InitDid`) from a Uint8Array based on the transaction category.
+     *
+     * @param {Uint8Array} txData - The serialized transaction data.
+     * @param {TxCategory} category - The transaction category (e.g. `INIT_DID`).
+     * @returns {InitDid} The deserialized transaction data object.
+     * @throws {Error} If the category is unsupported for deserialization.
+     *
+     * @example
+     * const deserializedData = PushChain.utils.tx.deserializeData(serializedData, TxCategory.INIT_DID);
+     */
     deserializeData(txData: Uint8Array, category: TxCategory): InitDid {
       return Utils.deserializeData(txData, category);
     },
@@ -220,7 +392,9 @@ export class Utils {
     ) {
       address = universalAccount.address.startsWith('push')
         ? universalAccount.address
-        : Address.evmToPush(universalAccount.address as `0x${string}`);
+        : PushChain.utils.account.evmToPushAddress(
+            universalAccount.address as `0x${string}`
+          );
       chain = 'push';
     } else {
       chain = universalAccount.chain.toLocaleLowerCase();

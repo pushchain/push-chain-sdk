@@ -7,7 +7,7 @@ import {
   privateKeyToAccount,
   privateKeyToAddress,
 } from 'viem/accounts';
-import { Address, PushChain } from '../../src';
+import { PushChain } from '../../src';
 import { CONSTANTS, Order } from '../../src/lib/constants';
 import { InitDid } from '../../src/lib/generated/txData/init_did';
 import {
@@ -433,7 +433,7 @@ describe('Tx', () => {
     );
 
     const sigVerification = await verifyMessage({
-      address: Address.pushToEvm(
+      address: PushChain.utils.account.pushToEvmAddress(
         'pushconsumer1ulpxwud78ctaar5zgeuhmju5k8gpz8najcvxkn'
       ) as `0x${string}`,
       message: { raw: dataToBeSigned },

@@ -224,14 +224,22 @@ export class Tx {
   private async getTransactionsFromVNode(
     accountInCaip: string,
     category: string,
-    ts: string = '' + Math.floor(Date.now()),
+    ts: string = '' + Math.floor(Date.now() / 1000),
     direction: 'ASC' | 'DESC' = 'DESC'
-  ) {
+  ): Promise<ReplyGrouped> {
     Tx.checkCategoryOrFail(category);
-    return await this.validator.callVNode<ReplyGrouped>(
+    const result = await this.validator.callVNode<ReplyGrouped>(
       'push_getTransactions',
       [Tx.normalizeCaip(accountInCaip), category, ts, direction]
     );
+    result.items.forEach((item) => {
+      if (item.data) {
+        item.data = new TextDecoder().decode(
+          new Uint8Array(Buffer.from(item.data, 'hex'))
+        );
+      }
+    });
+    return result;
   }
 
   private static normalizeCaip(accountInCaip: string) {
