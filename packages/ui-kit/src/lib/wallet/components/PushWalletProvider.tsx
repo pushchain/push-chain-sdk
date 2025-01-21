@@ -17,7 +17,6 @@ import { getWalletDataFromAccount } from '../wallet.utils';
 
 // Define the context shape
 export type PushWalletContextType = {
-  account: string | null;
   universalAddress: UniversalAddress | null;
   connectionStatus: ConnectionStatus;
   env: ENV;
@@ -27,11 +26,11 @@ export type PushWalletContextType = {
   setWalletVisibility: (isWalletVisible: boolean) => void;
   handleConnectToPushWallet: () => void;
   handleNewConnectionRequest: () => void;
-  handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>;
   setMinimiseWallet: (isWalletMinimised: boolean) => void;
   handleUserLogOutEvent: () => void;
   isIframeLoading: boolean;
   setIframeLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>;
 };
 
 export type WalletProviderProps = { children: ReactNode; env: ENV };
@@ -46,9 +45,6 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
   children,
   env,
 }) => {
-  const [account, setAccount] =
-    useState<PushWalletContextType['account']>(null);
-
   const [universalAddress, setUniversalAddress] =
     useState<PushWalletContextType['universalAddress']>(null);
 
@@ -101,12 +97,10 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
 
       const result = getWalletDataFromAccount(response.account);
 
-      setAccount(response.account);
-
       setUniversalAddress({
         chainId: result.chainId,
         chain: result.chain,
-        address: response.account,
+        address: result.address,
       });
     } else {
       handleNewConnectionRequest();
@@ -117,19 +111,17 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
     setConnectionStatus('connected');
     setMinimiseWallet(true);
     if (response.account) {
-      setAccount(response.account);
       const result = getWalletDataFromAccount(response.account);
       setUniversalAddress({
         chainId: result.chainId,
         chain: result.chain,
-        address: response.account,
+        address: result.address,
       });
     }
   };
 
   const handleAppConnectionRejection = () => {
     setConnectionStatus('retry');
-    setAccount(null);
     setUniversalAddress(null);
   };
 
@@ -139,7 +131,6 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
 
   const handleUserLogOutEvent = () => {
     setConnectionStatus('notConnected');
-    setAccount(null);
     setUniversalAddress(null);
     setMinimiseWallet(false);
     setWalletVisibility(false);
@@ -222,7 +213,6 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
   return (
     <PushWalletContext.Provider
       value={{
-        account,
         universalAddress,
         connectionStatus,
         env,
