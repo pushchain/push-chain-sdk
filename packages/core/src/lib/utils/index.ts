@@ -112,8 +112,8 @@ export function toSimplifiedBlockResponse(
  * - Data (de)serialization for different transaction categories
  *
  * @example
- * // Example usage of Utils.account
- * const chainAgnostic = Utils.account.toChainAgnostic({
+ * // Example usage of PushChain.utils.account
+ * const chainAgnostic = PushChain.utils.account.toChainAgnostic({
  *   chain: 'ETHEREUM',
  *   chainId: '1',
  *   address: '0xabc123...',
@@ -132,7 +132,7 @@ export class Utils {
      * @returns {UniversalAccount} A UniversalAccount that identifies the chain, chainId, and address.
      *
      * @example
-     * const universalAccount = Utils.account.toUniversal('push:devnet:push1xkuy...');
+     * const universalAccount = PushChain.utils.account.toUniversal('push:devnet:push1xkuy...');
      * // => { chain: 'PUSH', chainId: 'DEVNET', address: 'push1xkuy...' }
      */
     toUniversal(chainAgnosticAddress: string): UniversalAccount {
@@ -146,7 +146,7 @@ export class Utils {
      * @returns {string} A CAIP-formatted string, e.g. 'eip155:1:0xabc...'.
      *
      * @example
-     * const chainAgnosticStr = Utils.account.toChainAgnostic({
+     * const chainAgnosticStr = PushChain.utils.account.toChainAgnostic({
      *   chain: 'ETHEREUM',
      *   chainId: '1',
      *   address: '0xabc123...'
@@ -165,7 +165,7 @@ export class Utils {
      * @throws {Error} Throws an error if the EVM address is invalid.
      *
      * @example
-     * const pushAddr = Address.evmToPush('0x35B84d6848D16415177c64D64504663b998A6ab4');
+     * const pushAddr = PushChain.utils.account.evmToPush('0x35B84d6848D16415177c64D64504663b998A6ab4');
      * // => 'push1xkuy66zg69jp29muvnty2prx8wvc5645f9y5ux'
      */
     evmToPushAddress(address: `0x${string}`): string {
@@ -185,7 +185,7 @@ export class Utils {
      * @throws {Error} If the Push address is invalid.
      *
      * @example
-     * const evmAddr = Utils.account.pushToEvmAddress('push1xkuy66zg69jp29muvnty2prx8wvc5645f9y5ux');
+     * const evmAddr = PushChain.utils.account.pushToEvmAddress('push1xkuy66zg69jp29muvnty2prx8wvc5645f9y5ux');
      * // => '0x35B84d6848D16415177c64D64504663b998A6ab4'
      */
     pushToEvmAddress(address: string): string {
