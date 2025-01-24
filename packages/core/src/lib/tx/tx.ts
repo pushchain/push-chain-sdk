@@ -13,6 +13,12 @@ import { Validator } from '../validator/validator';
 import { TokenReply } from '../validator/validator.types';
 import { ReplyGrouped, TxCategory } from './tx.types';
 
+/**
+ * Tx is a class that provides methods to interact with the Push Network.
+ *
+ * **Note: ** It is not recommended to use this class directly.
+ * Users should use the Tx class under `PushChain.tx` instead.
+ */
 export class Tx {
   private tokenCache: TokenCache;
 
@@ -25,6 +31,26 @@ export class Tx {
     void this.tokenCache.getCachedApiToken();
   }
 
+  /**
+   * Initializes the Tx class.
+   *
+   * **Note: ** It is not recommended to use this class directly.
+   * Users should use the Tx class under `PushChain.tx` instead.
+   *
+   *  The `PushChain` can be initialized with or without a signer:
+   * - **Without a signer**: This is suitable for read-only operations, such as fetching transactions.
+   * - **With a signer**: Required for write operations, such as sending transactions, as it allows the transactions to be signed.
+   * @param env - The environment configuration.
+   * @param universalSigner - Optional signer for transactions. Only required for sending transactions.
+   * @returns An instance of the Tx class.
+   *
+   * @example
+   * // Initialize for read-only operations
+   * const pushChain = await PushChain.initialize(env);
+   *
+   * // Initialize for write operations with a signer
+   * const pushChainWithSigner = await PushChain.initialize(env, signer);
+   */
   static initialize = async (
     env: ENV,
     universalSigner: UniversalSigner | null = null
@@ -34,7 +60,7 @@ export class Tx {
   };
 
   /**
-   * Get transactions from the Push Network.
+   * Get transactions from the Push Chain.
    *
    * - If `reference = '*'`, fetches all transactions.
    * - If `reference` is a string (tx hash), fetch that specific transaction.
@@ -44,10 +70,34 @@ export class Tx {
    *   - 'sender': fetches all transactions sent by the given address
    *   - 'recipient': fetches all transactions received by the given address
    *
-   * @param reference The reference for the query.
+   * @param {UniversalAccount | string | '*'} [reference='*'] - The reference for the query.
    * Can be `'*'` (all), a transaction hash, or a UniversalAccount.
-   * @param options Optional parameters to refine the query.
-   * @returns A BlockResponse or SimplifiedBlockResponse
+   * @param {Object} [options] - Optional parameters to refine the query.
+   * @param {boolean} [options.raw=false] - If true, returns the raw SDK response.
+   * @param {string} [options.category] - The category of transactions to filter by.
+   * @param {number} [options.startTime=Math.floor(Date.now())] - The start time for fetching transactions.
+   * @param {Order} [options.order=Order.DESC] - The order in which to fetch transactions (ascending or descending).
+   * @param {number} [options.page=1] - The page number for pagination.
+   * @param {number} [options.limit=30] - The number of transactions to fetch per page.
+   * @param {'both' | 'sender' | 'recipient'} [options.filterMode='both'] - The mode to filter transactions by:
+   *   - 'both': fetches all transactions from and to the given address
+   *   - 'sender': fetches all transactions sent by the given address
+   *   - 'recipient': fetches all transactions received by the given address
+   * @returns {Promise<BlockResponse | CompleteBlockResponse>} A promise that resolves to the transaction data.
+   *
+   * @example
+   * // Fetch all transactions using PushChain.tx
+   * const allTransactions = await pushChain.tx.get();
+   *
+   * // Fetch a specific transaction by hash using PushChain.tx
+   * const specificTransaction = await pushChain.tx.get('0x123abc...');
+   *
+   * // Fetch transactions for a specific account, filtering by sender using PushChain.tx
+   * const accountTransactions = await pushChain.tx.get(universalAccount, {
+   *   filterMode: 'sender',
+   *   order: Order.ASC,
+   *   limit: 10,
+   * });
    */
   get = async (
     reference: UniversalAccount | string | '*' = '*',
@@ -154,10 +204,51 @@ export class Tx {
   }
 
   /**
-   * Send Tx to Push Network
-   * @param recipients
-   * @param options
-   * @returns Tx Hash
+   * Sends a transaction to the Push Network.
+   *
+   * This method allows you to send a transaction to specified recipients with a given category and data.
+   * The transaction is signed using the provided signer.
+   *
+   * @param recipients An array of UniversalAccount objects representing the recipients of the transaction.
+   * @param options An object containing the transaction options:
+   *   - `category`: A string representing the category of the transaction.
+   *   - `data`: A string containing the data to be sent with the transaction.
+   * @returns A promise that resolves to an object containing the transaction hash.
+   *
+   * @example
+   * // Initialize PushChain with a signer
+   * const signer: UniversalSigner = {
+   *   chain: CONSTANTS.CHAIN.ETHEREUM,
+   *   chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
+   *   address: '0xYourAddress',
+   *   signMessage: async (data: Uint8Array) => {
+   *     // Implement your signing logic here
+   *     return yourSigningFunction(data);
+   *   },
+   * };
+   * const pushChain = await PushChain.initialize(signer);
+   *
+   * // Define recipients
+   * const recipients: UniversalAccount[] = [
+   *   {
+   *     chain: CONSTANTS.CHAIN.ETHEREUM,
+   *     chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
+   *     address: '0xRecipientAddress1',
+   *   },
+   *   {
+   *     chain: CONSTANTS.CHAIN.ETHEREUM,
+   *     chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
+   *     address: '0xRecipientAddress2',
+   *   },
+   * ];
+   *
+   * // Send a transaction
+   * const result = await pushChain.tx.send(recipients, {
+   *   category: 'CUSTOM:CORE_SDK',
+   *   data: JSON.stringify({ message: 'Hello, Push Network!' }),
+   * });
+   *
+   * console.log('Transaction Hash:', result.txHash);
    */
   send = async (
     recipients: UniversalAccount[],
