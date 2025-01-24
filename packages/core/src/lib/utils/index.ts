@@ -1,6 +1,5 @@
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
 import { bech32m } from 'bech32';
-import { PushChain } from 'core';
 import { getAddress } from 'viem';
 // import { Address } from '../address/address';
 import {
@@ -392,7 +391,7 @@ export class Utils {
     ) {
       address = universalAccount.address.startsWith('push')
         ? universalAccount.address
-        : PushChain.utils.account.evmToPushAddress(
+        : Utils.account.evmToPushAddress(
             universalAccount.address as `0x${string}`
           );
       chain = 'push';

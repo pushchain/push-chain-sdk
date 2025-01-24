@@ -1,4 +1,4 @@
-import { CONSTANTS } from 'core';
+import { CONSTANTS } from '../constants';
 import { UniversalAccount, UniversalSigner } from './signer.types';
 
 /**
