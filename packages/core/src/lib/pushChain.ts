@@ -41,6 +41,7 @@ export class PushChain {
    * This is only required for write operations. If you only need to perform read operations,
    * you can pass `null`.
    * @param {Object} [options] - The options for initializing the PushChain.
+   * @param {boolean} [options.printTraces=false] - Console logs the requests to nodes
    * @param {ENV} [options.network=ENV.DEVNET] - The network environment.
    * @returns {Promise<PushChain>} A promise that resolves to the initialized PushChain instance.
    *
@@ -55,12 +56,18 @@ export class PushChain {
     universalSigner: UniversalSigner | null = null,
     options: {
       network: ENV;
+      printTraces?: boolean;
     } = {
       network: ENV.DEVNET,
+      printTraces: false,
     }
   ): Promise<PushChain> => {
     const block = await Block.initialize(options.network);
-    const tx = await Tx.initialize(options.network, universalSigner);
+    const tx = await Tx.initialize(
+      options.network,
+      universalSigner,
+      options.printTraces
+    );
     return new PushChain(block, tx);
   };
 }

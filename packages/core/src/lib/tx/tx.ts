@@ -42,6 +42,7 @@ export class Tx {
    * - **With a signer**: Required for write operations, such as sending transactions, as it allows the transactions to be signed.
    * @param env - The environment configuration.
    * @param universalSigner - Optional signer for transactions. Only required for sending transactions.
+   * @param printTraces - Console logs the requests to nodes
    * @returns An instance of the Tx class.
    *
    * @example
@@ -53,9 +54,10 @@ export class Tx {
    */
   static initialize = async (
     env: ENV,
-    universalSigner: UniversalSigner | null = null
+    universalSigner: UniversalSigner | null = null,
+    printTraces = false
   ) => {
-    const validator = await Validator.initalize({ env });
+    const validator = await Validator.initalize({ env, printTraces });
     return new Tx(validator, universalSigner);
   };
 
