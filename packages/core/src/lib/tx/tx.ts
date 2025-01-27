@@ -353,18 +353,29 @@ class TokenCache {
   private cachedToken: TokenReply | null = null;
   private cachedTokenTs = 0;
 
-  constructor(private validator: Validator) {}
+  constructor(
+    private validator: Validator,
+    private readonly printTraces?: boolean
+  ) {
+    this.printTraces = printTraces || false;
+  }
 
   async getCachedApiToken(): Promise<TokenReply | null> {
     if (TokenCache.isExpired(this.cachedTokenTs, this.TOKEN_EXPIRE_SECONDS)) {
-      console.log('token refresh started');
+      if (this.printTraces) {
+        console.log('token refresh started');
+      }
       this.cachedToken = await this.validator.call<TokenReply>(
         'push_getApiToken'
       );
       this.cachedTokenTs = new Date().getTime();
-      console.log('token refresh finished');
+      if (this.printTraces) {
+        console.log('token refresh finished');
+      }
     } else {
-      console.log('returning cached token');
+      if (this.printTraces) {
+        console.log('returning cached token');
+      }
     }
     return this.cachedToken;
   }
