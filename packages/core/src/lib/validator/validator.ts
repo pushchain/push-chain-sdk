@@ -39,20 +39,16 @@ export class Validator {
     private activeValidatorURL: string,
     private env: ENV,
     private validatorContractClient: ValidatorContract
-  ) {
-    if (
-      this.env === ENV.DEVNET ||
-      this.env === ENV.TESTNET ||
-      this.env === ENV.LOCAL
-    ) {
-      Validator.printTraces = true;
-    }
-  }
+  ) {}
 
-  static initalize = async (options?: { env?: ENV }): Promise<Validator> => {
+  static initalize = async (options?: {
+    env?: ENV;
+    printTraces?: boolean;
+  }): Promise<Validator> => {
     const settings = {
       env: options?.env || ENV.DEVNET,
     };
+    Validator.printTraces = options?.printTraces || false;
 
     /**
      * @dev - If instance is not created or env is different, create a new instance
