@@ -1,4 +1,3 @@
-import { clsx, type ClassValue } from 'clsx';
 import { FC } from 'react';
 import {
   IconProps,
@@ -11,9 +10,6 @@ import {
   PushMonotone,
 } from 'shared-components';
 
-export function cn(...inputs: ClassValue[]) {
-  return clsx(inputs);
-}
 export function trimAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }

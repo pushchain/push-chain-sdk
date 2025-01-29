@@ -43,7 +43,6 @@ const RumorsScreen = () => {
         `}
       >
         <Box
-          padding="spacing-xs"
           maxWidth="100%"
           css={css`
             box-sizing: border-box;

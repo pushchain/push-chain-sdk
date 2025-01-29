@@ -24,7 +24,10 @@ const Header: FC = () => {
         <Box display="flex" alignItems="center" gap="spacing-xxs">
           <img src="/RumorLogo.png" width={34} height={34} />
         </Box>
-        <Box display={{ initial: 'block', ml: 'none' }}>
+        <Box
+          display={{ initial: 'block', ml: 'none' }}
+          margin="spacing-xxxs spacing-none spacing-none spacing-none"
+        >
           <img src="/RumorsText.png" height={20} />
         </Box>
       </Box>

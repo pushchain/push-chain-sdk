@@ -40,7 +40,11 @@ const NewRumor = () => {
       const end = text.slice(selectionEnd);
 
       if (before === '> ') {
-        setText(`${start}\n${before}${middle}\n\n${end}`);
+        setText(
+          start
+            ? `${start}\n${before}${middle}\n\n${end}`
+            : `${before}${middle}\n\n${end}`
+        );
       } else {
         setText(`${start}${before}${middle}${after}${end}`);
       }
