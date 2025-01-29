@@ -6,6 +6,7 @@ export const performUpVote = async (
   wallet: string,
   upVote: number,
   txnHash: string,
+  existingWallets: string[],
   handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>
 ) => {
   try {
@@ -14,6 +15,7 @@ export const performUpVote = async (
 
       message Upvotes {
         int32 upvotes = 1;
+        repeated string wallets = 2;
       }
     `;
 
@@ -21,8 +23,11 @@ export const performUpVote = async (
     const root = await protobuf.parse(schema).root;
     const Upvotes = root.lookupType('Upvotes');
 
+    const updatedWallets = [...new Set([...existingWallets, wallet])];
+
     const serializedData = {
       upvotes: upVote + 1,
+      wallets: updatedWallets,
     };
 
     // Verify the data against the schema

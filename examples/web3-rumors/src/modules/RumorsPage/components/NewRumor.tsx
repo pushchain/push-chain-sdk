@@ -105,6 +105,7 @@ const NewRumor = () => {
         isVisible: true,
         timestamp: Date.now().toString(),
         markdownPost: text,
+        wallets: [],
       };
       setData((prev) => ({
         ...prev,
@@ -249,6 +250,7 @@ const NewRumor = () => {
               isVisible
               txnHash=""
               timestamp={Date.now().toString()}
+              wallets={[]}
             />
           </Box>
           <Button

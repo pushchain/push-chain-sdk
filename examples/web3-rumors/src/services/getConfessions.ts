@@ -37,7 +37,9 @@ export const getConfessions = async (page: number, pageSize: number) => {
 
     for (let i = 0; i < txRes.blocks.length; i++) {
       const block = txRes.blocks[i];
-      const upVoteCount = await calculateVote(block.transactions[0].txnHash);
+      const { upVoteCount, wallets } = await calculateVote(
+        block.transactions[0].txnHash
+      );
 
       const binaryData = Buffer.from(
         block.blockDataAsJson.txobjList[0].tx.data,
@@ -56,6 +58,7 @@ export const getConfessions = async (page: number, pageSize: number) => {
         upVoteCount: upVoteCount,
         markdownPost: (decodedData as any).post,
         txnHash: block.transactions[0].txnHash,
+        wallets: wallets,
       });
     }
 

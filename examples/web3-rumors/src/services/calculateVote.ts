@@ -13,6 +13,7 @@ export const calculateVote = async (txHash: string) => {
   
         message Upvotes {
           int32 upvotes = 1;
+          repeated string wallets = 2;
         }
       `;
 
@@ -39,20 +40,24 @@ export const calculateVote = async (txHash: string) => {
       );
 
       const decodedData = Upvotes.decode(binaryData);
-      const upVoteCount = Upvotes.toObject(decodedData, {
+      const decodedObject = Upvotes.toObject(decodedData, {
         longs: String,
         enums: String,
         bytes: String,
       });
 
-      console.log(`Decoded Data for ${txHash}:`, upVoteCount);
+      const upVoteCount = decodedObject.upvotes || 0;
+      const wallets = decodedObject.wallets || [];
 
-      return upVoteCount.upvotes || 0;
+      return {
+        upVoteCount: upVoteCount,
+        wallets,
+      };
     }
 
-    return 0;
+    return { upVoteCount: 0, wallets: [] };
   } catch (error) {
     console.error('Error at calculateVote():', error);
-    return 0;
+    return { upVoteCount: 0, wallets: [] };
   }
 };

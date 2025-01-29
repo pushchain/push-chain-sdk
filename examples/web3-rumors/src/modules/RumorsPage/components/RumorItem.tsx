@@ -17,7 +17,7 @@ import {
   ThumbsUp,
 } from 'shared-components';
 import ReactMarkdown from 'react-markdown';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { performUpVote } from '@/services/performUpVote';
 import { useAppContext } from '@/context/AppContext';
 import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
@@ -43,6 +43,7 @@ const RumorItem: React.FC<RumorType> = ({
   markdownPost,
   txnHash,
   timestamp,
+  wallets,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isUpvote, setIsUpvote] = useState(false);
@@ -63,18 +64,27 @@ const RumorItem: React.FC<RumorType> = ({
           account,
           upVoteCount,
           txnHash,
+          wallets,
           handleSendSignRequestToPushWallet
         );
         setData((prev) => ({
           ...prev,
           [TABS.LATEST]: prev[TABS.LATEST].map((item) =>
             item.txnHash === txnHash
-              ? { ...item, upVoteCount: item.upVoteCount + 1 }
+              ? {
+                  ...item,
+                  upVoteCount: item.upVoteCount + 1,
+                  wallets: [account, ...item.wallets],
+                }
               : item
           ),
           [TABS.MY_RUMORS]: prev[TABS.MY_RUMORS].map((item) =>
             item.txnHash === txnHash
-              ? { ...item, upVoteCount: item.upVoteCount + 1 }
+              ? {
+                  ...item,
+                  upVoteCount: item.upVoteCount + 1,
+                  wallets: [account, ...item.wallets],
+                }
               : item
           ),
         }));
@@ -86,6 +96,12 @@ const RumorItem: React.FC<RumorType> = ({
       setIsUpvote(false);
     }
   };
+
+  useEffect(() => {
+    if (account && wallets.includes(account)) {
+      setIsUpvote(true);
+    }
+  }, [wallets]);
 
   return (
     <Box

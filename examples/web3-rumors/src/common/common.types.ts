@@ -14,6 +14,7 @@ type RumorType = ConfessionType & {
   markdownPost: string;
   txnHash: string;
   upVoteCount: number;
+  wallets: string[];
 };
 
 export type { ConfessionType, RumorType };
