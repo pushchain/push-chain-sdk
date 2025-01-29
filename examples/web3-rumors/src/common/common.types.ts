@@ -13,8 +13,8 @@ type ConfessionType = {
 type RumorType = ConfessionType & {
   markdownPost: string;
   txnHash: string;
-  upVoteCount: number;
-  wallets: string[];
+  upvoteWallets: string[];
+  downvoteWallets: string[];
 };
 
 export type { ConfessionType, RumorType };

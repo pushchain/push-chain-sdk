@@ -173,6 +173,7 @@ export { default as Stopwatch } from './components/Stopwatch';
 
 export { default as Swap } from './components/Swap';
 
+export { default as ThumbsDown } from './components/ThumbsDown';
 export { default as ThumbsUp } from './components/ThumbsUp';
 export { default as Tick } from './components/Tick';
 export { default as TickCircleFilled } from './components/TickCircleFilled';

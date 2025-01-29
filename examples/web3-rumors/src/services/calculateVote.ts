@@ -12,8 +12,8 @@ export const calculateVote = async (txHash: string) => {
         syntax = "proto3";
   
         message Upvotes {
-          int32 upvotes = 1;
           repeated string wallets = 2;
+          repeated string downvoteWallets = 3;
         }
       `;
 
@@ -46,18 +46,18 @@ export const calculateVote = async (txHash: string) => {
         bytes: String,
       });
 
-      const upVoteCount = decodedObject.upvotes || 0;
-      const wallets = decodedObject.wallets || [];
+      const upvoteWallets = decodedObject.wallets || [];
+      const downvoteWallets = decodedObject.downvoteWallets || [];
 
       return {
-        upVoteCount: upVoteCount,
-        wallets,
+        upvoteWallets,
+        downvoteWallets,
       };
     }
 
-    return { upVoteCount: 0, wallets: [] };
+    return { upvoteWallets: [], downvoteWallets: [] };
   } catch (error) {
     console.error('Error at calculateVote():', error);
-    return { upVoteCount: 0, wallets: [] };
+    return { upvoteWallets: [], downvoteWallets: [] };
   }
 };

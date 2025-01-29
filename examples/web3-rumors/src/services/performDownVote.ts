@@ -1,12 +1,12 @@
 import { PushNetwork } from '@pushprotocol/push-chain';
 import protobuf from 'protobufjs';
 
-export const performUpVote = async (
+export const performDownVote = async (
   userAlice: PushNetwork,
   wallet: string,
   txnHash: string,
+  upvoteWallets: string[],
   existingWallets: string[],
-  downvoteWallets: string[],
   handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>
 ) => {
   try {
@@ -32,8 +32,8 @@ export const performUpVote = async (
     }
 
     const serializedData = {
-      wallets: updatedWallets,
-      downvoteWallets: downvoteWallets.filter((w) => w !== wallet),
+      wallets: upvoteWallets.filter((w) => w !== wallet),
+      downvoteWallets: updatedWallets,
     };
 
     // Verify the data against the schema

@@ -37,7 +37,7 @@ export const getConfessions = async (page: number, pageSize: number) => {
 
     for (let i = 0; i < txRes.blocks.length; i++) {
       const block = txRes.blocks[i];
-      const { upVoteCount, wallets } = await calculateVote(
+      const { upvoteWallets, downvoteWallets } = await calculateVote(
         block.transactions[0].txnHash
       );
 
@@ -55,10 +55,10 @@ export const getConfessions = async (page: number, pageSize: number) => {
 
       confessions.push({
         ...(confessionObj as ConfessionType),
-        upVoteCount: upVoteCount,
         markdownPost: (decodedData as any).post,
         txnHash: block.transactions[0].txnHash,
-        wallets: wallets,
+        upvoteWallets: upvoteWallets,
+        downvoteWallets: downvoteWallets,
       });
     }
 

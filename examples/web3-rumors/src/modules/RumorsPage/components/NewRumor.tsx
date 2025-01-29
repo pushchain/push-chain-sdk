@@ -101,11 +101,11 @@ const NewRumor = () => {
         txnHash: `temp-rumor`,
         post: text,
         address: account,
-        upVoteCount: 0,
         isVisible: true,
         timestamp: Date.now().toString(),
         markdownPost: text,
-        wallets: [],
+        upvoteWallets: [],
+        downvoteWallets: [],
       };
       setData((prev) => ({
         ...prev,
@@ -244,13 +244,13 @@ const NewRumor = () => {
             <Text variant="h5-bold">Rumor Preview</Text>
             <RumorItem
               address={trimAddress(account || '')}
-              upVoteCount={0}
               markdownPost={text}
               post=""
               isVisible
               txnHash=""
               timestamp={Date.now().toString()}
-              wallets={[]}
+              upvoteWallets={[]}
+              downvoteWallets={[]}
             />
           </Box>
           <Button

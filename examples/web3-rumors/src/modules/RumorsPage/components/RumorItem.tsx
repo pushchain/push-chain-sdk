@@ -14,6 +14,7 @@ import {
   css,
   PushMonotone,
   Text,
+  ThumbsDown,
   ThumbsUp,
 } from 'shared-components';
 import ReactMarkdown from 'react-markdown';
@@ -23,6 +24,7 @@ import { useAppContext } from '@/context/AppContext';
 import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import { performDownVote } from '@/services/performDownVote';
 
 const getChainIcon = (chainId: string) => {
   if (!chainId) {
@@ -38,15 +40,16 @@ const getChainIcon = (chainId: string) => {
 };
 
 const RumorItem: React.FC<RumorType> = ({
-  upVoteCount,
   address,
   markdownPost,
   txnHash,
   timestamp,
-  wallets,
+  upvoteWallets,
+  downvoteWallets,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isUpvote, setIsUpvote] = useState(false);
+  const [isDownvote, setIsDownvote] = useState(false);
 
   const { setMinimiseWallet } = usePushWalletContext();
 
@@ -56,40 +59,140 @@ const RumorItem: React.FC<RumorType> = ({
   const { result } = convertCaipToObject(address);
 
   const handleUpvote = async () => {
-    if (isUpvote) return;
     try {
       if (pushNetwork && account) {
         await performUpVote(
           pushNetwork,
           account,
-          upVoteCount,
           txnHash,
-          wallets,
+          upvoteWallets,
+          downvoteWallets,
           handleSendSignRequestToPushWallet
         );
-        setData((prev) => ({
-          ...prev,
-          [TABS.LATEST]: prev[TABS.LATEST].map((item) =>
-            item.txnHash === txnHash
-              ? {
-                  ...item,
-                  upVoteCount: item.upVoteCount + 1,
-                  wallets: [account, ...item.wallets],
-                }
-              : item
-          ),
-          [TABS.MY_RUMORS]: prev[TABS.MY_RUMORS].map((item) =>
-            item.txnHash === txnHash
-              ? {
-                  ...item,
-                  upVoteCount: item.upVoteCount + 1,
-                  wallets: [account, ...item.wallets],
-                }
-              : item
-          ),
-        }));
+        if (upvoteWallets.includes(account)) {
+          setData((prev) => ({
+            ...prev,
+            [TABS.LATEST]: prev[TABS.LATEST].map((item) =>
+              item.txnHash === txnHash
+                ? {
+                    ...item,
+                    upvoteWallets: item.upvoteWallets.filter(
+                      (w) => w !== account
+                    ),
+                  }
+                : item
+            ),
+            [TABS.MY_RUMORS]: prev[TABS.MY_RUMORS].map((item) =>
+              item.txnHash === txnHash
+                ? {
+                    ...item,
+                    upvoteWallets: item.upvoteWallets.filter(
+                      (w) => w !== account
+                    ),
+                  }
+                : item
+            ),
+          }));
+        } else {
+          setData((prev) => ({
+            ...prev,
+            [TABS.LATEST]: prev[TABS.LATEST].map((item) =>
+              item.txnHash === txnHash
+                ? {
+                    ...item,
+                    upvoteWallets: [account, ...item.upvoteWallets],
+                    downvoteWallets: item.downvoteWallets.filter(
+                      (w) => w !== account
+                    ),
+                  }
+                : item
+            ),
+            [TABS.MY_RUMORS]: prev[TABS.MY_RUMORS].map((item) =>
+              item.txnHash === txnHash
+                ? {
+                    ...item,
+                    upvoteWallets: [account, ...item.upvoteWallets],
+                    downvoteWallets: item.downvoteWallets.filter(
+                      (w) => w !== account
+                    ),
+                  }
+                : item
+            ),
+          }));
+        }
+
         setMinimiseWallet(true);
-        setIsUpvote(true);
+      }
+    } catch (error) {
+      console.error('Error performing upvote:', error);
+      setIsUpvote(false);
+    }
+  };
+
+  const handleDownvote = async () => {
+    try {
+      if (pushNetwork && account) {
+        await performDownVote(
+          pushNetwork,
+          account,
+          txnHash,
+          upvoteWallets,
+          downvoteWallets,
+          handleSendSignRequestToPushWallet
+        );
+        if (downvoteWallets.includes(account)) {
+          setData((prev) => ({
+            ...prev,
+            [TABS.LATEST]: prev[TABS.LATEST].map((item) =>
+              item.txnHash === txnHash
+                ? {
+                    ...item,
+                    downvoteWallets: item.downvoteWallets.filter(
+                      (w) => w !== account
+                    ),
+                  }
+                : item
+            ),
+            [TABS.MY_RUMORS]: prev[TABS.MY_RUMORS].map((item) =>
+              item.txnHash === txnHash
+                ? {
+                    ...item,
+                    downvoteWallets: item.downvoteWallets.filter(
+                      (w) => w !== account
+                    ),
+                  }
+                : item
+            ),
+          }));
+        } else {
+          setData((prev) => ({
+            ...prev,
+            [TABS.LATEST]: prev[TABS.LATEST].map((item) =>
+              item.txnHash === txnHash
+                ? {
+                    ...item,
+                    downvoteWallets: [account, ...item.downvoteWallets],
+                    upvoteWallets: item.upvoteWallets.filter(
+                      (w) => w !== account
+                    ),
+                  }
+                : item
+            ),
+            [TABS.MY_RUMORS]: prev[TABS.MY_RUMORS].map((item) =>
+              item.txnHash === txnHash
+                ? {
+                    ...item,
+                    downvoteWallets: [account, ...item.downvoteWallets],
+                    upvoteWallets: item.upvoteWallets.filter(
+                      (w) => w !== account
+                    ),
+                  }
+                : item
+            ),
+          }));
+        }
+
+        setMinimiseWallet(true);
       }
     } catch (error) {
       console.error('Error performing upvote:', error);
@@ -98,10 +201,20 @@ const RumorItem: React.FC<RumorType> = ({
   };
 
   useEffect(() => {
-    if (account && wallets.includes(account)) {
+    if (account && upvoteWallets.includes(account)) {
       setIsUpvote(true);
+    } else {
+      setIsUpvote(false);
     }
-  }, [wallets]);
+  }, [account, upvoteWallets]);
+
+  useEffect(() => {
+    if (account && downvoteWallets.includes(account)) {
+      setIsDownvote(true);
+    } else {
+      setIsDownvote(false);
+    }
+  }, [account, downvoteWallets]);
 
   return (
     <Box
@@ -121,18 +234,32 @@ const RumorItem: React.FC<RumorType> = ({
         flexDirection="column"
         justifyContent="center"
         alignItems="center"
-        gap="spacing-xxxs"
+        gap="spacing-xs"
         height="100%"
       >
-        <Box cursor={isUpvote ? 'default' : 'pointer'} onClick={handleUpvote}>
-          <ThumbsUp
-            size={24}
-            color={isUpvote ? 'icon-state-info-bold' : 'icon-tertiary'}
+        <Box
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+        >
+          <Box cursor="pointer" onClick={handleUpvote}>
+            <ThumbsUp
+              size={16}
+              color={isUpvote ? 'icon-state-info-bold' : 'icon-tertiary'}
+            />
+          </Box>
+          <Text variant="bs-semibold" color="text-tertiary">
+            {upvoteWallets.length}
+          </Text>
+        </Box>
+
+        <Box cursor="pointer" onClick={handleDownvote}>
+          <ThumbsDown
+            size={16}
+            color={isDownvote ? 'icon-state-info-bold' : 'icon-tertiary'}
           />
         </Box>
-        <Text variant="bs-semibold" color="text-tertiary">
-          {upVoteCount}
-        </Text>
       </Box>
       <Box
         width="100%"

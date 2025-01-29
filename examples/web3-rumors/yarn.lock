@@ -8022,7 +8022,7 @@ __metadata:
 
 "shared-components@file:../../packages/shared-components::locator=rumor-app%40workspace%3A.":
   version: 0.1.0
-  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=e3118d&locator=rumor-app%40workspace%3A."
+  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=2a0c9e&locator=rumor-app%40workspace%3A."
   dependencies:
     "@emotion/react": "npm:^11.13.0"
     "@radix-ui/react-dialog": "npm:^1.1.1"
@@ -8043,7 +8043,7 @@ __metadata:
   peerDependencies:
     react: ^18.3.1
     react-dom: ^18.3.1
-  checksum: 10/f9f9437173f5ec0bcf05ee73e169be0fbf88db60e52355074ed1953779dc8c799254181850e880d93d3dbc7b1000bb33e310d71de801d41e1104cd2105951d78
+  checksum: 10/087e67f0222975179d77acfb8fcf5e03e41606321966c384a224c327deca3e0543f1a1d611ebdb5e78ab93bbd209784753c406e8aeae0eaec1cb4d95dedd81b4
   languageName: node
   linkType: hard
 
