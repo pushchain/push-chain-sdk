@@ -1,5 +1,5 @@
 import { FC, ReactNode } from 'react';
-import { Box } from 'shared-components';
+import { Box, css } from 'shared-components';
 
 type SymbolBoxProps = {
   children: ReactNode;
@@ -18,6 +18,15 @@ const SymbolBox: FC<SymbolBoxProps> = ({ children, onClick }) => {
       justifyContent="center"
       cursor="pointer"
       onClick={onClick}
+      css={css`
+        transition: background-color 0.2s ease-in-out;
+        &:hover {
+          background-color: var(--surface-primary-inverse);
+          span {
+            color: var(--icon-secondary) !important;
+          }
+        }
+      `}
     >
       {children}
     </Box>

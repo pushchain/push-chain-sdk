@@ -13,6 +13,11 @@ body {
   margin: unset;
 }
 
+em {
+  font-family: Arial;
+  font-style: italic;
+}
+
 /**
  * Custom CSS
  */

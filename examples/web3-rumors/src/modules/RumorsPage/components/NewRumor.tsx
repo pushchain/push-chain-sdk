@@ -7,9 +7,8 @@ import {
   Text,
   TextArea,
   css,
-  styled,
 } from 'shared-components';
-import { RumorType, TABS, trimAddress } from '@/common';
+import { RumorType, SymbolBox, TABS } from '@/common';
 import RumorItem from './RumorItem';
 import { useAppContext } from '@/context/AppContext';
 import { postConfession } from '@/services/postConfession';
@@ -40,7 +39,11 @@ const NewRumor = () => {
       const middle = text.slice(selectionStart, selectionEnd);
       const end = text.slice(selectionEnd);
 
-      setText(`${start}${before}${middle}${after}${end}`);
+      if (before === '> ') {
+        setText(`${start}\n${before}${middle}\n\n${end}`);
+      } else {
+        setText(`${start}${before}${middle}${after}${end}`);
+      }
 
       setTimeout(() => {
         textarea.focus();
@@ -243,7 +246,7 @@ const NewRumor = () => {
           >
             <Text variant="h5-bold">Rumor Preview</Text>
             <RumorItem
-              address={trimAddress(account || '')}
+              address={account || ''}
               markdownPost={text}
               post=""
               isVisible
@@ -277,25 +280,3 @@ const NewRumor = () => {
 };
 
 export default NewRumor;
-
-const SymbolBox = styled(Box as any)`
-  width: 40px;
-  height: 40px;
-  display: flex;
-  background-color: var(--surface-tertiary);
-  border-radius: var(--radius-xs);
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background-color 0.2s ease-in-out;
-
-  &:hover {
-    background-color: var(
-      --surface-primary-inverse
-    ); // Change background on hover
-
-    span {
-      color: var(--icon-secondary) !important;
-    }
-  }
-`;
