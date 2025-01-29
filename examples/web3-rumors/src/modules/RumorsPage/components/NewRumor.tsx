@@ -3,12 +3,13 @@ import {
   Box,
   Button,
   Cross,
-  Mail,
+  Pencil,
   Text,
   TextArea,
   css,
+  styled,
 } from 'shared-components';
-import { SymbolBox, trimAddress } from '@/common';
+import { RumorType, TABS, trimAddress } from '@/common';
 import RumorItem from './RumorItem';
 import { useAppContext } from '@/context/AppContext';
 import { postConfession } from '@/services/postConfession';
@@ -17,23 +18,19 @@ import Italic from '@/common/icons/Italic';
 import Strikethrough from '@/common/icons/Strikethrough';
 import Quote from '@/common/icons/Quote';
 import Link from '@/common/icons/Link';
+import { getSentConfessions } from '@/services/getSentConfessions';
+import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 
 const NewRumor = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [text, setText] = useState('');
-  const [selected, setSelected] = useState({
-    bold: false,
-    italic: false,
-    strikethrough: false,
-    quote: false,
-    link: false,
-  });
   const [loading, setLoading] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const { account, pushNetwork, handleSendSignRequestToPushWallet } =
+  const { account, pushNetwork, setData, handleSendSignRequestToPushWallet } =
     useAppContext();
+  const { setMinimiseWallet } = usePushWalletContext();
 
   const insertText = (before: string, after = '') => {
     const textarea = textareaRef.current;
@@ -53,6 +50,27 @@ const NewRumor = () => {
     }
   };
 
+  const handleFetchNewData = async () => {
+    if (!account) return;
+    try {
+      const fetchedSentConfession = await getSentConfessions(account, 1, 1);
+      console.log(fetchedSentConfession);
+      if (fetchedSentConfession && fetchedSentConfession.length) {
+        setData((prev) => ({
+          ...prev,
+          [TABS.LATEST]: prev[TABS.LATEST].map((item) =>
+            item.txnHash === 'temp-rumor' ? fetchedSentConfession[0] : item
+          ),
+          [TABS.MY_RUMORS]: prev[TABS.MY_RUMORS].map((item) =>
+            item.txnHash === 'temp-rumor' ? fetchedSentConfession[0] : item
+          ),
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching confessions:', error);
+    }
+  };
+
   const handlePost = async () => {
     if (!account) return;
     if (!text.trim()) {
@@ -62,14 +80,12 @@ const NewRumor = () => {
 
     setLoading(true);
 
-    const date = new Date();
-
     const rumourDetails = {
       post: text,
       address: account,
       upvotes: 0,
       isVisible: true,
-      timestamp: date.toISOString(),
+      timestamp: Date.now().toString(),
     };
 
     try {
@@ -81,7 +97,26 @@ const NewRumor = () => {
           handleSendSignRequestToPushWallet
         );
       }
+      const tempRumor: RumorType = {
+        txnHash: `temp-rumor`,
+        post: text,
+        address: account,
+        upVoteCount: 0,
+        isVisible: true,
+        timestamp: Date.now().toString(),
+        markdownPost: text,
+      };
+      setData((prev) => ({
+        ...prev,
+        [TABS.LATEST]: [tempRumor, ...prev[TABS.LATEST]],
+        [TABS.MY_RUMORS]: [tempRumor, ...prev[TABS.MY_RUMORS]],
+      }));
+      setTimeout(() => {
+        handleFetchNewData();
+      }, 2000);
+      setMinimiseWallet(true);
       setText('');
+      setIsOpen(false);
     } catch (error) {
       console.error('Error posting rumour:', error);
       alert('Failed to post your rumour. Please try again.');
@@ -103,7 +138,7 @@ const NewRumor = () => {
         >
           <Button
             size="large"
-            leadingIcon={<Mail />}
+            leadingIcon={<Pencil size={16} />}
             css={css`
               border-radius: var(--radius-md);
               background: #0056d0 !important;
@@ -126,8 +161,9 @@ const NewRumor = () => {
           boxShadow="-2px 2px 7.8px 0px rgba(0, 0, 0, 0.25)"
           borderRadius="radius-md"
           position="fixed"
-          width="80%"
-          height="80%"
+          maxWidth="800px"
+          maxHeight="90vh"
+          width="100%"
           padding="spacing-md"
           display="flex"
           flexDirection="column"
@@ -135,9 +171,11 @@ const NewRumor = () => {
           gap="spacing-md"
           css={css`
             z-index: 999;
-            top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%);
+            overflow-y: auto;
+            box-sizing: border-box;
+            margin-top: 75px;
           `}
         >
           <Box position="relative" width="100%" textAlign="center">
@@ -166,47 +204,19 @@ const NewRumor = () => {
             `}
           >
             <Box display="flex" gap="spacing-xxs">
-              <SymbolBox
-                onClick={() => {
-                  insertText('**', '**');
-                  setSelected((prev) => ({ ...prev, bold: !prev.bold }));
-                }}
-              >
+              <SymbolBox onClick={() => insertText('**', '**')}>
                 <Bold size={14} color="icon-primary" />
               </SymbolBox>
-              <SymbolBox
-                onClick={() => {
-                  insertText('_', '_');
-                  setSelected((prev) => ({ ...prev, italic: !prev.italic }));
-                }}
-              >
+              <SymbolBox onClick={() => insertText('_', '_')}>
                 <Italic size={14} color="icon-primary" />
               </SymbolBox>
-              <SymbolBox
-                onClick={() => {
-                  insertText('~~', '~~');
-                  setSelected((prev) => ({
-                    ...prev,
-                    strikethrough: !prev.strikethrough,
-                  }));
-                }}
-              >
+              <SymbolBox onClick={() => insertText('~~', '~~')}>
                 <Strikethrough size={14} color="icon-primary" />
               </SymbolBox>
-              <SymbolBox
-                onClick={() => {
-                  insertText('> ');
-                  setSelected((prev) => ({ ...prev, quote: !prev.quote }));
-                }}
-              >
+              <SymbolBox onClick={() => insertText('> ')}>
                 <Quote size={14} color="icon-primary" />
               </SymbolBox>
-              <SymbolBox
-                onClick={() => {
-                  insertText('[', '](url)');
-                  setSelected((prev) => ({ ...prev, link: !prev.link }));
-                }}
-              >
+              <SymbolBox onClick={() => insertText('[', '](url)')}>
                 <Link size={16} color="icon-primary" />
               </SymbolBox>
             </Box>
@@ -236,9 +246,9 @@ const NewRumor = () => {
               upVoteCount={0}
               markdownPost={text}
               post=""
-              upvotes={0}
               isVisible
               txnHash=""
+              timestamp={Date.now().toString()}
             />
           </Box>
           <Button
@@ -247,7 +257,8 @@ const NewRumor = () => {
               border-radius: var(--radius-md);
               background: #0056d0 !important;
             `}
-            leadingIcon={<Mail />}
+            leadingIcon={<Pencil size={16} />}
+            disabled={loading}
           >
             <Text
               variant="h5-regular"
@@ -264,3 +275,25 @@ const NewRumor = () => {
 };
 
 export default NewRumor;
+
+const SymbolBox = styled(Box as any)`
+  width: 40px;
+  height: 40px;
+  display: flex;
+  background-color: var(--surface-tertiary);
+  border-radius: var(--radius-xs);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+
+  &:hover {
+    background-color: var(
+      --surface-primary-inverse
+    ); // Change background on hover
+
+    span {
+      color: var(--icon-secondary) !important;
+    }
+  }
+`;

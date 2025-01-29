@@ -1,5 +1,5 @@
 import { FC } from 'react';
-import { Box, PushLogo, Text, css } from 'shared-components';
+import { Box, css } from 'shared-components';
 import {
   TogglePushWalletButton,
   usePushWalletContext,
@@ -18,7 +18,6 @@ const Header: FC = () => {
       backgroundColor="surface-primary"
       css={css`
         border-bottom: 1px solid var(--stroke-secondary);
-        margin-bottom: 16px;
       `}
     >
       <Box display="flex" alignItems="center" gap="spacing-xs">

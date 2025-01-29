@@ -41,8 +41,6 @@ export const performUpVote = async (
 
     console.log('🛠️🛠️PUSH wallet address: ', wallet);
 
-    let txHash;
-
     const signer = {
       account: wallet,
       signMessage: async (data: Uint8Array) => {
@@ -55,7 +53,7 @@ export const performUpVote = async (
       },
     };
 
-    txHash = await userAlice.tx.send(unsignedTx, signer);
+    const txHash = await userAlice.tx.send(unsignedTx, signer);
     console.log('🪙🪙Push Wallet Transaction: ', txHash);
 
     return true;

@@ -1,31 +1,71 @@
 import { Box, Spinner } from 'shared-components';
 import RumorItem from './RumorItem';
 import { useAppContext } from '@/context/AppContext';
-import { useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TABS } from '@/common';
 
-const RumorsList = () => {
+type RumorsListProps = {
+  containerRef: React.RefObject<HTMLElement>;
+};
+
+const RumorsList: React.FC<RumorsListProps> = ({ containerRef }) => {
   const {
     currTab,
-    account,
-    confessions,
-    sentConfessions,
-    isRumorLoading,
-    isMyRumorLoading,
+    data,
+    hasMore,
+    fetchSentConfessions,
+    fetchConfessions,
+    loading,
   } = useAppContext();
 
-  console.log(currTab, confessions);
+  const [pages, setPages] = useState({
+    [TABS.LATEST]: 2,
+    [TABS.MY_RUMORS]: 2,
+  });
+  const isFetchingRef = useRef(false);
 
-  const list = useMemo(() => {
-    if (currTab === TABS.LATEST) {
-      return confessions;
-    } else if (currTab === TABS.TRENDING) {
-      return [...confessions].sort((a, b) => b.upVoteCount - a.upVoteCount);
-    } else if (currTab === TABS.MY_RUMORS) {
-      return sentConfessions;
+  const handleScroll = () => {
+    if (isFetchingRef.current || !hasMore[currTab]) return;
+
+    const container = containerRef.current;
+
+    if (
+      container &&
+      container.scrollTop + container.clientHeight >=
+        container.scrollHeight - 50
+    ) {
+      fetchData(currTab);
     }
-    return [];
-  }, [confessions, currTab]);
+  };
+
+  const fetchData = async (tab: TABS) => {
+    if (loading[tab] || isFetchingRef.current) return;
+
+    isFetchingRef.current = true;
+
+    try {
+      const page = pages[tab];
+      const fetchFn =
+        tab === TABS.MY_RUMORS ? fetchSentConfessions : fetchConfessions;
+      await fetchFn(page);
+      setPages((prev) => ({
+        ...prev,
+        [tab]: prev[tab] + 1,
+      }));
+    } catch (error) {
+      console.error(`Error fetching data for ${tab}:`, error);
+    } finally {
+      isFetchingRef.current = false;
+    }
+  };
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [hasMore, currTab, loading]);
 
   return (
     <Box
@@ -34,15 +74,15 @@ const RumorsList = () => {
       alignItems="center"
       gap="spacing-md"
     >
-      {currTab === TABS.MY_RUMORS &&
-        isMyRumorLoading &&
-        sentConfessions.length === 0 && <Spinner size="large" />}
-      {currTab !== TABS.MY_RUMORS &&
-        isRumorLoading &&
-        confessions.length === 0 && <Spinner size="large" />}
-      {list.map((item) => (
+      {loading[currTab] && data[currTab].length === 0 && (
+        <Spinner size="medium" />
+      )}
+      {data[currTab].map((item) => (
         <RumorItem key={item.txnHash} {...item} />
       ))}
+      {loading[currTab] && data[currTab].length > 0 && (
+        <Spinner size="medium" />
+      )}
     </Box>
   );
 };

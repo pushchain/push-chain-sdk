@@ -35,6 +35,8 @@ export const getConfessions = async () => {
         "CUSTOM:CONFESSION"
       );
 
+      console.log(txRes);
+
       if (!txRes || txRes.blocks.length === 0) break;
 
       for (let i = 0; i < txRes.blocks.length; i++) {

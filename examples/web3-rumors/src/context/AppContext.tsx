@@ -3,10 +3,9 @@ import { PushNetwork } from '@pushprotocol/push-chain';
 import React, { createContext, useContext } from 'react';
 import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
 import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
-import PushMail from 'push-mail';
 import { ReactNode, useEffect, useState } from 'react';
-import { extractWalletAddress, TABS } from '../common';
-import { getConfessions, RumorType } from '@/services/getConfessions';
+import { RumorType, TABS } from '@/common';
+import { getConfessions } from '@/services/getConfessions';
 import { getSentConfessions } from '@/services/getSentConfessions';
 
 interface AppContextType {
@@ -16,74 +15,136 @@ interface AppContextType {
   setCurrTab: React.Dispatch<React.SetStateAction<TABS>>;
   account: string | null;
   handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>;
-  confessions: RumorType[];
-  setConfessions: React.Dispatch<React.SetStateAction<RumorType[]>>;
-  sentConfessions: RumorType[];
-  setSentConfessions: React.Dispatch<React.SetStateAction<RumorType[]>>;
-  upvotes: {
-    [key: string]: number;
+  fetchSentConfessions: (page: number) => Promise<void>;
+  fetchConfessions: (page: number) => Promise<void>;
+  data: {
+    [TABS.LATEST]: RumorType[];
+    [TABS.MY_RUMORS]: RumorType[];
   };
-  setUpvotes: React.Dispatch<
+  setData: React.Dispatch<
     React.SetStateAction<{
-      [key: string]: number;
+      [TABS.LATEST]: RumorType[];
+      [TABS.MY_RUMORS]: RumorType[];
     }>
   >;
-  isRumorLoading: boolean;
-  isMyRumorLoading: boolean;
+  hasMore: {
+    [TABS.LATEST]: boolean;
+    [TABS.MY_RUMORS]: boolean;
+  };
+  loading: {
+    [TABS.LATEST]: boolean;
+    [TABS.MY_RUMORS]: boolean;
+  };
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
-  const [currTab, setCurrTab] = useState<TABS>(TABS.TRENDING);
-  const [confessions, setConfessions] = useState<RumorType[]>([]);
-  const [sentConfessions, setSentConfessions] = useState<RumorType[]>([]);
-  const [upvotes, setUpvotes] = useState<{ [key: string]: number }>({});
-  const [isRumorLoading, setIsRumorLoading] = useState(false);
-  const [isMyRumorLoading, setIsMyRumorLoading] = useState(false);
+  const [currTab, setCurrTab] = useState<TABS>(TABS.LATEST);
+  const [data, setData] = useState<{
+    [TABS.LATEST]: RumorType[];
+    [TABS.MY_RUMORS]: RumorType[];
+  }>({
+    [TABS.LATEST]: [],
+    [TABS.MY_RUMORS]: [],
+  });
+  const [loading, setLoading] = useState({
+    [TABS.LATEST]: true,
+    [TABS.MY_RUMORS]: true,
+  });
+  const [hasMore, setHasMore] = useState({
+    [TABS.LATEST]: true,
+    [TABS.MY_RUMORS]: true,
+  });
 
   const { account, handleSendSignRequestToPushWallet } = usePushWalletContext();
 
-  const fetchConfessions = async () => {
+  const fetchConfessions = async (page: number) => {
+    setLoading((prev) => ({
+      ...prev,
+      [TABS.LATEST]: true,
+    }));
     try {
-      setIsRumorLoading(true);
-      const fetchedConfessions = await getConfessions();
-      setConfessions(fetchedConfessions);
-
-      const upvoteMap: { [key: string]: number } = {};
-      fetchedConfessions.forEach((confession) => {
-        upvoteMap[confession.address] = confession.upVoteCount || 0;
-      });
-      setUpvotes(upvoteMap);
+      const fetchedConfessions = await getConfessions(page, 15);
+      if (fetchedConfessions.length > 0) {
+        setData((prev) => ({
+          ...prev,
+          [TABS.LATEST]: [
+            ...new Map(
+              [...prev[TABS.LATEST], ...fetchedConfessions].map((item) => [
+                item.txnHash,
+                item,
+              ])
+            ).values(),
+          ],
+        }));
+      } else {
+        setHasMore((prev) => ({
+          ...prev,
+          [TABS.LATEST]: false,
+        }));
+      }
     } catch (error) {
       console.error('Error fetching confessions:', error);
     } finally {
-      setIsRumorLoading(false);
+      setLoading((prev) => ({
+        ...prev,
+        [TABS.LATEST]: false,
+      }));
     }
   };
 
-  const fetchSentConfessions = async () => {
+  const fetchSentConfessions = async (page: number) => {
     if (!account) return;
+    setLoading((prev) => ({
+      ...prev,
+      [TABS.MY_RUMORS]: true,
+    }));
     try {
-      setIsMyRumorLoading(true);
-      const address = extractWalletAddress(account);
-      if (!address) {
+      // const address = extractWalletAddress(account);
+      if (!account) {
         throw new Error('No wallet connected');
       }
-      const data = await getSentConfessions(address);
-      setSentConfessions(data || []);
+      const fetchedSentConfessions = await getSentConfessions(
+        account,
+        page,
+        15
+      );
+      if (fetchedSentConfessions.length > 0) {
+        setData((prev) => ({
+          ...prev,
+          [TABS.MY_RUMORS]: [
+            ...new Map(
+              [...prev[TABS.MY_RUMORS], ...fetchedSentConfessions].map(
+                (item) => [item.txnHash, item]
+              )
+            ).values(),
+          ],
+        }));
+      } else {
+        setHasMore((prev) => ({
+          ...prev,
+          [TABS.MY_RUMORS]: false,
+        }));
+      }
     } catch (error) {
       console.error('Error fetching sent confessions:', error);
     } finally {
-      setIsMyRumorLoading(false);
+      setLoading((prev) => ({
+        ...prev,
+        [TABS.MY_RUMORS]: false,
+      }));
     }
   };
 
   useEffect(() => {
-    fetchConfessions();
-    fetchSentConfessions();
+    fetchConfessions(1);
   }, []);
+
+  useEffect(() => {
+    fetchSentConfessions(1);
+  }, [account]);
 
   useEffect(() => {
     const setNetwork = async () => {
@@ -107,14 +168,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setCurrTab,
         account,
         handleSendSignRequestToPushWallet,
-        confessions,
-        setConfessions,
-        sentConfessions,
-        setSentConfessions,
-        upvotes,
-        setUpvotes,
-        isRumorLoading,
-        isMyRumorLoading,
+        fetchSentConfessions,
+        fetchConfessions,
+        data,
+        setData,
+        hasMore,
+        loading,
       }}
     >
       {children}

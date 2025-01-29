@@ -1,4 +1,15 @@
 import { clsx, type ClassValue } from 'clsx';
+import { FC } from 'react';
+import {
+  IconProps,
+  EthereumMonotone,
+  PolygonMonotone,
+  BnbMonotone,
+  ArbitrumMonotone,
+  OptimismMonotone,
+  SolanaMonotone,
+  PushMonotone,
+} from 'shared-components';
 
 export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
@@ -113,6 +124,60 @@ export const getInCAIP = (address: string, chain: string) => {
   }:${address}`;
 };
 
+export const convertCaipToObject = (
+  addressinCAIP: string
+): {
+  result: {
+    chainId: string | null;
+    chain: string | null;
+    address: string | null;
+  };
+} => {
+  // Check if the input is a valid non-empty string
+  if (!addressinCAIP || typeof addressinCAIP !== 'string') {
+    return {
+      result: {
+        chain: null,
+        chainId: null,
+        address: null,
+      },
+    };
+  }
+
+  const addressComponent = addressinCAIP.split(':');
+
+  // Handle cases where there are exactly three components (chain, chainId, address)
+  if (addressComponent.length === 3) {
+    return {
+      result: {
+        chain: addressComponent[0],
+        chainId: addressComponent[1],
+        address: addressComponent[2],
+      },
+    };
+  }
+  // Handle cases where there are exactly two components (chain, address)
+  else if (addressComponent.length === 2) {
+    return {
+      result: {
+        chain: addressComponent[0],
+        chainId: null,
+        address: addressComponent[1],
+      },
+    };
+  }
+  // If the input doesn't match the expected format, return the address only
+  else {
+    return {
+      result: {
+        chain: null,
+        chainId: null,
+        address: addressinCAIP,
+      },
+    };
+  }
+};
+
 export const markdownToPlainText = (markdown: string) => {
   return markdown
     .replace(/\*\*(.*?)\*\*/g, '$1') // Bold (**text**)
@@ -120,4 +185,23 @@ export const markdownToPlainText = (markdown: string) => {
     .replace(/~~(.*?)~~/g, '$1') // Strikethrough (~~text~~)
     .replace(/>\s(.*?)(\r\n|\r|\n)?/g, '$1') // Blockquote (> text)
     .replace(/\[(.*?)\]\(.*?\)/g, '$1'); // Links ([text](url))
+};
+
+export const CHAIN_LOGO: {
+  [x: number | string]: FC<IconProps>;
+} = {
+  1: EthereumMonotone,
+  11155111: EthereumMonotone,
+  137: PolygonMonotone,
+  80002: PolygonMonotone,
+  97: BnbMonotone,
+  56: BnbMonotone,
+  42161: ArbitrumMonotone,
+  421614: ArbitrumMonotone,
+  11155420: OptimismMonotone,
+  10: OptimismMonotone,
+  2442: PolygonMonotone,
+  1101: PolygonMonotone,
+  '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp': SolanaMonotone,
+  devnet: PushMonotone,
 };

@@ -34,6 +34,8 @@
     "react-markdown": "^9.0.3",
     "react-resizable-panels": "^2.1.4",
     "react-router-dom": "^7.0.2",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.0",
     "shared-components": "file:../../packages/shared-components",
     "viem": "^2.21.28"
   },

@@ -1,6 +1,6 @@
+import { ConfessionType } from '@/common';
 import { PushNetwork } from '@pushprotocol/push-chain';
 import protobuf from 'protobufjs';
-import { ConfessionType } from './getConfessions';
 
 export const postConfession = async (
   userAlice: PushNetwork,
@@ -16,8 +16,8 @@ export const postConfession = async (
       message Confession {
         string post = 1;
         string address = 2;
-        int32 upvotes = 3;
         bool isVisible = 4;
+        string timestamp = 5;
       }
     `;
 
@@ -45,8 +45,6 @@ export const postConfession = async (
     );
     console.log('Unsigned Transaction:', unsignedTx);
 
-    let txHash;
-
     const signer = {
       account: wallet,
       signMessage: async (data: Uint8Array) => {
@@ -59,7 +57,7 @@ export const postConfession = async (
       },
     };
 
-    txHash = await userAlice.tx.send(unsignedTx, signer);
+    const txHash = await userAlice.tx.send(unsignedTx, signer);
     console.log('🪙🪙Push Wallet Transaction: ', txHash);
 
     return txHash;

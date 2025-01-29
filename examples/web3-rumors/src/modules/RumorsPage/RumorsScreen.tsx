@@ -2,21 +2,19 @@ import { Box, css, Tabs, Text } from 'shared-components';
 import { Header } from './components/Header';
 import { TABS } from '@/common';
 import { useAppContext } from '@/context/AppContext';
-import { PushNetwork } from '@pushprotocol/push-chain';
-import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
-import protobuf from 'protobufjs';
-import { Buffer } from 'buffer';
 import RumorsList from './components/RumorsList';
 import NewRumor from './components/NewRumor';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const RumorsScreen = () => {
   const { currTab, setCurrTab } = useAppContext();
-  const [isTablet, setIsTablet] = useState(window.innerWidth < 1024);
+  const [isTablet, setIsTablet] = useState(window.innerWidth < 768);
+
+  const containerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const handleResize = () => {
-      setIsTablet(window.innerWidth < 1024);
+      setIsTablet(window.innerWidth < 768);
     };
 
     window.addEventListener('resize', handleResize);
@@ -34,17 +32,22 @@ const RumorsScreen = () => {
       <Header />
       <NewRumor />
       <Box
+        ref={containerRef}
         alignSelf="center"
         display="flex"
         flexDirection="column"
         alignItems="center"
         width="100%"
+        css={css`
+          overflow-y: auto;
+        `}
       >
         <Box
           padding="spacing-xs"
-          width={{ initial: '50%', tb: '70%', ml: '100%' }}
+          maxWidth="100%"
           css={css`
             box-sizing: border-box;
+            margin-top: 24px;
           `}
         >
           <Tabs
@@ -52,15 +55,6 @@ const RumorsScreen = () => {
             activeKey={currTab}
             onChange={(tab) => setCurrTab(tab as TABS)}
             items={[
-              {
-                key: TABS.TRENDING,
-                label: (
-                  <Text variant="h5-semibold">
-                    {isTablet ? 'Trending' : 'Trending Rumors'}
-                  </Text>
-                ),
-                children: null,
-              },
               {
                 key: TABS.LATEST,
                 label: (
@@ -80,12 +74,13 @@ const RumorsScreen = () => {
         </Box>
         <Box
           padding="spacing-xs"
-          width={{ initial: '70%', tb: '90%', ml: '100%' }}
+          maxWidth="800px"
+          width="100%"
           css={css`
             box-sizing: border-box;
           `}
         >
-          <RumorsList />
+          <RumorsList containerRef={containerRef} />
         </Box>
       </Box>
     </Box>

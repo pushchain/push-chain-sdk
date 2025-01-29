@@ -1,7 +1,10 @@
 import {
+  CHAIN_LOGO,
+  convertCaipToObject,
   extractWalletAddress,
   formatTimestamp,
-  markdownToPlainText,
+  RumorType,
+  TABS,
   trimAddress,
 } from '@/common';
 import {
@@ -9,39 +12,50 @@ import {
   CaretDown,
   CaretUp,
   css,
+  PushMonotone,
   Text,
   ThumbsUp,
 } from 'shared-components';
 import ReactMarkdown from 'react-markdown';
-import { RumorType } from '@/services/getConfessions';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { performUpVote } from '@/services/performUpVote';
 import { useAppContext } from '@/context/AppContext';
 import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+
+const getChainIcon = (chainId: string) => {
+  if (!chainId) {
+    return <PushMonotone size={18} />;
+  }
+  const IconComponent = CHAIN_LOGO[chainId];
+  if (IconComponent) {
+    return <IconComponent size={18} color="icon-tertiary" />;
+  } else {
+    // TO Bypass some test cases addresses
+    return <PushMonotone size={18} />;
+  }
+};
 
 const RumorItem: React.FC<RumorType> = ({
   upVoteCount,
   address,
   markdownPost,
   txnHash,
+  timestamp,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isUpvote, setIsUpvote] = useState(false);
 
   const { setMinimiseWallet } = usePushWalletContext();
 
-  const {
-    account,
-    pushNetwork,
-    setConfessions,
-    handleSendSignRequestToPushWallet,
-  } = useAppContext();
+  const { account, pushNetwork, setData, handleSendSignRequestToPushWallet } =
+    useAppContext();
 
-  const postLength = useMemo(() => {
-    return markdownToPlainText(markdownPost).length;
-  }, []);
+  const { result } = convertCaipToObject(address);
 
   const handleUpvote = async () => {
+    if (isUpvote) return;
     try {
       if (pushNetwork && account) {
         await performUpVote(
@@ -51,11 +65,19 @@ const RumorItem: React.FC<RumorType> = ({
           txnHash,
           handleSendSignRequestToPushWallet
         );
-        setConfessions((prev) =>
-          prev.map((c) =>
-            c.txnHash === txnHash ? { ...c, upVoteCount: c.upVoteCount + 1 } : c
-          )
-        );
+        setData((prev) => ({
+          ...prev,
+          [TABS.LATEST]: prev[TABS.LATEST].map((item) =>
+            item.txnHash === txnHash
+              ? { ...item, upVoteCount: item.upVoteCount + 1 }
+              : item
+          ),
+          [TABS.MY_RUMORS]: prev[TABS.MY_RUMORS].map((item) =>
+            item.txnHash === txnHash
+              ? { ...item, upVoteCount: item.upVoteCount + 1 }
+              : item
+          ),
+        }));
         setMinimiseWallet(true);
         setIsUpvote(true);
       }
@@ -86,7 +108,7 @@ const RumorItem: React.FC<RumorType> = ({
         gap="spacing-xxxs"
         height="100%"
       >
-        <Box cursor="pointer" onClick={handleUpvote}>
+        <Box cursor={isUpvote ? 'default' : 'pointer'} onClick={handleUpvote}>
           <ThumbsUp
             size={24}
             color={isUpvote ? 'icon-state-info-bold' : 'icon-tertiary'}
@@ -96,7 +118,14 @@ const RumorItem: React.FC<RumorType> = ({
           {upVoteCount}
         </Text>
       </Box>
-      <Box width="100%">
+      <Box
+        width="100%"
+        overflow="hidden"
+        css={css`
+          text-overflow: ellipsis;
+          word-break: break-word;
+        `}
+      >
         <Box display="flex" flexDirection="column" alignItems="flex-start">
           <Box
             display="flex"
@@ -105,12 +134,32 @@ const RumorItem: React.FC<RumorType> = ({
             justifyContent="space-between"
             width="100%"
           >
-            <Text color="text-tertiary" variant="bm-semibold">
-              {address && trimAddress(extractWalletAddress(address))}
-            </Text>
-            {/* <Text color="text-tertiary" variant="bs-regular">
-              {formatTimestamp(timestamp)}
-            </Text> */}
+            <Box
+              display="flex"
+              alignItems="center"
+              gap="spacing-xxs"
+              overflow="hidden"
+              css={css`
+                white-space: nowrap;
+              `}
+            >
+              <Text color="text-tertiary" variant="bs-semibold">
+                {address && trimAddress(extractWalletAddress(address))}
+              </Text>
+              {result.chainId && getChainIcon(result.chainId)}
+            </Box>
+
+            {timestamp && (
+              <Text
+                color="text-tertiary"
+                variant="bs-regular"
+                css={css`
+                  white-space: nowrap;
+                `}
+              >
+                {formatTimestamp(timestamp.toString())}
+              </Text>
+            )}
           </Box>
           <Box
             display="flex"
@@ -119,8 +168,13 @@ const RumorItem: React.FC<RumorType> = ({
             gap="spacing-xxxs"
           >
             <Text variant="bm-regular">
-              <ReactMarkdown>
-                {isOpen ? markdownPost : `${markdownPost.slice(0, 280)}...`}
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeRaw]}
+              >
+                {!isOpen && markdownPost.length > 280
+                  ? `${markdownPost.slice(0, 280)}...`
+                  : markdownPost}
               </ReactMarkdown>
             </Text>
             {markdownPost.length > 280 && (
