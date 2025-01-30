@@ -1,5 +1,5 @@
 import { FC } from 'react';
-import { Box, PushLogo, Text, css } from 'shared-components';
+import { Box, css } from 'shared-components';
 import {
   TogglePushWalletButton,
   usePushWalletContext,
@@ -23,14 +23,11 @@ const Header: FC = () => {
     >
       <Box display="flex" alignItems="center" gap="spacing-xs">
         <Box display="flex" alignItems="center" gap="spacing-xxs">
-          <PushLogo height={40} />
-          <Text variant="h2-bold" display={{ initial: 'block', ml: 'none' }}>
-            Push
-          </Text>
+          <img src="/EmailLogo.png" width={34} height={34} />
         </Box>
-        <Text variant="h4-semibold" display={{ initial: 'block', tb: 'none' }}>
-          Email
-        </Text>
+        <Box display={{ initial: 'block', tb: 'none' }}>
+          <img src="/EmailText.png" height={28} width={84} />
+        </Box>
       </Box>
       <Box>{account && <TogglePushWalletButton account={account} />}</Box>
     </Box>

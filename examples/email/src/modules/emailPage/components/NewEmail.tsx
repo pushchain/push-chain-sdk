@@ -299,13 +299,31 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
           Compose
         </Text>
       </Button>
-      {isOpen && (
+      {
         <Box
           backgroundColor="surface-primary"
           boxShadow="-2px 2px 7.8px 0px rgba(0, 0, 0, 0.25)"
           borderRadius="radius-sm"
           position="fixed"
-          className="z-[999] right-5 bottom-5"
+          css={css`
+            z-index: 999;
+            right: 1.25rem;
+            bottom: 1.25rem;
+
+            opacity: 0;
+            transform: translate(20px, 20px) scale(0.9);
+            visibility: hidden;
+
+            transition: opacity 0.2s ease-out, transform 0.2s ease-out,
+              visibility 0.2s ease-out;
+
+            ${isOpen &&
+            `
+              opacity: 1;
+              transform: translate(0, 0) scale(1);
+              visibility: visible;
+            `}
+          `}
         >
           <Box
             display="flex"
@@ -496,7 +514,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
             </Button>
           </Box>
         </Box>
-      )}
+      }
     </Box>
     // <Box position="fixed" className="fixed bottom-5 right-5 z-10">
     //   <Popover

@@ -139,150 +139,170 @@ const NewRumor = () => {
 
   return (
     <>
-      {!isOpen && (
-        <Box
-          position="fixed"
-          css={css`
-            z-index: 10;
-            right: 1.25rem;
-            bottom: 1.25rem;
-          `}
-        >
-          <Button
-            size="large"
-            leadingIcon={<Pencil size={16} />}
-            css={css`
-              border-radius: var(--radius-md);
-              background: #0056d0 !important;
+      <Box
+        position="fixed"
+        css={css`
+          z-index: 10;
+          right: 1.25rem;
+          bottom: 1.25rem;
+
+          opacity: 1;
+          transform: scale(1);
+          transition: opacity 0.2s ease, transform 0.2s ease;
+
+          ${isOpen &&
+          `
+                opacity: 0;
+                transform: scale(0.8);
             `}
-            onClick={() => setIsOpen(true)}
+        `}
+      >
+        <Button
+          size="large"
+          leadingIcon={<Pencil size={16} />}
+          css={css`
+            border-radius: var(--radius-md);
+            background: #0056d0 !important;
+          `}
+          onClick={() => setIsOpen(true)}
+        >
+          <Text
+            variant="h5-regular"
+            color="text-primary-inverse"
+            display={{ initial: 'block', ml: 'none' }}
           >
-            <Text
-              variant="h5-regular"
-              color="text-primary-inverse"
-              display={{ initial: 'block', ml: 'none' }}
-            >
-              Post a Rumor
-            </Text>
-          </Button>
+            Post a Rumor
+          </Text>
+        </Button>
+      </Box>
+      <Box
+        backgroundColor="surface-secondary"
+        boxShadow="-2px 2px 7.8px 0px rgba(0, 0, 0, 0.25)"
+        borderRadius="radius-md"
+        position="fixed"
+        maxWidth="800px"
+        maxHeight="90vh"
+        width="100%"
+        padding="spacing-md"
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        gap="spacing-md"
+        css={css`
+          z-index: 999;
+          left: 50%;
+          transform: translate(-50%);
+          overflow-y: auto;
+          box-sizing: border-box;
+          margin-top: 75px;
+
+          opacity: 0;
+          transform: translate(-50%, 20px) scale(0.95);
+          visibility: hidden;
+
+          transition: opacity 0.3s ease, transform 0.3s ease,
+            visibility 0.3s ease;
+
+          ${isOpen &&
+          `
+                opacity: 1;
+                transform: translate(-50%, 0) scale(1);
+                visibility: visible;
+            `}
+        `}
+      >
+        <Box position="relative" width="100%" textAlign="center">
+          <Text variant="h3-bold">Post Rumor</Text>
+          <Box
+            position="absolute"
+            cursor="pointer"
+            css={css`
+              right: 0;
+              top: 0;
+            `}
+          >
+            <Cross size={27} onClick={() => setIsOpen(false)} />
+          </Box>
         </Box>
-      )}
-      {isOpen && (
         <Box
-          backgroundColor="surface-secondary"
-          boxShadow="-2px 2px 7.8px 0px rgba(0, 0, 0, 0.25)"
-          borderRadius="radius-md"
-          position="fixed"
-          maxWidth="800px"
-          maxHeight="90vh"
-          width="100%"
-          padding="spacing-md"
           display="flex"
           flexDirection="column"
-          alignItems="center"
-          gap="spacing-md"
+          borderRadius="radius-md"
+          width="100%"
+          padding="spacing-md"
+          gap="spacing-sm"
+          backgroundColor="surface-primary"
           css={css`
-            z-index: 999;
-            left: 50%;
-            transform: translate(-50%);
-            overflow-y: auto;
             box-sizing: border-box;
-            margin-top: 75px;
           `}
         >
-          <Box position="relative" width="100%" textAlign="center">
-            <Text variant="h3-bold">Post Rumor</Text>
-            <Box
-              position="absolute"
-              cursor="pointer"
-              css={css`
-                right: 0;
-                top: 0;
-              `}
-            >
-              <Cross size={27} onClick={() => setIsOpen(false)} />
-            </Box>
+          <Box display="flex" gap="spacing-xxs">
+            <SymbolBox onClick={() => insertText('**', '**')}>
+              <Bold size={14} color="icon-primary" />
+            </SymbolBox>
+            <SymbolBox onClick={() => insertText('_', '_')}>
+              <Italic size={14} color="icon-primary" />
+            </SymbolBox>
+            <SymbolBox onClick={() => insertText('~~', '~~')}>
+              <Strikethrough size={14} color="icon-primary" />
+            </SymbolBox>
+            <SymbolBox onClick={() => insertText('> ')}>
+              <Quote size={14} color="icon-primary" />
+            </SymbolBox>
+            <SymbolBox onClick={() => insertText('[', '](url)')}>
+              <Link size={16} color="icon-primary" />
+            </SymbolBox>
           </Box>
-          <Box
-            display="flex"
-            flexDirection="column"
-            borderRadius="radius-md"
-            width="100%"
-            padding="spacing-md"
-            gap="spacing-sm"
-            backgroundColor="surface-primary"
-            css={css`
-              box-sizing: border-box;
-            `}
-          >
-            <Box display="flex" gap="spacing-xxs">
-              <SymbolBox onClick={() => insertText('**', '**')}>
-                <Bold size={14} color="icon-primary" />
-              </SymbolBox>
-              <SymbolBox onClick={() => insertText('_', '_')}>
-                <Italic size={14} color="icon-primary" />
-              </SymbolBox>
-              <SymbolBox onClick={() => insertText('~~', '~~')}>
-                <Strikethrough size={14} color="icon-primary" />
-              </SymbolBox>
-              <SymbolBox onClick={() => insertText('> ')}>
-                <Quote size={14} color="icon-primary" />
-              </SymbolBox>
-              <SymbolBox onClick={() => insertText('[', '](url)')}>
-                <Link size={16} color="icon-primary" />
-              </SymbolBox>
-            </Box>
-            <TextArea
-              ref={textareaRef}
-              onChange={(e) => setText(e.target.value)}
-              value={text}
-              placeholder="Write your rumour here....... (Markdown Supported!)"
-              numberOfLines={8}
-            />
-          </Box>
-          <Box
-            display="flex"
-            flexDirection="column"
-            borderRadius="radius-md"
-            width="100%"
-            padding="spacing-md"
-            gap="spacing-xs"
-            backgroundColor="surface-primary"
-            css={css`
-              box-sizing: border-box;
-            `}
-          >
-            <Text variant="h5-bold">Rumor Preview</Text>
-            <RumorItem
-              address={account || ''}
-              markdownPost={text}
-              post=""
-              isVisible
-              txnHash=""
-              timestamp={Date.now().toString()}
-              upvoteWallets={[]}
-              downvoteWallets={[]}
-            />
-          </Box>
-          <Button
-            onClick={handlePost}
-            css={css`
-              border-radius: var(--radius-md);
-              background: #0056d0 !important;
-            `}
-            leadingIcon={<Pencil size={16} />}
-            disabled={loading}
-          >
-            <Text
-              variant="h5-regular"
-              color="text-primary-inverse"
-              display={{ initial: 'block', ml: 'none' }}
-            >
-              Post a Rumor
-            </Text>
-          </Button>
+          <TextArea
+            ref={textareaRef}
+            onChange={(e) => setText(e.target.value)}
+            value={text}
+            placeholder="Write your rumour here....... (Markdown Supported!)"
+            numberOfLines={8}
+          />
         </Box>
-      )}
+        <Box
+          display="flex"
+          flexDirection="column"
+          borderRadius="radius-md"
+          width="100%"
+          padding="spacing-md"
+          gap="spacing-xs"
+          backgroundColor="surface-primary"
+          css={css`
+            box-sizing: border-box;
+          `}
+        >
+          <Text variant="h5-bold">Rumor Preview</Text>
+          <RumorItem
+            address={account || ''}
+            markdownPost={text}
+            post=""
+            isVisible
+            txnHash=""
+            timestamp={Date.now().toString()}
+            upvoteWallets={[]}
+            downvoteWallets={[]}
+          />
+        </Box>
+        <Button
+          onClick={handlePost}
+          css={css`
+            border-radius: var(--radius-md);
+            background: #0056d0 !important;
+          `}
+          leadingIcon={<Pencil size={16} />}
+          disabled={loading}
+        >
+          <Text
+            variant="h5-regular"
+            color="text-primary-inverse"
+            display={{ initial: 'block', ml: 'none' }}
+          >
+            Post a Rumor
+          </Text>
+        </Button>
+      </Box>
     </>
   );
 };
