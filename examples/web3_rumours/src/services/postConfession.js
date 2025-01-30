@@ -1,23 +1,9 @@
 import { PushNetwork } from "@pushprotocol/push-chain";
-
 import protobuf from "protobufjs";
-
 import { ethers, BrowserProvider } from "ethers";
 
-/* ConfessionDetails demo data
-  const serializedData = {
-    post: "Post details",
-    address: "0xabc...123",
-    upvotes: 20,
-    isVisible: true,
-  };
-*/
-
-export const postConfession = async (userAlice, wallet, confessionDetails) => {
+export const postConfession = async (userAlice, wallet, confessionDetails, handleSendSignRequestToPushWallet) => {
   try {
-    // Initialize PushNetwork class instance
-    // const userAlice = await PushNetwork.initialize("dev");
-
     // Define the schema
     const schema = `
       syntax = "proto3";
@@ -54,8 +40,28 @@ export const postConfession = async (userAlice, wallet, confessionDetails) => {
     );
     console.log("Unsigned Transaction:", unsignedTx);
 
-    if (typeof wallet == "string") {
-      const txHash = await userAlice.tx.send(unsignedTx, {
+    let txHash;
+
+    // Handle Push Wallet case
+    if (typeof wallet === 'string' && handleSendSignRequestToPushWallet) {
+      const signer = {
+        account: wallet,
+        signMessage: async (data) => {
+          try {
+            return await handleSendSignRequestToPushWallet(new Uint8Array(data));
+          } catch (error) {
+            console.error("Error signing with Push Wallet:", error);
+            throw error;
+          }
+        },
+      };
+
+      txHash = await userAlice.tx.send(unsignedTx, signer);
+      console.log("🪙🪙Push Wallet Transaction: ", txHash);
+    }
+    // Handle regular wallet case (string without Push Wallet)
+    else if (typeof wallet === 'string') {
+      txHash = await userAlice.tx.send(unsignedTx, {
         account: wallet,
         signMessage: async (data) => {
           return await userAlice.wallet.sign(data);
@@ -63,13 +69,13 @@ export const postConfession = async (userAlice, wallet, confessionDetails) => {
       });
 
       console.log("🪙🪙Push Transaction: ", txHash);
-    } else {
+    }
+    // Handle Metamask case
+    else {
       // Initialize BrowserProvider for the wallet provider
       const provider = new BrowserProvider(wallet.provider);
       const metamaskSigner = await provider.getSigner();
 
-      // const pk = "0xafcd280386cd585959b642d9e5aefa86890c0af0b1eec0ff4fd0fe4884f3e6d9";
-      // const address = "eip155:1:0x76F1AE0d7E6bB39bFE4784627D3575c7397ad6eA";
       const normalizedAddress = ethers.getAddress(wallet.accounts[0]?.address);
       const address = `eip155:1:${normalizedAddress}`;
 
@@ -82,10 +88,13 @@ export const postConfession = async (userAlice, wallet, confessionDetails) => {
       };
 
       // Send a transaction
-      const txHash = await userAlice.tx.send(unsignedTx, signer);
+      txHash = await userAlice.tx.send(unsignedTx, signer);
       console.log("Confession Transaction Hash:", txHash);
     }
+
+    return txHash;
   } catch (error) {
-    console.error(error);
+    console.error("Error in postConfession:", error);
+    throw error;  // Re-throw the error to handle it in the component
   }
 };

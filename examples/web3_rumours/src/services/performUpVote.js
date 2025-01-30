@@ -1,27 +1,19 @@
 import { PushNetwork } from "@pushprotocol/push-chain";
-
 import protobuf from "protobufjs";
-
 import { ethers, BrowserProvider } from "ethers";
 
-export const performUpVote = async (userAlice, wallet, upVote, txnHash) => {
+export const performUpVote = async (userAlice, wallet, upVote, txnHash, handleSendSignRequestToPushWallet) => {
   try {
-    // Initialize PushNetwork class instance
-    // const userAlice = await PushNetwork.initialize("dev");
-
-    // Define the schema
     const schema = `
-          syntax = "proto3";
-    
-          message Upvotes {
-            int32 upvotes = 1;
-          }
-        `;
+      syntax = "proto3";
+
+      message Upvotes {
+        int32 upvotes = 1;
+      }
+    `;
 
     // Create a protobuf root and load the schema
     const root = await protobuf.parse(schema).root;
-
-    // Obtain a message type
     const Upvotes = root.lookupType("Upvotes");
 
     const serializedData = {
@@ -35,17 +27,37 @@ export const performUpVote = async (userAlice, wallet, upVote, txnHash) => {
     // Encode the object into a binary format
     const buffer = Upvotes.encode(Upvotes.create(serializedData)).finish();
 
-    // Create an unsigned transaction
+    // Create an unsigned transaction (keeping the hardcoded recipient address)
     const unsignedTx = userAlice.tx.createUnsigned(
       `CUSTOM:${txnHash}`,
       ["eip155:1:0xC9C52B3717A8Dfaacd0D33Ce14a916C575eE332A"], // acc 63
       buffer
     );
 
-    console.log("🛠️🛠️PUSH wallet address: ", wallet)
+    console.log("🛠️🛠️PUSH wallet address: ", wallet);
 
-    if (typeof wallet == "string") {
-      const txHash = await userAlice.tx.send(unsignedTx, {
+    let txHash;
+
+    // Handle Push Wallet case
+    if (typeof wallet === 'string' && handleSendSignRequestToPushWallet) {
+      const signer = {
+        account: wallet,
+        signMessage: async (data) => {
+          try {
+            return await handleSendSignRequestToPushWallet(new Uint8Array(data));
+          } catch (error) {
+            console.error("Error signing with Push Wallet:", error);
+            throw error;
+          }
+        },
+      };
+
+      txHash = await userAlice.tx.send(unsignedTx, signer);
+      console.log("🪙🪙Push Wallet Transaction: ", txHash);
+    }
+    // Handle regular wallet case (string without Push Wallet)
+    else if (typeof wallet === 'string') {
+      txHash = await userAlice.tx.send(unsignedTx, {
         account: wallet,
         signMessage: async (data) => {
           return await userAlice.wallet.sign(data);
@@ -53,8 +65,9 @@ export const performUpVote = async (userAlice, wallet, upVote, txnHash) => {
       });
 
       console.log("🪙🪙Push Transaction: ", txHash);
-    } else {
-      // Initialize BrowserProvider for the wallet provider
+    }
+    // Handle Metamask case
+    else {
       const provider = new BrowserProvider(wallet.provider);
       const metamaskSigner = await provider.getSigner();
 
@@ -69,13 +82,13 @@ export const performUpVote = async (userAlice, wallet, upVote, txnHash) => {
         },
       };
 
-      // Send a transaction
-      const txHash = await userAlice.tx.send(unsignedTx, signer);
+      txHash = await userAlice.tx.send(unsignedTx, signer);
       console.log("🪙🪙Upvote Transaction Hash:", txHash);
-
-      return true;
     }
+
+    return true;
   } catch (error) {
-    console.log(error);
+    console.error("Error in performUpVote:", error);
+    throw error;
   }
 };
