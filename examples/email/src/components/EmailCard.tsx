@@ -116,7 +116,7 @@ const EmailCard: React.FC<Email> = ({
               white-space: nowrap;
             `}
           >
-            {timestamp === 0 ? 'now' : formatTimestamp(timestamp.toString())}
+            {timestamp === 0 ? '' : formatTimestamp(timestamp.toString())}
           </Text>
         </Box>
       </Box>

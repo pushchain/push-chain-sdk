@@ -30,41 +30,37 @@ const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
 
   return (
     <>
-      <ButtonComponent
-        onClick={() => setMinimiseWallet(false)}
-      >
+      <ButtonComponent onClick={() => setMinimiseWallet(false)}>
         {getChainIcon(chainId)}
         {maskedAddress}
         <PushLogo />
       </ButtonComponent>
-
     </>
   );
 };
 
 export { TogglePushWalletButton };
 
-
 const ButtonComponent = styled.button`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-family: FK Grotesk Neu;
-    white-space: nowrap;
-    flex-shrink: 0;
-    border: none;
-    background-color: #17181B;
-    color: rgba(255, 255, 255, 1);
-    border-radius: 12px;
-    gap: 4px;
-    height: 48px;
-    padding: 16px 24px;
-    min-width: 100px;
-    leading-trim: both;
-    text-edge: cap;
-    font-size: 16px;
-    font-style: normal;
-    font-weight: 500;
-    line-height: 16px;
-`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: FK Grotesk Neu;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border: none;
+  background-color: #17181b;
+  color: rgba(255, 255, 255, 1);
+  border-radius: 12px;
+  gap: 4px;
+  height: 48px;
+  padding: 16px 24px;
+  min-width: 100px;
+  leading-trim: both;
+  text-edge: cap;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 16px;
+`;

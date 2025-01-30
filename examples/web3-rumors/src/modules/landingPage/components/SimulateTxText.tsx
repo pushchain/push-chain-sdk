@@ -5,7 +5,7 @@ const SimulateTxText = ({
   height: string;
   width: string;
 }) => {
-  return <img src={'/EmailLabel.png'} style={{ height, width }} />;
+  return <img src={'/RumorsLabel.png'} style={{ height, width }} />;
 };
 
 export { SimulateTxText };

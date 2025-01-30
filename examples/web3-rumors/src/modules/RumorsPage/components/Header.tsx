@@ -11,7 +11,6 @@ const Header: FC = () => {
   return (
     <Box
       position="sticky"
-      width="100%"
       display="flex"
       padding="spacing-xs spacing-xs"
       alignItems="center"
@@ -23,10 +22,13 @@ const Header: FC = () => {
     >
       <Box display="flex" alignItems="center" gap="spacing-xs">
         <Box display="flex" alignItems="center" gap="spacing-xxs">
-          <img src="/EmailLogo.png" width={34} height={34} />
+          <img src="/RumorLogo.png" width={34} height={34} />
         </Box>
-        <Box display={{ initial: 'block', tb: 'none' }}>
-          <img src="/EmailText.png" height={28} width={84} />
+        <Box
+          display={{ initial: 'block', ml: 'none' }}
+          margin="spacing-xxxs spacing-none spacing-none spacing-none"
+        >
+          <img src="/RumorsText.png" height={20} />
         </Box>
       </Box>
       <Box>{account && <TogglePushWalletButton account={account} />}</Box>
