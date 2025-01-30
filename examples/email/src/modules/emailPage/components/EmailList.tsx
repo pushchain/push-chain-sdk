@@ -30,10 +30,10 @@ const EmailList: FC<EmailListProps> = ({ type }) => {
   return (
     <Box height="100%" width="100%" overflow="scroll">
       <Box display="flex" flexDirection="column">
-        {type === EMAIL_BOX.INBOX && <EmailCard {...dummyEmail} />}
         {filteredEmails.map((email, index) => (
           <EmailCard key={index} {...email} />
         ))}
+        {type === EMAIL_BOX.INBOX && <EmailCard {...dummyEmail} />}
         {isLoading && (
           <Box display="flex" justifyContent="center" margin="spacing-lg">
             <Spinner size="medium" variant="primary" />

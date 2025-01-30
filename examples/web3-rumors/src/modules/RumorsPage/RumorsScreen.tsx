@@ -4,22 +4,12 @@ import { TABS } from '@/common';
 import { useAppContext } from '@/context/AppContext';
 import RumorsList from './components/RumorsList';
 import NewRumor from './components/NewRumor';
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 
 const RumorsScreen = () => {
-  const { currTab, setCurrTab } = useAppContext();
-  const [isTablet, setIsTablet] = useState(window.innerWidth < 768);
+  const { currTab, isMobile, setCurrTab } = useAppContext();
 
   const containerRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsTablet(window.innerWidth < 768);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   return (
     <Box
@@ -58,7 +48,7 @@ const RumorsScreen = () => {
                 key: TABS.LATEST,
                 label: (
                   <Text variant="h5-semibold">
-                    {isTablet ? 'New' : 'Latest Rumors'}
+                    {isMobile ? 'New' : 'Latest Rumors'}
                   </Text>
                 ),
                 children: null,

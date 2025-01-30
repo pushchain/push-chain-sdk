@@ -53,12 +53,18 @@ const RumorItem: React.FC<RumorType> = ({
 
   const { setMinimiseWallet } = usePushWalletContext();
 
-  const { account, pushNetwork, setData, handleSendSignRequestToPushWallet } =
-    useAppContext();
+  const {
+    account,
+    pushNetwork,
+    isMobile,
+    setData,
+    handleSendSignRequestToPushWallet,
+  } = useAppContext();
 
   const { result } = convertCaipToObject(address);
 
   const handleUpvote = async () => {
+    if (!txnHash) return;
     try {
       if (pushNetwork && account) {
         await performUpVote(
@@ -130,6 +136,7 @@ const RumorItem: React.FC<RumorType> = ({
   };
 
   const handleDownvote = async () => {
+    if (!txnHash) return;
     try {
       if (pushNetwork && account) {
         await performDownVote(
@@ -300,7 +307,7 @@ const RumorItem: React.FC<RumorType> = ({
                   white-space: nowrap;
                 `}
               >
-                {formatTimestamp(timestamp.toString())}
+                {formatTimestamp(timestamp.toString(), !isMobile)}
               </Text>
             )}
           </Box>

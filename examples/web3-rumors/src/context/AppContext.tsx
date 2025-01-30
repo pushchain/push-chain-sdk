@@ -35,6 +35,7 @@ interface AppContextType {
     [TABS.LATEST]: boolean;
     [TABS.MY_RUMORS]: boolean;
   };
+  isMobile: boolean;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -57,6 +58,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [TABS.LATEST]: true,
     [TABS.MY_RUMORS]: true,
   });
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 425);
 
   const { account, handleSendSignRequestToPushWallet } = usePushWalletContext();
 
@@ -159,6 +161,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setNetwork();
   }, []);
 
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 425);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -174,6 +185,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setData,
         hasMore,
         loading,
+        isMobile,
       }}
     >
       {children}
