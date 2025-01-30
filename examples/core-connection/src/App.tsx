@@ -25,13 +25,22 @@ const GlobalStyle = createGlobalStyle`
   }
 `;
 
+const env = {
+  production: ENV.PROD,
+  alpha: ENV.STAGING,
+} as const;
+
+type EnvKeys = keyof typeof env;
+
+const deploymentEnv: EnvKeys = import.meta.env.VITE_DEPLOYMENT_MODE;
+
 const App: React.FC = () => {
   const { isDarkMode } = useDarkMode();
 
   return (
     <ThemeProvider theme={isDarkMode ? themeConfig.dark : themeConfig.light}>
       <GlobalStyle />
-      <PushWalletProvider env={ENV.PROD}>
+      <PushWalletProvider env={env[deploymentEnv]}>
         <GlobalProvider>
           <Router>
             <PushWalletIFrame />
