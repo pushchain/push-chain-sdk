@@ -32,7 +32,8 @@ const env = {
 
 type EnvKeys = keyof typeof env;
 
-const deploymentEnv: EnvKeys = import.meta.env.VITE_DEPLOYMENT_MODE;
+const deploymentEnv: EnvKeys =
+  import.meta.env.VITE_DEPLOYMENT_MODE || 'production';
 
 const App: React.FC = () => {
   const { isDarkMode } = useDarkMode();
