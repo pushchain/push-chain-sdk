@@ -53,13 +53,8 @@ const RumorItem: React.FC<RumorType> = ({
 
   const { setMinimiseWallet } = usePushWalletContext();
 
-  const {
-    account,
-    pushNetwork,
-    isMobile,
-    setData,
-    handleSendSignRequestToPushWallet,
-  } = useAppContext();
+  const { account, pushNetwork, setData, handleSendSignRequestToPushWallet } =
+    useAppContext();
 
   const { result } = convertCaipToObject(address);
 
@@ -300,15 +295,30 @@ const RumorItem: React.FC<RumorType> = ({
             </Box>
 
             {timestamp && (
-              <Text
-                color="text-tertiary"
-                variant="bs-regular"
-                css={css`
-                  white-space: nowrap;
-                `}
-              >
-                {formatTimestamp(timestamp.toString(), !isMobile)}
-              </Text>
+              <>
+                <Box display={{ initial: 'block', ml: 'none' }}>
+                  <Text
+                    color="text-tertiary"
+                    variant="bs-regular"
+                    css={css`
+                      white-space: nowrap;
+                    `}
+                  >
+                    {formatTimestamp(timestamp.toString(), true)}
+                  </Text>
+                </Box>
+                <Box display={{ initial: 'none', ml: 'block' }}>
+                  <Text
+                    color="text-tertiary"
+                    variant="bs-regular"
+                    css={css`
+                      white-space: nowrap;
+                    `}
+                  >
+                    {formatTimestamp(timestamp.toString(), false)}
+                  </Text>
+                </Box>
+              </>
             )}
           </Box>
           <Box
@@ -321,6 +331,13 @@ const RumorItem: React.FC<RumorType> = ({
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeRaw]}
+                components={{
+                  a: ({ href, children }) => (
+                    <a href={href} target="_blank" rel="noopener noreferrer">
+                      {children}
+                    </a>
+                  ),
+                }}
               >
                 {!isOpen && markdownPost.length > 280
                   ? `${markdownPost.slice(0, 280)}...`

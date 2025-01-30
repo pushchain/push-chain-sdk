@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy:dev": "yarn run build && echo 'rumors.push.org' > ./dist/CNAME && gh-pages -d dist -r https://github.com/push-protocol/rumors-dev-deployment"
+    "deploy": "yarn run build && echo 'rumors.push.org' > ./dist/CNAME && gh-pages -d dist -r https://github.com/push-protocol/rumors-dev-deployment"
   },
   "dependencies": {
     "@pushprotocol/push-chain": "^0.1.7",

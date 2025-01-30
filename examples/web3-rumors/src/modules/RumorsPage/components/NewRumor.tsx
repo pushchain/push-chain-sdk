@@ -58,10 +58,14 @@ const NewRumor = () => {
   };
 
   const handleFetchNewData = async () => {
-    if (!account) return;
+    if (!account || !pushNetwork) return;
     try {
-      const fetchedSentConfession = await getSentConfessions(account, 1, 1);
-      console.log(fetchedSentConfession);
+      const fetchedSentConfession = await getSentConfessions(
+        pushNetwork,
+        account,
+        1,
+        1
+      );
       if (fetchedSentConfession && fetchedSentConfession.length) {
         setData((prev) => ({
           ...prev,

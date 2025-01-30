@@ -7,7 +7,7 @@ import NewRumor from './components/NewRumor';
 import { useRef } from 'react';
 
 const RumorsScreen = () => {
-  const { currTab, isMobile, setCurrTab } = useAppContext();
+  const { currTab, setCurrTab } = useAppContext();
 
   const containerRef = useRef<HTMLElement>(null);
 
@@ -47,9 +47,14 @@ const RumorsScreen = () => {
               {
                 key: TABS.LATEST,
                 label: (
-                  <Text variant="h5-semibold">
-                    {isMobile ? 'New' : 'Latest Rumors'}
-                  </Text>
+                  <>
+                    <Box display={{ initial: 'block', ml: 'none' }}>
+                      <Text variant="h5-semibold">Latest Rumors</Text>
+                    </Box>
+                    <Box display={{ initial: 'none', ml: 'block' }}>
+                      <Text variant="h5-semibold">New</Text>
+                    </Box>
+                  </>
                 ),
                 children: null,
               },

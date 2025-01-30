@@ -204,9 +204,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
         account,
         signMessage: async (data: Uint8Array) => {
           try {
-            return await handleSendSignRequestToPushWallet(
-              new Uint8Array(data)
-            );
+            return await handleSendSignRequestToPushWallet(data);
           } catch (error) {
             console.error('Error signing with Push Wallet:', error);
             throw error;

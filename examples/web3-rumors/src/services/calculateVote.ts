@@ -1,12 +1,12 @@
-import { PushNetwork, CONSTANTS } from '@pushprotocol/push-chain';
+import { PushNetwork } from '@pushprotocol/push-chain';
 import protobuf from 'protobufjs';
 import { Buffer } from 'buffer';
 
-export const calculateVote = async (txHash: string) => {
+export const calculateVote = async (
+  pushNetwork: PushNetwork,
+  txHash: string
+) => {
   try {
-    // Initialize PushNetwork class instance
-    const userAlice = await PushNetwork.initialize(CONSTANTS.ENV.DEV);
-
     // Define the schema
     const schema = `
         syntax = "proto3";
@@ -24,7 +24,7 @@ export const calculateVote = async (txHash: string) => {
     const Upvotes = root.lookupType('Upvotes');
 
     // Fetch transactions
-    const txRes = await userAlice.tx.get(
+    const txRes = await pushNetwork.tx.get(
       Math.floor(Date.now()),
       'DESC',
       10,

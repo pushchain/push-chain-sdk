@@ -3,7 +3,7 @@ import { PushNetwork } from '@pushprotocol/push-chain';
 import protobuf from 'protobufjs';
 
 export const postConfession = async (
-  userAlice: PushNetwork,
+  pushNetwork: PushNetwork,
   wallet: string,
   confessionDetails: ConfessionType,
   handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>
@@ -38,7 +38,7 @@ export const postConfession = async (
     console.log('Binary Encoded data:', buffer);
 
     // Create an unsigned transaction
-    const unsignedTx = userAlice.tx.createUnsigned(
+    const unsignedTx = pushNetwork.tx.createUnsigned(
       'CUSTOM:CONFESSION',
       ['eip155:1:0xC9C52B3717A8Dfaacd0D33Ce14a916C575eE332A'], // acc 63
       buffer
@@ -49,7 +49,7 @@ export const postConfession = async (
       account: wallet,
       signMessage: async (data: Uint8Array) => {
         try {
-          return await handleSendSignRequestToPushWallet(new Uint8Array(data));
+          return await handleSendSignRequestToPushWallet(data);
         } catch (error) {
           console.error('Error signing with Push Wallet:', error);
           throw error;
@@ -57,7 +57,7 @@ export const postConfession = async (
       },
     };
 
-    const txHash = await userAlice.tx.send(unsignedTx, signer);
+    const txHash = await pushNetwork.tx.send(unsignedTx, signer);
     console.log('🪙🪙Push Wallet Transaction: ', txHash);
 
     return txHash;

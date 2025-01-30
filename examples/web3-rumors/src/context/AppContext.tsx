@@ -35,7 +35,6 @@ interface AppContextType {
     [TABS.LATEST]: boolean;
     [TABS.MY_RUMORS]: boolean;
   };
-  isMobile: boolean;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -58,17 +57,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [TABS.LATEST]: true,
     [TABS.MY_RUMORS]: true,
   });
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 425);
 
   const { account, handleSendSignRequestToPushWallet } = usePushWalletContext();
 
   const fetchConfessions = async (page: number) => {
+    if (!pushNetwork) return;
     setLoading((prev) => ({
       ...prev,
       [TABS.LATEST]: true,
     }));
     try {
-      const fetchedConfessions = await getConfessions(page, 15);
+      const fetchedConfessions = await getConfessions(pushNetwork, page, 15);
       if (fetchedConfessions.length > 0) {
         setData((prev) => ({
           ...prev,
@@ -98,7 +97,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const fetchSentConfessions = async (page: number) => {
-    if (!account) return;
+    if (!account || !pushNetwork) return;
     setLoading((prev) => ({
       ...prev,
       [TABS.MY_RUMORS]: true,
@@ -109,6 +108,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error('No wallet connected');
       }
       const fetchedSentConfessions = await getSentConfessions(
+        pushNetwork,
         account,
         page,
         15
@@ -142,11 +142,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchConfessions(1);
-  }, []);
+  }, [pushNetwork]);
 
   useEffect(() => {
     fetchSentConfessions(1);
-  }, [account]);
+  }, [account, pushNetwork]);
 
   useEffect(() => {
     const setNetwork = async () => {
@@ -159,15 +159,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     };
     setNetwork();
-  }, []);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 425);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   return (
@@ -185,7 +176,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setData,
         hasMore,
         loading,
-        isMobile,
       }}
     >
       {children}

@@ -1,13 +1,15 @@
-import { PushNetwork, CONSTANTS } from '@pushprotocol/push-chain';
+import { PushNetwork } from '@pushprotocol/push-chain';
 import protobuf from 'protobufjs';
 import { Buffer } from 'buffer';
 import { calculateVote } from './calculateVote';
 import { ConfessionType, RumorType } from '@/common';
 
-export const getConfessions = async (page: number, pageSize: number) => {
+export const getConfessions = async (
+  pushNetwork: PushNetwork,
+  page: number,
+  pageSize: number
+) => {
   try {
-    const userAlice = await PushNetwork.initialize(CONSTANTS.ENV.DEV);
-
     const schema = `
       syntax = "proto3";
 
@@ -24,7 +26,7 @@ export const getConfessions = async (page: number, pageSize: number) => {
 
     const confessions: RumorType[] = [];
 
-    const txRes = await userAlice.tx.get(
+    const txRes = await pushNetwork.tx.get(
       Math.floor(Date.now()),
       'DESC',
       pageSize,
@@ -38,6 +40,7 @@ export const getConfessions = async (page: number, pageSize: number) => {
     for (let i = 0; i < txRes.blocks.length; i++) {
       const block = txRes.blocks[i];
       const { upvoteWallets, downvoteWallets } = await calculateVote(
+        pushNetwork,
         block.transactions[0].txnHash
       );
 
