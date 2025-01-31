@@ -5,11 +5,7 @@ import { getBlocksCSSVariables, themeConfig } from 'shared-components';
 import { useDarkMode } from './common/hooks';
 import { RouterContainer } from './common/components';
 import { GlobalProvider } from './context/GlobalContext';
-import {
-  ENV,
-  PushWalletProvider,
-  PushWalletIFrame,
-} from '@pushprotocol/pushchain-ui-kit';
+import { CONSTANTS, PushWalletProvider } from '@pushprotocol/pushchain-ui-kit';
 
 const GlobalStyle = createGlobalStyle`
   :root{
@@ -26,8 +22,8 @@ const GlobalStyle = createGlobalStyle`
 `;
 
 const env = {
-  production: ENV.PROD,
-  alpha: ENV.STAGING,
+  production: CONSTANTS.ENV.PROD,
+  alpha: CONSTANTS.ENV.STAGING,
 } as const;
 
 type EnvKeys = keyof typeof env;
@@ -41,10 +37,9 @@ const App: React.FC = () => {
   return (
     <ThemeProvider theme={isDarkMode ? themeConfig.dark : themeConfig.light}>
       <GlobalStyle />
-      <PushWalletProvider env={env[deploymentEnv]}>
+      <PushWalletProvider env={CONSTANTS.ENV.LOCAL}>
         <GlobalProvider>
           <Router>
-            <PushWalletIFrame />
             <RouterContainer />
           </Router>
         </GlobalProvider>
