@@ -66,8 +66,6 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
   } | null>(null);
 
   const handleOpenNewWalletTab = () => {
-    console.log('Tab Ref >>>', tabRef.current);
-
     if (!tabRef.current) {
       const width = 600;
       const height = 800;
@@ -109,7 +107,6 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
   };
 
   const handleIsLoggedInAction = (response: WalletEventRespoonse) => {
-    console.log('response received', response);
     if (response?.account) {
       setConnectionStatus('connected');
       setMinimiseWallet(true);
@@ -173,7 +170,6 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
   };
 
   const handleLogOut = async () => {
-    console.log('Sending log out requst');
     sendMessageToPushWallet({
       type: APP_TO_WALLET_ACTION.LOG_OUT,
       data: 'Log Out Event',
@@ -182,36 +178,28 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
 
   useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
-      console.log('Message event type', event.data);
       switch (event.data.type) {
         case WALLET_TO_APP_ACTION.IS_LOGGED_IN:
-          console.log('User has logged In', event.data);
           handleIsLoggedInAction(event.data.data);
           break;
         case WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS:
-          console.log('App Connection Success');
           handleAppConnectionSuccess(event.data.data);
           break;
         case WALLET_TO_APP_ACTION.APP_CONNECTION_REJECTED:
-          console.log('App Connection Rejected');
           handleAppConnectionRejection();
           break;
         case WALLET_TO_APP_ACTION.APP_CONNECTION_RETRY:
-          console.log('App Connection Retry');
           handleAppConnectionRetry();
           break;
         case WALLET_TO_APP_ACTION.SIGNATURE:
-          console.log('Signature received');
           if (signatureResolverRef.current) {
             signatureResolverRef?.current?.success?.(event.data.data);
           }
           break;
         case WALLET_TO_APP_ACTION.IS_LOGGED_OUT:
-          console.log('User loggged out');
           handleUserLogOutEvent();
           break;
         case WALLET_TO_APP_ACTION.ERROR:
-          console.log('Error from the child tab');
           signatureResolverRef?.current?.error?.(event.data.data);
           break;
         default:

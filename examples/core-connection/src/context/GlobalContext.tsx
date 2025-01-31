@@ -8,7 +8,7 @@ import {
   useEffect,
   useState,
 } from 'react';
-import { usePushWalletContext } from '../../../../packages/ui-kit';
+import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 
 // Define a type for the context value
 type GlobalContextType = {
