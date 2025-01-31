@@ -6802,7 +6802,7 @@ __metadata:
 
 "shared-components@file:../../packages/shared-components::locator=email-app%40workspace%3A.":
   version: 0.1.0
-  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=2a0c9e&locator=email-app%40workspace%3A."
+  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=7ec6fd&locator=email-app%40workspace%3A."
   dependencies:
     "@emotion/react": "npm:^11.13.0"
     "@radix-ui/react-dialog": "npm:^1.1.1"
@@ -6823,7 +6823,7 @@ __metadata:
   peerDependencies:
     react: ^18.3.1
     react-dom: ^18.3.1
-  checksum: 10/087e67f0222975179d77acfb8fcf5e03e41606321966c384a224c327deca3e0543f1a1d611ebdb5e78ab93bbd209784753c406e8aeae0eaec1cb4d95dedd81b4
+  checksum: 10/043be10cccbe754a00ed3a41688d8cdbca487e56abe72b78aded4e7617ed723c5e08314960c3b410356b57475d28ac0162119ffff0c7516f0e465d97bc5f3d37
   languageName: node
   linkType: hard
 
