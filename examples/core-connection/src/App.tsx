@@ -37,7 +37,7 @@ const App: React.FC = () => {
   return (
     <ThemeProvider theme={isDarkMode ? themeConfig.dark : themeConfig.light}>
       <GlobalStyle />
-      <PushWalletProvider env={CONSTANTS.ENV.LOCAL}>
+      <PushWalletProvider env={env[deploymentEnv]}>
         <GlobalProvider>
           <Router>
             <RouterContainer />

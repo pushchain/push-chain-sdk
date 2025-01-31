@@ -831,12 +831,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pushprotocol/pushchain-ui-kit@npm:^1.0.2":
-  version: 1.0.2
-  resolution: "@pushprotocol/pushchain-ui-kit@npm:1.0.2"
+"@pushprotocol/pushchain-ui-kit@npm:^1.0.3":
+  version: 1.0.3
+  resolution: "@pushprotocol/pushchain-ui-kit@npm:1.0.3"
   dependencies:
     tslib: "npm:^2.3.0"
-  checksum: 10/bccb97a3f29835569b33df5eb032c7f86c939a8a236267350c321eefede36acd273c59b4feb42cbbf5fe11ed342608324bec5f792d555522fb32cb89264e8283
+  checksum: 10/818afedb82299f6b6eef2d7b0bf269329c33cdbc8019664f0ada72673211f316d443a755a7474167446c36a0622396eaf7ab3ee8538e297238de7ff52bcd6dd0
   languageName: node
   linkType: hard
 
@@ -3054,7 +3054,7 @@ __metadata:
   dependencies:
     "@eslint/js": "npm:^9.9.0"
     "@pushprotocol/push-chain": "npm:^0.1.7"
-    "@pushprotocol/pushchain-ui-kit": "npm:^1.0.2"
+    "@pushprotocol/pushchain-ui-kit": "npm:^1.0.3"
     "@types/react": "npm:^18.3.3"
     "@types/react-dom": "npm:^18.3.0"
     "@vitejs/plugin-react-swc": "npm:^3.5.0"
@@ -6822,7 +6822,7 @@ __metadata:
 
 "shared-components@file:../../packages/shared-components::locator=core-connection%40workspace%3A.":
   version: 0.1.0
-  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=10ada3&locator=core-connection%40workspace%3A."
+  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=7ec6fd&locator=core-connection%40workspace%3A."
   dependencies:
     "@emotion/react": "npm:^11.13.0"
     "@radix-ui/react-dialog": "npm:^1.1.1"
@@ -6843,7 +6843,7 @@ __metadata:
   peerDependencies:
     react: ^18.3.1
     react-dom: ^18.3.1
-  checksum: 10/80296a3fc790cb8eddce91f9a12def1606e894d15aa9198b9c809370b302cb641d693a11cfe91d0f929f09aa75d296b79c49ea2733b5687d105fc41fcede3cde
+  checksum: 10/043be10cccbe754a00ed3a41688d8cdbca487e56abe72b78aded4e7617ed723c5e08314960c3b410356b57475d28ac0162119ffff0c7516f0e465d97bc5f3d37
   languageName: node
   linkType: hard
 
