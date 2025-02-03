@@ -5,7 +5,11 @@ import { getBlocksCSSVariables, themeConfig } from 'shared-components';
 import { useDarkMode } from './common/hooks';
 import { RouterContainer } from './common/components';
 import { GlobalProvider } from './context/GlobalContext';
-import { CONSTANTS, PushWalletProvider } from '@pushprotocol/pushchain-ui-kit';
+import {
+  CONSTANTS,
+  PushWalletProvider,
+  PushWalletIFrame,
+} from '@pushprotocol/pushchain-ui-kit';
 
 const GlobalStyle = createGlobalStyle`
   :root{
@@ -40,6 +44,7 @@ const App: React.FC = () => {
       <PushWalletProvider env={env[deploymentEnv]}>
         <GlobalProvider>
           <Router>
+            <PushWalletIFrame />
             <RouterContainer />
           </Router>
         </GlobalProvider>
