@@ -1,7 +1,14 @@
-import { Text, Box, TextInput, Tabs, Refresh } from 'shared-components';
+import {
+  Text,
+  Box,
+  TextInput,
+  Tabs,
+  Refresh,
+  Spinner,
+} from 'shared-components';
 import { useAppContext } from '@/context/AppContext';
 import { css } from 'styled-components';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { dummyEmail, EMAIL_BOX } from '@/common';
 import EmailLayout from '@/components/EmailLayout';
@@ -10,6 +17,11 @@ import NewEmail from './components/NewEmail';
 import { Header } from './components/Header';
 
 const EmailScreen = () => {
+  const [isLoading, setIsLoading] = useState<Record<EMAIL_BOX, boolean>>({
+    inbox: false,
+    sent: false,
+  });
+
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
@@ -22,7 +34,6 @@ const EmailScreen = () => {
     setSelectedEmail,
     selectedEmail,
     replyTo,
-    getEmails,
     getSentEmails,
     getReceivedEmails,
   } = useAppContext();
@@ -35,6 +46,18 @@ const EmailScreen = () => {
       getSentEmails();
     }
     // navigate(`/${tab}`);
+  };
+
+  const handleRefreshClick = async () => {
+    if (currTab === EMAIL_BOX.INBOX) {
+      setIsLoading((prev) => ({ ...prev, inbox: true }));
+      await getReceivedEmails();
+      setIsLoading((prev) => ({ ...prev, inbox: false }));
+    } else {
+      setIsLoading((prev) => ({ ...prev, sent: true }));
+      await getReceivedEmails();
+      setIsLoading((prev) => ({ ...prev, sent: false }));
+    }
   };
 
   useEffect(() => {
@@ -106,10 +129,18 @@ const EmailScreen = () => {
               alignItems="center"
               width="100%"
             >
-              <Text variant="h3-semibold">Inbox</Text>
-              <Box cursor="pointer" onClick={getEmails}>
-                <Refresh size={24} />
-              </Box>
+              <Text variant="h3-semibold" textTransform="capitalize">
+                {currTab}
+              </Text>
+              {isLoading[currTab] ? (
+                <Box>
+                  <Spinner size="medium" variant="primary" />
+                </Box>
+              ) : (
+                <Box cursor="pointer" onClick={handleRefreshClick}>
+                  <Refresh size={24} />
+                </Box>
+              )}
             </Box>
             <TextInput
               placeholder="Search for a sender address"

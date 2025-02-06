@@ -34,7 +34,6 @@ interface AppContextType {
   account: string | null;
   handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>;
   wallet: Wallet | null;
-  getEmails: () => Promise<void>;
   isLoading: boolean;
   getSentEmails: () => Promise<void>;
   isSentEmailLoading: boolean;
@@ -66,8 +65,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { account, handleSendSignRequestToPushWallet } = usePushWalletContext();
 
   const getSentEmails = async () => {
-    if (!account || !pushEmail || isLoading || isSentEmailLoading) return;
+    if (!account || !pushEmail || isSentEmailLoading) return;
     setIsSentEmailLoading(true);
+    console.log('check');
     try {
       const sent = await pushEmail.getBySender(account);
       setEmails((prev) => ({
@@ -82,7 +82,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const getReceivedEmails = async () => {
-    if (!account || !pushEmail || isLoading || isReceivedEmailLoading) return;
+    if (!account || !pushEmail || isReceivedEmailLoading) return;
     setIsReceivedEmailLoading(true);
     try {
       const received = await pushEmail.getByRecipient(account);
@@ -98,7 +98,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const getEmails = async () => {
-    if (!account || !pushEmail || isLoading) return;
+    if (!account || !pushEmail) return;
     setIsLoading(true);
     try {
       await Promise.all([getSentEmails(), getReceivedEmails()]);
@@ -108,17 +108,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    if (!account || !pushEmail) return;
     getEmails();
-  }, [account, pushEmail]);
-
-  useEffect(() => {
     const interval = setInterval(() => {
       getSentEmails();
       getReceivedEmails();
     }, 5 * 60 * 1000); // 5 minutes interval
 
     return () => clearInterval(interval);
-  });
+  }, [account, pushEmail]);
 
   useEffect(() => {
     if (account) {
@@ -158,7 +156,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         account,
         handleSendSignRequestToPushWallet,
         wallet,
-        getEmails,
         isLoading,
         getSentEmails,
         isSentEmailLoading,
