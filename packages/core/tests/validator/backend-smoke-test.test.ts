@@ -42,7 +42,7 @@ const mockRecipients = [
   `eip155:97:${privateKeyToAddress(generatePrivateKey())}`,
 ];
 
-async function sendCustomTx(
+export async function sendCustomTx(
   txInstance: Tx,
   senderPrivateKey: Hex,
   nonce: number

@@ -6,6 +6,10 @@ import { BlockResponse } from './block.types';
 export class Block {
   private constructor(private validator: Validator) {}
 
+  get validatorUrl(): string {
+    return this.validator.url;
+  }
+
   static initialize = async (env: ENV) => {
     const validator = await Validator.initalize({ env });
     return new Block(validator);
@@ -48,4 +52,8 @@ export class Block {
       blockHash,
     ]);
   };
+
+  public getWebSocketUrl(): string {
+    return this.validator.getWebSocketUrl();
+  }
 }

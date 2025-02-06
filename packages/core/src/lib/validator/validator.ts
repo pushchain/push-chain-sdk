@@ -286,4 +286,15 @@ export class Validator {
     }
     return urlObj.toString();
   }
+
+  get url(): string {
+    return this.activeValidatorURL;
+  }
+
+  getWebSocketUrl(): string {
+    const url = new URL(this.activeValidatorURL);
+    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    url.pathname = url.pathname.replace('/api/v1/rpc', '/ws'); // Remove /api/v1/rpc from the path
+    return url.toString();
+  }
 }

@@ -75,4 +75,12 @@ describe('Block Class', () => {
       blockChecker(block);
     });
   });
+
+  it('should return a valid WebSocket URL', async () => {
+    const blockInstance = await Block.initialize(env);
+    const wsUrl = blockInstance.getWebSocketUrl();
+    expect(typeof wsUrl).toBe('string');
+    expect(wsUrl).toMatch(/^wss?:\/\//); // Should start with ws:// or wss://
+    expect(wsUrl.length).toBeGreaterThan(0);
+  });
 });
