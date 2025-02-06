@@ -1,4 +1,4 @@
-import { Text, Box, TextInput, Tabs } from 'shared-components';
+import { Text, Box, TextInput, Tabs, Refresh } from 'shared-components';
 import { useAppContext } from '@/context/AppContext';
 import { css } from 'styled-components';
 import { useEffect } from 'react';
@@ -22,18 +22,26 @@ const EmailScreen = () => {
     setSelectedEmail,
     selectedEmail,
     replyTo,
+    getEmails,
+    getSentEmails,
+    getReceivedEmails,
   } = useAppContext();
 
-  const handleTabSwitch = (tab: 'inbox' | 'sent') => {
+  const handleTabSwitch = (tab: EMAIL_BOX) => {
     setCurrTab(tab);
+    if (tab === EMAIL_BOX.INBOX) {
+      getReceivedEmails();
+    } else {
+      getSentEmails();
+    }
     // navigate(`/${tab}`);
   };
 
   useEffect(() => {
-    if (location.pathname.includes('sent')) {
-      setCurrTab('sent');
+    if (location.pathname.includes(EMAIL_BOX.INBOX)) {
+      setCurrTab(EMAIL_BOX.INBOX);
     } else {
-      setCurrTab('inbox');
+      setCurrTab(EMAIL_BOX.SENT);
     }
   }, []);
 
@@ -92,7 +100,17 @@ const EmailScreen = () => {
               border-bottom: 1px solid var(--stroke-secondary);
             `}
           >
-            <Text variant="h3-semibold">Inbox</Text>
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              width="100%"
+            >
+              <Text variant="h3-semibold">Inbox</Text>
+              <Box cursor="pointer" onClick={getEmails}>
+                <Refresh size={24} />
+              </Box>
+            </Box>
             <TextInput
               placeholder="Search for a sender address"
               value={searchInput}
@@ -104,7 +122,7 @@ const EmailScreen = () => {
             <Tabs
               variant="fill"
               activeKey={currTab}
-              onChange={(tab) => handleTabSwitch(tab as 'inbox' | 'sent')}
+              onChange={(tab) => handleTabSwitch(tab as EMAIL_BOX)}
               items={[
                 {
                   key: 'inbox',
