@@ -8,7 +8,7 @@ import {
 } from '@pushprotocol/pushchain-ui-kit';
 import PushMail from 'push-mail';
 import { ReactNode, useEffect, useState } from 'react';
-import { Email, Wallet } from '../common';
+import { Email, EMAIL_BOX, transformEmails, Wallet } from '@/common';
 
 interface AppContextType {
   searchInput: string;
@@ -27,8 +27,8 @@ interface AppContextType {
       inbox: Email[];
     }>
   >;
-  currTab: 'inbox' | 'sent';
-  setCurrTab: React.Dispatch<React.SetStateAction<'inbox' | 'sent'>>;
+  currTab: EMAIL_BOX;
+  setCurrTab: React.Dispatch<React.SetStateAction<EMAIL_BOX>>;
   replyTo: Email | undefined;
   setReplyTo: React.Dispatch<React.SetStateAction<Email | undefined>>;
   account: string | null;
@@ -36,6 +36,10 @@ interface AppContextType {
   wallet: Wallet | null;
   getEmails: () => Promise<void>;
   isLoading: boolean;
+  getSentEmails: () => Promise<void>;
+  isSentEmailLoading: boolean;
+  getReceivedEmails: () => Promise<void>;
+  isReceivedEmailLoading: boolean;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -44,7 +48,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [searchInput, setSearchInput] = useState<string>('');
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
-  const [currTab, setCurrTab] = useState<'inbox' | 'sent'>('inbox');
+  const [pushEmail, setPushEmail] = useState<PushMail | null>(null);
+  const [currTab, setCurrTab] = useState<EMAIL_BOX>(EMAIL_BOX.INBOX);
   const [emails, setEmails] = useState<{
     sent: Email[];
     inbox: Email[];
@@ -55,45 +60,65 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [replyTo, setReplyTo] = useState<Email | undefined>(undefined);
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSentEmailLoading, setIsSentEmailLoading] = useState(false);
+  const [isReceivedEmailLoading, setIsReceivedEmailLoading] = useState(false);
 
   const { account, handleSendSignRequestToPushWallet } = usePushWalletContext();
 
+  const getSentEmails = async () => {
+    if (!account || !pushEmail || isLoading || isSentEmailLoading) return;
+    setIsSentEmailLoading(true);
+    try {
+      const sent = await pushEmail.getBySender(account);
+      setEmails((prev) => ({
+        ...prev,
+        sent: transformEmails(sent),
+      }));
+    } catch (err) {
+      console.log('Error fetching Sent Emails', err);
+    } finally {
+      setIsSentEmailLoading(false);
+    }
+  };
+
+  const getReceivedEmails = async () => {
+    if (!account || !pushEmail || isLoading || isReceivedEmailLoading) return;
+    setIsReceivedEmailLoading(true);
+    try {
+      const received = await pushEmail.getByRecipient(account);
+      setEmails((prev) => ({
+        ...prev,
+        inbox: transformEmails(received),
+      }));
+    } catch (err) {
+      console.log('Error fetching Received Emails', err);
+    } finally {
+      setIsReceivedEmailLoading(false);
+    }
+  };
+
   const getEmails = async () => {
-    if (!account) return;
+    if (!account || !pushEmail || isLoading) return;
     setIsLoading(true);
-    const pushMail = await PushMail.initialize(ENV.DEV);
-    const [sent, received] = await Promise.all([
-      pushMail.getBySender(account),
-      pushMail.getByRecipient(account),
-    ]);
-
-    setIsLoading(false);
-
-    setEmails({
-      sent: sent.map((email: any) => ({
-        from: email.from,
-        to: email.to,
-        subject: email.subject,
-        timestamp: email.ts,
-        body: email.body.content,
-        attachments: email.attachments,
-        txHash: email.txHash,
-      })),
-      inbox: received.map((email: any) => ({
-        from: email.from,
-        to: email.to,
-        subject: email.subject,
-        timestamp: email.ts,
-        body: email.body.content,
-        attachments: email.attachments,
-        txHash: email.txHash,
-      })),
-    });
+    try {
+      await Promise.all([getSentEmails(), getReceivedEmails()]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
     getEmails();
-  }, [account]);
+  }, [account, pushEmail]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      getSentEmails();
+      getReceivedEmails();
+    }, 5 * 60 * 1000); // 5 minutes interval
+
+    return () => clearInterval(interval);
+  });
 
   useEffect(() => {
     if (account) {
@@ -106,8 +131,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const setNetwork = async () => {
       try {
         const pushNetworkInstance = await PushNetwork.initialize(ENV.DEV);
-        console.log('Push Network initialized:', pushNetworkInstance);
+        const pushMail = await PushMail.initialize(ENV.DEV);
         setPushNetwork(pushNetworkInstance);
+        setPushEmail(pushMail);
       } catch (error) {
         console.error('Error initializing Push Network:', error);
       }
@@ -134,6 +160,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         wallet,
         getEmails,
         isLoading,
+        getSentEmails,
+        isSentEmailLoading,
+        getReceivedEmails,
+        isReceivedEmailLoading,
       }}
     >
       {children}
