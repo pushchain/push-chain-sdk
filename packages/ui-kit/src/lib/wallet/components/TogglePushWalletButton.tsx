@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { centerMaskString } from '../wallet.utils';
 import { CHAIN_LOGO } from '../../constants';
 import { usePushWalletContext } from './PushWalletProvider';
@@ -12,9 +12,10 @@ type TogglePushWalletButtonProps = {
 const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
   universalAddress,
 }) => {
-  const { setMinimiseWallet } = usePushWalletContext();
-
+  const { handleLogOut } = usePushWalletContext();
   const { chainId, address } = universalAddress;
+
+  const [isDropdownOpen, setDropdownOpen] = useState(false);
 
   function getChainIcon(chainId: string | null) {
     if (!chainId) {
@@ -30,13 +31,31 @@ const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
 
   const maskedAddress = centerMaskString(address);
 
+  // New function to toggle dropdown visibility
+  const toggleDropdown = () => {
+    setDropdownOpen(!isDropdownOpen);
+  };
+
+  const handleLogOutButton = () => {
+    handleLogOut();
+  };
+
   return (
     <>
-      <ButtonComponent onClick={() => setMinimiseWallet(false)}>
-        {getChainIcon(chainId)}
-        {maskedAddress}
-        <PushLogo />
-      </ButtonComponent>
+      <DropdownContainer>
+        <ButtonComponent onClick={toggleDropdown}>
+          {getChainIcon(chainId)}
+          {maskedAddress}
+          <PushLogo />
+        </ButtonComponent>
+        {isDropdownOpen && (
+          <DropdownMenu>
+            <ButtonComponent onClick={handleLogOutButton}>
+              Logout
+            </ButtonComponent>
+          </DropdownMenu>
+        )}
+      </DropdownContainer>
     </>
   );
 };
@@ -57,12 +76,30 @@ const ButtonComponent = styled.button`
   border-radius: 12px;
   gap: 4px;
   height: 48px;
+  width: -webkit-fill-available;
   padding: 16px 24px;
-  min-width: 100px;
   leading-trim: both;
   text-edge: cap;
   font-size: 16px;
   font-style: normal;
   font-weight: 500;
   line-height: 16px;
+`;
+
+// New styled components for dropdown
+const DropdownContainer = styled.div`
+  position: relative;
+`;
+
+const DropdownMenu = styled.div`
+  position: absolute;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1;
+  width: -webkit-fill-available;
+  border-radius: 12px;
+  background-color: #17181b;
+  color: rgba(255, 255, 255, 1);
 `;

@@ -22,13 +22,13 @@ const PushWalletButton: React.FC<PushWalletButtonProps> = ({
   }
 
   return (
-    <div>
+    <>
       {universalAddress ? (
         <TogglePushWalletButton universalAddress={universalAddress} />
       ) : (
         <ConnectPushWalletButton title={title} styling={styling} />
       )}
-    </div>
+    </>
   );
 };
 

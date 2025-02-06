@@ -4,13 +4,14 @@ import { css } from 'styled-components';
 import { TransactionSnippet } from '../../../common/components';
 import { useGlobalContext } from '../../../context/GlobalContext';
 import { Transaction } from '@pushprotocol/push-chain/src/lib/generated/tx';
-import { centerMaskString } from '../../../helpers';
+import { centerMaskString, convertToCaip } from '../../../helpers';
 import { usePushWalletContext } from '../../../../../../packages/ui-kit/src';
 
 const MockSendTransaction = () => {
-  const { pushNetwork, mockTx, account } = useGlobalContext();
+  const { pushNetwork, mockTx } = useGlobalContext();
 
-  const { handleSendSignRequestToPushWallet } = usePushWalletContext();
+  const { handleSendSignRequestToPushWallet, universalAddress } =
+    usePushWalletContext();
 
   const [isSendingTxn, setIsSendingTxn] = useState(false);
   const [txnHash, setTxnHash] = useState<string | null>(null);
@@ -18,10 +19,10 @@ const MockSendTransaction = () => {
 
   const handleSendTransaction = async (mockTx: Transaction) => {
     try {
-      if (pushNetwork && account) {
+      if (pushNetwork && universalAddress) {
         setIsSendingTxn(true);
         const txHash = await pushNetwork.tx.send(mockTx, {
-          account,
+          account: convertToCaip(universalAddress), // This will get changed to utils usage in pushchain devnet package
           signMessage: async (data: Uint8Array) => {
             return await handleSendSignRequestToPushWallet(data);
           },

@@ -28,6 +28,7 @@ export type PushWalletContextType = {
   handleNewConnectionRequest: () => void;
   setMinimiseWallet: (isWalletMinimised: boolean) => void;
   handleUserLogOutEvent: () => void;
+  handleLogOut: () => void;
   isIframeLoading: boolean;
   setIframeLoading: React.Dispatch<React.SetStateAction<boolean>>;
   handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>;
@@ -58,24 +59,40 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
     useState<ConnectionStatus>('notConnected');
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const tabRef = useRef<Window | null>(null);
 
   const signatureResolverRef = useRef<{
     success?: (data: WalletEventRespoonse) => void;
     error?: (data: WalletEventRespoonse) => void;
   } | null>(null);
 
+  const handleOpenNewWalletTab = () => {
+    if (!tabRef.current) {
+      const width = 600;
+      const height = 800;
+      const left = screen.width - width - 100;
+      const top = 150;
+
+      const newTab = window.open(
+        `${config.WALLET_URL[env]}/wallet?app=${window.location.origin}`,
+        '_blank',
+        `width=${width},height=${height},left=${left},top=${top}`
+      );
+
+      tabRef.current = newTab;
+    }
+  };
+
   const handleConnectToPushWallet = () => {
+    handleOpenNewWalletTab();
     setWalletVisibility(true);
     setConnectionStatus('connecting');
   };
 
   const sendMessageToPushWallet = (message: any) => {
-    if (iframeRef?.current?.contentWindow) {
+    if (tabRef.current) {
       try {
-        iframeRef.current.contentWindow.postMessage(
-          message,
-          config.WALLET_URL[env]
-        );
+        tabRef.current.postMessage(message, config.WALLET_URL[env]);
       } catch (error) {
         console.error('Error sending message to push wallet tab:', error);
       }
@@ -167,6 +184,13 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
     });
   };
 
+  const handleLogOut = async () => {
+    sendMessageToPushWallet({
+      type: CONSTANTS.APP_TO_WALLET_ACTION.LOG_OUT,
+      data: 'Log Out Event',
+    });
+  };
+
   useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
       switch (event.data.type) {
@@ -227,6 +251,7 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
         handleNewConnectionRequest,
         handleSendSignRequestToPushWallet,
         handleUserLogOutEvent,
+        handleLogOut,
       }}
     >
       {children}

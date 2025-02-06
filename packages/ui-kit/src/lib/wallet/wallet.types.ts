@@ -16,6 +16,7 @@ export enum WALLET_TO_APP_ACTION {
 export enum APP_TO_WALLET_ACTION {
   NEW_CONNECTION_REQUEST = 'newConnectionRequest',
   SIGN_MESSAGE = 'signMessage',
+  LOG_OUT = 'logOut',
 }
 
 export type ConnectionStatus =

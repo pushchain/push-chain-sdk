@@ -137,3 +137,15 @@ export const getInCAIP = (address: string, chain: string) => {
       : 'push:devnet'
   }:${address}`;
 };
+
+export const transformEmails = (emails: any[]) => {
+  return emails.map((email) => ({
+    from: email.from,
+    to: email.to,
+    subject: email.subject,
+    timestamp: email.ts,
+    body: email.body.content,
+    attachments: email.attachments,
+    txHash: email.txHash,
+  }));
+};

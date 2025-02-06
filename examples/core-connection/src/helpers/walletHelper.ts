@@ -1,3 +1,5 @@
+import { UniversalAddress } from '../../../../packages/ui-kit/src';
+
 export function centerMaskString(str: string) {
   if (str && str.length > 15) {
     const start = str.substring(0, 6);
@@ -60,4 +62,16 @@ export const convertCaipToObject = (
       },
     };
   }
+};
+
+export const convertToCaip = ({ address, chain }: UniversalAddress) => {
+  return `${
+    chain === 'eth'
+      ? 'eip155:1'
+      : chain === 'sol'
+      ? 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
+      : chain === 'bnb'
+      ? 'eip155:56'
+      : 'push:devnet'
+  }:${address}`;
 };

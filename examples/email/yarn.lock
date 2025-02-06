@@ -963,12 +963,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pushprotocol/pushchain-ui-kit@npm:^1.0.2":
-  version: 1.0.2
-  resolution: "@pushprotocol/pushchain-ui-kit@npm:1.0.2"
+"@pushprotocol/pushchain-ui-kit@npm:^1.0.3":
+  version: 1.0.3
+  resolution: "@pushprotocol/pushchain-ui-kit@npm:1.0.3"
   dependencies:
     tslib: "npm:^2.3.0"
-  checksum: 10/bccb97a3f29835569b33df5eb032c7f86c939a8a236267350c321eefede36acd273c59b4feb42cbbf5fe11ed342608324bec5f792d555522fb32cb89264e8283
+  checksum: 10/818afedb82299f6b6eef2d7b0bf269329c33cdbc8019664f0ada72673211f316d443a755a7474167446c36a0622396eaf7ab3ee8538e297238de7ff52bcd6dd0
   languageName: node
   linkType: hard
 
@@ -3674,7 +3674,7 @@ __metadata:
     "@eslint/js": "npm:^9.11.1"
     "@pushprotocol/node-core": "npm:^0.0.29"
     "@pushprotocol/push-chain": "npm:^0.1.7"
-    "@pushprotocol/pushchain-ui-kit": "npm:^1.0.2"
+    "@pushprotocol/pushchain-ui-kit": "npm:^1.0.3"
     "@radix-ui/react-icons": "npm:^1.3.0"
     "@radix-ui/react-popover": "npm:^1.1.2"
     "@radix-ui/react-scroll-area": "npm:^1.2.0"
@@ -6802,7 +6802,7 @@ __metadata:
 
 "shared-components@file:../../packages/shared-components::locator=email-app%40workspace%3A.":
   version: 0.1.0
-  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=ace6ac&locator=email-app%40workspace%3A."
+  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=48b7a6&locator=email-app%40workspace%3A."
   dependencies:
     "@emotion/react": "npm:^11.13.0"
     "@radix-ui/react-dialog": "npm:^1.1.1"
@@ -6823,7 +6823,7 @@ __metadata:
   peerDependencies:
     react: ^18.3.1
     react-dom: ^18.3.1
-  checksum: 10/60e51af9bd7ae0dc96ed0e18291966f1daf6d053f9d6b323d0c8aafb8d187db929c9d498dc19bdeeda8ce9be467a1310167b49537e9df520782c3f465700754a
+  checksum: 10/cb7641ef5ad6378388f0defe6b58a2153fc10da58f9fcc8014b1243fadf9ad5f09212c7f17cfdb736c2675e2d69ec4b9e079b7b12738a269adebd6104b402148
   languageName: node
   linkType: hard
 

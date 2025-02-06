@@ -1,13 +1,15 @@
 import { Box } from 'shared-components';
-import { useGlobalContext } from '../../../context/GlobalContext';
-import { TogglePushWalletButton } from '../../../../../../packages/ui-kit';
+import {
+  PushWalletButton,
+  usePushWalletContext,
+} from '../../../../../../packages/ui-kit';
 
 const SimulateHeader = () => {
-  const { account } = useGlobalContext();
+  const { universalAddress } = usePushWalletContext();
 
   return (
     <Box display="flex" justifyContent="end" width="100%">
-      {account && <TogglePushWalletButton account={account} />}
+      <PushWalletButton universalAddress={universalAddress} />
     </Box>
   );
 };

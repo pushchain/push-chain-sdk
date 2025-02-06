@@ -25,5 +25,4 @@ const config: ConfigType = {
     [ENV.LOCAL]: 'http://localhost:5173',
   },
 };
-
 export default config;
