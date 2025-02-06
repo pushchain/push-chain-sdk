@@ -62,7 +62,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
     setReplyTo,
     account,
     handleSendSignRequestToPushWallet,
-    getEmails,
+    getSentEmails,
     currTab,
   } = useAppContext();
   const [sendingMail, setSendingMail] = useState(false);
@@ -244,7 +244,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
       }
       console.log('Email sent:', txHash);
       setTimeout(() => {
-        getEmails();
+        getSentEmails();
       }, 5000);
       setEmailData({ subject: '', message: '' });
       setRecipients([]);
