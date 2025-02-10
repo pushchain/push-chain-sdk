@@ -27,7 +27,8 @@ const mockRecipients = [
 ];
 
 export const GlobalProvider = ({ children }: { children: ReactNode }) => {
-  const { account, handleSendSignRequestToPushWallet } = usePushWalletContext();
+  const { universalAddress, handleSendSignRequestToPushWallet } =
+    usePushWalletContext();
 
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
   const [mockTx, setMockTx] = useState<Transaction | null>(null);
@@ -54,7 +55,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
   return (
     <GlobalContext.Provider
       value={{
-        account,
+        account: universalAddress ? universalAddress.address : null,
         pushNetwork,
         mockTx,
         handleSendSignRequestToPushWallet,

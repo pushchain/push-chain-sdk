@@ -26,6 +26,12 @@ export type ConnectionStatus =
   | 'connected'
   | 'retry';
 
+export type UniversalAddress = {
+  chainId: string;
+  chain: string;
+  address: string;
+};
+
 export type WalletEventRespoonse = {
   signature?: Uint8Array;
   account?: string;

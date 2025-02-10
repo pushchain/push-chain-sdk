@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
-import { centerMaskString, getWalletDataFromAccount } from '../wallet.utils';
+import { centerMaskString } from '../wallet.utils';
 import { CHAIN_LOGO } from '../../constants';
 import { usePushWalletContext } from './PushWalletProvider';
 import { PushLogo, PushMonotone } from '../../common';
 import styled from 'styled-components';
+import { UniversalAddress } from '../wallet.types';
 
 type TogglePushWalletButtonProps = {
-  account: string;
+  universalAddress: UniversalAddress;
 };
 const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
-  account,
+  universalAddress,
 }) => {
-  const { setMinimiseWallet, handleLogOut } = usePushWalletContext();
-  const { chainId, address } = getWalletDataFromAccount(account);
+  const { handleLogOut } = usePushWalletContext();
+  const { chainId, address } = universalAddress;
 
   const [isDropdownOpen, setDropdownOpen] = useState(false);
 
@@ -101,15 +102,4 @@ const DropdownMenu = styled.div`
   border-radius: 12px;
   background-color: #17181b;
   color: rgba(255, 255, 255, 1);
-`;
-
-const DropdownItem = styled.button`
-  padding: 8px 16px;
-  cursor: pointer;
-  background: none;
-  border: none;
-  width: 100%;
-  text-align: left;
-  color: rgba(255, 255, 255, 1);
-  height: 48px;
 `;

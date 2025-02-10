@@ -1,12 +1,17 @@
 import { css } from 'styled-components';
 import { Box, Button, Front, Sale, Text } from 'shared-components';
-import { ConnectPushWalletButton } from '@pushprotocol/pushchain-ui-kit';
 import { useGlobalContext } from '../../../context/GlobalContext';
 import { LandingPageBanner } from './LandingPageBanner';
 import { SimulateTxText } from './SimulateTxText';
+import {
+  PushWalletButton,
+  usePushWalletContext,
+} from '@pushprotocol/pushchain-ui-kit';
 
 const LandingPageLeftComponent = () => {
   const { pushNetwork, mockTx } = useGlobalContext();
+
+  const { universalAddress } = usePushWalletContext();
 
   const featuresCard = [
     {
@@ -106,7 +111,13 @@ const LandingPageLeftComponent = () => {
               justifyContent="center"
               width="-webkit-fill-available"
             >
-              <ConnectPushWalletButton />
+              <PushWalletButton
+                universalAddress={universalAddress}
+                title="Connect Push Wallet"
+                styling={{
+                  width: 'inherit',
+                }}
+              />
             </Box>
           )}
 
