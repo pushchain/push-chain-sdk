@@ -831,12 +831,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pushprotocol/pushchain-ui-kit@npm:1.0.2":
-  version: 1.0.2
-  resolution: "@pushprotocol/pushchain-ui-kit@npm:1.0.2"
+"@pushprotocol/pushchain-ui-kit@npm:^1.0.4":
+  version: 1.0.4
+  resolution: "@pushprotocol/pushchain-ui-kit@npm:1.0.4"
   dependencies:
     tslib: "npm:^2.3.0"
-  checksum: 10/bccb97a3f29835569b33df5eb032c7f86c939a8a236267350c321eefede36acd273c59b4feb42cbbf5fe11ed342608324bec5f792d555522fb32cb89264e8283
+  checksum: 10/625c9744ca00b3bd0e5aedaa88a83d3deeff900b80ff3091c3cee6e9c3a0051d8b7be5cbff30942d4803615dfab90c962cefd8851d5f94eedcf95d0ad5e3aa51
   languageName: node
   linkType: hard
 
@@ -3054,7 +3054,7 @@ __metadata:
   dependencies:
     "@eslint/js": "npm:^9.9.0"
     "@pushprotocol/push-chain": "npm:^0.1.7"
-    "@pushprotocol/pushchain-ui-kit": "npm:1.0.2"
+    "@pushprotocol/pushchain-ui-kit": "npm:^1.0.4"
     "@types/react": "npm:^18.3.3"
     "@types/react-dom": "npm:^18.3.0"
     "@vitejs/plugin-react-swc": "npm:^3.5.0"
@@ -6822,7 +6822,7 @@ __metadata:
 
 "shared-components@file:../../packages/shared-components::locator=core-connection%40workspace%3A.":
   version: 0.1.0
-  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=10ada3&locator=core-connection%40workspace%3A."
+  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=9fe31a&locator=core-connection%40workspace%3A."
   dependencies:
     "@emotion/react": "npm:^11.13.0"
     "@radix-ui/react-dialog": "npm:^1.1.1"
@@ -6843,7 +6843,7 @@ __metadata:
   peerDependencies:
     react: ^18.3.1
     react-dom: ^18.3.1
-  checksum: 10/80296a3fc790cb8eddce91f9a12def1606e894d15aa9198b9c809370b302cb641d693a11cfe91d0f929f09aa75d296b79c49ea2733b5687d105fc41fcede3cde
+  checksum: 10/7d96c35a77cdbd873e64bb718d9fa8f44607528009e0586c7100f24b6a77d47ba5a89b2ee715086738fc39e6413a3880a32f1e32e53adedd86b586cce29fcbda
   languageName: node
   linkType: hard
 
