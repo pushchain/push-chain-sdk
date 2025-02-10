@@ -64,14 +64,10 @@ export const convertCaipToObject = (
   }
 };
 
-export const convertToCaip = ({ address, chain }: UniversalAddress) => {
-  return `${
-    chain === 'eth'
-      ? 'eip155:1'
-      : chain === 'sol'
-      ? 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
-      : chain === 'bnb'
-      ? 'eip155:56'
-      : 'push:devnet'
-  }:${address}`;
+export const convertToCaip = ({
+  address,
+  chain,
+  chainId,
+}: UniversalAddress) => {
+  return `${chain}:${chainId}:${address}`;
 };
