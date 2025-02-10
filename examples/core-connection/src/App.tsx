@@ -5,7 +5,7 @@ import { getBlocksCSSVariables, themeConfig } from 'shared-components';
 import { useDarkMode } from './common/hooks';
 import { RouterContainer } from './common/components';
 import { GlobalProvider } from './context/GlobalContext';
-import { CONSTANTS, PushWalletProvider } from '../../../packages/ui-kit';
+import { CONSTANTS, PushWalletProvider } from '@pushprotocol/pushchain-ui-kit';
 
 const GlobalStyle = createGlobalStyle`
   :root{

@@ -1,6 +1,5 @@
 import React, { FC } from 'react';
 import { usePushWalletContext } from './PushWalletProvider';
-import { walletConnectionButtonStatusMapper } from '../wallet.constants';
 import styled from 'styled-components';
 import { Spinner } from '../../common';
 
@@ -41,7 +40,6 @@ const ConnectPushWalletButton: FC<ConnectPushWalletButtonProps> = ({
         disabled={isConnectButtonDisbaled || isLoading}
         customStyle={styling}
       >
-        {/* {walletConnectionButtonStatusMapper[connectionStatus]} */}
         {connectionStatus === 'notConnected' ? title : connectionStatus}
         {isLoading && (
           <SpinnerContainer>

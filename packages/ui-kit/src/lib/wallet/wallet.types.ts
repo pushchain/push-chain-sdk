@@ -27,8 +27,8 @@ export type ConnectionStatus =
   | 'retry';
 
 export type UniversalAddress = {
-  chainId: string | null;
-  chain: string | null;
+  chainId: string;
+  chain: string;
   address: string;
 };
 

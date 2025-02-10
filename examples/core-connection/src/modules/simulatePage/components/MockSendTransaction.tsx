@@ -5,7 +5,7 @@ import { TransactionSnippet } from '../../../common/components';
 import { useGlobalContext } from '../../../context/GlobalContext';
 import { Transaction } from '@pushprotocol/push-chain/src/lib/generated/tx';
 import { centerMaskString, convertToCaip } from '../../../helpers';
-import { usePushWalletContext } from '../../../../../../packages/ui-kit/src';
+import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 
 const MockSendTransaction = () => {
   const { pushNetwork, mockTx } = useGlobalContext();

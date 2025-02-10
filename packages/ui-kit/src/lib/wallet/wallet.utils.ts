@@ -5,18 +5,7 @@ export const getWalletDataFromAccount = (
   chain: string;
   address: string;
 } => {
-  // // Check if the input is a valid non-empty string
-  // if (!account || typeof account !== 'string') {
-  //   return {
-  //     chain: null,
-  //     chainId: null,
-  //     address: null,
-  //   };
-  // }
-
   const addressComponent = account.split(':');
-
-  console.log('Address component', addressComponent);
 
   // Handle cases where there are exactly three components (chain, chainId, address)
   if (addressComponent.length === 3) {

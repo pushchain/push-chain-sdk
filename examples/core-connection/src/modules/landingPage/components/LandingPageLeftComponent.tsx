@@ -6,7 +6,7 @@ import { SimulateTxText } from './SimulateTxText';
 import {
   PushWalletButton,
   usePushWalletContext,
-} from '../../../../../../packages/ui-kit/src';
+} from '@pushprotocol/pushchain-ui-kit';
 
 const LandingPageLeftComponent = () => {
   const { pushNetwork, mockTx } = useGlobalContext();

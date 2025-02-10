@@ -1,4 +1,4 @@
-import { UniversalAddress } from '../../../../packages/ui-kit/src';
+import { UniversalAddress } from '@pushprotocol/pushchain-ui-kit';
 
 export function centerMaskString(str: string) {
   if (str && str.length > 15) {

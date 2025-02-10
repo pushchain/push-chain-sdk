@@ -16,20 +16,13 @@ const PushWalletButton: React.FC<PushWalletButtonProps> = ({
   title = 'Login',
   styling,
 }) => {
-  // If a custom component is provided, render it
-  if (component) {
+  // If universal address is present render the button
+  if (universalAddress) {
+    return <TogglePushWalletButton universalAddress={universalAddress} />;
+  } else if (component) {
+    // If no UA and custom component, then render the component
     return <>{component}</>;
-  }
-
-  return (
-    <>
-      {universalAddress ? (
-        <TogglePushWalletButton universalAddress={universalAddress} />
-      ) : (
-        <ConnectPushWalletButton title={title} styling={styling} />
-      )}
-    </>
-  );
+  } else return <ConnectPushWalletButton title={title} styling={styling} />; // If no UA and no custom component, then render the connect button
 };
 
 export { PushWalletButton };
