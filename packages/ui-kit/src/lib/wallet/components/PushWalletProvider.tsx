@@ -28,7 +28,6 @@ export type PushWalletContextType = {
   handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>;
   setMinimiseWallet: React.Dispatch<React.SetStateAction<boolean>>;
   handleUserLogOutEvent: () => void;
-  handleLogOut: () => void;
   isIframeLoading: boolean;
   setIframeLoading: React.Dispatch<React.SetStateAction<boolean>>;
 };
@@ -58,40 +57,24 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
     useState<ConnectionStatus>('notConnected');
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const tabRef = useRef<Window | null>(null);
 
   const signatureResolverRef = useRef<{
     success?: (data: WalletEventRespoonse) => void;
     error?: (data: WalletEventRespoonse) => void;
   } | null>(null);
 
-  const handleOpenNewWalletTab = () => {
-    if (!tabRef.current) {
-      const width = 600;
-      const height = 800;
-      const left = screen.width - width - 100;
-      const top = 150;
-
-      const newTab = window.open(
-        `${config.WALLET_URL[env]}/wallet?app=${window.location.origin}`,
-        '_blank',
-        `width=${width},height=${height},left=${left},top=${top}`
-      );
-
-      tabRef.current = newTab;
-    }
-  };
-
   const handleConnectToPushWallet = () => {
-    handleOpenNewWalletTab();
     setWalletVisibility(true);
     setConnectionStatus('connecting');
   };
 
   const sendMessageToPushWallet = (message: any) => {
-    if (tabRef.current) {
+    if (iframeRef?.current?.contentWindow) {
       try {
-        tabRef.current.postMessage(message, config.WALLET_URL[env]);
+        iframeRef.current.contentWindow.postMessage(
+          message,
+          config.WALLET_URL[env]
+        );
       } catch (error) {
         console.error('Error sending message to push wallet tab:', error);
       }
@@ -169,37 +152,37 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
     });
   };
 
-  const handleLogOut = async () => {
-    sendMessageToPushWallet({
-      type: APP_TO_WALLET_ACTION.LOG_OUT,
-      data: 'Log Out Event',
-    });
-  };
-
   useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
       switch (event.data.type) {
         case WALLET_TO_APP_ACTION.IS_LOGGED_IN:
+          console.log('User has logged In', event.data.data);
           handleIsLoggedInAction(event.data.data);
           break;
         case WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS:
+          console.log('App Connection Success');
           handleAppConnectionSuccess(event.data.data);
           break;
         case WALLET_TO_APP_ACTION.APP_CONNECTION_REJECTED:
+          console.log('App Connection Rejected');
           handleAppConnectionRejection();
           break;
         case WALLET_TO_APP_ACTION.APP_CONNECTION_RETRY:
+          console.log('App Connection Retry');
           handleAppConnectionRetry();
           break;
         case WALLET_TO_APP_ACTION.SIGNATURE:
+          console.log('Signature received');
           if (signatureResolverRef.current) {
             signatureResolverRef?.current?.success?.(event.data.data);
           }
           break;
         case WALLET_TO_APP_ACTION.IS_LOGGED_OUT:
+          console.log('User loggged out');
           handleUserLogOutEvent();
           break;
         case WALLET_TO_APP_ACTION.ERROR:
+          console.log('Error from the child tab');
           signatureResolverRef?.current?.error?.(event.data.data);
           break;
         default:
@@ -229,7 +212,6 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
         handleNewConnectionRequest,
         handleSendSignRequestToPushWallet,
         handleUserLogOutEvent,
-        handleLogOut,
       }}
     >
       {children}

@@ -20,8 +20,8 @@ export type ConfigType = {
 const config: ConfigType = {
   WALLET_URL: {
     [ENV.PROD]: 'https://wallet.push.org',
-    [ENV.STAGING]: 'https://push-protocol.github.io/push-wallet',
-    [ENV.DEV]: 'https://push-protocol.github.io/push-wallet',
+    [ENV.STAGING]: 'https://wallet-alpha.push.org',
+    [ENV.DEV]: 'https://wallet-alpha.push.org',
     [ENV.LOCAL]: 'http://localhost:5173',
   },
 };
