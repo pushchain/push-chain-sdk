@@ -1,14 +1,23 @@
-import { FC } from 'react';
-import { usePushWalletContext } from './WalletProvider';
-import { walletConnectionButtonStatusMapper } from '../wallet.constants';
+import React, { FC } from 'react';
+import { usePushWalletContext } from './PushWalletProvider';
+import styled from 'styled-components';
+import { Spinner } from '../../common';
 
 export type ConnectPushWalletButtonProps = {
   showLogOutButton?: boolean;
+  title?: string;
+  styling?: React.CSSProperties;
 };
 
-const ConnectPushWalletButton: FC<ConnectPushWalletButtonProps> = () => {
-  const { connectionStatus, handleConnectToPushWallet, handleNewConnectionRequest } =
-    usePushWalletContext();
+const ConnectPushWalletButton: FC<ConnectPushWalletButtonProps> = ({
+  title,
+  styling,
+}) => {
+  const {
+    connectionStatus,
+    handleConnectToPushWallet,
+    handleNewConnectionRequest,
+  } = usePushWalletContext();
 
   const isConnectButtonDisbaled =
     connectionStatus === 'connected' ||
@@ -19,59 +28,64 @@ const ConnectPushWalletButton: FC<ConnectPushWalletButtonProps> = () => {
     connectionStatus === 'connecting' || connectionStatus === 'authenticating';
 
   const handleConnectWalletButton = () => {
-    connectionStatus === 'retry' ? handleNewConnectionRequest() : handleConnectToPushWallet()
-  }
+    connectionStatus === 'retry'
+      ? handleNewConnectionRequest()
+      : handleConnectToPushWallet();
+  };
 
   return (
-    <div>
-      <button
-        className="send-button"
+    <>
+      <ConnectButton
         onClick={handleConnectWalletButton}
-        disabled={isConnectButtonDisbaled}
-        style={{
-          backgroundColor: '#d548ec',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '5px',
-          padding: '10px 20px',
-          cursor: 'pointer',
-          fontSize: '1rem',
-        }}
+        disabled={isConnectButtonDisbaled || isLoading}
+        customStyle={styling}
       >
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'row',
-            gap: '4px',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {isLoading && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <div
-                style={{
-                  border: '4px solid #e0e0e0',
-                  borderTop: '4px solid #d548ec',
-                  borderRadius: '50%',
-                  width: '16px',
-                  height: '16px',
-                  animation: 'spin 1s linear infinite',
-                }}
-              ></div>
-            </div>
-          )}
-          {walletConnectionButtonStatusMapper[connectionStatus]}{' '}
-        </div>
-      </button>
-    </div>
+        {connectionStatus === 'notConnected' ? title : connectionStatus}
+        {isLoading && (
+          <SpinnerContainer>
+            <Spinner />
+          </SpinnerContainer>
+        )}
+      </ConnectButton>
+    </>
   );
 };
 
 export { ConnectPushWalletButton };
+
+const ConnectButton = styled.button<{ customStyle?: React.CSSProperties }>`
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border: none;
+  background-color: #d548ec;
+  color: rgba(255, 255, 255, 1);
+  border-radius: 12px;
+  gap: 4px;
+  height: 48px;
+  padding: 16px 24px;
+  min-width: 100px;
+  leading-trim: both;
+  text-edge: cap;
+  font-family: FK Grotesk Neu;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 16px;
+  width: inherit;
+
+  ${(props) =>
+    props.customStyle &&
+    Object.entries(props.customStyle)
+      .map(
+        ([key, value]) =>
+          `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value};`
+      )
+      .join('\n')}
+`;
+const SpinnerContainer = styled.div`
+  padding: 4px;
+`;

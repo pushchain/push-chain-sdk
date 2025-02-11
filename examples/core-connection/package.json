@@ -5,19 +5,24 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "deploy:vercel": "vercel build --prod && vercel deploy --prebuilt --prod",
-    "deploy:dev": "npm run build && echo 'simulate.push.org' > ./dist/CNAME && gh-pages -d dist -r https://github.com/push-protocol/simulate-dev-deployment"
+    "deploy": "VITE_DEPLOYMENT_MODE=production npm run build && echo 'simulate.push.org' > ./dist/CNAME && gh-pages -d dist -r https://github.com/push-protocol/simulate-dev-deployment",
+    "deploy:alpha": "VITE_DEPLOYMENT_MODE=alpha npm run build && echo 'simulate-alpha.push.org' > ./dist/CNAME && gh-pages -d dist -r https://github.com/push-protocol/simulate-alpha-deployment"
   },
   "dependencies": {
     "@pushprotocol/push-chain": "^0.1.7",
-    "@pushprotocol/pushchain-ui-kit": "^0.0.7",
+    "@pushprotocol/pushchain-ui-kit": "^1.0.5",
+    "formik": "^2.4.6",
     "gh-pages": "^6.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "viem": "^2.21.34"
+    "react-router-dom": "^7.0.2",
+    "shared-components": "../../packages/shared-components",
+    "viem": "^2.21.34",
+    "yup": "^1.5.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",

@@ -4,6 +4,7 @@ export enum WALLET_TO_APP_ACTION {
 
   APP_CONNECTION_REJECTED = 'appConnectionRejected',
   APP_CONNECTION_SUCCESS = 'appConnectionSuccess',
+  APP_CONNECTION_RETRY = 'appConnectionRetry',
 
   IS_LOGGED_OUT = 'loggedOut',
   TAB_CLOSED = 'tabClosed',
@@ -15,6 +16,7 @@ export enum WALLET_TO_APP_ACTION {
 export enum APP_TO_WALLET_ACTION {
   NEW_CONNECTION_REQUEST = 'newConnectionRequest',
   SIGN_MESSAGE = 'signMessage',
+  LOG_OUT = 'logOut',
 }
 
 export type ConnectionStatus =
@@ -23,6 +25,12 @@ export type ConnectionStatus =
   | 'authenticating'
   | 'connected'
   | 'retry';
+
+export type UniversalAddress = {
+  chainId: string;
+  chain: string;
+  address: string;
+};
 
 export type WalletEventRespoonse = {
   signature?: Uint8Array;

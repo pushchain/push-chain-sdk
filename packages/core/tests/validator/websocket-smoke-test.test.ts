@@ -1,9 +1,5 @@
-import { PushNetwork } from '../../src';
-import { CONSTANTS } from '../../src';
-import { Tx } from '../../src';
-import {
-    generatePrivateKey
-} from 'viem/accounts';
+
+import { CONSTANTS, PushChain } from '../../src';
 import { sendCustomTx } from './backend-smoke-test.test';
 
 const sleep = (ms: number): Promise<void> => {
@@ -13,18 +9,18 @@ const sleep = (ms: number): Promise<void> => {
 describe('WebSocket Smoke Test', () => {
     const env = CONSTANTS.ENV.LOCAL;
 
-    let network: PushNetwork;
+    let pushChain: PushChain;
 
     beforeAll(async () => {
-        network = await PushNetwork.initialize(env);
+        pushChain = await PushChain.initialize(null, { network: env });
     });
 
     beforeEach(async () => {
-        await network.ws.connect();
+        await pushChain.ws.connect();
     });
 
     afterEach(async () => {
-        network.ws.disconnect();
+        pushChain.ws.disconnect();
     });
 
     afterAll(async () => {
@@ -32,7 +28,7 @@ describe('WebSocket Smoke Test', () => {
     });
 
     it('should successfully connect to WebSocket server', async () => {
-        expect(network.ws.isConnected()).toBe(true);
+        expect(pushChain.ws.isConnected()).toBe(true);
     });
 
     it('should successfully perform handshake exchange', async () => {
@@ -45,7 +41,7 @@ describe('WebSocket Smoke Test', () => {
                 reject(new Error('Handshake timeout - no HANDSHAKE_ACK received'));
             }, 5000);
 
-            const ws = network.ws as any;
+            const ws = pushChain.ws as any;
             ws.ws.on('message', (data: string) => {
                 try {
                     const message = JSON.parse(data);
@@ -70,7 +66,6 @@ describe('WebSocket Smoke Test', () => {
             ws.ws.send(JSON.stringify(handshakeMsg));
         });
 
-        // Wait for handshake to complete
         await handshakePromise;
 
         // Validate handshake response
@@ -83,7 +78,7 @@ describe('WebSocket Smoke Test', () => {
     it('should follow correct handshake protocol se-quence', async () => {
         const messages: any[] = [];
         const sentMessages: any[] = [];
-        const ws = network.ws as any;
+        const ws = pushChain.ws as any;
 
         // Store original send method and patch it to track sent messages
         const originalSend = ws.ws.send.bind(ws.ws);
@@ -160,7 +155,7 @@ describe('WebSocket Smoke Test', () => {
     }, 10000);
 
     it('should perform handshake and receive SUBSCRIBE_ACK with default filter', async () => {
-        const ws = network.ws as any;
+        const ws = pushChain.ws as any;
 
         // Perform handshake
         const handshakePromise = new Promise<void>((resolve, reject) => {
@@ -217,7 +212,7 @@ describe('WebSocket Smoke Test', () => {
             });
 
             // Send subscription request
-            network.ws.subscribeToBlocks(() => {
+            pushChain.ws.subscribeToBlocks(() => {
                 // No need to handle block updates in this test
             });
         });
@@ -230,7 +225,7 @@ describe('WebSocket Smoke Test', () => {
     }, 10000);
 
     it('should perform handshake and receive SUBSCRIBE_ACK with custom filters', async () => {
-        const ws = network.ws as any;
+        const ws = pushChain.ws as any;
 
         // Perform handshake
         const handshakePromise = new Promise<void>((resolve, reject) => {
@@ -293,7 +288,7 @@ describe('WebSocket Smoke Test', () => {
             });
 
             // Send subscription request with custom filters
-            network.ws.subscribeToBlocks(() => {
+            pushChain.ws.subscribeToBlocks(() => {
                 // No need to handle block updates in this test
             }, customFilters);
         });
@@ -306,7 +301,7 @@ describe('WebSocket Smoke Test', () => {
     }, 10000);
 
     it('should subscribe and receive a block after initiating a transaction', async () => {
-        const ws = network.ws as any;
+        const ws = pushChain.ws as any;
 
         // Perform handshake
         const handshakePromise = new Promise<void>((resolve, reject) => {
@@ -337,7 +332,6 @@ describe('WebSocket Smoke Test', () => {
             ws.ws.send(JSON.stringify(handshakeMsg));
         });
 
-        // Wait for handshake to complete
         await handshakePromise;
 
         // Subscribe to block updates
@@ -347,9 +341,9 @@ describe('WebSocket Smoke Test', () => {
         const subscribePromise = new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => {
                 reject(new Error('Block not received within timeout'));
-            }, 30000); // Timeout for receiving a block
+            }, 30000);
 
-            network.ws.subscribeToBlocks((block) => {
+            pushChain.ws.subscribeToBlocks((block) => {
                 blockReceived = true;
                 receivedBlock = block;
                 clearTimeout(timeout);
@@ -357,22 +351,18 @@ describe('WebSocket Smoke Test', () => {
             });
         });
 
-        const txInstance = await Tx.initialize(env);
-        await sendCustomTx(txInstance, generatePrivateKey(), 0);
+        await sendCustomTx(pushChain, 0);
 
-        // Wait for block to be received
         await subscribePromise;
 
         // Assertions
         expect(blockReceived).toBe(true);
         expect(receivedBlock).toBeDefined();
         expect(receivedBlock.txs.length).toBeGreaterThan(0);
-
-        console.log('Block received:', JSON.stringify(receivedBlock, null, 2));
-    }, 10000);
+    }, 30000);
 
     it('should subscribe with custom filters and receive a block after initiating multiple transactions', async () => {
-        const ws = network.ws as any;
+        const ws = pushChain.ws as any;
 
         // Perform handshake
         const handshakePromise = new Promise<void>((resolve, reject) => {
@@ -419,9 +409,9 @@ describe('WebSocket Smoke Test', () => {
         const subscribePromise = new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => {
                 reject(new Error('Block not received within timeout'));
-            }, 30000); // Timeout for receiving a block
+            }, 30000);
 
-            network.ws.subscribeToBlocks((block) => {
+            pushChain.ws.subscribeToBlocks((block) => {
                 blockReceived = true;
                 receivedBlock = block;
                 clearTimeout(timeout);
@@ -430,9 +420,8 @@ describe('WebSocket Smoke Test', () => {
         });
 
         // Initiate multiple transactions to trigger a block
-        const txInstance = await Tx.initialize(env);
         for (let i = 0; i < 3; i++) {
-            await sendCustomTx(txInstance, generatePrivateKey(), i);
+            await sendCustomTx(pushChain, i);
         }
 
         // Wait for block to be received
@@ -448,7 +437,7 @@ describe('WebSocket Smoke Test', () => {
     }, 10000);
 
     // it('should subscribe with multiple filters and receive a block after initiating transactions', async () => {
-    //     const ws = network.ws as any;
+    //     const ws = pushChain.ws as any;
 
     //     // Perform handshake
     //     const handshakePromise = new Promise<void>((resolve, reject) => {
@@ -497,7 +486,7 @@ describe('WebSocket Smoke Test', () => {
     //             reject(new Error('Block not received within timeout'));
     //         }, 30000); // Timeout for receiving a block
 
-    //         network.ws.subscribeToBlocks((block) => {
+    //         pushChain.ws.subscribeToBlocks((block) => {
     //             blockReceived = true;
     //             receivedBlock = block;
     //             clearTimeout(timeout);
@@ -524,7 +513,7 @@ describe('WebSocket Smoke Test', () => {
     // }, 30000);
 
     it('should handle reconnection and maintain subscription', async () => {
-        const ws = network.ws as any;
+        const ws = pushChain.ws as any;
         let blockCount = 0;
         let receivedBlock: any;
 
@@ -534,7 +523,7 @@ describe('WebSocket Smoke Test', () => {
                 reject(new Error('Block not received within timeout'));
             }, 30000);
 
-            network.ws.subscribeToBlocks((block) => {
+            pushChain.ws.subscribeToBlocks((block) => {
                 blockCount++;
                 receivedBlock = block;
                 clearTimeout(timeout);
@@ -543,22 +532,21 @@ describe('WebSocket Smoke Test', () => {
         });
 
         // Initiate a transaction to trigger initial block
-        const txInstance = await Tx.initialize(env);
-        await sendCustomTx(txInstance, generatePrivateKey(), 0);
+        await sendCustomTx(pushChain, 0);
 
         // Wait for first block
         await subscribePromise;
         const initialBlockCount = blockCount;
 
         // Test disconnection
-        network.ws.disconnect();
+        pushChain.ws.disconnect();
         await sleep(1000); // Give time for disconnect
-        expect(network.ws.isConnected()).toBe(false);
+        expect(pushChain.ws.isConnected()).toBe(false);
         
         // Test reconnection
-        await network.ws.connect();
+        await pushChain.ws.connect();
         await sleep(1000); // Give time for connect
-        expect(network.ws.isConnected()).toBe(true);
+        expect(pushChain.ws.isConnected()).toBe(true);
 
         // Verify subscription is maintained by sending new transactions
         const newBlockPromise = new Promise<void>((resolve, reject) => {
@@ -566,7 +554,7 @@ describe('WebSocket Smoke Test', () => {
                 reject(new Error('No new blocks received after reconnection'));
             }, 30000);
 
-            network.ws.subscribeToBlocks((block) => {
+            pushChain.ws.subscribeToBlocks((block) => {
                 blockCount++;
                 receivedBlock = block;
                 clearTimeout(timeout);
@@ -576,7 +564,7 @@ describe('WebSocket Smoke Test', () => {
 
         // Send new transactions after reconnection
         for (let i = 0; i < 3; i++) {
-            await sendCustomTx(txInstance, generatePrivateKey(), i);
+            await sendCustomTx(pushChain, i);
         }
 
         // Wait for new block after reconnection
@@ -596,11 +584,11 @@ describe('WebSocket Smoke Test', () => {
     }, 30000);
 
     // it('should handle connection interruption', async () => {
-    //     const ws = network.ws as any;
+    //     const ws = pushChain.ws as any;
         
     //     // First ensure we're connected
-    //     if (!network.ws.isConnected()) {
-    //         await network.ws.connect();
+    //     if (!pushChain.ws.isConnected()) {
+    //         await pushChain.ws.connect();
     //     }
 
     //     let blockCount = 0;
@@ -608,7 +596,7 @@ describe('WebSocket Smoke Test', () => {
     //     const receivedBlocks: any[] = [];
         
     //     // Subscribe to blocks and track metrics
-    //     await network.ws.subscribeToBlocks((block) => {
+    //     await pushChain.ws.subscribeToBlocks((block) => {
     //         blockCount++;
     //         lastBlockHash = block.blockHash;
     //         receivedBlocks.push(block);
@@ -629,7 +617,7 @@ describe('WebSocket Smoke Test', () => {
     //             reject(new Error('Block not received within timeout'));
     //         }, 30000);
 
-    //         network.ws.subscribeToBlocks((block) => {
+    //         pushChain.ws.subscribeToBlocks((block) => {
     //             blockCount++;
     //             clearTimeout(timeout);
     //             resolve();
@@ -647,15 +635,15 @@ describe('WebSocket Smoke Test', () => {
 
     //     // Test disconnection
     //     console.log('Disconnecting...');
-    //     network.ws.disconnect();
+    //     pushChain.ws.disconnect();
     //     await sleep(1000); // Give time for disconnect
-    //     expect(network.ws.isConnected()).toBe(false);
+    //     expect(pushChain.ws.isConnected()).toBe(false);
         
     //     // Test reconnection
     //     console.log('Reconnecting...');
-    //     await network.ws.connect();
+    //     await pushChain.ws.connect();
     //     await sleep(1000); // Give time for connect
-    //     expect(network.ws.isConnected()).toBe(true);
+    //     expect(pushChain.ws.isConnected()).toBe(true);
     //     console.log('Reconnected successfully');
 
     //     // Verify subscription is maintained by sending new transactions
@@ -664,7 +652,7 @@ describe('WebSocket Smoke Test', () => {
     //             reject(new Error('No new blocks received after reconnection'));
     //         }, 30000);
 
-    //         network.ws.subscribeToBlocks((block) => {
+    //         pushChain.ws.subscribeToBlocks((block) => {
     //             blockCount++;
     //             clearTimeout(timeout);
     //             resolve();
@@ -685,7 +673,7 @@ describe('WebSocket Smoke Test', () => {
     //     // Assertions
     //     expect(blockCount).toBeGreaterThan(initialBlockCount);
     //     expect(lastBlockHash).not.toBe(initialBlockHash);
-    //     expect(network.ws.isConnected()).toBe(true);
+    //     expect(pushChain.ws.isConnected()).toBe(true);
     //     expect(receivedBlocks[receivedBlocks.length - 1].txs).toBeDefined();
     //     expect(receivedBlocks[receivedBlocks.length - 1].txs.length).toBeGreaterThan(0);
 
@@ -700,7 +688,7 @@ describe('WebSocket Smoke Test', () => {
     // }, 30000);
 
     it('should handle handshake failure gracefully', async () => {
-        const ws = network.ws as any;
+        const ws = pushChain.ws as any;
         
         // Store received messages
         const receivedMessages: any[] = [];
@@ -746,7 +734,7 @@ describe('WebSocket Smoke Test', () => {
     }, 10000);
 
     // it('should successfully subscribe and unsubscribe', async () => {
-    //     const ws = network.ws as any;
+    //     const ws = pushChain.ws as any;
         
     //     // Perform handshake
     //     const handshakeMsg = {
@@ -772,7 +760,7 @@ describe('WebSocket Smoke Test', () => {
     //     });
 
     //     // Subscribe to blocks
-    //     const subscriptionId = await network.ws.subscribeToBlocks(() => {
+    //     const subscriptionId = await pushChain.ws.subscribeToBlocks(() => {
     //         // Callback intentionally empty for this test
     //     });
     //     expect(subscriptionId).toBeDefined();
@@ -790,7 +778,7 @@ describe('WebSocket Smoke Test', () => {
     //             }
     //         });
 
-    //         network.ws.unsubscribe(subscriptionId);
+    //         pushChain.ws.unsubscribe(subscriptionId);
     //     });
 
     //     await unsubscribePromise;

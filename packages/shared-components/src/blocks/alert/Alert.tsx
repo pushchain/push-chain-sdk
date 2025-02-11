@@ -1,12 +1,12 @@
-import type { FC } from "react";
-import styled, { FlattenSimpleInterpolation } from "styled-components";
+import type { FC } from 'react';
+import styled, { FlattenSimpleInterpolation } from 'styled-components';
 
-import type { TransformedHTMLAttributes } from "../Blocks.types";
-import type { AlertVariant } from "./Alert.types";
-import { alertVariants } from "./Alert.utils";
-import { Cross } from "../icons";
-import { HoverableSVG } from "../hoverableSVG";
-import { getTextVariantStyles } from "../Blocks.utils";
+import type { TransformedHTMLAttributes } from '../Blocks.types';
+import type { AlertVariant } from './Alert.types';
+import { alertVariants } from './Alert.utils';
+import { Cross } from '../icons';
+import { HoverableSVG } from '../hoverableSVG';
+import { getTextVariantStyles } from '../Blocks.utils';
 
 export type AlertProps = {
   /* Additional prop from styled components to apply custom css to Alert */
@@ -51,7 +51,7 @@ const StyledAlert = styled.div<AlertProps>`
   }
 
   /* Custom CSS applied via styled component css prop */
-  ${(props) => props.css || ""}
+  ${(props) => props.css || ''}
 `;
 
 const StyledLink = styled.div<{ variant: AlertVariant }>`
@@ -65,6 +65,7 @@ const TextContainer = styled.div`
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: center;
   gap: var(--spacing-xxxs);
   flex: 1 0 0;
 `;
@@ -78,12 +79,12 @@ const RightContainer = styled.div`
 
 const Heading = styled.p`
   white-space: break-spaces;
-  ${() => getTextVariantStyles("h5-semibold", "components-alert-text-default")}
+  ${() => getTextVariantStyles('h5-semibold', 'components-alert-text-default')}
 `;
 
 const Description = styled.p`
   white-space: break-spaces;
-  ${() => getTextVariantStyles("bs-regular", "components-alert-text-body")}
+  ${() => getTextVariantStyles('bs-regular', 'components-alert-text-body')}
 `;
 
 const Alert: FC<AlertProps> = ({
@@ -91,9 +92,9 @@ const Alert: FC<AlertProps> = ({
   heading,
   onClose,
   onAction,
-  actionText = "Try Again",
+  actionText = 'Try Again',
   showIcon = true,
-  variant = "info",
+  variant = 'info',
   ...props
 }) => {
   const { icon: Icon } = alertVariants[variant];
@@ -126,6 +127,6 @@ const Alert: FC<AlertProps> = ({
   );
 };
 
-Alert.displayName = "Alert";
+Alert.displayName = 'Alert';
 
 export { Alert };

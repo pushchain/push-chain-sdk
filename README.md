@@ -2,10 +2,13 @@
     <a href="https://push.org/#gh-light-mode-only">
     <img width='20%' height='10%' src="https://res.cloudinary.com/drdjegqln/image/upload/v1686227557/Push-Logo-Standard-Dark_xap7z5.png">
     </a>
+    <a href="https://push.org/#gh-dark-mode-only">
+    <img width='20%' height='10%' src="https://res.cloudinary.com/drdjegqln/image/upload/v1686227558/Push-Logo-Standard-White_dlvapc.png">
+    </a>
 </h1>
 
 <p align="center">
-  <i align="center">Push Protocol is a web3 communication network, enabling cross-chain notifications and messaging for dapps, wallets, and services.🚀</i>
+  <i align="center">Push protocol is evolving to Push Chain, a shared-state L1 designed to deliver universal app experiences (Any Chain. Any User. Any App).🚀</i>
 </p>
 
 <h4 align="center">
@@ -20,10 +23,6 @@
     <img src="https://img.shields.io/badge/youtube-d95652.svg?style=flat-square&" alt="youtube">
   </a>
 </h4>
-
-<p align="center">
-    <img src="https://res.cloudinary.com/drdjegqln/image/upload/v1686230764/1500x500_bhmpkc.jpg" alt="dashboard"/>
-</p>
 
 ## PUSH-CHAIN-SDK
 
@@ -63,6 +62,11 @@ Not sure where to start? Join our discord and we will help you get started!
 
 <a href="https://discord.com/invite/pushprotocol" title="Join Our Community"><img src="https://www.freepnglogos.com/uploads/discord-logo-png/playerunknown-battlegrounds-bgparty-15.png" width="200" alt="Discord" /></a>
 
-## License
+## Licenses
 
-Check out our License <a href='https://github.com/push-protocol/push-network-sdk/blob/main/LICENSE.md'>HERE </a>
+All crates of this repository are licensed under either of
+
+- Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.

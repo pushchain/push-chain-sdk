@@ -1,25 +1,33 @@
-import { usePrivy } from '@privy-io/react-auth';
+import { getBlocksCSSVariables, themeConfig } from 'shared-components';
+import { createGlobalStyle, ThemeProvider } from 'styled-components';
+import AppRoutes from './routes';
+import { BrowserRouter } from 'react-router-dom';
+import { CONSTANTS, PushWalletProvider } from '@pushprotocol/pushchain-ui-kit';
+import { AppProvider } from './context/AppContext';
 
-import { useAppContext } from './context/app-context';
-import LoggedInView from './components/logged-in-view';
-import Login from './components/login';
+const GlobalStyle = createGlobalStyle`
+  :root{
+    /* Font Family */
+      --font-family: 'FK Grotesk Neu';
+
+    /* New blocks theme css variables*/
+    
+    ${(props) => getBlocksCSSVariables(props.theme.blocksTheme)}
+  }
+`;
 
 function App() {
-  const { ready, authenticated } = usePrivy();
-  const { pushAccount } = useAppContext();
   return (
-    <>
-      {ready ? (
-        <main className="h-screen w-screen">
-          {authenticated || pushAccount ? <LoggedInView /> : <Login />}
-        </main>
-      ) : (
-        <div className="flex flex-col gap-4 items-center justify-center h-screen w-full">
-          <div className="w-8 h-8 animate-ping bg-primary rounded-full"></div>
-          <p>Loading</p>
-        </div>
-      )}
-    </>
+    <ThemeProvider theme={themeConfig.light}>
+      <GlobalStyle />
+      <PushWalletProvider env={CONSTANTS.ENV.PROD}>
+        <AppProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </AppProvider>
+      </PushWalletProvider>
+    </ThemeProvider>
   );
 }
 

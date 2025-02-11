@@ -4,6 +4,7 @@
   "main": "dist/shared-components.cjs.js",
   "module": "dist/shared-components.es.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "exports": {
     ".": {
       "import": "./dist/shared-components.es.js",
@@ -13,7 +14,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --build && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },

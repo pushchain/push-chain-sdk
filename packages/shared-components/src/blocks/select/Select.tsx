@@ -1,6 +1,18 @@
-import React, { useRef, useState, ReactNode, useEffect, useCallback } from 'react';
+import React, {
+  useRef,
+  useState,
+  ReactNode,
+  useEffect,
+  useCallback,
+} from 'react';
 import styled, { FlattenSimpleInterpolation, css } from 'styled-components';
-import { Combobox, ComboboxInput, ComboboxPopover, ComboboxList, ComboboxOption } from '@reach/combobox';
+import {
+  Combobox,
+  ComboboxInput,
+  ComboboxPopover,
+  ComboboxList,
+  ComboboxOption,
+} from '@reach/combobox';
 import '@reach/combobox/styles.css';
 
 import { textVariants } from '../text';
@@ -41,7 +53,10 @@ export type SelectProps = {
   action?: ReactNode;
 };
 
-const Container = styled.div<{ css?: FlattenSimpleInterpolation; label: SelectProps['label'] }>`
+const Container = styled.div<{
+  css?: FlattenSimpleInterpolation;
+  label: SelectProps['label'];
+}>`
   align-items: flex-start;
   display: flex;
   flex-direction: column;
@@ -57,9 +72,14 @@ const StyledBox = styled.div<{
   success?: boolean;
   disabled?: boolean;
 }>`
-  ${({ theme, success, error, disabled }) => {
-    const colors = theme?.blocksTheme?.colors;
-    const defaultState = error ? 'danger' : success ? 'success' : disabled ? 'disabled' : 'default';
+  ${({ success, error, disabled }) => {
+    const defaultState = error
+      ? 'danger'
+      : success
+      ? 'success'
+      : disabled
+      ? 'disabled'
+      : 'default';
     const focusState = error ? 'danger' : success ? 'success' : 'focus';
 
     return css`
@@ -69,27 +89,22 @@ const StyledBox = styled.div<{
       align-items: center;
       justify-content: space-between;
       border-radius: var(--radius-xs, 12px);
-      border: 1.5px solid
-        var(--components-inputs-stroke-${defaultState}, ${colors[`components-inputs-stroke-${defaultState}`]});
-      background: var(
-        --components-inputs-background-${defaultState},
-        ${colors[`components-inputs-background-${defaultState}`]}
-      );
+      border: 1.5px solid var(--components-inputs-stroke-${defaultState});
+      background: var(--components-inputs-background-${defaultState});
       padding: var(--spacing-xs, 12px);
       &:hover {
         border: 1.5px solid var(--components-inputs-stroke-hover, #c4cbd5);
       }
 
       &:focus-within {
-        border: 1.5px solid
-          var(--components-inputs-stroke-${focusState}, ${colors[`components-inputs-stroke-${focusState}`]});
+        border: 1.5px solid var(--components-inputs-stroke-${focusState});
         outline: none;
       }
 
       [data-reach-combobox-input] {
         background-color: transparent;
         border: none;
-        color: var(--components-inputs-text-default, ${colors['components-inputs-text-default']});
+        color: var(--components-inputs-text-default);
 
         display: flex;
 
@@ -110,11 +125,11 @@ const StyledBox = styled.div<{
         &:disabled {
           background-color: transparent;
           cursor: not-allowed;
-          color: var(--components-inputs-text-disabled, ${colors['components-inputs-text-disabled']});
+          color: var(--components-inputs-text-disabled);
         }
 
         ::placeholder {
-          color: var(--components-inputs-text-placeholder, ${colors['components-inputs-text-placeholder']});
+          color: var(--components-inputs-text-placeholder);
         }
       }
     `;
@@ -122,13 +137,15 @@ const StyledBox = styled.div<{
 `;
 
 const StyledPopover = styled(ComboboxPopover)`
-  margin: var(--spacing-sm) var(--spacing-none) var(--spacing-none) var(--spacing-none);
+  margin: var(--spacing-sm) var(--spacing-none) var(--spacing-none)
+    var(--spacing-none);
   padding: var(--spacing-xxs, 8px);
   border-radius: var(--radius-xs, 12px);
   border: var(--border-sm, 1px) solid var(--stroke-secondary, #eaebf2);
   background: var(--surface-primary, #fff);
   overflow: hidden auto;
   max-height: 20rem;
+  z-index: 999;
 `;
 
 const StyledCombobox = styled(Combobox)`
@@ -254,12 +271,15 @@ const Select: React.FC<SelectProps> = ({
     childRef?.current?.focus();
   };
   return (
-    <Container
-      css={css}
-      label={label}
-    >
+    <Container css={css} label={label}>
       <LabelContainer>
-        <LabelText color={disabled ? 'components-inputs-text-disabled' : 'components-inputs-text-default'}>
+        <LabelText
+          color={
+            disabled
+              ? 'components-inputs-text-disabled'
+              : 'components-inputs-text-default'
+          }
+        >
           <LabelTextContainer>
             {label}
             {required && <Asterisk size={4.6} />}
@@ -297,14 +317,17 @@ const Select: React.FC<SelectProps> = ({
               value={selectedOption?.label}
             />
           </StyledInputContainer>
-          <CaretDown
-            size={20}
-            color="icon-tertiary"
-          />
+          <CaretDown size={20} color="icon-tertiary" />
         </StyledBox>
 
         {viewPopover && (
-          <StyledPopover style={{ width: popoverWidth, left: popoverLeft, boxSizing: 'border-box' }}>
+          <StyledPopover
+            style={{
+              width: popoverWidth,
+              left: popoverLeft,
+              boxSizing: 'border-box',
+            }}
+          >
             <StyledList>
               {options.map((option, index) => (
                 <StyledOption
@@ -332,7 +355,11 @@ const Select: React.FC<SelectProps> = ({
           {description}
         </Description>
       )}
-      {errorMessage && <Description color="components-inputs-text-danger">{errorMessage}</Description>}
+      {errorMessage && (
+        <Description color="components-inputs-text-danger">
+          {errorMessage}
+        </Description>
+      )}
     </Container>
   );
 };

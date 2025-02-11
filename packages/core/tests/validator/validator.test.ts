@@ -1,6 +1,5 @@
 import { Validator } from '../../src';
 import {
-  PingReply,
   TokenReply,
   ActiveValidator,
 } from '../../src/lib/validator/validator.types';
@@ -20,6 +19,7 @@ describe('Validator Class', () => {
     });
     expect(activeValidators).toContain(validatorInstance['activeValidatorURL']);
   });
+
   it('Ping every active validator node', async () => {
     const validatorInstance = await Validator.initalize({ env });
 
@@ -39,6 +39,7 @@ describe('Validator Class', () => {
       // expect(pingReply?.status).toBe(1);
     }
   });
+
   it('Ping active read validator node', async () => {
     const validatorInstance = await Validator.initalize({ env });
     // default active read validator
@@ -49,6 +50,7 @@ describe('Validator Class', () => {
     // expect(pingReply).not.toBeNull();
     // expect(pingReply?.status).toBe(1);
   });
+
   it('Get token from random active validator node', async () => {
     const validatorInstance = await Validator.initalize({ env });
     const token = await validatorInstance.call<TokenReply>('push_getApiToken');

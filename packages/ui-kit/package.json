@@ -1,6 +1,6 @@
 {
   "name": "@pushprotocol/pushchain-ui-kit",
-  "version": "0.0.7",
+  "version": "1.0.5",
   "dependencies": {
     "tslib": "^2.3.0"
   },
@@ -9,6 +9,10 @@
   "typings": "./src/index.d.ts",
   "devDependencies": {
     "@types/react": "^18.3.13",
-    "react": "^18.3.1"
+    "react": "^18.3.1",
+    "styled-components": "^6.1.14"
+  },
+  "scripts": {
+    "release:stable": "npx nx run ui-kit:nx-release-publish --otp=1"
   }
 }
