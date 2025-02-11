@@ -1,0 +1,17 @@
+{
+  "name": "send-transaction",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@pushchain/devnet": "^1.0.5",
+    "viem": "^2.23.1"
+  }
+}
