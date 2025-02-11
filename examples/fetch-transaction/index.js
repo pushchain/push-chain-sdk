@@ -1,9 +1,5 @@
 // Import Push Chain SDK
-import {
-  CONSTANTS,
-  createUniversalAccount,
-  PushChain,
-} from '@pushchain/devnet';
+import { CONSTANTS, PushChain } from '@pushchain/devnet';
 
 // Initialize the Push Chain SDK
 const pushChain = await PushChain.initialize();
