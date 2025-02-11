@@ -23,6 +23,7 @@ const signer = {
 
 // Initialize Push Chain SDK
 const pushChain = await PushChain.initialize(signer);
+console.log('PushChain SDK initialized.');
 
 // Send Transaction
 const tx = await pushChain.tx.send(
@@ -42,4 +43,4 @@ const tx = await pushChain.tx.send(
   }
 );
 
-console.log(tx.txHash);
+console.log('Transaction sent successfully! Transaction hash:', tx.txHash);
