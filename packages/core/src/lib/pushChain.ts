@@ -75,7 +75,7 @@ export class PushChain {
       universalSigner,
       options.printTraces
     );
-    const ws = new WebSocketClient(block.getWebSocketUrl());
+    const ws = await WebSocketClient.initialize(options.network);
     return new PushChain(block, tx, ws);
   };
 }
