@@ -1,162 +1,204 @@
 import * as WebSocket from 'ws';
+import { ENV } from '../constants';
+import { Validator } from '../validator/validator';
 
 type WSMessage = {
-    type: string;
-    data?: any;
-    timestamp?: number;
-    filters?: SubscriptionFilter[];
+  type: string;
+  data?: any;
+  timestamp?: number;
+  filters?: SubscriptionFilter[];
 };
 
 type SubscriptionFilter = {
-    type: 'CATEGORY' | 'FROM' | 'RECIPIENTS' | 'WILDCARD';
-    value: string[];
+  type: 'CATEGORY' | 'FROM' | 'RECIPIENTS' | 'WILDCARD';
+  value: string[];
 };
 
 export class WebSocketClient {
-    private ws: WebSocket.WebSocket | null = null;
-    private clientId: string | null = null;
-    private blockHandlers: Map<string, (block: any) => void> = new Map();
-    
-    constructor(private url: string) {}
+  private ws: WebSocket.WebSocket | null = null;
+  private clientId: string | null = null;
+  private blockHandlers: Map<string, (block: any) => void> = new Map();
 
-    async connect(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            this.ws = new WebSocket(this.url);
+  private constructor(private url: string) {}
 
-            this.ws.on('message', (data: string) => {
-                const message = JSON.parse(data);
-                this.handleMessage(message);
-            });
+  static initialize = async (env: ENV): Promise<WebSocketClient> => {
+    const validator = await Validator.initalize({ env });
+    const wsUrl = WebSocketClient.fixVNodeUrl(validator.activeValidatorURL);
+    return new WebSocketClient(wsUrl);
+  };
 
-            this.ws.on('open', () => {
-                this.setupMessageHandler(resolve, reject);
-            });
-
-            this.ws.on('error', (error: Error) => {
-                reject(error);
-            });
-        });
+  /**
+   * Applies 4 rules to url
+   * 1) .local -> replace everything with localhost
+   * 2) http -> replace with https
+   * 3) domain.com -> appends /api/v1/rpc path
+   * 4) domain.com/api/ -> replace with domain.com/api
+   *
+   * @param url - url to fix
+   */
+  private static fixVNodeUrl(url: string) {
+    if (url == null || url.length == 0) {
+      return url;
+    }
+    const urlObj = new URL(url);
+    const isLocal = urlObj.hostname.endsWith('.local');
+    if (isLocal) {
+      urlObj.hostname = 'localhost';
+      urlObj.protocol = 'ws:';
+    } else {
+      urlObj.protocol = 'wss:';
+    }
+    if (urlObj.pathname.trim().length == 0 || urlObj.pathname.trim() === '/') {
+      urlObj.pathname = '/ws';
+    }
+    if (urlObj.pathname.endsWith('/')) {
+      urlObj.pathname = urlObj.pathname.slice(0, -1);
     }
 
-    private setupMessageHandler(resolve: () => void, reject: (error: Error) => void) {
-        const messageHandler = (data: string) => {
-            const message = JSON.parse(data);
-            if (message.type === 'WELCOME') {
-                this.clientId = message.data.clientId;
-                this.sendHandshake();
-            } else if (message.type === 'HANDSHAKE_ACK') {
-                if (message.data.success) {
-                    this.ws?.removeListener('message', messageHandler);
-                    resolve();
-                } else {
-                    reject(new Error(message.data.error));
-                }
-            }
-        };
+    return urlObj.toString();
+  }
 
-        this.ws?.on('message', messageHandler);
-    }
+  async connect(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.ws = new WebSocket(this.url);
 
-    private handleMessage(message: WSMessage) {
-        if (message.type === 'BLOCK' && message.data?.block) {
-            const handler = this.blockHandlers.get(message.data.subscriptionId);
-            if (handler) {
-                handler(message.data.block);
-            }
+      this.ws.on('message', (data: string) => {
+        const message = JSON.parse(data);
+        this.handleMessage(message);
+      });
+
+      this.ws.on('open', () => {
+        this.setupMessageHandler(resolve, reject);
+      });
+
+      this.ws.on('error', (error: Error) => {
+        reject(error);
+      });
+    });
+  }
+
+  private setupMessageHandler(
+    resolve: () => void,
+    reject: (error: Error) => void
+  ) {
+    const messageHandler = (data: string) => {
+      const message = JSON.parse(data);
+      if (message.type === 'WELCOME') {
+        this.clientId = message.data.clientId;
+        this.sendHandshake();
+      } else if (message.type === 'HANDSHAKE_ACK') {
+        if (message.data.success) {
+          this.ws?.removeListener('message', messageHandler);
+          resolve();
+        } else {
+          reject(new Error(message.data.error));
         }
+      }
+    };
+
+    this.ws?.on('message', messageHandler);
+  }
+
+  private handleMessage(message: WSMessage) {
+    if (message.type === 'BLOCK' && message.data?.block) {
+      const handler = this.blockHandlers.get(message.data.subscriptionId);
+      if (handler) {
+        handler(message.data.block);
+      }
     }
+  }
 
-    private sendHandshake() {
-        this.send({
-            type: 'HANDSHAKE',
-            data: { clientId: this.clientId },
-            timestamp: Date.now()
-        });
-    }
+  private sendHandshake() {
+    this.send({
+      type: 'HANDSHAKE',
+      data: { clientId: this.clientId },
+      timestamp: Date.now(),
+    });
+  }
 
-    /**
-     * Subscribe to block updates with filters
-     * @param callback Function to handle incoming block updates
-     * @param filters Optional filters for the subscription
-     * @returns Promise<string> Subscription ID
-     */
-    async subscribeToBlocks(
-        callback: (data: any) => void, 
-        filters: SubscriptionFilter[] = [{ type: 'WILDCARD', value: ['*'] }]
-    ): Promise<string> {
-        return new Promise((resolve, reject) => {
-            const handleSubscribeResponse = (data: string) => {
-                const message = JSON.parse(data);
-                if (message.type === 'SUBSCRIBE_ACK') {
-                    if (message.data.success) {
-                        const subscriptionId = message.data.subscriptionId;
-                        this.blockHandlers.set(subscriptionId, callback);
-                        this.ws?.removeListener('message', handleSubscribeResponse);
-                        resolve(subscriptionId);
-                    } else {
-                        reject(new Error(message.data.error));
-                    }
-                }
-            };
-
-            this.ws?.on('message', handleSubscribeResponse);
-
-            this.send({
-                type: 'SUBSCRIBE',
-                filters,
-                timestamp: Date.now()
-            });
-        });
-    }
-
-    private send(message: WSMessage): void {
-        if (!this.isConnected()) {
-            throw new Error('WebSocket is not connected');
+  /**
+   * Subscribe to block updates with filters
+   * @param callback Function to handle incoming block updates
+   * @param filters Optional filters for the subscription
+   * @returns Promise<string> Subscription ID
+   */
+  async subscribeToBlocks(
+    callback: (data: any) => void,
+    filters: SubscriptionFilter[] = [{ type: 'WILDCARD', value: ['*'] }]
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const handleSubscribeResponse = (data: string) => {
+        const message = JSON.parse(data);
+        if (message.type === 'SUBSCRIBE_ACK') {
+          if (message.data.success) {
+            const subscriptionId = message.data.subscriptionId;
+            this.blockHandlers.set(subscriptionId, callback);
+            this.ws?.removeListener('message', handleSubscribeResponse);
+            resolve(subscriptionId);
+          } else {
+            reject(new Error(message.data.error));
+          }
         }
-        this.ws?.send(JSON.stringify(message));
+      };
+
+      this.ws?.on('message', handleSubscribeResponse);
+
+      this.send({
+        type: 'SUBSCRIBE',
+        filters,
+        timestamp: Date.now(),
+      });
+    });
+  }
+
+  private send(message: WSMessage): void {
+    if (!this.isConnected()) {
+      throw new Error('WebSocket is not connected');
     }
+    this.ws?.send(JSON.stringify(message));
+  }
 
-    disconnect(): void {
-        this.ws?.close();
-        this.ws = null;
-        this.clientId = null;
-        this.blockHandlers.clear();
-    }
+  disconnect(): void {
+    this.ws?.close();
+    this.ws = null;
+    this.clientId = null;
+    this.blockHandlers.clear();
+  }
 
-    isConnected(): boolean {
-        return this.ws?.readyState === WebSocket.OPEN;
-    }
+  isConnected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
 
-    /**
-     * Unsubscribe from block updates
-     * @param subscriptionId The ID of the subscription to cancel
-     * @returns Promise<void>
-     */
-    async unsubscribe(subscriptionId: string): Promise<void> {
-        return new Promise((resolve, reject) => {
-            const handleUnsubscribeResponse = (data: string) => {
-                const message = JSON.parse(data);
-                if (message.type === 'UNSUBSCRIBE_ACK') {
-                    if (message.data.success) {
-                        this.blockHandlers.delete(subscriptionId);
-                        this.ws?.removeListener('message', handleUnsubscribeResponse);
-                        resolve();
-                    } else {
-                        reject(new Error(message.data.error));
-                    }
-                }
-            };
+  /**
+   * Unsubscribe from block updates
+   * @param subscriptionId The ID of the subscription to cancel
+   * @returns Promise<void>
+   */
+  async unsubscribe(subscriptionId: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const handleUnsubscribeResponse = (data: string) => {
+        const message = JSON.parse(data);
+        if (message.type === 'UNSUBSCRIBE_ACK') {
+          if (message.data.success) {
+            this.blockHandlers.delete(subscriptionId);
+            this.ws?.removeListener('message', handleUnsubscribeResponse);
+            resolve();
+          } else {
+            reject(new Error(message.data.error));
+          }
+        }
+      };
 
-            this.ws?.on('message', handleUnsubscribeResponse);
+      this.ws?.on('message', handleUnsubscribeResponse);
 
-            const unsubscribeMsg = {
-                type: 'UNSUBSCRIBE',
-                data: {
-                    subscriptionId
-                },
-                timestamp: Date.now()
-            };
-            this.ws?.send(JSON.stringify(unsubscribeMsg));
-        });
-    }
+      const unsubscribeMsg = {
+        type: 'UNSUBSCRIBE',
+        data: {
+          subscriptionId,
+        },
+        timestamp: Date.now(),
+      };
+      this.ws?.send(JSON.stringify(unsubscribeMsg));
+    });
+  }
 }
