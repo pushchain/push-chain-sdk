@@ -36,7 +36,7 @@ export class Validator {
     /**
      * @dev - active validator URL (Used for Get calls to a validator node)
      */
-    private activeValidatorURL: string,
+    public activeValidatorURL: string,
     private env: ENV,
     private validatorContractClient: ValidatorContract
   ) {}

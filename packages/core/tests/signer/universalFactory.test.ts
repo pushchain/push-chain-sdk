@@ -2,7 +2,7 @@ import { CONSTANTS } from '../../src';
 import {
   createUniversalAccount,
   createUniversalSigner,
-} from '../../src/lib/signer/universalFactories.ts';
+} from '../../src/lib/signer/universalFactories';
 
 const address = '0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5';
 

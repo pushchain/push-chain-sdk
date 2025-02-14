@@ -3,6 +3,7 @@ import { ENV } from './constants';
 import { UniversalSigner } from './signer/signer.types';
 import { Tx } from './tx/tx';
 import { Utils } from './utils';
+import { WebSocketClient } from './websocket/websocket-client';
 
 /**
  * The PushChain class provides access to the Push Chain's functionality.
@@ -29,9 +30,15 @@ export class PushChain {
    */
   public block: Block;
 
-  private constructor(block: Block, tx: Tx) {
+  /**
+   * Provides access to WebSocket functionality.
+   */
+  public ws: WebSocketClient;
+
+  private constructor(block: Block, tx: Tx, ws: WebSocketClient) {
     this.tx = tx;
     this.block = block;
+    this.ws = ws;
   }
 
   /**
@@ -68,6 +75,7 @@ export class PushChain {
       universalSigner,
       options.printTraces
     );
-    return new PushChain(block, tx);
+    const ws = await WebSocketClient.initialize(options.network);
+    return new PushChain(block, tx, ws);
   };
 }
