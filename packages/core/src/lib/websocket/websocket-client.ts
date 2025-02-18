@@ -14,10 +14,34 @@ type SubscriptionFilter = {
   value: string[];
 };
 
+type RawBlock = {
+  blockHash: string;
+  txs: {
+    blockHash: string;
+    txHash: string;
+    category: string;
+    from: string;
+    recipients: string[];
+  }[];
+};
+
+export type WebSocketBlock = {
+  blockHash: string;
+  transactions: WebSocketTransaction[];
+};
+
+export type WebSocketTransaction = {
+  hash: string;
+  category: string;
+  from: string;
+  recipients: string[];
+};
+
 export class WebSocketClient {
   private ws: WebSocket.WebSocket | null = null;
   private clientId: string | null = null;
-  private blockHandlers: Map<string, (block: any) => void> = new Map();
+  private blockHandlers: Map<string, (block: WebSocketBlock) => void> =
+    new Map();
 
   private constructor(private url: string) {}
 
@@ -103,7 +127,17 @@ export class WebSocketClient {
     if (message.type === 'BLOCK' && message.data?.block) {
       const handler = this.blockHandlers.get(message.data.subscriptionId);
       if (handler) {
-        handler(message.data.block);
+        const rawBlock = message.data.block as RawBlock;
+        const block: WebSocketBlock = {
+          blockHash: rawBlock.blockHash,
+          transactions: rawBlock.txs.map((tx) => ({
+            hash: tx.txHash,
+            category: tx.category,
+            from: tx.from,
+            recipients: tx.recipients,
+          })),
+        };
+        handler(block);
       }
     }
   }
@@ -120,21 +154,21 @@ export class WebSocketClient {
    * Subscribe to block updates with filters
    * @param callback Function to handle incoming block updates
    * @param filters Optional filters for the subscription
-   * @returns Promise<string> Subscription ID
+   * @returns Promise<{ subscriptionId: string }> Subscription ID
    */
-  async subscribeToBlocks(
-    callback: (data: any) => void,
+  async subscribe(
+    callback: (data: WebSocketBlock) => void,
     filters: SubscriptionFilter[] = [{ type: 'WILDCARD', value: ['*'] }]
-  ): Promise<string> {
+  ): Promise<{ subscriptionId: string }> {
     return new Promise((resolve, reject) => {
       const handleSubscribeResponse = (data: string) => {
         const message = JSON.parse(data);
         if (message.type === 'SUBSCRIBE_ACK') {
           if (message.data.success) {
-            const subscriptionId = message.data.subscriptionId;
+            const subscriptionId: string = message.data.subscriptionId;
             this.blockHandlers.set(subscriptionId, callback);
             this.ws?.removeListener('message', handleSubscribeResponse);
-            resolve(subscriptionId);
+            resolve({ subscriptionId });
           } else {
             reject(new Error(message.data.error));
           }
