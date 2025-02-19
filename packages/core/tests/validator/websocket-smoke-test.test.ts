@@ -229,7 +229,7 @@ describe('WebSocket Smoke Test', () => {
       });
 
       // Send subscription request
-      pushChain.ws.subscribeToBlocks(() => {
+      pushChain.ws.subscribe(() => {
         // No need to handle block updates in this test
       });
     });
@@ -307,7 +307,7 @@ describe('WebSocket Smoke Test', () => {
       });
 
       // Send subscription request with custom filters
-      pushChain.ws.subscribeToBlocks(() => {
+      pushChain.ws.subscribe(() => {
         // No need to handle block updates in this test
       }, customFilters);
     });
@@ -362,7 +362,7 @@ describe('WebSocket Smoke Test', () => {
         reject(new Error('Block not received within timeout'));
       }, 30000);
 
-      pushChain.ws.subscribeToBlocks((block) => {
+      pushChain.ws.subscribe((block) => {
         blockReceived = true;
         receivedBlock = block;
         clearTimeout(timeout);
@@ -377,7 +377,7 @@ describe('WebSocket Smoke Test', () => {
     // Assertions
     expect(blockReceived).toBe(true);
     expect(receivedBlock).toBeDefined();
-    expect(receivedBlock.txs.length).toBeGreaterThan(0);
+    expect(receivedBlock.transactions.length).toBeGreaterThan(0);
   }, 30000);
 
   it('should subscribe with custom filters and receive a block after initiating multiple transactions', async () => {
@@ -432,7 +432,7 @@ describe('WebSocket Smoke Test', () => {
         reject(new Error('Block not received within timeout'));
       }, 30000);
 
-      pushChain.ws.subscribeToBlocks((block) => {
+      pushChain.ws.subscribe((block) => {
         blockReceived = true;
         receivedBlock = block;
         clearTimeout(timeout);
@@ -451,8 +451,8 @@ describe('WebSocket Smoke Test', () => {
     // Assertions
     expect(blockReceived).toBe(true);
     expect(receivedBlock).toBeDefined();
-    expect(receivedBlock.txs.length).toBeGreaterThanOrEqual(1);
-    expect(receivedBlock.txs[0].category).toBe('CUSTOM:V2');
+    expect(receivedBlock.transactions.length).toBeGreaterThanOrEqual(1);
+    expect(receivedBlock.transactions[0].category).toBe('CUSTOM:V2');
 
     console.log(
       'Block received with custom filters:',
@@ -510,7 +510,7 @@ describe('WebSocket Smoke Test', () => {
   //             reject(new Error('Block not received within timeout'));
   //         }, 30000); // Timeout for receiving a block
 
-  //         pushChain.ws.subscribeToBlocks((block) => {
+  //         pushChain.ws.subscribe((block) => {
   //             blockReceived = true;
   //             receivedBlock = block;
   //             clearTimeout(timeout);
@@ -530,8 +530,8 @@ describe('WebSocket Smoke Test', () => {
   //     // Assertions
   //     expect(blockReceived).toBe(true);
   //     expect(receivedBlock).toBeDefined();
-  //     expect(receivedBlock.txs.length).toBeGreaterThanOrEqual(1);
-  //     expect(receivedBlock.txs[0].category).toBe('CUSTOM:V2');
+  //     expect(receivedBlock.transactions.length).toBeGreaterThanOrEqual(1);
+  //     expect(receivedBlock.transactions[0].category).toBe('CUSTOM:V2');
 
   //     console.log('Block received with multiple filters:', JSON.stringify(receivedBlock, null, 2));
   // }, 30000);
@@ -546,7 +546,7 @@ describe('WebSocket Smoke Test', () => {
         reject(new Error('Block not received within timeout'));
       }, 30000);
 
-      pushChain.ws.subscribeToBlocks((block) => {
+      pushChain.ws.subscribe((block) => {
         blockCount++;
         receivedBlock = block;
         clearTimeout(timeout);
@@ -577,7 +577,7 @@ describe('WebSocket Smoke Test', () => {
         reject(new Error('No new blocks received after reconnection'));
       }, 30000);
 
-      pushChain.ws.subscribeToBlocks((block) => {
+      pushChain.ws.subscribe((block) => {
         blockCount++;
         receivedBlock = block;
         clearTimeout(timeout);
@@ -596,8 +596,8 @@ describe('WebSocket Smoke Test', () => {
     // Assertions
     expect(blockCount).toBeGreaterThan(initialBlockCount);
     expect(receivedBlock).toBeDefined();
-    expect(receivedBlock.txs).toBeDefined();
-    expect(receivedBlock.txs.length).toBeGreaterThan(0);
+    expect(receivedBlock.transactions).toBeDefined();
+    expect(receivedBlock.transactions.length).toBeGreaterThan(0);
 
     console.log('Reconnection test completed successfully:', {
       initialBlockCount,
@@ -619,14 +619,14 @@ describe('WebSocket Smoke Test', () => {
   //     const receivedBlocks: any[] = [];
 
   //     // Subscribe to blocks and track metrics
-  //     await pushChain.ws.subscribeToBlocks((block) => {
+  //     await pushChain.ws.subscribe((block) => {
   //         blockCount++;
   //         lastBlockHash = block.blockHash;
   //         receivedBlocks.push(block);
   //         console.log('Received block:', {
   //             blockHash: block.blockHash,
   //             blockCount,
-  //             txCount: block.txs?.length || 0
+  //             txCount: block.transactions?.length || 0
   //         });
   //     });
 
@@ -637,10 +637,10 @@ describe('WebSocket Smoke Test', () => {
   //     // Wait for initial block
   //     const initialBlockPromise = new Promise<void>((resolve, reject) => {
   //         const timeout = setTimeout(() => {
-  //             reject(new Error('Block not received within timeout'));
+  //             reject(new Error('WebSocetBlock not received within timeout'));
   //         }, 30000);
 
-  //         pushChain.ws.subscribeToBlocks((block) => {
+  //         pushChain.ws.subscribe((block) => {
   //             blockCount++;
   //             clearTimeout(timeout);
   //             resolve();
@@ -675,7 +675,7 @@ describe('WebSocket Smoke Test', () => {
   //             reject(new Error('No new blocks received after reconnection'));
   //         }, 30000);
 
-  //         pushChain.ws.subscribeToBlocks((block) => {
+  //         pushChain.ws.subscribe((block) => {
   //             blockCount++;
   //             clearTimeout(timeout);
   //             resolve();
@@ -697,8 +697,8 @@ describe('WebSocket Smoke Test', () => {
   //     expect(blockCount).toBeGreaterThan(initialBlockCount);
   //     expect(lastBlockHash).not.toBe(initialBlockHash);
   //     expect(pushChain.ws.isConnected()).toBe(true);
-  //     expect(receivedBlocks[receivedBlocks.length - 1].txs).toBeDefined();
-  //     expect(receivedBlocks[receivedBlocks.length - 1].txs.length).toBeGreaterThan(0);
+  //     expect(receivedBlocks[receivedBlocks.length - 1].transactions).toBeDefined();
+  //     expect(receivedBlocks[receivedBlocks.length - 1].transactions.length).toBeGreaterThan(0);
 
   //     console.log('Final state:', {
   //         initialBlockCount,
@@ -706,7 +706,7 @@ describe('WebSocket Smoke Test', () => {
   //         initialBlockHash,
   //         finalBlockHash: lastBlockHash,
   //         totalBlocksReceived: receivedBlocks.length,
-  //         lastBlockTxCount: receivedBlocks[receivedBlocks.length - 1].txs.length
+  //         lastBlockTxCount: receivedBlocks[receivedBlocks.length - 1].transactions.length
   //     });
   // }, 30000);
 
@@ -785,7 +785,7 @@ describe('WebSocket Smoke Test', () => {
   //     });
 
   //     // Subscribe to blocks
-  //     const subscriptionId = await pushChain.ws.subscribeToBlocks(() => {
+  //     const subscriptionId = await pushChain.ws.subscribe(() => {
   //         // Callback intentionally empty for this test
   //     });
   //     expect(subscriptionId).toBeDefined();
