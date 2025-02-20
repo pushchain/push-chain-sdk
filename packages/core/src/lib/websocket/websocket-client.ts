@@ -45,8 +45,11 @@ export class WebSocketClient {
 
   private constructor(private url: string) {}
 
-  static initialize = async (env: ENV): Promise<WebSocketClient> => {
-    const validator = await Validator.initalize({ env });
+  static initialize = async (
+    env: ENV,
+    rpcUrl?: string
+  ): Promise<WebSocketClient> => {
+    const validator = await Validator.initalize({ env, rpcUrl });
     const wsUrl = WebSocketClient.fixVNodeUrl(validator.activeValidatorURL);
     return new WebSocketClient(wsUrl);
   };

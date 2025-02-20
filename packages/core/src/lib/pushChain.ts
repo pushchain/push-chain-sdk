@@ -50,6 +50,7 @@ export class PushChain {
    * @param {Object} [options] - The options for initializing the PushChain.
    * @param {boolean} [options.printTraces=false] - Console logs the requests to nodes
    * @param {ENV} [options.network=ENV.DEVNET] - The network environment.
+   * @param {string} [options.rpcUrl=''] - The RPC URL to use. If not provided, the default RPC URL for the network will be used.
    * @returns {Promise<PushChain>} A promise that resolves to the initialized PushChain instance.
    *
    * @example
@@ -63,19 +64,25 @@ export class PushChain {
     universalSigner: UniversalSigner | null = null,
     options: {
       network: ENV;
+      rpcUrl?: string;
       printTraces?: boolean;
     } = {
       network: ENV.DEVNET,
+      rpcUrl: '',
       printTraces: false,
     }
   ): Promise<PushChain> => {
-    const block = await Block.initialize(options.network);
+    const block = await Block.initialize(options.network, options.rpcUrl);
     const tx = await Tx.initialize(
       options.network,
       universalSigner,
-      options.printTraces
+      options.printTraces,
+      options.rpcUrl
     );
-    const ws = await WebSocketClient.initialize(options.network);
+    const ws = await WebSocketClient.initialize(
+      options.network,
+      options.rpcUrl
+    );
     return new PushChain(block, tx, ws);
   };
 }
