@@ -55,9 +55,10 @@ export class Tx {
   static initialize = async (
     env: ENV,
     universalSigner: UniversalSigner | null = null,
-    printTraces = false
+    printTraces = false,
+    rpcUrl?: string
   ) => {
-    const validator = await Validator.initalize({ env, printTraces });
+    const validator = await Validator.initalize({ env, printTraces, rpcUrl });
     return new Tx(validator, universalSigner);
   };
 

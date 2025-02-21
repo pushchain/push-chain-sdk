@@ -44,9 +44,11 @@ export class Validator {
   static initalize = async (options?: {
     env?: ENV;
     printTraces?: boolean;
+    rpcUrl?: string;
   }): Promise<Validator> => {
     const settings = {
       env: options?.env || ENV.DEVNET,
+      rpcUrl: options?.rpcUrl,
     };
     Validator.printTraces = options?.printTraces || false;
 
@@ -55,7 +57,8 @@ export class Validator {
      */
     if (!Validator.instance || Validator.instance.env !== settings.env) {
       const validatorContractClient = Validator.createValidatorContractClient(
-        settings.env
+        settings.env,
+        settings.rpcUrl
       );
       const activeValidator = await Validator.getActiveValidator(
         validatorContractClient
@@ -72,15 +75,17 @@ export class Validator {
   /**
    * @description Create validator contract client
    * @param env - Environment
+   * @param rpcUrl
    * @dev - Currently only supports public client
    * @returns Validator contract client
    */
   private static createValidatorContractClient = (
-    env: ENV
+    env: ENV,
+    rpcUrl?: string
   ): ValidatorContract => {
     const client = createPublicClient({
       chain: config.VALIDATOR[env].NETWORK,
-      transport: http(),
+      transport: rpcUrl ? http(rpcUrl) : http(),
     });
 
     return getContract({

@@ -9,7 +9,7 @@ type WSMessage = {
   filters?: SubscriptionFilter[];
 };
 
-type SubscriptionFilter = {
+export type SubscriptionFilter = {
   type: 'CATEGORY' | 'FROM' | 'RECIPIENTS' | 'WILDCARD';
   value: string[];
 };
@@ -45,8 +45,11 @@ export class WebSocketClient {
 
   private constructor(private url: string) {}
 
-  static initialize = async (env: ENV): Promise<WebSocketClient> => {
-    const validator = await Validator.initalize({ env });
+  static initialize = async (
+    env: ENV,
+    rpcUrl?: string
+  ): Promise<WebSocketClient> => {
+    const validator = await Validator.initalize({ env, rpcUrl });
     const wsUrl = WebSocketClient.fixVNodeUrl(validator.activeValidatorURL);
     return new WebSocketClient(wsUrl);
   };
@@ -82,6 +85,10 @@ export class WebSocketClient {
     return urlObj.toString();
   }
 
+  /**
+   * Connects to the WebSocket server
+   * @returns Promise<void>
+   */
   async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.ws = new WebSocket(this.url);
@@ -192,6 +199,10 @@ export class WebSocketClient {
     this.ws?.send(JSON.stringify(message));
   }
 
+  /**
+   * Disconnects from the WebSocket server
+   * @returns void
+   */
   disconnect(): void {
     this.ws?.close();
     this.ws = null;
@@ -199,6 +210,10 @@ export class WebSocketClient {
     this.blockHandlers.clear();
   }
 
+  /**
+   * Checks if the WebSocket is connected
+   * @returns boolean
+   */
   isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
   }
