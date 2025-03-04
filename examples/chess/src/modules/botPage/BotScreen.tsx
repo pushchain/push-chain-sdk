@@ -4,7 +4,7 @@ import { Chessboard } from 'react-chessboard';
 import { Piece } from 'react-chessboard/dist/chessboard/types';
 import { endGameSession } from '@/services/endGameSession';
 import { useAppContext } from '@/context/AppContext';
-import { GameData, PIECE_COLOR } from '@/common';
+import { GAME_RESULT, GameData, PIECE_COLOR } from '@/common';
 import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 import { Button } from 'shared-components';
 import { useNavigate } from 'react-router-dom';
@@ -128,7 +128,7 @@ const BotScreen = () => {
     return true;
   };
 
-  const handleEndGame = async (status: 'win' | 'lose' | 'draw') => {
+  const handleEndGame = async (status: GAME_RESULT) => {
     try {
       if (pushChain && universalAddress) {
         const gameData: GameData = {
@@ -151,7 +151,7 @@ const BotScreen = () => {
 
   const handleQuitGame = async () => {
     try {
-      handleEndGame('lose');
+      handleEndGame(GAME_RESULT.LOSE);
       navigate('/home');
     } catch (err) {
       console.log(err);
@@ -161,23 +161,24 @@ const BotScreen = () => {
   const handleBeforeUnload = (event: BeforeUnloadEvent) => {
     event.preventDefault();
     if (movesRef.current.length) {
-      handleEndGame('lose');
+      handleEndGame(GAME_RESULT.LOSE);
     }
   };
 
   useEffect(() => {
     if (game.isGameOver()) {
-      let status: 'win' | 'lose' | 'draw' = 'draw';
+      let status: GAME_RESULT = GAME_RESULT.DRAW;
 
       if (game.isCheckmate()) {
-        status = game.turn() === playerColor[0] ? 'lose' : 'win';
+        status =
+          game.turn() === playerColor[0] ? GAME_RESULT.LOSE : GAME_RESULT.WIN;
       } else if (
         game.isStalemate() ||
         game.isThreefoldRepetition() ||
         game.isInsufficientMaterial() ||
         game.isDraw()
       ) {
-        status = 'draw';
+        status = GAME_RESULT.DRAW;
       }
       handleEndGame(status);
     }

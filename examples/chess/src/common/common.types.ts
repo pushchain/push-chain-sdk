@@ -10,6 +10,12 @@ enum GAME_STATUS {
   CLOSED = 'closed',
 }
 
+enum GAME_RESULT {
+  WIN = 'win',
+  LOSE = 'lose',
+  DRAW = 'draw',
+}
+
 type PlayerData = {
   address: string;
   pieceColor: PIECE_COLOR;
@@ -35,5 +41,5 @@ type GameData = {
   timestamp: string;
 };
 
-export { PIECE_COLOR, GAME_STATUS };
+export { PIECE_COLOR, GAME_STATUS, GAME_RESULT };
 export type { PlayerData, GameSessionData, GameData };

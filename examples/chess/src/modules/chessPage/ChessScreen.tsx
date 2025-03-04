@@ -4,7 +4,7 @@ import { Chessboard } from 'react-chessboard';
 import { useAppContext } from '@/context/AppContext';
 import quitCurrentSession from '@/services/quitCurrentSession';
 import { getGameData } from '@/services/getGameData';
-import { GameData, PIECE_COLOR } from '@/common';
+import { GAME_RESULT, GameData, PIECE_COLOR } from '@/common';
 import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 import { Piece } from 'react-chessboard/dist/chessboard/types';
 import { sendGameMove } from '@/services/sendGameMove';
@@ -88,7 +88,7 @@ const ChessScreen = () => {
                   clearInterval(listenInterval.current);
                   listenInterval.current = null;
                 }
-                handleEndGame('win');
+                handleEndGame(GAME_RESULT.WIN);
                 return;
               } else if (data.moves.length) {
                 const lastMove = data.moves[0];
@@ -99,8 +99,15 @@ const ChessScreen = () => {
                       return prevGame;
                     }
                     const gameHistory = prevGame.history({ verbose: true });
-                    console.log(lastMove.player, universalAddress.address);
-                    console.log(lastMove.move, gameHistory);
+                    if (
+                      gameHistory.some(
+                        (m) =>
+                          m.from === lastMove.move.from &&
+                          m.to === lastMove.move.to
+                      )
+                    ) {
+                      return prevGame;
+                    }
                     const newGame = new Chess(prevGame.fen());
                     try {
                       const move = newGame.move({
@@ -140,7 +147,7 @@ const ChessScreen = () => {
     }
   };
 
-  const handleEndGame = async (status: 'win' | 'lose' | 'draw') => {
+  const handleEndGame = async (status: GAME_RESULT) => {
     try {
       if (pushChain && universalAddress && gameDataRef.current) {
         await endGameSession(
@@ -159,7 +166,7 @@ const ChessScreen = () => {
   const handleQuitGame = async () => {
     try {
       if (pushChain && universalAddress && gameDataRef.current) {
-        handleEndGame('lose');
+        handleEndGame(GAME_RESULT.LOSE);
         sendGameMove(
           pushChain,
           universalAddress,
@@ -178,7 +185,7 @@ const ChessScreen = () => {
     if (!gameDataRef.current) {
       quitCurrentSession(pushChain!, currentSession!);
     } else {
-      handleEndGame('lose');
+      handleEndGame(GAME_RESULT.LOSE);
       sendGameMove(
         pushChain!,
         universalAddress!,
@@ -190,17 +197,20 @@ const ChessScreen = () => {
 
   useEffect(() => {
     if (game.isGameOver()) {
-      let status: 'win' | 'lose' | 'draw' = 'draw';
+      let status: GAME_RESULT = GAME_RESULT.DRAW;
 
       if (game.isCheckmate()) {
-        status = game.turn() === currentPieceColor[0] ? 'lose' : 'win';
+        status =
+          game.turn() === currentPieceColor[0]
+            ? GAME_RESULT.LOSE
+            : GAME_RESULT.WIN;
       } else if (
         game.isStalemate() ||
         game.isThreefoldRepetition() ||
         game.isInsufficientMaterial() ||
         game.isDraw()
       ) {
-        status = 'draw';
+        status = GAME_RESULT.DRAW;
       }
       handleEndGame(status);
     }
