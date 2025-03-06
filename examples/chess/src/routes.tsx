@@ -10,12 +10,6 @@ import BotPage from './pages/BotPage';
 const AppRoutes = () => {
   const { universalAddress } = usePushWalletContext();
 
-  useEffect(() => {
-    console.log('check');
-  }, [universalAddress]);
-
-  console.log(universalAddress);
-
   return (
     <Box display="flex" justifyContent="center" minHeight="100vh">
       <Routes>
@@ -35,7 +29,6 @@ const AppRoutes = () => {
           path="/bot"
           element={universalAddress ? <BotPage /> : <Navigate to="/" />}
         />
-        <Route path="/test" element={<BotPage />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Box>

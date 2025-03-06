@@ -1,6 +1,7 @@
 import { Box, Button, Front, Sale, Text, css } from 'shared-components';
 import { PushWalletButton } from '@pushprotocol/pushchain-ui-kit';
 import { SimulateTxText } from './SimulateTxText';
+import { LandingPageBanner } from './LandingPageBanner';
 
 const LandingPageLeftComponent = () => {
   const featuresCard = [
@@ -72,13 +73,13 @@ const LandingPageLeftComponent = () => {
             time to take chess to the next level! 🚀
           </Text>
         </Box>
-        {/* <Box
+        <Box
           display={{ initial: 'none', tb: 'flex' }}
           alignItems="center"
           justifyContent="center"
         >
           <LandingPageBanner height="343px" />
-        </Box> */}
+        </Box>
       </Box>
 
       <Box display="flex" flexDirection="column" gap="spacing-sm">

@@ -1,7 +1,7 @@
 const LandingPageBanner = ({ height }: { height: string }) => {
   return (
     <img
-      src={'/EmailBanner.png'}
+      src={'/ChessBanner.png'}
       style={{
         height: height,
         maxWidth: '100%',

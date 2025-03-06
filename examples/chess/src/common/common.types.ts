@@ -31,14 +31,16 @@ type GameSessionData = {
   timestamp: string;
 };
 
+type GameMove = {
+  player: string;
+  move: Move;
+};
+
 type GameData = {
   gameId: string;
   player1: PlayerData;
   player2: PlayerData | null;
-  moves: {
-    player: string;
-    move: Move;
-  }[];
+  moves: GameMove[];
   otherPlayerQuit?: boolean;
   result?: {
     universalAddress: UniversalAddress;
@@ -48,4 +50,4 @@ type GameData = {
 };
 
 export { PIECE_COLOR, GAME_STATUS, GAME_RESULT };
-export type { PlayerData, GameSessionData, GameData };
+export type { PlayerData, GameSessionData, GameData, GameMove };

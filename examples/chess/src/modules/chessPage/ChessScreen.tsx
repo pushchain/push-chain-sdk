@@ -1,29 +1,19 @@
-import { FC, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess, Move } from 'chess.js';
 import { useAppContext } from '@/context/AppContext';
 import quitCurrentSession from '@/services/quitCurrentSession';
 import { getGameData } from '@/services/getGameData';
-import { GAME_RESULT, GameData, PIECE_COLOR, trimAddress } from '@/common';
-import {
-  UniversalAddress,
-  usePushWalletContext,
-} from '@pushprotocol/pushchain-ui-kit';
+import { GAME_RESULT, GameData, getGameResult, PIECE_COLOR } from '@/common';
+import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 import { Piece } from 'react-chessboard/dist/chessboard/types';
 import { sendGameMove } from '@/services/sendGameMove';
 import { endGameSession } from '@/services/endGameSession';
-import {
-  Box,
-  Button,
-  Cross,
-  css,
-  Spinner,
-  Text,
-  Tick,
-} from 'shared-components';
-import BlockiesSvg from 'blockies-react-svg';
-import { ChainIcon } from '@/common/components/ChainIcon';
+import { Box, css, Spinner, Text } from 'shared-components';
 import { GameEndModal } from '@/components/GameEndModal';
 import { ChessBoard } from '@/components/ChessBoard';
+import { PlayerData } from './components/PlayerData';
+import { GameSidebar } from '@/components/GameSidebar';
+import { useTimer } from '@/hooks/useTimer';
 
 const ChessScreen = () => {
   const [game, setGame] = useState(new Chess());
@@ -31,14 +21,15 @@ const ChessScreen = () => {
   const [playerColor, setPlayerColor] = useState<PIECE_COLOR>(
     PIECE_COLOR.WHITE
   );
-  const [confirmQuit, setConfirmQuit] = useState(false);
   const [status, setStatus] = useState<GAME_RESULT | null>(null);
+  const [playerTurn, setPlayerTurn] = useState('');
+
+  const listenInterval = useRef<NodeJS.Timeout | null>(null);
 
   const { pushChain, currentSession } = useAppContext();
   const { universalAddress } = usePushWalletContext();
 
-  const gameDataRef = useRef(gameData);
-  const listenInterval = useRef<NodeJS.Timeout | null>(null);
+  const { playerTimer, playerTimerRef, startPlayerTimer } = useTimer();
 
   const opponentData = useMemo(() => {
     if (gameData && universalAddress) {
@@ -85,6 +76,20 @@ const ChessScreen = () => {
     if (gameData && universalAddress && pushChain && moveToSend) {
       sendGameMove(pushChain, universalAddress, gameData, moveToSend)
         .then(() => {
+          startPlayerTimer();
+          setPlayerTurn(opponentData?.universalAddress.address || '');
+          setGameData((prevData) => {
+            if (prevData) {
+              return {
+                ...prevData,
+                moves: [
+                  { player: universalAddress.address, move: moveToSend! },
+                  ...prevData.moves,
+                ],
+              };
+            }
+            return null;
+          });
           listenGameMove();
         })
         .catch(() => {
@@ -158,6 +163,8 @@ const ChessScreen = () => {
                         clearInterval(listenInterval.current);
                         listenInterval.current = null;
                       }
+                      setPlayerTurn(universalAddress.address || '');
+                      startPlayerTimer();
                       return newGame;
                     } catch (err) {
                       console.log(err);
@@ -184,17 +191,17 @@ const ChessScreen = () => {
 
   const handleEndGame = async (status: GAME_RESULT) => {
     try {
-      if (pushChain && universalAddress && gameDataRef.current) {
+      if (pushChain && universalAddress && gameData) {
         const data: GameData = {
-          ...gameDataRef.current,
+          ...gameData,
           result: {
             universalAddress: universalAddress,
             status: status === GAME_RESULT.FORFEIT ? GAME_RESULT.LOSE : status,
           },
         };
         setStatus(status);
+        if (playerTimerRef.current) clearInterval(playerTimerRef.current);
         await endGameSession(pushChain, data);
-        window.removeEventListener('beforeunload', handleBeforeUnload);
       }
     } catch (err) {
       console.log(err);
@@ -203,56 +210,59 @@ const ChessScreen = () => {
 
   const handleQuitGame = async () => {
     try {
-      if (pushChain && universalAddress && gameDataRef.current) {
+      if (pushChain && !gameData) {
+        setStatus(GAME_RESULT.FORFEIT);
+        await quitCurrentSession(pushChain!, currentSession!);
+      } else if (pushChain && universalAddress && gameData) {
         await sendGameMove(
           pushChain,
           universalAddress,
-          { ...gameDataRef.current, otherPlayerQuit: true },
+          { ...gameData, otherPlayerQuit: true },
           null
         );
-        await handleEndGame(GAME_RESULT.LOSE);
+        await handleEndGame(GAME_RESULT.FORFEIT);
       }
     } catch (err) {
       console.log(err);
     }
   };
 
-  const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-    event.preventDefault();
-    if (!gameDataRef.current) {
-      quitCurrentSession(pushChain!, currentSession!);
-    } else {
-      handleEndGame(GAME_RESULT.LOSE);
-      sendGameMove(
-        pushChain!,
-        universalAddress!,
-        { ...gameDataRef.current, otherPlayerQuit: true },
-        null
-      );
+  useEffect(() => {
+    if (playerTimer === 0) {
+      if (playerTurn === universalAddress?.address) {
+        handleEndGame(GAME_RESULT.LOSE);
+      } else {
+        handleEndGame(GAME_RESULT.WIN);
+      }
     }
-  };
+  }, [playerTimer]);
 
   useEffect(() => {
-    if (game.isGameOver()) {
-      let status: GAME_RESULT = GAME_RESULT.DRAW;
-
-      if (game.isCheckmate()) {
-        status =
-          game.turn() === playerColor[0] ? GAME_RESULT.LOSE : GAME_RESULT.WIN;
-      } else if (
-        game.isStalemate() ||
-        game.isThreefoldRepetition() ||
-        game.isInsufficientMaterial() ||
-        game.isDraw()
-      ) {
-        status = GAME_RESULT.DRAW;
-      }
-      setTimeout(() => handleEndGame(status), 2000);
+    const result = getGameResult(game, playerColor);
+    if (result) {
+      setTimeout(() => handleEndGame(result), 2000);
     }
   }, [game]);
 
   useEffect(() => {
-    gameDataRef.current = gameData;
+    if (!playerTurn && gameData && universalAddress) {
+      if (
+        gameData.player1.universalAddress.address === universalAddress.address
+      ) {
+        setPlayerTurn(
+          gameData.player1.pieceColor === PIECE_COLOR.WHITE
+            ? universalAddress.address
+            : gameData.player2?.universalAddress.address || ''
+        );
+      } else {
+        setPlayerTurn(
+          gameData.player2?.pieceColor === PIECE_COLOR.WHITE
+            ? universalAddress.address
+            : gameData.player1.universalAddress.address
+        );
+      }
+      startPlayerTimer();
+    }
   }, [gameData]);
 
   useEffect(() => {
@@ -269,24 +279,14 @@ const ChessScreen = () => {
     listenGameMove();
   }, [currentSession]);
 
-  useEffect(() => {
-    if (currentSession && pushChain) {
-      window.addEventListener('beforeunload', handleBeforeUnload);
-
-      return () => {
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-      };
-    }
-  }, [currentSession, pushChain]);
-
   return (
     <>
       <Box
         display="flex"
-        margin="spacing-xl spacing-none spacing-none spacing-none"
+        margin="spacing-xl spacing-none"
         alignItems={{ initial: 'flex-start', lp: 'center' }}
         justifyContent="center"
-        gap={{ initial: 'spacing-xl', lp: 'unset' }}
+        gap={{ initial: 'spacing-xl', lp: 'spacing-none' }}
         flexDirection={{ initial: 'unset', lp: 'column' }}
         width="100%"
       >
@@ -298,7 +298,16 @@ const ChessScreen = () => {
           gap="spacing-xs"
         >
           {opponentData ? (
-            <PlayerData universalAddress={opponentData?.universalAddress} />
+            <PlayerData
+              universalAddress={opponentData?.universalAddress}
+              timer={
+                gameData
+                  ? playerTurn === opponentData.universalAddress.address
+                    ? playerTimer
+                    : 120
+                  : 120
+              }
+            />
           ) : (
             <Box
               display="flex"
@@ -307,6 +316,10 @@ const ChessScreen = () => {
               gap="spacing-xxs"
               width="100%"
               maxWidth="615px"
+              padding="spacing-none spacing-xs"
+              css={css`
+                box-sizing: border-box;
+              `}
             >
               <Spinner
                 size="small"
@@ -332,130 +345,42 @@ const ChessScreen = () => {
               return handleDraggablePiece(piece);
             }}
           />
-          <PlayerData universalAddress={universalAddress} />
+          <PlayerData
+            universalAddress={universalAddress}
+            timer={
+              gameData
+                ? playerTurn === universalAddress?.address
+                  ? playerTimer
+                  : 120
+                : 120
+            }
+          />
         </Box>
 
-        <Box
-          display="flex"
-          flexDirection={{ initial: 'column', lp: 'column-reverse' }}
-          gap="spacing-lg"
-          width={{ initial: '260px', lp: '100%' }}
-          maxWidth={{ initial: 'unset', lp: '390px' }}
-          padding={{
-            initial: 'spacing-xxl spacing-none',
-            lp: 'spacing-xxl spacing-md',
-          }}
-          css={css`
-            box-sizing: border-box;
-          `}
-        >
-          {confirmQuit ? (
-            <Box
-              display="flex"
-              alignItems="flex-start"
-              justifyContent="space-between"
-              padding="spacing-xs spacing-md"
-              width="100%"
-              css={css`
-                box-sizing: border-box;
-              `}
-            >
-              <Box cursor="pointer" onClick={handleQuitGame}>
-                <Tick size={20} color="icon-tertiary" />
-              </Box>
-              <Text variant="h6-semibold" color="text-tertiary">
-                Are you sure?
-              </Text>
-              <Box cursor="pointer" onClick={() => setConfirmQuit(false)}>
-                <Cross size={20} color="icon-tertiary" />
-              </Box>
-            </Box>
-          ) : (
-            <Button onClick={() => setConfirmQuit(true)}>Quit Game</Button>
-          )}
-
-          <Box
-            padding="spacing-md spacing-xxs"
-            backgroundColor="surface-primary-inverse"
-            borderRadius="radius-sm"
-          >
-            <Box
-              display="flex"
-              flexDirection="column"
-              height="260px"
-              padding="spacing-none spacing-sm"
-              gap="spacing-xs"
-              customScrollbar
-              css={css`
-                overflow-y: scroll;
-              `}
-            >
-              {gameData &&
-                gameData.moves.map((move, index) => (
-                  <Box
-                    display="flex"
-                    width="100%"
-                    alignItems="center"
-                    justifyContent="space-between"
-                  >
-                    <Text variant="cs-semibold" color="text-primary-inverse">
-                      {index + 1}.
-                    </Text>
-                    <Text variant="cs-semibold" color="text-primary-inverse">
-                      {move.move.from}
-                    </Text>
-                    <Text variant="cs-semibold" color="text-primary-inverse">
-                      {move.move.to}
-                    </Text>
-                  </Box>
-                ))}
-            </Box>
-          </Box>
-        </Box>
+        <GameSidebar
+          handleQuitGame={handleQuitGame}
+          moves={gameData?.moves || []}
+        />
       </Box>
       {status && (
         <GameEndModal
           isOpen={!!status}
           gameStatus={status}
           pieceColor={playerColor}
+          gameType="multiplayer"
           handleNewGame={() => {
             setGame(new Chess());
             setStatus(null);
-            setConfirmQuit(false);
             setGameData(null);
+            setPlayerTurn('');
+            if (listenInterval.current) {
+              clearInterval(listenInterval.current);
+              listenInterval.current = null;
+            }
           }}
         />
       )}
     </>
-  );
-};
-
-const PlayerData: FC<{ universalAddress: UniversalAddress | null }> = ({
-  universalAddress,
-}) => {
-  return (
-    <Box
-      display="flex"
-      alignItems="center"
-      height="42px"
-      gap="spacing-xxs"
-      width="100%"
-      maxWidth="615px"
-    >
-      <Box
-        width="32px"
-        height="32px"
-        borderRadius="radius-round"
-        overflow="hidden"
-        alignSelf="center"
-      >
-        <BlockiesSvg address={universalAddress?.address || ''} />
-      </Box>
-      <Text variant="bs-bold" color="text-primary-inverse">
-        {trimAddress(universalAddress?.address || '')}
-      </Text>
-      <ChainIcon chainId={universalAddress?.chainId || ''} />
-    </Box>
   );
 };
 

@@ -1,6 +1,6 @@
 'use client';
 import { GameSessionData } from '@/common';
-import { createUniversalSigner, PushChain } from '@pushchain/devnet';
+import { CONSTANTS, createUniversalSigner, PushChain } from '@pushchain/devnet';
 import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 import React, { createContext, useContext } from 'react';
 import { ReactNode, useEffect, useState } from 'react';
@@ -29,6 +29,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const setNetwork = async () => {
         const signer = createUniversalSigner({
           address: universalAddress.address,
+          chain: universalAddress.chain,
+          chainId: universalAddress.chainId,
           signMessage: async (data: Uint8Array) => {
             try {
               return await handleSendSignRequestToPushWallet(data);
@@ -39,10 +41,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           },
         });
         try {
-          const pushNetworkInstance = await PushChain.initialize(signer);
+          const pushNetworkInstance = await PushChain.initialize(signer, {
+            network: CONSTANTS.ENV.DEVNET,
+          });
           setPushChain(pushNetworkInstance);
         } catch (error) {
           console.error('Error initializing Push Network:', error);
+          alert(`Error initializing Push Network`);
         }
       };
       setNetwork();

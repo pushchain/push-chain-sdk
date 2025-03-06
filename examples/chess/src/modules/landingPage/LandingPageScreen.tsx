@@ -1,6 +1,7 @@
 import { Box } from 'shared-components';
 import { LandingPageLeftComponent } from './components/LandingPageLeftComponent';
 import { useEffect } from 'react';
+import { LandingPageBanner } from './components/LandingPageBanner';
 
 const LandingPageScreen = () => {
   useEffect(() => {
@@ -20,9 +21,9 @@ const LandingPageScreen = () => {
       margin="spacing-xl spacing-none"
     >
       <LandingPageLeftComponent />
-      {/* <Box display={{ initial: 'block', tb: 'none' }}>
+      <Box display={{ initial: 'block', tb: 'none' }}>
         <LandingPageBanner height="702px" />
-      </Box> */}
+      </Box>
     </Box>
   );
 };

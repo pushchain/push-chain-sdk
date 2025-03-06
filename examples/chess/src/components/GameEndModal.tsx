@@ -1,5 +1,6 @@
 import { GAME_RESULT, PIECE_COLOR } from '@/common';
-import React, { useMemo } from 'react';
+import { useChess } from '@/hooks/useChess';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Button, css, Text } from 'shared-components';
 
@@ -7,6 +8,7 @@ interface GameEndModalProps {
   isOpen: boolean;
   gameStatus: GAME_RESULT;
   pieceColor: PIECE_COLOR;
+  gameType: 'multiplayer' | 'bot';
   handleNewGame: () => void;
 }
 
@@ -14,8 +16,12 @@ const GameEndModal: React.FC<GameEndModalProps> = ({
   isOpen,
   gameStatus,
   pieceColor,
+  gameType,
   handleNewGame,
 }) => {
+  const [showLoader, setShowLoader] = useState(false);
+
+  const { startMultiplayer } = useChess();
   const navigate = useNavigate();
 
   const getModalText = useMemo(() => {
@@ -29,6 +35,22 @@ const GameEndModal: React.FC<GameEndModalProps> = ({
 
   const handleBack = () => {
     navigate('/home');
+  };
+
+  const handleClick = async () => {
+    if (gameType === 'multiplayer') {
+      setShowLoader(true);
+      try {
+        await startMultiplayer();
+        handleNewGame();
+      } catch (err) {
+        console.log(err);
+      } finally {
+        setShowLoader(false);
+      }
+    } else {
+      handleNewGame();
+    }
   };
 
   return (
@@ -105,8 +127,8 @@ const GameEndModal: React.FC<GameEndModalProps> = ({
           >
             Back to Home
           </Button>
-          <Button variant="primary" onClick={handleNewGame}>
-            Start New Game
+          <Button variant="primary" onClick={handleClick} loading={showLoader}>
+            {!showLoader && 'Start New Game'}
           </Button>
         </Box>
       </Box>
