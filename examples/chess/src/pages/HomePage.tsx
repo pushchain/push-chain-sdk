@@ -1,11 +1,11 @@
-import { ContentLayout } from '@/common';
+import { PageLayout } from '@/common';
 import HomeScreen from '@/modules/homePage/HomeScreen';
 
 const HomePage = () => {
   return (
-    <ContentLayout>
+    <PageLayout>
       <HomeScreen />
-    </ContentLayout>
+    </PageLayout>
   );
 };
 

@@ -1,13 +1,17 @@
 import { GAME_STATUS, GameSessionData, PIECE_COLOR } from '@/common';
+import { ChessBoard } from '@/components/ChessBoard';
 import { useAppContext } from '@/context/AppContext';
 import { createNewSession } from '@/services/createNewSession';
 import { getRecentSession } from '@/services/getRecentSession';
 import { joinExistingSession } from '@/services/joinExistingSession';
 import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button } from 'shared-components';
+import { Box, Button, css, Text } from 'shared-components';
 
 const HomeScreen = () => {
+  const [showLoader, setShowLoader] = useState(false);
+
   const { pushChain, setCurrentSession } = useAppContext();
   const { universalAddress } = usePushWalletContext();
   const navigate = useNavigate();
@@ -40,7 +44,7 @@ const HomeScreen = () => {
       const data: GameSessionData = {
         gameId: `${Date.now()}`,
         player1: {
-          address: universalAddress.address,
+          universalAddress: universalAddress,
           pieceColor: randomColor,
         },
         player2: null,
@@ -53,7 +57,7 @@ const HomeScreen = () => {
   };
 
   const handleJoinSession = async (data: GameSessionData) => {
-    if (data.player1.address === universalAddress?.address) {
+    if (data.player1.universalAddress.address === universalAddress?.address) {
       setCurrentSession(data);
     }
     if (pushChain && universalAddress) {
@@ -64,7 +68,7 @@ const HomeScreen = () => {
       const newData: GameSessionData = {
         ...data,
         player2: {
-          address: universalAddress.address,
+          universalAddress: universalAddress,
           pieceColor: newPieceColor,
         },
         status: GAME_STATUS.CLOSED,
@@ -75,15 +79,22 @@ const HomeScreen = () => {
   };
 
   const handleClick = async () => {
+    if (showLoader) return;
     if (pushChain) {
-      const data = await getRecentSession(pushChain);
-      console.log(data);
-      if (!data) {
-        await handleCreateSession();
-      } else {
-        await handleJoinSession(data);
+      setShowLoader(true);
+      try {
+        const data = await getRecentSession(pushChain);
+        if (!data) {
+          await handleCreateSession();
+        } else {
+          await handleJoinSession(data);
+        }
+        navigate('/chess');
+      } catch (err) {
+        console.log(err);
+      } finally {
+        setShowLoader(false);
       }
-      navigate('/chess');
     }
   };
 
@@ -92,9 +103,45 @@ const HomeScreen = () => {
   };
 
   return (
-    <Box display="flex" gap="spacing-xs">
-      <Button onClick={handleClick}>Play Online</Button>
-      <Button onClick={handleBotClick}>Play With Bot</Button>
+    <Box
+      display="flex"
+      margin="spacing-xl spacing-none spacing-none spacing-none"
+      alignItems={{ initial: 'flex-start', lp: 'center' }}
+      justifyContent="center"
+      gap="spacing-xl"
+      flexDirection={{ initial: 'unset', lp: 'column-reverse' }}
+    >
+      <ChessBoard position="8/8/8/8/8/8/8/8 w - - 0 1" />
+      <Box
+        display="flex"
+        flexDirection="column"
+        padding={{
+          initial: 'spacing-xxl spacing-none',
+          tb: 'spacing-none spacing-md',
+        }}
+        gap="spacing-lg"
+        width={{ initial: '260px', lp: '100%', tb: '100%' }}
+        maxWidth={{ initial: 'unset', lp: '390px', tb: '390px' }}
+        css={css`
+          box-sizing: border-box;
+        `}
+      >
+        <Box display="flex" flexDirection="column" gap="spacing-xxxs">
+          <Text color="text-primary-inverse" variant="h2-bold">
+            Uni Chess
+          </Text>
+          <Text color="text-primary-inverse" variant="bm-semibold">
+            Play Universal Chess with players from any chain and create on-chain
+            history.
+          </Text>
+        </Box>
+        <Box display="flex" flexDirection="column" gap="spacing-sm">
+          <Button onClick={handleBotClick}>Play With Bot</Button>
+          <Button onClick={handleClick} loading={showLoader}>
+            {!showLoader && 'Play Multiplayer'}
+          </Button>
+        </Box>
+      </Box>
     </Box>
   );
 };

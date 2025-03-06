@@ -9,6 +9,11 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+body {
+  margin: 0;
+  background-color: #202124;
+}
+
 a {
   text-decoration: inherit;
 }

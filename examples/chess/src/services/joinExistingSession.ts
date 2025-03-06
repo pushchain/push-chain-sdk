@@ -1,4 +1,4 @@
-import { GameSessionData } from '@/common';
+import { GameData, GameSessionData } from '@/common';
 import { PushChain } from '@pushchain/devnet';
 
 export const joinExistingSession = async (
@@ -12,16 +12,17 @@ export const joinExistingSession = async (
 
   console.log(txn);
 
+  const newData: GameData = {
+    gameId: data.gameId,
+    player1: data.player1,
+    player2: data.player2,
+    moves: [],
+    timestamp: Date.now().toString(),
+  };
+
   const txn2 = await pushChain.tx.send([], {
     category: `CHESS:${data.timestamp}`,
-    data: JSON.stringify({
-      gameId: data.gameId,
-      player1: data.player1,
-      player2: data.player2,
-      moves: [],
-      timestamp: Date.now(),
-      winner: null,
-    }),
+    data: JSON.stringify(newData),
   });
 
   console.log(txn2);

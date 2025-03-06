@@ -1,5 +1,5 @@
-import { LandingPageScreen } from '../modules/landingPage/LandingPageScreen';
-import { ContentLayout } from '../common/components/ContentLayout';
+import { ContentLayout } from '@/common';
+import { LandingPageScreen } from '@/modules/landingPage/LandingPageScreen';
 
 const LandingPage = () => {
   return (

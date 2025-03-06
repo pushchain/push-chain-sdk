@@ -1,23 +1,28 @@
 import { Box } from 'shared-components';
-import { PushWalletButton } from '@pushprotocol/pushchain-ui-kit';
+import { LandingPageLeftComponent } from './components/LandingPageLeftComponent';
+import { useEffect } from 'react';
 
 const LandingPageScreen = () => {
+  useEffect(() => {
+    document.body.style.background = '#ffffff';
+    return () => {
+      document.body.style.background = '';
+    };
+  }, []);
+
   return (
     <Box
       display="flex"
       flexDirection="row"
-      justifyContent="center"
+      justifyContent={{ initial: 'space-between', tb: 'center' }}
       width="100%"
       alignItems="center"
       margin="spacing-xl spacing-none"
     >
-      <PushWalletButton
-        universalAddress={null}
-        title="Connect Push Wallet"
-        styling={{
-          width: '200px',
-        }}
-      />
+      <LandingPageLeftComponent />
+      {/* <Box display={{ initial: 'block', tb: 'none' }}>
+        <LandingPageBanner height="702px" />
+      </Box> */}
     </Box>
   );
 };

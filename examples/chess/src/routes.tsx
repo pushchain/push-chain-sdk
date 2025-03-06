@@ -35,6 +35,7 @@ const AppRoutes = () => {
           path="/bot"
           element={universalAddress ? <BotPage /> : <Navigate to="/" />}
         />
+        <Route path="/test" element={<BotPage />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Box>

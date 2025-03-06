@@ -15,6 +15,7 @@
     "@pushprotocol/push-chain": "^0.1.7",
     "@pushprotocol/pushchain-ui-kit": "^1.0.5",
     "@radix-ui/react-popover": "^1.1.2",
+    "blockies-react-svg": "^0.0.13",
     "buffer": "^6.0.3",
     "chess.js": "^1.0.0",
     "protobufjs": "^7.4.0",

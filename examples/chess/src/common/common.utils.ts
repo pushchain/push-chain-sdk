@@ -1,7 +1,18 @@
 import { SubscriptionFilter } from '@pushchain/devnet/src/lib/websocket/websocket-client';
+import { FC } from 'react';
+import {
+  IconProps,
+  EthereumMonotone,
+  PolygonMonotone,
+  BnbMonotone,
+  ArbitrumMonotone,
+  OptimismMonotone,
+  SolanaMonotone,
+  PushMonotone,
+} from 'shared-components';
 
 export function trimAddress(address: string) {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  return `${address.slice(0, 7)}...${address.slice(-7)}`;
 }
 
 export function formatTimestamp(
@@ -98,3 +109,22 @@ export const getInCAIP = (address: string, chain: string) => {
 export const customSessionFilters: SubscriptionFilter[] = [
   { type: 'CATEGORY', value: ['CHESS_GAME_SESSION'] },
 ];
+
+export const CHAIN_LOGO: {
+  [x: number | string]: FC<IconProps>;
+} = {
+  1: EthereumMonotone,
+  11155111: EthereumMonotone,
+  137: PolygonMonotone,
+  80002: PolygonMonotone,
+  97: BnbMonotone,
+  56: BnbMonotone,
+  42161: ArbitrumMonotone,
+  421614: ArbitrumMonotone,
+  11155420: OptimismMonotone,
+  10: OptimismMonotone,
+  2442: PolygonMonotone,
+  1101: PolygonMonotone,
+  '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp': SolanaMonotone,
+  devnet: PushMonotone,
+};

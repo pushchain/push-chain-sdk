@@ -1,3 +1,4 @@
+import { UniversalAddress } from '@pushprotocol/pushchain-ui-kit';
 import { Move } from 'chess.js';
 
 enum PIECE_COLOR {
@@ -14,10 +15,11 @@ enum GAME_RESULT {
   WIN = 'win',
   LOSE = 'lose',
   DRAW = 'draw',
+  FORFEIT = 'forfeit',
 }
 
 type PlayerData = {
-  address: string;
+  universalAddress: UniversalAddress;
   pieceColor: PIECE_COLOR;
 };
 
@@ -38,6 +40,10 @@ type GameData = {
     move: Move;
   }[];
   otherPlayerQuit?: boolean;
+  result?: {
+    universalAddress: UniversalAddress;
+    status: GAME_RESULT;
+  };
   timestamp: string;
 };
 

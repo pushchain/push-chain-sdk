@@ -9,20 +9,22 @@ export const sendGameMove = async (
   data: GameData,
   move: Move | null
 ) => {
+  const newData: GameData = {
+    ...data,
+    moves: move
+      ? [
+          {
+            player: universalAddress.address,
+            move: move,
+          },
+          ...data.moves,
+        ]
+      : data.moves,
+  };
+
   const txn = await pushChain.tx.send([], {
     category: `CHESS:${data.gameId}`,
-    data: JSON.stringify({
-      ...data,
-      moves: move
-        ? [
-            {
-              player: universalAddress.address,
-              move: move,
-            },
-            ...data.moves,
-          ]
-        : data.moves,
-    }),
+    data: JSON.stringify(newData),
   });
 
   console.log(txn);

@@ -2804,6 +2804,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"blockies-react-svg@npm:^0.0.13":
+  version: 0.0.13
+  resolution: "blockies-react-svg@npm:0.0.13"
+  peerDependencies:
+    react: ">=16.8.0"
+  checksum: 10/1618aaf4186afe4cfec9680e831cdc03ea2fb911964a71e5392a64487c0a5ccddb0f37bc933e9680f76b552fa20f1e85b0a6072cfa9445df8b5d5877e2b0360f
+  languageName: node
+  linkType: hard
+
 "bluebird@npm:^3.7.2":
   version: 3.7.2
   resolution: "bluebird@npm:3.7.2"
@@ -3114,6 +3123,7 @@ __metadata:
     "@types/react-dom": "npm:^18.3.0"
     "@types/react-router-dom": "npm:^5.3.3"
     "@vitejs/plugin-react": "npm:^4.3.2"
+    blockies-react-svg: "npm:^0.0.13"
     buffer: "npm:^6.0.3"
     chess.js: "npm:^1.0.0"
     eslint: "npm:^9.11.1"
