@@ -1,6 +1,7 @@
 import { Block } from './block/block';
 import { ENV } from './constants';
 import { UniversalSigner } from './signer/signer.types';
+import { checksumAddress } from './signer/universalFactories';
 import { Tx } from './tx/tx';
 import { Utils } from './utils';
 import { WebSocketClient } from './websocket/websocket-client';
@@ -72,6 +73,12 @@ export class PushChain {
       printTraces: false,
     }
   ): Promise<PushChain> => {
+    if (universalSigner) {
+      universalSigner.address = checksumAddress(
+        universalSigner.chain,
+        universalSigner.address
+      );
+    }
     const block = await Block.initialize(options.network, options.rpcUrl);
     const tx = await Tx.initialize(
       options.network,
