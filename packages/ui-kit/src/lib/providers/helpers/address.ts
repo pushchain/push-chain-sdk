@@ -1,53 +1,76 @@
 import { ChainType } from '../types/wallet.types';
 
-const CHAIN_ID_MAP: Record<ChainType, string> = {
-  [ChainType.ETHEREUM]: 'eip155:1', // Ethereum mainnet
-  [ChainType.SOLANA]: 'solana:4sGjMW1sUnHzSxGspuhpqLDx6wiyjNtZ', // Solana mainnet
-  [ChainType.BINANCE]: 'eip155:56', // Binance Smart Chain
-  [ChainType.ARBITRUM]: 'eip155:42161', // Arbitrum One
+export const chainToNamespace = {
+  EVM: 'eip155',
+  SOL: 'solana',
 };
 
-export function formatCAIP10Address(
-  rawAddress: string,
-  chainType: ChainType
-): string {
-  const chainId = CHAIN_ID_MAP[chainType];
-
-  const formattedAddress = (() => {
-    switch (chainType) {
-      case ChainType.ETHEREUM:
-      case ChainType.BINANCE:
-      case ChainType.ARBITRUM:
-        return rawAddress;
-      case ChainType.SOLANA:
-        return rawAddress;
-      default:
-        return rawAddress;
-    }
-  })();
-
-  return `${chainId}:${formattedAddress}`;
-}
-
-export function parseCAIP10Address(caipAddress: string): {
-  chainType: ChainType | null;
-  rawAddress: string;
-} {
+export function fromCAIPFormat(caipAddress: string) {
   const parts = caipAddress.split(':');
 
   if (parts.length !== 3) {
-    return { chainType: null, rawAddress: caipAddress };
+    throw new Error('Invalid CAIP-10 address format');
   }
 
   const namespace = parts[0];
-  const reference = parts[1];
+  const chainId = parts[1];
   const rawAddress = parts[2];
 
-  const chainId = `${namespace}:${reference}`;
+  let chain: ChainType | null = null;
 
-  const chainType = Object.entries(CHAIN_ID_MAP).find(
-    ([, id]) => id === chainId
-  )?.[0] as ChainType | undefined;
+  if (namespace === 'eip155') {
+    if (chainId === '1') {
+      chain = ChainType.ETHEREUM;
+    } else if (chainId === '56') {
+      chain = ChainType.BINANCE;
+    } else if (chainId === '42161') {
+      chain = ChainType.ARBITRUM;
+    } else if (chainId === '43114') {
+      chain = ChainType.AVALANCHE;
+    } else {
+      chain = ChainType.ETHEREUM;
+    }
+  } else if (namespace === 'solana') {
+    chain = ChainType.SOLANA;
+  } else {
+    throw new Error('Unsupported namespace');
+  }
 
-  return { chainType: chainType || null, rawAddress };
+  return {
+    chain,
+    chainId,
+    rawAddress,
+  };
+}
+
+export function toCAIPFormat(
+  rawAddress: string,
+  chain: ChainType,
+  chainId: number | string
+) {
+  const formattedAddress = rawAddress;
+  let formattedChainId = chainId;
+  let namespace = '';
+
+  if (
+    chain.toLowerCase() === ChainType.ETHEREUM ||
+    chain.toLowerCase() === ChainType.BINANCE ||
+    chain.toLowerCase() === ChainType.ARBITRUM ||
+    chain.toLowerCase() === ChainType.AVALANCHE
+  ) {
+    namespace = 'eip155';
+
+    if (typeof chainId === 'string' && chainId.startsWith('0x')) {
+      formattedChainId = parseInt(chainId, 16);
+    }
+  } else if (chain.toLowerCase() === ChainType.SOLANA) {
+    namespace = 'solana';
+
+    // TODO: Find a method to get the solana chain id in caip format
+    formattedChainId = '4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z'; //testnet
+  } else {
+    throw new Error("Unsupported chain. Use 'ethereum' or 'solana'.");
+  }
+
+  return `${namespace}:${formattedChainId}:${formattedAddress}`;
 }

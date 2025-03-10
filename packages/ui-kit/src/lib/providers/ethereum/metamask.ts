@@ -1,6 +1,11 @@
 import { MetaMaskSDK } from '@metamask/sdk';
 import { BaseWalletProvider } from '../BaseWalletProvider';
 import { ChainType } from '../types/wallet.types';
+import { getAddress } from 'ethers';
+import { HexString } from 'ethers/lib.commonjs/utils/data';
+import * as chains from "viem/chains";
+import { toHex } from "viem";
+
 
 export class MetamaskProvider extends BaseWalletProvider {
   private sdk: MetaMaskSDK;
@@ -8,13 +13,11 @@ export class MetamaskProvider extends BaseWalletProvider {
   constructor() {
     super('MetaMask', 'https://metamask.io/images/metamask-fox.svg', [
       ChainType.ETHEREUM,
+      ChainType.ARBITRUM,
+      ChainType.AVALANCHE,
+      ChainType.BINANCE
     ]);
-    this.sdk = new MetaMaskSDK({
-      dappMetadata: {
-        name: 'Your Dapp Name',
-        url: window.location.href,
-      },
-    });
+    this.sdk = new MetaMaskSDK();
   }
 
   isInstalled = async (): Promise<boolean> => {
@@ -22,13 +25,22 @@ export class MetamaskProvider extends BaseWalletProvider {
     return !!provider;
   };
 
-  async connect(): Promise<{ caipAddress: string }> {
+  getProvider = () => {
+    return this.sdk.getProvider();
+  };
+
+  async connect(chainType: ChainType): Promise<{ caipAddress: string }> {
     try {
       const accounts = await this.sdk.connect();
-
       const rawAddress = accounts[0];
+      const checksumAddress = getAddress(rawAddress);
 
-      const addressincaip = this.formatAddress(rawAddress, ChainType.ETHEREUM);
+      await this.switchNetwork(chainType);
+
+      const chainId = await this.getChainId();
+
+      const addressincaip = this.formatAddress(checksumAddress, ChainType.ETHEREUM, chainId);
+
       return addressincaip;
     } catch (error) {
       console.error('Failed to connect to MetaMask:', error);
@@ -36,21 +48,59 @@ export class MetamaskProvider extends BaseWalletProvider {
     }
   }
 
-  getProvider = () => {
-    return this.sdk.getProvider();
-  };
-
-  getChainId = async (): Promise<unknown> => {
+  getChainId = async (): Promise<number> => {
     const provider = this.getProvider();
     if (!provider) {
       throw new Error('Provider is undefined');
     }
-    const chainId = await provider.request({
+    const hexChainId = await provider.request({
       method: 'eth_chainId',
       params: [],
-    });
+    }) as HexString;
+
+    const chainId = parseInt(hexChainId.toString(), 16);
     return chainId;
   };
+
+  switchNetwork = async (chainName: ChainType) => {
+    const network = chains[chainName] as chains.Chain
+    const provider = this.getProvider();
+
+    if (!provider) throw new Error('Provider not found while switching network');
+
+    const hexNetworkId = toHex(network.id);
+
+    try {
+      // Try to switch to the network
+      await provider.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: hexNetworkId }]
+      });
+    } catch (err) {
+      // If the error code is 4902, the network needs to be added
+      if (err.code === 4902) {
+        try {
+          await provider.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: hexNetworkId,
+              chainName: network.name,
+              rpcUrls: network.rpcUrls.default.http,
+              nativeCurrency: network.nativeCurrency,
+              blockExplorerUrls: network.blockExplorers?.default.url
+            }]
+          });
+        } catch (addError) {
+          console.error("Error adding network:", addError);
+          throw addError
+        }
+      } else {
+        console.error("Error switching network:", err);
+        throw err;
+      }
+    }
+
+  }
 
   signMessage = async (message: Uint8Array): Promise<Uint8Array> => {
     try {
@@ -72,7 +122,6 @@ export class MetamaskProvider extends BaseWalletProvider {
         method: 'personal_sign',
         params: [hexMessage, accounts[0]],
       });
-      console.log('Signature inside metamask', signature);
 
       return new Uint8Array(Buffer.from((signature as string).slice(2), 'hex'));
     } catch (error) {

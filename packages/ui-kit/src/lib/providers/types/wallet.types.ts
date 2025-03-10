@@ -1,8 +1,9 @@
 export enum ChainType {
-  ETHEREUM = 'ethereum',
-  SOLANA = 'solana',
-  BINANCE = 'binance',
-  ARBITRUM = 'arbitrum',
+  ETHEREUM = "mainnet",
+  SOLANA = "solana",
+  BINANCE = "bsc",
+  ARBITRUM = "arbitrum",
+  AVALANCHE = "avalanche",
 }
 export interface WalletInfo {
   address: string;
@@ -17,4 +18,6 @@ export interface IWalletProvider {
   connect(chainType?: ChainType): Promise<{ caipAddress: string }>;
   signMessage(message: Uint8Array): Promise<Uint8Array>;
   disconnect(): Promise<void>;
+  getChainId(): Promise<unknown>;
+  switchNetwork?(chainName: ChainType): Promise<void>;
 }

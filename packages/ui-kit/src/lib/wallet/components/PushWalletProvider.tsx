@@ -175,9 +175,7 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
   };
 
   const handleSignMessage = async (data: Uint8Array): Promise<Uint8Array> => {
-
     let signature;
-
     if (currentWallet) {
       signature = await handleExternalWalletSignRequest(data)
     } else {
@@ -196,7 +194,6 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
       const providerReceived = walletRegistry.getProvider(data.provider);
 
       if (!providerReceived) {
-        console.log('Provider not found');
         return;
       }
 
@@ -230,6 +227,12 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
       });
     } catch (error) {
       console.log('Failed to connect to provider', error);
+      sendMessageToPushWallet({
+        type: APP_TO_WALLET_ACTION.CONNECTION_STATUS,
+        data: {
+          status: 'rejected',
+        },
+      });
       throw new Error('Failed to connect to provider');
     }
   };
@@ -247,7 +250,6 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
       );
 
       if (!providerReceived) {
-        console.log('Provider not found');
         throw new Error('Provider not found');
       }
 

@@ -1,4 +1,4 @@
-import { formatCAIP10Address } from './helpers/address';
+import { toCAIPFormat } from './helpers/address';
 import { ChainType, IWalletProvider } from './types/wallet.types';
 
 export abstract class BaseWalletProvider implements IWalletProvider {
@@ -15,12 +15,14 @@ export abstract class BaseWalletProvider implements IWalletProvider {
   abstract connect(chainType?: ChainType): Promise<{ caipAddress: string }>;
   abstract signMessage(message: Uint8Array): Promise<Uint8Array>;
   abstract disconnect(): Promise<void>;
+  abstract getChainId(): Promise<unknown>;
 
   protected formatAddress(
     rawAddress: string,
-    chainType: ChainType
+    chainType: ChainType,
+    chainId: number,
   ): { caipAddress: string } {
-    const caipAddress = formatCAIP10Address(rawAddress, chainType);
+    const caipAddress = toCAIPFormat(rawAddress, chainType, chainId);
     return { caipAddress };
   }
 

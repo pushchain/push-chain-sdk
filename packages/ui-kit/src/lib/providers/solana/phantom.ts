@@ -1,3 +1,4 @@
+import { getAddress } from 'ethers';
 import { BaseWalletProvider } from '../BaseWalletProvider';
 import { ChainType } from '../types/wallet.types';
 
@@ -22,8 +23,13 @@ export class PhantomProvider extends BaseWalletProvider {
 
     const provider = window.phantom?.ethereum;
     const accounts = await provider.request({ method: 'eth_requestAccounts' });
+    const rawAddress = accounts[0];
 
-    const caipAddress = this.formatAddress(accounts, ChainType.ETHEREUM);
+    const checksumAddress = getAddress(rawAddress);
+
+    const chainId = await this.getChainId(ChainType.ETHEREUM);
+
+    const caipAddress = this.formatAddress(checksumAddress, ChainType.ETHEREUM, chainId);
     return caipAddress;
   };
 
@@ -35,9 +41,12 @@ export class PhantomProvider extends BaseWalletProvider {
     const provider = window.phantom?.solana;
     const accounts = await provider.connect();
 
+    const chainId = await this.getChainId(ChainType.SOLANA);
+
     const caipAddress = this.formatAddress(
       accounts.publicKey.toString(),
-      ChainType.SOLANA
+      ChainType.SOLANA,
+      chainId
     );
 
     return caipAddress;
@@ -45,9 +54,9 @@ export class PhantomProvider extends BaseWalletProvider {
 
   connect = async (chainType?: ChainType): Promise<{ caipAddress: string }> => {
     let account;
-    if (!chainType || chainType === 'solana') {
+    if (!chainType || chainType === ChainType.SOLANA) {
       account = this.connectSolana();
-    } else if (chainType === 'ethereum') {
+    } else if (chainType === ChainType.ETHEREUM) {
       account = this.connectEthereum();
     }
 
@@ -56,6 +65,18 @@ export class PhantomProvider extends BaseWalletProvider {
     }
 
     return account;
+  };
+
+  getChainId = async (chainType?: ChainType): Promise<number> => {
+    if (chainType === ChainType.ETHEREUM) {
+      const provider = window.phantom.ethereum;
+      const chainId = await provider.request({ method: 'eth_chainId' });
+      return parseInt(chainId, 16);
+    } else if (chainType === ChainType.SOLANA) {
+      const provider = window.phantom.solana;
+      return provider.chainId || 1;
+    }
+    throw new Error('No Phantom wallet connected');
   };
 
   signMessage = async (message: Uint8Array): Promise<Uint8Array> => {

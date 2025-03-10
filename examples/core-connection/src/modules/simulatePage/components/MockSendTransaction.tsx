@@ -4,6 +4,8 @@ import { css } from 'styled-components';
 import { useGlobalContext } from '../../../context/GlobalContext';
 import { centerMaskString } from '../../../helpers';
 import { CONSTANTS, createUniversalAccount } from '@pushchain/devnet';
+import { TransactionSnippet } from '../../../common/components';
+import { mockTransaction } from '../../../common/constants';
 
 const MockSendTransaction = () => {
   const { pushChain, universalAddress } = useGlobalContext();
@@ -23,7 +25,7 @@ const MockSendTransaction = () => {
             }),
             createUniversalAccount({
               chain: CONSTANTS.CHAIN.SOLANA,
-              chainId: CONSTANTS.CHAIN_ID.SOLANA.DEVNET,
+              chainId: CONSTANTS.CHAIN_ID.SOLANA.TESTNET,
               address: 'ySYrGNLLJSK9hvGGpoxg8TzWfRe8ftBtDSMECtx2eJR',
             }),
           ],
@@ -89,6 +91,11 @@ const MockSendTransaction = () => {
           />
         </Box>
       )}
+
+      <TransactionSnippet
+        heading="Mock Unsigned Transaction Data"
+        transactionData={mockTransaction}
+      />
 
       <Box width={{ initial: '350px', ml: '300px' }}>
         <Button
