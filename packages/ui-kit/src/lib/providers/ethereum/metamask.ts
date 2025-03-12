@@ -63,7 +63,7 @@ export class MetamaskProvider extends BaseWalletProvider {
   };
 
   switchNetwork = async (chainName: ChainType) => {
-    const network = chains[chainName] as chains.Chain
+    const network = (chains as Record<string, chains.Chain>)[chainName];
     const provider = this.getProvider();
 
     if (!provider) throw new Error('Provider not found while switching network');
@@ -78,7 +78,7 @@ export class MetamaskProvider extends BaseWalletProvider {
       });
     } catch (err) {
       // If the error code is 4902, the network needs to be added
-      if (err.code === 4902) {
+      if ((err as any).code === 4902) {
         try {
           await provider.request({
             method: "wallet_addEthereumChain",
@@ -143,7 +143,5 @@ export class MetamaskProvider extends BaseWalletProvider {
         },
       ],
     });
-
-    //TODO: reload the dapp after disconnecting the wallet
   };
 }

@@ -2,6 +2,24 @@ import { getAddress } from 'ethers';
 import { BaseWalletProvider } from '../BaseWalletProvider';
 import { ChainType } from '../types/wallet.types';
 
+declare global {
+  interface Window {
+    phantom?: {
+      ethereum?: {
+        isConnected?: boolean;
+        request: (args: { method: string; params?: any[] }) => Promise<any>;
+      };
+      solana?: {
+        isConnected?: boolean;
+        chainId?: number;
+        connect: () => Promise<{ publicKey: { toString: () => string } }>;
+        disconnect: () => Promise<void>;
+        signMessage: (message: Uint8Array, encoding: string) => Promise<{ signature: Uint8Array }>;
+      };
+    };
+  }
+}
+
 export class PhantomProvider extends BaseWalletProvider {
   constructor() {
     super('Phantom', 'https://www.phantom.app/img/logo.png', [
@@ -17,7 +35,7 @@ export class PhantomProvider extends BaseWalletProvider {
   };
 
   private connectEthereum = async (): Promise<{ caipAddress: string }> => {
-    if (!window.phantom || !window.phantom?.ethereum) {
+    if (!window.phantom?.ethereum) {
       throw new Error('Phantom not installed for Ethereum');
     }
 
@@ -34,8 +52,8 @@ export class PhantomProvider extends BaseWalletProvider {
   };
 
   private connectSolana = async (): Promise<{ caipAddress: string }> => {
-    if (!window.phantom || !window.phantom?.solana) {
-      throw new Error('Phantom not installed for Ethereum');
+    if (!window.phantom?.solana) {
+      throw new Error('Phantom not installed for Solana');
     }
 
     const provider = window.phantom?.solana;
@@ -69,11 +87,14 @@ export class PhantomProvider extends BaseWalletProvider {
 
   getChainId = async (chainType?: ChainType): Promise<number> => {
     if (chainType === ChainType.ETHEREUM) {
-      const provider = window.phantom.ethereum;
+      const provider = window.phantom?.ethereum;
+      if (!provider) throw new Error('No Phantom Ethereum wallet connected');
       const chainId = await provider.request({ method: 'eth_chainId' });
       return parseInt(chainId, 16);
     } else if (chainType === ChainType.SOLANA) {
-      const provider = window.phantom.solana;
+      const provider = window.phantom?.solana;
+      if (!provider) throw new Error('No Phantom Solana wallet connected');
+
       return provider.chainId || 1;
     }
     throw new Error('No Phantom wallet connected');
@@ -85,7 +106,7 @@ export class PhantomProvider extends BaseWalletProvider {
       throw new Error('No Phantom wallet installed');
     }
 
-    if (window.phantom.solana && window.phantom.solana.isConnected) {
+    if (window.phantom?.solana?.isConnected) {
       try {
         const provider = window.phantom?.solana;
         const signedMessage = await provider.signMessage(message, 'utf8');
@@ -95,7 +116,7 @@ export class PhantomProvider extends BaseWalletProvider {
         console.error('Phantom Solana signing error:', error);
         throw error;
       }
-    } else if (window.phantom.ethereum && window.phantom.ethereum.isConnected) {
+    } else if (window.phantom?.ethereum?.isConnected) {
       try {
         const provider = window.phantom?.ethereum;
 
@@ -128,12 +149,12 @@ export class PhantomProvider extends BaseWalletProvider {
     const isInstalled = this.isInstalled();
     if (!isInstalled) return;
 
-    if (window.phantom.solana.isConnected) {
+    if (window.phantom?.solana?.isConnected) {
       const provider = window.phantom?.solana;
       await provider.disconnect();
     }
 
-    if (window.phantom.ethereum.isConnected) {
+    if (window.phantom?.ethereum?.isConnected) {
       //TOOD: find how to disconnect ethereum
     }
 

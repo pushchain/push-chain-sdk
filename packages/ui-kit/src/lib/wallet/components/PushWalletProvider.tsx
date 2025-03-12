@@ -258,7 +258,7 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
           handleExternalWalletConnection(event.data.data);
           break;
         case WALLET_TO_APP_ACTION.IS_LOGGED_IN:
-          handleIsLoggedInAction(event.data.data);
+          handleIsLoggedInAction();
           break;
         case WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS:
           handleAppConnectionSuccess(event.data.data);
