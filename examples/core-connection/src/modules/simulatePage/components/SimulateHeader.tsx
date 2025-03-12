@@ -1,6 +1,6 @@
 import { Box } from 'shared-components';
 import { useGlobalContext } from '../../../context/GlobalContext';
-import { PushWalletButton } from '../../../../../../packages/ui-kit';
+import { PushWalletButton } from '@pushprotocol/pushchain-ui-kit';
 
 const SimulateHeader = () => {
   const { universalAddress } = useGlobalContext();

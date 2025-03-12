@@ -9,7 +9,7 @@ import {
   CONSTANTS,
   PushWalletProvider,
   PushWalletIFrame,
-} from '../../../packages/ui-kit';
+} from '@pushprotocol/pushchain-ui-kit';
 
 const GlobalStyle = createGlobalStyle`
   :root{
@@ -41,7 +41,7 @@ const App: React.FC = () => {
   return (
     <ThemeProvider theme={isDarkMode ? themeConfig.dark : themeConfig.light}>
       <GlobalStyle />
-      <PushWalletProvider env={CONSTANTS.ENV.LOCAL}>
+      <PushWalletProvider env={env[deploymentEnv]}>
         <GlobalProvider>
           <Router>
             <PushWalletIFrame />
