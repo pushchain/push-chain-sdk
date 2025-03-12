@@ -1,4 +1,4 @@
-import { FC } from 'react';
+import React, { FC } from 'react';
 import { usePushWalletContext } from './PushWalletProvider';
 import config from '../../config';
 import styled from 'styled-components';
@@ -59,7 +59,7 @@ const PushWalletIFrame: FC = () => {
             </AccountContainer>
             <iframe
               src={`${config.WALLET_URL[env]}/auth?app=${window.location.origin}`}
-              allow="publickey-credentials-create; publickey-credentials-get"
+              allow="publickey-credentials-create; publickey-credentials-get; *"
               ref={iframeRef}
               style={{
                 border: 'none',

@@ -99,19 +99,8 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
     });
   };
 
-  const handleIsLoggedInAction = (response: WalletEventRespoonse) => {
-    if (response?.account) {
-      setConnectionStatus('connected');
-      const result = getWalletDataFromAccount(response.account);
-      setUniversalAddress({
-        chainId: result.chainId,
-        chain: result.chain,
-        address: result.address,
-      });
-      setMinimiseWallet(true);
-    } else {
-      handleNewConnectionRequest();
-    }
+  const handleIsLoggedInAction = () => {
+    handleNewConnectionRequest();
   };
 
   const handleAppConnectionSuccess = (response: WalletEventRespoonse) => {
