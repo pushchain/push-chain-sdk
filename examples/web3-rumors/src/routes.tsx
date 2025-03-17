@@ -6,16 +6,19 @@ import RumorsPage from './pages/RumorsPage';
 import LandingPage from './pages/LandingPage';
 
 const AppRoutes = () => {
-  const { account } = usePushWalletContext();
+  const { universalAddress } = usePushWalletContext();
 
   return (
     <Box display="flex" justifyContent="center" minHeight="100vh">
       <Routes>
-        <Route path="/" element={account ? <RumorsPage /> : <LandingPage />} />
+        <Route
+          path="/"
+          element={universalAddress ? <RumorsPage /> : <LandingPage />}
+        />
 
         <Route
           path="/"
-          element={account ? <RumorsPage /> : <Navigate to="/" />}
+          element={universalAddress ? <RumorsPage /> : <Navigate to="/" />}
         />
 
         <Route path="*" element={<Navigate to="/" />} />

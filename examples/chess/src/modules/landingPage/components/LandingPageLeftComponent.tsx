@@ -1,4 +1,4 @@
-import { Box, Button, Front, Sale, Text, css } from 'shared-components';
+import { Box, Button, Front, Union, Text, css } from 'shared-components';
 import { PushWalletButton } from '@pushprotocol/pushchain-ui-kit';
 import { SimulateTxText } from './SimulateTxText';
 import { LandingPageBanner } from './LandingPageBanner';
@@ -142,7 +142,7 @@ const LandingPageLeftComponent = () => {
               alignItems="center"
             >
               <Box height="28px" width="28px">
-                <Sale size={28} color="icon-primary" />
+                <Union size={28} color="icon-primary" />
               </Box>
               <Text variant="h4-regular" as="span">
                 {item.text}

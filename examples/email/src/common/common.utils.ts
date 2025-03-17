@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { EMAIL_BOX, Email } from './common.types';
+import { UniversalAddress } from '@pushprotocol/pushchain-ui-kit';
 
 export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
@@ -136,6 +137,18 @@ export const getInCAIP = (address: string, chain: string) => {
       ? 'eip155:56'
       : 'push:devnet'
   }:${address}`;
+};
+
+export const getFullCaipAddress = (universalAddress: UniversalAddress) => {
+  const { chain, chainId, address } = universalAddress;
+
+  if (chain && chainId) {
+    return `${chain}:${chainId}:${address}`;
+  }
+  if (chain) {
+    return `${chain}:${address}`;
+  }
+  return address;
 };
 
 export const transformEmails = (emails: any[]) => {

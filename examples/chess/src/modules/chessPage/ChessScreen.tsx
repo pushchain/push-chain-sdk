@@ -190,6 +190,7 @@ const ChessScreen = () => {
   };
 
   const handleEndGame = async (status: GAME_RESULT) => {
+    setStatus(status);
     try {
       if (pushChain && universalAddress && gameData) {
         const data: GameData = {
@@ -199,7 +200,6 @@ const ChessScreen = () => {
             status: status === GAME_RESULT.FORFEIT ? GAME_RESULT.LOSE : status,
           },
         };
-        setStatus(status);
         if (playerTimerRef.current) clearInterval(playerTimerRef.current);
         await endGameSession(pushChain, data);
       }

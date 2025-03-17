@@ -30,46 +30,52 @@ const HomeScreen = () => {
   };
 
   return (
-    <Box
-      display="flex"
-      margin="spacing-xl spacing-none spacing-none spacing-none"
-      alignItems={{ initial: 'flex-start', lp: 'center' }}
-      justifyContent="center"
-      gap="spacing-xl"
-      flexDirection={{ initial: 'unset', lp: 'column-reverse' }}
-    >
-      <ChessBoard position="8/8/8/8/8/8/8/8 w - - 0 1" />
+    <>
       <Box
         display="flex"
-        flexDirection="column"
-        padding={{
-          initial: 'spacing-xxl spacing-none',
-          tb: 'spacing-none spacing-md',
-        }}
-        gap="spacing-lg"
-        width={{ initial: '260px', lp: '100%', tb: '100%' }}
-        maxWidth={{ initial: 'unset', lp: '390px', tb: '390px' }}
-        css={css`
-          box-sizing: border-box;
-        `}
+        margin="spacing-xl spacing-none spacing-none spacing-none"
+        alignItems={{ initial: 'flex-start', lp: 'center' }}
+        justifyContent="center"
+        gap="spacing-xl"
+        flexDirection={{ initial: 'unset', lp: 'column-reverse' }}
       >
-        <Box display="flex" flexDirection="column" gap="spacing-xxxs">
-          <Text color="text-primary-inverse" variant="h2-bold">
-            Uni Chess
-          </Text>
-          <Text color="text-primary-inverse" variant="bm-semibold">
-            Play Universal Chess with players from any chain and create on-chain
-            history.
-          </Text>
-        </Box>
-        <Box display="flex" flexDirection="column" gap="spacing-sm">
-          <Button onClick={handleBotClick}>Play With Bot</Button>
-          <Button onClick={handleClick} loading={showLoader}>
-            {!showLoader && 'Play Multiplayer'}
-          </Button>
+        <ChessBoard position="8/8/8/8/8/8/8/8 w - - 0 1" />
+        <Box
+          display="flex"
+          flexDirection="column"
+          padding={{
+            initial: 'spacing-xxl spacing-none',
+            lp: 'spacing-none spacing-md',
+            tb: 'spacing-none spacing-md',
+          }}
+          gap="spacing-lg"
+          width={{ initial: '260px', lp: '100%', tb: '100%' }}
+          maxWidth={{ initial: 'unset', lp: '390px', tb: '390px' }}
+          css={css`
+            box-sizing: border-box;
+          `}
+        >
+          <Box display="flex" flexDirection="column" gap="spacing-xxs">
+            <Box height="68px" width="68px">
+              <img height="68px" width="68px" src="/ChessIcon.png" />
+            </Box>
+            <Text color="text-primary-inverse" variant="h2-bold">
+              Uni Chess
+            </Text>
+            <Text color="text-primary-inverse" variant="bm-semibold">
+              Play Universal Chess with players from any chain and create
+              on-chain history.
+            </Text>
+          </Box>
+          <Box display="flex" flexDirection="column" gap="spacing-sm">
+            <Button onClick={handleBotClick}>Play With Bot</Button>
+            <Button onClick={handleClick} loading={showLoader}>
+              {!showLoader && 'Play Multiplayer'}
+            </Button>
+          </Box>
         </Box>
       </Box>
-    </Box>
+    </>
   );
 };
 

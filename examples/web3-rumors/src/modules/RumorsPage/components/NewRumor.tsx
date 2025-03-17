@@ -18,7 +18,6 @@ import Strikethrough from '@/common/icons/Strikethrough';
 import Quote from '@/common/icons/Quote';
 import Link from '@/common/icons/Link';
 import { getSentConfessions } from '@/services/getSentConfessions';
-import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 
 const NewRumor = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -29,7 +28,6 @@ const NewRumor = () => {
 
   const { account, pushNetwork, setData, handleSendSignRequestToPushWallet } =
     useAppContext();
-  const { setMinimiseWallet } = usePushWalletContext();
 
   const insertText = (before: string, after = '') => {
     const textarea = textareaRef.current;
@@ -126,7 +124,6 @@ const NewRumor = () => {
       setTimeout(() => {
         handleFetchNewData();
       }, 2000);
-      setMinimiseWallet(true);
       setText('');
       setIsOpen(false);
     } catch (error) {

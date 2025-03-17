@@ -8,7 +8,17 @@ import {
 } from '@pushprotocol/pushchain-ui-kit';
 import PushMail from 'push-mail';
 import { ReactNode, useEffect, useState } from 'react';
-import { Email, EMAIL_BOX, transformEmails, Wallet } from '@/common';
+import {
+  Email,
+  EMAIL_BOX,
+  getFullCaipAddress,
+  transformEmails,
+  Wallet,
+} from '@/common';
+import {
+  checkAndUpdateActivity,
+  checkAndUpdateReceiveEmailActivity,
+} from '@/services/rewards';
 
 interface AppContextType {
   searchInput: string;
@@ -39,11 +49,14 @@ interface AppContextType {
   isSentEmailLoading: boolean;
   getReceivedEmails: () => Promise<void>;
   isReceivedEmailLoading: boolean;
+  emailBot: boolean;
+  setEmailBot: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const [account, setAccount] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState<string>('');
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
@@ -61,8 +74,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSentEmailLoading, setIsSentEmailLoading] = useState(false);
   const [isReceivedEmailLoading, setIsReceivedEmailLoading] = useState(false);
+  const [emailBot, setEmailBot] = useState(false);
 
-  const { account, handleSendSignRequestToPushWallet } = usePushWalletContext();
+  const { universalAddress, handleSendSignRequestToPushWallet } =
+    usePushWalletContext();
 
   const getSentEmails = async () => {
     if (!account || !pushEmail || isSentEmailLoading) return;
@@ -108,6 +123,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    if (
+      selectedEmail &&
+      selectedEmail.txHash !== 'welcome' &&
+      universalAddress
+    ) {
+      checkAndUpdateReceiveEmailActivity(
+        universalAddress,
+        selectedEmail.txHash
+      );
+    }
+  }, [selectedEmail, universalAddress]);
+
+  useEffect(() => {
     if (!account || !pushEmail) return;
     getEmails();
     const interval = setInterval(() => {
@@ -124,6 +152,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setWallet({ address, chainId, chain });
     }
   }, [account]);
+
+  useEffect(() => {
+    if (universalAddress) {
+      setAccount(getFullCaipAddress(universalAddress));
+      checkAndUpdateActivity(universalAddress);
+    }
+  }, [universalAddress]);
 
   useEffect(() => {
     const setNetwork = async () => {
@@ -161,6 +196,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isSentEmailLoading,
         getReceivedEmails,
         isReceivedEmailLoading,
+        emailBot,
+        setEmailBot,
       }}
     >
       {children}

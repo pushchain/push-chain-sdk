@@ -6,7 +6,7 @@ import EmailPage from './pages/EmailPage';
 import LandingPage from './pages/LandingPage';
 
 const AppRoutes = () => {
-  const { account } = usePushWalletContext();
+  const { universalAddress } = usePushWalletContext();
   const isTablet = window.matchMedia('(max-width: 768px)').matches;
   return (
     <Box display="flex" justifyContent="center" minHeight="100vh">
@@ -14,7 +14,7 @@ const AppRoutes = () => {
         <Route
           path="/"
           element={
-            account ? (
+            universalAddress ? (
               isTablet ? (
                 <Navigate to="/inbox" />
               ) : (
@@ -26,7 +26,10 @@ const AppRoutes = () => {
           }
         />
 
-        <Route path="/" element={account ? <EmailPage /> : <Navigate to="/" />}>
+        <Route
+          path="/"
+          element={universalAddress ? <EmailPage /> : <Navigate to="/" />}
+        >
           <Route path="inbox" element={<EmailPage />} />
           <Route path="inbox/:id" element={<EmailPage />} />
           <Route path="sent" element={<EmailPage />} />

@@ -11,6 +11,7 @@ import {
   PushMonotone,
 } from 'shared-components';
 import { PIECE_COLOR, GAME_RESULT } from './common.types';
+import { UniversalAddress } from '@pushprotocol/pushchain-ui-kit';
 
 export function trimAddress(address: string) {
   return `${address.slice(0, 7)}...${address.slice(-7)}`;
@@ -63,4 +64,16 @@ export const getGameResult = (
   }
 
   return GAME_RESULT.DRAW;
+};
+
+export const getFullCaipAddress = (universalAddress: UniversalAddress) => {
+  const { chain, chainId, address } = universalAddress;
+
+  if (chain && chainId) {
+    return `${chain}:${chainId}:${address}`;
+  }
+  if (chain) {
+    return `${chain}:${address}`;
+  }
+  return address;
 };

@@ -1,3 +1,4 @@
+import { UniversalAddress } from '@pushprotocol/pushchain-ui-kit';
 import { FC } from 'react';
 import {
   IconProps,
@@ -200,4 +201,16 @@ export const CHAIN_LOGO: {
   1101: PolygonMonotone,
   '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp': SolanaMonotone,
   devnet: PushMonotone,
+};
+
+export const getFullCaipAddress = (universalAddress: UniversalAddress) => {
+  const { chain, chainId, address } = universalAddress;
+
+  if (chain && chainId) {
+    return `${chain}:${chainId}:${address}`;
+  }
+  if (chain) {
+    return `${chain}:${address}`;
+  }
+  return address;
 };

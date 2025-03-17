@@ -82,6 +82,7 @@ const BotScreen = () => {
   };
 
   const handleEndGame = async (status: GAME_RESULT) => {
+    setStatus(status);
     try {
       if (pushChain && universalAddress) {
         const gameData: GameData = {
@@ -98,7 +99,6 @@ const BotScreen = () => {
             status: status === GAME_RESULT.FORFEIT ? GAME_RESULT.LOSE : status,
           },
         };
-        setStatus(status);
         await endGameSession(pushChain, gameData);
       }
     } catch (err) {

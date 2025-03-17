@@ -963,12 +963,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pushprotocol/pushchain-ui-kit@npm:^1.0.3":
-  version: 1.0.3
-  resolution: "@pushprotocol/pushchain-ui-kit@npm:1.0.3"
+"@pushprotocol/pushchain-ui-kit@npm:^1.0.5":
+  version: 1.0.5
+  resolution: "@pushprotocol/pushchain-ui-kit@npm:1.0.5"
   dependencies:
     tslib: "npm:^2.3.0"
-  checksum: 10/818afedb82299f6b6eef2d7b0bf269329c33cdbc8019664f0ada72673211f316d443a755a7474167446c36a0622396eaf7ab3ee8538e297238de7ff52bcd6dd0
+  checksum: 10/886bb4ed2681e37c1684600ccfd2a650ff03d0968b2f3e464ceef552a9ee2e99c143ad368c62501e18dc31b322b5987dfe170e22c30aa875ea9268ffe39cbdc9
   languageName: node
   linkType: hard
 
@@ -2829,6 +2829,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"axios@npm:^1.8.2":
+  version: 1.8.2
+  resolution: "axios@npm:1.8.2"
+  dependencies:
+    follow-redirects: "npm:^1.15.6"
+    form-data: "npm:^4.0.0"
+    proxy-from-env: "npm:^1.1.0"
+  checksum: 10/d4328758128d0602cc809a8e7627622cb7839b379eae5e4d6b9d603dd4d5fb89159985630243ec107cf5c675cd8825dba737a319dff9499f3b7688d9a69ec9ed
+  languageName: node
+  linkType: hard
+
 "babel-plugin-macros@npm:^3.1.0":
   version: 3.1.0
   resolution: "babel-plugin-macros@npm:3.1.0"
@@ -3674,7 +3685,7 @@ __metadata:
     "@eslint/js": "npm:^9.11.1"
     "@pushprotocol/node-core": "npm:^0.0.29"
     "@pushprotocol/push-chain": "npm:^0.1.7"
-    "@pushprotocol/pushchain-ui-kit": "npm:^1.0.3"
+    "@pushprotocol/pushchain-ui-kit": "npm:^1.0.5"
     "@radix-ui/react-icons": "npm:^1.3.0"
     "@radix-ui/react-popover": "npm:^1.1.2"
     "@radix-ui/react-scroll-area": "npm:^1.2.0"
@@ -3689,6 +3700,7 @@ __metadata:
     "@vitejs/plugin-react": "npm:^4.3.2"
     "@web3icons/react": "npm:^3.7.1"
     autoprefixer: "npm:^10.4.20"
+    axios: "npm:^1.8.2"
     blockies-react-svg: "npm:^0.0.13"
     class-variance-authority: "npm:^0.7.0"
     clsx: "npm:^2.1.1"
@@ -6802,7 +6814,7 @@ __metadata:
 
 "shared-components@file:../../packages/shared-components::locator=email-app%40workspace%3A.":
   version: 0.1.0
-  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=48b7a6&locator=email-app%40workspace%3A."
+  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=8d653f&locator=email-app%40workspace%3A."
   dependencies:
     "@emotion/react": "npm:^11.13.0"
     "@radix-ui/react-dialog": "npm:^1.1.1"
@@ -6823,7 +6835,7 @@ __metadata:
   peerDependencies:
     react: ^18.3.1
     react-dom: ^18.3.1
-  checksum: 10/cb7641ef5ad6378388f0defe6b58a2153fc10da58f9fcc8014b1243fadf9ad5f09212c7f17cfdb736c2675e2d69ec4b9e079b7b12738a269adebd6104b402148
+  checksum: 10/c6cfcbff287039116aae3efaa5e45a93869b3aa88f3bddc3569fcfb35924597226692d8439f0f3bed60eed3fe1e39d531d1691abe4a1c51cbc3f84e4a84db272
   languageName: node
   linkType: hard
 
