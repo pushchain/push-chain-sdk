@@ -29,7 +29,8 @@ const ChessScreen = () => {
   const { pushChain, currentSession } = useAppContext();
   const { universalAddress } = usePushWalletContext();
 
-  const { playerTimer, playerTimerRef, startPlayerTimer } = useTimer();
+  const { playerTimer, currentTimeRef, playerTimerRef, startPlayerTimer } =
+    useTimer();
 
   const opponentData = useMemo(() => {
     if (gameData && universalAddress) {
@@ -76,6 +77,10 @@ const ChessScreen = () => {
     if (gameData && universalAddress && pushChain && moveToSend) {
       sendGameMove(pushChain, universalAddress, gameData, moveToSend)
         .then(() => {
+          if (currentTimeRef.current === 0) {
+            if (prevFen) setGame(new Chess(prevFen));
+            return;
+          }
           startPlayerTimer();
           setPlayerTurn(opponentData?.universalAddress.address || '');
           setGameData((prevData) => {
@@ -232,7 +237,9 @@ const ChessScreen = () => {
       if (playerTurn === universalAddress?.address) {
         handleEndGame(GAME_RESULT.LOSE);
       } else {
-        handleEndGame(GAME_RESULT.WIN);
+        setTimeout(() => {
+          if (listenInterval.current) handleEndGame(GAME_RESULT.WIN);
+        }, 3000);
       }
     }
   }, [playerTimer]);
