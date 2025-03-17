@@ -39,7 +39,7 @@ export const postConfession = async (
 
     // Create an unsigned transaction
     const unsignedTx = pushNetwork.tx.createUnsigned(
-      'CUSTOM:CONFESSION',
+      'CUSTOM:RUMORS',
       ['eip155:1:0xC9C52B3717A8Dfaacd0D33Ce14a916C575eE332A'], // acc 63
       buffer
     );
