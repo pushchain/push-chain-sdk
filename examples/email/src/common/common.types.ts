@@ -26,6 +26,30 @@ enum EMAIL_BOX {
   SENT = 'sent',
 }
 
+type RewardsResponseData = {
+  activities: {
+    [key: string]: {
+      activityId: string;
+      userWallet: string;
+      activityTypeId: string;
+      appName: string;
+      timestamp: string;
+      verificationProof: string;
+      data: {
+        [key: string]: any;
+      };
+      createdAt: string;
+      updatedAt: string;
+    };
+  };
+};
+
 type FileAttachments = FileAttachment[];
-export type { Email, FileAttachments, FileAttachment, Wallet };
+export type {
+  Email,
+  FileAttachments,
+  FileAttachment,
+  Wallet,
+  RewardsResponseData,
+};
 export { EMAIL_BOX };

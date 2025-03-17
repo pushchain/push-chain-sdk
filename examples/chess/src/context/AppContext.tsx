@@ -1,5 +1,6 @@
 'use client';
 import { GameSessionData } from '@/common';
+import { checkAndUpdateActivity } from '@/services/rewards';
 import { CONSTANTS, createUniversalSigner, PushChain } from '@pushchain/devnet';
 import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 import React, { createContext, useContext } from 'react';
@@ -53,6 +54,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setNetwork();
     }
   }, [universalAddress]);
+
+  useEffect(() => {
+    if (universalAddress) {
+      checkAndUpdateActivity(universalAddress);
+    }
+  }, [universalAddress]);
+
   return (
     <AppContext.Provider
       value={{

@@ -64,10 +64,10 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
     handleSendSignRequestToPushWallet,
     getSentEmails,
     currTab,
+    emailBot,
+    setEmailBot,
   } = useAppContext();
   const [sendingMail, setSendingMail] = useState(false);
-
-  const { setMinimiseWallet } = usePushWalletContext();
 
   useEffect(() => {
     if (replyTo) {
@@ -93,6 +93,15 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
       }
     }
   }, [replyTo]);
+
+  useEffect(() => {
+    if (emailBot) {
+      setIsOpen(true);
+      setRecipients([
+        { address: '0x3f7742a4cc7BD218472a66E98338AfC69212F2eB', chain: 'eth' },
+      ]);
+    }
+  }, [emailBot]);
 
   const handleSubjectChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
@@ -250,7 +259,6 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
       setRecipients([]);
       setFileAttachment([]);
       setIsOpen(false);
-      setMinimiseWallet(true);
     } catch (error) {
       console.error('Failed to send email:', error);
       alert('Failed to send email');
@@ -268,8 +276,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
 
   const handleOpenChange = () => {
     setIsOpen(!isOpen);
-    if (isOpen && replyTo) {
-      console.log('Popover closed');
+    if (isOpen) {
       setEmailData({
         subject: '',
         message: '',
@@ -277,11 +284,20 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
       setRecipients([]);
       setReplyTo(undefined);
       setFileAttachment([]);
+      setEmailBot(false);
     }
   };
 
   return (
-    <Box position="fixed" className="z-10 right-5 bottom-5 ml-5">
+    <Box
+      position="fixed"
+      css={css`
+        z-index: 10;
+        right: 20px;
+        bottom: 20px;
+        margin-left: 20px;
+      `}
+    >
       <Button
         size="large"
         leadingIcon={<SendNotification width={24} height={24} />}
@@ -305,10 +321,11 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
           boxShadow="-2px 2px 7.8px 0px rgba(0, 0, 0, 0.25)"
           borderRadius="radius-sm"
           position="fixed"
+          maxWidth="470px"
           css={css`
             z-index: 999;
-            right: 1.25rem;
-            bottom: 1.25rem;
+            right: 0;
+            bottom: 0;
 
             opacity: 0;
             transform: translate(20px, 20px) scale(0.9);
@@ -323,6 +340,11 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
               transform: translate(0, 0) scale(1);
               visibility: visible;
             `}
+
+            @media (min-width: 490px) {
+              right: 20px;
+              bottom: 20px;
+            }
           `}
         >
           <Box
@@ -349,6 +371,11 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
             alignItems="flex-start"
             gap="spacing-xs"
             alignSelf="stretch"
+            maxHeight="80vh"
+            customScrollbar
+            css={css`
+              overflow-y: scroll;
+            `}
           >
             <Box
               display="flex"
@@ -404,6 +431,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
                   onChange={handleNewRecipientChange}
                   onKeyDown={handleAddRecipientOnEnter}
                   onBlur={handleAddRecipientOnBlur}
+                  disabled={emailBot || !!replyTo}
                   className="outline-none focus:outline-none w-[80%]"
                 />
               </Box>
@@ -492,15 +520,26 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
               ))}
             </Box>
             <FileUpload id="file-upload" onChange={handleFileUpload}>
-              <Button
-                disabled={fileAttachment.length === 1}
-                variant="outline"
-                size="extraSmall"
-              >
-                <PaperclipIcon width={16} height={16} />
-                <Text>Choose File</Text>
-              </Button>
+              <label htmlFor="file-upload">
+                <Button
+                  disabled={fileAttachment.length === 1}
+                  variant="outline"
+                  size="extraSmall"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const label = document.querySelector(
+                      `label[for="file-upload"]`
+                    ) as HTMLLabelElement | null;
+                    label?.click();
+                  }}
+                >
+                  <PaperclipIcon width={16} height={16} />
+                  <Text>Choose File</Text>
+                </Button>
+              </label>
             </FileUpload>
+          </Box>
+          <Box padding="spacing-sm">
             <Button
               onClick={sendHandler}
               disabled={sendingMail}

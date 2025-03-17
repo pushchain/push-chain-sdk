@@ -56,8 +56,6 @@ const GameEndModal: React.FC<GameEndModalProps> = ({
   return (
     <Box
       position="fixed"
-      top="0"
-      left="0"
       width="100vw"
       height="100vh"
       display="flex"
@@ -97,14 +95,29 @@ const GameEndModal: React.FC<GameEndModalProps> = ({
             justifyContent="center"
             width="76px"
             height="77px"
+            gap="spacing-sm"
           >
-            <img
-              src={`/pieces/${
-                pieceColor === PIECE_COLOR.WHITE ? 'wK' : 'bK'
-              }.png`}
-              alt="Game End"
-              height="77px"
-            />
+            {(gameStatus === GAME_RESULT.WIN ||
+              gameStatus === GAME_RESULT.DRAW) && (
+              <img
+                src={`/pieces/${
+                  pieceColor === PIECE_COLOR.WHITE ? 'wK' : 'bK'
+                }.png`}
+                alt="Game End"
+                height="77px"
+              />
+            )}
+            {(gameStatus === GAME_RESULT.LOSE ||
+              gameStatus === GAME_RESULT.DRAW ||
+              gameStatus === GAME_RESULT.FORFEIT) && (
+              <img
+                src={`/pieces/${
+                  pieceColor === PIECE_COLOR.WHITE ? 'bK' : 'wK'
+                }.png`}
+                alt="Game End"
+                height="77px"
+              />
+            )}
           </Box>
 
           <Text variant="h4-semibold" color="text-primary-inverse">

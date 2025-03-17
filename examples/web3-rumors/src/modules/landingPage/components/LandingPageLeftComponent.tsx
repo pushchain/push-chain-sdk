@@ -1,20 +1,9 @@
-import {
-  Box,
-  Button,
-  Front,
-  Sale,
-  Text,
-  Spinner,
-  css,
-} from 'shared-components';
-import { ConnectPushWalletButton } from '@pushprotocol/pushchain-ui-kit';
+import { Box, Button, Front, Union, Text, css } from 'shared-components';
+import { PushWalletButton } from '@pushprotocol/pushchain-ui-kit';
 import { SimulateTxText } from './SimulateTxText';
-import { useAppContext } from '@/context/AppContext';
 import { LandingPageBanner } from './LandingPageBanner';
 
 const LandingPageLeftComponent = () => {
-  const { pushNetwork } = useAppContext();
-
   const featuresCard = [
     {
       id: 1,
@@ -105,11 +94,14 @@ const LandingPageLeftComponent = () => {
             justifyContent="center"
             width="-webkit-fill-available"
           >
-            {pushNetwork ? (
-              <ConnectPushWalletButton />
-            ) : (
-              <Spinner size="medium" variant="primary" />
-            )}
+            <PushWalletButton
+              universalAddress={null}
+              title="Connect to Push Wallet"
+              styling={{
+                width: 'inherit',
+                backgroundColor: '#0056D0',
+              }}
+            />
           </Box>
 
           <a href="https://push.org/chain" target="_blank">
@@ -154,7 +146,7 @@ const LandingPageLeftComponent = () => {
               alignItems="center"
             >
               <Box height="28px" width="28px">
-                <Sale size={28} color="icon-brand-medium" />
+                <Union size={28} svgProps={{ color: '#0056D0' }} />
               </Box>
               <Text variant="h4-regular" as="span">
                 {item.text}

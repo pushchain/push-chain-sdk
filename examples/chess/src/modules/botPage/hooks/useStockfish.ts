@@ -11,9 +11,9 @@ const useStockfish = (
   const sendBotMove = (fen: string) => {
     if (!stockfish) return;
 
-    stockfish.postMessage('setoption name Skill Level value 10'); //Mid level difficulty
+    stockfish.postMessage('setoption name Skill Level value 1'); //Low level difficulty
     stockfish.postMessage(`position fen ${fen}`);
-    stockfish.postMessage('go depth 10');
+    stockfish.postMessage('go depth 1');
   };
 
   useEffect(() => {

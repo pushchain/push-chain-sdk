@@ -17,6 +17,24 @@ type RumorType = ConfessionType & {
   downvoteWallets: string[];
 };
 
-export type { ConfessionType, RumorType };
+type RewardsResponseData = {
+  activities: {
+    [key: string]: {
+      activityId: string;
+      userWallet: string;
+      activityTypeId: string;
+      appName: string;
+      timestamp: string;
+      verificationProof: string;
+      data: {
+        [key: string]: any;
+      };
+      createdAt: string;
+      updatedAt: string;
+    };
+  };
+};
+
+export type { ConfessionType, RumorType, RewardsResponseData };
 
 export { TABS };
