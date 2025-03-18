@@ -2,7 +2,8 @@ import { getFullCaipAddress, RewardsResponseData } from '@/common';
 import { UniversalAddress } from '@pushprotocol/pushchain-ui-kit';
 import axios from 'axios';
 
-const baseUrl = 'https://us-east1-push-dev-apps.cloudfunctions.net/helloWorld';
+const baseUrl =
+  'https://us-east1-push-prod-apps.cloudfunctions.net/pushpointsrewardsystem';
 
 const checkAndUpdateActivity = async (universalAddress: UniversalAddress) => {
   const account = getFullCaipAddress(universalAddress);
