@@ -2,7 +2,7 @@ import { Box } from 'shared-components';
 import {
   PushWalletButton,
   usePushWalletContext,
-} from '@pushprotocol/pushchain-ui-kit';
+} from '../../../../../../packages/ui-kit';
 
 const SimulateHeader = () => {
   const { universalAddress } = usePushWalletContext();
