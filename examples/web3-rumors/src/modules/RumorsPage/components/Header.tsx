@@ -1,12 +1,12 @@
 import { FC } from 'react';
 import { Box, css } from 'shared-components';
 import {
-  TogglePushWalletButton,
+  PushWalletButton,
   usePushWalletContext,
 } from '@pushprotocol/pushchain-ui-kit';
 
 const Header: FC = () => {
-  const { account } = usePushWalletContext();
+  const { universalAddress } = usePushWalletContext();
 
   return (
     <Box
@@ -31,7 +31,9 @@ const Header: FC = () => {
           <img src="/RumorsText.png" height={20} />
         </Box>
       </Box>
-      <Box>{account && <TogglePushWalletButton account={account} />}</Box>
+      <Box>
+        <PushWalletButton universalAddress={universalAddress} />
+      </Box>
     </Box>
   );
 };
