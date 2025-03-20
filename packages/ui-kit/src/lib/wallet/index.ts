@@ -1,6 +1,6 @@
 export * from './components/PushWalletProvider';
 export * from './components/PushWalletIFrame';
-export * from './components/PushWalletButton';
+export * from './components/PushUniversalWallet';
 
 export * from './wallet.types';
 export * from './wallet.constants';

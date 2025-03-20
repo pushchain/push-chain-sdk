@@ -1,13 +1,13 @@
 import { Box } from 'shared-components';
 import { useGlobalContext } from '../../../context/GlobalContext';
-import { PushWalletButton } from '@pushprotocol/pushchain-ui-kit';
+import { PushUniversalWallet } from '../../../../../../packages/ui-kit';
 
 const SimulateHeader = () => {
   const { universalAddress } = useGlobalContext();
 
   return (
     <Box display="flex" justifyContent="end" width="100%">
-      <PushWalletButton universalAddress={universalAddress} />
+      <PushUniversalWallet universalAddress={universalAddress} />
     </Box>
   );
 };

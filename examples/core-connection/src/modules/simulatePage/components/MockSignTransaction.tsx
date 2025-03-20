@@ -3,7 +3,7 @@ import { Alert, Box, Button, TextInput } from 'shared-components';
 import { TransactionSnippet } from '../../../common/components';
 import { toHex } from 'viem';
 import { useGlobalContext } from '../../../context/GlobalContext';
-import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
+import { usePushWalletContext } from '../../../../../../packages/ui-kit';
 
 const MockSignTransaction = () => {
   const { pushChain } = useGlobalContext();

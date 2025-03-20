@@ -21,6 +21,7 @@ import {
   WalletInfo,
 } from '../../providers/types/wallet.types';
 import { getWalletDataFromAccount } from '../wallet.utils';
+import { PushWalletIFrame } from './PushWalletIFrame';
 
 // Define the context shape
 export type PushWalletContextType = {
@@ -101,6 +102,7 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
 
   const handleIsLoggedInAction = () => {
     handleNewConnectionRequest();
+    setCurrentWallet(null);
   };
 
   const handleAppConnectionSuccess = (response: WalletEventRespoonse) => {
@@ -165,6 +167,7 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
 
   const handleSignMessage = async (data: Uint8Array): Promise<Uint8Array> => {
     let signature;
+    console.log("current wallet", currentWallet);
     if (currentWallet) {
       signature = await handleExternalWalletSignRequest(data)
     } else {
@@ -258,6 +261,7 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
           handleExternalWalletConnection(event.data.data);
           break;
         case WALLET_TO_APP_ACTION.IS_LOGGED_IN:
+          console.log("wallet connected successfully", event.data);
           handleIsLoggedInAction();
           break;
         case WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS:
@@ -309,6 +313,7 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
         handleUserLogOutEvent,
       }}
     >
+      <PushWalletIFrame />
       {children}
     </PushWalletContext.Provider>
   );

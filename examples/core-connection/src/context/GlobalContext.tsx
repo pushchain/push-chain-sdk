@@ -6,7 +6,7 @@ import {
   useEffect,
   useState,
 } from 'react';
-import { UniversalAddress, usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
+import { UniversalAddress, usePushWalletContext } from '../../../../packages/ui-kit';
 
 type GlobalContextType = {
   pushChain: PushChain | null;

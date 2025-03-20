@@ -3,14 +3,14 @@ import { ConnectPushWalletButton } from './ConnectPushWalletButton';
 import { TogglePushWalletButton } from './TogglePushWalletButton';
 import { UniversalAddress } from '../wallet.types';
 
-type PushWalletButtonProps = {
+type PushUniversalWalletProps = {
     universalAddress: UniversalAddress | null;
     component?: ReactNode;
     title?: string;
     styling?: React.CSSProperties;
 };
 
-const PushWalletButton: React.FC<PushWalletButtonProps> = ({
+const PushUniversalWallet: React.FC<PushUniversalWalletProps> = ({
     universalAddress,
     component,
     title = 'Login',
@@ -25,4 +25,4 @@ const PushWalletButton: React.FC<PushWalletButtonProps> = ({
     } else return <ConnectPushWalletButton title={title} styling={styling} />; // If no UA and no custom component, then render the connect button
 };
 
-export { PushWalletButton };
+export { PushUniversalWallet };
