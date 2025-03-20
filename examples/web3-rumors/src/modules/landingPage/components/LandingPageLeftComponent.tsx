@@ -33,10 +33,10 @@ const LandingPageLeftComponent = () => {
         gap="spacing-md"
         alignItems={{ tb: 'center' }}
       >
-        <a href="https://x.com/PushChain" target="_blank">
+        <a href="https://portal.push.org/rewards" target="_blank">
           <Box display={{ initial: 'flex', tb: 'none' }}>
             <Button trailingIcon={<Front />} variant="outline" size="small">
-              Push Chain Devnet Drop S2 coming 20 Mar, 2025
+              Push Chain Devnet Drop S2 is Live!
             </Button>
           </Box>
           <Box display={{ initial: 'none', tb: 'flex' }}>
@@ -45,7 +45,7 @@ const LandingPageLeftComponent = () => {
               variant="outline"
               size="extraSmall"
             >
-              Push Chain Devnet Drop S2 coming 20 Mar, 2025
+              Push Chain Devnet Drop S2 is Live!
             </Button>
           </Box>
         </a>
