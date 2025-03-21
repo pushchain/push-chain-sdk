@@ -21,10 +21,11 @@ import ReactMarkdown from 'react-markdown';
 import { useEffect, useState } from 'react';
 import { performUpVote } from '@/services/performUpVote';
 import { useAppContext } from '@/context/AppContext';
-import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { performDownVote } from '@/services/performDownVote';
+import { checkAndUpdateVoteActivity } from '@/services/rewards';
+import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 
 const getChainIcon = (chainId: string) => {
   if (!chainId) {
@@ -51,10 +52,9 @@ const RumorItem: React.FC<RumorType> = ({
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
 
-  const { setMinimiseWallet } = usePushWalletContext();
-
   const { account, pushNetwork, setData, handleSendSignRequestToPushWallet } =
     useAppContext();
+  const { universalAddress } = usePushWalletContext();
 
   const { result } = convertCaipToObject(address);
 
@@ -70,6 +70,9 @@ const RumorItem: React.FC<RumorType> = ({
           downvoteWallets,
           handleSendSignRequestToPushWallet
         );
+        if (universalAddress) {
+          checkAndUpdateVoteActivity(universalAddress, 'upvote', txnHash);
+        }
         if (upvoteWallets.includes(account)) {
           setData((prev) => ({
             ...prev,
@@ -121,8 +124,6 @@ const RumorItem: React.FC<RumorType> = ({
             ),
           }));
         }
-
-        setMinimiseWallet(true);
       }
     } catch (error) {
       console.error('Error performing upvote:', error);
@@ -142,6 +143,9 @@ const RumorItem: React.FC<RumorType> = ({
           downvoteWallets,
           handleSendSignRequestToPushWallet
         );
+        if (universalAddress) {
+          checkAndUpdateVoteActivity(universalAddress, 'downvote', txnHash);
+        }
         if (downvoteWallets.includes(account)) {
           setData((prev) => ({
             ...prev,
@@ -193,8 +197,6 @@ const RumorItem: React.FC<RumorType> = ({
             ),
           }));
         }
-
-        setMinimiseWallet(true);
       }
     } catch (error) {
       console.error('Error performing upvote:', error);

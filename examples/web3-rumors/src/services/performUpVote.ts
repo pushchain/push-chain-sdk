@@ -45,7 +45,7 @@ export const performUpVote = async (
 
     // Create an unsigned transaction (keeping the hardcoded recipient address)
     const unsignedTx = pushNetwork.tx.createUnsigned(
-      `CUSTOM:${txnHash}`,
+      `RUMORS:${txnHash}`,
       ['eip155:1:0xC9C52B3717A8Dfaacd0D33Ce14a916C575eE332A'], // acc 63
       buffer
     );

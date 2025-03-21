@@ -36,7 +36,7 @@ const recipients: UniversalAccount[] = [
   },
 ];
 
-async function sendCustomTx(
+export async function sendCustomTx(
   pushChain: PushChain,
   nonce: number
 ): Promise<string> {

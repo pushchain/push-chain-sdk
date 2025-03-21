@@ -2,11 +2,7 @@ import { getBlocksCSSVariables, themeConfig } from 'shared-components';
 import { createGlobalStyle, ThemeProvider } from 'styled-components';
 import AppRoutes from './routes';
 import { BrowserRouter } from 'react-router-dom';
-import {
-  ENV,
-  PushWalletIFrame,
-  PushWalletProvider,
-} from '@pushprotocol/pushchain-ui-kit';
+import { PushWalletProvider, CONSTANTS } from '@pushprotocol/pushchain-ui-kit';
 import { AppProvider } from './context/AppContext';
 
 const GlobalStyle = createGlobalStyle`
@@ -24,10 +20,9 @@ function App() {
   return (
     <ThemeProvider theme={themeConfig.light}>
       <GlobalStyle />
-      <PushWalletProvider env={ENV.PROD}>
+      <PushWalletProvider env={CONSTANTS.ENV.PROD}>
         <AppProvider>
           <BrowserRouter>
-            <PushWalletIFrame />
             <AppRoutes />
           </BrowserRouter>
         </AppProvider>

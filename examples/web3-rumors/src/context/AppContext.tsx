@@ -4,9 +4,10 @@ import React, { createContext, useContext } from 'react';
 import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
 import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 import { ReactNode, useEffect, useState } from 'react';
-import { RumorType, TABS } from '@/common';
+import { getFullCaipAddress, RumorType, TABS } from '@/common';
 import { getConfessions } from '@/services/getConfessions';
 import { getSentConfessions } from '@/services/getSentConfessions';
+import { checkAndUpdateActivity } from '@/services/rewards';
 
 interface AppContextType {
   pushNetwork: PushNetwork | null;
@@ -40,6 +41,7 @@ interface AppContextType {
 export const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const [account, setAccount] = useState<string | null>(null);
   const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
   const [currTab, setCurrTab] = useState<TABS>(TABS.LATEST);
   const [data, setData] = useState<{
@@ -58,7 +60,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [TABS.MY_RUMORS]: true,
   });
 
-  const { account, handleSendSignRequestToPushWallet } = usePushWalletContext();
+  const { universalAddress, handleSendSignRequestToPushWallet } =
+    usePushWalletContext();
 
   const fetchConfessions = async (page: number) => {
     if (!pushNetwork) return;
@@ -147,6 +150,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetchSentConfessions(1);
   }, [account, pushNetwork]);
+
+  useEffect(() => {
+    if (universalAddress) {
+      setAccount(getFullCaipAddress(universalAddress));
+      checkAndUpdateActivity(universalAddress);
+    }
+  }, [universalAddress]);
 
   useEffect(() => {
     const setNetwork = async () => {

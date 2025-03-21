@@ -1,7 +1,14 @@
-import { Text, Box, TextInput, Tabs } from 'shared-components';
+import {
+  Text,
+  Box,
+  TextInput,
+  Tabs,
+  Refresh,
+  Spinner,
+} from 'shared-components';
 import { useAppContext } from '@/context/AppContext';
 import { css } from 'styled-components';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { dummyEmail, EMAIL_BOX } from '@/common';
 import EmailLayout from '@/components/EmailLayout';
@@ -10,6 +17,11 @@ import NewEmail from './components/NewEmail';
 import { Header } from './components/Header';
 
 const EmailScreen = () => {
+  const [isLoading, setIsLoading] = useState<Record<EMAIL_BOX, boolean>>({
+    inbox: false,
+    sent: false,
+  });
+
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
@@ -22,18 +34,37 @@ const EmailScreen = () => {
     setSelectedEmail,
     selectedEmail,
     replyTo,
+    getSentEmails,
+    getReceivedEmails,
   } = useAppContext();
 
-  const handleTabSwitch = (tab: 'inbox' | 'sent') => {
+  const handleTabSwitch = (tab: EMAIL_BOX) => {
     setCurrTab(tab);
+    if (tab === EMAIL_BOX.INBOX) {
+      getReceivedEmails();
+    } else {
+      getSentEmails();
+    }
     // navigate(`/${tab}`);
   };
 
-  useEffect(() => {
-    if (location.pathname.includes('sent')) {
-      setCurrTab('sent');
+  const handleRefreshClick = async () => {
+    if (currTab === EMAIL_BOX.INBOX) {
+      setIsLoading((prev) => ({ ...prev, inbox: true }));
+      await getReceivedEmails();
+      setIsLoading((prev) => ({ ...prev, inbox: false }));
     } else {
-      setCurrTab('inbox');
+      setIsLoading((prev) => ({ ...prev, sent: true }));
+      await getReceivedEmails();
+      setIsLoading((prev) => ({ ...prev, sent: false }));
+    }
+  };
+
+  useEffect(() => {
+    if (location.pathname.includes(EMAIL_BOX.INBOX)) {
+      setCurrTab(EMAIL_BOX.INBOX);
+    } else {
+      setCurrTab(EMAIL_BOX.SENT);
     }
   }, []);
 
@@ -92,7 +123,25 @@ const EmailScreen = () => {
               border-bottom: 1px solid var(--stroke-secondary);
             `}
           >
-            <Text variant="h3-semibold">Inbox</Text>
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              width="100%"
+            >
+              <Text variant="h3-semibold" textTransform="capitalize">
+                {currTab}
+              </Text>
+              {isLoading[currTab] ? (
+                <Box>
+                  <Spinner size="medium" variant="primary" />
+                </Box>
+              ) : (
+                <Box cursor="pointer" onClick={handleRefreshClick}>
+                  <Refresh size={24} />
+                </Box>
+              )}
+            </Box>
             <TextInput
               placeholder="Search for a sender address"
               value={searchInput}
@@ -104,7 +153,7 @@ const EmailScreen = () => {
             <Tabs
               variant="fill"
               activeKey={currTab}
-              onChange={(tab) => handleTabSwitch(tab as 'inbox' | 'sent')}
+              onChange={(tab) => handleTabSwitch(tab as EMAIL_BOX)}
               items={[
                 {
                   key: 'inbox',

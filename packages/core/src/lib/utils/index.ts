@@ -19,6 +19,7 @@ import { InitDid } from '../generated/txData/init_did';
 import { UniversalAccount } from '../signer/signer.types';
 import { CompleteTxResponse, TxCategory, TxResponse } from '../tx/tx.types';
 import { ValidatorCompleteTxResponse } from '../tx/validatorTx.types';
+import { checksumAddress } from '../signer/universalFactories';
 
 const PUSH_PREFIX = 'push';
 
@@ -301,19 +302,19 @@ export class Utils {
         return {
           chain: CHAIN.ETHEREUM,
           chainId: CHAIN_ID.ETHEREUM.MAINNET,
-          address,
+          address: checksumAddress(CHAIN.ETHEREUM, address),
         };
       } else if (chainId === '11155111') {
         return {
           chain: CHAIN.ETHEREUM,
           chainId: CHAIN_ID.ETHEREUM.SEPOLIA,
-          address,
+          address: checksumAddress(CHAIN.ETHEREUM, address),
         };
       } else
         return {
           chain: CHAIN.ETHEREUM,
           chainId,
-          address,
+          address: checksumAddress(CHAIN.ETHEREUM, address),
         };
     } else if (chain.toLocaleLowerCase() === 'push') {
       if (chainId.toLocaleLowerCase() === 'mainnet') {
@@ -380,6 +381,12 @@ export class Utils {
       CHAIN.ETHEREUM.toLocaleLowerCase()
     ) {
       chain = 'eip155';
+      // Checksum the Ethereum address
+      try {
+        address = checksumAddress(CHAIN.ETHEREUM, address);
+      } catch (error) {
+        throw new Error('Invalid Ethereum address format');
+      }
     } else if (
       universalAccount.chain.toLocaleLowerCase() ===
       CHAIN.SOLANA.toLocaleLowerCase()

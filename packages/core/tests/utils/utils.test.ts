@@ -178,35 +178,35 @@ describe('PushChain.utils.account.toUniversal', () => {
   // 1. EIP155 (Ethereum) tests
   //
   it('should return Ethereum Mainnet for "eip155:1:<address>"', () => {
-    const chainAgnosticAddr = `eip155:1:0x123`;
+    const chainAgnosticAddr = `eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4`;
     const result = PushChain.utils.account.toUniversal(chainAgnosticAddr);
 
     expect(result).toEqual<UniversalAccount>({
       chain: CHAIN.ETHEREUM,
       chainId: CHAIN_ID.ETHEREUM.MAINNET,
-      address: '0x123',
+      address: '0x35B84d6848D16415177c64D64504663b998A6ab4',
     });
   });
 
   it('should return Ethereum Sepolia for "eip155:11155111:<address>"', () => {
-    const chainAgnosticAddr = `eip155:11155111:0xABC`;
+    const chainAgnosticAddr = `eip155:11155111:0x35B84d6848D16415177c64D64504663b998A6ab4`;
     const result = PushChain.utils.account.toUniversal(chainAgnosticAddr);
 
     expect(result).toEqual<UniversalAccount>({
       chain: CHAIN.ETHEREUM,
       chainId: CHAIN_ID.ETHEREUM.SEPOLIA,
-      address: '0xABC',
+      address: '0x35B84d6848D16415177c64D64504663b998A6ab4',
     });
   });
 
   it('should return Ethereum custom chainId for "eip155:5:<address>" (Goerli or any other)', () => {
-    const chainAgnosticAddr = `eip155:5:0xGoerliAddress`;
+    const chainAgnosticAddr = `eip155:5:0x35B84d6848D16415177c64D64504663b998A6ab4`;
     const result = PushChain.utils.account.toUniversal(chainAgnosticAddr);
 
     expect(result).toEqual<UniversalAccount>({
       chain: CHAIN.ETHEREUM,
       chainId: '5',
-      address: '0xGoerliAddress',
+      address: '0x35B84d6848D16415177c64D64504663b998A6ab4',
     });
   });
 

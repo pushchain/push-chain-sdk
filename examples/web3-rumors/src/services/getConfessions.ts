@@ -32,7 +32,7 @@ export const getConfessions = async (
       pageSize,
       page,
       undefined,
-      'CUSTOM:CONFESSION'
+      'CUSTOM:RUMORS'
     );
 
     if (!txRes || txRes.blocks.length === 0) return [];
