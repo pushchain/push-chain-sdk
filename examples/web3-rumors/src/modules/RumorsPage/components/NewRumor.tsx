@@ -26,8 +26,7 @@ const NewRumor = () => {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const { account, pushNetwork, setData, handleSendSignRequestToPushWallet } =
-    useAppContext();
+  const { account, pushNetwork, setData, handleSignMessage } = useAppContext();
 
   const insertText = (before: string, after = '') => {
     const textarea = textareaRef.current;
@@ -103,7 +102,7 @@ const NewRumor = () => {
           pushNetwork,
           account,
           rumourDetails,
-          handleSendSignRequestToPushWallet
+          handleSignMessage
         );
       }
       const tempRumor: RumorType = {

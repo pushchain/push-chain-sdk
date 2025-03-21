@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@pushchain/devnet": "^1.0.8",
-    "@pushprotocol/pushchain-ui-kit": "^1.0.5",
+    "@pushprotocol/pushchain-ui-kit": "^1.0.6",
     "@radix-ui/react-popover": "^1.1.2",
     "blockies-react-svg": "^0.0.13",
     "chess.js": "^1.0.0",

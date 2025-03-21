@@ -15,7 +15,7 @@ interface AppContextType {
   currTab: TABS;
   setCurrTab: React.Dispatch<React.SetStateAction<TABS>>;
   account: string | null;
-  handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>;
+  handleSignMessage: (data: Uint8Array) => Promise<Uint8Array>;
   fetchSentConfessions: (page: number) => Promise<void>;
   fetchConfessions: (page: number) => Promise<void>;
   data: {
@@ -60,8 +60,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [TABS.MY_RUMORS]: true,
   });
 
-  const { universalAddress, handleSendSignRequestToPushWallet } =
-    usePushWalletContext();
+  const { universalAddress, handleSignMessage } = usePushWalletContext();
 
   const fetchConfessions = async (page: number) => {
     if (!pushNetwork) return;
@@ -179,7 +178,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         currTab,
         setCurrTab,
         account,
-        handleSendSignRequestToPushWallet,
+        handleSignMessage,
         fetchSentConfessions,
         fetchConfessions,
         data,

@@ -42,7 +42,7 @@ interface AppContextType {
   replyTo: Email | undefined;
   setReplyTo: React.Dispatch<React.SetStateAction<Email | undefined>>;
   account: string | null;
-  handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>;
+  handleSignMessage: (data: Uint8Array) => Promise<Uint8Array>;
   wallet: Wallet | null;
   isLoading: boolean;
   getSentEmails: () => Promise<void>;
@@ -76,8 +76,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isReceivedEmailLoading, setIsReceivedEmailLoading] = useState(false);
   const [emailBot, setEmailBot] = useState(false);
 
-  const { universalAddress, handleSendSignRequestToPushWallet } =
-    usePushWalletContext();
+  const { universalAddress, handleSignMessage } = usePushWalletContext();
 
   const getSentEmails = async () => {
     if (!account || !pushEmail || isSentEmailLoading) return;
@@ -189,7 +188,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         replyTo,
         setReplyTo,
         account,
-        handleSendSignRequestToPushWallet,
+        handleSignMessage,
         wallet,
         isLoading,
         getSentEmails,

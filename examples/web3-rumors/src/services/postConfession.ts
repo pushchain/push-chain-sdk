@@ -6,7 +6,7 @@ export const postConfession = async (
   pushNetwork: PushNetwork,
   wallet: string,
   confessionDetails: ConfessionType,
-  handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>
+  handleSignMessage: (data: Uint8Array) => Promise<Uint8Array>
 ) => {
   try {
     // Define the schema
@@ -49,7 +49,7 @@ export const postConfession = async (
       account: wallet,
       signMessage: async (data: Uint8Array) => {
         try {
-          return await handleSendSignRequestToPushWallet(data);
+          return await handleSignMessage(data);
         } catch (error) {
           console.error('Error signing with Push Wallet:', error);
           throw error;
