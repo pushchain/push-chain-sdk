@@ -26,8 +26,6 @@ import {
 import { Cross1Icon } from '@radix-ui/react-icons';
 import styled from 'styled-components';
 
-import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
-
 type FileData = {
   filename: string;
   type: string;
@@ -61,7 +59,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
     setEmails,
     setReplyTo,
     account,
-    handleSendSignRequestToPushWallet,
+    handleSignMessage,
     getSentEmails,
     currTab,
     emailBot,
@@ -213,7 +211,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
         account,
         signMessage: async (data: Uint8Array) => {
           try {
-            return await handleSendSignRequestToPushWallet(data);
+            return await handleSignMessage(data);
           } catch (error) {
             console.error('Error signing with Push Wallet:', error);
             throw error;
@@ -271,7 +269,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
     fileAttachment,
     account,
     pushNetwork,
-    handleSendSignRequestToPushWallet,
+    handleSignMessage,
   ]);
 
   const handleOpenChange = () => {

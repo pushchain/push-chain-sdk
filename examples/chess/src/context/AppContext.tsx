@@ -22,8 +22,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [currentSession, setCurrentSession] = useState<GameSessionData | null>(
     null
   );
-  const { universalAddress, handleSendSignRequestToPushWallet } =
-    usePushWalletContext();
+  const { universalAddress, handleSignMessage } = usePushWalletContext();
 
   useEffect(() => {
     if (universalAddress) {
@@ -34,7 +33,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           chainId: universalAddress.chainId,
           signMessage: async (data: Uint8Array) => {
             try {
-              return await handleSendSignRequestToPushWallet(data);
+              return await handleSignMessage(data);
             } catch (error) {
               console.error('Error signing with Push Wallet:', error);
               throw error;

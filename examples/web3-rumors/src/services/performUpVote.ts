@@ -7,7 +7,7 @@ export const performUpVote = async (
   txnHash: string,
   existingWallets: string[],
   downvoteWallets: string[],
-  handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>
+  handleSignMessage: (data: Uint8Array) => Promise<Uint8Array>
 ) => {
   try {
     const schema = `
@@ -56,7 +56,7 @@ export const performUpVote = async (
       account: wallet,
       signMessage: async (data: Uint8Array) => {
         try {
-          return await handleSendSignRequestToPushWallet(data);
+          return await handleSignMessage(data);
         } catch (error) {
           console.error('Error signing with Push Wallet:', error);
           throw error;
