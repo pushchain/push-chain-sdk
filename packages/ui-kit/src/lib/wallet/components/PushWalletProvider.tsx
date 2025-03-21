@@ -22,6 +22,7 @@ import {
 } from '../../providers/types/wallet.types';
 import { getWalletDataFromAccount } from '../wallet.utils';
 import { PushWalletIFrame } from './PushWalletIFrame';
+import { PushWalletToast } from './PushWalletToast';
 
 // Define the context shape
 export type PushWalletContextType = {
@@ -314,6 +315,7 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
       }}
     >
       <PushWalletIFrame />
+      <PushWalletToast />
       {children}
     </PushWalletContext.Provider>
   );

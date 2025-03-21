@@ -8,7 +8,6 @@ import { GlobalProvider } from './context/GlobalContext';
 import {
   CONSTANTS,
   PushWalletProvider,
-  PushWalletIFrame,
 } from '../../../packages/ui-kit';
 
 const GlobalStyle = createGlobalStyle`
