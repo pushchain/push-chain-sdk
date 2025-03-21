@@ -7,23 +7,38 @@ import React, {
   useRef,
 } from 'react';
 import {
+  APP_TO_WALLET_ACTION,
   ConnectionStatus,
   UniversalAddress,
+  WALLET_TO_APP_ACTION,
   WalletEventRespoonse,
 } from '../wallet.types';
 import { CONSTANTS } from '../../constants';
 import config, { ENV } from '../../config';
+import { walletRegistry } from '../../providers/WalletProviderRegistry';
+import {
+  ChainType,
+  IWalletProvider,
+  WalletInfo,
+} from '../../providers/types/wallet.types';
 import { getWalletDataFromAccount } from '../wallet.utils';
 
 // Define the context shape
 export type PushWalletContextType = {
-  universalAddress: UniversalAddress | null;
-  connectionStatus: ConnectionStatus;
+  universalAddress: UniversalAddress | null; // required
+  connectionStatus: ConnectionStatus; // required
   env: ENV;
-  handleConnectToPushWallet: () => void;
+  iframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
+  isWalletVisible: boolean;
+  isWalletMinimised: boolean;
+  setWalletVisibility: (isWalletVisible: boolean) => void;
+  handleConnectToPushWallet: () => void; // required
   handleNewConnectionRequest: () => void;
-  handleLogOut: () => void;
-  handleSendSignRequestToPushWallet: (data: Uint8Array) => Promise<Uint8Array>;
+  handleSignMessage: (data: Uint8Array) => Promise<Uint8Array>; // required
+  setMinimiseWallet: React.Dispatch<React.SetStateAction<boolean>>;
+  handleUserLogOutEvent: () => void;
+  isIframeLoading: boolean;
+  setIframeLoading: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 export type WalletProviderProps = { children: ReactNode; env: ENV };
@@ -41,42 +56,36 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
   const [universalAddress, setUniversalAddress] =
     useState<PushWalletContextType['universalAddress']>(null);
 
+  const [isWalletVisible, setWalletVisibility] = useState(false);
+
+  const [isWalletMinimised, setMinimiseWallet] = useState(false);
+
+  const [isIframeLoading, setIframeLoading] = useState(true);
+
+  const [currentWallet, setCurrentWallet] = useState<WalletInfo | null>(null);
+
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus>('notConnected');
 
-  const tabRef = useRef<Window | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const signatureResolverRef = useRef<{
     success?: (data: WalletEventRespoonse) => void;
     error?: (data: WalletEventRespoonse) => void;
   } | null>(null);
 
-  const handleOpenNewWalletTab = () => {
-    if (!tabRef.current) {
-      const width = 600;
-      const height = 800;
-      const left = screen.width - width - 100;
-      const top = 150;
-
-      const newTab = window.open(
-        `${config.WALLET_URL[env]}/wallet?app=${window.location.origin}`,
-        '_blank',
-        `width=${width},height=${height},left=${left},top=${top}`
-      );
-
-      tabRef.current = newTab;
-    }
-  };
-
   const handleConnectToPushWallet = () => {
-    handleOpenNewWalletTab();
+    setWalletVisibility(true);
     setConnectionStatus('connecting');
   };
 
   const sendMessageToPushWallet = (message: any) => {
-    if (tabRef.current) {
+    if (iframeRef?.current?.contentWindow) {
       try {
-        tabRef.current.postMessage(message, config.WALLET_URL[env]);
+        iframeRef.current.contentWindow.postMessage(
+          message,
+          config.WALLET_URL[env]
+        );
       } catch (error) {
         console.error('Error sending message to push wallet tab:', error);
       }
@@ -90,24 +99,13 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
     });
   };
 
-  const handleIsLoggedInAction = (response: WalletEventRespoonse) => {
-    if (response?.account) {
-      setConnectionStatus('connected');
-
-      const result = getWalletDataFromAccount(response.account);
-
-      setUniversalAddress({
-        chainId: result.chainId,
-        chain: result.chain,
-        address: result.address,
-      });
-    } else {
-      handleNewConnectionRequest();
-    }
+  const handleIsLoggedInAction = () => {
+    handleNewConnectionRequest();
   };
 
   const handleAppConnectionSuccess = (response: WalletEventRespoonse) => {
     setConnectionStatus('connected');
+    setMinimiseWallet(true);
     if (response.account) {
       const result = getWalletDataFromAccount(response.account);
       setUniversalAddress({
@@ -130,6 +128,9 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
   const handleUserLogOutEvent = () => {
     setConnectionStatus('notConnected');
     setUniversalAddress(null);
+    setMinimiseWallet(false);
+    setWalletVisibility(false);
+    setIframeLoading(true);
   };
 
   const handleSendSignRequestToPushWallet = (
@@ -160,18 +161,102 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
     });
   };
 
-  const handleLogOut = async () => {
-    sendMessageToPushWallet({
-      type: CONSTANTS.APP_TO_WALLET_ACTION.LOG_OUT,
-      data: 'Log Out Event',
-    });
+  const handleSignMessage = async (data: Uint8Array): Promise<Uint8Array> => {
+    let signature;
+    if (currentWallet) {
+      signature = await handleExternalWalletSignRequest(data)
+    } else {
+      signature = await handleSendSignRequestToPushWallet(data)
+    }
+
+    return signature
+
+  }
+
+  const handleExternalWalletConnection = async (data: {
+    chain: ChainType;
+    provider: IWalletProvider['name'];
+  }) => {
+    try {
+      const providerReceived = walletRegistry.getProvider(data.provider);
+
+      if (!providerReceived) {
+        return;
+      }
+
+      const walletInfo = await providerReceived.connect(data.chain);
+
+      setConnectionStatus('connected');
+      setMinimiseWallet(true);
+
+      const result = getWalletDataFromAccount(walletInfo.caipAddress);
+
+      setUniversalAddress({
+        chainId: result.chainId,
+        chain: result.chain,
+        address: result.address,
+      });
+
+      const connectedWallet: WalletInfo = {
+        address: walletInfo.caipAddress,
+        providerName: data.provider,
+        chainType: data.chain,
+      };
+
+      setCurrentWallet(connectedWallet);
+
+      sendMessageToPushWallet({
+        type: APP_TO_WALLET_ACTION.CONNECTION_STATUS,
+        data: {
+          status: 'successful',
+          ...connectedWallet,
+        },
+      });
+    } catch (error) {
+      console.log('Failed to connect to provider', error);
+      sendMessageToPushWallet({
+        type: APP_TO_WALLET_ACTION.CONNECTION_STATUS,
+        data: {
+          status: 'rejected',
+        },
+      });
+      throw new Error('Failed to connect to provider');
+    }
+  };
+
+  const handleExternalWalletSignRequest = async (
+    data: Uint8Array
+  ): Promise<Uint8Array> => {
+    if (!currentWallet) {
+      throw new Error('No External wallet connected');
+    }
+
+    try {
+      const providerReceived = walletRegistry.getProvider(
+        currentWallet.providerName
+      );
+
+      if (!providerReceived) {
+        throw new Error('Provider not found');
+      }
+
+      const signature = await providerReceived.signMessage(data);
+
+      return signature;
+    } catch (error) {
+      console.log('Error in generating signature', error);
+      throw new Error('Signature request failed');
+    }
   };
 
   useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
       switch (event.data.type) {
-        case CONSTANTS.WALLET_TO_APP_ACTION.IS_LOGGED_IN:
-          handleIsLoggedInAction(event.data.data);
+        case WALLET_TO_APP_ACTION.CONNECT_WALLET:
+          handleExternalWalletConnection(event.data.data);
+          break;
+        case WALLET_TO_APP_ACTION.IS_LOGGED_IN:
+          handleIsLoggedInAction();
           break;
         case CONSTANTS.WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS:
           handleAppConnectionSuccess(event.data.data);
@@ -211,8 +296,8 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
         env,
         handleConnectToPushWallet,
         handleNewConnectionRequest,
-        handleSendSignRequestToPushWallet,
-        handleLogOut,
+        handleSignMessage,
+        handleUserLogOutEvent,
       }}
     >
       {children}

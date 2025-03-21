@@ -1,11 +1,9 @@
 import { Box } from 'shared-components';
-import {
-  PushWalletButton,
-  usePushWalletContext,
-} from '@pushprotocol/pushchain-ui-kit';
+import { useGlobalContext } from '../../../context/GlobalContext';
+import { PushWalletButton } from '@pushprotocol/pushchain-ui-kit';
 
 const SimulateHeader = () => {
-  const { universalAddress } = usePushWalletContext();
+  const { universalAddress } = useGlobalContext();
 
   return (
     <Box display="flex" justifyContent="end" width="100%">

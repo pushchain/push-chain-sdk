@@ -41,11 +41,7 @@ const ConnectPushWalletButton: FC<ConnectPushWalletButtonProps> = ({
         customStyle={styling}
       >
         {connectionStatus === 'notConnected' ? title : connectionStatus}
-        {isLoading && (
-          <SpinnerContainer>
-            <Spinner />
-          </SpinnerContainer>
-        )}
+        {isLoading && (<SpinnerContainer><Spinner /></SpinnerContainer>)}
       </ConnectButton>
     </>
   );
