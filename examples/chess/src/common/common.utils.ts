@@ -33,6 +33,8 @@ export const CHAIN_LOGO: {
   2442: PolygonMonotone,
   1101: PolygonMonotone,
   '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp': SolanaMonotone,
+  '4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z': SolanaMonotone, //testnet
+  EtWTRABZaYq6iMfeYKouRu166VU2xqa1: SolanaMonotone, //devnet
   devnet: PushMonotone,
 };
 
