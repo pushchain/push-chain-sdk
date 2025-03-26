@@ -22,6 +22,7 @@ const BotScreen = () => {
   const [game, setGame] = useState(new Chess());
   const [moves, setMoves] = useState<GameMove[]>([]);
   const [status, setStatus] = useState<GAME_RESULT | null>(null);
+  const [walletSignWaiting, setWalletSignWaiting] = useState(false);
   const [playerColor, setPlayerColor] = useState<PIECE_COLOR>(
     Math.random() > 0.5 ? PIECE_COLOR.WHITE : PIECE_COLOR.BLACK
   );
@@ -82,7 +83,7 @@ const BotScreen = () => {
   };
 
   const handleEndGame = async (status: GAME_RESULT) => {
-    setStatus(status);
+    setWalletSignWaiting(true);
     try {
       if (pushChain && universalAddress) {
         const gameData: GameData = {
@@ -100,15 +101,18 @@ const BotScreen = () => {
           },
         };
         await endGameSession(pushChain, gameData);
+        setStatus(status);
       }
     } catch (err) {
       console.log(err);
+    } finally {
+      setWalletSignWaiting(false);
     }
   };
 
   const handleQuitGame = async () => {
     try {
-      handleEndGame(GAME_RESULT.FORFEIT);
+      await handleEndGame(GAME_RESULT.FORFEIT);
     } catch (err) {
       console.log(err);
     }
@@ -153,6 +157,8 @@ const BotScreen = () => {
             isDraggablePiece={({ piece }) => {
               return handleDrag(piece);
             }}
+            waiting={walletSignWaiting}
+            waitingText="Awaiting sign in wallet..."
           />
           <PlayerData universalAddress={universalAddress} />
         </Box>

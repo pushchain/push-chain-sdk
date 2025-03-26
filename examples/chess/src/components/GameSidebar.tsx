@@ -11,14 +11,20 @@ const GameSidebar: FC<GameSidebarProps> = ({ handleQuitGame, moves }) => {
   const [confirmQuit, setConfirmQuit] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (isLoading) return;
     setIsLoading(true);
-    handleQuitGame().finally(() => {
-      setConfirmQuit(false);
+    setConfirmQuit(false);
+    try {
+      await handleQuitGame();
+      console.log('check loading');
       setIsLoading(false);
-    });
+    } catch (err) {
+      console.log(err);
+    }
   };
+
+  console.log(isLoading);
 
   return (
     <Box
@@ -57,45 +63,49 @@ const GameSidebar: FC<GameSidebarProps> = ({ handleQuitGame, moves }) => {
           </Box>
         </Box>
       ) : (
-        <Button onClick={() => setConfirmQuit(true)}>Quit Game</Button>
+        <Button onClick={() => setConfirmQuit(true)} loading={isLoading}>
+          {!isLoading && 'Quit Game'}
+        </Button>
       )}
 
-      <Box
-        padding="spacing-md spacing-xxs"
-        backgroundColor="surface-primary-inverse"
-        borderRadius="radius-sm"
-      >
+      {!!moves.length && (
         <Box
-          display="flex"
-          flexDirection="column"
-          height="260px"
-          padding="spacing-none spacing-sm"
-          gap="spacing-xs"
-          customScrollbar
-          css={css`
-            overflow-y: scroll;
-          `}
+          padding="spacing-md spacing-xxs"
+          backgroundColor="surface-primary-inverse"
+          borderRadius="radius-sm"
         >
-          {moves.map((move, index) => (
-            <Box
-              display="flex"
-              width="100%"
-              alignItems="center"
-              justifyContent="space-between"
-            >
-              <Text variant="cs-semibold" color="text-primary-inverse">
-                {index + 1}.
-              </Text>
-              <Text variant="cs-semibold" color="text-primary-inverse">
-                {move.move.from}
-              </Text>
-              <Text variant="cs-semibold" color="text-primary-inverse">
-                {move.move.to}
-              </Text>
-            </Box>
-          ))}
+          <Box
+            display="flex"
+            flexDirection="column"
+            height="260px"
+            padding="spacing-none spacing-sm"
+            gap="spacing-xs"
+            customScrollbar
+            css={css`
+              overflow-y: scroll;
+            `}
+          >
+            {moves.map((move, index) => (
+              <Box
+                display="flex"
+                width="100%"
+                alignItems="center"
+                justifyContent="space-between"
+              >
+                <Text variant="cs-semibold" color="text-primary-inverse">
+                  {index + 1}.
+                </Text>
+                <Text variant="cs-semibold" color="text-primary-inverse">
+                  {move.move.from}
+                </Text>
+                <Text variant="cs-semibold" color="text-primary-inverse">
+                  {move.move.to}
+                </Text>
+              </Box>
+            ))}
+          </Box>
         </Box>
-      </Box>
+      )}
     </Box>
   );
 };

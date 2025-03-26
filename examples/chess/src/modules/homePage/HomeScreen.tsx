@@ -17,7 +17,6 @@ const HomeScreen = () => {
     setShowLoader(true);
     try {
       await startMultiplayer();
-      navigate('/chess');
     } catch (err) {
       console.log(err);
     } finally {
