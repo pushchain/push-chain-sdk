@@ -1,0 +1,17 @@
+{
+  "name": "fetch-transaction-from-category",
+  "version": "1.0.0",
+  "description": "Fetch a transaction from Push Chain",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@pushchain/devnet": "^1.0.5"
+  }
+}
