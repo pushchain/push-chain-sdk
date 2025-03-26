@@ -65,6 +65,8 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
 
   const [currentWallet, setCurrentWallet] = useState<WalletInfo | null>(null);
 
+  const [showToast, setShowToast] = useState(false);
+
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus>('notConnected');
 
@@ -140,7 +142,9 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
     data: Uint8Array
   ): Promise<Uint8Array> => {
     return new Promise((resolve, reject) => {
+      setShowToast(true);
       if (signatureResolverRef.current) {
+        setShowToast(false);
         reject(new Error('Another sign request is already in progress'));
         return;
       }
@@ -148,10 +152,13 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
       signatureResolverRef.current = {
         success: (response: WalletEventRespoonse) => {
           resolve(response.signature!);
+          setShowToast(false);
           signatureResolverRef.current = null; // Clean up
+
         },
         error: (response: WalletEventRespoonse) => {
           signatureResolverRef.current = null; // Clean up
+          setShowToast(false);
           reject(new Error('Signature request failed'));
         },
       };
@@ -168,7 +175,6 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
 
   const handleSignMessage = async (data: Uint8Array): Promise<Uint8Array> => {
     let signature;
-    console.log("current wallet", currentWallet);
     if (currentWallet) {
       signature = await handleExternalWalletSignRequest(data)
     } else {
@@ -237,12 +243,15 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
       throw new Error('No External wallet connected');
     }
 
+    setShowToast(true);
+
     try {
       const providerReceived = walletRegistry.getProvider(
         currentWallet.providerName
       );
 
       if (!providerReceived) {
+        setShowToast(false);
         throw new Error('Provider not found');
       }
 
@@ -252,6 +261,9 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
     } catch (error) {
       console.log('Error in generating signature', error);
       throw new Error('Signature request failed');
+    } finally {
+      console.log("Closing the toast");
+      setShowToast(false);
     }
   };
 
@@ -315,7 +327,7 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
       }}
     >
       <PushWalletIFrame />
-      <PushWalletToast />
+      {(isWalletVisible && showToast) && <PushWalletToast />}
       {children}
     </PushWalletContext.Provider>
   );

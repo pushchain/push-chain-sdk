@@ -24,6 +24,7 @@ const ToastContainer = styled.div`
     border:1px solid whitesmoke;
     padding:10px 20px;
     border-radius:10px;
+    background-color:#fff;
 `
 
 const TitleText = styled.h4`

@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import { Alert, Box, Button, Front, Text } from 'shared-components';
 import { css } from 'styled-components';
-import { useGlobalContext } from '../../../context/GlobalContext';
 import { centerMaskString } from '../../../helpers';
 import { CONSTANTS, createUniversalAccount } from '@pushchain/devnet';
 import { TransactionSnippet } from '../../../common/components';
 import { mockTransaction } from '../../../common/constants';
+import { usePushChain, usePushWalletContext } from '../../../../../../packages/ui-kit/src';
 
 const MockSendTransaction = () => {
-  const { pushChain, universalAddress } = useGlobalContext();
+
+  const { pushChain, isLoading, error } = usePushChain()
+  const { universalAddress } = usePushWalletContext();
+
+  console.log("Error ", error, isLoading);
 
   const [isSendingTxn, setIsSendingTxn] = useState(false);
   const [txnHash, setTxnHash] = useState<string | null>(null);
@@ -35,6 +39,7 @@ const MockSendTransaction = () => {
           }
         );
 
+        console.log("Tx recived", txHash);
         setTxnHash(txHash);
         setIsSendingTxn(false);
         setTxnError(null);
@@ -98,7 +103,7 @@ const MockSendTransaction = () => {
       />
 
       <Box width={{ initial: '350px', ml: '300px' }}>
-        <Button
+        {!isLoading && <Button
           variant="primary"
           size="large"
           block
@@ -106,7 +111,7 @@ const MockSendTransaction = () => {
           onClick={() => handleSendTransaction()}
         >
           {isSendingTxn ? 'Sending Transaction' : 'Send Transaction'}
-        </Button>
+        </Button>}
       </Box>
       <a href="https://scan.push.org/transactions" target="_blank">
         <Box

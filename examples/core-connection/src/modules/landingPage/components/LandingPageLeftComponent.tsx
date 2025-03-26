@@ -1,12 +1,11 @@
 import { css } from 'styled-components';
 import { Box, Button, Front, Sale, Text } from 'shared-components';
-import { PushUniversalWallet } from '../../../../../../packages/ui-kit';
-import { useGlobalContext } from '../../../context/GlobalContext';
+import { PushUniversalWallet, usePushWalletContext } from '../../../../../../packages/ui-kit';
 import { LandingPageBanner } from './LandingPageBanner';
 import { SimulateTxText } from './SimulateTxText';
 
 const LandingPageLeftComponent = () => {
-  const { universalAddress } = useGlobalContext();
+  const { universalAddress } = usePushWalletContext();
 
   const featuresCard = [
     {

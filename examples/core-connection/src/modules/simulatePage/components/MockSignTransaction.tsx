@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Alert, Box, Button, TextInput } from 'shared-components';
 import { TransactionSnippet } from '../../../common/components';
 import { toHex } from 'viem';
-import { useGlobalContext } from '../../../context/GlobalContext';
-import { usePushWalletContext } from '../../../../../../packages/ui-kit';
+import { usePushChain, usePushWalletContext } from '../../../../../../packages/ui-kit';
 
 const MockSignTransaction = () => {
-  const { pushChain } = useGlobalContext();
+
+  const { pushChain } = usePushChain();
+
+
   const { handleSignMessage } = usePushWalletContext();
   const [textInput, setTextInput] = useState('');
   const [signedData, setSignedData] = useState<Uint8Array | null>(null);

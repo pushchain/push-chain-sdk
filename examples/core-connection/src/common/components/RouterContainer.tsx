@@ -5,10 +5,10 @@ import { Box } from 'shared-components';
 import SimulatePage from '../../pages/SimulatePage';
 import { PrivateRoute } from '../../pages/PrivateRoute';
 import { APP_ROUTES } from '../constants';
-import { useGlobalContext } from '../../context/GlobalContext';
+import { usePushWalletContext } from '../../../../../packages/ui-kit/src';
 
 const RouterContainer = () => {
-  const { universalAddress } = useGlobalContext();
+  const { universalAddress } = usePushWalletContext();
   const navigate = useNavigate();
   useEffect(() => {
     if (universalAddress) {
