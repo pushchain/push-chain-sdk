@@ -205,7 +205,9 @@ export class Validator {
         modifiedUrl = 'http://localhost:5001/rpc';
       }
       if (this.env === ENV.DEVNET) {
-        modifiedUrl = 'https://aa1.dev.push.org/rpc';
+        const anodes = ['aa1', 'aa2', 'aa3', 'aa4', 'aa5'];
+        const randomAnode = getRandomElement(anodes);
+        modifiedUrl = `https://${randomAnode}.dev.push.org/rpc`;
       }
       modifiedFnName = `RpcService.${fnName.replace('push_', '')}`;
 
