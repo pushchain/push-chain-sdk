@@ -202,7 +202,9 @@ export class Validator {
       fnName === 'push_getTransactionsByRecipient'
     ) {
       if (this.env === ENV.LOCAL) {
-        modifiedUrl = 'http://localhost:5001/rpc';
+        const ports = ['5001', '5002', '5003', '5004', '5005'];
+        const randomPort = getRandomElement(ports);
+        modifiedUrl = `http://localhost:${randomPort}/rpc`;
       }
       if (this.env === ENV.DEVNET) {
         const anodes = ['aa1', 'aa2', 'aa3', 'aa4', 'aa5'];
