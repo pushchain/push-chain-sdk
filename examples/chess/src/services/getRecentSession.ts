@@ -26,17 +26,12 @@ export const getRecentSession = async (pushChain: PushChain) => {
     }
   });
 
-  console.log(latestGameSessions);
-
   const now = Date.now();
 
   const waitingGames = Object.values(latestGameSessions).filter((data) => {
     const isWithin90Secs = now - Number(data.timestamp) <= 85 * 1000;
-    console.log(now - Number(data.timestamp));
     return data.status === 'waiting' && isWithin90Secs;
   });
-
-  console.log(waitingGames);
 
   return waitingGames.length ? waitingGames[0] : null;
 };

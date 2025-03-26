@@ -158,7 +158,7 @@ const BotScreen = () => {
               return handleDrag(piece);
             }}
             waiting={walletSignWaiting}
-            waitingText="Awaiting sign in wallet..."
+            waitingText="Awaiting sign in wallet"
           />
           <PlayerData universalAddress={universalAddress} />
         </Box>

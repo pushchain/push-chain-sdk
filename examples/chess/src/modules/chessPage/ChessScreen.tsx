@@ -24,7 +24,7 @@ const ChessScreen = () => {
   );
   const [status, setStatus] = useState<GAME_RESULT | null>(null);
   const [playerTurn, setPlayerTurn] = useState('');
-  const [waitingText, setWaitingText] = useState('Searching for player...');
+  const [waitingText, setWaitingText] = useState('Searching for player');
   const [walletSignWaiting, setWalletSignWaiting] = useState(false);
 
   const listenInterval = useRef<NodeJS.Timeout | null>(null);
@@ -206,7 +206,7 @@ const ChessScreen = () => {
 
   const handleEndGame = async (status: GAME_RESULT) => {
     setWalletSignWaiting(true);
-    setWaitingText('Awaiting sign in wallet...');
+    setWaitingText('Awaiting sign in wallet');
     try {
       if (pushChain && universalAddress && gameData) {
         const data: GameData = {
@@ -230,7 +230,7 @@ const ChessScreen = () => {
     try {
       if (pushChain && !gameData) {
         setWalletSignWaiting(true);
-        setWaitingText('Awaiting sign in wallet...');
+        setWaitingText('Awaiting sign in wallet');
         try {
           await quitCurrentSession(pushChain!, currentSession!);
           setStatus(GAME_RESULT.FORFEIT);
@@ -312,10 +312,10 @@ const ChessScreen = () => {
   }, [currentSession]);
 
   useEffect(() => {
-    setWaitingText('Searching for player...');
+    setWaitingText('Searching for player');
     timeoutRef.current = setTimeout(() => {
       if (!opponentData) {
-        setWaitingText('Player not found.\n Starting a game against a bot...');
+        setWaitingText('Player not found.\n Starting a game against a bot');
         setTimeout(() => {
           navigate('/bot');
         }, 3000);
@@ -326,8 +326,6 @@ const ChessScreen = () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
-
-  console.log(gameData, opponentData);
 
   return (
     <>

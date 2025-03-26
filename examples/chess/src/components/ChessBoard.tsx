@@ -98,7 +98,34 @@ const ChessBoard: React.FC<
             white-space: pre-line;
           `}
         >
-          <Text variant="bs-bold" color="text-primary-inverse">
+          <Text
+            variant="bs-bold"
+            color="text-primary-inverse"
+            css={css`
+              &::after {
+                content: '...';
+                animation: dots steps(4, end) 1s infinite;
+              }
+
+              @keyframes dots {
+                0% {
+                  content: '';
+                }
+                25% {
+                  content: '.';
+                }
+                50% {
+                  content: '..';
+                }
+                75% {
+                  content: '...';
+                }
+                100% {
+                  content: '';
+                }
+              }
+            `}
+          >
             {waitingText}
           </Text>
         </Box>
