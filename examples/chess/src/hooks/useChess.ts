@@ -4,10 +4,12 @@ import { createNewSession } from '@/services/createNewSession';
 import { getRecentSession } from '@/services/getRecentSession';
 import { joinExistingSession } from '@/services/joinExistingSession';
 import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
+import { useNavigate } from 'react-router-dom';
 
 const useChess = () => {
   const { pushChain, setCurrentSession } = useAppContext();
   const { universalAddress } = usePushWalletContext();
+  const navigate = useNavigate();
 
   const handleCreateSession = async () => {
     if (pushChain && universalAddress) {
@@ -52,13 +54,13 @@ const useChess = () => {
   const startMultiplayer = async () => {
     if (pushChain) {
       try {
-        console.log('check');
         const data = await getRecentSession(pushChain);
         if (!data) {
           await handleCreateSession();
         } else {
           await handleJoinSession(data);
         }
+        navigate('/chess');
       } catch (err) {
         console.log(err);
       }

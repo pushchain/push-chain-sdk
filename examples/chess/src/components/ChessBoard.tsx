@@ -1,6 +1,6 @@
 import { Chessboard, ClearPremoves } from 'react-chessboard';
 import { ChessboardProps } from 'react-chessboard/dist/chessboard/types';
-import { Box, css } from 'shared-components';
+import { Box, css, Text } from 'shared-components';
 
 const customPieces = () => {
   const pieceComponents: {
@@ -45,29 +45,64 @@ const customPieces = () => {
   return pieceComponents;
 };
 
+interface ChessBoardProps {
+  waiting?: boolean;
+  waitingText?: string;
+}
+
 const ChessBoard: React.FC<
-  Omit<ChessboardProps, 'ref'> & import('react').RefAttributes<ClearPremoves>
+  Omit<ChessboardProps, 'ref'> &
+    import('react').RefAttributes<ClearPremoves> &
+    ChessBoardProps
 > = (props) => {
+  const { waiting, waitingText, ...chessProps } = props;
+
   return (
     <Box
       width="100%"
       maxWidth="615px"
       padding="spacing-xs"
+      position="relative"
+      borderRadius="radius-sm"
       css={css`
         background-color: #313134;
-        border-radius: 16px;
         box-sizing: border-box;
+        pointer-events: ${waiting ? 'none' : 'all'};
       `}
     >
-      <Chessboard
-        customBoardStyle={{
-          borderRadius: '12px',
-        }}
-        customDarkSquareStyle={{ backgroundColor: '#8778B8' }}
-        customLightSquareStyle={{ backgroundColor: '#EFEFEF' }}
-        customPieces={customPieces()}
-        {...props}
-      />
+      <Box overflow="hidden" borderRadius="radius-xs">
+        <Chessboard
+          customBoardStyle={{
+            borderRadius: '12px',
+            filter: waiting ? 'blur(8px)' : 'none',
+            opacity: waiting ? '0.5' : '1',
+          }}
+          customDarkSquareStyle={{ backgroundColor: '#8778B8' }}
+          customLightSquareStyle={{ backgroundColor: '#EFEFEF' }}
+          customPieces={customPieces()}
+          {...chessProps}
+        />
+      </Box>
+
+      {waiting && (
+        <Box
+          padding="spacing-xxs spacing-xs"
+          borderRadius="radius-xxs"
+          position="absolute"
+          textAlign="center"
+          css={css`
+            background-color: #202124;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            white-space: pre-line;
+          `}
+        >
+          <Text variant="bs-bold" color="text-primary-inverse">
+            {waitingText}
+          </Text>
+        </Box>
+      )}
     </Box>
   );
 };

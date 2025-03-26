@@ -21,7 +21,7 @@ export const joinExistingSession = async (
   };
 
   const txn2 = await pushChain.tx.send([], {
-    category: `CHESS:${data.timestamp}`,
+    category: `CHESS:${data.gameId}`,
     data: JSON.stringify(newData),
   });
 

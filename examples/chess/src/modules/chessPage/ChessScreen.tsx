@@ -8,12 +8,13 @@ import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 import { Piece } from 'react-chessboard/dist/chessboard/types';
 import { sendGameMove } from '@/services/sendGameMove';
 import { endGameSession } from '@/services/endGameSession';
-import { Box, css, Spinner, Text } from 'shared-components';
+import { Box } from 'shared-components';
 import { GameEndModal } from '@/components/GameEndModal';
 import { ChessBoard } from '@/components/ChessBoard';
 import { PlayerData } from './components/PlayerData';
 import { GameSidebar } from '@/components/GameSidebar';
 import { useTimer } from '@/hooks/useTimer';
+import { useNavigate } from 'react-router-dom';
 
 const ChessScreen = () => {
   const [game, setGame] = useState(new Chess());
@@ -23,11 +24,15 @@ const ChessScreen = () => {
   );
   const [status, setStatus] = useState<GAME_RESULT | null>(null);
   const [playerTurn, setPlayerTurn] = useState('');
+  const [waitingText, setWaitingText] = useState('Searching for player...');
+  const [walletSignWaiting, setWalletSignWaiting] = useState(false);
 
   const listenInterval = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { pushChain, currentSession } = useAppContext();
   const { universalAddress } = usePushWalletContext();
+  const navigate = useNavigate();
 
   const { playerTimer, currentTimeRef, playerTimerRef, startPlayerTimer } =
     useTimer();
@@ -183,6 +188,11 @@ const ChessScreen = () => {
                 (gameData && data.moves.length > gameData?.moves.length)
               ) {
                 setGameData(data);
+                if (timeoutRef.current) {
+                  clearTimeout(timeoutRef.current);
+                  timeoutRef.current = null;
+                }
+                console.log(data);
               }
             }
           } catch (err) {
@@ -195,7 +205,8 @@ const ChessScreen = () => {
   };
 
   const handleEndGame = async (status: GAME_RESULT) => {
-    setStatus(status);
+    setWalletSignWaiting(true);
+    setWaitingText('Awaiting sign in wallet...');
     try {
       if (pushChain && universalAddress && gameData) {
         const data: GameData = {
@@ -207,6 +218,8 @@ const ChessScreen = () => {
         };
         if (playerTimerRef.current) clearInterval(playerTimerRef.current);
         await endGameSession(pushChain, data);
+        setStatus(status);
+        setWalletSignWaiting(false);
       }
     } catch (err) {
       console.log(err);
@@ -216,15 +229,27 @@ const ChessScreen = () => {
   const handleQuitGame = async () => {
     try {
       if (pushChain && !gameData) {
-        setStatus(GAME_RESULT.FORFEIT);
-        await quitCurrentSession(pushChain!, currentSession!);
+        setWalletSignWaiting(true);
+        setWaitingText('Awaiting sign in wallet...');
+        try {
+          await quitCurrentSession(pushChain!, currentSession!);
+          setStatus(GAME_RESULT.FORFEIT);
+          setWalletSignWaiting(false);
+        } catch (err) {
+          console.log(err);
+        }
       } else if (pushChain && universalAddress && gameData) {
-        await sendGameMove(
-          pushChain,
-          universalAddress,
-          { ...gameData, otherPlayerQuit: true },
-          null
-        );
+        try {
+          await sendGameMove(
+            pushChain,
+            universalAddress,
+            { ...gameData, otherPlayerQuit: true },
+            null
+          );
+          setWalletSignWaiting(false);
+        } catch (err) {
+          console.log(err);
+        }
         await handleEndGame(GAME_RESULT.FORFEIT);
       }
     } catch (err) {
@@ -286,6 +311,24 @@ const ChessScreen = () => {
     listenGameMove();
   }, [currentSession]);
 
+  useEffect(() => {
+    setWaitingText('Searching for player...');
+    timeoutRef.current = setTimeout(() => {
+      if (!opponentData) {
+        setWaitingText('Player not found.\n Starting a game against a bot...');
+        setTimeout(() => {
+          navigate('/bot');
+        }, 3000);
+      }
+    }, 90 * 1000); // 1.5 minutes
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  console.log(gameData, opponentData);
+
   return (
     <>
       <Box
@@ -304,7 +347,7 @@ const ChessScreen = () => {
           width={{ initial: '615px', tb: '100%' }}
           gap="spacing-xs"
         >
-          {opponentData ? (
+          {opponentData && (
             <PlayerData
               universalAddress={opponentData?.universalAddress}
               timer={
@@ -315,7 +358,8 @@ const ChessScreen = () => {
                   : 120
               }
             />
-          ) : (
+          )}
+          {/* ) : (
             <Box
               display="flex"
               alignItems="center"
@@ -341,7 +385,7 @@ const ChessScreen = () => {
                 Searching for player...
               </Text>
             </Box>
-          )}
+          )} */}
 
           <ChessBoard
             position={game.fen()}
@@ -351,6 +395,8 @@ const ChessScreen = () => {
             isDraggablePiece={({ piece }) => {
               return handleDraggablePiece(piece);
             }}
+            waiting={!opponentData || walletSignWaiting}
+            waitingText={waitingText}
           />
           <PlayerData
             universalAddress={universalAddress}
