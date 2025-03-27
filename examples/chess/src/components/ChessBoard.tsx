@@ -70,7 +70,7 @@ const ChessBoard: React.FC<
         pointer-events: ${waiting ? 'none' : 'all'};
       `}
     >
-      <Box overflow="hidden" borderRadius="radius-xs">
+      <Box overflow={waiting ? 'hidden' : 'unset'} borderRadius="radius-xs">
         <Chessboard
           customBoardStyle={{
             borderRadius: '12px',
