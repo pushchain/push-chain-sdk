@@ -11,7 +11,7 @@
     "deploy": "yarn run build && echo 'chess.push.org' > ./dist/CNAME && gh-pages -d dist -r https://github.com/push-protocol/chess-dev-deployment"
   },
   "dependencies": {
-    "@pushchain/devnet": "^1.0.8",
+    "@pushchain/devnet": "^1.0.14",
     "@pushprotocol/pushchain-ui-kit": "^1.0.6",
     "@radix-ui/react-popover": "^1.1.2",
     "blockies-react-svg": "^0.0.13",

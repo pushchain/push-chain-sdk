@@ -1198,9 +1198,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pushchain/devnet@npm:^1.0.8":
-  version: 1.0.8
-  resolution: "@pushchain/devnet@npm:1.0.8"
+"@pushchain/devnet@npm:^1.0.14":
+  version: 1.0.14
+  resolution: "@pushchain/devnet@npm:1.0.14"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.0.0"
     "@noble/hashes": "npm:^1.5.0"
@@ -1216,7 +1216,7 @@ __metadata:
     uuid: "npm:^10.0.0"
     viem: "npm:^2.21.5"
     ws: "npm:8.18.0"
-  checksum: 10/55cc9ac1a2ecc78dacfd5b4f013280942ceaf65c5975ddc86fc2bf7a10b542c2041c3463520cf9de7bfd4307b286155b593d535d9d5c9692f93c9be684ec51ca
+  checksum: 10/4079a49deeb699a4d48a2a74dbe63edbae4d9d8e5407aec7d3ba3a3028f23f21fa37663569c563dcc5b1e1cb7c40ed81a012b967f4fe92d4e63a9ec2b17b220d
   languageName: node
   linkType: hard
 
@@ -3372,7 +3372,7 @@ __metadata:
   resolution: "chess-app@workspace:."
   dependencies:
     "@eslint/js": "npm:^9.11.1"
-    "@pushchain/devnet": "npm:^1.0.8"
+    "@pushchain/devnet": "npm:^1.0.14"
     "@pushprotocol/pushchain-ui-kit": "npm:^1.0.6"
     "@radix-ui/react-popover": "npm:^1.1.2"
     "@types/node": "npm:^22.7.6"

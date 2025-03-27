@@ -68,7 +68,7 @@ const HomeScreen = () => {
           </Box>
           <Box display="flex" flexDirection="column" gap="spacing-sm">
             <Button onClick={handleBotClick}>Play With Bot</Button>
-            <Button onClick={handleClick} loading={showLoader}>
+            <Button onClick={handleClick} loading={showLoader || !pushChain}>
               {!showLoader && 'Play Multiplayer'}
             </Button>
           </Box>

@@ -218,10 +218,11 @@ const ChessScreen = () => {
         if (playerTimerRef.current) clearInterval(playerTimerRef.current);
         await endGameSession(pushChain, data);
         setStatus(status);
-        setWalletSignWaiting(false);
       }
     } catch (err) {
       console.log(err);
+    } finally {
+      setWalletSignWaiting(false);
     }
   };
 
@@ -263,7 +264,7 @@ const ChessScreen = () => {
       } else {
         setTimeout(() => {
           if (listenInterval.current) handleEndGame(GAME_RESULT.WIN);
-        }, 3000);
+        }, 5000);
       }
     }
   }, [playerTimer]);

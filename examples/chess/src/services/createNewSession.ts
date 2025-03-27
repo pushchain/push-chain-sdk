@@ -9,6 +9,4 @@ export const createNewSession = async (
     category: 'CHESS_GAME_SESSION',
     data: JSON.stringify(data),
   });
-
-  console.log(txn);
 };
