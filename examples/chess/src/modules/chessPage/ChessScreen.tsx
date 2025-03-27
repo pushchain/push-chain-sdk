@@ -355,6 +355,7 @@ const ChessScreen = () => {
                     : 120
                   : 120
               }
+              isActive={playerTurn === opponentData.universalAddress.address}
             />
           )}
           {/* ) : (
@@ -405,6 +406,7 @@ const ChessScreen = () => {
                   : 120
                 : 120
             }
+            isActive={playerTurn === universalAddress?.address}
           />
         </Box>
 

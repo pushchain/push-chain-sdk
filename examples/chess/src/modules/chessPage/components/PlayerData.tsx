@@ -7,7 +7,8 @@ import { Box, Text, css } from 'shared-components';
 const PlayerData: FC<{
   universalAddress: UniversalAddress | null;
   timer: number;
-}> = ({ universalAddress, timer }) => {
+  isActive: boolean;
+}> = ({ universalAddress, timer, isActive }) => {
   return (
     <Box
       display="flex"
@@ -44,7 +45,7 @@ const PlayerData: FC<{
         borderRadius="radius-xs"
         width="48px"
         css={css`
-          background-color: #313134;
+          background-color: ${isActive ? '#AA30BE' : '#313134'};
         `}
       >
         <Text variant="bm-bold" color="text-primary-inverse">
