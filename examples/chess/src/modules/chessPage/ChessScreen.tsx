@@ -192,7 +192,6 @@ const ChessScreen = () => {
                   clearTimeout(timeoutRef.current);
                   timeoutRef.current = null;
                 }
-                console.log(data);
               }
             }
           } catch (err) {
@@ -200,7 +199,7 @@ const ChessScreen = () => {
           }
         };
         listen();
-      }, 3000);
+      }, 5000);
     }
   };
 

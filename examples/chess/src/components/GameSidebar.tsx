@@ -1,5 +1,5 @@
 import { GameMove } from '@/common';
-import { FC, useState } from 'react';
+import { FC, useEffect, useRef, useState } from 'react';
 import { Box, Button, Cross, Text, Tick, css } from 'shared-components';
 
 interface GameSidebarProps {
@@ -11,20 +11,25 @@ const GameSidebar: FC<GameSidebarProps> = ({ handleQuitGame, moves }) => {
   const [confirmQuit, setConfirmQuit] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [moves]);
+
   const handleClick = async () => {
     if (isLoading) return;
     setIsLoading(true);
     setConfirmQuit(false);
     try {
       await handleQuitGame();
-      console.log('check loading');
       setIsLoading(false);
     } catch (err) {
       console.log(err);
     }
   };
-
-  console.log(isLoading);
 
   return (
     <Box
@@ -75,6 +80,7 @@ const GameSidebar: FC<GameSidebarProps> = ({ handleQuitGame, moves }) => {
           borderRadius="radius-sm"
         >
           <Box
+            ref={scrollRef}
             display="flex"
             flexDirection="column"
             height="260px"
