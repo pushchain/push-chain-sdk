@@ -2,48 +2,48 @@ import { Chessboard, ClearPremoves } from 'react-chessboard';
 import { ChessboardProps } from 'react-chessboard/dist/chessboard/types';
 import { Box, css, Text } from 'shared-components';
 
-const customPieces = () => {
-  const pieceComponents: {
-    [key: string]: any;
-  } = {};
+// const customPieces = () => {
+//   const pieceComponents: {
+//     [key: string]: any;
+//   } = {};
 
-  [
-    'wP',
-    'wR',
-    'wN',
-    'wB',
-    'wQ',
-    'wK',
-    'bP',
-    'bR',
-    'bN',
-    'bB',
-    'bQ',
-    'bK',
-  ].forEach((piece) => {
-    pieceComponents[piece] = ({ squareWidth }: { squareWidth: number }) => (
-      <Box
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-        width={`${squareWidth}px`}
-        height={`${squareWidth}px`}
-      >
-        <img
-          src={`/pieces/${piece}.png`}
-          alt={piece}
-          height={
-            squareWidth *
-            (piece[1] === 'P' ? 0.7 : ['K', 'Q'].includes(piece[1]) ? 0.9 : 0.8)
-          }
-          style={{ objectFit: 'contain' }}
-        />
-      </Box>
-    );
-  });
+//   [
+//     'wP',
+//     'wR',
+//     'wN',
+//     'wB',
+//     'wQ',
+//     'wK',
+//     'bP',
+//     'bR',
+//     'bN',
+//     'bB',
+//     'bQ',
+//     'bK',
+//   ].forEach((piece) => {
+//     pieceComponents[piece] = ({ squareWidth }: { squareWidth: number }) => (
+//       <Box
+//         display="flex"
+//         alignItems="center"
+//         justifyContent="center"
+//         width={`${squareWidth}px`}
+//         height={`${squareWidth}px`}
+//       >
+//         <img
+//           src={`/pieces/${piece}.png`}
+//           alt={piece}
+//           height={
+//             squareWidth *
+//             (piece[1] === 'P' ? 0.7 : ['K', 'Q'].includes(piece[1]) ? 0.9 : 0.8)
+//           }
+//           style={{ objectFit: 'contain' }}
+//         />
+//       </Box>
+//     );
+//   });
 
-  return pieceComponents;
-};
+//   return pieceComponents;
+// };
 
 interface ChessBoardProps {
   waiting?: boolean;
@@ -79,7 +79,7 @@ const ChessBoard: React.FC<
           }}
           customDarkSquareStyle={{ backgroundColor: '#8778B8' }}
           customLightSquareStyle={{ backgroundColor: '#EFEFEF' }}
-          customPieces={customPieces()}
+          // customPieces={customPieces()}
           {...chessProps}
         />
       </Box>

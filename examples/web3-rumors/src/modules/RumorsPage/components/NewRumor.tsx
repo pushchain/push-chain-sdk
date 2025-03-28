@@ -22,6 +22,7 @@ import { getSentConfessions } from '@/services/getSentConfessions';
 const NewRumor = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [text, setText] = useState('');
+  const [errorText, setErrorText] = useState('');
   const [loading, setLoading] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -82,10 +83,15 @@ const NewRumor = () => {
   const handlePost = async () => {
     if (!account) return;
     if (!text.trim()) {
-      alert('Please write something to post your rumour.');
+      setErrorText('Please write something to post your rumour.');
+      return;
+    }
+    if (text.length < 100) {
+      setErrorText('Please enter at least 100 characters.');
       return;
     }
 
+    setErrorText('');
     setLoading(true);
 
     const rumourDetails = {
@@ -255,6 +261,7 @@ const NewRumor = () => {
             value={text}
             placeholder="Write your rumour here....... (Markdown Supported!)"
             numberOfLines={8}
+            errorMessage={errorText}
           />
         </Box>
         <Box
@@ -286,17 +293,20 @@ const NewRumor = () => {
           css={css`
             border-radius: var(--radius-md);
             background: #0056d0 !important;
+            width: 180px;
           `}
-          leadingIcon={<Pencil size={16} />}
-          disabled={loading}
+          leadingIcon={loading ? undefined : <Pencil size={16} />}
+          loading={loading}
         >
-          <Text
-            variant="h5-regular"
-            color="text-primary-inverse"
-            display={{ initial: 'block', ml: 'none' }}
-          >
-            Post a Rumor
-          </Text>
+          {!loading && (
+            <Text
+              variant="h5-regular"
+              color="text-primary-inverse"
+              display={{ initial: 'block', ml: 'none' }}
+            >
+              Post a Rumor
+            </Text>
+          )}
         </Button>
       </Box>
     </>
