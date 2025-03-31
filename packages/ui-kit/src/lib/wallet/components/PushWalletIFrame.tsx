@@ -2,7 +2,7 @@ import React, { FC } from 'react';
 import { usePushWalletContext } from './PushWalletProvider';
 import config from '../../config';
 import styled from 'styled-components';
-import { CrossIcon, DashIcon, Spinner } from '../../common';
+import { CrossIcon, Spinner } from '../../common';
 import { UniversalAddress } from '../wallet.types';
 
 const PushWalletIFrame: FC = () => {
@@ -29,7 +29,7 @@ const PushWalletIFrame: FC = () => {
                   handleUserLogOutEvent();
                 }}
               >
-                <CrossIcon />
+                <CrossIcon height='20px' width='20px' />
               </CloseButtonContainer>
               <LoadingTextContainer>
                 <LoadingText>Loading...</LoadingText>
@@ -45,7 +45,7 @@ const PushWalletIFrame: FC = () => {
             <AccountContainer universalAddress={universalAddress}>
               {universalAddress ? (
                 <DashButtonContainer onClick={() => setMinimiseWallet(true)}>
-                  <DashIcon />
+                  <CrossIcon height='18px' width='18px' />
                 </DashButtonContainer>
               ) : (
                 <CloseButtonContainer
@@ -53,7 +53,7 @@ const PushWalletIFrame: FC = () => {
                     handleUserLogOutEvent();
                   }}
                 >
-                  <CrossIcon />
+                  <CrossIcon height='20px' width='20px' />
                 </CloseButtonContainer>
               )}
             </AccountContainer>
@@ -65,8 +65,7 @@ const PushWalletIFrame: FC = () => {
                 border: 'none',
                 width: '-webkit-fill-available',
                 height: '100vh',
-                borderBottomRightRadius: universalAddress ? '10px' : '0px',
-                borderBottomLeftRadius: universalAddress ? '10px' : '0px',
+                borderRadius: universalAddress ? '10px' : '0px'
               }}
               onLoad={() => setIframeLoading(false)}
             />
@@ -83,19 +82,19 @@ const FrameContainer = styled.div<{
   universalAddress: UniversalAddress | null;
   isWalletMinimised: boolean;
 }>`
-  position: fixed;
+  position: ${({ universalAddress }) => universalAddress ? 'absolute' : 'fixed'};
   display: flex;
   flex-direction: column;
   background-color: #17181b;
   border-radius: 10px;
-  z-index: 99;
+  z-index: 9999;
 
   width: ${({ universalAddress, isWalletMinimised }) =>
-    isWalletMinimised ? '0px' : universalAddress ? '450px' : '100%'};
+    isWalletMinimised ? '0px' : universalAddress ? '450px' : '100vw'};
   height: ${({ universalAddress, isWalletMinimised }) =>
-    isWalletMinimised ? '0px' : universalAddress ? '710px' : '100%'};
-  right: ${({ universalAddress }) => (universalAddress ? '24px' : '0')};
-  top: ${({ universalAddress }) => (universalAddress ? '24px' : '0')};
+    isWalletMinimised ? '0px' : universalAddress ? '675px' : '100vh'};
+  right: ${({ universalAddress }) => (universalAddress ? '0px' : '0')};
+  top: ${({ universalAddress }) => (universalAddress ? '50px' : '0')};
 
   @media (max-width: 425px) {
     width: ${({ universalAddress, isWalletMinimised }) =>
@@ -119,9 +118,10 @@ const DashButtonContainer = styled.div`
   justify-content: center;
   cursor: pointer;
   border-radius: 1000px;
-  height: 14px;
-  width: 14px;
-  background-color: #ffbb16;
+  height: 20px;
+  width: 20px;
+  padding:2px;
+  background-color: #ff0000;
 `;
 
 const LoadingTextContainer = styled.div`
@@ -167,9 +167,12 @@ const AccountContainer = styled.div<{ universalAddress: UniversalAddress | null 
   width: -webkit-fill-available;
   display: flex;
   align-items: center;
+  position:absolute;
+  top:4px;
+  right:4px;
   justify-content: flex-end;
   padding: var(--spacing-xxs) var(--spacing-xxs);
   border-top-right-radius: ${({ universalAddress }) => (universalAddress ? '10px' : '0px')};
   border-top-left-radius: ${({ universalAddress }) => (universalAddress ? '10px' : '0px')};
-  background-color: ${({ universalAddress }) => (universalAddress ? '#e3e3e3' : '#17181B')};
+  background-color: transparent;
 `;

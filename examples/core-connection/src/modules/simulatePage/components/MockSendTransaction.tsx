@@ -12,8 +12,6 @@ const MockSendTransaction = () => {
   const { pushChain, isLoading, error } = usePushChain()
   const { universalAddress } = usePushWalletContext();
 
-  console.log("Error ", error, isLoading);
-
   const [isSendingTxn, setIsSendingTxn] = useState(false);
   const [txnHash, setTxnHash] = useState<string | null>(null);
   const [txnError, setTxnError] = useState<unknown | null>(null);
@@ -39,7 +37,6 @@ const MockSendTransaction = () => {
           }
         );
 
-        console.log("Tx recived", txHash);
         setTxnHash(txHash);
         setIsSendingTxn(false);
         setTxnError(null);

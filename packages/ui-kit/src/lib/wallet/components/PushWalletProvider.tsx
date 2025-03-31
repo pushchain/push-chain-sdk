@@ -163,8 +163,6 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
         },
       };
 
-      setMinimiseWallet(false);
-
       // Send the sign request to the wallet tab
       sendMessageToPushWallet({
         type: APP_TO_WALLET_ACTION.SIGN_MESSAGE,
@@ -262,7 +260,6 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
       console.log('Error in generating signature', error);
       throw new Error('Signature request failed');
     } finally {
-      console.log("Closing the toast");
       setShowToast(false);
     }
   };
@@ -326,7 +323,6 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
         handleUserLogOutEvent,
       }}
     >
-      <PushWalletIFrame />
       {(isWalletVisible && showToast) && <PushWalletToast />}
       {children}
     </PushWalletContext.Provider>
