@@ -1,6 +1,6 @@
 {
-  "name": "shared-components",
-  "version": "0.1.0",
+  "name": "@pushprotocol/common-components",
+  "version": "0.3.0",
   "main": "dist/shared-components.cjs.js",
   "module": "dist/shared-components.es.js",
   "types": "dist/index.d.ts",
@@ -12,11 +12,15 @@
       "types": "./dist/index.d.ts"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "release": "npm run build && npm publish --access public --otp=$npm_config_otp"
   },
   "dependencies": {
     "@emotion/react": "^11.13.0",
