@@ -323,6 +323,7 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
         handleUserLogOutEvent,
       }}
     >
+      <PushWalletIFrame />
       {(isWalletVisible && showToast) && <PushWalletToast />}
       {children}
     </PushWalletContext.Provider>

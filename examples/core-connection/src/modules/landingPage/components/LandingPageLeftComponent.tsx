@@ -98,6 +98,21 @@ const LandingPageLeftComponent = () => {
 
       <Box display="flex" flexDirection="column" gap="spacing-sm">
         <Box display="flex" flexDirection="column" gap="spacing-sm">
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            width="-webkit-fill-available"
+          >
+            <PushUniversalWallet
+              universalAddress={universalAddress}
+              title="Connect Push Wallet"
+              styling={{
+                width: 'inherit',
+              }}
+            />
+          </Box>
+
           <a href="https://push.org/chain" target="_blank">
             <Box
               display={{ initial: 'flex', ml: 'none' }}

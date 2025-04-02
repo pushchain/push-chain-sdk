@@ -16,7 +16,7 @@ const Navbar = () => {
             justifyContent='end'
             gap='spacing-md'
         >
-            <PushUniversalWallet universalAddress={universalAddress} title='Connect Push Wallet' />
+            {universalAddress && <PushUniversalWallet universalAddress={universalAddress} />}
 
             {!isDarkMode ? (
                 <Box

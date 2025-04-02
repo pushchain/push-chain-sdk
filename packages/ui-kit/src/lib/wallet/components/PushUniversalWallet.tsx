@@ -2,8 +2,6 @@ import React, { ReactNode } from 'react';
 import { ConnectPushWalletButton } from './ConnectPushWalletButton';
 import { TogglePushWalletButton } from './TogglePushWalletButton';
 import { UniversalAddress } from '../wallet.types';
-import { PushWalletIFrame } from './PushWalletIFrame';
-import styled from 'styled-components';
 
 type PushUniversalWalletProps = {
     universalAddress: UniversalAddress | null;
@@ -34,17 +32,10 @@ const PushUniversalWallet: React.FC<PushUniversalWalletProps> = ({
     styling,
 }) => {
     return (
-        <WalletContainer>
-            <RenderWallet universalAddress={universalAddress} component={component} title={title} styling={styling} />
-            <PushWalletIFrame />
-        </WalletContainer>
+        <RenderWallet universalAddress={universalAddress} component={component} title={title} styling={styling} />
     )
 };
 
 
 
 export { PushUniversalWallet };
-
-const WalletContainer = styled.div`
-    position:relative;  
-`
