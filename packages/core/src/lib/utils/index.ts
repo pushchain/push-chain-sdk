@@ -56,24 +56,87 @@ export function toSDKResponse(
         timestamp: b.ts,
         totalNumberOfTxns: b.totalNumberOfTxns,
         transactions: b.transactions.map(
-          (t: ValidatorCompleteTxResponse): CompleteTxResponse => ({
-            hash: t.txnHash,
-            fee: t.txnDataAsJson.tx.fee,
-            salt: t.txnDataAsJson.tx.salt,
-            apiToken: t.txnDataAsJson.tx.apitoken,
-            timestamp: +t.ts,
-            category: t.category,
-            from: t.from,
-            recipients: t.recipients.recipients.map((r) => r.address),
-            data: new TextDecoder().decode(
-              new Uint8Array(Buffer.from(t.txnData, 'hex'))
-            ),
-            signature: t.sig,
-          })
+          (t: ValidatorCompleteTxResponse): CompleteTxResponse => {
+            const decodedData = decodeTransactionData(t.txnData);
+            return {
+              hash: t.txnHash,
+              fee: t.txnDataAsJson.tx.fee,
+              salt: t.txnDataAsJson.tx.salt,
+              apiToken: t.txnDataAsJson.tx.apitoken,
+              timestamp: +t.ts,
+              category: t.category,
+              from: t.from,
+              recipients: t.recipients.recipients.map((r) => r.address),
+              data:
+                decodedData.type === 'string'
+                  ? decodedData.data
+                  : Buffer.from(decodedData.data).toString('hex'),
+              signature: t.sig,
+            };
+          }
         ),
       })
     ),
   };
+}
+
+/**
+ * Represents transaction data that can be either a string or binary data.
+ * This allows handling both new SDK (string) and old SDK (binary) formats.
+ */
+export type TransactionData =
+  | { type: 'string'; data: string }
+  | { type: 'binary'; data: Uint8Array };
+
+/**
+ * Decodes transaction data based on the category and format.
+ * Handles both old SDK (binary) and new SDK (string) formats.
+ *
+ * @param hexData - The transaction data in hex format
+ * @returns A TransactionData object indicating whether the data is a string or binary
+ *
+ * @example
+ * const txData = decodeTransactionData(transaction.txnData);
+ * if (txData.type === 'string') {
+ *   // Handle string data from new SDK
+ *   console.log(txData.data);
+ * } else {
+ *   // Handle binary data from old SDK
+ *   // Process txData.data (Uint8Array) as needed
+ * }
+ */
+export function decodeTransactionData(hexData: string): TransactionData {
+  try {
+    // Convert hex to Uint8Array
+    const dataBytes = new Uint8Array(Buffer.from(hexData, 'hex'));
+
+    // Try to decode as a string first (new SDK format)
+    const decodedString = new TextDecoder().decode(dataBytes);
+
+    // Check if the decoded string looks like binary data
+    // Look for null bytes or other control characters that would indicate binary data
+    const hasBinaryData = dataBytes.some(
+      (byte) =>
+        byte === 0 ||
+        (byte >= 1 && byte <= 8) ||
+        (byte >= 11 && byte <= 12) ||
+        (byte >= 14 && byte <= 31)
+    );
+
+    if (hasBinaryData) {
+      // This is likely binary data from the old SDK
+      return { type: 'binary', data: dataBytes };
+    }
+
+    return { type: 'string', data: decodedString };
+  } catch (e) {
+    console.error('Error decoding transaction data:', e);
+    // If decoding fails, return the original data as binary
+    return {
+      type: 'binary',
+      data: new Uint8Array(Buffer.from(hexData, 'hex')),
+    };
+  }
 }
 
 export function toSimplifiedBlockResponse(
@@ -165,7 +228,7 @@ export class Utils {
      * @throws {Error} Throws an error if the EVM address is invalid.
      *
      * @example
-     * const pushAddr = PushChain.utils.account.evmToPush('0x35B84d6848D16415177c64D64504663b998A6ab4');
+     * const pushAddr = PushChain.utils.account.evmToPushAddress('0x35B84d6848D16415177c64D64504663b998A6ab4');
      * // => 'push1xkuy66zg69jp29muvnty2prx8wvc5645f9y5ux'
      */
     evmToPushAddress(address: `0x${string}`): string {
