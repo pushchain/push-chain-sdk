@@ -4,7 +4,7 @@ import { parse, v4 as uuidv4 } from 'uuid';
 import { toHex } from 'viem';
 import { BlockResponse, CompleteBlockResponse } from '../block/block.types';
 import { ValidatorCompleteBlockResponse } from '../block/validatorBlock.types';
-import { Order, ENV } from '../constants';
+import { ORDER, ENV } from '../constants';
 import { Transaction } from '../generated/tx';
 import { PushChain } from '../pushChain';
 import { UniversalAccount, UniversalSigner } from '../signer/signer.types';
@@ -81,7 +81,7 @@ export class Tx {
    * @param {boolean} [options.raw=false] - If true, returns the raw SDK response.
    * @param {string} [options.category] - The category of transactions to filter by.
    * @param {number} [options.startTime=Math.floor(Date.now())] - The start time for fetching transactions.
-   * @param {Order} [options.order=Order.DESC] - The order in which to fetch transactions (ascending or descending).
+   * @param {ORDER} [options.order=ORDER.DESC] - The order in which to fetch transactions (ascending or descending).
    * @param {number} [options.page=1] - The page number for pagination.
    * @param {number} [options.limit=30] - The number of transactions to fetch per page.
    * @param {'both' | 'sender' | 'recipient'} [options.filterMode='both'] - The mode to filter transactions by:
@@ -100,7 +100,7 @@ export class Tx {
    * // Fetch transactions for a specific account, filtering by sender using PushChain.tx
    * const accountTransactions = await pushChain.tx.get(universalAccount, {
    *   filterMode: 'sender',
-   *   order: Order.ASC,
+   *   order: ORDER.ASC,
    *   limit: 10,
    * });
    */
@@ -110,7 +110,7 @@ export class Tx {
       raw = false,
       category = undefined,
       startTime = Math.floor(Date.now()),
-      order = Order.DESC,
+      order = ORDER.DESC,
       page = 1,
       limit = 30,
       filterMode = 'both' as 'both' | 'sender' | 'recipient',
@@ -118,7 +118,7 @@ export class Tx {
       raw?: boolean;
       category?: string;
       startTime?: number;
-      order?: Order;
+      order?: ORDER;
       page?: number;
       limit?: number;
       filterMode?: 'both' | 'sender' | 'recipient';
@@ -168,7 +168,7 @@ export class Tx {
     }: {
       category?: string;
       startTime: number;
-      order: Order;
+      order: ORDER;
       limit: number;
       page: number;
       filterMode: 'both' | 'sender' | 'recipient';

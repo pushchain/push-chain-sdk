@@ -1,4 +1,4 @@
-export enum Order {
+export enum ORDER {
   ASC = 'ASC',
   DESC = 'DESC',
 }
@@ -36,4 +36,5 @@ export const CONSTANTS = {
   ENV,
   CHAIN,
   CHAIN_ID,
+  ORDER,
 };
