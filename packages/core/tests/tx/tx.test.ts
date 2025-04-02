@@ -8,7 +8,7 @@ import {
   privateKeyToAddress,
 } from 'viem/accounts';
 import { PushChain } from '../../src';
-import { CONSTANTS, Order } from '../../src/lib/constants';
+import { CONSTANTS, ORDER } from '../../src/lib/constants';
 import { InitDid } from '../../src/lib/generated/txData/init_did';
 import {
   UniversalAccount,
@@ -87,7 +87,7 @@ describe('Tx', () => {
     const pushChain = await PushChain.initialize(null, { network: env });
     const res = await pushChain.tx.get('*', {
       startTime: Math.floor(Date.now() / 1000),
-      order: Order.DESC,
+      order: ORDER.DESC,
       limit: 30,
       page: 1,
     });
@@ -106,7 +106,7 @@ describe('Tx', () => {
         chainId: CONSTANTS.CHAIN_ID.ETHEREUM.SEPOLIA,
       },
       {
-        order: Order.DESC,
+        order: ORDER.DESC,
       }
     );
     expect(res.blocks).toBeInstanceOf(Array);
