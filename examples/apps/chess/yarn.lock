@@ -3391,7 +3391,7 @@ __metadata:
     react-chessboard: "npm:^4.7.2"
     react-dom: "npm:^18.3.1"
     react-router-dom: "npm:^7.0.2"
-    shared-components: "file:../../packages/shared-components"
+    shared-components: "file:../../../packages/shared-components"
     stockfish: "npm:^16.0.0"
     typescript: "npm:^5.5.3"
     typescript-eslint: "npm:^8.7.0"
@@ -7104,9 +7104,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"shared-components@file:../../packages/shared-components::locator=chess-app%40workspace%3A.":
-  version: 0.1.0
-  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=8d653f&locator=chess-app%40workspace%3A."
+"shared-components@file:../../../packages/shared-components::locator=chess-app%40workspace%3A.":
+  version: 0.3.0
+  resolution: "shared-components@file:../../../packages/shared-components#../../../packages/shared-components::hash=6ee25d&locator=chess-app%40workspace%3A."
   dependencies:
     "@emotion/react": "npm:^11.13.0"
     "@radix-ui/react-dialog": "npm:^1.1.1"
@@ -7127,7 +7127,7 @@ __metadata:
   peerDependencies:
     react: ^18.3.1
     react-dom: ^18.3.1
-  checksum: 10/c6cfcbff287039116aae3efaa5e45a93869b3aa88f3bddc3569fcfb35924597226692d8439f0f3bed60eed3fe1e39d531d1691abe4a1c51cbc3f84e4a84db272
+  checksum: 10/15f48cb353f08756d789b1346033a6f0db707946fd6fddea90e4c0d4f3e407edd58606e5155b2f40fb9513e6c71cccf729885e295796e1f76546533ffa7df097
   languageName: node
   linkType: hard
 
