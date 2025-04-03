@@ -1115,6 +1115,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@pushchain/devnet@npm:^1.0.13":
+  version: 1.0.15
+  resolution: "@pushchain/devnet@npm:1.0.15"
+  dependencies:
+    "@bufbuild/protobuf": "npm:^2.0.0"
+    "@noble/hashes": "npm:^1.5.0"
+    "@types/uuid": "npm:10.0.0"
+    "@types/ws": "npm:8.5.14"
+    axios: "npm:^1.7.7"
+    bech32: "npm:^2.0.0"
+    bs58: "npm:^6.0.0"
+    protobufjs-cli: "npm:1.1.3"
+    ts-proto: "npm:2.6.1"
+    tslib: "npm:^2.3.0"
+    tweetnacl: "npm:^1.0.3"
+    uuid: "npm:^10.0.0"
+    viem: "npm:^2.21.5"
+    ws: "npm:8.18.0"
+  checksum: 10/0906ae5e82a729b1175ceb8fee18c287e741226c11339b8e5309480c17bbc043762daced35637ad8085de67c884f46ff8fdb228be7af263522acff17b3141ea4
+  languageName: node
+  linkType: hard
+
 "@pushchain/devnet@npm:^1.0.8":
   version: 1.0.8
   resolution: "@pushchain/devnet@npm:1.0.8"
@@ -1157,15 +1179,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pushprotocol/pushchain-ui-kit@npm:^1.0.6":
-  version: 1.0.6
-  resolution: "@pushprotocol/pushchain-ui-kit@npm:1.0.6"
+"@pushprotocol/pushchain-ui-kit@npm:^1.0.7":
+  version: 1.0.7
+  resolution: "@pushprotocol/pushchain-ui-kit@npm:1.0.7"
   dependencies:
     "@metamask/sdk": "npm:^0.32.0"
+    "@pushchain/devnet": "npm:^1.0.13"
     ethers: "npm:^6.13.5"
     tslib: "npm:^2.3.0"
     viem: "npm:^2.23.9"
-  checksum: 10/32700d88ee58f15d9bde3042e54ee318fb114ce171274366a1fc92acf3217ac51f73bd42c18b25bab7efd10f548f7587446d764d61c11502be8e62272861d4bb
+  checksum: 10/ab15aa3832deb45aaf42b876b75ce155c185a2096646d39562014076e8d7e29f2d516f8aed5b80f3bc27eb5813da2cba4228aa4325d6b046ed1730f4f1ec0224
   languageName: node
   linkType: hard
 
@@ -3538,7 +3561,7 @@ __metadata:
     "@eslint/js": "npm:^9.9.0"
     "@pushchain/devnet": "npm:^1.0.8"
     "@pushprotocol/push-chain": "npm:^0.1.7"
-    "@pushprotocol/pushchain-ui-kit": "npm:^1.0.6"
+    "@pushprotocol/pushchain-ui-kit": "npm:^1.0.7"
     "@types/react": "npm:^18.3.3"
     "@types/react-dom": "npm:^18.3.0"
     "@vitejs/plugin-react-swc": "npm:^3.5.0"
@@ -7579,7 +7602,7 @@ __metadata:
 
 "shared-components@file:../../packages/shared-components::locator=core-connection%40workspace%3A.":
   version: 0.1.0
-  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=322083&locator=core-connection%40workspace%3A."
+  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=e90ddd&locator=core-connection%40workspace%3A."
   dependencies:
     "@emotion/react": "npm:^11.13.0"
     "@radix-ui/react-dialog": "npm:^1.1.1"
@@ -7600,7 +7623,7 @@ __metadata:
   peerDependencies:
     react: ^18.3.1
     react-dom: ^18.3.1
-  checksum: 10/8b07dc7f840ec202210ea642f9147ce5976f4bd4b806baf77f21289be6a4d7e2e1c9d95cdcfc83d171bb68e272e384ccc718920891fddf4ecfa90611952ffdf7
+  checksum: 10/4b1a331ef66c82f7b1d9a769728c7ef0d490dc7c75f13edc7d7a0a7646de5cab4cec205d7782df9efde64fea87753caca8cf1dc8594df64c21a776a3187625d4
   languageName: node
   linkType: hard
 
