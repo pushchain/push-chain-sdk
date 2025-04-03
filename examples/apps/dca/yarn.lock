@@ -6210,7 +6210,7 @@ __metadata:
     react: "npm:^18.3.1"
     react-dom: "npm:^18.3.1"
     recharts: "npm:^2.13.3"
-    shared-components: "file:../../packages/shared-components"
+    shared-components: "file:../../../packages/shared-components"
     styled-components: "npm:^6.1.14"
     tailwind-merge: "npm:^2.5.5"
     tailwindcss: "npm:^3.4.15"
@@ -10800,9 +10800,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"shared-components@file:../../packages/shared-components::locator=dca-app%40workspace%3A.":
-  version: 0.1.0
-  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=4270f6&locator=dca-app%40workspace%3A."
+"shared-components@file:../../../packages/shared-components::locator=dca-app%40workspace%3A.":
+  version: 0.3.0
+  resolution: "shared-components@file:../../../packages/shared-components#../../../packages/shared-components::hash=6ee25d&locator=dca-app%40workspace%3A."
   dependencies:
     "@emotion/react": "npm:^11.13.0"
     "@radix-ui/react-dialog": "npm:^1.1.1"
@@ -10823,7 +10823,7 @@ __metadata:
   peerDependencies:
     react: ^18.3.1
     react-dom: ^18.3.1
-  checksum: 10/8ba8d4af0295c9192d4df2d2f96fdfb6eba69d3400588450d9c6c3e658877d4b613de32365e83ddc4cad0213427727b8b075299b353e079e8e42cd34105044d1
+  checksum: 10/15f48cb353f08756d789b1346033a6f0db707946fd6fddea90e4c0d4f3e407edd58606e5155b2f40fb9513e6c71cccf729885e295796e1f76546533ffa7df097
   languageName: node
   linkType: hard
 
