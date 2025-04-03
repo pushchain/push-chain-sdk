@@ -13,6 +13,7 @@ import {
   WALLET_TO_APP_ACTION,
   WalletEventRespoonse,
 } from '../wallet.types';
+import { CONSTANTS } from '../../constants';
 import config, { ENV } from '../../config';
 import { walletRegistry } from '../../providers/WalletProviderRegistry';
 import {
@@ -96,10 +97,9 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
   };
 
   const handleNewConnectionRequest = () => {
-    setMinimiseWallet(false);
     setConnectionStatus('authenticating');
     sendMessageToPushWallet({
-      type: APP_TO_WALLET_ACTION.NEW_CONNECTION_REQUEST,
+      type: CONSTANTS.APP_TO_WALLET_ACTION.NEW_CONNECTION_REQUEST,
     });
   };
 
@@ -127,7 +127,7 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
   };
 
   const handleAppConnectionRetry = () => {
-    setMinimiseWallet(true);
+    // setMinimiseWallet(true);
   };
 
   const handleUserLogOutEvent = () => {
@@ -165,7 +165,7 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
 
       // Send the sign request to the wallet tab
       sendMessageToPushWallet({
-        type: APP_TO_WALLET_ACTION.SIGN_MESSAGE,
+        type: CONSTANTS.APP_TO_WALLET_ACTION.SIGN_MESSAGE,
         data,
       });
     });
@@ -274,24 +274,24 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
           console.log("wallet connected successfully", event.data);
           handleIsLoggedInAction();
           break;
-        case WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS:
+        case CONSTANTS.WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS:
           handleAppConnectionSuccess(event.data.data);
           break;
-        case WALLET_TO_APP_ACTION.APP_CONNECTION_REJECTED:
+        case CONSTANTS.WALLET_TO_APP_ACTION.APP_CONNECTION_REJECTED:
           handleAppConnectionRejection();
           break;
-        case WALLET_TO_APP_ACTION.APP_CONNECTION_RETRY:
+        case CONSTANTS.WALLET_TO_APP_ACTION.APP_CONNECTION_RETRY:
           handleAppConnectionRetry();
           break;
-        case WALLET_TO_APP_ACTION.SIGNATURE:
+        case CONSTANTS.WALLET_TO_APP_ACTION.SIGNATURE:
           if (signatureResolverRef.current) {
             signatureResolverRef?.current?.success?.(event.data.data);
           }
           break;
-        case WALLET_TO_APP_ACTION.IS_LOGGED_OUT:
+        case CONSTANTS.WALLET_TO_APP_ACTION.IS_LOGGED_OUT:
           handleUserLogOutEvent();
           break;
-        case WALLET_TO_APP_ACTION.ERROR:
+        case CONSTANTS.WALLET_TO_APP_ACTION.ERROR:
           signatureResolverRef?.current?.error?.(event.data.data);
           break;
         default:
@@ -310,13 +310,6 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
         universalAddress,
         connectionStatus,
         env,
-        iframeRef,
-        isWalletVisible,
-        setWalletVisibility,
-        isWalletMinimised,
-        setMinimiseWallet,
-        isIframeLoading,
-        setIframeLoading,
         handleConnectToPushWallet,
         handleNewConnectionRequest,
         handleSignMessage,

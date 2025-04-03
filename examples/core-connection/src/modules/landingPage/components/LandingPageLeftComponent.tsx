@@ -44,22 +44,19 @@ const LandingPageLeftComponent = () => {
         gap="spacing-md"
         alignItems={{ ml: 'center' }}
       >
-        <a
-          href="https://snapshot.box/#/s:pushdao.eth/proposal/0xa4a301c9a346356326d59e425245459d9fbde71b02aabc49a4ce191f0504f66a"
-          target="_blank"
-        >
-          <Box display={{ initial: 'flex', ml: 'none' }}>
+        <a href="https://portal.push.org/rewards" target="_blank">
+          <Box display={{ initial: 'flex', tb: 'none' }}>
             <Button trailingIcon={<Front />} variant="outline" size="small">
-              Push Chain proposal has successfully passed.
+              Push Chain Devnet Drop S2 is Live!
             </Button>
           </Box>
-          <Box display={{ initial: 'none', ml: 'flex' }}>
+          <Box display={{ initial: 'none', tb: 'flex' }}>
             <Button
               trailingIcon={<Front />}
               variant="outline"
               size="extraSmall"
             >
-              Push Chain proposal has successfully passed.
+              Push Chain Devnet Drop S2 is Live!
             </Button>
           </Box>
         </a>

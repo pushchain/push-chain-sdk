@@ -1,8 +1,10 @@
 import { Block } from './block/block';
 import { ENV } from './constants';
 import { UniversalSigner } from './signer/signer.types';
+import { checksumAddress } from './signer/universalFactories';
 import { Tx } from './tx/tx';
 import { Utils } from './utils';
+import { WebSocketClient } from './websocket/websocket-client';
 
 /**
  * The PushChain class provides access to the Push Chain's functionality.
@@ -29,9 +31,15 @@ export class PushChain {
    */
   public block: Block;
 
-  private constructor(block: Block, tx: Tx) {
+  /**
+   * Provides access to WebSocket functionality.
+   */
+  public ws: WebSocketClient;
+
+  private constructor(block: Block, tx: Tx, ws: WebSocketClient) {
     this.tx = tx;
     this.block = block;
+    this.ws = ws;
   }
 
   /**
@@ -43,6 +51,7 @@ export class PushChain {
    * @param {Object} [options] - The options for initializing the PushChain.
    * @param {boolean} [options.printTraces=false] - Console logs the requests to nodes
    * @param {ENV} [options.network=ENV.DEVNET] - The network environment.
+   * @param {string} [options.rpcUrl=''] - The RPC URL to use. If not provided, the default RPC URL for the network will be used.
    * @returns {Promise<PushChain>} A promise that resolves to the initialized PushChain instance.
    *
    * @example
@@ -56,18 +65,31 @@ export class PushChain {
     universalSigner: UniversalSigner | null = null,
     options: {
       network: ENV;
+      rpcUrl?: string;
       printTraces?: boolean;
     } = {
       network: ENV.DEVNET,
+      rpcUrl: '',
       printTraces: false,
     }
   ): Promise<PushChain> => {
-    const block = await Block.initialize(options.network);
+    if (universalSigner) {
+      universalSigner.address = checksumAddress(
+        universalSigner.chain,
+        universalSigner.address
+      );
+    }
+    const block = await Block.initialize(options.network, options.rpcUrl);
     const tx = await Tx.initialize(
       options.network,
       universalSigner,
-      options.printTraces
+      options.printTraces,
+      options.rpcUrl
     );
-    return new PushChain(block, tx);
+    const ws = await WebSocketClient.initialize(
+      options.network,
+      options.rpcUrl
+    );
+    return new PushChain(block, tx, ws);
   };
 }

@@ -33,7 +33,7 @@ export const getSentConfessions = async (
       'DESC',
       pageSize,
       page,
-      'CUSTOM:CONFESSION'
+      'CUSTOM:RUMORS'
     );
 
     console.log(txRes);

@@ -182,7 +182,7 @@ export { default as Tutorial } from './components/Tutotial';
 export { default as TwitterSimple } from './components/TwitterSimple';
 
 export { default as UserFilled } from './components/UserFilled';
-
+export { default as Union } from './components/Union';
 export { default as UserSwitch } from './components/UserSwitch';
 
 export { default as VideoCamera } from './components/VideoCamera';

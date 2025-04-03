@@ -1,20 +1,9 @@
-import {
-  Box,
-  Button,
-  Front,
-  Sale,
-  Text,
-  Spinner,
-  css,
-} from 'shared-components';
-import { ConnectPushWalletButton } from '@pushprotocol/pushchain-ui-kit';
+import { Box, Button, Front, Union, Text, css } from 'shared-components';
+import { PushWalletButton } from '@pushprotocol/pushchain-ui-kit';
 import { SimulateTxText } from './SimulateTxText';
-import { useAppContext } from '@/context/AppContext';
 import { LandingPageBanner } from './LandingPageBanner';
 
 const LandingPageLeftComponent = () => {
-  const { pushNetwork } = useAppContext();
-
   const featuresCard = [
     {
       id: 1,
@@ -44,13 +33,10 @@ const LandingPageLeftComponent = () => {
         gap="spacing-md"
         alignItems={{ tb: 'center' }}
       >
-        <a
-          href="https://snapshot.box/#/s:pushdao.eth/proposal/0xa4a301c9a346356326d59e425245459d9fbde71b02aabc49a4ce191f0504f66a"
-          target="_blank"
-        >
+        <a href="https://portal.push.org/rewards" target="_blank">
           <Box display={{ initial: 'flex', tb: 'none' }}>
             <Button trailingIcon={<Front />} variant="outline" size="small">
-              Push Chain proposal has successfully passed.
+              Push Chain Devnet Drop S2 is Live!
             </Button>
           </Box>
           <Box display={{ initial: 'none', tb: 'flex' }}>
@@ -59,7 +45,7 @@ const LandingPageLeftComponent = () => {
               variant="outline"
               size="extraSmall"
             >
-              Push Chain proposal has successfully passed
+              Push Chain Devnet Drop S2 is Live!
             </Button>
           </Box>
         </a>
@@ -105,11 +91,14 @@ const LandingPageLeftComponent = () => {
             justifyContent="center"
             width="-webkit-fill-available"
           >
-            {pushNetwork ? (
-              <ConnectPushWalletButton />
-            ) : (
-              <Spinner size="medium" variant="primary" />
-            )}
+            <PushWalletButton
+              universalAddress={null}
+              title="Connect to Push Wallet"
+              styling={{
+                width: 'inherit',
+                backgroundColor: '#E21D48',
+              }}
+            />
           </Box>
 
           <a href="https://push.org/chain" target="_blank">
@@ -154,7 +143,7 @@ const LandingPageLeftComponent = () => {
               alignItems="center"
             >
               <Box height="28px" width="28px">
-                <Sale size={28} color="icon-brand-medium" />
+                <Union size={28} svgProps={{ color: '#E21D48' }} />
               </Box>
               <Text variant="h4-regular" as="span">
                 {item.text}

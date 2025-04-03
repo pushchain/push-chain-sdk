@@ -13,8 +13,8 @@ import { ValidatorCompleteBlockResponse } from './validatorBlock.types';
 export class Block {
   private constructor(private validator: Validator) {}
 
-  static initialize = async (env: ENV) => {
-    const validator = await Validator.initalize({ env });
+  static initialize = async (env: ENV, rpcUrl?: string) => {
+    const validator = await Validator.initalize({ env, rpcUrl });
     return new Block(validator);
   };
 

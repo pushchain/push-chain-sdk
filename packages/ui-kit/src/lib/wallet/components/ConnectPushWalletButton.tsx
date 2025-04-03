@@ -1,4 +1,4 @@
-import { FC } from 'react';
+import React, { FC } from 'react';
 import { usePushWalletContext } from './PushWalletProvider';
 import styled from 'styled-components';
 import { Spinner } from '../../common';

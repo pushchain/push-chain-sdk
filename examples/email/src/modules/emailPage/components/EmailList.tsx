@@ -7,7 +7,14 @@ import { FC } from 'react';
 export type EmailListProps = { type: EMAIL_BOX.INBOX | EMAIL_BOX.SENT };
 
 const EmailList: FC<EmailListProps> = ({ type }) => {
-  const { searchInput, emails, isLoading } = useAppContext();
+  const {
+    searchInput,
+    emails,
+    currTab,
+    isLoading,
+    isReceivedEmailLoading,
+    isSentEmailLoading,
+  } = useAppContext();
 
   const filterEmails = (emails: any[], searchInput: string) => {
     if (searchInput === '') {
@@ -34,8 +41,11 @@ const EmailList: FC<EmailListProps> = ({ type }) => {
           <EmailCard key={index} {...email} />
         ))}
         {type === EMAIL_BOX.INBOX && <EmailCard {...dummyEmail} />}
-        {isLoading && (
-          <Box display="flex" justifyContent="center" margin="spacing-lg">
+        {((isLoading && isSentEmailLoading && currTab === EMAIL_BOX.SENT) ||
+          (isLoading &&
+            isReceivedEmailLoading &&
+            currTab === EMAIL_BOX.INBOX)) && (
+          <Box display="flex" justifyContent="center" padding="spacing-lg">
             <Spinner size="medium" variant="primary" />
           </Box>
         )}

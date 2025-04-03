@@ -1,13 +1,13 @@
 import { useAppContext } from '@/context/AppContext';
 import { trimAddress } from '@/common';
-import { Back, Box, PushLogo, Text, css } from 'shared-components';
+import { Back, Box, PushLogo, Text, css, styled } from 'shared-components';
 
 export type EmailViewerProps = {
   handleBack: () => void;
 };
 
 const DummyEmail: React.FC<EmailViewerProps> = ({ handleBack }) => {
-  const { wallet } = useAppContext();
+  const { wallet, setEmailBot } = useAppContext();
 
   return (
     <Box
@@ -110,7 +110,7 @@ const DummyEmail: React.FC<EmailViewerProps> = ({ handleBack }) => {
                 of a shared state email app.
               </Text>
               <br />
-              <Text variant="bs-semibold">
+              <Text variant="bs-semibold" color="text-state-danger-bold">
                 Please note that in this version, emails sent and received are
                 not encrypted.
               </Text>
@@ -131,10 +131,18 @@ const DummyEmail: React.FC<EmailViewerProps> = ({ handleBack }) => {
             <img src="/DummyDiscord.png" height={75} width={75} />
             <Box>
               <Text variant="bm-bold">No Frens? No Problem!</Text>
-              <Text variant="bs-regular">
+              <Text
+                variant="bs-regular"
+                css={css`
+                  flex-wrap: wrap;
+                `}
+              >
                 Feeling too busy for frens? Don’t worry! We’ve got your back.
-                Test out the email experience by chatting with our sassy email
-                bot.
+                Test out the email experience by chatting with our sassy{' '}
+                <CustomSpan onClick={() => setEmailBot(true)}>
+                  email bot
+                </CustomSpan>
+                .
               </Text>
               <br />
               <Text variant="bs-semibold">
@@ -151,5 +159,10 @@ const DummyEmail: React.FC<EmailViewerProps> = ({ handleBack }) => {
     </Box>
   );
 };
+
+const CustomSpan = styled.span`
+  color: #c742dd;
+  cursor: pointer;
+`;
 
 export default DummyEmail;

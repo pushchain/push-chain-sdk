@@ -1,5 +1,32 @@
+import { getAddress } from 'viem';
 import { CONSTANTS } from '../constants';
 import { UniversalAccount, UniversalSigner } from './signer.types';
+
+/**
+ * Helper function to convert an address to its checksum format for Ethereum addresses,
+ * or return as-is for other chains.
+ *
+ * @param {string} chain - The blockchain name (e.g. "ETHEREUM"). Only Ethereum is supported.
+ * @param {string} address - The address to checksum
+ * @returns {string} The checksummed address for Ethereum, or original address for other chains
+ * @throws {Error} If an invalid Ethereum address is provided
+ *
+ * @example
+ * // Returns checksummed Ethereum address
+ * checksumAddress("ETHEREUM", "0xabcd...")
+ * // => "0xAbCd..."
+ *
+ */
+export function checksumAddress(chain: string, address: string): string {
+  if (chain === CONSTANTS.CHAIN.ETHEREUM) {
+    try {
+      return getAddress(address);
+    } catch {
+      throw new Error('Invalid Ethereum address format');
+    }
+  }
+  return address;
+}
 
 /**
  * Creates a UniversalAccount object with default chain and chainId values if not provided.
@@ -36,7 +63,7 @@ export function createUniversalAccount({
   return {
     chain,
     chainId,
-    address,
+    address: checksumAddress(chain, address),
   };
 }
 
@@ -89,7 +116,7 @@ export function createUniversalSigner({
   return {
     chain,
     chainId,
-    address,
+    address: checksumAddress(chain, address),
     signMessage,
   };
 }

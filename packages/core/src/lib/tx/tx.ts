@@ -12,6 +12,7 @@ import { toSDKResponse, toSimplifiedBlockResponse } from '../utils';
 import { Validator } from '../validator/validator';
 import { TokenReply } from '../validator/validator.types';
 import { ReplyGrouped, TxCategory } from './tx.types';
+import { checksumAddress } from '../signer/universalFactories';
 
 /**
  * Tx is a class that provides methods to interact with the Push Network.
@@ -43,6 +44,7 @@ export class Tx {
    * @param env - The environment configuration.
    * @param universalSigner - Optional signer for transactions. Only required for sending transactions.
    * @param printTraces - Console logs the requests to nodes
+   * @param rpcUrl - The RPC URL to use. If not provided, the default RPC URL for the network will be used.
    * @returns An instance of the Tx class.
    *
    * @example
@@ -55,9 +57,10 @@ export class Tx {
   static initialize = async (
     env: ENV,
     universalSigner: UniversalSigner | null = null,
-    printTraces = false
+    printTraces = false,
+    rpcUrl?: string
   ) => {
-    const validator = await Validator.initalize({ env, printTraces });
+    const validator = await Validator.initalize({ env, printTraces, rpcUrl });
     return new Tx(validator, universalSigner);
   };
 
@@ -262,6 +265,10 @@ export class Tx {
     if (!this.signer) throw new Error('Signer not defined');
 
     Tx.checkCategoryOrFail(options.category);
+
+    recipients.forEach((recipient) => {
+      recipient.address = checksumAddress(recipient.chain, recipient.address);
+    });
 
     let dataBytes: Uint8Array;
     if (options.category === TxCategory.INIT_DID) {

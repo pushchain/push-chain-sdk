@@ -30,7 +30,7 @@ export const calculateVote = async (
       10,
       1,
       undefined,
-      `CUSTOM:${txHash}`
+      `RUMORS:${txHash}`
     );
 
     if (txRes.blocks.length > 0) {
