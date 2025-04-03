@@ -15,11 +15,12 @@
   "dependencies": {
     "@pushchain/devnet": "^1.0.8",
     "@pushprotocol/push-chain": "^0.1.7",
-    "@pushprotocol/pushchain-ui-kit": "^1.0.6",
+    "@pushprotocol/pushchain-ui-kit": "^1.0.7",
     "formik": "^2.4.6",
     "gh-pages": "^6.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-icons": "^5.5.0",
     "react-router-dom": "^7.0.2",
     "shared-components": "../../packages/shared-components",
     "viem": "^2.21.34",

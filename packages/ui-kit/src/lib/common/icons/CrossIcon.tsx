@@ -1,10 +1,16 @@
 import React from 'react';
 
-const CrossIcon = () => {
+const CrossIcon = ({
+    height,
+    width,
+}: {
+    height: string;
+    width: string;
+}) => {
     return (
         <svg
-            width="20px"
-            height="20px"
+            width={width}
+            height={height}
             viewBox="0 0 32 32"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"

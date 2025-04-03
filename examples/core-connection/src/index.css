@@ -9,6 +9,10 @@ a {
   text-decoration: inherit;
 }
 
+body {
+  background-color: var(--surface-primary);
+}
+
 /**
  * Custom CSS
  */

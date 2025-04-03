@@ -12,7 +12,7 @@ type TogglePushWalletButtonProps = {
 const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
   universalAddress,
 }) => {
-  const { setMinimiseWallet } = usePushWalletContext();
+  const { setMinimiseWallet, isWalletMinimised } = usePushWalletContext();
   const { chainId, address } = universalAddress;
 
   function getChainIcon(chainId: string | null) {
@@ -31,11 +31,13 @@ const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
 
   return (
     <>
-      <ButtonComponent onClick={() => setMinimiseWallet(false)}>
+      <ButtonComponent onClick={() => setMinimiseWallet(!isWalletMinimised)}>
         {getChainIcon(chainId)}
         {maskedAddress}
         <PushLogo />
       </ButtonComponent>
+
+
     </>
   );
 };
@@ -54,7 +56,7 @@ const ButtonComponent = styled.button`
   background-color: #17181b;
   color: rgba(255, 255, 255, 1);
   border-radius: 12px;
-  gap: 4px;
+  gap: 8px;
   height: 48px;
   padding: 16px 24px;
   min-width: 100px;

@@ -1,3 +1,5 @@
+import { useDarkMode } from "../../../common/hooks";
+
 const SimulateTxText = ({
   height,
   width,
@@ -5,7 +7,8 @@ const SimulateTxText = ({
   height: string;
   width: string;
 }) => {
-  return <img src={"/SimulateTxText.png"} style={{ height, width }} />;
+  const { isDarkMode } = useDarkMode();
+  return <img src={"/SimulateTxText.png"} style={{ height, width, filter: `${isDarkMode ? 'contrast(0) brightness(0) invert(1)' : ''}` }} />;
 };
 
 export { SimulateTxText };

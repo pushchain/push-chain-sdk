@@ -13,7 +13,7 @@ const ContentLayout: FC<ContentLayoutProps> = ({ children }) => {
   return (
     <Box
       alignItems="center"
-      backgroundColor="surface-transparent"
+      backgroundColor='surface-primary'
       display="flex"
       flexDirection="column"
       justifyContent="center"

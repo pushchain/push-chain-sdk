@@ -22,6 +22,8 @@ import {
   WalletInfo,
 } from '../../providers/types/wallet.types';
 import { getWalletDataFromAccount } from '../wallet.utils';
+import { PushWalletIFrame } from './PushWalletIFrame';
+import { PushWalletToast } from './PushWalletToast';
 
 // Define the context shape
 export type PushWalletContextType = {
@@ -64,6 +66,8 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
 
   const [currentWallet, setCurrentWallet] = useState<WalletInfo | null>(null);
 
+  const [showToast, setShowToast] = useState(false);
+
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus>('notConnected');
 
@@ -101,6 +105,7 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
 
   const handleIsLoggedInAction = () => {
     handleNewConnectionRequest();
+    setCurrentWallet(null);
   };
 
   const handleAppConnectionSuccess = (response: WalletEventRespoonse) => {
@@ -137,7 +142,9 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
     data: Uint8Array
   ): Promise<Uint8Array> => {
     return new Promise((resolve, reject) => {
+      setShowToast(true);
       if (signatureResolverRef.current) {
+        setShowToast(false);
         reject(new Error('Another sign request is already in progress'));
         return;
       }
@@ -145,10 +152,13 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
       signatureResolverRef.current = {
         success: (response: WalletEventRespoonse) => {
           resolve(response.signature!);
+          setShowToast(false);
           signatureResolverRef.current = null; // Clean up
+
         },
         error: (response: WalletEventRespoonse) => {
           signatureResolverRef.current = null; // Clean up
+          setShowToast(false);
           reject(new Error('Signature request failed'));
         },
       };
@@ -231,12 +241,15 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
       throw new Error('No External wallet connected');
     }
 
+    setShowToast(true);
+
     try {
       const providerReceived = walletRegistry.getProvider(
         currentWallet.providerName
       );
 
       if (!providerReceived) {
+        setShowToast(false);
         throw new Error('Provider not found');
       }
 
@@ -246,6 +259,8 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
     } catch (error) {
       console.log('Error in generating signature', error);
       throw new Error('Signature request failed');
+    } finally {
+      setShowToast(false);
     }
   };
 
@@ -256,6 +271,7 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
           handleExternalWalletConnection(event.data.data);
           break;
         case WALLET_TO_APP_ACTION.IS_LOGGED_IN:
+          console.log("wallet connected successfully", event.data);
           handleIsLoggedInAction();
           break;
         case CONSTANTS.WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS:
@@ -294,12 +310,21 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
         universalAddress,
         connectionStatus,
         env,
+        iframeRef,
+        isWalletVisible,
+        isWalletMinimised,
+        setWalletVisibility,
         handleConnectToPushWallet,
         handleNewConnectionRequest,
         handleSignMessage,
+        setMinimiseWallet,
         handleUserLogOutEvent,
+        isIframeLoading,
+        setIframeLoading
       }}
     >
+      <PushWalletIFrame />
+      {(isWalletVisible && showToast) && <PushWalletToast />}
       {children}
     </PushWalletContext.Provider>
   );

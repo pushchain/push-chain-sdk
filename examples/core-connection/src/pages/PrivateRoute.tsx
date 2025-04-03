@@ -1,9 +1,9 @@
 import React, { ReactNode } from 'react';
-import { useGlobalContext } from '../context/GlobalContext';
 import { Navigate } from 'react-router-dom';
+import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 
 const PrivateRoute = ({ children }: { children: ReactNode }) => {
-  const { universalAddress } = useGlobalContext();
+  const { universalAddress } = usePushWalletContext();
 
   if (universalAddress) return <>{children}</>;
 
