@@ -7,7 +7,7 @@ import { RouterContainer } from './common/components';
 import {
   CONSTANTS,
   PushWalletProvider,
-} from '../../../packages/ui-kit';
+} from '@pushprotocol/pushchain-ui-kit';
 import Navbar from './components/Navbar';
 
 const GlobalStyle = createGlobalStyle`
@@ -40,7 +40,7 @@ const App: React.FC = () => {
   return (
     <ThemeProvider theme={isDarkMode ? themeConfig.dark : themeConfig.light}>
       <GlobalStyle />
-      <PushWalletProvider env={CONSTANTS.ENV.LOCAL}>
+      <PushWalletProvider env={env[deploymentEnv]}>
         <Router>
           <Navbar />
           <RouterContainer />

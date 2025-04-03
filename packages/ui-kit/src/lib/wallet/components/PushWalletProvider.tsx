@@ -310,10 +310,17 @@ export const PushWalletProvider: React.FC<WalletProviderProps> = ({
         universalAddress,
         connectionStatus,
         env,
+        iframeRef,
+        isWalletVisible,
+        isWalletMinimised,
+        setWalletVisibility,
         handleConnectToPushWallet,
         handleNewConnectionRequest,
         handleSignMessage,
+        setMinimiseWallet,
         handleUserLogOutEvent,
+        isIframeLoading,
+        setIframeLoading
       }}
     >
       <PushWalletIFrame />

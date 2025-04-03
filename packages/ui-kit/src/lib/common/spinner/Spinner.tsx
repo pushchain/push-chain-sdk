@@ -20,7 +20,7 @@ const Container = styled.div`
   animation: ${spin} 1s linear infinite;
   width: 20px;
   height: 20px;
-  color: #fff;
+  color: #d548ec;
 `;
 
 // Spinner functional component
