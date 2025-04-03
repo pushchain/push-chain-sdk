@@ -3552,7 +3552,7 @@ __metadata:
     react: "npm:^18.3.1"
     react-dom: "npm:^18.3.1"
     react-router-dom: "npm:^7.0.2"
-    shared-components: ../../packages/shared-components
+    shared-components: ../../../packages/shared-components
     typescript: "npm:^5.5.3"
     typescript-eslint: "npm:^8.0.1"
     viem: "npm:^2.21.34"
@@ -7567,9 +7567,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"shared-components@file:../../packages/shared-components::locator=core-connection%40workspace%3A.":
-  version: 0.1.0
-  resolution: "shared-components@file:../../packages/shared-components#../../packages/shared-components::hash=322083&locator=core-connection%40workspace%3A."
+"shared-components@file:../../../packages/shared-components::locator=core-connection%40workspace%3A.":
+  version: 0.3.0
+  resolution: "shared-components@file:../../../packages/shared-components#../../../packages/shared-components::hash=6ee25d&locator=core-connection%40workspace%3A."
   dependencies:
     "@emotion/react": "npm:^11.13.0"
     "@radix-ui/react-dialog": "npm:^1.1.1"
@@ -7590,7 +7590,7 @@ __metadata:
   peerDependencies:
     react: ^18.3.1
     react-dom: ^18.3.1
-  checksum: 10/8b07dc7f840ec202210ea642f9147ce5976f4bd4b806baf77f21289be6a4d7e2e1c9d95cdcfc83d171bb68e272e384ccc718920891fddf4ecfa90611952ffdf7
+  checksum: 10/15f48cb353f08756d789b1346033a6f0db707946fd6fddea90e4c0d4f3e407edd58606e5155b2f40fb9513e6c71cccf729885e295796e1f76546533ffa7df097
   languageName: node
   linkType: hard
 
