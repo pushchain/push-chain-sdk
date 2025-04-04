@@ -20,7 +20,7 @@
     "react-chessboard": "^4.7.2",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.0.2",
-    "shared-components": "file:../../packages/shared-components",
+    "shared-components": "file:../../../packages/shared-components",
     "stockfish": "^16.0.0",
     "viem": "^2.21.28"
   },

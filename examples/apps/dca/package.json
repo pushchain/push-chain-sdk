@@ -34,7 +34,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.13.3",
-    "shared-components": "file:../../packages/shared-components",
+    "shared-components": "file:../../../packages/shared-components",
     "styled-components": "^6.1.14",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
