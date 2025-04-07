@@ -7106,7 +7106,7 @@ __metadata:
 
 "shared-components@file:../../../packages/shared-components::locator=chess-app%40workspace%3A.":
   version: 0.3.0
-  resolution: "shared-components@file:../../../packages/shared-components#../../../packages/shared-components::hash=6ee25d&locator=chess-app%40workspace%3A."
+  resolution: "shared-components@file:../../../packages/shared-components#../../../packages/shared-components::hash=0a966b&locator=chess-app%40workspace%3A."
   dependencies:
     "@emotion/react": "npm:^11.13.0"
     "@radix-ui/react-dialog": "npm:^1.1.1"
@@ -7127,7 +7127,7 @@ __metadata:
   peerDependencies:
     react: ^18.3.1
     react-dom: ^18.3.1
-  checksum: 10/15f48cb353f08756d789b1346033a6f0db707946fd6fddea90e4c0d4f3e407edd58606e5155b2f40fb9513e6c71cccf729885e295796e1f76546533ffa7df097
+  checksum: 10/23779da781dd6186e81d9b25293780936b141c3385125a3864d0c4cf971715cedb26b5a03e69a90df027174423cf6c96aeeeb29e9406e1b4cb90167f4dbc651c
   languageName: node
   linkType: hard
 
