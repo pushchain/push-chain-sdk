@@ -36,7 +36,7 @@ PUSH Chain SDK is a Javascript based Monorepo of packages that helps developers 
 
 Click on the packages to view more details.
 
-- [@pushprotocol/push-chain](./packages/core/README.md)
+- [@pushchain/devnet](./packages/devnet/README.md)
 
 ## Resources
 
