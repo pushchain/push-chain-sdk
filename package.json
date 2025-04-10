@@ -1,12 +1,10 @@
 {
-  "name": "push-network-sdk",
+  "name": "push-chain-sdk",
   "version": "0.0.0",
   "license": "MIT",
   "private": true,
   "dependencies": {
-    "bs58": "^6.0.0",
-    "tslib": "^2.3.0",
-    "tweetnacl": "^1.0.3"
+    "tslib": "^2.3.0"
   },
   "devDependencies": {
     "@nx/eslint": "20.1.4",

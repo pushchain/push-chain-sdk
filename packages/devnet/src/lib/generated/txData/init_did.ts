@@ -5,9 +5,9 @@
 // source: txData/init_did.proto
 
 /* eslint-disable */
-import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
+import { BinaryReader, BinaryWriter } from '@bufbuild/protobuf/wire';
 
-export const protobufPackage = "push";
+export const protobufPackage = 'push';
 
 export interface EncryptedText {
   ciphertext: string;
@@ -18,9 +18,7 @@ export interface EncryptedText {
 }
 
 export interface WalletToEncDerivedKey {
-  encDerivedPrivKey:
-    | EncryptedText
-    | undefined;
+  encDerivedPrivKey: EncryptedText | undefined;
   /** Helps Vnode to proof that encryptedData is indeed signed by account */
   signature: Uint8Array;
 }
@@ -38,31 +36,35 @@ export interface InitDid_WalletToEncDerivedKeyEntry {
 }
 
 function createBaseEncryptedText(): EncryptedText {
-  return { ciphertext: "", salt: "", nonce: "", version: "", preKey: "" };
+  return { ciphertext: '', salt: '', nonce: '', version: '', preKey: '' };
 }
 
 export const EncryptedText: MessageFns<EncryptedText> = {
-  encode(message: EncryptedText, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.ciphertext !== "") {
+  encode(
+    message: EncryptedText,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.ciphertext !== '') {
       writer.uint32(10).string(message.ciphertext);
     }
-    if (message.salt !== "") {
+    if (message.salt !== '') {
       writer.uint32(18).string(message.salt);
     }
-    if (message.nonce !== "") {
+    if (message.nonce !== '') {
       writer.uint32(26).string(message.nonce);
     }
-    if (message.version !== "") {
+    if (message.version !== '') {
       writer.uint32(34).string(message.version);
     }
-    if (message.preKey !== "") {
+    if (message.preKey !== '') {
       writer.uint32(42).string(message.preKey);
     }
     return writer;
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): EncryptedText {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseEncryptedText();
     while (reader.pos < end) {
@@ -119,44 +121,50 @@ export const EncryptedText: MessageFns<EncryptedText> = {
 
   fromJSON(object: any): EncryptedText {
     return {
-      ciphertext: isSet(object.ciphertext) ? globalThis.String(object.ciphertext) : "",
-      salt: isSet(object.salt) ? globalThis.String(object.salt) : "",
-      nonce: isSet(object.nonce) ? globalThis.String(object.nonce) : "",
-      version: isSet(object.version) ? globalThis.String(object.version) : "",
-      preKey: isSet(object.preKey) ? globalThis.String(object.preKey) : "",
+      ciphertext: isSet(object.ciphertext)
+        ? globalThis.String(object.ciphertext)
+        : '',
+      salt: isSet(object.salt) ? globalThis.String(object.salt) : '',
+      nonce: isSet(object.nonce) ? globalThis.String(object.nonce) : '',
+      version: isSet(object.version) ? globalThis.String(object.version) : '',
+      preKey: isSet(object.preKey) ? globalThis.String(object.preKey) : '',
     };
   },
 
   toJSON(message: EncryptedText): unknown {
     const obj: any = {};
-    if (message.ciphertext !== "") {
+    if (message.ciphertext !== '') {
       obj.ciphertext = message.ciphertext;
     }
-    if (message.salt !== "") {
+    if (message.salt !== '') {
       obj.salt = message.salt;
     }
-    if (message.nonce !== "") {
+    if (message.nonce !== '') {
       obj.nonce = message.nonce;
     }
-    if (message.version !== "") {
+    if (message.version !== '') {
       obj.version = message.version;
     }
-    if (message.preKey !== "") {
+    if (message.preKey !== '') {
       obj.preKey = message.preKey;
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<EncryptedText>, I>>(base?: I): EncryptedText {
+  create<I extends Exact<DeepPartial<EncryptedText>, I>>(
+    base?: I
+  ): EncryptedText {
     return EncryptedText.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<EncryptedText>, I>>(object: I): EncryptedText {
+  fromPartial<I extends Exact<DeepPartial<EncryptedText>, I>>(
+    object: I
+  ): EncryptedText {
     const message = createBaseEncryptedText();
-    message.ciphertext = object.ciphertext ?? "";
-    message.salt = object.salt ?? "";
-    message.nonce = object.nonce ?? "";
-    message.version = object.version ?? "";
-    message.preKey = object.preKey ?? "";
+    message.ciphertext = object.ciphertext ?? '';
+    message.salt = object.salt ?? '';
+    message.nonce = object.nonce ?? '';
+    message.version = object.version ?? '';
+    message.preKey = object.preKey ?? '';
     return message;
   },
 };
@@ -166,9 +174,15 @@ function createBaseWalletToEncDerivedKey(): WalletToEncDerivedKey {
 }
 
 export const WalletToEncDerivedKey: MessageFns<WalletToEncDerivedKey> = {
-  encode(message: WalletToEncDerivedKey, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: WalletToEncDerivedKey,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     if (message.encDerivedPrivKey !== undefined) {
-      EncryptedText.encode(message.encDerivedPrivKey, writer.uint32(10).fork()).join();
+      EncryptedText.encode(
+        message.encDerivedPrivKey,
+        writer.uint32(10).fork()
+      ).join();
     }
     if (message.signature.length !== 0) {
       writer.uint32(18).bytes(message.signature);
@@ -176,8 +190,12 @@ export const WalletToEncDerivedKey: MessageFns<WalletToEncDerivedKey> = {
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): WalletToEncDerivedKey {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): WalletToEncDerivedKey {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseWalletToEncDerivedKey();
     while (reader.pos < end) {
@@ -188,7 +206,10 @@ export const WalletToEncDerivedKey: MessageFns<WalletToEncDerivedKey> = {
             break;
           }
 
-          message.encDerivedPrivKey = EncryptedText.decode(reader, reader.uint32());
+          message.encDerivedPrivKey = EncryptedText.decode(
+            reader,
+            reader.uint32()
+          );
           continue;
         }
         case 2: {
@@ -210,8 +231,12 @@ export const WalletToEncDerivedKey: MessageFns<WalletToEncDerivedKey> = {
 
   fromJSON(object: any): WalletToEncDerivedKey {
     return {
-      encDerivedPrivKey: isSet(object.encDerivedPrivKey) ? EncryptedText.fromJSON(object.encDerivedPrivKey) : undefined,
-      signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(0),
+      encDerivedPrivKey: isSet(object.encDerivedPrivKey)
+        ? EncryptedText.fromJSON(object.encDerivedPrivKey)
+        : undefined,
+      signature: isSet(object.signature)
+        ? bytesFromBase64(object.signature)
+        : new Uint8Array(0),
     };
   },
 
@@ -226,42 +251,60 @@ export const WalletToEncDerivedKey: MessageFns<WalletToEncDerivedKey> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<WalletToEncDerivedKey>, I>>(base?: I): WalletToEncDerivedKey {
+  create<I extends Exact<DeepPartial<WalletToEncDerivedKey>, I>>(
+    base?: I
+  ): WalletToEncDerivedKey {
     return WalletToEncDerivedKey.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<WalletToEncDerivedKey>, I>>(object: I): WalletToEncDerivedKey {
+  fromPartial<I extends Exact<DeepPartial<WalletToEncDerivedKey>, I>>(
+    object: I
+  ): WalletToEncDerivedKey {
     const message = createBaseWalletToEncDerivedKey();
-    message.encDerivedPrivKey = (object.encDerivedPrivKey !== undefined && object.encDerivedPrivKey !== null)
-      ? EncryptedText.fromPartial(object.encDerivedPrivKey)
-      : undefined;
+    message.encDerivedPrivKey =
+      object.encDerivedPrivKey !== undefined &&
+      object.encDerivedPrivKey !== null
+        ? EncryptedText.fromPartial(object.encDerivedPrivKey)
+        : undefined;
     message.signature = object.signature ?? new Uint8Array(0);
     return message;
   },
 };
 
 function createBaseInitDid(): InitDid {
-  return { masterPubKey: "", derivedKeyIndex: 0, derivedPubKey: "", walletToEncDerivedKey: {} };
+  return {
+    masterPubKey: '',
+    derivedKeyIndex: 0,
+    derivedPubKey: '',
+    walletToEncDerivedKey: {},
+  };
 }
 
 export const InitDid: MessageFns<InitDid> = {
-  encode(message: InitDid, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.masterPubKey !== "") {
+  encode(
+    message: InitDid,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.masterPubKey !== '') {
       writer.uint32(10).string(message.masterPubKey);
     }
     if (message.derivedKeyIndex !== 0) {
       writer.uint32(16).uint32(message.derivedKeyIndex);
     }
-    if (message.derivedPubKey !== "") {
+    if (message.derivedPubKey !== '') {
       writer.uint32(26).string(message.derivedPubKey);
     }
     Object.entries(message.walletToEncDerivedKey).forEach(([key, value]) => {
-      InitDid_WalletToEncDerivedKeyEntry.encode({ key: key as any, value }, writer.uint32(34).fork()).join();
+      InitDid_WalletToEncDerivedKeyEntry.encode(
+        { key: key as any, value },
+        writer.uint32(34).fork()
+      ).join();
     });
     return writer;
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): InitDid {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseInitDid();
     while (reader.pos < end) {
@@ -296,7 +339,10 @@ export const InitDid: MessageFns<InitDid> = {
             break;
           }
 
-          const entry4 = InitDid_WalletToEncDerivedKeyEntry.decode(reader, reader.uint32());
+          const entry4 = InitDid_WalletToEncDerivedKeyEntry.decode(
+            reader,
+            reader.uint32()
+          );
           if (entry4.value !== undefined) {
             message.walletToEncDerivedKey[entry4.key] = entry4.value;
           }
@@ -313,30 +359,35 @@ export const InitDid: MessageFns<InitDid> = {
 
   fromJSON(object: any): InitDid {
     return {
-      masterPubKey: isSet(object.masterPubKey) ? globalThis.String(object.masterPubKey) : "",
-      derivedKeyIndex: isSet(object.derivedKeyIndex) ? globalThis.Number(object.derivedKeyIndex) : 0,
-      derivedPubKey: isSet(object.derivedPubKey) ? globalThis.String(object.derivedPubKey) : "",
+      masterPubKey: isSet(object.masterPubKey)
+        ? globalThis.String(object.masterPubKey)
+        : '',
+      derivedKeyIndex: isSet(object.derivedKeyIndex)
+        ? globalThis.Number(object.derivedKeyIndex)
+        : 0,
+      derivedPubKey: isSet(object.derivedPubKey)
+        ? globalThis.String(object.derivedPubKey)
+        : '',
       walletToEncDerivedKey: isObject(object.walletToEncDerivedKey)
-        ? Object.entries(object.walletToEncDerivedKey).reduce<{ [key: string]: WalletToEncDerivedKey }>(
-          (acc, [key, value]) => {
+        ? Object.entries(object.walletToEncDerivedKey).reduce<{
+            [key: string]: WalletToEncDerivedKey;
+          }>((acc, [key, value]) => {
             acc[key] = WalletToEncDerivedKey.fromJSON(value);
             return acc;
-          },
-          {},
-        )
+          }, {})
         : {},
     };
   },
 
   toJSON(message: InitDid): unknown {
     const obj: any = {};
-    if (message.masterPubKey !== "") {
+    if (message.masterPubKey !== '') {
       obj.masterPubKey = message.masterPubKey;
     }
     if (message.derivedKeyIndex !== 0) {
       obj.derivedKeyIndex = Math.round(message.derivedKeyIndex);
     }
-    if (message.derivedPubKey !== "") {
+    if (message.derivedPubKey !== '') {
       obj.derivedPubKey = message.derivedPubKey;
     }
     if (message.walletToEncDerivedKey) {
@@ -356,12 +407,12 @@ export const InitDid: MessageFns<InitDid> = {
   },
   fromPartial<I extends Exact<DeepPartial<InitDid>, I>>(object: I): InitDid {
     const message = createBaseInitDid();
-    message.masterPubKey = object.masterPubKey ?? "";
+    message.masterPubKey = object.masterPubKey ?? '';
     message.derivedKeyIndex = object.derivedKeyIndex ?? 0;
-    message.derivedPubKey = object.derivedPubKey ?? "";
-    message.walletToEncDerivedKey = Object.entries(object.walletToEncDerivedKey ?? {}).reduce<
-      { [key: string]: WalletToEncDerivedKey }
-    >((acc, [key, value]) => {
+    message.derivedPubKey = object.derivedPubKey ?? '';
+    message.walletToEncDerivedKey = Object.entries(
+      object.walletToEncDerivedKey ?? {}
+    ).reduce<{ [key: string]: WalletToEncDerivedKey }>((acc, [key, value]) => {
       if (value !== undefined) {
         acc[key] = WalletToEncDerivedKey.fromPartial(value);
       }
@@ -372,90 +423,109 @@ export const InitDid: MessageFns<InitDid> = {
 };
 
 function createBaseInitDid_WalletToEncDerivedKeyEntry(): InitDid_WalletToEncDerivedKeyEntry {
-  return { key: "", value: undefined };
+  return { key: '', value: undefined };
 }
 
-export const InitDid_WalletToEncDerivedKeyEntry: MessageFns<InitDid_WalletToEncDerivedKeyEntry> = {
-  encode(message: InitDid_WalletToEncDerivedKeyEntry, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.key !== "") {
-      writer.uint32(10).string(message.key);
-    }
-    if (message.value !== undefined) {
-      WalletToEncDerivedKey.encode(message.value, writer.uint32(18).fork()).join();
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): InitDid_WalletToEncDerivedKeyEntry {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseInitDid_WalletToEncDerivedKeyEntry();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.key = reader.string();
-          continue;
-        }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.value = WalletToEncDerivedKey.decode(reader, reader.uint32());
-          continue;
-        }
+export const InitDid_WalletToEncDerivedKeyEntry: MessageFns<InitDid_WalletToEncDerivedKeyEntry> =
+  {
+    encode(
+      message: InitDid_WalletToEncDerivedKeyEntry,
+      writer: BinaryWriter = new BinaryWriter()
+    ): BinaryWriter {
+      if (message.key !== '') {
+        writer.uint32(10).string(message.key);
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
+      if (message.value !== undefined) {
+        WalletToEncDerivedKey.encode(
+          message.value,
+          writer.uint32(18).fork()
+        ).join();
       }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+      return writer;
+    },
 
-  fromJSON(object: any): InitDid_WalletToEncDerivedKeyEntry {
-    return {
-      key: isSet(object.key) ? globalThis.String(object.key) : "",
-      value: isSet(object.value) ? WalletToEncDerivedKey.fromJSON(object.value) : undefined,
-    };
-  },
+    decode(
+      input: BinaryReader | Uint8Array,
+      length?: number
+    ): InitDid_WalletToEncDerivedKeyEntry {
+      const reader =
+        input instanceof BinaryReader ? input : new BinaryReader(input);
+      let end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseInitDid_WalletToEncDerivedKeyEntry();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
 
-  toJSON(message: InitDid_WalletToEncDerivedKeyEntry): unknown {
-    const obj: any = {};
-    if (message.key !== "") {
-      obj.key = message.key;
-    }
-    if (message.value !== undefined) {
-      obj.value = WalletToEncDerivedKey.toJSON(message.value);
-    }
-    return obj;
-  },
+            message.key = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
 
-  create<I extends Exact<DeepPartial<InitDid_WalletToEncDerivedKeyEntry>, I>>(
-    base?: I,
-  ): InitDid_WalletToEncDerivedKeyEntry {
-    return InitDid_WalletToEncDerivedKeyEntry.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<InitDid_WalletToEncDerivedKeyEntry>, I>>(
-    object: I,
-  ): InitDid_WalletToEncDerivedKeyEntry {
-    const message = createBaseInitDid_WalletToEncDerivedKeyEntry();
-    message.key = object.key ?? "";
-    message.value = (object.value !== undefined && object.value !== null)
-      ? WalletToEncDerivedKey.fromPartial(object.value)
-      : undefined;
-    return message;
-  },
-};
+            message.value = WalletToEncDerivedKey.decode(
+              reader,
+              reader.uint32()
+            );
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    },
+
+    fromJSON(object: any): InitDid_WalletToEncDerivedKeyEntry {
+      return {
+        key: isSet(object.key) ? globalThis.String(object.key) : '',
+        value: isSet(object.value)
+          ? WalletToEncDerivedKey.fromJSON(object.value)
+          : undefined,
+      };
+    },
+
+    toJSON(message: InitDid_WalletToEncDerivedKeyEntry): unknown {
+      const obj: any = {};
+      if (message.key !== '') {
+        obj.key = message.key;
+      }
+      if (message.value !== undefined) {
+        obj.value = WalletToEncDerivedKey.toJSON(message.value);
+      }
+      return obj;
+    },
+
+    create<I extends Exact<DeepPartial<InitDid_WalletToEncDerivedKeyEntry>, I>>(
+      base?: I
+    ): InitDid_WalletToEncDerivedKeyEntry {
+      return InitDid_WalletToEncDerivedKeyEntry.fromPartial(
+        base ?? ({} as any)
+      );
+    },
+    fromPartial<
+      I extends Exact<DeepPartial<InitDid_WalletToEncDerivedKeyEntry>, I>
+    >(object: I): InitDid_WalletToEncDerivedKeyEntry {
+      const message = createBaseInitDid_WalletToEncDerivedKeyEntry();
+      message.key = object.key ?? '';
+      message.value =
+        object.value !== undefined && object.value !== null
+          ? WalletToEncDerivedKey.fromPartial(object.value)
+          : undefined;
+      return message;
+    },
+  };
 
 function bytesFromBase64(b64: string): Uint8Array {
   if ((globalThis as any).Buffer) {
-    return Uint8Array.from(globalThis.Buffer.from(b64, "base64"));
+    return Uint8Array.from(globalThis.Buffer.from(b64, 'base64'));
   } else {
     const bin = globalThis.atob(b64);
     const arr = new Uint8Array(bin.length);
@@ -468,30 +538,44 @@ function bytesFromBase64(b64: string): Uint8Array {
 
 function base64FromBytes(arr: Uint8Array): string {
   if ((globalThis as any).Buffer) {
-    return globalThis.Buffer.from(arr).toString("base64");
+    return globalThis.Buffer.from(arr).toString('base64');
   } else {
     const bin: string[] = [];
     arr.forEach((byte) => {
       bin.push(globalThis.String.fromCharCode(byte));
     });
-    return globalThis.btoa(bin.join(""));
+    return globalThis.btoa(bin.join(''));
   }
 }
 
-type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
+type Builtin =
+  | Date
+  | Function
+  | Uint8Array
+  | string
+  | number
+  | boolean
+  | undefined;
 
-export type DeepPartial<T> = T extends Builtin ? T
-  : T extends globalThis.Array<infer U> ? globalThis.Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
+export type DeepPartial<T> = T extends Builtin
+  ? T
+  : T extends globalThis.Array<infer U>
+  ? globalThis.Array<DeepPartial<U>>
+  : T extends ReadonlyArray<infer U>
+  ? ReadonlyArray<DeepPartial<U>>
+  : T extends {}
+  ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-export type Exact<P, I extends P> = P extends Builtin ? P
-  : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & {
+      [K in Exclude<keyof I, KeysOfUnion<P>>]: never;
+    };
 
 function isObject(value: any): boolean {
-  return typeof value === "object" && value !== null;
+  return typeof value === 'object' && value !== null;
 }
 
 function isSet(value: any): boolean {

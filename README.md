@@ -55,7 +55,7 @@ Push Protocol is an open source Project. We firmly believe in a completely trans
 - Feature Request: Please submit a feature request if you have an idea or discover a capability that would make development simpler and more reliable.
 - Documentation Request: If you're reading the Push documentation and believe that we're missing something, please create a docs request.
 
-<!-- Read how you can contribute <a href="https://github.com/push-protocol/push-network-sdk/blob/main/CONTRIBUTING.md
+<!-- Read how you can contribute <a href="https://github.com/push-protocol/push-chain-sdk/blob/main/CONTRIBUTING.md
 ">HERE</a> -->
 
 Not sure where to start? Join our discord and we will help you get started!

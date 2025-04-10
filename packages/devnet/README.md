@@ -98,7 +98,7 @@ const pushChain = await PushChain.initialize(signer);
 **Parameters:**
 
 | Param               | Type              | Default  | Remarks                                                                                 |
-|---------------------|-------------------|----------|-----------------------------------------------------------------------------------------|
+| ------------------- | ----------------- | -------- | --------------------------------------------------------------------------------------- |
 | _`universalSigner`_ | `UniversalSigner` | null     | Signer responsible for signing when sending transactions. Only used for `send` function |
 | `options.network`   | `ENV`             | `devnet` | Push Chain environment                                                                  |
 
@@ -116,13 +116,15 @@ parameters like timestamp, category, etc.
 
 ```typescript
 // pushChain.tx.get(reference, {options?})
-const transaction = await pushChain.tx.get('177482c5a504f3922875c216f71a2b236f344cfbf334f97c8f59547e1e21fb23');
+const transaction = await pushChain.tx.get(
+  '177482c5a504f3922875c216f71a2b236f344cfbf334f97c8f59547e1e21fb23'
+);
 ```
 
 **Parameters:**
 
 | Param                | Type                                | Remarks                                                                                                                                | Default           |
-|----------------------|-------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|-------------------|
+| -------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
 | `reference`          | `UniversalAccount`, `string`, `'*'` | Specifies the query target: `'*'` for all transactions, a transaction hash, or a UniversalAccount.                                     | `*`               |
 | `options.raw`        | `boolean`                           | If `true`, returns the raw `BlockResponse`. If `false`, returns a `SimplifiedBlockResponse`. For most cases use default `raw = false`. | `false`           |
 | `options.category`   | `string`                            | Filters transactions by category (e.g., application-specific tags).                                                                    | `undefined`       |
@@ -139,7 +141,9 @@ const transaction = await pushChain.tx.get('177482c5a504f3922875c216f71a2b236f34
 Fetch a transaction that has the hash `177482c5a504f3922875c216f71a2b236f344cfbf334f97c8f59547e1e21fb23`.
 
 ```typescript
-const transaction = await pushChain.tx.get('177482c5a504f3922875c216f71a2b236f344cfbf334f97c8f59547e1e21fb23');
+const transaction = await pushChain.tx.get(
+  '177482c5a504f3922875c216f71a2b236f344cfbf334f97c8f59547e1e21fb23'
+);
 ```
 
 #### Example: Retrieving by category
@@ -207,7 +211,7 @@ const tx = await pushChain.tx.send(
 **Parameters:**
 
 | **Param**          | **Type**             | **Remarks**                                                                                                             |
-|--------------------|----------------------|-------------------------------------------------------------------------------------------------------------------------|
+| ------------------ | -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `recipients`       | `UniversalAccount[]` | An array of recipient addresses in a chain-agnostic format. Each address specifies the destination for the transaction. |
 | `options.category` | `string`             | The category of the transaction, used to classify or tag the transaction (e.g., `example-category`).                    |
 | `options.data`     | `Uint8Array`         | Serialized data payload for the transaction.                                                                            |
@@ -231,12 +235,10 @@ const recipients = [
   },
 ];
 
-const tx = await pushChain.tx.send(recipients,
-  {
-    category: 'MY_EMAIL_APP',
-    data: JSON.stringify(email),
-  }
-);
+const tx = await pushChain.tx.send(recipients, {
+  category: 'MY_EMAIL_APP',
+  data: JSON.stringify(email),
+});
 ```
 
 ---
@@ -252,13 +254,15 @@ Fetch blocks by hash or timestamp.
 
 ```typescript
 // pushChain.block.get(reference, {options?})
-const block = await pushChain.block.get('36939148bee59c6e1a9d4e6e6fb4e72d407f8667324714c206e64e1485f0f5ee');
+const block = await pushChain.block.get(
+  '36939148bee59c6e1a9d4e6e6fb4e72d407f8667324714c206e64e1485f0f5ee'
+);
 ```
 
 **Parameters:**
 
 | Param               | Type                          | Remarks                                                                                                                                | Default           |
-|---------------------|-------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|-------------------|
+| ------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
 | `reference`         | `string`, `'*'`               | Specifies the query target: `'*'` for all blocks or a block hash.                                                                      | `*`               |
 | `options.raw`       | `boolean`                     | If `true`, returns the raw `BlockResponse`. If `false`, returns a `SimplifiedBlockResponse`. For most cases use default `raw = false`. | `false`           |
 | `options.startTime` | `number` (timestamp)          | Fetches blocks starting from this timestamp.                                                                                           | Current timestamp |
@@ -271,7 +275,9 @@ const block = await pushChain.block.get('36939148bee59c6e1a9d4e6e6fb4e72d407f866
 Fetch a Block that has the hash `36939148bee59c6e1a9d4e6e6fb4e72d407f8667324714c206e64e1485f0f5ee`.
 
 ```typescript
-const block = await pushChain.block.get('36939148bee59c6e1a9d4e6e6fb4e72d407f8667324714c206e64e1485f0f5ee');
+const block = await pushChain.block.get(
+  '36939148bee59c6e1a9d4e6e6fb4e72d407f8667324714c206e64e1485f0f5ee'
+);
 ```
 
 #### Example: Retrieving by time
@@ -292,7 +298,9 @@ const blockByTime = await pushChain.block.get('*', {
 Converts a chain-agnostic address (e.g. `eip155:1:0xabc...`) into a UniversalAccount.
 
 ```typescript
-const universalAccount = PushChain.utils.account.toUniversal('push:devnet:push1xkuy...');
+const universalAccount = PushChain.utils.account.toUniversal(
+  'push:devnet:push1xkuy...'
+);
 // => { chain: 'PUSH', chainId: 'DEVNET', address: 'push1xkuy...' }
 ```
 
@@ -304,7 +312,7 @@ Converts a UniversalAccount into a chain-agnostic address (CAIP) string.
 const chainAgnosticStr = PushChain.utils.account.toChainAgnostic({
   chain: 'ETHEREUM',
   chainId: '1',
-  address: '0xabc123...'
+  address: '0xabc123...',
 });
 // => 'eip155:1:0xabc123...'
 ```
@@ -314,14 +322,18 @@ const chainAgnosticStr = PushChain.utils.account.toChainAgnostic({
 Converts an EVM (Ethereum) address to a Push (bech32m) address.
 
 ```typescript
-const pushAddr = PushChain.utils.account.evmToPush('0x35B84d6848D16415177c64D64504663b998A6ab4');
+const pushAddr = PushChain.utils.account.evmToPush(
+  '0x35B84d6848D16415177c64D64504663b998A6ab4'
+);
 // => 'push1xkuy66zg69jp29muvnty2prx8wvc5645f9y5ux'
 ```
 
 ### Converts a Push (bech32m) address back to an EVM (Ethereum) address in checksum format
 
 ```typescript
-const evmAddr = PushChain.utils.account.pushToEvmAddress('push1xkuy66zg69jp29muvnty2prx8wvc5645f9y5ux');
+const evmAddr = PushChain.utils.account.pushToEvmAddress(
+  'push1xkuy66zg69jp29muvnty2prx8wvc5645f9y5ux'
+);
 // => '0x35B84d6848D16415177c64D64504663b998A6ab4'
 ```
 
@@ -350,8 +362,13 @@ serialization automatically - this utility is only needed for an advanced use ca
 required.
 
 ```typescript
-const initDidData = { /* ...  */ };
-const serializedData = PushChain.utils.tx.serializeData(initDidData, TxCategory.INIT_DID);
+const initDidData = {
+  /* ...  */
+};
+const serializedData = PushChain.utils.tx.serializeData(
+  initDidData,
+  TxCategory.INIT_DID
+);
 ```
 
 ### Deserialize Transaction Payload Data
@@ -361,7 +378,10 @@ handles transaction data deserialization automatically - this utility is only ne
 manual deserialization is required.
 
 ```typescript
-const deserializedData = PushChain.utils.tx.deserializeData(serializedData, TxCategory.INIT_DID);
+const deserializedData = PushChain.utils.tx.deserializeData(
+  serializedData,
+  TxCategory.INIT_DID
+);
 ```
 
 ### Serialize Block

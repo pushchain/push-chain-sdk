@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Root directory of app
-ROOT_DIR="$(git rev-parse --show-toplevel)/packages/core"
+ROOT_DIR="$(git rev-parse --show-toplevel)/packages/devnet"
 
 # Path to Protoc Plugin
 PROTOC_GEN_TS_PATH="${ROOT_DIR}/node_modules/.bin/protoc-gen-ts_proto"
