@@ -350,8 +350,8 @@ export class Tx {
   }
 
   private static checkCategoryOrFail(category: string) {
-    if (category == null || category == '' || category.length > 20) {
-      throw new Error('Invalid category, max size is 20 ascii chars');
+    if (category == null || category == '' || category.length > 40) {
+      throw new Error('Invalid category, max size is 40 ascii chars');
     }
   }
 }
