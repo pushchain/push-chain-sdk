@@ -127,7 +127,7 @@ const transaction = await pushChain.tx.get('177482c5a504f3922875c216f71a2b236f34
 | `options.raw`        | `boolean`                           | If `true`, returns the raw `BlockResponse`. If `false`, returns a `SimplifiedBlockResponse`. For most cases use default `raw = false`. | `false`           |
 | `options.category`   | `string`                            | Filters transactions by category (e.g., application-specific tags).                                                                    | `undefined`       |
 | `options.startTime`  | `number` (timestamp)                | Fetches transactions starting from this timestamp.                                                                                     | Current timestamp |
-| `options.order`      | `Order` (`'ASC'` or `'DESC'`)       | Determines the sort order of transactions (`'ASC'` for ascending, `'DESC'` for descending).                                            | `'DESC'`          |
+| `options.order`      | `ORDER` (`'ASC'` or `'DESC'`)       | Determines the sort order of transactions (`'ASC'` for ascending, `'DESC'` for descending).                                            | `'DESC'`          |
 | `options.page`       | `number`                            | Specifies the page number for paginated results.                                                                                       | `1`               |
 | `options.limit`      | `number`                            | Sets the maximum number of transactions to fetch per page.                                                                             | `30`              |
 | `options.filterMode` | `'both'`, `'sender'`, `'recipient'` | Determines the query type: `'both'` fetches all, `'sender'` fetches sent, `'recipient'` fetches received.                              | `'both'`          |
@@ -262,7 +262,7 @@ const block = await pushChain.block.get('36939148bee59c6e1a9d4e6e6fb4e72d407f866
 | `reference`         | `string`, `'*'`               | Specifies the query target: `'*'` for all blocks or a block hash.                                                                      | `*`               |
 | `options.raw`       | `boolean`                     | If `true`, returns the raw `BlockResponse`. If `false`, returns a `SimplifiedBlockResponse`. For most cases use default `raw = false`. | `false`           |
 | `options.startTime` | `number` (timestamp)          | Fetches blocks starting from this timestamp.                                                                                           | Current timestamp |
-| `options.order`     | `Order` (`'ASC'` or `'DESC'`) | Determines the sort order of blocks (`'ASC'` for ascending, `'DESC'` for descending).                                                  | `'DESC'`          |
+| `options.order`     | `ORDER` (`'ASC'` or `'DESC'`) | Determines the sort order of blocks (`'ASC'` for ascending, `'DESC'` for descending).                                                  | `'DESC'`          |
 | `options.page`      | `number`                      | Specifies the page number for paginated results.                                                                                       | `1`               |
 | `options.limit`     | `number`                      | Sets the maximum number of transactions to fetch per page.                                                                             | `30`              |
 

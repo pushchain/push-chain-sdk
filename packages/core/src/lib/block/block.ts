@@ -1,4 +1,4 @@
-import { Order, ENV } from '../constants';
+import { ORDER, ENV } from '../constants';
 import { toSDKResponse, toSimplifiedBlockResponse } from '../utils';
 import { Validator } from '../validator/validator';
 import { BlockResponse, CompleteBlockResponse } from './block.types';
@@ -28,7 +28,7 @@ export class Block {
    * @param {Object} [options] - Options for fetching blocks.
    * @param {boolean} [options.raw=false] - If true, returns the raw SDK response.
    * @param {number} [options.startTime=Math.floor(Date.now())] - The start time for fetching blocks.
-   * @param {Order} [options.order=Order.DESC] - The order in which to fetch blocks (ascending or descending).
+   * @param {ORDER} [options.order=ORDER.DESC] - The order in which to fetch blocks (ascending or descending).
    * @param {number} [options.page=1] - The page number for pagination.
    * @param {number} [options.limit=30] - The number of blocks to fetch per page.
    * @returns {Promise<BlockResponse | CompleteBlockResponse>} A promise that resolves to the block data.
@@ -46,13 +46,13 @@ export class Block {
     {
       raw = false,
       startTime = Math.floor(Date.now()),
-      order = Order.DESC,
+      order = ORDER.DESC,
       page = 1,
       limit = 30,
     }: {
       raw?: boolean;
       startTime?: number;
-      order?: Order;
+      order?: ORDER;
       page?: number;
       limit?: number;
     } = {}
