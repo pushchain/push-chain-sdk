@@ -21,7 +21,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.0.2",
-    "shared-components": "../../packages/shared-components",
+    "shared-components": "../../../packages/shared-components",
     "viem": "^2.21.34",
     "yup": "^1.5.0"
   },

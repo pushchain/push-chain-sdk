@@ -1,6 +1,6 @@
 {
   "name": "@pushchain/devnet",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "dependencies": {
     "@bufbuild/protobuf": "^2.0.0",
     "@noble/hashes": "^1.5.0",

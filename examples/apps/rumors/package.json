@@ -22,7 +22,7 @@
     "react-router-dom": "^7.0.2",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.0",
-    "shared-components": "file:../../packages/shared-components",
+    "shared-components": "file:../../../packages/shared-components",
     "viem": "^2.21.28"
   },
   "devDependencies": {

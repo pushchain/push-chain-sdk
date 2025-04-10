@@ -1,9 +1,9 @@
 {
-  "name": "send-transaction",
+  "name": "fetch-transactions-specific-category",
   "version": "1.0.0",
-  "description": "Send a transaction to Push Chain",
-  "main": "index.js",
+  "description": "Fetch a transaction from Push Chain",
   "type": "module",
+  "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -12,7 +12,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@pushchain/devnet": "^1.0.5",
-    "viem": "^2.23.1"
+    "@pushchain/devnet": "^1.0.14"
   }
 }
