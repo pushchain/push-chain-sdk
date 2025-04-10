@@ -11499,9 +11499,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"push-network-sdk@workspace:.":
+"push-chain-sdk@workspace:.":
   version: 0.0.0-use.local
-  resolution: "push-network-sdk@workspace:."
+  resolution: "push-chain-sdk@workspace:."
   dependencies:
     "@nx/eslint": "npm:20.1.4"
     "@nx/eslint-plugin": "npm:20.1.4"
