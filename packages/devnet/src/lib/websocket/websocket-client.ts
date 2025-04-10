@@ -4,6 +4,7 @@ import { Validator } from '../validator/validator';
 
 type WSMessage = {
   type: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data?: any;
   timestamp?: number;
   filters?: SubscriptionFilter[];

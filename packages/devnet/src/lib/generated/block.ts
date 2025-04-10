@@ -5,10 +5,10 @@
 // source: block.proto
 
 /* eslint-disable */
-import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
-import { Transaction } from "./tx";
+import { BinaryReader, BinaryWriter } from '@bufbuild/protobuf/wire';
+import { Transaction } from './tx';
 
-export const protobufPackage = "push";
+export const protobufPackage = 'push';
 
 export enum Role {
   ROLE_UNSPECIFIED = 0,
@@ -20,16 +20,16 @@ export enum Role {
 export function roleFromJSON(object: any): Role {
   switch (object) {
     case 0:
-    case "ROLE_UNSPECIFIED":
+    case 'ROLE_UNSPECIFIED':
       return Role.ROLE_UNSPECIFIED;
     case 1:
-    case "VALIDATOR":
+    case 'VALIDATOR':
       return Role.VALIDATOR;
     case 2:
-    case "ATTESTER":
+    case 'ATTESTER':
       return Role.ATTESTER;
     case -1:
-    case "UNRECOGNIZED":
+    case 'UNRECOGNIZED':
     default:
       return Role.UNRECOGNIZED;
   }
@@ -38,14 +38,14 @@ export function roleFromJSON(object: any): Role {
 export function roleToJSON(object: Role): string {
   switch (object) {
     case Role.ROLE_UNSPECIFIED:
-      return "ROLE_UNSPECIFIED";
+      return 'ROLE_UNSPECIFIED';
     case Role.VALIDATOR:
-      return "VALIDATOR";
+      return 'VALIDATOR';
     case Role.ATTESTER:
-      return "ATTESTER";
+      return 'ATTESTER';
     case Role.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      return 'UNRECOGNIZED';
   }
 }
 
@@ -59,16 +59,16 @@ export enum Vote {
 export function voteFromJSON(object: any): Vote {
   switch (object) {
     case 0:
-    case "VOTE_UNSPECIFIED":
+    case 'VOTE_UNSPECIFIED':
       return Vote.VOTE_UNSPECIFIED;
     case 1:
-    case "ACCEPTED":
+    case 'ACCEPTED':
       return Vote.ACCEPTED;
     case 2:
-    case "REJECTED":
+    case 'REJECTED':
       return Vote.REJECTED;
     case -1:
-    case "UNRECOGNIZED":
+    case 'UNRECOGNIZED':
     default:
       return Vote.UNRECOGNIZED;
   }
@@ -77,14 +77,14 @@ export function voteFromJSON(object: any): Vote {
 export function voteToJSON(object: Vote): string {
   switch (object) {
     case Vote.VOTE_UNSPECIFIED:
-      return "VOTE_UNSPECIFIED";
+      return 'VOTE_UNSPECIFIED';
     case Vote.ACCEPTED:
-      return "ACCEPTED";
+      return 'ACCEPTED';
     case Vote.REJECTED:
-      return "REJECTED";
+      return 'REJECTED';
     case Vote.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      return 'UNRECOGNIZED';
   }
 }
 
@@ -121,13 +121,9 @@ export interface TxAttestorData {
 /** transaction with voting data */
 export interface TransactionObj {
   /** raw bytes: you need to decode this based on category into a Transaction */
-  tx:
-    | Transaction
-    | undefined;
+  tx: Transaction | undefined;
   /** validator(block producer) processes 'data' field and fills this output */
-  validatorData:
-    | TxValidatorData
-    | undefined;
+  validatorData: TxValidatorData | undefined;
   /** attestors process 'data' and 'metaData' and fill this output */
   attestorData: TxAttestorData[];
 }
@@ -185,15 +181,22 @@ function createBaseDidMapping(): DidMapping {
 }
 
 export const DidMapping: MessageFns<DidMapping> = {
-  encode(message: DidMapping, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: DidMapping,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     Object.entries(message.didMapping).forEach(([key, value]) => {
-      DidMapping_DidMappingEntry.encode({ key: key as any, value }, writer.uint32(10).fork()).join();
+      DidMapping_DidMappingEntry.encode(
+        { key: key as any, value },
+        writer.uint32(10).fork()
+      ).join();
     });
     return writer;
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): DidMapping {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseDidMapping();
     while (reader.pos < end) {
@@ -204,7 +207,10 @@ export const DidMapping: MessageFns<DidMapping> = {
             break;
           }
 
-          const entry1 = DidMapping_DidMappingEntry.decode(reader, reader.uint32());
+          const entry1 = DidMapping_DidMappingEntry.decode(
+            reader,
+            reader.uint32()
+          );
           if (entry1.value !== undefined) {
             message.didMapping[entry1.key] = entry1.value;
           }
@@ -222,10 +228,13 @@ export const DidMapping: MessageFns<DidMapping> = {
   fromJSON(object: any): DidMapping {
     return {
       didMapping: isObject(object.didMapping)
-        ? Object.entries(object.didMapping).reduce<{ [key: string]: string }>((acc, [key, value]) => {
-          acc[key] = String(value);
-          return acc;
-        }, {})
+        ? Object.entries(object.didMapping).reduce<{ [key: string]: string }>(
+            (acc, [key, value]) => {
+              acc[key] = String(value);
+              return acc;
+            },
+            {}
+          )
         : {},
     };
   },
@@ -247,103 +256,119 @@ export const DidMapping: MessageFns<DidMapping> = {
   create<I extends Exact<DeepPartial<DidMapping>, I>>(base?: I): DidMapping {
     return DidMapping.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<DidMapping>, I>>(object: I): DidMapping {
+  fromPartial<I extends Exact<DeepPartial<DidMapping>, I>>(
+    object: I
+  ): DidMapping {
     const message = createBaseDidMapping();
-    message.didMapping = Object.entries(object.didMapping ?? {}).reduce<{ [key: string]: string }>(
-      (acc, [key, value]) => {
-        if (value !== undefined) {
-          acc[key] = globalThis.String(value);
-        }
-        return acc;
-      },
-      {},
-    );
+    message.didMapping = Object.entries(object.didMapping ?? {}).reduce<{
+      [key: string]: string;
+    }>((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key] = globalThis.String(value);
+      }
+      return acc;
+    }, {});
     return message;
   },
 };
 
 function createBaseDidMapping_DidMappingEntry(): DidMapping_DidMappingEntry {
-  return { key: "", value: "" };
+  return { key: '', value: '' };
 }
 
-export const DidMapping_DidMappingEntry: MessageFns<DidMapping_DidMappingEntry> = {
-  encode(message: DidMapping_DidMappingEntry, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.key !== "") {
-      writer.uint32(10).string(message.key);
-    }
-    if (message.value !== "") {
-      writer.uint32(18).string(message.value);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): DidMapping_DidMappingEntry {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseDidMapping_DidMappingEntry();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.key = reader.string();
-          continue;
-        }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.value = reader.string();
-          continue;
-        }
+export const DidMapping_DidMappingEntry: MessageFns<DidMapping_DidMappingEntry> =
+  {
+    encode(
+      message: DidMapping_DidMappingEntry,
+      writer: BinaryWriter = new BinaryWriter()
+    ): BinaryWriter {
+      if (message.key !== '') {
+        writer.uint32(10).string(message.key);
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
+      if (message.value !== '') {
+        writer.uint32(18).string(message.value);
       }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+      return writer;
+    },
 
-  fromJSON(object: any): DidMapping_DidMappingEntry {
-    return {
-      key: isSet(object.key) ? globalThis.String(object.key) : "",
-      value: isSet(object.value) ? globalThis.String(object.value) : "",
-    };
-  },
+    decode(
+      input: BinaryReader | Uint8Array,
+      length?: number
+    ): DidMapping_DidMappingEntry {
+      const reader =
+        input instanceof BinaryReader ? input : new BinaryReader(input);
+      let end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseDidMapping_DidMappingEntry();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
 
-  toJSON(message: DidMapping_DidMappingEntry): unknown {
-    const obj: any = {};
-    if (message.key !== "") {
-      obj.key = message.key;
-    }
-    if (message.value !== "") {
-      obj.value = message.value;
-    }
-    return obj;
-  },
+            message.key = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
 
-  create<I extends Exact<DeepPartial<DidMapping_DidMappingEntry>, I>>(base?: I): DidMapping_DidMappingEntry {
-    return DidMapping_DidMappingEntry.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<DidMapping_DidMappingEntry>, I>>(object: I): DidMapping_DidMappingEntry {
-    const message = createBaseDidMapping_DidMappingEntry();
-    message.key = object.key ?? "";
-    message.value = object.value ?? "";
-    return message;
-  },
-};
+            message.value = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    },
+
+    fromJSON(object: any): DidMapping_DidMappingEntry {
+      return {
+        key: isSet(object.key) ? globalThis.String(object.key) : '',
+        value: isSet(object.value) ? globalThis.String(object.value) : '',
+      };
+    },
+
+    toJSON(message: DidMapping_DidMappingEntry): unknown {
+      const obj: any = {};
+      if (message.key !== '') {
+        obj.key = message.key;
+      }
+      if (message.value !== '') {
+        obj.value = message.value;
+      }
+      return obj;
+    },
+
+    create<I extends Exact<DeepPartial<DidMapping_DidMappingEntry>, I>>(
+      base?: I
+    ): DidMapping_DidMappingEntry {
+      return DidMapping_DidMappingEntry.fromPartial(base ?? ({} as any));
+    },
+    fromPartial<I extends Exact<DeepPartial<DidMapping_DidMappingEntry>, I>>(
+      object: I
+    ): DidMapping_DidMappingEntry {
+      const message = createBaseDidMapping_DidMappingEntry();
+      message.key = object.key ?? '';
+      message.value = object.value ?? '';
+      return message;
+    },
+  };
 
 function createBaseTxValidatorData(): TxValidatorData {
   return { vote: 0, didMapping: undefined };
 }
 
 export const TxValidatorData: MessageFns<TxValidatorData> = {
-  encode(message: TxValidatorData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: TxValidatorData,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     if (message.vote !== 0) {
       writer.uint32(8).int32(message.vote);
     }
@@ -354,7 +379,8 @@ export const TxValidatorData: MessageFns<TxValidatorData> = {
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): TxValidatorData {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseTxValidatorData();
     while (reader.pos < end) {
@@ -388,7 +414,9 @@ export const TxValidatorData: MessageFns<TxValidatorData> = {
   fromJSON(object: any): TxValidatorData {
     return {
       vote: isSet(object.vote) ? voteFromJSON(object.vote) : 0,
-      didMapping: isSet(object.didMapping) ? DidMapping.fromJSON(object.didMapping) : undefined,
+      didMapping: isSet(object.didMapping)
+        ? DidMapping.fromJSON(object.didMapping)
+        : undefined,
     };
   },
 
@@ -403,15 +431,20 @@ export const TxValidatorData: MessageFns<TxValidatorData> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<TxValidatorData>, I>>(base?: I): TxValidatorData {
+  create<I extends Exact<DeepPartial<TxValidatorData>, I>>(
+    base?: I
+  ): TxValidatorData {
     return TxValidatorData.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<TxValidatorData>, I>>(object: I): TxValidatorData {
+  fromPartial<I extends Exact<DeepPartial<TxValidatorData>, I>>(
+    object: I
+  ): TxValidatorData {
     const message = createBaseTxValidatorData();
     message.vote = object.vote ?? 0;
-    message.didMapping = (object.didMapping !== undefined && object.didMapping !== null)
-      ? DidMapping.fromPartial(object.didMapping)
-      : undefined;
+    message.didMapping =
+      object.didMapping !== undefined && object.didMapping !== null
+        ? DidMapping.fromPartial(object.didMapping)
+        : undefined;
     return message;
   },
 };
@@ -421,7 +454,10 @@ function createBaseTxAttestorData(): TxAttestorData {
 }
 
 export const TxAttestorData: MessageFns<TxAttestorData> = {
-  encode(message: TxAttestorData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: TxAttestorData,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     if (message.vote !== 0) {
       writer.uint32(8).int32(message.vote);
     }
@@ -429,7 +465,8 @@ export const TxAttestorData: MessageFns<TxAttestorData> = {
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): TxAttestorData {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseTxAttestorData();
     while (reader.pos < end) {
@@ -464,10 +501,14 @@ export const TxAttestorData: MessageFns<TxAttestorData> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<TxAttestorData>, I>>(base?: I): TxAttestorData {
+  create<I extends Exact<DeepPartial<TxAttestorData>, I>>(
+    base?: I
+  ): TxAttestorData {
     return TxAttestorData.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<TxAttestorData>, I>>(object: I): TxAttestorData {
+  fromPartial<I extends Exact<DeepPartial<TxAttestorData>, I>>(
+    object: I
+  ): TxAttestorData {
     const message = createBaseTxAttestorData();
     message.vote = object.vote ?? 0;
     return message;
@@ -479,12 +520,18 @@ function createBaseTransactionObj(): TransactionObj {
 }
 
 export const TransactionObj: MessageFns<TransactionObj> = {
-  encode(message: TransactionObj, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: TransactionObj,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     if (message.tx !== undefined) {
       Transaction.encode(message.tx, writer.uint32(10).fork()).join();
     }
     if (message.validatorData !== undefined) {
-      TxValidatorData.encode(message.validatorData, writer.uint32(18).fork()).join();
+      TxValidatorData.encode(
+        message.validatorData,
+        writer.uint32(18).fork()
+      ).join();
     }
     for (const v of message.attestorData) {
       TxAttestorData.encode(v!, writer.uint32(26).fork()).join();
@@ -493,7 +540,8 @@ export const TransactionObj: MessageFns<TransactionObj> = {
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): TransactionObj {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseTransactionObj();
     while (reader.pos < end) {
@@ -512,7 +560,10 @@ export const TransactionObj: MessageFns<TransactionObj> = {
             break;
           }
 
-          message.validatorData = TxValidatorData.decode(reader, reader.uint32());
+          message.validatorData = TxValidatorData.decode(
+            reader,
+            reader.uint32()
+          );
           continue;
         }
         case 3: {
@@ -520,7 +571,9 @@ export const TransactionObj: MessageFns<TransactionObj> = {
             break;
           }
 
-          message.attestorData.push(TxAttestorData.decode(reader, reader.uint32()));
+          message.attestorData.push(
+            TxAttestorData.decode(reader, reader.uint32())
+          );
           continue;
         }
       }
@@ -535,7 +588,9 @@ export const TransactionObj: MessageFns<TransactionObj> = {
   fromJSON(object: any): TransactionObj {
     return {
       tx: isSet(object.tx) ? Transaction.fromJSON(object.tx) : undefined,
-      validatorData: isSet(object.validatorData) ? TxValidatorData.fromJSON(object.validatorData) : undefined,
+      validatorData: isSet(object.validatorData)
+        ? TxValidatorData.fromJSON(object.validatorData)
+        : undefined,
       attestorData: globalThis.Array.isArray(object?.attestorData)
         ? object.attestorData.map((e: any) => TxAttestorData.fromJSON(e))
         : [],
@@ -551,21 +606,32 @@ export const TransactionObj: MessageFns<TransactionObj> = {
       obj.validatorData = TxValidatorData.toJSON(message.validatorData);
     }
     if (message.attestorData?.length) {
-      obj.attestorData = message.attestorData.map((e) => TxAttestorData.toJSON(e));
+      obj.attestorData = message.attestorData.map((e) =>
+        TxAttestorData.toJSON(e)
+      );
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<TransactionObj>, I>>(base?: I): TransactionObj {
+  create<I extends Exact<DeepPartial<TransactionObj>, I>>(
+    base?: I
+  ): TransactionObj {
     return TransactionObj.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<TransactionObj>, I>>(object: I): TransactionObj {
+  fromPartial<I extends Exact<DeepPartial<TransactionObj>, I>>(
+    object: I
+  ): TransactionObj {
     const message = createBaseTransactionObj();
-    message.tx = (object.tx !== undefined && object.tx !== null) ? Transaction.fromPartial(object.tx) : undefined;
-    message.validatorData = (object.validatorData !== undefined && object.validatorData !== null)
-      ? TxValidatorData.fromPartial(object.validatorData)
-      : undefined;
-    message.attestorData = object.attestorData?.map((e) => TxAttestorData.fromPartial(e)) || [];
+    message.tx =
+      object.tx !== undefined && object.tx !== null
+        ? Transaction.fromPartial(object.tx)
+        : undefined;
+    message.validatorData =
+      object.validatorData !== undefined && object.validatorData !== null
+        ? TxValidatorData.fromPartial(object.validatorData)
+        : undefined;
+    message.attestorData =
+      object.attestorData?.map((e) => TxAttestorData.fromPartial(e)) || [];
     return message;
   },
 };
@@ -575,7 +641,10 @@ function createBaseSigner(): Signer {
 }
 
 export const Signer: MessageFns<Signer> = {
-  encode(message: Signer, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: Signer,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     if (message.sig.length !== 0) {
       writer.uint32(10).bytes(message.sig);
     }
@@ -583,7 +652,8 @@ export const Signer: MessageFns<Signer> = {
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): Signer {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseSigner();
     while (reader.pos < end) {
@@ -607,7 +677,9 @@ export const Signer: MessageFns<Signer> = {
   },
 
   fromJSON(object: any): Signer {
-    return { sig: isSet(object.sig) ? bytesFromBase64(object.sig) : new Uint8Array(0) };
+    return {
+      sig: isSet(object.sig) ? bytesFromBase64(object.sig) : new Uint8Array(0),
+    };
   },
 
   toJSON(message: Signer): unknown {
@@ -633,7 +705,10 @@ function createBaseBlock(): Block {
 }
 
 export const Block: MessageFns<Block> = {
-  encode(message: Block, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: Block,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     if (message.ts !== 0) {
       writer.uint32(8).uint64(message.ts);
     }
@@ -650,7 +725,8 @@ export const Block: MessageFns<Block> = {
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): Block {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseBlock();
     while (reader.pos < end) {
@@ -700,9 +776,15 @@ export const Block: MessageFns<Block> = {
   fromJSON(object: any): Block {
     return {
       ts: isSet(object.ts) ? globalThis.Number(object.ts) : 0,
-      attestToken: isSet(object.attestToken) ? bytesFromBase64(object.attestToken) : new Uint8Array(0),
-      txObj: globalThis.Array.isArray(object?.txObj) ? object.txObj.map((e: any) => TransactionObj.fromJSON(e)) : [],
-      signers: globalThis.Array.isArray(object?.signers) ? object.signers.map((e: any) => Signer.fromJSON(e)) : [],
+      attestToken: isSet(object.attestToken)
+        ? bytesFromBase64(object.attestToken)
+        : new Uint8Array(0),
+      txObj: globalThis.Array.isArray(object?.txObj)
+        ? object.txObj.map((e: any) => TransactionObj.fromJSON(e))
+        : [],
+      signers: globalThis.Array.isArray(object?.signers)
+        ? object.signers.map((e: any) => Signer.fromJSON(e))
+        : [],
     };
   },
 
@@ -730,7 +812,8 @@ export const Block: MessageFns<Block> = {
     const message = createBaseBlock();
     message.ts = object.ts ?? 0;
     message.attestToken = object.attestToken ?? new Uint8Array(0);
-    message.txObj = object.txObj?.map((e) => TransactionObj.fromPartial(e)) || [];
+    message.txObj =
+      object.txObj?.map((e) => TransactionObj.fromPartial(e)) || [];
     message.signers = object.signers?.map((e) => Signer.fromPartial(e)) || [];
     return message;
   },
@@ -741,7 +824,10 @@ function createBaseAttestBlockResult(): AttestBlockResult {
 }
 
 export const AttestBlockResult: MessageFns<AttestBlockResult> = {
-  encode(message: AttestBlockResult, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: AttestBlockResult,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     for (const v of message.attestorData) {
       TxAttestorData.encode(v!, writer.uint32(10).fork()).join();
     }
@@ -752,7 +838,8 @@ export const AttestBlockResult: MessageFns<AttestBlockResult> = {
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): AttestBlockResult {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseAttestBlockResult();
     while (reader.pos < end) {
@@ -763,7 +850,9 @@ export const AttestBlockResult: MessageFns<AttestBlockResult> = {
             break;
           }
 
-          message.attestorData.push(TxAttestorData.decode(reader, reader.uint32()));
+          message.attestorData.push(
+            TxAttestorData.decode(reader, reader.uint32())
+          );
           continue;
         }
         case 2: {
@@ -795,7 +884,9 @@ export const AttestBlockResult: MessageFns<AttestBlockResult> = {
   toJSON(message: AttestBlockResult): unknown {
     const obj: any = {};
     if (message.attestorData?.length) {
-      obj.attestorData = message.attestorData.map((e) => TxAttestorData.toJSON(e));
+      obj.attestorData = message.attestorData.map((e) =>
+        TxAttestorData.toJSON(e)
+      );
     }
     if (message.signer !== undefined) {
       obj.signer = Signer.toJSON(message.signer);
@@ -803,25 +894,38 @@ export const AttestBlockResult: MessageFns<AttestBlockResult> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<AttestBlockResult>, I>>(base?: I): AttestBlockResult {
+  create<I extends Exact<DeepPartial<AttestBlockResult>, I>>(
+    base?: I
+  ): AttestBlockResult {
     return AttestBlockResult.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<AttestBlockResult>, I>>(object: I): AttestBlockResult {
+  fromPartial<I extends Exact<DeepPartial<AttestBlockResult>, I>>(
+    object: I
+  ): AttestBlockResult {
     const message = createBaseAttestBlockResult();
-    message.attestorData = object.attestorData?.map((e) => TxAttestorData.fromPartial(e)) || [];
-    message.signer = (object.signer !== undefined && object.signer !== null)
-      ? Signer.fromPartial(object.signer)
-      : undefined;
+    message.attestorData =
+      object.attestorData?.map((e) => TxAttestorData.fromPartial(e)) || [];
+    message.signer =
+      object.signer !== undefined && object.signer !== null
+        ? Signer.fromPartial(object.signer)
+        : undefined;
     return message;
   },
 };
 
 function createBaseAttestSignaturesRequest(): AttestSignaturesRequest {
-  return { attestations: [], initialBlockHash: new Uint8Array(0), finalBlockHash: new Uint8Array(0) };
+  return {
+    attestations: [],
+    initialBlockHash: new Uint8Array(0),
+    finalBlockHash: new Uint8Array(0),
+  };
 }
 
 export const AttestSignaturesRequest: MessageFns<AttestSignaturesRequest> = {
-  encode(message: AttestSignaturesRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: AttestSignaturesRequest,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     for (const v of message.attestations) {
       AttestBlockResult.encode(v!, writer.uint32(10).fork()).join();
     }
@@ -834,8 +938,12 @@ export const AttestSignaturesRequest: MessageFns<AttestSignaturesRequest> = {
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): AttestSignaturesRequest {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): AttestSignaturesRequest {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseAttestSignaturesRequest();
     while (reader.pos < end) {
@@ -846,7 +954,9 @@ export const AttestSignaturesRequest: MessageFns<AttestSignaturesRequest> = {
             break;
           }
 
-          message.attestations.push(AttestBlockResult.decode(reader, reader.uint32()));
+          message.attestations.push(
+            AttestBlockResult.decode(reader, reader.uint32())
+          );
           continue;
         }
         case 2: {
@@ -879,15 +989,21 @@ export const AttestSignaturesRequest: MessageFns<AttestSignaturesRequest> = {
       attestations: globalThis.Array.isArray(object?.attestations)
         ? object.attestations.map((e: any) => AttestBlockResult.fromJSON(e))
         : [],
-      initialBlockHash: isSet(object.initialBlockHash) ? bytesFromBase64(object.initialBlockHash) : new Uint8Array(0),
-      finalBlockHash: isSet(object.finalBlockHash) ? bytesFromBase64(object.finalBlockHash) : new Uint8Array(0),
+      initialBlockHash: isSet(object.initialBlockHash)
+        ? bytesFromBase64(object.initialBlockHash)
+        : new Uint8Array(0),
+      finalBlockHash: isSet(object.finalBlockHash)
+        ? bytesFromBase64(object.finalBlockHash)
+        : new Uint8Array(0),
     };
   },
 
   toJSON(message: AttestSignaturesRequest): unknown {
     const obj: any = {};
     if (message.attestations?.length) {
-      obj.attestations = message.attestations.map((e) => AttestBlockResult.toJSON(e));
+      obj.attestations = message.attestations.map((e) =>
+        AttestBlockResult.toJSON(e)
+      );
     }
     if (message.initialBlockHash.length !== 0) {
       obj.initialBlockHash = base64FromBytes(message.initialBlockHash);
@@ -898,12 +1014,17 @@ export const AttestSignaturesRequest: MessageFns<AttestSignaturesRequest> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<AttestSignaturesRequest>, I>>(base?: I): AttestSignaturesRequest {
+  create<I extends Exact<DeepPartial<AttestSignaturesRequest>, I>>(
+    base?: I
+  ): AttestSignaturesRequest {
     return AttestSignaturesRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<AttestSignaturesRequest>, I>>(object: I): AttestSignaturesRequest {
+  fromPartial<I extends Exact<DeepPartial<AttestSignaturesRequest>, I>>(
+    object: I
+  ): AttestSignaturesRequest {
     const message = createBaseAttestSignaturesRequest();
-    message.attestations = object.attestations?.map((e) => AttestBlockResult.fromPartial(e)) || [];
+    message.attestations =
+      object.attestations?.map((e) => AttestBlockResult.fromPartial(e)) || [];
     message.initialBlockHash = object.initialBlockHash ?? new Uint8Array(0);
     message.finalBlockHash = object.finalBlockHash ?? new Uint8Array(0);
     return message;
@@ -915,15 +1036,22 @@ function createBaseAttestSignaturesResponse(): AttestSignaturesResponse {
 }
 
 export const AttestSignaturesResponse: MessageFns<AttestSignaturesResponse> = {
-  encode(message: AttestSignaturesResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: AttestSignaturesResponse,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     for (const v of message.attestations) {
       AttestorReport.encode(v!, writer.uint32(10).fork()).join();
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): AttestSignaturesResponse {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): AttestSignaturesResponse {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseAttestSignaturesResponse();
     while (reader.pos < end) {
@@ -934,7 +1062,9 @@ export const AttestSignaturesResponse: MessageFns<AttestSignaturesResponse> = {
             break;
           }
 
-          message.attestations.push(AttestorReport.decode(reader, reader.uint32()));
+          message.attestations.push(
+            AttestorReport.decode(reader, reader.uint32())
+          );
           continue;
         }
       }
@@ -957,31 +1087,47 @@ export const AttestSignaturesResponse: MessageFns<AttestSignaturesResponse> = {
   toJSON(message: AttestSignaturesResponse): unknown {
     const obj: any = {};
     if (message.attestations?.length) {
-      obj.attestations = message.attestations.map((e) => AttestorReport.toJSON(e));
+      obj.attestations = message.attestations.map((e) =>
+        AttestorReport.toJSON(e)
+      );
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<AttestSignaturesResponse>, I>>(base?: I): AttestSignaturesResponse {
+  create<I extends Exact<DeepPartial<AttestSignaturesResponse>, I>>(
+    base?: I
+  ): AttestSignaturesResponse {
     return AttestSignaturesResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<AttestSignaturesResponse>, I>>(object: I): AttestSignaturesResponse {
+  fromPartial<I extends Exact<DeepPartial<AttestSignaturesResponse>, I>>(
+    object: I
+  ): AttestSignaturesResponse {
     const message = createBaseAttestSignaturesResponse();
-    message.attestations = object.attestations?.map((e) => AttestorReport.fromPartial(e)) || [];
+    message.attestations =
+      object.attestations?.map((e) => AttestorReport.fromPartial(e)) || [];
     return message;
   },
 };
 
 function createBaseAttestorReport(): AttestorReport {
-  return { nodeId: "", transactionHash: "", vote: 0, dataForSc: new Uint8Array(0), dataSigForSc: new Uint8Array(0) };
+  return {
+    nodeId: '',
+    transactionHash: '',
+    vote: 0,
+    dataForSc: new Uint8Array(0),
+    dataSigForSc: new Uint8Array(0),
+  };
 }
 
 export const AttestorReport: MessageFns<AttestorReport> = {
-  encode(message: AttestorReport, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.nodeId !== "") {
+  encode(
+    message: AttestorReport,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.nodeId !== '') {
       writer.uint32(10).string(message.nodeId);
     }
-    if (message.transactionHash !== "") {
+    if (message.transactionHash !== '') {
       writer.uint32(18).string(message.transactionHash);
     }
     if (message.vote !== 0) {
@@ -997,7 +1143,8 @@ export const AttestorReport: MessageFns<AttestorReport> = {
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): AttestorReport {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseAttestorReport();
     while (reader.pos < end) {
@@ -1054,20 +1201,26 @@ export const AttestorReport: MessageFns<AttestorReport> = {
 
   fromJSON(object: any): AttestorReport {
     return {
-      nodeId: isSet(object.nodeId) ? globalThis.String(object.nodeId) : "",
-      transactionHash: isSet(object.transactionHash) ? globalThis.String(object.transactionHash) : "",
+      nodeId: isSet(object.nodeId) ? globalThis.String(object.nodeId) : '',
+      transactionHash: isSet(object.transactionHash)
+        ? globalThis.String(object.transactionHash)
+        : '',
       vote: isSet(object.vote) ? globalThis.Number(object.vote) : 0,
-      dataForSc: isSet(object.dataForSc) ? bytesFromBase64(object.dataForSc) : new Uint8Array(0),
-      dataSigForSc: isSet(object.dataSigForSc) ? bytesFromBase64(object.dataSigForSc) : new Uint8Array(0),
+      dataForSc: isSet(object.dataForSc)
+        ? bytesFromBase64(object.dataForSc)
+        : new Uint8Array(0),
+      dataSigForSc: isSet(object.dataSigForSc)
+        ? bytesFromBase64(object.dataSigForSc)
+        : new Uint8Array(0),
     };
   },
 
   toJSON(message: AttestorReport): unknown {
     const obj: any = {};
-    if (message.nodeId !== "") {
+    if (message.nodeId !== '') {
       obj.nodeId = message.nodeId;
     }
-    if (message.transactionHash !== "") {
+    if (message.transactionHash !== '') {
       obj.transactionHash = message.transactionHash;
     }
     if (message.vote !== 0) {
@@ -1082,13 +1235,17 @@ export const AttestorReport: MessageFns<AttestorReport> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<AttestorReport>, I>>(base?: I): AttestorReport {
+  create<I extends Exact<DeepPartial<AttestorReport>, I>>(
+    base?: I
+  ): AttestorReport {
     return AttestorReport.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<AttestorReport>, I>>(object: I): AttestorReport {
+  fromPartial<I extends Exact<DeepPartial<AttestorReport>, I>>(
+    object: I
+  ): AttestorReport {
     const message = createBaseAttestorReport();
-    message.nodeId = object.nodeId ?? "";
-    message.transactionHash = object.transactionHash ?? "";
+    message.nodeId = object.nodeId ?? '';
+    message.transactionHash = object.transactionHash ?? '';
     message.vote = object.vote ?? 0;
     message.dataForSc = object.dataForSc ?? new Uint8Array(0);
     message.dataSigForSc = object.dataSigForSc ?? new Uint8Array(0);
@@ -1098,7 +1255,7 @@ export const AttestorReport: MessageFns<AttestorReport> = {
 
 function bytesFromBase64(b64: string): Uint8Array {
   if ((globalThis as any).Buffer) {
-    return Uint8Array.from(globalThis.Buffer.from(b64, "base64"));
+    return Uint8Array.from(globalThis.Buffer.from(b64, 'base64'));
   } else {
     const bin = globalThis.atob(b64);
     const arr = new Uint8Array(bin.length);
@@ -1111,41 +1268,55 @@ function bytesFromBase64(b64: string): Uint8Array {
 
 function base64FromBytes(arr: Uint8Array): string {
   if ((globalThis as any).Buffer) {
-    return globalThis.Buffer.from(arr).toString("base64");
+    return globalThis.Buffer.from(arr).toString('base64');
   } else {
     const bin: string[] = [];
     arr.forEach((byte) => {
       bin.push(globalThis.String.fromCharCode(byte));
     });
-    return globalThis.btoa(bin.join(""));
+    return globalThis.btoa(bin.join(''));
   }
 }
 
-type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
+type Builtin =
+  | Date
+  | Function
+  | Uint8Array
+  | string
+  | number
+  | boolean
+  | undefined;
 
-export type DeepPartial<T> = T extends Builtin ? T
-  : T extends globalThis.Array<infer U> ? globalThis.Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
+export type DeepPartial<T> = T extends Builtin
+  ? T
+  : T extends globalThis.Array<infer U>
+  ? globalThis.Array<DeepPartial<U>>
+  : T extends ReadonlyArray<infer U>
+  ? ReadonlyArray<DeepPartial<U>>
+  : T extends {}
+  ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-export type Exact<P, I extends P> = P extends Builtin ? P
-  : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & {
+      [K in Exclude<keyof I, KeysOfUnion<P>>]: never;
+    };
 
 function longToNumber(int64: { toString(): string }): number {
   const num = globalThis.Number(int64.toString());
   if (num > globalThis.Number.MAX_SAFE_INTEGER) {
-    throw new globalThis.Error("Value is larger than Number.MAX_SAFE_INTEGER");
+    throw new globalThis.Error('Value is larger than Number.MAX_SAFE_INTEGER');
   }
   if (num < globalThis.Number.MIN_SAFE_INTEGER) {
-    throw new globalThis.Error("Value is smaller than Number.MIN_SAFE_INTEGER");
+    throw new globalThis.Error('Value is smaller than Number.MIN_SAFE_INTEGER');
   }
   return num;
 }
 
 function isObject(value: any): boolean {
-  return typeof value === "object" && value !== null;
+  return typeof value === 'object' && value !== null;
 }
 
 function isSet(value: any): boolean {

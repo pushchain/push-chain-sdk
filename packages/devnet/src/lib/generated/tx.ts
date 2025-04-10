@@ -5,9 +5,9 @@
 // source: tx.proto
 
 /* eslint-disable */
-import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
+import { BinaryReader, BinaryWriter } from '@bufbuild/protobuf/wire';
 
-export const protobufPackage = "push";
+export const protobufPackage = 'push';
 
 /** TODO: SEQUENCE */
 export interface Transaction {
@@ -30,26 +30,29 @@ export interface Transaction {
 function createBaseTransaction(): Transaction {
   return {
     type: 0,
-    category: "",
-    sender: "",
+    category: '',
+    sender: '',
     recipients: [],
     data: new Uint8Array(0),
     salt: new Uint8Array(0),
     apiToken: new Uint8Array(0),
     signature: new Uint8Array(0),
-    fee: "",
+    fee: '',
   };
 }
 
 export const Transaction: MessageFns<Transaction> = {
-  encode(message: Transaction, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: Transaction,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     if (message.type !== 0) {
       writer.uint32(8).uint32(message.type);
     }
-    if (message.category !== "") {
+    if (message.category !== '') {
       writer.uint32(18).string(message.category);
     }
-    if (message.sender !== "") {
+    if (message.sender !== '') {
       writer.uint32(26).string(message.sender);
     }
     for (const v of message.recipients) {
@@ -67,14 +70,15 @@ export const Transaction: MessageFns<Transaction> = {
     if (message.signature.length !== 0) {
       writer.uint32(66).bytes(message.signature);
     }
-    if (message.fee !== "") {
+    if (message.fee !== '') {
       writer.uint32(74).string(message.fee);
     }
     return writer;
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): Transaction {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseTransaction();
     while (reader.pos < end) {
@@ -164,16 +168,26 @@ export const Transaction: MessageFns<Transaction> = {
   fromJSON(object: any): Transaction {
     return {
       type: isSet(object.type) ? globalThis.Number(object.type) : 0,
-      category: isSet(object.category) ? globalThis.String(object.category) : "",
-      sender: isSet(object.sender) ? globalThis.String(object.sender) : "",
+      category: isSet(object.category)
+        ? globalThis.String(object.category)
+        : '',
+      sender: isSet(object.sender) ? globalThis.String(object.sender) : '',
       recipients: globalThis.Array.isArray(object?.recipients)
         ? object.recipients.map((e: any) => globalThis.String(e))
         : [],
-      data: isSet(object.data) ? bytesFromBase64(object.data) : new Uint8Array(0),
-      salt: isSet(object.salt) ? bytesFromBase64(object.salt) : new Uint8Array(0),
-      apiToken: isSet(object.apiToken) ? bytesFromBase64(object.apiToken) : new Uint8Array(0),
-      signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(0),
-      fee: isSet(object.fee) ? globalThis.String(object.fee) : "",
+      data: isSet(object.data)
+        ? bytesFromBase64(object.data)
+        : new Uint8Array(0),
+      salt: isSet(object.salt)
+        ? bytesFromBase64(object.salt)
+        : new Uint8Array(0),
+      apiToken: isSet(object.apiToken)
+        ? bytesFromBase64(object.apiToken)
+        : new Uint8Array(0),
+      signature: isSet(object.signature)
+        ? bytesFromBase64(object.signature)
+        : new Uint8Array(0),
+      fee: isSet(object.fee) ? globalThis.String(object.fee) : '',
     };
   },
 
@@ -182,10 +196,10 @@ export const Transaction: MessageFns<Transaction> = {
     if (message.type !== 0) {
       obj.type = Math.round(message.type);
     }
-    if (message.category !== "") {
+    if (message.category !== '') {
       obj.category = message.category;
     }
-    if (message.sender !== "") {
+    if (message.sender !== '') {
       obj.sender = message.sender;
     }
     if (message.recipients?.length) {
@@ -203,7 +217,7 @@ export const Transaction: MessageFns<Transaction> = {
     if (message.signature.length !== 0) {
       obj.signature = base64FromBytes(message.signature);
     }
-    if (message.fee !== "") {
+    if (message.fee !== '') {
       obj.fee = message.fee;
     }
     return obj;
@@ -212,24 +226,26 @@ export const Transaction: MessageFns<Transaction> = {
   create<I extends Exact<DeepPartial<Transaction>, I>>(base?: I): Transaction {
     return Transaction.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<Transaction>, I>>(object: I): Transaction {
+  fromPartial<I extends Exact<DeepPartial<Transaction>, I>>(
+    object: I
+  ): Transaction {
     const message = createBaseTransaction();
     message.type = object.type ?? 0;
-    message.category = object.category ?? "";
-    message.sender = object.sender ?? "";
+    message.category = object.category ?? '';
+    message.sender = object.sender ?? '';
     message.recipients = object.recipients?.map((e) => e) || [];
     message.data = object.data ?? new Uint8Array(0);
     message.salt = object.salt ?? new Uint8Array(0);
     message.apiToken = object.apiToken ?? new Uint8Array(0);
     message.signature = object.signature ?? new Uint8Array(0);
-    message.fee = object.fee ?? "";
+    message.fee = object.fee ?? '';
     return message;
   },
 };
 
 function bytesFromBase64(b64: string): Uint8Array {
   if ((globalThis as any).Buffer) {
-    return Uint8Array.from(globalThis.Buffer.from(b64, "base64"));
+    return Uint8Array.from(globalThis.Buffer.from(b64, 'base64'));
   } else {
     const bin = globalThis.atob(b64);
     const arr = new Uint8Array(bin.length);
@@ -242,27 +258,41 @@ function bytesFromBase64(b64: string): Uint8Array {
 
 function base64FromBytes(arr: Uint8Array): string {
   if ((globalThis as any).Buffer) {
-    return globalThis.Buffer.from(arr).toString("base64");
+    return globalThis.Buffer.from(arr).toString('base64');
   } else {
     const bin: string[] = [];
     arr.forEach((byte) => {
       bin.push(globalThis.String.fromCharCode(byte));
     });
-    return globalThis.btoa(bin.join(""));
+    return globalThis.btoa(bin.join(''));
   }
 }
 
-type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
+type Builtin =
+  | Date
+  | Function
+  | Uint8Array
+  | string
+  | number
+  | boolean
+  | undefined;
 
-export type DeepPartial<T> = T extends Builtin ? T
-  : T extends globalThis.Array<infer U> ? globalThis.Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
+export type DeepPartial<T> = T extends Builtin
+  ? T
+  : T extends globalThis.Array<infer U>
+  ? globalThis.Array<DeepPartial<U>>
+  : T extends ReadonlyArray<infer U>
+  ? ReadonlyArray<DeepPartial<U>>
+  : T extends {}
+  ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-export type Exact<P, I extends P> = P extends Builtin ? P
-  : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & {
+      [K in Exclude<keyof I, KeysOfUnion<P>>]: never;
+    };
 
 function isSet(value: any): boolean {
   return value !== null && value !== undefined;

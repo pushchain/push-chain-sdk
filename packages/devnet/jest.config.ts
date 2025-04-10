@@ -1,6 +1,6 @@
 /* eslint-disable */
 export default {
-  displayName: 'core',
+  displayName: '@pushchain/devnet',
   testTimeout: 1000000,
   preset: '../../jest.preset.js',
   testEnvironment: 'node',
@@ -8,5 +8,5 @@ export default {
     '^.+\\.[tj]s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
-  coverageDirectory: '../../coverage/packages/core',
+  coverageDirectory: '../../coverage/packages/devnet',
 };

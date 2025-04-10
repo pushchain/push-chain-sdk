@@ -5,9 +5,9 @@
 // source: txData/init_session_key.proto
 
 /* eslint-disable */
-import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
+import { BinaryReader, BinaryWriter } from '@bufbuild/protobuf/wire';
 
-export const protobufPackage = "push";
+export const protobufPackage = 'push';
 
 export enum KeyAction {
   PUBLISH_KEY = 0,
@@ -18,13 +18,13 @@ export enum KeyAction {
 export function keyActionFromJSON(object: any): KeyAction {
   switch (object) {
     case 0:
-    case "PUBLISH_KEY":
+    case 'PUBLISH_KEY':
       return KeyAction.PUBLISH_KEY;
     case 1:
-    case "REVOKE_KEY":
+    case 'REVOKE_KEY':
       return KeyAction.REVOKE_KEY;
     case -1:
-    case "UNRECOGNIZED":
+    case 'UNRECOGNIZED':
     default:
       return KeyAction.UNRECOGNIZED;
   }
@@ -33,12 +33,12 @@ export function keyActionFromJSON(object: any): KeyAction {
 export function keyActionToJSON(object: KeyAction): string {
   switch (object) {
     case KeyAction.PUBLISH_KEY:
-      return "PUBLISH_KEY";
+      return 'PUBLISH_KEY';
     case KeyAction.REVOKE_KEY:
-      return "REVOKE_KEY";
+      return 'REVOKE_KEY';
     case KeyAction.UNRECOGNIZED:
     default:
-      return "UNRECOGNIZED";
+      return 'UNRECOGNIZED';
   }
 }
 
@@ -49,15 +49,18 @@ export interface InitSessionKey {
 }
 
 function createBaseInitSessionKey(): InitSessionKey {
-  return { keyIndex: 0, keyAddress: "", action: 0 };
+  return { keyIndex: 0, keyAddress: '', action: 0 };
 }
 
 export const InitSessionKey: MessageFns<InitSessionKey> = {
-  encode(message: InitSessionKey, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: InitSessionKey,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     if (message.keyIndex !== 0) {
       writer.uint32(8).int32(message.keyIndex);
     }
-    if (message.keyAddress !== "") {
+    if (message.keyAddress !== '') {
       writer.uint32(18).string(message.keyAddress);
     }
     if (message.action !== 0) {
@@ -67,7 +70,8 @@ export const InitSessionKey: MessageFns<InitSessionKey> = {
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): InitSessionKey {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseInitSessionKey();
     while (reader.pos < end) {
@@ -109,7 +113,9 @@ export const InitSessionKey: MessageFns<InitSessionKey> = {
   fromJSON(object: any): InitSessionKey {
     return {
       keyIndex: isSet(object.keyIndex) ? globalThis.Number(object.keyIndex) : 0,
-      keyAddress: isSet(object.keyAddress) ? globalThis.String(object.keyAddress) : "",
+      keyAddress: isSet(object.keyAddress)
+        ? globalThis.String(object.keyAddress)
+        : '',
       action: isSet(object.action) ? keyActionFromJSON(object.action) : 0,
     };
   },
@@ -119,7 +125,7 @@ export const InitSessionKey: MessageFns<InitSessionKey> = {
     if (message.keyIndex !== 0) {
       obj.keyIndex = Math.round(message.keyIndex);
     }
-    if (message.keyAddress !== "") {
+    if (message.keyAddress !== '') {
       obj.keyAddress = message.keyAddress;
     }
     if (message.action !== 0) {
@@ -128,29 +134,47 @@ export const InitSessionKey: MessageFns<InitSessionKey> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<InitSessionKey>, I>>(base?: I): InitSessionKey {
+  create<I extends Exact<DeepPartial<InitSessionKey>, I>>(
+    base?: I
+  ): InitSessionKey {
     return InitSessionKey.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<InitSessionKey>, I>>(object: I): InitSessionKey {
+  fromPartial<I extends Exact<DeepPartial<InitSessionKey>, I>>(
+    object: I
+  ): InitSessionKey {
     const message = createBaseInitSessionKey();
     message.keyIndex = object.keyIndex ?? 0;
-    message.keyAddress = object.keyAddress ?? "";
+    message.keyAddress = object.keyAddress ?? '';
     message.action = object.action ?? 0;
     return message;
   },
 };
 
-type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
+type Builtin =
+  | Date
+  | Function
+  | Uint8Array
+  | string
+  | number
+  | boolean
+  | undefined;
 
-export type DeepPartial<T> = T extends Builtin ? T
-  : T extends globalThis.Array<infer U> ? globalThis.Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
+export type DeepPartial<T> = T extends Builtin
+  ? T
+  : T extends globalThis.Array<infer U>
+  ? globalThis.Array<DeepPartial<U>>
+  : T extends ReadonlyArray<infer U>
+  ? ReadonlyArray<DeepPartial<U>>
+  : T extends {}
+  ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-export type Exact<P, I extends P> = P extends Builtin ? P
-  : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & {
+      [K in Exclude<keyof I, KeysOfUnion<P>>]: never;
+    };
 
 function isSet(value: any): boolean {
   return value !== null && value !== undefined;
