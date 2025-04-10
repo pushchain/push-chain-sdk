@@ -15,6 +15,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@pushchain/cross-chain": ["packages/cross-chain/src/index.ts"],
       "@pushchain/devnet": ["packages/devnet/src/index.ts"],
       "@pushprotocol/pushchain-ui-kit": ["packages/ui-kit/src/index.ts"]
     }
