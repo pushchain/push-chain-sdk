@@ -21,7 +21,7 @@
         "buildableProjectDepsInPackageJsonType": "dependencies"
       }
     },
-    "publish": {
+    "nx-release-publish": {
       "executor": "nx:run-commands",
       "options": {
         "command": "nx run @pushchain/devnet:build && npm publish dist/packages/devnet --access public --otp=${args.otp} && git tag devnet@$(node -p \"require('./packages/devnet/package.json').version\") && git push origin --tags && gh release create devnet@$(node -p \"require('./packages/devnet/package.json').version\") --title \"devnet@$(node -p 'require(\"./packages/devnet/package.json\").version')\" --notes \"### Changes\n\n$(git log --oneline $(git describe --tags --abbrev=0)..HEAD)\""
