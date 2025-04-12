@@ -52,7 +52,7 @@ const RumorItem: React.FC<RumorType> = ({
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
 
-  const { account, pushNetwork, setData, handleSignMessage } = useAppContext();
+  const { account, pushChain, setData } = useAppContext();
   const { universalAddress } = usePushWalletContext();
 
   const { result } = convertCaipToObject(address);
@@ -60,14 +60,13 @@ const RumorItem: React.FC<RumorType> = ({
   const handleUpvote = async () => {
     if (!txnHash) return;
     try {
-      if (pushNetwork && account) {
+      if (pushChain && account) {
         await performUpVote(
-          pushNetwork,
+          pushChain,
           account,
           txnHash,
           upvoteWallets,
           downvoteWallets,
-          handleSignMessage
         );
         if (universalAddress) {
           checkAndUpdateVoteActivity(universalAddress, 'upvote', txnHash);
@@ -133,14 +132,13 @@ const RumorItem: React.FC<RumorType> = ({
   const handleDownvote = async () => {
     if (!txnHash) return;
     try {
-      if (pushNetwork && account) {
+      if (pushChain && account) {
         await performDownVote(
-          pushNetwork,
+          pushChain,
           account,
           txnHash,
           upvoteWallets,
           downvoteWallets,
-          handleSignMessage
         );
         if (universalAddress) {
           checkAndUpdateVoteActivity(universalAddress, 'downvote', txnHash);

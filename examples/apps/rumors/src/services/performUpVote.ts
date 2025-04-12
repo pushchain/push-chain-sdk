@@ -1,13 +1,12 @@
-import { PushNetwork } from '@pushprotocol/push-chain';
+import { PushChain } from '@pushchain/devnet';
 import protobuf from 'protobufjs';
 
 export const performUpVote = async (
-  pushNetwork: PushNetwork,
+  pushChain: PushChain,
   wallet: string,
   txnHash: string,
   existingWallets: string[],
   downvoteWallets: string[],
-  handleSignMessage: (data: Uint8Array) => Promise<Uint8Array>
 ) => {
   try {
     const schema = `
@@ -44,27 +43,13 @@ export const performUpVote = async (
     const buffer = Upvotes.encode(Upvotes.create(serializedData)).finish();
 
     // Create an unsigned transaction (keeping the hardcoded recipient address)
-    const unsignedTx = pushNetwork.tx.createUnsigned(
-      `RUMORS:${txnHash}`,
-      ['eip155:1:0xC9C52B3717A8Dfaacd0D33Ce14a916C575eE332A'], // acc 63
-      buffer
-    );
+    const txHash = await pushChain.tx.send([
+      PushChain.utils.account.toUniversal('eip155:1:0xC9C52B3717A8Dfaacd0D33Ce14a916C575eE332A')
+    ], {
+      category: `RUMORS:${txnHash}`,
+      data: Buffer.from(buffer).toString('hex'),
+    });
 
-    console.log('🛠️🛠️PUSH wallet address: ', wallet);
-
-    const signer = {
-      account: wallet,
-      signMessage: async (data: Uint8Array) => {
-        try {
-          return await handleSignMessage(data);
-        } catch (error) {
-          console.error('Error signing with Push Wallet:', error);
-          throw error;
-        }
-      },
-    };
-
-    const txHash = await pushNetwork.tx.send(unsignedTx, signer);
     console.log('🪙🪙Push Wallet Transaction: ', txHash);
 
     return true;

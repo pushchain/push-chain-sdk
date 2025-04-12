@@ -105,6 +105,8 @@ const ChessScreen = () => {
         .catch(() => {
           if (prevFen) setGame(new Chess(prevFen));
         });
+    } else {
+      if (prevFen) setGame(new Chess(prevFen));
     }
 
     return true;

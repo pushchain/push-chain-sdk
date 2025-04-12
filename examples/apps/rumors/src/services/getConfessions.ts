@@ -1,11 +1,12 @@
-import { PushNetwork } from '@pushprotocol/push-chain';
 import protobuf from 'protobufjs';
 import { Buffer } from 'buffer';
 import { calculateVote } from './calculateVote';
 import { ConfessionType, RumorType } from '@/common';
+import { PushChain } from '@pushchain/devnet';
+import { ORDER } from '@pushchain/devnet/src/lib/constants';
 
 export const getConfessions = async (
-  pushNetwork: PushNetwork,
+  pushChain: PushChain,
   page: number,
   pageSize: number
 ) => {
@@ -26,43 +27,46 @@ export const getConfessions = async (
 
     const confessions: RumorType[] = [];
 
-    const txRes = await pushNetwork.tx.get(
-      Math.floor(Date.now()),
-      'DESC',
-      pageSize,
-      page,
-      undefined,
-      'CUSTOM:RUMORS'
-    );
+    const txRes = await pushChain.tx.get('*', {
+      category: 'CUSTOM:RUMORS',
+      startTime: Math.floor(Date.now()),
+      order: ORDER.DESC,
+      page: page,
+      limit: pageSize,
+    });
+
+    console.log(txRes);
 
     if (!txRes || txRes.blocks.length === 0) return [];
 
     for (let i = 0; i < txRes.blocks.length; i++) {
       const block = txRes.blocks[i];
       const { upvoteWallets, downvoteWallets } = await calculateVote(
-        pushNetwork,
-        block.transactions[0].txnHash
+        pushChain,
+        block.transactions[0].hash
       );
 
-      const binaryData = Buffer.from(
-        block.blockDataAsJson.txobjList[0].tx.data,
-        'base64'
-      );
+      try {
+        const dataBytes = new Uint8Array(
+          Buffer.from(block.transactions[0].data, "hex")
+        );
+        const decodedData = Confession.decode(dataBytes);
+        const confessionObj = Confession.toObject(decodedData, {
+          longs: String,
+          enums: String,
+          bytes: String,
+        });
 
-      const decodedData = Confession.decode(binaryData);
-      const confessionObj = Confession.toObject(decodedData, {
-        longs: String,
-        enums: String,
-        bytes: String,
-      });
-
-      confessions.push({
-        ...(confessionObj as ConfessionType),
-        markdownPost: (decodedData as any).post,
-        txnHash: block.transactions[0].txnHash,
-        upvoteWallets: upvoteWallets,
-        downvoteWallets: downvoteWallets,
-      });
+        confessions.push({
+          ...(confessionObj as ConfessionType),
+          markdownPost: (decodedData as any).post,
+          txnHash: block.transactions[0].hash,
+          upvoteWallets: upvoteWallets,
+          downvoteWallets: downvoteWallets,
+        });
+      } catch (err) {
+        console.log(err);
+      }
     }
 
     return confessions;

@@ -1,6 +1,4 @@
 import React, { ChangeEvent, useState, useCallback, useEffect } from 'react';
-import PushMail from 'push-mail';
-import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
 import { useAppContext } from '@/context/AppContext';
 import { TokenBNB, TokenETH, TokenPUSH, TokenSOL } from '@web3icons/react';
 import { PaperclipIcon } from 'lucide-react';
@@ -25,6 +23,7 @@ import {
 } from 'shared-components';
 import { Cross1Icon } from '@radix-ui/react-icons';
 import styled from 'styled-components';
+import { sendPushEmail } from '@/services/SendEmail';
 
 type FileData = {
   filename: string;
@@ -55,7 +54,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const {
-    pushNetwork,
+    pushChain,
     setEmails,
     setReplyTo,
     account,
@@ -190,6 +189,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
 
   const sendHandler = useCallback(async () => {
     if (!account) throw new Error('No account connected');
+    if (!pushChain) return;
     if (!recipients.length) {
       alert('Please specify at least one recipient.');
       return;
@@ -200,34 +200,19 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
     }
     setSendingMail(true);
     try {
-      const pushMail = await PushMail.initialize(ENV.DEV);
       const { subject, message } = emailData;
-
       const toInCAIP = recipients.map((recipient) =>
         getInCAIP(recipient.address, recipient.chain)
       );
 
-      const signer = {
-        account,
-        signMessage: async (data: Uint8Array) => {
-          try {
-            return await handleSignMessage(data);
-          } catch (error) {
-            console.error('Error signing with Push Wallet:', error);
-            throw error;
-          }
-        },
-      };
+      const txnHash = await sendPushEmail(pushChain, {
+        subject: subject,
+        message: message,
+        attachments: fileAttachment,
+        to: toInCAIP,
+      });
 
-      const txHash = await pushMail.send(
-        subject,
-        { content: message, format: 0 },
-        fileAttachment,
-        [{ key: 'Priority', value: 'High' }],
-        toInCAIP,
-        signer
-      );
-      if (txHash) {
+      if (txnHash) {
         setEmails(
           (prevEmails: {
             sent: Email[];
@@ -241,7 +226,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
                 timestamp: Date.now(),
                 body: message,
                 attachments: fileAttachment,
-                txHash: txHash,
+                txHash: txnHash,
               },
               ...prevEmails.sent,
             ],
@@ -249,10 +234,10 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
           })
         );
       }
-      console.log('Email sent:', txHash);
+      console.log('Email sent:', txnHash);
       setTimeout(() => {
         getSentEmails();
-      }, 5000);
+      }, 10000);
       setEmailData({ subject: '', message: '' });
       setRecipients([]);
       setFileAttachment([]);
@@ -268,7 +253,7 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
     recipients,
     fileAttachment,
     account,
-    pushNetwork,
+    pushChain,
     handleSignMessage,
   ]);
 
