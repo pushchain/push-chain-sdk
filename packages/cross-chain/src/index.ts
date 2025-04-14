@@ -1,1 +1,1 @@
-export * from './lib/cross-chain';
+export * from './lib';
