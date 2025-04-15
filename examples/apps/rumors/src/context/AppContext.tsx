@@ -2,7 +2,7 @@
 import React, { createContext, useContext } from 'react';
 import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 import { ReactNode, useEffect, useState } from 'react';
-import { RumorType, TABS } from '@/common';
+import { RPC_URL, RumorType, TABS } from '@/common';
 import { getConfessions } from '@/services/getConfessions';
 import { getSentConfessions } from '@/services/getSentConfessions';
 import { checkAndUpdateActivity } from '@/services/rewards';
@@ -113,6 +113,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         page,
         15
       );
+      
       if (fetchedSentConfessions.length > 0) {
         setData((prev) => ({
           ...prev,
@@ -174,7 +175,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         try {
           const pushNetworkInstance = await PushChain.initialize(signer, {
             network: CONSTANTS.ENV.DEVNET,
-            rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/skgdTbmOr9TCA8QTNb4y1PFfDW1iPn8y',
+            rpcUrl: RPC_URL,
           });
           setPushChain(pushNetworkInstance);
         } catch (error) {

@@ -37,15 +37,13 @@ export const getSentConfessions = async (
       filterMode: 'sender',
     });
 
-    console.log(txRes);
-
     if (!txRes || txRes.blocks.length === 0) return [];
 
     for (let i = 0; i < txRes.blocks.length; i++) {
       const block = txRes.blocks[i];
       const { upvoteWallets, downvoteWallets } = await calculateVote(
         pushChain,
-        block.transactions[0].hash
+        block.transactions[0].timestamp.toString(),
       );
 
       try {
@@ -66,6 +64,7 @@ export const getSentConfessions = async (
           txnHash: block.transactions[0].hash,
           upvoteWallets: upvoteWallets,
           downvoteWallets: downvoteWallets,
+          timestamp: block.transactions[0].timestamp.toString(),
         });
       } catch (err) {
         console.log(err);

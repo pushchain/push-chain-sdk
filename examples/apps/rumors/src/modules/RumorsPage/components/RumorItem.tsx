@@ -64,7 +64,7 @@ const RumorItem: React.FC<RumorType> = ({
         await performUpVote(
           pushChain,
           account,
-          txnHash,
+          timestamp,
           upvoteWallets,
           downvoteWallets,
         );
@@ -136,7 +136,7 @@ const RumorItem: React.FC<RumorType> = ({
         await performDownVote(
           pushChain,
           account,
-          txnHash,
+          timestamp,
           upvoteWallets,
           downvoteWallets,
         );

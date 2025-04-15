@@ -4,7 +4,7 @@ import protobuf from 'protobufjs';
 export const performDownVote = async (
   pushChain: PushChain,
   wallet: string,
-  txnHash: string,
+  timestamp: string,
   upvoteWallets: string[],
   existingWallets: string[],
 ) => {
@@ -46,7 +46,7 @@ export const performDownVote = async (
     const txHash = await pushChain.tx.send([
       PushChain.utils.account.toUniversal('eip155:1:0xC9C52B3717A8Dfaacd0D33Ce14a916C575eE332A')
     ], {
-      category: `RUMORS:${txnHash}`,
+      category: `RUMORS:${timestamp}`,
       data: Buffer.from(buffer).toString('hex'),
     });
 
