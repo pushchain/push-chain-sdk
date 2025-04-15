@@ -1,9 +1,10 @@
-import { PushNetwork } from '@pushprotocol/push-chain';
 import protobuf from 'protobufjs';
 import { Buffer } from 'buffer';
+import { PushChain } from '@pushchain/devnet';
+import { ORDER } from '@pushchain/devnet/src/lib/constants';
 
 export const calculateVote = async (
-  pushNetwork: PushNetwork,
+  pushChain: PushChain,
   txHash: string
 ) => {
   try {
@@ -24,35 +25,39 @@ export const calculateVote = async (
     const Upvotes = root.lookupType('Upvotes');
 
     // Fetch transactions
-    const txRes = await pushNetwork.tx.get(
-      Math.floor(Date.now()),
-      'DESC',
-      10,
-      1,
-      undefined,
-      `RUMORS:${txHash}`
-    );
+    const txRes = await pushChain.tx.get('*', {
+      raw: true,
+      category: `RUMORS:${txHash}`,
+      startTime: Math.floor(Date.now()),
+      order: ORDER.DESC,
+      page: 1,
+      limit: 1,
+    });
 
     if (txRes.blocks.length > 0) {
-      const binaryData = Buffer.from(
-        txRes.blocks[0].blockDataAsJson.txobjList[0].tx.data,
-        'base64'
-      );
 
-      const decodedData = Upvotes.decode(binaryData);
-      const decodedObject = Upvotes.toObject(decodedData, {
-        longs: String,
-        enums: String,
-        bytes: String,
-      });
-
-      const upvoteWallets = decodedObject.wallets || [];
-      const downvoteWallets = decodedObject.downvoteWallets || [];
-
-      return {
-        upvoteWallets,
-        downvoteWallets,
-      };
+      try {
+        const dataBytes = new Uint8Array(
+          Buffer.from(txRes.blocks[0].transactions[0].data, "hex")
+        );
+  
+        const decodedData = Upvotes.decode(dataBytes);
+        const decodedObject = Upvotes.toObject(decodedData, {
+          longs: String,
+          enums: String,
+          bytes: String,
+        });
+  
+        const upvoteWallets = decodedObject.wallets || [];
+        const downvoteWallets = decodedObject.downvoteWallets || [];
+  
+        return {
+          upvoteWallets,
+          downvoteWallets,
+        };
+      } catch (err) {
+        console.log(err);
+      }
     }
 
     return { upvoteWallets: [], downvoteWallets: [] };

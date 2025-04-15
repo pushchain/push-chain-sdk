@@ -1,6 +1,8 @@
 import { clsx, type ClassValue } from 'clsx';
+import { Email as EmailType } from 'push-mail/src/lib/generated/txData/email';
 import { EMAIL_BOX, Email } from './common.types';
 import { UniversalAddress } from '@pushprotocol/pushchain-ui-kit';
+import { Email as EmailUtil } from './email';
 
 export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
@@ -162,3 +164,12 @@ export const transformEmails = (emails: any[]) => {
     txHash: email.txHash,
   }));
 };
+
+export const serializeData = (txData: EmailType) =>
+  EmailUtil.encode(EmailUtil.create(txData)).finish();
+
+export const deserializeData = (txData: Uint8Array) => EmailUtil.decode(txData);
+
+export const RPC_URL = (!process.env.NODE_ENV || process.env.NODE_ENV === 'development')
+  ? 'https://eth-sepolia.g.alchemy.com/v2/skgdTbmOr9TCA8QTNb4y1PFfDW1iPn8y'
+  : 'https://sepolia.infura.io/v3/742ecf6f4ffb47dbb4b7b0203779050b';
