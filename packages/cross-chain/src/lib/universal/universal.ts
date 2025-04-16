@@ -1,4 +1,3 @@
-import { CHAIN } from '../constants/enums';
 import { UniversalAccount, UniversalSigner } from './universal.types';
 import { formatAddress } from '../utils/account.utils';
 
@@ -8,7 +7,7 @@ import { formatAddress } from '../utils/account.utils';
  *
  * @param {Object} params - The account configuration object.
  * @param {string} params.address - The account address.
- * @param {CHAIN} [params.chain=CHAIN.ETHEREUM_SEPOLIA] - The chain the account is associated with.
+ * @param {CHAIN} params.chain - The chain the account is associated with.
  * @returns {UniversalAccount} A normalized account object with chain and chainId set.
  *
  * @example
@@ -23,9 +22,9 @@ import { formatAddress } from '../utils/account.utils';
  * // → { chain: "SOLANA_TESTNET", chainId: "...", address: "solana123" }
  */
 export function createUniversalAccount({
-  chain = CHAIN.ETHEREUM_SEPOLIA,
+  chain,
   address,
-}: Partial<UniversalAccount> & { address: string }): UniversalAccount {
+}: UniversalAccount): UniversalAccount {
   return {
     chain,
     address: formatAddress(chain, address),
@@ -33,38 +32,33 @@ export function createUniversalAccount({
 }
 
 /**
- * Creates a `UniversalSigner` object for signing messages on any supported chain.
+ * Creates a `UniversalSigner` object for signing messages and transactions
+ * on any supported chain.
  *
  * @param {Object} params - The signer configuration object.
  * @param {string} params.address - The signer's address.
- * @param {(data: Uint8Array) => Promise<Uint8Array>} params.signMessage - Message signing function.
- * @param {CHAIN} [params.chain=CHAIN.ETHEREUM_SEPOLIA] - The chain this signer will operate on.
+ * @param {(data: Uint8Array) => Promise<Uint8Array>} params.signMessage - Required function to sign messages.
+ * @param {(data: Uint8Array) => Promise<Uint8Array>} [params.signTransaction] - Required function to sign transactions.
+ * @param {CHAIN} params.chain - The chain the signer will operate on.
  * @returns {UniversalSigner} A signer object with chain metadata.
  *
  * @example
  * const signer = createUniversalSigner({
+ *   chain: CHAIN.ETHEREUM_SEPOLIA
  *   address: "0xabc...",
- *   signMessage: async (data) => sign(data)
- * });
- *
- * @example
- * const solSigner = createUniversalSigner({
- *   address: "solanaPubkey123",
- *   chain: CHAIN.SOLANA_DEVNET,
- *   signMessage: async (data) => new Uint8Array([1, 2, 3])
+ *   signMessage: async (data) => sign(data),
+ *   signTransaction: async (data) => signRawTx(data),
  * });
  */
 export function createUniversalSigner({
-  chain = CHAIN.ETHEREUM_SEPOLIA,
+  chain,
   address,
   signMessage,
-}: Partial<UniversalSigner> & {
-  address: string;
-  signMessage: (data: Uint8Array) => Promise<Uint8Array>;
-}): UniversalSigner {
+  signTransaction,
+}: UniversalSigner): UniversalSigner {
   return {
-    chain,
-    address: formatAddress(chain, address),
+    ...createUniversalAccount({ chain, address }),
     signMessage,
+    signTransaction,
   };
 }

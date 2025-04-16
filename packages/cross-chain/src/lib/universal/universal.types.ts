@@ -22,8 +22,21 @@ export interface UniversalAccount {
  */
 export interface UniversalSigner extends UniversalAccount {
   /**
-   * Asynchronous function that takes binary data and returns a signed Uint8Array.
-   * Must be implemented by the end-developer using the SDK.
+   * Signs an arbitrary data, provided as binary data.
+   *
+   * If data is a **string**, you MUST UTF-8 encode it before calling this method.
+   * @param data - The message to sign, as a Uint8Array.
+   * @returns A Promise that resolves to the signature (as a Uint8Array).
+   *
+   * @example
+   * const encoded = new TextEncoder().encode("hello world");
+   * const signature = await signer.signMessage(encoded);
    */
   signMessage: (data: Uint8Array) => Promise<Uint8Array>;
+
+  /**
+   * Signs a transaction (unsigned tx bytes).
+   * Used for sending on-chain transactions.
+   */
+  signTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
 }
