@@ -1,37 +1,6 @@
-import { getAddress } from 'viem';
-import { CHAIN, VM } from '../constants/enums';
-import { UniversalAccount, UniversalSigner } from '../types/signer.types';
-import { CHAIN_INFO } from '../constants/chain';
-
-/**
- * Formats a blockchain address based on the virtual machine type of the provided chain.
- *
- * - For EVM chains, it converts the address to its checksummed format.
- * - For non-EVM chains (e.g., Solana), the original address is returned as-is. - Can be changed in future
- * @param {CHAIN} chain - A fully qualified chain identifier (e.g., CHAIN.ETHEREUM_MAINNET).
- * @param {string} address - The raw address string to normalize.
- * @returns {string} - A VM-compliant formatted address.
- *
- * @throws {Error} If an invalid EVM address is provided.
- *
- * @example
- * // EVM address gets checksummed
- * formatAddress(CHAIN.ETHEREUM_SEPOLIA, "0xabcd...") // → "0xAbCd..."
- *
- * @example
- * // Non-EVM address is returned as-is
- * formatAddress(CHAIN.SOLANA_DEVNET, "solanaAddress123") // → "solanaAddress123"
- */
-function formatAddress(chain: CHAIN, address: string): string {
-  if (CHAIN_INFO[chain].vm === VM.EVM) {
-    try {
-      return getAddress(address.toLowerCase());
-    } catch {
-      throw new Error('Invalid EVM address format');
-    }
-  }
-  return address;
-}
+import { CHAIN } from '../constants/enums';
+import { UniversalAccount, UniversalSigner } from './universal.types';
+import { formatAddress } from '../utils/account.utils';
 
 /**
  * Creates a `UniversalAccount` object for working with SDK.

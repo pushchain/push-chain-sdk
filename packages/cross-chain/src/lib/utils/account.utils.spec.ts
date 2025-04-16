@@ -1,6 +1,6 @@
 import { toUniversal, toChainAgnostic } from './account.utils';
 import { CHAIN } from '../constants/enums';
-import { UniversalAccount } from '../types/signer.types';
+import { UniversalAccount } from '../universal/universal.types';
 
 describe('account.utils', () => {
   describe('toChainAgnostic()', () => {

@@ -1,6 +1,11 @@
 import { toChainAgnostic, toUniversal } from './account.utils';
 
 /**
+ * @dev - THESE UTILS ARE EXPORTED TO SDK CONSUMER
+ * @dev - Make sure each exported fn has good comments to help out sdk consumer
+ */
+
+/**
  * Utility class for handling CAIP-10 chain-agnostic address formatting
  * and universal account conversions.
  */

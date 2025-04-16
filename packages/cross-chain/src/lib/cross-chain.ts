@@ -1,6 +1,6 @@
 import { ENV } from './constants/enums';
-import { createUniversalSigner } from './signer';
-import { UniversalSigner } from './types/signer.types';
+import { createUniversalSigner } from './universal/universal';
+import { UniversalSigner } from './universal/universal.types';
 import { Utils } from './utils';
 
 export class CrossChain {
