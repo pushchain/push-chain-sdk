@@ -1,5 +1,5 @@
 'use client';
-import { GameSessionData } from '@/common';
+import { GameSessionData, RPC_URL } from '@/common';
 import { checkAndUpdateActivity } from '@/services/rewards';
 import { CONSTANTS, createUniversalSigner, PushChain } from '@pushchain/devnet';
 import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
@@ -43,7 +43,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         try {
           const pushNetworkInstance = await PushChain.initialize(signer, {
             network: CONSTANTS.ENV.DEVNET,
-            rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/skgdTbmOr9TCA8QTNb4y1PFfDW1iPn8y',
+            rpcUrl: RPC_URL,
           });
           setPushChain(pushNetworkInstance);
         } catch (error) {
