@@ -97,6 +97,7 @@ const GameSidebar: FC<GameSidebarProps> = ({ handleQuitGame, moves }) => {
                 width="100%"
                 alignItems="center"
                 justifyContent="space-between"
+                key={index}
               >
                 <Text variant="cs-semibold" color="text-primary-inverse">
                   {index + 1}.
