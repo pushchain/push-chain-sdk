@@ -1,4 +1,5 @@
-import { ENV } from './constants/enums';
+import { CHAIN, ENV } from './constants/enums';
+import { Orchestrator } from './orchestrator/orchestrator';
 import { createUniversalSigner } from './universal/signer';
 import { UniversalSigner } from './universal/universal.types';
 import { Utils } from './utils';
@@ -10,26 +11,27 @@ export class CrossChain {
   public static utils = Utils;
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
-  private constructor() {}
+  private constructor(private orchestartor: Orchestrator) {}
 
   static initialize = async (
-    universalSigner: UniversalSigner | null = null,
-    options: {
-      network: ENV;
-      rpcUrl?: string;
+    universalSigner: UniversalSigner,
+    options?: {
+      network?: ENV;
+      rpcUrl?: Partial<Record<CHAIN, string>>;
       printTraces?: boolean;
-    } = {
-      network: ENV.TESTNET,
-      rpcUrl: '',
-      printTraces: false,
     }
   ) => {
-    /**
-     * @dev - createUniversalSigner in future can perform some parsing to ensure signer has correct implementation
-     */
-    const verifiedUniversalSigner = universalSigner
-      ? createUniversalSigner(universalSigner)
-      : null;
-    return new CrossChain();
+    const orchestartor = new Orchestrator(
+      /**
+       * @dev - createUniversalSigner parses the obj to ensure signer has correct implementation
+       */
+      createUniversalSigner(universalSigner),
+      options?.network || ENV.TESTNET,
+      options?.rpcUrl || {},
+      options?.printTraces || false
+    );
+    return new CrossChain(orchestartor);
   };
+
+  execute = this.orchestartor.execute;
 }
