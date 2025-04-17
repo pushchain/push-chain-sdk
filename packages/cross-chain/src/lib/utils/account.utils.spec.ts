@@ -7,11 +7,13 @@ describe('account.utils', () => {
     it('should convert an EVM UniversalAccount to CAIP-10 string', () => {
       const account: UniversalAccount = {
         chain: CHAIN.ETHEREUM_SEPOLIA,
-        address: '0xabc123...',
+        address: '0xeCba9a32A9823f1cb00cdD8344Bf2D1d87a8dd97',
       };
 
       const result = toChainAgnostic(account);
-      expect(result).toBe('eip155:11155111:0xabc123...');
+      expect(result).toBe(
+        'eip155:11155111:0xeCba9a32A9823f1cb00cdD8344Bf2D1d87a8dd97'
+      );
     });
 
     it('should convert a Solana UniversalAccount to CAIP-10 string', () => {
@@ -29,12 +31,12 @@ describe('account.utils', () => {
 
   describe('toUniversal()', () => {
     it('should convert a CAIP-10 EVM address to a UniversalAccount', () => {
-      const caip = 'eip155:11155111:0xabc123...';
+      const caip = 'eip155:11155111:0xeCba9a32A9823f1cb00cdD8344Bf2D1d87a8dd97';
       const result = toUniversal(caip);
 
       expect(result).toEqual({
         chain: CHAIN.ETHEREUM_SEPOLIA,
-        address: '0xabc123...',
+        address: '0xeCba9a32A9823f1cb00cdD8344Bf2D1d87a8dd97',
       });
     });
 
