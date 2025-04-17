@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { Alert, Box, Button, TextInput } from 'shared-components';
 import { TransactionSnippet } from '../../../common/components';
 import { toHex } from 'viem';
-import { usePushChain, usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
+import { usePushChain, usePushWalletContext } from '../../../../../../../packages/ui-kit';
 
 const MockSignTransaction = () => {
 
-  const { pushChain } = usePushChain();
+  const { pushChain } = usePushChain("https://eth-sepolia.g.alchemy.com/v2/_3hBL0pSgTxFgr4vryA-8l-MZrIamGLu");
 
 
   const { handleSignMessage } = usePushWalletContext();
