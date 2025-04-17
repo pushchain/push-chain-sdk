@@ -66,7 +66,7 @@ describe('EvmClient', () => {
         },
         signTransaction: async (unsignedTx: Uint8Array) => {
           const tx = parseTransaction(bytesToHex(unsignedTx));
-          const txHash = await walletClient.signTransaction(tx as any);
+          const txHash = await walletClient.signTransaction(tx as never);
           return hexToBytes(txHash);
         },
       };

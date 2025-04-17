@@ -1,5 +1,5 @@
 import { ENV } from './constants/enums';
-import { createUniversalSigner } from './universal/universal';
+import { createUniversalSigner } from './universal/signer';
 import { UniversalSigner } from './universal/universal.types';
 import { Utils } from './utils';
 

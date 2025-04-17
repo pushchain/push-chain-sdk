@@ -1,4 +1,3 @@
-import { Abi } from 'viem';
 import { UniversalSigner } from '../universal/universal.types';
 
 /**
@@ -15,6 +14,7 @@ export interface ReadContractParams {
   address: string; // VM clients will cast as needed (e.g., `0x` for EVM, base58 for SVM)
   abi: readonly string[];
   functionName: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   args?: any[];
   value?: bigint; // value in ether
 }

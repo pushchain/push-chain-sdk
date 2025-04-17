@@ -1,4 +1,8 @@
-import { toChainAgnostic, toUniversal } from './account.utils';
+import {
+  toChainAgnostic,
+  toUniversal as toUniversalAccount,
+} from './universal/account';
+import { toUniversal as toUniversalSigner } from './universal/signer';
 
 /**
  * @dev - THESE UTILS ARE EXPORTED TO SDK CONSUMER
@@ -40,6 +44,13 @@ export class Utils {
      * Utils.account.toUniversal('eip155:11155111:0xabc...')
      * // → { chain: CHAIN.ETHEREUM_SEPOLIA, address: '0xabc...' }
      */
-    toUniversal,
+    toUniversal: toUniversalAccount,
+  };
+
+  static signer = {
+    /**
+     * Wraps a viem WalletClient into a UniversalSigner.
+     */
+    toUniversal: toUniversalSigner,
   };
 }
