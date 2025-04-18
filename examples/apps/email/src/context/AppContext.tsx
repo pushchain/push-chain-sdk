@@ -83,7 +83,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsSentEmailLoading(true);
     try {
       const data = await getSentPushEmails(pushChain, universalAddress);
-      console.log(data);
       setEmails((prev) => ({
         ...prev,
         sent: data,
@@ -98,7 +97,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsReceivedEmailLoading(true);
     try {
       const data = await getReceivedPushEmails(pushChain, universalAddress);
-      console.log(data);
       setEmails((prev) => ({
         ...prev,
         inbox: data,

@@ -18,8 +18,6 @@ export const getSentPushEmails = async (
             limit: pageSize,
             filterMode: 'sender',
         });
-
-        console.log(txRes);
     
         const sentEmails: Email[] = [];
     
@@ -33,7 +31,6 @@ export const getSentPushEmails = async (
                     Buffer.from(txn.data, "hex")
                 );
         
-                console.log(deserializeData(dataBytes));
                 const data = deserializeData(dataBytes);
         
                 sentEmails.push({

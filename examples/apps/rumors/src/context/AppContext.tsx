@@ -2,11 +2,12 @@
 import React, { createContext, useContext } from 'react';
 import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 import { ReactNode, useEffect, useState } from 'react';
-import { RPC_URL, RumorType, TABS } from '@/common';
+import { easterRumor, RPC_URL, RumorType, TABS } from '@/common';
 import { getConfessions } from '@/services/getConfessions';
 import { getSentConfessions } from '@/services/getSentConfessions';
 import { checkAndUpdateActivity } from '@/services/rewards';
 import { CONSTANTS, createUniversalSigner, PushChain } from '@pushchain/devnet';
+import { getSingleConfession } from '@/services/getSingleConfession';
 
 interface AppContextType {
   pushChain: PushChain | null;
@@ -26,6 +27,8 @@ interface AppContextType {
       [TABS.MY_RUMORS]: RumorType[];
     }>
   >;
+  easterData: RumorType | null;
+  setEasterData: React.Dispatch<React.SetStateAction<RumorType | null>>;
   hasMore: {
     [TABS.LATEST]: boolean;
     [TABS.MY_RUMORS]: boolean;
@@ -49,6 +52,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [TABS.LATEST]: [],
     [TABS.MY_RUMORS]: [],
   });
+  const [dummy, setDummy] = useState<RumorType | null>(null);
   const [loading, setLoading] = useState({
     [TABS.LATEST]: true,
     [TABS.MY_RUMORS]: true,
@@ -68,6 +72,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
     try {
       const fetchedConfessions = await getConfessions(pushChain, page, 15);
+      console.log(fetchedConfessions);
       if (fetchedConfessions.length > 0) {
         setData((prev) => ({
           ...prev,
@@ -113,6 +118,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         page,
         15
       );
+
+      console.log(fetchedSentConfessions);
       
       if (fetchedSentConfessions.length > 0) {
         setData((prev) => ({
@@ -141,6 +148,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const fetchDummyConfession = async () => {
+    if (!pushChain) return;
+
+    try {
+      const dummyConfession = await getSingleConfession(pushChain, easterRumor.txnHash);
+      console.log(dummyConfession);
+      if (dummyConfession) {
+        setDummy(dummyConfession);
+      }
+    } catch (error) {
+      console.error('Error fetching Easter confessions:', error);
+    }
+  }
+
   useEffect(() => {
     fetchConfessions(1);
   }, [pushChain]);
@@ -148,6 +169,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetchSentConfessions(1);
   }, [account, pushChain]);
+
+  useEffect(() => {
+    fetchDummyConfession();
+  }, [pushChain]);
 
   useEffect(() => {
     if (universalAddress) {
@@ -202,6 +227,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setData,
         hasMore,
         loading,
+        easterData: dummy,
+        setEasterData: setDummy,
       }}
     >
       {children}

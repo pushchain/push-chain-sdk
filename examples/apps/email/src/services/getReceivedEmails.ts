@@ -30,7 +30,6 @@ export const getReceivedPushEmails = async (
                 Buffer.from(txn.data, "hex")
                 );
         
-                console.log(deserializeData(dataBytes));
                 const data = deserializeData(dataBytes);
         
                 receivedEmails.push({
