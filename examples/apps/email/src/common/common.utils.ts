@@ -125,7 +125,7 @@ export const extractWalletAddress = (address: string) => {
 export const getChainFromCAIP = (caip: string) => {
   const chainId = caip.split(':')[1];
   if (chainId === '1') return 'eth';
-  if (chainId === '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp') return 'sol';
+  if (chainId === '4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z') return 'sol';
   return 'push';
 };
 
@@ -134,7 +134,7 @@ export const getInCAIP = (address: string, chain: string) => {
     chain === 'eth'
       ? 'eip155:1'
       : chain === 'sol'
-      ? 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
+      ? 'solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z'
       : chain === 'bnb'
       ? 'eip155:56'
       : 'push:devnet'
