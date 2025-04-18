@@ -27,8 +27,6 @@ export const usePushChain = (custom_rpc_url?: string) => {
                     },
                 });
 
-                console.log("Custom rpc url", custom_rpc_url);
-
                 // Push Chain is only initialized at devnet and mainnet
                 const pushChainNetwork = env === ENV.LOCAL || env === ENV.TESTNET ? CONSTANTS.ENV.DEVNET : env;
 
@@ -36,8 +34,6 @@ export const usePushChain = (custom_rpc_url?: string) => {
                     network: pushChainNetwork,
                     ...(custom_rpc_url && { rpcUrl: custom_rpc_url })
                 });
-
-                console.log("Push Chain Initialised", instance);
 
                 setPushChain(instance);
                 setError(null);

@@ -6,7 +6,7 @@ import { usePushChain, usePushWalletContext } from '../../../../../../../package
 
 const MockSignTransaction = () => {
 
-  const { pushChain } = usePushChain("https://eth-sepolia.g.alchemy.com/v2/_3hBL0pSgTxFgr4vryA-8l-MZrIamGLu");
+  const { pushChain } = usePushChain();
 
 
   const { handleSignMessage } = usePushWalletContext();

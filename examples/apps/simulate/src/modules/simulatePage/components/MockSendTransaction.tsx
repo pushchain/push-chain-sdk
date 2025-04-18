@@ -9,7 +9,7 @@ import { usePushChain, usePushWalletContext } from '../../../../../../../package
 
 const MockSendTransaction = () => {
 
-  const { pushChain, isLoading, error } = usePushChain("https://eth-sepolia.g.alchemy.com/v2/_3hBL0pSgTxFgr4vryA-8l-MZrIamGLu")
+  const { pushChain, isLoading, error } = usePushChain();
   const { universalAddress } = usePushWalletContext();
 
   const [isSendingTxn, setIsSendingTxn] = useState(false);
