@@ -43,7 +43,7 @@ export const CHAIN_INFO: Record<
   [CHAIN.ETHEREUM_SEPOLIA]: {
     chainId: '11155111',
     vm: VM.EVM,
-    lockerContract: 'TBD',
+    lockerContract: '0x57235d27c8247CFE0E39248c9c9F22BD6EB054e1',
   },
 
   // Solana

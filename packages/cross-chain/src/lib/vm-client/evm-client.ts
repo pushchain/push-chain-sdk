@@ -1,3 +1,4 @@
+import { UniversalSigner } from '../universal/universal.types';
 import {
   ClientOptions,
   ReadContractParams,
@@ -49,7 +50,7 @@ export class EvmClient {
     args = [],
   }: ReadContractParams): Promise<T> {
     return this.publicClient.readContract({
-      abi: parseAbi(abi),
+      abi: parseAbi(abi as readonly string[]),
       address: address as `0x${string}`,
       functionName,
       args,
@@ -70,7 +71,7 @@ export class EvmClient {
     signer,
   }: WriteContractParams): Promise<Hex> {
     const data = encodeFunctionData({
-      abi: parseAbi(abi),
+      abi: parseAbi(abi as readonly string[]),
       functionName,
       args,
     });
@@ -95,10 +96,7 @@ export class EvmClient {
     to: `0x${string}`;
     data: Hex;
     value?: bigint;
-    signer: {
-      address: string;
-      signTransaction: (tx: Uint8Array) => Promise<Uint8Array>;
-    };
+    signer: UniversalSigner;
   }): Promise<Hex> {
     const [nonce, gas, feePerGas] = await Promise.all([
       this.publicClient.getTransactionCount({
@@ -125,6 +123,10 @@ export class EvmClient {
       maxPriorityFeePerGas: feePerGas.maxPriorityFeePerGas,
       value,
     });
+
+    if (!signer.signTransaction) {
+      throw new Error('signer.signTransaction is undefined');
+    }
 
     const signedTx = await signer.signTransaction(hexToBytes(unsignedTx));
 

@@ -20,6 +20,8 @@ export class Orchestrator {
   }): Promise<`0x${string}`> {
     // TODO: Implement this
 
+    // maybe throw error if signer is on push chain
+
     // 1 Find the NMSC address for the given signer
 
     // 2 Find gasFeeEstimate for the user interaction
@@ -34,6 +36,10 @@ export class Orchestrator {
   }
 
   private async deriveNMSCAddress() {
+    //
+  }
+
+  private async lockFee() {
     //
   }
 }

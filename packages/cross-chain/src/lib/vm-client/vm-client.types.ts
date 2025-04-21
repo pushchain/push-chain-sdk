@@ -1,3 +1,4 @@
+import { Idl } from '@coral-xyz/anchor';
 import { UniversalSigner } from '../universal/universal.types';
 
 /**
@@ -11,17 +12,33 @@ export interface ClientOptions {
  * Parameters for reading from a smart contract (read-only call).
  */
 export interface ReadContractParams {
-  address: string; // VM clients will cast as needed (e.g., `0x` for EVM, base58 for SVM)
-  abi: readonly string[];
+  /**
+   * EVM contract address
+   * SVM program id
+   */
+  address: string;
+  /**
+   * EVM abi
+   * SVM idl
+   */
+  abi: readonly string[] | Idl;
+  /**
+   * EVM contract fn name
+   * SVM PDA var name
+   */
   functionName: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  /**
+   * EVM fn vars
+   * SVM - undefined
+   */
   args?: any[];
-  value?: bigint; // value in ether
 }
 
 /**
  * Parameters for writing to a smart contract (requires signature).
  */
 export interface WriteContractParams extends ReadContractParams {
+  value?: bigint; // value in ether
   signer: UniversalSigner;
 }
