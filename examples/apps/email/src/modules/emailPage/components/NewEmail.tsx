@@ -155,10 +155,10 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
       const file = event.target.files?.[0];
       if (!file) return;
 
-      const MAX_FILE_SIZE = 0.5 * 1024 * 1024; // 0.5MB
+      const MAX_FILE_SIZE = 0.1 * 1024 * 1024; // 0.1MB
 
       if (file.size > MAX_FILE_SIZE) {
-        alert('File size exceeds 0.5MB. Please select a smaller file.');
+        alert('File size exceeds 100kB. Please select a smaller file.');
         return;
       }
 
