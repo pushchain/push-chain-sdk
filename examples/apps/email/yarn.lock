@@ -3424,6 +3424,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"browser-image-compression@npm:^2.0.2":
+  version: 2.0.2
+  resolution: "browser-image-compression@npm:2.0.2"
+  dependencies:
+    uzip: "npm:0.20201231.0"
+  checksum: 10/5be112b14dca03adb48b691b0a64181a746c201c63e9729de9eb961f95c70022778678a4453ec284be66173a6d524c60116ca878c9a520b78d1bb6d10939e2d9
+  languageName: node
+  linkType: hard
+
 "browser-resolve@npm:^2.0.0":
   version: 2.0.0
   resolution: "browser-resolve@npm:2.0.0"
@@ -4239,6 +4248,7 @@ __metadata:
     autoprefixer: "npm:^10.4.20"
     axios: "npm:^1.8.2"
     blockies-react-svg: "npm:^0.0.13"
+    browser-image-compression: "npm:^2.0.2"
     class-variance-authority: "npm:^0.7.0"
     clsx: "npm:^2.1.1"
     eslint: "npm:^9.11.1"
@@ -8441,6 +8451,13 @@ __metadata:
   bin:
     uuid: dist/bin/uuid
   checksum: 10/9d0b6adb72b736e36f2b1b53da0d559125ba3e39d913b6072f6f033e0c87835b414f0836b45bcfaf2bdf698f92297fea1c3cc19b0b258bc182c9c43cc0fab9f2
+  languageName: node
+  linkType: hard
+
+"uzip@npm:0.20201231.0":
+  version: 0.20201231.0
+  resolution: "uzip@npm:0.20201231.0"
+  checksum: 10/dcc7e678cd36e129819fd817184bf9276bfd8d84fc653fc07f0e5665dba86648bd35c087001104247d6ea63539524d051e0fa7abf11e7c7239298303a55085f8
   languageName: node
   linkType: hard
 

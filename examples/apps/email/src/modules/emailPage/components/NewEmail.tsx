@@ -24,6 +24,7 @@ import {
 import { Cross1Icon } from '@radix-ui/react-icons';
 import styled from 'styled-components';
 import { sendPushEmail } from '@/services/SendEmail';
+import imageCompression from 'browser-image-compression';
 
 type FileData = {
   filename: string;
@@ -150,36 +151,53 @@ const NewEmail: React.FC<NewEmailProps> = ({ replyTo }) => {
     setRecipients((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
-  const handleFileUpload = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = 
+    async (event: ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) return;
 
-      const MAX_FILE_SIZE = 0.1 * 1024 * 1024; // 0.1MB
+      // const MAX_FILE_SIZE = 0.1 * 1024 * 1024; // 0.1MB
 
-      if (file.size > MAX_FILE_SIZE) {
-        alert('File size exceeds 100kB. Please select a smaller file.');
-        return;
-      }
+      // if (file.size > MAX_FILE_SIZE) {
+      //   alert('File size exceeds 100kB. Please select a smaller file.');
+      //   return;
+      // }
 
-      const reader = new FileReader();
-      reader.onload = (e: ProgressEvent<FileReader>) => {
-        const result = e.target?.result;
-        if (typeof result === 'string') {
-          setFileAttachment((prevAttachments) => [
-            ...prevAttachments,
-            {
-              filename: file.name,
-              type: file.type,
-              content: result.split(',')[1],
-            },
-          ]);
-        }
+      const options = {
+        maxSizeMB: 0.1, // 100kB
+        maxWidthOrHeight: 720,
+        useWebWorker: true,
+        fileType: file.type,
       };
-      reader.readAsDataURL(file);
-    },
-    []
-  );
+
+      try {
+        const compressedFile = await imageCompression(file, options);
+        // console.log(file.size/(1024 * 1024), compressedFile.size/(1024 * 1024));
+  
+        // if (compressedFile.size > 0.1 * 1024 * 1024) {
+        //   alert('File size exceeds 100kB even after compression. Please select a smaller file.');
+        //   return;
+        // }
+  
+        const reader = new FileReader();
+        reader.onload = (e: ProgressEvent<FileReader>) => {
+          const result = e.target?.result;
+          if (typeof result === 'string') {
+            setFileAttachment((prevAttachments) => [
+              ...prevAttachments,
+              {
+                filename: compressedFile.name,
+                type: compressedFile.type,
+                content: result.split(',')[1],
+              },
+            ]);
+          }
+        };
+        reader.readAsDataURL(compressedFile);
+      } catch (error) {
+        console.error('Image compression failed:', error);
+      }
+    };
 
   const handleFileRemove = useCallback((filename: string) => {
     setFileAttachment((prevAttachments) =>
