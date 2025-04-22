@@ -8,7 +8,7 @@ const sleep = (ms: number): Promise<void> => {
   return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
-describe('WebSocket Tests', () => {
+describe('WebSocket Smoke Test', () => {
   const env = config.ENV;
   let pushChain: PushChain;
 
