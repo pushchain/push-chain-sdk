@@ -7,14 +7,14 @@ import {
 import {
   bytesToHex,
   createPublicClient,
+  encodeFunctionData,
+  hexToBytes,
   http,
   parseAbi,
+  parseEther,
+  PublicClient,
   serializeTransaction,
   Hex,
-  PublicClient,
-  hexToBytes,
-  encodeFunctionData,
-  parseEther,
 } from 'viem';
 
 /**
@@ -31,8 +31,6 @@ export class EvmClient {
 
   /**
    * Returns the balance (in wei) of an EVM address.
-   * @param address - The address to check.
-   * @returns Balance in wei as bigint.
    */
   async getBalance(address: `0x${string}`): Promise<bigint> {
     return this.publicClient.getBalance({ address });
@@ -40,8 +38,6 @@ export class EvmClient {
 
   /**
    * Performs a read-only call to a smart contract.
-   * @param params - ReadContractParams
-   * @returns The decoded return value of the contract call.
    */
   async readContract<T = unknown>({
     abi,
@@ -59,8 +55,6 @@ export class EvmClient {
 
   /**
    * Writes a transaction to a smart contract using a UniversalSigner.
-   * @param params - WriteContractParams
-   * @returns The transaction hash of the submitted tx.
    */
   async writeContract({
     abi,
@@ -133,5 +127,34 @@ export class EvmClient {
     return this.publicClient.sendRawTransaction({
       serializedTransaction: bytesToHex(signedTx),
     });
+  }
+
+  /**
+   * Estimates the gas required for a transaction.
+   */
+  async estimateGas({
+    from,
+    to,
+    value,
+    data,
+  }: {
+    from: `0x${string}`;
+    to: `0x${string}`;
+    value?: bigint;
+    data?: `0x${string}`;
+  }): Promise<bigint> {
+    return this.publicClient.estimateGas({
+      account: from,
+      to,
+      value,
+      data,
+    });
+  }
+
+  /**
+   * Gets the current gas price (for legacy transactions).
+   */
+  async getGasPrice(): Promise<bigint> {
+    return this.publicClient.getGasPrice();
   }
 }
