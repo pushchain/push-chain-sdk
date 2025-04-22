@@ -1,15 +1,46 @@
 // Conditional import for WebSocket based on environment
-let WebSocketImpl: any;
-if (typeof window !== 'undefined') {
-  // Browser environment
-  WebSocketImpl = window.WebSocket;
-} else {
-  // Node.js environment
-  WebSocketImpl = require('ws');
-}
-
 import { ENV } from '../constants';
 import { Validator } from '../validator/validator';
+
+// Define interfaces for WebSocket implementations
+interface BrowserWebSocket {
+  send(data: string): void;
+  close(): void;
+  addEventListener(type: string, listener: (event: MessageEvent) => void): void;
+  removeEventListener(
+    type: string,
+    listener: (event: MessageEvent) => void
+  ): void;
+  onmessage: ((event: MessageEvent) => void) | null;
+  onopen: (() => void) | null;
+  onerror: ((error: Event) => void) | null;
+  readyState: number;
+}
+
+interface NodeWebSocket {
+  send(data: string): void;
+  close(): void;
+  on(type: 'message', listener: (data: string) => void): void;
+  on(type: 'open', listener: () => void): void;
+  on(type: 'error', listener: (error: Error) => void): void;
+  removeListener(type: 'message', listener: (data: string) => void): void;
+  removeListener(type: 'open', listener: () => void): void;
+  removeListener(type: 'error', listener: (error: Error) => void): void;
+  readyState: number;
+}
+
+// Define a union type for our WebSocket implementation
+type WebSocketImpl = BrowserWebSocket | NodeWebSocket;
+
+// Import the appropriate WebSocket implementation
+let WebSocketConstructor: any;
+if (typeof window !== 'undefined') {
+  // Browser environment
+  WebSocketConstructor = window.WebSocket;
+} else {
+  // Node.js environment
+  WebSocketConstructor = require('ws');
+}
 
 type WSMessage = {
   type: string;
@@ -48,15 +79,12 @@ export type WebSocketTransaction = {
 };
 
 export class WebSocketClient {
-  private ws: any = null;
+  private ws: WebSocketImpl | null = null;
   private clientId: string | null = null;
   private blockHandlers: Map<string, (block: WebSocketBlock) => void> =
     new Map();
-  private isBrowser: boolean;
 
-  private constructor(private url: string) {
-    this.isBrowser = typeof window !== 'undefined';
-  }
+  private constructor(private url: string) {}
 
   static initialize = async (
     env: ENV,
@@ -104,95 +132,85 @@ export class WebSocketClient {
    */
   async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.ws = new WebSocketImpl(this.url);
+      this.ws = new WebSocketConstructor(this.url) as WebSocketImpl;
 
-      // Set up message handler
-      this.setupMessageListener((data) => {
-        const message = JSON.parse(data);
-        this.handleMessage(message);
-      });
+      if (typeof window !== 'undefined') {
+        // Browser environment
+        const browserWs = this.ws as BrowserWebSocket;
+        browserWs.onmessage = (event: MessageEvent) => {
+          const message = JSON.parse(event.data);
+          this.handleMessage(message);
+        };
 
-      // Set up open handler
-      this.setupOpenListener(() => {
-        this.setupMessageHandler(resolve, reject);
-      });
+        browserWs.onopen = () => {
+          this.setupMessageHandler(resolve, reject);
+        };
 
-      // Set up error handler
-      this.setupErrorListener((error) => {
-        reject(error);
-      });
+        browserWs.onerror = (error: Event) => {
+          reject(error);
+        };
+      } else {
+        // Node.js environment
+        const nodeWs = this.ws as NodeWebSocket;
+        nodeWs.on('message', (data: string) => {
+          const message = JSON.parse(data);
+          this.handleMessage(message);
+        });
+
+        nodeWs.on('open', () => {
+          this.setupMessageHandler(resolve, reject);
+        });
+
+        nodeWs.on('error', (error: Error) => {
+          reject(error);
+        });
+      }
     });
-  }
-
-  /**
-   * Set up message listener based on environment
-   */
-  private setupMessageListener(callback: (data: any) => void): void {
-    if (this.isBrowser) {
-      this.ws.onmessage = (event: MessageEvent) => callback(event.data);
-    } else {
-      this.ws.on('message', (data: string) => callback(data));
-    }
-  }
-
-  /**
-   * Set up open listener based on environment
-   */
-  private setupOpenListener(callback: () => void): void {
-    if (this.isBrowser) {
-      this.ws.onopen = callback;
-    } else {
-      this.ws.on('open', callback);
-    }
-  }
-
-  /**
-   * Set up error listener based on environment
-   */
-  private setupErrorListener(callback: (error: any) => void): void {
-    if (this.isBrowser) {
-      this.ws.onerror = callback;
-    } else {
-      this.ws.on('error', callback);
-    }
-  }
-
-  /**
-   * Add a one-time message listener based on environment
-   */
-  private addOneTimeMessageListener(callback: (data: any) => void): void {
-    if (this.isBrowser) {
-      const handler = (event: MessageEvent) => {
-        callback(event.data);
-        this.ws?.removeEventListener('message', handler);
-      };
-      this.ws?.addEventListener('message', handler);
-    } else {
-      const handler = (data: string) => {
-        callback(data);
-        this.ws?.removeListener('message', handler);
-      };
-      this.ws?.on('message', handler);
-    }
   }
 
   private setupMessageHandler(
     resolve: () => void,
     reject: (error: Error) => void
   ) {
-    this.addOneTimeMessageListener((data) => {
-      const message = JSON.parse(data);
-      if (message.type === 'WELCOME') {
-        this.clientId = message.data.clientId;
-        this.sendHandshake();
-      } else if (message.type === 'HANDSHAKE_ACK') {
-        if (message.data.success) {
-          resolve();
-        } else {
-          reject(new Error(message.data.error));
+    if (typeof window !== 'undefined') {
+      // Browser environment
+      const browserWs = this.ws as BrowserWebSocket;
+      const messageHandler = (event: MessageEvent) => {
+        const message = JSON.parse(event.data);
+        if (message.type === 'WELCOME') {
+          this.clientId = message.data.clientId;
+          this.sendHandshake();
+        } else if (message.type === 'HANDSHAKE_ACK') {
+          if (message.data.success) {
+            browserWs.removeEventListener('message', messageHandler);
+            resolve();
+          } else {
+            reject(new Error(message.data.error));
+          }
         }
-      }
-    });
+      };
+
+      browserWs.addEventListener('message', messageHandler);
+    } else {
+      // Node.js environment
+      const nodeWs = this.ws as NodeWebSocket;
+      const messageHandler = (data: string) => {
+        const message = JSON.parse(data);
+        if (message.type === 'WELCOME') {
+          this.clientId = message.data.clientId;
+          this.sendHandshake();
+        } else if (message.type === 'HANDSHAKE_ACK') {
+          if (message.data.success) {
+            nodeWs.removeListener('message', messageHandler);
+            resolve();
+          } else {
+            reject(new Error(message.data.error));
+          }
+        }
+      };
+
+      nodeWs.on('message', messageHandler);
+    }
   }
 
   private handleMessage(message: WSMessage) {
@@ -233,18 +251,43 @@ export class WebSocketClient {
     filters: SubscriptionFilter[] = [{ type: 'WILDCARD', value: ['*'] }]
   ): Promise<{ subscriptionId: string }> {
     return new Promise((resolve, reject) => {
-      this.addOneTimeMessageListener((data) => {
-        const message = JSON.parse(data);
-        if (message.type === 'SUBSCRIBE_ACK') {
-          if (message.data.success) {
-            const subscriptionId: string = message.data.subscriptionId;
-            this.blockHandlers.set(subscriptionId, callback);
-            resolve({ subscriptionId });
-          } else {
-            reject(new Error(message.data.error));
+      if (typeof window !== 'undefined') {
+        // Browser environment
+        const browserWs = this.ws as BrowserWebSocket;
+        const handleSubscribeResponse = (event: MessageEvent) => {
+          const message = JSON.parse(event.data);
+          if (message.type === 'SUBSCRIBE_ACK') {
+            if (message.data.success) {
+              const subscriptionId: string = message.data.subscriptionId;
+              this.blockHandlers.set(subscriptionId, callback);
+              browserWs.removeEventListener('message', handleSubscribeResponse);
+              resolve({ subscriptionId });
+            } else {
+              reject(new Error(message.data.error));
+            }
           }
-        }
-      });
+        };
+
+        browserWs.addEventListener('message', handleSubscribeResponse);
+      } else {
+        // Node.js environment
+        const nodeWs = this.ws as NodeWebSocket;
+        const handleSubscribeResponse = (data: string) => {
+          const message = JSON.parse(data);
+          if (message.type === 'SUBSCRIBE_ACK') {
+            if (message.data.success) {
+              const subscriptionId: string = message.data.subscriptionId;
+              this.blockHandlers.set(subscriptionId, callback);
+              nodeWs.removeListener('message', handleSubscribeResponse);
+              resolve({ subscriptionId });
+            } else {
+              reject(new Error(message.data.error));
+            }
+          }
+        };
+
+        nodeWs.on('message', handleSubscribeResponse);
+      }
 
       this.send({
         type: 'SUBSCRIBE',
@@ -277,7 +320,17 @@ export class WebSocketClient {
    * @returns boolean
    */
   isConnected(): boolean {
-    return this.ws?.readyState === WebSocketImpl.OPEN;
+    if (!this.ws) return false;
+
+    if (typeof window !== 'undefined') {
+      // Browser environment
+      const browserWs = this.ws as BrowserWebSocket;
+      return browserWs.readyState === WebSocketConstructor.OPEN;
+    } else {
+      // Node.js environment
+      const nodeWs = this.ws as NodeWebSocket;
+      return nodeWs.readyState === WebSocketConstructor.OPEN;
+    }
   }
 
   /**
@@ -287,17 +340,44 @@ export class WebSocketClient {
    */
   async unsubscribe(subscriptionId: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.addOneTimeMessageListener((data) => {
-        const message = JSON.parse(data);
-        if (message.type === 'UNSUBSCRIBE_ACK') {
-          if (message.data.success) {
-            this.blockHandlers.delete(subscriptionId);
-            resolve();
-          } else {
-            reject(new Error(message.data.error));
+      if (typeof window !== 'undefined') {
+        // Browser environment
+        const browserWs = this.ws as BrowserWebSocket;
+        const handleUnsubscribeResponse = (event: MessageEvent) => {
+          const message = JSON.parse(event.data);
+          if (message.type === 'UNSUBSCRIBE_ACK') {
+            if (message.data.success) {
+              this.blockHandlers.delete(subscriptionId);
+              browserWs.removeEventListener(
+                'message',
+                handleUnsubscribeResponse
+              );
+              resolve();
+            } else {
+              reject(new Error(message.data.error));
+            }
           }
-        }
-      });
+        };
+
+        browserWs.addEventListener('message', handleUnsubscribeResponse);
+      } else {
+        // Node.js environment
+        const nodeWs = this.ws as NodeWebSocket;
+        const handleUnsubscribeResponse = (data: string) => {
+          const message = JSON.parse(data);
+          if (message.type === 'UNSUBSCRIBE_ACK') {
+            if (message.data.success) {
+              this.blockHandlers.delete(subscriptionId);
+              nodeWs.removeListener('message', handleUnsubscribeResponse);
+              resolve();
+            } else {
+              reject(new Error(message.data.error));
+            }
+          }
+        };
+
+        nodeWs.on('message', handleUnsubscribeResponse);
+      }
 
       const unsubscribeMsg = {
         type: 'UNSUBSCRIBE',
