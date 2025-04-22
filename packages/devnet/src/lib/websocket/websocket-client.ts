@@ -1,4 +1,3 @@
-// Conditional import for WebSocket based on environment
 import { ENV } from '../constants';
 import { Validator } from '../validator/validator';
 
