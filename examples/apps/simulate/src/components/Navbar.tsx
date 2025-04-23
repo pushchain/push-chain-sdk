@@ -16,7 +16,7 @@ const Navbar = () => {
             justifyContent='end'
             gap='spacing-md'
         >
-            {universalAddress && <PushUniversalWallet universalAddress={universalAddress} />}
+            {universalAddress && <PushUniversalWallet />}
 
             {!isDarkMode ? (
                 <Box
