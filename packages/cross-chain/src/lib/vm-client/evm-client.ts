@@ -10,11 +10,11 @@ import {
   encodeFunctionData,
   hexToBytes,
   http,
-  parseAbi,
   parseEther,
   PublicClient,
   serializeTransaction,
   Hex,
+  Abi,
 } from 'viem';
 
 /**
@@ -46,7 +46,7 @@ export class EvmClient {
     args = [],
   }: ReadContractParams): Promise<T> {
     return this.publicClient.readContract({
-      abi: parseAbi(abi as readonly string[]),
+      abi: abi as Abi,
       address: address as `0x${string}`,
       functionName,
       args,
@@ -65,7 +65,7 @@ export class EvmClient {
     signer,
   }: WriteContractParams): Promise<Hex> {
     const data = encodeFunctionData({
-      abi: parseAbi(abi as readonly string[]),
+      abi: abi as Abi,
       functionName,
       args,
     });
@@ -100,6 +100,7 @@ export class EvmClient {
         account: signer.address as `0x${string}`,
         to,
         data,
+        value,
       }),
       this.publicClient.estimateFeesPerGas(),
     ]);

@@ -7,6 +7,7 @@ import {
   parseTransaction,
   bytesToHex,
   defineChain,
+  parseAbi,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { UniversalSigner } from '../universal/universal.types';
@@ -14,10 +15,10 @@ import { CHAIN } from '../constants/enums';
 import { CHAIN_INFO } from '../constants/chain';
 import { sepolia } from 'viem/chains';
 
-const ABI = [
+const ABI = parseAbi([
   'function greet() view returns (string)',
   'function setGreeting(string _greeting)',
-];
+]);
 
 const CONTRACT = '0x2ba5873eF818BEE57645B7d674149041C44F42c6';
 const RPC_URL = sepolia.rpcUrls.default.http[0];

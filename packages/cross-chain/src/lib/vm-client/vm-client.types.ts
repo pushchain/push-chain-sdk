@@ -1,5 +1,6 @@
 import { Idl } from '@coral-xyz/anchor';
 import { UniversalSigner } from '../universal/universal.types';
+import { Abi } from 'viem';
 
 /**
  * Common options used by all VM clients (EVM, SVM, etc.)
@@ -21,7 +22,7 @@ export interface ReadContractParams {
    * EVM abi
    * SVM idl
    */
-  abi: readonly string[] | Idl;
+  abi: Abi | Idl;
   /**
    * EVM contract fn name
    * SVM PDA var name
