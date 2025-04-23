@@ -10,7 +10,6 @@ const sleep = (ms: number): Promise<void> => {
 
 describe('WebSocket Smoke Test', () => {
   const env = config.ENV;
-
   let pushChain: PushChain;
 
   beforeAll(async () => {
@@ -31,20 +30,64 @@ describe('WebSocket Smoke Test', () => {
   });
 
   beforeEach(async () => {
+    // Ensure we're disconnected before each test
+    if (pushChain.ws.isConnected()) {
+      pushChain.ws.disconnect();
+    }
     await pushChain.ws.connect();
   });
 
   afterEach(async () => {
-    pushChain.ws.disconnect();
+    // Clean up after each test
+    if (pushChain.ws.isConnected()) {
+      pushChain.ws.disconnect();
+    }
   });
 
   afterAll(async () => {
     // Cleanup any remaining resources if needed
   });
 
-  it('should successfully connect to WebSocket server', async () => {
+  // ===== BASIC CONNECTION TESTS =====
+
+  it('should connect and disconnect successfully', async () => {
+    // Connect to WebSocket
+    await pushChain.ws.connect();
+    expect(pushChain.ws.isConnected()).toBe(true);
+
+    // Disconnect from WebSocket
+    pushChain.ws.disconnect();
+    expect(pushChain.ws.isConnected()).toBe(false);
+  });
+
+  it('should handle connection errors gracefully', async () => {
+    // Try to connect to an invalid URL
+    const invalidWs = pushChain.ws as any;
+    const originalUrl = invalidWs.url;
+    invalidWs.url = 'ws://invalid-url-that-does-not-exist';
+
+    // The connect method should throw an error
+    await expect(pushChain.ws.connect()).rejects.toThrow();
+
+    // Restore the original URL
+    invalidWs.url = originalUrl;
+  });
+
+  it('should handle reconnection', async () => {
+    // Connect to WebSocket
+    await pushChain.ws.connect();
+    expect(pushChain.ws.isConnected()).toBe(true);
+
+    // Disconnect
+    pushChain.ws.disconnect();
+    expect(pushChain.ws.isConnected()).toBe(false);
+
+    // Reconnect
+    await pushChain.ws.connect();
     expect(pushChain.ws.isConnected()).toBe(true);
   });
+
+  // ===== HANDSHAKE TESTS =====
 
   it('should successfully perform handshake exchange', async () => {
     // Store received messages for validation
@@ -92,7 +135,7 @@ describe('WebSocket Smoke Test', () => {
     expect(handshakeAck.timestamp).toBeDefined();
   }, 10000);
 
-  it('should follow correct handshake protocol se-quence', async () => {
+  it('should follow correct handshake protocol sequence', async () => {
     const messages: any[] = [];
     const sentMessages: any[] = [];
     const ws = pushChain.ws as any;
@@ -170,6 +213,70 @@ describe('WebSocket Smoke Test', () => {
       ws.ws.send = originalSend;
     }
   }, 10000);
+
+  it('should handle handshake failure gracefully', async () => {
+    const ws = pushChain.ws as any;
+
+    // Store received messages
+    const receivedMessages: any[] = [];
+
+    // Create a promise that will track the handshake attempt
+    const handshakePromise = new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Handshake timeout'));
+      }, 5000);
+
+      ws.ws.on('message', (data: string) => {
+        try {
+          const message = JSON.parse(data);
+          receivedMessages.push(message);
+          if (message.type === 'HANDSHAKE_ACK' && !message.data.success) {
+            clearTimeout(timeout);
+            resolve();
+          }
+        } catch (error) {
+          console.error('Failed to parse message:', error);
+        }
+      });
+
+      // Send invalid handshake message
+      const invalidHandshakeMsg = {
+        type: 'HANDSHAKE',
+        data: {
+          // Missing required clientId
+          timestamp: Date.now(),
+        },
+      };
+      ws.ws.send(JSON.stringify(invalidHandshakeMsg));
+    });
+
+    // Wait for handshake failure
+    await handshakePromise;
+
+    // Verify handshake failure response
+    const handshakeAck = receivedMessages.find(
+      (msg) => msg.type === 'HANDSHAKE_ACK'
+    );
+    expect(handshakeAck).toBeDefined();
+    expect(handshakeAck.data.success).toBe(false);
+    expect(handshakeAck.data.error).toBeDefined();
+  }, 10000);
+
+  // ===== SUBSCRIPTION TESTS =====
+
+  it('should subscribe and unsubscribe successfully', async () => {
+    // Subscribe to blocks
+    let blockReceived = false;
+    const subscription = await pushChain.ws.subscribe(() => {
+      blockReceived = true;
+    });
+
+    // Verify subscription was created
+    expect(subscription.subscriptionId).toBeDefined();
+
+    // Unsubscribe
+    await pushChain.ws.unsubscribe(subscription.subscriptionId);
+  });
 
   it('should perform handshake and receive SUBSCRIBE_ACK with default filter', async () => {
     const ws = pushChain.ws as any;
@@ -319,6 +426,80 @@ describe('WebSocket Smoke Test', () => {
     console.log('Custom filter subscription acknowledged successfully.');
   }, 10000);
 
+  it('should handle subscription with custom filters', async () => {
+    // Subscribe with custom filters
+    const subscription = await pushChain.ws.subscribe(() => {
+      // Callback for subscription
+    }, [
+      { type: 'CATEGORY', value: ['test-category'] },
+      { type: 'FROM', value: ['0x1234567890abcdef'] },
+    ]);
+
+    // Verify subscription was created
+    expect(subscription.subscriptionId).toBeDefined();
+
+    // Unsubscribe
+    await pushChain.ws.unsubscribe(subscription.subscriptionId);
+  });
+
+  it('should handle subscription with wildcard filter', async () => {
+    // Subscribe with wildcard filter
+    const subscription = await pushChain.ws.subscribe(() => {
+      // Callback for subscription
+    }, [{ type: 'WILDCARD', value: ['*'] }]);
+
+    // Verify subscription was created
+    expect(subscription.subscriptionId).toBeDefined();
+
+    // Unsubscribe
+    await pushChain.ws.unsubscribe(subscription.subscriptionId);
+  });
+
+  it('should handle subscription with multiple recipients filter', async () => {
+    // Subscribe with multiple recipients filter
+    const subscription = await pushChain.ws.subscribe(() => {
+      // Callback for subscription
+    }, [
+      {
+        type: 'RECIPIENTS',
+        value: ['0x1234567890abcdef', '0xabcdef1234567890'],
+      },
+    ]);
+
+    // Verify subscription was created
+    expect(subscription.subscriptionId).toBeDefined();
+
+    // Unsubscribe
+    await pushChain.ws.unsubscribe(subscription.subscriptionId);
+  });
+
+  it.skip('should handle multiple subscriptions', async () => {
+    // Create multiple subscriptions with different filters
+    const subscription1 = await pushChain.ws.subscribe(() => {
+      // Callback for first subscription
+    }, [{ type: 'CATEGORY', value: ['test1'] }]);
+
+    const subscription2 = await pushChain.ws.subscribe(() => {
+      // Callback for second subscription
+    }, [{ type: 'CATEGORY', value: ['test2'] }]);
+
+    // Verify both subscriptions were created
+    expect(subscription1.subscriptionId).toBeDefined();
+    expect(subscription2.subscriptionId).toBeDefined();
+    expect(subscription1.subscriptionId).not.toBe(subscription2.subscriptionId);
+
+    // Unsubscribe from one subscription
+    await pushChain.ws.unsubscribe(subscription1.subscriptionId);
+
+    // The other subscription should still be active
+    expect(pushChain.ws.isConnected()).toBe(true);
+
+    // Unsubscribe from the other subscription
+    await pushChain.ws.unsubscribe(subscription2.subscriptionId);
+  });
+
+  // ===== BLOCK RECEIVING TESTS =====
+
   it('should subscribe and receive a block after initiating a transaction', async () => {
     const ws = pushChain.ws as any;
 
@@ -460,81 +641,7 @@ describe('WebSocket Smoke Test', () => {
     );
   }, 10000);
 
-  // it('should subscribe with multiple filters and receive a block after initiating transactions', async () => {
-  //     const ws = pushChain.ws as any;
-
-  //     // Perform handshake
-  //     const handshakePromise = new Promise<void>((resolve, reject) => {
-  //         const timeout = setTimeout(() => {
-  //             reject(new Error('Handshake timeout - no HANDSHAKE_ACK received'));
-  //         }, 10000);
-
-  //         ws.ws.on('message', (data: string) => {
-  //             try {
-  //                 const message = JSON.parse(data);
-  //                 if (message.type === 'HANDSHAKE_ACK') {
-  //                     clearTimeout(timeout);
-  //                     resolve();
-  //                 }
-  //             } catch (error) {
-  //                 console.error('Failed to parse message:', error);
-  //             }
-  //         });
-
-  //         // Send handshake message
-  //         const handshakeMsg = {
-  //             type: 'HANDSHAKE',
-  //             data: {
-  //                 clientId: ws.clientId || 'test-client'
-  //             },
-  //             timestamp: Date.now()
-  //         };
-  //         ws.ws.send(JSON.stringify(handshakeMsg));
-  //     });
-
-  //     // Wait for handshake to complete
-  //     await handshakePromise;
-
-  //     // Define multiple filters
-  //     const multipleFilters = [
-  //         { type: 'CATEGORY' as const, value: ['CUSTOM:V2'] },
-  //         { type: 'WILDCARD' as const, value: ['*'] }
-  //     ];
-
-  //     // Subscribe to block updates with multiple filters
-  //     let blockReceived = false;
-  //     let receivedBlock: any;
-
-  //     const subscribePromise = new Promise<void>((resolve, reject) => {
-  //         const timeout = setTimeout(() => {
-  //             reject(new Error('Block not received within timeout'));
-  //         }, 30000); // Timeout for receiving a block
-
-  //         pushChain.ws.subscribe((block) => {
-  //             blockReceived = true;
-  //             receivedBlock = block;
-  //             clearTimeout(timeout);
-  //             resolve();
-  //         }, multipleFilters);
-  //     });
-
-  //     // Initiate multiple transactions to trigger a block
-  //     const txInstance = await Tx.initialize(env);
-  //     for (let i = 0; i < 3; i++) {
-  //         await sendCustomTx(txInstance, generatePrivateKey(), i);
-  //     }
-
-  //     // Wait for block to be received
-  //     await subscribePromise;
-
-  //     // Assertions
-  //     expect(blockReceived).toBe(true);
-  //     expect(receivedBlock).toBeDefined();
-  //     expect(receivedBlock.transactions.length).toBeGreaterThanOrEqual(1);
-  //     expect(receivedBlock.transactions[0].category).toBe('CUSTOM:V2');
-
-  //     console.log('Block received with multiple filters:', JSON.stringify(receivedBlock, null, 2));
-  // }, 30000);
+  // ===== RECONNECTION AND RESILIENCE TESTS =====
 
   it('should handle reconnection and maintain subscription', async () => {
     let blockCount = 0;
@@ -605,207 +712,4 @@ describe('WebSocket Smoke Test', () => {
       lastBlock: receivedBlock,
     });
   }, 30000);
-
-  // it('should handle connection interruption', async () => {
-  //     const ws = pushChain.ws as any;
-
-  //     // First ensure we're connected
-  //     if (!pushChain.ws.isConnected()) {
-  //         await pushChain.ws.connect();
-  //     }
-
-  //     let blockCount = 0;
-  //     let lastBlockHash: string | null = null;
-  //     const receivedBlocks: any[] = [];
-
-  //     // Subscribe to blocks and track metrics
-  //     await pushChain.ws.subscribe((block) => {
-  //         blockCount++;
-  //         lastBlockHash = block.blockHash;
-  //         receivedBlocks.push(block);
-  //         console.log('Received block:', {
-  //             blockHash: block.blockHash,
-  //             blockCount,
-  //             txCount: block.transactions?.length || 0
-  //         });
-  //     });
-
-  //     // Initiate a transaction to trigger initial block
-  //     const txInstance = await Tx.initialize(env);
-  //     await sendCustomTx(txInstance, generatePrivateKey(), 0);
-
-  //     // Wait for initial block
-  //     const initialBlockPromise = new Promise<void>((resolve, reject) => {
-  //         const timeout = setTimeout(() => {
-  //             reject(new Error('WebSocetBlock not received within timeout'));
-  //         }, 30000);
-
-  //         pushChain.ws.subscribe((block) => {
-  //             blockCount++;
-  //             clearTimeout(timeout);
-  //             resolve();
-  //         });
-  //     });
-
-  //     await initialBlockPromise;
-  //     const initialBlockCount = blockCount;
-  //     const initialBlockHash = lastBlockHash;
-
-  //     console.log('Initial state:', {
-  //         blockCount: initialBlockCount,
-  //         lastBlockHash: initialBlockHash
-  //     });
-
-  //     // Test disconnection
-  //     console.log('Disconnecting...');
-  //     pushChain.ws.disconnect();
-  //     await sleep(1000); // Give time for disconnect
-  //     expect(pushChain.ws.isConnected()).toBe(false);
-
-  //     // Test reconnection
-  //     console.log('Reconnecting...');
-  //     await pushChain.ws.connect();
-  //     await sleep(1000); // Give time for connect
-  //     expect(pushChain.ws.isConnected()).toBe(true);
-  //     console.log('Reconnected successfully');
-
-  //     // Verify subscription is maintained by sending new transactions
-  //     const newBlockPromise = new Promise<void>((resolve, reject) => {
-  //         const timeout = setTimeout(() => {
-  //             reject(new Error('No new blocks received after reconnection'));
-  //         }, 30000);
-
-  //         pushChain.ws.subscribe((block) => {
-  //             blockCount++;
-  //             clearTimeout(timeout);
-  //             resolve();
-  //         });
-  //     });
-
-  //     // Send new transactions after reconnection
-  //     for (let i = 0; i < 3; i++) {
-  //         await sendCustomTx(txInstance, generatePrivateKey(), i);
-  //     }
-
-  //     // Wait for new block after reconnection
-  //     await newBlockPromise;
-
-  //     // Add delay to ensure new blocks are produced
-  //     await new Promise(resolve => setTimeout(resolve, 30000)); // 5 second delay
-
-  //     // Assertions
-  //     expect(blockCount).toBeGreaterThan(initialBlockCount);
-  //     expect(lastBlockHash).not.toBe(initialBlockHash);
-  //     expect(pushChain.ws.isConnected()).toBe(true);
-  //     expect(receivedBlocks[receivedBlocks.length - 1].transactions).toBeDefined();
-  //     expect(receivedBlocks[receivedBlocks.length - 1].transactions.length).toBeGreaterThan(0);
-
-  //     console.log('Final state:', {
-  //         initialBlockCount,
-  //         finalBlockCount: blockCount,
-  //         initialBlockHash,
-  //         finalBlockHash: lastBlockHash,
-  //         totalBlocksReceived: receivedBlocks.length,
-  //         lastBlockTxCount: receivedBlocks[receivedBlocks.length - 1].transactions.length
-  //     });
-  // }, 30000);
-
-  it('should handle handshake failure gracefully', async () => {
-    const ws = pushChain.ws as any;
-
-    // Store received messages
-    const receivedMessages: any[] = [];
-
-    // Create a promise that will track the handshake attempt
-    const handshakePromise = new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Handshake timeout'));
-      }, 5000);
-
-      ws.ws.on('message', (data: string) => {
-        try {
-          const message = JSON.parse(data);
-          receivedMessages.push(message);
-          if (message.type === 'HANDSHAKE_ACK' && !message.data.success) {
-            clearTimeout(timeout);
-            resolve();
-          }
-        } catch (error) {
-          console.error('Failed to parse message:', error);
-        }
-      });
-
-      // Send invalid handshake message
-      const invalidHandshakeMsg = {
-        type: 'HANDSHAKE',
-        data: {
-          // Missing required clientId
-          timestamp: Date.now(),
-        },
-      };
-      ws.ws.send(JSON.stringify(invalidHandshakeMsg));
-    });
-
-    // Wait for handshake failure
-    await handshakePromise;
-
-    // Verify handshake failure response
-    const handshakeAck = receivedMessages.find(
-      (msg) => msg.type === 'HANDSHAKE_ACK'
-    );
-    expect(handshakeAck).toBeDefined();
-    expect(handshakeAck.data.success).toBe(false);
-    expect(handshakeAck.data.error).toBeDefined();
-  }, 10000);
-
-  // it('should successfully subscribe and unsubscribe', async () => {
-  //     const ws = pushChain.ws as any;
-
-  //     // Perform handshake
-  //     const handshakeMsg = {
-  //         type: 'HANDSHAKE',
-  //         data: {
-  //             clientId: ws.clientId || 'test-client'
-  //         },
-  //         timestamp: Date.now()
-  //     };
-  //     ws.ws.send(JSON.stringify(handshakeMsg));
-
-  //     // Wait for handshake acknowledgment
-  //     await new Promise<void>((resolve, reject) => {
-  //         const timeout = setTimeout(() => reject(new Error('Handshake timeout')), 5000);
-
-  //         ws.ws.on('message', (data: string) => {
-  //             const message = JSON.parse(data);
-  //             if (message.type === 'HANDSHAKE_ACK') {
-  //                 clearTimeout(timeout);
-  //                 resolve();
-  //             }
-  //         });
-  //     });
-
-  //     // Subscribe to blocks
-  //     const subscriptionId = await pushChain.ws.subscribe(() => {
-  //         // Callback intentionally empty for this test
-  //     });
-  //     expect(subscriptionId).toBeDefined();
-  //     expect(typeof subscriptionId).toBe('string');
-
-  //     // Unsubscribe from blocks and wait for acknowledgment
-  //     const unsubscribePromise = new Promise<void>((resolve, reject) => {
-  //         const timeout = setTimeout(() => reject(new Error('Unsubscribe timeout')), 5000);
-
-  //         ws.ws.on('message', (data: string) => {
-  //             const message = JSON.parse(data);
-  //             if (message.type === 'UNSUBSCRIBE_ACK' && message.data.success) {
-  //                 clearTimeout(timeout);
-  //                 resolve();
-  //             }
-  //         });
-
-  //         pushChain.ws.unsubscribe(subscriptionId);
-  //     });
-
-  //     await unsubscribePromise;
-  // }, 10000);
 });
