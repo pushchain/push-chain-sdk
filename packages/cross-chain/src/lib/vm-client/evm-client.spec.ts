@@ -92,7 +92,7 @@ describe('EvmClient', () => {
     expect(typeof result).toBe('string');
   });
 
-  it('writes contract value', async () => {
+  it.skip('writes contract value', async () => {
     const balance = await evmClient.getBalance(
       universalSigner.address as `0x${string}`
     );

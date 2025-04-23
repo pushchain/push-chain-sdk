@@ -1,11 +1,11 @@
-import { Abi, parseAbi, parseEther, zeroHash } from 'viem';
+import { Abi, zeroHash, getContractAddress, toBytes, sha256 } from 'viem';
 import { CHAIN, ENV, VM } from '../constants/enums';
 import { UniversalSigner } from '../universal/universal.types';
 import { ExecuteParams } from './orchestrator.types';
 import { EvmClient } from '../vm-client/evm-client';
-import { CHAIN_ID } from 'packages/devnet/src/lib/constants';
 import { CHAIN_INFO } from '../constants/chain';
 import { LOCKER_ABI } from '../constants/abi';
+import { toChainAgnostic } from '../universal/account';
 
 export class Orchestrator {
   constructor(
@@ -19,11 +19,7 @@ export class Orchestrator {
    * Executes an interaction on Push Chain — either direct or gasless.
    * Handles NMSC derivation, fee checks, and optional fee-locking.
    */
-  async execute({
-    target,
-    value = parseEther('0'),
-    data,
-  }: ExecuteParams): Promise<`0x${string}`> {
+  async execute(execute: ExecuteParams): Promise<`0x${string}`> {
     const chain = this.universalSigner.chain;
 
     // 1. Block direct execution if signer is already on Push Chain
@@ -35,33 +31,35 @@ export class Orchestrator {
     const nmscAddress = await this.deriveNMSCAddress();
 
     // 3. Estimate gas fee for this interaction
-    const requiredFee = await this.estimateFee({ target, value, data });
+    const requiredFee = await this.estimateFee(execute);
 
     // 4. Check NMSC balance on Push Chain
-    const hasFunds = await this.checkNMSCBalance(nmscAddress);
+    const hasFunds = await this.checkPushBalance(nmscAddress);
 
-    // 5. If not enough funds, lock required fee on source chain
+    const executionHash = this.sha256HashOfJson(execute);
+    // 5. If not enough funds, lock required fee on source chain and send tx to Push chain
     if (hasFunds < requiredFee) {
-      await this.lockFee(requiredFee);
+      const feeLockTxHash = await this.lockFee(requiredFee, executionHash);
+      return this.sendCrossChainPushTx(feeLockTxHash, execute);
+    } else {
+      // 6. If enough funds, sign execution data and send tx to Push chain
+      const signature = await this.universalSigner.signMessage(
+        toBytes(executionHash) // UTF-8 encode the hex string
+      );
+      return this.sendCrossChainPushTx(null, execute, signature);
     }
-
-    // 6. Submit gasless transaction to Push Chain via custom Cosmos tx
-    const txHash = await this.sendGaslessPushTx({
-      target,
-      value,
-      data,
-      nmscAddress,
-    });
-
-    return txHash;
   }
 
   /**
    * Computes the CREATE2-derived smart wallet address on Push Chain.
    */
   private async deriveNMSCAddress(): Promise<`0x${string}`> {
-    // TODO: Use CREATE2 logic with known factory + salt (user address)
-    return this.universalSigner.address as `0x${string}`;
+    return getContractAddress({
+      bytecode: '0x...', // To be deployed smart contract byteCode
+      from: '0x', // factory contract on Push Chain
+      opcode: 'CREATE2',
+      salt: toBytes(toChainAgnostic(this.universalSigner)),
+    });
   }
 
   /**
@@ -101,7 +99,7 @@ export class Orchestrator {
    * Checks NMSC balance for a given account
    * In case NMSC is not deployed - balance would be 0
    */
-  private async checkNMSCBalance(address: `0x${string}`): Promise<bigint> {
+  private async checkPushBalance(address: `0x${string}`): Promise<bigint> {
     const pushChain =
       this.pushNetwork === ENV.MAINNET
         ? CHAIN.PUSH_MAINNET
@@ -117,7 +115,10 @@ export class Orchestrator {
    * Locks fee on origin chain by interacting with the fee-locker contract.
    * amount is in lowest asset representation of the chain ( wei for evm )
    */
-  private async lockFee(amount: bigint): Promise<string> {
+  private async lockFee(
+    amount: bigint,
+    executionHash: string = zeroHash
+  ): Promise<string> {
     const { lockerContract, vm, defaultRPC } =
       CHAIN_INFO[this.universalSigner.chain];
 
@@ -133,7 +134,7 @@ export class Orchestrator {
           abi: LOCKER_ABI as Abi,
           address: lockerContract,
           functionName: 'addFunds',
-          args: [zeroHash],
+          args: [executionHash],
           signer: this.universalSigner,
           value: amount,
         });
@@ -150,17 +151,11 @@ export class Orchestrator {
   /**
    * Sends a custom Cosmos tx to Push Chain (gasless) to execute user intent.
    */
-  private async sendGaslessPushTx({
-    target,
-    value,
-    data,
-    nmscAddress,
-  }: {
-    target: string;
-    value: bigint;
-    data?: `0x${string}`;
-    nmscAddress: string;
-  }): Promise<`0x${string}`> {
+  public async sendCrossChainPushTx(
+    feeLockTxHash: string | null,
+    execute?: ExecuteParams,
+    signature?: Uint8Array
+  ): Promise<`0x${string}`> {
     // TODO: build and broadcast custom Cosmos transaction (gasless meta tx)
     return '0xTxHash';
   }
@@ -170,5 +165,17 @@ export class Orchestrator {
    */
   private isPushChain(chain: CHAIN): boolean {
     return chain === CHAIN.PUSH_MAINNET || chain === CHAIN.PUSH_TESTNET;
+  }
+
+  /**
+   * Utility: create sha256Hash of a JSON
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private sha256HashOfJson(obj: any): string {
+    // Step 1: Deterministic stringify (stable key order)
+    const jsonStr = JSON.stringify(obj, Object.keys(obj).sort());
+
+    // Step 2: Hash with SHA-256 using viem
+    return sha256(toBytes(jsonStr));
   }
 }
