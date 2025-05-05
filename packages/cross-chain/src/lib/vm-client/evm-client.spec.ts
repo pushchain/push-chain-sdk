@@ -71,6 +71,8 @@ describe('EvmClient', () => {
           return hexToBytes(txHash);
         },
       };
+    } else {
+      throw new Error('No Private key set');
     }
   });
 
@@ -112,5 +114,46 @@ describe('EvmClient', () => {
     });
     console.log('Tx Hash:', txHash);
     expect(txHash).toMatch(/^0x/);
+  });
+
+  describe('estimateGas', () => {
+    it('estimates gas for a simple transfer', async () => {
+      const gas = await evmClient.estimateGas({
+        from: universalSigner.address as `0x${string}`,
+        to: universalSigner.address as `0x${string}`,
+        value: BigInt(0),
+        data: '0x' as Hex,
+      });
+      expect(typeof gas).toBe('bigint');
+      expect(gas).toBeGreaterThan(0);
+    });
+
+    it('throws error for invalid from address', async () => {
+      await expect(
+        evmClient.estimateGas({
+          from: '0xInvalidAddress' as `0x${string}`,
+          to: universalSigner.address as `0x${string}`,
+          value: BigInt(0),
+        })
+      ).rejects.toThrow();
+    });
+
+    it('handles missing data field', async () => {
+      const gas = await evmClient.estimateGas({
+        from: universalSigner.address as `0x${string}`,
+        to: universalSigner.address as `0x${string}`,
+        value: BigInt(0),
+      });
+      expect(typeof gas).toBe('bigint');
+      expect(gas).toBeGreaterThan(0);
+    });
+  });
+
+  describe('getGasPrice', () => {
+    it('gets the current gas price', async () => {
+      const gasPrice = await evmClient.getGasPrice();
+      expect(typeof gasPrice).toBe('bigint');
+      expect(gasPrice).toBeGreaterThan(0);
+    });
   });
 });
