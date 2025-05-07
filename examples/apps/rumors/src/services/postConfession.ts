@@ -1,12 +1,10 @@
 import { ConfessionType } from '@/common';
-import { PushNetwork } from '@pushprotocol/push-chain';
+import { PushChain } from '@pushchain/devnet';
 import protobuf from 'protobufjs';
 
 export const postConfession = async (
-  pushNetwork: PushNetwork,
-  wallet: string,
+  pushChain: PushChain,
   confessionDetails: ConfessionType,
-  handleSignMessage: (data: Uint8Array) => Promise<Uint8Array>
 ) => {
   try {
     // Define the schema
@@ -37,30 +35,16 @@ export const postConfession = async (
     ).finish();
     console.log('Binary Encoded data:', buffer);
 
-    // Create an unsigned transaction
-    const unsignedTx = pushNetwork.tx.createUnsigned(
-      'CUSTOM:RUMORS',
-      ['eip155:1:0xC9C52B3717A8Dfaacd0D33Ce14a916C575eE332A'], // acc 63
-      buffer
-    );
-    console.log('Unsigned Transaction:', unsignedTx);
+    const txRes = await pushChain.tx.send([
+      PushChain.utils.account.toUniversal('eip155:1:0xC9C52B3717A8Dfaacd0D33Ce14a916C575eE332A')
+    ], {
+      category: 'CUSTOM:RUMORS',
+      data: Buffer.from(buffer).toString('hex'),
+    });
 
-    const signer = {
-      account: wallet,
-      signMessage: async (data: Uint8Array) => {
-        try {
-          return await handleSignMessage(data);
-        } catch (error) {
-          console.error('Error signing with Push Wallet:', error);
-          throw error;
-        }
-      },
-    };
+    console.log('🪙🪙Push Wallet Transaction: ', txRes);
 
-    const txHash = await pushNetwork.tx.send(unsignedTx, signer);
-    console.log('🪙🪙Push Wallet Transaction: ', txHash);
-
-    return txHash;
+    return txRes.txHash;
   } catch (error) {
     console.error('Error in postConfession:', error);
     throw error; // Re-throw the error to handle it in the component

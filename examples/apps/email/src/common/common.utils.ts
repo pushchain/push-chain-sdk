@@ -1,6 +1,8 @@
 import { clsx, type ClassValue } from 'clsx';
+import { Email as EmailType } from 'push-mail/src/lib/generated/txData/email';
 import { EMAIL_BOX, Email } from './common.types';
 import { UniversalAddress } from '@pushprotocol/pushchain-ui-kit';
+import { Email as EmailUtil } from './email';
 
 export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
@@ -123,7 +125,7 @@ export const extractWalletAddress = (address: string) => {
 export const getChainFromCAIP = (caip: string) => {
   const chainId = caip.split(':')[1];
   if (chainId === '1') return 'eth';
-  if (chainId === '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp') return 'sol';
+  if (chainId === '4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z') return 'sol';
   return 'push';
 };
 
@@ -132,7 +134,7 @@ export const getInCAIP = (address: string, chain: string) => {
     chain === 'eth'
       ? 'eip155:1'
       : chain === 'sol'
-      ? 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
+      ? 'solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z'
       : chain === 'bnb'
       ? 'eip155:56'
       : 'push:devnet'
@@ -162,3 +164,12 @@ export const transformEmails = (emails: any[]) => {
     txHash: email.txHash,
   }));
 };
+
+export const serializeData = (txData: EmailType) =>
+  EmailUtil.encode(EmailUtil.create(txData)).finish();
+
+export const deserializeData = (txData: Uint8Array) => EmailUtil.decode(txData);
+
+export const RPC_URL = (!process.env.NODE_ENV || process.env.NODE_ENV === 'development')
+  ? 'https://eth-sepolia.g.alchemy.com/v2/skgdTbmOr9TCA8QTNb4y1PFfDW1iPn8y'
+  : 'https://sepolia.infura.io/v3/742ecf6f4ffb47dbb4b7b0203779050b';

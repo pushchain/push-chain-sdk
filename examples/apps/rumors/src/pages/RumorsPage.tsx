@@ -1,7 +1,7 @@
-import EmailScreen from '@/modules/RumorsPage/RumorsScreen';
+import RumorsScreen from '@/modules/RumorsPage/RumorsScreen';
 
 const RumorsPage = () => {
-  return <EmailScreen />;
+  return <RumorsScreen />;
 };
 
 export default RumorsPage;

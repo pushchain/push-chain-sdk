@@ -16,6 +16,7 @@ const RumorsList: React.FC<RumorsListProps> = ({ containerRef }) => {
     fetchSentConfessions,
     fetchConfessions,
     loading,
+    easterData,
   } = useAppContext();
 
   const [pages, setPages] = useState({
@@ -74,6 +75,7 @@ const RumorsList: React.FC<RumorsListProps> = ({ containerRef }) => {
       alignItems="center"
       gap="spacing-md"
     >
+      {easterData && currTab === TABS.LATEST && (<RumorItem pinned {...easterData} />)}
       {loading[currTab] && data[currTab].length === 0 && (
         <Spinner size="medium" />
       )}

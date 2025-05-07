@@ -180,15 +180,14 @@ const AttachmentList: React.FC<{ attachments: FileAttachments }> = ({
   attachments,
 }) => {
   const handleDownload = (attachment: FileAttachment) => {
-    const decodedContent = atob(attachment.content);
-    const blob = new Blob([decodedContent], { type: attachment.type });
+    const byteArray = Uint8Array.from(atob(attachment.content), c => c.charCodeAt(0));
+    const blob = new Blob([byteArray], { type: attachment.type });
+  
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = attachment.filename;
-    document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 

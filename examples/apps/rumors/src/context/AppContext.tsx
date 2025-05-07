@@ -1,21 +1,20 @@
 'use client';
-import { PushNetwork } from '@pushprotocol/push-chain';
 import React, { createContext, useContext } from 'react';
-import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
 import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 import { ReactNode, useEffect, useState } from 'react';
-import { getFullCaipAddress, RumorType, TABS } from '@/common';
+import { easterRumor, RPC_URL, RumorType, TABS } from '@/common';
 import { getConfessions } from '@/services/getConfessions';
 import { getSentConfessions } from '@/services/getSentConfessions';
 import { checkAndUpdateActivity } from '@/services/rewards';
+import { CONSTANTS, createUniversalSigner, PushChain } from '@pushchain/devnet';
+import { getSingleConfession } from '@/services/getSingleConfession';
 
 interface AppContextType {
-  pushNetwork: PushNetwork | null;
-  setPushNetwork: React.Dispatch<React.SetStateAction<PushNetwork | null>>;
+  pushChain: PushChain | null;
+  setPushChain: React.Dispatch<React.SetStateAction<PushChain | null>>;
   currTab: TABS;
   setCurrTab: React.Dispatch<React.SetStateAction<TABS>>;
   account: string | null;
-  handleSignMessage: (data: Uint8Array) => Promise<Uint8Array>;
   fetchSentConfessions: (page: number) => Promise<void>;
   fetchConfessions: (page: number) => Promise<void>;
   data: {
@@ -28,6 +27,8 @@ interface AppContextType {
       [TABS.MY_RUMORS]: RumorType[];
     }>
   >;
+  easterData: RumorType | null;
+  setEasterData: React.Dispatch<React.SetStateAction<RumorType | null>>;
   hasMore: {
     [TABS.LATEST]: boolean;
     [TABS.MY_RUMORS]: boolean;
@@ -42,7 +43,7 @@ export const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<string | null>(null);
-  const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
+  const [pushChain, setPushChain] = useState<PushChain | null>(null);
   const [currTab, setCurrTab] = useState<TABS>(TABS.LATEST);
   const [data, setData] = useState<{
     [TABS.LATEST]: RumorType[];
@@ -51,6 +52,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [TABS.LATEST]: [],
     [TABS.MY_RUMORS]: [],
   });
+  const [dummy, setDummy] = useState<RumorType | null>(null);
   const [loading, setLoading] = useState({
     [TABS.LATEST]: true,
     [TABS.MY_RUMORS]: true,
@@ -63,13 +65,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { universalAddress, handleSignMessage } = usePushWalletContext();
 
   const fetchConfessions = async (page: number) => {
-    if (!pushNetwork) return;
+    if (!pushChain) return;
     setLoading((prev) => ({
       ...prev,
       [TABS.LATEST]: true,
     }));
     try {
-      const fetchedConfessions = await getConfessions(pushNetwork, page, 15);
+      const fetchedConfessions = await getConfessions(pushChain, page, 15);
+      console.log(fetchedConfessions);
       if (fetchedConfessions.length > 0) {
         setData((prev) => ({
           ...prev,
@@ -99,7 +102,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const fetchSentConfessions = async (page: number) => {
-    if (!account || !pushNetwork) return;
+    if (!universalAddress || !pushChain) return;
     setLoading((prev) => ({
       ...prev,
       [TABS.MY_RUMORS]: true,
@@ -110,11 +113,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error('No wallet connected');
       }
       const fetchedSentConfessions = await getSentConfessions(
-        pushNetwork,
-        account,
+        pushChain,
+        universalAddress,
         page,
         15
       );
+
+      console.log(fetchedSentConfessions);
+      
       if (fetchedSentConfessions.length > 0) {
         setData((prev) => ({
           ...prev,
@@ -142,49 +148,87 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const fetchDummyConfession = async () => {
+    if (!pushChain) return;
+
+    try {
+      const dummyConfession = await getSingleConfession(pushChain, easterRumor.txnHash);
+      console.log(dummyConfession);
+      if (dummyConfession) {
+        setDummy(dummyConfession);
+      }
+    } catch (error) {
+      console.error('Error fetching Easter confessions:', error);
+    }
+  }
+
   useEffect(() => {
     fetchConfessions(1);
-  }, [pushNetwork]);
+  }, [pushChain]);
 
   useEffect(() => {
     fetchSentConfessions(1);
-  }, [account, pushNetwork]);
+  }, [account, pushChain]);
+
+  useEffect(() => {
+    fetchDummyConfession();
+  }, [pushChain]);
 
   useEffect(() => {
     if (universalAddress) {
-      setAccount(getFullCaipAddress(universalAddress));
+      setAccount(PushChain.utils.account.toChainAgnostic(universalAddress));
       checkAndUpdateActivity(universalAddress);
     }
   }, [universalAddress]);
 
   useEffect(() => {
-    const setNetwork = async () => {
-      try {
-        const pushNetworkInstance = await PushNetwork.initialize(ENV.DEV);
-        console.log('Push Network initialized:', pushNetworkInstance);
-        setPushNetwork(pushNetworkInstance);
-      } catch (error) {
-        console.error('Error initializing Push Network:', error);
-      }
-    };
-    setNetwork();
-  }, []);
+    if (universalAddress) {
+      const setNetwork = async () => {
+        const signer = createUniversalSigner({
+          address: universalAddress.address,
+          chain: universalAddress.chain,
+          chainId: universalAddress.chainId,
+          signMessage: async (data: Uint8Array) => {
+            try {
+              return await handleSignMessage(data);
+            } catch (error) {
+              console.error('Error signing with Push Wallet:', error);
+              throw error;
+            }
+          },
+        });
+        try {
+          const pushNetworkInstance = await PushChain.initialize(signer, {
+            network: CONSTANTS.ENV.DEVNET,
+            rpcUrl: RPC_URL,
+          });
+          setPushChain(pushNetworkInstance);
+        } catch (error) {
+          console.error('Error initializing Push Network:', error);
+          alert(`Error initializing Push Network`);
+        }
+      };
+      setNetwork();
+    }
+  }, [universalAddress]);
+
 
   return (
     <AppContext.Provider
       value={{
-        pushNetwork,
-        setPushNetwork,
+        pushChain,
+        setPushChain,
         currTab,
         setCurrTab,
         account,
-        handleSignMessage,
         fetchSentConfessions,
         fetchConfessions,
         data,
         setData,
         hasMore,
         loading,
+        easterData: dummy,
+        setEasterData: setDummy,
       }}
     >
       {children}

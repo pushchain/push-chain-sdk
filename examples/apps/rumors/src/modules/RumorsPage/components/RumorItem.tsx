@@ -1,6 +1,7 @@
 import {
   CHAIN_LOGO,
   convertCaipToObject,
+  easterRumor,
   extractWalletAddress,
   formatTimestamp,
   RumorType,
@@ -40,19 +41,24 @@ const getChainIcon = (chainId: string) => {
   }
 };
 
-const RumorItem: React.FC<RumorType> = ({
+interface RumorItemProps extends RumorType {
+  pinned?: boolean;
+}
+
+const RumorItem: React.FC<RumorItemProps> = ({
   address,
   markdownPost,
   txnHash,
   timestamp,
   upvoteWallets,
   downvoteWallets,
+  pinned = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
 
-  const { account, pushNetwork, setData, handleSignMessage } = useAppContext();
+  const { account, pushChain, setData, setEasterData } = useAppContext();
   const { universalAddress } = usePushWalletContext();
 
   const { result } = convertCaipToObject(address);
@@ -60,68 +66,86 @@ const RumorItem: React.FC<RumorType> = ({
   const handleUpvote = async () => {
     if (!txnHash) return;
     try {
-      if (pushNetwork && account) {
+      if (pushChain && account) {
         await performUpVote(
-          pushNetwork,
+          pushChain,
           account,
-          txnHash,
+          timestamp,
           upvoteWallets,
           downvoteWallets,
-          handleSignMessage
         );
         if (universalAddress) {
           checkAndUpdateVoteActivity(universalAddress, 'upvote', txnHash);
         }
         if (upvoteWallets.includes(account)) {
-          setData((prev) => ({
-            ...prev,
-            [TABS.LATEST]: prev[TABS.LATEST].map((item) =>
-              item.txnHash === txnHash
-                ? {
-                    ...item,
-                    upvoteWallets: item.upvoteWallets.filter(
-                      (w) => w !== account
-                    ),
-                  }
-                : item
-            ),
-            [TABS.MY_RUMORS]: prev[TABS.MY_RUMORS].map((item) =>
-              item.txnHash === txnHash
-                ? {
-                    ...item,
-                    upvoteWallets: item.upvoteWallets.filter(
-                      (w) => w !== account
-                    ),
-                  }
-                : item
-            ),
-          }));
+          if (txnHash === easterRumor.txnHash) {
+            setEasterData((item) => (item && {
+              ...item,
+              upvoteWallets: item.upvoteWallets.filter(
+                (w) => w !== account
+              ),
+            }));
+          } else {
+            setData((prev) => ({
+              ...prev,
+              [TABS.LATEST]: prev[TABS.LATEST].map((item) =>
+                item.txnHash === txnHash
+                  ? {
+                      ...item,
+                      upvoteWallets: item.upvoteWallets.filter(
+                        (w) => w !== account
+                      ),
+                    }
+                  : item
+              ),
+              [TABS.MY_RUMORS]: prev[TABS.MY_RUMORS].map((item) =>
+                item.txnHash === txnHash
+                  ? {
+                      ...item,
+                      upvoteWallets: item.upvoteWallets.filter(
+                        (w) => w !== account
+                      ),
+                    }
+                  : item
+              ),
+            }));
+          }
         } else {
-          setData((prev) => ({
-            ...prev,
-            [TABS.LATEST]: prev[TABS.LATEST].map((item) =>
-              item.txnHash === txnHash
-                ? {
-                    ...item,
-                    upvoteWallets: [account, ...item.upvoteWallets],
-                    downvoteWallets: item.downvoteWallets.filter(
-                      (w) => w !== account
-                    ),
-                  }
-                : item
-            ),
-            [TABS.MY_RUMORS]: prev[TABS.MY_RUMORS].map((item) =>
-              item.txnHash === txnHash
-                ? {
-                    ...item,
-                    upvoteWallets: [account, ...item.upvoteWallets],
-                    downvoteWallets: item.downvoteWallets.filter(
-                      (w) => w !== account
-                    ),
-                  }
-                : item
-            ),
-          }));
+          if (txnHash === easterRumor.txnHash) {
+            setEasterData((item) => (item && {
+              ...item,
+              upvoteWallets: [account, ...item.upvoteWallets],
+              downvoteWallets: item.downvoteWallets.filter(
+                (w) => w !== account
+              ),
+            }))
+          } else {
+            setData((prev) => ({
+              ...prev,
+              [TABS.LATEST]: prev[TABS.LATEST].map((item) =>
+                item.txnHash === txnHash
+                  ? {
+                      ...item,
+                      upvoteWallets: [account, ...item.upvoteWallets],
+                      downvoteWallets: item.downvoteWallets.filter(
+                        (w) => w !== account
+                      ),
+                    }
+                  : item
+              ),
+              [TABS.MY_RUMORS]: prev[TABS.MY_RUMORS].map((item) =>
+                item.txnHash === txnHash
+                  ? {
+                      ...item,
+                      upvoteWallets: [account, ...item.upvoteWallets],
+                      downvoteWallets: item.downvoteWallets.filter(
+                        (w) => w !== account
+                      ),
+                    }
+                  : item
+              ),
+            }));
+          }
         }
       }
     } catch (error) {
@@ -133,14 +157,13 @@ const RumorItem: React.FC<RumorType> = ({
   const handleDownvote = async () => {
     if (!txnHash) return;
     try {
-      if (pushNetwork && account) {
+      if (pushChain && account) {
         await performDownVote(
-          pushNetwork,
+          pushChain,
           account,
-          txnHash,
+          timestamp,
           upvoteWallets,
           downvoteWallets,
-          handleSignMessage
         );
         if (universalAddress) {
           checkAndUpdateVoteActivity(universalAddress, 'downvote', txnHash);
@@ -225,7 +248,7 @@ const RumorItem: React.FC<RumorType> = ({
       padding="spacing-md"
       gap="spacing-md"
       alignItems="flex-start"
-      border="border-sm solid stroke-secondary"
+      border={`border-sm solid ${pinned ? 'stroke-state-info-bold' : 'stroke-secondary'}`}
       borderRadius="radius-md"
       width="100%"
       css={css`

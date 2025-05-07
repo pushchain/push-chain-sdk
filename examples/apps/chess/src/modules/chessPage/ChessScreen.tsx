@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Chess, Move } from 'chess.js';
+import { Chess } from 'chess.js';
 import { useAppContext } from '@/context/AppContext';
 import quitCurrentSession from '@/services/quitCurrentSession';
 import { getGameData } from '@/services/getGameData';
@@ -59,28 +59,19 @@ const ChessScreen = () => {
       return false;
     }
 
-    let moveToSend: Move | null = null;
-    let prevFen: string | null = null;
+    const nextGame = new Chess(game.fen());
+    const prevFen = game.fen();
+    const move = nextGame.move({ from: source, to: target, promotion: 'q' });
 
-    setGame((prevGame) => {
-      prevFen = prevGame.fen();
-      const newGame = new Chess(prevGame.fen());
-      try {
-        const move = newGame.move({ from: source, to: target, promotion: 'q' });
-        if (!move) {
-          console.log('Invalid Move');
-          return prevGame;
-        }
-        moveToSend = move;
-        return newGame;
-      } catch (err) {
-        console.log(err);
-        return prevGame;
-      }
-    });
+    if (!move) {
+      console.log('Invalid Move');
+      return false;
+    }
 
-    if (gameData && universalAddress && pushChain && moveToSend) {
-      sendGameMove(pushChain, universalAddress, gameData, moveToSend)
+    setGame(nextGame);
+
+    if (gameData && universalAddress && pushChain && move) {
+      sendGameMove(pushChain, universalAddress, gameData, move)
         .then(() => {
           if (currentTimeRef.current === 0) {
             if (prevFen) setGame(new Chess(prevFen));
@@ -93,7 +84,7 @@ const ChessScreen = () => {
               return {
                 ...prevData,
                 moves: [
-                  { player: universalAddress.address, move: moveToSend! },
+                  { player: universalAddress.address, move: move },
                   ...prevData.moves,
                 ],
               };
@@ -105,6 +96,8 @@ const ChessScreen = () => {
         .catch(() => {
           if (prevFen) setGame(new Chess(prevFen));
         });
+    } else {
+      if (prevFen) setGame(new Chess(prevFen));
     }
 
     return true;

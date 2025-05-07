@@ -1,7 +1,5 @@
 'use client';
-import { PushNetwork } from '@pushprotocol/push-chain';
 import React, { createContext, useContext } from 'react';
-import { ENV } from '@pushprotocol/push-chain/src/lib/constants';
 import {
   getWalletDataFromAccount,
   usePushWalletContext,
@@ -12,21 +10,22 @@ import {
   Email,
   EMAIL_BOX,
   getFullCaipAddress,
-  transformEmails,
+  RPC_URL,
   Wallet,
 } from '@/common';
 import {
   checkAndUpdateActivity,
   checkAndUpdateReceiveEmailActivity,
 } from '@/services/rewards';
+import { CONSTANTS, createUniversalSigner, PushChain } from '@pushchain/devnet';
+import { getSentPushEmails } from '@/services/getSentEmails';
+import { getReceivedPushEmails } from '@/services/getReceivedEmails';
 
 interface AppContextType {
   searchInput: string;
   setSearchInput: React.Dispatch<React.SetStateAction<string>>;
   selectedEmail: Email | null; // this is the email that is currently selected by the user
   setSelectedEmail: React.Dispatch<React.SetStateAction<Email | null>>;
-  pushNetwork: PushNetwork | null;
-  setPushNetwork: React.Dispatch<React.SetStateAction<PushNetwork | null>>;
   emails: {
     sent: Email[];
     inbox: Email[];
@@ -51,6 +50,7 @@ interface AppContextType {
   isReceivedEmailLoading: boolean;
   emailBot: boolean;
   setEmailBot: React.Dispatch<React.SetStateAction<boolean>>;
+  pushChain: PushChain | null;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -59,7 +59,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState<string>('');
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
-  const [pushNetwork, setPushNetwork] = useState<PushNetwork | null>(null);
+  const [pushChain, setPushChain] = useState<PushChain | null>(null);
   const [pushEmail, setPushEmail] = useState<PushMail | null>(null);
   const [currTab, setCurrTab] = useState<EMAIL_BOX>(EMAIL_BOX.INBOX);
   const [emails, setEmails] = useState<{
@@ -79,40 +79,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { universalAddress, handleSignMessage } = usePushWalletContext();
 
   const getSentEmails = async () => {
-    if (!account || !pushEmail || isSentEmailLoading) return;
+    if (!universalAddress || !pushChain || isSentEmailLoading) return;
     setIsSentEmailLoading(true);
-    console.log('check');
     try {
-      const sent = await pushEmail.getBySender(account);
+      const data = await getSentPushEmails(pushChain, universalAddress);
       setEmails((prev) => ({
         ...prev,
-        sent: transformEmails(sent),
+        sent: data,
       }));
-    } catch (err) {
-      console.log('Error fetching Sent Emails', err);
     } finally {
       setIsSentEmailLoading(false);
     }
   };
 
   const getReceivedEmails = async () => {
-    if (!account || !pushEmail || isReceivedEmailLoading) return;
+    if (!universalAddress || !pushChain || isReceivedEmailLoading) return;
     setIsReceivedEmailLoading(true);
     try {
-      const received = await pushEmail.getByRecipient(account);
+      const data = await getReceivedPushEmails(pushChain, universalAddress);
       setEmails((prev) => ({
         ...prev,
-        inbox: transformEmails(received),
+        inbox: data,
       }));
-    } catch (err) {
-      console.log('Error fetching Received Emails', err);
     } finally {
       setIsReceivedEmailLoading(false);
     }
   };
 
   const getEmails = async () => {
-    if (!account || !pushEmail) return;
+    if (!universalAddress || !pushChain) return;
     setIsLoading(true);
     try {
       await Promise.all([getSentEmails(), getReceivedEmails()]);
@@ -135,7 +130,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [selectedEmail, universalAddress]);
 
   useEffect(() => {
-    if (!account || !pushEmail) return;
+    if (!universalAddress || !pushChain) return;
     getEmails();
     const interval = setInterval(() => {
       getSentEmails();
@@ -143,7 +138,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, 5 * 60 * 1000); // 5 minutes interval
 
     return () => clearInterval(interval);
-  }, [account, pushEmail]);
+  }, [universalAddress, pushChain]);
 
   useEffect(() => {
     if (account) {
@@ -160,18 +155,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [universalAddress]);
 
   useEffect(() => {
-    const setNetwork = async () => {
-      try {
-        const pushNetworkInstance = await PushNetwork.initialize(ENV.DEV);
-        const pushMail = await PushMail.initialize(ENV.DEV);
-        setPushNetwork(pushNetworkInstance);
-        setPushEmail(pushMail);
-      } catch (error) {
-        console.error('Error initializing Push Network:', error);
-      }
-    };
-    setNetwork();
-  }, []);
+    if (universalAddress) {
+      const setNetwork = async () => {
+        const signer = createUniversalSigner({
+          address: universalAddress.address,
+          chain: universalAddress.chain,
+          chainId: universalAddress.chainId,
+          signMessage: async (data: Uint8Array) => {
+            try {
+              return await handleSignMessage(data);
+            } catch (error) {
+              console.error('Error signing with Push Wallet:', error);
+              throw error;
+            }
+          },
+        });
+        try {
+          const pushNetworkInstance = await PushChain.initialize(signer, {
+            network: CONSTANTS.ENV.DEVNET,
+            rpcUrl: RPC_URL,
+          });
+          setPushChain(pushNetworkInstance);
+        } catch (error) {
+          console.error('Error initializing Push Network:', error);
+          alert(`Error initializing Push Network`);
+        }
+      };
+      setNetwork();
+    }
+  }, [universalAddress]);
+
   return (
     <AppContext.Provider
       value={{
@@ -179,8 +192,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSearchInput,
         selectedEmail,
         setSelectedEmail,
-        pushNetwork,
-        setPushNetwork,
         emails,
         setEmails,
         currTab,
@@ -197,6 +208,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isReceivedEmailLoading,
         emailBot,
         setEmailBot,
+        pushChain,
       }}
     >
       {children}

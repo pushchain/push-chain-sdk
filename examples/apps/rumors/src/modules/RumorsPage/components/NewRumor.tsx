@@ -18,6 +18,7 @@ import Strikethrough from '@/common/icons/Strikethrough';
 import Quote from '@/common/icons/Quote';
 import Link from '@/common/icons/Link';
 import { getSentConfessions } from '@/services/getSentConfessions';
+import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 
 const NewRumor = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -27,7 +28,8 @@ const NewRumor = () => {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const { account, pushNetwork, setData, handleSignMessage } = useAppContext();
+  const { account, pushChain, setData } = useAppContext();
+  const { universalAddress } = usePushWalletContext();
 
   const insertText = (before: string, after = '') => {
     const textarea = textareaRef.current;
@@ -55,32 +57,44 @@ const NewRumor = () => {
     }
   };
 
-  const handleFetchNewData = async () => {
-    if (!account || !pushNetwork) return;
-    try {
-      const fetchedSentConfession = await getSentConfessions(
-        pushNetwork,
-        account,
-        1,
-        1
-      );
-      if (fetchedSentConfession && fetchedSentConfession.length) {
-        setData((prev) => ({
-          ...prev,
-          [TABS.LATEST]: prev[TABS.LATEST].map((item) =>
-            item.txnHash === 'temp-rumor' ? fetchedSentConfession[0] : item
-          ),
-          [TABS.MY_RUMORS]: prev[TABS.MY_RUMORS].map((item) =>
-            item.txnHash === 'temp-rumor' ? fetchedSentConfession[0] : item
-          ),
-        }));
+  const handleFetchNewData = (newTxnHash: string) => {
+    if (!universalAddress || !pushChain) return;
+  
+    const interval = setInterval(async () => {
+      try {
+        const fetchedSentConfession = await getSentConfessions(
+          pushChain,
+          universalAddress,
+          1,
+          1
+        );
+  
+        if (
+          fetchedSentConfession &&
+          fetchedSentConfession.length &&
+          fetchedSentConfession[0].txnHash === newTxnHash
+        ) {
+          setData((prev) => ({
+            ...prev,
+            [TABS.LATEST]: prev[TABS.LATEST].map((item) =>
+              item.txnHash === newTxnHash ? fetchedSentConfession[0] : item
+            ),
+            [TABS.MY_RUMORS]: prev[TABS.MY_RUMORS].map((item) =>
+              item.txnHash === newTxnHash ? fetchedSentConfession[0] : item
+            ),
+          }));
+  
+          clearInterval(interval);
+        }
+      } catch (error) {
+        console.error('Error fetching confessions:', error);
       }
-    } catch (error) {
-      console.error('Error fetching confessions:', error);
-    }
+    }, 5000);
   };
+  
 
   const handlePost = async () => {
+    if (!pushChain) return;
     if (!account) return;
     if (!text.trim()) {
       setErrorText('Please write something to post your rumour.');
@@ -103,16 +117,12 @@ const NewRumor = () => {
     };
 
     try {
-      if (pushNetwork) {
-        await postConfession(
-          pushNetwork,
-          account,
-          rumourDetails,
-          handleSignMessage
-        );
-      }
+      const txnHash = await postConfession(
+        pushChain,
+        rumourDetails,
+      );
       const tempRumor: RumorType = {
-        txnHash: `temp-rumor`,
+        txnHash: txnHash,
         post: text,
         address: account,
         isVisible: true,
@@ -127,8 +137,8 @@ const NewRumor = () => {
         [TABS.MY_RUMORS]: [tempRumor, ...prev[TABS.MY_RUMORS]],
       }));
       setTimeout(() => {
-        handleFetchNewData();
-      }, 2000);
+        handleFetchNewData(txnHash);
+      }, 5000);
       setText('');
       setIsOpen(false);
     } catch (error) {
