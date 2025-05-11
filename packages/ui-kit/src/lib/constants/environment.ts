@@ -14,11 +14,9 @@ export type ConfigType = {
     };
 };
 
-export const config: ConfigType = {
-    WALLET_URL: {
-        [ENV.MAINNET]: 'https://wallet.push.org',
-        [ENV.DEVNET]: 'https://wallet-alpha.push.org',
-        [ENV.TESTNET]: 'https://wallet-alpha.push.org',
-        [ENV.LOCAL]: 'http://localhost:5173',
-    },
+export const WALLET_CONFIG_URL = {
+    [ENV.MAINNET]: 'https://wallet.push.org',
+    [ENV.DEVNET]: 'https://wallet-alpha.push.org',
+    [ENV.TESTNET]: 'https://wallet-alpha.push.org',
+    [ENV.LOCAL]: 'http://localhost:5173',
 };

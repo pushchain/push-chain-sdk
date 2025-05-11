@@ -12,7 +12,14 @@ export const PushWalletProvider: FC<PushWalletProviderProps> = ({
     children
 }) => {
     return (
-        <WalletContextProvider value={{ config, app, buttonDefaults, modalDefaults }}>
+        <WalletContextProvider
+            config={config}
+            app={app}
+            buttonDefaults={buttonDefaults}
+            modalDefaults={modalDefaults}
+            themeMode={themeMode}
+            themeOverrides={themeOverrides}
+        >
             {children}
         </WalletContextProvider>
     );

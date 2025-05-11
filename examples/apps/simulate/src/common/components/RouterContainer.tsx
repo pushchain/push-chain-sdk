@@ -5,16 +5,16 @@ import { Box } from 'shared-components';
 import SimulatePage from '../../pages/SimulatePage';
 import { PrivateRoute } from '../../pages/PrivateRoute';
 import { APP_ROUTES } from '../constants';
-import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
+// import { usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
 
 const RouterContainer = () => {
-  const { universalAddress } = usePushWalletContext();
-  const navigate = useNavigate();
-  useEffect(() => {
-    if (universalAddress) {
-      navigate(APP_ROUTES.SIMULATE);
-    }
-  }, [universalAddress]);
+  // const { universalAddress } = usePushWalletContext();
+  // const navigate = useNavigate();
+  // useEffect(() => {
+  //   if (universalAddress) {
+  //     navigate(APP_ROUTES.SIMULATE);
+  //   }
+  // }, [universalAddress]);
 
   return (
     <Box display="flex" justifyContent="center" minHeight="100vh">
