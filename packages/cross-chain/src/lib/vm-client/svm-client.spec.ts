@@ -107,6 +107,15 @@ describe('SvmClient', () => {
       expect(typeof balance).toBe('bigint');
     });
 
+    it('returns non-zero balance for address that has SOL', async () => {
+      const solanaAddressThatHasSOLOnDevnet =
+        '8e7ekBeWmMdU6sJqnCwhm3P2bHBpNwZZ6RNiWJyrMyYz';
+      const balance = await svmClient.getBalance(
+        solanaAddressThatHasSOLOnDevnet
+      );
+      expect(balance).toBeGreaterThan(BigInt(0));
+    });
+
     it('handles invalid address', async () => {
       await expect(svmClient.getBalance('invalidAddress')).rejects.toThrow();
     });
