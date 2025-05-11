@@ -21,3 +21,16 @@ export interface IWalletProvider {
   getChainId(): Promise<unknown>;
   switchNetwork?(chainName: ChainType): Promise<void>;
 }
+
+export type UniversalAddress = {
+  chainId: string;
+  chain: string;
+  address: string;
+};
+
+export type ConnectionStatus =
+  | 'notConnected'
+  | 'connecting'
+  | 'authenticating'
+  | 'connected'
+  | 'retry';

@@ -1,6 +1,6 @@
 import React from 'react';
 import styled, { keyframes } from 'styled-components';
-import { Ellipse } from '../icons';
+import { Ellipse } from './icons';
 
 // Keyframes for the spinning animation
 const spin = keyframes`
@@ -25,11 +25,11 @@ const Container = styled.div`
 
 // Spinner functional component
 const Spinner = () => {
-  return (
-    <Container>
-      <Ellipse />
-    </Container>
-  );
+    return (
+        <Container>
+            <Ellipse />
+        </Container>
+    );
 };
 
 export default Spinner;
