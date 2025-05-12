@@ -1,47 +1,72 @@
 import React, { FC } from 'react';
 import { usePushWalletContext } from "../../hooks/usePushWallet";
-import Button from '../common/Button';
-import styled from 'styled-components';
-import { Spinner } from '../common';
+import { ConnectWalletButton } from "./ConnectWalletButton";
+import { TogglePushWalletButton } from "./TogglePushWalletButton"
+import { loginAppOverrides, modalAppOverrides } from '../../types/UniversalWallet.types';
 
 type PushUniversalAccountButtonProps = {
-    title?: string;
+    uid?: string;
+
+    connectButtonText?: string;
+    connectBgColor?: string;
+    connectButtonTextColor?: string;
+    connectButtonStyle?: React.CSSProperties;
+
+    connectButtonCustom?: React.ReactNode
+
+    loadingComponent?: React.ReactNode
+
+    connectedButtonBgColor?: string
+    connectedButtonTextColor?: string
+    connectedButtonStyle?: React.CSSProperties;
+
+    connectedButtonCustom?: React.ReactNode
+
+    modalAppOverride?: modalAppOverrides
+    loginAppOverride?: loginAppOverrides
 }
 
 const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
-    title = 'Connect Push Wallet'
+    uid,
+    connectButtonText = 'Connect Push Wallet',
+    connectBgColor,
+    connectButtonTextColor,
+    connectButtonStyle,
+    connectButtonCustom,
+    loadingComponent,
+    connectedButtonBgColor,
+    connectedButtonTextColor,
+    connectedButtonStyle,
+    connectedButtonCustom,
+    modalAppOverride,
+    loginAppOverride
 }) => {
+    const { universalAddress, buttonDefaults } = usePushWalletContext();
 
-    const {
-        connectionStatus,
-        handleConnectToPushWallet,
-    } = usePushWalletContext();
+    if (universalAddress) {
+        // Merge props with buttonDefaults, giving priority to direct props
+        const toggleButtonProps = {
+            universalAddress: universalAddress,
+            connectedButtonBgColor: connectedButtonBgColor || buttonDefaults?.connectedButtonBgColor,
+            connectedButtonTextColor: connectedButtonTextColor || buttonDefaults?.connectedButtonTextColor,
+            connectedButtonStyle: connectedButtonStyle || buttonDefaults?.connectedButtonStyle,
+            connectedButtonCustom,
+        };
 
-    const isConnectButtonDisbaled =
-        connectionStatus === 'connected' ||
-        connectionStatus === 'authenticating' ||
-        connectionStatus === 'connecting';
+        return <TogglePushWalletButton {...toggleButtonProps} />;
+    } else {
+        // Merge props with buttonDefaults, giving priority to direct props
+        const connectButtonProps = {
+            connectButtonText: connectButtonText || buttonDefaults?.connectButtonText,
+            connectBgColor: connectBgColor || buttonDefaults?.connectButtonBgColor,
+            connectButtonTextColor: connectButtonTextColor || buttonDefaults?.connectButtonTextColor,
+            connectButtonStyle: connectButtonStyle || buttonDefaults?.connectButtonStyle,
+            connectButtonCustom,
+            loadingComponent
+        };
 
-    const isLoading =
-        connectionStatus === 'connecting' || connectionStatus === 'authenticating';
-
-    const handleConnectWalletButton = () => handleConnectToPushWallet();
-
-    return (
-        <>
-            <Button
-                onClick={handleConnectWalletButton}
-                disabled={isConnectButtonDisbaled || isLoading}
-            >
-                {connectionStatus === 'notConnected' ? title : connectionStatus}
-                {isLoading && (<SpinnerContainer><Spinner /></SpinnerContainer>)}
-            </Button>
-        </>
-    );
+        return <ConnectWalletButton {...connectButtonProps} />;
+    }
 };
 
 export { PushUniversalAccountButton };
-
-const SpinnerContainer = styled.div`
-  padding: 4px;
-`;

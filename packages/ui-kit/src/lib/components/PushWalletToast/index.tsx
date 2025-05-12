@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { Spinner } from '../../common';
+import { Spinner } from "../../components/common";
 
 const PushWalletToast = () => {
     return (
