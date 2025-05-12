@@ -3,12 +3,13 @@ import { useDarkMode } from '../common/hooks';
 import { MdOutlineLightMode } from "react-icons/md";
 import { MdOutlineDarkMode } from "react-icons/md";
 import { Box } from 'shared-components';
-// import { PushUniversalWallet, usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
+import { PushUniversalAccountButton, usePushWalletContext } from '../../../../../packages/ui-kit/src';
 
 const Navbar = () => {
     const { isDarkMode, enable, disable } = useDarkMode();
 
-    // const { universalAddress } = usePushWalletContext();
+    const { universalAddress } = usePushWalletContext();
+    console.log("UNiversal Address in navbar >>>", universalAddress);
 
     return (
         <Box
@@ -16,7 +17,7 @@ const Navbar = () => {
             justifyContent='end'
             gap='spacing-md'
         >
-            {/* {universalAddress && <PushUniversalWallet universalAddress={universalAddress} />} */}
+            {universalAddress && <PushUniversalAccountButton />}
 
             {!isDarkMode ? (
                 <Box

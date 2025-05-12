@@ -13,7 +13,7 @@ export type LoginMethodConfig = {
 export type PushWalletProviderConfig = {
     uid?: string;
     env: typeof CONSTANTS.ENV[keyof typeof CONSTANTS.ENV];
-    rpcURLs?: string[];
+    rpcURL?: string;
     login?: LoginMethodConfig
 }
 

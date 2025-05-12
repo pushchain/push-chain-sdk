@@ -5,15 +5,24 @@ import { CrossIcon, Spinner } from "../../components/common";
 import { WALLET_CONFIG_URL } from '../../constants';
 import { UniversalAddress } from '../../types';
 
-const PushWalletIFrame: FC = () => {
+type PushWalletIframeProps = {
+    iframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
+    isWalletVisible: boolean;
+    isIframeLoading: boolean;
+    setIframeLoading: (isIframeLoading: boolean) => void;
+}
+
+
+const PushWalletIFrame: FC<PushWalletIframeProps> = ({
+    iframeRef,
+    isWalletVisible,
+    isIframeLoading,
+    setIframeLoading
+}) => {
     const {
         config,
-        iframeRef,
         universalAddress,
-        isWalletVisible,
         isWalletMinimised,
-        isIframeLoading,
-        setIframeLoading,
         setMinimiseWallet,
         handleUserLogOutEvent
     } = usePushWalletContext();
@@ -58,6 +67,7 @@ const PushWalletIFrame: FC = () => {
                                 </CloseButtonContainer>
                             )}
                         </AccountContainer>
+
                         <iframe
                             src={`${WALLET_CONFIG_URL[config.env]}/auth?app=${window.location.origin}`}
                             allow="publickey-credentials-create; publickey-credentials-get; *"
@@ -70,6 +80,9 @@ const PushWalletIFrame: FC = () => {
                             }}
                             onLoad={() => setIframeLoading(false)}
                         />
+
+
+
                     </FrameSubContainer>
                 </FrameContainer>
             ) : null}
