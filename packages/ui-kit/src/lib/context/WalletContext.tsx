@@ -29,6 +29,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     children,
     config,
     app,
+    themeMode,
     buttonDefaults,
     modalDefaults
 }) => {
@@ -58,9 +59,23 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     const handleConnectToPushWallet = () => {
         setWalletVisibility(true);
         setConnectionStatus('connecting');
-
-        // wallet event -> loginDefaults, appMetadata, themeMode
     };
+
+    const sendWalletConfig = () => {
+        const walletConfig = {
+            loginDefaults: config.login,
+            themeMode,
+            appMetadata: app
+        }
+        console.log("Sending wallet config to wallet", walletConfig);
+
+        sendMessageToPushWallet({
+            type: APP_TO_WALLET_ACTION.WALLET_CONFIG,
+            data: {
+                ...walletConfig
+            },
+        });
+    }
 
     const handleUserLogOutEvent = () => {
         setConnectionStatus('notConnected');
@@ -304,6 +319,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
                 isWalletVisible={isWalletVisible}
                 isIframeLoading={isIframeLoading}
                 setIframeLoading={setIframeLoading}
+                sendWalletConfig={sendWalletConfig}
             />
             {(isWalletVisible && showToast) && <PushWalletToast />}
             {children}

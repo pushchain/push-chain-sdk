@@ -9,7 +9,6 @@ const Navbar = () => {
     const { isDarkMode, enable, disable } = useDarkMode();
 
     const { universalAddress } = usePushWalletContext();
-    console.log("UNiversal Address in navbar >>>", universalAddress);
 
     return (
         <Box

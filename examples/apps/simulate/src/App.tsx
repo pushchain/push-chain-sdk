@@ -39,14 +39,20 @@ const App: React.FC = () => {
   const { isDarkMode } = useDarkMode();
 
   const walletConfig: PushWalletProviderConfig = {
-    env: CONSTANTS.ENV.LOCAL
-
+    env: CONSTANTS.ENV.LOCAL,
+    login: {
+      email: true,
+      google: true,
+      wallet: {
+        enabled: true
+      }
+    },
   }
 
   return (
     <ThemeProvider theme={isDarkMode ? themeConfig.dark : themeConfig.light}>
       <GlobalStyle />
-      <PushWalletProvider config={walletConfig}>
+      <PushWalletProvider config={walletConfig} themeMode={CONSTANTS.THEME.DARK}>
         <Router>
           <Navbar />
           <RouterContainer />
