@@ -39,6 +39,7 @@ export enum APP_TO_WALLET_ACTION {
     LOG_OUT = 'logOut',
 
     CONNECTION_STATUS = 'connectionStatus',
+    WALLET_CONFIG = "walletConfig"
 }
 
 export const CHAIN_LOGO: Record<string, React.FC | React.ComponentType> = {

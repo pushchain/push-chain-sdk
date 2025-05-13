@@ -10,6 +10,7 @@ type PushWalletIframeProps = {
     isWalletVisible: boolean;
     isIframeLoading: boolean;
     setIframeLoading: (isIframeLoading: boolean) => void;
+    sendWalletConfig: () => void;
 }
 
 
@@ -17,7 +18,8 @@ const PushWalletIFrame: FC<PushWalletIframeProps> = ({
     iframeRef,
     isWalletVisible,
     isIframeLoading,
-    setIframeLoading
+    setIframeLoading,
+    sendWalletConfig
 }) => {
     const {
         config,
@@ -78,7 +80,10 @@ const PushWalletIFrame: FC<PushWalletIframeProps> = ({
                                 height: '100vh',
                                 borderRadius: universalAddress ? '10px' : '0px'
                             }}
-                            onLoad={() => setIframeLoading(false)}
+                            onLoad={() => {
+                                setIframeLoading(false)
+                                sendWalletConfig();
+                            }}
                         />
 
 
