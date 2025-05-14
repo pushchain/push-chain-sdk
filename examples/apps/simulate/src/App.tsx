@@ -5,7 +5,9 @@ import { getBlocksCSSVariables, themeConfig } from 'shared-components';
 import { useDarkMode } from './common/hooks';
 import { RouterContainer } from './common/components';
 import {
+  AppMetadata,
   CONSTANTS,
+  ModalDefaultsProps,
   PushWalletProvider,
   PushWalletProviderConfig,
 } from '../../../../packages/ui-kit';
@@ -49,10 +51,25 @@ const App: React.FC = () => {
     },
   }
 
+  const appMetadata: AppMetadata = {
+    logoUrl: "https://plus.unsplash.com/premium_photo-1746731481770-08b2f71661d0?q=80&w=2671&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    name: 'Simulate'
+  }
+
+  const modalDefaults: ModalDefaultsProps = {
+    loginLayout: CONSTANTS.LOGIN.SPLIT,
+    showModalAppPreview: true
+  }
+
   return (
     <ThemeProvider theme={isDarkMode ? themeConfig.dark : themeConfig.light}>
       <GlobalStyle />
-      <PushWalletProvider config={walletConfig} themeMode={CONSTANTS.THEME.DARK}>
+      <PushWalletProvider
+        config={walletConfig}
+        themeMode={CONSTANTS.THEME.DARK}
+        app={appMetadata}
+        modalDefaults={modalDefaults}
+      >
         <Router>
           <Navbar />
           <RouterContainer />
