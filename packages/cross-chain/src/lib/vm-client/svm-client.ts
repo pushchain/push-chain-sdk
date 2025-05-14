@@ -1,17 +1,18 @@
 import {
   Connection,
+  Keypair,
   PublicKey,
   SystemProgram,
   Transaction,
   TransactionInstruction,
-  sendAndConfirmRawTransaction,
+  BlockheightBasedTransactionConfirmationStrategy,
 } from '@solana/web3.js';
 import {
   ClientOptions,
   ReadContractParams,
   WriteContractParams,
 } from './vm-client.types';
-import { BN, Idl, Program } from '@coral-xyz/anchor';
+import { AnchorProvider, Program, Wallet } from '@coral-xyz/anchor';
 import { UniversalSigner } from '../universal/universal.types';
 
 /**
@@ -41,18 +42,18 @@ export class SvmClient {
     abi,
     address,
     functionName,
+    args = [],
   }: ReadContractParams): Promise<T> {
-    const idl = abi as Idl;
-
-    const program = new Program(idl, {
-      connection: this.connection,
-    });
-
-    const pubkey = new PublicKey(address);
-
-    // @ts-expect-error anchor doesn't have dynamic key typings for account layout access
+    const provider = new AnchorProvider(
+      this.connection,
+      new Wallet(new Keypair()),
+      {
+        preflightCommitment: 'confirmed',
+      }
+    );
+    const program = new Program(abi, new PublicKey(address), provider);
+    const pubkey = new PublicKey(args[0]);
     const account = await program.account[functionName].fetch(pubkey);
-
     return account as T;
   }
 
@@ -64,31 +65,36 @@ export class SvmClient {
     abi,
     address,
     signer,
-  }: WriteContractParams): Promise<string> {
-    const idl = abi as Idl;
-    const programId = new PublicKey(idl.address);
-
-    const program = new Program(idl, {
-      connection: this.connection,
-    });
-
-    // (1) Derive PDA for newAccount (replace seeds with your actual derivation logic)
-    const [newAccountPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('user'), new PublicKey(signer.address).toBuffer()],
-      programId
+    functionName,
+    args = [],
+  }: WriteContractParams & { solanaKeyPair: Keypair }): Promise<string> {
+    const provider = new AnchorProvider(
+      this.connection,
+      new Wallet(new Keypair()),
+      {
+        preflightCommitment: 'confirmed',
+      }
     );
+    const program = new Program(abi, new PublicKey(address), provider);
 
-    // (2) Hardcoded input value (like u64: 42)
-    const data = new BN(42);
-
-    // (3) Build instruction
-    const instruction = await program.methods['initialize'](data)
-      .accounts({
-        newAccount: newAccountPda,
-        signer: new PublicKey(signer.address),
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
+    let instruction: TransactionInstruction;
+    if (args.length > 0) {
+      instruction = await program.methods[functionName](...args)
+        .accounts({
+          newAccount: new Keypair().publicKey,
+          signer: new PublicKey(signer.address),
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction();
+    } else {
+      instruction = await program.methods[functionName]()
+        .accounts({
+          newAccount: new Keypair().publicKey,
+          signer: new PublicKey(signer.address),
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction();
+    }
 
     // (4) Send transaction via UniversalSigner
     return this.sendTransaction({
@@ -109,7 +115,8 @@ export class SvmClient {
     signer: UniversalSigner;
   }): Promise<string> {
     const feePayer = new PublicKey(signer.address);
-    const { blockhash } = await this.connection.getLatestBlockhash();
+    const { blockhash, lastValidBlockHeight } =
+      await this.connection.getLatestBlockhash();
 
     const tx = new Transaction({
       recentBlockhash: blockhash,
@@ -120,9 +127,47 @@ export class SvmClient {
       requireAllSignatures: false,
       verifySignatures: false,
     });
+    const signature = await this.connection.sendRawTransaction(serialized);
 
-    const signed = await signer.signMessage(serialized);
+    const confirmStrategy: BlockheightBasedTransactionConfirmationStrategy = {
+      blockhash: blockhash,
+      lastValidBlockHeight: lastValidBlockHeight,
+      signature: signature,
+    };
+    const result = await this.connection.confirmTransaction(confirmStrategy);
+    return '';
 
-    return sendAndConfirmRawTransaction(this.connection, Buffer.from(signed));
+    // const signed = await signer.signMessage(serialized);
+    // const txHash = await sendAndConfirmRawTransaction(
+    //   this.connection,
+    //   Buffer.from(signed),
+    //   { commitment: 'confirmed' }
+    // );
+    // return txHash;
+  }
+
+  /**
+   * Estimates the fee (in lamports) to send a transaction with the given instructions.
+   */
+  async estimateGas({
+    instructions,
+    signer,
+  }: {
+    instructions: TransactionInstruction[];
+    signer: UniversalSigner;
+  }): Promise<bigint> {
+    const feePayer = new PublicKey(signer.address);
+    const { blockhash, lastValidBlockHeight } =
+      await this.connection.getLatestBlockhash();
+    const tx = new Transaction({ blockhash, lastValidBlockHeight, feePayer });
+    if (instructions.length > 0) {
+      tx.add(...instructions);
+    }
+    const message = tx.compileMessage();
+    const feeResp = await this.connection.getFeeForMessage(message);
+    if (!feeResp || feeResp.value == null) {
+      throw new Error('Failed to estimate fee');
+    }
+    return BigInt(feeResp.value);
   }
 }
