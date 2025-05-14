@@ -3,9 +3,11 @@ import React from 'react';
 const CrossIcon = ({
     height,
     width,
+    color
 }: {
     height: string;
     width: string;
+    color: string;
 }) => {
     return (
         <svg
@@ -17,14 +19,14 @@ const CrossIcon = ({
         >
             <path
                 d="M25.3552 7.51471L8.38466 24.4853"
-                stroke="#EAEBF2"
+                stroke={color}
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
             ></path>
             <path
                 d="M25.3552 24.4853L8.38466 7.51473"
-                stroke="#EAEBF2"
+                stroke={color}
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"

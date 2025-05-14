@@ -317,6 +317,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         }}>
             <PushWalletIFrame
                 iframeRef={iframeRef}
+                themeMode={themeMode}
                 isWalletVisible={isWalletVisible}
                 isIframeLoading={isIframeLoading}
                 setIframeLoading={setIframeLoading}
