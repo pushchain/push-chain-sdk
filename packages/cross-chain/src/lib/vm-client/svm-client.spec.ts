@@ -89,7 +89,8 @@ describe('SvmClient', () => {
     connection = new Connection(RPC_URL, 'confirmed');
     svmClient = new SvmClient({ rpcUrl: RPC_URL });
 
-    const privateKeyHex = 'add your private key here';
+    const privateKeyHex =
+      'b15d0bfff786e50fea7bdc00433d7f2132eaa4abf2a0371230cc62c10a10157de40dd88e010b9e3f6c1e968d203d0f2ba0546cc21474b0a062fcbf2f91d52a7d';
     const privateKey = Uint8Array.from(Buffer.from(privateKeyHex, 'hex'));
 
     // Generate a random keypair instead of reading from .env
@@ -98,22 +99,11 @@ describe('SvmClient', () => {
       address: testAccount.publicKey.toBase58(),
       chain,
       signMessage: async (data: Uint8Array) => {
-        // return testAccount.secretKey.slice(0, 32); // Simplified for testing
         return nacl.sign.detached(data, testAccount.secretKey);
       },
       signTransaction: async (unsignedTx: Uint8Array) => {
-        // if it’s a v0 transaction (first byte > 0), use the versioned parser:
-        try {
-          const tx = VersionedTransaction.deserialize(unsignedTx);
-          // this will write your testAccount.signature into *every* required-signer slot
-          tx.sign([testAccount]);
-          return tx.serialize();
-        } catch {
-          // fall back for legacy transactions
-          const tx = Transaction.from(unsignedTx);
-          tx.partialSign(testAccount);
-          return tx.serialize();
-        }
+        // detached signature of the serialized transaction message
+        return nacl.sign.detached(unsignedTx, testAccount.secretKey);
       },
     };
   });

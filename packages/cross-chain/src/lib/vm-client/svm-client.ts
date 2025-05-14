@@ -104,8 +104,7 @@ export class SvmClient {
   }
 
   /**
-   * Sends a Solana transaction using a UniversalSigner.
-   * TODO: Remove deprecated functions
+   * Sends a set of instructions as a manually-signed Solana transaction.
    */
   async sendTransaction({
     instructions,
@@ -114,36 +113,37 @@ export class SvmClient {
     instructions: TransactionInstruction[];
     signer: UniversalSigner;
   }): Promise<string> {
-    const feePayer = new PublicKey(signer.address);
-    const { blockhash, lastValidBlockHeight } =
-      await this.connection.getLatestBlockhash();
+    // (1) Build the Transaction
+    const feePayerPubkey = new PublicKey(signer.address);
+    const { blockhash } = await this.connection.getLatestBlockhash('finalized');
 
     const tx = new Transaction({
+      feePayer: feePayerPubkey,
       recentBlockhash: blockhash,
-      feePayer,
-    }).add(...instructions);
-
-    const serialized = tx.serialize({
-      requireAllSignatures: false,
-      verifySignatures: false,
     });
-    const signature = await this.connection.sendRawTransaction(serialized);
 
-    const confirmStrategy: BlockheightBasedTransactionConfirmationStrategy = {
-      blockhash: blockhash,
-      lastValidBlockHeight: lastValidBlockHeight,
-      signature: signature,
-    };
-    const result = await this.connection.confirmTransaction(confirmStrategy);
-    return '';
+    // 📌 Tell it which pubkeys will sign.  (Only those keys get signature slots.)
+    tx.setSigners(feePayerPubkey /*, ...anyOtherSignerPubkeys if needed */);
 
-    // const signed = await signer.signMessage(serialized);
-    // const txHash = await sendAndConfirmRawTransaction(
-    //   this.connection,
-    //   Buffer.from(signed),
-    //   { commitment: 'confirmed' }
-    // );
-    // return txHash;
+    tx.add(...instructions);
+
+    // (2) Serialize the message for signing
+    const message = tx.serializeMessage();
+
+    // (3) Let your UniversalSigner produce the real ed25519 signature
+    const sigUint8 = await signer.signTransaction(message);
+    const sigBuffer = Buffer.from(sigUint8);
+
+    // (4) Attach the signature in the correct slot
+    tx.addSignature(feePayerPubkey, sigBuffer);
+    // If you had other signers, repeat the above two lines for each
+
+    // (5) Now serialize normally (will verify signatures client-side)
+    const rawTx = tx.serialize();
+
+    // (6) Send it
+    const txid = await this.connection.sendRawTransaction(rawTx);
+    return txid;
   }
 
   /**
