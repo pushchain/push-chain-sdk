@@ -10,6 +10,7 @@ import {
   SolanaMonotone,
   PushMonotone,
 } from 'shared-components';
+import { RumorType } from './common.types';
 
 export function trimAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -216,3 +217,113 @@ export const getFullCaipAddress = (universalAddress: UniversalAddress) => {
   }
   return address;
 };
+
+export const RPC_URL = (!process.env.NODE_ENV || process.env.NODE_ENV === 'development')
+  ? 'https://eth-sepolia.g.alchemy.com/v2/skgdTbmOr9TCA8QTNb4y1PFfDW1iPn8y'
+  : 'https://sepolia.infura.io/v3/4e4c307950b3459ab22a024f7304156c';
+
+
+export const easterRumor: RumorType = (
+  {
+    address: 'eip155:1:0xFaE3594C68EDFc2A61b7527164BDAe80bC302108',
+    post: '',
+    isVisible: true,
+    timestamp: '1744941195950',
+    markdownPost: `**PUSH CHAIN EASTER HUNT is LIVE!!🕵️‍♂️✨**
+
+A few eggs have slipped into the **Push Chain** universe 🌌 — hidden across blogs, docs, and pages that define what we're building. Can you find them?
+
+Follow the riddles, uncover the eggs, and win big from a portion of **1,000,000** **Push Points!**
+
+💠 There are **9 riddles**.
+
+💠 Each riddle leads to **1 hidden egg**.
+
+💠 Each egg reveals **one letter** from the word: **PUSHCHAIN** 
+
+💠 Crack all 9 to complete the chain and win big!
+
+🔔 **Winners will be announced after the hunt ends on 23rd April**
+
+Let the hunt begin, anon — and may your Easter be _egg-stra_ rewarding! 🥚
+
+Hoppy Easter!
+
+---
+
+🔍 **How to Play:**
+
+**1.** **Register to [Devnet Drop Points Program S2](https://portal.push.org/rewards) to become eligible**
+
+**2.** Solve the riddles shared below — each one leads to a hidden Easter egg somewhere across **[push.org](https://push.org/).**
+
+**3.** Once you find an egg, **take a screenshot📸** showing the egg's location.
+
+**4.** 📧 Email the screenshot to **[0x24b46FDC49210ca5466A14f48ea0428557B2fbAA]** with the subject line: **_Easter Egg Hunt - [Your Wallet Address]_** **using [AnyChain Email](https://email.push.org)!**
+
+**5.** **Top 100 correct entries will receive a solid 10,000 Push Points drop!🤑**
+
+---
+---
+
+**HERE ARE THE RIDDLES👇**
+
+
+**1️⃣** **_One Spider-Man? Two? Are they both the same?👀
+Is Push Chain just another L1? Nope — that's not its game🤭_**
+
+---
+
+**2️⃣** **_Extra Slice of the Reward 🍰
+Refer a friend, earn your slice.
+20 and 5 — numbers that sound real nice. 🥚_**
+
+---
+
+**3️⃣** _**Universal  DeFi?  Any chain Socials? Any chain NFTs in flight?
+The egg hides where *use cases* shine bright☀️**_
+
+---
+
+**4️⃣** **_What, Why's, and How's Push Chain ??  — many web3 curious ask🤔.
+The answer lies in one common page where answers to all questions are unmasked.**
+
+---
+
+**5️⃣** **_Class is in Session📚
+New to Push and don't know where to begin?
+Start at 101 — that's where the clues kick in._**
+
+---
+
+**6️⃣** **_No User Left Behind
+From socials to sign-ins, EVMs to mail,
+The Developer Docs reveal a lot about._**
+
+---
+
+**7️⃣** **_⚒️ Want to build your own cross-chain email?
+👩‍🍳 The legendary Push docs hold the recipe,
+🧙For sending mail across chains with some epic Push Chain SDK sorcery._**
+
+---
+
+**8️⃣** **_🪄Want to know the Math Behind the Magic?
+How is the Push Chain token being forged?
+One page holds the secrets — utility, supply, airdrops, and the allocation lore._**
+
+---
+
+**9️⃣** **_The Loyal Shall Be Rewarded🫡
+In Discord's halls, where updates flow,
+The egg awaits for those who know. 🥚_**
+
+---
+---
+
+**HAPPY EASTER - GOOD LUCK🤞**`,
+    txnHash: '87681871029479faf68b604bf543064352d902a572c874c144443f2993eabf25',
+    upvoteWallets: [],
+    downvoteWallets: [],
+  }
+)

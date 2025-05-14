@@ -79,3 +79,7 @@ export const getFullCaipAddress = (universalAddress: UniversalAddress) => {
   }
   return address;
 };
+
+export const RPC_URL = (!process.env.NODE_ENV || process.env.NODE_ENV === 'development')
+  ? 'https://eth-sepolia.g.alchemy.com/v2/skgdTbmOr9TCA8QTNb4y1PFfDW1iPn8y'
+  : 'https://sepolia.infura.io/v3/06fea733133d428f9c47cf3c911c682b';

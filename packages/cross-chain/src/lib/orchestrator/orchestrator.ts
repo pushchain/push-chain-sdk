@@ -18,6 +18,7 @@ export class Orchestrator {
   /**
    * Executes an interaction on Push Chain — either direct or gasless.
    * Handles NMSC derivation, fee checks, and optional fee-locking.
+   * TODO: Look into gasLimits
    */
   async execute(execute: ExecuteParams): Promise<`0x${string}`> {
     const chain = this.universalSigner.chain;
@@ -36,15 +37,20 @@ export class Orchestrator {
     const requiredFee = await this.estimateFee(execute);
 
     // 4. Check NMSC balance on Push Chain
-    const hasFunds = await this.checkPushBalance(nmscAddress);
+    const funds = await this.checkPushBalance(nmscAddress); // 0
 
     const executionHash = this.sha256HashOfJson(execute);
     // 5. If not enough funds, lock required fee on source chain and send tx to Push chain
-    if (hasFunds < requiredFee) {
-      const feeLockTxHash = await this.lockFee(requiredFee, executionHash);
+    if (funds < requiredFee) {
+      // TODO: Lock difference
+      const feeLockTxHash = await this.lockFee(
+        requiredFee - funds,
+        executionHash
+      );
       return this.sendCrossChainPushTx(feeLockTxHash, execute);
     } else {
       // 6. If enough funds, sign execution data and send tx to Push chain
+      // TODO: Look into chain specific signing
       const signature = await this.universalSigner.signMessage(
         toBytes(executionHash) // UTF-8 encode the hex string
       );

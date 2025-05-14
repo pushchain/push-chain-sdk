@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package crosschain.v1;
+
+message MsgDeployNMSC {
+  string signer = 1;
+  string user_key = 2;
+  string caip_string = 3;
+  int32 owner_type = 4;
+}
+
+message MsgMintPush {
+  string signer = 1;
+  string tx_hash = 2;
+  string caip_string = 3;
+}
+
+message CrossChainPayload {
+    string target = 1;                 // EVM address as hex string (0x...)
+    string value = 2;                  // Amount in wei as string (uint256)
+    string data = 3;                    // ABI-encoded calldata
+    string gas_limit = 4;             // uint256 as string
+    string max_fee_per_gas = 5;       // uint256 as string
+    string max_priority_fee_per_gas = 6; // uint256 as string
+    string nonce = 7;                 // uint256 as string
+    string deadline = 8;              // uint256 as string
+  }
+
+message MsgExecutePayload {
+  string signer = 1;
+  string caip_string = 2; 
+  CrossChainPayload crosschain_payload = 3;
+  string signature = 4;
+}

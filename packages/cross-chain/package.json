@@ -8,7 +8,17 @@
     "tslib": "^2.3.0",
     "viem": "2.22.13"
   },
+  "scripts": {
+    "build:proto": "scripts/protoc-generate.sh"
+  },
   "type": "commonjs",
   "main": "./src/index.js",
-  "typings": "./src/index.d.ts"
+  "typings": "./src/index.d.ts",
+  "devDependencies": {
+    "@cosmjs/proto-signing": "^0.33.1",
+    "@cosmjs/stargate": "^0.33.1",
+    "protobufjs": "7.4.0",
+    "secp256k1": "^5.0.1",
+    "ts-proto": "^2.0.3"
+  }
 }
