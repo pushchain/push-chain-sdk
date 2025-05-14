@@ -117,7 +117,7 @@ describe('Push Chain Custom MsgSend Tx Test', () => {
       signatures: [hexToBytes(sig)],
     });
 
-    console.log(toBase64(TxRaw.encode(txRaw).finish()));
+    // console.log(toBase64(TxRaw.encode(txRaw).finish()));
 
     const client = await StargateClient.connect(rpc);
     const result = await client.broadcastTx(TxRaw.encode(txRaw).finish());
