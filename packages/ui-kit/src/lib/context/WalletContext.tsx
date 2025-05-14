@@ -65,7 +65,8 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         const walletConfig = {
             loginDefaults: config.login,
             themeMode,
-            appMetadata: app
+            appMetadata: app,
+            modalDefaults: modalDefaults
         }
         console.log("Sending wallet config to wallet", walletConfig);
 

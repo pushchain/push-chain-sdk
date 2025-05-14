@@ -1,5 +1,5 @@
 import React, { FC } from 'react';
-import { PushWalletProviderConfig, PushWalletProviderProps } from "../types/index"
+import { PushWalletProviderConfig, PushWalletProviderProps, ModalDefaultsProps } from "../types/index"
 import { WalletContextProvider } from "../context/WalletContext"
 import { CONSTANTS } from '../constants';
 
@@ -14,6 +14,13 @@ const loginDefaultConfig = {
 const PushWalletConfigDefault: PushWalletProviderConfig = {
     login: loginDefaultConfig,
     env: CONSTANTS.ENV.DEVNET,
+};
+
+const modalDefaultsDefault: ModalDefaultsProps = {
+    loginLayout: CONSTANTS.LOGIN.SIMPLE,
+    showModalAppPreview: false,
+    bgColor: '#313338',
+    textColor: '#ffffff'
 };
 
 export const PushWalletProvider: FC<PushWalletProviderProps> = ({
@@ -38,12 +45,17 @@ export const PushWalletProvider: FC<PushWalletProviderProps> = ({
         }
     };
 
+    const mergedModalDefaults = {
+        ...modalDefaultsDefault,
+        ...modalDefaults
+    };
+
     return (
         <WalletContextProvider
             config={mergedConfig}
             app={app}
             buttonDefaults={buttonDefaults}
-            modalDefaults={modalDefaults}
+            modalDefaults={mergedModalDefaults}
             themeMode={themeMode}
             themeOverrides={themeOverrides}
         >
