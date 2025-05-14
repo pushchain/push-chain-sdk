@@ -2,12 +2,13 @@ import React, { FC } from 'react';
 import styled from 'styled-components';
 import { usePushWalletContext } from "../../hooks/usePushWallet";
 import { CrossIcon, Spinner } from "../../components/common";
-import { WALLET_CONFIG_URL } from '../../constants';
+import { CONSTANTS, WALLET_CONFIG_URL } from '../../constants';
 import { UniversalAddress } from '../../types';
 
 type PushWalletIframeProps = {
     iframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
     isWalletVisible: boolean;
+    themeMode?: typeof CONSTANTS.THEME.LIGHT | typeof CONSTANTS.THEME.DARK;
     isIframeLoading: boolean;
     setIframeLoading: (isIframeLoading: boolean) => void;
     sendWalletConfig: () => void;
@@ -18,6 +19,7 @@ const PushWalletIFrame: FC<PushWalletIframeProps> = ({
     iframeRef,
     isWalletVisible,
     isIframeLoading,
+    themeMode,
     setIframeLoading,
     sendWalletConfig
 }) => {
@@ -33,15 +35,19 @@ const PushWalletIFrame: FC<PushWalletIframeProps> = ({
     return (
         <>
             {isWalletVisible ? (
-                <FrameContainer isWalletMinimised={isWalletMinimised} universalAddress={universalAddress}>
+                <FrameContainer
+                    isWalletMinimised={isWalletMinimised}
+                    universalAddress={universalAddress}
+                    themeMode={themeMode ? themeMode : CONSTANTS.THEME.DARK}
+                >
                     {isIframeLoading && (
-                        <FrameLoadingContainer>
+                        <FrameLoadingContainer themeMode={themeMode ? themeMode : CONSTANTS.THEME.DARK}>
                             <CloseButtonContainer
                                 onClick={() => {
                                     handleUserLogOutEvent();
                                 }}
                             >
-                                <CrossIcon height='20px' width='20px' />
+                                <CrossIcon height='20px' width='20px' color={themeMode === CONSTANTS.THEME.LIGHT ? '#000' : '#FFF'} />
                             </CloseButtonContainer>
                             <LoadingTextContainer>
                                 <LoadingText>Loading...</LoadingText>
@@ -57,7 +63,7 @@ const PushWalletIFrame: FC<PushWalletIframeProps> = ({
                         <AccountContainer universalAddress={universalAddress}>
                             {universalAddress ? (
                                 <DashButtonContainer onClick={() => setMinimiseWallet(true)}>
-                                    <CrossIcon height='18px' width='18px' />
+                                    <CrossIcon height='18px' width='18px' color={themeMode === CONSTANTS.THEME.LIGHT ? '#FFF' : '#000'} />
                                 </DashButtonContainer>
                             ) : (
                                 <CloseButtonContainer
@@ -65,7 +71,7 @@ const PushWalletIFrame: FC<PushWalletIframeProps> = ({
                                         handleUserLogOutEvent();
                                     }}
                                 >
-                                    <CrossIcon height='20px' width='20px' />
+                                    <CrossIcon height='20px' width='20px' color={themeMode === CONSTANTS.THEME.LIGHT ? '#000' : '#FFF'} />
                                 </CloseButtonContainer>
                             )}
                         </AccountContainer>
@@ -100,11 +106,12 @@ export { PushWalletIFrame };
 const FrameContainer = styled.div<{
     universalAddress: UniversalAddress | null;
     isWalletMinimised: boolean;
+    themeMode: typeof CONSTANTS.THEME.LIGHT | typeof CONSTANTS.THEME.DARK;
 }>`
   position: ${({ universalAddress }) => universalAddress ? 'absolute' : 'fixed'};
   display: flex;
   flex-direction: column;
-  background-color: #17181b;
+  background-color: ${({ themeMode }) => themeMode === CONSTANTS.THEME.LIGHT ? '#F5F6F8' : '#17181b'};
   border-radius: 10px;
   z-index: 9999;
 
@@ -156,19 +163,22 @@ const LoadingText = styled.p`
   font-size: 18px;
   font-weight: 500;
   line-height: 27px;
-  color: rgba(255, 255, 255, 1);
+  color: inherit;
   font-family: FK Grotesk Neu;
   margin: 0px;
   width: auto;
 `;
 
-const FrameLoadingContainer = styled.div`
+const FrameLoadingContainer = styled.div<{
+    themeMode: typeof CONSTANTS.THEME.LIGHT | typeof CONSTANTS.THEME.DARK;
+}>`
   height: -webkit-fill-available;
   width: -webkit-fill-available;
   flex-direction: column;
   display: flex;
   padding: 8px;
-  background-color: #17181b;
+  color:${({ themeMode }) => themeMode === CONSTANTS.THEME.LIGHT ? '#17181b' : '#F5F6F8'};
+ background-color: ${({ themeMode }) => themeMode === CONSTANTS.THEME.LIGHT ? '#F5F6F8' : '#17181b'};
 `;
 
 const FrameSubContainer = styled.div<{
