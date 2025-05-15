@@ -44,10 +44,11 @@ const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
 
     // TODO: login App Overrides is not done yet.
 
-    const { universalAddress, buttonDefaults, updateModalAppData } = usePushWalletContext();
+    const { universalAddress, buttonDefaults, updateModalAppData, updateWalletAppData } = usePushWalletContext();
 
     useEffect(() => {
         if (modalAppOverride) updateModalAppData(modalAppOverride)
+        if (loginAppOverride) updateWalletAppData(loginAppOverride)
     }, [])
 
     if (universalAddress) {
