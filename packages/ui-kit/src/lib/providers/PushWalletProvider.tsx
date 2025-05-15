@@ -19,7 +19,7 @@ const PushWalletConfigDefault: PushWalletProviderConfig = {
 const modalDefaultsDefault: ModalDefaultsProps = {
     loginLayout: CONSTANTS.LOGIN.SIMPLE,
     showModalAppPreview: false,
-    bgColor: '#313338',
+    bgColor: 'transparent',
     textColor: '#ffffff'
 };
 

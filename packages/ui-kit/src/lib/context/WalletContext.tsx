@@ -1,10 +1,10 @@
 import React, { createContext, FC, useEffect, useRef, useState } from 'react';
-import { ChainType, ConnectionStatus, IWalletProvider, PushWalletProviderProps, UniversalAddress, WalletEventRespoonse, WalletInfo } from '../types';
+import { ChainType, ConnectionStatus, IWalletProvider, ModalAppDetails, PushWalletProviderProps, UniversalAddress, WalletEventRespoonse, WalletInfo } from '../types';
 import { APP_TO_WALLET_ACTION, WALLET_CONFIG_URL, WALLET_TO_APP_ACTION } from '../constants';
-import { PushWalletIFrame } from "../components/PushWalletIframe";
 import { getWalletDataFromAccount } from "../helpers";
 import { walletRegistry } from '../providers/walletProviders/WalletProviderRegistry';
 import { PushWalletToast } from "../components/PushWalletToast";
+import { LoginModal } from "../components/LoginModal";
 
 export type WalletContextType = {
     universalAddress: UniversalAddress | null;
@@ -21,6 +21,9 @@ export type WalletContextType = {
     app?: PushWalletProviderProps['app'];
     buttonDefaults?: PushWalletProviderProps['buttonDefaults'];
     modalDefaults?: PushWalletProviderProps['modalDefaults'];
+
+    modalAppData: ModalAppDetails;
+    updateModalAppData: (newData: Partial<ModalAppDetails>) => void;
 }
 
 export const WalletContext = createContext<WalletContextType | null>(null);
@@ -56,17 +59,33 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         error?: (data: WalletEventRespoonse) => void;
     } | null>(null);
 
+    const [modalAppData, setModalAppData] = useState<ModalAppDetails>({
+        title: app?.title || '',
+        logoURL: app?.logoUrl || '',
+        description: app?.description || ''
+    });
+
+    const updateModalAppData = (newData: Partial<ModalAppDetails>) => {
+        setModalAppData(prevData => ({
+            ...prevData,
+            ...newData
+        }));
+    };
+
     const handleConnectToPushWallet = () => {
         setWalletVisibility(true);
         setConnectionStatus('connecting');
     };
 
+    // sending wallet config to the Push wallet
     const sendWalletConfig = () => {
+
+        // here we need to pass loginAppOverrides
+
         const walletConfig = {
             loginDefaults: config.login,
             themeMode,
             appMetadata: app,
-            modalDefaults: modalDefaults
         }
         console.log("Sending wallet config to wallet", walletConfig);
 
@@ -310,14 +329,17 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
             isWalletMinimised,
             buttonDefaults,
             modalDefaults,
+            modalAppData,
+            updateModalAppData,
             setMinimiseWallet,
             handleConnectToPushWallet,
             handleUserLogOutEvent,
             handleSignMessage
         }}>
-            <PushWalletIFrame
+            <LoginModal
                 iframeRef={iframeRef}
                 themeMode={themeMode}
+                modalAppData={modalAppData}
                 isWalletVisible={isWalletVisible}
                 isIframeLoading={isIframeLoading}
                 setIframeLoading={setIframeLoading}

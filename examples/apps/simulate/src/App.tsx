@@ -53,7 +53,8 @@ const App: React.FC = () => {
 
   const appMetadata: AppMetadata = {
     logoUrl: "https://plus.unsplash.com/premium_photo-1746731481770-08b2f71661d0?q=80&w=2671&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    name: 'Simulate'
+    title: 'Simulate',
+    description: 'Push Chain is a shared state L1 blockchain that allows all chains to unify, enabling apps of any chain to be accessed by users of any chain.'
   }
 
   const modalDefaults: ModalDefaultsProps = {
@@ -66,7 +67,7 @@ const App: React.FC = () => {
       <GlobalStyle />
       <PushWalletProvider
         config={walletConfig}
-        themeMode={CONSTANTS.THEME.LIGHT}
+        themeMode={CONSTANTS.THEME.DARK}
         app={appMetadata}
         modalDefaults={modalDefaults}
       >

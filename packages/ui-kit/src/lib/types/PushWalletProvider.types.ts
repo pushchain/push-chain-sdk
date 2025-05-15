@@ -18,7 +18,7 @@ export type PushWalletProviderConfig = {
 }
 
 export type AppMetadata = {
-    name: string;
+    title: string;
     logoUrl?: string;
     description?: string;
 }
@@ -71,4 +71,18 @@ export type PushWalletProviderProps = {
     themeOverrides?: Record<string, string>;
     buttonDefaults?: ButtonDefaultsProps,
     modalDefaults?: ModalDefaultsProps
+}
+
+// Dapp details that display in the preview pane
+export type ModalAppDetails = {
+    logoURL?: string;
+    title?: string;
+    description?: string;
+}
+
+// Dapp details that goes to the wallet 
+export type WalletAppDetails = {
+    logoURL?: string;
+    title?: string;
+    description?: string;
 }
