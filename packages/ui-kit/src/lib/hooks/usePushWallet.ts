@@ -1,11 +1,14 @@
 import { useContext } from 'react';
-import { WalletContext, WalletContextType } from "../context/WalletContext"
+import { WalletContextType } from '../context/WalletContext';
+import { getWalletContext } from '../context/WalletContextMap';
 
 // Custom hook to use WalletContext
-export const usePushWalletContext = (): WalletContextType => {
-    const context = useContext(WalletContext);
-    if (!context) {
-        throw new Error('useWallet must be used within a WalletProvider');
-    }
-    return context;
+export const usePushWalletContext = (uid?: string): WalletContextType => {
+  const context = useContext(getWalletContext(uid || 'default'));
+  if (!context) {
+    throw new Error(
+      'usePushWalletContext must be used within a PushWalletProvider'
+    );
+  }
+  return context;
 };

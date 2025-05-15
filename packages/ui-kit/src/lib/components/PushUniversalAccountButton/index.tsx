@@ -1,80 +1,95 @@
 import React, { FC, useEffect, useMemo } from 'react';
-import { usePushWalletContext } from "../../hooks/usePushWallet";
-import { ConnectWalletButton } from "./ConnectWalletButton";
-import { TogglePushWalletButton } from "./TogglePushWalletButton"
-import { loginAppOverrides, modalAppOverrides } from '../../types/UniversalWallet.types';
+import { usePushWalletContext } from '../../hooks/usePushWallet';
+import { ConnectWalletButton } from './ConnectWalletButton';
+import { TogglePushWalletButton } from './TogglePushWalletButton';
+import {
+  loginAppOverrides,
+  modalAppOverrides,
+} from '../../types/UniversalWallet.types';
 
 type PushUniversalAccountButtonProps = {
-    uid?: string;
+  uid?: string;
 
-    connectButtonText?: string;
-    connectBgColor?: string;
-    connectButtonTextColor?: string;
-    connectButtonStyle?: React.CSSProperties;
+  connectButtonText?: string;
+  connectButtonBgColor?: string;
+  connectButtonTextColor?: string;
+  connectButtonStyle?: React.CSSProperties;
 
-    connectButtonCustom?: React.ReactNode
+  connectButtonCustom?: React.ReactNode;
 
-    loadingComponent?: React.ReactNode
+  loadingComponent?: React.ReactNode;
 
-    connectedButtonBgColor?: string
-    connectedButtonTextColor?: string
-    connectedButtonStyle?: React.CSSProperties;
+  connectedButtonBgColor?: string;
+  connectedButtonTextColor?: string;
+  connectedButtonStyle?: React.CSSProperties;
 
-    connectedButtonCustom?: React.ReactNode
+  connectedButtonCustom?: React.ReactNode;
 
-    modalAppOverride?: modalAppOverrides
-    loginAppOverride?: loginAppOverrides
-}
+  modalAppOverride?: modalAppOverrides;
+  loginAppOverride?: loginAppOverrides;
+};
 
 const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
-    uid,
-    connectButtonText = 'Connect Push Wallet',
-    connectBgColor,
-    connectButtonTextColor,
-    connectButtonStyle,
-    connectButtonCustom,
-    loadingComponent,
-    connectedButtonBgColor,
-    connectedButtonTextColor,
-    connectedButtonStyle,
-    connectedButtonCustom,
-    modalAppOverride,
-    loginAppOverride
+  uid = 'default',
+  connectButtonText = 'Connect Push Wallet',
+  connectButtonBgColor,
+  connectButtonTextColor,
+  connectButtonStyle,
+  connectButtonCustom,
+  loadingComponent,
+  connectedButtonBgColor,
+  connectedButtonTextColor,
+  connectedButtonStyle,
+  connectedButtonCustom,
+  modalAppOverride,
+  loginAppOverride,
 }) => {
+  // TODO: login App Overrides is not done yet.
 
-    // TODO: login App Overrides is not done yet.
+  const {
+    universalAddress,
+    buttonDefaults,
+    updateModalAppData,
+    updateWalletAppData,
+  } = usePushWalletContext(uid);
 
-    const { universalAddress, buttonDefaults, updateModalAppData, updateWalletAppData } = usePushWalletContext();
+  useEffect(() => {
+    if (modalAppOverride) updateModalAppData(modalAppOverride);
+    if (loginAppOverride) updateWalletAppData(loginAppOverride);
+  }, []);
 
-    useEffect(() => {
-        if (modalAppOverride) updateModalAppData(modalAppOverride)
-        if (loginAppOverride) updateWalletAppData(loginAppOverride)
-    }, [])
+  if (universalAddress) {
+    // Merge props with buttonDefaults, giving priority to direct props
+    const toggleButtonProps = {
+      uid: uid,
+      universalAddress: universalAddress,
+      connectedButtonBgColor:
+        connectedButtonBgColor || buttonDefaults?.connectedButtonBgColor,
+      connectedButtonTextColor:
+        connectedButtonTextColor || buttonDefaults?.connectedButtonTextColor,
+      connectedButtonStyle:
+        connectedButtonStyle || buttonDefaults?.connectedButtonStyle,
+      connectedButtonCustom,
+    };
 
-    if (universalAddress) {
-        // Merge props with buttonDefaults, giving priority to direct props
-        const toggleButtonProps = {
-            universalAddress: universalAddress,
-            connectedButtonBgColor: connectedButtonBgColor || buttonDefaults?.connectedButtonBgColor,
-            connectedButtonTextColor: connectedButtonTextColor || buttonDefaults?.connectedButtonTextColor,
-            connectedButtonStyle: connectedButtonStyle || buttonDefaults?.connectedButtonStyle,
-            connectedButtonCustom,
-        };
+    return <TogglePushWalletButton {...toggleButtonProps} />;
+  } else {
+    // Merge props with buttonDefaults, giving priority to direct props
+    const connectButtonProps = {
+      uid: uid,
+      connectButtonText: connectButtonText || buttonDefaults?.connectButtonText,
+      connectBgColor:
+        connectButtonBgColor || buttonDefaults?.connectButtonBgColor,
+      connectButtonTextColor:
+        connectButtonTextColor || buttonDefaults?.connectButtonTextColor,
+      connectButtonStyle:
+        connectButtonStyle || buttonDefaults?.connectButtonStyle,
+      connectButtonCustom,
+      loadingComponent,
+    };
 
-        return <TogglePushWalletButton {...toggleButtonProps} />;
-    } else {
-        // Merge props with buttonDefaults, giving priority to direct props
-        const connectButtonProps = {
-            connectButtonText: connectButtonText || buttonDefaults?.connectButtonText,
-            connectBgColor: connectBgColor || buttonDefaults?.connectButtonBgColor,
-            connectButtonTextColor: connectButtonTextColor || buttonDefaults?.connectButtonTextColor,
-            connectButtonStyle: connectButtonStyle || buttonDefaults?.connectButtonStyle,
-            connectButtonCustom,
-            loadingComponent
-        };
-
-        return <ConnectWalletButton {...connectButtonProps} />;
-    }
+    return <ConnectWalletButton {...connectButtonProps} />;
+  }
 };
 
 export { PushUniversalAccountButton };
