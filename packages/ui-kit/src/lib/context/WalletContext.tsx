@@ -37,12 +37,14 @@ export type WalletContextType = {
   buttonDefaults?: PushWalletProviderProps['buttonDefaults'];
   modalDefaults?: PushWalletProviderProps['modalDefaults'];
 
-  modalAppData: ModalAppDetails;
+  modalAppData: ModalAppDetails | undefined;
   updateModalAppData: (newData: Partial<ModalAppDetails>) => void;
 
-  walletAppData: WalletAppDetails;
+  walletAppData: WalletAppDetails | undefined;
   updateWalletAppData: (newData: Partial<WalletAppDetails>) => void;
-};
+}
+
+export const WalletContext = createContext<WalletContextType | null>(null);
 
 export const WalletContextProvider: FC<PushWalletProviderProps> = ({
   children,
@@ -74,17 +76,17 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     error?: (data: WalletEventRespoonse) => void;
   } | null>(null);
 
-  const [modalAppData, setModalAppData] = useState<ModalAppDetails>({
-    title: app?.title || '',
-    logoURL: app?.logoUrl || '',
-    description: app?.description || '',
-  });
+  const [modalAppData, setModalAppData] = useState<ModalAppDetails | undefined>(app ? {
+    title: app?.title,
+    logoURL: app?.logoUrl,
+    description: app?.description
+  } : undefined);
 
-  const [walletAppData, setWalletAppData] = useState<WalletAppDetails>({
-    title: app?.title || '',
-    logoURL: app?.logoUrl || '',
-    description: app?.description || '',
-  });
+  const [walletAppData, setWalletAppData] = useState<WalletAppDetails | undefined>(app ? {
+    title: app?.title,
+    logoURL: app?.logoUrl,
+    description: app?.description
+  } : undefined);
 
   const updateModalAppData = (newData: Partial<ModalAppDetails>) => {
     setModalAppData((prevData) => ({

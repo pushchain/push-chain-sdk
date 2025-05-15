@@ -47,7 +47,8 @@ const App: React.FC = () => {
       google: true,
       wallet: {
         enabled: true
-      }
+      },
+      appPreview: true
     },
   }
 
@@ -59,7 +60,7 @@ const App: React.FC = () => {
 
   const modalDefaults: ModalDefaultsProps = {
     loginLayout: CONSTANTS.LOGIN.SPLIT,
-    showModalAppPreview: true
+    showModalAppPreview: true,
   }
 
   return (

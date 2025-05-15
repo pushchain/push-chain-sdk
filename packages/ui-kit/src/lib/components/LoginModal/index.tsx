@@ -1,6 +1,5 @@
 import React, { FC } from 'react';
 import styled from 'styled-components';
-import { usePushWalletContext } from '../../hooks/usePushWallet';
 import { CrossIcon, Spinner } from '../../components/common';
 import { CONSTANTS, WALLET_CONFIG_URL } from '../../constants';
 import {
@@ -17,7 +16,7 @@ type LoginModalProps = {
   isIframeLoading: boolean;
   setIframeLoading: (isIframeLoading: boolean) => void;
   sendWalletConfig: () => void;
-  modalAppData: ModalAppDetails;
+  modalAppData: ModalAppDetails | undefined
   config: PushWalletProviderConfig;
   universalAddress: UniversalAddress | null;
   isWalletMinimised: boolean;
@@ -108,36 +107,34 @@ const LoginModal: FC<LoginModalProps> = ({
             </AccountContainer>
 
             <SplitContainer>
-              {modalAppData &&
-                modalDefaults?.loginLayout === CONSTANTS.LOGIN.SPLIT && (
-                  <AppPreviewContainer
-                    universalAddress={universalAddress}
-                    bgColor={modalDefaults.bgColor || 'transparent'}
-                  >
-                    <AppContainer>
-                      <ImageContainer>
-                        <Image
-                          src={modalAppData?.logoURL}
-                          alt={modalAppData.title}
-                        />
-                      </ImageContainer>
+              {(modalDefaults?.showModalAppPreview && modalAppData && modalDefaults?.loginLayout === CONSTANTS.LOGIN.SPLIT) && (
+                <AppPreviewContainer
+                  universalAddress={universalAddress}
+                  bgColor={modalDefaults.bgColor || 'transparent'}
+                >
+                  <AppContainer>
+                    {modalAppData?.logoURL && <ImageContainer>
+                      <Image
+                        src={modalAppData?.logoURL}
+                        alt={modalAppData.title}
+                      />
+                    </ImageContainer>}
 
-                      <TextContainer
-                        themeMode={themeMode ? themeMode : CONSTANTS.THEME.DARK}
-                        textColor={modalDefaults.textColor || '#ffffff'}
-                      >
-                        <Heading>{modalAppData.title}</Heading>
-                        <p>{modalAppData?.description}</p>
-                      </TextContainer>
-                    </AppContainer>
-                  </AppPreviewContainer>
-                )}
+                    <TextContainer
+                      themeMode={themeMode ? themeMode : CONSTANTS.THEME.DARK}
+                      textColor={modalDefaults.textColor || '#ffffff'}
+                    >
+                      <Heading>{modalAppData.title}</Heading>
+                      <p>{modalAppData?.description}</p>
+                    </TextContainer>
+                  </AppContainer>
+                </AppPreviewContainer>
+              )}
 
               <MainFrameContainer>
                 <iframe
-                  src={`${WALLET_CONFIG_URL[config.env]}/auth?app=${
-                    window.location.origin
-                  }`}
+                  src={`${WALLET_CONFIG_URL[config.env]}/auth?app=${window.location.origin
+                    }`}
                   allow="publickey-credentials-create; publickey-credentials-get; *"
                   ref={iframeRef}
                   style={{
@@ -185,7 +182,7 @@ const FrameContainer = styled.div<{
 
   @media (max-width: 425px) {
     width: ${({ universalAddress, isWalletMinimised }) =>
-      isWalletMinimised ? '0px' : universalAddress ? '96%' : '100%'};
+    isWalletMinimised ? '0px' : universalAddress ? '96%' : '100%'};
     right: ${({ universalAddress }) => (universalAddress ? '2%' : '0')};
     top: ${({ universalAddress }) => (universalAddress ? '8%' : '0')};
   }
@@ -297,6 +294,8 @@ const AppContainer = styled.div`
   align-items: flex-start;
   gap: 16px;
   align-self: stretch;
+  height:700px;
+    justify-content: center;
 `;
 
 const MainFrameContainer = styled.div`
@@ -324,8 +323,8 @@ const TextContainer = styled.div<{
   font-size: 16px;
   font-weight: 400;
   line-height: 22px;
-  color: ${({ themeMode }) =>
-    themeMode === CONSTANTS.THEME.LIGHT ? '#17181b' : '#F5F6F8'};
+  color:${({ themeMode, textColor }) => themeMode === CONSTANTS.THEME.LIGHT ? textColor ? textColor : '#17181b' : textColor ? textColor : '#F5F6F8'};
+
 `;
 
 const Heading = styled.h1`
