@@ -1,4 +1,4 @@
-import React, { FC } from 'react';
+import React, { FC, useEffect, useMemo } from 'react';
 import { usePushWalletContext } from "../../hooks/usePushWallet";
 import { ConnectWalletButton } from "./ConnectWalletButton";
 import { TogglePushWalletButton } from "./TogglePushWalletButton"
@@ -41,7 +41,14 @@ const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
     modalAppOverride,
     loginAppOverride
 }) => {
-    const { universalAddress, buttonDefaults } = usePushWalletContext();
+
+    // TODO: login App Overrides is not done yet.
+
+    const { universalAddress, buttonDefaults, updateModalAppData } = usePushWalletContext();
+
+    useEffect(() => {
+        if (modalAppOverride) updateModalAppData(modalAppOverride)
+    }, [])
 
     if (universalAddress) {
         // Merge props with buttonDefaults, giving priority to direct props

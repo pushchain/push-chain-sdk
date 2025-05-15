@@ -87,7 +87,7 @@ const App: React.FC = () => {
       <GlobalStyle />
       <PushWalletProvider
         config={walletConfig}
-        themeMode={CONSTANTS.THEME.LIGHT}
+        themeMode={CONSTANTS.THEME.DARK}
         app={appMetadata}
         modalDefaults={modalDefaults}
         buttonDefaults={buttonDefaults}
