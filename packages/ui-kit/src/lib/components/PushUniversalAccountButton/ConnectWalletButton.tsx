@@ -1,67 +1,68 @@
 import React, { FC } from 'react';
 import styled from 'styled-components';
-import { usePushWalletContext } from "../../hooks/usePushWallet";
+import { usePushWalletContext } from '../../hooks/usePushWallet';
 import { Button, Spinner } from '../common';
 
 export type ConnectPushWalletButtonProps = {
+  uid?: string;
+  connectButtonText?: string;
+  connectBgColor?: string;
+  connectButtonTextColor?: string;
+  connectButtonStyle?: React.CSSProperties;
 
-    connectButtonText?: string;
-    connectBgColor?: string;
-    connectButtonTextColor?: string;
-    connectButtonStyle?: React.CSSProperties;
+  connectButtonCustom?: React.ReactNode;
 
-    connectButtonCustom?: React.ReactNode
-
-    loadingComponent?: React.ReactNode
-
+  loadingComponent?: React.ReactNode;
 };
 
 const ConnectWalletButton: FC<ConnectPushWalletButtonProps> = ({
-    connectButtonText,
-    connectBgColor,
-    connectButtonTextColor,
-    connectButtonStyle,
+  uid,
+  connectButtonText,
+  connectBgColor,
+  connectButtonTextColor,
+  connectButtonStyle,
 
-    connectButtonCustom,
-    loadingComponent
-
+  connectButtonCustom,
+  loadingComponent,
 }) => {
-    const {
-        connectionStatus,
-        handleConnectToPushWallet,
-    } = usePushWalletContext();
+  const { connectionStatus, handleConnectToPushWallet } =
+    usePushWalletContext(uid);
 
-    const isConnectButtonDisbaled =
-        connectionStatus === 'connected' ||
-        connectionStatus === 'authenticating' ||
-        connectionStatus === 'connecting';
+  const isConnectButtonDisbaled =
+    connectionStatus === 'connected' ||
+    connectionStatus === 'authenticating' ||
+    connectionStatus === 'connecting';
 
-    const isLoading =
-        connectionStatus === 'connecting' || connectionStatus === 'authenticating';
+  const isLoading =
+    connectionStatus === 'connecting' || connectionStatus === 'authenticating';
 
-    const handleConnectWalletButton = () => handleConnectToPushWallet();
+  const handleConnectWalletButton = () => handleConnectToPushWallet();
 
-
-    if (connectButtonCustom) {
-        return <>{connectButtonCustom}</>
-    } else {
-        return (
-            <Button
-                bgColor={connectBgColor}
-                textColor={connectButtonTextColor}
-                customStyle={connectButtonStyle}
-                onClick={handleConnectWalletButton}
-                disabled={isConnectButtonDisbaled || isLoading}
-            >
-                {connectionStatus === 'notConnected' ? connectButtonText : connectionStatus}
-                {isLoading && (
-                    loadingComponent ? loadingComponent : <SpinnerContainer><Spinner /></SpinnerContainer>
-                )}
-            </Button>
-        );
-    }
-
-
+  if (connectButtonCustom) {
+    return <>{connectButtonCustom}</>;
+  } else {
+    return (
+      <Button
+        bgColor={connectBgColor}
+        textColor={connectButtonTextColor}
+        customStyle={connectButtonStyle}
+        onClick={handleConnectWalletButton}
+        disabled={isConnectButtonDisbaled || isLoading}
+      >
+        {connectionStatus === 'notConnected'
+          ? connectButtonText
+          : connectionStatus}
+        {isLoading &&
+          (loadingComponent ? (
+            loadingComponent
+          ) : (
+            <SpinnerContainer>
+              <Spinner />
+            </SpinnerContainer>
+          ))}
+      </Button>
+    );
+  }
 };
 
 export { ConnectWalletButton };
