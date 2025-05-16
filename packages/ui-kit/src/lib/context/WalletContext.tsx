@@ -114,7 +114,6 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       themeMode,
       appMetadata: walletAppData,
     };
-    console.log('Sending wallet config to wallet', walletConfig);
 
     sendMessageToPushWallet({
       type: APP_TO_WALLET_ACTION.WALLET_CONFIG,
@@ -381,6 +380,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         setMinimiseWallet={setMinimiseWallet}
         handleUserLogOutEvent={handleUserLogOutEvent}
         modalDefaults={modalDefaults}
+        buttonDefaults={buttonDefaults}
       />
       {isWalletVisible && showToast && <PushWalletToast />}
       {children}

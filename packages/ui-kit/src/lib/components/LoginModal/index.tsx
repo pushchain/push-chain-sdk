@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { CrossIcon, Spinner } from '../../components/common';
 import { CONSTANTS, WALLET_CONFIG_URL } from '../../constants';
 import {
+  ButtonDefaultsProps,
   ModalAppDetails,
   ModalDefaultsProps,
   PushWalletProviderConfig,
@@ -23,6 +24,7 @@ type LoginModalProps = {
   setMinimiseWallet: (isWalletMinimised: boolean) => void;
   handleUserLogOutEvent: () => void;
   modalDefaults?: ModalDefaultsProps;
+  buttonDefaults?: ButtonDefaultsProps;
 };
 
 const LoginModal: FC<LoginModalProps> = ({
@@ -39,6 +41,7 @@ const LoginModal: FC<LoginModalProps> = ({
   handleUserLogOutEvent,
   config,
   modalDefaults,
+  buttonDefaults,
 }) => {
   /**
    * TODO: bgImage from modalDefaults is not integrated
@@ -51,6 +54,7 @@ const LoginModal: FC<LoginModalProps> = ({
           isWalletMinimised={isWalletMinimised}
           universalAddress={universalAddress}
           themeMode={themeMode ? themeMode : CONSTANTS.THEME.DARK}
+          accountMenuVariant={buttonDefaults?.accountMenuVariant}
         >
           {isIframeLoading && (
             <FrameLoadingContainer
@@ -77,6 +81,7 @@ const LoginModal: FC<LoginModalProps> = ({
           <FrameSubContainer
             isWalletMinimised={isWalletMinimised}
             isIframeLoading={isIframeLoading}
+            bgColor={modalDefaults?.bgColor || 'transparent'}
           >
             <AccountContainer universalAddress={universalAddress}>
               {universalAddress ? (
@@ -110,7 +115,6 @@ const LoginModal: FC<LoginModalProps> = ({
               {(modalDefaults?.showModalAppPreview && modalAppData && modalDefaults?.loginLayout === CONSTANTS.LOGIN.SPLIT) && (
                 <AppPreviewContainer
                   universalAddress={universalAddress}
-                  bgColor={modalDefaults.bgColor || 'transparent'}
                 >
                   <AppContainer>
                     {modalAppData?.logoURL && <ImageContainer>
@@ -140,7 +144,7 @@ const LoginModal: FC<LoginModalProps> = ({
                   style={{
                     border: 'none',
                     width: '-webkit-fill-available',
-                    height: universalAddress ? '675px' : '100vh',
+                    height: universalAddress ? buttonDefaults?.accountMenuVariant === 'full' ? '100vh' : '675px' : '100vh',
                     borderRadius: universalAddress ? '10px' : '0px',
                   }}
                   onLoad={() => {
@@ -163,9 +167,10 @@ const FrameContainer = styled.div<{
   universalAddress: UniversalAddress | null;
   isWalletMinimised: boolean;
   themeMode: typeof CONSTANTS.THEME.LIGHT | typeof CONSTANTS.THEME.DARK;
+  accountMenuVariant: ButtonDefaultsProps['accountMenuVariant']
 }>`
-  position: ${({ universalAddress }) =>
-    universalAddress ? 'absolute' : 'fixed'};
+  position: ${({ universalAddress, accountMenuVariant }) =>
+    universalAddress ? accountMenuVariant === 'full' ? 'fixed' : 'absolute' : 'fixed'};
   display: flex;
   flex-direction: column;
   background-color: ${({ themeMode }) =>
@@ -173,18 +178,18 @@ const FrameContainer = styled.div<{
   border-radius: 10px;
   z-index: 9999;
 
-  width: ${({ universalAddress, isWalletMinimised }) =>
-    isWalletMinimised ? '0px' : universalAddress ? '450px' : '100vw'};
-  height: ${({ universalAddress, isWalletMinimised }) =>
-    isWalletMinimised ? '0px' : universalAddress ? '675px' : '100vh'};
-  right: ${({ universalAddress }) => (universalAddress ? '0px' : '0')};
-  top: ${({ universalAddress }) => (universalAddress ? '50px' : '0')};
+  width: ${({ universalAddress, isWalletMinimised, accountMenuVariant }) =>
+    isWalletMinimised ? '0px' : universalAddress ? accountMenuVariant === 'full' ? '100%' : '450px' : '100vw'};
+  height: ${({ universalAddress, isWalletMinimised, accountMenuVariant }) =>
+    isWalletMinimised ? '0px' : universalAddress ? accountMenuVariant === 'full' ? '100vw' : '675px' : '100vh'};
+  right: ${({ universalAddress, accountMenuVariant }) => (universalAddress ? accountMenuVariant === 'full' ? '0' : '10px' : '0')};
+  top: ${({ universalAddress, accountMenuVariant }) => (universalAddress ? accountMenuVariant === 'full' ? '0' : '70px' : '0')};
 
   @media (max-width: 425px) {
     width: ${({ universalAddress, isWalletMinimised }) =>
     isWalletMinimised ? '0px' : universalAddress ? '96%' : '100%'};
     right: ${({ universalAddress }) => (universalAddress ? '2%' : '0')};
-    top: ${({ universalAddress }) => (universalAddress ? '8%' : '0')};
+    top: ${({ universalAddress, accountMenuVariant }) => (universalAddress ? accountMenuVariant === 'full' ? '0' : '8%' : '0')};
   }
 `;
 
@@ -244,12 +249,15 @@ const FrameLoadingContainer = styled.div<{
 const FrameSubContainer = styled.div<{
   isWalletMinimised: boolean;
   isIframeLoading: boolean;
+  bgColor: string;
 }>`
   display: ${({ isWalletMinimised, isIframeLoading }) =>
     isWalletMinimised || isIframeLoading ? 'none' : 'flex'};
   width: -webkit-fill-available;
   height: -webkit-fill-available;
   flex-direction: column;
+    background-color: ${({ bgColor }) => (bgColor ? bgColor : 'transparent')};
+
 `;
 
 const AccountContainer = styled.div<{
@@ -276,14 +284,13 @@ const SplitContainer = styled.div`
 
 const AppPreviewContainer = styled.div<{
   universalAddress: UniversalAddress | null;
-  bgColor: string;
 }>`
   display: ${({ universalAddress }) => (universalAddress ? 'none' : 'flex')};
   align-items: center;
   justify-content: center;
   flex: 1;
   padding: 100px 10px 10px 10px;
-  background-color: ${({ bgColor }) => (bgColor ? bgColor : 'transparent')};
+  background-color: transparent;
 `;
 
 const AppContainer = styled.div`

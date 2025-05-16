@@ -6,6 +6,7 @@ import { useDarkMode } from './common/hooks';
 import { RouterContainer } from './common/components';
 import {
   AppMetadata,
+  ButtonDefaultsProps,
   CONSTANTS,
   ModalDefaultsProps,
   PushWalletProvider,
@@ -46,7 +47,8 @@ const App: React.FC = () => {
       email: true,
       google: true,
       wallet: {
-        enabled: true
+        enabled: true,
+        chains: [CONSTANTS.CHAIN.SOLANA, CONSTANTS.CHAIN.ETHEREUM]
       },
       appPreview: true
     },
@@ -63,6 +65,10 @@ const App: React.FC = () => {
     showModalAppPreview: true,
   }
 
+  const buttonDefaults: ButtonDefaultsProps = {
+    accountMenuVariant: 'hover',
+  }
+
   return (
     <ThemeProvider theme={isDarkMode ? themeConfig.dark : themeConfig.light}>
       <GlobalStyle />
@@ -71,6 +77,7 @@ const App: React.FC = () => {
         themeMode={CONSTANTS.THEME.DARK}
         app={appMetadata}
         modalDefaults={modalDefaults}
+        buttonDefaults={buttonDefaults}
       >
         <Router>
           <Navbar />
