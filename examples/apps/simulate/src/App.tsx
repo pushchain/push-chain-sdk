@@ -82,6 +82,10 @@ const App: React.FC = () => {
     showModalAppPreview: true,
   };
 
+  const buttonDefaults: ButtonDefaultsProps = {
+    accountMenuVariant: 'hover',
+  };
+
   return (
     <ThemeProvider theme={isDarkMode ? themeConfig.dark : themeConfig.light}>
       <GlobalStyle />
