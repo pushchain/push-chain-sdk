@@ -17,7 +17,7 @@ type LoginModalProps = {
   isIframeLoading: boolean;
   setIframeLoading: (isIframeLoading: boolean) => void;
   sendWalletConfig: () => void;
-  modalAppData: ModalAppDetails | undefined
+  modalAppData: ModalAppDetails | undefined;
   config: PushWalletProviderConfig;
   universalAddress: UniversalAddress | null;
   isWalletMinimised: boolean;
@@ -31,7 +31,7 @@ const LoginModal: FC<LoginModalProps> = ({
   iframeRef,
   isWalletVisible,
   isIframeLoading,
-  themeMode,
+  themeMode = CONSTANTS.THEME.DARK,
   modalAppData,
   setIframeLoading,
   sendWalletConfig,
@@ -55,6 +55,7 @@ const LoginModal: FC<LoginModalProps> = ({
           universalAddress={universalAddress}
           themeMode={themeMode ? themeMode : CONSTANTS.THEME.DARK}
           accountMenuVariant={buttonDefaults?.accountMenuVariant}
+          modalDefaults={modalDefaults}
         >
           {isIframeLoading && (
             <FrameLoadingContainer
@@ -112,39 +113,51 @@ const LoginModal: FC<LoginModalProps> = ({
             </AccountContainer>
 
             <SplitContainer>
-              {(modalDefaults?.showModalAppPreview && modalAppData && modalDefaults?.loginLayout === CONSTANTS.LOGIN.SPLIT) && (
-                <AppPreviewContainer
-                  universalAddress={universalAddress}
-                >
-                  <AppContainer>
-                    {modalAppData?.logoURL && <ImageContainer>
-                      <Image
-                        src={modalAppData?.logoURL}
-                        alt={modalAppData.title}
-                      />
-                    </ImageContainer>}
+              {modalDefaults?.showModalAppPreview &&
+                modalAppData &&
+                modalDefaults?.loginLayout === CONSTANTS.LOGIN.SPLIT && (
+                  <AppPreviewContainer universalAddress={universalAddress}>
+                    <AppContainer>
+                      {modalAppData?.logoURL && (
+                        <ImageContainer>
+                          <Image
+                            src={modalAppData?.logoURL}
+                            alt={modalAppData.title}
+                          />
+                        </ImageContainer>
+                      )}
 
-                    <TextContainer
-                      themeMode={themeMode ? themeMode : CONSTANTS.THEME.DARK}
-                      textColor={modalDefaults.textColor || '#ffffff'}
-                    >
-                      <Heading>{modalAppData.title}</Heading>
-                      <p>{modalAppData?.description}</p>
-                    </TextContainer>
-                  </AppContainer>
-                </AppPreviewContainer>
-              )}
+                      <TextContainer
+                        themeMode={themeMode ? themeMode : CONSTANTS.THEME.DARK}
+                        textColor={
+                          modalDefaults.textColor ??
+                          (themeMode === CONSTANTS.THEME.LIGHT
+                            ? '#F5F6F8'
+                            : '#17181b')
+                        }
+                      >
+                        <Heading>{modalAppData.title}</Heading>
+                        <p>{modalAppData?.description}</p>
+                      </TextContainer>
+                    </AppContainer>
+                  </AppPreviewContainer>
+                )}
 
               <MainFrameContainer>
                 <iframe
-                  src={`${WALLET_CONFIG_URL[config.env]}/auth?app=${window.location.origin
-                    }`}
+                  src={`${WALLET_CONFIG_URL[config.env]}/auth?app=${
+                    window.location.origin
+                  }`}
                   allow="publickey-credentials-create; publickey-credentials-get; *"
                   ref={iframeRef}
                   style={{
                     border: 'none',
                     width: '-webkit-fill-available',
-                    height: universalAddress ? buttonDefaults?.accountMenuVariant === 'full' ? '100vh' : '675px' : '100vh',
+                    height: universalAddress
+                      ? buttonDefaults?.accountMenuVariant === 'full'
+                        ? '100vh'
+                        : '675px'
+                      : '100vh',
                     borderRadius: universalAddress ? '10px' : '0px',
                   }}
                   onLoad={() => {
@@ -167,29 +180,52 @@ const FrameContainer = styled.div<{
   universalAddress: UniversalAddress | null;
   isWalletMinimised: boolean;
   themeMode: typeof CONSTANTS.THEME.LIGHT | typeof CONSTANTS.THEME.DARK;
-  accountMenuVariant: ButtonDefaultsProps['accountMenuVariant']
+  accountMenuVariant: ButtonDefaultsProps['accountMenuVariant'];
+  modalDefaults?: ModalDefaultsProps;
 }>`
   position: ${({ universalAddress, accountMenuVariant }) =>
-    universalAddress ? accountMenuVariant === 'full' ? 'fixed' : 'absolute' : 'fixed'};
+    universalAddress
+      ? accountMenuVariant === 'full'
+        ? 'fixed'
+        : 'absolute'
+      : 'fixed'};
   display: flex;
   flex-direction: column;
-  background-color: ${({ themeMode }) =>
-    themeMode === CONSTANTS.THEME.LIGHT ? '#F5F6F8' : '#17181b'};
+  background-image: url(${({ modalDefaults }) => modalDefaults?.bgImage});
+  background-size: cover;
+  background-color: ${({ themeMode, modalDefaults }) =>
+    modalDefaults?.bgColor ??
+    (themeMode === CONSTANTS.THEME.LIGHT ? '#F5F6F8' : '#17181b')};
   border-radius: 10px;
   z-index: 9999;
 
   width: ${({ universalAddress, isWalletMinimised, accountMenuVariant }) =>
-    isWalletMinimised ? '0px' : universalAddress ? accountMenuVariant === 'full' ? '100%' : '450px' : '100vw'};
+    isWalletMinimised
+      ? '0px'
+      : universalAddress
+      ? accountMenuVariant === 'full'
+        ? '100%'
+        : '450px'
+      : '100vw'};
   height: ${({ universalAddress, isWalletMinimised, accountMenuVariant }) =>
-    isWalletMinimised ? '0px' : universalAddress ? accountMenuVariant === 'full' ? '100vw' : '675px' : '100vh'};
-  right: ${({ universalAddress, accountMenuVariant }) => (universalAddress ? accountMenuVariant === 'full' ? '0' : '10px' : '0')};
-  top: ${({ universalAddress, accountMenuVariant }) => (universalAddress ? accountMenuVariant === 'full' ? '0' : '70px' : '0')};
+    isWalletMinimised
+      ? '0px'
+      : universalAddress
+      ? accountMenuVariant === 'full'
+        ? '100vw'
+        : '675px'
+      : '100vh'};
+  right: ${({ universalAddress, accountMenuVariant }) =>
+    universalAddress ? (accountMenuVariant === 'full' ? '0' : '10px') : '0'};
+  top: ${({ universalAddress, accountMenuVariant }) =>
+    universalAddress ? (accountMenuVariant === 'full' ? '0' : '70px') : '0'};
 
   @media (max-width: 425px) {
     width: ${({ universalAddress, isWalletMinimised }) =>
-    isWalletMinimised ? '0px' : universalAddress ? '96%' : '100%'};
+      isWalletMinimised ? '0px' : universalAddress ? '96%' : '100%'};
     right: ${({ universalAddress }) => (universalAddress ? '2%' : '0')};
-    top: ${({ universalAddress, accountMenuVariant }) => (universalAddress ? accountMenuVariant === 'full' ? '0' : '8%' : '0')};
+    top: ${({ universalAddress, accountMenuVariant }) =>
+      universalAddress ? (accountMenuVariant === 'full' ? '0' : '8%') : '0'};
   }
 `;
 
@@ -256,8 +292,7 @@ const FrameSubContainer = styled.div<{
   width: -webkit-fill-available;
   height: -webkit-fill-available;
   flex-direction: column;
-    background-color: ${({ bgColor }) => (bgColor ? bgColor : 'transparent')};
-
+  background-color: ${({ bgColor }) => (bgColor ? bgColor : 'transparent')};
 `;
 
 const AccountContainer = styled.div<{
@@ -301,8 +336,8 @@ const AppContainer = styled.div`
   align-items: flex-start;
   gap: 16px;
   align-self: stretch;
-  height:700px;
-    justify-content: center;
+  height: 700px;
+  justify-content: center;
 `;
 
 const MainFrameContainer = styled.div`
@@ -330,8 +365,14 @@ const TextContainer = styled.div<{
   font-size: 16px;
   font-weight: 400;
   line-height: 22px;
-  color:${({ themeMode, textColor }) => themeMode === CONSTANTS.THEME.LIGHT ? textColor ? textColor : '#17181b' : textColor ? textColor : '#F5F6F8'};
-
+  color: ${({ themeMode, textColor }) =>
+    themeMode === CONSTANTS.THEME.LIGHT
+      ? textColor
+        ? textColor
+        : '#17181b'
+      : textColor
+      ? textColor
+      : '#F5F6F8'};
 `;
 
 const Heading = styled.h1`
