@@ -1,5 +1,5 @@
 import { Orchestrator } from './orchestrator';
-import { CHAIN, ENV } from '../constants/enums';
+import { CHAIN, NETWORK } from '../constants/enums';
 import { UniversalSigner } from '../universal/universal.types';
 import {
   bytesToHex,
@@ -57,7 +57,7 @@ describe('Orchestrator', () => {
     },
   };
 
-  const orchestrator = new Orchestrator(universalSigner, ENV.TESTNET);
+  const orchestrator = new Orchestrator(universalSigner, NETWORK.TESTNET);
 
   it('should estimate fee for a basic tx', async () => {
     const fee = await orchestrator['estimateFee']({

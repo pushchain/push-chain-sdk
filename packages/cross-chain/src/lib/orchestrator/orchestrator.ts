@@ -1,5 +1,5 @@
 import { Abi, zeroHash, getContractAddress, toBytes, sha256 } from 'viem';
-import { CHAIN, ENV, VM } from '../constants/enums';
+import { CHAIN, NETWORK, VM } from '../constants/enums';
 import { UniversalSigner } from '../universal/universal.types';
 import { ExecuteParams } from './orchestrator.types';
 import { EvmClient } from '../vm-client/evm-client';
@@ -10,7 +10,7 @@ import { toChainAgnostic } from '../universal/account';
 export class Orchestrator {
   constructor(
     private readonly universalSigner: UniversalSigner,
-    private readonly pushNetwork: ENV,
+    private readonly pushNetwork: NETWORK,
     private readonly rpcUrl: Partial<Record<CHAIN, string>> = {},
     private readonly printTraces = false
   ) {}
@@ -77,7 +77,7 @@ export class Orchestrator {
     data,
   }: ExecuteParams): Promise<bigint> {
     const pushChain =
-      this.pushNetwork === ENV.MAINNET
+      this.pushNetwork === NETWORK.MAINNET
         ? CHAIN.PUSH_MAINNET
         : CHAIN.PUSH_TESTNET;
 
@@ -107,7 +107,7 @@ export class Orchestrator {
    */
   private async checkPushBalance(address: `0x${string}`): Promise<bigint> {
     const pushChain =
-      this.pushNetwork === ENV.MAINNET
+      this.pushNetwork === NETWORK.MAINNET
         ? CHAIN.PUSH_MAINNET
         : CHAIN.PUSH_TESTNET;
     const pushChainRPC =
@@ -119,7 +119,7 @@ export class Orchestrator {
 
   /**
    * Locks fee on origin chain by interacting with the fee-locker contract.
-   * amount is in lowest asset representation of the chain ( wei for evm )
+   * amount is in lowest native token representation of the chain ( wei for evm )
    */
   private async lockFee(
     amount: bigint,

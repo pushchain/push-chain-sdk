@@ -3,10 +3,9 @@
  * Determines the RPC endpoints, contract addresses, and network context
  * for interacting with Push Chain.
  */
-export enum ENV {
+export enum NETWORK {
   MAINNET = 'MAINNET',
   TESTNET = 'TESTNET',
-  LOCAL = 'LOCAL',
 }
 
 /**

@@ -1,4 +1,4 @@
-import { CHAIN, ENV } from './constants/enums';
+import { CHAIN, NETWORK } from './constants/enums';
 import { Orchestrator } from './orchestrator/orchestrator';
 import { createUniversalSigner } from './universal/signer';
 import { UniversalSigner } from './universal/universal.types';
@@ -16,7 +16,7 @@ export class CrossChain {
   static initialize = async (
     universalSigner: UniversalSigner,
     options?: {
-      network?: ENV;
+      network?: NETWORK;
       rpcUrl?: Partial<Record<CHAIN, string>>;
       printTraces?: boolean;
     }
@@ -26,7 +26,7 @@ export class CrossChain {
        * @dev - createUniversalSigner parses the obj to ensure signer has correct implementation
        */
       createUniversalSigner(universalSigner),
-      options?.network || ENV.TESTNET,
+      options?.network || NETWORK.TESTNET,
       options?.rpcUrl || {},
       options?.printTraces || false
     );
