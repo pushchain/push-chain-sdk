@@ -1,5 +1,5 @@
 import { SvmClient } from './svm-client';
-import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
+import { Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import { UniversalSigner } from '../universal/universal.types';
 import { CHAIN } from '../constants/enums';
 import * as nacl from 'tweetnacl';
@@ -263,30 +263,30 @@ describe('SvmClient', () => {
       console.log('Updated value:', updatedCounter.value);
     });
 
-    // it('throws error for invalid program address', async () => {
-    //   await expect(
-    //     svmClient.writeContract({
-    //       abi: IDL,
-    //       address: 'invalidAddress',
-    //       functionName: 'initialize',
-    //       args: [new BN(42)],
-    //       signer: universalSigner,
-    //     })
-    //   ).rejects.toThrow();
-    // });
+    it('throws error for invalid program address', async () => {
+      await expect(
+        svmClient.writeContract({
+          abi: IDL,
+          address: 'invalidAddress',
+          functionName: 'initialize',
+          args: [],
+          signer: universalSigner,
+        })
+      ).rejects.toThrow();
+    });
 
-    // it('throws error for missing signer.signTransaction', async () => {
-    //   const invalidSigner = { ...universalSigner, signTransaction: undefined };
-    //   await expect(
-    //     svmClient.writeContract({
-    //       abi: IDL,
-    //       address: PROGRAM_ID,
-    //       functionName: 'initialize',
-    //       args: [new BN(42)],
-    //       signer: invalidSigner as unknown as UniversalSigner,
-    //     })
-    //   ).rejects.toThrow('signer.signTransaction is undefined');
-    // });
+    it('throws error for missing signer.signTransaction', async () => {
+      const invalidSigner = { ...universalSigner, signTransaction: undefined };
+      await expect(
+        svmClient.writeContract({
+          abi: IDL,
+          address: PROGRAM_ID,
+          functionName: 'initialize',
+          args: [],
+          signer: invalidSigner as unknown as UniversalSigner,
+        })
+      ).rejects.toThrow('signer.signTransaction is not a function');
+    });
   });
 
   describe('estimateGas', () => {
