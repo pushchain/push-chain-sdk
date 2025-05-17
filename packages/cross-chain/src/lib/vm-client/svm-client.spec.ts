@@ -183,7 +183,7 @@ describe('SvmClient', () => {
           systemProgram: SystemProgram.programId,
         },
         // Pass keypairs that need to sign
-        signers: [counterAccount],
+        extraSigners: [counterAccount],
       });
       console.log('Transaction Signature: ', txSignature);
 
@@ -215,7 +215,7 @@ describe('SvmClient', () => {
           user: new PublicKey(universalSigner.address),
           systemProgram: SystemProgram.programId,
         },
-        signers: [counterAccount],
+        extraSigners: [counterAccount],
       });
 
       console.log('Initialize Transaction:', initTxSignature);
@@ -242,7 +242,7 @@ describe('SvmClient', () => {
         accounts: {
           counter: counterAccount.publicKey,
         },
-        signers: [],
+        extraSigners: [],
       });
 
       console.log('Increment Transaction:', incrementTxSignature);
@@ -286,6 +286,131 @@ describe('SvmClient', () => {
           signer: invalidSigner as unknown as UniversalSigner,
         })
       ).rejects.toThrow('signer.signTransaction is not a function');
+    });
+
+    it('throws error for invalid account configuration', async () => {
+      const counterAccount = Keypair.generate();
+      await expect(
+        svmClient.writeContract({
+          abi: IDL,
+          address: PROGRAM_ID,
+          functionName: 'initialize',
+          signer: universalSigner,
+          accounts: {
+            // Missing required 'user' account
+            counter: counterAccount.publicKey,
+            systemProgram: SystemProgram.programId,
+          },
+          extraSigners: [counterAccount],
+        })
+      ).rejects.toThrow();
+    });
+
+    it('throws error for invalid signer configuration', async () => {
+      const counterAccount = Keypair.generate();
+      await expect(
+        svmClient.writeContract({
+          abi: IDL,
+          address: PROGRAM_ID,
+          functionName: 'initialize',
+          signer: universalSigner,
+          accounts: {
+            counter: counterAccount.publicKey,
+            user: new PublicKey(universalSigner.address),
+            systemProgram: SystemProgram.programId,
+          },
+          // Missing required counter account signer
+          extraSigners: [],
+        })
+      ).rejects.toThrow();
+    });
+
+    it('handles multiple instructions in sequence', async () => {
+      const balance = await svmClient.getBalance(universalSigner.address);
+      if (balance === BigInt(0)) {
+        console.warn('Skipping Test - Account has insufficient balance');
+        throw new Error('Not enough balance');
+      }
+
+      const counterAccount = Keypair.generate();
+
+      // Initialize counter
+      const initTxSignature = await svmClient.writeContract({
+        abi: IDL,
+        address: PROGRAM_ID,
+        functionName: 'initialize',
+        signer: universalSigner,
+        accounts: {
+          counter: counterAccount.publicKey,
+          user: new PublicKey(universalSigner.address),
+          systemProgram: SystemProgram.programId,
+        },
+        extraSigners: [counterAccount],
+      });
+      await svmClient.confirmTransaction(initTxSignature);
+
+      // Increment counter twice
+      for (let i = 0; i < 2; i++) {
+        const incrementTxSignature = await svmClient.writeContract({
+          abi: IDL,
+          address: PROGRAM_ID,
+          functionName: 'increment',
+          signer: universalSigner,
+          accounts: {
+            counter: counterAccount.publicKey,
+          },
+          extraSigners: [],
+        });
+        await svmClient.confirmTransaction(incrementTxSignature);
+      }
+
+      // Verify final value
+      const finalCounter = await svmClient.readContract<{ value: bigint }>({
+        abi: IDL,
+        address: PROGRAM_ID,
+        functionName: 'counter',
+        args: [counterAccount.publicKey.toBase58()],
+      });
+
+      expect(finalCounter.value.toString()).toBe('2');
+    });
+
+    it('handles different ABI configurations', async () => {
+      const balance = await svmClient.getBalance(universalSigner.address);
+      if (balance === BigInt(0)) {
+        console.warn('Skipping Test - Account has insufficient balance');
+        throw new Error('Not enough balance');
+      }
+
+      // Create a modified version of the IDL with different instruction name
+      const modifiedIDL = {
+        ...IDL,
+        instructions: [
+          {
+            ...IDL.instructions[0],
+            name: 'customInitialize',
+          },
+          ...IDL.instructions.slice(1),
+        ],
+      };
+
+      const counterAccount = Keypair.generate();
+
+      // Should throw when using wrong instruction name
+      await expect(
+        svmClient.writeContract({
+          abi: modifiedIDL,
+          address: PROGRAM_ID,
+          functionName: 'initialize', // This should fail as the name was changed
+          signer: universalSigner,
+          accounts: {
+            counter: counterAccount.publicKey,
+            user: new PublicKey(universalSigner.address),
+            systemProgram: SystemProgram.programId,
+          },
+          extraSigners: [counterAccount],
+        })
+      ).rejects.toThrow();
     });
   });
 
