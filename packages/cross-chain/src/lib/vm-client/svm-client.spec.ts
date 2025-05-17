@@ -189,6 +189,64 @@ describe('SvmClient', () => {
       expect(txSignature).toMatch(/^[A-Za-z0-9]+$/);
     });
 
+    it('increments counter and verifies value increased', async () => {
+      const balance = await svmClient.getBalance(universalSigner.address);
+      if (balance === BigInt(0)) {
+        console.warn('Skipping Test - Account has insufficient balance');
+        throw new Error('Not enough balance');
+      }
+
+      // Create a new keypair for the counter account
+      const counterAccount = Keypair.generate();
+
+      // 1. Initialize the counter first
+      await svmClient.writeContract({
+        abi: IDL,
+        address: PROGRAM_ID,
+        functionName: 'initialize',
+        signer: universalSigner,
+        accounts: {
+          counter: counterAccount.publicKey,
+          user: new PublicKey(universalSigner.address),
+          systemProgram: SystemProgram.programId,
+        },
+        signers: [counterAccount],
+      });
+
+      // 2. Read the initial value
+      const initialCounter = await svmClient.readContract<{ value: number }>({
+        abi: IDL,
+        address: PROGRAM_ID,
+        functionName: 'counter',
+        args: [counterAccount.publicKey.toBase58()],
+      });
+
+      // 3. Call increment
+      const txSignature = await svmClient.writeContract({
+        abi: IDL,
+        address: PROGRAM_ID,
+        functionName: 'increment',
+        signer: universalSigner,
+        accounts: {
+          counter: counterAccount.publicKey,
+        },
+        signers: [],
+      });
+
+      // 4. Read the value again and verify it increased
+      const updatedCounter = await svmClient.readContract<{ value: number }>({
+        abi: IDL,
+        address: PROGRAM_ID,
+        functionName: 'counter',
+        args: [counterAccount.publicKey.toBase58()],
+      });
+
+      expect(updatedCounter.value).toBe(1);
+      console.log('Increment Transaction:', txSignature);
+      console.log('Initial value:', initialCounter.value.toString());
+      console.log('Updated value:', updatedCounter.value.toString());
+    });
+
     // it('throws error for invalid program address', async () => {
     //   await expect(
     //     svmClient.writeContract({
