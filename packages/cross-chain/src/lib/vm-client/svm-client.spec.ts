@@ -186,6 +186,11 @@ describe('SvmClient', () => {
         signers: [counterAccount],
       });
       console.log('Transaction Signature: ', txSignature);
+
+      // Wait for the transaction to be confirmed
+      await svmClient.confirmTransaction(txSignature);
+      console.log('Transaction confirmed');
+
       expect(txSignature).toMatch(/^[A-Za-z0-9]+$/);
     });
 
@@ -200,7 +205,7 @@ describe('SvmClient', () => {
       const counterAccount = Keypair.generate();
 
       // 1. Initialize the counter first
-      await svmClient.writeContract({
+      const initTxSignature = await svmClient.writeContract({
         abi: IDL,
         address: PROGRAM_ID,
         functionName: 'initialize',
@@ -213,6 +218,12 @@ describe('SvmClient', () => {
         signers: [counterAccount],
       });
 
+      console.log('Initialize Transaction:', initTxSignature);
+
+      // Wait for the initialization transaction to be confirmed
+      await svmClient.confirmTransaction(initTxSignature);
+      console.log('Initialize transaction confirmed');
+
       // 2. Read the initial value
       const initialCounter = await svmClient.readContract<{ value: number }>({
         abi: IDL,
@@ -220,9 +231,10 @@ describe('SvmClient', () => {
         functionName: 'counter',
         args: [counterAccount.publicKey.toBase58()],
       });
+      console.log('Initial value:', initialCounter.value);
 
       // 3. Call increment
-      const txSignature = await svmClient.writeContract({
+      const incrementTxSignature = await svmClient.writeContract({
         abi: IDL,
         address: PROGRAM_ID,
         functionName: 'increment',
@@ -233,18 +245,22 @@ describe('SvmClient', () => {
         signers: [],
       });
 
+      console.log('Increment Transaction:', incrementTxSignature);
+
+      // Wait for the increment transaction to be confirmed
+      await svmClient.confirmTransaction(incrementTxSignature);
+      console.log('Increment transaction confirmed');
+
       // 4. Read the value again and verify it increased
-      const updatedCounter = await svmClient.readContract<{ value: number }>({
+      const updatedCounter = await svmClient.readContract<{ value: bigint }>({
         abi: IDL,
         address: PROGRAM_ID,
         functionName: 'counter',
         args: [counterAccount.publicKey.toBase58()],
       });
 
-      expect(updatedCounter.value).toBe(1);
-      console.log('Increment Transaction:', txSignature);
-      console.log('Initial value:', initialCounter.value.toString());
-      console.log('Updated value:', updatedCounter.value.toString());
+      expect(updatedCounter.value.toString()).toBe('1');
+      console.log('Updated value:', updatedCounter.value);
     });
 
     // it('throws error for invalid program address', async () => {

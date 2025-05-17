@@ -130,6 +130,39 @@ export class SvmClient {
   }
 
   /**
+   * Waits for a transaction to be confirmed on the blockchain.
+   * @param signature The transaction signature to confirm
+   * @param timeout Optional timeout in milliseconds (default: 30000)
+   */
+  async confirmTransaction(signature: string, timeout = 30000): Promise<void> {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeout) {
+      const status = await this.connection.getSignatureStatus(signature);
+
+      if (status && status.value) {
+        if (status.value.err) {
+          throw new Error(
+            `Transaction failed: ${JSON.stringify(status.value.err)}`
+          );
+        }
+
+        if (
+          status.value.confirmationStatus === 'confirmed' ||
+          status.value.confirmationStatus === 'finalized'
+        ) {
+          return;
+        }
+      }
+
+      // Sleep for a short time before checking again
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    throw new Error(`Transaction confirmation timeout after ${timeout}ms`);
+  }
+
+  /**
    * Estimates the fee (in lamports) to send a transaction with the given instructions.
    */
   async estimateGas({
