@@ -49,5 +49,5 @@ export interface WriteContractParams extends ReadContractParams {
   /**
    * **For Solana only** Keypairs that should sign the transaction
    */
-  signers?: Keypair[];
+  extraSigners?: Keypair[];
 }

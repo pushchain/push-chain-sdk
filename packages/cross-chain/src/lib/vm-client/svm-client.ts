@@ -67,7 +67,7 @@ export class SvmClient {
     functionName,
     args = [],
     accounts = {},
-    signers = [],
+    extraSigners = [],
   }: WriteContractParams): Promise<string> {
     const provider = new AnchorProvider(
       this.connection,
@@ -89,7 +89,7 @@ export class SvmClient {
     return this.sendTransaction({
       instruction,
       signer,
-      solanaAccounts: signers,
+      extraSigners,
     });
   }
 
@@ -99,11 +99,11 @@ export class SvmClient {
   async sendTransaction({
     instruction,
     signer,
-    solanaAccounts = [],
+    extraSigners = [],
   }: {
     instruction: TransactionInstruction;
     signer: UniversalSigner;
-    solanaAccounts?: Keypair[];
+    extraSigners?: Keypair[];
   }): Promise<string> {
     const feePayerPubkey = new PublicKey(signer.address);
     const { blockhash, lastValidBlockHeight } =
@@ -116,8 +116,8 @@ export class SvmClient {
     }).add(instruction);
 
     // Sign with all provided keypairs
-    if (solanaAccounts.length > 0) {
-      tx.partialSign(...solanaAccounts);
+    if (extraSigners.length > 0) {
+      tx.partialSign(...extraSigners);
     }
 
     const messageBytes = tx.serializeMessage();
