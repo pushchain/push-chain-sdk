@@ -5,7 +5,6 @@ import {
   SystemProgram,
   Transaction,
   TransactionInstruction,
-  BlockheightBasedTransactionConfirmationStrategy,
 } from '@solana/web3.js';
 import {
   ClientOptions,
@@ -67,7 +66,7 @@ export class SvmClient {
     signer,
     functionName,
     args = [],
-  }: WriteContractParams & { solanaKeyPair: Keypair }): Promise<string> {
+  }: WriteContractParams & { solanaAccounts?: Keypair[] }): Promise<string> {
     const provider = new AnchorProvider(
       this.connection,
       new Wallet(new Keypair()),
@@ -76,21 +75,22 @@ export class SvmClient {
       }
     );
     const program = new Program(abi, new PublicKey(address), provider);
+    const counterAccount = new Keypair();
 
     let instruction: TransactionInstruction;
     if (args.length > 0) {
       instruction = await program.methods[functionName](...args)
         .accounts({
-          newAccount: new Keypair().publicKey,
-          signer: new PublicKey(signer.address),
+          counter: counterAccount.publicKey,
+          user: new PublicKey(signer.address),
           systemProgram: SystemProgram.programId,
         })
         .instruction();
     } else {
       instruction = await program.methods[functionName]()
         .accounts({
-          newAccount: new Keypair().publicKey,
-          signer: new PublicKey(signer.address),
+          counter: counterAccount.publicKey,
+          user: new PublicKey(signer.address),
           systemProgram: SystemProgram.programId,
         })
         .instruction();
@@ -98,8 +98,9 @@ export class SvmClient {
 
     // (4) Send transaction via UniversalSigner
     return this.sendTransaction({
-      instructions: [instruction],
+      instruction,
       signer,
+      solanaAccounts: [counterAccount],
     });
   }
 
@@ -107,43 +108,35 @@ export class SvmClient {
    * Sends a set of instructions as a manually-signed Solana transaction.
    */
   async sendTransaction({
-    instructions,
+    instruction,
     signer,
+    solanaAccounts,
   }: {
-    instructions: TransactionInstruction[];
+    instruction: TransactionInstruction;
     signer: UniversalSigner;
+    solanaAccounts?: Keypair[];
   }): Promise<string> {
-    // (1) Build the Transaction
     const feePayerPubkey = new PublicKey(signer.address);
-    const { blockhash } = await this.connection.getLatestBlockhash('finalized');
+    const { blockhash, lastValidBlockHeight } =
+      await this.connection.getLatestBlockhash('finalized');
 
     const tx = new Transaction({
       feePayer: feePayerPubkey,
-      recentBlockhash: blockhash,
-    });
+      blockhash,
+      lastValidBlockHeight,
+    }).add(instruction);
 
-    // 📌 Tell it which pubkeys will sign.  (Only those keys get signature slots.)
-    tx.setSigners(feePayerPubkey /*, ...anyOtherSignerPubkeys if needed */);
+    if (solanaAccounts) {
+      tx.partialSign(solanaAccounts[0]);
+    }
 
-    tx.add(...instructions);
+    const messageBytes = tx.serializeMessage();
+    const signature = await signer.signTransaction(messageBytes);
+    tx.addSignature(feePayerPubkey, Buffer.from(signature));
 
-    // (2) Serialize the message for signing
-    const message = tx.serializeMessage();
-
-    // (3) Let your UniversalSigner produce the real ed25519 signature
-    const sigUint8 = await signer.signTransaction(message);
-    const sigBuffer = Buffer.from(sigUint8);
-
-    // (4) Attach the signature in the correct slot
-    tx.addSignature(feePayerPubkey, sigBuffer);
-    // If you had other signers, repeat the above two lines for each
-
-    // (5) Now serialize normally (will verify signatures client-side)
     const rawTx = tx.serialize();
 
-    // (6) Send it
-    const txid = await this.connection.sendRawTransaction(rawTx);
-    return txid;
+    return await this.connection.sendRawTransaction(rawTx);
   }
 
   /**

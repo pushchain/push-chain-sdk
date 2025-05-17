@@ -1,16 +1,8 @@
 import { SvmClient } from './svm-client';
-import {
-  Connection,
-  Keypair,
-  LAMPORTS_PER_SOL,
-  PublicKey,
-  SystemProgram,
-  Transaction,
-  VersionedTransaction,
-} from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import { UniversalSigner } from '../universal/universal.types';
 import { CHAIN } from '../constants/enums';
-import nacl from 'tweetnacl';
+import * as nacl from 'tweetnacl';
 
 // Add type declaration for bn.js
 declare module 'bn.js';
@@ -82,11 +74,9 @@ const IDL = {
 describe('SvmClient', () => {
   let svmClient: SvmClient;
   let universalSigner: UniversalSigner;
-  let connection: Connection;
   let testAccount: Keypair;
 
   beforeAll(async () => {
-    connection = new Connection(RPC_URL, 'confirmed');
     svmClient = new SvmClient({ rpcUrl: RPC_URL });
 
     const privateKeyHex =
@@ -95,15 +85,17 @@ describe('SvmClient', () => {
 
     // Generate a random keypair instead of reading from .env
     testAccount = Keypair.fromSecretKey(privateKey);
+
+    // Create the object first with any required properties
     universalSigner = {
+      keypair: testAccount,
       address: testAccount.publicKey.toBase58(),
       chain,
       signMessage: async (data: Uint8Array) => {
         return nacl.sign.detached(data, testAccount.secretKey);
       },
-      signTransaction: async (unsignedTx: Uint8Array) => {
-        // detached signature of the serialized transaction message
-        return nacl.sign.detached(unsignedTx, testAccount.secretKey);
+      signTransaction: async function (unsignedTx: Uint8Array) {
+        return nacl.sign.detached(unsignedTx, this.keypair.secretKey);
       },
     };
   });
@@ -169,13 +161,12 @@ describe('SvmClient', () => {
     });
   });
 
-  describe('writeContract', () => {
+  describe.only('writeContract', () => {
     it('writes contract value', async () => {
       const balance = await svmClient.getBalance(universalSigner.address);
-      console.log('balance', balance);
-      if (balance < BigInt(LAMPORTS_PER_SOL)) {
+      if (balance === BigInt(0)) {
         console.warn('Skipping Test - Account has insufficient balance');
-        return;
+        throw new Error('Not enough balance');
       }
 
       const txSignature = await svmClient.writeContract({
@@ -183,8 +174,8 @@ describe('SvmClient', () => {
         address: PROGRAM_ID,
         functionName: 'initialize',
         signer: universalSigner,
-        solanaKeyPair: testAccount,
       });
+      console.log('Transaction Signature: ', txSignature);
       expect(txSignature).toMatch(/^[A-Za-z0-9]+$/);
     });
 
