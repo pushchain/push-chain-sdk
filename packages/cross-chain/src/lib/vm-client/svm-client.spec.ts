@@ -88,14 +88,13 @@ describe('SvmClient', () => {
 
     // Create the object first with any required properties
     universalSigner = {
-      keypair: testAccount,
       address: testAccount.publicKey.toBase58(),
       chain,
       signMessage: async (data: Uint8Array) => {
         return nacl.sign.detached(data, testAccount.secretKey);
       },
       signTransaction: async function (unsignedTx: Uint8Array) {
-        return nacl.sign.detached(unsignedTx, this.keypair.secretKey);
+        return nacl.sign.detached(unsignedTx, testAccount.secretKey);
       },
     };
   });
