@@ -66,7 +66,9 @@ export class SvmClient {
     signer,
     functionName,
     args = [],
-  }: WriteContractParams & { solanaAccounts?: Keypair[] }): Promise<string> {
+    accounts = {},
+    signers = [],
+  }: WriteContractParams): Promise<string> {
     const provider = new AnchorProvider(
       this.connection,
       new Wallet(new Keypair()),
@@ -75,32 +77,19 @@ export class SvmClient {
       }
     );
     const program = new Program(abi, new PublicKey(address), provider);
-    const counterAccount = new Keypair();
 
-    let instruction: TransactionInstruction;
-    if (args.length > 0) {
-      instruction = await program.methods[functionName](...args)
-        .accounts({
-          counter: counterAccount.publicKey,
-          user: new PublicKey(signer.address),
-          systemProgram: SystemProgram.programId,
-        })
-        .instruction();
-    } else {
-      instruction = await program.methods[functionName]()
-        .accounts({
-          counter: counterAccount.publicKey,
-          user: new PublicKey(signer.address),
-          systemProgram: SystemProgram.programId,
-        })
-        .instruction();
-    }
+    const methodContext =
+      args.length > 0
+        ? program.methods[functionName](...args)
+        : program.methods[functionName]();
 
-    // (4) Send transaction via UniversalSigner
+    const instruction = await methodContext.accounts(accounts).instruction();
+
+    // Send transaction via UniversalSigner
     return this.sendTransaction({
       instruction,
       signer,
-      solanaAccounts: [counterAccount],
+      solanaAccounts: signers,
     });
   }
 
@@ -110,7 +99,7 @@ export class SvmClient {
   async sendTransaction({
     instruction,
     signer,
-    solanaAccounts,
+    solanaAccounts = [],
   }: {
     instruction: TransactionInstruction;
     signer: UniversalSigner;
@@ -126,8 +115,9 @@ export class SvmClient {
       lastValidBlockHeight,
     }).add(instruction);
 
-    if (solanaAccounts) {
-      tx.partialSign(solanaAccounts[0]);
+    // Sign with all provided keypairs
+    if (solanaAccounts.length > 0) {
+      tx.partialSign(...solanaAccounts);
     }
 
     const messageBytes = tx.serializeMessage();

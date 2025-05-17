@@ -168,11 +168,22 @@ describe('SvmClient', () => {
         throw new Error('Not enough balance');
       }
 
+      // Create a new keypair for the counter account
+      const counterAccount = Keypair.generate();
+
       const txSignature = await svmClient.writeContract({
         abi: IDL,
         address: PROGRAM_ID,
         functionName: 'initialize',
         signer: universalSigner,
+        // Pass dynamic accounts
+        accounts: {
+          counter: counterAccount.publicKey,
+          user: new PublicKey(universalSigner.address),
+          systemProgram: SystemProgram.programId,
+        },
+        // Pass keypairs that need to sign
+        signers: [counterAccount],
       });
       console.log('Transaction Signature: ', txSignature);
       expect(txSignature).toMatch(/^[A-Za-z0-9]+$/);
