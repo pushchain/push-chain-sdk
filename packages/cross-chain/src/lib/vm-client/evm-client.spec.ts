@@ -35,8 +35,7 @@ describe('EvmClient', () => {
   beforeAll(() => {
     evmClient = new EvmClient({ rpcUrl: RPC_URL });
 
-    const PRIVATE_KEY =
-      '0x730b326679b7b7ee74d0611d5b4c4cfc276957fe810deb8d013261f6331483f5';
+    const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as Hex | undefined;
     if (PRIVATE_KEY) {
       const account = privateKeyToAccount(PRIVATE_KEY);
       const walletClient = createWalletClient({
