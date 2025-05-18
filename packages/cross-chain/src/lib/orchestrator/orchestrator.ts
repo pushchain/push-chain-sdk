@@ -1,24 +1,32 @@
-import { Abi, zeroHash, getContractAddress, toBytes, sha256 } from 'viem';
-import { CHAIN, ENV, VM } from '../constants/enums';
+import { Abi, zeroHash, toBytes, sha256 } from 'viem';
+import { CHAIN, NETWORK, VM } from '../constants/enums';
 import { UniversalSigner } from '../universal/universal.types';
 import { ExecuteParams } from './orchestrator.types';
 import { EvmClient } from '../vm-client/evm-client';
 import { CHAIN_INFO } from '../constants/chain';
 import { LOCKER_ABI } from '../constants/abi';
 import { toChainAgnostic } from '../universal/account';
+import { PushClient } from '../push-client/push-client';
 
 export class Orchestrator {
+  private pushClient: PushClient;
   constructor(
     private readonly universalSigner: UniversalSigner,
-    private readonly pushNetwork: ENV,
+    private readonly pushNetwork: NETWORK,
     private readonly rpcUrl: Partial<Record<CHAIN, string>> = {},
     private readonly printTraces = false
-  ) {}
+  ) {
+    const pushChain =
+      this.pushNetwork === NETWORK.MAINNET
+        ? CHAIN.PUSH_MAINNET
+        : CHAIN.PUSH_TESTNET;
+    const pushChainRPC =
+      this.rpcUrl[pushChain] || CHAIN_INFO[pushChain].defaultRPC;
+    this.pushClient = new PushClient({ rpcUrl: pushChainRPC });
+  }
 
   /**
-   * Executes an interaction on Push Chain — either direct or gasless.
-   * Handles NMSC derivation, fee checks, and optional fee-locking.
-   * TODO: Look into gasLimits
+   * Executes an interaction on Push Chain
    */
   async execute(execute: ExecuteParams): Promise<`0x${string}`> {
     const chain = this.universalSigner.chain;
@@ -30,112 +38,72 @@ export class Orchestrator {
       throw new Error('UniversalSigner is already on Push Chain');
     }
 
-    // 2. Derive NMSC address for this signer (on Push Chain)
-    const nmscAddress = await this.deriveNMSCAddress();
+    // 2. Get Push chain NMSC address for this signer
+    const nmscAddress = await this.pushClient.getNMSCAddress(
+      toChainAgnostic(this.universalSigner)
+    );
 
-    // 3. Estimate gas fee for this interaction
-    const requiredFee = await this.estimateFee(execute);
+    // 3. Estimate funds required for the execution
+    // TODO: Fix gas estimation - estimation is req on how much gas the sc will take for the execution. Also nonce should also be accounted for
+    const gasEstimate = await this.pushClient.estimateGas({
+      from: nmscAddress, // the NMSC smart wallet
+      to: execute.target as `0x${string}`,
+      data: execute.data,
+      value: execute.value,
+      gas: execute.gasLimit,
+      maxFeePerGas: execute.maxFeePerGas,
+      maxPriorityFeePerGas: execute.maxPriorityFeePerGas,
+    });
+    const requiredGasFee = (await this.pushClient.getGasPrice()) * gasEstimate;
+    const requiredFunds = requiredGasFee + execute.value;
 
-    // 4. Check NMSC balance on Push Chain
-    const funds = await this.checkPushBalance(nmscAddress); // 0
+    // 4. Check NMSC balance on Push Chain ( in nPUSH )
+    const funds = await this.pushClient.getBalance(nmscAddress);
 
+    // 5. Create execution hash ( execution data to be signed )
     const executionHash = this.sha256HashOfJson(execute);
-    // 5. If not enough funds, lock required fee on source chain and send tx to Push chain
-    if (funds < requiredFee) {
-      // TODO: Lock difference
-      const feeLockTxHash = await this.lockFee(
-        requiredFee - funds,
-        executionHash
-      );
-      return this.sendCrossChainPushTx(feeLockTxHash, execute);
-    } else {
-      // 6. If enough funds, sign execution data and send tx to Push chain
-      // TODO: Look into chain specific signing
-      const signature = await this.universalSigner.signMessage(
-        toBytes(executionHash) // UTF-8 encode the hex string
-      );
-      return this.sendCrossChainPushTx(null, execute, signature);
+
+    // 6 If not enough funds, lock required fee on source chain and send tx to Push chain
+    let feeLockTxHash: string | null = null;
+    if (funds < requiredFunds) {
+      const fundDifference = requiredFunds - funds;
+      const fundDifferenceInUSDC = this.pushClient.pushToUSDC(fundDifference); // in micro-USDC ( USDC with 6 decimal points )
+      feeLockTxHash = await this.lockFee(fundDifferenceInUSDC, executionHash);
     }
+
+    // 7. Sign execution data
+    const signature = await this.universalSigner.signMessage(
+      toBytes(executionHash) // UTF-8 encode the hex string
+    );
+
+    // 8. Send Tx to Push chain
+    return this.sendCrossChainPushTx(feeLockTxHash, execute, signature);
   }
 
   /**
-   * Computes the CREATE2-derived smart wallet address on Push Chain.
-   */
-  private async deriveNMSCAddress(): Promise<`0x${string}`> {
-    return getContractAddress({
-      bytecode: '0x...', // To be deployed smart contract byteCode
-      from: '0x', // factory contract on Push Chain
-      opcode: 'CREATE2',
-      salt: toBytes(toChainAgnostic(this.universalSigner)),
-    });
-  }
-
-  /**
-   * Estimates the gas fee needed for executing the user’s request on Push Chain.
-   */
-  private async estimateFee({
-    target,
-    value,
-    data,
-  }: ExecuteParams): Promise<bigint> {
-    const pushChain =
-      this.pushNetwork === ENV.MAINNET
-        ? CHAIN.PUSH_MAINNET
-        : CHAIN.PUSH_TESTNET;
-
-    const pushChainRPC =
-      this.rpcUrl[pushChain] || CHAIN_INFO[pushChain].defaultRPC;
-
-    const evmClient = new EvmClient({ rpcUrl: pushChainRPC });
-
-    // Simulate the tx to get estimated gas
-    const gasEstimate = await evmClient.estimateGas({
-      from: await this.deriveNMSCAddress(), // the NMSC smart wallet
-      to: target as `0x${string}`,
-      data,
-      value,
-    });
-
-    // Fetch current gas price on Push Chain
-    const gasPrice = await evmClient.getGasPrice();
-
-    // Multiply to get total cost in wei
-    return gasEstimate * gasPrice;
-  }
-
-  /**
-   * Checks NMSC balance for a given account
-   * In case NMSC is not deployed - balance would be 0
-   */
-  private async checkPushBalance(address: `0x${string}`): Promise<bigint> {
-    const pushChain =
-      this.pushNetwork === ENV.MAINNET
-        ? CHAIN.PUSH_MAINNET
-        : CHAIN.PUSH_TESTNET;
-    const pushChainRPC =
-      this.rpcUrl[pushChain] || CHAIN_INFO[pushChain].defaultRPC;
-
-    const pushClient = new EvmClient({ rpcUrl: pushChainRPC });
-    return pushClient.getBalance(address);
-  }
-
-  /**
-   * Locks fee on origin chain by interacting with the fee-locker contract.
-   * amount is in lowest asset representation of the chain ( wei for evm )
+   * Locks a fee on the origin chain by interacting with the chain's fee-locker contract.
+   *
+   * @param amount - Fee amount in USDC (8 Decimals)
+   * @param executionHash - Optional execution payload hash (default: zeroHash)
+   * @returns Transaction hash of the locking transaction
    */
   private async lockFee(
     amount: bigint,
     executionHash: string = zeroHash
   ): Promise<string> {
-    const { lockerContract, vm, defaultRPC } =
-      CHAIN_INFO[this.universalSigner.chain];
+    const chain = this.universalSigner.chain;
+    const { lockerContract, vm, defaultRPC } = CHAIN_INFO[chain];
+
+    if (!lockerContract) {
+      throw new Error(`Locker contract not configured for chain: ${chain}`);
+    }
+
+    const rpcUrl = this.rpcUrl[chain] || defaultRPC;
+
+    // TODO: Convert USDC to the native token's lowest denomination (e.g., wei for EVM)
 
     switch (vm) {
       case VM.EVM: {
-        if (!lockerContract) {
-          throw new Error('Locker Contract Not Found');
-        }
-        const rpcUrl = this.rpcUrl[this.universalSigner.chain] || defaultRPC;
         const evmClient = new EvmClient({ rpcUrl });
 
         return await evmClient.writeContract({
@@ -147,11 +115,14 @@ export class Orchestrator {
           value: amount,
         });
       }
+
       case VM.SVM: {
-        throw new Error('Not Implemented');
+        // To be implemented when Solana-compatible support is added
+        throw new Error(`Fee locking for SVM not implemented yet`);
       }
+
       default: {
-        throw new Error('Unknown VM');
+        throw new Error(`Unsupported VM type: ${vm}`);
       }
     }
   }
@@ -169,21 +140,26 @@ export class Orchestrator {
   }
 
   /**
-   * Utility: checks if a chain belongs to the Push Chain group.
+   * Checks if the given chain belongs to the Push Chain ecosystem.
+   * Used to differentiate logic for Push-native interactions vs external chains.
+   *
+   * @param chain - The chain identifier (e.g., PUSH_MAINNET, PUSH_TESTNET)
+   * @returns True if the chain is a Push chain, false otherwise.
    */
   private isPushChain(chain: CHAIN): boolean {
     return chain === CHAIN.PUSH_MAINNET || chain === CHAIN.PUSH_TESTNET;
   }
 
   /**
-   * Utility: create sha256Hash of a JSON
+   * Creates a deterministic SHA-256 hash of a JSON object.
+   * Ensures consistent key ordering before hashing to avoid mismatches.
+   *
+   * @param obj - Any JSON-serializable object
+   * @returns A hex string representing the SHA-256 hash of the sorted JSON
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private sha256HashOfJson(obj: any): string {
-    // Step 1: Deterministic stringify (stable key order)
     const jsonStr = JSON.stringify(obj, Object.keys(obj).sort());
-
-    // Step 2: Hash with SHA-256 using viem
     return sha256(toBytes(jsonStr));
   }
 }
