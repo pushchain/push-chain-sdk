@@ -3,14 +3,21 @@ import { Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import { UniversalSigner } from '../universal/universal.types';
 import { CHAIN } from '../constants/enums';
 import * as nacl from 'tweetnacl';
+import * as dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 // Add type declaration for bn.js
 declare module 'bn.js';
 
 const PROGRAM_ID = 'ETGtqwDKEm1Z9gq6FdvYUfyDuUZr7g4UdPSmyNLVGriX';
 const chain = CHAIN.SOLANA_DEVNET;
-const RPC_URL =
-  'https://devnet.helius-rpc.com/?api-key=6d172aff-5191-4b4a-bc10-e33f97a50131';
+const RPC_URL = process.env['SOLANA_RPC_URL'];
+
+if (!RPC_URL) {
+  throw new Error('SOLANA_RPC_URL environment variable is not set');
+}
 
 // Example IDL for a simple program
 const IDL = {
@@ -79,11 +86,13 @@ describe('SvmClient', () => {
   beforeAll(async () => {
     svmClient = new SvmClient({ rpcUrl: RPC_URL });
 
-    const privateKeyHex =
-      'b15d0bfff786e50fea7bdc00433d7f2132eaa4abf2a0371230cc62c10a10157de40dd88e010b9e3f6c1e968d203d0f2ba0546cc21474b0a062fcbf2f91d52a7d';
+    const privateKeyHex = process.env['SOLANA_PRIVATE_KEY'];
+    if (!privateKeyHex) {
+      throw new Error('SOLANA_PRIVATE_KEY environment variable is not set');
+    }
     const privateKey = Uint8Array.from(Buffer.from(privateKeyHex, 'hex'));
 
-    // Generate a random keypair instead of reading from .env
+    // Generate a keypair from the private key in .env
     testAccount = Keypair.fromSecretKey(privateKey);
 
     // Create the object first with any required properties
