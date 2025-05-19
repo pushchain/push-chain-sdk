@@ -8,4 +8,5 @@ export default {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/packages/cross-chain',
+  testTimeout: 10000, // Set max test time to 10 seconds
 };

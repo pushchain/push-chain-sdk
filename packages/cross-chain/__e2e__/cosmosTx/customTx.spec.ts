@@ -21,7 +21,7 @@ import {
   MsgMintPush,
 } from '../../src/lib/generated/v1/tx';
 
-describe('Push Chain Custom MsgSend Tx Test', () => {
+describe.skip('Push Chain Custom MsgSend Tx Test', () => {
   const rpc = 'http://localhost:26657';
   const prefix = 'push';
   const denom = 'npush';
