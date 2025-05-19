@@ -42,8 +42,7 @@ const App: React.FC = () => {
   const { isDarkMode } = useDarkMode();
 
   const walletConfig: PushWalletProviderConfig = {
-    // env: env[deploymentEnv],
-    env: CONSTANTS.ENV.LOCAL,
+    env: env[deploymentEnv],
     login: {
       email: true,
       google: true,
