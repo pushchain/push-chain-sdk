@@ -7,6 +7,7 @@ import { CHAIN_INFO } from '../constants/chain';
 import { LOCKER_ABI } from '../constants/abi';
 import { toChainAgnostic } from '../universal/account';
 import { PushClient } from '../push-client/push-client';
+import { SvmClient } from '../vm-client/svm-client';
 
 export class Orchestrator {
   private pushClient: PushClient;
@@ -22,7 +23,10 @@ export class Orchestrator {
         : CHAIN.PUSH_TESTNET;
     const pushChainRPC =
       this.rpcUrl[pushChain] || CHAIN_INFO[pushChain].defaultRPC;
-    this.pushClient = new PushClient({ rpcUrl: pushChainRPC });
+    this.pushClient = new PushClient({
+      rpcUrl: pushChainRPC,
+      network: pushNetwork,
+    });
   }
 
   /**
@@ -117,8 +121,17 @@ export class Orchestrator {
       }
 
       case VM.SVM: {
-        // To be implemented when Solana-compatible support is added
-        throw new Error(`Fee locking for SVM not implemented yet`);
+        const svmClient = new SvmClient({ rpcUrl });
+
+        // TODO: Fix svm client calling
+        return await svmClient.writeContract({
+          abi: LOCKER_ABI as Abi,
+          address: lockerContract,
+          functionName: 'addFunds',
+          args: [executionHash],
+          signer: this.universalSigner,
+          value: amount,
+        });
       }
 
       default: {

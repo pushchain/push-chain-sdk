@@ -72,3 +72,47 @@ export const CHAIN_INFO: Record<
     defaultRPC: '',
   },
 };
+
+/**
+ * Extra required info regarding Push Chain
+ */
+export const PUSH_CHAIN_INFO: Record<
+  CHAIN.PUSH_MAINNET | CHAIN.PUSH_TESTNET,
+  (typeof CHAIN_INFO)[CHAIN.PUSH_MAINNET] & {
+    denom: string;
+    tendermintRpc: string;
+    prefix: string;
+    factoryAddress: `0x${string}`;
+    scWalletBytecode: `0x${string}`;
+    pushDecimals: bigint;
+    usdcDecimals: bigint;
+    pushToUsdcNumerator: bigint;
+    pushToUsdcDenominator: bigint;
+  }
+> = {
+  [CHAIN.PUSH_MAINNET]: {
+    ...CHAIN_INFO[CHAIN.PUSH_MAINNET],
+    denom: 'npush',
+    tendermintRpc: 'TBD',
+    prefix: 'push',
+    factoryAddress: '0xTBD',
+    scWalletBytecode: '0xTBD',
+    pushDecimals: BigInt(1e18),
+    usdcDecimals: BigInt(1e8),
+    pushToUsdcNumerator: BigInt(1e7), // 0.1 USDC
+    pushToUsdcDenominator: BigInt(1e18),
+  },
+  [CHAIN.PUSH_TESTNET]: {
+    ...CHAIN_INFO[CHAIN.PUSH_TESTNET],
+    denom: 'npush',
+    // tendermintRpc: 'https://pn1.dev.push.org',
+    tendermintRpc: 'http://localhost:26657',
+    prefix: 'push',
+    factoryAddress: '0xTBD',
+    scWalletBytecode: '0xTBD',
+    pushDecimals: BigInt(1e18),
+    usdcDecimals: BigInt(1e8),
+    pushToUsdcNumerator: BigInt(1e7), // 0.1 USDC
+    pushToUsdcDenominator: BigInt(1e18),
+  },
+};

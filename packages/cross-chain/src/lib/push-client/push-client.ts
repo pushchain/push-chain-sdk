@@ -19,14 +19,21 @@ import { BaseAccount } from 'cosmjs-types/cosmos/auth/v1beta1/auth';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { toBech32 } from '@cosmjs/encoding';
 import { EvmClient } from '../vm-client/evm-client';
-import { PushClientConfig as cfg } from './push-client.config';
 import { PushClientOptions } from './push-client.types';
+import { PUSH_CHAIN_INFO } from '../constants/chain';
+import { CHAIN, NETWORK } from '../constants/enums';
 
 export class PushClient extends EvmClient {
-  private tendermintRpcUrl: string;
+  private pushChainInfo;
+  private network: NETWORK;
   constructor(clientOptions: PushClientOptions) {
     super(clientOptions);
-    this.tendermintRpcUrl = clientOptions.tendermintRpcUrl;
+    this.network = clientOptions.network;
+
+    this.pushChainInfo =
+      clientOptions.network === NETWORK.MAINNET
+        ? PUSH_CHAIN_INFO[CHAIN.PUSH_MAINNET]
+        : PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET];
   }
 
   /**
@@ -34,8 +41,8 @@ export class PushClient extends EvmClient {
    */
   async getNMSCAddress(caipAddress: string): Promise<`0x${string}`> {
     return getContractAddress({
-      bytecode: cfg.scWalletBytecode,
-      from: cfg.factoryAddress,
+      bytecode: this.pushChainInfo.scWalletBytecode,
+      from: this.pushChainInfo.factoryAddress,
       opcode: 'CREATE2',
       salt: toBytes(caipAddress),
     });
@@ -45,14 +52,20 @@ export class PushClient extends EvmClient {
    * Converts nPUSH (1e18) to USDC (1e8), fixed rate: 1 PUSH = 0.1 USDC
    */
   pushToUSDC(amount: bigint): bigint {
-    return (amount * cfg.pushToUsdcNumerator) / cfg.pushToUsdcDenominator;
+    return (
+      (amount * this.pushChainInfo.pushToUsdcNumerator) /
+      this.pushChainInfo.pushToUsdcDenominator
+    );
   }
 
   /**
    * Converts USDC (1e8) to nPUSH (1e18), fixed rate: 1 PUSH = 0.1 USDC
    */
   usdcToPush(amount: bigint): bigint {
-    return (amount * cfg.pushToUsdcDenominator) / cfg.pushToUsdcNumerator;
+    return (
+      (amount * this.pushChainInfo.pushToUsdcDenominator) /
+      this.pushChainInfo.pushToUsdcNumerator
+    );
   }
 
   // --- Msg Creators ---
@@ -93,10 +106,15 @@ export class PushClient extends EvmClient {
   async signCosmosTx(txBody: TxBody): Promise<TxRaw> {
     const privateKey = generatePrivateKey();
     const account = privateKeyToAccount(privateKey);
-    const sender = toBech32(cfg.bech32Prefix, hexToBytes(account.address));
+    const sender = toBech32(
+      this.pushChainInfo.prefix,
+      hexToBytes(account.address)
+    );
 
     // 🔍 Get on-chain account info
-    const tmClient = await Tendermint34Client.connect(this.tendermintRpcUrl);
+    const tmClient = await Tendermint34Client.connect(
+      this.pushChainInfo.tendermintRpc
+    );
     const status = await tmClient.status();
     const chainId = status.nodeInfo.network;
     const queryClient = QueryClient.withExtensions(
@@ -141,7 +159,9 @@ export class PushClient extends EvmClient {
   }
 
   async broadcastCosmosTx(txRaw: TxRaw): Promise<string> {
-    const client = await StargateClient.connect(this.tendermintRpcUrl);
+    const client = await StargateClient.connect(
+      this.pushChainInfo.tendermintRpc
+    );
     const result = await client.broadcastTx(TxRaw.encode(txRaw).finish());
     return result.transactionHash;
   }

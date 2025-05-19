@@ -7,12 +7,12 @@ import {
   MsgExecutePayload,
 } from '../generated/v1/tx';
 import { TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
+import { NETWORK } from '../constants/enums';
 
 // These constants must match what your PushClient uses internally
 const FACTORY_ADDRESS: `0x${string}` =
   '0x0000000000000000000000000000000000000000';
 const SC_WALLET_BYTECODE: `0x${string}` = '0x00'; // dummy bytecode for test
-const TENDERMINT_RPC = 'http://localhost:26657';
 const EVM_RPC_URL = CHAIN_INFO['PUSH_TESTNET'].defaultRPC;
 
 describe('PushClient', () => {
@@ -21,7 +21,7 @@ describe('PushClient', () => {
   beforeEach(() => {
     client = new PushClient({
       rpcUrl: EVM_RPC_URL,
-      tendermintRpcUrl: TENDERMINT_RPC,
+      network: NETWORK.TESTNET,
     });
   });
 
