@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { Alert, Box, Button, TextInput } from 'shared-components';
 import { TransactionSnippet } from '../../../common/components';
 import { toHex } from 'viem';
-import { usePushChainClient, usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
+import {
+  usePushChainClient,
+  usePushWalletContext,
+} from '@pushprotocol/pushchain-ui-kit';
 
 const MockSignTransaction = () => {
-
   const { pushChain } = usePushChainClient();
 
   const { handleSignMessage } = usePushWalletContext();

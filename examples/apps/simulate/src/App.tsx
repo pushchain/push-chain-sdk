@@ -22,9 +22,9 @@ const GlobalStyle = createGlobalStyle`
     /* New blocks theme css variables*/
   
     ${(props) => {
-    // @ts-expect-error
-    return getBlocksCSSVariables(props.theme.blocksTheme);
-  }}
+      // @ts-expect-error
+      return getBlocksCSSVariables(props.theme.blocksTheme);
+    }}
   }
 `;
 
@@ -42,32 +42,34 @@ const App: React.FC = () => {
   const { isDarkMode } = useDarkMode();
 
   const walletConfig: PushWalletProviderConfig = {
-    env: env[deploymentEnv],
+    env: CONSTANTS.ENV.LOCAL,
     login: {
       email: true,
       google: true,
       wallet: {
         enabled: true,
       },
-      appPreview: true
+      appPreview: true,
     },
-  }
+  };
 
   const appMetadata: AppMetadata = {
-    logoUrl: "https://plus.unsplash.com/premium_photo-1746731481770-08b2f71661d0?q=80&w=2671&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    logoUrl:
+      'https://plus.unsplash.com/premium_photo-1746731481770-08b2f71661d0?q=80&w=2671&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
     title: 'Simulate',
-    description: 'Push Chain is a shared state L1 blockchain that allows all chains to unify, enabling apps of any chain to be accessed by users of any chain.'
-  }
+    description:
+      'Push Chain is a shared state L1 blockchain that allows all chains to unify, enabling apps of any chain to be accessed by users of any chain.',
+  };
 
   const modalDefaults: ModalDefaultsProps = {
     loginLayout: CONSTANTS.LOGIN.SPLIT,
     showModalAppPreview: true,
-    bgColor: '#000'
-  }
+    bgColor: '#000',
+  };
 
   const buttonDefaults: ButtonDefaultsProps = {
     accountMenuVariant: 'hover',
-  }
+  };
 
   return (
     <ThemeProvider theme={isDarkMode ? themeConfig.dark : themeConfig.light}>
@@ -89,7 +91,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
-
-
-

@@ -5,14 +5,16 @@ import { centerMaskString } from '../../../helpers';
 import { CONSTANTS, createUniversalAccount } from '@pushchain/devnet';
 import { TransactionSnippet } from '../../../common/components';
 import { mockTransaction } from '../../../common/constants';
-import { usePushChainClient, usePushWalletContext } from '@pushprotocol/pushchain-ui-kit';
+import {
+  usePushChainClient,
+  usePushWalletContext,
+} from '@pushprotocol/pushchain-ui-kit';
 
 const MockSendTransaction = () => {
-
-  const { pushChain, isLoading, error } = usePushChainClient()
+  const { pushChain, isLoading, error } = usePushChainClient();
   const { universalAddress } = usePushWalletContext();
 
-  console.log("Error initialising push chain >>", error);
+  console.log('Error initialising push chain >>', error);
 
   const [isSendingTxn, setIsSendingTxn] = useState(false);
   const [txnHash, setTxnHash] = useState<string | null>(null);
@@ -102,15 +104,17 @@ const MockSendTransaction = () => {
       />
 
       <Box width={{ initial: '350px', ml: '300px' }}>
-        {!isLoading && <Button
-          variant="primary"
-          size="large"
-          block
-          disabled={isSendingTxn}
-          onClick={() => handleSendTransaction()}
-        >
-          {isSendingTxn ? 'Sending Transaction' : 'Send Transaction'}
-        </Button>}
+        {!isLoading && (
+          <Button
+            variant="primary"
+            size="large"
+            block
+            disabled={isSendingTxn}
+            onClick={() => handleSendTransaction()}
+          >
+            {isSendingTxn ? 'Sending Transaction' : 'Send Transaction'}
+          </Button>
+        )}
       </Box>
       <a href="https://scan.push.org/transactions" target="_blank">
         <Box
