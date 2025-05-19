@@ -1,17 +1,17 @@
 import {
   Connection,
+  Keypair,
   PublicKey,
   SystemProgram,
   Transaction,
   TransactionInstruction,
-  sendAndConfirmRawTransaction,
 } from '@solana/web3.js';
 import {
   ClientOptions,
   ReadContractParams,
   WriteContractParams,
 } from './vm-client.types';
-import { BN, Idl, Program } from '@coral-xyz/anchor';
+import { AnchorProvider, Program, Wallet } from '@coral-xyz/anchor';
 import { UniversalSigner } from '../universal/universal.types';
 
 /**
@@ -41,18 +41,18 @@ export class SvmClient {
     abi,
     address,
     functionName,
+    args = [],
   }: ReadContractParams): Promise<T> {
-    const idl = abi as Idl;
-
-    const program = new Program(idl, {
-      connection: this.connection,
-    });
-
-    const pubkey = new PublicKey(address);
-
-    // @ts-expect-error anchor doesn't have dynamic key typings for account layout access
+    const provider = new AnchorProvider(
+      this.connection,
+      new Wallet(new Keypair()),
+      {
+        preflightCommitment: 'confirmed',
+      }
+    );
+    const program = new Program(abi, new PublicKey(address), provider);
+    const pubkey = new PublicKey(args[0]);
     const account = await program.account[functionName].fetch(pubkey);
-
     return account as T;
   }
 
@@ -64,65 +64,126 @@ export class SvmClient {
     abi,
     address,
     signer,
+    functionName,
+    args = [],
+    accounts = {},
+    extraSigners = [],
   }: WriteContractParams): Promise<string> {
-    const idl = abi as Idl;
-    const programId = new PublicKey(idl.address);
-
-    const program = new Program(idl, {
-      connection: this.connection,
-    });
-
-    // (1) Derive PDA for newAccount (replace seeds with your actual derivation logic)
-    const [newAccountPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('user'), new PublicKey(signer.address).toBuffer()],
-      programId
+    const provider = new AnchorProvider(
+      this.connection,
+      new Wallet(new Keypair()),
+      {
+        preflightCommitment: 'confirmed',
+      }
     );
+    const program = new Program(abi, new PublicKey(address), provider);
 
-    // (2) Hardcoded input value (like u64: 42)
-    const data = new BN(42);
+    const methodContext =
+      args.length > 0
+        ? program.methods[functionName](...args)
+        : program.methods[functionName]();
 
-    // (3) Build instruction
-    const instruction = await program.methods['initialize'](data)
-      .accounts({
-        newAccount: newAccountPda,
-        signer: new PublicKey(signer.address),
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
+    const instruction = await methodContext.accounts(accounts).instruction();
 
-    // (4) Send transaction via UniversalSigner
+    // Send transaction via UniversalSigner
     return this.sendTransaction({
-      instructions: [instruction],
+      instruction,
       signer,
+      extraSigners,
     });
   }
 
   /**
-   * Sends a Solana transaction using a UniversalSigner.
-   * TODO: Remove deprecated functions
+   * Sends a set of instructions as a manually-signed Solana transaction.
    */
   async sendTransaction({
+    instruction,
+    signer,
+    extraSigners = [],
+  }: {
+    instruction: TransactionInstruction;
+    signer: UniversalSigner;
+    extraSigners?: Keypair[];
+  }): Promise<string> {
+    const feePayerPubkey = new PublicKey(signer.address);
+    const { blockhash, lastValidBlockHeight } =
+      await this.connection.getLatestBlockhash('finalized');
+
+    const tx = new Transaction({
+      feePayer: feePayerPubkey,
+      blockhash,
+      lastValidBlockHeight,
+    }).add(instruction);
+
+    // Sign with all provided keypairs
+    if (extraSigners.length > 0) {
+      tx.partialSign(...extraSigners);
+    }
+
+    const messageBytes = tx.serializeMessage();
+    const signature = await signer.signTransaction(messageBytes);
+    tx.addSignature(feePayerPubkey, Buffer.from(signature));
+
+    const rawTx = tx.serialize();
+
+    return await this.connection.sendRawTransaction(rawTx);
+  }
+
+  /**
+   * Waits for a transaction to be confirmed on the blockchain.
+   * @param signature The transaction signature to confirm
+   * @param timeout Optional timeout in milliseconds (default: 30000)
+   */
+  async confirmTransaction(signature: string, timeout = 30000): Promise<void> {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeout) {
+      const status = await this.connection.getSignatureStatus(signature);
+
+      if (status && status.value) {
+        if (status.value.err) {
+          throw new Error(
+            `Transaction failed: ${JSON.stringify(status.value.err)}`
+          );
+        }
+
+        if (
+          status.value.confirmationStatus === 'confirmed' ||
+          status.value.confirmationStatus === 'finalized'
+        ) {
+          return;
+        }
+      }
+
+      // Sleep for a short time before checking again
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    throw new Error(`Transaction confirmation timeout after ${timeout}ms`);
+  }
+
+  /**
+   * Estimates the fee (in lamports) to send a transaction with the given instructions.
+   */
+  async estimateGas({
     instructions,
     signer,
   }: {
     instructions: TransactionInstruction[];
     signer: UniversalSigner;
-  }): Promise<string> {
+  }): Promise<bigint> {
     const feePayer = new PublicKey(signer.address);
-    const { blockhash } = await this.connection.getLatestBlockhash();
-
-    const tx = new Transaction({
-      recentBlockhash: blockhash,
-      feePayer,
-    }).add(...instructions);
-
-    const serialized = tx.serialize({
-      requireAllSignatures: false,
-      verifySignatures: false,
-    });
-
-    const signed = await signer.signMessage(serialized);
-
-    return sendAndConfirmRawTransaction(this.connection, Buffer.from(signed));
+    const { blockhash, lastValidBlockHeight } =
+      await this.connection.getLatestBlockhash();
+    const tx = new Transaction({ blockhash, lastValidBlockHeight, feePayer });
+    if (instructions.length > 0) {
+      tx.add(...instructions);
+    }
+    const message = tx.compileMessage();
+    const feeResp = await this.connection.getFeeForMessage(message);
+    if (!feeResp || feeResp.value == null) {
+      throw new Error('Failed to estimate fee');
+    }
+    return BigInt(feeResp.value);
   }
 }

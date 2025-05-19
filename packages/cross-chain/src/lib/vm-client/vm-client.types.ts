@@ -1,6 +1,6 @@
-import { Idl } from '@coral-xyz/anchor';
 import { UniversalSigner } from '../universal/universal.types';
 import { Abi } from 'viem';
+import { Keypair, PublicKey } from '@solana/web3.js';
 
 /**
  * Common options used by all VM clients (EVM, SVM, etc.)
@@ -22,7 +22,7 @@ export interface ReadContractParams {
    * EVM abi
    * SVM idl
    */
-  abi: Abi | Idl;
+  abi: Abi | any;
   /**
    * EVM contract fn name
    * SVM PDA var name
@@ -42,4 +42,12 @@ export interface ReadContractParams {
 export interface WriteContractParams extends ReadContractParams {
   value?: bigint; // value in ether
   signer: UniversalSigner;
+  /**
+   * **For Solana only** Dynamic accounts to pass to the solana program instruction
+   */
+  accounts?: Record<string, PublicKey>;
+  /**
+   * **For Solana only** Keypairs that should sign the transaction
+   */
+  extraSigners?: Keypair[];
 }
