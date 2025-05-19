@@ -4,9 +4,15 @@
   "dependencies": {
     "@bufbuild/protobuf": "^2.0.0",
     "@coral-xyz/anchor": "^0.28.0",
+    "@cosmjs/crypto": "0.33.1",
+    "@cosmjs/encoding": "0.33.1",
+    "@cosmjs/proto-signing": "^0.33.1",
+    "@cosmjs/stargate": "^0.33.1",
+    "@cosmjs/tendermint-rpc": "0.33.1",
     "@solana/web3.js": "^1.68.0",
+    "cosmjs-types": "0.9.0",
+    "protobufjs": "7.4.0",
     "tslib": "^2.3.0",
-    "tweetnacl": "^1.0.3",
     "viem": "2.22.13"
   },
   "scripts": {
@@ -16,10 +22,8 @@
   "main": "./src/index.js",
   "typings": "./src/index.d.ts",
   "devDependencies": {
-    "@cosmjs/proto-signing": "^0.33.1",
-    "@cosmjs/stargate": "^0.33.1",
-    "protobufjs": "7.4.0",
     "secp256k1": "^5.0.1",
-    "ts-proto": "^2.0.3"
+    "ts-proto": "^2.0.3",
+    "tweetnacl": "^1.0.3"
   }
 }
