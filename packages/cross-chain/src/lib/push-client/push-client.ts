@@ -25,11 +25,8 @@ import { CHAIN, NETWORK } from '../constants/enums';
 
 export class PushClient extends EvmClient {
   private pushChainInfo;
-  private network: NETWORK;
   constructor(clientOptions: PushClientOptions) {
     super(clientOptions);
-    this.network = clientOptions.network;
-
     this.pushChainInfo =
       clientOptions.network === NETWORK.MAINNET
         ? PUSH_CHAIN_INFO[CHAIN.PUSH_MAINNET]
