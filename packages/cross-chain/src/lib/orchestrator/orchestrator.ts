@@ -43,9 +43,10 @@ export class Orchestrator {
     }
 
     // 2. Get Push chain NMSC address for this signer
-    const nmscAddress = await this.pushClient.getNMSCAddress(
-      toChainAgnostic(this.universalSigner)
-    );
+    const { address: nmscAddress, deployed: isNMSCDeployed } =
+      await this.pushClient.getNMSCAddress(
+        toChainAgnostic(this.universalSigner)
+      );
 
     // 3. Estimate funds required for the execution
     // TODO: Fix gas estimation - estimation is req on how much gas the sc will take for the execution. Also nonce should also be accounted for
@@ -76,12 +77,18 @@ export class Orchestrator {
     }
 
     // 7. Sign execution data
+    // TODO: Fix signing according to Validator's logic
     const signature = await this.universalSigner.signMessage(
       toBytes(executionHash) // UTF-8 encode the hex string
     );
 
     // 8. Send Tx to Push chain
-    return this.sendCrossChainPushTx(feeLockTxHash, execute, signature);
+    return this.sendCrossChainPushTx(
+      isNMSCDeployed,
+      feeLockTxHash,
+      execute,
+      signature
+    );
   }
 
   /**
@@ -144,11 +151,28 @@ export class Orchestrator {
    * Sends a custom Cosmos tx to Push Chain (gasless) to execute user intent.
    */
   public async sendCrossChainPushTx(
+    isNMSCDeployed: boolean,
     feeLockTxHash: string | null,
     execute?: ExecuteParams,
     signature?: Uint8Array
   ): Promise<`0x${string}`> {
     // TODO: build and broadcast custom Cosmos transaction (gasless meta tx)
+    if (!isNMSCDeployed) {
+      // prepare MsgDeployNMSC
+    }
+
+    if (feeLockTxHash) {
+      // prepare MsgMintPush
+    }
+
+    if (execute && signature) {
+      // prepare MsgExecutePayload
+    }
+
+    // createTxBody
+    // signTx
+    // broadcastTx
+
     return '0xTxHash';
   }
 
