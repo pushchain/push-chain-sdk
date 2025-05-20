@@ -27,7 +27,7 @@ import {
  * });
  */
 export class EvmClient {
-  private publicClient: PublicClient;
+  protected publicClient: PublicClient;
 
   constructor({ rpcUrl }: ClientOptions) {
     this.publicClient = createPublicClient({

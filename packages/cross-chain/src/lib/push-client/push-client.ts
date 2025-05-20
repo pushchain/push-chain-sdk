@@ -39,13 +39,20 @@ export class PushClient extends EvmClient {
   /**
    * Computes the CREATE2-derived smart wallet address on Push Chain.
    */
-  async getNMSCAddress(caipAddress: string): Promise<`0x${string}`> {
-    return getContractAddress({
+  async getNMSCAddress(caipAddress: string): Promise<{
+    address: `0x${string}`;
+    deployed: boolean;
+  }> {
+    const address = await getContractAddress({
       bytecode: this.pushChainInfo.scWalletBytecode,
       from: this.pushChainInfo.factoryAddress,
       opcode: 'CREATE2',
       salt: toBytes(caipAddress),
     });
+
+    const byteCode = await this.publicClient.getCode({ address });
+
+    return { address, deployed: byteCode !== '0x' };
   }
 
   /**
