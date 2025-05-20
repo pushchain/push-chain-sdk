@@ -2,7 +2,7 @@ export type ExecuteParams = {
   /**
    * The target contract or account on Push Chain.
    */
-  target: string;
+  target: `0x${string}`;
 
   /**
    * Amount of native token (in wei) to send alongside the call.
@@ -29,6 +29,7 @@ export type ExecuteParams = {
 
   /**
    * Optional override for the EIP-1559 max priority fee per gas (in wei).
+   * TODO: This will be removed
    * @reason Allows customizing the miner tip separately from the base fee.
    */
   maxPriorityFeePerGas?: bigint;
@@ -37,5 +38,10 @@ export type ExecuteParams = {
    * Optional explicit nonce for the transaction.
    * @reason Ensures correct ordering and avoids “replacement underpriced” when sending in parallel.
    */
-  nonce?: number;
+  nonce?: bigint;
+
+  /**
+   * Optional for signature expiry
+   */
+  deadline?: bigint;
 };

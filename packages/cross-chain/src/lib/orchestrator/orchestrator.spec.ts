@@ -98,26 +98,48 @@ describe('Orchestrator', () => {
     //
   });
 
-  describe('sha256HashOfJson', () => {
+  describe('computeExecutionHash', () => {
     const orc = new Orchestrator(mockSigner, NETWORK.TESTNET);
-    it('returns the same hash for identical objects with different key order', () => {
-      const objA = { foo: 1, bar: 2 };
-      const objB = { bar: 2, foo: 1 };
+    const expectedHash =
+      '0x861bf096806b54e87be2ff4480c2568e4d90161c8c9f962e392b8a7ae4f96aea';
+    it('should return the expected Hash', () => {
+      const value = {
+        target: '0x527F3692F5C53CfA83F7689885995606F93b6164' as `0x{string}`,
+        value: BigInt(0),
+        data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312' as `0x{string}`,
+        gasLimit: BigInt(21000000),
+        maxFeePerGas: BigInt(10000000000000000),
+        maxPriorityFeePerGas: BigInt(2),
+        nonce: BigInt(1),
+        deadline: BigInt(9999999999),
+      };
 
-      const hashA = orc['sha256HashOfJson'](objA);
-      const hashB = orc['sha256HashOfJson'](objB);
-
-      expect(hashA).toBe(hashB);
-      expect(hashA).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      const hash = orc['computeExecutionHash']({
+        chainId: 9000,
+        payload: value,
+        verifyingContract: '0x48445e02796af0b076f96fc013536f1c879e282c',
+      });
+      expect(hash === expectedHash).toBe(true);
     });
 
-    it('produces different hashes for different content', () => {
-      const obj1 = { foo: 1 };
-      const obj2 = { foo: 2 };
-      const hash1 = orc['sha256HashOfJson'](obj1);
-      const hash2 = orc['sha256HashOfJson'](obj2);
+    it('should return different hash on changing params', () => {
+      const value = {
+        target: '0x527F3692F5C53CfA83F7689885995606F93b6164' as `0x{string}`,
+        value: BigInt(0),
+        data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312' as `0x{string}`,
+        gasLimit: BigInt(21000000),
+        maxFeePerGas: BigInt(10000000000000000),
+        maxPriorityFeePerGas: BigInt(2),
+        nonce: BigInt(1),
+        deadline: BigInt(9999999998),
+      };
 
-      expect(hash1).not.toBe(hash2);
+      const hash = orc['computeExecutionHash']({
+        chainId: 9000,
+        payload: value,
+        verifyingContract: '0x48445e02796af0b076f96fc013536f1c879e282c',
+      });
+      expect(hash === expectedHash).toBe(false);
     });
   });
 });

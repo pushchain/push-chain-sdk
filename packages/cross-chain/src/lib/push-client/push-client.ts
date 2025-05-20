@@ -24,7 +24,7 @@ import { PUSH_CHAIN_INFO } from '../constants/chain';
 import { CHAIN, NETWORK } from '../constants/enums';
 
 export class PushClient extends EvmClient {
-  private pushChainInfo;
+  public pushChainInfo;
   constructor(clientOptions: PushClientOptions) {
     super(clientOptions);
     this.pushChainInfo =

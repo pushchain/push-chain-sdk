@@ -1,4 +1,11 @@
-import { Abi, zeroHash, toBytes, sha256 } from 'viem';
+import {
+  Abi,
+  zeroHash,
+  toBytes,
+  keccak256,
+  encodeAbiParameters,
+  encodePacked,
+} from 'viem';
 import { CHAIN, NETWORK, VM } from '../constants/enums';
 import { UniversalSigner } from '../universal/universal.types';
 import { ExecuteParams } from './orchestrator.types';
@@ -13,14 +20,12 @@ export class Orchestrator {
   private pushClient: PushClient;
   constructor(
     private readonly universalSigner: UniversalSigner,
-    private readonly pushNetwork: NETWORK,
+    pushNetwork: NETWORK,
     private readonly rpcUrl: Partial<Record<CHAIN, string>> = {},
     private readonly printTraces = false
   ) {
     const pushChain =
-      this.pushNetwork === NETWORK.MAINNET
-        ? CHAIN.PUSH_MAINNET
-        : CHAIN.PUSH_TESTNET;
+      pushNetwork === NETWORK.MAINNET ? CHAIN.PUSH_MAINNET : CHAIN.PUSH_TESTNET;
     const pushChainRPC =
       this.rpcUrl[pushChain] || CHAIN_INFO[pushChain].defaultRPC;
     this.pushClient = new PushClient({
@@ -66,7 +71,19 @@ export class Orchestrator {
     const funds = await this.pushClient.getBalance(nmscAddress);
 
     // 5. Create execution hash ( execution data to be signed )
-    const executionHash = this.sha256HashOfJson(execute);
+    const executionHash = this.computeExecutionHash({
+      verifyingContract: nmscAddress,
+      payload: {
+        target: execute.target,
+        value: execute.value,
+        data: execute.data,
+        gasLimit: execute.gasLimit || BigInt(21000000),
+        maxFeePerGas: execute.maxFeePerGas || BigInt(10000000000000000),
+        maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(2),
+        nonce: execute.nonce || BigInt(1), // TODO: fetch is from nmsc itself
+        deadline: execute.deadline || BigInt(9999999999),
+      },
+    });
 
     // 6 If not enough funds, lock required fee on source chain and send tx to Push chain
     let feeLockTxHash: string | null = null;
@@ -188,15 +205,105 @@ export class Orchestrator {
   }
 
   /**
-   * Creates a deterministic SHA-256 hash of a JSON object.
-   * Ensures consistent key ordering before hashing to avoid mismatches.
+   * Computes the EIP-712 digest hash for the CrossChainPayload structure.
+   * This is the message that should be signed by the user's wallet (e.g., Solana signer).
    *
-   * @param obj - Any JSON-serializable object
-   * @returns A hex string representing the SHA-256 hash of the sorted JSON
+   * The resulting hash is equivalent to:
+   * keccak256("\x19\x01" || domainSeparator || structHash)
+   *
+   * @param chainId - EVM chain ID of the destination chain (Push Chain)
+   * @param verifyingContract - Address of the verifying contract (i.e., the user's NMSC smart wallet)
+   * @param version - Optional EIP-712 domain version (default: '0.1.0')
+   * @param payload - Execution details encoded into the CrossChainPayload struct
+   * @returns keccak256 digest to be signed by the user
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private sha256HashOfJson(obj: any): string {
-    const jsonStr = JSON.stringify(obj, Object.keys(obj).sort());
-    return sha256(toBytes(jsonStr));
+  private computeExecutionHash({
+    chainId = Number(this.pushClient.pushChainInfo.chainId),
+    verifyingContract,
+    payload,
+    version = '0.1.0',
+  }: {
+    chainId?: number;
+    verifyingContract: `0x${string}`;
+    version?: string;
+    payload: {
+      target: `0x${string}`;
+      value: bigint;
+      data: `0x${string}`;
+      gasLimit: bigint;
+      maxFeePerGas: bigint;
+      maxPriorityFeePerGas: bigint;
+      nonce: bigint;
+      deadline: bigint;
+    };
+  }): `0x${string}` {
+    // 1. Hash the type signature
+    const typeHash = keccak256(
+      toBytes(
+        'CrossChainPayload(address target,uint256 value,bytes data,uint256 gasLimit,uint256 maxFeePerGas,uint256 maxPriorityFeePerGas,uint256 nonce,uint256 deadline)'
+      )
+    );
+
+    // 2. Domain separator
+    const domainTypeHash = keccak256(
+      toBytes(
+        'EIP712Domain(string version,uint256 chainId,address verifyingContract)'
+      )
+    );
+
+    const domainSeparator = keccak256(
+      encodeAbiParameters(
+        [
+          { name: 'typeHash', type: 'bytes32' },
+          { name: 'version', type: 'bytes32' },
+          { name: 'chainId', type: 'uint256' },
+          { name: 'verifyingContract', type: 'address' },
+        ],
+        [
+          domainTypeHash,
+          keccak256(toBytes(version)),
+          BigInt(chainId),
+          verifyingContract,
+        ]
+      )
+    );
+
+    // 3. Struct hash
+    const structHash = keccak256(
+      encodeAbiParameters(
+        [
+          { name: 'typeHash', type: 'bytes32' },
+          { name: 'target', type: 'address' },
+          { name: 'value', type: 'uint256' },
+          { name: 'dataHash', type: 'bytes32' },
+          { name: 'gasLimit', type: 'uint256' },
+          { name: 'maxFeePerGas', type: 'uint256' },
+          { name: 'maxPriorityFeePerGas', type: 'uint256' },
+          { name: 'nonce', type: 'uint256' },
+          { name: 'deadline', type: 'uint256' },
+        ],
+        [
+          typeHash,
+          payload.target,
+          payload.value,
+          keccak256(payload.data),
+          payload.gasLimit,
+          payload.maxFeePerGas,
+          payload.maxPriorityFeePerGas,
+          payload.nonce,
+          payload.deadline,
+        ]
+      )
+    );
+
+    // 4. Final digest: keccak256("\x19\x01" || domainSeparator || structHash)
+    const digest = keccak256(
+      encodePacked(
+        ['string', 'bytes32', 'bytes32'],
+        ['\x19\x01', domainSeparator, structHash]
+      )
+    );
+
+    return digest;
   }
 }
