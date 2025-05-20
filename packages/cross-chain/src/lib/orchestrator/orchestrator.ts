@@ -95,6 +95,7 @@ export class Orchestrator {
 
     // 7. Sign execution data
     // TODO: Fix signing according to Validator's logic
+    // Does it need to beut8 encoded for only solana or for eth too ??
     const signature = await this.universalSigner.signMessage(
       toBytes(executionHash) // UTF-8 encode the hex string
     );

@@ -25,12 +25,15 @@ import { CHAIN, NETWORK } from '../constants/enums';
 
 export class PushClient extends EvmClient {
   public pushChainInfo;
+  private signerPrivateKey;
   constructor(clientOptions: PushClientOptions) {
     super(clientOptions);
     this.pushChainInfo =
       clientOptions.network === NETWORK.MAINNET
         ? PUSH_CHAIN_INFO[CHAIN.PUSH_MAINNET]
         : PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET];
+
+    this.signerPrivateKey = generatePrivateKey();
   }
 
   /**
@@ -103,13 +106,17 @@ export class PushClient extends EvmClient {
     return TxBody.fromPartial({ messages, memo });
   }
 
+  // --- Tx Signer ---
+  getSignerAddress(): `0x${string}` {
+    return privateKeyToAccount(this.signerPrivateKey).address;
+  }
+
   /**
    * Signs a Cosmos tx using a temporary account.
    * In prod, signer should be passed in instead.
    */
   async signCosmosTx(txBody: TxBody): Promise<TxRaw> {
-    const privateKey = generatePrivateKey();
-    const account = privateKeyToAccount(privateKey);
+    const account = privateKeyToAccount(this.signerPrivateKey);
     const sender = toBech32(
       this.pushChainInfo.prefix,
       hexToBytes(account.address)
