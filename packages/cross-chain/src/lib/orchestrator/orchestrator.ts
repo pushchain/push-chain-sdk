@@ -5,14 +5,19 @@ import {
   keccak256,
   encodeAbiParameters,
   encodePacked,
+  toHex,
 } from 'viem';
 import { CHAIN, NETWORK, VM } from '../constants/enums';
 import { UniversalSigner } from '../universal/universal.types';
 import { ExecuteParams } from './orchestrator.types';
 import { EvmClient } from '../vm-client/evm-client';
-import { CHAIN_INFO } from '../constants/chain';
-import { LOCKER_ABI } from '../constants/abi';
-import { toChainAgnostic } from '../universal/account';
+import { CHAIN_INFO, VM_NAMESPACE } from '../constants/chain';
+import {
+  FACTORY_V1,
+  FEE_LOCKER_EVM,
+  SMART_ACCOUNT_EVM,
+  SMART_ACCOUNT_SVM,
+} from '../constants/abi';
 import { PushClient } from '../push-client/push-client';
 import { SvmClient } from '../vm-client/svm-client';
 
@@ -25,7 +30,11 @@ export class Orchestrator {
     private readonly printTraces = false
   ) {
     const pushChain =
-      pushNetwork === NETWORK.MAINNET ? CHAIN.PUSH_MAINNET : CHAIN.PUSH_TESTNET;
+      pushNetwork === NETWORK.MAINNET
+        ? CHAIN.PUSH_MAINNET
+        : pushNetwork === NETWORK.TESTNET
+        ? CHAIN.PUSH_TESTNET
+        : CHAIN.PUSH_LOCALNET;
     const pushChainRPC =
       this.rpcUrl[pushChain] || CHAIN_INFO[pushChain].defaultRPC;
     this.pushClient = new PushClient({
@@ -49,9 +58,7 @@ export class Orchestrator {
 
     // 2. Get Push chain NMSC address for this signer
     const { address: nmscAddress, deployed: isNMSCDeployed } =
-      await this.pushClient.getNMSCAddress(
-        toChainAgnostic(this.universalSigner)
-      );
+      await this.getNMSCAddress();
 
     // 3. Estimate funds required for the execution
     // TODO: Fix gas estimation - estimation is req on how much gas the sc will take for the execution. Also nonce should also be accounted for
@@ -70,7 +77,12 @@ export class Orchestrator {
     // 4. Check NMSC balance on Push Chain ( in nPUSH )
     const funds = await this.pushClient.getBalance(nmscAddress);
 
-    // 5. Create execution hash ( execution data to be signed )
+    // 5. Get NMSC Nonce
+    const nonce = isNMSCDeployed
+      ? await this.getNMSCNonce(nmscAddress)
+      : BigInt(1);
+
+    // 6. Create execution hash ( execution data to be signed )
     const executionHash = this.computeExecutionHash({
       verifyingContract: nmscAddress,
       payload: {
@@ -80,12 +92,12 @@ export class Orchestrator {
         gasLimit: execute.gasLimit || BigInt(21000000),
         maxFeePerGas: execute.maxFeePerGas || BigInt(10000000000000000),
         maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(2),
-        nonce: execute.nonce || BigInt(1), // TODO: fetch is from nmsc itself
+        nonce,
         deadline: execute.deadline || BigInt(9999999999),
       },
     });
 
-    // 6 If not enough funds, lock required fee on source chain and send tx to Push chain
+    // 7. If not enough funds, lock required fee on source chain and send tx to Push chain
     let feeLockTxHash: string | null = null;
     if (funds < requiredFunds) {
       const fundDifference = requiredFunds - funds;
@@ -93,14 +105,14 @@ export class Orchestrator {
       feeLockTxHash = await this.lockFee(fundDifferenceInUSDC, executionHash);
     }
 
-    // 7. Sign execution data
+    // 8. Sign execution data
     // TODO: Fix signing according to Validator's logic
     // Does it need to beut8 encoded for only solana or for eth too ??
     const signature = await this.universalSigner.signMessage(
       toBytes(executionHash) // UTF-8 encode the hex string
     );
 
-    // 8. Send Tx to Push chain
+    // 9. Send Tx to Push chain
     return this.sendCrossChainPushTx(
       isNMSCDeployed,
       feeLockTxHash,
@@ -136,7 +148,7 @@ export class Orchestrator {
         const evmClient = new EvmClient({ rpcUrl });
 
         return await evmClient.writeContract({
-          abi: LOCKER_ABI as Abi,
+          abi: FEE_LOCKER_EVM as Abi,
           address: lockerContract,
           functionName: 'addFunds',
           args: [executionHash],
@@ -150,7 +162,7 @@ export class Orchestrator {
 
         // TODO: Fix svm client calling
         return await svmClient.writeContract({
-          abi: LOCKER_ABI as Abi,
+          abi: FEE_LOCKER_EVM as Abi,
           address: lockerContract,
           functionName: 'addFunds',
           args: [executionHash],
@@ -176,7 +188,12 @@ export class Orchestrator {
   ): Promise<`0x${string}`> {
     // TODO: build and broadcast custom Cosmos transaction (gasless meta tx)
     if (!isNMSCDeployed) {
-      // prepare MsgDeployNMSC
+      /**
+       * @dev - fee should be locked for NMSC deployment to avoid spamming
+       */
+      if (!feeLockTxHash) {
+        throw new Error('NMSC cannot be deployed without fee locking');
+      }
     }
 
     if (feeLockTxHash) {
@@ -306,5 +323,80 @@ export class Orchestrator {
     );
 
     return digest;
+  }
+
+  /**
+   * Computes the smart wallet (NMSC) on Push Chain.
+   */
+  async getNMSCAddress(): Promise<{
+    address: `0x${string}`;
+    deployed: boolean;
+  }> {
+    const { chain, address } = this.universalSigner;
+    const { vm, chainId } = CHAIN_INFO[chain];
+
+    const computedAddress: `0x{string}` = await this.pushClient.readContract({
+      address: this.pushClient.pushChainInfo.factoryAddress,
+      abi: FACTORY_V1 as Abi,
+      functionName: 'computeSmartAccountAddress',
+      args: [
+        {
+          namespace: VM_NAMESPACE[vm],
+          chainId,
+          /**
+           * @dev - OwnerKey should be in bytes
+           * for eth - convert hex to bytes
+           * for sol - convert base64 to bytes
+           * for others - not defined yet
+           */
+          ownerKey:
+            vm === VM.EVM ? address : vm === VM.SVM ? toHex(address) : address,
+          /**
+           * @dev
+           * 0 -> evm
+           * 1 -> svm
+           * Rest are not defined
+           */
+          vmType: vm === VM.EVM ? 0 : vm === VM.SVM ? 1 : 2,
+        },
+      ],
+    });
+
+    const byteCode = await this.pushClient.publicClient.getCode({
+      address: computedAddress,
+    });
+    return { address: computedAddress, deployed: byteCode !== undefined };
+  }
+
+  /**
+   * @dev - Although as of now nonce var is same in evm & svm so switch conditions does not matter
+   * @param address NMSC address
+   * @returns NMSC current nonce
+   */
+  private async getNMSCNonce(address: `0x${string}`): Promise<bigint> {
+    const chain = this.universalSigner.chain;
+    const { vm } = CHAIN_INFO[chain];
+
+    switch (vm) {
+      case VM.EVM: {
+        return this.pushClient.readContract({
+          address,
+          abi: SMART_ACCOUNT_EVM as Abi,
+          functionName: 'nonce',
+        });
+      }
+
+      case VM.SVM: {
+        return this.pushClient.readContract({
+          address,
+          abi: SMART_ACCOUNT_SVM as Abi,
+          functionName: 'nonce',
+        });
+      }
+
+      default: {
+        throw new Error(`Unsupported VM type: ${vm}`);
+      }
+    }
   }
 }
