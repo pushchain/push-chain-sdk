@@ -6,6 +6,7 @@
 export enum NETWORK {
   MAINNET = 'MAINNET',
   TESTNET = 'TESTNET',
+  LOCALNET = 'LOCALNET',
 }
 
 /**
@@ -15,6 +16,7 @@ export enum CHAIN {
   // Push
   PUSH_MAINNET = 'PUSH_MAINNET',
   PUSH_TESTNET = 'PUSH_TESTNET',
+  PUSH_LOCALNET = 'PUSH_LOCALNET',
 
   // Ethereum
   ETHEREUM_MAINNET = 'ETHEREUM_MAINNET',
