@@ -43,7 +43,7 @@ export class PushClient extends EvmClient {
     address: `0x${string}`;
     deployed: boolean;
   }> {
-    const address = await getContractAddress({
+    const address = getContractAddress({
       bytecode: this.pushChainInfo.scWalletBytecode,
       from: this.pushChainInfo.factoryAddress,
       opcode: 'CREATE2',

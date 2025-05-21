@@ -40,7 +40,32 @@ export class Orchestrator {
   async execute(execute: ExecuteParams): Promise<`0x${string}`> {
     const chain = this.universalSigner.chain;
 
-    // TODO: add validation that if sepolia, or any origin testnet, you can only interact with Push testnet. Same for mainnet
+    // Add validation that if sepolia, or any origin testnet, you can only interact with Push testnet. Same for mainnet
+    const isTestnet = [
+      CHAIN.ETHEREUM_SEPOLIA,
+      CHAIN.SOLANA_TESTNET,
+      CHAIN.SOLANA_DEVNET,
+    ].includes(chain);
+
+    const isMainnet = [CHAIN.ETHEREUM_MAINNET, CHAIN.SOLANA_MAINNET].includes(
+      chain
+    );
+
+    if (
+      isTestnet &&
+      this.pushClient.pushChainInfo.chainId !==
+        CHAIN_INFO[CHAIN.PUSH_TESTNET].chainId
+    ) {
+      throw new Error('Testnet chains can only interact with Push Testnet');
+    }
+
+    if (
+      isMainnet &&
+      this.pushClient.pushChainInfo.chainId !==
+        CHAIN_INFO[CHAIN.PUSH_MAINNET].chainId
+    ) {
+      throw new Error('Mainnet chains can only interact with Push Mainnet');
+    }
 
     // 1. Block direct execution if signer is already on Push Chain
     if (this.isPushChain(chain)) {
