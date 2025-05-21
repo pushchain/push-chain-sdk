@@ -63,13 +63,13 @@ export const CHAIN_INFO: Record<
     chainId: '4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z',
     vm: VM.SVM,
     lockerContract: 'TBD',
-    defaultRPC: '',
+    defaultRPC: 'https://api.testnet.solana.com',
   },
   [CHAIN.SOLANA_DEVNET]: {
     chainId: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
     vm: VM.SVM,
     lockerContract: 'TBD',
-    defaultRPC: '',
+    defaultRPC: 'https://api.devnet.solana.com',
   },
 };
 
