@@ -19,7 +19,7 @@ import {
   MsgDeployNMSC,
   MsgExecutePayload,
   MsgMintPush,
-} from '../../src/lib/generated/v1/tx';
+} from '../src/lib/generated/v1/tx';
 
 describe.skip('Push Chain Custom MsgSend Tx Test', () => {
   const rpc = 'http://localhost:26657';
