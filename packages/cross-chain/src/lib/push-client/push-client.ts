@@ -1,4 +1,4 @@
-import { getContractAddress, hexToBytes, keccak256, toBytes } from 'viem';
+import { hexToBytes, keccak256 } from 'viem';
 import {
   MsgDeployNMSC,
   MsgExecutePayload,
@@ -31,28 +31,11 @@ export class PushClient extends EvmClient {
     this.pushChainInfo =
       clientOptions.network === NETWORK.MAINNET
         ? PUSH_CHAIN_INFO[CHAIN.PUSH_MAINNET]
-        : PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET];
+        : clientOptions.network === NETWORK.TESTNET
+        ? PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET]
+        : PUSH_CHAIN_INFO[CHAIN.PUSH_LOCALNET];
 
     this.signerPrivateKey = generatePrivateKey();
-  }
-
-  /**
-   * Computes the CREATE2-derived smart wallet address on Push Chain.
-   */
-  async getNMSCAddress(caipAddress: string): Promise<{
-    address: `0x${string}`;
-    deployed: boolean;
-  }> {
-    const address = await getContractAddress({
-      bytecode: this.pushChainInfo.scWalletBytecode,
-      from: this.pushChainInfo.factoryAddress,
-      opcode: 'CREATE2',
-      salt: toBytes(caipAddress),
-    });
-
-    const byteCode = await this.publicClient.getCode({ address });
-
-    return { address, deployed: byteCode !== '0x' };
   }
 
   /**
