@@ -1,4 +1,4 @@
-export const LOCKER_ABI = [
+export const FEE_LOCKER_EVM = [
   { inputs: [], name: 'AccessControlBadConfirmation', type: 'error' },
   {
     inputs: [

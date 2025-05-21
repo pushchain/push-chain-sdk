@@ -47,23 +47,6 @@ describe('PushClient', () => {
     });
   });
 
-  // TODO: complete this tc
-  describe('getNMSCAddress', () => {
-    // it('computes a valid CREATE2 address', async () => {
-    //   const caip = 'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4';
-    //   // independently compute expected address
-    //   const expected = getContractAddress({
-    //     bytecode: SC_WALLET_BYTECODE,
-    //     from: FACTORY_ADDRESS,
-    //     opcode: 'CREATE2',
-    //     salt: toBytes(caip),
-    //   });
-    //   // run your client method
-    //   const actual = await client.getNMSCAddress(caip);
-    //   expect(actual).toBe(expected);
-    // });
-  });
-
   describe('PushClient Msg & Cosmos Tx Tests', () => {
     it('creates MsgDeployNMSC Any', () => {
       const msg: MsgDeployNMSC = {
