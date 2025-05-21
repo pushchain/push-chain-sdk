@@ -18,6 +18,7 @@ import { SvmClient } from '../vm-client/svm-client';
 
 export class Orchestrator {
   private pushClient: PushClient;
+
   constructor(
     private readonly universalSigner: UniversalSigner,
     pushNetwork: NETWORK,
@@ -39,6 +40,12 @@ export class Orchestrator {
    */
   async execute(execute: ExecuteParams): Promise<`0x${string}`> {
     const chain = this.universalSigner.chain;
+
+    if (this.printTraces) {
+      console.log(
+        `[Orchestrator] Starting cross-chain execution from chain: ${chain}`
+      );
+    }
 
     // Add validation that if sepolia, or any origin testnet, you can only interact with Push testnet. Same for mainnet
     const isTestnet = [
@@ -73,12 +80,23 @@ export class Orchestrator {
     }
 
     // 2. Get Push chain NMSC address for this signer
+    if (this.printTraces) {
+      console.log('[Orchestrator] Fetching NMSC address for signer...');
+    }
     const { address: nmscAddress, deployed: isNMSCDeployed } =
       await this.pushClient.getNMSCAddress(
         toChainAgnostic(this.universalSigner)
       );
+    if (this.printTraces) {
+      console.log(
+        `[Orchestrator] NMSC Address: ${nmscAddress}, Deployed: ${isNMSCDeployed}`
+      );
+    }
 
     // 3. Estimate funds required for the execution
+    if (this.printTraces) {
+      console.log('[Orchestrator] Estimating required funds...');
+    }
     // TODO: Fix gas estimation - estimation is req on how much gas the sc will take for the execution. Also nonce should also be accounted for
     const gasEstimate = await this.pushClient.estimateGas({
       from: nmscAddress, // the NMSC smart wallet
@@ -92,10 +110,25 @@ export class Orchestrator {
     const requiredGasFee = (await this.pushClient.getGasPrice()) * gasEstimate;
     const requiredFunds = requiredGasFee + execute.value;
 
+    if (this.printTraces) {
+      console.log(
+        `[Orchestrator] Required funds: ${requiredFunds} (Gas: ${requiredGasFee}, Value: ${execute.value})`
+      );
+    }
+
     // 4. Check NMSC balance on Push Chain ( in nPUSH )
+    if (this.printTraces) {
+      console.log('[Orchestrator] Checking NMSC balance...');
+    }
     const funds = await this.pushClient.getBalance(nmscAddress);
+    if (this.printTraces) {
+      console.log(`[Orchestrator] Current balance: ${funds}`);
+    }
 
     // 5. Create execution hash ( execution data to be signed )
+    if (this.printTraces) {
+      console.log('[Orchestrator] Computing execution hash...');
+    }
     const executionHash = this.computeExecutionHash({
       verifyingContract: nmscAddress,
       payload: {
@@ -109,29 +142,58 @@ export class Orchestrator {
         deadline: execute.deadline || BigInt(9999999999),
       },
     });
+    if (this.printTraces) {
+      console.log(`[Orchestrator] Execution hash: ${executionHash}`);
+    }
 
     // 6 If not enough funds, lock required fee on source chain and send tx to Push chain
     let feeLockTxHash: string | null = null;
     if (funds < requiredFunds) {
+      if (this.printTraces) {
+        console.log(
+          '[Orchestrator] Insufficient funds, locking additional fees...'
+        );
+      }
       const fundDifference = requiredFunds - funds;
       const fundDifferenceInUSDC = this.pushClient.pushToUSDC(fundDifference); // in micro-USDC ( USDC with 6 decimal points )
       feeLockTxHash = await this.lockFee(fundDifferenceInUSDC, executionHash);
+      if (this.printTraces) {
+        console.log(
+          `[Orchestrator] Fee lock transaction hash: ${feeLockTxHash}`
+        );
+      }
     }
 
     // 7. Sign execution data
+    if (this.printTraces) {
+      console.log('[Orchestrator] Signing execution data...');
+    }
     // TODO: Fix signing according to Validator's logic
     // Does it need to beut8 encoded for only solana or for eth too ??
     const signature = await this.universalSigner.signMessage(
       toBytes(executionHash) // UTF-8 encode the hex string
     );
+    if (this.printTraces) {
+      console.log('[Orchestrator] Execution data signed successfully');
+    }
 
     // 8. Send Tx to Push chain
-    return this.sendCrossChainPushTx(
+    if (this.printTraces) {
+      console.log('[Orchestrator] Sending transaction to Push chain...');
+    }
+    const txHash = await this.sendCrossChainPushTx(
       isNMSCDeployed,
       feeLockTxHash,
       execute,
       signature
     );
+    if (this.printTraces) {
+      console.log(
+        `[Orchestrator] Transaction sent successfully. Hash: ${txHash}`
+      );
+    }
+
+    return txHash;
   }
 
   /**
