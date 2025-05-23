@@ -65,8 +65,8 @@ export async function toUniversal(
     },
     signTransaction: async (unsignedTx: Uint8Array) => {
       const tx = parseTransaction(bytesToHex(unsignedTx));
-      const txHash = await client.signTransaction(tx as never);
-      return hexToBytes(txHash);
+      const signature = await client.signTransaction(tx as never);
+      return hexToBytes(signature);
     },
     signTypedData: async ({
       domain,
