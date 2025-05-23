@@ -3,11 +3,12 @@ import { CHAIN, NETWORK } from '../constants/enums';
 import { UniversalSigner } from '../universal/universal.types';
 import { Hex, parseEther } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { Keypair } from '@solana/web3.js';
+import { Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import {
   createUniversalSignerFromSolanaKeypair,
   createUniversalSignerFromViem,
 } from '../universal/signer/signer';
+import { SvmClient } from '../vm-client/svm-client';
 
 describe('Orchestrator', () => {
   const mockSigner: UniversalSigner = {
@@ -49,8 +50,8 @@ describe('Orchestrator', () => {
       expect(txHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
     });
 
-    it('solana devnet', async () => {
-      const chain = CHAIN.SOLANA_DEVNET;
+    it('solana testnet', async () => {
+      const chain = CHAIN.SOLANA_TESTNET;
       const privateKeyHex = process.env['SOLANA_PRIVATE_KEY'];
       if (!privateKeyHex) {
         throw new Error('SOLANA_PRIVATE_KEY environment variable is not set');
@@ -65,13 +66,24 @@ describe('Orchestrator', () => {
         chain
       );
 
+      const svmClient = new SvmClient({
+        rpcUrl: 'https://api.testnet.solana.com',
+      });
+
+      const balance = await svmClient.getBalance(solanaDevnetSigner.address);
+      console.log('balance:', balance, 'address: ', solanaDevnetSigner.address);
+
       const orchestrator = new Orchestrator(
         solanaDevnetSigner,
         NETWORK.TESTNET
       );
-      const txHash = await orchestrator['lockFee'](parseEther('0.0001'));
+
+      const amount = BigInt(0.0001 * LAMPORTS_PER_SOL); // 100 000 lamports
+      const dummyTxHash = new Uint8Array(32).fill(1);
+
+      const txHash = await orchestrator['lockFee'](amount, dummyTxHash);
       console.log('lockFee txHash:', txHash);
-      expect(txHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(txHash).toMatch(/^[1-9A-HJ-NP-Za-km-z]{87,88}$/);
     });
   });
 
