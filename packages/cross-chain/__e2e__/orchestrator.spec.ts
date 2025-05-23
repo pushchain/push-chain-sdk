@@ -6,6 +6,25 @@ import { Hex, hexToBytes } from 'viem';
 import { Keypair } from '@solana/web3.js';
 import * as nacl from 'tweetnacl';
 
+/** CLI COMMANDS
+ 
+TO GENERATE UNSIGNED TX
+  pchaind tx bank send acc1 push1f5th78lzntc2h0krzqn5yldvwg43lcrgkqxtsv 1000npush \
+  --generate-only --output json > unsigned.json
+
+TO SIGN THE TX & GENERATE SIGNED TX ( VIA ACC 1 )
+  pchaind tx sign unsigned.json \
+  --from acc1 --chain-id localchain_9000-1 \
+  --keyring-backend test \
+  --output-document signed.json
+
+TO ENCODE TX
+  pchaind tx encode signed.json
+
+TO DECODE TX
+  pchaind tx decode base64EncodedString
+
+ */
 describe('Orchestrator (e2e)', () => {
   const pushNetwork = NETWORK.LOCALNET;
 
