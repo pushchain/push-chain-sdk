@@ -38,7 +38,7 @@ export const CHAIN_INFO: Record<
     defaultRPC: 'https://evm.pn1.dev.push.org',
   },
   [CHAIN.PUSH_LOCALNET]: {
-    chainId: '1',
+    chainId: '9000',
     vm: VM.EVM,
     defaultRPC: 'http://localhost:8545',
   },

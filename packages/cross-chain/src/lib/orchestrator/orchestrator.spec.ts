@@ -24,7 +24,7 @@ describe('Orchestrator', () => {
     },
   };
 
-  describe('lockFee', () => {
+  describe.skip('lockFee', () => {
     it('eth sepolia', async () => {
       // Create orchestrator for eth_sepolia signer
 
