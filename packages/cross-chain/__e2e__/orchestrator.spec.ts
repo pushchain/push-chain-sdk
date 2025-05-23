@@ -1,8 +1,13 @@
 import { Orchestrator } from '../src/lib/orchestrator/orchestrator';
-import { privateKeyToAccount, signTypedData } from 'viem/accounts';
+import { privateKeyToAccount } from 'viem/accounts';
 import { NETWORK, CHAIN, VM } from '../src/lib/constants/enums';
-import { toBech32, fromBase64 } from '@cosmjs/encoding';
-import { Hex, hexToBytes } from 'viem';
+import {
+  bytesToHex,
+  Hex,
+  hexToBytes,
+  parseTransaction,
+  PrivateKeyAccount,
+} from 'viem';
 import { Keypair } from '@solana/web3.js';
 import * as nacl from 'tweetnacl';
 
@@ -33,9 +38,7 @@ describe('Orchestrator (e2e)', () => {
     let orchestrator: Orchestrator;
 
     beforeAll(() => {
-      // const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
-      const privateKey =
-        '0x730b326679b7b7ee74d0611d5b4c4cfc276957fe810deb8d013261f6331483f5';
+      const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
       if (!privateKey) throw new Error('EVM_PRIVATE_KEY not set');
 
       const account = privateKeyToAccount(privateKey);
@@ -67,35 +70,30 @@ describe('Orchestrator (e2e)', () => {
           });
           return hexToBytes(hexSig);
         },
-        signTransaction: async () => {
-          throw new Error('tx signing not needed in this test');
+        signTransaction: async (unsignedTx: Uint8Array) => {
+          const tx = parseTransaction(bytesToHex(unsignedTx));
+          const signature = await account.signTransaction(tx as never);
+          return hexToBytes(signature);
         },
       };
 
       orchestrator = new Orchestrator(universalSigner, pushNetwork);
     });
 
-    it('computes and deploys NMSC if not deployed', async () => {
+    it('execute cross chain payload', async () => {
       const nmsc = await orchestrator.getNMSCAddress();
       console.log('💬 NMSC :', nmsc.address, '| Deployed:', nmsc.deployed);
 
-      if (nmsc.deployed) {
-        console.log('✅ Already deployed. Skipping.');
-        return;
-      }
-
       const txHash = await orchestrator.execute({
-        target: '0x527F3692F5C53CfA83F7689885995606F93b6164',
+        target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
         value: BigInt(0),
         data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
-        gasLimit: BigInt(21000000),
-        maxFeePerGas: BigInt(1000000000),
+        gasLimit: BigInt(50000000000000000),
+        maxFeePerGas: BigInt(50000000000000000),
         maxPriorityFeePerGas: BigInt(200000000),
         deadline: BigInt(9999999999),
       });
-      console.log('📝 Deployment Tx:', txHash);
-
-      // some timeout maybe
+      console.log('TxHash:', txHash);
 
       const after = await orchestrator.getNMSCAddress();
       expect(after.deployed).toBe(true);
@@ -134,16 +132,19 @@ describe('Orchestrator (e2e)', () => {
       const nmsc = await orchestrator.getNMSCAddress();
       console.log('💬 NMSC :', nmsc.address, '| Deployed:', nmsc.deployed);
 
-      if (nmsc.deployed) {
-        console.log('✅ Already deployed. Skipping.');
-        return;
-      }
+      const txHash = await orchestrator.execute({
+        target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
+        value: BigInt(0),
+        data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
+        gasLimit: BigInt(50000000000000000),
+        maxFeePerGas: BigInt(50000000000000000),
+        maxPriorityFeePerGas: BigInt(200000000),
+        deadline: BigInt(9999999999),
+      });
+      console.log('TxHash:', txHash);
 
-      //   const txHash = await orchestrator.sendCrossChainPushTx(false, '0x1234');
-      //   console.log('📝 Deployment Tx:', txHash);
-
-      //   const after = await orchestrator.getNMSCAddress();
-      //   expect(after.deployed).toBe(true);
+      const after = await orchestrator.getNMSCAddress();
+      expect(after.deployed).toBe(true);
     }, 30000);
   });
 });

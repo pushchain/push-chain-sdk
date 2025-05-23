@@ -63,18 +63,20 @@ export class Orchestrator {
     const { address: nmscAddress, deployed: isNMSCDeployed } =
       await this.getNMSCAddress();
 
+    // TODO: Do some fee estimation
     // 3. Estimate funds required for the execution
-    const gasEstimate = await this.pushClient.estimateGas({
-      from: this.pushClient.getSignerAddress().evmAddress, // the NMSC smart wallet
-      to: execute.target as `0x${string}`,
-      data: execute.data,
-      value: execute.value,
-      gas: execute.gasLimit,
-      maxFeePerGas: execute.maxFeePerGas,
-      maxPriorityFeePerGas: execute.maxPriorityFeePerGas,
-    });
-    const requiredGasFee = (await this.pushClient.getGasPrice()) * gasEstimate;
-    const requiredFunds = requiredGasFee + execute.value;
+    // const gasEstimate = await this.pushClient.estimateGas({
+    //   from: this.pushClient.getSignerAddress().evmAddress, // random Signer
+    //   to: nmscAddress,
+    //   data: execute.data,
+    //   value: execute.value,
+    //   gas: execute.gasLimit,
+    //   maxFeePerGas: execute.maxFeePerGas,
+    //   maxPriorityFeePerGas: execute.maxPriorityFeePerGas,
+    // });
+    // const requiredGasFee = (await this.pushClient.getGasPrice()) * gasEstimate;
+    // const requiredFunds = requiredGasFee + execute.value;
+    const requiredFunds = execute.value + BigInt(50e18); // Assumption 50 Push is gas fee
 
     // 4. Check NMSC balance on Push Chain ( in nPUSH )
     const funds = await this.pushClient.getBalance(nmscAddress);
@@ -82,7 +84,7 @@ export class Orchestrator {
     // 5. Get NMSC Nonce
     const nonce = isNMSCDeployed
       ? await this.getNMSCNonce(nmscAddress)
-      : BigInt(1);
+      : BigInt(0);
 
     // 6. Create execution hash ( execution data to be signed )
     const crosschainPayload = {
@@ -202,7 +204,7 @@ export class Orchestrator {
     version?: string
   ) {
     const chain = this.universalSigner.chain;
-    const { vm, chainId } = CHAIN_INFO[chain];
+    const { vm } = CHAIN_INFO[chain];
 
     switch (vm) {
       case VM.EVM: {
@@ -211,9 +213,8 @@ export class Orchestrator {
         }
         return this.universalSigner.signTypedData({
           domain: {
-            name: 'Push',
-            version,
-            chainId: Number(chainId),
+            version: version || '0.1.0',
+            chainId: Number(this.pushClient.pushChainInfo.chainId),
             verifyingContract,
           },
           types: {
@@ -235,7 +236,7 @@ export class Orchestrator {
 
       case VM.SVM: {
         const digest = this.computeExecutionHash({
-          chainId: Number(chainId),
+          chainId: Number(this.pushClient.pushChainInfo.chainId),
           verifyingContract,
           payload: crosschainPayload,
           version: version || '0.1.0',
@@ -316,7 +317,7 @@ export class Orchestrator {
     if (txresponse.code === 0) {
       return txresponse.transactionHash;
     } else {
-      throw new Error(JSON.stringify(txresponse));
+      throw new Error(txresponse.rawLog);
     }
   }
 
