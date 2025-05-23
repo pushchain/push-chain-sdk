@@ -91,9 +91,15 @@ export class PushClient extends EvmClient {
   }
 
   // --- Tx Signer ---
-  getCosmosSignerAddress(): string {
+  getSignerAddress() {
     const account = privateKeyToAccount(this.signerPrivateKey);
-    return toBech32(this.pushChainInfo.prefix, hexToBytes(account.address));
+    return {
+      evmAddress: account.address,
+      cosmosAddress: toBech32(
+        this.pushChainInfo.prefix,
+        hexToBytes(account.address)
+      ),
+    };
   }
 
   /**

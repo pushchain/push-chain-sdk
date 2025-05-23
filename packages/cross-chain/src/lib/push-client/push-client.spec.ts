@@ -136,7 +136,7 @@ describe('PushClient', () => {
     });
 
     it('signs tx', async () => {
-      const cosmosSigner = client.getCosmosSignerAddress();
+      const { cosmosAddress: cosmosSigner } = client.getSignerAddress();
       const msg1 = client.createMsgDeployNMSC({
         signer: cosmosSigner,
         accountId: {
