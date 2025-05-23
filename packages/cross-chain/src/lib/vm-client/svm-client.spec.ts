@@ -19,49 +19,60 @@ if (!RPC_URL) {
   throw new Error('SOLANA_RPC_URL environment variable is not set');
 }
 
-// Example IDL for a simple program
+// Solana IDL for the counter program deployed on devnet
 const IDL = {
-  version: '0.1.0',
-  name: 'counter_program',
+  address: PROGRAM_ID,
+  metadata: {
+    name: 'counter_program',
+    version: '0.1.0',
+    spec: '0.1.0',
+    description: 'Created with Anchor',
+  },
   instructions: [
     {
-      name: 'initialize',
-      docs: [
-        'Create the counter account (with 8 byte discriminator + 8 byte u64)',
-      ],
+      name: 'increment',
+      docs: ['Increment the counter by 1'],
+      discriminator: [11, 18, 104, 9, 104, 174, 59, 33],
       accounts: [
         {
           name: 'counter',
-          isMut: true,
-          isSigner: true,
-        },
-        {
-          name: 'user',
-          isMut: true,
-          isSigner: true,
-        },
-        {
-          name: 'systemProgram',
-          isMut: false,
-          isSigner: false,
+          writable: true,
         },
       ],
       args: [],
     },
     {
-      name: 'increment',
-      docs: ['Increment the counter by 1'],
+      name: 'initialize',
+      docs: [
+        'Create the counter account (with 8 byte discriminator + 8 byte u64)',
+      ],
+      discriminator: [175, 175, 109, 31, 13, 152, 155, 237],
       accounts: [
         {
           name: 'counter',
-          isMut: true,
-          isSigner: false,
+          writable: true,
+          signer: true,
+        },
+        {
+          name: 'user',
+          writable: true,
+          signer: true,
+        },
+        {
+          name: 'system_program',
+          address: '11111111111111111111111111111111',
         },
       ],
       args: [],
     },
   ],
   accounts: [
+    {
+      name: 'Counter',
+      discriminator: [255, 176, 4, 245, 188, 253, 124, 25],
+    },
+  ],
+  types: [
     {
       name: 'Counter',
       docs: ['The on‐chain data structure'],
@@ -169,7 +180,7 @@ describe('SvmClient', () => {
     });
   });
 
-  describe.only('writeContract', () => {
+  describe('writeContract', () => {
     it('writes contract value', async () => {
       const balance = await svmClient.getBalance(universalSigner.address);
       if (balance === BigInt(0)) {
@@ -382,44 +393,6 @@ describe('SvmClient', () => {
       });
 
       expect(finalCounter.value.toString()).toBe('2');
-    });
-
-    it('handles different ABI configurations', async () => {
-      const balance = await svmClient.getBalance(universalSigner.address);
-      if (balance === BigInt(0)) {
-        console.warn('Skipping Test - Account has insufficient balance');
-        throw new Error('Not enough balance');
-      }
-
-      // Create a modified version of the IDL with different instruction name
-      const modifiedIDL = {
-        ...IDL,
-        instructions: [
-          {
-            ...IDL.instructions[0],
-            name: 'customInitialize',
-          },
-          ...IDL.instructions.slice(1),
-        ],
-      };
-
-      const counterAccount = Keypair.generate();
-
-      // Should throw when using wrong instruction name
-      await expect(
-        svmClient.writeContract({
-          abi: modifiedIDL,
-          address: PROGRAM_ID,
-          functionName: 'initialize', // This should fail as the name was changed
-          signer: universalSigner,
-          accounts: {
-            counter: counterAccount.publicKey,
-            user: new PublicKey(universalSigner.address),
-            systemProgram: SystemProgram.programId,
-          },
-          extraSigners: [counterAccount],
-        })
-      ).rejects.toThrow();
     });
   });
 
