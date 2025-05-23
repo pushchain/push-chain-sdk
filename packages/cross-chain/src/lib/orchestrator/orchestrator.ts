@@ -15,6 +15,9 @@ import { LOCKER_ABI } from '../constants/abi';
 import { toChainAgnostic } from '../universal/account';
 import { PushClient } from '../push-client/push-client';
 import { SvmClient } from '../vm-client/svm-client';
+import LOCKER_IDL from '../constants/idl.json';
+import { PublicKey, SystemProgram } from '@solana/web3.js';
+import * as anchor from '@coral-xyz/anchor';
 
 export class Orchestrator {
   private pushClient: PushClient;
@@ -107,7 +110,12 @@ export class Orchestrator {
       maxFeePerGas: execute.maxFeePerGas,
       maxPriorityFeePerGas: execute.maxPriorityFeePerGas,
     });
-    const requiredGasFee = (await this.pushClient.getGasPrice()) * gasEstimate;
+
+    // Calculate required gas fee with buffer to account for potential gas price fluctuations
+    const gasPrice = await this.pushClient.getGasPrice();
+    const gasBufferPercent = BigInt(110); // 10% buffer
+    const adjustedGasEstimate = (gasEstimate * gasBufferPercent) / BigInt(100);
+    const requiredGasFee = gasPrice * adjustedGasEstimate;
     const requiredFunds = requiredGasFee + execute.value;
 
     if (this.printTraces) {
@@ -156,7 +164,10 @@ export class Orchestrator {
       }
       const fundDifference = requiredFunds - funds;
       const fundDifferenceInUSDC = this.pushClient.pushToUSDC(fundDifference); // in micro-USDC ( USDC with 6 decimal points )
-      feeLockTxHash = await this.lockFee(fundDifferenceInUSDC, executionHash);
+      feeLockTxHash = await this.lockFee(
+        fundDifferenceInUSDC,
+        toBytes(executionHash)
+      );
       if (this.printTraces) {
         console.log(
           `[Orchestrator] Fee lock transaction hash: ${feeLockTxHash}`
@@ -168,6 +179,7 @@ export class Orchestrator {
     if (this.printTraces) {
       console.log('[Orchestrator] Signing execution data...');
     }
+
     // TODO: Fix signing according to Validator's logic
     // Does it need to beut8 encoded for only solana or for eth too ??
     const signature = await this.universalSigner.signMessage(
@@ -205,7 +217,7 @@ export class Orchestrator {
    */
   private async lockFee(
     amount: bigint,
-    executionHash: string = zeroHash
+    executionHash: Uint8Array = toBytes(zeroHash)
   ): Promise<string> {
     const chain = this.universalSigner.chain;
     const { lockerContract, vm, defaultRPC } = CHAIN_INFO[chain];
@@ -235,14 +247,23 @@ export class Orchestrator {
       case VM.SVM: {
         const svmClient = new SvmClient({ rpcUrl });
 
-        // TODO: Fix svm client calling
+        const [lockerPda, lockerBump] =
+          anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from('locker')],
+            new PublicKey(lockerContract)
+          );
+
         return await svmClient.writeContract({
-          abi: LOCKER_ABI as Abi,
+          abi: LOCKER_IDL,
           address: lockerContract,
           functionName: 'addFunds',
-          args: [executionHash],
+          args: [amount, executionHash],
           signer: this.universalSigner,
-          value: amount,
+          accounts: {
+            locker: lockerPda,
+            user: new PublicKey(this.universalSigner.address),
+            systemProgram: SystemProgram.programId,
+          },
         });
       }
 
