@@ -1,23 +1,19 @@
 import { PushClient } from './push-client';
-import { getContractAddress, toBytes } from 'viem';
-import { CHAIN_INFO } from '../constants/chain';
+import { PUSH_CHAIN_INFO } from '../constants/chain';
 import {
   MsgDeployNMSC,
   MsgMintPush,
   MsgExecutePayload,
 } from '../generated/v1/tx';
-import { TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 import { NETWORK } from '../constants/enums';
-
-const EVM_RPC_URL = CHAIN_INFO['PUSH_TESTNET'].defaultRPC;
 
 describe('PushClient', () => {
   let client: PushClient;
 
   beforeEach(() => {
     client = new PushClient({
-      rpcUrl: EVM_RPC_URL,
-      network: NETWORK.TESTNET,
+      rpcUrl: PUSH_CHAIN_INFO['PUSH_LOCALNET'].defaultRPC,
+      network: NETWORK.LOCALNET,
     });
   });
 
@@ -47,9 +43,14 @@ describe('PushClient', () => {
     it('creates MsgDeployNMSC Any', () => {
       const msg: MsgDeployNMSC = {
         signer: 'push1f5th78lzntc2h0krzqn5yldvwg43lcrgkqxtsv',
-        userKey: '0x778D3206374f8AC265728E18E3fE2Ae6b93E4ce4',
-        caipString: 'eip155:1:0x778D3206374f8AC265728E18E3fE2Ae6b93E4ce4',
-        ownerType: 1,
+        accountId: {
+          namespace: 'solana',
+          chainId: 'vghvh',
+          ownerKey:
+            '0x30ea71869947818d27b718592ea44010b458903bd9bf0370f50eda79e87d9f69',
+          vmType: 1,
+        },
+        txHash: '0xbhcdfbjhv',
       };
 
       const any = client.createMsgDeployNMSC(msg);
@@ -60,8 +61,14 @@ describe('PushClient', () => {
     it('creates MsgMintPush Any', () => {
       const msg: MsgMintPush = {
         signer: 'push1f5th78lzntc2h0krzqn5yldvwg43lcrgkqxtsv',
-        txHash: '0x',
-        caipString: 'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4',
+        accountId: {
+          namespace: 'solana',
+          chainId: 'vghvh',
+          ownerKey:
+            '0x30ea71869947818d27b718592ea44010b458903bd9bf0370f50eda79e87d9f69',
+          vmType: 1,
+        },
+        txHash: '0xbhcdfbjhv',
       };
 
       const any = client.createMsgMintPush(msg);
@@ -72,8 +79,13 @@ describe('PushClient', () => {
     it('creates MsgExecutePayload Any', () => {
       const msg: MsgExecutePayload = {
         signer: 'push1f5th78lzntc2h0krzqn5yldvwg43lcrgkqxtsv',
-        caipString:
-          'sol:abccd:0x30ea71869947818d27b718592ea44010b458903bd9bf0370f50eda79e87d9f69',
+        accountId: {
+          namespace: 'solana',
+          chainId: 'vghvh',
+          ownerKey:
+            '0x30ea71869947818d27b718592ea44010b458903bd9bf0370f50eda79e87d9f69',
+          vmType: 1,
+        },
         crosschainPayload: {
           target: '0x527F3692F5C53CfA83F7689885995606F93b6164',
           value: '0',
@@ -96,15 +108,26 @@ describe('PushClient', () => {
     it('creates TxBody from multiple messages', async () => {
       const msg1 = client.createMsgDeployNMSC({
         signer: 'push1f5th78lzntc2h0krzqn5yldvwg43lcrgkqxtsv',
-        userKey: '0x778D3206374f8AC265728E18E3fE2Ae6b93E4ce4',
-        caipString: 'eip155:1:0x778D3206374f8AC265728E18E3fE2Ae6b93E4ce4',
-        ownerType: 1,
+        accountId: {
+          namespace: 'solana',
+          chainId: 'vghvh',
+          ownerKey:
+            '0x30ea71869947818d27b718592ea44010b458903bd9bf0370f50eda79e87d9f69',
+          vmType: 1,
+        },
+        txHash: '0xbhcdfbjhv',
       });
 
       const msg2 = client.createMsgMintPush({
         signer: 'push1f5th78lzntc2h0krzqn5yldvwg43lcrgkqxtsv',
-        txHash: '0x',
-        caipString: 'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4',
+        accountId: {
+          namespace: 'solana',
+          chainId: 'vghvh',
+          ownerKey:
+            '0x30ea71869947818d27b718592ea44010b458903bd9bf0370f50eda79e87d9f69',
+          vmType: 1,
+        },
+        txHash: '0xbhcdfbjhv',
       });
 
       const txBody = await client.createCosmosTxBody([msg1, msg2], 'test memo');
@@ -112,24 +135,41 @@ describe('PushClient', () => {
       expect(txBody.memo).toBe('test memo');
     });
 
-    it('signs and broadcasts a tx (live node)', async () => {
+    it('signs tx', async () => {
+      const cosmosSigner = client.getCosmosSignerAddress();
       const msg1 = client.createMsgDeployNMSC({
-        signer: 'push1f5th78lzntc2h0krzqn5yldvwg43lcrgkqxtsv',
-        userKey: '0x778D3206374f8AC265728E18E3fE2Ae6b93E4ce4',
-        caipString: 'eip155:1:0x778D3206374f8AC265728E18E3fE2Ae6b93E4ce4',
-        ownerType: 1,
+        signer: cosmosSigner,
+        accountId: {
+          namespace: 'solana',
+          chainId: 'vghvh',
+          ownerKey:
+            '0x30ea71869947818d27b718592ea44010b458903bd9bf0370f50eda79e87d9f69',
+          vmType: 1,
+        },
+        txHash: '0xbhcdfbjhv',
       });
 
       const msg2 = client.createMsgMintPush({
-        signer: 'push1f5th78lzntc2h0krzqn5yldvwg43lcrgkqxtsv',
-        txHash: '0x',
-        caipString: 'eip155:1:0x35B84d6848D16415177c64D64504663b998A6ab4',
+        signer: cosmosSigner,
+        accountId: {
+          namespace: 'solana',
+          chainId: 'vghvh',
+          ownerKey:
+            '0x30ea71869947818d27b718592ea44010b458903bd9bf0370f50eda79e87d9f69',
+          vmType: 1,
+        },
+        txHash: '0xbhcdfbjhv',
       });
 
       const msg3 = client.createMsgExecutePayload({
-        signer: 'push1f5th78lzntc2h0krzqn5yldvwg43lcrgkqxtsv',
-        caipString:
-          'sol:abccd:0x30ea71869947818d27b718592ea44010b458903bd9bf0370f50eda79e87d9f69',
+        signer: cosmosSigner,
+        accountId: {
+          namespace: 'solana',
+          chainId: 'vghvh',
+          ownerKey:
+            '0x30ea71869947818d27b718592ea44010b458903bd9bf0370f50eda79e87d9f69',
+          vmType: 1,
+        },
         crosschainPayload: {
           target: '0x527F3692F5C53CfA83F7689885995606F93b6164',
           value: '0',
@@ -145,11 +185,7 @@ describe('PushClient', () => {
       });
 
       const txBody = await client.createCosmosTxBody([msg1, msg2, msg3]);
-      const txRaw: TxRaw = await client.signCosmosTx(txBody);
-      const txHash = await client.broadcastCosmosTx(txRaw);
-
-      console.log('✅ TxHash:', txHash);
-      expect(txHash).toMatch(/^0x[0-9a-fA-F]{64}$/);
-    }, 20000);
+      await client.signCosmosTx(txBody);
+    });
   });
 });

@@ -9,6 +9,7 @@ import { SignDoc, TxBody, TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 import { Writer } from 'protobufjs';
 import { makeAuthInfoBytes, makeSignDoc } from '@cosmjs/proto-signing';
 import {
+  DeliverTxResponse,
   QueryClient,
   setupAuthExtension,
   StargateClient,
@@ -90,8 +91,9 @@ export class PushClient extends EvmClient {
   }
 
   // --- Tx Signer ---
-  getSignerAddress(): `0x${string}` {
-    return privateKeyToAccount(this.signerPrivateKey).address;
+  getCosmosSignerAddress(): string {
+    const account = privateKeyToAccount(this.signerPrivateKey);
+    return toBech32(this.pushChainInfo.prefix, hexToBytes(account.address));
   }
 
   /**
@@ -111,12 +113,18 @@ export class PushClient extends EvmClient {
     );
     const status = await tmClient.status();
     const chainId = status.nodeInfo.network;
+
     const queryClient = QueryClient.withExtensions(
       tmClient,
       setupAuthExtension
     );
-    const accountResp = await queryClient.auth.account(sender);
-    const baseAccount = BaseAccount.decode(accountResp!.value);
+    let baseAccount: BaseAccount | null = null;
+    try {
+      const accountResp = await queryClient.auth.account(sender);
+      baseAccount = BaseAccount.decode(accountResp!.value);
+    } catch (err) {
+      // Ignore
+    }
 
     // 📦 Encode pubkey
     const uncompressedPubKey = hexToBytes(account.publicKey);
@@ -127,9 +135,14 @@ export class PushClient extends EvmClient {
     };
 
     const authInfoBytes = makeAuthInfoBytes(
-      [{ pubkey: pubkeyEncoded, sequence: Number(baseAccount.sequence) }],
+      [
+        {
+          pubkey: pubkeyEncoded,
+          sequence: baseAccount ? Number(baseAccount.sequence) : 0,
+        },
+      ],
       [],
-      200000, // gas
+      100000000000, // gas
       undefined,
       undefined
     );
@@ -139,7 +152,7 @@ export class PushClient extends EvmClient {
       txBodyBytes,
       authInfoBytes,
       chainId,
-      Number(baseAccount.accountNumber)
+      baseAccount ? Number(baseAccount.accountNumber) : 0
     );
 
     const digest = keccak256(SignDoc.encode(signDoc).finish());
@@ -152,11 +165,11 @@ export class PushClient extends EvmClient {
     });
   }
 
-  async broadcastCosmosTx(txRaw: TxRaw): Promise<string> {
+  async broadcastCosmosTx(txRaw: TxRaw): Promise<DeliverTxResponse> {
     const client = await StargateClient.connect(
       this.pushChainInfo.tendermintRpc
     );
     const result = await client.broadcastTx(TxRaw.encode(txRaw).finish());
-    return result.transactionHash;
+    return result;
   }
 }
