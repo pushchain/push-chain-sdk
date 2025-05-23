@@ -9,10 +9,6 @@ import {
 import { TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 import { NETWORK } from '../constants/enums';
 
-// These constants must match what your PushClient uses internally
-const FACTORY_ADDRESS: `0x${string}` =
-  '0x0000000000000000000000000000000000000000';
-const SC_WALLET_BYTECODE: `0x${string}` = '0x00'; // dummy bytecode for test
 const EVM_RPC_URL = CHAIN_INFO['PUSH_TESTNET'].defaultRPC;
 
 describe('PushClient', () => {
