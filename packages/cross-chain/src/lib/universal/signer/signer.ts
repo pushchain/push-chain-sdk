@@ -1,4 +1,11 @@
-import { bytesToHex, hexToBytes, parseTransaction, WalletClient } from 'viem';
+import {
+  bytesToHex,
+  hexToBytes,
+  parseTransaction,
+  TypedData,
+  TypedDataDomain,
+  WalletClient,
+} from 'viem';
 import { createUniversalAccount } from '../account/account';
 import { UniversalSigner } from '../universal.types';
 import { CHAIN } from '../../constants/enums';
@@ -27,11 +34,13 @@ export function createUniversalSigner({
   address,
   signMessage,
   signTransaction,
+  signTypedData,
 }: UniversalSigner): UniversalSigner {
   return {
     ...createUniversalAccount({ chain, address }),
     signMessage,
     signTransaction,
+    signTypedData,
   };
 }
 
@@ -58,6 +67,26 @@ export async function toUniversal(
       const tx = parseTransaction(bytesToHex(unsignedTx));
       const txHash = await client.signTransaction(tx as never);
       return hexToBytes(txHash);
+    },
+    signTypedData: async ({
+      domain,
+      types,
+      primaryType,
+      message,
+    }: {
+      domain: TypedDataDomain;
+      types: TypedData;
+      primaryType: string;
+      message: Record<string, any>;
+    }) => {
+      const hexSig = await client.signTypedData({
+        domain,
+        types,
+        primaryType,
+        message,
+        account: address,
+      });
+      return hexToBytes(hexSig);
     },
   };
   return createUniversalSigner(universalSigner);

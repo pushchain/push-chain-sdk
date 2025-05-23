@@ -206,11 +206,14 @@ export class Orchestrator {
 
     switch (vm) {
       case VM.EVM: {
+        if (!this.universalSigner.signTypedData) {
+          throw new Error('signTypedData is not defined');
+        }
         return this.universalSigner.signTypedData({
           domain: {
             name: 'Push',
             version,
-            chainId,
+            chainId: Number(chainId),
             verifyingContract,
           },
           types: {

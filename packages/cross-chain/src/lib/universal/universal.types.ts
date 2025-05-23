@@ -1,3 +1,4 @@
+import { TypedData, TypedDataDomain } from 'viem';
 import { CHAIN } from '../constants/enums';
 
 /**
@@ -33,6 +34,25 @@ export interface UniversalSigner extends UniversalAccount {
    * const signature = await signer.signMessage(encoded);
    */
   signMessage: (data: Uint8Array) => Promise<Uint8Array>;
+
+  /**
+   * Signs an typed data, provided as binary data.
+   * @dev !! Only Required for Evm Signers !!
+   *
+   * @param data - The message to sign, as a Uint8Array.
+   * @returns A Promise that resolves to the signature (as a Uint8Array).
+   */
+  signTypedData?: ({
+    domain,
+    types,
+    primaryType,
+    message,
+  }: {
+    domain: TypedDataDomain;
+    types: TypedData;
+    primaryType: string;
+    message: Record<string, any>;
+  }) => Promise<Uint8Array>;
 
   /**
    * Signs a transaction (unsigned tx bytes).

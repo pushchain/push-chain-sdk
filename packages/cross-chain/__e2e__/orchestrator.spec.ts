@@ -1,5 +1,5 @@
 import { Orchestrator } from '../src/lib/orchestrator/orchestrator';
-import { privateKeyToAccount } from 'viem/accounts';
+import { privateKeyToAccount, signTypedData } from 'viem/accounts';
 import { NETWORK, CHAIN, VM } from '../src/lib/constants/enums';
 import { toBech32, fromBase64 } from '@cosmjs/encoding';
 import { Hex, hexToBytes } from 'viem';
@@ -33,7 +33,9 @@ describe('Orchestrator (e2e)', () => {
     let orchestrator: Orchestrator;
 
     beforeAll(() => {
-      const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
+      // const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
+      const privateKey =
+        '0x730b326679b7b7ee74d0611d5b4c4cfc276957fe810deb8d013261f6331483f5';
       if (!privateKey) throw new Error('EVM_PRIVATE_KEY not set');
 
       const account = privateKeyToAccount(privateKey);
@@ -43,6 +45,25 @@ describe('Orchestrator (e2e)', () => {
         signMessage: async (data: Uint8Array) => {
           const hexSig = await account.signMessage({
             message: { raw: data },
+          });
+          return hexToBytes(hexSig);
+        },
+        signTypedData: async ({
+          domain,
+          types,
+          primaryType,
+          message,
+        }: {
+          domain: any;
+          types: any;
+          primaryType: string;
+          message: any;
+        }) => {
+          const hexSig = await account.signTypedData({
+            domain,
+            types,
+            primaryType,
+            message,
           });
           return hexToBytes(hexSig);
         },
@@ -63,11 +84,21 @@ describe('Orchestrator (e2e)', () => {
         return;
       }
 
-      //   const txHash = await orchestrator.sendCrossChainPushTx(false, '0x1234');
-      //   console.log('📝 Deployment Tx:', txHash);
+      const txHash = await orchestrator.execute({
+        target: '0x527F3692F5C53CfA83F7689885995606F93b6164',
+        value: BigInt(0),
+        data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
+        gasLimit: BigInt(21000000),
+        maxFeePerGas: BigInt(1000000000),
+        maxPriorityFeePerGas: BigInt(200000000),
+        deadline: BigInt(9999999999),
+      });
+      console.log('📝 Deployment Tx:', txHash);
 
-      //   const after = await orchestrator.getNMSCAddress();
-      //   expect(after.deployed).toBe(true);
+      // some timeout maybe
+
+      const after = await orchestrator.getNMSCAddress();
+      expect(after.deployed).toBe(true);
     }, 30000);
   });
 
