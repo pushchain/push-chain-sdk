@@ -6,6 +6,7 @@ import {
   encodeAbiParameters,
   encodePacked,
   toHex,
+  bytesToHex,
 } from 'viem';
 import { CHAIN, NETWORK, VM } from '../constants/enums';
 import { UniversalSigner } from '../universal/universal.types';
@@ -20,6 +21,8 @@ import {
 } from '../constants/abi';
 import { PushClient } from '../push-client/push-client';
 import { SvmClient } from '../vm-client/svm-client';
+import { Any } from 'cosmjs-types/google/protobuf/any';
+import { AccountId, CrossChainPayload, vmType } from '../generated/v1/tx';
 
 export class Orchestrator {
   private pushClient: PushClient;
@@ -46,7 +49,7 @@ export class Orchestrator {
   /**
    * Executes an interaction on Push Chain
    */
-  async execute(execute: ExecuteParams): Promise<`0x${string}`> {
+  async execute(execute: ExecuteParams): Promise<string> {
     const chain = this.universalSigner.chain;
 
     // TODO: add validation that if sepolia, or any origin testnet, you can only interact with Push testnet. Same for mainnet
@@ -61,9 +64,8 @@ export class Orchestrator {
       await this.getNMSCAddress();
 
     // 3. Estimate funds required for the execution
-    // TODO: Fix gas estimation - estimation is req on how much gas the sc will take for the execution. Also nonce should also be accounted for
     const gasEstimate = await this.pushClient.estimateGas({
-      from: nmscAddress, // the NMSC smart wallet
+      from: this.pushClient.getSignerAddress().evmAddress, // the NMSC smart wallet
       to: execute.target as `0x${string}`,
       data: execute.data,
       value: execute.value,
@@ -83,18 +85,19 @@ export class Orchestrator {
       : BigInt(1);
 
     // 6. Create execution hash ( execution data to be signed )
+    const crosschainPayload = {
+      target: execute.target,
+      value: execute.value,
+      data: execute.data,
+      gasLimit: execute.gasLimit || BigInt(21000000),
+      maxFeePerGas: execute.maxFeePerGas || BigInt(10000000000000000),
+      maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(2),
+      nonce,
+      deadline: execute.deadline || BigInt(9999999999),
+    };
     const executionHash = this.computeExecutionHash({
       verifyingContract: nmscAddress,
-      payload: {
-        target: execute.target,
-        value: execute.value,
-        data: execute.data,
-        gasLimit: execute.gasLimit || BigInt(21000000),
-        maxFeePerGas: execute.maxFeePerGas || BigInt(10000000000000000),
-        maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(2),
-        nonce,
-        deadline: execute.deadline || BigInt(9999999999),
-      },
+      payload: crosschainPayload,
     });
 
     // 7. If not enough funds, lock required fee on source chain and send tx to Push chain
@@ -106,17 +109,24 @@ export class Orchestrator {
     }
 
     // 8. Sign execution data
-    // TODO: Fix signing according to Validator's logic
-    // Does it need to beut8 encoded for only solana or for eth too ??
-    const signature = await this.universalSigner.signMessage(
-      toBytes(executionHash) // UTF-8 encode the hex string
+    const signature = await this.signCrossChainPayload(
+      crosschainPayload,
+      nmscAddress
     );
 
     // 9. Send Tx to Push chain
     return this.sendCrossChainPushTx(
       isNMSCDeployed,
       feeLockTxHash,
-      execute,
+      {
+        ...crosschainPayload,
+        value: crosschainPayload.value.toString(),
+        gasLimit: crosschainPayload.gasLimit.toString(),
+        maxFeePerGas: crosschainPayload.maxFeePerGas.toString(),
+        maxPriorityFeePerGas: crosschainPayload.maxPriorityFeePerGas.toString(),
+        nonce: crosschainPayload.nonce.toString(),
+        deadline: crosschainPayload.deadline.toString(),
+      },
       signature
     );
   }
@@ -177,16 +187,88 @@ export class Orchestrator {
     }
   }
 
+  private async signCrossChainPayload(
+    crosschainPayload: {
+      target: `0x${string}`;
+      value: bigint;
+      data: `0x${string}`;
+      gasLimit: bigint;
+      maxFeePerGas: bigint;
+      maxPriorityFeePerGas: bigint;
+      nonce: bigint;
+      deadline: bigint;
+    },
+    verifyingContract: `0x${string}`,
+    version?: string
+  ) {
+    const chain = this.universalSigner.chain;
+    const { vm, chainId } = CHAIN_INFO[chain];
+
+    switch (vm) {
+      case VM.EVM: {
+        return this.universalSigner.signTypedData({
+          domain: {
+            name: 'Push',
+            version,
+            chainId,
+            verifyingContract,
+          },
+          types: {
+            CrossChainPayload: [
+              { name: 'target', type: 'address' },
+              { name: 'value', type: 'uint256' },
+              { name: 'data', type: 'bytes' },
+              { name: 'gasLimit', type: 'uint256' },
+              { name: 'maxFeePerGas', type: 'uint256' },
+              { name: 'maxPriorityFeePerGas', type: 'uint256' },
+              { name: 'nonce', type: 'uint256' },
+              { name: 'deadline', type: 'uint256' },
+            ],
+          },
+          primaryType: 'CrossChainPayload',
+          message: crosschainPayload,
+        });
+      }
+
+      case VM.SVM: {
+        const digest = this.computeExecutionHash({
+          chainId: Number(chainId),
+          verifyingContract,
+          payload: crosschainPayload,
+          version: version || '0.1.0',
+        });
+        return this.universalSigner.signMessage(toBytes(digest));
+      }
+
+      default: {
+        throw new Error(`Unsupported VM type: ${vm}`);
+      }
+    }
+  }
+
   /**
    * Sends a custom Cosmos tx to Push Chain (gasless) to execute user intent.
    */
   public async sendCrossChainPushTx(
     isNMSCDeployed: boolean,
     feeLockTxHash: string | null,
-    execute?: ExecuteParams,
+    crosschainPayload?: CrossChainPayload,
     signature?: Uint8Array
-  ): Promise<`0x${string}`> {
-    // TODO: build and broadcast custom Cosmos transaction (gasless meta tx)
+  ): Promise<string> {
+    const { chain, address } = this.universalSigner;
+    const { vm, chainId } = CHAIN_INFO[chain];
+
+    const accountId: AccountId = {
+      namespace: VM_NAMESPACE[vm],
+      chainId,
+      ownerKey:
+        vm === VM.EVM ? address : vm === VM.SVM ? toHex(address) : address,
+      vmType: vmType[vm],
+    };
+
+    const { cosmosAddress: signer } = this.pushClient.getSignerAddress();
+    const msgs: Any[] = [];
+
     if (!isNMSCDeployed) {
       /**
        * @dev - fee should be locked for NMSC deployment to avoid spamming
@@ -194,21 +276,45 @@ export class Orchestrator {
       if (!feeLockTxHash) {
         throw new Error('NMSC cannot be deployed without fee locking');
       }
+      msgs.push(
+        this.pushClient.createMsgDeployNMSC({
+          signer,
+          accountId,
+          txHash: feeLockTxHash,
+        })
+      );
     }
 
     if (feeLockTxHash) {
-      // prepare MsgMintPush
+      msgs.push(
+        this.pushClient.createMsgMintPush({
+          signer,
+          accountId,
+          txHash: feeLockTxHash,
+        })
+      );
     }
 
-    if (execute && signature) {
-      // prepare MsgExecutePayload
+    if (crosschainPayload && signature) {
+      msgs.push(
+        this.pushClient.createMsgExecutePayload({
+          signer,
+          accountId,
+          crosschainPayload,
+          signature: bytesToHex(signature),
+        })
+      );
     }
 
-    // createTxBody
-    // signTx
-    // broadcastTx
+    const txBody = await this.pushClient.createCosmosTxBody(msgs);
+    const txRaw = await this.pushClient.signCosmosTx(txBody);
+    const txresponse = await this.pushClient.broadcastCosmosTx(txRaw);
 
-    return '0xTxHash';
+    if (txresponse.code === 0) {
+      return txresponse.transactionHash;
+    } else {
+      throw new Error(JSON.stringify(txresponse));
+    }
   }
 
   /**
