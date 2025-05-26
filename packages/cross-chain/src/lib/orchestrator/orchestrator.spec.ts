@@ -73,7 +73,8 @@ describe('Orchestrator', () => {
       );
 
       const amount = BigInt(0.0001 * LAMPORTS_PER_SOL); // 100 000 lamports
-      const dummyTxHash = new Uint8Array(32).fill(1);
+      const dummyTxHash =
+        '25ytBco5ZxMaaatzKwcw28emNHD42JzCVe5wUy78mTA8ophwLCZN6dXKkXaRfxhgCdWdqSKpvGNuKvbqJQjzLKwy';
 
       const txHash = await orchestrator['lockFee'](amount, dummyTxHash);
       console.log('lockFee txHash:', txHash);

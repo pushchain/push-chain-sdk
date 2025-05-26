@@ -161,7 +161,7 @@ export class Orchestrator {
       const fundDifferenceInUSDC = this.pushClient.pushToUSDC(fundDifference); // in micro-USDC ( USDC with 6 decimal points )
       feeLockTxHash = await this.lockFee(
         fundDifferenceInUSDC,
-        toBytes(executionHash)
+        executionHash
       );
       if (this.printTraces) {
         console.log(
@@ -219,7 +219,7 @@ export class Orchestrator {
    */
   private async lockFee(
     amount: bigint,
-    executionHash: Uint8Array = toBytes(zeroHash)
+    executionHash: string = zeroHash
   ): Promise<string> {
     const chain = this.universalSigner.chain;
     const { lockerContract, vm, defaultRPC } = CHAIN_INFO[chain];
@@ -259,7 +259,7 @@ export class Orchestrator {
           abi: FEE_LOCKER_SVM,
           address: lockerContract,
           functionName: 'addFunds',
-          args: [amount, executionHash],
+          args: [amount, toBytes(executionHash)],
           signer: this.universalSigner,
           accounts: {
             locker: lockerPda,
