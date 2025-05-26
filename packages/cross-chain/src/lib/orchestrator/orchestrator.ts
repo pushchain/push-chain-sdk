@@ -5,19 +5,27 @@ import {
   keccak256,
   encodeAbiParameters,
   encodePacked,
+  toHex,
+  bytesToHex,
 } from 'viem';
 import { CHAIN, NETWORK, VM } from '../constants/enums';
 import { UniversalSigner } from '../universal/universal.types';
 import { ExecuteParams } from './orchestrator.types';
 import { EvmClient } from '../vm-client/evm-client';
-import { CHAIN_INFO } from '../constants/chain';
-import { LOCKER_ABI } from '../constants/abi';
-import { toChainAgnostic } from '../universal/account';
+import { CHAIN_INFO, VM_NAMESPACE } from '../constants/chain';
+import {
+  FACTORY_V1,
+  FEE_LOCKER_EVM,
+  FEE_LOCKER_SVM,
+  SMART_ACCOUNT_EVM,
+  SMART_ACCOUNT_SVM,
+} from '../constants/abi';
 import { PushClient } from '../push-client/push-client';
 import { SvmClient } from '../vm-client/svm-client';
-import LOCKER_IDL from '../constants/idl.json';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import * as anchor from '@coral-xyz/anchor';
+import { Any } from 'cosmjs-types/google/protobuf/any';
+import { AccountId, CrossChainPayload, vmType } from '../generated/v1/tx';
 
 export class Orchestrator {
   private pushClient: PushClient;
@@ -29,7 +37,11 @@ export class Orchestrator {
     private readonly printTraces = false
   ) {
     const pushChain =
-      pushNetwork === NETWORK.MAINNET ? CHAIN.PUSH_MAINNET : CHAIN.PUSH_TESTNET;
+      pushNetwork === NETWORK.MAINNET
+        ? CHAIN.PUSH_MAINNET
+        : pushNetwork === NETWORK.TESTNET
+        ? CHAIN.PUSH_TESTNET
+        : CHAIN.PUSH_LOCALNET;
     const pushChainRPC =
       this.rpcUrl[pushChain] || CHAIN_INFO[pushChain].defaultRPC;
     this.pushClient = new PushClient({
@@ -41,7 +53,7 @@ export class Orchestrator {
   /**
    * Executes an interaction on Push Chain
    */
-  async execute(execute: ExecuteParams): Promise<`0x${string}`> {
+  async execute(execute: ExecuteParams): Promise<string> {
     const chain = this.universalSigner.chain;
 
     if (this.printTraces) {
@@ -87,42 +99,22 @@ export class Orchestrator {
       console.log('[Orchestrator] Fetching NMSC address for signer...');
     }
     const { address: nmscAddress, deployed: isNMSCDeployed } =
-      await this.pushClient.getNMSCAddress(
-        toChainAgnostic(this.universalSigner)
-      );
-    if (this.printTraces) {
-      console.log(
-        `[Orchestrator] NMSC Address: ${nmscAddress}, Deployed: ${isNMSCDeployed}`
-      );
-    }
+      await this.getNMSCAddress();
 
+    // TODO: Do some fee estimation
     // 3. Estimate funds required for the execution
-    if (this.printTraces) {
-      console.log('[Orchestrator] Estimating required funds...');
-    }
-    // TODO: Fix gas estimation - estimation is req on how much gas the sc will take for the execution. Also nonce should also be accounted for
-    const gasEstimate = await this.pushClient.estimateGas({
-      from: nmscAddress, // the NMSC smart wallet
-      to: execute.target as `0x${string}`,
-      data: execute.data,
-      value: execute.value,
-      gas: execute.gasLimit,
-      maxFeePerGas: execute.maxFeePerGas,
-      maxPriorityFeePerGas: execute.maxPriorityFeePerGas,
-    });
-
-    // Calculate required gas fee with buffer to account for potential gas price fluctuations
-    const gasPrice = await this.pushClient.getGasPrice();
-    const gasBufferPercent = BigInt(110); // 10% buffer
-    const adjustedGasEstimate = (gasEstimate * gasBufferPercent) / BigInt(100);
-    const requiredGasFee = gasPrice * adjustedGasEstimate;
-    const requiredFunds = requiredGasFee + execute.value;
-
-    if (this.printTraces) {
-      console.log(
-        `[Orchestrator] Required funds: ${requiredFunds} (Gas: ${requiredGasFee}, Value: ${execute.value})`
-      );
-    }
+    // const gasEstimate = await this.pushClient.estimateGas({
+    //   from: this.pushClient.getSignerAddress().evmAddress, // random Signer
+    //   to: nmscAddress,
+    //   data: execute.data,
+    //   value: execute.value,
+    //   gas: execute.gasLimit,
+    //   maxFeePerGas: execute.maxFeePerGas,
+    //   maxPriorityFeePerGas: execute.maxPriorityFeePerGas,
+    // });
+    // const requiredGasFee = (await this.pushClient.getGasPrice()) * gasEstimate;
+    // const requiredFunds = requiredGasFee + execute.value;
+    const requiredFunds = execute.value + BigInt(50e18); // Assumption 50 Push is gas fee
 
     // 4. Check NMSC balance on Push Chain ( in nPUSH )
     if (this.printTraces) {
@@ -133,28 +125,31 @@ export class Orchestrator {
       console.log(`[Orchestrator] Current balance: ${funds}`);
     }
 
-    // 5. Create execution hash ( execution data to be signed )
-    if (this.printTraces) {
-      console.log('[Orchestrator] Computing execution hash...');
-    }
+    // 5. Get NMSC Nonce
+    const nonce = isNMSCDeployed
+      ? await this.getNMSCNonce(nmscAddress)
+      : BigInt(0);
+
+    // 6. Create execution hash ( execution data to be signed )
+    const crosschainPayload = {
+      target: execute.target,
+      value: execute.value,
+      data: execute.data,
+      gasLimit: execute.gasLimit || BigInt(21000000),
+      maxFeePerGas: execute.maxFeePerGas || BigInt(10000000000000000),
+      maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(2),
+      nonce,
+      deadline: execute.deadline || BigInt(9999999999),
+    };
     const executionHash = this.computeExecutionHash({
       verifyingContract: nmscAddress,
-      payload: {
-        target: execute.target,
-        value: execute.value,
-        data: execute.data,
-        gasLimit: execute.gasLimit || BigInt(21000000),
-        maxFeePerGas: execute.maxFeePerGas || BigInt(10000000000000000),
-        maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(2),
-        nonce: execute.nonce || BigInt(1), // TODO: fetch is from nmsc itself
-        deadline: execute.deadline || BigInt(9999999999),
-      },
+      payload: crosschainPayload,
     });
     if (this.printTraces) {
       console.log(`[Orchestrator] Execution hash: ${executionHash}`);
     }
 
-    // 6 If not enough funds, lock required fee on source chain and send tx to Push chain
+    // 7. If not enough funds, lock required fee on source chain and send tx to Push chain
     let feeLockTxHash: string | null = null;
     if (funds < requiredFunds) {
       if (this.printTraces) {
@@ -175,15 +170,14 @@ export class Orchestrator {
       }
     }
 
-    // 7. Sign execution data
     if (this.printTraces) {
       console.log('[Orchestrator] Signing execution data...');
     }
 
-    // TODO: Fix signing according to Validator's logic
-    // Does it need to beut8 encoded for only solana or for eth too ??
-    const signature = await this.universalSigner.signMessage(
-      toBytes(executionHash) // UTF-8 encode the hex string
+    // 8. Sign execution data
+    const signature = await this.signCrossChainPayload(
+      crosschainPayload,
+      nmscAddress
     );
     if (this.printTraces) {
       console.log('[Orchestrator] Execution data signed successfully');
@@ -196,7 +190,15 @@ export class Orchestrator {
     const txHash = await this.sendCrossChainPushTx(
       isNMSCDeployed,
       feeLockTxHash,
-      execute,
+      {
+        ...crosschainPayload,
+        value: crosschainPayload.value.toString(),
+        gasLimit: crosschainPayload.gasLimit.toString(),
+        maxFeePerGas: crosschainPayload.maxFeePerGas.toString(),
+        maxPriorityFeePerGas: crosschainPayload.maxPriorityFeePerGas.toString(),
+        nonce: crosschainPayload.nonce.toString(),
+        deadline: crosschainPayload.deadline.toString(),
+      },
       signature
     );
     if (this.printTraces) {
@@ -235,7 +237,7 @@ export class Orchestrator {
         const evmClient = new EvmClient({ rpcUrl });
 
         return await evmClient.writeContract({
-          abi: LOCKER_ABI as Abi,
+          abi: FEE_LOCKER_EVM as Abi,
           address: lockerContract,
           functionName: 'addFunds',
           args: [executionHash],
@@ -254,7 +256,7 @@ export class Orchestrator {
           );
 
         return await svmClient.writeContract({
-          abi: LOCKER_IDL,
+          abi: FEE_LOCKER_SVM,
           address: lockerContract,
           functionName: 'addFunds',
           args: [amount, executionHash],
@@ -273,33 +275,136 @@ export class Orchestrator {
     }
   }
 
+  private async signCrossChainPayload(
+    crosschainPayload: {
+      target: `0x${string}`;
+      value: bigint;
+      data: `0x${string}`;
+      gasLimit: bigint;
+      maxFeePerGas: bigint;
+      maxPriorityFeePerGas: bigint;
+      nonce: bigint;
+      deadline: bigint;
+    },
+    verifyingContract: `0x${string}`,
+    version?: string
+  ) {
+    const chain = this.universalSigner.chain;
+    const { vm } = CHAIN_INFO[chain];
+
+    switch (vm) {
+      case VM.EVM: {
+        if (!this.universalSigner.signTypedData) {
+          throw new Error('signTypedData is not defined');
+        }
+        return this.universalSigner.signTypedData({
+          domain: {
+            version: version || '0.1.0',
+            chainId: Number(this.pushClient.pushChainInfo.chainId),
+            verifyingContract,
+          },
+          types: {
+            CrossChainPayload: [
+              { name: 'target', type: 'address' },
+              { name: 'value', type: 'uint256' },
+              { name: 'data', type: 'bytes' },
+              { name: 'gasLimit', type: 'uint256' },
+              { name: 'maxFeePerGas', type: 'uint256' },
+              { name: 'maxPriorityFeePerGas', type: 'uint256' },
+              { name: 'nonce', type: 'uint256' },
+              { name: 'deadline', type: 'uint256' },
+            ],
+          },
+          primaryType: 'CrossChainPayload',
+          message: crosschainPayload,
+        });
+      }
+
+      case VM.SVM: {
+        const digest = this.computeExecutionHash({
+          chainId: Number(this.pushClient.pushChainInfo.chainId),
+          verifyingContract,
+          payload: crosschainPayload,
+          version: version || '0.1.0',
+        });
+        return this.universalSigner.signMessage(toBytes(digest));
+      }
+
+      default: {
+        throw new Error(`Unsupported VM type: ${vm}`);
+      }
+    }
+  }
+
   /**
    * Sends a custom Cosmos tx to Push Chain (gasless) to execute user intent.
    */
   public async sendCrossChainPushTx(
     isNMSCDeployed: boolean,
     feeLockTxHash: string | null,
-    execute?: ExecuteParams,
+    crosschainPayload?: CrossChainPayload,
     signature?: Uint8Array
-  ): Promise<`0x${string}`> {
-    // TODO: build and broadcast custom Cosmos transaction (gasless meta tx)
+  ): Promise<string> {
+    const { chain, address } = this.universalSigner;
+    const { vm, chainId } = CHAIN_INFO[chain];
+
+    const accountId: AccountId = {
+      namespace: VM_NAMESPACE[vm],
+      chainId,
+      ownerKey:
+        vm === VM.EVM ? address : vm === VM.SVM ? toHex(address) : address,
+      vmType: vmType[vm],
+    };
+
+    const { cosmosAddress: signer } = this.pushClient.getSignerAddress();
+    const msgs: Any[] = [];
+
     if (!isNMSCDeployed) {
-      // prepare MsgDeployNMSC
+      /**
+       * @dev - fee should be locked for NMSC deployment to avoid spamming
+       */
+      if (!feeLockTxHash) {
+        throw new Error('NMSC cannot be deployed without fee locking');
+      }
+      msgs.push(
+        this.pushClient.createMsgDeployNMSC({
+          signer,
+          accountId,
+          txHash: feeLockTxHash,
+        })
+      );
     }
 
     if (feeLockTxHash) {
-      // prepare MsgMintPush
+      msgs.push(
+        this.pushClient.createMsgMintPush({
+          signer,
+          accountId,
+          txHash: feeLockTxHash,
+        })
+      );
     }
 
-    if (execute && signature) {
-      // prepare MsgExecutePayload
+    if (crosschainPayload && signature) {
+      msgs.push(
+        this.pushClient.createMsgExecutePayload({
+          signer,
+          accountId,
+          crosschainPayload,
+          signature: bytesToHex(signature),
+        })
+      );
     }
 
-    // createTxBody
-    // signTx
-    // broadcastTx
+    const txBody = await this.pushClient.createCosmosTxBody(msgs);
+    const txRaw = await this.pushClient.signCosmosTx(txBody);
+    const txresponse = await this.pushClient.broadcastCosmosTx(txRaw);
 
-    return '0xTxHash';
+    if (txresponse.code === 0) {
+      return txresponse.transactionHash;
+    } else {
+      throw new Error(txresponse.rawLog);
+    }
   }
 
   /**
@@ -414,5 +519,80 @@ export class Orchestrator {
     );
 
     return digest;
+  }
+
+  /**
+   * Computes the smart wallet (NMSC) on Push Chain.
+   */
+  async getNMSCAddress(): Promise<{
+    address: `0x${string}`;
+    deployed: boolean;
+  }> {
+    const { chain, address } = this.universalSigner;
+    const { vm, chainId } = CHAIN_INFO[chain];
+
+    const computedAddress: `0x{string}` = await this.pushClient.readContract({
+      address: this.pushClient.pushChainInfo.factoryAddress,
+      abi: FACTORY_V1 as Abi,
+      functionName: 'computeSmartAccountAddress',
+      args: [
+        {
+          namespace: VM_NAMESPACE[vm],
+          chainId,
+          /**
+           * @dev - OwnerKey should be in bytes
+           * for eth - convert hex to bytes
+           * for sol - convert base64 to bytes
+           * for others - not defined yet
+           */
+          ownerKey:
+            vm === VM.EVM ? address : vm === VM.SVM ? toHex(address) : address,
+          /**
+           * @dev
+           * 0 -> evm
+           * 1 -> svm
+           * Rest are not defined
+           */
+          vmType: vm === VM.EVM ? 0 : vm === VM.SVM ? 1 : 2,
+        },
+      ],
+    });
+
+    const byteCode = await this.pushClient.publicClient.getCode({
+      address: computedAddress,
+    });
+    return { address: computedAddress, deployed: byteCode !== undefined };
+  }
+
+  /**
+   * @dev - Although as of now nonce var is same in evm & svm so switch conditions does not matter
+   * @param address NMSC address
+   * @returns NMSC current nonce
+   */
+  private async getNMSCNonce(address: `0x${string}`): Promise<bigint> {
+    const chain = this.universalSigner.chain;
+    const { vm } = CHAIN_INFO[chain];
+
+    switch (vm) {
+      case VM.EVM: {
+        return this.pushClient.readContract({
+          address,
+          abi: SMART_ACCOUNT_EVM as Abi,
+          functionName: 'nonce',
+        });
+      }
+
+      case VM.SVM: {
+        return this.pushClient.readContract({
+          address,
+          abi: SMART_ACCOUNT_SVM as Abi,
+          functionName: 'nonce',
+        });
+      }
+
+      default: {
+        throw new Error(`Unsupported VM type: ${vm}`);
+      }
+    }
   }
 }

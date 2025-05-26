@@ -4,6 +4,8 @@ import {
   parseTransaction,
   WalletClient,
   Account,
+  TypedDataDomain,
+  TypedData,
 } from 'viem';
 import { createUniversalAccount } from '../account/account';
 import { UniversalSigner } from '../universal.types';
@@ -35,11 +37,13 @@ export function createUniversalSigner({
   address,
   signMessage,
   signTransaction,
+  signTypedData,
 }: UniversalSigner): UniversalSigner {
   return {
     ...createUniversalAccount({ chain, address }),
     signMessage,
     signTransaction,
+    signTypedData,
   };
 }
 
@@ -57,6 +61,17 @@ export async function createUniversalSignerFromViem(
   let address: `0x${string}`;
   let signMessage: (data: Uint8Array) => Promise<Uint8Array>;
   let signTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
+  let signTypedData: ({
+    domain,
+    types,
+    primaryType,
+    message,
+  }: {
+    domain: TypedDataDomain;
+    types: TypedData;
+    primaryType: string;
+    message: Record<string, any>;
+  }) => Promise<Uint8Array>;
 
   if ('getAddresses' in clientOrAccount) {
     // It's a WalletClient
@@ -72,6 +87,26 @@ export async function createUniversalSignerFromViem(
       const tx = parseTransaction(bytesToHex(unsignedTx));
       const txHash = await clientOrAccount.signTransaction(tx as never);
       return hexToBytes(txHash);
+    };
+    signTypedData = async ({
+      domain,
+      types,
+      primaryType,
+      message,
+    }: {
+      domain: TypedDataDomain;
+      types: TypedData;
+      primaryType: string;
+      message: Record<string, any>;
+    }) => {
+      const hexSig = await clientOrAccount.signTypedData({
+        domain,
+        types,
+        primaryType,
+        message,
+        account: clientOrAccount.account || address,
+      });
+      return hexToBytes(hexSig);
     };
   } else {
     // It's an Account
@@ -94,6 +129,25 @@ export async function createUniversalSignerFromViem(
       const hexSig = await clientOrAccount.signTransaction(tx);
       return hexToBytes(hexSig);
     };
+    signTypedData = async ({
+      domain,
+      types,
+      primaryType,
+      message,
+    }: {
+      domain: TypedDataDomain;
+      types: TypedData;
+      primaryType: string;
+      message: Record<string, any>;
+    }) => {
+      const hexSig = await clientOrAccount.signTypedData({
+        domain,
+        types,
+        primaryType,
+        message,
+      });
+      return hexToBytes(hexSig);
+    };
   }
 
   const universalSigner: UniversalSigner = {
@@ -101,6 +155,7 @@ export async function createUniversalSignerFromViem(
     chain,
     signMessage,
     signTransaction,
+    signTypedData,
   };
   return createUniversalSigner(universalSigner);
 }

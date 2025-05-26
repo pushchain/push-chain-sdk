@@ -13,6 +13,7 @@
     "cosmjs-types": "0.9.0",
     "protobufjs": "7.4.0",
     "tslib": "^2.3.0",
+    "tweetnacl": "^1.0.3",
     "viem": "2.22.13"
   },
   "scripts": {
@@ -23,7 +24,6 @@
   "typings": "./src/index.d.ts",
   "devDependencies": {
     "secp256k1": "^5.0.1",
-    "ts-proto": "^2.0.3",
-    "tweetnacl": "^1.0.3"
+    "ts-proto": "^2.0.3"
   }
 }

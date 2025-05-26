@@ -1,4 +1,4 @@
-import { getContractAddress, hexToBytes, keccak256, toBytes } from 'viem';
+import { hexToBytes, keccak256 } from 'viem';
 import {
   MsgDeployNMSC,
   MsgExecutePayload,
@@ -9,6 +9,7 @@ import { SignDoc, TxBody, TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 import { Writer } from 'protobufjs';
 import { makeAuthInfoBytes, makeSignDoc } from '@cosmjs/proto-signing';
 import {
+  DeliverTxResponse,
   QueryClient,
   setupAuthExtension,
   StargateClient,
@@ -31,28 +32,11 @@ export class PushClient extends EvmClient {
     this.pushChainInfo =
       clientOptions.network === NETWORK.MAINNET
         ? PUSH_CHAIN_INFO[CHAIN.PUSH_MAINNET]
-        : PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET];
+        : clientOptions.network === NETWORK.TESTNET
+        ? PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET]
+        : PUSH_CHAIN_INFO[CHAIN.PUSH_LOCALNET];
 
     this.signerPrivateKey = generatePrivateKey();
-  }
-
-  /**
-   * Computes the CREATE2-derived smart wallet address on Push Chain.
-   */
-  async getNMSCAddress(caipAddress: string): Promise<{
-    address: `0x${string}`;
-    deployed: boolean;
-  }> {
-    const address = getContractAddress({
-      bytecode: this.pushChainInfo.scWalletBytecode,
-      from: this.pushChainInfo.factoryAddress,
-      opcode: 'CREATE2',
-      salt: toBytes(caipAddress),
-    });
-
-    const byteCode = await this.publicClient.getCode({ address });
-
-    return { address, deployed: byteCode !== '0x' };
   }
 
   /**
@@ -107,8 +91,15 @@ export class PushClient extends EvmClient {
   }
 
   // --- Tx Signer ---
-  getSignerAddress(): `0x${string}` {
-    return privateKeyToAccount(this.signerPrivateKey).address;
+  getSignerAddress() {
+    const account = privateKeyToAccount(this.signerPrivateKey);
+    return {
+      evmAddress: account.address,
+      cosmosAddress: toBech32(
+        this.pushChainInfo.prefix,
+        hexToBytes(account.address)
+      ),
+    };
   }
 
   /**
@@ -128,12 +119,18 @@ export class PushClient extends EvmClient {
     );
     const status = await tmClient.status();
     const chainId = status.nodeInfo.network;
+
     const queryClient = QueryClient.withExtensions(
       tmClient,
       setupAuthExtension
     );
-    const accountResp = await queryClient.auth.account(sender);
-    const baseAccount = BaseAccount.decode(accountResp!.value);
+    let baseAccount: BaseAccount | null = null;
+    try {
+      const accountResp = await queryClient.auth.account(sender);
+      baseAccount = BaseAccount.decode(accountResp!.value);
+    } catch (err) {
+      // Ignore
+    }
 
     // 📦 Encode pubkey
     const uncompressedPubKey = hexToBytes(account.publicKey);
@@ -144,9 +141,14 @@ export class PushClient extends EvmClient {
     };
 
     const authInfoBytes = makeAuthInfoBytes(
-      [{ pubkey: pubkeyEncoded, sequence: Number(baseAccount.sequence) }],
+      [
+        {
+          pubkey: pubkeyEncoded,
+          sequence: baseAccount ? Number(baseAccount.sequence) : 0,
+        },
+      ],
       [],
-      200000, // gas
+      100000000000, // gas
       undefined,
       undefined
     );
@@ -156,7 +158,7 @@ export class PushClient extends EvmClient {
       txBodyBytes,
       authInfoBytes,
       chainId,
-      Number(baseAccount.accountNumber)
+      baseAccount ? Number(baseAccount.accountNumber) : 0
     );
 
     const digest = keccak256(SignDoc.encode(signDoc).finish());
@@ -169,11 +171,11 @@ export class PushClient extends EvmClient {
     });
   }
 
-  async broadcastCosmosTx(txRaw: TxRaw): Promise<string> {
+  async broadcastCosmosTx(txRaw: TxRaw): Promise<DeliverTxResponse> {
     const client = await StargateClient.connect(
       this.pushChainInfo.tendermintRpc
     );
     const result = await client.broadcastTx(TxRaw.encode(txRaw).finish());
-    return result.transactionHash;
+    return result;
   }
 }
