@@ -2,7 +2,10 @@ import {
   toChainAgnostic,
   toUniversal as toUniversalAccount,
 } from './universal/account';
-import { toUniversal as toUniversalSigner } from './universal/signer';
+import {
+  createUniversalSignerFromSolanaKeypair,
+  createUniversalSignerFromViem,
+} from './universal/signer';
 
 /**
  * @dev - THESE UTILS ARE EXPORTED TO SDK CONSUMER
@@ -51,6 +54,11 @@ export class Utils {
     /**
      * Wraps a viem WalletClient into a UniversalSigner.
      */
-    toUniversal: toUniversalSigner,
+    createUniversalSignerFromViem,
+
+    /**
+     * Wraps a Solana Keypair into a UniversalSigner.
+     */
+    createUniversalSignerFromSolanaKeypair,
   };
 }
