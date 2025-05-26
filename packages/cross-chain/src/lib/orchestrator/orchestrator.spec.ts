@@ -22,12 +22,6 @@ describe('Orchestrator', () => {
     },
   };
 
-  const keypair = Keypair.generate();
-
-  // Get the private key as a hex string
-  const privateKeyHex = Buffer.from(keypair.secretKey).toString('hex');
-  console.log('Private Key:', privateKeyHex);
-
   describe('lockFee', () => {
     it('eth sepolia', async () => {
       // Create orchestrator for eth_sepolia signer
@@ -45,7 +39,7 @@ describe('Orchestrator', () => {
         await createUniversalSignerFromViem(account, chain);
 
       const orchestrator = new Orchestrator(ethSepoliaSigner, NETWORK.TESTNET);
-      const txHash = await orchestrator['lockFee'](parseEther('0.0001'));
+      const txHash = await orchestrator['lockFee'](BigInt(100000)); // 0.01 USDC
       console.log('lockFee txHash:', txHash);
       expect(txHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
     });
