@@ -159,10 +159,8 @@ export class Orchestrator {
       }
       const fundDifference = requiredFunds - funds;
       const fundDifferenceInUSDC = this.pushClient.pushToUSDC(fundDifference); // in micro-USDC ( USDC with 6 decimal points )
-      feeLockTxHash = await this.lockFee(
-        fundDifferenceInUSDC,
-        executionHash
-      );
+      feeLockTxHash = await this.lockFee(fundDifferenceInUSDC, executionHash);
+
       if (this.printTraces) {
         console.log(
           `[Orchestrator] Fee lock transaction hash: ${feeLockTxHash}`
