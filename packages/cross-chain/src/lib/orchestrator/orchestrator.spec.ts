@@ -39,13 +39,13 @@ describe('Orchestrator', () => {
         await createUniversalSignerFromViem(account, chain);
 
       const orchestrator = new Orchestrator(ethSepoliaSigner, NETWORK.TESTNET);
-      const txHash = await orchestrator['lockFee'](BigInt(100000)); // 0.01 USDC
+      const txHash = await orchestrator['lockFee'](BigInt(1)); // 0.00000001 USDC
       console.log('lockFee txHash:', txHash);
       expect(txHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
     });
 
     it('solana testnet', async () => {
-      const chain = CHAIN.SOLANA_TESTNET;
+      const chain = CHAIN.SOLANA_DEVNET;
       const privateKeyHex = process.env['SOLANA_PRIVATE_KEY'];
       if (!privateKeyHex) {
         throw new Error('SOLANA_PRIVATE_KEY environment variable is not set');
@@ -61,7 +61,7 @@ describe('Orchestrator', () => {
       );
 
       const svmClient = new SvmClient({
-        rpcUrl: 'https://api.testnet.solana.com',
+        rpcUrl: 'https://api.devnet.solana.com',
       });
 
       const balance = await svmClient.getBalance(solanaDevnetSigner.address);
@@ -72,7 +72,7 @@ describe('Orchestrator', () => {
         NETWORK.TESTNET
       );
 
-      const amount = BigInt(0.0001 * LAMPORTS_PER_SOL); // 100 000 lamports
+      const amount = BigInt(100); // 0.000001 USDC
       const dummyTxHash =
         '25ytBco5ZxMaaatzKwcw28emNHD42JzCVe5wUy78mTA8ophwLCZN6dXKkXaRfxhgCdWdqSKpvGNuKvbqJQjzLKwy';
 

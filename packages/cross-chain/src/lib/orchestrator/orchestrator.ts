@@ -26,6 +26,7 @@ import { PublicKey, SystemProgram } from '@solana/web3.js';
 import * as anchor from '@coral-xyz/anchor';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 import { AccountId, CrossChainPayload, vmType } from '../generated/v1/tx';
+import { PriceFetch } from '../price-fetch/price-fetch';
 
 export class Orchestrator {
   private pushClient: PushClient;
@@ -216,7 +217,7 @@ export class Orchestrator {
    * @returns Transaction hash of the locking transaction
    */
   private async lockFee(
-    amount: bigint,
+    amount: bigint, // USD with 8 decimals
     executionHash: string = zeroHash
   ): Promise<string> {
     const chain = this.universalSigner.chain;
@@ -227,11 +228,17 @@ export class Orchestrator {
     }
 
     const rpcUrl = this.rpcUrl[chain] || defaultRPC;
+    const priceFetcher = new PriceFetch(this.rpcUrl);
+    const nativeTokenUsdPrice = await priceFetcher.getPrice(chain); // 8 decimals
 
-    // TODO: Convert USDC to the native token's lowest denomination (e.g., wei for EVM)
+    let nativeAmount: bigint;
 
     switch (vm) {
       case VM.EVM: {
+        const nativeDecimals = 18; // ETH, MATIC, etc.
+        nativeAmount =
+          (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
+
         const evmClient = new EvmClient({ rpcUrl });
 
         return await evmClient.writeContract({
@@ -240,11 +247,15 @@ export class Orchestrator {
           functionName: 'addFunds',
           args: [executionHash],
           signer: this.universalSigner,
-          value: amount,
+          value: nativeAmount,
         });
       }
 
       case VM.SVM: {
+        const nativeDecimals = 9; // SOL lamports
+        nativeAmount =
+          (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
+
         const svmClient = new SvmClient({ rpcUrl });
 
         const [lockerPda, lockerBump] =
@@ -257,7 +268,7 @@ export class Orchestrator {
           abi: FEE_LOCKER_SVM,
           address: lockerContract,
           functionName: 'addFunds',
-          args: [amount, toBytes(executionHash)],
+          args: [nativeAmount, toBytes(executionHash)],
           signer: this.universalSigner,
           accounts: {
             locker: lockerPda,
@@ -267,9 +278,8 @@ export class Orchestrator {
         });
       }
 
-      default: {
+      default:
         throw new Error(`Unsupported VM type: ${vm}`);
-      }
     }
   }
 
