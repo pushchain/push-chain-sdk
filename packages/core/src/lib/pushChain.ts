@@ -4,7 +4,7 @@ import { createUniversalSigner } from './universal/signer';
 import { UniversalSigner } from './universal/universal.types';
 import { Utils } from './utils';
 
-export class CrossChain {
+export class PushChain {
   /**
    * Provides access to utility methods in PushChain.
    */
@@ -30,7 +30,7 @@ export class CrossChain {
       options?.rpcUrl || {},
       options?.printTraces || false
     );
-    return new CrossChain(orchestartor);
+    return new PushChain(orchestartor);
   };
 
   execute = this.orchestartor.execute;

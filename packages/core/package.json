@@ -1,5 +1,5 @@
 {
-  "name": "@pushchain/cross-chain",
+  "name": "@pushchain/core",
   "version": "0.0.1",
   "dependencies": {
     "@bufbuild/protobuf": "^2.0.0",
@@ -14,7 +14,7 @@
     "protobufjs": "7.4.0",
     "tslib": "^2.3.0",
     "tweetnacl": "^1.0.3",
-    "viem": "2.22.13"
+    "viem": "2.27.2"
   },
   "scripts": {
     "build:proto": "scripts/protoc-generate.sh"
