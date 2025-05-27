@@ -54,7 +54,7 @@ export function createUniversalSigner({
  * @param {CHAIN} chain - The chain the signer will operate on
  * @returns {Promise<UniversalSigner>} A signer object configured for the specified chain
  */
-export async function createUniversalSignerFromViem(
+export async function toUniversalFromViem(
   clientOrAccount: WalletClient | Account,
   chain: CHAIN
 ): Promise<UniversalSigner> {
@@ -167,7 +167,7 @@ export async function createUniversalSignerFromViem(
  * @param {CHAIN} chain - The chain the signer will operate on (should be a Solana chain)
  * @returns {UniversalSigner} A signer object configured for Solana operations
  */
-export function createUniversalSignerFromSolanaKeypair(
+export function toUniversalFromSolanaKeypair(
   keypair: Keypair,
   chain: CHAIN
 ): UniversalSigner {

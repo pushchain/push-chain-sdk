@@ -3,8 +3,8 @@ import {
   toUniversal as toUniversalAccount,
 } from './universal/account';
 import {
-  createUniversalSignerFromSolanaKeypair,
-  createUniversalSignerFromViem,
+  toUniversalFromSolanaKeypair,
+  toUniversalFromViem,
 } from './universal/signer';
 
 /**
@@ -54,11 +54,11 @@ export class Utils {
     /**
      * Wraps a viem WalletClient into a UniversalSigner.
      */
-    createUniversalSignerFromViem,
+    toUniversalFromViem,
 
     /**
      * Wraps a Solana Keypair into a UniversalSigner.
      */
-    createUniversalSignerFromSolanaKeypair,
+    toUniversalFromSolanaKeypair,
   };
 }

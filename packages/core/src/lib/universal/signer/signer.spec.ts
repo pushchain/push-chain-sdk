@@ -1,7 +1,7 @@
 import {
   createUniversalSigner,
-  createUniversalSignerFromViem,
-  createUniversalSignerFromSolanaKeypair,
+  toUniversalFromViem,
+  toUniversalFromSolanaKeypair,
 } from './signer';
 import { CHAIN } from '../../constants/enums';
 import {
@@ -36,7 +36,7 @@ describe('Universal Account Utilities', () => {
     });
   });
 
-  describe('createUniversalSignerFromViem', () => {
+  describe('toUniversalFromViem', () => {
     const pk = generatePrivateKey();
     const account = privateKeyToAccount(pk);
     const client = createWalletClient({
@@ -46,10 +46,7 @@ describe('Universal Account Utilities', () => {
     });
 
     it('wraps a viem WalletClient into a UniversalSigner', async () => {
-      const signer = await createUniversalSignerFromViem(
-        client,
-        CHAIN.ETHEREUM_SEPOLIA
-      );
+      const signer = await toUniversalFromViem(client, CHAIN.ETHEREUM_SEPOLIA);
 
       expect(signer.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
       expect(signer.address).toBe(account.address);
@@ -78,10 +75,7 @@ describe('Universal Account Utilities', () => {
     });
 
     it('wraps a viem Account into a UniversalSigner', async () => {
-      const signer = await createUniversalSignerFromViem(
-        account,
-        CHAIN.ETHEREUM_SEPOLIA
-      );
+      const signer = await toUniversalFromViem(account, CHAIN.ETHEREUM_SEPOLIA);
 
       expect(signer.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
       expect(signer.address).toBe(account.address);
@@ -115,21 +109,18 @@ describe('Universal Account Utilities', () => {
       };
 
       await expect(
-        createUniversalSignerFromViem(
-          invalidAccount as any,
-          CHAIN.ETHEREUM_SEPOLIA
-        )
+        toUniversalFromViem(invalidAccount as any, CHAIN.ETHEREUM_SEPOLIA)
       ).rejects.toThrow(
         'Invalid Account instance: missing required properties'
       );
     });
   });
 
-  describe('createUniversalSignerFromSolanaKeypair', () => {
+  describe('toUniversalFromSolanaKeypair', () => {
     const keypair = Keypair.generate();
 
     it('creates a valid UniversalSigner for Solana', () => {
-      const signer = createUniversalSignerFromSolanaKeypair(
+      const signer = toUniversalFromSolanaKeypair(
         keypair,
         CHAIN.SOLANA_TESTNET
       );
@@ -142,12 +133,12 @@ describe('Universal Account Utilities', () => {
 
     it('throws error for non-Solana chain', () => {
       expect(() =>
-        createUniversalSignerFromSolanaKeypair(keypair, CHAIN.ETHEREUM_SEPOLIA)
+        toUniversalFromSolanaKeypair(keypair, CHAIN.ETHEREUM_SEPOLIA)
       ).toThrow('Invalid chain for Solana Keypair');
     });
 
     it('signs messages correctly', async () => {
-      const signer = createUniversalSignerFromSolanaKeypair(
+      const signer = toUniversalFromSolanaKeypair(
         keypair,
         CHAIN.SOLANA_MAINNET
       );
@@ -159,7 +150,7 @@ describe('Universal Account Utilities', () => {
     });
 
     it('signs transactions correctly', async () => {
-      const signer = createUniversalSignerFromSolanaKeypair(
+      const signer = toUniversalFromSolanaKeypair(
         keypair,
         CHAIN.SOLANA_MAINNET
       );

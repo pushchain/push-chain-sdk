@@ -1,12 +1,12 @@
 import { Orchestrator } from './orchestrator';
 import { CHAIN, NETWORK } from '../constants/enums';
 import { UniversalSigner } from '../universal/universal.types';
-import { Hex, parseEther } from 'viem';
+import { Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Keypair } from '@solana/web3.js';
 import {
-  createUniversalSignerFromSolanaKeypair,
-  createUniversalSignerFromViem,
+  toUniversalFromSolanaKeypair,
+  toUniversalFromViem,
 } from '../universal/signer/signer';
 import { SvmClient } from '../vm-client/svm-client';
 
@@ -35,8 +35,10 @@ describe('Orchestrator', () => {
 
       const account = privateKeyToAccount(PRIVATE_KEY);
 
-      const ethSepoliaSigner: UniversalSigner =
-        await createUniversalSignerFromViem(account, chain);
+      const ethSepoliaSigner: UniversalSigner = await toUniversalFromViem(
+        account,
+        chain
+      );
 
       const orchestrator = new Orchestrator(ethSepoliaSigner, NETWORK.TESTNET);
       const txHash = await orchestrator['lockFee'](BigInt(1)); // 0.00000001 USDC
@@ -55,7 +57,7 @@ describe('Orchestrator', () => {
       // Generate a keypair from the private key in .env
       const testAccount = Keypair.fromSecretKey(privateKey);
 
-      const solanaDevnetSigner = createUniversalSignerFromSolanaKeypair(
+      const solanaDevnetSigner = toUniversalFromSolanaKeypair(
         testAccount,
         chain
       );
