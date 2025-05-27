@@ -5,8 +5,8 @@ import {
   keccak256,
   encodeAbiParameters,
   encodePacked,
-  toHex,
   bytesToHex,
+  stringToBytes,
 } from 'viem';
 import { CHAIN, NETWORK, VM } from '../constants/enums';
 import { UniversalSigner } from '../universal/universal.types';
@@ -27,6 +27,7 @@ import * as anchor from '@coral-xyz/anchor';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 import { AccountId, CrossChainPayload, vmType } from '../generated/v1/tx';
 import { PriceFetch } from '../price-fetch/price-fetch';
+import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
 
 export class Orchestrator {
   private pushClient: PushClient;
@@ -115,7 +116,7 @@ export class Orchestrator {
     // });
     // const requiredGasFee = (await this.pushClient.getGasPrice()) * gasEstimate;
     // const requiredFunds = requiredGasFee + execute.value;
-    const requiredFunds = execute.value + BigInt(50e18); // Assumption 50 Push is gas fee
+    const requiredFunds = execute.value + BigInt(50 * 1e18);
 
     // 4. Check NMSC balance on Push Chain ( in nPUSH )
     if (this.printTraces) {
@@ -159,7 +160,7 @@ export class Orchestrator {
         );
       }
       const fundDifference = requiredFunds - funds;
-      const fundDifferenceInUSDC = this.pushClient.pushToUSDC(fundDifference); // in micro-USDC ( USDC with 6 decimal points )
+      const fundDifferenceInUSDC = this.pushClient.pushToUSDC(fundDifference); // ( USDC with 8 decimal points )
       feeLockTxHash = await this.lockFee(fundDifferenceInUSDC, executionHash);
 
       if (this.printTraces) {
@@ -335,7 +336,7 @@ export class Orchestrator {
           payload: crosschainPayload,
           version: version || '0.1.0',
         });
-        return this.universalSigner.signMessage(toBytes(digest));
+        return this.universalSigner.signMessage(stringToBytes(digest));
       }
 
       default: {
@@ -360,7 +361,11 @@ export class Orchestrator {
       namespace: VM_NAMESPACE[vm],
       chainId,
       ownerKey:
-        vm === VM.EVM ? address : vm === VM.SVM ? toHex(address) : address,
+        vm === VM.EVM
+          ? address
+          : vm === VM.SVM
+          ? bytesToHex(bs58.decode(address))
+          : address,
       vmType: vmType[vm],
     };
 
@@ -554,7 +559,11 @@ export class Orchestrator {
            * for others - not defined yet
            */
           ownerKey:
-            vm === VM.EVM ? address : vm === VM.SVM ? toHex(address) : address,
+            vm === VM.EVM
+              ? address
+              : vm === VM.SVM
+              ? bytesToHex(bs58.decode(address))
+              : address,
           /**
            * @dev
            * 0 -> evm

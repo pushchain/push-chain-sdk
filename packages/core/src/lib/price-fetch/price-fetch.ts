@@ -64,11 +64,12 @@ export class PriceFetch {
           priceFeedAddress.NATIVE_USD,
           evmClient
         );
+
         const usdcUsdPrice = await this.fetchPrice(
           priceFeedAddress.USDC_USD,
           evmClient
         );
-        return ethUsdPrice / usdcUsdPrice;
+        return (ethUsdPrice / usdcUsdPrice) * BigInt(1e8);
       }
       case VM.SVM: {
         if (chain === CHAIN.SOLANA_DEVNET) {

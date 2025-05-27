@@ -46,7 +46,7 @@ describe('Orchestrator', () => {
       expect(txHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
     });
 
-    it('solana testnet', async () => {
+    it('solana devnet', async () => {
       const chain = CHAIN.SOLANA_DEVNET;
       const privateKeyHex = process.env['SOLANA_PRIVATE_KEY'];
       if (!privateKeyHex) {
