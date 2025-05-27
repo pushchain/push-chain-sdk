@@ -1,16 +1,14 @@
 import { Orchestrator } from './orchestrator';
 import { CHAIN, NETWORK } from '../constants/enums';
 import { UniversalSigner } from '../universal/universal.types';
-import {
-  bytesToHex,
-  Hex,
-  hexToBytes,
-  parseEther,
-  parseTransaction,
-} from 'viem';
+import { Hex, parseEther } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { Keypair } from '@solana/web3.js';
-import nacl from 'tweetnacl';
+import { Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import {
+  createUniversalSignerFromSolanaKeypair,
+  createUniversalSignerFromViem,
+} from '../universal/signer/signer';
+import { SvmClient } from '../vm-client/svm-client';
 
 describe('Orchestrator', () => {
   const mockSigner: UniversalSigner = {
@@ -24,7 +22,7 @@ describe('Orchestrator', () => {
     },
   };
 
-  describe.skip('lockFee', () => {
+  describe('lockFee', () => {
     it('eth sepolia', async () => {
       // Create orchestrator for eth_sepolia signer
 
@@ -37,31 +35,16 @@ describe('Orchestrator', () => {
 
       const account = privateKeyToAccount(PRIVATE_KEY);
 
-      const ethSepoliaSigner: UniversalSigner = {
-        address: account.address,
-        chain,
-        signMessage: async (data: Uint8Array) => {
-          const hexSig = await account.signMessage({
-            message: { raw: data },
-          });
-          return hexToBytes(hexSig);
-        },
-        signTransaction: async (unsignedTx: Uint8Array) => {
-          const tx = parseTransaction(bytesToHex(unsignedTx));
-          const txHash = await account.signTransaction(tx as never);
-          return hexToBytes(txHash);
-        },
-      };
+      const ethSepoliaSigner: UniversalSigner =
+        await createUniversalSignerFromViem(account, chain);
 
       const orchestrator = new Orchestrator(ethSepoliaSigner, NETWORK.TESTNET);
-      const txHash = await orchestrator['lockFee'](parseEther('0.0001'));
+      const txHash = await orchestrator['lockFee'](BigInt(1)); // 0.00000001 USDC
       console.log('lockFee txHash:', txHash);
       expect(txHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
     });
 
-    it('solana devnet', async () => {
-      // Create orchestrator for eth_sepolia signer
-
+    it('solana testnet', async () => {
       const chain = CHAIN.SOLANA_DEVNET;
       const privateKeyHex = process.env['SOLANA_PRIVATE_KEY'];
       if (!privateKeyHex) {
@@ -72,25 +55,30 @@ describe('Orchestrator', () => {
       // Generate a keypair from the private key in .env
       const testAccount = Keypair.fromSecretKey(privateKey);
 
-      // Create the object first with any required properties
-      const solanaDevnetSigner = {
-        address: testAccount.publicKey.toBase58(),
-        chain,
-        signMessage: async (data: Uint8Array) => {
-          return nacl.sign.detached(data, testAccount.secretKey);
-        },
-        signTransaction: async function (unsignedTx: Uint8Array) {
-          return nacl.sign.detached(unsignedTx, testAccount.secretKey);
-        },
-      };
+      const solanaDevnetSigner = createUniversalSignerFromSolanaKeypair(
+        testAccount,
+        chain
+      );
+
+      const svmClient = new SvmClient({
+        rpcUrl: 'https://api.devnet.solana.com',
+      });
+
+      const balance = await svmClient.getBalance(solanaDevnetSigner.address);
+      console.log('balance:', balance, 'address: ', solanaDevnetSigner.address);
 
       const orchestrator = new Orchestrator(
         solanaDevnetSigner,
         NETWORK.TESTNET
       );
-      const txHash = await orchestrator['lockFee'](parseEther('0.0001'));
+
+      const amount = BigInt(100); // 0.000001 USDC
+      const dummyTxHash =
+        '25ytBco5ZxMaaatzKwcw28emNHD42JzCVe5wUy78mTA8ophwLCZN6dXKkXaRfxhgCdWdqSKpvGNuKvbqJQjzLKwy';
+
+      const txHash = await orchestrator['lockFee'](amount, dummyTxHash);
       console.log('lockFee txHash:', txHash);
-      expect(txHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(txHash).toMatch(/^[1-9A-HJ-NP-Za-km-z]{87,88}$/);
     });
   });
 

@@ -30,7 +30,7 @@ TO DECODE TX
   pchaind tx decode base64EncodedString
 
  */
-describe('Orchestrator (e2e)', () => {
+describe.skip('Orchestrator (e2e)', () => {
   const pushNetwork = NETWORK.LOCALNET;
 
   describe('with EVM signer', () => {

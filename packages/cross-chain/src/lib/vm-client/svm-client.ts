@@ -2,7 +2,6 @@ import {
   Connection,
   Keypair,
   PublicKey,
-  SystemProgram,
   Transaction,
   TransactionInstruction,
 } from '@solana/web3.js';
@@ -11,7 +10,7 @@ import {
   ReadContractParams,
   WriteContractParams,
 } from './vm-client.types';
-import { AnchorProvider, Program, Wallet } from '@coral-xyz/anchor';
+import { AnchorProvider, Program, Wallet, BN } from '@coral-xyz/anchor';
 import { UniversalSigner } from '../universal/universal.types';
 
 /**
@@ -39,30 +38,31 @@ export class SvmClient {
    */
   async readContract<T = unknown>({
     abi,
-    address,
     functionName,
     args = [],
   }: ReadContractParams): Promise<T> {
     const provider = new AnchorProvider(
       this.connection,
       new Wallet(new Keypair()),
-      {
-        preflightCommitment: 'confirmed',
-      }
+      { preflightCommitment: 'confirmed' }
     );
-    const program = new Program(abi, new PublicKey(address), provider);
+
+    // Anchor v0.31 constructor no longer takes programId
+    // Use the IDL's embedded metadata.address instead
+    const program = new Program<typeof abi>(abi, provider);
+
     const pubkey = new PublicKey(args[0]);
-    const account = await program.account[functionName].fetch(pubkey);
+    // Cast account namespace to any to allow dynamic string
+    const accountNamespace = program.account as any;
+    const account = await accountNamespace[functionName].fetch(pubkey);
     return account as T;
   }
 
   /**
    * Sends a Solana transaction using a smart contract instruction.
-   * Your `abi`, `functionName`, and `args` need to be compiled into instruction manually.
    */
   async writeContract({
     abi,
-    address,
     signer,
     functionName,
     args = [],
@@ -72,20 +72,34 @@ export class SvmClient {
     const provider = new AnchorProvider(
       this.connection,
       new Wallet(new Keypair()),
-      {
-        preflightCommitment: 'confirmed',
-      }
+      { preflightCommitment: 'confirmed' }
     );
-    const program = new Program(abi, new PublicKey(address), provider);
 
+    // NEW: Drop explicit programId. Anchor v0.31 infers it from IDL.metadata.address
+    const program = new Program<typeof abi>(abi, provider);
+
+    // Convert BigInt arguments to BN instances for Anchor compatibility. Anchor program expects BN for BigInts
+    const convertedArgs = args.map((arg) => {
+      if (typeof arg === 'bigint') {
+        return new BN(arg.toString());
+      }
+      return arg;
+    });
+
+    // Build the method context
     const methodContext =
-      args.length > 0
-        ? program.methods[functionName](...args)
+      convertedArgs.length > 0
+        ? program.methods[functionName](...convertedArgs)
         : program.methods[functionName]();
 
-    const instruction = await methodContext.accounts(accounts).instruction();
+    let instructionBuilder = methodContext as any;
 
-    // Send transaction via UniversalSigner
+    if (Object.keys(accounts).length > 0) {
+      instructionBuilder = instructionBuilder.accounts(accounts);
+    }
+
+    const instruction = await instructionBuilder.instruction();
+
     return this.sendTransaction({
       instruction,
       signer,
@@ -125,28 +139,22 @@ export class SvmClient {
     tx.addSignature(feePayerPubkey, Buffer.from(signature));
 
     const rawTx = tx.serialize();
-
     return await this.connection.sendRawTransaction(rawTx);
   }
 
   /**
    * Waits for a transaction to be confirmed on the blockchain.
-   * @param signature The transaction signature to confirm
-   * @param timeout Optional timeout in milliseconds (default: 30000)
    */
   async confirmTransaction(signature: string, timeout = 30000): Promise<void> {
     const startTime = Date.now();
-
     while (Date.now() - startTime < timeout) {
       const status = await this.connection.getSignatureStatus(signature);
-
-      if (status && status.value) {
+      if (status?.value) {
         if (status.value.err) {
           throw new Error(
             `Transaction failed: ${JSON.stringify(status.value.err)}`
           );
         }
-
         if (
           status.value.confirmationStatus === 'confirmed' ||
           status.value.confirmationStatus === 'finalized'
@@ -154,11 +162,8 @@ export class SvmClient {
           return;
         }
       }
-
-      // Sleep for a short time before checking again
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((r) => setTimeout(r, 500));
     }
-
     throw new Error(`Transaction confirmation timeout after ${timeout}ms`);
   }
 
@@ -176,14 +181,10 @@ export class SvmClient {
     const { blockhash, lastValidBlockHeight } =
       await this.connection.getLatestBlockhash();
     const tx = new Transaction({ blockhash, lastValidBlockHeight, feePayer });
-    if (instructions.length > 0) {
-      tx.add(...instructions);
-    }
+    if (instructions.length) tx.add(...instructions);
     const message = tx.compileMessage();
     const feeResp = await this.connection.getFeeForMessage(message);
-    if (!feeResp || feeResp.value == null) {
-      throw new Error('Failed to estimate fee');
-    }
+    if (!feeResp?.value) throw new Error('Failed to estimate fee');
     return BigInt(feeResp.value);
   }
 }

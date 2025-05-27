@@ -16,16 +16,21 @@ import { CHAIN_INFO, VM_NAMESPACE } from '../constants/chain';
 import {
   FACTORY_V1,
   FEE_LOCKER_EVM,
+  FEE_LOCKER_SVM,
   SMART_ACCOUNT_EVM,
   SMART_ACCOUNT_SVM,
 } from '../constants/abi';
 import { PushClient } from '../push-client/push-client';
 import { SvmClient } from '../vm-client/svm-client';
+import { PublicKey, SystemProgram } from '@solana/web3.js';
+import * as anchor from '@coral-xyz/anchor';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 import { AccountId, CrossChainPayload, vmType } from '../generated/v1/tx';
+import { PriceFetch } from '../price-fetch/price-fetch';
 
 export class Orchestrator {
   private pushClient: PushClient;
+
   constructor(
     private readonly universalSigner: UniversalSigner,
     pushNetwork: NETWORK,
@@ -52,7 +57,38 @@ export class Orchestrator {
   async execute(execute: ExecuteParams): Promise<string> {
     const chain = this.universalSigner.chain;
 
-    // TODO: add validation that if sepolia, or any origin testnet, you can only interact with Push testnet. Same for mainnet
+    if (this.printTraces) {
+      console.log(
+        `[Orchestrator] Starting cross-chain execution from chain: ${chain}`
+      );
+    }
+
+    // Add validation that if sepolia, or any origin testnet, you can only interact with Push testnet. Same for mainnet
+    const isTestnet = [
+      CHAIN.ETHEREUM_SEPOLIA,
+      CHAIN.SOLANA_TESTNET,
+      CHAIN.SOLANA_DEVNET,
+    ].includes(chain);
+
+    const isMainnet = [CHAIN.ETHEREUM_MAINNET, CHAIN.SOLANA_MAINNET].includes(
+      chain
+    );
+
+    if (
+      isTestnet &&
+      this.pushClient.pushChainInfo.chainId !==
+        CHAIN_INFO[CHAIN.PUSH_TESTNET].chainId
+    ) {
+      throw new Error('Testnet chains can only interact with Push Testnet');
+    }
+
+    if (
+      isMainnet &&
+      this.pushClient.pushChainInfo.chainId !==
+        CHAIN_INFO[CHAIN.PUSH_MAINNET].chainId
+    ) {
+      throw new Error('Mainnet chains can only interact with Push Mainnet');
+    }
 
     // 1. Block direct execution if signer is already on Push Chain
     if (this.isPushChain(chain)) {
@@ -60,6 +96,9 @@ export class Orchestrator {
     }
 
     // 2. Get Push chain NMSC address for this signer
+    if (this.printTraces) {
+      console.log('[Orchestrator] Fetching NMSC address for signer...');
+    }
     const { address: nmscAddress, deployed: isNMSCDeployed } =
       await this.getNMSCAddress();
 
@@ -79,7 +118,13 @@ export class Orchestrator {
     const requiredFunds = execute.value + BigInt(50e18); // Assumption 50 Push is gas fee
 
     // 4. Check NMSC balance on Push Chain ( in nPUSH )
+    if (this.printTraces) {
+      console.log('[Orchestrator] Checking NMSC balance...');
+    }
     const funds = await this.pushClient.getBalance(nmscAddress);
+    if (this.printTraces) {
+      console.log(`[Orchestrator] Current balance: ${funds}`);
+    }
 
     // 5. Get NMSC Nonce
     const nonce = isNMSCDeployed
@@ -101,13 +146,31 @@ export class Orchestrator {
       verifyingContract: nmscAddress,
       payload: crosschainPayload,
     });
+    if (this.printTraces) {
+      console.log(`[Orchestrator] Execution hash: ${executionHash}`);
+    }
 
     // 7. If not enough funds, lock required fee on source chain and send tx to Push chain
     let feeLockTxHash: string | null = null;
     if (funds < requiredFunds) {
+      if (this.printTraces) {
+        console.log(
+          '[Orchestrator] Insufficient funds, locking additional fees...'
+        );
+      }
       const fundDifference = requiredFunds - funds;
       const fundDifferenceInUSDC = this.pushClient.pushToUSDC(fundDifference); // in micro-USDC ( USDC with 6 decimal points )
       feeLockTxHash = await this.lockFee(fundDifferenceInUSDC, executionHash);
+
+      if (this.printTraces) {
+        console.log(
+          `[Orchestrator] Fee lock transaction hash: ${feeLockTxHash}`
+        );
+      }
+    }
+
+    if (this.printTraces) {
+      console.log('[Orchestrator] Signing execution data...');
     }
 
     // 8. Sign execution data
@@ -115,9 +178,15 @@ export class Orchestrator {
       crosschainPayload,
       nmscAddress
     );
+    if (this.printTraces) {
+      console.log('[Orchestrator] Execution data signed successfully');
+    }
 
-    // 9. Send Tx to Push chain
-    return this.sendCrossChainPushTx(
+    // 8. Send Tx to Push chain
+    if (this.printTraces) {
+      console.log('[Orchestrator] Sending transaction to Push chain...');
+    }
+    const txHash = await this.sendCrossChainPushTx(
       isNMSCDeployed,
       feeLockTxHash,
       {
@@ -131,6 +200,13 @@ export class Orchestrator {
       },
       signature
     );
+    if (this.printTraces) {
+      console.log(
+        `[Orchestrator] Transaction sent successfully. Hash: ${txHash}`
+      );
+    }
+
+    return txHash;
   }
 
   /**
@@ -141,7 +217,7 @@ export class Orchestrator {
    * @returns Transaction hash of the locking transaction
    */
   private async lockFee(
-    amount: bigint,
+    amount: bigint, // USD with 8 decimals
     executionHash: string = zeroHash
   ): Promise<string> {
     const chain = this.universalSigner.chain;
@@ -152,11 +228,17 @@ export class Orchestrator {
     }
 
     const rpcUrl = this.rpcUrl[chain] || defaultRPC;
+    const priceFetcher = new PriceFetch(this.rpcUrl);
+    const nativeTokenUsdPrice = await priceFetcher.getPrice(chain); // 8 decimals
 
-    // TODO: Convert USDC to the native token's lowest denomination (e.g., wei for EVM)
+    let nativeAmount: bigint;
 
     switch (vm) {
       case VM.EVM: {
+        const nativeDecimals = 18; // ETH, MATIC, etc.
+        nativeAmount =
+          (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
+
         const evmClient = new EvmClient({ rpcUrl });
 
         return await evmClient.writeContract({
@@ -165,27 +247,39 @@ export class Orchestrator {
           functionName: 'addFunds',
           args: [executionHash],
           signer: this.universalSigner,
-          value: amount,
+          value: nativeAmount,
         });
       }
 
       case VM.SVM: {
+        const nativeDecimals = 9; // SOL lamports
+        nativeAmount =
+          (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
+
         const svmClient = new SvmClient({ rpcUrl });
 
-        // TODO: Fix svm client calling
+        const [lockerPda, lockerBump] =
+          anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from('locker')],
+            new PublicKey(lockerContract)
+          );
+
         return await svmClient.writeContract({
-          abi: FEE_LOCKER_EVM as Abi,
+          abi: FEE_LOCKER_SVM,
           address: lockerContract,
           functionName: 'addFunds',
-          args: [executionHash],
+          args: [nativeAmount, toBytes(executionHash)],
           signer: this.universalSigner,
-          value: amount,
+          accounts: {
+            locker: lockerPda,
+            user: new PublicKey(this.universalSigner.address),
+            systemProgram: SystemProgram.programId,
+          },
         });
       }
 
-      default: {
+      default:
         throw new Error(`Unsupported VM type: ${vm}`);
-      }
     }
   }
 
