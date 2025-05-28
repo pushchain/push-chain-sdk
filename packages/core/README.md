@@ -11,6 +11,7 @@ or [Push.org](https://push.org) to learn more.
     - [With signer](#with-signer)
       - [UniversalSigner structure](#universalsigner-structure)
       - [Example using `viem` to create a UniversalSigner](#example-using-viem-to-create-a-universalsigner)
+  - [Execute Cross-Chain Transaction](#execute-cross-chain-transaction)
 - [Utilities](#utilities)
   - [Converts CAIP-10 address to UniversalAccount](#converts-caip-10-address-to-universalaccount)
   - [Converts UniversalAccount to CAIP-10 address](#converts-universalaccount-to-caip-10-address)
@@ -143,6 +144,42 @@ const pushChain = await PushChain.initialize(signer);
 | ----------------- | ----------------- | --------- | ------------------------------------------------------------------------------ |
 | `universalSigner` | `UniversalSigner` | `null`    | Required for sending transactions or verifying signatures on the source chain. |
 | `options.network` | `NETWORK`         | `testnet` | Push Chain environment. Can be `testnet`, or `mainnet`.                        |
+
+---
+
+### Execute Cross-Chain Transaction
+
+```ts
+pushchain.execute({
+  // Target to execute on Push Chain - Can be EOA or smart contract address
+  target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
+  // Amount to send to the target in npush
+  value: BigInt(0),
+  // Data to send to the target - contract function call data
+  data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
+  // Gas limit for the transaction on Push Chain
+  gasLimit: BigInt(50000000000000000),
+  // Max fee per gas on Push Chain
+  maxFeePerGas: BigInt(50000000000000000),
+  // Max priority fee per gas on Push Chain
+  maxPriorityFeePerGas: BigInt(200000000),
+  // Deadline for the transaction to be executed on Push Chain
+  deadline: BigInt(9999999999),
+});
+```
+
+**Parameters:**
+
+| Param                  | Type     | Default                       | Description                                                                      |
+| ---------------------- | -------- | ----------------------------- | -------------------------------------------------------------------------------- |
+| `target`               | `string` | —                             | Target address on Push Chain to execute the transaction. Can be EOA or contract. |
+| `value`                | `bigint` | -                             | Amount in **npush** (smallest unit) to transfer to the target address.           |
+| `data`                 | `string` | -                             | Hex-encoded calldata for the contract method to execute.                         |
+| `gasLimit`             | `bigint` | 21000000                      | Max gas allowed for the transaction execution on Push Chain.                     |
+| `maxFeePerGas`         | `bigint` | 10000000000000000             | Maximum fee per unit of gas the sender is willing to pay.                        |
+| `maxPriorityFeePerGas` | `bigint` | 2                             | Priority tip for validators to include this tx (like EIP-1559).                  |
+| `nonce`                | `bigint` | Taken automatically from NMSC | Transaction execution order on Push Chain.                                       |
+| `deadline`             | `bigint` | 9999999999                    | Timestamp (in seconds) by which the tx must be included on Push Chain.           |
 
 ---
 
