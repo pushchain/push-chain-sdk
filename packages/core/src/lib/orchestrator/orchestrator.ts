@@ -103,20 +103,20 @@ export class Orchestrator {
     const { address: nmscAddress, deployed: isNMSCDeployed } =
       await this.getNMSCAddress();
 
-    // TODO: Do some fee estimation
     // 3. Estimate funds required for the execution
-    // const gasEstimate = await this.pushClient.estimateGas({
-    //   from: this.pushClient.getSignerAddress().evmAddress, // random Signer
-    //   to: nmscAddress,
-    //   data: execute.data,
-    //   value: execute.value,
-    //   gas: execute.gasLimit,
-    //   maxFeePerGas: execute.maxFeePerGas,
-    //   maxPriorityFeePerGas: execute.maxPriorityFeePerGas,
-    // });
-    // const requiredGasFee = (await this.pushClient.getGasPrice()) * gasEstimate;
-    // const requiredFunds = requiredGasFee + execute.value;
-    const requiredFunds = execute.value + BigInt(50 * 1e18);
+    const gasEstimate = await this.pushClient.estimateGas({
+      to: execute.target,
+      data: execute.data,
+      value: execute.value,
+    });
+    // Fetch current gas price
+    const gasPrice = await this.pushClient.getGasPrice();
+
+    // Add 10% buffer as integer math
+    const requiredGasFee = (gasEstimate * gasPrice * BigInt(110)) / BigInt(100);
+
+    // Total funds = gas fee + value being sent
+    const requiredFunds = requiredGasFee + execute.value;
 
     // 4. Check NMSC balance on Push Chain ( in nPUSH )
     if (this.printTraces) {

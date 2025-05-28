@@ -251,26 +251,17 @@ export class EvmClient {
     to,
     value,
     data,
-    gas,
-    maxFeePerGas,
-    maxPriorityFeePerGas,
   }: {
-    from: `0x${string}`;
+    from?: `0x${string}`;
     to: `0x${string}`;
     value?: bigint;
     data?: `0x${string}`;
-    gas?: bigint;
-    maxFeePerGas?: bigint;
-    maxPriorityFeePerGas?: bigint;
   }): Promise<bigint> {
     return this.publicClient.estimateGas({
-      account: from,
+      account: from || undefined,
       to,
       value,
       data,
-      gas,
-      maxFeePerGas,
-      maxPriorityFeePerGas,
     });
   }
 

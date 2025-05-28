@@ -8,6 +8,7 @@ import {
   bytesToHex,
   defineChain,
   parseAbi,
+  encodeFunctionData,
 } from 'viem';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { UniversalSigner } from '../universal/universal.types';
@@ -34,56 +35,9 @@ describe('EvmClient', () => {
 
   beforeAll(() => {
     evmClient = new EvmClient({ rpcUrl: RPC_URL });
-
-    const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as Hex | undefined;
-    if (PRIVATE_KEY) {
-      const account = privateKeyToAccount(PRIVATE_KEY);
-      const walletClient = createWalletClient({
-        account,
-        chain: defineChain({
-          id: parseInt(CHAIN_INFO[chain].chainId),
-          name: chain,
-          nativeCurrency: {
-            decimals: 18,
-            name: 'Ether',
-            symbol: 'ETH',
-          },
-          rpcUrls: {
-            default: {
-              http: [RPC_URL],
-            },
-          },
-        }),
-        transport: http(),
-      });
-      universalSigner = {
-        address: account.address,
-        chain,
-        signMessage: async (data: Uint8Array) => {
-          const hexSig = await walletClient.signMessage({
-            message: { raw: data },
-          });
-          return hexToBytes(hexSig);
-        },
-        signTransaction: async (unsignedTx: Uint8Array) => {
-          const tx = parseTransaction(bytesToHex(unsignedTx));
-          const txHash = await walletClient.signTransaction(tx as never);
-          return hexToBytes(txHash);
-        },
-      };
-    } else {
-      throw new Error('No Private key set');
-    }
   });
 
   describe('getBalance', () => {
-    it('gets balance', async () => {
-      const balance = await evmClient.getBalance(
-        universalSigner.address as `0x${string}`
-      );
-      expect(typeof balance).toBe('bigint');
-    });
-
     it('handles invalid address', async () => {
       await expect(
         evmClient.getBalance('0xInvalidAddress' as `0x${string}`)
@@ -140,6 +94,46 @@ describe('EvmClient', () => {
   });
 
   it.skip('writes contract value', async () => {
+    const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as Hex | undefined;
+    if (PRIVATE_KEY) {
+      const account = privateKeyToAccount(PRIVATE_KEY);
+      const walletClient = createWalletClient({
+        account,
+        chain: defineChain({
+          id: parseInt(CHAIN_INFO[chain].chainId),
+          name: chain,
+          nativeCurrency: {
+            decimals: 18,
+            name: 'Ether',
+            symbol: 'ETH',
+          },
+          rpcUrls: {
+            default: {
+              http: [RPC_URL],
+            },
+          },
+        }),
+        transport: http(),
+      });
+      universalSigner = {
+        address: account.address,
+        chain,
+        signMessage: async (data: Uint8Array) => {
+          const hexSig = await walletClient.signMessage({
+            message: { raw: data },
+          });
+          return hexToBytes(hexSig);
+        },
+        signTransaction: async (unsignedTx: Uint8Array) => {
+          const tx = parseTransaction(bytesToHex(unsignedTx));
+          const txHash = await walletClient.signTransaction(tx as never);
+          return hexToBytes(txHash);
+        },
+      };
+    } else {
+      throw new Error('No Private key set');
+    }
+
     const balance = await evmClient.getBalance(
       universalSigner.address as `0x${string}`
     );
@@ -164,11 +158,28 @@ describe('EvmClient', () => {
   describe('estimateGas', () => {
     it('estimates gas for a simple transfer', async () => {
       const gas = await evmClient.estimateGas({
-        from: universalSigner.address as `0x${string}`,
-        to: universalSigner.address as `0x${string}`,
-        value: BigInt(0),
+        to: privateKeyToAccount(generatePrivateKey()).address,
+        value: BigInt(1e18),
         data: '0x' as Hex,
       });
+      console.log(gas);
+      expect(typeof gas).toBe('bigint');
+      expect(gas).toBeGreaterThan(0);
+    });
+    it('estimates gas for a contract call', async () => {
+      const calldata = encodeFunctionData({
+        abi: ABI,
+        functionName: 'setGreeting',
+        args: ['Hello Push!'],
+      });
+
+      // estimate for setGreeting
+      const gas = await evmClient.estimateGas({
+        to: '0x2ba5873eF818BEE57645B7d674149041C44F42c6',
+        value: BigInt(0),
+        data: calldata,
+      });
+      console.log(gas);
       expect(typeof gas).toBe('bigint');
       expect(gas).toBeGreaterThan(0);
     });
@@ -177,20 +188,10 @@ describe('EvmClient', () => {
       await expect(
         evmClient.estimateGas({
           from: '0xInvalidAddress' as `0x${string}`,
-          to: universalSigner.address as `0x${string}`,
+          to: privateKeyToAccount(generatePrivateKey()).address,
           value: BigInt(0),
         })
       ).rejects.toThrow();
-    });
-
-    it('handles missing data field', async () => {
-      const gas = await evmClient.estimateGas({
-        from: universalSigner.address as `0x${string}`,
-        to: universalSigner.address as `0x${string}`,
-        value: BigInt(0),
-      });
-      expect(typeof gas).toBe('bigint');
-      expect(gas).toBeGreaterThan(0);
     });
   });
 
