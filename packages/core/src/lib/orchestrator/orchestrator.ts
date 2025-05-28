@@ -60,7 +60,7 @@ export class Orchestrator {
 
     if (this.printTraces) {
       console.log(
-        `[Orchestrator] Starting cross-chain execution from chain: ${chain}`
+        `[${this.constructor.name}] Starting cross-chain execution from chain: ${chain}`
       );
     }
 
@@ -98,33 +98,63 @@ export class Orchestrator {
 
     // 2. Get Push chain NMSC address for this signer
     if (this.printTraces) {
-      console.log('[Orchestrator] Fetching NMSC address for signer...');
+      console.log(
+        `[${this.constructor.name}] Fetching NMSC address for UniversalSigner`
+      );
     }
     const { address: nmscAddress, deployed: isNMSCDeployed } =
       await this.getNMSCAddress();
 
+    if (this.printTraces) {
+      console.log(`[${this.constructor.name}] NMSC Address: ${nmscAddress}`);
+      console.log(`[${this.constructor.name}] Deployed: ${isNMSCDeployed}`);
+    }
+
     // 3. Estimate funds required for the execution
+    if (this.printTraces) {
+      console.log(`[${this.constructor.name}] Estimating cost of execution`);
+    }
     const gasEstimate = await this.pushClient.estimateGas({
       to: execute.target,
       data: execute.data,
       value: execute.value,
     });
+
+    if (this.printTraces) {
+      console.log(`[${this.constructor.name}] GasEstimate: ${gasEstimate}`);
+    }
+
     // Fetch current gas price
+    if (this.printTraces) {
+      console.log(`[${this.constructor.name}] Fetching Gas Price`);
+    }
     const gasPrice = await this.pushClient.getGasPrice();
+    if (this.printTraces) {
+      console.log(`[${this.constructor.name}] Gas Price: ${gasPrice}`);
+    }
 
     // Add 10% buffer as integer math
+    if (this.printTraces) {
+      console.log(
+        `[${this.constructor.name}] Calculating estimated gas fee for execution`
+      );
+    }
     const requiredGasFee = (gasEstimate * gasPrice * BigInt(110)) / BigInt(100);
-
+    if (this.printTraces) {
+      console.log(
+        `[${this.constructor.name}] Required Gas Fee: ${requiredGasFee}`
+      );
+    }
     // Total funds = gas fee + value being sent
     const requiredFunds = requiredGasFee + execute.value;
 
     // 4. Check NMSC balance on Push Chain ( in nPUSH )
     if (this.printTraces) {
-      console.log('[Orchestrator] Checking NMSC balance...');
+      console.log(`${this.constructor.name}]  Checking NMSC balance...`);
     }
     const funds = await this.pushClient.getBalance(nmscAddress);
     if (this.printTraces) {
-      console.log(`[Orchestrator] Current balance: ${funds}`);
+      console.log(`[${this.constructor.name}]  Current balance: ${funds}`);
     }
 
     // 5. Get NMSC Nonce
@@ -148,7 +178,9 @@ export class Orchestrator {
       payload: crosschainPayload,
     });
     if (this.printTraces) {
-      console.log(`[Orchestrator] Execution hash: ${executionHash}`);
+      console.log(
+        `[${this.constructor.name}] Execution hash: ${executionHash}`
+      );
     }
 
     // 7. If not enough funds, lock required fee on source chain and send tx to Push chain
@@ -156,7 +188,7 @@ export class Orchestrator {
     if (funds < requiredFunds) {
       if (this.printTraces) {
         console.log(
-          '[Orchestrator] Insufficient funds, locking additional fees...'
+          `[${this.constructor.name}] Insufficient funds, locking additional fees...`
         );
       }
       const fundDifference = requiredFunds - funds;
@@ -165,13 +197,13 @@ export class Orchestrator {
 
       if (this.printTraces) {
         console.log(
-          `[Orchestrator] Fee lock transaction hash: ${feeLockTxHash}`
+          `[${this.constructor.name}] Fee lock transaction hash: ${feeLockTxHash}`
         );
       }
     }
 
     if (this.printTraces) {
-      console.log('[Orchestrator] Signing execution data...');
+      console.log(`[${this.constructor.name}] Signing execution data...`);
     }
 
     // 8. Sign execution data
@@ -180,12 +212,16 @@ export class Orchestrator {
       nmscAddress
     );
     if (this.printTraces) {
-      console.log('[Orchestrator] Execution data signed successfully');
+      console.log(
+        `[${this.constructor.name}] Execution data signed successfully`
+      );
     }
 
     // 8. Send Tx to Push chain
     if (this.printTraces) {
-      console.log('[Orchestrator] Sending transaction to Push chain...');
+      console.log(
+        `[${this.constructor.name}] Sending transaction to Push chain...`
+      );
     }
     const txHash = await this.sendCrossChainPushTx(
       isNMSCDeployed,
@@ -203,7 +239,7 @@ export class Orchestrator {
     );
     if (this.printTraces) {
       console.log(
-        `[Orchestrator] Transaction sent successfully. Hash: ${txHash}`
+        `[${this.constructor.name}] Transaction sent successfully. Hash: ${txHash}`
       );
     }
 
