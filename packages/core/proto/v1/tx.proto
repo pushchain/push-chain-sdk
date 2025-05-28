@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package crosschain.v1;
+
+enum VM_TYPE {
+  EVM = 0;
+  SVM = 1;
+  MOVE_VM = 2;
+  WASM_VM = 3;
+  CAIRO_VM = 4;
+  OTHER_VM = 5;
+}
+
+// AccountId is the identifier of a crosschain owner account
+message AccountId {
+  string namespace = 1; 
+  string chain_id = 2;
+  string owner_key = 3;
+  VM_TYPE vm_type = 4;
+}
+
+message MsgDeployNMSC {
+  string signer = 1;
+  AccountId account_id = 2;
+  string tx_hash = 3;
+}
+
+message MsgMintPush {
+  string signer = 1;
+  // account_id is the identifier of the crosschain owner account
+  AccountId account_id = 2;
+  // tx_hash is the hash of the transaction in which user locked the tokens
+  string tx_hash = 3;
+}
+
+message CrossChainPayload {
+  string target = 1;                 // EVM address as hex string (0x...)
+  string value = 2;                  // Amount in wei as string (uint256)
+  string data = 3;                    // ABI-encoded calldata
+  string gas_limit = 4;             // uint256 as string
+  string max_fee_per_gas = 5;       // uint256 as string
+  string max_priority_fee_per_gas = 6; // uint256 as string
+  string nonce = 7;                 // uint256 as string
+  string deadline = 8;              // uint256 as string
+  }
+
+message MsgExecutePayload {
+  string signer = 1;
+  // account_id is the identifier of the crosschain owner account
+  AccountId account_id = 2;
+  // payload is the crosschain payload to be executed
+  CrossChainPayload crosschain_payload = 3;
+  // signature is the signature of the payload by user
+  string signature = 4;
+}
