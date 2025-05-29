@@ -9,9 +9,11 @@ import {
   WalletEventRespoonse,
   WalletInfo,
   WalletAppDetails,
+  ThemeMode,
 } from '../types';
 import {
   APP_TO_WALLET_ACTION,
+  CONSTANTS,
   WALLET_CONFIG_URL,
   WALLET_TO_APP_ACTION,
 } from '../constants';
@@ -42,6 +44,7 @@ export type WalletContextType = {
   walletAppData: WalletAppDetails | undefined;
   updateWalletAppData: (newData: Partial<WalletAppDetails>) => void;
 
+  themeMode: ThemeMode;
   themeOverrides: ThemeOverrides;
 };
 
@@ -51,7 +54,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
   children,
   config,
   app,
-  themeMode,
+  themeMode = CONSTANTS.THEME.DARK,
   themeOverrides,
 }) => {
   const [universalAddress, setUniversalAddress] =
@@ -366,6 +369,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         universalAddress,
         isWalletMinimised,
         modalAppData,
+        themeMode,
         themeOverrides: {},
         updateModalAppData,
         walletAppData,

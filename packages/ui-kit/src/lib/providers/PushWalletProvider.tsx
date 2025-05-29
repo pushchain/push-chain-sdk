@@ -3,6 +3,12 @@ import { ProviderConfigProps, PushWalletProviderProps } from '../types/index';
 import { WalletContextProvider } from '../context/WalletContext';
 import { CONSTANTS } from '../constants';
 import { createGlobalStyle, ThemeProvider } from 'styled-components';
+import {
+  themeDefault,
+  lightThemeDefault,
+  darkThemeDefault,
+} from '../constants/themes';
+import { mapCoreToInt } from '../utils/theme';
 
 const loginDefaultConfig = {
   email: true,
@@ -16,9 +22,9 @@ const PushWalletConfigDefault: ProviderConfigProps = {
   uid: 'default',
   login: loginDefaultConfig,
   env: CONSTANTS.ENV.DEVNET,
-  modalDefaults: {
+  modal: {
     loginLayout: CONSTANTS.LOGIN.SIMPLE,
-    showModalAppPreview: false,
+    appPreview: false,
   },
 };
 
@@ -26,48 +32,29 @@ export const PushWalletProvider: FC<PushWalletProviderProps> = ({
   config,
   app,
   themeMode = CONSTANTS.THEME.DARK,
-  themeOverrides,
+  themeOverrides = {},
   children,
 }) => {
   const GlobalStyle = createGlobalStyle`
     :root{
       ${(props) => {
         const { themeMode, themeOverrides } = props.theme;
+        console.log(themeOverrides);
         const isLightMode = themeMode === 'light';
-        const bgPrimaryColor = themeOverrides?.['--pw-core-bg-primary-color'];
-        const textPrimaryColor =
-          themeOverrides?.['--pw-core-text-primary-color'];
-        const textSecondaryColor =
-          themeOverrides?.['--pw-core-text-secondary-color'];
-        return `
-          --pw-int-bg-primary-color: ${
-            isLightMode
-              ? bgPrimaryColor || '#F5F6F8'
-              : bgPrimaryColor
-              ? `color-mix(in srgb, ${bgPrimaryColor}, #000000 93%)`
-              : '#17181B'
-          };
-          --pw-int-text-primary-color: ${
-            isLightMode
-              ? textPrimaryColor || '#17181B'
-              : textPrimaryColor
-              ? `color-mix(in srgb, ${textPrimaryColor}, #ffffff 95%)`
-              : '#F5F6F8'
-          };
-          --pw-int-text-secondary-color: ${
-            isLightMode
-              ? textSecondaryColor || '#313338'
-              : textSecondaryColor
-              ? `color-mix(in srgb, ${textSecondaryColor}, #ffffff 70%)`
-              : '#C4CBD5'
-          };
-          --pw-int-text-heading-xsmall-size: ${
-            themeOverrides?.['--pw-int-text-heading-xsmall-size'] || '18px'
-          };
-          --pw-int-text-body-large-size: ${
-            themeOverrides?.['--pw-int-text-body-large-size'] || '16px'
-          };
-        `;
+        const { dark, light, ...globalOverrides } = themeOverrides;
+        console.log(mapCoreToInt(globalOverrides));
+        const newOverrides = {
+          ...{
+            ...themeDefault,
+            ...(isLightMode ? lightThemeDefault : darkThemeDefault),
+          },
+          ...mapCoreToInt(globalOverrides),
+          ...mapCoreToInt(isLightMode ? light : dark),
+        };
+        console.log(newOverrides);
+        return Object.entries(newOverrides)
+          .map(([key, value]) => `${key}: ${value};`)
+          .join('\n');
       }}
     }
   `;
@@ -83,9 +70,9 @@ export const PushWalletProvider: FC<PushWalletProviderProps> = ({
         ...(config?.login?.wallet || {}),
       },
     },
-    modalDefaults: {
-      ...PushWalletConfigDefault.modalDefaults,
-      ...config.modalDefaults,
+    modal: {
+      ...PushWalletConfigDefault.modal,
+      ...config.modal,
     },
   };
 

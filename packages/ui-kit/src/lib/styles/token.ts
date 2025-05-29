@@ -1,66 +1,72 @@
-// design tokens: light/dark palettes
-
-export const themeTokens = {
-  // Typography
-  '--pw-core-font-family': 'inherit, Arial, sans-serif',
-  '--pw-core-text-size': '1.625rem',
-
+type ColorThemeTokens = {
   // Brand Colors
-  '--pw-core-brand-primary-color': '#D548EC',
+  '--pw-core-brand-primary-color': string;
 
   // Text Colors
-  '--pw-core-text-primary-color': '#17181B',
-  '--pw-core-text-secondary-color': '#313338',
-  '--pw-core-text-tertiary-color': '#8C93A0',
-  '--pw-core-text-link-color': '#C742DD',
-  '--pw-core-text-disabled-color': '#B0B3B9',
+  '--pw-core-text-primary-color': string;
+  '--pw-core-text-secondary-color': string;
+  '--pw-core-text-tertiary-color': string;
+  '--pw-core-text-link-color': string;
+  '--pw-core-text-disabled-color': string;
 
   // Background Colors & Filter
-  '--pw-core-bg-primary-color': '#FFFFFF',
-  '--pw-core-bg-secondary-color': '#F5F6F8',
-  '--pw-core-bg-tertiary-color': '#EAEBF2',
-  '--pw-core-bg-disabled-color': '#EAEBF2',
+  '--pw-core-bg-primary-color': string;
+  '--pw-core-bg-secondary-color': string;
+  '--pw-core-bg-tertiary-color': string;
+  '--pw-core-bg-disabled-color': string;
 
   // State Colors
-  '--pw-core-success-primary-color': '#00A47F',
-  '--pw-core-error-primary-color': '#F11F1F',
+  '--pw-core-success-primary-color': string;
+  '--pw-core-error-primary-color': string;
 
   // Button
-  '--pw-core-btn-primary-bg-color': '#D548EC',
-  '--pw-core-btn-primary-text-color': '#FFFFFF',
+  '--pw-core-btn-primary-bg-color': string;
+  '--pw-core-btn-primary-text-color': string;
+
+  // Push Universal Account Button
+  '--pwauth-btn-connect-text-color': string;
+  '--pwauth-btn-connect-bg-color': string;
+  '--pwauth-btn-connected-text-color': string;
+  '--pwauth-btn-connected-bg-color': string;
+  '--pwauth-btn-connect-border-radius': string;
+};
+
+type ThemeTokens = ColorThemeTokens & {
+  // Typography
+  '--pw-core-font-family': string;
+  '--pw-core-text-size': string;
 
   // Sizing & Spacing
-  '--pw-core-modal-border': '2px',
-  '--pw-core-modal-border-radius': '24px',
-  '--pw-core-modal-width': '376px',
-  '--pw-core-modal-padding': '24px',
-  '--pw-core-list-spacing': '12px',
-  '--pw-core-btn-border-radius': '12px',
+  '--pw-core-modal-border': string;
+  '--pw-core-modal-border-radius': string;
+  '--pw-core-modal-width': string;
+  '--pw-core-modal-padding': string;
+  '--pw-core-list-spacing': string;
+  '--pw-core-btn-border-radius': string;
 
   // Push Universal Account Button
-  '--pwauth-btn-connect-text-color': '#FFF',
-  '--pwauth-btn-connect-bg-color': '#D548EC',
-  '--pwauth-btn-connected-text-color': '#FFF',
-  '--pwauth-btn-connected-bg-color': '#000',
-  '--pwauth-btn-connect-border-radius': '12px',
+  '--pwauth-btn-connect-border-radius': string;
 };
 
-export const buttonThemeTokens = {
+type ButtonColorTokens = {
   // Push Universal Account Button
-  '--pwauth-btn-connect-text-color': '#FFF',
-  '--pwauth-btn-connect-bg-color': '#D548EC',
-  '--pwauth-btn-connected-text-color': '#FFF',
-  '--pwauth-btn-connected-bg-color': '#000',
-  '--pwauth-btn-connect-border-radius': '12px',
+  '--pwauth-btn-connect-text-color': string;
+  '--pwauth-btn-connect-bg-color': string;
+  '--pwauth-btn-connected-text-color': string;
+  '--pwauth-btn-connected-bg-color': string;
 };
 
-type ThemeTokenKey = keyof typeof themeTokens;
-type ButtonThemeTokenKey = keyof typeof buttonThemeTokens;
-
-export type ThemeOverrides = {
-  [K in ThemeTokenKey]?: string;
+type ButtonThemeTokens = ButtonColorTokens & {
+  // Push Universal Account Button
+  '--pwauth-btn-connect-border-radius': string;
 };
 
-export type ButtonThemeOverrides = {
-  [K in ButtonThemeTokenKey]?: string;
+export type ThemeOverrides = Partial<ThemeTokens> & {
+  light?: Partial<ColorThemeTokens>;
+  dark?: Partial<ColorThemeTokens>;
+};
+
+export type ButtonThemeOverrides = Partial<ButtonThemeTokens> & {
+  light?: Partial<ButtonColorTokens>;
+  dark?: Partial<ButtonColorTokens>;
 };

@@ -49,12 +49,10 @@ const App: React.FC = () => {
       },
       appPreview: true,
     },
-    modalDefaults: {
+    modal: {
       loginLayout: CONSTANTS.LOGIN.SPLIT,
-      showModalAppPreview: true,
-    },
-    buttonDefaults: {
-      accountMenuVariant: 'hover',
+      appPreview: true,
+      connectedLayout: 'hover',
     },
   };
 
@@ -71,8 +69,8 @@ const App: React.FC = () => {
       <GlobalStyle />
       <PushWalletProvider
         config={walletConfig}
-        themeMode={CONSTANTS.THEME.DARK}
         app={appMetadata}
+        themeMode={CONSTANTS.THEME.DARK}
       >
         <Router>
           <Navbar />

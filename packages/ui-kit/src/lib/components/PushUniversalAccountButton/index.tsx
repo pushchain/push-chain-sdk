@@ -8,69 +8,48 @@ import {
 } from '../../types/UniversalWallet.types';
 import { createGlobalStyle, ThemeProvider } from 'styled-components';
 import { ButtonThemeOverrides } from '../../styles/token';
+import { buttonThemeDefault } from '../../constants/themes';
+import { mapButtonCoreToInt } from '../../utils/theme';
 
 type PushUniversalAccountButtonProps = {
   uid?: string;
-
   connectButtonText?: string;
-  connectButtonStyle?: React.CSSProperties;
-  connectButtonCustom?: React.ReactNode;
-
   loadingComponent?: React.ReactNode;
-
-  connectedButtonStyle?: React.CSSProperties;
-  connectedButtonCustom?: React.ReactNode;
-
   modalAppOverride?: modalAppOverrides;
-
   loginAppOverride?: loginAppOverrides;
-
   themeOverrides?: ButtonThemeOverrides;
 };
 
 const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
   uid = 'default',
   connectButtonText = 'Connect Push Wallet',
-  connectButtonStyle,
-  connectButtonCustom,
   loadingComponent,
-  connectedButtonStyle,
-  connectedButtonCustom,
   modalAppOverride,
   loginAppOverride,
   themeOverrides: ButtonThemeOverrides,
 }) => {
   const {
     universalAddress,
-    config,
     themeOverrides,
+    themeMode,
     updateModalAppData,
     updateWalletAppData,
   } = usePushWalletContext(uid);
 
-  const { buttonDefaults } = config;
-
   const GlobalStyle = createGlobalStyle`
     :root{
       ${(props) => {
-        const { themeOverrides } = props.theme;
-        return `
-          --pwauth-btn-connect-text-color: ${
-            themeOverrides['--pwauth-btn-connect-text-color'] || '#FFF'
-          };
-          --pwauth-btn-connect-bg-color: ${
-            themeOverrides['--pwauth-btn-connect-text-color'] || '#D548EC'
-          };
-          --pwauth-btn-connected-text-color: ${
-            themeOverrides['--pwauth-btn-connect-text-color'] || '#FFF'
-          };
-          --pwauth-btn-connected-bg-color: ${
-            themeOverrides['--pwauth-btn-connect-text-color'] || '#000'
-          };
-          --pwauth-btn-connect-border-radius: ${
-            themeOverrides['--pwauth-btn-connect-text-color'] || '12px'
-          };
-        `;
+        const { themeOverrides, themeMode } = props.theme;
+        const isLightMode = themeMode === 'light';
+        const { dark, light, ...globalOverrides } = themeOverrides;
+        const newTokens = {
+          ...buttonThemeDefault,
+          ...mapButtonCoreToInt(globalOverrides),
+          ...mapButtonCoreToInt(isLightMode ? light : dark),
+        };
+        return Object.entries(newTokens)
+          .map(([key, value]) => `${key}: ${value};`)
+          .join('\n');
       }}
     }
   `;
@@ -86,9 +65,6 @@ const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
       const toggleButtonProps = {
         uid: uid,
         universalAddress: universalAddress,
-        connectedButtonStyle:
-          connectedButtonStyle || buttonDefaults?.connectedButtonStyle,
-        connectedButtonCustom,
       };
 
       return <TogglePushWalletButton {...toggleButtonProps} />;
@@ -96,11 +72,7 @@ const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
       // Merge props with buttonDefaults, giving priority to direct props
       const connectButtonProps = {
         uid: uid,
-        connectButtonText:
-          connectButtonText || buttonDefaults?.connectButtonText,
-        connectButtonStyle:
-          connectButtonStyle || buttonDefaults?.connectButtonStyle,
-        connectButtonCustom,
+        connectButtonText,
         loadingComponent,
       };
 
@@ -110,7 +82,10 @@ const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
 
   return (
     <ThemeProvider
-      theme={{ themeOverrides: { ...themeOverrides, ...ButtonThemeOverrides } }}
+      theme={{
+        themeMode,
+        themeOverrides: { ...themeOverrides, ...ButtonThemeOverrides },
+      }}
     >
       <GlobalStyle />
       <Component />

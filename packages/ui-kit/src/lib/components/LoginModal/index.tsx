@@ -3,7 +3,6 @@ import styled from 'styled-components';
 import { CrossIcon, Spinner } from '../../components/common';
 import { CONSTANTS, WALLET_CONFIG_URL } from '../../constants';
 import {
-  ButtonDefaultsProps,
   ModalAppDetails,
   ModalDefaultsProps,
   ProviderConfigProps,
@@ -39,7 +38,7 @@ const LoginModal: FC<LoginModalProps> = ({
   handleUserLogOutEvent,
   config,
 }) => {
-  const { modalDefaults, buttonDefaults } = config;
+  const { modal } = config;
 
   return (
     <>
@@ -48,8 +47,8 @@ const LoginModal: FC<LoginModalProps> = ({
           isWalletMinimised={isWalletMinimised}
           universalAddress={universalAddress}
           themeMode={themeMode ? themeMode : CONSTANTS.THEME.DARK}
-          accountMenuVariant={buttonDefaults?.accountMenuVariant}
-          modalDefaults={modalDefaults}
+          accountMenuVariant={modal?.connectedLayout}
+          modalDefaults={modal}
         >
           {isIframeLoading && (
             <FrameLoadingContainer
@@ -106,9 +105,9 @@ const LoginModal: FC<LoginModalProps> = ({
             </AccountContainer>
 
             <SplitContainer>
-              {modalDefaults?.showModalAppPreview &&
+              {modal?.appPreview &&
                 modalAppData &&
-                modalDefaults?.loginLayout === CONSTANTS.LOGIN.SPLIT && (
+                modal?.loginLayout === CONSTANTS.LOGIN.SPLIT && (
                   <AppPreviewContainer universalAddress={universalAddress}>
                     <AppContainer>
                       {modalAppData?.logoURL && (
@@ -146,7 +145,7 @@ const LoginModal: FC<LoginModalProps> = ({
                     border: 'none',
                     width: '-webkit-fill-available',
                     height: universalAddress
-                      ? buttonDefaults?.accountMenuVariant === 'full'
+                      ? modal?.connectedLayout === 'full'
                         ? '100vh'
                         : '675px'
                       : '100vh',
@@ -172,7 +171,7 @@ const FrameContainer = styled.div<{
   universalAddress: UniversalAddress | null;
   isWalletMinimised: boolean;
   themeMode: typeof CONSTANTS.THEME.LIGHT | typeof CONSTANTS.THEME.DARK;
-  accountMenuVariant: ButtonDefaultsProps['accountMenuVariant'];
+  accountMenuVariant: ModalDefaultsProps['connectedLayout'];
   modalDefaults?: ModalDefaultsProps;
 }>`
   position: ${({ universalAddress, accountMenuVariant }) =>

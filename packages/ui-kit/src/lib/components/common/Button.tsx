@@ -15,8 +15,6 @@ export type ButtonProps = {
   textColor?: React.CSSProperties['color'];
   /* Text color of the button */
   borderRadius?: React.CSSProperties['borderRadius'];
-  /* Custom styles to be applied to the button */
-  customStyle?: React.CSSProperties;
   /* Sets button as disabled */
   disabled?: boolean;
 } & TransformedHTMLAttributes<HTMLButtonElement>;
@@ -46,13 +44,6 @@ const StyledButton = styled.button<ButtonProps>`
   border-radius: ${(props) =>
     props.borderRadius ? props.borderRadius : '12px'};
   white-space: nowrap;
-
-  /* Custom styles applied via customStyle prop */
-  ${(props) =>
-    props.customStyle &&
-    Object.entries(props.customStyle)
-      .map(([key, value]) => `${key}: ${value};`)
-      .join('\n')}
 `;
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(

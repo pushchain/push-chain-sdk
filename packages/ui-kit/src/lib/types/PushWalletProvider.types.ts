@@ -16,27 +16,13 @@ export type ProviderConfigProps = {
   env: (typeof CONSTANTS.ENV)[keyof typeof CONSTANTS.ENV];
   rpcURL?: string;
   login?: LoginMethodConfig;
-  buttonDefaults?: ButtonDefaultsProps;
-  modalDefaults?: ModalDefaultsProps;
+  modal?: ModalDefaultsProps;
 };
 
 export type AppMetadata = {
   title: string;
   logoUrl?: string;
   description?: string;
-};
-
-export type ButtonDefaultsProps = {
-  /** “Connect” button text when disconnected */
-  connectButtonText?: string;
-  /** inline style overrides for the “Connect” button */
-  connectButtonStyle?: React.CSSProperties;
-  /** custom node to show while connecting */
-  loadingComponent?: React.ReactNode;
-  /** inline style overrides for the connected‐state button */
-  connectedButtonStyle?: React.CSSProperties;
-  /** when connected, how the account menu appears */
-  accountMenuVariant?: 'full' | 'hover';
 };
 
 export type ModalDefaultsProps = {
@@ -46,16 +32,22 @@ export type ModalDefaultsProps = {
    */
   loginLayout?: typeof CONSTANTS.LOGIN.SPLIT | typeof CONSTANTS.LOGIN.SIMPLE;
   /** if true (and `app` is provided), show the preview pane in the wrapper */
-  showModalAppPreview?: boolean;
+  appPreview?: boolean;
   /** CSS background-image for wrapper or preview pane */
   bgImage?: string;
+  /** when connected, how the account menu appears */
+  connectedLayout?: 'full' | 'hover';
 };
+
+export type ThemeMode =
+  | typeof CONSTANTS.THEME.LIGHT
+  | typeof CONSTANTS.THEME.DARK;
 
 export type PushWalletProviderProps = {
   children: React.ReactNode;
   config: ProviderConfigProps;
   app?: AppMetadata;
-  themeMode?: typeof CONSTANTS.THEME.LIGHT | typeof CONSTANTS.THEME.DARK;
+  themeMode?: ThemeMode;
   themeOverrides?: ThemeOverrides;
 };
 
