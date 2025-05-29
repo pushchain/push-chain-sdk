@@ -7,7 +7,7 @@ import {
   themeDefault,
   lightThemeDefault,
   darkThemeDefault,
-} from '../constants/themes';
+} from '../styles/token';
 import { mapCoreToInt } from '../utils/theme';
 
 const loginDefaultConfig = {

@@ -13,7 +13,7 @@ export type ButtonProps = {
   bgColor?: React.CSSProperties['backgroundColor'];
   /* Text color of the button */
   textColor?: React.CSSProperties['color'];
-  /* Text color of the button */
+  /* Border Radius of the button */
   borderRadius?: React.CSSProperties['borderRadius'];
   /* Sets button as disabled */
   disabled?: boolean;

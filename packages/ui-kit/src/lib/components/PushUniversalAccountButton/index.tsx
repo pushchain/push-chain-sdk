@@ -8,7 +8,7 @@ import {
 } from '../../types/UniversalWallet.types';
 import { createGlobalStyle, ThemeProvider } from 'styled-components';
 import { ButtonThemeOverrides } from '../../styles/token';
-import { buttonThemeDefault } from '../../constants/themes';
+import { buttonThemeDefault } from '../../styles/token';
 import { mapButtonCoreToInt } from '../../utils/theme';
 
 type PushUniversalAccountButtonProps = {

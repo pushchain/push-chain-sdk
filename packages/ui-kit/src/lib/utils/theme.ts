@@ -1,4 +1,4 @@
-import { buttonThemeDefault, defaultThemeKeys } from '../constants/themes';
+import { buttonThemeDefault, defaultThemeKeys } from '../styles/token';
 
 export const mapCoreToInt = (
   obj: Record<string, string | undefined>
