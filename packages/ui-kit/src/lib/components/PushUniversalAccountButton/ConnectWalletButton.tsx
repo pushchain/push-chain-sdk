@@ -6,20 +6,14 @@ import { Button, Spinner } from '../common';
 export type ConnectPushWalletButtonProps = {
   uid?: string;
   connectButtonText?: string;
-  connectBgColor?: string;
-  connectButtonTextColor?: string;
   connectButtonStyle?: React.CSSProperties;
-
   connectButtonCustom?: React.ReactNode;
-
   loadingComponent?: React.ReactNode;
 };
 
 const ConnectWalletButton: FC<ConnectPushWalletButtonProps> = ({
   uid,
   connectButtonText,
-  connectBgColor,
-  connectButtonTextColor,
   connectButtonStyle,
 
   connectButtonCustom,
@@ -43,8 +37,9 @@ const ConnectWalletButton: FC<ConnectPushWalletButtonProps> = ({
   } else {
     return (
       <Button
-        bgColor={connectBgColor}
-        textColor={connectButtonTextColor}
+        bgColor="var(--pwauth-btn-connect-bg-color)"
+        textColor="var(--pwauth-btn-connect-text-color)"
+        borderRadius="var(--pwauth-btn-connect-border-radius)"
         customStyle={connectButtonStyle}
         onClick={handleConnectWalletButton}
         disabled={isConnectButtonDisbaled || isLoading}

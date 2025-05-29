@@ -9,8 +9,6 @@ type TogglePushWalletButtonProps = {
   uid?: string;
   universalAddress: UniversalAddress;
 
-  connectedButtonBgColor?: string;
-  connectedButtonTextColor?: string;
   connectedButtonStyle?: React.CSSProperties;
 
   connectedButtonCustom?: React.ReactNode;
@@ -19,8 +17,6 @@ const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
   uid,
   universalAddress,
 
-  connectedButtonBgColor,
-  connectedButtonTextColor,
   connectedButtonStyle,
   connectedButtonCustom,
 }) => {
@@ -48,8 +44,9 @@ const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
       <>
         <Button
           onClick={() => setMinimiseWallet(!isWalletMinimised)}
-          bgColor={connectedButtonBgColor || '#17181b'}
-          textColor={connectedButtonTextColor}
+          bgColor="var(--pwauth-btn-connected-bg-color)"
+          textColor="var(--pwauth-btn-connected-text-color)"
+          borderRadius="var(--pwauth-btn-connect-border-radius)"
           customStyle={connectedButtonStyle}
         >
           {getChainIcon(chainId)}

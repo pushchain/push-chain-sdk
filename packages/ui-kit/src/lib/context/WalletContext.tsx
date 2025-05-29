@@ -20,6 +20,7 @@ import { walletRegistry } from '../providers/walletProviders/WalletProviderRegis
 import { PushWalletToast } from '../components/PushWalletToast';
 import { LoginModal } from '../components/LoginModal';
 import { getWalletContext } from './WalletContextMap';
+import { ThemeOverrides } from '../styles/token';
 
 export type WalletContextType = {
   universalAddress: UniversalAddress | null;
@@ -34,15 +35,15 @@ export type WalletContextType = {
 
   config: PushWalletProviderProps['config'];
   app?: PushWalletProviderProps['app'];
-  buttonDefaults?: PushWalletProviderProps['buttonDefaults'];
-  modalDefaults?: PushWalletProviderProps['modalDefaults'];
 
   modalAppData: ModalAppDetails | undefined;
   updateModalAppData: (newData: Partial<ModalAppDetails>) => void;
 
   walletAppData: WalletAppDetails | undefined;
   updateWalletAppData: (newData: Partial<WalletAppDetails>) => void;
-}
+
+  themeOverrides: ThemeOverrides;
+};
 
 export const WalletContext = createContext<WalletContextType | null>(null);
 
@@ -51,8 +52,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
   config,
   app,
   themeMode,
-  buttonDefaults,
-  modalDefaults,
+  themeOverrides,
 }) => {
   const [universalAddress, setUniversalAddress] =
     useState<WalletContextType['universalAddress']>(null);
@@ -76,17 +76,27 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     error?: (data: WalletEventRespoonse) => void;
   } | null>(null);
 
-  const [modalAppData, setModalAppData] = useState<ModalAppDetails | undefined>(app ? {
-    title: app?.title,
-    logoURL: app?.logoUrl,
-    description: app?.description
-  } : undefined);
+  const [modalAppData, setModalAppData] = useState<ModalAppDetails | undefined>(
+    app
+      ? {
+          title: app?.title,
+          logoURL: app?.logoUrl,
+          description: app?.description,
+        }
+      : undefined
+  );
 
-  const [walletAppData, setWalletAppData] = useState<WalletAppDetails | undefined>(app ? {
-    title: app?.title,
-    logoURL: app?.logoUrl,
-    description: app?.description
-  } : undefined);
+  const [walletAppData, setWalletAppData] = useState<
+    WalletAppDetails | undefined
+  >(
+    app
+      ? {
+          title: app?.title,
+          logoURL: app?.logoUrl,
+          description: app?.description,
+        }
+      : undefined
+  );
 
   const updateModalAppData = (newData: Partial<ModalAppDetails>) => {
     setModalAppData((prevData) => ({
@@ -113,6 +123,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       loginDefaults: config.login,
       themeMode,
       appMetadata: walletAppData,
+      themeOverrides: themeOverrides || {},
     };
 
     sendMessageToPushWallet({
@@ -354,9 +365,8 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         connectionStatus,
         universalAddress,
         isWalletMinimised,
-        buttonDefaults,
-        modalDefaults,
         modalAppData,
+        themeOverrides: {},
         updateModalAppData,
         walletAppData,
         updateWalletAppData,
@@ -379,8 +389,6 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         isWalletMinimised={isWalletMinimised}
         setMinimiseWallet={setMinimiseWallet}
         handleUserLogOutEvent={handleUserLogOutEvent}
-        modalDefaults={modalDefaults}
-        buttonDefaults={buttonDefaults}
       />
       {isWalletVisible && showToast && <PushWalletToast />}
       {children}

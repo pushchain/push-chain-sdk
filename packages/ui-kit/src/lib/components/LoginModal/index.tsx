@@ -6,7 +6,7 @@ import {
   ButtonDefaultsProps,
   ModalAppDetails,
   ModalDefaultsProps,
-  PushWalletProviderConfig,
+  ProviderConfigProps,
   UniversalAddress,
 } from '../../types';
 
@@ -18,13 +18,11 @@ type LoginModalProps = {
   setIframeLoading: (isIframeLoading: boolean) => void;
   sendWalletConfig: () => void;
   modalAppData: ModalAppDetails | undefined;
-  config: PushWalletProviderConfig;
+  config: ProviderConfigProps;
   universalAddress: UniversalAddress | null;
   isWalletMinimised: boolean;
   setMinimiseWallet: (isWalletMinimised: boolean) => void;
   handleUserLogOutEvent: () => void;
-  modalDefaults?: ModalDefaultsProps;
-  buttonDefaults?: ButtonDefaultsProps;
 };
 
 const LoginModal: FC<LoginModalProps> = ({
@@ -40,12 +38,8 @@ const LoginModal: FC<LoginModalProps> = ({
   setMinimiseWallet,
   handleUserLogOutEvent,
   config,
-  modalDefaults,
-  buttonDefaults,
 }) => {
-  /**
-   * TODO: bgImage from modalDefaults is not integrated
-   */
+  const { modalDefaults, buttonDefaults } = config;
 
   return (
     <>
@@ -82,7 +76,6 @@ const LoginModal: FC<LoginModalProps> = ({
           <FrameSubContainer
             isWalletMinimised={isWalletMinimised}
             isIframeLoading={isIframeLoading}
-            bgColor={modalDefaults?.bgColor || 'transparent'}
           >
             <AccountContainer universalAddress={universalAddress}>
               {universalAddress ? (
@@ -130,14 +123,13 @@ const LoginModal: FC<LoginModalProps> = ({
                       <TextContainer
                         themeMode={themeMode ? themeMode : CONSTANTS.THEME.DARK}
                         textColor={
-                          modalDefaults.textColor ??
-                          (themeMode === CONSTANTS.THEME.LIGHT
+                          themeMode === CONSTANTS.THEME.LIGHT
                             ? '#F5F6F8'
-                            : '#17181b')
+                            : '#17181b'
                         }
                       >
                         <Heading>{modalAppData.title}</Heading>
-                        <p>{modalAppData?.description}</p>
+                        <Description>{modalAppData?.description}</Description>
                       </TextContainer>
                     </AppContainer>
                   </AppPreviewContainer>
@@ -193,9 +185,7 @@ const FrameContainer = styled.div<{
   flex-direction: column;
   background-image: url(${({ modalDefaults }) => modalDefaults?.bgImage});
   background-size: cover;
-  background-color: ${({ themeMode, modalDefaults }) =>
-    modalDefaults?.bgColor ??
-    (themeMode === CONSTANTS.THEME.LIGHT ? '#F5F6F8' : '#17181b')};
+  background-color: var(--pw-int-bg-primary-color);
   border-radius: 10px;
   z-index: 9999;
 
@@ -285,14 +275,12 @@ const FrameLoadingContainer = styled.div<{
 const FrameSubContainer = styled.div<{
   isWalletMinimised: boolean;
   isIframeLoading: boolean;
-  bgColor: string;
 }>`
   display: ${({ isWalletMinimised, isIframeLoading }) =>
     isWalletMinimised || isIframeLoading ? 'none' : 'flex'};
   width: -webkit-fill-available;
   height: -webkit-fill-available;
   flex-direction: column;
-  background-color: ${({ bgColor }) => (bgColor ? bgColor : 'transparent')};
 `;
 
 const AccountContainer = styled.div<{
@@ -376,7 +364,15 @@ const TextContainer = styled.div<{
 `;
 
 const Heading = styled.h1`
-  font-size: 18px;
+  font-size: var(--pw-int-text-heading-xsmall-size);
   font-weight: 500;
   line-height: 27px;
+  color: var(--pw-int-text-primary-color);
+`;
+
+const Description = styled.p`
+  font-size: var(--pw-int-text-body-large-size);
+  line-height: 22px;
+  font-weight: 400;
+  color: var(--pw-int-text-secondary-color);
 `;
