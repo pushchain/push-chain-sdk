@@ -35,6 +35,11 @@ export type ExecuteParams = {
   maxPriorityFeePerGas?: bigint;
 
   /**
+   * Optional to bypass fee locking in case funds are already locked by user
+   */
+  feeLockTxHash?: string;
+
+  /**
    * Optional explicit nonce for the transaction.
    * @reason Ensures correct ordering and avoids “replacement underpriced” when sending in parallel.
    */

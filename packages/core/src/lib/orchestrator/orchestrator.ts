@@ -91,9 +91,14 @@ export class Orchestrator {
       throw new Error('Mainnet chains can only interact with Push Mainnet');
     }
 
-    // 1. Block direct execution if signer is already on Push Chain
+    // 1. Execute direct tx if signer is already on Push Chain
     if (this.isPushChain(chain)) {
-      throw new Error('UniversalSigner is already on Push Chain');
+      return this.pushClient.sendTransaction({
+        to: execute.target,
+        data: execute.data,
+        value: execute.value,
+        signer: this.universalSigner,
+      });
     }
 
     // 2. Get Push chain NMSC address for this signer
@@ -184,8 +189,8 @@ export class Orchestrator {
     }
 
     // 7. If not enough funds, lock required fee on source chain and send tx to Push chain
-    let feeLockTxHash: string | null = null;
-    if (funds < requiredFunds) {
+    let feeLockTxHash: string | undefined = execute.feeLockTxHash;
+    if (funds < requiredFunds && !feeLockTxHash) {
       if (this.printTraces) {
         console.log(
           `[${this.constructor.name}] Insufficient funds, locking additional fees...`
@@ -386,7 +391,7 @@ export class Orchestrator {
    */
   public async sendCrossChainPushTx(
     isNMSCDeployed: boolean,
-    feeLockTxHash: string | null,
+    feeLockTxHash?: string,
     crosschainPayload?: CrossChainPayload,
     signature?: Uint8Array
   ): Promise<string> {
@@ -464,7 +469,11 @@ export class Orchestrator {
    * @returns True if the chain is a Push chain, false otherwise.
    */
   private isPushChain(chain: CHAIN): boolean {
-    return chain === CHAIN.PUSH_MAINNET || chain === CHAIN.PUSH_TESTNET;
+    return (
+      chain === CHAIN.PUSH_MAINNET ||
+      chain === CHAIN.PUSH_TESTNET ||
+      chain === CHAIN.PUSH_LOCALNET
+    );
   }
 
   /**
@@ -579,6 +588,12 @@ export class Orchestrator {
   }> {
     const { chain, address } = this.universalSigner;
     const { vm, chainId } = CHAIN_INFO[chain];
+
+    if (this.isPushChain(chain)) {
+      throw new Error(
+        'NMSC address cannot be computed for a Push Chain Address'
+      );
+    }
 
     const computedAddress: `0x{string}` = await this.pushClient.readContract({
       address: this.pushClient.pushChainInfo.factoryAddress,

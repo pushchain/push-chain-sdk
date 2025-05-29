@@ -27,14 +27,14 @@ const chain = CHAIN.ETHEREUM_SEPOLIA;
 
 // const CONTRACT = '0x87D792696Fa0810eBC5f6947F79ba50CbD267E72';
 // const RPC_URL = 'https://evm.pn1.dev.push.org';
-// const chain = CHAIN.PUSH_TESTNET;
+// const chain = CHAIN.PUSH_LOCALNET;
 
 describe('EvmClient', () => {
   let evmClient: EvmClient;
   let universalSigner: UniversalSigner;
 
   beforeAll(() => {
-    evmClient = new EvmClient({ rpcUrl: RPC_URL });
+    evmClient = new EvmClient({ rpcUrl: CHAIN_INFO[chain].defaultRPC });
   });
 
   describe('getBalance', () => {
@@ -175,9 +175,33 @@ describe('EvmClient', () => {
 
       // estimate for setGreeting
       const gas = await evmClient.estimateGas({
-        to: '0x2ba5873eF818BEE57645B7d674149041C44F42c6',
+        to: CONTRACT,
         value: BigInt(0),
         data: calldata,
+      });
+      console.log(gas);
+      expect(typeof gas).toBe('bigint');
+      expect(gas).toBeGreaterThan(0);
+    });
+
+    it('estimates gas from nmsc - contract call', async () => {
+      const gas = await evmClient.estimateGas({
+        from: '0xF5184CE4b1e3eC540401f3987DDDf5ab069d05F6',
+        to: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
+        value: BigInt(0),
+        data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
+      });
+      console.log(gas);
+      expect(typeof gas).toBe('bigint');
+      expect(gas).toBeGreaterThan(0);
+    });
+
+    it('estimates gas from nmsc - transfer call', async () => {
+      const gas = await evmClient.estimateGas({
+        from: '0xF5184CE4b1e3eC540401f3987DDDf5ab069d05F6',
+        to: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+        value: BigInt(0),
+        data: '0x',
       });
       console.log(gas);
       expect(typeof gas).toBe('bigint');

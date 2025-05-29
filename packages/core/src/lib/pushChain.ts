@@ -3,16 +3,61 @@ import { Orchestrator } from './orchestrator/orchestrator';
 import { createUniversalSigner } from './universal/signer';
 import { UniversalSigner } from './universal/universal.types';
 import { Utils } from './utils';
+import * as viem from 'viem';
 
+/**
+ * @class PushChain
+ *
+ * Entry point to interact with Push Chain in your application.
+ * Provides access to cross-chain execution, utilities, and signer abstraction.
+ */
 export class PushChain {
   /**
-   * Provides access to utility methods in PushChain.
+   * @static
+   * Utility functions for encoding, hashing, and data formatting.
    */
   public static utils = Utils;
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  private constructor(private orchestartor: Orchestrator) {}
+  /**
+   * @static
+   * Exposes viem utilities to the SDK user for convenience.
+   */
+  static viem = viem;
 
+  private orchestartor: Orchestrator;
+
+  /**
+   * Executes a transaction on Push Chain
+   */
+  sendTransaction: Orchestrator['execute'];
+
+  /**
+   * Computes the NMSC address for the universal signer on Push
+   */
+  getNMSCAddress: Orchestrator['getNMSCAddress'];
+
+  private constructor(orchestartor: Orchestrator) {
+    this.orchestartor = orchestartor;
+
+    // Ensure context is preserved when methods are called externally
+    this.sendTransaction = this.orchestartor.execute.bind(this.orchestartor);
+    this.getNMSCAddress = this.orchestartor.getNMSCAddress.bind(
+      this.orchestartor
+    );
+  }
+
+  /**
+   * @method initialize
+   * Initializes the PushChain SDK with a universal signer and optional config.
+   *
+   * @param universalSigner
+   * @param options - Optional settings to configure the SDK instance.
+   *   - network: PushChain network to target (e.g., TESTNET, MAINNET).
+   *   - rpcUrl: Custom RPC URLs mapped by chain IDs.
+   *   - printTraces: Whether to print internal trace logs for debugging.
+   *
+   * @returns An initialized instance of PushChain.
+   */
   static initialize = async (
     universalSigner: UniversalSigner,
     options?: {
@@ -23,7 +68,7 @@ export class PushChain {
   ) => {
     const orchestartor = new Orchestrator(
       /**
-       * @dev - createUniversalSigner parses the obj to ensure signer has correct implementation
+       * Ensures the signer conforms to the UniversalSigner interface.
        */
       createUniversalSigner(universalSigner),
       options?.network || NETWORK.TESTNET,
@@ -32,6 +77,4 @@ export class PushChain {
     );
     return new PushChain(orchestartor);
   };
-
-  execute = this.orchestartor.execute;
 }

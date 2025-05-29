@@ -84,10 +84,6 @@ describe('Orchestrator', () => {
     });
   });
 
-  describe('sendCrossChainPushTx', () => {
-    //
-  });
-
   describe('computeExecutionHash', () => {
     const orc = new Orchestrator(mockSigner, NETWORK.TESTNET);
     const expectedHash =
