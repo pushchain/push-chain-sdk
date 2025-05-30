@@ -1159,6 +1159,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@pushchain/ui-kit@npm:^1.0.8-alpha.0":
+  version: 1.0.8-alpha.0
+  resolution: "@pushchain/ui-kit@npm:1.0.8-alpha.0"
+  dependencies:
+    "@metamask/sdk": "npm:^0.32.0"
+    "@pushchain/devnet": "npm:^1.0.13"
+    ethers: "npm:^6.13.5"
+    tslib: "npm:^2.3.0"
+    viem: "npm:^2.23.9"
+  checksum: 10/d69b1965fd8a7443c221381ee862f795586f5f720e8f93e4868a5f60c8072bf6d03e8a828ad7a985ddcee2ea7b7432fc7fec0889c0619bfa9ebf1fff6d5e65ee
+  languageName: node
+  linkType: hard
+
 "@pushprotocol/push-chain@npm:^0.1.7":
   version: 0.1.7
   resolution: "@pushprotocol/push-chain@npm:0.1.7"
@@ -1176,19 +1189,6 @@ __metadata:
     uuid: "npm:^10.0.0"
     viem: "npm:^2.21.5"
   checksum: 10/a6189301318ffb1f580147aad7aa6d241cd74165daed7ea29919b4b3ab9b9cf685255398dd93b74df2351c13867633b3343f291b44f38a91f5035f859327125b
-  languageName: node
-  linkType: hard
-
-"@pushprotocol/pushchain-ui-kit@npm:1.0.7-alpha.1":
-  version: 1.0.7-alpha.1
-  resolution: "@pushprotocol/pushchain-ui-kit@npm:1.0.7-alpha.1"
-  dependencies:
-    "@metamask/sdk": "npm:^0.32.0"
-    "@pushchain/devnet": "npm:^1.0.13"
-    ethers: "npm:^6.13.5"
-    tslib: "npm:^2.3.0"
-    viem: "npm:^2.23.9"
-  checksum: 10/7c1621a499e529ed665046f4dd73bea958d4cf49e3c972c5001cb9fc8dfd9c9d40b309ca97d8befd43e88d8a4319ec721af2e18afd842acf23121f1e740981df
   languageName: node
   linkType: hard
 
@@ -3560,8 +3560,8 @@ __metadata:
   dependencies:
     "@eslint/js": "npm:^9.9.0"
     "@pushchain/devnet": "npm:^1.0.8"
+    "@pushchain/ui-kit": "npm:^1.0.8-alpha.0"
     "@pushprotocol/push-chain": "npm:^0.1.7"
-    "@pushprotocol/pushchain-ui-kit": "npm:1.0.7-alpha.1"
     "@types/react": "npm:^18.3.3"
     "@types/react-dom": "npm:^18.3.0"
     "@vitejs/plugin-react-swc": "npm:^3.5.0"

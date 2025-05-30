@@ -3095,6 +3095,24 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@pushchain/ui-kit@workspace:packages/ui-kit":
+  version: 0.0.0-use.local
+  resolution: "@pushchain/ui-kit@workspace:packages/ui-kit"
+  dependencies:
+    "@metamask/sdk": "npm:^0.32.0"
+    "@pushchain/devnet": "npm:^1.0.13"
+    "@types/react": "npm:^18.3.13"
+    eslint-plugin-react-hooks: "npm:^5.0.0"
+    eslint-plugin-react-refresh: "npm:^0.4.20"
+    ethers: "npm:^6.13.5"
+    react: "npm:^18.3.1"
+    styled-components: "npm:^6.1.14"
+    tslib: "npm:^2.3.0"
+    typescript-eslint: "npm:^8.32.1"
+    viem: "npm:^2.23.9"
+  languageName: unknown
+  linkType: soft
+
 "@pushprotocol/common-components@workspace:packages/shared-components":
   version: 0.0.0-use.local
   resolution: "@pushprotocol/common-components@workspace:packages/shared-components"
@@ -3133,24 +3151,6 @@ __metadata:
   peerDependencies:
     react: ^18.3.1
     react-dom: ^18.3.1
-  languageName: unknown
-  linkType: soft
-
-"@pushprotocol/pushchain-ui-kit@workspace:packages/ui-kit":
-  version: 0.0.0-use.local
-  resolution: "@pushprotocol/pushchain-ui-kit@workspace:packages/ui-kit"
-  dependencies:
-    "@metamask/sdk": "npm:^0.32.0"
-    "@pushchain/devnet": "npm:^1.0.13"
-    "@types/react": "npm:^18.3.13"
-    eslint-plugin-react-hooks: "npm:^5.0.0"
-    eslint-plugin-react-refresh: "npm:^0.4.20"
-    ethers: "npm:^6.13.5"
-    react: "npm:^18.3.1"
-    styled-components: "npm:^6.1.14"
-    tslib: "npm:^2.3.0"
-    typescript-eslint: "npm:^8.32.1"
-    viem: "npm:^2.23.9"
   languageName: unknown
   linkType: soft
 

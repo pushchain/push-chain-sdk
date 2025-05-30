@@ -325,6 +325,10 @@ const AppPreviewContainer = styled.div<{
   flex: 1;
   padding: 100px 10px 10px 10px;
   background-color: transparent;
+
+  @media (max-width: 1024px) {
+    display: none;
+  }
 `;
 
 const AppContainer = styled.div`
