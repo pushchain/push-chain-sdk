@@ -51,8 +51,8 @@ const App: React.FC = () => {
     },
     modal: {
       loginLayout: CONSTANTS.LOGIN.SPLIT,
-      appPreview: true,
       connectedLayout: CONSTANTS.CONNECTED.HOVER,
+      appPreview: true,
     },
   };
 
@@ -70,7 +70,7 @@ const App: React.FC = () => {
       <PushWalletProvider
         config={walletConfig}
         app={appMetadata}
-        themeMode={CONSTANTS.THEME.DARK}
+        themeMode={CONSTANTS.THEME.LIGHT}
       >
         <Router>
           <Navbar />
