@@ -16,16 +16,16 @@ export type ProviderConfigProps = {
   env: (typeof CONSTANTS.ENV)[keyof typeof CONSTANTS.ENV];
   rpcURL?: string;
   login?: LoginMethodConfig;
-  modal?: ModalDefaultsProps;
+  modal?: ModalProps;
 };
 
 export type AppMetadata = {
-  title: string;
+  title?: string;
   logoUrl?: string;
   description?: string;
 };
 
-export type ModalDefaultsProps = {
+export type ModalProps = {
   /**
    * “split” shows the preview pane side-by-side with the iframe
    * “simple” shows only the iframe (no preview)
@@ -36,7 +36,9 @@ export type ModalDefaultsProps = {
   /** CSS background-image for wrapper or preview pane */
   bgImage?: string;
   /** when connected, how the account menu appears */
-  connectedLayout?: 'full' | 'hover';
+  connectedLayout?:
+    | typeof CONSTANTS.CONNECTED.FULL
+    | typeof CONSTANTS.CONNECTED.HOVER;
 };
 
 export type ThemeMode =

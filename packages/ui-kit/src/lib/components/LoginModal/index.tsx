@@ -4,7 +4,7 @@ import { CrossIcon, Spinner } from '../../components/common';
 import { CONSTANTS, WALLET_CONFIG_URL } from '../../constants';
 import {
   ModalAppDetails,
-  ModalDefaultsProps,
+  ModalProps,
   ProviderConfigProps,
   UniversalAddress,
 } from '../../types';
@@ -145,7 +145,7 @@ const LoginModal: FC<LoginModalProps> = ({
                     border: 'none',
                     width: '-webkit-fill-available',
                     height: universalAddress
-                      ? modal?.connectedLayout === 'full'
+                      ? modal?.connectedLayout === CONSTANTS.CONNECTED.FULL
                         ? '100vh'
                         : '675px'
                       : '100vh',
@@ -171,12 +171,12 @@ const FrameContainer = styled.div<{
   universalAddress: UniversalAddress | null;
   isWalletMinimised: boolean;
   themeMode: typeof CONSTANTS.THEME.LIGHT | typeof CONSTANTS.THEME.DARK;
-  accountMenuVariant: ModalDefaultsProps['connectedLayout'];
-  modalDefaults?: ModalDefaultsProps;
+  accountMenuVariant: ModalProps['connectedLayout'];
+  modalDefaults?: ModalProps;
 }>`
   position: ${({ universalAddress, accountMenuVariant }) =>
     universalAddress
-      ? accountMenuVariant === 'full'
+      ? accountMenuVariant === CONSTANTS.CONNECTED.FULL
         ? 'fixed'
         : 'absolute'
       : 'fixed'};
@@ -192,7 +192,7 @@ const FrameContainer = styled.div<{
     isWalletMinimised
       ? '0px'
       : universalAddress
-      ? accountMenuVariant === 'full'
+      ? accountMenuVariant === CONSTANTS.CONNECTED.FULL
         ? '100%'
         : '450px'
       : '100vw'};
@@ -200,21 +200,33 @@ const FrameContainer = styled.div<{
     isWalletMinimised
       ? '0px'
       : universalAddress
-      ? accountMenuVariant === 'full'
+      ? accountMenuVariant === CONSTANTS.CONNECTED.FULL
         ? '100vw'
         : '675px'
       : '100vh'};
   right: ${({ universalAddress, accountMenuVariant }) =>
-    universalAddress ? (accountMenuVariant === 'full' ? '0' : '10px') : '0'};
+    universalAddress
+      ? accountMenuVariant === CONSTANTS.CONNECTED.FULL
+        ? '0'
+        : '10px'
+      : '0'};
   top: ${({ universalAddress, accountMenuVariant }) =>
-    universalAddress ? (accountMenuVariant === 'full' ? '0' : '70px') : '0'};
+    universalAddress
+      ? accountMenuVariant === CONSTANTS.CONNECTED.FULL
+        ? '0'
+        : '70px'
+      : '0'};
 
   @media (max-width: 425px) {
     width: ${({ universalAddress, isWalletMinimised }) =>
       isWalletMinimised ? '0px' : universalAddress ? '96%' : '100%'};
     right: ${({ universalAddress }) => (universalAddress ? '2%' : '0')};
     top: ${({ universalAddress, accountMenuVariant }) =>
-      universalAddress ? (accountMenuVariant === 'full' ? '0' : '8%') : '0'};
+      universalAddress
+        ? accountMenuVariant === CONSTANTS.CONNECTED.FULL
+          ? '0'
+          : '8%'
+        : '0'};
   }
 `;
 

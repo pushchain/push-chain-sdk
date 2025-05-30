@@ -52,7 +52,7 @@ const App: React.FC = () => {
     modal: {
       loginLayout: CONSTANTS.LOGIN.SPLIT,
       appPreview: true,
-      connectedLayout: 'hover',
+      connectedLayout: CONSTANTS.CONNECTED.HOVER,
     },
   };
 

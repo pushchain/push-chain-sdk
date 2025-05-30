@@ -2,21 +2,18 @@ import React, { FC, useEffect, useMemo } from 'react';
 import { usePushWalletContext } from '../../hooks/usePushWallet';
 import { ConnectWalletButton } from './ConnectWalletButton';
 import { TogglePushWalletButton } from './TogglePushWalletButton';
-import {
-  loginAppOverrides,
-  modalAppOverrides,
-} from '../../types/UniversalWallet.types';
 import { createGlobalStyle, ThemeProvider } from 'styled-components';
 import { ButtonThemeOverrides } from '../../styles/token';
 import { buttonThemeDefault } from '../../styles/token';
 import { mapButtonCoreToInt } from '../../utils/theme';
+import { AppMetadata } from '../../types';
 
 type PushUniversalAccountButtonProps = {
   uid?: string;
   connectButtonText?: string;
   loadingComponent?: React.ReactNode;
-  modalAppOverride?: modalAppOverrides;
-  loginAppOverride?: loginAppOverrides;
+  modalAppOverride?: AppMetadata;
+  loginAppOverride?: AppMetadata;
   themeOverrides?: ButtonThemeOverrides;
 };
 
