@@ -8,21 +8,10 @@ import { CHAIN_LOGO } from '../../constants';
 type TogglePushWalletButtonProps = {
   uid?: string;
   universalAddress: UniversalAddress;
-
-  connectedButtonBgColor?: string;
-  connectedButtonTextColor?: string;
-  connectedButtonStyle?: React.CSSProperties;
-
-  connectedButtonCustom?: React.ReactNode;
 };
 const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
   uid,
   universalAddress,
-
-  connectedButtonBgColor,
-  connectedButtonTextColor,
-  connectedButtonStyle,
-  connectedButtonCustom,
 }) => {
   const { setMinimiseWallet, isWalletMinimised } = usePushWalletContext(uid);
   const { chainId, address } = universalAddress;
@@ -41,24 +30,20 @@ const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
 
   const maskedAddress = centerMaskString(address);
 
-  if (connectedButtonCustom) {
-    return <>{connectedButtonCustom}</>;
-  } else {
-    return (
-      <>
-        <Button
-          onClick={() => setMinimiseWallet(!isWalletMinimised)}
-          bgColor={connectedButtonBgColor || '#17181b'}
-          textColor={connectedButtonTextColor}
-          customStyle={connectedButtonStyle}
-        >
-          {getChainIcon(chainId)}
-          {maskedAddress}
-          <PushLogo />
-        </Button>
-      </>
-    );
-  }
+  return (
+    <>
+      <Button
+        onClick={() => setMinimiseWallet(!isWalletMinimised)}
+        bgColor="var(--pwauth-btn-connected-bg-color)"
+        textColor="var(--pwauth-btn-connected-text-color)"
+        borderRadius="var(--pwauth-btn-connect-border-radius)"
+      >
+        {getChainIcon(chainId)}
+        {maskedAddress}
+        <PushLogo />
+      </Button>
+    </>
+  );
 };
 
 export { TogglePushWalletButton };

@@ -6,12 +6,10 @@ import { useDarkMode } from './common/hooks';
 import { RouterContainer } from './common/components';
 import {
   AppMetadata,
-  ButtonDefaultsProps,
   CONSTANTS,
-  ModalDefaultsProps,
   PushWalletProvider,
-  PushWalletProviderConfig,
-} from '@pushprotocol/pushchain-ui-kit';
+  ProviderConfigProps,
+} from '../../../../packages/ui-kit';
 import Navbar from './components/Navbar';
 
 const GlobalStyle = createGlobalStyle`
@@ -41,7 +39,7 @@ const deploymentEnv: EnvKeys =
 const App: React.FC = () => {
   const { isDarkMode } = useDarkMode();
 
-  const walletConfig: PushWalletProviderConfig = {
+  const walletConfig: ProviderConfigProps = {
     env: CONSTANTS.ENV.LOCAL,
     login: {
       email: true,
@@ -49,6 +47,11 @@ const App: React.FC = () => {
       wallet: {
         enabled: true,
       },
+      appPreview: true,
+    },
+    modal: {
+      loginLayout: CONSTANTS.LOGIN.SPLIT,
+      connectedLayout: CONSTANTS.CONNECTED.HOVER,
       appPreview: true,
     },
   };
@@ -61,25 +64,13 @@ const App: React.FC = () => {
       'Push Chain is a shared state L1 blockchain that allows all chains to unify, enabling apps of any chain to be accessed by users of any chain.',
   };
 
-  const modalDefaults: ModalDefaultsProps = {
-    loginLayout: CONSTANTS.LOGIN.SPLIT,
-    showModalAppPreview: true,
-    bgColor: '#000',
-  };
-
-  const buttonDefaults: ButtonDefaultsProps = {
-    accountMenuVariant: 'hover',
-  };
-
   return (
     <ThemeProvider theme={isDarkMode ? themeConfig.dark : themeConfig.light}>
       <GlobalStyle />
       <PushWalletProvider
         config={walletConfig}
-        themeMode={CONSTANTS.THEME.DARK}
         app={appMetadata}
-        modalDefaults={modalDefaults}
-        buttonDefaults={buttonDefaults}
+        themeMode={CONSTANTS.THEME.LIGHT}
       >
         <Router>
           <Navbar />

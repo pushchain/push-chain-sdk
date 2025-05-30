@@ -6,23 +6,12 @@ import { Button, Spinner } from '../common';
 export type ConnectPushWalletButtonProps = {
   uid?: string;
   connectButtonText?: string;
-  connectBgColor?: string;
-  connectButtonTextColor?: string;
-  connectButtonStyle?: React.CSSProperties;
-
-  connectButtonCustom?: React.ReactNode;
-
   loadingComponent?: React.ReactNode;
 };
 
 const ConnectWalletButton: FC<ConnectPushWalletButtonProps> = ({
   uid,
   connectButtonText,
-  connectBgColor,
-  connectButtonTextColor,
-  connectButtonStyle,
-
-  connectButtonCustom,
   loadingComponent,
 }) => {
   const { connectionStatus, handleConnectToPushWallet } =
@@ -38,31 +27,27 @@ const ConnectWalletButton: FC<ConnectPushWalletButtonProps> = ({
 
   const handleConnectWalletButton = () => handleConnectToPushWallet();
 
-  if (connectButtonCustom) {
-    return <>{connectButtonCustom}</>;
-  } else {
-    return (
-      <Button
-        bgColor={connectBgColor}
-        textColor={connectButtonTextColor}
-        customStyle={connectButtonStyle}
-        onClick={handleConnectWalletButton}
-        disabled={isConnectButtonDisbaled || isLoading}
-      >
-        {connectionStatus === 'notConnected'
-          ? connectButtonText
-          : connectionStatus}
-        {isLoading &&
-          (loadingComponent ? (
-            loadingComponent
-          ) : (
-            <SpinnerContainer>
-              <Spinner />
-            </SpinnerContainer>
-          ))}
-      </Button>
-    );
-  }
+  return (
+    <Button
+      bgColor="var(--pwauth-btn-connect-bg-color)"
+      textColor="var(--pwauth-btn-connect-text-color)"
+      borderRadius="var(--pwauth-btn-connect-border-radius)"
+      onClick={handleConnectWalletButton}
+      disabled={isConnectButtonDisbaled || isLoading}
+    >
+      {connectionStatus === 'notConnected'
+        ? connectButtonText
+        : connectionStatus}
+      {isLoading &&
+        (loadingComponent ? (
+          loadingComponent
+        ) : (
+          <SpinnerContainer>
+            <Spinner />
+          </SpinnerContainer>
+        ))}
+    </Button>
+  );
 };
 
 export { ConnectWalletButton };

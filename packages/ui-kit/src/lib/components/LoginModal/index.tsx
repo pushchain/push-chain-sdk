@@ -3,10 +3,9 @@ import styled from 'styled-components';
 import { CrossIcon, Spinner } from '../../components/common';
 import { CONSTANTS, WALLET_CONFIG_URL } from '../../constants';
 import {
-  ButtonDefaultsProps,
   ModalAppDetails,
-  ModalDefaultsProps,
-  PushWalletProviderConfig,
+  ModalProps,
+  ProviderConfigProps,
   UniversalAddress,
 } from '../../types';
 
@@ -18,13 +17,11 @@ type LoginModalProps = {
   setIframeLoading: (isIframeLoading: boolean) => void;
   sendWalletConfig: () => void;
   modalAppData: ModalAppDetails | undefined;
-  config: PushWalletProviderConfig;
+  config: ProviderConfigProps;
   universalAddress: UniversalAddress | null;
   isWalletMinimised: boolean;
   setMinimiseWallet: (isWalletMinimised: boolean) => void;
   handleUserLogOutEvent: () => void;
-  modalDefaults?: ModalDefaultsProps;
-  buttonDefaults?: ButtonDefaultsProps;
 };
 
 const LoginModal: FC<LoginModalProps> = ({
@@ -40,12 +37,8 @@ const LoginModal: FC<LoginModalProps> = ({
   setMinimiseWallet,
   handleUserLogOutEvent,
   config,
-  modalDefaults,
-  buttonDefaults,
 }) => {
-  /**
-   * TODO: bgImage from modalDefaults is not integrated
-   */
+  const { modal } = config;
 
   return (
     <>
@@ -54,8 +47,8 @@ const LoginModal: FC<LoginModalProps> = ({
           isWalletMinimised={isWalletMinimised}
           universalAddress={universalAddress}
           themeMode={themeMode ? themeMode : CONSTANTS.THEME.DARK}
-          accountMenuVariant={buttonDefaults?.accountMenuVariant}
-          modalDefaults={modalDefaults}
+          accountMenuVariant={modal?.connectedLayout}
+          modalDefaults={modal}
         >
           {isIframeLoading && (
             <FrameLoadingContainer
@@ -82,7 +75,6 @@ const LoginModal: FC<LoginModalProps> = ({
           <FrameSubContainer
             isWalletMinimised={isWalletMinimised}
             isIframeLoading={isIframeLoading}
-            bgColor={modalDefaults?.bgColor || 'transparent'}
           >
             <AccountContainer universalAddress={universalAddress}>
               {universalAddress ? (
@@ -113,9 +105,9 @@ const LoginModal: FC<LoginModalProps> = ({
             </AccountContainer>
 
             <SplitContainer>
-              {modalDefaults?.showModalAppPreview &&
+              {modal?.appPreview &&
                 modalAppData &&
-                modalDefaults?.loginLayout === CONSTANTS.LOGIN.SPLIT && (
+                modal?.loginLayout === CONSTANTS.LOGIN.SPLIT && (
                   <AppPreviewContainer universalAddress={universalAddress}>
                     <AppContainer>
                       {modalAppData?.logoURL && (
@@ -130,14 +122,13 @@ const LoginModal: FC<LoginModalProps> = ({
                       <TextContainer
                         themeMode={themeMode ? themeMode : CONSTANTS.THEME.DARK}
                         textColor={
-                          modalDefaults.textColor ??
-                          (themeMode === CONSTANTS.THEME.LIGHT
+                          themeMode === CONSTANTS.THEME.LIGHT
                             ? '#F5F6F8'
-                            : '#17181b')
+                            : '#17181b'
                         }
                       >
                         <Heading>{modalAppData.title}</Heading>
-                        <p>{modalAppData?.description}</p>
+                        <Description>{modalAppData?.description}</Description>
                       </TextContainer>
                     </AppContainer>
                   </AppPreviewContainer>
@@ -154,7 +145,7 @@ const LoginModal: FC<LoginModalProps> = ({
                     border: 'none',
                     width: '-webkit-fill-available',
                     height: universalAddress
-                      ? buttonDefaults?.accountMenuVariant === 'full'
+                      ? modal?.connectedLayout === CONSTANTS.CONNECTED.FULL
                         ? '100vh'
                         : '675px'
                       : '100vh',
@@ -180,12 +171,12 @@ const FrameContainer = styled.div<{
   universalAddress: UniversalAddress | null;
   isWalletMinimised: boolean;
   themeMode: typeof CONSTANTS.THEME.LIGHT | typeof CONSTANTS.THEME.DARK;
-  accountMenuVariant: ButtonDefaultsProps['accountMenuVariant'];
-  modalDefaults?: ModalDefaultsProps;
+  accountMenuVariant: ModalProps['connectedLayout'];
+  modalDefaults?: ModalProps;
 }>`
   position: ${({ universalAddress, accountMenuVariant }) =>
     universalAddress
-      ? accountMenuVariant === 'full'
+      ? accountMenuVariant === CONSTANTS.CONNECTED.FULL
         ? 'fixed'
         : 'absolute'
       : 'fixed'};
@@ -193,9 +184,7 @@ const FrameContainer = styled.div<{
   flex-direction: column;
   background-image: url(${({ modalDefaults }) => modalDefaults?.bgImage});
   background-size: cover;
-  background-color: ${({ themeMode, modalDefaults }) =>
-    modalDefaults?.bgColor ??
-    (themeMode === CONSTANTS.THEME.LIGHT ? '#F5F6F8' : '#17181b')};
+  background-color: var(--pw-int-bg-primary-color);
   border-radius: 10px;
   z-index: 9999;
 
@@ -203,7 +192,7 @@ const FrameContainer = styled.div<{
     isWalletMinimised
       ? '0px'
       : universalAddress
-      ? accountMenuVariant === 'full'
+      ? accountMenuVariant === CONSTANTS.CONNECTED.FULL
         ? '100%'
         : '450px'
       : '100vw'};
@@ -211,21 +200,33 @@ const FrameContainer = styled.div<{
     isWalletMinimised
       ? '0px'
       : universalAddress
-      ? accountMenuVariant === 'full'
+      ? accountMenuVariant === CONSTANTS.CONNECTED.FULL
         ? '100vw'
         : '675px'
       : '100vh'};
   right: ${({ universalAddress, accountMenuVariant }) =>
-    universalAddress ? (accountMenuVariant === 'full' ? '0' : '10px') : '0'};
+    universalAddress
+      ? accountMenuVariant === CONSTANTS.CONNECTED.FULL
+        ? '0'
+        : '10px'
+      : '0'};
   top: ${({ universalAddress, accountMenuVariant }) =>
-    universalAddress ? (accountMenuVariant === 'full' ? '0' : '70px') : '0'};
+    universalAddress
+      ? accountMenuVariant === CONSTANTS.CONNECTED.FULL
+        ? '0'
+        : '70px'
+      : '0'};
 
   @media (max-width: 425px) {
     width: ${({ universalAddress, isWalletMinimised }) =>
       isWalletMinimised ? '0px' : universalAddress ? '96%' : '100%'};
     right: ${({ universalAddress }) => (universalAddress ? '2%' : '0')};
     top: ${({ universalAddress, accountMenuVariant }) =>
-      universalAddress ? (accountMenuVariant === 'full' ? '0' : '8%') : '0'};
+      universalAddress
+        ? accountMenuVariant === CONSTANTS.CONNECTED.FULL
+          ? '0'
+          : '8%'
+        : '0'};
   }
 `;
 
@@ -285,14 +286,12 @@ const FrameLoadingContainer = styled.div<{
 const FrameSubContainer = styled.div<{
   isWalletMinimised: boolean;
   isIframeLoading: boolean;
-  bgColor: string;
 }>`
   display: ${({ isWalletMinimised, isIframeLoading }) =>
     isWalletMinimised || isIframeLoading ? 'none' : 'flex'};
   width: -webkit-fill-available;
   height: -webkit-fill-available;
   flex-direction: column;
-  background-color: ${({ bgColor }) => (bgColor ? bgColor : 'transparent')};
 `;
 
 const AccountContainer = styled.div<{
@@ -376,7 +375,15 @@ const TextContainer = styled.div<{
 `;
 
 const Heading = styled.h1`
-  font-size: 18px;
+  font-size: var(--pw-int-text-heading-xsmall-size);
   font-weight: 500;
   line-height: 27px;
+  color: var(--pw-int-text-primary-color);
+`;
+
+const Description = styled.p`
+  font-size: var(--pw-int-text-body-large-size);
+  line-height: 22px;
+  font-weight: 400;
+  color: var(--pw-int-text-secondary-color);
 `;

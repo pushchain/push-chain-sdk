@@ -5,7 +5,7 @@ import { toHex } from 'viem';
 import {
   usePushChainClient,
   usePushWalletContext,
-} from '@pushprotocol/pushchain-ui-kit';
+} from '../../../../../../../packages/ui-kit';
 
 const MockSignTransaction = () => {
   const { pushChain } = usePushChainClient();

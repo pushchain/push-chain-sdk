@@ -8,7 +8,7 @@ import { mockTransaction } from '../../../common/constants';
 import {
   usePushChainClient,
   usePushWalletContext,
-} from '@pushprotocol/pushchain-ui-kit';
+} from '../../../../../../../packages/ui-kit';
 
 const MockSendTransaction = () => {
   const { pushChain, isLoading, error } = usePushChainClient();
