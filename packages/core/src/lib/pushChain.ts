@@ -57,7 +57,7 @@ export class PushChain {
    * @param universalSigner
    * @param options - Optional settings to configure the SDK instance.
    *   - network: PushChain network to target (e.g., TESTNET, MAINNET).
-   *   - rpcUrl: Custom RPC URLs mapped by chain IDs.
+   *   - rpcUrls: Custom RPC URLs mapped by chain IDs.
    *   - printTraces: Whether to print internal trace logs for debugging.
    *
    * @returns An initialized instance of PushChain.
@@ -66,7 +66,7 @@ export class PushChain {
     universalSigner: UniversalSigner,
     options?: {
       network?: NETWORK;
-      rpcUrl?: Partial<Record<CHAIN, string>>;
+      rpcUrls?: Partial<Record<CHAIN, string>>;
       printTraces?: boolean;
     }
   ) => {
@@ -76,7 +76,7 @@ export class PushChain {
        */
       createUniversalSigner(universalSigner),
       options?.network || NETWORK.TESTNET,
-      options?.rpcUrl || {},
+      options?.rpcUrls || {},
       options?.printTraces || false
     );
     return new PushChain(orchestartor);
