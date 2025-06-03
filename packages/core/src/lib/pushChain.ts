@@ -4,6 +4,29 @@ import { createUniversalSigner } from './universal/signer';
 import { UniversalSigner } from './universal/universal.types';
 import { Utils } from './utils';
 import * as viem from 'viem';
+import { CHAIN_INFO } from './constants/chain';
+
+// Define Push Chain networks as viem chains
+export const pushTestnet = viem.defineChain({
+  id: parseInt(CHAIN_INFO.PUSH_TESTNET.chainId),
+  name: 'Push Testnet',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'nPUSH',
+    symbol: 'nPUSH',
+  },
+  rpcUrls: {
+    default: {
+      http: [CHAIN_INFO.PUSH_TESTNET.defaultRPC],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'Push Testnet Explorer',
+      url: 'https://explorer.dev.push.org/',
+    },
+  },
+});
 
 /**
  * @class PushChain
