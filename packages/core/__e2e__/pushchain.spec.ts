@@ -50,13 +50,13 @@ describe.skip('PushChain (e2e)', () => {
       });
 
       it('should getNMSCAddress', async () => {
-        const result = await pushClient.getNMSCAddress();
+        const result = await pushClient.Universal.getNMSCAddress();
         expect(isAddress(result.address)).toBe(true);
         expect(typeof result.deployed).toBe('boolean');
       });
 
       it('should sendTransaction', async () => {
-        await pushClient.sendTransaction({
+        await pushClient.Universal.sendTransaction({
           target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
           value: BigInt(0),
           data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
@@ -65,7 +65,7 @@ describe.skip('PushChain (e2e)', () => {
           maxPriorityFeePerGas: BigInt(200000000),
           deadline: BigInt(9999999999),
         });
-        const after = await pushClient.getNMSCAddress();
+        const after = await pushClient.Universal.getNMSCAddress();
         expect(after.deployed).toBe(true);
       }, 30000);
     });
@@ -93,13 +93,13 @@ describe.skip('PushChain (e2e)', () => {
       });
 
       it('should getNMSCAddress', async () => {
-        await expect(pushClient.getNMSCAddress()).rejects.toThrow(
+        await expect(pushClient.Universal.getNMSCAddress()).rejects.toThrow(
           'NMSC address cannot be computed for a Push Chain Address'
         );
       });
 
       it('should sendTransaction', async () => {
-        await pushClient.sendTransaction({
+        await pushClient.Universal.sendTransaction({
           target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
           value: BigInt(0),
           data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
@@ -107,7 +107,7 @@ describe.skip('PushChain (e2e)', () => {
           maxFeePerGas: BigInt(50000000000000000),
           maxPriorityFeePerGas: BigInt(200000000),
         });
-        const after = await pushClient.getNMSCAddress();
+        const after = await pushClient.Universal.getNMSCAddress();
         expect(after.deployed).toBe(true);
       }, 30000);
     });
@@ -139,13 +139,13 @@ describe.skip('PushChain (e2e)', () => {
       });
 
       it('should getNMSCAddress', async () => {
-        const result = await pushClient.getNMSCAddress();
+        const result = await pushClient.Universal.getNMSCAddress();
         expect(isAddress(result.address)).toBe(true);
         expect(typeof result.deployed).toBe('boolean');
       });
 
       it('should sendTransaction', async () => {
-        await pushClient.sendTransaction({
+        await pushClient.Universal.sendTransaction({
           target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
           value: BigInt(0),
           data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
@@ -154,7 +154,7 @@ describe.skip('PushChain (e2e)', () => {
           maxPriorityFeePerGas: BigInt(200000000),
           deadline: BigInt(9999999999),
         });
-        const after = await pushClient.getNMSCAddress();
+        const after = await pushClient.Universal.getNMSCAddress();
         expect(after.deployed).toBe(true);
       }, 30000);
     });

@@ -27,23 +27,27 @@ export class PushChain {
   private orchestartor: Orchestrator;
 
   /**
-   * Executes a transaction on Push Chain
+   * Universal namespace containing core transaction and address computation methods
    */
-  sendTransaction: Orchestrator['execute'];
-
-  /**
-   * Computes the NMSC address for the universal signer on Push
-   */
-  getNMSCAddress: Orchestrator['getNMSCAddress'];
+  Universal: {
+    /**
+     * Executes a transaction on Push Chain
+     */
+    sendTransaction: Orchestrator['execute'];
+    /**
+     * Computes the NMSC address for the universal signer on Push
+     */
+    getNMSCAddress: Orchestrator['getNMSCAddress'];
+  };
 
   private constructor(orchestartor: Orchestrator) {
     this.orchestartor = orchestartor;
 
-    // Ensure context is preserved when methods are called externally
-    this.sendTransaction = this.orchestartor.execute.bind(this.orchestartor);
-    this.getNMSCAddress = this.orchestartor.getNMSCAddress.bind(
-      this.orchestartor
-    );
+    // Initialize Universal namespace with bound methods
+    this.Universal = {
+      sendTransaction: this.orchestartor.execute.bind(this.orchestartor),
+      getNMSCAddress: this.orchestartor.getNMSCAddress.bind(this.orchestartor),
+    };
   }
 
   /**
