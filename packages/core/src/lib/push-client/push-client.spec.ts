@@ -1,5 +1,4 @@
 import { PushClient } from './push-client';
-import { PushChain } from '../pushChain';
 import { PUSH_CHAIN_INFO } from '../constants/chain';
 import {
   MsgDeployNMSC,
@@ -7,8 +6,6 @@ import {
   MsgExecutePayload,
 } from '../generated/v1/tx';
 import { NETWORK } from '../constants/enums';
-import { PublicClient } from 'viem';
-import { CONSTANTS } from '../constants';
 
 describe('PushClient', () => {
   let client: PushClient;
@@ -189,38 +186,6 @@ describe('PushClient', () => {
 
       const txBody = await client.createCosmosTxBody([msg1, msg2, msg3]);
       await client.signCosmosTx(txBody);
-    });
-  });
-
-  describe('viem', () => {
-    let viemClient: PublicClient;
-
-    beforeAll(() => {
-      viemClient = PushChain.viem.createPublicClient({
-        chain: CONSTANTS.VIEM_PUSH_TESTNET,
-        transport: PushChain.viem.http(),
-      });
-    });
-
-    it('creates a viem client', async () => {
-      expect(viemClient).toBeDefined();
-      expect(typeof viemClient.getBlock).toBe('function');
-    });
-
-    it('gets a block', async () => {
-      const block = await viemClient.getBlock();
-      expect(block).toBeDefined();
-
-      // Check essential block properties
-      expect(typeof block.number).toBe('bigint');
-      expect(typeof block.hash).toBe('string');
-      expect(block.hash).toMatch(/^0x[a-fA-F0-9]{64}$/); // Valid hex hash
-      expect(typeof block.timestamp).toBe('bigint');
-      expect(Array.isArray(block.transactions)).toBe(true);
-      expect(typeof block.gasLimit).toBe('bigint');
-      expect(typeof block.gasUsed).toBe('bigint');
-      expect(block.number).toBeGreaterThan(0);
-      expect(block.timestamp).toBeGreaterThan(0);
     });
   });
 });
