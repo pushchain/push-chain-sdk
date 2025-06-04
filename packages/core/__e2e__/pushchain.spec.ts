@@ -1,8 +1,8 @@
 import { privateKeyToAccount } from 'viem/accounts';
-import { NETWORK, CHAIN } from '../src/lib/constants/enums';
-import { Hex, isAddress } from 'viem';
+import { NETWORK, CHAIN, LIBRARY } from '../src/lib/constants/enums';
+import { Hex, isAddress, PublicClient } from 'viem';
 import { Keypair } from '@solana/web3.js';
-import { PushChain } from '../src';
+import { CONSTANTS, PushChain } from '../src';
 
 /** CLI COMMANDS
  
@@ -37,11 +37,13 @@ describe.skip('PushChain (e2e)', () => {
 
         const account = privateKeyToAccount(privateKey);
 
-        const universalSigner =
-          await PushChain.utils.signer.toUniversalFromViem(
-            account,
-            originChain
-          );
+        const universalSigner = await PushChain.utils.signer.toUniversal(
+          account,
+          {
+            chain: originChain,
+            library: CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+          }
+        );
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
@@ -50,13 +52,13 @@ describe.skip('PushChain (e2e)', () => {
       });
 
       it('should getNMSCAddress', async () => {
-        const result = await pushClient.getNMSCAddress();
+        const result = await pushClient.Universal.getNMSCAddress();
         expect(isAddress(result.address)).toBe(true);
         expect(typeof result.deployed).toBe('boolean');
       });
 
       it('should sendTransaction', async () => {
-        await pushClient.sendTransaction({
+        await pushClient.Universal.sendTransaction({
           target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
           value: BigInt(0),
           data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
@@ -65,7 +67,7 @@ describe.skip('PushChain (e2e)', () => {
           maxPriorityFeePerGas: BigInt(200000000),
           deadline: BigInt(9999999999),
         });
-        const after = await pushClient.getNMSCAddress();
+        const after = await pushClient.Universal.getNMSCAddress();
         expect(after.deployed).toBe(true);
       }, 30000);
     });
@@ -80,11 +82,13 @@ describe.skip('PushChain (e2e)', () => {
 
         const account = privateKeyToAccount(privateKey);
 
-        const universalSigner =
-          await PushChain.utils.signer.toUniversalFromViem(
-            account,
-            originChain
-          );
+        const universalSigner = await PushChain.utils.signer.toUniversal(
+          account,
+          {
+            chain: originChain,
+            library: CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+          }
+        );
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
@@ -93,13 +97,13 @@ describe.skip('PushChain (e2e)', () => {
       });
 
       it('should getNMSCAddress', async () => {
-        await expect(pushClient.getNMSCAddress()).rejects.toThrow(
+        await expect(pushClient.Universal.getNMSCAddress()).rejects.toThrow(
           'NMSC address cannot be computed for a Push Chain Address'
         );
       });
 
       it('should sendTransaction', async () => {
-        await pushClient.sendTransaction({
+        await pushClient.Universal.sendTransaction({
           target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
           value: BigInt(0),
           data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
@@ -107,7 +111,7 @@ describe.skip('PushChain (e2e)', () => {
           maxFeePerGas: BigInt(50000000000000000),
           maxPriorityFeePerGas: BigInt(200000000),
         });
-        const after = await pushClient.getNMSCAddress();
+        const after = await pushClient.Universal.getNMSCAddress();
         expect(after.deployed).toBe(true);
       }, 30000);
     });
@@ -126,11 +130,13 @@ describe.skip('PushChain (e2e)', () => {
 
         const account = Keypair.fromSecretKey(privateKey);
 
-        const universalSigner =
-          PushChain.utils.signer.toUniversalFromSolanaKeypair(
-            account,
-            originChain
-          );
+        const universalSigner = await PushChain.utils.signer.toUniversal(
+          account,
+          {
+            chain: originChain,
+            library: CONSTANTS.LIBRARY.SOLANA_WEB3,
+          }
+        );
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
@@ -139,13 +145,13 @@ describe.skip('PushChain (e2e)', () => {
       });
 
       it('should getNMSCAddress', async () => {
-        const result = await pushClient.getNMSCAddress();
+        const result = await pushClient.Universal.getNMSCAddress();
         expect(isAddress(result.address)).toBe(true);
         expect(typeof result.deployed).toBe('boolean');
       });
 
       it('should sendTransaction', async () => {
-        await pushClient.sendTransaction({
+        await pushClient.Universal.sendTransaction({
           target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
           value: BigInt(0),
           data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
@@ -154,9 +160,41 @@ describe.skip('PushChain (e2e)', () => {
           maxPriorityFeePerGas: BigInt(200000000),
           deadline: BigInt(9999999999),
         });
-        const after = await pushClient.getNMSCAddress();
+        const after = await pushClient.Universal.getNMSCAddress();
         expect(after.deployed).toBe(true);
       }, 30000);
     });
+  });
+});
+
+describe('viem', () => {
+  let viemClient: PublicClient;
+
+  beforeAll(() => {
+    viemClient = PushChain.viem.createPublicClient({
+      chain: CONSTANTS.VIEM_PUSH_TESTNET,
+      transport: PushChain.viem.http(),
+    });
+  });
+
+  it('creates a viem client', async () => {
+    expect(viemClient).toBeDefined();
+    expect(typeof viemClient.getBlock).toBe('function');
+  });
+
+  it('gets a block', async () => {
+    const block = await viemClient.getBlock();
+    expect(block).toBeDefined();
+
+    // Check essential block properties
+    expect(typeof block.number).toBe('bigint');
+    expect(typeof block.hash).toBe('string');
+    expect(block.hash).toMatch(/^0x[a-fA-F0-9]{64}$/); // Valid hex hash
+    expect(typeof block.timestamp).toBe('bigint');
+    expect(Array.isArray(block.transactions)).toBe(true);
+    expect(typeof block.gasLimit).toBe('bigint');
+    expect(typeof block.gasUsed).toBe('bigint');
+    expect(block.number).toBeGreaterThan(0);
+    expect(block.timestamp).toBeGreaterThan(0);
   });
 });
