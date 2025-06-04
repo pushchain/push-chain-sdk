@@ -9,7 +9,10 @@ import {
   stringToBytes,
 } from 'viem';
 import { CHAIN, NETWORK, VM } from '../constants/enums';
-import { UniversalSigner } from '../universal/universal.types';
+import {
+  UniversalAccount,
+  UniversalSigner,
+} from '../universal/universal.types';
 import { ExecuteParams } from './orchestrator.types';
 import { EvmClient } from '../vm-client/evm-client';
 import { CHAIN_INFO, VM_NAMESPACE } from '../constants/chain';
@@ -662,5 +665,12 @@ export class Orchestrator {
         throw new Error(`Unsupported VM type: ${vm}`);
       }
     }
+  }
+
+  getUOA(): UniversalAccount {
+    return {
+      chain: this.universalSigner.chain,
+      address: this.universalSigner.address,
+    };
   }
 }

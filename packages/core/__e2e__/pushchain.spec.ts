@@ -1,5 +1,5 @@
 import { privateKeyToAccount } from 'viem/accounts';
-import { NETWORK, CHAIN, LIBRARY } from '../src/lib/constants/enums';
+import { NETWORK, CHAIN } from '../src/lib/constants/enums';
 import { Hex, isAddress, PublicClient } from 'viem';
 import { Keypair } from '@solana/web3.js';
 import { CONSTANTS, PushChain } from '../src';
@@ -52,13 +52,20 @@ describe.skip('PushChain (e2e)', () => {
       });
 
       it('should getNMSCAddress', async () => {
-        const result = await pushClient.Universal.getNMSCAddress();
+        const result = await pushClient.universal.account.getUEA();
         expect(isAddress(result.address)).toBe(true);
         expect(typeof result.deployed).toBe('boolean');
       });
 
+      it('should getUOA', () => {
+        const uoa = pushClient.universal.account.getUOA();
+        expect(uoa).toBeDefined();
+        expect(uoa.chain).toBe(originChain);
+        expect(isAddress(uoa.address)).toBe(true);
+      });
+
       it('should sendTransaction', async () => {
-        await pushClient.Universal.sendTransaction({
+        await pushClient.universal.sendTransaction({
           target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
           value: BigInt(0),
           data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
@@ -67,7 +74,7 @@ describe.skip('PushChain (e2e)', () => {
           maxPriorityFeePerGas: BigInt(200000000),
           deadline: BigInt(9999999999),
         });
-        const after = await pushClient.Universal.getNMSCAddress();
+        const after = await pushClient.universal.account.getUEA();
         expect(after.deployed).toBe(true);
       }, 30000);
     });
@@ -97,13 +104,20 @@ describe.skip('PushChain (e2e)', () => {
       });
 
       it('should getNMSCAddress', async () => {
-        await expect(pushClient.Universal.getNMSCAddress()).rejects.toThrow(
+        await expect(pushClient.universal.account.getUEA()).rejects.toThrow(
           'NMSC address cannot be computed for a Push Chain Address'
         );
       });
 
+      it.only('should getUOA', () => {
+        const uoa = pushClient.universal.account.getUOA();
+        expect(uoa).toBeDefined();
+        expect(uoa.chain).toBe(originChain);
+        expect(isAddress(uoa.address)).toBe(true);
+      });
+
       it('should sendTransaction', async () => {
-        await pushClient.Universal.sendTransaction({
+        await pushClient.universal.sendTransaction({
           target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
           value: BigInt(0),
           data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
@@ -111,7 +125,7 @@ describe.skip('PushChain (e2e)', () => {
           maxFeePerGas: BigInt(50000000000000000),
           maxPriorityFeePerGas: BigInt(200000000),
         });
-        const after = await pushClient.Universal.getNMSCAddress();
+        const after = await pushClient.universal.account.getUEA();
         expect(after.deployed).toBe(true);
       }, 30000);
     });
@@ -145,13 +159,20 @@ describe.skip('PushChain (e2e)', () => {
       });
 
       it('should getNMSCAddress', async () => {
-        const result = await pushClient.Universal.getNMSCAddress();
+        const result = await pushClient.universal.account.getUEA();
         expect(isAddress(result.address)).toBe(true);
         expect(typeof result.deployed).toBe('boolean');
       });
 
+      it('should getUOA', () => {
+        const uoa = pushClient.universal.account.getUOA();
+        expect(uoa).toBeDefined();
+        expect(uoa.chain).toBe(originChain);
+        expect(isAddress(uoa.address)).toBe(true);
+      });
+
       it('should sendTransaction', async () => {
-        await pushClient.Universal.sendTransaction({
+        await pushClient.universal.sendTransaction({
           target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
           value: BigInt(0),
           data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
@@ -160,7 +181,7 @@ describe.skip('PushChain (e2e)', () => {
           maxPriorityFeePerGas: BigInt(200000000),
           deadline: BigInt(9999999999),
         });
-        const after = await pushClient.Universal.getNMSCAddress();
+        const after = await pushClient.universal.account.getUEA();
         expect(after.deployed).toBe(true);
       }, 30000);
     });
