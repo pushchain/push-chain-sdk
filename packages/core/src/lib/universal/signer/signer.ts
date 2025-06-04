@@ -9,7 +9,7 @@ import {
 } from 'viem';
 import { createUniversalAccount } from '../account/account';
 import { UniversalSigner } from '../universal.types';
-import { CHAIN } from '../../constants/enums';
+import { CHAIN, LIBRARY } from '../../constants/enums';
 import * as nacl from 'tweetnacl';
 import { Keypair } from '@solana/web3.js';
 
@@ -54,11 +54,11 @@ export function createUniversalSigner({
  * @param {CHAIN} chain - The chain the signer will operate on
  * @returns {Promise<UniversalSigner>} A signer object configured for the specified chain
  */
-export async function toUniversalFromViem(
-  clientOrAccount: WalletClient | Account,
-  chain: CHAIN
+export async function toUniversal(
+  clientOrAccount: WalletClient | Account | Keypair,
+  { chain, library }: { chain: CHAIN; library: LIBRARY }
 ): Promise<UniversalSigner> {
-  let address: `0x${string}`;
+  let address: string;
   let signMessage: (data: Uint8Array) => Promise<Uint8Array>;
   let signTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
   let signTypedData: ({
@@ -73,81 +73,117 @@ export async function toUniversalFromViem(
     message: Record<string, any>;
   }) => Promise<Uint8Array>;
 
-  if ('getAddresses' in clientOrAccount) {
-    // It's a WalletClient
-    address = (await clientOrAccount.getAddresses())[0];
-    signMessage = async (data: Uint8Array) => {
-      const hexSig = await clientOrAccount.signMessage({
-        account: clientOrAccount.account || address,
-        message: { raw: data },
-      });
-      return hexToBytes(hexSig);
-    };
-    signTransaction = async (unsignedTx: Uint8Array) => {
-      const tx = parseTransaction(bytesToHex(unsignedTx));
-      const txHash = await clientOrAccount.signTransaction(tx as never);
-      return hexToBytes(txHash);
-    };
-    signTypedData = async ({
-      domain,
-      types,
-      primaryType,
-      message,
-    }: {
-      domain: TypedDataDomain;
-      types: TypedData;
-      primaryType: string;
-      message: Record<string, any>;
-    }) => {
-      const hexSig = await clientOrAccount.signTypedData({
-        domain,
-        types,
-        primaryType,
-        message,
-        account: clientOrAccount.account || address,
-      });
-      return hexToBytes(hexSig);
-    };
-  } else {
-    // It's an Account
-    if (
-      !clientOrAccount.address ||
-      !clientOrAccount.signMessage ||
-      !clientOrAccount.signTransaction
-    ) {
-      throw new Error('Invalid Account instance: missing required properties');
+  switch (library) {
+    case LIBRARY.ETHEREUM_VIEM: {
+      if ('getAddresses' in clientOrAccount) {
+        // It's a WalletClient
+        address = (await clientOrAccount.getAddresses())[0];
+        signMessage = async (data: Uint8Array) => {
+          const hexSig = await clientOrAccount.signMessage({
+            account: clientOrAccount.account || (address as `0x${string}`),
+            message: { raw: data },
+          });
+          return hexToBytes(hexSig);
+        };
+        signTransaction = async (unsignedTx: Uint8Array) => {
+          const tx = parseTransaction(bytesToHex(unsignedTx));
+          const txHash = await clientOrAccount.signTransaction(tx as never);
+          return hexToBytes(txHash);
+        };
+        signTypedData = async ({
+          domain,
+          types,
+          primaryType,
+          message,
+        }: {
+          domain: TypedDataDomain;
+          types: TypedData;
+          primaryType: string;
+          message: Record<string, any>;
+        }) => {
+          const hexSig = await clientOrAccount.signTypedData({
+            domain,
+            types,
+            primaryType,
+            message,
+            account: clientOrAccount.account || (address as `0x${string}`),
+          });
+          return hexToBytes(hexSig);
+        };
+      } else {
+        // It's an Account
+        const account = clientOrAccount as Account;
+        if (
+          !account.address ||
+          !account.signMessage ||
+          !account.signTransaction
+        ) {
+          throw new Error(
+            'Invalid Account instance: missing required properties'
+          );
+        }
+        address = account.address;
+        signMessage = async (data: Uint8Array) => {
+          const hexSig = await account.signMessage({
+            message: { raw: data },
+          });
+          return hexToBytes(hexSig);
+        };
+        signTransaction = async (unsignedTx: Uint8Array) => {
+          const tx = parseTransaction(bytesToHex(unsignedTx));
+          const hexSig = await account.signTransaction(tx);
+          return hexToBytes(hexSig);
+        };
+        signTypedData = async ({
+          domain,
+          types,
+          primaryType,
+          message,
+        }: {
+          domain: TypedDataDomain;
+          types: TypedData;
+          primaryType: string;
+          message: Record<string, any>;
+        }) => {
+          const hexSig = await account.signTypedData({
+            domain,
+            types,
+            primaryType,
+            message,
+          });
+          return hexToBytes(hexSig);
+        };
+      }
+      break;
     }
-    address = clientOrAccount.address;
-    signMessage = async (data: Uint8Array) => {
-      const hexSig = await clientOrAccount.signMessage({
-        message: { raw: data },
-      });
-      return hexToBytes(hexSig);
-    };
-    signTransaction = async (unsignedTx: Uint8Array) => {
-      const tx = parseTransaction(bytesToHex(unsignedTx));
-      const hexSig = await clientOrAccount.signTransaction(tx);
-      return hexToBytes(hexSig);
-    };
-    signTypedData = async ({
-      domain,
-      types,
-      primaryType,
-      message,
-    }: {
-      domain: TypedDataDomain;
-      types: TypedData;
-      primaryType: string;
-      message: Record<string, any>;
-    }) => {
-      const hexSig = await clientOrAccount.signTypedData({
-        domain,
-        types,
-        primaryType,
-        message,
-      });
-      return hexToBytes(hexSig);
-    };
+
+    case LIBRARY.SOLANA_WEB3: {
+      // It's a Solana Keypair
+      const keypair = clientOrAccount as Keypair;
+      if (
+        chain !== CHAIN.SOLANA_MAINNET &&
+        chain !== CHAIN.SOLANA_TESTNET &&
+        chain !== CHAIN.SOLANA_DEVNET
+      ) {
+        throw new Error('Invalid chain for Solana Keypair');
+      }
+
+      address = keypair.publicKey.toBase58();
+      signMessage = async (data: Uint8Array) => {
+        return nacl.sign.detached(data, keypair.secretKey);
+      };
+      signTransaction = async (unsignedTx: Uint8Array) => {
+        return nacl.sign.detached(unsignedTx, keypair.secretKey);
+      };
+      signTypedData = async () => {
+        throw new Error('Typed data signing is not supported for Solana');
+      };
+      break;
+    }
+
+    default: {
+      throw new Error(`Unsupported library: ${library}`);
+    }
   }
 
   const universalSigner: UniversalSigner = {
@@ -156,37 +192,6 @@ export async function toUniversalFromViem(
     signMessage,
     signTransaction,
     signTypedData,
-  };
-  return createUniversalSigner(universalSigner);
-}
-
-/**
- * Creates a UniversalSigner from a Solana Keypair.
- *
- * @param {Keypair} keypair - The Solana Keypair to create the signer from
- * @param {CHAIN} chain - The chain the signer will operate on (should be a Solana chain)
- * @returns {UniversalSigner} A signer object configured for Solana operations
- */
-export function toUniversalFromSolanaKeypair(
-  keypair: Keypair,
-  chain: CHAIN
-): UniversalSigner {
-  if (
-    chain !== CHAIN.SOLANA_MAINNET &&
-    chain !== CHAIN.SOLANA_TESTNET &&
-    chain !== CHAIN.SOLANA_DEVNET
-  ) {
-    throw new Error('Invalid chain for Solana Keypair');
-  }
-  const universalSigner: UniversalSigner = {
-    address: keypair.publicKey.toBase58(),
-    chain,
-    signMessage: async (data: Uint8Array) => {
-      return nacl.sign.detached(data, keypair.secretKey);
-    },
-    signTransaction: async (unsignedTx: Uint8Array) => {
-      return nacl.sign.detached(unsignedTx, keypair.secretKey);
-    },
   };
   return createUniversalSigner(universalSigner);
 }

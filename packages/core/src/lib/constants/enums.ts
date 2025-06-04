@@ -35,3 +35,8 @@ export enum VM {
   EVM = 'EVM',
   SVM = 'SVM',
 }
+
+export enum LIBRARY {
+  ETHEREUM_VIEM = 'viem',
+  SOLANA_WEB3 = 'solana-web3',
+}

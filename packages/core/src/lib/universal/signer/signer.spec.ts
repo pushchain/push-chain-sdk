@@ -1,9 +1,6 @@
-import {
-  createUniversalSigner,
-  toUniversalFromViem,
-  toUniversalFromSolanaKeypair,
-} from './signer';
-import { CHAIN } from '../../constants/enums';
+import { createUniversalSigner } from './signer';
+import { PushChain } from '../../pushChain';
+import { CHAIN, LIBRARY } from '../../constants/enums';
 import {
   createWalletClient,
   http,
@@ -36,7 +33,7 @@ describe('Universal Account Utilities', () => {
     });
   });
 
-  describe('toUniversalFromViem', () => {
+  describe('toUniversal (viem)', () => {
     const pk = generatePrivateKey();
     const account = privateKeyToAccount(pk);
     const client = createWalletClient({
@@ -46,7 +43,10 @@ describe('Universal Account Utilities', () => {
     });
 
     it('wraps a viem WalletClient into a UniversalSigner', async () => {
-      const signer = await toUniversalFromViem(client, CHAIN.ETHEREUM_SEPOLIA);
+      const signer = await PushChain.utils.signer.toUniversal(client, {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+        library: LIBRARY.ETHEREUM_VIEM,
+      });
 
       expect(signer.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
       expect(signer.address).toBe(account.address);
@@ -75,7 +75,10 @@ describe('Universal Account Utilities', () => {
     });
 
     it('wraps a viem Account into a UniversalSigner', async () => {
-      const signer = await toUniversalFromViem(account, CHAIN.ETHEREUM_SEPOLIA);
+      const signer = await PushChain.utils.signer.toUniversal(account, {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+        library: LIBRARY.ETHEREUM_VIEM,
+      });
 
       expect(signer.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
       expect(signer.address).toBe(account.address);
@@ -109,21 +112,24 @@ describe('Universal Account Utilities', () => {
       };
 
       await expect(
-        toUniversalFromViem(invalidAccount as any, CHAIN.ETHEREUM_SEPOLIA)
+        PushChain.utils.signer.toUniversal(invalidAccount as any, {
+          chain: CHAIN.ETHEREUM_SEPOLIA,
+          library: LIBRARY.ETHEREUM_VIEM,
+        })
       ).rejects.toThrow(
         'Invalid Account instance: missing required properties'
       );
     });
   });
 
-  describe('toUniversalFromSolanaKeypair', () => {
+  describe('toUniversal (solana)', () => {
     const keypair = Keypair.generate();
 
-    it('creates a valid UniversalSigner for Solana', () => {
-      const signer = toUniversalFromSolanaKeypair(
-        keypair,
-        CHAIN.SOLANA_TESTNET
-      );
+    it('creates a valid UniversalSigner for Solana', async () => {
+      const signer = await PushChain.utils.signer.toUniversal(keypair, {
+        chain: CHAIN.SOLANA_TESTNET,
+        library: LIBRARY.SOLANA_WEB3,
+      });
 
       expect(signer.chain).toBe(CHAIN.SOLANA_TESTNET);
       expect(signer.address).toBe(keypair.publicKey.toBase58());
@@ -131,17 +137,20 @@ describe('Universal Account Utilities', () => {
       expect(typeof signer.signTransaction).toBe('function');
     });
 
-    it('throws error for non-Solana chain', () => {
-      expect(() =>
-        toUniversalFromSolanaKeypair(keypair, CHAIN.ETHEREUM_SEPOLIA)
-      ).toThrow('Invalid chain for Solana Keypair');
+    it('throws error for non-Solana chain', async () => {
+      await expect(
+        PushChain.utils.signer.toUniversal(keypair, {
+          chain: CHAIN.ETHEREUM_SEPOLIA,
+          library: LIBRARY.SOLANA_WEB3,
+        })
+      ).rejects.toThrow('Invalid chain for Solana Keypair');
     });
 
     it('signs messages correctly', async () => {
-      const signer = toUniversalFromSolanaKeypair(
-        keypair,
-        CHAIN.SOLANA_MAINNET
-      );
+      const signer = await PushChain.utils.signer.toUniversal(keypair, {
+        chain: CHAIN.SOLANA_MAINNET,
+        library: LIBRARY.SOLANA_WEB3,
+      });
 
       const msg = new TextEncoder().encode('test message');
       const sig = await signer.signMessage(msg);
@@ -150,10 +159,10 @@ describe('Universal Account Utilities', () => {
     });
 
     it('signs transactions correctly', async () => {
-      const signer = toUniversalFromSolanaKeypair(
-        keypair,
-        CHAIN.SOLANA_MAINNET
-      );
+      const signer = await PushChain.utils.signer.toUniversal(keypair, {
+        chain: CHAIN.SOLANA_MAINNET,
+        library: LIBRARY.SOLANA_WEB3,
+      });
 
       const tx = new TextEncoder().encode('test transaction');
       const sig = await signer.signTransaction(tx);

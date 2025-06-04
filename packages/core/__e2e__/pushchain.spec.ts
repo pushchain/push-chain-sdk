@@ -1,5 +1,5 @@
 import { privateKeyToAccount } from 'viem/accounts';
-import { NETWORK, CHAIN } from '../src/lib/constants/enums';
+import { NETWORK, CHAIN, LIBRARY } from '../src/lib/constants/enums';
 import { Hex, isAddress, PublicClient } from 'viem';
 import { Keypair } from '@solana/web3.js';
 import { CONSTANTS, PushChain } from '../src';
@@ -37,11 +37,13 @@ describe.skip('PushChain (e2e)', () => {
 
         const account = privateKeyToAccount(privateKey);
 
-        const universalSigner =
-          await PushChain.utils.signer.toUniversalFromViem(
-            account,
-            originChain
-          );
+        const universalSigner = await PushChain.utils.signer.toUniversal(
+          account,
+          {
+            chain: originChain,
+            library: CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+          }
+        );
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
@@ -80,11 +82,13 @@ describe.skip('PushChain (e2e)', () => {
 
         const account = privateKeyToAccount(privateKey);
 
-        const universalSigner =
-          await PushChain.utils.signer.toUniversalFromViem(
-            account,
-            originChain
-          );
+        const universalSigner = await PushChain.utils.signer.toUniversal(
+          account,
+          {
+            chain: originChain,
+            library: CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+          }
+        );
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
@@ -126,11 +130,13 @@ describe.skip('PushChain (e2e)', () => {
 
         const account = Keypair.fromSecretKey(privateKey);
 
-        const universalSigner =
-          PushChain.utils.signer.toUniversalFromSolanaKeypair(
-            account,
-            originChain
-          );
+        const universalSigner = await PushChain.utils.signer.toUniversal(
+          account,
+          {
+            chain: originChain,
+            library: CONSTANTS.LIBRARY.SOLANA_WEB3,
+          }
+        );
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
