@@ -28,7 +28,7 @@ const PushWalletConfigDefault: ProviderConfigProps = {
   },
 };
 
-export const PushWalletProvider: FC<PushWalletProviderProps> = ({
+export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
   config,
   app,
   themeMode = CONSTANTS.THEME.DARK,

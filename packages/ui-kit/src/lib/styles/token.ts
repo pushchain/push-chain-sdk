@@ -80,12 +80,14 @@ export const lightThemeDefault = {
   '--pw-int-bg-primary-color': '#F5F6F8',
   '--pw-int-text-primary-color': '#17181B',
   '--pw-int-text-secondary-color': '#313338',
+  '--pw-int-brand-primary-color': '#CF59E2',
 };
 
 export const darkThemeDefault = {
   '--pw-int-bg-primary-color': '#17181B',
   '--pw-int-text-primary-color': '#F5F6F8',
   '--pw-int-text-secondary-color': '#C4CBD5',
+  '--pw-int-brand-primary-color': '#D548EC',
 };
 
 export const buttonThemeDefault = {

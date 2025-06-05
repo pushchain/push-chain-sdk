@@ -19,7 +19,7 @@ type PushUniversalAccountButtonProps = {
 
 const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
   uid = 'default',
-  connectButtonText = 'Connect Push Wallet',
+  connectButtonText = 'Connect Account',
   loadingComponent,
   modalAppOverride,
   loginAppOverride,

@@ -5,7 +5,10 @@ import { centerMaskString } from '../../../helpers';
 import { CONSTANTS, createUniversalAccount } from '@pushchain/devnet';
 import { TransactionSnippet } from '../../../common/components';
 import { mockTransaction } from '../../../common/constants';
-import { usePushChainClient, usePushWalletContext } from '@pushchain/ui-kit';
+import {
+  usePushChainClient,
+  usePushWalletContext,
+} from '../../../../../../../packages/ui-kit';
 
 const MockSendTransaction = () => {
   const { pushChain, isLoading, error } = usePushChainClient();
