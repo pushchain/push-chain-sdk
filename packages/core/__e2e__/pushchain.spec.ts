@@ -193,7 +193,7 @@ describe('viem', () => {
 
   beforeAll(() => {
     viemClient = PushChain.viem.createPublicClient({
-      chain: CONSTANTS.VIEM_PUSH_TESTNET,
+      chain: CONSTANTS.VIEM_PUSH_TESTNET_DONUT,
       transport: PushChain.viem.http(),
     });
   });
