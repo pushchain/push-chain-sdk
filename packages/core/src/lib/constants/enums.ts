@@ -3,9 +3,9 @@
  * Determines the RPC endpoints, contract addresses, and network context
  * for interacting with Push Chain.
  */
-export enum NETWORK {
+export enum PUSH_NETWORK {
   MAINNET = 'MAINNET',
-  TESTNET = 'TESTNET',
+  TESTNET_DONUT = 'TESTNET_DONUT',
   LOCALNET = 'LOCALNET',
 }
 
@@ -15,7 +15,7 @@ export enum NETWORK {
 export enum CHAIN {
   // Push
   PUSH_MAINNET = 'PUSH_MAINNET',
-  PUSH_TESTNET = 'PUSH_TESTNET',
+  PUSH_TESTNET_DONUT = 'PUSH_TESTNET_DONUT',
   PUSH_LOCALNET = 'PUSH_LOCALNET',
 
   // Ethereum

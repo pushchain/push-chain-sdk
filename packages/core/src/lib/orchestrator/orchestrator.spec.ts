@@ -1,5 +1,5 @@
 import { Orchestrator } from './orchestrator';
-import { CHAIN, LIBRARY, NETWORK } from '../constants/enums';
+import { CHAIN, LIBRARY, PUSH_NETWORK } from '../constants/enums';
 import { UniversalSigner } from '../universal/universal.types';
 import { Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -37,7 +37,10 @@ describe('Orchestrator', () => {
         library: LIBRARY.ETHEREUM_VIEM,
       });
 
-      const orchestrator = new Orchestrator(ethSepoliaSigner, NETWORK.TESTNET);
+      const orchestrator = new Orchestrator(
+        ethSepoliaSigner,
+        PUSH_NETWORK.TESTNET_DONUT
+      );
       const txHash = await orchestrator['lockFee'](BigInt(1)); // 0.00000001 USDC
       console.log('lockFee txHash:', txHash);
       expect(txHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
@@ -68,7 +71,7 @@ describe('Orchestrator', () => {
 
       const orchestrator = new Orchestrator(
         solanaDevnetSigner,
-        NETWORK.TESTNET
+        PUSH_NETWORK.TESTNET_DONUT
       );
 
       const amount = BigInt(100); // 0.000001 USDC
@@ -82,7 +85,7 @@ describe('Orchestrator', () => {
   });
 
   describe('computeExecutionHash', () => {
-    const orc = new Orchestrator(mockSigner, NETWORK.TESTNET);
+    const orc = new Orchestrator(mockSigner, PUSH_NETWORK.TESTNET_DONUT);
     const expectedHash =
       '0x861bf096806b54e87be2ff4480c2568e4d90161c8c9f962e392b8a7ae4f96aea';
     it('should return the expected Hash', () => {

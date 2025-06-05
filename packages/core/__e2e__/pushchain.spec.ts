@@ -1,5 +1,5 @@
 import { privateKeyToAccount } from 'viem/accounts';
-import { NETWORK, CHAIN } from '../src/lib/constants/enums';
+import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
 import { Hex, isAddress, PublicClient } from 'viem';
 import { Keypair } from '@solana/web3.js';
 import { CONSTANTS, PushChain } from '../src';
@@ -24,7 +24,7 @@ TO DECODE TX
 
  */
 describe.skip('PushChain (e2e)', () => {
-  const pushNetwork = NETWORK.LOCALNET;
+  const pushNetwork = PUSH_NETWORK.LOCALNET;
 
   describe('EVM signer', () => {
     describe(`ORIGIN CHAIN: ${CHAIN.ETHEREUM_SEPOLIA}`, () => {

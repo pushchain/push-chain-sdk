@@ -32,7 +32,7 @@ export const CHAIN_INFO: Record<
     vm: VM.EVM,
     defaultRPC: '',
   },
-  [CHAIN.PUSH_TESTNET]: {
+  [CHAIN.PUSH_TESTNET_DONUT]: {
     chainId: '9000',
     vm: VM.EVM,
     defaultRPC: 'https://evm.pn1.dev.push.org',
@@ -82,7 +82,7 @@ export const CHAIN_INFO: Record<
  * Extra required info regarding Push Chain
  */
 export const PUSH_CHAIN_INFO: Record<
-  CHAIN.PUSH_MAINNET | CHAIN.PUSH_TESTNET | CHAIN.PUSH_LOCALNET,
+  CHAIN.PUSH_MAINNET | CHAIN.PUSH_TESTNET_DONUT | CHAIN.PUSH_LOCALNET,
   (typeof CHAIN_INFO)[CHAIN.PUSH_MAINNET] & {
     denom: string;
     tendermintRpc: string;
@@ -105,8 +105,8 @@ export const PUSH_CHAIN_INFO: Record<
     pushToUsdcNumerator: BigInt(1e7), // 0.1 USDC
     pushToUsdcDenominator: BigInt(1e18),
   },
-  [CHAIN.PUSH_TESTNET]: {
-    ...CHAIN_INFO[CHAIN.PUSH_TESTNET],
+  [CHAIN.PUSH_TESTNET_DONUT]: {
+    ...CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT],
     denom: 'npush',
     tendermintRpc: 'https://pn1.dev.push.org',
     prefix: 'push',

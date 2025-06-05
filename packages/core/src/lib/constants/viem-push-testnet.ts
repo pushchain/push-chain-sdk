@@ -3,7 +3,7 @@ import * as viem from 'viem';
 
 // Define Push Chain networks as viem chains
 export const VIEM_PUSH_TESTNET = viem.defineChain({
-  id: parseInt(CHAIN_INFO.PUSH_TESTNET.chainId),
+  id: parseInt(CHAIN_INFO.PUSH_TESTNET_DONUT.chainId),
   name: 'Push Testnet',
   nativeCurrency: {
     decimals: 18,
@@ -12,7 +12,7 @@ export const VIEM_PUSH_TESTNET = viem.defineChain({
   },
   rpcUrls: {
     default: {
-      http: [CHAIN_INFO.PUSH_TESTNET.defaultRPC],
+      http: [CHAIN_INFO.PUSH_TESTNET_DONUT.defaultRPC],
     },
   },
   blockExplorers: {

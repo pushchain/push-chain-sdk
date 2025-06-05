@@ -1,9 +1,9 @@
-import { CHAIN, LIBRARY, NETWORK } from './enums';
+import { CHAIN, LIBRARY, PUSH_NETWORK } from './enums';
 import { VIEM_PUSH_TESTNET } from './viem-push-testnet';
 
 // NOTE - Only include enums & constants which need to be exported to end user.
 export const CONSTANTS = {
-  NETWORK,
+  PUSH_NETWORK,
   CHAIN,
   VIEM_PUSH_TESTNET,
   LIBRARY,

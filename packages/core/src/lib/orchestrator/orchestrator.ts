@@ -8,7 +8,7 @@ import {
   bytesToHex,
   stringToBytes,
 } from 'viem';
-import { CHAIN, NETWORK, VM } from '../constants/enums';
+import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
 import {
   UniversalAccount,
   UniversalSigner,
@@ -37,15 +37,15 @@ export class Orchestrator {
 
   constructor(
     private readonly universalSigner: UniversalSigner,
-    pushNetwork: NETWORK,
+    pushNetwork: PUSH_NETWORK,
     private readonly rpcUrl: Partial<Record<CHAIN, string>> = {},
     private readonly printTraces = false
   ) {
     const pushChain =
-      pushNetwork === NETWORK.MAINNET
+      pushNetwork === PUSH_NETWORK.MAINNET
         ? CHAIN.PUSH_MAINNET
-        : pushNetwork === NETWORK.TESTNET
-        ? CHAIN.PUSH_TESTNET
+        : pushNetwork === PUSH_NETWORK.TESTNET_DONUT
+        ? CHAIN.PUSH_TESTNET_DONUT
         : CHAIN.PUSH_LOCALNET;
     const pushChainRPC =
       this.rpcUrl[pushChain] || CHAIN_INFO[pushChain].defaultRPC;
@@ -81,7 +81,7 @@ export class Orchestrator {
     if (
       isTestnet &&
       this.pushClient.pushChainInfo.chainId !==
-        CHAIN_INFO[CHAIN.PUSH_TESTNET].chainId
+        CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId
     ) {
       throw new Error('Testnet chains can only interact with Push Testnet');
     }
@@ -468,13 +468,13 @@ export class Orchestrator {
    * Checks if the given chain belongs to the Push Chain ecosystem.
    * Used to differentiate logic for Push-native interactions vs external chains.
    *
-   * @param chain - The chain identifier (e.g., PUSH_MAINNET, PUSH_TESTNET)
+   * @param chain - The chain identifier (e.g., PUSH_MAINNET, PUSH_TESTNET_DONUT)
    * @returns True if the chain is a Push chain, false otherwise.
    */
   private isPushChain(chain: CHAIN): boolean {
     return (
       chain === CHAIN.PUSH_MAINNET ||
-      chain === CHAIN.PUSH_TESTNET ||
+      chain === CHAIN.PUSH_TESTNET_DONUT ||
       chain === CHAIN.PUSH_LOCALNET
     );
   }

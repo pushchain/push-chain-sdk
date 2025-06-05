@@ -1,4 +1,4 @@
-import { CHAIN, NETWORK } from './constants/enums';
+import { CHAIN, PUSH_NETWORK } from './constants/enums';
 import { Orchestrator } from './orchestrator/orchestrator';
 import { createUniversalSigner } from './universal/signer';
 import { UniversalSigner } from './universal/universal.types';
@@ -64,7 +64,7 @@ export class PushChain {
    *
    * @param universalSigner
    * @param options - Optional settings to configure the SDK instance.
-   *   - network: PushChain network to target (e.g., TESTNET, MAINNET).
+   *   - network: PushChain network to target (e.g., TESTNET_DONUT, MAINNET).
    *   - rpcUrls: Custom RPC URLs mapped by chain IDs.
    *   - printTraces: Whether to print internal trace logs for debugging.
    *
@@ -73,7 +73,7 @@ export class PushChain {
   static initialize = async (
     universalSigner: UniversalSigner,
     options?: {
-      network?: NETWORK;
+      network?: PUSH_NETWORK;
       rpcUrls?: Partial<Record<CHAIN, string>>;
       printTraces?: boolean;
     }
@@ -83,7 +83,7 @@ export class PushChain {
        * Ensures the signer conforms to the UniversalSigner interface.
        */
       createUniversalSigner(universalSigner),
-      options?.network || NETWORK.TESTNET,
+      options?.network || PUSH_NETWORK.TESTNET_DONUT,
       options?.rpcUrls || {},
       options?.printTraces || false
     );

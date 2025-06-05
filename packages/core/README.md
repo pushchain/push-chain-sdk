@@ -143,7 +143,7 @@ const pushChain = await PushChain.initialize(signer);
 | Param             | Type              | Default   | Description                                                                    |
 | ----------------- | ----------------- | --------- | ------------------------------------------------------------------------------ |
 | `universalSigner` | `UniversalSigner` | `null`    | Required for sending transactions or verifying signatures on the source chain. |
-| `options.network` | `NETWORK`         | `testnet` | Push Chain environment. Can be `testnet`, or `mainnet`.                        |
+| `options.network` | `PUSH_NETWORK`         | `testnet` | Push Chain environment. Can be `testnet`, or `mainnet`.                        |
 
 ---
 
