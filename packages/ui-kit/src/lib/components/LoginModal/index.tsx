@@ -1,4 +1,4 @@
-import React, { FC } from 'react';
+import React, { FC, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { CrossIcon, Spinner } from '../../components/common';
 import { CONSTANTS, WALLET_CONFIG_URL } from '../../constants';
@@ -39,11 +39,27 @@ const LoginModal: FC<LoginModalProps> = ({
   config,
 }) => {
   const { modal } = config;
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setMinimiseWallet(!isWalletMinimised);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   return (
     <>
       {isWalletVisible ? (
         <FrameContainer
+          ref={containerRef}
           isWalletMinimised={isWalletMinimised}
           universalAddress={universalAddress}
           themeMode={themeMode ? themeMode : CONSTANTS.THEME.DARK}
@@ -82,9 +98,7 @@ const LoginModal: FC<LoginModalProps> = ({
                   <CrossIcon
                     height="18px"
                     width="18px"
-                    color={
-                      themeMode === CONSTANTS.THEME.LIGHT ? '#FFF' : '#000'
-                    }
+                    color="var(--pw-int-text-primary-color)"
                   />
                 </DashButtonContainer>
               ) : (
@@ -96,9 +110,7 @@ const LoginModal: FC<LoginModalProps> = ({
                   <CrossIcon
                     height="20px"
                     width="20px"
-                    color={
-                      themeMode === CONSTANTS.THEME.LIGHT ? '#000' : '#FFF'
-                    }
+                    color="var(--pw-int-text-primary-color)"
                   />
                 </CloseButtonContainer>
               )}
@@ -174,18 +186,14 @@ const FrameContainer = styled.div<{
   accountMenuVariant: ModalProps['connectedLayout'];
   modalDefaults?: ModalProps;
 }>`
-  position: ${({ universalAddress, accountMenuVariant }) =>
-    universalAddress
-      ? accountMenuVariant === CONSTANTS.CONNECTED.FULL
-        ? 'fixed'
-        : 'absolute'
-      : 'fixed'};
+  position: fixed;
   display: flex;
   flex-direction: column;
   background-image: url(${({ modalDefaults }) => modalDefaults?.bgImage});
   background-size: cover;
   background-color: var(--pw-int-bg-primary-color);
-  border-radius: 10px;
+  border-radius: ${({ universalAddress }) =>
+    universalAddress ? '10px' : 'unset'};
   z-index: 9999;
 
   width: ${({ universalAddress, isWalletMinimised, accountMenuVariant }) =>
@@ -243,11 +251,9 @@ const DashButtonContainer = styled.div`
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border-radius: 1000px;
   height: 20px;
   width: 20px;
   padding: 2px;
-  background-color: #ff0000;
 `;
 
 const LoadingTextContainer = styled.div`
@@ -277,10 +283,8 @@ const FrameLoadingContainer = styled.div<{
   flex-direction: column;
   display: flex;
   padding: 8px;
-  color: ${({ themeMode }) =>
-    themeMode === CONSTANTS.THEME.LIGHT ? '#17181b' : '#F5F6F8'};
-  background-color: ${({ themeMode }) =>
-    themeMode === CONSTANTS.THEME.LIGHT ? '#F5F6F8' : '#17181b'};
+  color: var(--pw-int-text-primary-color);
+  background-color: var(--pw-int-bg-primary-color);
 `;
 
 const FrameSubContainer = styled.div<{

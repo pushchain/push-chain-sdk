@@ -7,9 +7,10 @@ import { RouterContainer } from './common/components';
 import {
   AppMetadata,
   CONSTANTS,
-  PushWalletProvider,
+  PushUniversalWalletProvider,
   ProviderConfigProps,
-} from '@pushchain/ui-kit';
+  usePushWalletContext,
+} from '../../../../packages/ui-kit';
 import Navbar from './components/Navbar';
 
 const GlobalStyle = createGlobalStyle`
@@ -40,7 +41,7 @@ const App: React.FC = () => {
   const { isDarkMode } = useDarkMode();
 
   const walletConfig: ProviderConfigProps = {
-    env: CONSTANTS.ENV.DEVNET,
+    env: CONSTANTS.ENV.LOCAL,
     login: {
       email: true,
       google: true,
@@ -67,7 +68,7 @@ const App: React.FC = () => {
   return (
     <ThemeProvider theme={isDarkMode ? themeConfig.dark : themeConfig.light}>
       <GlobalStyle />
-      <PushWalletProvider
+      <PushUniversalWalletProvider
         config={walletConfig}
         app={appMetadata}
         themeMode={CONSTANTS.THEME.LIGHT}
@@ -76,7 +77,7 @@ const App: React.FC = () => {
           <Navbar />
           <RouterContainer />
         </Router>
-      </PushWalletProvider>
+      </PushUniversalWalletProvider>
     </ThemeProvider>
   );
 };

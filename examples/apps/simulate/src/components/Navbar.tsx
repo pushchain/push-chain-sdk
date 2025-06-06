@@ -6,7 +6,7 @@ import { Box } from 'shared-components';
 import {
   PushUniversalAccountButton,
   usePushWalletContext,
-} from '@pushchain/ui-kit';
+} from '../../../../../packages/ui-kit';
 
 const Navbar = () => {
   const { isDarkMode, enable, disable } = useDarkMode();

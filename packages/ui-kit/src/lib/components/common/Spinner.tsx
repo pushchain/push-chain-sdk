@@ -20,16 +20,16 @@ const Container = styled.div`
   animation: ${spin} 1s linear infinite;
   width: 20px;
   height: 20px;
-  color: #d548ec;
+  color: var(--pw-int-brand-primary-color);
 `;
 
 // Spinner functional component
 const Spinner = () => {
-    return (
-        <Container>
-            <Ellipse />
-        </Container>
-    );
+  return (
+    <Container>
+      <Ellipse />
+    </Container>
+  );
 };
 
 export default Spinner;
