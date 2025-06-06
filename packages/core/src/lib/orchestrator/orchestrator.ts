@@ -479,7 +479,11 @@ export class Orchestrator {
    * @returns True if the chain is a Push chain, false otherwise.
    */
   private isPushChain(chain: CHAIN): boolean {
-    return chain === CHAIN.PUSH_MAINNET || chain === CHAIN.PUSH_TESTNET_DONUT;
+    return (
+      chain === CHAIN.PUSH_MAINNET ||
+      chain === CHAIN.PUSH_TESTNET_DONUT ||
+      chain === CHAIN.PUSH_LOCALNET
+    );
   }
 
   /**

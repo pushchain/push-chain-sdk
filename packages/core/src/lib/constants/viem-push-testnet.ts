@@ -1,9 +1,10 @@
 import { CHAIN_INFO } from './chain';
 import * as viem from 'viem';
+import { CHAIN } from './enums';
 
 // Define Push Chain networks as viem chains
 export const VIEM_PUSH_TESTNET_DONUT = viem.defineChain({
-  id: parseInt(CHAIN_INFO.PUSH_TESTNET_DONUT.chainId),
+  id: parseInt(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId),
   name: 'Push Testnet',
   nativeCurrency: {
     decimals: 18,
@@ -12,7 +13,7 @@ export const VIEM_PUSH_TESTNET_DONUT = viem.defineChain({
   },
   rpcUrls: {
     default: {
-      http: [CHAIN_INFO.PUSH_TESTNET_DONUT.defaultRPC],
+      http: [CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]],
     },
   },
   blockExplorers: {
