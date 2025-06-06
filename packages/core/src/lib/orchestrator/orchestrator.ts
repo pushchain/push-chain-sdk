@@ -59,7 +59,7 @@ export class Orchestrator {
    * Executes an interaction on Push Chain
    */
   async execute(execute: ExecuteParams): Promise<string> {
-    const chain = this.universalSigner.chain;
+    const chain = this.universalSigner.account.chain;
 
     if (this.printTraces) {
       console.log(
@@ -265,7 +265,7 @@ export class Orchestrator {
     amount: bigint, // USD with 8 decimals
     executionHash: string = zeroHash
   ): Promise<string> {
-    const chain = this.universalSigner.chain;
+    const chain = this.universalSigner.account.chain;
     const { lockerContract, vm, defaultRPC } = CHAIN_INFO[chain];
 
     if (!lockerContract) {
@@ -317,7 +317,7 @@ export class Orchestrator {
           signer: this.universalSigner,
           accounts: {
             locker: lockerPda,
-            user: new PublicKey(this.universalSigner.address),
+            user: new PublicKey(this.universalSigner.account.address),
             systemProgram: SystemProgram.programId,
           },
         });
@@ -342,7 +342,7 @@ export class Orchestrator {
     verifyingContract: `0x${string}`,
     version?: string
   ) {
-    const chain = this.universalSigner.chain;
+    const chain = this.universalSigner.account.chain;
     const { vm } = CHAIN_INFO[chain];
 
     switch (vm) {
@@ -398,7 +398,7 @@ export class Orchestrator {
     crosschainPayload?: CrossChainPayload,
     signature?: Uint8Array
   ): Promise<string> {
-    const { chain, address } = this.universalSigner;
+    const { chain, address } = this.universalSigner.account;
     const { vm, chainId } = CHAIN_INFO[chain];
 
     const accountId: AccountId = {
@@ -589,7 +589,7 @@ export class Orchestrator {
     address: `0x${string}`;
     deployed: boolean;
   }> {
-    const { chain, address } = this.universalSigner;
+    const { chain, address } = this.universalSigner.account;
     const { vm, chainId } = CHAIN_INFO[chain];
 
     if (this.isPushChain(chain)) {
@@ -641,7 +641,7 @@ export class Orchestrator {
    * @returns NMSC current nonce
    */
   private async getNMSCNonce(address: `0x${string}`): Promise<bigint> {
-    const chain = this.universalSigner.chain;
+    const chain = this.universalSigner.account.chain;
     const { vm } = CHAIN_INFO[chain];
 
     switch (vm) {
@@ -669,8 +669,8 @@ export class Orchestrator {
 
   getUOA(): UniversalAccount {
     return {
-      chain: this.universalSigner.chain,
-      address: this.universalSigner.address,
+      chain: this.universalSigner.account.chain,
+      address: this.universalSigner.account.address,
     };
   }
 }

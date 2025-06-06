@@ -30,10 +30,10 @@ export class PushChain {
    * Universal namespace containing core transaction and address computation methods
    */
   universal: {
-    account: {
-      getUOA: Orchestrator['getUOA'];
-      getUEA: Orchestrator['getNMSCAddress'];
-    };
+    // pushChainClient.universal.origin. not a function, just a property. => Return UOA wallet address. If from Push chain, both returns above will match. Else, it will tell from which chian it comes from.
+    get origin(): ReturnType<Orchestrator['getUOA']>;
+    // pushChainClient.universal.account. not a function, just a property. => Return UEA (wallet from push chain). If on push, return Push Chain wallet itself.
+    get account(): ReturnType<Orchestrator['getNMSCAddress']>;
     /**
      * Executes a transaction on Push Chain
      */
@@ -49,9 +49,11 @@ export class PushChain {
 
     // Initialize Universal namespace with bound methods
     this.universal = {
-      account: {
-        getUOA: this.orchestartor.getUOA.bind(this.orchestartor),
-        getUEA: this.orchestartor.getNMSCAddress.bind(this.orchestartor),
+      get origin() {
+        return orchestartor.getUOA();
+      },
+      get account() {
+        return orchestartor.getNMSCAddress();
       },
       sendTransaction: this.orchestartor.execute.bind(this.orchestartor),
       // getNMSCAddress: this.orchestartor.getNMSCAddress.bind(this.orchestartor),

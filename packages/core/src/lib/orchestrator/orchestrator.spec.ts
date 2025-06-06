@@ -4,13 +4,15 @@ import { UniversalSigner } from '../universal/universal.types';
 import { Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { Keypair } from '@solana/web3.js';
-import { toUniversal } from '../universal/signer/signer';
+import { toUniversalFromKeyPair } from '../universal/signer/signer';
 import { SvmClient } from '../vm-client/svm-client';
 
 describe('Orchestrator', () => {
   const mockSigner: UniversalSigner = {
-    address: '0x35B84d6848D16415177c64D64504663b998A6ab4',
-    chain: CHAIN.ETHEREUM_SEPOLIA,
+    account: {
+      address: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+    },
     signMessage: async (data: Uint8Array) => {
       return data;
     },
@@ -32,7 +34,7 @@ describe('Orchestrator', () => {
 
       const account = privateKeyToAccount(PRIVATE_KEY);
 
-      const ethSepoliaSigner: UniversalSigner = await toUniversal(account, {
+      const ethSepoliaSigner: UniversalSigner = await toUniversalFromKeyPair(account, {
         chain,
         library: LIBRARY.ETHEREUM_VIEM,
       });
@@ -57,7 +59,7 @@ describe('Orchestrator', () => {
       // Generate a keypair from the private key in .env
       const testAccount = Keypair.fromSecretKey(privateKey);
 
-      const solanaDevnetSigner = await toUniversal(testAccount, {
+      const solanaDevnetSigner = await toUniversalFromKeyPair(testAccount, {
         chain,
         library: LIBRARY.SOLANA_WEB3,
       });
@@ -66,8 +68,15 @@ describe('Orchestrator', () => {
         rpcUrl: 'https://api.devnet.solana.com',
       });
 
-      const balance = await svmClient.getBalance(solanaDevnetSigner.address);
-      console.log('balance:', balance, 'address: ', solanaDevnetSigner.address);
+      const balance = await svmClient.getBalance(
+        solanaDevnetSigner.account.address
+      );
+      console.log(
+        'balance:',
+        balance,
+        'address: ',
+        solanaDevnetSigner.account.address
+      );
 
       const orchestrator = new Orchestrator(
         solanaDevnetSigner,

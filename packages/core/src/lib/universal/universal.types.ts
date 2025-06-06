@@ -1,5 +1,6 @@
 import { TypedData, TypedDataDomain } from 'viem';
 import { CHAIN } from '../constants/enums';
+import { Keypair } from '@solana/web3.js';
 
 /**
  * A chain-agnostic account representation.
@@ -17,11 +18,73 @@ export interface UniversalAccount {
   address: string;
 }
 
+export interface CustomUniversalSigner {
+  signerId: 'custom_generated_signer';
+  account: UniversalAccount;
+  signMessage: (data: Uint8Array) => Promise<Uint8Array>;
+  signTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
+  signTypedData: ({
+    domain,
+    types,
+    primaryType,
+    message,
+  }: {
+    domain: TypedDataDomain;
+    types: TypedData;
+    primaryType: string;
+    message: Record<string, any>;
+  }) => Promise<Uint8Array>;
+}
+
+export interface MetamaskSigner {
+  signMessage: (data: Uint8Array) => Promise<Uint8Array>;
+  signTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
+  signTypedData: ({
+    domain,
+    types,
+    primaryType,
+    message,
+  }: {
+    domain: TypedDataDomain;
+    types: TypedData;
+    primaryType: string;
+    message: Record<string, any>;
+  }) => Promise<Uint8Array>;
+}
+
+export interface ViemSigner {
+  signTypedData: (args: {
+    account: any;
+    domain: any;
+    types: any;
+    primaryType: any;
+    message: any;
+  }) => Promise<`0x${string}`>;
+  getChainId: () => Promise<number>;
+  signMessage: (args: {
+    message: any;
+    account: any;
+    [key: string]: any;
+  }) => Promise<`0x${string}`>;
+  account: { [key: string]: any };
+  privateKey?: string;
+  provider?: any;
+}
+
+// export type ViemSigner = viem.WalletClient;
+export type SolanaWeb3jsSigner = Keypair;
+
+// TODO: create PushChain.signer.construct({signMessage, signTransaction, signTypedData, address, chain, UID='custom'}) returns a CustomUniversalSigner.
+
+// TODO: Create new interface for `Signer`. Used for when we don't have the library yet to create signMesssage signTransaction signTypedData for the user.
+
 /**
  * A signer capable of signing messages for a specific chain.
  * Used to abstract away signing across multiple VM types.
  */
-export interface UniversalSigner extends UniversalAccount {
+export interface UniversalSigner {
+  account: UniversalAccount;
+
   /**
    * Signs an arbitrary data, provided as binary data.
    *
@@ -59,4 +122,22 @@ export interface UniversalSigner extends UniversalAccount {
    * Used for sending on-chain transactions.
    */
   signTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
+}
+
+export interface UniversalSignerSkeleton {
+  signerId: 'CustomGeneratedSigner';
+  account: UniversalAccount;
+  signMessage: (data: Uint8Array) => Promise<Uint8Array>;
+  signTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
+  signTypedData?: ({
+    domain,
+    types,
+    primaryType,
+    message,
+  }: {
+    domain: TypedDataDomain;
+    types: TypedData;
+    primaryType: string;
+    message: Record<string, any>;
+  }) => Promise<Uint8Array>;
 }

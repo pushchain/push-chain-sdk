@@ -7,8 +7,11 @@ import {
   TypedDataDomain,
   TypedData,
 } from 'viem';
-import { createUniversalAccount } from '../account/account';
-import { UniversalSigner } from '../universal.types';
+import {
+  UniversalAccount,
+  UniversalSigner,
+  UniversalSignerSkeleton,
+} from '../universal.types';
 import { CHAIN, LIBRARY } from '../../constants/enums';
 import * as nacl from 'tweetnacl';
 import { Keypair } from '@solana/web3.js';
@@ -33,14 +36,13 @@ import { Keypair } from '@solana/web3.js';
  * });
  */
 export function createUniversalSigner({
-  chain,
-  address,
+  account,
   signMessage,
   signTransaction,
   signTypedData,
 }: UniversalSigner): UniversalSigner {
   return {
-    ...createUniversalAccount({ chain, address }),
+    account,
     signMessage,
     signTransaction,
     signTypedData,
@@ -54,7 +56,7 @@ export function createUniversalSigner({
  * @param {CHAIN} chain - The chain the signer will operate on
  * @returns {Promise<UniversalSigner>} A signer object configured for the specified chain
  */
-export async function toUniversal(
+export async function toUniversalFromKeyPair(
   clientOrAccount: WalletClient | Account | Keypair,
   { chain, library }: { chain: CHAIN; library: LIBRARY }
 ): Promise<UniversalSigner> {
@@ -72,6 +74,9 @@ export async function toUniversal(
     primaryType: string;
     message: Record<string, any>;
   }) => Promise<Uint8Array>;
+
+  // Check if signer has UID='custom', then we take signMessage, signTransaction, signTypedData, chain and address from the CustomUniversalSigner.
+  // If ViemSigner, convert ViemSigner to UniversalSigner.
 
   switch (library) {
     case LIBRARY.ETHEREUM_VIEM: {
@@ -187,11 +192,51 @@ export async function toUniversal(
   }
 
   const universalSigner: UniversalSigner = {
-    address,
-    chain,
+    account: {
+      address,
+      chain,
+    },
     signMessage,
     signTransaction,
     signTypedData,
   };
   return createUniversalSigner(universalSigner);
+}
+
+// `signTypedData` is only mandatory for EVM Signers. For Solana this is not necessary.
+export function construct({
+  signMessage,
+  signTransaction,
+  signTypedData,
+  account,
+}: {
+  signMessage: (data: Uint8Array) => Promise<Uint8Array>;
+  signTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
+  signTypedData?: ({
+    domain,
+    types,
+    primaryType,
+    message,
+  }: {
+    domain: TypedDataDomain;
+    types: TypedData;
+    primaryType: string;
+    message: Record<string, any>;
+  }) => Promise<Uint8Array>;
+  account: UniversalAccount;
+  signerId: 'CustomGeneratedSigner';
+}): UniversalSignerSkeleton {
+  return {
+    signerId: 'CustomGeneratedSigner',
+    account,
+    signMessage,
+    signTransaction,
+    signTypedData,
+  };
+}
+
+export async function toUniversal(
+  signer: UniversalSignerSkeleton
+): Promise<UniversalSigner> {
+  return createUniversalSigner(signer);
 }

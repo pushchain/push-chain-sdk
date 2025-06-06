@@ -37,13 +37,11 @@ describe.skip('PushChain (e2e)', () => {
 
         const account = privateKeyToAccount(privateKey);
 
-        const universalSigner = await PushChain.utils.signer.toUniversal(
-          account,
-          {
+        const universalSigner =
+          await PushChain.utils.signer.toUniversalFromKeyPair(account, {
             chain: originChain,
             library: CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-          }
-        );
+          });
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
@@ -52,13 +50,13 @@ describe.skip('PushChain (e2e)', () => {
       });
 
       it('should getNMSCAddress', async () => {
-        const result = await pushClient.universal.account.getUEA();
+        const result = await pushClient.universal.account;
         expect(isAddress(result.address)).toBe(true);
         expect(typeof result.deployed).toBe('boolean');
       });
 
       it('should getUOA', () => {
-        const uoa = pushClient.universal.account.getUOA();
+        const uoa = pushClient.universal.origin;
         expect(uoa).toBeDefined();
         expect(uoa.chain).toBe(originChain);
         expect(isAddress(uoa.address)).toBe(true);
@@ -74,7 +72,7 @@ describe.skip('PushChain (e2e)', () => {
           maxPriorityFeePerGas: BigInt(200000000),
           deadline: BigInt(9999999999),
         });
-        const after = await pushClient.universal.account.getUEA();
+        const after = await pushClient.universal.account;
         expect(after.deployed).toBe(true);
       }, 30000);
     });
@@ -89,13 +87,11 @@ describe.skip('PushChain (e2e)', () => {
 
         const account = privateKeyToAccount(privateKey);
 
-        const universalSigner = await PushChain.utils.signer.toUniversal(
-          account,
-          {
+        const universalSigner =
+          await PushChain.utils.signer.toUniversalFromKeyPair(account, {
             chain: originChain,
             library: CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-          }
-        );
+          });
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
@@ -104,13 +100,13 @@ describe.skip('PushChain (e2e)', () => {
       });
 
       it('should getNMSCAddress', async () => {
-        await expect(pushClient.universal.account.getUEA()).rejects.toThrow(
+        await expect(pushClient.universal.account).rejects.toThrow(
           'NMSC address cannot be computed for a Push Chain Address'
         );
       });
 
       it.only('should getUOA', () => {
-        const uoa = pushClient.universal.account.getUOA();
+        const uoa = pushClient.universal.origin;
         expect(uoa).toBeDefined();
         expect(uoa.chain).toBe(originChain);
         expect(isAddress(uoa.address)).toBe(true);
@@ -125,7 +121,7 @@ describe.skip('PushChain (e2e)', () => {
           maxFeePerGas: BigInt(50000000000000000),
           maxPriorityFeePerGas: BigInt(200000000),
         });
-        const after = await pushClient.universal.account.getUEA();
+        const after = await pushClient.universal.account;
         expect(after.deployed).toBe(true);
       }, 30000);
     });
@@ -144,13 +140,11 @@ describe.skip('PushChain (e2e)', () => {
 
         const account = Keypair.fromSecretKey(privateKey);
 
-        const universalSigner = await PushChain.utils.signer.toUniversal(
-          account,
-          {
+        const universalSigner =
+          await PushChain.utils.signer.toUniversalFromKeyPair(account, {
             chain: originChain,
             library: CONSTANTS.LIBRARY.SOLANA_WEB3,
-          }
-        );
+          });
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
@@ -159,13 +153,13 @@ describe.skip('PushChain (e2e)', () => {
       });
 
       it('should getNMSCAddress', async () => {
-        const result = await pushClient.universal.account.getUEA();
+        const result = await pushClient.universal.account;
         expect(isAddress(result.address)).toBe(true);
         expect(typeof result.deployed).toBe('boolean');
       });
 
       it('should getUOA', () => {
-        const uoa = pushClient.universal.account.getUOA();
+        const uoa = pushClient.universal.origin;
         expect(uoa).toBeDefined();
         expect(uoa.chain).toBe(originChain);
         expect(isAddress(uoa.address)).toBe(true);
@@ -181,7 +175,7 @@ describe.skip('PushChain (e2e)', () => {
           maxPriorityFeePerGas: BigInt(200000000),
           deadline: BigInt(9999999999),
         });
-        const after = await pushClient.universal.account.getUEA();
+        const after = await pushClient.universal.account;
         expect(after.deployed).toBe(true);
       }, 30000);
     });

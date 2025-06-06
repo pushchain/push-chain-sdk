@@ -180,10 +180,10 @@ export class EvmClient {
   }): Promise<Hex> {
     const [nonce, gas, feePerGas] = await Promise.all([
       this.publicClient.getTransactionCount({
-        address: signer.address as `0x${string}`,
+        address: signer.account.address as `0x${string}`,
       }),
       this.publicClient.estimateGas({
-        account: signer.address as `0x${string}`,
+        account: signer.account.address as `0x${string}`,
         to,
         data,
         value,
@@ -240,7 +240,7 @@ export class EvmClient {
    * });
    *
    * const gasEstimate = await evmClient.estimateGas({
-   *   from: universalSigner.address as `0x${string}`,
+   *   from: universalSigner.account.address as `0x${string}`,
    *   to: '0xContractAddress',
    *   data,
    *   value: BigInt(0),
