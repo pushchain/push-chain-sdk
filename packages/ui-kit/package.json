@@ -1,6 +1,6 @@
 {
   "name": "@pushchain/ui-kit",
-  "version": "1.0.8-alpha.0",
+  "version": "1.0.9",
   "dependencies": {
     "@metamask/sdk": "^0.32.0",
     "@pushchain/core": "^0.1.1",

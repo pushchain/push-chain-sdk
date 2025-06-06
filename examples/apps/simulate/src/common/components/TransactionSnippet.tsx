@@ -1,7 +1,7 @@
+import { Transaction } from '@pushchain/devnet/src/lib/generated/tx';
 import React, { FC } from 'react';
 import { Box, Text, TextArea } from 'shared-components';
 import { css } from 'styled-components';
-import { Transaction } from '@pushprotocol/push-chain/src/lib/generated/tx';
 
 type TransactionSnippetProps = {
   heading: string;
