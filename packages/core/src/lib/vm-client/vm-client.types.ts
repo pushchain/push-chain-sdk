@@ -6,7 +6,7 @@ import { Keypair, PublicKey } from '@solana/web3.js';
  * Common options used by all VM clients (EVM, SVM, etc.)
  */
 export interface ClientOptions {
-  rpcUrl: string;
+  rpcUrls: string[];
 }
 
 /**

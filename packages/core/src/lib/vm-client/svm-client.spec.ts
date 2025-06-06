@@ -95,7 +95,7 @@ describe('SvmClient', () => {
   let testAccount: Keypair;
 
   beforeAll(async () => {
-    svmClient = new SvmClient({ rpcUrl: RPC_URL });
+    svmClient = new SvmClient({ rpcUrls: [RPC_URL] });
 
     const privateKeyHex = process.env['SOLANA_PRIVATE_KEY'];
     if (!privateKeyHex) {
@@ -108,8 +108,10 @@ describe('SvmClient', () => {
 
     // Create the object first with any required properties
     universalSigner = {
-      address: testAccount.publicKey.toBase58(),
-      chain,
+      account: {
+        address: testAccount.publicKey.toBase58(),
+        chain,
+      },
       signMessage: async (data: Uint8Array) => {
         return nacl.sign.detached(data, testAccount.secretKey);
       },
@@ -121,7 +123,9 @@ describe('SvmClient', () => {
 
   describe('getBalance', () => {
     it('gets balance', async () => {
-      const balance = await svmClient.getBalance(universalSigner.address);
+      const balance = await svmClient.getBalance(
+        universalSigner.account.address
+      );
       expect(typeof balance).toBe('bigint');
     });
 
@@ -182,7 +186,9 @@ describe('SvmClient', () => {
 
   describe('writeContract', () => {
     it('writes contract value', async () => {
-      const balance = await svmClient.getBalance(universalSigner.address);
+      const balance = await svmClient.getBalance(
+        universalSigner.account.address
+      );
       if (balance === BigInt(0)) {
         console.warn('Skipping Test - Account has insufficient balance');
         throw new Error('Not enough balance');
@@ -199,7 +205,7 @@ describe('SvmClient', () => {
         // Pass dynamic accounts
         accounts: {
           counter: counterAccount.publicKey,
-          user: new PublicKey(universalSigner.address),
+          user: new PublicKey(universalSigner.account.address),
           systemProgram: SystemProgram.programId,
         },
         // Pass keypairs that need to sign
@@ -215,7 +221,9 @@ describe('SvmClient', () => {
     });
 
     it('increments counter and verifies value increased', async () => {
-      const balance = await svmClient.getBalance(universalSigner.address);
+      const balance = await svmClient.getBalance(
+        universalSigner.account.address
+      );
       if (balance === BigInt(0)) {
         console.warn('Skipping Test - Account has insufficient balance');
         throw new Error('Not enough balance');
@@ -232,7 +240,7 @@ describe('SvmClient', () => {
         signer: universalSigner,
         accounts: {
           counter: counterAccount.publicKey,
-          user: new PublicKey(universalSigner.address),
+          user: new PublicKey(universalSigner.account.address),
           systemProgram: SystemProgram.programId,
         },
         extraSigners: [counterAccount],
@@ -336,7 +344,7 @@ describe('SvmClient', () => {
           signer: universalSigner,
           accounts: {
             counter: counterAccount.publicKey,
-            user: new PublicKey(universalSigner.address),
+            user: new PublicKey(universalSigner.account.address),
             systemProgram: SystemProgram.programId,
           },
           // Missing required counter account signer
@@ -346,7 +354,9 @@ describe('SvmClient', () => {
     });
 
     it('handles multiple instructions in sequence', async () => {
-      const balance = await svmClient.getBalance(universalSigner.address);
+      const balance = await svmClient.getBalance(
+        universalSigner.account.address
+      );
       if (balance === BigInt(0)) {
         console.warn('Skipping Test - Account has insufficient balance');
         throw new Error('Not enough balance');
@@ -362,7 +372,7 @@ describe('SvmClient', () => {
         signer: universalSigner,
         accounts: {
           counter: counterAccount.publicKey,
-          user: new PublicKey(universalSigner.address),
+          user: new PublicKey(universalSigner.account.address),
           systemProgram: SystemProgram.programId,
         },
         extraSigners: [counterAccount],
@@ -399,8 +409,8 @@ describe('SvmClient', () => {
   describe('estimateGas', () => {
     it('estimates fee for a simple transfer', async () => {
       const instruction = SystemProgram.transfer({
-        fromPubkey: new PublicKey(universalSigner.address),
-        toPubkey: new PublicKey(universalSigner.address),
+        fromPubkey: new PublicKey(universalSigner.account.address),
+        toPubkey: new PublicKey(universalSigner.account.address),
         lamports: 1,
       });
       const gas = await svmClient.estimateGas({

@@ -38,10 +38,6 @@ export class PushChain {
      * Executes a transaction on Push Chain
      */
     sendTransaction: Orchestrator['execute'];
-    // /**
-    //  * Computes the NMSC address for the universal signer on Push
-    //  */
-    // getNMSCAddress: Orchestrator['getNMSCAddress'];
   };
 
   private constructor(orchestartor: Orchestrator) {
@@ -76,7 +72,9 @@ export class PushChain {
     universalSigner: UniversalSigner,
     options?: {
       network?: PUSH_NETWORK;
-      rpcUrls?: Partial<Record<CHAIN, string>>;
+      rpcUrls?: Partial<Record<CHAIN, string[]>>;
+      // Just name and url. Multiple block explorers per chain. 1st one is the default.
+      blockExplorers?: Partial<Record<CHAIN, Record<string, string>>>;
       printTraces?: boolean;
     }
   ) => {

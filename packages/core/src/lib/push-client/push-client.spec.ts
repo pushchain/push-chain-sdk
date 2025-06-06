@@ -5,14 +5,14 @@ import {
   MsgMintPush,
   MsgExecutePayload,
 } from '../generated/v1/tx';
-import { PUSH_NETWORK } from '../constants/enums';
+import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 
 describe('PushClient', () => {
   let client: PushClient;
 
   beforeEach(() => {
     client = new PushClient({
-      rpcUrl: PUSH_CHAIN_INFO['PUSH_LOCALNET'].defaultRPC,
+      rpcUrls: PUSH_CHAIN_INFO[CHAIN.PUSH_LOCALNET].defaultRPC,
       network: PUSH_NETWORK.LOCALNET,
     });
   });

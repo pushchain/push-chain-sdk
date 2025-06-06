@@ -19,8 +19,9 @@ import { UniversalSigner } from '../universal/universal.types';
 export class SvmClient {
   private readonly connection: Connection;
 
-  constructor({ rpcUrl }: ClientOptions) {
-    this.connection = new Connection(rpcUrl, 'confirmed');
+  constructor({ rpcUrls }: ClientOptions) {
+    // TODO: Add fallback like on viem.
+    this.connection = new Connection(rpcUrls[0], 'confirmed');
   }
 
   /**

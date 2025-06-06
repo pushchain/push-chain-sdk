@@ -34,7 +34,7 @@ describe('EvmClient', () => {
   let universalSigner: UniversalSigner;
 
   beforeAll(() => {
-    evmClient = new EvmClient({ rpcUrl: CHAIN_INFO[chain].defaultRPC });
+    evmClient = new EvmClient({ rpcUrls: CHAIN_INFO[chain].defaultRPC });
   });
 
   describe('getBalance', () => {
@@ -115,9 +115,12 @@ describe('EvmClient', () => {
         }),
         transport: http(),
       });
+
       universalSigner = {
-        address: account.address,
-        chain,
+        account: {
+          address: account.address,
+          chain,
+        },
         signMessage: async (data: Uint8Array) => {
           const hexSig = await walletClient.signMessage({
             message: { raw: data },
@@ -135,7 +138,7 @@ describe('EvmClient', () => {
     }
 
     const balance = await evmClient.getBalance(
-      universalSigner.address as `0x${string}`
+      universalSigner.account.address as `0x${string}`
     );
     if (balance === BigInt(0)) {
       console.warn('Skipping Test - Account has no balance');

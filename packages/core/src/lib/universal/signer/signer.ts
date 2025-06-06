@@ -4,9 +4,8 @@ import {
   parseTransaction,
   WalletClient,
   Account,
-  TypedDataDomain,
-  TypedData,
 } from 'viem';
+import { TypedDataDomain, TypedData } from '../../constants';
 import {
   UniversalAccount,
   UniversalSigner,
@@ -162,7 +161,7 @@ export async function toUniversalFromKeyPair(
       break;
     }
 
-    case LIBRARY.SOLANA_WEB3: {
+    case LIBRARY.SOLANA_WEB3JS: {
       // It's a Solana Keypair
       const keypair = clientOrAccount as Keypair;
       if (
@@ -204,28 +203,34 @@ export async function toUniversalFromKeyPair(
 }
 
 // `signTypedData` is only mandatory for EVM Signers. For Solana this is not necessary.
-export function construct({
-  signMessage,
-  signTransaction,
-  signTypedData,
-  account,
-}: {
-  signMessage: (data: Uint8Array) => Promise<Uint8Array>;
-  signTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
-  signTypedData?: ({
-    domain,
-    types,
-    primaryType,
-    message,
-  }: {
-    domain: TypedDataDomain;
-    types: TypedData;
-    primaryType: string;
-    message: Record<string, any>;
-  }) => Promise<Uint8Array>;
-  account: UniversalAccount;
-  signerId: 'CustomGeneratedSigner';
-}): UniversalSignerSkeleton {
+export function construct(
+  account: UniversalAccount,
+  options: {
+    signMessage: (data: Uint8Array) => Promise<Uint8Array>;
+    signTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
+    signTypedData?: ({
+      domain,
+      types,
+      primaryType,
+      message,
+    }: {
+      domain: TypedDataDomain;
+      types: TypedData;
+      primaryType: string;
+      message: Record<string, any>;
+    }) => Promise<Uint8Array>;
+  }
+): UniversalSignerSkeleton {
+  const { signMessage, signTransaction, signTypedData } = options;
+  if (
+    signTypedData &&
+    (account.chain === CHAIN.SOLANA_MAINNET ||
+      account.chain === CHAIN.SOLANA_TESTNET ||
+      account.chain === CHAIN.SOLANA_DEVNET)
+  ) {
+    throw new Error('Typed data signing is not supported for Solana');
+  }
+
   return {
     signerId: 'CustomGeneratedSigner',
     account,

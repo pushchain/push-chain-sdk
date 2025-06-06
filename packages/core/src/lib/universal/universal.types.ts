@@ -1,4 +1,4 @@
-import { TypedData, TypedDataDomain } from 'viem';
+import { TypedData, TypedDataDomain } from '../constants';
 import { CHAIN } from '../constants/enums';
 import { Keypair } from '@solana/web3.js';
 

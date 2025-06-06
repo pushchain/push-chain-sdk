@@ -26,6 +26,7 @@ import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 
 export class PushClient extends EvmClient {
   public pushChainInfo;
+  // TODO: Check why this is needed.
   private signerPrivateKey;
   constructor(clientOptions: PushClientOptions) {
     super(clientOptions);

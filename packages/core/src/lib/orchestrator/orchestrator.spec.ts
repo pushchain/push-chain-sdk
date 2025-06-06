@@ -34,10 +34,13 @@ describe('Orchestrator', () => {
 
       const account = privateKeyToAccount(PRIVATE_KEY);
 
-      const ethSepoliaSigner: UniversalSigner = await toUniversalFromKeyPair(account, {
-        chain,
-        library: LIBRARY.ETHEREUM_VIEM,
-      });
+      const ethSepoliaSigner: UniversalSigner = await toUniversalFromKeyPair(
+        account,
+        {
+          chain,
+          library: LIBRARY.ETHEREUM_VIEM,
+        }
+      );
 
       const orchestrator = new Orchestrator(
         ethSepoliaSigner,
@@ -61,11 +64,11 @@ describe('Orchestrator', () => {
 
       const solanaDevnetSigner = await toUniversalFromKeyPair(testAccount, {
         chain,
-        library: LIBRARY.SOLANA_WEB3,
+        library: LIBRARY.SOLANA_WEB3JS,
       });
 
       const svmClient = new SvmClient({
-        rpcUrl: 'https://api.devnet.solana.com',
+        rpcUrls: ['https://api.devnet.solana.com'],
       });
 
       const balance = await svmClient.getBalance(

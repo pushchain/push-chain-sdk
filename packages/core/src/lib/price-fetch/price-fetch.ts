@@ -43,10 +43,14 @@ const FEED_ADDRESS: Partial<
 };
 
 export class PriceFetch {
-  constructor(private readonly rpcUrl: Partial<Record<CHAIN, string>> = {}) {}
+  constructor(
+    private readonly rpcUrls: Partial<Record<CHAIN, string[]>> = {}
+  ) {}
 
   async getPrice(chain: CHAIN): Promise<bigint> {
-    const rpcUrl = this.rpcUrl[chain] || CHAIN_INFO[chain].defaultRPC;
+    const rpcUrls: string[] =
+      this.rpcUrls[chain] || CHAIN_INFO[chain].defaultRPC;
+
     const vm = CHAIN_INFO[chain].vm;
 
     switch (vm) {
@@ -58,7 +62,7 @@ export class PriceFetch {
           );
         }
 
-        const evmClient = new EvmClient({ rpcUrl });
+        const evmClient = new EvmClient({ rpcUrls });
 
         const ethUsdPrice = await this.fetchPrice(
           priceFeedAddress.NATIVE_USD,
@@ -86,7 +90,6 @@ export class PriceFetch {
         } else {
           throw new Error('Cannot fetch price in USD');
         }
-        break;
       }
       default: {
         throw new Error(`Unsupported VM ${vm}`);

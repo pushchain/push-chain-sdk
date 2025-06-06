@@ -15,6 +15,7 @@ import {
   serializeTransaction,
   Hex,
   Abi,
+  fallback,
 } from 'viem';
 
 /**
@@ -29,9 +30,10 @@ import {
 export class EvmClient {
   public publicClient: PublicClient;
 
-  constructor({ rpcUrl }: ClientOptions) {
+  constructor({ rpcUrls }: ClientOptions) {
+    const transports = rpcUrls.map((rpcUrl) => http(rpcUrl));
     this.publicClient = createPublicClient({
-      transport: http(rpcUrl),
+      transport: fallback(transports),
     });
   }
 

@@ -38,7 +38,7 @@ export class Orchestrator {
   constructor(
     private readonly universalSigner: UniversalSigner,
     pushNetwork: PUSH_NETWORK,
-    private readonly rpcUrl: Partial<Record<CHAIN, string>> = {},
+    private readonly rpcUrls: Partial<Record<CHAIN, string[]>> = {},
     private readonly printTraces = false
   ) {
     const pushChain =
@@ -47,10 +47,12 @@ export class Orchestrator {
         : pushNetwork === PUSH_NETWORK.TESTNET_DONUT
         ? CHAIN.PUSH_TESTNET_DONUT
         : CHAIN.PUSH_LOCALNET;
-    const pushChainRPC =
-      this.rpcUrl[pushChain] || CHAIN_INFO[pushChain].defaultRPC;
+
+    const pushChainRPCs: string[] =
+      this.rpcUrls[pushChain] || CHAIN_INFO[pushChain].defaultRPC;
+
     this.pushClient = new PushClient({
-      rpcUrl: pushChainRPC,
+      rpcUrls: pushChainRPCs,
       network: pushNetwork,
     });
   }
@@ -72,10 +74,15 @@ export class Orchestrator {
       CHAIN.ETHEREUM_SEPOLIA,
       CHAIN.SOLANA_TESTNET,
       CHAIN.SOLANA_DEVNET,
-    ].includes(chain);
+    ].includes(
+      chain as
+        | typeof CHAIN.ETHEREUM_SEPOLIA
+        | typeof CHAIN.SOLANA_TESTNET
+        | typeof CHAIN.SOLANA_DEVNET
+    );
 
     const isMainnet = [CHAIN.ETHEREUM_MAINNET, CHAIN.SOLANA_MAINNET].includes(
-      chain
+      chain as typeof CHAIN.ETHEREUM_MAINNET | typeof CHAIN.SOLANA_MAINNET
     );
 
     if (
@@ -272,8 +279,8 @@ export class Orchestrator {
       throw new Error(`Locker contract not configured for chain: ${chain}`);
     }
 
-    const rpcUrl = this.rpcUrl[chain] || defaultRPC;
-    const priceFetcher = new PriceFetch(this.rpcUrl);
+    const rpcUrls: string[] = this.rpcUrls[chain] || defaultRPC;
+    const priceFetcher = new PriceFetch(this.rpcUrls);
     const nativeTokenUsdPrice = await priceFetcher.getPrice(chain); // 8 decimals
 
     let nativeAmount: bigint;
@@ -284,7 +291,7 @@ export class Orchestrator {
         nativeAmount =
           (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
 
-        const evmClient = new EvmClient({ rpcUrl });
+        const evmClient = new EvmClient({ rpcUrls });
 
         return await evmClient.writeContract({
           abi: FEE_LOCKER_EVM as Abi,
@@ -301,7 +308,7 @@ export class Orchestrator {
         nativeAmount =
           (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
 
-        const svmClient = new SvmClient({ rpcUrl });
+        const svmClient = new SvmClient({ rpcUrls });
 
         const [lockerPda, lockerBump] =
           anchor.web3.PublicKey.findProgramAddressSync(
@@ -472,11 +479,7 @@ export class Orchestrator {
    * @returns True if the chain is a Push chain, false otherwise.
    */
   private isPushChain(chain: CHAIN): boolean {
-    return (
-      chain === CHAIN.PUSH_MAINNET ||
-      chain === CHAIN.PUSH_TESTNET_DONUT ||
-      chain === CHAIN.PUSH_LOCALNET
-    );
+    return chain === CHAIN.PUSH_MAINNET || chain === CHAIN.PUSH_TESTNET_DONUT;
   }
 
   /**

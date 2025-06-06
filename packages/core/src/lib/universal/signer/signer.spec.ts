@@ -1,6 +1,6 @@
 import { createUniversalSigner } from './signer';
+import { CONSTANTS } from '../../constants';
 import { PushChain } from '../../pushChain';
-import { CHAIN, LIBRARY } from '../../constants/enums';
 import {
   createWalletClient,
   http,
@@ -19,7 +19,7 @@ describe('Universal Account Utilities', () => {
     it('creates a valid UniversalSigner with chain info', () => {
       const dummySigner: UniversalSigner = {
         account: {
-          chain: CHAIN.ETHEREUM_SEPOLIA,
+          chain: CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
           address: '0xeCba9a32A9823f1cb00cdD8344Bf2D1d87a8dd97',
         },
         signMessage: async (data: Uint8Array) => new Uint8Array([...data, 1]),
@@ -28,7 +28,7 @@ describe('Universal Account Utilities', () => {
 
       const signer = createUniversalSigner(dummySigner);
 
-      expect(signer.account.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+      expect(signer.account.chain).toBe(CONSTANTS.CHAIN.ETHEREUM_SEPOLIA);
       expect(signer.account.address).toBe(
         '0xeCba9a32A9823f1cb00cdD8344Bf2D1d87a8dd97'
       );
@@ -50,12 +50,12 @@ describe('Universal Account Utilities', () => {
       const signer = await PushChain.utils.signer.toUniversalFromKeyPair(
         client,
         {
-          chain: CHAIN.ETHEREUM_SEPOLIA,
-          library: LIBRARY.ETHEREUM_VIEM,
+          chain: CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+          library: CONSTANTS.LIBRARY.ETHEREUM_VIEM,
         }
       );
 
-      expect(signer.account.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+      expect(signer.account.chain).toBe(CONSTANTS.CHAIN.ETHEREUM_SEPOLIA);
       expect(signer.account.address).toBe(account.address);
 
       // Test signMessage
@@ -85,12 +85,12 @@ describe('Universal Account Utilities', () => {
       const signer = await PushChain.utils.signer.toUniversalFromKeyPair(
         account,
         {
-          chain: CHAIN.ETHEREUM_SEPOLIA,
-          library: LIBRARY.ETHEREUM_VIEM,
+          chain: CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+          library: CONSTANTS.LIBRARY.ETHEREUM_VIEM,
         }
       );
 
-      expect(signer.account.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+      expect(signer.account.chain).toBe(CONSTANTS.CHAIN.ETHEREUM_SEPOLIA);
       expect(signer.account.address).toBe(account.address);
 
       // Test signMessage
@@ -123,8 +123,8 @@ describe('Universal Account Utilities', () => {
 
       await expect(
         PushChain.utils.signer.toUniversalFromKeyPair(invalidAccount as any, {
-          chain: CHAIN.ETHEREUM_SEPOLIA,
-          library: LIBRARY.ETHEREUM_VIEM,
+          chain: CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+          library: CONSTANTS.LIBRARY.ETHEREUM_VIEM,
         })
       ).rejects.toThrow(
         'Invalid Account instance: missing required properties'
@@ -139,12 +139,12 @@ describe('Universal Account Utilities', () => {
       const signer = await PushChain.utils.signer.toUniversalFromKeyPair(
         keypair,
         {
-          chain: CHAIN.SOLANA_TESTNET,
-          library: LIBRARY.SOLANA_WEB3,
+          chain: CONSTANTS.CHAIN.SOLANA_TESTNET,
+          library: CONSTANTS.LIBRARY.SOLANA_WEB3JS,
         }
       );
 
-      expect(signer.account.chain).toBe(CHAIN.SOLANA_TESTNET);
+      expect(signer.account.chain).toBe(CONSTANTS.CHAIN.SOLANA_TESTNET);
       expect(signer.account.address).toBe(keypair.publicKey.toBase58());
       expect(typeof signer.signMessage).toBe('function');
       expect(typeof signer.signTransaction).toBe('function');
@@ -153,8 +153,8 @@ describe('Universal Account Utilities', () => {
     it('throws error for non-Solana chain', async () => {
       await expect(
         PushChain.utils.signer.toUniversalFromKeyPair(keypair, {
-          chain: CHAIN.ETHEREUM_SEPOLIA,
-          library: LIBRARY.SOLANA_WEB3,
+          chain: CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+          library: CONSTANTS.LIBRARY.SOLANA_WEB3JS,
         })
       ).rejects.toThrow('Invalid chain for Solana Keypair');
     });
@@ -163,8 +163,8 @@ describe('Universal Account Utilities', () => {
       const signer = await PushChain.utils.signer.toUniversalFromKeyPair(
         keypair,
         {
-          chain: CHAIN.SOLANA_MAINNET,
-          library: LIBRARY.SOLANA_WEB3,
+          chain: CONSTANTS.CHAIN.SOLANA_MAINNET,
+          library: CONSTANTS.LIBRARY.SOLANA_WEB3JS,
         }
       );
 
@@ -178,8 +178,8 @@ describe('Universal Account Utilities', () => {
       const signer = await PushChain.utils.signer.toUniversalFromKeyPair(
         keypair,
         {
-          chain: CHAIN.SOLANA_MAINNET,
-          library: LIBRARY.SOLANA_WEB3,
+          chain: CONSTANTS.CHAIN.SOLANA_MAINNET,
+          library: CONSTANTS.LIBRARY.SOLANA_WEB3JS,
         }
       );
 
@@ -194,7 +194,7 @@ describe('Universal Account Utilities', () => {
     it('creates a UniversalSignerSkeleton with construct and converts it to UniversalSigner with toUniversal', async () => {
       // Mock account
       const mockAccount: UniversalAccount = {
-        chain: CHAIN.ETHEREUM_SEPOLIA,
+        chain: CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
         address: '0xeCba9a32A9823f1cb00cdD8344Bf2D1d87a8dd97',
       };
 
@@ -210,12 +210,10 @@ describe('Universal Account Utilities', () => {
         .mockResolvedValue(new Uint8Array([7, 8, 9]));
 
       // Step 1: Call construct function
-      const skeleton = PushChain.utils.signer.construct({
+      const skeleton = PushChain.utils.signer.construct(mockAccount, {
         signMessage: mockSignMessage,
         signTransaction: mockSignTransaction,
         signTypedData: mockSignTypedData,
-        account: mockAccount,
-        signerId: 'CustomGeneratedSigner',
       });
 
       // Verify the skeleton is correctly created
@@ -265,7 +263,7 @@ describe('Universal Account Utilities', () => {
     it('creates a UniversalSignerSkeleton without signTypedData (for Solana)', async () => {
       // Mock Solana account
       const mockAccount: UniversalAccount = {
-        chain: CHAIN.SOLANA_TESTNET,
+        chain: CONSTANTS.CHAIN.SOLANA_TESTNET,
         address: 'FvwEAhmxKfeiG8SnEvq42hc6whRyY3EFYAvebMqDNDGCgxN5Z',
       };
 
@@ -278,11 +276,9 @@ describe('Universal Account Utilities', () => {
         .mockResolvedValue(new Uint8Array([4, 5, 6]));
 
       // Step 1: Call construct function without signTypedData
-      const skeleton = PushChain.utils.signer.construct({
+      const skeleton = PushChain.utils.signer.construct(mockAccount, {
         signMessage: mockSignMessage,
         signTransaction: mockSignTransaction,
-        account: mockAccount,
-        signerId: 'CustomGeneratedSigner',
       });
 
       // Verify the skeleton is correctly created
@@ -316,7 +312,7 @@ describe('Universal Account Utilities', () => {
 
     it('maintains the same reference for signing functions through the conversion flow', async () => {
       const mockAccount: UniversalAccount = {
-        chain: CHAIN.ETHEREUM_SEPOLIA,
+        chain: CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
         address: '0xeCba9a32A9823f1cb00cdD8344Bf2D1d87a8dd97',
       };
 
@@ -329,12 +325,10 @@ describe('Universal Account Utilities', () => {
         .mockResolvedValue(new Uint8Array([3]));
 
       // Create skeleton
-      const skeleton = PushChain.utils.signer.construct({
+      const skeleton = PushChain.utils.signer.construct(mockAccount, {
         signMessage: mockSignMessage,
         signTransaction: mockSignTransaction,
         signTypedData: mockSignTypedData,
-        account: mockAccount,
-        signerId: 'CustomGeneratedSigner',
       });
 
       // Convert to universal signer

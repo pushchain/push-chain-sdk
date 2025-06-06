@@ -62,6 +62,7 @@ describe.skip('PushChain (e2e)', () => {
         expect(isAddress(uoa.address)).toBe(true);
       });
 
+      // TODO: ADD EXAMPLE ON GENERATING DATA PROPERTY.
       it('should sendTransaction', async () => {
         await pushClient.universal.sendTransaction({
           target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
@@ -143,7 +144,7 @@ describe.skip('PushChain (e2e)', () => {
         const universalSigner =
           await PushChain.utils.signer.toUniversalFromKeyPair(account, {
             chain: originChain,
-            library: CONSTANTS.LIBRARY.SOLANA_WEB3,
+            library: CONSTANTS.LIBRARY.SOLANA_WEB3JS,
           });
 
         pushClient = await PushChain.initialize(universalSigner, {
