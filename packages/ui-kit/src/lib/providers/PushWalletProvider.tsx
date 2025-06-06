@@ -39,10 +39,8 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
     :root{
       ${(props) => {
         const { themeMode, themeOverrides } = props.theme;
-        console.log(themeOverrides);
         const isLightMode = themeMode === 'light';
         const { dark, light, ...globalOverrides } = themeOverrides;
-        console.log(mapCoreToInt(globalOverrides));
         const newOverrides = {
           ...{
             ...themeDefault,
@@ -51,7 +49,6 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
           ...mapCoreToInt(globalOverrides),
           ...mapCoreToInt(isLightMode ? light : dark),
         };
-        console.log(newOverrides);
         return Object.entries(newOverrides)
           .map(([key, value]) => `${key}: ${value};`)
           .join('\n');

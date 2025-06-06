@@ -1,16 +1,10 @@
 import { css } from 'styled-components';
 import { Box, Button, Front, Sale, Text } from 'shared-components';
-import {
-  PushUniversalAccountButton,
-  usePushWalletContext,
-} from '../../../../../../../packages/ui-kit';
+import { PushUniversalAccountButton } from '../../../../../../../packages/ui-kit';
 import { LandingPageBanner } from './LandingPageBanner';
 import { SimulateTxText } from './SimulateTxText';
 
 const LandingPageLeftComponent = () => {
-  const { universalAddress } = usePushWalletContext();
-
-  console.log(universalAddress);
   const featuresCard = [
     {
       id: 1,
