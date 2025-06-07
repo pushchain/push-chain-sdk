@@ -41,4 +41,5 @@ export enum VM {
 export enum LIBRARY {
   ETHEREUM_VIEM = 'viem',
   SOLANA_WEB3JS = 'solana-web3js',
+  ETHEREUM_ETHERSV6 = 'ethers-v6',
 }

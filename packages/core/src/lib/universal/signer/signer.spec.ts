@@ -12,6 +12,7 @@ import { UniversalSigner, UniversalAccount } from '../universal.types';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 import { Keypair } from '@solana/web3.js';
+import { ethers } from 'ethers';
 
 describe('Universal Account Utilities', () => {
   describe('createUniversalSigner', () => {
@@ -134,6 +135,112 @@ describe('Universal Account Utilities', () => {
       ).rejects.toThrow(
         'Invalid Account instance: missing required properties'
       );
+    });
+  });
+
+  describe('toUniversalFromKeyPair (ethers)', () => {
+    // Create a mock provider for ethers that returns the correct chain ID
+    const mockProvider = {
+      getNetwork: jest.fn().mockResolvedValue({
+        chainId: BigInt(11155111), // Sepolia chain ID
+      }),
+    };
+
+    const pk = generatePrivateKey();
+    const wallet = new ethers.Wallet(pk, mockProvider as any);
+
+    it('wraps an ethers.Wallet into a UniversalSigner', async () => {
+      const signer = await PushChain.utils.signer.toUniversalFromKeyPair(
+        wallet,
+        {
+          chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_ETHERSV6,
+        }
+      );
+
+      expect(signer.account.chain).toBe(
+        PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA
+      );
+      expect(signer.account.address).toBe(await wallet.getAddress());
+
+      // Test signMessage
+      const msg = new TextEncoder().encode('test message');
+      const sig = await signer.signMessage(msg);
+      expect(sig).toBeInstanceOf(Uint8Array);
+      expect(sig.length).toBeGreaterThan(0);
+
+      // Test signTransaction
+      const tx = {
+        type: 2,
+        to: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+        value: ethers.parseEther('1'),
+        data: '0x',
+        gasLimit: 21000,
+        maxFeePerGas: ethers.parseUnits('10', 'gwei'),
+        maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei'),
+        nonce: 0,
+        chainId: 11155111,
+      };
+      // Create a proper unsigned transaction
+      const unsignedTx = ethers.Transaction.from(tx);
+      const txBytes = ethers.getBytes(unsignedTx.unsignedSerialized);
+      const txSig = await signer.signTransaction(txBytes);
+      expect(txSig).toBeInstanceOf(Uint8Array);
+      expect(txSig.length).toBeGreaterThan(0);
+
+      // Test signTypedData
+      if (signer.signTypedData) {
+        const typedDataArgs = {
+          domain: { name: 'Test', version: '1', chainId: 11155111 },
+          types: { Test: [{ name: 'data', type: 'string' }] },
+          primaryType: 'Test',
+          message: { data: 'test' },
+        };
+        const typedDataSig = await signer.signTypedData(typedDataArgs);
+        expect(typedDataSig).toBeInstanceOf(Uint8Array);
+        expect(typedDataSig.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('throws error for ethers.Wallet without provider', async () => {
+      const walletWithoutProvider = new ethers.Wallet(pk);
+
+      await expect(
+        PushChain.utils.signer.toUniversalFromKeyPair(walletWithoutProvider, {
+          chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_ETHERSV6,
+        })
+      ).rejects.toThrow('ethers.Wallet must have a provider attached');
+    });
+
+    it('throws error for chain mismatch', async () => {
+      const wrongChainProvider = {
+        getNetwork: jest.fn().mockResolvedValue({
+          chainId: BigInt(1), // Mainnet instead of Sepolia
+        }),
+      };
+      const walletWrongChain = new ethers.Wallet(pk, wrongChainProvider as any);
+
+      await expect(
+        PushChain.utils.signer.toUniversalFromKeyPair(walletWrongChain, {
+          chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_ETHERSV6,
+        })
+      ).rejects.toThrow(/Chain mismatch/);
+    });
+
+    it('throws error for non-ethers.Wallet instance', async () => {
+      const fakeWallet = {
+        address: '0x123',
+        // Missing required ethers.Wallet methods
+      };
+
+      await expect(
+        PushChain.utils.signer.toUniversalFromKeyPair(fakeWallet as any, {
+          chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_ETHERSV6,
+        })
+      ).rejects.toThrow('Expected ethers.Wallet for ETHEREUM_ETHERSV6 library');
     });
   });
 
@@ -347,6 +454,129 @@ describe('Universal Account Utilities', () => {
       expect(universalSigner.signMessage).toBe(mockSignMessage);
       expect(universalSigner.signTransaction).toBe(mockSignTransaction);
       expect(universalSigner.signTypedData).toBe(mockSignTypedData);
+    });
+  });
+
+  describe('toUniversal with ethers', () => {
+    it('converts an ethers.Wallet directly to UniversalSigner via toUniversal', async () => {
+      // Create a mock provider for ethers
+      const mockProvider = {
+        getNetwork: jest.fn().mockResolvedValue({
+          chainId: BigInt(11155111), // Sepolia chain ID
+        }),
+      };
+
+      const pk = generatePrivateKey();
+      const wallet = new ethers.Wallet(pk, mockProvider as any);
+
+      // Convert ethers.Wallet to UniversalSigner using toUniversal
+      const universalSigner = await PushChain.utils.signer.toUniversal(wallet);
+
+      // Verify the conversion worked correctly
+      expect(universalSigner.account.chain).toBe(
+        PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA
+      );
+      expect(universalSigner.account.address).toBe(await wallet.getAddress());
+      expect(typeof universalSigner.signMessage).toBe('function');
+      expect(typeof universalSigner.signTransaction).toBe('function');
+      expect(typeof universalSigner.signTypedData).toBe('function');
+
+      // Test signing functionality
+      const msg = new TextEncoder().encode('test message');
+      const sig = await universalSigner.signMessage(msg);
+      expect(sig).toBeInstanceOf(Uint8Array);
+      expect(sig.length).toBeGreaterThan(0);
+
+      // Test signTransaction functionality
+      const tx = {
+        type: 2,
+        to: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+        value: ethers.parseEther('1'),
+        data: '0x',
+        gasLimit: 21000,
+        maxFeePerGas: ethers.parseUnits('10', 'gwei'),
+        maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei'),
+        nonce: 0,
+        chainId: 11155111,
+      };
+      // Create a proper unsigned transaction
+      const unsignedTx = ethers.Transaction.from(tx);
+      const txBytes = ethers.getBytes(unsignedTx.unsignedSerialized);
+      const txSig = await universalSigner.signTransaction(txBytes);
+      expect(txSig).toBeInstanceOf(Uint8Array);
+      expect(txSig.length).toBeGreaterThan(0);
+    });
+
+    it('maps different chain IDs correctly for ethers.Wallet', async () => {
+      const pk = generatePrivateKey();
+
+      // Test Ethereum Mainnet
+      const mainnetProvider = {
+        getNetwork: jest.fn().mockResolvedValue({
+          chainId: BigInt(1),
+        }),
+      };
+      const mainnetWallet = new ethers.Wallet(pk, mainnetProvider as any);
+      const mainnetSigner = await PushChain.utils.signer.toUniversal(
+        mainnetWallet
+      );
+      expect(mainnetSigner.account.chain).toBe(
+        PushChain.CONSTANTS.CHAIN.ETHEREUM_MAINNET
+      );
+
+      // Test Push Testnet
+      const pushTestnetProvider = {
+        getNetwork: jest.fn().mockResolvedValue({
+          chainId: BigInt(9000),
+        }),
+      };
+      const pushTestnetWallet = new ethers.Wallet(
+        pk,
+        pushTestnetProvider as any
+      );
+      const pushTestnetSigner = await PushChain.utils.signer.toUniversal(
+        pushTestnetWallet
+      );
+      expect(pushTestnetSigner.account.chain).toBe(
+        PushChain.CONSTANTS.CHAIN.PUSH_TESTNET
+      );
+    });
+
+    it('throws error for unsupported chain ID in ethers.Wallet', async () => {
+      const mockProvider = {
+        getNetwork: jest.fn().mockResolvedValue({
+          chainId: BigInt(999999), // Unsupported chain ID
+        }),
+      };
+
+      const pk = generatePrivateKey();
+      const wallet = new ethers.Wallet(pk, mockProvider as any);
+
+      await expect(PushChain.utils.signer.toUniversal(wallet)).rejects.toThrow(
+        'Unsupported chainId: 999999'
+      );
+    });
+
+    it('throws error for ethers.Wallet without provider', async () => {
+      const pk = generatePrivateKey();
+      const walletWithoutProvider = new ethers.Wallet(pk);
+
+      await expect(
+        PushChain.utils.signer.toUniversal(walletWithoutProvider)
+      ).rejects.toThrow(
+        'ethers.Wallet must have a provider attached to determine chain'
+      );
+    });
+
+    it('throws error for unsupported signer type', async () => {
+      const invalidSigner = {
+        someProperty: 'value',
+        // Missing signerId property and not an ethers.Wallet
+      };
+
+      await expect(
+        PushChain.utils.signer.toUniversal(invalidSigner as any)
+      ).rejects.toThrow('Unsupported signer type');
     });
   });
 });

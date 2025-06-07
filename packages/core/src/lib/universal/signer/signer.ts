@@ -7,13 +7,18 @@ import {
 } from 'viem';
 import { TypedDataDomain, TypedData } from '../../constants';
 import {
+  EthersV5SignerType,
+  EthersV6SignerType,
+  TypedDataField,
   UniversalAccount,
   UniversalSigner,
   UniversalSignerSkeleton,
+  ViemSigner,
 } from '../universal.types';
-import { CHAIN, LIBRARY } from '../../constants/enums';
 import * as nacl from 'tweetnacl';
 import { Keypair } from '@solana/web3.js';
+import { CHAIN, LIBRARY } from '../../constants/enums';
+import { ethers, getBytes, hexlify, Wallet } from 'ethers';
 
 /**
  * Creates a `UniversalSigner` object for signing messages and transactions
@@ -56,7 +61,7 @@ export function createUniversalSigner({
  * @returns {Promise<UniversalSigner>} A signer object configured for the specified chain
  */
 export async function toUniversalFromKeyPair(
-  clientOrAccount: WalletClient | Account | Keypair,
+  clientOrAccount: WalletClient | Account | Keypair | Wallet,
   { chain, library }: { chain: CHAIN; library: LIBRARY }
 ): Promise<UniversalSigner> {
   let address: string;
@@ -78,6 +83,63 @@ export async function toUniversalFromKeyPair(
   // If ViemSigner, convert ViemSigner to UniversalSigner.
 
   switch (library) {
+    case LIBRARY.ETHEREUM_ETHERSV6: {
+      if (!(clientOrAccount instanceof ethers.Wallet)) {
+        throw new Error('Expected ethers.Wallet for ETHEREUM_ETHERSV6 library');
+      }
+      const wallet = clientOrAccount as ethers.Wallet;
+      if (!wallet.provider) {
+        throw new Error('ethers.Wallet must have a provider attached');
+      }
+      // fetch on-chain chainId
+      const { chainId } = await wallet.provider.getNetwork();
+      if (chainId.toString() !== chain.split(':')[1]) {
+        throw new Error(
+          `Chain mismatch: wallet is on ${chainId}, expected ${chain}`
+        );
+      }
+
+      address = await wallet.getAddress();
+
+      // raw bytes → ethers.signMessage → hex → back to bytes
+      signMessage = async (data) => {
+        const sigHex = await wallet.signMessage(data);
+        return getBytes(sigHex);
+      };
+
+      // raw unsigned tx bytes → hex → parse → signTransaction → bytes
+      signTransaction = async (raw) => {
+        const unsignedHex = hexlify(raw);
+        const tx = ethers.Transaction.from(unsignedHex);
+        const txReq: ethers.TransactionRequest = {
+          to: tx.to,
+          value: tx.value,
+          data: tx.data,
+          gasLimit: tx.gasLimit,
+          gasPrice: tx.gasPrice,
+          maxFeePerGas: tx.maxFeePerGas,
+          maxPriorityFeePerGas: tx.maxPriorityFeePerGas,
+          nonce: tx.nonce,
+          type: tx.type,
+          chainId: tx.chainId,
+        };
+        const signedHex = await wallet.signTransaction(txReq);
+        return getBytes(signedHex);
+      };
+
+      // EIP-712 typed data → _signTypedData → hex → bytes
+      signTypedData = async ({ domain, types, primaryType, message }) => {
+        const sigHex = await wallet.signTypedData(
+          domain,
+          types as unknown as Record<string, TypedDataField[]>,
+          message
+        );
+        return getBytes(sigHex);
+      };
+
+      break;
+    }
+
     case LIBRARY.ETHEREUM_VIEM: {
       if ('getAddresses' in clientOrAccount) {
         // It's a WalletClient
@@ -241,7 +303,113 @@ export function construct(
 }
 
 export async function toUniversal(
-  signer: UniversalSignerSkeleton
+  signer: UniversalSignerSkeleton | ethers.Wallet
 ): Promise<UniversalSigner> {
-  return createUniversalSigner(signer);
+  // Check if it's a UniversalSignerSkeleton (has signerId property)
+  if ('signerId' in signer) {
+    return createUniversalSigner(signer as UniversalSignerSkeleton);
+  }
+
+  // Check if it's an ethers.Wallet
+  if (signer instanceof ethers.Wallet) {
+    // We need to determine the chain and library for the wallet
+    // For now, we'll assume Ethereum Sepolia as default, but this should be configurable
+    const wallet = signer as ethers.Wallet;
+    if (!wallet.provider) {
+      throw new Error(
+        'ethers.Wallet must have a provider attached to determine chain'
+      );
+    }
+
+    const { chainId } = await wallet.provider.getNetwork();
+    // Map chainId to CHAIN enum - this is a simplified mapping
+    let chain: CHAIN;
+    switch (chainId.toString()) {
+      case '11155111':
+        chain = CHAIN.ETHEREUM_SEPOLIA;
+        break;
+      case '1':
+        chain = CHAIN.ETHEREUM_MAINNET;
+        break;
+      case '9':
+        chain = CHAIN.PUSH_MAINNET;
+        break;
+      case '9000':
+        chain = CHAIN.PUSH_TESTNET;
+        break;
+      case '9001':
+        chain = CHAIN.PUSH_LOCALNET;
+        break;
+      default:
+        throw new Error(`Unsupported chainId: ${chainId}`);
+    }
+
+    return toUniversalFromKeyPair(wallet, {
+      chain,
+      library: LIBRARY.ETHEREUM_ETHERSV6,
+    });
+  }
+
+  throw new Error('Unsupported signer type');
+}
+
+export async function generateSkeletonFromEthers(
+  signer: EthersV6SignerType
+): Promise<UniversalSignerSkeleton> {
+  const address = await signer.getAddress();
+  const { chainId } = await signer.provider.getNetwork();
+
+  if (!Object.values(CHAIN).includes(chainId as CHAIN)) {
+    throw new Error(`Unsupported chainId: ${chainId}`);
+  }
+
+  return {
+    signerId: `EthersSigner-${address}`,
+    account: { address, chain: chainId as CHAIN },
+
+    signMessage: async (data) => {
+      const sig = (await signer.signMessage(data)) as `0x${string}`;
+      return hexToBytes(sig);
+    },
+
+    signTransaction: async (rawUnsignedTx) => {
+      const unsignedHex = bytesToHex(rawUnsignedTx);
+      const tx = ethers.Transaction.from(unsignedHex);
+      const txReq: ethers.TransactionRequest = {
+        to: tx.to,
+        value: tx.value,
+        data: tx.data,
+        gasLimit: tx.gasLimit,
+        gasPrice: tx.gasPrice,
+        maxFeePerGas: tx.maxFeePerGas,
+        maxPriorityFeePerGas: tx.maxPriorityFeePerGas,
+        nonce: tx.nonce,
+        type: tx.type,
+        chainId: tx.chainId,
+      };
+      const signedHex = (await signer.signTransaction(txReq)) as `0x${string}`;
+      return hexToBytes(signedHex);
+    },
+
+    signTypedData: async ({ domain, types, primaryType, message }) => {
+      // now ethers will accept this
+      const sig = await signer.signTypedData(
+        domain,
+        types as unknown as Record<string, TypedDataField[]>,
+        message
+      );
+      return hexToBytes(sig as `0x${string}`);
+    },
+  };
+}
+
+function isViemSigner(
+  signer: ViemSigner | EthersV5SignerType | EthersV6SignerType
+) {
+  return (
+    typeof (signer as any).signTypedData === 'function' &&
+    typeof (signer as any).getChainId === 'function' &&
+    signer.signMessage.length === 1 && // Checking if the function takes one argument
+    (signer as any).signTypedData.length === 1 // Checking if the function takes one argument
+  );
 }
