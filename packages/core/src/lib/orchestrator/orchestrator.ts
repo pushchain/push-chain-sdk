@@ -8,8 +8,11 @@ import {
   bytesToHex,
   stringToBytes,
 } from 'viem';
-import { CHAIN, NETWORK, VM } from '../constants/enums';
-import { UniversalSigner } from '../universal/universal.types';
+import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
+import {
+  UniversalAccount,
+  UniversalSigner,
+} from '../universal/universal.types';
 import { ExecuteParams } from './orchestrator.types';
 import { EvmClient } from '../vm-client/evm-client';
 import { CHAIN_INFO, VM_NAMESPACE } from '../constants/chain';
@@ -34,20 +37,22 @@ export class Orchestrator {
 
   constructor(
     private readonly universalSigner: UniversalSigner,
-    pushNetwork: NETWORK,
-    private readonly rpcUrl: Partial<Record<CHAIN, string>> = {},
+    pushNetwork: PUSH_NETWORK,
+    private readonly rpcUrls: Partial<Record<CHAIN, string[]>> = {},
     private readonly printTraces = false
   ) {
     const pushChain =
-      pushNetwork === NETWORK.MAINNET
+      pushNetwork === PUSH_NETWORK.MAINNET
         ? CHAIN.PUSH_MAINNET
-        : pushNetwork === NETWORK.TESTNET
-        ? CHAIN.PUSH_TESTNET
+        : pushNetwork === PUSH_NETWORK.TESTNET_DONUT
+        ? CHAIN.PUSH_TESTNET_DONUT
         : CHAIN.PUSH_LOCALNET;
-    const pushChainRPC =
-      this.rpcUrl[pushChain] || CHAIN_INFO[pushChain].defaultRPC;
+
+    const pushChainRPCs: string[] =
+      this.rpcUrls[pushChain] || CHAIN_INFO[pushChain].defaultRPC;
+
     this.pushClient = new PushClient({
-      rpcUrl: pushChainRPC,
+      rpcUrls: pushChainRPCs,
       network: pushNetwork,
     });
   }
@@ -56,7 +61,7 @@ export class Orchestrator {
    * Executes an interaction on Push Chain
    */
   async execute(execute: ExecuteParams): Promise<string> {
-    const chain = this.universalSigner.chain;
+    const chain = this.universalSigner.account.chain;
 
     if (this.printTraces) {
       console.log(
@@ -69,16 +74,21 @@ export class Orchestrator {
       CHAIN.ETHEREUM_SEPOLIA,
       CHAIN.SOLANA_TESTNET,
       CHAIN.SOLANA_DEVNET,
-    ].includes(chain);
+    ].includes(
+      chain as
+        | typeof CHAIN.ETHEREUM_SEPOLIA
+        | typeof CHAIN.SOLANA_TESTNET
+        | typeof CHAIN.SOLANA_DEVNET
+    );
 
     const isMainnet = [CHAIN.ETHEREUM_MAINNET, CHAIN.SOLANA_MAINNET].includes(
-      chain
+      chain as typeof CHAIN.ETHEREUM_MAINNET | typeof CHAIN.SOLANA_MAINNET
     );
 
     if (
       isTestnet &&
       this.pushClient.pushChainInfo.chainId !==
-        CHAIN_INFO[CHAIN.PUSH_TESTNET].chainId
+        CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId
     ) {
       throw new Error('Testnet chains can only interact with Push Testnet');
     }
@@ -262,15 +272,15 @@ export class Orchestrator {
     amount: bigint, // USD with 8 decimals
     executionHash: string = zeroHash
   ): Promise<string> {
-    const chain = this.universalSigner.chain;
+    const chain = this.universalSigner.account.chain;
     const { lockerContract, vm, defaultRPC } = CHAIN_INFO[chain];
 
     if (!lockerContract) {
       throw new Error(`Locker contract not configured for chain: ${chain}`);
     }
 
-    const rpcUrl = this.rpcUrl[chain] || defaultRPC;
-    const priceFetcher = new PriceFetch(this.rpcUrl);
+    const rpcUrls: string[] = this.rpcUrls[chain] || defaultRPC;
+    const priceFetcher = new PriceFetch(this.rpcUrls);
     const nativeTokenUsdPrice = await priceFetcher.getPrice(chain); // 8 decimals
 
     let nativeAmount: bigint;
@@ -281,7 +291,7 @@ export class Orchestrator {
         nativeAmount =
           (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
 
-        const evmClient = new EvmClient({ rpcUrl });
+        const evmClient = new EvmClient({ rpcUrls });
 
         return await evmClient.writeContract({
           abi: FEE_LOCKER_EVM as Abi,
@@ -298,7 +308,7 @@ export class Orchestrator {
         nativeAmount =
           (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
 
-        const svmClient = new SvmClient({ rpcUrl });
+        const svmClient = new SvmClient({ rpcUrls });
 
         const [lockerPda, lockerBump] =
           anchor.web3.PublicKey.findProgramAddressSync(
@@ -314,7 +324,7 @@ export class Orchestrator {
           signer: this.universalSigner,
           accounts: {
             locker: lockerPda,
-            user: new PublicKey(this.universalSigner.address),
+            user: new PublicKey(this.universalSigner.account.address),
             systemProgram: SystemProgram.programId,
           },
         });
@@ -339,7 +349,7 @@ export class Orchestrator {
     verifyingContract: `0x${string}`,
     version?: string
   ) {
-    const chain = this.universalSigner.chain;
+    const chain = this.universalSigner.account.chain;
     const { vm } = CHAIN_INFO[chain];
 
     switch (vm) {
@@ -395,7 +405,7 @@ export class Orchestrator {
     crosschainPayload?: CrossChainPayload,
     signature?: Uint8Array
   ): Promise<string> {
-    const { chain, address } = this.universalSigner;
+    const { chain, address } = this.universalSigner.account;
     const { vm, chainId } = CHAIN_INFO[chain];
 
     const accountId: AccountId = {
@@ -465,13 +475,13 @@ export class Orchestrator {
    * Checks if the given chain belongs to the Push Chain ecosystem.
    * Used to differentiate logic for Push-native interactions vs external chains.
    *
-   * @param chain - The chain identifier (e.g., PUSH_MAINNET, PUSH_TESTNET)
+   * @param chain - The chain identifier (e.g., PUSH_MAINNET, PUSH_TESTNET_DONUT)
    * @returns True if the chain is a Push chain, false otherwise.
    */
   private isPushChain(chain: CHAIN): boolean {
     return (
       chain === CHAIN.PUSH_MAINNET ||
-      chain === CHAIN.PUSH_TESTNET ||
+      chain === CHAIN.PUSH_TESTNET_DONUT ||
       chain === CHAIN.PUSH_LOCALNET
     );
   }
@@ -586,7 +596,7 @@ export class Orchestrator {
     address: `0x${string}`;
     deployed: boolean;
   }> {
-    const { chain, address } = this.universalSigner;
+    const { chain, address } = this.universalSigner.account;
     const { vm, chainId } = CHAIN_INFO[chain];
 
     if (this.isPushChain(chain)) {
@@ -638,7 +648,7 @@ export class Orchestrator {
    * @returns NMSC current nonce
    */
   private async getNMSCNonce(address: `0x${string}`): Promise<bigint> {
-    const chain = this.universalSigner.chain;
+    const chain = this.universalSigner.account.chain;
     const { vm } = CHAIN_INFO[chain];
 
     switch (vm) {
@@ -662,5 +672,12 @@ export class Orchestrator {
         throw new Error(`Unsupported VM type: ${vm}`);
       }
     }
+  }
+
+  getUOA(): UniversalAccount {
+    return {
+      chain: this.universalSigner.account.chain,
+      address: this.universalSigner.account.address,
+    };
   }
 }

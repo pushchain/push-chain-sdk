@@ -22,18 +22,19 @@ import { toBech32 } from '@cosmjs/encoding';
 import { EvmClient } from '../vm-client/evm-client';
 import { PushClientOptions } from './push-client.types';
 import { PUSH_CHAIN_INFO } from '../constants/chain';
-import { CHAIN, NETWORK } from '../constants/enums';
+import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 
 export class PushClient extends EvmClient {
   public pushChainInfo;
+  // TODO: Check why this is needed.
   private signerPrivateKey;
   constructor(clientOptions: PushClientOptions) {
     super(clientOptions);
     this.pushChainInfo =
-      clientOptions.network === NETWORK.MAINNET
+      clientOptions.network === PUSH_NETWORK.MAINNET
         ? PUSH_CHAIN_INFO[CHAIN.PUSH_MAINNET]
-        : clientOptions.network === NETWORK.TESTNET
-        ? PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET]
+        : clientOptions.network === PUSH_NETWORK.TESTNET_DONUT
+        ? PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT]
         : PUSH_CHAIN_INFO[CHAIN.PUSH_LOCALNET];
 
     this.signerPrivateKey = generatePrivateKey();

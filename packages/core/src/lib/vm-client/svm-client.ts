@@ -19,8 +19,9 @@ import { UniversalSigner } from '../universal/universal.types';
 export class SvmClient {
   private readonly connection: Connection;
 
-  constructor({ rpcUrl }: ClientOptions) {
-    this.connection = new Connection(rpcUrl, 'confirmed');
+  constructor({ rpcUrls }: ClientOptions) {
+    // TODO: Add fallback like on viem.
+    this.connection = new Connection(rpcUrls[0], 'confirmed');
   }
 
   /**
@@ -119,7 +120,7 @@ export class SvmClient {
     signer: UniversalSigner;
     extraSigners?: Keypair[];
   }): Promise<string> {
-    const feePayerPubkey = new PublicKey(signer.address);
+    const feePayerPubkey = new PublicKey(signer.account.address);
     const { blockhash, lastValidBlockHeight } =
       await this.connection.getLatestBlockhash('finalized');
 
@@ -177,7 +178,7 @@ export class SvmClient {
     instructions: TransactionInstruction[];
     signer: UniversalSigner;
   }): Promise<bigint> {
-    const feePayer = new PublicKey(signer.address);
+    const feePayer = new PublicKey(signer.account.address);
     const { blockhash, lastValidBlockHeight } =
       await this.connection.getLatestBlockhash();
     const tx = new Transaction({ blockhash, lastValidBlockHeight, feePayer });

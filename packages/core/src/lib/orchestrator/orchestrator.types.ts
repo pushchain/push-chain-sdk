@@ -13,6 +13,7 @@ export type ExecuteParams = {
    * Hex-encoded calldata or transfer payload.
    * @reason Encodes the function selector + arguments (or plain transfer).
    */
+  // TODO: MAKE THIS OPTIONAL
   data: `0x${string}`;
 
   /**
