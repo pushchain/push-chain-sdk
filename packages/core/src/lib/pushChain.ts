@@ -1,3 +1,4 @@
+import { CONSTANTS } from './constants';
 import { CHAIN, PUSH_NETWORK } from './constants/enums';
 import { Orchestrator } from './orchestrator/orchestrator';
 import { createUniversalSigner } from './universal/signer';
@@ -12,6 +13,12 @@ import * as viem from 'viem';
  * Provides access to cross-chain execution, utilities, and signer abstraction.
  */
 export class PushChain {
+  /**
+   * @static
+   * Constants for the PushChain SDK.
+   */
+  public static CONSTANTS = CONSTANTS;
+
   /**
    * @static
    * Utility functions for encoding, hashing, and data formatting.
