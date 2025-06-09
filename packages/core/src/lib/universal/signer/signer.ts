@@ -13,7 +13,7 @@ import {
   UniversalAccount,
   UniversalSigner,
   UniversalSignerSkeleton,
-  ViemSigner,
+  ViemSignerType,
 } from '../universal.types';
 import * as nacl from 'tweetnacl';
 import { Keypair } from '@solana/web3.js';
@@ -264,7 +264,7 @@ export async function toUniversalFromKeyPair(
   return createUniversalSigner(universalSigner);
 }
 
-// `signTypedData` is only mandatory for EVM Signers. For Solana this is not necessary.
+// `signTypedData` is only mandatory for EVM Signers. For Solana, this is not necessary.
 export function construct(
   account: UniversalAccount,
   options: {
@@ -303,13 +303,17 @@ export function construct(
 }
 
 export async function toUniversal(
-  signer: UniversalSignerSkeleton | EthersV6SignerType | EthersV5SignerType
+  signer:
+    | UniversalSignerSkeleton
+    | EthersV6SignerType
+    | EthersV5SignerType
+    | ViemSignerType
 ): Promise<UniversalSigner> {
-  // Check if it's a UniversalSignerSkeleton (has signerId property)
   if ('signerId' in signer) {
     return createUniversalSigner(signer as UniversalSignerSkeleton);
   }
 
+  let skeleton: UniversalSignerSkeleton;
   // Check if it's an ethers signer
   if (!isViemSigner(signer)) {
     const wallet = signer;
@@ -321,13 +325,19 @@ export async function toUniversal(
 
     // Check if _signTypedData property is present to determine if it's EthersV5 or EthersV6
     if ('_signTypedData' in wallet) {
-      return generateSkeletonFromEthersV5(wallet as EthersV5SignerType);
+      skeleton = await generateSkeletonFromEthersV5(
+        wallet as EthersV5SignerType
+      );
     } else {
-      return generateSkeletonFromEthersV6(wallet as EthersV6SignerType);
+      skeleton = await generateSkeletonFromEthersV6(
+        wallet as EthersV6SignerType
+      );
     }
+  } else {
+    skeleton = await generateSkeletonFromViem(signer as ViemSignerType);
   }
 
-  throw new Error('Unsupported signer type');
+  return createUniversalSigner(skeleton);
 }
 
 async function generateSkeletonFromEthersV5(
@@ -477,12 +487,90 @@ async function generateSkeletonFromEthersV6(
 }
 
 function isViemSigner(
-  signer: ViemSigner | EthersV5SignerType | EthersV6SignerType
+  signer: ViemSignerType | EthersV5SignerType | EthersV6SignerType
 ) {
   return (
     typeof (signer as any).signTypedData === 'function' &&
-    typeof (signer as any).getChainId === 'function' &&
-    signer.signMessage.length === 1 && // Checking if the function takes one argument
-    (signer as any).signTypedData.length === 1 // Checking if the function takes one argument
+    typeof (signer as any).getChainId === 'function'
   );
+}
+
+async function generateSkeletonFromViem(
+  signer: ViemSignerType
+): Promise<UniversalSignerSkeleton> {
+  if (!signer.account) {
+    throw new Error('Signer account is not set');
+  }
+  const address = signer.account['address'];
+  const chainId = await signer.getChainId();
+
+  // Map chainId to CHAIN enum
+  let chain: CHAIN;
+  switch (chainId.toString()) {
+    case '11155111':
+      chain = CHAIN.ETHEREUM_SEPOLIA;
+      break;
+    case '1':
+      chain = CHAIN.ETHEREUM_MAINNET;
+      break;
+    case '9':
+      chain = CHAIN.PUSH_MAINNET;
+      break;
+    case '9000':
+      chain = CHAIN.PUSH_TESTNET;
+      break;
+    case '9001':
+      chain = CHAIN.PUSH_LOCALNET;
+      break;
+    default:
+      throw new Error(`Unsupported chainId: ${chainId}`);
+  }
+
+  return {
+    signerId: `ViemSigner-${address}`,
+    account: {
+      address,
+      chain,
+    },
+    signMessage: async (data: Uint8Array) => {
+      const hexSig = await signer.signMessage({
+        account: address as `0x${string}`,
+        message: { raw: data },
+      });
+      return hexToBytes(hexSig);
+    },
+    signTransaction: async (unsignedTx: Uint8Array) => {
+      // For viem signers, we need to handle transaction signing differently
+      // Since the ViemSignerType doesn't have signTransaction, we'll need to
+      // use the account's signTransaction method if available
+      if (signer.account['signTransaction']) {
+        const tx = parseTransaction(bytesToHex(unsignedTx));
+        const hexSig = await signer.account['signTransaction'](tx);
+        return hexToBytes(hexSig);
+      }
+      throw new Error(
+        'Transaction signing not supported for this viem signer type'
+      );
+    },
+    signTypedData: async ({
+      domain,
+      types,
+      primaryType,
+      message,
+    }: {
+      domain: TypedDataDomain;
+      types: TypedData;
+      primaryType: string;
+      message: Record<string, any>;
+    }) => {
+      const hexSig = await signer.signTypedData({
+        domain,
+        types,
+        primaryType,
+        message,
+        account: address as `0x${string}`,
+      });
+      return hexToBytes(hexSig);
+    },
+  };
 }
