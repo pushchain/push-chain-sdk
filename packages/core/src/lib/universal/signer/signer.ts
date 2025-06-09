@@ -303,17 +303,15 @@ export function construct(
 }
 
 export async function toUniversal(
-  signer: UniversalSignerSkeleton | EthersV6SignerType
+  signer: UniversalSignerSkeleton | EthersV6SignerType | EthersV5SignerType
 ): Promise<UniversalSigner> {
   // Check if it's a UniversalSignerSkeleton (has signerId property)
   if ('signerId' in signer) {
     return createUniversalSigner(signer as UniversalSignerSkeleton);
   }
 
-  // Check if it's an ethers.Wallet
+  // Check if it's an ethers signer
   if (!isViemSigner(signer)) {
-    // We need to determine the chain and library for the wallet
-    // For now, we'll assume Ethereum Sepolia as default, but this should be configurable
     const wallet = signer;
     if (!wallet.provider) {
       throw new Error(
@@ -321,13 +319,91 @@ export async function toUniversal(
       );
     }
 
-    return generateSkeletonFromEthers(wallet);
+    // Check if _signTypedData property is present to determine if it's EthersV5 or EthersV6
+    if ('_signTypedData' in wallet) {
+      return generateSkeletonFromEthersV5(wallet as EthersV5SignerType);
+    } else {
+      return generateSkeletonFromEthersV6(wallet as EthersV6SignerType);
+    }
   }
 
   throw new Error('Unsupported signer type');
 }
 
-async function generateSkeletonFromEthers(
+async function generateSkeletonFromEthersV5(
+  signer: EthersV5SignerType
+): Promise<UniversalSignerSkeleton> {
+  const address = await signer.getAddress();
+
+  const { chainId } = await signer.provider.getNetwork();
+
+  // Map chainId to CHAIN enum - this is a simplified mapping
+  let chain: CHAIN;
+  switch (chainId.toString()) {
+    case '11155111':
+      chain = CHAIN.ETHEREUM_SEPOLIA;
+      break;
+    case '1':
+      chain = CHAIN.ETHEREUM_MAINNET;
+      break;
+    case '9':
+      chain = CHAIN.PUSH_MAINNET;
+      break;
+    case '9000':
+      chain = CHAIN.PUSH_TESTNET;
+      break;
+    case '9001':
+      chain = CHAIN.PUSH_LOCALNET;
+      break;
+    default:
+      throw new Error(`Unsupported chainId: ${chainId}`);
+  }
+
+  if (!Object.values(CHAIN).includes(chain)) {
+    throw new Error(`Unsupported chainId: ${chainId}`);
+  }
+
+  return {
+    signerId: `EthersSignerV5-${address}`,
+    account: { address, chain },
+
+    signMessage: async (data) => {
+      const sigHex = await signer.signMessage(data);
+      return getBytes(sigHex);
+    },
+
+    // raw unsigned tx bytes → hex → parse → signTransaction → bytes
+    signTransaction: async (raw) => {
+      const unsignedHex = hexlify(raw);
+      const tx = ethers.Transaction.from(unsignedHex);
+      const txReq: ethers.TransactionRequest = {
+        to: tx.to,
+        value: tx.value,
+        data: tx.data,
+        gasLimit: tx.gasLimit,
+        gasPrice: tx.gasPrice,
+        maxFeePerGas: tx.maxFeePerGas,
+        maxPriorityFeePerGas: tx.maxPriorityFeePerGas,
+        nonce: tx.nonce,
+        type: tx.type,
+        chainId: tx.chainId,
+      };
+      const signedHex = await signer.signTransaction(txReq);
+      return getBytes(signedHex);
+    },
+
+    signTypedData: async ({ domain, types, primaryType, message }) => {
+      const sigHex = await signer._signTypedData(
+        domain,
+        types as unknown as Record<string, TypedDataField[]>,
+        message
+      );
+      return getBytes(sigHex);
+    },
+  };
+}
+
+async function generateSkeletonFromEthersV6(
   signer: EthersV6SignerType
 ): Promise<UniversalSignerSkeleton> {
   const address = await signer.getAddress();
@@ -361,8 +437,8 @@ async function generateSkeletonFromEthers(
   }
 
   return {
-    signerId: `EthersSigner-${address}`,
-    account: { address, chain},
+    signerId: `EthersSignerV6-${address}`,
+    account: { address, chain },
 
     signMessage: async (data) => {
       const sigHex = await signer.signMessage(data);

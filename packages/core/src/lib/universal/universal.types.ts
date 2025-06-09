@@ -198,11 +198,11 @@ export interface EthersV5SignerType {
     domain: TypedDataDomain,
     types: Record<string, Array<TypedDataField>>,
     value: Record<string, any>
-  ) => Promise<string>;
-  getAddress: () => Promise<string>;
-  signMessage: (message: Uint8Array | string) => Promise<string>;
-  privateKey?: string;
-  provider?: any;
+  ) => Promise<string>
+  getAddress: () => Promise<string>
+  signMessage: (message: Uint8Array | string) => Promise<string>
+  signTransaction: (transaction: TransactionRequest) => Promise<string>
+  provider?: any
 }
 
 export interface EthersV6SignerType {
