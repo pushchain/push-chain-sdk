@@ -1,4 +1,5 @@
 import { createUniversalSigner } from './signer';
+import * as viem from 'viem';
 import { PushChain } from '../../pushChain';
 import {
   createWalletClient,
@@ -42,7 +43,7 @@ describe('Universal Account Utilities', () => {
   describe('toUniversalFromKeyPair (viem)', () => {
     const pk = generatePrivateKey();
     const account = privateKeyToAccount(pk);
-    const client = createWalletClient({
+    const client: viem.WalletClient = createWalletClient({
       account,
       chain: sepolia,
       transport: http(),
@@ -245,7 +246,7 @@ describe('Universal Account Utilities', () => {
   });
 
   describe('toUniversalFromKeyPair (solana)', () => {
-    const keypair = Keypair.generate();
+    const keypair: Keypair = Keypair.generate();
 
     it('creates a valid UniversalSigner for Solana', async () => {
       const signer = await PushChain.utils.signer.toUniversalFromKeyPair(
@@ -576,7 +577,7 @@ describe('Universal Account Utilities', () => {
 
       await expect(
         PushChain.utils.signer.toUniversal(invalidSigner as any)
-      ).rejects.toThrow('Unsupported signer type');
+      ).rejects.toThrow('ethers.Wallet must have a provider attached to determine chain');
     });
   });
 });

@@ -214,7 +214,6 @@ export interface EthersV6SignerType {
     types: Record<string, Array<TypedDataField>>,
     value: Record<string, any>
   ) => Promise<string>;
-  privateKey?: string;
   provider?: any;
 }
 

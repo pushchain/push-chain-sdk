@@ -303,7 +303,7 @@ export function construct(
 }
 
 export async function toUniversal(
-  signer: UniversalSignerSkeleton | ethers.Wallet
+  signer: UniversalSignerSkeleton | EthersV6SignerType
 ): Promise<UniversalSigner> {
   // Check if it's a UniversalSignerSkeleton (has signerId property)
   if ('signerId' in signer) {
@@ -311,69 +311,67 @@ export async function toUniversal(
   }
 
   // Check if it's an ethers.Wallet
-  if (signer instanceof ethers.Wallet) {
+  if (!isViemSigner(signer)) {
     // We need to determine the chain and library for the wallet
     // For now, we'll assume Ethereum Sepolia as default, but this should be configurable
-    const wallet = signer as ethers.Wallet;
+    const wallet = signer;
     if (!wallet.provider) {
       throw new Error(
         'ethers.Wallet must have a provider attached to determine chain'
       );
     }
 
-    const { chainId } = await wallet.provider.getNetwork();
-    // Map chainId to CHAIN enum - this is a simplified mapping
-    let chain: CHAIN;
-    switch (chainId.toString()) {
-      case '11155111':
-        chain = CHAIN.ETHEREUM_SEPOLIA;
-        break;
-      case '1':
-        chain = CHAIN.ETHEREUM_MAINNET;
-        break;
-      case '9':
-        chain = CHAIN.PUSH_MAINNET;
-        break;
-      case '9000':
-        chain = CHAIN.PUSH_TESTNET;
-        break;
-      case '9001':
-        chain = CHAIN.PUSH_LOCALNET;
-        break;
-      default:
-        throw new Error(`Unsupported chainId: ${chainId}`);
-    }
-
-    return toUniversalFromKeyPair(wallet, {
-      chain,
-      library: LIBRARY.ETHEREUM_ETHERSV6,
-    });
+    return generateSkeletonFromEthers(wallet);
   }
 
   throw new Error('Unsupported signer type');
 }
 
-export async function generateSkeletonFromEthers(
+async function generateSkeletonFromEthers(
   signer: EthersV6SignerType
 ): Promise<UniversalSignerSkeleton> {
   const address = await signer.getAddress();
+
   const { chainId } = await signer.provider.getNetwork();
 
-  if (!Object.values(CHAIN).includes(chainId as CHAIN)) {
+  // Map chainId to CHAIN enum - this is a simplified mapping
+  let chain: CHAIN;
+  switch (chainId.toString()) {
+    case '11155111':
+      chain = CHAIN.ETHEREUM_SEPOLIA;
+      break;
+    case '1':
+      chain = CHAIN.ETHEREUM_MAINNET;
+      break;
+    case '9':
+      chain = CHAIN.PUSH_MAINNET;
+      break;
+    case '9000':
+      chain = CHAIN.PUSH_TESTNET;
+      break;
+    case '9001':
+      chain = CHAIN.PUSH_LOCALNET;
+      break;
+    default:
+      throw new Error(`Unsupported chainId: ${chainId}`);
+  }
+
+  if (!Object.values(CHAIN).includes(chain)) {
     throw new Error(`Unsupported chainId: ${chainId}`);
   }
 
   return {
     signerId: `EthersSigner-${address}`,
-    account: { address, chain: chainId as CHAIN },
+    account: { address, chain},
 
     signMessage: async (data) => {
-      const sig = (await signer.signMessage(data)) as `0x${string}`;
-      return hexToBytes(sig);
+      const sigHex = await signer.signMessage(data);
+      return getBytes(sigHex);
     },
 
-    signTransaction: async (rawUnsignedTx) => {
-      const unsignedHex = bytesToHex(rawUnsignedTx);
+    // raw unsigned tx bytes → hex → parse → signTransaction → bytes
+    signTransaction: async (raw) => {
+      const unsignedHex = hexlify(raw);
       const tx = ethers.Transaction.from(unsignedHex);
       const txReq: ethers.TransactionRequest = {
         to: tx.to,
@@ -387,18 +385,17 @@ export async function generateSkeletonFromEthers(
         type: tx.type,
         chainId: tx.chainId,
       };
-      const signedHex = (await signer.signTransaction(txReq)) as `0x${string}`;
-      return hexToBytes(signedHex);
+      const signedHex = await signer.signTransaction(txReq);
+      return getBytes(signedHex);
     },
 
     signTypedData: async ({ domain, types, primaryType, message }) => {
-      // now ethers will accept this
-      const sig = await signer.signTypedData(
+      const sigHex = await signer.signTypedData(
         domain,
         types as unknown as Record<string, TypedDataField[]>,
         message
       );
-      return hexToBytes(sig as `0x${string}`);
+      return getBytes(sigHex);
     },
   };
 }
