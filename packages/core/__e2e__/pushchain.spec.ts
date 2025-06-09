@@ -2,7 +2,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
 import { Hex, isAddress, PublicClient } from 'viem';
 import { Keypair } from '@solana/web3.js';
-import { CONSTANTS, PushChain } from '../src';
+import { PushChain } from '../src';
 
 /** CLI COMMANDS
  
@@ -40,7 +40,7 @@ describe.skip('PushChain (e2e)', () => {
         const universalSigner =
           await PushChain.utils.signer.toUniversalFromKeyPair(account, {
             chain: originChain,
-            library: CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+            library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
           });
 
         pushClient = await PushChain.initialize(universalSigner, {
@@ -91,7 +91,7 @@ describe.skip('PushChain (e2e)', () => {
         const universalSigner =
           await PushChain.utils.signer.toUniversalFromKeyPair(account, {
             chain: originChain,
-            library: CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+            library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
           });
 
         pushClient = await PushChain.initialize(universalSigner, {
@@ -144,7 +144,7 @@ describe.skip('PushChain (e2e)', () => {
         const universalSigner =
           await PushChain.utils.signer.toUniversalFromKeyPair(account, {
             chain: originChain,
-            library: CONSTANTS.LIBRARY.SOLANA_WEB3JS,
+            library: PushChain.CONSTANTS.LIBRARY.SOLANA_WEB3JS,
           });
 
         pushClient = await PushChain.initialize(universalSigner, {
@@ -188,7 +188,7 @@ describe('viem', () => {
 
   beforeAll(() => {
     viemClient = PushChain.viem.createPublicClient({
-      chain: CONSTANTS.VIEM_PUSH_TESTNET_DONUT,
+      chain: PushChain.CONSTANTS.VIEM_PUSH_TESTNET_DONUT,
       transport: PushChain.viem.http(),
     });
   });

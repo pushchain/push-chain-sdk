@@ -1,4 +1,5 @@
 import { createUniversalSigner } from './signer';
+import * as viem from 'viem';
 import { PushChain } from '../../pushChain';
 import {
   createWalletClient,
@@ -42,10 +43,10 @@ describe('Universal Account Utilities', () => {
   describe('toUniversalFromKeyPair (viem)', () => {
     const pk = generatePrivateKey();
     const account = privateKeyToAccount(pk);
-    const client = createWalletClient({
+    const client: viem.WalletClient = createWalletClient({
       account,
       chain: sepolia,
-      transport: http(),
+      transport: http('https://sepolia.gateway.tenderly.co'),
     });
 
     it('wraps a viem WalletClient into a UniversalSigner', async () => {
@@ -245,7 +246,7 @@ describe('Universal Account Utilities', () => {
   });
 
   describe('toUniversalFromKeyPair (solana)', () => {
-    const keypair = Keypair.generate();
+    const keypair: Keypair = Keypair.generate();
 
     it('creates a valid UniversalSigner for Solana', async () => {
       const signer = await PushChain.utils.signer.toUniversalFromKeyPair(
@@ -576,7 +577,229 @@ describe('Universal Account Utilities', () => {
 
       await expect(
         PushChain.utils.signer.toUniversal(invalidSigner as any)
-      ).rejects.toThrow('Unsupported signer type');
+      ).rejects.toThrow(
+        'ethers.Wallet must have a provider attached to determine chain'
+      );
+    });
+  });
+
+  describe('toUniversal with viem', () => {
+    it('converts a viem-compatible signer directly to UniversalSigner via toUniversal', async () => {
+      const pk = generatePrivateKey();
+      const account = privateKeyToAccount(pk);
+
+      // Create a mock viem signer that matches ViemSignerType interface
+      const mockViemSigner = {
+        account: {
+          address: account.address,
+          signTransaction: jest.fn().mockImplementation(async () => {
+            return '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1b';
+          }),
+        },
+        getChainId: jest.fn().mockResolvedValue(11155111), // Sepolia
+        signMessage: jest.fn().mockImplementation(async ({ message }) => {
+          // Mock implementation that returns a hex signature
+          return '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1b';
+        }),
+        signTypedData: jest.fn().mockImplementation(async () => {
+          // Mock implementation that returns a hex signature
+          return '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1b';
+        }),
+      };
+
+      // Convert mock viem signer to UniversalSigner using toUniversal
+      const universalSigner = await PushChain.utils.signer.toUniversal(
+        mockViemSigner
+      );
+
+      // Verify the conversion worked correctly
+      expect(universalSigner.account.chain).toBe(
+        PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA
+      );
+      expect(universalSigner.account.address).toBe(account.address);
+      expect(typeof universalSigner.signMessage).toBe('function');
+      expect(typeof universalSigner.signTransaction).toBe('function');
+      expect(typeof universalSigner.signTypedData).toBe('function');
+
+      // Test signing functionality
+      const msg = new TextEncoder().encode('test message');
+      const sig = await universalSigner.signMessage(msg);
+      expect(sig).toBeInstanceOf(Uint8Array);
+      expect(sig.length).toBeGreaterThan(0);
+      expect(mockViemSigner.signMessage).toHaveBeenCalled();
+
+      // Test signTransaction functionality
+      const tx: TransactionSerializableEIP1559 = {
+        to: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8' as `0x${string}`,
+        value: BigInt('1000000000000000000'),
+        data: '0x' as Hex,
+        chainId: sepolia.id,
+        maxFeePerGas: BigInt('1000000000'),
+        maxPriorityFeePerGas: BigInt('1000000000'),
+        nonce: 0,
+      };
+      const serializedTx = serializeTransaction(tx);
+      const txSig = await universalSigner.signTransaction(
+        hexToBytes(serializedTx)
+      );
+      expect(txSig).toBeInstanceOf(Uint8Array);
+      expect(txSig.length).toBeGreaterThan(0);
+      expect(mockViemSigner.account.signTransaction).toHaveBeenCalled();
+
+      // Test signTypedData functionality
+      if (universalSigner.signTypedData) {
+        const typedDataArgs = {
+          domain: { name: 'Test', version: '1', chainId: sepolia.id },
+          types: { Test: [{ name: 'data', type: 'string' }] },
+          primaryType: 'Test',
+          message: { data: 'test' },
+        };
+        const typedDataSig = await universalSigner.signTypedData(typedDataArgs);
+        expect(typedDataSig).toBeInstanceOf(Uint8Array);
+        expect(typedDataSig.length).toBeGreaterThan(0);
+        expect(mockViemSigner.signTypedData).toHaveBeenCalled();
+      }
+    });
+
+    it('maps different chain IDs correctly for viem signers', async () => {
+      const pk = generatePrivateKey();
+      const account = privateKeyToAccount(pk);
+
+      // Test Ethereum Mainnet
+      const mainnetSigner = {
+        account: {
+          address: account.address,
+          signTransaction: jest.fn().mockResolvedValue('0x123'),
+        },
+        getChainId: jest.fn().mockResolvedValue(1),
+        signMessage: jest.fn().mockResolvedValue('0x123'),
+        signTypedData: jest.fn().mockResolvedValue('0x123'),
+      };
+      const mainnetUniversalSigner = await PushChain.utils.signer.toUniversal(
+        mainnetSigner
+      );
+      expect(mainnetUniversalSigner.account.chain).toBe(
+        PushChain.CONSTANTS.CHAIN.ETHEREUM_MAINNET
+      );
+
+      // Test Push Testnet
+      const pushTestnetSigner = {
+        account: {
+          address: account.address,
+          signTransaction: jest.fn().mockResolvedValue('0x123'),
+        },
+        getChainId: jest.fn().mockResolvedValue(9000),
+        signMessage: jest.fn().mockResolvedValue('0x123'),
+        signTypedData: jest.fn().mockResolvedValue('0x123'),
+      };
+      const pushTestnetUniversalSigner =
+        await PushChain.utils.signer.toUniversal(pushTestnetSigner);
+      expect(pushTestnetUniversalSigner.account.chain).toBe(
+        PushChain.CONSTANTS.CHAIN.PUSH_TESTNET
+      );
+
+      // Test Push Mainnet
+      const pushMainnetSigner = {
+        account: {
+          address: account.address,
+          signTransaction: jest.fn().mockResolvedValue('0x123'),
+        },
+        getChainId: jest.fn().mockResolvedValue(9),
+        signMessage: jest.fn().mockResolvedValue('0x123'),
+        signTypedData: jest.fn().mockResolvedValue('0x123'),
+      };
+      const pushMainnetUniversalSigner =
+        await PushChain.utils.signer.toUniversal(pushMainnetSigner);
+      expect(pushMainnetUniversalSigner.account.chain).toBe(
+        PushChain.CONSTANTS.CHAIN.PUSH_MAINNET
+      );
+
+      // Test Push Localnet
+      const pushLocalnetSigner = {
+        account: {
+          address: account.address,
+          signTransaction: jest.fn().mockResolvedValue('0x123'),
+        },
+        getChainId: jest.fn().mockResolvedValue(9001),
+        signMessage: jest.fn().mockResolvedValue('0x123'),
+        signTypedData: jest.fn().mockResolvedValue('0x123'),
+      };
+      const pushLocalnetUniversalSigner =
+        await PushChain.utils.signer.toUniversal(pushLocalnetSigner);
+      expect(pushLocalnetUniversalSigner.account.chain).toBe(
+        PushChain.CONSTANTS.CHAIN.PUSH_LOCALNET
+      );
+    });
+
+    it('throws error for unsupported chain ID in viem signers', async () => {
+      const pk = generatePrivateKey();
+      const account = privateKeyToAccount(pk);
+
+      const signerWithUnsupportedChain = {
+        account: {
+          address: account.address,
+          signTransaction: jest.fn(),
+        },
+        getChainId: jest.fn().mockResolvedValue(999999), // Unsupported chain ID
+        signMessage: jest.fn().mockResolvedValue('0x123'),
+        signTypedData: jest.fn().mockResolvedValue('0x123'),
+      };
+
+      await expect(
+        PushChain.utils.signer.toUniversal(signerWithUnsupportedChain)
+      ).rejects.toThrow('Unsupported chainId: 999999');
+    });
+
+    it('throws error for viem signer without account', async () => {
+      // Create a signer without an account - need to cast as any since TypeScript won't allow null account
+      const signerWithoutAccount = {
+        account: {} as any, // Empty object to satisfy type but will fail the account check
+        getChainId: jest.fn().mockResolvedValue(11155111),
+        signMessage: jest.fn().mockResolvedValue('0x123'),
+        signTypedData: jest.fn().mockResolvedValue('0x123'),
+      };
+
+      // Remove the account property to simulate missing account
+      delete (signerWithoutAccount as any).account;
+
+      await expect(
+        PushChain.utils.signer.toUniversal(signerWithoutAccount as any)
+      ).rejects.toThrow('Signer account is not set');
+    });
+
+    it('throws error for viem signer account without signTransaction method', async () => {
+      const pk = generatePrivateKey();
+      const account = privateKeyToAccount(pk);
+
+      // Create a signer with account that lacks signTransaction method
+      const signerWithIncompleteAccount = {
+        account: { address: account.address }, // Missing signTransaction
+        getChainId: jest.fn().mockResolvedValue(11155111),
+        signMessage: jest.fn().mockResolvedValue('0x123'),
+        signTypedData: jest.fn().mockResolvedValue('0x123'),
+      };
+
+      const universalSigner = await PushChain.utils.signer.toUniversal(
+        signerWithIncompleteAccount
+      );
+
+      // The signTransaction should throw an error when called
+      const tx: TransactionSerializableEIP1559 = {
+        to: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8' as `0x${string}`,
+        value: BigInt('1000000000000000000'),
+        data: '0x' as Hex,
+        chainId: sepolia.id,
+        maxFeePerGas: BigInt('1000000000'),
+        maxPriorityFeePerGas: BigInt('1000000000'),
+        nonce: 0,
+      };
+      const serializedTx = serializeTransaction(tx);
+
+      await expect(
+        universalSigner.signTransaction(hexToBytes(serializedTx))
+      ).rejects.toThrow(
+        'Transaction signing not supported for this viem signer type'
+      );
     });
   });
 });

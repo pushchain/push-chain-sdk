@@ -158,23 +158,7 @@ export type TransactionRequest = {
   //gasMultiplier?: number;
 };
 
-export interface MetamaskSigner {
-  signMessage: (data: Uint8Array) => Promise<Uint8Array>;
-  signTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
-  signTypedData: ({
-    domain,
-    types,
-    primaryType,
-    message,
-  }: {
-    domain: TypedDataDomain;
-    types: TypedData;
-    primaryType: string;
-    message: Record<string, any>;
-  }) => Promise<Uint8Array>;
-}
-
-export interface ViemSigner {
+export type ViemSignerType = {
   signTypedData: (args: {
     account: any;
     domain: any;
@@ -189,9 +173,8 @@ export interface ViemSigner {
     [key: string]: any;
   }) => Promise<`0x${string}`>;
   account: { [key: string]: any };
-  privateKey?: string;
   provider?: any;
-}
+};
 
 export interface EthersV5SignerType {
   _signTypedData: (
@@ -201,7 +184,7 @@ export interface EthersV5SignerType {
   ) => Promise<string>;
   getAddress: () => Promise<string>;
   signMessage: (message: Uint8Array | string) => Promise<string>;
-  privateKey?: string;
+  signTransaction: (transaction: TransactionRequest) => Promise<string>;
   provider?: any;
 }
 
@@ -214,16 +197,11 @@ export interface EthersV6SignerType {
     types: Record<string, Array<TypedDataField>>,
     value: Record<string, any>
   ) => Promise<string>;
-  privateKey?: string;
   provider?: any;
 }
 
 // export type ViemSigner = viem.WalletClient;
 export type SolanaWeb3jsSigner = Keypair;
-
-// TODO: create PushChain.signer.construct({signMessage, signTransaction, signTypedData, address, chain, UID='custom'}) returns a CustomUniversalSigner.
-
-// TODO: Create new interface for `Signer`. Used for when we don't have the library yet to create signMesssage signTransaction signTypedData for the user.
 
 /**
  * A signer capable of signing messages for a specific chain.
@@ -246,7 +224,7 @@ export interface UniversalSigner {
   signMessage: (data: Uint8Array) => Promise<Uint8Array>;
 
   /**
-   * Signs an typed data, provided as binary data.
+   * Signs a typed data, provided as binary data.
    * @dev !! Only Required for Evm Signers !!
    *
    * @param data - The message to sign, as a Uint8Array.
