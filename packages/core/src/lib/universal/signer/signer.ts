@@ -314,9 +314,8 @@ export async function toUniversal(
   }
 
   let skeleton: UniversalSignerSkeleton;
-  // Check if it's an ethers signer
   if (!isViemSigner(signer)) {
-    const wallet = signer;
+    const wallet = signer as EthersV5SignerType | EthersV6SignerType;
     if (!wallet.provider) {
       throw new Error(
         'ethers.Wallet must have a provider attached to determine chain'

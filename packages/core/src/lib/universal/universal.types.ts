@@ -200,9 +200,6 @@ export interface EthersV6SignerType {
   provider?: any;
 }
 
-// export type ViemSigner = viem.WalletClient;
-export type SolanaWeb3jsSigner = Keypair;
-
 /**
  * A signer capable of signing messages for a specific chain.
  * Used to abstract away signing across multiple VM types.
