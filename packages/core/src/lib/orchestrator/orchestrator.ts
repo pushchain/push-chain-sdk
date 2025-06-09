@@ -63,6 +63,10 @@ export class Orchestrator {
   async execute(execute: ExecuteParams): Promise<string> {
     const chain = this.universalSigner.account.chain;
 
+    if (!execute.data) {
+      execute.data = '0x';
+    }
+
     if (this.printTraces) {
       console.log(
         `[${this.constructor.name}] Starting cross-chain execution from chain: ${chain}`
