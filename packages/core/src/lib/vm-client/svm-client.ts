@@ -17,11 +17,64 @@ import { UniversalSigner } from '../universal/universal.types';
  * Solana-compatible VM client for reading and writing SVM-based chains.
  */
 export class SvmClient {
-  private readonly connection: Connection;
+  private readonly rpcUrls: string[];
+  private readonly connections: Connection[];
+  private currentConnectionIndex: number = 0;
+  private readonly maxRetries: number = 3;
 
   constructor({ rpcUrls }: ClientOptions) {
-    // TODO: Add fallback like on viem.
-    this.connection = new Connection(rpcUrls[0], 'confirmed');
+    if (!rpcUrls || rpcUrls.length === 0) {
+      throw new Error('At least one RPC URL must be provided');
+    }
+    
+    this.rpcUrls = rpcUrls;
+    this.connections = rpcUrls.map(url => new Connection(url, 'confirmed'));
+  }
+
+  /**
+   * Gets the current active connection, with fallback to next available connection on failure
+   */
+  private getCurrentConnection(): Connection {
+    return this.connections[this.currentConnectionIndex];
+  }
+
+  /**
+   * Executes a function with automatic fallback to next RPC endpoint on failure
+   */
+  private async executeWithFallback<T>(
+    operation: (connection: Connection) => Promise<T>,
+    operationName: string = 'operation'
+  ): Promise<T> {
+    let lastError: Error | null = null;
+    
+    // Try each connection starting from current index
+    for (let attempt = 0; attempt < this.connections.length; attempt++) {
+      const connectionIndex = (this.currentConnectionIndex + attempt) % this.connections.length;
+      const connection = this.connections[connectionIndex];
+      
+      try {
+        const result = await operation(connection);
+        // Success - update current connection index if we switched
+        if (connectionIndex !== this.currentConnectionIndex) {
+          //console.log(`Switched to RPC endpoint ${connectionIndex + 1}: ${this.rpcUrls[connectionIndex]}`);
+          this.currentConnectionIndex = connectionIndex;
+        }
+        return result;
+      } catch (error) {
+        lastError = error as Error;
+        //console.warn(`RPC endpoint ${connectionIndex + 1} failed for ${operationName}:`, error);
+        
+        // If this was our last attempt, throw the error
+        if (attempt === this.connections.length - 1) {
+          break;
+        }
+        
+        // Wait a bit before trying next endpoint
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
+    throw new Error(`All RPC endpoints failed for ${operationName}. Last error: ${lastError?.message}`);
   }
 
   /**
@@ -29,7 +82,10 @@ export class SvmClient {
    */
   async getBalance(address: string): Promise<bigint> {
     const pubkey = new PublicKey(address);
-    const lamports = await this.connection.getBalance(pubkey);
+    const lamports = await this.executeWithFallback(
+      (connection) => connection.getBalance(pubkey),
+      'getBalance'
+    );
     return BigInt(lamports);
   }
 
@@ -42,21 +98,23 @@ export class SvmClient {
     functionName,
     args = [],
   }: ReadContractParams): Promise<T> {
-    const provider = new AnchorProvider(
-      this.connection,
-      new Wallet(new Keypair()),
-      { preflightCommitment: 'confirmed' }
-    );
+    return this.executeWithFallback(async (connection) => {
+      const provider = new AnchorProvider(
+        connection,
+        new Wallet(new Keypair()),
+        { preflightCommitment: 'confirmed' }
+      );
 
-    // Anchor v0.31 constructor no longer takes programId
-    // Use the IDL's embedded metadata.address instead
-    const program = new Program<typeof abi>(abi, provider);
+      // Anchor v0.31 constructor no longer takes programId
+      // Use the IDL's embedded metadata.address instead
+      const program = new Program<typeof abi>(abi, provider);
 
-    const pubkey = new PublicKey(args[0]);
-    // Cast account namespace to any to allow dynamic string
-    const accountNamespace = program.account as any;
-    const account = await accountNamespace[functionName].fetch(pubkey);
-    return account as T;
+      const pubkey = new PublicKey(args[0]);
+      // Cast account namespace to any to allow dynamic string
+      const accountNamespace = program.account as any;
+      const account = await accountNamespace[functionName].fetch(pubkey);
+      return account as T;
+    }, 'readContract');
   }
 
   /**
@@ -70,42 +128,45 @@ export class SvmClient {
     accounts = {},
     extraSigners = [],
   }: WriteContractParams): Promise<string> {
-    const provider = new AnchorProvider(
-      this.connection,
-      new Wallet(new Keypair()),
-      { preflightCommitment: 'confirmed' }
-    );
+    return this.executeWithFallback(async (connection) => {
+      const provider = new AnchorProvider(
+        connection,
+        new Wallet(new Keypair()),
+        { preflightCommitment: 'confirmed' }
+      );
 
-    // NEW: Drop explicit programId. Anchor v0.31 infers it from IDL.metadata.address
-    const program = new Program<typeof abi>(abi, provider);
+      // NEW: Drop explicit programId. Anchor v0.31 infers it from IDL.metadata.address
+      const program = new Program<typeof abi>(abi, provider);
 
-    // Convert BigInt arguments to BN instances for Anchor compatibility. Anchor program expects BN for BigInts
-    const convertedArgs = args.map((arg) => {
-      if (typeof arg === 'bigint') {
-        return new BN(arg.toString());
+      // Convert BigInt arguments to BN instances for Anchor compatibility. Anchor program expects BN for BigInts
+      const convertedArgs = args.map((arg) => {
+        if (typeof arg === 'bigint') {
+          return new BN(arg.toString());
+        }
+        return arg;
+      });
+
+      // Build the method context
+      const methodContext =
+        convertedArgs.length > 0
+          ? program.methods[functionName](...convertedArgs)
+          : program.methods[functionName]();
+
+      let instructionBuilder = methodContext as any;
+
+      if (Object.keys(accounts).length > 0) {
+        instructionBuilder = instructionBuilder.accounts(accounts);
       }
-      return arg;
-    });
 
-    // Build the method context
-    const methodContext =
-      convertedArgs.length > 0
-        ? program.methods[functionName](...convertedArgs)
-        : program.methods[functionName]();
+      const instruction = await instructionBuilder.instruction();
 
-    let instructionBuilder = methodContext as any;
-
-    if (Object.keys(accounts).length > 0) {
-      instructionBuilder = instructionBuilder.accounts(accounts);
-    }
-
-    const instruction = await instructionBuilder.instruction();
-
-    return this.sendTransaction({
-      instruction,
-      signer,
-      extraSigners,
-    });
+      return this.sendTransaction({
+        instruction,
+        signer,
+        extraSigners,
+        connection,
+      });
+    }, 'writeContract');
   }
 
   /**
@@ -115,32 +176,44 @@ export class SvmClient {
     instruction,
     signer,
     extraSigners = [],
+    connection,
   }: {
     instruction: TransactionInstruction;
     signer: UniversalSigner;
     extraSigners?: Keypair[];
+    connection?: Connection;
   }): Promise<string> {
-    const feePayerPubkey = new PublicKey(signer.account.address);
-    const { blockhash, lastValidBlockHeight } =
-      await this.connection.getLatestBlockhash('finalized');
+    const executeTransaction = async (conn: Connection) => {
+      const feePayerPubkey = new PublicKey(signer.account.address);
+      const { blockhash, lastValidBlockHeight } =
+        await conn.getLatestBlockhash('finalized');
 
-    const tx = new Transaction({
-      feePayer: feePayerPubkey,
-      blockhash,
-      lastValidBlockHeight,
-    }).add(instruction);
+      const tx = new Transaction({
+        feePayer: feePayerPubkey,
+        blockhash,
+        lastValidBlockHeight,
+      }).add(instruction);
 
-    // Sign with all provided keypairs
-    if (extraSigners.length > 0) {
-      tx.partialSign(...extraSigners);
+      // Sign with all provided keypairs
+      if (extraSigners.length > 0) {
+        tx.partialSign(...extraSigners);
+      }
+
+      const messageBytes = tx.serializeMessage();
+      const signature = await signer.signTransaction(messageBytes);
+      tx.addSignature(feePayerPubkey, Buffer.from(signature));
+
+      const rawTx = tx.serialize();
+      return await conn.sendRawTransaction(rawTx);
+    };
+
+    // If a specific connection is provided, use it directly
+    if (connection) {
+      return executeTransaction(connection);
     }
 
-    const messageBytes = tx.serializeMessage();
-    const signature = await signer.signTransaction(messageBytes);
-    tx.addSignature(feePayerPubkey, Buffer.from(signature));
-
-    const rawTx = tx.serialize();
-    return await this.connection.sendRawTransaction(rawTx);
+    // Otherwise use fallback mechanism
+    return this.executeWithFallback(executeTransaction, 'sendTransaction');
   }
 
   /**
@@ -148,24 +221,27 @@ export class SvmClient {
    */
   async confirmTransaction(signature: string, timeout = 30000): Promise<void> {
     const startTime = Date.now();
-    while (Date.now() - startTime < timeout) {
-      const status = await this.connection.getSignatureStatus(signature);
-      if (status?.value) {
-        if (status.value.err) {
-          throw new Error(
-            `Transaction failed: ${JSON.stringify(status.value.err)}`
-          );
+    
+    return this.executeWithFallback(async (connection) => {
+      while (Date.now() - startTime < timeout) {
+        const status = await connection.getSignatureStatus(signature);
+        if (status?.value) {
+          if (status.value.err) {
+            throw new Error(
+              `Transaction failed: ${JSON.stringify(status.value.err)}`
+            );
+          }
+          if (
+            status.value.confirmationStatus === 'confirmed' ||
+            status.value.confirmationStatus === 'finalized'
+          ) {
+            return;
+          }
         }
-        if (
-          status.value.confirmationStatus === 'confirmed' ||
-          status.value.confirmationStatus === 'finalized'
-        ) {
-          return;
-        }
+        await new Promise((r) => setTimeout(r, 500));
       }
-      await new Promise((r) => setTimeout(r, 500));
-    }
-    throw new Error(`Transaction confirmation timeout after ${timeout}ms`);
+      throw new Error(`Transaction confirmation timeout after ${timeout}ms`);
+    }, 'confirmTransaction');
   }
 
   /**
@@ -178,14 +254,16 @@ export class SvmClient {
     instructions: TransactionInstruction[];
     signer: UniversalSigner;
   }): Promise<bigint> {
-    const feePayer = new PublicKey(signer.account.address);
-    const { blockhash, lastValidBlockHeight } =
-      await this.connection.getLatestBlockhash();
-    const tx = new Transaction({ blockhash, lastValidBlockHeight, feePayer });
-    if (instructions.length) tx.add(...instructions);
-    const message = tx.compileMessage();
-    const feeResp = await this.connection.getFeeForMessage(message);
-    if (!feeResp?.value) throw new Error('Failed to estimate fee');
-    return BigInt(feeResp.value);
+    return this.executeWithFallback(async (connection) => {
+      const feePayer = new PublicKey(signer.account.address);
+      const { blockhash, lastValidBlockHeight } =
+        await connection.getLatestBlockhash();
+      const tx = new Transaction({ blockhash, lastValidBlockHeight, feePayer });
+      if (instructions.length) tx.add(...instructions);
+      const message = tx.compileMessage();
+      const feeResp = await connection.getFeeForMessage(message);
+      if (!feeResp?.value) throw new Error('Failed to estimate fee');
+      return BigInt(feeResp.value);
+    }, 'estimateGas');
   }
 }
