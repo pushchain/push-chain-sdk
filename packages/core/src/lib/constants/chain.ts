@@ -53,7 +53,7 @@ export const CHAIN_INFO: Record<
   [CHAIN.ETHEREUM_SEPOLIA]: {
     chainId: '11155111',
     vm: VM.EVM,
-    lockerContract: '0x57235d27c8247CFE0E39248c9c9F22BD6EB054e1',
+    lockerContract: '0xdEF1a1265247488e5934706657404F40A81eDEe4',
     defaultRPC: [sepolia.rpcUrls.default.http[0]],
   },
 
@@ -67,13 +67,13 @@ export const CHAIN_INFO: Record<
   [CHAIN.SOLANA_TESTNET]: {
     chainId: '4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z',
     vm: VM.SVM,
-    lockerContract: 'FVnnKN3tmbSuWcHbc8anrXZnzETHn96FdaKcJxamrfFx',
+    lockerContract: '3zrWaMknHTRQpZSxY4BvQxw9TStSXiHcmcp3NMPTFkke',
     defaultRPC: ['https://api.testnet.solana.com'],
   },
   [CHAIN.SOLANA_DEVNET]: {
     chainId: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
     vm: VM.SVM,
-    lockerContract: 'FVnnKN3tmbSuWcHbc8anrXZnzETHn96FdaKcJxamrfFx',
+    lockerContract: '3zrWaMknHTRQpZSxY4BvQxw9TStSXiHcmcp3NMPTFkke',
     defaultRPC: ['https://api.devnet.solana.com'],
   },
 };
@@ -110,7 +110,7 @@ export const PUSH_CHAIN_INFO: Record<
     denom: 'npush',
     tendermintRpc: 'https://pn1.dev.push.org',
     prefix: 'push',
-    factoryAddress: '0xTBD',
+    factoryAddress: '0x00000000000000000000000000000000000000eA',
     pushDecimals: BigInt(1e18),
     usdcDecimals: BigInt(1e8),
     pushToUsdcNumerator: BigInt(1e7), // 0.1 USDC

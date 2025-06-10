@@ -56,12 +56,17 @@ export function createUniversalSigner({
 /**
  * Creates a UniversalSigner from either a viem WalletClient or Account instance.
  *
- * @param {WalletClient | Account} clientOrAccount - The viem WalletClient or Account instance
+ * @param {WalletClient | Account | Keypair | ethers.HDNodeWallet} clientOrAccount - The viem WalletClient or Account instance
  * @param {CHAIN} chain - The chain the signer will operate on
  * @returns {Promise<UniversalSigner>} A signer object configured for the specified chain
  */
 export async function toUniversalFromKeyPair(
-  clientOrAccount: WalletClient | Account | Keypair | Wallet,
+  clientOrAccount:
+    | WalletClient
+    | Account
+    | Keypair
+    | ethers.Wallet
+    | ethers.HDNodeWallet,
   { chain, library }: { chain: CHAIN; library: LIBRARY }
 ): Promise<UniversalSigner> {
   let address: string;
@@ -84,10 +89,15 @@ export async function toUniversalFromKeyPair(
 
   switch (library) {
     case LIBRARY.ETHEREUM_ETHERSV6: {
-      if (!(clientOrAccount instanceof ethers.Wallet)) {
-        throw new Error('Expected ethers.Wallet for ETHEREUM_ETHERSV6 library');
+      if (
+        !(clientOrAccount instanceof ethers.Wallet) &&
+        !(clientOrAccount instanceof ethers.HDNodeWallet)
+      ) {
+        throw new Error(
+          'Expected ethers.Wallet or ethers.HDNodeWallet for ETHEREUM_ETHERSV6 library'
+        );
       }
-      const wallet = clientOrAccount as ethers.Wallet;
+      const wallet = clientOrAccount as ethers.Wallet | ethers.HDNodeWallet;
       if (!wallet.provider) {
         throw new Error('ethers.Wallet must have a provider attached');
       }
@@ -314,9 +324,8 @@ export async function toUniversal(
   }
 
   let skeleton: UniversalSignerSkeleton;
-  // Check if it's an ethers signer
   if (!isViemSigner(signer)) {
-    const wallet = signer;
+    const wallet = signer as EthersV5SignerType | EthersV6SignerType;
     if (!wallet.provider) {
       throw new Error(
         'ethers.Wallet must have a provider attached to determine chain'

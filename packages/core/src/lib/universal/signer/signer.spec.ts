@@ -203,6 +203,60 @@ describe('Universal Account Utilities', () => {
       }
     });
 
+    it('wraps an ethers.HDNodeWallet into a UniversalSigner', async () => {
+      const hdNodeWallet = ethers.Wallet.createRandom(mockProvider as any);
+      const signer = await PushChain.utils.signer.toUniversalFromKeyPair(
+        hdNodeWallet,
+        {
+          chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_ETHERSV6,
+        }
+      );
+
+      expect(signer.account.chain).toBe(
+        PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA
+      );
+      expect(signer.account.address).toBe(await hdNodeWallet.getAddress());
+
+      // Test signMessage
+      const msg = new TextEncoder().encode('test message');
+      const sig = await signer.signMessage(msg);
+      expect(sig).toBeInstanceOf(Uint8Array);
+      expect(sig.length).toBeGreaterThan(0);
+
+      // Test signTransaction
+      const tx = {
+        type: 2,
+        to: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+        value: ethers.parseEther('1'),
+        data: '0x',
+        gasLimit: 21000,
+        maxFeePerGas: ethers.parseUnits('10', 'gwei'),
+        maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei'),
+        nonce: 0,
+        chainId: 11155111,
+      };
+      // Create a proper unsigned transaction
+      const unsignedTx = ethers.Transaction.from(tx);
+      const txBytes = ethers.getBytes(unsignedTx.unsignedSerialized);
+      const txSig = await signer.signTransaction(txBytes);
+      expect(txSig).toBeInstanceOf(Uint8Array);
+      expect(txSig.length).toBeGreaterThan(0);
+
+      // Test signTypedData
+      if (signer.signTypedData) {
+        const typedDataArgs = {
+          domain: { name: 'Test', version: '1', chainId: 11155111 },
+          types: { Test: [{ name: 'data', type: 'string' }] },
+          primaryType: 'Test',
+          message: { data: 'test' },
+        };
+        const typedDataSig = await signer.signTypedData(typedDataArgs);
+        expect(typedDataSig).toBeInstanceOf(Uint8Array);
+        expect(typedDataSig.length).toBeGreaterThan(0);
+      }
+    });
+
     it('throws error for ethers.Wallet without provider', async () => {
       const walletWithoutProvider = new ethers.Wallet(pk);
 
@@ -241,7 +295,9 @@ describe('Universal Account Utilities', () => {
           chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
           library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_ETHERSV6,
         })
-      ).rejects.toThrow('Expected ethers.Wallet for ETHEREUM_ETHERSV6 library');
+      ).rejects.toThrow(
+        'Expected ethers.Wallet or ethers.HDNodeWallet for ETHEREUM_ETHERSV6 library'
+      );
     });
   });
 
@@ -659,6 +715,40 @@ describe('Universal Account Utilities', () => {
         expect(typedDataSig.length).toBeGreaterThan(0);
         expect(mockViemSigner.signTypedData).toHaveBeenCalled();
       }
+    });
+
+    it('viem wallet client to UniversalSigner', async () => {
+      const pk = generatePrivateKey();
+      const account = privateKeyToAccount(pk);
+      account.signMessage;
+      const client = createWalletClient({
+        account,
+        transport: http('https://sepolia.gateway.tenderly.co'),
+        chain: sepolia,
+      });
+      const universalSigner = await PushChain.utils.signer.toUniversal(client);
+      expect(universalSigner.account.chain).toBe(
+        PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA
+      );
+      expect(universalSigner.account.address).toBe(account.address);
+      expect(typeof universalSigner.signMessage).toBe('function');
+      expect(typeof universalSigner.signTransaction).toBe('function');
+      expect(typeof universalSigner.signTypedData).toBe('function');
+      const tx: TransactionSerializableEIP1559 = {
+        to: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8' as `0x${string}`,
+        value: BigInt('1000000000000000000'),
+        data: '0x' as Hex,
+        chainId: sepolia.id,
+        maxFeePerGas: BigInt('1000000000'),
+        maxPriorityFeePerGas: BigInt('1000000000'),
+        nonce: 0,
+      };
+      const serializedTx = serializeTransaction(tx);
+      const txSig = await universalSigner.signTransaction(
+        hexToBytes(serializedTx)
+      );
+      expect(txSig).toBeInstanceOf(Uint8Array);
+      expect(txSig.length).toBeGreaterThan(0);
     });
 
     it('maps different chain IDs correctly for viem signers', async () => {
