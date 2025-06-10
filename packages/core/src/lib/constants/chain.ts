@@ -33,9 +33,9 @@ export const CHAIN_INFO: Record<
     defaultRPC: [''],
   },
   [CHAIN.PUSH_TESTNET_DONUT]: {
-    chainId: '9000',
+    chainId: '42101',
     vm: VM.EVM,
-    defaultRPC: ['https://evm.pn1.dev.push.org'],
+    defaultRPC: ['https://evm.rpc-testnet-donut-node1.push.org/'],
   },
   [CHAIN.PUSH_LOCALNET]: {
     chainId: '9000',
