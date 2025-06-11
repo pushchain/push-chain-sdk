@@ -31,6 +31,7 @@ import { Any } from 'cosmjs-types/google/protobuf/any';
 import { AccountId, CrossChainPayload, vmType } from '../generated/v1/tx';
 import { PriceFetch } from '../price-fetch/price-fetch';
 import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
+import { AbiCoder, ethers } from 'ethers';
 
 export class Orchestrator {
   private pushClient: PushClient;
@@ -646,6 +647,62 @@ export class Orchestrator {
       address: computedAddress,
     });
     return { address: computedAddress, deployed: byteCode !== undefined };
+  }
+
+  calculateUEAOffchain(): `0x${string}` {
+    const { chain, address } = this.universalSigner.account;
+    const { vm, implementationAddress, chainId } = CHAIN_INFO[chain];
+
+    let ownerKey: `0x${string}`;
+    if (vm === VM.EVM) {
+      ownerKey = address as `0x${string}`;
+    } else if (vm === VM.SVM) {
+      ownerKey = bytesToHex(bs58.decode(address));
+    } else {
+      throw new Error(`Unsupported VM type: ${vm}`);
+    }
+
+    const accountId = {
+      namespace: VM_NAMESPACE[vm],
+      chainId,
+      ownerKey,
+      vmType: vm === VM.EVM ? 0 : vm === VM.SVM ? 1 : 2,
+    };
+
+    // Step 1: Recreate the salt: keccak256(abi.encode(AccountId))
+    const abiCoder = AbiCoder.defaultAbiCoder();
+    const encodedAccountId = abiCoder.encode(
+      ['tuple(string namespace,string chainId,bytes ownerKey,uint8 vmType)'],
+      [
+        [
+          accountId.namespace,
+          accountId.chainId,
+          accountId.ownerKey,
+          accountId.vmType,
+        ],
+      ]
+    );
+
+    const salt = ethers.keccak256(encodedAccountId);
+
+    // Step 2: Clone Minimal Proxy bytecode
+    const minimalProxyRuntimeCode =
+      '0x3d602d80600a3d3981f3' +
+      '363d3d373d3d3d363d73' +
+      implementationAddress.toLowerCase().replace(/^0x/, '') +
+      '5af43d82803e903d91602b57fd5bf3';
+
+    // Step 3: Get init code hash (used by CREATE2)
+    const initCodeHash = ethers.keccak256(minimalProxyRuntimeCode);
+
+    // Step 4: Predict the address using standard CREATE2 formula
+    const predictedAddress = ethers.getCreate2Address(
+      this.pushClient.pushChainInfo.factoryAddress,
+      salt,
+      initCodeHash
+    );
+
+    return predictedAddress as `0x${string}`;
   }
 
   /**

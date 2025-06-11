@@ -1,7 +1,10 @@
-import { getAddress } from 'viem';
+import { bytesToHex, getAddress, Abi } from 'viem';
 import { CHAIN_INFO, VM_NAMESPACE } from '../../constants/chain';
-import { CHAIN, VM } from '../../constants/enums';
+import { CHAIN, VM, PUSH_NETWORK } from '../../constants/enums';
 import { UniversalAccount } from '../universal.types';
+import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
+import { FACTORY_V1 } from '../../constants/abi';
+import { PushClient } from '../../push-client/push-client';
 
 /**
  * Formats a blockchain address based on the virtual machine type of the provided chain.
@@ -120,4 +123,116 @@ export function toUniversal(caip: string): UniversalAccount {
     chain,
     address: formatAddress(chain, rawAddress),
   };
+}
+
+/**
+ * Determines the Push Network based on the chain type (testnet vs mainnet)
+ */
+function getPushNetworkFromChain(chain: CHAIN): PUSH_NETWORK {
+  const testnetChains = [
+    CHAIN.ETHEREUM_SEPOLIA,
+    CHAIN.SOLANA_TESTNET,
+    CHAIN.SOLANA_DEVNET,
+    CHAIN.PUSH_TESTNET_DONUT,
+    CHAIN.PUSH_TESTNET,
+    CHAIN.PUSH_LOCALNET,
+  ];
+
+  const mainnetChains = [
+    CHAIN.ETHEREUM_MAINNET,
+    CHAIN.SOLANA_MAINNET,
+    CHAIN.PUSH_MAINNET,
+  ];
+
+  const localnetChains = [CHAIN.PUSH_LOCALNET];
+
+  if (testnetChains.includes(chain)) {
+    return PUSH_NETWORK.TESTNET_DONUT;
+  } else if (mainnetChains.includes(chain)) {
+    return PUSH_NETWORK.MAINNET;
+  } else if (localnetChains.includes(chain)) {
+    return PUSH_NETWORK.LOCALNET;
+  } else {
+    throw new Error(`Unsupported chain for Push Network mapping: ${chain}`);
+  }
+}
+
+export async function convertOriginToExecutor(
+  account: UniversalAccount,
+  options: {
+    status: boolean;
+  }
+): Promise<{
+  address: `0x${string}`;
+  deployed?: boolean;
+}> {
+  const { chain, address } = account;
+  const { vm, chainId } = CHAIN_INFO[chain];
+
+  if (isPushChain(chain)) {
+    throw new Error('NMSC address cannot be computed for a Push Chain Address');
+  }
+
+  // Determine Push Network from the chain
+  const pushNetwork = getPushNetworkFromChain(chain);
+
+  const pushChain =
+    pushNetwork === PUSH_NETWORK.MAINNET
+      ? CHAIN.PUSH_MAINNET
+      : pushNetwork === PUSH_NETWORK.TESTNET_DONUT
+      ? CHAIN.PUSH_TESTNET_DONUT
+      : CHAIN.PUSH_LOCALNET;
+
+  // Create PushClient to get factory address
+  const pushClient = new PushClient({
+    rpcUrls: CHAIN_INFO[pushChain].defaultRPC,
+    network: pushNetwork,
+  });
+
+  const computedAddress: `0x${string}` = await pushClient.readContract({
+    address: pushClient.pushChainInfo.factoryAddress,
+    abi: FACTORY_V1 as Abi,
+    functionName: 'computeSmartAccountAddress',
+    args: [
+      {
+        namespace: VM_NAMESPACE[vm],
+        chainId,
+        /**
+         * @dev - OwnerKey should be in bytes
+         * for eth - convert hex to bytes
+         * for sol - convert base64 to bytes
+         * for others - not defined yet
+         */
+        ownerKey:
+          vm === VM.EVM
+            ? address
+            : vm === VM.SVM
+            ? bytesToHex(bs58.decode(address))
+            : address,
+        /**
+         * @dev
+         * 0 -> evm
+         * 1 -> svm
+         * Rest are not defined
+         */
+        vmType: vm === VM.EVM ? 0 : vm === VM.SVM ? 1 : 2,
+      },
+    ],
+  });
+
+  const byteCode = await pushClient.publicClient.getCode({
+    address: computedAddress,
+  });
+  if (options.status) {
+    return { address: computedAddress, deployed: byteCode !== undefined };
+  }
+  return { address: computedAddress };
+}
+
+function isPushChain(chain: CHAIN): boolean {
+  return (
+    chain === CHAIN.PUSH_MAINNET ||
+    chain === CHAIN.PUSH_TESTNET_DONUT ||
+    chain === CHAIN.PUSH_LOCALNET
+  );
 }

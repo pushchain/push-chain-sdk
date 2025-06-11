@@ -2,8 +2,13 @@ import {
   createUniversalAccount,
   toChainAgnostic,
   toUniversal,
+  convertOriginToExecutor,
 } from './account';
-import { CHAIN } from '../../constants/enums';
+import { CHAIN, LIBRARY, PUSH_NETWORK } from '../../constants/enums';
+import { PushChain } from '../../pushChain';
+import { Orchestrator } from '../../orchestrator/orchestrator';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+import { toUniversalFromKeyPair } from '../signer';
 
 const EVM_ADDRESS = '0xeCba9a32A9823f1cb00cdD8344Bf2D1d87a8dd97';
 
@@ -82,6 +87,34 @@ describe('Universal Account Utilities', () => {
       expect(() => toUniversal('foo:999:bar')).toThrow(
         'Unsupported or unknown CAIP address: foo:999:bar'
       );
+    });
+  });
+
+  describe('convertOriginToExecutor() - Not Mocked', () => {
+    it('should return same address and pushChainClient.universal.account', async () => {
+      const account = privateKeyToAccount(generatePrivateKey());
+      const signer = await toUniversalFromKeyPair(account, {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+        library: LIBRARY.ETHEREUM_VIEM,
+      });
+
+      const orchestrator = new Orchestrator(signer, PUSH_NETWORK.TESTNET_DONUT);
+      const address = orchestrator.calculateUEAOffchain();
+      const address2 = await orchestrator.getNMSCAddress();
+      const result = await convertOriginToExecutor(signer.account, {
+        status: true,
+      });
+
+      expect(address).toBe(result.address);
+      expect(address2.address).toBe(result.address);
+
+      const address3 = await PushChain.utils.account.convertOriginToExecutor(
+        signer.account,
+        {
+          status: true,
+        }
+      );
+      expect(address3.address).toBe(address2.address);
     });
   });
 });

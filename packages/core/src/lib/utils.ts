@@ -1,4 +1,5 @@
 import {
+  convertOriginToExecutor,
   toChainAgnostic,
   toUniversal as toUniversalAccount,
 } from './universal/account';
@@ -49,6 +50,8 @@ export class Utils {
      * // → { chain: CHAIN.ETHEREUM_SEPOLIA, address: '0xabc...' }
      */
     toUniversal: toUniversalAccount,
+
+    convertOriginToExecutor,
   };
 
   static signer = {

@@ -3,6 +3,7 @@ import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
 import { Hex, isAddress, PublicClient } from 'viem';
 import { Keypair } from '@solana/web3.js';
 import { PushChain } from '../src';
+import { UniversalSigner } from '../src/lib/universal/universal.types';
 
 /** CLI COMMANDS
  
@@ -23,8 +24,9 @@ TO DECODE TX
   pchaind tx decode base64EncodedString
 
  */
-describe.skip('PushChain (e2e)', () => {
-  const pushNetwork = PUSH_NETWORK.LOCALNET;
+describe('PushChain (e2e)', () => {
+  const pushNetwork = PUSH_NETWORK.TESTNET_DONUT;
+  let universalSigner: UniversalSigner;
 
   describe('EVM signer', () => {
     describe(`ORIGIN CHAIN: ${CHAIN.ETHEREUM_SEPOLIA}`, () => {
@@ -37,11 +39,13 @@ describe.skip('PushChain (e2e)', () => {
 
         const account = privateKeyToAccount(privateKey);
 
-        const universalSigner =
-          await PushChain.utils.signer.toUniversalFromKeyPair(account, {
+        universalSigner = await PushChain.utils.signer.toUniversalFromKeyPair(
+          account,
+          {
             chain: originChain,
             library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-          });
+          }
+        );
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
@@ -49,10 +53,32 @@ describe.skip('PushChain (e2e)', () => {
         });
       });
 
-      it('should getNMSCAddress', async () => {
-        const result = await pushClient.universal.account;
+      it.only('should getNMSCAddress', async () => {
+        const result = await PushChain.utils.account.convertOriginToExecutor(
+          universalSigner.account,
+          {
+            status: true,
+          }
+        );
+
         expect(isAddress(result.address)).toBe(true);
         expect(typeof result.deployed).toBe('boolean');
+
+        const universalSignerSolana =
+          await PushChain.utils.signer.toUniversalFromKeyPair(new Keypair(), {
+            chain: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET,
+            library: PushChain.CONSTANTS.LIBRARY.SOLANA_WEB3JS,
+          });
+
+        const resultSolana =
+          await PushChain.utils.account.convertOriginToExecutor(
+            universalSignerSolana.account,
+            {
+              status: true,
+            }
+          );
+        expect(isAddress(resultSolana.address)).toBe(true);
+        expect(typeof resultSolana.deployed).toBe('boolean');
       });
 
       it('should getUOA', () => {
@@ -73,7 +99,12 @@ describe.skip('PushChain (e2e)', () => {
           maxPriorityFeePerGas: BigInt(200000000),
           deadline: BigInt(9999999999),
         });
-        const after = await pushClient.universal.account;
+        const after = await PushChain.utils.account.convertOriginToExecutor(
+          universalSigner.account,
+          {
+            status: true,
+          }
+        );
         expect(after.deployed).toBe(true);
       }, 30000);
     });
@@ -122,7 +153,12 @@ describe.skip('PushChain (e2e)', () => {
           maxFeePerGas: BigInt(50000000000000000),
           maxPriorityFeePerGas: BigInt(200000000),
         });
-        const after = await pushClient.universal.account;
+        const after = await PushChain.utils.account.convertOriginToExecutor(
+          universalSigner.account,
+          {
+            status: true,
+          }
+        );
         expect(after.deployed).toBe(true);
       }, 30000);
     });
@@ -154,7 +190,12 @@ describe.skip('PushChain (e2e)', () => {
       });
 
       it('should getNMSCAddress', async () => {
-        const result = await pushClient.universal.account;
+        const result = await PushChain.utils.account.convertOriginToExecutor(
+          universalSigner.account,
+          {
+            status: true,
+          }
+        );
         expect(isAddress(result.address)).toBe(true);
         expect(typeof result.deployed).toBe('boolean');
       });
@@ -176,7 +217,12 @@ describe.skip('PushChain (e2e)', () => {
           maxPriorityFeePerGas: BigInt(200000000),
           deadline: BigInt(9999999999),
         });
-        const after = await pushClient.universal.account;
+        const after = await PushChain.utils.account.convertOriginToExecutor(
+          universalSigner.account,
+          {
+            status: true,
+          }
+        );
         expect(after.deployed).toBe(true);
       }, 30000);
     });

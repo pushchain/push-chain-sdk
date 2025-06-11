@@ -24,6 +24,7 @@ export const CHAIN_INFO: Record<
     vm: VM;
     lockerContract?: string;
     defaultRPC: string[];
+    implementationAddress: string; // Used to calculate UEA offchain
   }
 > = {
   // Push
@@ -31,16 +32,19 @@ export const CHAIN_INFO: Record<
     chainId: 'TBD',
     vm: VM.EVM,
     defaultRPC: [''],
+    implementationAddress: '',
   },
   [CHAIN.PUSH_TESTNET_DONUT]: {
     chainId: '42101',
     vm: VM.EVM,
     defaultRPC: ['https://evm.rpc-testnet-donut-node1.push.org/'],
+    implementationAddress: '',
   },
   [CHAIN.PUSH_LOCALNET]: {
     chainId: '9000',
     vm: VM.EVM,
     defaultRPC: ['http://localhost:8545'],
+    implementationAddress: '',
   },
 
   // Ethereum
@@ -49,12 +53,14 @@ export const CHAIN_INFO: Record<
     vm: VM.EVM,
     lockerContract: 'TBD',
     defaultRPC: [mainnet.rpcUrls.default.http[0]],
+    implementationAddress: 'TBD',
   },
   [CHAIN.ETHEREUM_SEPOLIA]: {
     chainId: '11155111',
     vm: VM.EVM,
     lockerContract: '0xdEF1a1265247488e5934706657404F40A81eDEe4',
     defaultRPC: [sepolia.rpcUrls.default.http[0]],
+    implementationAddress: '0xcebe72a311e0c11accc00ca33383ff91a5f0f1cc',
   },
 
   // Solana
@@ -63,18 +69,21 @@ export const CHAIN_INFO: Record<
     vm: VM.SVM,
     lockerContract: 'TBD',
     defaultRPC: [''],
+    implementationAddress: 'TBD',
   },
   [CHAIN.SOLANA_TESTNET]: {
     chainId: '4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z',
     vm: VM.SVM,
     lockerContract: '3zrWaMknHTRQpZSxY4BvQxw9TStSXiHcmcp3NMPTFkke',
     defaultRPC: ['https://api.testnet.solana.com'],
+    implementationAddress: 'TBD',
   },
   [CHAIN.SOLANA_DEVNET]: {
     chainId: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
     vm: VM.SVM,
     lockerContract: '3zrWaMknHTRQpZSxY4BvQxw9TStSXiHcmcp3NMPTFkke',
     defaultRPC: ['https://api.devnet.solana.com'],
+    implementationAddress: '0xf3ccb7d82aed24cb34ffc0a0b12c8d6141a888a6',
   },
 };
 
