@@ -37,36 +37,6 @@ function formatAddress(chain: CHAIN, address: string): string {
 }
 
 /**
- * Creates a `UniversalAccount` object for working with SDK.
- * Useful for signing or tracking account-specific state in a cross-chain context.
- *
- * @param {Object} params - The account configuration object.
- * @param {string} params.address - The account address.
- * @param {CHAIN} params.chain - The chain the account is associated with.
- * @returns {UniversalAccount} A normalized account object with chain and chainId set.
- *
- * @example
- * const account = createUniversalAccount({ address: "0xabc..." });
- * // → { chain: "ETHEREUM_SEPOLIA", chainId: "11155111", address: "0xAbC..." }
- *
- * @example
- * const solanaAcc = createUniversalAccount({
- *   address: "solana123",
- *   chain: CHAIN.SOLANA_TESTNET
- * });
- * // → { chain: "SOLANA_TESTNET", chainId: "...", address: "solana123" }
- */
-export function createUniversalAccount({
-  chain,
-  address,
-}: UniversalAccount): UniversalAccount {
-  return {
-    chain,
-    address: formatAddress(chain, address),
-  };
-}
-
-/**
  * Creates a `UniversalAccount` object from an address and chain options.
  * Alternative to createUniversalAccount with a different parameter structure.
  *

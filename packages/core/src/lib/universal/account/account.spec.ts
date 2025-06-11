@@ -1,10 +1,3 @@
-import {
-  createUniversalAccount,
-  toChainAgnostic,
-  convertOriginToExecutor,
-  fromChainAgnostic,
-  toUniversal,
-} from './account';
 import { CHAIN, LIBRARY, PUSH_NETWORK } from '../../constants/enums';
 import { PushChain } from '../../pushChain';
 import { Orchestrator } from '../../orchestrator/orchestrator';
@@ -14,40 +7,9 @@ import { toUniversalFromKeyPair } from '../signer';
 const EVM_ADDRESS = '0xeCba9a32A9823f1cb00cdD8344Bf2D1d87a8dd97';
 
 describe('Universal Account Utilities', () => {
-  describe('createUniversalAccount()', () => {
-    it('returns a checksummed address for EVM chains', () => {
-      const account = createUniversalAccount({
-        chain: CHAIN.ETHEREUM_SEPOLIA,
-        address: EVM_ADDRESS.toLowerCase(), // simulate unchecksummed input
-      });
-
-      expect(account.address).toBe(EVM_ADDRESS);
-      expect(account.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
-    });
-
-    it('returns the address as-is for non-EVM chains', () => {
-      const account = createUniversalAccount({
-        chain: CHAIN.SOLANA_TESTNET,
-        address: 'solanaAddress123',
-      });
-
-      expect(account.address).toBe('solanaAddress123');
-      expect(account.chain).toBe(CHAIN.SOLANA_TESTNET);
-    });
-
-    it('throws an error on invalid EVM address format', () => {
-      expect(() =>
-        createUniversalAccount({
-          chain: CHAIN.ETHEREUM_SEPOLIA,
-          address: 'not-an-eth-address',
-        })
-      ).toThrow('Invalid EVM address format');
-    });
-  });
-
   describe('toChainAgnostic()', () => {
     it('converts a UniversalAccount to a CAIP-10 string for EVM', () => {
-      const caip = toChainAgnostic({
+      const caip = PushChain.utils.account.toChainAgnostic({
         chain: CHAIN.ETHEREUM_SEPOLIA,
         address: EVM_ADDRESS,
       });
@@ -56,7 +18,7 @@ describe('Universal Account Utilities', () => {
     });
 
     it('converts a UniversalAccount to a CAIP-10 string for Solana', () => {
-      const caip = toChainAgnostic({
+      const caip = PushChain.utils.account.toChainAgnostic({
         chain: CHAIN.SOLANA_TESTNET,
         address: 'solanaAddress123',
       });
@@ -69,14 +31,16 @@ describe('Universal Account Utilities', () => {
 
   describe('fromChainAgnostic()', () => {
     it('converts a CAIP-10 string to a UniversalAccount (EVM)', () => {
-      const account = fromChainAgnostic(`eip155:11155111:${EVM_ADDRESS}`);
+      const account = PushChain.utils.account.fromChainAgnostic(
+        `eip155:11155111:${EVM_ADDRESS}`
+      );
 
       expect(account.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
       expect(account.address).toBe(EVM_ADDRESS);
     });
 
     it('converts a CAIP-10 string to a UniversalAccount (Solana)', () => {
-      const account = fromChainAgnostic(
+      const account = PushChain.utils.account.fromChainAgnostic(
         'solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z:solanaAddress123'
       );
 
@@ -85,9 +49,9 @@ describe('Universal Account Utilities', () => {
     });
 
     it('throws an error if the CAIP string is unsupported', () => {
-      expect(() => fromChainAgnostic('foo:999:bar')).toThrow(
-        'Unsupported or unknown CAIP address: foo:999:bar'
-      );
+      expect(() =>
+        PushChain.utils.account.fromChainAgnostic('foo:999:bar')
+      ).toThrow('Unsupported or unknown CAIP address: foo:999:bar');
     });
   });
 
@@ -102,9 +66,12 @@ describe('Universal Account Utilities', () => {
       const orchestrator = new Orchestrator(signer, PUSH_NETWORK.TESTNET_DONUT);
       const address = orchestrator.calculateUEAOffchain();
       const address2 = await orchestrator.getNMSCAddress();
-      const result = await convertOriginToExecutor(signer.account, {
-        status: true,
-      });
+      const result = await PushChain.utils.account.convertOriginToExecutor(
+        signer.account,
+        {
+          status: true,
+        }
+      );
 
       expect(address).toBe(result.address);
       expect(address2.address).toBe(result.address);
@@ -121,16 +88,19 @@ describe('Universal Account Utilities', () => {
 
   describe('toUniversal()', () => {
     it('returns a checksummed address for EVM chains', () => {
-      const account = toUniversal(EVM_ADDRESS.toLowerCase(), {
-        chain: CHAIN.ETHEREUM_SEPOLIA,
-      });
+      const account = PushChain.utils.account.toUniversal(
+        EVM_ADDRESS.toLowerCase(),
+        {
+          chain: CHAIN.ETHEREUM_SEPOLIA,
+        }
+      );
 
       expect(account.address).toBe(EVM_ADDRESS);
       expect(account.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
     });
 
     it('returns the address as-is for non-EVM chains', () => {
-      const account = toUniversal('solanaAddress123', {
+      const account = PushChain.utils.account.toUniversal('solanaAddress123', {
         chain: CHAIN.SOLANA_TESTNET,
       });
 
@@ -140,14 +110,14 @@ describe('Universal Account Utilities', () => {
 
     it('throws an error on invalid EVM address format', () => {
       expect(() =>
-        toUniversal('not-an-eth-address', {
+        PushChain.utils.account.toUniversal('not-an-eth-address', {
           chain: CHAIN.ETHEREUM_SEPOLIA,
         })
       ).toThrow('Invalid EVM address format');
     });
 
     it('works with different EVM chains', () => {
-      const account = toUniversal(EVM_ADDRESS, {
+      const account = PushChain.utils.account.toUniversal(EVM_ADDRESS, {
         chain: CHAIN.ETHEREUM_MAINNET,
       });
 
@@ -157,7 +127,7 @@ describe('Universal Account Utilities', () => {
 
     it('works with different Solana chains', () => {
       const solanaAddress = 'DjVE6JNiYqPL2QXyCUUh8rNjHrbz9hXHNYt99MQ59qw1';
-      const account = toUniversal(solanaAddress, {
+      const account = PushChain.utils.account.toUniversal(solanaAddress, {
         chain: CHAIN.SOLANA_DEVNET,
       });
 
