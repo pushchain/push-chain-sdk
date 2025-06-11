@@ -17,25 +17,15 @@ import { UniversalSigner } from '../universal/universal.types';
  * Solana-compatible VM client for reading and writing SVM-based chains.
  */
 export class SvmClient {
-  private readonly rpcUrls: string[];
   private readonly connections: Connection[];
-  private currentConnectionIndex: number = 0;
-  private readonly maxRetries: number = 3;
+  private currentConnectionIndex = 0;
 
   constructor({ rpcUrls }: ClientOptions) {
     if (!rpcUrls || rpcUrls.length === 0) {
       throw new Error('At least one RPC URL must be provided');
     }
-    
-    this.rpcUrls = rpcUrls;
-    this.connections = rpcUrls.map(url => new Connection(url, 'confirmed'));
-  }
 
-  /**
-   * Gets the current active connection, with fallback to next available connection on failure
-   */
-  private getCurrentConnection(): Connection {
-    return this.connections[this.currentConnectionIndex];
+    this.connections = rpcUrls.map((url) => new Connection(url, 'confirmed'));
   }
 
   /**
@@ -43,15 +33,16 @@ export class SvmClient {
    */
   private async executeWithFallback<T>(
     operation: (connection: Connection) => Promise<T>,
-    operationName: string = 'operation'
+    operationName = 'operation'
   ): Promise<T> {
     let lastError: Error | null = null;
-    
+
     // Try each connection starting from current index
     for (let attempt = 0; attempt < this.connections.length; attempt++) {
-      const connectionIndex = (this.currentConnectionIndex + attempt) % this.connections.length;
+      const connectionIndex =
+        (this.currentConnectionIndex + attempt) % this.connections.length;
       const connection = this.connections[connectionIndex];
-      
+
       try {
         const result = await operation(connection);
         // Success - update current connection index if we switched
@@ -63,18 +54,20 @@ export class SvmClient {
       } catch (error) {
         lastError = error as Error;
         //console.warn(`RPC endpoint ${connectionIndex + 1} failed for ${operationName}:`, error);
-        
+
         // If this was our last attempt, throw the error
         if (attempt === this.connections.length - 1) {
           break;
         }
-        
+
         // Wait a bit before trying next endpoint
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }
-    
-    throw new Error(`All RPC endpoints failed for ${operationName}. Last error: ${lastError?.message}`);
+
+    throw new Error(
+      `All RPC endpoints failed for ${operationName}. Last error: ${lastError?.message}`
+    );
   }
 
   /**
@@ -164,7 +157,6 @@ export class SvmClient {
         instruction,
         signer,
         extraSigners,
-        connection,
       });
     }, 'writeContract');
   }
@@ -176,17 +168,16 @@ export class SvmClient {
     instruction,
     signer,
     extraSigners = [],
-    connection,
   }: {
     instruction: TransactionInstruction;
     signer: UniversalSigner;
     extraSigners?: Keypair[];
-    connection?: Connection;
   }): Promise<string> {
     const executeTransaction = async (conn: Connection) => {
       const feePayerPubkey = new PublicKey(signer.account.address);
-      const { blockhash, lastValidBlockHeight } =
-        await conn.getLatestBlockhash('finalized');
+      const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash(
+        'finalized'
+      );
 
       const tx = new Transaction({
         feePayer: feePayerPubkey,
@@ -207,11 +198,6 @@ export class SvmClient {
       return await conn.sendRawTransaction(rawTx);
     };
 
-    // If a specific connection is provided, use it directly
-    if (connection) {
-      return executeTransaction(connection);
-    }
-
     // Otherwise use fallback mechanism
     return this.executeWithFallback(executeTransaction, 'sendTransaction');
   }
@@ -221,7 +207,7 @@ export class SvmClient {
    */
   async confirmTransaction(signature: string, timeout = 30000): Promise<void> {
     const startTime = Date.now();
-    
+
     return this.executeWithFallback(async (connection) => {
       while (Date.now() - startTime < timeout) {
         const status = await connection.getSignatureStatus(signature);
