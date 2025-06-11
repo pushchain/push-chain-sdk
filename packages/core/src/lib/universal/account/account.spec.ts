@@ -8,19 +8,17 @@ const EVM_ADDRESS = '0xeCba9a32A9823f1cb00cdD8344Bf2D1d87a8dd97';
 
 describe('Universal Account Utilities', () => {
   describe('toChainAgnostic()', () => {
-    it('converts a UniversalAccount to a CAIP-10 string for EVM', () => {
-      const caip = PushChain.utils.account.toChainAgnostic({
+    it('converts an address and chain to a CAIP-10 string for EVM', () => {
+      const caip = PushChain.utils.account.toChainAgnostic(EVM_ADDRESS, {
         chain: CHAIN.ETHEREUM_SEPOLIA,
-        address: EVM_ADDRESS,
       });
 
       expect(caip).toBe(`eip155:11155111:${EVM_ADDRESS}`);
     });
 
-    it('converts a UniversalAccount to a CAIP-10 string for Solana', () => {
-      const caip = PushChain.utils.account.toChainAgnostic({
+    it('converts an address and chain to a CAIP-10 string for Solana', () => {
+      const caip = PushChain.utils.account.toChainAgnostic('solanaAddress123', {
         chain: CHAIN.SOLANA_TESTNET,
-        address: 'solanaAddress123',
       });
 
       expect(caip).toBe(

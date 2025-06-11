@@ -63,23 +63,27 @@ export function toUniversal(
 }
 
 /**
- * Converts a UniversalAccount into a CAIP-10 style address string.
+ * Converts an address and chain into a CAIP-10 style address string.
  *
  * Format: `namespace:chainId:address`
  * Namespace is derived from the chain's VM type using VM_NAMESPACE.
  *
- * @param {UniversalAccount} account - The account to convert.
+ * @param {string} address - The account address to convert.
+ * @param {Object} options - The configuration options.
+ * @param {CHAIN} options.chain - The chain the account is associated with.
  * @returns {string} A CAIP-10 formatted string.
  *
  * @example
- * Utils.account.toChainAgnostic({
- *   chain: CHAIN.ETHEREUM_SEPOLIA,
- *   address: '0xabc'
+ * Utils.account.toChainAgnostic('0xabc123...', {
+ *   chain: CHAIN.ETHEREUM_SEPOLIA
  * })
- * // → 'eip155:11155111:0xabc'
+ * // → 'eip155:11155111:0xabc123...'
  */
-export function toChainAgnostic(account: UniversalAccount): string {
-  const { chain, address } = account;
+export function toChainAgnostic(
+  address: string,
+  options: { chain: CHAIN }
+): string {
+  const { chain } = options;
 
   const chainMeta = CHAIN_INFO[chain];
   if (!chainMeta) {
