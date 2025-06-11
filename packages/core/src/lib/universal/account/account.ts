@@ -104,10 +104,10 @@ export function toChainAgnostic(account: UniversalAccount): string {
  * @throws {Error} If the CAIP string is invalid or unsupported.
  *
  * @example
- * Utils.account.toUniversal('eip155:11155111:0xabc...')
+ * Utils.account.fromChainAgnostic('eip155:11155111:0xabc...')
  * // → { chain: CHAIN.ETHEREUM_SEPOLIA, address: '0xabc...' }
  */
-export function toUniversal(caip: string): UniversalAccount {
+export function fromChainAgnostic(caip: string): UniversalAccount {
   const [namespace, chainId, rawAddress] = caip.split(':');
 
   const chain = (Object.entries(CHAIN_INFO).find(

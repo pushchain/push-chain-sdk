@@ -1,8 +1,8 @@
 import {
   createUniversalAccount,
   toChainAgnostic,
-  toUniversal,
   convertOriginToExecutor,
+  fromChainAgnostic,
 } from './account';
 import { CHAIN, LIBRARY, PUSH_NETWORK } from '../../constants/enums';
 import { PushChain } from '../../pushChain';
@@ -66,16 +66,16 @@ describe('Universal Account Utilities', () => {
     });
   });
 
-  describe('toUniversal()', () => {
+  describe('fromChainAgnostic()', () => {
     it('converts a CAIP-10 string to a UniversalAccount (EVM)', () => {
-      const account = toUniversal(`eip155:11155111:${EVM_ADDRESS}`);
+      const account = fromChainAgnostic(`eip155:11155111:${EVM_ADDRESS}`);
 
       expect(account.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
       expect(account.address).toBe(EVM_ADDRESS);
     });
 
     it('converts a CAIP-10 string to a UniversalAccount (Solana)', () => {
-      const account = toUniversal(
+      const account = fromChainAgnostic(
         'solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z:solanaAddress123'
       );
 
@@ -84,7 +84,7 @@ describe('Universal Account Utilities', () => {
     });
 
     it('throws an error if the CAIP string is unsupported', () => {
-      expect(() => toUniversal('foo:999:bar')).toThrow(
+      expect(() => fromChainAgnostic('foo:999:bar')).toThrow(
         'Unsupported or unknown CAIP address: foo:999:bar'
       );
     });

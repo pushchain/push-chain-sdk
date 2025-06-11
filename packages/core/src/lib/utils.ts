@@ -1,7 +1,7 @@
 import {
   convertOriginToExecutor,
+  fromChainAgnostic,
   toChainAgnostic,
-  toUniversal as toUniversalAccount,
 } from './universal/account';
 import {
   toUniversalFromKeyPair,
@@ -46,10 +46,10 @@ export class Utils {
      * @throws {Error} If the CAIP string is invalid or unsupported.
      *
      * @example
-     * Utils.account.toUniversal('eip155:11155111:0xabc...')
+     * Utils.account.fromChainAgnostic('eip155:11155111:0xabc...')
      * // → { chain: CHAIN.ETHEREUM_SEPOLIA, address: '0xabc...' }
      */
-    toUniversal: toUniversalAccount,
+    fromChainAgnostic,
 
     convertOriginToExecutor,
   };
