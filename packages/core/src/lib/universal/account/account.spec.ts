@@ -3,6 +3,7 @@ import {
   toChainAgnostic,
   convertOriginToExecutor,
   fromChainAgnostic,
+  toUniversal,
 } from './account';
 import { CHAIN, LIBRARY, PUSH_NETWORK } from '../../constants/enums';
 import { PushChain } from '../../pushChain';
@@ -115,6 +116,53 @@ describe('Universal Account Utilities', () => {
         }
       );
       expect(address3.address).toBe(address2.address);
+    });
+  });
+
+  describe('toUniversal()', () => {
+    it('returns a checksummed address for EVM chains', () => {
+      const account = toUniversal(EVM_ADDRESS.toLowerCase(), {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+      });
+
+      expect(account.address).toBe(EVM_ADDRESS);
+      expect(account.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+    });
+
+    it('returns the address as-is for non-EVM chains', () => {
+      const account = toUniversal('solanaAddress123', {
+        chain: CHAIN.SOLANA_TESTNET,
+      });
+
+      expect(account.address).toBe('solanaAddress123');
+      expect(account.chain).toBe(CHAIN.SOLANA_TESTNET);
+    });
+
+    it('throws an error on invalid EVM address format', () => {
+      expect(() =>
+        toUniversal('not-an-eth-address', {
+          chain: CHAIN.ETHEREUM_SEPOLIA,
+        })
+      ).toThrow('Invalid EVM address format');
+    });
+
+    it('works with different EVM chains', () => {
+      const account = toUniversal(EVM_ADDRESS, {
+        chain: CHAIN.ETHEREUM_MAINNET,
+      });
+
+      expect(account.address).toBe(EVM_ADDRESS);
+      expect(account.chain).toBe(CHAIN.ETHEREUM_MAINNET);
+    });
+
+    it('works with different Solana chains', () => {
+      const solanaAddress = 'DjVE6JNiYqPL2QXyCUUh8rNjHrbz9hXHNYt99MQ59qw1';
+      const account = toUniversal(solanaAddress, {
+        chain: CHAIN.SOLANA_DEVNET,
+      });
+
+      expect(account.address).toBe(solanaAddress);
+      expect(account.chain).toBe(CHAIN.SOLANA_DEVNET);
     });
   });
 });

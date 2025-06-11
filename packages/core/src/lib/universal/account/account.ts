@@ -67,6 +67,32 @@ export function createUniversalAccount({
 }
 
 /**
+ * Creates a `UniversalAccount` object from an address and chain options.
+ * Alternative to createUniversalAccount with a different parameter structure.
+ *
+ * @param {string} address - The account address.
+ * @param {Object} options - The configuration options.
+ * @param {CHAIN} options.chain - The chain the account is associated with.
+ * @returns {UniversalAccount} A normalized account object with chain and address.
+ *
+ * @example
+ * const universalAccount = toUniversal(
+ *   '0x35B84d6848D16415177c64D64504663b998A6ab4',
+ *   { chain: CHAIN.ETHEREUM_SEPOLIA }
+ * );
+ * // → { chain: CHAIN.ETHEREUM_SEPOLIA, address: '0x35B84d6848D16415177c64D64504663b998A6ab4' }
+ */
+export function toUniversal(
+  address: string,
+  options: { chain: CHAIN }
+): UniversalAccount {
+  return {
+    chain: options.chain,
+    address: formatAddress(options.chain, address),
+  };
+}
+
+/**
  * Converts a UniversalAccount into a CAIP-10 style address string.
  *
  * Format: `namespace:chainId:address`
