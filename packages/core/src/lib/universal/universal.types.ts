@@ -1,15 +1,13 @@
 import {
   AccessListish,
-  AuthorizationLike,
   BigNumberish,
   BlobLike,
   BlockTag,
-  KzgLibraryLike,
+  KzgLibrary,
 } from 'ethers';
 import { AddressLike } from 'ethers';
 import { TypedData, TypedDataDomain } from '../constants';
 import { CHAIN } from '../constants/enums';
-import { Keypair } from '@solana/web3.js';
 
 /**
  * A chain-agnostic account representation.
@@ -147,15 +145,7 @@ export type TransactionRequest = {
    *  This is generally ``null``, unless you are creating BLOb
    *  transactions.
    */
-  kzg?: null | KzgLibraryLike;
-
-  /**
-   *  The [[link-eip-7702]] authorizations (if any).
-   */
-  authorizationList?: null | Array<AuthorizationLike>;
-
-  // Todo?
-  //gasMultiplier?: number;
+  kzg?: null | KzgLibrary;
 };
 
 export type ViemSignerType = {
