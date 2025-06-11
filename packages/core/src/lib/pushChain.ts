@@ -33,6 +33,9 @@ export class PushChain {
 
   private orchestartor: Orchestrator;
 
+  // convertOriginToExecutor(UniversalAccount, options: {status: true -> deployed as true or false})
+  // convertExecutorToOrigin(address: string)
+
   /**
    * Universal namespace containing core transaction and address computation methods
    */
@@ -40,7 +43,7 @@ export class PushChain {
     // pushChainClient.universal.origin. not a function, just a property. => Return UOA wallet address. If from Push chain, both returns above will match. Else, it will tell from which chian it comes from.
     get origin(): ReturnType<Orchestrator['getUOA']>;
     // pushChainClient.universal.account. not a function, just a property. => Return UEA (wallet from push chain). If on push, return Push Chain wallet itself.
-    get account(): ReturnType<Orchestrator['getNMSCAddress']>;
+    get account(): ReturnType<Orchestrator['calculateUEAOffchain']>;
     /**
      * Executes a transaction on Push Chain
      */
@@ -56,10 +59,9 @@ export class PushChain {
         return orchestartor.getUOA();
       },
       get account() {
-        return orchestartor.getNMSCAddress();
+        return orchestartor.calculateUEAOffchain();
       },
       sendTransaction: this.orchestartor.execute.bind(this.orchestartor),
-      // getNMSCAddress: this.orchestartor.getNMSCAddress.bind(this.orchestartor),
     };
   }
 

@@ -140,4 +140,225 @@ describe('Orchestrator', () => {
       expect(hash === expectedHash).toBe(false);
     });
   });
+
+  describe('calculateUEAOffchain', () => {
+    describe('EVM signers', () => {
+      it('should calculate consistent UEA address for Ethereum Sepolia signer', async () => {
+        const ethSepoliaSigner: UniversalSigner = {
+          account: {
+            address: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+            chain: CHAIN.ETHEREUM_SEPOLIA,
+          },
+          signMessage: async (data: Uint8Array) => {
+            return data;
+          },
+          signTransaction: async (unsignedTx: Uint8Array) => {
+            return unsignedTx;
+          },
+        };
+
+        const orchestrator = new Orchestrator(
+          ethSepoliaSigner,
+          PUSH_NETWORK.TESTNET_DONUT
+        );
+
+        const ueaAddress = await orchestrator.calculateUEAOffchain();
+
+        // Should return a valid Ethereum address
+        expect(ueaAddress).toMatch(/^0x[a-fA-F0-9]{40}$/);
+
+        // Should be consistent across multiple calls
+        const ueaAddress2 = await orchestrator.calculateUEAOffchain();
+        expect(ueaAddress).toBe(ueaAddress2);
+      });
+
+      it('should calculate different UEA addresses for different EVM addresses', async () => {
+        const signer1: UniversalSigner = {
+          account: {
+            address: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+            chain: CHAIN.ETHEREUM_SEPOLIA,
+          },
+          signMessage: async (data: Uint8Array) => data,
+          signTransaction: async (unsignedTx: Uint8Array) => unsignedTx,
+        };
+
+        const signer2: UniversalSigner = {
+          account: {
+            address: '0x1234567890123456789012345678901234567890',
+            chain: CHAIN.ETHEREUM_SEPOLIA,
+          },
+          signMessage: async (data: Uint8Array) => data,
+          signTransaction: async (unsignedTx: Uint8Array) => unsignedTx,
+        };
+
+        const orchestrator1 = new Orchestrator(
+          signer1,
+          PUSH_NETWORK.TESTNET_DONUT
+        );
+        const orchestrator2 = new Orchestrator(
+          signer2,
+          PUSH_NETWORK.TESTNET_DONUT
+        );
+
+        const ueaAddress1 = await orchestrator1.calculateUEAOffchain();
+        const ueaAddress2 = await orchestrator2.calculateUEAOffchain();
+
+        expect(ueaAddress1).not.toBe(ueaAddress2);
+      });
+    });
+
+    describe('SVM signers', () => {
+      it('should calculate consistent UEA address for Solana Devnet signer', async () => {
+        // Create a test Solana keypair
+        const testKeypair = Keypair.generate();
+
+        const solanaSigner: UniversalSigner = {
+          account: {
+            address: testKeypair.publicKey.toString(),
+            chain: CHAIN.SOLANA_DEVNET,
+          },
+          signMessage: async (data: Uint8Array) => {
+            return data;
+          },
+          signTransaction: async (unsignedTx: Uint8Array) => {
+            return unsignedTx;
+          },
+        };
+
+        const orchestrator = new Orchestrator(
+          solanaSigner,
+          PUSH_NETWORK.TESTNET_DONUT
+        );
+
+        const ueaAddress = await orchestrator.calculateUEAOffchain();
+
+        // Should return a valid Ethereum address
+        expect(ueaAddress).toMatch(/^0x[a-fA-F0-9]{40}$/);
+
+        // Should be consistent across multiple calls
+        const ueaAddress2 = await orchestrator.calculateUEAOffchain();
+        expect(ueaAddress).toBe(ueaAddress2);
+      });
+
+      it('should calculate different UEA addresses for different Solana addresses', async () => {
+        const keypair1 = Keypair.generate();
+        const keypair2 = Keypair.generate();
+
+        const signer1: UniversalSigner = {
+          account: {
+            address: keypair1.publicKey.toString(),
+            chain: CHAIN.SOLANA_DEVNET,
+          },
+          signMessage: async (data: Uint8Array) => data,
+          signTransaction: async (unsignedTx: Uint8Array) => unsignedTx,
+        };
+
+        const signer2: UniversalSigner = {
+          account: {
+            address: keypair2.publicKey.toString(),
+            chain: CHAIN.SOLANA_DEVNET,
+          },
+          signMessage: async (data: Uint8Array) => data,
+          signTransaction: async (unsignedTx: Uint8Array) => unsignedTx,
+        };
+
+        const orchestrator1 = new Orchestrator(
+          signer1,
+          PUSH_NETWORK.TESTNET_DONUT
+        );
+        const orchestrator2 = new Orchestrator(
+          signer2,
+          PUSH_NETWORK.TESTNET_DONUT
+        );
+
+        const ueaAddress1 = await orchestrator1.calculateUEAOffchain();
+        const ueaAddress2 = await orchestrator2.calculateUEAOffchain();
+
+        expect(ueaAddress1).not.toBe(ueaAddress2);
+      });
+    });
+
+    describe('different Push networks', () => {
+      it('should produce different UEA addresses for different Push networks', async () => {
+        const signer: UniversalSigner = {
+          account: {
+            address: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+            chain: CHAIN.ETHEREUM_SEPOLIA,
+          },
+          signMessage: async (data: Uint8Array) => data,
+          signTransaction: async (unsignedTx: Uint8Array) => unsignedTx,
+        };
+
+        const testnetOrchestrator = new Orchestrator(
+          signer,
+          PUSH_NETWORK.TESTNET_DONUT
+        );
+        const localnetOrchestrator = new Orchestrator(
+          signer,
+          PUSH_NETWORK.LOCALNET
+        );
+
+        const testnetUeaAddress =
+          await testnetOrchestrator.calculateUEAOffchain();
+        const localnetUeaAddress =
+          await localnetOrchestrator.calculateUEAOffchain();
+
+        expect(testnetUeaAddress).not.toBe(localnetUeaAddress);
+      });
+    });
+
+    describe('address consistency', () => {
+      it('should return the same address as getNMSCAddress for EVM signer', async () => {
+        const ethSepoliaSigner: UniversalSigner = {
+          account: {
+            address: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+            chain: CHAIN.ETHEREUM_SEPOLIA,
+          },
+          signMessage: async (data: Uint8Array) => {
+            return data;
+          },
+          signTransaction: async (unsignedTx: Uint8Array) => {
+            return unsignedTx;
+          },
+        };
+
+        const orchestrator = new Orchestrator(
+          ethSepoliaSigner,
+          PUSH_NETWORK.TESTNET_DONUT
+        );
+
+        const offchainAddress = await orchestrator.calculateUEAOffchain();
+        const nmscResult = await orchestrator.getNMSCAddress();
+
+        expect(offchainAddress).toBe(nmscResult.address);
+      });
+
+      it('should return the same address as getNMSCAddress for SVM signer', async () => {
+        const testKeypair = Keypair.generate();
+
+        const solanaSigner: UniversalSigner = {
+          account: {
+            address: testKeypair.publicKey.toString(),
+            chain: CHAIN.SOLANA_DEVNET,
+          },
+          signMessage: async (data: Uint8Array) => {
+            return data;
+          },
+          signTransaction: async (unsignedTx: Uint8Array) => {
+            return unsignedTx;
+          },
+        };
+
+        const orchestrator = new Orchestrator(
+          solanaSigner,
+          PUSH_NETWORK.TESTNET_DONUT
+        );
+
+        const offchainAddress = await orchestrator.calculateUEAOffchain();
+        const nmscResult = await orchestrator.getNMSCAddress();
+
+        expect(offchainAddress).toBe(nmscResult.address);
+      });
+    });
+  });
 });
