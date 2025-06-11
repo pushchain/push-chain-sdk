@@ -16,7 +16,7 @@ export enum PUSH_NETWORK {
 export enum CHAIN {
   // Push
   PUSH_MAINNET = 'eip155:9',
-  PUSH_TESTNET = 'eip155:9000',
+  PUSH_TESTNET = 'eip155:42101',
   PUSH_TESTNET_DONUT = PUSH_TESTNET,
   PUSH_LOCALNET = 'eip155:9001',
 
