@@ -6,10 +6,10 @@ import { useDarkMode } from './common/hooks';
 import { RouterContainer } from './common/components';
 import {
   AppMetadata,
-  CONSTANTS,
+  PushUI,
   PushUniversalWalletProvider,
   ProviderConfigProps,
-} from '@pushchain/ui-kit';
+} from '../../../../packages/ui-kit';
 import Navbar from './components/Navbar';
 
 const GlobalStyle = createGlobalStyle`
@@ -27,8 +27,8 @@ const GlobalStyle = createGlobalStyle`
 `;
 
 const env = {
-  production: CONSTANTS.ENV.MAINNET,
-  alpha: CONSTANTS.ENV.DEVNET,
+  production: PushUI.CONSTANTS.NETWORK.MAINNET,
+  alpha: PushUI.CONSTANTS.NETWORK.TESTNET,
 } as const;
 
 type EnvKeys = keyof typeof env;
@@ -40,7 +40,7 @@ const App: React.FC = () => {
   const { isDarkMode } = useDarkMode();
 
   const walletConfig: ProviderConfigProps = {
-    env: CONSTANTS.ENV.DEVNET,
+    network: PushUI.CONSTANTS.NETWORK.LOCALNET,
     login: {
       email: true,
       google: true,
@@ -50,8 +50,8 @@ const App: React.FC = () => {
       appPreview: true,
     },
     modal: {
-      loginLayout: CONSTANTS.LOGIN.SPLIT,
-      connectedLayout: CONSTANTS.CONNECTED.HOVER,
+      loginLayout: PushUI.CONSTANTS.LOGIN.SPLIT,
+      connectedLayout: PushUI.CONSTANTS.CONNECTED.HOVER,
       appPreview: true,
     },
   };
@@ -70,7 +70,7 @@ const App: React.FC = () => {
       <PushUniversalWalletProvider
         config={walletConfig}
         app={appMetadata}
-        themeMode={CONSTANTS.THEME.LIGHT}
+        themeMode={PushUI.CONSTANTS.THEME.LIGHT}
       >
         <Router>
           <Navbar />

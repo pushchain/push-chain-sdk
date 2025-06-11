@@ -1,4 +1,6 @@
+import { TransactionRequest } from 'ethers';
 import { ChainType } from '../../../types/wallet.types';
+import { bytesToHex, parseTransaction } from 'viem';
 
 export const chainToNamespace = {
   EVM: 'eip155',

@@ -1,7 +1,7 @@
 import React, { FC } from 'react';
 import { ProviderConfigProps, PushWalletProviderProps } from '../types/index';
 import { WalletContextProvider } from '../context/WalletContext';
-import { CONSTANTS } from '../constants';
+import { PushUI } from '../constants';
 import { createGlobalStyle, ThemeProvider } from 'styled-components';
 import {
   themeDefault,
@@ -21,9 +21,9 @@ const loginDefaultConfig = {
 const PushWalletConfigDefault: ProviderConfigProps = {
   uid: 'default',
   login: loginDefaultConfig,
-  env: CONSTANTS.ENV.DEVNET,
+  network: PushUI.CONSTANTS.NETWORK.TESTNET_DONUT,
   modal: {
-    loginLayout: CONSTANTS.LOGIN.SIMPLE,
+    loginLayout: PushUI.CONSTANTS.LOGIN.SIMPLE,
     appPreview: false,
   },
 };
@@ -31,7 +31,7 @@ const PushWalletConfigDefault: ProviderConfigProps = {
 export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
   config,
   app,
-  themeMode = CONSTANTS.THEME.DARK,
+  themeMode = PushUI.CONSTANTS.THEME.DARK,
   themeOverrides = {},
   children,
 }) => {

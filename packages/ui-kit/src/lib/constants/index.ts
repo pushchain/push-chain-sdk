@@ -1,3 +1,4 @@
+import { PushChain } from '@pushchain/core';
 import {
   ArbitrumMonotone,
   AvalancheMonotone,
@@ -8,14 +9,15 @@ import {
   PushMonotone,
   SolanaMonotone,
 } from '../components/common';
-import { ENV } from './environment';
 
-export const CONSTANTS = {
-  ENV: ENV,
-  CHAIN: { ETHEREUM: 'ethereum', SOLANA: 'solana' },
-  THEME: { LIGHT: 'light', DARK: 'dark' },
-  LOGIN: { SPLIT: 'split', SIMPLE: 'simple' },
-  CONNECTED: { FULL: 'full', HOVER: 'hover' },
+export const PushUI = {
+  CONSTANTS: {
+    NETWORK: PushChain.CONSTANTS.PUSH_NETWORK,
+    CHAIN: { ETHEREUM: 'ethereum', SOLANA: 'solana' },
+    THEME: { LIGHT: 'light', DARK: 'dark' },
+    LOGIN: { SPLIT: 'split', SIMPLE: 'simple' },
+    CONNECTED: { FULL: 'full', HOVER: 'hover' },
+  },
 };
 
 // events send by wallet to the dapp
@@ -28,7 +30,9 @@ export enum WALLET_TO_APP_ACTION {
   IS_LOGGED_IN = 'isLoggedIn',
   IS_LOGGED_OUT = 'loggedOut',
 
-  SIGNATURE = 'signature',
+  SIGN_MESSAGE = 'signatureMessage',
+  SIGN_TRANSACTION = 'signatureTransaction',
+  SIGN_TYPED_DATA = 'signatureTypedData',
   ERROR = 'error',
 }
 
@@ -36,6 +40,8 @@ export enum WALLET_TO_APP_ACTION {
 export enum APP_TO_WALLET_ACTION {
   NEW_CONNECTION_REQUEST = 'newConnectionRequest',
   SIGN_MESSAGE = 'signMessage',
+  SIGN_TRANSACTION = 'signTransaction',
+  SIGN_TYPED_DATA = 'signTypedData',
   LOG_OUT = 'logOut',
 
   CONNECTION_STATUS = 'connectionStatus',
@@ -60,6 +66,8 @@ export const CHAIN_LOGO: Record<string, React.FC | React.ComponentType> = {
   '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp': SolanaMonotone, // mainnet
   '4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z': SolanaMonotone, // testnet
   EtWTRABZaYq6iMfeYKouRu166VU2xqa1: SolanaMonotone, // devnet
+  9: PushMonotone,
+  9000: PushMonotone,
   devnet: PushMonotone,
 };
 

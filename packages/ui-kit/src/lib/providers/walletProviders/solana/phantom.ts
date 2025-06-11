@@ -1,6 +1,11 @@
-import { getAddress } from 'ethers';
+import {
+  BrowserProvider,
+  getAddress,
+  Transaction as EtherTransaction,
+} from 'ethers';
 import { BaseWalletProvider } from '../BaseWalletProvider';
-import { ChainType } from '../../../types/wallet.types';
+import { ChainType, ITypedData } from '../../../types/wallet.types';
+import { Transaction } from '@solana/web3.js';
 
 declare global {
   interface Window {
@@ -14,7 +19,11 @@ declare global {
         chainId?: number;
         connect: () => Promise<{ publicKey: { toString: () => string } }>;
         disconnect: () => Promise<void>;
-        signMessage: (message: Uint8Array, encoding: string) => Promise<{ signature: Uint8Array }>;
+        signMessage: (
+          message: Uint8Array,
+          encoding: string
+        ) => Promise<{ signature: Uint8Array }>;
+        signTransaction: (txn: Uint8Array) => Promise<Transaction>;
       };
     };
   }
@@ -47,7 +56,11 @@ export class PhantomProvider extends BaseWalletProvider {
 
     const chainId = await this.getChainId(ChainType.ETHEREUM);
 
-    const caipAddress = this.formatAddress(checksumAddress, ChainType.ETHEREUM, chainId);
+    const caipAddress = this.formatAddress(
+      checksumAddress,
+      ChainType.ETHEREUM,
+      chainId
+    );
     return caipAddress;
   };
 
@@ -144,6 +157,57 @@ export class PhantomProvider extends BaseWalletProvider {
       throw new Error('No Phantom wallet connected');
     }
   };
+
+  signTransaction = async (txn: Uint8Array): Promise<Uint8Array> => {
+    const isInstalled = this.isInstalled();
+    if (!isInstalled) {
+      throw new Error('No Phantom wallet installed');
+    }
+
+    if (window.phantom?.solana?.isConnected) {
+      try {
+        const provider = window.phantom?.solana;
+        const signedTransaction = await provider.signTransaction(txn);
+
+        return new Uint8Array(signedTransaction.serialize());
+      } catch (error) {
+        console.error('Phantom Solana signing error:', error);
+        throw error;
+      }
+    } else if (window.phantom?.ethereum?.isConnected) {
+      try {
+        const provider = window.phantom?.ethereum;
+
+        const browserProvider = new BrowserProvider(provider);
+
+        const accounts = await provider.request({
+          method: 'eth_accounts',
+        });
+
+        if (!accounts || accounts.length === 0) {
+          throw new Error('No connected account');
+        }
+
+        const hex = '0x' + Buffer.from(txn).toString('hex');
+
+        const signer = await browserProvider.getSigner();
+
+        const parsedTx = EtherTransaction.from(hex);
+        const signature = await signer.signTransaction(parsedTx);
+
+        return new Uint8Array(Buffer.from(signature.slice(2), 'hex'));
+      } catch (error) {
+        console.error('Phantom Ethereum signing error:', error);
+        throw error;
+      }
+    } else {
+      throw new Error('No Phantom wallet connected');
+    }
+  };
+
+  signTypedData(typedData: ITypedData): Promise<Uint8Array> {
+    throw new Error('signTypedData is not implemented for this provider');
+  }
 
   disconnect = async (): Promise<void> => {
     const isInstalled = this.isInstalled();

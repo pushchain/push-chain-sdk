@@ -1,11 +1,10 @@
 import { MetaMaskSDK } from '@metamask/sdk';
 import { BaseWalletProvider } from '../BaseWalletProvider';
-import { ChainType } from '../../../types/wallet.types';
-import { getAddress } from 'ethers';
+import { ChainType, ITypedData } from '../../../types/wallet.types';
+import { BrowserProvider, getAddress, Transaction } from 'ethers';
 import { HexString } from 'ethers/lib.commonjs/utils/data';
-import * as chains from "viem/chains";
-import { toHex } from "viem";
-
+import * as chains from 'viem/chains';
+import { toHex, TypedData, TypedDataDomain } from 'viem';
 
 export class MetamaskProvider extends BaseWalletProvider {
   private sdk: MetaMaskSDK;
@@ -15,7 +14,7 @@ export class MetamaskProvider extends BaseWalletProvider {
       ChainType.ETHEREUM,
       ChainType.ARBITRUM,
       ChainType.AVALANCHE,
-      ChainType.BINANCE
+      ChainType.BINANCE,
     ]);
     this.sdk = new MetaMaskSDK();
   }
@@ -29,6 +28,15 @@ export class MetamaskProvider extends BaseWalletProvider {
     return this.sdk.getProvider();
   };
 
+  getSigner = async () => {
+    const sdkProvider = this.sdk.getProvider();
+    if (!sdkProvider) {
+      throw new Error('Provider is undefined');
+    }
+    const browserProvider = new BrowserProvider(sdkProvider);
+    return await browserProvider.getSigner();
+  };
+
   async connect(chainType: ChainType): Promise<{ caipAddress: string }> {
     try {
       const accounts = await this.sdk.connect();
@@ -39,7 +47,11 @@ export class MetamaskProvider extends BaseWalletProvider {
 
       const chainId = await this.getChainId();
 
-      const addressincaip = this.formatAddress(checksumAddress, ChainType.ETHEREUM, chainId);
+      const addressincaip = this.formatAddress(
+        checksumAddress,
+        ChainType.ETHEREUM,
+        chainId
+      );
 
       return addressincaip;
     } catch (error) {
@@ -53,10 +65,10 @@ export class MetamaskProvider extends BaseWalletProvider {
     if (!provider) {
       throw new Error('Provider is undefined');
     }
-    const hexChainId = await provider.request({
+    const hexChainId = (await provider.request({
       method: 'eth_chainId',
       params: [],
-    }) as HexString;
+    })) as HexString;
 
     const chainId = parseInt(hexChainId.toString(), 16);
     return chainId;
@@ -66,41 +78,72 @@ export class MetamaskProvider extends BaseWalletProvider {
     const network = (chains as Record<string, chains.Chain>)[chainName];
     const provider = this.getProvider();
 
-    if (!provider) throw new Error('Provider not found while switching network');
+    if (!provider)
+      throw new Error('Provider not found while switching network');
 
     const hexNetworkId = toHex(network.id);
 
     try {
       // Try to switch to the network
       await provider.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: hexNetworkId }]
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: hexNetworkId }],
       });
     } catch (err) {
       // If the error code is 4902, the network needs to be added
       if ((err as any).code === 4902) {
         try {
           await provider.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: hexNetworkId,
-              chainName: network.name,
-              rpcUrls: network.rpcUrls.default.http,
-              nativeCurrency: network.nativeCurrency,
-              blockExplorerUrls: network.blockExplorers?.default.url
-            }]
+            method: 'wallet_addEthereumChain',
+            params: [
+              {
+                chainId: hexNetworkId,
+                chainName: network.name,
+                rpcUrls: network.rpcUrls.default.http,
+                nativeCurrency: network.nativeCurrency,
+                blockExplorerUrls: network.blockExplorers?.default.url,
+              },
+            ],
           });
         } catch (addError) {
-          console.error("Error adding network:", addError);
-          throw addError
+          console.error('Error adding network:', addError);
+          throw addError;
         }
       } else {
-        console.error("Error switching network:", err);
+        console.error('Error switching network:', err);
         throw err;
       }
     }
+  };
 
-  }
+  signTransaction = async (txn: Uint8Array): Promise<Uint8Array> => {
+    try {
+      const provider = this.getProvider();
+      if (!provider) {
+        throw new Error('Provider is undefined');
+      }
+      const browserProvider = new BrowserProvider(provider);
+      const accounts = (await provider.request({
+        method: 'eth_accounts',
+      })) as string[];
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No connected account');
+      }
+
+      const hex = '0x' + Buffer.from(txn).toString('hex');
+
+      const signer = await browserProvider.getSigner();
+
+      const parsedTx = Transaction.from(hex);
+      const signature = await signer.signTransaction(parsedTx);
+
+      return new Uint8Array(Buffer.from((signature as string).slice(2), 'hex'));
+    } catch (error) {
+      console.error('MetaMask signing error:', error);
+      throw error;
+    }
+  };
 
   signMessage = async (message: Uint8Array): Promise<Uint8Array> => {
     try {
@@ -121,6 +164,32 @@ export class MetamaskProvider extends BaseWalletProvider {
       const signature = await provider.request({
         method: 'personal_sign',
         params: [hexMessage, accounts[0]],
+      });
+
+      return new Uint8Array(Buffer.from((signature as string).slice(2), 'hex'));
+    } catch (error) {
+      console.error('MetaMask signing error:', error);
+      throw error;
+    }
+  };
+
+  signTypedData = async (typedData: ITypedData): Promise<Uint8Array> => {
+    try {
+      const provider = this.getProvider();
+      if (!provider) {
+        throw new Error('Provider is undefined');
+      }
+      const accounts = (await provider.request({
+        method: 'eth_accounts',
+      })) as string[];
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No connected account');
+      }
+
+      const signature = await provider.request({
+        method: 'eth_signTypedData_v4',
+        params: [accounts[0], typedData],
       });
 
       return new Uint8Array(Buffer.from((signature as string).slice(2), 'hex'));

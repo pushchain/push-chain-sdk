@@ -1,22 +1,18 @@
-export enum ENV {
-    MAINNET = 'MAINNET',
-    DEVNET = 'DEVNET',
-    TESTNET = 'TESTNET',
-    LOCAL = 'LOCAL',
-}
+import { PushChain } from '@pushchain/core';
 
 export type ConfigType = {
-    WALLET_URL: {
-        [ENV.MAINNET]: string;
-        [ENV.DEVNET]: string;
-        [ENV.TESTNET]: string;
-        [ENV.LOCAL]: string;
-    };
+  WALLET_URL: {
+    [PushChain.CONSTANTS.PUSH_NETWORK.MAINNET]: string;
+    [PushChain.CONSTANTS.PUSH_NETWORK.TESTNET]: string;
+    [PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]: string;
+    [PushChain.CONSTANTS.PUSH_NETWORK.LOCALNET]: string;
+  };
 };
 
 export const WALLET_CONFIG_URL = {
-    [ENV.MAINNET]: 'https://wallet.push.org',
-    [ENV.DEVNET]: 'https://wallet-alpha.push.org',
-    [ENV.TESTNET]: 'https://wallet-alpha.push.org',
-    [ENV.LOCAL]: 'http://localhost:5173',
+  [PushChain.CONSTANTS.PUSH_NETWORK.MAINNET]: 'https://wallet.push.org',
+  [PushChain.CONSTANTS.PUSH_NETWORK.TESTNET]: 'https://wallet-alpha.push.org',
+  [PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]:
+    'https://wallet-alpha.push.org',
+  [PushChain.CONSTANTS.PUSH_NETWORK.LOCALNET]: 'http://localhost:5173',
 };

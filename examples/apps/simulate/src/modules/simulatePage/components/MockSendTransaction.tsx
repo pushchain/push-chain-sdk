@@ -2,14 +2,13 @@ import React, { useState } from 'react';
 import { Alert, Box, Button, Front, Text } from 'shared-components';
 import { css } from 'styled-components';
 import { centerMaskString } from '../../../helpers';
-import { CONSTANTS, createUniversalAccount } from '@pushchain/devnet';
 import { TransactionSnippet } from '../../../common/components';
 import { mockTransaction } from '../../../common/constants';
-import { usePushChainClient, usePushWalletContext } from '@pushchain/ui-kit';
+import { usePushChainClient } from '../../../../../../../packages/ui-kit';
 
 const MockSendTransaction = () => {
-  const { pushChain, isLoading, error } = usePushChainClient();
-  const { universalAddress } = usePushWalletContext();
+  const { universalAccount, pushChainClient, isLoading, error } =
+    usePushChainClient();
 
   console.log('Error initialising push chain >>', error);
 
@@ -19,24 +18,12 @@ const MockSendTransaction = () => {
 
   const handleSendTransaction = async () => {
     try {
-      if (pushChain && universalAddress) {
+      if (pushChainClient && universalAccount) {
         setIsSendingTxn(true);
-        const { txHash } = await pushChain.tx.send(
-          [
-            createUniversalAccount({
-              address: '0x22B173e0596c6723dD1A95817052D96b97176Dd8',
-            }),
-            createUniversalAccount({
-              chain: CONSTANTS.CHAIN.SOLANA,
-              chainId: CONSTANTS.CHAIN_ID.SOLANA.TESTNET,
-              address: 'ySYrGNLLJSK9hvGGpoxg8TzWfRe8ftBtDSMECtx2eJR',
-            }),
-          ],
-          {
-            category: 'CUSTOM:SAMPLE_TX',
-            data: 'Hello world',
-          }
-        );
+        const txHash = await pushChainClient.universal.sendTransaction({
+          target: '0x22B173e0596c6723dD1A95817052D96b97176Dd8',
+          value: 0n,
+        });
 
         setTxnHash(txHash);
         setIsSendingTxn(false);

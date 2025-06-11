@@ -6,16 +6,16 @@ import { Box } from 'shared-components';
 import {
   PushUniversalAccountButton,
   usePushWalletContext,
-} from '@pushchain/ui-kit';
+} from '../../../../../packages/ui-kit';
 
 const Navbar = () => {
   const { isDarkMode, enable, disable } = useDarkMode();
 
-  const { universalAddress } = usePushWalletContext();
+  const { universalAccount } = usePushWalletContext();
 
   return (
     <Box display="flex" justifyContent="end" gap="spacing-md">
-      {universalAddress && <PushUniversalAccountButton />}
+      {universalAccount && <PushUniversalAccountButton />}
 
       {!isDarkMode ? (
         <Box

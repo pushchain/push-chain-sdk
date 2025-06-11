@@ -5,15 +5,16 @@ import {
   IWalletProvider,
   ModalAppDetails,
   PushWalletProviderProps,
-  UniversalAddress,
+  UniversalAccount,
   WalletEventRespoonse,
   WalletInfo,
   WalletAppDetails,
   ThemeMode,
+  ITypedData,
 } from '../types';
 import {
   APP_TO_WALLET_ACTION,
-  CONSTANTS,
+  PushUI,
   WALLET_CONFIG_URL,
   WALLET_TO_APP_ACTION,
 } from '../constants';
@@ -23,9 +24,10 @@ import { PushWalletToast } from '../components/PushWalletToast';
 import { LoginModal } from '../components/LoginModal';
 import { getWalletContext } from './WalletContextMap';
 import { ThemeOverrides } from '../styles/token';
+import { PushChain } from '@pushchain/core';
 
 export type WalletContextType = {
-  universalAddress: UniversalAddress | null;
+  universalAccount: UniversalAccount | null;
   connectionStatus: ConnectionStatus;
 
   isWalletMinimised: boolean;
@@ -46,6 +48,14 @@ export type WalletContextType = {
 
   themeMode: ThemeMode;
   themeOverrides: ThemeOverrides;
+
+  handleExternalWalletSignRequest: (data: Uint8Array) => Promise<Uint8Array>;
+  handleExternalWalletSignTransactionRequest: (
+    data: Uint8Array
+  ) => Promise<Uint8Array>;
+  handleExternalWalletSignTypedDataRequest: (
+    data: ITypedData
+  ) => Promise<Uint8Array>;
 };
 
 export const WalletContext = createContext<WalletContextType | null>(null);
@@ -54,11 +64,11 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
   children,
   config,
   app,
-  themeMode = CONSTANTS.THEME.DARK,
+  themeMode = PushUI.CONSTANTS.THEME.DARK,
   themeOverrides,
 }) => {
-  const [universalAddress, setUniversalAddress] =
-    useState<WalletContextType['universalAddress']>(null);
+  const [universalAccount, setUniversalAccount] =
+    useState<WalletContextType['universalAccount']>(null);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [isWalletVisible, setWalletVisibility] = useState(false); // to display the iframe as connect button is clicked
@@ -139,7 +149,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
 
   const handleUserLogOutEvent = () => {
     setConnectionStatus('notConnected');
-    setUniversalAddress(null);
+    setUniversalAccount(null);
     setMinimiseWallet(false);
     setWalletVisibility(false);
   };
@@ -150,7 +160,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       try {
         iframeRef.current.contentWindow.postMessage(
           message,
-          WALLET_CONFIG_URL[config.env]
+          WALLET_CONFIG_URL[config.network]
         );
       } catch (error) {
         console.error('Error sending message to push wallet tab:', error);
@@ -176,18 +186,14 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     setConnectionStatus('connected');
     setMinimiseWallet(true);
     if (response.account) {
-      const result = getWalletDataFromAccount(response.account);
-      setUniversalAddress({
-        chainId: result.chainId,
-        chain: result.chain,
-        address: result.address,
-      });
+      const result = PushChain.utils.account.toUniversal(response.account);
+      setUniversalAccount(result);
     }
   };
 
   const handleAppConnectionRejection = () => {
     setConnectionStatus('retry');
-    setUniversalAddress(null);
+    setUniversalAccount(null);
   };
 
   // Connect external wallet
@@ -207,13 +213,11 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       setConnectionStatus('connected');
       setMinimiseWallet(true);
 
-      const result = getWalletDataFromAccount(walletInfo.caipAddress);
+      const result = PushChain.utils.account.toUniversal(
+        walletInfo.caipAddress
+      );
 
-      setUniversalAddress({
-        chainId: result.chainId,
-        chain: result.chain,
-        address: result.address,
-      });
+      setUniversalAccount(result);
 
       const connectedWallet: WalletInfo = {
         address: walletInfo.caipAddress,
@@ -263,6 +267,66 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       }
 
       const signature = await providerReceived.signMessage(data);
+
+      return signature;
+    } catch (error) {
+      console.log('Error in generating signature', error);
+      throw new Error('Signature request failed');
+    } finally {
+      setShowToast(false);
+    }
+  };
+
+  const handleExternalWalletSignTransactionRequest = async (
+    data: Uint8Array
+  ): Promise<Uint8Array> => {
+    if (!externalWallet) {
+      throw new Error('No External wallet connected');
+    }
+
+    setShowToast(true);
+
+    try {
+      const providerReceived = walletRegistry.getProvider(
+        externalWallet.providerName
+      );
+
+      if (!providerReceived) {
+        setShowToast(false);
+        throw new Error('Provider not found');
+      }
+
+      const signature = await providerReceived.signTransaction(data);
+
+      return signature;
+    } catch (error) {
+      console.log('Error in generating signature', error);
+      throw new Error('Signature request failed');
+    } finally {
+      setShowToast(false);
+    }
+  };
+
+  const handleExternalWalletSignTypedDataRequest = async (
+    data: ITypedData
+  ): Promise<Uint8Array> => {
+    if (!externalWallet) {
+      throw new Error('No External wallet connected');
+    }
+
+    setShowToast(true);
+
+    try {
+      const providerReceived = walletRegistry.getProvider(
+        externalWallet.providerName
+      );
+
+      if (!providerReceived) {
+        setShowToast(false);
+        throw new Error('Provider not found');
+      }
+
+      const signature = await providerReceived.signTypedData(data);
 
       return signature;
     } catch (error) {
@@ -337,7 +401,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         case WALLET_TO_APP_ACTION.APP_CONNECTION_REJECTED:
           handleAppConnectionRejection();
           break;
-        case WALLET_TO_APP_ACTION.SIGNATURE:
+        case WALLET_TO_APP_ACTION.SIGN_MESSAGE:
           if (signatureResolverRef.current) {
             signatureResolverRef?.current?.success?.(event.data.data);
           }
@@ -366,7 +430,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         app,
         config,
         connectionStatus,
-        universalAddress,
+        universalAccount,
         isWalletMinimised,
         modalAppData,
         themeMode,
@@ -378,6 +442,9 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         handleConnectToPushWallet,
         handleUserLogOutEvent,
         handleSignMessage,
+        handleExternalWalletSignRequest,
+        handleExternalWalletSignTransactionRequest,
+        handleExternalWalletSignTypedDataRequest,
       }}
     >
       <LoginModal
@@ -389,7 +456,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         setIframeLoading={setIframeLoading}
         sendWalletConfig={sendWalletConfig}
         config={config}
-        universalAddress={universalAddress}
+        universalAccount={universalAccount}
         isWalletMinimised={isWalletMinimised}
         setMinimiseWallet={setMinimiseWallet}
         handleUserLogOutEvent={handleUserLogOutEvent}
