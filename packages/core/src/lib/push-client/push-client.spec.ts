@@ -12,8 +12,8 @@ describe('PushClient', () => {
 
   beforeEach(() => {
     client = new PushClient({
-      rpcUrls: PUSH_CHAIN_INFO[CHAIN.PUSH_LOCALNET].defaultRPC,
-      network: PUSH_NETWORK.LOCALNET,
+      rpcUrls: PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET].defaultRPC,
+      network: PUSH_NETWORK.TESTNET,
     });
   });
 
@@ -54,7 +54,7 @@ describe('PushClient', () => {
       };
 
       const any = client.createMsgDeployNMSC(msg);
-      expect(any.typeUrl).toBe('/crosschain.v1.MsgDeployNMSC');
+      expect(any.typeUrl).toBe('/ue.v1.MsgDeployNMSC');
       expect(any.value.length).toBeGreaterThan(0);
     });
 
@@ -72,7 +72,7 @@ describe('PushClient', () => {
       };
 
       const any = client.createMsgMintPush(msg);
-      expect(any.typeUrl).toBe('/crosschain.v1.MsgMintPush');
+      expect(any.typeUrl).toBe('/ue.v1.MsgMintPush');
       expect(any.value.length).toBeGreaterThan(0);
     });
 
@@ -101,7 +101,7 @@ describe('PushClient', () => {
       };
 
       const any = client.createMsgExecutePayload(msg);
-      expect(any.typeUrl).toBe('/crosschain.v1.MsgExecutePayload');
+      expect(any.typeUrl).toBe('/ue.v1.MsgExecutePayload');
       expect(any.value.length).toBeGreaterThan(0);
     });
 
