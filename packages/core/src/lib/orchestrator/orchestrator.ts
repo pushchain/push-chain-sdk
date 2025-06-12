@@ -659,6 +659,10 @@ export class Orchestrator {
     const { chain, address } = this.universalSigner.account;
     const { vm, implementationAddress, chainId } = CHAIN_INFO[chain];
 
+    if (this.isPushChain(chain)) {
+      return address as `0x${string}`;
+    }
+
     let ownerKey: `0x${string}`;
     if (vm === VM.EVM) {
       ownerKey = address as `0x${string}`;
