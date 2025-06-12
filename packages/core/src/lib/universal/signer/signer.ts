@@ -9,7 +9,6 @@ import { TypedDataDomain, TypedData } from '../../constants';
 import {
   EthersV5SignerType,
   EthersV6SignerType,
-  TypedDataField,
   UniversalAccount,
   UniversalSigner,
   UniversalSignerSkeleton,
@@ -18,7 +17,7 @@ import {
 import * as nacl from 'tweetnacl';
 import { Keypair } from '@solana/web3.js';
 import { CHAIN, LIBRARY } from '../../constants/enums';
-import { ethers, getBytes, hexlify, Wallet } from 'ethers';
+import { ethers, getBytes, hexlify } from 'ethers';
 
 /**
  * Creates a `UniversalSigner` object for signing messages and transactions
@@ -141,7 +140,7 @@ export async function toUniversalFromKeyPair(
       signTypedData = async ({ domain, types, primaryType, message }) => {
         const sigHex = await wallet.signTypedData(
           domain,
-          types as unknown as Record<string, TypedDataField[]>,
+          types as unknown as Record<string, any[]>,
           message
         );
         return getBytes(sigHex);
@@ -414,7 +413,7 @@ async function generateSkeletonFromEthersV5(
     signTypedData: async ({ domain, types, primaryType, message }) => {
       const sigHex = await signer._signTypedData(
         domain,
-        types as unknown as Record<string, TypedDataField[]>,
+        types as unknown as Record<string, any[]>,
         message
       );
       return getBytes(sigHex);
@@ -487,7 +486,7 @@ async function generateSkeletonFromEthersV6(
     signTypedData: async ({ domain, types, primaryType, message }) => {
       const sigHex = await signer.signTypedData(
         domain,
-        types as unknown as Record<string, TypedDataField[]>,
+        types as unknown as Record<string, any[]>,
         message
       );
       return getBytes(sigHex);

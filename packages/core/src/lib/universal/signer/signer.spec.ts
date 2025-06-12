@@ -584,7 +584,7 @@ describe('Universal Account Utilities', () => {
       // Test Push Testnet
       const pushTestnetProvider = {
         getNetwork: jest.fn().mockResolvedValue({
-          chainId: BigInt(9000),
+          chainId: BigInt(42101),
         }),
       };
       const pushTestnetWallet = new ethers.Wallet(
@@ -778,7 +778,7 @@ describe('Universal Account Utilities', () => {
           address: account.address,
           signTransaction: jest.fn().mockResolvedValue('0x123'),
         },
-        getChainId: jest.fn().mockResolvedValue(9000),
+        getChainId: jest.fn().mockResolvedValue(42101),
         signMessage: jest.fn().mockResolvedValue('0x123'),
         signTypedData: jest.fn().mockResolvedValue('0x123'),
       };
@@ -786,22 +786,6 @@ describe('Universal Account Utilities', () => {
         await PushChain.utils.signer.toUniversal(pushTestnetSigner);
       expect(pushTestnetUniversalSigner.account.chain).toBe(
         PushChain.CONSTANTS.CHAIN.PUSH_TESTNET
-      );
-
-      // Test Push Mainnet
-      const pushMainnetSigner = {
-        account: {
-          address: account.address,
-          signTransaction: jest.fn().mockResolvedValue('0x123'),
-        },
-        getChainId: jest.fn().mockResolvedValue(9),
-        signMessage: jest.fn().mockResolvedValue('0x123'),
-        signTypedData: jest.fn().mockResolvedValue('0x123'),
-      };
-      const pushMainnetUniversalSigner =
-        await PushChain.utils.signer.toUniversal(pushMainnetSigner);
-      expect(pushMainnetUniversalSigner.account.chain).toBe(
-        PushChain.CONSTANTS.CHAIN.PUSH_MAINNET
       );
 
       // Test Push Localnet
