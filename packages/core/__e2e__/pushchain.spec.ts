@@ -53,7 +53,7 @@ describe('PushChain (e2e)', () => {
         });
       });
 
-      it.only('should getNMSCAddress', async () => {
+      it('should getNMSCAddress', async () => {
         const result = await PushChain.utils.account.convertOriginToExecutor(
           universalSigner.account,
           {
@@ -137,7 +137,7 @@ describe('PushChain (e2e)', () => {
         );
       });
 
-      it.only('should getUOA', () => {
+      it('should getUOA', () => {
         const uoa = pushClient.universal.origin;
         expect(uoa).toBeDefined();
         expect(uoa.chain).toBe(originChain);

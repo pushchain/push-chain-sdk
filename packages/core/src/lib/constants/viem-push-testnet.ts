@@ -8,8 +8,8 @@ export const VIEM_PUSH_TESTNET_DONUT = viem.defineChain({
   name: 'Push Testnet',
   nativeCurrency: {
     decimals: 18,
-    name: 'nPUSH',
-    symbol: 'nPUSH',
+    name: 'PC',
+    symbol: '$PC',
   },
   rpcUrls: {
     default: {
@@ -19,7 +19,7 @@ export const VIEM_PUSH_TESTNET_DONUT = viem.defineChain({
   blockExplorers: {
     default: {
       name: 'Push Testnet Explorer',
-      url: 'https://explorer.dev.push.org/',
+      url: 'https://explorer.testnet.push.org/',
     },
   },
 });

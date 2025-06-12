@@ -84,15 +84,10 @@ export class Orchestrator {
       CHAIN.ETHEREUM_SEPOLIA,
       CHAIN.SOLANA_TESTNET,
       CHAIN.SOLANA_DEVNET,
-    ].includes(
-      chain as
-        | typeof CHAIN.ETHEREUM_SEPOLIA
-        | typeof CHAIN.SOLANA_TESTNET
-        | typeof CHAIN.SOLANA_DEVNET
-    );
+    ].includes(chain);
 
     const isMainnet = [CHAIN.ETHEREUM_MAINNET, CHAIN.SOLANA_MAINNET].includes(
-      chain as typeof CHAIN.ETHEREUM_MAINNET | typeof CHAIN.SOLANA_MAINNET
+      chain
     );
 
     if (
@@ -153,7 +148,12 @@ export class Orchestrator {
     if (this.printTraces) {
       console.log(`[${this.constructor.name}] Fetching Gas Price`);
     }
-    const gasPrice = await this.pushClient.getGasPrice();
+    let gasPrice = await this.pushClient.getGasPrice();
+    // TODO: REMOVE THIS AFTER
+    if (gasPrice === BigInt(0)) {
+      gasPrice = BigInt(163026331);
+    }
+
     if (this.printTraces) {
       console.log(`[${this.constructor.name}] Gas Price: ${gasPrice}`);
     }
@@ -654,6 +654,7 @@ export class Orchestrator {
     return { address: computedAddress, deployed: byteCode !== undefined };
   }
 
+  // TODO: Convert to viem
   calculateUEAOffchain(): `0x${string}` {
     const { chain, address } = this.universalSigner.account;
     const { vm, implementationAddress, chainId } = CHAIN_INFO[chain];

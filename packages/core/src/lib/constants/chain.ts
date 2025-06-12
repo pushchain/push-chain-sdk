@@ -120,7 +120,7 @@ export const PUSH_CHAIN_INFO: Record<
   [CHAIN.PUSH_TESTNET_DONUT]: {
     ...CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT],
     denom: 'npush',
-    tendermintRpc: 'https://pn1.dev.push.org',
+    tendermintRpc: 'https://rpc-testnet-donut-node1.push.org/',
     prefix: 'push',
     factoryAddress: '0x00000000000000000000000000000000000000eA',
     pushDecimals: BigInt(1e18),
