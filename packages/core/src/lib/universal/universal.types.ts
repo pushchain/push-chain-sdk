@@ -1,11 +1,3 @@
-import {
-  AccessListish,
-  BigNumberish,
-  BlobLike,
-  BlockTag,
-  KzgLibrary,
-} from 'ethers';
-import { AddressLike } from 'ethers';
 import { TypedData, TypedDataDomain } from '../constants';
 import { CHAIN } from '../constants/enums';
 
@@ -24,129 +16,6 @@ export interface UniversalAccount {
    */
   address: string;
 }
-
-export type TypedDataField = {
-  name: string;
-  type: string;
-};
-
-export type TransactionRequest = {
-  /**
-   *  The transaction type.
-   */
-  type?: null | number;
-
-  /**
-   *  The target of the transaction.
-   */
-  to?: null | AddressLike;
-
-  /**
-   *  The sender of the transaction.
-   */
-  from?: null | AddressLike;
-
-  /**
-   *  The nonce of the transaction, used to prevent replay attacks.
-   */
-  nonce?: null | number;
-
-  /**
-   *  The maximum amount of gas to allow this transaction to consume.
-   */
-  gasLimit?: null | BigNumberish;
-
-  /**
-   *  The gas price to use for legacy transactions or transactions on
-   *  legacy networks.
-   *
-   *  Most of the time the ``max*FeePerGas`` is preferred.
-   */
-  gasPrice?: null | BigNumberish;
-
-  /**
-   *  The [[link-eip-1559]] maximum priority fee to pay per gas.
-   */
-  maxPriorityFeePerGas?: null | BigNumberish;
-
-  /**
-   *  The [[link-eip-1559]] maximum total fee to pay per gas. The actual
-   *  value used is protocol enforced to be the block's base fee.
-   */
-  maxFeePerGas?: null | BigNumberish;
-
-  /**
-   *  The transaction data.
-   */
-  data?: null | string;
-
-  /**
-   *  The transaction value (in wei).
-   */
-  value?: null | BigNumberish;
-
-  /**
-   *  The chain ID for the network this transaction is valid on.
-   */
-  chainId?: null | BigNumberish;
-
-  /**
-   *  The [[link-eip-2930]] access list. Storage slots included in the access
-   *  list are //warmed// by pre-loading them, so their initial cost to
-   *  fetch is guaranteed, but then each additional access is cheaper.
-   */
-  accessList?: null | AccessListish;
-
-  /**
-   *  A custom object, which can be passed along for network-specific
-   *  values.
-   */
-  customData?: any;
-
-  // Only meaningful when used for call
-
-  /**
-   *  When using ``call`` or ``estimateGas``, this allows a specific
-   *  block to be queried. Many backends do not support this and when
-   *  unsupported errors are silently squelched and ``"latest"`` is used.
-   */
-  blockTag?: BlockTag;
-
-  /**
-   *  When using ``call``, this enables CCIP-read, which permits the
-   *  provider to be redirected to web-based content during execution,
-   *  which is then further validated by the contract.
-   *
-   *  There are potential security implications allowing CCIP-read, as
-   *  it could be used to expose the IP address or user activity during
-   *  the fetch to unexpected parties.
-   */
-  enableCcipRead?: boolean;
-
-  /**
-   *  The blob versioned hashes (see [[link-eip-4844]]).
-   */
-  blobVersionedHashes?: null | Array<string>;
-
-  /**
-   *  The maximum fee per blob gas (see [[link-eip-4844]]).
-   */
-  maxFeePerBlobGas?: null | BigNumberish;
-
-  /**
-   *  Any blobs to include in the transaction (see [[link-eip-4844]]).
-   */
-  blobs?: null | Array<BlobLike>;
-
-  /**
-   *  An external library for computing the KZG commitments and
-   *  proofs necessary for EIP-4844 transactions (see [[link-eip-4844]]).
-   *
-   *  This is generally ``null``, unless you are creating BLOb
-   *  transactions.
-   */
-  kzg?: null | KzgLibrary;
-};
 
 export type ViemSignerType = {
   signTypedData: (args: {
@@ -169,22 +38,22 @@ export type ViemSignerType = {
 export interface EthersV5SignerType {
   _signTypedData: (
     domain: TypedDataDomain,
-    types: Record<string, Array<TypedDataField>>,
+    types: Record<string, Array<any>>,
     value: Record<string, any>
   ) => Promise<string>;
   getAddress: () => Promise<string>;
   signMessage: (message: Uint8Array | string) => Promise<string>;
-  signTransaction: (transaction: TransactionRequest) => Promise<string>;
+  signTransaction: (transaction: any) => Promise<string>;
   provider?: any;
 }
 
 export interface EthersV6SignerType {
   getAddress: () => Promise<string>;
   signMessage: (message: Uint8Array | string) => Promise<string>;
-  signTransaction: (tx: TransactionRequest) => Promise<string>;
+  signTransaction: (tx: any) => Promise<string>;
   signTypedData: (
     domain: TypedDataDomain,
-    types: Record<string, Array<TypedDataField>>,
+    types: Record<string, Array<any>>,
     value: Record<string, any>
   ) => Promise<string>;
   provider?: any;
