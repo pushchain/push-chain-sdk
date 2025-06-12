@@ -9,7 +9,16 @@
   "instructions": [
     {
       "name": "add_funds",
-      "discriminator": [132, 237, 76, 57, 80, 10, 179, 138],
+      "discriminator": [
+        132,
+        237,
+        76,
+        57,
+        80,
+        10,
+        179,
+        138
+      ],
       "accounts": [
         {
           "name": "locker",
@@ -17,7 +26,14 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [108, 111, 99, 107, 101, 114]
+                "value": [
+                  108,
+                  111,
+                  99,
+                  107,
+                  101,
+                  114
+                ]
               }
             ]
           }
@@ -29,7 +45,13 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [118, 97, 117, 108, 116]
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
               }
             ]
           }
@@ -55,14 +77,26 @@
         {
           "name": "transaction_hash",
           "type": {
-            "array": ["u8", 32]
+            "array": [
+              "u8",
+              32
+            ]
           }
         }
       ]
     },
     {
       "name": "get_sol_price",
-      "discriminator": [230, 145, 206, 175, 43, 184, 97, 110],
+      "discriminator": [
+        230,
+        145,
+        206,
+        175,
+        43,
+        184,
+        97,
+        110
+      ],
       "accounts": [
         {
           "name": "price_update"
@@ -77,7 +111,16 @@
     },
     {
       "name": "initialize",
-      "discriminator": [175, 175, 109, 31, 13, 152, 155, 237],
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
       "accounts": [
         {
           "name": "locker_data",
@@ -86,7 +129,14 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [108, 111, 99, 107, 101, 114]
+                "value": [
+                  108,
+                  111,
+                  99,
+                  107,
+                  101,
+                  114
+                ]
               }
             ]
           }
@@ -98,7 +148,13 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [118, 97, 117, 108, 116]
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
               }
             ]
           }
@@ -117,7 +173,16 @@
     },
     {
       "name": "recover_tokens",
-      "discriminator": [156, 18, 205, 212, 197, 254, 126, 142],
+      "discriminator": [
+        156,
+        18,
+        205,
+        212,
+        197,
+        254,
+        126,
+        142
+      ],
       "accounts": [
         {
           "name": "locker_data"
@@ -129,7 +194,13 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [118, 97, 117, 108, 116]
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
               }
             ]
           }
@@ -160,21 +231,57 @@
   "accounts": [
     {
       "name": "Locker",
-      "discriminator": [74, 246, 6, 113, 249, 228, 75, 169]
+      "discriminator": [
+        74,
+        246,
+        6,
+        113,
+        249,
+        228,
+        75,
+        169
+      ]
     },
     {
       "name": "PriceUpdateV2",
-      "discriminator": [34, 241, 35, 99, 157, 126, 244, 205]
+      "discriminator": [
+        34,
+        241,
+        35,
+        99,
+        157,
+        126,
+        244,
+        205
+      ]
     }
   ],
   "events": [
     {
       "name": "FundsAddedEvent",
-      "discriminator": [127, 31, 108, 255, 187, 19, 70, 68]
+      "discriminator": [
+        127,
+        31,
+        108,
+        255,
+        187,
+        19,
+        70,
+        68
+      ]
     },
     {
       "name": "TokenRecoveredEvent",
-      "discriminator": [72, 100, 110, 181, 188, 125, 10, 53]
+      "discriminator": [
+        72,
+        100,
+        110,
+        181,
+        188,
+        125,
+        10,
+        53
+      ]
     }
   ],
   "errors": [
@@ -219,7 +326,10 @@
           {
             "name": "transaction_hash",
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           }
         ]
@@ -283,7 +393,10 @@
               "`FeedId` but avoid the type alias because of compatibility issues with Anchor's `idl-build` feature."
             ],
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           },
           {
@@ -300,7 +413,9 @@
           },
           {
             "name": "publish_time",
-            "docs": ["The timestamp of this price update in seconds"],
+            "docs": [
+              "The timestamp of this price update in seconds"
+            ],
             "type": "i64"
           },
           {
