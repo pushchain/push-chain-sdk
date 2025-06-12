@@ -216,7 +216,7 @@ export class EvmClient {
 
     const signedTx = await signer.signTransaction(hexToBytes(unsignedTx));
 
-    return this.publicClient.sendRawTransaction({
+    const hash = await this.publicClient.sendRawTransaction({
       serializedTransaction: bytesToHex(signedTx),
     });
 
