@@ -1,12 +1,13 @@
 import {
   convertOriginToExecutor,
+  fromChainAgnostic,
   toChainAgnostic,
-  toUniversal as toUniversalAccount,
+  toUniversal,
 } from './universal/account';
 import {
   toUniversalFromKeyPair,
   construct,
-  toUniversal,
+  toUniversal as toUniversalSigner,
 } from './universal/signer';
 
 /**
@@ -38,6 +39,8 @@ export class Utils {
      */
     toChainAgnostic,
 
+    toUniversal,
+
     /**
      * Converts a CAIP-10 formatted string into a UniversalAccount.
      *
@@ -46,10 +49,10 @@ export class Utils {
      * @throws {Error} If the CAIP string is invalid or unsupported.
      *
      * @example
-     * Utils.account.toUniversal('eip155:11155111:0xabc...')
+     * Utils.account.fromChainAgnostic('eip155:11155111:0xabc...')
      * // → { chain: CHAIN.ETHEREUM_SEPOLIA, address: '0xabc...' }
      */
-    toUniversal: toUniversalAccount,
+    fromChainAgnostic,
 
     convertOriginToExecutor,
   };
@@ -66,6 +69,6 @@ export class Utils {
     /**
      * Converts a UniversalSignerSkeleton to a UniversalSigner.
      */
-    toUniversal,
+    toUniversal: toUniversalSigner,
   };
 }

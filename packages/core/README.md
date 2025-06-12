@@ -190,7 +190,7 @@ pushchain.execute({
 Converts a chain-agnostic address (e.g. `eip155:1:0xabc...`) into a UniversalAccount.
 
 ```typescript
-const universalAccount = PushChain.utils.account.toUniversal(
+const universalAccount = PushChain.utils.account.fromChainAgnostic(
   'eip155:11155111:0x35B84d6848D16415177c64D64504663b998A6ab4'
 );
 // => { chain: 'ETHEREUM_SEPOLIA', address: '0x35B84d6848D16415177c64D64504663b998A6ab4' }

@@ -37,53 +37,53 @@ function formatAddress(chain: CHAIN, address: string): string {
 }
 
 /**
- * Creates a `UniversalAccount` object for working with SDK.
- * Useful for signing or tracking account-specific state in a cross-chain context.
+ * Creates a `UniversalAccount` object from an address and chain options.
+ * Alternative to createUniversalAccount with a different parameter structure.
  *
- * @param {Object} params - The account configuration object.
- * @param {string} params.address - The account address.
- * @param {CHAIN} params.chain - The chain the account is associated with.
- * @returns {UniversalAccount} A normalized account object with chain and chainId set.
- *
- * @example
- * const account = createUniversalAccount({ address: "0xabc..." });
- * // → { chain: "ETHEREUM_SEPOLIA", chainId: "11155111", address: "0xAbC..." }
+ * @param {string} address - The account address.
+ * @param {Object} options - The configuration options.
+ * @param {CHAIN} options.chain - The chain the account is associated with.
+ * @returns {UniversalAccount} A normalized account object with chain and address.
  *
  * @example
- * const solanaAcc = createUniversalAccount({
- *   address: "solana123",
- *   chain: CHAIN.SOLANA_TESTNET
- * });
- * // → { chain: "SOLANA_TESTNET", chainId: "...", address: "solana123" }
+ * const universalAccount = toUniversal(
+ *   '0x35B84d6848D16415177c64D64504663b998A6ab4',
+ *   { chain: CHAIN.ETHEREUM_SEPOLIA }
+ * );
+ * // → { chain: CHAIN.ETHEREUM_SEPOLIA, address: '0x35B84d6848D16415177c64D64504663b998A6ab4' }
  */
-export function createUniversalAccount({
-  chain,
-  address,
-}: UniversalAccount): UniversalAccount {
+export function toUniversal(
+  address: string,
+  options: { chain: CHAIN }
+): UniversalAccount {
   return {
-    chain,
-    address: formatAddress(chain, address),
+    chain: options.chain,
+    address: formatAddress(options.chain, address),
   };
 }
 
 /**
- * Converts a UniversalAccount into a CAIP-10 style address string.
+ * Converts an address and chain into a CAIP-10 style address string.
  *
  * Format: `namespace:chainId:address`
  * Namespace is derived from the chain's VM type using VM_NAMESPACE.
  *
- * @param {UniversalAccount} account - The account to convert.
+ * @param {string} address - The account address to convert.
+ * @param {Object} options - The configuration options.
+ * @param {CHAIN} options.chain - The chain the account is associated with.
  * @returns {string} A CAIP-10 formatted string.
  *
  * @example
- * Utils.account.toChainAgnostic({
- *   chain: CHAIN.ETHEREUM_SEPOLIA,
- *   address: '0xabc'
+ * Utils.account.toChainAgnostic('0xabc123...', {
+ *   chain: CHAIN.ETHEREUM_SEPOLIA
  * })
- * // → 'eip155:11155111:0xabc'
+ * // → 'eip155:11155111:0xabc123...'
  */
-export function toChainAgnostic(account: UniversalAccount): string {
-  const { chain, address } = account;
+export function toChainAgnostic(
+  address: string,
+  options: { chain: CHAIN }
+): string {
+  const { chain } = options;
 
   const chainMeta = CHAIN_INFO[chain];
   if (!chainMeta) {
@@ -104,10 +104,10 @@ export function toChainAgnostic(account: UniversalAccount): string {
  * @throws {Error} If the CAIP string is invalid or unsupported.
  *
  * @example
- * Utils.account.toUniversal('eip155:11155111:0xabc...')
+ * Utils.account.fromChainAgnostic('eip155:11155111:0xabc...')
  * // → { chain: CHAIN.ETHEREUM_SEPOLIA, address: '0xabc...' }
  */
-export function toUniversal(caip: string): UniversalAccount {
+export function fromChainAgnostic(caip: string): UniversalAccount {
   const [namespace, chainId, rawAddress] = caip.split(':');
 
   const chain = (Object.entries(CHAIN_INFO).find(

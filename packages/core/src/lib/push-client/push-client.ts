@@ -27,7 +27,7 @@ import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 export class PushClient extends EvmClient {
   public pushChainInfo;
   // TODO: Check why this is needed.
-  private signerPrivateKey;
+  private readonly signerPrivateKey;
   constructor(clientOptions: PushClientOptions) {
     super(clientOptions);
     this.pushChainInfo =
@@ -36,6 +36,17 @@ export class PushClient extends EvmClient {
         : clientOptions.network === PUSH_NETWORK.TESTNET_DONUT
         ? PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT]
         : PUSH_CHAIN_INFO[CHAIN.PUSH_LOCALNET];
+
+    if (clientOptions.network === PUSH_NETWORK.MAINNET) {
+      this.pushChainInfo = PUSH_CHAIN_INFO[CHAIN.PUSH_MAINNET];
+    } else if (
+      clientOptions.network === PUSH_NETWORK.TESTNET_DONUT ||
+      clientOptions.network === PUSH_NETWORK.TESTNET
+    ) {
+      this.pushChainInfo = PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT];
+    } else {
+      this.pushChainInfo = PUSH_CHAIN_INFO[CHAIN.PUSH_LOCALNET]
+    }
 
     this.signerPrivateKey = generatePrivateKey();
   }
