@@ -335,6 +335,9 @@ export class Orchestrator {
           accounts: {
             locker: lockerPda,
             user: new PublicKey(this.universalSigner.account.address),
+            priceUpdate: new PublicKey(
+              '7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE'
+            ),
             systemProgram: SystemProgram.programId,
           },
         });
