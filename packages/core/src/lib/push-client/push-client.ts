@@ -45,7 +45,7 @@ export class PushClient extends EvmClient {
     ) {
       this.pushChainInfo = PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT];
     } else {
-      this.pushChainInfo = PUSH_CHAIN_INFO[CHAIN.PUSH_LOCALNET]
+      this.pushChainInfo = PUSH_CHAIN_INFO[CHAIN.PUSH_LOCALNET];
     }
 
     this.signerPrivateKey = generatePrivateKey();
@@ -75,21 +75,21 @@ export class PushClient extends EvmClient {
 
   createMsgDeployNMSC(input: MsgDeployNMSC): Any {
     return {
-      typeUrl: '/crosschain.v1.MsgDeployNMSC',
+      typeUrl: '/ue.v1.MsgDeployNMSC',
       value: MsgDeployNMSC.encode(MsgDeployNMSC.fromPartial(input)).finish(),
     };
   }
 
   createMsgMintPush(input: MsgMintPush): Any {
     return {
-      typeUrl: '/crosschain.v1.MsgMintPush',
+      typeUrl: '/ue.v1.MsgMintPush',
       value: MsgMintPush.encode(MsgMintPush.fromPartial(input)).finish(),
     };
   }
 
   createMsgExecutePayload(input: MsgExecutePayload): Any {
     return {
-      typeUrl: '/crosschain.v1.MsgExecutePayload',
+      typeUrl: '/ue.v1.MsgExecutePayload',
       value: MsgExecutePayload.encode(
         MsgExecutePayload.fromPartial(input)
       ).finish(),

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package crosschain.v1;
+package ue.v1;
 
 enum VM_TYPE {
   EVM = 0;
