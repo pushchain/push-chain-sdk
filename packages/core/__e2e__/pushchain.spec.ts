@@ -1,7 +1,7 @@
 import { privateKeyToAccount } from 'viem/accounts';
 import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
 import { Hex, isAddress, PublicClient } from 'viem';
-import { Keypair } from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
 import { PushChain } from '../src';
 import { UniversalSigner } from '../src/lib/universal/universal.types';
 
@@ -109,8 +109,8 @@ describe('PushChain (e2e)', () => {
       }, 30000);
     });
 
-    describe(`ORIGIN CHAIN: ${CHAIN.PUSH_LOCALNET}`, () => {
-      const originChain = CHAIN.PUSH_LOCALNET;
+    describe(`ORIGIN CHAIN: ${CHAIN.PUSH_TESTNET_DONUT}`, () => {
+      const originChain = CHAIN.PUSH_TESTNET_DONUT;
       let pushClient: PushChain;
 
       beforeAll(async () => {
@@ -119,11 +119,13 @@ describe('PushChain (e2e)', () => {
 
         const account = privateKeyToAccount(privateKey);
 
-        const universalSigner =
-          await PushChain.utils.signer.toUniversalFromKeyPair(account, {
+        universalSigner = await PushChain.utils.signer.toUniversalFromKeyPair(
+          account,
+          {
             chain: originChain,
             library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-          });
+          }
+        );
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
@@ -177,11 +179,13 @@ describe('PushChain (e2e)', () => {
 
         const account = Keypair.fromSecretKey(privateKey);
 
-        const universalSigner =
-          await PushChain.utils.signer.toUniversalFromKeyPair(account, {
+        universalSigner = await PushChain.utils.signer.toUniversalFromKeyPair(
+          account,
+          {
             chain: originChain,
             library: PushChain.CONSTANTS.LIBRARY.SOLANA_WEB3JS,
-          });
+          }
+        );
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
@@ -204,7 +208,15 @@ describe('PushChain (e2e)', () => {
         const uoa = pushClient.universal.origin;
         expect(uoa).toBeDefined();
         expect(uoa.chain).toBe(originChain);
-        expect(isAddress(uoa.address)).toBe(true);
+
+        let isValid = true;
+        try {
+          new PublicKey(uoa.address);
+        } catch {
+          isValid = false;
+        }
+
+        expect(isValid).toBe(true);
       });
 
       it('should sendTransaction', async () => {
