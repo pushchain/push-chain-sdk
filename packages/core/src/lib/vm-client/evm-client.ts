@@ -184,12 +184,15 @@ export class EvmClient {
       this.publicClient.getTransactionCount({
         address: signer.account.address as `0x${string}`,
       }),
-      this.publicClient.estimateGas({
-        account: signer.account.address as `0x${string}`,
-        to,
-        data,
-        value,
-      }),
+      // Use fixed gas for simple transfers, estimate for contract interactions
+      data === '0x'
+        ? Promise.resolve(BigInt(21000))
+        : this.publicClient.estimateGas({
+            account: signer.account.address as `0x${string}`,
+            to,
+            data,
+            value,
+          }),
       this.publicClient.estimateFeesPerGas(),
     ]);
 
@@ -213,9 +216,14 @@ export class EvmClient {
 
     const signedTx = await signer.signTransaction(hexToBytes(unsignedTx));
 
-    return this.publicClient.sendRawTransaction({
+    const hash = await this.publicClient.sendRawTransaction({
       serializedTransaction: bytesToHex(signedTx),
     });
+
+    // Wait for the transaction to include in a block
+    await this.publicClient.waitForTransactionReceipt({ hash });
+
+    return hash;
   }
 
   /**

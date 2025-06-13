@@ -1,9 +1,10 @@
-import { privateKeyToAccount } from 'viem/accounts';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
 import { Hex, isAddress, PublicClient } from 'viem';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { PushChain } from '../src';
 import { UniversalSigner } from '../src/lib/universal/universal.types';
+import { ethers, Wallet } from 'ethers';
 
 /** CLI COMMANDS
  
@@ -237,6 +238,48 @@ describe('PushChain (e2e)', () => {
         );
         expect(after.deployed).toBe(true);
       }, 30000);
+    });
+  });
+
+  describe('Push Chain Signer', () => {
+    it('Origin and Account should be the same when push chain', async () => {
+      const account = privateKeyToAccount(generatePrivateKey());
+      const signer = await PushChain.utils.signer.toUniversalFromKeyPair(
+        account,
+        {
+          chain: PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+        }
+      );
+      const pushChainClient = await PushChain.initialize(signer, {
+        network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+      });
+      const origin = pushChainClient.universal.origin;
+      const account2 = pushChainClient.universal.account;
+      expect(origin.address).toBe(account2);
+      expect(origin.chain === CHAIN.PUSH_TESTNET);
+    });
+
+    it('Should be able to send transaction from push chain', async () => {
+      const privateKey = process.env['PUSH_CHAIN_PRIVATE_KEY'] as Hex;
+      if (!privateKey) throw new Error('PUSH_CHAIN_PRIVATE_KEY not set');
+      const wallet = new Wallet(privateKey);
+      const provider = new ethers.JsonRpcProvider(
+        'https://evm.rpc-testnet-donut-node1.push.org/'
+      );
+      const signer = wallet.connect(provider);
+      const universalSigner = await PushChain.utils.signer.toUniversal(signer);
+      const pushChainClient = await PushChain.initialize(universalSigner, {
+        network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET,
+      });
+
+      const txHash = await pushChainClient.universal.sendTransaction({
+        target: '0x1b527b5A848A264a4d8195Fc41aEae0166cd36b7',
+        value: BigInt(100000000),
+      });
+
+      const tx = await provider.getTransaction(txHash);
+      expect(tx).toBeDefined();
     });
   });
 });
