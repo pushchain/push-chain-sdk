@@ -16,6 +16,7 @@ import {
   Hex,
   Abi,
   fallback,
+  parseGwei,
 } from 'viem';
 
 /**
@@ -205,8 +206,11 @@ export class EvmClient {
       data,
       gas,
       nonce,
-      maxFeePerGas: feePerGas.maxFeePerGas,
-      maxPriorityFeePerGas: feePerGas.maxPriorityFeePerGas,
+      // TODO: THIS WILL BE REMOVED! Only for testing purposes
+      // maxFeePerGas: feePerGas.maxFeePerGas,
+      // maxPriorityFeePerGas: feePerGas.maxPriorityFeePerGas,
+      maxFeePerGas: parseGwei('2'),
+      maxPriorityFeePerGas: parseGwei('1'),
       value,
     });
 

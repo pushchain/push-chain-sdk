@@ -176,12 +176,17 @@ export async function convertOriginToExecutor(
   // Determine Push Network from the chain
   const pushNetwork = getPushNetworkFromChain(chain);
 
-  const pushChain =
-    pushNetwork === PUSH_NETWORK.MAINNET
-      ? CHAIN.PUSH_MAINNET
-      : pushNetwork === PUSH_NETWORK.TESTNET_DONUT
-      ? CHAIN.PUSH_TESTNET_DONUT
-      : CHAIN.PUSH_LOCALNET;
+  let pushChain: CHAIN;
+  if (pushNetwork === PUSH_NETWORK.MAINNET) {
+    pushChain = CHAIN.PUSH_MAINNET;
+  } else if (
+    pushNetwork === PUSH_NETWORK.TESTNET_DONUT ||
+    pushNetwork === PUSH_NETWORK.TESTNET
+  ) {
+    pushChain = CHAIN.PUSH_TESTNET_DONUT;
+  } else {
+    pushChain = CHAIN.PUSH_LOCALNET;
+  }
 
   // Create PushClient to get factory address
   const pushClient = new PushClient({
