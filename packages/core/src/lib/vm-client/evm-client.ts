@@ -16,6 +16,7 @@ import {
   Hex,
   Abi,
   fallback,
+  parseGwei,
 } from 'viem';
 
 /**
@@ -296,5 +297,38 @@ export class EvmClient {
    */
   async getGasPrice(): Promise<bigint> {
     return this.publicClient.getGasPrice();
+  }
+
+  /**
+   * Waits for a transaction to achieve the desired number of confirmations.
+   *
+   * @param txHash - Transaction hash
+   * @param confirmations - Number of confirmations to wait for (default: 6)
+   * @param pollIntervalMs - How often to check (default: 4000ms)
+   */
+  async waitForConfirmations({
+    txHash,
+    confirmations = 6,
+    pollIntervalMs = 4000,
+  }: {
+    txHash: `0x${string}`;
+    confirmations?: number;
+    pollIntervalMs?: number;
+  }): Promise<void> {
+    const receipt = await this.publicClient.waitForTransactionReceipt({
+      hash: txHash,
+    });
+
+    const targetBlock = receipt.blockNumber + BigInt(confirmations);
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const currentBlock = await this.publicClient.getBlockNumber();
+      // console.log('......');
+      // console.log(currentBlock);
+      // console.log(targetBlock);
+      if (currentBlock >= targetBlock) return;
+      await new Promise((r) => setTimeout(r, pollIntervalMs));
+    }
   }
 }

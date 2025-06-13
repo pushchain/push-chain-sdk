@@ -86,7 +86,7 @@ export class PriceFetch {
             );
           }
           const data = (await response.json()) as { solana: { usd: number } };
-          return BigInt(data.solana.usd * 1e8);
+          return BigInt(Math.round(data.solana.usd * 1e8));
         } else {
           throw new Error('Cannot fetch price in USD');
         }

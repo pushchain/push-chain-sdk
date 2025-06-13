@@ -252,4 +252,46 @@ export class SvmClient {
       return BigInt(feeResp.value);
     }, 'estimateGas');
   }
+
+  /**
+   * Waits for a Solana transaction to reach the desired confirmations.
+   *
+   * @param txSignature - The transaction signature to monitor
+   * @param confirmations - Desired confirmation count (default: 6)
+   * @param timeoutMs - Max wait time in milliseconds (default: 90_000)
+   */
+  async waitForConfirmations({
+    txSignature,
+    confirmations = 6,
+    timeoutMs = 90000,
+  }: {
+    txSignature: string;
+    confirmations?: number;
+    timeoutMs?: number;
+  }): Promise<void> {
+    return this.executeWithFallback(async (connection) => {
+      const start = Date.now();
+
+      while (Date.now() - start < timeoutMs) {
+        const result = await connection.getSignatureStatuses([txSignature]);
+        const status = result.value[0];
+        // console.log('...');
+        // console.log(status);
+
+        if (
+          status &&
+          status.confirmations !== null &&
+          status.confirmations >= confirmations
+        ) {
+          return;
+        }
+
+        await new Promise((r) => setTimeout(r, 500));
+      }
+
+      throw new Error(
+        `Solana tx ${txSignature} not confirmed after ${timeoutMs}ms`
+      );
+    }, 'waitForConfirmations');
+  }
 }
