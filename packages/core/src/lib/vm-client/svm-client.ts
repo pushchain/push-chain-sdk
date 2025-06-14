@@ -262,7 +262,7 @@ export class SvmClient {
    */
   async waitForConfirmations({
     txSignature,
-    confirmations = 6,
+    confirmations = 2,
     timeoutMs = 90000,
   }: {
     txSignature: string;
@@ -275,8 +275,6 @@ export class SvmClient {
       while (Date.now() - start < timeoutMs) {
         const result = await connection.getSignatureStatuses([txSignature]);
         const status = result.value[0];
-        // console.log('...');
-        // console.log(status);
 
         if (
           status &&

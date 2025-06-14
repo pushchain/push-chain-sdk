@@ -206,11 +206,8 @@ export class EvmClient {
       data,
       gas,
       nonce,
-      // TODO: THIS WILL BE REMOVED! Only for testing purposes
-      // maxFeePerGas: feePerGas.maxFeePerGas,
-      // maxPriorityFeePerGas: feePerGas.maxPriorityFeePerGas,
-      maxFeePerGas: parseGwei('2'),
-      maxPriorityFeePerGas: parseGwei('1'),
+      maxFeePerGas: feePerGas.maxFeePerGas,
+      maxPriorityFeePerGas: feePerGas.maxPriorityFeePerGas,
       value,
     });
 
@@ -311,7 +308,7 @@ export class EvmClient {
    */
   async waitForConfirmations({
     txHash,
-    confirmations = 6,
+    confirmations = 2,
     pollIntervalMs = 4000,
   }: {
     txHash: `0x${string}`;
@@ -327,9 +324,6 @@ export class EvmClient {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const currentBlock = await this.publicClient.getBlockNumber();
-      // console.log('......');
-      // console.log(currentBlock);
-      // console.log(targetBlock);
       if (currentBlock >= targetBlock) return;
       await new Promise((r) => setTimeout(r, pollIntervalMs));
     }
