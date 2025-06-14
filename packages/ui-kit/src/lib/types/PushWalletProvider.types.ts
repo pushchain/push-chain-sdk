@@ -1,22 +1,31 @@
-import { CONSTANTS } from '../constants';
+import { CHAIN } from '@pushchain/core/src/lib/constants/enums';
+import { PushUI } from '../constants';
 import { ThemeOverrides } from '../styles/token';
+import { PushChain } from '@pushchain/core';
 
 export type LoginMethodConfig = {
   email?: boolean;
   google?: boolean;
   wallet?: {
     enabled?: boolean;
-    chains?: (typeof CONSTANTS.CHAIN)[keyof typeof CONSTANTS.CHAIN][];
+    chains?: (typeof PushUI.CONSTANTS.CHAIN)[keyof typeof PushUI.CONSTANTS.CHAIN][];
   };
   appPreview?: boolean;
 };
 
+export type ChainConfig = {
+  rpcUrls?: Partial<Record<CHAIN, string[]>>;
+  blockExplorers?: Partial<Record<CHAIN, Record<string, string>>>;
+  printTraces?: boolean;
+};
+
 export type ProviderConfigProps = {
   uid?: string;
-  env: (typeof CONSTANTS.ENV)[keyof typeof CONSTANTS.ENV];
+  network: keyof typeof PushChain.CONSTANTS.PUSH_NETWORK;
   rpcURL?: string;
   login?: LoginMethodConfig;
   modal?: ModalProps;
+  chain?: ChainConfig;
 };
 
 export type AppMetadata = {
@@ -30,20 +39,22 @@ export type ModalProps = {
    * “split” shows the preview pane side-by-side with the iframe
    * “simple” shows only the iframe (no preview)
    */
-  loginLayout?: typeof CONSTANTS.LOGIN.SPLIT | typeof CONSTANTS.LOGIN.SIMPLE;
+  loginLayout?:
+    | typeof PushUI.CONSTANTS.LOGIN.SPLIT
+    | typeof PushUI.CONSTANTS.LOGIN.SIMPLE;
   /** if true (and `app` is provided), show the preview pane in the wrapper */
   appPreview?: boolean;
   /** CSS background-image for wrapper or preview pane */
   bgImage?: string;
   /** when connected, how the account menu appears */
   connectedLayout?:
-    | typeof CONSTANTS.CONNECTED.FULL
-    | typeof CONSTANTS.CONNECTED.HOVER;
+    | typeof PushUI.CONSTANTS.CONNECTED.FULL
+    | typeof PushUI.CONSTANTS.CONNECTED.HOVER;
 };
 
 export type ThemeMode =
-  | typeof CONSTANTS.THEME.LIGHT
-  | typeof CONSTANTS.THEME.DARK;
+  | typeof PushUI.CONSTANTS.THEME.LIGHT
+  | typeof PushUI.CONSTANTS.THEME.DARK;
 
 export type PushWalletProviderProps = {
   children: React.ReactNode;

@@ -26,7 +26,7 @@ const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
   themeOverrides: ButtonThemeOverrides,
 }) => {
   const {
-    universalAddress,
+    universalAccount,
     themeOverrides,
     themeMode,
     updateModalAppData,
@@ -57,11 +57,11 @@ const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
   }, []);
 
   const Component = () => {
-    if (universalAddress) {
+    if (universalAccount) {
       // Merge props with buttonDefaults, giving priority to direct props
       const toggleButtonProps = {
         uid: uid,
-        universalAddress: universalAddress,
+        universalAccount: universalAccount,
       };
 
       return <TogglePushWalletButton {...toggleButtonProps} />;

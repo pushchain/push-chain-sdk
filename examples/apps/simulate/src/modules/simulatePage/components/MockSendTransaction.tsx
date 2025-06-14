@@ -2,16 +2,12 @@ import React, { useState } from 'react';
 import { Alert, Box, Button, Front, Text } from 'shared-components';
 import { css } from 'styled-components';
 import { centerMaskString } from '../../../helpers';
-import { CONSTANTS, createUniversalAccount } from '@pushchain/devnet';
 import { TransactionSnippet } from '../../../common/components';
 import { mockTransaction } from '../../../common/constants';
-import { usePushChainClient, usePushWalletContext } from '@pushchain/ui-kit';
+import { usePushChainClient } from '../../../../../../../packages/ui-kit';
 
 const MockSendTransaction = () => {
-  const { pushChain, isLoading, error } = usePushChainClient();
-  const { universalAddress } = usePushWalletContext();
-
-  console.log('Error initialising push chain >>', error);
+  const { universalAccount, pushChainClient, isLoading } = usePushChainClient();
 
   const [isSendingTxn, setIsSendingTxn] = useState(false);
   const [txnHash, setTxnHash] = useState<string | null>(null);
@@ -19,24 +15,22 @@ const MockSendTransaction = () => {
 
   const handleSendTransaction = async () => {
     try {
-      if (pushChain && universalAddress) {
+      if (pushChainClient && universalAccount) {
         setIsSendingTxn(true);
-        const { txHash } = await pushChain.tx.send(
-          [
-            createUniversalAccount({
-              address: '0x22B173e0596c6723dD1A95817052D96b97176Dd8',
-            }),
-            createUniversalAccount({
-              chain: CONSTANTS.CHAIN.SOLANA,
-              chainId: CONSTANTS.CHAIN_ID.SOLANA.TESTNET,
-              address: 'ySYrGNLLJSK9hvGGpoxg8TzWfRe8ftBtDSMECtx2eJR',
-            }),
-          ],
-          {
-            category: 'CUSTOM:SAMPLE_TX',
-            data: 'Hello world',
-          }
-        );
+        // const txHash = await pushChainClient.universal.sendTransaction({
+        //   target: '0xFd6C2fE69bE13d8bE379CCB6c9306e74193EC1A9',
+        //   value: BigInt(2),
+        // });
+
+        const txHash = await pushChainClient.universal.sendTransaction({
+          target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
+          value: BigInt(0),
+          data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
+          gasLimit: BigInt(50000000000000000),
+          maxFeePerGas: BigInt(50000000000000000),
+          maxPriorityFeePerGas: BigInt(200000000),
+          deadline: BigInt(9999999999),
+        });
 
         setTxnHash(txHash);
         setIsSendingTxn(false);

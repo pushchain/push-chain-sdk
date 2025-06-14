@@ -1,48 +1,57 @@
 // hooks/usePushChainClient.ts (use uid?:string in the future as prop)
 
-import { CONSTANTS, PushChain, createUniversalSigner } from '@pushchain/devnet';
 import { usePushWalletContext } from './usePushWallet';
 import { useEffect, useState } from 'react';
-import { ENV } from '../constants';
+import { PushChain } from '@pushchain/core';
 
 export const usePushChainClient = (uid?: string) => {
-  const { config, universalAddress, handleSignMessage } =
-    usePushWalletContext(uid);
+  const {
+    universalAccount,
+    handleSignMessage,
+    handleSignTransaction,
+    handleSignTypedData,
+    config,
+  } = usePushWalletContext(uid);
   const [pushChain, setPushChain] = useState<PushChain | null>(null);
   const [error, setError] = useState<Error | null>(null);
+
+  const dummySendTransaction = async (txn: Uint8Array) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const dummySignature = new Uint8Array(65).fill(0);
+
+    return dummySignature;
+  };
 
   // initialise Push Chain instance here and export that
   useEffect(() => {
     const initializePushChain = async () => {
-      if (!universalAddress) {
+      if (!universalAccount) {
         setPushChain(null);
         return;
       }
 
       try {
-        const signer = createUniversalSigner({
-          address: universalAddress.address,
-          chain: universalAddress.chain,
-          chainId: universalAddress.chainId,
-          signMessage: async (data: Uint8Array) => {
-            return await handleSignMessage(data);
-          },
+        const signerSkeleton = PushChain.utils.signer.construct(
+          universalAccount,
+          {
+            signMessage: handleSignMessage,
+            signTransaction: dummySendTransaction,
+            signTypedData: handleSignTypedData,
+          }
+        );
+
+        const universalSigner = await PushChain.utils.signer.toUniversal(
+          signerSkeleton
+        );
+
+        const pushChainClient = await PushChain.initialize(universalSigner, {
+          network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+          rpcUrls: config.chain?.rpcUrls,
+          blockExplorers: config.chain?.blockExplorers,
+          printTraces: config.chain?.printTraces,
         });
 
-        // Push Chain is only initialized at devnet and mainnet
-        const pushChainNetwork =
-          config.env === ENV.LOCAL || config.env === ENV.TESTNET
-            ? CONSTANTS.ENV.DEVNET
-            : config.env;
-
-        const instance = await PushChain.initialize(signer, {
-          network: pushChainNetwork,
-          rpcUrl: config.rpcURL,
-        });
-
-        console.log('Push Chain Initialised', instance);
-
-        setPushChain(instance);
+        setPushChain(pushChainClient);
         setError(null);
       } catch (err) {
         console.log('Error occured when initialising Push chain', err);
@@ -56,10 +65,11 @@ export const usePushChainClient = (uid?: string) => {
     };
 
     initializePushChain();
-  }, [universalAddress]);
+  }, [universalAccount, config]);
 
   return {
-    pushChain,
+    pushChainClient: pushChain,
+    universalAccount,
     error,
     isLoading: !pushChain && !error,
   };

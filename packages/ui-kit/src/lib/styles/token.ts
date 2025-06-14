@@ -74,6 +74,7 @@ export type ButtonThemeOverrides = Partial<ButtonThemeTokens> & {
 export const themeDefault = {
   '--pw-int-text-heading-xsmall-size': '18px',
   '--pw-int-text-body-large-size': '16px',
+  '--pw-int-font-family': '"Inter", sans-serif',
 };
 
 export const lightThemeDefault = {
@@ -96,6 +97,7 @@ export const buttonThemeDefault = {
   '--pwauth-btn-connected-text-color': '#FFF',
   '--pwauth-btn-connected-bg-color': '#000',
   '--pwauth-btn-connect-border-radius': '12px',
+  '--pw-int-font-family': '"Inter", sans-serif',
 };
 
 export const defaultThemeKeys = Object.keys({
