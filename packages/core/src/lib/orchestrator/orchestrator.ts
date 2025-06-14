@@ -135,16 +135,11 @@ export class Orchestrator {
       console.log(`[${this.constructor.name}] Estimating cost of execution`);
     }
 
-    let gasEstimate: bigint;
-    if (execute.data === '0x') {
-      gasEstimate = BigInt(21000);
-    } else {
-      gasEstimate = await this.pushClient.estimateGas({
-        to: execute.target,
-        data: execute.data,
-        value: execute.value,
-      });
-    }
+    const gasEstimate = await this.pushClient.estimateGas({
+      to: execute.target,
+      data: execute.data,
+      // value: execute.value, @DEV - taking 0 as of now
+    });
 
     if (this.printTraces) {
       console.log(`[${this.constructor.name}] GasEstimate: ${gasEstimate}`);
