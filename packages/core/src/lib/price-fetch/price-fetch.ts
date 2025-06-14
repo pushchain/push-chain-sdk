@@ -1,46 +1,7 @@
 import { CHAIN, VM } from '../constants/enums';
 import { CHAIN_INFO } from '../constants/chain';
 import { EvmClient } from '../vm-client/evm-client';
-
-// Minimal ABI for Chainlink AggregatorV3Interface
-const aggregatorV3InterfaceABI = [
-  {
-    inputs: [],
-    name: 'decimals',
-    outputs: [{ internalType: 'uint8', name: '', type: 'uint8' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'latestRoundData',
-    outputs: [
-      { internalType: 'uint80', name: 'roundId', type: 'uint80' },
-      { internalType: 'int256', name: 'answer', type: 'int256' },
-      { internalType: 'uint256', name: 'startedAt', type: 'uint256' },
-      { internalType: 'uint256', name: 'updatedAt', type: 'uint256' },
-      { internalType: 'uint80', name: 'answeredInRound', type: 'uint80' },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-] as const;
-
-// Configure feed addresses per chain
-const FEED_ADDRESS: Partial<
-  Record<
-    CHAIN,
-    {
-      NATIVE_USD: string;
-      USDC_USD: string;
-    }
-  >
-> = {
-  [CHAIN.ETHEREUM_SEPOLIA]: {
-    NATIVE_USD: '0x694AA1769357215DE4FAC081bf1f309aDC325306',
-    USDC_USD: '0xA2F78ab2355fe2f984D808B5CeE7FD0A93D5270E',
-  },
-};
+import { FEE_LOCKER_EVM } from '../constants/abi';
 
 export class PriceFetch {
   constructor(
@@ -52,28 +13,23 @@ export class PriceFetch {
       this.rpcUrls[chain] || CHAIN_INFO[chain].defaultRPC;
 
     const vm = CHAIN_INFO[chain].vm;
+    const { lockerContract } = CHAIN_INFO[chain];
+    if (!lockerContract) {
+      throw new Error(`Locker contract not configured for chain: ${chain}`);
+    }
 
     switch (vm) {
       case VM.EVM: {
-        const priceFeedAddress = FEED_ADDRESS[chain];
-        if (!priceFeedAddress) {
-          throw new Error(
-            `Price Conversion functionality not available for ${chain}`
-          );
-        }
-
         const evmClient = new EvmClient({ rpcUrls });
 
-        const ethUsdPrice = await this.fetchPrice(
-          priceFeedAddress.NATIVE_USD,
-          evmClient
-        );
+        const result = await evmClient.readContract<[bigint, number]>({
+          abi: FEE_LOCKER_EVM,
+          address: lockerContract as `0x${string}`,
+          functionName: 'getEthUsdPrice',
+        });
 
-        const usdcUsdPrice = await this.fetchPrice(
-          priceFeedAddress.USDC_USD,
-          evmClient
-        );
-        return (ethUsdPrice / usdcUsdPrice) * BigInt(1e8);
+        const [price, decimals] = result;
+        return price / BigInt(10 ** decimals);
       }
       case VM.SVM: {
         if (chain === CHAIN.SOLANA_DEVNET) {
@@ -95,41 +51,5 @@ export class PriceFetch {
         throw new Error(`Unsupported VM ${vm}`);
       }
     }
-  }
-
-  /**
-   *
-   * @param address Chainlink oracle feed address
-   * @param vmClient EVM client instance
-   * @returns price scaled to 8 decimals (10^8)
-   */
-  private async fetchPrice(address: string, vmClient: EvmClient) {
-    const [, raw] = (await vmClient.readContract({
-      address: address as `0x${string}`,
-      abi: aggregatorV3InterfaceABI,
-      functionName: 'latestRoundData',
-      args: [],
-    })) as any;
-
-    const decimals = await vmClient.readContract({
-      address: address as `0x${string}`,
-      abi: aggregatorV3InterfaceABI,
-      functionName: 'decimals',
-    });
-
-    const rawBigInt = BigInt(raw);
-    const actualDecimals = Number(decimals);
-
-    // Normalize to 8 decimals (10^8)
-    let normalizedPrice: bigint;
-    if (actualDecimals === 8) {
-      normalizedPrice = rawBigInt;
-    } else if (actualDecimals > 8) {
-      normalizedPrice = rawBigInt / BigInt(10 ** (actualDecimals - 8));
-    } else {
-      normalizedPrice = rawBigInt * BigInt(10 ** (8 - actualDecimals));
-    }
-
-    return normalizedPrice;
   }
 }
