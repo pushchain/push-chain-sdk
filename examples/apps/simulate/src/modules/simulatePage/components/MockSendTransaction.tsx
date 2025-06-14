@@ -7,10 +7,7 @@ import { mockTransaction } from '../../../common/constants';
 import { usePushChainClient } from '../../../../../../../packages/ui-kit';
 
 const MockSendTransaction = () => {
-  const { universalAccount, pushChainClient, isLoading, error } =
-    usePushChainClient();
-
-  console.log('Error initialising push chain >>', error);
+  const { universalAccount, pushChainClient, isLoading } = usePushChainClient();
 
   const [isSendingTxn, setIsSendingTxn] = useState(false);
   const [txnHash, setTxnHash] = useState<string | null>(null);
@@ -20,9 +17,19 @@ const MockSendTransaction = () => {
     try {
       if (pushChainClient && universalAccount) {
         setIsSendingTxn(true);
+        // const txHash = await pushChainClient.universal.sendTransaction({
+        //   target: '0xFd6C2fE69bE13d8bE379CCB6c9306e74193EC1A9',
+        //   value: BigInt(2),
+        // });
+
         const txHash = await pushChainClient.universal.sendTransaction({
-          target: '0x22B173e0596c6723dD1A95817052D96b97176Dd8',
-          value: 0n,
+          target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
+          value: BigInt(0),
+          data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
+          gasLimit: BigInt(50000000000000000),
+          maxFeePerGas: BigInt(50000000000000000),
+          maxPriorityFeePerGas: BigInt(200000000),
+          deadline: BigInt(9999999999),
         });
 
         setTxnHash(txHash);

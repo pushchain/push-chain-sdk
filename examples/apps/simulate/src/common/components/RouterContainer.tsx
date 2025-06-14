@@ -5,10 +5,14 @@ import { Box } from 'shared-components';
 import SimulatePage from '../../pages/SimulatePage';
 import { PrivateRoute } from '../../pages/PrivateRoute';
 import { APP_ROUTES } from '../constants';
-import { usePushWalletContext } from '../../../../../../packages/ui-kit';
+import {
+  usePushChainClient,
+  usePushWalletContext,
+} from '../../../../../../packages/ui-kit';
 
 const RouterContainer = () => {
-  const { universalAccount } = usePushWalletContext();
+  const { universalAccount } = usePushChainClient();
+
   const navigate = useNavigate();
   useEffect(() => {
     if (universalAccount) {

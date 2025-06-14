@@ -3,7 +3,7 @@ import { CHAIN } from '@pushchain/core/src/lib/constants/enums';
 import { TypedData, TypedDataDomain } from 'viem';
 
 export enum ChainType {
-  ETHEREUM = 'mainnet',
+  ETHEREUM = 'sepolia',
   SOLANA = 'solana',
   BINANCE = 'bsc',
   ARBITRUM = 'arbitrum',
@@ -49,5 +49,5 @@ export type ConnectionStatus =
 
 export type WalletEventRespoonse = {
   signature?: Uint8Array;
-  account?: string;
+  account?: UniversalAccount;
 };

@@ -5,6 +5,7 @@ import { BrowserProvider, getAddress, Transaction } from 'ethers';
 import { HexString } from 'ethers/lib.commonjs/utils/data';
 import * as chains from 'viem/chains';
 import { toHex, TypedData, TypedDataDomain } from 'viem';
+import { ethers, getBytes, hexlify } from 'ethers';
 
 export class MetamaskProvider extends BaseWalletProvider {
   private sdk: MetaMaskSDK;
@@ -122,7 +123,7 @@ export class MetamaskProvider extends BaseWalletProvider {
       if (!provider) {
         throw new Error('Provider is undefined');
       }
-      const browserProvider = new BrowserProvider(provider);
+
       const accounts = (await provider.request({
         method: 'eth_accounts',
       })) as string[];
@@ -130,10 +131,13 @@ export class MetamaskProvider extends BaseWalletProvider {
       if (!accounts || accounts.length === 0) {
         throw new Error('No connected account');
       }
+      const browserProvider = new BrowserProvider(provider);
 
       const hex = '0x' + Buffer.from(txn).toString('hex');
 
       const signer = await browserProvider.getSigner();
+
+      console.log('Signer', signer);
 
       const parsedTx = Transaction.from(hex);
       const signature = await signer.signTransaction(parsedTx);

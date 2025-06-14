@@ -18,7 +18,6 @@ import {
   WALLET_CONFIG_URL,
   WALLET_TO_APP_ACTION,
 } from '../constants';
-import { getWalletDataFromAccount } from '../helpers';
 import { walletRegistry } from '../providers/walletProviders/WalletProviderRegistry';
 import { PushWalletToast } from '../components/PushWalletToast';
 import { LoginModal } from '../components/LoginModal';
@@ -36,6 +35,8 @@ export type WalletContextType = {
   handleConnectToPushWallet: () => void;
   handleUserLogOutEvent: () => void;
   handleSignMessage: (data: Uint8Array) => Promise<Uint8Array>;
+  handleSignTransaction: (data: Uint8Array) => Promise<Uint8Array>;
+  handleSignTypedData: (data: ITypedData) => Promise<Uint8Array>;
 
   config: PushWalletProviderProps['config'];
   app?: PushWalletProviderProps['app'];
@@ -48,14 +49,6 @@ export type WalletContextType = {
 
   themeMode: ThemeMode;
   themeOverrides: ThemeOverrides;
-
-  handleExternalWalletSignRequest: (data: Uint8Array) => Promise<Uint8Array>;
-  handleExternalWalletSignTransactionRequest: (
-    data: Uint8Array
-  ) => Promise<Uint8Array>;
-  handleExternalWalletSignTypedDataRequest: (
-    data: ITypedData
-  ) => Promise<Uint8Array>;
 };
 
 export const WalletContext = createContext<WalletContextType | null>(null);
@@ -186,8 +179,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     setConnectionStatus('connected');
     setMinimiseWallet(true);
     if (response.account) {
-      const result = PushChain.utils.account.toUniversal(response.account);
-      setUniversalAccount(result);
+      setUniversalAccount(response.account);
     }
   };
 
@@ -210,10 +202,14 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
 
       const walletInfo = await providerReceived.connect(data.chain);
 
+      console.log('@@@@@@@ walletInfo', walletInfo);
+      console.log('#######', PushChain.utils.account);
+      console.log('$$$$$$', PushChain.utils.account.fromChainAgnostic);
+
       setConnectionStatus('connected');
       setMinimiseWallet(true);
 
-      const result = PushChain.utils.account.toUniversal(
+      const result = PushChain.utils.account.fromChainAgnostic(
         walletInfo.caipAddress
       );
 
@@ -370,6 +366,70 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     });
   };
 
+  const handleSendSignTransactionRequestToPushWallet = (
+    data: Uint8Array
+  ): Promise<Uint8Array> => {
+    return new Promise((resolve, reject) => {
+      setShowToast(true);
+      if (signatureResolverRef.current) {
+        setShowToast(false);
+        reject(new Error('Another sign request is already in progress'));
+        return;
+      }
+
+      signatureResolverRef.current = {
+        success: (response: WalletEventRespoonse) => {
+          resolve(response.signature!);
+          setShowToast(false);
+          signatureResolverRef.current = null; // Clean up
+        },
+        error: (response: WalletEventRespoonse) => {
+          signatureResolverRef.current = null; // Clean up
+          setShowToast(false);
+          reject(new Error('Signature request failed'));
+        },
+      };
+
+      // Send the sign request to the wallet tab
+      sendMessageToPushWallet({
+        type: APP_TO_WALLET_ACTION.SIGN_TRANSACTION,
+        data,
+      });
+    });
+  };
+
+  const handleSendSignTypedDataRequestToPushWallet = (
+    data: ITypedData
+  ): Promise<Uint8Array> => {
+    return new Promise((resolve, reject) => {
+      setShowToast(true);
+      if (signatureResolverRef.current) {
+        setShowToast(false);
+        reject(new Error('Another sign request is already in progress'));
+        return;
+      }
+
+      signatureResolverRef.current = {
+        success: (response: WalletEventRespoonse) => {
+          resolve(response.signature!);
+          setShowToast(false);
+          signatureResolverRef.current = null; // Clean up
+        },
+        error: (response: WalletEventRespoonse) => {
+          signatureResolverRef.current = null; // Clean up
+          setShowToast(false);
+          reject(new Error('Signature request failed'));
+        },
+      };
+
+      // Send the sign request to the wallet tab
+      sendMessageToPushWallet({
+        type: APP_TO_WALLET_ACTION.SIGN_TYPED_DATA,
+        data,
+      });
+    });
+  };
+
   // sending Message sign request to wallet based on which wallet is connected (external or pushwallet)
   const handleSignMessage = async (data: Uint8Array): Promise<Uint8Array> => {
     let signature;
@@ -377,6 +437,30 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       signature = await handleExternalWalletSignRequest(data);
     } else {
       signature = await handleSendSignRequestToPushWallet(data);
+    }
+
+    return signature;
+  };
+
+  const handleSignTransaction = async (
+    data: Uint8Array
+  ): Promise<Uint8Array> => {
+    let signature;
+    if (externalWallet) {
+      signature = await handleExternalWalletSignTransactionRequest(data);
+    } else {
+      signature = await handleSendSignTransactionRequestToPushWallet(data);
+    }
+
+    return signature;
+  };
+
+  const handleSignTypedData = async (data: ITypedData): Promise<Uint8Array> => {
+    let signature;
+    if (externalWallet) {
+      signature = await handleExternalWalletSignTypedDataRequest(data);
+    } else {
+      signature = await handleSendSignTypedDataRequestToPushWallet(data);
     }
 
     return signature;
@@ -402,6 +486,16 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
           handleAppConnectionRejection();
           break;
         case WALLET_TO_APP_ACTION.SIGN_MESSAGE:
+          if (signatureResolverRef.current) {
+            signatureResolverRef?.current?.success?.(event.data.data);
+          }
+          break;
+        case WALLET_TO_APP_ACTION.SIGN_TRANSACTION:
+          if (signatureResolverRef.current) {
+            signatureResolverRef?.current?.success?.(event.data.data);
+          }
+          break;
+        case WALLET_TO_APP_ACTION.SIGN_TYPED_DATA:
           if (signatureResolverRef.current) {
             signatureResolverRef?.current?.success?.(event.data.data);
           }
@@ -442,9 +536,8 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         handleConnectToPushWallet,
         handleUserLogOutEvent,
         handleSignMessage,
-        handleExternalWalletSignRequest,
-        handleExternalWalletSignTransactionRequest,
-        handleExternalWalletSignTypedDataRequest,
+        handleSignTransaction,
+        handleSignTypedData,
       }}
     >
       <LoginModal
