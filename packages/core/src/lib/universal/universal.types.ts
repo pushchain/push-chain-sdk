@@ -32,6 +32,7 @@ export type ViemSignerType = {
     [key: string]: any;
   }) => Promise<`0x${string}`>;
   account: { [key: string]: any };
+  sendTransaction: (transaction: any) => Promise<any>;
   provider?: any;
 };
 
@@ -43,14 +44,14 @@ export interface EthersV5SignerType {
   ) => Promise<string>;
   getAddress: () => Promise<string>;
   signMessage: (message: Uint8Array | string) => Promise<string>;
-  signTransaction: (transaction: any) => Promise<string>;
+  sendTransaction: (transaction: any) => Promise<any>;
   provider?: any;
 }
 
 export interface EthersV6SignerType {
   getAddress: () => Promise<string>;
   signMessage: (message: Uint8Array | string) => Promise<string>;
-  signTransaction: (tx: any) => Promise<string>;
+  sendTransaction: (tx: any) => Promise<any>;
   signTypedData: (
     domain: TypedDataDomain,
     types: Record<string, Array<any>>,
@@ -99,17 +100,17 @@ export interface UniversalSigner {
   }) => Promise<Uint8Array>;
 
   /**
-   * Signs a transaction (unsigned tx bytes).
+   * Signs and sends a transaction (unsigned tx bytes).
    * Used for sending on-chain transactions.
    */
-  signTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
+  signAndSendTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
 }
 
 export interface UniversalSignerSkeleton {
   signerId: string;
   account: UniversalAccount;
   signMessage: (data: Uint8Array) => Promise<Uint8Array>;
-  signTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
+  signAndSendTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
   signTypedData?: ({
     domain,
     types,

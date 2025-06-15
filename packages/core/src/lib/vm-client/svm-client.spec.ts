@@ -1,9 +1,9 @@
 import { SvmClient } from './svm-client';
 import { Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import { UniversalSigner } from '../universal/universal.types';
-import { CHAIN } from '../constants/enums';
-import * as nacl from 'tweetnacl';
+import { CHAIN, LIBRARY } from '../constants/enums';
 import * as dotenv from 'dotenv';
+import { PushChain } from '../pushChain';
 
 // Load environment variables
 dotenv.config();
@@ -107,18 +107,10 @@ describe('SvmClient', () => {
     testAccount = Keypair.fromSecretKey(privateKey);
 
     // Create the object first with any required properties
-    universalSigner = {
-      account: {
-        address: testAccount.publicKey.toBase58(),
-        chain,
-      },
-      signMessage: async (data: Uint8Array) => {
-        return nacl.sign.detached(data, testAccount.secretKey);
-      },
-      signTransaction: async function (unsignedTx: Uint8Array) {
-        return nacl.sign.detached(unsignedTx, testAccount.secretKey);
-      },
-    };
+    universalSigner = await PushChain.utils.signer.toUniversalFromKeyPair(
+      testAccount,
+      { chain: chain, library: LIBRARY.SOLANA_WEB3JS }
+    );
   });
 
   describe('getBalance', () => {
@@ -304,7 +296,10 @@ describe('SvmClient', () => {
     });
 
     it('throws error for missing signer.signTransaction', async () => {
-      const invalidSigner = { ...universalSigner, signTransaction: undefined };
+      const invalidSigner = {
+        ...universalSigner,
+        signAndSendTransaction: undefined,
+      };
       await expect(
         svmClient.writeContract({
           abi: IDL,
@@ -313,7 +308,7 @@ describe('SvmClient', () => {
           args: [],
           signer: invalidSigner as unknown as UniversalSigner,
         })
-      ).rejects.toThrow('signer.signTransaction is not a function');
+      ).rejects.toThrow('signer.signTransaction is undefined');
     });
 
     it('throws error for invalid account configuration', async () => {

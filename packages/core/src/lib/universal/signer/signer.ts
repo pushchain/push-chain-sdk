@@ -3,7 +3,7 @@ import {
   hexToBytes,
   parseTransaction,
   WalletClient,
-  Account,
+  Hex,
 } from 'viem';
 import { TypedDataDomain, TypedData } from '../../constants';
 import {
@@ -15,9 +15,11 @@ import {
   ViemSignerType,
 } from '../universal.types';
 import * as nacl from 'tweetnacl';
-import { Keypair } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js';
 import { CHAIN, LIBRARY } from '../../constants/enums';
 import { ethers, getBytes, hexlify } from 'ethers';
+import { CHAIN_INFO } from '../../constants/chain';
+import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
 
 /**
  * Creates a `UniversalSigner` object for signing messages and transactions
@@ -26,7 +28,7 @@ import { ethers, getBytes, hexlify } from 'ethers';
  * @param {Object} params - The signer configuration object.
  * @param {string} params.address - The signer's address.
  * @param {(data: Uint8Array) => Promise<Uint8Array>} params.signMessage - Required function to sign messages.
- * @param {(data: Uint8Array) => Promise<Uint8Array>} [params.signTransaction] - Required function to sign transactions.
+ * @param {(data: Uint8Array) => Promise<Uint8Array>} [params.signAndSendTransaction] - Required function to sign and send transactions.
  * @param {CHAIN} params.chain - The chain the signer will operate on.
  * @returns {UniversalSigner} A signer object with chain metadata.
  *
@@ -35,42 +37,37 @@ import { ethers, getBytes, hexlify } from 'ethers';
  *   chain: CHAIN.ETHEREUM_SEPOLIA
  *   address: "0xabc...",
  *   signMessage: async (data) => sign(data),
- *   signTransaction: async (data) => signRawTx(data),
+ *   signAndSendTransaction: async (data) => signRawTx(data),
  * });
  */
 export function createUniversalSigner({
   account,
   signMessage,
-  signTransaction,
+  signAndSendTransaction,
   signTypedData,
 }: UniversalSigner): UniversalSigner {
   return {
     account,
     signMessage,
-    signTransaction,
+    signAndSendTransaction,
     signTypedData,
   };
 }
 
 /**
- * Creates a UniversalSigner from either a viem WalletClient or Account instance.
+ * Creates a UniversalSigner from either a viem, ethers, solana WalletClient or Account instance.
  *
  * @param {WalletClient | Account | Keypair | ethers.HDNodeWallet} clientOrAccount - The viem WalletClient or Account instance
  * @param {CHAIN} chain - The chain the signer will operate on
  * @returns {Promise<UniversalSigner>} A signer object configured for the specified chain
  */
 export async function toUniversalFromKeyPair(
-  clientOrAccount:
-    | WalletClient
-    | Account
-    | Keypair
-    | ethers.Wallet
-    | ethers.HDNodeWallet,
+  clientOrAccount: WalletClient | Keypair | ethers.Wallet | ethers.HDNodeWallet,
   { chain, library }: { chain: CHAIN; library: LIBRARY }
 ): Promise<UniversalSigner> {
   let address: string;
   let signMessage: (data: Uint8Array) => Promise<Uint8Array>;
-  let signTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
+  let signAndSendTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
   let signTypedData: ({
     domain,
     types,
@@ -83,7 +80,7 @@ export async function toUniversalFromKeyPair(
     message: Record<string, any>;
   }) => Promise<Uint8Array>;
 
-  // Check if signer has UID='custom', then we take signMessage, signTransaction, signTypedData, chain and address from the CustomUniversalSigner.
+  // Check if signer has UID='custom', then we take signMessage, signAndSendTransaction, signTypedData, chain and address from the CustomUniversalSigner.
   // If ViemSigner, convert ViemSigner to UniversalSigner.
 
   switch (library) {
@@ -116,24 +113,12 @@ export async function toUniversalFromKeyPair(
         return getBytes(sigHex);
       };
 
-      // raw unsigned tx bytes → hex → parse → signTransaction → bytes
-      signTransaction = async (raw) => {
+      // raw unsigned tx bytes → hex → parse → signAndSendTransaction → bytes
+      signAndSendTransaction = async (raw) => {
         const unsignedHex = hexlify(raw);
         const tx = ethers.Transaction.from(unsignedHex);
-        const txReq: ethers.TransactionRequest = {
-          to: tx.to,
-          value: tx.value,
-          data: tx.data,
-          gasLimit: tx.gasLimit,
-          gasPrice: tx.gasPrice,
-          maxFeePerGas: tx.maxFeePerGas,
-          maxPriorityFeePerGas: tx.maxPriorityFeePerGas,
-          nonce: tx.nonce,
-          type: tx.type,
-          chainId: tx.chainId,
-        };
-        const signedHex = await wallet.signTransaction(txReq);
-        return getBytes(signedHex);
+        const txResponse = await wallet.sendTransaction(tx);
+        return hexToBytes(txResponse.hash as Hex);
       };
 
       // EIP-712 typed data → _signTypedData → hex → bytes
@@ -150,90 +135,39 @@ export async function toUniversalFromKeyPair(
     }
 
     case LIBRARY.ETHEREUM_VIEM: {
-      if ('getAddresses' in clientOrAccount) {
-        // It's a WalletClient
-        address = (await clientOrAccount.getAddresses())[0];
-        signMessage = async (data: Uint8Array) => {
-          const hexSig = await clientOrAccount.signMessage({
-            account: clientOrAccount.account || (address as `0x${string}`),
-            message: { raw: data },
-          });
-          return hexToBytes(hexSig);
-        };
-        signTransaction = async (unsignedTx: Uint8Array) => {
-          const tx = parseTransaction(bytesToHex(unsignedTx));
-          const txHash = await clientOrAccount.signTransaction(tx as never);
-          return hexToBytes(txHash);
-        };
-        signTypedData = async ({
+      const wallet = clientOrAccount as WalletClient;
+      address = (await wallet.getAddresses())[0];
+
+      signMessage = async (data: Uint8Array) => {
+        const hexSig = await (clientOrAccount as WalletClient).signMessage({
+          account: wallet.account || (address as `0x${string}`),
+          message: { raw: data },
+        });
+        return hexToBytes(hexSig);
+      };
+
+      signAndSendTransaction = async (unsignedTx: Uint8Array) => {
+        const tx = parseTransaction(bytesToHex(unsignedTx));
+        const txHash = await wallet.sendTransaction(tx as never);
+        return hexToBytes(txHash);
+      };
+
+      signTypedData = async ({ domain, types, primaryType, message }) => {
+        const hexSig = await wallet.signTypedData({
           domain,
           types,
           primaryType,
           message,
-        }: {
-          domain: TypedDataDomain;
-          types: TypedData;
-          primaryType: string;
-          message: Record<string, any>;
-        }) => {
-          const hexSig = await clientOrAccount.signTypedData({
-            domain,
-            types,
-            primaryType,
-            message,
-            account: clientOrAccount.account || (address as `0x${string}`),
-          });
-          return hexToBytes(hexSig);
-        };
-      } else {
-        // It's an Account
-        const account = clientOrAccount as Account;
-        if (
-          !account.address ||
-          !account.signMessage ||
-          !account.signTransaction
-        ) {
-          throw new Error(
-            'Invalid Account instance: missing required properties'
-          );
-        }
-        address = account.address;
-        signMessage = async (data: Uint8Array) => {
-          const hexSig = await account.signMessage({
-            message: { raw: data },
-          });
-          return hexToBytes(hexSig);
-        };
-        signTransaction = async (unsignedTx: Uint8Array) => {
-          const tx = parseTransaction(bytesToHex(unsignedTx));
-          const hexSig = await account.signTransaction(tx);
-          return hexToBytes(hexSig);
-        };
-        signTypedData = async ({
-          domain,
-          types,
-          primaryType,
-          message,
-        }: {
-          domain: TypedDataDomain;
-          types: TypedData;
-          primaryType: string;
-          message: Record<string, any>;
-        }) => {
-          const hexSig = await account.signTypedData({
-            domain,
-            types,
-            primaryType,
-            message,
-          });
-          return hexToBytes(hexSig);
-        };
-      }
+          account:
+            (clientOrAccount as WalletClient).account ||
+            (address as `0x${string}`),
+        });
+        return hexToBytes(hexSig);
+      };
       break;
     }
 
     case LIBRARY.SOLANA_WEB3JS: {
-      // It's a Solana Keypair
       const keypair = clientOrAccount as Keypair;
       if (
         chain !== CHAIN.SOLANA_MAINNET &&
@@ -244,15 +178,32 @@ export async function toUniversalFromKeyPair(
       }
 
       address = keypair.publicKey.toBase58();
+
       signMessage = async (data: Uint8Array) => {
         return nacl.sign.detached(data, keypair.secretKey);
       };
-      signTransaction = async (unsignedTx: Uint8Array) => {
-        return nacl.sign.detached(unsignedTx, keypair.secretKey);
+
+      // ✅ Sign and send the transaction to Solana network
+      signAndSendTransaction = async (unsignedTx: Uint8Array) => {
+        // sign
+        const tx = Transaction.from(unsignedTx);
+        const messageBytes = tx.serializeMessage();
+        const signature = nacl.sign.detached(messageBytes, keypair.secretKey);
+        tx.addSignature(
+          new PublicKey(keypair.publicKey.toBase58()),
+          Buffer.from(signature)
+        );
+        const rawTx = tx.serialize();
+        const endpoint = CHAIN_INFO[chain].defaultRPC[0];
+        const connection = new Connection(endpoint, 'confirmed');
+        const txHash = await connection.sendRawTransaction(rawTx);
+        return bs58.decode(txHash);
       };
+
       signTypedData = async () => {
         throw new Error('Typed data signing is not supported for Solana');
       };
+
       break;
     }
 
@@ -267,7 +218,7 @@ export async function toUniversalFromKeyPair(
       chain,
     },
     signMessage,
-    signTransaction,
+    signAndSendTransaction,
     signTypedData,
   };
   return createUniversalSigner(universalSigner);
@@ -278,7 +229,7 @@ export function construct(
   account: UniversalAccount,
   options: {
     signMessage: (data: Uint8Array) => Promise<Uint8Array>;
-    signTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
+    signAndSendTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
     signTypedData?: ({
       domain,
       types,
@@ -292,7 +243,7 @@ export function construct(
     }) => Promise<Uint8Array>;
   }
 ): UniversalSignerSkeleton {
-  const { signMessage, signTransaction, signTypedData } = options;
+  const { signMessage, signAndSendTransaction, signTypedData } = options;
   if (
     signTypedData &&
     (account.chain === CHAIN.SOLANA_MAINNET ||
@@ -306,7 +257,7 @@ export function construct(
     signerId: 'CustomGeneratedSigner',
     account,
     signMessage,
-    signTransaction,
+    signAndSendTransaction,
     signTypedData,
   };
 }
@@ -391,23 +342,11 @@ async function generateSkeletonFromEthersV5(
     },
 
     // raw unsigned tx bytes → hex → parse → signTransaction → bytes
-    signTransaction: async (raw) => {
+    signAndSendTransaction: async (raw) => {
       const unsignedHex = hexlify(raw);
       const tx = ethers.Transaction.from(unsignedHex);
-      const txReq: ethers.TransactionRequest = {
-        to: tx.to,
-        value: tx.value,
-        data: tx.data,
-        gasLimit: tx.gasLimit,
-        gasPrice: tx.gasPrice,
-        maxFeePerGas: tx.maxFeePerGas,
-        maxPriorityFeePerGas: tx.maxPriorityFeePerGas,
-        nonce: tx.nonce,
-        type: tx.type,
-        chainId: tx.chainId,
-      };
-      const signedHex = await signer.signTransaction(txReq);
-      return getBytes(signedHex);
+      const txHash = await signer.sendTransaction(tx);
+      return hexToBytes(txHash as Hex);
     },
 
     signTypedData: async ({ domain, types, primaryType, message }) => {
@@ -464,23 +403,11 @@ async function generateSkeletonFromEthersV6(
     },
 
     // raw unsigned tx bytes → hex → parse → signTransaction → bytes
-    signTransaction: async (raw) => {
+    signAndSendTransaction: async (raw) => {
       const unsignedHex = hexlify(raw);
       const tx = ethers.Transaction.from(unsignedHex);
-      const txReq: ethers.TransactionRequest = {
-        to: tx.to,
-        value: tx.value,
-        data: tx.data,
-        gasLimit: tx.gasLimit,
-        gasPrice: tx.gasPrice,
-        maxFeePerGas: tx.maxFeePerGas,
-        maxPriorityFeePerGas: tx.maxPriorityFeePerGas,
-        nonce: tx.nonce,
-        type: tx.type,
-        chainId: tx.chainId,
-      };
-      const signedHex = await signer.signTransaction(txReq);
-      return getBytes(signedHex);
+      const txHash = await signer.sendTransaction(tx);
+      return hexToBytes(txHash as Hex);
     },
 
     signTypedData: async ({ domain, types, primaryType, message }) => {
@@ -547,14 +474,14 @@ async function generateSkeletonFromViem(
       });
       return hexToBytes(hexSig);
     },
-    signTransaction: async (unsignedTx: Uint8Array) => {
+    signAndSendTransaction: async (unsignedTx: Uint8Array) => {
       // For viem signers, we need to handle transaction signing differently
       // Since the ViemSignerType doesn't have signTransaction, we'll need to
       // use the account's signTransaction method if available
       if (signer.account['signTransaction']) {
         const tx = parseTransaction(bytesToHex(unsignedTx));
-        const hexSig = await signer.account['signTransaction'](tx);
-        return hexToBytes(hexSig);
+        const txHash = await signer.sendTransaction(tx);
+        return hexToBytes(txHash as Hex);
       }
       throw new Error(
         'Transaction signing not supported for this viem signer type'
