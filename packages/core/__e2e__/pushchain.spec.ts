@@ -270,8 +270,7 @@ describe('PushChain (e2e)', () => {
     });
 
     it('Should be able to send transaction from push chain', async () => {
-      const privateKey =
-        '0x730b326679b7b7ee74d0611d5b4c4cfc276957fe810deb8d013261f6331483f5';
+      const privateKey = process.env['PUSH_CHAIN_PRIVATE_KEY'] as Hex;
       if (!privateKey) throw new Error('PUSH_CHAIN_PRIVATE_KEY not set');
       const wallet = new Wallet(privateKey);
       const provider = new ethers.JsonRpcProvider(
