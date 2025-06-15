@@ -3,6 +3,8 @@ import { PushChain } from '../../pushChain';
 import { Orchestrator } from '../../orchestrator/orchestrator';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { toUniversalFromKeyPair } from '../signer';
+import { createWalletClient, http } from 'viem';
+import { CHAIN_INFO } from '../../constants/chain';
 
 const EVM_ADDRESS = '0xeCba9a32A9823f1cb00cdD8344Bf2D1d87a8dd97';
 
@@ -56,7 +58,11 @@ describe('Universal Account Utilities', () => {
   describe('convertOriginToExecutor() - Not Mocked', () => {
     it('should return same address and pushChainClient.universal.account', async () => {
       const account = privateKeyToAccount(generatePrivateKey());
-      const signer = await toUniversalFromKeyPair(account, {
+      const walletClient = createWalletClient({
+        account: account,
+        transport: http(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0]),
+      });
+      const signer = await toUniversalFromKeyPair(walletClient, {
         chain: CHAIN.ETHEREUM_SEPOLIA,
         library: LIBRARY.ETHEREUM_VIEM,
       });

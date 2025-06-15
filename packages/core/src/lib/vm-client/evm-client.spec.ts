@@ -3,10 +3,6 @@ import {
   createWalletClient,
   http,
   Hex,
-  hexToBytes,
-  parseTransaction,
-  bytesToHex,
-  defineChain,
   parseAbi,
   encodeFunctionData,
 } from 'viem';
@@ -15,6 +11,7 @@ import { UniversalSigner } from '../universal/universal.types';
 import { CHAIN } from '../constants/enums';
 import { CHAIN_INFO } from '../constants/chain';
 import { sepolia } from 'viem/chains';
+import { PushChain } from '../pushChain';
 
 const ABI = parseAbi([
   'function greet() view returns (string)',
@@ -99,40 +96,9 @@ describe('EvmClient', () => {
       const account = privateKeyToAccount(PRIVATE_KEY);
       const walletClient = createWalletClient({
         account,
-        chain: defineChain({
-          id: parseInt(CHAIN_INFO[chain].chainId),
-          name: chain,
-          nativeCurrency: {
-            decimals: 18,
-            name: 'Ether',
-            symbol: 'ETH',
-          },
-          rpcUrls: {
-            default: {
-              http: [RPC_URL],
-            },
-          },
-        }),
-        transport: http(),
+        transport: http(RPC_URL),
       });
-
-      universalSigner = {
-        account: {
-          address: account.address,
-          chain,
-        },
-        signMessage: async (data: Uint8Array) => {
-          const hexSig = await walletClient.signMessage({
-            message: { raw: data },
-          });
-          return hexToBytes(hexSig);
-        },
-        signTransaction: async (unsignedTx: Uint8Array) => {
-          const tx = parseTransaction(bytesToHex(unsignedTx));
-          const txHash = await walletClient.signTransaction(tx as never);
-          return hexToBytes(txHash);
-        },
-      };
+      universalSigner = await PushChain.utils.signer.toUniversal(walletClient);
     } else {
       throw new Error('No Private key set');
     }

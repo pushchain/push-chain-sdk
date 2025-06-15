@@ -16,7 +16,6 @@ import {
   Hex,
   Abi,
   fallback,
-  parseGwei,
 } from 'viem';
 
 /**
@@ -206,28 +205,20 @@ export class EvmClient {
       data,
       gas,
       nonce,
-      // TODO: THIS WILL BE REMOVED! Only for testing purposes
-      // maxFeePerGas: feePerGas.maxFeePerGas,
-      // maxPriorityFeePerGas: feePerGas.maxPriorityFeePerGas,
-      maxFeePerGas: parseGwei('2'),
-      maxPriorityFeePerGas: parseGwei('1'),
+      maxFeePerGas: feePerGas.maxFeePerGas,
+      maxPriorityFeePerGas: feePerGas.maxPriorityFeePerGas,
       value,
     });
 
-    if (!signer.signTransaction) {
-      throw new Error('signer.signTransaction is undefined');
+    if (!signer.signAndSendTransaction) {
+      throw new Error('signer.signAndSendTransaction is undefined');
     }
 
-    const signedTx = await signer.signTransaction(hexToBytes(unsignedTx));
+    const txHashBytes = await signer.signAndSendTransaction(
+      hexToBytes(unsignedTx)
+    );
 
-    const hash = await this.publicClient.sendRawTransaction({
-      serializedTransaction: bytesToHex(signedTx),
-    });
-
-    // Wait for the transaction to include in a block
-    await this.publicClient.waitForTransactionReceipt({ hash });
-
-    return hash;
+    return bytesToHex(txHashBytes);
   }
 
   /**
@@ -300,5 +291,35 @@ export class EvmClient {
    */
   async getGasPrice(): Promise<bigint> {
     return this.publicClient.getGasPrice();
+  }
+
+  /**
+   * Waits for a transaction to achieve the desired number of confirmations.
+   *
+   * @param txHash - Transaction hash
+   * @param confirmations - Number of confirmations to wait for (default: 6)
+   * @param pollIntervalMs - How often to check (default: 4000ms)
+   */
+  async waitForConfirmations({
+    txHash,
+    confirmations = 2,
+    pollIntervalMs = 4000,
+  }: {
+    txHash: `0x${string}`;
+    confirmations?: number;
+    pollIntervalMs?: number;
+  }): Promise<void> {
+    const receipt = await this.publicClient.waitForTransactionReceipt({
+      hash: txHash,
+    });
+
+    const targetBlock = receipt.blockNumber + BigInt(confirmations);
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const currentBlock = await this.publicClient.getBlockNumber();
+      if (currentBlock >= targetBlock) return;
+      await new Promise((r) => setTimeout(r, pollIntervalMs));
+    }
   }
 }

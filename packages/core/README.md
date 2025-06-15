@@ -110,10 +110,10 @@ export interface UniversalSigner extends UniversalAccount {
   }) => Promise<Uint8Array>;
 
   /**
-   * Signs a transaction (unsigned transaction bytes).
+   * Signs and sends a transaction (unsigned transaction bytes).
    * Used for direct on-chain sending when necessary.
    */
-  signTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
+  signAndSendTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
 }
 ```
 
@@ -143,7 +143,7 @@ const pushChain = await PushChain.initialize(signer);
 | Param             | Type              | Default   | Description                                                                    |
 | ----------------- | ----------------- | --------- | ------------------------------------------------------------------------------ |
 | `universalSigner` | `UniversalSigner` | `null`    | Required for sending transactions or verifying signatures on the source chain. |
-| `options.network` | `PUSH_NETWORK`         | `testnet` | Push Chain environment. Can be `testnet`, or `mainnet`.                        |
+| `options.network` | `PUSH_NETWORK`    | `testnet` | Push Chain environment. Can be `testnet`, or `mainnet`.                        |
 
 ---
 

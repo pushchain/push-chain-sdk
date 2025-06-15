@@ -93,9 +93,13 @@ export class Orchestrator {
     if (
       isTestnet &&
       this.pushClient.pushChainInfo.chainId !==
-        CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId
+        CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId &&
+      this.pushClient.pushChainInfo.chainId !==
+        CHAIN_INFO[CHAIN.PUSH_LOCALNET].chainId
     ) {
-      throw new Error('Testnet chains can only interact with Push Testnet');
+      throw new Error(
+        'Testnet chains can only interact with Push Testnet or Localnet'
+      );
     }
 
     if (
@@ -189,8 +193,8 @@ export class Orchestrator {
       target: execute.target,
       value: execute.value,
       data: execute.data,
-      gasLimit: execute.gasLimit || BigInt(21000000),
-      maxFeePerGas: execute.maxFeePerGas || BigInt(10000000000000000),
+      gasLimit: execute.gasLimit || BigInt(1e18),
+      maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
       maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(2),
       nonce,
       deadline: execute.deadline || BigInt(9999999999),
@@ -220,6 +224,19 @@ export class Orchestrator {
       if (this.printTraces) {
         console.log(
           `[${this.constructor.name}] Fee lock transaction hash: ${feeLockTxHash}`
+        );
+      }
+
+      if (this.printTraces) {
+        console.log(
+          `[${this.constructor.name}] Waiting for Block Confirmations..`
+        );
+      }
+      await this.waitForLockerFeeConfirmation(feeLockTxHash);
+
+      if (this.printTraces) {
+        console.log(
+          `[${this.constructor.name}] Enough Origin Chain Block confirmations received`
         );
       }
     }
@@ -752,5 +769,30 @@ export class Orchestrator {
       chain: this.universalSigner.account.chain,
       address: this.universalSigner.account.address,
     };
+  }
+
+  private async waitForLockerFeeConfirmation(txHash: string): Promise<void> {
+    const chain = this.universalSigner.account.chain;
+    const { vm, defaultRPC } = CHAIN_INFO[chain];
+    const rpcUrls = this.rpcUrls[chain] || defaultRPC;
+
+    switch (vm) {
+      case VM.EVM: {
+        const evmClient = new EvmClient({ rpcUrls });
+        await evmClient.waitForConfirmations({
+          txHash: txHash as `0x${string}`,
+        });
+        return;
+      }
+
+      case VM.SVM: {
+        const svmClient = new SvmClient({ rpcUrls });
+        await svmClient.waitForConfirmations({ txSignature: txHash });
+        return;
+      }
+
+      default:
+        throw new Error(`Unsupported VM for tx confirmation: ${vm}`);
+    }
   }
 }
