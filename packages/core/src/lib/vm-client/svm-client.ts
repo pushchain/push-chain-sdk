@@ -12,6 +12,7 @@ import {
 } from './vm-client.types';
 import { AnchorProvider, Program, Wallet, BN } from '@coral-xyz/anchor';
 import { UniversalSigner } from '../universal/universal.types';
+import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
 
 /**
  * Solana-compatible VM client for reading and writing SVM-based chains.
@@ -121,44 +122,43 @@ export class SvmClient {
     accounts = {},
     extraSigners = [],
   }: WriteContractParams): Promise<string> {
-    return this.executeWithFallback(async (connection) => {
-      const provider = new AnchorProvider(
-        connection,
-        new Wallet(new Keypair()),
-        { preflightCommitment: 'confirmed' }
-      );
+    // 1. Grab or build your RPC connection however your class manages it
+    const connection = this.connections[this.currentConnectionIndex];
 
-      // NEW: Drop explicit programId. Anchor v0.31 infers it from IDL.metadata.address
-      const program = new Program<typeof abi>(abi, provider);
+    // 2. Create an AnchorProvider
+    const provider = new AnchorProvider(
+      connection,
+      new Wallet(new Keypair()), // replace with your payer wallet
+      { preflightCommitment: 'confirmed' }
+    );
 
-      // Convert BigInt arguments to BN instances for Anchor compatibility. Anchor program expects BN for BigInts
-      const convertedArgs = args.map((arg) => {
-        if (typeof arg === 'bigint') {
-          return new BN(arg.toString());
-        }
-        return arg;
-      });
+    // 3. Instantiate the program (Anchor v0.31 will infer programId from IDL.metadata.address)
+    const program = new Program<typeof abi>(abi, provider);
 
-      // Build the method context
-      const methodContext =
-        convertedArgs.length > 0
-          ? program.methods[functionName](...convertedArgs)
-          : program.methods[functionName]();
+    // 4. Convert any BigInt args into BN for Anchor
+    const convertedArgs = args.map((arg) =>
+      typeof arg === 'bigint' ? new BN(arg.toString()) : arg
+    );
 
-      let instructionBuilder = methodContext as any;
+    // 5. Build the method call
+    let builder =
+      convertedArgs.length > 0
+        ? (program.methods[functionName](...convertedArgs) as any)
+        : (program.methods[functionName]() as any);
 
-      if (Object.keys(accounts).length > 0) {
-        instructionBuilder = instructionBuilder.accounts(accounts);
-      }
+    if (Object.keys(accounts).length > 0) {
+      builder = builder.accounts(accounts);
+    }
 
-      const instruction = await instructionBuilder.instruction();
+    // 6. Get the actual instruction
+    const instruction = await builder.instruction();
 
-      return this.sendTransaction({
-        instruction,
-        signer,
-        extraSigners,
-      });
-    }, 'writeContract');
+    // 7. Send it and return the tx signature
+    return this.sendTransaction({
+      instruction,
+      signer,
+      extraSigners,
+    });
   }
 
   /**
@@ -173,33 +173,34 @@ export class SvmClient {
     signer: UniversalSigner;
     extraSigners?: Keypair[];
   }): Promise<string> {
-    const executeTransaction = async (conn: Connection) => {
-      const feePayerPubkey = new PublicKey(signer.account.address);
-      const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash(
-        'finalized'
-      );
+    const connection = this.connections[this.currentConnectionIndex];
+    const feePayer = new PublicKey(signer.account.address);
 
-      const tx = new Transaction({
-        feePayer: feePayerPubkey,
-        blockhash,
-        lastValidBlockHeight,
-      }).add(instruction);
+    const { blockhash, lastValidBlockHeight } =
+      await connection.getLatestBlockhash('finalized');
 
-      // Sign with all provided keypairs
-      if (extraSigners.length > 0) {
-        tx.partialSign(...extraSigners);
-      }
+    const tx = new Transaction({
+      feePayer,
+      blockhash,
+      lastValidBlockHeight,
+    }).add(instruction);
 
-      const messageBytes = tx.serializeMessage();
-      const signature = await signer.signTransaction(messageBytes);
-      tx.addSignature(feePayerPubkey, Buffer.from(signature));
+    if (extraSigners.length > 0) {
+      tx.partialSign(...extraSigners);
+    }
 
-      const rawTx = tx.serialize();
-      return await conn.sendRawTransaction(rawTx);
-    };
+    const txBytes = tx.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false,
+    });
 
-    // Otherwise use fallback mechanism
-    return this.executeWithFallback(executeTransaction, 'sendTransaction');
+    if (!signer.signAndSendTransaction) {
+      throw new Error('signer.signTransaction is undefined');
+    }
+
+    const txHashBytes = await signer.signAndSendTransaction(txBytes);
+
+    return bs58.encode(txHashBytes); // Clean, readable tx hash
   }
 
   /**

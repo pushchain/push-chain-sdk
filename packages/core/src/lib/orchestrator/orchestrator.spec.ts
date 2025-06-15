@@ -1,11 +1,12 @@
 import { Orchestrator } from './orchestrator';
 import { CHAIN, LIBRARY, PUSH_NETWORK } from '../constants/enums';
 import { UniversalSigner } from '../universal/universal.types';
-import { Hex } from 'viem';
+import { createWalletClient, Hex, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { Keypair } from '@solana/web3.js';
 import { toUniversalFromKeyPair } from '../universal/signer/signer';
 import { SvmClient } from '../vm-client/svm-client';
+import { CHAIN_INFO } from '../constants/chain';
 
 describe('Orchestrator', () => {
   const mockSigner: UniversalSigner = {
@@ -16,7 +17,7 @@ describe('Orchestrator', () => {
     signMessage: async (data: Uint8Array) => {
       return data;
     },
-    signTransaction: async (unsignedTx: Uint8Array) => {
+    signAndSendTransaction: async (unsignedTx: Uint8Array) => {
       return unsignedTx;
     },
   };
@@ -33,9 +34,13 @@ describe('Orchestrator', () => {
       }
 
       const account = privateKeyToAccount(PRIVATE_KEY);
+      const walletClient = createWalletClient({
+        account: account,
+        transport: http(CHAIN_INFO[chain].defaultRPC[0]),
+      });
 
       const ethSepoliaSigner: UniversalSigner = await toUniversalFromKeyPair(
-        account,
+        walletClient,
         {
           chain,
           library: LIBRARY.ETHEREUM_VIEM,
@@ -152,7 +157,7 @@ describe('Orchestrator', () => {
           signMessage: async (data: Uint8Array) => {
             return data;
           },
-          signTransaction: async (unsignedTx: Uint8Array) => {
+          signAndSendTransaction: async (unsignedTx: Uint8Array) => {
             return unsignedTx;
           },
         };
@@ -179,7 +184,7 @@ describe('Orchestrator', () => {
             chain: CHAIN.ETHEREUM_SEPOLIA,
           },
           signMessage: async (data: Uint8Array) => data,
-          signTransaction: async (unsignedTx: Uint8Array) => unsignedTx,
+          signAndSendTransaction: async (unsignedTx: Uint8Array) => unsignedTx,
         };
 
         const signer2: UniversalSigner = {
@@ -188,7 +193,7 @@ describe('Orchestrator', () => {
             chain: CHAIN.ETHEREUM_SEPOLIA,
           },
           signMessage: async (data: Uint8Array) => data,
-          signTransaction: async (unsignedTx: Uint8Array) => unsignedTx,
+          signAndSendTransaction: async (unsignedTx: Uint8Array) => unsignedTx,
         };
 
         const orchestrator1 = new Orchestrator(
@@ -220,7 +225,7 @@ describe('Orchestrator', () => {
           signMessage: async (data: Uint8Array) => {
             return data;
           },
-          signTransaction: async (unsignedTx: Uint8Array) => {
+          signAndSendTransaction: async (unsignedTx: Uint8Array) => {
             return unsignedTx;
           },
         };
@@ -250,7 +255,7 @@ describe('Orchestrator', () => {
             chain: CHAIN.SOLANA_DEVNET,
           },
           signMessage: async (data: Uint8Array) => data,
-          signTransaction: async (unsignedTx: Uint8Array) => unsignedTx,
+          signAndSendTransaction: async (unsignedTx: Uint8Array) => unsignedTx,
         };
 
         const signer2: UniversalSigner = {
@@ -259,7 +264,7 @@ describe('Orchestrator', () => {
             chain: CHAIN.SOLANA_DEVNET,
           },
           signMessage: async (data: Uint8Array) => data,
-          signTransaction: async (unsignedTx: Uint8Array) => unsignedTx,
+          signAndSendTransaction: async (unsignedTx: Uint8Array) => unsignedTx,
         };
 
         const orchestrator1 = new Orchestrator(
@@ -286,7 +291,7 @@ describe('Orchestrator', () => {
             chain: CHAIN.ETHEREUM_SEPOLIA,
           },
           signMessage: async (data: Uint8Array) => data,
-          signTransaction: async (unsignedTx: Uint8Array) => unsignedTx,
+          signAndSendTransaction: async (unsignedTx: Uint8Array) => unsignedTx,
         };
 
         const testnetOrchestrator = new Orchestrator(
@@ -317,7 +322,7 @@ describe('Orchestrator', () => {
           signMessage: async (data: Uint8Array) => {
             return data;
           },
-          signTransaction: async (unsignedTx: Uint8Array) => {
+          signAndSendTransaction: async (unsignedTx: Uint8Array) => {
             return unsignedTx;
           },
         };
@@ -344,7 +349,7 @@ describe('Orchestrator', () => {
           signMessage: async (data: Uint8Array) => {
             return data;
           },
-          signTransaction: async (unsignedTx: Uint8Array) => {
+          signAndSendTransaction: async (unsignedTx: Uint8Array) => {
             return unsignedTx;
           },
         };

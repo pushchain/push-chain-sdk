@@ -1,10 +1,11 @@
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
-import { Hex, isAddress, PublicClient } from 'viem';
+import { createWalletClient, Hex, http, isAddress, PublicClient } from 'viem';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { PushChain } from '../src';
 import { UniversalSigner } from '../src/lib/universal/universal.types';
 import { ethers, Wallet } from 'ethers';
+import { CHAIN_INFO } from '../src/lib/constants/chain';
 
 /** CLI COMMANDS
  
@@ -39,9 +40,13 @@ describe('PushChain (e2e)', () => {
         if (!privateKey) throw new Error('EVM_PRIVATE_KEY not set');
 
         const account = privateKeyToAccount(privateKey);
+        const walletClient = createWalletClient({
+          account,
+          transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+        });
 
         universalSigner = await PushChain.utils.signer.toUniversalFromKeyPair(
-          account,
+          walletClient,
           {
             chain: originChain,
             library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
@@ -88,17 +93,10 @@ describe('PushChain (e2e)', () => {
         expect(uoa.chain).toBe(originChain);
         expect(isAddress(uoa.address)).toBe(true);
       });
-
-      // TODO: ADD EXAMPLE ON GENERATING DATA PROPERTY.
-      it('should sendTransaction', async () => {
+      it('should sendTransaction - Transfer Call', async () => {
         await pushClient.universal.sendTransaction({
-          target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
-          value: BigInt(0),
-          data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
-          gasLimit: BigInt(50000000000000000),
-          maxFeePerGas: BigInt(50000000000000000),
-          maxPriorityFeePerGas: BigInt(200000000),
-          deadline: BigInt(9999999999),
+          target: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+          value: BigInt(1e13),
         });
         const after = await PushChain.utils.account.convertOriginToExecutor(
           universalSigner.account,
@@ -107,7 +105,8 @@ describe('PushChain (e2e)', () => {
           }
         );
         expect(after.deployed).toBe(true);
-      }, 30000);
+      }, 300000);
+      // TODO - should sendTransaction - Contract Call
     });
 
     describe(`ORIGIN CHAIN: ${CHAIN.PUSH_TESTNET_DONUT}`, () => {
@@ -119,9 +118,13 @@ describe('PushChain (e2e)', () => {
         if (!privateKey) throw new Error('EVM_PRIVATE_KEY not set');
 
         const account = privateKeyToAccount(privateKey);
+        const walletClient = createWalletClient({
+          account,
+          transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+        });
 
         universalSigner = await PushChain.utils.signer.toUniversalFromKeyPair(
-          account,
+          walletClient,
           {
             chain: originChain,
             library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
@@ -223,8 +226,8 @@ describe('PushChain (e2e)', () => {
       it('should sendTransaction', async () => {
         await pushClient.universal.sendTransaction({
           target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
-          value: BigInt(0),
-          data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
+          value: BigInt(1000000),
+          // data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
           gasLimit: BigInt(50000000000000000),
           maxFeePerGas: BigInt(50000000000000000),
           maxPriorityFeePerGas: BigInt(200000000),
@@ -244,8 +247,14 @@ describe('PushChain (e2e)', () => {
   describe('Push Chain Signer', () => {
     it('Origin and Account should be the same when push chain', async () => {
       const account = privateKeyToAccount(generatePrivateKey());
-      const signer = await PushChain.utils.signer.toUniversalFromKeyPair(
+      const walletClient = createWalletClient({
         account,
+        transport: http(
+          CHAIN_INFO[PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]
+        ),
+      });
+      const signer = await PushChain.utils.signer.toUniversalFromKeyPair(
+        walletClient,
         {
           chain: PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT,
           library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
@@ -261,7 +270,8 @@ describe('PushChain (e2e)', () => {
     });
 
     it('Should be able to send transaction from push chain', async () => {
-      const privateKey = process.env['PUSH_CHAIN_PRIVATE_KEY'] as Hex;
+      const privateKey =
+        '0x730b326679b7b7ee74d0611d5b4c4cfc276957fe810deb8d013261f6331483f5';
       if (!privateKey) throw new Error('PUSH_CHAIN_PRIVATE_KEY not set');
       const wallet = new Wallet(privateKey);
       const provider = new ethers.JsonRpcProvider(

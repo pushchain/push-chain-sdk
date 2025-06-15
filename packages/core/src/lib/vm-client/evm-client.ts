@@ -16,7 +16,6 @@ import {
   Hex,
   Abi,
   fallback,
-  parseGwei,
 } from 'viem';
 
 /**
@@ -211,20 +210,15 @@ export class EvmClient {
       value,
     });
 
-    if (!signer.signTransaction) {
-      throw new Error('signer.signTransaction is undefined');
+    if (!signer.signAndSendTransaction) {
+      throw new Error('signer.signAndSendTransaction is undefined');
     }
 
-    const signedTx = await signer.signTransaction(hexToBytes(unsignedTx));
+    const txHashBytes = await signer.signAndSendTransaction(
+      hexToBytes(unsignedTx)
+    );
 
-    const hash = await this.publicClient.sendRawTransaction({
-      serializedTransaction: bytesToHex(signedTx),
-    });
-
-    // Wait for the transaction to include in a block
-    await this.publicClient.waitForTransactionReceipt({ hash });
-
-    return hash;
+    return bytesToHex(txHashBytes);
   }
 
   /**
