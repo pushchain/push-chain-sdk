@@ -23,7 +23,7 @@ declare global {
           message: Uint8Array,
           encoding: string
         ) => Promise<{ signature: Uint8Array }>;
-        signTransaction: (txn: Uint8Array) => Promise<Transaction>;
+        signAndSendTransaction: (txn: Transaction) => Promise<string>;
       };
     };
   }
@@ -158,7 +158,7 @@ export class PhantomProvider extends BaseWalletProvider {
     }
   };
 
-  signTransaction = async (txn: Uint8Array): Promise<Uint8Array> => {
+  signAndSendTransaction = async (txn: Uint8Array): Promise<Uint8Array> => {
     const isInstalled = this.isInstalled();
     if (!isInstalled) {
       throw new Error('No Phantom wallet installed');
@@ -167,9 +167,13 @@ export class PhantomProvider extends BaseWalletProvider {
     if (window.phantom?.solana?.isConnected) {
       try {
         const provider = window.phantom?.solana;
-        const signedTransaction = await provider.signTransaction(txn);
 
-        return new Uint8Array(signedTransaction.serialize());
+        const transaction = Transaction.from(txn);
+        const signedTransaction = await provider.signAndSendTransaction(
+          transaction
+        );
+
+        return new Uint8Array(Buffer.from(signedTransaction.slice(2), 'hex'));
       } catch (error) {
         console.error('Phantom Solana signing error:', error);
         throw error;
@@ -177,8 +181,6 @@ export class PhantomProvider extends BaseWalletProvider {
     } else if (window.phantom?.ethereum?.isConnected) {
       try {
         const provider = window.phantom?.ethereum;
-
-        const browserProvider = new BrowserProvider(provider);
 
         const accounts = await provider.request({
           method: 'eth_accounts',
@@ -189,11 +191,12 @@ export class PhantomProvider extends BaseWalletProvider {
         }
 
         const hex = '0x' + Buffer.from(txn).toString('hex');
-
-        const signer = await browserProvider.getSigner();
-
         const parsedTx = EtherTransaction.from(hex);
-        const signature = await signer.signTransaction(parsedTx);
+
+        const signature = await provider.request({
+          method: 'eth_sendTransaction',
+          params: [parsedTx],
+        });
 
         return new Uint8Array(Buffer.from(signature.slice(2), 'hex'));
       } catch (error) {

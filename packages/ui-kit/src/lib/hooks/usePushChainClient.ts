@@ -8,19 +8,12 @@ export const usePushChainClient = (uid?: string) => {
   const {
     universalAccount,
     handleSignMessage,
-    handleSignTransaction,
+    handleSignAndSendTransaction,
     handleSignTypedData,
     config,
   } = usePushWalletContext(uid);
   const [pushChain, setPushChain] = useState<PushChain | null>(null);
   const [error, setError] = useState<Error | null>(null);
-
-  const dummySendTransaction = async (txn: Uint8Array) => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const dummySignature = new Uint8Array(65).fill(0);
-
-    return dummySignature;
-  };
 
   // initialise Push Chain instance here and export that
   useEffect(() => {
@@ -30,13 +23,21 @@ export const usePushChainClient = (uid?: string) => {
         return;
       }
 
+      const CHAINS = PushChain.CONSTANTS.CHAIN;
+
+      const isSolana = [
+        CHAINS.SOLANA_DEVNET,
+        CHAINS.SOLANA_MAINNET,
+        CHAINS.SOLANA_TESTNET,
+      ].includes(universalAccount.chain);
+
       try {
         const signerSkeleton = PushChain.utils.signer.construct(
           universalAccount,
           {
             signMessage: handleSignMessage,
-            signTransaction: dummySendTransaction,
-            signTypedData: handleSignTypedData,
+            signAndSendTransaction: handleSignAndSendTransaction,
+            signTypedData: isSolana ? undefined : handleSignTypedData,
           }
         );
 

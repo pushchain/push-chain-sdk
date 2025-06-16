@@ -18,7 +18,7 @@ export abstract class BaseWalletProvider implements IWalletProvider {
 
   abstract connect(chainType?: ChainType): Promise<{ caipAddress: string }>;
   abstract signMessage(message: Uint8Array): Promise<Uint8Array>;
-  abstract signTransaction(txn: Uint8Array): Promise<Uint8Array>;
+  abstract signAndSendTransaction(txn: Uint8Array): Promise<Uint8Array>;
   abstract signTypedData(typedData: ITypedData): Promise<Uint8Array>;
   abstract disconnect(): Promise<void>;
   abstract getChainId(): Promise<unknown>;

@@ -27,8 +27,8 @@ const GlobalStyle = createGlobalStyle`
 `;
 
 const env = {
-  production: PushUI.CONSTANTS.NETWORK.MAINNET,
-  alpha: PushUI.CONSTANTS.NETWORK.TESTNET,
+  production: PushUI.CONSTANTS.PUSH_NETWORK.MAINNET,
+  alpha: PushUI.CONSTANTS.PUSH_NETWORK.TESTNET,
 } as const;
 
 type EnvKeys = keyof typeof env;
@@ -40,7 +40,7 @@ const App: React.FC = () => {
   const { isDarkMode } = useDarkMode();
 
   const walletConfig: ProviderConfigProps = {
-    network: PushUI.CONSTANTS.NETWORK.LOCALNET,
+    network: PushUI.CONSTANTS.PUSH_NETWORK.LOCALNET,
     login: {
       email: true,
       google: true,

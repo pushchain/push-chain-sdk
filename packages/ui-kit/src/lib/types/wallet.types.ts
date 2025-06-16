@@ -1,4 +1,3 @@
-import { PushChain } from '@pushchain/core';
 import { CHAIN } from '@pushchain/core/src/lib/constants/enums';
 import { TypedData, TypedDataDomain } from 'viem';
 
@@ -28,7 +27,7 @@ export interface IWalletProvider {
   supportedChains: ChainType[];
   connect(chainType?: ChainType): Promise<{ caipAddress: string }>;
   signMessage(message: Uint8Array): Promise<Uint8Array>;
-  signTransaction(txn: Uint8Array): Promise<Uint8Array>;
+  signAndSendTransaction(txn: Uint8Array): Promise<Uint8Array>;
   signTypedData(typedData: ITypedData): Promise<Uint8Array>;
   disconnect(): Promise<void>;
   getChainId(): Promise<unknown>;

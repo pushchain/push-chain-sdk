@@ -35,7 +35,7 @@ export type WalletContextType = {
   handleConnectToPushWallet: () => void;
   handleUserLogOutEvent: () => void;
   handleSignMessage: (data: Uint8Array) => Promise<Uint8Array>;
-  handleSignTransaction: (data: Uint8Array) => Promise<Uint8Array>;
+  handleSignAndSendTransaction: (data: Uint8Array) => Promise<Uint8Array>;
   handleSignTypedData: (data: ITypedData) => Promise<Uint8Array>;
 
   config: PushWalletProviderProps['config'];
@@ -292,7 +292,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         throw new Error('Provider not found');
       }
 
-      const signature = await providerReceived.signTransaction(data);
+      const signature = await providerReceived.signAndSendTransaction(data);
 
       return signature;
     } catch (error) {
@@ -442,7 +442,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     return signature;
   };
 
-  const handleSignTransaction = async (
+  const handleSignAndSendTransaction = async (
     data: Uint8Array
   ): Promise<Uint8Array> => {
     let signature;
@@ -536,7 +536,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         handleConnectToPushWallet,
         handleUserLogOutEvent,
         handleSignMessage,
-        handleSignTransaction,
+        handleSignAndSendTransaction,
         handleSignTypedData,
       }}
     >

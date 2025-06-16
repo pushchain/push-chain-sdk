@@ -21,7 +21,7 @@ const loginDefaultConfig = {
 const PushWalletConfigDefault: ProviderConfigProps = {
   uid: 'default',
   login: loginDefaultConfig,
-  network: PushUI.CONSTANTS.NETWORK.TESTNET_DONUT,
+  network: PushUI.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
   modal: {
     loginLayout: PushUI.CONSTANTS.LOGIN.SIMPLE,
     appPreview: false,

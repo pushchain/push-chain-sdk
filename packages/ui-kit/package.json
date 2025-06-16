@@ -1,9 +1,9 @@
 {
   "name": "@pushchain/ui-kit",
-  "version": "1.0.9",
+  "version": "1.1.0-alpha.0",
   "dependencies": {
     "@metamask/sdk": "^0.32.0",
-    "@pushchain/core": "^0.1.15",
+    "@pushchain/core": "^0.1.16",
     "@solana/web3.js": "^1.98.2",
     "ethers": "^6.13.5",
     "tslib": "^2.3.0",

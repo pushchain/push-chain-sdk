@@ -12,7 +12,7 @@ import {
 
 export const PushUI = {
   CONSTANTS: {
-    NETWORK: PushChain.CONSTANTS.PUSH_NETWORK,
+    PUSH_NETWORK: PushChain.CONSTANTS.PUSH_NETWORK,
     CHAIN: { ETHEREUM: 'ethereum', SOLANA: 'solana' },
     THEME: { LIGHT: 'light', DARK: 'dark' },
     LOGIN: { SPLIT: 'split', SIMPLE: 'simple' },
