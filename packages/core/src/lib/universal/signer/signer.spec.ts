@@ -2,6 +2,7 @@ import {
   createUniversalSigner,
   toUniversalFromKeyPair,
   toUniversal,
+  construct,
 } from './signer';
 import {
   WalletClient,
@@ -158,6 +159,178 @@ describe('UniversalSigner utilities', () => {
       expect(uni.signMessage).toBe(skeleton.signMessage);
       expect(uni.signAndSendTransaction).toBe(skeleton.signAndSendTransaction);
       expect(uni.signTypedData).toBe(skeleton.signTypedData);
+    });
+  });
+
+  describe('construct', () => {
+    const mockAccount = {
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      address: '0x123',
+    };
+
+    const mockOptions = {
+      signMessage: async (data: Uint8Array) => data,
+      signAndSendTransaction: async (data: Uint8Array) => data,
+    };
+
+    it('should create a UniversalSignerSkeleton with required parameters', () => {
+      const signer = construct(mockAccount, mockOptions);
+
+      expect(signer.signerId).toBe('CustomGeneratedSigner');
+      expect(signer.account).toEqual(mockAccount);
+      expect(signer.signMessage).toBe(mockOptions.signMessage);
+      expect(signer.signAndSendTransaction).toBe(
+        mockOptions.signAndSendTransaction
+      );
+      expect(signer.signTypedData).toBeUndefined();
+    });
+
+    it('should include signTypedData when provided', () => {
+      const mockSignTypedData = async () => new Uint8Array([1]);
+      const signer = construct(mockAccount, {
+        ...mockOptions,
+        signTypedData: mockSignTypedData,
+      });
+
+      expect(signer.signTypedData).toBe(mockSignTypedData);
+    });
+
+    it('should throw error when signTypedData is provided for Solana chain', () => {
+      const solanaAccount = {
+        chain: CHAIN.SOLANA_MAINNET,
+        address: 'solana-address',
+      };
+
+      const mockSignTypedData = async () => new Uint8Array([1]);
+
+      expect(() =>
+        construct(solanaAccount, {
+          ...mockOptions,
+          signTypedData: mockSignTypedData,
+        })
+      ).toThrow('Typed data signing is not supported for Solana');
+    });
+
+    it('should work with Solana chain when signTypedData is not provided', () => {
+      const solanaAccount = {
+        chain: CHAIN.SOLANA_MAINNET,
+        address: 'solana-address',
+      };
+
+      const signer = construct(solanaAccount, mockOptions);
+
+      expect(signer.signerId).toBe('CustomGeneratedSigner');
+      expect(signer.account).toEqual(solanaAccount);
+      expect(signer.signMessage).toBe(mockOptions.signMessage);
+      expect(signer.signAndSendTransaction).toBe(
+        mockOptions.signAndSendTransaction
+      );
+      expect(signer.signTypedData).toBeUndefined();
+    });
+  });
+
+  describe('construct + toUniversal two-step process', () => {
+    const mockAccount = {
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      address: '0x123',
+    };
+
+    // Raw functions that will be used to create the signer
+    const rawSignMessage = async (data: Uint8Array) => {
+      return new Uint8Array([...data, 1, 2, 3]); // Append some bytes to simulate signing
+    };
+
+    const rawSignAndSendTransaction = async (data: Uint8Array) => {
+      return new Uint8Array([...data, 4, 5, 6]); // Append some bytes to simulate tx hash
+    };
+
+    const rawSignTypedData = async ({
+      domain,
+      types,
+      primaryType,
+      message,
+    }: {
+      domain: any;
+      types: any;
+      primaryType: string;
+      message: any;
+    }) => {
+      return new Uint8Array([7, 8, 9]); // Return some bytes to simulate typed data signature
+    };
+
+    it('should create a UniversalSigner through construct + toUniversal', async () => {
+      // Step 1: Create a UniversalSignerSkeleton using construct
+      const skeleton = construct(mockAccount, {
+        signMessage: rawSignMessage,
+        signAndSendTransaction: rawSignAndSendTransaction,
+        signTypedData: rawSignTypedData,
+      });
+
+      // Verify the skeleton structure
+      expect(skeleton.signerId).toBe('CustomGeneratedSigner');
+      expect(skeleton.account).toEqual(mockAccount);
+      expect(skeleton.signMessage).toBe(rawSignMessage);
+      expect(skeleton.signAndSendTransaction).toBe(rawSignAndSendTransaction);
+      expect(skeleton.signTypedData).toBe(rawSignTypedData);
+
+      // Step 2: Convert the skeleton to a UniversalSigner using toUniversal
+      const universalSigner = await toUniversal(skeleton);
+
+      // Verify the universal signer structure
+      expect(universalSigner.account).toEqual(mockAccount);
+      expect(universalSigner.signMessage).toBe(rawSignMessage);
+      expect(universalSigner.signAndSendTransaction).toBe(
+        rawSignAndSendTransaction
+      );
+      expect(universalSigner.signTypedData).toBe(rawSignTypedData);
+
+      // Test the actual functionality
+      const testMessage = new Uint8Array([1, 2, 3]);
+      const signedMessage = await universalSigner.signMessage(testMessage);
+      expect(signedMessage).toEqual(new Uint8Array([1, 2, 3, 1, 2, 3]));
+
+      const testTx = new Uint8Array([4, 5, 6]);
+      const txHash = await universalSigner.signAndSendTransaction(testTx);
+      expect(txHash).toEqual(new Uint8Array([4, 5, 6, 4, 5, 6]));
+
+      if (universalSigner.signTypedData) {
+        const typedDataSignature = await universalSigner.signTypedData({
+          domain: {},
+          types: {},
+          primaryType: 'Test',
+          message: {},
+        });
+        expect(typedDataSignature).toEqual(new Uint8Array([7, 8, 9]));
+      }
+    });
+
+    it('should work without signTypedData for Solana chain', async () => {
+      const solanaAccount = {
+        chain: CHAIN.SOLANA_MAINNET,
+        address: 'solana-address',
+      };
+
+      // Step 1: Create skeleton without signTypedData
+      const skeleton = construct(solanaAccount, {
+        signMessage: rawSignMessage,
+        signAndSendTransaction: rawSignAndSendTransaction,
+      });
+
+      // Step 2: Convert to UniversalSigner
+      const universalSigner = await toUniversal(skeleton);
+
+      // Verify structure
+      expect(universalSigner.account).toEqual(solanaAccount);
+      expect(universalSigner.signMessage).toBe(rawSignMessage);
+      expect(universalSigner.signAndSendTransaction).toBe(
+        rawSignAndSendTransaction
+      );
+      expect(universalSigner.signTypedData).toBeUndefined();
+
+      // Test functionality
+      const testMessage = new Uint8Array([1, 2, 3]);
+      const signedMessage = await universalSigner.signMessage(testMessage);
+      expect(signedMessage).toEqual(new Uint8Array([1, 2, 3, 1, 2, 3]));
     });
   });
 });
