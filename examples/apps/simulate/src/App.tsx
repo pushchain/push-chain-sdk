@@ -71,6 +71,9 @@ const App: React.FC = () => {
         config={walletConfig}
         app={appMetadata}
         themeMode={PushUI.CONSTANTS.THEME.LIGHT}
+        themeOverrides={{
+          '--pw-core-font-family': 'FK Grotesk Neu',
+        }}
       >
         <Router>
           <Navbar />
