@@ -1,6 +1,6 @@
 {
   "name": "@pushchain/ui-kit",
-  "version": "1.1.0-alpha.0",
+  "version": "1.1.0-alpha.1",
   "dependencies": {
     "@metamask/sdk": "^0.32.0",
     "@pushchain/core": "^0.1.16",
@@ -21,6 +21,7 @@
     "typescript-eslint": "^8.32.1"
   },
   "scripts": {
-    "release:stable": "npx nx run ui-kit:nx-release-publish --otp=1"
+    "release:stable": "npx nx run ui-kit:nx-release-publish --otp=1",
+    "release:alpha": "npx nx run ui-kit:nx-release-alpha-publish --otp=1"
   }
 }

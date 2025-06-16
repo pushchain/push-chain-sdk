@@ -28,7 +28,7 @@ const StyledButton = styled.button<ButtonProps>`
   color: ${(props) =>
     props.textColor ? props.textColor : 'rgba(255, 255, 255, 1)'};
   display: flex;
-  font-family: FK Grotesk Neu;
+  font-family: var(--pw-int-font-family);
   justify-content: center;
   white-space: nowrap;
   flex-shrink: 0;

@@ -23,13 +23,9 @@ const MockSendTransaction = () => {
         // });
 
         const txHash = await pushChainClient.universal.sendTransaction({
-          target: '0x4f9Baa4b4BCd3A24eB57dF405Ee82d49D6550d95',
-          value: BigInt(0),
+          target: '0x68F8b46e4cD01a7648393911E734d99d34E6f107',
+          value: BigInt(1),
           data: '0x',
-          gasLimit: BigInt(50000000000000000),
-          maxFeePerGas: BigInt(50000000000000000),
-          maxPriorityFeePerGas: BigInt(200000000),
-          deadline: BigInt(9999999999),
         });
 
         setTxnHash(txHash);

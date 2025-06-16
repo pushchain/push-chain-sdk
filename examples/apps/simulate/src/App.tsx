@@ -54,6 +54,11 @@ const App: React.FC = () => {
       connectedLayout: PushUI.CONSTANTS.CONNECTED.HOVER,
       appPreview: true,
     },
+    chain: {
+      rpcUrls: {
+        'eip155:11155111': ['https://sepolia.gateway.tenderly.co/'],
+      },
+    },
   };
 
   const appMetadata: AppMetadata = {

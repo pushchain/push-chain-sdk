@@ -1,11 +1,8 @@
-import {
-  BrowserProvider,
-  getAddress,
-  Transaction as EtherTransaction,
-} from 'ethers';
+import { getAddress } from 'ethers';
 import { BaseWalletProvider } from '../BaseWalletProvider';
 import { ChainType, ITypedData } from '../../../types/wallet.types';
 import { Transaction } from '@solana/web3.js';
+import { parseTransaction } from 'viem';
 
 declare global {
   interface Window {
@@ -190,15 +187,31 @@ export class PhantomProvider extends BaseWalletProvider {
           throw new Error('No connected account');
         }
 
-        const hex = '0x' + Buffer.from(txn).toString('hex');
-        const parsedTx = EtherTransaction.from(hex);
+        const hex = ('0x' + Buffer.from(txn).toString('hex')) as `0x${string}`;
+        const parsed = parseTransaction(hex);
+
+        const txParams = {
+          from: accounts[0],
+          to: parsed.to,
+          value: parsed.value ? '0x' + parsed.value.toString(16) : undefined,
+          data: parsed.data,
+          gas: parsed.gas ? '0x' + parsed.gas.toString(16) : undefined,
+          maxPriorityFeePerGas: parsed.maxPriorityFeePerGas
+            ? '0x' + parsed.maxPriorityFeePerGas.toString(16)
+            : undefined,
+          maxFeePerGas: parsed.maxFeePerGas
+            ? '0x' + parsed.maxFeePerGas.toString(16)
+            : undefined,
+        };
 
         const signature = await provider.request({
           method: 'eth_sendTransaction',
-          params: [parsedTx],
+          params: [txParams],
         });
 
-        return new Uint8Array(Buffer.from(signature.slice(2), 'hex'));
+        return new Uint8Array(
+          Buffer.from((signature as string).slice(2), 'hex')
+        );
       } catch (error) {
         console.error('Phantom Ethereum signing error:', error);
         throw error;

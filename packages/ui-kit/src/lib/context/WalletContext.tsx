@@ -164,7 +164,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
   // response when the wallet sends logged in action
   const handleIsLoggedInAction = () => {
     handleNewConnectionRequest();
-    setExternalWallet(null);
+    // setExternalWallet(null);
   };
 
   // sending a new connection request as soon as wallet gets connected
@@ -194,6 +194,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     provider: IWalletProvider['name'];
   }) => {
     try {
+      console.log('checl');
       const providerReceived = walletRegistry.getProvider(data.provider);
 
       if (!providerReceived) {
@@ -220,6 +221,8 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         providerName: data.provider,
         chainType: data.chain,
       };
+
+      console.log(connectedWallet);
 
       setExternalWallet(connectedWallet);
 

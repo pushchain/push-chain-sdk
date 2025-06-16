@@ -1,10 +1,10 @@
 import { MetaMaskSDK } from '@metamask/sdk';
 import { BaseWalletProvider } from '../BaseWalletProvider';
 import { ChainType, ITypedData } from '../../../types/wallet.types';
-import { BrowserProvider, getAddress, Transaction } from 'ethers';
+import { BrowserProvider, getAddress } from 'ethers';
 import { HexString } from 'ethers/lib.commonjs/utils/data';
 import * as chains from 'viem/chains';
-import { toHex } from 'viem';
+import { parseTransaction, toHex } from 'viem';
 
 export class MetamaskProvider extends BaseWalletProvider {
   private sdk: MetaMaskSDK;
@@ -130,12 +130,26 @@ export class MetamaskProvider extends BaseWalletProvider {
         throw new Error('No connected account');
       }
 
-      const hex = '0x' + Buffer.from(txn).toString('hex');
-      const parsedTx = Transaction.from(hex);
+      const hex = ('0x' + Buffer.from(txn).toString('hex')) as `0x${string}`;
+      const parsed = parseTransaction(hex);
+
+      const txParams = {
+        from: accounts[0],
+        to: parsed.to,
+        value: parsed.value ? '0x' + parsed.value.toString(16) : undefined,
+        data: parsed.data,
+        gas: parsed.gas ? '0x' + parsed.gas.toString(16) : undefined,
+        maxPriorityFeePerGas: parsed.maxPriorityFeePerGas
+          ? '0x' + parsed.maxPriorityFeePerGas.toString(16)
+          : undefined,
+        maxFeePerGas: parsed.maxFeePerGas
+          ? '0x' + parsed.maxFeePerGas.toString(16)
+          : undefined,
+      };
 
       const signature = await provider.request({
         method: 'eth_sendTransaction',
-        params: [parsedTx],
+        params: [txParams],
       });
 
       return new Uint8Array(Buffer.from((signature as string).slice(2), 'hex'));
