@@ -25,12 +25,6 @@ export class PushChain {
    */
   public static utils = Utils;
 
-  /**
-   * @static
-   * Exposes viem utilities to the SDK user for convenience.
-   */
-  static viem = viem;
-
   private orchestartor: Orchestrator;
 
   // convertOriginToExecutor(UniversalAccount, options: {status: true -> deployed as true or false})
