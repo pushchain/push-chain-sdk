@@ -86,7 +86,7 @@ export const CHAIN_INFO: Record<
     vm: VM.SVM,
     lockerContract: '3zrWaMknHTRQpZSxY4BvQxw9TStSXiHcmcp3NMPTFkke',
     defaultRPC: ['https://api.devnet.solana.com'],
-    implementationAddress: '0xf3ccb7d82aed24cb34ffc0a0b12c8d6141a888a6',
+    implementationAddress: '0xbFdC775469e260bEfC44E871D06f5C420F0ECB68',
   },
 };
 

@@ -219,15 +219,10 @@ describe('PushChain (e2e)', () => {
         expect(isValid).toBe(true);
       });
 
-      it.skip('should sendTransaction', async () => {
+      it('should sendTransaction', async () => {
         await pushClient.universal.sendTransaction({
-          target: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
-          value: BigInt(1000000),
-          // data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312',
-          gasLimit: BigInt(50000000000000000),
-          maxFeePerGas: BigInt(50000000000000000),
-          maxPriorityFeePerGas: BigInt(200000000),
-          deadline: BigInt(9999999999),
+          target: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+          value: BigInt(1e18),
         });
         const after = await PushChain.utils.account.convertOriginToExecutor(
           universalSigner.account,
