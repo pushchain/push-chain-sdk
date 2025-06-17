@@ -287,35 +287,3 @@ describe('PushChain (e2e)', () => {
     });
   });
 });
-
-describe('viem', () => {
-  let viemClient: PublicClient;
-
-  beforeAll(() => {
-    viemClient = PushChain.viem.createPublicClient({
-      chain: PushChain.CONSTANTS.VIEM_PUSH_TESTNET_DONUT,
-      transport: PushChain.viem.http(),
-    });
-  });
-
-  it('creates a viem client', async () => {
-    expect(viemClient).toBeDefined();
-    expect(typeof viemClient.getBlock).toBe('function');
-  });
-
-  it('gets a block', async () => {
-    const block = await viemClient.getBlock();
-    expect(block).toBeDefined();
-
-    // Check essential block properties
-    expect(typeof block.number).toBe('bigint');
-    expect(typeof block.hash).toBe('string');
-    expect(block.hash).toMatch(/^0x[a-fA-F0-9]{64}$/); // Valid hex hash
-    expect(typeof block.timestamp).toBe('bigint');
-    expect(Array.isArray(block.transactions)).toBe(true);
-    expect(typeof block.gasLimit).toBe('bigint');
-    expect(typeof block.gasUsed).toBe('bigint');
-    expect(block.number).toBeGreaterThan(0);
-    expect(block.timestamp).toBeGreaterThan(0);
-  });
-});

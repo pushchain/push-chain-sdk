@@ -86,11 +86,12 @@ export async function toUniversalFromKeyPair(
   switch (library) {
     case LIBRARY.ETHEREUM_ETHERSV6: {
       if (
-        !(clientOrAccount instanceof ethers.Wallet) &&
-        !(clientOrAccount instanceof ethers.HDNodeWallet)
+        typeof (clientOrAccount as any).signMessage !== 'function' ||
+        typeof (clientOrAccount as any).sendTransaction !== 'function' ||
+        typeof (clientOrAccount as any).getAddress !== 'function'
       ) {
         throw new Error(
-          'Expected ethers.Wallet or ethers.HDNodeWallet for ETHEREUM_ETHERSV6 library'
+          'Expected an object with signMessage, sendTransaction, getAddress methods for ETHEREUM_ETHERSV6 library'
         );
       }
       const wallet = clientOrAccount as ethers.Wallet | ethers.HDNodeWallet;
