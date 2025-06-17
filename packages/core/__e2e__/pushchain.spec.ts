@@ -98,7 +98,7 @@ describe('PushChain (e2e)', () => {
         expect(isAddress(uoa.address)).toBe(true);
       });
       it('should sendTransaction - Transfer Call', async () => {
-        await pushClient.universal.sendTransaction({
+        const tx = await pushClient.universal.sendTransaction({
           target: '0x35B84d6848D16415177c64D64504663b998A6ab4',
           value: BigInt(1e13),
         });
@@ -109,6 +109,7 @@ describe('PushChain (e2e)', () => {
           }
         );
         expect(after.deployed).toBe(true);
+        expect(tx.code).toBe(0);
       }, 300000);
       // TODO - should sendTransaction - Contract Call
     });
@@ -156,12 +157,13 @@ describe('PushChain (e2e)', () => {
       });
 
       it('should sendTransaction', async () => {
-        const txHash = await pushClient.universal.sendTransaction({
+        const tx = await pushClient.universal.sendTransaction({
           target: '0x35B84d6848D16415177c64D64504663b998A6ab4',
           value: BigInt(2),
         });
 
-        expect(txHash).toBeDefined();
+        expect(tx).toBeDefined();
+        expect(tx.code).toBe(0);
       }, 30000);
     });
   });
@@ -277,12 +279,10 @@ describe('PushChain (e2e)', () => {
         network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET,
       });
 
-      const txHash = await pushChainClient.universal.sendTransaction({
+      const tx = await pushChainClient.universal.sendTransaction({
         target: '0x1b527b5A848A264a4d8195Fc41aEae0166cd36b7',
         value: BigInt(100000000),
       });
-
-      const tx = await provider.getTransaction(txHash);
       expect(tx).toBeDefined();
     });
   });
