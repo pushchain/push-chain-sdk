@@ -77,7 +77,7 @@ export const CHAIN_INFO: Record<
   [CHAIN.SOLANA_TESTNET]: {
     chainId: '4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z',
     vm: VM.SVM,
-    lockerContract: '3zrWaMknHTRQpZSxY4BvQxw9TStSXiHcmcp3NMPTFkke',
+    lockerContract: '',
     defaultRPC: ['https://api.testnet.solana.com'],
     implementationAddress: 'TBD',
   },

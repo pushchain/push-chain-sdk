@@ -11,7 +11,7 @@ describe('PriceFetch', () => {
     expect(price > BigInt(0)).toBe(true);
   });
 
-  it('fetches SOL/USD price on Solana Devnet (via CoinGecko)', async () => {
+  it('fetches SOL/USD price on Solana Devnet', async () => {
     const price = await priceFetcher.getPrice(CHAIN.SOLANA_DEVNET);
     expect(typeof price).toBe('bigint');
     console.log(price);
@@ -19,6 +19,8 @@ describe('PriceFetch', () => {
   });
 
   it('throws for unsupported chains', async () => {
-    await expect(priceFetcher.getPrice(CHAIN.SOLANA_TESTNET)).rejects.toThrow();
+    await expect(priceFetcher.getPrice(CHAIN.SOLANA_TESTNET)).rejects.toThrow(
+      `Locker contract not configured for chain: ${CHAIN.SOLANA_TESTNET}`
+    );
   });
 });

@@ -1,7 +1,12 @@
 import { CHAIN, VM } from '../constants/enums';
 import { CHAIN_INFO } from '../constants/chain';
 import { EvmClient } from '../vm-client/evm-client';
-import { FEE_LOCKER_EVM } from '../constants/abi';
+import { FEE_LOCKER_EVM, FEE_LOCKER_SVM } from '../constants/abi';
+import { Program } from '@coral-xyz/anchor';
+import { Connection } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
+import { AnchorProvider } from '@coral-xyz/anchor';
+import { BN } from '@coral-xyz/anchor';
 
 export class PriceFetch {
   constructor(
@@ -32,20 +37,40 @@ export class PriceFetch {
         return price / BigInt(10 ** decimals);
       }
       case VM.SVM: {
-        if (chain === CHAIN.SOLANA_DEVNET) {
-          const url =
-            'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd';
-          const response = await fetch(url);
-          if (!response.ok) {
-            throw new Error(
-              `CoinGecko API error: ${response.status} ${response.statusText}`
-            );
-          }
-          const data = (await response.json()) as { solana: { usd: number } };
-          return BigInt(Math.round(data.solana.usd * 1e8));
-        } else {
-          throw new Error('Cannot fetch price in USD');
+        const PRICE_ACCOUNT = new PublicKey(
+          '7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE'
+        );
+
+        const connection = new Connection(rpcUrls[0], 'confirmed');
+        const provider = new AnchorProvider(
+          connection,
+          {
+            publicKey: new PublicKey(
+              'FetTyW8xAYfd33x4GMHoE7hTuEdWLj1fNnhJuyVMUGGa'
+            ),
+          } as any,
+          { commitment: 'confirmed' }
+        );
+
+        const program = new Program(FEE_LOCKER_SVM, provider);
+
+        const result = await program.methods['getSolPrice']()
+          .accounts({
+            priceUpdate: PRICE_ACCOUNT,
+          })
+          .view();
+
+        if (!result || !result.price) {
+          throw new Error('Invalid price data returned');
         }
+
+        // Exponent on this function is always NEGATIVE
+        const price = (result.price as BN).toNumber();
+        const exponent = result.exponent as number;
+        // const formattedPrice = price * 10 ** exponent;
+        const formattedPrice = price / 10 ** -exponent;
+
+        return BigInt(Math.ceil(formattedPrice));
       }
       default: {
         throw new Error(`Unsupported VM ${vm}`);
