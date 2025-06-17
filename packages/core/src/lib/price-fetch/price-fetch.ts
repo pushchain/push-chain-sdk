@@ -28,8 +28,8 @@ export class PriceFetch {
           functionName: 'getEthUsdPrice',
         });
 
-        const [price, decimals] = result;
-        return price / BigInt(10 ** decimals);
+        const [price] = result;
+        return price;
       }
       case VM.SVM: {
         if (chain === CHAIN.SOLANA_DEVNET) {
