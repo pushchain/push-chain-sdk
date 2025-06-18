@@ -4,10 +4,14 @@ import { css } from 'styled-components';
 import { centerMaskString } from '../../../helpers';
 import { TransactionSnippet } from '../../../common/components';
 import { mockTransaction } from '../../../common/constants';
-import { usePushChainClient } from '../../../../../../../packages/ui-kit';
+import {
+  usePushChainClient,
+  usePushWalletContext,
+} from '../../../../../../../packages/ui-kit';
 
 const MockSendTransaction = () => {
-  const { universalAccount, pushChainClient, isLoading } = usePushChainClient();
+  const { pushChainClient, isLoading } = usePushChainClient();
+  const { universalAccount } = usePushWalletContext();
 
   const [isSendingTxn, setIsSendingTxn] = useState(false);
   const [txnHash, setTxnHash] = useState<string | null>(null);

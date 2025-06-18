@@ -16,7 +16,6 @@ export const mapCoreToInt = (
       continue;
     }
     const intKey = key.replace('core', 'int');
-    console.log(intKey, defaultThemeKeys);
     if (defaultThemeKeys.includes(intKey)) {
       result[intKey] = obj[key] as string;
     }

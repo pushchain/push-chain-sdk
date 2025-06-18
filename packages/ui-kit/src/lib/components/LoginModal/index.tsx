@@ -252,7 +252,7 @@ const CloseButtonContainer = styled.div`
   align-items: center;
   justify-content: flex-end;
   cursor: pointer;
-  padding: 0 16px;
+  padding: 8px 16px;
 `;
 
 const DashButtonContainer = styled.div`

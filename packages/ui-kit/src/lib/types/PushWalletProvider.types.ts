@@ -1,7 +1,6 @@
-import { CHAIN } from '@pushchain/core/src/lib/constants/enums';
+import { CHAIN, PUSH_NETWORK } from '@pushchain/core/src/lib/constants/enums';
 import { PushUI } from '../constants';
 import { ThemeOverrides } from '../styles/token';
-import { PushChain } from '@pushchain/core';
 
 export type LoginMethodConfig = {
   email?: boolean;
@@ -21,7 +20,7 @@ export type ChainConfig = {
 
 export type ProviderConfigProps = {
   uid?: string;
-  network: keyof typeof PushChain.CONSTANTS.PUSH_NETWORK;
+  network: PUSH_NETWORK;
   rpcURL?: string;
   login?: LoginMethodConfig;
   modal?: ModalProps;
