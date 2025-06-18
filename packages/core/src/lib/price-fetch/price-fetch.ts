@@ -48,6 +48,7 @@ export class PriceFetch {
             publicKey: new PublicKey(
               'FetTyW8xAYfd33x4GMHoE7hTuEdWLj1fNnhJuyVMUGGa'
             ),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any,
           { commitment: 'confirmed' }
         );

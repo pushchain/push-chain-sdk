@@ -7,6 +7,7 @@ import {
   encodePacked,
   bytesToHex,
   stringToBytes,
+  getCreate2Address,
 } from 'viem';
 import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
 import {
@@ -20,18 +21,17 @@ import {
   FACTORY_V1,
   FEE_LOCKER_EVM,
   FEE_LOCKER_SVM,
-  SMART_ACCOUNT_EVM,
-  SMART_ACCOUNT_SVM,
+  UEA_EVM,
+  UEA_SVM,
 } from '../constants/abi';
 import { PushClient } from '../push-client/push-client';
 import { SvmClient } from '../vm-client/svm-client';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import * as anchor from '@coral-xyz/anchor';
 import { Any } from 'cosmjs-types/google/protobuf/any';
-import { AccountId, CrossChainPayload, vmType } from '../generated/v1/tx';
+import { UniversalPayload, SignatureType } from '../generated/v1/tx';
 import { PriceFetch } from '../price-fetch/price-fetch';
 import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
-import { AbiCoder, ethers } from 'ethers';
 import { DeliverTxResponse } from '@cosmjs/stargate';
 
 export class Orchestrator {
@@ -122,18 +122,17 @@ export class Orchestrator {
       return this.pushClient.getCosmosTx(txHash);
     }
 
-    // 2. Get Push chain NMSC address for this signer
+    // 2. Get Push chain UEA address for this signer
     if (this.printTraces) {
       console.log(
-        `[${this.constructor.name}] Fetching NMSC address for UniversalSigner`
+        `[${this.constructor.name}] Fetching UEA address for UniversalSigner`
       );
     }
-    const { address: nmscAddress, deployed: isNMSCDeployed } =
-      await this.getNMSCAddress();
+    const { address: UEA, deployed: isUEADeployed } = await this.computeUEA();
 
     if (this.printTraces) {
-      console.log(`[${this.constructor.name}] NMSC Address: ${nmscAddress}`);
-      console.log(`[${this.constructor.name}] Deployed: ${isNMSCDeployed}`);
+      console.log(`[${this.constructor.name}] UEA Address: ${UEA}`);
+      console.log(`[${this.constructor.name}] Deployed: ${isUEADeployed}`);
     }
 
     // 3. Estimate funds required for the execution
@@ -176,23 +175,21 @@ export class Orchestrator {
     // Total funds = gas fee + value being sent
     const requiredFunds = requiredGasFee + execute.value;
 
-    // 4. Check NMSC balance on Push Chain ( in nPUSH )
+    // 4. Check UEA balance on Push Chain ( in nPUSH )
     if (this.printTraces) {
-      console.log(`${this.constructor.name}]  Checking NMSC balance...`);
+      console.log(`${this.constructor.name}]  Checking UEA balance...`);
     }
-    const funds = await this.pushClient.getBalance(nmscAddress);
+    const funds = await this.pushClient.getBalance(UEA);
     if (this.printTraces) {
       console.log(`[${this.constructor.name}]  Current balance: ${funds}`);
     }
 
-    // 5. Get NMSC Nonce
-    const nonce = isNMSCDeployed
-      ? await this.getNMSCNonce(nmscAddress)
-      : BigInt(0);
+    // 5. Get UEA Nonce
+    const nonce = isUEADeployed ? await this.getUEANonce(UEA) : BigInt(0);
 
     // 6. Create execution hash ( execution data to be signed )
-    const crosschainPayload = {
-      target: execute.target,
+    const universalPayload = {
+      to: execute.target,
       value: execute.value,
       data: execute.data,
       gasLimit: execute.gasLimit || BigInt(1e18),
@@ -200,10 +197,11 @@ export class Orchestrator {
       maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(2),
       nonce,
       deadline: execute.deadline || BigInt(9999999999),
+      sigType: SignatureType.signedVerification,
     };
     const executionHash = this.computeExecutionHash({
-      verifyingContract: nmscAddress,
-      payload: crosschainPayload,
+      verifyingContract: UEA,
+      payload: universalPayload,
     });
     if (this.printTraces) {
       console.log(
@@ -248,10 +246,7 @@ export class Orchestrator {
     }
 
     // 8. Sign execution data
-    const signature = await this.signCrossChainPayload(
-      crosschainPayload,
-      nmscAddress
-    );
+    const signature = await this.signUniversalPayload(universalPayload, UEA);
     if (this.printTraces) {
       console.log(
         `[${this.constructor.name}] Execution data signed successfully`
@@ -264,18 +259,16 @@ export class Orchestrator {
         `[${this.constructor.name}] Sending transaction to Push chain...`
       );
     }
-    const tx = await this.sendCrossChainPushTx(
-      isNMSCDeployed,
+
+    // Serialize & parse in one go to convert all bigint → string
+    const serializedPayload = JSON.parse(
+      JSON.stringify(universalPayload, this.bigintReplacer)
+    ) as UniversalPayload;
+
+    const tx = await this.sendUniversalTx(
+      isUEADeployed,
       feeLockTxHash,
-      {
-        ...crosschainPayload,
-        value: crosschainPayload.value.toString(),
-        gasLimit: crosschainPayload.gasLimit.toString(),
-        maxFeePerGas: crosschainPayload.maxFeePerGas.toString(),
-        maxPriorityFeePerGas: crosschainPayload.maxPriorityFeePerGas.toString(),
-        nonce: crosschainPayload.nonce.toString(),
-        deadline: crosschainPayload.deadline.toString(),
-      },
+      serializedPayload,
       signature
     );
     if (this.printTraces) {
@@ -337,11 +330,10 @@ export class Orchestrator {
 
         const svmClient = new SvmClient({ rpcUrls });
 
-        const [lockerPda, lockerBump] =
-          anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from('locker')],
-            new PublicKey(lockerContract)
-          );
+        const [lockerPda] = anchor.web3.PublicKey.findProgramAddressSync(
+          [Buffer.from('locker')],
+          new PublicKey(lockerContract)
+        );
 
         return await svmClient.writeContract({
           abi: FEE_LOCKER_SVM,
@@ -365,9 +357,9 @@ export class Orchestrator {
     }
   }
 
-  private async signCrossChainPayload(
-    crosschainPayload: {
-      target: `0x${string}`;
+  private async signUniversalPayload(
+    universalPayload: {
+      to: `0x${string}`;
       value: bigint;
       data: `0x${string}`;
       gasLimit: bigint;
@@ -375,6 +367,7 @@ export class Orchestrator {
       maxPriorityFeePerGas: bigint;
       nonce: bigint;
       deadline: bigint;
+      sigType: SignatureType;
     },
     verifyingContract: `0x${string}`,
     version?: string
@@ -394,8 +387,8 @@ export class Orchestrator {
             verifyingContract,
           },
           types: {
-            CrossChainPayload: [
-              { name: 'target', type: 'address' },
+            UniversalPayload: [
+              { name: 'to', type: 'address' },
               { name: 'value', type: 'uint256' },
               { name: 'data', type: 'bytes' },
               { name: 'gasLimit', type: 'uint256' },
@@ -403,10 +396,11 @@ export class Orchestrator {
               { name: 'maxPriorityFeePerGas', type: 'uint256' },
               { name: 'nonce', type: 'uint256' },
               { name: 'deadline', type: 'uint256' },
+              { name: 'sigType', type: 'unit8' },
             ],
           },
-          primaryType: 'CrossChainPayload',
-          message: crosschainPayload,
+          primaryType: 'UniversalPayload',
+          message: universalPayload,
         });
       }
 
@@ -414,7 +408,7 @@ export class Orchestrator {
         const digest = this.computeExecutionHash({
           chainId: Number(this.pushClient.pushChainInfo.chainId),
           verifyingContract,
-          payload: crosschainPayload,
+          payload: universalPayload,
           version: version || '0.1.0',
         });
         return this.universalSigner.signMessage(stringToBytes(digest));
@@ -429,41 +423,39 @@ export class Orchestrator {
   /**
    * Sends a custom Cosmos tx to Push Chain (gasless) to execute user intent.
    */
-  public async sendCrossChainPushTx(
-    isNMSCDeployed: boolean,
+  public async sendUniversalTx(
+    isUEADeployed: boolean,
     feeLockTxHash?: string,
-    crosschainPayload?: CrossChainPayload,
+    universalPayload?: UniversalPayload,
     signature?: Uint8Array
   ): Promise<DeliverTxResponse> {
     const { chain, address } = this.universalSigner.account;
-    const { vm, chainId } = CHAIN_INFO[chain];
+    const { vm } = CHAIN_INFO[chain];
 
-    const accountId: AccountId = {
-      namespace: VM_NAMESPACE[vm],
-      chainId,
-      ownerKey:
+    const universalAccount = {
+      chain,
+      owner:
         vm === VM.EVM
           ? address
           : vm === VM.SVM
           ? bytesToHex(bs58.decode(address))
           : address,
-      vmType: vmType[vm],
     };
 
     const { cosmosAddress: signer } = this.pushClient.getSignerAddress();
     const msgs: Any[] = [];
 
-    if (!isNMSCDeployed) {
+    if (!isUEADeployed) {
       /**
-       * @dev - fee should be locked for NMSC deployment to avoid spamming
+       * @dev - fee should be locked for UEA deployment to avoid spamming
        */
       if (!feeLockTxHash) {
-        throw new Error('NMSC cannot be deployed without fee locking');
+        throw new Error('UEA cannot be deployed without fee locking');
       }
       msgs.push(
-        this.pushClient.createMsgDeployNMSC({
+        this.pushClient.createMsgDeployUEA({
           signer,
-          accountId,
+          universalAccount,
           txHash: feeLockTxHash,
         })
       );
@@ -471,20 +463,20 @@ export class Orchestrator {
 
     if (feeLockTxHash) {
       msgs.push(
-        this.pushClient.createMsgMintPush({
+        this.pushClient.createMsgMintPC({
           signer,
-          accountId,
+          universalAccount,
           txHash: feeLockTxHash,
         })
       );
     }
 
-    if (crosschainPayload && signature) {
+    if (universalPayload && signature) {
       msgs.push(
         this.pushClient.createMsgExecutePayload({
           signer,
-          accountId,
-          crosschainPayload,
+          universalAccount,
+          universalPayload,
           signature: bytesToHex(signature),
         })
       );
@@ -496,31 +488,16 @@ export class Orchestrator {
   }
 
   /**
-   * Checks if the given chain belongs to the Push Chain ecosystem.
-   * Used to differentiate logic for Push-native interactions vs external chains.
-   *
-   * @param chain - The chain identifier (e.g., PUSH_MAINNET, PUSH_TESTNET_DONUT)
-   * @returns True if the chain is a Push chain, false otherwise.
-   */
-  private isPushChain(chain: CHAIN): boolean {
-    return (
-      chain === CHAIN.PUSH_MAINNET ||
-      chain === CHAIN.PUSH_TESTNET_DONUT ||
-      chain === CHAIN.PUSH_LOCALNET
-    );
-  }
-
-  /**
-   * Computes the EIP-712 digest hash for the CrossChainPayload structure.
+   * Computes the EIP-712 digest hash for the UniversalPayload structure.
    * This is the message that should be signed by the user's wallet (e.g., Solana signer).
    *
    * The resulting hash is equivalent to:
    * keccak256("\x19\x01" || domainSeparator || structHash)
    *
    * @param chainId - EVM chain ID of the destination chain (Push Chain)
-   * @param verifyingContract - Address of the verifying contract (i.e., the user's NMSC smart wallet)
+   * @param verifyingContract - Address of the verifying contract (i.e., the user's UEA smart wallet)
    * @param version - Optional EIP-712 domain version (default: '0.1.0')
-   * @param payload - Execution details encoded into the CrossChainPayload struct
+   * @param payload - Execution details encoded into the UniversalPayload struct
    * @returns keccak256 digest to be signed by the user
    */
   private computeExecutionHash({
@@ -533,7 +510,7 @@ export class Orchestrator {
     verifyingContract: `0x${string}`;
     version?: string;
     payload: {
-      target: `0x${string}`;
+      to: `0x${string}`;
       value: bigint;
       data: `0x${string}`;
       gasLimit: bigint;
@@ -541,12 +518,13 @@ export class Orchestrator {
       maxPriorityFeePerGas: bigint;
       nonce: bigint;
       deadline: bigint;
+      sigType: SignatureType;
     };
   }): `0x${string}` {
-    // 1. Hash the type signature
+    // 1. Type hash
     const typeHash = keccak256(
       toBytes(
-        'CrossChainPayload(address target,uint256 value,bytes data,uint256 gasLimit,uint256 maxFeePerGas,uint256 maxPriorityFeePerGas,uint256 nonce,uint256 deadline)'
+        'UniversalPayload(address to,uint256 value,bytes data,uint256 gasLimit,uint256 maxFeePerGas,uint256 maxPriorityFeePerGas,uint256 nonce,uint256 deadline,uint8 sigType)'
       )
     );
 
@@ -579,7 +557,7 @@ export class Orchestrator {
       encodeAbiParameters(
         [
           { name: 'typeHash', type: 'bytes32' },
-          { name: 'target', type: 'address' },
+          { name: 'to', type: 'address' },
           { name: 'value', type: 'uint256' },
           { name: 'dataHash', type: 'bytes32' },
           { name: 'gasLimit', type: 'uint256' },
@@ -587,10 +565,11 @@ export class Orchestrator {
           { name: 'maxPriorityFeePerGas', type: 'uint256' },
           { name: 'nonce', type: 'uint256' },
           { name: 'deadline', type: 'uint256' },
+          { name: 'sigType', type: 'uint8' },
         ],
         [
           typeHash,
-          payload.target,
+          payload.to,
           payload.value,
           keccak256(payload.data),
           payload.gasLimit,
@@ -598,66 +577,55 @@ export class Orchestrator {
           payload.maxPriorityFeePerGas,
           payload.nonce,
           payload.deadline,
+          payload.sigType,
         ]
       )
     );
 
-    // 4. Final digest: keccak256("\x19\x01" || domainSeparator || structHash)
-    const digest = keccak256(
+    // 4. Final digest
+    return keccak256(
       encodePacked(
         ['string', 'bytes32', 'bytes32'],
         ['\x19\x01', domainSeparator, structHash]
       )
     );
-
-    return digest;
   }
 
   /**
-   * Computes the smart wallet (NMSC) on Push Chain.
+   * Computes UEA for given UniversalAccount
+   * @dev - This fn calls a view fn of Factory Contract
+   * @returns UEA Address with Deployment Status
    */
-  // TODO: DON'T CALL THIS FUNCTION FOR .ADDRESS. MAKE FUNCTION SYNC.
-  // TODO: CREATE ANOTHER FUNCTION TO CHECK IF NMSC IS DEPLOYED.
-  async getNMSCAddress(): Promise<{
+  async computeUEA(): Promise<{
     address: `0x${string}`;
     deployed: boolean;
   }> {
     const { chain, address } = this.universalSigner.account;
-    const { vm, chainId } = CHAIN_INFO[chain];
+    const { vm } = CHAIN_INFO[chain];
 
     if (this.isPushChain(chain)) {
-      throw new Error(
-        'NMSC address cannot be computed for a Push Chain Address'
-      );
+      throw new Error('UEA cannot be computed for a Push Chain Address');
     }
 
     const computedAddress: `0x{string}` = await this.pushClient.readContract({
       address: this.pushClient.pushChainInfo.factoryAddress,
       abi: FACTORY_V1 as Abi,
-      functionName: 'computeSmartAccountAddress',
+      functionName: 'computeUEA',
       args: [
         {
-          namespace: VM_NAMESPACE[vm],
-          chainId,
+          chain,
           /**
-           * @dev - OwnerKey should be in bytes
+           * @dev - Owner should be in bytes
            * for eth - convert hex to bytes
            * for sol - convert base64 to bytes
            * for others - not defined yet
            */
-          ownerKey:
+          owner:
             vm === VM.EVM
               ? address
               : vm === VM.SVM
               ? bytesToHex(bs58.decode(address))
               : address,
-          /**
-           * @dev
-           * 0 -> evm
-           * 1 -> svm
-           * Rest are not defined
-           */
-          vmType: vm === VM.EVM ? 0 : vm === VM.SVM ? 1 : 2,
         },
       ],
     });
@@ -668,8 +636,8 @@ export class Orchestrator {
     return { address: computedAddress, deployed: byteCode !== undefined };
   }
 
-  // TODO: Convert to viem
-  calculateUEAOffchain(): `0x${string}` {
+  // TODO: Convert to viem, also fix the script
+  computeUEAOffchain(): `0x${string}` {
     const { chain, address } = this.universalSigner.account;
     const { vm, implementationAddress, chainId } = CHAIN_INFO[chain];
 
@@ -694,9 +662,13 @@ export class Orchestrator {
     };
 
     // Step 1: Recreate the salt: keccak256(abi.encode(AccountId))
-    const abiCoder = AbiCoder.defaultAbiCoder();
-    const encodedAccountId = abiCoder.encode(
-      ['tuple(string namespace,string chainId,bytes ownerKey,uint8 vmType)'],
+    const encodedAccountId = encodeAbiParameters(
+      [
+        {
+          name: 'accountId',
+          type: 'tuple(string namespace,string chainId,bytes ownerKey,uint8 vmType)',
+        },
+      ],
       [
         [
           accountId.namespace,
@@ -707,34 +679,33 @@ export class Orchestrator {
       ]
     );
 
-    const salt = ethers.keccak256(encodedAccountId);
+    const salt = keccak256(encodedAccountId);
 
     // Step 2: Clone Minimal Proxy bytecode
-    const minimalProxyRuntimeCode =
-      '0x3d602d80600a3d3981f3' +
+    const minimalProxyRuntimeCode = ('0x3d602d80600a3d3981f3' +
       '363d3d373d3d3d363d73' +
       implementationAddress.toLowerCase().replace(/^0x/, '') +
-      '5af43d82803e903d91602b57fd5bf3';
+      '5af43d82803e903d91602b57fd5bf3') as `0x${string}`;
 
     // Step 3: Get init code hash (used by CREATE2)
-    const initCodeHash = ethers.keccak256(minimalProxyRuntimeCode);
+    const initCodeHash = keccak256(minimalProxyRuntimeCode);
 
     // Step 4: Predict the address using standard CREATE2 formula
-    const predictedAddress = ethers.getCreate2Address(
-      this.pushClient.pushChainInfo.factoryAddress,
+    const predictedAddress = getCreate2Address({
+      from: this.pushClient.pushChainInfo.factoryAddress,
       salt,
-      initCodeHash
-    );
+      bytecode: initCodeHash,
+    });
 
     return predictedAddress as `0x${string}`;
   }
 
   /**
    * @dev - Although as of now nonce var is same in evm & svm so switch conditions does not matter
-   * @param address NMSC address
-   * @returns NMSC current nonce
+   * @param address UEA address
+   * @returns UEA current nonce
    */
-  private async getNMSCNonce(address: `0x${string}`): Promise<bigint> {
+  private async getUEANonce(address: `0x${string}`): Promise<bigint> {
     const chain = this.universalSigner.account.chain;
     const { vm } = CHAIN_INFO[chain];
 
@@ -742,7 +713,7 @@ export class Orchestrator {
       case VM.EVM: {
         return this.pushClient.readContract({
           address,
-          abi: SMART_ACCOUNT_EVM as Abi,
+          abi: UEA_EVM as Abi,
           functionName: 'nonce',
         });
       }
@@ -750,7 +721,7 @@ export class Orchestrator {
       case VM.SVM: {
         return this.pushClient.readContract({
           address,
-          abi: SMART_ACCOUNT_SVM as Abi,
+          abi: UEA_SVM as Abi,
           functionName: 'nonce',
         });
       }
@@ -761,6 +732,7 @@ export class Orchestrator {
     }
   }
 
+  // TODO: Fix this fn - It needs to get UOA for a given UEA
   getUOA(): UniversalAccount {
     return {
       chain: this.universalSigner.account.chain,
@@ -793,9 +765,27 @@ export class Orchestrator {
     }
   }
 
+  /********************************** HELPER FUNCTIONS **************************************************/
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private bigintReplacer(_key: string, value: any) {
     return typeof value === 'bigint'
       ? value.toString() // convert BigInt to string
       : value;
+  }
+
+  /**
+   * Checks if the given chain belongs to the Push Chain ecosystem.
+   * Used to differentiate logic for Push-native interactions vs external chains.
+   *
+   * @param chain - The chain identifier (e.g., PUSH_MAINNET, PUSH_TESTNET_DONUT)
+   * @returns True if the chain is a Push chain, false otherwise.
+   */
+  private isPushChain(chain: CHAIN): boolean {
+    return (
+      chain === CHAIN.PUSH_MAINNET ||
+      chain === CHAIN.PUSH_TESTNET_DONUT ||
+      chain === CHAIN.PUSH_LOCALNET
+    );
   }
 }

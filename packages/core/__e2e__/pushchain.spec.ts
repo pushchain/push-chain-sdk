@@ -4,7 +4,7 @@ import {
   privateKeyToAccount,
 } from 'viem/accounts';
 import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
-import { createWalletClient, Hex, http, isAddress, PublicClient } from 'viem';
+import { createWalletClient, Hex, http, isAddress } from 'viem';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { PushChain } from '../src';
 import { UniversalSigner } from '../src/lib/universal/universal.types';

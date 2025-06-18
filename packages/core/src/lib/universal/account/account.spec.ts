@@ -68,8 +68,8 @@ describe('Universal Account Utilities', () => {
       });
 
       const orchestrator = new Orchestrator(signer, PUSH_NETWORK.TESTNET_DONUT);
-      const address = orchestrator.calculateUEAOffchain();
-      const address2 = await orchestrator.getNMSCAddress();
+      const address = orchestrator.computeUEAOffchain();
+      const address2 = await orchestrator.computeUEA();
       const result = await PushChain.utils.account.convertOriginToExecutor(
         signer.account,
         {
