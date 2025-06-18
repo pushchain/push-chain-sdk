@@ -396,7 +396,7 @@ export class Orchestrator {
               { name: 'maxPriorityFeePerGas', type: 'uint256' },
               { name: 'nonce', type: 'uint256' },
               { name: 'deadline', type: 'uint256' },
-              { name: 'sigType', type: 'unit8' },
+              { name: 'sigType', type: 'uint8' },
             ],
           },
           primaryType: 'UniversalPayload',
@@ -639,65 +639,39 @@ export class Orchestrator {
   // TODO: Convert to viem, also fix the script
   computeUEAOffchain(): `0x${string}` {
     const { chain, address } = this.universalSigner.account;
-    const { vm, implementationAddress, chainId } = CHAIN_INFO[chain];
+    const { implementationAddress } = CHAIN_INFO[chain];
 
+    // If this is already a Push-chain EOA, just return it
     if (this.isPushChain(chain)) {
       return address as `0x${string}`;
     }
 
-    let ownerKey: `0x${string}`;
-    if (vm === VM.EVM) {
-      ownerKey = address as `0x${string}`;
-    } else if (vm === VM.SVM) {
-      ownerKey = bytesToHex(bs58.decode(address));
-    } else {
-      throw new Error(`Unsupported VM type: ${vm}`);
-    }
-
-    const accountId = {
-      namespace: VM_NAMESPACE[vm],
-      chainId,
-      ownerKey,
-      vmType: vm === VM.EVM ? 0 : vm === VM.SVM ? 1 : 2,
-    };
-
-    // Step 1: Recreate the salt: keccak256(abi.encode(AccountId))
-    const encodedAccountId = encodeAbiParameters(
+    // Step 1: recreate the CREATE2 salt = keccak256(abi.encode(chain, owner))
+    const encoded = encodeAbiParameters(
       [
-        {
-          name: 'accountId',
-          type: 'tuple(string namespace,string chainId,bytes ownerKey,uint8 vmType)',
-        },
+        { name: 'chain', type: 'string' },
+        { name: 'owner', type: 'bytes' },
       ],
       [
-        [
-          accountId.namespace,
-          accountId.chainId,
-          accountId.ownerKey,
-          accountId.vmType,
-        ],
+        // abi.encode(string chain, bytes owner)
+        chain,
+        address as `0x${string}`,
       ]
     );
+    const salt = keccak256(encoded);
 
-    const salt = keccak256(encodedAccountId);
-
-    // Step 2: Clone Minimal Proxy bytecode
-    const minimalProxyRuntimeCode = ('0x3d602d80600a3d3981f3' +
+    // Step 2: build the minimal-proxy init bytecode (EIP-1167)
+    const minimalProxyBytecode = ('0x3d602d80600a3d3981f3' +
       '363d3d373d3d3d363d73' +
       implementationAddress.toLowerCase().replace(/^0x/, '') +
       '5af43d82803e903d91602b57fd5bf3') as `0x${string}`;
 
-    // Step 3: Get init code hash (used by CREATE2)
-    const initCodeHash = keccak256(minimalProxyRuntimeCode);
-
-    // Step 4: Predict the address using standard CREATE2 formula
-    const predictedAddress = getCreate2Address({
+    // Step 3: predictDeterministicAddress via CREATE2
+    return getCreate2Address({
       from: this.pushClient.pushChainInfo.factoryAddress,
       salt,
-      bytecode: initCodeHash,
-    });
-
-    return predictedAddress as `0x${string}`;
+      bytecode: minimalProxyBytecode,
+    }) as `0x${string}`;
   }
 
   /**
