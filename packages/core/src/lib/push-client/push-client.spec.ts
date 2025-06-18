@@ -187,5 +187,12 @@ describe('PushClient', () => {
       const txBody = await client.createCosmosTxBody([msg1, msg2, msg3]);
       await client.signCosmosTx(txBody);
     });
+
+    it('get tx', async () => {
+      const query =
+        '0x7faf47ef206f8aa356fe60a14d998cef6403ae8753948a5d8cddff7b23965be7';
+      const tx = await client.getCosmosTx(query);
+      console.log(tx);
+    });
   });
 });

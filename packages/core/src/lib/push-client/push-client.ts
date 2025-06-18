@@ -190,4 +190,26 @@ export class PushClient extends EvmClient {
     const result = await client.broadcastTx(TxRaw.encode(txRaw).finish());
     return result;
   }
+
+  /**
+   * Fetches a Cosmos transaction by its hash.
+   * @param txHash The hex‐encoded transaction hash (without “0x” or with—both work).
+   * @returns The indexed transaction (height, logs, events, etc.).
+   * @throws If the tx isn’t found.
+   */
+  public async getCosmosTx(txHash: string): Promise<DeliverTxResponse> {
+    // 1. Connect to the Tendermint RPC
+    const client = await StargateClient.connect(
+      this.pushChainInfo.tendermintRpc
+    );
+
+    // Raw string query—must be one string, not a KV array:
+    const query = `ethereum_tx.ethereumTxHash='${txHash}'`;
+
+    const results = await client.searchTx(query);
+    if (results.length === 0) {
+      throw new Error(`No Cosmos-indexed tx for EVM hash ${txHash}`);
+    }
+    return { ...results[0], transactionHash: txHash };
+  }
 }

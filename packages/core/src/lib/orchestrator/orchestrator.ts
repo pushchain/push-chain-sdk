@@ -32,6 +32,7 @@ import { AccountId, CrossChainPayload, vmType } from '../generated/v1/tx';
 import { PriceFetch } from '../price-fetch/price-fetch';
 import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
 import { AbiCoder, ethers } from 'ethers';
+import { DeliverTxResponse } from '@cosmjs/stargate';
 
 export class Orchestrator {
   private pushClient: PushClient;
@@ -66,7 +67,7 @@ export class Orchestrator {
   /**
    * Executes an interaction on Push Chain
    */
-  async execute(execute: ExecuteParams): Promise<string> {
+  async execute(execute: ExecuteParams): Promise<DeliverTxResponse> {
     const chain = this.universalSigner.account.chain;
 
     if (!execute.data) {
@@ -112,12 +113,13 @@ export class Orchestrator {
 
     // 1. Execute direct tx if signer is already on Push Chain
     if (this.isPushChain(chain)) {
-      return this.pushClient.sendTransaction({
+      const txHash = await this.pushClient.sendTransaction({
         to: execute.target,
         data: execute.data,
         value: execute.value,
         signer: this.universalSigner,
       });
+      return this.pushClient.getCosmosTx(txHash);
     }
 
     // 2. Get Push chain NMSC address for this signer
@@ -262,7 +264,7 @@ export class Orchestrator {
         `[${this.constructor.name}] Sending transaction to Push chain...`
       );
     }
-    const txHash = await this.sendCrossChainPushTx(
+    const tx = await this.sendCrossChainPushTx(
       isNMSCDeployed,
       feeLockTxHash,
       {
@@ -278,11 +280,12 @@ export class Orchestrator {
     );
     if (this.printTraces) {
       console.log(
-        `[${this.constructor.name}] Transaction sent successfully. Hash: ${txHash}`
+        `[${this.constructor.name}] Transaction sent successfully. Tx: ` +
+          JSON.stringify(tx, this.bigintReplacer, 2)
       );
     }
 
-    return txHash;
+    return tx;
   }
 
   /**
@@ -431,7 +434,7 @@ export class Orchestrator {
     feeLockTxHash?: string,
     crosschainPayload?: CrossChainPayload,
     signature?: Uint8Array
-  ): Promise<string> {
+  ): Promise<DeliverTxResponse> {
     const { chain, address } = this.universalSigner.account;
     const { vm, chainId } = CHAIN_INFO[chain];
 
@@ -489,13 +492,7 @@ export class Orchestrator {
 
     const txBody = await this.pushClient.createCosmosTxBody(msgs);
     const txRaw = await this.pushClient.signCosmosTx(txBody);
-    const txresponse = await this.pushClient.broadcastCosmosTx(txRaw);
-
-    if (txresponse.code === 0) {
-      return txresponse.transactionHash;
-    } else {
-      throw new Error(txresponse.rawLog);
-    }
+    return this.pushClient.broadcastCosmosTx(txRaw);
   }
 
   /**
@@ -794,5 +791,11 @@ export class Orchestrator {
       default:
         throw new Error(`Unsupported VM for tx confirmation: ${vm}`);
     }
+  }
+
+  private bigintReplacer(_key: string, value: any) {
+    return typeof value === 'bigint'
+      ? value.toString() // convert BigInt to string
+      : value;
   }
 }
