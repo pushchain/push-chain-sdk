@@ -2,7 +2,7 @@ import { PushClient } from './push-client';
 import { PUSH_CHAIN_INFO } from '../constants/chain';
 import {
   MsgDeployUEA,
-  MsgMintPush,
+  MsgMintPC,
   MsgExecutePayload,
   SignatureType,
 } from '../generated/v1/tx';
@@ -20,7 +20,7 @@ describe('PushClient', () => {
       '0x7faf47ef206f8aa356fe60a14d998cef6403ae8753948a5d8cddff7b23965be7',
   };
 
-  const MSG_MINT_PUSH: MsgMintPush = {
+  const MSG_MINT_PC: MsgMintPC = {
     signer: 'push1f5th78lzntc2h0krzqn5yldvwg43lcrgkqxtsv',
     universalAccount: {
       chain: CHAIN.SOLANA_DEVNET,
@@ -82,19 +82,19 @@ describe('PushClient', () => {
   });
 
   describe('PushClient Msg & Cosmos Tx Tests', () => {
-    it('creates MsgDeployUEA Any', () => {
+    it('creates MsgDeployUEA', () => {
       const msg = client.createMsgDeployUEA(MSG_DEPLOY_UEA);
       expect(msg.typeUrl).toBe('/ue.v1.MsgDeployUEA');
       expect(msg.value.length).toBeGreaterThan(0);
     });
 
-    it('creates MsgMintPush Any', () => {
-      const msg = client.createMsgMintPush(MSG_MINT_PUSH);
-      expect(msg.typeUrl).toBe('/ue.v1.MsgMintPush');
+    it('creates MsgMintPC', () => {
+      const msg = client.createMsgMintPC(MSG_MINT_PC);
+      expect(msg.typeUrl).toBe('/ue.v1.MsgMintPC');
       expect(msg.value.length).toBeGreaterThan(0);
     });
 
-    it('creates MsgExecutePayload Any', () => {
+    it('creates MsgExecutePayload', () => {
       const msg = client.createMsgExecutePayload(MSG_EXECUTE_PAYLOAD);
       expect(msg.typeUrl).toBe('/ue.v1.MsgExecutePayload');
       expect(msg.value.length).toBeGreaterThan(0);
@@ -102,7 +102,7 @@ describe('PushClient', () => {
 
     it('creates TxBody from multiple messages', async () => {
       const msg1 = client.createMsgDeployUEA(MSG_DEPLOY_UEA);
-      const msg2 = client.createMsgMintPush(MSG_MINT_PUSH);
+      const msg2 = client.createMsgMintPC(MSG_MINT_PC);
       const txBody = await client.createCosmosTxBody([msg1, msg2], 'test memo');
       expect(txBody.messages.length).toBe(2);
       expect(txBody.memo).toBe('test memo');
@@ -110,7 +110,7 @@ describe('PushClient', () => {
 
     it('signs tx', async () => {
       const msg1 = client.createMsgDeployUEA(MSG_DEPLOY_UEA);
-      const msg2 = client.createMsgMintPush(MSG_MINT_PUSH);
+      const msg2 = client.createMsgMintPC(MSG_MINT_PC);
       const msg3 = client.createMsgExecutePayload(MSG_EXECUTE_PAYLOAD);
       const txBody = await client.createCosmosTxBody([msg1, msg2, msg3]);
       await client.signCosmosTx(txBody);

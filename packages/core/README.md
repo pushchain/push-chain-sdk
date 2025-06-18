@@ -170,16 +170,16 @@ pushchain.execute({
 
 **Parameters:**
 
-| Param                  | Type     | Default                       | Description                                                                      |
-| ---------------------- | -------- | ----------------------------- | -------------------------------------------------------------------------------- |
-| `target`               | `string` | —                             | Target address on Push Chain to execute the transaction. Can be EOA or contract. |
-| `value`                | `bigint` | -                             | Amount in **npush** (smallest unit) to transfer to the target address.           |
-| `data`                 | `string` | -                             | Hex-encoded calldata for the contract method to execute.                         |
-| `gasLimit`             | `bigint` | 21000000                      | Max gas allowed for the transaction execution on Push Chain.                     |
-| `maxFeePerGas`         | `bigint` | 10000000000000000             | Maximum fee per unit of gas the sender is willing to pay.                        |
-| `maxPriorityFeePerGas` | `bigint` | 2                             | Priority tip for validators to include this tx (like EIP-1559).                  |
-| `nonce`                | `bigint` | Taken automatically from NMSC | Transaction execution order on Push Chain.                                       |
-| `deadline`             | `bigint` | 9999999999                    | Timestamp (in seconds) by which the tx must be included on Push Chain.           |
+| Param                  | Type     | Default                      | Description                                                                      |
+| ---------------------- | -------- | ---------------------------- | -------------------------------------------------------------------------------- |
+| `target`               | `string` | —                            | Target address on Push Chain to execute the transaction. Can be EOA or contract. |
+| `value`                | `bigint` | -                            | Amount in **npush** (smallest unit) to transfer to the target address.           |
+| `data`                 | `string` | -                            | Hex-encoded calldata for the contract method to execute.                         |
+| `gasLimit`             | `bigint` | 21000000                     | Max gas allowed for the transaction execution on Push Chain.                     |
+| `maxFeePerGas`         | `bigint` | 10000000000000000            | Maximum fee per unit of gas the sender is willing to pay.                        |
+| `maxPriorityFeePerGas` | `bigint` | 2                            | Priority tip for validators to include this tx (like EIP-1559).                  |
+| `nonce`                | `bigint` | Taken automatically from UEA | Transaction execution order on Push Chain.                                       |
+| `deadline`             | `bigint` | 9999999999                   | Timestamp (in seconds) by which the tx must be included on Push Chain.           |
 
 ---
 

@@ -20,9 +20,9 @@ message MsgDeployUEA {
   string tx_hash = 3;
 }
 
-// MsgMintPush represents a message to mint PUSH tokens to a smart account,
+// MsgMintPC represents a message to mint PUSH tokens to a smart account,
 // based on the amount locked by the user in the gateway contract.
-message MsgMintPush {
+message MsgMintPC {
   // signer is the Cosmos address initiating the tx (used for tx signing)
   string signer = 1;
 

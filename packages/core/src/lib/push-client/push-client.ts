@@ -1,9 +1,5 @@
 import { hexToBytes, keccak256 } from 'viem';
-import {
-  MsgDeployUEA,
-  MsgExecutePayload,
-  MsgMintPush,
-} from '../generated/v1/tx';
+import { MsgDeployUEA, MsgExecutePayload, MsgMintPC } from '../generated/v1/tx';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 import { SignDoc, TxBody, TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 import { Writer } from 'protobufjs';
@@ -80,10 +76,10 @@ export class PushClient extends EvmClient {
     };
   }
 
-  createMsgMintPush(input: MsgMintPush): Any {
+  createMsgMintPC(input: MsgMintPC): Any {
     return {
-      typeUrl: '/ue.v1.MsgMintPush',
-      value: MsgMintPush.encode(MsgMintPush.fromPartial(input)).finish(),
+      typeUrl: '/ue.v1.MsgMintPC',
+      value: MsgMintPC.encode(MsgMintPC.fromPartial(input)).finish(),
     };
   }
 

@@ -66,10 +66,10 @@ export interface MsgDeployUEA {
 }
 
 /**
- * MsgMintPush represents a message to mint PUSH tokens to a smart account,
+ * MsgMintPC represents a message to mint PUSH tokens to a smart account,
  * based on the amount locked by the user in the gateway contract.
  */
-export interface MsgMintPush {
+export interface MsgMintPC {
   /** signer is the Cosmos address initiating the tx (used for tx signing) */
   signer: string;
   /** universal_account is the identifier of the owner account */
@@ -288,12 +288,12 @@ export const MsgDeployUEA: MessageFns<MsgDeployUEA> = {
   },
 };
 
-function createBaseMsgMintPush(): MsgMintPush {
+function createBaseMsgMintPC(): MsgMintPC {
   return { signer: "", universalAccount: undefined, txHash: "" };
 }
 
-export const MsgMintPush: MessageFns<MsgMintPush> = {
-  encode(message: MsgMintPush, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+export const MsgMintPC: MessageFns<MsgMintPC> = {
+  encode(message: MsgMintPC, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.signer !== "") {
       writer.uint32(10).string(message.signer);
     }
@@ -306,10 +306,10 @@ export const MsgMintPush: MessageFns<MsgMintPush> = {
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): MsgMintPush {
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgMintPC {
     const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseMsgMintPush();
+    const message = createBaseMsgMintPC();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -346,7 +346,7 @@ export const MsgMintPush: MessageFns<MsgMintPush> = {
     return message;
   },
 
-  fromJSON(object: any): MsgMintPush {
+  fromJSON(object: any): MsgMintPC {
     return {
       signer: isSet(object.signer) ? globalThis.String(object.signer) : "",
       universalAccount: isSet(object.universalAccount) ? UniversalAccount.fromJSON(object.universalAccount) : undefined,
@@ -354,7 +354,7 @@ export const MsgMintPush: MessageFns<MsgMintPush> = {
     };
   },
 
-  toJSON(message: MsgMintPush): unknown {
+  toJSON(message: MsgMintPC): unknown {
     const obj: any = {};
     if (message.signer !== "") {
       obj.signer = message.signer;
@@ -368,11 +368,11 @@ export const MsgMintPush: MessageFns<MsgMintPush> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<MsgMintPush>, I>>(base?: I): MsgMintPush {
-    return MsgMintPush.fromPartial(base ?? ({} as any));
+  create<I extends Exact<DeepPartial<MsgMintPC>, I>>(base?: I): MsgMintPC {
+    return MsgMintPC.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<MsgMintPush>, I>>(object: I): MsgMintPush {
-    const message = createBaseMsgMintPush();
+  fromPartial<I extends Exact<DeepPartial<MsgMintPC>, I>>(object: I): MsgMintPC {
+    const message = createBaseMsgMintPC();
     message.signer = object.signer ?? "";
     message.universalAccount = (object.universalAccount !== undefined && object.universalAccount !== null)
       ? UniversalAccount.fromPartial(object.universalAccount)
