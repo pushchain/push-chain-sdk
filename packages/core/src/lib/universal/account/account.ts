@@ -200,30 +200,22 @@ export async function convertOriginToExecutor(
   const computedAddress: `0x${string}` = await pushClient.readContract({
     address: pushClient.pushChainInfo.factoryAddress,
     abi: FACTORY_V1 as Abi,
-    functionName: 'computeSmartAccountAddress',
+    functionName: 'computeUEA',
     args: [
       {
-        namespace: VM_NAMESPACE[vm],
-        chainId,
+        chain: chain,
         /**
          * @dev - OwnerKey should be in bytes
          * for eth - convert hex to bytes
          * for sol - convert base64 to bytes
          * for others - not defined yet
          */
-        ownerKey:
+        owner:
           vm === VM.EVM
             ? address
             : vm === VM.SVM
             ? bytesToHex(bs58.decode(address))
             : address,
-        /**
-         * @dev
-         * 0 -> evm
-         * 1 -> svm
-         * Rest are not defined
-         */
-        vmType: vm === VM.EVM ? 0 : vm === VM.SVM ? 1 : 2,
       },
     ],
   });

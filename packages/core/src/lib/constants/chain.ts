@@ -61,7 +61,7 @@ export const CHAIN_INFO: Record<
   [CHAIN.ETHEREUM_SEPOLIA]: {
     chainId: '11155111',
     vm: VM.EVM,
-    lockerContract: '0x8D6518CBc834Da6868916A55F6F3faB0fE2f8a59',
+    lockerContract: '0x28E0F09bE2321c1420Dc60Ee146aACbD68B335Fe',
     defaultRPC: [sepolia.rpcUrls.default.http[0]],
     implementationAddress: '0xcebe72a311e0c11accc00ca33383ff91a5f0f1cc',
   },

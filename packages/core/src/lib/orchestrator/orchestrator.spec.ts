@@ -105,7 +105,7 @@ describe('Orchestrator', () => {
   describe('computeExecutionHash', () => {
     const orc = new Orchestrator(mockSigner, PUSH_NETWORK.TESTNET_DONUT);
     const expectedHash =
-      '0x861bf096806b54e87be2ff4480c2568e4d90161c8c9f962e392b8a7ae4f96aea';
+      '0x67f36f7e406c900444bc9daba0c70d9b565011e6cab09cabb2b0b805864e07e9';
     it('should return the expected Hash', () => {
       const value = {
         to: '0x527F3692F5C53CfA83F7689885995606F93b6164' as `0x{string}`,
