@@ -108,7 +108,7 @@ export const PUSH_CHAIN_INFO: Record<
 > = {
   [CHAIN.PUSH_MAINNET]: {
     ...CHAIN_INFO[CHAIN.PUSH_MAINNET],
-    denom: 'npush',
+    denom: 'upc',
     tendermintRpc: 'TBD',
     prefix: 'push',
     factoryAddress: '0xTBD',
@@ -119,7 +119,7 @@ export const PUSH_CHAIN_INFO: Record<
   },
   [CHAIN.PUSH_TESTNET_DONUT]: {
     ...CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT],
-    denom: 'npush',
+    denom: 'upc',
     tendermintRpc: 'https://rpc-testnet-donut-node1.push.org/',
     prefix: 'push',
     factoryAddress: '0x00000000000000000000000000000000000000eA',
@@ -130,10 +130,10 @@ export const PUSH_CHAIN_INFO: Record<
   },
   [CHAIN.PUSH_LOCALNET]: {
     ...CHAIN_INFO[CHAIN.PUSH_LOCALNET],
-    denom: 'npush',
+    denom: 'upc',
     tendermintRpc: 'http://localhost:26657',
     prefix: 'push',
-    factoryAddress: '0x527F3692F5C53CfA83F7689885995606F93b6164',
+    factoryAddress: '0x00000000000000000000000000000000000000eA',
     pushDecimals: BigInt(1e18),
     usdcDecimals: BigInt(1e8),
     pushToUsdcNumerator: BigInt(1e7), // 0.1 USDC

@@ -4,7 +4,6 @@ import { Orchestrator } from './orchestrator/orchestrator';
 import { createUniversalSigner } from './universal/signer';
 import { UniversalSigner } from './universal/universal.types';
 import { Utils } from './utils';
-import * as viem from 'viem';
 
 /**
  * @class PushChain

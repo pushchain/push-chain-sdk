@@ -2,54 +2,67 @@ syntax = "proto3";
 
 package ue.v1;
 
-enum VM_TYPE {
-  EVM = 0;
-  SVM = 1;
-  MOVE_VM = 2;
-  WASM_VM = 3;
-  CAIRO_VM = 4;
-  OTHER_VM = 5;
+// UniversalAccount is the identifier of a owner account
+message UniversalAccount {
+  string chain = 1; // chain is the caip2 identifier of the chain where the owner is located - (e.g. "eip155:1" for Ethereum mainnet)
+  string owner = 2; // Owner's public key bytes or address in hex format
 }
 
-// AccountId is the identifier of a crosschain owner account
-message AccountId {
-  string namespace = 1; 
-  string chain_id = 2;
-  string owner_key = 3;
-  VM_TYPE vm_type = 4;
-}
-
-message MsgDeployNMSC {
+// MsgDeployUEA is the message used to deploy a new smart account.
+message MsgDeployUEA {
+  // signer is the Cosmos address initiating the tx (used for tx signing)
   string signer = 1;
-  AccountId account_id = 2;
-  string tx_hash = 3;
-}
 
-message MsgMintPush {
-  string signer = 1;
-  // account_id is the identifier of the crosschain owner account
-  AccountId account_id = 2;
+  // universal_account is the identifier of the owner account
+  UniversalAccount universal_account = 2;
+
   // tx_hash is the hash of the transaction in which user locked the tokens
   string tx_hash = 3;
 }
 
-message CrossChainPayload {
-  string target = 1;                 // EVM address as hex string (0x...)
-  string value = 2;                  // Amount in wei as string (uint256)
+// MsgMintPush represents a message to mint PUSH tokens to a smart account,
+// based on the amount locked by the user in the gateway contract.
+message MsgMintPush {
+  // signer is the Cosmos address initiating the tx (used for tx signing)
+  string signer = 1;
+
+  // universal_account is the identifier of the owner account
+  UniversalAccount universal_account = 2;
+
+  // tx_hash is the hash of the transaction in which user locked the tokens
+  string tx_hash = 3;
+}
+
+// Signature verification types
+enum SignatureType {
+  signedVerification = 0; // Signed verification using a signature
+  universalTxVerification = 1; // Universal transaction verification
+}
+
+// UniversalPayload mirrors the Solidity struct
+message UniversalPayload {
+  string to = 1;                 // EVM address as hex string (0x...)
+  string value = 2;                  // Amount in upc as string (uint256)
   string data = 3;                    // ABI-encoded calldata
   string gas_limit = 4;             // uint256 as string
   string max_fee_per_gas = 5;       // uint256 as string
   string max_priority_fee_per_gas = 6; // uint256 as string
   string nonce = 7;                 // uint256 as string
   string deadline = 8;              // uint256 as string
-  }
+  SignatureType sig_type = 9; // Type of signature verification
+}
 
+// MsgExecutePayload defines a message for executing a universal payload
 message MsgExecutePayload {
+  // signer is the Cosmos address initiating the tx (used for tx signing)
   string signer = 1;
-  // account_id is the identifier of the crosschain owner account
-  AccountId account_id = 2;
-  // payload is the crosschain payload to be executed
-  CrossChainPayload crosschain_payload = 3;
+
+  // universal_account is the identifier of the owner account
+  UniversalAccount universal_account = 2;
+
+  // payload is the universal payload to be executed
+  UniversalPayload universal_payload = 3;
+
   // signature is the signature of the payload by user
   string signature = 4;
 }

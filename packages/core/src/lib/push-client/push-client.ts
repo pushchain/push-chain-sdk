@@ -1,6 +1,6 @@
 import { hexToBytes, keccak256 } from 'viem';
 import {
-  MsgDeployNMSC,
+  MsgDeployUEA,
   MsgExecutePayload,
   MsgMintPush,
 } from '../generated/v1/tx';
@@ -73,10 +73,10 @@ export class PushClient extends EvmClient {
 
   // --- Msg Creators ---
 
-  createMsgDeployNMSC(input: MsgDeployNMSC): Any {
+  createMsgDeployUEA(input: MsgDeployUEA): Any {
     return {
-      typeUrl: '/ue.v1.MsgDeployNMSC',
-      value: MsgDeployNMSC.encode(MsgDeployNMSC.fromPartial(input)).finish(),
+      typeUrl: '/ue.v1.MsgDeployUEA',
+      value: MsgDeployUEA.encode(MsgDeployUEA.fromPartial(input)).finish(),
     };
   }
 
