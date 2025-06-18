@@ -63,7 +63,7 @@ describe('PushChain (e2e)', () => {
         });
       });
 
-      it('should getNMSCAddress', async () => {
+      it('should computeUEA', async () => {
         const result = await PushChain.utils.account.convertOriginToExecutor(
           universalSigner.account,
           {
@@ -143,7 +143,7 @@ describe('PushChain (e2e)', () => {
         });
       });
 
-      it('should getNMSCAddress', async () => {
+      it('should computeUEA', async () => {
         const address = pushClient.universal.account;
         expect(address).toBeDefined();
         expect(address).toBe(account.address);
@@ -195,7 +195,7 @@ describe('PushChain (e2e)', () => {
         });
       });
 
-      it('should getNMSCAddress', async () => {
+      it('should computeUEA', async () => {
         const result = await PushChain.utils.account.convertOriginToExecutor(
           universalSigner.account,
           {
