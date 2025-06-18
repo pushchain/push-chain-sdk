@@ -16,7 +16,7 @@ import {
 } from '../universal/universal.types';
 import { ExecuteParams } from './orchestrator.types';
 import { EvmClient } from '../vm-client/evm-client';
-import { CHAIN_INFO, VM_NAMESPACE } from '../constants/chain';
+import { CHAIN_INFO } from '../constants/chain';
 import {
   FACTORY_V1,
   FEE_LOCKER_EVM,
@@ -641,37 +641,52 @@ export class Orchestrator {
     const { chain, address } = this.universalSigner.account;
     const { implementationAddress } = CHAIN_INFO[chain];
 
-    // If this is already a Push-chain EOA, just return it
+    // If already an on-chain Push EOA, just return it
     if (this.isPushChain(chain)) {
       return address as `0x${string}`;
     }
 
-    // Step 1: recreate the CREATE2 salt = keccak256(abi.encode(chain, owner))
-    const encoded = encodeAbiParameters(
-      [
-        { name: 'chain', type: 'string' },
-        { name: 'owner', type: 'bytes' },
-      ],
-      [
-        // abi.encode(string chain, bytes owner)
-        chain,
-        address as `0x${string}`,
-      ]
-    );
-    const salt = keccak256(encoded);
+    // 1) Figure out the external‐chain ownerKey bytes
+    let ownerKey: `0x${string}`;
+    if (CHAIN_INFO[chain].vm === VM.EVM) {
+      ownerKey = address as `0x${string}`;
+    } else if (CHAIN_INFO[chain].vm === VM.SVM) {
+      ownerKey = bytesToHex(bs58.decode(address));
+    } else {
+      throw new Error(`Unsupported VM type: ${CHAIN_INFO[chain].vm}`);
+    }
 
-    // Step 2: build the minimal-proxy init bytecode (EIP-1167)
-    const minimalProxyBytecode = ('0x3d602d80600a3d3981f3' +
+    // Step 1: Recreate the salt: keccak256(abi.encode(UniversalAccount))
+    const encodedAccountId = encodeAbiParameters(
+      [
+        {
+          type: 'tuple',
+          components: [
+            { name: 'chain', type: 'string' },
+            { name: 'owner', type: 'bytes' },
+          ],
+        },
+      ],
+      [{ chain, owner: ownerKey }]
+    );
+
+    const salt = keccak256(encodedAccountId);
+
+    // Step 2: Clone Minimal Proxy bytecode
+    const minimalProxyRuntimeCode = ('0x3d602d80600a3d3981f3' +
       '363d3d373d3d3d363d73' +
       implementationAddress.toLowerCase().replace(/^0x/, '') +
       '5af43d82803e903d91602b57fd5bf3') as `0x${string}`;
 
-    // Step 3: predictDeterministicAddress via CREATE2
+    // Step 3: Get init code hash (used by CREATE2)
+    const initCodeHash = keccak256(minimalProxyRuntimeCode);
+
+    // Step 4: Predict the address using standard CREATE2 formula
     return getCreate2Address({
       from: this.pushClient.pushChainInfo.factoryAddress,
       salt,
-      bytecode: minimalProxyBytecode,
-    }) as `0x${string}`;
+      bytecodeHash: initCodeHash,
+    });
   }
 
   /**
