@@ -114,11 +114,19 @@ export class Orchestrator {
     // 1. Execute direct tx if signer is already on Push Chain
     if (this.isPushChain(chain)) {
       const txHash = await this.pushClient.sendTransaction({
-        to: execute.target,
+        to: execute.to,
         data: execute.data,
         value: execute.value,
         signer: this.universalSigner,
       });
+
+      if (chain === CHAIN.PUSH_LOCALNET) {
+        // @dev - Required for preventing cosmos fetching failures
+        const delay = (ms: number): Promise<void> => {
+          return new Promise((resolve) => setTimeout(resolve, ms));
+        };
+        await delay(3000);
+      }
       return this.pushClient.getCosmosTx(txHash);
     }
 
@@ -140,11 +148,12 @@ export class Orchestrator {
       console.log(`[${this.constructor.name}] Estimating cost of execution`);
     }
 
-    const gasEstimate = await this.pushClient.estimateGas({
-      to: execute.target,
-      data: execute.data,
-      // value: execute.value, @DEV - taking 0 as of now
-    });
+    // const gasEstimate = await this.pushClient.estimateGas({
+    //   to: execute.target,
+    //   data: execute.data,
+    //   // value: execute.value, @DEV - taking 0 as of now
+    // });
+    const gasEstimate = execute.gasLimit || BigInt(1e8);
 
     if (this.printTraces) {
       console.log(`[${this.constructor.name}] GasEstimate: ${gasEstimate}`);
@@ -166,7 +175,7 @@ export class Orchestrator {
         `[${this.constructor.name}] Calculating estimated gas fee for execution`
       );
     }
-    const requiredGasFee = (gasEstimate * gasPrice * BigInt(110)) / BigInt(100);
+    const requiredGasFee = gasEstimate * gasPrice;
     if (this.printTraces) {
       console.log(
         `[${this.constructor.name}] Required Gas Fee: ${requiredGasFee}`
@@ -189,12 +198,12 @@ export class Orchestrator {
 
     // 6. Create execution hash ( execution data to be signed )
     const universalPayload = {
-      to: execute.target,
+      to: execute.to,
       value: execute.value,
       data: execute.data,
-      gasLimit: execute.gasLimit || BigInt(1e18),
+      gasLimit: execute.gasLimit || BigInt(1e8),
       maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
-      maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(2),
+      maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
       nonce,
       deadline: execute.deadline || BigInt(9999999999),
       sigType: SignatureType.signedVerification,
