@@ -7,6 +7,8 @@ export enum ChainType {
   BINANCE = 'bsc',
   ARBITRUM = 'arbitrum',
   AVALANCHE = 'avalanche',
+  WALLET_CONNECT = 'walletConnect',
+  PUSH_WALLET = 'pushWalletDonut',
 }
 export interface WalletInfo {
   address: string;
@@ -39,12 +41,13 @@ export type UniversalAccount = {
   address: string;
 };
 
-export type ConnectionStatus =
-  | 'notConnected'
-  | 'connecting'
-  | 'authenticating'
-  | 'connected'
-  | 'retry';
+export enum ConnectionStatus {
+  NOT_CONNECTED = 'notConnected',
+  CONNECTING = 'connecting',
+  AUTHENTICATING = 'authenticating',
+  CONNECTED = 'connected',
+  RETRY = 'retry',
+}
 
 export type WalletEventRespoonse = {
   signature?: Uint8Array;

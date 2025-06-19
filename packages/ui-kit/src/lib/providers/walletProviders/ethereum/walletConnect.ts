@@ -1,61 +1,72 @@
-import { MetaMaskSDK } from '@metamask/sdk';
+import { EthereumProvider } from '@walletconnect/ethereum-provider';
+import { getAddress } from 'ethers';
 import { BaseWalletProvider } from '../BaseWalletProvider';
 import { ChainType, ITypedData } from '../../../types/wallet.types';
-import { BrowserProvider, getAddress } from 'ethers';
-import { HexString } from 'ethers/lib.commonjs/utils/data';
-import { chains } from './chains';
-import { Chain } from 'viem';
+import * as chains from 'viem/chains';
 import { parseTransaction, toHex } from 'viem';
+import { HexString } from 'ethers/lib.commonjs/utils/data';
 
-export class MetamaskProvider extends BaseWalletProvider {
-  private sdk: MetaMaskSDK;
+export class WalletConnectProvider extends BaseWalletProvider {
+  private provider: InstanceType<typeof EthereumProvider> | null = null;
 
   constructor() {
-    super('MetaMask', 'https://metamask.io/images/metamask-fox.svg', [
-      ChainType.ETHEREUM,
-      ChainType.ARBITRUM,
-      ChainType.AVALANCHE,
-      ChainType.BINANCE,
-      ChainType.PUSH_WALLET,
+    super('WalletConnect', 'https://walletconnect.com/walletconnect-logo.svg', [
+      ChainType.WALLET_CONNECT,
     ]);
-    this.sdk = new MetaMaskSDK();
   }
 
   isInstalled = async (): Promise<boolean> => {
-    const provider = this.sdk.getProvider();
-    return !!provider;
+    return true; // WalletConnect doesn't require installation
   };
 
   getProvider = () => {
-    return this.sdk.getProvider();
-  };
-
-  getSigner = async () => {
-    const sdkProvider = this.sdk.getProvider();
-    if (!sdkProvider) {
-      throw new Error('Provider is undefined');
+    if (!this.provider) {
+      throw new Error('WalletConnect provider not initialized');
     }
-    const browserProvider = new BrowserProvider(sdkProvider);
-    return await browserProvider.getSigner();
+    return this.provider;
   };
 
-  async connect(chainType: ChainType): Promise<{ caipAddress: string }> {
+  private async initProvider(chainId: number) {
+    console.log('Provder >>', this.provider);
+
+    if (this.provider) {
+      return;
+    }
+
+    this.provider = await EthereumProvider.init({
+      projectId: '575a3e339ad56f54669c32264c133172',
+      chains: [chainId],
+      methods: ['eth_sendTransaction', 'personal_sign', 'eth_signTypedData'],
+      showQrModal: true,
+    });
+
+    await this.provider.enable();
+  }
+
+  async connect(): Promise<{ caipAddress: string }> {
     try {
-      const accounts = await this.sdk.connect();
+      const chain = chains['sepolia'] as chains.Chain;
+      const chainId = chain.id;
+
+      await this.initProvider(chainId);
+
+      const accounts = (await this.provider!.request({
+        method: 'eth_requestAccounts',
+      })) as string[];
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No connected account');
+      }
+
       const rawAddress = accounts[0];
       const checksumAddress = getAddress(rawAddress);
 
-      await this.switchNetwork(chainType);
-
-      const chainId = await this.getChainId();
-
-      const addressincaip = this.formatAddress(
+      const caipAddress = this.formatAddress(
         checksumAddress,
         ChainType.ETHEREUM,
         chainId
       );
-
-      return addressincaip;
+      return caipAddress;
     } catch (error) {
       console.error('Failed to connect to MetaMask:', error);
       throw error;
@@ -74,48 +85,6 @@ export class MetamaskProvider extends BaseWalletProvider {
 
     const chainId = parseInt(hexChainId.toString(), 16);
     return chainId;
-  };
-
-  switchNetwork = async (chainName: ChainType) => {
-    const network = chains[chainName] as Chain;
-    const provider = this.getProvider();
-
-    if (!provider)
-      throw new Error('Provider not found while switching network');
-
-    const hexNetworkId = toHex(network.id);
-
-    try {
-      // Try to switch to the network
-      await provider.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: hexNetworkId }],
-      });
-    } catch (err) {
-      // If the error code is 4902, the network needs to be added
-      if ((err as any).code === 4902) {
-        try {
-          await provider.request({
-            method: 'wallet_addEthereumChain',
-            params: [
-              {
-                chainId: hexNetworkId,
-                chainName: network.name,
-                rpcUrls: network.rpcUrls.default.http,
-                nativeCurrency: network.nativeCurrency,
-                blockExplorerUrls: network.blockExplorers?.default.url,
-              },
-            ],
-          });
-        } catch (addError) {
-          console.error('Error adding network:', addError);
-          throw addError;
-        }
-      } else {
-        console.error('Error switching network:', err);
-        throw err;
-      }
-    }
   };
 
   signAndSendTransaction = async (txn: Uint8Array): Promise<Uint8Array> => {
@@ -217,16 +186,8 @@ export class MetamaskProvider extends BaseWalletProvider {
 
   disconnect = async () => {
     const provider = this.getProvider();
-    if (!provider) {
-      throw new Error('Provider is undefined');
+    if (provider && typeof provider.disconnect === 'function') {
+      await provider.disconnect();
     }
-    await provider.request({
-      method: 'wallet_revokePermissions',
-      params: [
-        {
-          eth_accounts: {},
-        },
-      ],
-    });
   };
 }

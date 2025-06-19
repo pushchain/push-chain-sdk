@@ -24,6 +24,7 @@ import { LoginModal } from '../components/LoginModal';
 import { getWalletContext } from './WalletContextMap';
 import { ThemeOverrides } from '../styles/token';
 import { PushChain } from '@pushchain/core';
+import '../styles/globals.css';
 
 export type WalletContextType = {
   universalAccount: UniversalAccount | null;
@@ -70,8 +71,9 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
 
   const [isIframeLoading, setIframeLoading] = useState(true);
 
-  const [connectionStatus, setConnectionStatus] =
-    useState<WalletContextType['connectionStatus']>('notConnected');
+  const [connectionStatus, setConnectionStatus] = useState<
+    WalletContextType['connectionStatus']
+  >(ConnectionStatus.NOT_CONNECTED);
 
   const [externalWallet, setExternalWallet] = useState<WalletInfo | null>(null); // to connect with external wallet
 
@@ -120,7 +122,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
 
   const handleConnectToPushWallet = () => {
     setWalletVisibility(true);
-    setConnectionStatus('connecting');
+    setConnectionStatus(ConnectionStatus.CONNECTING);
   };
 
   // sending wallet config to the Push wallet
@@ -141,7 +143,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
   };
 
   const handleUserLogOutEvent = () => {
-    setConnectionStatus('notConnected');
+    setConnectionStatus(ConnectionStatus.NOT_CONNECTED);
     setUniversalAccount(null);
     setMinimiseWallet(false);
     setWalletVisibility(false);
@@ -169,14 +171,14 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
 
   // sending a new connection request as soon as wallet gets connected
   const handleNewConnectionRequest = () => {
-    setConnectionStatus('authenticating');
+    setConnectionStatus(ConnectionStatus.AUTHENTICATING);
     sendMessageToPushWallet({
       type: APP_TO_WALLET_ACTION.NEW_CONNECTION_REQUEST,
     });
   };
 
   const handleAppConnectionSuccess = (response: WalletEventRespoonse) => {
-    setConnectionStatus('connected');
+    setConnectionStatus(ConnectionStatus.CONNECTED);
     setMinimiseWallet(true);
     if (response.account) {
       setUniversalAccount(response.account);
@@ -184,7 +186,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
   };
 
   const handleAppConnectionRejection = () => {
-    setConnectionStatus('retry');
+    setConnectionStatus(ConnectionStatus.RETRY);
     setUniversalAccount(null);
   };
 
@@ -207,7 +209,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       console.log('#######', PushChain.utils.account);
       console.log('$$$$$$', PushChain.utils.account.fromChainAgnostic);
 
-      setConnectionStatus('connected');
+      setConnectionStatus(ConnectionStatus.CONNECTED);
       setMinimiseWallet(true);
 
       const result = PushChain.utils.account.fromChainAgnostic(

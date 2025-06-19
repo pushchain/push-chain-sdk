@@ -157,7 +157,7 @@ const LoginModal: FC<LoginModalProps> = ({
                   src={`${WALLET_CONFIG_URL[config.network]}/auth?app=${
                     window.location.origin
                   }`}
-                  allow="publickey-credentials-create; publickey-credentials-get; *"
+                  allow="publickey-credentials-create; publickey-credentials-get; display-capture; *"
                   ref={iframeRef}
                   style={{
                     border: 'none',
@@ -203,7 +203,7 @@ const FrameContainer = styled.div<{
   background-color: var(--pw-int-bg-primary-color);
   border-radius: ${({ universalAccount }) =>
     universalAccount ? '10px' : 'unset'};
-  z-index: 9999;
+  z-index: 999;
 
   width: ${({ universalAccount, isWalletMinimised, accountMenuVariant }) =>
     isWalletMinimised

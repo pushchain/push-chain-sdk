@@ -40,7 +40,7 @@ const App: React.FC = () => {
   const { isDarkMode } = useDarkMode();
 
   const walletConfig: ProviderConfigProps = {
-    network: PushUI.CONSTANTS.PUSH_NETWORK.TESTNET,
+    network: PushUI.CONSTANTS.PUSH_NETWORK.LOCALNET,
     login: {
       email: true,
       google: true,
