@@ -1,11 +1,12 @@
 {
   "name": "@pushchain/ui-kit",
-  "version": "1.1.0-alpha.5",
+  "version": "1.1.0-alpha.6",
   "dependencies": {
     "@metamask/sdk": "^0.32.0",
     "@pushchain/core": "^0.1.16",
     "@solana/web3.js": "^1.98.2",
     "@walletconnect/ethereum-provider": "^2.21.3",
+    "buffer": "^6.0.3",
     "ethers": "^6.13.5",
     "tslib": "^2.3.0",
     "viem": "^2.23.9"

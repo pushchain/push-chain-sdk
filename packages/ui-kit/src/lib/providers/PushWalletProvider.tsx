@@ -9,6 +9,7 @@ import {
   darkThemeDefault,
 } from '../styles/token';
 import { mapCoreToInt } from '../utils/theme';
+import { Buffer } from 'buffer';
 
 const loginDefaultConfig = {
   email: true,
@@ -77,6 +78,10 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
       ...config.modal,
     },
   };
+
+  if (typeof window !== 'undefined' && !window.Buffer) {
+    window.Buffer = Buffer;
+  }
 
   return (
     <ThemeProvider theme={{ themeMode, themeOverrides }}>
