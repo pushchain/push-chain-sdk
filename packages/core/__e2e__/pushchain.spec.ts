@@ -99,8 +99,8 @@ describe('PushChain (e2e)', () => {
       });
       it('should sendTransaction - Transfer Call', async () => {
         const tx = await pushClient.universal.sendTransaction({
-          target: '0x35B84d6848D16415177c64D64504663b998A6ab4',
-          value: BigInt(1e13),
+          to: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+          value: BigInt(1e18),
         });
         const after = await PushChain.utils.account.convertOriginToExecutor(
           universalSigner.account,
@@ -158,7 +158,7 @@ describe('PushChain (e2e)', () => {
 
       it('should sendTransaction', async () => {
         const tx = await pushClient.universal.sendTransaction({
-          target: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+          to: '0x35B84d6848D16415177c64D64504663b998A6ab4',
           value: BigInt(2),
         });
 
@@ -223,7 +223,7 @@ describe('PushChain (e2e)', () => {
 
       it('should sendTransaction', async () => {
         await pushClient.universal.sendTransaction({
-          target: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+          to: '0x35B84d6848D16415177c64D64504663b998A6ab4',
           value: BigInt(1e18),
         });
         const after = await PushChain.utils.account.convertOriginToExecutor(
@@ -280,7 +280,7 @@ describe('PushChain (e2e)', () => {
       });
 
       const tx = await pushChainClient.universal.sendTransaction({
-        target: '0x1b527b5A848A264a4d8195Fc41aEae0166cd36b7',
+        to: '0x1b527b5A848A264a4d8195Fc41aEae0166cd36b7',
         value: BigInt(100000000),
       });
       expect(tx).toBeDefined();

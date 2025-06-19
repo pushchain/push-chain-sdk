@@ -70,52 +70,14 @@ export class Orchestrator {
   async execute(execute: ExecuteParams): Promise<DeliverTxResponse> {
     const chain = this.universalSigner.account.chain;
 
-    if (!execute.data) {
-      execute.data = '0x';
-    }
-
-    if (this.printTraces) {
-      console.log(
-        `[${this.constructor.name}] Starting cross-chain execution from chain: ${chain}`
-      );
-    }
-
-    // Add validation that if sepolia, or any origin testnet, you can only interact with Push testnet. Same for mainnet
-    const isTestnet = [
-      CHAIN.ETHEREUM_SEPOLIA,
-      CHAIN.SOLANA_TESTNET,
-      CHAIN.SOLANA_DEVNET,
-    ].includes(chain);
-
-    const isMainnet = [CHAIN.ETHEREUM_MAINNET, CHAIN.SOLANA_MAINNET].includes(
-      chain
-    );
-
-    if (
-      isTestnet &&
-      this.pushClient.pushChainInfo.chainId !==
-        CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId &&
-      this.pushClient.pushChainInfo.chainId !==
-        CHAIN_INFO[CHAIN.PUSH_LOCALNET].chainId
-    ) {
-      throw new Error(
-        'Testnet chains can only interact with Push Testnet or Localnet'
-      );
-    }
-
-    if (
-      isMainnet &&
-      this.pushClient.pushChainInfo.chainId !==
-        CHAIN_INFO[CHAIN.PUSH_MAINNET].chainId
-    ) {
-      throw new Error('Mainnet chains can only interact with Push Mainnet');
-    }
+    this.validateMainnetConnection(chain);
 
     // 1. Execute direct tx if signer is already on Push Chain
     if (this.isPushChain(chain)) {
+      this.printLog('Push to Push Transaction Detected');
       const txHash = await this.pushClient.sendTransaction({
         to: execute.to,
-        data: execute.data,
+        data: execute.data || '0x',
         value: execute.value,
         signer: this.universalSigner,
       });
@@ -131,76 +93,48 @@ export class Orchestrator {
     }
 
     // 2. Get Push chain UEA address for this signer
-    if (this.printTraces) {
-      console.log(
-        `[${this.constructor.name}] Fetching UEA address for UniversalSigner`
-      );
-    }
+    this.printLog('Fetching UEA for Connected Universal Account');
     const { address: UEA, deployed: isUEADeployed } = await this.computeUEA();
-
-    if (this.printTraces) {
-      console.log(`[${this.constructor.name}] UEA Address: ${UEA}`);
-      console.log(`[${this.constructor.name}] Deployed: ${isUEADeployed}`);
-    }
+    this.printLog(`UEA: ${UEA}, Deployed: ${isUEADeployed}`);
 
     // 3. Estimate funds required for the execution
-    if (this.printTraces) {
-      console.log(`[${this.constructor.name}] Estimating cost of execution`);
-    }
-
+    this.printLog('Estimating Gas Limit for Execution');
     // const gasEstimate = await this.pushClient.estimateGas({
     //   to: execute.target,
     //   data: execute.data,
     //   // value: execute.value, @DEV - taking 0 as of now
     // });
     const gasEstimate = execute.gasLimit || BigInt(1e8);
-
-    if (this.printTraces) {
-      console.log(`[${this.constructor.name}] GasEstimate: ${gasEstimate}`);
-    }
+    this.printLog(`GasEstimate: ${gasEstimate}`);
 
     // Fetch current gas price
-    if (this.printTraces) {
-      console.log(`[${this.constructor.name}] Fetching Gas Price`);
-    }
+    this.printLog('Fetching Gas Price');
     const gasPrice = await this.pushClient.getGasPrice();
+    this.printLog(`Gas Price: ${gasPrice}`);
 
-    if (this.printTraces) {
-      console.log(`[${this.constructor.name}] Gas Price: ${gasPrice}`);
-    }
-
-    // Add 10% buffer as integer math
-    if (this.printTraces) {
-      console.log(
-        `[${this.constructor.name}] Calculating estimated gas fee for execution`
-      );
-    }
     const requiredGasFee = gasEstimate * gasPrice;
-    if (this.printTraces) {
-      console.log(
-        `[${this.constructor.name}] Required Gas Fee: ${requiredGasFee}`
-      );
-    }
-    // Total funds = gas fee + value being sent
-    const requiredFunds = requiredGasFee + execute.value;
+    this.printLog(`Required Gas Fee for Execution: ${requiredGasFee} upc`);
 
-    // 4. Check UEA balance on Push Chain ( in nPUSH )
-    if (this.printTraces) {
-      console.log(`${this.constructor.name}]  Checking UEA balance...`);
-    }
+    const requiredFunds = requiredGasFee + execute.value;
+    this.printLog(
+      `Total Required Funds for Execution (fee + value): ${requiredFunds} upc`
+    );
+
+    // 4. Check UEA balance on Push Chain
+    this.printLog('Checking UEA balance');
     const funds = await this.pushClient.getBalance(UEA);
-    if (this.printTraces) {
-      console.log(`[${this.constructor.name}]  Current balance: ${funds}`);
-    }
+    this.printLog(`Current balance: ${funds}`);
 
     // 5. Get UEA Nonce
+    this.printLog('Fetching UEA nonce');
     const nonce = isUEADeployed ? await this.getUEANonce(UEA) : BigInt(0);
+    this.printLog(`Current Nonce: ${nonce}`);
 
     // 6. Create execution hash ( execution data to be signed )
     const universalPayload = {
       to: execute.to,
       value: execute.value,
-      data: execute.data,
+      data: execute.data || '0x',
       gasLimit: execute.gasLimit || BigInt(1e8),
       maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
       maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
@@ -212,63 +146,32 @@ export class Orchestrator {
       verifyingContract: UEA,
       payload: universalPayload,
     });
-    if (this.printTraces) {
-      console.log(
-        `[${this.constructor.name}] Execution hash: ${executionHash}`
-      );
-    }
+    this.printLog(`Universal Payload Hash: ${executionHash}`);
 
     // 7. If not enough funds, lock required fee on source chain and send tx to Push chain
     let feeLockTxHash: string | undefined = execute.feeLockTxHash;
     if (funds < requiredFunds && !feeLockTxHash) {
-      if (this.printTraces) {
-        console.log(
-          `[${this.constructor.name}] Insufficient funds, locking additional fees...`
-        );
-      }
       const fundDifference = requiredFunds - funds;
+      this.printLog(`Insufficient funds, locking funds ${fundDifference} upc`);
+
       const fundDifferenceInUSDC = this.pushClient.pushToUSDC(fundDifference); // ( USDC with 8 decimal points )
       feeLockTxHash = await this.lockFee(fundDifferenceInUSDC, executionHash);
+      this.printLog(`Fee lock TxHash: ${feeLockTxHash}`);
 
-      if (this.printTraces) {
-        console.log(
-          `[${this.constructor.name}] Fee lock transaction hash: ${feeLockTxHash}`
-        );
-      }
-
-      if (this.printTraces) {
-        console.log(
-          `[${this.constructor.name}] Waiting for Block Confirmations..`
-        );
-      }
+      this.printLog(
+        'Waiting for Block Confirmations of Fee lock Tx on Origin Chain'
+      );
       await this.waitForLockerFeeConfirmation(feeLockTxHash);
-
-      if (this.printTraces) {
-        console.log(
-          `[${this.constructor.name}] Enough Origin Chain Block confirmations received`
-        );
-      }
-    }
-
-    if (this.printTraces) {
-      console.log(`[${this.constructor.name}] Signing execution data...`);
+      this.printLog('Enough Confirmations received');
     }
 
     // 8. Sign execution data
+    this.printLog(`Signing Universal Payload`);
     const signature = await this.signUniversalPayload(universalPayload, UEA);
-    if (this.printTraces) {
-      console.log(
-        `[${this.constructor.name}] Execution data signed successfully`
-      );
-    }
+    this.printLog(`Signature: ${bytesToHex(signature)}`);
 
-    // 8. Send Tx to Push chain
-    if (this.printTraces) {
-      console.log(
-        `[${this.constructor.name}] Sending transaction to Push chain...`
-      );
-    }
-
+    // 9. Send Tx to Push chain
+    this.printLog('Sending transaction to Push chain');
     // Serialize & parse in one go to convert all bigint → string
     const serializedPayload = JSON.parse(
       JSON.stringify(universalPayload, this.bigintReplacer)
@@ -280,13 +183,7 @@ export class Orchestrator {
       serializedPayload,
       signature
     );
-    if (this.printTraces) {
-      console.log(
-        `[${this.constructor.name}] Transaction sent successfully. Tx: ` +
-          JSON.stringify(tx, this.bigintReplacer, 2)
-      );
-    }
-
+    this.printLog(`Tx: ${JSON.stringify(tx, this.bigintReplacer, 2)}`);
     return tx;
   }
 
@@ -645,7 +542,6 @@ export class Orchestrator {
     return { address: computedAddress, deployed: byteCode !== undefined };
   }
 
-  // TODO: Convert to viem, also fix the script
   computeUEAOffchain(): `0x${string}` {
     const { chain, address } = this.universalSigner.account;
     const { implementationAddress } = CHAIN_INFO[chain];
@@ -785,5 +681,24 @@ export class Orchestrator {
       chain === CHAIN.PUSH_TESTNET_DONUT ||
       chain === CHAIN.PUSH_LOCALNET
     );
+  }
+
+  private validateMainnetConnection(chain: CHAIN) {
+    const isMainnet = [CHAIN.ETHEREUM_MAINNET, CHAIN.SOLANA_MAINNET].includes(
+      chain
+    );
+    if (
+      isMainnet &&
+      this.pushClient.pushChainInfo.chainId !==
+        CHAIN_INFO[CHAIN.PUSH_MAINNET].chainId
+    ) {
+      throw new Error('Mainnet chains can only interact with Push Mainnet');
+    }
+  }
+
+  private printLog(log: string): void {
+    if (this.printTraces) {
+      console.log(`[${this.constructor.name}] ${log}`);
+    }
   }
 }

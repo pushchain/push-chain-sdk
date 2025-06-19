@@ -263,7 +263,7 @@ export class SvmClient {
    */
   async waitForConfirmations({
     txSignature,
-    confirmations = 20,
+    confirmations = 2,
     timeoutMs = 90000,
   }: {
     txSignature: string;
