@@ -24,7 +24,6 @@ import { LoginModal } from '../components/LoginModal';
 import { getWalletContext } from './WalletContextMap';
 import { ThemeOverrides } from '../styles/token';
 import { PushChain } from '@pushchain/core';
-import '../styles/globals.css';
 
 export type WalletContextType = {
   universalAccount: UniversalAccount | null;

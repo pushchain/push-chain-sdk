@@ -37,6 +37,11 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
 }) => {
   const GlobalStyle = createGlobalStyle`
     :root{
+      #w3m-modal {
+        z-index: 9999 !important;
+        position: fixed !important;
+      }
+
       ${(props) => {
         const { themeMode, themeOverrides } = props.theme;
         const isLightMode = themeMode === 'light';
