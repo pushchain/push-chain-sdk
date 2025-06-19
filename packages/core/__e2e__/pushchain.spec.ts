@@ -120,8 +120,8 @@ describe('PushChain (e2e)', () => {
       let account: PrivateKeyAccount;
 
       beforeAll(async () => {
-        const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
-        if (!privateKey) throw new Error('EVM_PRIVATE_KEY not set');
+        const privateKey = process.env['PUSH_CHAIN_PRIVATE_KEY'] as Hex;
+        if (!privateKey) throw new Error('PUSH_CHAIN_PRIVATE_KEY not set');
 
         account = privateKeyToAccount(privateKey);
         const walletClient = createWalletClient({
