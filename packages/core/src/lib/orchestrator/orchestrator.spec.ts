@@ -7,6 +7,7 @@ import { Keypair } from '@solana/web3.js';
 import { toUniversalFromKeyPair } from '../universal/signer/signer';
 import { SvmClient } from '../vm-client/svm-client';
 import { CHAIN_INFO } from '../constants/chain';
+import { SignatureType } from '../generated/v1/tx';
 
 describe('Orchestrator', () => {
   const mockSigner: UniversalSigner = {
@@ -104,10 +105,10 @@ describe('Orchestrator', () => {
   describe('computeExecutionHash', () => {
     const orc = new Orchestrator(mockSigner, PUSH_NETWORK.TESTNET_DONUT);
     const expectedHash =
-      '0x861bf096806b54e87be2ff4480c2568e4d90161c8c9f962e392b8a7ae4f96aea';
+      '0x67f36f7e406c900444bc9daba0c70d9b565011e6cab09cabb2b0b805864e07e9';
     it('should return the expected Hash', () => {
       const value = {
-        target: '0x527F3692F5C53CfA83F7689885995606F93b6164' as `0x{string}`,
+        to: '0x527F3692F5C53CfA83F7689885995606F93b6164' as `0x{string}`,
         value: BigInt(0),
         data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312' as `0x{string}`,
         gasLimit: BigInt(21000000),
@@ -115,6 +116,7 @@ describe('Orchestrator', () => {
         maxPriorityFeePerGas: BigInt(2),
         nonce: BigInt(1),
         deadline: BigInt(9999999999),
+        sigType: SignatureType.signedVerification,
       };
 
       const hash = orc['computeExecutionHash']({
@@ -127,7 +129,7 @@ describe('Orchestrator', () => {
 
     it('should return different hash on changing params', () => {
       const value = {
-        target: '0x527F3692F5C53CfA83F7689885995606F93b6164' as `0x{string}`,
+        to: '0x527F3692F5C53CfA83F7689885995606F93b6164' as `0x{string}`,
         value: BigInt(0),
         data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312' as `0x{string}`,
         gasLimit: BigInt(21000000),
@@ -135,6 +137,7 @@ describe('Orchestrator', () => {
         maxPriorityFeePerGas: BigInt(2),
         nonce: BigInt(1),
         deadline: BigInt(9999999998),
+        sigType: SignatureType.signedVerification,
       };
 
       const hash = orc['computeExecutionHash']({
@@ -167,13 +170,13 @@ describe('Orchestrator', () => {
           PUSH_NETWORK.TESTNET_DONUT
         );
 
-        const ueaAddress = await orchestrator.calculateUEAOffchain();
+        const ueaAddress = await orchestrator.computeUEAOffchain();
 
         // Should return a valid Ethereum address
         expect(ueaAddress).toMatch(/^0x[a-fA-F0-9]{40}$/);
 
         // Should be consistent across multiple calls
-        const ueaAddress2 = await orchestrator.calculateUEAOffchain();
+        const ueaAddress2 = await orchestrator.computeUEAOffchain();
         expect(ueaAddress).toBe(ueaAddress2);
       });
 
@@ -205,8 +208,8 @@ describe('Orchestrator', () => {
           PUSH_NETWORK.TESTNET_DONUT
         );
 
-        const ueaAddress1 = await orchestrator1.calculateUEAOffchain();
-        const ueaAddress2 = await orchestrator2.calculateUEAOffchain();
+        const ueaAddress1 = await orchestrator1.computeUEAOffchain();
+        const ueaAddress2 = await orchestrator2.computeUEAOffchain();
 
         expect(ueaAddress1).not.toBe(ueaAddress2);
       });
@@ -235,13 +238,13 @@ describe('Orchestrator', () => {
           PUSH_NETWORK.TESTNET_DONUT
         );
 
-        const ueaAddress = await orchestrator.calculateUEAOffchain();
+        const ueaAddress = await orchestrator.computeUEAOffchain();
 
         // Should return a valid Ethereum address
         expect(ueaAddress).toMatch(/^0x[a-fA-F0-9]{40}$/);
 
         // Should be consistent across multiple calls
-        const ueaAddress2 = await orchestrator.calculateUEAOffchain();
+        const ueaAddress2 = await orchestrator.computeUEAOffchain();
         expect(ueaAddress).toBe(ueaAddress2);
       });
 
@@ -276,8 +279,8 @@ describe('Orchestrator', () => {
           PUSH_NETWORK.TESTNET_DONUT
         );
 
-        const ueaAddress1 = await orchestrator1.calculateUEAOffchain();
-        const ueaAddress2 = await orchestrator2.calculateUEAOffchain();
+        const ueaAddress1 = await orchestrator1.computeUEAOffchain();
+        const ueaAddress2 = await orchestrator2.computeUEAOffchain();
 
         expect(ueaAddress1).not.toBe(ueaAddress2);
       });
@@ -304,16 +307,16 @@ describe('Orchestrator', () => {
         );
 
         const testnetUeaAddress =
-          await testnetOrchestrator.calculateUEAOffchain();
+          await testnetOrchestrator.computeUEAOffchain();
         const localnetUeaAddress =
-          await localnetOrchestrator.calculateUEAOffchain();
+          await localnetOrchestrator.computeUEAOffchain();
 
         expect(testnetUeaAddress).not.toBe(localnetUeaAddress);
       });
     });
 
     describe('address consistency', () => {
-      it('should return the same address as getNMSCAddress for EVM signer', async () => {
+      it('should return the same address as UEA for EVM signer', async () => {
         const ethSepoliaSigner: UniversalSigner = {
           account: {
             address: '0x35B84d6848D16415177c64D64504663b998A6ab4',
@@ -332,13 +335,13 @@ describe('Orchestrator', () => {
           PUSH_NETWORK.TESTNET_DONUT
         );
 
-        const offchainAddress = await orchestrator.calculateUEAOffchain();
-        const nmscResult = await orchestrator.getNMSCAddress();
+        const offchainAddress = await orchestrator.computeUEAOffchain();
+        const UEAResult = await orchestrator.computeUEA();
 
-        expect(offchainAddress).toBe(nmscResult.address);
+        expect(offchainAddress).toBe(UEAResult.address);
       });
 
-      it('should return the same address as getNMSCAddress for SVM signer', async () => {
+      it('should return the same address as UEA for SVM signer', async () => {
         const testKeypair = Keypair.generate();
 
         const solanaSigner: UniversalSigner = {
@@ -359,10 +362,10 @@ describe('Orchestrator', () => {
           PUSH_NETWORK.TESTNET_DONUT
         );
 
-        const offchainAddress = await orchestrator.calculateUEAOffchain();
-        const nmscResult = await orchestrator.getNMSCAddress();
+        const offchainAddress = await orchestrator.computeUEAOffchain();
+        const UEAResult = await orchestrator.computeUEA();
 
-        expect(offchainAddress).toBe(nmscResult.address);
+        expect(offchainAddress).toBe(UEAResult.address);
       });
     });
   });

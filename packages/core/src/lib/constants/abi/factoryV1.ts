@@ -1,248 +1,331 @@
 export const FACTORY_V1 = [
-  { "type": "constructor", "inputs": [], "stateMutability": "nonpayable" },
+  { type: 'constructor', inputs: [], stateMutability: 'nonpayable' },
   {
-    "type": "function",
-    "name": "accountImplmentationForVM",
-    "inputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
-    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
-    "stateMutability": "view"
+    type: 'function',
+    name: 'CHAIN_to_VM',
+    inputs: [{ name: '', type: 'bytes32', internalType: 'bytes32' }],
+    outputs: [{ name: '', type: 'bytes32', internalType: 'bytes32' }],
+    stateMutability: 'view',
   },
   {
-    "type": "function",
-    "name": "computeSmartAccountAddress",
-    "inputs": [
+    type: 'function',
+    name: 'UEA_VM',
+    inputs: [{ name: '', type: 'bytes32', internalType: 'bytes32' }],
+    outputs: [{ name: '', type: 'address', internalType: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'UOA_to_UEA',
+    inputs: [{ name: '', type: 'bytes32', internalType: 'bytes32' }],
+    outputs: [{ name: '', type: 'address', internalType: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'computeUEA',
+    inputs: [
       {
-        "name": "_id",
-        "type": "tuple",
-        "internalType": "struct AccountId",
-        "components": [
-          { "name": "namespace", "type": "string", "internalType": "string" },
-          { "name": "chainId", "type": "string", "internalType": "string" },
-          { "name": "ownerKey", "type": "bytes", "internalType": "bytes" },
-          {
-            "name": "vmType",
-            "type": "uint8",
-            "internalType": "enum VM_TYPE"
-          }
-        ]
-      }
+        name: '_id',
+        type: 'tuple',
+        internalType: 'struct UniversalAccount',
+        components: [
+          { name: 'chain', type: 'string', internalType: 'string' },
+          { name: 'owner', type: 'bytes', internalType: 'bytes' },
+        ],
+      },
     ],
-    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
-    "stateMutability": "view"
+    outputs: [{ name: '', type: 'address', internalType: 'address' }],
+    stateMutability: 'view',
   },
   {
-    "type": "function",
-    "name": "deploySmartAccount",
-    "inputs": [
+    type: 'function',
+    name: 'deployUEA',
+    inputs: [
       {
-        "name": "_id",
-        "type": "tuple",
-        "internalType": "struct AccountId",
-        "components": [
-          { "name": "namespace", "type": "string", "internalType": "string" },
-          { "name": "chainId", "type": "string", "internalType": "string" },
-          { "name": "ownerKey", "type": "bytes", "internalType": "bytes" },
-          {
-            "name": "vmType",
-            "type": "uint8",
-            "internalType": "enum VM_TYPE"
-          }
-        ]
-      }
+        name: '_id',
+        type: 'tuple',
+        internalType: 'struct UniversalAccount',
+        components: [
+          { name: 'chain', type: 'string', internalType: 'string' },
+          { name: 'owner', type: 'bytes', internalType: 'bytes' },
+        ],
+      },
     ],
-    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
-    "stateMutability": "nonpayable"
+    outputs: [{ name: '', type: 'address', internalType: 'address' }],
+    stateMutability: 'nonpayable',
   },
   {
-    "type": "function",
-    "name": "generateSalt",
-    "inputs": [
+    type: 'function',
+    name: 'generateSalt',
+    inputs: [
       {
-        "name": "_id",
-        "type": "tuple",
-        "internalType": "struct AccountId",
-        "components": [
-          { "name": "namespace", "type": "string", "internalType": "string" },
-          { "name": "chainId", "type": "string", "internalType": "string" },
-          { "name": "ownerKey", "type": "bytes", "internalType": "bytes" },
-          {
-            "name": "vmType",
-            "type": "uint8",
-            "internalType": "enum VM_TYPE"
-          }
-        ]
-      }
+        name: '_id',
+        type: 'tuple',
+        internalType: 'struct UniversalAccount',
+        components: [
+          { name: 'chain', type: 'string', internalType: 'string' },
+          { name: 'owner', type: 'bytes', internalType: 'bytes' },
+        ],
+      },
     ],
-    "outputs": [{ "name": "", "type": "bytes32", "internalType": "bytes32" }],
-    "stateMutability": "pure"
+    outputs: [{ name: '', type: 'bytes32', internalType: 'bytes32' }],
+    stateMutability: 'pure',
   },
   {
-    "type": "function",
-    "name": "getImplementation",
-    "inputs": [
-      { "name": "_vmType", "type": "uint8", "internalType": "enum VM_TYPE" }
-    ],
-    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "owner",
-    "inputs": [],
-    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "registerImplementation",
-    "inputs": [
-      { "name": "_vmType", "type": "uint256", "internalType": "uint256" },
+    type: 'function',
+    name: 'getOriginForUEA',
+    inputs: [{ name: 'addr', type: 'address', internalType: 'address' }],
+    outputs: [
       {
-        "name": "_implementation",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: 'account',
+        type: 'tuple',
+        internalType: 'struct UniversalAccount',
+        components: [
+          { name: 'chain', type: 'string', internalType: 'string' },
+          { name: 'owner', type: 'bytes', internalType: 'bytes' },
+        ],
+      },
+      { name: 'isUEA', type: 'bool', internalType: 'bool' },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    stateMutability: 'view',
   },
   {
-    "type": "function",
-    "name": "registerMultipleImplementations",
-    "inputs": [
+    type: 'function',
+    name: 'getUEA',
+    inputs: [{ name: '_chainHash', type: 'bytes32', internalType: 'bytes32' }],
+    outputs: [{ name: '', type: 'address', internalType: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getUEAForOrigin',
+    inputs: [
       {
-        "name": "_vmTypes",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
+        name: '_id',
+        type: 'tuple',
+        internalType: 'struct UniversalAccount',
+        components: [
+          { name: 'chain', type: 'string', internalType: 'string' },
+          { name: 'owner', type: 'bytes', internalType: 'bytes' },
+        ],
+      },
+    ],
+    outputs: [
+      { name: 'uea', type: 'address', internalType: 'address' },
+      { name: 'isDeployed', type: 'bool', internalType: 'bool' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getVMType',
+    inputs: [{ name: '_chainHash', type: 'bytes32', internalType: 'bytes32' }],
+    outputs: [
+      { name: 'vmHash', type: 'bytes32', internalType: 'bytes32' },
+      { name: 'isRegistered', type: 'bool', internalType: 'bool' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'hasCode',
+    inputs: [{ name: '_addr', type: 'address', internalType: 'address' }],
+    outputs: [{ name: '', type: 'bool', internalType: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'initialize',
+    inputs: [
+      { name: 'initialOwner', type: 'address', internalType: 'address' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'owner',
+    inputs: [],
+    outputs: [{ name: '', type: 'address', internalType: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'registerMultipleUEA',
+    inputs: [
+      {
+        name: '_chainHashes',
+        type: 'bytes32[]',
+        internalType: 'bytes32[]',
       },
       {
-        "name": "_implementations",
-        "type": "address[]",
-        "internalType": "address[]"
-      }
+        name: '_vmHashes',
+        type: 'bytes32[]',
+        internalType: 'bytes32[]',
+      },
+      { name: '_UEA', type: 'address[]', internalType: 'address[]' },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: 'nonpayable',
   },
   {
-    "type": "function",
-    "name": "renounceOwnership",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "transferOwnership",
-    "inputs": [
-      { "name": "newOwner", "type": "address", "internalType": "address" }
+    type: 'function',
+    name: 'registerNewChain',
+    inputs: [
+      { name: '_chainHash', type: 'bytes32', internalType: 'bytes32' },
+      { name: '_vmHash', type: 'bytes32', internalType: 'bytes32' },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: 'nonpayable',
   },
   {
-    "type": "function",
-    "name": "userAccounts",
-    "inputs": [{ "name": "", "type": "bytes", "internalType": "bytes" }],
-    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
-    "stateMutability": "view"
+    type: 'function',
+    name: 'registerUEA',
+    inputs: [
+      { name: '_chainHash', type: 'bytes32', internalType: 'bytes32' },
+      { name: '_vmHash', type: 'bytes32', internalType: 'bytes32' },
+      { name: '_UEA', type: 'address', internalType: 'address' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
   },
   {
-    "type": "event",
-    "name": "ImplementationRegistered",
-    "inputs": [
+    type: 'function',
+    name: 'renounceOwnership',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'transferOwnership',
+    inputs: [{ name: 'newOwner', type: 'address', internalType: 'address' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'event',
+    name: 'ChainRegistered',
+    inputs: [
       {
-        "name": "vmType",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
+        name: 'chainHash',
+        type: 'bytes32',
+        indexed: true,
+        internalType: 'bytes32',
       },
       {
-        "name": "implementation",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      }
+        name: 'vmHash',
+        type: 'bytes32',
+        indexed: false,
+        internalType: 'bytes32',
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "OwnershipTransferred",
-    "inputs": [
+    type: 'event',
+    name: 'Initialized',
+    inputs: [
       {
-        "name": "previousOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: 'version',
+        type: 'uint64',
+        indexed: false,
+        internalType: 'uint64',
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: 'event',
+    name: 'OwnershipTransferred',
+    inputs: [
+      {
+        name: 'previousOwner',
+        type: 'address',
+        indexed: true,
+        internalType: 'address',
       },
       {
-        "name": "newOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
+        name: 'newOwner',
+        type: 'address',
+        indexed: true,
+        internalType: 'address',
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "SmartAccountDeployed",
-    "inputs": [
+    type: 'event',
+    name: 'UEADeployed',
+    inputs: [
       {
-        "name": "smartAccount",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: 'UEA',
+        type: 'address',
+        indexed: true,
+        internalType: 'address',
       },
       {
-        "name": "ownerKey",
-        "type": "bytes",
-        "indexed": false,
-        "internalType": "bytes"
+        name: 'owner',
+        type: 'bytes',
+        indexed: false,
+        internalType: 'bytes',
       },
       {
-        "name": "id",
-        "type": "tuple",
-        "indexed": false,
-        "internalType": "struct AccountId",
-        "components": [
-          { "name": "namespace", "type": "string", "internalType": "string" },
-          { "name": "chainId", "type": "string", "internalType": "string" },
-          { "name": "ownerKey", "type": "bytes", "internalType": "bytes" },
-          {
-            "name": "vmType",
-            "type": "uint8",
-            "internalType": "enum VM_TYPE"
-          }
-        ]
-      }
+        name: 'chainHash',
+        type: 'bytes32',
+        indexed: false,
+        internalType: 'bytes32',
+      },
     ],
-    "anonymous": false
-  },
-  { "type": "error", "name": "AccountAlreadyExists", "inputs": [] },
-  { "type": "error", "name": "FailedDeployment", "inputs": [] },
-  {
-    "type": "error",
-    "name": "InsufficientBalance",
-    "inputs": [
-      { "name": "balance", "type": "uint256", "internalType": "uint256" },
-      { "name": "needed", "type": "uint256", "internalType": "uint256" }
-    ]
-  },
-  { "type": "error", "name": "InvalidInputArgs", "inputs": [] },
-  {
-    "type": "error",
-    "name": "OwnableInvalidOwner",
-    "inputs": [
-      { "name": "owner", "type": "address", "internalType": "address" }
-    ]
+    anonymous: false,
   },
   {
-    "type": "error",
-    "name": "OwnableUnauthorizedAccount",
-    "inputs": [
-      { "name": "account", "type": "address", "internalType": "address" }
-    ]
-  }
+    type: 'event',
+    name: 'UEARegistered',
+    inputs: [
+      {
+        name: 'chainHash',
+        type: 'bytes32',
+        indexed: true,
+        internalType: 'bytes32',
+      },
+      {
+        name: 'UEA_Logic',
+        type: 'address',
+        indexed: false,
+        internalType: 'address',
+      },
+      {
+        name: 'vmHash',
+        type: 'bytes32',
+        indexed: false,
+        internalType: 'bytes32',
+      },
+    ],
+    anonymous: false,
+  },
+  { type: 'error', name: 'AccountAlreadyExists', inputs: [] },
+  { type: 'error', name: 'FailedDeployment', inputs: [] },
+  {
+    type: 'error',
+    name: 'InsufficientBalance',
+    inputs: [
+      { name: 'balance', type: 'uint256', internalType: 'uint256' },
+      { name: 'needed', type: 'uint256', internalType: 'uint256' },
+    ],
+  },
+  { type: 'error', name: 'InvalidInitialization', inputs: [] },
+  { type: 'error', name: 'InvalidInputArgs', inputs: [] },
+  { type: 'error', name: 'NotInitializing', inputs: [] },
+  {
+    type: 'error',
+    name: 'OwnableInvalidOwner',
+    inputs: [{ name: 'owner', type: 'address', internalType: 'address' }],
+  },
+  {
+    type: 'error',
+    name: 'OwnableUnauthorizedAccount',
+    inputs: [{ name: 'account', type: 'address', internalType: 'address' }],
+  },
 ];

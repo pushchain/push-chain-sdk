@@ -4,7 +4,7 @@ import {
   privateKeyToAccount,
 } from 'viem/accounts';
 import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
-import { createWalletClient, Hex, http, isAddress, PublicClient } from 'viem';
+import { createWalletClient, Hex, http, isAddress } from 'viem';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { PushChain } from '../src';
 import { UniversalSigner } from '../src/lib/universal/universal.types';
@@ -63,7 +63,7 @@ describe('PushChain (e2e)', () => {
         });
       });
 
-      it('should getNMSCAddress', async () => {
+      it('should computeUEA', async () => {
         const result = await PushChain.utils.account.convertOriginToExecutor(
           universalSigner.account,
           {
@@ -99,8 +99,8 @@ describe('PushChain (e2e)', () => {
       });
       it('should sendTransaction - Transfer Call', async () => {
         const tx = await pushClient.universal.sendTransaction({
-          target: '0x35B84d6848D16415177c64D64504663b998A6ab4',
-          value: BigInt(1e13),
+          to: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+          value: BigInt(1e18),
         });
         const after = await PushChain.utils.account.convertOriginToExecutor(
           universalSigner.account,
@@ -120,8 +120,8 @@ describe('PushChain (e2e)', () => {
       let account: PrivateKeyAccount;
 
       beforeAll(async () => {
-        const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
-        if (!privateKey) throw new Error('EVM_PRIVATE_KEY not set');
+        const privateKey = process.env['PUSH_CHAIN_PRIVATE_KEY'] as Hex;
+        if (!privateKey) throw new Error('PUSH_CHAIN_PRIVATE_KEY not set');
 
         account = privateKeyToAccount(privateKey);
         const walletClient = createWalletClient({
@@ -143,7 +143,7 @@ describe('PushChain (e2e)', () => {
         });
       });
 
-      it('should getNMSCAddress', async () => {
+      it('should computeUEA', async () => {
         const address = pushClient.universal.account;
         expect(address).toBeDefined();
         expect(address).toBe(account.address);
@@ -158,7 +158,7 @@ describe('PushChain (e2e)', () => {
 
       it('should sendTransaction', async () => {
         const tx = await pushClient.universal.sendTransaction({
-          target: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+          to: '0x35B84d6848D16415177c64D64504663b998A6ab4',
           value: BigInt(2),
         });
 
@@ -195,7 +195,7 @@ describe('PushChain (e2e)', () => {
         });
       });
 
-      it('should getNMSCAddress', async () => {
+      it('should computeUEA', async () => {
         const result = await PushChain.utils.account.convertOriginToExecutor(
           universalSigner.account,
           {
@@ -223,7 +223,7 @@ describe('PushChain (e2e)', () => {
 
       it('should sendTransaction', async () => {
         await pushClient.universal.sendTransaction({
-          target: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+          to: '0x35B84d6848D16415177c64D64504663b998A6ab4',
           value: BigInt(1e18),
         });
         const after = await PushChain.utils.account.convertOriginToExecutor(
@@ -280,7 +280,7 @@ describe('PushChain (e2e)', () => {
       });
 
       const tx = await pushChainClient.universal.sendTransaction({
-        target: '0x1b527b5A848A264a4d8195Fc41aEae0166cd36b7',
+        to: '0x1b527b5A848A264a4d8195Fc41aEae0166cd36b7',
         value: BigInt(100000000),
       });
       expect(tx).toBeDefined();

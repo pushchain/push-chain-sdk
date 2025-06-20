@@ -46,8 +46,9 @@ export class PriceFetch {
           connection,
           {
             publicKey: new PublicKey(
-              'FetTyW8xAYfd33x4GMHoE7hTuEdWLj1fNnhJuyVMUGGa'
+              'EfQYRThwBu4MsU7Lf3D2e68tCtdwfYj6f66ot1e2HNrq'
             ),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any,
           { commitment: 'confirmed' }
         );
@@ -66,11 +67,7 @@ export class PriceFetch {
 
         // Exponent on this function is always NEGATIVE
         const price = (result.price as BN).toNumber();
-        const exponent = result.exponent as number;
-        // const formattedPrice = price * 10 ** exponent;
-        const formattedPrice = price / 10 ** -exponent;
-
-        return BigInt(Math.ceil(formattedPrice));
+        return BigInt(price);
       }
       default: {
         throw new Error(`Unsupported VM ${vm}`);

@@ -1,5 +1,4 @@
-export const SMART_ACCOUNT_SVM = [
-  { type: 'constructor', inputs: [], stateMutability: 'nonpayable' },
+export const UEA_SVM = [
   { type: 'receive', stateMutability: 'payable' },
   {
     type: 'function',
@@ -17,29 +16,6 @@ export const SMART_ACCOUNT_SVM = [
   },
   {
     type: 'function',
-    name: 'accountId',
-    inputs: [],
-    outputs: [
-      {
-        name: '',
-        type: 'tuple',
-        internalType: 'struct AccountId',
-        components: [
-          { name: 'namespace', type: 'string', internalType: 'string' },
-          { name: 'chainId', type: 'string', internalType: 'string' },
-          { name: 'ownerKey', type: 'bytes', internalType: 'bytes' },
-          {
-            name: 'vmType',
-            type: 'uint8',
-            internalType: 'enum VM_TYPE',
-          },
-        ],
-      },
-    ],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
     name: 'domainSeparator',
     inputs: [],
     outputs: [{ name: '', type: 'bytes32', internalType: 'bytes32' }],
@@ -52,9 +28,9 @@ export const SMART_ACCOUNT_SVM = [
       {
         name: 'payload',
         type: 'tuple',
-        internalType: 'struct CrossChainPayload',
+        internalType: 'struct UniversalPayload',
         components: [
-          { name: 'target', type: 'address', internalType: 'address' },
+          { name: 'to', type: 'address', internalType: 'address' },
           { name: 'value', type: 'uint256', internalType: 'uint256' },
           { name: 'data', type: 'bytes', internalType: 'bytes' },
           {
@@ -73,7 +49,16 @@ export const SMART_ACCOUNT_SVM = [
             internalType: 'uint256',
           },
           { name: 'nonce', type: 'uint256', internalType: 'uint256' },
-          { name: 'deadline', type: 'uint256', internalType: 'uint256' },
+          {
+            name: 'deadline',
+            type: 'uint256',
+            internalType: 'uint256',
+          },
+          {
+            name: 'sigType',
+            type: 'uint8',
+            internalType: 'enum SignatureType',
+          },
         ],
       },
       { name: 'signature', type: 'bytes', internalType: 'bytes' },
@@ -88,9 +73,9 @@ export const SMART_ACCOUNT_SVM = [
       {
         name: 'payload',
         type: 'tuple',
-        internalType: 'struct CrossChainPayload',
+        internalType: 'struct UniversalPayload',
         components: [
-          { name: 'target', type: 'address', internalType: 'address' },
+          { name: 'to', type: 'address', internalType: 'address' },
           { name: 'value', type: 'uint256', internalType: 'uint256' },
           { name: 'data', type: 'bytes', internalType: 'bytes' },
           {
@@ -109,7 +94,16 @@ export const SMART_ACCOUNT_SVM = [
             internalType: 'uint256',
           },
           { name: 'nonce', type: 'uint256', internalType: 'uint256' },
-          { name: 'deadline', type: 'uint256', internalType: 'uint256' },
+          {
+            name: 'deadline',
+            type: 'uint256',
+            internalType: 'uint256',
+          },
+          {
+            name: 'sigType',
+            type: 'uint8',
+            internalType: 'enum SignatureType',
+          },
         ],
       },
     ],
@@ -121,18 +115,12 @@ export const SMART_ACCOUNT_SVM = [
     name: 'initialize',
     inputs: [
       {
-        name: '_accountId',
+        name: '_id',
         type: 'tuple',
-        internalType: 'struct AccountId',
+        internalType: 'struct UniversalAccount',
         components: [
-          { name: 'namespace', type: 'string', internalType: 'string' },
-          { name: 'chainId', type: 'string', internalType: 'string' },
-          { name: 'ownerKey', type: 'bytes', internalType: 'bytes' },
-          {
-            name: 'vmType',
-            type: 'uint8',
-            internalType: 'enum VM_TYPE',
-          },
+          { name: 'chain', type: 'string', internalType: 'string' },
+          { name: 'owner', type: 'bytes', internalType: 'bytes' },
         ],
       },
     ],
@@ -148,6 +136,23 @@ export const SMART_ACCOUNT_SVM = [
   },
   {
     type: 'function',
+    name: 'universalAccount',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        internalType: 'struct UniversalAccount',
+        components: [
+          { name: 'chain', type: 'string', internalType: 'string' },
+          { name: 'owner', type: 'bytes', internalType: 'bytes' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     name: 'verifyPayloadSignature',
     inputs: [
       { name: 'messageHash', type: 'bytes32', internalType: 'bytes32' },
@@ -155,19 +160,6 @@ export const SMART_ACCOUNT_SVM = [
     ],
     outputs: [{ name: '', type: 'bool', internalType: 'bool' }],
     stateMutability: 'view',
-  },
-  {
-    type: 'event',
-    name: 'Initialized',
-    inputs: [
-      {
-        name: 'version',
-        type: 'uint64',
-        indexed: false,
-        internalType: 'uint64',
-      },
-    ],
-    anonymous: false,
   },
   {
     type: 'event',
@@ -194,12 +186,10 @@ export const SMART_ACCOUNT_SVM = [
     ],
     anonymous: false,
   },
+  { type: 'error', name: 'AlreadyInitialized', inputs: [] },
   { type: 'error', name: 'ExecutionFailed', inputs: [] },
   { type: 'error', name: 'ExpiredDeadline', inputs: [] },
-  { type: 'error', name: 'InvalidInitialization', inputs: [] },
-  { type: 'error', name: 'InvalidInputArgs', inputs: [] },
   { type: 'error', name: 'InvalidSVMSignature', inputs: [] },
-  { type: 'error', name: 'NotInitializing', inputs: [] },
   { type: 'error', name: 'PrecompileCallFailed', inputs: [] },
   { type: 'error', name: 'ReentrancyGuardReentrantCall', inputs: [] },
 ];

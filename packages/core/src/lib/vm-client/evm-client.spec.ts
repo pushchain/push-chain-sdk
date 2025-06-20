@@ -153,7 +153,7 @@ describe('EvmClient', () => {
       expect(gas).toBeGreaterThan(0);
     });
 
-    it('estimates gas from nmsc - contract call', async () => {
+    it('estimates gas from UEA - contract call', async () => {
       const gas = await evmClient.estimateGas({
         from: '0xF5184CE4b1e3eC540401f3987DDDf5ab069d05F6',
         to: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
@@ -165,7 +165,7 @@ describe('EvmClient', () => {
       expect(gas).toBeGreaterThan(0);
     });
 
-    it('estimates gas from nmsc - transfer call', async () => {
+    it('estimates gas from UEA - transfer call', async () => {
       const gas = await evmClient.estimateGas({
         from: '0xF5184CE4b1e3eC540401f3987DDDf5ab069d05F6',
         to: '0x35B84d6848D16415177c64D64504663b998A6ab4',

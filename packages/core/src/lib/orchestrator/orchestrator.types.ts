@@ -2,7 +2,7 @@ export type ExecuteParams = {
   /**
    * The target contract or account on Push Chain.
    */
-  target: `0x${string}`;
+  to: `0x${string}`;
 
   /**
    * Amount of native token (in wei) to send alongside the call.

@@ -1,10 +1,12 @@
 import { CONSTANTS } from './constants';
-import { CHAIN, PUSH_NETWORK } from './constants/enums';
+import { CHAIN, PUSH_NETWORK, VM } from './constants/enums';
+import { CHAIN_INFO } from './constants/chain';
 import { Orchestrator } from './orchestrator/orchestrator';
 import { createUniversalSigner } from './universal/signer';
 import { UniversalSigner } from './universal/universal.types';
 import { Utils } from './utils';
-import * as viem from 'viem';
+import bs58 from 'bs58';
+import { bytesToHex, TypedData, TypedDataDomain } from 'viem';
 
 /**
  * @class PushChain
@@ -25,11 +27,6 @@ export class PushChain {
    */
   public static utils = Utils;
 
-  private orchestartor: Orchestrator;
-
-  // convertOriginToExecutor(UniversalAccount, options: {status: true -> deployed as true or false})
-  // convertExecutorToOrigin(address: string)
-
   /**
    * Universal namespace containing core transaction and address computation methods
    */
@@ -37,25 +34,62 @@ export class PushChain {
     // pushChainClient.universal.origin. not a function, just a property. => Return UOA wallet address. If from Push chain, both returns above will match. Else, it will tell from which chian it comes from.
     get origin(): ReturnType<Orchestrator['getUOA']>;
     // pushChainClient.universal.account. not a function, just a property. => Return UEA (wallet from push chain). If on push, return Push Chain wallet itself.
-    get account(): ReturnType<Orchestrator['calculateUEAOffchain']>;
+    get account(): ReturnType<Orchestrator['computeUEAOffchain']>;
     /**
      * Executes a transaction on Push Chain
      */
     sendTransaction: Orchestrator['execute'];
+    /**
+     * Signs an arbitrary message
+     */
+    signMessage: (data: Uint8Array) => Promise<string>;
+    /**
+     * Signs EIP-712 typed data
+     */
+    signTypedData: ({
+      domain,
+      types,
+      primaryType,
+      message,
+    }: {
+      domain: TypedDataDomain;
+      types: TypedData;
+      primaryType: string;
+      message: Record<string, any>;
+    }) => Promise<string>;
   };
 
-  private constructor(orchestartor: Orchestrator) {
-    this.orchestartor = orchestartor;
+  private constructor(
+    private orchestrator: Orchestrator,
+    private universalSigner: UniversalSigner
+  ) {
+    this.orchestrator = orchestrator;
 
-    // Initialize Universal namespace with bound methods
     this.universal = {
       get origin() {
-        return orchestartor.getUOA();
+        return orchestrator.getUOA();
       },
       get account() {
-        return orchestartor.calculateUEAOffchain();
+        return orchestrator.computeUEAOffchain();
       },
-      sendTransaction: this.orchestartor.execute.bind(this.orchestartor),
+      sendTransaction: orchestrator.execute.bind(orchestrator),
+      signMessage: async (data: Uint8Array) => {
+        const sigBytes = await universalSigner.signMessage(data);
+        const chain = universalSigner.account.chain;
+        if (CHAIN_INFO[chain].vm === VM.EVM) {
+          return bytesToHex(sigBytes);
+        } else if (CHAIN_INFO[chain].vm === VM.SVM) {
+          return bs58.encode(sigBytes);
+        }
+        return bytesToHex(sigBytes);
+      },
+      signTypedData: async (...args) => {
+        if (typeof universalSigner.signTypedData !== 'function') {
+          throw new Error('Typed data signing not supported');
+        }
+        const signBytes = await universalSigner.signTypedData(...args);
+        return bytesToHex(signBytes);
+      },
     };
   }
 
@@ -80,16 +114,17 @@ export class PushChain {
       blockExplorers?: Partial<Record<CHAIN, Record<string, string>>>;
       printTraces?: boolean;
     }
-  ) => {
-    const orchestartor = new Orchestrator(
+  ): Promise<PushChain> => {
+    const validatedUniversalSigner = createUniversalSigner(universalSigner);
+    const orchestrator = new Orchestrator(
       /**
        * Ensures the signer conforms to the UniversalSigner interface.
        */
-      createUniversalSigner(universalSigner),
-      options?.network || PUSH_NETWORK.TESTNET_DONUT,
-      options?.rpcUrls || {},
-      options?.printTraces || false
+      validatedUniversalSigner,
+      options?.network ?? PUSH_NETWORK.TESTNET_DONUT,
+      options?.rpcUrls ?? {},
+      options?.printTraces ?? false
     );
-    return new PushChain(orchestartor);
+    return new PushChain(orchestrator, validatedUniversalSigner);
   };
 }
