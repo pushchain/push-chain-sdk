@@ -1,15 +1,10 @@
 import { css } from 'styled-components';
 import { Box, Button, Front, Sale, Text } from 'shared-components';
-import {
-  PushUniversalAccountButton,
-  usePushChainClient,
-} from '../../../../../../../packages/ui-kit';
+import { PushUniversalAccountButton } from '@pushchain/ui-kit';
 import { LandingPageBanner } from './LandingPageBanner';
 import { SimulateTxText } from './SimulateTxText';
 
 const LandingPageLeftComponent = () => {
-  const { pushChain } = usePushChainClient();
-
   const featuresCard = [
     {
       id: 1,

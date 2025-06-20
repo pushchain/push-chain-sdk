@@ -9,7 +9,7 @@ import {
   PushUI,
   PushUniversalWalletProvider,
   ProviderConfigProps,
-} from '../../../../packages/ui-kit';
+} from '@pushchain/ui-kit';
 import Navbar from './components/Navbar';
 
 const GlobalStyle = createGlobalStyle`
@@ -40,7 +40,7 @@ const App: React.FC = () => {
   const { isDarkMode } = useDarkMode();
 
   const walletConfig: ProviderConfigProps = {
-    network: PushUI.CONSTANTS.PUSH_NETWORK.LOCALNET,
+    network: PushUI.CONSTANTS.PUSH_NETWORK.TESTNET,
     login: {
       email: true,
       google: true,

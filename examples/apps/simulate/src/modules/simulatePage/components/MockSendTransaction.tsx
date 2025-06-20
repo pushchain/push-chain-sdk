@@ -4,10 +4,7 @@ import { css } from 'styled-components';
 import { centerMaskString } from '../../../helpers';
 import { TransactionSnippet } from '../../../common/components';
 import { mockTransaction } from '../../../common/constants';
-import {
-  usePushChainClient,
-  usePushWalletContext,
-} from '../../../../../../../packages/ui-kit';
+import { usePushChainClient, usePushWalletContext } from '@pushchain/ui-kit';
 
 const MockSendTransaction = () => {
   const { pushChainClient, isLoading } = usePushChainClient();
@@ -26,13 +23,13 @@ const MockSendTransaction = () => {
         //   value: BigInt(2),
         // });
 
-        const txHash = await pushChainClient.universal.sendTransaction({
-          target: '0x68F8b46e4cD01a7648393911E734d99d34E6f107',
+        const res = await pushChainClient.universal.sendTransaction({
+          to: '0x68F8b46e4cD01a7648393911E734d99d34E6f107',
           value: BigInt(1),
           data: '0x',
         });
 
-        setTxnHash(txHash);
+        setTxnHash(res.transactionHash);
         setIsSendingTxn(false);
         setTxnError(null);
       }

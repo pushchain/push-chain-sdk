@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import { usePushWalletContext } from '../../../../../packages/ui-kit';
+import { usePushWalletContext } from '@pushchain/ui-kit';
 
 const PrivateRoute = ({ children }: { children: ReactNode }) => {
   const { universalAccount } = usePushWalletContext();

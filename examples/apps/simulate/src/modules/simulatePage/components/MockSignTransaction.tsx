@@ -2,13 +2,10 @@ import { useState } from 'react';
 import { Alert, Box, Button, TextInput } from 'shared-components';
 import { TransactionSnippet } from '../../../common/components';
 import { toHex } from 'viem';
-import {
-  usePushChainClient,
-  usePushWalletContext,
-} from '../../../../../../../packages/ui-kit';
+import { usePushChainClient, usePushWalletContext } from '@pushchain/ui-kit';
 
 const MockSignTransaction = () => {
-  const { pushChain } = usePushChainClient();
+  const { pushChainClient } = usePushChainClient();
 
   const { handleSignMessage } = usePushWalletContext();
   const [textInput, setTextInput] = useState('');
@@ -19,7 +16,7 @@ const MockSignTransaction = () => {
   const handleSignMessageRequest = async () => {
     if (!textInput) return;
     try {
-      if (pushChain) {
+      if (pushChainClient) {
         const signedData = await handleSignMessage(
           new TextEncoder().encode(textInput)
         );
