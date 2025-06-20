@@ -104,7 +104,7 @@ export class Orchestrator {
     //   data: execute.data,
     //   // value: execute.value, @DEV - taking 0 as of now
     // });
-    const gasEstimate = execute.gasLimit || BigInt(1e8);
+    const gasEstimate = execute.gasLimit || BigInt(1e7);
     this.printLog(`GasEstimate: ${gasEstimate}`);
 
     // Fetch current gas price
@@ -135,7 +135,7 @@ export class Orchestrator {
       to: execute.to,
       value: execute.value,
       data: execute.data || '0x',
-      gasLimit: execute.gasLimit || BigInt(1e8),
+      gasLimit: execute.gasLimit || BigInt(1e7),
       maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
       maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
       nonce,
