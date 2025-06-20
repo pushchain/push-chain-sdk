@@ -63,7 +63,7 @@ export const CHAIN_INFO: Record<
     vm: VM.EVM,
     lockerContract: '0x28E0F09bE2321c1420Dc60Ee146aACbD68B335Fe',
     defaultRPC: [sepolia.rpcUrls.default.http[0]],
-    implementationAddress: '0xcebe72a311e0c11accc00ca33383ff91a5f0f1cc',
+    implementationAddress: '0x523294411f0CBFE40Ff8B7b415ef0e92f01ac38f',
   },
 
   // Solana
@@ -86,7 +86,7 @@ export const CHAIN_INFO: Record<
     vm: VM.SVM,
     lockerContract: '3zrWaMknHTRQpZSxY4BvQxw9TStSXiHcmcp3NMPTFkke',
     defaultRPC: ['https://api.devnet.solana.com'],
-    implementationAddress: '0xbFdC775469e260bEfC44E871D06f5C420F0ECB68',
+    implementationAddress: '0xCA0C5E6F002A389E1580F0DB7cd06e4549B5F9d3',
   },
 };
 
