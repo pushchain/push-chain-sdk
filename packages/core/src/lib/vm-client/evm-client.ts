@@ -302,7 +302,7 @@ export class EvmClient {
    */
   async waitForConfirmations({
     txHash,
-    confirmations = 2,
+    confirmations = 0,
     pollIntervalMs = 4000,
   }: {
     txHash: `0x${string}`;
