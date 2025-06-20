@@ -131,17 +131,22 @@ export class Orchestrator {
     this.printLog(`Current Nonce: ${nonce}`);
 
     // 6. Create execution hash ( execution data to be signed )
-    const universalPayload = {
-      to: execute.to,
-      value: execute.value,
-      data: execute.data || '0x',
-      gasLimit: execute.gasLimit || BigInt(1e7),
-      maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
-      maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
-      nonce,
-      deadline: execute.deadline || BigInt(9999999999),
-      sigType: SignatureType.signedVerification,
-    };
+    const universalPayload = JSON.parse(
+      JSON.stringify(
+        {
+          to: execute.to,
+          value: execute.value,
+          data: execute.data || '0x',
+          gasLimit: execute.gasLimit || BigInt(1e7),
+          maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
+          maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
+          nonce,
+          deadline: execute.deadline || BigInt(9999999999),
+          sigType: SignatureType.signedVerification,
+        },
+        this.bigintReplacer
+      )
+    ) as UniversalPayload;
     const executionHash = this.computeExecutionHash({
       verifyingContract: UEA,
       payload: universalPayload,
@@ -264,17 +269,7 @@ export class Orchestrator {
   }
 
   private async signUniversalPayload(
-    universalPayload: {
-      to: `0x${string}`;
-      value: bigint;
-      data: `0x${string}`;
-      gasLimit: bigint;
-      maxFeePerGas: bigint;
-      maxPriorityFeePerGas: bigint;
-      nonce: bigint;
-      deadline: bigint;
-      sigType: SignatureType;
-    },
+    universalPayload: UniversalPayload,
     verifyingContract: `0x${string}`,
     version?: string
   ) {
@@ -415,17 +410,7 @@ export class Orchestrator {
     chainId?: number;
     verifyingContract: `0x${string}`;
     version?: string;
-    payload: {
-      to: `0x${string}`;
-      value: bigint;
-      data: `0x${string}`;
-      gasLimit: bigint;
-      maxFeePerGas: bigint;
-      maxPriorityFeePerGas: bigint;
-      nonce: bigint;
-      deadline: bigint;
-      sigType: SignatureType;
-    };
+    payload: UniversalPayload;
   }): `0x${string}` {
     // 1. Type hash
     const typeHash = keccak256(
@@ -475,14 +460,14 @@ export class Orchestrator {
         ],
         [
           typeHash,
-          payload.to,
-          payload.value,
-          keccak256(payload.data),
-          payload.gasLimit,
-          payload.maxFeePerGas,
-          payload.maxPriorityFeePerGas,
-          payload.nonce,
-          payload.deadline,
+          payload.to as `0x${string}`,
+          BigInt(payload.value),
+          keccak256(payload.data as `0x${string}`),
+          BigInt(payload.gasLimit),
+          BigInt(payload.maxFeePerGas),
+          BigInt(payload.maxPriorityFeePerGas),
+          BigInt(payload.nonce),
+          BigInt(payload.deadline),
           payload.sigType,
         ]
       )
