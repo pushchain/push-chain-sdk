@@ -286,4 +286,30 @@ describe('PushChain (e2e)', () => {
       expect(tx).toBeDefined();
     });
   });
+
+  describe('Explorer Namespace', () => {
+    it('should get transaction url', async () => {
+      const account = privateKeyToAccount(generatePrivateKey());
+      const walletClient = createWalletClient({
+        account,
+        transport: http(
+          CHAIN_INFO[PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]
+        ),
+      });
+      const signer = await PushChain.utils.signer.toUniversalFromKeyPair(
+        walletClient,
+        {
+          chain: PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+        }
+      );
+      const pushChainClient = await PushChain.initialize(signer, {
+        network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+      });
+
+      const txHash = '0x123';
+      const url = pushChainClient.explorer.getTransactionUrl(txHash);
+      expect(url).toBe(`https://donut.push.network/tx/${txHash}`);
+    });
+  });
 });
