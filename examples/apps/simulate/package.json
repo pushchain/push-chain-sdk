@@ -1,0 +1,42 @@
+{
+  "name": "core-connection",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "deploy:vercel": "vercel build --prod && vercel deploy --prebuilt --prod",
+    "deploy": "VITE_DEPLOYMENT_MODE=production npm run build && echo 'simulate.push.org' > ./dist/CNAME && gh-pages -d dist -r https://github.com/push-protocol/simulate-dev-deployment",
+    "deploy:alpha": "VITE_DEPLOYMENT_MODE=alpha npm run build && echo 'simulate-alpha.push.org' > ./dist/CNAME && gh-pages -d dist -r https://github.com/push-protocol/simulate-alpha-deployment"
+  },
+  "dependencies": {
+    "@pushchain/ui-kit": "^1.1.0-alpha.7",
+    "formik": "^2.4.6",
+    "gh-pages": "^6.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^7.0.2",
+    "shared-components": "../../../packages/shared-components",
+    "viem": "^2.21.34",
+    "yup": "^1.5.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.9.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react-swc": "^3.5.0",
+    "eslint": "^9.9.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.9",
+    "globals": "^15.9.0",
+    "typescript": "^5.5.3",
+    "typescript-eslint": "^8.0.1",
+    "vite": "^5.4.1",
+    "vite-plugin-node-polyfills": "0.17.0"
+  }
+}
