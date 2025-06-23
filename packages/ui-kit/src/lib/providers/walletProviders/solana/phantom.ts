@@ -171,7 +171,7 @@ export class PhantomProvider extends BaseWalletProvider {
           transaction
         );
 
-        return bs58.decode(signedTransaction);
+        return bs58.decode((signedTransaction as any).signature);
       } catch (error) {
         console.error('Phantom Solana signing error:', error);
         throw error;
