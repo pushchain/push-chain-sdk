@@ -4,7 +4,7 @@ import { UniversalSigner } from '../universal/universal.types';
 import { createWalletClient, Hex, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { Keypair } from '@solana/web3.js';
-import { toUniversalFromKeyPair } from '../universal/signer/signer';
+import { toUniversalFromKeypair } from '../universal/signer/signer';
 import { SvmClient } from '../vm-client/svm-client';
 import { CHAIN_INFO } from '../constants/chain';
 import { SignatureType } from '../generated/v1/tx';
@@ -40,7 +40,7 @@ describe('Orchestrator', () => {
         transport: http(CHAIN_INFO[chain].defaultRPC[0]),
       });
 
-      const ethSepoliaSigner: UniversalSigner = await toUniversalFromKeyPair(
+      const ethSepoliaSigner: UniversalSigner = await toUniversalFromKeypair(
         walletClient,
         {
           chain,
@@ -68,7 +68,7 @@ describe('Orchestrator', () => {
       // Generate a keypair from the private key in .env
       const testAccount = Keypair.fromSecretKey(privateKey);
 
-      const solanaDevnetSigner = await toUniversalFromKeyPair(testAccount, {
+      const solanaDevnetSigner = await toUniversalFromKeypair(testAccount, {
         chain,
         library: LIBRARY.SOLANA_WEB3JS,
       });

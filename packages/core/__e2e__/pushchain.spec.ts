@@ -49,7 +49,7 @@ describe('PushChain (e2e)', () => {
           transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
         });
 
-        universalSigner = await PushChain.utils.signer.toUniversalFromKeyPair(
+        universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
           walletClient,
           {
             chain: originChain,
@@ -75,7 +75,7 @@ describe('PushChain (e2e)', () => {
         expect(typeof result.deployed).toBe('boolean');
 
         const universalSignerSolana =
-          await PushChain.utils.signer.toUniversalFromKeyPair(new Keypair(), {
+          await PushChain.utils.signer.toUniversalFromKeypair(new Keypair(), {
             chain: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET,
             library: PushChain.CONSTANTS.LIBRARY.SOLANA_WEB3JS,
           });
@@ -129,7 +129,7 @@ describe('PushChain (e2e)', () => {
           transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
         });
 
-        universalSigner = await PushChain.utils.signer.toUniversalFromKeyPair(
+        universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
           walletClient,
           {
             chain: originChain,
@@ -181,7 +181,7 @@ describe('PushChain (e2e)', () => {
 
         const account = Keypair.fromSecretKey(privateKey);
 
-        universalSigner = await PushChain.utils.signer.toUniversalFromKeyPair(
+        universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
           account,
           {
             chain: originChain,
@@ -246,7 +246,7 @@ describe('PushChain (e2e)', () => {
           CHAIN_INFO[PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]
         ),
       });
-      const signer = await PushChain.utils.signer.toUniversalFromKeyPair(
+      const signer = await PushChain.utils.signer.toUniversalFromKeypair(
         walletClient,
         {
           chain: PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT,
@@ -296,7 +296,7 @@ describe('PushChain (e2e)', () => {
           CHAIN_INFO[PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]
         ),
       });
-      const signer = await PushChain.utils.signer.toUniversalFromKeyPair(
+      const signer = await PushChain.utils.signer.toUniversalFromKeypair(
         walletClient,
         {
           chain: PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT,

@@ -61,7 +61,7 @@ export function createUniversalSigner({
  * @param {CHAIN} chain - The chain the signer will operate on
  * @returns {Promise<UniversalSigner>} A signer object configured for the specified chain
  */
-export async function toUniversalFromKeyPair(
+export async function toUniversalFromKeypair(
   clientOrAccount: WalletClient | Keypair | ethers.Wallet | ethers.HDNodeWallet,
   { chain, library }: { chain: CHAIN; library: LIBRARY }
 ): Promise<UniversalSigner> {

@@ -107,7 +107,7 @@ describe('SvmClient', () => {
     testAccount = Keypair.fromSecretKey(privateKey);
 
     // Create the object first with any required properties
-    universalSigner = await PushChain.utils.signer.toUniversalFromKeyPair(
+    universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
       testAccount,
       { chain: chain, library: LIBRARY.SOLANA_WEB3JS }
     );

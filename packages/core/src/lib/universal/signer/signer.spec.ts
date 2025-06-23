@@ -1,6 +1,6 @@
 import {
   createUniversalSigner,
-  toUniversalFromKeyPair,
+  toUniversalFromKeypair,
   toUniversal,
   construct,
 } from './signer';
@@ -33,7 +33,7 @@ describe('UniversalSigner utilities', () => {
     });
   });
 
-  describe('toUniversalFromKeyPair - viem', () => {
+  describe('toUniversalFromKeypair - viem', () => {
     let mockClient: WalletClient;
     let account: any;
 
@@ -50,7 +50,7 @@ describe('UniversalSigner utilities', () => {
     });
 
     it('wraps WalletClient correctly', async () => {
-      const signer = await toUniversalFromKeyPair(mockClient, {
+      const signer = await toUniversalFromKeypair(mockClient, {
         chain: CHAIN.ETHEREUM_SEPOLIA,
         library: LIBRARY.ETHEREUM_VIEM,
       });
@@ -79,7 +79,7 @@ describe('UniversalSigner utilities', () => {
 
     it('rejects invalid account', async () => {
       await expect(
-        toUniversalFromKeyPair({} as any, {
+        toUniversalFromKeypair({} as any, {
           chain: CHAIN.ETHEREUM_SEPOLIA,
           library: LIBRARY.ETHEREUM_VIEM,
         })
@@ -87,7 +87,7 @@ describe('UniversalSigner utilities', () => {
     });
   });
 
-  describe('toUniversalFromKeyPair - ethers v6', () => {
+  describe('toUniversalFromKeypair - ethers v6', () => {
     const pk = generatePrivateKey();
     const mockProvider = {
       getNetwork: jest.fn().mockResolvedValue({ chainId: BigInt(11155111) }),
@@ -95,7 +95,7 @@ describe('UniversalSigner utilities', () => {
     const wallet = new ethers.Wallet(pk, mockProvider);
 
     it('wraps ethers.Wallet correctly', async () => {
-      const signer = await toUniversalFromKeyPair(wallet, {
+      const signer = await toUniversalFromKeypair(wallet, {
         chain: CHAIN.ETHEREUM_SEPOLIA,
         library: LIBRARY.ETHEREUM_ETHERSV6,
       });
@@ -111,7 +111,7 @@ describe('UniversalSigner utilities', () => {
     it('throws if no provider', async () => {
       const w = new ethers.Wallet(pk);
       await expect(
-        toUniversalFromKeyPair(w, {
+        toUniversalFromKeypair(w, {
           chain: CHAIN.ETHEREUM_SEPOLIA,
           library: LIBRARY.ETHEREUM_ETHERSV6,
         })
@@ -119,11 +119,11 @@ describe('UniversalSigner utilities', () => {
     });
   });
 
-  describe('toUniversalFromKeyPair - solana', () => {
+  describe('toUniversalFromKeypair - solana', () => {
     const keypair = Keypair.generate();
 
     it('wraps Solana Keypair correctly', async () => {
-      const signer = await toUniversalFromKeyPair(keypair, {
+      const signer = await toUniversalFromKeypair(keypair, {
         chain: CHAIN.SOLANA_DEVNET,
         library: LIBRARY.SOLANA_WEB3JS,
       });
@@ -138,7 +138,7 @@ describe('UniversalSigner utilities', () => {
 
     it('throws on wrong chain', async () => {
       await expect(
-        toUniversalFromKeyPair(keypair, {
+        toUniversalFromKeypair(keypair, {
           chain: CHAIN.ETHEREUM_MAINNET,
           library: LIBRARY.SOLANA_WEB3JS,
         })
