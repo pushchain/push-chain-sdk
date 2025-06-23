@@ -61,12 +61,13 @@ export class PushChain {
 
   explorer: {
     getTransactionUrl: (txHash: string) => string;
+    listUrls: () => string[];
   };
 
   private constructor(
     private orchestrator: Orchestrator,
     private universalSigner: UniversalSigner,
-    private blockExplorers: Partial<Record<CHAIN, Record<string, string>>>
+    private blockExplorers: Partial<Record<CHAIN, string[]>>
   ) {
     this.orchestrator = orchestrator;
 
@@ -101,6 +102,9 @@ export class PushChain {
       getTransactionUrl: (txHash: string) => {
         return `https://donut.push.network/tx/${txHash}`;
       },
+      listUrls: () => {
+        return blockExplorers[CHAIN.PUSH_TESTNET_DONUT] ?? [];
+      },
     };
   }
 
@@ -121,16 +125,13 @@ export class PushChain {
     options?: {
       network?: PUSH_NETWORK;
       rpcUrls?: Partial<Record<CHAIN, string[]>>;
-      // Just name and url. Multiple block explorers per chain. 1st one is the default.
-      blockExplorers?: Partial<Record<CHAIN, Record<string, string>>>;
+      blockExplorers?: Partial<Record<CHAIN, string[]>>;
       printTraces?: boolean;
     }
   ): Promise<PushChain> => {
     const validatedUniversalSigner = createUniversalSigner(universalSigner);
     const blockExplorers = options?.blockExplorers ?? {
-      [CHAIN.PUSH_TESTNET_DONUT]: {
-        default: 'https://donut.push.network',
-      },
+      [CHAIN.PUSH_TESTNET_DONUT]: ['https://donut.push.network'],
     };
     const orchestrator = new Orchestrator(
       /**
