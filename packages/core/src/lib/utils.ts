@@ -5,10 +5,11 @@ import {
   toUniversal,
 } from './universal/account';
 import {
-  toUniversalFromKeyPair,
   construct,
   toUniversal as toUniversalSigner,
+  toUniversalFromKeypair,
 } from './universal/signer';
+import { CHAIN } from './constants/enums';
 
 /**
  * @dev - THESE UTILS ARE EXPORTED TO SDK CONSUMER
@@ -61,7 +62,7 @@ export class Utils {
     /**
      * Converts various signer types (viem, ethers v6, Solana) into a UniversalSigner.
      */
-    toUniversalFromKeyPair,
+    toUniversalFromKeypair,
     /**
      * Constructs a UniversalSignerSkeleton from raw signing functions.
      */
@@ -70,5 +71,22 @@ export class Utils {
      * Converts a UniversalSignerSkeleton to a UniversalSigner.
      */
     toUniversal: toUniversalSigner,
+  };
+
+  static helpers = {
+    getChainName: (chainNamespace: string) => {
+      const chainEntries = Object.entries(CHAIN);
+      const foundEntry = chainEntries.find(
+        ([_, value]) => value === chainNamespace
+      );
+
+      if (!foundEntry) {
+        throw new Error(
+          `Chain value '${chainNamespace}' not found in CHAIN enum`
+        );
+      }
+
+      return foundEntry[0];
+    },
   };
 }

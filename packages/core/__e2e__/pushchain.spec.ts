@@ -49,7 +49,7 @@ describe('PushChain (e2e)', () => {
           transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
         });
 
-        universalSigner = await PushChain.utils.signer.toUniversalFromKeyPair(
+        universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
           walletClient,
           {
             chain: originChain,
@@ -75,7 +75,7 @@ describe('PushChain (e2e)', () => {
         expect(typeof result.deployed).toBe('boolean');
 
         const universalSignerSolana =
-          await PushChain.utils.signer.toUniversalFromKeyPair(new Keypair(), {
+          await PushChain.utils.signer.toUniversalFromKeypair(new Keypair(), {
             chain: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET,
             library: PushChain.CONSTANTS.LIBRARY.SOLANA_WEB3JS,
           });
@@ -129,7 +129,7 @@ describe('PushChain (e2e)', () => {
           transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
         });
 
-        universalSigner = await PushChain.utils.signer.toUniversalFromKeyPair(
+        universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
           walletClient,
           {
             chain: originChain,
@@ -181,7 +181,7 @@ describe('PushChain (e2e)', () => {
 
         const account = Keypair.fromSecretKey(privateKey);
 
-        universalSigner = await PushChain.utils.signer.toUniversalFromKeyPair(
+        universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
           account,
           {
             chain: originChain,
@@ -246,7 +246,7 @@ describe('PushChain (e2e)', () => {
           CHAIN_INFO[PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]
         ),
       });
-      const signer = await PushChain.utils.signer.toUniversalFromKeyPair(
+      const signer = await PushChain.utils.signer.toUniversalFromKeypair(
         walletClient,
         {
           chain: PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT,
@@ -284,6 +284,143 @@ describe('PushChain (e2e)', () => {
         value: BigInt(100000000),
       });
       expect(tx).toBeDefined();
+    });
+  });
+
+  describe('Explorer Namespace', () => {
+    it('should get transaction url', async () => {
+      const account = privateKeyToAccount(generatePrivateKey());
+      const walletClient = createWalletClient({
+        account,
+        transport: http(
+          CHAIN_INFO[PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]
+        ),
+      });
+      const signer = await PushChain.utils.signer.toUniversalFromKeypair(
+        walletClient,
+        {
+          chain: PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+        }
+      );
+      const pushChainClient = await PushChain.initialize(signer, {
+        network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+      });
+
+      const txHash = '0x123';
+      const url = pushChainClient.explorer.getTransactionUrl(txHash);
+      expect(url).toBe(`https://donut.push.network/tx/${txHash}`);
+    });
+  });
+
+  describe('Helpers Utils Namespace', () => {
+    describe('getChainName', () => {
+      it('should get chain name', () => {
+        // Test Push chains
+        expect(PushChain.utils.helpers.getChainName(CHAIN.PUSH_MAINNET)).toBe(
+          'PUSH_MAINNET'
+        );
+        expect(PushChain.utils.helpers.getChainName(CHAIN.PUSH_TESTNET)).toBe(
+          'PUSH_TESTNET'
+        );
+        expect(
+          PushChain.utils.helpers.getChainName(CHAIN.PUSH_TESTNET_DONUT)
+        ).toBe('PUSH_TESTNET');
+        expect(PushChain.utils.helpers.getChainName(CHAIN.PUSH_LOCALNET)).toBe(
+          'PUSH_LOCALNET'
+        );
+        // Test Ethereum chains
+        expect(
+          PushChain.utils.helpers.getChainName(CHAIN.ETHEREUM_MAINNET)
+        ).toBe('ETHEREUM_MAINNET');
+        expect(
+          PushChain.utils.helpers.getChainName(CHAIN.ETHEREUM_SEPOLIA)
+        ).toBe('ETHEREUM_SEPOLIA');
+        // Test Solana chains
+        expect(PushChain.utils.helpers.getChainName(CHAIN.SOLANA_MAINNET)).toBe(
+          'SOLANA_MAINNET'
+        );
+        expect(PushChain.utils.helpers.getChainName(CHAIN.SOLANA_TESTNET)).toBe(
+          'SOLANA_TESTNET'
+        );
+        expect(PushChain.utils.helpers.getChainName(CHAIN.SOLANA_DEVNET)).toBe(
+          'SOLANA_DEVNET'
+        );
+      });
+
+      it('should handle chain values directly', () => {
+        // Test with raw chain values
+        expect(PushChain.utils.helpers.getChainName('eip155:9')).toBe(
+          'PUSH_MAINNET'
+        );
+        expect(PushChain.utils.helpers.getChainName('eip155:42101')).toBe(
+          'PUSH_TESTNET'
+        );
+        expect(PushChain.utils.helpers.getChainName('eip155:9001')).toBe(
+          'PUSH_LOCALNET'
+        );
+        expect(PushChain.utils.helpers.getChainName('eip155:1')).toBe(
+          'ETHEREUM_MAINNET'
+        );
+        expect(PushChain.utils.helpers.getChainName('eip155:11155111')).toBe(
+          'ETHEREUM_SEPOLIA'
+        );
+        expect(
+          PushChain.utils.helpers.getChainName(
+            'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
+          )
+        ).toBe('SOLANA_MAINNET');
+        expect(
+          PushChain.utils.helpers.getChainName(
+            'solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z'
+          )
+        ).toBe('SOLANA_TESTNET');
+        expect(
+          PushChain.utils.helpers.getChainName(
+            'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'
+          )
+        ).toBe('SOLANA_DEVNET');
+      });
+
+      it('should throw error for invalid chain values', () => {
+        // Test with invalid chain values
+        expect(() =>
+          PushChain.utils.helpers.getChainName('invalid-chain')
+        ).toThrow("Chain value 'invalid-chain' not found in CHAIN enum");
+        expect(() =>
+          PushChain.utils.helpers.getChainName('eip155:999999')
+        ).toThrow("Chain value 'eip155:999999' not found in CHAIN enum");
+        expect(() =>
+          PushChain.utils.helpers.getChainName('solana:invalid')
+        ).toThrow("Chain value 'solana:invalid' not found in CHAIN enum");
+        expect(() => PushChain.utils.helpers.getChainName('')).toThrow(
+          "Chain value '' not found in CHAIN enum"
+        );
+      });
+
+      it('should handle case sensitivity correctly', () => {
+        // Test that the function is case sensitive
+        expect(() => PushChain.utils.helpers.getChainName('EIP155:1')).toThrow(
+          "Chain value 'EIP155:1' not found in CHAIN enum"
+        );
+        expect(() =>
+          PushChain.utils.helpers.getChainName(
+            'SOLANA:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
+          )
+        ).toThrow(
+          "Chain value 'SOLANA:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp' not found in CHAIN enum"
+        );
+      });
+
+      it('should handle whitespace correctly', () => {
+        // Test that whitespace is not ignored
+        expect(() => PushChain.utils.helpers.getChainName(' eip155:1')).toThrow(
+          "Chain value ' eip155:1' not found in CHAIN enum"
+        );
+        expect(() => PushChain.utils.helpers.getChainName('eip155:1 ')).toThrow(
+          "Chain value 'eip155:1 ' not found in CHAIN enum"
+        );
+      });
     });
   });
 });

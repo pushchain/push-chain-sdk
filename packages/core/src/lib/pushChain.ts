@@ -59,9 +59,14 @@ export class PushChain {
     }) => Promise<string>;
   };
 
+  explorer: {
+    getTransactionUrl: (txHash: string) => string;
+  };
+
   private constructor(
     private orchestrator: Orchestrator,
-    private universalSigner: UniversalSigner
+    private universalSigner: UniversalSigner,
+    private blockExplorers: Partial<Record<CHAIN, Record<string, string>>>
   ) {
     this.orchestrator = orchestrator;
 
@@ -91,6 +96,12 @@ export class PushChain {
         return bytesToHex(signBytes);
       },
     };
+
+    this.explorer = {
+      getTransactionUrl: (txHash: string) => {
+        return `https://donut.push.network/tx/${txHash}`;
+      },
+    };
   }
 
   /**
@@ -116,6 +127,11 @@ export class PushChain {
     }
   ): Promise<PushChain> => {
     const validatedUniversalSigner = createUniversalSigner(universalSigner);
+    const blockExplorers = options?.blockExplorers ?? {
+      [CHAIN.PUSH_TESTNET_DONUT]: {
+        default: 'https://donut.push.network',
+      },
+    };
     const orchestrator = new Orchestrator(
       /**
        * Ensures the signer conforms to the UniversalSigner interface.
@@ -125,6 +141,10 @@ export class PushChain {
       options?.rpcUrls ?? {},
       options?.printTraces ?? false
     );
-    return new PushChain(orchestrator, validatedUniversalSigner);
+    return new PushChain(
+      orchestrator,
+      validatedUniversalSigner,
+      blockExplorers
+    );
   };
 }

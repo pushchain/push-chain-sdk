@@ -2,7 +2,7 @@ import { CHAIN, LIBRARY, PUSH_NETWORK } from '../../constants/enums';
 import { PushChain } from '../../pushChain';
 import { Orchestrator } from '../../orchestrator/orchestrator';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
-import { toUniversalFromKeyPair } from '../signer';
+import { toUniversalFromKeypair } from '../signer';
 import { createWalletClient, http } from 'viem';
 import { CHAIN_INFO } from '../../constants/chain';
 
@@ -62,7 +62,7 @@ describe('Universal Account Utilities', () => {
         account: account,
         transport: http(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0]),
       });
-      const signer = await toUniversalFromKeyPair(walletClient, {
+      const signer = await toUniversalFromKeypair(walletClient, {
         chain: CHAIN.ETHEREUM_SEPOLIA,
         library: LIBRARY.ETHEREUM_VIEM,
       });
