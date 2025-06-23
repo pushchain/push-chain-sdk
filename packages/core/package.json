@@ -1,26 +1,30 @@
 {
-  "name": "@pushchain/devnet",
-  "version": "1.0.15",
+  "name": "@pushchain/core",
+  "version": "0.1.22",
   "dependencies": {
     "@bufbuild/protobuf": "^2.0.0",
-    "@noble/hashes": "^1.5.0",
-    "axios": "^1.7.7",
-    "bech32": "^2.0.0",
+    "@coral-xyz/anchor": "^0.31.0",
+    "@cosmjs/crypto": "0.33.1",
+    "@cosmjs/encoding": "0.33.1",
+    "@cosmjs/proto-signing": "^0.33.1",
+    "@cosmjs/stargate": "^0.33.1",
+    "@cosmjs/tendermint-rpc": "0.33.1",
+    "@solana/web3.js": "^1.68.0",
+    "cosmjs-types": "0.9.0",
+    "ethers": "^6.14.3",
+    "protobufjs": "7.4.0",
     "tslib": "^2.3.0",
-    "uuid": "^10.0.0",
-    "viem": "^2.21.5"
+    "tweetnacl": "^1.0.3",
+    "viem": "2.27.2"
   },
   "scripts": {
     "build:proto": "scripts/protoc-generate.sh"
   },
   "type": "commonjs",
-  "publishConfig": {
-    "access": "public"
-  },
+  "main": "./src/index.js",
+  "typings": "./src/index.d.ts",
   "devDependencies": {
-    "@types/uuid": "^10.0.0",
-    "@types/ws": "^8.5.14",
-    "protobufjs-cli": "^1.1.3",
+    "secp256k1": "^5.0.1",
     "ts-proto": "^2.0.3"
   }
 }

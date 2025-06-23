@@ -1,95 +1,151 @@
-import { Block } from './block/block';
-import { ENV } from './constants';
-import { UniversalSigner } from './signer/signer.types';
-import { checksumAddress } from './signer/universalFactories';
-import { Tx } from './tx/tx';
+import { CONSTANTS } from './constants';
+import { CHAIN, PUSH_NETWORK, VM } from './constants/enums';
+import { CHAIN_INFO } from './constants/chain';
+import { Orchestrator } from './orchestrator/orchestrator';
+import { createUniversalSigner } from './universal/signer';
+import { UniversalSigner } from './universal/universal.types';
 import { Utils } from './utils';
-import { WebSocketClient } from './websocket/websocket-client';
+import bs58 from 'bs58';
+import { bytesToHex, TypedData, TypedDataDomain } from 'viem';
 
 /**
- * The PushChain class provides access to the Push Chain's functionality.
- * It includes methods for interacting with blocks and transactions.
+ * @class PushChain
  *
- * @example
- * const pushChain = await PushChain.initialize();
- * const blocks = await pushChain.block.get('*', { limit: 30 }); // Fetch the latest 30 blocks
- * const transactions = await pushChain.tx.get(universalAccount, { limit: 30 }); // Fetch the latest 30 transactions for a specific account
+ * Entry point to interact with Push Chain in your application.
+ * Provides access to cross-chain execution, utilities, and signer abstraction.
  */
 export class PushChain {
   /**
-   * Provides access to utility methods in PushChain.
+   * @static
+   * Constants for the PushChain SDK.
+   */
+  public static CONSTANTS = CONSTANTS;
+
+  /**
+   * @static
+   * Utility functions for encoding, hashing, and data formatting.
    */
   public static utils = Utils;
 
   /**
-   * Provides access to transaction-related methods in PushChain.
+   * Universal namespace containing core transaction and address computation methods
    */
-  public tx: Tx;
+  universal: {
+    // pushChainClient.universal.origin. not a function, just a property. => Return UOA wallet address. If from Push chain, both returns above will match. Else, it will tell from which chian it comes from.
+    get origin(): ReturnType<Orchestrator['getUOA']>;
+    // pushChainClient.universal.account. not a function, just a property. => Return UEA (wallet from push chain). If on push, return Push Chain wallet itself.
+    get account(): ReturnType<Orchestrator['computeUEAOffchain']>;
+    /**
+     * Executes a transaction on Push Chain
+     */
+    sendTransaction: Orchestrator['execute'];
+    /**
+     * Signs an arbitrary message
+     */
+    signMessage: (data: Uint8Array) => Promise<string>;
+    /**
+     * Signs EIP-712 typed data
+     */
+    signTypedData: ({
+      domain,
+      types,
+      primaryType,
+      message,
+    }: {
+      domain: TypedDataDomain;
+      types: TypedData;
+      primaryType: string;
+      message: Record<string, any>;
+    }) => Promise<string>;
+  };
 
-  /**
-   * Provides access to block-related methods in PushChain.
-   */
-  public block: Block;
+  explorer: {
+    getTransactionUrl: (txHash: string) => string;
+    listUrls: () => string[];
+  };
 
-  /**
-   * Provides access to WebSocket functionality.
-   */
-  public ws: WebSocketClient;
+  private constructor(
+    private orchestrator: Orchestrator,
+    private universalSigner: UniversalSigner,
+    private blockExplorers: Partial<Record<CHAIN, string[]>>
+  ) {
+    this.orchestrator = orchestrator;
 
-  private constructor(block: Block, tx: Tx, ws: WebSocketClient) {
-    this.tx = tx;
-    this.block = block;
-    this.ws = ws;
+    this.universal = {
+      get origin() {
+        return orchestrator.getUOA();
+      },
+      get account() {
+        return orchestrator.computeUEAOffchain();
+      },
+      sendTransaction: orchestrator.execute.bind(orchestrator),
+      signMessage: async (data: Uint8Array) => {
+        const sigBytes = await universalSigner.signMessage(data);
+        const chain = universalSigner.account.chain;
+        if (CHAIN_INFO[chain].vm === VM.EVM) {
+          return bytesToHex(sigBytes);
+        } else if (CHAIN_INFO[chain].vm === VM.SVM) {
+          return bs58.encode(sigBytes);
+        }
+        return bytesToHex(sigBytes);
+      },
+      signTypedData: async (...args) => {
+        if (typeof universalSigner.signTypedData !== 'function') {
+          throw new Error('Typed data signing not supported');
+        }
+        const signBytes = await universalSigner.signTypedData(...args);
+        return bytesToHex(signBytes);
+      },
+    };
+
+    this.explorer = {
+      getTransactionUrl: (txHash: string) => {
+        return `https://donut.push.network/tx/${txHash}`;
+      },
+      listUrls: () => {
+        return blockExplorers[CHAIN.PUSH_TESTNET_DONUT] ?? [];
+      },
+    };
   }
 
   /**
-   * Initializes the PushChain class with the given UniversalSigner and network options.
+   * @method initialize
+   * Initializes the PushChain SDK with a universal signer and optional config.
    *
-   * @param {UniversalSigner | null} [universalSigner=null] - The UniversalSigner instance.
-   * This is only required for write operations. If you only need to perform read operations,
-   * you can pass `null`.
-   * @param {Object} [options] - The options for initializing the PushChain.
-   * @param {boolean} [options.printTraces=false] - Console logs the requests to nodes
-   * @param {ENV} [options.network=ENV.DEVNET] - The network environment.
-   * @param {string} [options.rpcUrl=''] - The RPC URL to use. If not provided, the default RPC URL for the network will be used.
-   * @returns {Promise<PushChain>} A promise that resolves to the initialized PushChain instance.
+   * @param universalSigner
+   * @param options - Optional settings to configure the SDK instance.
+   *   - network: PushChain network to target (e.g., TESTNET_DONUT, MAINNET).
+   *   - rpcUrls: Custom RPC URLs mapped by chain IDs.
+   *   - printTraces: Whether to print internal trace logs for debugging.
    *
-   * @example
-   * // Initialize for read-only operations
-   * const pushChain = await PushChain.initialize(env);
-   *
-   * // Initialize for write operations with a signer
-   * const pushChainWithSigner = await PushChain.initialize(env, signer);
+   * @returns An initialized instance of PushChain.
    */
   static initialize = async (
-    universalSigner: UniversalSigner | null = null,
-    options: {
-      network: ENV;
-      rpcUrl?: string;
+    universalSigner: UniversalSigner,
+    options?: {
+      network?: PUSH_NETWORK;
+      rpcUrls?: Partial<Record<CHAIN, string[]>>;
+      blockExplorers?: Partial<Record<CHAIN, string[]>>;
       printTraces?: boolean;
-    } = {
-      network: ENV.DEVNET,
-      rpcUrl: '',
-      printTraces: false,
     }
   ): Promise<PushChain> => {
-    if (universalSigner) {
-      universalSigner.address = checksumAddress(
-        universalSigner.chain,
-        universalSigner.address
-      );
-    }
-    const block = await Block.initialize(options.network, options.rpcUrl);
-    const tx = await Tx.initialize(
-      options.network,
-      universalSigner,
-      options.printTraces,
-      options.rpcUrl
+    const validatedUniversalSigner = createUniversalSigner(universalSigner);
+    const blockExplorers = options?.blockExplorers ?? {
+      [CHAIN.PUSH_TESTNET_DONUT]: ['https://donut.push.network'],
+    };
+    const orchestrator = new Orchestrator(
+      /**
+       * Ensures the signer conforms to the UniversalSigner interface.
+       */
+      validatedUniversalSigner,
+      options?.network ?? PUSH_NETWORK.TESTNET_DONUT,
+      options?.rpcUrls ?? {},
+      options?.printTraces ?? false
     );
-    const ws = await WebSocketClient.initialize(
-      options.network,
-      options.rpcUrl
+    return new PushChain(
+      orchestrator,
+      validatedUniversalSigner,
+      blockExplorers
     );
-    return new PushChain(block, tx, ws);
   };
 }

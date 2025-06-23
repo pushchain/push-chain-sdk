@@ -15,8 +15,9 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@pushprotocol/pushchain-ui-kit": ["packages/ui-kit/src/index.ts"],
-      "core": ["packages/core/src/index.ts"]
+      "@pushchain/core": ["packages/core/src/index.ts"],
+      "@pushchain/devnet": ["packages/devnet/src/index.ts"],
+      "@pushprotocol/pushchain-ui-kit": ["packages/ui-kit/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

@@ -1,12 +1,10 @@
 {
-  "name": "push-network-sdk",
+  "name": "push-chain-sdk",
   "version": "0.0.0",
   "license": "MIT",
   "private": true,
   "dependencies": {
-    "bs58": "^6.0.0",
-    "tslib": "^2.3.0",
-    "tweetnacl": "^1.0.3"
+    "tslib": "^2.3.0"
   },
   "devDependencies": {
     "@nx/eslint": "20.1.4",
@@ -16,6 +14,7 @@
     "@swc-node/register": "~1.9.1",
     "@swc/core": "~1.5.7",
     "@swc/helpers": "~0.5.11",
+    "@types/bn.js": "^5.1.6",
     "@types/jest": "^29.5.12",
     "@types/node": "18.16.9",
     "@typescript-eslint/eslint-plugin": "^7.16.0",
@@ -36,5 +35,6 @@
   ],
   "nx": {
     "includedScripts": []
-  }
+  },
+  "packageManager": "yarn@4.2.2+sha512.c44e283c54e02de9d1da8687025b030078c1b9648d2895a65aab8e64225bfb7becba87e1809fc0b4b6778bbd47a1e2ab6ac647de4c5e383a53a7c17db6c3ff4b"
 }

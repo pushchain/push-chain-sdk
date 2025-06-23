@@ -1,5 +1,5 @@
 {
-  "name": "push-network-sdk",
+  "name": "push-chain-sdk",
   "$schema": "node_modules/nx/schemas/project-schema.json",
   "targets": {
     "local-registry": {
