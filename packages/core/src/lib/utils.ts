@@ -5,9 +5,9 @@ import {
   toUniversal,
 } from './universal/account';
 import {
-  toUniversalFromKeyPair,
   construct,
   toUniversal as toUniversalSigner,
+  toUniversalFromKeypair,
 } from './universal/signer';
 import { CHAIN } from './constants/enums';
 
@@ -62,7 +62,7 @@ export class Utils {
     /**
      * Converts various signer types (viem, ethers v6, Solana) into a UniversalSigner.
      */
-    toUniversalFromKeyPair,
+    toUniversalFromKeypair,
     /**
      * Constructs a UniversalSignerSkeleton from raw signing functions.
      */
