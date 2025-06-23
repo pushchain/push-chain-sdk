@@ -15,6 +15,12 @@ export const usePushChainClient = (uid?: string) => {
   const [pushChain, setPushChain] = useState<PushChain | null>(null);
   const [error, setError] = useState<Error | null>(null);
 
+  const dummyFunc = async (data: Uint8Array): Promise<Uint8Array> => {
+    console.log('dummy');
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    return data;
+  };
+
   // initialise Push Chain instance here and export that
   useEffect(() => {
     const initializePushChain = async () => {
@@ -49,7 +55,7 @@ export const usePushChainClient = (uid?: string) => {
           network: config.network,
           rpcUrls: config.chain?.rpcUrls,
           blockExplorers: config.chain?.blockExplorers,
-          printTraces: config.chain?.printTraces,
+          printTraces: true,
         });
 
         setPushChain(pushChainClient);
@@ -69,6 +75,8 @@ export const usePushChainClient = (uid?: string) => {
   }, [universalAccount, config]);
 
   return {
+    handleSignMessage,
+    handleSignAndSendTransaction,
     pushChainClient: pushChain,
     error,
     isLoading: !pushChain && !error,

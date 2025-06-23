@@ -1426,7 +1426,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@coral-xyz/anchor@npm:^0.31.0":
+"@coral-xyz/anchor@npm:^0.31.0, @coral-xyz/anchor@npm:^0.31.1":
   version: 0.31.1
   resolution: "@coral-xyz/anchor@npm:0.31.1"
   dependencies:
@@ -3379,9 +3379,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pushchain/core@npm:^0.1.18":
-  version: 0.1.18
-  resolution: "@pushchain/core@npm:0.1.18"
+"@pushchain/core@npm:^0.1.22":
+  version: 0.1.22
+  resolution: "@pushchain/core@npm:0.1.22"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.0.0"
     "@coral-xyz/anchor": "npm:^0.31.0"
@@ -3397,7 +3397,7 @@ __metadata:
     tslib: "npm:^2.3.0"
     tweetnacl: "npm:^1.0.3"
     viem: "npm:2.27.2"
-  checksum: 10/e73f7a9e6bd85d90dcf9e98edef178eb2133a22b948bcce705559bd7934ce7064448dbfa8be57e46a3ac91b23195d2b1367c258b92203a155e959f40eab4eb24
+  checksum: 10/683b2fb96067ba8511c8fb7bf52fcf08d874cec82076b05ed7c38f4dfcd82b1c937cc3e20bc406dca9fac765342949a1e82d66b4e4811784152393ed6e268d98
   languageName: node
   linkType: hard
 
@@ -3423,8 +3423,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@pushchain/ui-kit@workspace:packages/ui-kit"
   dependencies:
+    "@coral-xyz/anchor": "npm:^0.31.1"
     "@metamask/sdk": "npm:^0.32.0"
-    "@pushchain/core": "npm:^0.1.18"
+    "@pushchain/core": "npm:^0.1.22"
     "@solana/web3.js": "npm:^1.98.2"
     "@types/react": "npm:^18.3.13"
     "@walletconnect/ethereum-provider": "npm:^2.21.3"

@@ -180,6 +180,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     setConnectionStatus(ConnectionStatus.CONNECTED);
     setMinimiseWallet(true);
     if (response.account) {
+      console.log(response.account);
       setUniversalAccount(response.account);
     }
   };

@@ -4,10 +4,14 @@ import { css } from 'styled-components';
 import { centerMaskString } from '../../../helpers';
 import { TransactionSnippet } from '../../../common/components';
 import { mockTransaction } from '../../../common/constants';
-import { usePushChainClient, usePushWalletContext } from '@pushchain/ui-kit';
+import {
+  usePushChainClient,
+  usePushWalletContext,
+} from '../../../../../../../packages/ui-kit';
 
 const MockSendTransaction = () => {
-  const { pushChainClient, isLoading } = usePushChainClient();
+  const { pushChainClient, isLoading, handleSignAndSendTransaction } =
+    usePushChainClient();
   const { universalAccount } = usePushWalletContext();
 
   const [isSendingTxn, setIsSendingTxn] = useState(false);
@@ -22,6 +26,8 @@ const MockSendTransaction = () => {
         //   target: '0xFd6C2fE69bE13d8bE379CCB6c9306e74193EC1A9',
         //   value: BigInt(2),
         // });
+
+        // const res = await handleSignAndSendTransaction(new TextEncoder().encode());
 
         const res = await pushChainClient.universal.sendTransaction({
           to: '0x68F8b46e4cD01a7648393911E734d99d34E6f107',
