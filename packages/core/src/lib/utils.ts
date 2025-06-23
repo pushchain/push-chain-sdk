@@ -9,6 +9,7 @@ import {
   construct,
   toUniversal as toUniversalSigner,
 } from './universal/signer';
+import { CHAIN } from './constants/enums';
 
 /**
  * @dev - THESE UTILS ARE EXPORTED TO SDK CONSUMER
@@ -70,5 +71,22 @@ export class Utils {
      * Converts a UniversalSignerSkeleton to a UniversalSigner.
      */
     toUniversal: toUniversalSigner,
+  };
+
+  static helpers = {
+    getChainName: (chainNamespace: string) => {
+      const chainEntries = Object.entries(CHAIN);
+      const foundEntry = chainEntries.find(
+        ([_, value]) => value === chainNamespace
+      );
+
+      if (!foundEntry) {
+        throw new Error(
+          `Chain value '${chainNamespace}' not found in CHAIN enum`
+        );
+      }
+
+      return foundEntry[0];
+    },
   };
 }
