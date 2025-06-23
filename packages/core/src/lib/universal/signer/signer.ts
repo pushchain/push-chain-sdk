@@ -346,8 +346,8 @@ async function generateSkeletonFromEthersV5(
     signAndSendTransaction: async (raw) => {
       const unsignedHex = hexlify(raw);
       const tx = ethers.Transaction.from(unsignedHex);
-      const txHash = await signer.sendTransaction(tx);
-      return hexToBytes(txHash as Hex);
+      const txResponse = await signer.sendTransaction(tx);
+      return hexToBytes(txResponse.hash as Hex);
     },
 
     signTypedData: async ({ domain, types, primaryType, message }) => {
@@ -407,8 +407,8 @@ async function generateSkeletonFromEthersV6(
     signAndSendTransaction: async (raw) => {
       const unsignedHex = hexlify(raw);
       const tx = ethers.Transaction.from(unsignedHex);
-      const txHash = await signer.sendTransaction(tx);
-      return hexToBytes(txHash as Hex);
+      const txResponse = await signer.sendTransaction(tx);
+      return hexToBytes(txResponse.hash as Hex);
     },
 
     signTypedData: async ({ domain, types, primaryType, message }) => {
@@ -488,23 +488,13 @@ async function generateSkeletonFromViem(
         'Transaction signing not supported for this viem signer type'
       );
     },
-    signTypedData: async ({
-      domain,
-      types,
-      primaryType,
-      message,
-    }: {
-      domain: TypedDataDomain;
-      types: TypedData;
-      primaryType: string;
-      message: Record<string, any>;
-    }) => {
+    signTypedData: async ({ domain, types, primaryType, message }) => {
       const hexSig = await signer.signTypedData({
         domain,
         types,
         primaryType,
         message,
-        account: address as `0x${string}`,
+        account: (signer as WalletClient).account || (address as `0x${string}`),
       });
       return hexToBytes(hexSig);
     },
