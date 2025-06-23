@@ -4,12 +4,20 @@ import {
   privateKeyToAccount,
 } from 'viem/accounts';
 import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
-import { createWalletClient, Hex, http, isAddress } from 'viem';
+import {
+  createWalletClient,
+  defineChain,
+  Hex,
+  http,
+  isAddress,
+  verifyMessage,
+} from 'viem';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { PushChain } from '../src';
 import { UniversalSigner } from '../src/lib/universal/universal.types';
 import { ethers, Wallet } from 'ethers';
 import { CHAIN_INFO } from '../src/lib/constants/chain';
+import { sepolia } from 'viem/chains';
 
 /** CLI COMMANDS
  
@@ -111,7 +119,6 @@ describe('PushChain (e2e)', () => {
         expect(after.deployed).toBe(true);
         expect(tx.code).toBe(0);
       }, 300000);
-      // TODO - should sendTransaction - Contract Call
     });
 
     describe(`ORIGIN CHAIN: ${CHAIN.PUSH_TESTNET_DONUT}`, () => {
@@ -416,11 +423,11 @@ describe('PushChain (e2e)', () => {
           'PUSH_MAINNET'
         );
         expect(PushChain.utils.helpers.getChainName(CHAIN.PUSH_TESTNET)).toBe(
-          'PUSH_TESTNET'
+          'PUSH_TESTNET_DONUT'
         );
         expect(
           PushChain.utils.helpers.getChainName(CHAIN.PUSH_TESTNET_DONUT)
-        ).toBe('PUSH_TESTNET');
+        ).toBe('PUSH_TESTNET_DONUT');
         expect(PushChain.utils.helpers.getChainName(CHAIN.PUSH_LOCALNET)).toBe(
           'PUSH_LOCALNET'
         );
@@ -449,7 +456,7 @@ describe('PushChain (e2e)', () => {
           'PUSH_MAINNET'
         );
         expect(PushChain.utils.helpers.getChainName('eip155:42101')).toBe(
-          'PUSH_TESTNET'
+          'PUSH_TESTNET_DONUT'
         );
         expect(PushChain.utils.helpers.getChainName('eip155:9001')).toBe(
           'PUSH_LOCALNET'
@@ -516,6 +523,180 @@ describe('PushChain (e2e)', () => {
           "Chain value 'eip155:1 ' not found in CHAIN enum"
         );
       });
+    });
+  });
+
+  describe('Sign Message and Sign Typed Data', () => {
+    let pushClientEVM: PushChain;
+    let pushChainPush: PushChain;
+    let universalSignerEVM: UniversalSigner;
+    let universalSignerPush: UniversalSigner;
+
+    beforeAll(async () => {
+      const account = privateKeyToAccount(generatePrivateKey());
+      const walletClient = createWalletClient({
+        account,
+        chain: sepolia,
+        transport: http(),
+      });
+      universalSignerEVM = await PushChain.utils.signer.toUniversalFromKeypair(
+        walletClient,
+        {
+          chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+        }
+      );
+      pushClientEVM = await PushChain.initialize(universalSignerEVM, {
+        network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+      });
+
+      const pushTestnet = defineChain({
+        id: parseInt(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId),
+        name: 'Push Testnet',
+        nativeCurrency: {
+          decimals: 18,
+          name: 'PC',
+          symbol: '$PC',
+        },
+        rpcUrls: {
+          default: {
+            http: [CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]],
+          },
+        },
+        blockExplorers: {
+          default: {
+            name: 'Push Testnet Explorer',
+            url: 'https://explorer.testnet.push.org/',
+          },
+        },
+      });
+      const accountPush = privateKeyToAccount(generatePrivateKey());
+      const walletClientPush = createWalletClient({
+        account: accountPush,
+        chain: pushTestnet,
+        transport: http(),
+      });
+      universalSignerPush = await PushChain.utils.signer.toUniversalFromKeypair(
+        walletClientPush,
+        {
+          chain: PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+        }
+      );
+      pushChainPush = await PushChain.initialize(universalSignerPush, {
+        network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+      });
+    });
+
+    it('should signMessage - EVM format', async () => {
+      const testMessage = new TextEncoder().encode('Hello, Push Chain!');
+      const signatureEVM = await pushClientEVM.universal.signMessage(
+        testMessage
+      );
+      const signaturePush = await pushChainPush.universal.signMessage(
+        testMessage
+      );
+
+      // Verify signature format (should be hex for EVM)
+      expect(signatureEVM).toMatch(/^0x[a-fA-F0-9]+$/);
+      expect(signatureEVM.length).toBeGreaterThan(2); // At least 0x + some hex chars
+
+      expect(signaturePush).toMatch(/^0x[a-fA-F0-9]+$/);
+      expect(signaturePush.length).toBeGreaterThan(2); // At least 0x + some hex chars
+
+      // Verify the signature is valid
+      const isValidEVM = await verifyMessage({
+        address: universalSignerEVM.account.address as `0x${string}`,
+        message: { raw: testMessage },
+        signature: signatureEVM as `0x${string}`,
+      });
+
+      expect(isValidEVM).toBe(true);
+
+      const isValidPush = await verifyMessage({
+        address: universalSignerPush.account.address as `0x${string}`,
+        message: { raw: testMessage },
+        signature: signaturePush as `0x${string}`,
+      });
+
+      expect(isValidPush).toBe(true);
+    });
+
+    it('should signMessage - binary data', async () => {
+      const binaryData = new Uint8Array([1, 2, 3, 4, 5, 255, 0, 128]);
+      const signatureEVM = await pushClientEVM.universal.signMessage(
+        binaryData
+      );
+      const signaturePush = await pushChainPush.universal.signMessage(
+        binaryData
+      );
+
+      expect(signatureEVM).toMatch(/^0x[a-fA-F0-9]+$/);
+      expect(signatureEVM.length).toBeGreaterThan(2); // At least 0x + some hex chars
+
+      // Verify the signature is valid
+      const isValidEVM = await verifyMessage({
+        address: universalSignerEVM.account.address as `0x${string}`,
+        message: { raw: binaryData },
+        signature: signatureEVM as `0x${string}`,
+      });
+
+      expect(isValidEVM).toBe(true);
+
+      const isValidPush = await verifyMessage({
+        address: universalSignerPush.account.address as `0x${string}`,
+        message: { raw: binaryData },
+        signature: signaturePush as `0x${string}`,
+      });
+
+      expect(isValidPush).toBe(true);
+    });
+
+    it('should signTypedData - EIP-712 format', async () => {
+      const domain = {
+        name: 'Push Chain',
+        version: '1',
+        chainId: 42101, // Push testnet
+        verifyingContract:
+          '0x1234567890123456789012345678901234567890' as `0x${string}`,
+      };
+
+      const types = {
+        Person: [
+          { name: 'name', type: 'string' },
+          { name: 'wallet', type: 'address' },
+        ],
+      };
+
+      const message = {
+        name: 'Alice',
+        wallet: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826' as `0x${string}`,
+      };
+
+      const signatureEVM = await pushClientEVM.universal.signTypedData({
+        domain,
+        types,
+        primaryType: 'Person',
+        message,
+      });
+
+      // Verify signature format (should be hex for EVM)
+      expect(signatureEVM).toMatch(/^0x[a-fA-F0-9]+$/);
+      expect(signatureEVM.length).toBeGreaterThan(2);
+
+      expect(typeof signatureEVM).toBe('string');
+
+      const signaturePush = await pushChainPush.universal.signTypedData({
+        domain,
+        types,
+        primaryType: 'Person',
+        message,
+      });
+
+      expect(signaturePush).toMatch(/^0x[a-fA-F0-9]+$/);
+      expect(signaturePush.length).toBeGreaterThan(2);
+
+      expect(typeof signaturePush).toBe('string');
     });
   });
 });

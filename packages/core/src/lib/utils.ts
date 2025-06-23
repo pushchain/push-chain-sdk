@@ -75,6 +75,11 @@ export class Utils {
 
   static helpers = {
     getChainName: (chainNamespace: string) => {
+      // Special case: prefer PUSH_TESTNET_DONUT over PUSH_TESTNET for 'eip155:42101'
+      if (chainNamespace === 'eip155:42101') {
+        return 'PUSH_TESTNET_DONUT';
+      }
+
       const chainEntries = Object.entries(CHAIN);
       const foundEntry = chainEntries.find(
         ([_, value]) => value === chainNamespace
