@@ -109,13 +109,13 @@ describe('Orchestrator', () => {
     it('should return the expected Hash', () => {
       const value = {
         to: '0x527F3692F5C53CfA83F7689885995606F93b6164' as `0x{string}`,
-        value: BigInt(0),
+        value: '0',
         data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312' as `0x{string}`,
-        gasLimit: BigInt(21000000),
-        maxFeePerGas: BigInt(10000000000000000),
-        maxPriorityFeePerGas: BigInt(2),
-        nonce: BigInt(1),
-        deadline: BigInt(9999999999),
+        gasLimit: '21000000',
+        maxFeePerGas: '10000000000000000',
+        maxPriorityFeePerGas: '2',
+        nonce: '1',
+        deadline: '9999999999',
         sigType: SignatureType.signedVerification,
       };
 
@@ -130,13 +130,13 @@ describe('Orchestrator', () => {
     it('should return different hash on changing params', () => {
       const value = {
         to: '0x527F3692F5C53CfA83F7689885995606F93b6164' as `0x{string}`,
-        value: BigInt(0),
+        value: '0',
         data: '0x2ba2ed980000000000000000000000000000000000000000000000000000000000000312' as `0x{string}`,
-        gasLimit: BigInt(21000000),
-        maxFeePerGas: BigInt(10000000000000000),
-        maxPriorityFeePerGas: BigInt(2),
-        nonce: BigInt(1),
-        deadline: BigInt(9999999998),
+        gasLimit: '21000000',
+        maxFeePerGas: '10000000000000000',
+        maxPriorityFeePerGas: '2',
+        nonce: '1',
+        deadline: '9999999998',
         sigType: SignatureType.signedVerification,
       };
 

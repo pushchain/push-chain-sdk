@@ -4,16 +4,17 @@ import {
   PublicKey,
   Transaction,
   TransactionInstruction,
+  VersionedTransaction,
 } from '@solana/web3.js';
 import {
   ClientOptions,
   ReadContractParams,
   WriteContractParams,
 } from './vm-client.types';
-import { AnchorProvider, Program, Wallet, BN } from '@coral-xyz/anchor';
+import { AnchorProvider, Program, BN } from '@coral-xyz/anchor';
 import { UniversalSigner } from '../universal/universal.types';
-import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
-
+import type { Wallet } from '@coral-xyz/anchor';
+import bs58 from 'bs58';
 /**
  * Solana-compatible VM client for reading and writing SVM-based chains.
  */
@@ -71,6 +72,49 @@ export class SvmClient {
     );
   }
 
+  /** Build an AnchorProvider; if a signer is passed we wrap it, otherwise we give a no-op wallet. */
+  private createProvider(
+    connection: Connection,
+    signer?: UniversalSigner
+  ): AnchorProvider {
+    let wallet: Wallet;
+
+    if (signer) {
+      const feePayerPk = new PublicKey(signer.account.address);
+      wallet = {
+        publicKey: feePayerPk,
+        payer: signer.account as any,
+        signTransaction: async <T extends Transaction | VersionedTransaction>(
+          tx: T
+        ): Promise<T> => tx,
+        signAllTransactions: async <
+          T extends Transaction | VersionedTransaction
+        >(
+          txs: T[]
+        ): Promise<T[]> => txs,
+      };
+    } else {
+      // dummy keypair + no-op sign
+      const kp = Keypair.generate();
+      wallet = {
+        publicKey: kp.publicKey,
+        payer: kp,
+        signTransaction: async <T extends Transaction | VersionedTransaction>(
+          tx: T
+        ): Promise<T> => tx,
+        signAllTransactions: async <
+          T extends Transaction | VersionedTransaction
+        >(
+          txs: T[]
+        ): Promise<T[]> => txs,
+      };
+    }
+
+    return new AnchorProvider(connection, wallet, {
+      preflightCommitment: 'confirmed',
+    });
+  }
+
   /**
    * Returns the balance (in lamports) of a Solana address.
    */
@@ -82,7 +126,6 @@ export class SvmClient {
     );
     return BigInt(lamports);
   }
-
   /**
    * Reads a full program account using Anchor IDL.
    * `functionName` must match the account layout name in the IDL.
@@ -93,12 +136,7 @@ export class SvmClient {
     args = [],
   }: ReadContractParams): Promise<T> {
     return this.executeWithFallback(async (connection) => {
-      const provider = new AnchorProvider(
-        connection,
-        new Wallet(new Keypair()),
-        { preflightCommitment: 'confirmed' }
-      );
-
+      const provider = this.createProvider(connection);
       // Anchor v0.31 constructor no longer takes programId
       // Use the IDL's embedded metadata.address instead
       const program = new Program<typeof abi>(abi, provider);
@@ -126,11 +164,7 @@ export class SvmClient {
     const connection = this.connections[this.currentConnectionIndex];
 
     // 2. Create an AnchorProvider
-    const provider = new AnchorProvider(
-      connection,
-      new Wallet(new Keypair()), // replace with your payer wallet
-      { preflightCommitment: 'confirmed' }
-    );
+    const provider = this.createProvider(connection);
 
     // 3. Instantiate the program (Anchor v0.31 will infer programId from IDL.metadata.address)
     const program = new Program<typeof abi>(abi, provider);
