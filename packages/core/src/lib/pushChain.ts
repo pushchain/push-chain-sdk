@@ -5,7 +5,7 @@ import { Orchestrator } from './orchestrator/orchestrator';
 import { createUniversalSigner } from './universal/signer';
 import { UniversalSigner } from './universal/universal.types';
 import { Utils } from './utils';
-import bs58 from 'bs58';
+import { utils } from '@coral-xyz/anchor';
 import { bytesToHex, TypedData, TypedDataDomain } from 'viem';
 
 /**
@@ -85,7 +85,7 @@ export class PushChain {
         if (CHAIN_INFO[chain].vm === VM.EVM) {
           return bytesToHex(sigBytes);
         } else if (CHAIN_INFO[chain].vm === VM.SVM) {
-          return bs58.encode(sigBytes);
+          return utils.bytes.bs58.encode(sigBytes);
         }
         return bytesToHex(sigBytes);
       },

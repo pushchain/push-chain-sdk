@@ -31,7 +31,7 @@ import * as anchor from '@coral-xyz/anchor';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 import { UniversalPayload, SignatureType } from '../generated/v1/tx';
 import { PriceFetch } from '../price-fetch/price-fetch';
-import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
+import { utils } from '@coral-xyz/anchor';
 import { DeliverTxResponse } from '@cosmjs/stargate';
 
 export class Orchestrator {
@@ -339,7 +339,7 @@ export class Orchestrator {
         vm === VM.EVM
           ? address
           : vm === VM.SVM
-          ? bytesToHex(bs58.decode(address))
+          ? bytesToHex(utils.bytes.bs58.decode(address))
           : address,
     };
 
@@ -515,7 +515,7 @@ export class Orchestrator {
             vm === VM.EVM
               ? address
               : vm === VM.SVM
-              ? bytesToHex(bs58.decode(address))
+              ? bytesToHex(utils.bytes.bs58.decode(address))
               : address,
         },
       ],
@@ -541,7 +541,7 @@ export class Orchestrator {
     if (CHAIN_INFO[chain].vm === VM.EVM) {
       ownerKey = address as `0x${string}`;
     } else if (CHAIN_INFO[chain].vm === VM.SVM) {
-      ownerKey = bytesToHex(bs58.decode(address));
+      ownerKey = bytesToHex(utils.bytes.bs58.decode(address));
     } else {
       throw new Error(`Unsupported VM type: ${CHAIN_INFO[chain].vm}`);
     }

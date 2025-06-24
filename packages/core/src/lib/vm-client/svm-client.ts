@@ -14,7 +14,7 @@ import {
 import { AnchorProvider, Program, BN } from '@coral-xyz/anchor';
 import { UniversalSigner } from '../universal/universal.types';
 import type { Wallet } from '@coral-xyz/anchor';
-import bs58 from 'bs58';
+import { utils } from '@coral-xyz/anchor';
 /**
  * Solana-compatible VM client for reading and writing SVM-based chains.
  */
@@ -234,7 +234,7 @@ export class SvmClient {
 
     const txHashBytes = await signer.signAndSendTransaction(txBytes);
 
-    return bs58.encode(txHashBytes); // Clean, readable tx hash
+    return utils.bytes.bs58.encode(txHashBytes); // Clean, readable tx hash
   }
 
   /**

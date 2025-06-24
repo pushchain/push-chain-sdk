@@ -19,7 +19,7 @@ import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js';
 import { CHAIN, LIBRARY } from '../../constants/enums';
 import { ethers, getBytes, hexlify } from 'ethers';
 import { CHAIN_INFO } from '../../constants/chain';
-import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
+import { utils } from '@coral-xyz/anchor';
 
 /**
  * Creates a `UniversalSigner` object for signing messages and transactions
@@ -198,7 +198,7 @@ export async function toUniversalFromKeypair(
         const endpoint = CHAIN_INFO[chain].defaultRPC[0];
         const connection = new Connection(endpoint, 'confirmed');
         const txHash = await connection.sendRawTransaction(rawTx);
-        return bs58.decode(txHash);
+        return utils.bytes.bs58.decode(txHash);
       };
 
       signTypedData = async () => {

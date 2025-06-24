@@ -2,7 +2,7 @@ import { bytesToHex, getAddress, Abi } from 'viem';
 import { CHAIN_INFO, VM_NAMESPACE } from '../../constants/chain';
 import { CHAIN, VM, PUSH_NETWORK } from '../../constants/enums';
 import { UniversalAccount } from '../universal.types';
-import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
+import { utils } from '@coral-xyz/anchor';
 import { FACTORY_V1 } from '../../constants/abi';
 import { PushClient } from '../../push-client/push-client';
 
@@ -214,7 +214,7 @@ export async function convertOriginToExecutor(
           vm === VM.EVM
             ? address
             : vm === VM.SVM
-            ? bytesToHex(bs58.decode(address))
+            ? bytesToHex(utils.bytes.bs58.decode(address))
             : address,
       },
     ],
