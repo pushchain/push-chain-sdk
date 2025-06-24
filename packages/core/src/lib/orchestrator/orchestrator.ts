@@ -33,6 +33,11 @@ import { UniversalPayload, SignatureType } from '../generated/v1/tx';
 import { PriceFetch } from '../price-fetch/price-fetch';
 import { utils } from '@coral-xyz/anchor';
 import { DeliverTxResponse } from '@cosmjs/stargate';
+import {
+  ProgressHookType,
+  ProgressHookTypeFunction,
+} from '../progress-hook/progress-hook.types';
+import PROGRESS_HOOKS from '../progress-hook/progress-hook';
 
 export class Orchestrator {
   private pushClient: PushClient;
@@ -41,7 +46,8 @@ export class Orchestrator {
     private readonly universalSigner: UniversalSigner,
     pushNetwork: PUSH_NETWORK,
     private readonly rpcUrls: Partial<Record<CHAIN, string[]>> = {},
-    private readonly printTraces = false
+    private readonly printTraces = false,
+    private progressHook?: (progress: ProgressHookType) => void
   ) {
     let pushChain: CHAIN;
     if (pushNetwork === PUSH_NETWORK.MAINNET) {
@@ -69,63 +75,45 @@ export class Orchestrator {
    */
   async execute(execute: ExecuteParams): Promise<DeliverTxResponse> {
     const chain = this.universalSigner.account.chain;
-
+    this.executeProgressHook('SEND-TRANSACTION-01', chain);
     this.validateMainnetConnection(chain);
 
-    // 1. Execute direct tx if signer is already on Push Chain
     if (this.isPushChain(chain)) {
-      this.printLog('Push to Push Transaction Detected');
-      const txHash = await this.pushClient.sendTransaction({
-        to: execute.to,
-        data: execute.data || '0x',
-        value: execute.value,
-        signer: this.universalSigner,
-      });
-
-      if (chain === CHAIN.PUSH_LOCALNET) {
-        // @dev - Required for preventing cosmos fetching failures
-        const delay = (ms: number): Promise<void> => {
-          return new Promise((resolve) => setTimeout(resolve, ms));
-        };
-        await delay(3000);
-      }
-      return this.pushClient.getCosmosTx(txHash);
+      this.executeProgressHook('SEND-TRANSACTION-20');
+      const tx = await this.sendPushTx(execute);
+      this.executeProgressHook(
+        'SEND-TRANSACTION-21',
+        JSON.stringify(tx, this.bigintReplacer, 2)
+      );
+      return tx;
     }
 
-    // 2. Get Push chain UEA address for this signer
-    this.printLog('Fetching UEA for Connected Universal Account');
-    const { address: UEA, deployed: isUEADeployed } = await this.computeUEA();
-    this.printLog(`UEA: ${UEA}, Deployed: ${isUEADeployed}`);
-
-    // 3. Estimate funds required for the execution
-    this.printLog('Estimating Gas Limit for Execution');
+    this.executeProgressHook('SEND-TRANSACTION-02');
     const gasEstimate = execute.gasLimit || BigInt(1e7);
-    this.printLog(`GasEstimate: ${gasEstimate}`);
+    this.executeProgressHook('SEND-TRANSACTION-03', gasEstimate);
 
-    // Fetch current gas price
-    this.printLog('Fetching Gas Price');
+    this.executeProgressHook('SEND-TRANSACTION-04');
     const gasPrice = await this.pushClient.getGasPrice();
-    this.printLog(`Gas Price: ${gasPrice}`);
+    this.executeProgressHook('SEND-TRANSACTION-05', gasPrice);
 
     const requiredGasFee = gasEstimate * gasPrice;
-    this.printLog(`Required Gas Fee for Execution: ${requiredGasFee} upc`);
+    this.executeProgressHook('SEND-TRANSACTION-06', requiredGasFee);
 
     const requiredFunds = requiredGasFee + execute.value;
-    this.printLog(
-      `Total Required Funds for Execution (fee + value): ${requiredFunds} upc`
-    );
+    this.executeProgressHook('SEND-TRANSACTION-07', requiredFunds);
 
-    // 4. Check UEA balance on Push Chain
-    this.printLog('Checking UEA balance');
+    this.executeProgressHook('SEND-TRANSACTION-08');
+    const { address: UEA, deployed: isUEADeployed } = await this.computeUEA();
+    this.executeProgressHook('SEND-TRANSACTION-09', UEA, isUEADeployed);
+
+    this.executeProgressHook('SEND-TRANSACTION-10');
     const funds = await this.pushClient.getBalance(UEA);
-    this.printLog(`Current balance: ${funds}`);
+    this.executeProgressHook('SEND-TRANSACTION-11', funds);
 
-    // 5. Get UEA Nonce
-    this.printLog('Fetching UEA nonce');
+    this.executeProgressHook('SEND-TRANSACTION-12');
     const nonce = isUEADeployed ? await this.getUEANonce(UEA) : BigInt(0);
-    this.printLog(`Current Nonce: ${nonce}`);
+    this.executeProgressHook('SEND-TRANSACTION-13', nonce);
 
-    // 6. Create execution hash ( execution data to be signed )
     const universalPayload = JSON.parse(
       JSON.stringify(
         {
@@ -146,44 +134,40 @@ export class Orchestrator {
       verifyingContract: UEA,
       payload: universalPayload,
     });
-    this.printLog(`Universal Payload Hash: ${executionHash}`);
+    this.executeProgressHook('SEND-TRANSACTION-14', executionHash);
 
-    // 7. If not enough funds, lock required fee on source chain and send tx to Push chain
     let feeLockTxHash: string | undefined = execute.feeLockTxHash;
     if (funds < requiredFunds && !feeLockTxHash) {
       const fundDifference = requiredFunds - funds;
-      this.printLog(`Insufficient funds, locking funds ${fundDifference} upc`);
+      this.executeProgressHook('SEND-TRANSACTION-15', fundDifference);
 
       const fundDifferenceInUSDC = this.pushClient.pushToUSDC(fundDifference); // ( USDC with 8 decimal points )
       feeLockTxHash = await this.lockFee(fundDifferenceInUSDC, executionHash);
-      this.printLog(`Fee lock TxHash: ${feeLockTxHash}`);
-
-      this.printLog(
-        'Waiting for Block Confirmations of Fee lock Tx on Origin Chain'
+      this.executeProgressHook(
+        'SEND-TRANSACTION-16',
+        feeLockTxHash,
+        CHAIN_INFO[chain].confirmations
       );
+
       await this.waitForLockerFeeConfirmation(feeLockTxHash);
-      this.printLog('Enough Confirmations received');
+      this.executeProgressHook('SEND-TRANSACTION-17');
     }
 
-    // 8. Sign execution data
-    this.printLog(`Signing Universal Payload`);
+    this.executeProgressHook('SEND-TRANSACTION-18');
     const signature = await this.signUniversalPayload(universalPayload, UEA);
-    this.printLog(`Signature: ${bytesToHex(signature)}`);
+    this.executeProgressHook('SEND-TRANSACTION-19', bytesToHex(signature));
 
-    // 9. Send Tx to Push chain
-    this.printLog('Sending transaction to Push chain');
-    // Serialize & parse in one go to convert all bigint → string
-    const serializedPayload = JSON.parse(
-      JSON.stringify(universalPayload, this.bigintReplacer)
-    ) as UniversalPayload;
-
+    this.executeProgressHook('SEND-TRANSACTION-20');
     const tx = await this.sendUniversalTx(
       isUEADeployed,
       feeLockTxHash,
-      serializedPayload,
+      universalPayload,
       signature
     );
-    this.printLog(`Tx: ${JSON.stringify(tx, this.bigintReplacer, 2)}`);
+    this.executeProgressHook(
+      'SEND-TRANSACTION-21',
+      JSON.stringify(tx, this.bigintReplacer, 2)
+    );
     return tx;
   }
 
@@ -319,7 +303,7 @@ export class Orchestrator {
   /**
    * Sends a custom Cosmos tx to Push Chain (gasless) to execute user intent.
    */
-  public async sendUniversalTx(
+  private async sendUniversalTx(
     isUEADeployed: boolean,
     feeLockTxHash?: string,
     universalPayload?: UniversalPayload,
@@ -381,6 +365,30 @@ export class Orchestrator {
     const txBody = await this.pushClient.createCosmosTxBody(msgs);
     const txRaw = await this.pushClient.signCosmosTx(txBody);
     return this.pushClient.broadcastCosmosTx(txRaw);
+  }
+
+  /**
+   * Sends a EVM trx on Push Chain
+   * @dev - Only to be used from universal signer is on Push chain
+   * @param execute
+   * @returns Cosmos Tx Response for a given Evm Tx
+   */
+  private async sendPushTx(execute: ExecuteParams) {
+    const txHash = await this.pushClient.sendTransaction({
+      to: execute.to,
+      data: execute.data || '0x',
+      value: execute.value,
+      signer: this.universalSigner,
+    });
+
+    if (this.universalSigner.account.chain === CHAIN.PUSH_LOCALNET) {
+      // @dev - Required for preventing cosmos fetching failures
+      const delay = (ms: number): Promise<void> => {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      };
+      await delay(3000);
+    }
+    return this.pushClient.getCosmosTx(txHash);
   }
 
   /**
@@ -686,5 +694,26 @@ export class Orchestrator {
     if (this.printTraces) {
       console.log(`[${this.constructor.name}] ${log}`);
     }
+  }
+
+  private executeProgressHook(hookId: string, ...args: any[]): void {
+    const hookEntry = PROGRESS_HOOKS[hookId];
+    if (!hookEntry) {
+      console.warn(`No progress hook found for id ${hookId}`);
+      return;
+    }
+
+    // resolve the hook (call if it's a factory, or use directly if it's a static object)
+    const hookPayload: ProgressHookType =
+      typeof hookEntry === 'function'
+        ? (hookEntry as ProgressHookTypeFunction)(...args)
+        : (hookEntry as ProgressHookType);
+
+    this.printLog(hookPayload.info);
+
+    if (!this.progressHook) return;
+
+    // invoke the user-provided callback
+    this.progressHook(hookPayload);
   }
 }
