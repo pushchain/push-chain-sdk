@@ -3,7 +3,7 @@ import { Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import { UniversalSigner } from '../universal/universal.types';
 import { CHAIN, LIBRARY } from '../constants/enums';
 import * as dotenv from 'dotenv';
-import { PushChain } from '../pushChain';
+import { PushChain } from '../push-chain/push-chain';
 
 // Load environment variables
 dotenv.config();

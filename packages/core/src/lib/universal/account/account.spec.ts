@@ -1,5 +1,5 @@
 import { CHAIN, LIBRARY, PUSH_NETWORK } from '../../constants/enums';
-import { PushChain } from '../../pushChain';
+import { PushChain } from '../../push-chain/push-chain';
 import { Orchestrator } from '../../orchestrator/orchestrator';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { toUniversalFromKeypair } from '../signer';

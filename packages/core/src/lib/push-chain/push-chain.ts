@@ -1,10 +1,10 @@
-import { CONSTANTS } from './constants';
-import { CHAIN, PUSH_NETWORK, VM } from './constants/enums';
-import { CHAIN_INFO } from './constants/chain';
-import { Orchestrator } from './orchestrator/orchestrator';
-import { createUniversalSigner } from './universal/signer';
-import { UniversalSigner } from './universal/universal.types';
-import { Utils } from './utils';
+import { CONSTANTS } from '../constants';
+import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
+import { CHAIN_INFO } from '../constants/chain';
+import { Orchestrator } from '../orchestrator/orchestrator';
+import { createUniversalSigner } from '../universal/signer';
+import { UniversalSigner } from '../universal/universal.types';
+import { Utils } from '../utils';
 import { utils } from '@coral-xyz/anchor';
 import { bytesToHex, TypedData, TypedDataDomain } from 'viem';
 
