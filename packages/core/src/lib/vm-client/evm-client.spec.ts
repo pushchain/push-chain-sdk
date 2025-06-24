@@ -11,7 +11,7 @@ import { UniversalSigner } from '../universal/universal.types';
 import { CHAIN } from '../constants/enums';
 import { CHAIN_INFO } from '../constants/chain';
 import { sepolia } from 'viem/chains';
-import { PushChain } from '../pushChain';
+import { PushChain } from '../push-chain/push-chain';
 
 const ABI = parseAbi([
   'function greet() view returns (string)',

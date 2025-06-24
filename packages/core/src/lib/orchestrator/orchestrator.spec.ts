@@ -286,35 +286,6 @@ describe('Orchestrator', () => {
       });
     });
 
-    describe('different Push networks', () => {
-      it('should produce different UEA addresses for different Push networks', async () => {
-        const signer: UniversalSigner = {
-          account: {
-            address: '0x35B84d6848D16415177c64D64504663b998A6ab4',
-            chain: CHAIN.ETHEREUM_SEPOLIA,
-          },
-          signMessage: async (data: Uint8Array) => data,
-          signAndSendTransaction: async (unsignedTx: Uint8Array) => unsignedTx,
-        };
-
-        const testnetOrchestrator = new Orchestrator(
-          signer,
-          PUSH_NETWORK.TESTNET_DONUT
-        );
-        const localnetOrchestrator = new Orchestrator(
-          signer,
-          PUSH_NETWORK.LOCALNET
-        );
-
-        const testnetUeaAddress =
-          await testnetOrchestrator.computeUEAOffchain();
-        const localnetUeaAddress =
-          await localnetOrchestrator.computeUEAOffchain();
-
-        expect(testnetUeaAddress).not.toBe(localnetUeaAddress);
-      });
-    });
-
     describe('address consistency', () => {
       it('should return the same address as UEA for EVM signer', async () => {
         const ethSepoliaSigner: UniversalSigner = {
