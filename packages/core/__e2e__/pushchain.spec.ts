@@ -1,23 +1,10 @@
-import {
-  generatePrivateKey,
-  PrivateKeyAccount,
-  privateKeyToAccount,
-} from 'viem/accounts';
+import { PrivateKeyAccount, privateKeyToAccount } from 'viem/accounts';
 import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
-import {
-  createWalletClient,
-  defineChain,
-  Hex,
-  http,
-  isAddress,
-  verifyMessage,
-} from 'viem';
-import { Keypair, PublicKey } from '@solana/web3.js';
+import { createWalletClient, Hex, http } from 'viem';
+import { Keypair } from '@solana/web3.js';
 import { PushChain } from '../src';
 import { UniversalSigner } from '../src/lib/universal/universal.types';
-import { ethers, Wallet } from 'ethers';
 import { CHAIN_INFO } from '../src/lib/constants/chain';
-import { sepolia } from 'viem/chains';
 
 describe('PushChain (e2e)', () => {
   const pushNetwork = PUSH_NETWORK.TESTNET_DONUT;

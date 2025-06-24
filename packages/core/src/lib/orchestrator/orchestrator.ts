@@ -16,7 +16,7 @@ import {
 } from '../universal/universal.types';
 import { ExecuteParams } from './orchestrator.types';
 import { EvmClient } from '../vm-client/evm-client';
-import { CHAIN_INFO } from '../constants/chain';
+import { CHAIN_INFO, VM_UEA } from '../constants/chain';
 import {
   FACTORY_V1,
   FEE_LOCKER_EVM,
@@ -99,11 +99,6 @@ export class Orchestrator {
 
     // 3. Estimate funds required for the execution
     this.printLog('Estimating Gas Limit for Execution');
-    // const gasEstimate = await this.pushClient.estimateGas({
-    //   to: execute.target,
-    //   data: execute.data,
-    //   // value: execute.value, @DEV - taking 0 as of now
-    // });
     const gasEstimate = execute.gasLimit || BigInt(1e7);
     this.printLog(`GasEstimate: ${gasEstimate}`);
 
@@ -529,7 +524,7 @@ export class Orchestrator {
 
   computeUEAOffchain(): `0x${string}` {
     const { chain, address } = this.universalSigner.account;
-    const { implementationAddress } = CHAIN_INFO[chain];
+    const { vm } = CHAIN_INFO[chain];
 
     // If already an on-chain Push EOA, just return it
     if (this.isPushChain(chain)) {
@@ -565,7 +560,7 @@ export class Orchestrator {
     // Step 2: Clone Minimal Proxy bytecode
     const minimalProxyRuntimeCode = ('0x3d602d80600a3d3981f3' +
       '363d3d373d3d3d363d73' +
-      implementationAddress.toLowerCase().replace(/^0x/, '') +
+      VM_UEA[vm].toLowerCase().replace(/^0x/, '') +
       '5af43d82803e903d91602b57fd5bf3') as `0x${string}`;
 
     // Step 3: Get init code hash (used by CREATE2)
@@ -621,7 +616,7 @@ export class Orchestrator {
 
   private async waitForLockerFeeConfirmation(txHash: string): Promise<void> {
     const chain = this.universalSigner.account.chain;
-    const { vm, defaultRPC } = CHAIN_INFO[chain];
+    const { vm, defaultRPC, confirmations, timeout } = CHAIN_INFO[chain];
     const rpcUrls = this.rpcUrls[chain] || defaultRPC;
 
     switch (vm) {
@@ -629,13 +624,19 @@ export class Orchestrator {
         const evmClient = new EvmClient({ rpcUrls });
         await evmClient.waitForConfirmations({
           txHash: txHash as `0x${string}`,
+          confirmations,
+          timeoutMs: timeout,
         });
         return;
       }
 
       case VM.SVM: {
         const svmClient = new SvmClient({ rpcUrls });
-        await svmClient.waitForConfirmations({ txSignature: txHash });
+        await svmClient.waitForConfirmations({
+          txSignature: txHash,
+          confirmations,
+          timeoutMs: timeout,
+        });
         return;
       }
 
