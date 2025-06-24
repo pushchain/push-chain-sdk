@@ -296,29 +296,45 @@ export class EvmClient {
   /**
    * Waits for a transaction to achieve the desired number of confirmations.
    *
-   * @param txHash - Transaction hash
-   * @param confirmations - Number of confirmations to wait for (default: 6)
-   * @param pollIntervalMs - How often to check (default: 4000ms)
+   * @param txHash         - Transaction hash
+   * @param confirmations  - Number of confirmations to wait for (default: 3)
+   * @param pollIntervalMs - How often to check (default: 1000 ms)
+   * @param timeoutMs      - Maximum time to wait before error (default: 60000 ms)
    */
   async waitForConfirmations({
     txHash,
-    confirmations = 0,
-    pollIntervalMs = 4000,
+    confirmations = 3,
+    pollIntervalMs = 1000,
+    timeoutMs = 30000,
   }: {
     txHash: `0x${string}`;
     confirmations?: number;
     pollIntervalMs?: number;
+    timeoutMs?: number;
   }): Promise<void> {
+    // first, wait for the tx to land in a block
     const receipt = await this.publicClient.waitForTransactionReceipt({
       hash: txHash,
     });
 
     const targetBlock = receipt.blockNumber + BigInt(confirmations);
+    const startTime = Date.now();
 
+    // poll until we hit the target block or timeout
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const currentBlock = await this.publicClient.getBlockNumber();
-      if (currentBlock >= targetBlock) return;
+      if (currentBlock >= targetBlock) {
+        return;
+      }
+
+      if (Date.now() - startTime > timeoutMs) {
+        throw new Error(
+          `Timeout: transaction ${txHash} not confirmed with ${confirmations} confirmations ` +
+            `within ${timeoutMs} ms`
+        );
+      }
+
       await new Promise((r) => setTimeout(r, pollIntervalMs));
     }
   }

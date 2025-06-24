@@ -289,42 +289,53 @@ export class SvmClient {
   }
 
   /**
+   * Sleeps for the given number of milliseconds.
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
    * Waits for a Solana transaction to reach the desired confirmations.
    *
-   * @param txSignature - The transaction signature to monitor
+   * @param txSignature   - The transaction signature to monitor
    * @param confirmations - Desired confirmation count (default: 6)
-   * @param timeoutMs - Max wait time in milliseconds (default: 90_000)
+   * @param timeoutMs     - Max wait time in milliseconds (default: 90_000)
+   * @param pollIntervalMs- How often to poll in milliseconds (default: 500)
    */
   async waitForConfirmations({
     txSignature,
-    confirmations = 0,
-    timeoutMs = 90000,
+    confirmations = 3,
+    timeoutMs = 30000,
+    pollIntervalMs = 500,
   }: {
     txSignature: string;
     confirmations?: number;
     timeoutMs?: number;
+    pollIntervalMs?: number;
   }): Promise<void> {
-    return this.executeWithFallback(async (connection) => {
-      const start = Date.now();
+    const connection = this.connections[this.currentConnectionIndex];
 
-      while (Date.now() - start < timeoutMs) {
-        const result = await connection.getSignatureStatuses([txSignature]);
-        const status = result.value[0];
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      // fetch status
+      const { value } = await connection.getSignatureStatuses([txSignature]);
+      const status = value[0];
 
-        if (
-          status &&
-          status.confirmations !== null &&
-          status.confirmations >= confirmations
-        ) {
-          return;
-        }
-
-        await new Promise((r) => setTimeout(r, 500));
+      if (
+        status?.confirmations != null &&
+        status.confirmations >= confirmations
+      ) {
+        return;
       }
 
-      throw new Error(
-        `Solana tx ${txSignature} not confirmed after ${timeoutMs}ms`
-      );
-    }, 'waitForConfirmations');
+      // wait before retrying
+      await this.sleep(pollIntervalMs);
+    }
+
+    throw new Error(
+      `Timeout: transaction ${txSignature} not confirmed with ` +
+        `${confirmations} confirmations within ${timeoutMs} ms`
+    );
   }
 }
