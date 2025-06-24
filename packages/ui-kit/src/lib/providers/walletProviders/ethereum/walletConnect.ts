@@ -3,7 +3,7 @@ import { getAddress } from 'ethers';
 import { BaseWalletProvider } from '../BaseWalletProvider';
 import { ChainType, ITypedData } from '../../../types/wallet.types';
 import * as chains from 'viem/chains';
-import { parseTransaction, toHex } from 'viem';
+import { bytesToHex, hexToBytes, parseTransaction, toHex } from 'viem';
 import { HexString } from 'ethers/lib.commonjs/utils/data';
 
 export class WalletConnectProvider extends BaseWalletProvider {
@@ -101,7 +101,7 @@ export class WalletConnectProvider extends BaseWalletProvider {
         throw new Error('No connected account');
       }
 
-      const hex = ('0x' + Buffer.from(txn).toString('hex')) as `0x${string}`;
+      const hex = bytesToHex(txn);
       const parsed = parseTransaction(hex);
 
       const txParams = {
@@ -123,7 +123,7 @@ export class WalletConnectProvider extends BaseWalletProvider {
         params: [txParams],
       });
 
-      return new Uint8Array(Buffer.from((signature as string).slice(2), 'hex'));
+      return hexToBytes(signature as `0x${string}`);
     } catch (error) {
       console.error('MetaMask signing error:', error);
       throw error;
@@ -144,14 +144,14 @@ export class WalletConnectProvider extends BaseWalletProvider {
         throw new Error('No connected account');
       }
 
-      const hexMessage = '0x' + Buffer.from(message).toString('hex');
+      const hexMessage = bytesToHex(message);
 
       const signature = await provider.request({
         method: 'personal_sign',
         params: [hexMessage, accounts[0]],
       });
 
-      return new Uint8Array(Buffer.from((signature as string).slice(2), 'hex'));
+      return hexToBytes(signature as `0x${string}`);
     } catch (error) {
       console.error('MetaMask signing error:', error);
       throw error;
@@ -177,7 +177,7 @@ export class WalletConnectProvider extends BaseWalletProvider {
         params: [accounts[0], typedData],
       });
 
-      return new Uint8Array(Buffer.from((signature as string).slice(2), 'hex'));
+      return hexToBytes(signature as `0x${string}`);
     } catch (error) {
       console.error('MetaMask signing error:', error);
       throw error;

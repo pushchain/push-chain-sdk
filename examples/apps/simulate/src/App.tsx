@@ -9,7 +9,7 @@ import {
   PushUI,
   PushUniversalWalletProvider,
   ProviderConfigProps,
-} from '@pushchain/ui-kit';
+} from '../../../../packages/ui-kit';
 import Navbar from './components/Navbar';
 
 const GlobalStyle = createGlobalStyle`

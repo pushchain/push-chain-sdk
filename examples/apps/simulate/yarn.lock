@@ -1459,6 +1459,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@pushchain/core@npm:^0.1.24":
+  version: 0.1.24
+  resolution: "@pushchain/core@npm:0.1.24"
+  dependencies:
+    "@bufbuild/protobuf": "npm:^2.0.0"
+    "@coral-xyz/anchor": "npm:^0.31.0"
+    "@cosmjs/crypto": "npm:0.33.1"
+    "@cosmjs/encoding": "npm:0.33.1"
+    "@cosmjs/proto-signing": "npm:^0.33.1"
+    "@cosmjs/stargate": "npm:^0.33.1"
+    "@cosmjs/tendermint-rpc": "npm:0.33.1"
+    "@solana/web3.js": "npm:^1.68.0"
+    cosmjs-types: "npm:0.9.0"
+    ethers: "npm:^6.14.3"
+    protobufjs: "npm:7.4.0"
+    tslib: "npm:^2.3.0"
+    tweetnacl: "npm:^1.0.3"
+    viem: "npm:2.27.2"
+  checksum: 10/9c3f98765bb62680a8a1e9d652489b542d696f10bab0735f93e7792275d077942a14e610739855a805b9a24ad416190149b563dfaf6bdc0b6facd7793626484d
+  languageName: node
+  linkType: hard
+
 "@pushchain/ui-kit@npm:^1.1.0-alpha.7":
   version: 1.1.0-alpha.7
   resolution: "@pushchain/ui-kit@npm:1.1.0-alpha.7"
@@ -4591,6 +4613,7 @@ __metadata:
   resolution: "core-connection@workspace:."
   dependencies:
     "@eslint/js": "npm:^9.9.0"
+    "@pushchain/core": "npm:^0.1.24"
     "@pushchain/ui-kit": "npm:^1.1.0-alpha.7"
     "@types/react": "npm:^18.3.3"
     "@types/react-dom": "npm:^18.3.0"
@@ -8992,7 +9015,7 @@ __metadata:
 
 "shared-components@file:../../../packages/shared-components::locator=core-connection%40workspace%3A.":
   version: 0.3.0
-  resolution: "shared-components@file:../../../packages/shared-components#../../../packages/shared-components::hash=adf5cc&locator=core-connection%40workspace%3A."
+  resolution: "shared-components@file:../../../packages/shared-components#../../../packages/shared-components::hash=f62b53&locator=core-connection%40workspace%3A."
   dependencies:
     "@emotion/react": "npm:^11.13.0"
     "@radix-ui/react-dialog": "npm:^1.1.1"
@@ -9013,7 +9036,7 @@ __metadata:
   peerDependencies:
     react: ^18.3.1
     react-dom: ^18.3.1
-  checksum: 10/1dcbbb3d4fcd986ae8a9e9b7fc1dd3c562e7c2ceaf33dd8fa5af90c5b2d0ce8b6bafec803a5a49ba21a78fee73ad9d46b1c223c45369099fb6d2a8a5ad9a01bc
+  checksum: 10/0ad9d9d625e9a226ac02a3a1b5effaa525ebe08cba71bf7a0e7720a7a2fc0b89dfd4a32156ac8a74f0f50283c741f8c54eb182a8e5f015bfb8676ee6ff12c15b
   languageName: node
   linkType: hard
 

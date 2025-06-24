@@ -2,7 +2,8 @@ import { getAddress } from 'ethers';
 import { BaseWalletProvider } from '../BaseWalletProvider';
 import { ChainType, ITypedData } from '../../../types/wallet.types';
 import { Transaction } from '@solana/web3.js';
-import { parseTransaction } from 'viem';
+import { bytesToHex, hexToBytes, parseTransaction } from 'viem';
+import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
 
 declare global {
   interface Window {
@@ -138,14 +139,14 @@ export class PhantomProvider extends BaseWalletProvider {
           throw new Error('No connected account');
         }
 
-        const hexMessage = '0x' + Buffer.from(message).toString('hex');
+        const hexMessage = bytesToHex(message);
 
         const signature = await provider.request({
           method: 'personal_sign',
           params: [hexMessage, accounts[0]],
         });
 
-        return new Uint8Array(Buffer.from(signature.slice(2), 'hex'));
+        return hexToBytes(signature as `0x${string}`);
       } catch (error) {
         console.error('Phantom Ethereum signing error:', error);
         throw error;
@@ -170,7 +171,7 @@ export class PhantomProvider extends BaseWalletProvider {
           transaction
         );
 
-        return new Uint8Array(Buffer.from(signedTransaction.slice(2), 'hex'));
+        return bs58.decode((signedTransaction as any).signature);
       } catch (error) {
         console.error('Phantom Solana signing error:', error);
         throw error;
@@ -187,7 +188,7 @@ export class PhantomProvider extends BaseWalletProvider {
           throw new Error('No connected account');
         }
 
-        const hex = ('0x' + Buffer.from(txn).toString('hex')) as `0x${string}`;
+        const hex = bytesToHex(txn);
         const parsed = parseTransaction(hex);
 
         const txParams = {
@@ -209,9 +210,7 @@ export class PhantomProvider extends BaseWalletProvider {
           params: [txParams],
         });
 
-        return new Uint8Array(
-          Buffer.from((signature as string).slice(2), 'hex')
-        );
+        return hexToBytes(signature as `0x${string}`);
       } catch (error) {
         console.error('Phantom Ethereum signing error:', error);
         throw error;

@@ -49,7 +49,7 @@ export const usePushChainClient = (uid?: string) => {
           network: config.network,
           rpcUrls: config.chain?.rpcUrls,
           blockExplorers: config.chain?.blockExplorers,
-          printTraces: config.chain?.printTraces,
+          printTraces: true,
         });
 
         setPushChain(pushChainClient);

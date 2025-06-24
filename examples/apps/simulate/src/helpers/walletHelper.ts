@@ -1,4 +1,4 @@
-import { UniversalAddress } from '@pushchain/ui-kit';
+import { UniversalAccount } from '../../../../../packages/ui-kit';
 
 export function centerMaskString(str: string) {
   if (str && str.length > 15) {
@@ -67,7 +67,6 @@ export const convertCaipToObject = (
 export const convertToCaip = ({
   address,
   chain,
-  chainId,
-}: UniversalAddress) => {
-  return `${chain}:${chainId}:${address}`;
+}: UniversalAccount) => {
+  return `${chain}:${address}`;
 };

@@ -2,7 +2,11 @@ import React, { FC } from 'react';
 import { ProviderConfigProps, PushWalletProviderProps } from '../types/index';
 import { WalletContextProvider } from '../context/WalletContext';
 import { PushUI } from '../constants';
-import { createGlobalStyle, ThemeProvider } from 'styled-components';
+import {
+  createGlobalStyle,
+  DefaultTheme,
+  ThemeProvider,
+} from 'styled-components';
 import {
   themeDefault,
   lightThemeDefault,
@@ -29,6 +33,11 @@ const PushWalletConfigDefault: ProviderConfigProps = {
   },
 };
 
+export interface CustomTheme extends DefaultTheme {
+  themeMode: string;
+  themeOverrides: Record<string, any>;
+}
+
 export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
   config,
   app,
@@ -44,7 +53,7 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
       }
 
       ${(props) => {
-        const { themeMode, themeOverrides } = props.theme;
+        const { themeMode, themeOverrides } = props.theme as CustomTheme;
         const isLightMode = themeMode === 'light';
         const { dark, light, ...globalOverrides } = themeOverrides;
         const newOverrides = {

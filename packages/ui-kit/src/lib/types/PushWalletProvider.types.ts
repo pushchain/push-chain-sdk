@@ -14,7 +14,7 @@ export type LoginMethodConfig = {
 
 export type ChainConfig = {
   rpcUrls?: Partial<Record<CHAIN, string[]>>;
-  blockExplorers?: Partial<Record<CHAIN, Record<string, string>>>;
+  blockExplorers?: Partial<Record<CHAIN, string[]>>;
   printTraces?: boolean;
 };
 
