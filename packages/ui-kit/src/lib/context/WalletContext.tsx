@@ -195,7 +195,6 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     provider: IWalletProvider['name'];
   }) => {
     try {
-      console.log('checl');
       const providerReceived = walletRegistry.getProvider(data.provider);
 
       if (!providerReceived) {
@@ -222,8 +221,6 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         providerName: data.provider,
         chainType: data.chain,
       };
-
-      console.log(connectedWallet);
 
       setExternalWallet(connectedWallet);
 

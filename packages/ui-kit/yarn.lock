@@ -774,9 +774,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pushchain/core@npm:0.1.23":
-  version: 0.1.23
-  resolution: "@pushchain/core@npm:0.1.23"
+"@pushchain/core@npm:^0.1.24":
+  version: 0.1.24
+  resolution: "@pushchain/core@npm:0.1.24"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.0.0"
     "@coral-xyz/anchor": "npm:^0.31.0"
@@ -792,7 +792,7 @@ __metadata:
     tslib: "npm:^2.3.0"
     tweetnacl: "npm:^1.0.3"
     viem: "npm:2.27.2"
-  checksum: 10/896a4bfdbeaad2ff327554a0fe0d659a48e9cf46da8100e156139c2e1936e0b60985aba05a8874d4125aa8ec3a9f898f7d33b7211bd529b97f9955dec659b5f1
+  checksum: 10/9c3f98765bb62680a8a1e9d652489b542d696f10bab0735f93e7792275d077942a14e610739855a805b9a24ad416190149b563dfaf6bdc0b6facd7793626484d
   languageName: node
   linkType: hard
 
@@ -802,7 +802,7 @@ __metadata:
   dependencies:
     "@coral-xyz/anchor": "npm:^0.31.1"
     "@metamask/sdk": "npm:^0.32.0"
-    "@pushchain/core": "npm:0.1.23"
+    "@pushchain/core": "npm:^0.1.24"
     "@solana/web3.js": "npm:^1.98.2"
     "@types/react": "npm:^18.3.13"
     "@walletconnect/ethereum-provider": "npm:^2.21.3"

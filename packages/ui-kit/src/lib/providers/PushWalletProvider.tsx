@@ -55,7 +55,7 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
 
       ${(props) => {
         const { themeMode, themeOverrides } = props.theme as CustomTheme;
-        const isLightMode = themeMode === 'light';
+        const isLightMode = themeMode === PushUI.CONSTANTS.THEME.LIGHT;
         const { dark, light, ...globalOverrides } = themeOverrides;
         const newOverrides = {
           ...{

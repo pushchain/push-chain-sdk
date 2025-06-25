@@ -9,6 +9,7 @@ import {
   PushMonotone,
   SolanaMonotone,
 } from '../components/common';
+import { ConnectionStatus } from '../types';
 
 export const PushUI = {
   CONSTANTS: {
@@ -17,6 +18,7 @@ export const PushUI = {
     THEME: { LIGHT: 'light', DARK: 'dark' },
     LOGIN: { SPLIT: 'split', SIMPLE: 'simple' },
     CONNECTED: { FULL: 'full', HOVER: 'hover' },
+    CONNECTION_STATUS: ConnectionStatus,
   },
 };
 
