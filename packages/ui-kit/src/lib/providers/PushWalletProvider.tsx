@@ -16,6 +16,11 @@ import {
 import { mapCoreToInt } from '../utils/theme';
 import { Buffer } from 'buffer';
 
+interface CustomTheme extends DefaultTheme {
+  themeMode: string;
+  themeOverrides: ThemeOverrides;
+}
+
 const loginDefaultConfig = {
   email: true,
   google: true,
@@ -33,11 +38,6 @@ const PushWalletConfigDefault: ProviderConfigProps = {
     appPreview: false,
   },
 };
-
-export interface CustomTheme extends DefaultTheme {
-  themeMode: string;
-  themeOverrides: ThemeOverrides;
-}
 
 export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
   config,

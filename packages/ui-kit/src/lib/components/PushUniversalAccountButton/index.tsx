@@ -2,8 +2,12 @@ import React, { FC, useEffect, useMemo } from 'react';
 import { usePushWalletContext } from '../../hooks/usePushWallet';
 import { ConnectWalletButton } from './ConnectWalletButton';
 import { TogglePushWalletButton } from './TogglePushWalletButton';
-import { createGlobalStyle, ThemeProvider } from 'styled-components';
-import { ButtonThemeOverrides } from '../../styles/token';
+import {
+  createGlobalStyle,
+  DefaultTheme,
+  ThemeProvider,
+} from 'styled-components';
+import { ButtonThemeOverrides, ThemeOverrides } from '../../styles/token';
 import { buttonThemeDefault } from '../../styles/token';
 import { mapButtonCoreToInt } from '../../utils/theme';
 import { AppMetadata } from '../../types';
@@ -16,6 +20,11 @@ type PushUniversalAccountButtonProps = {
   loginAppOverride?: AppMetadata;
   themeOverrides?: ButtonThemeOverrides;
 };
+
+interface CustomTheme extends DefaultTheme {
+  themeOverrides: ThemeOverrides;
+  themeMode: string;
+}
 
 const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
   uid = 'default',
@@ -36,13 +45,13 @@ const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
   const GlobalStyle = createGlobalStyle`
     :root{
       ${(props) => {
-        const { themeOverrides, themeMode } = props.theme;
+        const { themeOverrides, themeMode } = props.theme as CustomTheme;
         const isLightMode = themeMode === 'light';
         const { dark, light, ...globalOverrides } = themeOverrides;
         const newTokens = {
           ...buttonThemeDefault,
           ...mapButtonCoreToInt(globalOverrides),
-          ...mapButtonCoreToInt(isLightMode ? light : dark),
+          ...mapButtonCoreToInt((isLightMode ? light : dark) ?? {}),
         };
         return Object.entries(newTokens)
           .map(([key, value]) => `${key}: ${value};`)
