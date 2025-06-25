@@ -11,6 +11,7 @@ import {
   themeDefault,
   lightThemeDefault,
   darkThemeDefault,
+  ThemeOverrides,
 } from '../styles/token';
 import { mapCoreToInt } from '../utils/theme';
 import { Buffer } from 'buffer';
@@ -35,7 +36,7 @@ const PushWalletConfigDefault: ProviderConfigProps = {
 
 export interface CustomTheme extends DefaultTheme {
   themeMode: string;
-  themeOverrides: Record<string, any>;
+  themeOverrides: ThemeOverrides;
 }
 
 export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
@@ -62,7 +63,7 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
             ...(isLightMode ? lightThemeDefault : darkThemeDefault),
           },
           ...mapCoreToInt(globalOverrides),
-          ...mapCoreToInt(isLightMode ? light : dark),
+          ...mapCoreToInt((isLightMode ? light : dark) ?? {}),
         };
         return Object.entries(newOverrides)
           .map(([key, value]) => `${key}: ${value};`)
