@@ -16,7 +16,7 @@ import {
 } from '../universal/universal.types';
 import { ExecuteParams } from './orchestrator.types';
 import { EvmClient } from '../vm-client/evm-client';
-import { CHAIN_INFO, VM_UEA } from '../constants/chain';
+import { CHAIN_INFO, NETWORK_VM_UEA, VM_NAMESPACE } from '../constants/chain';
 import {
   FACTORY_V1,
   FEE_LOCKER_EVM,
@@ -29,7 +29,11 @@ import { SvmClient } from '../vm-client/svm-client';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import * as anchor from '@coral-xyz/anchor';
 import { Any } from 'cosmjs-types/google/protobuf/any';
-import { UniversalPayload, SignatureType } from '../generated/v1/tx';
+import {
+  UniversalPayload,
+  VerificationType,
+  UniversalAccountId,
+} from '../generated/v1/tx';
 import { PriceFetch } from '../price-fetch/price-fetch';
 import { utils } from '@coral-xyz/anchor';
 import { DeliverTxResponse } from '@cosmjs/stargate';
@@ -39,7 +43,7 @@ export class Orchestrator {
 
   constructor(
     private readonly universalSigner: UniversalSigner,
-    pushNetwork: PUSH_NETWORK,
+    private pushNetwork: PUSH_NETWORK,
     private readonly rpcUrls: Partial<Record<CHAIN, string[]>> = {},
     private readonly printTraces = false
   ) {
@@ -137,7 +141,7 @@ export class Orchestrator {
           maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
           nonce,
           deadline: execute.deadline || BigInt(9999999999),
-          sigType: SignatureType.signedVerification,
+          vType: VerificationType.signedVerification,
         },
         this.bigintReplacer
       )
@@ -269,7 +273,7 @@ export class Orchestrator {
     version?: string
   ) {
     const chain = this.universalSigner.account.chain;
-    const { vm } = CHAIN_INFO[chain];
+    const { vm, chainId } = CHAIN_INFO[chain];
 
     switch (vm) {
       case VM.EVM: {
@@ -279,7 +283,7 @@ export class Orchestrator {
         return this.universalSigner.signTypedData({
           domain: {
             version: version || '0.1.0',
-            chainId: Number(this.pushClient.pushChainInfo.chainId),
+            chainId: Number(chainId),
             verifyingContract,
           },
           types: {
@@ -292,7 +296,7 @@ export class Orchestrator {
               { name: 'maxPriorityFeePerGas', type: 'uint256' },
               { name: 'nonce', type: 'uint256' },
               { name: 'deadline', type: 'uint256' },
-              { name: 'sigType', type: 'uint8' },
+              { name: 'vType', type: 'uint8' },
             ],
           },
           primaryType: 'UniversalPayload',
@@ -302,7 +306,6 @@ export class Orchestrator {
 
       case VM.SVM: {
         const digest = this.computeExecutionHash({
-          chainId: Number(this.pushClient.pushChainInfo.chainId),
           verifyingContract,
           payload: universalPayload,
           version: version || '0.1.0',
@@ -326,10 +329,11 @@ export class Orchestrator {
     signature?: Uint8Array
   ): Promise<DeliverTxResponse> {
     const { chain, address } = this.universalSigner.account;
-    const { vm } = CHAIN_INFO[chain];
+    const { vm, chainId } = CHAIN_INFO[chain];
 
-    const universalAccount = {
-      chain,
+    const universalAccountId: UniversalAccountId = {
+      chainNamespace: VM_NAMESPACE[vm],
+      chainId: chainId,
       owner:
         vm === VM.EVM
           ? address
@@ -351,7 +355,7 @@ export class Orchestrator {
       msgs.push(
         this.pushClient.createMsgDeployUEA({
           signer,
-          universalAccount,
+          universalAccountId,
           txHash: feeLockTxHash,
         })
       );
@@ -361,7 +365,7 @@ export class Orchestrator {
       msgs.push(
         this.pushClient.createMsgMintPC({
           signer,
-          universalAccount,
+          universalAccountId,
           txHash: feeLockTxHash,
         })
       );
@@ -371,7 +375,7 @@ export class Orchestrator {
       msgs.push(
         this.pushClient.createMsgExecutePayload({
           signer,
-          universalAccount,
+          universalAccountId,
           universalPayload,
           signature: bytesToHex(signature),
         })
@@ -397,27 +401,30 @@ export class Orchestrator {
    * @returns keccak256 digest to be signed by the user
    */
   private computeExecutionHash({
-    chainId = Number(this.pushClient.pushChainInfo.chainId),
     verifyingContract,
     payload,
     version = '0.1.0',
   }: {
-    chainId?: number;
     verifyingContract: `0x${string}`;
     version?: string;
     payload: UniversalPayload;
   }): `0x${string}` {
+    const chain = this.universalSigner.account.chain;
+    const { vm, chainId } = CHAIN_INFO[chain];
+
     // 1. Type hash
     const typeHash = keccak256(
       toBytes(
-        'UniversalPayload(address to,uint256 value,bytes data,uint256 gasLimit,uint256 maxFeePerGas,uint256 maxPriorityFeePerGas,uint256 nonce,uint256 deadline,uint8 sigType)'
+        'UniversalPayload(address to,uint256 value,bytes data,uint256 gasLimit,uint256 maxFeePerGas,uint256 maxPriorityFeePerGas,uint256 nonce,uint256 deadline,uint8 vType)'
       )
     );
 
     // 2. Domain separator
     const domainTypeHash = keccak256(
       toBytes(
-        'EIP712Domain(string version,uint256 chainId,address verifyingContract)'
+        vm === VM.EVM
+          ? 'EIP712Domain(string version,uint256 chainId,address verifyingContract)'
+          : 'EIP712Domain_SVM(string version,string chainId,address verifyingContract)'
       )
     );
 
@@ -426,13 +433,13 @@ export class Orchestrator {
         [
           { name: 'typeHash', type: 'bytes32' },
           { name: 'version', type: 'bytes32' },
-          { name: 'chainId', type: 'uint256' },
+          { name: 'chainId', type: vm === VM.EVM ? 'uint256' : 'string' },
           { name: 'verifyingContract', type: 'address' },
         ],
         [
           domainTypeHash,
           keccak256(toBytes(version)),
-          BigInt(chainId),
+          vm === VM.EVM ? BigInt(chainId) : chainId,
           verifyingContract,
         ]
       )
@@ -445,13 +452,13 @@ export class Orchestrator {
           { name: 'typeHash', type: 'bytes32' },
           { name: 'to', type: 'address' },
           { name: 'value', type: 'uint256' },
-          { name: 'dataHash', type: 'bytes32' },
+          { name: 'data', type: 'bytes32' },
           { name: 'gasLimit', type: 'uint256' },
           { name: 'maxFeePerGas', type: 'uint256' },
           { name: 'maxPriorityFeePerGas', type: 'uint256' },
           { name: 'nonce', type: 'uint256' },
           { name: 'deadline', type: 'uint256' },
-          { name: 'sigType', type: 'uint8' },
+          { name: 'vType', type: 'uint8' },
         ],
         [
           typeHash,
@@ -463,7 +470,7 @@ export class Orchestrator {
           BigInt(payload.maxPriorityFeePerGas),
           BigInt(payload.nonce),
           BigInt(payload.deadline),
-          payload.sigType,
+          payload.vType,
         ]
       )
     );
@@ -487,7 +494,7 @@ export class Orchestrator {
     deployed: boolean;
   }> {
     const { chain, address } = this.universalSigner.account;
-    const { vm } = CHAIN_INFO[chain];
+    const { vm, chainId } = CHAIN_INFO[chain];
 
     if (this.isPushChain(chain)) {
       throw new Error('UEA cannot be computed for a Push Chain Address');
@@ -499,7 +506,8 @@ export class Orchestrator {
       functionName: 'computeUEA',
       args: [
         {
-          chain,
+          chainNamespace: VM_NAMESPACE[vm],
+          chainId: chainId,
           /**
            * @dev - Owner should be in bytes
            * for eth - convert hex to bytes
@@ -524,7 +532,7 @@ export class Orchestrator {
 
   computeUEAOffchain(): `0x${string}` {
     const { chain, address } = this.universalSigner.account;
-    const { vm } = CHAIN_INFO[chain];
+    const { vm, chainId } = CHAIN_INFO[chain];
 
     // If already an on-chain Push EOA, just return it
     if (this.isPushChain(chain)) {
@@ -547,12 +555,13 @@ export class Orchestrator {
         {
           type: 'tuple',
           components: [
-            { name: 'chain', type: 'string' },
+            { name: 'chainNamespace', type: 'string' },
+            { name: 'chainId', type: 'string' },
             { name: 'owner', type: 'bytes' },
           ],
         },
       ],
-      [{ chain, owner: ownerKey }]
+      [{ chainNamespace: VM_NAMESPACE[vm], chainId, owner: ownerKey }]
     );
 
     const salt = keccak256(encodedAccountId);
@@ -560,7 +569,7 @@ export class Orchestrator {
     // Step 2: Clone Minimal Proxy bytecode
     const minimalProxyRuntimeCode = ('0x3d602d80600a3d3981f3' +
       '363d3d373d3d3d363d73' +
-      VM_UEA[vm].toLowerCase().replace(/^0x/, '') +
+      NETWORK_VM_UEA[this.pushNetwork][vm].toLowerCase().replace(/^0x/, '') +
       '5af43d82803e903d91602b57fd5bf3') as `0x${string}`;
 
     // Step 3: Get init code hash (used by CREATE2)

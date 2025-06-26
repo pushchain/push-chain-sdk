@@ -5,6 +5,11 @@ import { Keypair } from '@solana/web3.js';
 import { PushChain } from '../src';
 import { UniversalSigner } from '../src/lib/universal/universal.types';
 import { CHAIN_INFO } from '../src/lib/constants/chain';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Adjust path as needed if your .env is in the root
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 describe('PushChain (e2e)', () => {
   const pushNetwork = PUSH_NETWORK.TESTNET_DONUT;

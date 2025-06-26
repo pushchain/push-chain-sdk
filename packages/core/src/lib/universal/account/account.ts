@@ -203,7 +203,8 @@ export async function convertOriginToExecutor(
     functionName: 'computeUEA',
     args: [
       {
-        chain: chain,
+        chainNamespace: VM_NAMESPACE[vm],
+        chainId: chainId,
         /**
          * @dev - OwnerKey should be in bytes
          * for eth - convert hex to bytes

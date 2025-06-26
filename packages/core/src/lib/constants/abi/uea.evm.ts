@@ -1,17 +1,32 @@
 export const UEA_EVM = [
-  { type: 'receive', stateMutability: 'payable' },
+  {
+    type: 'receive',
+    stateMutability: 'payable',
+  },
   {
     type: 'function',
     name: 'VERSION',
     inputs: [],
-    outputs: [{ name: '', type: 'string', internalType: 'string' }],
+    outputs: [
+      {
+        name: '',
+        type: 'string',
+        internalType: 'string',
+      },
+    ],
     stateMutability: 'view',
   },
   {
     type: 'function',
     name: 'domainSeparator',
     inputs: [],
-    outputs: [{ name: '', type: 'bytes32', internalType: 'bytes32' }],
+    outputs: [
+      {
+        name: '',
+        type: 'bytes32',
+        internalType: 'bytes32',
+      },
+    ],
     stateMutability: 'view',
   },
   {
@@ -23,9 +38,21 @@ export const UEA_EVM = [
         type: 'tuple',
         internalType: 'struct UniversalPayload',
         components: [
-          { name: 'to', type: 'address', internalType: 'address' },
-          { name: 'value', type: 'uint256', internalType: 'uint256' },
-          { name: 'data', type: 'bytes', internalType: 'bytes' },
+          {
+            name: 'to',
+            type: 'address',
+            internalType: 'address',
+          },
+          {
+            name: 'value',
+            type: 'uint256',
+            internalType: 'uint256',
+          },
+          {
+            name: 'data',
+            type: 'bytes',
+            internalType: 'bytes',
+          },
           {
             name: 'gasLimit',
             type: 'uint256',
@@ -41,20 +68,28 @@ export const UEA_EVM = [
             type: 'uint256',
             internalType: 'uint256',
           },
-          { name: 'nonce', type: 'uint256', internalType: 'uint256' },
+          {
+            name: 'nonce',
+            type: 'uint256',
+            internalType: 'uint256',
+          },
           {
             name: 'deadline',
             type: 'uint256',
             internalType: 'uint256',
           },
           {
-            name: 'sigType',
+            name: 'vType',
             type: 'uint8',
-            internalType: 'enum SignatureType',
+            internalType: 'enum VerificationType',
           },
         ],
       },
-      { name: 'signature', type: 'bytes', internalType: 'bytes' },
+      {
+        name: 'signature',
+        type: 'bytes',
+        internalType: 'bytes',
+      },
     ],
     outputs: [],
     stateMutability: 'nonpayable',
@@ -68,9 +103,21 @@ export const UEA_EVM = [
         type: 'tuple',
         internalType: 'struct UniversalPayload',
         components: [
-          { name: 'to', type: 'address', internalType: 'address' },
-          { name: 'value', type: 'uint256', internalType: 'uint256' },
-          { name: 'data', type: 'bytes', internalType: 'bytes' },
+          {
+            name: 'to',
+            type: 'address',
+            internalType: 'address',
+          },
+          {
+            name: 'value',
+            type: 'uint256',
+            internalType: 'uint256',
+          },
+          {
+            name: 'data',
+            type: 'bytes',
+            internalType: 'bytes',
+          },
           {
             name: 'gasLimit',
             type: 'uint256',
@@ -86,21 +133,31 @@ export const UEA_EVM = [
             type: 'uint256',
             internalType: 'uint256',
           },
-          { name: 'nonce', type: 'uint256', internalType: 'uint256' },
+          {
+            name: 'nonce',
+            type: 'uint256',
+            internalType: 'uint256',
+          },
           {
             name: 'deadline',
             type: 'uint256',
             internalType: 'uint256',
           },
           {
-            name: 'sigType',
+            name: 'vType',
             type: 'uint8',
-            internalType: 'enum SignatureType',
+            internalType: 'enum VerificationType',
           },
         ],
       },
     ],
-    outputs: [{ name: '', type: 'bytes32', internalType: 'bytes32' }],
+    outputs: [
+      {
+        name: '',
+        type: 'bytes32',
+        internalType: 'bytes32',
+      },
+    ],
     stateMutability: 'view',
   },
   {
@@ -110,10 +167,23 @@ export const UEA_EVM = [
       {
         name: '_id',
         type: 'tuple',
-        internalType: 'struct UniversalAccount',
+        internalType: 'struct UniversalAccountId',
         components: [
-          { name: 'chain', type: 'string', internalType: 'string' },
-          { name: 'owner', type: 'bytes', internalType: 'bytes' },
+          {
+            name: 'chainNamespace',
+            type: 'string',
+            internalType: 'string',
+          },
+          {
+            name: 'chainId',
+            type: 'string',
+            internalType: 'string',
+          },
+          {
+            name: 'owner',
+            type: 'bytes',
+            internalType: 'bytes',
+          },
         ],
       },
     ],
@@ -124,7 +194,13 @@ export const UEA_EVM = [
     type: 'function',
     name: 'nonce',
     inputs: [],
-    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
+    outputs: [
+      {
+        name: '',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
     stateMutability: 'view',
   },
   {
@@ -135,10 +211,23 @@ export const UEA_EVM = [
       {
         name: '',
         type: 'tuple',
-        internalType: 'struct UniversalAccount',
+        internalType: 'struct UniversalAccountId',
         components: [
-          { name: 'chain', type: 'string', internalType: 'string' },
-          { name: 'owner', type: 'bytes', internalType: 'bytes' },
+          {
+            name: 'chainNamespace',
+            type: 'string',
+            internalType: 'string',
+          },
+          {
+            name: 'chainId',
+            type: 'string',
+            internalType: 'string',
+          },
+          {
+            name: 'owner',
+            type: 'bytes',
+            internalType: 'bytes',
+          },
         ],
       },
     ],
@@ -148,10 +237,24 @@ export const UEA_EVM = [
     type: 'function',
     name: 'verifyPayloadSignature',
     inputs: [
-      { name: 'messageHash', type: 'bytes32', internalType: 'bytes32' },
-      { name: 'signature', type: 'bytes', internalType: 'bytes' },
+      {
+        name: 'messageHash',
+        type: 'bytes32',
+        internalType: 'bytes32',
+      },
+      {
+        name: 'signature',
+        type: 'bytes',
+        internalType: 'bytes',
+      },
     ],
-    outputs: [{ name: '', type: 'bool', internalType: 'bool' }],
+    outputs: [
+      {
+        name: '',
+        type: 'bool',
+        internalType: 'bool',
+      },
+    ],
     stateMutability: 'view',
   },
   {
@@ -179,20 +282,56 @@ export const UEA_EVM = [
     ],
     anonymous: false,
   },
-  { type: 'error', name: 'AlreadyInitialized', inputs: [] },
-  { type: 'error', name: 'ECDSAInvalidSignature', inputs: [] },
+  {
+    type: 'error',
+    name: 'AlreadyInitialized',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'ECDSAInvalidSignature',
+    inputs: [],
+  },
   {
     type: 'error',
     name: 'ECDSAInvalidSignatureLength',
-    inputs: [{ name: 'length', type: 'uint256', internalType: 'uint256' }],
+    inputs: [
+      {
+        name: 'length',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
   },
   {
     type: 'error',
     name: 'ECDSAInvalidSignatureS',
-    inputs: [{ name: 's', type: 'bytes32', internalType: 'bytes32' }],
+    inputs: [
+      {
+        name: 's',
+        type: 'bytes32',
+        internalType: 'bytes32',
+      },
+    ],
   },
-  { type: 'error', name: 'ExecutionFailed', inputs: [] },
-  { type: 'error', name: 'ExpiredDeadline', inputs: [] },
-  { type: 'error', name: 'InvalidEVMSignature', inputs: [] },
-  { type: 'error', name: 'ReentrancyGuardReentrantCall', inputs: [] },
+  {
+    type: 'error',
+    name: 'ExecutionFailed',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'ExpiredDeadline',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'InvalidEVMSignature',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'ReentrancyGuardReentrantCall',
+    inputs: [],
+  },
 ];
