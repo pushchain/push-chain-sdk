@@ -1,4 +1,4 @@
-import { CHAIN, VM } from './enums';
+import { CHAIN, PUSH_NETWORK, VM } from './enums';
 import { mainnet, sepolia } from 'viem/chains';
 
 /**
@@ -12,11 +12,25 @@ export const VM_NAMESPACE: Record<VM, string> = {
 };
 
 /**
- * Maps VM type to its UEA Implementation
+ * Maps Push Network → VM → UEA implementation address.
  */
-export const VM_UEA: Record<VM, `0x${string}`> = {
-  [VM.EVM]: '0x523294411f0CBFE40Ff8B7b415ef0e92f01ac38f',
-  [VM.SVM]: '0xCA0C5E6F002A389E1580F0DB7cd06e4549B5F9d3',
+export const NETWORK_VM_UEA: Record<PUSH_NETWORK, Record<VM, `0x${string}`>> = {
+  [PUSH_NETWORK.MAINNET]: {
+    [VM.EVM]: '0xTBD',
+    [VM.SVM]: '0xTBD',
+  },
+  [PUSH_NETWORK.TESTNET_DONUT]: {
+    [VM.EVM]: '0x523294411f0CBFE40Ff8B7b415ef0e92f01ac38f',
+    [VM.SVM]: '0xCA0C5E6F002A389E1580F0DB7cd06e4549B5F9d3',
+  },
+  [PUSH_NETWORK.TESTNET]: {
+    [VM.EVM]: '0x523294411f0CBFE40Ff8B7b415ef0e92f01ac38f',
+    [VM.SVM]: '0xCA0C5E6F002A389E1580F0DB7cd06e4549B5F9d3',
+  },
+  [PUSH_NETWORK.LOCALNET]: {
+    [VM.EVM]: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
+    [VM.SVM]: '0x4c79A13451E7c338aF1798DD15d6e6d8888b9637',
+  },
 };
 
 /**
