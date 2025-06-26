@@ -306,7 +306,6 @@ export class Orchestrator {
 
       case VM.SVM: {
         const digest = this.computeExecutionHash({
-          chainId: Number(this.pushClient.pushChainInfo.chainId),
           verifyingContract,
           payload: universalPayload,
           version: version || '0.1.0',
@@ -402,27 +401,30 @@ export class Orchestrator {
    * @returns keccak256 digest to be signed by the user
    */
   private computeExecutionHash({
-    chainId = Number(this.pushClient.pushChainInfo.chainId),
     verifyingContract,
     payload,
     version = '0.1.0',
   }: {
-    chainId?: number;
     verifyingContract: `0x${string}`;
     version?: string;
     payload: UniversalPayload;
   }): `0x${string}` {
+    const chain = this.universalSigner.account.chain;
+    const { vm, chainId } = CHAIN_INFO[chain];
+
     // 1. Type hash
     const typeHash = keccak256(
       toBytes(
-        'UniversalPayload(address to,uint256 value,bytes data,uint256 gasLimit,uint256 maxFeePerGas,uint256 maxPriorityFeePerGas,uint256 nonce,uint256 deadline,uint8 sigType)'
+        'UniversalPayload(address to,uint256 value,bytes data,uint256 gasLimit,uint256 maxFeePerGas,uint256 maxPriorityFeePerGas,uint256 nonce,uint256 deadline,uint8 vType)'
       )
     );
 
     // 2. Domain separator
     const domainTypeHash = keccak256(
       toBytes(
-        'EIP712Domain(string version,uint256 chainId,address verifyingContract)'
+        vm === VM.EVM
+          ? 'EIP712Domain(string version,uint256 chainId,address verifyingContract)'
+          : 'EIP712Domain_SVM(string version,string chainId,address verifyingContract)'
       )
     );
 
@@ -431,13 +433,13 @@ export class Orchestrator {
         [
           { name: 'typeHash', type: 'bytes32' },
           { name: 'version', type: 'bytes32' },
-          { name: 'chainId', type: 'uint256' },
+          { name: 'chainId', type: vm === VM.EVM ? 'uint256' : 'string' },
           { name: 'verifyingContract', type: 'address' },
         ],
         [
           domainTypeHash,
           keccak256(toBytes(version)),
-          BigInt(chainId),
+          vm === VM.EVM ? BigInt(chainId) : chainId,
           verifyingContract,
         ]
       )
@@ -450,7 +452,7 @@ export class Orchestrator {
           { name: 'typeHash', type: 'bytes32' },
           { name: 'to', type: 'address' },
           { name: 'value', type: 'uint256' },
-          { name: 'dataHash', type: 'bytes32' },
+          { name: 'data', type: 'bytes32' },
           { name: 'gasLimit', type: 'uint256' },
           { name: 'maxFeePerGas', type: 'uint256' },
           { name: 'maxPriorityFeePerGas', type: 'uint256' },
@@ -530,7 +532,7 @@ export class Orchestrator {
 
   computeUEAOffchain(): `0x${string}` {
     const { chain, address } = this.universalSigner.account;
-    const { vm } = CHAIN_INFO[chain];
+    const { vm, chainId } = CHAIN_INFO[chain];
 
     // If already an on-chain Push EOA, just return it
     if (this.isPushChain(chain)) {
@@ -553,12 +555,13 @@ export class Orchestrator {
         {
           type: 'tuple',
           components: [
-            { name: 'chain', type: 'string' },
+            { name: 'chainNamespace', type: 'string' },
+            { name: 'chainId', type: 'string' },
             { name: 'owner', type: 'bytes' },
           ],
         },
       ],
-      [{ chain, owner: ownerKey }]
+      [{ chainNamespace: VM_NAMESPACE[vm], chainId, owner: ownerKey }]
     );
 
     const salt = keccak256(encodedAccountId);

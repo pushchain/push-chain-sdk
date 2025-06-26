@@ -105,7 +105,7 @@ describe('Orchestrator', () => {
   describe('computeExecutionHash', () => {
     const orc = new Orchestrator(mockSigner, PUSH_NETWORK.TESTNET_DONUT);
     const expectedHash =
-      '0x67f36f7e406c900444bc9daba0c70d9b565011e6cab09cabb2b0b805864e07e9';
+      '0xb6830a8b7684694a071dbeb780edc7627b0f8d9076492d59ea06df60cf04618c';
     it('should return the expected Hash', () => {
       const value = {
         to: '0x527F3692F5C53CfA83F7689885995606F93b6164' as `0x{string}`,
@@ -120,7 +120,6 @@ describe('Orchestrator', () => {
       };
 
       const hash = orc['computeExecutionHash']({
-        chainId: 9000,
         payload: value,
         verifyingContract: '0x48445e02796af0b076f96fc013536f1c879e282c',
       });
@@ -141,7 +140,6 @@ describe('Orchestrator', () => {
       };
 
       const hash = orc['computeExecutionHash']({
-        chainId: 9000,
         payload: value,
         verifyingContract: '0x48445e02796af0b076f96fc013536f1c879e282c',
       });
