@@ -1,10 +1,10 @@
 import { PushClient } from './push-client';
-import { PUSH_CHAIN_INFO } from '../constants/chain';
+import { CHAIN_INFO, PUSH_CHAIN_INFO, VM_NAMESPACE } from '../constants/chain';
 import {
   MsgDeployUEA,
   MsgMintPC,
   MsgExecutePayload,
-  SignatureType,
+  VerificationType,
 } from '../generated/v1/tx';
 import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 
@@ -12,8 +12,9 @@ describe('PushClient', () => {
   let client: PushClient;
   const MSG_DEPLOY_UEA: MsgDeployUEA = {
     signer: 'push1f5th78lzntc2h0krzqn5yldvwg43lcrgkqxtsv',
-    universalAccount: {
-      chain: CHAIN.ETHEREUM_SEPOLIA,
+    universalAccountId: {
+      chainNamespace: VM_NAMESPACE[CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].vm],
+      chainId: CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].chainId,
       owner: '0x35B84d6848D16415177c64D64504663b998A6ab4',
     },
     txHash:
@@ -22,8 +23,9 @@ describe('PushClient', () => {
 
   const MSG_MINT_PC: MsgMintPC = {
     signer: 'push1f5th78lzntc2h0krzqn5yldvwg43lcrgkqxtsv',
-    universalAccount: {
-      chain: CHAIN.SOLANA_DEVNET,
+    universalAccountId: {
+      chainNamespace: VM_NAMESPACE[CHAIN_INFO[CHAIN.SOLANA_DEVNET].vm],
+      chainId: CHAIN_INFO[CHAIN.SOLANA_DEVNET].chainId,
       owner:
         '0x30ea71869947818d27b718592ea44010b458903bd9bf0370f50eda79e87d9f69',
     },
@@ -32,8 +34,9 @@ describe('PushClient', () => {
 
   const MSG_EXECUTE_PAYLOAD: MsgExecutePayload = {
     signer: 'push1f5th78lzntc2h0krzqn5yldvwg43lcrgkqxtsv',
-    universalAccount: {
-      chain: CHAIN.SOLANA_DEVNET,
+    universalAccountId: {
+      chainNamespace: VM_NAMESPACE[CHAIN_INFO[CHAIN.SOLANA_DEVNET].vm],
+      chainId: CHAIN_INFO[CHAIN.SOLANA_DEVNET].chainId,
       owner:
         '0x30ea71869947818d27b718592ea44010b458903bd9bf0370f50eda79e87d9f69',
     },
@@ -46,7 +49,7 @@ describe('PushClient', () => {
       maxPriorityFeePerGas: '200000000',
       nonce: '1',
       deadline: '9999999999',
-      sigType: SignatureType.signedVerification,
+      vType: VerificationType.signedVerification,
     },
     signature:
       '0x911d4ee13db2ca041e52c0e77035e4c7c82705a77e59368740ef42edcdb813144aff65d2a3a6d03215f764a037a229170c69ffbaaad50fff690940a5ef458304',

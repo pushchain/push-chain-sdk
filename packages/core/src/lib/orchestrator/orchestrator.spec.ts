@@ -7,7 +7,7 @@ import { Keypair } from '@solana/web3.js';
 import { toUniversalFromKeypair } from '../universal/signer/signer';
 import { SvmClient } from '../vm-client/svm-client';
 import { CHAIN_INFO } from '../constants/chain';
-import { SignatureType } from '../generated/v1/tx';
+import { VerificationType } from '../generated/v1/tx';
 
 describe('Orchestrator', () => {
   const mockSigner: UniversalSigner = {
@@ -116,7 +116,7 @@ describe('Orchestrator', () => {
         maxPriorityFeePerGas: '2',
         nonce: '1',
         deadline: '9999999999',
-        sigType: SignatureType.signedVerification,
+        vType: VerificationType.signedVerification,
       };
 
       const hash = orc['computeExecutionHash']({
@@ -137,7 +137,7 @@ describe('Orchestrator', () => {
         maxPriorityFeePerGas: '2',
         nonce: '1',
         deadline: '9999999998',
-        sigType: SignatureType.signedVerification,
+        vType: VerificationType.signedVerification,
       };
 
       const hash = orc['computeExecutionHash']({
