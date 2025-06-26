@@ -3,9 +3,10 @@ syntax = "proto3";
 package ue.v1;
 
 // UniversalAccount is the identifier of a owner account
-message UniversalAccount {
-  string chain = 1; // chain is the caip2 identifier of the chain where the owner is located - (e.g. "eip155:1" for Ethereum mainnet)
-  string owner = 2; // Owner's public key bytes or address in hex format
+message UniversalAccountId {
+  string chain_namespace = 1; // chain_namespace is the CAIP-2 namespace of the chain where the owner is located (e.g. "eip155" for Ethereum)
+  string chain_id = 2; // chain_id is the chain ID of the chain where the owner is located
+  string owner = 3; // Owner's public key bytes or address in hex format
 }
 
 // MsgDeployUEA is the message used to deploy a new smart account.
@@ -14,7 +15,7 @@ message MsgDeployUEA {
   string signer = 1;
 
   // universal_account is the identifier of the owner account
-  UniversalAccount universal_account = 2;
+  UniversalAccountId universal_account_id = 2;
 
   // tx_hash is the hash of the transaction in which user locked the tokens
   string tx_hash = 3;
@@ -27,14 +28,14 @@ message MsgMintPC {
   string signer = 1;
 
   // universal_account is the identifier of the owner account
-  UniversalAccount universal_account = 2;
+  UniversalAccountId universal_account_id = 2;
 
   // tx_hash is the hash of the transaction in which user locked the tokens
   string tx_hash = 3;
 }
 
 // Signature verification types
-enum SignatureType {
+enum VerificationType {
   signedVerification = 0; // Signed verification using a signature
   universalTxVerification = 1; // Universal transaction verification
 }
@@ -49,7 +50,7 @@ message UniversalPayload {
   string max_priority_fee_per_gas = 6; // uint256 as string
   string nonce = 7;                 // uint256 as string
   string deadline = 8;              // uint256 as string
-  SignatureType sig_type = 9; // Type of signature verification
+  VerificationType v_type = 9; // Type of signature verification
 }
 
 // MsgExecutePayload defines a message for executing a universal payload
@@ -58,7 +59,7 @@ message MsgExecutePayload {
   string signer = 1;
 
   // universal_account is the identifier of the owner account
-  UniversalAccount universal_account = 2;
+  UniversalAccountId universal_account_id = 2;
 
   // payload is the universal payload to be executed
   UniversalPayload universal_payload = 3;
