@@ -92,9 +92,13 @@ export class Orchestrator {
     const gasEstimate = execute.gasLimit || BigInt(1e7);
     this.executeProgressHook('SEND-TRANSACTION-03', gasEstimate);
 
+    // Run gasPrice and UEA computation in parallel
     this.executeProgressHook('SEND-TRANSACTION-04');
-    const gasPrice = await this.pushClient.getGasPrice();
+    this.executeProgressHook('SEND-TRANSACTION-08');
+    const [gasPrice, { address: UEA, deployed: isUEADeployed }] =
+      await Promise.all([this.pushClient.getGasPrice(), this.computeUEA()]);
     this.executeProgressHook('SEND-TRANSACTION-05', gasPrice);
+    this.executeProgressHook('SEND-TRANSACTION-09', UEA, isUEADeployed);
 
     const requiredGasFee = gasEstimate * gasPrice;
     this.executeProgressHook('SEND-TRANSACTION-06', requiredGasFee);
@@ -102,16 +106,14 @@ export class Orchestrator {
     const requiredFunds = requiredGasFee + execute.value;
     this.executeProgressHook('SEND-TRANSACTION-07', requiredFunds);
 
-    this.executeProgressHook('SEND-TRANSACTION-08');
-    const { address: UEA, deployed: isUEADeployed } = await this.computeUEA();
-    this.executeProgressHook('SEND-TRANSACTION-09', UEA, isUEADeployed);
-
+    // Run balance and nonce fetching in parallel
     this.executeProgressHook('SEND-TRANSACTION-10');
-    const funds = await this.pushClient.getBalance(UEA);
-    this.executeProgressHook('SEND-TRANSACTION-11', funds);
-
     this.executeProgressHook('SEND-TRANSACTION-12');
-    const nonce = isUEADeployed ? await this.getUEANonce(UEA) : BigInt(0);
+    const [funds, nonce] = await Promise.all([
+      this.pushClient.getBalance(UEA),
+      isUEADeployed ? this.getUEANonce(UEA) : Promise.resolve(BigInt(0)),
+    ]);
+    this.executeProgressHook('SEND-TRANSACTION-11', funds);
     this.executeProgressHook('SEND-TRANSACTION-13', nonce);
 
     const universalPayload = JSON.parse(
