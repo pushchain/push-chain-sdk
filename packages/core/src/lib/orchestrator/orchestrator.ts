@@ -192,18 +192,18 @@ export class Orchestrator {
     }
 
     const rpcUrls: string[] = this.rpcUrls[chain] || defaultRPC;
-    const priceFetcher = new PriceFetch(this.rpcUrls);
-    const nativeTokenUsdPrice = await priceFetcher.getPrice(chain); // 8 decimals
-
-    let nativeAmount: bigint;
 
     switch (vm) {
       case VM.EVM: {
-        const nativeDecimals = 18; // ETH, MATIC, etc.
-        nativeAmount =
-          (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
+        // Run price fetching and client creation in parallel
+        const [nativeTokenUsdPrice, evmClient] = await Promise.all([
+          new PriceFetch(this.rpcUrls).getPrice(chain), // 8 decimals
+          Promise.resolve(new EvmClient({ rpcUrls })),
+        ]);
 
-        const evmClient = new EvmClient({ rpcUrls });
+        const nativeDecimals = 18; // ETH, MATIC, etc.
+        const nativeAmount =
+          (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
 
         return await evmClient.writeContract({
           abi: FEE_LOCKER_EVM as Abi,
@@ -216,16 +216,23 @@ export class Orchestrator {
       }
 
       case VM.SVM: {
-        const nativeDecimals = 9; // SOL lamports
-        nativeAmount =
-          (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
-
-        const svmClient = new SvmClient({ rpcUrls });
-
-        const [lockerPda] = anchor.web3.PublicKey.findProgramAddressSync(
-          [Buffer.from('locker')],
-          new PublicKey(lockerContract)
+        // Run price fetching, client creation, and PDA computation in parallel
+        const [nativeTokenUsdPrice, svmClient, [lockerPda]] = await Promise.all(
+          [
+            new PriceFetch(this.rpcUrls).getPrice(chain), // 8 decimals
+            Promise.resolve(new SvmClient({ rpcUrls })),
+            Promise.resolve(
+              anchor.web3.PublicKey.findProgramAddressSync(
+                [Buffer.from('locker')],
+                new PublicKey(lockerContract)
+              )
+            ),
+          ]
         );
+
+        const nativeDecimals = 9; // SOL lamports
+        const nativeAmount =
+          (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
 
         return await svmClient.writeContract({
           abi: FEE_LOCKER_SVM,
