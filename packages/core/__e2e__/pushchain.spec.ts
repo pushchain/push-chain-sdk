@@ -34,13 +34,15 @@ describe('PushChain (e2e)', () => {
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
-          printTraces: true,
+          progressHook: (val: any) => {
+            console.log(val);
+          },
         });
       });
       it('should sendTransaction - Transfer Call', async () => {
         const tx = await pushClient.universal.sendTransaction({
           to: '0x35B84d6848D16415177c64D64504663b998A6ab4',
-          value: BigInt(1e18),
+          value: BigInt(1e3),
         });
         const after = await PushChain.utils.account.convertOriginToExecutor(
           universalSigner.account,
@@ -78,7 +80,9 @@ describe('PushChain (e2e)', () => {
 
       pushClient = await PushChain.initialize(universalSigner, {
         network: pushNetwork,
-        printTraces: true,
+        progressHook: (val: any) => {
+          console.log(val);
+        },
       });
     });
 
@@ -115,7 +119,9 @@ describe('PushChain (e2e)', () => {
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
-          printTraces: true,
+          progressHook: (val: any) => {
+            console.log(val);
+          },
         });
       });
 
