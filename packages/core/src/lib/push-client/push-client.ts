@@ -203,9 +203,21 @@ export class PushClient extends EvmClient {
     const query = `ethereum_tx.ethereumTxHash='${txHash}'`;
 
     const results = await client.searchTx(query);
-    if (results.length === 0) {
+
+    // Convert bigint values to strings in the results. This is done to avoid JSON.stringify()
+    // from converting bigint to string when on the client side.
+    // On documentation, one thing very common was to use JSON.stringify() to log the results, then we would get an error.
+    const convertedResults = results.map((result) =>
+      JSON.parse(
+        JSON.stringify(result, (key, value) =>
+          typeof value === 'bigint' ? value.toString() : value
+        )
+      )
+    );
+
+    if (convertedResults.length === 0) {
       throw new Error(`No Cosmos-indexed tx for EVM hash ${txHash}`);
     }
-    return { ...results[0], transactionHash: txHash };
+    return { ...convertedResults[0], transactionHash: txHash };
   }
 }
