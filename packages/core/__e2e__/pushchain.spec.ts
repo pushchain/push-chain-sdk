@@ -50,7 +50,7 @@ describe('PushChain (e2e)', () => {
         const after = await PushChain.utils.account.convertOriginToExecutor(
           universalSigner.account,
           {
-            status: true,
+            onlyCompute: true,
           }
         );
         expect(after.deployed).toBe(true);
@@ -132,7 +132,7 @@ describe('PushChain (e2e)', () => {
         const after = await PushChain.utils.account.convertOriginToExecutor(
           universalSigner.account,
           {
-            status: true,
+            onlyCompute: true,
           }
         );
         expect(after.deployed).toBe(true);

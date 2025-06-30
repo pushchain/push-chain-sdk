@@ -73,7 +73,7 @@ describe('Universal Account Utilities', () => {
       const result = await PushChain.utils.account.convertOriginToExecutor(
         signer.account,
         {
-          status: true,
+          onlyCompute: true,
         }
       );
 
@@ -83,7 +83,7 @@ describe('Universal Account Utilities', () => {
       const address3 = await PushChain.utils.account.convertOriginToExecutor(
         signer.account,
         {
-          status: true,
+          onlyCompute: true,
         }
       );
       expect(address3.address).toBe(address2.address);

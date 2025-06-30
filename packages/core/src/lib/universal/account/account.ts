@@ -160,8 +160,8 @@ function getPushNetworkFromChain(chain: CHAIN): PUSH_NETWORK {
 export async function convertOriginToExecutor(
   account: UniversalAccount,
   options: {
-    status: boolean;
-  }
+    onlyCompute?: boolean;
+  } = { onlyCompute: true }
 ): Promise<{
   address: `0x${string}`;
   deployed?: boolean;
@@ -170,7 +170,7 @@ export async function convertOriginToExecutor(
   const { vm, chainId } = CHAIN_INFO[chain];
 
   if (isPushChain(chain)) {
-    if (options.status) {
+    if (options.onlyCompute) {
       return { address: account.address as `0x${string}`, deployed: false };
     }
     return { address: account.address as `0x${string}` };
@@ -224,7 +224,7 @@ export async function convertOriginToExecutor(
   const byteCode = await pushClient.publicClient.getCode({
     address: computedAddress,
   });
-  if (options.status) {
+  if (options.onlyCompute) {
     return { address: computedAddress, deployed: byteCode !== undefined };
   }
   return { address: computedAddress };
