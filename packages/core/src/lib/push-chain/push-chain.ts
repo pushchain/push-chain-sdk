@@ -124,7 +124,7 @@ export class PushChain {
   static initialize = async (
     universalSigner: UniversalSigner,
     options?: {
-      network?: PUSH_NETWORK;
+      network: PUSH_NETWORK;
       rpcUrls?: Partial<Record<CHAIN, string[]>>;
       blockExplorers?: Partial<Record<CHAIN, string[]>>;
       printTraces?: boolean;
