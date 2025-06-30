@@ -1,12 +1,15 @@
-import {
-  ProgressHookType,
-  ProgressHookTypeFunction,
-} from './progress-hook.types';
+import { ProgressEvent, ProgressHookTypeFunction } from './progress-hook.types';
 
-const PROGRESS_HOOKS: Record<
-  string,
-  ProgressHookType | ProgressHookTypeFunction
-> = {
+const withTimestamp = (
+  fn: ProgressHookTypeFunction
+): ProgressHookTypeFunction => {
+  return (...args: any[]) => ({
+    ...fn(...args),
+    timestamp: new Date().toISOString(),
+  });
+};
+
+const RAW_HOOKS: Record<string, ProgressEvent | ProgressHookTypeFunction> = {
   /**
    * 00. Non-specific error
    */
