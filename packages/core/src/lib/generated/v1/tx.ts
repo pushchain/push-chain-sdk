@@ -10,7 +10,7 @@ import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
 export const protobufPackage = "ue.v1";
 
 /** Signature verification types */
-export enum SignatureType {
+export enum VerificationType {
   /** signedVerification - Signed verification using a signature */
   signedVerification = 0,
   /** universalTxVerification - Universal transaction verification */
@@ -18,37 +18,39 @@ export enum SignatureType {
   UNRECOGNIZED = -1,
 }
 
-export function signatureTypeFromJSON(object: any): SignatureType {
+export function verificationTypeFromJSON(object: any): VerificationType {
   switch (object) {
     case 0:
     case "signedVerification":
-      return SignatureType.signedVerification;
+      return VerificationType.signedVerification;
     case 1:
     case "universalTxVerification":
-      return SignatureType.universalTxVerification;
+      return VerificationType.universalTxVerification;
     case -1:
     case "UNRECOGNIZED":
     default:
-      return SignatureType.UNRECOGNIZED;
+      return VerificationType.UNRECOGNIZED;
   }
 }
 
-export function signatureTypeToJSON(object: SignatureType): string {
+export function verificationTypeToJSON(object: VerificationType): string {
   switch (object) {
-    case SignatureType.signedVerification:
+    case VerificationType.signedVerification:
       return "signedVerification";
-    case SignatureType.universalTxVerification:
+    case VerificationType.universalTxVerification:
       return "universalTxVerification";
-    case SignatureType.UNRECOGNIZED:
+    case VerificationType.UNRECOGNIZED:
     default:
       return "UNRECOGNIZED";
   }
 }
 
 /** UniversalAccount is the identifier of a owner account */
-export interface UniversalAccount {
-  /** chain is the caip2 identifier of the chain where the owner is located - (e.g. "eip155:1" for Ethereum mainnet) */
-  chain: string;
+export interface UniversalAccountId {
+  /** chain_namespace is the CAIP-2 namespace of the chain where the owner is located (e.g. "eip155" for Ethereum) */
+  chainNamespace: string;
+  /** chain_id is the chain ID of the chain where the owner is located */
+  chainId: string;
   /** Owner's public key bytes or address in hex format */
   owner: string;
 }
@@ -58,8 +60,8 @@ export interface MsgDeployUEA {
   /** signer is the Cosmos address initiating the tx (used for tx signing) */
   signer: string;
   /** universal_account is the identifier of the owner account */
-  universalAccount:
-    | UniversalAccount
+  universalAccountId:
+    | UniversalAccountId
     | undefined;
   /** tx_hash is the hash of the transaction in which user locked the tokens */
   txHash: string;
@@ -73,8 +75,8 @@ export interface MsgMintPC {
   /** signer is the Cosmos address initiating the tx (used for tx signing) */
   signer: string;
   /** universal_account is the identifier of the owner account */
-  universalAccount:
-    | UniversalAccount
+  universalAccountId:
+    | UniversalAccountId
     | undefined;
   /** tx_hash is the hash of the transaction in which user locked the tokens */
   txHash: string;
@@ -99,7 +101,7 @@ export interface UniversalPayload {
   /** uint256 as string */
   deadline: string;
   /** Type of signature verification */
-  sigType: SignatureType;
+  vType: VerificationType;
 }
 
 /** MsgExecutePayload defines a message for executing a universal payload */
@@ -107,8 +109,8 @@ export interface MsgExecutePayload {
   /** signer is the Cosmos address initiating the tx (used for tx signing) */
   signer: string;
   /** universal_account is the identifier of the owner account */
-  universalAccount:
-    | UniversalAccount
+  universalAccountId:
+    | UniversalAccountId
     | undefined;
   /** payload is the universal payload to be executed */
   universalPayload:
@@ -118,25 +120,28 @@ export interface MsgExecutePayload {
   signature: string;
 }
 
-function createBaseUniversalAccount(): UniversalAccount {
-  return { chain: "", owner: "" };
+function createBaseUniversalAccountId(): UniversalAccountId {
+  return { chainNamespace: "", chainId: "", owner: "" };
 }
 
-export const UniversalAccount: MessageFns<UniversalAccount> = {
-  encode(message: UniversalAccount, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.chain !== "") {
-      writer.uint32(10).string(message.chain);
+export const UniversalAccountId: MessageFns<UniversalAccountId> = {
+  encode(message: UniversalAccountId, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.chainNamespace !== "") {
+      writer.uint32(10).string(message.chainNamespace);
+    }
+    if (message.chainId !== "") {
+      writer.uint32(18).string(message.chainId);
     }
     if (message.owner !== "") {
-      writer.uint32(18).string(message.owner);
+      writer.uint32(26).string(message.owner);
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): UniversalAccount {
+  decode(input: BinaryReader | Uint8Array, length?: number): UniversalAccountId {
     const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseUniversalAccount();
+    const message = createBaseUniversalAccountId();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -145,11 +150,19 @@ export const UniversalAccount: MessageFns<UniversalAccount> = {
             break;
           }
 
-          message.chain = reader.string();
+          message.chainNamespace = reader.string();
           continue;
         }
         case 2: {
           if (tag !== 18) {
+            break;
+          }
+
+          message.chainId = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
             break;
           }
 
@@ -165,17 +178,21 @@ export const UniversalAccount: MessageFns<UniversalAccount> = {
     return message;
   },
 
-  fromJSON(object: any): UniversalAccount {
+  fromJSON(object: any): UniversalAccountId {
     return {
-      chain: isSet(object.chain) ? globalThis.String(object.chain) : "",
+      chainNamespace: isSet(object.chainNamespace) ? globalThis.String(object.chainNamespace) : "",
+      chainId: isSet(object.chainId) ? globalThis.String(object.chainId) : "",
       owner: isSet(object.owner) ? globalThis.String(object.owner) : "",
     };
   },
 
-  toJSON(message: UniversalAccount): unknown {
+  toJSON(message: UniversalAccountId): unknown {
     const obj: any = {};
-    if (message.chain !== "") {
-      obj.chain = message.chain;
+    if (message.chainNamespace !== "") {
+      obj.chainNamespace = message.chainNamespace;
+    }
+    if (message.chainId !== "") {
+      obj.chainId = message.chainId;
     }
     if (message.owner !== "") {
       obj.owner = message.owner;
@@ -183,19 +200,20 @@ export const UniversalAccount: MessageFns<UniversalAccount> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<UniversalAccount>, I>>(base?: I): UniversalAccount {
-    return UniversalAccount.fromPartial(base ?? ({} as any));
+  create<I extends Exact<DeepPartial<UniversalAccountId>, I>>(base?: I): UniversalAccountId {
+    return UniversalAccountId.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<UniversalAccount>, I>>(object: I): UniversalAccount {
-    const message = createBaseUniversalAccount();
-    message.chain = object.chain ?? "";
+  fromPartial<I extends Exact<DeepPartial<UniversalAccountId>, I>>(object: I): UniversalAccountId {
+    const message = createBaseUniversalAccountId();
+    message.chainNamespace = object.chainNamespace ?? "";
+    message.chainId = object.chainId ?? "";
     message.owner = object.owner ?? "";
     return message;
   },
 };
 
 function createBaseMsgDeployUEA(): MsgDeployUEA {
-  return { signer: "", universalAccount: undefined, txHash: "" };
+  return { signer: "", universalAccountId: undefined, txHash: "" };
 }
 
 export const MsgDeployUEA: MessageFns<MsgDeployUEA> = {
@@ -203,8 +221,8 @@ export const MsgDeployUEA: MessageFns<MsgDeployUEA> = {
     if (message.signer !== "") {
       writer.uint32(10).string(message.signer);
     }
-    if (message.universalAccount !== undefined) {
-      UniversalAccount.encode(message.universalAccount, writer.uint32(18).fork()).join();
+    if (message.universalAccountId !== undefined) {
+      UniversalAccountId.encode(message.universalAccountId, writer.uint32(18).fork()).join();
     }
     if (message.txHash !== "") {
       writer.uint32(26).string(message.txHash);
@@ -232,7 +250,7 @@ export const MsgDeployUEA: MessageFns<MsgDeployUEA> = {
             break;
           }
 
-          message.universalAccount = UniversalAccount.decode(reader, reader.uint32());
+          message.universalAccountId = UniversalAccountId.decode(reader, reader.uint32());
           continue;
         }
         case 3: {
@@ -255,7 +273,9 @@ export const MsgDeployUEA: MessageFns<MsgDeployUEA> = {
   fromJSON(object: any): MsgDeployUEA {
     return {
       signer: isSet(object.signer) ? globalThis.String(object.signer) : "",
-      universalAccount: isSet(object.universalAccount) ? UniversalAccount.fromJSON(object.universalAccount) : undefined,
+      universalAccountId: isSet(object.universalAccountId)
+        ? UniversalAccountId.fromJSON(object.universalAccountId)
+        : undefined,
       txHash: isSet(object.txHash) ? globalThis.String(object.txHash) : "",
     };
   },
@@ -265,8 +285,8 @@ export const MsgDeployUEA: MessageFns<MsgDeployUEA> = {
     if (message.signer !== "") {
       obj.signer = message.signer;
     }
-    if (message.universalAccount !== undefined) {
-      obj.universalAccount = UniversalAccount.toJSON(message.universalAccount);
+    if (message.universalAccountId !== undefined) {
+      obj.universalAccountId = UniversalAccountId.toJSON(message.universalAccountId);
     }
     if (message.txHash !== "") {
       obj.txHash = message.txHash;
@@ -280,8 +300,8 @@ export const MsgDeployUEA: MessageFns<MsgDeployUEA> = {
   fromPartial<I extends Exact<DeepPartial<MsgDeployUEA>, I>>(object: I): MsgDeployUEA {
     const message = createBaseMsgDeployUEA();
     message.signer = object.signer ?? "";
-    message.universalAccount = (object.universalAccount !== undefined && object.universalAccount !== null)
-      ? UniversalAccount.fromPartial(object.universalAccount)
+    message.universalAccountId = (object.universalAccountId !== undefined && object.universalAccountId !== null)
+      ? UniversalAccountId.fromPartial(object.universalAccountId)
       : undefined;
     message.txHash = object.txHash ?? "";
     return message;
@@ -289,7 +309,7 @@ export const MsgDeployUEA: MessageFns<MsgDeployUEA> = {
 };
 
 function createBaseMsgMintPC(): MsgMintPC {
-  return { signer: "", universalAccount: undefined, txHash: "" };
+  return { signer: "", universalAccountId: undefined, txHash: "" };
 }
 
 export const MsgMintPC: MessageFns<MsgMintPC> = {
@@ -297,8 +317,8 @@ export const MsgMintPC: MessageFns<MsgMintPC> = {
     if (message.signer !== "") {
       writer.uint32(10).string(message.signer);
     }
-    if (message.universalAccount !== undefined) {
-      UniversalAccount.encode(message.universalAccount, writer.uint32(18).fork()).join();
+    if (message.universalAccountId !== undefined) {
+      UniversalAccountId.encode(message.universalAccountId, writer.uint32(18).fork()).join();
     }
     if (message.txHash !== "") {
       writer.uint32(26).string(message.txHash);
@@ -326,7 +346,7 @@ export const MsgMintPC: MessageFns<MsgMintPC> = {
             break;
           }
 
-          message.universalAccount = UniversalAccount.decode(reader, reader.uint32());
+          message.universalAccountId = UniversalAccountId.decode(reader, reader.uint32());
           continue;
         }
         case 3: {
@@ -349,7 +369,9 @@ export const MsgMintPC: MessageFns<MsgMintPC> = {
   fromJSON(object: any): MsgMintPC {
     return {
       signer: isSet(object.signer) ? globalThis.String(object.signer) : "",
-      universalAccount: isSet(object.universalAccount) ? UniversalAccount.fromJSON(object.universalAccount) : undefined,
+      universalAccountId: isSet(object.universalAccountId)
+        ? UniversalAccountId.fromJSON(object.universalAccountId)
+        : undefined,
       txHash: isSet(object.txHash) ? globalThis.String(object.txHash) : "",
     };
   },
@@ -359,8 +381,8 @@ export const MsgMintPC: MessageFns<MsgMintPC> = {
     if (message.signer !== "") {
       obj.signer = message.signer;
     }
-    if (message.universalAccount !== undefined) {
-      obj.universalAccount = UniversalAccount.toJSON(message.universalAccount);
+    if (message.universalAccountId !== undefined) {
+      obj.universalAccountId = UniversalAccountId.toJSON(message.universalAccountId);
     }
     if (message.txHash !== "") {
       obj.txHash = message.txHash;
@@ -374,8 +396,8 @@ export const MsgMintPC: MessageFns<MsgMintPC> = {
   fromPartial<I extends Exact<DeepPartial<MsgMintPC>, I>>(object: I): MsgMintPC {
     const message = createBaseMsgMintPC();
     message.signer = object.signer ?? "";
-    message.universalAccount = (object.universalAccount !== undefined && object.universalAccount !== null)
-      ? UniversalAccount.fromPartial(object.universalAccount)
+    message.universalAccountId = (object.universalAccountId !== undefined && object.universalAccountId !== null)
+      ? UniversalAccountId.fromPartial(object.universalAccountId)
       : undefined;
     message.txHash = object.txHash ?? "";
     return message;
@@ -392,7 +414,7 @@ function createBaseUniversalPayload(): UniversalPayload {
     maxPriorityFeePerGas: "",
     nonce: "",
     deadline: "",
-    sigType: 0,
+    vType: 0,
   };
 }
 
@@ -422,8 +444,8 @@ export const UniversalPayload: MessageFns<UniversalPayload> = {
     if (message.deadline !== "") {
       writer.uint32(66).string(message.deadline);
     }
-    if (message.sigType !== 0) {
-      writer.uint32(72).int32(message.sigType);
+    if (message.vType !== 0) {
+      writer.uint32(72).int32(message.vType);
     }
     return writer;
   },
@@ -504,7 +526,7 @@ export const UniversalPayload: MessageFns<UniversalPayload> = {
             break;
           }
 
-          message.sigType = reader.int32() as any;
+          message.vType = reader.int32() as any;
           continue;
         }
       }
@@ -526,7 +548,7 @@ export const UniversalPayload: MessageFns<UniversalPayload> = {
       maxPriorityFeePerGas: isSet(object.maxPriorityFeePerGas) ? globalThis.String(object.maxPriorityFeePerGas) : "",
       nonce: isSet(object.nonce) ? globalThis.String(object.nonce) : "",
       deadline: isSet(object.deadline) ? globalThis.String(object.deadline) : "",
-      sigType: isSet(object.sigType) ? signatureTypeFromJSON(object.sigType) : 0,
+      vType: isSet(object.vType) ? verificationTypeFromJSON(object.vType) : 0,
     };
   },
 
@@ -556,8 +578,8 @@ export const UniversalPayload: MessageFns<UniversalPayload> = {
     if (message.deadline !== "") {
       obj.deadline = message.deadline;
     }
-    if (message.sigType !== 0) {
-      obj.sigType = signatureTypeToJSON(message.sigType);
+    if (message.vType !== 0) {
+      obj.vType = verificationTypeToJSON(message.vType);
     }
     return obj;
   },
@@ -575,13 +597,13 @@ export const UniversalPayload: MessageFns<UniversalPayload> = {
     message.maxPriorityFeePerGas = object.maxPriorityFeePerGas ?? "";
     message.nonce = object.nonce ?? "";
     message.deadline = object.deadline ?? "";
-    message.sigType = object.sigType ?? 0;
+    message.vType = object.vType ?? 0;
     return message;
   },
 };
 
 function createBaseMsgExecutePayload(): MsgExecutePayload {
-  return { signer: "", universalAccount: undefined, universalPayload: undefined, signature: "" };
+  return { signer: "", universalAccountId: undefined, universalPayload: undefined, signature: "" };
 }
 
 export const MsgExecutePayload: MessageFns<MsgExecutePayload> = {
@@ -589,8 +611,8 @@ export const MsgExecutePayload: MessageFns<MsgExecutePayload> = {
     if (message.signer !== "") {
       writer.uint32(10).string(message.signer);
     }
-    if (message.universalAccount !== undefined) {
-      UniversalAccount.encode(message.universalAccount, writer.uint32(18).fork()).join();
+    if (message.universalAccountId !== undefined) {
+      UniversalAccountId.encode(message.universalAccountId, writer.uint32(18).fork()).join();
     }
     if (message.universalPayload !== undefined) {
       UniversalPayload.encode(message.universalPayload, writer.uint32(26).fork()).join();
@@ -621,7 +643,7 @@ export const MsgExecutePayload: MessageFns<MsgExecutePayload> = {
             break;
           }
 
-          message.universalAccount = UniversalAccount.decode(reader, reader.uint32());
+          message.universalAccountId = UniversalAccountId.decode(reader, reader.uint32());
           continue;
         }
         case 3: {
@@ -652,7 +674,9 @@ export const MsgExecutePayload: MessageFns<MsgExecutePayload> = {
   fromJSON(object: any): MsgExecutePayload {
     return {
       signer: isSet(object.signer) ? globalThis.String(object.signer) : "",
-      universalAccount: isSet(object.universalAccount) ? UniversalAccount.fromJSON(object.universalAccount) : undefined,
+      universalAccountId: isSet(object.universalAccountId)
+        ? UniversalAccountId.fromJSON(object.universalAccountId)
+        : undefined,
       universalPayload: isSet(object.universalPayload) ? UniversalPayload.fromJSON(object.universalPayload) : undefined,
       signature: isSet(object.signature) ? globalThis.String(object.signature) : "",
     };
@@ -663,8 +687,8 @@ export const MsgExecutePayload: MessageFns<MsgExecutePayload> = {
     if (message.signer !== "") {
       obj.signer = message.signer;
     }
-    if (message.universalAccount !== undefined) {
-      obj.universalAccount = UniversalAccount.toJSON(message.universalAccount);
+    if (message.universalAccountId !== undefined) {
+      obj.universalAccountId = UniversalAccountId.toJSON(message.universalAccountId);
     }
     if (message.universalPayload !== undefined) {
       obj.universalPayload = UniversalPayload.toJSON(message.universalPayload);
@@ -681,8 +705,8 @@ export const MsgExecutePayload: MessageFns<MsgExecutePayload> = {
   fromPartial<I extends Exact<DeepPartial<MsgExecutePayload>, I>>(object: I): MsgExecutePayload {
     const message = createBaseMsgExecutePayload();
     message.signer = object.signer ?? "";
-    message.universalAccount = (object.universalAccount !== undefined && object.universalAccount !== null)
-      ? UniversalAccount.fromPartial(object.universalAccount)
+    message.universalAccountId = (object.universalAccountId !== undefined && object.universalAccountId !== null)
+      ? UniversalAccountId.fromPartial(object.universalAccountId)
       : undefined;
     message.universalPayload = (object.universalPayload !== undefined && object.universalPayload !== null)
       ? UniversalPayload.fromPartial(object.universalPayload)
