@@ -1,7 +1,13 @@
-import { ProgressEvent, ProgressHookTypeFunction } from './progress-hook.types';
+import {
+  ProgressEvent,
+  ProgressHookTypeFunction,
+  ProgressHookTypeFunctionWithoutTimestamp,
+  PROGRESS_HOOK,
+} from './progress-hook.types';
 
+// Helper to wrap a hook function with timestamp
 const withTimestamp = (
-  fn: ProgressHookTypeFunction
+  fn: ProgressHookTypeFunctionWithoutTimestamp
 ): ProgressHookTypeFunction => {
   return (...args: any[]) => ({
     ...fn(...args),
@@ -9,234 +15,116 @@ const withTimestamp = (
   });
 };
 
-const RAW_HOOKS: Record<string, ProgressEvent | ProgressHookTypeFunction> = {
-  /**
-   * 00. Non-specific error
-   */
-  'SEND-TRANSACTION-00': (fnName: string, err: string) => ({
-    id: 'SEND-TRANSACTION-00',
-    title: 'Transaction Error',
-    info: `[Core SDK] - Error in ${fnName}(): ${err}`,
+// Helper to create a hook entry (either static or dynamic)
+const createHook = (
+  value:
+    | Omit<ProgressEvent, 'timestamp'>
+    | ProgressHookTypeFunctionWithoutTimestamp
+): ProgressEvent | ProgressHookTypeFunction => {
+  if (typeof value === 'function') {
+    return withTimestamp(value);
+  }
+  return {
+    ...value,
+    timestamp: new Date().toISOString(),
+  };
+};
+
+const RAW_HOOKS: {
+  [K in PROGRESS_HOOK]:
+    | Omit<ProgressEvent, 'timestamp'>
+    | ProgressHookTypeFunctionWithoutTimestamp;
+} = {
+  [PROGRESS_HOOK.SEND_TX_01]: (originChain: string) => ({
+    id: PROGRESS_HOOK.SEND_TX_01,
+    title: 'Origin Chain Detected',
+    message: `Origin chain: ${originChain}`,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_02_01]: {
+    id: PROGRESS_HOOK.SEND_TX_02_01,
+    title: 'Estimating Gas',
+    message: 'Estimating and fetching gas limit, gas price for TX…',
+    level: 'INFO',
+  },
+  [PROGRESS_HOOK.SEND_TX_02_02]: (executionCost: bigint) => ({
+    id: PROGRESS_HOOK.SEND_TX_02_02,
+    title: 'Gas Estimated',
+    message: `Total execution cost (Gas cost + value): ${executionCost} UPC`,
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_03_01]: {
+    id: PROGRESS_HOOK.SEND_TX_03_01,
+    title: 'Resolving UAE',
+    message:
+      'Resolving Execution Account (UEA) - Compunting address, checking deployment status, nonce and balance',
+    level: 'INFO',
+  },
+  [PROGRESS_HOOK.SEND_TX_03_02]: (
+    ueaAddress: `0x${string}`,
+    deployed: boolean,
+    balance: bigint,
+    nonce: bigint
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_03_02,
+    title: 'UEA Resolved',
+    message: `UEA: ${ueaAddress}, Deployed: ${deployed}, Balance: ${balance.toString()} UPC, Nonce: ${nonce.toString()}`,
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_04_01]: (hash: string) => ({
+    id: PROGRESS_HOOK.SEND_TX_04_01,
+    title: 'Awaiting Signature for Tx Execution',
+    message: `Universal Payload Hash: ${hash}`,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_04_02]: (signature: string) => ({
+    id: PROGRESS_HOOK.SEND_TX_04_02,
+    title: 'Signature Completed',
+    message: `Signature: ${signature}`,
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_05_01]: (feeAmount: bigint) => ({
+    id: PROGRESS_HOOK.SEND_TX_05_01,
+    title: 'Locking Origin Chain Fee',
+    message: `Locking fee: ${feeAmount.toString()} UPC on origin chain`,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_05_02]: (txHash: string, confirmations: number) => ({
+    id: PROGRESS_HOOK.SEND_TX_05_02,
+    title: 'Awaiting Origin Chain Confirmations',
+    message: `Tx sent: ${txHash}, waiting for ${confirmations} confirmations.`,
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_05_03]: {
+    id: PROGRESS_HOOK.SEND_TX_05_03,
+    title: 'Confirmations Received',
+    message: 'Required confirmations received.',
+    level: 'SUCCESS',
+  },
+  [PROGRESS_HOOK.SEND_TX_06]: {
+    id: PROGRESS_HOOK.SEND_TX_06,
+    title: 'Broadcasting to Push Chain',
+    message: 'Sending Tx to Push Chain…',
+    level: 'INFO',
+  },
+  [PROGRESS_HOOK.SEND_TX_99_01]: (stringifiedTxResponse: string) => ({
+    id: PROGRESS_HOOK.SEND_TX_99_01,
+    title: 'Push Chain Tx Success',
+    message: stringifiedTxResponse,
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_99_02]: (errMessage: string) => ({
+    id: PROGRESS_HOOK.SEND_TX_99_02,
+    title: 'Push Chain Tx Failed',
+    message: errMessage,
     level: 'ERROR',
   }),
-
-  /**
-   * 01. Detect origin chain (given as function param)
-   */
-  'SEND-TRANSACTION-01': (originChain: string) => ({
-    id: 'SEND-TRANSACTION-01',
-    title: 'Origin Chain Detected',
-    info: `Origin chain: ${originChain}`,
-    level: 'INFO',
-  }),
-
-  /**
-   * 02. Start estimating gas limit
-   */
-  'SEND-TRANSACTION-02': {
-    id: 'SEND-TRANSACTION-02',
-    title: 'Estimating Gas Limit',
-    info: 'Estimating gas limit for transaction…',
-    level: 'INFO',
-  },
-
-  /**
-   * 03. Gas limit estimation succeeded
-   */
-  'SEND-TRANSACTION-03': (gasLimit: bigint) => ({
-    id: 'SEND-TRANSACTION-03',
-    title: 'Gas Limit Estimated',
-    info: `Estimated gas limit: ${gasLimit.toString()}`,
-    level: 'SUCCESS',
-  }),
-
-  /**
-   * 04. Start fetching gas price
-   */
-  'SEND-TRANSACTION-04': {
-    id: 'SEND-TRANSACTION-04',
-    title: 'Fetching Gas Price',
-    info: 'Retrieving current gas price…',
-    level: 'INFO',
-  },
-
-  /**
-   * 05. Gas price fetch succeeded
-   */
-  'SEND-TRANSACTION-05': (gasPrice: bigint) => ({
-    id: 'SEND-TRANSACTION-05',
-    title: 'Gas Price Retrieved',
-    info: `Current gas price: ${gasPrice.toString()}`,
-    level: 'SUCCESS',
-  }),
-
-  /**
-   * 06. Total Gas cost calculated (in UPC)
-   */
-  'SEND-TRANSACTION-06': (gasCost: bigint) => ({
-    id: 'SEND-TRANSACTION-06',
-    title: 'Total Gas Cost',
-    info: `Total gas cost: ${gasCost.toString()} UPC`,
-    level: 'INFO',
-  }),
-
-  'SEND-TRANSACTION-07': (execCost: bigint) => ({
-    id: 'SEND-TRANSACTION-07',
-    title: 'Total Execution Cost',
-    info: `Total execution cost (Gas cost + value): ${execCost.toString()} UPC`,
-    level: 'INFO',
-  }),
-
-  /**
-   * 08. Start fetching UEA details
-   */
-  'SEND-TRANSACTION-08': {
-    id: 'SEND-TRANSACTION-08',
-    title: 'Fetching UEA Details',
-    info: 'Computing UEA address and checking deployment status…',
-    level: 'INFO',
-  },
-
-  /**
-   * 09. UEA details fetched
-   */
-  'SEND-TRANSACTION-09': (ueaAddress: `0x${string}`, deployed: boolean) => ({
-    id: 'SEND-TRANSACTION-09',
-    title: 'UEA Details Retrieved',
-    info: `UEA: ${ueaAddress}, Deployed: ${deployed}`,
-    level: 'SUCCESS',
-  }),
-
-  /**
-   * 10. Start fetching UEA balance
-   */
-  'SEND-TRANSACTION-10': {
-    id: 'SEND-TRANSACTION-10',
-    title: 'Fetching UEA Balance',
-    info: 'Querying UEA account balance…',
-    level: 'INFO',
-  },
-
-  /**
-   * 11. UEA balance fetched
-   */
-  'SEND-TRANSACTION-11': (balance: bigint) => ({
-    id: 'SEND-TRANSACTION-11',
-    title: 'UEA Balance Retrieved',
-    info: `UEA balance: ${balance.toString()} UPC`,
-    level: 'SUCCESS',
-  }),
-
-  /**
-   * 12. Start fetching UEA nonce
-   */
-  'SEND-TRANSACTION-12': {
-    id: 'SEND-TRANSACTION-12',
-    title: 'Fetching UEA Nonce',
-    info: 'Retrieving UEA transaction nonce…',
-    level: 'INFO',
-  },
-
-  /**
-   * 13. UEA nonce fetched
-   */
-  'SEND-TRANSACTION-13': (nonce: bigint) => ({
-    id: 'SEND-TRANSACTION-13',
-    title: 'UEA Nonce Retrieved',
-    info: `UEA nonce: ${nonce.toString()}`,
-    level: 'SUCCESS',
-  }),
-
-  /**
-   * 14. Execution hash generated
-   */
-  'SEND-TRANSACTION-14': (execHash: string) => ({
-    id: 'SEND-TRANSACTION-14',
-    title: 'Universal Payload Hash Generated',
-    info: `Universal Payload Hash: ${execHash}`,
-    level: 'INFO',
-  }),
-
-  /**
-   * 15. Locking fee on origin chain
-   */
-  'SEND-TRANSACTION-15': (feeAmount: bigint) => ({
-    id: 'SEND-TRANSACTION-15',
-    title: 'Locking Origin Chain Fee',
-    info: `Locking fee: ${feeAmount.toString()} UPC on origin chain`,
-    level: 'INFO',
-  }),
-
-  /**
-   * 16. Transaction sent on origin chain, awaiting confirmations
-   */
-  'SEND-TRANSACTION-16': (txHash: string, confirmations: number) => ({
-    id: 'SEND-TRANSACTION-16',
-    title: 'Awaiting Origin Chain Confirmations',
-    info: `Transaction sent: ${txHash}, waiting for ${confirmations} confirmations.`,
-    level: 'SUCCESS',
-  }),
-
-  /**
-   * 17. Required confirmations received, awaiting signing
-   */
-  'SEND-TRANSACTION-17': {
-    id: 'SEND-TRANSACTION-17',
-    title: 'Confirmations Received',
-    info: 'Required confirmations received.',
-    level: 'SUCCESS',
-  },
-
-  /**
-   * 18. Signature Request
-   */
-  'SEND-TRANSACTION-18': {
-    id: 'SEND-TRANSACTION-19',
-    title: 'Awaiting Signature',
-    info: 'Waiting for signature…',
-    level: 'INFO',
-  },
-
-  /**
-   * 19. Signature completed
-   */
-  'SEND-TRANSACTION-19': (signature: string) => ({
-    id: 'SEND-TRANSACTION-19',
-    title: 'Signature Completed',
-    info: `Signature: ${signature}`,
-    level: 'SUCCESS',
-  }),
-
-  /**
-   * 20. Sending transaction on Push Chain
-   */
-  'SEND-TRANSACTION-20': {
-    id: 'SEND-TRANSACTION-20',
-    title: 'Broadcasting to Push Chain',
-    info: 'Sending transaction to Push Chain…',
-    level: 'INFO',
-  },
-
-  /**
-   * 21. Push Chain transaction result (parses string, logs full details, checks code)
-   */
-  'SEND-TRANSACTION-21': (txDetailsString: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let details: any;
-    try {
-      details = JSON.parse(txDetailsString);
-    } catch (e) {
-      console.error('Failed to parse txDetails:', e, txDetailsString);
-      details = { raw: txDetailsString };
-    }
-    const success = details.code === 0;
-    return {
-      id: 'SEND-TRANSACTION-21',
-      title: success ? 'Push Chain Tx Success' : 'Push Chain Tx Failure',
-      info: `Tx: ${txDetailsString}`,
-      level: success ? 'SUCCESS' : 'ERROR',
-    };
-  },
 };
+
+// Build final hooks with timestamp injection
+const PROGRESS_HOOKS: Record<string, ProgressEvent | ProgressHookTypeFunction> =
+  Object.fromEntries(
+    Object.entries(RAW_HOOKS).map(([key, value]) => [key, createHook(value)])
+  );
 
 export default PROGRESS_HOOKS;

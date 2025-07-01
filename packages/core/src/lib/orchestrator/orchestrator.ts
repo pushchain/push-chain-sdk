@@ -38,7 +38,8 @@ import { PriceFetch } from '../price-fetch/price-fetch';
 import { utils } from '@coral-xyz/anchor';
 import { DeliverTxResponse } from '@cosmjs/stargate';
 import {
-  ProgressHookType,
+  PROGRESS_HOOK,
+  ProgressEvent,
   ProgressHookTypeFunction,
 } from '../progress-hook/progress-hook.types';
 import PROGRESS_HOOKS from '../progress-hook/progress-hook';
@@ -51,7 +52,7 @@ export class Orchestrator {
     private pushNetwork: PUSH_NETWORK,
     private readonly rpcUrls: Partial<Record<CHAIN, string[]>> = {},
     private readonly printTraces = false,
-    private progressHook?: (progress: ProgressHookType) => void
+    private progressHook?: (progress: ProgressEvent) => void
   ) {
     let pushChain: CHAIN;
     if (pushNetwork === PUSH_NETWORK.MAINNET) {
@@ -78,103 +79,122 @@ export class Orchestrator {
    * Executes an interaction on Push Chain
    */
   async execute(execute: ExecuteParams): Promise<DeliverTxResponse> {
-    const chain = this.universalSigner.account.chain;
-    this.executeProgressHook('SEND-TRANSACTION-01', chain);
-    this.validateMainnetConnection(chain);
-
-    if (this.isPushChain(chain)) {
-      this.executeProgressHook('SEND-TRANSACTION-20');
-      const tx = await this.sendPushTx(execute);
+    try {
+      const chain = this.universalSigner.account.chain;
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_01, chain);
+      this.validateMainnetConnection(chain);
+      /**
+       * Push to Push Tx
+       */
+      if (this.isPushChain(chain)) {
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06);
+        const tx = await this.sendPushTx(execute);
+        tx.code === 0
+          ? this.executeProgressHook(
+              PROGRESS_HOOK.SEND_TX_99_01,
+              JSON.stringify(tx, this.bigintReplacer, 2)
+            )
+          : this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_02, tx.rawLog);
+        return tx;
+      }
+      /**
+       * Fetch Gas details and estimate cost of execution
+       */
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_02_01);
+      const gasEstimate = execute.gasLimit || BigInt(1e7);
+      const gasPrice = await this.pushClient.getGasPrice();
+      const requiredGasFee = gasEstimate * gasPrice;
+      const requiredFunds = requiredGasFee + execute.value;
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_02_02, requiredFunds);
+      /**
+       * Fetch UEA Details
+       */
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_03_01);
+      const UEA = this.computeUEAOffchain();
+      const [code, funds] = await Promise.all([
+        this.pushClient.publicClient.getCode({ address: UEA }),
+        this.pushClient.getBalance(UEA),
+      ]);
+      const isUEADeployed = code !== undefined;
+      const nonce = isUEADeployed ? await this.getUEANonce(UEA) : BigInt(0);
       this.executeProgressHook(
-        'SEND-TRANSACTION-21',
+        PROGRESS_HOOK.SEND_TX_03_02,
+        UEA,
+        isUEADeployed,
+        funds,
+        nonce
+      );
+      /**
+       * Compute Universal Payload Hash
+       */
+      const universalPayload = JSON.parse(
+        JSON.stringify(
+          {
+            to: execute.to,
+            value: execute.value,
+            data: execute.data || '0x',
+            gasLimit: execute.gasLimit || BigInt(1e7),
+            maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
+            maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
+            nonce,
+            deadline: execute.deadline || BigInt(9999999999),
+            vType: VerificationType.signedVerification,
+          },
+          this.bigintReplacer
+        )
+      ) as UniversalPayload;
+      const executionHash = this.computeExecutionHash({
+        verifyingContract: UEA,
+        payload: universalPayload,
+      });
+      /**
+       * Sign Universal Payload
+       */
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_01, executionHash);
+      const signature = await this.signUniversalPayload(universalPayload, UEA);
+      this.executeProgressHook(
+        PROGRESS_HOOK.SEND_TX_04_02,
+        bytesToHex(signature)
+      );
+      /**
+       * Fee Locking
+       */
+      let feeLockTxHash: string | undefined = execute.feeLockTxHash;
+      if (funds < requiredFunds && !feeLockTxHash) {
+        const fundDifference = requiredFunds - funds;
+        const fundDifferenceInUSD = this.pushClient.pushToUSDC(fundDifference); // ( USD with 8 decimal points )
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_05_01, fundDifference);
+        feeLockTxHash = await this.lockFee(fundDifferenceInUSD, executionHash);
+        /**
+         * Waiting for Confirmations
+         */
+        this.executeProgressHook(
+          PROGRESS_HOOK.SEND_TX_05_02,
+          feeLockTxHash,
+          CHAIN_INFO[chain].confirmations
+        );
+        await this.waitForLockerFeeConfirmation(feeLockTxHash);
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_05_03);
+      }
+      /**
+       * Broadcasting Tx to PC
+       */
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06);
+      const tx = await this.sendUniversalTx(
+        isUEADeployed,
+        feeLockTxHash,
+        universalPayload,
+        signature
+      );
+      this.executeProgressHook(
+        PROGRESS_HOOK.SEND_TX_99_01,
         JSON.stringify(tx, this.bigintReplacer, 2)
       );
       return tx;
+    } catch (err) {
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_02, err);
+      throw err;
     }
-
-    this.executeProgressHook('SEND-TRANSACTION-02');
-    const gasEstimate = execute.gasLimit || BigInt(1e7);
-    this.executeProgressHook('SEND-TRANSACTION-03', gasEstimate);
-
-    // Run gasPrice and UEA computation in parallel
-    this.executeProgressHook('SEND-TRANSACTION-04');
-    this.executeProgressHook('SEND-TRANSACTION-08');
-    const [gasPrice, { address: UEA, deployed: isUEADeployed }] =
-      await Promise.all([this.pushClient.getGasPrice(), this.computeUEA()]);
-    this.executeProgressHook('SEND-TRANSACTION-05', gasPrice);
-    this.executeProgressHook('SEND-TRANSACTION-09', UEA, isUEADeployed);
-
-    const requiredGasFee = gasEstimate * gasPrice;
-    this.executeProgressHook('SEND-TRANSACTION-06', requiredGasFee);
-
-    const requiredFunds = requiredGasFee + execute.value;
-    this.executeProgressHook('SEND-TRANSACTION-07', requiredFunds);
-
-    // Run balance and nonce fetching in parallel
-    this.executeProgressHook('SEND-TRANSACTION-10');
-    this.executeProgressHook('SEND-TRANSACTION-12');
-    const [funds, nonce] = await Promise.all([
-      this.pushClient.getBalance(UEA),
-      isUEADeployed ? this.getUEANonce(UEA) : Promise.resolve(BigInt(0)),
-    ]);
-    this.executeProgressHook('SEND-TRANSACTION-11', funds);
-    this.executeProgressHook('SEND-TRANSACTION-13', nonce);
-
-    const universalPayload = JSON.parse(
-      JSON.stringify(
-        {
-          to: execute.to,
-          value: execute.value,
-          data: execute.data || '0x',
-          gasLimit: execute.gasLimit || BigInt(1e7),
-          maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
-          maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
-          nonce,
-          deadline: execute.deadline || BigInt(9999999999),
-          vType: VerificationType.signedVerification,
-        },
-        this.bigintReplacer
-      )
-    ) as UniversalPayload;
-    const executionHash = this.computeExecutionHash({
-      verifyingContract: UEA,
-      payload: universalPayload,
-    });
-    this.executeProgressHook('SEND-TRANSACTION-14', executionHash);
-
-    let feeLockTxHash: string | undefined = execute.feeLockTxHash;
-    if (funds < requiredFunds && !feeLockTxHash) {
-      const fundDifference = requiredFunds - funds;
-      this.executeProgressHook('SEND-TRANSACTION-15', fundDifference);
-
-      const fundDifferenceInUSDC = this.pushClient.pushToUSDC(fundDifference); // ( USDC with 8 decimal points )
-      feeLockTxHash = await this.lockFee(fundDifferenceInUSDC, executionHash);
-      this.executeProgressHook(
-        'SEND-TRANSACTION-16',
-        feeLockTxHash,
-        CHAIN_INFO[chain].confirmations
-      );
-
-      await this.waitForLockerFeeConfirmation(feeLockTxHash);
-      this.executeProgressHook('SEND-TRANSACTION-17');
-    }
-
-    this.executeProgressHook('SEND-TRANSACTION-18');
-    const signature = await this.signUniversalPayload(universalPayload, UEA);
-    this.executeProgressHook('SEND-TRANSACTION-19', bytesToHex(signature));
-
-    this.executeProgressHook('SEND-TRANSACTION-20');
-    const tx = await this.sendUniversalTx(
-      isUEADeployed,
-      feeLockTxHash,
-      universalPayload,
-      signature
-    );
-    this.executeProgressHook(
-      'SEND-TRANSACTION-21',
-      JSON.stringify(tx, this.bigintReplacer, 2)
-    );
-    return tx;
   }
 
   /**
@@ -377,7 +397,11 @@ export class Orchestrator {
 
     const txBody = await this.pushClient.createCosmosTxBody(msgs);
     const txRaw = await this.pushClient.signCosmosTx(txBody);
-    return this.pushClient.broadcastCosmosTx(txRaw);
+    const tx = await this.pushClient.broadcastCosmosTx(txRaw);
+    if (tx.code !== 0) {
+      throw new Error(tx.rawLog);
+    }
+    return tx;
   }
 
   /**
@@ -401,7 +425,11 @@ export class Orchestrator {
       };
       await delay(3000);
     }
-    return this.pushClient.getCosmosTx(txHash);
+    const tx = await this.pushClient.getCosmosTx(txHash);
+    if (tx.code !== 0) {
+      throw new Error(tx.rawLog);
+    }
+    return tx;
   }
 
   /**
@@ -504,6 +532,7 @@ export class Orchestrator {
   /**
    * Computes UEA for given UniversalAccount
    * @dev - This fn calls a view fn of Factory Contract
+   * @dev - Don't use this fn in production - only used for testing
    * @returns UEA Address with Deployment Status
    */
   async computeUEA(): Promise<{
@@ -722,12 +751,12 @@ export class Orchestrator {
     }
 
     // resolve the hook (call if it's a factory, or use directly if it's a static object)
-    const hookPayload: ProgressHookType =
+    const hookPayload: ProgressEvent =
       typeof hookEntry === 'function'
         ? (hookEntry as ProgressHookTypeFunction)(...args)
-        : (hookEntry as ProgressHookType);
+        : (hookEntry as ProgressEvent);
 
-    this.printLog(hookPayload.info);
+    this.printLog(hookPayload.message);
 
     if (!this.progressHook) return;
 
