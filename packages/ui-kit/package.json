@@ -1,10 +1,10 @@
 {
   "name": "@pushchain/ui-kit",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
     "@metamask/sdk": "^0.32.0",
-    "@pushchain/core": "^0.1.28",
+    "@pushchain/core": "^0.1.29",
     "@solana/web3.js": "^1.98.2",
     "@walletconnect/ethereum-provider": "^2.21.3",
     "buffer": "^6.0.3",

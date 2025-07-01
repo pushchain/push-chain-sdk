@@ -1437,9 +1437,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pushchain/core@npm:^0.1.28":
-  version: 0.1.28
-  resolution: "@pushchain/core@npm:0.1.28"
+"@pushchain/core@npm:^0.1.29":
+  version: 0.1.29
+  resolution: "@pushchain/core@npm:0.1.29"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.0.0"
     "@coral-xyz/anchor": "npm:^0.31.0"
@@ -1455,7 +1455,7 @@ __metadata:
     tslib: "npm:^2.3.0"
     tweetnacl: "npm:^1.0.3"
     viem: "npm:2.27.2"
-  checksum: 10/eca2256be9b2b9d7a0f142a9701c5e48cf75d8eb6f1fd3c616124c8050fe8d734b67cf9071fa5cd2a461d525bda1a959c4aee122bab41bd1ab78315f744df2cb
+  checksum: 10/d0597cfee30302d36d7735ef3244b86db6a151aff240706d4532f992f4a125b974002b3f3919d87692d33a8a39f0f315f4e764de22e14198bb1e455c2ec002b0
   languageName: node
   linkType: hard
 
@@ -4590,7 +4590,7 @@ __metadata:
   resolution: "core-connection@workspace:."
   dependencies:
     "@eslint/js": "npm:^9.9.0"
-    "@pushchain/core": "npm:^0.1.28"
+    "@pushchain/core": "npm:^0.1.29"
     "@pushchain/ui-kit": "npm:^1.1.0-alpha.7"
     "@types/react": "npm:^18.3.3"
     "@types/react-dom": "npm:^18.3.0"
