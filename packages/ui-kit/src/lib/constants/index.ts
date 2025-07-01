@@ -21,7 +21,7 @@ export const PushUI = {
       LAYOUT: { FULL: 'full', HOVER: 'hover' },
       INTERACTION: { INTERACTIVE: 'interactive', BLUR: 'blur' },
     },
-    CONNECTION_STATUS: ConnectionStatus,
+    CONNECTION: { STATUS: ConnectionStatus },
   },
 };
 

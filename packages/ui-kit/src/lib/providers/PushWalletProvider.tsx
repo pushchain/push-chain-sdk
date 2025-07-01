@@ -43,7 +43,7 @@ const PushWalletConfigDefault: ProviderConfigProps = {
 export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
   config,
   app,
-  themeMode = PushUI.CONSTANTS.THEME.DARK,
+  themeMode = PushUI.CONSTANTS.THEME.LIGHT,
   themeOverrides = {},
   children,
 }) => {

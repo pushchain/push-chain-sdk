@@ -18,9 +18,9 @@ const Container = styled.div`
   align-items: center;
   justify-content: center;
   animation: ${spin} 1s linear infinite;
-  width: 20px;
-  height: 20px;
-  color: var(--pw-int-brand-primary-color);
+  width: 16px;
+  height: 16px;
+  color: var(--pwauth-btn-connect-text-color);
 `;
 
 // Spinner functional component

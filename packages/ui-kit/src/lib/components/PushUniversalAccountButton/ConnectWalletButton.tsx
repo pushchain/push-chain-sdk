@@ -22,8 +22,17 @@ const ConnectWalletButton: FC<ConnectPushWalletButtonProps> = ({
     connectionStatus === 'authenticating' ||
     connectionStatus === 'connecting';
 
+  let status = 'connecting';
+
   const isLoading =
-    connectionStatus === 'connecting' || connectionStatus === 'authenticating';
+    status === 'connecting' || status === 'authenticating';
+
+  console.log(isLoading);
+
+  const capitalize = (word: string): string => {
+    if (!word) return '';
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  }
 
   const handleConnectWalletButton = () => handleConnectToPushWallet();
 
@@ -32,20 +41,21 @@ const ConnectWalletButton: FC<ConnectPushWalletButtonProps> = ({
       bgColor="var(--pwauth-btn-connect-bg-color)"
       textColor="var(--pwauth-btn-connect-text-color)"
       borderRadius="var(--pwauth-btn-connect-border-radius)"
-      onClick={handleConnectWalletButton}
+      // onClick={handleConnectWalletButton}
       disabled={isConnectButtonDisbaled || isLoading}
     >
-      {connectionStatus === 'notConnected'
+      {status === 'notConnected'
         ? connectButtonText
-        : connectionStatus}
-      {isLoading &&
-        (loadingComponent ? (
-          loadingComponent
-        ) : (
-          <SpinnerContainer>
-            <Spinner />
-          </SpinnerContainer>
-        ))}
+        : isLoading
+          ? loadingComponent
+            ? loadingComponent
+            : <>
+                {capitalize(status)}
+                <SpinnerContainer>
+                  <Spinner />
+                </SpinnerContainer>
+              </>
+          : capitalize(status)}
     </Button>
   );
 };
@@ -53,5 +63,5 @@ const ConnectWalletButton: FC<ConnectPushWalletButtonProps> = ({
 export { ConnectWalletButton };
 
 const SpinnerContainer = styled.div`
-  padding: 4px;
+  padding: 0px 4px;
 `;
