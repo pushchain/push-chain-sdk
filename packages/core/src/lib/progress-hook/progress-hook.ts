@@ -27,7 +27,7 @@ const RAW_HOOKS: {
   [PROGRESS_HOOK.SEND_TX_02_01]: () => ({
     id: PROGRESS_HOOK.SEND_TX_02_01,
     title: 'Estimating Gas',
-    message: 'Estimating and fetching gas limit, gas price for TX…',
+    message: 'Estimating and fetching gas limit, gas price for Tx…',
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_02_02]: (executionCost: bigint) => ({
