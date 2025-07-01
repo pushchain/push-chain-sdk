@@ -2,6 +2,7 @@ import React, { FC } from 'react';
 import styled from 'styled-components';
 import { usePushWalletContext } from '../../hooks/usePushWallet';
 import { Button, Spinner } from '../common';
+import { PushUI } from '../../constants';
 
 export type ConnectPushWalletButtonProps = {
   uid?: string;
@@ -18,16 +19,13 @@ const ConnectWalletButton: FC<ConnectPushWalletButtonProps> = ({
     usePushWalletContext(uid);
 
   const isConnectButtonDisbaled =
-    connectionStatus === 'connected' ||
-    connectionStatus === 'authenticating' ||
-    connectionStatus === 'connecting';
-
-  let status = 'connecting';
+    connectionStatus === PushUI.CONSTANTS.CONNECTION.STATUS.CONNECTED ||
+    connectionStatus === PushUI.CONSTANTS.CONNECTION.STATUS.AUTHENTICATING ||
+    connectionStatus === PushUI.CONSTANTS.CONNECTION.STATUS.CONNECTING;
 
   const isLoading =
-    status === 'connecting' || status === 'authenticating';
-
-  console.log(isLoading);
+    connectionStatus === PushUI.CONSTANTS.CONNECTION.STATUS.CONNECTING ||
+    connectionStatus === PushUI.CONSTANTS.CONNECTION.STATUS.AUTHENTICATING;
 
   const capitalize = (word: string): string => {
     if (!word) return '';
@@ -41,21 +39,21 @@ const ConnectWalletButton: FC<ConnectPushWalletButtonProps> = ({
       bgColor="var(--pwauth-btn-connect-bg-color)"
       textColor="var(--pwauth-btn-connect-text-color)"
       borderRadius="var(--pwauth-btn-connect-border-radius)"
-      // onClick={handleConnectWalletButton}
+      onClick={handleConnectWalletButton}
       disabled={isConnectButtonDisbaled || isLoading}
     >
-      {status === 'notConnected'
+      {connectionStatus === PushUI.CONSTANTS.CONNECTION.STATUS.NOT_CONNECTED
         ? connectButtonText
         : isLoading
           ? loadingComponent
             ? loadingComponent
             : <>
-                {capitalize(status)}
+                {capitalize(connectionStatus)}
                 <SpinnerContainer>
                   <Spinner />
                 </SpinnerContainer>
               </>
-          : capitalize(status)}
+          : capitalize(connectionStatus)}
     </Button>
   );
 };
