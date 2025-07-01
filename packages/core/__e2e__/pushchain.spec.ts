@@ -39,13 +39,26 @@ describe('PushChain (e2e)', () => {
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
-          printTraces: true,
+          progressHook: (val: any) => {
+            console.log(val);
+          },
         });
       });
-      it('should sendTransaction - Transfer Call', async () => {
+
+      it('should fail to send universal.sendTransaction with invalid feeLockTxHash', async () => {
+        await expect(
+          pushClient.universal.sendTransaction({
+            to: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+            feeLockTxHash: '0xABC', // Invalid txHash
+            value: BigInt(1e3),
+          })
+        ).rejects.toThrow();
+      }, 30000);
+
+      it('should successfully sendTransaction - Transfer Call', async () => {
         const tx = await pushClient.universal.sendTransaction({
           to: '0x35B84d6848D16415177c64D64504663b998A6ab4',
-          value: BigInt(1e18),
+          value: BigInt(1e3),
         });
         const after = await PushChain.utils.account.convertOriginToExecutor(
           universalSigner.account,
@@ -83,7 +96,9 @@ describe('PushChain (e2e)', () => {
 
       pushClient = await PushChain.initialize(universalSigner, {
         network: pushNetwork,
-        printTraces: true,
+        progressHook: (val: any) => {
+          console.log(val);
+        },
       });
     });
 
@@ -120,11 +135,23 @@ describe('PushChain (e2e)', () => {
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
-          printTraces: true,
+          progressHook: (val: any) => {
+            console.log(val);
+          },
         });
       });
 
-      it('universal.sendTransaction', async () => {
+      it('should fail to send universal.sendTransaction with invalid feeLockTxHash', async () => {
+        await expect(
+          pushClient.universal.sendTransaction({
+            to: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+            feeLockTxHash: '0xABC', // Invalid txHash
+            value: BigInt(1e18),
+          })
+        ).rejects.toThrow();
+      }, 30000);
+
+      it('should successfully send universal.sendTransaction', async () => {
         await pushClient.universal.sendTransaction({
           to: '0x35B84d6848D16415177c64D64504663b998A6ab4',
           value: BigInt(1e18),

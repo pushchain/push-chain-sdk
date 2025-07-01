@@ -7,6 +7,7 @@ import { UniversalSigner } from '../universal/universal.types';
 import { Utils } from '../utils';
 import { utils } from '@coral-xyz/anchor';
 import { bytesToHex, TypedData, TypedDataDomain } from 'viem';
+import { ProgressEvent } from '../progress-hook/progress-hook.types';
 
 /**
  * @class PushChain
@@ -127,6 +128,7 @@ export class PushChain {
       rpcUrls?: Partial<Record<CHAIN, string[]>>;
       blockExplorers?: Partial<Record<CHAIN, string[]>>;
       printTraces?: boolean;
+      progressHook?: (progress: ProgressEvent) => void;
     }
   ): Promise<PushChain> => {
     const validatedUniversalSigner = createUniversalSigner(universalSigner);
@@ -140,7 +142,8 @@ export class PushChain {
       validatedUniversalSigner,
       options?.network ?? PUSH_NETWORK.TESTNET_DONUT,
       options?.rpcUrls ?? {},
-      options?.printTraces ?? false
+      options?.printTraces ?? false,
+      options?.progressHook
     );
     return new PushChain(
       orchestrator,
