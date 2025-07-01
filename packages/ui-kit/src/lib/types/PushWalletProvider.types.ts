@@ -21,10 +21,10 @@ export type ChainConfig = {
 export type ProviderConfigProps = {
   uid?: string;
   network: PUSH_NETWORK;
-  rpcURL?: string;
+  rpcUrl?: string;
   login?: LoginMethodConfig;
   modal?: ModalProps;
-  chain?: ChainConfig;
+  chainConfig?: ChainConfig;
 };
 
 export type AppMetadata = {
@@ -39,16 +39,19 @@ export type ModalProps = {
    * “simple” shows only the iframe (no preview)
    */
   loginLayout?:
-    | typeof PushUI.CONSTANTS.LOGIN.SPLIT
-    | typeof PushUI.CONSTANTS.LOGIN.SIMPLE;
+    | typeof PushUI.CONSTANTS.LOGIN.LAYOUT.SPLIT
+    | typeof PushUI.CONSTANTS.LOGIN.LAYOUT.SIMPLE;
   /** if true (and `app` is provided), show the preview pane in the wrapper */
   appPreview?: boolean;
   /** CSS background-image for wrapper or preview pane */
   bgImage?: string;
   /** when connected, how the account menu appears */
   connectedLayout?:
-    | typeof PushUI.CONSTANTS.CONNECTED.FULL
-    | typeof PushUI.CONSTANTS.CONNECTED.HOVER;
+    | typeof PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
+    | typeof PushUI.CONSTANTS.CONNECTED.LAYOUT.HOVER;
+  connectedInteraction?:
+    | typeof PushUI.CONSTANTS.CONNECTED.INTERACTION.INTERACTIVE
+    | typeof PushUI.CONSTANTS.CONNECTED.INTERACTION.BLUR;
 };
 
 export type ThemeMode =

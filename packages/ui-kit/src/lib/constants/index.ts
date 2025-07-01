@@ -16,8 +16,11 @@ export const PushUI = {
     PUSH_NETWORK: PushChain.CONSTANTS.PUSH_NETWORK,
     CHAIN: { ETHEREUM: 'ethereum', SOLANA: 'solana' },
     THEME: { LIGHT: 'light', DARK: 'dark' },
-    LOGIN: { SPLIT: 'split', SIMPLE: 'simple' },
-    CONNECTED: { FULL: 'full', HOVER: 'hover' },
+    LOGIN: { LAYOUT: { SPLIT: 'split', SIMPLE: 'simple' } },
+    CONNECTED: {
+      LAYOUT: { FULL: 'full', HOVER: 'hover' },
+      INTERACTION: { INTERACTIVE: 'interactive', BLUR: 'blur' },
+    },
     CONNECTION_STATUS: ConnectionStatus,
   },
 };

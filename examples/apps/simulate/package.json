@@ -13,7 +13,7 @@
     "deploy:alpha": "VITE_DEPLOYMENT_MODE=alpha npm run build && echo 'simulate-alpha.push.org' > ./dist/CNAME && gh-pages -d dist -r https://github.com/push-protocol/simulate-alpha-deployment"
   },
   "dependencies": {
-    "@pushchain/core": "^0.1.24",
+    "@pushchain/core": "^0.1.28",
     "@pushchain/ui-kit": "^1.1.0-alpha.7",
     "formik": "^2.4.6",
     "gh-pages": "^6.2.0",

@@ -4,7 +4,10 @@ import { css } from 'styled-components';
 import { centerMaskString } from '../../../helpers';
 import { TransactionSnippet } from '../../../common/components';
 import { mockTransaction } from '../../../common/constants';
-import { usePushChainClient, usePushWalletContext } from '../../../../../../../packages/ui-kit';
+import {
+  usePushChainClient,
+  usePushWalletContext,
+} from '../../../../../../../packages/ui-kit';
 
 const MockSendTransaction = () => {
   const { pushChainClient, isLoading } = usePushChainClient();

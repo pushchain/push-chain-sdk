@@ -49,6 +49,8 @@ export type WalletContextType = {
 
   themeMode: ThemeMode;
   themeOverrides: ThemeOverrides;
+
+  toggleButtonRef: React.RefObject<HTMLButtonElement>;
 };
 
 export const WalletContext = createContext<WalletContextType | null>(null);
@@ -104,6 +106,8 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         }
       : undefined
   );
+
+  const toggleButtonRef = useRef<HTMLButtonElement>(null);
 
   const updateModalAppData = (newData: Partial<ModalAppDetails>) => {
     setModalAppData((prevData) => ({
@@ -539,6 +543,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         handleSignMessage,
         handleSignAndSendTransaction,
         handleSignTypedData,
+        toggleButtonRef,
       }}
     >
       <LoginModal
@@ -554,6 +559,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         isWalletMinimised={isWalletMinimised}
         setMinimiseWallet={setMinimiseWallet}
         handleUserLogOutEvent={handleUserLogOutEvent}
+        toggleButtonRef={toggleButtonRef}
       />
       {isWalletVisible && showToast && <PushWalletToast />}
       {children}

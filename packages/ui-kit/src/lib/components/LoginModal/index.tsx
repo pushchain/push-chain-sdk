@@ -1,4 +1,4 @@
-import React, { FC, useEffect, useRef } from 'react';
+import React, { FC, useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { CrossIcon, Spinner } from '../../components/common';
 import { PushUI, WALLET_CONFIG_URL } from '../../constants';
@@ -8,6 +8,7 @@ import {
   ProviderConfigProps,
   UniversalAccount,
 } from '../../types';
+import { useSmartModalPosition } from './useSmartModalPosition';
 
 type LoginModalProps = {
   iframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
@@ -24,6 +25,7 @@ type LoginModalProps = {
   isWalletMinimised: boolean;
   setMinimiseWallet: (isWalletMinimised: boolean) => void;
   handleUserLogOutEvent: () => void;
+  toggleButtonRef: React.RefObject<HTMLButtonElement>;
 };
 
 const LoginModal: FC<LoginModalProps> = ({
@@ -39,9 +41,17 @@ const LoginModal: FC<LoginModalProps> = ({
   setMinimiseWallet,
   handleUserLogOutEvent,
   config,
+  toggleButtonRef,
 }) => {
   const { modal } = config;
   const containerRef = useRef<HTMLDivElement>(null);
+  // const [position, setPosition] = useState({ top: 0, left: 0 });
+  const { top, left } = useSmartModalPosition(
+    toggleButtonRef,
+    450,
+    675,
+    isWalletMinimised
+  );
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -57,16 +67,39 @@ const LoginModal: FC<LoginModalProps> = ({
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
+  // useEffect(() => {
+  //   if (toggleButtonRef?.current) {
+  //     setPosition({
+  //       top: rect.bottom + window.scrollY,
+  //       left: rect.left + window.scrollX,
+  //     });
+  //     console.log({
+  //       top: rect.bottom + window.scrollY,
+  //       left: rect.left + window.scrollX,
+  //     });
+  //   }
+  // }, [isWalletVisible, isWalletMinimised]);
+
   return (
     <>
+      {!isWalletMinimised &&
+        universalAccount &&
+        config.modal?.connectedLayout ===
+          PushUI.CONSTANTS.CONNECTED.LAYOUT.HOVER &&
+        config.modal?.connectedInteraction ===
+          PushUI.CONSTANTS.CONNECTED.INTERACTION.BLUR && (
+          <BlurBackground
+            onClick={() => setMinimiseWallet(!isWalletMinimised)}
+          />
+        )}
       {isWalletVisible ? (
         <FrameContainer
-          ref={containerRef}
           isWalletMinimised={isWalletMinimised}
           universalAccount={universalAccount}
           themeMode={themeMode ? themeMode : PushUI.CONSTANTS.THEME.DARK}
           accountMenuVariant={modal?.connectedLayout}
           modalDefaults={modal}
+          style={{ top, left }}
         >
           {isIframeLoading && (
             <FrameLoadingContainer
@@ -123,7 +156,7 @@ const LoginModal: FC<LoginModalProps> = ({
             <SplitContainer>
               {modal?.appPreview &&
                 modalAppData &&
-                modal?.loginLayout === PushUI.CONSTANTS.LOGIN.SPLIT && (
+                modal?.loginLayout === PushUI.CONSTANTS.LOGIN.LAYOUT.SPLIT && (
                   <AppPreviewContainer universalAccount={universalAccount}>
                     <AppContainer>
                       {modalAppData?.logoURL && (
@@ -164,7 +197,7 @@ const LoginModal: FC<LoginModalProps> = ({
                     width: '-webkit-fill-available',
                     height: universalAccount
                       ? modal?.connectedLayout ===
-                        PushUI.CONSTANTS.CONNECTED.FULL
+                        PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
                         ? '100vh'
                         : '675px'
                       : '100vh',
@@ -186,6 +219,15 @@ const LoginModal: FC<LoginModalProps> = ({
 
 export { LoginModal };
 
+const BlurBackground = styled.div`
+  position: fixed;
+  top: 0px;
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+  backdrop-filter: blur(8px);
+`;
+
 const FrameContainer = styled.div<{
   universalAccount: UniversalAccount | null;
   isWalletMinimised: boolean;
@@ -194,8 +236,11 @@ const FrameContainer = styled.div<{
     | typeof PushUI.CONSTANTS.THEME.DARK;
   accountMenuVariant: ModalProps['connectedLayout'];
   modalDefaults?: ModalProps;
+  style?: Record<'top' | 'left', number>;
 }>`
   position: fixed;
+  top: ${({ style }) => `${style?.top}px`};
+  left: ${({ style }) => `${style?.left}px`};
   display: flex;
   flex-direction: column;
   background-image: url(${({ modalDefaults }) => modalDefaults?.bgImage});
@@ -209,7 +254,7 @@ const FrameContainer = styled.div<{
     isWalletMinimised
       ? '0px'
       : universalAccount
-      ? accountMenuVariant === PushUI.CONSTANTS.CONNECTED.FULL
+      ? accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
         ? '100%'
         : '450px'
       : '100vw'};
@@ -217,19 +262,19 @@ const FrameContainer = styled.div<{
     isWalletMinimised
       ? '0px'
       : universalAccount
-      ? accountMenuVariant === PushUI.CONSTANTS.CONNECTED.FULL
+      ? accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
         ? '100vw'
         : '675px'
       : '100vh'};
   right: ${({ universalAccount, accountMenuVariant }) =>
     universalAccount
-      ? accountMenuVariant === PushUI.CONSTANTS.CONNECTED.FULL
+      ? accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
         ? '0'
         : '10px'
       : '0'};
   top: ${({ universalAccount, accountMenuVariant }) =>
     universalAccount
-      ? accountMenuVariant === PushUI.CONSTANTS.CONNECTED.FULL
+      ? accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
         ? '0'
         : '70px'
       : '0'};
@@ -240,7 +285,7 @@ const FrameContainer = styled.div<{
     right: ${({ universalAccount }) => (universalAccount ? '2%' : '0')};
     top: ${({ universalAccount, accountMenuVariant }) =>
       universalAccount
-        ? accountMenuVariant === PushUI.CONSTANTS.CONNECTED.FULL
+        ? accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
           ? '0'
           : '8%'
         : '0'};

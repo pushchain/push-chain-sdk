@@ -47,9 +47,9 @@ export const usePushChainClient = (uid?: string) => {
 
         const pushChainClient = await PushChain.initialize(universalSigner, {
           network: config.network,
-          rpcUrls: config.chain?.rpcUrls,
-          blockExplorers: config.chain?.blockExplorers,
-          printTraces: true,
+          rpcUrls: config.chainConfig?.rpcUrls,
+          blockExplorers: config.chainConfig?.blockExplorers,
+          printTraces: config.chainConfig?.printTraces,
         });
 
         setPushChain(pushChainClient);
@@ -71,6 +71,6 @@ export const usePushChainClient = (uid?: string) => {
   return {
     pushChainClient: pushChain,
     error,
-    isLoading: !pushChain && !error,
+    isInitialized: !!pushChain && !error,
   };
 };

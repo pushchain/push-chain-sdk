@@ -34,8 +34,9 @@ const PushWalletConfigDefault: ProviderConfigProps = {
   login: loginDefaultConfig,
   network: PushUI.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
   modal: {
-    loginLayout: PushUI.CONSTANTS.LOGIN.SIMPLE,
+    loginLayout: PushUI.CONSTANTS.LOGIN.LAYOUT.SIMPLE,
     appPreview: false,
+    connectedInteraction: PushUI.CONSTANTS.CONNECTED.INTERACTION.INTERACTIVE,
   },
 };
 

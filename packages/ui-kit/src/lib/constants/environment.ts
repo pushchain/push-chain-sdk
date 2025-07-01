@@ -1,18 +1,17 @@
-import { PushChain } from '@pushchain/core';
+import { PUSH_NETWORK } from '@pushchain/core/src/lib/constants/enums';
 
 export type ConfigType = {
   WALLET_URL: {
-    [PushChain.CONSTANTS.PUSH_NETWORK.MAINNET]: string;
-    [PushChain.CONSTANTS.PUSH_NETWORK.TESTNET]: string;
-    [PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]: string;
-    [PushChain.CONSTANTS.PUSH_NETWORK.LOCALNET]: string;
+    [PUSH_NETWORK.MAINNET]: string;
+    [PUSH_NETWORK.TESTNET]: string;
+    [PUSH_NETWORK.TESTNET_DONUT]: string;
+    [PUSH_NETWORK.LOCALNET]: string;
   };
 };
 
 export const WALLET_CONFIG_URL = {
-  [PushChain.CONSTANTS.PUSH_NETWORK.MAINNET]: 'https://wallet.push.org',
-  [PushChain.CONSTANTS.PUSH_NETWORK.TESTNET]: 'https://wallet-alpha.push.org',
-  [PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]:
-    'https://wallet-alpha.push.org',
-  [PushChain.CONSTANTS.PUSH_NETWORK.LOCALNET]: 'http://localhost:5173',
+  [PUSH_NETWORK.MAINNET]: 'https://wallet.push.org',
+  [PUSH_NETWORK.TESTNET]: 'https://wallet-alpha.push.org',
+  [PUSH_NETWORK.TESTNET_DONUT]: 'https://wallet-alpha.push.org',
+  [PUSH_NETWORK.LOCALNET]: 'http://localhost:5173',
 };

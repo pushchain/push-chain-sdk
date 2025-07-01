@@ -50,9 +50,10 @@ const App: React.FC = () => {
       appPreview: true,
     },
     modal: {
-      loginLayout: PushUI.CONSTANTS.LOGIN.SPLIT,
-      connectedLayout: PushUI.CONSTANTS.CONNECTED.HOVER,
+      loginLayout: PushUI.CONSTANTS.LOGIN.LAYOUT.SPLIT,
+      connectedLayout: PushUI.CONSTANTS.CONNECTED.LAYOUT.HOVER,
       appPreview: true,
+      connectedInteraction: PushUI.CONSTANTS.CONNECTED.INTERACTION.BLUR,
     },
     chain: {
       rpcUrls: {
