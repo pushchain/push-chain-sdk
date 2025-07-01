@@ -7,9 +7,9 @@ export type ProgressEvent = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type ProgressHookTypeFunction = (...args: any[]) => ProgressEvent;
+export type ProgressEventFunction = (...args: any[]) => ProgressEvent;
 
-export type ProgressHookTypeFunctionWithoutTimestamp = (
+export type ProgressEventFunctionWithoutTimestamp = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ...args: any[]
 ) => Omit<ProgressEvent, 'timestamp'>;

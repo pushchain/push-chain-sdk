@@ -40,7 +40,6 @@ import { DeliverTxResponse } from '@cosmjs/stargate';
 import {
   PROGRESS_HOOK,
   ProgressEvent,
-  ProgressHookTypeFunction,
 } from '../progress-hook/progress-hook.types';
 import PROGRESS_HOOKS from '../progress-hook/progress-hook';
 
@@ -745,21 +744,9 @@ export class Orchestrator {
 
   private executeProgressHook(hookId: string, ...args: any[]): void {
     const hookEntry = PROGRESS_HOOKS[hookId];
-    if (!hookEntry) {
-      console.warn(`No progress hook found for id ${hookId}`);
-      return;
-    }
-
-    // resolve the hook (call if it's a factory, or use directly if it's a static object)
-    const hookPayload: ProgressEvent =
-      typeof hookEntry === 'function'
-        ? (hookEntry as ProgressHookTypeFunction)(...args)
-        : (hookEntry as ProgressEvent);
-
+    const hookPayload: ProgressEvent = hookEntry(...args);
     this.printLog(hookPayload.message);
-
     if (!this.progressHook) return;
-
     // invoke the user-provided callback
     this.progressHook(hookPayload);
   }
