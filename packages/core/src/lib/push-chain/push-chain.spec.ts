@@ -478,5 +478,173 @@ describe('PushChain', () => {
         );
       });
     });
+
+    describe('encodeTxData', () => {
+      const testAbi = [
+        {
+          inputs: [],
+          stateMutability: 'nonpayable',
+          type: 'constructor',
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
+              internalType: 'uint256',
+              name: 'newCount',
+              type: 'uint256',
+            },
+            {
+              indexed: true,
+              internalType: 'address',
+              name: 'caller',
+              type: 'address',
+            },
+            {
+              indexed: false,
+              internalType: 'string',
+              name: 'chainNamespace',
+              type: 'string',
+            },
+            {
+              indexed: false,
+              internalType: 'string',
+              name: 'chainId',
+              type: 'string',
+            },
+          ],
+          name: 'CountIncremented',
+          type: 'event',
+        },
+        {
+          inputs: [],
+          name: 'increment',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        {
+          inputs: [],
+          name: 'reset',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        {
+          inputs: [],
+          name: 'countEth',
+          outputs: [
+            {
+              internalType: 'uint256',
+              name: '',
+              type: 'uint256',
+            },
+          ],
+          stateMutability: 'view',
+          type: 'function',
+        },
+        {
+          inputs: [],
+          name: 'countPC',
+          outputs: [
+            {
+              internalType: 'uint256',
+              name: '',
+              type: 'uint256',
+            },
+          ],
+          stateMutability: 'view',
+          type: 'function',
+        },
+        {
+          inputs: [],
+          name: 'countSol',
+          outputs: [
+            {
+              internalType: 'uint256',
+              name: '',
+              type: 'uint256',
+            },
+          ],
+          stateMutability: 'view',
+          type: 'function',
+        },
+        {
+          inputs: [],
+          name: 'getCount',
+          outputs: [
+            {
+              internalType: 'uint256',
+              name: '',
+              type: 'uint256',
+            },
+          ],
+          stateMutability: 'view',
+          type: 'function',
+        },
+      ];
+
+      it('should encode function data correctly', () => {
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: testAbi,
+          functionName: 'increment',
+        });
+        expect(result).toBe('0xd09de08a');
+      });
+
+      it('should encode function data with arguments', () => {
+        // Test with a function that has no arguments (reset)
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: testAbi,
+          functionName: 'reset',
+        });
+        expect(result).toMatch(/^0x[a-fA-F0-9]+$/);
+        expect(typeof result).toBe('string');
+      });
+
+      it('should throw error for invalid ABI', () => {
+        expect(() =>
+          PushChain.utils.helpers.encodeTxData({
+            abi: 'invalid' as any,
+            functionName: 'increment',
+          })
+        ).toThrow('ABI must be an array');
+        expect(() =>
+          PushChain.utils.helpers.encodeTxData({
+            abi: null as any,
+            functionName: 'increment',
+          })
+        ).toThrow('ABI must be an array');
+      });
+
+      it('should throw error for invalid arguments', () => {
+        expect(() =>
+          PushChain.utils.helpers.encodeTxData({
+            abi: testAbi,
+            functionName: 'increment',
+            args: 'invalid' as any,
+          })
+        ).toThrow('Arguments must be an array');
+      });
+
+      it('should throw error for non-existent function', () => {
+        expect(() =>
+          PushChain.utils.helpers.encodeTxData({
+            abi: testAbi,
+            functionName: 'nonExistentFunction',
+          })
+        ).toThrow("Function 'nonExistentFunction' not found in ABI");
+      });
+
+      it('should handle empty args array', () => {
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: testAbi,
+          functionName: 'increment',
+          args: [],
+        });
+        expect(result).toBe('0xd09de08a');
+      });
+    });
   });
 });

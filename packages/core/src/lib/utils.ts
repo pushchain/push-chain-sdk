@@ -10,6 +10,7 @@ import {
   toUniversalFromKeypair,
 } from './universal/signer';
 import { CHAIN } from './constants/enums';
+import { ethers } from 'ethers';
 
 /**
  * @dev - THESE UTILS ARE EXPORTED TO SDK CONSUMER
@@ -92,6 +93,44 @@ export class Utils {
       }
 
       return foundEntry[0];
+    },
+
+    encodeTxData({
+      abi,
+      functionName,
+      args = [],
+    }: {
+      abi: any[];
+      functionName: string;
+      args?: any[];
+    }) {
+      // Validate inputs
+      if (!Array.isArray(abi)) {
+        throw new Error('ABI must be an array');
+      }
+
+      if (!Array.isArray(args)) {
+        throw new Error('Arguments must be an array');
+      }
+
+      // Find the function in the ABI
+      const functionAbi = abi.find((f: any) => f.name === functionName);
+      if (!functionAbi) {
+        throw new Error(`Function '${functionName}' not found in ABI`);
+      }
+
+      try {
+        // Create ethers Interface and encode the function data
+        const abiInterface = new ethers.Interface(abi);
+        const data = abiInterface.encodeFunctionData(functionName, args);
+        return data;
+      } catch (error) {
+        throw new Error(
+          `Failed to encode function '${functionName}': ${
+            error instanceof Error ? error.message : 'Unknown error'
+          }`
+        );
+      }
     },
   };
 }
