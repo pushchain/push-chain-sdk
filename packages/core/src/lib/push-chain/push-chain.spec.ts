@@ -586,51 +586,63 @@ describe('PushChain', () => {
       ];
 
       it('should encode function data correctly', () => {
-        const result = PushChain.utils.helpers.encodeTxData(
-          testAbi,
-          'increment'
-        );
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: testAbi,
+          functionName: 'increment',
+        });
         expect(result).toBe('0xd09de08a');
       });
 
       it('should encode function data with arguments', () => {
         // Test with a function that has no arguments (reset)
-        const result = PushChain.utils.helpers.encodeTxData(testAbi, 'reset');
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: testAbi,
+          functionName: 'reset',
+        });
         expect(result).toMatch(/^0x[a-fA-F0-9]+$/);
         expect(typeof result).toBe('string');
       });
 
       it('should throw error for invalid ABI', () => {
         expect(() =>
-          PushChain.utils.helpers.encodeTxData('invalid' as any, 'increment')
+          PushChain.utils.helpers.encodeTxData({
+            abi: 'invalid' as any,
+            functionName: 'increment',
+          })
         ).toThrow('ABI must be an array');
         expect(() =>
-          PushChain.utils.helpers.encodeTxData(null as any, 'increment')
+          PushChain.utils.helpers.encodeTxData({
+            abi: null as any,
+            functionName: 'increment',
+          })
         ).toThrow('ABI must be an array');
       });
 
       it('should throw error for invalid arguments', () => {
         expect(() =>
-          PushChain.utils.helpers.encodeTxData(
-            testAbi,
-            'increment',
-            'invalid' as any
-          )
+          PushChain.utils.helpers.encodeTxData({
+            abi: testAbi,
+            functionName: 'increment',
+            args: 'invalid' as any,
+          })
         ).toThrow('Arguments must be an array');
       });
 
       it('should throw error for non-existent function', () => {
         expect(() =>
-          PushChain.utils.helpers.encodeTxData(testAbi, 'nonExistentFunction')
+          PushChain.utils.helpers.encodeTxData({
+            abi: testAbi,
+            functionName: 'nonExistentFunction',
+          })
         ).toThrow("Function 'nonExistentFunction' not found in ABI");
       });
 
       it('should handle empty args array', () => {
-        const result = PushChain.utils.helpers.encodeTxData(
-          testAbi,
-          'increment',
-          []
-        );
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: testAbi,
+          functionName: 'increment',
+          args: [],
+        });
         expect(result).toBe('0xd09de08a');
       });
     });

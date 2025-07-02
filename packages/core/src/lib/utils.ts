@@ -95,7 +95,15 @@ export class Utils {
       return foundEntry[0];
     },
 
-    encodeTxData(abi: any[], functionName: string, args: any[] = []) {
+    encodeTxData({
+      abi,
+      functionName,
+      args = [],
+    }: {
+      abi: any[];
+      functionName: string;
+      args?: any[];
+    }) {
       // Validate inputs
       if (!Array.isArray(abi)) {
         throw new Error('ABI must be an array');
