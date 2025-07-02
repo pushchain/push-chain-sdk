@@ -88,10 +88,7 @@ export class Orchestrator {
       if (this.isPushChain(chain)) {
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06);
         const tx = await this.sendPushTx(execute);
-        this.executeProgressHook(
-          PROGRESS_HOOK.SEND_TX_99_01,
-          JSON.stringify([tx], this.bigintReplacer, 2)
-        );
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [tx]);
         return tx;
       }
       /**
@@ -183,10 +180,7 @@ export class Orchestrator {
         universalPayload,
         signature
       );
-      this.executeProgressHook(
-        PROGRESS_HOOK.SEND_TX_99_01,
-        JSON.stringify(transactions, this.bigintReplacer, 2)
-      );
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, transactions);
       return transactions[transactions.length - 1];
     } catch (err) {
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_02, err);
