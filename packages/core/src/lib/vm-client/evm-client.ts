@@ -2,6 +2,7 @@ import { UniversalSigner } from '../universal/universal.types';
 import {
   ClientOptions,
   ReadContractParams,
+  TxResponse,
   WriteContractParams,
 } from './vm-client.types';
 import {
@@ -16,6 +17,7 @@ import {
   Hex,
   Abi,
   fallback,
+  TransactionReceipt,
 } from 'viem';
 
 /**
@@ -291,6 +293,34 @@ export class EvmClient {
    */
   async getGasPrice(): Promise<bigint> {
     return this.publicClient.getGasPrice();
+  }
+
+  /**
+   * Fetches the full transaction response by hash.
+   *
+   * @param txHash - The transaction hash to query
+   * @returns The transaction object or null if not found
+   *
+   * @example
+   * const tx = await evmClient.getTransaction('0xabc...');
+   * console.log(tx?.from, tx?.to, tx?.value);
+   */
+  async getTransaction(txHash: `0x${string}`): Promise<TxResponse> {
+    const tx = await this.publicClient.getTransaction({ hash: txHash });
+    if (!tx) throw new Error('No transaction found!');
+
+    const wait = async (confirmations = 1): Promise<TransactionReceipt> => {
+      const receipt = await this.publicClient.waitForTransactionReceipt({
+        hash: txHash,
+        confirmations,
+      });
+      return receipt;
+    };
+
+    return {
+      ...tx,
+      wait,
+    };
   }
 
   /**
