@@ -46,12 +46,16 @@ VERSION=$(node -p "require('./packages/$SCOPE/package.json').version")
 
 npm publish "$PACKAGE_DIR" --access public --otp="$OTP"
 
-# Step 4: Git tag + push
+# Step 4: Commit version + changelog
+git add "packages/$SCOPE/package.json" ".changeset/$SCOPE.md"
+git commit -m "release($SCOPE): bump to $VERSION"
+
+# Step 5: Git tag + push
 TAG="$SCOPE@$VERSION"
 git tag "$TAG"
 git push origin "$TAG"
 
-# Step 5: GitHub release using changelog as body
+# Step 6: GitHub release using changelog as body
 CHANGELOG_FILE=".changeset/$SCOPE.md"
 
 if [ ! -f "$CHANGELOG_FILE" ]; then
@@ -59,6 +63,8 @@ if [ ! -f "$CHANGELOG_FILE" ]; then
   exit 1
 fi
 
-gh release create "$TAG" --title "$TAG" --notes-file "$CHANGELOG_FILE"
+# Extract only the latest changelog block (up to first ---)
+LATEST_NOTES=$(awk '/^---$/ { exit } { print }' "$CHANGELOG_FILE")
+gh release create "$TAG" --title "$TAG" --notes "$LATEST_NOTES"
 
 echo "✅ Release complete: $TAG"

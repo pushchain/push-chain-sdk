@@ -1,6 +1,6 @@
 {
   "name": "@pushchain/core",
-  "version": "0.1.32",
+  "version": "0.1.33",
   "dependencies": {
     "@bufbuild/protobuf": "^2.0.0",
     "@coral-xyz/anchor": "^0.31.0",
