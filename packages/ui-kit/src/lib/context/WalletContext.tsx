@@ -51,6 +51,7 @@ export type WalletContextType = {
   themeOverrides: ThemeOverrides;
 
   toggleButtonRef: React.RefObject<HTMLButtonElement>;
+  setToast: React.Dispatch<React.SetStateAction<string | null>>;
 };
 
 export const WalletContext = createContext<WalletContextType | null>(null);
@@ -78,7 +79,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
 
   const [externalWallet, setExternalWallet] = useState<WalletInfo | null>(null); // to connect with external wallet
 
-  const [showToast, setShowToast] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   const signatureResolverRef = useRef<{
     success?: (data: WalletEventRespoonse) => void;
@@ -255,15 +256,12 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       throw new Error('No External wallet connected');
     }
 
-    setShowToast(true);
-
     try {
       const providerReceived = walletRegistry.getProvider(
         externalWallet.providerName
       );
 
       if (!providerReceived) {
-        setShowToast(false);
         throw new Error('Provider not found');
       }
 
@@ -273,8 +271,6 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     } catch (error) {
       console.log('Error in generating signature', error);
       throw new Error('Signature request failed');
-    } finally {
-      setShowToast(false);
     }
   };
 
@@ -285,15 +281,12 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       throw new Error('No External wallet connected');
     }
 
-    setShowToast(true);
-
     try {
       const providerReceived = walletRegistry.getProvider(
         externalWallet.providerName
       );
 
       if (!providerReceived) {
-        setShowToast(false);
         throw new Error('Provider not found');
       }
 
@@ -303,8 +296,6 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     } catch (error) {
       console.log('Error in generating signature', error);
       throw new Error('Signature request failed');
-    } finally {
-      setShowToast(false);
     }
   };
 
@@ -315,15 +306,12 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       throw new Error('No External wallet connected');
     }
 
-    setShowToast(true);
-
     try {
       const providerReceived = walletRegistry.getProvider(
         externalWallet.providerName
       );
 
       if (!providerReceived) {
-        setShowToast(false);
         throw new Error('Provider not found');
       }
 
@@ -333,8 +321,6 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     } catch (error) {
       console.log('Error in generating signature', error);
       throw new Error('Signature request failed');
-    } finally {
-      setShowToast(false);
     }
   };
 
@@ -343,9 +329,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     data: Uint8Array
   ): Promise<Uint8Array> => {
     return new Promise((resolve, reject) => {
-      setShowToast(true);
       if (signatureResolverRef.current) {
-        setShowToast(false);
         reject(new Error('Another sign request is already in progress'));
         return;
       }
@@ -353,12 +337,10 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       signatureResolverRef.current = {
         success: (response: WalletEventRespoonse) => {
           resolve(response.signature!);
-          setShowToast(false);
           signatureResolverRef.current = null; // Clean up
         },
         error: (response: WalletEventRespoonse) => {
           signatureResolverRef.current = null; // Clean up
-          setShowToast(false);
           reject(new Error('Signature request failed'));
         },
       };
@@ -375,9 +357,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     data: Uint8Array
   ): Promise<Uint8Array> => {
     return new Promise((resolve, reject) => {
-      setShowToast(true);
       if (signatureResolverRef.current) {
-        setShowToast(false);
         reject(new Error('Another sign request is already in progress'));
         return;
       }
@@ -385,12 +365,10 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       signatureResolverRef.current = {
         success: (response: WalletEventRespoonse) => {
           resolve(response.signature!);
-          setShowToast(false);
           signatureResolverRef.current = null; // Clean up
         },
         error: (response: WalletEventRespoonse) => {
           signatureResolverRef.current = null; // Clean up
-          setShowToast(false);
           reject(new Error('Signature request failed'));
         },
       };
@@ -407,9 +385,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     data: ITypedData
   ): Promise<Uint8Array> => {
     return new Promise((resolve, reject) => {
-      setShowToast(true);
       if (signatureResolverRef.current) {
-        setShowToast(false);
         reject(new Error('Another sign request is already in progress'));
         return;
       }
@@ -417,12 +393,10 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       signatureResolverRef.current = {
         success: (response: WalletEventRespoonse) => {
           resolve(response.signature!);
-          setShowToast(false);
           signatureResolverRef.current = null; // Clean up
         },
         error: (response: WalletEventRespoonse) => {
           signatureResolverRef.current = null; // Clean up
-          setShowToast(false);
           reject(new Error('Signature request failed'));
         },
       };
@@ -544,6 +518,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         handleSignAndSendTransaction,
         handleSignTypedData,
         toggleButtonRef,
+        setToast,
       }}
     >
       <LoginModal
@@ -561,7 +536,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         handleUserLogOutEvent={handleUserLogOutEvent}
         toggleButtonRef={toggleButtonRef}
       />
-      {isWalletVisible && showToast && <PushWalletToast />}
+      {toast && <PushWalletToast toast={toast} />}
       {children}
     </WalletContext.Provider>
   );

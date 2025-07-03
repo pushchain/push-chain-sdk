@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { FC } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { Ellipse } from './icons';
 
@@ -13,20 +13,27 @@ const spin = keyframes`
 `;
 
 // Styled container for the Spinner
-const Container = styled.div`
+const Container = styled.div<{
+  color?: string;
+}>`
   display: flex;
   align-items: center;
   justify-content: center;
   animation: ${spin} 1s linear infinite;
   width: 16px;
   height: 16px;
-  color: var(--pwauth-btn-connect-text-color);
+  color: ${({ color }) => color || 'var(--pwauth-btn-connect-text-color)'};
 `;
 
+type SpinnerProps = {
+  color?: string;
+}
+
+
 // Spinner functional component
-const Spinner = () => {
+const Spinner: FC<SpinnerProps> = ({ color }) => {
   return (
-    <Container>
+    <Container color={color} >
       <Ellipse />
     </Container>
   );

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { usePushWalletContext } from '../../hooks/usePushWallet';
+import { PushUI } from '../../constants';
 
 type Position = { top: number; left: number };
 
@@ -6,15 +8,20 @@ export function useSmartModalPosition(
   triggerRef: React.RefObject<HTMLElement>,
   modalWidth = 450,
   modalHeight = 675,
-  isVisible: boolean
+  uid?: string,
 ): Position {
   const [position, setPosition] = useState<Position>({ top: 0, left: 0 });
 
-  console.log(isVisible);
+  const { isWalletMinimised, universalAccount, config } = usePushWalletContext(uid);
 
   useEffect(() => {
     const calculatePosition = () => {
       if (!triggerRef.current) return;
+
+      if (config.modal?.connectedLayout === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL) {
+        setPosition({ top: 0, left: 0 });
+        return;
+      }
 
       const triggerRect = triggerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
@@ -45,7 +52,13 @@ export function useSmartModalPosition(
     calculatePosition();
     window.addEventListener('resize', calculatePosition);
     return () => window.removeEventListener('resize', calculatePosition);
-  }, [triggerRef, modalWidth, modalHeight, isVisible]);
+  }, [triggerRef, modalWidth, modalHeight, isWalletMinimised, config]);
+
+  useEffect(() => {
+    if (!universalAccount) {
+        setPosition({top: 0, left: 0});
+    }
+  }, [universalAccount])
 
   return position;
 }

@@ -50,7 +50,7 @@ const LoginModal: FC<LoginModalProps> = ({
     toggleButtonRef,
     450,
     675,
-    isWalletMinimised
+    config.uid
   );
 
   useEffect(() => {

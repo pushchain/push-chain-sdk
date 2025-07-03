@@ -1,12 +1,17 @@
-import React from 'react';
+import React, { FC } from 'react';
 import styled from 'styled-components';
 import { Spinner } from "../../components/common";
 
-const PushWalletToast = () => {
+type PushWalletToastProps = {
+    toast: string | null;
+}
+
+const PushWalletToast: FC<PushWalletToastProps> = ({toast}) => {
+    if (!toast) return <></>
     return (
         <ToastContainer>
-            <Spinner />
-            <TitleText>Sending Transaction</TitleText>
+            <Spinner color='#000' />
+            <TitleText>{toast}</TitleText>
         </ToastContainer>
     );
 };
@@ -21,7 +26,7 @@ const ToastContainer = styled.div`
     flex-direction:row;
     gap:12px;
     align-items:center;
-    border:1px solid whitesmoke;
+    border:1px solid #C4CBD5;
     padding:10px 20px;
     border-radius:10px;
     background-color:#fff;

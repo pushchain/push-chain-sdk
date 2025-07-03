@@ -44,7 +44,6 @@ const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
       >
         {getChainIcon(chain)}
         {maskedAddress}
-        <PushLogo />
       </Button>
     </>
   );
