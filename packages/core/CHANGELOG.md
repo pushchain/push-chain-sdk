@@ -1,3 +1,9 @@
+@pushchain/core@0.1.35 (2025-07-03)
+
+- chore: fix changelog gen (#158)
+
+---
+
 @pushchain/core@0.1.34 (2025-07-03)
 
 - chore: change release script
