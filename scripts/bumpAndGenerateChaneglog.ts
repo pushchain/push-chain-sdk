@@ -78,19 +78,17 @@ if (scopedCommits.length === 0) {
   process.exit(0);
 }
 
-// --- 3. Prepend to single file: .changeset/core.md ---
+// --- 3. Prepend to packages/PACKAGE/CHANGELOG.md ---
 const dateStr = new Date().toISOString().split('T')[0];
 const header = `${scopeToPackage[typedScope]}@${newVersion} (${dateStr})`;
 const body = scopedCommits.join('\n');
 const fullEntry = `${header}\n\n${body}\n\n---\n\n`;
 
-if (!fs.existsSync('.changeset')) fs.mkdirSync('.changeset');
-
-const changelogPath = path.join('.changeset', `${scope}.md`);
+const changelogPath = path.join(pkgDir, 'CHANGELOG.md');
 let previousContent = '';
 if (fs.existsSync(changelogPath)) {
   previousContent = fs.readFileSync(changelogPath, 'utf-8');
 }
 
 fs.writeFileSync(changelogPath, fullEntry + previousContent);
-console.log(`📝 Prepended release to .changeset/${scope}.md`);
+console.log(`📝 Prepended release to ${path.relative('.', changelogPath)}`);
