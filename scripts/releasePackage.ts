@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import semver from 'semver';
+import { execSync } from 'child_process';
 
-console.log(process.argv);
 const [, , scope, bump] = process.argv;
 
 if (!scope || !bump) {
@@ -22,14 +22,14 @@ const scopeToFolder = {
 } as const;
 
 type Scope = keyof typeof scopeToPackage;
-
 const typedScope = scope as Scope;
 
-if (!(scope in scopeToPackage)) {
+if (!(typedScope in scopeToPackage)) {
   console.error(`❌ Unknown scope: ${scope}`);
   process.exit(1);
 }
 
+// --- 1. Read & bump version ---
 const pkgDir = scopeToFolder[typedScope];
 const pkgPath = path.join(pkgDir, 'package.json');
 const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
@@ -46,15 +46,41 @@ pkg.version = newVersion;
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 console.log(`📦 Updated ${pkg.name} to ${newVersion}`);
 
-const changesetContent = `---
-"${scopeToPackage[typedScope]}": ${bump}
----
+// --- 2. Collect commit messages for this scope ---
+function getCommitsForScope(scope: string): string[] {
+  const log = execSync('git log --pretty=format:%s origin/main..HEAD', {
+    encoding: 'utf-8',
+  });
 
-Release ${newVersion}
-`;
+  const commits = log
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((msg) => new RegExp(`^\\w+\\(${scope}\\):`).test(msg))
+    .map((msg) => `- ${msg.replace(/^(\w+)\([^)]+\):\s*/, '')}`);
+
+  return commits;
+}
+
+const scopedCommits = getCommitsForScope(scope);
+if (scopedCommits.length === 0) {
+  console.log('⚠️ No commits found for this scope. Skipping changelog update.');
+  process.exit(0);
+}
+
+// --- 3. Prepend to single file: .changeset/core.md ---
+const dateStr = new Date().toISOString().split('T')[0];
+const header = `${scopeToPackage[typedScope]}@${newVersion} (${dateStr})`;
+const body = scopedCommits.join('\n');
+
+const fullEntry = `${header}\n\n${body}\n\n---\n\n`;
 
 if (!fs.existsSync('.changeset')) fs.mkdirSync('.changeset');
 
-const filename = `.changeset/${scope}-${newVersion}.md`;
-fs.writeFileSync(filename, changesetContent);
-console.log(`📝 Created changeset file: ${filename}`);
+const changelogPath = path.join('.changeset', `${scope}.md`);
+let previousContent = '';
+if (fs.existsSync(changelogPath)) {
+  previousContent = fs.readFileSync(changelogPath, 'utf-8');
+}
+
+fs.writeFileSync(changelogPath, fullEntry + previousContent);
+console.log(`📝 Prepended release to .changeset/${scope}.md`);
