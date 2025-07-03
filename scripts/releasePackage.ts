@@ -52,13 +52,17 @@ function getCommitsForScope(scope: string): string[] {
     encoding: 'utf-8',
   });
 
-  const commits = log
+  return log
     .split('\n')
     .map((line) => line.trim())
     .filter((msg) => new RegExp(`^\\w+\\(${scope}\\):`).test(msg))
-    .map((msg) => `- ${msg.replace(/^(\w+)\([^)]+\):\s*/, '')}`);
-
-  return commits;
+    .map((msg) => {
+      const match = msg.match(/^(\w+)\([^)]+\):\s*(.+)$/);
+      if (!match) return null;
+      const [, type, subject] = match;
+      return `- ${type}: ${subject}`;
+    })
+    .filter((v): v is string => !!v);
 }
 
 const scopedCommits = getCommitsForScope(scope);
@@ -71,7 +75,6 @@ if (scopedCommits.length === 0) {
 const dateStr = new Date().toISOString().split('T')[0];
 const header = `${scopeToPackage[typedScope]}@${newVersion} (${dateStr})`;
 const body = scopedCommits.join('\n');
-
 const fullEntry = `${header}\n\n${body}\n\n---\n\n`;
 
 if (!fs.existsSync('.changeset')) fs.mkdirSync('.changeset');
