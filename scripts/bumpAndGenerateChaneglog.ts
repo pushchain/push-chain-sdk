@@ -48,7 +48,14 @@ console.log(`📦 Updated ${pkg.name} to ${newVersion}`);
 
 // --- 2. Collect commit messages for this scope ---
 function getCommitsForScope(scope: string): string[] {
-  const log = execSync('git log --pretty=format:%s origin/main..HEAD', {
+  const previousTag = execSync(
+    `git describe --tags --match '${scope}@*' --abbrev=0`,
+    {
+      encoding: 'utf-8',
+    }
+  ).trim();
+
+  const log = execSync(`git log --pretty=format:%s ${previousTag}..HEAD`, {
     encoding: 'utf-8',
   });
 

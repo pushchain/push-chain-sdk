@@ -30,24 +30,24 @@
     "nx-release-publish": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "BUMP=${args.bump} OTP=${args.otp} sh -c 'ts-node scripts/releasePackage.ts core ${BUMP} && yarn changeset version && nx run core:build && npm publish dist/packages/core --access public --otp=$OTP && VERSION=$(yarn --silent get-version core) && git tag core@$VERSION && git push origin --tags && gh release create core@$VERSION --title \"core@$VERSION\" --notes-file packages/core/CHANGELOG.md'"
+        "command": "bash scripts/release.sh core '{args.bump}' '{args.otp}'"
       },
-      "optionsDescription": "Pass bump and OTP",
+      "optionsDescription": "Bumps version and releases to npm & GitHub",
       "schema": {
         "type": "object",
         "properties": {
+          "bump": {
+            "type": "string",
+            "description": "Version bump type: patch | minor | major"
+          },
           "otp": {
             "type": "string",
             "description": "One-time password for 2FA"
-          },
-          "bump": {
-            "type": "string",
-            "description": "Bump type (patch | minor | major)"
           }
         },
         "required": [
-          "otp",
-          "bump"
+          "bump",
+          "otp"
         ]
       }
     }
