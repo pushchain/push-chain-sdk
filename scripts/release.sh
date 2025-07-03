@@ -53,7 +53,8 @@ git commit -m "release($SCOPE): bump to $VERSION"
 # Step 5: Git tag + push
 TAG="$SCOPE@$VERSION"
 git tag "$TAG"
-git push origin "$TAG"
+git push origin HEAD    # ✅ Push the actual commit
+git push origin "$TAG"  # ✅ Push the tag
 
 # Step 6: GitHub release using changelog as body
 CHANGELOG_FILE="packages/$SCOPE/CHANGELOG.md"
