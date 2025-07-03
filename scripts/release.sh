@@ -33,7 +33,7 @@ fi
 
 echo "🚀 Releasing @$SCOPE with a $BUMP bump..."
 
-# Step 1: Bump version and generate .changeset markdown
+# Step 1: Bump version and generate changelog markdown
 ts-node scripts/bumpAndGenerateChaneglog.ts "$SCOPE" "$BUMP"
 
 # Step 2: Build the package
@@ -47,7 +47,7 @@ VERSION=$(node -p "require('./packages/$SCOPE/package.json').version")
 npm publish "$PACKAGE_DIR" --access public --otp="$OTP"
 
 # Step 4: Commit version + changelog
-git add "packages/$SCOPE/package.json" ".changeset/$SCOPE.md"
+git add "packages/$SCOPE/package.json" "packages/$SCOPE/CHANGELOG.md"
 git commit -m "release($SCOPE): bump to $VERSION"
 
 # Step 5: Git tag + push
@@ -56,7 +56,7 @@ git tag "$TAG"
 git push origin "$TAG"
 
 # Step 6: GitHub release using changelog as body
-CHANGELOG_FILE=".changeset/$SCOPE.md"
+CHANGELOG_FILE="packages/$SCOPE/CHANGELOG.md"
 
 if [ ! -f "$CHANGELOG_FILE" ]; then
   echo "⚠️ No changelog file found for $SCOPE"
