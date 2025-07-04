@@ -15,29 +15,40 @@
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/packages/core",
         "main": "packages/core/src/index.ts",
         "tsConfig": "packages/core/tsconfig.lib.json",
-        "assets": ["packages/core/*.md"]
+        "assets": [
+          "packages/core/*.md"
+        ]
       }
     },
     "nx-release-publish": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "nx run core:build && npm publish dist/packages/core --access public --otp=${args.otp} && git tag core@$(node -p \"require('./packages/core/package.json').version\") && git push origin --tags && gh release create core@$(node -p \"require('./packages/core/package.json').version\") --title \"core@$(node -p 'require(\"./packages/core/package.json\").version')\" --notes \"### Changes\n\n$(git log --oneline $(git describe --tags --abbrev=0)..HEAD)\""
+        "command": "bash scripts/release.sh core '{args.bump}' '{args.otp}'"
       },
-      "optionsDescription": "Pass OTP as an argument with --otp",
+      "optionsDescription": "Bumps version and releases to npm & GitHub",
       "schema": {
         "type": "object",
         "properties": {
+          "bump": {
+            "type": "string",
+            "description": "Version bump type: patch | minor | major"
+          },
           "otp": {
             "type": "string",
             "description": "One-time password for 2FA"
           }
         },
-        "required": ["otp"]
+        "required": [
+          "bump",
+          "otp"
+        ]
       }
     }
   }

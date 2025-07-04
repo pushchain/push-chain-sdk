@@ -14,6 +14,7 @@ module.exports = {
         'ci',
         'perf',
         'build',
+        'release',
       ],
     ],
     'scope-enum': [

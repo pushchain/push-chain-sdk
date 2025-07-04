@@ -7,6 +7,7 @@
     "tslib": "^2.3.0"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.29.5",
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
     "@nx/eslint": "20.1.4",
@@ -19,6 +20,7 @@
     "@types/bn.js": "^5.1.6",
     "@types/jest": "^29.5.12",
     "@types/node": "18.16.9",
+    "@types/semver": "^7.7.0",
     "@typescript-eslint/eslint-plugin": "^7.16.0",
     "@typescript-eslint/parser": "^7.16.0",
     "eslint": "~8.57.0",
@@ -28,6 +30,7 @@
     "jest-environment-node": "^29.7.0",
     "nx": "^20.4.2",
     "prettier": "^2.6.2",
+    "semver": "^7.7.2",
     "ts-jest": "^29.1.0",
     "ts-node": "10.9.1",
     "typescript": "~5.5.2",
