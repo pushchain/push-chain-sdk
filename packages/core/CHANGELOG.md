@@ -1,3 +1,9 @@
+@pushchain/core@0.1.38 (2025-07-04)
+
+- fix: revert erip712Domain - does not work with ethers
+
+---
+
 @pushchain/core@0.1.37 (2025-07-04)
 
 - fix: add eip712Hash
