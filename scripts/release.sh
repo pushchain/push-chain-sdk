@@ -34,7 +34,7 @@ fi
 echo "🚀 Releasing @$SCOPE with a $BUMP bump..."
 
 # Step 1: Bump version and generate changelog markdown
-ts-node scripts/bumpAndGenerateChaneglog.ts "$SCOPE" "$BUMP"
+ts-node scripts/bumpAndGenerateChangelog.ts "$SCOPE" "$BUMP"
 
 # Step 2: Build the package
 nx run "$SCOPE:build"
