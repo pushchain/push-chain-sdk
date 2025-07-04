@@ -1,3 +1,9 @@
+@pushchain/core@0.1.37 (2025-07-04)
+
+- fix: add eip712Hash
+
+---
+
 @pushchain/core@0.1.35 (2025-07-03)
 
 - chore: fix changelog gen (#158)
