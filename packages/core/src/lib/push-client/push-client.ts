@@ -143,7 +143,7 @@ export class PushClient extends EvmClient {
     const uncompressedPubKey = hexToBytes(account.publicKey);
     const compressedPubKey = Secp256k1.compressPubkey(uncompressedPubKey);
     const pubkeyEncoded = {
-      typeUrl: '/os.crypto.v1.ethsecp256k1.PubKey',
+      typeUrl: '/cosmos.evm.crypto.v1.ethsecp256k1.PubKey',
       value: Writer.create().uint32(10).bytes(compressedPubKey).finish(),
     };
 

@@ -36,12 +36,12 @@ import {
 } from '../generated/v1/tx';
 import { PriceFetch } from '../price-fetch/price-fetch';
 import { utils } from '@coral-xyz/anchor';
-import { DeliverTxResponse } from '@cosmjs/stargate';
 import {
   PROGRESS_HOOK,
   ProgressEvent,
 } from '../progress-hook/progress-hook.types';
 import PROGRESS_HOOKS from '../progress-hook/progress-hook';
+import { TxResponse } from '../vm-client/vm-client.types';
 
 export class Orchestrator {
   private pushClient: PushClient;
@@ -77,7 +77,7 @@ export class Orchestrator {
   /**
    * Executes an interaction on Push Chain
    */
-  async execute(execute: ExecuteParams): Promise<DeliverTxResponse> {
+  async execute(execute: ExecuteParams): Promise<TxResponse> {
     try {
       const chain = this.universalSigner.account.chain;
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_01, chain);
@@ -88,12 +88,7 @@ export class Orchestrator {
       if (this.isPushChain(chain)) {
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06);
         const tx = await this.sendPushTx(execute);
-        tx.code === 0
-          ? this.executeProgressHook(
-              PROGRESS_HOOK.SEND_TX_99_01,
-              JSON.stringify(tx, this.bigintReplacer, 2)
-            )
-          : this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_02, tx.rawLog);
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [tx]);
         return tx;
       }
       /**
@@ -179,17 +174,14 @@ export class Orchestrator {
        * Broadcasting Tx to PC
        */
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06);
-      const tx = await this.sendUniversalTx(
+      const transactions = await this.sendUniversalTx(
         isUEADeployed,
         feeLockTxHash,
         universalPayload,
         signature
       );
-      this.executeProgressHook(
-        PROGRESS_HOOK.SEND_TX_99_01,
-        JSON.stringify(tx, this.bigintReplacer, 2)
-      );
-      return tx;
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, transactions);
+      return transactions[transactions.length - 1];
     } catch (err) {
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_02, err);
       throw err;
@@ -339,7 +331,7 @@ export class Orchestrator {
     feeLockTxHash?: string,
     universalPayload?: UniversalPayload,
     signature?: Uint8Array
-  ): Promise<DeliverTxResponse> {
+  ): Promise<TxResponse[]> {
     const { chain, address } = this.universalSigner.account;
     const { vm, chainId } = CHAIN_INFO[chain];
 
@@ -400,7 +392,28 @@ export class Orchestrator {
     if (tx.code !== 0) {
       throw new Error(tx.rawLog);
     }
-    return tx;
+
+    const ethTxHashes: `0x${string}`[] =
+      tx.events
+        ?.filter((e: any) => e.type === 'ethereum_tx')
+        .flatMap((e: any) =>
+          e.attributes
+            ?.filter((attr: any) => attr.key === 'ethereumTxHash')
+            .map((attr: any) => attr.value as `0x${string}`)
+        ) ?? [];
+
+    if (ethTxHashes.length === 0) {
+      throw new Error('No ethereumTxHash found in transaction events');
+    }
+
+    // 🔗 Fetch all corresponding EVM transactions in parallel
+    const evmTxs = await Promise.all(
+      ethTxHashes.map(async (hash) => {
+        return await this.pushClient.getTransaction(hash);
+      })
+    );
+
+    return evmTxs;
   }
 
   /**
@@ -409,26 +422,14 @@ export class Orchestrator {
    * @param execute
    * @returns Cosmos Tx Response for a given Evm Tx
    */
-  private async sendPushTx(execute: ExecuteParams) {
+  private async sendPushTx(execute: ExecuteParams): Promise<TxResponse> {
     const txHash = await this.pushClient.sendTransaction({
       to: execute.to,
       data: execute.data || '0x',
       value: execute.value,
       signer: this.universalSigner,
     });
-
-    if (this.universalSigner.account.chain === CHAIN.PUSH_LOCALNET) {
-      // @dev - Required for preventing cosmos fetching failures
-      const delay = (ms: number): Promise<void> => {
-        return new Promise((resolve) => setTimeout(resolve, ms));
-      };
-      await delay(3000);
-    }
-    const tx = await this.pushClient.getCosmosTx(txHash);
-    if (tx.code !== 0) {
-      throw new Error(tx.rawLog);
-    }
-    return tx;
+    return this.pushClient.getTransaction(txHash);
   }
 
   /**

@@ -3,6 +3,7 @@ export type ProgressEvent = {
   title: string;
   message: string;
   level: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
+  response: null | object;
   timestamp: string; // ISO-8601, e.g. "2025-06-26T15:04:05.000Z"
 };
 

@@ -1,5 +1,5 @@
 import { UniversalSigner } from '../universal/universal.types';
-import { Abi } from 'viem';
+import { Abi, Transaction, TransactionReceipt } from 'viem';
 import { Keypair, PublicKey } from '@solana/web3.js';
 
 /**
@@ -51,3 +51,7 @@ export interface WriteContractParams extends ReadContractParams {
    */
   extraSigners?: Keypair[];
 }
+
+export type TxResponse = Transaction & {
+  wait: (confirmations?: number) => Promise<TransactionReceipt>;
+};
