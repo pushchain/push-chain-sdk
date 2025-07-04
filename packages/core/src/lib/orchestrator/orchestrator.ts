@@ -291,11 +291,6 @@ export class Orchestrator {
             verifyingContract,
           },
           types: {
-            EIP712Domain: [
-              { name: 'version', type: 'string' },
-              { name: 'chainId', type: 'uint256' },
-              { name: 'verifyingContract', type: 'address' },
-            ],
             UniversalPayload: [
               { name: 'to', type: 'address' },
               { name: 'value', type: 'uint256' },
