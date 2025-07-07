@@ -20,8 +20,8 @@ const Container = styled.div<{
   align-items: center;
   justify-content: center;
   animation: ${spin} 1s linear infinite;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   color: ${({ color }) => color || 'var(--pwauth-btn-connect-text-color)'};
 `;
 

@@ -190,7 +190,7 @@ const LoginModal: FC<LoginModalProps> = ({
                   src={`${WALLET_CONFIG_URL[config.network]}/auth?app=${
                     window.location.origin
                   }`}
-                  allow="publickey-credentials-create; publickey-credentials-get; display-capture; *"
+                  allow="clipboard-write; clipboard-read; publickey-credentials-create; publickey-credentials-get; display-capture; *"
                   ref={iframeRef}
                   style={{
                     border: 'none',

@@ -102,4 +102,5 @@ export const buttonThemeDefault = {
 export const defaultThemeKeys = Object.keys({
   ...themeDefault,
   ...lightThemeDefault,
+  ...buttonThemeDefault,
 });

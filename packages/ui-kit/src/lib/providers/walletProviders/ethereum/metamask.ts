@@ -191,17 +191,6 @@ export class MetamaskProvider extends BaseWalletProvider {
 
   signTypedData = async (typedData: ITypedData): Promise<Uint8Array> => {
     try {
-      console.log(typedData);
-      const bigintReplacer = (_key: string, value: any) => {
-        return typeof value === 'bigint'
-          ? value.toString() // convert BigInt to string
-          : value;
-      };
-      // typedData.domain = {
-      //   verifyingContract: typedData.domain.verifyingContract,
-      //   version: typedData.domain.version,
-      // };
-      console.log(typedData);
       const provider = this.getProvider();
       if (!provider) {
         throw new Error('Provider is undefined');
@@ -214,14 +203,19 @@ export class MetamaskProvider extends BaseWalletProvider {
         throw new Error('No connected account');
       }
 
-      console.log('check');
+      typedData.types = {
+        EIP712Domain: [
+          { name: 'version', type: 'string' },
+          { name: 'chainId', type: 'uint256' },
+          { name: 'verifyingContract', type: 'address' },
+        ],
+        UniversalPayload: typedData.types['UniversalPayload'],
+      }
 
       const signature = await provider.request({
         method: 'eth_signTypedData_v4',
-        params: [accounts[0], typedData],
+        params: [accounts[0], JSON.stringify(typedData)],
       });
-
-      console.log(signature);
 
       return hexToBytes(signature as `0x${string}`);
     } catch (error) {

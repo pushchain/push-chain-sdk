@@ -5,6 +5,7 @@ import { LandingPageBanner } from './LandingPageBanner';
 import { SimulateTxText } from './SimulateTxText';
 
 const LandingPageLeftComponent = () => {
+
   const featuresCard = [
     {
       id: 1,

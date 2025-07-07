@@ -10,7 +10,7 @@ const PushWalletToast: FC<PushWalletToastProps> = ({toast}) => {
     if (!toast) return <></>
     return (
         <ToastContainer>
-            <Spinner color='#000' />
+            <Spinner color='var(--pw-int-brand-primary-color)' />
             <TitleText>{toast}</TitleText>
         </ToastContainer>
     );
@@ -36,4 +36,5 @@ const TitleText = styled.h4`
     font-size:18px;
     font-weight:400;
     margin:0;
+    font-family: var(--pw-int-font-family);
 `

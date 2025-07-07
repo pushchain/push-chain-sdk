@@ -55,7 +55,7 @@ const App: React.FC = () => {
       appPreview: true,
       connectedInteraction: PushUI.CONSTANTS.CONNECTED.INTERACTION.BLUR,
     },
-    chain: {
+    chainConfig: {
       rpcUrls: {
         'eip155:11155111': ['https://sepolia.gateway.tenderly.co/'],
       },

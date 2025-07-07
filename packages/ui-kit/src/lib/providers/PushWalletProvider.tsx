@@ -12,9 +12,9 @@ import {
   lightThemeDefault,
   darkThemeDefault,
   ThemeOverrides,
+  buttonThemeDefault,
 } from '../styles/token';
 import { mapCoreToInt } from '../utils/theme';
-import { Buffer } from 'buffer';
 
 interface CustomTheme extends DefaultTheme {
   themeMode: string;
@@ -47,8 +47,8 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
   themeOverrides = {},
   children,
 }) => {
-  const GlobalStyle = createGlobalStyle`
-    :root{
+  const GlobalStyle = createGlobalStyle<{ uid: string }>`
+    [data-pw-wrapper='${(props) => props.uid}']{
       #w3m-modal {
         z-index: 9999 !important;
         position: fixed !important;
@@ -61,6 +61,7 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
         const newOverrides = {
           ...{
             ...themeDefault,
+            ...buttonThemeDefault,
             ...(isLightMode ? lightThemeDefault : darkThemeDefault),
           },
           ...mapCoreToInt(globalOverrides),
@@ -90,21 +91,19 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
     },
   };
 
-  if (typeof window !== 'undefined' && !window.Buffer) {
-    window.Buffer = Buffer;
-  }
-
   return (
     <ThemeProvider theme={{ themeMode, themeOverrides }}>
-      <GlobalStyle />
-      <WalletContextProvider
-        config={mergedConfig}
-        app={app}
-        themeMode={themeMode}
-        themeOverrides={themeOverrides}
-      >
-        {children}
-      </WalletContextProvider>
+      <GlobalStyle uid={mergedConfig.uid!} />
+      <div data-pw-wrapper={mergedConfig.uid}>
+        <WalletContextProvider
+          config={mergedConfig}
+          app={app}
+          themeMode={themeMode}
+          themeOverrides={themeOverrides}
+        >
+          {children}
+        </WalletContextProvider>
+      </div>
     </ThemeProvider>
   );
 };
