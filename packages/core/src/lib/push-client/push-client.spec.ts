@@ -51,7 +51,7 @@ describe('PushClient', () => {
       deadline: '9999999999',
       vType: VerificationType.signedVerification,
     },
-    signature:
+    verificationData:
       '0x911d4ee13db2ca041e52c0e77035e4c7c82705a77e59368740ef42edcdb813144aff65d2a3a6d03215f764a037a229170c69ffbaaad50fff690940a5ef458304',
   };
 
