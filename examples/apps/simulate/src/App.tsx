@@ -76,7 +76,7 @@ const App: React.FC = () => {
       <PushUniversalWalletProvider
         config={walletConfig}
         app={appMetadata}
-        themeMode={PushUI.CONSTANTS.THEME.LIGHT}
+        themeMode={PushUI.CONSTANTS.THEME.DARK}
         themeOverrides={{
           '--pw-core-font-family': 'FK Grotesk Neu',
         }}

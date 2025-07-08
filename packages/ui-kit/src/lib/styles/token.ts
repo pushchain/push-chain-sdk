@@ -74,7 +74,7 @@ export type ButtonThemeOverrides = Partial<ButtonThemeTokens> & {
 export const themeDefault = {
   '--pw-int-text-heading-xsmall-size': '18px',
   '--pw-int-text-body-large-size': '16px',
-  '--pw-int-font-family': 'Arial, sans-serif',
+  '--pw-int-font-family': '"Arial", sans-serif',
 };
 
 export const lightThemeDefault = {
