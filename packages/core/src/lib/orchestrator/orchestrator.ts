@@ -8,6 +8,7 @@ import {
   bytesToHex,
   stringToBytes,
   getCreate2Address,
+  hexToBytes,
 } from 'viem';
 import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
 import {
@@ -121,6 +122,8 @@ export class Orchestrator {
       /**
        * Compute Universal Payload Hash
        */
+      let feeLockTxHash: string | undefined = execute.feeLockTxHash;
+      const feeLockingRequired = funds < requiredFunds && !feeLockTxHash;
       const universalPayload = JSON.parse(
         JSON.stringify(
           {
@@ -132,7 +135,9 @@ export class Orchestrator {
             maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
             nonce,
             deadline: execute.deadline || BigInt(9999999999),
-            vType: VerificationType.signedVerification,
+            vType: feeLockingRequired
+              ? VerificationType.universalTxVerification
+              : VerificationType.signedVerification,
           },
           this.bigintReplacer
         )
@@ -142,32 +147,46 @@ export class Orchestrator {
         payload: universalPayload,
       });
       /**
-       * Sign Universal Payload
+       * Prepare verification data by either signature or fund locking
        */
-      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_01, executionHash);
-      const signature = await this.signUniversalPayload(universalPayload, UEA);
-      this.executeProgressHook(
-        PROGRESS_HOOK.SEND_TX_04_02,
-        bytesToHex(signature)
-      );
-      /**
-       * Fee Locking
-       */
-      let feeLockTxHash: string | undefined = execute.feeLockTxHash;
-      if (funds < requiredFunds && !feeLockTxHash) {
+      let verificationData: `0x${string}`;
+      if (!feeLockingRequired) {
+        /**
+         * Sign Universal Payload
+         */
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_01, executionHash);
+        const signature = await this.signUniversalPayload(
+          universalPayload,
+          UEA
+        );
+        verificationData = bytesToHex(signature);
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_02, verificationData);
+      } else {
+        /**
+         * Fee Locking
+         */
         const fundDifference = requiredFunds - funds;
         const fundDifferenceInUSD = this.pushClient.pushToUSDC(fundDifference); // ( USD with 8 decimal points )
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_05_01, fundDifference);
-        feeLockTxHash = await this.lockFee(fundDifferenceInUSD, executionHash);
+        const feeLockTxHashBytes = await this.lockFee(
+          fundDifferenceInUSD,
+          executionHash
+        );
+        feeLockTxHash = bytesToHex(feeLockTxHashBytes);
+        verificationData = bytesToHex(feeLockTxHashBytes);
         /**
          * Waiting for Confirmations
          */
+        const { vm } = CHAIN_INFO[chain];
+
         this.executeProgressHook(
           PROGRESS_HOOK.SEND_TX_05_02,
-          feeLockTxHash,
+          vm === VM.SVM
+            ? utils.bytes.bs58.encode(feeLockTxHashBytes)
+            : feeLockTxHash,
           CHAIN_INFO[chain].confirmations
         );
-        await this.waitForLockerFeeConfirmation(feeLockTxHash);
+        await this.waitForLockerFeeConfirmation(feeLockTxHashBytes);
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_05_03);
       }
       /**
@@ -178,7 +197,7 @@ export class Orchestrator {
         isUEADeployed,
         feeLockTxHash,
         universalPayload,
-        signature
+        verificationData
       );
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, transactions);
       return transactions[transactions.length - 1];
@@ -198,7 +217,7 @@ export class Orchestrator {
   private async lockFee(
     amount: bigint, // USD with 8 decimals
     executionHash: string = zeroHash
-  ): Promise<string> {
+  ): Promise<Uint8Array> {
     const chain = this.universalSigner.account.chain;
     const { lockerContract, vm, defaultRPC } = CHAIN_INFO[chain];
 
@@ -220,7 +239,7 @@ export class Orchestrator {
         const nativeAmount =
           (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
 
-        return await evmClient.writeContract({
+        const txHash = await evmClient.writeContract({
           abi: FEE_LOCKER_EVM as Abi,
           address: lockerContract,
           functionName: 'addFunds',
@@ -228,6 +247,7 @@ export class Orchestrator {
           signer: this.universalSigner,
           value: nativeAmount,
         });
+        return hexToBytes(txHash);
       }
 
       case VM.SVM: {
@@ -249,7 +269,7 @@ export class Orchestrator {
         const nativeAmount =
           (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
 
-        return await svmClient.writeContract({
+        const txHash = await svmClient.writeContract({
           abi: FEE_LOCKER_SVM,
           address: lockerContract,
           functionName: 'addFunds',
@@ -264,6 +284,7 @@ export class Orchestrator {
             systemProgram: SystemProgram.programId,
           },
         });
+        return utils.bytes.bs58.decode(txHash);
       }
 
       default:
@@ -330,7 +351,7 @@ export class Orchestrator {
     isUEADeployed: boolean,
     feeLockTxHash?: string,
     universalPayload?: UniversalPayload,
-    signature?: Uint8Array
+    verificationData?: `0x${string}`
   ): Promise<TxResponse[]> {
     const { chain, address } = this.universalSigner.account;
     const { vm, chainId } = CHAIN_INFO[chain];
@@ -375,13 +396,13 @@ export class Orchestrator {
       );
     }
 
-    if (universalPayload && signature) {
+    if (universalPayload && verificationData) {
       msgs.push(
         this.pushClient.createMsgExecutePayload({
           signer,
           universalAccountId,
           universalPayload,
-          signature: bytesToHex(signature),
+          verificationData,
         })
       );
     }
@@ -669,7 +690,9 @@ export class Orchestrator {
     };
   }
 
-  private async waitForLockerFeeConfirmation(txHash: string): Promise<void> {
+  private async waitForLockerFeeConfirmation(
+    txHashBytes: Uint8Array
+  ): Promise<void> {
     const chain = this.universalSigner.account.chain;
     const { vm, defaultRPC, confirmations, timeout } = CHAIN_INFO[chain];
     const rpcUrls = this.rpcUrls[chain] || defaultRPC;
@@ -678,7 +701,7 @@ export class Orchestrator {
       case VM.EVM: {
         const evmClient = new EvmClient({ rpcUrls });
         await evmClient.waitForConfirmations({
-          txHash: txHash as `0x${string}`,
+          txHash: bytesToHex(txHashBytes),
           confirmations,
           timeoutMs: timeout,
         });
@@ -688,7 +711,7 @@ export class Orchestrator {
       case VM.SVM: {
         const svmClient = new SvmClient({ rpcUrls });
         await svmClient.waitForConfirmations({
-          txSignature: txHash,
+          txSignature: utils.bytes.bs58.encode(txHashBytes),
           confirmations,
           timeoutMs: timeout,
         });

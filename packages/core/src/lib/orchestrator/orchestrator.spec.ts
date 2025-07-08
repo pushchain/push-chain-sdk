@@ -1,13 +1,14 @@
 import { Orchestrator } from './orchestrator';
 import { CHAIN, LIBRARY, PUSH_NETWORK } from '../constants/enums';
 import { UniversalSigner } from '../universal/universal.types';
-import { createWalletClient, Hex, http } from 'viem';
+import { bytesToHex, createWalletClient, Hex, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { Keypair } from '@solana/web3.js';
 import { toUniversalFromKeypair } from '../universal/signer/signer';
 import { SvmClient } from '../vm-client/svm-client';
 import { CHAIN_INFO } from '../constants/chain';
 import { VerificationType } from '../generated/v1/tx';
+import { utils } from '@coral-xyz/anchor';
 
 describe('Orchestrator', () => {
   const mockSigner: UniversalSigner = {
@@ -52,7 +53,8 @@ describe('Orchestrator', () => {
         ethSepoliaSigner,
         PUSH_NETWORK.TESTNET_DONUT
       );
-      const txHash = await orchestrator['lockFee'](BigInt(1)); // 0.00000001 USDC
+      const txHashBytes = await orchestrator['lockFee'](BigInt(1)); // 0.00000001 USDC
+      const txHash = bytesToHex(txHashBytes);
       console.log('lockFee txHash:', txHash);
       expect(txHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
     });
@@ -96,7 +98,8 @@ describe('Orchestrator', () => {
       const dummyTxHash =
         '25ytBco5ZxMaaatzKwcw28emNHD42JzCVe5wUy78mTA8ophwLCZN6dXKkXaRfxhgCdWdqSKpvGNuKvbqJQjzLKwy';
 
-      const txHash = await orchestrator['lockFee'](amount, dummyTxHash);
+      const txHashBytes = await orchestrator['lockFee'](amount, dummyTxHash);
+      const txHash = utils.bytes.bs58.encode(txHashBytes);
       console.log('lockFee txHash:', txHash);
       expect(txHash).toMatch(/^[1-9A-HJ-NP-Za-km-z]{87,88}$/);
     });
