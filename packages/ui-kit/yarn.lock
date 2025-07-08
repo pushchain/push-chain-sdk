@@ -774,7 +774,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pushchain/core@npm:^0.1.39":
+"@pushchain/core@npm:^0.1.38":
   version: 0.1.39
   resolution: "@pushchain/core@npm:0.1.39"
   dependencies:
@@ -802,7 +802,7 @@ __metadata:
   dependencies:
     "@coral-xyz/anchor": "npm:^0.31.1"
     "@metamask/sdk": "npm:^0.32.0"
-    "@pushchain/core": "npm:^0.1.39"
+    "@pushchain/core": "npm:^0.1.38"
     "@solana/web3.js": "npm:^1.98.2"
     "@types/react": "npm:^18.3.13"
     "@walletconnect/ethereum-provider": "npm:^2.21.3"
