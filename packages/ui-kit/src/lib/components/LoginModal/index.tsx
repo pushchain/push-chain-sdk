@@ -324,7 +324,7 @@ const LoadingText = styled.p`
   font-weight: 500;
   line-height: 27px;
   color: inherit;
-  font-family: FK Grotesk Neu;
+  font-family: var(--pw-int-font-family);
   margin: 0px;
   width: auto;
 `;
@@ -423,7 +423,7 @@ const TextContainer = styled.div<{
     | typeof PushUI.CONSTANTS.THEME.DARK;
   textColor: string;
 }>`
-  font-family: 'FK Grotesk Neu';
+  font-family: var(--pw-int-font-family);
   src: url('./assets/fonts/FKGroteskNeue-Regular.woff2') format('woff2'),
     url('./assets/fonts/FKGroteskNeue-Regular.woff') format('woff');
   font-style: normal;
