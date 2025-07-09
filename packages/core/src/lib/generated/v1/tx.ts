@@ -117,7 +117,7 @@ export interface MsgExecutePayload {
     | UniversalPayload
     | undefined;
   /** signature is the signature of the payload by user */
-  signature: string;
+  verificationData: string;
 }
 
 function createBaseUniversalAccountId(): UniversalAccountId {
@@ -603,7 +603,7 @@ export const UniversalPayload: MessageFns<UniversalPayload> = {
 };
 
 function createBaseMsgExecutePayload(): MsgExecutePayload {
-  return { signer: "", universalAccountId: undefined, universalPayload: undefined, signature: "" };
+  return { signer: "", universalAccountId: undefined, universalPayload: undefined, verificationData: "" };
 }
 
 export const MsgExecutePayload: MessageFns<MsgExecutePayload> = {
@@ -617,8 +617,8 @@ export const MsgExecutePayload: MessageFns<MsgExecutePayload> = {
     if (message.universalPayload !== undefined) {
       UniversalPayload.encode(message.universalPayload, writer.uint32(26).fork()).join();
     }
-    if (message.signature !== "") {
-      writer.uint32(34).string(message.signature);
+    if (message.verificationData !== "") {
+      writer.uint32(34).string(message.verificationData);
     }
     return writer;
   },
@@ -659,7 +659,7 @@ export const MsgExecutePayload: MessageFns<MsgExecutePayload> = {
             break;
           }
 
-          message.signature = reader.string();
+          message.verificationData = reader.string();
           continue;
         }
       }
@@ -678,7 +678,7 @@ export const MsgExecutePayload: MessageFns<MsgExecutePayload> = {
         ? UniversalAccountId.fromJSON(object.universalAccountId)
         : undefined,
       universalPayload: isSet(object.universalPayload) ? UniversalPayload.fromJSON(object.universalPayload) : undefined,
-      signature: isSet(object.signature) ? globalThis.String(object.signature) : "",
+      verificationData: isSet(object.verificationData) ? globalThis.String(object.verificationData) : "",
     };
   },
 
@@ -693,8 +693,8 @@ export const MsgExecutePayload: MessageFns<MsgExecutePayload> = {
     if (message.universalPayload !== undefined) {
       obj.universalPayload = UniversalPayload.toJSON(message.universalPayload);
     }
-    if (message.signature !== "") {
-      obj.signature = message.signature;
+    if (message.verificationData !== "") {
+      obj.verificationData = message.verificationData;
     }
     return obj;
   },
@@ -711,7 +711,7 @@ export const MsgExecutePayload: MessageFns<MsgExecutePayload> = {
     message.universalPayload = (object.universalPayload !== undefined && object.universalPayload !== null)
       ? UniversalPayload.fromPartial(object.universalPayload)
       : undefined;
-    message.signature = object.signature ?? "";
+    message.verificationData = object.verificationData ?? "";
     return message;
   },
 };

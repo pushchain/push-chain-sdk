@@ -76,7 +76,7 @@ describe('PushChain (e2e)', () => {
             .evmAddress,
           uea
         );
-      }, 30000);
+      }, 300000);
     });
   });
   describe('Origin - Push', () => {
@@ -177,7 +177,7 @@ describe('PushChain (e2e)', () => {
             .evmAddress,
           uea
         );
-      }, 30000);
+      }, 300000);
     });
   });
 });

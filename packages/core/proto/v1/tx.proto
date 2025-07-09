@@ -65,5 +65,5 @@ message MsgExecutePayload {
   UniversalPayload universal_payload = 3;
 
   // signature is the signature of the payload by user
-  string signature = 4;
+  string verification_data = 4;
 }
