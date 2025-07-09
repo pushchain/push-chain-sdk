@@ -1,3 +1,9 @@
+@pushchain/core@0.1.40 (2025-07-09)
+
+- feat: 1 Click Signature (#159)
+
+---
+
 @pushchain/core@0.1.38 (2025-07-04)
 
 - fix: revert erip712Domain - does not work with ethers
