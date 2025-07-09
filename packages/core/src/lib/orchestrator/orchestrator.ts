@@ -123,6 +123,10 @@ export class Orchestrator {
        * Compute Universal Payload Hash
        */
       let feeLockTxHash: string | undefined = execute.feeLockTxHash;
+      if (feeLockTxHash && !feeLockTxHash.startsWith('0x')) {
+        // decode svm base58
+        feeLockTxHash = bytesToHex(utils.bytes.bs58.decode(feeLockTxHash));
+      }
       const feeLockingRequired = funds < requiredFunds && !feeLockTxHash;
       const universalPayload = JSON.parse(
         JSON.stringify(
