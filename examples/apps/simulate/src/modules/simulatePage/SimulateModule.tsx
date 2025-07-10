@@ -27,8 +27,8 @@ const SimulateModule = () => {
         maxWidth={{ initial: 'auto', ml: '350px' }}
       >
         <MockSendTransaction />
-        <Text variant="h4-semibold"> or Sign a message</Text>
-        <MockSignTransaction />
+        {/* <Text variant="h4-semibold"> or Sign a message</Text>
+        <MockSignTransaction /> */}
       </Box>
     </Box>
   );

@@ -1460,9 +1460,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pushchain/core@npm:^0.1.38":
-  version: 0.1.38
-  resolution: "@pushchain/core@npm:0.1.38"
+"@pushchain/core@npm:^0.1.40":
+  version: 0.1.40
+  resolution: "@pushchain/core@npm:0.1.40"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.0.0"
     "@coral-xyz/anchor": "npm:^0.31.0"
@@ -1478,17 +1478,17 @@ __metadata:
     tslib: "npm:^2.3.0"
     tweetnacl: "npm:^1.0.3"
     viem: "npm:2.27.2"
-  checksum: 10/102cda17559edd12c6f9706d6a2b2568132130269a78147dc929676c8bef7aacc47b81bc40880255ab3c279df3d06408aea2e8265a43011128e32d049e1ef1e1
+  checksum: 10/400c4d4ad300667744d2d459b130d768e681cc8d2aa9861496583158e07616114471967ee812625fd555febc50c07daa4c29854e0030909fa218a804a1c3a113
   languageName: node
   linkType: hard
 
-"@pushchain/ui-kit@npm:^1.1.11":
-  version: 1.1.11
-  resolution: "@pushchain/ui-kit@npm:1.1.11"
+"@pushchain/ui-kit@npm:^1.1.16":
+  version: 1.1.16
+  resolution: "@pushchain/ui-kit@npm:1.1.16"
   dependencies:
     "@coral-xyz/anchor": "npm:^0.31.1"
     "@metamask/sdk": "npm:^0.32.0"
-    "@pushchain/core": "npm:^0.1.38"
+    "@pushchain/core": "npm:^0.1.40"
     "@solana/web3.js": "npm:^1.98.2"
     "@walletconnect/ethereum-provider": "npm:^2.21.3"
     buffer: "npm:^6.0.3"
@@ -1498,7 +1498,7 @@ __metadata:
     styled-components: "npm:^6.1.19"
     tslib: "npm:^2.3.0"
     viem: "npm:^2.23.9"
-  checksum: 10/89ca05b95364785e7637babf8aa89e9a396ab51e7739fa8c7cf6e2c8b892c0580c38ced02963b113cf6429edb74e8b78f21bc7d3b33e338c6a2fcd3f4dee2285
+  checksum: 10/04d60a7b01fe6c481e7a80c23169124c57f356fa22e6c87b09ffbc9b893afc24d854ab0c48935e4674e5b43fdddb6d3222b01f09f3dca216548008555f919fbe
   languageName: node
   linkType: hard
 
@@ -4656,8 +4656,8 @@ __metadata:
   resolution: "core-connection@workspace:."
   dependencies:
     "@eslint/js": "npm:^9.9.0"
-    "@pushchain/core": "npm:^0.1.38"
-    "@pushchain/ui-kit": "npm:^1.1.11"
+    "@pushchain/core": "npm:^0.1.40"
+    "@pushchain/ui-kit": "npm:^1.1.16"
     "@types/react": "npm:^18.3.3"
     "@types/react-dom": "npm:^18.3.0"
     "@vitejs/plugin-react-swc": "npm:^3.10.2"

@@ -120,7 +120,7 @@ const LoginModal: FC<LoginModalProps> = ({
               </CloseButtonContainer>
               <LoadingTextContainer>
                 <LoadingText>Loading...</LoadingText>
-                <Spinner />
+                <Spinner color="var(--pw-int-brand-primary-color)" />
               </LoadingTextContainer>
             </FrameLoadingContainer>
           )}

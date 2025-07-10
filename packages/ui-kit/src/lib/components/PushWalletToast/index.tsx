@@ -1,17 +1,28 @@
 import React, { FC } from 'react';
 import styled from 'styled-components';
-import { Spinner } from "../../components/common";
+import { CrossIcon, Spinner, TickIcon, WarningIcon } from "../../components/common";
+import { ProgressEvent } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
 
 type PushWalletToastProps = {
-    toast: string | null;
+    progress: ProgressEvent;
+    setProgress: React.Dispatch<React.SetStateAction<ProgressEvent | null>>;
 }
 
-const PushWalletToast: FC<PushWalletToastProps> = ({toast}) => {
-    if (!toast) return <></>
+const PushWalletToast: FC<PushWalletToastProps> = ({ progress, setProgress }) => {
+    if (!progress) return <></>
     return (
         <ToastContainer>
-            <Spinner color='var(--pw-int-brand-primary-color)' />
-            <TitleText>{toast}</TitleText>
+            <IconContainer>
+                {
+                    progress.level === 'SUCCESS' ? <TickIcon /> :
+                    progress.level === 'ERROR' ? <WarningIcon /> :
+                    <Spinner color='var(--pw-int-brand-primary-color)' />
+                }
+            </IconContainer>
+            <TitleText>{progress.title}</TitleText>
+            <CloseContainer onClick={() => setProgress(null)}>
+                <CrossIcon height='18px' width='18px' color='#000000' />
+            </CloseContainer>
         </ToastContainer>
     );
 };
@@ -24,18 +35,34 @@ const ToastContainer = styled.div`
     right: 30px;
     display:flex;
     flex-direction:row;
-    gap:12px;
+    gap:8px;
     align-items:center;
-    border:1px solid #C4CBD5;
-    padding:10px 20px;
-    border-radius:10px;
+    border:1px solid #EAEBF2;
+    padding:16px;
+    border-radius:16px;
     background-color:#fff;
     z-index:9999;
+    width:320px;
+    max-width: -webkit-fill-available;
 `
 
 const TitleText = styled.h4`
-    font-size:18px;
-    font-weight:400;
+    font-size:14px;
+    font-weight:500;
+    line-height:21px;
     margin:0;
-    font-family: var(--pw-int-font-family);
+    font-family:var(--pw-int-font-family);
+    color:#17181B;
+`
+
+const IconContainer = styled.div`
+    height: 18px;
+    width: 18px;
+`
+
+const CloseContainer = styled.div`
+    display: flex;
+    margin-left: auto;
+    align-items: center;
+    cursor: pointer;
 `

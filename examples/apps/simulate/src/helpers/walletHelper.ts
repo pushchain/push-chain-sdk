@@ -1,4 +1,4 @@
-import { UniversalAccount } from '../../../../../packages/ui-kit';
+import { UniversalAccount } from '@pushchain/ui-kit';
 
 export function centerMaskString(str: string) {
   if (str && str.length > 15) {

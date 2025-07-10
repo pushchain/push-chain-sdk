@@ -7,17 +7,20 @@ import { mockTransaction } from '../../../common/constants';
 import {
   usePushChainClient,
   usePushWalletContext,
-} from '../../../../../../../packages/ui-kit';
+} from '@pushchain/ui-kit';
+import { ExecuteParams } from '@pushchain/core/src/lib/orchestrator/orchestrator.types';
 
 const MockSendTransaction = () => {
-  const { pushChainClient, isLoading } = usePushChainClient();
+  const { pushChainClient, isInitialized } = usePushChainClient();
   const { universalAccount } = usePushWalletContext();
 
   const [isSendingTxn, setIsSendingTxn] = useState(false);
   const [txnHash, setTxnHash] = useState<string | null>(null);
   const [txnError, setTxnError] = useState<unknown | null>(null);
+  const [txnData, setTxnData] = useState<ExecuteParams>(mockTransaction);
 
   const handleSendTransaction = async () => {
+    console.log(txnData, mockTransaction);
     try {
       if (pushChainClient && universalAccount) {
         setIsSendingTxn(true);
@@ -26,13 +29,9 @@ const MockSendTransaction = () => {
         //   value: BigInt(2),
         // });
 
-        const res = await pushChainClient.universal.sendTransaction({
-          to: '0x68F8b46e4cD01a7648393911E734d99d34E6f107',
-          value: BigInt(1),
-          data: '0x',
-        });
+        const res = await pushChainClient.universal.sendTransaction(txnData);
 
-        setTxnHash(res.transactionHash);
+        setTxnHash(res.hash);
         setIsSendingTxn(false);
         setTxnError(null);
       }
@@ -45,8 +44,8 @@ const MockSendTransaction = () => {
   };
 
   const handleViewOnScan = () => {
-    if (txnHash) {
-      window.open(`https://scan.push.org/transactions/${txnHash}`, '_blank');
+    if (txnHash && pushChainClient) {
+      window.open(pushChainClient.explorer.getTransactionUrl(txnHash), '_blank');
     }
   };
 
@@ -68,7 +67,7 @@ const MockSendTransaction = () => {
           <Alert
             variant="info"
             description={`Tx sent - ${centerMaskString(txnHash)}`}
-            actionText="View on Scan"
+            actionText="View on Explorer"
             onAction={handleViewOnScan}
             onClose={() => {
               setTxnHash(null);
@@ -90,12 +89,13 @@ const MockSendTransaction = () => {
       )}
 
       <TransactionSnippet
-        heading="Mock Unsigned Transaction Data"
-        transactionData={mockTransaction}
+        heading="Send Universal Transaction Data"
+        transactionData={txnData}
+        setTransactionData={setTxnData}
       />
 
       <Box width={{ initial: '350px', ml: '300px' }}>
-        {!isLoading && (
+        {isInitialized && (
           <Button
             variant="primary"
             size="large"
@@ -107,7 +107,7 @@ const MockSendTransaction = () => {
           </Button>
         )}
       </Box>
-      <a href="https://scan.push.org/transactions" target="_blank">
+      <a href='https://donut.push.network/txs' target="_blank">
         <Box
           display="flex"
           flexDirection="row"
@@ -122,7 +122,7 @@ const MockSendTransaction = () => {
           `}
         >
           <Text variant="bl-semibold" color="text-brand-medium">
-            See all txs on Push Network using Push Scan
+            See all txs on Push Network using Push Chain Explorer
           </Text>
           <Front color="icon-brand-medium" size={24} />
         </Box>

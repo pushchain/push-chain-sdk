@@ -12,7 +12,7 @@ export const usePushChainClient = (uid?: string) => {
     handleSignAndSendTransaction,
     handleSignTypedData,
     config,
-    setToast
+    setProgress
   } = usePushWalletContext(uid);
   const [pushChain, setPushChain] = useState<PushChain | null>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -50,14 +50,13 @@ export const usePushChainClient = (uid?: string) => {
         const pushChainClient = await PushChain.initialize(universalSigner, {
           network: config.network,
           progressHook: async (progress: any) => {
-            console.log('TX Progress: ', progress.title, ' | Time:', progress.timestamp);
-            setToast(progress.title);
+            setProgress(progress);
 
             if (
               progress.id === PROGRESS_HOOK.SEND_TX_99_01 ||
               progress.id === PROGRESS_HOOK.SEND_TX_99_02
             ) {
-              setTimeout(() => setToast(null), 3000);
+              setTimeout(() => setProgress(null), 5000);
             }
           },
           rpcUrls: config.chainConfig?.rpcUrls,

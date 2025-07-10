@@ -12,3 +12,5 @@ export { default as BnbMonotone } from './BnbMonotone';
 export { default as OptimismMonotone } from './OptimismMonotone';
 export { default as PolygonMonotone } from './PolygonMonotone';
 export { default as SolanaMonotone } from './SolanaMonotone';
+export { default as TickIcon } from './TickIcon';
+export { default as WarningIcon } from './WarningIcon';

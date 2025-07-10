@@ -24,6 +24,7 @@ import { LoginModal } from '../components/LoginModal';
 import { getWalletContext } from './WalletContextMap';
 import { ThemeOverrides } from '../styles/token';
 import { PushChain } from '@pushchain/core';
+import { ProgressEvent } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
 
 export type WalletContextType = {
   universalAccount: UniversalAccount | null;
@@ -51,7 +52,7 @@ export type WalletContextType = {
   themeOverrides: ThemeOverrides;
 
   toggleButtonRef: React.RefObject<HTMLButtonElement>;
-  setToast: React.Dispatch<React.SetStateAction<string | null>>;
+  setProgress: React.Dispatch<React.SetStateAction<ProgressEvent | null>>;
 };
 
 export const WalletContext = createContext<WalletContextType | null>(null);
@@ -79,7 +80,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
 
   const [externalWallet, setExternalWallet] = useState<WalletInfo | null>(null); // to connect with external wallet
 
-  const [toast, setToast] = useState<string | null>(null);
+  const [progress, setProgress] = useState<ProgressEvent | null>(null);
 
   const signatureResolverRef = useRef<{
     success?: (data: WalletEventRespoonse) => void;
@@ -518,7 +519,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         handleSignAndSendTransaction,
         handleSignTypedData,
         toggleButtonRef,
-        setToast,
+        setProgress,
       }}
     >
       <LoginModal
@@ -536,7 +537,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         handleUserLogOutEvent={handleUserLogOutEvent}
         toggleButtonRef={toggleButtonRef}
       />
-      {toast && <PushWalletToast toast={toast} />}
+      {progress && <PushWalletToast progress={progress} setProgress={setProgress} />}
       {children}
     </WalletContext.Provider>
   );
