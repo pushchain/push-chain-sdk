@@ -43,7 +43,7 @@ const ToastContainer = styled.div`
     background-color:#fff;
     z-index:9999;
     width:320px;
-    max-width: -webkit-fill-available;
+    max-width: 100%;
 `
 
 const TitleText = styled.h4`

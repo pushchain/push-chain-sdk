@@ -194,7 +194,7 @@ const LoginModal: FC<LoginModalProps> = ({
                   ref={iframeRef}
                   style={{
                     border: 'none',
-                    width: '-webkit-fill-available',
+                    width: '100%',
                     height: universalAccount
                       ? modal?.connectedLayout ===
                         PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
@@ -315,8 +315,8 @@ const LoadingTextContainer = styled.div`
   align-items: center;
   justify-content: center;
   gap: 16px;
-  width: -webkit-fill-available;
-  height: -webkit-fill-available;
+  width: 100%;
+  height: 100%;
 `;
 
 const LoadingText = styled.p`
@@ -334,8 +334,8 @@ const FrameLoadingContainer = styled.div<{
     | typeof PushUI.CONSTANTS.THEME.LIGHT
     | typeof PushUI.CONSTANTS.THEME.DARK;
 }>`
-  height: -webkit-fill-available;
-  width: -webkit-fill-available;
+  height: 100%;
+  width: 100%;
   flex-direction: column;
   display: flex;
   padding: 8px;
@@ -349,15 +349,15 @@ const FrameSubContainer = styled.div<{
 }>`
   display: ${({ isWalletMinimised, isIframeLoading }) =>
     isWalletMinimised || isIframeLoading ? 'none' : 'flex'};
-  width: -webkit-fill-available;
-  height: -webkit-fill-available;
+  width: 100%;
+  height: 100%;
   flex-direction: column;
 `;
 
 const AccountContainer = styled.div<{
   universalAccount: UniversalAccount | null;
 }>`
-  width: -webkit-fill-available;
+  width: 100%;
   display: flex;
   align-items: center;
   position: absolute;
