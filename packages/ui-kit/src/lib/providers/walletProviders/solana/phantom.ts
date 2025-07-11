@@ -29,11 +29,6 @@ declare global {
   }
 }
 
-const walletClient = createWalletClient({
-  chain: sepolia,
-  transport: custom(window.ethereum!),
-})
-
 export class PhantomProvider extends BaseWalletProvider {
   constructor() {
     super('Phantom', 'https://www.phantom.app/img/logo.png', [
@@ -243,6 +238,11 @@ export class PhantomProvider extends BaseWalletProvider {
       throw new Error('signTypedData is not implemented for this provider');
     } else if (this.connectedChainType === ChainType.ETHEREUM && window.phantom?.ethereum) {
       try {
+        const walletClient = createWalletClient({
+          chain: sepolia,
+          transport: custom(window.ethereum!),
+        })
+
         const accounts = await walletClient.request({
           method: 'eth_accounts',
         });

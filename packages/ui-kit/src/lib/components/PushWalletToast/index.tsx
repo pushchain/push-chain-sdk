@@ -1,7 +1,7 @@
 import React, { FC } from 'react';
 import styled from 'styled-components';
 import { CrossIcon, Spinner, TickIcon, WarningIcon } from "../../components/common";
-import { ProgressEvent } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
+import { PROGRESS_HOOK, ProgressEvent } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
 
 type PushWalletToastProps = {
     progress: ProgressEvent;
@@ -14,8 +14,8 @@ const PushWalletToast: FC<PushWalletToastProps> = ({ progress, setProgress }) =>
         <ToastContainer>
             <IconContainer>
                 {
-                    progress.level === 'SUCCESS' ? <TickIcon /> :
-                    progress.level === 'ERROR' ? <WarningIcon /> :
+                    progress.id === PROGRESS_HOOK.SEND_TX_99_01 ? <TickIcon /> :
+                    progress.id === PROGRESS_HOOK.SEND_TX_99_02 ? <WarningIcon /> :
                     <Spinner color='var(--pw-int-brand-primary-color)' />
                 }
             </IconContainer>
