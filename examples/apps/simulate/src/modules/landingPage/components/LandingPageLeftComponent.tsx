@@ -98,7 +98,7 @@ const LandingPageLeftComponent = () => {
             display="flex"
             alignItems="center"
             justifyContent="center"
-            width="-webkit-fill-available"
+            width="100%"
           >
             <PushUniversalAccountButton />
           </Box>

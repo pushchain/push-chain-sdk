@@ -1482,9 +1482,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pushchain/ui-kit@npm:^1.1.16":
-  version: 1.1.16
-  resolution: "@pushchain/ui-kit@npm:1.1.16"
+"@pushchain/ui-kit@npm:^1.1.19":
+  version: 1.1.19
+  resolution: "@pushchain/ui-kit@npm:1.1.19"
   dependencies:
     "@coral-xyz/anchor": "npm:^0.31.1"
     "@metamask/sdk": "npm:^0.32.0"
@@ -1498,7 +1498,7 @@ __metadata:
     styled-components: "npm:^6.1.19"
     tslib: "npm:^2.3.0"
     viem: "npm:^2.23.9"
-  checksum: 10/04d60a7b01fe6c481e7a80c23169124c57f356fa22e6c87b09ffbc9b893afc24d854ab0c48935e4674e5b43fdddb6d3222b01f09f3dca216548008555f919fbe
+  checksum: 10/168baf9953e87eed657d135f3c44a4893d5317ad6fe256942e7bf1a1ca6f4a292685cca084bec9577ad2d6554b4c107c8ac146be1ecf57335b27945f3d6c4c9d
   languageName: node
   linkType: hard
 
@@ -4657,7 +4657,7 @@ __metadata:
   dependencies:
     "@eslint/js": "npm:^9.9.0"
     "@pushchain/core": "npm:^0.1.40"
-    "@pushchain/ui-kit": "npm:^1.1.16"
+    "@pushchain/ui-kit": "npm:^1.1.19"
     "@types/react": "npm:^18.3.3"
     "@types/react-dom": "npm:^18.3.0"
     "@vitejs/plugin-react-swc": "npm:^3.10.2"
