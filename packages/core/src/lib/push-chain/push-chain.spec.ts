@@ -647,6 +647,560 @@ describe('PushChain', () => {
       });
     });
 
+    describe('encodeTxData', () => {
+      const testAbi = [
+        {
+          inputs: [],
+          stateMutability: 'nonpayable',
+          type: 'constructor',
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
+              internalType: 'uint256',
+              name: 'newCount',
+              type: 'uint256',
+            },
+            {
+              indexed: true,
+              internalType: 'address',
+              name: 'caller',
+              type: 'address',
+            },
+            {
+              indexed: false,
+              internalType: 'string',
+              name: 'chainNamespace',
+              type: 'string',
+            },
+            {
+              indexed: false,
+              internalType: 'string',
+              name: 'chainId',
+              type: 'string',
+            },
+          ],
+          name: 'CountIncremented',
+          type: 'event',
+        },
+        {
+          inputs: [],
+          name: 'increment',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        {
+          inputs: [],
+          name: 'reset',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        {
+          inputs: [],
+          name: 'countEth',
+          outputs: [
+            {
+              internalType: 'uint256',
+              name: '',
+              type: 'uint256',
+            },
+          ],
+          stateMutability: 'view',
+          type: 'function',
+        },
+        {
+          inputs: [],
+          name: 'countPC',
+          outputs: [
+            {
+              internalType: 'uint256',
+              name: '',
+              type: 'uint256',
+            },
+          ],
+          stateMutability: 'view',
+          type: 'function',
+        },
+        {
+          inputs: [],
+          name: 'countSol',
+          outputs: [
+            {
+              internalType: 'uint256',
+              name: '',
+              type: 'uint256',
+            },
+          ],
+          stateMutability: 'view',
+          type: 'function',
+        },
+        {
+          inputs: [],
+          name: 'getCount',
+          outputs: [
+            {
+              internalType: 'uint256',
+              name: '',
+              type: 'uint256',
+            },
+          ],
+          stateMutability: 'view',
+          type: 'function',
+        },
+      ];
+
+      it('should encode function data correctly', () => {
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: testAbi,
+          functionName: 'increment',
+        });
+        expect(result).toBe('0xd09de08a');
+      });
+
+      it('should encode function data with arguments', () => {
+        // Test with a function that has no arguments (reset)
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: testAbi,
+          functionName: 'reset',
+        });
+        expect(result).toMatch(/^0x[a-fA-F0-9]+$/);
+        expect(typeof result).toBe('string');
+      });
+
+      it('should throw error for invalid ABI', () => {
+        expect(() =>
+          PushChain.utils.helpers.encodeTxData({
+            abi: 'invalid' as any,
+            functionName: 'increment',
+          })
+        ).toThrow('ABI must be an array');
+        expect(() =>
+          PushChain.utils.helpers.encodeTxData({
+            abi: null as any,
+            functionName: 'increment',
+          })
+        ).toThrow('ABI must be an array');
+      });
+
+      it('should throw error for invalid arguments', () => {
+        expect(() =>
+          PushChain.utils.helpers.encodeTxData({
+            abi: testAbi,
+            functionName: 'increment',
+            args: 'invalid' as any,
+          })
+        ).toThrow('Arguments must be an array');
+      });
+
+      it('should throw error for non-existent function', () => {
+        expect(() =>
+          PushChain.utils.helpers.encodeTxData({
+            abi: testAbi,
+            functionName: 'nonExistentFunction',
+          })
+        ).toThrow("Function 'nonExistentFunction' not found in ABI");
+      });
+
+      it('should handle empty args array', () => {
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: testAbi,
+          functionName: 'increment',
+          args: [],
+        });
+        expect(result).toBe('0xd09de08a');
+      });
+
+      it('should handle functions with parameters', () => {
+        const abiWithParams = [
+          {
+            inputs: [
+              {
+                internalType: 'uint256',
+                name: 'amount',
+                type: 'uint256',
+              },
+              {
+                internalType: 'address',
+                name: 'recipient',
+                type: 'address',
+              },
+            ],
+            name: 'transfer',
+            outputs: [
+              {
+                internalType: 'bool',
+                name: '',
+                type: 'bool',
+              },
+            ],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+        ];
+
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: abiWithParams,
+          functionName: 'transfer',
+          args: [1000, '0x742d35Cc6634C0532925a3b844Bc454e4438f44e'],
+        });
+
+        expect(result).toMatch(/^0x[a-fA-F0-9]+$/);
+        expect(typeof result).toBe('string');
+        expect(result.length).toBeGreaterThan(10); // Should be longer than just function selector
+      });
+
+      it('should handle different data types in parameters', () => {
+        const abiWithMultipleTypes = [
+          {
+            inputs: [
+              {
+                internalType: 'string',
+                name: 'name',
+                type: 'string',
+              },
+              {
+                internalType: 'uint256',
+                name: 'age',
+                type: 'uint256',
+              },
+              {
+                internalType: 'bool',
+                name: 'active',
+                type: 'bool',
+              },
+              {
+                internalType: 'address',
+                name: 'wallet',
+                type: 'address',
+              },
+            ],
+            name: 'createUser',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+        ];
+
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: abiWithMultipleTypes,
+          functionName: 'createUser',
+          args: [
+            'Alice',
+            25,
+            true,
+            '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+          ],
+        });
+
+        expect(result).toMatch(/^0x[a-fA-F0-9]+$/);
+        expect(typeof result).toBe('string');
+      });
+
+      it('should handle array parameters', () => {
+        const abiWithArrays = [
+          {
+            inputs: [
+              {
+                internalType: 'uint256[]',
+                name: 'numbers',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'address[]',
+                name: 'recipients',
+                type: 'address[]',
+              },
+            ],
+            name: 'batchTransfer',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+        ];
+
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: abiWithArrays,
+          functionName: 'batchTransfer',
+          args: [
+            [100, 200, 300],
+            [
+              '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+              '0x52908400098527886E0F7030069857D2E4169EE7',
+            ],
+          ],
+        });
+
+        expect(result).toMatch(/^0x[a-fA-F0-9]+$/);
+        expect(typeof result).toBe('string');
+      });
+
+      it('should handle bytes parameters', () => {
+        const abiWithBytes = [
+          {
+            inputs: [
+              {
+                internalType: 'bytes',
+                name: 'data',
+                type: 'bytes',
+              },
+              {
+                internalType: 'bytes32',
+                name: 'hash',
+                type: 'bytes32',
+              },
+            ],
+            name: 'processData',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+        ];
+
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: abiWithBytes,
+          functionName: 'processData',
+          args: [
+            '0x1234567890abcdef',
+            '0x1234567890123456789012345678901234567890123456789012345678901234',
+          ],
+        });
+
+        expect(result).toMatch(/^0x[a-fA-F0-9]+$/);
+        expect(typeof result).toBe('string');
+      });
+
+      it('should handle complex nested structures', () => {
+        const abiWithStructs = [
+          {
+            inputs: [
+              {
+                components: [
+                  {
+                    internalType: 'string',
+                    name: 'name',
+                    type: 'string',
+                  },
+                  {
+                    internalType: 'uint256',
+                    name: 'value',
+                    type: 'uint256',
+                  },
+                ],
+                internalType: 'struct TestStruct',
+                name: 'data',
+                type: 'tuple',
+              },
+            ],
+            name: 'processStruct',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+        ];
+
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: abiWithStructs,
+          functionName: 'processStruct',
+          args: [{ name: 'Test', value: 42 }],
+        });
+
+        expect(result).toMatch(/^0x[a-fA-F0-9]+$/);
+        expect(typeof result).toBe('string');
+      });
+
+      it('should handle view functions', () => {
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: testAbi,
+          functionName: 'getCount',
+        });
+        expect(result).toMatch(/^0x[a-fA-F0-9]+$/);
+        expect(typeof result).toBe('string');
+      });
+
+      it('should handle pure functions', () => {
+        const abiWithPure = [
+          {
+            inputs: [
+              {
+                internalType: 'uint256',
+                name: 'a',
+                type: 'uint256',
+              },
+              {
+                internalType: 'uint256',
+                name: 'b',
+                type: 'uint256',
+              },
+            ],
+            name: 'add',
+            outputs: [
+              {
+                internalType: 'uint256',
+                name: '',
+                type: 'uint256',
+              },
+            ],
+            stateMutability: 'pure',
+            type: 'function',
+          },
+        ];
+
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: abiWithPure,
+          functionName: 'add',
+          args: [5, 3],
+        });
+
+        expect(result).toMatch(/^0x[a-fA-F0-9]+$/);
+        expect(typeof result).toBe('string');
+      });
+
+      it('should handle payable functions', () => {
+        const abiWithPayable = [
+          {
+            inputs: [
+              {
+                internalType: 'string',
+                name: 'message',
+                type: 'string',
+              },
+            ],
+            name: 'sendMessage',
+            outputs: [],
+            stateMutability: 'payable',
+            type: 'function',
+          },
+        ];
+
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: abiWithPayable,
+          functionName: 'sendMessage',
+          args: ['Hello World'],
+        });
+
+        expect(result).toMatch(/^0x[a-fA-F0-9]+$/);
+        expect(typeof result).toBe('string');
+      });
+
+      it('should handle functions with no inputs', () => {
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: testAbi,
+          functionName: 'countEth',
+        });
+        expect(result).toMatch(/^0x[a-fA-F0-9]+$/);
+        expect(typeof result).toBe('string');
+      });
+
+      it('should handle functions with multiple outputs', () => {
+        const abiWithMultipleOutputs = [
+          {
+            inputs: [
+              {
+                internalType: 'uint256',
+                name: 'id',
+                type: 'uint256',
+              },
+            ],
+            name: 'getUserInfo',
+            outputs: [
+              {
+                internalType: 'string',
+                name: 'name',
+                type: 'string',
+              },
+              {
+                internalType: 'uint256',
+                name: 'age',
+                type: 'uint256',
+              },
+              {
+                internalType: 'bool',
+                name: 'active',
+                type: 'bool',
+              },
+            ],
+            stateMutability: 'view',
+            type: 'function',
+          },
+        ];
+
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: abiWithMultipleOutputs,
+          functionName: 'getUserInfo',
+          args: [1],
+        });
+
+        expect(result).toMatch(/^0x[a-fA-F0-9]+$/);
+        expect(typeof result).toBe('string');
+      });
+
+      it('should handle edge cases with empty strings and zero values', () => {
+        const abiWithEdgeCases = [
+          {
+            inputs: [
+              {
+                internalType: 'string',
+                name: 'text',
+                type: 'string',
+              },
+              {
+                internalType: 'uint256',
+                name: 'number',
+                type: 'uint256',
+              },
+            ],
+            name: 'edgeCaseTest',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+        ];
+
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: abiWithEdgeCases,
+          functionName: 'edgeCaseTest',
+          args: ['', 0],
+        });
+
+        expect(result).toMatch(/^0x[a-fA-F0-9]+$/);
+        expect(typeof result).toBe('string');
+      });
+
+      it('should handle large numbers correctly', () => {
+        const abiWithLargeNumbers = [
+          {
+            inputs: [
+              {
+                internalType: 'uint256',
+                name: 'largeNumber',
+                type: 'uint256',
+              },
+            ],
+            name: 'handleLargeNumber',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+        ];
+
+        const largeNumber =
+          '115792089237316195423570985008687907853269984665640564039457584007913129639935'; // max uint256
+
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: abiWithLargeNumbers,
+          functionName: 'handleLargeNumber',
+          args: [largeNumber],
+        });
+
+        expect(result).toMatch(/^0x[a-fA-F0-9]+$/);
+        expect(typeof result).toBe('string');
+      });
+    });
+
     describe('parseUnits', () => {
       it('should parse integer values correctly', () => {
         // Test basic integer parsing like the viem example
