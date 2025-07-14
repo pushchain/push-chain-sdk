@@ -10,7 +10,7 @@ import {
   toUniversalFromKeypair,
 } from './universal/signer';
 import { CHAIN } from './constants/enums';
-import { ethers } from 'ethers';
+import { encodeFunctionData } from 'viem';
 
 /**
  * @dev - THESE UTILS ARE EXPORTED TO SDK CONSUMER
@@ -120,9 +120,12 @@ export class Utils {
       }
 
       try {
-        // Create ethers Interface and encode the function data
-        const abiInterface = new ethers.Interface(abi);
-        const data = abiInterface.encodeFunctionData(functionName, args);
+        // Use viem's encodeFunctionData to encode the function data
+        const data = encodeFunctionData({
+          abi,
+          functionName,
+          args,
+        });
         return data;
       } catch (error) {
         throw new Error(
