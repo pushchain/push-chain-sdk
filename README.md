@@ -1,9 +1,9 @@
 <h1 align="center">
     <a href="https://push.org/#gh-light-mode-only">
-    <img width='20%' height='10%' src="https://res.cloudinary.com/drdjegqln/image/upload/v1686227557/Push-Logo-Standard-Dark_xap7z5.png">
+    <img width='20%' height='10%' src="https://res.cloudinary.com/dx8mqtt0p/image/upload/t_pushchain_logo/Screenshot_2025-07-15_at_11.35.04_AM_wxoldu">
     </a>
     <a href="https://push.org/#gh-dark-mode-only">
-    <img width='20%' height='10%' src="https://res.cloudinary.com/drdjegqln/image/upload/v1686227558/Push-Logo-Standard-White_dlvapc.png">
+    <img width='20%' height='10%' src="https://res.cloudinary.com/dx8mqtt0p/image/upload/t_pushchain_logo/Screenshot_2025-07-15_at_11.35.04_AM_wxoldu">
     </a>
 </h1>
 
