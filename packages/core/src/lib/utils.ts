@@ -23,7 +23,7 @@ import { ethers } from 'ethers';
  */
 export class Utils {
   static account = {
-    /**
+    /*
      * Converts a UniversalAccount into a CAIP-10 style address string.
      *
      * Format: `namespace:chainId:address`
@@ -126,8 +126,7 @@ export class Utils {
         return data;
       } catch (error) {
         throw new Error(
-          `Failed to encode function '${functionName}': ${
-            error instanceof Error ? error.message : 'Unknown error'
+          `Failed to encode function '${functionName}': ${error instanceof Error ? error.message : 'Unknown error'
           }`
         );
       }
@@ -216,11 +215,82 @@ export class Utils {
           throw error;
         }
         throw new Error(
-          `Failed to parse value '${value}': ${
-            error instanceof Error ? error.message : 'Invalid number format'
+          `Failed to parse value '${value}': ${error instanceof Error ? error.message : 'Invalid number format'
           }`
         );
       }
     },
   };
+  
+  static uea = {
+    /**
+     * Generates a consistent cache key for UEA deployment status.
+     */
+    getCacheKey(userAddress: string): string {
+      return `UEA_STATUS_${userAddress.toLowerCase()}`;
+    },
+
+    /**
+     * Retrieves cached UEA deployment status for a user.
+     * Checks in-memory first, then localStorage (in browser).
+     */
+    getCache(userAddress: string): any | null {
+      const key = Utils.uea.getCacheKey(userAddress);
+
+      // Check in-memory
+      if (Utils.uea._memoryCache.has(key)) {
+        return Utils.uea._memoryCache.get(key);
+      }
+
+      // Check localStorage (browser-only)
+      if (typeof localStorage !== 'undefined') {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+
+        try {
+          const parsed = JSON.parse(raw);
+          Utils.uea._memoryCache.set(key, parsed); // warm memory cache
+          return parsed;
+        } catch {
+          return null;
+        }
+      }
+
+      return null;
+    },
+
+    /**
+     * Stores UEA deployment status in memory and localStorage (if available).
+     */
+    setCache(userAddress: string, data: any): void {
+      const key = Utils.uea.getCacheKey(userAddress);
+      Utils.uea._memoryCache.set(key, data);
+
+      if (typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem(key, JSON.stringify(data));
+        } catch {
+          // Storage might be full or unavailable
+        }
+      }
+    },
+
+    /**
+     * Clears the cached UEA status for the user.
+     */
+    clearCache(userAddress: string): void {
+      const key = Utils.uea.getCacheKey(userAddress);
+      Utils.uea._memoryCache.delete(key);
+
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(key);
+      }
+    },
+
+    /**
+     * In-memory cache (private internal map).
+     */
+    _memoryCache: new Map<string, any>(),
+  };
+
 }
