@@ -49,9 +49,18 @@ export function useSmartModalPosition(
       setPosition({ top, left });
     };
 
+    if (!isWalletMinimised) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
     calculatePosition();
     window.addEventListener('resize', calculatePosition);
-    return () => window.removeEventListener('resize', calculatePosition);
+    return () => {
+      window.removeEventListener('resize', calculatePosition);
+      document.body.style.overflow = '';
+    };
   }, [triggerRef, modalWidth, modalHeight, isWalletMinimised, config]);
 
   useEffect(() => {
