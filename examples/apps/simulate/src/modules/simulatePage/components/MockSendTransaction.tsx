@@ -20,14 +20,9 @@ const MockSendTransaction = () => {
   const [txnData, setTxnData] = useState<ExecuteParams>(mockTransaction);
 
   const handleSendTransaction = async () => {
-    console.log(txnData, mockTransaction);
     try {
       if (pushChainClient && universalAccount) {
         setIsSendingTxn(true);
-        // const txHash = await pushChainClient.universal.sendTransaction({
-        //   target: '0xFd6C2fE69bE13d8bE379CCB6c9306e74193EC1A9',
-        //   value: BigInt(2),
-        // });
 
         const res = await pushChainClient.universal.sendTransaction(txnData);
 

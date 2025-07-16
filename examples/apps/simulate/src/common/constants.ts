@@ -6,7 +6,7 @@ export const APP_ROUTES = {
 };
 
 export const mockTransaction: ExecuteParams = {
-  to: '0x68F8b46e4cD01a7648393911E734d99d34E6f107',
-  value: BigInt(1),
+  to: '0xFaE3594C68EDFc2A61b7527164BDAe80bC302108',
+  value: BigInt(10) ** BigInt(18),
   data: '0x',
 }
