@@ -1,6 +1,10 @@
 {
   "extends": ["../../.eslintrc.json"],
-  "ignorePatterns": ["!**/*"],
+  "ignorePatterns": [
+    "node_modules",
+    "**/*.d.ts",
+    "!**/*"
+  ],
   "overrides": [
     {
       "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
@@ -21,5 +25,8 @@
         "@nx/dependency-checks": "error"
       }
     }
-  ]
+  ],
+  "rules": {
+    "@typescript-eslint/no-duplicate-enum-values": "off"
+  }
 }
