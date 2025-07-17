@@ -15,12 +15,16 @@
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/packages/ui-kit",
         "main": "packages/ui-kit/src/index.ts",
         "tsConfig": "packages/ui-kit/tsconfig.lib.json",
-        "assets": ["packages/ui-kit/*.md"]
+        "assets": [
+          "packages/ui-kit/*.md"
+        ]
       }
     },
     "nx-release-publish": {
@@ -37,7 +41,28 @@
             "description": "One-time password for 2FA"
           }
         },
-        "required": ["otp"]
+        "required": [
+          "otp"
+        ]
+      }
+    },
+    "nx-release-alpha-publish": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx run ui-kit:build && npm publish dist/packages/ui-kit --tag alpha --access public --otp=${args.otp}"
+      },
+      "optionsDescription": "Pass OTP as an argument with --otp",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "otp": {
+            "type": "string",
+            "description": "One-time password for 2FA"
+          }
+        },
+        "required": [
+          "otp"
+        ]
       }
     }
   }
