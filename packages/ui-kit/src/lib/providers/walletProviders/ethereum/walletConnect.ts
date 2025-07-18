@@ -36,11 +36,12 @@ export class WalletConnectProvider extends BaseWalletProvider {
     this.provider = await EthereumProvider.init({
       projectId: '575a3e339ad56f54669c32264c133172',
       chains: [chainId],
-      methods: ['eth_sendTransaction', 'personal_sign', 'eth_signTypedData'],
+      methods: ['eth_sendTransaction', 'personal_sign', 'eth_signTypedData_v4', 'eth_requestAccounts', 'eth_chainId', 'eth_accounts'],
       showQrModal: true,
       rpcMap: {
-        [chainId]: chains.sepolia.rpcUrls.default.http[0],
-      }
+        '11155111': 'https://sepolia.gateway.tenderly.co/',
+      },
+      optionalChains: [],
     });
 
     await this.provider.enable();
@@ -175,9 +176,18 @@ export class WalletConnectProvider extends BaseWalletProvider {
         throw new Error('No connected account');
       }
 
+      typedData.types = {
+        EIP712Domain: [
+          { name: 'version', type: 'string' },
+          { name: 'chainId', type: 'uint256' },
+          { name: 'verifyingContract', type: 'address' },
+        ],
+        UniversalPayload: typedData.types['UniversalPayload'],
+      }
+
       const signature = await provider.request({
         method: 'eth_signTypedData_v4',
-        params: [accounts[0], typedData],
+        params: [accounts[0], JSON.stringify(typedData)],
       });
 
       return hexToBytes(signature as `0x${string}`);
@@ -192,5 +202,6 @@ export class WalletConnectProvider extends BaseWalletProvider {
     if (provider && typeof provider.disconnect === 'function') {
       await provider.disconnect();
     }
+    this.provider = null;
   };
 }
