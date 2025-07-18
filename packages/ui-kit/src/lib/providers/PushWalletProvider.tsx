@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import React, { FC } from 'react';
 import { ProviderConfigProps, PushWalletProviderProps } from '../types/index';
 import { WalletContextProvider } from '../context/WalletContext';
