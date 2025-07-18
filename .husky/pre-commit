@@ -1,6 +1,2 @@
-# TODO: Add other projects to the pre-commit hook
-# Lint core project
-npx nx run core:lint
-
-# Build core project
-npx nx run core:build
+npx nx affected:lint --base=origin/main
+npx nx affected:build --base=origin/main
