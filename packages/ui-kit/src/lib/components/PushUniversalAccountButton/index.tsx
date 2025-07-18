@@ -1,8 +1,13 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import React, { FC, useEffect, useMemo } from 'react';
 import { usePushWalletContext } from '../../hooks/usePushWallet';
 import { ConnectWalletButton } from './ConnectWalletButton';
 import { TogglePushWalletButton } from './TogglePushWalletButton';
-import { createGlobalStyle, DefaultTheme, ThemeProvider } from 'styled-components';
+import {
+  createGlobalStyle,
+  DefaultTheme,
+  ThemeProvider,
+} from 'styled-components';
 import { ButtonThemeOverrides, ThemeOverrides } from '../../styles/token';
 import { buttonThemeDefault } from '../../styles/token';
 import { mapButtonCoreToInt } from '../../utils/theme';

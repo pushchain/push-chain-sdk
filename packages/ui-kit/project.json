@@ -30,18 +30,23 @@
     "nx-release-publish": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "nx run ui-kit:build && npm publish dist/packages/ui-kit --access public --otp=${args.otp}"
+        "command": "bash scripts/release.sh ui-kit '{args.bump}' '{args.otp}'"
       },
-      "optionsDescription": "Pass OTP as an argument with --otp",
+      "optionsDescription": "Bumps version and releases to npm & GitHub",
       "schema": {
         "type": "object",
         "properties": {
+          "bump": {
+            "type": "string",
+            "description": "Version bump type: patch | minor | major"
+          },
           "otp": {
             "type": "string",
             "description": "One-time password for 2FA"
           }
         },
         "required": [
+          "bump",
           "otp"
         ]
       }
