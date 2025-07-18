@@ -49,7 +49,7 @@ export function useSmartModalPosition(
       setPosition({ top, left });
     };
 
-    if (!isWalletMinimised) {
+    if (!isWalletMinimised && universalAccount) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';

@@ -133,8 +133,8 @@ const LoginModal: FC<LoginModalProps> = ({
               {universalAccount ? (
                 <DashButtonContainer onClick={() => setMinimiseWallet(true)}>
                   <CrossIcon
-                    height="18px"
-                    width="18px"
+                    height="20px"
+                    width="20px"
                     color="var(--pw-int-text-primary-color)"
                   />
                 </DashButtonContainer>
@@ -204,8 +204,10 @@ const LoginModal: FC<LoginModalProps> = ({
                     borderRadius: universalAccount ? '10px' : '0px',
                   }}
                   onLoad={() => {
-                    setIframeLoading(false);
-                    sendWalletConfig();
+                    setTimeout(() => {
+                      setIframeLoading(false);
+                      sendWalletConfig();
+                    }, 100);
                   }}
                 />
               </MainFrameContainer>
@@ -338,9 +340,10 @@ const FrameLoadingContainer = styled.div<{
   width: 100%;
   flex-direction: column;
   display: flex;
-  padding: 8px;
+  padding: var(--spacing-xxs) var(--spacing-xxs);
   color: var(--pw-int-text-primary-color);
   background-color: var(--pw-int-bg-primary-color);
+  box-sizing: border-box;
 `;
 
 const FrameSubContainer = styled.div<{
@@ -361,10 +364,10 @@ const AccountContainer = styled.div<{
   display: flex;
   align-items: center;
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 8px;
+  right: 8px;
   justify-content: flex-end;
-  padding: var(--spacing-xxs) var(--spacing-xxs);
+  // padding: var(--spacing-xxs) var(--spacing-xxs);
   border-top-right-radius: ${({ universalAccount }) =>
     universalAccount ? '10px' : '0px'};
   border-top-left-radius: ${({ universalAccount }) =>
