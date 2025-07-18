@@ -38,6 +38,9 @@ export class WalletConnectProvider extends BaseWalletProvider {
       chains: [chainId],
       methods: ['eth_sendTransaction', 'personal_sign', 'eth_signTypedData'],
       showQrModal: true,
+      rpcMap: {
+        [chainId]: chains.sepolia.rpcUrls.default.http[0],
+      }
     });
 
     await this.provider.enable();

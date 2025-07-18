@@ -152,6 +152,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     setUniversalAccount(null);
     setMinimiseWallet(false);
     setWalletVisibility(false);
+    setIframeLoading(true);
   };
 
   // sending events to wallet from dapp
