@@ -85,6 +85,13 @@ export async function toUniversalFromKeypair(
 
   switch (library) {
     case LIBRARY.ETHEREUM_ETHERSV6: {
+      // Runtime check for ethers availability
+      if (typeof ethers === 'undefined' || !ethers.Wallet) {
+        throw new Error(
+          'ethers is required but not found. Please install ethers: npm install ethers@^6.14.3'
+        );
+      }
+
       if (
         typeof (clientOrAccount as any).signMessage !== 'function' ||
         typeof (clientOrAccount as any).sendTransaction !== 'function' ||
@@ -303,6 +310,13 @@ export async function toUniversal(
 async function generateSkeletonFromEthersV5(
   signer: EthersV5SignerType
 ): Promise<UniversalSignerSkeleton> {
+  // Runtime check for ethers availability
+  if (typeof ethers === 'undefined' || !ethers.Transaction) {
+    throw new Error(
+      'ethers is required but not found. Please install ethers@^6.14.3'
+    );
+  }
+
   const address = await signer.getAddress();
 
   const { chainId } = await signer.provider.getNetwork();
@@ -364,6 +378,13 @@ async function generateSkeletonFromEthersV5(
 async function generateSkeletonFromEthersV6(
   signer: EthersV6SignerType
 ): Promise<UniversalSignerSkeleton> {
+  // Runtime check for ethers availability
+  if (typeof ethers === 'undefined' || !ethers.Transaction) {
+    throw new Error(
+      'ethers is required but not found. Please install ethers@^6.14.3'
+    );
+  }
+
   const address = await signer.getAddress();
 
   const { chainId } = await signer.provider.getNetwork();
