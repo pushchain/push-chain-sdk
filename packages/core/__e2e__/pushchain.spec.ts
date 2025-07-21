@@ -96,8 +96,8 @@ describe('PushChain (e2e)', () => {
     let account: PrivateKeyAccount;
 
     beforeAll(async () => {
-      const privateKey = process.env['PUSH_CHAIN_PRIVATE_KEY'] as Hex;
-      if (!privateKey) throw new Error('PUSH_CHAIN_PRIVATE_KEY not set');
+      const privateKey = process.env['PUSH_PRIVATE_KEY'] as Hex;
+      if (!privateKey) throw new Error('PUSH_PRIVATE_KEY not set');
 
       account = privateKeyToAccount(privateKey);
       const walletClient = createWalletClient({
@@ -318,7 +318,7 @@ describe('Deploy UEA on Push Testnet Edge Cases', () => {
       value: PushChain.utils.helpers.parseUnits('0.05', 18),
     });
     expect(tx).toBeDefined();
-  }, 60000);
+  }, 100000);
 });
 
 const txValidator = async (
