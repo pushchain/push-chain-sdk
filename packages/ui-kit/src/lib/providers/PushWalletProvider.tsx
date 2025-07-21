@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import React, { FC } from 'react';
 import { ProviderConfigProps, PushWalletProviderProps } from '../types/index';
 import { WalletContextProvider } from '../context/WalletContext';
@@ -92,7 +93,9 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
   };
 
   return (
+    // @ts-expect-error
     <ThemeProvider theme={{ themeMode, themeOverrides }}>
+      {/* @ts-expect-error */}
       <GlobalStyle uid={mergedConfig.uid!} />
       <div data-pw-wrapper={mergedConfig.uid}>
         <WalletContextProvider

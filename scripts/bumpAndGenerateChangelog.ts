@@ -48,12 +48,22 @@ console.log(`📦 Updated ${pkg.name} to ${newVersion}`);
 
 // --- 2. Collect commit messages for this scope ---
 function getCommitsForScope(scope: string): string[] {
-  const previousTag = execSync(
-    `git describe --tags --match '${scope}@*' --abbrev=0`,
-    {
+  let previousTag: string;
+
+  try {
+    previousTag = execSync(
+      `git describe --tags --match '${scope}@*' --abbrev=0`,
+      {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'ignore'], // suppress error if no tag
+      }
+    ).trim();
+  } catch {
+    // No tag found, use the root commit as the starting point
+    previousTag = execSync('git rev-list --max-parents=0 HEAD', {
       encoding: 'utf-8',
-    }
-  ).trim();
+    }).trim();
+  }
 
   const log = execSync(`git log --pretty=format:%s ${previousTag}..HEAD`, {
     encoding: 'utf-8',

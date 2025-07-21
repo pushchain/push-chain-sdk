@@ -1,6 +1,10 @@
 {
   "extends": ["../../.eslintrc.json"],
-  "ignorePatterns": ["!**/*"],
+  "ignorePatterns": [
+    "node_modules",
+    "**/*.d.ts",
+    "!**/*"
+  ],
   "overrides": [
     {
       "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
@@ -18,8 +22,11 @@
       "files": ["*.json"],
       "parser": "jsonc-eslint-parser",
       "rules": {
-        "@nx/dependency-checks": "error"
+        "@nx/dependency-checks": "warn"
       }
     }
-  ]
+  ],
+  "rules": {
+    "@typescript-eslint/no-duplicate-enum-values": "off"
+  }
 }

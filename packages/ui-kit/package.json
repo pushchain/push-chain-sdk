@@ -1,17 +1,15 @@
 {
   "name": "@pushchain/ui-kit",
-  "version": "1.1.21",
+  "version": "1.1.25",
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
     "@metamask/sdk": "^0.32.0",
     "@pushchain/core": "^0.1.40",
     "@solana/web3.js": "^1.98.2",
-    "@walletconnect/ethereum-provider": "^2.21.3",
-    "buffer": "^6.0.3",
+    "@walletconnect/ethereum-provider": "^2.21.5",
     "ethers": "^6.13.5",
-    "process": "^0.11.10",
     "react": "^18.3.1",
-    "styled-components": "^6.1.19",
+    "styled-components": "^5.3.8",
     "tslib": "^2.3.0",
     "viem": "^2.23.9"
   },

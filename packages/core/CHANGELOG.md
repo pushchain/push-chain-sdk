@@ -1,3 +1,9 @@
+@pushchain/core@0.1.41 (2025-07-21)
+
+- fix: refine fee locking logic in Orchestrator to handle UEA deployment and fund sufficiency
+
+---
+
 @pushchain/core@0.1.40 (2025-07-09)
 
 - feat: 1 Click Signature (#159)
