@@ -93,7 +93,6 @@ const LoginModal: FC<LoginModalProps> = ({
 
       switch (event.data.type) {
         case WALLET_TO_APP_ACTION.PUSH_SEND_TRANSACTION:
-          console.log('check');
           handleSendTransaction(event.data.data);
           break;
         default:

@@ -537,6 +537,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         setMinimiseWallet={setMinimiseWallet}
         handleUserLogOutEvent={handleUserLogOutEvent}
         toggleButtonRef={toggleButtonRef}
+        sendMessageToPushWallet={sendMessageToPushWallet}
       />
       {progress && <PushWalletToast progress={progress} setProgress={setProgress} />}
       {children}
