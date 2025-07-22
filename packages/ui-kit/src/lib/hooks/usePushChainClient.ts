@@ -14,7 +14,6 @@ export const usePushChainClient = (uid?: string) => {
     handleSignTypedData,
     config,
     setProgress,
-    sendMessageToPushWallet
   } = usePushWalletContext(uid);
   const [pushChain, setPushChain] = useState<PushChain | null>(null);
   const [error, setError] = useState<Error | null>(null);
