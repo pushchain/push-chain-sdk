@@ -1,10 +1,7 @@
-// hooks/usePushChainClient.ts (use uid?:string in the future as prop)
-
-import { usePushWalletContext } from './usePushWallet';
-import { useEffect, useState } from 'react';
 import { PushChain } from '@pushchain/core';
 import { PROGRESS_HOOK } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
-import { APP_TO_WALLET_ACTION } from '../constants';
+import { usePushWalletContext } from './usePushWallet';
+import { useEffect, useState } from 'react';
 
 export const usePushChainClient = (uid?: string) => {
   const {

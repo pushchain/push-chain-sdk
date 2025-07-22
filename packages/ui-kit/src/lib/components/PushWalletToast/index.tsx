@@ -1,7 +1,7 @@
 import React, { FC } from 'react';
+import { PROGRESS_HOOK, ProgressEvent } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
 import styled from 'styled-components';
 import { CrossIcon, Spinner, TickIcon, WarningIcon } from "../../components/common";
-import { PROGRESS_HOOK, ProgressEvent } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
 
 type PushWalletToastProps = {
     progress: ProgressEvent;

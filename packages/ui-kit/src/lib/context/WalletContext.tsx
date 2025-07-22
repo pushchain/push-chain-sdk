@@ -1,4 +1,6 @@
 import React, { createContext, FC, useEffect, useRef, useState } from 'react';
+import { PushChain } from '@pushchain/core';
+import { ProgressEvent } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
 import {
   ChainType,
   ConnectionStatus,
@@ -23,8 +25,6 @@ import { PushWalletToast } from '../components/PushWalletToast';
 import { LoginModal } from '../components/LoginModal';
 import { getWalletContext } from './WalletContextMap';
 import { ThemeOverrides } from '../styles/token';
-import { PushChain } from '@pushchain/core';
-import { ProgressEvent } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
 
 export type WalletContextType = {
   universalAccount: UniversalAccount | null;

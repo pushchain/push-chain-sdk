@@ -1,4 +1,5 @@
 import React, { FC, useEffect, useRef } from 'react';
+import { ExecuteParams } from '@pushchain/core/src/lib/orchestrator/orchestrator.types';
 import styled from 'styled-components';
 import { CrossIcon, Spinner } from '../../components/common';
 import { APP_TO_WALLET_ACTION, PushUI, WALLET_CONFIG_URL, WALLET_TO_APP_ACTION } from '../../constants';
@@ -10,7 +11,6 @@ import {
 } from '../../types';
 import { useSmartModalPosition } from './useSmartModalPosition';
 import { usePushChainClient } from '../../hooks/usePushChainClient';
-import { ExecuteParams } from '@pushchain/core/src/lib/orchestrator/orchestrator.types';
 
 type LoginModalProps = {
   iframeRef: React.MutableRefObject<HTMLIFrameElement | null>;

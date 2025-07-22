@@ -1,10 +1,10 @@
 import React from 'react';
+import { CHAIN } from '@pushchain/core/src/lib/constants/enums';
 import { usePushWalletContext } from '../../hooks/usePushWallet';
 import { UniversalAccount } from '../../types';
 import { Button, PushLogo, PushMonotone } from '../common';
 import { centerMaskString, getChainId } from '../../helpers';
 import { CHAIN_LOGO } from '../../constants';
-import { CHAIN } from '@pushchain/core/src/lib/constants/enums';
 
 type TogglePushWalletButtonProps = {
   uid?: string;
