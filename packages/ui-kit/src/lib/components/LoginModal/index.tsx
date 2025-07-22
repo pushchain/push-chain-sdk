@@ -1,7 +1,7 @@
-import React, { FC, useEffect, useRef, useState } from 'react';
+import React, { FC, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { CrossIcon, Spinner } from '../../components/common';
-import { PushUI, WALLET_CONFIG_URL } from '../../constants';
+import { APP_TO_WALLET_ACTION, PushUI, WALLET_CONFIG_URL, WALLET_TO_APP_ACTION } from '../../constants';
 import {
   ModalAppDetails,
   ModalProps,
@@ -9,6 +9,8 @@ import {
   UniversalAccount,
 } from '../../types';
 import { useSmartModalPosition } from './useSmartModalPosition';
+import { usePushChainClient } from '../../hooks/usePushChainClient';
+import { ExecuteParams } from '@pushchain/core/src/lib/orchestrator/orchestrator.types';
 
 type LoginModalProps = {
   iframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
@@ -26,6 +28,7 @@ type LoginModalProps = {
   setMinimiseWallet: (isWalletMinimised: boolean) => void;
   handleUserLogOutEvent: () => void;
   toggleButtonRef: React.RefObject<HTMLButtonElement>;
+  sendMessageToPushWallet: (message: any) => void;
 };
 
 const LoginModal: FC<LoginModalProps> = ({
@@ -42,10 +45,13 @@ const LoginModal: FC<LoginModalProps> = ({
   handleUserLogOutEvent,
   config,
   toggleButtonRef,
+  sendMessageToPushWallet
 }) => {
   const { modal } = config;
   const containerRef = useRef<HTMLDivElement>(null);
   // const [position, setPosition] = useState({ top: 0, left: 0 });
+  const { pushChainClient } = usePushChainClient(config?.uid || 'default');
+
   const { top, left } = useSmartModalPosition(
     toggleButtonRef,
     450,
@@ -67,18 +73,38 @@ const LoginModal: FC<LoginModalProps> = ({
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  // useEffect(() => {
-  //   if (toggleButtonRef?.current) {
-  //     setPosition({
-  //       top: rect.bottom + window.scrollY,
-  //       left: rect.left + window.scrollX,
-  //     });
-  //     console.log({
-  //       top: rect.bottom + window.scrollY,
-  //       left: rect.left + window.scrollX,
-  //     });
-  //   }
-  // }, [isWalletVisible, isWalletMinimised]);
+  const handleSendTransaction = async (data: ExecuteParams) => {
+    if (!pushChainClient) return;
+
+    const res = await pushChainClient.universal.sendTransaction({
+      ...data,
+      value: BigInt(data.value)
+    });
+
+    sendMessageToPushWallet({
+      type: APP_TO_WALLET_ACTION.PUSH_SEND_TRANSACTION_RESPONSE,
+      data: res.hash,
+    });
+  }
+
+  useEffect(() => {
+    const pushMessageHandler = (event: MessageEvent) => {
+      if (iframeRef.current?.contentWindow !== event.source || !pushChainClient) return;
+
+      switch (event.data.type) {
+        case WALLET_TO_APP_ACTION.PUSH_SEND_TRANSACTION:
+          console.log('check');
+          handleSendTransaction(event.data.data);
+          break;
+        default:
+          console.warn('Unknown message type:', event.data.type);
+      }
+    };
+
+    window.addEventListener('message', pushMessageHandler);
+
+    return () => window.removeEventListener('message', pushMessageHandler);
+  }, [pushChainClient]);
 
   return (
     <>

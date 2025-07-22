@@ -4,6 +4,7 @@ import { usePushWalletContext } from './usePushWallet';
 import { useEffect, useState } from 'react';
 import { PushChain } from '@pushchain/core';
 import { PROGRESS_HOOK } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
+import { APP_TO_WALLET_ACTION } from '../constants';
 
 export const usePushChainClient = (uid?: string) => {
   const {
@@ -12,7 +13,8 @@ export const usePushChainClient = (uid?: string) => {
     handleSignAndSendTransaction,
     handleSignTypedData,
     config,
-    setProgress
+    setProgress,
+    sendMessageToPushWallet
   } = usePushWalletContext(uid);
   const [pushChain, setPushChain] = useState<PushChain | null>(null);
   const [error, setError] = useState<Error | null>(null);

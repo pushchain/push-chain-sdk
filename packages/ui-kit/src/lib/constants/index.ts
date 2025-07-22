@@ -39,6 +39,8 @@ export enum WALLET_TO_APP_ACTION {
   SIGN_TRANSACTION = 'signatureTransaction',
   SIGN_TYPED_DATA = 'signatureTypedData',
   ERROR = 'error',
+
+  PUSH_SEND_TRANSACTION = 'pushSendTransaction',
 }
 
 // events send by dapp to the wallet
@@ -51,6 +53,8 @@ export enum APP_TO_WALLET_ACTION {
 
   CONNECTION_STATUS = 'connectionStatus',
   WALLET_CONFIG = 'walletConfig',
+
+  PUSH_SEND_TRANSACTION_RESPONSE = 'pushSendTransactionResponse',
 }
 
 export const CHAIN_LOGO: Record<string, React.FC | React.ComponentType> = {

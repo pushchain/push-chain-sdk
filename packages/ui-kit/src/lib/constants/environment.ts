@@ -11,7 +11,7 @@ export type ConfigType = {
 
 export const WALLET_CONFIG_URL = {
   [PUSH_NETWORK.MAINNET]: 'https://wallet.push.org',
-  [PUSH_NETWORK.TESTNET]: 'https://wallet.push.org',
+  [PUSH_NETWORK.TESTNET]: 'http://localhost:5173',
   [PUSH_NETWORK.TESTNET_DONUT]: 'https://wallet.push.org',
   [PUSH_NETWORK.LOCALNET]: 'http://localhost:5173',
 };
