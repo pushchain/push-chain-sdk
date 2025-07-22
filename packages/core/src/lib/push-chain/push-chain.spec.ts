@@ -820,5 +820,58 @@ describe('PushChain', () => {
         expect(pushResult).toBe(BigInt('1000500000000000000000'));
       });
     });
+
+    describe('getOriginForUEA', () => {
+      it('should return valid origin data for a UEA address', async () => {
+        // Test with the address that returns the known result
+        const testAddress =
+          '0xc16a585b95810F7D204620bb3677F73243242A8F' as `0x${string}`;
+
+        const result = await PushChain.utils.helpers.getOriginForUEA(
+          testAddress
+        );
+
+        // Validate the result structure - should be a tuple [account, isUEA]
+        expect(Array.isArray(result)).toBe(true);
+        expect(result).toHaveLength(2);
+
+        const [account, isUEA] = result;
+
+        // Validate the account object structure
+        expect(account).toEqual({
+          chainNamespace: 'solana',
+          chainId: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
+          owner:
+            '0xd572b94b471971447fff72c3ea1d8193bf918e3caa17e2e0fab77cf161e24bce',
+        });
+
+        // Validate isUEA flag
+        expect(isUEA).toBe(true);
+      }, 30000); // 30 second timeout for network call
+
+      it('should handle non-UEA addresses gracefully', async () => {
+        // Test with a different address that might not be a UEA
+        const testAddress =
+          '0x0000000000000000000000000000000000000001' as `0x${string}`;
+
+        const result = await PushChain.utils.helpers.getOriginForUEA(
+          testAddress
+        );
+
+        const [account, isUEA] = result;
+
+        expect(account).toEqual({
+          chainNamespace: '',
+          chainId: '',
+          owner: '0x',
+        });
+
+        expect(isUEA).toBe(false);
+
+        // Validate the result structure regardless of isUEA value
+        expect(Array.isArray(result)).toBe(true);
+        expect(result).toHaveLength(2);
+      }, 30000); // 30 second timeout for network call
+    });
   });
 });

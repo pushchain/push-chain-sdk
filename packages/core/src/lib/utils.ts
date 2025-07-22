@@ -11,6 +11,8 @@ import {
 } from './universal/signer';
 import { CHAIN } from './constants/enums';
 import { ethers } from 'ethers';
+import { createPublicClient, http, defineChain } from 'viem';
+import { PUSH_CHAIN_INFO } from './constants/chain';
 
 /**
  * @dev - THESE UTILS ARE EXPORTED TO SDK CONSUMER
@@ -126,7 +128,8 @@ export class Utils {
         return data;
       } catch (error) {
         throw new Error(
-          `Failed to encode function '${functionName}': ${error instanceof Error ? error.message : 'Unknown error'
+          `Failed to encode function '${functionName}': ${
+            error instanceof Error ? error.message : 'Unknown error'
           }`
         );
       }
@@ -215,10 +218,86 @@ export class Utils {
           throw error;
         }
         throw new Error(
-          `Failed to parse value '${value}': ${error instanceof Error ? error.message : 'Invalid number format'
+          `Failed to parse value '${value}': ${
+            error instanceof Error ? error.message : 'Invalid number format'
           }`
         );
       }
+    },
+
+    getOriginForUEA: async (ueaAddress: `0x${string}`) => {
+      const RPC_URL = PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
+      const FACTORY_ADDRESS =
+        PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].factoryAddress;
+
+      // Define the Push testnet chain
+      const pushTestnetDonut = defineChain({
+        id: 42101,
+        name: 'Push Testnet Donut',
+        nativeCurrency: {
+          decimals: 18,
+          name: 'PUSH',
+          symbol: 'PUSH',
+        },
+        rpcUrls: {
+          default: { http: [RPC_URL] },
+          public: { http: [RPC_URL] },
+        },
+      });
+
+      // ABI in proper object format for viem
+      const IUEAFactoryABI = [
+        {
+          name: 'getOriginForUEA',
+          type: 'function',
+          stateMutability: 'view',
+          inputs: [
+            {
+              name: 'addr',
+              type: 'address',
+            },
+          ],
+          outputs: [
+            {
+              name: 'account',
+              type: 'tuple',
+              components: [
+                {
+                  name: 'chainNamespace',
+                  type: 'string',
+                },
+                {
+                  name: 'chainId',
+                  type: 'string',
+                },
+                {
+                  name: 'owner',
+                  type: 'bytes',
+                },
+              ],
+            },
+            {
+              name: 'isUEA',
+              type: 'bool',
+            },
+          ],
+        },
+      ] as const;
+
+      // Create viem public client
+      const client = createPublicClient({
+        chain: pushTestnetDonut,
+        transport: http(),
+      });
+
+      const originResult = await client.readContract({
+        address: FACTORY_ADDRESS,
+        abi: IUEAFactoryABI,
+        functionName: 'getOriginForUEA',
+        args: [ueaAddress],
+      });
+
+      return originResult;
     },
   };
 }
