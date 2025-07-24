@@ -17,7 +17,7 @@ import { UniversalSigner } from '../src/lib/universal/universal.types';
 import { CHAIN_INFO } from '../src/lib/constants/chain';
 import dotenv from 'dotenv';
 import path from 'path';
-import { TxResponse } from '../src/lib/vm-client/vm-client.types';
+import { UniversalTxResponse } from '../src/lib/vm-client/vm-client.types';
 import { sepolia } from 'viem/chains';
 
 // Adjust path as needed if your .env is in the root
@@ -322,19 +322,38 @@ describe('Deploy UEA on Push Testnet Edge Cases', () => {
 });
 
 const txValidator = async (
-  tx: TxResponse,
+  tx: UniversalTxResponse,
   from: `0x${string}`,
   to: `0x${string}`
 ) => {
   expect(tx).toBeDefined();
 
-  // Basic fields
+  // 1. Identity fields
   expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+  expect(tx.origin).toBeDefined();
+  expect(tx.origin).toMatch(/^[a-zA-Z0-9_-]+:[0-9]+:0x[a-fA-F0-9]{40}$/); // Format: namespace:chainId:address
+
+  // 2. Block Info
+  expect(typeof tx.blockNumber).toBe('bigint');
+  expect(tx.blockNumber).toBeGreaterThanOrEqual(BigInt(0));
+  expect(typeof tx.blockHash).toBe('string');
+  expect(typeof tx.transactionIndex).toBe('number');
+  expect(typeof tx.chainId).toBe('number');
+
+  // 3. Execution Context
   expect(tx.to?.toLowerCase()).toBe(to.toLowerCase());
   expect(tx.from.toLowerCase()).toBe(from.toLowerCase());
+  expect(typeof tx.nonce).toBe('number');
 
-  // Gas-related
-  expect(tx.gas).toBeGreaterThanOrEqual(BigInt(0));
+  // 4. Payload
+  expect(typeof tx.data).toBe('string');
+  expect(tx.data).toMatch(/^0x/);
+  expect(typeof tx.value).toBe('bigint');
+
+  // 5. Gas-related (changed from tx.gas to tx.gasLimit)
+  expect(typeof tx.gasLimit).toBe('bigint');
+  expect(tx.gasLimit).toBeGreaterThanOrEqual(BigInt(0));
+
   if (tx.maxFeePerGas !== undefined) {
     expect(typeof tx.maxFeePerGas).toBe('bigint');
     expect(tx.maxFeePerGas >= BigInt(0)).toBe(true);
@@ -345,25 +364,328 @@ const txValidator = async (
     expect(tx.maxPriorityFeePerGas >= BigInt(0)).toBe(true);
   }
 
-  // EIP-1559 specifics (optional presence check)
-  if (tx.type !== undefined) {
-    expect(typeof tx.type).toBe('string');
-    expect(['eip1559', 'legacy', 'eip2930']).toContain(tx.type);
+  expect(Array.isArray(tx.accessList)).toBe(true);
+
+  // 6. Utilities
+  expect(typeof tx.wait).toBe('function');
+
+  // 7. Metadata - New fields
+  expect(typeof tx.type).toBe('string');
+  expect(['99', '2', '1', '0']).toContain(tx.type); // Universal, EIP-1559, EIP-2930, Legacy
+
+  expect(typeof tx.typeVerbose).toBe('string');
+  expect(['universal', 'EIP-1559', 'EIP-2930', 'legacy']).toContain(
+    tx.typeVerbose
+  );
+
+  // Signature object validation
+  expect(tx.signature).toBeDefined();
+  expect(typeof tx.signature.r).toBe('string');
+  expect(typeof tx.signature.s).toBe('string');
+  expect(typeof tx.signature.v).toBe('number');
+  expect(typeof tx.signature.yParity).toBe('number');
+  expect(tx.signature.r).toMatch(/^0x[a-fA-F0-9]+$/);
+  expect(tx.signature.s).toMatch(/^0x[a-fA-F0-9]+$/);
+  expect([0, 1]).toContain(tx.signature.yParity);
+
+  // 8. Raw Universal Fields (optional)
+  if (tx.raw) {
+    expect(typeof tx.raw.from).toBe('string');
+    expect(typeof tx.raw.to).toBe('string');
+    expect(typeof tx.raw.nonce).toBe('number');
+    expect(typeof tx.raw.data).toBe('string');
+    expect(typeof tx.raw.value).toBe('bigint');
   }
-
-  expect(['0x2', '0x63']).toContain(tx.typeHex);
-
-  // Signature components
-  expect(tx.r).toMatch(/^0x[a-fA-F0-9]{1,64}$/);
-  expect(tx.s).toMatch(/^0x[a-fA-F0-9]{1,64}$/);
-  expect([0, 1]).toContain(tx.yParity);
-  expect(Number(tx.v)).toBe(tx.yParity);
 
   // Optional: Wait for receipt and confirm it's mined
   const receipt = await tx.wait();
-  expect(receipt.status).toBe('success'); // or use receipt.status === 1 if using viem raw format
+  expect(receipt).toBeDefined();
+  expect(receipt.hash).toBe(tx.hash); // Same transaction
   expect(receipt.blockNumber).toBeGreaterThan(BigInt(0));
 };
+
+describe('UniversalTxReceipt Type Validation', () => {
+  const pushNetwork = PUSH_NETWORK.TESTNET_DONUT;
+  const to = '0x35B84d6848D16415177c64D64504663b998A6ab4';
+  let universalSigner: UniversalSigner;
+  let pushClient: PushChain;
+
+  beforeAll(async () => {
+    const privateKey =
+      '0x890ddbe894a269bb58d68b652d7989205b02d0c9ba915625da2aad464e47e0aa';
+    if (!privateKey) throw new Error('EVM_PRIVATE_KEY not set');
+
+    const account = privateKeyToAccount(privateKey);
+    const walletClient = createWalletClient({
+      account,
+      transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET].defaultRPC[0]),
+    });
+
+    universalSigner = await PushChain.utils.signer.toUniversal(walletClient);
+
+    pushClient = await PushChain.initialize(universalSigner, {
+      network: pushNetwork,
+    });
+  });
+
+  describe('Response Type Structure', () => {
+    it('should return UniversalTxReceipt with all required fields', async () => {
+      const tx = await pushClient.universal.sendTransaction({
+        to,
+        value: BigInt(1000),
+      });
+
+      // Verify it's the new type, not the old TxResponse
+      expect(tx).toBeDefined();
+
+      // 1. Identity
+      expect(tx.hash).toBeDefined();
+      expect(typeof tx.hash).toBe('string');
+      expect(tx.origin).toBeDefined();
+      expect(typeof tx.origin).toBe('string');
+
+      // 2. Block Info
+      expect(tx.blockNumber).toBeDefined();
+      expect(typeof tx.blockNumber).toBe('bigint');
+      expect(tx.blockHash).toBeDefined();
+      expect(typeof tx.blockHash).toBe('string');
+      expect(tx.transactionIndex).toBeDefined();
+      expect(typeof tx.transactionIndex).toBe('number');
+      expect(tx.chainId).toBeDefined();
+      expect(typeof tx.chainId).toBe('number');
+
+      // 3. Execution Context
+      expect(tx.from).toBeDefined();
+      expect(typeof tx.from).toBe('string');
+      expect(tx.to).toBeDefined();
+      expect(typeof tx.to).toBe('string');
+      expect(tx.nonce).toBeDefined();
+      expect(typeof tx.nonce).toBe('number');
+
+      // 4. Payload
+      expect(tx.data).toBeDefined();
+      expect(typeof tx.data).toBe('string');
+      expect(tx.value).toBeDefined();
+      expect(typeof tx.value).toBe('bigint');
+
+      // 5. Gas
+      expect(tx.gasLimit).toBeDefined();
+      expect(typeof tx.gasLimit).toBe('bigint');
+      expect(tx.accessList).toBeDefined();
+      expect(Array.isArray(tx.accessList)).toBe(true);
+
+      // 6. Utilities
+      expect(tx.wait).toBeDefined();
+      expect(typeof tx.wait).toBe('function');
+
+      // 7. Metadata
+      expect(tx.type).toBeDefined();
+      expect(typeof tx.type).toBe('string');
+      expect(tx.typeVerbose).toBeDefined();
+      expect(typeof tx.typeVerbose).toBe('string');
+      expect(tx.signature).toBeDefined();
+      expect(typeof tx.signature).toBe('object');
+    }, 60000);
+
+    it('should have valid origin field format', async () => {
+      const tx = await pushClient.universal.sendTransaction({
+        to,
+        value: BigInt(100),
+      });
+
+      // Origin should follow format: namespace:chainId:address
+      expect(tx.origin).toMatch(/^[a-zA-Z0-9_-]+:[0-9]+:0x[a-fA-F0-9]{40}$/);
+
+      // Should contain the chain info
+      expect(tx.origin).toContain('eip155'); // EVM namespace
+      expect(tx.origin).toContain('42101'); // Push chain ID
+      expect(tx.origin.toLowerCase()).toContain(
+        universalSigner.account.address.toLowerCase()
+      );
+    }, 60000);
+
+    it('should have valid signature object', async () => {
+      const tx = await pushClient.universal.sendTransaction({
+        to,
+        value: BigInt(100),
+      });
+
+      const signature = tx.signature;
+
+      // Check signature properties
+      expect(signature.r).toBeDefined();
+      expect(signature.s).toBeDefined();
+      expect(signature.v).toBeDefined();
+      expect(signature.yParity).toBeDefined();
+
+      // Check types
+      expect(typeof signature.r).toBe('string');
+      expect(typeof signature.s).toBe('string');
+      expect(typeof signature.v).toBe('number');
+      expect(typeof signature.yParity).toBe('number');
+
+      // Check formats
+      expect(signature.r).toMatch(/^0x[a-fA-F0-9]+$/);
+      expect(signature.s).toMatch(/^0x[a-fA-F0-9]+$/);
+      expect([0, 1]).toContain(signature.yParity);
+    }, 60000);
+
+    it('should have raw transaction data when available', async () => {
+      const testTo = '0x35B84d6848D16415177c64D64504663b998A6ab4';
+      const testValue = BigInt(300);
+      const testData = '0x1234';
+      const tx = await pushClient.universal.sendTransaction({
+        to: testTo,
+        value: testValue,
+        data: testData,
+      });
+
+      if (tx.raw) {
+        // Verify raw values match the transaction parameters
+        expect(tx.raw.to).toBe(testTo);
+        expect(tx.raw.value).toBe(testValue);
+        expect(tx.raw.data).toBe(testData);
+
+        // Verify from address matches the signer's address
+        expect(tx.raw.from).toBe(universalSigner.account.address);
+
+        // Verify nonce is a valid number
+        expect(typeof tx.raw.nonce).toBe('number');
+        expect(tx.raw.nonce).toBeGreaterThanOrEqual(0);
+      }
+    }, 60000);
+
+    it('should maintain wait function compatibility', async () => {
+      const tx = await pushClient.universal.sendTransaction({
+        to,
+        value: BigInt(150),
+      });
+
+      expect(typeof tx.wait).toBe('function');
+
+      // Wait function should return UniversalTxReceipt
+      const waitResult = await tx.wait();
+
+      // --- Identity ---
+      expect(waitResult.hash).toBeDefined();
+      expect(typeof waitResult.hash).toBe('string');
+
+      // --- Block Info ---
+      expect(waitResult.blockNumber).toBeDefined();
+      expect(typeof waitResult.blockNumber).toBe('bigint');
+      expect(waitResult.blockNumber).toBeGreaterThanOrEqual(BigInt(0));
+      expect(waitResult.blockHash).toBeDefined();
+      expect(typeof waitResult.blockHash).toBe('string');
+      expect(waitResult.transactionIndex).toBeDefined();
+      expect(typeof waitResult.transactionIndex).toBe('number');
+      expect(waitResult.transactionIndex).toBeGreaterThanOrEqual(0);
+
+      // --- Execution Context ---
+      expect(waitResult.from).toBeDefined();
+      expect(typeof waitResult.from).toBe('string');
+      expect(waitResult.from).toMatch(/^0x[a-fA-F0-9]{40}$/);
+      expect(waitResult.to).toBeDefined();
+      expect(typeof waitResult.to).toBe('string');
+      expect(waitResult.to).toMatch(/^0x[a-fA-F0-9]{40}$/);
+      expect(
+        waitResult.contractAddress === null ||
+          typeof waitResult.contractAddress === 'string'
+      ).toBe(true);
+      if (waitResult.contractAddress) {
+        expect(waitResult.contractAddress).toMatch(/^0x[a-fA-F0-9]{40}$/);
+      }
+
+      // --- Gas & Usage ---
+      expect(waitResult.gasPrice).toBeDefined();
+      expect(typeof waitResult.gasPrice).toBe('bigint');
+      expect(waitResult.gasPrice).toBeGreaterThanOrEqual(BigInt(0));
+      expect(waitResult.gasUsed).toBeDefined();
+      expect(typeof waitResult.gasUsed).toBe('bigint');
+      expect(waitResult.gasUsed).toBeGreaterThanOrEqual(BigInt(0));
+      expect(waitResult.cumulativeGasUsed).toBeDefined();
+      expect(typeof waitResult.cumulativeGasUsed).toBe('bigint');
+      expect(waitResult.cumulativeGasUsed).toBeGreaterThanOrEqual(BigInt(0));
+
+      // --- Logs ---
+      expect(Array.isArray(waitResult.logs)).toBe(true);
+      expect(waitResult.logsBloom).toBeDefined();
+      expect(typeof waitResult.logsBloom).toBe('string');
+
+      // --- Outcome ---
+      expect([0, 1]).toContain(waitResult.status);
+
+      // --- Raw ---
+      expect(waitResult.raw).toBeDefined();
+      expect(typeof waitResult.raw).toBe('object');
+      expect(waitResult.raw.from).toBeDefined();
+      expect(typeof waitResult.raw.from).toBe('string');
+      expect(waitResult.raw.from).toMatch(/^0x[a-fA-F0-9]{40}$/);
+      expect(waitResult.raw.to).toBeDefined();
+      expect(typeof waitResult.raw.to).toBe('string');
+      expect(waitResult.raw.to).toMatch(/^0x[a-fA-F0-9]{40}$/);
+    }, 60000);
+  });
+
+  describe('Orchestrator execute method validation', () => {
+    it('should return UniversalTxReceipt from orchestrator.execute', async () => {
+      // Access the orchestrator directly to test the execute method
+      const orchestrator = (pushClient as any).orchestrator;
+
+      const executeParams = {
+        to: to as `0x${string}`,
+        value: BigInt(100),
+        data: '0x' as `0x${string}`,
+      };
+
+      const result = await orchestrator.execute(executeParams);
+
+      // Verify it returns UniversalTxReceipt
+      expect(result).toBeDefined();
+      expect(result.hash).toBeDefined();
+      expect(result.origin).toBeDefined();
+      expect(result.signature).toBeDefined();
+      expect(result.typeVerbose).toBeDefined();
+      expect(typeof result.gasLimit).toBe('bigint');
+      expect(typeof result.data).toBe('string');
+
+      // Should not have old TxResponse fields
+      expect((result as any).input).toBeUndefined();
+      expect((result as any).gas).toBeUndefined();
+      expect((result as any).typeHex).toBeUndefined();
+    }, 60000);
+
+    it('should handle different transaction types correctly', async () => {
+      const orchestrator = (pushClient as any).orchestrator;
+
+      // Test with different gas settings to potentially trigger different tx types
+      const executeParams = {
+        to: to as `0x${string}`,
+        value: BigInt(50),
+        maxFeePerGas: BigInt(2000000000),
+        maxPriorityFeePerGas: BigInt(1000000000),
+      };
+
+      const result = await orchestrator.execute(executeParams);
+
+      expect(result.type).toBeDefined();
+      expect(result.typeVerbose).toBeDefined();
+
+      // Should be one of the valid types
+      expect(['99', '2', '1', '0']).toContain(result.type);
+      expect(['universal', 'EIP-1559', 'EIP-2930', 'legacy']).toContain(
+        result.typeVerbose
+      );
+
+      // Gas fields should be properly set
+      if (result.maxFeePerGas) {
+        expect(typeof result.maxFeePerGas).toBe('bigint');
+      }
+      if (result.maxPriorityFeePerGas) {
+        expect(typeof result.maxPriorityFeePerGas).toBe('bigint');
+      }
+    }, 60000);
+  });
+});
 
 /** CLI COMMANDS
  

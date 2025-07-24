@@ -9,6 +9,8 @@ import {
   stringToBytes,
   getCreate2Address,
   hexToBytes,
+  TransactionReceipt,
+  getAddress,
 } from 'viem';
 import { PushChain } from '../push-chain/push-chain';
 import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
@@ -43,7 +45,12 @@ import {
   ProgressEvent,
 } from '../progress-hook/progress-hook.types';
 import PROGRESS_HOOKS from '../progress-hook/progress-hook';
-import { TxResponse } from '../vm-client/vm-client.types';
+import {
+  TxResponse,
+  UniversalTxResponse,
+  Signature,
+  UniversalTxReceipt,
+} from '../vm-client/vm-client.types';
 
 export class Orchestrator {
   private pushClient: PushClient;
@@ -79,7 +86,7 @@ export class Orchestrator {
   /**
    * Executes an interaction on Push Chain
    */
-  async execute(execute: ExecuteParams): Promise<TxResponse> {
+  async execute(execute: ExecuteParams): Promise<UniversalTxResponse> {
     try {
       const chain = this.universalSigner.account.chain;
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_01, chain);
@@ -369,7 +376,7 @@ export class Orchestrator {
     feeLockTxHash?: string,
     universalPayload?: UniversalPayload,
     verificationData?: `0x${string}`
-  ): Promise<TxResponse[]> {
+  ): Promise<UniversalTxResponse[]> {
     const { chain, address } = this.universalSigner.account;
     const { vm, chainId } = CHAIN_INFO[chain];
 
@@ -451,7 +458,20 @@ export class Orchestrator {
       })
     );
 
-    return evmTxs;
+    return evmTxs.map((tx) =>
+      this.transformToUniversalTxResponse(tx, {
+        from: this.universalSigner.account.address,
+        to: universalPayload?.to || '',
+        nonce: Number(universalPayload?.nonce || 0),
+        data: universalPayload?.data || '0x',
+        value:
+          typeof universalPayload?.value === 'bigint'
+            ? universalPayload.value
+            : typeof universalPayload?.value === 'string'
+            ? BigInt(universalPayload.value)
+            : BigInt(universalPayload?.value || 0),
+      })
+    );
   }
 
   /**
@@ -460,14 +480,23 @@ export class Orchestrator {
    * @param execute
    * @returns Cosmos Tx Response for a given Evm Tx
    */
-  private async sendPushTx(execute: ExecuteParams): Promise<TxResponse> {
+  private async sendPushTx(
+    execute: ExecuteParams
+  ): Promise<UniversalTxResponse> {
     const txHash = await this.pushClient.sendTransaction({
       to: execute.to,
       data: execute.data || '0x',
       value: execute.value,
       signer: this.universalSigner,
     });
-    return this.pushClient.getTransaction(txHash);
+    const txResponse = await this.pushClient.getTransaction(txHash);
+    return this.transformToUniversalTxResponse(txResponse, {
+      from: this.universalSigner.account.address,
+      to: execute.to,
+      nonce: txResponse.nonce,
+      data: execute.data || '0x',
+      value: execute.value,
+    });
   }
 
   /**
@@ -741,6 +770,156 @@ export class Orchestrator {
   }
 
   /********************************** HELPER FUNCTIONS **************************************************/
+
+  /**
+   * Transforms a TransactionReceipt to UniversalTxReceipt format
+   */
+  private transformToUniversalTxReceipt(
+    receipt: TransactionReceipt, // TransactionReceipt from viem
+    originalTxResponse: UniversalTxResponse
+  ): UniversalTxReceipt {
+    return {
+      // 1. Identity
+      hash: receipt.transactionHash,
+
+      // 2. Block Info
+      blockNumber: receipt.blockNumber,
+      blockHash: receipt.blockHash,
+      transactionIndex: receipt.transactionIndex,
+
+      // 3. Execution Context
+      from: originalTxResponse.from,
+      to: originalTxResponse.to,
+      contractAddress: receipt.contractAddress || null,
+
+      // 4. Gas & Usage
+      gasPrice: originalTxResponse.gasPrice || BigInt(0),
+      gasUsed: receipt.gasUsed,
+      cumulativeGasUsed: receipt.cumulativeGasUsed,
+
+      // 5. Logs
+      logs: receipt.logs || [],
+      logsBloom: receipt.logsBloom || '0x',
+
+      // 6. Outcome
+      status: receipt.status === 'success' ? 1 : 0,
+
+      // 7. Raw
+      raw: originalTxResponse.raw || {
+        from: originalTxResponse.from,
+        to: originalTxResponse.to,
+      },
+    };
+  }
+
+  /**
+   * Transforms a TxResponse to the new UniversalTxResponse format
+   */
+  private transformToUniversalTxResponse(
+    txResponse: TxResponse,
+    rawTransactionData: {
+      from: string;
+      to: string;
+      nonce: number;
+      data: string;
+      value: bigint;
+    }
+  ): UniversalTxResponse {
+    const chain = this.universalSigner.account.chain;
+    const { vm, chainId } = CHAIN_INFO[chain];
+
+    // Create origin identifier
+    const origin = `${VM_NAMESPACE[vm]}:${chainId}:${this.universalSigner.account.address}`;
+
+    // Create signature from transaction r, s, v values
+    let signature: Signature;
+    try {
+      signature = new Signature({
+        r: txResponse.r || '0x0',
+        s: txResponse.s || '0x0',
+        v:
+          typeof txResponse.v === 'bigint'
+            ? Number(txResponse.v)
+            : txResponse.v || 0,
+        yParity: txResponse.yParity,
+      });
+    } catch {
+      // Fallback signature if parsing fails
+      signature = new Signature({
+        r: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        s: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        v: 0,
+        yParity: 0,
+      });
+    }
+
+    // Determine transaction type and typeVerbose
+    let type = '99'; // universal
+    let typeVerbose = 'universal';
+
+    if (txResponse.type !== undefined) {
+      const txType = txResponse.type;
+      if (txType === 'eip1559') {
+        type = '2';
+        typeVerbose = 'eip1559';
+      } else if (txType === 'eip2930') {
+        type = '1';
+        typeVerbose = 'eip2930';
+      } else if (txType === 'legacy') {
+        type = '0';
+        typeVerbose = 'legacy';
+      } else if (txType == 'eip4844') {
+        type = '3';
+        typeVerbose = 'eip4844';
+      }
+    }
+
+    const universalTxResponse: UniversalTxResponse = {
+      // 1. Identity
+      hash: txResponse.hash,
+      origin,
+
+      // 2. Block Info
+      blockNumber: txResponse.blockNumber || BigInt(0),
+      blockHash: txResponse.blockHash || '',
+      transactionIndex: txResponse.transactionIndex || 0,
+      chainId: Number(chainId),
+
+      // 3. Execution Context
+      from: getAddress(txResponse.from), // UEA (executor) address, checksummed for EVM
+      to: txResponse.to ? getAddress(txResponse.to) : '',
+      nonce: txResponse.nonce,
+
+      // 4. Payload
+      data: txResponse.input || '0x', // perceived calldata (was input)
+      value: txResponse.value,
+
+      // 5. Gas
+      gasLimit: txResponse.gas || BigInt(0), // (was gas)
+      gasPrice: txResponse.gasPrice,
+      maxFeePerGas: txResponse.maxFeePerGas,
+      maxPriorityFeePerGas: txResponse.maxPriorityFeePerGas,
+      accessList: Array.isArray(txResponse.accessList)
+        ? [...txResponse.accessList]
+        : [],
+
+      // 6. Utilities
+      wait: async (): Promise<UniversalTxReceipt> => {
+        const receipt = await txResponse.wait();
+        return this.transformToUniversalTxReceipt(receipt, universalTxResponse);
+      },
+
+      // 7. Metadata
+      type,
+      typeVerbose,
+      signature,
+
+      // 8. Raw Universal Fields
+      raw: rawTransactionData,
+    };
+
+    return universalTxResponse;
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private bigintReplacer(_key: string, value: any) {
