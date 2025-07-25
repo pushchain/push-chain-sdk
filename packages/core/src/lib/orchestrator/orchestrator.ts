@@ -51,6 +51,7 @@ import {
   Signature,
   UniversalTxReceipt,
 } from '../vm-client/vm-client.types';
+import { fetchUEAInfo } from '../utils';
 
 export class Orchestrator {
   private pushClient: PushClient;
@@ -458,19 +459,21 @@ export class Orchestrator {
       })
     );
 
-    return evmTxs.map((tx) =>
-      this.transformToUniversalTxResponse(tx, {
-        from: this.universalSigner.account.address,
-        to: universalPayload?.to || '',
-        nonce: Number(universalPayload?.nonce || 0),
-        data: universalPayload?.data || '0x',
-        value:
-          typeof universalPayload?.value === 'bigint'
-            ? universalPayload.value
-            : typeof universalPayload?.value === 'string'
-            ? BigInt(universalPayload.value)
-            : BigInt(universalPayload?.value || 0),
-      })
+    return await Promise.all(
+      evmTxs.map((tx) =>
+        this.transformToUniversalTxResponse(tx, {
+          from: this.universalSigner.account.address,
+          to: universalPayload?.to || '',
+          nonce: Number(universalPayload?.nonce || 0),
+          data: universalPayload?.data || '0x',
+          value:
+            typeof universalPayload?.value === 'bigint'
+              ? universalPayload.value
+              : typeof universalPayload?.value === 'string'
+              ? BigInt(universalPayload.value)
+              : BigInt(universalPayload?.value || 0),
+        })
+      )
     );
   }
 
@@ -490,7 +493,7 @@ export class Orchestrator {
       signer: this.universalSigner,
     });
     const txResponse = await this.pushClient.getTransaction(txHash);
-    return this.transformToUniversalTxResponse(txResponse, {
+    return await this.transformToUniversalTxResponse(txResponse, {
       from: this.universalSigner.account.address,
       to: execute.to,
       nonce: txResponse.nonce,
@@ -815,7 +818,7 @@ export class Orchestrator {
   /**
    * Transforms a TxResponse to the new UniversalTxResponse format
    */
-  private transformToUniversalTxResponse(
+  private async transformToUniversalTxResponse(
     txResponse: TxResponse,
     rawTransactionData: {
       from: string;
@@ -824,12 +827,26 @@ export class Orchestrator {
       data: string;
       value: bigint;
     }
-  ): UniversalTxResponse {
+  ): Promise<UniversalTxResponse> {
     const chain = this.universalSigner.account.chain;
     const { vm, chainId } = CHAIN_INFO[chain];
 
+    const ueaOrigin = await PushChain.utils.helpers.getOriginForUEA(
+      txResponse.to as `0x${string}`
+    );
+    const [account, isUEA] = ueaOrigin;
+    let originAddress: `0x${string}`;
+
+    if (isUEA) {
+      originAddress = account.owner as `0x${string}`;
+    } else {
+      originAddress = txResponse.to as `0x${string}`;
+    }
+
     // Create origin identifier
-    const origin = `${VM_NAMESPACE[vm]}:${chainId}:${this.universalSigner.account.address}`;
+    const origin = `${VM_NAMESPACE[vm]}:${chainId}:${originAddress}`;
+
+    const ueaInfo = await fetchUEAInfo(txResponse.hash);
 
     // Create signature from transaction r, s, v values
     let signature: Signature;
@@ -891,8 +908,8 @@ export class Orchestrator {
       nonce: txResponse.nonce,
 
       // 4. Payload
-      data: txResponse.input || '0x', // perceived calldata (was input)
-      value: txResponse.value,
+      data: isUEA ? ueaInfo?.ueaRawInput || '0x' : txResponse.input || '0x', // perceived calldata (was input)
+      value: isUEA ? BigInt(ueaInfo?.ueaValue || 0) : txResponse.value,
 
       // 5. Gas
       gasLimit: txResponse.gas || BigInt(0), // (was gas)

@@ -11,6 +11,14 @@ import {
 } from './universal/signer';
 import { CHAIN } from './constants/enums';
 import { ethers } from 'ethers';
+import {
+  createPublicClient,
+  http,
+  defineChain,
+  decodeFunctionData,
+} from 'viem';
+import { PUSH_CHAIN_INFO } from './constants/chain';
+import { UEA_EVM as executePayloadAbi } from './constants/abi/uea.evm';
 
 /**
  * @dev - THESE UTILS ARE EXPORTED TO SDK CONSUMER
@@ -126,7 +134,8 @@ export class Utils {
         return data;
       } catch (error) {
         throw new Error(
-          `Failed to encode function '${functionName}': ${error instanceof Error ? error.message : 'Unknown error'
+          `Failed to encode function '${functionName}': ${
+            error instanceof Error ? error.message : 'Unknown error'
           }`
         );
       }
@@ -215,10 +224,178 @@ export class Utils {
           throw error;
         }
         throw new Error(
-          `Failed to parse value '${value}': ${error instanceof Error ? error.message : 'Invalid number format'
+          `Failed to parse value '${value}': ${
+            error instanceof Error ? error.message : 'Invalid number format'
           }`
         );
       }
     },
+
+    getOriginForUEA: async (ueaAddress: `0x${string}`) => {
+      const RPC_URL = PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
+      const FACTORY_ADDRESS =
+        PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].factoryAddress;
+
+      // Define the Push testnet chain
+      const pushTestnetDonut = defineChain({
+        id: 42101,
+        name: 'Push Testnet Donut',
+        nativeCurrency: {
+          decimals: 18,
+          name: 'PUSH',
+          symbol: 'PUSH',
+        },
+        rpcUrls: {
+          default: { http: [RPC_URL] },
+          public: { http: [RPC_URL] },
+        },
+      });
+
+      // ABI in proper object format for viem
+      const IUEAFactoryABI = [
+        {
+          name: 'getOriginForUEA',
+          type: 'function',
+          stateMutability: 'view',
+          inputs: [
+            {
+              name: 'addr',
+              type: 'address',
+            },
+          ],
+          outputs: [
+            {
+              name: 'account',
+              type: 'tuple',
+              components: [
+                {
+                  name: 'chainNamespace',
+                  type: 'string',
+                },
+                {
+                  name: 'chainId',
+                  type: 'string',
+                },
+                {
+                  name: 'owner',
+                  type: 'bytes',
+                },
+              ],
+            },
+            {
+              name: 'isUEA',
+              type: 'bool',
+            },
+          ],
+        },
+      ] as const;
+
+      // Create viem public client
+      const client = createPublicClient({
+        chain: pushTestnetDonut,
+        transport: http(),
+      });
+
+      const originResult = await client.readContract({
+        address: FACTORY_ADDRESS,
+        abi: IUEAFactoryABI,
+        functionName: 'getOriginForUEA',
+        args: [ueaAddress],
+      });
+
+      return originResult;
+    },
   };
 }
+
+// Define DecodedArgsTuple and a simple convertToUniversalPayload for fetchUEAInfo
+// This should match the UniversalPayload tuple structure from the ABI
+
+type DecodedArgsTuple = [
+  to: string,
+  value: string,
+  data: string,
+  gas_limit: string,
+  max_fee_per_gas: string,
+  max_priority_fee_per_gas: string,
+  nonce: string,
+  deadline: string,
+  vType: number
+];
+
+function convertToUniversalPayload(tuple: DecodedArgsTuple) {
+  return {
+    to: tuple[0],
+    value: tuple[1],
+    data: tuple[2],
+    gas_limit: tuple[3],
+    max_fee_per_gas: tuple[4],
+    max_priority_fee_per_gas: tuple[5],
+    nonce: tuple[6],
+    deadline: tuple[7],
+    vType: tuple[8],
+  };
+}
+
+export const fetchUEAInfo = async (
+  txHash: string | undefined
+): Promise<{
+  universalPayload: ReturnType<typeof convertToUniversalPayload>;
+  ueaValue: string;
+  ueaTransactionFee: string;
+  ueaMaxFeePerGas: string;
+  ueaMaxPriorityFeePerGas: string;
+  ueaRawInput: string;
+  ueaTo: string;
+  updatedGasLimit: string;
+} | null> => {
+  const rpcURL = 'https://evm.rpc-testnet-donut-node1.push.org';
+
+  if (!txHash) return null;
+
+  try {
+    // Use viem to create a public client and fetch the transaction
+    const client = createPublicClient({
+      transport: http(rpcURL),
+    });
+    const tx = await client.getTransaction({ hash: txHash as `0x${string}` });
+
+    if (!tx?.input) return null;
+
+    // Use viem to decode the function data
+    const decoded = decodeFunctionData({
+      abi: executePayloadAbi,
+      data: tx.input,
+    });
+
+    // The first argument should be the UniversalPayload tuple
+    if (!decoded.args) return null;
+    const payloadTuple = decoded.args[0] as DecodedArgsTuple;
+    const universalPayload = convertToUniversalPayload(payloadTuple);
+
+    const ueaValue = universalPayload?.value;
+    const maxFee = universalPayload?.max_fee_per_gas;
+    const gasLimit = universalPayload?.gas_limit;
+
+    if (!maxFee || !gasLimit) {
+      throw new Error('Missing fee or gas limit in decoded payload');
+    }
+
+    const ueaTransactionFee = (BigInt(maxFee) * BigInt(gasLimit)).toString();
+
+    const updatedGasLimit = BigInt(universalPayload.gas_limit).toString();
+
+    return {
+      universalPayload,
+      ueaValue,
+      ueaTransactionFee,
+      ueaMaxFeePerGas: universalPayload.max_fee_per_gas,
+      ueaMaxPriorityFeePerGas: universalPayload.max_priority_fee_per_gas,
+      ueaRawInput: universalPayload?.data,
+      ueaTo: universalPayload?.to,
+      updatedGasLimit: updatedGasLimit,
+    };
+  } catch (err) {
+    return null;
+  }
+};
