@@ -1,6 +1,6 @@
-import React, { createContext, FC, useEffect, useRef, useState } from 'react';
+import React, { createContext, FC, useCallback, useEffect, useRef, useState } from 'react';
 import { PushChain } from '@pushchain/core';
-import { ProgressEvent } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
+import { PROGRESS_HOOK, ProgressEvent } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
 import {
   ChainType,
   ConnectionStatus,
@@ -447,6 +447,10 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     return signature;
   };
 
+  const handleCloseIFrame = useCallback(() => {
+    
+  }, [universalAccount])
+
   useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
       if (iframeRef.current?.contentWindow !== event.source) return;
@@ -487,6 +491,9 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         case WALLET_TO_APP_ACTION.ERROR:
           signatureResolverRef?.current?.error?.(event.data.data);
           break;
+        case WALLET_TO_APP_ACTION.CLOSE_IFRAME:
+          universalAccount ? setMinimiseWallet(true) : handleUserLogOutEvent();
+          break;
         default:
           console.warn('Unknown message type:', event.data.type);
       }
@@ -495,9 +502,18 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     window.addEventListener('message', messageHandler);
 
     return () => window.removeEventListener('message', messageHandler);
-  }, []);
+  }, [universalAccount]);
 
   const WalletContext = getWalletContext(config?.uid || 'default');
+
+  const dummyProgress: ProgressEvent = {
+    id: PROGRESS_HOOK.SEND_TX_99_01,
+    title: 'Push Chain Tx Success',
+    message: '',
+    level: 'SUCCESS',
+    response: null,
+    timestamp: '',
+  }
 
   return (
     <WalletContext.Provider

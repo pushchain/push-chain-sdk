@@ -15,6 +15,9 @@ export type ButtonProps = {
   textColor?: React.CSSProperties['color'];
   /* Border Radius of the button */
   borderRadius?: React.CSSProperties['borderRadius'];
+  /* Spacing between the elements of the button */
+  gap?: React.CSSProperties['gap'];
+  padding?: React.CSSProperties['padding'];
   /* Sets button as disabled */
   disabled?: boolean;
 } & TransformedHTMLAttributes<HTMLButtonElement>;
@@ -36,10 +39,12 @@ const StyledButton = styled.button<ButtonProps>`
   font-style: normal;
   font-weight: 500;
   line-height: 16px;
-  padding: 16px 24px;
+  padding: ${(props) =>
+    props.padding ? props.padding : '16px 24px'};
   min-width: 100px;
   width: inherit;
-  gap: 4px;
+  gap: ${(props) =>
+    props.gap ? props.gap : '4px'};
   border: none;
   border-radius: ${(props) =>
     props.borderRadius ? props.borderRadius : '12px'};
@@ -47,7 +52,7 @@ const StyledButton = styled.button<ButtonProps>`
 `;
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ disabled, bgColor, textColor, borderRadius, children, ...props }, ref) => (
+  ({ disabled, bgColor, textColor, borderRadius, gap, padding, children, ...props }, ref) => (
     <StyledButton
       {...(disabled ? { 'aria-disabled': true } : {})}
       disabled={disabled}
@@ -56,6 +61,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       bgColor={bgColor}
       textColor={textColor}
       borderRadius={borderRadius}
+      gap={gap}
+      padding={padding}
       {...props}
     >
       {children}

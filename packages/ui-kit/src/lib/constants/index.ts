@@ -41,6 +41,8 @@ export enum WALLET_TO_APP_ACTION {
   ERROR = 'error',
 
   PUSH_SEND_TRANSACTION = 'pushSendTransaction',
+
+  CLOSE_IFRAME = 'closeIFrame',
 }
 
 // events send by dapp to the wallet

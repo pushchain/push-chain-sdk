@@ -154,7 +154,7 @@ const LoginModal: FC<LoginModalProps> = ({
             isWalletMinimised={isWalletMinimised}
             isIframeLoading={isIframeLoading}
           >
-            <AccountContainer universalAccount={universalAccount}>
+            {/* <AccountContainer universalAccount={universalAccount}>
               {universalAccount ? (
                 <DashButtonContainer onClick={() => setMinimiseWallet(true)}>
                   <CrossIcon
@@ -176,7 +176,7 @@ const LoginModal: FC<LoginModalProps> = ({
                   />
                 </CloseButtonContainer>
               )}
-            </AccountContainer>
+            </AccountContainer> */}
 
             <SplitContainer>
               {modal?.appPreview &&
@@ -308,7 +308,7 @@ const FrameContainer = styled.div<{
 
   @media (max-width: 425px) {
     width: ${({ universalAccount, isWalletMinimised }) =>
-      isWalletMinimised ? '0px' : universalAccount ? '96%' : '100%'};
+      isWalletMinimised ? '0px' : universalAccount ? '100%' : '100%'};
     right: ${({ universalAccount }) => (universalAccount ? '2%' : '0')};
     top: ${({ universalAccount, accountMenuVariant }) =>
       universalAccount

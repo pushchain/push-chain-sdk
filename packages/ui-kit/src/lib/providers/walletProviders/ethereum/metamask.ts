@@ -18,7 +18,11 @@ export class MetamaskProvider extends BaseWalletProvider {
       ChainType.BINANCE,
       ChainType.PUSH_WALLET,
     ]);
-    this.sdk = new MetaMaskSDK();
+    this.sdk = new MetaMaskSDK({
+      dappMetadata: {
+        url: 'https://push.org/',
+      }
+    });
   }
 
   isInstalled = async (): Promise<boolean> => {

@@ -42,14 +42,14 @@ const PushLogo = () => {
                     y2="17.3781"
                     gradientUnits="userSpaceOnUse"
                 >
-                    <stop stop-color="#FF94A6" />
-                    <stop offset="0.17" stop-color="#EA6AC0" />
-                    <stop offset="0.33" stop-color="#DA4AD5" />
-                    <stop offset="0.42" stop-color="#D53EDD" />
-                    <stop offset="0.53" stop-color="#CB3EDD" />
-                    <stop offset="0.72" stop-color="#B341E0" />
-                    <stop offset="0.95" stop-color="#8B45E4" />
-                    <stop offset="1" stop-color="#8247E5" />
+                    <stop stopColor="#FF94A6" />
+                    <stop offset="0.17" stopColor="#EA6AC0" />
+                    <stop offset="0.33" stopColor="#DA4AD5" />
+                    <stop offset="0.42" stopColor="#D53EDD" />
+                    <stop offset="0.53" stopColor="#CB3EDD" />
+                    <stop offset="0.72" stopColor="#B341E0" />
+                    <stop offset="0.95" stopColor="#8B45E4" />
+                    <stop offset="1" stopColor="#8247E5" />
                 </linearGradient>
                 <linearGradient
                     id="paint1_linear_2966_8287"
@@ -59,14 +59,14 @@ const PushLogo = () => {
                     y2="15.9842"
                     gradientUnits="userSpaceOnUse"
                 >
-                    <stop stop-color="#FF94A6" />
-                    <stop offset="0.17" stop-color="#EA6AC0" />
-                    <stop offset="0.33" stop-color="#DA4AD5" />
-                    <stop offset="0.42" stop-color="#D53EDD" />
-                    <stop offset="0.53" stop-color="#CB3EDD" />
-                    <stop offset="0.72" stop-color="#B341E0" />
-                    <stop offset="0.95" stop-color="#8B45E4" />
-                    <stop offset="1" stop-color="#8247E5" />
+                    <stop stopColor="#FF94A6" />
+                    <stop offset="0.17" stopColor="#EA6AC0" />
+                    <stop offset="0.33" stopColor="#DA4AD5" />
+                    <stop offset="0.42" stopColor="#D53EDD" />
+                    <stop offset="0.53" stopColor="#CB3EDD" />
+                    <stop offset="0.72" stopColor="#B341E0" />
+                    <stop offset="0.95" stopColor="#8B45E4" />
+                    <stop offset="1" stopColor="#8247E5" />
                 </linearGradient>
                 <linearGradient
                     id="paint2_linear_2966_8287"
@@ -76,14 +76,14 @@ const PushLogo = () => {
                     y2="11.7045"
                     gradientUnits="userSpaceOnUse"
                 >
-                    <stop stop-color="#FF94A6" />
-                    <stop offset="0.17" stop-color="#EA6AC0" />
-                    <stop offset="0.33" stop-color="#DA4AD5" />
-                    <stop offset="0.42" stop-color="#D53EDD" />
-                    <stop offset="0.53" stop-color="#CB3EDD" />
-                    <stop offset="0.72" stop-color="#B341E0" />
-                    <stop offset="0.95" stop-color="#8B45E4" />
-                    <stop offset="1" stop-color="#8247E5" />
+                    <stop stopColor="#FF94A6" />
+                    <stop offset="0.17" stopColor="#EA6AC0" />
+                    <stop offset="0.33" stopColor="#DA4AD5" />
+                    <stop offset="0.42" stopColor="#D53EDD" />
+                    <stop offset="0.53" stopColor="#CB3EDD" />
+                    <stop offset="0.72" stopColor="#B341E0" />
+                    <stop offset="0.95" stopColor="#8B45E4" />
+                    <stop offset="1" stopColor="#8247E5" />
                 </linearGradient>
                 <linearGradient
                     id="paint3_linear_2966_8287"
@@ -93,14 +93,14 @@ const PushLogo = () => {
                     y2="11.4661"
                     gradientUnits="userSpaceOnUse"
                 >
-                    <stop stop-color="#FF94A6" />
-                    <stop offset="0.17" stop-color="#EA6AC0" />
-                    <stop offset="0.33" stop-color="#DA4AD5" />
-                    <stop offset="0.42" stop-color="#D53EDD" />
-                    <stop offset="0.53" stop-color="#CB3EDD" />
-                    <stop offset="0.72" stop-color="#B341E0" />
-                    <stop offset="0.95" stop-color="#8B45E4" />
-                    <stop offset="1" stop-color="#8247E5" />
+                    <stop stopColor="#FF94A6" />
+                    <stop offset="0.17" stopColor="#EA6AC0" />
+                    <stop offset="0.33" stopColor="#DA4AD5" />
+                    <stop offset="0.42" stopColor="#D53EDD" />
+                    <stop offset="0.53" stopColor="#CB3EDD" />
+                    <stop offset="0.72" stopColor="#B341E0" />
+                    <stop offset="0.95" stopColor="#8B45E4" />
+                    <stop offset="1" stopColor="#8247E5" />
                 </linearGradient>
                 <linearGradient
                     id="paint4_linear_2966_8287"
@@ -110,14 +110,14 @@ const PushLogo = () => {
                     y2="6.95455"
                     gradientUnits="userSpaceOnUse"
                 >
-                    <stop stop-color="#FF94A6" />
-                    <stop offset="0.17" stop-color="#EA6AC0" />
-                    <stop offset="0.33" stop-color="#DA4AD5" />
-                    <stop offset="0.42" stop-color="#D53EDD" />
-                    <stop offset="0.53" stop-color="#CB3EDD" />
-                    <stop offset="0.72" stop-color="#B341E0" />
-                    <stop offset="0.95" stop-color="#8B45E4" />
-                    <stop offset="1" stop-color="#8247E5" />
+                    <stop stopColor="#FF94A6" />
+                    <stop offset="0.17" stopColor="#EA6AC0" />
+                    <stop offset="0.33" stopColor="#DA4AD5" />
+                    <stop offset="0.42" stopColor="#D53EDD" />
+                    <stop offset="0.53" stopColor="#CB3EDD" />
+                    <stop offset="0.72" stopColor="#B341E0" />
+                    <stop offset="0.95" stopColor="#8B45E4" />
+                    <stop offset="1" stopColor="#8247E5" />
                 </linearGradient>
                 <linearGradient
                     id="paint5_linear_2966_8287"
@@ -127,14 +127,14 @@ const PushLogo = () => {
                     y2="5.70088"
                     gradientUnits="userSpaceOnUse"
                 >
-                    <stop stop-color="#FF94A6" />
-                    <stop offset="0.17" stop-color="#EA6AC0" />
-                    <stop offset="0.33" stop-color="#DA4AD5" />
-                    <stop offset="0.42" stop-color="#D53EDD" />
-                    <stop offset="0.53" stop-color="#CB3EDD" />
-                    <stop offset="0.72" stop-color="#B341E0" />
-                    <stop offset="0.95" stop-color="#8B45E4" />
-                    <stop offset="1" stop-color="#8247E5" />
+                    <stop stopColor="#FF94A6" />
+                    <stop offset="0.17" stopColor="#EA6AC0" />
+                    <stop offset="0.33" stopColor="#DA4AD5" />
+                    <stop offset="0.42" stopColor="#D53EDD" />
+                    <stop offset="0.53" stopColor="#CB3EDD" />
+                    <stop offset="0.72" stopColor="#B341E0" />
+                    <stop offset="0.95" stopColor="#8B45E4" />
+                    <stop offset="1" stopColor="#8247E5" />
                 </linearGradient>
             </defs>
         </svg>
