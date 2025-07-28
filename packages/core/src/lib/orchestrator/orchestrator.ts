@@ -10,6 +10,7 @@ import {
   getCreate2Address,
   hexToBytes,
 } from 'viem';
+import { PushChain } from '../push-chain/push-chain';
 import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
 import {
   UniversalAccount,
@@ -127,7 +128,9 @@ export class Orchestrator {
         // decode svm base58
         feeLockTxHash = bytesToHex(utils.bytes.bs58.decode(feeLockTxHash));
       }
-      const feeLockingRequired = funds < requiredFunds && !feeLockTxHash;
+      // Fee locking is required if UEA is not deployed OR insufficient funds
+      const feeLockingRequired =
+        (!isUEADeployed || funds < requiredFunds) && !feeLockTxHash;
       const universalPayload = JSON.parse(
         JSON.stringify(
           {
@@ -154,6 +157,12 @@ export class Orchestrator {
        * Prepare verification data by either signature or fund locking
        */
       let verificationData: `0x${string}`;
+      /**
+       * 1. UEA deployed + sufficient funds: No fee locking needed
+       * 2. UEA deployed + insufficient funds: Lock requiredFunds
+       * 3. UEA not deployed + sufficient funds: Lock 0.001 PC (for deployment)
+       * 4. UEA not deployed + insufficient funds: Lock requiredFunds
+       */
       if (!feeLockingRequired) {
         /**
          * Sign Universal Payload
@@ -170,10 +179,14 @@ export class Orchestrator {
          * Fee Locking
          */
         const fundDifference = requiredFunds - funds;
-        const fundDifferenceInUSD = this.pushClient.pushToUSDC(fundDifference); // ( USD with 8 decimal points )
-        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_05_01, fundDifference);
+        const fixedPushAmount = PushChain.utils.helpers.parseUnits('0.001', 18); // Minimum lock 0.001 Push tokens
+        const lockAmount =
+          funds < requiredFunds ? fundDifference : fixedPushAmount;
+        const lockAmountInUSD = this.pushClient.pushToUSDC(lockAmount);
+
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_05_01, lockAmount);
         const feeLockTxHashBytes = await this.lockFee(
-          fundDifferenceInUSD,
+          lockAmountInUSD,
           executionHash
         );
         feeLockTxHash = bytesToHex(feeLockTxHashBytes);
@@ -262,7 +275,7 @@ export class Orchestrator {
             Promise.resolve(new SvmClient({ rpcUrls })),
             Promise.resolve(
               anchor.web3.PublicKey.findProgramAddressSync(
-                [Buffer.from('locker')],
+                [stringToBytes('locker')],
                 new PublicKey(lockerContract)
               )
             ),
