@@ -407,105 +407,143 @@ const txValidator = async (
 describe('UniversalTxReceipt Type Validation', () => {
   const pushNetwork = PUSH_NETWORK.TESTNET_DONUT;
   const to = '0x35B84d6848D16415177c64D64504663b998A6ab4';
-  let universalSigner: UniversalSigner;
-  let pushClient: PushChain;
+  let universalSignerPush: UniversalSigner;
+  let universalSignerSepolia: UniversalSigner;
+  let pushClientPush: PushChain;
+  let pushClientSepolia: PushChain;
 
   beforeAll(async () => {
-    const privateKey =
-      '0x890ddbe894a269bb58d68b652d7989205b02d0c9ba915625da2aad464e47e0aa';
+    const privateKey = process.env['EVM_PRIVATE_KEY'] as `0x${string}`;
     if (!privateKey) throw new Error('EVM_PRIVATE_KEY not set');
 
     const account = privateKeyToAccount(privateKey);
-    const walletClient = createWalletClient({
+    const walletClientPush = createWalletClient({
       account,
       transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET].defaultRPC[0]),
     });
+    const walletClientSepolia = createWalletClient({
+      account,
+      chain: sepolia,
+      transport: http(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0]),
+    });
 
-    universalSigner = await PushChain.utils.signer.toUniversal(walletClient);
-
-    pushClient = await PushChain.initialize(universalSigner, {
+    universalSignerPush = await PushChain.utils.signer.toUniversal(
+      walletClientPush
+    );
+    universalSignerSepolia = await PushChain.utils.signer.toUniversal(
+      walletClientSepolia
+    );
+    pushClientPush = await PushChain.initialize(universalSignerPush, {
+      network: pushNetwork,
+    });
+    pushClientSepolia = await PushChain.initialize(universalSignerSepolia, {
       network: pushNetwork,
     });
   });
 
   describe('Response Type Structure', () => {
     it('should return UniversalTxReceipt with all required fields', async () => {
-      const tx = await pushClient.universal.sendTransaction({
+      const txPush = await pushClientPush.universal.sendTransaction({
+        to,
+        value: BigInt(1000),
+      });
+      const txSepolia = await pushClientSepolia.universal.sendTransaction({
         to,
         value: BigInt(1000),
       });
 
+      // Helper function to DRY up assertions
+      function expectUniversalTxReceiptFields(tx: UniversalTxResponse) {
+        // 1. Identity
+        expect(tx.hash).toBeDefined();
+        expect(typeof tx.hash).toBe('string');
+        expect(tx.origin).toBeDefined();
+        expect(typeof tx.origin).toBe('string');
+
+        // 2. Block Info
+        expect(tx.blockNumber).toBeDefined();
+        expect(typeof tx.blockNumber).toBe('bigint');
+        expect(tx.blockHash).toBeDefined();
+        expect(typeof tx.blockHash).toBe('string');
+        expect(tx.transactionIndex).toBeDefined();
+        expect(typeof tx.transactionIndex).toBe('number');
+        expect(tx.chainId).toBeDefined();
+        expect(typeof tx.chainId).toBe('number');
+
+        // 3. Execution Context
+        expect(tx.from).toBeDefined();
+        expect(typeof tx.from).toBe('string');
+        expect(tx.to).toBeDefined();
+        expect(typeof tx.to).toBe('string');
+        expect(tx.nonce).toBeDefined();
+        expect(typeof tx.nonce).toBe('number');
+
+        // 4. Payload
+        expect(tx.data).toBeDefined();
+        expect(typeof tx.data).toBe('string');
+        expect(tx.value).toBeDefined();
+        expect(typeof tx.value).toBe('bigint');
+
+        // 5. Gas
+        expect(tx.gasLimit).toBeDefined();
+        expect(typeof tx.gasLimit).toBe('bigint');
+        expect(tx.accessList).toBeDefined();
+        expect(Array.isArray(tx.accessList)).toBe(true);
+
+        // 6. Utilities
+        expect(tx.wait).toBeDefined();
+        expect(typeof tx.wait).toBe('function');
+
+        // 7. Metadata
+        expect(tx.type).toBeDefined();
+        expect(typeof tx.type).toBe('string');
+        expect(tx.typeVerbose).toBeDefined();
+        expect(typeof tx.typeVerbose).toBe('string');
+        expect(tx.signature).toBeDefined();
+        expect(typeof tx.signature).toBe('object');
+      }
+
       // Verify it's the new type, not the old TxResponse
-      expect(tx).toBeDefined();
+      expect(txPush).toBeDefined();
+      expectUniversalTxReceiptFields(txPush);
 
-      // 1. Identity
-      expect(tx.hash).toBeDefined();
-      expect(typeof tx.hash).toBe('string');
-      expect(tx.origin).toBeDefined();
-      expect(typeof tx.origin).toBe('string');
-
-      // 2. Block Info
-      expect(tx.blockNumber).toBeDefined();
-      expect(typeof tx.blockNumber).toBe('bigint');
-      expect(tx.blockHash).toBeDefined();
-      expect(typeof tx.blockHash).toBe('string');
-      expect(tx.transactionIndex).toBeDefined();
-      expect(typeof tx.transactionIndex).toBe('number');
-      expect(tx.chainId).toBeDefined();
-      expect(typeof tx.chainId).toBe('number');
-
-      // 3. Execution Context
-      expect(tx.from).toBeDefined();
-      expect(typeof tx.from).toBe('string');
-      expect(tx.to).toBeDefined();
-      expect(typeof tx.to).toBe('string');
-      expect(tx.nonce).toBeDefined();
-      expect(typeof tx.nonce).toBe('number');
-
-      // 4. Payload
-      expect(tx.data).toBeDefined();
-      expect(typeof tx.data).toBe('string');
-      expect(tx.value).toBeDefined();
-      expect(typeof tx.value).toBe('bigint');
-
-      // 5. Gas
-      expect(tx.gasLimit).toBeDefined();
-      expect(typeof tx.gasLimit).toBe('bigint');
-      expect(tx.accessList).toBeDefined();
-      expect(Array.isArray(tx.accessList)).toBe(true);
-
-      // 6. Utilities
-      expect(tx.wait).toBeDefined();
-      expect(typeof tx.wait).toBe('function');
-
-      // 7. Metadata
-      expect(tx.type).toBeDefined();
-      expect(typeof tx.type).toBe('string');
-      expect(tx.typeVerbose).toBeDefined();
-      expect(typeof tx.typeVerbose).toBe('string');
-      expect(tx.signature).toBeDefined();
-      expect(typeof tx.signature).toBe('object');
+      expect(txSepolia).toBeDefined();
+      expectUniversalTxReceiptFields(txSepolia);
     }, 60000);
 
     it('should have valid origin field format', async () => {
-      const tx = await pushClient.universal.sendTransaction({
+      const txPush = await pushClientPush.universal.sendTransaction({
+        to,
+        value: BigInt(100),
+      });
+      const txSepolia = await pushClientSepolia.universal.sendTransaction({
         to,
         value: BigInt(100),
       });
 
       // Origin should follow format: namespace:chainId:address
-      expect(tx.origin).toMatch(/^[a-zA-Z0-9_-]+:[0-9]+:0x[a-fA-F0-9]{40}$/);
+      expect(txPush.origin).toMatch(
+        /^[a-zA-Z0-9_-]+:[0-9]+:0x[a-fA-F0-9]{40}$/
+      );
+      expect(txSepolia.origin).toMatch(
+        /^[a-zA-Z0-9_-]+:[0-9]+:0x[a-fA-F0-9]{40}$/
+      );
 
       // Should contain the chain info
-      expect(tx.origin).toContain('eip155'); // EVM namespace
-      expect(tx.origin).toContain('42101'); // Push chain ID
-      expect(tx.origin.toLowerCase()).toContain(
-        universalSigner.account.address.toLowerCase()
+      expect(txPush.origin).toContain('eip155'); // EVM namespace
+      expect(txSepolia.origin).toContain('eip155'); // EVM namespace
+      expect(txPush.origin).toContain('42101'); // Push chain ID
+      expect(txSepolia.origin).toContain('11155111'); // Push chain ID
+      expect(txPush.origin).toContain(txPush.from);
+      expect(txSepolia.origin).not.toContain(txSepolia.from);
+      expect(txPush.origin).toContain(universalSignerPush.account.address);
+      expect(txSepolia.origin.toLowerCase()).toContain(
+        universalSignerSepolia.account.address.toLowerCase()
       );
     }, 60000);
 
     it('should have valid signature object', async () => {
-      const tx = await pushClient.universal.sendTransaction({
+      const tx = await pushClientPush.universal.sendTransaction({
         to,
         value: BigInt(100),
       });
@@ -534,7 +572,7 @@ describe('UniversalTxReceipt Type Validation', () => {
       const testTo = '0x35B84d6848D16415177c64D64504663b998A6ab4';
       const testValue = BigInt(300);
       const testData = '0x1234';
-      const tx = await pushClient.universal.sendTransaction({
+      const tx = await pushClientPush.universal.sendTransaction({
         to: testTo,
         value: testValue,
         data: testData,
@@ -547,7 +585,7 @@ describe('UniversalTxReceipt Type Validation', () => {
         expect(tx.raw.data).toBe(testData);
 
         // Verify from address matches the signer's address
-        expect(tx.raw.from).toBe(universalSigner.account.address);
+        expect(tx.raw.from).toBe(universalSignerPush.account.address);
 
         // Verify nonce is a valid number
         expect(typeof tx.raw.nonce).toBe('number');
@@ -556,7 +594,7 @@ describe('UniversalTxReceipt Type Validation', () => {
     }, 60000);
 
     it('should maintain wait function compatibility', async () => {
-      const tx = await pushClient.universal.sendTransaction({
+      const tx = await pushClientPush.universal.sendTransaction({
         to,
         value: BigInt(150),
       });
@@ -629,7 +667,7 @@ describe('UniversalTxReceipt Type Validation', () => {
   describe('Orchestrator execute method validation', () => {
     it('should return UniversalTxReceipt from orchestrator.execute', async () => {
       // Access the orchestrator directly to test the execute method
-      const orchestrator = (pushClient as any).orchestrator;
+      const orchestrator = (pushClientPush as any).orchestrator;
 
       const executeParams = {
         to: to as `0x${string}`,
@@ -655,7 +693,7 @@ describe('UniversalTxReceipt Type Validation', () => {
     }, 60000);
 
     it('should handle different transaction types correctly', async () => {
-      const orchestrator = (pushClient as any).orchestrator;
+      const orchestrator = (pushClientPush as any).orchestrator;
 
       // Test with different gas settings to potentially trigger different tx types
       const executeParams = {

@@ -11,6 +11,7 @@ import {
   hexToBytes,
   TransactionReceipt,
   getAddress,
+  decodeFunctionData,
 } from 'viem';
 import { PushChain } from '../push-chain/push-chain';
 import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
@@ -25,7 +26,6 @@ import {
   FACTORY_V1,
   FEE_LOCKER_EVM,
   FEE_LOCKER_SVM,
-  UEA_EVM,
   UEA_SVM,
 } from '../constants/abi';
 import { PushClient } from '../push-client/push-client';
@@ -51,7 +51,7 @@ import {
   Signature,
   UniversalTxReceipt,
 } from '../vm-client/vm-client.types';
-import { fetchUEAInfo } from '../utils';
+import { UEA_EVM } from '../constants/abi/uea.evm';
 
 export class Orchestrator {
   private pushClient: PushClient;
@@ -460,20 +460,7 @@ export class Orchestrator {
     );
 
     return await Promise.all(
-      evmTxs.map((tx) =>
-        this.transformToUniversalTxResponse(tx, {
-          from: this.universalSigner.account.address,
-          to: universalPayload?.to || '',
-          nonce: Number(universalPayload?.nonce || 0),
-          data: universalPayload?.data || '0x',
-          value:
-            typeof universalPayload?.value === 'bigint'
-              ? universalPayload.value
-              : typeof universalPayload?.value === 'string'
-              ? BigInt(universalPayload.value)
-              : BigInt(universalPayload?.value || 0),
-        })
-      )
+      evmTxs.map((tx) => this.transformToUniversalTxResponse(tx))
     );
   }
 
@@ -493,13 +480,7 @@ export class Orchestrator {
       signer: this.universalSigner,
     });
     const txResponse = await this.pushClient.getTransaction(txHash);
-    return await this.transformToUniversalTxResponse(txResponse, {
-      from: this.universalSigner.account.address,
-      to: execute.to,
-      nonce: txResponse.nonce,
-      data: execute.data || '0x',
-      value: execute.value,
-    });
+    return await this.transformToUniversalTxResponse(txResponse);
   }
 
   /**
@@ -819,46 +800,85 @@ export class Orchestrator {
    * Transforms a TxResponse to the new UniversalTxResponse format
    */
   private async transformToUniversalTxResponse(
-    txResponse: TxResponse,
-    rawTransactionData: {
+    tx: TxResponse
+  ): Promise<UniversalTxResponse> {
+    const chain = this.universalSigner.account.chain;
+    const { vm, chainId } = CHAIN_INFO[chain];
+    let from: `0x${string}`;
+    let to: `0x${string}`;
+    let value: bigint;
+    let data: string;
+    let rawTransactionData: {
       from: string;
       to: string;
       nonce: number;
       data: string;
       value: bigint;
-    }
-  ): Promise<UniversalTxResponse> {
-    const chain = this.universalSigner.account.chain;
-    const { vm, chainId } = CHAIN_INFO[chain];
+    };
 
     const ueaOrigin = await PushChain.utils.helpers.getOriginForUEA(
-      txResponse.to as `0x${string}`
+      tx.to as `0x${string}`
     );
     const [account, isUEA] = ueaOrigin;
     let originAddress: `0x${string}`;
 
     if (isUEA) {
-      originAddress = account.owner as `0x${string}`;
+      originAddress = getAddress(account.owner as `0x${string}`);
+      from = getAddress(tx.to as `0x${string}`);
+
+      const decoded = decodeFunctionData({
+        abi: UEA_EVM,
+        data: tx.input,
+      });
+      if (!decoded?.args) {
+        throw new Error('Failed to decode function data');
+      }
+      const universalPayload = decoded?.args[0] as {
+        to: string;
+        value: bigint;
+        data: string;
+        gasLimit: bigint;
+        maxFeePerGas: bigint;
+        maxPriorityFeePerGas: bigint;
+        nonce: bigint;
+        deadline: bigint;
+        vType: number;
+      };
+      to = universalPayload.to as `0x${string}`;
+      value = BigInt(universalPayload.value);
+      data = universalPayload.data;
+      rawTransactionData = {
+        from: getAddress(tx.from),
+        to: getAddress(tx.to as `0x${string}`),
+        nonce: tx.nonce,
+        data: tx.input,
+        value: tx.value,
+      };
     } else {
-      originAddress = txResponse.to as `0x${string}`;
+      originAddress = getAddress(tx.from);
+      from = getAddress(tx.from);
+      to = getAddress(tx.to as `0x${string}`);
+      value = tx.value;
+      data = tx.input;
+      rawTransactionData = {
+        from: getAddress(tx.from),
+        to: getAddress(tx.to as `0x${string}`),
+        nonce: tx.nonce,
+        data: tx.input,
+        value: tx.value,
+      };
     }
 
-    // Create origin identifier
     const origin = `${VM_NAMESPACE[vm]}:${chainId}:${originAddress}`;
-
-    const ueaInfo = await fetchUEAInfo(txResponse.hash);
 
     // Create signature from transaction r, s, v values
     let signature: Signature;
     try {
       signature = new Signature({
-        r: txResponse.r || '0x0',
-        s: txResponse.s || '0x0',
-        v:
-          typeof txResponse.v === 'bigint'
-            ? Number(txResponse.v)
-            : txResponse.v || 0,
-        yParity: txResponse.yParity,
+        r: tx.r || '0x0',
+        s: tx.s || '0x0',
+        v: typeof tx.v === 'bigint' ? Number(tx.v) : tx.v || 0,
+        yParity: tx.yParity,
       });
     } catch {
       // Fallback signature if parsing fails
@@ -874,8 +894,8 @@ export class Orchestrator {
     let type = '99'; // universal
     let typeVerbose = 'universal';
 
-    if (txResponse.type !== undefined) {
-      const txType = txResponse.type;
+    if (tx.type !== undefined) {
+      const txType = tx.type;
       if (txType === 'eip1559') {
         type = '2';
         typeVerbose = 'eip1559';
@@ -893,36 +913,34 @@ export class Orchestrator {
 
     const universalTxResponse: UniversalTxResponse = {
       // 1. Identity
-      hash: txResponse.hash,
+      hash: tx.hash,
       origin,
 
       // 2. Block Info
-      blockNumber: txResponse.blockNumber || BigInt(0),
-      blockHash: txResponse.blockHash || '',
-      transactionIndex: txResponse.transactionIndex || 0,
+      blockNumber: tx.blockNumber || BigInt(0),
+      blockHash: tx.blockHash || '',
+      transactionIndex: tx.transactionIndex || 0,
       chainId: Number(chainId),
 
       // 3. Execution Context
-      from: getAddress(txResponse.from), // UEA (executor) address, checksummed for EVM
-      to: txResponse.to ? getAddress(txResponse.to) : '',
-      nonce: txResponse.nonce,
+      from: from, // UEA (executor) address, checksummed for EVM
+      to: to || '',
+      nonce: tx.nonce,
 
       // 4. Payload
-      data: isUEA ? ueaInfo?.ueaRawInput || '0x' : txResponse.input || '0x', // perceived calldata (was input)
-      value: isUEA ? BigInt(ueaInfo?.ueaValue || 0) : txResponse.value,
+      data, // perceived calldata (was input)
+      value,
 
       // 5. Gas
-      gasLimit: txResponse.gas || BigInt(0), // (was gas)
-      gasPrice: txResponse.gasPrice,
-      maxFeePerGas: txResponse.maxFeePerGas,
-      maxPriorityFeePerGas: txResponse.maxPriorityFeePerGas,
-      accessList: Array.isArray(txResponse.accessList)
-        ? [...txResponse.accessList]
-        : [],
+      gasLimit: tx.gas || BigInt(0), // (was gas)
+      gasPrice: tx.gasPrice,
+      maxFeePerGas: tx.maxFeePerGas,
+      maxPriorityFeePerGas: tx.maxPriorityFeePerGas,
+      accessList: Array.isArray(tx.accessList) ? [...tx.accessList] : [],
 
       // 6. Utilities
       wait: async (): Promise<UniversalTxReceipt> => {
-        const receipt = await txResponse.wait();
+        const receipt = await tx.wait();
         return this.transformToUniversalTxReceipt(receipt, universalTxResponse);
       },
 
