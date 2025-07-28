@@ -1,6 +1,21 @@
 {
   "name": "@pushchain/ui-kit",
   "version": "1.1.25",
+  "homepage": "https://push.org",
+  "keywords": [
+    "pushchain",
+    "push",
+    "solana",
+    "evm",
+    "typescript",
+    "universal",
+    "ui-kit"
+  ],
+  "repository": "https://github.com/pushchain/push-chain-sdk",
+  "authors": [
+    "https://github.com/riyanshu-patro"
+  ],
+  "license": "MIT",
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
     "@metamask/sdk": "^0.32.0",
