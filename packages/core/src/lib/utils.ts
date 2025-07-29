@@ -230,21 +230,6 @@ export class Utils {
       const FACTORY_ADDRESS =
         PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].factoryAddress;
 
-      // Define the Push testnet chain
-      const pushTestnetDonut = defineChain({
-        id: 42101,
-        name: 'Push Testnet Donut',
-        nativeCurrency: {
-          decimals: 18,
-          name: 'PUSH',
-          symbol: 'PUSH',
-        },
-        rpcUrls: {
-          default: { http: [RPC_URL] },
-          public: { http: [RPC_URL] },
-        },
-      });
-
       // ABI in proper object format for viem
       const IUEAFactoryABI = [
         {
@@ -286,8 +271,7 @@ export class Utils {
 
       // Create viem public client
       const client = createPublicClient({
-        chain: pushTestnetDonut,
-        transport: http(),
+        transport: http(RPC_URL),
       });
 
       const originResult = await client.readContract({
