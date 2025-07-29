@@ -272,7 +272,11 @@ const FrameContainer = styled.div<{
   flex-direction: column;
   background-image: url(${({ modalDefaults }) => modalDefaults?.bgImage});
   background-size: cover;
-  background-color: var(--pw-int-bg-primary-color);
+  background-color: ${({universalAccount, accountMenuVariant}) => 
+    universalAccount && accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.HOVER ?
+    'transparent' :
+    'var(--pw-int-bg-primary-color)'
+  };
   border-radius: ${({ universalAccount }) =>
     universalAccount ? '10px' : 'unset'};
   z-index: 999;
