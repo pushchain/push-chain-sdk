@@ -1,4 +1,4 @@
-import { UniversalTxResponse } from '../vm-client/vm-client.types';
+import { UniversalTxResponse } from '../orchestrator/orchestrator.types';
 import {
   PROGRESS_HOOK,
   ProgressEventFunction,

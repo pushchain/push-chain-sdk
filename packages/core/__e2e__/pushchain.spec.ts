@@ -17,7 +17,7 @@ import { UniversalSigner } from '../src/lib/universal/universal.types';
 import { CHAIN_INFO } from '../src/lib/constants/chain';
 import dotenv from 'dotenv';
 import path from 'path';
-import { UniversalTxResponse } from '../src/lib/vm-client/vm-client.types';
+import { UniversalTxResponse } from '../src/lib/orchestrator/orchestrator.types';
 import { sepolia } from 'viem/chains';
 
 // Adjust path as needed if your .env is in the root

@@ -45,13 +45,13 @@ import {
   ProgressEvent,
 } from '../progress-hook/progress-hook.types';
 import PROGRESS_HOOKS from '../progress-hook/progress-hook';
+import { TxResponse } from '../vm-client/vm-client.types';
+import { UEA_EVM } from '../constants/abi/uea.evm';
 import {
-  TxResponse,
   UniversalTxResponse,
   Signature,
   UniversalTxReceipt,
-} from '../vm-client/vm-client.types';
-import { UEA_EVM } from '../constants/abi/uea.evm';
+} from './orchestrator.types';
 
 export class Orchestrator {
   private pushClient: PushClient;
