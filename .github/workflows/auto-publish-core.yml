@@ -73,15 +73,8 @@ jobs:
           node-version: '18'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Setup Yarn
-        run: |
-          corepack enable yarn
-          corepack use yarn@4.2.2
-
       - name: Install dependencies
-        run: |
-          # Allow lockfile updates in CI when package versions change
-          yarn install
+        run: npm install
 
       - name: Configure git
         run: |
