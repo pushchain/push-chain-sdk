@@ -283,7 +283,7 @@ export class Orchestrator {
             Promise.resolve(new SvmClient({ rpcUrls })),
             Promise.resolve(
               anchor.web3.PublicKey.findProgramAddressSync(
-                [Buffer.from('locker')],
+                [stringToBytes('locker')],
                 new PublicKey(lockerContract)
               )
             ),

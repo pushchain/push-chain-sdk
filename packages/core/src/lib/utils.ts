@@ -11,14 +11,8 @@ import {
 } from './universal/signer';
 import { CHAIN } from './constants/enums';
 import { ethers } from 'ethers';
-import {
-  createPublicClient,
-  http,
-  defineChain,
-  decodeFunctionData,
-} from 'viem';
+import { createPublicClient, http, defineChain } from 'viem';
 import { PUSH_CHAIN_INFO } from './constants/chain';
-import { UEA_EVM as executePayloadAbi } from './constants/abi/uea.evm';
 
 /**
  * @dev - THESE UTILS ARE EXPORTED TO SDK CONSUMER

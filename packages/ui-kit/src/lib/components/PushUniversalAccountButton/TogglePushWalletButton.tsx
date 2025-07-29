@@ -1,10 +1,10 @@
 import React from 'react';
+import { CHAIN } from '@pushchain/core/src/lib/constants/enums';
 import { usePushWalletContext } from '../../hooks/usePushWallet';
 import { UniversalAccount } from '../../types';
 import { Button, PushLogo, PushMonotone } from '../common';
 import { centerMaskString, getChainId } from '../../helpers';
 import { CHAIN_LOGO } from '../../constants';
-import { CHAIN } from '@pushchain/core/src/lib/constants/enums';
 
 type TogglePushWalletButtonProps = {
   uid?: string;
@@ -40,6 +40,8 @@ const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
         bgColor="var(--pwauth-btn-connected-bg-color)"
         textColor="var(--pwauth-btn-connected-text-color)"
         borderRadius="var(--pwauth-btn-connect-border-radius)"
+        gap='8px'
+        padding='12px'
         ref={toggleButtonRef}
       >
         {getChainIcon(chain)}

@@ -9,7 +9,7 @@ const BnbMonotone = () => {
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
         >
-            <g clip-path="url(#clip0_8547_11030)">
+            <g clipPath="url(#clip0_8547_11030)">
                 <path
                     d="M0 8C0 3.58172 3.58172 0 8 0H12C16.4183 0 20 3.58172 20 8V12C20 16.4183 16.4183 20 12 20H8C3.58172 20 0 16.4183 0 12V8Z"
                     fill="#EAEBF2"
