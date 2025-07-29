@@ -1,13 +1,13 @@
-// import { Buffer as PolyBuffer } from 'buffer';
-// import type { Buffer as BufferType } from 'buffer';
+import { Buffer as PolyBuffer } from 'buffer';
+import type { Buffer as BufferType } from 'buffer';
 
-// declare global {
-//   // eslint-disable-next-line no-var
-//   var Buffer: BufferType;
-// }
+declare global {
+  // eslint-disable-next-line no-var
+  var Buffer: BufferType;
+}
 
-// const g: any = globalThis;
-// if (!g.Buffer || !g.Buffer.from || !g.Buffer.alloc) g.Buffer = PolyBuffer;
+const g: any = globalThis;
+if (!g.Buffer || !g.Buffer.from || !g.Buffer.alloc) g.Buffer = PolyBuffer;
 
 if (typeof globalThis.process === 'undefined') {
   (globalThis as any).process = { env: {} };
