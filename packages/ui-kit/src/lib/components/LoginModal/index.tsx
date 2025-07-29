@@ -48,8 +48,6 @@ const LoginModal: FC<LoginModalProps> = ({
   sendMessageToPushWallet
 }) => {
   const { modal } = config;
-  const containerRef = useRef<HTMLDivElement>(null);
-  // const [position, setPosition] = useState({ top: 0, left: 0 });
   const { pushChainClient } = usePushChainClient(config?.uid || 'default');
 
   const { top, left } = useSmartModalPosition(
@@ -58,20 +56,6 @@ const LoginModal: FC<LoginModalProps> = ({
     675,
     config.uid
   );
-
-  useEffect(() => {
-    const handleOutsideClick = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setMinimiseWallet(!isWalletMinimised);
-      }
-    };
-
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, []);
 
   const handleSendTransaction = async (data: ExecuteParams) => {
     if (!pushChainClient) return;
@@ -212,9 +196,9 @@ const LoginModal: FC<LoginModalProps> = ({
 
               <MainFrameContainer>
                 <iframe
-                  src={`${WALLET_CONFIG_URL[config.network]}/auth?app=${
-                    window.location.origin
-                  }`}
+                  src={`
+                    ${WALLET_CONFIG_URL[config.network]}/auth?app=${window.location.origin}&version=1
+                  `}
                   allow="clipboard-write; clipboard-read; publickey-credentials-create; publickey-credentials-get; display-capture; *"
                   ref={iframeRef}
                   style={{

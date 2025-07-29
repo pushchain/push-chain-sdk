@@ -43,6 +43,7 @@ const StyledButton = styled.button<ButtonProps>`
     props.padding ? props.padding : '16px 24px'};
   min-width: 100px;
   width: inherit;
+  height: 48px;
   gap: ${(props) =>
     props.gap ? props.gap : '4px'};
   border: none;

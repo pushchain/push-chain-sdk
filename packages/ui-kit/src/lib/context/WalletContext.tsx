@@ -492,7 +492,8 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
           signatureResolverRef?.current?.error?.(event.data.data);
           break;
         case WALLET_TO_APP_ACTION.CLOSE_IFRAME:
-          universalAccount ? setMinimiseWallet(true) : handleUserLogOutEvent();
+          if (universalAccount) setMinimiseWallet(true);
+          else handleUserLogOutEvent();
           break;
         default:
           console.warn('Unknown message type:', event.data.type);
