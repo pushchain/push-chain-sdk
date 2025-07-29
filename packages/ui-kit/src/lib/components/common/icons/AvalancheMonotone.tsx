@@ -9,7 +9,7 @@ const AvalancheMonotone = () => {
             viewBox="0 0 20 20"
             fill="none"
         >
-            <g clip-path="url(#clip0_18252_20797)">
+            <g clipPath="url(#clip0_18252_20797)">
                 <path
                     d="M0 8C0 3.58172 3.58172 0 8 0H12C16.4183 0 20 3.58172 20 8V12C20 16.4183 16.4183 20 12 20H8C3.58172 20 0 16.4183 0 12V8Z"
                     fill="#EAEBF2"

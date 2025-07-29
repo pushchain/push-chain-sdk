@@ -1,7 +1,8 @@
-import React, { FC, useEffect, useRef, useState } from 'react';
+import React, { FC, useEffect, useRef } from 'react';
+import { ExecuteParams } from '@pushchain/core/src/lib/orchestrator/orchestrator.types';
 import styled from 'styled-components';
 import { CrossIcon, Spinner } from '../../components/common';
-import { PushUI, WALLET_CONFIG_URL } from '../../constants';
+import { APP_TO_WALLET_ACTION, PushUI, WALLET_CONFIG_URL, WALLET_TO_APP_ACTION } from '../../constants';
 import {
   ModalAppDetails,
   ModalProps,
@@ -9,6 +10,7 @@ import {
   UniversalAccount,
 } from '../../types';
 import { useSmartModalPosition } from './useSmartModalPosition';
+import { usePushChainClient } from '../../hooks/usePushChainClient';
 
 type LoginModalProps = {
   iframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
@@ -26,6 +28,7 @@ type LoginModalProps = {
   setMinimiseWallet: (isWalletMinimised: boolean) => void;
   handleUserLogOutEvent: () => void;
   toggleButtonRef: React.RefObject<HTMLButtonElement>;
+  sendMessageToPushWallet: (message: any) => void;
 };
 
 const LoginModal: FC<LoginModalProps> = ({
@@ -42,10 +45,11 @@ const LoginModal: FC<LoginModalProps> = ({
   handleUserLogOutEvent,
   config,
   toggleButtonRef,
+  sendMessageToPushWallet
 }) => {
   const { modal } = config;
-  const containerRef = useRef<HTMLDivElement>(null);
-  // const [position, setPosition] = useState({ top: 0, left: 0 });
+  const { pushChainClient } = usePushChainClient(config?.uid || 'default');
+
   const { top, left } = useSmartModalPosition(
     toggleButtonRef,
     450,
@@ -53,32 +57,37 @@ const LoginModal: FC<LoginModalProps> = ({
     config.uid
   );
 
+  const handleSendTransaction = async (data: ExecuteParams) => {
+    if (!pushChainClient) return;
+
+    const res = await pushChainClient.universal.sendTransaction({
+      ...data,
+      value: BigInt(data.value)
+    });
+
+    sendMessageToPushWallet({
+      type: APP_TO_WALLET_ACTION.PUSH_SEND_TRANSACTION_RESPONSE,
+      data: res.hash,
+    });
+  }
+
   useEffect(() => {
-    const handleOutsideClick = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setMinimiseWallet(!isWalletMinimised);
+    const pushMessageHandler = (event: MessageEvent) => {
+      if (iframeRef.current?.contentWindow !== event.source || !pushChainClient) return;
+
+      switch (event.data.type) {
+        case WALLET_TO_APP_ACTION.PUSH_SEND_TRANSACTION:
+          handleSendTransaction(event.data.data);
+          break;
+        default:
+          console.warn('Unknown message type:', event.data.type);
       }
     };
 
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, []);
+    window.addEventListener('message', pushMessageHandler);
 
-  // useEffect(() => {
-  //   if (toggleButtonRef?.current) {
-  //     setPosition({
-  //       top: rect.bottom + window.scrollY,
-  //       left: rect.left + window.scrollX,
-  //     });
-  //     console.log({
-  //       top: rect.bottom + window.scrollY,
-  //       left: rect.left + window.scrollX,
-  //     });
-  //   }
-  // }, [isWalletVisible, isWalletMinimised]);
+    return () => window.removeEventListener('message', pushMessageHandler);
+  }, [pushChainClient]);
 
   return (
     <>
@@ -129,7 +138,7 @@ const LoginModal: FC<LoginModalProps> = ({
             isWalletMinimised={isWalletMinimised}
             isIframeLoading={isIframeLoading}
           >
-            <AccountContainer universalAccount={universalAccount}>
+            {/* <AccountContainer universalAccount={universalAccount}>
               {universalAccount ? (
                 <DashButtonContainer onClick={() => setMinimiseWallet(true)}>
                   <CrossIcon
@@ -151,7 +160,7 @@ const LoginModal: FC<LoginModalProps> = ({
                   />
                 </CloseButtonContainer>
               )}
-            </AccountContainer>
+            </AccountContainer> */}
 
             <SplitContainer>
               {modal?.appPreview &&
@@ -187,9 +196,9 @@ const LoginModal: FC<LoginModalProps> = ({
 
               <MainFrameContainer>
                 <iframe
-                  src={`${WALLET_CONFIG_URL[config.network]}/auth?app=${
-                    window.location.origin
-                  }`}
+                  src={`
+                    ${WALLET_CONFIG_URL[config.network]}/auth?app=${window.location.origin}&version=1
+                  `}
                   allow="clipboard-write; clipboard-read; publickey-credentials-create; publickey-credentials-get; display-capture; *"
                   ref={iframeRef}
                   style={{
@@ -247,7 +256,11 @@ const FrameContainer = styled.div<{
   flex-direction: column;
   background-image: url(${({ modalDefaults }) => modalDefaults?.bgImage});
   background-size: cover;
-  background-color: var(--pw-int-bg-primary-color);
+  background-color: ${({universalAccount, accountMenuVariant}) => 
+    universalAccount && accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.HOVER ?
+    'transparent' :
+    'var(--pw-int-bg-primary-color)'
+  };
   border-radius: ${({ universalAccount }) =>
     universalAccount ? '10px' : 'unset'};
   z-index: 999;
@@ -283,7 +296,7 @@ const FrameContainer = styled.div<{
 
   @media (max-width: 425px) {
     width: ${({ universalAccount, isWalletMinimised }) =>
-      isWalletMinimised ? '0px' : universalAccount ? '96%' : '100%'};
+      isWalletMinimised ? '0px' : universalAccount ? '100%' : '100%'};
     right: ${({ universalAccount }) => (universalAccount ? '2%' : '0')};
     top: ${({ universalAccount, accountMenuVariant }) =>
       universalAccount

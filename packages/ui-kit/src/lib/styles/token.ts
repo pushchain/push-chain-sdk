@@ -75,6 +75,7 @@ export const themeDefault = {
   '--pw-int-text-heading-xsmall-size': '18px',
   '--pw-int-text-body-large-size': '16px',
   '--pw-int-font-family': '"Arial", sans-serif',
+  '--pw-int-modal-width': '376px',
 };
 
 export const lightThemeDefault = {
