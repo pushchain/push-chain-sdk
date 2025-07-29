@@ -74,10 +74,12 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Setup Yarn
-        run: corepack enable yarn
+        run: |
+          corepack enable yarn
+          corepack use yarn@4.2.2
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Configure git
         run: |

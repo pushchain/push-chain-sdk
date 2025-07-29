@@ -3842,6 +3842,7 @@ __metadata:
     "@cosmjs/stargate": "npm:^0.33.1"
     "@cosmjs/tendermint-rpc": "npm:0.33.1"
     "@solana/web3.js": "npm:^1.68.0"
+    buffer: "npm:^6.0.3"
     cosmjs-types: "npm:0.9.0"
     ethers: "npm:^6.14.3"
     protobufjs: "npm:7.4.0"
