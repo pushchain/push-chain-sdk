@@ -3830,7 +3830,29 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pushchain/core@npm:^0.1.40, @pushchain/core@workspace:packages/core":
+"@pushchain/core@npm:0.1.41":
+  version: 0.1.41
+  resolution: "@pushchain/core@npm:0.1.41"
+  dependencies:
+    "@bufbuild/protobuf": "npm:^2.0.0"
+    "@coral-xyz/anchor": "npm:^0.31.0"
+    "@cosmjs/crypto": "npm:0.33.1"
+    "@cosmjs/encoding": "npm:0.33.1"
+    "@cosmjs/proto-signing": "npm:^0.33.1"
+    "@cosmjs/stargate": "npm:^0.33.1"
+    "@cosmjs/tendermint-rpc": "npm:0.33.1"
+    "@solana/web3.js": "npm:^1.68.0"
+    cosmjs-types: "npm:0.9.0"
+    ethers: "npm:^6.14.3"
+    protobufjs: "npm:7.4.0"
+    tslib: "npm:^2.3.0"
+    tweetnacl: "npm:^1.0.3"
+    viem: "npm:2.27.2"
+  checksum: 10/f5e3b63f8f46f9552cc3a917f189edb01fa4dd99f4aa5df354125d374d00e390eace22ad4a302906c5e2929e9b114084728c8d260d8ba53625c1638d6c3d3b52
+  languageName: node
+  linkType: hard
+
+"@pushchain/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@pushchain/core@workspace:packages/core"
   dependencies:
@@ -3881,14 +3903,17 @@ __metadata:
   dependencies:
     "@coral-xyz/anchor": "npm:^0.31.1"
     "@metamask/sdk": "npm:^0.32.0"
-    "@pushchain/core": "npm:^0.1.40"
+    "@pushchain/core": "npm:0.1.41"
     "@solana/web3.js": "npm:^1.98.2"
     "@types/react": "npm:^18.3.13"
+    "@types/react-is": "npm:^19"
     "@walletconnect/ethereum-provider": "npm:^2.21.5"
+    buffer: "npm:^6.0.3"
     eslint-plugin-react-hooks: "npm:^5.0.0"
     eslint-plugin-react-refresh: "npm:^0.4.20"
     ethers: "npm:^6.13.5"
     react: "npm:^18.3.1"
+    react-is: "npm:^19.1.0"
     styled-components: "npm:^5.3.8"
     tslib: "npm:^2.3.0"
     typescript-eslint: "npm:^8.32.1"
@@ -5642,6 +5667,15 @@ __metadata:
   peerDependencies:
     "@types/react": ^18.0.0
   checksum: 10/ae179355401c64423d39946eda22c5f7f74c94ce61c21505024d4d82c33853ec40bc9b370f75e4a7750b0524aba4d95a43fcc328d8d14684dc2abb41ba529de8
+  languageName: node
+  linkType: hard
+
+"@types/react-is@npm:^19":
+  version: 19.0.0
+  resolution: "@types/react-is@npm:19.0.0"
+  dependencies:
+    "@types/react": "npm:*"
+  checksum: 10/c56e39e88558a71bc0b1deaa84cce9d5c84d6522057b73690d099b0763898203ec29a91563431e83b5086c49ac64a239fe993c50a4f008d6fbfc551587db5895
   languageName: node
   linkType: hard
 
@@ -14405,6 +14439,13 @@ __metadata:
   version: 18.3.1
   resolution: "react-is@npm:18.3.1"
   checksum: 10/d5f60c87d285af24b1e1e7eaeb123ec256c3c8bdea7061ab3932e3e14685708221bf234ec50b21e10dd07f008f1b966a2730a0ce4ff67905b3872ff2042aec22
+  languageName: node
+  linkType: hard
+
+"react-is@npm:^19.1.0":
+  version: 19.1.0
+  resolution: "react-is@npm:19.1.0"
+  checksum: 10/4aceca94492032a19411138bf68c6ca7dce4abee7ae6c7f23db9291d2dff14d6a643717b176ef9a151e8cdf6a2b71fdbc59fd998328e086a6f752512304a252b
   languageName: node
   linkType: hard
 

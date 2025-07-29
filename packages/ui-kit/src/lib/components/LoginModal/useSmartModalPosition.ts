@@ -34,16 +34,16 @@ export function useSmartModalPosition(
 
       const top =
         spaceBelow >= modalHeight
-          ? triggerRect.bottom + 4
+          ? triggerRect.bottom - 24
           : spaceAbove >= modalHeight
-          ? triggerRect.top - modalHeight - 4
+          ? triggerRect.top - modalHeight + 24
           : Math.max(viewportHeight - modalHeight, 0);
 
       const left =
         spaceRight >= modalWidth
-          ? triggerRect.left
+          ? triggerRect.left - 35
           : spaceLeft >= modalWidth
-          ? triggerRect.right - modalWidth
+          ? triggerRect.right - modalWidth + 35
           : Math.max(viewportWidth - modalWidth, 0);
 
       setPosition({ top, left });
