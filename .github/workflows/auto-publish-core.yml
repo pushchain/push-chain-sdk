@@ -79,7 +79,9 @@ jobs:
           corepack use yarn@4.2.2
 
       - name: Install dependencies
-        run: yarn install --immutable
+        run: |
+          # Allow lockfile updates in CI when package versions change
+          yarn install
 
       - name: Configure git
         run: |
