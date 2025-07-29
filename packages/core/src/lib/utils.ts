@@ -11,8 +11,9 @@ import {
 } from './universal/signer';
 import { CHAIN } from './constants/enums';
 import { ethers } from 'ethers';
-import { createPublicClient, http, defineChain } from 'viem';
+import { createPublicClient, http } from 'viem';
 import { PUSH_CHAIN_INFO } from './constants/chain';
+import { FACTORY_V1 } from './constants/abi';
 
 /**
  * @dev - THESE UTILS ARE EXPORTED TO SDK CONSUMER
@@ -225,61 +226,32 @@ export class Utils {
       }
     },
 
-    getOriginForUEA: async (ueaAddress: `0x${string}`) => {
+    getOriginForUEA: async (
+      ueaAddress: `0x${string}`
+    ): Promise<
+      [
+        { chainNamespace: string; chainId: string; owner: `0x${string}` },
+        boolean
+      ]
+    > => {
       const RPC_URL = PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
       const FACTORY_ADDRESS =
         PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].factoryAddress;
-
-      // ABI in proper object format for viem
-      const IUEAFactoryABI = [
-        {
-          name: 'getOriginForUEA',
-          type: 'function',
-          stateMutability: 'view',
-          inputs: [
-            {
-              name: 'addr',
-              type: 'address',
-            },
-          ],
-          outputs: [
-            {
-              name: 'account',
-              type: 'tuple',
-              components: [
-                {
-                  name: 'chainNamespace',
-                  type: 'string',
-                },
-                {
-                  name: 'chainId',
-                  type: 'string',
-                },
-                {
-                  name: 'owner',
-                  type: 'bytes',
-                },
-              ],
-            },
-            {
-              name: 'isUEA',
-              type: 'bool',
-            },
-          ],
-        },
-      ] as const;
 
       // Create viem public client
       const client = createPublicClient({
         transport: http(RPC_URL),
       });
 
-      const originResult = await client.readContract({
+      const originResult = (await client.readContract({
         address: FACTORY_ADDRESS,
-        abi: IUEAFactoryABI,
+        abi: FACTORY_V1,
         functionName: 'getOriginForUEA',
         args: [ueaAddress],
-      });
+      })) as [
+        { chainNamespace: string; chainId: string; owner: `0x${string}` },
+        boolean
+      ];
 
       return originResult;
     },
