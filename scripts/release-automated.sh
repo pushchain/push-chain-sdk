@@ -30,7 +30,7 @@ echo "🚀 Releasing @$SCOPE with a $BUMP bump..."
 npx ts-node scripts/bumpAndGenerateChangelog.ts "$SCOPE" "$BUMP"
 
 # Step 2: Build the package
-nx run "$SCOPE:build"
+npx nx run "$SCOPE:build"
 
 # Step 3: Copy package.json to dist directory for publishing
 PACKAGE_DIR="dist/packages/$SCOPE"
