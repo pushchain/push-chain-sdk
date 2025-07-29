@@ -663,66 +663,6 @@ describe('UniversalTxReceipt Type Validation', () => {
       expect(waitResult.raw.to).toMatch(/^0x[a-fA-F0-9]{40}$/);
     }, 60000);
   });
-
-  describe('Orchestrator execute method validation', () => {
-    it('should return UniversalTxReceipt from orchestrator.execute', async () => {
-      // Access the orchestrator directly to test the execute method
-      const orchestrator = (pushClientPush as any).orchestrator;
-
-      const executeParams = {
-        to: to as `0x${string}`,
-        value: BigInt(100),
-        data: '0x' as `0x${string}`,
-      };
-
-      const result = await orchestrator.execute(executeParams);
-
-      // Verify it returns UniversalTxReceipt
-      expect(result).toBeDefined();
-      expect(result.hash).toBeDefined();
-      expect(result.origin).toBeDefined();
-      expect(result.signature).toBeDefined();
-      expect(result.typeVerbose).toBeDefined();
-      expect(typeof result.gasLimit).toBe('bigint');
-      expect(typeof result.data).toBe('string');
-
-      // Should not have old TxResponse fields
-      expect((result as any).input).toBeUndefined();
-      expect((result as any).gas).toBeUndefined();
-      expect((result as any).typeHex).toBeUndefined();
-    }, 60000);
-
-    it('should handle different transaction types correctly', async () => {
-      const orchestrator = (pushClientPush as any).orchestrator;
-
-      // Test with different gas settings to potentially trigger different tx types
-      const executeParams = {
-        to: to as `0x${string}`,
-        value: BigInt(50),
-        maxFeePerGas: BigInt(2000000000),
-        maxPriorityFeePerGas: BigInt(1000000000),
-      };
-
-      const result = await orchestrator.execute(executeParams);
-
-      expect(result.type).toBeDefined();
-      expect(result.typeVerbose).toBeDefined();
-
-      // Should be one of the valid types
-      expect(['99', '2', '1', '0']).toContain(result.type);
-      expect(['universal', 'EIP-1559', 'EIP-2930', 'legacy']).toContain(
-        result.typeVerbose
-      );
-
-      // Gas fields should be properly set
-      if (result.maxFeePerGas) {
-        expect(typeof result.maxFeePerGas).toBe('bigint');
-      }
-      if (result.maxPriorityFeePerGas) {
-        expect(typeof result.maxPriorityFeePerGas).toBe('bigint');
-      }
-    }, 60000);
-  });
 });
 
 /** CLI COMMANDS

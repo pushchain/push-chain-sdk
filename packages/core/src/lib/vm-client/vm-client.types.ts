@@ -53,40 +53,13 @@ export interface WriteContractParams extends ReadContractParams {
 }
 
 /**
- * Signature class modeled after ethers.js v6 Signature interface
+ * Signature interface modeled after ethers.js v6 Signature interface
  */
-export class Signature {
-  readonly r: string;
-  readonly s: string;
-  readonly v: number;
-  readonly yParity: number;
-
-  constructor(signature: {
-    r: string;
-    s: string;
-    v: number;
-    yParity?: number;
-  }) {
-    this.r = signature.r;
-    this.s = signature.s;
-    this.v = signature.v;
-    this.yParity = signature.yParity ?? (signature.v === 27 ? 0 : 1);
-  }
-
-  /**
-   * Create a Signature from a raw signature string (65 bytes / 130 hex chars)
-   */
-  static from(signature: string): Signature {
-    if (!signature.startsWith('0x') || signature.length !== 132) {
-      throw new Error('Invalid signature format');
-    }
-
-    const r = signature.slice(0, 66); // 0x + 32 bytes
-    const s = '0x' + signature.slice(66, 130); // 32 bytes
-    const v = parseInt(signature.slice(130, 132), 16); // 1 byte
-
-    return new Signature({ r, s, v });
-  }
+export interface Signature {
+  r: string;
+  s: string;
+  v: number;
+  yParity?: number;
 }
 
 export type TxResponse = Transaction & {

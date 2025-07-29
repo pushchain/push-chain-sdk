@@ -874,20 +874,20 @@ export class Orchestrator {
     // Create signature from transaction r, s, v values
     let signature: Signature;
     try {
-      signature = new Signature({
+      signature = {
         r: tx.r || '0x0',
         s: tx.s || '0x0',
         v: typeof tx.v === 'bigint' ? Number(tx.v) : tx.v || 0,
         yParity: tx.yParity,
-      });
+      };
     } catch {
       // Fallback signature if parsing fails
-      signature = new Signature({
+      signature = {
         r: '0x0000000000000000000000000000000000000000000000000000000000000000',
         s: '0x0000000000000000000000000000000000000000000000000000000000000000',
         v: 0,
         yParity: 0,
-      });
+      };
     }
 
     // Determine transaction type and typeVerbose
