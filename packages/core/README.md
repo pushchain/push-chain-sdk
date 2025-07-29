@@ -25,4 +25,4 @@ Or with yarn:
 yarn add @pushchain/core
 ```
 
-test_change
+test_change_2
