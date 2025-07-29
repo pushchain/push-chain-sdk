@@ -1,3 +1,9 @@
+@pushchain/core@0.1.42 (2025-07-29)
+
+- feat: implement getOriginForUEA function in Utils for Push Testnet
+
+---
+
 @pushchain/core@0.1.41 (2025-07-21)
 
 - fix: refine fee locking logic in Orchestrator to handle UEA deployment and fund sufficiency
