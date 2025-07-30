@@ -1,14 +1,31 @@
+import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
+
 type CacheEntry = {
   value: any;
   createdAt: number;
   ttl?: number;
 };
 
+export class CacheKeys {
+  static ueaAddressOnchain(
+    chain: CHAIN,
+    address: string,
+    pushNetwork: PUSH_NETWORK,
+    vm: VM
+  ): string {
+    return `uea_address_onchain:${chain}:${address}:${pushNetwork}:${vm}`;
+  }
+
+  static deploymentStatus(address: string): string {
+    return `deployment_status:${address}`;
+  }
+}
+
 export class Cache {
   private cache: Map<string, CacheEntry>;
   private maxSize: number;
 
-  constructor(maxSize: number = 100) {
+  constructor(maxSize = 100) {
     this.cache = new Map();
     this.maxSize = maxSize;
   }
@@ -36,7 +53,7 @@ export class Cache {
     return null;
   }
 
-  set(key: string, value: number, ttl?: number): void {
+  set(key: string, value: any, ttl?: number): void {
     if (this.cache.has(key)) {
       this.cache.delete(key);
     } else if (this.cache.size >= this.maxSize) {

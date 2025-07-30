@@ -660,11 +660,13 @@ export class Orchestrator {
     const initCodeHash = keccak256(minimalProxyRuntimeCode);
 
     // Step 4: Predict the address using standard CREATE2 formula
-    return getCreate2Address({
+    const ueaAddress = getCreate2Address({
       from: this.pushClient.pushChainInfo.factoryAddress,
       salt,
       bytecodeHash: initCodeHash,
     });
+
+    return ueaAddress;
   }
 
   /**
