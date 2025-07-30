@@ -44,11 +44,9 @@ import {
 } from '../progress-hook/progress-hook.types';
 import PROGRESS_HOOKS from '../progress-hook/progress-hook';
 import { TxResponse } from '../vm-client/vm-client.types';
-import { OrchestratorCache } from '../cache/cache';
 
 export class Orchestrator {
   private pushClient: PushClient;
-  private cache: OrchestratorCache;
 
   constructor(
     private readonly universalSigner: UniversalSigner,
@@ -57,8 +55,6 @@ export class Orchestrator {
     private readonly printTraces = false,
     private progressHook?: (progress: ProgressEvent) => void
   ) {
-    this.cache = new OrchestratorCache();
-
     let pushChain: CHAIN;
     if (pushNetwork === PUSH_NETWORK.MAINNET) {
       pushChain = CHAIN.PUSH_MAINNET;
