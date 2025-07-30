@@ -37,7 +37,8 @@ const PushWalletConfigDefault: ProviderConfigProps = {
   modal: {
     loginLayout: PushUI.CONSTANTS.LOGIN.LAYOUT.SIMPLE,
     appPreview: false,
-    connectedInteraction: PushUI.CONSTANTS.CONNECTED.INTERACTION.INTERACTIVE,
+    connectedInteraction: PushUI.CONSTANTS.CONNECTED.INTERACTION.BLUR,
+    connectedLayout: PushUI.CONSTANTS.CONNECTED.LAYOUT.HOVER,
   },
 };
 
