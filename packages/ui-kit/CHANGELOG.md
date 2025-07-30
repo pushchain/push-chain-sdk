@@ -1,3 +1,9 @@
+@pushchain/ui-kit@1.1.28 (2025-07-30)
+
+- fix: add default connected layout
+
+---
+
 @pushchain/ui-kit@1.1.27 (2025-07-29)
 
 - feat: new wallet UI
