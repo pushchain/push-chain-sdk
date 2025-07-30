@@ -627,17 +627,6 @@ export class Orchestrator {
       return address as `0x${string}`;
     }
 
-    // Try to get UEA address from cache first
-    const cachedUEA = this.cache.getUEAAddress(
-      chain,
-      address,
-      this.pushNetwork,
-      vm
-    );
-    if (cachedUEA !== null) {
-      return cachedUEA as `0x${string}`;
-    }
-
     // 1) Figure out the external‐chain ownerKey bytes
     let ownerKey: `0x${string}`;
     if (CHAIN_INFO[chain].vm === VM.EVM) {
@@ -680,9 +669,6 @@ export class Orchestrator {
       salt,
       bytecodeHash: initCodeHash,
     });
-
-    // Cache the computed UEA address
-    this.cache.setUEAAddress(chain, address, this.pushNetwork, vm, ueaAddress);
 
     return ueaAddress;
   }

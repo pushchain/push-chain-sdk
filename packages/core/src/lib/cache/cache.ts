@@ -29,15 +29,6 @@ export const DEFAULT_CACHE_CONFIG: CacheConfig = {
  * Cache key generators for different data types
  */
 export class CacheKeys {
-  static ueaAddressOffchain(
-    chain: CHAIN,
-    address: string,
-    pushNetwork: PUSH_NETWORK,
-    vm: VM
-  ): string {
-    return `uea_address_offchain:${chain}:${address}:${pushNetwork}:${vm}`;
-  }
-
   static ueaAddressOnchain(
     chain: CHAIN,
     address: string,
@@ -113,30 +104,6 @@ export class OrchestratorCache {
 
   constructor(config?: Partial<CacheConfig>) {
     this.cache = new Cache(config);
-  }
-
-  getUEAAddress(
-    chain: CHAIN,
-    address: string,
-    pushNetwork: PUSH_NETWORK,
-    vm: VM
-  ): string | null {
-    return this.cache.get(
-      CacheKeys.ueaAddressOffchain(chain, address, pushNetwork, vm)
-    );
-  }
-
-  setUEAAddress(
-    chain: CHAIN,
-    address: string,
-    pushNetwork: PUSH_NETWORK,
-    vm: VM,
-    ueaAddress: string
-  ): void {
-    this.cache.set(
-      CacheKeys.ueaAddressOffchain(chain, address, pushNetwork, vm),
-      ueaAddress
-    );
   }
 }
 
