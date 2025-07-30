@@ -1,3 +1,9 @@
+@pushchain/core@0.1.43 (2025-07-30)
+
+- docs: update README with test change
+
+---
+
 @pushchain/core@0.1.42 (2025-07-29)
 
 - feat: implement getOriginForUEA function in Utils for Push Testnet
