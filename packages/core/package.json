@@ -10,7 +10,10 @@
     "typescript",
     "universal"
   ],
-  "repository": "https://github.com/pushchain/push-chain-sdk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pushchain/push-chain-sdk"
+  },
   "authors": [
     "https://github.com/Aman035",
     "https://github.com/strykerin"
