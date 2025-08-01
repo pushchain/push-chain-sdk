@@ -19,6 +19,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { UniversalTxResponse } from '../src/lib/orchestrator/orchestrator.types';
 import { sepolia } from 'viem/chains';
+import bs58 from 'bs58';
 
 // Adjust path as needed if your .env is in the root
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -69,7 +70,6 @@ describe('PushChain (e2e)', () => {
       }, 30000);
 
       it('should successfully sendTransaction - Transfer Call', async () => {
-        const uea = pushClient.universal.account;
         const tx = await pushClient.universal.sendTransaction({
           to,
           value: BigInt(1e3),
@@ -83,9 +83,8 @@ describe('PushChain (e2e)', () => {
         expect(after.deployed).toBe(true);
         await txValidator(
           tx,
-          pushClient['orchestrator']['pushClient'].getSignerAddress()
-            .evmAddress,
-          uea
+          pushClient.universal.origin.address as `0x${string}`,
+          to
         );
       }, 300000);
     });
@@ -173,7 +172,7 @@ describe('PushChain (e2e)', () => {
         const uea = pushClient.universal.account;
         const tx = await pushClient.universal.sendTransaction({
           to,
-          value: BigInt(1e18),
+          value: BigInt(1),
         });
         const after = await PushChain.utils.account.convertOriginToExecutor(
           universalSigner.account,
@@ -182,12 +181,7 @@ describe('PushChain (e2e)', () => {
           }
         );
         expect(after.deployed).toBe(true);
-        await txValidator(
-          tx,
-          pushClient['orchestrator']['pushClient'].getSignerAddress()
-            .evmAddress,
-          uea
-        );
+        await txValidator(tx, pushClient.universal.origin.address, to);
       }, 300000);
     });
   });
@@ -323,7 +317,7 @@ describe('Deploy UEA on Push Testnet Edge Cases', () => {
 
 const txValidator = async (
   tx: UniversalTxResponse,
-  from: `0x${string}`,
+  from: string,
   to: `0x${string}`
 ) => {
   expect(tx).toBeDefined();
@@ -331,14 +325,16 @@ const txValidator = async (
   // 1. Identity fields
   expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
   expect(tx.origin).toBeDefined();
-  expect(tx.origin).toMatch(/^[a-zA-Z0-9_-]+:[0-9]+:0x[a-fA-F0-9]{40}$/); // Format: namespace:chainId:address
+  expect(tx.origin).toMatch(
+    /^[a-zA-Z0-9_-]+:[a-zA-Z0-9]+:(0x[a-fA-F0-9]{40,64}|[1-9A-HJ-NP-Za-km-z]{43,44})$/
+  ); // Format: namespace:chainId:address (supports both EVM and Solana)
 
   // 2. Block Info
   expect(typeof tx.blockNumber).toBe('bigint');
   expect(tx.blockNumber).toBeGreaterThanOrEqual(BigInt(0));
   expect(typeof tx.blockHash).toBe('string');
   expect(typeof tx.transactionIndex).toBe('number');
-  expect(typeof tx.chainId).toBe('number');
+  expect(typeof tx.chainId).toBe('string');
 
   // 3. Execution Context
   expect(tx.to?.toLowerCase()).toBe(to.toLowerCase());
