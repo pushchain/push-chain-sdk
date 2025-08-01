@@ -1,3 +1,9 @@
+@pushchain/core@0.2.0 (2025-08-01)
+
+- feat: New response type (#180)
+
+---
+
 @pushchain/core@0.1.43 (2025-07-30)
 
 - docs: update README with test change
