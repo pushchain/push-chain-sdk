@@ -1,4 +1,4 @@
-import { TxResponse } from '../vm-client/vm-client.types';
+import { UniversalTxResponse } from '../orchestrator/orchestrator.types';
 import {
   PROGRESS_HOOK,
   ProgressEventFunction,
@@ -102,7 +102,7 @@ const RAW_HOOKS: {
     response: null,
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_99_01]: (txResponse: TxResponse[]) => ({
+  [PROGRESS_HOOK.SEND_TX_99_01]: (txResponse: UniversalTxResponse[]) => ({
     id: PROGRESS_HOOK.SEND_TX_99_01,
     title: 'Push Chain Tx Success',
     message: `Final Tx Hash: ${txResponse[txResponse.length - 1].hash}`,
