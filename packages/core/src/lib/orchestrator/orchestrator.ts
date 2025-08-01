@@ -820,40 +820,63 @@ export class Orchestrator {
       tx.to as `0x${string}`
     );
     const [account, isUEA] = ueaOrigin;
-    let originAddress: `0x${string}`;
+    let originAddress: string;
 
     if (isUEA) {
-      originAddress = getAddress(account.owner as `0x${string}`);
+      // For SVM, the account.owner is a hex encoded of the solana public key, convert to base58 format
+      if (account.chainNamespace === VM_NAMESPACE[VM.SVM]) {
+        // Convert hex-encoded owner to base58 address format
+        const hexBytes = hexToBytes(account.owner);
+        originAddress = utils.bytes.bs58.encode(hexBytes);
+      } else {
+        originAddress = getAddress(account.owner as `0x${string}`);
+      }
       from = getAddress(tx.to as `0x${string}`);
 
-      const decoded = decodeFunctionData({
-        abi: UEA_EVM,
-        data: tx.input,
-      });
-      if (!decoded?.args) {
-        throw new Error('Failed to decode function data');
+      let decoded;
+
+      if (tx.input !== '0x') {
+        decoded = decodeFunctionData({
+          abi: UEA_EVM,
+          data: tx.input,
+        });
+        if (!decoded?.args) {
+          throw new Error('Failed to decode function data');
+        }
+        const universalPayload = decoded?.args[0] as {
+          to: string;
+          value: bigint;
+          data: string;
+          gasLimit: bigint;
+          maxFeePerGas: bigint;
+          maxPriorityFeePerGas: bigint;
+          nonce: bigint;
+          deadline: bigint;
+          vType: number;
+        };
+
+        to = universalPayload.to as `0x${string}`;
+        value = BigInt(universalPayload.value);
+        data = universalPayload.data;
+        rawTransactionData = {
+          from: getAddress(tx.from),
+          to: getAddress(tx.to as `0x${string}`),
+          nonce: tx.nonce,
+          data: tx.input,
+          value: tx.value,
+        };
+      } else {
+        to = getAddress(tx.to as `0x${string}`);
+        value = tx.value;
+        data = tx.input;
+        rawTransactionData = {
+          from: getAddress(tx.from),
+          to: getAddress(tx.to as `0x${string}`),
+          nonce: tx.nonce,
+          data: tx.input,
+          value: tx.value,
+        };
       }
-      const universalPayload = decoded?.args[0] as {
-        to: string;
-        value: bigint;
-        data: string;
-        gasLimit: bigint;
-        maxFeePerGas: bigint;
-        maxPriorityFeePerGas: bigint;
-        nonce: bigint;
-        deadline: bigint;
-        vType: number;
-      };
-      to = universalPayload.to as `0x${string}`;
-      value = BigInt(universalPayload.value);
-      data = universalPayload.data;
-      rawTransactionData = {
-        from: getAddress(tx.from),
-        to: getAddress(tx.to as `0x${string}`),
-        nonce: tx.nonce,
-        data: tx.input,
-        value: tx.value,
-      };
     } else {
       originAddress = getAddress(tx.from);
       from = getAddress(tx.from);
@@ -920,7 +943,7 @@ export class Orchestrator {
       blockNumber: tx.blockNumber || BigInt(0),
       blockHash: tx.blockHash || '',
       transactionIndex: tx.transactionIndex || 0,
-      chainId: Number(chainId),
+      chainId,
 
       // 3. Execution Context
       from: from, // UEA (executor) address, checksummed for EVM

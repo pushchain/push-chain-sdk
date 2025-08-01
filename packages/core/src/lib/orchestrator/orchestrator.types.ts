@@ -63,7 +63,7 @@ export interface UniversalTxResponse {
   blockNumber: bigint; // 803963n
   blockHash: string; // block hash
   transactionIndex: number; // index in block
-  chainId: number; // 42101
+  chainId: string; // 42101 or solana
 
   // 3. Execution Context
   from: string; // UEA (executor) address
