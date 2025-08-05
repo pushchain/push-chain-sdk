@@ -1,6 +1,7 @@
 import {
   convertOriginToExecutor,
   fromChainAgnostic,
+  convertExecutorToOrigin,
   toChainAgnostic,
   toUniversal,
 } from './universal/account';
@@ -11,9 +12,6 @@ import {
 } from './universal/signer';
 import { CHAIN } from './constants/enums';
 import { ethers } from 'ethers';
-import { createPublicClient, http } from 'viem';
-import { PUSH_CHAIN_INFO } from './constants/chain';
-import { FACTORY_V1 } from './constants/abi';
 
 /**
  * @dev - THESE UTILS ARE EXPORTED TO SDK CONSUMER
@@ -60,6 +58,8 @@ export class Utils {
     fromChainAgnostic,
 
     convertOriginToExecutor,
+
+    convertExecutorToOrigin,
   };
 
   static signer = {
@@ -224,36 +224,6 @@ export class Utils {
           }`
         );
       }
-    },
-
-    getOriginForUEA: async (
-      ueaAddress: `0x${string}`
-    ): Promise<
-      [
-        { chainNamespace: string; chainId: string; owner: `0x${string}` },
-        boolean
-      ]
-    > => {
-      const RPC_URL = PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
-      const FACTORY_ADDRESS =
-        PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].factoryAddress;
-
-      // Create viem public client
-      const client = createPublicClient({
-        transport: http(RPC_URL),
-      });
-
-      const originResult = (await client.readContract({
-        address: FACTORY_ADDRESS,
-        abi: FACTORY_V1,
-        functionName: 'getOriginForUEA',
-        args: [ueaAddress],
-      })) as [
-        { chainNamespace: string; chainId: string; owner: `0x${string}` },
-        boolean
-      ];
-
-      return originResult;
     },
   };
 }

@@ -3,7 +3,7 @@ import { PushChain } from '../../push-chain/push-chain';
 import { Orchestrator } from '../../orchestrator/orchestrator';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { toUniversalFromKeypair } from '../signer';
-import { createWalletClient, http } from 'viem';
+import { createWalletClient, getAddress, http } from 'viem';
 import { CHAIN_INFO } from '../../constants/chain';
 import { convertOriginToExecutor } from './account';
 
@@ -89,6 +89,96 @@ describe('Universal Account Utilities', () => {
       );
       expect(address3.address).toBe(address2.address);
     });
+  });
+
+  describe('convertExecutorToOrigin()', () => {
+    it('Solana: should return valid origin data for a UEA address', async () => {
+      const testAddress = '0xc16a585b95810F7D204620bb3677F73243242A8F';
+
+      const result = await PushChain.utils.account.convertExecutorToOrigin(
+        testAddress
+      );
+
+      // Validate the result structure - should be a tuple [account, isUEA]
+      expect(result).toHaveProperty('account');
+      expect(result).toHaveProperty('isUEA');
+
+      const { account, isUEA } = result;
+
+      // Validate the account object structure
+      expect(account).toEqual({
+        chain: CHAIN.SOLANA_DEVNET,
+        address: 'FNDJWigdNWsmxXYGrFV2gCvioLYwXnsVxZ4stL33wFHf',
+      });
+
+      // Validate isUEA flag
+      expect(isUEA).toBe(true);
+    }, 30000); // 30 second timeout for network call
+
+    it('Ethereum: should return valid origin data for a UEA address', async () => {
+      const testAddress = '0xea3Eff68C6Ac7e91dDf975643bc6747b30aC1355';
+
+      const result = await PushChain.utils.account.convertExecutorToOrigin(
+        testAddress
+      );
+
+      // Validate the result structure - should be a tuple [account, isUEA]
+      expect(result).toHaveProperty('account');
+      expect(result).toHaveProperty('isUEA');
+
+      const { account, isUEA } = result;
+
+      // Validate the account object structure
+      expect(account).toEqual({
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+        address: getAddress('0xfd6c2fe69be13d8be379ccb6c9306e74193ec1a9'),
+      });
+
+      // Validate isUEA flag
+      expect(isUEA).toBe(true);
+    }, 30000); // 30 second timeout for network call
+
+    it('Push Address WITH transactions: should return valid origin data for a UEA address', async () => {
+      // Push Address that has transactions on it
+      const testAddress = '0xFd6C2fE69bE13d8bE379CCB6c9306e74193EC1A9';
+
+      const result = await PushChain.utils.account.convertExecutorToOrigin(
+        testAddress
+      );
+
+      // Validate the result structure - should be a tuple [account, isUEA]
+      expect(result).toHaveProperty('account');
+      expect(result).toHaveProperty('isUEA');
+
+      const { account, isUEA } = result;
+
+      // Validate the account object structure
+      expect(account).toEqual(null);
+
+      // Validate isUEA flag
+      expect(isUEA).toBe(false);
+    }, 30000); // 30 second timeout for network call
+
+    it('Random Push Address WITHOUT transactions: should handle non-UEA addresses gracefully', async () => {
+      // Ran
+      const testAddress =
+        '0x0000000000000000000000000000000000000001' as `0x${string}`;
+
+      const result = await PushChain.utils.account.convertExecutorToOrigin(
+        testAddress
+      );
+
+      const { account, isUEA } = result;
+
+      expect(account).toEqual(null);
+
+      expect(isUEA).toBe(false);
+
+      // Validate the result structure - should be a tuple [account, isUEA]
+      expect(result).toHaveProperty('account');
+      expect(result).toHaveProperty('isUEA');
+
+    }, 30000); // 30 second timeout for network call
   });
 
   describe('convertOriginToExecutor() - Direct Tests', () => {

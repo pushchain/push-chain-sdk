@@ -409,16 +409,25 @@ const txValidator = async (
 describe('UniversalTxReceipt Type Validation', () => {
   const pushNetwork = PUSH_NETWORK.TESTNET_DONUT;
   const to = '0x35B84d6848D16415177c64D64504663b998A6ab4';
-  let from: `0x${string}`;
+  let fromEVM: `0x${string}`;
+  let fromSolana: string;
   let universalSignerPush: UniversalSigner;
   let universalSignerSepolia: UniversalSigner;
+  let universalSignerSolana: UniversalSigner;
   let pushClientPush: PushChain;
   let pushClientSepolia: PushChain;
+  let pushClientSolana: PushChain;
 
   beforeAll(async () => {
-    const privateKey = process.env['EVM_PRIVATE_KEY'] as `0x${string}`;
+    const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
+    const privateKeySolanaBase58 = process.env['SOLANA_PRIVATE_KEY'];
+    if (!privateKeySolanaBase58) throw new Error('SOLANA_PRIVATE_KEY not set');
+    const privateKeySolana = bs58.decode(privateKeySolanaBase58);
     if (!privateKey) throw new Error('EVM_PRIVATE_KEY not set');
-    from = privateKeyToAccount(privateKey).address;
+    if (!privateKeySolana) throw new Error('SOLANA_PRIVATE_KEY not set');
+    const accountSolana = Keypair.fromSecretKey(privateKeySolana);
+    fromEVM = privateKeyToAccount(privateKey).address;
+    fromSolana = accountSolana.publicKey.toBase58();
     const account = privateKeyToAccount(privateKey);
     const walletClientPush = createWalletClient({
       account,
@@ -436,10 +445,20 @@ describe('UniversalTxReceipt Type Validation', () => {
     universalSignerSepolia = await PushChain.utils.signer.toUniversal(
       walletClientSepolia
     );
+    universalSignerSolana = await PushChain.utils.signer.toUniversalFromKeypair(
+      accountSolana,
+      {
+        chain: CHAIN.SOLANA_DEVNET,
+        library: PushChain.CONSTANTS.LIBRARY.SOLANA_WEB3JS,
+      }
+    );
     pushClientPush = await PushChain.initialize(universalSignerPush, {
       network: pushNetwork,
     });
     pushClientSepolia = await PushChain.initialize(universalSignerSepolia, {
+      network: pushNetwork,
+    });
+    pushClientSolana = await PushChain.initialize(universalSignerSolana, {
       network: pushNetwork,
     });
   });
@@ -454,12 +473,19 @@ describe('UniversalTxReceipt Type Validation', () => {
         to,
         value: BigInt(1000),
       });
+      const txSolana = await pushClientSolana.universal.sendTransaction({
+        to,
+        value: BigInt(1000),
+      });
+      await new Promise((resolve) => setTimeout(resolve, 500));
       await txPush.wait();
       await txSepolia.wait();
+      await txSolana.wait();
 
       // Use the existing txValidator function with skipAddressValidation
-      await txValidator(txPush, from, to);
-      await txValidator(txSepolia, from, to);
+      await txValidator(txPush, fromEVM, to);
+      await txValidator(txSepolia, fromEVM, to);
+      await txValidator(txSolana, fromSolana, to);
     }, 60000);
 
     it('should have valid origin field format', async () => {
@@ -471,24 +497,36 @@ describe('UniversalTxReceipt Type Validation', () => {
         to,
         value: BigInt(100),
       });
+      const txSolana = await pushClientSolana.universal.sendTransaction({
+        to,
+        value: BigInt(100),
+      });
 
       await txPush.wait();
       await txSepolia.wait();
+      await txSolana.wait();
 
       // Use txValidator for comprehensive validation (includes origin format validation)
-      await txValidator(txPush, from, to);
-      await txValidator(txSepolia, from, to);
+      await txValidator(txPush, fromEVM, to);
+      await txValidator(txSepolia, fromEVM, to);
+      await txValidator(txSolana, fromSolana, to);
 
       // Additional specific origin content validations
       expect(txPush.origin).toContain('eip155'); // EVM namespace
       expect(txSepolia.origin).toContain('eip155'); // EVM namespace
+      expect(txSolana.origin).toContain('solana'); // Solana namespace
       expect(txPush.origin).toContain('42101'); // Push chain ID
       expect(txSepolia.origin).toContain('11155111'); // Push chain ID
+      expect(txSolana.origin).toContain('EtWTRABZaYq6iMfeYKouRu166VU2xqa1'); // Push chain ID
       expect(txPush.origin).toContain(txPush.from);
       expect(txSepolia.origin).not.toContain(txSepolia.from);
+      expect(txSolana.origin).not.toContain(txSolana.from);
       expect(txPush.origin).toContain(universalSignerPush.account.address);
       expect(txSepolia.origin.toLowerCase()).toContain(
         universalSignerSepolia.account.address.toLowerCase()
+      );
+      expect(txSolana.origin.toLowerCase()).toContain(
+        universalSignerSolana.account.address.toLowerCase()
       );
     }, 60000);
 
@@ -496,21 +534,19 @@ describe('UniversalTxReceipt Type Validation', () => {
       const testTo = '0x35B84d6848D16415177c64D64504663b998A6ab4';
       const testValue = BigInt(300);
       const testData = '0x1234';
-      const tx = await pushClientPush.universal.sendTransaction({
+      const txPush = await pushClientPush.universal.sendTransaction({
         to: testTo,
         value: testValue,
         data: testData,
       });
-
-      // Use txValidator for comprehensive validation (includes raw data validation)
-      await txValidator(tx, from, to);
+      await txValidator(txPush, fromEVM, to);
 
       // Additional specific raw data validations
-      if (tx.raw) {
-        expect(tx.raw.to).toBe(testTo);
-        expect(tx.raw.value).toBe(testValue);
-        expect(tx.raw.data).toBe(testData);
-        expect(tx.raw.from).toBe(universalSignerPush.account.address);
+      if (txPush.raw) {
+        expect(txPush.raw.to).toBe(testTo);
+        expect(txPush.raw.value).toBe(testValue);
+        expect(txPush.raw.data).toBe(testData);
+        expect(txPush.raw.from).toBe(universalSignerPush.account.address);
       }
     }, 60000);
 

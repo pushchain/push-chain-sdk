@@ -818,21 +818,16 @@ export class Orchestrator {
       value: bigint;
     };
 
-    const ueaOrigin = await PushChain.utils.helpers.getOriginForUEA(
+    const ueaOrigin = await PushChain.utils.account.convertExecutorToOrigin(
       tx.to as `0x${string}`
     );
-    const [account, isUEA] = ueaOrigin;
     let originAddress: string;
 
-    if (isUEA) {
-      // For SVM, the account.owner is a hex encoded of the solana public key, convert to base58 format
-      if (account.chainNamespace === VM_NAMESPACE[VM.SVM]) {
-        // Convert hex-encoded owner to base58 address format
-        const hexBytes = hexToBytes(account.owner);
-        originAddress = utils.bytes.bs58.encode(hexBytes);
-      } else {
-        originAddress = getAddress(account.owner as `0x${string}`);
+    if (ueaOrigin.isUEA) {
+      if (!ueaOrigin.account) {
+        throw new Error('UEA origin account is null');
       }
+      originAddress = ueaOrigin.account.address;
       from = getAddress(tx.to as `0x${string}`);
 
       let decoded;
