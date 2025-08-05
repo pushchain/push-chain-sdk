@@ -1,3 +1,9 @@
+@pushchain/core@0.3.0 (2025-08-05)
+
+- feat: enhance transaction handling and origin fetching
+
+---
+
 @pushchain/core@0.2.0 (2025-08-01)
 
 - feat: New response type (#180)
