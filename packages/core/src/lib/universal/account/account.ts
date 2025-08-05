@@ -1,11 +1,23 @@
-import { bytesToHex, getAddress, Abi } from 'viem';
-import { CHAIN_INFO, VM_NAMESPACE } from '../../constants/chain';
+import {
+  bytesToHex,
+  getAddress,
+  Abi,
+  http,
+  createPublicClient,
+  hexToBytes,
+} from 'viem';
+import {
+  CHAIN_INFO,
+  PUSH_CHAIN_INFO,
+  VM_NAMESPACE,
+} from '../../constants/chain';
 import { CHAIN, VM, PUSH_NETWORK } from '../../constants/enums';
 import { UniversalAccount } from '../universal.types';
 import { utils } from '@coral-xyz/anchor';
 import { FACTORY_V1 } from '../../constants/abi';
 import { PushClient } from '../../push-client/push-client';
 import { Cache, CacheKeys } from '../../cache/cache';
+import { PushChain } from '../../push-chain/push-chain';
 
 /**
  * Formats a blockchain address based on the virtual machine type of the provided chain.
@@ -266,6 +278,52 @@ export async function convertOriginToExecutor(
     return { address: computedAddress, deployed: isDeployed };
   }
   return { address: computedAddress };
+}
+
+export async function convertExecutorToOrigin(
+  ueaAddress: `0x${string}`
+): Promise<{ account: UniversalAccount | null; isUEA: boolean }> {
+  const RPC_URL = PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
+  const FACTORY_ADDRESS =
+    PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].factoryAddress;
+
+  // Create viem public client
+  const client = createPublicClient({
+    transport: http(RPC_URL),
+  });
+
+  const originResult = (await client.readContract({
+    address: FACTORY_ADDRESS,
+    abi: FACTORY_V1,
+    functionName: 'getOriginForUEA',
+    args: [ueaAddress],
+  })) as [
+    { chainNamespace: string; chainId: string; owner: `0x${string}` },
+    boolean
+  ];
+
+  const [account, isUEA] = originResult;
+
+  if (
+    account.chainNamespace === '' ||
+    account.chainId === '' ||
+    account.owner === '0x'
+  ) {
+    return { account: null, isUEA };
+  }
+
+  const universalAccount = PushChain.utils.account.fromChainAgnostic(
+    `${account.chainNamespace}:${account.chainId}:${account.owner}`
+  );
+  if (isUEA) {
+    if (universalAccount.chain.startsWith(VM_NAMESPACE[VM.SVM])) {
+      // Convert hex-encoded owner to base58 address format
+      const hexBytes = hexToBytes(account.owner);
+      universalAccount.address = utils.bytes.bs58.encode(hexBytes);
+    }
+  }
+
+  return { account: universalAccount, isUEA };
 }
 
 function isPushChain(chain: CHAIN): boolean {
