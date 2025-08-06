@@ -135,18 +135,11 @@ export class PushChain {
   }
 
   /**
-   * @method initialize
-   * Initializes the PushChain SDK with a universal signer and optional config.
-   *
-   * @param universalSigner
-   * @param options - Optional settings to configure the SDK instance.
-   *   - network: PushChain network to target (e.g., TESTNET_DONUT, MAINNET).
-   *   - rpcUrls: Custom RPC URLs mapped by chain IDs.
-   *   - printTraces: Whether to print internal trace logs for debugging.
-   *
-   * @returns An initialized instance of PushChain.
+   * @private
+   * Internal method to create a PushChain instance with the given parameters.
+   * Used by both initialize and reinitialize methods to avoid code duplication.
    */
-  static initialize = async (
+  private static async createInstance(
     universalSigner: UniversalSigner | UniversalAccount,
     options?: {
       network: PUSH_NETWORK;
@@ -155,7 +148,7 @@ export class PushChain {
       printTraces?: boolean;
       progressHook?: (progress: ProgressEvent) => void;
     }
-  ): Promise<PushChain> => {
+  ): Promise<PushChain> {
     const isReadOnly = isUniversalAccount(universalSigner);
 
     // If it's a UniversalAccount (read-only), create a dummy signer for the orchestrator
@@ -192,5 +185,55 @@ export class PushChain {
       blockExplorers,
       isReadOnly
     );
+  }
+
+  /**
+   * @method initialize
+   * Initializes the PushChain SDK with a universal signer and optional config.
+   *
+   * @param universalSigner
+   * @param options - Optional settings to configure the SDK instance.
+   *   - network: PushChain network to target (e.g., TESTNET_DONUT, MAINNET).
+   *   - rpcUrls: Custom RPC URLs mapped by chain IDs.
+   *   - printTraces: Whether to print internal trace logs for debugging.
+   *
+   * @returns An initialized instance of PushChain.
+   */
+  static initialize = async (
+    universalSigner: UniversalSigner | UniversalAccount,
+    options?: {
+      network: PUSH_NETWORK;
+      rpcUrls?: Partial<Record<CHAIN, string[]>>;
+      blockExplorers?: Partial<Record<CHAIN, string[]>>;
+      printTraces?: boolean;
+      progressHook?: (progress: ProgressEvent) => void;
+    }
+  ): Promise<PushChain> => {
+    return PushChain.createInstance(universalSigner, options);
+  };
+
+  /**
+   * @method reinitialize
+   * Reinitializes the PushChain SDK with a new universal signer and optional config.
+   *
+   * @param universalSigner
+   * @param options - Optional settings to configure the SDK instance.
+   *   - network: PushChain network to target (e.g., TESTNET_DONUT, MAINNET).
+   *   - rpcUrls: Custom RPC URLs mapped by chain IDs.
+   *   - printTraces: Whether to print internal trace logs for debugging.
+   *
+   * @returns A new initialized instance of PushChain.
+   */
+  reinitialize = async (
+    universalSigner: UniversalSigner | UniversalAccount,
+    options?: {
+      network: PUSH_NETWORK;
+      rpcUrls?: Partial<Record<CHAIN, string[]>>;
+      blockExplorers?: Partial<Record<CHAIN, string[]>>;
+      printTraces?: boolean;
+      progressHook?: (progress: ProgressEvent) => void;
+    }
+  ): Promise<PushChain> => {
+    return PushChain.createInstance(universalSigner, options);
   };
 }
