@@ -13,7 +13,7 @@
 
 <h4 align="center">
 
-  <a href="https://discord.com/invite/pushprotocol">
+  <a href="https://discord.com/invite/pushchain">
     <img src="https://img.shields.io/badge/discord-7289da.svg?style=flat-square" alt="discord">
   </a>
   <a href="https://twitter.com/pushprotocol">
@@ -44,7 +44,7 @@ Click on the packages to view more details.
 - **[Website](https://push.org)** To checkout our Product.
 - **[Docs](https://docs.push.org/developers/)** For comprehensive documentation.
 - **[Blog](https://medium.com/push-protocol)** To learn more about our partners, new launches, etc.
-- **[Discord](https://discord.com/invite/pushprotocol)** for support and discussions with the community and the team.
+- **[Discord](https://discord.com/invite/pushchain)** for support and discussions with the community and the team.
 - **[GitHub](https://github.com/push-protocol)** for source code, project board, issues, and pull requests.
 - **[Twitter](https://twitter.com/pushprotocol)** for the latest updates on the product and published blogs.
 
@@ -61,7 +61,7 @@ Push Protocol is an open source Project. We firmly believe in a completely trans
 
 Not sure where to start? Join our discord and we will help you get started!
 
-<a href="https://discord.com/invite/pushprotocol" title="Join Our Community"><img src="https://www.freepnglogos.com/uploads/discord-logo-png/playerunknown-battlegrounds-bgparty-15.png" width="200" alt="Discord" /></a>
+<a href="https://discord.com/invite/pushchain" title="Join Our Community"><img src="https://www.freepnglogos.com/uploads/discord-logo-png/playerunknown-battlegrounds-bgparty-15.png" width="200" alt="Discord" /></a>
 
 ## Licenses
 
