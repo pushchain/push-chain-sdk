@@ -3,11 +3,23 @@ import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
 import { CHAIN_INFO } from '../constants/chain';
 import { Orchestrator } from '../orchestrator/orchestrator';
 import { createUniversalSigner } from '../universal/signer';
-import { UniversalSigner } from '../universal/universal.types';
+import {
+  UniversalAccount,
+  UniversalSigner,
+} from '../universal/universal.types';
 import { Utils } from '../utils';
 import { utils } from '@coral-xyz/anchor';
 import { bytesToHex, TypedData, TypedDataDomain } from 'viem';
 import { ProgressEvent } from '../progress-hook/progress-hook.types';
+
+/**
+ * Helper function to check if input is UniversalAccount (read-only) or UniversalSigner
+ */
+function isUniversalAccount(
+  input: UniversalSigner | UniversalAccount
+): input is UniversalAccount {
+  return !('signMessage' in input) && !('signAndSendTransaction' in input);
+}
 
 /**
  * @class PushChain
@@ -16,6 +28,7 @@ import { ProgressEvent } from '../progress-hook/progress-hook.types';
  * Provides access to cross-chain execution, utilities, and signer abstraction.
  */
 export class PushChain {
+  private isReadOnly: boolean;
   /**
    * @static
    * Constants for the PushChain SDK.
@@ -68,9 +81,11 @@ export class PushChain {
   private constructor(
     private orchestrator: Orchestrator,
     private universalSigner: UniversalSigner,
-    private blockExplorers: Partial<Record<CHAIN, string[]>>
+    private blockExplorers: Partial<Record<CHAIN, string[]>>,
+    isReadOnly: boolean
   ) {
     this.orchestrator = orchestrator;
+    this.isReadOnly = isReadOnly;
 
     this.universal = {
       get origin() {
@@ -79,8 +94,18 @@ export class PushChain {
       get account() {
         return orchestrator.computeUEAOffchain();
       },
-      sendTransaction: orchestrator.execute.bind(orchestrator),
+      sendTransaction: (...args) => {
+        if (this.isReadOnly) {
+          throw new Error(
+            'Read only mode cannot call sendTransaction function'
+          );
+        }
+        return orchestrator.execute.bind(orchestrator)(...args);
+      },
       signMessage: async (data: Uint8Array) => {
+        if (this.isReadOnly) {
+          throw new Error('Read only mode cannot call signMessage function');
+        }
         const sigBytes = await universalSigner.signMessage(data);
         const chain = universalSigner.account.chain;
         if (CHAIN_INFO[chain].vm === VM.EVM) {
@@ -122,7 +147,7 @@ export class PushChain {
    * @returns An initialized instance of PushChain.
    */
   static initialize = async (
-    universalSigner: UniversalSigner,
+    universalSigner: UniversalSigner | UniversalAccount,
     options?: {
       network: PUSH_NETWORK;
       rpcUrls?: Partial<Record<CHAIN, string[]>>;
@@ -131,7 +156,23 @@ export class PushChain {
       progressHook?: (progress: ProgressEvent) => void;
     }
   ): Promise<PushChain> => {
-    const validatedUniversalSigner = createUniversalSigner(universalSigner);
+    const isReadOnly = isUniversalAccount(universalSigner);
+
+    // If it's a UniversalAccount (read-only), create a dummy signer for the orchestrator
+    const validatedUniversalSigner = isReadOnly
+      ? createUniversalSigner({
+          account: universalSigner,
+          signMessage: async () => {
+            throw new Error('Read only mode cannot call signMessage function');
+          },
+          signAndSendTransaction: async () => {
+            throw new Error(
+              'Read only mode cannot call signAndSendTransaction function'
+            );
+          },
+        })
+      : createUniversalSigner(universalSigner as UniversalSigner);
+
     const blockExplorers = options?.blockExplorers ?? {
       [CHAIN.PUSH_TESTNET_DONUT]: ['https://donut.push.network'],
     };
@@ -148,7 +189,8 @@ export class PushChain {
     return new PushChain(
       orchestrator,
       validatedUniversalSigner,
-      blockExplorers
+      blockExplorers,
+      isReadOnly
     );
   };
 }
