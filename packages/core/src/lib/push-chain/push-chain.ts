@@ -28,7 +28,7 @@ function isUniversalAccount(
  * Provides access to cross-chain execution, utilities, and signer abstraction.
  */
 export class PushChain {
-  private isReadOnly: boolean;
+  public isReadMode: boolean;
   /**
    * @static
    * Constants for the PushChain SDK.
@@ -82,10 +82,10 @@ export class PushChain {
     private orchestrator: Orchestrator,
     private universalSigner: UniversalSigner,
     private blockExplorers: Partial<Record<CHAIN, string[]>>,
-    isReadOnly: boolean
+    isReadMode: boolean
   ) {
     this.orchestrator = orchestrator;
-    this.isReadOnly = isReadOnly;
+    this.isReadMode = isReadMode;
 
     this.universal = {
       get origin() {
@@ -95,7 +95,7 @@ export class PushChain {
         return orchestrator.computeUEAOffchain();
       },
       sendTransaction: (...args) => {
-        if (this.isReadOnly) {
+        if (this.isReadMode) {
           throw new Error(
             'Read only mode cannot call sendTransaction function'
           );
@@ -103,7 +103,7 @@ export class PushChain {
         return orchestrator.execute.bind(orchestrator)(...args);
       },
       signMessage: async (data: Uint8Array) => {
-        if (this.isReadOnly) {
+        if (this.isReadMode) {
           throw new Error('Read only mode cannot call signMessage function');
         }
         const sigBytes = await universalSigner.signMessage(data);
