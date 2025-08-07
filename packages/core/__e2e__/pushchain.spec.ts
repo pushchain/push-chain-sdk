@@ -69,6 +69,35 @@ describe('PushChain (e2e)', () => {
         ).rejects.toThrow();
       }, 30000);
 
+      it('should fail to send universal.sendTransaction with fundGas property', async () => {
+        await expect(
+          pushClient.universal.sendTransaction({
+            to,
+            value: BigInt(1e3),
+            fundGas: {
+              chainToken: '0x1234567890123456789012345678901234567890',
+            },
+          })
+        ).rejects.toThrow(
+          'fundGas must not be set. Custom token gas funding is not yet supported.'
+        );
+      }, 30000);
+
+      it('should successfully send universal.sendTransaction without fundGas (default behavior)', async () => {
+        const tx = await pushClient.universal.sendTransaction({
+          to,
+          value: BigInt(1e3),
+          // fundGas not provided - should work fine
+        });
+        expect(tx).toBeDefined();
+        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        await txValidator(
+          tx,
+          pushClient.universal.origin.address as `0x${string}`,
+          to
+        );
+      }, 300000);
+
       it('should successfully sendTransaction - Transfer Call', async () => {
         const tx = await pushClient.universal.sendTransaction({
           to,
@@ -120,6 +149,18 @@ describe('PushChain (e2e)', () => {
       });
     });
 
+    it('should fail to send universal.sendTransaction with fundGas property from Push origin', async () => {
+      await expect(
+        pushClient.universal.sendTransaction({
+          to,
+          value: BigInt(2),
+          fundGas: { chainToken: '0x1234567890123456789012345678901234567890' },
+        })
+      ).rejects.toThrow(
+        'fundGas must not be set. Custom token gas funding is not yet supported.'
+      );
+    }, 30000);
+
     it('should sendTransaction', async () => {
       const from = pushClient.universal.account;
       const tx = await pushClient.universal.sendTransaction({
@@ -138,7 +179,7 @@ describe('PushChain (e2e)', () => {
         const privateKeyHex = process.env['SOLANA_PRIVATE_KEY'];
         if (!privateKeyHex) throw new Error('SOLANA_PRIVATE_KEY not set');
 
-        const privateKey = Uint8Array.from(Buffer.from(privateKeyHex, 'hex'));
+        const privateKey = bs58.decode(privateKeyHex);
 
         const account = Keypair.fromSecretKey(privateKey);
 
@@ -166,6 +207,20 @@ describe('PushChain (e2e)', () => {
             value: BigInt(1e1),
           })
         ).rejects.toThrow();
+      }, 30000);
+
+      it('should fail to send universal.sendTransaction with fundGas property from Solana origin', async () => {
+        await expect(
+          pushClient.universal.sendTransaction({
+            to,
+            value: BigInt(1e1),
+            fundGas: {
+              chainToken: '0x1234567890123456789012345678901234567890',
+            },
+          })
+        ).rejects.toThrow(
+          'fundGas must not be set. Custom token gas funding is not yet supported.'
+        );
       }, 30000);
 
       it('should successfully send universal.sendTransaction', async () => {
@@ -277,7 +332,7 @@ describe('Deploy UEA on Push Testnet Edge Cases', () => {
     // Try to send a transaction from that random address. Use walletClientWithPushTokens to send the 2 push tokens to Universal.account address
     const hashPushTokens = await walletClientWithPushTokens.sendTransaction({
       to: universalOrigin.address,
-      value: PushChain.utils.helpers.parseUnits('2', 18),
+      value: PushChain.utils.helpers.parseUnits('0.0003', 18),
     });
     // Wait for the transaction to be mined
     await publicClientPush.waitForTransactionReceipt({
@@ -287,7 +342,7 @@ describe('Deploy UEA on Push Testnet Edge Cases', () => {
     // Try to send Sepolia ETH to random generated address
     const hashSepoliaTokens = await walletClientSepoliaTokens.sendTransaction({
       to: randomAccount.address,
-      value: PushChain.utils.helpers.parseUnits('0.07', 18),
+      value: PushChain.utils.helpers.parseUnits('0.0000001', 18),
     });
     // Wait for transaction to bbe mined
     await publicClientSepolia.waitForTransactionReceipt({
@@ -299,17 +354,17 @@ describe('Deploy UEA on Push Testnet Edge Cases', () => {
       address: pushChainClient.universal.account,
     });
     console.log('Balance after Push', balanceAfterPush);
-    expect(balanceAfterPush).toBe(BigInt('2000000000000000000'));
+    expect(balanceAfterPush).toBe(BigInt('300000000000000'));
     const balanceAfterSepolia = await publicClientSepolia.getBalance({
       address: randomAccount.address,
     });
     console.log('Balance after Sepolia', balanceAfterSepolia);
-    expect(balanceAfterSepolia).toBe(BigInt('70000000000000000'));
+    expect(balanceAfterSepolia).toBe(BigInt('100000000000'));
 
     // Try to send a transaction from that random address. Use walletClientWithPushTokens to send the 2 push tokens to Universal.account address
-    const tx = await pushChainClient.universal.sendTransaction({
+    const tx = await walletClientWithPushTokens.sendTransaction({
       to: universalOrigin.address,
-      value: PushChain.utils.helpers.parseUnits('0.05', 18),
+      value: PushChain.utils.helpers.parseUnits('0.000000001', 18),
     });
     expect(tx).toBeDefined();
   }, 100000);
