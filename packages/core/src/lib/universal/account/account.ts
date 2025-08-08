@@ -12,7 +12,11 @@ import {
   VM_NAMESPACE,
 } from '../../constants/chain';
 import { CHAIN, VM, PUSH_NETWORK } from '../../constants/enums';
-import { UniversalAccount } from '../universal.types';
+import {
+  ExecutorAccountInfo,
+  OriginAccountInfo,
+  UniversalAccount,
+} from '../universal.types';
 import { utils } from '@coral-xyz/anchor';
 import { FACTORY_V1 } from '../../constants/abi';
 import { PushClient } from '../../push-client/push-client';
@@ -178,10 +182,7 @@ export async function convertOriginToExecutor(
   options: {
     onlyCompute?: boolean;
   } = { onlyCompute: true }
-): Promise<{
-  address: `0x${string}`;
-  deployed?: boolean;
-}> {
+): Promise<ExecutorAccountInfo> {
   const { chain, address } = account;
   const { vm, chainId } = CHAIN_INFO[chain];
 
@@ -280,9 +281,15 @@ export async function convertOriginToExecutor(
   return { address: computedAddress };
 }
 
-export async function convertExecutorToOrigin(
+/**
+ * Convert Executor to Origin Account
+ *
+ * Given a UEA (executor) address on Push Chain, returns the mapped origin
+ * account and an existence flag.
+ */
+export async function convertExecutorToOriginAccount(
   ueaAddress: `0x${string}`
-): Promise<{ account: UniversalAccount | null; isUEA: boolean }> {
+): Promise<OriginAccountInfo> {
   const RPC_URL = PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
   const FACTORY_ADDRESS =
     PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].factoryAddress;
@@ -309,7 +316,7 @@ export async function convertExecutorToOrigin(
     account.chainId === '' ||
     account.owner === '0x'
   ) {
-    return { account: null, isUEA };
+    return { account: null, exists: isUEA };
   }
 
   const universalAccount = PushChain.utils.account.fromChainAgnostic(
@@ -323,7 +330,7 @@ export async function convertExecutorToOrigin(
     }
   }
 
-  return { account: universalAccount, isUEA };
+  return { account: universalAccount, exists: isUEA };
 }
 
 function isPushChain(chain: CHAIN): boolean {
