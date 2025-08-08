@@ -9,6 +9,7 @@ import {
   createWalletClient,
   defineChain,
   Hex,
+  hexToBytes,
   http,
 } from 'viem';
 import { Keypair } from '@solana/web3.js';
@@ -287,7 +288,7 @@ describe('Deploy UEA on Push Testnet Edge Cases', () => {
     // Try to send Sepolia ETH to random generated address
     const hashSepoliaTokens = await walletClientSepoliaTokens.sendTransaction({
       to: randomAccount.address,
-      value: PushChain.utils.helpers.parseUnits('0.07', 18),
+      value: PushChain.utils.helpers.parseUnits('0.7', 14),
     });
     // Wait for transaction to bbe mined
     await publicClientSepolia.waitForTransactionReceipt({
@@ -304,12 +305,12 @@ describe('Deploy UEA on Push Testnet Edge Cases', () => {
       address: randomAccount.address,
     });
     console.log('Balance after Sepolia', balanceAfterSepolia);
-    expect(balanceAfterSepolia).toBe(BigInt('70000000000000000'));
+    expect(balanceAfterSepolia).toBe(BigInt('70000000000000'));
 
     // Try to send a transaction from that random address. Use walletClientWithPushTokens to send the 2 push tokens to Universal.account address
     const tx = await pushChainClient.universal.sendTransaction({
       to: universalOrigin.address,
-      value: PushChain.utils.helpers.parseUnits('0.05', 18),
+      value: PushChain.utils.helpers.parseUnits('0.05', 10),
     });
     expect(tx).toBeDefined();
   }, 100000);
@@ -410,6 +411,7 @@ describe('UniversalTxReceipt Type Validation', () => {
   const pushNetwork = PUSH_NETWORK.TESTNET_DONUT;
   const to = '0x35B84d6848D16415177c64D64504663b998A6ab4';
   let fromEVM: `0x${string}`;
+  let fromPush: `0x${string}`;
   let fromSolana: string;
   let universalSignerPush: UniversalSigner;
   let universalSignerSepolia: UniversalSigner;
@@ -419,22 +421,25 @@ describe('UniversalTxReceipt Type Validation', () => {
   let pushClientSolana: PushChain;
 
   beforeAll(async () => {
-    const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
-    const privateKeySolanaBase58 = process.env['SOLANA_PRIVATE_KEY'];
-    if (!privateKeySolanaBase58) throw new Error('SOLANA_PRIVATE_KEY not set');
-    const privateKeySolana = bs58.decode(privateKeySolanaBase58);
-    if (!privateKey) throw new Error('EVM_PRIVATE_KEY not set');
+    const privateKeyEVM = process.env['EVM_PRIVATE_KEY'] as Hex;
+    if (!privateKeyEVM) throw new Error('EVM_PRIVATE_KEY not set');
+    const privateKeyPush = process.env['PUSH_PRIVATE_KEY'] as Hex;
+    if (!privateKeyPush) throw new Error('EVM_PRIVATE_KEY not set');
+    const privateKeySolana = process.env['SOLANA_PRIVATE_KEY'];
     if (!privateKeySolana) throw new Error('SOLANA_PRIVATE_KEY not set');
-    const accountSolana = Keypair.fromSecretKey(privateKeySolana);
-    fromEVM = privateKeyToAccount(privateKey).address;
+    const accountSolana = Keypair.fromSecretKey(
+      hexToBytes(`0x${privateKeySolana}`)
+    );
+    fromEVM = privateKeyToAccount(privateKeyEVM).address;
+    fromPush = privateKeyToAccount(privateKeyPush).address;
     fromSolana = accountSolana.publicKey.toBase58();
-    const account = privateKeyToAccount(privateKey);
+
     const walletClientPush = createWalletClient({
-      account,
+      account: privateKeyToAccount(privateKeyPush),
       transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET].defaultRPC[0]),
     });
     const walletClientSepolia = createWalletClient({
-      account,
+      account: privateKeyToAccount(privateKeyEVM),
       chain: sepolia,
       transport: http(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0]),
     });
@@ -483,7 +488,7 @@ describe('UniversalTxReceipt Type Validation', () => {
       await txSolana.wait();
 
       // Use the existing txValidator function with skipAddressValidation
-      await txValidator(txPush, fromEVM, to);
+      await txValidator(txPush, fromPush, to);
       await txValidator(txSepolia, fromEVM, to);
       await txValidator(txSolana, fromSolana, to);
     }, 60000);
@@ -507,7 +512,7 @@ describe('UniversalTxReceipt Type Validation', () => {
       await txSolana.wait();
 
       // Use txValidator for comprehensive validation (includes origin format validation)
-      await txValidator(txPush, fromEVM, to);
+      await txValidator(txPush, fromPush, to);
       await txValidator(txSepolia, fromEVM, to);
       await txValidator(txSolana, fromSolana, to);
 
@@ -539,7 +544,7 @@ describe('UniversalTxReceipt Type Validation', () => {
         value: testValue,
         data: testData,
       });
-      await txValidator(txPush, fromEVM, to);
+      await txValidator(txPush, fromPush, to);
 
       // Additional specific raw data validations
       if (txPush.raw) {
