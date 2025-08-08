@@ -818,12 +818,13 @@ export class Orchestrator {
       value: bigint;
     };
 
-    const ueaOrigin = await PushChain.utils.account.convertExecutorToOrigin(
-      tx.to as `0x${string}`
-    );
+    const ueaOrigin =
+      await PushChain.utils.account.convertExecutorToOriginAccount(
+        tx.to as `0x${string}`
+      );
     let originAddress: string;
 
-    if (ueaOrigin.isUEA) {
+    if (ueaOrigin.exists) {
       if (!ueaOrigin.account) {
         throw new Error('UEA origin account is null');
       }
