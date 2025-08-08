@@ -21,7 +21,7 @@ import {
 } from '../universal/universal.types';
 import { ExecuteParams } from './orchestrator.types';
 import { EvmClient } from '../vm-client/evm-client';
-import { CHAIN_INFO, NETWORK_VM_UEA, VM_NAMESPACE } from '../constants/chain';
+import { CHAIN_INFO, UEA_PROXY, VM_NAMESPACE } from '../constants/chain';
 import {
   FACTORY_V1,
   FEE_LOCKER_EVM,
@@ -666,7 +666,7 @@ export class Orchestrator {
     // Step 2: Clone Minimal Proxy bytecode
     const minimalProxyRuntimeCode = ('0x3d602d80600a3d3981f3' +
       '363d3d373d3d3d363d73' +
-      NETWORK_VM_UEA[this.pushNetwork][vm].toLowerCase().replace(/^0x/, '') +
+      UEA_PROXY[this.pushNetwork].toLowerCase().replace(/^0x/, '') +
       '5af43d82803e903d91602b57fd5bf3') as `0x${string}`;
 
     // Step 3: Get init code hash (used by CREATE2)

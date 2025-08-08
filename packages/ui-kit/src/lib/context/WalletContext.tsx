@@ -1,6 +1,16 @@
-import React, { createContext, FC, useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  createContext,
+  FC,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { PushChain } from '@pushchain/core';
-import { PROGRESS_HOOK, ProgressEvent } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
+import {
+  PROGRESS_HOOK,
+  ProgressEvent,
+} from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
 import {
   ChainType,
   ConnectionStatus,
@@ -447,9 +457,8 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     return signature;
   };
 
-  const handleCloseIFrame = useCallback(() => {
-    
-  }, [universalAccount])
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  const handleCloseIFrame = useCallback(() => {}, [universalAccount]);
 
   useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
@@ -514,7 +523,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     level: 'SUCCESS',
     response: null,
     timestamp: '',
-  }
+  };
 
   return (
     <WalletContext.Provider
@@ -556,7 +565,9 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         toggleButtonRef={toggleButtonRef}
         sendMessageToPushWallet={sendMessageToPushWallet}
       />
-      {progress && <PushWalletToast progress={progress} setProgress={setProgress} />}
+      {progress && (
+        <PushWalletToast progress={progress} setProgress={setProgress} />
+      )}
       {children}
     </WalletContext.Provider>
   );

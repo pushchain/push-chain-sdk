@@ -87,19 +87,19 @@ describe('PushClient', () => {
   describe('PushClient Msg & Cosmos Tx Tests', () => {
     it('creates MsgDeployUEA', () => {
       const msg = client.createMsgDeployUEA(MSG_DEPLOY_UEA);
-      expect(msg.typeUrl).toBe('/ue.v1.MsgDeployUEA');
+      expect(msg.typeUrl).toBe('/uexecutor.v1.MsgDeployUEA');
       expect(msg.value.length).toBeGreaterThan(0);
     });
 
     it('creates MsgMintPC', () => {
       const msg = client.createMsgMintPC(MSG_MINT_PC);
-      expect(msg.typeUrl).toBe('/ue.v1.MsgMintPC');
+      expect(msg.typeUrl).toBe('/uexecutor.v1.MsgMintPC');
       expect(msg.value.length).toBeGreaterThan(0);
     });
 
     it('creates MsgExecutePayload', () => {
       const msg = client.createMsgExecutePayload(MSG_EXECUTE_PAYLOAD);
-      expect(msg.typeUrl).toBe('/ue.v1.MsgExecutePayload');
+      expect(msg.typeUrl).toBe('/uexecutor.v1.MsgExecutePayload');
       expect(msg.value.length).toBeGreaterThan(0);
     });
 
