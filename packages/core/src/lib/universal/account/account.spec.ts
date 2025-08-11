@@ -93,7 +93,7 @@ describe('Universal Account Utilities', () => {
 
   describe('convertExecutorToOriginAccount()', () => {
     it('Solana: should return valid origin data for a UEA address', async () => {
-      const testAddress = '0xc16a585b95810F7D204620bb3677F73243242A8F';
+      const testAddress = '0x352E88F401f34c6934F889972110BA3341a28e02';
 
       const result =
         await PushChain.utils.account.convertExecutorToOriginAccount(
@@ -117,7 +117,7 @@ describe('Universal Account Utilities', () => {
     }, 30000); // 30 second timeout for network call
 
     it('Ethereum: should return valid origin data for a UEA address', async () => {
-      const testAddress = '0xea3Eff68C6Ac7e91dDf975643bc6747b30aC1355';
+      const testAddress = '0xA3678aaCcA30e93f2f2CCa22F502CD5487d906EE';
 
       const result =
         await PushChain.utils.account.convertExecutorToOriginAccount(
@@ -133,7 +133,7 @@ describe('Universal Account Utilities', () => {
       // Validate the account object structure
       expect(account).toEqual({
         chain: CHAIN.ETHEREUM_SEPOLIA,
-        address: getAddress('0xfd6c2fe69be13d8be379ccb6c9306e74193ec1a9'),
+        address: getAddress('0xeCba9a32A9823f1cb00cdD8344Bf2D1d87a8dd97'),
       });
 
       // Validate exists flag
