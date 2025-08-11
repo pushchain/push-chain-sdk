@@ -1,3 +1,11 @@
+@pushchain/ui-kit@1.1.29 (2025-08-11)
+
+- chore: upgrade the core sdk to v1.1.29
+- release: bump to 1.1.28
+- fix: add default connected layout
+
+---
+
 @pushchain/ui-kit@1.1.28 (2025-07-30)
 
 - fix: add default connected layout
