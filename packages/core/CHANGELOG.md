@@ -1,3 +1,9 @@
+@pushchain/core@0.4.0 (2025-08-11)
+
+- feat: Add UEA proxy (migration support) + testnet module renaming (#190)
+
+---
+
 @pushchain/core@0.3.1 (2025-08-08)
 
 - refactor: rename and enhance executor-origin conversion utilities
