@@ -1,3 +1,9 @@
+@pushchain/core@1.1.29 (2025-08-11)
+
+- chore: bump core version to ui-kit
+
+---
+
 @pushchain/core@0.4.0 (2025-08-11)
 
 - feat: Add UEA proxy (migration support) + testnet module renaming (#190)
