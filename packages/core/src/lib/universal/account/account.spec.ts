@@ -91,19 +91,20 @@ describe('Universal Account Utilities', () => {
     });
   });
 
-  describe('convertExecutorToOrigin()', () => {
+  describe('convertExecutorToOriginAccount()', () => {
     it('Solana: should return valid origin data for a UEA address', async () => {
       const testAddress = '0x352E88F401f34c6934F889972110BA3341a28e02';
 
-      const result = await PushChain.utils.account.convertExecutorToOrigin(
-        testAddress
-      );
+      const result =
+        await PushChain.utils.account.convertExecutorToOriginAccount(
+          testAddress
+        );
 
-      // Validate the result structure - should be a tuple [account, isUEA]
+      // Validate the result structure - should be an object { account, exists }
       expect(result).toHaveProperty('account');
-      expect(result).toHaveProperty('isUEA');
+      expect(result).toHaveProperty('exists');
 
-      const { account, isUEA } = result;
+      const { account, exists } = result;
 
       // Validate the account object structure
       expect(account).toEqual({
@@ -111,22 +112,23 @@ describe('Universal Account Utilities', () => {
         address: 'FNDJWigdNWsmxXYGrFV2gCvioLYwXnsVxZ4stL33wFHf',
       });
 
-      // Validate isUEA flag
-      expect(isUEA).toBe(true);
+      // Validate exists flag
+      expect(exists).toBe(true);
     }, 30000); // 30 second timeout for network call
 
     it('Ethereum: should return valid origin data for a UEA address', async () => {
       const testAddress = '0xA3678aaCcA30e93f2f2CCa22F502CD5487d906EE';
 
-      const result = await PushChain.utils.account.convertExecutorToOrigin(
-        testAddress
-      );
+      const result =
+        await PushChain.utils.account.convertExecutorToOriginAccount(
+          testAddress
+        );
 
-      // Validate the result structure - should be a tuple [account, isUEA]
+      // Validate the result structure - should be an object { account, exists }
       expect(result).toHaveProperty('account');
-      expect(result).toHaveProperty('isUEA');
+      expect(result).toHaveProperty('exists');
 
-      const { account, isUEA } = result;
+      const { account, exists } = result;
 
       // Validate the account object structure
       expect(account).toEqual({
@@ -134,29 +136,30 @@ describe('Universal Account Utilities', () => {
         address: getAddress('0xeCba9a32A9823f1cb00cdD8344Bf2D1d87a8dd97'),
       });
 
-      // Validate isUEA flag
-      expect(isUEA).toBe(true);
+      // Validate exists flag
+      expect(exists).toBe(true);
     }, 30000); // 30 second timeout for network call
 
     it('Push Address WITH transactions: should return valid origin data for a UEA address', async () => {
       // Push Address that has transactions on it
       const testAddress = '0xFd6C2fE69bE13d8bE379CCB6c9306e74193EC1A9';
 
-      const result = await PushChain.utils.account.convertExecutorToOrigin(
-        testAddress
-      );
+      const result =
+        await PushChain.utils.account.convertExecutorToOriginAccount(
+          testAddress
+        );
 
-      // Validate the result structure - should be a tuple [account, isUEA]
+      // Validate the result structure - should be a object { account, exists }
       expect(result).toHaveProperty('account');
-      expect(result).toHaveProperty('isUEA');
+      expect(result).toHaveProperty('exists');
 
-      const { account, isUEA } = result;
+      const { account, exists } = result;
 
       // Validate the account object structure
       expect(account).toEqual(null);
 
-      // Validate isUEA flag
-      expect(isUEA).toBe(false);
+      // Validate exists flag
+      expect(exists).toBe(false);
     }, 30000); // 30 second timeout for network call
 
     it('Random Push Address WITHOUT transactions: should handle non-UEA addresses gracefully', async () => {
@@ -164,19 +167,20 @@ describe('Universal Account Utilities', () => {
       const testAddress =
         '0x0000000000000000000000000000000000000001' as `0x${string}`;
 
-      const result = await PushChain.utils.account.convertExecutorToOrigin(
-        testAddress
-      );
+      const result =
+        await PushChain.utils.account.convertExecutorToOriginAccount(
+          testAddress
+        );
 
-      const { account, isUEA } = result;
+      const { account, exists } = result;
 
       expect(account).toEqual(null);
 
-      expect(isUEA).toBe(false);
+      expect(exists).toBe(false);
 
-      // Validate the result structure - should be a tuple [account, isUEA]
+      // Validate the result structure - should be a object { account, exists }
       expect(result).toHaveProperty('account');
-      expect(result).toHaveProperty('isUEA');
+      expect(result).toHaveProperty('exists');
     }, 30000); // 30 second timeout for network call
   });
 
