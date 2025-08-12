@@ -1,0 +1,108 @@
+name: Auto Publish UI Kit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/ui-kit/**'
+      - '!packages/ui-kit/CHANGELOG.md'
+      - '!packages/ui-kit/README.md'
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: write
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      has-changes: ${{ steps.changes.outputs.uiKit }}
+      bump-type: ${{ steps.bump-type.outputs.type }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for ui-kit package changes
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            uiKit:
+              - 'packages/ui-kit/src/**'
+              - 'packages/ui-kit/package.json'
+              - 'packages/ui-kit/project.json'
+              - 'packages/ui-kit/tsconfig.*'
+
+      - name: Determine version bump type
+        id: bump-type
+        run: |
+          # Get the latest commit message
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "Commit message: $COMMIT_MSG"
+
+          # Determine bump type from conventional commits
+          if echo "$COMMIT_MSG" | grep -qE "^(feat|feature)(\(.+\))?!:|^[a-zA-Z]+(\(.+\))?!:|BREAKING CHANGE:"; then
+            echo "type=major" >> $GITHUB_OUTPUT
+            echo "Detected BREAKING CHANGE -> major bump"
+          elif echo "$COMMIT_MSG" | grep -qE "^feat(\(.+\))?:|^feature(\(.+\))?:"; then
+            echo "type=minor" >> $GITHUB_OUTPUT
+            echo "Detected feature -> minor bump"
+          elif echo "$COMMIT_MSG" | grep -qE "^(fix|bugfix|patch|chore|docs|style|refactor|perf|test)(\(.+\))?:"; then
+            echo "type=patch" >> $GITHUB_OUTPUT
+            echo "Detected fix/patch -> patch bump"
+          else
+            echo "type=patch" >> $GITHUB_OUTPUT
+            echo "Default -> patch bump"
+          fi
+
+  publish:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has-changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run automated release
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Use the automated release script
+          bash scripts/release-automated.sh ui-kit ${{ needs.detect-changes.outputs.bump-type }}
+
+      - name: Create GitHub Release
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get the new version and create release
+          VERSION=$(node -p "require('./packages/ui-kit/package.json').version")
+          TAG="ui-kit@$VERSION"
+
+          # Extract latest changelog
+          CHANGELOG_FILE="packages/ui-kit/CHANGELOG.md"
+          if [ -f "$CHANGELOG_FILE" ]; then
+            LATEST_NOTES=$(awk '/^---$/ { exit } { print }' "$CHANGELOG_FILE")
+            gh release create "$TAG" --title "🚀 $TAG" --notes "$LATEST_NOTES" --latest
+          else
+            gh release create "$TAG" --title "🚀 $TAG" --notes "Automated release of $TAG" --latest
+          fi
