@@ -1,3 +1,9 @@
+@pushchain/core@1.1.30 (2025-08-12)
+
+- chore: update test comment to trigger GitHub Action 9
+
+---
+
 @pushchain/core@1.1.29 (2025-08-11)
 
 - chore: bump core version to ui-kit
