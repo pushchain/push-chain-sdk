@@ -74,7 +74,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies (root)
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable --immutable-cache
 
       - name: Configure git
         run: |
