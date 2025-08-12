@@ -1,3 +1,9 @@
+@pushchain/core@1.1.31 (2025-08-12)
+
+- chore: update test comment to trigger GitHub Action 10
+
+---
+
 @pushchain/core@1.1.30 (2025-08-12)
 
 - chore: update test comment to trigger GitHub Action 9
