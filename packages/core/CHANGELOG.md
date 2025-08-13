@@ -1,3 +1,17 @@
+@pushchain/core@1.1.33 (2025-08-13)
+
+- chore: bump version to 1.1.32 and update GitHub Action test comment
+- refactor: update error messages for fundGas validation in PushChain tests and orchestrator
+- refactor: add read-only accessors for Orchestrator configuration
+- refactor: make isReadMode property public in PushChain class
+- refactor: move isUniversalAccount function to static method in PushChain class
+- release: bump to 1.1.32 [skip ci]
+- chore: Add fundGas property to sendTransaction
+- chore: add reinitialize method to PushChain for dynamic signer updates
+- patch: implement read-only mode for UniversalAccount in PushChain
+
+---
+
 @pushchain/core@1.1.31 (2025-08-12)
 
 - chore: update test comment to trigger GitHub Action 10
