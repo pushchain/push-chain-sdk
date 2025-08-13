@@ -232,6 +232,20 @@ export class PushChain {
       progressHook?: (progress: ProgressEvent) => void;
     }
   ): Promise<PushChain> => {
-    return PushChain.createInstance(universalSigner, options);
+    const mergedOptions = {
+      network: options?.network ?? this.orchestrator.getNetwork(),
+      rpcUrls: options?.rpcUrls ?? this.orchestrator.getRpcUrls(),
+      blockExplorers: options?.blockExplorers ?? this.blockExplorers,
+      printTraces: options?.printTraces ?? this.orchestrator.getPrintTraces(),
+      progressHook:
+        options?.progressHook ?? this.orchestrator.getProgressHook(),
+    } as {
+      network: PUSH_NETWORK;
+      rpcUrls?: Partial<Record<CHAIN, string[]>>;
+      blockExplorers?: Partial<Record<CHAIN, string[]>>;
+      printTraces?: boolean;
+      progressHook?: (progress: ProgressEvent) => void;
+    };
+    return PushChain.createInstance(universalSigner, mergedOptions);
   };
 }
