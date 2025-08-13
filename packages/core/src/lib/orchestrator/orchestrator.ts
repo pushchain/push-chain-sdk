@@ -108,6 +108,11 @@ export class Orchestrator {
    */
   async execute(execute: ExecuteParams): Promise<UniversalTxResponse> {
     try {
+      // Validate fundGas property - must not be set for now
+      if (execute.fundGas) {
+        throw new Error('Unsupported token');
+      }
+
       const chain = this.universalSigner.account.chain;
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_01, chain);
       this.validateMainnetConnection(chain);
