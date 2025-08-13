@@ -85,6 +85,25 @@ export class Orchestrator {
   }
 
   /**
+   * Read-only accessors for current Orchestrator configuration
+   */
+  public getNetwork(): PUSH_NETWORK {
+    return this.pushNetwork;
+  }
+
+  public getRpcUrls(): Partial<Record<CHAIN, string[]>> {
+    return this.rpcUrls;
+  }
+
+  public getPrintTraces(): boolean {
+    return this.printTraces;
+  }
+
+  public getProgressHook(): ((progress: ProgressEvent) => void) | undefined {
+    return this.progressHook;
+  }
+
+  /**
    * Executes an interaction on Push Chain
    */
   async execute(execute: ExecuteParams): Promise<UniversalTxResponse> {
