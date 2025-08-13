@@ -91,9 +91,7 @@ export class Orchestrator {
     try {
       // Validate fundGas property - must not be set for now
       if (execute.fundGas) {
-        throw new Error(
-          'fundGas must not be set. Custom token gas funding is not yet supported.'
-        );
+        throw new Error('Unsupported token');
       }
 
       const chain = this.universalSigner.account.chain;

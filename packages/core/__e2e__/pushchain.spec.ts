@@ -95,9 +95,7 @@ describe('PushChain (e2e)', () => {
               chainToken: '0x1234567890123456789012345678901234567890',
             },
           })
-        ).rejects.toThrow(
-          'fundGas must not be set. Custom token gas funding is not yet supported.'
-        );
+        ).rejects.toThrow('Unsupported token');
       }, 30000);
 
       it('should successfully send universal.sendTransaction without fundGas (default behavior)', async () => {
@@ -209,9 +207,7 @@ describe('PushChain (e2e)', () => {
           value: BigInt(2),
           fundGas: { chainToken: '0x1234567890123456789012345678901234567890' },
         })
-      ).rejects.toThrow(
-        'fundGas must not be set. Custom token gas funding is not yet supported.'
-      );
+      ).rejects.toThrow('Unsupported token');
     }, 30000);
 
     it('should sendTransaction', async () => {
@@ -271,9 +267,7 @@ describe('PushChain (e2e)', () => {
               chainToken: '0x1234567890123456789012345678901234567890',
             },
           })
-        ).rejects.toThrow(
-          'fundGas must not be set. Custom token gas funding is not yet supported.'
-        );
+        ).rejects.toThrow('Unsupported token');
       }, 30000);
 
       it('should successfully send universal.sendTransaction', async () => {
