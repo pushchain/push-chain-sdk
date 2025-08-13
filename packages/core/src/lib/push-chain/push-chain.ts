@@ -13,15 +13,6 @@ import { bytesToHex, TypedData, TypedDataDomain } from 'viem';
 import { ProgressEvent } from '../progress-hook/progress-hook.types';
 
 /**
- * Helper function to check if input is UniversalAccount (read-only) or UniversalSigner
- */
-function isUniversalAccount(
-  input: UniversalSigner | UniversalAccount
-): input is UniversalAccount {
-  return !('signMessage' in input) && !('signAndSendTransaction' in input);
-}
-
-/**
  * @class PushChain
  *
  * Entry point to interact with Push Chain in your application.
@@ -40,6 +31,15 @@ export class PushChain {
    * Utility functions for encoding, hashing, and data formatting.
    */
   public static utils = Utils;
+
+  /**
+   * Helper function to check if input is UniversalAccount (read-only) or UniversalSigner
+   */
+  private static isUniversalAccount(
+    input: UniversalSigner | UniversalAccount
+  ): input is UniversalAccount {
+    return !('signMessage' in input) && !('signAndSendTransaction' in input);
+  }
 
   /**
    * Universal namespace containing core transaction and address computation methods
@@ -149,7 +149,7 @@ export class PushChain {
       progressHook?: (progress: ProgressEvent) => void;
     }
   ): Promise<PushChain> {
-    const isReadOnly = isUniversalAccount(universalSigner);
+    const isReadOnly = PushChain.isUniversalAccount(universalSigner);
 
     // If it's a UniversalAccount (read-only), create a dummy signer for the orchestrator
     const validatedUniversalSigner = isReadOnly
