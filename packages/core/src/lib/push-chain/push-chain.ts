@@ -19,7 +19,6 @@ import { ProgressEvent } from '../progress-hook/progress-hook.types';
  * Provides access to cross-chain execution, utilities, and signer abstraction.
  */
 export class PushChain {
-  public isReadMode: boolean;
   /**
    * @static
    * Constants for the PushChain SDK.
@@ -82,10 +81,9 @@ export class PushChain {
     private orchestrator: Orchestrator,
     private universalSigner: UniversalSigner,
     private blockExplorers: Partial<Record<CHAIN, string[]>>,
-    isReadMode: boolean
+    public isReadMode: boolean
   ) {
     this.orchestrator = orchestrator;
-    this.isReadMode = isReadMode;
 
     this.universal = {
       get origin() {
