@@ -1,3 +1,9 @@
+@pushchain/ui-kit@1.1.33 (2025-08-13)
+
+- chore: update GitHub Action test comment to trigger workflow
+
+---
+
 @pushchain/ui-kit@1.1.32 (2025-08-13)
 
 - fix: fix the zIndex for the blur background
