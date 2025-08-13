@@ -1,3 +1,33 @@
+@pushchain/core@1.1.31 (2025-08-12)
+
+- chore: update test comment to trigger GitHub Action 10
+
+---
+
+@pushchain/core@1.1.30 (2025-08-12)
+
+- chore: update test comment to trigger GitHub Action 9
+
+---
+
+@pushchain/core@1.1.29 (2025-08-11)
+
+- chore: bump core version to ui-kit
+
+---
+
+@pushchain/core@0.4.0 (2025-08-11)
+
+- feat: Add UEA proxy (migration support) + testnet module renaming (#190)
+
+---
+
+@pushchain/core@0.3.1 (2025-08-08)
+
+- refactor: rename and enhance executor-origin conversion utilities
+
+---
+
 @pushchain/core@0.3.0 (2025-08-05)
 
 - feat: enhance transaction handling and origin fetching

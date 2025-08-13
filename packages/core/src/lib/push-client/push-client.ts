@@ -70,21 +70,21 @@ export class PushClient extends EvmClient {
 
   createMsgDeployUEA(input: MsgDeployUEA): Any {
     return {
-      typeUrl: '/ue.v1.MsgDeployUEA',
+      typeUrl: '/uexecutor.v1.MsgDeployUEA',
       value: MsgDeployUEA.encode(MsgDeployUEA.fromPartial(input)).finish(),
     };
   }
 
   createMsgMintPC(input: MsgMintPC): Any {
     return {
-      typeUrl: '/ue.v1.MsgMintPC',
+      typeUrl: '/uexecutor.v1.MsgMintPC',
       value: MsgMintPC.encode(MsgMintPC.fromPartial(input)).finish(),
     };
   }
 
   createMsgExecutePayload(input: MsgExecutePayload): Any {
     return {
-      typeUrl: '/ue.v1.MsgExecutePayload',
+      typeUrl: '/uexecutor.v1.MsgExecutePayload',
       value: MsgExecutePayload.encode(
         MsgExecutePayload.fromPartial(input)
       ).finish(),

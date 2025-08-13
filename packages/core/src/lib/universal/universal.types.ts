@@ -123,3 +123,31 @@ export interface UniversalSignerSkeleton {
     message: Record<string, any>;
   }) => Promise<Uint8Array>;
 }
+
+/**
+ * Response model for converting an Executor (UEA) address to its Origin account.
+ */
+export interface OriginAccountInfo {
+  /**
+   * Resolved Origin account when the executor address maps to a known UEA; otherwise null.
+   */
+  account: UniversalAccount | null;
+  /**
+   * Whether the provided executor address corresponds to a Universal Executor Account (UEA).
+   */
+  exists: boolean;
+}
+
+/**
+ * Response model for converting an Origin account to its Executor (UEA) address.
+ */
+export interface ExecutorAccountInfo {
+  /**
+   * The computed or resolved UEA address on Push Chain.
+   */
+  address: `0x${string}`;
+  /**
+   * When computed with deployment check, indicates if the UEA is deployed on-chain.
+   */
+  deployed?: boolean;
+}

@@ -34,9 +34,9 @@ export function useSmartModalPosition(
 
       const top =
         spaceBelow >= modalHeight
-          ? triggerRect.bottom - 24
+          ? triggerRect.bottom - 16
           : spaceAbove >= modalHeight
-          ? triggerRect.top - modalHeight + 24
+          ? triggerRect.top - modalHeight + 16
           : Math.max(viewportHeight - modalHeight, 0);
 
       const left =

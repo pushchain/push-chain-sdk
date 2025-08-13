@@ -237,6 +237,7 @@ const BlurBackground = styled.div`
   left: 0px;
   right: 0px;
   backdrop-filter: blur(8px);
+  z-index: 99;
 `;
 
 const FrameContainer = styled.div<{

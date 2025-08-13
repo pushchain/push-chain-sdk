@@ -322,7 +322,7 @@ async function generateSkeletonFromEthersV5(
     case '42101':
       chain = CHAIN.PUSH_TESTNET;
       break;
-    case '9001':
+    case '9000':
       chain = CHAIN.PUSH_LOCALNET;
       break;
     default:
@@ -383,7 +383,7 @@ async function generateSkeletonFromEthersV6(
     case '42101':
       chain = CHAIN.PUSH_TESTNET;
       break;
-    case '9001':
+    case '9000':
       chain = CHAIN.PUSH_LOCALNET;
       break;
     default:
@@ -455,7 +455,7 @@ async function generateSkeletonFromViem(
     case '42101':
       chain = CHAIN.PUSH_TESTNET;
       break;
-    case '9001':
+    case '9000':
       chain = CHAIN.PUSH_LOCALNET;
       break;
     default:
