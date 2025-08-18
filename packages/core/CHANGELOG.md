@@ -1,3 +1,9 @@
+@pushchain/core@1.1.34 (2025-08-18)
+
+- fix: update return type for encodeFunctionData method to ensure correct string format
+
+---
+
 @pushchain/core@1.1.33 (2025-08-13)
 
 - chore: bump version to 1.1.32 and update GitHub Action test comment
