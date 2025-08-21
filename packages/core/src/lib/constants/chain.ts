@@ -77,7 +77,7 @@ export const CHAIN_INFO: Record<
     chainId: '11155111',
     vm: VM.EVM,
     lockerContract: '0x28E0F09bE2321c1420Dc60Ee146aACbD68B335Fe',
-    defaultRPC: [sepolia.rpcUrls.default.http[0]],
+    defaultRPC: ['http://localhost:9545'],
     confirmations: 1,
     timeout: 30000,
   },
