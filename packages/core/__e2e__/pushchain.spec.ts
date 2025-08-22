@@ -249,6 +249,7 @@ describe('PushChain (e2e)', () => {
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
+          rpcUrls:{[CHAIN.SOLANA_DEVNET] : ['http://localhost:8899'], [CHAIN.SOLANA_TESTNET] : ['http://localhost:8899']},
           progressHook: (val: any) => {
             console.log(val);
           },
@@ -279,10 +280,13 @@ describe('PushChain (e2e)', () => {
 
       it('should successfully send universal.sendTransaction', async () => {
         const uea = pushClient.universal.account;
+        console.log('somelll', uea)
         const tx = await pushClient.universal.sendTransaction({
           to,
           value: BigInt(1),
         });
+        console.log(uea)
+        console.log("hellotx ", tx)
         const after = await PushChain.utils.account.convertOriginToExecutor(
           universalSigner.account,
           {
@@ -405,8 +409,8 @@ describe('UniversalTxReceipt Type Validation', () => {
     if (!privateKeyEVM) throw new Error('EVM_PRIVATE_KEY not set');
     const privateKeyPush = process.env['PUSH_PRIVATE_KEY'] as Hex;
     if (!privateKeyPush) throw new Error('EVM_PRIVATE_KEY not set');
-    const privateKeySolana = process.env['SOLANA_PRIVATE_KEY'];
-    if (!privateKeySolana) throw new Error('SOLANA_PRIVATE_KEY not set');
+    const privateKeySolana = process.env['SOLANA_PRIVATE_KEY_HEX'];
+    if (!privateKeySolana) throw new Error('SOLANA_PRIVATE_KEY_HEX not set');
     const accountSolana = Keypair.fromSecretKey(
       hexToBytes(`0x${privateKeySolana}`)
     );
@@ -440,15 +444,15 @@ describe('UniversalTxReceipt Type Validation', () => {
     );
     pushClientPush = await PushChain.initialize(universalSignerPush, {
       network: pushNetwork,
-      rpcUrls:{[CHAIN.ETHEREUM_SEPOLIA] : ['http://localhost:9545'], [CHAIN.PUSH_LOCALNET] : ['http://localhost:8545']}
+      rpcUrls:{[CHAIN.ETHEREUM_SEPOLIA] : ['http://localhost:9545'], [CHAIN.PUSH_LOCALNET] : ['http://localhost:8545'], [CHAIN.SOLANA_DEVNET] : ['http://localhost:8899'], [CHAIN.SOLANA_TESTNET] : ['http://localhost:8899'],}
     });
     pushClientSepolia = await PushChain.initialize(universalSignerSepolia, {
       network: pushNetwork,
-      rpcUrls:{[CHAIN.ETHEREUM_SEPOLIA] : ['http://localhost:9545'], [CHAIN.PUSH_LOCALNET] : ['http://localhost:8545']}
+      rpcUrls:{[CHAIN.ETHEREUM_SEPOLIA] : ['http://localhost:9545'], [CHAIN.PUSH_LOCALNET] : ['http://localhost:8545'], [CHAIN.SOLANA_DEVNET] : ['http://localhost:8899'], [CHAIN.SOLANA_TESTNET] : ['http://localhost:8899']}
     });
     pushClientSolana = await PushChain.initialize(universalSignerSolana, {
       network: pushNetwork,
-      rpcUrls:{[CHAIN.ETHEREUM_SEPOLIA] : ['http://localhost:9545'], [CHAIN.PUSH_LOCALNET] : ['http://localhost:8545']}
+      rpcUrls:{[CHAIN.ETHEREUM_SEPOLIA] : ['http://localhost:9545'], [CHAIN.PUSH_LOCALNET] : ['http://localhost:8545'], [CHAIN.SOLANA_DEVNET] : ['http://localhost:8899'], [CHAIN.SOLANA_TESTNET] : ['http://localhost:8899']}
     });
   });
 

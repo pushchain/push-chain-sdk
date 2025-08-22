@@ -82,6 +82,7 @@ export class Orchestrator {
       rpcUrls: pushChainRPCs,
       network: pushNetwork,
     });
+    console.log("timetoplay", rpcUrls)
   }
 
   /**
