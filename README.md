@@ -16,7 +16,7 @@
   <a href="https://discord.com/invite/pushchain">
     <img src="https://img.shields.io/badge/discord-7289da.svg?style=flat-square" alt="discord">
   </a>
-  <a href="https://twitter.com/pushprotocol">
+  <a href="https://x.com/pushchain">
     <img src="https://img.shields.io/badge/twitter-18a1d6.svg?style=flat-square" alt="twitter">
   </a>
   <a href="https://www.youtube.com/@pushprotocol">
@@ -42,11 +42,11 @@ Click on the packages to view more details.
 ## Resources
 
 - **[Website](https://push.org)** To checkout our Product.
-- **[Docs](https://docs.push.org/developers/)** For comprehensive documentation.
+- **[Docs](https://push.org/docs)** For comprehensive documentation.
 - **[Blog](https://medium.com/push-protocol)** To learn more about our partners, new launches, etc.
 - **[Discord](https://discord.com/invite/pushchain)** for support and discussions with the community and the team.
 - **[GitHub](https://github.com/push-protocol)** for source code, project board, issues, and pull requests.
-- **[Twitter](https://twitter.com/pushprotocol)** for the latest updates on the product and published blogs.
+- **[X/Twitter](https://x.com/pushchain)** for the latest updates on the product and published blogs.
 
 ## Contributing
 
