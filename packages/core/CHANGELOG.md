@@ -1,3 +1,9 @@
+@pushchain/core@1.1.35 (2025-08-26)
+
+- chore: fix tc
+
+---
+
 @pushchain/core@1.1.34 (2025-08-18)
 
 - fix: update return type for encodeFunctionData method to ensure correct string format
