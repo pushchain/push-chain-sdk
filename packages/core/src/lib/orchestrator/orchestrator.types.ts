@@ -49,6 +49,12 @@ export type ExecuteParams = {
    * Optional for signature expiry
    */
   deadline?: bigint;
+
+  /**
+   * For funding gas fees. If undefined (default), gas fees will be paid in the native token.
+   * If specified, the user can select which token to pay gas fees from.
+   */
+  fundGas?: { chainToken: `0x${string}` };
 };
 
 /**

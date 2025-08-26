@@ -1,3 +1,35 @@
+@pushchain/ui-kit@1.1.33 (2025-08-13)
+
+- chore: update GitHub Action test comment to trigger workflow
+
+---
+
+@pushchain/ui-kit@1.1.32 (2025-08-13)
+
+- fix: fix the zIndex for the blur background
+
+---
+
+@pushchain/ui-kit@1.1.31 (2025-08-12)
+
+- chore: add test comment to trigger GitHub Action 1
+
+---
+
+@pushchain/ui-kit@1.1.30 (2025-08-11)
+
+- fix: fix the vertical position of the iframe modal
+
+---
+
+@pushchain/ui-kit@1.1.29 (2025-08-11)
+
+- chore: upgrade the core sdk to v1.1.29
+- release: bump to 1.1.28
+- fix: add default connected layout
+
+---
+
 @pushchain/ui-kit@1.1.28 (2025-07-30)
 
 - fix: add default connected layout

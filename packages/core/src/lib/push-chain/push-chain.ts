@@ -3,7 +3,10 @@ import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
 import { CHAIN_INFO } from '../constants/chain';
 import { Orchestrator } from '../orchestrator/orchestrator';
 import { createUniversalSigner } from '../universal/signer';
-import { UniversalSigner } from '../universal/universal.types';
+import {
+  UniversalAccount,
+  UniversalSigner,
+} from '../universal/universal.types';
 import { Utils } from '../utils';
 import { utils } from '@coral-xyz/anchor';
 import { bytesToHex, TypedData, TypedDataDomain } from 'viem';
@@ -27,6 +30,15 @@ export class PushChain {
    * Utility functions for encoding, hashing, and data formatting.
    */
   public static utils = Utils;
+
+  /**
+   * Helper function to check if input is UniversalAccount (read-only) or UniversalSigner
+   */
+  private static isUniversalAccount(
+    input: UniversalSigner | UniversalAccount
+  ): input is UniversalAccount {
+    return !('signMessage' in input) && !('signAndSendTransaction' in input);
+  }
 
   /**
    * Universal namespace containing core transaction and address computation methods
@@ -68,7 +80,8 @@ export class PushChain {
   private constructor(
     private orchestrator: Orchestrator,
     private universalSigner: UniversalSigner,
-    private blockExplorers: Partial<Record<CHAIN, string[]>>
+    private blockExplorers: Partial<Record<CHAIN, string[]>>,
+    public isReadMode: boolean
   ) {
     this.orchestrator = orchestrator;
 
@@ -79,8 +92,18 @@ export class PushChain {
       get account() {
         return orchestrator.computeUEAOffchain();
       },
-      sendTransaction: orchestrator.execute.bind(orchestrator),
+      sendTransaction: (...args) => {
+        if (this.isReadMode) {
+          throw new Error(
+            'Read only mode cannot call sendTransaction function'
+          );
+        }
+        return orchestrator.execute.bind(orchestrator)(...args);
+      },
       signMessage: async (data: Uint8Array) => {
+        if (this.isReadMode) {
+          throw new Error('Read only mode cannot call signMessage function');
+        }
         const sigBytes = await universalSigner.signMessage(data);
         const chain = universalSigner.account.chain;
         if (CHAIN_INFO[chain].vm === VM.EVM) {
@@ -110,19 +133,12 @@ export class PushChain {
   }
 
   /**
-   * @method initialize
-   * Initializes the PushChain SDK with a universal signer and optional config.
-   *
-   * @param universalSigner
-   * @param options - Optional settings to configure the SDK instance.
-   *   - network: PushChain network to target (e.g., TESTNET_DONUT, MAINNET).
-   *   - rpcUrls: Custom RPC URLs mapped by chain IDs.
-   *   - printTraces: Whether to print internal trace logs for debugging.
-   *
-   * @returns An initialized instance of PushChain.
+   * @private
+   * Internal method to create a PushChain instance with the given parameters.
+   * Used by both initialize and reinitialize methods to avoid code duplication.
    */
-  static initialize = async (
-    universalSigner: UniversalSigner,
+  private static async createInstance(
+    universalSigner: UniversalSigner | UniversalAccount,
     options?: {
       network: PUSH_NETWORK;
       rpcUrls?: Partial<Record<CHAIN, string[]>>;
@@ -130,8 +146,24 @@ export class PushChain {
       printTraces?: boolean;
       progressHook?: (progress: ProgressEvent) => void;
     }
-  ): Promise<PushChain> => {
-    const validatedUniversalSigner = createUniversalSigner(universalSigner);
+  ): Promise<PushChain> {
+    const isReadOnly = PushChain.isUniversalAccount(universalSigner);
+
+    // If it's a UniversalAccount (read-only), create a dummy signer for the orchestrator
+    const validatedUniversalSigner = isReadOnly
+      ? createUniversalSigner({
+          account: universalSigner,
+          signMessage: async () => {
+            throw new Error('Read only mode cannot call signMessage function');
+          },
+          signAndSendTransaction: async () => {
+            throw new Error(
+              'Read only mode cannot call signAndSendTransaction function'
+            );
+          },
+        })
+      : createUniversalSigner(universalSigner as UniversalSigner);
+
     const blockExplorers = options?.blockExplorers ?? {
       [CHAIN.PUSH_TESTNET_DONUT]: ['https://donut.push.network'],
     };
@@ -148,7 +180,72 @@ export class PushChain {
     return new PushChain(
       orchestrator,
       validatedUniversalSigner,
-      blockExplorers
+      blockExplorers,
+      isReadOnly
     );
+  }
+
+  /**
+   * @method initialize
+   * Initializes the PushChain SDK with a universal signer and optional config.
+   *
+   * @param universalSigner
+   * @param options - Optional settings to configure the SDK instance.
+   *   - network: PushChain network to target (e.g., TESTNET_DONUT, MAINNET).
+   *   - rpcUrls: Custom RPC URLs mapped by chain IDs.
+   *   - printTraces: Whether to print internal trace logs for debugging.
+   *
+   * @returns An initialized instance of PushChain.
+   */
+  static initialize = async (
+    universalSigner: UniversalSigner | UniversalAccount,
+    options?: {
+      network: PUSH_NETWORK;
+      rpcUrls?: Partial<Record<CHAIN, string[]>>;
+      blockExplorers?: Partial<Record<CHAIN, string[]>>;
+      printTraces?: boolean;
+      progressHook?: (progress: ProgressEvent) => void;
+    }
+  ): Promise<PushChain> => {
+    return PushChain.createInstance(universalSigner, options);
+  };
+
+  /**
+   * @method reinitialize
+   * Reinitializes the PushChain SDK with a new universal signer and optional config.
+   *
+   * @param universalSigner
+   * @param options - Optional settings to configure the SDK instance.
+   *   - network: PushChain network to target (e.g., TESTNET_DONUT, MAINNET).
+   *   - rpcUrls: Custom RPC URLs mapped by chain IDs.
+   *   - printTraces: Whether to print internal trace logs for debugging.
+   *
+   * @returns A new initialized instance of PushChain.
+   */
+  reinitialize = async (
+    universalSigner: UniversalSigner | UniversalAccount,
+    options?: {
+      network: PUSH_NETWORK;
+      rpcUrls?: Partial<Record<CHAIN, string[]>>;
+      blockExplorers?: Partial<Record<CHAIN, string[]>>;
+      printTraces?: boolean;
+      progressHook?: (progress: ProgressEvent) => void;
+    }
+  ): Promise<PushChain> => {
+    const mergedOptions = {
+      network: options?.network ?? this.orchestrator.getNetwork(),
+      rpcUrls: options?.rpcUrls ?? this.orchestrator.getRpcUrls(),
+      blockExplorers: options?.blockExplorers ?? this.blockExplorers,
+      printTraces: options?.printTraces ?? this.orchestrator.getPrintTraces(),
+      progressHook:
+        options?.progressHook ?? this.orchestrator.getProgressHook(),
+    } as {
+      network: PUSH_NETWORK;
+      rpcUrls?: Partial<Record<CHAIN, string[]>>;
+      blockExplorers?: Partial<Record<CHAIN, string[]>>;
+      printTraces?: boolean;
+      progressHook?: (progress: ProgressEvent) => void;
+    };
+    return PushChain.createInstance(universalSigner, mergedOptions);
   };
 }

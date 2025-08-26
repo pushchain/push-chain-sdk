@@ -1,5 +1,8 @@
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
-import { UniversalSigner } from '../universal/universal.types';
+import {
+  UniversalSigner,
+  UniversalAccount,
+} from '../universal/universal.types';
 import { PushChain } from './push-chain';
 import {
   createWalletClient,
@@ -244,6 +247,460 @@ describe('PushChain', () => {
         }
 
         expect(isValid).toBe(true);
+      });
+    });
+
+    describe('Read Only Mode', () => {
+      let readOnlyAccountEVM: UniversalAccount;
+      let readOnlyAccountPush: UniversalAccount;
+      let readOnlyAccountSVM: UniversalAccount;
+      let readOnlyPushClientEVM: PushChain;
+      let readOnlyPushClientPush: PushChain;
+      let readOnlyPushClientSVM: PushChain;
+
+      beforeAll(async () => {
+        // Create read-only accounts from existing signers
+        readOnlyAccountEVM = {
+          address: pushClientEVM.universal.origin.address,
+          chain: pushClientEVM.universal.origin.chain,
+        };
+
+        readOnlyAccountPush = {
+          address: pushChainPush.universal.origin.address,
+          chain: pushChainPush.universal.origin.chain,
+        };
+
+        readOnlyAccountSVM = {
+          address: pushChainSVM.universal.origin.address,
+          chain: pushChainSVM.universal.origin.chain,
+        };
+
+        // Initialize read-only clients
+        readOnlyPushClientEVM = await PushChain.initialize(readOnlyAccountEVM, {
+          network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+        });
+
+        readOnlyPushClientPush = await PushChain.initialize(
+          readOnlyAccountPush,
+          {
+            network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+          }
+        );
+
+        readOnlyPushClientSVM = await PushChain.initialize(readOnlyAccountSVM, {
+          network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+        });
+      });
+
+      describe('Initialization', () => {
+        it('should successfully initialize with UniversalAccount (EVM)', async () => {
+          expect(readOnlyPushClientEVM).toBeDefined();
+          expect(readOnlyPushClientEVM.universal).toBeDefined();
+        });
+
+        it('should successfully initialize with UniversalAccount (Push)', async () => {
+          expect(readOnlyPushClientPush).toBeDefined();
+          expect(readOnlyPushClientPush.universal).toBeDefined();
+        });
+
+        it('should successfully initialize with UniversalAccount (SVM)', async () => {
+          expect(readOnlyPushClientSVM).toBeDefined();
+          expect(readOnlyPushClientSVM.universal).toBeDefined();
+        });
+      });
+
+      describe('Read-only restrictions', () => {
+        it('should throw error when calling signMessage on read-only EVM client', async () => {
+          const testMessage = new TextEncoder().encode('Hello, Push Chain!');
+
+          await expect(
+            readOnlyPushClientEVM.universal.signMessage(testMessage)
+          ).rejects.toThrow('Read only mode cannot call signMessage function');
+        });
+
+        it('should throw error when calling signMessage on read-only Push client', async () => {
+          const testMessage = new TextEncoder().encode('Hello, Push Chain!');
+
+          await expect(
+            readOnlyPushClientPush.universal.signMessage(testMessage)
+          ).rejects.toThrow('Read only mode cannot call signMessage function');
+        });
+
+        it('should throw error when calling signMessage on read-only SVM client', async () => {
+          const testMessage = new TextEncoder().encode('Hello, Push Chain!');
+
+          await expect(
+            readOnlyPushClientSVM.universal.signMessage(testMessage)
+          ).rejects.toThrow('Read only mode cannot call signMessage function');
+        });
+
+        it('should throw error when calling sendTransaction on read-only EVM client', () => {
+          const mockTxData = {
+            to: '0x1234567890123456789012345678901234567890' as `0x${string}`,
+            value: BigInt(1000000000000000000), // 1 ETH
+            data: '0x' as `0x${string}`,
+            gas: BigInt(21000),
+          };
+
+          expect(() =>
+            readOnlyPushClientEVM.universal.sendTransaction(mockTxData)
+          ).toThrow('Read only mode cannot call sendTransaction function');
+        });
+
+        it('should throw error when calling sendTransaction on read-only Push client', () => {
+          const mockTxData = {
+            to: '0x1234567890123456789012345678901234567890' as `0x${string}`,
+            value: BigInt(1000000000000000000), // 1 ETH
+            data: '0x' as `0x${string}`,
+            gas: BigInt(21000),
+          };
+
+          expect(() =>
+            readOnlyPushClientPush.universal.sendTransaction(mockTxData)
+          ).toThrow('Read only mode cannot call sendTransaction function');
+        });
+
+        it('should throw error when calling sendTransaction on read-only SVM client', () => {
+          const mockTxData = {
+            to: '0x1234567890123456789012345678901234567890' as `0x${string}`,
+            value: BigInt(1000000000000000000), // 1 ETH
+            data: '0x' as `0x${string}`,
+            gas: BigInt(21000),
+          };
+
+          expect(() =>
+            readOnlyPushClientSVM.universal.sendTransaction(mockTxData)
+          ).toThrow('Read only mode cannot call sendTransaction function');
+        });
+
+        it('should throw error when calling signTypedData on read-only EVM client', async () => {
+          const typedData = {
+            domain: {
+              name: 'Test',
+              version: '1',
+              chainId: 11155111,
+            },
+            types: {
+              Message: [{ name: 'content', type: 'string' }],
+            },
+            primaryType: 'Message',
+            message: {
+              content: 'Hello, typed data!',
+            },
+          };
+
+          await expect(
+            readOnlyPushClientEVM.universal.signTypedData(typedData)
+          ).rejects.toThrow('Typed data signing not supported');
+        });
+      });
+
+      describe('Read-only allowed operations', () => {
+        it('should allow accessing origin property on read-only client', () => {
+          const origin = readOnlyPushClientEVM.universal.origin;
+          expect(origin).toBeDefined();
+          expect(typeof origin.address).toBe('string');
+          expect(typeof origin.chain).toBe('string');
+        });
+
+        it('should allow accessing account property on read-only client', () => {
+          const account = readOnlyPushClientEVM.universal.account;
+          expect(account).toBeDefined();
+          expect(typeof account).toBe('string');
+          expect(account.startsWith('0x')).toBe(true);
+        });
+
+        it('should allow accessing explorer methods on read-only client', () => {
+          const txUrl =
+            readOnlyPushClientEVM.explorer.getTransactionUrl('0x123');
+          expect(typeof txUrl).toBe('string');
+          expect(txUrl).toContain('0x123');
+
+          const urls = readOnlyPushClientEVM.explorer.listUrls();
+          expect(Array.isArray(urls)).toBe(true);
+        });
+
+        it('should allow accessing static constants and utils on read-only client', () => {
+          expect(PushChain.CONSTANTS).toBeDefined();
+          expect(PushChain.utils).toBeDefined();
+        });
+      });
+
+      describe('Comparison with writable clients', () => {
+        it('should have same origin and account addresses as writable client', () => {
+          // Compare EVM clients
+          expect(readOnlyPushClientEVM.universal.origin.address).toBe(
+            pushClientEVM.universal.origin.address
+          );
+          expect(readOnlyPushClientEVM.universal.account).toBe(
+            pushClientEVM.universal.account
+          );
+
+          // Compare Push clients
+          expect(readOnlyPushClientPush.universal.origin.address).toBe(
+            pushChainPush.universal.origin.address
+          );
+          expect(readOnlyPushClientPush.universal.account).toBe(
+            pushChainPush.universal.account
+          );
+
+          // Compare SVM clients
+          expect(readOnlyPushClientSVM.universal.origin.address).toBe(
+            pushChainSVM.universal.origin.address
+          );
+          expect(readOnlyPushClientSVM.universal.account).toBe(
+            pushChainSVM.universal.account
+          );
+        });
+
+        it('should allow signMessage on writable client but not on read-only client', async () => {
+          const testMessage = new TextEncoder().encode('Test message');
+
+          // Writable client should work
+          const signature = await pushClientEVM.universal.signMessage(
+            testMessage
+          );
+          expect(typeof signature).toBe('string');
+          expect(signature.length).toBeGreaterThan(0);
+
+          // Read-only client should throw error
+          await expect(
+            readOnlyPushClientEVM.universal.signMessage(testMessage)
+          ).rejects.toThrow('Read only mode cannot call signMessage function');
+        });
+      });
+
+      describe('Type checking', () => {
+        it('should correctly identify UniversalAccount vs UniversalSigner during initialization', async () => {
+          // Test with UniversalSigner - should not be read-only
+          const writableClient = pushClientEVM;
+
+          const testMessage = new TextEncoder().encode('Test');
+          const signature = await writableClient.universal.signMessage(
+            testMessage
+          );
+          expect(typeof signature).toBe('string');
+
+          // Test with UniversalAccount - should be read-only
+          const readOnlyAccount: UniversalAccount = {
+            address: writableClient.universal.origin.address,
+            chain: writableClient.universal.origin.chain,
+          };
+
+          const readOnlyClient = await PushChain.initialize(readOnlyAccount, {
+            network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+          });
+
+          await expect(
+            readOnlyClient.universal.signMessage(testMessage)
+          ).rejects.toThrow('Read only mode cannot call signMessage function');
+        });
+      });
+    });
+  });
+
+  describe('Reinitialize Method', () => {
+    let pushClientEVM: PushChain;
+    let universalSignerEVM: UniversalSigner;
+    let universalSignerEVM2: UniversalSigner;
+    let universalSignerPush: UniversalSigner;
+
+    beforeAll(async () => {
+      // Create first EVM signer
+      const account1 = privateKeyToAccount(generatePrivateKey());
+      const walletClient1 = createWalletClient({
+        account: account1,
+        chain: sepolia,
+        transport: http(),
+      });
+      universalSignerEVM = await PushChain.utils.signer.toUniversalFromKeypair(
+        walletClient1,
+        {
+          chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+        }
+      );
+
+      // Create second EVM signer for testing signer change
+      const account2 = privateKeyToAccount(generatePrivateKey());
+      const walletClient2 = createWalletClient({
+        account: account2,
+        chain: sepolia,
+        transport: http(),
+      });
+      universalSignerEVM2 = await PushChain.utils.signer.toUniversalFromKeypair(
+        walletClient2,
+        {
+          chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+        }
+      );
+
+      // Create Push signer
+      const pushTestnet = defineChain({
+        id: parseInt(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId),
+        name: 'Push Testnet',
+        nativeCurrency: {
+          decimals: 18,
+          name: 'PC',
+          symbol: '$PC',
+        },
+        rpcUrls: {
+          default: {
+            http: [CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]],
+          },
+        },
+        blockExplorers: {
+          default: {
+            name: 'Push Testnet Explorer',
+            url: 'https://explorer.testnet.push.org/',
+          },
+        },
+      });
+      const accountPush = privateKeyToAccount(generatePrivateKey());
+      const walletClientPush = createWalletClient({
+        account: accountPush,
+        chain: pushTestnet,
+        transport: http(),
+      });
+      universalSignerPush = await PushChain.utils.signer.toUniversalFromKeypair(
+        walletClientPush,
+        {
+          chain: PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+        }
+      );
+
+      // Initialize first client
+      pushClientEVM = await PushChain.initialize(universalSignerEVM, {
+        network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+      });
+    });
+
+    describe('Basic functionality', () => {
+      it('should reinitialize with same signer and return new instance', async () => {
+        const newClient = await pushClientEVM.reinitialize(universalSignerEVM, {
+          network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+        });
+
+        // Should be different instances
+        expect(newClient).not.toBe(pushClientEVM);
+
+        // But should have same addresses since same signer
+        expect(newClient.universal.origin.address).toBe(
+          pushClientEVM.universal.origin.address
+        );
+        expect(newClient.universal.account).toBe(
+          pushClientEVM.universal.account
+        );
+      });
+
+      it('should reinitialize with different signer', async () => {
+        const newClient = await pushClientEVM.reinitialize(
+          universalSignerEVM2,
+          {
+            network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+          }
+        );
+
+        // Should be different instances
+        expect(newClient).not.toBe(pushClientEVM);
+
+        // Should have different addresses since different signer
+        expect(newClient.universal.origin.address).not.toBe(
+          pushClientEVM.universal.origin.address
+        );
+        expect(newClient.universal.account).not.toBe(
+          pushClientEVM.universal.account
+        );
+
+        // New client should have the new signer's address
+        expect(newClient.universal.origin.address).toBe(
+          universalSignerEVM2.account.address
+        );
+      });
+
+      it('should reinitialize with different chain signer', async () => {
+        const newClient = await pushClientEVM.reinitialize(
+          universalSignerPush,
+          {
+            network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+          }
+        );
+
+        // Should be different instances
+        expect(newClient).not.toBe(pushClientEVM);
+
+        // Should have different chain and addresses
+        expect(newClient.universal.origin.chain).toBe(
+          PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT
+        );
+        expect(newClient.universal.origin.chain).not.toBe(
+          pushClientEVM.universal.origin.chain
+        );
+      });
+    });
+
+    describe('With different options', () => {
+      it('should reinitialize with custom RPC URLs', async () => {
+        const customRpcUrls = {
+          [CHAIN.ETHEREUM_SEPOLIA]: ['https://custom-sepolia.rpc.com'],
+        };
+
+        const newClient = await pushClientEVM.reinitialize(universalSignerEVM, {
+          network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+          rpcUrls: customRpcUrls,
+        });
+
+        expect(newClient).not.toBe(pushClientEVM);
+        expect(newClient).toBeDefined();
+      });
+
+      it('should reinitialize with custom block explorers', async () => {
+        const customBlockExplorers = {
+          [CHAIN.PUSH_TESTNET_DONUT]: [
+            'https://custom-explorer1.push.network',
+            'https://custom-explorer2.push.network',
+          ],
+        };
+
+        const newClient = await pushClientEVM.reinitialize(universalSignerEVM, {
+          network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+          blockExplorers: customBlockExplorers,
+        });
+
+        expect(newClient).not.toBe(pushClientEVM);
+
+        const urls = newClient.explorer.listUrls();
+        expect(urls).toEqual([
+          'https://custom-explorer1.push.network',
+          'https://custom-explorer2.push.network',
+        ]);
+      });
+
+      it('should reinitialize with printTraces enabled', async () => {
+        const newClient = await pushClientEVM.reinitialize(universalSignerEVM, {
+          network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+          printTraces: true,
+        });
+
+        expect(newClient).not.toBe(pushClientEVM);
+        expect(newClient).toBeDefined();
+      });
+
+      it('should reinitialize with progress hook', async () => {
+        const progressEvents: any[] = [];
+        const progressHook = (progress: any) => {
+          progressEvents.push(progress);
+        };
+
+        const newClient = await pushClientEVM.reinitialize(universalSignerEVM, {
+          network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+          progressHook,
+        });
+
+        expect(newClient).not.toBe(pushClientEVM);
+        expect(newClient).toBeDefined();
       });
     });
   });

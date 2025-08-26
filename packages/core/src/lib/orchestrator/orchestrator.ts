@@ -85,10 +85,34 @@ export class Orchestrator {
   }
 
   /**
+   * Read-only accessors for current Orchestrator configuration
+   */
+  public getNetwork(): PUSH_NETWORK {
+    return this.pushNetwork;
+  }
+
+  public getRpcUrls(): Partial<Record<CHAIN, string[]>> {
+    return this.rpcUrls;
+  }
+
+  public getPrintTraces(): boolean {
+    return this.printTraces;
+  }
+
+  public getProgressHook(): ((progress: ProgressEvent) => void) | undefined {
+    return this.progressHook;
+  }
+
+  /**
    * Executes an interaction on Push Chain
    */
   async execute(execute: ExecuteParams): Promise<UniversalTxResponse> {
     try {
+      // Validate fundGas property - must not be set for now
+      if (execute.fundGas) {
+        throw new Error('Unsupported token');
+      }
+
       const chain = this.universalSigner.account.chain;
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_01, chain);
       this.validateMainnetConnection(chain);

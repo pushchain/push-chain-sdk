@@ -106,7 +106,7 @@ export class Utils {
       abi: any[];
       functionName: string;
       args?: any[];
-    }) {
+    }): `0x${string}` {
       // Validate inputs
       if (!Array.isArray(abi)) {
         throw new Error('ABI must be an array');
@@ -126,7 +126,7 @@ export class Utils {
         // Create ethers Interface and encode the function data
         const abiInterface = new ethers.Interface(abi);
         const data = abiInterface.encodeFunctionData(functionName, args);
-        return data;
+        return data as `0x${string}`;
       } catch (error) {
         throw new Error(
           `Failed to encode function '${functionName}': ${
