@@ -9,6 +9,11 @@ import { SvmClient } from '../vm-client/svm-client';
 import { CHAIN_INFO } from '../constants/chain';
 import { VerificationType } from '../generated/v1/tx';
 import { utils } from '@coral-xyz/anchor';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Adjust path as needed if your .env is in the root
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 describe('Orchestrator', () => {
   const mockSigner: UniversalSigner = {
