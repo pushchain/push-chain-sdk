@@ -51,7 +51,6 @@ describe('PushChain (e2e)', () => {
             library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
           }
         );
-        console.log("universal signer : ", universalSigner)
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
@@ -63,14 +62,12 @@ describe('PushChain (e2e)', () => {
 
         // Generate random account
         randomAccount = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
-        console.log("hgay ", randomAccount.address)
         // Try to send Sepolia ETH to random generated address
         const txHash = await walletClient.sendTransaction({
           to: randomAccount.address,
           chain: sepolia,
           value: PushChain.utils.helpers.parseUnits('1', 14),
         });
-        console.log("txhash", txHash)
         const publicClient = createPublicClient({
           chain: sepolia,
           transport: http('http://localhost:9545'),
@@ -78,7 +75,6 @@ describe('PushChain (e2e)', () => {
         await publicClient.waitForTransactionReceipt({
           hash: txHash,
         });
-        console.log("done 1")
       }, 100000);
 
       it('should fail to send universal.sendTransaction with invalid feeLockTxHash', async () => {
@@ -109,7 +105,6 @@ describe('PushChain (e2e)', () => {
           value: BigInt(1e3),
           // fundGas not provided - should work fine
         });
-        console.log("tan :", tx);
         expect(tx).toBeDefined();
         expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
         await txValidator(
@@ -222,7 +217,6 @@ describe('PushChain (e2e)', () => {
         to,
         value: BigInt(2),
       });
-      console.log("sine ", tx)
       await txValidator(tx, from, to);
     });
   });
@@ -280,13 +274,10 @@ describe('PushChain (e2e)', () => {
 
       it('should successfully send universal.sendTransaction', async () => {
         const uea = pushClient.universal.account;
-        console.log('somelll', uea)
         const tx = await pushClient.universal.sendTransaction({
           to,
           value: BigInt(1),
         });
-        console.log(uea)
-        console.log("hellotx ", tx)
         const after = await PushChain.utils.account.convertOriginToExecutor(
           universalSigner.account,
           {
@@ -508,7 +499,7 @@ describe('UniversalTxReceipt Type Validation', () => {
       expect(txPush.origin).toContain('eip155'); // EVM namespace
       expect(txSepolia.origin).toContain('eip155'); // EVM namespace
       expect(txSolana.origin).toContain('solana'); // Solana namespace
-      expect(txPush.origin).toContain('42101'); // Push chain ID
+      expect(txPush.origin).toContain('eip155:9000:0x778D3206374f8AC265728E18E3fE2Ae6b93E4ce4'); // Push chain ID
       expect(txSepolia.origin).toContain('11155111'); // Push chain ID
       expect(txSolana.origin).toContain('EtWTRABZaYq6iMfeYKouRu166VU2xqa1'); // Push chain ID
       expect(txPush.origin).toContain(txPush.from);

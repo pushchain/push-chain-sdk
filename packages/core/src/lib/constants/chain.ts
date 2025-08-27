@@ -92,7 +92,7 @@ export const CHAIN_INFO: Record<
     timeout: 15000,
   },
   [CHAIN.SOLANA_TESTNET]: {
-    chainId: '4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z',
+    chainId: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
     vm: VM.SVM,
     lockerContract: 'HNR69MMiNQxewJvgvwypdPGWBKSrpKmmiae3FTcnD8wt',
     defaultRPC: ['http://127.0.0.1:8899'],
