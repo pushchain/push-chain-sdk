@@ -269,7 +269,7 @@ export class Orchestrator {
     executionHash: string = zeroHash
   ): Promise<Uint8Array> {
     const chain = this.universalSigner.account.chain;
-    const { lockerContract, vm, defaultRPC } = CHAIN_INFO[chain];
+    var { lockerContract, vm, defaultRPC } = CHAIN_INFO[chain];
 
     if (!lockerContract) {
       throw new Error(`Locker contract not configured for chain: ${chain}`);
@@ -301,6 +301,8 @@ export class Orchestrator {
       }
 
       case VM.SVM: {
+        lockerContract = process.env['SOLANA_PROGRAM_ID'] as string;
+        console.log('just-checkin', lockerContract);
         // Run price fetching, client creation, and PDA computation in parallel
         const [nativeTokenUsdPrice, svmClient, [lockerPda]] = await Promise.all(
           [
