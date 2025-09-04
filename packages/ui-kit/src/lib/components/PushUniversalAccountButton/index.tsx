@@ -87,14 +87,12 @@ const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
   };
 
   return (
-    // @ts-expect-error
     <ThemeProvider
       theme={{
         themeMode,
         themeOverrides: { ...themeOverrides, ...ButtonThemeOverrides },
       }}
     >
-      {/* @ts-expect-error */}
       <GlobalStyle uid={uid} />
       <Component />
     </ThemeProvider>
