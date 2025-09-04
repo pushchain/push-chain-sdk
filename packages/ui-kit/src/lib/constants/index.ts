@@ -22,6 +22,7 @@ export const PushUI = {
       INTERACTION: { INTERACTIVE: 'interactive', BLUR: 'blur' },
     },
     CONNECTION: { STATUS: ConnectionStatus },
+    CHAIN_CONFIG: PushChain.CONSTANTS.CHAIN,
   },
 };
 
