@@ -1,3 +1,9 @@
+@pushchain/ui-kit@1.1.34 (2025-09-04)
+
+- chore: add chain config to the constants
+
+---
+
 @pushchain/ui-kit@1.1.33 (2025-08-13)
 
 - chore: update GitHub Action test comment to trigger workflow
