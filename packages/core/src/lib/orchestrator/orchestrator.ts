@@ -108,6 +108,11 @@ export class Orchestrator {
    */
   async execute(execute: ExecuteParams): Promise<UniversalTxResponse> {
     try {
+      // Set default value for value if undefined
+      if (execute.value === undefined) {
+        execute.value = BigInt(0);
+      }
+
       // Validate fundGas property - must not be set for now
       if (execute.fundGas) {
         throw new Error('Unsupported token');

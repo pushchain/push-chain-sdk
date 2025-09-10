@@ -7,7 +7,7 @@ export type ExecuteParams = {
   /**
    * Amount of native token (in wei) to send alongside the call.
    */
-  value: bigint;
+  value?: bigint;
 
   /**
    * Hex-encoded calldata or transfer payload.
