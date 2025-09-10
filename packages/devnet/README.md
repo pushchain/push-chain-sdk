@@ -1,5 +1,14 @@
 # Push Chain Devnet
 
+> ⚠️ **Deprecated package**
+>
+> `@pushchain/devnet` is deprecated and will no longer receive updates. For interacting with Push Chain, please use one of the actively maintained packages instead:
+>
+> - `@pushchain/core` — Core TypeScript SDK for programmatic access
+> - `@pushchain/ui-kit` — React UI kit and helpers for app integrations
+>
+> See the Developer Docs at `https://pushchain.github.io/push-chain-website/pr-preview/pr-1067/docs/chain/` for up-to-date guidance.
+
 This package provides access to the Push Chain's Devnet. Visit the [Developer Docs](https://push.org/docs)
 or [Push.org](https://push.org) to learn more.
 
