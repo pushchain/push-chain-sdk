@@ -82,7 +82,6 @@ export class Orchestrator {
       rpcUrls: pushChainRPCs,
       network: pushNetwork,
     });
-    console.log("timetoplay", rpcUrls)
   }
 
   /**
@@ -302,7 +301,6 @@ export class Orchestrator {
 
       case VM.SVM: {
         lockerContract = process.env['SOLANA_PROGRAM_ID'] as string;
-        console.log('just-checkin', lockerContract);
         // Run price fetching, client creation, and PDA computation in parallel
         const [nativeTokenUsdPrice, svmClient, [lockerPda]] = await Promise.all(
           [

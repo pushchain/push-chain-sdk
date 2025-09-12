@@ -413,7 +413,6 @@ describe('UniversalTxReceipt Type Validation', () => {
       account: privateKeyToAccount(privateKeyPush),
       transport: http(CHAIN_INFO[CHAIN.PUSH_LOCALNET].defaultRPC[0]),
     });
-    console.log("cjjj ", CHAIN_INFO[CHAIN.PUSH_LOCALNET].defaultRPC[0])
     const walletClientSepolia = createWalletClient({
       account: privateKeyToAccount(privateKeyEVM),
       chain: sepolia,

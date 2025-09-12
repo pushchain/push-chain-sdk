@@ -308,10 +308,8 @@ export async function convertExecutorToOriginAccount(
     { chainNamespace: string; chainId: string; owner: `0x${string}` },
     boolean
   ];
-  console.log("some100 ", originResult)
 
   const [account, isUEA] = originResult;
-  console.log("some101 ", isUEA)
   if (
     account.chainNamespace === '' ||
     account.chainId === '' ||
@@ -330,7 +328,6 @@ export async function convertExecutorToOriginAccount(
       universalAccount.address = utils.bytes.bs58.encode(hexBytes);
     }
   }
-  console.log("some102 ", isUEA)
 
   return { account: universalAccount, exists: isUEA };
 }

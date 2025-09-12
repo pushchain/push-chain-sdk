@@ -64,7 +64,6 @@ export class PriceFetch {
         if (!result || !result.price) {
           throw new Error('Invalid price data returned');
         }
-        console.log('is this passing?', result)
         // Exponent on this function is always NEGATIVE
         const price = (result.price as BN).toNumber();
         return BigInt(price);
