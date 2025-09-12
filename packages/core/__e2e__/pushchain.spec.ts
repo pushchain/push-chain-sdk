@@ -25,7 +25,7 @@ import bs58 from 'bs58';
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 describe('PushChain (e2e)', () => {
-  const pushNetwork = PUSH_NETWORK.TESTNET_DONUT;
+  const pushNetwork = PUSH_NETWORK.LOCALNET;
   const to = '0x35B84d6848D16415177c64D64504663b998A6ab4';
   let universalSigner: UniversalSigner;
   let randomAccount: PrivateKeyAccount;
@@ -41,7 +41,7 @@ describe('PushChain (e2e)', () => {
         const account = privateKeyToAccount(privateKey);
         const walletClient = createWalletClient({
           account,
-          transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+          transport: http('http://localhost:9545'),
         });
 
         universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
@@ -54,22 +54,23 @@ describe('PushChain (e2e)', () => {
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
+          rpcUrls: {[CHAIN.ETHEREUM_SEPOLIA] : ["http://localhost:9545"]},
           progressHook: (val: any) => {
             console.log(val);
           },
         });
 
         // Generate random account
-        randomAccount = privateKeyToAccount(generatePrivateKey());
+        randomAccount = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
         // Try to send Sepolia ETH to random generated address
         const txHash = await walletClient.sendTransaction({
-          to: randomAccount.address,
+          to: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
           chain: sepolia,
           value: PushChain.utils.helpers.parseUnits('1', 14),
         });
         const publicClient = createPublicClient({
           chain: sepolia,
-          transport: http(),
+          transport: http('http://localhost:9545'),
         });
         await publicClient.waitForTransactionReceipt({
           hash: txHash,
@@ -100,7 +101,7 @@ describe('PushChain (e2e)', () => {
 
       it('should successfully send universal.sendTransaction without fundGas (default behavior)', async () => {
         const tx = await pushClient.universal.sendTransaction({
-          to,
+          to : '0x35B84d6848D16415177c64D64504663b998A6ab4',
           value: BigInt(1e3),
           // fundGas not provided - should work fine
         });
@@ -115,7 +116,7 @@ describe('PushChain (e2e)', () => {
 
       it('should successfully sendTransaction - Transfer Call', async () => {
         const tx = await pushClient.universal.sendTransaction({
-          to,
+          to : '0x35B84d6848D16415177c64D64504663b998A6ab4',
           value: BigInt(1e3),
         });
         const after = await PushChain.utils.account.convertOriginToExecutor(
@@ -170,7 +171,7 @@ describe('PushChain (e2e)', () => {
     });
   });
   describe('Origin - Push', () => {
-    const originChain = CHAIN.PUSH_TESTNET_DONUT;
+    const originChain = CHAIN.PUSH_LOCALNET;
     let pushClient: PushChain;
     let account: PrivateKeyAccount;
 
@@ -242,6 +243,7 @@ describe('PushChain (e2e)', () => {
 
         pushClient = await PushChain.initialize(universalSigner, {
           network: pushNetwork,
+          rpcUrls:{[CHAIN.SOLANA_DEVNET] : ['http://localhost:8899'], [CHAIN.SOLANA_TESTNET] : ['http://localhost:8899']},
           progressHook: (val: any) => {
             console.log(val);
           },
@@ -381,7 +383,7 @@ const txValidator = async (
 };
 
 describe('UniversalTxReceipt Type Validation', () => {
-  const pushNetwork = PUSH_NETWORK.TESTNET_DONUT;
+  const pushNetwork = PUSH_NETWORK.LOCALNET;
   const to = '0x35B84d6848D16415177c64D64504663b998A6ab4';
   let fromEVM: `0x${string}`;
   let fromPush: `0x${string}`;
@@ -398,8 +400,8 @@ describe('UniversalTxReceipt Type Validation', () => {
     if (!privateKeyEVM) throw new Error('EVM_PRIVATE_KEY not set');
     const privateKeyPush = process.env['PUSH_PRIVATE_KEY'] as Hex;
     if (!privateKeyPush) throw new Error('EVM_PRIVATE_KEY not set');
-    const privateKeySolana = process.env['SOLANA_PRIVATE_KEY'];
-    if (!privateKeySolana) throw new Error('SOLANA_PRIVATE_KEY not set');
+    const privateKeySolana = process.env['SOLANA_PRIVATE_KEY_HEX'];
+    if (!privateKeySolana) throw new Error('SOLANA_PRIVATE_KEY_HEX not set');
     const accountSolana = Keypair.fromSecretKey(
       hexToBytes(`0x${privateKeySolana}`)
     );
@@ -409,7 +411,7 @@ describe('UniversalTxReceipt Type Validation', () => {
 
     const walletClientPush = createWalletClient({
       account: privateKeyToAccount(privateKeyPush),
-      transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET].defaultRPC[0]),
+      transport: http(CHAIN_INFO[CHAIN.PUSH_LOCALNET].defaultRPC[0]),
     });
     const walletClientSepolia = createWalletClient({
       account: privateKeyToAccount(privateKeyEVM),
@@ -432,12 +434,15 @@ describe('UniversalTxReceipt Type Validation', () => {
     );
     pushClientPush = await PushChain.initialize(universalSignerPush, {
       network: pushNetwork,
+      rpcUrls:{[CHAIN.ETHEREUM_SEPOLIA] : ['http://localhost:9545'], [CHAIN.PUSH_LOCALNET] : ['http://localhost:8545'], [CHAIN.SOLANA_DEVNET] : ['http://localhost:8899'], [CHAIN.SOLANA_TESTNET] : ['http://localhost:8899'],}
     });
     pushClientSepolia = await PushChain.initialize(universalSignerSepolia, {
       network: pushNetwork,
+      rpcUrls:{[CHAIN.ETHEREUM_SEPOLIA] : ['http://localhost:9545'], [CHAIN.PUSH_LOCALNET] : ['http://localhost:8545'], [CHAIN.SOLANA_DEVNET] : ['http://localhost:8899'], [CHAIN.SOLANA_TESTNET] : ['http://localhost:8899']}
     });
     pushClientSolana = await PushChain.initialize(universalSignerSolana, {
       network: pushNetwork,
+      rpcUrls:{[CHAIN.ETHEREUM_SEPOLIA] : ['http://localhost:9545'], [CHAIN.PUSH_LOCALNET] : ['http://localhost:8545'], [CHAIN.SOLANA_DEVNET] : ['http://localhost:8899'], [CHAIN.SOLANA_TESTNET] : ['http://localhost:8899']}
     });
   });
 
@@ -493,7 +498,7 @@ describe('UniversalTxReceipt Type Validation', () => {
       expect(txPush.origin).toContain('eip155'); // EVM namespace
       expect(txSepolia.origin).toContain('eip155'); // EVM namespace
       expect(txSolana.origin).toContain('solana'); // Solana namespace
-      expect(txPush.origin).toContain('42101'); // Push chain ID
+      expect(txPush.origin).toContain('eip155:9000:0x778D3206374f8AC265728E18E3fE2Ae6b93E4ce4'); // Push chain ID
       expect(txSepolia.origin).toContain('11155111'); // Push chain ID
       expect(txSolana.origin).toContain('EtWTRABZaYq6iMfeYKouRu166VU2xqa1'); // Push chain ID
       expect(txPush.origin).toContain(txPush.from);

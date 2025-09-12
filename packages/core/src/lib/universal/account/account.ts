@@ -232,7 +232,7 @@ export async function convertOriginToExecutor(
 
   // Create PushClient to get factory address
   const pushClient = new PushClient({
-    rpcUrls: CHAIN_INFO[pushChain].defaultRPC,
+    rpcUrls: ['http://localhost:8545'],
     network: pushNetwork,
   });
 
@@ -290,7 +290,7 @@ export async function convertOriginToExecutor(
 export async function convertExecutorToOriginAccount(
   ueaAddress: `0x${string}`
 ): Promise<OriginAccountInfo> {
-  const RPC_URL = PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
+  const RPC_URL = 'http://localhost:8545';
   const FACTORY_ADDRESS =
     PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].factoryAddress;
 
@@ -310,7 +310,6 @@ export async function convertExecutorToOriginAccount(
   ];
 
   const [account, isUEA] = originResult;
-
   if (
     account.chainNamespace === '' ||
     account.chainId === '' ||
