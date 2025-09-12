@@ -46,7 +46,7 @@ export class PriceFetch {
           connection,
           {
             publicKey: new PublicKey(
-              'EfQYRThwBu4MsU7Lf3D2e68tCtdwfYj6f66ot1e2HNrq'
+              'DKWx5ZiKpmdzu7s11JR93cw69PEJZkHAZpg6BNoHjVmK'
             ),
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any,
@@ -64,7 +64,6 @@ export class PriceFetch {
         if (!result || !result.price) {
           throw new Error('Invalid price data returned');
         }
-
         // Exponent on this function is always NEGATIVE
         const price = (result.price as BN).toNumber();
         return BigInt(price);
