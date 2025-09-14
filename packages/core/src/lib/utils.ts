@@ -357,5 +357,83 @@ export class Utils {
         );
       }
     },
+    /**
+     * Calculates the minimum amount out after applying slippage.
+     *
+     * Given an input amount and slippage in basis points, returns the minimum amount
+     * that should be received after accounting for slippage.
+     *
+     * @param {string} amount - The input amount in smallest units (e.g., "100000000" for 100 USDC with 6 decimals)
+     * @param {object} options - Configuration options
+     * @param {number} options.slippageBps - Slippage in basis points (100 = 1%, 50 = 0.5%)
+     * @returns {string} The minimum amount out in smallest units
+     *
+     * @example
+     * // Calculate minimum amount for 100 USDC with 1% slippage
+     * const amount = PushChain.utils.helpers.parseUnits("100", 6); // "100000000"
+     * const minOut = PushChain.utils.helpers.slippageToMinAmount(amount, {
+     *   slippageBps: 100, // 1%
+     * });
+     * // => "99000000" (99 USDC in smallest units)
+     *
+     * @example
+     * // Simple case with whole numbers
+     * const minOut = PushChain.utils.helpers.slippageToMinAmount("100", {
+     *   slippageBps: 100, // 1%
+     * });
+     * // => "99"
+     */
+    slippageToMinAmount(
+      amount: string,
+      options: {
+        slippageBps: number; // 100 = 1%
+      }
+    ): string {
+      // Validate inputs
+      if (typeof amount !== 'string') {
+        throw new Error('Amount must be a string');
+      }
+
+      if (typeof options.slippageBps !== 'number') {
+        throw new Error('slippageBps must be a number');
+      }
+
+      if (!Number.isInteger(options.slippageBps)) {
+        throw new Error('slippageBps must be an integer');
+      }
+
+      if (options.slippageBps < 0) {
+        throw new Error('slippageBps must be non-negative');
+      }
+
+      if (options.slippageBps > 10000) {
+        throw new Error('slippageBps cannot exceed 10000 (100%)');
+      }
+
+      // Handle empty string
+      if (amount.trim() === '') {
+        throw new Error('Amount cannot be empty');
+      }
+
+      try {
+        // Convert amount to BigInt for precise calculation
+        const amountBigInt = BigInt(amount);
+
+        // Calculate slippage factor: (10000 - slippageBps) / 10000
+        // For 1% slippage (100 bps): (10000 - 100) / 10000 = 0.99
+        const slippageFactor = BigInt(10000 - options.slippageBps);
+
+        // Calculate minimum amount: amount * slippageFactor / 10000
+        const minAmountBigInt = (amountBigInt * slippageFactor) / BigInt(10000);
+
+        return minAmountBigInt.toString();
+      } catch (error) {
+        throw new Error(
+          `Failed to calculate slippage: ${
+            error instanceof Error ? error.message : 'Invalid amount format'
+          }`
+        );
+      }
+    },
   };
 }
