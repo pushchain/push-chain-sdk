@@ -1191,18 +1191,22 @@ describe('PushChain', () => {
       it('should throw error for invalid exponent types', () => {
         expect(() =>
           PushChain.utils.helpers.parseUnits('1', '18' as any)
-        ).toThrow('Exponent must be a non-negative integer');
+        ).toThrow(
+          'Exponent must be a number or an object with decimals property'
+        );
 
         expect(() =>
           PushChain.utils.helpers.parseUnits('1', null as any)
-        ).toThrow('Exponent must be a non-negative integer');
+        ).toThrow(
+          'Exponent must be a number or an object with decimals property'
+        );
 
         expect(() => PushChain.utils.helpers.parseUnits('1', 1.5)).toThrow(
-          'Exponent must be a non-negative integer'
+          'Exponent must be an integer'
         );
 
         expect(() => PushChain.utils.helpers.parseUnits('1', -1)).toThrow(
-          'Exponent must be a non-negative integer'
+          'Exponent must be non-negative'
         );
       });
 
@@ -1275,6 +1279,223 @@ describe('PushChain', () => {
         // Push token (18 decimals) - example amount
         const pushResult = PushChain.utils.helpers.parseUnits('1000.5', 18);
         expect(pushResult).toBe(BigInt('1000500000000000000000'));
+      });
+
+      it('should handle object-based exponent input', () => {
+        // Test basic integer parsing with object format
+        const result1 = PushChain.utils.helpers.parseUnits('420', {
+          decimals: 9,
+        });
+        expect(result1).toBe(BigInt('420000000000'));
+
+        // Test ETH to wei conversion (18 decimals) with object format
+        const result2 = PushChain.utils.helpers.parseUnits('1.5', {
+          decimals: 18,
+        });
+        expect(result2).toBe(BigInt('1500000000000000000'));
+
+        // Test smaller decimal values with object format
+        const result3 = PushChain.utils.helpers.parseUnits('0.1', {
+          decimals: 6,
+        });
+        expect(result3).toBe(BigInt('100000'));
+
+        // Test fractional values with fewer decimals than exponent
+        const result4 = PushChain.utils.helpers.parseUnits('1.23', {
+          decimals: 6,
+        });
+        expect(result4).toBe(BigInt('1230000'));
+
+        // Test zero values with object format
+        const result5 = PushChain.utils.helpers.parseUnits('0', {
+          decimals: 18,
+        });
+        expect(result5).toBe(BigInt('0'));
+
+        const result6 = PushChain.utils.helpers.parseUnits('0.0', {
+          decimals: 6,
+        });
+        expect(result6).toBe(BigInt('0'));
+
+        // Test negative values with object format
+        const result7 = PushChain.utils.helpers.parseUnits('-1', {
+          decimals: 18,
+        });
+        expect(result7).toBe(BigInt('-1000000000000000000'));
+
+        const result8 = PushChain.utils.helpers.parseUnits('-0.5', {
+          decimals: 6,
+        });
+        expect(result8).toBe(BigInt('-500000'));
+
+        // Test values without decimals with object format
+        const result9 = PushChain.utils.helpers.parseUnits('100', {
+          decimals: 0,
+        });
+        expect(result9).toBe(BigInt('100'));
+
+        const result10 = PushChain.utils.helpers.parseUnits('1000', {
+          decimals: 3,
+        });
+        expect(result10).toBe(BigInt('1000000'));
+
+        // Test values with leading/trailing whitespace with object format
+        const result11 = PushChain.utils.helpers.parseUnits(' 1.5 ', {
+          decimals: 18,
+        });
+        expect(result11).toBe(BigInt('1500000000000000000'));
+
+        const result12 = PushChain.utils.helpers.parseUnits('\t420\n', {
+          decimals: 9,
+        });
+        expect(result12).toBe(BigInt('420000000000'));
+
+        // Test values starting with decimal point with object format
+        const result13 = PushChain.utils.helpers.parseUnits('.5', {
+          decimals: 18,
+        });
+        expect(result13).toBe(BigInt('500000000000000000'));
+
+        const result14 = PushChain.utils.helpers.parseUnits('.123', {
+          decimals: 6,
+        });
+        expect(result14).toBe(BigInt('123000'));
+
+        // Test exact decimal place matches with object format
+        const result15 = PushChain.utils.helpers.parseUnits('1.123456', {
+          decimals: 6,
+        });
+        expect(result15).toBe(BigInt('1123456'));
+
+        // Test large numbers with object format
+        const result16 = PushChain.utils.helpers.parseUnits(
+          '999999999999999999',
+          { decimals: 18 }
+        );
+        expect(result16).toBe(BigInt('999999999999999999000000000000000000'));
+
+        const result17 = PushChain.utils.helpers.parseUnits('1000000', {
+          decimals: 0,
+        });
+        expect(result17).toBe(BigInt('1000000'));
+
+        // Test common token decimal scenarios with object format
+        // ETH (18 decimals)
+        const ethResult = PushChain.utils.helpers.parseUnits('1', {
+          decimals: 18,
+        });
+        expect(ethResult).toBe(BigInt('1000000000000000000'));
+
+        // USDC (6 decimals)
+        const usdcResult = PushChain.utils.helpers.parseUnits('100', {
+          decimals: 6,
+        });
+        expect(usdcResult).toBe(BigInt('100000000'));
+
+        // BTC (8 decimals)
+        const btcResult = PushChain.utils.helpers.parseUnits('0.00000001', {
+          decimals: 8,
+        });
+        expect(btcResult).toBe(BigInt('1'));
+
+        // Push token (18 decimals) - example amount
+        const pushResult = PushChain.utils.helpers.parseUnits('1000.5', {
+          decimals: 18,
+        });
+        expect(pushResult).toBe(BigInt('1000500000000000000000'));
+      });
+
+      it('should throw error for invalid object-based exponent types', () => {
+        expect(() =>
+          PushChain.utils.helpers.parseUnits('1', { decimals: '18' } as any)
+        ).toThrow('Exponent must be a number');
+
+        expect(() =>
+          PushChain.utils.helpers.parseUnits('1', { decimals: null } as any)
+        ).toThrow('Exponent must be a number');
+
+        expect(() =>
+          PushChain.utils.helpers.parseUnits('1', { decimals: 1.5 })
+        ).toThrow('Exponent must be an integer');
+
+        expect(() =>
+          PushChain.utils.helpers.parseUnits('1', { decimals: -1 })
+        ).toThrow('Exponent must be non-negative');
+
+        expect(() =>
+          PushChain.utils.helpers.parseUnits('1', {} as any)
+        ).toThrow(
+          'Exponent must be a number or an object with decimals property'
+        );
+
+        expect(() =>
+          PushChain.utils.helpers.parseUnits('1', { invalid: 18 } as any)
+        ).toThrow(
+          'Exponent must be a number or an object with decimals property'
+        );
+
+        expect(() =>
+          PushChain.utils.helpers.parseUnits('1', null as any)
+        ).toThrow(
+          'Exponent must be a number or an object with decimals property'
+        );
+
+        expect(() =>
+          PushChain.utils.helpers.parseUnits('1', undefined as any)
+        ).toThrow(
+          'Exponent must be a number or an object with decimals property'
+        );
+      });
+
+      it('should throw error when decimal places exceed exponent with object format', () => {
+        expect(() =>
+          PushChain.utils.helpers.parseUnits('1.123456789', { decimals: 6 })
+        ).toThrow('Value has more decimal places (9) than exponent allows (6)');
+
+        expect(() =>
+          PushChain.utils.helpers.parseUnits('0.12345678901234567890', {
+            decimals: 18,
+          })
+        ).toThrow(
+          'Value has more decimal places (20) than exponent allows (18)'
+        );
+      });
+
+      it('should produce same results for number and object-based exponent formats', () => {
+        const testCases = [
+          { value: '420', decimals: 9 },
+          { value: '1.5', decimals: 18 },
+          { value: '0.1', decimals: 6 },
+          { value: '1.23', decimals: 6 },
+          { value: '0', decimals: 18 },
+          { value: '0.0', decimals: 6 },
+          { value: '-1', decimals: 18 },
+          { value: '-0.5', decimals: 6 },
+          { value: '100', decimals: 0 },
+          { value: '1000', decimals: 3 },
+          { value: ' 1.5 ', decimals: 18 },
+          { value: '\t420\n', decimals: 9 },
+          { value: '.5', decimals: 18 },
+          { value: '.123', decimals: 6 },
+          { value: '1.123456', decimals: 6 },
+          { value: '999999999999999999', decimals: 18 },
+          { value: '1000000', decimals: 0 },
+          { value: '1', decimals: 18 },
+          { value: '100', decimals: 6 },
+          { value: '0.00000001', decimals: 8 },
+          { value: '1000.5', decimals: 18 },
+        ];
+
+        testCases.forEach(({ value, decimals }) => {
+          const numberResult = PushChain.utils.helpers.parseUnits(
+            value,
+            decimals
+          );
+          const objectResult = PushChain.utils.helpers.parseUnits(value, {
+            decimals,
+          });
+          expect(numberResult).toBe(objectResult);
+        });
       });
     });
   });

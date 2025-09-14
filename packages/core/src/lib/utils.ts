@@ -143,7 +143,7 @@ export class Utils {
      * For example, converting "1.5" ETH to wei (18 decimals) would be parseUnits("1.5", 18).
      *
      * @param {string} value - The string representation of the number to multiply.
-     * @param {number} exponent - The exponent (number of decimal places).
+     * @param {number | {decimals: number}} exponent - The exponent (number of decimal places) or an object with decimals property.
      * @returns {bigint} The result as a bigint.
      *
      * @example
@@ -153,19 +153,43 @@ export class Utils {
      * @example
      * Utils.helpers.parseUnits('1.5', 18)
      * // → 1500000000000000000n
+     *
+     * @example
+     * Utils.helpers.parseUnits('1.5', {decimals: 18})
+     * // → 1500000000000000000n
      */
-    parseUnits(value: string, exponent: number): bigint {
+    parseUnits(value: string, exponent: number | { decimals: number }): bigint {
       // Validate inputs
       if (typeof value !== 'string') {
         throw new Error('Value must be a string');
       }
 
-      if (
-        typeof exponent !== 'number' ||
-        !Number.isInteger(exponent) ||
-        exponent < 0
+      // Extract the actual exponent value from either number or object
+      let actualExponent: number;
+      if (typeof exponent === 'number') {
+        actualExponent = exponent;
+      } else if (
+        typeof exponent === 'object' &&
+        exponent !== null &&
+        'decimals' in exponent
       ) {
-        throw new Error('Exponent must be a non-negative integer');
+        actualExponent = exponent.decimals;
+      } else {
+        throw new Error(
+          'Exponent must be a number or an object with decimals property'
+        );
+      }
+
+      if (typeof actualExponent !== 'number') {
+        throw new Error('Exponent must be a number');
+      }
+
+      if (!Number.isInteger(actualExponent)) {
+        throw new Error('Exponent must be an integer');
+      }
+
+      if (actualExponent < 0) {
+        throw new Error('Exponent must be non-negative');
       }
 
       // Handle empty string
@@ -197,14 +221,14 @@ export class Utils {
         const fractionalPart = parts[1] || '';
 
         // Check if fractional part has more digits than the exponent allows
-        if (fractionalPart.length > exponent) {
+        if (fractionalPart.length > actualExponent) {
           throw new Error(
-            `Value has more decimal places (${fractionalPart.length}) than exponent allows (${exponent})`
+            `Value has more decimal places (${fractionalPart.length}) than exponent allows (${actualExponent})`
           );
         }
 
         // Pad fractional part with zeros to match exponent
-        const paddedFractionalPart = fractionalPart.padEnd(exponent, '0');
+        const paddedFractionalPart = fractionalPart.padEnd(actualExponent, '0');
 
         // Combine integer and fractional parts
         const combinedValue = integerPart + paddedFractionalPart;
