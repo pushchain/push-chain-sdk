@@ -1498,5 +1498,429 @@ describe('PushChain', () => {
         });
       });
     });
+
+    describe('formatUnits', () => {
+      describe('EVM-style usage (number decimals)', () => {
+        it('should format bigint values correctly', () => {
+          // ETH (18 decimals)
+          const result1 = PushChain.utils.helpers.formatUnits(
+            BigInt('1500000000000000000'),
+            18
+          );
+          expect(result1).toBe('1.5');
+
+          // USDC (6 decimals)
+          const result2 = PushChain.utils.helpers.formatUnits(
+            BigInt('1500000'),
+            6
+          );
+          expect(result2).toBe('1.5');
+
+          // BTC (8 decimals)
+          const result3 = PushChain.utils.helpers.formatUnits(
+            BigInt('123456789'),
+            8
+          );
+          expect(result3).toBe('1.23456789');
+
+          // Zero value
+          const result4 = PushChain.utils.helpers.formatUnits(BigInt('0'), 18);
+          expect(result4).toBe('0.0');
+
+          // Large value
+          const result5 = PushChain.utils.helpers.formatUnits(
+            BigInt('1000000000000000000000'),
+            18
+          );
+          expect(result5).toBe('1000.0');
+        });
+
+        it('should format string values correctly', () => {
+          // ETH (18 decimals)
+          const result1 = PushChain.utils.helpers.formatUnits(
+            '1500000000000000000',
+            18
+          );
+          expect(result1).toBe('1.5');
+
+          // USDC (6 decimals)
+          const result2 = PushChain.utils.helpers.formatUnits('1500000', 6);
+          expect(result2).toBe('1.5');
+
+          // BTC (8 decimals)
+          const result3 = PushChain.utils.helpers.formatUnits('123456789', 8);
+          expect(result3).toBe('1.23456789');
+
+          // Zero value
+          const result4 = PushChain.utils.helpers.formatUnits('0', 18);
+          expect(result4).toBe('0.0');
+
+          // Large value
+          const result5 = PushChain.utils.helpers.formatUnits(
+            '1000000000000000000000',
+            18
+          );
+          expect(result5).toBe('1000.0');
+        });
+
+        it('should handle different decimal scenarios', () => {
+          // No decimals (0)
+          const result1 = PushChain.utils.helpers.formatUnits(BigInt('100'), 0);
+          expect(result1).toBe('100');
+
+          // Single decimal (1)
+          const result2 = PushChain.utils.helpers.formatUnits(BigInt('123'), 1);
+          expect(result2).toBe('12.3');
+
+          // Many decimals (30)
+          const result3 = PushChain.utils.helpers.formatUnits(
+            BigInt('123456789012345678901234567890'),
+            30
+          );
+          expect(result3).toBe('0.12345678901234567890123456789');
+        });
+      });
+
+      describe('Push-style usage (options object)', () => {
+        it('should format with decimals option', () => {
+          // ETH (18 decimals)
+          const result1 = PushChain.utils.helpers.formatUnits(
+            BigInt('1500000000000000000'),
+            { decimals: 18 }
+          );
+          expect(result1).toBe('1.5');
+
+          // USDC (6 decimals)
+          const result2 = PushChain.utils.helpers.formatUnits('1500000', {
+            decimals: 6,
+          });
+          expect(result2).toBe('1.5');
+
+          // BTC (8 decimals)
+          const result3 = PushChain.utils.helpers.formatUnits('123456789', {
+            decimals: 8,
+          });
+          expect(result3).toBe('1.23456789');
+
+          // Zero value
+          const result4 = PushChain.utils.helpers.formatUnits('0', {
+            decimals: 18,
+          });
+          expect(result4).toBe('0.0');
+
+          // Large value
+          const result5 = PushChain.utils.helpers.formatUnits(
+            '1000000000000000000000',
+            { decimals: 18 }
+          );
+          expect(result5).toBe('1000.0');
+        });
+
+        it('should format with precision option', () => {
+          // Truncate to 2 decimal places
+          const result1 = PushChain.utils.helpers.formatUnits('1234567', {
+            decimals: 6,
+            precision: 2,
+          });
+          expect(result1).toBe('1.23');
+
+          // Truncate to 4 decimal places
+          const result2 = PushChain.utils.helpers.formatUnits('123456789', {
+            decimals: 8,
+            precision: 4,
+          });
+          expect(result2).toBe('1.2345');
+
+          // Truncate to 0 decimal places (integer)
+          const result3 = PushChain.utils.helpers.formatUnits('1500000', {
+            decimals: 6,
+            precision: 0,
+          });
+          expect(result3).toBe('1');
+
+          // Truncate to 1 decimal place
+          const result4 = PushChain.utils.helpers.formatUnits(
+            '1500000000000000000',
+            { decimals: 18, precision: 1 }
+          );
+          expect(result4).toBe('1.5');
+
+          // Precision larger than actual decimals
+          const result5 = PushChain.utils.helpers.formatUnits('1500000', {
+            decimals: 6,
+            precision: 10,
+          });
+          expect(result5).toBe('1.5');
+        });
+
+        it('should handle edge cases with precision', () => {
+          // Very small number with precision
+          const result1 = PushChain.utils.helpers.formatUnits('1', {
+            decimals: 18,
+            precision: 2,
+          });
+          expect(result1).toBe('0');
+
+          // Number that rounds down with precision
+          const result2 = PushChain.utils.helpers.formatUnits('123456', {
+            decimals: 6,
+            precision: 1,
+          });
+          expect(result2).toBe('0.1');
+
+          // Number that rounds down to zero
+          const result3 = PushChain.utils.helpers.formatUnits('123456', {
+            decimals: 6,
+            precision: 0,
+          });
+          expect(result3).toBe('0');
+        });
+      });
+
+      describe('Common token scenarios', () => {
+        it('should handle ETH scenarios', () => {
+          // 1 ETH
+          const result1 = PushChain.utils.helpers.formatUnits(
+            '1000000000000000000',
+            18
+          );
+          expect(result1).toBe('1.0');
+
+          // 0.5 ETH
+          const result2 = PushChain.utils.helpers.formatUnits(
+            '500000000000000000',
+            18
+          );
+          expect(result2).toBe('0.5');
+
+          // 0.001 ETH
+          const result3 = PushChain.utils.helpers.formatUnits(
+            '1000000000000000',
+            18
+          );
+          expect(result3).toBe('0.001');
+        });
+
+        it('should handle USDC scenarios', () => {
+          // 100 USDC
+          const result1 = PushChain.utils.helpers.formatUnits('100000000', 6);
+          expect(result1).toBe('100.0');
+
+          // 0.01 USDC
+          const result2 = PushChain.utils.helpers.formatUnits('10000', 6);
+          expect(result2).toBe('0.01');
+
+          // 0.000001 USDC (smallest unit)
+          const result3 = PushChain.utils.helpers.formatUnits('1', 6);
+          expect(result3).toBe('0.000001');
+        });
+
+        it('should handle BTC scenarios', () => {
+          // 1 BTC
+          const result1 = PushChain.utils.helpers.formatUnits('100000000', 8);
+          expect(result1).toBe('1.0');
+
+          // 0.5 BTC
+          const result2 = PushChain.utils.helpers.formatUnits('50000000', 8);
+          expect(result2).toBe('0.5');
+
+          // 0.00000001 BTC (1 satoshi)
+          const result3 = PushChain.utils.helpers.formatUnits('1', 8);
+          expect(result3).toBe('0.00000001');
+        });
+      });
+
+      describe('Error handling and validation', () => {
+        it('should throw error for invalid value types', () => {
+          expect(() =>
+            PushChain.utils.helpers.formatUnits(123 as any, 18)
+          ).toThrow('Value must be a bigint or string');
+
+          expect(() =>
+            PushChain.utils.helpers.formatUnits(null as any, 18)
+          ).toThrow('Value must be a bigint or string');
+
+          expect(() =>
+            PushChain.utils.helpers.formatUnits(undefined as any, 18)
+          ).toThrow('Value must be a bigint or string');
+
+          expect(() =>
+            PushChain.utils.helpers.formatUnits({} as any, 18)
+          ).toThrow('Value must be a bigint or string');
+        });
+
+        it('should throw error for invalid decimals parameter', () => {
+          expect(() =>
+            PushChain.utils.helpers.formatUnits('100', '18' as any)
+          ).toThrow(
+            'Second parameter must be a number (decimals) or an object with decimals property'
+          );
+
+          expect(() =>
+            PushChain.utils.helpers.formatUnits('100', null as any)
+          ).toThrow(
+            'Second parameter must be a number (decimals) or an object with decimals property'
+          );
+
+          expect(() =>
+            PushChain.utils.helpers.formatUnits('100', undefined as any)
+          ).toThrow(
+            'Second parameter must be a number (decimals) or an object with decimals property'
+          );
+
+          expect(() =>
+            PushChain.utils.helpers.formatUnits('100', {} as any)
+          ).toThrow(
+            'Second parameter must be a number (decimals) or an object with decimals property'
+          );
+        });
+
+        it('should throw error for invalid decimals values', () => {
+          expect(() => PushChain.utils.helpers.formatUnits('100', 1.5)).toThrow(
+            'Decimals must be an integer'
+          );
+
+          expect(() => PushChain.utils.helpers.formatUnits('100', -1)).toThrow(
+            'Decimals must be non-negative'
+          );
+
+          expect(() => PushChain.utils.helpers.formatUnits('100', NaN)).toThrow(
+            'Decimals must be an integer'
+          );
+        });
+
+        it('should throw error for invalid precision values', () => {
+          expect(() =>
+            PushChain.utils.helpers.formatUnits('100', {
+              decimals: 18,
+              precision: 1.5,
+            })
+          ).toThrow('Precision must be an integer');
+
+          expect(() =>
+            PushChain.utils.helpers.formatUnits('100', {
+              decimals: 18,
+              precision: -1,
+            })
+          ).toThrow('Precision must be non-negative');
+
+          expect(() =>
+            PushChain.utils.helpers.formatUnits('100', {
+              decimals: 18,
+              precision: NaN,
+            })
+          ).toThrow('Precision must be an integer');
+        });
+
+        it('should throw error for invalid string values', () => {
+          expect(() =>
+            PushChain.utils.helpers.formatUnits('invalid', 18)
+          ).toThrow('Failed to format units');
+        });
+      });
+
+      describe('Edge cases', () => {
+        it('should handle very large numbers', () => {
+          const result1 = PushChain.utils.helpers.formatUnits(
+            '999999999999999999999999999999999999999999',
+            18
+          );
+          expect(result1).toBe('999999999999999999999999.999999999999999999');
+
+          const result2 = PushChain.utils.helpers.formatUnits(
+            '999999999999999999999999999999999999999999',
+            { decimals: 18, precision: 2 }
+          );
+          expect(result2).toBe('1e+24');
+        });
+
+        it('should handle very small numbers', () => {
+          const result1 = PushChain.utils.helpers.formatUnits('1', 30);
+          expect(result1).toBe('0.000000000000000000000000000001');
+
+          const result2 = PushChain.utils.helpers.formatUnits('1', {
+            decimals: 30,
+            precision: 10,
+          });
+          expect(result2).toBe('0');
+        });
+
+        it('should handle zero with different decimals', () => {
+          const result1 = PushChain.utils.helpers.formatUnits('0', 0);
+          expect(result1).toBe('0');
+
+          const result2 = PushChain.utils.helpers.formatUnits('0', 18);
+          expect(result2).toBe('0.0');
+
+          const result3 = PushChain.utils.helpers.formatUnits('0', {
+            decimals: 6,
+            precision: 2,
+          });
+          expect(result3).toBe('0');
+        });
+
+        it('should handle negative numbers', () => {
+          const result1 = PushChain.utils.helpers.formatUnits(
+            '-1500000000000000000',
+            18
+          );
+          expect(result1).toBe('-1.5');
+
+          const result2 = PushChain.utils.helpers.formatUnits('-1500000', {
+            decimals: 6,
+            precision: 2,
+          });
+          expect(result2).toBe('-1.5');
+        });
+      });
+
+      describe('Consistency between EVM-style and Push-style', () => {
+        it('should produce same results for number and object-based formats', () => {
+          const testCases = [
+            { value: '1500000000000000000', decimals: 18 },
+            { value: '1500000', decimals: 6 },
+            { value: '123456789', decimals: 8 },
+            { value: '0', decimals: 18 },
+            { value: '1000000000000000000000', decimals: 18 },
+            { value: '123456', decimals: 6 },
+            { value: '999999999999999999', decimals: 18 },
+            { value: '1', decimals: 30 },
+          ];
+
+          testCases.forEach(({ value, decimals }) => {
+            const numberResult = PushChain.utils.helpers.formatUnits(
+              value,
+              decimals
+            );
+            const objectResult = PushChain.utils.helpers.formatUnits(value, {
+              decimals,
+            });
+            expect(numberResult).toBe(objectResult);
+          });
+        });
+
+        it('should handle bigint and string inputs consistently', () => {
+          const testCases = [
+            { value: '1500000000000000000', decimals: 18 },
+            { value: '1500000', decimals: 6 },
+            { value: '123456789', decimals: 8 },
+            { value: '0', decimals: 18 },
+            { value: '1000000000000000000000', decimals: 18 },
+          ];
+
+          testCases.forEach(({ value, decimals }) => {
+            const stringResult = PushChain.utils.helpers.formatUnits(
+              value,
+              decimals
+            );
+            const bigintResult = PushChain.utils.helpers.formatUnits(
+              BigInt(value),
+              decimals
+            );
+            expect(stringResult).toBe(bigintResult);
+          });
+        });
+      });
+    });
   });
 });

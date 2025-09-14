@@ -249,5 +249,113 @@ export class Utils {
         );
       }
     },
+
+    /**
+     * Formats a value from smallest units to human-readable string.
+     *
+     * Supports both EVM-style (like ethers/viem) and Push-style (options object) usage patterns.
+     * Always returns a string for UI safety.
+     *
+     * @param {bigint | string} value - The value in smallest units (e.g., "1500000" or 1500000000000000000n).
+     * @param {number | {decimals: number; precision?: number}} decimalsOrOptions - Token decimals or options object.
+     * @returns {string} Human-readable string (e.g., "1.5").
+     *
+     * @example
+     * // EVM-style usage
+     * Utils.helpers.formatUnits(1500000000000000000n, 18)
+     * // → "1.5"
+     *
+     * @example
+     * // Push-style usage
+     * Utils.helpers.formatUnits("1500000", { decimals: 6 })
+     * // → "1.5"
+     *
+     * @example
+     * // With precision (truncate after 2 decimals)
+     * Utils.helpers.formatUnits("1234567", { decimals: 6, precision: 2 })
+     * // → "1.23"
+     */
+    formatUnits(
+      value: bigint | string,
+      decimalsOrOptions: number | { decimals: number; precision?: number }
+    ): string {
+      // Validate inputs
+      if (typeof value !== 'bigint' && typeof value !== 'string') {
+        throw new Error('Value must be a bigint or string');
+      }
+
+      // Extract decimals and precision from the second parameter
+      let decimals: number;
+      let precision: number | undefined;
+
+      if (typeof decimalsOrOptions === 'number') {
+        // EVM-style: formatUnits(value, decimals)
+        decimals = decimalsOrOptions;
+      } else if (
+        typeof decimalsOrOptions === 'object' &&
+        decimalsOrOptions !== null &&
+        'decimals' in decimalsOrOptions
+      ) {
+        // Push-style: formatUnits(value, { decimals, precision? })
+        decimals = decimalsOrOptions.decimals;
+        precision = decimalsOrOptions.precision;
+      } else {
+        throw new Error(
+          'Second parameter must be a number (decimals) or an object with decimals property'
+        );
+      }
+
+      // Validate decimals
+      if (typeof decimals !== 'number') {
+        throw new Error('Decimals must be a number');
+      }
+
+      if (!Number.isInteger(decimals)) {
+        throw new Error('Decimals must be an integer');
+      }
+
+      if (decimals < 0) {
+        throw new Error('Decimals must be non-negative');
+      }
+
+      // Validate precision if provided
+      if (precision !== undefined) {
+        if (typeof precision !== 'number') {
+          throw new Error('Precision must be a number');
+        }
+
+        if (!Number.isInteger(precision)) {
+          throw new Error('Precision must be an integer');
+        }
+
+        if (precision < 0) {
+          throw new Error('Precision must be non-negative');
+        }
+      }
+
+      try {
+        // Convert string to bigint if needed
+        const bigintValue = typeof value === 'string' ? BigInt(value) : value;
+
+        // Use ethers to format the units
+        const formatted = ethers.formatUnits(bigintValue, decimals);
+
+        // Apply precision if specified
+        if (precision !== undefined) {
+          const num = parseFloat(formatted);
+          const factor = Math.pow(10, precision);
+          const truncated = Math.floor(num * factor) / factor;
+          return truncated.toString();
+        }
+
+        return formatted;
+      } catch (error) {
+        throw new Error(
+          `Failed to format units: ${
+            error instanceof Error ? error.message : 'Unknown error'
+          }`
+        );
+      }
+    },
   };
 }
