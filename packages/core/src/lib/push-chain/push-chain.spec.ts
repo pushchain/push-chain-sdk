@@ -2173,5 +2173,137 @@ describe('PushChain', () => {
         });
       });
     });
+
+    describe('Tokens Utils', () => {
+      let tokensClientEVM: PushChain;
+      let tokensUniversalSignerEVM: UniversalSigner;
+
+      beforeAll(async () => {
+        const account = privateKeyToAccount(generatePrivateKey());
+        const walletClient = createWalletClient({
+          account,
+          chain: sepolia,
+          transport: http(),
+        });
+        tokensUniversalSignerEVM =
+          await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
+            chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+            library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+          });
+        tokensClientEVM = await PushChain.initialize(tokensUniversalSignerEVM, {
+          network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+        });
+      });
+      it('should list all moveable tokens across all chains', () => {
+        const grouped = PushChain.utils.getMoveableTokens();
+        console.log(grouped);
+        const flat = Object.values(grouped).flatMap((arr) => arr ?? []);
+        expect(Array.isArray(flat)).toBe(true);
+        expect(flat.length).toBeGreaterThan(0);
+
+        // Sanity check for common tokens present in the registry
+        const hasETH = flat.some(
+          (t) => t.symbol === 'ETH' && t.decimals === 18
+        );
+        const hasUSDC = flat.some(
+          (t) => t.symbol === 'USDC' && t.decimals === 6
+        );
+        const hasUSDT = flat.some(
+          (t) => t.symbol === 'USDT' && t.decimals === 6
+        );
+        expect(hasETH).toBe(true);
+        expect(hasUSDC).toBe(true);
+        expect(hasUSDT).toBe(true);
+      });
+
+      it('should list moveable tokens for a specific chain (Ethereum Sepolia)', () => {
+        const grouped = PushChain.utils.getMoveableTokens(
+          CHAIN.ETHEREUM_SEPOLIA
+        );
+        console.log(grouped)
+        const list = grouped[CHAIN.ETHEREUM_SEPOLIA] ?? [];
+        expect(Array.isArray(list)).toBe(true);
+        expect(list.length).toBeGreaterThan(0);
+
+        // Expect ETH, USDC, USDT per tokens registry
+        expect(
+          list.some(
+            (t) => t.symbol === 'ETH' && t.decimals === 18 && !t.requiresApprove
+          )
+        ).toBe(true);
+        expect(
+          list.some(
+            (t) => t.symbol === 'USDC' && t.decimals === 6 && t.requiresApprove
+          )
+        ).toBe(true);
+        expect(
+          list.some(
+            (t) => t.symbol === 'USDT' && t.decimals === 6 && t.requiresApprove
+          )
+        ).toBe(true);
+      });
+
+      it('should list all payable tokens across all chains', () => {
+        const grouped = PushChain.utils.getPayableTokens();
+        const flat = Object.values(grouped).flatMap((arr) => arr ?? []);
+        expect(Array.isArray(flat)).toBe(true);
+        expect(flat.length).toBeGreaterThan(0);
+
+        // Sanity check for common tokens present in the registry
+        const hasETH = flat.some(
+          (t) => t.symbol === 'ETH' && t.decimals === 18
+        );
+        const hasUSDC = flat.some(
+          (t) => t.symbol === 'USDC' && t.decimals === 6
+        );
+        const hasUSDT = flat.some(
+          (t) => t.symbol === 'USDT' && t.decimals === 6
+        );
+        expect(hasETH).toBe(true);
+        expect(hasUSDC).toBe(true);
+        expect(hasUSDT).toBe(true);
+      });
+
+      it('should list payable tokens for a specific chain (Solana Devnet)', () => {
+        const grouped = PushChain.utils.getPayableTokens(CHAIN.SOLANA_DEVNET);
+        const list = grouped[CHAIN.SOLANA_DEVNET] ?? [];
+        expect(Array.isArray(list)).toBe(true);
+        expect(list.length).toBeGreaterThan(0);
+
+        // Expect SOL, USDC, USDT per tokens registry
+        expect(
+          list.some(
+            (t) => t.symbol === 'SOL' && t.decimals === 9 && !t.requiresApprove
+          )
+        ).toBe(true);
+        expect(
+          list.some(
+            (t) => t.symbol === 'USDC' && t.decimals === 6 && t.requiresApprove
+          )
+        ).toBe(true);
+        expect(
+          list.some(
+            (t) => t.symbol === 'USDT' && t.decimals === 6 && t.requiresApprove
+          )
+        ).toBe(true);
+      });
+
+      it('should resolve chain via client instance for moveable tokens', () => {
+        const fromClientGrouped =
+          PushChain.utils.getMoveableTokens(tokensClientEVM);
+        const fromChainGrouped = PushChain.utils.getMoveableTokens(
+          CHAIN.ETHEREUM_SEPOLIA
+        );
+
+        const clientList = fromClientGrouped[CHAIN.ETHEREUM_SEPOLIA] ?? [];
+        const chainList = fromChainGrouped[CHAIN.ETHEREUM_SEPOLIA] ?? [];
+
+        // Compare by symbol presence and count (order not guaranteed by spec)
+        const symbolsFromClient = new Set(clientList.map((t) => t.symbol));
+        const symbolsFromChain = new Set(chainList.map((t) => t.symbol));
+        expect(symbolsFromClient).toEqual(symbolsFromChain);
+        expect(clientList.length).toBe(chainList.length);
+      });
+    });
   });
 });

@@ -11,6 +11,14 @@ import {
   toUniversalFromKeypair,
 } from './universal/signer';
 import { CHAIN } from './constants/enums';
+import {
+  MOVEABLE_TOKENS,
+  PAYABLE_TOKENS,
+  MoveableToken,
+  PayableToken,
+} from './constants/tokens';
+import { UniversalAccount } from './universal/universal.types';
+import type { PushChain } from './push-chain/push-chain';
 import { ethers } from 'ethers';
 
 /**
@@ -436,4 +444,66 @@ export class Utils {
       }
     },
   };
+
+  /**
+   * Returns supported moveable tokens. If a specific chain or a PushChain client is passed,
+   * returns only that chain's tokens grouped by chain. Otherwise returns tokens grouped for all chains.
+   */
+  static getMoveableTokens(
+    chainOrClient?: CHAIN | PushChain
+  ): Partial<Record<CHAIN, MoveableToken[]>> {
+    const chain: CHAIN | undefined = Utils.resolveChainFromInput(chainOrClient);
+    if (chain) {
+      return {
+        [chain]: [...(MOVEABLE_TOKENS[chain] ?? [])],
+      } as Partial<Record<CHAIN, MoveableToken[]>>;
+    }
+    const result: Partial<Record<CHAIN, MoveableToken[]>> = {};
+    for (const [key, list] of Object.entries(MOVEABLE_TOKENS)) {
+      const k = key as CHAIN;
+      result[k] = [...(list ?? [])];
+    }
+    return result;
+  }
+
+  /**
+   * Returns supported payable tokens. If a specific chain or a PushChain client is passed,
+   * limits the list to that chain. Otherwise returns tokens across all chains.
+   */
+  static getPayableTokens(
+    chainOrClient?: CHAIN | PushChain
+  ): Partial<Record<CHAIN, PayableToken[]>> {
+    const chain: CHAIN | undefined = Utils.resolveChainFromInput(chainOrClient);
+    if (chain) {
+      return {
+        [chain]: [...(PAYABLE_TOKENS[chain] ?? [])],
+      } as Partial<Record<CHAIN, PayableToken[]>>;
+    }
+    const result: Partial<Record<CHAIN, PayableToken[]>> = {};
+    for (const [key, list] of Object.entries(PAYABLE_TOKENS)) {
+      const k = key as CHAIN;
+      result[k] = [...(list ?? [])];
+    }
+    return result;
+  }
+
+  /**
+   * Internal: resolves a CHAIN enum from either a CHAIN value or a PushChain client instance.
+   */
+  private static resolveChainFromInput(
+    chainOrClient?: CHAIN | PushChain
+  ): CHAIN | undefined {
+    if (!chainOrClient) return undefined;
+    if (typeof chainOrClient === 'string') return chainOrClient as CHAIN;
+    // PushChain client → get origin chain from signer account
+    try {
+      const originAccount = (chainOrClient as PushChain).universal?.origin as
+        | UniversalAccount
+        | undefined;
+      if (originAccount && originAccount.chain) return originAccount.chain;
+    } catch {
+      // ignore
+    }
+    return undefined;
+  }
 }
