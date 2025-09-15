@@ -52,6 +52,7 @@ import {
   Signature,
   UniversalTxReceipt,
 } from './orchestrator.types';
+import { MOVEABLE_TOKENS, MoveableToken } from '../constants/tokens';
 
 export class Orchestrator {
   private pushClient: PushClient;
@@ -126,6 +127,22 @@ export class Orchestrator {
         const gatewayAddress = lockerContract as `0x${string}`;
         if (!gatewayAddress) {
           throw new Error('Universal Gateway address not configured');
+        }
+
+        // Resolve token: default to native token based on VM (ETH for EVM, SOL for SVM)
+        if (!execute.funds.token) {
+          const available: MoveableToken[] =
+            (MOVEABLE_TOKENS[chain] as MoveableToken[] | undefined) || [];
+          const vm = CHAIN_INFO[chain].vm;
+          const preferredSymbol =
+            vm === VM.EVM ? 'ETH' : vm === VM.SVM ? 'SOL' : undefined;
+          const nativeToken = preferredSymbol
+            ? available.find((t) => t.symbol === preferredSymbol)
+            : undefined;
+          if (!nativeToken) {
+            throw new Error('Native token not configured for this chain');
+          }
+          execute.funds.token = nativeToken;
         }
 
         const tokenAddr = execute.funds.token.address as `0x${string}`;

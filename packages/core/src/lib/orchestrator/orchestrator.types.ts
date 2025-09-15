@@ -67,7 +67,7 @@ export type ExecuteParams = {
    */
   funds?: {
     amount: bigint; // smallest units of the token
-    token: import('../constants').MoveableToken; // must be an ERC-20 on origin chain
+    token?: import('../constants').MoveableToken; // if omitted, defaults to native token for origin chain
   };
 };
 
