@@ -9,8 +9,18 @@ import {
 } from '../universal/universal.types';
 import { Utils } from '../utils';
 import { utils } from '@coral-xyz/anchor';
-import { bytesToHex, TypedData, TypedDataDomain } from 'viem';
+import { Abi, bytesToHex, parseAbi, TypedData, TypedDataDomain } from 'viem';
 import { ProgressEvent } from '../progress-hook/progress-hook.types';
+import { EvmClient } from '../vm-client/evm-client';
+import {
+  MOVEABLE_TOKENS,
+  PAYABLE_TOKENS,
+  MoveableToken,
+  PayableToken,
+  MoveableTokenMap,
+  PayableTokenMap,
+  ConversionQuote,
+} from '../constants/tokens';
 
 /**
  * @class PushChain
@@ -77,6 +87,23 @@ export class PushChain {
     listUrls: () => string[];
   };
 
+  /**
+   * Moveable and payable token registries exposed on the client instance.
+   * These are derived from the origin chain and only include tokens available for that chain.
+   */
+  moveable: { token: MoveableTokenMap };
+  payable: { token: PayableTokenMap };
+
+  funds: {
+    getConversionQuote: (
+      amountIn: bigint,
+      options: {
+        from: PayableToken | undefined;
+        to: MoveableToken | undefined;
+      }
+    ) => Promise<ConversionQuote>;
+  };
+
   private constructor(
     private orchestrator: Orchestrator,
     private universalSigner: UniversalSigner,
@@ -128,6 +155,159 @@ export class PushChain {
       },
       listUrls: () => {
         return blockExplorers[CHAIN.PUSH_TESTNET_DONUT] ?? [];
+      },
+    };
+
+    // Derive moveable/payable tokens for the current origin chain
+    const originChain = universalSigner.account.chain;
+    const toTokenMap = <T extends { symbol: string }>(arr: T[] | undefined) =>
+      (arr ?? []).reduce<Record<string, T>>((acc, t) => {
+        acc[t.symbol] = t;
+        return acc;
+      }, {});
+
+    const moveableList =
+      MOVEABLE_TOKENS[originChain] ??
+      MOVEABLE_TOKENS[CHAIN.ETHEREUM_MAINNET] ??
+      MOVEABLE_TOKENS[CHAIN.ETHEREUM_SEPOLIA] ??
+      [];
+    const payableList =
+      PAYABLE_TOKENS[originChain] ??
+      PAYABLE_TOKENS[CHAIN.ETHEREUM_MAINNET] ??
+      PAYABLE_TOKENS[CHAIN.ETHEREUM_SEPOLIA] ??
+      [];
+
+    this.moveable = {
+      token: toTokenMap(moveableList) as MoveableTokenMap,
+    };
+    this.payable = {
+      token: toTokenMap(payableList) as PayableTokenMap,
+    };
+
+    this.funds = {
+      getConversionQuote: async (
+        amountIn: bigint,
+        {
+          from,
+          to,
+        }: {
+          from: PayableToken | undefined;
+          to: MoveableToken | undefined;
+        }
+      ): Promise<ConversionQuote> => {
+        const originChain = universalSigner.account.chain;
+        if (
+          originChain !== CHAIN.ETHEREUM_MAINNET &&
+          originChain !== CHAIN.ETHEREUM_SEPOLIA
+        ) {
+          throw new Error(
+            'getConversionQuote is only supported on Ethereum Mainnet and Sepolia for now'
+          );
+        }
+
+        if (!from) {
+          throw new Error('from token is required');
+        }
+
+        if (!to) {
+          throw new Error('to token is required');
+        }
+
+        // Resolve RPCs from client config, falling back to defaults
+        const rpcUrls =
+          orchestrator.getRpcUrls()[originChain] ||
+          CHAIN_INFO[originChain].defaultRPC;
+
+        const evm = new EvmClient({ rpcUrls });
+
+        // Minimal ABIs and known Uniswap V3 addresses (per network)
+        const UNISWAP_V3_FACTORY: `0x${string}` =
+          originChain === CHAIN.ETHEREUM_SEPOLIA
+            ? ('0x0227628f3F023bb0B980b67D528571c95c6DaC1c' as `0x${string}`)
+            : ('0x1F98431c8aD98523631AE4a59f267346ea31F984' as `0x${string}`);
+        const UNISWAP_V3_QUOTER_V2: `0x${string}` =
+          originChain === CHAIN.ETHEREUM_SEPOLIA
+            ? ('0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3' as `0x${string}`)
+            : ('0x61fFE014bA17989E743c5F6cB21bF9697530B21e' as `0x${string}`);
+
+        const factoryAbi: Abi = parseAbi([
+          'function getPool(address tokenA, address tokenB, uint24 fee) view returns (address)',
+        ]);
+        const quoterAbi: Abi = parseAbi([
+          'function quoteExactInputSingle((address tokenIn, address tokenOut, uint256 amountIn, uint24 fee, uint160 sqrtPriceLimitX96)) returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate)',
+        ]);
+
+        const feeTiers: number[] = [100, 500, 3000, 10000];
+
+        let bestAmountOut = BigInt(0);
+        let bestFee: number | null = null;
+
+        for (const fee of feeTiers) {
+          // Find pool address for this fee tier
+          const poolAddress = await evm.readContract<string>({
+            abi: factoryAbi,
+            address: UNISWAP_V3_FACTORY,
+            functionName: 'getPool',
+            args: [from.address, to.address, fee],
+          });
+
+          const isZero =
+            !poolAddress ||
+            poolAddress.toLowerCase() ===
+              '0x0000000000000000000000000000000000000000';
+          if (isZero) continue;
+
+          // Quote exact input single for this fee tier; catch reverts due to empty/uninitialized pools
+          try {
+            const result = await evm.readContract<
+              [bigint, bigint, number, bigint]
+            >({
+              abi: quoterAbi,
+              address: UNISWAP_V3_QUOTER_V2,
+              functionName: 'quoteExactInputSingle',
+              args: [
+                {
+                  tokenIn: from.address,
+                  tokenOut: to.address,
+                  amountIn,
+                  fee,
+                  sqrtPriceLimitX96: BigInt(0),
+                },
+              ],
+            });
+
+            const amountOut = result?.[0] ?? BigInt(0);
+            if (amountOut > bestAmountOut) {
+              bestAmountOut = amountOut;
+              bestFee = fee;
+            }
+          } catch {
+            // try next fee
+          }
+        }
+
+        if (!bestFee) {
+          throw new Error(
+            'No direct Uniswap V3 pool found for the given token pair on common fee tiers'
+          );
+        }
+
+        // Compute normalized rate: tokenOut per tokenIn
+        const amountInHuman = parseFloat(
+          Utils.helpers.formatUnits(amountIn, { decimals: from.decimals })
+        );
+        const amountOutHuman = parseFloat(
+          Utils.helpers.formatUnits(bestAmountOut, { decimals: to.decimals })
+        );
+        const rate = amountInHuman > 0 ? amountOutHuman / amountInHuman : 0;
+
+        return {
+          amountIn: amountIn.toString(),
+          amountOut: bestAmountOut.toString(),
+          rate,
+          route: [from.symbol, to.symbol],
+          timestamp: Date.now(),
+        };
       },
     };
   }

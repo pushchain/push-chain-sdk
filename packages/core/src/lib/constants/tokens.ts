@@ -14,6 +14,35 @@ export interface PayableToken {
   requiresApprove: boolean;
 }
 
+// Explicit token symbol maps to enable dot-access (no index signature errors)
+export type MoveableTokenMap = Partial<{
+  ETH: MoveableToken;
+  USDC: MoveableToken;
+  USDT: MoveableToken;
+  UNI: MoveableToken;
+  WETH: MoveableToken;
+  SOL: MoveableToken;
+}>;
+
+export type PayableTokenMap = Partial<{
+  ETH: PayableToken;
+  USDC: PayableToken;
+  USDT: PayableToken;
+  DAI: PayableToken;
+  PEPE: PayableToken;
+  UNI: PayableToken;
+  WETH: PayableToken;
+  SOL: PayableToken;
+}>;
+
+export interface ConversionQuote {
+  amountIn: string; // smallest units
+  amountOut: string; // smallest units
+  rate: number; // normalized (tokenOut per tokenIn)
+  route?: string[]; // optional: swap path if available
+  timestamp: number; // unix ms
+}
+
 // Native token sentinel addresses
 const EVM_NATIVE: `0x${string}` = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 
@@ -27,8 +56,21 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
       address: EVM_NATIVE,
       requiresApprove: false,
     },
-    { symbol: 'USDC', decimals: 6, address: '0xTBD', requiresApprove: true },
+    // Sepolia USDC
+    {
+      symbol: 'USDC',
+      decimals: 6,
+      address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+      requiresApprove: true,
+    },
     { symbol: 'USDT', decimals: 6, address: '0xTBD', requiresApprove: true },
+    // Sepolia WETH9
+    {
+      symbol: 'WETH',
+      decimals: 18,
+      address: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+      requiresApprove: true,
+    },
   ],
 
   // Ethereum Mainnet (placeholder addresses for now)
@@ -51,6 +93,20 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
       address: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
       requiresApprove: true,
     },
+    // Mainnet WETH
+    {
+      symbol: 'WETH',
+      decimals: 18,
+      address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+      requiresApprove: true,
+    },
+    // Mainnet UNI
+    {
+      symbol: 'UNI',
+      decimals: 18,
+      address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984',
+      requiresApprove: true,
+    },
   ],
 
   // Solana Devnet (decimals are per SPL mint; addresses TBD)
@@ -70,8 +126,21 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
       address: EVM_NATIVE,
       requiresApprove: false,
     },
-    { symbol: 'USDC', decimals: 6, address: '0xTBD', requiresApprove: true },
+    // Sepolia USDC
+    {
+      symbol: 'USDC',
+      decimals: 6,
+      address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+      requiresApprove: true,
+    },
     { symbol: 'USDT', decimals: 6, address: '0xTBD', requiresApprove: true },
+    // Sepolia WETH9
+    {
+      symbol: 'WETH',
+      decimals: 18,
+      address: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+      requiresApprove: true,
+    },
   ],
   [CHAIN.ETHEREUM_MAINNET]: [
     {
@@ -90,6 +159,20 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
       symbol: 'USDT',
       decimals: 6,
       address: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+      requiresApprove: true,
+    },
+    // Mainnet WETH
+    {
+      symbol: 'WETH',
+      decimals: 18,
+      address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+      requiresApprove: true,
+    },
+    // Mainnet UNI
+    {
+      symbol: 'UNI',
+      decimals: 18,
+      address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984',
       requiresApprove: true,
     },
   ],

@@ -826,6 +826,116 @@ describe('PushChain', () => {
     });
   });
 
+  describe('Funds Namespace (Integration - Uniswap live on Sepolia)', () => {
+    // Live RPCs can be slower
+    jest.setTimeout(30000);
+
+    it('should error on unsupported chains (non-Ethereum origin)', async () => {
+      // Create a client on Push chain (origin not Ethereum)
+      const pushAccount = privateKeyToAccount(generatePrivateKey());
+      const pushWallet = createWalletClient({
+        account: pushAccount,
+        chain: defineChain({
+          id: parseInt(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId),
+          name: 'Push Testnet',
+          nativeCurrency: { decimals: 18, name: 'PC', symbol: '$PC' },
+          rpcUrls: {
+            default: {
+              http: [CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]],
+            },
+          },
+        }),
+        transport: http(),
+      });
+      const pushSigner = await PushChain.utils.signer.toUniversalFromKeypair(
+        pushWallet,
+        {
+          chain: PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+        }
+      );
+      const pushClient = await PushChain.initialize(pushSigner, {
+        network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+      });
+
+      const amountIn = PushChain.utils.helpers.parseUnits('1', 18);
+
+      await expect(
+        pushClient.funds.getConversionQuote(amountIn, {
+          from: pushClient.payable.token.USDT,
+          to: pushClient.moveable.token.UNI,
+        })
+      ).rejects.toThrow(/only supported on Ethereum Mainnet and Sepolia/);
+    });
+
+    it('sepolia: WETH -> WETH should fail gracefully (no direct pool)', async () => {
+      const account = privateKeyToAccount(generatePrivateKey());
+      const walletClient = createWalletClient({
+        account,
+        chain: sepolia,
+        transport: http(),
+      });
+      const signer = await PushChain.utils.signer.toUniversalFromKeypair(
+        walletClient,
+        {
+          chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+        }
+      );
+      const client = await PushChain.initialize(signer, {
+        network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+      });
+
+      // Use WETH9 Sepolia
+      const WETH9 =
+        '0xfff9976782d46cc05630d1f6ebab18b2324d6b14' as `0x${string}`;
+      const amountIn = PushChain.utils.helpers.parseUnits('0.01', 18);
+      await expect(
+        client.funds.getConversionQuote(amountIn, {
+          from: client.payable.token.WETH,
+          // from: { symbol: 'WETH', decimals: 18, address: WETH9 },
+          to: client.moveable.token.WETH,
+          // to: { symbol: 'WETH', decimals: 18, address: WETH9 },
+        })
+      ).rejects.toThrow(/No direct Uniswap V3 pool found/);
+    });
+
+    it('sepolia: WETH -> USDC quote via Uniswap V3', async () => {
+      const account = privateKeyToAccount(generatePrivateKey());
+      const walletClient = createWalletClient({
+        account,
+        chain: sepolia,
+        transport: http(),
+      });
+      const signer = await PushChain.utils.signer.toUniversalFromKeypair(
+        walletClient,
+        {
+          chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+        }
+      );
+      const client = await PushChain.initialize(signer, {
+        network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+      });
+
+      const WETH9 =
+        '0xfff9976782d46cc05630d1f6ebab18b2324d6b14' as `0x${string}`; // Sepolia WETH9
+      const USDC =
+        '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238' as `0x${string}`; // Provided Sepolia USDC
+
+      // Quote: 0.005 WETH -> USDC
+      const amountIn = PushChain.utils.helpers.parseUnits('0.005', 18);
+      const quote = await client.funds.getConversionQuote(amountIn, {
+        from: client.payable.token.WETH,
+        to: client.moveable.token.USDC,
+      });
+
+      expect(BigInt(quote.amountOut)).toBeGreaterThan(BigInt(0));
+      expect(quote.rate).toBeGreaterThan(0);
+      expect(quote.route).toEqual(['WETH', 'USDC']);
+    });
+  });
+
   describe('Helpers Utils Namespace', () => {
     describe('getChainName', () => {
       it('should get chain name', () => {
@@ -2220,7 +2330,7 @@ describe('PushChain', () => {
         const grouped = PushChain.utils.getMoveableTokens(
           CHAIN.ETHEREUM_SEPOLIA
         );
-        console.log(grouped)
+        console.log(grouped);
         const list = grouped[CHAIN.ETHEREUM_SEPOLIA] ?? [];
         expect(Array.isArray(list)).toBe(true);
         expect(list.length).toBeGreaterThan(0);
