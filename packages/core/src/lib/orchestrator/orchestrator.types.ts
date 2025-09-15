@@ -55,6 +55,20 @@ export type ExecuteParams = {
    * If specified, the user can select which token to pay gas fees from.
    */
   fundGas?: { chainToken: `0x${string}` };
+
+  /**
+   * Optional funds movement from origin chain to Push Chain (FUNDS_TX).
+   * When present and no calldata is provided, the SDK will bridge the specified
+   * ERC‑20 token amount to Push Chain using the Universal Gateway.
+   *
+   * Notes:
+   * - Currently supported only on Ethereum Sepolia
+   * - pay-with-token gas abstraction is NOT supported yet
+   */
+  funds?: {
+    amount: bigint; // smallest units of the token
+    token: import('../constants').MoveableToken; // must be an ERC-20 on origin chain
+  };
 };
 
 /**

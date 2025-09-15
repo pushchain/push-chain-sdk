@@ -108,6 +108,144 @@ export class Orchestrator {
    */
   async execute(execute: ExecuteParams): Promise<UniversalTxResponse> {
     try {
+      // FUNDS_TX short-circuit: Bridge tokens from Ethereum Sepolia to Push Chain
+      // No payload execution; supports USDC/USDT ERC-20 via UniversalGatewayV0.sendFunds
+      if (execute.funds) {
+        const chain = this.universalSigner.account.chain;
+        if (chain !== CHAIN.ETHEREUM_SEPOLIA) {
+          throw new Error(
+            'Funds bridging is only supported on Ethereum Sepolia for now'
+          );
+        }
+
+        const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
+        const rpcUrls: string[] = this.rpcUrls[chain] || defaultRPC;
+        const evmClient = new EvmClient({ rpcUrls });
+
+        // Gateway address comes from lockerContract field for now (per workspace config note)
+        const gatewayAddress = lockerContract as `0x${string}`;
+        if (!gatewayAddress) {
+          throw new Error('Universal Gateway address not configured');
+        }
+
+        const tokenAddr = execute.funds.token.address as `0x${string}`;
+        const amount = execute.funds.amount;
+
+        // Approve gateway to pull tokens if ERC-20 (not native sentinel)
+        if (execute.funds.token.requiresApprove) {
+          // 1) Check current allowance
+          const ERC20_READ_ABI = [
+            {
+              type: 'function',
+              name: 'allowance',
+              inputs: [
+                { name: 'owner', type: 'address', internalType: 'address' },
+                { name: 'spender', type: 'address', internalType: 'address' },
+              ],
+              outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
+              stateMutability: 'view',
+            },
+          ] as Abi;
+
+          const currentAllowance = await evmClient.readContract<bigint>({
+            abi: ERC20_READ_ABI,
+            address: tokenAddr,
+            functionName: 'allowance',
+            args: [
+              this.universalSigner.account.address as `0x${string}`,
+              gatewayAddress,
+            ],
+          });
+
+          // 2) Approve only if insufficient
+          if (currentAllowance < amount) {
+            const ERC20_WRITE_ABI = [
+              {
+                type: 'function',
+                name: 'approve',
+                inputs: [
+                  { name: 'spender', type: 'address', internalType: 'address' },
+                  { name: 'amount', type: 'uint256', internalType: 'uint256' },
+                ],
+                outputs: [{ name: '', type: 'bool' }],
+                stateMutability: 'nonpayable',
+              },
+            ] as Abi;
+
+            const approveTxHash = await evmClient.writeContract({
+              abi: ERC20_WRITE_ABI,
+              address: tokenAddr,
+              functionName: 'approve',
+              args: [gatewayAddress, amount],
+              signer: this.universalSigner,
+            });
+
+            // Wait for approval confirmation to ensure allowance is set before estimating sendFunds
+            await evmClient.waitForConfirmations({
+              txHash: approveTxHash,
+              confirmations: 1,
+              timeoutMs: CHAIN_INFO[chain].timeout,
+            });
+
+            // Optional: re-check allowance; proceed even if provider lags
+            try {
+              const updated = await evmClient.readContract<bigint>({
+                abi: ERC20_READ_ABI,
+                address: tokenAddr,
+                functionName: 'allowance',
+                args: [
+                  this.universalSigner.account.address as `0x${string}`,
+                  gatewayAddress,
+                ],
+              });
+              if (updated < amount) {
+                this.printLog('Warning: allowance not updated yet; proceeding');
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+
+        // Call UniversalGatewayV0.sendFunds(recipient, bridgeToken, bridgeAmount, revertCFG)
+        const { UNIVERSAL_GATEWAY_V0 } = await import(
+          '../constants/abi/universalGatewayV0.evm'
+        );
+        const recipient = execute.to; // funds to recipient on Push Chain
+        const bridgeToken = execute.funds.token.requiresApprove
+          ? tokenAddr
+          : ('0x0000000000000000000000000000000000000000' as `0x${string}`);
+        const bridgeAmount = amount;
+
+        const revertCFG = {
+          fundRecipient: this.universalSigner.account.address as `0x${string}`,
+          revertMsg: '0x',
+        } as unknown as never; // typed by viem via ABI
+
+        const txHash = await evmClient.writeContract({
+          abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
+          address: gatewayAddress,
+          functionName: 'sendFunds',
+          args: [recipient, bridgeToken, bridgeAmount, revertCFG],
+          signer: this.universalSigner,
+          value: BigInt(0),
+        });
+
+        // TODO: No call validators here.
+        // TODO: Just call validators for `addFunds` and `sendTxWithFunds` (send funds + add funds -> gas with funds).
+
+        // Wait for confirmations on origin chain per chain config
+        await evmClient.waitForConfirmations({
+          txHash: txHash,
+          confirmations: CHAIN_INFO[chain].confirmations,
+          timeoutMs: CHAIN_INFO[chain].timeout,
+        });
+
+        // Fetch origin-chain tx and transform to UniversalTxResponse
+        const tx = await evmClient.getTransaction(txHash);
+        return await this.transformToUniversalTxResponse(tx);
+      }
+
       // Set default value for value if undefined
       if (execute.value === undefined) {
         execute.value = BigInt(0);

@@ -4,6 +4,8 @@ export interface MoveableToken {
   symbol: string;
   decimals: number;
   address: string; // chain-native may use a sentinel value
+  // TODO: If true, then we do a ERC-20 approve. If false, then permit2 or similar.
+  // TODO: Rename it to `mechanism`. Then have it as enum: `approve` or `permit2`.
   requiresApprove: boolean; // true for ERC20/SPL, false for native tokens
 }
 
@@ -63,7 +65,12 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
       address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
       requiresApprove: true,
     },
-    { symbol: 'USDT', decimals: 6, address: '0xTBD', requiresApprove: true },
+    {
+      symbol: 'USDT',
+      decimals: 6,
+      address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
+      requiresApprove: true,
+    },
     // Sepolia WETH9
     {
       symbol: 'WETH',
@@ -133,7 +140,12 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
       address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
       requiresApprove: true,
     },
-    { symbol: 'USDT', decimals: 6, address: '0xTBD', requiresApprove: true },
+    {
+      symbol: 'USDT',
+      decimals: 6,
+      address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
+      requiresApprove: true,
+    },
     // Sepolia WETH9
     {
       symbol: 'WETH',
