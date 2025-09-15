@@ -17,9 +17,9 @@ import {
   PAYABLE_TOKENS,
   MoveableToken,
   PayableToken,
-  MoveableTokenMap,
-  PayableTokenMap,
   ConversionQuote,
+  MoveableTokenAccessor,
+  PayableTokenAccessor,
 } from '../constants/tokens';
 
 /**
@@ -91,8 +91,8 @@ export class PushChain {
    * Moveable and payable token registries exposed on the client instance.
    * These are derived from the origin chain and only include tokens available for that chain.
    */
-  moveable: { token: MoveableTokenMap };
-  payable: { token: PayableTokenMap };
+  moveable: { token: MoveableTokenAccessor };
+  payable: { token: PayableTokenAccessor };
 
   funds: {
     getConversionQuote: (
@@ -178,10 +178,14 @@ export class PushChain {
       [];
 
     this.moveable = {
-      token: toTokenMap(moveableList) as MoveableTokenMap,
+      token: new MoveableTokenAccessor(
+        toTokenMap(moveableList) as Record<string, MoveableToken>
+      ),
     };
     this.payable = {
-      token: toTokenMap(payableList) as PayableTokenMap,
+      token: new PayableTokenAccessor(
+        toTokenMap(payableList) as Record<string, PayableToken>
+      ),
     };
 
     this.funds = {

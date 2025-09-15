@@ -37,6 +37,74 @@ export type PayableTokenMap = Partial<{
   SOL: PayableToken;
 }>;
 
+// Strongly-typed accessors that throw at runtime if a token is unavailable,
+// while providing non-undefined types at compile time.
+export class MoveableTokenAccessor {
+  constructor(private readonly tokens: Record<string, MoveableToken>) {}
+
+  private require(name: keyof MoveableTokenMap): MoveableToken {
+    const t = this.tokens[name as string];
+    if (!t)
+      throw new Error(`${String(name)} token not available on this chain`);
+    return t;
+  }
+
+  get ETH(): MoveableToken {
+    return this.require('ETH');
+  }
+  get USDC(): MoveableToken {
+    return this.require('USDC');
+  }
+  get USDT(): MoveableToken {
+    return this.require('USDT');
+  }
+  get UNI(): MoveableToken {
+    return this.require('UNI');
+  }
+  get WETH(): MoveableToken {
+    return this.require('WETH');
+  }
+  get SOL(): MoveableToken {
+    return this.require('SOL');
+  }
+}
+
+export class PayableTokenAccessor {
+  constructor(private readonly tokens: Record<string, PayableToken>) {}
+
+  private require(name: keyof PayableTokenMap): PayableToken {
+    const t = this.tokens[name as string];
+    if (!t)
+      throw new Error(`${String(name)} token not available on this chain`);
+    return t;
+  }
+
+  get ETH(): PayableToken {
+    return this.require('ETH');
+  }
+  get USDC(): PayableToken {
+    return this.require('USDC');
+  }
+  get USDT(): PayableToken {
+    return this.require('USDT');
+  }
+  get DAI(): PayableToken {
+    return this.require('DAI');
+  }
+  get PEPE(): PayableToken {
+    return this.require('PEPE');
+  }
+  get UNI(): PayableToken {
+    return this.require('UNI');
+  }
+  get WETH(): PayableToken {
+    return this.require('WETH');
+  }
+  get SOL(): PayableToken {
+    return this.require('SOL');
+  }
+}
+
 export interface ConversionQuote {
   amountIn: string; // smallest units
   amountOut: string; // smallest units
