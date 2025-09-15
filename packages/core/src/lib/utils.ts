@@ -11,12 +11,7 @@ import {
   toUniversalFromKeypair,
 } from './universal/signer';
 import { CHAIN } from './constants/enums';
-import {
-  MOVEABLE_TOKENS,
-  PAYABLE_TOKENS,
-  MoveableToken,
-  PayableToken,
-} from './constants/tokens';
+import { MOVEABLE_TOKENS, PAYABLE_TOKENS } from './constants/tokens';
 import { UniversalAccount } from './universal/universal.types';
 import type { PushChain } from './push-chain/push-chain';
 import { ethers } from 'ethers';
@@ -446,45 +441,101 @@ export class Utils {
   };
 
   /**
-   * Returns supported moveable tokens. If a specific chain or a PushChain client is passed,
-   * returns only that chain's tokens grouped by chain. Otherwise returns tokens grouped for all chains.
+   * Returns supported moveable tokens as a flat list with chain info.
+   * - If a specific chain or a PushChain client is passed, returns only that chain's tokens
+   * - Otherwise returns tokens across all chains
    */
-  static getMoveableTokens(
-    chainOrClient?: CHAIN | PushChain
-  ): Partial<Record<CHAIN, MoveableToken[]>> {
+  static getMoveableTokens(chainOrClient?: CHAIN | PushChain): {
+    tokens: Array<{
+      chain: CHAIN;
+      symbol: string;
+      decimals: number;
+      address: string;
+    }>;
+  } {
     const chain: CHAIN | undefined = Utils.resolveChainFromInput(chainOrClient);
+
     if (chain) {
+      const list = MOVEABLE_TOKENS[chain] ?? [];
       return {
-        [chain]: [...(MOVEABLE_TOKENS[chain] ?? [])],
-      } as Partial<Record<CHAIN, MoveableToken[]>>;
+        tokens: list.map((t) => ({
+          chain,
+          symbol: t.symbol,
+          decimals: t.decimals,
+          address: t.address,
+        })),
+      };
     }
-    const result: Partial<Record<CHAIN, MoveableToken[]>> = {};
+
+    const tokens: Array<{
+      chain: CHAIN;
+      symbol: string;
+      decimals: number;
+      address: string;
+    }> = [];
+
     for (const [key, list] of Object.entries(MOVEABLE_TOKENS)) {
       const k = key as CHAIN;
-      result[k] = [...(list ?? [])];
+      for (const t of list ?? []) {
+        tokens.push({
+          chain: k,
+          symbol: t.symbol,
+          decimals: t.decimals,
+          address: t.address,
+        });
+      }
     }
-    return result;
+
+    return { tokens };
   }
 
   /**
-   * Returns supported payable tokens. If a specific chain or a PushChain client is passed,
-   * limits the list to that chain. Otherwise returns tokens across all chains.
+   * Returns supported payable tokens as a flat list with chain info.
+   * - If a specific chain or a PushChain client is passed, returns only that chain's tokens
+   * - Otherwise returns tokens across all chains
    */
-  static getPayableTokens(
-    chainOrClient?: CHAIN | PushChain
-  ): Partial<Record<CHAIN, PayableToken[]>> {
+  static getPayableTokens(chainOrClient?: CHAIN | PushChain): {
+    tokens: Array<{
+      chain: CHAIN;
+      symbol: string;
+      decimals: number;
+      address: string;
+    }>;
+  } {
     const chain: CHAIN | undefined = Utils.resolveChainFromInput(chainOrClient);
+
     if (chain) {
+      const list = PAYABLE_TOKENS[chain] ?? [];
       return {
-        [chain]: [...(PAYABLE_TOKENS[chain] ?? [])],
-      } as Partial<Record<CHAIN, PayableToken[]>>;
+        tokens: list.map((t) => ({
+          chain,
+          symbol: t.symbol,
+          decimals: t.decimals,
+          address: t.address,
+        })),
+      };
     }
-    const result: Partial<Record<CHAIN, PayableToken[]>> = {};
+
+    const tokens: Array<{
+      chain: CHAIN;
+      symbol: string;
+      decimals: number;
+      address: string;
+    }> = [];
+
     for (const [key, list] of Object.entries(PAYABLE_TOKENS)) {
       const k = key as CHAIN;
-      result[k] = [...(list ?? [])];
+      for (const t of list ?? []) {
+        tokens.push({
+          chain: k,
+          symbol: t.symbol,
+          decimals: t.decimals,
+          address: t.address,
+        });
+      }
     }
-    return result;
+
+    return { tokens };
   }
 
   /**
