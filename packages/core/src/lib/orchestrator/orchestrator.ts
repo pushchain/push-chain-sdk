@@ -114,6 +114,15 @@ export class Orchestrator {
       // FUNDS_TX short-circuit: Bridge tokens from Ethereum Sepolia to Push Chain
       // No payload execution; supports USDC/USDT ERC-20 via UniversalGatewayV0.sendFunds
       if (execute.funds) {
+        // Disallow user-provided `value` for funds-only bridging. The SDK derives
+        // origin-chain msg.value automatically from the funds input:
+        //  - Native path: msg.value = bridgeAmount
+        //  - ERC-20 path: msg.value = 0
+        if (execute.value !== undefined && execute.value !== BigInt(0)) {
+          throw new Error(
+            'Do not set `value` when using funds bridging; the SDK sets origin msg.value from `funds.amount` automatically'
+          );
+        }
         const chain = this.universalSigner.account.chain;
         if (chain !== CHAIN.ETHEREUM_SEPOLIA) {
           throw new Error(
