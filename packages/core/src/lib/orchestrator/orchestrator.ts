@@ -196,14 +196,11 @@ export class Orchestrator {
             value: isNative ? bridgeAmount : BigInt(0),
           });
 
-          // TODO: No call validators here.
-          // TODO: Just call validators for `addFunds` and `sendTxWithFunds` (send funds + add funds -> gas with funds).
-
           // Wait for confirmations on origin chain per chain config
           await evmClient.waitForConfirmations({
             txHash: txHash,
-            confirmations: CHAIN_INFO[chain].confirmations,
-            timeoutMs: CHAIN_INFO[chain].timeout,
+            confirmations: 14,
+            timeoutMs: 180000, // CHAIN_INFO[chain].timeout,
           });
 
           // Fetch origin-chain tx and transform to UniversalTxResponse
@@ -279,7 +276,7 @@ export class Orchestrator {
 
           await evmClient.waitForConfirmations({
             txHash: txHash,
-            confirmations: CHAIN_INFO[chain].confirmations,
+            confirmations: 1,
             timeoutMs: CHAIN_INFO[chain].timeout,
           });
 
