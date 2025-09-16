@@ -27,6 +27,8 @@ import {
   FEE_LOCKER_EVM,
   FEE_LOCKER_SVM,
   UEA_SVM,
+  ERC20_EVM,
+  UNIVERSAL_GATEWAY_V0,
 } from '../constants/abi';
 import { PushClient } from '../push-client/push-client';
 import { SvmClient } from '../vm-client/svm-client';
@@ -122,8 +124,6 @@ export class Orchestrator {
         const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
         const rpcUrls: string[] = this.rpcUrls[chain] || defaultRPC;
         const evmClient = new EvmClient({ rpcUrls });
-
-        // Gateway address comes from lockerContract field for now (per workspace config note)
         const gatewayAddress = lockerContract as `0x${string}`;
         if (!gatewayAddress) {
           throw new Error('Universal Gateway address not configured');
@@ -149,89 +149,21 @@ export class Orchestrator {
         const amount = execute.funds.amount;
 
         // Approve gateway to pull tokens if ERC-20 (not native sentinel)
-        if (execute.funds.token.requiresApprove) {
-          // 1) Check current allowance
-          const ERC20_READ_ABI = [
-            {
-              type: 'function',
-              name: 'allowance',
-              inputs: [
-                { name: 'owner', type: 'address', internalType: 'address' },
-                { name: 'spender', type: 'address', internalType: 'address' },
-              ],
-              outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
-              stateMutability: 'view',
-            },
-          ] as Abi;
-
-          const currentAllowance = await evmClient.readContract<bigint>({
-            abi: ERC20_READ_ABI,
-            address: tokenAddr,
-            functionName: 'allowance',
-            args: [
-              this.universalSigner.account.address as `0x${string}`,
-              gatewayAddress,
-            ],
-          });
-
-          // 2) Approve only if insufficient
-          if (currentAllowance < amount) {
-            const ERC20_WRITE_ABI = [
-              {
-                type: 'function',
-                name: 'approve',
-                inputs: [
-                  { name: 'spender', type: 'address', internalType: 'address' },
-                  { name: 'amount', type: 'uint256', internalType: 'uint256' },
-                ],
-                outputs: [{ name: '', type: 'bool' }],
-                stateMutability: 'nonpayable',
-              },
-            ] as Abi;
-
-            const approveTxHash = await evmClient.writeContract({
-              abi: ERC20_WRITE_ABI,
-              address: tokenAddr,
-              functionName: 'approve',
-              args: [gatewayAddress, amount],
-              signer: this.universalSigner,
-            });
-
-            // Wait for approval confirmation to ensure allowance is set before estimating sendFunds
-            await evmClient.waitForConfirmations({
-              txHash: approveTxHash,
-              confirmations: 1,
-              timeoutMs: CHAIN_INFO[chain].timeout,
-            });
-
-            // Optional: re-check allowance; proceed even if provider lags
-            try {
-              const updated = await evmClient.readContract<bigint>({
-                abi: ERC20_READ_ABI,
-                address: tokenAddr,
-                functionName: 'allowance',
-                args: [
-                  this.universalSigner.account.address as `0x${string}`,
-                  gatewayAddress,
-                ],
-              });
-              if (updated < amount) {
-                this.printLog('Warning: allowance not updated yet; proceeding');
-              }
-            } catch {
-              // ignore
-            }
-          }
+        if (execute.funds.token.mechanism === 'approve') {
+          await this.ensureErc20Allowance(
+            evmClient,
+            tokenAddr,
+            gatewayAddress,
+            amount
+          );
         }
 
         // Call UniversalGatewayV0.sendFunds(recipient, bridgeToken, bridgeAmount, revertCFG)
-        const { UNIVERSAL_GATEWAY_V0 } = await import(
-          '../constants/abi/universalGatewayV0.evm'
-        );
         const recipient = execute.to; // funds to recipient on Push Chain
-        const bridgeToken = execute.funds.token.requiresApprove
-          ? tokenAddr
-          : ('0x0000000000000000000000000000000000000000' as `0x${string}`);
+        const bridgeToken =
+          execute.funds.token.mechanism === 'approve'
+            ? tokenAddr
+            : ('0x0000000000000000000000000000000000000000' as `0x${string}`);
         const bridgeAmount = amount;
 
         const revertCFG = {
@@ -936,6 +868,53 @@ export class Orchestrator {
 
       default:
         throw new Error(`Unsupported VM for tx confirmation: ${vm}`);
+    }
+  }
+
+  private async ensureErc20Allowance(
+    evmClient: EvmClient,
+    tokenAddress: `0x${string}`,
+    spender: `0x${string}`,
+    requiredAmount: bigint
+  ): Promise<void> {
+    const chain = this.universalSigner.account.chain;
+    const owner = this.universalSigner.account.address as `0x${string}`;
+
+    const currentAllowance = await evmClient.readContract<bigint>({
+      abi: ERC20_EVM as Abi,
+      address: tokenAddress,
+      functionName: 'allowance',
+      args: [owner, spender],
+    });
+
+    if (currentAllowance >= requiredAmount) return;
+
+    const approveTxHash = await evmClient.writeContract({
+      abi: ERC20_EVM as Abi,
+      address: tokenAddress,
+      functionName: 'approve',
+      args: [spender, requiredAmount],
+      signer: this.universalSigner,
+    });
+
+    await evmClient.waitForConfirmations({
+      txHash: approveTxHash,
+      confirmations: 1,
+      timeoutMs: CHAIN_INFO[chain].timeout,
+    });
+
+    try {
+      const updated = await evmClient.readContract<bigint>({
+        abi: ERC20_EVM as Abi,
+        address: tokenAddress,
+        functionName: 'allowance',
+        args: [owner, spender],
+      });
+      if (updated < requiredAmount) {
+        this.printLog('Warning: allowance not updated yet; proceeding');
+      }
+    } catch {
+      // ignore
     }
   }
 

@@ -5,15 +5,16 @@ export interface MoveableToken {
   decimals: number;
   address: string; // chain-native may use a sentinel value
   // TODO: If true, then we do a ERC-20 approve. If false, then permit2 or similar.
-  // TODO: Rename it to `mechanism`. Then have it as enum: `approve` or `permit2`.
-  requiresApprove: boolean; // true for ERC20/SPL, false for native tokens
+  // TODO: Rename it to `mechanism`. Then have it as enum: `approve` or `permit2` or `native`
+  // requiresApprove: boolean; // true for ERC20/SPL, false for native tokens
+  mechanism: 'approve' | 'permit2' | 'native';
 }
 
 export interface PayableToken {
   symbol: string;
   decimals: number;
   address: string;
-  requiresApprove: boolean;
+  mechanism: 'approve' | 'permit2' | 'native';
 }
 
 // Explicit token symbol maps to enable dot-access (no index signature errors)
@@ -124,27 +125,27 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
       symbol: 'ETH',
       decimals: 18,
       address: EVM_NATIVE,
-      requiresApprove: false,
+      mechanism: 'native',
     },
     // Sepolia USDC
     {
       symbol: 'USDC',
       decimals: 6,
       address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
-      requiresApprove: true,
+      mechanism: 'approve',
     },
     {
       symbol: 'USDT',
       decimals: 6,
       address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
-      requiresApprove: true,
+      mechanism: 'approve',
     },
     // Sepolia WETH9
     {
       symbol: 'WETH',
       decimals: 18,
       address: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
-      requiresApprove: true,
+      mechanism: 'approve',
     },
   ],
 
@@ -154,41 +155,41 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
       symbol: 'ETH',
       decimals: 18,
       address: EVM_NATIVE,
-      requiresApprove: false,
+      mechanism: 'native',
     },
     {
       symbol: 'USDC',
       decimals: 6,
       address: '0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
-      requiresApprove: true,
+      mechanism: 'approve',
     },
     {
       symbol: 'USDT',
       decimals: 6,
       address: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
-      requiresApprove: true,
+      mechanism: 'approve',
     },
     // Mainnet WETH
     {
       symbol: 'WETH',
       decimals: 18,
       address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-      requiresApprove: true,
+      mechanism: 'approve',
     },
     // Mainnet UNI
     {
       symbol: 'UNI',
       decimals: 18,
       address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984',
-      requiresApprove: true,
+      mechanism: 'approve',
     },
   ],
 
   // Solana Devnet (decimals are per SPL mint; addresses TBD)
   [CHAIN.SOLANA_DEVNET]: [
-    { symbol: 'SOL', decimals: 9, address: 'native', requiresApprove: false },
-    { symbol: 'USDC', decimals: 6, address: 'TBD', requiresApprove: true },
-    { symbol: 'USDT', decimals: 6, address: 'TBD', requiresApprove: true },
+    { symbol: 'SOL', decimals: 9, address: 'native', mechanism: 'native' },
+    { symbol: 'USDC', decimals: 6, address: 'TBD', mechanism: 'approve' },
+    { symbol: 'USDT', decimals: 6, address: 'TBD', mechanism: 'approve' },
   ],
 };
 
@@ -199,27 +200,27 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
       symbol: 'ETH',
       decimals: 18,
       address: EVM_NATIVE,
-      requiresApprove: false,
+      mechanism: 'native',
     },
     // Sepolia USDC
     {
       symbol: 'USDC',
       decimals: 6,
       address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
-      requiresApprove: true,
+      mechanism: 'approve',
     },
     {
       symbol: 'USDT',
       decimals: 6,
       address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
-      requiresApprove: true,
+      mechanism: 'approve',
     },
     // Sepolia WETH9
     {
       symbol: 'WETH',
       decimals: 18,
       address: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
-      requiresApprove: true,
+      mechanism: 'approve',
     },
   ],
   [CHAIN.ETHEREUM_MAINNET]: [
@@ -227,38 +228,38 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
       symbol: 'ETH',
       decimals: 18,
       address: EVM_NATIVE,
-      requiresApprove: false,
+      mechanism: 'native',
     },
     {
       symbol: 'USDC',
       decimals: 6,
       address: '0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
-      requiresApprove: true,
+      mechanism: 'approve',
     },
     {
       symbol: 'USDT',
       decimals: 6,
       address: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
-      requiresApprove: true,
+      mechanism: 'approve',
     },
     // Mainnet WETH
     {
       symbol: 'WETH',
       decimals: 18,
       address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-      requiresApprove: true,
+      mechanism: 'approve',
     },
     // Mainnet UNI
     {
       symbol: 'UNI',
       decimals: 18,
       address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984',
-      requiresApprove: true,
+      mechanism: 'approve',
     },
   ],
   [CHAIN.SOLANA_DEVNET]: [
-    { symbol: 'SOL', decimals: 9, address: 'native', requiresApprove: false },
-    { symbol: 'USDC', decimals: 6, address: 'TBD', requiresApprove: true },
-    { symbol: 'USDT', decimals: 6, address: 'TBD', requiresApprove: true },
+    { symbol: 'SOL', decimals: 9, address: 'native', mechanism: 'native' },
+    { symbol: 'USDC', decimals: 6, address: 'TBD', mechanism: 'approve' },
+    { symbol: 'USDT', decimals: 6, address: 'TBD', mechanism: 'approve' },
   ],
 };
