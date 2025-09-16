@@ -210,37 +210,26 @@ export class Orchestrator {
           const tx = await evmClient.getTransaction(txHash);
           return await this.transformToUniversalTxResponse(tx);
         } else {
-          // Call sendTxWithFunds (bridge ERC-20 + deposit native gas + payload execution)
+          // Bridge funds + execute payload. Support ERC-20 (approve) and native ETH.
           const { chain, evmClient, gatewayAddress } =
             this.ensureSepoliaGateway();
 
           if (!execute.funds.token) {
-            throw new Error('Token is required for sendTxWithFunds');
+            throw new Error('Token is required for bridging with payload');
           }
 
-          if (execute.funds.token.mechanism !== 'approve') {
+          const mechanism = execute.funds.token.mechanism;
+          if (mechanism !== 'approve') {
             throw new Error(
-              'Only ERC-20 tokens are supported for sendTxWithFunds'
+              'Only ERC-20 tokens are supported for funds+payload; native and permit2 are not supported yet'
             );
           }
-
-          const tokenAddr = execute.funds.token.address as `0x${string}`;
-          const bridgeAmount = execute.funds.amount;
-
-          // Ensure allowance for ERC-20 bridge
-          await this.ensureErc20Allowance(
-            evmClient,
-            tokenAddr,
-            gatewayAddress,
-            bridgeAmount
-          );
 
           const { deployed: isUEADeployed, nonce } =
             await this.getUeaStatusAndNonce();
           const { payload: universalPayload, gasAmount } =
             await this.buildGatewayPayloadAndGas(execute, nonce);
 
-          // Validate gasAmount against gateway min/max range from on-chain oracle
           const [minMax] = await Promise.all([
             evmClient.readContract<readonly [bigint, bigint]>({
               abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
@@ -262,17 +251,16 @@ export class Orchestrator {
             revertMsg: '0x',
           } as unknown as never;
 
-          console.log('args', [
-            tokenAddr,
-            bridgeAmount,
-            universalPayload,
-            revertCFG,
-            zeroHash,
-          ]);
-          console.log('value', gasAmount);
-          console.log('address', gatewayAddress);
+          // ERC-20 bridge token path
+          const tokenAddr = execute.funds.token.address as `0x${string}`;
+          const bridgeAmount = execute.funds.amount;
 
-          console.log('signer', this.universalSigner);
+          await this.ensureErc20Allowance(
+            evmClient,
+            tokenAddr,
+            gatewayAddress,
+            bridgeAmount
+          );
 
           const txHash = await evmClient.writeContract({
             abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
@@ -295,7 +283,6 @@ export class Orchestrator {
             timeoutMs: CHAIN_INFO[chain].timeout,
           });
 
-          // Cosmos validator flow for universal execution with funds
           const transactions = await this.sendUniversalTx(
             isUEADeployed,
             txHash,
@@ -1000,7 +987,27 @@ export class Orchestrator {
 
     if (currentAllowance >= requiredAmount) return;
 
-    const approveTxHash = await evmClient.writeContract({
+    // Some ERC-20s like USDT require setting allowance to 0 before changing
+    // an existing non-zero allowance to a different non-zero value.
+    if (currentAllowance > BigInt(0)) {
+      this.printLog(
+        `Resetting existing allowance from ${currentAllowance.toString()} to 0 for spender ${spender}`
+      );
+      const resetTxHash = await evmClient.writeContract({
+        abi: ERC20_EVM as Abi,
+        address: tokenAddress,
+        functionName: 'approve',
+        args: [spender, BigInt(0)],
+        signer: this.universalSigner,
+      });
+      await evmClient.waitForConfirmations({
+        txHash: resetTxHash,
+        confirmations: 1,
+        timeoutMs: CHAIN_INFO[chain].timeout,
+      });
+    }
+
+    const setTxHash = await evmClient.writeContract({
       abi: ERC20_EVM as Abi,
       address: tokenAddress,
       functionName: 'approve',
@@ -1009,7 +1016,7 @@ export class Orchestrator {
     });
 
     await evmClient.waitForConfirmations({
-      txHash: approveTxHash,
+      txHash: setTxHash,
       confirmations: 1,
       timeoutMs: CHAIN_INFO[chain].timeout,
     });
