@@ -156,10 +156,15 @@ export class Orchestrator {
             gatewayAddress,
             amount
           );
+        } else if (execute.funds.token.mechanism === 'permit2') {
+          throw new Error('Permit2 is not supported yet');
+        } else if (execute.funds.token.mechanism === 'native') {
+          // Native flow uses msg.value == bridgeAmount and bridgeToken = address(0)
         }
 
         // Call UniversalGatewayV0.sendFunds(recipient, bridgeToken, bridgeAmount, revertCFG)
         const recipient = execute.to; // funds to recipient on Push Chain
+        const isNative = execute.funds.token.mechanism === 'native';
         const bridgeToken =
           execute.funds.token.mechanism === 'approve'
             ? tokenAddr
@@ -177,7 +182,7 @@ export class Orchestrator {
           functionName: 'sendFunds',
           args: [recipient, bridgeToken, bridgeAmount, revertCFG],
           signer: this.universalSigner,
-          value: BigInt(0),
+          value: isNative ? bridgeAmount : BigInt(0),
         });
 
         // TODO: No call validators here.
