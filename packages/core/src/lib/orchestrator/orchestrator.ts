@@ -114,99 +114,196 @@ export class Orchestrator {
       // FUNDS_TX short-circuit: Bridge tokens from Ethereum Sepolia to Push Chain
       // No payload execution; supports USDC/USDT ERC-20 via UniversalGatewayV0.sendFunds
       if (execute.funds) {
-        // Disallow user-provided `value` for funds-only bridging. The SDK derives
-        // origin-chain msg.value automatically from the funds input:
-        //  - Native path: msg.value = bridgeAmount
-        //  - ERC-20 path: msg.value = 0
-        if (execute.value !== undefined && execute.value !== BigInt(0)) {
-          throw new Error(
-            'Do not set `value` when using funds bridging; the SDK sets origin msg.value from `funds.amount` automatically'
-          );
-        }
-        const chain = this.universalSigner.account.chain;
-        if (chain !== CHAIN.ETHEREUM_SEPOLIA) {
-          throw new Error(
-            'Funds bridging is only supported on Ethereum Sepolia for now'
-          );
-        }
-
-        const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
-        const rpcUrls: string[] = this.rpcUrls[chain] || defaultRPC;
-        const evmClient = new EvmClient({ rpcUrls });
-        const gatewayAddress = lockerContract as `0x${string}`;
-        if (!gatewayAddress) {
-          throw new Error('Universal Gateway address not configured');
-        }
-
-        // Resolve token: default to native token based on VM (ETH for EVM, SOL for SVM)
-        if (!execute.funds.token) {
-          const available: MoveableToken[] =
-            (MOVEABLE_TOKENS[chain] as MoveableToken[] | undefined) || [];
-          const vm = CHAIN_INFO[chain].vm;
-          const preferredSymbol =
-            vm === VM.EVM ? 'ETH' : vm === VM.SVM ? 'SOL' : undefined;
-          const nativeToken = preferredSymbol
-            ? available.find((t) => t.symbol === preferredSymbol)
-            : undefined;
-          if (!nativeToken) {
-            throw new Error('Native token not configured for this chain');
+        if (!execute.data || execute.data === '0x') {
+          // Disallow user-provided `value` for funds-only bridging. The SDK derives
+          // origin-chain msg.value automatically from the funds input:
+          //  - Native path: msg.value = bridgeAmount
+          //  - ERC-20 path: msg.value = 0
+          if (execute.value !== undefined && execute.value !== BigInt(0)) {
+            throw new Error(
+              'Do not set `value` when using funds bridging; the SDK sets origin msg.value from `funds.amount` automatically'
+            );
           }
-          execute.funds.token = nativeToken;
-        }
+          const chain = this.universalSigner.account.chain;
+          if (chain !== CHAIN.ETHEREUM_SEPOLIA) {
+            throw new Error(
+              'Funds bridging is only supported on Ethereum Sepolia for now'
+            );
+          }
 
-        const tokenAddr = execute.funds.token.address as `0x${string}`;
-        const amount = execute.funds.amount;
+          const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
+          const rpcUrls: string[] = this.rpcUrls[chain] || defaultRPC;
+          const evmClient = new EvmClient({ rpcUrls });
+          const gatewayAddress = lockerContract as `0x${string}`;
+          if (!gatewayAddress) {
+            throw new Error('Universal Gateway address not configured');
+          }
 
-        // Approve gateway to pull tokens if ERC-20 (not native sentinel)
-        if (execute.funds.token.mechanism === 'approve') {
+          // Resolve token: default to native token based on VM (ETH for EVM, SOL for SVM)
+          if (!execute.funds.token) {
+            const available: MoveableToken[] =
+              (MOVEABLE_TOKENS[chain] as MoveableToken[] | undefined) || [];
+            const vm = CHAIN_INFO[chain].vm;
+            const preferredSymbol =
+              vm === VM.EVM ? 'ETH' : vm === VM.SVM ? 'SOL' : undefined;
+            const nativeToken = preferredSymbol
+              ? available.find((t) => t.symbol === preferredSymbol)
+              : undefined;
+            if (!nativeToken) {
+              throw new Error('Native token not configured for this chain');
+            }
+            execute.funds.token = nativeToken;
+          }
+
+          const tokenAddr = execute.funds.token.address as `0x${string}`;
+          const amount = execute.funds.amount;
+
+          // Approve gateway to pull tokens if ERC-20 (not native sentinel)
+          if (execute.funds.token.mechanism === 'approve') {
+            await this.ensureErc20Allowance(
+              evmClient,
+              tokenAddr,
+              gatewayAddress,
+              amount
+            );
+          } else if (execute.funds.token.mechanism === 'permit2') {
+            throw new Error('Permit2 is not supported yet');
+          } else if (execute.funds.token.mechanism === 'native') {
+            // Native flow uses msg.value == bridgeAmount and bridgeToken = address(0)
+          }
+
+          // Call UniversalGatewayV0.sendFunds(recipient, bridgeToken, bridgeAmount, revertCFG)
+          const recipient = execute.to; // funds to recipient on Push Chain
+          const isNative = execute.funds.token.mechanism === 'native';
+          const bridgeToken =
+            execute.funds.token.mechanism === 'approve'
+              ? tokenAddr
+              : ('0x0000000000000000000000000000000000000000' as `0x${string}`);
+          const bridgeAmount = amount;
+
+          const revertCFG = {
+            fundRecipient: this.universalSigner.account
+              .address as `0x${string}`,
+            revertMsg: '0x',
+          } as unknown as never; // typed by viem via ABI
+
+          const txHash = await evmClient.writeContract({
+            abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
+            address: gatewayAddress,
+            functionName: 'sendFunds',
+            args: [recipient, bridgeToken, bridgeAmount, revertCFG],
+            signer: this.universalSigner,
+            value: isNative ? bridgeAmount : BigInt(0),
+          });
+
+          // TODO: No call validators here.
+          // TODO: Just call validators for `addFunds` and `sendTxWithFunds` (send funds + add funds -> gas with funds).
+
+          // Wait for confirmations on origin chain per chain config
+          await evmClient.waitForConfirmations({
+            txHash: txHash,
+            confirmations: CHAIN_INFO[chain].confirmations,
+            timeoutMs: CHAIN_INFO[chain].timeout,
+          });
+
+          // Fetch origin-chain tx and transform to UniversalTxResponse
+          const tx = await evmClient.getTransaction(txHash);
+          return await this.transformToUniversalTxResponse(tx);
+        } else {
+          // Call sendTxWithFunds (bridge ERC-20 + deposit native gas + payload execution)
+          const { chain, evmClient, gatewayAddress } =
+            this.ensureSepoliaGateway();
+
+          if (!execute.funds.token) {
+            throw new Error('Token is required for sendTxWithFunds');
+          }
+
+          if (execute.funds.token.mechanism !== 'approve') {
+            throw new Error(
+              'Only ERC-20 tokens are supported for sendTxWithFunds'
+            );
+          }
+
+          const tokenAddr = execute.funds.token.address as `0x${string}`;
+          const bridgeAmount = execute.funds.amount;
+
+          // Ensure allowance for ERC-20 bridge
           await this.ensureErc20Allowance(
             evmClient,
             tokenAddr,
             gatewayAddress,
-            amount
+            bridgeAmount
           );
-        } else if (execute.funds.token.mechanism === 'permit2') {
-          throw new Error('Permit2 is not supported yet');
-        } else if (execute.funds.token.mechanism === 'native') {
-          // Native flow uses msg.value == bridgeAmount and bridgeToken = address(0)
+
+          const { deployed: isUEADeployed, nonce } =
+            await this.getUeaStatusAndNonce();
+          const { payload: universalPayload, gasAmount } =
+            await this.buildGatewayPayloadAndGas(execute, nonce);
+
+          // Validate gasAmount against gateway min/max range from on-chain oracle
+          const [minMax] = await Promise.all([
+            evmClient.readContract<readonly [bigint, bigint]>({
+              abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
+              address: gatewayAddress,
+              functionName: 'getMinMaxValueForNative',
+            }),
+          ]);
+          const minAllowed = minMax[0];
+          const maxAllowed = minMax[1];
+          if (gasAmount < minAllowed || gasAmount > maxAllowed) {
+            throw new Error(
+              `Gas deposit out of range. min=${minAllowed.toString()} max=${maxAllowed.toString()} got=${gasAmount.toString()}`
+            );
+          }
+
+          const revertCFG = {
+            fundRecipient: this.universalSigner.account
+              .address as `0x${string}`,
+            revertMsg: '0x',
+          } as unknown as never;
+
+          console.log('args', [
+            tokenAddr,
+            bridgeAmount,
+            universalPayload,
+            revertCFG,
+            zeroHash,
+          ]);
+          console.log('value', gasAmount);
+          console.log('address', gatewayAddress);
+
+          console.log('signer', this.universalSigner);
+
+          const txHash = await evmClient.writeContract({
+            abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
+            address: gatewayAddress,
+            functionName: 'sendTxWithFunds',
+            args: [
+              tokenAddr,
+              bridgeAmount,
+              universalPayload,
+              revertCFG,
+              zeroHash,
+            ],
+            signer: this.universalSigner,
+            value: gasAmount,
+          });
+
+          await evmClient.waitForConfirmations({
+            txHash: txHash,
+            confirmations: CHAIN_INFO[chain].confirmations,
+            timeoutMs: CHAIN_INFO[chain].timeout,
+          });
+
+          // Cosmos validator flow for universal execution with funds
+          const transactions = await this.sendUniversalTx(
+            isUEADeployed,
+            txHash,
+            universalPayload as unknown as UniversalPayload,
+            txHash
+          );
+          return transactions[transactions.length - 1];
         }
-
-        // Call UniversalGatewayV0.sendFunds(recipient, bridgeToken, bridgeAmount, revertCFG)
-        const recipient = execute.to; // funds to recipient on Push Chain
-        const isNative = execute.funds.token.mechanism === 'native';
-        const bridgeToken =
-          execute.funds.token.mechanism === 'approve'
-            ? tokenAddr
-            : ('0x0000000000000000000000000000000000000000' as `0x${string}`);
-        const bridgeAmount = amount;
-
-        const revertCFG = {
-          fundRecipient: this.universalSigner.account.address as `0x${string}`,
-          revertMsg: '0x',
-        } as unknown as never; // typed by viem via ABI
-
-        const txHash = await evmClient.writeContract({
-          abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
-          address: gatewayAddress,
-          functionName: 'sendFunds',
-          args: [recipient, bridgeToken, bridgeAmount, revertCFG],
-          signer: this.universalSigner,
-          value: isNative ? bridgeAmount : BigInt(0),
-        });
-
-        // TODO: No call validators here.
-        // TODO: Just call validators for `addFunds` and `sendTxWithFunds` (send funds + add funds -> gas with funds).
-
-        // Wait for confirmations on origin chain per chain config
-        await evmClient.waitForConfirmations({
-          txHash: txHash,
-          confirmations: CHAIN_INFO[chain].confirmations,
-          timeoutMs: CHAIN_INFO[chain].timeout,
-        });
-
-        // Fetch origin-chain tx and transform to UniversalTxResponse
-        const tx = await evmClient.getTransaction(txHash);
-        return await this.transformToUniversalTxResponse(tx);
       }
 
       // Set default value for value if undefined
@@ -930,6 +1027,85 @@ export class Orchestrator {
     } catch {
       // ignore
     }
+  }
+
+  /**
+   * Ensures we're on Sepolia, returns EVM client and gateway address.
+   */
+  private ensureSepoliaGateway(): {
+    chain: CHAIN;
+    evmClient: EvmClient;
+    gatewayAddress: `0x${string}`;
+  } {
+    const chain = this.universalSigner.account.chain;
+    if (chain !== CHAIN.ETHEREUM_SEPOLIA) {
+      throw new Error(
+        'Funds + payload bridging is only supported on Ethereum Sepolia for now'
+      );
+    }
+
+    const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
+    const rpcUrls: string[] = this.rpcUrls[chain] || defaultRPC;
+    const evmClient = new EvmClient({ rpcUrls });
+    const gatewayAddress = lockerContract as `0x${string}`;
+    if (!gatewayAddress) {
+      throw new Error('Universal Gateway address not configured');
+    }
+
+    return { chain, evmClient, gatewayAddress };
+  }
+
+  /**
+   * Computes UEA and fetches its nonce if deployed; returns 0 otherwise.
+   */
+  private async getUeaNonceForExecution(): Promise<bigint> {
+    const UEA = this.computeUEAOffchain();
+    const [code] = await Promise.all([
+      this.pushClient.publicClient.getCode({ address: UEA }),
+    ]);
+    return code !== undefined ? await this.getUEANonce(UEA) : BigInt(0);
+  }
+
+  /**
+   * Returns UEA deployment status and nonce (0 if not deployed).
+   */
+  private async getUeaStatusAndNonce(): Promise<{
+    deployed: boolean;
+    nonce: bigint;
+  }> {
+    const UEA = this.computeUEAOffchain();
+    const [code] = await Promise.all([
+      this.pushClient.publicClient.getCode({ address: UEA }),
+    ]);
+    const deployed = code !== undefined;
+    const nonce = deployed ? await this.getUEANonce(UEA) : BigInt(0);
+    return { deployed, nonce };
+  }
+
+  /**
+   * Builds UniversalPayload for the gateway and computes the native gas deposit.
+   */
+  private async buildGatewayPayloadAndGas(
+    execute: ExecuteParams,
+    nonce: bigint
+  ): Promise<{ payload: never; gasAmount: bigint }> {
+    const gasEstimate = execute.gasLimit || BigInt(1e7);
+    const payloadValue = execute.value ?? BigInt(0);
+    const gasAmount = execute.value ?? BigInt(0);
+
+    const universalPayload = {
+      to: execute.to,
+      value: payloadValue,
+      data: execute.data || '0x',
+      gasLimit: gasEstimate,
+      maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
+      maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
+      nonce,
+      deadline: execute.deadline || BigInt(9999999999),
+      vType: VerificationType.universalTxVerification,
+    } as unknown as never;
+
+    return { payload: universalPayload, gasAmount };
   }
 
   /********************************** HELPER FUNCTIONS **************************************************/
