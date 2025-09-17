@@ -227,13 +227,13 @@ export class Orchestrator {
             symbol
           );
 
-          // Wait for confirmations on origin chain per chain config
-          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_03, 14);
-          await evmClient.waitForConfirmations({
-            txHash: txHash,
-            confirmations: 14,
-            timeoutMs: 210000, // CHAIN_INFO[chain].timeout,
-          });
+          // Wait for confirmations on origin chain per chain config with countdown
+          await this.waitForEvmConfirmationsWithCountdown(
+            evmClient,
+            txHash,
+            14,
+            210000 // CHAIN_INFO[chain].timeout
+          );
 
           // Funds Flow: Confirmed on origin
           this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_06);
@@ -1443,5 +1443,41 @@ export class Orchestrator {
     if (!this.progressHook) return;
     // invoke the user-provided callback
     this.progressHook(hookPayload);
+  }
+
+  // Emit countdown updates while waiting for EVM confirmations
+  private async waitForEvmConfirmationsWithCountdown(
+    evmClient: EvmClient,
+    txHash: `0x${string}`,
+    confirmations: number,
+    timeoutMs: number
+  ): Promise<void> {
+    // initial emit
+    this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_03, confirmations);
+    const start = Date.now();
+
+    // Wait for receipt to get included block
+    const receipt = await evmClient.publicClient.waitForTransactionReceipt({
+      hash: txHash,
+    });
+    const targetBlock = receipt.blockNumber + BigInt(confirmations);
+
+    // Poll blocks and emit remaining confirmations
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const currentBlock = await evmClient.publicClient.getBlockNumber();
+      if (currentBlock >= targetBlock) return;
+
+      const remaining = Number(targetBlock - currentBlock);
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_03, remaining);
+
+      if (Date.now() - start > timeoutMs) {
+        throw new Error(
+          `Timeout: transaction ${txHash} not confirmed with ${confirmations} confirmations within ${timeoutMs} ms`
+        );
+      }
+
+      await new Promise((r) => setTimeout(r, 12000));
+    }
   }
 }
