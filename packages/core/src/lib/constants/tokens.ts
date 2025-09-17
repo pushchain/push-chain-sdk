@@ -20,22 +20,14 @@ export interface PayableToken {
 // Explicit token symbol maps to enable dot-access (no index signature errors)
 export type MoveableTokenMap = Partial<{
   ETH: MoveableToken;
-  USDC: MoveableToken;
   USDT: MoveableToken;
-  UNI: MoveableToken;
   WETH: MoveableToken;
-  SOL: MoveableToken;
 }>;
 
 export type PayableTokenMap = Partial<{
   ETH: PayableToken;
-  USDC: PayableToken;
   USDT: PayableToken;
-  DAI: PayableToken;
-  PEPE: PayableToken;
-  UNI: PayableToken;
   WETH: PayableToken;
-  SOL: PayableToken;
 }>;
 
 // Strongly-typed accessors that throw at runtime if a token is unavailable,
@@ -53,20 +45,11 @@ export class MoveableTokenAccessor {
   get ETH(): MoveableToken {
     return this.require('ETH');
   }
-  get USDC(): MoveableToken {
-    return this.require('USDC');
-  }
   get USDT(): MoveableToken {
     return this.require('USDT');
   }
-  get UNI(): MoveableToken {
-    return this.require('UNI');
-  }
   get WETH(): MoveableToken {
     return this.require('WETH');
-  }
-  get SOL(): MoveableToken {
-    return this.require('SOL');
   }
 }
 
@@ -83,26 +66,11 @@ export class PayableTokenAccessor {
   get ETH(): PayableToken {
     return this.require('ETH');
   }
-  get USDC(): PayableToken {
-    return this.require('USDC');
-  }
   get USDT(): PayableToken {
     return this.require('USDT');
   }
-  get DAI(): PayableToken {
-    return this.require('DAI');
-  }
-  get PEPE(): PayableToken {
-    return this.require('PEPE');
-  }
-  get UNI(): PayableToken {
-    return this.require('UNI');
-  }
   get WETH(): PayableToken {
     return this.require('WETH');
-  }
-  get SOL(): PayableToken {
-    return this.require('SOL');
   }
 }
 
@@ -126,13 +94,6 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
       decimals: 18,
       address: EVM_NATIVE,
       mechanism: 'native',
-    },
-    // Sepolia USDC
-    {
-      symbol: 'USDC',
-      decimals: 6,
-      address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
-      mechanism: 'approve',
     },
     {
       symbol: 'USDT',
@@ -158,12 +119,6 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
       mechanism: 'native',
     },
     {
-      symbol: 'USDC',
-      decimals: 6,
-      address: '0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
-      mechanism: 'approve',
-    },
-    {
       symbol: 'USDT',
       decimals: 6,
       address: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
@@ -176,19 +131,10 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
       address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
       mechanism: 'approve',
     },
-    // Mainnet UNI
-    {
-      symbol: 'UNI',
-      decimals: 18,
-      address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984',
-      mechanism: 'approve',
-    },
   ],
 
   // Solana Devnet (decimals are per SPL mint; addresses TBD)
   [CHAIN.SOLANA_DEVNET]: [
-    { symbol: 'SOL', decimals: 9, address: 'native', mechanism: 'native' },
-    { symbol: 'USDC', decimals: 6, address: 'TBD', mechanism: 'approve' },
     { symbol: 'USDT', decimals: 6, address: 'TBD', mechanism: 'approve' },
   ],
 };
@@ -201,13 +147,6 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
       decimals: 18,
       address: EVM_NATIVE,
       mechanism: 'native',
-    },
-    // Sepolia USDC
-    {
-      symbol: 'USDC',
-      decimals: 6,
-      address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
-      mechanism: 'approve',
     },
     {
       symbol: 'USDT',
@@ -231,12 +170,6 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
       mechanism: 'native',
     },
     {
-      symbol: 'USDC',
-      decimals: 6,
-      address: '0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
-      mechanism: 'approve',
-    },
-    {
       symbol: 'USDT',
       decimals: 6,
       address: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
@@ -249,17 +182,8 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
       address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
       mechanism: 'approve',
     },
-    // Mainnet UNI
-    {
-      symbol: 'UNI',
-      decimals: 18,
-      address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984',
-      mechanism: 'approve',
-    },
   ],
   [CHAIN.SOLANA_DEVNET]: [
-    { symbol: 'SOL', decimals: 9, address: 'native', mechanism: 'native' },
-    { symbol: 'USDC', decimals: 6, address: 'TBD', mechanism: 'approve' },
     { symbol: 'USDT', decimals: 6, address: 'TBD', mechanism: 'approve' },
   ],
 };
