@@ -499,7 +499,19 @@ export class Orchestrator {
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, transactions);
       return transactions[transactions.length - 1];
     } catch (err) {
-      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_02, err);
+      const errMessage =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'string'
+          ? err
+          : (() => {
+              try {
+                return JSON.stringify(err);
+              } catch {
+                return 'Unknown error';
+              }
+            })();
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_02, errMessage);
       throw err;
     }
   }
