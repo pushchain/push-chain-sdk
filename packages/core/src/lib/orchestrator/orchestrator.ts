@@ -246,8 +246,20 @@ export class Orchestrator {
           const { chain, evmClient, gatewayAddress } =
             this.ensureSepoliaGateway();
 
+          // Default token to native ETH if none provided
           if (!execute.funds.token) {
-            throw new Error('Token is required for bridging with payload');
+            const available: MoveableToken[] =
+              (MOVEABLE_TOKENS[chain] as MoveableToken[] | undefined) || [];
+            const vm = CHAIN_INFO[chain].vm;
+            const preferredSymbol =
+              vm === VM.EVM ? 'ETH' : vm === VM.SVM ? 'SOL' : undefined;
+            const nativeToken = preferredSymbol
+              ? available.find((t) => t.symbol === preferredSymbol)
+              : undefined;
+            if (!nativeToken) {
+              throw new Error('Native token not configured for this chain');
+            }
+            execute.funds.token = nativeToken;
           }
 
           const mechanism = execute.funds.token.mechanism;
