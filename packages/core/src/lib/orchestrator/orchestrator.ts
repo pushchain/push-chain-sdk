@@ -280,13 +280,8 @@ export class Orchestrator {
             timeoutMs: CHAIN_INFO[chain].timeout,
           });
 
-          const transactions = await this.sendUniversalTx(
-            isUEADeployed,
-            txHash,
-            universalPayload as unknown as UniversalPayload,
-            txHash
-          );
-          return transactions[transactions.length - 1];
+          const tx = await evmClient.getTransaction(txHash);
+          return await this.transformToUniversalTxResponse(tx);
         }
       }
 
