@@ -269,7 +269,7 @@ export class Orchestrator {
             );
           }
 
-          const { nonce } = await this.getUeaStatusAndNonce();
+          const { deployed, nonce } = await this.getUeaStatusAndNonce();
           const { payload: universalPayload, gasAmount } =
             await this.buildGatewayPayloadAndGas(execute, nonce);
 
@@ -357,6 +357,11 @@ export class Orchestrator {
 
           // Funds Flow: Confirmed on origin
           this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_06);
+
+          // If UEA is not deployed yet, deploy it now using the gateway tx hash
+          if (!deployed) {
+            await this.sendUniversalTx(false, txHash);
+          }
 
           const tx = await evmClient.getTransaction(txHash);
           return await this.transformToUniversalTxResponse(tx);
