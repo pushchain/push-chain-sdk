@@ -200,7 +200,7 @@ export class Orchestrator {
           await evmClient.waitForConfirmations({
             txHash: txHash,
             confirmations: 14,
-            timeoutMs: 180000, // CHAIN_INFO[chain].timeout,
+            timeoutMs: 210000, // CHAIN_INFO[chain].timeout,
           });
 
           // Fetch origin-chain tx and transform to UniversalTxResponse
