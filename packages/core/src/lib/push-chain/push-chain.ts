@@ -217,6 +217,97 @@ export class PushChain {
           throw new Error('to token is required');
         }
 
+        // Sepolia-only override: if quoting USDT -> WETH, use Chainlink ETH/USD to match UniversalGatewayV0.sol
+        if (
+          originChain === CHAIN.ETHEREUM_SEPOLIA &&
+          from.symbol === 'USDT' &&
+          to.symbol === 'WETH'
+        ) {
+          // Resolve RPCs from client config, falling back to defaults
+          const rpcUrls =
+            orchestrator.getRpcUrls()[originChain] ||
+            CHAIN_INFO[originChain].defaultRPC;
+
+          const evm = new EvmClient({ rpcUrls });
+
+          // Chainlink AggregatorV3Interface (ETH/USD) on Sepolia
+          const aggregatorAbi: Abi = parseAbi([
+            'function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)',
+            'function decimals() view returns (uint8)',
+          ]);
+          const ETH_USD_FEED_SEPOLIA =
+            '0x694AA1769357215DE4FAC081bf1f309aDC325306' as `0x${string}`;
+
+          // Get price and decimals
+          const [latest, dec] = await Promise.all([
+            evm.readContract<
+              [
+                bigint, // roundId
+                bigint, // answer
+                bigint, // startedAt
+                bigint, // updatedAt
+                bigint // answeredInRound
+              ]
+            >({
+              abi: aggregatorAbi,
+              address: ETH_USD_FEED_SEPOLIA,
+              functionName: 'latestRoundData',
+              args: [],
+            }),
+            evm.readContract<number>({
+              abi: aggregatorAbi,
+              address: ETH_USD_FEED_SEPOLIA,
+              functionName: 'decimals',
+              args: [],
+            }),
+          ]);
+
+          const answer = latest?.[1] ?? BigInt(0); // USD price per ETH with "dec" decimals
+          if (answer <= BigInt(0)) {
+            throw new Error('Chainlink ETH/USD price is invalid');
+          }
+
+          // Scale price to 1e18 without using bigint exponent operator (target constraints)
+          if (dec > 18) {
+            throw new Error('Unexpected Chainlink decimals');
+          }
+          const pow10 = (exp: number): bigint => {
+            if (exp <= 0) return BigInt(1);
+            let result = BigInt(1);
+            for (let i = 0; i < exp; i++) result *= BigInt(10);
+            return result;
+          };
+          const priceScale = pow10(18 - dec);
+          const price1e18 = answer * priceScale; // USD(1e18) per 1 ETH
+
+          // Convert USDT amount to USD(1e18) using token decimals (default 6)
+          const fromDecimals: number =
+            typeof from.decimals === 'number' ? from.decimals : 6;
+          const usd1e18 =
+            fromDecimals <= 18
+              ? amountIn * pow10(18 - fromDecimals)
+              : amountIn / pow10(fromDecimals - 18);
+
+          // ETH(wei) = (USD(1e18) * 1e18) / price1e18
+          const amountOutWei = (usd1e18 * pow10(18)) / price1e18;
+
+          const amountInHuman = parseFloat(
+            Utils.helpers.formatUnits(amountIn, { decimals: from.decimals })
+          );
+          const amountOutHuman = parseFloat(
+            Utils.helpers.formatUnits(amountOutWei, { decimals: to.decimals })
+          );
+          const rate = amountInHuman > 0 ? amountOutHuman / amountInHuman : 0;
+
+          return {
+            amountIn: amountIn.toString(),
+            amountOut: amountOutWei.toString(),
+            rate,
+            route: [from.symbol, to.symbol],
+            timestamp: Date.now(),
+          };
+        }
+
         // Resolve RPCs from client config, falling back to defaults
         const rpcUrls =
           orchestrator.getRpcUrls()[originChain] ||
