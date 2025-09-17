@@ -131,6 +131,9 @@ export class Orchestrator {
             );
           }
 
+          // Progress: Origin chain detected
+          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_01, chain);
+
           const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
           const rpcUrls: string[] = this.rpcUrls[chain] || defaultRPC;
           const evmClient = new EvmClient({ rpcUrls });
@@ -157,6 +160,15 @@ export class Orchestrator {
 
           const tokenAddr = execute.funds.token.address as `0x${string}`;
           const amount = execute.funds.amount;
+          const symbol = execute.funds.token.symbol;
+
+          // Funds Flow: Preparing funds transfer
+          this.executeProgressHook(
+            PROGRESS_HOOK.SEND_TX_06_01,
+            amount,
+            execute.funds.token.decimals,
+            symbol
+          );
 
           // Approve gateway to pull tokens if ERC-20 (not native sentinel)
           if (execute.funds.token.mechanism === 'approve') {
@@ -187,21 +199,44 @@ export class Orchestrator {
             revertMsg: '0x',
           } as unknown as never; // typed by viem via ABI
 
-          const txHash = await evmClient.writeContract({
-            abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
-            address: gatewayAddress,
-            functionName: 'sendFunds',
-            args: [recipient, bridgeToken, bridgeAmount, revertCFG],
-            signer: this.universalSigner,
-            value: isNative ? bridgeAmount : BigInt(0),
-          });
+          let txHash: `0x${string}`;
+          try {
+            txHash = await evmClient.writeContract({
+              abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
+              address: gatewayAddress,
+              functionName: 'sendFunds',
+              args: [recipient, bridgeToken, bridgeAmount, revertCFG],
+              signer: this.universalSigner,
+              value: isNative ? bridgeAmount : BigInt(0),
+            });
+          } catch (err) {
+            // Payload Flow: Verification declined by user (wallet rejection)
+            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_04);
+            throw err;
+          }
+
+          // Payload Flow: Verification Success
+          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_03);
+
+          // Funds Flow: Funds lock submitted
+          this.executeProgressHook(
+            PROGRESS_HOOK.SEND_TX_06_02,
+            txHash,
+            bridgeAmount,
+            execute.funds.token.decimals,
+            symbol
+          );
 
           // Wait for confirmations on origin chain per chain config
+          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_03, 14);
           await evmClient.waitForConfirmations({
             txHash: txHash,
             confirmations: 14,
             timeoutMs: 210000, // CHAIN_INFO[chain].timeout,
           });
+
+          // Funds Flow: Confirmed on origin
+          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_06);
 
           // Fetch origin-chain tx and transform to UniversalTxResponse
           const tx = await evmClient.getTransaction(txHash);
@@ -222,8 +257,7 @@ export class Orchestrator {
             );
           }
 
-          const { deployed: isUEADeployed, nonce } =
-            await this.getUeaStatusAndNonce();
+          const { nonce } = await this.getUeaStatusAndNonce();
           const { payload: universalPayload, gasAmount } =
             await this.buildGatewayPayloadAndGas(execute, nonce);
 
@@ -251,6 +285,15 @@ export class Orchestrator {
           // ERC-20 bridge token path
           const tokenAddr = execute.funds.token.address as `0x${string}`;
           const bridgeAmount = execute.funds.amount;
+          const symbol = execute.funds.token.symbol;
+
+          // Funds Flow: Preparing funds transfer
+          this.executeProgressHook(
+            PROGRESS_HOOK.SEND_TX_06_01,
+            bridgeAmount,
+            execute.funds.token.decimals,
+            symbol
+          );
 
           await this.ensureErc20Allowance(
             evmClient,
@@ -259,26 +302,49 @@ export class Orchestrator {
             bridgeAmount
           );
 
-          const txHash = await evmClient.writeContract({
-            abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
-            address: gatewayAddress,
-            functionName: 'sendTxWithFunds',
-            args: [
-              tokenAddr,
-              bridgeAmount,
-              universalPayload,
-              revertCFG,
-              zeroHash,
-            ],
-            signer: this.universalSigner,
-            value: gasAmount,
-          });
+          let txHash: `0x${string}`;
+          try {
+            txHash = await evmClient.writeContract({
+              abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
+              address: gatewayAddress,
+              functionName: 'sendTxWithFunds',
+              args: [
+                tokenAddr,
+                bridgeAmount,
+                universalPayload,
+                revertCFG,
+                zeroHash,
+              ],
+              signer: this.universalSigner,
+              value: gasAmount,
+            });
+          } catch (err) {
+            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_04);
+            throw err;
+          }
 
+          // Payload Flow: Verification Success
+          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_03);
+
+          // Funds Flow: Funds lock submitted
+          this.executeProgressHook(
+            PROGRESS_HOOK.SEND_TX_06_02,
+            txHash,
+            bridgeAmount,
+            execute.funds.token.decimals,
+            symbol
+          );
+
+          // Awaiting confirmations
+          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_03, 1);
           await evmClient.waitForConfirmations({
             txHash: txHash,
             confirmations: 1,
             timeoutMs: CHAIN_INFO[chain].timeout,
           });
+
+          // Funds Flow: Confirmed on origin
+          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_06);
 
           const tx = await evmClient.getTransaction(txHash);
           return await this.transformToUniversalTxResponse(tx);

@@ -1,4 +1,5 @@
 import { UniversalTxResponse } from '../orchestrator/orchestrator.types';
+import { Utils } from '../utils';
 import {
   PROGRESS_HOOK,
   ProgressEventFunction,
@@ -74,6 +75,21 @@ const RAW_HOOKS: {
     response: null,
     level: 'SUCCESS',
   }),
+  // V2 Payload flow
+  [PROGRESS_HOOK.SEND_TX_04_03]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_04_03,
+    title: 'Verification Success',
+    message: 'Verification completed via Transaction or Signature',
+    response: null,
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_04_04]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_04_04,
+    title: 'Verification Declined',
+    message: 'Verification declined by user',
+    response: null,
+    level: 'ERROR',
+  }),
   [PROGRESS_HOOK.SEND_TX_05_01]: (feeAmount: bigint) => ({
     id: PROGRESS_HOOK.SEND_TX_05_01,
     title: 'Locking Origin Chain Fee',
@@ -101,6 +117,78 @@ const RAW_HOOKS: {
     message: 'Sending Tx to Push Chain…',
     response: null,
     level: 'INFO',
+  }),
+  // V2 Funds flow
+  [PROGRESS_HOOK.SEND_TX_06_01]: (
+    amount: bigint,
+    decimals: number,
+    symbol: string
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_06_01,
+    title: 'Preparing Funds Transfer',
+    message: `Preparing to move ${Utils.helpers.formatUnits(
+      amount,
+      decimals
+    )} ${symbol} from origin chain`,
+    response: null,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_06_02]: (
+    txHash: string,
+    amount: bigint,
+    decimals: number,
+    symbol: string
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_06_02,
+    title: 'Funds Lock Submitted',
+    message: `Locking ${Utils.helpers.formatUnits(
+      amount,
+      decimals
+    )} ${symbol} for transfer (Tx hash: ${txHash})`,
+    response: null,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_06_03]: (required: number) => ({
+    id: PROGRESS_HOOK.SEND_TX_06_03,
+    title: 'Awaiting Confirmations',
+    message: `Waiting for ${required} confirmations`,
+    response: null,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_06_04]: (current: number, required: number) => ({
+    id: PROGRESS_HOOK.SEND_TX_06_04,
+    title: 'Confirmation #1 Received',
+    message: `${current}/${required} confirmations received`,
+    response: null,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_06_05]: (current: number, required: number) => ({
+    id: PROGRESS_HOOK.SEND_TX_06_05,
+    title: 'Confirmation #2 Received',
+    message: `${current}/${required} confirmations received`,
+    response: null,
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_06_06]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_06_06,
+    title: 'Funds Confirmed',
+    message: 'Origin chain lock confirmed',
+    response: null,
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_06_07]: (
+    amount: bigint,
+    decimals: number,
+    symbol: string
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_06_07,
+    title: 'Funds Credited on Push Chain',
+    message: `Funds credited: ${Utils.helpers.formatUnits(
+      amount,
+      decimals
+    )} ${symbol} (minus fees)`,
+    response: null,
+    level: 'SUCCESS',
   }),
   [PROGRESS_HOOK.SEND_TX_99_01]: (txResponse: UniversalTxResponse[]) => ({
     id: PROGRESS_HOOK.SEND_TX_99_01,
