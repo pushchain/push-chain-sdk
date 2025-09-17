@@ -238,7 +238,10 @@ export class PushChain {
           'function getPool(address tokenA, address tokenB, uint24 fee) view returns (address)',
         ]);
         const quoterAbi: Abi = parseAbi([
-          'function quoteExactInputSingle((address tokenIn, address tokenOut, uint256 amountIn, uint24 fee, uint160 sqrtPriceLimitX96)) returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate)',
+          'function quoteExactInputSingle((address tokenIn, address tokenOut, uint256 amountIn, uint24 fee, uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate)',
+        ]);
+        const poolAbi: Abi = parseAbi([
+          'function liquidity() view returns (uint128)',
         ]);
 
         const feeTiers: number[] = [100, 500, 3000, 10000];
@@ -260,6 +263,22 @@ export class PushChain {
             poolAddress.toLowerCase() ===
               '0x0000000000000000000000000000000000000000';
           if (isZero) continue;
+
+          // Skip uninitialized/empty pools to avoid Quoter reverts
+          try {
+            const liquidity = await evm.readContract<bigint>({
+              abi: poolAbi,
+              address: poolAddress as `0x${string}`,
+              functionName: 'liquidity',
+              args: [],
+            });
+            if (!liquidity || liquidity === BigInt(0)) {
+              continue;
+            }
+          } catch {
+            // If we can't read liquidity, skip this pool/fee tier
+            continue;
+          }
 
           // Quote exact input single for this fee tier; catch reverts due to empty/uninitialized pools
           try {
