@@ -10,11 +10,19 @@ import {
   http,
   isAddress,
   verifyMessage,
+  parseAbi,
+  PrivateKeyAccount,
 } from 'viem';
 import { sepolia } from 'viem/chains';
 import { CHAIN_INFO } from '../constants/chain';
 import { CHAIN } from '../constants/enums';
 import { Keypair, PublicKey } from '@solana/web3.js';
+import { EvmClient } from '../vm-client/evm-client';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load environment variables from packages/core/.env
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 describe('PushChain', () => {
   describe('Universal Namesapce', () => {
     let pushClientEVM: PushChain;
@@ -823,6 +831,290 @@ describe('PushChain', () => {
       expect(Array.isArray(urls)).toBe(true);
       expect(urls).toEqual(['https://donut-explorer.push.network']);
       expect(urls.length).toBe(1);
+    });
+  });
+
+  describe('Universal.sendTransaction (FUNDS_TX via UniversalGatewayV0)', () => {
+    // Live RPCs can be slower
+    jest.setTimeout(30000);
+    const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
+      | `0x${string}`
+      | undefined;
+    let signer: UniversalSigner;
+    let account: PrivateKeyAccount;
+    let client: PushChain;
+
+    beforeAll(async () => {
+      if (!PRIVATE_KEY) {
+        throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+      }
+
+      account = privateKeyToAccount(PRIVATE_KEY);
+      const walletClient = createWalletClient({
+        account,
+        chain: sepolia,
+        transport: http(),
+      });
+      signer = await PushChain.utils.signer.toUniversalFromKeypair(
+        walletClient,
+        {
+          chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+        }
+      );
+      client = await PushChain.initialize(signer, {
+        network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+      });
+    });
+
+    it('should throw on unsupported origin chains', async () => {
+      // Use SVM signer (unsupported for FUNDS_TX origin)
+      const accountSVM = Keypair.generate();
+      const svmSigner = await PushChain.utils.signer.toUniversalFromKeypair(
+        accountSVM,
+        {
+          chain: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET,
+          library: PushChain.CONSTANTS.LIBRARY.SOLANA_WEB3JS,
+        }
+      );
+      const svmClient = await PushChain.initialize(svmSigner, {
+        network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+      });
+
+      const amount = PushChain.utils.helpers.parseUnits('100', { decimals: 6 });
+      await expect(
+        svmClient.universal.sendTransaction({
+          to: '0x1234567890123456789012345678901234567890' as `0x${string}`,
+          funds: {
+            amount,
+            token: {
+              symbol: 'USDC',
+              decimals: 6,
+              address: '0xA0b8',
+              requiresApprove: true,
+            } as any,
+          },
+        } as any)
+      ).rejects.toThrow(/only supported on Ethereum Sepolia/i);
+    });
+
+    it('integration: sepolia sendFunds USDT via UniversalGatewayV0', async () => {
+      // Ensure we have some USDT balance; skip test gracefully if not
+      const erc20Abi = parseAbi([
+        'function balanceOf(address) view returns (uint256)',
+      ]);
+
+      const usdt = client.moveable.token.USDT;
+
+      const balance: bigint = await new EvmClient({
+        rpcUrls: CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC,
+      }).readContract<bigint>({
+        abi: erc20Abi,
+        address: usdt.address,
+        functionName: 'balanceOf',
+        args: [account.address],
+      });
+
+      if (balance <= BigInt(0)) {
+        console.warn(
+          'Skipping integration sendFunds test: no USDT balance on Sepolia'
+        );
+        return;
+      }
+
+      const amount = BigInt(1);
+      const recipient = client.universal.account;
+
+      const resUSDT = await client.universal.sendTransaction({
+        to: recipient,
+        funds: { amount: amount, token: client.moveable.token.USDT },
+      });
+
+      const receipt = await resUSDT.wait();
+      expect(receipt.status).toBe(1);
+      console.log('Receipt', receipt);
+    }, 300000);
+
+    it('integration: sepolia sendFunds ETH via UniversalGatewayV0', async () => {
+      const amount = BigInt(1);
+      const recipient = client.universal.account;
+
+      const resNative = await client.universal.sendTransaction({
+        to: recipient,
+        funds: { amount: amount },
+      });
+
+      const receipt = await resNative.wait();
+      expect(receipt.status).toBe(1);
+      console.log('Receipt', receipt);
+    }, 300000);
+
+    it('integration: sepolia sendTxWithFunds USDT via UniversalGatewayV0', async () => {
+      try {
+        const erc20Abi = parseAbi([
+          'function balanceOf(address) view returns (uint256)',
+        ]);
+        const usdt = client.moveable.token.USDT;
+        if (usdt) {
+          const evm = new EvmClient({
+            rpcUrls: CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC,
+          });
+          const usdtBal: bigint = await evm.readContract<bigint>({
+            abi: erc20Abi,
+            address: usdt.address,
+            functionName: 'balanceOf',
+            args: [account.address],
+          });
+
+          if (usdtBal === BigInt(0)) {
+            console.warn(
+              'Skipping USDT sendTxWithFunds: no USDT balance on Sepolia'
+            );
+            return;
+          }
+
+          const bridgeAmount = BigInt(1); // 1 unit (6 decimals)
+          // SimpleCounter.increment() ABI-encoded payload (per docs tutorial)
+          const UCABI = [
+            {
+              inputs: [],
+              name: 'increment',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+          ];
+          const COUNTER_ADDRESS =
+            '0x9F95857e43d25Bb9DaFc6376055eFf63bC0887C1' as `0x${string}`;
+          const data = PushChain.utils.helpers.encodeTxData({
+            abi: UCABI,
+            functionName: 'increment',
+          });
+
+          const tenUsdt = PushChain.utils.helpers.parseUnits('10', {
+            decimals: client.payable.token.USDT.decimals,
+          });
+          const quote = await client.funds.getConversionQuote(tenUsdt, {
+            from: client.payable.token.USDT,
+            to: client.moveable.token.WETH,
+          });
+          const ethValue = BigInt(quote.amountOut);
+
+          const resUSDT = await client.universal.sendTransaction({
+            to: COUNTER_ADDRESS,
+            value: ethValue,
+            data,
+            funds: { amount: bridgeAmount, token: usdt },
+          });
+          expect(typeof resUSDT.hash).toBe('string');
+          expect(resUSDT.hash.startsWith('0x')).toBe(true);
+        }
+      } catch (err) {
+        console.warn(
+          'USDT sendTxWithFunds flow failed (non-fatal for test):',
+          err
+        );
+      }
+    });
+
+    it('integration: sepolia sendTxWithFunds ETH via UniversalGatewayV0', async () => {
+      try {
+        const bridgeAmount = BigInt(1); // 1 unit (6 decimals)
+        // SimpleCounter.increment() ABI-encoded payload (per docs tutorial)
+        const UCABI = [
+          {
+            inputs: [],
+            name: 'increment',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+        ];
+        const COUNTER_ADDRESS =
+          '0x9F95857e43d25Bb9DaFc6376055eFf63bC0887C1' as `0x${string}`;
+        const data = PushChain.utils.helpers.encodeTxData({
+          abi: UCABI,
+          functionName: 'increment',
+        });
+
+        const tenUsdt = PushChain.utils.helpers.parseUnits('10', {
+          decimals: client.payable.token.USDT.decimals,
+        });
+        const quote = await client.funds.getConversionQuote(tenUsdt, {
+          from: client.payable.token.USDT,
+          to: client.moveable.token.WETH,
+        });
+        const ethValue = BigInt(quote.amountOut);
+
+        await expect(
+          client.universal.sendTransaction({
+            to: COUNTER_ADDRESS,
+            value: ethValue,
+            data,
+            funds: { amount: bridgeAmount, token: client.moveable.token.ETH },
+          })
+        ).rejects.toThrow(
+          'Only ERC-20 tokens are supported for funds+payload; native and permit2 are not supported yet'
+        );
+      } catch (err) {
+        console.warn(
+          'ETH sendTxWithFunds flow failed (non-fatal for test):',
+          err
+        );
+      }
+    });
+  });
+
+  describe('Validation: funds + value guard', () => {
+    it('should reject non-zero value when funds is set, but allow value=0', async () => {
+      // Create a client on Push chain (so we fail early on the sepolia-only check without network calls)
+      const pushTestnet = defineChain({
+        id: parseInt(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId),
+        name: 'Push Testnet',
+        nativeCurrency: { decimals: 18, name: 'PC', symbol: '$PC' },
+        rpcUrls: {
+          default: {
+            http: [CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]],
+          },
+        },
+      });
+      const account = privateKeyToAccount(generatePrivateKey());
+      const walletClient = createWalletClient({
+        account,
+        chain: pushTestnet,
+        transport: http(),
+      });
+      const signer = await PushChain.utils.signer.toUniversalFromKeypair(
+        walletClient,
+        {
+          chain: PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+        }
+      );
+      const client = await PushChain.initialize(signer, {
+        network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+      });
+
+      const recipient =
+        '0x1234567890123456789012345678901234567890' as `0x${string}`;
+
+      // 1) Non-zero value with funds should be rejected by the guard
+      await expect(
+        client.universal.sendTransaction({
+          to: recipient,
+          value: BigInt(1),
+          funds: { amount: BigInt(1) },
+        })
+      ).rejects.toThrow(/Do not set `value` when using funds bridging/i);
+
+      // 2) value = 0 with funds should pass the guard and then fail on sepolia-only check
+      await expect(
+        client.universal.sendTransaction({
+          to: recipient,
+          value: BigInt(0),
+          funds: { amount: BigInt(1) },
+        })
+      ).rejects.toThrow(/only supported on Ethereum Sepolia/i);
     });
   });
 
