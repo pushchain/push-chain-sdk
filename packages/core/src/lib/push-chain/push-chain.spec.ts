@@ -1,4 +1,5 @@
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+import bs58 from 'bs58';
 import {
   UniversalSigner,
   UniversalAccount,
@@ -6,15 +7,23 @@ import {
 import { PushChain } from './push-chain';
 import {
   createWalletClient,
+  createPublicClient,
   defineChain,
   http,
   isAddress,
   verifyMessage,
 } from 'viem';
 import { sepolia } from 'viem/chains';
+import { keccak256, toBytes } from 'viem';
+import { MulticallCall } from '../orchestrator/orchestrator.types';
 import { CHAIN_INFO } from '../constants/chain';
 import { CHAIN } from '../constants/enums';
 import { Keypair, PublicKey } from '@solana/web3.js';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load env from the core package root
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 describe('PushChain', () => {
   describe('Universal Namesapce', () => {
     let pushClientEVM: PushChain;
@@ -25,7 +34,10 @@ describe('PushChain', () => {
     let universalSignerSVM: UniversalSigner;
 
     beforeAll(async () => {
-      const account = privateKeyToAccount(generatePrivateKey());
+      const evmPrivateKey = process.env['EVM_PRIVATE_KEY'];
+      if (!evmPrivateKey)
+        throw new Error('EVM_PRIVATE_KEY not set in core/.env');
+      const account = privateKeyToAccount(evmPrivateKey as `0x${string}`);
       const walletClient = createWalletClient({
         account,
         chain: sepolia,
@@ -62,7 +74,7 @@ describe('PushChain', () => {
           },
         },
       });
-      const accountPush = privateKeyToAccount(generatePrivateKey());
+      const accountPush = privateKeyToAccount(evmPrivateKey as `0x${string}`);
       const walletClientPush = createWalletClient({
         account: accountPush,
         chain: pushTestnet,
@@ -78,7 +90,14 @@ describe('PushChain', () => {
       pushChainPush = await PushChain.initialize(universalSignerPush, {
         network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
       });
-      const accountSVM = Keypair.generate();
+
+      const privateKeyHex = process.env['SOLANA_PRIVATE_KEY'];
+      if (!privateKeyHex) throw new Error('SOLANA_PRIVATE_KEY not set');
+
+      const privateKey = bs58.decode(privateKeyHex);
+
+      const accountSVM = Keypair.fromSecretKey(privateKey);
+
       universalSignerSVM = await PushChain.utils.signer.toUniversalFromKeypair(
         accountSVM,
         {
@@ -155,6 +174,230 @@ describe('PushChain', () => {
 
         expect(isValidPush).toBe(true);
       });
+    });
+
+    describe('Multicall', () => {
+      const COUNTER_ADDRESS =
+        '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
+
+      const CounterABI = [
+        {
+          inputs: [],
+          name: 'increment',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        {
+          inputs: [],
+          name: 'countPC',
+          outputs: [
+            {
+              internalType: 'uint256',
+              name: '',
+              type: 'uint256',
+            },
+          ],
+          stateMutability: 'view',
+          type: 'function',
+        },
+      ] as const;
+
+      it('should throw if multicall used with invalid to', async () => {
+        const incrementData = PushChain.utils.helpers.encodeTxData({
+          abi: CounterABI as unknown as any[],
+          functionName: 'increment',
+        });
+
+        const calls: MulticallCall[] = [
+          {
+            to: COUNTER_ADDRESS,
+            value: BigInt(0),
+            data: incrementData as `0x${string}`,
+          },
+        ];
+
+        await expect(
+          pushClientEVM.universal.sendTransaction({
+            // Force wrong type to trigger runtime validation
+            to: 'invalid-address' as unknown as `0x${string}`,
+            value: BigInt(0),
+            data: calls,
+          })
+        ).rejects.toThrow(
+          'When using multicall, "to" must be a 0x-prefixed address'
+        );
+      });
+
+      it('should build and send multicall payload from Sepolia', async () => {
+        const incrementData = PushChain.utils.helpers.encodeTxData({
+          abi: CounterABI as unknown as any[],
+          functionName: 'increment',
+        }) as `0x${string}`;
+
+        const calls: MulticallCall[] = [
+          { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
+          { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
+        ];
+
+        const publicClientPush = createPublicClient({
+          transport: http('https://evm.rpc-testnet-donut-node1.push.org/'),
+        });
+
+        const before = (await publicClientPush.readContract({
+          address: COUNTER_ADDRESS,
+          abi: CounterABI as unknown as any[],
+          functionName: 'countPC',
+          args: [],
+        })) as unknown as bigint;
+
+        const tx = await pushClientEVM.universal.sendTransaction({
+          to: COUNTER_ADDRESS,
+          value: BigInt(0),
+          data: calls,
+        });
+
+        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+        // Multicall payload must be prefixed with bytes4(keccak256("UEA_MULTICALL"))
+        const selector = keccak256(toBytes('UEA_MULTICALL')).slice(0, 10);
+        expect(tx.data.slice(0, 10)).toBe(selector);
+
+        await tx.wait();
+
+        const after = (await publicClientPush.readContract({
+          address: COUNTER_ADDRESS,
+          abi: CounterABI as unknown as any[],
+          functionName: 'countPC',
+          args: [],
+        })) as unknown as bigint;
+
+        expect(after).toBe(before + BigInt(2));
+      }, 300000);
+
+      it('should throw if multicall used with invalid to (SVM)', async () => {
+        const incrementData = PushChain.utils.helpers.encodeTxData({
+          abi: CounterABI as unknown as any[],
+          functionName: 'increment',
+        });
+
+        const calls: MulticallCall[] = [
+          {
+            to: COUNTER_ADDRESS,
+            value: BigInt(0),
+            data: incrementData as `0x${string}`,
+          },
+        ];
+
+        await expect(
+          pushChainSVM.universal.sendTransaction({
+            to: 'invalid-address' as unknown as `0x${string}`,
+            value: BigInt(0),
+            data: calls,
+          })
+        ).rejects.toThrow(
+          'When using multicall, "to" must be a 0x-prefixed address'
+        );
+      });
+
+      it('should build and send multicall payload from Solana Devnet', async () => {
+        const incrementData = PushChain.utils.helpers.encodeTxData({
+          abi: CounterABI as unknown as any[],
+          functionName: 'increment',
+        }) as `0x${string}`;
+
+        const calls: MulticallCall[] = [
+          { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
+          { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
+        ];
+
+        const publicClientPush = createPublicClient({
+          transport: http('https://evm.rpc-testnet-donut-node1.push.org/'),
+        });
+
+        const before = (await publicClientPush.readContract({
+          address: COUNTER_ADDRESS,
+          abi: CounterABI as unknown as any[],
+          functionName: 'countPC',
+          args: [],
+        })) as unknown as bigint;
+
+        const tx = await pushChainSVM.universal.sendTransaction({
+          to: COUNTER_ADDRESS,
+          value: BigInt(0),
+          data: calls,
+        });
+
+        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+        const selector = keccak256(toBytes('UEA_MULTICALL')).slice(0, 10);
+        expect(tx.data.slice(0, 10)).toBe(selector);
+
+        await tx.wait();
+
+        const after = (await publicClientPush.readContract({
+          address: COUNTER_ADDRESS,
+          abi: CounterABI as unknown as any[],
+          functionName: 'countPC',
+          args: [],
+        })) as unknown as bigint;
+
+        expect(after).toBe(before + BigInt(2));
+      }, 300000);
+
+      it('should perform normal single-call from Sepolia, Solana Devnet, and Push Testnet', async () => {
+        const incrementData = PushChain.utils.helpers.encodeTxData({
+          abi: CounterABI as unknown as any[],
+          functionName: 'increment',
+        }) as `0x${string}`;
+
+        const publicClientPush = createPublicClient({
+          transport: http('https://evm.rpc-testnet-donut-node1.push.org/'),
+        });
+
+        const before = (await publicClientPush.readContract({
+          address: COUNTER_ADDRESS,
+          abi: CounterABI as unknown as any[],
+          functionName: 'countPC',
+          args: [],
+        })) as unknown as bigint;
+
+        // 1) From Ethereum Sepolia origin
+        const txEvm = await pushClientEVM.universal.sendTransaction({
+          to: COUNTER_ADDRESS,
+          value: BigInt(0),
+          data: incrementData,
+        });
+        expect(txEvm.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        await txEvm.wait();
+
+        // 2) From Solana Devnet origin
+        const txSvm = await pushChainSVM.universal.sendTransaction({
+          to: COUNTER_ADDRESS,
+          value: BigInt(0),
+          data: incrementData,
+        });
+        expect(txSvm.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        await txSvm.wait();
+
+        // 3) From Push Testnet origin
+        const txPush = await pushChainPush.universal.sendTransaction({
+          to: COUNTER_ADDRESS,
+          value: BigInt(0),
+          data: incrementData,
+        });
+        expect(txPush.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        await txPush.wait();
+
+        const after = (await publicClientPush.readContract({
+          address: COUNTER_ADDRESS,
+          abi: CounterABI as unknown as any[],
+          functionName: 'countPC',
+          args: [],
+        })) as unknown as bigint;
+
+        expect(after).toBe(before + BigInt(3));
+      }, 300000);
     });
     describe('signTypedData', () => {
       it('should signTypedData - EIP-712 format', async () => {

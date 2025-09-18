@@ -163,17 +163,71 @@ export class Orchestrator {
       let feeLockTxHash: string | undefined = execute.feeLockTxHash;
       if (feeLockTxHash && !feeLockTxHash.startsWith('0x')) {
         // decode svm base58
-        feeLockTxHash = bytesToHex(utils.bytes.bs58.decode(feeLockTxHash));
+        const decoded = utils.bytes.bs58.decode(feeLockTxHash);
+        feeLockTxHash = bytesToHex(Uint8Array.from(decoded));
       }
       // Fee locking is required if UEA is not deployed OR insufficient funds
       const feeLockingRequired =
         (!isUEADeployed || funds < requiredFunds) && !feeLockTxHash;
+
+      // Support multicall payload encoding when execute.data is an array
+      let payloadData: `0x${string}`;
+      if (Array.isArray(execute.data)) {
+        // Gate multicall to Ethereum Sepolia and Solana Devnet only
+        const allowedChains = [CHAIN.ETHEREUM_SEPOLIA, CHAIN.SOLANA_DEVNET];
+        if (!allowedChains.includes(this.universalSigner.account.chain)) {
+          throw new Error(
+            'Multicall is only enabled for Ethereum Sepolia and Solana Devnet'
+          );
+        }
+
+        // Validate `to` is a 0x-prefixed address
+        if (typeof execute.to !== 'string' || !execute.to.startsWith('0x')) {
+          throw new Error(
+            'When using multicall, "to" must be a 0x-prefixed address'
+          );
+        }
+
+        // Normalize and validate calls
+        const normalizedCalls = execute.data.map((c) => ({
+          to: getAddress(c.to as `0x${string}`),
+          value: c.value,
+          data: c.data as `0x${string}`,
+        }));
+
+        // bytes4(keccak256("UEA_MULTICALL")) selector, e.g., 0x4e2d2ff6-like prefix
+        const selector = keccak256(toBytes('UEA_MULTICALL')).slice(
+          0,
+          10
+        ) as `0x${string}`;
+
+        // abi.encode(Call[]), where Call = { address to; uint256 value; bytes data; }
+        const encodedCalls = encodeAbiParameters(
+          [
+            {
+              type: 'tuple[]',
+              components: [
+                { name: 'to', type: 'address' },
+                { name: 'value', type: 'uint256' },
+                { name: 'data', type: 'bytes' },
+              ],
+            },
+          ],
+          [normalizedCalls]
+        );
+
+        // Concatenate prefix selector with encodedCalls without 0x
+        payloadData = (selector + encodedCalls.slice(2)) as `0x${string}`;
+      } else {
+        payloadData = (execute.data || '0x') as `0x${string}`;
+      }
+
       const universalPayload = JSON.parse(
         JSON.stringify(
           {
             to: execute.to,
             value: execute.value,
-            data: execute.data || '0x',
+            data: payloadData,
             gasLimit: execute.gasLimit || BigInt(1e7),
             maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
             maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
@@ -502,9 +556,14 @@ export class Orchestrator {
   private async sendPushTx(
     execute: ExecuteParams
   ): Promise<UniversalTxResponse> {
+    // For PushChain, multicall is not supported. Ensure data is hex string.
+    if (Array.isArray(execute.data)) {
+      throw new Error('Multicall is not supported on PushChain');
+    }
+
     const txHash = await this.pushClient.sendTransaction({
       to: execute.to,
-      data: execute.data || '0x',
+      data: (execute.data || '0x') as `0x${string}`,
       value: execute.value,
       signer: this.universalSigner,
     });
