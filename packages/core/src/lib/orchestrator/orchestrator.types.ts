@@ -13,7 +13,7 @@ export type ExecuteParams = {
    * Hex-encoded calldata or transfer payload.
    * @reason Encodes the function selector + arguments (or plain transfer).
    */
-  data?: `0x${string}`;
+  data?: `0x${string}` | MulticallCall[];
 
   /**
    * Optional hard cap on gas to use for this transaction.
@@ -150,3 +150,12 @@ export interface Signature {
   v: number;
   yParity?: number;
 }
+
+/**
+ * Call shape for multicall payloads
+ */
+export type MulticallCall = {
+  to: `0x${string}`;
+  value: bigint;
+  data: `0x${string}`;
+};
