@@ -173,9 +173,12 @@ export class Orchestrator {
       // Support multicall payload encoding when execute.data is an array
       let payloadData: `0x${string}`;
       if (Array.isArray(execute.data)) {
-        // Gate multicall to Ethereum Sepolia only
-        if (this.universalSigner.account.chain !== CHAIN.ETHEREUM_SEPOLIA) {
-          throw new Error('Multicall is only enabled for Ethereum Sepolia');
+        // Gate multicall to Ethereum Sepolia and Solana Devnet only
+        const allowedChains = [CHAIN.ETHEREUM_SEPOLIA, CHAIN.SOLANA_DEVNET];
+        if (!allowedChains.includes(this.universalSigner.account.chain)) {
+          throw new Error(
+            'Multicall is only enabled for Ethereum Sepolia and Solana Devnet'
+          );
         }
 
         // Validate `to` is a 0x-prefixed address
