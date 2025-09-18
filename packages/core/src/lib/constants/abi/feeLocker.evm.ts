@@ -72,6 +72,16 @@ export const FEE_LOCKER_EVM = [
   },
   {
     type: 'function',
+    name: 'getEthUsdPrice_old',
+    inputs: [],
+    outputs: [
+      { name: '', type: 'uint256', internalType: 'uint256' },
+      { name: '', type: 'uint8', internalType: 'uint8' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     name: 'getRoleAdmin',
     inputs: [{ name: 'role', type: 'bytes32', internalType: 'bytes32' }],
     outputs: [{ name: '', type: 'bytes32', internalType: 'bytes32' }],

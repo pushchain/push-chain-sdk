@@ -16,8 +16,8 @@ export const VM_NAMESPACE: Record<VM, string> = {
  */
 export const UEA_PROXY: Record<PUSH_NETWORK, `0x${string}`> = {
   [PUSH_NETWORK.MAINNET]: '0xTBD',
-  [PUSH_NETWORK.TESTNET_DONUT]: '0x523294411f0CBFE40Ff8B7b415ef0e92f01ac38f',
-  [PUSH_NETWORK.TESTNET]: '0x523294411f0CBFE40Ff8B7b415ef0e92f01ac38f',
+  [PUSH_NETWORK.TESTNET_DONUT]: '0x80Fc249D907Ada49668b898F11b41882B4DAD090',
+  [PUSH_NETWORK.TESTNET]: '0x80Fc249D907Ada49668b898F11b41882B4DAD090',
   [PUSH_NETWORK.LOCALNET]: '0x2FE70447492307108Bdc7Ff6BaB33Ff37Dacc479',
 };
 
@@ -76,7 +76,7 @@ export const CHAIN_INFO: Record<
   [CHAIN.ETHEREUM_SEPOLIA]: {
     chainId: '11155111',
     vm: VM.EVM,
-    lockerContract: '0x28E0F09bE2321c1420Dc60Ee146aACbD68B335Fe',
+    lockerContract: '0x05bD7a3D18324c1F7e216f7fBF2b15985aE5281A',
     defaultRPC: [sepolia.rpcUrls.default.http[0]],
     confirmations: 1,
     timeout: 30000,
@@ -102,7 +102,7 @@ export const CHAIN_INFO: Record<
   [CHAIN.SOLANA_DEVNET]: {
     chainId: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
     vm: VM.SVM,
-    lockerContract: '3zrWaMknHTRQpZSxY4BvQxw9TStSXiHcmcp3NMPTFkke',
+    lockerContract: 'CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS',
     defaultRPC: ['https://api.devnet.solana.com'],
     confirmations: 1,
     timeout: 5000,
