@@ -62,7 +62,7 @@ const LoginModal: FC<LoginModalProps> = ({
 
     const res = await pushChainClient.universal.sendTransaction({
       ...data,
-      value: BigInt(data.value)
+      value: data.value ? BigInt(data.value) : data.value
     });
 
     sendMessageToPushWallet({
