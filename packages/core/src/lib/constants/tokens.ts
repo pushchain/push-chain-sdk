@@ -20,6 +20,7 @@ export interface PayableToken {
 // Explicit token symbol maps to enable dot-access (no index signature errors)
 export type MoveableTokenMap = Partial<{
   ETH: MoveableToken;
+  SOL: MoveableToken;
   USDT: MoveableToken;
   WETH: MoveableToken;
 }>;
@@ -44,6 +45,9 @@ export class MoveableTokenAccessor {
 
   get ETH(): MoveableToken {
     return this.require('ETH');
+  }
+  get SOL(): MoveableToken {
+    return this.require('SOL');
   }
   get USDT(): MoveableToken {
     return this.require('USDT');
@@ -135,6 +139,14 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
 
   // Solana Devnet (decimals are per SPL mint; addresses TBD)
   [CHAIN.SOLANA_DEVNET]: [
+    // Native SOL (lamports) sentinel: use 'solana-native' string; not used as a Pubkey
+    {
+      symbol: 'SOL',
+      decimals: 9,
+      address: 'solana-native',
+      mechanism: 'native',
+    },
+    // Example SPL USDT mint address on Devnet (placeholder or set via config if needed)
     { symbol: 'USDT', decimals: 6, address: 'TBD', mechanism: 'approve' },
   ],
 };
@@ -184,6 +196,12 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
     },
   ],
   [CHAIN.SOLANA_DEVNET]: [
+    {
+      symbol: 'SOL',
+      decimals: 9,
+      address: 'solana-native',
+      mechanism: 'native',
+    },
     { symbol: 'USDT', decimals: 6, address: 'TBD', mechanism: 'approve' },
   ],
 };

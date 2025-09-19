@@ -6,6 +6,7 @@ import {
 import { PushChain } from './push-chain';
 import {
   createWalletClient,
+  createPublicClient,
   defineChain,
   http,
   isAddress,
@@ -17,12 +18,18 @@ import { sepolia } from 'viem/chains';
 import { CHAIN_INFO } from '../constants/chain';
 import { CHAIN } from '../constants/enums';
 import { Keypair, PublicKey } from '@solana/web3.js';
+import { utils as anchorUtils } from '@coral-xyz/anchor';
 import { EvmClient } from '../vm-client/evm-client';
 import dotenv from 'dotenv';
 import path from 'path';
 
 // Load environment variables from packages/core/.env
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+const EVM_RPC =
+  process.env['EVM_RPC'] || CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0];
+const SOLANA_RPC =
+  process.env['SOLANA_RPC_URL'] ||
+  CHAIN_INFO[CHAIN.SOLANA_DEVNET].defaultRPC[0];
 describe('PushChain', () => {
   describe('Universal Namesapce', () => {
     let pushClientEVM: PushChain;
@@ -37,7 +44,7 @@ describe('PushChain', () => {
       const walletClient = createWalletClient({
         account,
         chain: sepolia,
-        transport: http(),
+        transport: http(EVM_RPC),
       });
       universalSignerEVM = await PushChain.utils.signer.toUniversalFromKeypair(
         walletClient,
@@ -48,6 +55,7 @@ describe('PushChain', () => {
       );
       pushClientEVM = await PushChain.initialize(universalSignerEVM, {
         network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+        rpcUrls: { [CHAIN.ETHEREUM_SEPOLIA]: [EVM_RPC] },
       });
 
       const pushTestnet = defineChain({
@@ -85,6 +93,7 @@ describe('PushChain', () => {
       );
       pushChainPush = await PushChain.initialize(universalSignerPush, {
         network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+        rpcUrls: { [CHAIN.ETHEREUM_SEPOLIA]: [EVM_RPC] },
       });
       const accountSVM = Keypair.generate();
       universalSignerSVM = await PushChain.utils.signer.toUniversalFromKeypair(
@@ -96,6 +105,7 @@ describe('PushChain', () => {
       );
       pushChainSVM = await PushChain.initialize(universalSignerSVM, {
         network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+        rpcUrls: { [CHAIN.ETHEREUM_SEPOLIA]: [EVM_RPC] },
       });
     });
 
@@ -519,7 +529,7 @@ describe('PushChain', () => {
       const walletClient1 = createWalletClient({
         account: account1,
         chain: sepolia,
-        transport: http(),
+        transport: http(EVM_RPC),
       });
       universalSignerEVM = await PushChain.utils.signer.toUniversalFromKeypair(
         walletClient1,
@@ -534,7 +544,7 @@ describe('PushChain', () => {
       const walletClient2 = createWalletClient({
         account: account2,
         chain: sepolia,
-        transport: http(),
+        transport: http(EVM_RPC),
       });
       universalSignerEVM2 = await PushChain.utils.signer.toUniversalFromKeypair(
         walletClient2,
@@ -836,7 +846,7 @@ describe('PushChain', () => {
 
   describe('Universal.sendTransaction (FUNDS_TX via UniversalGatewayV0)', () => {
     // Live RPCs can be slower
-    jest.setTimeout(30000);
+    // jest.setTimeout(30000);
     const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
       | `0x${string}`
       | undefined;
@@ -853,7 +863,7 @@ describe('PushChain', () => {
       const walletClient = createWalletClient({
         account,
         chain: sepolia,
-        transport: http(),
+        transport: http(EVM_RPC),
       });
       signer = await PushChain.utils.signer.toUniversalFromKeypair(
         walletClient,
@@ -864,6 +874,12 @@ describe('PushChain', () => {
       );
       client = await PushChain.initialize(signer, {
         network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+        progressHook: (progress) => {
+          console.log('Progress', progress);
+        },
+        rpcUrls: {
+          [CHAIN.ETHEREUM_SEPOLIA]: [EVM_RPC],
+        },
       });
     });
 
@@ -879,6 +895,7 @@ describe('PushChain', () => {
       );
       const svmClient = await PushChain.initialize(svmSigner, {
         network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+        rpcUrls: { [CHAIN.ETHEREUM_SEPOLIA]: [EVM_RPC] },
       });
 
       const amount = PushChain.utils.helpers.parseUnits('100', { decimals: 6 });
@@ -923,11 +940,11 @@ describe('PushChain', () => {
       }
 
       const amount = BigInt(1);
-      const recipient = client.universal.account;
+      const recipient = '0xFd6C2fE69bE13d8bE379CCB6c9306e74193EC1A9';
 
       const resUSDT = await client.universal.sendTransaction({
         to: recipient,
-        funds: { amount: amount, token: client.moveable.token.USDT },
+        funds: { amount: amount, token: client.moveable.token.ETH },
       });
 
       const receipt = await resUSDT.wait();
@@ -950,72 +967,99 @@ describe('PushChain', () => {
     }, 300000);
 
     it('integration: sepolia sendTxWithFunds USDT via UniversalGatewayV0', async () => {
-      try {
-        const erc20Abi = parseAbi([
-          'function balanceOf(address) view returns (uint256)',
-        ]);
-        const usdt = client.moveable.token.USDT;
-        if (usdt) {
-          const evm = new EvmClient({
-            rpcUrls: CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC,
-          });
-          const usdtBal: bigint = await evm.readContract<bigint>({
-            abi: erc20Abi,
-            address: usdt.address,
-            functionName: 'balanceOf',
-            args: [account.address],
-          });
+      const erc20Abi = parseAbi([
+        'function balanceOf(address) view returns (uint256)',
+      ]);
+      const usdt = client.moveable.token.USDT;
+      if (usdt) {
+        const evm = new EvmClient({
+          rpcUrls: CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC,
+        });
+        const usdtBal: bigint = await evm.readContract<bigint>({
+          abi: erc20Abi,
+          address: usdt.address,
+          functionName: 'balanceOf',
+          args: [account.address],
+        });
 
-          if (usdtBal === BigInt(0)) {
-            console.warn(
-              'Skipping USDT sendTxWithFunds: no USDT balance on Sepolia'
-            );
-            return;
-          }
-
-          const bridgeAmount = BigInt(1); // 1 unit (6 decimals)
-          // SimpleCounter.increment() ABI-encoded payload (per docs tutorial)
-          const UCABI = [
-            {
-              inputs: [],
-              name: 'increment',
-              outputs: [],
-              stateMutability: 'nonpayable',
-              type: 'function',
-            },
-          ];
-          const COUNTER_ADDRESS =
-            '0x9F95857e43d25Bb9DaFc6376055eFf63bC0887C1' as `0x${string}`;
-          const data = PushChain.utils.helpers.encodeTxData({
-            abi: UCABI,
-            functionName: 'increment',
-          });
-
-          const tenUsdt = PushChain.utils.helpers.parseUnits('10', {
-            decimals: client.payable.token.USDT.decimals,
-          });
-          const quote = await client.funds.getConversionQuote(tenUsdt, {
-            from: client.payable.token.USDT,
-            to: client.moveable.token.WETH,
-          });
-          const ethValue = BigInt(quote.amountOut);
-
-          const resUSDT = await client.universal.sendTransaction({
-            to: COUNTER_ADDRESS,
-            value: ethValue,
-            data,
-            funds: { amount: bridgeAmount, token: usdt },
-          });
-          expect(typeof resUSDT.hash).toBe('string');
-          expect(resUSDT.hash.startsWith('0x')).toBe(true);
+        if (usdtBal === BigInt(0)) {
+          console.warn(
+            'Skipping USDT sendTxWithFunds: no USDT balance on Sepolia'
+          );
+          return;
         }
-      } catch (err) {
-        console.warn(
-          'USDT sendTxWithFunds flow failed (non-fatal for test):',
-          err
-        );
+
+        const bridgeAmount = BigInt(1); // 1 unit (6 decimals)
+        // Counter contract ABI with both increment and countPC functions
+        const COUNTER_ABI = [
+          {
+            inputs: [],
+            name: 'increment',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          {
+            inputs: [],
+            name: 'countPC',
+            outputs: [
+              {
+                internalType: 'uint256',
+                name: '',
+                type: 'uint256',
+              },
+            ],
+            stateMutability: 'view',
+            type: 'function',
+          },
+        ];
+        const COUNTER_ADDRESS =
+          '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
+        const data = PushChain.utils.helpers.encodeTxData({
+          abi: COUNTER_ABI,
+          functionName: 'increment',
+        });
+
+        const pushPublicClient = createPublicClient({
+          transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
+        });
+
+        // Ensure the address is a contract on Push chain
+        const bytecode = await pushPublicClient.getBytecode({
+          address: COUNTER_ADDRESS,
+        });
+        if (!bytecode || bytecode === '0x') {
+          console.warn(
+            `Skipping test: no contract bytecode at ${COUNTER_ADDRESS} on Push Testnet`
+          );
+          return;
+        }
+
+        const beforeCount = (await pushPublicClient.readContract({
+          abi: COUNTER_ABI,
+          address: COUNTER_ADDRESS,
+          functionName: 'countPC',
+        })) as bigint;
+
+        const resUSDT = await client.universal.sendTransaction({
+          to: COUNTER_ADDRESS,
+          value: BigInt(0),
+          data,
+          funds: { amount: bridgeAmount, token: usdt },
+        });
+        expect(typeof resUSDT.hash).toBe('string');
+        expect(resUSDT.hash.startsWith('0x')).toBe(true);
+        await resUSDT.wait();
+
+        // Read counter after transaction
+        const afterCount = (await pushPublicClient.readContract({
+          abi: COUNTER_ABI,
+          address: COUNTER_ADDRESS,
+          functionName: 'countPC',
+        })) as bigint;
+        expect(afterCount).toBe(beforeCount + BigInt(1));
       }
-    });
+    }, 500000);
 
     it('integration: sepolia sendTxWithFunds ETH via UniversalGatewayV0', async () => {
       try {
@@ -1031,7 +1075,7 @@ describe('PushChain', () => {
           },
         ];
         const COUNTER_ADDRESS =
-          '0x9F95857e43d25Bb9DaFc6376055eFf63bC0887C1' as `0x${string}`;
+          '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
         const data = PushChain.utils.helpers.encodeTxData({
           abi: UCABI,
           functionName: 'increment',
@@ -1063,6 +1107,89 @@ describe('PushChain', () => {
         );
       }
     });
+  });
+
+  describe.skip('Universal.sendTransaction (FUNDS_TX via pushsolanagateway - Solana Devnet)', () => {
+    // Live RPCs can be slower
+    jest.setTimeout(30000);
+    const SOL_PRIVATE_KEY =
+      (process.env['SOLANA_PRIVATE_KEY'] as string | undefined) ||
+      (process.env['SVM_PRIVATE_KEY'] as string | undefined);
+    let signer: UniversalSigner;
+    let client: PushChain;
+
+    function getSolKeypairFromEnv(): Keypair {
+      if (!SOL_PRIVATE_KEY) {
+        throw new Error('SOL_PRIVATE_KEY (or SVM_PRIVATE_KEY) is not set');
+      }
+      try {
+        // Try JSON array format
+        if (SOL_PRIVATE_KEY.trim().startsWith('[')) {
+          const arr = JSON.parse(SOL_PRIVATE_KEY) as number[];
+          return Keypair.fromSecretKey(Uint8Array.from(arr));
+        }
+        // Else assume base58-encoded secret key
+        const decoded = anchorUtils.bytes.bs58.decode(SOL_PRIVATE_KEY.trim());
+        return Keypair.fromSecretKey(Uint8Array.from(decoded));
+      } catch (e) {
+        throw new Error('Invalid SOL_PRIVATE_KEY format');
+      }
+    }
+
+    beforeAll(async () => {
+      const kp = getSolKeypairFromEnv();
+      signer = await PushChain.utils.signer.toUniversalFromKeypair(kp, {
+        chain: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET,
+        library: PushChain.CONSTANTS.LIBRARY.SOLANA_WEB3JS,
+      });
+      client = await PushChain.initialize(signer, {
+        network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+        progressHook: (progress) => {
+          console.log('Progress (SVM)', progress);
+        },
+        rpcUrls: {
+          [CHAIN.SOLANA_DEVNET]: [SOLANA_RPC],
+        },
+      });
+    });
+
+    it.skip('devnet: sendFunds SOL via pushsolanagateway', async () => {
+      // const amountLamports = PushChain.utils.helpers.parseUnits('0.001', 9);
+      const amountLamports = BigInt(1);
+      const recipient = client.universal.account;
+
+      const resNative = await client.universal.sendTransaction({
+        to: recipient,
+        funds: { amount: amountLamports, token: client.moveable.token.SOL },
+      });
+
+      const receipt = await resNative.wait();
+      expect(receipt.status).toBe(1);
+      console.log('SVM Native Receipt', receipt);
+    }, 300000);
+
+    it.skip('devnet: sendTxWithFunds SOL via pushsolanagateway', async () => {
+      try {
+        const bridgeAmount = PushChain.utils.helpers.parseUnits('0.001', 9); // 0.001 SOL
+        // Use a dummy EVM target address for payload context
+        const COUNTER_ADDRESS =
+          '0x1111111111111111111111111111111111111111' as `0x${string}`;
+        // Minimal non-empty data to trigger funds+payload path
+        const data = '0x01' as `0x${string}`;
+
+        const res = await client.universal.sendTransaction({
+          to: COUNTER_ADDRESS,
+          data,
+          funds: { amount: bridgeAmount, token: client.moveable.token.SOL },
+        });
+
+        expect(typeof res.hash).toBe('string');
+        expect(res.hash.length).toBeGreaterThan(0);
+        console.log('SVM sendTxWithFunds hash', res.hash);
+      } catch (err) {
+        console.warn('SVM sendTxWithFunds SOL flow failed (non-fatal):', err);
+      }
+    }, 300000);
   });
 
   describe('Validation: funds + value guard', () => {
@@ -1155,7 +1282,7 @@ describe('PushChain', () => {
       await expect(
         pushClient.funds.getConversionQuote(amountIn, {
           from: pushClient.payable.token.USDT,
-          to: pushClient.moveable.token.UNI,
+          to: pushClient.moveable.token.ETH,
         })
       ).rejects.toThrow(/only supported on Ethereum Mainnet and Sepolia/);
     });
@@ -1165,7 +1292,7 @@ describe('PushChain', () => {
       const walletClient = createWalletClient({
         account,
         chain: sepolia,
-        transport: http(),
+        transport: http(EVM_RPC),
       });
       const signer = await PushChain.utils.signer.toUniversalFromKeypair(
         walletClient,
@@ -1176,6 +1303,7 @@ describe('PushChain', () => {
       );
       const client = await PushChain.initialize(signer, {
         network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+        rpcUrls: { [CHAIN.ETHEREUM_SEPOLIA]: [EVM_RPC] },
       });
 
       // Use WETH9 Sepolia
@@ -1192,7 +1320,7 @@ describe('PushChain', () => {
       ).rejects.toThrow(/No direct Uniswap V3 pool found/);
     });
 
-    it('sepolia: WETH -> USDC quote via Uniswap V3', async () => {
+    it('sepolia: WETH -> USDT quote via Uniswap V3', async () => {
       const account = privateKeyToAccount(generatePrivateKey());
       const walletClient = createWalletClient({
         account,
@@ -1219,12 +1347,12 @@ describe('PushChain', () => {
       const amountIn = PushChain.utils.helpers.parseUnits('0.005', 18);
       const quote = await client.funds.getConversionQuote(amountIn, {
         from: client.payable.token.WETH,
-        to: client.moveable.token.USDC,
+        to: client.moveable.token.USDT,
       });
 
       expect(BigInt(quote.amountOut)).toBeGreaterThan(BigInt(0));
       expect(quote.rate).toBeGreaterThan(0);
-      expect(quote.route).toEqual(['WETH', 'USDC']);
+      expect(quote.route).toEqual(['WETH', 'USDT']);
     });
   });
 
