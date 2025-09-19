@@ -252,7 +252,7 @@ describe('PushChain', () => {
         })) as unknown as bigint;
 
         const tx = await pushClientEVM.universal.sendTransaction({
-          to: COUNTER_ADDRESS,
+          to: '0x',
           value: BigInt(0),
           data: calls,
         });
@@ -323,7 +323,7 @@ describe('PushChain', () => {
         })) as unknown as bigint;
 
         const tx = await pushChainSVM.universal.sendTransaction({
-          to: COUNTER_ADDRESS,
+          to: '0x',
           value: BigInt(0),
           data: calls,
         });
