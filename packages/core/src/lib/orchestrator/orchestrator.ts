@@ -181,8 +181,9 @@ export class Orchestrator {
           );
         }
 
-        // Validate `to` is a 0x-prefixed address
-        if (typeof execute.to !== 'string' || !execute.to.startsWith('0x')) {
+        // For multicall payloads, ExecuteParams.to must be the sentinel '0x'
+        // Note: This is distinct from each call's `to` inside MulticallCall[]
+        if (execute.to !== '0x') {
           throw new Error(
             'When using multicall, "to" must be a 0x-prefixed address'
           );
@@ -222,10 +223,15 @@ export class Orchestrator {
         payloadData = (execute.data || '0x') as `0x${string}`;
       }
 
+      // Determine payload `to` value. For multicall sentinel '0x', encode as zero address.
+      const payloadTo: `0x${string}` = Array.isArray(execute.data)
+        ? ('0x0000000000000000000000000000000000000000' as `0x${string}`)
+        : (execute.to as `0x${string}`);
+
       const universalPayload = JSON.parse(
         JSON.stringify(
           {
-            to: execute.to,
+            to: payloadTo,
             value: execute.value,
             data: payloadData,
             gasLimit: execute.gasLimit || BigInt(1e7),
