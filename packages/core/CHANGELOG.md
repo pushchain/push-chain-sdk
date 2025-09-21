@@ -1,3 +1,10 @@
+@pushchain/core@2.0.0 (2025-09-18)
+
+- fix: svm gateway idl
+- fix: update contracts and price fn
+
+---
+
 @pushchain/core@1.1.35 (2025-08-26)
 
 - chore: fix tc

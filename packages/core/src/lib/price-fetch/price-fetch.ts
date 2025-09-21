@@ -30,7 +30,7 @@ export class PriceFetch {
         const result = await evmClient.readContract<[bigint, number]>({
           abi: FEE_LOCKER_EVM,
           address: lockerContract as `0x${string}`,
-          functionName: 'getEthUsdPrice',
+          functionName: 'getEthUsdPrice_old',
         });
 
         const [price] = result;

@@ -1,3 +1,15 @@
+@pushchain/ui-kit@2.0.2 (2025-09-19)
+
+- feat: update core sdk to 2.0.2
+
+---
+
+@pushchain/ui-kit@2.0.0 (2025-09-18)
+
+- feat: upgrade core sdk and fix big int check in send txn
+
+---
+
 @pushchain/ui-kit@1.1.34 (2025-09-04)
 
 - chore: add chain config to the constants

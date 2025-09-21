@@ -102,7 +102,7 @@ export const CHAIN_INFO: Record<
   [CHAIN.SOLANA_DEVNET]: {
     chainId: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
     vm: VM.SVM,
-    lockerContract: '3zrWaMknHTRQpZSxY4BvQxw9TStSXiHcmcp3NMPTFkke',
+    lockerContract: 'CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS',
     defaultRPC: ['https://api.devnet.solana.com'],
     confirmations: 1,
     timeout: 5000,
