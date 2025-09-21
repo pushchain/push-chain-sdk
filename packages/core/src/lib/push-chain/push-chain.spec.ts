@@ -18,8 +18,6 @@ import { sepolia } from 'viem/chains';
 import { CHAIN_INFO } from '../constants/chain';
 import { CHAIN } from '../constants/enums';
 import { Keypair, PublicKey } from '@solana/web3.js';
-import { utils as anchorUtils } from '@coral-xyz/anchor';
-import { EvmClient } from '../vm-client/evm-client';
 import dotenv from 'dotenv';
 import path from 'path';
 
