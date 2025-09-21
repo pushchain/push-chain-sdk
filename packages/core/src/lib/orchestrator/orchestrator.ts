@@ -576,7 +576,7 @@ export class Orchestrator {
                 typeof eip712Signature === 'string'
                   ? (eip712Signature as `0x${string}`)
                   : (bytesToHex(eip712Signature) as `0x${string}`);
-              const signatureData = keccak256(eip712SignatureHex);
+              // const signatureData = keccak256(eip712SignatureHex);
               txHash = await evmClient.writeContract({
                 abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                 address: gatewayAddress,
@@ -586,7 +586,7 @@ export class Orchestrator {
                   bridgeAmount,
                   universalPayload,
                   revertCFG,
-                  signatureData,
+                  eip712SignatureHex,
                 ],
                 signer: this.universalSigner,
                 value: nativeAmount,
@@ -1708,7 +1708,7 @@ export class Orchestrator {
       maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
       nonce,
       deadline: execute.deadline || BigInt(9999999999),
-      vType: VerificationType.universalTxVerification,
+      vType: VerificationType.signedVerification,
     } as unknown as never;
 
     return { payload: universalPayload, gasAmount };
