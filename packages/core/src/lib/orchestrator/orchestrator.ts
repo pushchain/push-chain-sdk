@@ -3,6 +3,7 @@ import {
   zeroHash,
   toBytes,
   keccak256,
+  sha256,
   encodeAbiParameters,
   encodePacked,
   bytesToHex,
@@ -128,11 +129,9 @@ export class Orchestrator {
           }
           const chain = this.universalSigner.account.chain;
           const { vm } = CHAIN_INFO[chain];
-          if (
-            !(chain === CHAIN.ETHEREUM_SEPOLIA || chain === CHAIN.SOLANA_DEVNET)
-          ) {
+          if (!(chain === CHAIN.ETHEREUM_SEPOLIA)) {
             throw new Error(
-              'Funds bridging is only supported on Ethereum Sepolia and Solana Devnet for now'
+              'Funds bridging is only supported on Ethereum Sepolia for now'
             );
           }
 
@@ -238,9 +237,54 @@ export class Orchestrator {
               14,
               210000
             );
-            // TODO: PC monitoring
-            // return minted
-            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_06);
+            // After origin confirmations, query Push Chain for UniversalTx status
+            try {
+              const receipt =
+                await evmClient.publicClient.getTransactionReceipt({
+                  hash: txHash,
+                });
+              const gatewayLogs = (receipt.logs || []).filter(
+                (l: any) =>
+                  (l.address || '').toLowerCase() ===
+                  gatewayAddress.toLowerCase()
+              );
+              const firstLog = (gatewayLogs[0] || receipt.logs?.[0]) as any;
+              const logIndexVal = firstLog?.logIndex ?? 0;
+              const logIndexStr =
+                typeof logIndexVal === 'bigint'
+                  ? logIndexVal.toString()
+                  : String(logIndexVal);
+
+              const sourceChain = `${VM_NAMESPACE[vm]}:${
+                CHAIN_INFO[this.universalSigner.account.chain].chainId
+              }`;
+
+              // ID = sha256("${sourceChain}:${txHash}:${logIndex}") as hex string (no 0x)
+              const idInput = `${sourceChain}:${txHash}:${logIndexStr}`;
+              const idHex = sha256(stringToBytes(idInput)).slice(2);
+
+              // Fetch UniversalTx via gRPC with a brief retry window
+              let universalTxObj: any | undefined;
+              for (let attempt = 0; attempt < 10; attempt++) {
+                try {
+                  const universalTxResp =
+                    await this.pushClient.getUniversalTxById(idHex);
+                  universalTxObj = universalTxResp?.universalTx;
+                  if (universalTxObj) break;
+                } catch {
+                  // ignore and retry
+                }
+                await new Promise((r) => setTimeout(r, 1500));
+              }
+              this.executeProgressHook(
+                PROGRESS_HOOK.SEND_TX_06_06,
+                universalTxObj?.universalStatus ||
+                  universalTxObj?.universal_status
+              );
+            } catch {
+              // Best-effort; do not fail flow if PC query is unavailable
+              this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_06);
+            }
             const tx = await evmClient.getTransaction(txHash);
             return await this.transformToUniversalTxResponse(tx);
           } else {
@@ -521,6 +565,18 @@ export class Orchestrator {
           try {
             if (CHAIN_INFO[this.universalSigner.account.chain].vm === VM.EVM) {
               const tokenAddr = execute.funds.token.address as `0x${string}`;
+              // Compute EIP-712 signature for the universal payload and hash to bytes32
+              const ueaAddress = this.computeUEAOffchain();
+              const eip712Signature = await this.signUniversalPayload(
+                universalPayload,
+                // execute.to
+                ueaAddress
+              );
+              const eip712SignatureHex =
+                typeof eip712Signature === 'string'
+                  ? (eip712Signature as `0x${string}`)
+                  : (bytesToHex(eip712Signature) as `0x${string}`);
+              const signatureData = keccak256(eip712SignatureHex);
               txHash = await evmClient.writeContract({
                 abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                 address: gatewayAddress,
@@ -530,7 +586,7 @@ export class Orchestrator {
                   bridgeAmount,
                   universalPayload,
                   revertCFG,
-                  zeroHash,
+                  signatureData,
                 ],
                 signer: this.universalSigner,
                 value: nativeAmount,
@@ -1100,6 +1156,8 @@ export class Orchestrator {
           txHash: feeLockTxHash,
         })
       );
+
+      // TODO: pchaind q uexecutor all-universal-tx  --node https://rpc-testnet-donut-node1.push.org/
     }
 
     if (feeLockTxHash) {

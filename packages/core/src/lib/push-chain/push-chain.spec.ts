@@ -944,7 +944,7 @@ describe('PushChain', () => {
 
       const resUSDT = await client.universal.sendTransaction({
         to: recipient,
-        funds: { amount: amount, token: client.moveable.token.ETH },
+        funds: { amount: amount, token: client.moveable.token.USDT },
       });
 
       const receipt = await resUSDT.wait();
@@ -1050,6 +1050,17 @@ describe('PushChain', () => {
         expect(typeof resUSDT.hash).toBe('string');
         expect(resUSDT.hash.startsWith('0x')).toBe(true);
         await resUSDT.wait();
+
+        // Wait for 14 confirmations on Sepolia before checking counter on Push Chain
+        const sepoliaClient = createPublicClient({
+          chain: sepolia,
+          transport: http(EVM_RPC),
+        });
+        await sepoliaClient.waitForTransactionReceipt({
+          hash: resUSDT.hash as `0x${string}`,
+          confirmations: 14,
+          timeout: 210000,
+        });
 
         // Read counter after transaction
         const afterCount = (await pushPublicClient.readContract({
@@ -2733,14 +2744,14 @@ describe('PushChain', () => {
         const hasETH = tokens.some(
           (t) => t.symbol === 'ETH' && t.decimals === 18
         );
-        const hasUSDC = tokens.some(
-          (t) => t.symbol === 'USDC' && t.decimals === 6
+        const hasWETH = tokens.some(
+          (t) => t.symbol === 'WETH' && t.decimals === 18
         );
         const hasUSDT = tokens.some(
           (t) => t.symbol === 'USDT' && t.decimals === 6
         );
         expect(hasETH).toBe(true);
-        expect(hasUSDC).toBe(true);
+        expect(hasWETH).toBe(true);
         expect(hasUSDT).toBe(true);
       });
 
@@ -2751,7 +2762,7 @@ describe('PushChain', () => {
         expect(Array.isArray(tokens)).toBe(true);
         expect(tokens.length).toBeGreaterThan(0);
 
-        // Expect ETH, USDC, USDT per tokens registry
+        // Expect ETH, WETH, USDT per tokens registry
         expect(
           tokens.some(
             (t) =>
@@ -2764,8 +2775,8 @@ describe('PushChain', () => {
           tokens.some(
             (t) =>
               t.chain === CHAIN.ETHEREUM_SEPOLIA &&
-              t.symbol === 'USDC' &&
-              t.decimals === 6
+              t.symbol === 'WETH' &&
+              t.decimals === 18
           )
         ).toBe(true);
         expect(
@@ -2784,17 +2795,13 @@ describe('PushChain', () => {
         expect(tokens.length).toBeGreaterThan(0);
 
         // Sanity check for common tokens present in the registry
-        const hasETH = tokens.some(
-          (t) => t.symbol === 'ETH' && t.decimals === 18
-        );
-        const hasUSDC = tokens.some(
-          (t) => t.symbol === 'USDC' && t.decimals === 6
+        const hasSOL = tokens.some(
+          (t) => t.symbol === 'SOL' && t.decimals === 9
         );
         const hasUSDT = tokens.some(
           (t) => t.symbol === 'USDT' && t.decimals === 6
         );
-        expect(hasETH).toBe(true);
-        expect(hasUSDC).toBe(true);
+        expect(hasSOL).toBe(true);
         expect(hasUSDT).toBe(true);
       });
 
@@ -2814,14 +2821,7 @@ describe('PushChain', () => {
               t.decimals === 9
           )
         ).toBe(true);
-        expect(
-          tokens.some(
-            (t) =>
-              t.chain === CHAIN.SOLANA_DEVNET &&
-              t.symbol === 'USDC' &&
-              t.decimals === 6
-          )
-        ).toBe(true);
+
         expect(
           tokens.some(
             (t) =>
