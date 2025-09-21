@@ -1288,16 +1288,16 @@ describe('PushChain', () => {
         expect(resUSDT.hash.startsWith('0x')).toBe(true);
         await resUSDT.wait();
 
-        // Wait for 14 confirmations on Sepolia before checking counter on Push Chain
-        const sepoliaClient = createPublicClient({
-          chain: sepolia,
-          transport: http(EVM_RPC),
-        });
-        await sepoliaClient.waitForTransactionReceipt({
-          hash: resUSDT.hash as `0x${string}`,
-          confirmations: 14,
-          timeout: 210000,
-        });
+        // // Wait for 14 confirmations on Sepolia before checking counter on Push Chain
+        // const sepoliaClient = createPublicClient({
+        //   chain: sepolia,
+        //   transport: http(EVM_RPC),
+        // });
+        // await sepoliaClient.waitForTransactionReceipt({
+        //   hash: resUSDT.hash as `0x${string}`,
+        //   confirmations: 14,
+        //   timeout: 210000,
+        // });
 
         // Read counter after transaction
         const afterCount = (await pushPublicClient.readContract({

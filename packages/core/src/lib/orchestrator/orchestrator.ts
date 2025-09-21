@@ -726,13 +726,13 @@ export class Orchestrator {
           );
 
           // Awaiting confirmations
-          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_03, 3);
           if (CHAIN_INFO[this.universalSigner.account.chain].vm === VM.EVM) {
-            await evmClient.waitForConfirmations({
-              txHash: txHash as `0x${string}`,
-              confirmations: 3,
-              timeoutMs: 300000,
-            });
+            await this.waitForEvmConfirmationsWithCountdown(
+              evmClient,
+              txHash as `0x${string}`,
+              14,
+              300000
+            );
           } else {
             const svmClient = new SvmClient({
               rpcUrls:
