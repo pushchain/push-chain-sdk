@@ -18,11 +18,18 @@ import { sepolia } from 'viem/chains';
 import { CHAIN_INFO } from '../constants/chain';
 import { CHAIN } from '../constants/enums';
 import { Keypair, PublicKey } from '@solana/web3.js';
+import { utils as anchorUtils } from '@coral-xyz/anchor';
+import { EvmClient } from '../vm-client/evm-client';
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load env from the core package root
+// Load environment variables from packages/core/.env
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+const EVM_RPC =
+  process.env['EVM_RPC'] || CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0];
+const SOLANA_RPC =
+  process.env['SOLANA_RPC_URL'] ||
+  CHAIN_INFO[CHAIN.SOLANA_DEVNET].defaultRPC[0];
 describe('PushChain', () => {
   describe('Universal Namesapce', () => {
     let pushClientEVM: PushChain;
