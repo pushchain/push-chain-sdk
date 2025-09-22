@@ -51,13 +51,11 @@ const RAW_HOOKS: {
   }),
   [PROGRESS_HOOK.SEND_TX_03_02]: (
     ueaAddress: `0x${string}`,
-    deployed: boolean,
-    balance: bigint,
-    nonce: bigint
+    deployed: boolean
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_03_02,
     title: 'UEA Resolved',
-    message: `UEA: ${ueaAddress}, Deployed: ${deployed}, Balance: ${balance.toString()} UPC, Nonce: ${nonce.toString()}`,
+    message: `UEA: ${ueaAddress}, Deployed: ${deployed}`,
     response: null,
     level: 'SUCCESS',
   }),
@@ -157,22 +155,15 @@ const RAW_HOOKS: {
   }),
   [PROGRESS_HOOK.SEND_TX_06_04]: (current: number, required: number) => ({
     id: PROGRESS_HOOK.SEND_TX_06_04,
-    title: 'Confirmation #1 Received',
+    title: `Confirmation #${current} Received`,
     message: `${current}/${required} confirmations received`,
     response: null,
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_06_05]: (current: number, required: number) => ({
-    id: PROGRESS_HOOK.SEND_TX_06_05,
-    title: 'Confirmation #2 Received',
-    message: `${current}/${required} confirmations received`,
-    response: null,
-    level: 'SUCCESS',
-  }),
   [PROGRESS_HOOK.SEND_TX_06_06]: () => ({
     id: PROGRESS_HOOK.SEND_TX_06_06,
     title: 'Funds Confirmed',
-    message: 'Origin chain lock confirmed',
+    message: `Origin chain lock confirmed`,
     response: null,
     level: 'SUCCESS',
   }),
