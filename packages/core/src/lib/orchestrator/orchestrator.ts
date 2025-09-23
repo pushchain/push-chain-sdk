@@ -652,6 +652,12 @@ export class Orchestrator {
                 fundRecipient: userPk,
                 revertMsg: Buffer.from([]),
               } as unknown as never;
+              // Compute signature for universal payload on SVM
+              const ueaAddressSvm = this.computeUEAOffchain();
+              const svmSignature = await this.signUniversalPayload(
+                universalPayload,
+                ueaAddressSvm
+              );
               if (isNative) {
                 // Native SOL as bridge + gas
                 const [whitelistPdaLocal] = PublicKey.findProgramAddressSync(
@@ -668,7 +674,7 @@ export class Orchestrator {
                     universalPayload,
                     revertSvm2,
                     nativeAmount,
-                    Buffer.alloc(32),
+                    Buffer.from(svmSignature),
                   ],
                   signer: this.universalSigner,
                   accounts: {
@@ -726,7 +732,7 @@ export class Orchestrator {
                     universalPayload,
                     revertSvm2,
                     nativeAmount,
-                    Buffer.alloc(32),
+                    Buffer.from(svmSignature),
                   ],
                   signer: this.universalSigner,
                   accounts: {
@@ -784,11 +790,15 @@ export class Orchestrator {
           }
 
           // Funds Flow: Confirmed on origin
-          if (CHAIN_INFO[this.universalSigner.account.chain].vm === VM.EVM) {
-            await this.sendUniversalTx(deployed, txHash);
-          } else {
-            // skip
+          let feeLockTxHash = txHash;
+          if (CHAIN_INFO[this.universalSigner.account.chain].vm === VM.SVM) {
+            if (feeLockTxHash && !feeLockTxHash.startsWith('0x')) {
+              // decode svm base58
+              const decoded = utils.bytes.bs58.decode(feeLockTxHash);
+              feeLockTxHash = bytesToHex(new Uint8Array(decoded));
+            }
           }
+          await this.sendUniversalTx(deployed, feeLockTxHash);
 
           this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_06);
 
