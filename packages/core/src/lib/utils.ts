@@ -452,6 +452,7 @@ export class Utils {
         symbol: string;
         decimals: number;
         address: string;
+        mechanism: 'approve' | 'permit2' | 'native';
       }>;
     } {
       const chain: CHAIN | undefined =
@@ -465,6 +466,7 @@ export class Utils {
             symbol: t.symbol,
             decimals: t.decimals,
             address: t.address,
+            mechanism: t.mechanism,
           })),
         };
       }
@@ -474,6 +476,7 @@ export class Utils {
         symbol: string;
         decimals: number;
         address: string;
+        mechanism: 'approve' | 'permit2' | 'native';
       }> = [];
 
       for (const [key, list] of Object.entries(MOVEABLE_TOKENS)) {
@@ -484,6 +487,7 @@ export class Utils {
             symbol: t.symbol,
             decimals: t.decimals,
             address: t.address,
+            mechanism: t.mechanism,
           });
         }
       }
@@ -502,6 +506,7 @@ export class Utils {
         symbol: string;
         decimals: number;
         address: string;
+        mechanism: 'approve' | 'permit2' | 'native';
       }>;
     } {
       const chain: CHAIN | undefined =
@@ -515,6 +520,7 @@ export class Utils {
             symbol: t.symbol,
             decimals: t.decimals,
             address: t.address,
+            mechanism: t.mechanism,
           })),
         };
       }
@@ -524,6 +530,7 @@ export class Utils {
         symbol: string;
         decimals: number;
         address: string;
+        mechanism: 'approve' | 'permit2' | 'native';
       }> = [];
 
       for (const [key, list] of Object.entries(PAYABLE_TOKENS)) {
@@ -534,6 +541,7 @@ export class Utils {
             symbol: t.symbol,
             decimals: t.decimals,
             address: t.address,
+            mechanism: t.mechanism,
           });
         }
       }
