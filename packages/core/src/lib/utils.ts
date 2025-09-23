@@ -360,6 +360,9 @@ export class Utils {
         );
       }
     },
+  };
+
+  static conversion = {
     /**
      * Calculates the minimum amount out after applying slippage.
      *
@@ -374,14 +377,14 @@ export class Utils {
      * @example
      * // Calculate minimum amount for 100 USDC with 1% slippage
      * const amount = PushChain.utils.helpers.parseUnits("100", 6); // "100000000"
-     * const minOut = PushChain.utils.helpers.slippageToMinAmount(amount, {
+     * const minOut = PushChain.utils.conversion.slippageToMinAmount(amount, {
      *   slippageBps: 100, // 1%
      * });
      * // => "99000000" (99 USDC in smallest units)
      *
      * @example
      * // Simple case with whole numbers
-     * const minOut = PushChain.utils.helpers.slippageToMinAmount("100", {
+     * const minOut = PushChain.utils.conversion.slippageToMinAmount("100", {
      *   slippageBps: 100, // 1%
      * });
      * // => "99"

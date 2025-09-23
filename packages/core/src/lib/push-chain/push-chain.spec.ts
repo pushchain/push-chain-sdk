@@ -2886,14 +2886,14 @@ describe('PushChain', () => {
     describe('slippageToMinAmount', () => {
       describe('basic functionality', () => {
         it('should calculate minimum amount out with 1% slippage', () => {
-          const result = PushChain.utils.helpers.slippageToMinAmount('100', {
+          const result = PushChain.utils.conversion.slippageToMinAmount('100', {
             slippageBps: 100,
           });
           expect(result).toBe('99');
         });
 
         it('should calculate minimum amount out with 1% slippage for large amounts', () => {
-          const result = PushChain.utils.helpers.slippageToMinAmount(
+          const result = PushChain.utils.conversion.slippageToMinAmount(
             '100000000',
             {
               slippageBps: 100,
@@ -2903,7 +2903,7 @@ describe('PushChain', () => {
         });
 
         it('should calculate minimum amount out with 0.5% slippage', () => {
-          const result = PushChain.utils.helpers.slippageToMinAmount(
+          const result = PushChain.utils.conversion.slippageToMinAmount(
             '100000000',
             {
               slippageBps: 50,
@@ -2913,7 +2913,7 @@ describe('PushChain', () => {
         });
 
         it('should calculate minimum amount out with 2% slippage', () => {
-          const result = PushChain.utils.helpers.slippageToMinAmount(
+          const result = PushChain.utils.conversion.slippageToMinAmount(
             '100000000',
             {
               slippageBps: 200,
@@ -2923,7 +2923,7 @@ describe('PushChain', () => {
         });
 
         it('should handle zero slippage', () => {
-          const result = PushChain.utils.helpers.slippageToMinAmount(
+          const result = PushChain.utils.conversion.slippageToMinAmount(
             '100000000',
             {
               slippageBps: 0,
@@ -2933,7 +2933,7 @@ describe('PushChain', () => {
         });
 
         it('should handle maximum slippage (100%)', () => {
-          const result = PushChain.utils.helpers.slippageToMinAmount(
+          const result = PushChain.utils.conversion.slippageToMinAmount(
             '100000000',
             {
               slippageBps: 10000,
@@ -2945,7 +2945,7 @@ describe('PushChain', () => {
 
       describe('edge cases', () => {
         it('should handle very small amounts', () => {
-          const result = PushChain.utils.helpers.slippageToMinAmount('1', {
+          const result = PushChain.utils.conversion.slippageToMinAmount('1', {
             slippageBps: 100,
           });
           expect(result).toBe('0');
@@ -2953,7 +2953,7 @@ describe('PushChain', () => {
 
         it('should handle very large amounts', () => {
           const largeAmount = '999999999999999999999999999999';
-          const result = PushChain.utils.helpers.slippageToMinAmount(
+          const result = PushChain.utils.conversion.slippageToMinAmount(
             largeAmount,
             {
               slippageBps: 100,
@@ -2966,7 +2966,7 @@ describe('PushChain', () => {
 
         it('should handle fractional slippage calculations correctly', () => {
           // Test with amount that doesn't divide evenly by 10000
-          const result = PushChain.utils.helpers.slippageToMinAmount(
+          const result = PushChain.utils.conversion.slippageToMinAmount(
             '100000001',
             {
               slippageBps: 100,
@@ -2979,7 +2979,7 @@ describe('PushChain', () => {
 
       describe('different slippage rates', () => {
         it('should handle 0.1% slippage (10 bps)', () => {
-          const result = PushChain.utils.helpers.slippageToMinAmount(
+          const result = PushChain.utils.conversion.slippageToMinAmount(
             '100000000',
             {
               slippageBps: 10,
@@ -2989,7 +2989,7 @@ describe('PushChain', () => {
         });
 
         it('should handle 0.25% slippage (25 bps)', () => {
-          const result = PushChain.utils.helpers.slippageToMinAmount(
+          const result = PushChain.utils.conversion.slippageToMinAmount(
             '100000000',
             {
               slippageBps: 25,
@@ -2999,7 +2999,7 @@ describe('PushChain', () => {
         });
 
         it('should handle 5% slippage (500 bps)', () => {
-          const result = PushChain.utils.helpers.slippageToMinAmount(
+          const result = PushChain.utils.conversion.slippageToMinAmount(
             '100000000',
             {
               slippageBps: 500,
@@ -3009,7 +3009,7 @@ describe('PushChain', () => {
         });
 
         it('should handle 10% slippage (1000 bps)', () => {
-          const result = PushChain.utils.helpers.slippageToMinAmount(
+          const result = PushChain.utils.conversion.slippageToMinAmount(
             '100000000',
             {
               slippageBps: 1000,
@@ -3019,7 +3019,7 @@ describe('PushChain', () => {
         });
 
         it('should handle 50% slippage (5000 bps)', () => {
-          const result = PushChain.utils.helpers.slippageToMinAmount(
+          const result = PushChain.utils.conversion.slippageToMinAmount(
             '100000000',
             {
               slippageBps: 5000,
@@ -3032,7 +3032,7 @@ describe('PushChain', () => {
       describe('error handling', () => {
         it('should throw error for non-string amount', () => {
           expect(() => {
-            PushChain.utils.helpers.slippageToMinAmount(100 as any, {
+            PushChain.utils.conversion.slippageToMinAmount(100 as any, {
               slippageBps: 100,
             });
           }).toThrow('Amount must be a string');
@@ -3040,7 +3040,7 @@ describe('PushChain', () => {
 
         it('should throw error for non-number slippageBps', () => {
           expect(() => {
-            PushChain.utils.helpers.slippageToMinAmount('100', {
+            PushChain.utils.conversion.slippageToMinAmount('100', {
               slippageBps: '100' as any,
             });
           }).toThrow('slippageBps must be a number');
@@ -3048,7 +3048,7 @@ describe('PushChain', () => {
 
         it('should throw error for non-integer slippageBps', () => {
           expect(() => {
-            PushChain.utils.helpers.slippageToMinAmount('100', {
+            PushChain.utils.conversion.slippageToMinAmount('100', {
               slippageBps: 100.5,
             });
           }).toThrow('slippageBps must be an integer');
@@ -3056,7 +3056,7 @@ describe('PushChain', () => {
 
         it('should throw error for negative slippageBps', () => {
           expect(() => {
-            PushChain.utils.helpers.slippageToMinAmount('100', {
+            PushChain.utils.conversion.slippageToMinAmount('100', {
               slippageBps: -100,
             });
           }).toThrow('slippageBps must be non-negative');
@@ -3064,7 +3064,7 @@ describe('PushChain', () => {
 
         it('should throw error for slippageBps exceeding 10000', () => {
           expect(() => {
-            PushChain.utils.helpers.slippageToMinAmount('100', {
+            PushChain.utils.conversion.slippageToMinAmount('100', {
               slippageBps: 10001,
             });
           }).toThrow('slippageBps cannot exceed 10000 (100%)');
@@ -3072,7 +3072,7 @@ describe('PushChain', () => {
 
         it('should throw error for empty amount string', () => {
           expect(() => {
-            PushChain.utils.helpers.slippageToMinAmount('', {
+            PushChain.utils.conversion.slippageToMinAmount('', {
               slippageBps: 100,
             });
           }).toThrow('Amount cannot be empty');
@@ -3080,7 +3080,7 @@ describe('PushChain', () => {
 
         it('should throw error for whitespace-only amount string', () => {
           expect(() => {
-            PushChain.utils.helpers.slippageToMinAmount('   ', {
+            PushChain.utils.conversion.slippageToMinAmount('   ', {
               slippageBps: 100,
             });
           }).toThrow('Amount cannot be empty');
@@ -3088,7 +3088,7 @@ describe('PushChain', () => {
 
         it('should throw error for invalid amount format', () => {
           expect(() => {
-            PushChain.utils.helpers.slippageToMinAmount('invalid', {
+            PushChain.utils.conversion.slippageToMinAmount('invalid', {
               slippageBps: 100,
             });
           }).toThrow('Failed to calculate slippage');
@@ -3099,7 +3099,7 @@ describe('PushChain', () => {
         it('should work with USDC amounts (6 decimals)', () => {
           // 1000 USDC with 0.3% slippage
           const usdcAmount = '1000000000'; // 1000 USDC in smallest units
-          const result = PushChain.utils.helpers.slippageToMinAmount(
+          const result = PushChain.utils.conversion.slippageToMinAmount(
             usdcAmount,
             {
               slippageBps: 30, // 0.3%
@@ -3111,7 +3111,7 @@ describe('PushChain', () => {
         it('should work with ETH amounts (18 decimals)', () => {
           // 1 ETH with 0.5% slippage
           const ethAmount = '1000000000000000000'; // 1 ETH in wei
-          const result = PushChain.utils.helpers.slippageToMinAmount(
+          const result = PushChain.utils.conversion.slippageToMinAmount(
             ethAmount,
             {
               slippageBps: 50, // 0.5%
@@ -3123,7 +3123,7 @@ describe('PushChain', () => {
         it('should work with small token amounts', () => {
           // 0.001 tokens with 1% slippage
           const smallAmount = '1000';
-          const result = PushChain.utils.helpers.slippageToMinAmount(
+          const result = PushChain.utils.conversion.slippageToMinAmount(
             smallAmount,
             {
               slippageBps: 100, // 1%
