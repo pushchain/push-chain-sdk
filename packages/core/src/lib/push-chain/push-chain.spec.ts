@@ -3155,7 +3155,7 @@ describe('PushChain', () => {
         });
       });
       it('should list all moveable tokens across all chains', () => {
-        const { tokens } = PushChain.utils.getMoveableTokens();
+        const { tokens } = PushChain.utils.tokens.getMoveableTokens();
         expect(Array.isArray(tokens)).toBe(true);
         expect(tokens.length).toBeGreaterThan(0);
 
@@ -3175,7 +3175,7 @@ describe('PushChain', () => {
       });
 
       it('should list moveable tokens for a specific chain (Ethereum Sepolia)', () => {
-        const { tokens } = PushChain.utils.getMoveableTokens(
+        const { tokens } = PushChain.utils.tokens.getMoveableTokens(
           CHAIN.ETHEREUM_SEPOLIA
         );
         expect(Array.isArray(tokens)).toBe(true);
@@ -3209,7 +3209,7 @@ describe('PushChain', () => {
       });
 
       it('should list all payable tokens across all chains', () => {
-        const { tokens } = PushChain.utils.getPayableTokens();
+        const { tokens } = PushChain.utils.tokens.getPayableTokens();
         expect(Array.isArray(tokens)).toBe(true);
         expect(tokens.length).toBeGreaterThan(0);
 
@@ -3225,7 +3225,7 @@ describe('PushChain', () => {
       });
 
       it('should list payable tokens for a specific chain (Solana Devnet)', () => {
-        const { tokens } = PushChain.utils.getPayableTokens(
+        const { tokens } = PushChain.utils.tokens.getPayableTokens(
           CHAIN.SOLANA_DEVNET
         );
         expect(Array.isArray(tokens)).toBe(true);
@@ -3253,8 +3253,8 @@ describe('PushChain', () => {
 
       it('should resolve chain via client instance for moveable tokens', () => {
         const clientTokens =
-          PushChain.utils.getMoveableTokens(tokensClientEVM).tokens;
-        const chainTokens = PushChain.utils.getMoveableTokens(
+          PushChain.utils.tokens.getMoveableTokens(tokensClientEVM).tokens;
+        const chainTokens = PushChain.utils.tokens.getMoveableTokens(
           CHAIN.ETHEREUM_SEPOLIA
         ).tokens;
 

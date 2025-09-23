@@ -440,103 +440,107 @@ export class Utils {
     },
   };
 
-  /**
-   * Returns supported moveable tokens as a flat list with chain info.
-   * - If a specific chain or a PushChain client is passed, returns only that chain's tokens
-   * - Otherwise returns tokens across all chains
-   */
-  static getMoveableTokens(chainOrClient?: CHAIN | PushChain): {
-    tokens: Array<{
-      chain: CHAIN;
-      symbol: string;
-      decimals: number;
-      address: string;
-    }>;
-  } {
-    const chain: CHAIN | undefined = Utils.resolveChainFromInput(chainOrClient);
+  static tokens = {
+    /**
+     * Returns supported moveable tokens as a flat list with chain info.
+     * - If a specific chain or a PushChain client is passed, returns only that chain's tokens
+     * - Otherwise returns tokens across all chains
+     */
+    getMoveableTokens(chainOrClient?: CHAIN | PushChain): {
+      tokens: Array<{
+        chain: CHAIN;
+        symbol: string;
+        decimals: number;
+        address: string;
+      }>;
+    } {
+      const chain: CHAIN | undefined =
+        Utils.resolveChainFromInput(chainOrClient);
 
-    if (chain) {
-      const list = MOVEABLE_TOKENS[chain] ?? [];
-      return {
-        tokens: list.map((t) => ({
-          chain,
-          symbol: t.symbol,
-          decimals: t.decimals,
-          address: t.address,
-        })),
-      };
-    }
-
-    const tokens: Array<{
-      chain: CHAIN;
-      symbol: string;
-      decimals: number;
-      address: string;
-    }> = [];
-
-    for (const [key, list] of Object.entries(MOVEABLE_TOKENS)) {
-      const k = key as CHAIN;
-      for (const t of list ?? []) {
-        tokens.push({
-          chain: k,
-          symbol: t.symbol,
-          decimals: t.decimals,
-          address: t.address,
-        });
+      if (chain) {
+        const list = MOVEABLE_TOKENS[chain] ?? [];
+        return {
+          tokens: list.map((t) => ({
+            chain,
+            symbol: t.symbol,
+            decimals: t.decimals,
+            address: t.address,
+          })),
+        };
       }
-    }
 
-    return { tokens };
-  }
+      const tokens: Array<{
+        chain: CHAIN;
+        symbol: string;
+        decimals: number;
+        address: string;
+      }> = [];
 
-  /**
-   * Returns supported payable tokens as a flat list with chain info.
-   * - If a specific chain or a PushChain client is passed, returns only that chain's tokens
-   * - Otherwise returns tokens across all chains
-   */
-  static getPayableTokens(chainOrClient?: CHAIN | PushChain): {
-    tokens: Array<{
-      chain: CHAIN;
-      symbol: string;
-      decimals: number;
-      address: string;
-    }>;
-  } {
-    const chain: CHAIN | undefined = Utils.resolveChainFromInput(chainOrClient);
-
-    if (chain) {
-      const list = PAYABLE_TOKENS[chain] ?? [];
-      return {
-        tokens: list.map((t) => ({
-          chain,
-          symbol: t.symbol,
-          decimals: t.decimals,
-          address: t.address,
-        })),
-      };
-    }
-
-    const tokens: Array<{
-      chain: CHAIN;
-      symbol: string;
-      decimals: number;
-      address: string;
-    }> = [];
-
-    for (const [key, list] of Object.entries(PAYABLE_TOKENS)) {
-      const k = key as CHAIN;
-      for (const t of list ?? []) {
-        tokens.push({
-          chain: k,
-          symbol: t.symbol,
-          decimals: t.decimals,
-          address: t.address,
-        });
+      for (const [key, list] of Object.entries(MOVEABLE_TOKENS)) {
+        const k = key as CHAIN;
+        for (const t of list ?? []) {
+          tokens.push({
+            chain: k,
+            symbol: t.symbol,
+            decimals: t.decimals,
+            address: t.address,
+          });
+        }
       }
-    }
 
-    return { tokens };
-  }
+      return { tokens };
+    },
+
+    /**
+     * Returns supported payable tokens as a flat list with chain info.
+     * - If a specific chain or a PushChain client is passed, returns only that chain's tokens
+     * - Otherwise returns tokens across all chains
+     */
+    getPayableTokens(chainOrClient?: CHAIN | PushChain): {
+      tokens: Array<{
+        chain: CHAIN;
+        symbol: string;
+        decimals: number;
+        address: string;
+      }>;
+    } {
+      const chain: CHAIN | undefined =
+        Utils.resolveChainFromInput(chainOrClient);
+
+      if (chain) {
+        const list = PAYABLE_TOKENS[chain] ?? [];
+        return {
+          tokens: list.map((t) => ({
+            chain,
+            symbol: t.symbol,
+            decimals: t.decimals,
+            address: t.address,
+          })),
+        };
+      }
+
+      const tokens: Array<{
+        chain: CHAIN;
+        symbol: string;
+        decimals: number;
+        address: string;
+      }> = [];
+
+      for (const [key, list] of Object.entries(PAYABLE_TOKENS)) {
+        const k = key as CHAIN;
+        for (const t of list ?? []) {
+          tokens.push({
+            chain: k,
+            symbol: t.symbol,
+            decimals: t.decimals,
+            address: t.address,
+          });
+        }
+      }
+
+      return { tokens };
+    },
+  };
 
   /**
    * Internal: resolves a CHAIN enum from either a CHAIN value or a PushChain client instance.
