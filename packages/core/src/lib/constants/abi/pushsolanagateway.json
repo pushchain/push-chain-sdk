@@ -537,7 +537,9 @@
       "args": [
         {
           "name": "recipient",
-          "type": "pubkey"
+          "type": {
+            "array": ["u8", 20]
+          }
         },
         {
           "name": "bridge_token",
@@ -1667,7 +1669,9 @@
           },
           {
             "name": "recipient",
-            "type": "pubkey"
+            "type": {
+              "array": ["u8", 20]
+            }
           },
           {
             "name": "bridge_amount",

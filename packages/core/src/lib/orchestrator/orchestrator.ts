@@ -273,9 +273,15 @@ export class Orchestrator {
               fundRecipient: userPk,
               revertMsg: Buffer.from([]),
             } as unknown as never;
+            // New gateway expects EVM recipient as [u8; 20]
+            const recipientEvm20: number[] = Array.from(
+              Buffer.from(
+                (execute.to as `0x${string}`).slice(2).padStart(40, '0'),
+                'hex'
+              ).subarray(0, 20)
+            );
             if (execute.funds.token.mechanism === 'native') {
               // Native SOL funds-only
-              const recipientPk = userPk; // must be non-default per program checks
               // Compute a local whitelist PDA to avoid TS scope issues
               const [whitelistPdaLocal] = PublicKey.findProgramAddressSync(
                 [stringToBytes('whitelist')],
@@ -285,7 +291,12 @@ export class Orchestrator {
                 abi: SVM_GATEWAY_IDL,
                 address: programId.toBase58(),
                 functionName: 'sendFunds', // -> unified sendFunds(recipient, bridge_token, bridge_amount, revert_cfg)
-                args: [recipientPk, PublicKey.default, bridgeAmount, revertSvm],
+                args: [
+                  recipientEvm20,
+                  PublicKey.default,
+                  bridgeAmount,
+                  revertSvm,
+                ],
                 signer: this.universalSigner,
                 accounts: {
                   config: configPda,
@@ -328,12 +339,11 @@ export class Orchestrator {
                 ASSOCIATED_TOKEN_PROGRAM_ID
               )[0];
 
-              const recipientPk = userPk; // must be non-default per program checks
               txSignature = await svmClient.writeContract({
                 abi: SVM_GATEWAY_IDL,
                 address: programId.toBase58(),
                 functionName: 'sendFunds',
-                args: [recipientPk, mintPk, bridgeAmount, revertSvm],
+                args: [recipientEvm20, mintPk, bridgeAmount, revertSvm],
                 signer: this.universalSigner,
                 accounts: {
                   config: configPda,
