@@ -147,7 +147,12 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
       mechanism: 'native',
     },
     // Example SPL USDT mint address on Devnet (placeholder or set via config if needed)
-    { symbol: 'USDT', decimals: 6, address: 'TBD', mechanism: 'approve' },
+    {
+      symbol: 'USDT',
+      decimals: 6,
+      address: 'EiXDnrAg9ea2Q6vEPV7E5TpTU1vh41jcuZqKjU5Dc4ZF',
+      mechanism: 'approve',
+    },
   ],
 };
 

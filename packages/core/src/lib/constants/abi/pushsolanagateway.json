@@ -1,7 +1,6 @@
 {
   "address": "CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS",
   "metadata": {
-    "address": "CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS",
     "name": "pushsolanagateway",
     "version": "0.1.0",
     "spec": "0.1.0",
@@ -10,13 +9,19 @@
   "instructions": [
     {
       "name": "add_funds",
+      "docs": [
+        "@notice Legacy-compatible add funds event for offchain relayers (pushsolanalocker)"
+      ],
       "discriminator": [132, 237, 76, 57, 80, 10, 179, 138],
       "accounts": [
         {
           "name": "config",
           "pda": {
             "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
             ]
           }
         },
@@ -24,27 +29,58 @@
           "name": "vault",
           "writable": true,
           "pda": {
-            "seeds": [{ "kind": "const", "value": [118, 97, 117, 108, 116] }]
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [118, 97, 117, 108, 116]
+              }
+            ]
           }
         },
-        { "name": "user", "writable": true, "signer": true },
-        { "name": "price_update" },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "price_update"
+        },
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
-        { "name": "amount", "type": "u64" },
-        { "name": "transaction_hash", "type": { "array": ["u8", 32] } }
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "transaction_hash",
+          "type": {
+            "array": ["u8", 32]
+          }
+        }
       ]
     },
     {
       "name": "get_sol_price",
+      "docs": [
+        "@notice View function for SOL price (locker-compatible)",
+        "@dev    Anyone can fetch SOL price in USD"
+      ],
       "discriminator": [230, 145, 206, 175, 43, 184, 97, 110],
-      "accounts": [{ "name": "price_update" }],
+      "accounts": [
+        {
+          "name": "price_update"
+        }
+      ],
       "args": [],
-      "returns": { "defined": { "name": "PriceData" } }
+      "returns": {
+        "defined": {
+          "name": "PriceData"
+        }
+      }
     },
     {
       "name": "init_tss",
@@ -53,21 +89,41 @@
         {
           "name": "tss_pda",
           "writable": true,
-          "pda": { "seeds": [{ "kind": "const", "value": [116, 115, 115] }] }
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [116, 115, 115]
+              }
+            ]
+          }
         },
-        { "name": "authority", "writable": true, "signer": true },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
-        { "name": "tss_eth_address", "type": { "array": ["u8", 20] } },
-        { "name": "chain_id", "type": "u64" }
+        {
+          "name": "tss_eth_address",
+          "type": {
+            "array": ["u8", 20]
+          }
+        },
+        {
+          "name": "chain_id",
+          "type": "u64"
+        }
       ]
     },
     {
       "name": "initialize",
+      "docs": ["@notice Initialize the gateway"],
       "discriminator": [175, 175, 109, 31, 13, 152, 155, 237],
       "accounts": [
         {
@@ -75,7 +131,10 @@
           "writable": true,
           "pda": {
             "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
             ]
           }
         },
@@ -83,26 +142,54 @@
           "name": "vault",
           "writable": true,
           "pda": {
-            "seeds": [{ "kind": "const", "value": [118, 97, 117, 108, 116] }]
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [118, 97, 117, 108, 116]
+              }
+            ]
           }
         },
-        { "name": "admin", "writable": true, "signer": true },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
-        { "name": "admin", "type": "pubkey" },
-        { "name": "pauser", "type": "pubkey" },
-        { "name": "tss", "type": "pubkey" },
-        { "name": "min_cap_usd", "type": "u128" },
-        { "name": "max_cap_usd", "type": "u128" },
-        { "name": "pyth_price_feed", "type": "pubkey" }
+        {
+          "name": "admin",
+          "type": "pubkey"
+        },
+        {
+          "name": "pauser",
+          "type": "pubkey"
+        },
+        {
+          "name": "tss",
+          "type": "pubkey"
+        },
+        {
+          "name": "min_cap_usd",
+          "type": "u128"
+        },
+        {
+          "name": "max_cap_usd",
+          "type": "u128"
+        },
+        {
+          "name": "pyth_price_feed",
+          "type": "pubkey"
+        }
       ]
     },
     {
       "name": "pause",
+      "docs": ["@notice Pause the gateway"],
       "discriminator": [211, 22, 221, 251, 74, 121, 193, 47],
       "accounts": [
         {
@@ -110,16 +197,23 @@
           "writable": true,
           "pda": {
             "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
             ]
           }
         },
-        { "name": "pauser", "signer": true }
+        {
+          "name": "pauser",
+          "signer": true
+        }
       ],
       "args": []
     },
     {
       "name": "remove_whitelist_token",
+      "docs": ["@notice Remove token from whitelist"],
       "discriminator": [65, 182, 42, 255, 198, 163, 73, 46],
       "accounts": [
         {
@@ -127,7 +221,10 @@
           "writable": true,
           "pda": {
             "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
             ]
           }
         },
@@ -143,13 +240,22 @@
             ]
           }
         },
-        { "name": "admin", "writable": true, "signer": true },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": [{ "name": "token", "type": "pubkey" }]
+      "args": [
+        {
+          "name": "token",
+          "type": "pubkey"
+        }
+      ]
     },
     {
       "name": "reset_nonce",
@@ -158,21 +264,40 @@
         {
           "name": "tss_pda",
           "writable": true,
-          "pda": { "seeds": [{ "kind": "const", "value": [116, 115, 115] }] }
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [116, 115, 115]
+              }
+            ]
+          }
         },
-        { "name": "authority", "signer": true }
+        {
+          "name": "authority",
+          "signer": true
+        }
       ],
-      "args": [{ "name": "new_nonce", "type": "u64" }]
+      "args": [
+        {
+          "name": "new_nonce",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "revert_withdraw",
+      "docs": ["@notice TSS-verified revert withdraw for SOL"],
       "discriminator": [8, 232, 107, 216, 153, 25, 204, 116],
       "accounts": [
         {
           "name": "config",
           "pda": {
             "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
             ]
           }
         },
@@ -180,79 +305,173 @@
           "name": "vault",
           "writable": true,
           "pda": {
-            "seeds": [{ "kind": "const", "value": [118, 97, 117, 108, 116] }]
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [118, 97, 117, 108, 116]
+              }
+            ]
           }
         },
         {
           "name": "tss_pda",
           "writable": true,
-          "pda": { "seeds": [{ "kind": "const", "value": [116, 115, 115] }] }
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [116, 115, 115]
+              }
+            ]
+          }
         },
-        { "name": "recipient", "writable": true },
+        {
+          "name": "recipient",
+          "writable": true
+        },
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
-        { "name": "amount", "type": "u64" },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
         {
           "name": "revert_cfg",
-          "type": { "defined": { "name": "RevertSettings" } }
+          "type": {
+            "defined": {
+              "name": "RevertSettings"
+            }
+          }
         },
-        { "name": "signature", "type": { "array": ["u8", 64] } },
-        { "name": "recovery_id", "type": "u8" },
-        { "name": "message_hash", "type": { "array": ["u8", 32] } },
-        { "name": "nonce", "type": "u64" }
+        {
+          "name": "signature",
+          "type": {
+            "array": ["u8", 64]
+          }
+        },
+        {
+          "name": "recovery_id",
+          "type": "u8"
+        },
+        {
+          "name": "message_hash",
+          "type": {
+            "array": ["u8", 32]
+          }
+        },
+        {
+          "name": "nonce",
+          "type": "u64"
+        }
       ]
     },
     {
       "name": "revert_withdraw_spl_token",
+      "docs": ["@notice TSS-verified revert withdraw for SPL tokens"],
       "discriminator": [172, 155, 56, 3, 92, 190, 159, 191],
       "accounts": [
         {
           "name": "config",
           "pda": {
             "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
             ]
           }
         },
-        { "name": "whitelist" },
+        {
+          "name": "whitelist"
+        },
         {
           "name": "vault",
           "writable": true,
           "pda": {
-            "seeds": [{ "kind": "const", "value": [118, 97, 117, 108, 116] }]
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [118, 97, 117, 108, 116]
+              }
+            ]
           }
         },
-        { "name": "token_vault", "writable": true },
+        {
+          "name": "token_vault",
+          "writable": true
+        },
         {
           "name": "tss_pda",
           "writable": true,
-          "pda": { "seeds": [{ "kind": "const", "value": [116, 115, 115] }] }
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [116, 115, 115]
+              }
+            ]
+          }
         },
-        { "name": "recipient_token_account", "writable": true },
-        { "name": "token_mint" },
+        {
+          "name": "recipient_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_mint"
+        },
         {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": [
-        { "name": "amount", "type": "u64" },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
         {
           "name": "revert_cfg",
-          "type": { "defined": { "name": "RevertSettings" } }
+          "type": {
+            "defined": {
+              "name": "RevertSettings"
+            }
+          }
         },
-        { "name": "signature", "type": { "array": ["u8", 64] } },
-        { "name": "recovery_id", "type": "u8" },
-        { "name": "message_hash", "type": { "array": ["u8", 32] } },
-        { "name": "nonce", "type": "u64" }
+        {
+          "name": "signature",
+          "type": {
+            "array": ["u8", 64]
+          }
+        },
+        {
+          "name": "recovery_id",
+          "type": "u8"
+        },
+        {
+          "name": "message_hash",
+          "type": {
+            "array": ["u8", 32]
+          }
+        },
+        {
+          "name": "nonce",
+          "type": "u64"
+        }
       ]
     },
     {
       "name": "send_funds",
+      "docs": [
+        "@notice Allows initiating a TX for movement of funds from source chain to Push Chain.",
+        "@dev    Supports both native SOL and SPL token deposits (like ETH Gateway).",
+        "For native SOL: pass Pubkey::default() as bridge_token",
+        "For SPL tokens: pass token mint address as bridge_token",
+        "The route emits TxWithFunds event."
+      ],
       "discriminator": [84, 247, 211, 40, 63, 106, 15, 59],
       "accounts": [
         {
@@ -260,7 +479,10 @@
           "writable": true,
           "pda": {
             "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
             ]
           }
         },
@@ -268,7 +490,12 @@
           "name": "vault",
           "writable": true,
           "pda": {
-            "seeds": [{ "kind": "const", "value": [118, 97, 117, 108, 116] }]
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [118, 97, 117, 108, 116]
+              }
+            ]
           }
         },
         {
@@ -282,10 +509,22 @@
             ]
           }
         },
-        { "name": "user_token_account", "writable": true },
-        { "name": "gateway_token_account", "writable": true },
-        { "name": "user", "writable": true, "signer": true },
-        { "name": "bridge_token" },
+        {
+          "name": "user_token_account",
+          "writable": true
+        },
+        {
+          "name": "gateway_token_account",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "bridge_token"
+        },
         {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
@@ -296,52 +535,35 @@
         }
       ],
       "args": [
-        { "name": "recipient", "type": "pubkey" },
-        { "name": "bridge_token", "type": "pubkey" },
-        { "name": "bridge_amount", "type": "u64" },
         {
-          "name": "revert_cfg",
-          "type": { "defined": { "name": "RevertSettings" } }
-        }
-      ]
-    },
-    {
-      "name": "send_funds_native",
-      "discriminator": [245, 51, 222, 185, 98, 79, 40, 25],
-      "accounts": [
-        {
-          "name": "config",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
-            ]
-          }
+          "name": "recipient",
+          "type": "pubkey"
         },
         {
-          "name": "vault",
-          "writable": true,
-          "pda": {
-            "seeds": [{ "kind": "const", "value": [118, 97, 117, 108, 116] }]
-          }
+          "name": "bridge_token",
+          "type": "pubkey"
         },
-        { "name": "user", "writable": true, "signer": true },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        { "name": "recipient", "type": "pubkey" },
-        { "name": "bridge_amount", "type": "u64" },
+          "name": "bridge_amount",
+          "type": "u64"
+        },
         {
           "name": "revert_cfg",
-          "type": { "defined": { "name": "RevertSettings" } }
+          "type": {
+            "defined": {
+              "name": "RevertSettings"
+            }
+          }
         }
       ]
     },
     {
       "name": "send_tx_with_funds",
+      "docs": [
+        "@notice Allows initiating a TX for movement of funds and payload from source chain to Push Chain.",
+        "@dev    Supports both native SOL and SPL token deposits with payload execution.",
+        "The route emits both TxWithGas and TxWithFunds events."
+      ],
       "discriminator": [224, 179, 202, 222, 121, 238, 38, 168],
       "accounts": [
         {
@@ -349,7 +571,10 @@
           "writable": true,
           "pda": {
             "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
             ]
           }
         },
@@ -357,7 +582,12 @@
           "name": "vault",
           "writable": true,
           "pda": {
-            "seeds": [{ "kind": "const", "value": [118, 97, 117, 108, 116] }]
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [118, 97, 117, 108, 116]
+              }
+            ]
           }
         },
         {
@@ -371,11 +601,25 @@
             ]
           }
         },
-        { "name": "user_token_account", "writable": true },
-        { "name": "gateway_token_account", "writable": true },
-        { "name": "user", "writable": true, "signer": true },
-        { "name": "price_update" },
-        { "name": "bridge_token" },
+        {
+          "name": "user_token_account",
+          "writable": true
+        },
+        {
+          "name": "gateway_token_account",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "price_update"
+        },
+        {
+          "name": "bridge_token"
+        },
         {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
@@ -386,22 +630,47 @@
         }
       ],
       "args": [
-        { "name": "bridge_token", "type": "pubkey" },
-        { "name": "bridge_amount", "type": "u64" },
+        {
+          "name": "bridge_token",
+          "type": "pubkey"
+        },
+        {
+          "name": "bridge_amount",
+          "type": "u64"
+        },
         {
           "name": "payload",
-          "type": { "defined": { "name": "UniversalPayload" } }
+          "type": {
+            "defined": {
+              "name": "UniversalPayload"
+            }
+          }
         },
         {
           "name": "revert_cfg",
-          "type": { "defined": { "name": "RevertSettings" } }
+          "type": {
+            "defined": {
+              "name": "RevertSettings"
+            }
+          }
         },
-        { "name": "gas_amount", "type": "u64" },
-        { "name": "signature_data", "type": { "array": ["u8", 32] } }
+        {
+          "name": "gas_amount",
+          "type": "u64"
+        },
+        {
+          "name": "signature_data",
+          "type": "bytes"
+        }
       ]
     },
     {
       "name": "send_tx_with_gas",
+      "docs": [
+        "@notice Allows initiating a TX for funding UEA with gas deposits from source chain.",
+        "@dev    Supports only native SOL deposits for gas funding.",
+        "The route emits TxWithGas event - important for Instant TX Route."
+      ],
       "discriminator": [220, 10, 179, 127, 41, 153, 193, 213],
       "accounts": [
         {
@@ -409,7 +678,10 @@
           "writable": true,
           "pda": {
             "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
             ]
           }
         },
@@ -417,11 +689,22 @@
           "name": "vault",
           "writable": true,
           "pda": {
-            "seeds": [{ "kind": "const", "value": [118, 97, 117, 108, 116] }]
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [118, 97, 117, 108, 116]
+              }
+            ]
           }
         },
-        { "name": "user", "writable": true, "signer": true },
-        { "name": "price_update" },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "price_update"
+        },
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
@@ -430,17 +713,29 @@
       "args": [
         {
           "name": "payload",
-          "type": { "defined": { "name": "UniversalPayload" } }
+          "type": {
+            "defined": {
+              "name": "UniversalPayload"
+            }
+          }
         },
         {
           "name": "revert_cfg",
-          "type": { "defined": { "name": "RevertSettings" } }
+          "type": {
+            "defined": {
+              "name": "RevertSettings"
+            }
+          }
         },
-        { "name": "amount", "type": "u64" }
+        {
+          "name": "amount",
+          "type": "u64"
+        }
       ]
     },
     {
       "name": "set_caps_usd",
+      "docs": ["@notice Set USD caps"],
       "discriminator": [136, 160, 17, 54, 239, 108, 125, 129],
       "accounts": [
         {
@@ -448,19 +743,32 @@
           "writable": true,
           "pda": {
             "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
             ]
           }
         },
-        { "name": "admin", "signer": true }
+        {
+          "name": "admin",
+          "signer": true
+        }
       ],
       "args": [
-        { "name": "min_cap", "type": "u128" },
-        { "name": "max_cap", "type": "u128" }
+        {
+          "name": "min_cap",
+          "type": "u128"
+        },
+        {
+          "name": "max_cap",
+          "type": "u128"
+        }
       ]
     },
     {
       "name": "set_pyth_confidence_threshold",
+      "docs": ["@notice Set Pyth confidence threshold"],
       "discriminator": [213, 69, 242, 123, 122, 165, 125, 21],
       "accounts": [
         {
@@ -468,16 +776,28 @@
           "writable": true,
           "pda": {
             "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
             ]
           }
         },
-        { "name": "admin", "signer": true }
+        {
+          "name": "admin",
+          "signer": true
+        }
       ],
-      "args": [{ "name": "threshold", "type": "u64" }]
+      "args": [
+        {
+          "name": "threshold",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "set_pyth_price_feed",
+      "docs": ["@notice Set Pyth price feed"],
       "discriminator": [202, 185, 109, 150, 255, 130, 210, 208],
       "accounts": [
         {
@@ -485,16 +805,28 @@
           "writable": true,
           "pda": {
             "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
             ]
           }
         },
-        { "name": "admin", "signer": true }
+        {
+          "name": "admin",
+          "signer": true
+        }
       ],
-      "args": [{ "name": "price_feed", "type": "pubkey" }]
+      "args": [
+        {
+          "name": "price_feed",
+          "type": "pubkey"
+        }
+      ]
     },
     {
       "name": "set_tss_address",
+      "docs": ["@notice Set TSS address"],
       "discriminator": [158, 254, 147, 0, 154, 3, 56, 50],
       "accounts": [
         {
@@ -502,16 +834,28 @@
           "writable": true,
           "pda": {
             "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
             ]
           }
         },
-        { "name": "admin", "signer": true }
+        {
+          "name": "admin",
+          "signer": true
+        }
       ],
-      "args": [{ "name": "new_tss", "type": "pubkey" }]
+      "args": [
+        {
+          "name": "new_tss",
+          "type": "pubkey"
+        }
+      ]
     },
     {
       "name": "unpause",
+      "docs": ["@notice Unpause the gateway"],
       "discriminator": [169, 144, 4, 38, 10, 141, 188, 255],
       "accounts": [
         {
@@ -519,11 +863,17 @@
           "writable": true,
           "pda": {
             "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
             ]
           }
         },
-        { "name": "pauser", "signer": true }
+        {
+          "name": "pauser",
+          "signer": true
+        }
       ],
       "args": []
     },
@@ -534,17 +884,36 @@
         {
           "name": "tss_pda",
           "writable": true,
-          "pda": { "seeds": [{ "kind": "const", "value": [116, 115, 115] }] }
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [116, 115, 115]
+              }
+            ]
+          }
         },
-        { "name": "authority", "signer": true }
+        {
+          "name": "authority",
+          "signer": true
+        }
       ],
       "args": [
-        { "name": "tss_eth_address", "type": { "array": ["u8", 20] } },
-        { "name": "chain_id", "type": "u64" }
+        {
+          "name": "tss_eth_address",
+          "type": {
+            "array": ["u8", 20]
+          }
+        },
+        {
+          "name": "chain_id",
+          "type": "u64"
+        }
       ]
     },
     {
       "name": "whitelist_token",
+      "docs": ["@notice Whitelist a token"],
       "discriminator": [6, 141, 83, 167, 31, 6, 2, 224],
       "accounts": [
         {
@@ -552,7 +921,10 @@
           "writable": true,
           "pda": {
             "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
             ]
           }
         },
@@ -568,64 +940,122 @@
             ]
           }
         },
-        { "name": "admin", "writable": true, "signer": true },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": [{ "name": "token", "type": "pubkey" }]
+      "args": [
+        {
+          "name": "token",
+          "type": "pubkey"
+        }
+      ]
     },
     {
       "name": "withdraw_spl_token_tss",
+      "docs": ["@notice TSS-verified withdraw of SPL tokens"],
       "discriminator": [238, 209, 47, 229, 44, 234, 138, 198],
       "accounts": [
         {
           "name": "config",
           "pda": {
             "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
             ]
           }
         },
-        { "name": "whitelist" },
+        {
+          "name": "whitelist"
+        },
         {
           "name": "vault",
           "writable": true,
           "pda": {
-            "seeds": [{ "kind": "const", "value": [118, 97, 117, 108, 116] }]
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [118, 97, 117, 108, 116]
+              }
+            ]
           }
         },
-        { "name": "token_vault", "writable": true },
+        {
+          "name": "token_vault",
+          "writable": true
+        },
         {
           "name": "tss_pda",
           "writable": true,
-          "pda": { "seeds": [{ "kind": "const", "value": [116, 115, 115] }] }
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [116, 115, 115]
+              }
+            ]
+          }
         },
-        { "name": "recipient_token_account", "writable": true },
-        { "name": "token_mint" },
+        {
+          "name": "recipient_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_mint"
+        },
         {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": [
-        { "name": "amount", "type": "u64" },
-        { "name": "signature", "type": { "array": ["u8", 64] } },
-        { "name": "recovery_id", "type": "u8" },
-        { "name": "message_hash", "type": { "array": ["u8", 32] } },
-        { "name": "nonce", "type": "u64" }
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "signature",
+          "type": {
+            "array": ["u8", 64]
+          }
+        },
+        {
+          "name": "recovery_id",
+          "type": "u8"
+        },
+        {
+          "name": "message_hash",
+          "type": {
+            "array": ["u8", 32]
+          }
+        },
+        {
+          "name": "nonce",
+          "type": "u64"
+        }
       ]
     },
     {
       "name": "withdraw_tss",
+      "docs": ["@notice TSS-verified withdraw of native SOL"],
       "discriminator": [112, 51, 93, 250, 136, 175, 118, 100],
       "accounts": [
         {
           "name": "config",
           "pda": {
             "seeds": [
-              { "kind": "const", "value": [99, 111, 110, 102, 105, 103] }
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
             ]
           }
         },
@@ -633,26 +1063,60 @@
           "name": "vault",
           "writable": true,
           "pda": {
-            "seeds": [{ "kind": "const", "value": [118, 97, 117, 108, 116] }]
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [118, 97, 117, 108, 116]
+              }
+            ]
           }
         },
         {
           "name": "tss_pda",
           "writable": true,
-          "pda": { "seeds": [{ "kind": "const", "value": [116, 115, 115] }] }
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [116, 115, 115]
+              }
+            ]
+          }
         },
-        { "name": "recipient", "writable": true },
+        {
+          "name": "recipient",
+          "writable": true
+        },
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
-        { "name": "amount", "type": "u64" },
-        { "name": "signature", "type": { "array": ["u8", 64] } },
-        { "name": "recovery_id", "type": "u8" },
-        { "name": "message_hash", "type": { "array": ["u8", 32] } },
-        { "name": "nonce", "type": "u64" }
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "signature",
+          "type": {
+            "array": ["u8", 64]
+          }
+        },
+        {
+          "name": "recovery_id",
+          "type": "u8"
+        },
+        {
+          "name": "message_hash",
+          "type": {
+            "array": ["u8", 32]
+          }
+        },
+        {
+          "name": "nonce",
+          "type": "u64"
+        }
       ]
     }
   ],
@@ -709,17 +1173,61 @@
     }
   ],
   "errors": [
-    { "code": 6000, "name": "PausedError", "msg": "Contract is paused" },
-    { "code": 6001, "name": "Unauthorized", "msg": "Unauthorized access" },
-    { "code": 6002, "name": "InvalidAmount", "msg": "Invalid amount" },
-    { "code": 6003, "name": "InvalidRecipient", "msg": "Invalid recipient" },
-    { "code": 6004, "name": "BelowMinCap", "msg": "Amount below minimum cap" },
-    { "code": 6005, "name": "AboveMaxCap", "msg": "Amount above maximum cap" },
-    { "code": 6006, "name": "ZeroAddress", "msg": "Zero address not allowed" },
-    { "code": 6007, "name": "InvalidCapRange", "msg": "Invalid cap range" },
-    { "code": 6008, "name": "InvalidPayload", "msg": "Invalid payload" },
-    { "code": 6009, "name": "DeadlineExceeded", "msg": "Deadline exceeded" },
-    { "code": 6010, "name": "InvalidPrice", "msg": "Invalid price data" },
+    {
+      "code": 6000,
+      "name": "PausedError",
+      "msg": "Contract is paused"
+    },
+    {
+      "code": 6001,
+      "name": "Unauthorized",
+      "msg": "Unauthorized access"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidAmount",
+      "msg": "Invalid amount"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidRecipient",
+      "msg": "Invalid recipient"
+    },
+    {
+      "code": 6004,
+      "name": "BelowMinCap",
+      "msg": "Amount below minimum cap"
+    },
+    {
+      "code": 6005,
+      "name": "AboveMaxCap",
+      "msg": "Amount above maximum cap"
+    },
+    {
+      "code": 6006,
+      "name": "ZeroAddress",
+      "msg": "Zero address not allowed"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidCapRange",
+      "msg": "Invalid cap range"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidPayload",
+      "msg": "Invalid payload"
+    },
+    {
+      "code": 6009,
+      "name": "DeadlineExceeded",
+      "msg": "Deadline exceeded"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidPrice",
+      "msg": "Invalid price data"
+    },
     {
       "code": 6011,
       "name": "TokenAlreadyWhitelisted",
@@ -735,22 +1243,46 @@
       "name": "TokenTransferFailed",
       "msg": "Token transfer failed"
     },
-    { "code": 6014, "name": "InvalidTokenVault", "msg": "Invalid token vault" },
-    { "code": 6015, "name": "InvalidOwner", "msg": "Invalid owner" },
+    {
+      "code": 6014,
+      "name": "InvalidTokenVault",
+      "msg": "Invalid token vault"
+    },
+    {
+      "code": 6015,
+      "name": "InvalidOwner",
+      "msg": "Invalid owner"
+    },
     {
       "code": 6016,
       "name": "SlippageExceededOrExpired",
       "msg": "Slippage exceeded or expired"
     },
-    { "code": 6017, "name": "Paused", "msg": "Contract is paused" },
-    { "code": 6018, "name": "InvalidInput", "msg": "Invalid input" },
-    { "code": 6019, "name": "InvalidMint", "msg": "Invalid mint" },
+    {
+      "code": 6017,
+      "name": "Paused",
+      "msg": "Contract is paused"
+    },
+    {
+      "code": 6018,
+      "name": "InvalidInput",
+      "msg": "Invalid input"
+    },
+    {
+      "code": 6019,
+      "name": "InvalidMint",
+      "msg": "Invalid mint"
+    },
     {
       "code": 6020,
       "name": "InsufficientBalance",
       "msg": "Insufficient balance"
     },
-    { "code": 6021, "name": "InvalidToken", "msg": "Invalid token" }
+    {
+      "code": 6021,
+      "name": "InvalidToken",
+      "msg": "Invalid token"
+    }
   ],
   "types": [
     {
@@ -758,39 +1290,100 @@
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "min_cap_usd", "type": "u128" },
-          { "name": "max_cap_usd", "type": "u128" }
+          {
+            "name": "min_cap_usd",
+            "type": "u128"
+          },
+          {
+            "name": "max_cap_usd",
+            "type": "u128"
+          }
         ]
       }
     },
     {
       "name": "Config",
+      "docs": [
+        "Gateway configuration state (authorities, caps, oracle).",
+        "PDA: `[b\"config\"]`. Holds USD caps (8 decimals) for gas-route deposits and oracle config."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "admin", "type": "pubkey" },
-          { "name": "tss_address", "type": "pubkey" },
-          { "name": "pauser", "type": "pubkey" },
-          { "name": "min_cap_universal_tx_usd", "type": "u128" },
-          { "name": "max_cap_universal_tx_usd", "type": "u128" },
-          { "name": "paused", "type": "bool" },
-          { "name": "bump", "type": "u8" },
-          { "name": "vault_bump", "type": "u8" },
-          { "name": "pyth_price_feed", "type": "pubkey" },
-          { "name": "pyth_confidence_threshold", "type": "u64" }
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "tss_address",
+            "type": "pubkey"
+          },
+          {
+            "name": "pauser",
+            "type": "pubkey"
+          },
+          {
+            "name": "min_cap_universal_tx_usd",
+            "type": "u128"
+          },
+          {
+            "name": "max_cap_universal_tx_usd",
+            "type": "u128"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vault_bump",
+            "type": "u8"
+          },
+          {
+            "name": "pyth_price_feed",
+            "type": "pubkey"
+          },
+          {
+            "name": "pyth_confidence_threshold",
+            "type": "u64"
+          }
         ]
       }
     },
     {
       "name": "FundsAddedEvent",
+      "docs": [
+        "Legacy event for fee-abstraction route (locker-compatible).",
+        "Matches `pushsolanalocker` `FundsAddedEvent` exactly for offchain compatibility."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "user", "type": "pubkey" },
-          { "name": "sol_amount", "type": "u64" },
-          { "name": "usd_equivalent", "type": "i128" },
-          { "name": "usd_exponent", "type": "i32" },
-          { "name": "transaction_hash", "type": { "array": ["u8", 32] } }
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "sol_amount",
+            "type": "u64"
+          },
+          {
+            "name": "usd_equivalent",
+            "type": "i128"
+          },
+          {
+            "name": "usd_exponent",
+            "type": "i32"
+          },
+          {
+            "name": "transaction_hash",
+            "type": {
+              "array": ["u8", 32]
+            }
+          }
         ]
       }
     },
@@ -799,55 +1392,144 @@
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "price", "type": "i64" },
-          { "name": "exponent", "type": "i32" },
-          { "name": "publish_time", "type": "i64" },
-          { "name": "confidence", "type": "u64" }
+          {
+            "name": "price",
+            "type": "i64"
+          },
+          {
+            "name": "exponent",
+            "type": "i32"
+          },
+          {
+            "name": "publish_time",
+            "type": "i64"
+          },
+          {
+            "name": "confidence",
+            "type": "u64"
+          }
         ]
       }
     },
     {
       "name": "PriceFeedMessage",
-      "repr": { "kind": "c" },
+      "repr": {
+        "kind": "c"
+      },
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "feed_id", "type": { "array": ["u8", 32] } },
-          { "name": "price", "type": "i64" },
-          { "name": "conf", "type": "u64" },
-          { "name": "exponent", "type": "i32" },
-          { "name": "publish_time", "type": "i64" },
-          { "name": "prev_publish_time", "type": "i64" },
-          { "name": "ema_price", "type": "i64" },
-          { "name": "ema_conf", "type": "u64" }
+          {
+            "name": "feed_id",
+            "docs": [
+              "`FeedId` but avoid the type alias because of compatibility issues with Anchor's `idl-build` feature."
+            ],
+            "type": {
+              "array": ["u8", 32]
+            }
+          },
+          {
+            "name": "price",
+            "type": "i64"
+          },
+          {
+            "name": "conf",
+            "type": "u64"
+          },
+          {
+            "name": "exponent",
+            "type": "i32"
+          },
+          {
+            "name": "publish_time",
+            "docs": ["The timestamp of this price update in seconds"],
+            "type": "i64"
+          },
+          {
+            "name": "prev_publish_time",
+            "docs": [
+              "The timestamp of the previous price update. This field is intended to allow users to",
+              "identify the single unique price update for any moment in time:",
+              "for any time t, the unique update is the one such that prev_publish_time < t <= publish_time.",
+              "",
+              "Note that there may not be such an update while we are migrating to the new message-sending logic,",
+              "as some price updates on pythnet may not be sent to other chains (because the message-sending",
+              "logic may not have triggered). We can solve this problem by making the message-sending mandatory",
+              "(which we can do once publishers have migrated over).",
+              "",
+              "Additionally, this field may be equal to publish_time if the message is sent on a slot where",
+              "where the aggregation was unsuccesful. This problem will go away once all publishers have",
+              "migrated over to a recent version of pyth-agent."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "ema_price",
+            "type": "i64"
+          },
+          {
+            "name": "ema_conf",
+            "type": "u64"
+          }
         ]
       }
     },
     {
       "name": "PriceUpdateV2",
+      "docs": [
+        "A price update account. This account is used by the Pyth Receiver program to store a verified price update from a Pyth price feed.",
+        "It contains:",
+        "- `write_authority`: The write authority for this account. This authority can close this account to reclaim rent or update the account to contain a different price update.",
+        "- `verification_level`: The [`VerificationLevel`] of this price update. This represents how many Wormhole guardian signatures have been verified for this price update.",
+        "- `price_message`: The actual price update.",
+        "- `posted_slot`: The slot at which this price update was posted."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "write_authority", "type": "pubkey" },
+          {
+            "name": "write_authority",
+            "type": "pubkey"
+          },
           {
             "name": "verification_level",
-            "type": { "defined": { "name": "VerificationLevel" } }
+            "type": {
+              "defined": {
+                "name": "VerificationLevel"
+              }
+            }
           },
           {
             "name": "price_message",
-            "type": { "defined": { "name": "PriceFeedMessage" } }
+            "type": {
+              "defined": {
+                "name": "PriceFeedMessage"
+              }
+            }
           },
-          { "name": "posted_slot", "type": "u64" }
+          {
+            "name": "posted_slot",
+            "type": "u64"
+          }
         ]
       }
     },
     {
       "name": "RevertSettings",
+      "docs": [
+        "Revert settings for failed transactions (parity with EVM `RevertSettings`)."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "fund_recipient", "type": "pubkey" },
-          { "name": "revert_msg", "type": "bytes" }
+          {
+            "name": "fund_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "revert_msg",
+            "type": "bytes"
+          }
         ]
       }
     },
@@ -856,8 +1538,14 @@
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "old_tss", "type": "pubkey" },
-          { "name": "new_tss", "type": "pubkey" }
+          {
+            "name": "old_tss",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_tss",
+            "type": "pubkey"
+          }
         ]
       }
     },
@@ -865,16 +1553,33 @@
       "name": "TokenRemovedFromWhitelist",
       "type": {
         "kind": "struct",
-        "fields": [{ "name": "token_address", "type": "pubkey" }]
+        "fields": [
+          {
+            "name": "token_address",
+            "type": "pubkey"
+          }
+        ]
       }
     },
     {
       "name": "TokenWhitelist",
+      "docs": [
+        "SPL token whitelist state.",
+        "PDA: `[b\"whitelist\"]`. Simple list of supported SPL mints."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "tokens", "type": { "vec": "pubkey" } },
-          { "name": "bump", "type": "u8" }
+          {
+            "name": "tokens",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
         ]
       }
     },
@@ -882,121 +1587,288 @@
       "name": "TokenWhitelisted",
       "type": {
         "kind": "struct",
-        "fields": [{ "name": "token_address", "type": "pubkey" }]
+        "fields": [
+          {
+            "name": "token_address",
+            "type": "pubkey"
+          }
+        ]
       }
     },
     {
       "name": "TssPda",
+      "docs": [
+        "TSS state PDA for ECDSA verification (Ethereum-style secp256k1).",
+        "Stores 20-byte ETH address, chain id, and replay-protection nonce."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "tss_eth_address", "type": { "array": ["u8", 20] } },
-          { "name": "chain_id", "type": "u64" },
-          { "name": "nonce", "type": "u64" },
-          { "name": "authority", "type": "pubkey" },
-          { "name": "bump", "type": "u8" }
+          {
+            "name": "tss_eth_address",
+            "type": {
+              "array": ["u8", 20]
+            }
+          },
+          {
+            "name": "chain_id",
+            "type": "u64"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
         ]
       }
     },
     {
       "name": "TxType",
+      "docs": [
+        "Transaction types matching the EVM Universal Gateway `TX_TYPE`.",
+        "Kept 1:1 for relayer/event parity with the EVM implementation."
+      ],
       "type": {
         "kind": "enum",
         "variants": [
-          { "name": "Gas" },
-          { "name": "GasAndPayload" },
-          { "name": "Funds" },
-          { "name": "FundsAndPayload" }
+          {
+            "name": "Gas"
+          },
+          {
+            "name": "GasAndPayload"
+          },
+          {
+            "name": "Funds"
+          },
+          {
+            "name": "FundsAndPayload"
+          }
         ]
       }
     },
     {
       "name": "TxWithFunds",
+      "docs": [
+        "FUNDS deposit event (parity with EVM `TxWithFunds`). Emitted for FUNDS-only and FUNDS+PAYLOAD routes."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "sender", "type": "pubkey" },
-          { "name": "recipient", "type": "pubkey" },
-          { "name": "bridge_amount", "type": "u64" },
-          { "name": "gas_amount", "type": "u64" },
-          { "name": "bridge_token", "type": "pubkey" },
-          { "name": "data", "type": "bytes" },
+          {
+            "name": "sender",
+            "type": "pubkey"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "bridge_amount",
+            "type": "u64"
+          },
+          {
+            "name": "gas_amount",
+            "type": "u64"
+          },
+          {
+            "name": "bridge_token",
+            "type": "pubkey"
+          },
+          {
+            "name": "data",
+            "type": "bytes"
+          },
           {
             "name": "revert_cfg",
-            "type": { "defined": { "name": "RevertSettings" } }
+            "type": {
+              "defined": {
+                "name": "RevertSettings"
+              }
+            }
           },
-          { "name": "tx_type", "type": { "defined": { "name": "TxType" } } },
-          { "name": "signature_data", "type": { "array": ["u8", 32] } }
+          {
+            "name": "tx_type",
+            "type": {
+              "defined": {
+                "name": "TxType"
+              }
+            }
+          },
+          {
+            "name": "signature_data",
+            "type": "bytes"
+          }
         ]
       }
     },
     {
       "name": "TxWithGas",
+      "docs": [
+        "GAS deposit event (parity with EVM `TxWithGas`). Emitted for gas funding on both GAS and GAS+PAYLOAD routes."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "sender", "type": "pubkey" },
-          { "name": "payload_hash", "type": { "array": ["u8", 32] } },
-          { "name": "native_token_deposited", "type": "u64" },
+          {
+            "name": "sender",
+            "type": "pubkey"
+          },
+          {
+            "name": "payload_hash",
+            "type": {
+              "array": ["u8", 32]
+            }
+          },
+          {
+            "name": "native_token_deposited",
+            "type": "u64"
+          },
           {
             "name": "revert_cfg",
-            "type": { "defined": { "name": "RevertSettings" } }
+            "type": {
+              "defined": {
+                "name": "RevertSettings"
+              }
+            }
           },
-          { "name": "tx_type", "type": { "defined": { "name": "TxType" } } }
+          {
+            "name": "tx_type",
+            "type": {
+              "defined": {
+                "name": "TxType"
+              }
+            }
+          }
         ]
       }
     },
     {
       "name": "UniversalPayload",
+      "docs": [
+        "Universal payload for cross-chain execution (parity with EVM `UniversalPayload`).",
+        "Serialized and hashed for event parity with EVM (payload bytes/hash)."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "to", "type": "pubkey" },
-          { "name": "value", "type": "u64" },
-          { "name": "data", "type": "bytes" },
-          { "name": "gas_limit", "type": "u64" },
-          { "name": "max_fee_per_gas", "type": "u64" },
-          { "name": "max_priority_fee_per_gas", "type": "u64" },
-          { "name": "nonce", "type": "u64" },
-          { "name": "deadline", "type": "i64" },
+          {
+            "name": "to",
+            "type": {
+              "array": ["u8", 20]
+            }
+          },
+          {
+            "name": "value",
+            "type": "u64"
+          },
+          {
+            "name": "data",
+            "type": "bytes"
+          },
+          {
+            "name": "gas_limit",
+            "type": "u64"
+          },
+          {
+            "name": "max_fee_per_gas",
+            "type": "u64"
+          },
+          {
+            "name": "max_priority_fee_per_gas",
+            "type": "u64"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "deadline",
+            "type": "i64"
+          },
           {
             "name": "v_type",
-            "type": { "defined": { "name": "VerificationType" } }
+            "type": {
+              "defined": {
+                "name": "VerificationType"
+              }
+            }
           }
         ]
       }
     },
     {
       "name": "VerificationLevel",
+      "docs": [
+        "Pyth price updates are bridged to all blockchains via Wormhole.",
+        "Using the price updates on another chain requires verifying the signatures of the Wormhole guardians.",
+        "The usual process is to check the signatures for two thirds of the total number of guardians, but this can be cumbersome on Solana because of the transaction size limits,",
+        "so we also allow for partial verification.",
+        "",
+        "This enum represents how much a price update has been verified:",
+        "- If `Full`, we have verified the signatures for two thirds of the current guardians.",
+        "- If `Partial`, only `num_signatures` guardian signatures have been checked.",
+        "",
+        "# Warning",
+        "Using partially verified price updates is dangerous, as it lowers the threshold of guardians that need to collude to produce a malicious price update."
+      ],
       "type": {
         "kind": "enum",
         "variants": [
           {
             "name": "Partial",
-            "fields": [{ "name": "num_signatures", "type": "u8" }]
+            "fields": [
+              {
+                "name": "num_signatures",
+                "type": "u8"
+              }
+            ]
           },
-          { "name": "Full" }
+          {
+            "name": "Full"
+          }
         ]
       }
     },
     {
       "name": "VerificationType",
+      "docs": ["Verification types for payload execution (parity with EVM)."],
       "type": {
         "kind": "enum",
         "variants": [
-          { "name": "SignedVerification" },
-          { "name": "UniversalTxVerification" }
+          {
+            "name": "SignedVerification"
+          },
+          {
+            "name": "UniversalTxVerification"
+          }
         ]
       }
     },
     {
       "name": "WithdrawFunds",
+      "docs": ["Withdraw event (parity with EVM `WithdrawFunds`)."],
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "recipient", "type": "pubkey" },
-          { "name": "amount", "type": "u64" },
-          { "name": "token", "type": "pubkey" }
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "token",
+            "type": "pubkey"
+          }
         ]
       }
     }

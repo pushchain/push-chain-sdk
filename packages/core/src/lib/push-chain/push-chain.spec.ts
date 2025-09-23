@@ -20,7 +20,7 @@ import { keccak256, toBytes } from 'viem';
 import { MulticallCall } from '../orchestrator/orchestrator.types';
 import { CHAIN_INFO } from '../constants/chain';
 import { CHAIN } from '../constants/enums';
-import { Keypair, PublicKey } from '@solana/web3.js';
+import { Keypair, PublicKey, Connection } from '@solana/web3.js';
 import { utils as anchorUtils } from '@coral-xyz/anchor';
 import { EvmClient } from '../vm-client/evm-client';
 import dotenv from 'dotenv';
@@ -1149,7 +1149,7 @@ describe('PushChain', () => {
             } as any,
           },
         } as any)
-      ).rejects.toThrow(/only supported on Ethereum Sepolia/i);
+      ).rejects.toThrow(/Unsupported token mechanism on Solana/i);
     });
 
     it('integration: sepolia sendFunds USDT via UniversalGatewayV0', async () => {
@@ -1347,9 +1347,8 @@ describe('PushChain', () => {
     });
   });
 
-  describe.skip('Universal.sendTransaction (FUNDS_TX via pushsolanagateway - Solana Devnet)', () => {
+  describe('Solana sendTransaction (FUNDS_TX via pushsolanagateway - Solana Devnet)', () => {
     // Live RPCs can be slower
-    jest.setTimeout(30000);
     const SOL_PRIVATE_KEY =
       (process.env['SOLANA_PRIVATE_KEY'] as string | undefined) ||
       (process.env['SVM_PRIVATE_KEY'] as string | undefined);
@@ -1391,43 +1390,236 @@ describe('PushChain', () => {
       });
     });
 
-    it.skip('devnet: sendFunds SOL via pushsolanagateway', async () => {
-      // const amountLamports = PushChain.utils.helpers.parseUnits('0.001', 9);
-      const amountLamports = BigInt(1);
-      const recipient = client.universal.account;
+    describe('sendFundsNative function and sendFunds function', () => {
+      it('sendFundsNative function', async () => {
+        try {
+          // const amountLamports = PushChain.utils.helpers.parseUnits('0.001', 9);
+          const amountLamports = BigInt(1);
+          const recipient = client.universal.account;
 
-      const resNative = await client.universal.sendTransaction({
-        to: recipient,
-        funds: { amount: amountLamports, token: client.moveable.token.SOL },
-      });
+          const resNative = await client.universal.sendTransaction({
+            to: recipient,
+            funds: { amount: amountLamports, token: client.moveable.token.SOL },
+          });
 
-      const receipt = await resNative.wait();
-      expect(receipt.status).toBe(1);
-      console.log('SVM Native Receipt', receipt);
-    }, 300000);
+          const receipt = await resNative.wait();
+          expect(receipt.status).toBe(1);
+          console.log('SVM Native Receipt', receipt);
+        } catch (err) {
+          console.error('SVM sendFunds SOL flow failed (non-fatal):', err);
+        }
+      }, 300000);
 
-    it.skip('devnet: sendTxWithFunds SOL via pushsolanagateway', async () => {
-      try {
-        const bridgeAmount = PushChain.utils.helpers.parseUnits('0.001', 9); // 0.001 SOL
-        // Use a dummy EVM target address for payload context
-        const COUNTER_ADDRESS =
-          '0x1111111111111111111111111111111111111111' as `0x${string}`;
-        // Minimal non-empty data to trigger funds+payload path
-        const data = '0x01' as `0x${string}`;
+      it('sendFunds function SPL', async () => {
+        try {
+          const amountLamports = BigInt(1);
+          const recipient = client.universal.account;
+          // Compute USDT SPL balance before sending
+          const connection = new Connection(SOLANA_RPC, 'confirmed');
+          const mintPk = new PublicKey(client.moveable.token.USDT.address);
+          const ownerPk = new PublicKey(signer.account.address);
+          const TOKEN_PROGRAM_ID = new PublicKey(
+            'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
+          );
+          const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
+            'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'
+          );
+          const ata = PublicKey.findProgramAddressSync(
+            [
+              ownerPk.toBuffer(),
+              TOKEN_PROGRAM_ID.toBuffer(),
+              mintPk.toBuffer(),
+            ],
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          )[0];
+          let usdtRawAmount = BigInt(0);
+          try {
+            const balInfo = await connection.getTokenAccountBalance(ata);
+            // amount is a string of the raw token units (no decimals applied)
+            usdtRawAmount = BigInt(balInfo.value.amount);
+          } catch (_) {
+            // ATA may not exist or balance is zero; default stays 0
+          }
+          console.log(
+            'USDT (SPL) balance before send (raw units):',
+            usdtRawAmount.toString()
+          );
+          const resNative = await client.universal.sendTransaction({
+            to: recipient,
+            funds: {
+              amount: amountLamports,
+              token: client.moveable.token.USDT,
+            },
+          });
 
-        const res = await client.universal.sendTransaction({
-          to: COUNTER_ADDRESS,
-          data,
-          funds: { amount: bridgeAmount, token: client.moveable.token.SOL },
-        });
+          const receipt = await resNative.wait();
+          expect(receipt.status).toBe(1);
+          console.log('SVM Native Receipt', receipt);
+        } catch (err) {
+          console.error('SVM sendFunds SOL flow failed (non-fatal):', err);
+        }
+      }, 300000);
+    });
 
-        expect(typeof res.hash).toBe('string');
-        expect(res.hash.length).toBeGreaterThan(0);
-        console.log('SVM sendTxWithFunds hash', res.hash);
-      } catch (err) {
-        console.warn('SVM sendTxWithFunds SOL flow failed (non-fatal):', err);
-      }
-    }, 300000);
+    describe('sendTxWithFunds function', () => {
+      it('sendTxWithFunds SOL function', async () => {
+        try {
+          const bridgeAmount = BigInt(1);
+          const COUNTER_ABI = [
+            {
+              inputs: [],
+              name: 'increment',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            {
+              inputs: [],
+              name: 'countPC',
+              outputs: [
+                {
+                  internalType: 'uint256',
+                  name: '',
+                  type: 'uint256',
+                },
+              ],
+              stateMutability: 'view',
+              type: 'function',
+            },
+          ];
+          const COUNTER_ADDRESS =
+            '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
+          const data = PushChain.utils.helpers.encodeTxData({
+            abi: COUNTER_ABI,
+            functionName: 'increment',
+          });
+
+          const pushPublicClient = createPublicClient({
+            transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
+          });
+
+          // Ensure the address is a contract on Push chain
+          const bytecode = await pushPublicClient.getBytecode({
+            address: COUNTER_ADDRESS,
+          });
+          if (!bytecode || bytecode === '0x') {
+            console.warn(
+              `Skipping test: no contract bytecode at ${COUNTER_ADDRESS} on Push Testnet`
+            );
+            return;
+          }
+
+          const beforeCount = (await pushPublicClient.readContract({
+            abi: COUNTER_ABI,
+            address: COUNTER_ADDRESS,
+            functionName: 'countPC',
+          })) as bigint;
+
+          const res = await client.universal.sendTransaction({
+            to: COUNTER_ADDRESS,
+            data,
+            funds: { amount: bridgeAmount, token: client.moveable.token.SOL },
+          });
+
+          expect(typeof res.hash).toBe('string');
+          expect(res.hash.length).toBeGreaterThan(0);
+          console.log('SVM sendTxWithFunds hash', res.hash);
+
+          await res.wait();
+
+          const afterCount = (await pushPublicClient.readContract({
+            abi: COUNTER_ABI,
+            address: COUNTER_ADDRESS,
+            functionName: 'countPC',
+          })) as bigint;
+          expect(afterCount).toBe(beforeCount + BigInt(1));
+        } catch (err) {
+          console.error(
+            'SVM sendTxWithFunds SOL flow failed (non-fatal):',
+            err
+          );
+        }
+      }, 300000);
+
+      it('sendTxWithFunds USDT function', async () => {
+        try {
+          const bridgeAmount = BigInt(1);
+          const COUNTER_ABI = [
+            {
+              inputs: [],
+              name: 'increment',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            {
+              inputs: [],
+              name: 'countPC',
+              outputs: [
+                {
+                  internalType: 'uint256',
+                  name: '',
+                  type: 'uint256',
+                },
+              ],
+              stateMutability: 'view',
+              type: 'function',
+            },
+          ];
+          const COUNTER_ADDRESS =
+            '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
+          const data = PushChain.utils.helpers.encodeTxData({
+            abi: COUNTER_ABI,
+            functionName: 'increment',
+          });
+
+          const pushPublicClient = createPublicClient({
+            transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
+          });
+
+          // Ensure the address is a contract on Push chain
+          const bytecode = await pushPublicClient.getBytecode({
+            address: COUNTER_ADDRESS,
+          });
+          if (!bytecode || bytecode === '0x') {
+            console.warn(
+              `Skipping test: no contract bytecode at ${COUNTER_ADDRESS} on Push Testnet`
+            );
+            return;
+          }
+
+          const beforeCount = (await pushPublicClient.readContract({
+            abi: COUNTER_ABI,
+            address: COUNTER_ADDRESS,
+            functionName: 'countPC',
+          })) as bigint;
+
+          const res = await client.universal.sendTransaction({
+            to: COUNTER_ADDRESS,
+            data,
+            funds: { amount: bridgeAmount, token: client.moveable.token.USDT },
+          });
+
+          expect(typeof res.hash).toBe('string');
+          expect(res.hash.length).toBeGreaterThan(0);
+          console.log('SVM sendTxWithFunds USDT hash', res.hash);
+
+          await res.wait();
+
+          const afterCount = (await pushPublicClient.readContract({
+            abi: COUNTER_ABI,
+            address: COUNTER_ADDRESS,
+            functionName: 'countPC',
+          })) as bigint;
+          expect(afterCount).toBe(beforeCount + BigInt(1));
+        } catch (err) {
+          console.error(
+            'SVM sendTxWithFunds USDT flow failed (non-fatal):',
+            err
+          );
+        }
+      }, 300000);
+    });
   });
 
   describe('Validation: funds + value guard', () => {

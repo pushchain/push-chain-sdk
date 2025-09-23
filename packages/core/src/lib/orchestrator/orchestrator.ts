@@ -129,9 +129,11 @@ export class Orchestrator {
           }
           const chain = this.universalSigner.account.chain;
           const { vm } = CHAIN_INFO[chain];
-          if (!(chain === CHAIN.ETHEREUM_SEPOLIA)) {
+          if (
+            !(chain === CHAIN.ETHEREUM_SEPOLIA || chain === CHAIN.SOLANA_DEVNET)
+          ) {
             throw new Error(
-              'Funds bridging is only supported on Ethereum Sepolia for now'
+              'Funds bridging is only supported on Ethereum Sepolia and Solana Devnet for now'
             );
           }
 
@@ -249,13 +251,17 @@ export class Orchestrator {
           } else {
             // SVM path (Solana Devnet)
             const svmClient = new SvmClient({ rpcUrls });
-            const programId = new PublicKey(SVM_GATEWAY_IDL.metadata.address);
+            const programId = new PublicKey(SVM_GATEWAY_IDL.address);
             const [configPda] = PublicKey.findProgramAddressSync(
               [stringToBytes('config')],
               programId
             );
             const [vaultPda] = PublicKey.findProgramAddressSync(
               [stringToBytes('vault')],
+              programId
+            );
+            const [whitelistPda] = PublicKey.findProgramAddressSync(
+              [stringToBytes('whitelist')],
               programId
             );
 
@@ -265,52 +271,39 @@ export class Orchestrator {
             // SVM-specific RevertSettings: bytes must be a Buffer
             const revertSvm = {
               fundRecipient: userPk,
-              revertMsg: Buffer.alloc(0),
+              revertMsg: Buffer.from([]),
             } as unknown as never;
             if (execute.funds.token.mechanism === 'native') {
               // Native SOL funds-only
               const recipientPk = userPk; // must be non-default per program checks
-              console.log('recipientPk', recipientPk);
-              console.log('bridgeAmount', bridgeAmount);
-              console.log('userPk', userPk);
-              console.log('configPda', configPda);
-              console.log('vaultPda', vaultPda);
-              console.log('systemProgram', SystemProgram.programId);
-              console.log('programId', programId.toBase58());
-              console.log('SVM_GATEWAY_IDL', SVM_GATEWAY_IDL);
-              console.log('sendFundsNative', 'sendFundsNative');
-              console.log('args', [
-                recipientPk,
-                bridgeAmount,
-                { fundRecipient: userPk, revertMsg: new Uint8Array([]) },
-              ]);
-              console.log('signer', this.universalSigner);
-              console.log('accounts', {
-                config: configPda,
-                vault: vaultPda,
-                user: userPk,
-                systemProgram: SystemProgram.programId,
-              });
+              // Compute a local whitelist PDA to avoid TS scope issues
+              const [whitelistPdaLocal] = PublicKey.findProgramAddressSync(
+                [stringToBytes('whitelist')],
+                programId
+              );
               txSignature = await svmClient.writeContract({
                 abi: SVM_GATEWAY_IDL,
                 address: programId.toBase58(),
-                functionName: 'sendFundsNative',
-                args: [recipientPk, bridgeAmount, revertSvm],
+                functionName: 'sendFunds', // -> unified sendFunds(recipient, bridge_token, bridge_amount, revert_cfg)
+                args: [recipientPk, PublicKey.default, bridgeAmount, revertSvm],
                 signer: this.universalSigner,
                 accounts: {
                   config: configPda,
                   vault: vaultPda,
                   user: userPk,
+                  tokenWhitelist: whitelistPdaLocal,
+                  userTokenAccount: userPk,
+                  gatewayTokenAccount: vaultPda,
+                  bridgeToken: PublicKey.default,
+                  tokenProgram: new PublicKey(
+                    'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
+                  ),
                   systemProgram: SystemProgram.programId,
                 },
               });
             } else if (execute.funds.token.mechanism === 'approve') {
               // SPL token funds-only (requires pre-existing ATAs)
               const mintPk = new PublicKey(execute.funds.token.address);
-              const [whitelistPda] = PublicKey.findProgramAddressSync(
-                [stringToBytes('whitelist')],
-                programId
-              );
               // Associated Token Accounts
               const TOKEN_PROGRAM_ID = new PublicKey(
                 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
@@ -431,7 +424,7 @@ export class Orchestrator {
           // - EVM (Sepolia): ERC-20 approve path + native gas via msg.value
           // - SVM (Solana Devnet): SPL or native SOL with gas_amount
           const { chain, evmClient, gatewayAddress } =
-            this.ensureSepoliaGateway();
+            this.getOriginGatewayContext();
 
           this.executeProgressHook(PROGRESS_HOOK.SEND_TX_01, chain);
 
@@ -494,12 +487,56 @@ export class Orchestrator {
 
           this.executeProgressHook(PROGRESS_HOOK.SEND_TX_02_02, depositUsd);
 
-          // Convert USD(8) -> native wei using the same pricing path as fee locking
+          // If SVM, clamp depositUsd to on-chain Config caps
+          if (CHAIN_INFO[chain].vm === VM.SVM) {
+            const svmClient = new SvmClient({
+              rpcUrls:
+                this.rpcUrls[CHAIN.SOLANA_DEVNET] ||
+                CHAIN_INFO[CHAIN.SOLANA_DEVNET].defaultRPC,
+            });
+            const programId = new PublicKey(SVM_GATEWAY_IDL.address);
+            const [configPda] = PublicKey.findProgramAddressSync(
+              [stringToBytes('config')],
+              programId
+            );
+            try {
+              const cfg: any = await svmClient.readContract({
+                abi: SVM_GATEWAY_IDL,
+                address: SVM_GATEWAY_IDL.address,
+                functionName: 'config',
+                args: [configPda.toBase58()],
+              });
+              const minField =
+                cfg.minCapUniversalTxUsd ?? cfg.min_cap_universal_tx_usd;
+              const maxField =
+                cfg.maxCapUniversalTxUsd ?? cfg.max_cap_universal_tx_usd;
+              const minCapUsd = BigInt(minField.toString());
+              const maxCapUsd = BigInt(maxField.toString());
+              if (depositUsd < minCapUsd) depositUsd = minCapUsd;
+              // Add 20% safety margin to avoid BelowMinCap due to price drift
+              const withMargin = (minCapUsd * BigInt(12)) / BigInt(10);
+              if (depositUsd < withMargin) depositUsd = withMargin;
+              if (depositUsd > maxCapUsd) depositUsd = maxCapUsd;
+            } catch {
+              // best-effort; fallback to previous bounds if read fails
+            }
+          }
+
+          // Convert USD(8) -> native units using pricing path
           const nativeTokenUsdPrice = await new PriceFetch(
             this.rpcUrls
           ).getPrice(chain); // 8 decimals
-          const oneEthWei = PushChain.utils.helpers.parseUnits('1', 18);
-          const nativeAmount = (depositUsd * oneEthWei) / nativeTokenUsdPrice;
+          const nativeDecimals = CHAIN_INFO[chain].vm === VM.SVM ? 9 : 18;
+          const oneNativeUnit = PushChain.utils.helpers.parseUnits(
+            '1',
+            nativeDecimals
+          );
+          // Ceil division to avoid rounding below min USD on-chain
+          let nativeAmount =
+            (depositUsd * oneNativeUnit + (nativeTokenUsdPrice - BigInt(1))) /
+            nativeTokenUsdPrice;
+          // Add 1 unit safety to avoid BelowMinCap from rounding differences
+          nativeAmount = nativeAmount + BigInt(1);
 
           const revertCFG = {
             fundRecipient: this.universalSigner.account
@@ -525,10 +562,12 @@ export class Orchestrator {
                 'Only ERC-20 tokens are supported for funds+payload on EVM; native and permit2 are not supported yet'
               );
             }
+            const evmClientEvm = evmClient as EvmClient;
+            const gatewayAddressEvm = gatewayAddress as `0x${string}`;
             await this.ensureErc20Allowance(
-              evmClient,
+              evmClientEvm,
               tokenAddr,
-              gatewayAddress,
+              gatewayAddressEvm,
               bridgeAmount
             );
           }
@@ -557,9 +596,11 @@ export class Orchestrator {
                 typeof eip712Signature === 'string'
                   ? (eip712Signature as `0x${string}`)
                   : (bytesToHex(eip712Signature) as `0x${string}`);
-              txHash = await evmClient.writeContract({
+              const evmClientEvm = evmClient as EvmClient;
+              const gatewayAddressEvm = gatewayAddress as `0x${string}`;
+              txHash = await evmClientEvm.writeContract({
                 abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
-                address: gatewayAddress,
+                address: gatewayAddressEvm,
                 functionName: 'sendTxWithFunds',
                 args: [
                   tokenAddr,
@@ -578,7 +619,7 @@ export class Orchestrator {
                   this.rpcUrls[CHAIN.SOLANA_DEVNET] ||
                   CHAIN_INFO[CHAIN.SOLANA_DEVNET].defaultRPC,
               });
-              const programId = new PublicKey(SVM_GATEWAY_IDL.metadata.address);
+              const programId = new PublicKey(SVM_GATEWAY_IDL.address);
               const [configPda] = PublicKey.findProgramAddressSync(
                 [stringToBytes('config')],
                 programId
@@ -587,10 +628,7 @@ export class Orchestrator {
                 [stringToBytes('vault')],
                 programId
               );
-              const [whitelistPda] = PublicKey.findProgramAddressSync(
-                [stringToBytes('whitelist')],
-                programId
-              );
+              // whitelistPda already computed above
               const userPk = new PublicKey(
                 this.universalSigner.account.address
               );
@@ -602,10 +640,14 @@ export class Orchestrator {
                 mechanism === 'native' || execute.funds.token.symbol === 'SOL';
               const revertSvm2 = {
                 fundRecipient: userPk,
-                revertMsg: Buffer.alloc(0),
+                revertMsg: Buffer.from([]),
               } as unknown as never;
               if (isNative) {
                 // Native SOL as bridge + gas
+                const [whitelistPdaLocal] = PublicKey.findProgramAddressSync(
+                  [stringToBytes('whitelist')],
+                  programId
+                );
                 txHash = await svmClient.writeContract({
                   abi: SVM_GATEWAY_IDL,
                   address: programId.toBase58(),
@@ -622,9 +664,9 @@ export class Orchestrator {
                   accounts: {
                     config: configPda,
                     vault: vaultPda,
-                    tokenWhitelist: whitelistPda,
-                    userTokenAccount: PublicKey.default, // not used for native
-                    gatewayTokenAccount: PublicKey.default, // not used for native
+                    tokenWhitelist: whitelistPdaLocal,
+                    userTokenAccount: userPk, // for native SOL, can be any valid account
+                    gatewayTokenAccount: vaultPda, // for native SOL, can be any valid account
                     user: userPk,
                     priceUpdate: priceUpdatePk,
                     bridgeToken: PublicKey.default,
@@ -660,6 +702,10 @@ export class Orchestrator {
                   ASSOCIATED_TOKEN_PROGRAM_ID
                 )[0];
 
+                const [whitelistPdaLocal] = PublicKey.findProgramAddressSync(
+                  [stringToBytes('whitelist')],
+                  programId
+                );
                 txHash = await svmClient.writeContract({
                   abi: SVM_GATEWAY_IDL,
                   address: programId.toBase58(),
@@ -676,7 +722,7 @@ export class Orchestrator {
                   accounts: {
                     config: configPda,
                     vault: vaultPda,
-                    tokenWhitelist: whitelistPda,
+                    tokenWhitelist: whitelistPdaLocal,
                     userTokenAccount: userAta,
                     gatewayTokenAccount: vaultAta,
                     user: userPk,
@@ -707,8 +753,9 @@ export class Orchestrator {
 
           // Awaiting confirmations
           if (CHAIN_INFO[this.universalSigner.account.chain].vm === VM.EVM) {
+            const evmClientEvm = evmClient as EvmClient;
             await this.waitForEvmConfirmationsWithCountdown(
-              evmClient,
+              evmClientEvm,
               txHash as `0x${string}`,
               14,
               300000
@@ -727,22 +774,29 @@ export class Orchestrator {
           }
 
           // Funds Flow: Confirmed on origin
-          await this.sendUniversalTx(deployed, txHash);
+          if (CHAIN_INFO[this.universalSigner.account.chain].vm === VM.EVM) {
+            await this.sendUniversalTx(deployed, txHash);
+          } else {
+            // skip
+          }
 
           this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_06);
 
           // After sending Cosmos tx to Push Chain, query UniversalTx status (Sepolia only)
           if (CHAIN_INFO[this.universalSigner.account.chain].vm === VM.EVM) {
+            const evmClientEvm = evmClient as EvmClient;
+            const gatewayAddressEvm = gatewayAddress as `0x${string}`;
             await this.queryUniversalTxStatusFromEvmGatewayTx(
-              evmClient,
-              gatewayAddress,
+              evmClientEvm,
+              gatewayAddressEvm,
               txHash as `0x${string}`,
               'sendTxWithFunds'
             );
           }
 
           if (CHAIN_INFO[this.universalSigner.account.chain].vm === VM.EVM) {
-            const evmTx = await evmClient.getTransaction(
+            const evmClientEvm = evmClient as EvmClient;
+            const evmTx = await evmClientEvm.getTransaction(
               txHash as `0x${string}`
             );
             this.executeProgressHook(
@@ -858,7 +912,7 @@ export class Orchestrator {
       if (feeLockTxHash && !feeLockTxHash.startsWith('0x')) {
         // decode svm base58
         const decoded = utils.bytes.bs58.decode(feeLockTxHash);
-        feeLockTxHash = bytesToHex(Uint8Array.from(decoded));
+        feeLockTxHash = bytesToHex(new Uint8Array(decoded));
       }
       // Fee locking is required if UEA is not deployed OR insufficient funds
       const feeLockingRequired =
@@ -1104,7 +1158,7 @@ export class Orchestrator {
             systemProgram: SystemProgram.programId,
           },
         });
-        return utils.bytes.bs58.decode(txHash);
+        return new Uint8Array(utils.bytes.bs58.decode(txHash));
       }
 
       default:
@@ -1183,7 +1237,7 @@ export class Orchestrator {
         vm === VM.EVM
           ? address
           : vm === VM.SVM
-          ? bytesToHex(utils.bytes.bs58.decode(address))
+          ? bytesToHex(new Uint8Array(utils.bytes.bs58.decode(address)))
           : address,
     };
 
@@ -1417,7 +1471,7 @@ export class Orchestrator {
             vm === VM.EVM
               ? address
               : vm === VM.SVM
-              ? bytesToHex(utils.bytes.bs58.decode(address))
+              ? bytesToHex(new Uint8Array(utils.bytes.bs58.decode(address)))
               : address,
         },
       ],
@@ -1443,7 +1497,7 @@ export class Orchestrator {
     if (CHAIN_INFO[chain].vm === VM.EVM) {
       ownerKey = address as `0x${string}`;
     } else if (CHAIN_INFO[chain].vm === VM.SVM) {
-      ownerKey = bytesToHex(utils.bytes.bs58.decode(address));
+      ownerKey = bytesToHex(new Uint8Array(utils.bytes.bs58.decode(address)));
     } else {
       throw new Error(`Unsupported VM type: ${CHAIN_INFO[chain].vm}`);
     }
@@ -1627,27 +1681,32 @@ export class Orchestrator {
   /**
    * Ensures we're on Sepolia, returns EVM client and gateway address.
    */
-  private ensureSepoliaGateway(): {
+  private getOriginGatewayContext(): {
     chain: CHAIN;
-    evmClient: EvmClient;
-    gatewayAddress: `0x${string}`;
+    evmClient?: EvmClient;
+    gatewayAddress?: `0x${string}`;
   } {
     const chain = this.universalSigner.account.chain;
-    if (chain !== CHAIN.ETHEREUM_SEPOLIA) {
+    if (chain !== CHAIN.ETHEREUM_SEPOLIA && chain !== CHAIN.SOLANA_DEVNET) {
       throw new Error(
-        'Funds + payload bridging is only supported on Ethereum Sepolia for now'
+        'Funds + payload bridging is only supported on Ethereum Sepolia and Solana Devnet for now'
       );
     }
 
-    const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
-    const rpcUrls: string[] = this.rpcUrls[chain] || defaultRPC;
-    const evmClient = new EvmClient({ rpcUrls });
-    const gatewayAddress = lockerContract as `0x${string}`;
-    if (!gatewayAddress) {
-      throw new Error('Universal Gateway address not configured');
+    // For EVM (Sepolia), return client and gateway address. For SVM (Solana Devnet), only chain is needed here.
+    if (CHAIN_INFO[chain].vm === VM.EVM) {
+      const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
+      const rpcUrls: string[] = this.rpcUrls[chain] || defaultRPC;
+      const evmClient = new EvmClient({ rpcUrls });
+      const gatewayAddress = lockerContract as `0x${string}`;
+      if (!gatewayAddress) {
+        throw new Error('Universal Gateway address not configured');
+      }
+      return { chain, evmClient, gatewayAddress };
     }
 
-    return { chain, evmClient, gatewayAddress };
+    // SVM path (Solana Devnet) does not require evmClient/gatewayAddress
+    return { chain };
   }
 
   /**
