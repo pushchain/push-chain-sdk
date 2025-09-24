@@ -42,6 +42,33 @@ const PushWalletConfigDefault: ProviderConfigProps = {
   },
 };
 
+const GlobalStyle = createGlobalStyle<{ uid: string }>`
+  [data-pw-wrapper='${(props) => props.uid}']{
+    #w3m-modal {
+      z-index: 9999 !important;
+      position: fixed !important;
+    }
+
+    ${(props) => {
+      const { themeMode, themeOverrides } = props.theme as CustomTheme;
+      const isLightMode = themeMode === PushUI.CONSTANTS.THEME.LIGHT;
+      const { dark, light, ...globalOverrides } = themeOverrides;
+      const newOverrides = {
+        ...{
+          ...themeDefault,
+          ...buttonThemeDefault,
+          ...(isLightMode ? lightThemeDefault : darkThemeDefault),
+        },
+        ...mapCoreToInt(globalOverrides),
+        ...mapCoreToInt((isLightMode ? light : dark) ?? {}),
+      };
+      return Object.entries(newOverrides)
+        .map(([key, value]) => `${key}: ${value};`)
+        .join('\n');
+    }}
+  }
+`;
+
 export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
   config,
   app,
@@ -49,32 +76,6 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
   themeOverrides = {},
   children,
 }) => {
-  const GlobalStyle = createGlobalStyle<{ uid: string }>`
-    [data-pw-wrapper='${(props) => props.uid}']{
-      #w3m-modal {
-        z-index: 9999 !important;
-        position: fixed !important;
-      }
-
-      ${(props) => {
-        const { themeMode, themeOverrides } = props.theme as CustomTheme;
-        const isLightMode = themeMode === PushUI.CONSTANTS.THEME.LIGHT;
-        const { dark, light, ...globalOverrides } = themeOverrides;
-        const newOverrides = {
-          ...{
-            ...themeDefault,
-            ...buttonThemeDefault,
-            ...(isLightMode ? lightThemeDefault : darkThemeDefault),
-          },
-          ...mapCoreToInt(globalOverrides),
-          ...mapCoreToInt((isLightMode ? light : dark) ?? {}),
-        };
-        return Object.entries(newOverrides)
-          .map(([key, value]) => `${key}: ${value};`)
-          .join('\n');
-      }}
-    }
-  `;
 
   const mergedConfig: ProviderConfigProps = {
     ...PushWalletConfigDefault,
