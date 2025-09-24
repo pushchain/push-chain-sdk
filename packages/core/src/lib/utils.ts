@@ -89,14 +89,14 @@ export class Utils {
      * @returns {{ chains: CHAIN[] }} Object containing supported chains.
      *
      * @example
-     * Utils.chains.getSupportedChain(PushChain.CONSTANTS.PUSH_NETWORK.TESTNET)
+     * Utils.chains.getSupportedChains(PushChain.CONSTANTS.PUSH_NETWORK.TESTNET)
      * // => { chains: [CHAIN.ETHEREUM_SEPOLIA, CHAIN.SOLANA_DEVNET] }
      *
      * @example
-     * Utils.chains.getSupportedChain(PushChain.CONSTANTS.PUSH_NETWORK.MAINNET)
+     * Utils.chains.getSupportedChains(PushChain.CONSTANTS.PUSH_NETWORK.MAINNET)
      * // => { chains: [] }
      */
-    getSupportedChain: (
+    getSupportedChains: (
       network: PUSH_NETWORK
     ): {
       chains: CHAIN[];

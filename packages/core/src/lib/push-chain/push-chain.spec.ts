@@ -1932,7 +1932,7 @@ describe('PushChain', () => {
 
     describe('getSupportedChain', () => {
       it('should return supported chains for TESTNET', () => {
-        const res = PushChain.utils.chains.getSupportedChain(
+        const res = PushChain.utils.chains.getSupportedChains(
           PushChain.CONSTANTS.PUSH_NETWORK.TESTNET
         );
         expect(res).toEqual({
@@ -1941,7 +1941,7 @@ describe('PushChain', () => {
       });
 
       it('should return supported chains for TESTNET_DONUT', () => {
-        const res = PushChain.utils.chains.getSupportedChain(
+        const res = PushChain.utils.chains.getSupportedChains(
           PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT
         );
         expect(res).toEqual({
@@ -1950,7 +1950,7 @@ describe('PushChain', () => {
       });
 
       it('should return supported chains for LOCALNET', () => {
-        const res = PushChain.utils.chains.getSupportedChain(
+        const res = PushChain.utils.chains.getSupportedChains(
           PushChain.CONSTANTS.PUSH_NETWORK.LOCALNET
         );
         expect(res).toEqual({
@@ -1959,7 +1959,7 @@ describe('PushChain', () => {
       });
 
       it('should return empty list for MAINNET', () => {
-        const res = PushChain.utils.chains.getSupportedChain(
+        const res = PushChain.utils.chains.getSupportedChains(
           PushChain.CONSTANTS.PUSH_NETWORK.MAINNET
         );
         expect(res).toEqual({ chains: [] });
