@@ -671,7 +671,7 @@ describe('PushChain', () => {
           expect(typeof txUrl).toBe('string');
           expect(txUrl).toContain('0x123');
 
-          const urls = readOnlyPushClientEVM.explorer.listUrls();
+          const { urls } = readOnlyPushClientEVM.explorer.listUrls();
           expect(Array.isArray(urls)).toBe(true);
         });
 
@@ -926,7 +926,7 @@ describe('PushChain', () => {
 
         expect(newClient).not.toBe(pushClientEVM);
 
-        const urls = newClient.explorer.listUrls();
+        const { urls } = newClient.explorer.listUrls();
         expect(urls).toEqual([
           'https://custom-explorer1.push.network',
           'https://custom-explorer2.push.network',
@@ -1004,7 +1004,7 @@ describe('PushChain', () => {
         network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
       });
 
-      const urls = pushChainClient.explorer.listUrls();
+      const { urls } = pushChainClient.explorer.listUrls();
       expect(Array.isArray(urls)).toBe(true);
       expect(urls).toContain('https://donut.push.network');
       expect(urls.length).toBeGreaterThan(0);
@@ -1038,7 +1038,7 @@ describe('PushChain', () => {
         blockExplorers: customBlockExplorers,
       });
 
-      const urls = pushChainClient.explorer.listUrls();
+      const { urls } = pushChainClient.explorer.listUrls();
       expect(Array.isArray(urls)).toBe(true);
       expect(urls).toEqual([
         'https://custom-explorer1.push.network',
@@ -1074,7 +1074,7 @@ describe('PushChain', () => {
         blockExplorers: multiChainBlockExplorers,
       });
 
-      const urls = pushChainClient.explorer.listUrls();
+      const { urls } = pushChainClient.explorer.listUrls();
       expect(Array.isArray(urls)).toBe(true);
       expect(urls).toEqual(['https://donut-explorer.push.network']);
       expect(urls.length).toBe(1);
@@ -2532,6 +2532,21 @@ describe('PushChain', () => {
     describe('formatUnits', () => {
       describe('EVM-style usage (number decimals)', () => {
         it('should format bigint values correctly', () => {
+          const readable1 = PushChain.utils.helpers.formatUnits(
+            BigInt('1500000000000000000'),
+            18
+          );
+          console.log(readable1);
+          const readable2 = PushChain.utils.helpers.formatUnits('1500000', {
+            decimals: 6,
+          });
+          console.log(readable2);
+          const readable3 = PushChain.utils.helpers.formatUnits('1234567', {
+            decimals: 6,
+            precision: 2,
+          });
+          console.log(readable3);
+
           // ETH (18 decimals)
           const result1 = PushChain.utils.helpers.formatUnits(
             BigInt('1500000000000000000'),

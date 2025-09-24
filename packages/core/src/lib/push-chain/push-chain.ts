@@ -84,7 +84,7 @@ export class PushChain {
 
   explorer: {
     getTransactionUrl: (txHash: string) => string;
-    listUrls: () => string[];
+    listUrls: () => { urls: string[] };
   };
 
   /**
@@ -154,7 +154,7 @@ export class PushChain {
         return `https://donut.push.network/tx/${txHash}`;
       },
       listUrls: () => {
-        return blockExplorers[CHAIN.PUSH_TESTNET_DONUT] ?? [];
+        return { urls: blockExplorers[CHAIN.PUSH_TESTNET_DONUT] ?? [] };
       },
     };
 
