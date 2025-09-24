@@ -1930,6 +1930,42 @@ describe('PushChain', () => {
       });
     });
 
+    describe('getSupportedChain', () => {
+      it('should return supported chains for TESTNET', () => {
+        const res = PushChain.utils.chains.getSupportedChain(
+          PushChain.CONSTANTS.PUSH_NETWORK.TESTNET
+        );
+        expect(res).toEqual({
+          chains: [CHAIN.ETHEREUM_SEPOLIA, CHAIN.SOLANA_DEVNET],
+        });
+      });
+
+      it('should return supported chains for TESTNET_DONUT', () => {
+        const res = PushChain.utils.chains.getSupportedChain(
+          PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT
+        );
+        expect(res).toEqual({
+          chains: [CHAIN.ETHEREUM_SEPOLIA, CHAIN.SOLANA_DEVNET],
+        });
+      });
+
+      it('should return supported chains for LOCALNET', () => {
+        const res = PushChain.utils.chains.getSupportedChain(
+          PushChain.CONSTANTS.PUSH_NETWORK.LOCALNET
+        );
+        expect(res).toEqual({
+          chains: [CHAIN.ETHEREUM_SEPOLIA, CHAIN.SOLANA_DEVNET],
+        });
+      });
+
+      it('should return empty list for MAINNET', () => {
+        const res = PushChain.utils.chains.getSupportedChain(
+          PushChain.CONSTANTS.PUSH_NETWORK.MAINNET
+        );
+        expect(res).toEqual({ chains: [] });
+      });
+    });
+
     describe('encodeTxData', () => {
       const testAbi = [
         {

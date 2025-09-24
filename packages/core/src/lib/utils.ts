@@ -10,7 +10,7 @@ import {
   toUniversal as toUniversalSigner,
   toUniversalFromKeypair,
 } from './universal/signer';
-import { CHAIN } from './constants/enums';
+import { CHAIN, PUSH_NETWORK } from './constants/enums';
 import { MOVEABLE_TOKENS, PAYABLE_TOKENS } from './constants/tokens';
 import { UniversalAccount } from './universal/universal.types';
 import type { PushChain } from './push-chain/push-chain';
@@ -81,6 +81,40 @@ export class Utils {
   };
 
   static chains = {
+    /**
+     * Returns the list of supported chains for a given Push network.
+     * Future-proofed to return an object with a `chains` array.
+     *
+     * @param {PUSH_NETWORK} network - The Push network environment.
+     * @returns {{ chains: CHAIN[] }} Object containing supported chains.
+     *
+     * @example
+     * Utils.chains.getSupportedChain(PushChain.CONSTANTS.PUSH_NETWORK.TESTNET)
+     * // => { chains: [CHAIN.ETHEREUM_SEPOLIA, CHAIN.SOLANA_DEVNET] }
+     *
+     * @example
+     * Utils.chains.getSupportedChain(PushChain.CONSTANTS.PUSH_NETWORK.MAINNET)
+     * // => { chains: [] }
+     */
+    getSupportedChain: (
+      network: PUSH_NETWORK
+    ): {
+      chains: CHAIN[];
+    } => {
+      // Current support: expose test/dev chains; mainnet returns empty until GA
+      const mapping: Record<PUSH_NETWORK, CHAIN[]> = {
+        [PUSH_NETWORK.MAINNET]: [],
+        [PUSH_NETWORK.TESTNET]: [CHAIN.ETHEREUM_SEPOLIA, CHAIN.SOLANA_DEVNET],
+        [PUSH_NETWORK.TESTNET_DONUT]: [
+          CHAIN.ETHEREUM_SEPOLIA,
+          CHAIN.SOLANA_DEVNET,
+        ],
+        [PUSH_NETWORK.LOCALNET]: [CHAIN.ETHEREUM_SEPOLIA, CHAIN.SOLANA_DEVNET],
+      };
+
+      return { chains: mapping[network] ?? [] };
+    },
+
     getChainName: (chainNamespace: string): string | undefined => {
       // Special case: prefer PUSH_TESTNET_DONUT over PUSH_TESTNET for 'eip155:42101'
       if (chainNamespace === 'eip155:42101') {
