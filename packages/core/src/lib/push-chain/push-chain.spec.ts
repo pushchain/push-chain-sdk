@@ -231,13 +231,13 @@ describe('PushChain', () => {
 
         await expect(
           pushClientEVM.universal.sendTransaction({
-            // Force wrong type to trigger runtime validation
-            to: 'invalid-address' as unknown as `0x${string}`,
+            // Provide a valid address that is NOT the UEA, to trigger UEA mismatch
+            to: COUNTER_ADDRESS,
             value: BigInt(0),
             data: calls,
           })
         ).rejects.toThrow(
-          'When using multicall, "to" must be a 0x-prefixed address'
+          'Multicall requires `to` to be the executor account (UEA) of the sender.'
         );
       });
 
@@ -264,7 +264,7 @@ describe('PushChain', () => {
         })) as unknown as bigint;
 
         const tx = await pushClientEVM.universal.sendTransaction({
-          to: '0x',
+          to: pushClientEVM.universal.account,
           value: BigInt(0),
           data: calls,
         });
@@ -303,12 +303,12 @@ describe('PushChain', () => {
 
         await expect(
           pushChainSVM.universal.sendTransaction({
-            to: 'invalid-address' as unknown as `0x${string}`,
+            to: COUNTER_ADDRESS,
             value: BigInt(0),
             data: calls,
           })
         ).rejects.toThrow(
-          'When using multicall, "to" must be a 0x-prefixed address'
+          'Multicall requires `to` to be the executor account (UEA) of the sender.'
         );
       });
 
@@ -335,7 +335,7 @@ describe('PushChain', () => {
         })) as unknown as bigint;
 
         const tx = await pushChainSVM.universal.sendTransaction({
-          to: '0x',
+          to: pushChainSVM.universal.account,
           value: BigInt(0),
           data: calls,
         });

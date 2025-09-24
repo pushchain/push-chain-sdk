@@ -949,11 +949,13 @@ export class Orchestrator {
           );
         }
 
-        // For multicall payloads, ExecuteParams.to must be the sentinel '0x'
-        // Note: This is distinct from each call's `to` inside MulticallCall[]
-        if (execute.to !== '0x') {
+        // For multicall, `to` must be the executor account (UEA) of the sender
+        // i.e., PushChain.universal.account
+        const expectedUea = this.computeUEAOffchain();
+        const toAddr = getAddress(execute.to as `0x${string}`);
+        if (toAddr !== getAddress(expectedUea)) {
           throw new Error(
-            'When using multicall, "to" must be a 0x-prefixed address'
+            'Multicall requires `to` to be the executor account (UEA) of the sender.'
           );
         }
 
@@ -991,10 +993,8 @@ export class Orchestrator {
         payloadData = (execute.data || '0x') as `0x${string}`;
       }
 
-      // Determine payload `to` value. For multicall sentinel '0x', encode as zero address.
-      const payloadTo: `0x${string}` = Array.isArray(execute.data)
-        ? ('0x0000000000000000000000000000000000000000' as `0x${string}`)
-        : (execute.to as `0x${string}`);
+      // Determine payload `to` value. For multicall, `to` must be UEA, pass-through as-is.
+      const payloadTo: `0x${string}` = execute.to as `0x${string}`;
 
       const universalPayload = JSON.parse(
         JSON.stringify(
