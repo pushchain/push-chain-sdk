@@ -158,10 +158,7 @@ export class Utils {
     },
   };
 
-  /**
-   * Deprecated aliases and shims
-   */
-  static helper = {
+  static helpers = {
     /**
      * @deprecated Use PushChain.utils.chains.getChainNamespace(chainName) instead.
      * Alias maintained for backwards compatibility. Logs a deprecation warning
@@ -176,9 +173,6 @@ export class Utils {
       );
       return Utils.chains.getChainNamespace(chainName);
     },
-  };
-
-  static helpers = {
     encodeTxData({
       abi,
       functionName,
