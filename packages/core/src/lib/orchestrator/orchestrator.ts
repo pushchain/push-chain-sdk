@@ -34,7 +34,7 @@ import {
 } from '../constants/abi';
 import { PushClient } from '../push-client/push-client';
 import { SvmClient } from '../vm-client/svm-client';
-import { PublicKey, SystemProgram } from '@solana/web3.js';
+import { PublicKey, SystemProgram, Connection } from '@solana/web3.js';
 import * as anchor from '@coral-xyz/anchor';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 import {
@@ -236,11 +236,11 @@ export class Orchestrator {
             await this.waitForEvmConfirmationsWithCountdown(
               evmClient,
               txHash,
-              14,
+              4,
               210000
             );
             // After origin confirmations, query Push Chain for UniversalTx status
-            await this.queryUniversalTxStatusFromEvmGatewayTx(
+            await this.queryUniversalTxStatusFromGatewayTx(
               evmClient,
               gatewayAddress,
               txHash,
@@ -372,9 +372,16 @@ export class Orchestrator {
 
             await svmClient.waitForConfirmations({
               txSignature,
-              confirmations: CHAIN_INFO[chain].confirmations,
+              confirmations: 12,
               timeoutMs: CHAIN_INFO[chain].timeout,
             });
+            // After origin confirmations, query Push Chain for UniversalTx status (SVM)
+            await this.queryUniversalTxStatusFromGatewayTx(
+              undefined,
+              undefined,
+              txSignature,
+              'sendFunds'
+            );
             this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_06);
 
             // Build a minimal UniversalTxResponse for SVM origin
@@ -773,7 +780,7 @@ export class Orchestrator {
             await this.waitForEvmConfirmationsWithCountdown(
               evmClientEvm,
               txHash as `0x${string}`,
-              14,
+              4,
               300000
             );
           } else {
@@ -784,7 +791,7 @@ export class Orchestrator {
             });
             await svmClient.waitForConfirmations({
               txSignature: txHash as string,
-              confirmations: CHAIN_INFO[CHAIN.SOLANA_DEVNET].confirmations,
+              confirmations: 12,
               timeoutMs: CHAIN_INFO[CHAIN.SOLANA_DEVNET].timeout,
             });
           }
@@ -802,14 +809,21 @@ export class Orchestrator {
 
           this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_06);
 
-          // After sending Cosmos tx to Push Chain, query UniversalTx status (Sepolia only)
+          // After sending Cosmos tx to Push Chain, query UniversalTx status
           if (CHAIN_INFO[this.universalSigner.account.chain].vm === VM.EVM) {
             const evmClientEvm = evmClient as EvmClient;
             const gatewayAddressEvm = gatewayAddress as `0x${string}`;
-            await this.queryUniversalTxStatusFromEvmGatewayTx(
+            await this.queryUniversalTxStatusFromGatewayTx(
               evmClientEvm,
               gatewayAddressEvm,
               txHash as `0x${string}`,
+              'sendTxWithFunds'
+            );
+          } else {
+            await this.queryUniversalTxStatusFromGatewayTx(
+              undefined,
+              undefined,
+              txHash as string,
               'sendTxWithFunds'
             );
           }
@@ -2054,36 +2068,100 @@ export class Orchestrator {
     this.progressHook(hookPayload);
   }
 
-  // Query Push Chain for UniversalTx status given an EVM gateway tx
-  private async queryUniversalTxStatusFromEvmGatewayTx(
-    evmClient: EvmClient,
-    gatewayAddress: `0x${string}`,
-    txHash: `0x${string}`,
+  // Derive the SVM gateway log index from a Solana transaction's log messages
+  private getSvmGatewayLogIndexFromTx(txResp: any): number {
+    const logs: string[] = (txResp?.meta?.logMessages || []) as string[];
+    if (!Array.isArray(logs) || logs.length === 0) return 0;
+
+    const prefix = 'Program data: ';
+    for (let i = 0; i < logs.length; i++) {
+      const log = logs[i] || '';
+      if (!log.startsWith(prefix)) continue;
+
+      const base64Data = log.slice(prefix.length).trim();
+      let decoded: Uint8Array | null = null;
+      try {
+        decoded = new Uint8Array(Buffer.from(base64Data, 'base64'));
+      } catch {
+        continue;
+      }
+
+      if (!decoded || decoded.length < 8) continue;
+      const discriminatorHex = bytesToHex(decoded.slice(0, 8)).slice(2);
+
+      // add_funds discriminator (skip if this is not the target event)
+      // If this is the target you want, flip the condition accordingly
+      if (discriminatorHex === '7f1f6cffbb134644') {
+        return i;
+      }
+    }
+
+    // Fallback to first log
+    return 0;
+  }
+
+  // Query Push Chain for UniversalTx status given an origin gateway tx (EVM or SVM)
+  private async queryUniversalTxStatusFromGatewayTx(
+    evmClient: EvmClient | undefined,
+    gatewayAddress: `0x${string}` | undefined,
+    txHash: string,
     fromBranch: 'sendFunds' | 'sendTxWithFunds'
   ): Promise<any | undefined> {
     try {
-      const receipt = await evmClient.publicClient.getTransactionReceipt({
-        hash: txHash,
-      });
-      const gatewayLogs = (receipt.logs || []).filter(
-        (l: any) =>
-          (l.address || '').toLowerCase() === gatewayAddress.toLowerCase()
-      );
-      const logIndexToUse = fromBranch === 'sendTxWithFunds' ? 1 : 0;
-      const firstLog = (gatewayLogs[logIndexToUse] ||
-        receipt.logs?.[logIndexToUse]) as any;
-      const logIndexVal = firstLog?.logIndex ?? 0;
-      const logIndexStr =
-        typeof logIndexVal === 'bigint'
-          ? logIndexVal.toString()
-          : String(logIndexVal);
-
       const chain = this.universalSigner.account.chain;
       const { vm } = CHAIN_INFO[chain];
+
+      let logIndexStr = '0';
+      let txHashHex: `0x${string}` | string = txHash;
+
+      if (vm === VM.EVM) {
+        if (!evmClient || !gatewayAddress)
+          throw new Error('Missing EVM context');
+        const receipt = await evmClient.publicClient.getTransactionReceipt({
+          hash: txHash as `0x${string}`,
+        });
+        const gatewayLogs = (receipt.logs || []).filter(
+          (l: any) =>
+            (l.address || '').toLowerCase() === gatewayAddress.toLowerCase()
+        );
+        const logIndexToUse = fromBranch === 'sendTxWithFunds' ? 1 : 0;
+        const firstLog = (gatewayLogs[logIndexToUse] ||
+          receipt.logs?.[logIndexToUse]) as any;
+        const logIndexVal = firstLog?.logIndex ?? 0;
+        logIndexStr =
+          typeof logIndexVal === 'bigint'
+            ? logIndexVal.toString()
+            : String(logIndexVal);
+      } else if (vm === VM.SVM) {
+        // Normalize Solana signature to 0x-hex for ID composition
+        let txSignature = txHash;
+        if (!txHash.startsWith('0x')) {
+          const decoded = utils.bytes.bs58.decode(txHash);
+          txHashHex = bytesToHex(new Uint8Array(decoded));
+        } else {
+          // When provided as hex, convert to base58 for RPC
+          const hex = txHash.slice(2);
+          const bytes = Uint8Array.from(Buffer.from(hex, 'hex'));
+          txSignature = utils.bytes.bs58.encode(bytes);
+        }
+
+        // Fetch transaction by initializing a Connection and calling Solana RPC
+        const rpcUrls: string[] =
+          this.rpcUrls[chain] || CHAIN_INFO[chain].defaultRPC;
+        const connection = new Connection(rpcUrls[0], 'confirmed');
+        const txResp = await connection.getTransaction(txSignature, {
+          maxSupportedTransactionVersion: 0,
+          commitment: 'confirmed',
+        } as any);
+        // Derive proper log index using discriminator matching
+        const svmLogIndex = this.getSvmGatewayLogIndexFromTx(txResp);
+        logIndexStr = String(svmLogIndex);
+      }
+
       const sourceChain = `${VM_NAMESPACE[vm]}:${CHAIN_INFO[chain].chainId}`;
 
       // ID = sha256("${sourceChain}:${txHash}:${logIndex}") as hex string (no 0x)
-      const idInput = `${sourceChain}:${txHash}:${logIndexStr}`;
+      const idInput = `${sourceChain}:${txHashHex}:${logIndexStr}`;
       const idHex = sha256(stringToBytes(idInput)).slice(2);
 
       // Fetch UniversalTx via gRPC with a brief retry window
@@ -2106,19 +2184,19 @@ export class Orchestrator {
         PROGRESS_HOOK.SEND_TX_06_06,
         universalTxObj?.universalStatus || universalTxObj?.universal_status
       );
-      this.printLog(
-        `UniversalTx fetched via gRPC: ${JSON.stringify(
-          {
-            gatewayTx: txHash,
-            id: idHex,
-            status:
-              universalTxObj?.universalStatus ||
-              universalTxObj?.universal_status,
-          },
-          this.bigintReplacer,
-          2
-        )}`
-      );
+      // this.printLog(
+      //   `UniversalTx fetched via gRPC: ${JSON.stringify(
+      //     {
+      //       gatewayTx: txHashHex,
+      //       id: idHex,
+      //       status:
+      //         universalTxObj?.universalStatus ||
+      //         universalTxObj?.universal_status,
+      //     },
+      //     this.bigintReplacer,
+      //     2
+      //   )}`
+      // );
       return universalTxObj;
     } catch {
       // Best-effort; do not fail flow if PC query is unavailable

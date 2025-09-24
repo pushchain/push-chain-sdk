@@ -1336,7 +1336,7 @@ describe('PushChain', () => {
             funds: { amount: bridgeAmount, token: client.moveable.token.ETH },
           })
         ).rejects.toThrow(
-          'Only ERC-20 tokens are supported for funds+payload; native and permit2 are not supported yet'
+          'Only ERC-20 tokens are supported for funds+payload on EVM; native and permit2 are not supported yet'
         );
       } catch (err) {
         console.warn(
