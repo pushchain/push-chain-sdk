@@ -1,3 +1,10 @@
+@pushchain/ui-kit@2.0.5 (2025-09-24)
+
+- fix: update the variables affecting the DOM
+- chore: update yarn lock
+
+---
+
 @pushchain/ui-kit@2.0.2 (2025-09-19)
 
 - feat: update core sdk to 2.0.2
