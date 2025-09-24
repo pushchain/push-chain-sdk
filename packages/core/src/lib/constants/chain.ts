@@ -97,7 +97,7 @@ export const CHAIN_INFO: Record<
     lockerContract: '',
     defaultRPC: ['https://api.testnet.solana.com'],
     confirmations: 6,
-    timeout: 15000,
+    timeout: 55000,
   },
   [CHAIN.SOLANA_DEVNET]: {
     chainId: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
@@ -105,7 +105,7 @@ export const CHAIN_INFO: Record<
     lockerContract: 'CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS',
     defaultRPC: ['https://api.devnet.solana.com'],
     confirmations: 1,
-    timeout: 5000,
+    timeout: 35000,
   },
 };
 

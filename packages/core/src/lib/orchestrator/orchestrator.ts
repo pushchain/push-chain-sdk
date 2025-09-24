@@ -372,8 +372,8 @@ export class Orchestrator {
 
             await svmClient.waitForConfirmations({
               txSignature,
-              confirmations: 12,
-              timeoutMs: CHAIN_INFO[chain].timeout,
+              confirmations: 25,
+              timeoutMs: 300000,
             });
             // After origin confirmations, query Push Chain for UniversalTx status (SVM)
             await this.queryUniversalTxStatusFromGatewayTx(
@@ -791,8 +791,8 @@ export class Orchestrator {
             });
             await svmClient.waitForConfirmations({
               txSignature: txHash as string,
-              confirmations: 12,
-              timeoutMs: CHAIN_INFO[CHAIN.SOLANA_DEVNET].timeout,
+              confirmations: 25,
+              timeoutMs: 300000,
             });
           }
 
@@ -2089,11 +2089,9 @@ export class Orchestrator {
       if (!decoded || decoded.length < 8) continue;
       const discriminatorHex = bytesToHex(decoded.slice(0, 8)).slice(2);
 
-      // add_funds discriminator (skip if this is not the target event)
-      // If this is the target you want, flip the condition accordingly
-      if (discriminatorHex === '7f1f6cffbb134644') {
-        return i;
-      }
+      // Skip add_funds discriminator; return the first other Program data event
+      if (discriminatorHex === '7f1f6cffbb134644') continue;
+      return i;
     }
 
     // Fallback to first log
@@ -2175,7 +2173,7 @@ export class Orchestrator {
           if (universalTxObj) break;
         } catch (error) {
           // ignore and retry
-          console.log(error);
+          // console.log(error);
         }
         await new Promise((r) => setTimeout(r, 1500));
       }
