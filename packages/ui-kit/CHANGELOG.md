@@ -1,3 +1,9 @@
+@pushchain/ui-kit@2.0.6 (2025-09-24)
+
+- chore: update core sdk to v2.0.8
+
+---
+
 @pushchain/ui-kit@2.0.5 (2025-09-24)
 
 - fix: update the variables affecting the DOM
