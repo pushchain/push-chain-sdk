@@ -103,17 +103,14 @@ const LoginModal: FC<LoginModalProps> = ({
         )}
       {isWalletVisible ? (
         <FrameContainer
-          isWalletMinimised={isWalletMinimised}
-          universalAccount={universalAccount}
-          themeMode={themeMode ? themeMode : PushUI.CONSTANTS.THEME.DARK}
-          accountMenuVariant={modal?.connectedLayout}
-          modalDefaults={modal}
+          iswalletminimised={isWalletMinimised}
+          universalaccount={universalAccount}
+          accountmenuvariant={modal?.connectedLayout}
+          modaldefaults={modal}
           style={{ top, left }}
         >
           {isIframeLoading && (
-            <FrameLoadingContainer
-              themeMode={themeMode ? themeMode : PushUI.CONSTANTS.THEME.DARK}
-            >
+            <FrameLoadingContainer>
               <CloseButtonContainer
                 onClick={() => {
                   handleUserLogOutEvent();
@@ -135,10 +132,10 @@ const LoginModal: FC<LoginModalProps> = ({
           )}
 
           <FrameSubContainer
-            isWalletMinimised={isWalletMinimised}
-            isIframeLoading={isIframeLoading}
+            iswalletminimised={isWalletMinimised}
+            isiframeloading={isIframeLoading}
           >
-            {/* <AccountContainer universalAccount={universalAccount}>
+            {/* <AccountContainer universalaccount={universalaccount}>
               {universalAccount ? (
                 <DashButtonContainer onClick={() => setMinimiseWallet(true)}>
                   <CrossIcon
@@ -166,7 +163,7 @@ const LoginModal: FC<LoginModalProps> = ({
               {modal?.appPreview &&
                 modalAppData &&
                 modal?.loginLayout === PushUI.CONSTANTS.LOGIN.LAYOUT.SPLIT && (
-                  <AppPreviewContainer universalAccount={universalAccount}>
+                  <AppPreviewContainer universalaccount={universalAccount}>
                     <AppContainer>
                       {modalAppData?.logoURL && (
                         <ImageContainer>
@@ -178,10 +175,10 @@ const LoginModal: FC<LoginModalProps> = ({
                       )}
 
                       <TextContainer
-                        themeMode={
+                        thememode={
                           themeMode ? themeMode : PushUI.CONSTANTS.THEME.DARK
                         }
-                        textColor={
+                        textcolor={
                           themeMode === PushUI.CONSTANTS.THEME.LIGHT
                             ? '#F5F6F8'
                             : '#17181b'
@@ -241,13 +238,10 @@ const BlurBackground = styled.div`
 `;
 
 const FrameContainer = styled.div<{
-  universalAccount: UniversalAccount | null;
-  isWalletMinimised: boolean;
-  themeMode:
-    | typeof PushUI.CONSTANTS.THEME.LIGHT
-    | typeof PushUI.CONSTANTS.THEME.DARK;
-  accountMenuVariant: ModalProps['connectedLayout'];
-  modalDefaults?: ModalProps;
+  universalaccount: UniversalAccount | null;
+  iswalletminimised: boolean;
+  accountmenuvariant: ModalProps['connectedLayout'];
+  modaldefaults?: ModalProps;
   style?: Record<'top' | 'left', number>;
 }>`
   position: fixed;
@@ -255,53 +249,53 @@ const FrameContainer = styled.div<{
   left: ${({ style }) => `${style?.left}px`};
   display: flex;
   flex-direction: column;
-  background-image: url(${({ modalDefaults }) => modalDefaults?.bgImage});
+  background-image: url(${({ modaldefaults }) => modaldefaults?.bgImage});
   background-size: cover;
-  background-color: ${({universalAccount, accountMenuVariant}) => 
-    universalAccount && accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.HOVER ?
+  background-color: ${({universalaccount, accountmenuvariant}) => 
+    universalaccount && accountmenuvariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.HOVER ?
     'transparent' :
     'var(--pw-int-bg-primary-color)'
   };
-  border-radius: ${({ universalAccount }) =>
-    universalAccount ? '10px' : 'unset'};
+  border-radius: ${({ universalaccount }) =>
+    universalaccount ? '10px' : 'unset'};
   z-index: 999;
 
-  width: ${({ universalAccount, isWalletMinimised, accountMenuVariant }) =>
-    isWalletMinimised
+  width: ${({ universalaccount, iswalletminimised, accountmenuvariant }) =>
+    iswalletminimised
       ? '0px'
-      : universalAccount
-      ? accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
+      : universalaccount
+      ? accountmenuvariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
         ? '100%'
         : '450px'
       : '100vw'};
-  height: ${({ universalAccount, isWalletMinimised, accountMenuVariant }) =>
-    isWalletMinimised
+  height: ${({ universalaccount, iswalletminimised, accountmenuvariant }) =>
+    iswalletminimised
       ? '0px'
-      : universalAccount
-      ? accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
+      : universalaccount
+      ? accountmenuvariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
         ? '100vw'
         : '675px'
       : '100vh'};
-  right: ${({ universalAccount, accountMenuVariant }) =>
-    universalAccount
-      ? accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
+  right: ${({ universalaccount, accountmenuvariant }) =>
+    universalaccount
+      ? accountmenuvariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
         ? '0'
         : '10px'
       : '0'};
-  top: ${({ universalAccount, accountMenuVariant }) =>
-    universalAccount
-      ? accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
+  top: ${({ universalaccount, accountmenuvariant }) =>
+    universalaccount
+      ? accountmenuvariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
         ? '0'
         : '70px'
       : '0'};
 
   @media (max-width: 425px) {
-    width: ${({ universalAccount, isWalletMinimised }) =>
-      isWalletMinimised ? '0px' : universalAccount ? '100%' : '100%'};
-    right: ${({ universalAccount }) => (universalAccount ? '2%' : '0')};
-    top: ${({ universalAccount, accountMenuVariant }) =>
-      universalAccount
-        ? accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
+    width: ${({ universalaccount, iswalletminimised }) =>
+      iswalletminimised ? '0px' : universalaccount ? '100%' : '100%'};
+    right: ${({ universalaccount }) => (universalaccount ? '2%' : '0')};
+    top: ${({ universalaccount, accountmenuvariant }) =>
+      universalaccount
+        ? accountmenuvariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
           ? '0'
           : '8%'
         : '0'};
@@ -314,16 +308,6 @@ const CloseButtonContainer = styled.div`
   justify-content: flex-end;
   cursor: pointer;
   padding: 8px 16px;
-`;
-
-const DashButtonContainer = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  height: 20px;
-  width: 20px;
-  padding: 2px;
 `;
 
 const LoadingTextContainer = styled.div`
@@ -345,11 +329,7 @@ const LoadingText = styled.p`
   width: auto;
 `;
 
-const FrameLoadingContainer = styled.div<{
-  themeMode:
-    | typeof PushUI.CONSTANTS.THEME.LIGHT
-    | typeof PushUI.CONSTANTS.THEME.DARK;
-}>`
+const FrameLoadingContainer = styled.div`
   height: 100%;
   width: 100%;
   flex-direction: column;
@@ -361,18 +341,18 @@ const FrameLoadingContainer = styled.div<{
 `;
 
 const FrameSubContainer = styled.div<{
-  isWalletMinimised: boolean;
-  isIframeLoading: boolean;
+  iswalletminimised: boolean;
+  isiframeloading: boolean;
 }>`
-  display: ${({ isWalletMinimised, isIframeLoading }) =>
-    isWalletMinimised || isIframeLoading ? 'none' : 'flex'};
+  display: ${({ iswalletminimised, isiframeloading }) =>
+    iswalletminimised || isiframeloading ? 'none' : 'flex'};
   width: 100%;
   height: 100%;
   flex-direction: column;
 `;
 
 const AccountContainer = styled.div<{
-  universalAccount: UniversalAccount | null;
+  universalaccount: UniversalAccount | null;
 }>`
   width: 100%;
   display: flex;
@@ -382,10 +362,10 @@ const AccountContainer = styled.div<{
   right: 8px;
   justify-content: flex-end;
   // padding: var(--spacing-xxs) var(--spacing-xxs);
-  border-top-right-radius: ${({ universalAccount }) =>
-    universalAccount ? '10px' : '0px'};
-  border-top-left-radius: ${({ universalAccount }) =>
-    universalAccount ? '10px' : '0px'};
+  border-top-right-radius: ${({ universalaccount }) =>
+    universalaccount ? '10px' : '0px'};
+  border-top-left-radius: ${({ universalaccount }) =>
+    universalaccount ? '10px' : '0px'};
   background-color: transparent;
 `;
 
@@ -394,9 +374,9 @@ const SplitContainer = styled.div`
 `;
 
 const AppPreviewContainer = styled.div<{
-  universalAccount: UniversalAccount | null;
+  universalaccount: UniversalAccount | null;
 }>`
-  display: ${({ universalAccount }) => (universalAccount ? 'none' : 'flex')};
+  display: ${({ universalaccount }) => (universalaccount ? 'none' : 'flex')};
   align-items: center;
   justify-content: center;
   flex: 1;
@@ -435,10 +415,10 @@ const Image = styled.img`
   border: 1px solid var(--stroke-secondary, #313338);
 `;
 const TextContainer = styled.div<{
-  themeMode:
+  thememode:
     | typeof PushUI.CONSTANTS.THEME.LIGHT
     | typeof PushUI.CONSTANTS.THEME.DARK;
-  textColor: string;
+  textcolor: string;
 }>`
   font-family: var(--pw-int-font-family);
   src: url('./assets/fonts/FKGroteskNeue-Regular.woff2') format('woff2'),
@@ -447,13 +427,13 @@ const TextContainer = styled.div<{
   font-size: 16px;
   font-weight: 400;
   line-height: 22px;
-  color: ${({ themeMode, textColor }) =>
-    themeMode === PushUI.CONSTANTS.THEME.LIGHT
-      ? textColor
-        ? textColor
+  color: ${({ thememode, textcolor }) =>
+    thememode === PushUI.CONSTANTS.THEME.LIGHT
+      ? textcolor
+        ? textcolor
         : '#17181b'
-      : textColor
-      ? textColor
+      : textcolor
+      ? textcolor
       : '#F5F6F8'};
 `;
 

@@ -37,9 +37,9 @@ const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
     <>
       <Button
         onClick={() => setMinimiseWallet(!isWalletMinimised)}
-        bgColor="var(--pwauth-btn-connected-bg-color)"
-        textColor="var(--pwauth-btn-connected-text-color)"
-        borderRadius="var(--pwauth-btn-connect-border-radius)"
+        bgcolor="var(--pwauth-btn-connected-bg-color)"
+        textcolor="var(--pwauth-btn-connected-text-color)"
+        borderradius="var(--pwauth-btn-connect-border-radius)"
         gap='8px'
         padding='12px'
         ref={toggleButtonRef}

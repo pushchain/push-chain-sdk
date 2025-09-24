@@ -9,7 +9,6 @@ import {
   ThemeProvider,
 } from 'styled-components';
 import { ButtonThemeOverrides, ThemeOverrides } from '../../styles/token';
-import { buttonThemeDefault } from '../../styles/token';
 import { mapButtonCoreToInt } from '../../utils/theme';
 import { AppMetadata } from '../../types';
 
