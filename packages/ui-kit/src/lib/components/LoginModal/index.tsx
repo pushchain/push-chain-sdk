@@ -103,11 +103,11 @@ const LoginModal: FC<LoginModalProps> = ({
         )}
       {isWalletVisible ? (
         <FrameContainer
-          iswalletminimised={isWalletMinimised}
-          universalaccount={universalAccount}
-          accountmenuvariant={modal?.connectedLayout}
-          modaldefaults={modal}
-          style={{ top, left }}
+          $isWalletMinimised={isWalletMinimised}
+          $universalAccount={universalAccount}
+          $accountMenuVariant={modal?.connectedLayout}
+          $modalDefaults={modal}
+          $style={{ top, left }}
         >
           {isIframeLoading && (
             <FrameLoadingContainer>
@@ -132,10 +132,10 @@ const LoginModal: FC<LoginModalProps> = ({
           )}
 
           <FrameSubContainer
-            iswalletminimised={isWalletMinimised}
-            isiframeloading={isIframeLoading}
+            $isWalletMinimised={isWalletMinimised}
+            $isIframeLoading={isIframeLoading}
           >
-            {/* <AccountContainer universalaccount={universalaccount}>
+            {/* <AccountContainer $universalAccount={universalaccount}>
               {universalAccount ? (
                 <DashButtonContainer onClick={() => setMinimiseWallet(true)}>
                   <CrossIcon
@@ -163,7 +163,7 @@ const LoginModal: FC<LoginModalProps> = ({
               {modal?.appPreview &&
                 modalAppData &&
                 modal?.loginLayout === PushUI.CONSTANTS.LOGIN.LAYOUT.SPLIT && (
-                  <AppPreviewContainer universalaccount={universalAccount}>
+                  <AppPreviewContainer $universalAccount={universalAccount}>
                     <AppContainer>
                       {modalAppData?.logoURL && (
                         <ImageContainer>
@@ -175,10 +175,10 @@ const LoginModal: FC<LoginModalProps> = ({
                       )}
 
                       <TextContainer
-                        thememode={
+                        $themeMode={
                           themeMode ? themeMode : PushUI.CONSTANTS.THEME.DARK
                         }
-                        textcolor={
+                        $textColor={
                           themeMode === PushUI.CONSTANTS.THEME.LIGHT
                             ? '#F5F6F8'
                             : '#17181b'
@@ -238,64 +238,64 @@ const BlurBackground = styled.div`
 `;
 
 const FrameContainer = styled.div<{
-  universalaccount: UniversalAccount | null;
-  iswalletminimised: boolean;
-  accountmenuvariant: ModalProps['connectedLayout'];
-  modaldefaults?: ModalProps;
-  style?: Record<'top' | 'left', number>;
+  $universalAccount: UniversalAccount | null;
+  $isWalletMinimised: boolean;
+  $accountMenuVariant: ModalProps['connectedLayout'];
+  $modalDefaults?: ModalProps;
+  $style?: Record<'top' | 'left', number>;
 }>`
   position: fixed;
-  top: ${({ style }) => `${style?.top}px`};
-  left: ${({ style }) => `${style?.left}px`};
+  top: ${({ $style }) => `${$style?.top}px`};
+  left: ${({ $style }) => `${$style?.left}px`};
   display: flex;
   flex-direction: column;
-  background-image: url(${({ modaldefaults }) => modaldefaults?.bgImage});
+  background-image: url(${({ $modalDefaults }) => $modalDefaults?.bgImage});
   background-size: cover;
-  background-color: ${({universalaccount, accountmenuvariant}) => 
-    universalaccount && accountmenuvariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.HOVER ?
+  background-color: ${({$universalAccount, $accountMenuVariant}) => 
+    $universalAccount && $accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.HOVER ?
     'transparent' :
     'var(--pw-int-bg-primary-color)'
   };
-  border-radius: ${({ universalaccount }) =>
-    universalaccount ? '10px' : 'unset'};
+  border-radius: ${({ $universalAccount }) =>
+    $universalAccount ? '10px' : 'unset'};
   z-index: 999;
 
-  width: ${({ universalaccount, iswalletminimised, accountmenuvariant }) =>
-    iswalletminimised
+  width: ${({ $universalAccount, $isWalletMinimised, $accountMenuVariant }) =>
+    $isWalletMinimised
       ? '0px'
-      : universalaccount
-      ? accountmenuvariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
+      : $universalAccount
+      ? $accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
         ? '100%'
         : '450px'
       : '100vw'};
-  height: ${({ universalaccount, iswalletminimised, accountmenuvariant }) =>
-    iswalletminimised
+  height: ${({ $universalAccount, $isWalletMinimised, $accountMenuVariant }) =>
+    $isWalletMinimised
       ? '0px'
-      : universalaccount
-      ? accountmenuvariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
+      : $universalAccount
+      ? $accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
         ? '100vw'
         : '675px'
       : '100vh'};
-  right: ${({ universalaccount, accountmenuvariant }) =>
-    universalaccount
-      ? accountmenuvariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
+  right: ${({ $universalAccount, $accountMenuVariant }) =>
+    $universalAccount
+      ? $accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
         ? '0'
         : '10px'
       : '0'};
-  top: ${({ universalaccount, accountmenuvariant }) =>
-    universalaccount
-      ? accountmenuvariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
+  top: ${({ $universalAccount, $accountMenuVariant }) =>
+    $universalAccount
+      ? $accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
         ? '0'
         : '70px'
       : '0'};
 
   @media (max-width: 425px) {
-    width: ${({ universalaccount, iswalletminimised }) =>
-      iswalletminimised ? '0px' : universalaccount ? '100%' : '100%'};
-    right: ${({ universalaccount }) => (universalaccount ? '2%' : '0')};
-    top: ${({ universalaccount, accountmenuvariant }) =>
-      universalaccount
-        ? accountmenuvariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
+    width: ${({ $universalAccount, $isWalletMinimised }) =>
+      $isWalletMinimised ? '0px' : $universalAccount ? '100%' : '100%'};
+    right: ${({ $universalAccount }) => ($universalAccount ? '2%' : '0')};
+    top: ${({ $universalAccount, $accountMenuVariant }) =>
+      $universalAccount
+        ? $accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
           ? '0'
           : '8%'
         : '0'};
@@ -341,18 +341,18 @@ const FrameLoadingContainer = styled.div`
 `;
 
 const FrameSubContainer = styled.div<{
-  iswalletminimised: boolean;
-  isiframeloading: boolean;
+  $isWalletMinimised: boolean;
+  $isIframeLoading: boolean;
 }>`
-  display: ${({ iswalletminimised, isiframeloading }) =>
-    iswalletminimised || isiframeloading ? 'none' : 'flex'};
+  display: ${({ $isWalletMinimised, $isIframeLoading }) =>
+    $isWalletMinimised || $isIframeLoading ? 'none' : 'flex'};
   width: 100%;
   height: 100%;
   flex-direction: column;
 `;
 
 const AccountContainer = styled.div<{
-  universalaccount: UniversalAccount | null;
+  $universalAccount: UniversalAccount | null;
 }>`
   width: 100%;
   display: flex;
@@ -362,10 +362,10 @@ const AccountContainer = styled.div<{
   right: 8px;
   justify-content: flex-end;
   // padding: var(--spacing-xxs) var(--spacing-xxs);
-  border-top-right-radius: ${({ universalaccount }) =>
-    universalaccount ? '10px' : '0px'};
-  border-top-left-radius: ${({ universalaccount }) =>
-    universalaccount ? '10px' : '0px'};
+  border-top-right-radius: ${({ $universalAccount }) =>
+    $universalAccount ? '10px' : '0px'};
+  border-top-left-radius: ${({ $universalAccount }) =>
+    $universalAccount ? '10px' : '0px'};
   background-color: transparent;
 `;
 
@@ -374,9 +374,9 @@ const SplitContainer = styled.div`
 `;
 
 const AppPreviewContainer = styled.div<{
-  universalaccount: UniversalAccount | null;
+  $universalAccount: UniversalAccount | null;
 }>`
-  display: ${({ universalaccount }) => (universalaccount ? 'none' : 'flex')};
+  display: ${({ $universalAccount }) => ($universalAccount ? 'none' : 'flex')};
   align-items: center;
   justify-content: center;
   flex: 1;
@@ -415,10 +415,10 @@ const Image = styled.img`
   border: 1px solid var(--stroke-secondary, #313338);
 `;
 const TextContainer = styled.div<{
-  thememode:
+  $themeMode:
     | typeof PushUI.CONSTANTS.THEME.LIGHT
     | typeof PushUI.CONSTANTS.THEME.DARK;
-  textcolor: string;
+  $textColor: string;
 }>`
   font-family: var(--pw-int-font-family);
   src: url('./assets/fonts/FKGroteskNeue-Regular.woff2') format('woff2'),
@@ -427,13 +427,13 @@ const TextContainer = styled.div<{
   font-size: 16px;
   font-weight: 400;
   line-height: 22px;
-  color: ${({ thememode, textcolor }) =>
-    thememode === PushUI.CONSTANTS.THEME.LIGHT
-      ? textcolor
-        ? textcolor
+  color: ${({ $themeMode, $textColor }) =>
+    $themeMode === PushUI.CONSTANTS.THEME.LIGHT
+      ? $textColor
+        ? $textColor
         : '#17181b'
-      : textcolor
-      ? textcolor
+      : $textColor
+      ? $textColor
       : '#F5F6F8'};
 `;
 

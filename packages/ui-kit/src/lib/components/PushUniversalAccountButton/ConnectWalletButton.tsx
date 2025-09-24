@@ -36,9 +36,9 @@ const ConnectWalletButton: FC<ConnectPushWalletButtonProps> = ({
 
   return (
     <Button
-      bgcolor="var(--pwauth-btn-connect-bg-color)"
-      textcolor="var(--pwauth-btn-connect-text-color)"
-      borderradius="var(--pwauth-btn-connect-border-radius)"
+      bgColor="var(--pwauth-btn-connect-bg-color)"
+      textColor="var(--pwauth-btn-connect-text-color)"
+      borderRadius="var(--pwauth-btn-connect-border-radius)"
       onClick={handleConnectWalletButton}
       disabled={isConnectButtonDisbaled || isLoading}
     >
