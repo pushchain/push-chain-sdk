@@ -124,6 +124,26 @@ export class Utils {
     },
   };
 
+  /**
+   * Deprecated aliases and shims
+   */
+  static helper = {
+    /**
+     * @deprecated Use PushChain.utils.chains.getChainNamespace(chainName) instead.
+     * Alias maintained for backwards compatibility. Logs a deprecation warning
+     * and delegates to Utils.chains.getChainNamespace.
+     */
+    getChainName: (chainName: string): string | undefined => {
+      // Emit deprecation warning on every call to surface migration need
+      // Note: Keeping message explicit for SDK consumers
+      console.warn(
+        '[DEPRECATED] PushChain.utils.helper.getChainName is deprecated. ' +
+          'Use PushChain.utils.chains.getChainNamespace(chainName) instead.'
+      );
+      return Utils.chains.getChainNamespace(chainName);
+    },
+  };
+
   static helpers = {
     encodeTxData({
       abi,
