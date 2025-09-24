@@ -1790,66 +1790,66 @@ describe('PushChain', () => {
     describe('getChainName', () => {
       it('should get chain name', () => {
         // Test Push chains
-        expect(PushChain.utils.helpers.getChainName(CHAIN.PUSH_MAINNET)).toBe(
+        expect(PushChain.utils.chains.getChainName(CHAIN.PUSH_MAINNET)).toBe(
           'PUSH_MAINNET'
         );
-        expect(PushChain.utils.helpers.getChainName(CHAIN.PUSH_TESTNET)).toBe(
+        expect(PushChain.utils.chains.getChainName(CHAIN.PUSH_TESTNET)).toBe(
           'PUSH_TESTNET_DONUT'
         );
         expect(
-          PushChain.utils.helpers.getChainName(CHAIN.PUSH_TESTNET_DONUT)
+          PushChain.utils.chains.getChainName(CHAIN.PUSH_TESTNET_DONUT)
         ).toBe('PUSH_TESTNET_DONUT');
-        expect(PushChain.utils.helpers.getChainName(CHAIN.PUSH_LOCALNET)).toBe(
+        expect(PushChain.utils.chains.getChainName(CHAIN.PUSH_LOCALNET)).toBe(
           'PUSH_LOCALNET'
         );
         // Test Ethereum chains
         expect(
-          PushChain.utils.helpers.getChainName(CHAIN.ETHEREUM_MAINNET)
+          PushChain.utils.chains.getChainName(CHAIN.ETHEREUM_MAINNET)
         ).toBe('ETHEREUM_MAINNET');
         expect(
-          PushChain.utils.helpers.getChainName(CHAIN.ETHEREUM_SEPOLIA)
+          PushChain.utils.chains.getChainName(CHAIN.ETHEREUM_SEPOLIA)
         ).toBe('ETHEREUM_SEPOLIA');
         // Test Solana chains
-        expect(PushChain.utils.helpers.getChainName(CHAIN.SOLANA_MAINNET)).toBe(
+        expect(PushChain.utils.chains.getChainName(CHAIN.SOLANA_MAINNET)).toBe(
           'SOLANA_MAINNET'
         );
-        expect(PushChain.utils.helpers.getChainName(CHAIN.SOLANA_TESTNET)).toBe(
+        expect(PushChain.utils.chains.getChainName(CHAIN.SOLANA_TESTNET)).toBe(
           'SOLANA_TESTNET'
         );
-        expect(PushChain.utils.helpers.getChainName(CHAIN.SOLANA_DEVNET)).toBe(
+        expect(PushChain.utils.chains.getChainName(CHAIN.SOLANA_DEVNET)).toBe(
           'SOLANA_DEVNET'
         );
       });
 
       it('should handle chain values directly', () => {
         // Test with raw chain values
-        expect(PushChain.utils.helpers.getChainName('eip155:9')).toBe(
+        expect(PushChain.utils.chains.getChainName('eip155:9')).toBe(
           'PUSH_MAINNET'
         );
-        expect(PushChain.utils.helpers.getChainName('eip155:42101')).toBe(
+        expect(PushChain.utils.chains.getChainName('eip155:42101')).toBe(
           'PUSH_TESTNET_DONUT'
         );
-        expect(PushChain.utils.helpers.getChainName('eip155:9001')).toBe(
+        expect(PushChain.utils.chains.getChainName('eip155:9001')).toBe(
           'PUSH_LOCALNET'
         );
-        expect(PushChain.utils.helpers.getChainName('eip155:1')).toBe(
+        expect(PushChain.utils.chains.getChainName('eip155:1')).toBe(
           'ETHEREUM_MAINNET'
         );
-        expect(PushChain.utils.helpers.getChainName('eip155:11155111')).toBe(
+        expect(PushChain.utils.chains.getChainName('eip155:11155111')).toBe(
           'ETHEREUM_SEPOLIA'
         );
         expect(
-          PushChain.utils.helpers.getChainName(
+          PushChain.utils.chains.getChainName(
             'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
           )
         ).toBe('SOLANA_MAINNET');
         expect(
-          PushChain.utils.helpers.getChainName(
+          PushChain.utils.chains.getChainName(
             'solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z'
           )
         ).toBe('SOLANA_TESTNET');
         expect(
-          PushChain.utils.helpers.getChainName(
+          PushChain.utils.chains.getChainName(
             'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'
           )
         ).toBe('SOLANA_DEVNET');
@@ -1858,26 +1858,26 @@ describe('PushChain', () => {
       it('should throw error for invalid chain values', () => {
         // Test with invalid chain values
         expect(() =>
-          PushChain.utils.helpers.getChainName('invalid-chain')
+          PushChain.utils.chains.getChainName('invalid-chain')
         ).toThrow("Chain value 'invalid-chain' not found in CHAIN enum");
         expect(() =>
-          PushChain.utils.helpers.getChainName('eip155:999999')
+          PushChain.utils.chains.getChainName('eip155:999999')
         ).toThrow("Chain value 'eip155:999999' not found in CHAIN enum");
         expect(() =>
-          PushChain.utils.helpers.getChainName('solana:invalid')
+          PushChain.utils.chains.getChainName('solana:invalid')
         ).toThrow("Chain value 'solana:invalid' not found in CHAIN enum");
-        expect(() => PushChain.utils.helpers.getChainName('')).toThrow(
+        expect(() => PushChain.utils.chains.getChainName('')).toThrow(
           "Chain value '' not found in CHAIN enum"
         );
       });
 
       it('should handle case sensitivity correctly', () => {
         // Test that the function is case sensitive
-        expect(() => PushChain.utils.helpers.getChainName('EIP155:1')).toThrow(
+        expect(() => PushChain.utils.chains.getChainName('EIP155:1')).toThrow(
           "Chain value 'EIP155:1' not found in CHAIN enum"
         );
         expect(() =>
-          PushChain.utils.helpers.getChainName(
+          PushChain.utils.chains.getChainName(
             'SOLANA:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
           )
         ).toThrow(
@@ -1887,10 +1887,10 @@ describe('PushChain', () => {
 
       it('should handle whitespace correctly', () => {
         // Test that whitespace is not ignored
-        expect(() => PushChain.utils.helpers.getChainName(' eip155:1')).toThrow(
+        expect(() => PushChain.utils.chains.getChainName(' eip155:1')).toThrow(
           "Chain value ' eip155:1' not found in CHAIN enum"
         );
-        expect(() => PushChain.utils.helpers.getChainName('eip155:1 ')).toThrow(
+        expect(() => PushChain.utils.chains.getChainName('eip155:1 ')).toThrow(
           "Chain value 'eip155:1 ' not found in CHAIN enum"
         );
       });

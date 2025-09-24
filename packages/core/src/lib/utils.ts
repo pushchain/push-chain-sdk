@@ -80,7 +80,7 @@ export class Utils {
     toUniversal: toUniversalSigner,
   };
 
-  static helpers = {
+  static chains = {
     getChainName: (chainNamespace: string) => {
       // Special case: prefer PUSH_TESTNET_DONUT over PUSH_TESTNET for 'eip155:42101'
       if (chainNamespace === 'eip155:42101') {
@@ -89,7 +89,7 @@ export class Utils {
 
       const chainEntries = Object.entries(CHAIN);
       const foundEntry = chainEntries.find(
-        ([_, value]) => value === chainNamespace
+        (entry) => entry[1] === chainNamespace
       );
 
       if (!foundEntry) {
@@ -100,7 +100,9 @@ export class Utils {
 
       return foundEntry[0];
     },
+  };
 
+  static helpers = {
     encodeTxData({
       abi,
       functionName,
