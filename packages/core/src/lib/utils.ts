@@ -81,7 +81,7 @@ export class Utils {
   };
 
   static chains = {
-    getChainName: (chainNamespace: string) => {
+    getChainName: (chainNamespace: string): string | undefined => {
       // Special case: prefer PUSH_TESTNET_DONUT over PUSH_TESTNET for 'eip155:42101'
       if (chainNamespace === 'eip155:42101') {
         return 'PUSH_TESTNET_DONUT';
@@ -93,12 +93,34 @@ export class Utils {
       );
 
       if (!foundEntry) {
-        throw new Error(
-          `Chain value '${chainNamespace}' not found in CHAIN enum`
-        );
+        return undefined;
       }
 
       return foundEntry[0];
+    },
+
+    /**
+     * Returns the chain namespace (e.g., 'eip155:11155111') for a given chain name.
+     * Reverse of getChainName. If input is already a namespace, it is returned.
+     *
+     * @param {string} chainName - The CHAIN key name (e.g., 'ETHEREUM_SEPOLIA' or 'PUSH_TESTNET_DONUT')
+     *                             or an existing namespace (e.g., 'eip155:11155111').
+     * @returns {string | undefined} The chain namespace, or undefined if unsupported.
+     */
+    getChainNamespace: (chainName: string): string | undefined => {
+      // If already a valid namespace value, return as-is
+      const namespaceValues = Object.values(CHAIN) as string[];
+      if (namespaceValues.includes(chainName)) {
+        return chainName;
+      }
+
+      // Map enum key -> value
+      const namespace = (CHAIN as Record<string, string | number>)[chainName];
+      if (typeof namespace === 'string') {
+        return namespace;
+      }
+
+      return undefined;
     },
   };
 

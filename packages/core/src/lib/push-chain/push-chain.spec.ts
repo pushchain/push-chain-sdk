@@ -1855,44 +1855,78 @@ describe('PushChain', () => {
         ).toBe('SOLANA_DEVNET');
       });
 
-      it('should throw error for invalid chain values', () => {
+      it('should return undefined for invalid chain values', () => {
         // Test with invalid chain values
-        expect(() =>
+        expect(
           PushChain.utils.chains.getChainName('invalid-chain')
-        ).toThrow("Chain value 'invalid-chain' not found in CHAIN enum");
-        expect(() =>
+        ).toBeUndefined();
+        expect(
           PushChain.utils.chains.getChainName('eip155:999999')
-        ).toThrow("Chain value 'eip155:999999' not found in CHAIN enum");
-        expect(() =>
+        ).toBeUndefined();
+        expect(
           PushChain.utils.chains.getChainName('solana:invalid')
-        ).toThrow("Chain value 'solana:invalid' not found in CHAIN enum");
-        expect(() => PushChain.utils.chains.getChainName('')).toThrow(
-          "Chain value '' not found in CHAIN enum"
-        );
+        ).toBeUndefined();
+        expect(PushChain.utils.chains.getChainName('')).toBeUndefined();
       });
 
-      it('should handle case sensitivity correctly', () => {
+      it('should handle case sensitivity correctly (returns undefined)', () => {
         // Test that the function is case sensitive
-        expect(() => PushChain.utils.chains.getChainName('EIP155:1')).toThrow(
-          "Chain value 'EIP155:1' not found in CHAIN enum"
-        );
-        expect(() =>
+        expect(PushChain.utils.chains.getChainName('EIP155:1')).toBeUndefined();
+        expect(
           PushChain.utils.chains.getChainName(
             'SOLANA:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
           )
-        ).toThrow(
-          "Chain value 'SOLANA:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp' not found in CHAIN enum"
+        ).toBeUndefined();
+      });
+
+      it('should handle whitespace correctly (returns undefined)', () => {
+        // Test that whitespace is not ignored
+        expect(
+          PushChain.utils.chains.getChainName(' eip155:1')
+        ).toBeUndefined();
+        expect(
+          PushChain.utils.chains.getChainName('eip155:1 ')
+        ).toBeUndefined();
+      });
+    });
+
+    describe('getChainNamespace', () => {
+      it('should get chain namespace from enum key name', () => {
+        expect(
+          PushChain.utils.chains.getChainNamespace('ETHEREUM_SEPOLIA')
+        ).toBe(CHAIN.ETHEREUM_SEPOLIA);
+
+        expect(
+          PushChain.utils.chains.getChainNamespace('ETHEREUM_MAINNET')
+        ).toBe(CHAIN.ETHEREUM_MAINNET);
+
+        expect(
+          PushChain.utils.chains.getChainNamespace('PUSH_TESTNET_DONUT')
+        ).toBe(CHAIN.PUSH_TESTNET_DONUT);
+
+        expect(PushChain.utils.chains.getChainNamespace('SOLANA_DEVNET')).toBe(
+          CHAIN.SOLANA_DEVNET
         );
       });
 
-      it('should handle whitespace correctly', () => {
-        // Test that whitespace is not ignored
-        expect(() => PushChain.utils.chains.getChainName(' eip155:1')).toThrow(
-          "Chain value ' eip155:1' not found in CHAIN enum"
-        );
-        expect(() => PushChain.utils.chains.getChainName('eip155:1 ')).toThrow(
-          "Chain value 'eip155:1 ' not found in CHAIN enum"
-        );
+      it('should return input unchanged when already a namespace', () => {
+        expect(
+          PushChain.utils.chains.getChainNamespace(CHAIN.ETHEREUM_SEPOLIA)
+        ).toBe(CHAIN.ETHEREUM_SEPOLIA);
+
+        expect(
+          PushChain.utils.chains.getChainNamespace(CHAIN.PUSH_TESTNET_DONUT)
+        ).toBe(CHAIN.PUSH_TESTNET_DONUT);
+      });
+
+      it('should return undefined for unsupported names', () => {
+        expect(
+          PushChain.utils.chains.getChainNamespace('UNKNOWN_CHAIN')
+        ).toBeUndefined();
+        expect(
+          PushChain.utils.chains.getChainNamespace('ethereum_sepolia' as any)
+        ).toBeUndefined();
+        expect(PushChain.utils.chains.getChainNamespace('')).toBeUndefined();
       });
     });
 
