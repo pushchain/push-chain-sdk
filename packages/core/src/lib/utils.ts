@@ -171,7 +171,7 @@ export class Utils {
         '[DEPRECATED] PushChain.utils.helper.getChainName is deprecated. ' +
           'Use PushChain.utils.chains.getChainNamespace(chainName) instead.'
       );
-      return Utils.chains.getChainNamespace(chainName);
+      return Utils.chains.getChainName(chainName);
     },
     encodeTxData({
       abi,
