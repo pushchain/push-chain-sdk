@@ -169,14 +169,98 @@ export class SvmClient {
     // 3. Instantiate the program (Anchor v0.31 will infer programId from IDL.metadata.address)
     const program = new Program<typeof abi>(abi, provider);
 
-    // 4. Convert any BigInt args into BN for Anchor
-    const convertedArgs = args.map((arg) =>
-      typeof arg === 'bigint' ? new BN(arg.toString()) : arg
-    );
+    // 4. Deep-convert arguments into Anchor-friendly types
+    //    - BigInt -> BN
+    //    - hex strings (0x...) -> Buffer
+    //    - Uint8Array -> Buffer
+    //    - UniversalPayload object normalization (to/data/vType)
+    const anchorify = (value: unknown): any => {
+      // Preserve BN, Buffer, PublicKey, null/undefined
+      if (
+        value === null ||
+        value === undefined ||
+        value instanceof BN ||
+        Buffer.isBuffer(value) ||
+        value instanceof PublicKey
+      )
+        return value;
+
+      // BigInt -> BN
+      if (typeof value === 'bigint') return new BN(value.toString());
+
+      // Hex string -> Buffer
+      if (typeof value === 'string' && value.startsWith('0x')) {
+        const hex = value.slice(2);
+        if (hex.length === 0) return Buffer.alloc(0);
+        // If odd length, left-pad a 0
+        const normalized = hex.length % 2 === 1 ? `0${hex}` : hex;
+        return Buffer.from(normalized, 'hex');
+      }
+
+      // Uint8Array -> Buffer
+      if (value instanceof Uint8Array) return Buffer.from(value);
+
+      // Array -> map recursively
+      if (Array.isArray(value)) return value.map((v) => anchorify(v));
+
+      // Plain object -> recurse and normalize UniversalPayload shape
+      if (typeof value === 'object') {
+        const obj = value as Record<string, any>;
+        const out: Record<string, any> = {};
+        for (const [k, v] of Object.entries(obj)) {
+          out[k] = anchorify(v);
+        }
+
+        // Heuristic: normalize UniversalPayload fields expected by Anchor IDL
+        const hasUniversalPayloadKeys =
+          'to' in out &&
+          'value' in out &&
+          'data' in out &&
+          'gasLimit' in out &&
+          'maxFeePerGas' in out &&
+          'maxPriorityFeePerGas' in out &&
+          'nonce' in out &&
+          'deadline' in out &&
+          'vType' in out;
+
+        if (hasUniversalPayloadKeys) {
+          // to: address(20 bytes) -> Buffer(20)
+          if (typeof obj['to'] === 'string' && obj['to'].startsWith('0x')) {
+            const hex = obj['to'].slice(2).padStart(40, '0');
+            out['to'] = Buffer.from(hex, 'hex');
+          }
+          // data: bytes -> Buffer
+          if (typeof obj['data'] === 'string' && obj['data'].startsWith('0x')) {
+            const hex = obj['data'].slice(2);
+            out['data'] = hex.length
+              ? Buffer.from(hex, 'hex')
+              : Buffer.alloc(0);
+          }
+          // vType: enum -> Anchor enum object
+          if (typeof obj['vType'] === 'number') {
+            out['vType'] =
+              obj['vType'] === 0
+                ? { signedVerification: {} }
+                : { universalTxVerification: {} };
+          } else if (typeof obj['vType'] === 'string') {
+            const vt = obj['vType'].toLowerCase();
+            if (vt.includes('signed'))
+              out['vType'] = { signedVerification: {} };
+            else out['vType'] = { universalTxVerification: {} };
+          }
+        }
+
+        return out;
+      }
+
+      return value;
+    };
+
+    const convertedArgs = anchorify(args);
 
     // 5. Build the method call
     let builder =
-      convertedArgs.length > 0
+      Array.isArray(convertedArgs) && convertedArgs.length > 0
         ? (program.methods[functionName](...convertedArgs) as any)
         : (program.methods[functionName]() as any);
 
@@ -232,7 +316,9 @@ export class SvmClient {
       throw new Error('signer.signTransaction is undefined');
     }
 
-    const txHashBytes = await signer.signAndSendTransaction(txBytes);
+    const txHashBytes = await signer.signAndSendTransaction(
+      new Uint8Array(txBytes)
+    );
 
     return utils.bytes.bs58.encode(txHashBytes); // Clean, readable tx hash
   }
