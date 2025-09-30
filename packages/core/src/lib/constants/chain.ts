@@ -76,7 +76,7 @@ export const CHAIN_INFO: Record<
   [CHAIN.ETHEREUM_SEPOLIA]: {
     chainId: '11155111',
     vm: VM.EVM,
-    lockerContract: '0x28E0F09bE2321c1420Dc60Ee146aACbD68B335Fe',
+    lockerContract: '0x05bD7a3D18324c1F7e216f7fBF2b15985aE5281A',
     defaultRPC: ['http://localhost:9545'],
     confirmations: 1,
     timeout: 30000,
