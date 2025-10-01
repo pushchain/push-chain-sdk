@@ -805,7 +805,7 @@ export class Orchestrator {
               feeLockTxHash = bytesToHex(new Uint8Array(decoded));
             }
           }
-          await this.sendUniversalTx(deployed, feeLockTxHash);
+          const txs = await this.sendUniversalTx(deployed, feeLockTxHash);
 
           this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_06);
 
@@ -841,57 +841,7 @@ export class Orchestrator {
             );
             return await this.transformToUniversalTxResponse(evmTx);
           } else {
-            const chainId = CHAIN_INFO[chain].chainId;
-            const vm = CHAIN_INFO[chain].vm;
-            const origin = `${VM_NAMESPACE[vm]}:${chainId}:${this.universalSigner.account.address}`;
-            const universalTxResponse: UniversalTxResponse = {
-              hash: txHash as string,
-              origin,
-              blockNumber: BigInt(0),
-              blockHash: '',
-              transactionIndex: 0,
-              chainId,
-              from: this.universalSigner.account.address,
-              to: '0x0000000000000000000000000000000000000000',
-              nonce: 0,
-              data: '0x',
-              value: BigInt(0),
-              gasLimit: BigInt(0),
-              gasPrice: undefined,
-              maxFeePerGas: undefined,
-              maxPriorityFeePerGas: undefined,
-              accessList: [],
-              wait: async () => ({
-                hash: txHash as string,
-                blockNumber: BigInt(0),
-                blockHash: '',
-                transactionIndex: 0,
-                from: this.universalSigner.account.address,
-                to: '0x0000000000000000000000000000000000000000',
-                contractAddress: null,
-                gasPrice: BigInt(0),
-                gasUsed: BigInt(0),
-                cumulativeGasUsed: BigInt(0),
-                logs: [],
-                logsBloom: '0x',
-                status: 1,
-                raw: {
-                  from: this.universalSigner.account.address,
-                  to: '0x0000000000000000000000000000000000000000',
-                },
-              }),
-              type: '99',
-              typeVerbose: 'universal',
-              signature: { r: '0x0', s: '0x0', v: 0 },
-              raw: {
-                from: this.universalSigner.account.address,
-                to: '0x0000000000000000000000000000000000000000',
-                nonce: 0,
-                data: '0x',
-                value: BigInt(0),
-              },
-            };
-            return universalTxResponse;
+            return txs[txs.length - 1];
           }
         }
       }
