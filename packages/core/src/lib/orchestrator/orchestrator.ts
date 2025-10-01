@@ -60,6 +60,7 @@ import { MOVEABLE_TOKENS, MoveableToken } from '../constants/tokens';
 
 export class Orchestrator {
   private pushClient: PushClient;
+  private ueaVersionCache?: string;
 
   constructor(
     private readonly universalSigner: UniversalSigner,
@@ -604,9 +605,11 @@ export class Orchestrator {
 
               this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_01);
               this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_02);
+              const ueaVersion = await this.fetchUEAVersion();
               const eip712Signature = await this.signUniversalPayload(
                 universalPayload,
-                ueaAddress
+                ueaAddress,
+                ueaVersion
               );
               this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_03);
               const eip712SignatureHex =
@@ -661,9 +664,11 @@ export class Orchestrator {
               } as unknown as never;
               // Compute signature for universal payload on SVM
               const ueaAddressSvm = this.computeUEAOffchain();
+              const ueaVersion = await this.fetchUEAVersion();
               const svmSignature = await this.signUniversalPayload(
                 universalPayload,
-                ueaAddressSvm
+                ueaAddressSvm,
+                ueaVersion
               );
               if (isNative) {
                 // Native SOL as bridge + gas
@@ -978,9 +983,11 @@ export class Orchestrator {
           this.bigintReplacer
         )
       ) as UniversalPayload;
+      const ueaVersion = await this.fetchUEAVersion();
       const executionHash = this.computeExecutionHash({
         verifyingContract: UEA,
         payload: universalPayload,
+        version: ueaVersion,
       });
       /**
        * Prepare verification data by either signature or fund locking
@@ -999,7 +1006,8 @@ export class Orchestrator {
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_01, executionHash);
         const signature = await this.signUniversalPayload(
           universalPayload,
-          UEA
+          UEA,
+          ueaVersion
         );
         verificationData = bytesToHex(signature);
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_02, verificationData);
@@ -2192,5 +2200,22 @@ export class Orchestrator {
 
       await new Promise((r) => setTimeout(r, 12000));
     }
+  }
+
+  // Fetch and cache UEA version from the contract on Push Chain
+  private async fetchUEAVersion(): Promise<string> {
+    if (this.ueaVersionCache) return this.ueaVersionCache;
+    const chain = this.universalSigner.account.chain;
+    const { vm } = CHAIN_INFO[chain];
+    const abi: Abi =
+      vm === VM.EVM ? (UEA_EVM as unknown as Abi) : (UEA_SVM as unknown as Abi);
+    const predictedUEA = this.computeUEAOffchain();
+    const version = await this.pushClient.readContract<string>({
+      address: predictedUEA,
+      abi,
+      functionName: 'VERSION',
+    });
+    this.ueaVersionCache = version;
+    return version;
   }
 }
