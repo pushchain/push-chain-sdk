@@ -2210,6 +2210,14 @@ export class Orchestrator {
     const abi: Abi =
       vm === VM.EVM ? (UEA_EVM as unknown as Abi) : (UEA_SVM as unknown as Abi);
     const predictedUEA = this.computeUEAOffchain();
+    // Only attempt to read VERSION if UEA is deployed; otherwise default to 1.0.0
+    const code = await this.pushClient.publicClient.getCode({
+      address: predictedUEA,
+    });
+    if (code === undefined) {
+      this.ueaVersionCache = '1.0.0';
+      return '1.0.0';
+    }
     const version = await this.pushClient.readContract<string>({
       address: predictedUEA,
       abi,
