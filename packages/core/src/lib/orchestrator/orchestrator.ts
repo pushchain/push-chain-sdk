@@ -1165,7 +1165,7 @@ export class Orchestrator {
         }
         return this.universalSigner.signTypedData({
           domain: {
-            version: version || '0.1.0',
+            version: version || '1.0.0',
             chainId: Number(chainId),
             verifyingContract,
           },
@@ -1191,7 +1191,7 @@ export class Orchestrator {
         const digest = this.computeExecutionHash({
           verifyingContract,
           payload: universalPayload,
-          version: version || '0.1.0',
+          version: version || '1.0.0',
         });
         return this.universalSigner.signMessage(stringToBytes(digest));
       }
@@ -1339,7 +1339,7 @@ export class Orchestrator {
   private computeExecutionHash({
     verifyingContract,
     payload,
-    version = '0.1.0',
+    version = '1.0.0',
   }: {
     verifyingContract: `0x${string}`;
     version?: string;
