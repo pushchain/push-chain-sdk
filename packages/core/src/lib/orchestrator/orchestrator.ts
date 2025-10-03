@@ -1173,7 +1173,7 @@ export class Orchestrator {
         }
         return this.universalSigner.signTypedData({
           domain: {
-            version: version || '1.0.0',
+            version: version || '0.1.0',
             chainId: Number(chainId),
             verifyingContract,
           },
@@ -1199,7 +1199,7 @@ export class Orchestrator {
         const digest = this.computeExecutionHash({
           verifyingContract,
           payload: universalPayload,
-          version: version || '1.0.0',
+          version: version || '0.1.0',
         });
         return this.universalSigner.signMessage(stringToBytes(digest));
       }
@@ -1347,7 +1347,7 @@ export class Orchestrator {
   private computeExecutionHash({
     verifyingContract,
     payload,
-    version = '1.0.0',
+    version = '0.1.0',
   }: {
     verifyingContract: `0x${string}`;
     version?: string;
@@ -2210,13 +2210,13 @@ export class Orchestrator {
     const abi: Abi =
       vm === VM.EVM ? (UEA_EVM as unknown as Abi) : (UEA_SVM as unknown as Abi);
     const predictedUEA = this.computeUEAOffchain();
-    // Only attempt to read VERSION if UEA is deployed; otherwise default to 1.0.0
+    // Only attempt to read VERSION if UEA is deployed; otherwise default to 0.1.0
     const code = await this.pushClient.publicClient.getCode({
       address: predictedUEA,
     });
     if (code === undefined) {
-      this.ueaVersionCache = '1.0.0';
-      return '1.0.0';
+      this.ueaVersionCache = '0.1.0';
+      return '0.1.0';
     }
     const version = await this.pushClient.readContract<string>({
       address: predictedUEA,
