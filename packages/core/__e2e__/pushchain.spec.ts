@@ -22,7 +22,7 @@ import { sepolia } from 'viem/chains';
 import bs58 from 'bs58';
 
 // Adjust path as needed if your .env is in the root
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 describe('PushChain (e2e)', () => {
   const pushNetwork = PUSH_NETWORK.TESTNET_DONUT;
