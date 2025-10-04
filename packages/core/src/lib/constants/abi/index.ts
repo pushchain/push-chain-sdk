@@ -5,4 +5,4 @@ export { UEA_EVM } from './uea.evm';
 export { UEA_SVM } from './uea.svm';
 export { UNIVERSAL_GATEWAY_V0 } from './universalGatewayV0.evm';
 export { ERC20_EVM } from './erc20.evm';
-export { default as SVM_GATEWAY_IDL } from './pushsolanagateway.json';
+export { default as SVM_GATEWAY_IDL } from './universalGatewayV0.json';
