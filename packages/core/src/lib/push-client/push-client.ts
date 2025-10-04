@@ -9,7 +9,12 @@ import {
   QueryClient,
   setupAuthExtension,
   StargateClient,
+  createProtobufRpcClient,
 } from '@cosmjs/stargate';
+import {
+  QueryGetUniversalTxRequest,
+  QueryGetUniversalTxResponse,
+} from '../generated/uexecutor/v1/query';
 import { Secp256k1 } from '@cosmjs/crypto';
 import { Tendermint34Client } from '@cosmjs/tendermint-rpc';
 import { BaseAccount } from 'cosmjs-types/cosmos/auth/v1beta1/auth';
@@ -184,6 +189,28 @@ export class PushClient extends EvmClient {
     );
     const result = await client.broadcastTx(TxRaw.encode(txRaw).finish());
     return result;
+  }
+
+  /**
+   * Queries Push Chain's uexecutor gRPC service for a UniversalTx by its ID.
+   */
+  public async getUniversalTxById(
+    id: string
+  ): Promise<QueryGetUniversalTxResponse> {
+    const tmClient = await Tendermint34Client.connect(
+      this.pushChainInfo.tendermintRpc
+    );
+    const queryClient = new QueryClient(tmClient);
+    const rpc = createProtobufRpcClient(queryClient);
+
+    const request = QueryGetUniversalTxRequest.fromPartial({ id });
+    const responseBytes = await rpc.request(
+      'uexecutor.v1.Query',
+      'GetUniversalTx',
+      QueryGetUniversalTxRequest.encode(request).finish()
+    );
+    const response = QueryGetUniversalTxResponse.decode(responseBytes);
+    return response;
   }
 
   /**

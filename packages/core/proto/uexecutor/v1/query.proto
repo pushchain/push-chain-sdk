@@ -1,0 +1,69 @@
+syntax = "proto3";
+package uexecutor.v1;
+
+import "google/api/annotations.proto";
+import "uexecutor/v1/types.proto";
+import "cosmos/base/query/v1beta1/pagination.proto";
+
+option go_package = "github.com/pushchain/push-chain-node/x/uexecutor/types";
+
+// Query provides defines the gRPC querier service.
+service Query {
+  // Params queries all parameters of the module.
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
+    option (google.api.http).get = "/uexecutor/v1/params";
+  }
+
+  // Queries all pending inbound IDs.
+  rpc AllPendingInbounds(QueryAllPendingInboundsRequest) returns (QueryAllPendingInboundsResponse) {
+    option (google.api.http).get = "/uexecutor/v1/pending_inbounds";
+  }
+
+  // Queries a single UniversalTx by ID.
+  rpc GetUniversalTx(QueryGetUniversalTxRequest) returns (QueryGetUniversalTxResponse) {
+    option (google.api.http).get = "/uexecutor/v1/universal_txs/{id}";
+  }
+
+  // Queries all UniversalTxs.
+  rpc AllUniversalTx(QueryAllUniversalTxRequest) returns (QueryAllUniversalTxResponse) {
+    option (google.api.http).get = "/uexecutor/v1/universal_txs";
+  }
+}
+
+// QueryParamsRequest is the request type for the Query/Params RPC method.
+message QueryParamsRequest {}
+
+// QueryParamsResponse is the response type for the Query/Params RPC method.
+message QueryParamsResponse {
+  // params defines the parameters of the module.
+  Params params = 1;
+}
+
+// Pending Inbounds
+message QueryAllPendingInboundsRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+
+message QueryAllPendingInboundsResponse {
+  repeated string inbound_ids = 1;
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+// Get UniversalTx
+message QueryGetUniversalTxRequest {
+  string id = 1;
+}
+
+message QueryGetUniversalTxResponse {
+  UniversalTx universal_tx = 1;
+}
+
+// All UniversalTx
+message QueryAllUniversalTxRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+
+message QueryAllUniversalTxResponse {
+  repeated UniversalTx universal_txs = 1;
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
