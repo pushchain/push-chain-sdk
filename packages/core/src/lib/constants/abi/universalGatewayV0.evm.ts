@@ -11,6 +11,92 @@ export const UNIVERSAL_GATEWAY_V0 = [
   },
   {
     type: 'function',
+    name: 'sendTxWithGas',
+    inputs: [
+      {
+        name: 'payload',
+        type: 'tuple',
+        internalType: 'struct UniversalPayload',
+        components: [
+          { name: 'to', type: 'address', internalType: 'address' },
+          { name: 'value', type: 'uint256', internalType: 'uint256' },
+          { name: 'data', type: 'bytes', internalType: 'bytes' },
+          { name: 'gasLimit', type: 'uint256', internalType: 'uint256' },
+          { name: 'maxFeePerGas', type: 'uint256', internalType: 'uint256' },
+          {
+            name: 'maxPriorityFeePerGas',
+            type: 'uint256',
+            internalType: 'uint256',
+          },
+          { name: 'nonce', type: 'uint256', internalType: 'uint256' },
+          { name: 'deadline', type: 'uint256', internalType: 'uint256' },
+          {
+            name: 'vType',
+            type: 'uint8',
+            internalType: 'enum VerificationType',
+          },
+        ],
+      },
+      {
+        name: 'revertCFG',
+        type: 'tuple',
+        internalType: 'struct RevertSettings',
+        components: [
+          { name: 'fundRecipient', type: 'address', internalType: 'address' },
+          { name: 'revertMsg', type: 'bytes', internalType: 'bytes' },
+        ],
+      },
+    ],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'sendTxWithGas',
+    inputs: [
+      { name: 'tokenIn', type: 'address', internalType: 'address' },
+      { name: 'amountIn', type: 'uint256', internalType: 'uint256' },
+      {
+        name: 'payload',
+        type: 'tuple',
+        internalType: 'struct UniversalPayload',
+        components: [
+          { name: 'to', type: 'address', internalType: 'address' },
+          { name: 'value', type: 'uint256', internalType: 'uint256' },
+          { name: 'data', type: 'bytes', internalType: 'bytes' },
+          { name: 'gasLimit', type: 'uint256', internalType: 'uint256' },
+          { name: 'maxFeePerGas', type: 'uint256', internalType: 'uint256' },
+          {
+            name: 'maxPriorityFeePerGas',
+            type: 'uint256',
+            internalType: 'uint256',
+          },
+          { name: 'nonce', type: 'uint256', internalType: 'uint256' },
+          { name: 'deadline', type: 'uint256', internalType: 'uint256' },
+          {
+            name: 'vType',
+            type: 'uint8',
+            internalType: 'enum VerificationType',
+          },
+        ],
+      },
+      {
+        name: 'revertCFG',
+        type: 'tuple',
+        internalType: 'struct RevertSettings',
+        components: [
+          { name: 'fundRecipient', type: 'address', internalType: 'address' },
+          { name: 'revertMsg', type: 'bytes', internalType: 'bytes' },
+        ],
+      },
+      { name: 'amountOutMinETH', type: 'uint256', internalType: 'uint256' },
+      { name: 'deadline', type: 'uint256', internalType: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
     name: 'addFunds',
     inputs: [
       {

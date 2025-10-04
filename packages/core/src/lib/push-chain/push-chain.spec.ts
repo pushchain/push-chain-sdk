@@ -754,6 +754,87 @@ describe('PushChain', () => {
     });
   });
 
+  describe('Test new fee absctraction', () => {
+    let pushClientEVM: PushChain;
+    let newSepoliaAccount: PrivateKeyAccount;
+    let pushClientNewSepolia: PushChain;
+
+    beforeAll(async () => {
+      const account = privateKeyToAccount(
+        process.env['EVM_PRIVATE_KEY'] as `0x${string}`
+      );
+      const walletClient = createWalletClient({
+        account,
+        chain: sepolia,
+        transport: http(EVM_RPC),
+      });
+      const universalSignerEVM =
+        await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
+          chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+        });
+      pushClientEVM = await PushChain.initialize(universalSignerEVM, {
+        network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+      });
+
+      newSepoliaAccount = privateKeyToAccount(generatePrivateKey());
+
+      const walletClientNewSepolia = createWalletClient({
+        account: newSepoliaAccount,
+        chain: sepolia,
+        transport: http(EVM_RPC),
+      });
+
+      const publicClient = createPublicClient({
+        chain: sepolia,
+        transport: http(),
+      });
+
+      const balanceBefore = await publicClient.getBalance({
+        address: newSepoliaAccount.address,
+      });
+      console.log('newSepolia balance before (wei):', balanceBefore.toString());
+
+      // Try to send Sepolia ETH to random generated address
+      const txHash = await walletClient.sendTransaction({
+        to: newSepoliaAccount.address,
+        chain: sepolia,
+        value: PushChain.utils.helpers.parseUnits('0.0001', 18),
+      });
+      await publicClient.waitForTransactionReceipt({
+        hash: txHash,
+      });
+
+      const balanceAfter = await publicClient.getBalance({
+        address: newSepoliaAccount.address,
+      });
+      console.log('newSepolia balance after (wei):', balanceAfter.toString());
+
+      const universalSignerNewSepolia =
+        await PushChain.utils.signer.toUniversalFromKeypair(
+          walletClientNewSepolia,
+          {
+            chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+            library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+          }
+        );
+      pushClientNewSepolia = await PushChain.initialize(
+        universalSignerNewSepolia,
+        {
+          network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+        }
+      );
+    });
+
+    it('new fee abstraction should work', async () => {
+      const txHash = await pushClientNewSepolia.universal.sendTransaction({
+        to: '0x1234567890123456789012345678901234567890',
+        value: BigInt(1),
+      });
+      expect(txHash).toBeDefined();
+    }, 300000);
+  });
+
   describe('Reinitialize Method', () => {
     let pushClientEVM: PushChain;
     let universalSignerEVM: UniversalSigner;

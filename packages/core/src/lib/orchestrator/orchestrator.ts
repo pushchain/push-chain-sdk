@@ -1,6 +1,5 @@
 import {
   Abi,
-  zeroHash,
   toBytes,
   keccak256,
   sha256,
@@ -25,8 +24,6 @@ import { EvmClient } from '../vm-client/evm-client';
 import { CHAIN_INFO, UEA_PROXY, VM_NAMESPACE } from '../constants/chain';
 import {
   FACTORY_V1,
-  FEE_LOCKER_EVM,
-  FEE_LOCKER_SVM,
   UEA_SVM,
   ERC20_EVM,
   UNIVERSAL_GATEWAY_V0,
@@ -1024,7 +1021,7 @@ export class Orchestrator {
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_05_01, lockAmount);
         const feeLockTxHashBytes = await this.lockFee(
           lockAmountInUSD,
-          executionHash
+          universalPayload
         );
         feeLockTxHash = bytesToHex(feeLockTxHashBytes);
         verificationData = bytesToHex(feeLockTxHashBytes);
@@ -1046,6 +1043,7 @@ export class Orchestrator {
       /**
        * Broadcasting Tx to PC
        */
+
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06);
       const transactions = await this.sendUniversalTx(
         isUEADeployed,
@@ -1082,7 +1080,7 @@ export class Orchestrator {
    */
   private async lockFee(
     amount: bigint, // USD with 8 decimals
-    executionHash: string = zeroHash
+    universalPayload: UniversalPayload
   ): Promise<Uint8Array> {
     const chain = this.universalSigner.account.chain;
     const { lockerContract, vm, defaultRPC } = CHAIN_INFO[chain];
@@ -1105,11 +1103,17 @@ export class Orchestrator {
         const nativeAmount =
           (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
 
-        const txHash = await evmClient.writeContract({
-          abi: FEE_LOCKER_EVM as Abi,
+        // Deposit-only funding via UniversalGatewayV0 (no payload execution)
+        const revertCFG = {
+          fundRecipient: this.universalSigner.account.address as `0x${string}`,
+          revertMsg: '0x',
+        } as unknown as never;
+
+        const txHash: `0x${string}` = await evmClient.writeContract({
+          abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
           address: lockerContract,
-          functionName: 'addFunds',
-          args: [executionHash],
+          functionName: 'sendTxWithGas',
+          args: [universalPayload as unknown as never, revertCFG],
           signer: this.universalSigner,
           value: nativeAmount,
         });
@@ -1117,33 +1121,43 @@ export class Orchestrator {
       }
 
       case VM.SVM: {
-        // Run price fetching, client creation, and PDA computation in parallel
-        const [nativeTokenUsdPrice, svmClient, [lockerPda]] = await Promise.all(
-          [
-            new PriceFetch(this.rpcUrls).getPrice(chain), // 8 decimals
-            Promise.resolve(new SvmClient({ rpcUrls })),
-            Promise.resolve(
-              anchor.web3.PublicKey.findProgramAddressSync(
-                [stringToBytes('locker')],
-                new PublicKey(lockerContract)
-              )
-            ),
-          ]
-        );
+        // Run price fetching and client creation in parallel
+        const [nativeTokenUsdPrice, svmClient] = await Promise.all([
+          new PriceFetch(this.rpcUrls).getPrice(chain), // 8 decimals
+          Promise.resolve(new SvmClient({ rpcUrls })),
+        ]);
 
         const nativeDecimals = 9; // SOL lamports
         const nativeAmount =
           (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
 
+        // Program & PDAs
+        const programId = new PublicKey(SVM_GATEWAY_IDL.address);
+        const [configPda] = PublicKey.findProgramAddressSync(
+          [stringToBytes('config')],
+          programId
+        );
+        const [vaultPda] = PublicKey.findProgramAddressSync(
+          [stringToBytes('vault')],
+          programId
+        );
+
+        const userPk = new PublicKey(this.universalSigner.account.address);
+        const revertSvm = {
+          fundRecipient: userPk,
+          revertMsg: Buffer.from([]),
+        } as unknown as never;
+
         const txHash = await svmClient.writeContract({
-          abi: FEE_LOCKER_SVM,
-          address: lockerContract,
-          functionName: 'addFunds',
-          args: [nativeAmount, toBytes(executionHash)],
+          abi: SVM_GATEWAY_IDL,
+          address: programId.toBase58(),
+          functionName: 'sendTxWithGas',
+          args: [universalPayload as unknown as never, revertSvm, nativeAmount],
           signer: this.universalSigner,
           accounts: {
-            locker: lockerPda,
-            user: new PublicKey(this.universalSigner.account.address),
+            config: configPda,
+            vault: vaultPda,
+            user: userPk,
             priceUpdate: new PublicKey(
               '7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE'
             ),
