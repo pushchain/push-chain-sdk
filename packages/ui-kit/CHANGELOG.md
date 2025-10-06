@@ -1,3 +1,9 @@
+@pushchain/ui-kit@2.0.9 (2025-10-06)
+
+- chore: update core version to 2.0.16
+
+---
+
 @pushchain/ui-kit@2.0.6 (2025-09-24)
 
 - chore: update core sdk to v2.0.8
