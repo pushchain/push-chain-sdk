@@ -20,14 +20,21 @@ import { keccak256, toBytes } from 'viem';
 import { MulticallCall } from '../orchestrator/orchestrator.types';
 import { CHAIN_INFO } from '../constants/chain';
 import { CHAIN } from '../constants/enums';
-import { Keypair, PublicKey, Connection } from '@solana/web3.js';
+import {
+  Keypair,
+  PublicKey,
+  Connection,
+  Transaction,
+  SystemProgram,
+  SendTransactionError,
+} from '@solana/web3.js';
 import { utils as anchorUtils } from '@coral-xyz/anchor';
 import { EvmClient } from '../vm-client/evm-client';
 import dotenv from 'dotenv';
 import path from 'path';
 
 // Load environment variables from packages/core/.env
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 const EVM_RPC =
   process.env['EVM_RPC'] || CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0];
 const SOLANA_RPC =
@@ -754,7 +761,12 @@ describe('PushChain', () => {
     });
   });
 
+  // TODO: THIS IS HOW TO TEST THE NEW FEE ABSTRACTION.
+  // TODO: WE ARE CREATING BRAND NEW WALLETS SO WE WILL NEED TO DEPLOY A UEA WHEN SENDING A TRANSCTION.
+  // TODO: THIS IS DONE SO WE TEST THE COMPLETE LOGIC THAT THE BACKEND IS INDEED CORRECTLY DEPLOYING THE UEA and funding the wallet.
   describe('Test new fee absctraction', () => {
+    // Increase timeout for setup and network operations in this suite
+    jest.setTimeout(300000);
     let pushClientEVM: PushChain;
     let newSepoliaAccount: PrivateKeyAccount;
     let pushClientNewSepolia: PushChain;
@@ -787,7 +799,7 @@ describe('PushChain', () => {
 
       const publicClient = createPublicClient({
         chain: sepolia,
-        transport: http(),
+        transport: http(EVM_RPC),
       });
 
       const balanceBefore = await publicClient.getBalance({
@@ -799,8 +811,10 @@ describe('PushChain', () => {
       const txHash = await walletClient.sendTransaction({
         to: newSepoliaAccount.address,
         chain: sepolia,
-        value: PushChain.utils.helpers.parseUnits('0.0001', 18),
+        value: PushChain.utils.helpers.parseUnits('0.00023', 18),
       });
+      // Delay 15 seconds to allow Sepolia ETH transfer to be mined and indexed
+      await new Promise((resolve) => setTimeout(resolve, 15000));
       await publicClient.waitForTransactionReceipt({
         hash: txHash,
       });
@@ -824,10 +838,122 @@ describe('PushChain', () => {
           network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
         }
       );
-    });
+    }, 300000);
 
     it('new fee abstraction should work', async () => {
       const txHash = await pushClientNewSepolia.universal.sendTransaction({
+        to: '0x1234567890123456789012345678901234567890',
+        value: BigInt(1),
+      });
+      expect(txHash).toBeDefined();
+    }, 300000);
+  });
+
+  // TODO: NEW FEE ABSTRACTION - SOLANA
+  describe('Test new fee abstraction (Solana Devnet - random wallet funding)', () => {
+    // Increase timeout for setup and network operations in this suite
+    jest.setTimeout(300000);
+
+    let newSolanaKeypair: Keypair;
+    let pushClientNewSolana: PushChain;
+
+    beforeAll(async () => {
+      newSolanaKeypair = Keypair.generate();
+
+      const connection = new Connection(SOLANA_RPC, 'confirmed');
+
+      const balanceBefore = await connection.getBalance(
+        newSolanaKeypair.publicKey,
+        'confirmed'
+      );
+      console.log(
+        'newSolana balance before (lamports):',
+        balanceBefore.toString()
+      );
+
+      // Fund the new wallet from a pre-funded SOLANA_PRIVATE_KEY
+      const SOL_FUNDING_KEY =
+        (process.env['SOLANA_PRIVATE_KEY'] as string | undefined) ||
+        (process.env['SVM_PRIVATE_KEY'] as string | undefined);
+      if (!SOL_FUNDING_KEY) {
+        throw new Error('SOLANA_PRIVATE_KEY (or SVM_PRIVATE_KEY) is not set');
+      }
+      let funderKeypair: Keypair;
+      try {
+        if (SOL_FUNDING_KEY.trim().startsWith('[')) {
+          const arr = JSON.parse(SOL_FUNDING_KEY) as number[];
+          funderKeypair = Keypair.fromSecretKey(Uint8Array.from(arr));
+        } else {
+          const decoded = anchorUtils.bytes.bs58.decode(SOL_FUNDING_KEY.trim());
+          funderKeypair = Keypair.fromSecretKey(Uint8Array.from(decoded));
+        }
+      } catch (e) {
+        throw new Error('Invalid SOLANA_PRIVATE_KEY format');
+      }
+      // Ensure we transfer at least rent-exempt minimum for a zero-data account
+      const minRent = await connection.getMinimumBalanceForRentExemption(
+        0,
+        'confirmed'
+      );
+      const transferIx = SystemProgram.transfer({
+        fromPubkey: funderKeypair.publicKey,
+        toPubkey: newSolanaKeypair.publicKey,
+        lamports: Math.max(minRent, 50000000),
+      });
+      const { blockhash, lastValidBlockHeight } =
+        await connection.getLatestBlockhash('confirmed');
+      const tx = new Transaction({
+        feePayer: funderKeypair.publicKey,
+        recentBlockhash: blockhash,
+      }).add(transferIx);
+      tx.sign(funderKeypair);
+      let sig: string;
+      try {
+        sig = await connection.sendRawTransaction(tx.serialize(), {
+          skipPreflight: false,
+          preflightCommitment: 'confirmed',
+        });
+      } catch (err) {
+        if (err instanceof SendTransactionError) {
+          const logs = await err.getLogs(connection);
+          // eslint-disable-next-line no-console
+          console.error('Solana sendRawTransaction logs:', logs);
+        }
+        throw err;
+      }
+      await connection.confirmTransaction(
+        { signature: sig, blockhash, lastValidBlockHeight },
+        'confirmed'
+      );
+
+      const balanceAfter = await connection.getBalance(
+        newSolanaKeypair.publicKey,
+        'confirmed'
+      );
+      console.log(
+        'newSolana balance after (lamports):',
+        balanceAfter.toString()
+      );
+
+      const universalSignerNewSolana =
+        await PushChain.utils.signer.toUniversalFromKeypair(newSolanaKeypair, {
+          chain: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET,
+          library: PushChain.CONSTANTS.LIBRARY.SOLANA_WEB3JS,
+        });
+
+      pushClientNewSolana = await PushChain.initialize(
+        universalSignerNewSolana,
+        {
+          network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+          rpcUrls: {
+            [CHAIN.SOLANA_DEVNET]: [SOLANA_RPC],
+          },
+        }
+      );
+    }, 300000);
+
+    it('random solana wallet is funded', async () => {
+      const txHash = await pushClientNewSolana.universal.sendTransaction({
         to: '0x1234567890123456789012345678901234567890',
         value: BigInt(1),
       });
