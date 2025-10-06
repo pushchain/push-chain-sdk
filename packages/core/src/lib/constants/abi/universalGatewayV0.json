@@ -340,10 +340,10 @@
           "type": "u64"
         },
         {
-          "name": "revert_cfg",
+          "name": "revert_instruction",
           "type": {
             "defined": {
-              "name": "RevertSettings"
+              "name": "RevertInstructions"
             }
           }
         },
@@ -434,10 +434,10 @@
           "type": "u64"
         },
         {
-          "name": "revert_cfg",
+          "name": "revert_instruction",
           "type": {
             "defined": {
-              "name": "RevertSettings"
+              "name": "RevertInstructions"
             }
           }
         },
@@ -470,7 +470,7 @@
         "@dev    Supports both native SOL and SPL token deposits (like ETH Gateway).",
         "For native SOL: pass Pubkey::default() as bridge_token",
         "For SPL tokens: pass token mint address as bridge_token",
-        "The route emits TxWithFunds event."
+        "The route emits UniversalTx event."
       ],
       "discriminator": [84, 247, 211, 40, 63, 106, 15, 59],
       "accounts": [
@@ -550,10 +550,10 @@
           "type": "u64"
         },
         {
-          "name": "revert_cfg",
+          "name": "revert_instruction",
           "type": {
             "defined": {
-              "name": "RevertSettings"
+              "name": "RevertInstructions"
             }
           }
         }
@@ -564,7 +564,7 @@
       "docs": [
         "@notice Allows initiating a TX for movement of funds and payload from source chain to Push Chain.",
         "@dev    Supports both native SOL and SPL token deposits with payload execution.",
-        "The route emits both TxWithGas and TxWithFunds events."
+        "The route emits UniversalTx event."
       ],
       "discriminator": [224, 179, 202, 222, 121, 238, 38, 168],
       "accounts": [
@@ -649,10 +649,10 @@
           }
         },
         {
-          "name": "revert_cfg",
+          "name": "revert_instruction",
           "type": {
             "defined": {
-              "name": "RevertSettings"
+              "name": "RevertInstructions"
             }
           }
         },
@@ -671,7 +671,7 @@
       "docs": [
         "@notice Allows initiating a TX for funding UEA with gas deposits from source chain.",
         "@dev    Supports only native SOL deposits for gas funding.",
-        "The route emits TxWithGas event - important for Instant TX Route."
+        "The route emits UniversalTx event - important for Instant TX Route."
       ],
       "discriminator": [220, 10, 179, 127, 41, 153, 193, 213],
       "accounts": [
@@ -722,10 +722,10 @@
           }
         },
         {
-          "name": "revert_cfg",
+          "name": "revert_instruction",
           "type": {
             "defined": {
-              "name": "RevertSettings"
+              "name": "RevertInstructions"
             }
           }
         },
@@ -1162,12 +1162,8 @@
       "discriminator": [65, 3, 231, 165, 235, 116, 154, 51]
     },
     {
-      "name": "TxWithFunds",
-      "discriminator": [43, 31, 31, 2, 4, 236, 107, 255]
-    },
-    {
-      "name": "TxWithGas",
-      "discriminator": [182, 110, 243, 17, 145, 36, 153, 15]
+      "name": "UniversalTx",
+      "discriminator": [108, 154, 216, 41, 181, 234, 29, 124]
     },
     {
       "name": "WithdrawFunds",
@@ -1517,9 +1513,9 @@
       }
     },
     {
-      "name": "RevertSettings",
+      "name": "RevertInstructions",
       "docs": [
-        "Revert settings for failed transactions (parity with EVM `RevertSettings`)."
+        "Revert instructions for failed transactions (parity with EVM `RevertInstructions`)."
       ],
       "type": {
         "kind": "struct",
@@ -1656,104 +1652,6 @@
       }
     },
     {
-      "name": "TxWithFunds",
-      "docs": [
-        "FUNDS deposit event (parity with EVM `TxWithFunds`). Emitted for FUNDS-only and FUNDS+PAYLOAD routes."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "sender",
-            "type": "pubkey"
-          },
-          {
-            "name": "recipient",
-            "type": {
-              "array": ["u8", 20]
-            }
-          },
-          {
-            "name": "bridge_amount",
-            "type": "u64"
-          },
-          {
-            "name": "gas_amount",
-            "type": "u64"
-          },
-          {
-            "name": "bridge_token",
-            "type": "pubkey"
-          },
-          {
-            "name": "data",
-            "type": "bytes"
-          },
-          {
-            "name": "revert_cfg",
-            "type": {
-              "defined": {
-                "name": "RevertSettings"
-              }
-            }
-          },
-          {
-            "name": "tx_type",
-            "type": {
-              "defined": {
-                "name": "TxType"
-              }
-            }
-          },
-          {
-            "name": "signature_data",
-            "type": "bytes"
-          }
-        ]
-      }
-    },
-    {
-      "name": "TxWithGas",
-      "docs": [
-        "GAS deposit event (parity with EVM `TxWithGas`). Emitted for gas funding on both GAS and GAS+PAYLOAD routes."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "sender",
-            "type": "pubkey"
-          },
-          {
-            "name": "payload_hash",
-            "type": {
-              "array": ["u8", 32]
-            }
-          },
-          {
-            "name": "native_token_deposited",
-            "type": "u64"
-          },
-          {
-            "name": "revert_cfg",
-            "type": {
-              "defined": {
-                "name": "RevertSettings"
-              }
-            }
-          },
-          {
-            "name": "tx_type",
-            "type": {
-              "defined": {
-                "name": "TxType"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "UniversalPayload",
       "docs": [
         "Universal payload for cross-chain execution (parity with EVM `UniversalPayload`).",
@@ -1803,6 +1701,60 @@
                 "name": "VerificationType"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UniversalTx",
+      "docs": [
+        "Universal transaction event (parity with EVM V0 `UniversalTx`).",
+        "Single event for both gas funding and funds movement."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "sender",
+            "type": "pubkey"
+          },
+          {
+            "name": "recipient",
+            "type": {
+              "array": ["u8", 20]
+            }
+          },
+          {
+            "name": "token",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "payload",
+            "type": "bytes"
+          },
+          {
+            "name": "revert_instruction",
+            "type": {
+              "defined": {
+                "name": "RevertInstructions"
+              }
+            }
+          },
+          {
+            "name": "tx_type",
+            "type": {
+              "defined": {
+                "name": "TxType"
+              }
+            }
+          },
+          {
+            "name": "signature_data",
+            "type": "bytes"
           }
         ]
       }
