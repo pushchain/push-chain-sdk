@@ -1045,6 +1045,10 @@ export class Orchestrator {
        */
 
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06);
+      // NOTE: The new sendTxWithGas flow won’t call the sendUniversalTx() function below.
+      // This legacy call is temporarily kept to preserve the current return so we don't get compiler errors.
+      // What we will return instead is the gRPC query result directly from the lockFee() function, that call validators to get the transaction.
+      // Remove this once lockFee() returns the final result.
       const transactions = await this.sendUniversalTx(
         isUEADeployed,
         feeLockTxHash,
@@ -1100,8 +1104,17 @@ export class Orchestrator {
         ]);
 
         const nativeDecimals = 18; // ETH, MATIC, etc.
-        const nativeAmount =
-          (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
+        // Ensure deposit respects gateway USD caps (min $1, max $10) and avoid rounding below min
+        const oneUsd = PushChain.utils.helpers.parseUnits('1', 8);
+        const tenUsd = PushChain.utils.helpers.parseUnits('10', 8);
+        let depositUsd = amount < oneUsd ? oneUsd : amount;
+        if (depositUsd > tenUsd) depositUsd = tenUsd;
+        // Ceil division to avoid falling below on-chain min due to rounding, then add 1 wei safety
+        let nativeAmount =
+          (depositUsd * BigInt(10 ** nativeDecimals) +
+            (nativeTokenUsdPrice - BigInt(1))) /
+          nativeTokenUsdPrice;
+        nativeAmount = nativeAmount + BigInt(1);
 
         // Deposit-only funding via UniversalGatewayV0 (no payload execution)
         const revertCFG = {
@@ -1117,6 +1130,14 @@ export class Orchestrator {
           signer: this.universalSigner,
           value: nativeAmount,
         });
+        // TODO: Check if the behaviour for querying the transaction is the same as 'sendFunds' or 'sendTxWithFunds' - so we pass the correct argument, the enum.
+        const queryTx = await this.queryUniversalTxStatusFromGatewayTx(
+          evmClient,
+          lockerContract as `0x${string}`,
+          txHash,
+          'sendFunds'
+        );
+        // TODO: return this queryTx, then return it to the user.
         return hexToBytes(txHash);
       }
 
@@ -1126,10 +1147,18 @@ export class Orchestrator {
           new PriceFetch(this.rpcUrls).getPrice(chain), // 8 decimals
           Promise.resolve(new SvmClient({ rpcUrls })),
         ]);
-
+        // Ensure deposit respects gateway USD caps (min $1, max $10) and avoid rounding below min
         const nativeDecimals = 9; // SOL lamports
-        const nativeAmount =
-          (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
+        const oneUsd = PushChain.utils.helpers.parseUnits('1', 8);
+        const tenUsd = PushChain.utils.helpers.parseUnits('10', 8);
+        let depositUsd = amount < oneUsd ? oneUsd : amount;
+        if (depositUsd > tenUsd) depositUsd = tenUsd;
+        // Ceil division to avoid falling below on-chain min due to rounding, then add 1 lamport safety
+        let nativeAmount =
+          (depositUsd * BigInt(10 ** nativeDecimals) +
+            (nativeTokenUsdPrice - BigInt(1))) /
+          nativeTokenUsdPrice;
+        nativeAmount = nativeAmount + BigInt(1);
 
         // Program & PDAs
         const programId = new PublicKey(SVM_GATEWAY_IDL.address);
@@ -1148,11 +1177,39 @@ export class Orchestrator {
           revertMsg: Buffer.from([]),
         } as unknown as never;
 
+        // Build minimal Anchor-compatible payload (BN/Buffer/snake_case + enum variant)
+        const up: any = universalPayload as any;
+        const vType =
+          up?.vType === 0 ||
+          (up?.vType && up?.vType.signedVerification !== undefined)
+            ? { signedVerification: {} }
+            : { universalTxVerification: {} };
+        const svmPayload = {
+          to: Array.from(
+            Buffer.from(
+              String(up.to).slice(2).padStart(40, '0'),
+              'hex'
+            ).subarray(0, 20)
+          ),
+          value: new anchor.BN(BigInt(up.value ?? 0).toString()),
+          data: Buffer.from(String(up.data ?? '0x').slice(2), 'hex'),
+          gas_limit: new anchor.BN(BigInt(up.gasLimit ?? 0).toString()),
+          max_fee_per_gas: new anchor.BN(
+            BigInt(up.maxFeePerGas ?? 0).toString()
+          ),
+          max_priority_fee_per_gas: new anchor.BN(
+            BigInt(up.maxPriorityFeePerGas ?? 0).toString()
+          ),
+          nonce: new anchor.BN(BigInt(up.nonce ?? 0).toString()),
+          deadline: new anchor.BN(BigInt(up.deadline ?? 0).toString()),
+          v_type: vType,
+        } as unknown as never;
+
         const txHash = await svmClient.writeContract({
           abi: SVM_GATEWAY_IDL,
           address: programId.toBase58(),
           functionName: 'sendTxWithGas',
-          args: [universalPayload as unknown as never, revertSvm, nativeAmount],
+          args: [svmPayload, revertSvm, new anchor.BN(nativeAmount.toString())],
           signer: this.universalSigner,
           accounts: {
             config: configPda,
@@ -1164,6 +1221,14 @@ export class Orchestrator {
             systemProgram: SystemProgram.programId,
           },
         });
+        // TODO: Check if the behaviour for querying the transaction is the same as 'sendFunds' or 'sendTxWithFunds' - so we pass the correct argument, the enum.
+        const queryTx = await this.queryUniversalTxStatusFromGatewayTx(
+          undefined,
+          undefined,
+          txHash,
+          'sendFunds'
+        );
+        // TODO: return this queryTx, then return it to the user.
         return new Uint8Array(utils.bytes.bs58.decode(txHash));
       }
 
@@ -2087,9 +2152,19 @@ export class Orchestrator {
       if (vm === VM.EVM) {
         if (!evmClient || !gatewayAddress)
           throw new Error('Missing EVM context');
-        const receipt = await evmClient.publicClient.getTransactionReceipt({
-          hash: txHash as `0x${string}`,
-        });
+        let receipt;
+        try {
+          receipt = await evmClient.publicClient.getTransactionReceipt({
+            hash: txHash as `0x${string}`,
+          });
+        } catch {
+          // Receipt might not be indexed yet on this RPC; wait briefly for it
+          receipt = await evmClient.publicClient.waitForTransactionReceipt({
+            hash: txHash as `0x${string}`,
+            confirmations: 0,
+            timeout: CHAIN_INFO[chain].timeout,
+          });
+        }
         const gatewayLogs = (receipt.logs || []).filter(
           (l: any) =>
             (l.address || '').toLowerCase() === gatewayAddress.toLowerCase()
