@@ -34,6 +34,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 // Load environment variables from packages/core/.env
+// Try multiple possible paths to handle different execution contexts
+dotenv.config({ path: path.resolve(process.cwd(), 'packages/core/.env') }) ||
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 const EVM_RPC =
   process.env['EVM_RPC'] || CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0];
@@ -836,6 +838,9 @@ describe('PushChain', () => {
         universalSignerNewSepolia,
         {
           network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+          progressHook: (progress) => {
+            console.log('Progress', progress);
+          },
         }
       );
     }, 300000);
@@ -945,6 +950,9 @@ describe('PushChain', () => {
         universalSignerNewSolana,
         {
           network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+          progressHook: (progress) => {
+            console.log('Progress', progress);
+          },
           rpcUrls: {
             [CHAIN.SOLANA_DEVNET]: [SOLANA_RPC],
           },

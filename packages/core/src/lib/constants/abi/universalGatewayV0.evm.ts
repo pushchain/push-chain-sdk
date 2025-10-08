@@ -524,6 +524,11 @@ export const UNIVERSAL_GATEWAY_V0 = [
           { name: 'revertMsg', type: 'bytes', internalType: 'bytes' },
         ],
       },
+      {
+        name: 'signatureData',
+        type: 'bytes',
+        internalType: 'bytes',
+      },
     ],
     outputs: [],
     stateMutability: 'payable',
@@ -589,6 +594,11 @@ export const UNIVERSAL_GATEWAY_V0 = [
         internalType: 'uint256',
       },
       { name: 'deadline', type: 'uint256', internalType: 'uint256' },
+      {
+        name: 'signatureData',
+        type: 'bytes',
+        internalType: 'bytes',
+      },
     ],
     outputs: [],
     stateMutability: 'nonpayable',

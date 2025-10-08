@@ -1039,16 +1039,85 @@ export class Orchestrator {
         );
         await this.waitForLockerFeeConfirmation(feeLockTxHashBytes);
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_05_03);
+
+        /**
+         * Return response directly (skip sendUniversalTx for sendTxWithGas flow)
+         * Note: queryTx may be undefined since validators don't recognize new UniversalTx event yet
+         */
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06);
+
+        // Transform to UniversalTxResponse (follow sendFunds pattern)
+        if (vm === VM.EVM) {
+          // Get EVM transaction for full response
+          const evmClient = new EvmClient({
+            rpcUrls: this.rpcUrls[chain] || CHAIN_INFO[chain].defaultRPC,
+          });
+          const tx = await evmClient.getTransaction(
+            feeLockTxHash as `0x${string}`
+          );
+          const response = await this.transformToUniversalTxResponse(tx);
+          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
+          return response;
+        } else {
+          // SVM: build minimal response (follow sendFunds SVM pattern)
+          const chainId = CHAIN_INFO[chain].chainId;
+          const origin = `${VM_NAMESPACE[vm]}:${chainId}:${this.universalSigner.account.address}`;
+          const response: UniversalTxResponse = {
+            hash: utils.bytes.bs58.encode(feeLockTxHashBytes),
+            origin,
+            blockNumber: BigInt(0),
+            blockHash: '',
+            transactionIndex: 0,
+            chainId,
+            from: this.universalSigner.account.address,
+            to: '0x0000000000000000000000000000000000000000',
+            nonce: 0,
+            data: '0x',
+            value: BigInt(0),
+            gasLimit: BigInt(0),
+            gasPrice: undefined,
+            maxFeePerGas: undefined,
+            maxPriorityFeePerGas: undefined,
+            accessList: [],
+            wait: async () => ({
+              hash: utils.bytes.bs58.encode(feeLockTxHashBytes),
+              blockNumber: BigInt(0),
+              blockHash: '',
+              transactionIndex: 0,
+              from: this.universalSigner.account.address,
+              to: '0x0000000000000000000000000000000000000000',
+              contractAddress: null,
+              gasPrice: BigInt(0),
+              gasUsed: BigInt(0),
+              cumulativeGasUsed: BigInt(0),
+              logs: [],
+              logsBloom: '0x',
+              status: 1 as 0 | 1,
+              raw: {
+                from: this.universalSigner.account.address,
+                to: '0x0000000000000000000000000000000000000000',
+              },
+            }),
+            type: '99',
+            typeVerbose: 'universal',
+            signature: { r: '0x0', s: '0x0', v: 0 },
+            raw: {
+              from: this.universalSigner.account.address,
+              to: '0x0000000000000000000000000000000000000000',
+              nonce: 0,
+              data: '0x',
+              value: BigInt(0),
+            },
+          };
+          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
+          return response;
+        }
       }
       /**
-       * Broadcasting Tx to PC
+       * Non-fee-locking path: Broadcasting Tx to PC via sendUniversalTx
        */
 
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06);
-      // NOTE: The new sendTxWithGas flow won’t call the sendUniversalTx() function below.
-      // This legacy call is temporarily kept to preserve the current return so we don't get compiler errors.
-      // What we will return instead is the gRPC query result directly from the lockFee() function, that call validators to get the transaction.
-      // Remove this once lockFee() returns the final result.
       const transactions = await this.sendUniversalTx(
         isUEADeployed,
         feeLockTxHash,
@@ -1080,7 +1149,7 @@ export class Orchestrator {
    *
    * @param amount - Fee amount in USDC (8 Decimals)
    * @param executionHash - Optional execution payload hash (default: zeroHash)
-   * @returns Transaction hash of the locking transaction
+   * @returns Transaction hash bytes
    */
   private async lockFee(
     amount: bigint, // USD with 8 decimals
@@ -1126,18 +1195,10 @@ export class Orchestrator {
           abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
           address: lockerContract,
           functionName: 'sendTxWithGas',
-          args: [universalPayload as unknown as never, revertCFG],
+          args: [universalPayload as unknown as never, revertCFG, '0x'],
           signer: this.universalSigner,
           value: nativeAmount,
         });
-        // TODO: Check if the behaviour for querying the transaction is the same as 'sendFunds' or 'sendTxWithFunds' - so we pass the correct argument, the enum.
-        const queryTx = await this.queryUniversalTxStatusFromGatewayTx(
-          evmClient,
-          lockerContract as `0x${string}`,
-          txHash,
-          'sendFunds'
-        );
-        // TODO: return this queryTx, then return it to the user.
         return hexToBytes(txHash);
       }
 
@@ -1221,14 +1282,6 @@ export class Orchestrator {
             systemProgram: SystemProgram.programId,
           },
         });
-        // TODO: Check if the behaviour for querying the transaction is the same as 'sendFunds' or 'sendTxWithFunds' - so we pass the correct argument, the enum.
-        const queryTx = await this.queryUniversalTxStatusFromGatewayTx(
-          undefined,
-          undefined,
-          txHash,
-          'sendFunds'
-        );
-        // TODO: return this queryTx, then return it to the user.
         return new Uint8Array(utils.bytes.bs58.decode(txHash));
       }
 
@@ -1659,21 +1712,23 @@ export class Orchestrator {
     switch (vm) {
       case VM.EVM: {
         const evmClient = new EvmClient({ rpcUrls });
-        await evmClient.waitForConfirmations({
-          txHash: bytesToHex(txHashBytes),
+        await this.waitForEvmConfirmationsWithCountdown(
+          evmClient,
+          bytesToHex(txHashBytes),
           confirmations,
-          timeoutMs: timeout,
-        });
+          timeout
+        );
         return;
       }
 
       case VM.SVM: {
         const svmClient = new SvmClient({ rpcUrls });
-        await svmClient.waitForConfirmations({
-          txSignature: utils.bytes.bs58.encode(txHashBytes),
+        await this.waitForSvmConfirmationsWithCountdown(
+          svmClient,
+          utils.bytes.bs58.encode(txHashBytes),
           confirmations,
-          timeoutMs: timeout,
-        });
+          timeout
+        );
         return;
       }
 
@@ -2267,19 +2322,44 @@ export class Orchestrator {
     });
     const targetBlock = receipt.blockNumber + BigInt(confirmations);
 
+    // Track last emitted confirmation to avoid duplicates
+    let lastEmitted = 0;
+
     // Poll blocks and emit remaining confirmations
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const currentBlock = await evmClient.publicClient.getBlockNumber();
-      if (currentBlock >= targetBlock) return;
+
+      // If already confirmed, emit progress for final confirmation
+      if (currentBlock >= targetBlock) {
+        // Only emit if we haven't already shown this confirmation
+        if (lastEmitted < confirmations) {
+          this.executeProgressHook(
+            PROGRESS_HOOK.SEND_TX_06_04,
+            confirmations,
+            confirmations
+          );
+        }
+        return;
+      }
 
       const remaining = Number(targetBlock - currentBlock);
       const completed = Math.max(1, confirmations - remaining + 1);
-      this.executeProgressHook(
-        PROGRESS_HOOK.SEND_TX_06_04,
-        completed,
-        confirmations
-      );
+
+      // Only emit if this is a new confirmation count
+      if (completed > lastEmitted) {
+        this.executeProgressHook(
+          PROGRESS_HOOK.SEND_TX_06_04,
+          completed,
+          confirmations
+        );
+        lastEmitted = completed;
+
+        // If we've reached required confirmations, we're done
+        if (completed >= confirmations) {
+          return;
+        }
+      }
 
       if (Date.now() - start > timeoutMs) {
         throw new Error(
@@ -2288,6 +2368,56 @@ export class Orchestrator {
       }
 
       await new Promise((r) => setTimeout(r, 12000));
+    }
+  }
+
+  // Emit countdown updates while waiting for SVM confirmations
+  private async waitForSvmConfirmationsWithCountdown(
+    svmClient: SvmClient,
+    txSignature: string,
+    confirmations: number,
+    timeoutMs: number
+  ): Promise<void> {
+    // initial emit
+    this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_03, confirmations);
+    const start = Date.now();
+
+    // Poll for confirmations and emit progress
+    let lastConfirmed = 0;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const connection = (svmClient as any).connections[(svmClient as any).currentConnectionIndex];
+      const { value } = await connection.getSignatureStatuses([txSignature]);
+      const status = value[0];
+
+      if (status) {
+        const currentConfirms = status.confirmations ?? 0;
+        const hasEnoughConfirmations = currentConfirms >= confirmations;
+        const isSuccessfullyFinalized = status.err === null && status.confirmationStatus !== null;
+
+        // Emit progress if we have more confirmations than before OR if finalized
+        if (currentConfirms > lastConfirmed || (isSuccessfullyFinalized && lastConfirmed === 0)) {
+          const confirmCount = isSuccessfullyFinalized && currentConfirms === 0 ? confirmations : currentConfirms;
+          this.executeProgressHook(
+            PROGRESS_HOOK.SEND_TX_06_04,
+            Math.max(1, confirmCount),
+            confirmations
+          );
+          lastConfirmed = currentConfirms;
+        }
+
+        if (hasEnoughConfirmations || isSuccessfullyFinalized) {
+          return;
+        }
+      }
+
+      if (Date.now() - start > timeoutMs) {
+        throw new Error(
+          `Timeout: transaction ${txSignature} not confirmed with ${confirmations} confirmations within ${timeoutMs} ms`
+        );
+      }
+
+      await new Promise((r) => setTimeout(r, 500));
     }
   }
 
