@@ -17,6 +17,7 @@
     "paths": {
       "@pushchain/core": ["packages/core/src/index.ts"],
       "@pushchain/devnet": ["packages/devnet/src/index.ts"],
+      "@pushchain/notice-client": ["packages/notice-client/src/index.ts"],
       "@pushchain/ui-kit": ["packages/ui-kit/src/index.ts"]
     }
   },

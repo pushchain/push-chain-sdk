@@ -1,0 +1,33 @@
+{
+  "name": "@pushchain/notice-client",
+  "version": "0.0.1",
+  "homepage": "https://push.org",
+  "keywords": [
+    "pushchain",
+    "push",
+    "solana",
+    "evm",
+    "typescript",
+    "universal",
+    "ui-kit"
+  ],
+  "dependencies": {
+    "react-is": "^19.1.0",
+    "styled-components": "^6.1.0",
+    "tslib": "^2.3.0"
+  },
+  "peerDependencies": {
+    "react": ">=18.3.0 <20.0.0",
+    "react-dom": ">=18.3.0 <20.0.0"
+  },
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "typings": "./src/index.d.ts",
+  "devDependencies": {
+    "@types/react": "^18.3.13",
+    "@types/react-is": "^19",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "typescript-eslint": "^8.32.1"
+  }
+}
