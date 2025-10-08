@@ -1191,11 +1191,24 @@ export class Orchestrator {
           revertMsg: '0x',
         } as unknown as never;
 
+        // Sign the universal payload
+        const ueaAddress = this.computeUEAOffchain();
+        const ueaVersion = await this.fetchUEAVersion();
+        const eip712Signature = await this.signUniversalPayload(
+          universalPayload,
+          ueaAddress,
+          ueaVersion
+        );
+        const eip712SignatureHex =
+          typeof eip712Signature === 'string'
+            ? (eip712Signature as `0x${string}`)
+            : (bytesToHex(eip712Signature) as `0x${string}`);
+
         const txHash: `0x${string}` = await evmClient.writeContract({
           abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
           address: lockerContract,
           functionName: 'sendTxWithGas',
-          args: [universalPayload as unknown as never, revertCFG, '0x'],
+          args: [universalPayload as unknown as never, revertCFG, eip712SignatureHex],
           signer: this.universalSigner,
           value: nativeAmount,
         });
