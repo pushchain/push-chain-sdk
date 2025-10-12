@@ -1044,6 +1044,7 @@ export class Orchestrator {
          * Return response directly (skip sendUniversalTx for sendTxWithGas flow)
          * Note: queryTx may be undefined since validators don't recognize new UniversalTx event yet
          */
+
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06);
 
         // Transform to UniversalTxResponse (follow sendFunds pattern)
@@ -1056,7 +1057,7 @@ export class Orchestrator {
             feeLockTxHash as `0x${string}`
           );
           const response = await this.transformToUniversalTxResponse(tx);
-          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
+          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]); 
           return response;
         } else {
           // SVM: build minimal response (follow sendFunds SVM pattern)
@@ -1204,6 +1205,9 @@ export class Orchestrator {
             ? (eip712Signature as `0x${string}`)
             : (bytesToHex(eip712Signature) as `0x${string}`);
 
+        // Override vType to 0 for sendTxWithGas (signature-based verification)
+        universalPayload.vType = VerificationType.signedVerification;
+
         const txHash: `0x${string}` = await evmClient.writeContract({
           abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
           address: lockerContract,
@@ -1251,13 +1255,12 @@ export class Orchestrator {
           revertMsg: Buffer.from([]),
         } as unknown as never;
 
+        // Override vType to 0 for sendTxWithGas (signature-based verification)
+        universalPayload.vType = VerificationType.signedVerification;
+
         // Build minimal Anchor-compatible payload (BN/Buffer/snake_case + enum variant)
         const up: any = universalPayload as any;
-        const vType =
-          up?.vType === 0 ||
-          (up?.vType && up?.vType.signedVerification !== undefined)
-            ? { signedVerification: {} }
-            : { universalTxVerification: {} };
+        const vType = { signedVerification: {} }; // Always signedVerification for sendTxWithGas
         const svmPayload = {
           to: Array.from(
             Buffer.from(

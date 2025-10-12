@@ -813,7 +813,7 @@ describe('PushChain', () => {
       const txHash = await walletClient.sendTransaction({
         to: newSepoliaAccount.address,
         chain: sepolia,
-        value: PushChain.utils.helpers.parseUnits('0.00023', 18),
+        value: PushChain.utils.helpers.parseUnits('0.00024', 18),
       });
       // Delay 15 seconds to allow Sepolia ETH transfer to be mined and indexed
       await new Promise((resolve) => setTimeout(resolve, 15000));
