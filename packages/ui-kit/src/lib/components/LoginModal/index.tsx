@@ -29,6 +29,7 @@ type LoginModalProps = {
   handleUserLogOutEvent: () => void;
   toggleButtonRef: React.RefObject<HTMLButtonElement>;
   sendMessageToPushWallet: (message: any) => void;
+  isReadOnly: boolean;
 };
 
 const LoginModal: FC<LoginModalProps> = ({
@@ -45,7 +46,8 @@ const LoginModal: FC<LoginModalProps> = ({
   handleUserLogOutEvent,
   config,
   toggleButtonRef,
-  sendMessageToPushWallet
+  sendMessageToPushWallet,
+  isReadOnly
 }) => {
   const { modal } = config;
   const { pushChainClient } = usePushChainClient(config?.uid || 'default');
@@ -109,7 +111,7 @@ const LoginModal: FC<LoginModalProps> = ({
           $modalDefaults={modal}
           $style={{ top, left }}
         >
-          {isIframeLoading && (
+          {isIframeLoading && !isReadOnly && (
             <FrameLoadingContainer>
               <CloseButtonContainer
                 onClick={() => {
