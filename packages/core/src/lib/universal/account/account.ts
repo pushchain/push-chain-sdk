@@ -151,6 +151,8 @@ const accountCache = new Cache();
 function getPushNetworkFromChain(chain: CHAIN): PUSH_NETWORK {
   const testnetChains = [
     CHAIN.ETHEREUM_SEPOLIA,
+    CHAIN.ARBITRUM_SEPOLIA,
+    CHAIN.BASE_SEPOLIA,
     CHAIN.SOLANA_TESTNET,
     CHAIN.SOLANA_DEVNET,
     CHAIN.PUSH_TESTNET_DONUT,

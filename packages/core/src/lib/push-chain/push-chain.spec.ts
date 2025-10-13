@@ -730,29 +730,69 @@ describe('PushChain', () => {
       }, 300000);
     });
 
-    // Parameterized multicall tests for all EVM chains
-    describe.each(EVM_CHAIN_CONFIGS)(
-      'Multicall - $name',
-      (config) => {
-        const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
-          | `0x${string}`
-          | undefined;
-        let client: PushChain;
+    // Individual multicall tests for each EVM chain (for IDE run button support)
+    describe('Multicall - Ethereum Sepolia', () => {
+      const config = EVM_CHAIN_CONFIGS[0]; // Ethereum Sepolia
+      const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
+        | `0x${string}`
+        | undefined;
+      let client: PushChain;
 
-        beforeAll(async () => {
-          if (!PRIVATE_KEY) {
-            throw new Error('EVM_PRIVATE_KEY environment variable is not set');
-          }
+      beforeAll(async () => {
+        if (!PRIVATE_KEY) {
+          throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+        }
 
-          const result = await setupEVMChainClient(config, PRIVATE_KEY);
-          client = result.client;
-        });
+        const result = await setupEVMChainClient(config, PRIVATE_KEY);
+        client = result.client;
+      });
 
-        it('integration: should build and send multicall payload', async () => {
-          await testMulticall(client, config);
-        }, 300000);
-      }
-    );
+      it('integration: should build and send multicall payload', async () => {
+        await testMulticall(client, config);
+      }, 300000);
+    });
+
+    describe('Multicall - Arbitrum Sepolia', () => {
+      const config = EVM_CHAIN_CONFIGS[1]; // Arbitrum Sepolia
+      const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
+        | `0x${string}`
+        | undefined;
+      let client: PushChain;
+
+      beforeAll(async () => {
+        if (!PRIVATE_KEY) {
+          throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+        }
+
+        const result = await setupEVMChainClient(config, PRIVATE_KEY);
+        client = result.client;
+      });
+
+      it('integration: should build and send multicall payload', async () => {
+        await testMulticall(client, config);
+      }, 300000);
+    });
+
+    describe('Multicall - Base Sepolia', () => {
+      const config = EVM_CHAIN_CONFIGS[2]; // Base Sepolia
+      const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
+        | `0x${string}`
+        | undefined;
+      let client: PushChain;
+
+      beforeAll(async () => {
+        if (!PRIVATE_KEY) {
+          throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+        }
+
+        const result = await setupEVMChainClient(config, PRIVATE_KEY);
+        client = result.client;
+      });
+
+      it('integration: should build and send multicall payload', async () => {
+        await testMulticall(client, config);
+      }, 300000);
+    });
 
     describe('signTypedData', () => {
       it('should signTypedData - EIP-712 format', async () => {
@@ -1426,85 +1466,145 @@ describe('PushChain', () => {
     });
   });
 
-  // Parameterized test suite for all EVM chains
-  describe.each(EVM_CHAIN_CONFIGS)(
-    'Universal.sendTransaction (FUNDS_TX via UniversalGatewayV0) - $name',
-    (config) => {
-      const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
-        | `0x${string}`
-        | undefined;
-      let account: PrivateKeyAccount;
-      let client: PushChain;
+  // Individual test suites for each EVM chain (for IDE run button support)
+  describe('Universal.sendTransaction (FUNDS_TX via UniversalGatewayV0) - Ethereum Sepolia', () => {
+    const config = EVM_CHAIN_CONFIGS[0]; // Ethereum Sepolia
+    const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
+      | `0x${string}`
+      | undefined;
+    let account: PrivateKeyAccount;
+    let client: PushChain;
 
-      beforeAll(async () => {
-        if (!PRIVATE_KEY) {
-          throw new Error('EVM_PRIVATE_KEY environment variable is not set');
-        }
+    beforeAll(async () => {
+      if (!PRIVATE_KEY) {
+        throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+      }
 
-        const result = await setupEVMChainClient(config, PRIVATE_KEY);
-        account = result.account;
-        client = result.client;
-      });
+      const result = await setupEVMChainClient(config, PRIVATE_KEY);
+      account = result.account;
+      client = result.client;
+    });
 
-      it('integration: sendFunds USDT via UniversalGatewayV0', async () => {
-        await testSendFundsUSDT(client, account, config);
-      }, 300000);
+    it('integration: sendFunds USDT via UniversalGatewayV0', async () => {
+      await testSendFundsUSDT(client, account, config);
+    }, 300000);
 
-      it('integration: sendFunds ETH via UniversalGatewayV0', async () => {
-        await testSendFundsETH(client, config);
-      }, 300000);
+    it('integration: sendFunds ETH via UniversalGatewayV0', async () => {
+      await testSendFundsETH(client, config);
+    }, 300000);
 
-      it('integration: sendTxWithFunds USDT via UniversalGatewayV0', async () => {
-        await testSendTxWithFundsUSDT(client, account, config);
-      }, 500000);
+    it('integration: sendTxWithFunds USDT via UniversalGatewayV0', async () => {
+      await testSendTxWithFundsUSDT(client, account, config);
+    }, 500000);
 
-      it('integration: sendTxWithFunds ETH should throw (not supported)', async () => {
-        try {
-          const bridgeAmount = BigInt(1);
-          const UCABI = [
-            {
-              inputs: [],
-              name: 'increment',
-              outputs: [],
-              stateMutability: 'nonpayable',
-              type: 'function',
-            },
-          ];
-          const COUNTER_ADDRESS =
-            '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
-          const data = PushChain.utils.helpers.encodeTxData({
-            abi: UCABI,
-            functionName: 'increment',
-          });
+    it('integration: sendTxWithFunds ETH should throw (not supported)', async () => {
+      try {
+        const bridgeAmount = BigInt(1);
+        const UCABI = [
+          {
+            inputs: [],
+            name: 'increment',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+        ];
+        const COUNTER_ADDRESS =
+          '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
+        const data = PushChain.utils.helpers.encodeTxData({
+          abi: UCABI,
+          functionName: 'increment',
+        });
 
-          const tenUsdt = PushChain.utils.helpers.parseUnits('10', {
-            decimals: client.payable.token.USDT.decimals,
-          });
-          const quote = await client.funds.getConversionQuote(tenUsdt, {
-            from: client.payable.token.USDT,
-            to: client.moveable.token.WETH,
-          });
-          const ethValue = BigInt(quote.amountOut);
+        const tenUsdt = PushChain.utils.helpers.parseUnits('10', {
+          decimals: client.payable.token.USDT.decimals,
+        });
+        const quote = await client.funds.getConversionQuote(tenUsdt, {
+          from: client.payable.token.USDT,
+          to: client.moveable.token.WETH,
+        });
+        const ethValue = BigInt(quote.amountOut);
 
-          await expect(
-            client.universal.sendTransaction({
-              to: COUNTER_ADDRESS,
-              value: ethValue,
-              data,
-              funds: { amount: bridgeAmount, token: client.moveable.token.ETH },
-            })
-          ).rejects.toThrow(
-            'Only ERC-20 tokens are supported for funds+payload on EVM; native and permit2 are not supported yet'
-          );
-        } catch (err) {
-          console.warn(
-            `ETH sendTxWithFunds flow failed (non-fatal for test on ${config.name}):`,
-            err
-          );
-        }
-      });
-    }
-  );
+        await expect(
+          client.universal.sendTransaction({
+            to: COUNTER_ADDRESS,
+            value: ethValue,
+            data,
+            funds: { amount: bridgeAmount, token: client.moveable.token.ETH },
+          })
+        ).rejects.toThrow(
+          'Only ERC-20 tokens are supported for funds+payload on EVM; native and permit2 are not supported yet'
+        );
+      } catch (err) {
+        console.warn(
+          `ETH sendTxWithFunds flow failed (non-fatal for test on ${config.name}):`,
+          err
+        );
+      }
+    });
+  });
+
+  describe('Universal.sendTransaction (FUNDS_TX via UniversalGatewayV0) - Arbitrum Sepolia', () => {
+    const config = EVM_CHAIN_CONFIGS[1]; // Arbitrum Sepolia
+    const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
+      | `0x${string}`
+      | undefined;
+    let account: PrivateKeyAccount;
+    let client: PushChain;
+
+    beforeAll(async () => {
+      if (!PRIVATE_KEY) {
+        throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+      }
+
+      const result = await setupEVMChainClient(config, PRIVATE_KEY);
+      account = result.account;
+      client = result.client;
+    });
+
+    it('integration: sendFunds USDT via UniversalGatewayV0', async () => {
+      await testSendFundsUSDT(client, account, config);
+    }, 300000);
+
+    it('integration: sendFunds ETH via UniversalGatewayV0', async () => {
+      await testSendFundsETH(client, config);
+    }, 300000);
+
+    it('integration: sendTxWithFunds USDT via UniversalGatewayV0', async () => {
+      await testSendTxWithFundsUSDT(client, account, config);
+    }, 500000);
+  });
+
+  describe('Universal.sendTransaction (FUNDS_TX via UniversalGatewayV0) - Base Sepolia', () => {
+    const config = EVM_CHAIN_CONFIGS[2]; // Base Sepolia
+    const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
+      | `0x${string}`
+      | undefined;
+    let account: PrivateKeyAccount;
+    let client: PushChain;
+
+    beforeAll(async () => {
+      if (!PRIVATE_KEY) {
+        throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+      }
+
+      const result = await setupEVMChainClient(config, PRIVATE_KEY);
+      account = result.account;
+      client = result.client;
+    });
+
+    it('integration: sendFunds USDT via UniversalGatewayV0', async () => {
+      await testSendFundsUSDT(client, account, config);
+    }, 300000);
+
+    it('integration: sendFunds ETH via UniversalGatewayV0', async () => {
+      await testSendFundsETH(client, config);
+    }, 300000);
+
+    it('integration: sendTxWithFunds USDT via UniversalGatewayV0', async () => {
+      await testSendTxWithFundsUSDT(client, account, config);
+    }, 500000);
+  });
 
   // Test for unsupported origin chains (only needs to run once, not per chain)
   describe('Universal.sendTransaction - Unsupported chains', () => {

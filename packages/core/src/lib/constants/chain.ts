@@ -92,7 +92,7 @@ export const CHAIN_INFO: Record<
   [CHAIN.BASE_SEPOLIA]: {
     chainId: '84532',
     vm: VM.EVM,
-    lockerContract: '0xe91addb5a01b4fb4ac2599b171f56e765fc8903c',
+    lockerContract: '0xFD4fef1F43aFEc8b5bcdEEc47f35a1431479aC16',
     defaultRPC: [baseSepolia.rpcUrls.default.http[0]],
     confirmations: 1,
     timeout: 30000,
