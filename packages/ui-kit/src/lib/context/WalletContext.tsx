@@ -207,7 +207,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
   const handleAppConnectionSuccess = (response: WalletEventRespoonse) => {
     setConnectionStatus(ConnectionStatus.CONNECTED);
     setMinimiseWallet(true);
-    setIsReadOnly(false);
+    // setIsReadOnly(false);
     if (response.account) {
       setUniversalAccount(response.account);
     }
@@ -498,7 +498,6 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
 
   const requestPushWalletConnection = () => {
     setMinimiseWallet(false);
-    // Send a message to the Push Wallet iframe to request connection
     sendMessageToPushWallet({
       type: APP_TO_WALLET_ACTION.RECONNECT_WALLET,
     });

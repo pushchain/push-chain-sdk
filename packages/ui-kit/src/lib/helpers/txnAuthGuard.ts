@@ -34,8 +34,8 @@ export function createGuardedPushChain(
 
 				if (walletData.providerName) {
 					handleExternalWalletConnection({
-						chain: walletData.chain,
-						provider: walletData.provider
+						chain: walletData.chainType,
+						provider: walletData.providerName
 					});
 				} else {
 					await requestPushWalletConnection();
