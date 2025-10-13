@@ -1,6 +1,5 @@
 import {
   Abi,
-  zeroHash,
   toBytes,
   keccak256,
   sha256,
@@ -25,8 +24,6 @@ import { EvmClient } from '../vm-client/evm-client';
 import { CHAIN_INFO, UEA_PROXY, VM_NAMESPACE } from '../constants/chain';
 import {
   FACTORY_V1,
-  FEE_LOCKER_EVM,
-  FEE_LOCKER_SVM,
   UEA_SVM,
   ERC20_EVM,
   UNIVERSAL_GATEWAY_V0,
@@ -1024,7 +1021,7 @@ export class Orchestrator {
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_05_01, lockAmount);
         const feeLockTxHashBytes = await this.lockFee(
           lockAmountInUSD,
-          executionHash
+          universalPayload
         );
         feeLockTxHash = bytesToHex(feeLockTxHashBytes);
         verificationData = bytesToHex(feeLockTxHashBytes);
@@ -1042,10 +1039,85 @@ export class Orchestrator {
         );
         await this.waitForLockerFeeConfirmation(feeLockTxHashBytes);
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_05_03);
+
+        /**
+         * Return response directly (skip sendUniversalTx for sendTxWithGas flow)
+         * Note: queryTx may be undefined since validators don't recognize new UniversalTx event yet
+         */
+
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06);
+
+        // Transform to UniversalTxResponse (follow sendFunds pattern)
+        if (vm === VM.EVM) {
+          // Get EVM transaction for full response
+          const evmClient = new EvmClient({
+            rpcUrls: this.rpcUrls[chain] || CHAIN_INFO[chain].defaultRPC,
+          });
+          const tx = await evmClient.getTransaction(
+            feeLockTxHash as `0x${string}`
+          );
+          const response = await this.transformToUniversalTxResponse(tx);
+          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]); 
+          return response;
+        } else {
+          // SVM: build minimal response (follow sendFunds SVM pattern)
+          const chainId = CHAIN_INFO[chain].chainId;
+          const origin = `${VM_NAMESPACE[vm]}:${chainId}:${this.universalSigner.account.address}`;
+          const response: UniversalTxResponse = {
+            hash: utils.bytes.bs58.encode(feeLockTxHashBytes),
+            origin,
+            blockNumber: BigInt(0),
+            blockHash: '',
+            transactionIndex: 0,
+            chainId,
+            from: this.universalSigner.account.address,
+            to: '0x0000000000000000000000000000000000000000',
+            nonce: 0,
+            data: '0x',
+            value: BigInt(0),
+            gasLimit: BigInt(0),
+            gasPrice: undefined,
+            maxFeePerGas: undefined,
+            maxPriorityFeePerGas: undefined,
+            accessList: [],
+            wait: async () => ({
+              hash: utils.bytes.bs58.encode(feeLockTxHashBytes),
+              blockNumber: BigInt(0),
+              blockHash: '',
+              transactionIndex: 0,
+              from: this.universalSigner.account.address,
+              to: '0x0000000000000000000000000000000000000000',
+              contractAddress: null,
+              gasPrice: BigInt(0),
+              gasUsed: BigInt(0),
+              cumulativeGasUsed: BigInt(0),
+              logs: [],
+              logsBloom: '0x',
+              status: 1 as 0 | 1,
+              raw: {
+                from: this.universalSigner.account.address,
+                to: '0x0000000000000000000000000000000000000000',
+              },
+            }),
+            type: '99',
+            typeVerbose: 'universal',
+            signature: { r: '0x0', s: '0x0', v: 0 },
+            raw: {
+              from: this.universalSigner.account.address,
+              to: '0x0000000000000000000000000000000000000000',
+              nonce: 0,
+              data: '0x',
+              value: BigInt(0),
+            },
+          };
+          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
+          return response;
+        }
       }
       /**
-       * Broadcasting Tx to PC
+       * Non-fee-locking path: Broadcasting Tx to PC via sendUniversalTx
        */
+
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06);
       const transactions = await this.sendUniversalTx(
         isUEADeployed,
@@ -1078,11 +1150,11 @@ export class Orchestrator {
    *
    * @param amount - Fee amount in USDC (8 Decimals)
    * @param executionHash - Optional execution payload hash (default: zeroHash)
-   * @returns Transaction hash of the locking transaction
+   * @returns Transaction hash bytes
    */
   private async lockFee(
     amount: bigint, // USD with 8 decimals
-    executionHash: string = zeroHash
+    universalPayload: UniversalPayload
   ): Promise<Uint8Array> {
     const chain = this.universalSigner.account.chain;
     const { lockerContract, vm, defaultRPC } = CHAIN_INFO[chain];
@@ -1102,14 +1174,45 @@ export class Orchestrator {
         ]);
 
         const nativeDecimals = 18; // ETH, MATIC, etc.
-        const nativeAmount =
-          (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
+        // Ensure deposit respects gateway USD caps (min $1, max $10) and avoid rounding below min
+        const oneUsd = PushChain.utils.helpers.parseUnits('1', 8);
+        const tenUsd = PushChain.utils.helpers.parseUnits('10', 8);
+        let depositUsd = amount < oneUsd ? oneUsd : amount;
+        if (depositUsd > tenUsd) depositUsd = tenUsd;
+        // Ceil division to avoid falling below on-chain min due to rounding, then add 1 wei safety
+        let nativeAmount =
+          (depositUsd * BigInt(10 ** nativeDecimals) +
+            (nativeTokenUsdPrice - BigInt(1))) /
+          nativeTokenUsdPrice;
+        nativeAmount = nativeAmount + BigInt(1);
 
-        const txHash = await evmClient.writeContract({
-          abi: FEE_LOCKER_EVM as Abi,
+        // Deposit-only funding via UniversalGatewayV0 (no payload execution)
+        const revertCFG = {
+          fundRecipient: this.universalSigner.account.address as `0x${string}`,
+          revertMsg: '0x',
+        } as unknown as never;
+
+        // Sign the universal payload
+        const ueaAddress = this.computeUEAOffchain();
+        const ueaVersion = await this.fetchUEAVersion();
+        const eip712Signature = await this.signUniversalPayload(
+          universalPayload,
+          ueaAddress,
+          ueaVersion
+        );
+        const eip712SignatureHex =
+          typeof eip712Signature === 'string'
+            ? (eip712Signature as `0x${string}`)
+            : (bytesToHex(eip712Signature) as `0x${string}`);
+
+        // Override vType to 0 for sendTxWithGas (signature-based verification)
+        universalPayload.vType = VerificationType.signedVerification;
+
+        const txHash: `0x${string}` = await evmClient.writeContract({
+          abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
           address: lockerContract,
-          functionName: 'addFunds',
-          args: [executionHash],
+          functionName: 'sendTxWithGas',
+          args: [universalPayload as unknown as never, revertCFG, eip712SignatureHex],
           signer: this.universalSigner,
           value: nativeAmount,
         });
@@ -1117,33 +1220,78 @@ export class Orchestrator {
       }
 
       case VM.SVM: {
-        // Run price fetching, client creation, and PDA computation in parallel
-        const [nativeTokenUsdPrice, svmClient, [lockerPda]] = await Promise.all(
-          [
-            new PriceFetch(this.rpcUrls).getPrice(chain), // 8 decimals
-            Promise.resolve(new SvmClient({ rpcUrls })),
-            Promise.resolve(
-              anchor.web3.PublicKey.findProgramAddressSync(
-                [stringToBytes('locker')],
-                new PublicKey(lockerContract)
-              )
-            ),
-          ]
+        // Run price fetching and client creation in parallel
+        const [nativeTokenUsdPrice, svmClient] = await Promise.all([
+          new PriceFetch(this.rpcUrls).getPrice(chain), // 8 decimals
+          Promise.resolve(new SvmClient({ rpcUrls })),
+        ]);
+        // Ensure deposit respects gateway USD caps (min $1, max $10) and avoid rounding below min
+        const nativeDecimals = 9; // SOL lamports
+        const oneUsd = PushChain.utils.helpers.parseUnits('1', 8);
+        const tenUsd = PushChain.utils.helpers.parseUnits('10', 8);
+        let depositUsd = amount < oneUsd ? oneUsd : amount;
+        if (depositUsd > tenUsd) depositUsd = tenUsd;
+        // Ceil division to avoid falling below on-chain min due to rounding, then add 1 lamport safety
+        let nativeAmount =
+          (depositUsd * BigInt(10 ** nativeDecimals) +
+            (nativeTokenUsdPrice - BigInt(1))) /
+          nativeTokenUsdPrice;
+        nativeAmount = nativeAmount + BigInt(1);
+
+        // Program & PDAs
+        const programId = new PublicKey(SVM_GATEWAY_IDL.address);
+        const [configPda] = PublicKey.findProgramAddressSync(
+          [stringToBytes('config')],
+          programId
+        );
+        const [vaultPda] = PublicKey.findProgramAddressSync(
+          [stringToBytes('vault')],
+          programId
         );
 
-        const nativeDecimals = 9; // SOL lamports
-        const nativeAmount =
-          (amount * BigInt(10 ** nativeDecimals)) / nativeTokenUsdPrice;
+        const userPk = new PublicKey(this.universalSigner.account.address);
+        const revertSvm = {
+          fundRecipient: userPk,
+          revertMsg: Buffer.from([]),
+        } as unknown as never;
+
+        // Override vType to 0 for sendTxWithGas (signature-based verification)
+        universalPayload.vType = VerificationType.signedVerification;
+
+        // Build minimal Anchor-compatible payload (BN/Buffer/snake_case + enum variant)
+        const up: any = universalPayload as any;
+        const vType = { signedVerification: {} }; // Always signedVerification for sendTxWithGas
+        const svmPayload = {
+          to: Array.from(
+            Buffer.from(
+              String(up.to).slice(2).padStart(40, '0'),
+              'hex'
+            ).subarray(0, 20)
+          ),
+          value: new anchor.BN(BigInt(up.value ?? 0).toString()),
+          data: Buffer.from(String(up.data ?? '0x').slice(2), 'hex'),
+          gas_limit: new anchor.BN(BigInt(up.gasLimit ?? 0).toString()),
+          max_fee_per_gas: new anchor.BN(
+            BigInt(up.maxFeePerGas ?? 0).toString()
+          ),
+          max_priority_fee_per_gas: new anchor.BN(
+            BigInt(up.maxPriorityFeePerGas ?? 0).toString()
+          ),
+          nonce: new anchor.BN(BigInt(up.nonce ?? 0).toString()),
+          deadline: new anchor.BN(BigInt(up.deadline ?? 0).toString()),
+          v_type: vType,
+        } as unknown as never;
 
         const txHash = await svmClient.writeContract({
-          abi: FEE_LOCKER_SVM,
-          address: lockerContract,
-          functionName: 'addFunds',
-          args: [nativeAmount, toBytes(executionHash)],
+          abi: SVM_GATEWAY_IDL,
+          address: programId.toBase58(),
+          functionName: 'sendTxWithGas',
+          args: [svmPayload, revertSvm, new anchor.BN(nativeAmount.toString())],
           signer: this.universalSigner,
           accounts: {
-            locker: lockerPda,
-            user: new PublicKey(this.universalSigner.account.address),
+            config: configPda,
+            vault: vaultPda,
+            user: userPk,
             priceUpdate: new PublicKey(
               '7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE'
             ),
@@ -1580,21 +1728,23 @@ export class Orchestrator {
     switch (vm) {
       case VM.EVM: {
         const evmClient = new EvmClient({ rpcUrls });
-        await evmClient.waitForConfirmations({
-          txHash: bytesToHex(txHashBytes),
+        await this.waitForEvmConfirmationsWithCountdown(
+          evmClient,
+          bytesToHex(txHashBytes),
           confirmations,
-          timeoutMs: timeout,
-        });
+          timeout
+        );
         return;
       }
 
       case VM.SVM: {
         const svmClient = new SvmClient({ rpcUrls });
-        await svmClient.waitForConfirmations({
-          txSignature: utils.bytes.bs58.encode(txHashBytes),
+        await this.waitForSvmConfirmationsWithCountdown(
+          svmClient,
+          utils.bytes.bs58.encode(txHashBytes),
           confirmations,
-          timeoutMs: timeout,
-        });
+          timeout
+        );
         return;
       }
 
@@ -2073,9 +2223,19 @@ export class Orchestrator {
       if (vm === VM.EVM) {
         if (!evmClient || !gatewayAddress)
           throw new Error('Missing EVM context');
-        const receipt = await evmClient.publicClient.getTransactionReceipt({
-          hash: txHash as `0x${string}`,
-        });
+        let receipt;
+        try {
+          receipt = await evmClient.publicClient.getTransactionReceipt({
+            hash: txHash as `0x${string}`,
+          });
+        } catch {
+          // Receipt might not be indexed yet on this RPC; wait briefly for it
+          receipt = await evmClient.publicClient.waitForTransactionReceipt({
+            hash: txHash as `0x${string}`,
+            confirmations: 0,
+            timeout: CHAIN_INFO[chain].timeout,
+          });
+        }
         const gatewayLogs = (receipt.logs || []).filter(
           (l: any) =>
             (l.address || '').toLowerCase() === gatewayAddress.toLowerCase()
@@ -2178,19 +2338,44 @@ export class Orchestrator {
     });
     const targetBlock = receipt.blockNumber + BigInt(confirmations);
 
+    // Track last emitted confirmation to avoid duplicates
+    let lastEmitted = 0;
+
     // Poll blocks and emit remaining confirmations
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const currentBlock = await evmClient.publicClient.getBlockNumber();
-      if (currentBlock >= targetBlock) return;
+
+      // If already confirmed, emit progress for final confirmation
+      if (currentBlock >= targetBlock) {
+        // Only emit if we haven't already shown this confirmation
+        if (lastEmitted < confirmations) {
+          this.executeProgressHook(
+            PROGRESS_HOOK.SEND_TX_06_04,
+            confirmations,
+            confirmations
+          );
+        }
+        return;
+      }
 
       const remaining = Number(targetBlock - currentBlock);
       const completed = Math.max(1, confirmations - remaining + 1);
-      this.executeProgressHook(
-        PROGRESS_HOOK.SEND_TX_06_04,
-        completed,
-        confirmations
-      );
+
+      // Only emit if this is a new confirmation count
+      if (completed > lastEmitted) {
+        this.executeProgressHook(
+          PROGRESS_HOOK.SEND_TX_06_04,
+          completed,
+          confirmations
+        );
+        lastEmitted = completed;
+
+        // If we've reached required confirmations, we're done
+        if (completed >= confirmations) {
+          return;
+        }
+      }
 
       if (Date.now() - start > timeoutMs) {
         throw new Error(
@@ -2199,6 +2384,56 @@ export class Orchestrator {
       }
 
       await new Promise((r) => setTimeout(r, 12000));
+    }
+  }
+
+  // Emit countdown updates while waiting for SVM confirmations
+  private async waitForSvmConfirmationsWithCountdown(
+    svmClient: SvmClient,
+    txSignature: string,
+    confirmations: number,
+    timeoutMs: number
+  ): Promise<void> {
+    // initial emit
+    this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_03, confirmations);
+    const start = Date.now();
+
+    // Poll for confirmations and emit progress
+    let lastConfirmed = 0;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const connection = (svmClient as any).connections[(svmClient as any).currentConnectionIndex];
+      const { value } = await connection.getSignatureStatuses([txSignature]);
+      const status = value[0];
+
+      if (status) {
+        const currentConfirms = status.confirmations ?? 0;
+        const hasEnoughConfirmations = currentConfirms >= confirmations;
+        const isSuccessfullyFinalized = status.err === null && status.confirmationStatus !== null;
+
+        // Emit progress if we have more confirmations than before OR if finalized
+        if (currentConfirms > lastConfirmed || (isSuccessfullyFinalized && lastConfirmed === 0)) {
+          const confirmCount = isSuccessfullyFinalized && currentConfirms === 0 ? confirmations : currentConfirms;
+          this.executeProgressHook(
+            PROGRESS_HOOK.SEND_TX_06_04,
+            Math.max(1, confirmCount),
+            confirmations
+          );
+          lastConfirmed = currentConfirms;
+        }
+
+        if (hasEnoughConfirmations || isSuccessfullyFinalized) {
+          return;
+        }
+      }
+
+      if (Date.now() - start > timeoutMs) {
+        throw new Error(
+          `Timeout: transaction ${txSignature} not confirmed with ${confirmations} confirmations within ${timeoutMs} ms`
+        );
+      }
+
+      await new Promise((r) => setTimeout(r, 500));
     }
   }
 

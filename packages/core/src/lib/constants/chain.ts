@@ -78,7 +78,7 @@ export const CHAIN_INFO: Record<
     vm: VM.EVM,
     lockerContract: '0x05bD7a3D18324c1F7e216f7fBF2b15985aE5281A',
     defaultRPC: [sepolia.rpcUrls.default.http[0]],
-    confirmations: 1,
+    confirmations: 2,
     timeout: 30000,
   },
 
@@ -104,7 +104,7 @@ export const CHAIN_INFO: Record<
     vm: VM.SVM,
     lockerContract: 'CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS',
     defaultRPC: ['https://api.devnet.solana.com'],
-    confirmations: 1,
+    confirmations: 2,
     timeout: 35000,
   },
 };

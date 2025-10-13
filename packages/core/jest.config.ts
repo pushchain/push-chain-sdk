@@ -8,5 +8,5 @@ export default {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/packages/core',
-  testTimeout: 10000, // Set max test time to 10 seconds
+  testTimeout: 300000, // Allow long-running integration tests (5 min)
 };
