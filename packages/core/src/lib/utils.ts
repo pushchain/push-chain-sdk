@@ -104,12 +104,24 @@ export class Utils {
       // Current support: expose test/dev chains; mainnet returns empty until GA
       const mapping: Record<PUSH_NETWORK, CHAIN[]> = {
         [PUSH_NETWORK.MAINNET]: [],
-        [PUSH_NETWORK.TESTNET]: [CHAIN.ETHEREUM_SEPOLIA, CHAIN.SOLANA_DEVNET],
-        [PUSH_NETWORK.TESTNET_DONUT]: [
+        [PUSH_NETWORK.TESTNET]: [
           CHAIN.ETHEREUM_SEPOLIA,
+          CHAIN.ARBITRUM_SEPOLIA,
+          CHAIN.BASE_SEPOLIA,
           CHAIN.SOLANA_DEVNET,
         ],
-        [PUSH_NETWORK.LOCALNET]: [CHAIN.ETHEREUM_SEPOLIA, CHAIN.SOLANA_DEVNET],
+        [PUSH_NETWORK.TESTNET_DONUT]: [
+          CHAIN.ETHEREUM_SEPOLIA,
+          CHAIN.ARBITRUM_SEPOLIA,
+          CHAIN.BASE_SEPOLIA,
+          CHAIN.SOLANA_DEVNET,
+        ],
+        [PUSH_NETWORK.LOCALNET]: [
+          CHAIN.ETHEREUM_SEPOLIA,
+          CHAIN.ARBITRUM_SEPOLIA,
+          CHAIN.BASE_SEPOLIA,
+          CHAIN.SOLANA_DEVNET,
+        ],
       };
 
       return { chains: mapping[network] ?? [] };

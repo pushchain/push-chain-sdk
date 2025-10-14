@@ -1,5 +1,5 @@
 import { CHAIN, PUSH_NETWORK, VM } from './enums';
-import { mainnet, sepolia } from 'viem/chains';
+import { mainnet, sepolia, arbitrumSepolia, baseSepolia } from 'viem/chains';
 
 /**
  * Maps VM type to its namespace
@@ -78,6 +78,22 @@ export const CHAIN_INFO: Record<
     vm: VM.EVM,
     lockerContract: '0x05bD7a3D18324c1F7e216f7fBF2b15985aE5281A',
     defaultRPC: [sepolia.rpcUrls.default.http[0]],
+    confirmations: 1,
+    timeout: 30000,
+  },
+  [CHAIN.ARBITRUM_SEPOLIA]: {
+    chainId: '421614',
+    vm: VM.EVM,
+    lockerContract: '0x2cd870e0166Ba458dEC615168Fd659AacD795f34',
+    defaultRPC: [arbitrumSepolia.rpcUrls.default.http[0]],
+    confirmations: 1,
+    timeout: 30000,
+  },
+  [CHAIN.BASE_SEPOLIA]: {
+    chainId: '84532',
+    vm: VM.EVM,
+    lockerContract: '0xFD4fef1F43aFEc8b5bcdEEc47f35a1431479aC16',
+    defaultRPC: [baseSepolia.rpcUrls.default.http[0]],
     confirmations: 1,
     timeout: 30000,
   },
