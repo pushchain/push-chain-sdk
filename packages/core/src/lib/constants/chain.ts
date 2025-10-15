@@ -36,6 +36,11 @@ export const CHAIN_INFO: Record<
     defaultRPC: string[];
     confirmations: number; // Confirmations required to mark a tx as finalized
     timeout: number; // Wait timeout in ms for required confirmations : Ideal value = (confirmations + 1)* Avg Chain Block time
+    dex?: {
+      uniV3Factory?: `0x${string}`;
+      uniV3QuoterV2?: `0x${string}`;
+      weth?: `0x${string}`;
+    };
   }
 > = {
   // Push
@@ -80,6 +85,12 @@ export const CHAIN_INFO: Record<
     defaultRPC: [sepolia.rpcUrls.default.http[0]],
     confirmations: 1,
     timeout: 30000,
+    dex: {
+      // Allow env overrides, else default known addresses for Sepolia
+      uniV3Factory: '0x0227628f3F023bb0B980b67D528571c95c6DaC1c',
+      uniV3QuoterV2: '0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3',
+      weth: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+    },
   },
   [CHAIN.ARBITRUM_SEPOLIA]: {
     chainId: '421614',
@@ -88,6 +99,12 @@ export const CHAIN_INFO: Record<
     defaultRPC: [arbitrumSepolia.rpcUrls.default.http[0]],
     confirmations: 1,
     timeout: 30000,
+    dex: {
+      // Expect env to provide addresses; leave undefined if not set to force validation error
+      uniV3Factory: '0x0227628f3F023bb0B980b67D528571c95c6DaC1c',
+      uniV3QuoterV2: '0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3',
+      weth: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+    },
   },
   [CHAIN.BASE_SEPOLIA]: {
     chainId: '84532',
@@ -96,6 +113,11 @@ export const CHAIN_INFO: Record<
     defaultRPC: [baseSepolia.rpcUrls.default.http[0]],
     confirmations: 1,
     timeout: 30000,
+    dex: {
+      uniV3Factory: '0x0227628f3F023bb0B980b67D528571c95c6DaC1c',
+      uniV3QuoterV2: '0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3',
+      weth: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+    },
   },
 
   // Solana

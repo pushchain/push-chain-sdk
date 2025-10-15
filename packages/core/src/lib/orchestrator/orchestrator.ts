@@ -13,6 +13,7 @@ import {
   TransactionReceipt,
   getAddress,
   decodeFunctionData,
+  parseAbi,
 } from 'viem';
 import { PushChain } from '../push-chain/push-chain';
 import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
@@ -623,20 +624,81 @@ export class Orchestrator {
                   : (bytesToHex(eip712Signature) as `0x${string}`);
               const evmClientEvm = evmClient as EvmClient;
               const gatewayAddressEvm = gatewayAddress as `0x${string}`;
-              txHash = await evmClientEvm.writeContract({
-                abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
-                address: gatewayAddressEvm,
-                functionName: 'sendTxWithFunds',
-                args: [
+              // New behavior: if user provided a gasTokenAddress, pay gas in that token via Uniswap quote
+              // Determine pay-with token address, min-out and slippage
+              const payWith = execute.funds.payWith;
+              const gasTokenAddress = payWith?.token?.address as
+                | `0x${string}`
+                | undefined;
+
+              if (gasTokenAddress) {
+                const amountOutMinETH =
+                  payWith?.minAmountOut !== undefined
+                    ? BigInt(payWith.minAmountOut)
+                    : nativeAmount;
+                const { gasAmount, deadline } =
+                  await this.buildEvmGasPaymentParams(
+                    evmClientEvm,
+                    gasTokenAddress as `0x${string}`,
+                    amountOutMinETH
+                  );
+
+                // Approve gas token to gateway
+                await this.ensureErc20Allowance(
+                  evmClientEvm,
+                  gasTokenAddress,
+                  gatewayAddressEvm,
+                  gasAmount
+                );
+
+                console.log([
+                  'sendTxWithFunds',
                   tokenAddr,
                   bridgeAmount,
+                  gasTokenAddress,
+                  gasAmount,
+                  amountOutMinETH,
+                  deadline,
                   universalPayload,
                   revertCFG,
                   eip712SignatureHex,
-                ],
-                signer: this.universalSigner,
-                value: nativeAmount,
-              });
+                ]);
+
+                // Approve bridge token already done above; now call new gateway signature (nonpayable)
+                txHash = await evmClientEvm.writeContract({
+                  abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
+                  address: gatewayAddressEvm,
+                  functionName: 'sendTxWithFunds',
+                  args: [
+                    tokenAddr,
+                    bridgeAmount,
+                    gasTokenAddress,
+                    gasAmount,
+                    amountOutMinETH,
+                    deadline,
+                    universalPayload,
+                    revertCFG,
+                    eip712SignatureHex,
+                  ],
+                  signer: this.universalSigner,
+                });
+              } else {
+                // Existing native-ETH value path
+                txHash = await evmClientEvm.writeContract({
+                  abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
+                  address: gatewayAddressEvm,
+                  functionName: 'sendTxWithFunds',
+                  args: [
+                    tokenAddr,
+                    bridgeAmount,
+                    universalPayload,
+                    revertCFG,
+                    eip712SignatureHex,
+                  ],
+                  signer: this.universalSigner,
+                  value: nativeAmount,
+                });
+              }
             } else {
               // SVM funds+payload path
               const svmClient = new SvmClient({
@@ -2240,5 +2302,98 @@ export class Orchestrator {
     });
     this.ueaVersionCache = version;
     return version;
+  }
+
+  // Build EVM gas payment parameters when paying gas with an ERC-20 token
+  private async buildEvmGasPaymentParams(
+    evmClient: EvmClient,
+    gasTokenAddress: `0x${string}`,
+    amountOutMinETH: bigint | string
+  ): Promise<{
+    gasToken: `0x${string}`;
+    gasAmount: bigint;
+    deadline: bigint;
+  }> {
+    const originChain = this.universalSigner.account.chain;
+    if (
+      originChain !== CHAIN.ETHEREUM_SEPOLIA &&
+      originChain !== CHAIN.ARBITRUM_SEPOLIA &&
+      originChain !== CHAIN.BASE_SEPOLIA
+    ) {
+      throw new Error(
+        'Gas payment in ERC-20 is supported only on Ethereum Sepolia, Arbitrum Sepolia, and Base Sepolia for now'
+      );
+    }
+
+    // Resolve WETH: prefer chain config, fallback to registry
+    const WETH = CHAIN_INFO[originChain].dex?.weth;
+    if (!WETH) throw new Error('WETH address not configured for this chain');
+
+    let gasAmount: bigint;
+    if (gasTokenAddress.toLowerCase() === WETH.toLowerCase()) {
+      gasAmount = BigInt(amountOutMinETH);
+    } else {
+      const UNISWAP_V3_FACTORY = CHAIN_INFO[originChain].dex?.uniV3Factory;
+      const UNISWAP_V3_QUOTER_V2 = CHAIN_INFO[originChain].dex?.uniV3QuoterV2;
+      if (!UNISWAP_V3_FACTORY || !UNISWAP_V3_QUOTER_V2) {
+        throw new Error('Uniswap V3 addresses not configured for this chain');
+      }
+
+      const factoryAbi: Abi = parseAbi([
+        'function getPool(address tokenA, address tokenB, uint24 fee) view returns (address)',
+      ]);
+      const quoterAbi: Abi = parseAbi([
+        'function quoteExactOutputSingle((address tokenIn,address tokenOut,uint256 amount,uint24 fee,uint160 sqrtPriceLimitX96) params) view returns (uint256 amountIn,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)',
+      ]);
+
+      const feeTiers: number[] = [500, 3000, 10000];
+      let selectedFee: number | undefined;
+      for (const fee of feeTiers) {
+        const poolAddr = await evmClient.readContract<string>({
+          abi: factoryAbi,
+          address: UNISWAP_V3_FACTORY,
+          functionName: 'getPool',
+          args: [gasTokenAddress, WETH, fee],
+        });
+        const isZero =
+          !poolAddr ||
+          poolAddr.toLowerCase() ===
+            '0x0000000000000000000000000000000000000000';
+        if (!isZero) {
+          selectedFee = fee;
+          break;
+        }
+      }
+      if (selectedFee === undefined) {
+        throw new Error(
+          'Unsupported gas token: no direct Uniswap v3 pool to WETH'
+        );
+      }
+
+      const result = await evmClient.readContract<
+        [bigint, bigint, number, bigint]
+      >({
+        abi: quoterAbi,
+        address: UNISWAP_V3_QUOTER_V2,
+        functionName: 'quoteExactOutputSingle',
+        args: [
+          {
+            tokenIn: gasTokenAddress,
+            tokenOut: WETH,
+            amount: amountOutMinETH,
+            fee: selectedFee as number,
+            sqrtPriceLimitX96: BigInt(0),
+          },
+        ],
+      });
+      const amountIn = result?.[0] ?? BigInt(0);
+      if (amountIn === BigInt(0)) {
+        throw new Error('Failed to quote gas token amount');
+      }
+      gasAmount = (amountIn * BigInt(101)) / BigInt(100);
+    }
+
+    const deadline = BigInt(0);
+    return { gasToken: gasTokenAddress, gasAmount, deadline };
   }
 }

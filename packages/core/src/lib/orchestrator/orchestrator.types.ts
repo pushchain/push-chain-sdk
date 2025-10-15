@@ -68,6 +68,14 @@ export type ExecuteParams = {
   funds?: {
     amount: bigint; // smallest units of the token
     token?: import('../constants').MoveableToken; // if omitted, defaults to native token for origin chain
+    /**
+     * Optional: pay gas in a specific token. If not provided, use `token` (bridge token) when present; otherwise, native token.
+     */
+    payWith?: {
+      token?: import('../constants').PayableToken; // e.g., client.payable.token.DAI | ETH sentinel
+      slippageBps?: number; // e.g., 100 = 1%
+      minAmountOut?: bigint | string; // optional min ETH out (wei); takes precedence if set
+    };
   };
 };
 

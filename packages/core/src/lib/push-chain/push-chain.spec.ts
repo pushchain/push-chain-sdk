@@ -146,7 +146,9 @@ async function testSendFundsUSDT(
   account: PrivateKeyAccount,
   config: EVMChainTestConfig
 ): Promise<void> {
-  const erc20Abi = parseAbi(['function balanceOf(address) view returns (uint256)']);
+  const erc20Abi = parseAbi([
+    'function balanceOf(address) view returns (uint256)',
+  ]);
   const usdt = client.moveable.token.USDT;
 
   const balance: bigint = await new EvmClient({
@@ -198,7 +200,9 @@ async function testSendTxWithFundsUSDT(
   account: PrivateKeyAccount,
   config: EVMChainTestConfig
 ): Promise<void> {
-  const erc20Abi = parseAbi(['function balanceOf(address) view returns (uint256)']);
+  const erc20Abi = parseAbi([
+    'function balanceOf(address) view returns (uint256)',
+  ]);
   const usdt = client.moveable.token.USDT;
 
   const evm = new EvmClient({
@@ -250,9 +254,7 @@ async function testSendTxWithFundsUSDT(
     address: COUNTER_ADDRESS,
   });
   if (!bytecode || bytecode === '0x') {
-    console.warn(
-      `Skipping ${config.name}: no contract at ${COUNTER_ADDRESS}`
-    );
+    console.warn(`Skipping ${config.name}: no contract at ${COUNTER_ADDRESS}`);
     return;
   }
 
@@ -281,6 +283,114 @@ async function testSendTxWithFundsUSDT(
 
   expect(afterCount).toBe(beforeCount + BigInt(1));
   console.log(`[${config.name}] Counter incremented successfully`);
+}
+
+// New: funds+payload paying gas with USDT (gasTokenAddress)
+async function testSendTxWithFundsPayGasUSDT(
+  client: PushChain,
+  account: PrivateKeyAccount,
+  config: EVMChainTestConfig
+): Promise<void> {
+  const erc20Abi = parseAbi([
+    'function balanceOf(address) view returns (uint256)',
+  ]);
+  const usdt = client.moveable.token.USDT;
+
+  const evm = new EvmClient({
+    rpcUrls: CHAIN_INFO[config.chain].defaultRPC,
+  });
+  const usdtBal: bigint = await evm.readContract<bigint>({
+    abi: erc20Abi,
+    address: usdt.address,
+    functionName: 'balanceOf',
+    args: [account.address],
+  });
+
+  if (usdtBal === BigInt(0)) {
+    console.warn(`Skipping ${config.name} pay-gas-in-USDT: no USDT balance`);
+    return;
+  }
+
+  const bridgeAmount = BigInt(1);
+  const COUNTER_ABI = [
+    {
+      inputs: [],
+      name: 'increment',
+      outputs: [],
+      stateMutability: 'nonpayable',
+      type: 'function',
+    },
+    {
+      inputs: [],
+      name: 'countPC',
+      outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+      stateMutability: 'view',
+      type: 'function',
+    },
+  ];
+  const COUNTER_ADDRESS =
+    '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
+  const data = PushChain.utils.helpers.encodeTxData({
+    abi: COUNTER_ABI,
+    functionName: 'increment',
+  });
+
+  const pushPublicClient = createPublicClient({
+    transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
+  });
+  const bytecode = await pushPublicClient.getBytecode({
+    address: COUNTER_ADDRESS,
+  });
+  if (!bytecode || bytecode === '0x') {
+    console.warn(`Skipping ${config.name}: no contract at ${COUNTER_ADDRESS}`);
+    return;
+  }
+
+  const beforeCount = (await pushPublicClient.readContract({
+    abi: COUNTER_ABI,
+    address: COUNTER_ADDRESS,
+    functionName: 'countPC',
+  })) as bigint;
+
+  const amount = PushChain.utils.helpers.parseUnits('2', {
+    decimals: client.payable.token.USDT.decimals,
+  });
+  const toToken = client.moveable.token.WETH;
+  const quote = await client.funds.getConversionQuote(amount, {
+    from: client.payable.token.USDT,
+    to: toToken,
+  });
+  const minAmountOut = PushChain.utils.conversion.slippageToMinAmount(
+    quote.amountOut,
+    { slippageBps: 300 }
+  );
+
+  const res = await client.universal.sendTransaction({
+    to: COUNTER_ADDRESS,
+    value: BigInt(0),
+    data,
+    funds: {
+      amount: bridgeAmount,
+      token: usdt,
+      payWith: {
+        token: client.payable.token.WETH,
+        minAmountOut: minAmountOut,
+      },
+    },
+  });
+
+  expect(typeof res.hash).toBe('string');
+  expect(res.hash.startsWith('0x')).toBe(true);
+  await res.wait();
+
+  const afterCount = (await pushPublicClient.readContract({
+    abi: COUNTER_ABI,
+    address: COUNTER_ADDRESS,
+    functionName: 'countPC',
+  })) as bigint;
+
+  expect(afterCount).toBe(beforeCount + BigInt(1));
+  console.log(`[${config.name}] Pay-gas-with-USDT executed successfully`);
 }
 
 async function testMulticall(
@@ -1497,6 +1607,9 @@ describe('PushChain', () => {
       await testSendTxWithFundsUSDT(client, account, config);
     }, 500000);
 
+    // it('integration: pay gas with USDT via UniversalGatewayV0', async () => {
+    //   await testSendTxWithFundsPayGasUSDT(client, account, config);
+    // }, 500000);
     it('integration: sendTxWithFunds ETH should throw (not supported)', async () => {
       try {
         const bridgeAmount = BigInt(1);
@@ -1573,6 +1686,10 @@ describe('PushChain', () => {
     it('integration: sendTxWithFunds USDT via UniversalGatewayV0', async () => {
       await testSendTxWithFundsUSDT(client, account, config);
     }, 500000);
+
+    // it('integration: pay gas with USDT via UniversalGatewayV0', async () => {
+    //   await testSendTxWithFundsPayGasUSDT(client, account, config);
+    // }, 500000);
   });
 
   describe('Universal.sendTransaction (FUNDS_TX via UniversalGatewayV0) - Base Sepolia', () => {
@@ -2106,9 +2223,9 @@ describe('PushChain', () => {
         expect(
           PushChain.utils.chains.getChainName(CHAIN.ARBITRUM_SEPOLIA)
         ).toBe('ARBITRUM_SEPOLIA');
-        expect(
-          PushChain.utils.chains.getChainName(CHAIN.BASE_SEPOLIA)
-        ).toBe('BASE_SEPOLIA');
+        expect(PushChain.utils.chains.getChainName(CHAIN.BASE_SEPOLIA)).toBe(
+          'BASE_SEPOLIA'
+        );
         // Test Solana chains
         expect(PushChain.utils.chains.getChainName(CHAIN.SOLANA_MAINNET)).toBe(
           'SOLANA_MAINNET'
@@ -2210,9 +2327,9 @@ describe('PushChain', () => {
           PushChain.utils.chains.getChainNamespace('ARBITRUM_SEPOLIA')
         ).toBe(CHAIN.ARBITRUM_SEPOLIA);
 
-        expect(
-          PushChain.utils.chains.getChainNamespace('BASE_SEPOLIA')
-        ).toBe(CHAIN.BASE_SEPOLIA);
+        expect(PushChain.utils.chains.getChainNamespace('BASE_SEPOLIA')).toBe(
+          CHAIN.BASE_SEPOLIA
+        );
 
         expect(
           PushChain.utils.chains.getChainNamespace('PUSH_TESTNET_DONUT')
