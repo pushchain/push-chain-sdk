@@ -57,7 +57,13 @@ import {
   Signature,
   UniversalTxReceipt,
 } from './orchestrator.types';
-import { MOVEABLE_TOKENS, MoveableToken } from '../constants/tokens';
+import {
+  ConversionQuote,
+  MOVEABLE_TOKENS,
+  MoveableToken,
+  PAYABLE_TOKENS,
+  PayableToken,
+} from '../constants/tokens';
 
 export class Orchestrator {
   private pushClient: PushClient;
@@ -632,16 +638,40 @@ export class Orchestrator {
                 | undefined;
 
               if (gasTokenAddress) {
+                // TODO: If no minAmountOut, then calculate it ourselves. And add slippage ourselves.
                 const amountOutMinETH =
                   payWith?.minAmountOut !== undefined
                     ? BigInt(payWith.minAmountOut)
                     : nativeAmount;
-                const { gasAmount, deadline } =
-                  await this.buildEvmGasPaymentParams(
-                    evmClientEvm,
+                const { gasAmount  } =
+                  await this.calculateGasAmountFromAmountOutMinETH(
                     gasTokenAddress as `0x${string}`,
                     amountOutMinETH
                   );
+                const deadline = BigInt(0);
+
+                // Ensure caller has enough balance of the gas token to cover fees
+                const ownerAddress = this.universalSigner.account
+                  .address as `0x${string}`;
+                const gasTokenBalance = await evmClientEvm.getErc20Balance({
+                  tokenAddress: gasTokenAddress as `0x${string}`,
+                  ownerAddress,
+                });
+                if (gasTokenBalance < gasAmount) {
+                  const sym = payWith?.token?.symbol ?? 'gas token';
+                  const decimals = payWith?.token?.decimals ?? 18;
+                  const needFmt = PushChain.utils.helpers.formatUnits(
+                    gasAmount,
+                    decimals
+                  );
+                  const haveFmt = PushChain.utils.helpers.formatUnits(
+                    gasTokenBalance,
+                    decimals
+                  );
+                  throw new Error(
+                    `Insufficient ${sym} balance to cover gas fees: need ${needFmt}, have ${haveFmt}`
+                  );
+                }
 
                 // Approve gas token to gateway
                 await this.ensureErc20Allowance(
@@ -650,19 +680,6 @@ export class Orchestrator {
                   gatewayAddressEvm,
                   gasAmount
                 );
-
-                console.log([
-                  'sendTxWithFunds',
-                  tokenAddr,
-                  bridgeAmount,
-                  gasTokenAddress,
-                  gasAmount,
-                  amountOutMinETH,
-                  deadline,
-                  universalPayload,
-                  revertCFG,
-                  eip712SignatureHex,
-                ]);
 
                 // Approve bridge token already done above; now call new gateway signature (nonpayable)
                 txHash = await evmClientEvm.writeContract({
@@ -1675,6 +1692,148 @@ export class Orchestrator {
     }
   }
 
+  /**
+   * Quotes exact-output on Uniswap V3 for EVM origin chains using QuoterV2.
+   * Returns the minimum required input (amountIn) to receive the target amountOut.
+   */
+  private async _quoteExactOutput(
+    amountOut: bigint,
+    {
+      from,
+      to,
+    }: {
+      from: PayableToken | undefined;
+      to: MoveableToken | undefined;
+    }
+  ): Promise<ConversionQuote> {
+    const originChain = this.universalSigner.account.chain;
+    if (
+      originChain !== CHAIN.ETHEREUM_MAINNET &&
+      originChain !== CHAIN.ETHEREUM_SEPOLIA
+    ) {
+      throw new Error(
+        'Exact-output quoting is only supported on Ethereum Mainnet and Sepolia for now'
+      );
+    }
+
+    if (!from) {
+      throw new Error('from token is required');
+    }
+    if (!to) {
+      throw new Error('to token is required');
+    }
+
+    const rpcUrls =
+      this.getRpcUrls()[originChain] || CHAIN_INFO[originChain].defaultRPC;
+    const evm = new EvmClient({ rpcUrls });
+
+    const UNISWAP_V3_FACTORY: `0x${string}` =
+      originChain === CHAIN.ETHEREUM_SEPOLIA
+        ? ('0x0227628f3F023bb0B980b67D528571c95c6DaC1c' as `0x${string}`)
+        : ('0x1F98431c8aD98523631AE4a59f267346ea31F984' as `0x${string}`);
+    const UNISWAP_V3_QUOTER_V2: `0x${string}` =
+      originChain === CHAIN.ETHEREUM_SEPOLIA
+        ? ('0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3' as `0x${string}`)
+        : ('0x61fFE014bA17989E743c5F6cB21bF9697530B21e' as `0x${string}`);
+
+    const factoryAbi: Abi = parseAbi([
+      'function getPool(address tokenA, address tokenB, uint24 fee) view returns (address)',
+    ]);
+    const quoterAbi: Abi = parseAbi([
+      'function quoteExactOutputSingle((address tokenIn, address tokenOut, uint256 amount, uint24 fee, uint160 sqrtPriceLimitX96) params) returns (uint256 amountIn, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate)',
+    ]);
+    const poolAbi: Abi = parseAbi([
+      'function liquidity() view returns (uint128)',
+    ]);
+
+    const feeTiers: number[] = [100, 500, 3000, 10000];
+
+    let bestAmountIn: bigint | null = null;
+    let bestFee: number | null = null;
+
+    for (const fee of feeTiers) {
+      // Find pool address for this fee tier
+      const poolAddress = await evm.readContract<string>({
+        abi: factoryAbi,
+        address: UNISWAP_V3_FACTORY,
+        functionName: 'getPool',
+        args: [from.address as `0x${string}`, to.address as `0x${string}`, fee],
+      });
+
+      const isZero =
+        !poolAddress ||
+        poolAddress.toLowerCase() ===
+          '0x0000000000000000000000000000000000000000';
+      if (isZero) continue;
+
+      // Skip uninitialized/empty pools to avoid Quoter reverts
+      try {
+        const liquidity = await evm.readContract<bigint>({
+          abi: poolAbi,
+          address: poolAddress as `0x${string}`,
+          functionName: 'liquidity',
+          args: [],
+        });
+        if (!liquidity || liquidity === BigInt(0)) continue;
+      } catch {
+        continue;
+      }
+
+      // Quote exact output single for this fee tier
+      try {
+        const result = await evm.readContract<[bigint, bigint, number, bigint]>(
+          {
+            abi: quoterAbi,
+            address: UNISWAP_V3_QUOTER_V2,
+            functionName: 'quoteExactOutputSingle',
+            args: [
+              {
+                tokenIn: from.address as `0x${string}`,
+                tokenOut: to.address as `0x${string}`,
+                amount: amountOut,
+                fee,
+                sqrtPriceLimitX96: BigInt(0),
+              },
+            ],
+          }
+        );
+        const amountIn = result?.[0] ?? BigInt(0);
+        if (amountIn === BigInt(0)) continue;
+        if (bestAmountIn === null || amountIn < bestAmountIn) {
+          bestAmountIn = amountIn;
+          bestFee = fee;
+        }
+      } catch {
+        // try next fee
+      }
+    }
+
+    if (bestAmountIn === null || bestFee === null) {
+      throw new Error(
+        'No direct Uniswap V3 pool found for the given token pair on common fee tiers'
+      );
+    }
+
+    const amountInBig = BigInt(bestAmountIn);
+    const amountInHuman = parseFloat(
+      PushChain.utils.helpers.formatUnits(amountInBig, {
+        decimals: from.decimals,
+      })
+    );
+    const amountOutHuman = parseFloat(
+      PushChain.utils.helpers.formatUnits(amountOut, { decimals: to.decimals })
+    );
+    const rate = amountInHuman > 0 ? amountOutHuman / amountInHuman : 0;
+
+    return {
+      amountIn: bestAmountIn.toString(),
+      amountOut: amountOut.toString(),
+      rate,
+      route: [from.symbol, to.symbol],
+      timestamp: Date.now(),
+    };
+  }
+
   private async ensureErc20Allowance(
     evmClient: EvmClient,
     tokenAddress: `0x${string}`,
@@ -2305,14 +2464,11 @@ export class Orchestrator {
   }
 
   // Build EVM gas payment parameters when paying gas with an ERC-20 token
-  private async buildEvmGasPaymentParams(
-    evmClient: EvmClient,
+  private async calculateGasAmountFromAmountOutMinETH(
     gasTokenAddress: `0x${string}`,
     amountOutMinETH: bigint | string
   ): Promise<{
-    gasToken: `0x${string}`;
     gasAmount: bigint;
-    deadline: bigint;
   }> {
     const originChain = this.universalSigner.account.chain;
     if (
@@ -2333,67 +2489,34 @@ export class Orchestrator {
     if (gasTokenAddress.toLowerCase() === WETH.toLowerCase()) {
       gasAmount = BigInt(amountOutMinETH);
     } else {
-      const UNISWAP_V3_FACTORY = CHAIN_INFO[originChain].dex?.uniV3Factory;
-      const UNISWAP_V3_QUOTER_V2 = CHAIN_INFO[originChain].dex?.uniV3QuoterV2;
-      if (!UNISWAP_V3_FACTORY || !UNISWAP_V3_QUOTER_V2) {
-        throw new Error('Uniswap V3 addresses not configured for this chain');
+      // Resolve token objects from registries
+      const fromList = PAYABLE_TOKENS[originChain] ?? [];
+      const fromToken: PayableToken | undefined = fromList.find(
+        (t) => (t.address || '').toLowerCase() === gasTokenAddress.toLowerCase()
+      );
+      const toList = (MOVEABLE_TOKENS[originChain] ?? []) as MoveableToken[];
+      const toToken: MoveableToken | undefined = toList.find(
+        (t) =>
+          t.symbol === 'WETH' ||
+          (t.address || '').toLowerCase() === (WETH || '').toLowerCase()
+      );
+
+      if (!fromToken || !toToken) {
+        throw new Error('Token not supported for quoting');
       }
 
-      const factoryAbi: Abi = parseAbi([
-        'function getPool(address tokenA, address tokenB, uint24 fee) view returns (address)',
-      ]);
-      const quoterAbi: Abi = parseAbi([
-        'function quoteExactOutputSingle((address tokenIn,address tokenOut,uint256 amount,uint24 fee,uint160 sqrtPriceLimitX96) params) view returns (uint256 amountIn,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)',
-      ]);
-
-      const feeTiers: number[] = [500, 3000, 10000];
-      let selectedFee: number | undefined;
-      for (const fee of feeTiers) {
-        const poolAddr = await evmClient.readContract<string>({
-          abi: factoryAbi,
-          address: UNISWAP_V3_FACTORY,
-          functionName: 'getPool',
-          args: [gasTokenAddress, WETH, fee],
-        });
-        const isZero =
-          !poolAddr ||
-          poolAddr.toLowerCase() ===
-            '0x0000000000000000000000000000000000000000';
-        if (!isZero) {
-          selectedFee = fee;
-          break;
+      const targetOut = BigInt(amountOutMinETH);
+      const exactOutQuote = await this._quoteExactOutput(
+        targetOut,
+        {
+          from: fromToken,
+          to: toToken,
         }
-      }
-      if (selectedFee === undefined) {
-        throw new Error(
-          'Unsupported gas token: no direct Uniswap v3 pool to WETH'
-        );
-      }
-
-      const result = await evmClient.readContract<
-        [bigint, bigint, number, bigint]
-      >({
-        abi: quoterAbi,
-        address: UNISWAP_V3_QUOTER_V2,
-        functionName: 'quoteExactOutputSingle',
-        args: [
-          {
-            tokenIn: gasTokenAddress,
-            tokenOut: WETH,
-            amount: amountOutMinETH,
-            fee: selectedFee as number,
-            sqrtPriceLimitX96: BigInt(0),
-          },
-        ],
-      });
-      const amountIn = result?.[0] ?? BigInt(0);
-      if (amountIn === BigInt(0)) {
-        throw new Error('Failed to quote gas token amount');
-      }
-      gasAmount = (amountIn * BigInt(101)) / BigInt(100);
+      );
+      const requiredIn = BigInt(exactOutQuote.amountIn);
+      gasAmount = (requiredIn * BigInt(101)) / BigInt(100); // 1% safety margin
     }
 
-    const deadline = BigInt(0);
-    return { gasToken: gasTokenAddress, gasAmount, deadline };
+    return { gasAmount };
   }
 }

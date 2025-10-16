@@ -365,6 +365,27 @@ async function testSendTxWithFundsPayGasUSDT(
     { slippageBps: 300 }
   );
 
+  const amountOutEth = PushChain.utils.helpers.formatUnits(
+    quote.amountOut,
+    toToken.decimals
+  );
+  console.log('amountOut (USDT -> WETH)', amountOutEth);
+
+  // const exactOut = await client.funds.getConversionQuoteExactOutput(
+  //   BigInt(minAmountOut),
+  //   {
+  //     from: client.payable.token.USDT,
+  //     to: client.moveable.token.WETH,
+  //   }
+  // );
+  // const requiredUsdt = PushChain.utils.helpers.formatUnits(
+  //   exactOut.amountIn,
+  //   client.payable.token.USDT.decimals
+  // );
+  // console.log('requiredUSDT for minOut WETH (exact-output)', requiredUsdt);
+
+  // TODO: Check if we can pass the `value` as != 0. If we pass, what would be the behaviour? Because we can only pay gas fees with native OR token.
+  // TODO: Add balance check.
   const res = await client.universal.sendTransaction({
     to: COUNTER_ADDRESS,
     value: BigInt(0),
@@ -373,7 +394,9 @@ async function testSendTxWithFundsPayGasUSDT(
       amount: bridgeAmount,
       token: usdt,
       payWith: {
-        token: client.payable.token.WETH,
+        // token: client.payable.token.WETH,
+        token: client.payable.token.USDT,
+        // TODO: What happens if minAmountOut is `undefined`.
         minAmountOut: minAmountOut,
       },
     },
@@ -1607,9 +1630,9 @@ describe('PushChain', () => {
       await testSendTxWithFundsUSDT(client, account, config);
     }, 500000);
 
-    // it('integration: pay gas with USDT via UniversalGatewayV0', async () => {
-    //   await testSendTxWithFundsPayGasUSDT(client, account, config);
-    // }, 500000);
+    it('integration: pay gas with USDT via UniversalGatewayV0', async () => {
+      await testSendTxWithFundsPayGasUSDT(client, account, config);
+    }, 500000);
     it('integration: sendTxWithFunds ETH should throw (not supported)', async () => {
       try {
         const bridgeAmount = BigInt(1);
@@ -1687,9 +1710,9 @@ describe('PushChain', () => {
       await testSendTxWithFundsUSDT(client, account, config);
     }, 500000);
 
-    // it('integration: pay gas with USDT via UniversalGatewayV0', async () => {
-    //   await testSendTxWithFundsPayGasUSDT(client, account, config);
-    // }, 500000);
+    it('integration: pay gas with USDT via UniversalGatewayV0', async () => {
+      await testSendTxWithFundsPayGasUSDT(client, account, config);
+    }, 500000);
   });
 
   describe('Universal.sendTransaction (FUNDS_TX via UniversalGatewayV0) - Base Sepolia', () => {
