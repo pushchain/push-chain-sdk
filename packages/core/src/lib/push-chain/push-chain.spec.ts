@@ -394,10 +394,10 @@ async function testSendTxWithFundsPayGasUSDT(
       amount: bridgeAmount,
       token: usdt,
       payWith: {
-        // token: client.payable.token.WETH,
-        token: client.payable.token.USDT,
+        token: client.payable.token.WETH,
+        // token: client.payable.token.USDT,
         // TODO: What happens if minAmountOut is `undefined`.
-        minAmountOut: minAmountOut,
+        // minAmountOut: minAmountOut,
       },
     },
   });

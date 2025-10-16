@@ -638,12 +638,20 @@ export class Orchestrator {
                 | undefined;
 
               if (gasTokenAddress) {
-                // TODO: If no minAmountOut, then calculate it ourselves. And add slippage ourselves.
-                const amountOutMinETH =
+                let amountOutMinETH =
                   payWith?.minAmountOut !== undefined
                     ? BigInt(payWith.minAmountOut)
                     : nativeAmount;
-                const { gasAmount  } =
+
+                const slippageBps = payWith?.slippageBps ?? 100;
+                amountOutMinETH = BigInt(
+                  PushChain.utils.conversion.slippageToMinAmount(
+                    amountOutMinETH.toString(),
+                    { slippageBps }
+                  )
+                );
+
+                const { gasAmount } =
                   await this.calculateGasAmountFromAmountOutMinETH(
                     gasTokenAddress as `0x${string}`,
                     amountOutMinETH
@@ -2506,13 +2514,10 @@ export class Orchestrator {
       }
 
       const targetOut = BigInt(amountOutMinETH);
-      const exactOutQuote = await this._quoteExactOutput(
-        targetOut,
-        {
-          from: fromToken,
-          to: toToken,
-        }
-      );
+      const exactOutQuote = await this._quoteExactOutput(targetOut, {
+        from: fromToken,
+        to: toToken,
+      });
       const requiredIn = BigInt(exactOutQuote.amountIn);
       gasAmount = (requiredIn * BigInt(101)) / BigInt(100); // 1% safety margin
     }
