@@ -18,7 +18,7 @@ import { CHAIN_INFO } from '../src/lib/constants/chain';
 import dotenv from 'dotenv';
 import path from 'path';
 import { UniversalTxResponse } from '../src/lib/orchestrator/orchestrator.types';
-import { sepolia } from 'viem/chains';
+import { sepolia, arbitrumSepolia, baseSepolia } from 'viem/chains';
 import bs58 from 'bs58';
 
 // Adjust path as needed if your .env is in the root
@@ -30,7 +30,7 @@ describe('PushChain (e2e)', () => {
   let universalSigner: UniversalSigner;
   let randomAccount: PrivateKeyAccount;
   describe('Origin - EVM (Except Push)', () => {
-    describe(`${CHAIN.ETHEREUM_SEPOLIA}`, () => {
+    describe('ETHEREUM_SEPOLIA', () => {
       const originChain = CHAIN.ETHEREUM_SEPOLIA;
       let pushClient: PushChain;
 
@@ -69,6 +69,284 @@ describe('PushChain (e2e)', () => {
         });
         const publicClient = createPublicClient({
           chain: sepolia,
+          transport: http(),
+        });
+        await publicClient.waitForTransactionReceipt({
+          hash: txHash,
+        });
+      }, 100000);
+
+      it('should fail to send universal.sendTransaction with invalid feeLockTxHash', async () => {
+        await expect(
+          pushClient.universal.sendTransaction({
+            to,
+            feeLockTxHash: '0xABC', // Invalid txHash
+            value: BigInt(1e3),
+          })
+        ).rejects.toThrow();
+      }, 30000);
+
+      it('should fail to send universal.sendTransaction with fundGas property', async () => {
+        await expect(
+          pushClient.universal.sendTransaction({
+            to,
+            value: BigInt(1e3),
+            fundGas: {
+              chainToken: '0x1234567890123456789012345678901234567890',
+            },
+          })
+        ).rejects.toThrow('Unsupported token');
+      }, 30000);
+
+      it('should successfully send universal.sendTransaction without fundGas (default behavior)', async () => {
+        const tx = await pushClient.universal.sendTransaction({
+          to,
+          value: BigInt(1e3),
+          // fundGas not provided - should work fine
+        });
+        expect(tx).toBeDefined();
+        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        await txValidator(
+          tx,
+          pushClient.universal.origin.address as `0x${string}`,
+          to
+        );
+      }, 300000);
+
+      it('should successfully sendTransaction - Transfer Call', async () => {
+        const tx = await pushClient.universal.sendTransaction({
+          to,
+          value: BigInt(1e3),
+        });
+        const after = await PushChain.utils.account.convertOriginToExecutor(
+          universalSigner.account,
+          {
+            onlyCompute: true,
+          }
+        );
+        expect(after.deployed).toBe(true);
+        await txValidator(
+          tx,
+          pushClient.universal.origin.address as `0x${string}`,
+          to
+        );
+      }, 300000);
+
+      it('should successfully sendTransaction to funded undeployed UEA', async () => {
+        const walletClient = createWalletClient({
+          account: randomAccount,
+          transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+        });
+        const randomUniversalSigner =
+          await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
+            chain: originChain,
+            library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+          });
+        const UEA = await PushChain.utils.account.convertOriginToExecutor(
+          randomUniversalSigner.account,
+          {
+            onlyCompute: true,
+          }
+        );
+
+        // Fund Undeployed UEA - 1PC
+        await pushClient.universal.sendTransaction({
+          to: UEA.address,
+          value: BigInt(1e18),
+        });
+
+        // Send Tx Via Random Address
+        const randomPushClient = await PushChain.initialize(
+          randomUniversalSigner,
+          {
+            network: pushNetwork,
+          }
+        );
+        await randomPushClient.universal.sendTransaction({
+          to,
+          value: BigInt(1e6),
+        });
+      }, 300000);
+    });
+
+    describe('ARBITRUM_SEPOLIA', () => {
+      const originChain = CHAIN.ARBITRUM_SEPOLIA;
+      let pushClient: PushChain;
+
+      beforeAll(async () => {
+        const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
+        if (!privateKey) throw new Error('EVM_PRIVATE_KEY not set');
+
+        const account = privateKeyToAccount(privateKey);
+        const walletClient = createWalletClient({
+          account,
+          transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+        });
+
+        universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
+          walletClient,
+          {
+            chain: originChain,
+            library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+          }
+        );
+
+        pushClient = await PushChain.initialize(universalSigner, {
+          network: pushNetwork,
+          progressHook: (val: any) => {
+            console.log(val);
+          },
+        });
+
+        // Generate random account
+        randomAccount = privateKeyToAccount(generatePrivateKey());
+        // Try to send Arbitrum Sepolia ETH to random generated address
+        const txHash = await walletClient.sendTransaction({
+          to: randomAccount.address,
+          chain: arbitrumSepolia,
+          value: PushChain.utils.helpers.parseUnits('1', 14),
+        });
+        const publicClient = createPublicClient({
+          chain: arbitrumSepolia,
+          transport: http(),
+        });
+        await publicClient.waitForTransactionReceipt({
+          hash: txHash,
+        });
+      }, 100000);
+
+      it('should fail to send universal.sendTransaction with invalid feeLockTxHash', async () => {
+        await expect(
+          pushClient.universal.sendTransaction({
+            to,
+            feeLockTxHash: '0xABC', // Invalid txHash
+            value: BigInt(1e3),
+          })
+        ).rejects.toThrow();
+      }, 30000);
+
+      it('should fail to send universal.sendTransaction with fundGas property', async () => {
+        await expect(
+          pushClient.universal.sendTransaction({
+            to,
+            value: BigInt(1e3),
+            fundGas: {
+              chainToken: '0x1234567890123456789012345678901234567890',
+            },
+          })
+        ).rejects.toThrow('Unsupported token');
+      }, 30000);
+
+      it('should successfully send universal.sendTransaction without fundGas (default behavior)', async () => {
+        const tx = await pushClient.universal.sendTransaction({
+          to,
+          value: BigInt(1e3),
+          // fundGas not provided - should work fine
+        });
+        expect(tx).toBeDefined();
+        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        await txValidator(
+          tx,
+          pushClient.universal.origin.address as `0x${string}`,
+          to
+        );
+      }, 300000);
+
+      it('should successfully sendTransaction - Transfer Call', async () => {
+        const tx = await pushClient.universal.sendTransaction({
+          to,
+          value: BigInt(1e3),
+        });
+        const after = await PushChain.utils.account.convertOriginToExecutor(
+          universalSigner.account,
+          {
+            onlyCompute: true,
+          }
+        );
+        expect(after.deployed).toBe(true);
+        await txValidator(
+          tx,
+          pushClient.universal.origin.address as `0x${string}`,
+          to
+        );
+      }, 300000);
+
+      it('should successfully sendTransaction to funded undeployed UEA', async () => {
+        const walletClient = createWalletClient({
+          account: randomAccount,
+          transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+        });
+        const randomUniversalSigner =
+          await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
+            chain: originChain,
+            library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+          });
+        const UEA = await PushChain.utils.account.convertOriginToExecutor(
+          randomUniversalSigner.account,
+          {
+            onlyCompute: true,
+          }
+        );
+
+        // Fund Undeployed UEA - 1PC
+        await pushClient.universal.sendTransaction({
+          to: UEA.address,
+          value: BigInt(1e18),
+        });
+
+        // Send Tx Via Random Address
+        const randomPushClient = await PushChain.initialize(
+          randomUniversalSigner,
+          {
+            network: pushNetwork,
+          }
+        );
+        await randomPushClient.universal.sendTransaction({
+          to,
+          value: BigInt(1e6),
+        });
+      }, 300000);
+    });
+
+    describe('BASE_SEPOLIA', () => {
+      const originChain = CHAIN.BASE_SEPOLIA;
+      let pushClient: PushChain;
+
+      beforeAll(async () => {
+        const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
+        if (!privateKey) throw new Error('EVM_PRIVATE_KEY not set');
+
+        const account = privateKeyToAccount(privateKey);
+        const walletClient = createWalletClient({
+          account,
+          transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+        });
+
+        universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
+          walletClient,
+          {
+            chain: originChain,
+            library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+          }
+        );
+
+        pushClient = await PushChain.initialize(universalSigner, {
+          network: pushNetwork,
+          progressHook: (val: any) => {
+            console.log(val);
+          },
+        });
+
+        // Generate random account
+        randomAccount = privateKeyToAccount(generatePrivateKey());
+        // Try to send Base Sepolia ETH to random generated address
+        const txHash = await walletClient.sendTransaction({
+          to: randomAccount.address,
+          chain: baseSepolia,
+          value: PushChain.utils.helpers.parseUnits('1', 14),
+        });
+        const publicClient = createPublicClient({
+          chain: baseSepolia,
           transport: http(),
         });
         await publicClient.waitForTransactionReceipt({
@@ -220,7 +498,7 @@ describe('PushChain (e2e)', () => {
     });
   });
   describe('Origin - SVM', () => {
-    describe(`${CHAIN.SOLANA_DEVNET}`, () => {
+    describe('SOLANA_DEVNET', () => {
       const originChain = CHAIN.SOLANA_DEVNET;
       let pushClient: PushChain;
 

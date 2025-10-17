@@ -1,5 +1,5 @@
 import { CHAIN, PUSH_NETWORK, VM } from './enums';
-import { mainnet, sepolia } from 'viem/chains';
+import { mainnet, sepolia, arbitrumSepolia, baseSepolia } from 'viem/chains';
 
 /**
  * Maps VM type to its namespace
@@ -81,6 +81,22 @@ export const CHAIN_INFO: Record<
     confirmations: 1,
     timeout: 30000,
   },
+  [CHAIN.ARBITRUM_SEPOLIA]: {
+    chainId: '421614',
+    vm: VM.EVM,
+    lockerContract: '0x2cd870e0166Ba458dEC615168Fd659AacD795f34',
+    defaultRPC: [arbitrumSepolia.rpcUrls.default.http[0]],
+    confirmations: 1,
+    timeout: 30000,
+  },
+  [CHAIN.BASE_SEPOLIA]: {
+    chainId: '84532',
+    vm: VM.EVM,
+    lockerContract: '0xFD4fef1F43aFEc8b5bcdEEc47f35a1431479aC16',
+    defaultRPC: [baseSepolia.rpcUrls.default.http[0]],
+    confirmations: 1,
+    timeout: 30000,
+  },
 
   // Solana
   [CHAIN.SOLANA_MAINNET]: {
@@ -97,7 +113,7 @@ export const CHAIN_INFO: Record<
     lockerContract: '',
     defaultRPC: ['https://api.testnet.solana.com'],
     confirmations: 6,
-    timeout: 15000,
+    timeout: 55000,
   },
   [CHAIN.SOLANA_DEVNET]: {
     chainId: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
@@ -105,7 +121,7 @@ export const CHAIN_INFO: Record<
     lockerContract: 'CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS',
     defaultRPC: ['https://api.devnet.solana.com'],
     confirmations: 1,
-    timeout: 5000,
+    timeout: 35000,
   },
 };
 

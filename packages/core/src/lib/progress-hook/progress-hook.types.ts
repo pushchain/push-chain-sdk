@@ -23,10 +23,21 @@ export enum PROGRESS_HOOK {
   SEND_TX_03_02 = 'SEND-TX-03-02',
   SEND_TX_04_01 = 'SEND-TX-04-01',
   SEND_TX_04_02 = 'SEND-TX-04-02',
+  // V2 funds flow additions
+  SEND_TX_04_03 = 'SEND-TX-04-03',
+  SEND_TX_04_04 = 'SEND-TX-04-04',
   SEND_TX_05_01 = 'SEND-TX-05-01',
   SEND_TX_05_02 = 'SEND-TX-05-02',
   SEND_TX_05_03 = 'SEND-TX-05-03',
+  // Broadcasting to Push Chain (existing)
   SEND_TX_06 = 'SEND-TX-06',
+  // Funds flow granularity (origin chain)
+  SEND_TX_06_01 = 'SEND-TX-06-01',
+  SEND_TX_06_02 = 'SEND-TX-06-02',
+  SEND_TX_06_03 = 'SEND-TX-06-03',
+  SEND_TX_06_04 = 'SEND-TX-06-04',
+  SEND_TX_06_06 = 'SEND-TX-06-06',
+  SEND_TX_06_07 = 'SEND-TX-06-07',
   SEND_TX_99_01 = 'SEND-TX-99-01',
   SEND_TX_99_02 = 'SEND-TX-99-02',
 }
