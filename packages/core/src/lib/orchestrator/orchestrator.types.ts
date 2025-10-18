@@ -72,9 +72,9 @@ export type ExecuteParams = {
      * Optional: pay gas in a specific token. If not provided, use `token` (bridge token) when present; otherwise, native token.
      */
     payWith?: {
-      token?: import('../constants').PayableToken; // e.g., client.payable.token.DAI | ETH sentinel
+      token?: import('../constants').PayableToken; // e.g., client.payable.token.USDT
       slippageBps?: number; // e.g., 100 = 1%
-      minAmountOut?: bigint | string; // optional min ETH out (wei); takes precedence if set
+      minAmountOut?: bigint | string; // optional min ETH out (wei)
     };
   };
 };
