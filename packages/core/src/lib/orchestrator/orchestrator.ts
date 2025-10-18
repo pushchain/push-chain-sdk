@@ -280,6 +280,11 @@ export class Orchestrator {
 
             const userPk = new PublicKey(this.universalSigner.account.address);
 
+            // pay-with-token gas abstraction is not supported on Solana
+            if (execute.funds?.payWith !== undefined) {
+              throw new Error('Pay-with token is not supported on Solana');
+            }
+
             let txSignature: string;
             // SVM-specific RevertSettings: bytes must be a Buffer
             const revertSvm = {
@@ -747,6 +752,11 @@ export class Orchestrator {
               const priceUpdatePk = new PublicKey(
                 '7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE'
               );
+
+              // pay-with-token gas abstraction is not supported on Solana
+              if (execute.funds?.payWith !== undefined) {
+                throw new Error('Pay-with token is not supported on Solana');
+              }
 
               const isNative =
                 mechanism === 'native' || execute.funds.token.symbol === 'SOL';
@@ -1704,7 +1714,7 @@ export class Orchestrator {
    * Quotes exact-output on Uniswap V3 for EVM origin chains using QuoterV2.
    * Returns the minimum required input (amountIn) to receive the target amountOut.
    */
-  private async _quoteExactOutput(
+  public async _quoteExactOutput(
     amountOut: bigint,
     {
       from,

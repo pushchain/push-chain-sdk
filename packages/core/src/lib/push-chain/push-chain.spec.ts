@@ -2131,6 +2131,40 @@ describe('PushChain', () => {
         })) as bigint;
         expect(afterCount).toBe(beforeCount + BigInt(1));
       }, 300000);
+
+      it('sendTxWithFunds payWith USDT should fail on Solana Devnet', async () => {
+        const bridgeAmount = BigInt(1);
+        const COUNTER_ABI = [
+          {
+            inputs: [],
+            name: 'increment',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+        ];
+        const COUNTER_ADDRESS =
+          '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
+        const data = PushChain.utils.helpers.encodeTxData({
+          abi: COUNTER_ABI,
+          functionName: 'increment',
+        });
+
+        await expect(
+          client.universal.sendTransaction({
+            to: COUNTER_ADDRESS,
+            value: BigInt(0),
+            data,
+            funds: {
+              amount: bridgeAmount,
+              token: client.moveable.token.USDT,
+              payWith: {
+                token: client.payable.token.USDT,
+              },
+            },
+          })
+        ).rejects.toThrow('Pay-with token is not supported on Solana');
+      });
     });
   });
 
