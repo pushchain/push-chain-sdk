@@ -22,6 +22,45 @@ export const UEA_PROXY: Record<PUSH_NETWORK, `0x${string}`> = {
 };
 
 /**
+ * Addresses for wrapped ETH/SOL/ARBITRUM assets by Push network.
+ * Includes pETH and PUSDT bridged from origin on test networks.
+ */
+export const SYNTHETIC_PUSH_ERC20: Record<
+  PUSH_NETWORK,
+  {
+    pETH: `0x${string}`;
+    pSOL: `0x${string}`;
+    USDT_ETH: `0x${string}`;
+    USDT_SOL: `0x${string}`;
+  }
+> = {
+  [PUSH_NETWORK.TESTNET_DONUT]: {
+    pETH: '0x2971824Db68229D087931155C2b8bB820B275809',
+    pSOL: '0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed',
+    USDT_ETH: '0xCA0C5E6F002A389E1580F0DB7cd06e4549B5F9d3',
+    USDT_SOL: '0x4f1A3D22d170a2F4Bddb37845a962322e24f4e34'
+  },
+  [PUSH_NETWORK.TESTNET]: {
+    pETH: '0x2971824Db68229D087931155C2b8bB820B275809',
+    pSOL: '0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed',
+    USDT_ETH: '0xCA0C5E6F002A389E1580F0DB7cd06e4549B5F9d3',
+    USDT_SOL: '0x4f1A3D22d170a2F4Bddb37845a962322e24f4e34'
+  },
+  [PUSH_NETWORK.LOCALNET]: {
+    pETH: '0xTBD',
+    pSOL: '0xTBD',
+    USDT_ETH: '0xTBD',
+    USDT_SOL: '0xTBD',
+  },
+  [PUSH_NETWORK.MAINNET]: {
+    pETH: '0xTBD',
+    pSOL: '0xTBD',
+    USDT_ETH: '0xTBD',
+    USDT_SOL: '0xTBD',
+  },
+};
+
+/**
  * Canonical metadata for each chain supported by the SDK.
  * Acts as a single source of truth for chainId, vm type, locker contract, etc.
  * References -
