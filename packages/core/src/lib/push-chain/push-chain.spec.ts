@@ -328,19 +328,14 @@ async function testSendTxWithFundsPayGasUSDT(
   account: PrivateKeyAccount,
   config: EVMChainTestConfig
 ): Promise<void> {
-  const erc20Abi = parseAbi([
-    'function balanceOf(address) view returns (uint256)',
-  ]);
   const usdt = client.moveable.token.USDT;
 
   const evm = new EvmClient({
     rpcUrls: CHAIN_INFO[config.chain].defaultRPC,
   });
-  const usdtBal: bigint = await evm.readContract<bigint>({
-    abi: erc20Abi,
-    address: usdt.address,
-    functionName: 'balanceOf',
-    args: [account.address],
+  const usdtBal: bigint = await evm.getErc20Balance({
+    tokenAddress: usdt.address as `0x${string}`,
+    ownerAddress: account.address as `0x${string}`,
   });
 
   if (usdtBal === BigInt(0)) {
