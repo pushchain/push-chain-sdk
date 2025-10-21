@@ -505,16 +505,18 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     // Wait for a response from the Push Wallet iframe
     return new Promise<{ chain: ChainType; provider: IWalletProvider["name"] }>((resolve, reject) => {
       const handleMessage = (event: MessageEvent) => {
-        if (event.data.type === WALLET_TO_APP_ACTION.SOCIAL_CONNECT_URL) {
-          window.open(event.data.data, "Google OAuth", getAuthWindowConfig());
-        }
-        else if (event.data.type === WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS) {
+        if (event.data.type === WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS) {
           window.removeEventListener('message', handleMessage);
           if (event.data.error) {
             reject(new Error(event.data.error));
           } else {
             resolve(event.data);
           }
+        }
+        if (event.data.type === WALLET_TO_APP_ACTION.APP_CONNECTION_CANCELLED) {
+          window.removeEventListener('message', handleMessage);
+          reject(new Error('Push Wallet connection failed'));
+          setMinimiseWallet(true);
         }
       };
   

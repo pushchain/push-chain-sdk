@@ -32,6 +32,7 @@ export enum WALLET_TO_APP_ACTION {
 
   APP_CONNECTION_SUCCESS = 'appConnectionSuccess',
   APP_CONNECTION_REJECTED = 'appConnectionRejected',
+  APP_CONNECTION_CANCELLED = 'appConnectionCancelled',
 
   IS_LOGGED_IN = 'isLoggedIn',
   IS_LOGGED_OUT = 'loggedOut',
@@ -44,7 +45,6 @@ export enum WALLET_TO_APP_ACTION {
   PUSH_SEND_TRANSACTION = 'pushSendTransaction',
 
   CLOSE_IFRAME = 'closeIFrame',
-  SOCIAL_CONNECT_URL = 'socialConnectURL',
 }
 
 // events send by dapp to the wallet
