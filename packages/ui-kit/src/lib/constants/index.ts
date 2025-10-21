@@ -33,6 +33,7 @@ export enum WALLET_TO_APP_ACTION {
 
   APP_CONNECTION_SUCCESS = 'appConnectionSuccess',
   APP_CONNECTION_REJECTED = 'appConnectionRejected',
+  APP_CONNECTION_CANCELLED = 'appConnectionCancelled',
 
   IS_LOGGED_IN = 'isLoggedIn',
   IS_LOGGED_OUT = 'loggedOut',
@@ -59,6 +60,8 @@ export enum APP_TO_WALLET_ACTION {
   WALLET_CONFIG = 'walletConfig',
 
   PUSH_SEND_TRANSACTION_RESPONSE = 'pushSendTransactionResponse',
+  READ_ONLY_CONNECTION_STATUS = 'readOnlyConnectionStatus',
+  RECONNECT_WALLET = 'ReconnectWallet',
 }
 
 export const CHAIN_LOGO: Record<string, React.FC | React.ComponentType> = {

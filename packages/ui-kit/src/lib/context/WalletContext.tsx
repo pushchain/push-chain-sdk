@@ -48,6 +48,10 @@ export type WalletContextType = {
   handleSignMessage: (data: Uint8Array) => Promise<Uint8Array>;
   handleSignAndSendTransaction: (data: Uint8Array) => Promise<Uint8Array>;
   handleSignTypedData: (data: ITypedData) => Promise<Uint8Array>;
+  handleExternalWalletConnection: (data: {
+    chain: ChainType;
+    provider: IWalletProvider["name"];
+  }) => Promise<void>;
 
   config: PushWalletProviderProps['config'];
   app?: PushWalletProviderProps['app'];
@@ -63,6 +67,10 @@ export type WalletContextType = {
 
   toggleButtonRef: React.RefObject<HTMLButtonElement>;
   setProgress: React.Dispatch<React.SetStateAction<ProgressEvent | null>>;
+
+  isReadOnly: boolean;
+  setIsReadOnly: React.Dispatch<React.SetStateAction<boolean>>;
+  requestPushWalletConnection: () => Promise<{ chain: ChainType; provider: IWalletProvider["name"] }>;
 };
 
 export const WalletContext = createContext<WalletContextType | null>(null);
@@ -83,6 +91,8 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
   const [isWalletMinimised, setMinimiseWallet] = useState(false); // to display/hide minimized wallet modal
 
   const [isIframeLoading, setIframeLoading] = useState(true);
+
+  const [isReadOnly, setIsReadOnly] = useState(false);
 
   const [connectionStatus, setConnectionStatus] = useState<
     WalletContextType['connectionStatus']
@@ -163,6 +173,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     setMinimiseWallet(false);
     setWalletVisibility(false);
     setIframeLoading(true);
+    localStorage.removeItem("walletInfo");
   };
 
   // sending events to wallet from dapp
@@ -196,9 +207,14 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
   const handleAppConnectionSuccess = (response: WalletEventRespoonse) => {
     setConnectionStatus(ConnectionStatus.CONNECTED);
     setMinimiseWallet(true);
+    // setIsReadOnly(false);
     if (response.account) {
       setUniversalAccount(response.account);
     }
+    localStorage.setItem(
+      "walletInfo",
+      JSON.stringify(response.account)
+    );
   };
 
   const handleAppConnectionRejection = () => {
@@ -238,6 +254,11 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         providerName: data.provider,
         chainType: data.chain,
       };
+
+      localStorage.setItem(
+        "walletInfo",
+        JSON.stringify(connectedWallet)
+      );
 
       setExternalWallet(connectedWallet);
 
@@ -457,8 +478,97 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     return signature;
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  const handleCloseIFrame = useCallback(() => {}, [universalAccount]);
+  const getAuthWindowConfig = () => {
+    // Calculate the screen width and height
+    const screenWidth = window.screen.width;
+    const screenHeight = window.screen.height;
+
+    const width = 500;
+    const height = 600;
+
+    // Calculate the position to center the window
+    const left = (screenWidth - width) / 2;
+    const top = (screenHeight - height) / 2;
+
+    // Open a new window with the calculated position
+    const windowFeatures = `width=${width},height=${height},left=${left},top=${top},resizable,scrollbars`;
+
+    return windowFeatures;
+  };
+
+  const requestPushWalletConnection = () => {
+    setMinimiseWallet(false);
+    sendMessageToPushWallet({
+      type: APP_TO_WALLET_ACTION.RECONNECT_WALLET,
+    });
+  
+    // Wait for a response from the Push Wallet iframe
+    return new Promise<{ chain: ChainType; provider: IWalletProvider["name"] }>((resolve, reject) => {
+      const handleMessage = (event: MessageEvent) => {
+        if (event.data.type === WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS) {
+          window.removeEventListener('message', handleMessage);
+          if (event.data.error) {
+            reject(new Error(event.data.error));
+          } else {
+            resolve(event.data);
+          }
+        }
+        if (event.data.type === WALLET_TO_APP_ACTION.APP_CONNECTION_CANCELLED) {
+          window.removeEventListener('message', handleMessage);
+          reject(new Error('Push Wallet connection failed'));
+          setMinimiseWallet(true);
+        }
+      };
+  
+      window.addEventListener('message', handleMessage);
+  
+      setTimeout(() => {
+        window.removeEventListener('message', handleMessage);
+        reject(new Error('Push Wallet connection timed out'));
+        setMinimiseWallet(true);
+      }, 100000);
+    });
+  }
+
+  useEffect(() => {
+    const walletInfo = localStorage.getItem("walletInfo");
+    const walletData = walletInfo ? JSON.parse(walletInfo) : null;
+    if (!walletData) return;
+    if (walletData.providerName) {
+      setUniversalAccount(PushChain.utils.account.fromChainAgnostic(
+        walletData.address
+      ));
+      setExternalWallet(walletData);
+    } else {
+      setUniversalAccount(walletData);
+    }
+    setIsReadOnly(true);
+    setMinimiseWallet(true);
+    setWalletVisibility(true);
+    setConnectionStatus(ConnectionStatus.CONNECTED);
+  }, []);
+
+  useEffect(() => {
+    if (isIframeLoading) return;
+    if (!isReadOnly) return;
+    if (externalWallet) {
+      sendMessageToPushWallet({
+        type: APP_TO_WALLET_ACTION.READ_ONLY_CONNECTION_STATUS,
+        data: {
+          status: 'successful',
+          ...externalWallet,
+        },
+      });
+    } else if (universalAccount) {
+      sendMessageToPushWallet({
+        type: APP_TO_WALLET_ACTION.READ_ONLY_CONNECTION_STATUS,
+        data: {
+          status: 'successful',
+          ...universalAccount,
+        },
+      });
+    }
+  }, [isIframeLoading])
 
   useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
@@ -516,15 +626,6 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
 
   const WalletContext = getWalletContext(config?.uid || 'default');
 
-  const dummyProgress: ProgressEvent = {
-    id: PROGRESS_HOOK.SEND_TX_99_01,
-    title: 'Push Chain Tx Success',
-    message: '',
-    level: 'SUCCESS',
-    response: null,
-    timestamp: '',
-  };
-
   return (
     <WalletContext.Provider
       value={{
@@ -547,6 +648,10 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         handleSignTypedData,
         toggleButtonRef,
         setProgress,
+        isReadOnly,
+        setIsReadOnly,
+        handleExternalWalletConnection,
+        requestPushWalletConnection,
       }}
     >
       <LoginModal
@@ -564,6 +669,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         handleUserLogOutEvent={handleUserLogOutEvent}
         toggleButtonRef={toggleButtonRef}
         sendMessageToPushWallet={sendMessageToPushWallet}
+        isReadOnly={isReadOnly}
       />
       {progress && (
         <PushWalletToast progress={progress} setProgress={setProgress} />
