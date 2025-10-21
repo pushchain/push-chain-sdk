@@ -1,3 +1,9 @@
+@pushchain/ui-kit@2.0.10 (2025-10-17)
+
+- feat: add base and arbitrum wallet
+
+---
+
 @pushchain/ui-kit@2.0.9 (2025-10-06)
 
 - chore: update core version to 2.0.16

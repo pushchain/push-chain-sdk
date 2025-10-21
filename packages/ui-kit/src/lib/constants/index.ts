@@ -10,6 +10,7 @@ import {
   SolanaMonotone,
 } from '../components/common';
 import { ConnectionStatus } from '../types';
+import BaseMonotone from '../components/common/icons/BaseMonotone';
 
 export const PushUI = {
   CONSTANTS: {
@@ -72,6 +73,7 @@ export const CHAIN_LOGO: Record<string, React.FC | React.ComponentType> = {
   56: BnbMonotone,
   42161: ArbitrumMonotone,
   421614: ArbitrumMonotone,
+  84532: BaseMonotone,
   11155420: OptimismMonotone,
   10: OptimismMonotone,
   2442: PolygonMonotone,
