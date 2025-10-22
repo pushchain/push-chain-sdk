@@ -168,6 +168,12 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
   };
 
   const handleUserLogOutEvent = () => {
+    if (externalWallet) {
+      const providerReceived = walletRegistry.getProvider(
+        externalWallet.providerName
+      );
+      providerReceived?.disconnect();
+    }
     setConnectionStatus(ConnectionStatus.NOT_CONNECTED);
     setUniversalAccount(null);
     setMinimiseWallet(false);
