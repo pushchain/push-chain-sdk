@@ -142,7 +142,7 @@ export const CHAIN_INFO: Record<
       // Expect env to provide addresses; leave undefined if not set to force validation error
       uniV3Factory: '0x0227628f3F023bb0B980b67D528571c95c6DaC1c',
       uniV3QuoterV2: '0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3',
-      weth: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+      weth: '0x980B62Da83eFf3D4576C647993b0c1D7faf17c73',
     },
   },
   [CHAIN.BASE_SEPOLIA]: {

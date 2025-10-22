@@ -154,7 +154,7 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
     {
       symbol: 'WETH',
       decimals: 18,
-      address: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+      address: '0x980B62Da83eFf3D4576C647993b0c1D7faf17c73',
       mechanism: 'approve',
     },
   ],
