@@ -643,6 +643,13 @@ export class Orchestrator {
                 | undefined;
 
               if (gasTokenAddress) {
+                if (chain !== CHAIN.ETHEREUM_SEPOLIA) {
+                  throw new Error(
+                    `Only ${PushChain.utils.chains.getChainName(
+                      CHAIN.ETHEREUM_SEPOLIA
+                    )} is supported for paying gas fees with ERC-20 tokens`
+                  );
+                }
                 let amountOutMinETH =
                   payWith?.minAmountOut !== undefined
                     ? BigInt(payWith.minAmountOut)
