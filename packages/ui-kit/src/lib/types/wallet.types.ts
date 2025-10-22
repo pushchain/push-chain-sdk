@@ -6,6 +6,7 @@ export enum ChainType {
   SOLANA = 'solana',
   BINANCE = 'bsc',
   ARBITRUM = 'arbitrum',
+  BASE = "baseSepolia",
   AVALANCHE = 'avalanche',
   WALLET_CONNECT = 'walletConnect',
   PUSH_WALLET = 'pushWalletDonut',

@@ -10,6 +10,7 @@ import {
   SolanaMonotone,
 } from '../components/common';
 import { ConnectionStatus } from '../types';
+import BaseMonotone from '../components/common/icons/BaseMonotone';
 
 export const PushUI = {
   CONSTANTS: {
@@ -32,6 +33,7 @@ export enum WALLET_TO_APP_ACTION {
 
   APP_CONNECTION_SUCCESS = 'appConnectionSuccess',
   APP_CONNECTION_REJECTED = 'appConnectionRejected',
+  APP_CONNECTION_CANCELLED = 'appConnectionCancelled',
 
   IS_LOGGED_IN = 'isLoggedIn',
   IS_LOGGED_OUT = 'loggedOut',
@@ -58,6 +60,8 @@ export enum APP_TO_WALLET_ACTION {
   WALLET_CONFIG = 'walletConfig',
 
   PUSH_SEND_TRANSACTION_RESPONSE = 'pushSendTransactionResponse',
+  READ_ONLY_CONNECTION_STATUS = 'readOnlyConnectionStatus',
+  RECONNECT_WALLET = 'ReconnectWallet',
 }
 
 export const CHAIN_LOGO: Record<string, React.FC | React.ComponentType> = {
@@ -69,6 +73,7 @@ export const CHAIN_LOGO: Record<string, React.FC | React.ComponentType> = {
   56: BnbMonotone,
   42161: ArbitrumMonotone,
   421614: ArbitrumMonotone,
+  84532: BaseMonotone,
   11155420: OptimismMonotone,
   10: OptimismMonotone,
   2442: PolygonMonotone,

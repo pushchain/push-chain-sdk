@@ -1,3 +1,39 @@
+@pushchain/ui-kit@2.0.11 (2025-10-21)
+
+- feat: Read Only feature implementation
+- fix: revert environment and polyfil changes
+- feat: cancel transaction on close drawer
+- fix: fix the params for reconnect external wallet
+- chore: update package json
+- feat: add read only feature for ui-kit
+
+---
+
+@pushchain/ui-kit@2.0.10 (2025-10-17)
+
+- feat: add base and arbitrum wallet
+
+---
+
+@pushchain/ui-kit@2.0.9 (2025-10-06)
+
+- chore: update core version to 2.0.16
+
+---
+
+@pushchain/ui-kit@2.0.6 (2025-09-24)
+
+- chore: update core sdk to v2.0.8
+
+---
+
+@pushchain/ui-kit@2.0.5 (2025-09-24)
+
+- fix: update the variables affecting the DOM
+- chore: update yarn lock
+
+---
+
 @pushchain/ui-kit@2.0.2 (2025-09-19)
 
 - feat: update core sdk to 2.0.2

@@ -137,6 +137,38 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
     },
   ],
 
+  // Arbitrum Sepolia
+  [CHAIN.ARBITRUM_SEPOLIA]: [
+    {
+      symbol: 'ETH',
+      decimals: 18,
+      address: EVM_NATIVE,
+      mechanism: 'native',
+    },
+    {
+      symbol: 'USDT',
+      decimals: 6,
+      address: '0x1419d7C74D234fA6B73E06A2ce7822C1d37922f0',
+      mechanism: 'approve',
+    },
+  ],
+
+  // Base Sepolia
+  [CHAIN.BASE_SEPOLIA]: [
+    {
+      symbol: 'ETH',
+      decimals: 18,
+      address: EVM_NATIVE,
+      mechanism: 'native',
+    },
+    {
+      symbol: 'USDT',
+      decimals: 6,
+      address: '0x9FF5a186f53F6E6964B00320Da1D2024DE11E0cB',
+      mechanism: 'approve',
+    },
+  ],
+
   // Solana Devnet (decimals are per SPL mint; addresses TBD)
   [CHAIN.SOLANA_DEVNET]: [
     // Native SOL (lamports) sentinel: use 'solana-native' string; not used as a Pubkey
@@ -197,6 +229,34 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
       symbol: 'WETH',
       decimals: 18,
       address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+      mechanism: 'approve',
+    },
+  ],
+  [CHAIN.ARBITRUM_SEPOLIA]: [
+    {
+      symbol: 'ETH',
+      decimals: 18,
+      address: EVM_NATIVE,
+      mechanism: 'native',
+    },
+    {
+      symbol: 'USDT',
+      decimals: 6,
+      address: '0x1419d7C74D234fA6B73E06A2ce7822C1d37922f0',
+      mechanism: 'approve',
+    },
+  ],
+  [CHAIN.BASE_SEPOLIA]: [
+    {
+      symbol: 'ETH',
+      decimals: 18,
+      address: EVM_NATIVE,
+      mechanism: 'native',
+    },
+    {
+      symbol: 'USDT',
+      decimals: 6,
+      address: '0x9FF5a186f53F6E6964B00320Da1D2024DE11E0cB',
       mechanism: 'approve',
     },
   ],

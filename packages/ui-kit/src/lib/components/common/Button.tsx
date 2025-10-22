@@ -22,14 +22,21 @@ export type ButtonProps = {
   disabled?: boolean;
 } & TransformedHTMLAttributes<HTMLButtonElement>;
 
-const StyledButton = styled.button<ButtonProps>`
+const StyledButton = styled.button<{
+  $bgColor?: ButtonProps['bgColor'];
+  $textColor?: ButtonProps['textColor'];
+  $borderRadius?: ButtonProps['borderRadius'];
+  $gap?: ButtonProps['gap'];
+  $padding?: ButtonProps['padding'];
+  $disabled?: ButtonProps['disabled'];
+}>`
   /* Common Button CSS */
 
   align-items: center;
-  cursor: ${(props) => (props.disabled ? 'not-allowed' : 'pointer')};
-  background: ${(props) => (props.bgColor ? props.bgColor : '#d548ec')};
-  color: ${(props) =>
-    props.textColor ? props.textColor : 'rgba(255, 255, 255, 1)'};
+  cursor: ${({ $disabled }) => ($disabled ? 'not-allowed' : 'pointer')};
+  background: ${({ $bgColor }) => ($bgColor ? $bgColor : '#d548ec')};
+  color: ${({ $textColor }) =>
+    $textColor ? $textColor : 'rgba(255, 255, 255, 1)'};
   display: flex;
   font-family: var(--pw-int-font-family);
   justify-content: center;
@@ -39,16 +46,16 @@ const StyledButton = styled.button<ButtonProps>`
   font-style: normal;
   font-weight: 500;
   line-height: 16px;
-  padding: ${(props) =>
-    props.padding ? props.padding : '16px 24px'};
+  padding: ${({ $padding }) =>
+    $padding ? $padding : '16px 24px'};
   min-width: 100px;
   width: inherit;
   height: 48px;
-  gap: ${(props) =>
-    props.gap ? props.gap : '4px'};
+  gap: ${({ $gap }) =>
+    $gap ? $gap : '4px'};
   border: none;
-  border-radius: ${(props) =>
-    props.borderRadius ? props.borderRadius : '12px'};
+  border-radius: ${({ $borderRadius }) =>
+    $borderRadius ? $borderRadius : '12px'};
   white-space: nowrap;
 `;
 
@@ -56,14 +63,14 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ disabled, bgColor, textColor, borderRadius, gap, padding, children, ...props }, ref) => (
     <StyledButton
       {...(disabled ? { 'aria-disabled': true } : {})}
-      disabled={disabled}
       role="button"
       ref={ref}
-      bgColor={bgColor}
-      textColor={textColor}
-      borderRadius={borderRadius}
-      gap={gap}
-      padding={padding}
+      $bgColor={bgColor}
+      $textColor={textColor}
+      $borderRadius={borderRadius}
+      $gap={gap}
+      $padding={padding}
+      $disabled={disabled}
       {...props}
     >
       {children}

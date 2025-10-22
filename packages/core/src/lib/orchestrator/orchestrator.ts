@@ -128,10 +128,15 @@ export class Orchestrator {
           const chain = this.universalSigner.account.chain;
           const { vm } = CHAIN_INFO[chain];
           if (
-            !(chain === CHAIN.ETHEREUM_SEPOLIA || chain === CHAIN.SOLANA_DEVNET)
+            !(
+              chain === CHAIN.ETHEREUM_SEPOLIA ||
+              chain === CHAIN.ARBITRUM_SEPOLIA ||
+              chain === CHAIN.BASE_SEPOLIA ||
+              chain === CHAIN.SOLANA_DEVNET
+            )
           ) {
             throw new Error(
-              'Funds bridging is only supported on Ethereum Sepolia and Solana Devnet for now'
+              'Funds bridging is only supported on Ethereum Sepolia, Arbitrum Sepolia, Base Sepolia, and Solana Devnet for now'
             );
           }
 
@@ -907,11 +912,16 @@ export class Orchestrator {
       // Support multicall payload encoding when execute.data is an array
       let payloadData: `0x${string}`;
       if (Array.isArray(execute.data)) {
-        // Gate multicall to Ethereum Sepolia and Solana Devnet only
-        const allowedChains = [CHAIN.ETHEREUM_SEPOLIA, CHAIN.SOLANA_DEVNET];
+        // Gate multicall to supported testnets
+        const allowedChains = [
+          CHAIN.ETHEREUM_SEPOLIA,
+          CHAIN.ARBITRUM_SEPOLIA,
+          CHAIN.BASE_SEPOLIA,
+          CHAIN.SOLANA_DEVNET,
+        ];
         if (!allowedChains.includes(this.universalSigner.account.chain)) {
           throw new Error(
-            'Multicall is only enabled for Ethereum Sepolia and Solana Devnet'
+            'Multicall is only enabled for Ethereum Sepolia, Arbitrum Sepolia, Base Sepolia, and Solana Devnet'
           );
         }
 
@@ -1829,9 +1839,14 @@ export class Orchestrator {
     gatewayAddress?: `0x${string}`;
   } {
     const chain = this.universalSigner.account.chain;
-    if (chain !== CHAIN.ETHEREUM_SEPOLIA && chain !== CHAIN.SOLANA_DEVNET) {
+    if (
+      chain !== CHAIN.ETHEREUM_SEPOLIA &&
+      chain !== CHAIN.ARBITRUM_SEPOLIA &&
+      chain !== CHAIN.BASE_SEPOLIA &&
+      chain !== CHAIN.SOLANA_DEVNET
+    ) {
       throw new Error(
-        'Funds + payload bridging is only supported on Ethereum Sepolia and Solana Devnet for now'
+        'Funds + payload bridging is only supported on Ethereum Sepolia, Arbitrum Sepolia, Base Sepolia, and Solana Devnet for now'
       );
     }
 

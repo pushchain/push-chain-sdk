@@ -2,6 +2,7 @@ import { PushChain } from '@pushchain/core';
 import { PROGRESS_HOOK } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
 import { usePushWalletContext } from './usePushWallet';
 import { useEffect, useState } from 'react';
+import { createGuardedPushChain } from '../helpers/txnAuthGuard';
 
 export const usePushChainClient = (uid?: string) => {
   const {
@@ -9,8 +10,12 @@ export const usePushChainClient = (uid?: string) => {
     handleSignMessage,
     handleSignAndSendTransaction,
     handleSignTypedData,
+    handleExternalWalletConnection,
+    requestPushWalletConnection,
     config,
     setProgress,
+    isReadOnly,
+    setIsReadOnly
   } = usePushWalletContext(uid);
   const [pushChain, setPushChain] = useState<PushChain | null>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -45,7 +50,7 @@ export const usePushChainClient = (uid?: string) => {
           signerSkeleton
         );
 
-        const pushChainClient = await PushChain.initialize(universalSigner, {
+        const intializeProps = {
           network: config.network,
           progressHook: async (progress: any) => {
             setProgress(progress);
@@ -60,10 +65,30 @@ export const usePushChainClient = (uid?: string) => {
           rpcUrls: config.chainConfig?.rpcUrls,
           blockExplorers: config.chainConfig?.blockExplorers,
           printTraces: config.chainConfig?.printTraces,
-        });
+        }
 
-        setPushChain(pushChainClient);
+        if (isReadOnly) {
+          const pushChainClient = await PushChain.initialize(universalAccount, {
+            network: config.network,
+          });
+          setPushChain(
+            createGuardedPushChain(
+              pushChainClient,
+              handleExternalWalletConnection,
+              requestPushWalletConnection,
+              universalSigner,
+              intializeProps,
+              () => {
+                setIsReadOnly(false);
+              },
+            )
+          );
+        } else {
+          const pushChainClient = await PushChain.initialize(universalSigner, intializeProps);
+          setPushChain(pushChainClient);
+        }
         setError(null);
+
       } catch (err) {
         console.log('Error occured when initialising Push chain', err);
         setError(

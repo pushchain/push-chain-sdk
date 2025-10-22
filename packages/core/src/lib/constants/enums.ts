@@ -23,6 +23,8 @@ export enum CHAIN {
   // Ethereum
   ETHEREUM_MAINNET = 'eip155:1',
   ETHEREUM_SEPOLIA = 'eip155:11155111',
+  ARBITRUM_SEPOLIA = 'eip155:421614',
+  BASE_SEPOLIA = 'eip155:84532',
 
   // Solana
   SOLANA_MAINNET = 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
