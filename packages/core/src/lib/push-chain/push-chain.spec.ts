@@ -360,6 +360,100 @@ async function testMulticall(
   console.log(`[${config.name}] Multicall executed successfully`);
 }
 
+async function testFeeAbstraction(
+  config: EVMChainTestConfig,
+  privateKey: `0x${string}`
+): Promise<void> {
+  const account = privateKeyToAccount(privateKey);
+  const walletClient = createWalletClient({
+    account,
+    chain: config.viemChain,
+    transport: http(config.rpcUrl),
+  });
+
+  const universalSignerEVM =
+    await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
+      chain: config.chain,
+      library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+    });
+  const pushClientEVM = await PushChain.initialize(universalSignerEVM, {
+    network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+    rpcUrls: {
+      [config.chain]: [config.rpcUrl],
+    },
+  });
+
+  const newAccount = privateKeyToAccount(generatePrivateKey());
+
+  const walletClientNew = createWalletClient({
+    account: newAccount,
+    chain: config.viemChain,
+    transport: http(config.rpcUrl),
+  });
+
+  const publicClient = createPublicClient({
+    chain: config.viemChain,
+    transport: http(config.rpcUrl),
+  });
+
+  const balanceBefore = await publicClient.getBalance({
+    address: newAccount.address,
+  });
+  console.log(
+    `[${config.name}] New account balance before (wei):`,
+    balanceBefore.toString()
+  );
+
+  // Send native token to new account
+  const txHash = await walletClient.sendTransaction({
+    to: newAccount.address,
+    chain: config.viemChain,
+    value: PushChain.utils.helpers.parseUnits('0.00029', 18),
+  });
+
+  // Wait for transaction to be mined
+  await new Promise((resolve) => setTimeout(resolve, 15000));
+  await publicClient.waitForTransactionReceipt({
+    hash: txHash,
+  });
+
+  const balanceAfter = await publicClient.getBalance({
+    address: newAccount.address,
+  });
+  console.log(
+    `[${config.name}] New account balance after (wei):`,
+    balanceAfter.toString()
+  );
+
+  const universalSignerNewAccount =
+    await PushChain.utils.signer.toUniversalFromKeypair(walletClientNew, {
+      chain: config.chain,
+      library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+    });
+
+  const pushClientNewAccount = await PushChain.initialize(
+    universalSignerNewAccount,
+    {
+      network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+      progressHook: (progress) => {
+        console.log(`[${config.name}] Progress:`, progress);
+      },
+      rpcUrls: {
+        [config.chain]: [config.rpcUrl],
+      },
+    }
+  );
+
+  // Execute transaction from new account
+  const resultTx = await pushClientNewAccount.universal.sendTransaction({
+    to: '0x1234567890123456789012345678901234567890',
+    value: BigInt(1),
+  });
+
+  expect(resultTx).toBeDefined();
+  console.log(`[${config.name}] Fee abstraction test completed successfully`);
+}
+
 describe('PushChain', () => {
   describe('Universal Namesapce', () => {
     let pushClientEVM: PushChain;
@@ -1149,91 +1243,45 @@ describe('PushChain', () => {
   // TODO: THIS IS HOW TO TEST THE NEW FEE ABSTRACTION.
   // TODO: WE ARE CREATING BRAND NEW WALLETS SO WE WILL NEED TO DEPLOY A UEA WHEN SENDING A TRANSCTION.
   // TODO: THIS IS DONE SO WE TEST THE COMPLETE LOGIC THAT THE BACKEND IS INDEED CORRECTLY DEPLOYING THE UEA and funding the wallet.
-  describe('Test new fee absctraction', () => {
-    // Increase timeout for setup and network operations in this suite
-    jest.setTimeout(300000);
-    let pushClientEVM: PushChain;
-    let newSepoliaAccount: PrivateKeyAccount;
-    let pushClientNewSepolia: PushChain;
-
-    beforeAll(async () => {
-      const account = privateKeyToAccount(
-        process.env['EVM_PRIVATE_KEY'] as `0x${string}`
-      );
-      const walletClient = createWalletClient({
-        account,
-        chain: sepolia,
-        transport: http(EVM_RPC),
-      });
-      const universalSignerEVM =
-        await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
-          chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
-          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-        });
-      pushClientEVM = await PushChain.initialize(universalSignerEVM, {
-        network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
-      });
-
-      newSepoliaAccount = privateKeyToAccount(generatePrivateKey());
-
-      const walletClientNewSepolia = createWalletClient({
-        account: newSepoliaAccount,
-        chain: sepolia,
-        transport: http(EVM_RPC),
-      });
-
-      const publicClient = createPublicClient({
-        chain: sepolia,
-        transport: http(EVM_RPC),
-      });
-
-      const balanceBefore = await publicClient.getBalance({
-        address: newSepoliaAccount.address,
-      });
-      console.log('newSepolia balance before (wei):', balanceBefore.toString());
-
-      // Try to send Sepolia ETH to random generated address
-      const txHash = await walletClient.sendTransaction({
-        to: newSepoliaAccount.address,
-        chain: sepolia,
-        value: PushChain.utils.helpers.parseUnits('0.00024', 18),
-      });
-      // Delay 15 seconds to allow Sepolia ETH transfer to be mined and indexed
-      await new Promise((resolve) => setTimeout(resolve, 15000));
-      await publicClient.waitForTransactionReceipt({
-        hash: txHash,
-      });
-
-      const balanceAfter = await publicClient.getBalance({
-        address: newSepoliaAccount.address,
-      });
-      console.log('newSepolia balance after (wei):', balanceAfter.toString());
-
-      const universalSignerNewSepolia =
-        await PushChain.utils.signer.toUniversalFromKeypair(
-          walletClientNewSepolia,
-          {
-            chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
-            library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-          }
-        );
-      pushClientNewSepolia = await PushChain.initialize(
-        universalSignerNewSepolia,
-        {
-          network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
-          progressHook: (progress) => {
-            console.log('Progress', progress);
-          },
-        }
-      );
-    }, 300000);
+  describe('Test new fee abstraction - Ethereum Sepolia', () => {
+    const config = EVM_CHAIN_CONFIGS[0]; // Ethereum Sepolia
+    const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
+      | `0x${string}`
+      | undefined;
 
     it('new fee abstraction should work', async () => {
-      const txHash = await pushClientNewSepolia.universal.sendTransaction({
-        to: '0x1234567890123456789012345678901234567890',
-        value: BigInt(1),
-      });
-      expect(txHash).toBeDefined();
+      if (!PRIVATE_KEY) {
+        throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+      }
+      await testFeeAbstraction(config, PRIVATE_KEY);
+    }, 300000);
+  });
+
+  describe('Test new fee abstraction - Base Sepolia', () => {
+    const config = EVM_CHAIN_CONFIGS[2]; // Base Sepolia
+    const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
+      | `0x${string}`
+      | undefined;
+
+    it('new fee abstraction should work', async () => {
+      if (!PRIVATE_KEY) {
+        throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+      }
+      await testFeeAbstraction(config, PRIVATE_KEY);
+    }, 300000);
+  });
+
+  describe('Test new fee abstraction - Arbitrum Sepolia', () => {
+    const config = EVM_CHAIN_CONFIGS[1]; // Arbitrum Sepolia
+    const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
+      | `0x${string}`
+      | undefined;
+
+    it('new fee abstraction should work', async () => {
+      if (!PRIVATE_KEY) {
+        throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+      }
+      await testFeeAbstraction(config, PRIVATE_KEY);
     }, 300000);
   });
 
