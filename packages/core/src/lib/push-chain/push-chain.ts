@@ -200,12 +200,9 @@ export class PushChain {
         }
       ): Promise<ConversionQuote> => {
         const originChain = universalSigner.account.chain;
-        if (
-          originChain !== CHAIN.ETHEREUM_MAINNET &&
-          originChain !== CHAIN.ETHEREUM_SEPOLIA
-        ) {
+        if (originChain !== CHAIN.ETHEREUM_SEPOLIA) {
           throw new Error(
-            'getConversionQuote is only supported on Ethereum Mainnet and Sepolia for now'
+            'getConversionQuote is only supported on Ethereum Sepolia for now'
           );
         }
 
@@ -224,15 +221,14 @@ export class PushChain {
 
         const evm = new EvmClient({ rpcUrls });
 
-        // Minimal ABIs and known Uniswap V3 addresses (per network)
-        const UNISWAP_V3_FACTORY: `0x${string}` =
-          originChain === CHAIN.ETHEREUM_SEPOLIA
-            ? ('0x0227628f3F023bb0B980b67D528571c95c6DaC1c' as `0x${string}`)
-            : ('0x1F98431c8aD98523631AE4a59f267346ea31F984' as `0x${string}`);
-        const UNISWAP_V3_QUOTER_V2: `0x${string}` =
-          originChain === CHAIN.ETHEREUM_SEPOLIA
-            ? ('0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3' as `0x${string}`)
-            : ('0x61fFE014bA17989E743c5F6cB21bF9697530B21e' as `0x${string}`);
+        // Minimal ABIs and Uniswap V3 addresses sourced from chain config
+        const factoryFromConfig = CHAIN_INFO[originChain].dex?.uniV3Factory;
+        const quoterFromConfig = CHAIN_INFO[originChain].dex?.uniV3QuoterV2;
+        if (!factoryFromConfig || !quoterFromConfig) {
+          throw new Error('Uniswap V3 addresses not configured for this chain');
+        }
+        const UNISWAP_V3_FACTORY = factoryFromConfig as `0x${string}`;
+        const UNISWAP_V3_QUOTER_V2 = quoterFromConfig as `0x${string}`;
 
         const factoryAbi: Abi = parseAbi([
           'function getPool(address tokenA, address tokenB, uint24 fee) view returns (address)',
