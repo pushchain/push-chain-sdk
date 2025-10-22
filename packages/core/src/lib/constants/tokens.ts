@@ -151,6 +151,12 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
       address: '0x1419d7C74D234fA6B73E06A2ce7822C1d37922f0',
       mechanism: 'approve',
     },
+    {
+      symbol: 'WETH',
+      decimals: 18,
+      address: '0x980B62Da83eFf3D4576C647993b0c1D7faf17c73',
+      mechanism: 'approve',
+    },
   ],
 
   // Base Sepolia
@@ -165,6 +171,12 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
       symbol: 'USDT',
       decimals: 6,
       address: '0x9FF5a186f53F6E6964B00320Da1D2024DE11E0cB',
+      mechanism: 'approve',
+    },
+    {
+      symbol: 'WETH',
+      decimals: 18,
+      address: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
       mechanism: 'approve',
     },
   ],

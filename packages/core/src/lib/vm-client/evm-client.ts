@@ -101,6 +101,31 @@ export class EvmClient {
   }
 
   /**
+   * Returns the ERC-20 token balance of an owner address.
+   *
+   * This is a convenience wrapper around readContract using the minimal
+   * ERC-20 ABI: balanceOf(address) -> uint256.
+   */
+  async getErc20Balance({
+    tokenAddress,
+    ownerAddress,
+  }: {
+    tokenAddress: `0x${string}`;
+    ownerAddress: `0x${string}`;
+  }): Promise<bigint> {
+    const { parseAbi } = await import('viem');
+    const erc20Abi = parseAbi([
+      'function balanceOf(address) view returns (uint256)',
+    ]);
+    return this.readContract<bigint>({
+      abi: erc20Abi as unknown as Abi,
+      address: tokenAddress,
+      functionName: 'balanceOf',
+      args: [ownerAddress],
+    });
+  }
+
+  /**
    * Writes a transaction to a smart contract using a UniversalSigner.
    * This function handles contract interaction by encoding function data
    * and sending the transaction through sendTransaction.
