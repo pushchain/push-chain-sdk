@@ -25,6 +25,7 @@ export enum CHAIN {
   ETHEREUM_SEPOLIA = 'eip155:11155111',
   ARBITRUM_SEPOLIA = 'eip155:421614',
   BASE_SEPOLIA = 'eip155:84532',
+  BNB_TESTNET = 'eip155:97',
 
   // Solana
   SOLANA_MAINNET = 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
