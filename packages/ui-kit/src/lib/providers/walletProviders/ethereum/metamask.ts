@@ -15,6 +15,7 @@ export class MetamaskProvider extends BaseWalletProvider {
       ChainType.ETHEREUM,
       ChainType.ARBITRUM,
       ChainType.BASE,
+      ChainType.BINANCE,
       ChainType.PUSH_WALLET,
     ]);
     this.sdk = new MetaMaskSDK({
