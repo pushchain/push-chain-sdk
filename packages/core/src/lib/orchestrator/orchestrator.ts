@@ -135,11 +135,12 @@ export class Orchestrator {
               chain === CHAIN.ETHEREUM_SEPOLIA ||
               chain === CHAIN.ARBITRUM_SEPOLIA ||
               chain === CHAIN.BASE_SEPOLIA ||
+              chain === CHAIN.BNB_TESTNET ||
               chain === CHAIN.SOLANA_DEVNET
             )
           ) {
             throw new Error(
-              'Funds bridging is only supported on Ethereum Sepolia, Arbitrum Sepolia, Base Sepolia, and Solana Devnet for now'
+              'Funds bridging is only supported on Ethereum Sepolia, Arbitrum Sepolia, Base Sepolia, BNB Testnet, and Solana Devnet for now'
             );
           }
 
@@ -1693,10 +1694,11 @@ export class Orchestrator {
       chain !== CHAIN.ETHEREUM_SEPOLIA &&
       chain !== CHAIN.ARBITRUM_SEPOLIA &&
       chain !== CHAIN.BASE_SEPOLIA &&
+      chain !== CHAIN.BNB_TESTNET &&
       chain !== CHAIN.SOLANA_DEVNET
     ) {
       throw new Error(
-        'Funds + payload bridging is only supported on Ethereum Sepolia, Arbitrum Sepolia, Base Sepolia, and Solana Devnet for now'
+        'Funds + payload bridging is only supported on Ethereum Sepolia, Arbitrum Sepolia, Base Sepolia, BNB Testnet, and Solana Devnet for now'
       );
     }
 
