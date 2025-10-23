@@ -1328,6 +1328,20 @@ describe('PushChain', () => {
     }, 300000);
   });
 
+  describe('Test new fee abstraction - BNB Testnet', () => {
+    const config = EVM_CHAIN_CONFIGS[3]; // BNB Testnet
+    const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
+      | `0x${string}`
+      | undefined;
+
+    it('new fee abstraction should work', async () => {
+      if (!PRIVATE_KEY) {
+        throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+      }
+      await testFeeAbstraction(config, PRIVATE_KEY);
+    }, 300000);
+  });
+
   // TODO: NEW FEE ABSTRACTION - SOLANA
   describe('Test new fee abstraction (Solana Devnet - random wallet funding)', () => {
     // Increase timeout for setup and network operations in this suite
