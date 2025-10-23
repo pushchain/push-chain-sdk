@@ -169,6 +169,22 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
     },
   ],
 
+  // BNB Testnet
+  [CHAIN.BNB_TESTNET]: [
+    {
+      symbol: 'ETH',
+      decimals: 18,
+      address: EVM_NATIVE,
+      mechanism: 'native',
+    },
+    {
+      symbol: 'USDT',
+      decimals: 6,
+      address: '0xBC14F348BC9667be46b35Edc9B68653d86013DC5',
+      mechanism: 'approve',
+    },
+  ],
+
   // Solana Devnet (decimals are per SPL mint; addresses TBD)
   [CHAIN.SOLANA_DEVNET]: [
     // Native SOL (lamports) sentinel: use 'solana-native' string; not used as a Pubkey
@@ -257,6 +273,20 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
       symbol: 'USDT',
       decimals: 6,
       address: '0x9FF5a186f53F6E6964B00320Da1D2024DE11E0cB',
+      mechanism: 'approve',
+    },
+  ],
+  [CHAIN.BNB_TESTNET]: [
+    {
+      symbol: 'BNB',
+      decimals: 18,
+      address: EVM_NATIVE,
+      mechanism: 'native',
+    },
+    {
+      symbol: 'USDT',
+      decimals: 6,
+      address: '0xBC14F348BC9667be46b35Edc9B68653d86013DC5',
       mechanism: 'approve',
     },
   ],

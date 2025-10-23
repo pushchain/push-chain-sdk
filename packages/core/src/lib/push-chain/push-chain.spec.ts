@@ -15,7 +15,7 @@ import {
   parseAbi,
   PrivateKeyAccount,
 } from 'viem';
-import { sepolia, arbitrumSepolia, baseSepolia } from 'viem/chains';
+import { sepolia, arbitrumSepolia, baseSepolia, bscTestnet } from 'viem/chains';
 import { keccak256, toBytes } from 'viem';
 import { MulticallCall } from '../orchestrator/orchestrator.types';
 import { CHAIN_INFO } from '../constants/chain';
@@ -45,6 +45,9 @@ const ARBITRUM_SEPOLIA_RPC =
 const BASE_SEPOLIA_RPC =
   process.env['BASE_SEPOLIA_RPC'] ||
   CHAIN_INFO[CHAIN.BASE_SEPOLIA].defaultRPC[0];
+const BNB_TESTNET_RPC =
+  process.env['BNB_TESTNET_RPC'] ||
+  CHAIN_INFO[CHAIN.BNB_TESTNET].defaultRPC[0];
 const SOLANA_RPC =
   process.env['SOLANA_RPC_URL'] ||
   CHAIN_INFO[CHAIN.SOLANA_DEVNET].defaultRPC[0];
@@ -53,7 +56,7 @@ const SOLANA_RPC =
 interface EVMChainTestConfig {
   name: string;
   chain: CHAIN;
-  viemChain: typeof sepolia | typeof arbitrumSepolia | typeof baseSepolia;
+  viemChain: typeof sepolia | typeof arbitrumSepolia | typeof baseSepolia | typeof bscTestnet;
   rpcUrl: string;
   gatewayAddress: string;
   tokens: {
@@ -109,6 +112,22 @@ const EVM_CHAIN_CONFIGS: EVMChainTestConfig[] = [
     tokens: {
       usdt: {
         address: '0x9FF5a186f53F6E6964B00320Da1D2024DE11E0cB',
+        decimals: 6,
+      },
+      eth: {
+        decimals: 18,
+      },
+    },
+  },
+  {
+    name: 'BNB Testnet',
+    chain: CHAIN.BNB_TESTNET,
+    viemChain: bscTestnet,
+    rpcUrl: BNB_TESTNET_RPC,
+    gatewayAddress: '0x44aFFC61983F4348DdddB886349eb992C061EaC0',
+    tokens: {
+      usdt: {
+        address: '0xBC14F348BC9667be46b35Edc9B68653d86013DC5',
         decimals: 6,
       },
       eth: {
@@ -281,6 +300,9 @@ async function testSendTxWithFundsUSDT(
   expect(typeof resUSDT.hash).toBe('string');
   expect(resUSDT.hash.startsWith('0x')).toBe(true);
   await resUSDT.wait();
+
+  // Wait for Push Chain state to finalize
+  await new Promise(resolve => setTimeout(resolve, 3000));
 
   const afterCount = (await pushPublicClient.readContract({
     abi: COUNTER_ABI,
@@ -878,6 +900,27 @@ describe('PushChain', () => {
 
     describe('Multicall - Base Sepolia', () => {
       const config = EVM_CHAIN_CONFIGS[2]; // Base Sepolia
+      const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
+        | `0x${string}`
+        | undefined;
+      let client: PushChain;
+
+      beforeAll(async () => {
+        if (!PRIVATE_KEY) {
+          throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+        }
+
+        const result = await setupEVMChainClient(config, PRIVATE_KEY);
+        client = result.client;
+      });
+
+      it('integration: should build and send multicall payload', async () => {
+        await testMulticall(client, config);
+      }, 300000);
+    });
+
+    describe('Multicall - BNB Testnet', () => {
+      const config = EVM_CHAIN_CONFIGS[3]; // BNB Testnet
       const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
         | `0x${string}`
         | undefined;
@@ -1861,6 +1904,37 @@ describe('PushChain', () => {
     }, 300000);
 
     it('integration: sendFunds ETH via UniversalGatewayV0', async () => {
+      await testSendFundsETH(client, config);
+    }, 300000);
+
+    it('integration: sendTxWithFunds USDT via UniversalGatewayV0', async () => {
+      await testSendTxWithFundsUSDT(client, account, config);
+    }, 500000);
+  });
+
+  describe('Universal.sendTransaction (FUNDS_TX via UniversalGatewayV0) - BNB Testnet', () => {
+    const config = EVM_CHAIN_CONFIGS[3]; // BNB Testnet
+    const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
+      | `0x${string}`
+      | undefined;
+    let account: PrivateKeyAccount;
+    let client: PushChain;
+
+    beforeAll(async () => {
+      if (!PRIVATE_KEY) {
+        throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+      }
+
+      const result = await setupEVMChainClient(config, PRIVATE_KEY);
+      account = result.account;
+      client = result.client;
+    });
+
+    it('integration: sendFunds USDT via UniversalGatewayV0', async () => {
+      await testSendFundsUSDT(client, account, config);
+    }, 300000);
+
+    it('integration: sendFunds BNB via UniversalGatewayV0', async () => {
       await testSendFundsETH(client, config);
     }, 300000);
 
