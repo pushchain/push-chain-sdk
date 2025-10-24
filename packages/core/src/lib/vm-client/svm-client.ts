@@ -408,11 +408,19 @@ export class SvmClient {
       const { value } = await connection.getSignatureStatuses([txSignature]);
       const status = value[0];
 
-      if (
-        status?.confirmations != null &&
-        status.confirmations >= confirmations
-      ) {
-        return;
+      if (status) {
+        // Transaction is confirmed if either:
+        // 1. It has enough confirmations, OR
+        // 2. It succeeded (err === null) and has a confirmation status
+        //    (handles case where RPC returns null for confirmations on finalized txs)
+        const hasEnoughConfirmations =
+          status.confirmations != null && status.confirmations >= confirmations;
+        const isSuccessfullyFinalized =
+          status.err === null && status.confirmationStatus !== null;
+
+        if (hasEnoughConfirmations || isSuccessfullyFinalized) {
+          return;
+        }
       }
 
       // wait before retrying
