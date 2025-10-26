@@ -18,7 +18,7 @@ import {
 import { sepolia, arbitrumSepolia, baseSepolia, bscTestnet } from 'viem/chains';
 import { keccak256, toBytes } from 'viem';
 import { MulticallCall } from '../orchestrator/orchestrator.types';
-import { CHAIN_INFO } from '../constants/chain';
+import { CHAIN_INFO, SYNTHETIC_PUSH_ERC20 } from '../constants/chain';
 import { CHAIN } from '../constants/enums';
 import { Keypair, PublicKey, Connection } from '@solana/web3.js';
 import { utils as anchorUtils } from '@coral-xyz/anchor';
@@ -165,7 +165,9 @@ async function testSendFundsUSDT(
   account: PrivateKeyAccount,
   config: EVMChainTestConfig
 ): Promise<void> {
-  const erc20Abi = parseAbi(['function balanceOf(address) view returns (uint256)']);
+  const erc20Abi = parseAbi([
+    'function balanceOf(address) view returns (uint256)',
+  ]);
   const usdt = client.moveable.token.USDT;
 
   const balance: bigint = await new EvmClient({
@@ -183,7 +185,30 @@ async function testSendFundsUSDT(
   }
 
   const amount = BigInt(1);
-  const recipient = '0xFd6C2fE69bE13d8bE379CCB6c9306e74193EC1A9';
+  const recipient = '0x7AEE1699FeE2C906251863D24D35B3dEbe0932EC';
+
+  // pUSDT (USDT.eth) balance on Push chain should increase for the recipient
+  const pushChainClient = new EvmClient({
+    rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
+  });
+
+  let pusdt;
+  if (config.chain === CHAIN.ETHEREUM_SEPOLIA) {
+    pusdt =
+      SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
+        .USDT_ETH;
+  } else if (config.chain === CHAIN.ARBITRUM_SEPOLIA) {
+    pusdt =
+      SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
+        .USDT_ARB;
+  } else {
+    throw new Error('USDT address not on Push Chain');
+  }
+
+  const balanceBefore = await pushChainClient.getErc20Balance({
+    tokenAddress: pusdt,
+    ownerAddress: recipient as `0x${string}`,
+  });
 
   const resUSDT = await client.universal.sendTransaction({
     to: recipient,
@@ -193,6 +218,12 @@ async function testSendFundsUSDT(
   const receipt = await resUSDT.wait();
   expect(receipt.status).toBe(1);
   console.log(`[${config.name}] USDT bridge receipt:`, receipt);
+
+  const balanceAfter = await pushChainClient.getErc20Balance({
+    tokenAddress: pusdt,
+    ownerAddress: recipient as `0x${string}`,
+  });
+  expect(balanceAfter > balanceBefore).toBe(true);
 }
 
 async function testSendFundsETH(
@@ -202,6 +233,18 @@ async function testSendFundsETH(
   const amount = BigInt(1);
   const recipient = client.universal.account;
 
+  // pETH balance on Push chain should increase for the recipient after bridging
+  const pushChainClient = new EvmClient({
+    rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
+  });
+  const pETH_ADDRESS =
+    SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT].pETH;
+
+  const balanceBefore = await pushChainClient.getErc20Balance({
+    tokenAddress: pETH_ADDRESS,
+    ownerAddress: recipient,
+  });
+
   const resNative = await client.universal.sendTransaction({
     to: recipient,
     funds: { amount },
@@ -210,6 +253,12 @@ async function testSendFundsETH(
   const receipt = await resNative.wait();
   expect(receipt.status).toBe(1);
   console.log(`[${config.name}] ETH bridge receipt:`, receipt);
+
+  const balanceAfter = await pushChainClient.getErc20Balance({
+    tokenAddress: pETH_ADDRESS,
+    ownerAddress: recipient,
+  });
+  expect(balanceAfter > balanceBefore).toBe(true);
 }
 
 async function testSendTxWithFundsUSDT(
@@ -217,11 +266,13 @@ async function testSendTxWithFundsUSDT(
   account: PrivateKeyAccount,
   config: EVMChainTestConfig
 ): Promise<void> {
-  const erc20Abi = parseAbi(['function balanceOf(address) view returns (uint256)']);
+  const erc20Abi = parseAbi([
+    'function balanceOf(address) view returns (uint256)',
+  ]);
   const usdt = client.moveable.token.USDT;
 
   const evm = new EvmClient({
-    rpcUrls: CHAIN_INFO[config.chain].defaultRPC,
+    rpcUrls: [EVM_RPC],
   });
   const usdtBal: bigint = await evm.readContract<bigint>({
     abi: erc20Abi,
@@ -269,9 +320,7 @@ async function testSendTxWithFundsUSDT(
     address: COUNTER_ADDRESS,
   });
   if (!bytecode || bytecode === '0x') {
-    console.warn(
-      `Skipping ${config.name}: no contract at ${COUNTER_ADDRESS}`
-    );
+    console.warn(`Skipping ${config.name}: no contract at ${COUNTER_ADDRESS}`);
     return;
   }
 
@@ -303,6 +352,132 @@ async function testSendTxWithFundsUSDT(
 
   expect(afterCount).toBe(beforeCount + BigInt(1));
   console.log(`[${config.name}] Counter incremented successfully`);
+}
+
+// New: funds+payload paying gas with USDT (gasTokenAddress)
+async function testSendTxWithFundsPayGasUSDT(
+  client: PushChain,
+  account: PrivateKeyAccount,
+  config: EVMChainTestConfig
+): Promise<void> {
+  const usdt = client.moveable.token.USDT;
+
+  const evm = new EvmClient({
+    rpcUrls: CHAIN_INFO[config.chain].defaultRPC,
+  });
+  const usdtBal: bigint = await evm.getErc20Balance({
+    tokenAddress: usdt.address as `0x${string}`,
+    ownerAddress: account.address as `0x${string}`,
+  });
+
+  if (usdtBal === BigInt(0)) {
+    console.warn(`Skipping ${config.name} pay-gas-in-USDT: no USDT balance`);
+    return;
+  }
+
+  const bridgeAmount = BigInt(1);
+  const COUNTER_ABI = [
+    {
+      inputs: [],
+      name: 'increment',
+      outputs: [],
+      stateMutability: 'nonpayable',
+      type: 'function',
+    },
+    {
+      inputs: [],
+      name: 'countPC',
+      outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+      stateMutability: 'view',
+      type: 'function',
+    },
+  ];
+  const COUNTER_ADDRESS =
+    '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
+  const data = PushChain.utils.helpers.encodeTxData({
+    abi: COUNTER_ABI,
+    functionName: 'increment',
+  });
+
+  const pushPublicClient = createPublicClient({
+    transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
+  });
+  const bytecode = await pushPublicClient.getBytecode({
+    address: COUNTER_ADDRESS,
+  });
+  if (!bytecode || bytecode === '0x') {
+    console.warn(`Skipping ${config.name}: no contract at ${COUNTER_ADDRESS}`);
+    return;
+  }
+
+  const beforeCount = (await pushPublicClient.readContract({
+    abi: COUNTER_ABI,
+    address: COUNTER_ADDRESS,
+    functionName: 'countPC',
+  })) as bigint;
+
+  // const amount = PushChain.utils.helpers.parseUnits('1.05', {
+  //   decimals: client.payable.token.USDT.decimals,
+  // });
+  // const toToken = client.moveable.token.WETH;
+  // const quote = await client.funds.getConversionQuote(amount, {
+  //   from: client.payable.token.USDT,
+  //   to: toToken,
+  // });
+  // const minAmountOut = PushChain.utils.conversion.slippageToMinAmount(
+  //   quote.amountOut,
+  //   { slippageBps: 300 }
+  // );
+
+  // const amountOutEth = PushChain.utils.helpers.formatUnits(
+  //   quote.amountOut,
+  //   toToken.decimals
+  // );
+  // console.log('amountOut (USDT -> WETH)', amountOutEth);
+
+  // const exactOut = await client.funds.getConversionQuoteExactOutput(
+  //   BigInt(minAmountOut),
+  //   {
+  //     from: client.payable.token.USDT,
+  //     to: client.moveable.token.WETH,
+  //   }
+  // );
+  // const requiredUsdt = PushChain.utils.helpers.formatUnits(
+  //   exactOut.amountIn,
+  //   client.payable.token.USDT.decimals
+  // );
+  // console.log('requiredUSDT for minOut WETH (exact-output)', requiredUsdt);
+
+  // TODO: Check if we can pass the `value` as != 0. If we pass, what would be the behaviour? Because we can only pay gas fees with native OR token.
+  // TODO: Add balance check.
+  const res = await client.universal.sendTransaction({
+    to: COUNTER_ADDRESS,
+    value: BigInt(0),
+    data,
+    funds: {
+      amount: bridgeAmount,
+      token: usdt,
+      payWith: {
+        token: client.payable.token.WETH,
+        // token: client.payable.token.USDT,
+        // TODO: What happens if minAmountOut is `undefined`.
+        // minAmountOut: minAmountOut,
+      },
+    },
+  });
+
+  expect(typeof res.hash).toBe('string');
+  expect(res.hash.startsWith('0x')).toBe(true);
+  await res.wait();
+
+  const afterCount = (await pushPublicClient.readContract({
+    abi: COUNTER_ABI,
+    address: COUNTER_ADDRESS,
+    functionName: 'countPC',
+  })) as bigint;
+
+  expect(afterCount).toBe(beforeCount + BigInt(1));
+  console.log(`[${config.name}] Pay-gas-with-USDT executed successfully`);
 }
 
 async function testMulticall(
@@ -1540,6 +1715,9 @@ describe('PushChain', () => {
       await testSendTxWithFundsUSDT(client, account, config);
     }, 500000);
 
+    it('integration: pay gas with USDT via UniversalGatewayV0', async () => {
+      await testSendTxWithFundsPayGasUSDT(client, account, config);
+    }, 500000);
     it('integration: sendTxWithFunds ETH should throw (not supported)', async () => {
       try {
         const bridgeAmount = BigInt(1);
@@ -1615,6 +1793,10 @@ describe('PushChain', () => {
 
     it('integration: sendTxWithFunds USDT via UniversalGatewayV0', async () => {
       await testSendTxWithFundsUSDT(client, account, config);
+    }, 500000);
+
+    it('integration: pay gas with USDT via UniversalGatewayV0', async () => {
+      await testSendTxWithFundsPayGasUSDT(client, account, config);
     }, 500000);
   });
 
@@ -1765,6 +1947,19 @@ describe('PushChain', () => {
           const amountLamports = BigInt(1);
           const recipient = client.universal.account;
 
+          // Check pSOL balance on PushChain before bridging
+          const pushChainClient = new EvmClient({
+            rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
+          });
+          const pSOL_ADDRESS =
+            SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
+              .pSOL;
+          const balanceBefore = await pushChainClient.getErc20Balance({
+            tokenAddress: pSOL_ADDRESS,
+            ownerAddress: recipient as `0x${string}`,
+          });
+          console.log('pSOL balance before bridging', balanceBefore);
+
           const resNative = await client.universal.sendTransaction({
             to: recipient,
             funds: { amount: amountLamports, token: client.moveable.token.SOL },
@@ -1773,220 +1968,289 @@ describe('PushChain', () => {
           const receipt = await resNative.wait();
           expect(receipt.status).toBe(1);
           console.log('SVM Native Receipt', receipt);
+
+          // Check pSOL balance on PushChain after bridging
+          const balanceAfter = await pushChainClient.getErc20Balance({
+            tokenAddress: pSOL_ADDRESS,
+            ownerAddress: recipient as `0x${string}`,
+          });
+          console.log('pSOL balance after bridging', balanceAfter);
+          expect(balanceAfter > balanceBefore).toBe(true);
         } catch (err) {
           console.error('SVM sendFunds SOL flow failed (non-fatal):', err);
         }
       }, 300000);
 
       it('sendFunds function SPL', async () => {
+        const amountLamports = BigInt(1);
+        const recipient = client.universal.account;
+        // Check pUSDT (USDT.sol) balance on PushChain before bridging
+        const pushChainClient = new EvmClient({
+          rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
+        });
+        const USDT_SOL_ADDRESS =
+          SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
+            .USDT_SOL;
+        const balanceBefore = await pushChainClient.getErc20Balance({
+          tokenAddress: USDT_SOL_ADDRESS,
+          ownerAddress: recipient as `0x${string}`,
+        });
+        console.log('pUSDT(SOL) balance before bridging', balanceBefore);
+        // Compute USDT SPL balance before sending
+        const connection = new Connection(SOLANA_RPC, 'confirmed');
+        const mintPk = new PublicKey(client.moveable.token.USDT.address);
+        const ownerPk = new PublicKey(signer.account.address);
+        const TOKEN_PROGRAM_ID = new PublicKey(
+          'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
+        );
+        const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
+          'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'
+        );
+        const ata = PublicKey.findProgramAddressSync(
+          [ownerPk.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mintPk.toBuffer()],
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        )[0];
+        let usdtRawAmount = BigInt(0);
         try {
-          const amountLamports = BigInt(1);
-          const recipient = client.universal.account;
-          // Compute USDT SPL balance before sending
-          const connection = new Connection(SOLANA_RPC, 'confirmed');
-          const mintPk = new PublicKey(client.moveable.token.USDT.address);
-          const ownerPk = new PublicKey(signer.account.address);
-          const TOKEN_PROGRAM_ID = new PublicKey(
-            'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
-          );
-          const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
-            'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'
-          );
-          const ata = PublicKey.findProgramAddressSync(
-            [
-              ownerPk.toBuffer(),
-              TOKEN_PROGRAM_ID.toBuffer(),
-              mintPk.toBuffer(),
-            ],
-            ASSOCIATED_TOKEN_PROGRAM_ID
-          )[0];
-          let usdtRawAmount = BigInt(0);
-          try {
-            const balInfo = await connection.getTokenAccountBalance(ata);
-            // amount is a string of the raw token units (no decimals applied)
-            usdtRawAmount = BigInt(balInfo.value.amount);
-          } catch (_) {
-            // ATA may not exist or balance is zero; default stays 0
-          }
-          console.log(
-            'USDT (SPL) balance before send (raw units):',
-            usdtRawAmount.toString()
-          );
-          const resNative = await client.universal.sendTransaction({
-            to: recipient,
-            funds: {
-              amount: amountLamports,
-              token: client.moveable.token.USDT,
-            },
-          });
-
-          const receipt = await resNative.wait();
-          expect(receipt.status).toBe(1);
-          console.log('SVM Native Receipt', receipt);
-        } catch (err) {
-          console.error('SVM sendFunds SOL flow failed (non-fatal):', err);
+          const balInfo = await connection.getTokenAccountBalance(ata);
+          // amount is a string of the raw token units (no decimals applied)
+          usdtRawAmount = BigInt(balInfo.value.amount);
+        } catch (_) {
+          // ATA may not exist or balance is zero; default stays 0
         }
+        console.log(
+          'USDT (SPL) balance before send (raw units):',
+          usdtRawAmount.toString()
+        );
+        const resNative = await client.universal.sendTransaction({
+          to: recipient,
+          funds: {
+            amount: amountLamports,
+            token: client.moveable.token.USDT,
+          },
+        });
+
+        const receipt = await resNative.wait();
+        expect(receipt.status).toBe(1);
+        console.log('SVM Native Receipt', receipt);
+        // Check pUSDT (USDT.sol) balance on PushChain after bridging
+        const balanceAfter = await pushChainClient.getErc20Balance({
+          tokenAddress: USDT_SOL_ADDRESS,
+          ownerAddress: recipient as `0x${string}`,
+        });
+        console.log('pUSDT(SOL) balance after bridging', balanceAfter);
+        expect(balanceAfter > balanceBefore).toBe(true);
       }, 300000);
     });
 
     describe('sendTxWithFunds function', () => {
       it('sendTxWithFunds SOL function', async () => {
-        try {
-          const bridgeAmount = BigInt(1);
-          const COUNTER_ABI = [
-            {
-              inputs: [],
-              name: 'increment',
-              outputs: [],
-              stateMutability: 'nonpayable',
-              type: 'function',
-            },
-            {
-              inputs: [],
-              name: 'countPC',
-              outputs: [
-                {
-                  internalType: 'uint256',
-                  name: '',
-                  type: 'uint256',
-                },
-              ],
-              stateMutability: 'view',
-              type: 'function',
-            },
-          ];
-          const COUNTER_ADDRESS =
-            '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
-          const data = PushChain.utils.helpers.encodeTxData({
-            abi: COUNTER_ABI,
-            functionName: 'increment',
-          });
+        const bridgeAmount = BigInt(1);
+        const COUNTER_ABI = [
+          {
+            inputs: [],
+            name: 'increment',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          {
+            inputs: [],
+            name: 'countPC',
+            outputs: [
+              {
+                internalType: 'uint256',
+                name: '',
+                type: 'uint256',
+              },
+            ],
+            stateMutability: 'view',
+            type: 'function',
+          },
+        ];
+        const COUNTER_ADDRESS =
+          '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
+        const data = PushChain.utils.helpers.encodeTxData({
+          abi: COUNTER_ABI,
+          functionName: 'increment',
+        });
 
-          const pushPublicClient = createPublicClient({
-            transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
-          });
+        const pushPublicClient = createPublicClient({
+          transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
+        });
 
-          // Ensure the address is a contract on Push chain
-          const bytecode = await pushPublicClient.getBytecode({
-            address: COUNTER_ADDRESS,
-          });
-          if (!bytecode || bytecode === '0x') {
-            console.warn(
-              `Skipping test: no contract bytecode at ${COUNTER_ADDRESS} on Push Testnet`
-            );
-            return;
-          }
-
-          const beforeCount = (await pushPublicClient.readContract({
-            abi: COUNTER_ABI,
-            address: COUNTER_ADDRESS,
-            functionName: 'countPC',
-          })) as bigint;
-
-          const res = await client.universal.sendTransaction({
-            to: COUNTER_ADDRESS,
-            data,
-            funds: { amount: bridgeAmount, token: client.moveable.token.SOL },
-          });
-
-          expect(typeof res.hash).toBe('string');
-          expect(res.hash.length).toBeGreaterThan(0);
-          console.log('SVM sendTxWithFunds hash', res.hash);
-
-          await res.wait();
-
-          const afterCount = (await pushPublicClient.readContract({
-            abi: COUNTER_ABI,
-            address: COUNTER_ADDRESS,
-            functionName: 'countPC',
-          })) as bigint;
-          expect(afterCount).toBe(beforeCount + BigInt(1));
-        } catch (err) {
-          console.error(
-            'SVM sendTxWithFunds SOL flow failed (non-fatal):',
-            err
+        // Ensure the address is a contract on Push chain
+        const bytecode = await pushPublicClient.getBytecode({
+          address: COUNTER_ADDRESS,
+        });
+        if (!bytecode || bytecode === '0x') {
+          console.warn(
+            `Skipping test: no contract bytecode at ${COUNTER_ADDRESS} on Push Testnet`
           );
+          return;
         }
+
+        const beforeCount = (await pushPublicClient.readContract({
+          abi: COUNTER_ABI,
+          address: COUNTER_ADDRESS,
+          functionName: 'countPC',
+        })) as bigint;
+
+        // Check pSOL balance on PushChain before bridging
+        const recipient = client.universal.account;
+        const pushChainClient = new EvmClient({
+          rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
+        });
+        const pSOL_ADDRESS =
+          SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
+            .pSOL;
+        const balanceBefore = await pushChainClient.getErc20Balance({
+          tokenAddress: pSOL_ADDRESS,
+          ownerAddress: recipient as `0x${string}`,
+        });
+        console.log(
+          'pSOL balance before bridging (sendTxWithFunds SOL)',
+          balanceBefore
+        );
+
+        const res = await client.universal.sendTransaction({
+          to: COUNTER_ADDRESS,
+          data,
+          funds: { amount: bridgeAmount, token: client.moveable.token.SOL },
+        });
+
+        expect(typeof res.hash).toBe('string');
+        expect(res.hash.length).toBeGreaterThan(0);
+        console.log('SVM sendTxWithFunds hash', res.hash);
+
+        await res.wait();
+
+        // Check pSOL balance on PushChain after bridging
+        const balanceAfter = await pushChainClient.getErc20Balance({
+          tokenAddress: pSOL_ADDRESS,
+          ownerAddress: recipient as `0x${string}`,
+        });
+        console.log(
+          'pSOL balance after bridging (sendTxWithFunds SOL)',
+          balanceAfter
+        );
+        expect(balanceAfter > balanceBefore).toBe(true);
+
+        const afterCount = (await pushPublicClient.readContract({
+          abi: COUNTER_ABI,
+          address: COUNTER_ADDRESS,
+          functionName: 'countPC',
+        })) as bigint;
+        expect(afterCount).toBe(beforeCount + BigInt(1));
       }, 300000);
 
       it('sendTxWithFunds USDT function', async () => {
-        try {
-          const bridgeAmount = BigInt(1);
-          const COUNTER_ABI = [
-            {
-              inputs: [],
-              name: 'increment',
-              outputs: [],
-              stateMutability: 'nonpayable',
-              type: 'function',
-            },
-            {
-              inputs: [],
-              name: 'countPC',
-              outputs: [
-                {
-                  internalType: 'uint256',
-                  name: '',
-                  type: 'uint256',
-                },
-              ],
-              stateMutability: 'view',
-              type: 'function',
-            },
-          ];
-          const COUNTER_ADDRESS =
-            '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
-          const data = PushChain.utils.helpers.encodeTxData({
-            abi: COUNTER_ABI,
-            functionName: 'increment',
-          });
+        const bridgeAmount = BigInt(1);
+        const COUNTER_ABI = [
+          {
+            inputs: [],
+            name: 'increment',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          {
+            inputs: [],
+            name: 'countPC',
+            outputs: [
+              {
+                internalType: 'uint256',
+                name: '',
+                type: 'uint256',
+              },
+            ],
+            stateMutability: 'view',
+            type: 'function',
+          },
+        ];
+        const COUNTER_ADDRESS =
+          '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
+        const data = PushChain.utils.helpers.encodeTxData({
+          abi: COUNTER_ABI,
+          functionName: 'increment',
+        });
 
-          const pushPublicClient = createPublicClient({
-            transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
-          });
+        const pushPublicClient = createPublicClient({
+          transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
+        });
 
-          // Ensure the address is a contract on Push chain
-          const bytecode = await pushPublicClient.getBytecode({
-            address: COUNTER_ADDRESS,
-          });
-          if (!bytecode || bytecode === '0x') {
-            console.warn(
-              `Skipping test: no contract bytecode at ${COUNTER_ADDRESS} on Push Testnet`
-            );
-            return;
-          }
-
-          const beforeCount = (await pushPublicClient.readContract({
-            abi: COUNTER_ABI,
-            address: COUNTER_ADDRESS,
-            functionName: 'countPC',
-          })) as bigint;
-
-          const res = await client.universal.sendTransaction({
-            to: COUNTER_ADDRESS,
-            data,
-            funds: { amount: bridgeAmount, token: client.moveable.token.USDT },
-          });
-
-          expect(typeof res.hash).toBe('string');
-          expect(res.hash.length).toBeGreaterThan(0);
-          console.log('SVM sendTxWithFunds USDT hash', res.hash);
-
-          await res.wait();
-
-          const afterCount = (await pushPublicClient.readContract({
-            abi: COUNTER_ABI,
-            address: COUNTER_ADDRESS,
-            functionName: 'countPC',
-          })) as bigint;
-          expect(afterCount).toBe(beforeCount + BigInt(1));
-        } catch (err) {
-          console.error(
-            'SVM sendTxWithFunds USDT flow failed (non-fatal):',
-            err
+        // Ensure the address is a contract on Push chain
+        const bytecode = await pushPublicClient.getBytecode({
+          address: COUNTER_ADDRESS,
+        });
+        if (!bytecode || bytecode === '0x') {
+          console.warn(
+            `Skipping test: no contract bytecode at ${COUNTER_ADDRESS} on Push Testnet`
           );
+          return;
         }
+
+        const beforeCount = (await pushPublicClient.readContract({
+          abi: COUNTER_ABI,
+          address: COUNTER_ADDRESS,
+          functionName: 'countPC',
+        })) as bigint;
+
+        const res = await client.universal.sendTransaction({
+          to: COUNTER_ADDRESS,
+          data,
+          funds: { amount: bridgeAmount, token: client.moveable.token.USDT },
+        });
+
+        expect(typeof res.hash).toBe('string');
+        expect(res.hash.length).toBeGreaterThan(0);
+        console.log('SVM sendTxWithFunds USDT hash', res.hash);
+
+        await res.wait();
+
+        const afterCount = (await pushPublicClient.readContract({
+          abi: COUNTER_ABI,
+          address: COUNTER_ADDRESS,
+          functionName: 'countPC',
+        })) as bigint;
+        expect(afterCount).toBe(beforeCount + BigInt(1));
       }, 300000);
+
+      it('sendTxWithFunds payWith USDT should fail on Solana Devnet', async () => {
+        const bridgeAmount = BigInt(1);
+        const COUNTER_ABI = [
+          {
+            inputs: [],
+            name: 'increment',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+        ];
+        const COUNTER_ADDRESS =
+          '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
+        const data = PushChain.utils.helpers.encodeTxData({
+          abi: COUNTER_ABI,
+          functionName: 'increment',
+        });
+
+        console.log(client.moveable.token.USDT);
+
+        await expect(
+          client.universal.sendTransaction({
+            to: COUNTER_ADDRESS,
+            value: BigInt(0),
+            data,
+            funds: {
+              amount: bridgeAmount,
+              token: client.moveable.token.USDT,
+              payWith: {
+                token: client.payable.token.USDT,
+              },
+            },
+          })
+        ).rejects.toThrow('Pay-with token is not supported on Solana');
+      });
     });
   });
 
@@ -2180,9 +2444,9 @@ describe('PushChain', () => {
         expect(
           PushChain.utils.chains.getChainName(CHAIN.ARBITRUM_SEPOLIA)
         ).toBe('ARBITRUM_SEPOLIA');
-        expect(
-          PushChain.utils.chains.getChainName(CHAIN.BASE_SEPOLIA)
-        ).toBe('BASE_SEPOLIA');
+        expect(PushChain.utils.chains.getChainName(CHAIN.BASE_SEPOLIA)).toBe(
+          'BASE_SEPOLIA'
+        );
         // Test Solana chains
         expect(PushChain.utils.chains.getChainName(CHAIN.SOLANA_MAINNET)).toBe(
           'SOLANA_MAINNET'
@@ -2284,9 +2548,9 @@ describe('PushChain', () => {
           PushChain.utils.chains.getChainNamespace('ARBITRUM_SEPOLIA')
         ).toBe(CHAIN.ARBITRUM_SEPOLIA);
 
-        expect(
-          PushChain.utils.chains.getChainNamespace('BASE_SEPOLIA')
-        ).toBe(CHAIN.BASE_SEPOLIA);
+        expect(PushChain.utils.chains.getChainNamespace('BASE_SEPOLIA')).toBe(
+          CHAIN.BASE_SEPOLIA
+        );
 
         expect(
           PushChain.utils.chains.getChainNamespace('PUSH_TESTNET_DONUT')
