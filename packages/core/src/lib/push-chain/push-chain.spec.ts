@@ -466,6 +466,20 @@ async function testFeeAbstraction(
     }
   );
 
+  // Prepare Push EVM client and compute executor (UEA) address on Push Chain
+  const pushEvmClient = new EvmClient({
+    rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
+  });
+  const executorInfo = await PushChain.utils.account.convertOriginToExecutor(
+    universalSignerNewAccount.account,
+    { onlyCompute: true }
+  );
+  const pcBefore = await pushEvmClient.getBalance(executorInfo.address);
+  console.log(
+    `[${config.name}] Executor PC balance before (wei):`,
+    pcBefore.toString()
+  );
+
   // Execute transaction from new account
   const resultTx = await pushClientNewAccount.universal.sendTransaction({
     to: '0x1234567890123456789012345678901234567890',
@@ -473,6 +487,14 @@ async function testFeeAbstraction(
   });
 
   expect(resultTx).toBeDefined();
+  await resultTx.wait();
+
+  const pcAfter = await pushEvmClient.getBalance(executorInfo.address);
+  console.log(
+    `[${config.name}] Executor PC balance after (wei):`,
+    pcAfter.toString()
+  );
+  expect(pcAfter > pcBefore).toBe(true);
   console.log(`[${config.name}] Fee abstraction test completed successfully`);
 }
 
