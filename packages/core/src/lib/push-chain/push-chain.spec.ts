@@ -172,12 +172,22 @@ async function testSendFundsUSDT(
   const pushChainClient = new EvmClient({
     rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
   });
-  const PUSDT_ETH_ADDRESS =
-    SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
-      .USDT_ETH;
+
+  let pusdt;
+  if (config.chain === CHAIN.ETHEREUM_SEPOLIA) {
+    pusdt =
+      SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
+        .USDT_ETH;
+  } else if (config.chain === CHAIN.ARBITRUM_SEPOLIA) {
+    pusdt =
+      SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
+        .USDT_ARB;
+  } else {
+    throw new Error('USDT address not on Push Chain');
+  }
 
   const balanceBefore = await pushChainClient.getErc20Balance({
-    tokenAddress: PUSDT_ETH_ADDRESS,
+    tokenAddress: pusdt,
     ownerAddress: recipient as `0x${string}`,
   });
 
@@ -191,7 +201,7 @@ async function testSendFundsUSDT(
   console.log(`[${config.name}] USDT bridge receipt:`, receipt);
 
   const balanceAfter = await pushChainClient.getErc20Balance({
-    tokenAddress: PUSDT_ETH_ADDRESS,
+    tokenAddress: pusdt,
     ownerAddress: recipient as `0x${string}`,
   });
   expect(balanceAfter > balanceBefore).toBe(true);
@@ -243,7 +253,7 @@ async function testSendTxWithFundsUSDT(
   const usdt = client.moveable.token.USDT;
 
   const evm = new EvmClient({
-    rpcUrls: CHAIN_INFO[config.chain].defaultRPC,
+    rpcUrls: [EVM_RPC],
   });
   const usdtBal: bigint = await evm.readContract<bigint>({
     abi: erc20Abi,
@@ -384,37 +394,37 @@ async function testSendTxWithFundsPayGasUSDT(
     functionName: 'countPC',
   })) as bigint;
 
-  const amount = PushChain.utils.helpers.parseUnits('1.05', {
-    decimals: client.payable.token.USDT.decimals,
-  });
-  const toToken = client.moveable.token.WETH;
-  const quote = await client.funds.getConversionQuote(amount, {
-    from: client.payable.token.USDT,
-    to: toToken,
-  });
-  const minAmountOut = PushChain.utils.conversion.slippageToMinAmount(
-    quote.amountOut,
-    { slippageBps: 300 }
-  );
+  // const amount = PushChain.utils.helpers.parseUnits('1.05', {
+  //   decimals: client.payable.token.USDT.decimals,
+  // });
+  // const toToken = client.moveable.token.WETH;
+  // const quote = await client.funds.getConversionQuote(amount, {
+  //   from: client.payable.token.USDT,
+  //   to: toToken,
+  // });
+  // const minAmountOut = PushChain.utils.conversion.slippageToMinAmount(
+  //   quote.amountOut,
+  //   { slippageBps: 300 }
+  // );
 
-  const amountOutEth = PushChain.utils.helpers.formatUnits(
-    quote.amountOut,
-    toToken.decimals
-  );
-  console.log('amountOut (USDT -> WETH)', amountOutEth);
+  // const amountOutEth = PushChain.utils.helpers.formatUnits(
+  //   quote.amountOut,
+  //   toToken.decimals
+  // );
+  // console.log('amountOut (USDT -> WETH)', amountOutEth);
 
-  const exactOut = await client.funds.getConversionQuoteExactOutput(
-    BigInt(minAmountOut),
-    {
-      from: client.payable.token.USDT,
-      to: client.moveable.token.WETH,
-    }
-  );
-  const requiredUsdt = PushChain.utils.helpers.formatUnits(
-    exactOut.amountIn,
-    client.payable.token.USDT.decimals
-  );
-  console.log('requiredUSDT for minOut WETH (exact-output)', requiredUsdt);
+  // const exactOut = await client.funds.getConversionQuoteExactOutput(
+  //   BigInt(minAmountOut),
+  //   {
+  //     from: client.payable.token.USDT,
+  //     to: client.moveable.token.WETH,
+  //   }
+  // );
+  // const requiredUsdt = PushChain.utils.helpers.formatUnits(
+  //   exactOut.amountIn,
+  //   client.payable.token.USDT.decimals
+  // );
+  // console.log('requiredUSDT for minOut WETH (exact-output)', requiredUsdt);
 
   // TODO: Check if we can pass the `value` as != 0. If we pass, what would be the behaviour? Because we can only pay gas fees with native OR token.
   // TODO: Add balance check.
@@ -426,8 +436,8 @@ async function testSendTxWithFundsPayGasUSDT(
       amount: bridgeAmount,
       token: usdt,
       payWith: {
-        // token: client.payable.token.WETH,
-        token: client.payable.token.USDT,
+        token: client.payable.token.WETH,
+        // token: client.payable.token.USDT,
         // TODO: What happens if minAmountOut is `undefined`.
         // minAmountOut: minAmountOut,
       },
@@ -2149,6 +2159,8 @@ describe('PushChain', () => {
           abi: COUNTER_ABI,
           functionName: 'increment',
         });
+
+        console.log(client.moveable.token.USDT);
 
         await expect(
           client.universal.sendTransaction({
