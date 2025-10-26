@@ -19,4 +19,23 @@ export const ERC20_EVM = [
     outputs: [{ name: '', type: 'bool' }],
     stateMutability: 'nonpayable',
   },
+  {
+    type: 'function',
+    name: 'transfer',
+    inputs: [
+      { name: 'recipient', type: 'address', internalType: 'address' },
+      { name: 'amount', type: 'uint256', internalType: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'transferFrom',
+    inputs: [
+      { name: 'sender', type: 'address', internalType: 'address' },
+      { name: 'recipient', type: 'address', internalType: 'address' },
+      { name: 'amount', type: 'uint256', internalType: 'uint256' },
+    ],
+  },
 ] as const;
