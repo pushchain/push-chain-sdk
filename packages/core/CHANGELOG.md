@@ -1,3 +1,9 @@
+@pushchain/core@2.1.1 (2025-10-26)
+
+- release: bump to 2.0.21
+
+---
+
 @pushchain/core@2.0.0 (2025-09-18)
 
 - fix: svm gateway idl
