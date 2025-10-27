@@ -1,5 +1,11 @@
 import { CHAIN, PUSH_NETWORK, VM } from './enums';
-import { mainnet, sepolia, arbitrumSepolia, baseSepolia, bscTestnet } from 'viem/chains';
+import {
+  mainnet,
+  sepolia,
+  arbitrumSepolia,
+  baseSepolia,
+  bscTestnet,
+} from 'viem/chains';
 
 /**
  * Maps VM type to its namespace
@@ -29,6 +35,8 @@ export const SYNTHETIC_PUSH_ERC20: Record<
   PUSH_NETWORK,
   {
     pETH: `0x${string}`;
+    pETH_ARB: `0x${string}`;
+    pETH_BASE: `0x${string}`;
     pSOL: `0x${string}`;
     USDT_ETH: `0x${string}`;
     USDT_ARB: `0x${string}`;
@@ -37,6 +45,8 @@ export const SYNTHETIC_PUSH_ERC20: Record<
 > = {
   [PUSH_NETWORK.TESTNET_DONUT]: {
     pETH: '0x2971824Db68229D087931155C2b8bB820B275809',
+    pETH_ARB: '0xc0a821a1AfEd1322c5e15f1F4586C0B8cE65400e',
+    pETH_BASE: '0xc7007af2B24D4eb963fc9633B0c66e1d2D90Fc21',
     pSOL: '0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed',
     USDT_ETH: '0xCA0C5E6F002A389E1580F0DB7cd06e4549B5F9d3',
     USDT_ARB: '0x76Ad08339dF606BeEDe06f90e3FaF82c5b2fb2E9',
@@ -44,6 +54,8 @@ export const SYNTHETIC_PUSH_ERC20: Record<
   },
   [PUSH_NETWORK.TESTNET]: {
     pETH: '0x2971824Db68229D087931155C2b8bB820B275809',
+    pETH_ARB: '0xc0a821a1AfEd1322c5e15f1F4586C0B8cE65400e',
+    pETH_BASE: '0xc7007af2B24D4eb963fc9633B0c66e1d2D90Fc21',
     pSOL: '0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed',
     USDT_ETH: '0xCA0C5E6F002A389E1580F0DB7cd06e4549B5F9d3',
     USDT_ARB: '0x76Ad08339dF606BeEDe06f90e3FaF82c5b2fb2E9',
@@ -51,6 +63,8 @@ export const SYNTHETIC_PUSH_ERC20: Record<
   },
   [PUSH_NETWORK.LOCALNET]: {
     pETH: '0xTBD',
+    pETH_ARB: '0xTBD',
+    pETH_BASE: '0xTBD',
     pSOL: '0xTBD',
     USDT_ETH: '0xTBD',
     USDT_ARB: '0xTBD',
@@ -58,6 +72,8 @@ export const SYNTHETIC_PUSH_ERC20: Record<
   },
   [PUSH_NETWORK.MAINNET]: {
     pETH: '0xTBD',
+    pETH_ARB: '0xTBD',
+    pETH_BASE: '0xTBD',
     pSOL: '0xTBD',
     USDT_ETH: '0xTBD',
     USDT_ARB: '0xTBD',

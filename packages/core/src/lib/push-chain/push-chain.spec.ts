@@ -37,8 +37,7 @@ const BASE_SEPOLIA_RPC =
   process.env['BASE_SEPOLIA_RPC'] ||
   CHAIN_INFO[CHAIN.BASE_SEPOLIA].defaultRPC[0];
 const BNB_TESTNET_RPC =
-  process.env['BNB_TESTNET_RPC'] ||
-  CHAIN_INFO[CHAIN.BNB_TESTNET].defaultRPC[0];
+  process.env['BNB_TESTNET_RPC'] || CHAIN_INFO[CHAIN.BNB_TESTNET].defaultRPC[0];
 const SOLANA_RPC =
   process.env['SOLANA_RPC_URL'] ||
   CHAIN_INFO[CHAIN.SOLANA_DEVNET].defaultRPC[0];
@@ -47,7 +46,11 @@ const SOLANA_RPC =
 interface EVMChainTestConfig {
   name: string;
   chain: CHAIN;
-  viemChain: typeof sepolia | typeof arbitrumSepolia | typeof baseSepolia | typeof bscTestnet;
+  viemChain:
+    | typeof sepolia
+    | typeof arbitrumSepolia
+    | typeof baseSepolia
+    | typeof bscTestnet;
   rpcUrl: string;
   gatewayAddress: string;
   tokens: {
@@ -237,8 +240,17 @@ async function testSendFundsETH(
   const pushChainClient = new EvmClient({
     rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
   });
-  const pETH_ADDRESS =
-    SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT].pETH;
+  let pETH_ADDRESS;
+  if (config.chain === CHAIN.ETHEREUM_SEPOLIA) {
+    pETH_ADDRESS =
+      SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT].pETH;
+  } else if (config.chain === CHAIN.ARBITRUM_SEPOLIA) {
+    pETH_ADDRESS =
+      SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
+        .pETH_ARB;
+  } else {
+    throw new Error('pETH address not on Push Chain');
+  }
 
   const balanceBefore = await pushChainClient.getErc20Balance({
     tokenAddress: pETH_ADDRESS,
@@ -371,7 +383,7 @@ async function testSendTxWithFundsUSDT(
 
   expect(pusdtAfter - pusdtBefore).toBe(bridgeAmount);
   // Wait for Push Chain state to finalize
-  await new Promise(resolve => setTimeout(resolve, 3000));
+  await new Promise((resolve) => setTimeout(resolve, 3000));
 
   const afterCount = (await pushPublicClient.readContract({
     abi: COUNTER_ABI,
