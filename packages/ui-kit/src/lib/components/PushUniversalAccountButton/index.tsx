@@ -9,7 +9,6 @@ import {
   ThemeProvider,
 } from 'styled-components';
 import { ButtonThemeOverrides, ThemeOverrides } from '../../styles/token';
-import { buttonThemeDefault } from '../../styles/token';
 import { mapButtonCoreToInt } from '../../utils/theme';
 import { AppMetadata } from '../../types';
 
@@ -27,6 +26,23 @@ interface CustomTheme extends DefaultTheme {
   themeMode: string;
 }
 
+const GlobalStyle = createGlobalStyle<{ uid: string }>`
+  [data-pw-wrapper='${(props) => props.uid}']{
+    ${(props) => {
+      const { themeOverrides, themeMode } = props.theme as CustomTheme;
+      const isLightMode = themeMode === 'light';
+      const { dark, light, ...globalOverrides } = themeOverrides;
+      const newTokens = {
+        ...mapButtonCoreToInt(globalOverrides),
+        ...mapButtonCoreToInt((isLightMode ? light : dark) ?? {}),
+      };
+      return Object.entries(newTokens)
+        .map(([key, value]) => `${key}: ${value};`)
+        .join('\n');
+    }}
+  }
+`;
+
 const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
   uid = 'default',
   connectButtonText = 'Connect Account',
@@ -42,23 +58,6 @@ const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
     updateModalAppData,
     updateWalletAppData,
   } = usePushWalletContext(uid);
-
-  const GlobalStyle = createGlobalStyle<{ uid: string }>`
-    [data-pw-wrapper='${(props) => props.uid}']{
-      ${(props) => {
-        const { themeOverrides, themeMode } = props.theme as CustomTheme;
-        const isLightMode = themeMode === 'light';
-        const { dark, light, ...globalOverrides } = themeOverrides;
-        const newTokens = {
-          ...mapButtonCoreToInt(globalOverrides),
-          ...mapButtonCoreToInt((isLightMode ? light : dark) ?? {}),
-        };
-        return Object.entries(newTokens)
-          .map(([key, value]) => `${key}: ${value};`)
-          .join('\n');
-      }}
-    }
-  `;
 
   useEffect(() => {
     if (modalAppOverride) updateModalAppData(modalAppOverride);

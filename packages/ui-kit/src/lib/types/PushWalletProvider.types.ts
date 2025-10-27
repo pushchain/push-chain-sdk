@@ -8,6 +8,7 @@ export type LoginMethodConfig = {
   wallet?: {
     enabled?: boolean;
     chains?: (typeof PushUI.CONSTANTS.CHAIN)[keyof typeof PushUI.CONSTANTS.CHAIN][];
+    excludedChains?: (typeof PushUI.CONSTANTS.CHAIN)[keyof typeof PushUI.CONSTANTS.CHAIN][];
   };
   appPreview?: boolean;
 };

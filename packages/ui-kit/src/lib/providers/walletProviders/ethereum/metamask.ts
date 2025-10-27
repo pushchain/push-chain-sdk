@@ -14,7 +14,7 @@ export class MetamaskProvider extends BaseWalletProvider {
     super('MetaMask', 'https://metamask.io/images/metamask-fox.svg', [
       ChainType.ETHEREUM,
       ChainType.ARBITRUM,
-      ChainType.AVALANCHE,
+      ChainType.BASE,
       ChainType.BINANCE,
       ChainType.PUSH_WALLET,
     ]);

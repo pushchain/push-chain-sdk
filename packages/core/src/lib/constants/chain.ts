@@ -1,5 +1,5 @@
 import { CHAIN, PUSH_NETWORK, VM } from './enums';
-import { mainnet, sepolia, arbitrumSepolia, baseSepolia } from 'viem/chains';
+import { mainnet, sepolia, arbitrumSepolia, baseSepolia, bscTestnet } from 'viem/chains';
 
 /**
  * Maps VM type to its namespace
@@ -160,6 +160,14 @@ export const CHAIN_INFO: Record<
       uniV3QuoterV2: '0xTBD',
       weth: '0x4200000000000000000000000000000000000006',
     },
+  },
+  [CHAIN.BNB_TESTNET]: {
+    chainId: '97',
+    vm: VM.EVM,
+    lockerContract: '0x44aFFC61983F4348DdddB886349eb992C061EaC0',
+    defaultRPC: [bscTestnet.rpcUrls.default.http[0]],
+    confirmations: 1,
+    timeout: 30000,
   },
 
   // Solana
