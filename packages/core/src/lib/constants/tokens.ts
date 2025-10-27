@@ -29,6 +29,7 @@ export type PayableTokenMap = Partial<{
   ETH: PayableToken;
   USDT: PayableToken;
   WETH: PayableToken;
+  USDC: PayableToken;
 }>;
 
 // Strongly-typed accessors that throw at runtime if a token is unavailable,
@@ -72,6 +73,9 @@ export class PayableTokenAccessor {
   }
   get USDT(): PayableToken {
     return this.require('USDT');
+  }
+  get USDC(): PayableToken {
+    return this.require('USDC');
   }
   get WETH(): PayableToken {
     return this.require('WETH');
@@ -213,6 +217,12 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
       symbol: 'USDT',
       decimals: 6,
       address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
+      mechanism: 'approve',
+    },
+    {
+      symbol: 'USDC',
+      decimals: 6,
+      address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
       mechanism: 'approve',
     },
     // Sepolia WETH9

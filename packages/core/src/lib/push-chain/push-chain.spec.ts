@@ -311,6 +311,28 @@ async function testSendTxWithFundsUSDT(
     functionName: 'countPC',
   })) as bigint;
 
+  // Capture pUSDT balance on Push chain before bridging
+  const recipient = client.universal.account;
+  const pushChainClient = new EvmClient({
+    rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
+  });
+  let pusdtAddress: `0x${string}`;
+  if (config.chain === CHAIN.ETHEREUM_SEPOLIA) {
+    pusdtAddress =
+      SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
+        .USDT_ETH;
+  } else if (config.chain === CHAIN.ARBITRUM_SEPOLIA) {
+    pusdtAddress =
+      SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
+        .USDT_ARB;
+  } else {
+    throw new Error('USDT address not on Push Chain for this origin chain');
+  }
+  const pusdtBefore = await pushChainClient.getErc20Balance({
+    tokenAddress: pusdtAddress,
+    ownerAddress: recipient as `0x${string}`,
+  });
+
   const resUSDT = await client.universal.sendTransaction({
     to: COUNTER_ADDRESS,
     value: BigInt(0),
@@ -321,6 +343,14 @@ async function testSendTxWithFundsUSDT(
   expect(typeof resUSDT.hash).toBe('string');
   expect(resUSDT.hash.startsWith('0x')).toBe(true);
   await resUSDT.wait();
+
+  // Check pUSDT balance on Push chain increased by exactly bridgeAmount
+  const pusdtAfter = await pushChainClient.getErc20Balance({
+    tokenAddress: pusdtAddress,
+    ownerAddress: recipient as `0x${string}`,
+  });
+
+  expect(pusdtAfter - pusdtBefore).toBe(bridgeAmount);
 
   const afterCount = (await pushPublicClient.readContract({
     abi: COUNTER_ABI,
@@ -426,6 +456,28 @@ async function testSendTxWithFundsPayGasUSDT(
   // );
   // console.log('requiredUSDT for minOut WETH (exact-output)', requiredUsdt);
 
+  // Capture pUSDT balance on Push chain before bridging
+  const recipient = client.universal.account;
+  const pushChainClient = new EvmClient({
+    rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
+  });
+  let pusdtAddress: `0x${string}`;
+  if (config.chain === CHAIN.ETHEREUM_SEPOLIA) {
+    pusdtAddress =
+      SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
+        .USDT_ETH;
+  } else if (config.chain === CHAIN.ARBITRUM_SEPOLIA) {
+    pusdtAddress =
+      SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
+        .USDT_ARB;
+  } else {
+    throw new Error('USDT address not on Push Chain for this origin chain');
+  }
+  const pusdtBefore = await pushChainClient.getErc20Balance({
+    tokenAddress: pusdtAddress,
+    ownerAddress: recipient as `0x${string}`,
+  });
+
   // TODO: Check if we can pass the `value` as != 0. If we pass, what would be the behaviour? Because we can only pay gas fees with native OR token.
   // TODO: Add balance check.
   const res = await client.universal.sendTransaction({
@@ -436,7 +488,7 @@ async function testSendTxWithFundsPayGasUSDT(
       amount: bridgeAmount,
       token: usdt,
       payWith: {
-        token: client.payable.token.WETH,
+        token: client.payable.token.USDC,
         // token: client.payable.token.USDT,
         // TODO: What happens if minAmountOut is `undefined`.
         // minAmountOut: minAmountOut,
@@ -455,6 +507,14 @@ async function testSendTxWithFundsPayGasUSDT(
   })) as bigint;
 
   expect(afterCount).toBe(beforeCount + BigInt(1));
+
+  // Check pUSDT balance on Push chain increased by exactly bridgeAmount
+  const pusdtAfter = await pushChainClient.getErc20Balance({
+    tokenAddress: pusdtAddress,
+    ownerAddress: recipient as `0x${string}`,
+  });
+
+  expect(pusdtAfter - pusdtBefore).toBe(bridgeAmount);
   console.log(`[${config.name}] Pay-gas-with-USDT executed successfully`);
 }
 
