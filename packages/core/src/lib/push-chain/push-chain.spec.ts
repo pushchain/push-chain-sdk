@@ -1755,10 +1755,10 @@ describe('PushChain', () => {
         });
 
         const tenUsdt = PushChain.utils.helpers.parseUnits('10', {
-          decimals: client.payable.token.USDT.decimals,
+          decimals: client.payable.token.USDC.decimals,
         });
         const quote = await client.funds.getConversionQuote(tenUsdt, {
-          from: client.payable.token.USDT,
+          from: client.payable.token.USDC,
           to: client.moveable.token.WETH,
         });
         const ethValue = BigInt(quote.amountOut);
@@ -2231,7 +2231,7 @@ describe('PushChain', () => {
               amount: bridgeAmount,
               token: client.moveable.token.USDT,
               payWith: {
-                token: client.payable.token.USDT,
+                token: client.payable.token.USDC,
               },
             },
           })
@@ -2329,7 +2329,7 @@ describe('PushChain', () => {
 
       await expect(
         pushClient.funds.getConversionQuote(amountIn, {
-          from: pushClient.payable.token.USDT,
+          from: pushClient.payable.token.USDC,
           to: pushClient.moveable.token.ETH,
         })
       ).rejects.toThrow(/only supported on Ethereum Mainnet and Sepolia/);
