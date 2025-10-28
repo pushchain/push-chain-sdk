@@ -179,6 +179,8 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     setMinimiseWallet(false);
     setWalletVisibility(false);
     setIframeLoading(true);
+    setExternalWallet(null);
+    setIsReadOnly(false);
     localStorage.removeItem("walletInfo");
   };
 
@@ -241,10 +243,6 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       }
 
       const walletInfo = await providerReceived.connect(data.chain);
-
-      console.log('@@@@@@@ walletInfo', walletInfo);
-      console.log('#######', PushChain.utils.account);
-      console.log('$$$$$$', PushChain.utils.account.fromChainAgnostic);
 
       setConnectionStatus(ConnectionStatus.CONNECTED);
       setMinimiseWallet(true);
@@ -582,11 +580,9 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
 
       switch (event.data.type) {
         case WALLET_TO_APP_ACTION.CONNECT_EXTERNAL_WALLET:
-          console.log('External wallet connection req');
           handleExternalWalletConnection(event.data.data);
           break;
         case WALLET_TO_APP_ACTION.IS_LOGGED_IN:
-          console.log('wallet connected successfully', event.data);
           handleIsLoggedInAction();
           break;
         case WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS:
