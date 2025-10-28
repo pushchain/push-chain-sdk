@@ -313,6 +313,15 @@ async function generateSkeletonFromEthersV5(
     case '11155111':
       chain = CHAIN.ETHEREUM_SEPOLIA;
       break;
+    case '421614':
+      chain = CHAIN.ARBITRUM_SEPOLIA;
+      break;
+    case '84532':
+      chain = CHAIN.BASE_SEPOLIA;
+      break;
+    case '97':
+      chain = CHAIN.BNB_TESTNET;
+      break;
     case '1':
       chain = CHAIN.ETHEREUM_MAINNET;
       break;
@@ -373,6 +382,15 @@ async function generateSkeletonFromEthersV6(
   switch (chainId.toString()) {
     case '11155111':
       chain = CHAIN.ETHEREUM_SEPOLIA;
+      break;
+    case '421614':
+      chain = CHAIN.ARBITRUM_SEPOLIA;
+      break;
+    case '84532':
+      chain = CHAIN.BASE_SEPOLIA;
+      break;
+    case '97':
+      chain = CHAIN.BNB_TESTNET;
       break;
     case '1':
       chain = CHAIN.ETHEREUM_MAINNET;
@@ -445,6 +463,15 @@ async function generateSkeletonFromViem(
   switch (chainId.toString()) {
     case '11155111':
       chain = CHAIN.ETHEREUM_SEPOLIA;
+      break;
+    case '421614':
+      chain = CHAIN.ARBITRUM_SEPOLIA;
+      break;
+    case '84532':
+      chain = CHAIN.BASE_SEPOLIA;
+      break;
+    case '97':
+      chain = CHAIN.BNB_TESTNET;
       break;
     case '1':
       chain = CHAIN.ETHEREUM_MAINNET;
