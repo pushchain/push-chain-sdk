@@ -16,7 +16,6 @@
     "baseUrl": ".",
     "paths": {
       "@pushchain/core": ["packages/core/src/index.ts"],
-      "@pushchain/devnet": ["packages/devnet/src/index.ts"],
       "@pushchain/ui-kit": ["packages/ui-kit/src/index.ts"]
     }
   },
