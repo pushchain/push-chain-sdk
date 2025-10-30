@@ -90,7 +90,7 @@ export const usePushChainClient = (uid?: string) => {
         setError(null);
 
       } catch (err) {
-        console.log('Error occured when initialising Push chain', err);
+        console.log('Error occurred when initialising Push chain', err);
         setError(
           err instanceof Error
             ? err
