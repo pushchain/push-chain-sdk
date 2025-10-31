@@ -236,6 +236,21 @@ export class SvmClient {
               ? Buffer.from(hex, 'hex')
               : Buffer.alloc(0);
           }
+          // numeric fields (often provided as decimal strings from protobuf/JSON) -> BN
+          const numericStringToBn = (val: unknown): BN | unknown => {
+            if (typeof val === 'bigint') return new BN(val.toString());
+            if (typeof val === 'string' && /^[0-9]+$/.test(val))
+              return new BN(val);
+            return val;
+          };
+          out['value'] = numericStringToBn(out['value']);
+          out['gasLimit'] = numericStringToBn(out['gasLimit']);
+          out['maxFeePerGas'] = numericStringToBn(out['maxFeePerGas']);
+          out['maxPriorityFeePerGas'] = numericStringToBn(
+            out['maxPriorityFeePerGas']
+          );
+          out['nonce'] = numericStringToBn(out['nonce']);
+          out['deadline'] = numericStringToBn(out['deadline']);
           // vType: enum -> Anchor enum object
           if (typeof obj['vType'] === 'number') {
             out['vType'] =
