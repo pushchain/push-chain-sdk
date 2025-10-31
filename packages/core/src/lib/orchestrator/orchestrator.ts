@@ -630,7 +630,7 @@ export class Orchestrator {
                   bridgeAmount,
                   universalPayload,
                   revertCFG,
-                  eip712SignatureHex,
+                  '0x',
                 ],
                 signer: this.universalSigner,
                 value: nativeAmount,
@@ -979,7 +979,7 @@ export class Orchestrator {
             to: payloadTo,
             value: execute.value,
             data: payloadData,
-            gasLimit: execute.gasLimit || BigInt(1e7),
+            gasLimit: execute.gasLimit || BigInt(5e7),
             maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
             maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
             nonce,
@@ -1021,7 +1021,7 @@ export class Orchestrator {
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_02, verificationData);
       } else {
         /**
-         * Fee Locking
+         * Fee Locking - For all chains, EVM and Solana
          */
         const fundDifference = requiredFunds - funds;
         const fixedPushAmount = PushChain.utils.helpers.parseUnits('0.001', 18); // Minimum lock 0.001 Push tokens
@@ -1036,11 +1036,8 @@ export class Orchestrator {
         );
         feeLockTxHash = bytesToHex(feeLockTxHashBytes);
         verificationData = bytesToHex(feeLockTxHashBytes);
-        /**
-         * Waiting for Confirmations
-         */
-        const { vm } = CHAIN_INFO[chain];
 
+        const { vm } = CHAIN_INFO[chain];
         this.executeProgressHook(
           PROGRESS_HOOK.SEND_TX_05_02,
           vm === VM.SVM
@@ -1048,8 +1045,19 @@ export class Orchestrator {
             : feeLockTxHash,
           CHAIN_INFO[chain].confirmations
         );
+
+        // Waiting for blocks confirmations
         await this.waitForLockerFeeConfirmation(feeLockTxHashBytes);
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_05_03);
+
+        // Query nodes via gRPC for Push Chain transaction
+        const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
+        await this.queryUniversalTxStatusFromGatewayTx(
+          new EvmClient({ rpcUrls: this.rpcUrls[chain] || defaultRPC }),
+          lockerContract as `0x${string}`,
+          feeLockTxHash,
+          'sendTxWithGas'
+        );
 
         /**
          * Return response directly (skip sendUniversalTx for sendTxWithGas flow)
@@ -1068,7 +1076,7 @@ export class Orchestrator {
             feeLockTxHash as `0x${string}`
           );
           const response = await this.transformToUniversalTxResponse(tx);
-          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]); 
+          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
           return response;
         } else {
           // SVM: build minimal response (follow sendFunds SVM pattern)
@@ -2419,18 +2427,27 @@ export class Orchestrator {
     let lastConfirmed = 0;
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      const connection = (svmClient as any).connections[(svmClient as any).currentConnectionIndex];
+      const connection = (svmClient as any).connections[
+        (svmClient as any).currentConnectionIndex
+      ];
       const { value } = await connection.getSignatureStatuses([txSignature]);
       const status = value[0];
 
       if (status) {
         const currentConfirms = status.confirmations ?? 0;
         const hasEnoughConfirmations = currentConfirms >= confirmations;
-        const isSuccessfullyFinalized = status.err === null && status.confirmationStatus !== null;
+        const isSuccessfullyFinalized =
+          status.err === null && status.confirmationStatus !== null;
 
         // Emit progress if we have more confirmations than before OR if finalized
-        if (currentConfirms > lastConfirmed || (isSuccessfullyFinalized && lastConfirmed === 0)) {
-          const confirmCount = isSuccessfullyFinalized && currentConfirms === 0 ? confirmations : currentConfirms;
+        if (
+          currentConfirms > lastConfirmed ||
+          (isSuccessfullyFinalized && lastConfirmed === 0)
+        ) {
+          const confirmCount =
+            isSuccessfullyFinalized && currentConfirms === 0
+              ? confirmations
+              : currentConfirms;
           this.executeProgressHook(
             PROGRESS_HOOK.SEND_TX_06_04,
             Math.max(1, confirmCount),
