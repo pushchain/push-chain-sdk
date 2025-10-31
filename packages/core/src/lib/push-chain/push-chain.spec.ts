@@ -36,7 +36,7 @@ import path from 'path';
 // Load environment variables from packages/core/.env
 // Try multiple possible paths to handle different execution contexts
 dotenv.config({ path: path.resolve(process.cwd(), 'packages/core/.env') }) ||
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+  dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 const EVM_RPC =
   process.env['EVM_RPC'] || CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0];
 const ARBITRUM_SEPOLIA_RPC =
@@ -46,8 +46,7 @@ const BASE_SEPOLIA_RPC =
   process.env['BASE_SEPOLIA_RPC'] ||
   CHAIN_INFO[CHAIN.BASE_SEPOLIA].defaultRPC[0];
 const BNB_TESTNET_RPC =
-  process.env['BNB_TESTNET_RPC'] ||
-  CHAIN_INFO[CHAIN.BNB_TESTNET].defaultRPC[0];
+  process.env['BNB_TESTNET_RPC'] || CHAIN_INFO[CHAIN.BNB_TESTNET].defaultRPC[0];
 const SOLANA_RPC =
   process.env['SOLANA_RPC_URL'] ||
   CHAIN_INFO[CHAIN.SOLANA_DEVNET].defaultRPC[0];
@@ -56,7 +55,11 @@ const SOLANA_RPC =
 interface EVMChainTestConfig {
   name: string;
   chain: CHAIN;
-  viemChain: typeof sepolia | typeof arbitrumSepolia | typeof baseSepolia | typeof bscTestnet;
+  viemChain:
+    | typeof sepolia
+    | typeof arbitrumSepolia
+    | typeof baseSepolia
+    | typeof bscTestnet;
   rpcUrl: string;
   gatewayAddress: string;
   tokens: {
@@ -174,7 +177,9 @@ async function testSendFundsUSDT(
   account: PrivateKeyAccount,
   config: EVMChainTestConfig
 ): Promise<void> {
-  const erc20Abi = parseAbi(['function balanceOf(address) view returns (uint256)']);
+  const erc20Abi = parseAbi([
+    'function balanceOf(address) view returns (uint256)',
+  ]);
   const usdt = client.moveable.token.USDT;
 
   const balance: bigint = await new EvmClient({
@@ -226,7 +231,9 @@ async function testSendTxWithFundsUSDT(
   account: PrivateKeyAccount,
   config: EVMChainTestConfig
 ): Promise<void> {
-  const erc20Abi = parseAbi(['function balanceOf(address) view returns (uint256)']);
+  const erc20Abi = parseAbi([
+    'function balanceOf(address) view returns (uint256)',
+  ]);
   const usdt = client.moveable.token.USDT;
 
   const evm = new EvmClient({
@@ -278,9 +285,7 @@ async function testSendTxWithFundsUSDT(
     address: COUNTER_ADDRESS,
   });
   if (!bytecode || bytecode === '0x') {
-    console.warn(
-      `Skipping ${config.name}: no contract at ${COUNTER_ADDRESS}`
-    );
+    console.warn(`Skipping ${config.name}: no contract at ${COUNTER_ADDRESS}`);
     return;
   }
 
@@ -289,6 +294,19 @@ async function testSendTxWithFundsUSDT(
     address: COUNTER_ADDRESS,
     functionName: 'countPC',
   })) as bigint;
+
+  const pushEvmClient = new EvmClient({
+    rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
+  });
+
+  const executorInfo = await PushChain.utils.account.convertOriginToExecutor(
+    {
+      chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+      address: account.address,
+    },
+    { onlyCompute: true }
+  );
+  const pcBeforeUEA = await pushEvmClient.getBalance(executorInfo.address);
 
   const resUSDT = await client.universal.sendTransaction({
     to: COUNTER_ADDRESS,
@@ -302,7 +320,7 @@ async function testSendTxWithFundsUSDT(
   await resUSDT.wait();
 
   // Wait for Push Chain state to finalize
-  await new Promise(resolve => setTimeout(resolve, 3000));
+  await new Promise((resolve) => setTimeout(resolve, 3000));
 
   const afterCount = (await pushPublicClient.readContract({
     abi: COUNTER_ABI,
@@ -310,7 +328,10 @@ async function testSendTxWithFundsUSDT(
     functionName: 'countPC',
   })) as bigint;
 
+  const pcAfterUEA = await pushEvmClient.getBalance(executorInfo.address);
+
   expect(afterCount).toBe(beforeCount + BigInt(1));
+  expect(pcAfterUEA > pcBeforeUEA).toBe(true);
   console.log(`[${config.name}] Counter incremented successfully`);
 }
 
@@ -474,10 +495,17 @@ async function testFeeAbstraction(
     universalSignerNewAccount.account,
     { onlyCompute: true }
   );
-  const pcBefore = await pushEvmClient.getBalance(executorInfo.address);
+  const pcBeforeUEA = await pushEvmClient.getBalance(executorInfo.address);
+  const pcBeforeRecipient = await pushEvmClient.getBalance(
+    '0x1234567890123456789012345678901234567890'
+  );
   console.log(
     `[${config.name}] Executor PC balance before (wei):`,
-    pcBefore.toString()
+    pcBeforeUEA.toString()
+  );
+  console.log(
+    `[${config.name}] Executor PC balance before (wei):`,
+    pcBeforeRecipient.toString()
   );
 
   // Execute transaction from new account
@@ -489,12 +517,21 @@ async function testFeeAbstraction(
   expect(resultTx).toBeDefined();
   await resultTx.wait();
 
-  const pcAfter = await pushEvmClient.getBalance(executorInfo.address);
+  const pcAfterUEA = await pushEvmClient.getBalance(executorInfo.address);
+  const pcAfterRecipient = await pushEvmClient.getBalance(
+    '0x1234567890123456789012345678901234567890'
+  );
   console.log(
     `[${config.name}] Executor PC balance after (wei):`,
-    pcAfter.toString()
+    pcAfterUEA.toString()
   );
-  expect(pcAfter > pcBefore).toBe(true);
+  console.log(
+    `[${config.name}] Executor PC balance after (wei):`,
+    pcAfterRecipient.toString()
+  );
+
+  expect(pcAfterUEA > pcBeforeUEA).toBe(true);
+  expect(pcAfterRecipient > pcBeforeRecipient).toBe(true);
   console.log(`[${config.name}] Fee abstraction test completed successfully`);
 }
 
@@ -1471,11 +1508,43 @@ describe('PushChain', () => {
     }, 300000);
 
     it('random solana wallet is funded', async () => {
-      const txHash = await pushClientNewSolana.universal.sendTransaction({
+      // Prepare Push EVM client and compute executor (UEA) address on Push Chain
+      const pushEvmClient = new EvmClient({
+        rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
+      });
+      const executorInfo =
+        await PushChain.utils.account.convertOriginToExecutor(
+          pushClientNewSolana.universal.origin,
+          { onlyCompute: true }
+        );
+      const pcBeforeUEA = await pushEvmClient.getBalance(executorInfo.address);
+      const pcBeforeRecipient = await pushEvmClient.getBalance(
+        '0x1234567890123456789012345678901234567890'
+      );
+      console.log(
+        'Executor PC balance before (wei):',
+        pcBeforeRecipient.toString()
+      );
+
+      const tx = await pushClientNewSolana.universal.sendTransaction({
         to: '0x1234567890123456789012345678901234567890',
         value: BigInt(1),
       });
-      expect(txHash).toBeDefined();
+      expect(tx).toBeDefined();
+      await tx.wait();
+
+      await new Promise((resolve) => setTimeout(resolve, 15000));
+
+      const pcAfterRecipient = await pushEvmClient.getBalance(
+        '0x1234567890123456789012345678901234567890'
+      );
+      const pcAfterUEA = await pushEvmClient.getBalance(executorInfo.address);
+      console.log(
+        'Executor PC balance after (wei):',
+        pcAfterRecipient.toString()
+      );
+      expect(pcAfterRecipient > pcBeforeRecipient).toBe(true);
+      expect(pcAfterUEA > pcBeforeUEA).toBe(true);
     }, 300000);
   });
 
@@ -2479,9 +2548,9 @@ describe('PushChain', () => {
         expect(
           PushChain.utils.chains.getChainName(CHAIN.ARBITRUM_SEPOLIA)
         ).toBe('ARBITRUM_SEPOLIA');
-        expect(
-          PushChain.utils.chains.getChainName(CHAIN.BASE_SEPOLIA)
-        ).toBe('BASE_SEPOLIA');
+        expect(PushChain.utils.chains.getChainName(CHAIN.BASE_SEPOLIA)).toBe(
+          'BASE_SEPOLIA'
+        );
         // Test Solana chains
         expect(PushChain.utils.chains.getChainName(CHAIN.SOLANA_MAINNET)).toBe(
           'SOLANA_MAINNET'
@@ -2583,9 +2652,9 @@ describe('PushChain', () => {
           PushChain.utils.chains.getChainNamespace('ARBITRUM_SEPOLIA')
         ).toBe(CHAIN.ARBITRUM_SEPOLIA);
 
-        expect(
-          PushChain.utils.chains.getChainNamespace('BASE_SEPOLIA')
-        ).toBe(CHAIN.BASE_SEPOLIA);
+        expect(PushChain.utils.chains.getChainNamespace('BASE_SEPOLIA')).toBe(
+          CHAIN.BASE_SEPOLIA
+        );
 
         expect(
           PushChain.utils.chains.getChainNamespace('PUSH_TESTNET_DONUT')
