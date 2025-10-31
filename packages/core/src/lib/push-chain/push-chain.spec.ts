@@ -20,14 +20,23 @@ import { keccak256, toBytes } from 'viem';
 import { MulticallCall } from '../orchestrator/orchestrator.types';
 import { CHAIN_INFO, SYNTHETIC_PUSH_ERC20 } from '../constants/chain';
 import { CHAIN } from '../constants/enums';
-import { Keypair, PublicKey, Connection } from '@solana/web3.js';
+import {
+  Keypair,
+  PublicKey,
+  Connection,
+  Transaction,
+  SystemProgram,
+  SendTransactionError,
+} from '@solana/web3.js';
 import { utils as anchorUtils } from '@coral-xyz/anchor';
 import { EvmClient } from '../vm-client/evm-client';
 import dotenv from 'dotenv';
 import path from 'path';
 
 // Load environment variables from packages/core/.env
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+// Try multiple possible paths to handle different execution contexts
+dotenv.config({ path: path.resolve(process.cwd(), 'packages/core/.env') }) ||
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 const EVM_RPC =
   process.env['EVM_RPC'] || CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0];
 const ARBITRUM_SEPOLIA_RPC =
@@ -617,6 +626,122 @@ async function testMulticall(
 
   expect(after).toBe(before + BigInt(2));
   console.log(`[${config.name}] Multicall executed successfully`);
+}
+
+async function testFeeAbstraction(
+  config: EVMChainTestConfig,
+  privateKey: `0x${string}`
+): Promise<void> {
+  const account = privateKeyToAccount(privateKey);
+  const walletClient = createWalletClient({
+    account,
+    chain: config.viemChain,
+    transport: http(config.rpcUrl),
+  });
+
+  const universalSignerEVM =
+    await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
+      chain: config.chain,
+      library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+    });
+  const pushClientEVM = await PushChain.initialize(universalSignerEVM, {
+    network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+    rpcUrls: {
+      [config.chain]: [config.rpcUrl],
+    },
+  });
+
+  const newAccount = privateKeyToAccount(generatePrivateKey());
+
+  const walletClientNew = createWalletClient({
+    account: newAccount,
+    chain: config.viemChain,
+    transport: http(config.rpcUrl),
+  });
+
+  const publicClient = createPublicClient({
+    chain: config.viemChain,
+    transport: http(config.rpcUrl),
+  });
+
+  const balanceBefore = await publicClient.getBalance({
+    address: newAccount.address,
+  });
+  console.log(
+    `[${config.name}] New account balance before (wei):`,
+    balanceBefore.toString()
+  );
+
+  // Send native token to new account
+  const txHash = await walletClient.sendTransaction({
+    to: newAccount.address,
+    chain: config.viemChain,
+    value: PushChain.utils.helpers.parseUnits('0.00029', 18),
+  });
+
+  // Wait for transaction to be mined
+  await new Promise((resolve) => setTimeout(resolve, 15000));
+  await publicClient.waitForTransactionReceipt({
+    hash: txHash,
+  });
+
+  const balanceAfter = await publicClient.getBalance({
+    address: newAccount.address,
+  });
+  console.log(
+    `[${config.name}] New account balance after (wei):`,
+    balanceAfter.toString()
+  );
+
+  const universalSignerNewAccount =
+    await PushChain.utils.signer.toUniversalFromKeypair(walletClientNew, {
+      chain: config.chain,
+      library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+    });
+
+  const pushClientNewAccount = await PushChain.initialize(
+    universalSignerNewAccount,
+    {
+      network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+      progressHook: (progress) => {
+        console.log(`[${config.name}] Progress:`, progress);
+      },
+      rpcUrls: {
+        [config.chain]: [config.rpcUrl],
+      },
+    }
+  );
+
+  // Prepare Push EVM client and compute executor (UEA) address on Push Chain
+  const pushEvmClient = new EvmClient({
+    rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
+  });
+  const executorInfo = await PushChain.utils.account.convertOriginToExecutor(
+    universalSignerNewAccount.account,
+    { onlyCompute: true }
+  );
+  const pcBefore = await pushEvmClient.getBalance(executorInfo.address);
+  console.log(
+    `[${config.name}] Executor PC balance before (wei):`,
+    pcBefore.toString()
+  );
+
+  // Execute transaction from new account
+  const resultTx = await pushClientNewAccount.universal.sendTransaction({
+    to: '0x1234567890123456789012345678901234567890',
+    value: BigInt(1),
+  });
+
+  expect(resultTx).toBeDefined();
+  await resultTx.wait();
+
+  const pcAfter = await pushEvmClient.getBalance(executorInfo.address);
+  console.log(
+    `[${config.name}] Executor PC balance after (wei):`,
+    pcAfter.toString()
+  );
+  expect(pcAfter > pcBefore).toBe(true);
+  console.log(`[${config.name}] Fee abstraction test completed successfully`);
 }
 
 describe('PushChain', () => {
@@ -1424,6 +1549,180 @@ describe('PushChain', () => {
         });
       });
     });
+  });
+
+  // TODO: THIS IS HOW TO TEST THE NEW FEE ABSTRACTION.
+  // TODO: WE ARE CREATING BRAND NEW WALLETS SO WE WILL NEED TO DEPLOY A UEA WHEN SENDING A TRANSCTION.
+  // TODO: THIS IS DONE SO WE TEST THE COMPLETE LOGIC THAT THE BACKEND IS INDEED CORRECTLY DEPLOYING THE UEA and funding the wallet.
+  describe('Test new fee abstraction - Ethereum Sepolia', () => {
+    const config = EVM_CHAIN_CONFIGS[0]; // Ethereum Sepolia
+    const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
+      | `0x${string}`
+      | undefined;
+
+    it('new fee abstraction should work', async () => {
+      if (!PRIVATE_KEY) {
+        throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+      }
+      await testFeeAbstraction(config, PRIVATE_KEY);
+    }, 300000);
+  });
+
+  describe('Test new fee abstraction - Base Sepolia', () => {
+    const config = EVM_CHAIN_CONFIGS[2]; // Base Sepolia
+    const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
+      | `0x${string}`
+      | undefined;
+
+    it('new fee abstraction should work', async () => {
+      if (!PRIVATE_KEY) {
+        throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+      }
+      await testFeeAbstraction(config, PRIVATE_KEY);
+    }, 300000);
+  });
+
+  describe('Test new fee abstraction - Arbitrum Sepolia', () => {
+    const config = EVM_CHAIN_CONFIGS[1]; // Arbitrum Sepolia
+    const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
+      | `0x${string}`
+      | undefined;
+
+    it('new fee abstraction should work', async () => {
+      if (!PRIVATE_KEY) {
+        throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+      }
+      await testFeeAbstraction(config, PRIVATE_KEY);
+    }, 300000);
+  });
+
+  describe('Test new fee abstraction - BNB Testnet', () => {
+    const config = EVM_CHAIN_CONFIGS[3]; // BNB Testnet
+    const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
+      | `0x${string}`
+      | undefined;
+
+    it('new fee abstraction should work', async () => {
+      if (!PRIVATE_KEY) {
+        throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+      }
+      await testFeeAbstraction(config, PRIVATE_KEY);
+    }, 300000);
+  });
+
+  // TODO: NEW FEE ABSTRACTION - SOLANA
+  describe('Test new fee abstraction (Solana Devnet - random wallet funding)', () => {
+    // Increase timeout for setup and network operations in this suite
+    jest.setTimeout(300000);
+
+    let newSolanaKeypair: Keypair;
+    let pushClientNewSolana: PushChain;
+
+    beforeAll(async () => {
+      newSolanaKeypair = Keypair.generate();
+
+      const connection = new Connection(SOLANA_RPC, 'confirmed');
+
+      const balanceBefore = await connection.getBalance(
+        newSolanaKeypair.publicKey,
+        'confirmed'
+      );
+      console.log(
+        'newSolana balance before (lamports):',
+        balanceBefore.toString()
+      );
+
+      // Fund the new wallet from a pre-funded SOLANA_PRIVATE_KEY
+      const SOL_FUNDING_KEY =
+        (process.env['SOLANA_PRIVATE_KEY'] as string | undefined) ||
+        (process.env['SVM_PRIVATE_KEY'] as string | undefined);
+      if (!SOL_FUNDING_KEY) {
+        throw new Error('SOLANA_PRIVATE_KEY (or SVM_PRIVATE_KEY) is not set');
+      }
+      let funderKeypair: Keypair;
+      try {
+        if (SOL_FUNDING_KEY.trim().startsWith('[')) {
+          const arr = JSON.parse(SOL_FUNDING_KEY) as number[];
+          funderKeypair = Keypair.fromSecretKey(Uint8Array.from(arr));
+        } else {
+          const decoded = anchorUtils.bytes.bs58.decode(SOL_FUNDING_KEY.trim());
+          funderKeypair = Keypair.fromSecretKey(Uint8Array.from(decoded));
+        }
+      } catch (e) {
+        throw new Error('Invalid SOLANA_PRIVATE_KEY format');
+      }
+      // Ensure we transfer at least rent-exempt minimum for a zero-data account
+      const minRent = await connection.getMinimumBalanceForRentExemption(
+        0,
+        'confirmed'
+      );
+      const transferIx = SystemProgram.transfer({
+        fromPubkey: funderKeypair.publicKey,
+        toPubkey: newSolanaKeypair.publicKey,
+        lamports: Math.max(minRent, 50000000),
+      });
+      const { blockhash, lastValidBlockHeight } =
+        await connection.getLatestBlockhash('confirmed');
+      const tx = new Transaction({
+        feePayer: funderKeypair.publicKey,
+        recentBlockhash: blockhash,
+      }).add(transferIx);
+      tx.sign(funderKeypair);
+      let sig: string;
+      try {
+        sig = await connection.sendRawTransaction(tx.serialize(), {
+          skipPreflight: false,
+          preflightCommitment: 'confirmed',
+        });
+      } catch (err) {
+        if (err instanceof SendTransactionError) {
+          const logs = await err.getLogs(connection);
+          // eslint-disable-next-line no-console
+          console.error('Solana sendRawTransaction logs:', logs);
+        }
+        throw err;
+      }
+      await connection.confirmTransaction(
+        { signature: sig, blockhash, lastValidBlockHeight },
+        'confirmed'
+      );
+
+      const balanceAfter = await connection.getBalance(
+        newSolanaKeypair.publicKey,
+        'confirmed'
+      );
+      console.log(
+        'newSolana balance after (lamports):',
+        balanceAfter.toString()
+      );
+
+      const universalSignerNewSolana =
+        await PushChain.utils.signer.toUniversalFromKeypair(newSolanaKeypair, {
+          chain: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET,
+          library: PushChain.CONSTANTS.LIBRARY.SOLANA_WEB3JS,
+        });
+
+      pushClientNewSolana = await PushChain.initialize(
+        universalSignerNewSolana,
+        {
+          network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+          progressHook: (progress) => {
+            console.log('Progress', progress);
+          },
+          rpcUrls: {
+            [CHAIN.SOLANA_DEVNET]: [SOLANA_RPC],
+          },
+        }
+      );
+    }, 300000);
+
+    it('random solana wallet is funded', async () => {
+      const txHash = await pushClientNewSolana.universal.sendTransaction({
+        to: '0x1234567890123456789012345678901234567890',
+        value: BigInt(1),
+      });
+      expect(txHash).toBeDefined();
+    }, 300000);
   });
 
   describe('Reinitialize Method', () => {
