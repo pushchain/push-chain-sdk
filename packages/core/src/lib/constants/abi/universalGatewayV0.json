@@ -1,10 +1,10 @@
 {
   "address": "CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS",
   "metadata": {
-    "name": "pushsolanagateway",
+    "name": "universal_gateway",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "Push Solana Gateway - Universal Gateway for Solana"
+    "description": "Universal Gateway for Solana - Cross-chain bridge and transaction router"
   },
   "instructions": [
     {
@@ -12,7 +12,16 @@
       "docs": [
         "@notice Legacy-compatible add funds event for offchain relayers (pushsolanalocker)"
       ],
-      "discriminator": [132, 237, 76, 57, 80, 10, 179, 138],
+      "discriminator": [
+        132,
+        237,
+        76,
+        57,
+        80,
+        10,
+        179,
+        138
+      ],
       "accounts": [
         {
           "name": "config",
@@ -20,7 +29,14 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -32,7 +48,13 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [118, 97, 117, 108, 116]
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
               }
             ]
           }
@@ -58,7 +80,10 @@
         {
           "name": "transaction_hash",
           "type": {
-            "array": ["u8", 32]
+            "array": [
+              "u8",
+              32
+            ]
           }
         }
       ]
@@ -69,7 +94,16 @@
         "@notice View function for SOL price (locker-compatible)",
         "@dev    Anyone can fetch SOL price in USD"
       ],
-      "discriminator": [230, 145, 206, 175, 43, 184, 97, 110],
+      "discriminator": [
+        230,
+        145,
+        206,
+        175,
+        43,
+        184,
+        97,
+        110
+      ],
       "accounts": [
         {
           "name": "price_update"
@@ -84,7 +118,16 @@
     },
     {
       "name": "init_tss",
-      "discriminator": [47, 31, 100, 111, 115, 2, 22, 208],
+      "discriminator": [
+        47,
+        31,
+        100,
+        111,
+        115,
+        2,
+        22,
+        208
+      ],
       "accounts": [
         {
           "name": "tss_pda",
@@ -93,7 +136,11 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [116, 115, 115]
+                "value": [
+                  116,
+                  115,
+                  115
+                ]
               }
             ]
           }
@@ -112,7 +159,10 @@
         {
           "name": "tss_eth_address",
           "type": {
-            "array": ["u8", 20]
+            "array": [
+              "u8",
+              20
+            ]
           }
         },
         {
@@ -123,8 +173,19 @@
     },
     {
       "name": "initialize",
-      "docs": ["@notice Initialize the gateway"],
-      "discriminator": [175, 175, 109, 31, 13, 152, 155, 237],
+      "docs": [
+        "@notice Initialize the gateway"
+      ],
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
       "accounts": [
         {
           "name": "config",
@@ -133,7 +194,14 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -145,7 +213,13 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [118, 97, 117, 108, 116]
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
               }
             ]
           }
@@ -189,8 +263,19 @@
     },
     {
       "name": "pause",
-      "docs": ["@notice Pause the gateway"],
-      "discriminator": [211, 22, 221, 251, 74, 121, 193, 47],
+      "docs": [
+        "@notice Pause the gateway"
+      ],
+      "discriminator": [
+        211,
+        22,
+        221,
+        251,
+        74,
+        121,
+        193,
+        47
+      ],
       "accounts": [
         {
           "name": "config",
@@ -199,7 +284,14 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -213,8 +305,19 @@
     },
     {
       "name": "remove_whitelist_token",
-      "docs": ["@notice Remove token from whitelist"],
-      "discriminator": [65, 182, 42, 255, 198, 163, 73, 46],
+      "docs": [
+        "@notice Remove token from whitelist"
+      ],
+      "discriminator": [
+        65,
+        182,
+        42,
+        255,
+        198,
+        163,
+        73,
+        46
+      ],
       "accounts": [
         {
           "name": "config",
@@ -223,7 +326,14 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -235,7 +345,17 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [119, 104, 105, 116, 101, 108, 105, 115, 116]
+                "value": [
+                  119,
+                  104,
+                  105,
+                  116,
+                  101,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
               }
             ]
           }
@@ -259,7 +379,16 @@
     },
     {
       "name": "reset_nonce",
-      "discriminator": [104, 139, 110, 85, 234, 155, 132, 248],
+      "discriminator": [
+        104,
+        139,
+        110,
+        85,
+        234,
+        155,
+        132,
+        248
+      ],
       "accounts": [
         {
           "name": "tss_pda",
@@ -268,7 +397,11 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [116, 115, 115]
+                "value": [
+                  116,
+                  115,
+                  115
+                ]
               }
             ]
           }
@@ -287,8 +420,19 @@
     },
     {
       "name": "revert_withdraw",
-      "docs": ["@notice TSS-verified revert withdraw for SOL"],
-      "discriminator": [8, 232, 107, 216, 153, 25, 204, 116],
+      "docs": [
+        "@notice TSS-verified revert withdraw for SOL"
+      ],
+      "discriminator": [
+        8,
+        232,
+        107,
+        216,
+        153,
+        25,
+        204,
+        116
+      ],
       "accounts": [
         {
           "name": "config",
@@ -296,7 +440,14 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -308,7 +459,13 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [118, 97, 117, 108, 116]
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
               }
             ]
           }
@@ -320,7 +477,11 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [116, 115, 115]
+                "value": [
+                  116,
+                  115,
+                  115
+                ]
               }
             ]
           }
@@ -350,7 +511,10 @@
         {
           "name": "signature",
           "type": {
-            "array": ["u8", 64]
+            "array": [
+              "u8",
+              64
+            ]
           }
         },
         {
@@ -360,7 +524,10 @@
         {
           "name": "message_hash",
           "type": {
-            "array": ["u8", 32]
+            "array": [
+              "u8",
+              32
+            ]
           }
         },
         {
@@ -371,8 +538,19 @@
     },
     {
       "name": "revert_withdraw_spl_token",
-      "docs": ["@notice TSS-verified revert withdraw for SPL tokens"],
-      "discriminator": [172, 155, 56, 3, 92, 190, 159, 191],
+      "docs": [
+        "@notice TSS-verified revert withdraw for SPL tokens"
+      ],
+      "discriminator": [
+        172,
+        155,
+        56,
+        3,
+        92,
+        190,
+        159,
+        191
+      ],
       "accounts": [
         {
           "name": "config",
@@ -380,7 +558,14 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -395,7 +580,13 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [118, 97, 117, 108, 116]
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
               }
             ]
           }
@@ -411,7 +602,11 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [116, 115, 115]
+                "value": [
+                  116,
+                  115,
+                  115
+                ]
               }
             ]
           }
@@ -444,7 +639,10 @@
         {
           "name": "signature",
           "type": {
-            "array": ["u8", 64]
+            "array": [
+              "u8",
+              64
+            ]
           }
         },
         {
@@ -454,7 +652,10 @@
         {
           "name": "message_hash",
           "type": {
-            "array": ["u8", 32]
+            "array": [
+              "u8",
+              32
+            ]
           }
         },
         {
@@ -472,7 +673,16 @@
         "For SPL tokens: pass token mint address as bridge_token",
         "The route emits UniversalTx event."
       ],
-      "discriminator": [84, 247, 211, 40, 63, 106, 15, 59],
+      "discriminator": [
+        84,
+        247,
+        211,
+        40,
+        63,
+        106,
+        15,
+        59
+      ],
       "accounts": [
         {
           "name": "config",
@@ -481,7 +691,14 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -493,7 +710,13 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [118, 97, 117, 108, 116]
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
               }
             ]
           }
@@ -504,7 +727,17 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [119, 104, 105, 116, 101, 108, 105, 115, 116]
+                "value": [
+                  119,
+                  104,
+                  105,
+                  116,
+                  101,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
               }
             ]
           }
@@ -538,7 +771,10 @@
         {
           "name": "recipient",
           "type": {
-            "array": ["u8", 20]
+            "array": [
+              "u8",
+              20
+            ]
           }
         },
         {
@@ -566,7 +802,16 @@
         "@dev    Supports both native SOL and SPL token deposits with payload execution.",
         "The route emits UniversalTx event."
       ],
-      "discriminator": [224, 179, 202, 222, 121, 238, 38, 168],
+      "discriminator": [
+        224,
+        179,
+        202,
+        222,
+        121,
+        238,
+        38,
+        168
+      ],
       "accounts": [
         {
           "name": "config",
@@ -575,7 +820,14 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -587,7 +839,13 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [118, 97, 117, 108, 116]
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
               }
             ]
           }
@@ -598,7 +856,17 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [119, 104, 105, 116, 101, 108, 105, 115, 116]
+                "value": [
+                  119,
+                  104,
+                  105,
+                  116,
+                  101,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
               }
             ]
           }
@@ -673,7 +941,16 @@
         "@dev    Supports only native SOL deposits for gas funding.",
         "The route emits UniversalTx event - important for Instant TX Route."
       ],
-      "discriminator": [220, 10, 179, 127, 41, 153, 193, 213],
+      "discriminator": [
+        220,
+        10,
+        179,
+        127,
+        41,
+        153,
+        193,
+        213
+      ],
       "accounts": [
         {
           "name": "config",
@@ -682,7 +959,14 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -694,7 +978,13 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [118, 97, 117, 108, 116]
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
               }
             ]
           }
@@ -732,13 +1022,28 @@
         {
           "name": "amount",
           "type": "u64"
+        },
+        {
+          "name": "signature_data",
+          "type": "bytes"
         }
       ]
     },
     {
-      "name": "set_caps_usd",
-      "docs": ["@notice Set USD caps"],
-      "discriminator": [136, 160, 17, 54, 239, 108, 125, 129],
+      "name": "set_block_usd_cap",
+      "docs": [
+        "@notice Set block-based USD cap for rate limiting"
+      ],
+      "discriminator": [
+        205,
+        253,
+        33,
+        164,
+        220,
+        216,
+        42,
+        50
+      ],
       "accounts": [
         {
           "name": "config",
@@ -747,7 +1052,96 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "rate_limit_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  97,
+                  116,
+                  101,
+                  95,
+                  108,
+                  105,
+                  109,
+                  105,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "block_usd_cap",
+          "type": "u128"
+        }
+      ]
+    },
+    {
+      "name": "set_caps_usd",
+      "docs": [
+        "@notice Set USD caps"
+      ],
+      "discriminator": [
+        136,
+        160,
+        17,
+        54,
+        239,
+        108,
+        125,
+        129
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -770,8 +1164,19 @@
     },
     {
       "name": "set_pyth_confidence_threshold",
-      "docs": ["@notice Set Pyth confidence threshold"],
-      "discriminator": [213, 69, 242, 123, 122, 165, 125, 21],
+      "docs": [
+        "@notice Set Pyth confidence threshold"
+      ],
+      "discriminator": [
+        213,
+        69,
+        242,
+        123,
+        122,
+        165,
+        125,
+        21
+      ],
       "accounts": [
         {
           "name": "config",
@@ -780,7 +1185,14 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -799,8 +1211,19 @@
     },
     {
       "name": "set_pyth_price_feed",
-      "docs": ["@notice Set Pyth price feed"],
-      "discriminator": [202, 185, 109, 150, 255, 130, 210, 208],
+      "docs": [
+        "@notice Set Pyth price feed"
+      ],
+      "discriminator": [
+        202,
+        185,
+        109,
+        150,
+        255,
+        130,
+        210,
+        208
+      ],
       "accounts": [
         {
           "name": "config",
@@ -809,7 +1232,14 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -827,9 +1257,20 @@
       ]
     },
     {
-      "name": "set_tss_address",
-      "docs": ["@notice Set TSS address"],
-      "discriminator": [158, 254, 147, 0, 154, 3, 56, 50],
+      "name": "set_token_rate_limit",
+      "docs": [
+        "@notice Set token-specific rate limit threshold"
+      ],
+      "discriminator": [
+        67,
+        225,
+        226,
+        248,
+        119,
+        98,
+        18,
+        68
+      ],
       "accounts": [
         {
           "name": "config",
@@ -838,7 +1279,96 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_rate_limit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  97,
+                  116,
+                  101,
+                  95,
+                  108,
+                  105,
+                  109,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "limit_threshold",
+          "type": "u128"
+        }
+      ]
+    },
+    {
+      "name": "set_tss_address",
+      "docs": [
+        "@notice Set TSS address"
+      ],
+      "discriminator": [
+        158,
+        254,
+        147,
+        0,
+        154,
+        3,
+        56,
+        50
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -857,8 +1387,19 @@
     },
     {
       "name": "unpause",
-      "docs": ["@notice Unpause the gateway"],
-      "discriminator": [169, 144, 4, 38, 10, 141, 188, 255],
+      "docs": [
+        "@notice Unpause the gateway"
+      ],
+      "discriminator": [
+        169,
+        144,
+        4,
+        38,
+        10,
+        141,
+        188,
+        255
+      ],
       "accounts": [
         {
           "name": "config",
@@ -867,7 +1408,14 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -880,8 +1428,99 @@
       "args": []
     },
     {
+      "name": "update_epoch_duration",
+      "docs": [
+        "@notice Update epoch duration for rate limiting"
+      ],
+      "discriminator": [
+        145,
+        173,
+        2,
+        249,
+        226,
+        157,
+        29,
+        104
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "rate_limit_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  97,
+                  116,
+                  101,
+                  95,
+                  108,
+                  105,
+                  109,
+                  105,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "epoch_duration_sec",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "update_tss",
-      "discriminator": [227, 136, 3, 242, 177, 168, 10, 160],
+      "discriminator": [
+        227,
+        136,
+        3,
+        242,
+        177,
+        168,
+        10,
+        160
+      ],
       "accounts": [
         {
           "name": "tss_pda",
@@ -890,7 +1529,11 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [116, 115, 115]
+                "value": [
+                  116,
+                  115,
+                  115
+                ]
               }
             ]
           }
@@ -904,7 +1547,10 @@
         {
           "name": "tss_eth_address",
           "type": {
-            "array": ["u8", 20]
+            "array": [
+              "u8",
+              20
+            ]
           }
         },
         {
@@ -915,8 +1561,19 @@
     },
     {
       "name": "whitelist_token",
-      "docs": ["@notice Whitelist a token"],
-      "discriminator": [6, 141, 83, 167, 31, 6, 2, 224],
+      "docs": [
+        "@notice Whitelist a token"
+      ],
+      "discriminator": [
+        6,
+        141,
+        83,
+        167,
+        31,
+        6,
+        2,
+        224
+      ],
       "accounts": [
         {
           "name": "config",
@@ -925,7 +1582,14 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -937,7 +1601,17 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [119, 104, 105, 116, 101, 108, 105, 115, 116]
+                "value": [
+                  119,
+                  104,
+                  105,
+                  116,
+                  101,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
               }
             ]
           }
@@ -961,8 +1635,19 @@
     },
     {
       "name": "withdraw_spl_token_tss",
-      "docs": ["@notice TSS-verified withdraw of SPL tokens"],
-      "discriminator": [238, 209, 47, 229, 44, 234, 138, 198],
+      "docs": [
+        "@notice TSS-verified withdraw of SPL tokens"
+      ],
+      "discriminator": [
+        238,
+        209,
+        47,
+        229,
+        44,
+        234,
+        138,
+        198
+      ],
       "accounts": [
         {
           "name": "config",
@@ -970,7 +1655,14 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -985,7 +1677,13 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [118, 97, 117, 108, 116]
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
               }
             ]
           }
@@ -1001,7 +1699,11 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [116, 115, 115]
+                "value": [
+                  116,
+                  115,
+                  115
+                ]
               }
             ]
           }
@@ -1026,7 +1728,10 @@
         {
           "name": "signature",
           "type": {
-            "array": ["u8", 64]
+            "array": [
+              "u8",
+              64
+            ]
           }
         },
         {
@@ -1036,7 +1741,10 @@
         {
           "name": "message_hash",
           "type": {
-            "array": ["u8", 32]
+            "array": [
+              "u8",
+              32
+            ]
           }
         },
         {
@@ -1047,8 +1755,19 @@
     },
     {
       "name": "withdraw_tss",
-      "docs": ["@notice TSS-verified withdraw of native SOL"],
-      "discriminator": [112, 51, 93, 250, 136, 175, 118, 100],
+      "docs": [
+        "@notice TSS-verified withdraw of native SOL"
+      ],
+      "discriminator": [
+        112,
+        51,
+        93,
+        250,
+        136,
+        175,
+        118,
+        100
+      ],
       "accounts": [
         {
           "name": "config",
@@ -1056,7 +1775,14 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
@@ -1068,7 +1794,13 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [118, 97, 117, 108, 116]
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
               }
             ]
           }
@@ -1080,7 +1812,11 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [116, 115, 115]
+                "value": [
+                  116,
+                  115,
+                  115
+                ]
               }
             ]
           }
@@ -1102,7 +1838,10 @@
         {
           "name": "signature",
           "type": {
-            "array": ["u8", 64]
+            "array": [
+              "u8",
+              64
+            ]
           }
         },
         {
@@ -1112,7 +1851,10 @@
         {
           "name": "message_hash",
           "type": {
-            "array": ["u8", 32]
+            "array": [
+              "u8",
+              32
+            ]
           }
         },
         {
@@ -1125,49 +1867,213 @@
   "accounts": [
     {
       "name": "Config",
-      "discriminator": [155, 12, 170, 224, 30, 250, 204, 130]
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
     },
     {
       "name": "PriceUpdateV2",
-      "discriminator": [34, 241, 35, 99, 157, 126, 244, 205]
+      "discriminator": [
+        34,
+        241,
+        35,
+        99,
+        157,
+        126,
+        244,
+        205
+      ]
+    },
+    {
+      "name": "RateLimitConfig",
+      "discriminator": [
+        172,
+        233,
+        8,
+        17,
+        15,
+        174,
+        216,
+        176
+      ]
+    },
+    {
+      "name": "TokenRateLimit",
+      "discriminator": [
+        129,
+        99,
+        70,
+        230,
+        57,
+        181,
+        132,
+        97
+      ]
     },
     {
       "name": "TokenWhitelist",
-      "discriminator": [105, 240, 104, 47, 95, 13, 48, 78]
+      "discriminator": [
+        105,
+        240,
+        104,
+        47,
+        95,
+        13,
+        48,
+        78
+      ]
     },
     {
       "name": "TssPda",
-      "discriminator": [121, 138, 162, 251, 127, 95, 238, 135]
+      "discriminator": [
+        121,
+        138,
+        162,
+        251,
+        127,
+        95,
+        238,
+        135
+      ]
     }
   ],
   "events": [
     {
+      "name": "BlockUsdCapUpdated",
+      "discriminator": [
+        69,
+        44,
+        151,
+        48,
+        36,
+        74,
+        176,
+        194
+      ]
+    },
+    {
       "name": "CapsUpdated",
-      "discriminator": [147, 181, 117, 249, 72, 147, 156, 255]
+      "discriminator": [
+        147,
+        181,
+        117,
+        249,
+        72,
+        147,
+        156,
+        255
+      ]
+    },
+    {
+      "name": "EpochDurationUpdated",
+      "discriminator": [
+        167,
+        122,
+        82,
+        178,
+        133,
+        191,
+        19,
+        129
+      ]
     },
     {
       "name": "FundsAddedEvent",
-      "discriminator": [127, 31, 108, 255, 187, 19, 70, 68]
+      "discriminator": [
+        127,
+        31,
+        108,
+        255,
+        187,
+        19,
+        70,
+        68
+      ]
     },
     {
       "name": "TSSAddressUpdated",
-      "discriminator": [157, 148, 149, 250, 42, 118, 17, 232]
+      "discriminator": [
+        157,
+        148,
+        149,
+        250,
+        42,
+        118,
+        17,
+        232
+      ]
+    },
+    {
+      "name": "TokenRateLimitUpdated",
+      "discriminator": [
+        73,
+        75,
+        54,
+        189,
+        59,
+        130,
+        39,
+        59
+      ]
     },
     {
       "name": "TokenRemovedFromWhitelist",
-      "discriminator": [200, 69, 55, 209, 167, 225, 117, 11]
+      "discriminator": [
+        200,
+        69,
+        55,
+        209,
+        167,
+        225,
+        117,
+        11
+      ]
     },
     {
       "name": "TokenWhitelisted",
-      "discriminator": [65, 3, 231, 165, 235, 116, 154, 51]
+      "discriminator": [
+        65,
+        3,
+        231,
+        165,
+        235,
+        116,
+        154,
+        51
+      ]
     },
     {
       "name": "UniversalTx",
-      "discriminator": [108, 154, 216, 41, 181, 234, 29, 124]
+      "discriminator": [
+        108,
+        154,
+        216,
+        41,
+        181,
+        234,
+        29,
+        124
+      ]
     },
     {
       "name": "WithdrawFunds",
-      "discriminator": [4, 77, 4, 28, 115, 6, 39, 233]
+      "discriminator": [
+        4,
+        77,
+        4,
+        28,
+        115,
+        6,
+        39,
+        233
+      ]
     }
   ],
   "errors": [
@@ -1280,9 +2186,36 @@
       "code": 6021,
       "name": "InvalidToken",
       "msg": "Invalid token"
+    },
+    {
+      "code": 6022,
+      "name": "BlockUsdCapExceeded",
+      "msg": "Block USD cap exceeded"
+    },
+    {
+      "code": 6023,
+      "name": "RateLimitExceeded",
+      "msg": "Rate limit exceeded"
+    },
+    {
+      "code": 6024,
+      "name": "InvalidAccount",
+      "msg": "Invalid account"
     }
   ],
   "types": [
+    {
+      "name": "BlockUsdCapUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "block_usd_cap",
+            "type": "u128"
+          }
+        ]
+      }
+    },
     {
       "name": "CapsUpdated",
       "type": {
@@ -1352,6 +2285,37 @@
       }
     },
     {
+      "name": "EpochDurationUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epoch_duration_sec",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EpochUsage",
+      "docs": [
+        "Epoch usage tracking for rate limiting (matching EVM EpochUsage struct)"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epoch",
+            "type": "u64"
+          },
+          {
+            "name": "used",
+            "type": "u128"
+          }
+        ]
+      }
+    },
+    {
       "name": "FundsAddedEvent",
       "docs": [
         "Legacy event for fee-abstraction route (locker-compatible).",
@@ -1379,7 +2343,10 @@
           {
             "name": "transaction_hash",
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           }
         ]
@@ -1423,7 +2390,10 @@
               "`FeedId` but avoid the type alias because of compatibility issues with Anchor's `idl-build` feature."
             ],
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           },
           {
@@ -1440,7 +2410,9 @@
           },
           {
             "name": "publish_time",
-            "docs": ["The timestamp of this price update in seconds"],
+            "docs": [
+              "The timestamp of this price update in seconds"
+            ],
             "type": "i64"
           },
           {
@@ -1513,6 +2485,38 @@
       }
     },
     {
+      "name": "RateLimitConfig",
+      "docs": [
+        "Rate limiting configuration (separate account for backward compatibility)",
+        "PDA: `[b\"rate_limit_config\"]`. Stores global rate limiting settings."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "block_usd_cap",
+            "type": "u128"
+          },
+          {
+            "name": "epoch_duration_sec",
+            "type": "u64"
+          },
+          {
+            "name": "last_slot",
+            "type": "u64"
+          },
+          {
+            "name": "consumed_usd_in_block",
+            "type": "u128"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "RevertInstructions",
       "docs": [
         "Revert instructions for failed transactions (parity with EVM `RevertInstructions`)."
@@ -1543,6 +2547,54 @@
           {
             "name": "new_tss",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenRateLimit",
+      "docs": [
+        "Token-specific rate limiting state (matching EVM implementation)",
+        "PDA: `[b\"rate_limit\", token_mint]`. Tracks epoch-based usage per token."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "token_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "limit_threshold",
+            "type": "u128"
+          },
+          {
+            "name": "epoch_usage",
+            "type": {
+              "defined": {
+                "name": "EpochUsage"
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenRateLimitUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "token_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "limit_threshold",
+            "type": "u128"
           }
         ]
       }
@@ -1605,7 +2657,10 @@
           {
             "name": "tss_eth_address",
             "type": {
-              "array": ["u8", 20]
+              "array": [
+                "u8",
+                20
+              ]
             }
           },
           {
@@ -1663,7 +2718,10 @@
           {
             "name": "to",
             "type": {
-              "array": ["u8", 20]
+              "array": [
+                "u8",
+                20
+              ]
             }
           },
           {
@@ -1721,7 +2779,10 @@
           {
             "name": "recipient",
             "type": {
-              "array": ["u8", 20]
+              "array": [
+                "u8",
+                20
+              ]
             }
           },
           {
@@ -1794,7 +2855,9 @@
     },
     {
       "name": "VerificationType",
-      "docs": ["Verification types for payload execution (parity with EVM)."],
+      "docs": [
+        "Verification types for payload execution (parity with EVM)."
+      ],
       "type": {
         "kind": "enum",
         "variants": [
@@ -1809,7 +2872,9 @@
     },
     {
       "name": "WithdrawFunds",
-      "docs": ["Withdraw event (parity with EVM `WithdrawFunds`)."],
+      "docs": [
+        "Withdraw event (parity with EVM `WithdrawFunds`)."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
