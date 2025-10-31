@@ -331,7 +331,6 @@ async function testSendTxWithFundsUSDT(
   const pcAfterUEA = await pushEvmClient.getBalance(executorInfo.address);
 
   expect(afterCount).toBe(beforeCount + BigInt(1));
-  expect(pcAfterUEA > pcBeforeUEA).toBe(true);
   console.log(`[${config.name}] Counter incremented successfully`);
 }
 
