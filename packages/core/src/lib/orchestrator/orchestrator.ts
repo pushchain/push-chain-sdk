@@ -1224,14 +1224,11 @@ export class Orchestrator {
             ? (eip712Signature as `0x${string}`)
             : (bytesToHex(eip712Signature) as `0x${string}`);
 
-        // Override vType to 0 for sendTxWithGas (signature-based verification)
-        universalPayload.vType = VerificationType.signedVerification;
-
         const txHash: `0x${string}` = await evmClient.writeContract({
           abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
           address: lockerContract,
           functionName: 'sendTxWithGas',
-          args: [universalPayload as unknown as never, revertCFG, eip712SignatureHex],
+          args: [universalPayload as unknown as never, revertCFG, '0x'],
           signer: this.universalSigner,
           value: nativeAmount,
         });
@@ -1274,38 +1271,24 @@ export class Orchestrator {
           revertMsg: Buffer.from([]),
         } as unknown as never;
 
-        // Override vType to 0 for sendTxWithGas (signature-based verification)
-        universalPayload.vType = VerificationType.signedVerification;
-
-        // Build minimal Anchor-compatible payload (BN/Buffer/snake_case + enum variant)
-        const up: any = universalPayload as any;
-        const vType = { signedVerification: {} }; // Always signedVerification for sendTxWithGas
-        const svmPayload = {
-          to: Array.from(
-            Buffer.from(
-              String(up.to).slice(2).padStart(40, '0'),
-              'hex'
-            ).subarray(0, 20)
-          ),
-          value: new anchor.BN(BigInt(up.value ?? 0).toString()),
-          data: Buffer.from(String(up.data ?? '0x').slice(2), 'hex'),
-          gas_limit: new anchor.BN(BigInt(up.gasLimit ?? 0).toString()),
-          max_fee_per_gas: new anchor.BN(
-            BigInt(up.maxFeePerGas ?? 0).toString()
-          ),
-          max_priority_fee_per_gas: new anchor.BN(
-            BigInt(up.maxPriorityFeePerGas ?? 0).toString()
-          ),
-          nonce: new anchor.BN(BigInt(up.nonce ?? 0).toString()),
-          deadline: new anchor.BN(BigInt(up.deadline ?? 0).toString()),
-          v_type: vType,
-        } as unknown as never;
+        // const ueaAddressSvm = this.computeUEAOffchain();
+        // const ueaVersion = await this.fetchUEAVersion();
+        // const svmSignature = await this.signUniversalPayload(
+        //   universalPayload,
+        //   ueaAddressSvm,
+        //   ueaVersion
+        // );
 
         const txHash = await svmClient.writeContract({
           abi: SVM_GATEWAY_IDL,
           address: programId.toBase58(),
           functionName: 'sendTxWithGas',
-          args: [svmPayload, revertSvm, new anchor.BN(nativeAmount.toString())],
+          args: [
+            universalPayload,
+            revertSvm,
+            new anchor.BN(nativeAmount.toString()),
+            '0x',
+          ],
           signer: this.universalSigner,
           accounts: {
             config: configPda,
@@ -1923,7 +1906,7 @@ export class Orchestrator {
       maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
       nonce,
       deadline: execute.deadline || BigInt(9999999999),
-      vType: VerificationType.signedVerification,
+      vType: VerificationType.universalTxVerification,
     } as unknown as never;
 
     return { payload: universalPayload, gasAmount };
@@ -2223,8 +2206,9 @@ export class Orchestrator {
       const discriminatorHex = bytesToHex(decoded.slice(0, 8)).slice(2);
 
       // Skip add_funds discriminator; return the first other Program data event
-      if (discriminatorHex === '7f1f6cffbb134644') continue;
-      return i;
+      // if (discriminatorHex === '7f1f6cffbb134644') continue;
+      if (discriminatorHex === '6c9ad829b5ea1d7c') return i;
+      // return i;
     }
 
     // Fallback to first log
@@ -2236,7 +2220,7 @@ export class Orchestrator {
     evmClient: EvmClient | undefined,
     gatewayAddress: `0x${string}` | undefined,
     txHash: string,
-    fromBranch: 'sendFunds' | 'sendTxWithFunds'
+    evmGatewayMethod: 'sendFunds' | 'sendTxWithFunds' | 'sendTxWithGas'
   ): Promise<any | undefined> {
     try {
       const chain = this.universalSigner.account.chain;
@@ -2265,7 +2249,7 @@ export class Orchestrator {
           (l: any) =>
             (l.address || '').toLowerCase() === gatewayAddress.toLowerCase()
         );
-        const logIndexToUse = fromBranch === 'sendTxWithFunds' ? 1 : 0;
+        const logIndexToUse = evmGatewayMethod === 'sendTxWithFunds' ? 1 : 0;
         const firstLog = (gatewayLogs[logIndexToUse] ||
           receipt.logs?.[logIndexToUse]) as any;
         const logIndexVal = firstLog?.logIndex ?? 0;
