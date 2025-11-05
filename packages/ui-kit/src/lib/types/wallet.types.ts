@@ -4,8 +4,8 @@ import { TypedData, TypedDataDomain } from 'viem';
 export enum ChainType {
   ETHEREUM = 'sepolia',
   SOLANA = 'solana',
-  BINANCE = 'bsc',
-  ARBITRUM = 'arbitrum',
+  BINANCE = 'bscTestnet',
+  ARBITRUM = 'arbitrumSepolia',
   BASE = "baseSepolia",
   AVALANCHE = 'avalanche',
   WALLET_CONNECT = 'walletConnect',

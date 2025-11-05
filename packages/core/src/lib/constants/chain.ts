@@ -22,6 +22,50 @@ export const UEA_PROXY: Record<PUSH_NETWORK, `0x${string}`> = {
 };
 
 /**
+ * Addresses for wrapped ETH/SOL/ARBITRUM assets by Push network.
+ * Includes pETH and PUSDT bridged from origin on test networks.
+ */
+export const SYNTHETIC_PUSH_ERC20: Record<
+  PUSH_NETWORK,
+  {
+    pETH: `0x${string}`;
+    pSOL: `0x${string}`;
+    USDT_ETH: `0x${string}`;
+    USDT_ARB: `0x${string}`;
+    USDT_SOL: `0x${string}`;
+  }
+> = {
+  [PUSH_NETWORK.TESTNET_DONUT]: {
+    pETH: '0x2971824Db68229D087931155C2b8bB820B275809',
+    pSOL: '0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed',
+    USDT_ETH: '0xCA0C5E6F002A389E1580F0DB7cd06e4549B5F9d3',
+    USDT_ARB: '0x76Ad08339dF606BeEDe06f90e3FaF82c5b2fb2E9',
+    USDT_SOL: '0x4f1A3D22d170a2F4Bddb37845a962322e24f4e34',
+  },
+  [PUSH_NETWORK.TESTNET]: {
+    pETH: '0x2971824Db68229D087931155C2b8bB820B275809',
+    pSOL: '0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed',
+    USDT_ETH: '0xCA0C5E6F002A389E1580F0DB7cd06e4549B5F9d3',
+    USDT_ARB: '0x76Ad08339dF606BeEDe06f90e3FaF82c5b2fb2E9',
+    USDT_SOL: '0x4f1A3D22d170a2F4Bddb37845a962322e24f4e34',
+  },
+  [PUSH_NETWORK.LOCALNET]: {
+    pETH: '0xTBD',
+    pSOL: '0xTBD',
+    USDT_ETH: '0xTBD',
+    USDT_ARB: '0xTBD',
+    USDT_SOL: '0xTBD',
+  },
+  [PUSH_NETWORK.MAINNET]: {
+    pETH: '0xTBD',
+    pSOL: '0xTBD',
+    USDT_ETH: '0xTBD',
+    USDT_ARB: '0xTBD',
+    USDT_SOL: '0xTBD',
+  },
+};
+
+/**
  * Canonical metadata for each chain supported by the SDK.
  * Acts as a single source of truth for chainId, vm type, locker contract, etc.
  * References -
@@ -36,6 +80,11 @@ export const CHAIN_INFO: Record<
     defaultRPC: string[];
     confirmations: number; // Confirmations required to mark a tx as finalized
     timeout: number; // Wait timeout in ms for required confirmations : Ideal value = (confirmations + 1)* Avg Chain Block time
+    dex?: {
+      uniV3Factory?: `0x${string}`;
+      uniV3QuoterV2?: `0x${string}`;
+      weth?: `0x${string}`;
+    };
   }
 > = {
   // Push
@@ -80,6 +129,11 @@ export const CHAIN_INFO: Record<
     defaultRPC: [sepolia.rpcUrls.default.http[0]],
     confirmations: 2,
     timeout: 30000,
+    dex: {
+      uniV3Factory: '0x0227628f3F023bb0B980b67D528571c95c6DaC1c',
+      uniV3QuoterV2: '0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3',
+      weth: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+    },
   },
   [CHAIN.ARBITRUM_SEPOLIA]: {
     chainId: '421614',
@@ -88,6 +142,11 @@ export const CHAIN_INFO: Record<
     defaultRPC: [arbitrumSepolia.rpcUrls.default.http[0]],
     confirmations: 1,
     timeout: 30000,
+    dex: {
+      uniV3Factory: '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
+      uniV3QuoterV2: '0xTBD',
+      weth: '0x980B62Da83eFf3D4576C647993b0c1D7faf17c73',
+    },
   },
   [CHAIN.BASE_SEPOLIA]: {
     chainId: '84532',
@@ -96,6 +155,11 @@ export const CHAIN_INFO: Record<
     defaultRPC: [baseSepolia.rpcUrls.default.http[0]],
     confirmations: 1,
     timeout: 30000,
+    dex: {
+      uniV3Factory: '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
+      uniV3QuoterV2: '0xTBD',
+      weth: '0x4200000000000000000000000000000000000006',
+    },
   },
   [CHAIN.BNB_TESTNET]: {
     chainId: '97',

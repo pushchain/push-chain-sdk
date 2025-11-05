@@ -15,7 +15,15 @@ import BaseMonotone from '../components/common/icons/BaseMonotone';
 export const PushUI = {
   CONSTANTS: {
     PUSH_NETWORK: PushChain.CONSTANTS.PUSH_NETWORK,
-    CHAIN: { ETHEREUM: 'ethereum', SOLANA: 'solana' },
+    CHAIN: {
+      PUSH: 'pushWallet',
+      ETHEREUM: 'ethereum',
+      SOLANA: 'solana',
+      BASE: 'base',
+      ARBITRUM: 'arbitrum',
+      BINANCE: 'binance',
+      WALLET_CONNECT: 'walletConnect'
+    },
     THEME: { LIGHT: 'light', DARK: 'dark' },
     LOGIN: { LAYOUT: { SPLIT: 'split', SIMPLE: 'simple' } },
     CONNECTED: {

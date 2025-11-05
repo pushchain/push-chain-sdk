@@ -1,3 +1,9 @@
+@pushchain/ui-kit@2.0.13 (2025-10-23)
+
+- feat: add bnb and other fixes
+
+---
+
 @pushchain/ui-kit@2.0.11 (2025-10-21)
 
 - feat: Read Only feature implementation

@@ -196,7 +196,7 @@ const LoginModal: FC<LoginModalProps> = ({
               <MainFrameContainer>
                 <iframe
                   src={`
-                    ${WALLET_CONFIG_URL[config.network]}/auth?app=${window.location.origin}&version=2
+                    ${WALLET_CONFIG_URL[config.network]}/auth?app=${window.location.origin}&version=3
                   `}
                   allow="clipboard-write; clipboard-read; publickey-credentials-create; publickey-credentials-get; display-capture; *"
                   ref={iframeRef}
@@ -429,6 +429,7 @@ const TextContainer = styled.div<{
   font-size: 16px;
   font-weight: 400;
   line-height: 22px;
+  text-align: left;
   color: ${({ $themeMode, $textColor }) =>
     $themeMode === PushUI.CONSTANTS.THEME.LIGHT
       ? $textColor
