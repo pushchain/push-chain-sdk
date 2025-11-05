@@ -284,7 +284,7 @@ async function testSendTxWithFundsUSDT(
   const usdt = client.moveable.token.USDT;
 
   const evm = new EvmClient({
-    rpcUrls: [EVM_RPC],
+    rpcUrls: CHAIN_INFO[config.chain].defaultRPC,
   });
   const usdtBal: bigint = await evm.readContract<bigint>({
     abi: erc20Abi,
@@ -623,7 +623,7 @@ async function testFeeAbstraction(
   const txHash = await walletClient.sendTransaction({
     to: newAccount.address,
     chain: config.viemChain,
-    value: PushChain.utils.helpers.parseUnits('0.00029', 18),
+    value: PushChain.utils.helpers.parseUnits('0.00031', 18),
   });
 
   // Wait for transaction to be mined
@@ -2711,7 +2711,9 @@ describe('PushChain', () => {
           from: pushClient.payable.token.USDT,
           to: pushClient.moveable.token.ETH,
         })
-      ).rejects.toThrow(/only supported on Ethereum Mainnet and Sepolia/);
+      ).rejects.toThrow(
+        'getConversionQuote is only supported on Ethereum Sepolia for now'
+      );
     });
 
     it('sepolia: WETH -> WETH should fail gracefully (no direct pool)', async () => {
