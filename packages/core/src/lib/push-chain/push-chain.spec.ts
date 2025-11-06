@@ -17,7 +17,7 @@ import {
 } from 'viem';
 import { sepolia, arbitrumSepolia, baseSepolia, bscTestnet } from 'viem/chains';
 import { keccak256, toBytes } from 'viem';
-import { MulticallCall } from '../orchestrator/orchestrator.types';
+import { MultiCall } from '../orchestrator/orchestrator.types';
 import { CHAIN_INFO, SYNTHETIC_PUSH_ERC20 } from '../constants/chain';
 import { CHAIN } from '../constants/enums';
 import { Keypair, PublicKey, Connection } from '@solana/web3.js';
@@ -587,7 +587,7 @@ async function testMulticall(
     functionName: 'increment',
   }) as `0x${string}`;
 
-  const calls: MulticallCall[] = [
+  const calls: MultiCall[] = [
     { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
     { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
   ];
@@ -815,7 +815,7 @@ describe('PushChain', () => {
           functionName: 'increment',
         });
 
-        const calls: MulticallCall[] = [
+        const calls: MultiCall[] = [
           {
             to: COUNTER_ADDRESS,
             value: BigInt(0),
@@ -841,7 +841,7 @@ describe('PushChain', () => {
           functionName: 'increment',
         }) as `0x${string}`;
 
-        const calls: MulticallCall[] = [
+        const calls: MultiCall[] = [
           { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
           { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
         ];
@@ -887,7 +887,7 @@ describe('PushChain', () => {
           functionName: 'increment',
         });
 
-        const calls: MulticallCall[] = [
+        const calls: MultiCall[] = [
           {
             to: COUNTER_ADDRESS,
             value: BigInt(0),
@@ -912,7 +912,7 @@ describe('PushChain', () => {
           functionName: 'increment',
         }) as `0x${string}`;
 
-        const calls: MulticallCall[] = [
+        const calls: MultiCall[] = [
           { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
           { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
         ];
