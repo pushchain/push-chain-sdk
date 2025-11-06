@@ -204,6 +204,10 @@ async function testSendFundsUSDT(
     pusdt =
       SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
         .USDT_ARB;
+  } else if (config.chain === CHAIN.BNB_TESTNET) {
+    pusdt = SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT].USDT_BNB;
+  } else if (config.chain === CHAIN.BASE_SEPOLIA) {
+    pusdt = SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT].USDT_BASE;
   } else {
     throw new Error('USDT address not on Push Chain');
   }
@@ -248,6 +252,10 @@ async function testSendFundsETH(
     pETH_ADDRESS =
       SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
         .pETH_ARB;
+  } else if (config.chain === CHAIN.BNB_TESTNET) {
+    pETH_ADDRESS = SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT].pETH_BNB;
+  } else if (config.chain === CHAIN.BASE_SEPOLIA) {
+    pETH_ADDRESS = SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT].pETH_BASE;
   } else {
     throw new Error('pETH address not on Push Chain');
   }
@@ -284,7 +292,7 @@ async function testSendTxWithFundsUSDT(
   const usdt = client.moveable.token.USDT;
 
   const evm = new EvmClient({
-    rpcUrls: [EVM_RPC],
+    rpcUrls: [config.rpcUrl],
   });
   const usdtBal: bigint = await evm.readContract<bigint>({
     abi: erc20Abi,
@@ -517,15 +525,15 @@ async function testSendTxWithFundsPayGasUSDT(
     to: COUNTER_ADDRESS,
     value: BigInt(0),
     data,
+    payGasWith: {
+      token: client.payable.token.USDC,
+      // token: client.payable.token.USDT,
+      // TODO: What happens if minAmountOut is `undefined`.
+      // minAmountOut: minAmountOut,
+    },
     funds: {
       amount: bridgeAmount,
       token: usdt,
-      payWith: {
-        token: client.payable.token.USDC,
-        // token: client.payable.token.USDT,
-        // TODO: What happens if minAmountOut is `undefined`.
-        // minAmountOut: minAmountOut,
-      },
     },
   });
 
@@ -2287,7 +2295,7 @@ describe('PushChain', () => {
         expect(afterCount).toBe(beforeCount + BigInt(1));
       }, 300000);
 
-      it('sendTxWithFunds payWith USDT should fail on Solana Devnet', async () => {
+      it('sendTxWithFunds payGasWith USDT should fail on Solana Devnet', async () => {
         const bridgeAmount = BigInt(1);
         const COUNTER_ABI = [
           {
@@ -2312,12 +2320,12 @@ describe('PushChain', () => {
             to: COUNTER_ADDRESS,
             value: BigInt(0),
             data,
+            payGasWith: {
+              token: client.payable.token.USDC,
+            },
             funds: {
               amount: bridgeAmount,
               token: client.moveable.token.USDT,
-              payWith: {
-                token: client.payable.token.USDC,
-              },
             },
           })
         ).rejects.toThrow('Pay-with token is not supported on Solana');
