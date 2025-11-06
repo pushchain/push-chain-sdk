@@ -17,7 +17,7 @@ import {
 } from 'viem';
 import { sepolia, arbitrumSepolia, baseSepolia, bscTestnet } from 'viem/chains';
 import { keccak256, toBytes } from 'viem';
-import { MulticallCall } from '../orchestrator/orchestrator.types';
+import { MultiCall } from '../orchestrator/orchestrator.types';
 import { CHAIN_INFO, SYNTHETIC_PUSH_ERC20 } from '../constants/chain';
 import { CHAIN } from '../constants/enums';
 import {
@@ -197,7 +197,7 @@ async function testSendFundsUSDT(
   }
 
   const amount = BigInt(1);
-  const recipient = '0x7AEE1699FeE2C906251863D24D35B3dEbe0932EC';
+  const recipient = '0x0000000000000000000000000000000000042101';
 
   // pUSDT (USDT.eth) balance on Push chain should increase for the recipient
   const pushChainClient = new EvmClient({
@@ -353,7 +353,12 @@ async function testSendTxWithFundsUSDT(
     },
     { onlyCompute: true }
   );
-  const pcBeforeUEA = await pushEvmClient.getBalance(executorInfo.address);
+
+  const pusdt = PushChain.utils.tokens.toSyntheticAddress(usdt);
+  const balanceBeforepUSDTETH = await pushEvmClient.getErc20Balance({
+    tokenAddress: pusdt,
+    ownerAddress: executorInfo.address,
+  });
 
   const resUSDT = await client.universal.sendTransaction({
     to: COUNTER_ADDRESS,
@@ -375,8 +380,13 @@ async function testSendTxWithFundsUSDT(
     functionName: 'countPC',
   })) as bigint;
 
-  const pcAfterUEA = await pushEvmClient.getBalance(executorInfo.address);
+  const balanceAfterpUSDTETH = await pushEvmClient.getErc20Balance({
+    tokenAddress: pusdt,
+    ownerAddress: executorInfo.address,
+  });
 
+  // UEA USDT balance ++
+  expect(balanceAfterpUSDTETH > balanceBeforepUSDTETH).toBe(true);
   expect(afterCount).toBe(beforeCount + BigInt(1));
   console.log(`[${config.name}] Counter incremented successfully`);
 }
@@ -535,7 +545,7 @@ async function testMulticall(
     functionName: 'increment',
   }) as `0x${string}`;
 
-  const calls: MulticallCall[] = [
+  const calls: MultiCall[] = [
     { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
     { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
   ];
@@ -895,7 +905,7 @@ describe('PushChain', () => {
           functionName: 'increment',
         });
 
-        const calls: MulticallCall[] = [
+        const calls: MultiCall[] = [
           {
             to: COUNTER_ADDRESS,
             value: BigInt(0),
@@ -921,7 +931,7 @@ describe('PushChain', () => {
           functionName: 'increment',
         }) as `0x${string}`;
 
-        const calls: MulticallCall[] = [
+        const calls: MultiCall[] = [
           { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
           { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
         ];
@@ -967,7 +977,7 @@ describe('PushChain', () => {
           functionName: 'increment',
         });
 
-        const calls: MulticallCall[] = [
+        const calls: MultiCall[] = [
           {
             to: COUNTER_ADDRESS,
             value: BigInt(0),
@@ -992,7 +1002,7 @@ describe('PushChain', () => {
           functionName: 'increment',
         }) as `0x${string}`;
 
-        const calls: MulticallCall[] = [
+        const calls: MultiCall[] = [
           { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
           { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
         ];
