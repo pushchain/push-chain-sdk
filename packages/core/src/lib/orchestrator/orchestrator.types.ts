@@ -51,10 +51,13 @@ export type ExecuteParams = {
   deadline?: bigint;
 
   /**
-   * For funding gas fees. If undefined (default), gas fees will be paid in the native token.
-   * If specified, the user can select which token to pay gas fees from.
+   * Optional: pay gas in a specific token. If not provided, use `token` (bridge token) when present; otherwise, native token.
    */
-  fundGas?: { chainToken: `0x${string}` };
+  payGasWith?: {
+    token?: import('../constants').PayableToken; // e.g., client.payable.token.USDT
+    slippageBps?: number; // e.g., 100 = 1%
+    minAmountOut?: bigint | string; // optional min ETH out (wei)
+  };
 
   /**
    * Optional funds movement from origin chain to Push Chain (FUNDS_TX).
@@ -68,14 +71,6 @@ export type ExecuteParams = {
   funds?: {
     amount: bigint; // smallest units of the token
     token?: import('../constants').MoveableToken; // if omitted, defaults to native token for origin chain
-    /**
-     * Optional: pay gas in a specific token. If not provided, use `token` (bridge token) when present; otherwise, native token.
-     */
-    payWith?: {
-      token?: import('../constants').PayableToken; // e.g., client.payable.token.USDT
-      slippageBps?: number; // e.g., 100 = 1%
-      minAmountOut?: bigint | string; // optional min ETH out (wei)
-    };
   };
 };
 
