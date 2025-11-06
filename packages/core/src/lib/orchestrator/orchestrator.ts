@@ -22,9 +22,14 @@ import {
   UniversalAccount,
   UniversalSigner,
 } from '../universal/universal.types';
-import { ExecuteParams } from './orchestrator.types';
+import { ExecuteParams, MultiCall } from './orchestrator.types';
 import { EvmClient } from '../vm-client/evm-client';
-import { CHAIN_INFO, UEA_PROXY, VM_NAMESPACE } from '../constants/chain';
+import {
+  CHAIN_INFO,
+  SYNTHETIC_PUSH_ERC20,
+  UEA_PROXY,
+  VM_NAMESPACE,
+} from '../constants/chain';
 import {
   FACTORY_V1,
   UEA_SVM,
@@ -125,15 +130,21 @@ export class Orchestrator {
       // - SVM (Solana Devnet): pushsolanagateway
       if (execute.funds) {
         if (!execute.data || execute.data === '0x') {
-          // Disallow user-provided `value` for funds-only bridging. The SDK derives
-          // origin-chain msg.value automatically from the funds input:
-          //  - Native path: msg.value = bridgeAmount
-          //  - ERC-20 path: msg.value = 0
-          if (execute.value !== undefined && execute.value !== BigInt(0)) {
-            throw new Error(
-              'Do not set `value` when using funds bridging; the SDK sets origin msg.value from `funds.amount` automatically'
-            );
-          }
+          // @@@@@@@@@@@@@@@
+          // @@@@@@@@@@@@@@@
+          // @@@@@@@@@@@@@@@
+          // @@@@@@@@@@@@@@@
+          // @@@@@@@@@@@@@@@
+          // @@@@@@@@@@@@@@@
+          // // Disallow user-provided `value` for funds-only bridging. The SDK derives
+          // // origin-chain msg.value automatically from the funds input:
+          // //  - Native path: msg.value = bridgeAmount
+          // //  - ERC-20 path: msg.value = 0
+          // if (execute.value !== undefined && execute.value !== BigInt(0)) {
+          //   throw new Error(
+          //     'Do not set `value` when using funds bridging; the SDK sets origin msg.value from `funds.amount` automatically'
+          //   );
+          // }
           const chain = this.universalSigner.account.chain;
           const { vm } = CHAIN_INFO[chain];
           if (
@@ -260,6 +271,16 @@ export class Orchestrator {
                 revertCFG,
                 '0x',
               ]);
+              // @@@@@@ native. sendGas. temp
+              // txHash = await evmClient.writeContract({
+              //   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
+              //   address: gatewayAddress as `0x${string}`,
+              //   functionName: 'sendTxWithGas',
+              //   args: [universalPayload as unknown as never, revertCFG, '0x'],
+              //   signer: this.universalSigner,
+              //   value: nativeAmount,
+              // })
+
               txHash = await evmClient.writeContract({
                 abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                 address: gatewayAddress,
@@ -1089,59 +1110,7 @@ export class Orchestrator {
       // Support multicall payload encoding when execute.data is an array
       let payloadData: `0x${string}`;
       if (Array.isArray(execute.data)) {
-        // Gate multicall to supported testnets
-        const allowedChains = [
-          CHAIN.ETHEREUM_SEPOLIA,
-          CHAIN.ARBITRUM_SEPOLIA,
-          CHAIN.BASE_SEPOLIA,
-          CHAIN.SOLANA_DEVNET,
-        ];
-        if (!allowedChains.includes(this.universalSigner.account.chain)) {
-          throw new Error(
-            'Multicall is only enabled for Ethereum Sepolia, Arbitrum Sepolia, Base Sepolia, and Solana Devnet'
-          );
-        }
-
-        // For multicall, `to` must be the executor account (UEA) of the sender
-        // i.e., PushChain.universal.account
-        const expectedUea = this.computeUEAOffchain();
-        const toAddr = getAddress(execute.to as `0x${string}`);
-        if (toAddr !== getAddress(expectedUea)) {
-          throw new Error(
-            'Multicall requires `to` to be the executor account (UEA) of the sender.'
-          );
-        }
-
-        // Normalize and validate calls
-        const normalizedCalls = execute.data.map((c) => ({
-          to: getAddress(c.to as `0x${string}`),
-          value: c.value,
-          data: c.data as `0x${string}`,
-        }));
-
-        // bytes4(keccak256("UEA_MULTICALL")) selector, e.g., 0x4e2d2ff6-like prefix
-        const selector = keccak256(toBytes('UEA_MULTICALL')).slice(
-          0,
-          10
-        ) as `0x${string}`;
-
-        // abi.encode(Call[]), where Call = { address to; uint256 value; bytes data; }
-        const encodedCalls = encodeAbiParameters(
-          [
-            {
-              type: 'tuple[]',
-              components: [
-                { name: 'to', type: 'address' },
-                { name: 'value', type: 'uint256' },
-                { name: 'data', type: 'bytes' },
-              ],
-            },
-          ],
-          [normalizedCalls]
-        );
-
-        // Concatenate prefix selector with encodedCalls without 0x
-        payloadData = (selector + encodedCalls.slice(2)) as `0x${string}`;
+        payloadData = this._buildMulticallPayloadData(execute.to, execute.data);
       } else {
         payloadData = (execute.data || '0x') as `0x${string}`;
       }
@@ -1801,6 +1770,64 @@ export class Orchestrator {
     return { address: computedAddress, deployed: byteCode !== undefined };
   }
 
+  private _buildMulticallPayloadData(
+    to: `0x${string}`,
+    data: MultiCall[]
+  ): `0x${string}` {
+    const allowedChains = [
+      CHAIN.ETHEREUM_SEPOLIA,
+      CHAIN.ARBITRUM_SEPOLIA,
+      CHAIN.BASE_SEPOLIA,
+      CHAIN.SOLANA_DEVNET,
+    ];
+    if (!allowedChains.includes(this.universalSigner.account.chain)) {
+      throw new Error(
+        'Multicall is only enabled for Ethereum Sepolia, Arbitrum Sepolia, Base Sepolia, and Solana Devnet'
+      );
+    }
+
+    // For multicall, `to` must be the executor account (UEA) of the sender
+    // i.e., PushChain.universal.account
+    const expectedUea = this.computeUEAOffchain();
+    const toAddr = getAddress(to as `0x${string}`);
+    // if (toAddr !== getAddress(expectedUea)) {
+    //   throw new Error(
+    //     'Multicall requires `to` to be the executor account (UEA) of the sender.'
+    //   );
+    // }
+
+    // Normalize and validate calls
+    const normalizedCalls = data.map((c: MultiCall) => ({
+      to: getAddress(c.to),
+      value: c.value,
+      data: c.data,
+    }));
+
+    // bytes4(keccak256("UEA_MULTICALL")) selector, e.g., 0x4e2d2ff6-like prefix
+    const selector = keccak256(toBytes('UEA_MULTICALL')).slice(
+      0,
+      10
+    ) as `0x${string}`;
+
+    // abi.encode(Call[]), where Call = { address to; uint256 value; bytes data; }
+    const encodedCalls = encodeAbiParameters(
+      [
+        {
+          type: 'tuple[]',
+          components: [
+            { name: 'to', type: 'address' },
+            { name: 'value', type: 'uint256' },
+            { name: 'data', type: 'bytes' },
+          ],
+        },
+      ],
+      [normalizedCalls]
+    );
+
+    // Concatenate prefix selector with encodedCalls without 0x
+    return (selector + encodedCalls.slice(2)) as `0x${string}`;
+  }
+
   computeUEAOffchain(): `0x${string}` {
     const { chain, address } = this.universalSigner.account;
     const { vm, chainId } = CHAIN_INFO[chain];
@@ -2216,18 +2243,6 @@ export class Orchestrator {
     const payloadValue = execute.value ?? BigInt(0);
     const gasAmount = execute.value ?? BigInt(0);
 
-    // @@@@@@@@@@@@
-    // const universalPayload = {
-    //   to: execute.to,
-    //   value: payloadValue,
-    //   data: execute.data || '0x',
-    //   gasLimit: gasEstimate,
-    //   maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
-    //   maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
-    //   nonce,
-    //   deadline: execute.deadline || BigInt(9999999999),
-    //   vType: VerificationType.universalTxVerification,
-    // } as unknown as never;
     if (type === 'sendTxWithFunds') {
       if (fundsValue) throw new Error('fundsValue property must be empty');
       const universalPayload = {
@@ -2252,10 +2267,24 @@ export class Orchestrator {
         functionName: 'transfer',
         args: [execute.to, fundsValue],
       });
+      // @@@ temp, rename later
+      // Make this dynamic, payable
+      // const pushChainTo = SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT].USDT_ETH;
+      const nativeTo = '0x0000000000000000000000000000000000042101'
+      const erc20To = zeroAddress;
+      const nativeData = '0x';
+      // const erc20To =
+      const pushChainTo = SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT].USDT_ETH;
+      const nativeValue = fundsValue;
+      const erc20Value = payloadValue
       const universalPayload = {
-        to: zeroAddress, // We can't simply do `0x` because we will get an error when eip712 signing the transaction.
-        value: payloadValue,
-        data,
+        // to: nativeTo, // We can't simply do `0x` because we will get an error when eip712 signing the transaction.
+        to: zeroAddress,
+        value: erc20Value,
+        // data: '0x',
+        data: this._buildMulticallPayloadData(execute.to as `0x${string}`, [
+          { to: pushChainTo, value: payloadValue, data },
+        ]),
         gasLimit: gasEstimate,
         maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
         maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
