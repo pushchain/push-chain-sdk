@@ -155,7 +155,7 @@ const RAW_HOOKS: {
   }),
   [PROGRESS_HOOK.SEND_TX_06_04]: (current: number, required: number) => ({
     id: PROGRESS_HOOK.SEND_TX_06_04,
-    title: `Confirmation #${current} Received`,
+    title: `Confirmation ${current}/${required} Received`,
     message: `${current}/${required} confirmations received`,
     response: null,
     level: 'INFO',
