@@ -1,6 +1,6 @@
 {
   "name": "@pushchain/ui-kit",
-  "version": "2.0.15",
+  "version": "2.0.16",
   "homepage": "https://push.org",
   "keywords": [
     "pushchain",
@@ -19,7 +19,7 @@
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
     "@metamask/sdk": "^0.32.0",
-    "@pushchain/core": "^2.1.5",
+    "@pushchain/core": "^2.1.8",
     "@solana/web3.js": "^1.98.2",
     "@walletconnect/ethereum-provider": "^2.21.5",
     "buffer": "^6.0.3",
