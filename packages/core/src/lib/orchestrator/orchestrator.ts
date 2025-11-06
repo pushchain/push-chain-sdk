@@ -1779,10 +1779,11 @@ export class Orchestrator {
       CHAIN.ARBITRUM_SEPOLIA,
       CHAIN.BASE_SEPOLIA,
       CHAIN.SOLANA_DEVNET,
+      CHAIN.BNB_TESTNET
     ];
     if (!allowedChains.includes(this.universalSigner.account.chain)) {
       throw new Error(
-        'Multicall is only enabled for Ethereum Sepolia, Arbitrum Sepolia, Base Sepolia, and Solana Devnet'
+        'Multicall is only enabled for Ethereum Sepolia, Arbitrum Sepolia, Base Sepolia, Binance Smart Chain and Solana Devnet'
       );
     }
 
