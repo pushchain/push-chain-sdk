@@ -430,10 +430,12 @@ export class SvmClient {
         //    (handles case where RPC returns null for confirmations on finalized txs)
         const hasEnoughConfirmations =
           status.confirmations != null && status.confirmations >= confirmations;
-        const isSuccessfullyFinalized =
-          status.err === null && status.confirmationStatus !== null;
+        const isFinalized =
+          status.err === null &&
+          (status.confirmationStatus === 'finalized' ||
+            status.confirmations === null);
 
-        if (hasEnoughConfirmations || isSuccessfullyFinalized) {
+        if (hasEnoughConfirmations || isFinalized) {
           return;
         }
       }

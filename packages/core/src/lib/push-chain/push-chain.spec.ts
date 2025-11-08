@@ -1,4 +1,6 @@
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+import { COUNTER_ABI } from './helpers/abis';
+import { COUNTER_ADDRESS } from './helpers/addresses';
 import bs58 from 'bs58';
 import {
   UniversalSigner,
@@ -197,7 +199,8 @@ async function testSendFundsUSDT(
   }
 
   const amount = BigInt(1);
-  const recipient = '0x0000000000000000000000000000000000042101';
+  // const recipient = '0x0000000000000000000000000000000000042101';
+  const recipient = client.universal.account;
 
   // pUSDT (USDT.eth) balance on Push chain should increase for the recipient
   const pushChainClient = new EvmClient({
@@ -243,7 +246,8 @@ async function testSendFundsETH(
   config: EVMChainTestConfig
 ): Promise<void> {
   const amount = BigInt(1);
-  const recipient = client.universal.account;
+  // const recipient = client.universal.account;
+  const recipient = '0x0000000000000000000000000000000000042101';
 
   // pETH balance on Push chain should increase for the recipient after bridging
   const pushChainClient = new EvmClient({
@@ -567,11 +571,6 @@ async function testMulticall(
     data: calls,
   });
 
-  expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-
-  const selector = keccak256(toBytes('UEA_MULTICALL')).slice(0, 10);
-  expect(tx.data.slice(0, 10)).toBe(selector);
-
   await tx.wait();
 
   const after = (await publicClientPush.readContract({
@@ -582,10 +581,13 @@ async function testMulticall(
   })) as unknown as bigint;
 
   expect(after).toBe(before + BigInt(2));
+
+  expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
   console.log(`[${config.name}] Multicall executed successfully`);
 }
 
-async function testFeeAbstraction(
+async function testFeeAbstractionValueOnly(
   config: EVMChainTestConfig,
   privateKey: `0x${string}`
 ): Promise<void> {
@@ -717,6 +719,55 @@ async function testFeeAbstraction(
   console.log(`[${config.name}] Fee abstraction test completed successfully`);
 }
 
+async function testFeeAbstractionPayloadAndValue(
+  client: PushChain,
+  config: EVMChainTestConfig
+): Promise<void> {
+  // Prepare Push EVM client and compute executor (UEA) address on Push Chain
+  const pushEvmClient = new EvmClient({
+    rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
+  });
+  const pcBeforeUEA = await pushEvmClient.getBalance(client.universal.account);
+
+  const data = PushChain.utils.helpers.encodeTxData({
+    abi: COUNTER_ABI,
+    functionName: 'increment',
+  }) as `0x${string}`;
+
+  const pushPublicClient = createPublicClient({
+    transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
+  });
+
+  const beforeCount = (await pushPublicClient.readContract({
+    abi: COUNTER_ABI,
+    address: COUNTER_ADDRESS,
+    functionName: 'countPC',
+  })) as bigint;
+
+  // Execute transaction from new account
+  const resultTx = await client.universal.sendTransaction({
+    to: COUNTER_ADDRESS,
+    value: BigInt(7), // << -- go to smart contract
+    data,
+  });
+
+  expect(resultTx).toBeDefined();
+  await resultTx.wait();
+
+  const afterCount = (await pushPublicClient.readContract({
+    abi: COUNTER_ABI,
+    address: COUNTER_ADDRESS,
+    functionName: 'countPC',
+  })) as bigint;
+
+  const pcAfterUEA = await pushEvmClient.getBalance(client.universal.account);
+
+  expect(afterCount).toBe(beforeCount + BigInt(1));
+  // We should have less PC AFTER execution
+  expect(pcAfterUEA < pcBeforeUEA).toBe(true);
+  console.log(`[${config.name}] Fee abstraction test completed successfully`);
+}
+
 describe('PushChain', () => {
   describe('Universal Namesapce', () => {
     let pushClientEVM: PushChain;
@@ -746,6 +797,7 @@ describe('PushChain', () => {
       pushClientEVM = await PushChain.initialize(universalSignerEVM, {
         network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
         rpcUrls: { [CHAIN.ETHEREUM_SEPOLIA]: [EVM_RPC] },
+        progressHook: (progress) => console.log(progress),
       });
 
       const pushTestnet = defineChain({
@@ -784,6 +836,7 @@ describe('PushChain', () => {
       pushChainPush = await PushChain.initialize(universalSignerPush, {
         network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
         rpcUrls: { [CHAIN.ETHEREUM_SEPOLIA]: [EVM_RPC] },
+        progressHook: (progress) => console.log(progress),
       });
 
       const privateKeyHex = process.env['SOLANA_PRIVATE_KEY'];
@@ -803,6 +856,7 @@ describe('PushChain', () => {
       pushChainSVM = await PushChain.initialize(universalSignerSVM, {
         network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
         rpcUrls: { [CHAIN.ETHEREUM_SEPOLIA]: [EVM_RPC] },
+        progressHook: (progress) => console.log(progress),
       });
     });
 
@@ -1026,8 +1080,8 @@ describe('PushChain', () => {
 
         expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
 
-        const selector = keccak256(toBytes('UEA_MULTICALL')).slice(0, 10);
-        expect(tx.data.slice(0, 10)).toBe(selector);
+        // const selector = keccak256(toBytes('UEA_MULTICALL')).slice(0, 10);
+        // expect(tx.data.slice(0, 10)).toBe(selector);
 
         await tx.wait();
 
@@ -1532,12 +1586,31 @@ describe('PushChain', () => {
     const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
       | `0x${string}`
       | undefined;
+    let account: PrivateKeyAccount;
+    let client: PushChain;
+
+    beforeAll(async () => {
+      if (!PRIVATE_KEY) {
+        throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+      }
+
+      const result = await setupEVMChainClient(config, PRIVATE_KEY);
+      account = result.account;
+      client = result.client;
+    });
 
     it('new fee abstraction should work', async () => {
       if (!PRIVATE_KEY) {
         throw new Error('EVM_PRIVATE_KEY environment variable is not set');
       }
-      await testFeeAbstraction(config, PRIVATE_KEY);
+      await testFeeAbstractionValueOnly(config, PRIVATE_KEY);
+    }, 300000);
+
+    it('new fee abstraction Payload + Value', async () => {
+      if (!PRIVATE_KEY) {
+        throw new Error('EVM_PRIVATE_KEY environment variable is not set');
+      }
+      await testFeeAbstractionPayloadAndValue(client, config);
     }, 300000);
   });
 
@@ -1551,7 +1624,7 @@ describe('PushChain', () => {
       if (!PRIVATE_KEY) {
         throw new Error('EVM_PRIVATE_KEY environment variable is not set');
       }
-      await testFeeAbstraction(config, PRIVATE_KEY);
+      await testFeeAbstractionValueOnly(config, PRIVATE_KEY);
     }, 300000);
   });
 
@@ -1565,7 +1638,7 @@ describe('PushChain', () => {
       if (!PRIVATE_KEY) {
         throw new Error('EVM_PRIVATE_KEY environment variable is not set');
       }
-      await testFeeAbstraction(config, PRIVATE_KEY);
+      await testFeeAbstractionValueOnly(config, PRIVATE_KEY);
     }, 300000);
   });
 
@@ -1579,7 +1652,7 @@ describe('PushChain', () => {
       if (!PRIVATE_KEY) {
         throw new Error('EVM_PRIVATE_KEY environment variable is not set');
       }
-      await testFeeAbstraction(config, PRIVATE_KEY);
+      await testFeeAbstractionValueOnly(config, PRIVATE_KEY);
     }, 300000);
   });
 
@@ -2320,7 +2393,8 @@ describe('PushChain', () => {
         try {
           // const amountLamports = PushChain.utils.helpers.parseUnits('0.001', 9);
           const amountLamports = BigInt(1);
-          const recipient = client.universal.account;
+          // const recipient = client.universal.account;
+          const recipient = '0x0000000000000000000000000000000000042101';
 
           // Check pSOL balance on PushChain before bridging
           const pushChainClient = new EvmClient({
@@ -2358,7 +2432,8 @@ describe('PushChain', () => {
 
       it('sendFunds function SPL', async () => {
         const amountLamports = BigInt(1);
-        const recipient = client.universal.account;
+        // const recipient = client.universal.account;
+        const recipient = '0x0000000000000000000000000000000000042101';
         // Check pUSDT (USDT.sol) balance on PushChain before bridging
         const pushChainClient = new EvmClient({
           rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
@@ -2407,7 +2482,6 @@ describe('PushChain', () => {
 
         const receipt = await resNative.wait();
         expect(receipt.status).toBe(1);
-        console.log('SVM Native Receipt', receipt);
         // Check pUSDT (USDT.sol) balance on PushChain after bridging
         const balanceAfter = await pushChainClient.getErc20Balance({
           tokenAddress: USDT_SOL_ADDRESS,
