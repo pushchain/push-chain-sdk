@@ -281,20 +281,32 @@ export class Orchestrator {
               //   value: nativeAmount,
               // })
 
-              txHash = await evmClient.writeContract({
-                abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
-                address: gatewayAddress,
-                functionName: 'sendTxWithFunds',
-                args: [
-                  tokenAddr,
-                  bridgeAmount,
-                  universalPayload,
-                  revertCFG,
-                  '0x',
-                ],
-                signer: this.universalSigner,
-                value: nativeAmount,
-              });
+              const ueaAddress = this.computeUEAOffchain();
+              if (execute.to === ueaAddress) {
+                txHash = await evmClient.writeContract({
+                  abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
+                  address: gatewayAddress,
+                  functionName: 'sendFunds',
+                  args: [recipient, bridgeToken, bridgeAmount, revertCFG],
+                  signer: this.universalSigner,
+                  value: isNative ? bridgeAmount : BigInt(0),
+                });
+              } else {
+                txHash = await evmClient.writeContract({
+                  abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
+                  address: gatewayAddress,
+                  functionName: 'sendTxWithFunds',
+                  args: [
+                    tokenAddr,
+                    bridgeAmount,
+                    universalPayload,
+                    revertCFG,
+                    '0x',
+                  ],
+                  signer: this.universalSigner,
+                  value: nativeAmount,
+                });
+              }
 
               // txHash = await evmClient.writeContract({
               //   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
@@ -329,7 +341,9 @@ export class Orchestrator {
               evmClient,
               gatewayAddress,
               txHash,
-              'sendFunds'
+              execute.to === ueaAddress ? 'sendFunds' : 'sendTxWithFunds'
+              // 'sendFunds'
+              // 'sendTxWithFunds'
             );
             const tx = await evmClient.getTransaction(txHash);
             return await this.transformToUniversalTxResponse(tx);
@@ -377,31 +391,68 @@ export class Orchestrator {
                 [stringToBytes('whitelist')],
                 programId
               );
-              txSignature = await svmClient.writeContract({
-                abi: SVM_GATEWAY_IDL,
-                address: programId.toBase58(),
-                functionName: 'sendFunds', // -> unified sendFunds(recipient, bridge_token, bridge_amount, revert_cfg)
-                args: [
-                  recipientEvm20,
-                  PublicKey.default,
+              //////// @@@@@@@
+              //////// @@@@@@@
+              //////// @@@@@@@
+              //////// @@@@@@@
+              //////// @@@@@@@
+              //////// @@@@@@@
+              //////// @@@@@@@
+              //////// @@@@@@@
+              //////// @@@@@@@
+              // DO THE SAME AS FOR BELOW, BUT NOW FOR NATIVE.
+              // for sendTxWithFunds multicall
+              const ueaAddress = this.computeUEAOffchain();
+              if (execute.to === ueaAddress) {
+                txSignature = await svmClient.writeContract({
+                  abi: SVM_GATEWAY_IDL,
+                  address: programId.toBase58(),
+                  functionName: 'sendFunds', // -> unified sendFunds(recipient, bridge_token, bridge_amount, revert_cfg)
+                  args: [
+                    recipientEvm20,
+                    PublicKey.default,
+                    bridgeAmount,
+                    revertSvm,
+                  ],
+                  signer: this.universalSigner,
+                  accounts: {
+                    config: configPda,
+                    vault: vaultPda,
+                    user: userPk,
+                    tokenWhitelist: whitelistPdaLocal,
+                    userTokenAccount: userPk,
+                    gatewayTokenAccount: vaultPda,
+                    bridgeToken: PublicKey.default,
+                    tokenProgram: new PublicKey(
+                      'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
+                    ),
+                    systemProgram: SystemProgram.programId,
+                  },
+                });
+              } else {
+                const { nonce } = await this.getUeaStatusAndNonce();
+                const { payload: universalPayload } =
+                  await this.buildGatewayPayloadAndGas(
+                    execute,
+                    nonce,
+                    'sendFunds',
+                    execute.funds.amount
+                  );
+                const ueaBalanceForGas = await this.pushClient.getBalance(
+                  ueaAddress
+                );
+                txSignature = await this._sendSVMTxWithFunds({
+                  execute,
+                  mechanism: execute.funds.token.mechanism,
+                  universalPayload,
                   bridgeAmount,
-                  revertSvm,
-                ],
-                signer: this.universalSigner,
-                accounts: {
-                  config: configPda,
-                  vault: vaultPda,
-                  user: userPk,
-                  tokenWhitelist: whitelistPdaLocal,
-                  userTokenAccount: userPk,
-                  gatewayTokenAccount: vaultPda,
-                  bridgeToken: PublicKey.default,
-                  tokenProgram: new PublicKey(
-                    'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
+                  nativeAmount: await this.calculateNativeAmountForDeposit(
+                    chain,
+                    BigInt(0),
+                    ueaBalanceForGas
                   ),
-                  systemProgram: SystemProgram.programId,
-                },
-              });
+                });
+              }
             } else if (execute.funds.token.mechanism === 'approve') {
               // SPL token funds-only (requires pre-existing ATAs)
               const mintPk = new PublicKey(execute.funds.token.address);
@@ -429,24 +480,51 @@ export class Orchestrator {
                 ASSOCIATED_TOKEN_PROGRAM_ID
               )[0];
 
-              txSignature = await svmClient.writeContract({
-                abi: SVM_GATEWAY_IDL,
-                address: programId.toBase58(),
-                functionName: 'sendFunds',
-                args: [recipientEvm20, mintPk, bridgeAmount, revertSvm],
-                signer: this.universalSigner,
-                accounts: {
-                  config: configPda,
-                  vault: vaultPda,
-                  tokenWhitelist: whitelistPda,
-                  userTokenAccount: userAta,
-                  gatewayTokenAccount: vaultAta,
-                  user: userPk,
-                  bridgeToken: mintPk,
-                  tokenProgram: TOKEN_PROGRAM_ID,
-                  systemProgram: SystemProgram.programId,
-                },
-              });
+              const ueaAddress = this.computeUEAOffchain();
+              if (execute.to === ueaAddress) {
+                // vitalik
+                txSignature = await svmClient.writeContract({
+                  abi: SVM_GATEWAY_IDL,
+                  address: programId.toBase58(),
+                  functionName: 'sendFunds',
+                  args: [recipientEvm20, mintPk, bridgeAmount, revertSvm],
+                  signer: this.universalSigner,
+                  accounts: {
+                    config: configPda,
+                    vault: vaultPda,
+                    tokenWhitelist: whitelistPda,
+                    userTokenAccount: userAta,
+                    gatewayTokenAccount: vaultAta,
+                    user: userPk,
+                    bridgeToken: mintPk,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                    systemProgram: SystemProgram.programId,
+                  },
+                });
+              } else {
+                const { nonce } = await this.getUeaStatusAndNonce();
+                const { payload: universalPayload } =
+                  await this.buildGatewayPayloadAndGas(
+                    execute,
+                    nonce,
+                    'sendFunds',
+                    execute.funds.amount
+                  );
+                const ueaBalanceForGas = await this.pushClient.getBalance(
+                  ueaAddress
+                );
+                txSignature = await this._sendSVMTxWithFunds({
+                  execute,
+                  mechanism: execute.funds.token.mechanism,
+                  universalPayload,
+                  bridgeAmount,
+                  nativeAmount: await this.calculateNativeAmountForDeposit(
+                    chain,
+                    BigInt(0),
+                    ueaBalanceForGas
+                  ),
+                });
+              }
             } else {
               throw new Error('Unsupported token mechanism on Solana');
             }
@@ -828,139 +906,146 @@ export class Orchestrator {
                 });
               }
             } else {
-              // SVM funds+payload path
-              const svmClient = new SvmClient({
-                rpcUrls:
-                  this.rpcUrls[CHAIN.SOLANA_DEVNET] ||
-                  CHAIN_INFO[CHAIN.SOLANA_DEVNET].defaultRPC,
-              });
-              const programId = new PublicKey(SVM_GATEWAY_IDL.address);
-              const [configPda] = PublicKey.findProgramAddressSync(
-                [stringToBytes('config')],
-                programId
-              );
-              const [vaultPda] = PublicKey.findProgramAddressSync(
-                [stringToBytes('vault')],
-                programId
-              );
-              // whitelistPda already computed above
-              const userPk = new PublicKey(
-                this.universalSigner.account.address
-              );
-              const priceUpdatePk = new PublicKey(
-                '7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE'
-              );
-
-              // pay-with-token gas abstraction is not supported on Solana
-              if (execute.funds?.payWith !== undefined) {
-                throw new Error('Pay-with token is not supported on Solana');
-              }
-
-              const isNative =
-                mechanism === 'native' || execute.funds.token.symbol === 'SOL';
-              const revertSvm2 = {
-                fundRecipient: userPk,
-                revertMsg: Buffer.from([]),
-              } as unknown as never;
-              // Compute signature for universal payload on SVM
-              const ueaAddressSvm = this.computeUEAOffchain();
-              const ueaVersion = await this.fetchUEAVersion();
-              const svmSignature = await this.signUniversalPayload(
+              txHash = await this._sendSVMTxWithFunds({
+                execute,
+                mechanism,
                 universalPayload,
-                ueaAddressSvm,
-                ueaVersion
-              );
-              if (isNative) {
-                // Native SOL as bridge + gas
-                const [whitelistPdaLocal] = PublicKey.findProgramAddressSync(
-                  [stringToBytes('whitelist')],
-                  programId
-                );
-                txHash = await svmClient.writeContract({
-                  abi: SVM_GATEWAY_IDL,
-                  address: programId.toBase58(),
-                  functionName: 'sendTxWithFunds',
-                  args: [
-                    PublicKey.default, // bridge_token = default for native SOL
-                    bridgeAmount,
-                    universalPayload,
-                    revertSvm2,
-                    nativeAmount,
-                    Buffer.from(svmSignature),
-                  ],
-                  signer: this.universalSigner,
-                  accounts: {
-                    config: configPda,
-                    vault: vaultPda,
-                    tokenWhitelist: whitelistPdaLocal,
-                    userTokenAccount: userPk, // for native SOL, can be any valid account
-                    gatewayTokenAccount: vaultPda, // for native SOL, can be any valid account
-                    user: userPk,
-                    priceUpdate: priceUpdatePk,
-                    bridgeToken: PublicKey.default,
-                    tokenProgram: new PublicKey(
-                      'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
-                    ),
-                    systemProgram: SystemProgram.programId,
-                  },
-                });
-              } else {
-                // SPL token as bridge + native SOL lamports as gas_amount
-                const mintPk = new PublicKey(execute.funds.token.address);
-                const TOKEN_PROGRAM_ID = new PublicKey(
-                  'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
-                );
-                const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
-                  'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'
-                );
-                const userAta = PublicKey.findProgramAddressSync(
-                  [
-                    userPk.toBuffer(),
-                    TOKEN_PROGRAM_ID.toBuffer(),
-                    mintPk.toBuffer(),
-                  ],
-                  ASSOCIATED_TOKEN_PROGRAM_ID
-                )[0];
-                const vaultAta = PublicKey.findProgramAddressSync(
-                  [
-                    vaultPda.toBuffer(),
-                    TOKEN_PROGRAM_ID.toBuffer(),
-                    mintPk.toBuffer(),
-                  ],
-                  ASSOCIATED_TOKEN_PROGRAM_ID
-                )[0];
+                bridgeAmount,
+                nativeAmount,
+              });
+              // // SVM funds+payload path
+              // const svmClient = new SvmClient({
+              //   rpcUrls:
+              //     this.rpcUrls[CHAIN.SOLANA_DEVNET] ||
+              //     CHAIN_INFO[CHAIN.SOLANA_DEVNET].defaultRPC,
+              // });
+              // const programId = new PublicKey(SVM_GATEWAY_IDL.address);
+              // const [configPda] = PublicKey.findProgramAddressSync(
+              //   [stringToBytes('config')],
+              //   programId
+              // );
+              // const [vaultPda] = PublicKey.findProgramAddressSync(
+              //   [stringToBytes('vault')],
+              //   programId
+              // );
+              // // whitelistPda already computed above
+              // const userPk = new PublicKey(
+              //   this.universalSigner.account.address
+              // );
+              // const priceUpdatePk = new PublicKey(
+              //   '7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE'
+              // );
 
-                const [whitelistPdaLocal] = PublicKey.findProgramAddressSync(
-                  [stringToBytes('whitelist')],
-                  programId
-                );
-                txHash = await svmClient.writeContract({
-                  abi: SVM_GATEWAY_IDL,
-                  address: programId.toBase58(),
-                  functionName: 'sendTxWithFunds',
-                  args: [
-                    mintPk,
-                    bridgeAmount,
-                    universalPayload,
-                    revertSvm2,
-                    nativeAmount,
-                    Buffer.from(svmSignature),
-                  ],
-                  signer: this.universalSigner,
-                  accounts: {
-                    config: configPda,
-                    vault: vaultPda,
-                    tokenWhitelist: whitelistPdaLocal,
-                    userTokenAccount: userAta,
-                    gatewayTokenAccount: vaultAta,
-                    user: userPk,
-                    priceUpdate: priceUpdatePk,
-                    bridgeToken: mintPk,
-                    tokenProgram: TOKEN_PROGRAM_ID,
-                    systemProgram: SystemProgram.programId,
-                  },
-                });
-              }
+              // // pay-with-token gas abstraction is not supported on Solana
+              // if (execute.funds?.payWith !== undefined) {
+              //   throw new Error('Pay-with token is not supported on Solana');
+              // }
+
+              // const isNative =
+              //   mechanism === 'native' || execute.funds.token.symbol === 'SOL';
+              // const revertSvm2 = {
+              //   fundRecipient: userPk,
+              //   revertMsg: Buffer.from([]),
+              // } as unknown as never;
+              // // Compute signature for universal payload on SVM
+              // const ueaAddressSvm = this.computeUEAOffchain();
+              // const ueaVersion = await this.fetchUEAVersion();
+              // const svmSignature = await this.signUniversalPayload(
+              //   universalPayload,
+              //   ueaAddressSvm,
+              //   ueaVersion
+              // );
+              // if (isNative) {
+              //   // Native SOL as bridge + gas
+              //   const [whitelistPdaLocal] = PublicKey.findProgramAddressSync(
+              //     [stringToBytes('whitelist')],
+              //     programId
+              //   );
+              //   txHash = await svmClient.writeContract({
+              //     abi: SVM_GATEWAY_IDL,
+              //     address: programId.toBase58(),
+              //     functionName: 'sendTxWithFunds',
+              //     args: [
+              //       PublicKey.default, // bridge_token = default for native SOL
+              //       bridgeAmount,
+              //       universalPayload,
+              //       revertSvm2,
+              //       nativeAmount,
+              //       Buffer.from(svmSignature),
+              //     ],
+              //     signer: this.universalSigner,
+              //     accounts: {
+              //       config: configPda,
+              //       vault: vaultPda,
+              //       tokenWhitelist: whitelistPdaLocal,
+              //       userTokenAccount: userPk, // for native SOL, can be any valid account
+              //       gatewayTokenAccount: vaultPda, // for native SOL, can be any valid account
+              //       user: userPk,
+              //       priceUpdate: priceUpdatePk,
+              //       bridgeToken: PublicKey.default,
+              //       tokenProgram: new PublicKey(
+              //         'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
+              //       ),
+              //       systemProgram: SystemProgram.programId,
+              //     },
+              //   });
+              // } else {
+              //   // SPL token as bridge + native SOL lamports as gas_amount
+              //   const mintPk = new PublicKey(execute.funds.token.address);
+              //   const TOKEN_PROGRAM_ID = new PublicKey(
+              //     'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
+              //   );
+              //   const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
+              //     'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'
+              //   );
+              //   const userAta = PublicKey.findProgramAddressSync(
+              //     [
+              //       userPk.toBuffer(),
+              //       TOKEN_PROGRAM_ID.toBuffer(),
+              //       mintPk.toBuffer(),
+              //     ],
+              //     ASSOCIATED_TOKEN_PROGRAM_ID
+              //   )[0];
+              //   const vaultAta = PublicKey.findProgramAddressSync(
+              //     [
+              //       vaultPda.toBuffer(),
+              //       TOKEN_PROGRAM_ID.toBuffer(),
+              //       mintPk.toBuffer(),
+              //     ],
+              //     ASSOCIATED_TOKEN_PROGRAM_ID
+              //   )[0];
+
+              //   const [whitelistPdaLocal] = PublicKey.findProgramAddressSync(
+              //     [stringToBytes('whitelist')],
+              //     programId
+              //   );
+              //   txHash = await svmClient.writeContract({
+              //     abi: SVM_GATEWAY_IDL,
+              //     address: programId.toBase58(),
+              //     functionName: 'sendTxWithFunds',
+              //     args: [
+              //       mintPk,
+              //       bridgeAmount,
+              //       universalPayload,
+              //       revertSvm2,
+              //       nativeAmount,
+              //       Buffer.from(svmSignature),
+              //     ],
+              //     signer: this.universalSigner,
+              //     accounts: {
+              //       config: configPda,
+              //       vault: vaultPda,
+              //       tokenWhitelist: whitelistPdaLocal,
+              //       userTokenAccount: userAta,
+              //       gatewayTokenAccount: vaultAta,
+              //       user: userPk,
+              //       priceUpdate: priceUpdatePk,
+              //       bridgeToken: mintPk,
+              //       tokenProgram: TOKEN_PROGRAM_ID,
+              //       systemProgram: SystemProgram.programId,
+              //     },
+              //   });
+              // }
             }
           } catch (err) {
             this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_04);
@@ -1106,6 +1191,7 @@ export class Orchestrator {
       // Fee locking is required if UEA is not deployed OR insufficient funds
       const feeLockingRequired =
         (!isUEADeployed || funds < requiredFunds) && !feeLockTxHash;
+      // const feeLockingRequired = true;
 
       // Support multicall payload encoding when execute.data is an array
       let payloadData: `0x${string}`;
@@ -1779,7 +1865,7 @@ export class Orchestrator {
       CHAIN.ARBITRUM_SEPOLIA,
       CHAIN.BASE_SEPOLIA,
       CHAIN.SOLANA_DEVNET,
-      CHAIN.BNB_TESTNET
+      CHAIN.BNB_TESTNET,
     ];
     if (!allowedChains.includes(this.universalSigner.account.chain)) {
       throw new Error(
@@ -1827,6 +1913,151 @@ export class Orchestrator {
 
     // Concatenate prefix selector with encodedCalls without 0x
     return (selector + encodedCalls.slice(2)) as `0x${string}`;
+  }
+
+  private async _sendSVMTxWithFunds({
+    execute,
+    mechanism,
+    universalPayload,
+    bridgeAmount,
+    nativeAmount,
+  }: {
+    execute: ExecuteParams;
+    mechanism: 'native' | 'approve' | 'permit2' | string;
+    universalPayload: UniversalPayload;
+    bridgeAmount: bigint;
+    nativeAmount: bigint;
+  }): Promise<string> {
+    // SVM funds+payload path
+    const svmClient = new SvmClient({
+      rpcUrls:
+        this.rpcUrls[CHAIN.SOLANA_DEVNET] ||
+        CHAIN_INFO[CHAIN.SOLANA_DEVNET].defaultRPC,
+    });
+    const programId = new PublicKey(SVM_GATEWAY_IDL.address);
+    const [configPda] = PublicKey.findProgramAddressSync(
+      [stringToBytes('config')],
+      programId
+    );
+    const [vaultPda] = PublicKey.findProgramAddressSync(
+      [stringToBytes('vault')],
+      programId
+    );
+    // whitelistPda already computed above
+    const userPk = new PublicKey(this.universalSigner.account.address);
+    const priceUpdatePk = new PublicKey(
+      '7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE'
+    );
+
+    // pay-with-token gas abstraction is not supported on Solana
+    if (execute.funds?.payWith !== undefined) {
+      throw new Error('Pay-with token is not supported on Solana');
+    }
+
+    if (!execute.funds?.token?.address) {
+      throw new Error('Token address is required for bridge path');
+    }
+
+    const isNative =
+      mechanism === 'native' || execute.funds.token.symbol === 'SOL';
+    const revertSvm2 = {
+      fundRecipient: userPk,
+      revertMsg: Buffer.from([]),
+    } as unknown as never;
+    // Compute signature for universal payload on SVM
+    const ueaAddressSvm = this.computeUEAOffchain();
+    const ueaVersion = await this.fetchUEAVersion();
+    const svmSignature = await this.signUniversalPayload(
+      universalPayload,
+      ueaAddressSvm,
+      ueaVersion
+    );
+    if (isNative) {
+      // Native SOL as bridge + gas
+      const [whitelistPdaLocal] = PublicKey.findProgramAddressSync(
+        [stringToBytes('whitelist')],
+        programId
+      );
+      return await svmClient.writeContract({
+        abi: SVM_GATEWAY_IDL,
+        address: programId.toBase58(),
+        functionName: 'sendTxWithFunds',
+        args: [
+          PublicKey.default, // bridge_token = default for native SOL
+          bridgeAmount,
+          universalPayload,
+          revertSvm2,
+          nativeAmount,
+          Buffer.from(svmSignature),
+        ],
+        signer: this.universalSigner,
+        accounts: {
+          config: configPda,
+          vault: vaultPda,
+          tokenWhitelist: whitelistPdaLocal,
+          userTokenAccount: userPk, // for native SOL, can be any valid account
+          gatewayTokenAccount: vaultPda, // for native SOL, can be any valid account
+          user: userPk,
+          priceUpdate: priceUpdatePk,
+          bridgeToken: PublicKey.default,
+          tokenProgram: new PublicKey(
+            'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
+          ),
+          systemProgram: SystemProgram.programId,
+        },
+      });
+    } else {
+      // SPL token as bridge + native SOL lamports as gas_amount
+      if (!execute.funds?.token?.address) {
+        throw new Error('Token address is required for SPL bridge path');
+      }
+      const mintPk = new PublicKey(execute.funds.token.address);
+      const TOKEN_PROGRAM_ID = new PublicKey(
+        'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
+      );
+      const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
+        'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'
+      );
+      const userAta = PublicKey.findProgramAddressSync(
+        [userPk.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mintPk.toBuffer()],
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      )[0];
+      const vaultAta = PublicKey.findProgramAddressSync(
+        [vaultPda.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mintPk.toBuffer()],
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      )[0];
+
+      const [whitelistPdaLocal] = PublicKey.findProgramAddressSync(
+        [stringToBytes('whitelist')],
+        programId
+      );
+      return await svmClient.writeContract({
+        abi: SVM_GATEWAY_IDL,
+        address: programId.toBase58(),
+        functionName: 'sendTxWithFunds',
+        args: [
+          mintPk,
+          bridgeAmount,
+          universalPayload,
+          revertSvm2,
+          nativeAmount,
+          Buffer.from(svmSignature),
+        ],
+        signer: this.universalSigner,
+        accounts: {
+          config: configPda,
+          vault: vaultPda,
+          tokenWhitelist: whitelistPdaLocal,
+          userTokenAccount: userAta,
+          gatewayTokenAccount: vaultAta,
+          user: userPk,
+          priceUpdate: priceUpdatePk,
+          bridgeToken: mintPk,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        },
+      });
+    }
   }
 
   computeUEAOffchain(): `0x${string}` {
@@ -2271,13 +2502,17 @@ export class Orchestrator {
       // @@@ temp, rename later
       // Make this dynamic, payable
       // const pushChainTo = SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT].USDT_ETH;
-      const nativeTo = '0x0000000000000000000000000000000000042101'
+      const nativeTo = '0x0000000000000000000000000000000000042101';
       const erc20To = zeroAddress;
       const nativeData = '0x';
       // const erc20To =
-      const pushChainTo = SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT].USDT_ETH;
+      // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+      // THIS SHOULD BE DYNAMICALLY FETCHED BASED ON OUR NEW UTITLITY FUNCTION.
+      const pushChainTo = PushChain.utils.tokens.toSyntheticAddress(
+        execute.funds!.token as MoveableToken
+      );
       const nativeValue = fundsValue;
-      const erc20Value = payloadValue
+      const erc20Value = payloadValue;
       const universalPayload = {
         // to: nativeTo, // We can't simply do `0x` because we will get an error when eip712 signing the transaction.
         to: zeroAddress,
