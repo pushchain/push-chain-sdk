@@ -1,4 +1,4 @@
-export const COUNTER_ABI = [
+export const COUNTER_ABI_PAYABLE = [
   {
     anonymous: false,
     inputs: [
@@ -26,6 +26,24 @@ export const COUNTER_ABI = [
   },
   {
     inputs: [],
+    name: 'increment',
+    outputs: [],
+    stateMutability: 'payable',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'reset',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    stateMutability: 'payable',
+    type: 'receive',
+  },
+  {
+    inputs: [],
     name: 'countPC',
     outputs: [
       {
@@ -48,20 +66,6 @@ export const COUNTER_ABI = [
       },
     ],
     stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'increment',
-    outputs: [],
-    stateMutability: 'payable',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'reset',
-    outputs: [],
-    stateMutability: 'nonpayable',
     type: 'function',
   },
 ];
