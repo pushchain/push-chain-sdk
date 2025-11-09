@@ -18,6 +18,7 @@ import {
 } from 'viem';
 import { PushChain } from '../push-chain/push-chain';
 import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
+import { buildExecuteMulticall } from './payload-builders';
 import {
   UniversalAccount,
   UniversalSigner,
@@ -295,7 +296,7 @@ export class Orchestrator {
                 txHash = await evmClient.writeContract({
                   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                   address: gatewayAddress,
-                  functionName: 'sendTxWithFunds',
+                  functionName: 'sendTxWithFunds_new',
                   args: [
                     tokenAddr,
                     bridgeAmount,
@@ -636,7 +637,8 @@ export class Orchestrator {
             await this.buildGatewayPayloadAndGas(
               execute,
               nonce,
-              'sendTxWithFunds'
+              'sendTxWithFunds',
+              execute.funds.amount
             );
 
           this.executeProgressHook(PROGRESS_HOOK.SEND_TX_02_01);
@@ -776,17 +778,7 @@ export class Orchestrator {
 
               this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_01);
               this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_02);
-              const ueaVersion = await this.fetchUEAVersion();
-              const eip712Signature = await this.signUniversalPayload(
-                universalPayload,
-                ueaAddress,
-                ueaVersion
-              );
               this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_03);
-              const eip712SignatureHex =
-                typeof eip712Signature === 'string'
-                  ? (eip712Signature as `0x${string}`)
-                  : (bytesToHex(eip712Signature) as `0x${string}`);
               const evmClientEvm = evmClient as EvmClient;
               const gatewayAddressEvm = gatewayAddress as `0x${string}`;
               // @@@@@@@@@@@@
@@ -874,7 +866,7 @@ export class Orchestrator {
                 txHash = await evmClientEvm.writeContract({
                   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                   address: gatewayAddressEvm,
-                  functionName: 'sendTxWithFunds',
+                  functionName: 'sendTxWithFunds_new',
                   args: [
                     tokenAddr,
                     bridgeAmount,
@@ -893,7 +885,7 @@ export class Orchestrator {
                 txHash = await evmClientEvm.writeContract({
                   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                   address: gatewayAddressEvm,
-                  functionName: 'sendTxWithFunds',
+                  functionName: 'sendTxWithFunds_new',
                   args: [
                     tokenAddr,
                     bridgeAmount,
@@ -913,139 +905,6 @@ export class Orchestrator {
                 bridgeAmount,
                 nativeAmount,
               });
-              // // SVM funds+payload path
-              // const svmClient = new SvmClient({
-              //   rpcUrls:
-              //     this.rpcUrls[CHAIN.SOLANA_DEVNET] ||
-              //     CHAIN_INFO[CHAIN.SOLANA_DEVNET].defaultRPC,
-              // });
-              // const programId = new PublicKey(SVM_GATEWAY_IDL.address);
-              // const [configPda] = PublicKey.findProgramAddressSync(
-              //   [stringToBytes('config')],
-              //   programId
-              // );
-              // const [vaultPda] = PublicKey.findProgramAddressSync(
-              //   [stringToBytes('vault')],
-              //   programId
-              // );
-              // // whitelistPda already computed above
-              // const userPk = new PublicKey(
-              //   this.universalSigner.account.address
-              // );
-              // const priceUpdatePk = new PublicKey(
-              //   '7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE'
-              // );
-
-              // // pay-with-token gas abstraction is not supported on Solana
-              // if (execute.funds?.payWith !== undefined) {
-              //   throw new Error('Pay-with token is not supported on Solana');
-              // }
-
-              // const isNative =
-              //   mechanism === 'native' || execute.funds.token.symbol === 'SOL';
-              // const revertSvm2 = {
-              //   fundRecipient: userPk,
-              //   revertMsg: Buffer.from([]),
-              // } as unknown as never;
-              // // Compute signature for universal payload on SVM
-              // const ueaAddressSvm = this.computeUEAOffchain();
-              // const ueaVersion = await this.fetchUEAVersion();
-              // const svmSignature = await this.signUniversalPayload(
-              //   universalPayload,
-              //   ueaAddressSvm,
-              //   ueaVersion
-              // );
-              // if (isNative) {
-              //   // Native SOL as bridge + gas
-              //   const [whitelistPdaLocal] = PublicKey.findProgramAddressSync(
-              //     [stringToBytes('whitelist')],
-              //     programId
-              //   );
-              //   txHash = await svmClient.writeContract({
-              //     abi: SVM_GATEWAY_IDL,
-              //     address: programId.toBase58(),
-              //     functionName: 'sendTxWithFunds',
-              //     args: [
-              //       PublicKey.default, // bridge_token = default for native SOL
-              //       bridgeAmount,
-              //       universalPayload,
-              //       revertSvm2,
-              //       nativeAmount,
-              //       Buffer.from(svmSignature),
-              //     ],
-              //     signer: this.universalSigner,
-              //     accounts: {
-              //       config: configPda,
-              //       vault: vaultPda,
-              //       tokenWhitelist: whitelistPdaLocal,
-              //       userTokenAccount: userPk, // for native SOL, can be any valid account
-              //       gatewayTokenAccount: vaultPda, // for native SOL, can be any valid account
-              //       user: userPk,
-              //       priceUpdate: priceUpdatePk,
-              //       bridgeToken: PublicKey.default,
-              //       tokenProgram: new PublicKey(
-              //         'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
-              //       ),
-              //       systemProgram: SystemProgram.programId,
-              //     },
-              //   });
-              // } else {
-              //   // SPL token as bridge + native SOL lamports as gas_amount
-              //   const mintPk = new PublicKey(execute.funds.token.address);
-              //   const TOKEN_PROGRAM_ID = new PublicKey(
-              //     'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
-              //   );
-              //   const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
-              //     'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'
-              //   );
-              //   const userAta = PublicKey.findProgramAddressSync(
-              //     [
-              //       userPk.toBuffer(),
-              //       TOKEN_PROGRAM_ID.toBuffer(),
-              //       mintPk.toBuffer(),
-              //     ],
-              //     ASSOCIATED_TOKEN_PROGRAM_ID
-              //   )[0];
-              //   const vaultAta = PublicKey.findProgramAddressSync(
-              //     [
-              //       vaultPda.toBuffer(),
-              //       TOKEN_PROGRAM_ID.toBuffer(),
-              //       mintPk.toBuffer(),
-              //     ],
-              //     ASSOCIATED_TOKEN_PROGRAM_ID
-              //   )[0];
-
-              //   const [whitelistPdaLocal] = PublicKey.findProgramAddressSync(
-              //     [stringToBytes('whitelist')],
-              //     programId
-              //   );
-              //   txHash = await svmClient.writeContract({
-              //     abi: SVM_GATEWAY_IDL,
-              //     address: programId.toBase58(),
-              //     functionName: 'sendTxWithFunds',
-              //     args: [
-              //       mintPk,
-              //       bridgeAmount,
-              //       universalPayload,
-              //       revertSvm2,
-              //       nativeAmount,
-              //       Buffer.from(svmSignature),
-              //     ],
-              //     signer: this.universalSigner,
-              //     accounts: {
-              //       config: configPda,
-              //       vault: vaultPda,
-              //       tokenWhitelist: whitelistPdaLocal,
-              //       userTokenAccount: userAta,
-              //       gatewayTokenAccount: vaultAta,
-              //       user: userPk,
-              //       priceUpdate: priceUpdatePk,
-              //       bridgeToken: mintPk,
-              //       tokenProgram: TOKEN_PROGRAM_ID,
-              //       systemProgram: SystemProgram.programId,
-              //     },
-              //   });
-              // }
             }
           } catch (err) {
             this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_04);
@@ -1189,20 +1048,37 @@ export class Orchestrator {
         feeLockTxHash = bytesToHex(new Uint8Array(decoded));
       }
       // Fee locking is required if UEA is not deployed OR insufficient funds
-      const feeLockingRequired =
-        (!isUEADeployed || funds < requiredFunds) && !feeLockTxHash;
-      // const feeLockingRequired = true;
+      // const feeLockingRequired =
+      //   (!isUEADeployed || funds < requiredFunds) && !feeLockTxHash;
+      const feeLockingRequired = true;
 
       // Support multicall payload encoding when execute.data is an array
       let payloadData: `0x${string}`;
+      let payloadTo: `0x${string}`;
       if (Array.isArray(execute.data)) {
-        payloadData = this._buildMulticallPayloadData(execute.to, execute.data);
+        // payloadData = this._buildMulticallPayloadData(execute.to, execute.data);
+        // Normal multicall. We replace the `to` to zeroAddress. Then console.warn to let user know that it should be
+        // passed as zeroAddress in the future.
+        // execute.to = zeroAddress;
+        payloadTo = zeroAddress;
+        console.warn(`Multicalls should have execute.to as ${zeroAddress}`);
+        payloadData = this._buildMulticallPayloadData(
+          execute.to,
+          buildExecuteMulticall({ execute, ueaAddress: UEA })
+        );
       } else {
-        payloadData = (execute.data || '0x') as `0x${string}`;
+        // payloadData = (execute.data || '0x') as `0x${string}`;
+        if (execute.to.toLowerCase() !== UEA.toLowerCase()) {
+          payloadTo = zeroAddress;
+          payloadData = this._buildMulticallPayloadData(
+            execute.to,
+            buildExecuteMulticall({ execute, ueaAddress: UEA })
+          );
+        } else {
+          payloadTo = execute.to;
+          payloadData = execute.data || '0x';
+        }
       }
-
-      // Determine payload `to` value. For multicall, `to` must be UEA, pass-through as-is.
-      const payloadTo: `0x${string}` = execute.to as `0x${string}`;
 
       const universalPayload = JSON.parse(
         JSON.stringify(
@@ -2472,15 +2348,22 @@ export class Orchestrator {
     fundsValue?: bigint
   ): Promise<{ payload: never; gasAmount: bigint }> {
     const gasEstimate = execute.gasLimit || BigInt(1e7);
-    const payloadValue = execute.value ?? BigInt(0);
     const gasAmount = execute.value ?? BigInt(0);
 
     if (type === 'sendTxWithFunds') {
-      if (fundsValue) throw new Error('fundsValue property must be empty');
+      if (!execute.funds?.token)
+        throw new Error(`Invalid ${execute.funds?.token}`);
+
+      const multicallData: MultiCall[] = buildExecuteMulticall({
+        execute,
+        ueaAddress: this.computeUEAOffchain(),
+      });
+      // THIS ABOVE WILL CHANGE WHEN FUNDS ARE PASSED
       const universalPayload = {
-        to: execute.to,
-        value: payloadValue,
-        data: execute.data || '0x',
+        to: zeroAddress,
+        value: execute.value ?? BigInt(0),
+        // data: execute.data || '0x',
+        data: this._buildMulticallPayloadData(execute.to, multicallData),
         gasLimit: gasEstimate,
         maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
         maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
@@ -2492,35 +2375,28 @@ export class Orchestrator {
       return { payload: universalPayload, gasAmount };
     } else {
       if (!fundsValue) throw new Error('fundsValue property must not be empty');
-      // The data will be the abi-encoded transfer function from erc-20 function. The recipient will be `execute.to`, the value
-      // will be the fundsValue property.
-      const data = encodeFunctionData({
-        abi: ERC20_EVM,
-        functionName: 'transfer',
-        args: [execute.to, fundsValue],
+      const multicallData: MultiCall[] = buildExecuteMulticall({
+        execute,
+        ueaAddress: this.computeUEAOffchain(),
       });
-      // @@@ temp, rename later
-      // Make this dynamic, payable
-      // const pushChainTo = SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT].USDT_ETH;
-      const nativeTo = '0x0000000000000000000000000000000000042101';
-      const erc20To = zeroAddress;
-      const nativeData = '0x';
-      // const erc20To =
-      // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-      // THIS SHOULD BE DYNAMICALLY FETCHED BASED ON OUR NEW UTITLITY FUNCTION.
-      const pushChainTo = PushChain.utils.tokens.toSyntheticAddress(
-        execute.funds!.token as MoveableToken
-      );
-      const nativeValue = fundsValue;
-      const erc20Value = payloadValue;
+
+      // // The data will be the abi-encoded transfer function from erc-20 function. The recipient will be `execute.to`, the value
+      // // will be the fundsValue property.
+      // const data = encodeFunctionData({
+      //   abi: ERC20_EVM,
+      //   functionName: 'transfer',
+      //   args: [execute.to, fundsValue],
+      // });
+      // const pushChainTo = PushChain.utils.tokens.toSyntheticAddress(
+      //   execute.funds!.token as MoveableToken
+      // );
       const universalPayload = {
-        // to: nativeTo, // We can't simply do `0x` because we will get an error when eip712 signing the transaction.
-        to: zeroAddress,
-        value: erc20Value,
-        // data: '0x',
-        data: this._buildMulticallPayloadData(execute.to as `0x${string}`, [
-          { to: pushChainTo, value: payloadValue, data },
-        ]),
+        to: zeroAddress, // We can't simply do `0x` because we will get an error when eip712 signing the transaction.
+        value: execute.value ?? BigInt(0),
+        data: this._buildMulticallPayloadData(execute.to, multicallData),
+        // data: this._buildMulticallPayloadData(execute.to, [
+        //   { to: pushChainTo, value: execute.value ?? BigInt(0), data },
+        // ]),
         gasLimit: gasEstimate,
         maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
         maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
@@ -2918,6 +2794,9 @@ export class Orchestrator {
             idHex
           );
           universalTxObj = universalTxResp?.universalTx;
+          console.log('@@@@@');
+          console.log(universalTxObj);
+          console.log('@@@@@');
           if (universalTxObj) break;
         } catch (error) {
           // ignore and retry
