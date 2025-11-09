@@ -8,8 +8,8 @@ export const pushWalletDonut = defineChain({
   name: 'Push Testnet Donut',
   nativeCurrency: {
     decimals: 18,
-    name: 'PUSH',
-    symbol: 'PUSH',
+    name: 'Push Chain',
+    symbol: 'PC',
   },
   rpcUrls: {
     default: {

@@ -129,10 +129,7 @@ export const CHAIN_INFO: Record<
   [CHAIN.PUSH_TESTNET_DONUT]: {
     chainId: '42101',
     vm: VM.EVM,
-    defaultRPC: [
-      'https://evm.rpc-testnet-donut-node1.push.org/',
-      'https://evm.rpc-testnet-donut-node2.push.org/',
-    ],
+    defaultRPC: ['https://evm.donut.rpc.push.org/'],
     confirmations: 3,
     timeout: 30000,
   },
@@ -258,7 +255,7 @@ export const PUSH_CHAIN_INFO: Record<
   [CHAIN.PUSH_TESTNET_DONUT]: {
     ...CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT],
     denom: 'upc',
-    tendermintRpc: 'https://rpc-testnet-donut-node1.push.org/',
+    tendermintRpc: 'https://donut.rpc.push.org/',
     prefix: 'push',
     factoryAddress: '0x00000000000000000000000000000000000000eA',
     pushDecimals: BigInt(1e18),

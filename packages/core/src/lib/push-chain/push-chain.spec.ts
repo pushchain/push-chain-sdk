@@ -847,7 +847,7 @@ describe('PushChain', () => {
         ];
 
         const publicClientPush = createPublicClient({
-          transport: http('https://evm.rpc-testnet-donut-node1.push.org/'),
+          transport: http('https://evm.donut.rpc.push.org/'),
         });
 
         const before = (await publicClientPush.readContract({
@@ -918,7 +918,7 @@ describe('PushChain', () => {
         ];
 
         const publicClientPush = createPublicClient({
-          transport: http('https://evm.rpc-testnet-donut-node1.push.org/'),
+          transport: http('https://evm.donut.rpc.push.org/'),
         });
 
         const before = (await publicClientPush.readContract({
@@ -958,7 +958,7 @@ describe('PushChain', () => {
         }) as `0x${string}`;
 
         const publicClientPush = createPublicClient({
-          transport: http('https://evm.rpc-testnet-donut-node1.push.org/'),
+          transport: http('https://evm.donut.rpc.push.org/'),
         });
 
         const before = (await publicClientPush.readContract({
