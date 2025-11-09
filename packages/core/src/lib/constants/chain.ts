@@ -1,5 +1,11 @@
 import { CHAIN, PUSH_NETWORK, VM } from './enums';
-import { mainnet, sepolia, arbitrumSepolia, baseSepolia, bscTestnet } from 'viem/chains';
+import {
+  mainnet,
+  sepolia,
+  arbitrumSepolia,
+  baseSepolia,
+  bscTestnet,
+} from 'viem/chains';
 
 /**
  * Maps VM type to its namespace
@@ -34,10 +40,14 @@ export const SYNTHETIC_PUSH_ERC20: Record<
     pETH_BNB: `0x${string}`;
     pSOL: `0x${string}`;
     USDT_ETH: `0x${string}`;
+    USDC_ETH: `0x${string}`;
     USDT_ARB: `0x${string}`;
+    USDC_ARB: `0x${string}`;
     USDT_SOL: `0x${string}`;
+    USDC_SOL: `0x${string}`;
     USDT_BNB: `0x${string}`;
     USDT_BASE: `0x${string}`;
+    USDC_BASE: `0x${string}`;
   }
 > = {
   [PUSH_NETWORK.TESTNET_DONUT]: {
@@ -47,10 +57,14 @@ export const SYNTHETIC_PUSH_ERC20: Record<
     pETH_BNB: '0x7a9082dA308f3fa005beA7dB0d203b3b86664E36',
     pSOL: '0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed',
     USDT_ETH: '0xCA0C5E6F002A389E1580F0DB7cd06e4549B5F9d3',
+    USDC_ETH: '0x387b9C8Db60E74999aAAC5A2b7825b400F12d68E',
     USDT_ARB: '0x76Ad08339dF606BeEDe06f90e3FaF82c5b2fb2E9',
+    USDC_ARB: '0xa261A10e94aE4bA88EE8c5845CbE7266bD679DD6',
     USDT_SOL: '0x4f1A3D22d170a2F4Bddb37845a962322e24f4e34',
+    USDC_SOL: '0x04B8F634ABC7C879763F623e0f0550a4b5c4426F',
     USDT_BNB: '0x2f98B4235FD2BA0173a2B056D722879360B12E7b',
     USDT_BASE: '0x2C455189D2af6643B924A981a9080CcC63d5a567',
+    USDC_BASE: '0x84B62e44F667F692F7739Ca6040cD17DA02068A8',
   },
   [PUSH_NETWORK.TESTNET]: {
     pETH: '0x2971824Db68229D087931155C2b8bB820B275809',
@@ -59,10 +73,14 @@ export const SYNTHETIC_PUSH_ERC20: Record<
     pETH_BNB: '0x7a9082dA308f3fa005beA7dB0d203b3b86664E36',
     pSOL: '0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed',
     USDT_ETH: '0xCA0C5E6F002A389E1580F0DB7cd06e4549B5F9d3',
+    USDC_ETH: '0x387b9C8Db60E74999aAAC5A2b7825b400F12d68E',
     USDT_ARB: '0x76Ad08339dF606BeEDe06f90e3FaF82c5b2fb2E9',
+    USDC_ARB: '0xa261A10e94aE4bA88EE8c5845CbE7266bD679DD6',
     USDT_SOL: '0x4f1A3D22d170a2F4Bddb37845a962322e24f4e34',
+    USDC_SOL: '0x04B8F634ABC7C879763F623e0f0550a4b5c4426F',
     USDT_BNB: '0x2f98B4235FD2BA0173a2B056D722879360B12E7b',
     USDT_BASE: '0x2C455189D2af6643B924A981a9080CcC63d5a567',
+    USDC_BASE: '0x84B62e44F667F692F7739Ca6040cD17DA02068A8',
   },
   [PUSH_NETWORK.LOCALNET]: {
     pETH: '0xTBD',
@@ -71,10 +89,14 @@ export const SYNTHETIC_PUSH_ERC20: Record<
     pETH_BNB: '0xTBD',
     pSOL: '0xTBD',
     USDT_ETH: '0xTBD',
+    USDC_ETH: '0xTBD',
     USDT_ARB: '0xTBD',
+    USDC_ARB: '0xTBD',
     USDT_SOL: '0xTBD',
+    USDC_SOL: '0xTBD',
     USDT_BNB: '0xTBD',
     USDT_BASE: '0xTBD',
+    USDC_BASE: '0xTBD',
   },
   [PUSH_NETWORK.MAINNET]: {
     pETH: '0xTBD',
@@ -83,10 +105,14 @@ export const SYNTHETIC_PUSH_ERC20: Record<
     pETH_BNB: '0xTBD',
     pSOL: '0xTBD',
     USDT_ETH: '0xTBD',
+    USDC_ETH: '0xTBD',
     USDT_ARB: '0xTBD',
+    USDC_ARB: '0xTBD',
     USDT_SOL: '0xTBD',
+    USDC_SOL: '0xTBD',
     USDT_BNB: '0xTBD',
     USDT_BASE: '0xTBD',
+    USDC_BASE: '0xTBD',
   },
 };
 
@@ -129,6 +155,12 @@ export const CHAIN_INFO: Record<
     ],
     confirmations: 3,
     timeout: 30000,
+    // Push Chain AMM - Uniswap V3
+    dex: {
+      uniV3Factory: '0x81b8Bca02580C7d6b636051FDb7baAC436bFb454',
+      uniV3QuoterV2: '0x83316275f7C2F79BC4E26f089333e88E89093037',
+      weth: '0xE17DD2E0509f99E9ee9469Cf6634048Ec5a3ADe9',
+    },
   },
   [CHAIN.PUSH_LOCALNET]: {
     chainId: '9000',
