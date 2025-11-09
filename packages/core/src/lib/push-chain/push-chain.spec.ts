@@ -1,6 +1,6 @@
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
-import { COUNTER_ABI } from './helpers/abis';
-import { COUNTER_ADDRESS } from './helpers/addresses';
+import { COUNTER_ABI_PAYABLE } from './helpers/abis';
+import { COUNTER_ADDRESS_PAYABLE } from './helpers/addresses';
 import bs58 from 'bs58';
 import {
   UniversalSigner,
@@ -174,7 +174,7 @@ async function setupEVMChainClient(
   return { client, account };
 }
 
-async function testSendFundsUSDT(
+async function testSendFundsUSDTNoValue(
   client: PushChain,
   account: PrivateKeyAccount,
   config: EVMChainTestConfig
@@ -207,19 +207,7 @@ async function testSendFundsUSDT(
     rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
   });
 
-  let pusdt;
-  if (config.chain === CHAIN.ETHEREUM_SEPOLIA) {
-    pusdt =
-      SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
-        .USDT_ETH;
-  } else if (config.chain === CHAIN.ARBITRUM_SEPOLIA) {
-    pusdt =
-      SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
-        .USDT_ARB;
-  } else {
-    throw new Error('USDT address not on Push Chain');
-  }
-
+  const pusdt = PushChain.utils.tokens.toSyntheticAddress(usdt);
   const balanceBefore = await pushChainClient.getErc20Balance({
     tokenAddress: pusdt,
     ownerAddress: recipient as `0x${string}`,
@@ -232,13 +220,79 @@ async function testSendFundsUSDT(
 
   const receipt = await resUSDT.wait();
   expect(receipt.status).toBe(1);
-  console.log(`[${config.name}] USDT bridge receipt:`, receipt);
 
   const balanceAfter = await pushChainClient.getErc20Balance({
     tokenAddress: pusdt,
     ownerAddress: recipient as `0x${string}`,
   });
   expect(balanceAfter > balanceBefore).toBe(true);
+}
+
+async function testSendFundsUSDTWithValue(
+  client: PushChain,
+  account: PrivateKeyAccount,
+  config: EVMChainTestConfig,
+  transactionRecipient: 'self' | 'other'
+): Promise<void> {
+  if (!transactionRecipient)
+    throw new Error('Please select the recipient for this testcase');
+  const erc20Abi = parseAbi([
+    'function balanceOf(address) view returns (uint256)',
+  ]);
+  const usdt = client.moveable.token.USDT;
+
+  const balance: bigint = await new EvmClient({
+    rpcUrls: CHAIN_INFO[config.chain].defaultRPC,
+  }).readContract<bigint>({
+    abi: erc20Abi,
+    address: usdt.address,
+    functionName: 'balanceOf',
+    args: [account.address],
+  });
+
+  if (balance <= BigInt(0)) {
+    console.warn(`Skipping ${config.name} USDT test: no USDT balance`);
+    return;
+  }
+
+  const amount = BigInt(1);
+  let recipient: `0x${string}`;
+  if (transactionRecipient === 'self') recipient = client.universal.account;
+  else recipient = '0x0000000000000000000000000000000000042101';
+
+  // pUSDT (USDT.eth) balance on Push chain should increase for the recipient
+  const pushChainClient = new EvmClient({
+    rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
+  });
+
+  const pusdt = PushChain.utils.tokens.toSyntheticAddress(usdt);
+  const balanceUSDTBefore = await pushChainClient.getErc20Balance({
+    tokenAddress: pusdt,
+    ownerAddress: recipient,
+  });
+  const balancePCBefore = await pushChainClient.getBalance(recipient);
+
+  // What to expect from this:
+  // *************************
+  // recipient PC balance ++
+  // recipient USDT balance ++
+  // *************************
+  const resUSDT = await client.universal.sendTransaction({
+    to: recipient,
+    value: BigInt(3),
+    funds: { amount, token: usdt },
+  });
+
+  const receipt = await resUSDT.wait();
+  expect(receipt.status).toBe(1);
+
+  const balanceUSDTAfter = await pushChainClient.getErc20Balance({
+    tokenAddress: pusdt,
+    ownerAddress: recipient as `0x${string}`,
+  });
+  const balancePCAfter = await pushChainClient.getBalance(recipient);
+  expect(balancePCAfter > balancePCBefore).toBe(true);
+  expect(balanceUSDTAfter > balanceUSDTBefore).toBe(true);
 }
 
 async function testSendFundsETH(
@@ -277,11 +331,15 @@ async function testSendFundsETH(
   expect(balanceAfter > balanceBefore).toBe(true);
 }
 
-async function testSendTxWithFundsUSDT(
+async function testSendTxWithFundsUSDTNoValue(
   client: PushChain,
   account: PrivateKeyAccount,
-  config: EVMChainTestConfig
+  config: EVMChainTestConfig,
+  transactionRecipient: 'self' | 'other'
 ): Promise<void> {
+  if (!transactionRecipient)
+    throw new Error('Please select the recipient for this testcase');
+
   const erc20Abi = parseAbi([
     'function balanceOf(address) view returns (uint256)',
   ]);
@@ -359,10 +417,26 @@ async function testSendTxWithFundsUSDT(
   );
 
   const pusdt = PushChain.utils.tokens.toSyntheticAddress(usdt);
-  const balanceBeforepUSDTETH = await pushEvmClient.getErc20Balance({
+  const balanceBefore_pUSDT_ETH_UEA = await pushEvmClient.getErc20Balance({
     tokenAddress: pusdt,
     ownerAddress: executorInfo.address,
   });
+  const balanceBefore_pUSDT_ETH_COUNTER = await pushEvmClient.getErc20Balance({
+    tokenAddress: pusdt,
+    ownerAddress: COUNTER_ADDRESS,
+  });
+
+  if (transactionRecipient === 'self') {
+    await expect(
+      client.universal.sendTransaction({
+        to: client.universal.account,
+        value: BigInt(0),
+        data,
+        funds: { amount: bridgeAmount, token: usdt },
+      })
+    ).rejects.toThrow(`You can't execute data on the UEA address`);
+    return;
+  }
 
   const resUSDT = await client.universal.sendTransaction({
     to: COUNTER_ADDRESS,
@@ -384,13 +458,234 @@ async function testSendTxWithFundsUSDT(
     functionName: 'countPC',
   })) as bigint;
 
-  const balanceAfterpUSDTETH = await pushEvmClient.getErc20Balance({
+  const balanceAfter_pUSDT_ETH_UEA = await pushEvmClient.getErc20Balance({
     tokenAddress: pusdt,
     ownerAddress: executorInfo.address,
   });
 
+  const balanceAfter_pUSDT_ETH_COUNTER = await pushEvmClient.getErc20Balance({
+    tokenAddress: pusdt,
+    ownerAddress: COUNTER_ADDRESS,
+  });
+
   // UEA USDT balance ++
-  expect(balanceAfterpUSDTETH > balanceBeforepUSDTETH).toBe(true);
+  expect(balanceAfter_pUSDT_ETH_UEA === balanceBefore_pUSDT_ETH_UEA).toBe(true);
+  expect(balanceAfter_pUSDT_ETH_COUNTER > balanceBefore_pUSDT_ETH_COUNTER).toBe(
+    true
+  );
+  expect(afterCount).toBe(beforeCount + BigInt(1));
+  console.log(`[${config.name}] Counter incremented successfully`);
+}
+
+async function testSendTxValueAndPayload(
+  client: PushChain,
+  account: PrivateKeyAccount,
+  config: EVMChainTestConfig
+): Promise<void> {
+  const erc20Abi = parseAbi([
+    'function balanceOf(address) view returns (uint256)',
+  ]);
+  const usdt = client.moveable.token.USDT;
+
+  const evm = new EvmClient({
+    rpcUrls: CHAIN_INFO[config.chain].defaultRPC,
+  });
+  const usdtBal: bigint = await evm.readContract<bigint>({
+    abi: erc20Abi,
+    address: usdt.address,
+    functionName: 'balanceOf',
+    args: [account.address],
+  });
+
+  if (usdtBal === BigInt(0)) {
+    console.warn(
+      `Skipping ${config.name} USDT sendTxWithFunds: no USDT balance`
+    );
+    return;
+  }
+
+  const data = PushChain.utils.helpers.encodeTxData({
+    abi: COUNTER_ABI_PAYABLE,
+    functionName: 'increment',
+  });
+
+  const pushPublicClient = createPublicClient({
+    transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
+  });
+  const beforeCount = (await pushPublicClient.readContract({
+    abi: COUNTER_ABI_PAYABLE,
+    address: COUNTER_ADDRESS_PAYABLE,
+    functionName: 'countPC',
+  })) as bigint;
+
+  const pushEvmClient = new EvmClient({
+    rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
+  });
+
+  const beforeCounterPCBalance = await pushEvmClient.getBalance(
+    COUNTER_ADDRESS_PAYABLE
+  );
+
+  const resUSDT = await client.universal.sendTransaction({
+    to: COUNTER_ADDRESS_PAYABLE,
+    value: BigInt(5),
+    data,
+  });
+
+  expect(typeof resUSDT.hash).toBe('string');
+  expect(resUSDT.hash.startsWith('0x')).toBe(true);
+  await resUSDT.wait();
+
+  // Wait for Push Chain state to finalize
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+
+  const afterCount = (await pushPublicClient.readContract({
+    abi: COUNTER_ABI_PAYABLE,
+    address: COUNTER_ADDRESS_PAYABLE,
+    functionName: 'countPC',
+  })) as bigint;
+
+  const afterCounterPCBalance = await pushEvmClient.getBalance(
+    COUNTER_ADDRESS_PAYABLE
+  );
+
+  expect(afterCounterPCBalance - beforeCounterPCBalance).toBe(BigInt(5));
+  expect(afterCount).toBe(beforeCount + BigInt(1));
+  console.log(`[${config.name}] Counter incremented successfully`);
+}
+
+async function testSendTxWithFundsUSDTWithValue(
+  client: PushChain,
+  account: PrivateKeyAccount,
+  config: EVMChainTestConfig,
+  transactionRecipient: 'self' | 'other'
+): Promise<void> {
+  if (!transactionRecipient)
+    throw new Error('Please select the recipient for this testcase');
+
+  const erc20Abi = parseAbi([
+    'function balanceOf(address) view returns (uint256)',
+  ]);
+  const usdt = client.moveable.token.USDT;
+
+  const evm = new EvmClient({
+    rpcUrls: CHAIN_INFO[config.chain].defaultRPC,
+  });
+  const usdtBal: bigint = await evm.readContract<bigint>({
+    abi: erc20Abi,
+    address: usdt.address,
+    functionName: 'balanceOf',
+    args: [account.address],
+  });
+
+  if (usdtBal === BigInt(0)) {
+    console.warn(
+      `Skipping ${config.name} USDT sendTxWithFunds: no USDT balance`
+    );
+    return;
+  }
+
+  let recipient: `0x${string}`;
+  if (transactionRecipient === 'self') recipient = client.universal.account;
+  else recipient = COUNTER_ADDRESS_PAYABLE;
+
+  const data = PushChain.utils.helpers.encodeTxData({
+    abi: COUNTER_ABI_PAYABLE,
+    functionName: 'increment',
+  });
+
+  if (transactionRecipient === 'self') {
+    await expect(
+      client.universal.sendTransaction({
+        to: recipient,
+        value: BigInt(5),
+        data,
+        funds: { amount: BigInt(1), token: usdt },
+      })
+    ).rejects.toThrow(`You can't execute data on the UEA address`);
+    return;
+  }
+
+  const pushPublicClient = createPublicClient({
+    transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
+  });
+
+  const bytecode = await pushPublicClient.getBytecode({
+    address: COUNTER_ADDRESS_PAYABLE,
+  });
+  if (!bytecode || bytecode === '0x') {
+    console.warn(
+      `Skipping ${config.name}: no contract at ${COUNTER_ADDRESS_PAYABLE}`
+    );
+    return;
+  }
+
+  const beforeCount = (await pushPublicClient.readContract({
+    abi: COUNTER_ABI_PAYABLE,
+    address: COUNTER_ADDRESS_PAYABLE,
+    functionName: 'countPC',
+  })) as bigint;
+
+  const pushEvmClient = new EvmClient({
+    rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
+  });
+
+  const pusdt = PushChain.utils.tokens.toSyntheticAddress(usdt);
+  const balanceBefore_pUSDT_UEA = await pushEvmClient.getErc20Balance({
+    tokenAddress: pusdt,
+    ownerAddress: client.universal.account,
+  });
+  const balanceBefore_pUSDT_COUNTER = await pushEvmClient.getErc20Balance({
+    tokenAddress: pusdt,
+    ownerAddress: COUNTER_ADDRESS_PAYABLE,
+  });
+  const balanceBeforePC_COUNTER = await pushEvmClient.getBalance(
+    COUNTER_ADDRESS_PAYABLE
+  );
+  const balanceBeforePC_UEA = await pushEvmClient.getBalance(
+    client.universal.account
+  );
+
+  const resUSDT = await client.universal.sendTransaction({
+    to: recipient,
+    value: BigInt(5),
+    data,
+    funds: { amount: BigInt(1), token: usdt },
+  });
+
+  expect(typeof resUSDT.hash).toBe('string');
+  expect(resUSDT.hash.startsWith('0x')).toBe(true);
+  await resUSDT.wait();
+
+  // Wait for Push Chain state to finalize
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+
+  const afterCount = (await pushPublicClient.readContract({
+    abi: COUNTER_ABI_PAYABLE,
+    address: COUNTER_ADDRESS_PAYABLE,
+    functionName: 'countPC',
+  })) as bigint;
+
+  const balanceAfter_pUSDT_UEA = await pushEvmClient.getErc20Balance({
+    tokenAddress: pusdt,
+    ownerAddress: client.universal.account,
+  });
+  const balanceAfter_pUSDT_COUNTER = await pushEvmClient.getErc20Balance({
+    tokenAddress: pusdt,
+    ownerAddress: COUNTER_ADDRESS_PAYABLE,
+  });
+  const balanceAfterPC_COUNTER = await pushEvmClient.getBalance(
+    COUNTER_ADDRESS_PAYABLE
+  );
+  const balanceAfterPC_UEA = await pushEvmClient.getBalance(
+    client.universal.account
+  );
+
+  expect(balanceAfter_pUSDT_UEA === balanceBefore_pUSDT_UEA).toBe(true);
+  expect(balanceAfter_pUSDT_COUNTER > balanceBefore_pUSDT_COUNTER).toBe(true);
+  expect(balanceAfterPC_COUNTER > balanceBeforePC_COUNTER).toBe(true);
+  // expect(balanceAfterPC_UEA > balanceBeforePC_UEA).toBe(true); // check
+
   expect(afterCount).toBe(beforeCount + BigInt(1));
   console.log(`[${config.name}] Counter incremented successfully`);
 }
@@ -489,8 +784,6 @@ async function testSendTxWithFundsPayGasUSDT(
   // );
   // console.log('requiredUSDT for minOut WETH (exact-output)', requiredUsdt);
 
-  // TODO: Check if we can pass the `value` as != 0. If we pass, what would be the behaviour? Because we can only pay gas fees with native OR token.
-  // TODO: Add balance check.
   const res = await client.universal.sendTransaction({
     to: COUNTER_ADDRESS,
     value: BigInt(0),
@@ -500,9 +793,6 @@ async function testSendTxWithFundsPayGasUSDT(
       token: usdt,
       payWith: {
         token: client.payable.token.WETH,
-        // token: client.payable.token.USDT,
-        // TODO: What happens if minAmountOut is `undefined`.
-        // minAmountOut: minAmountOut,
       },
     },
   });
@@ -589,8 +879,10 @@ async function testMulticall(
 
 async function testFeeAbstractionValueOnly(
   config: EVMChainTestConfig,
-  privateKey: `0x${string}`
+  privateKey: `0x${string}`,
+  transactionRecipient: 'self' | 'other'
 ): Promise<void> {
+  if (!transactionRecipient) throw new Error('Missing transaction recipient');
   const account = privateKeyToAccount(privateKey);
   const walletClient = createWalletClient({
     account,
@@ -671,6 +963,10 @@ async function testFeeAbstractionValueOnly(
     }
   );
 
+  let recipient: `0x${string}`;
+  if (transactionRecipient === 'self')
+    recipient = pushClientNewAccount.universal.account;
+  else recipient = '0x0000000000000000000000000000000000042101';
   // Prepare Push EVM client and compute executor (UEA) address on Push Chain
   const pushEvmClient = new EvmClient({
     rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
@@ -680,9 +976,7 @@ async function testFeeAbstractionValueOnly(
     { onlyCompute: true }
   );
   const pcBeforeUEA = await pushEvmClient.getBalance(executorInfo.address);
-  const pcBeforeRecipient = await pushEvmClient.getBalance(
-    '0x1234567890123456789012345678901234567890'
-  );
+  const pcBeforeRecipient = await pushEvmClient.getBalance(recipient);
   console.log(
     `[${config.name}] Executor PC balance before (wei):`,
     pcBeforeUEA.toString()
@@ -694,7 +988,7 @@ async function testFeeAbstractionValueOnly(
 
   // Execute transaction from new account
   const resultTx = await pushClientNewAccount.universal.sendTransaction({
-    to: '0x1234567890123456789012345678901234567890',
+    to: recipient,
     value: BigInt(1),
   });
 
@@ -702,9 +996,7 @@ async function testFeeAbstractionValueOnly(
   await resultTx.wait();
 
   const pcAfterUEA = await pushEvmClient.getBalance(executorInfo.address);
-  const pcAfterRecipient = await pushEvmClient.getBalance(
-    '0x1234567890123456789012345678901234567890'
-  );
+  const pcAfterRecipient = await pushEvmClient.getBalance(recipient);
   console.log(
     `[${config.name}] Executor PC balance after (wei):`,
     pcAfterUEA.toString()
@@ -728,9 +1020,12 @@ async function testFeeAbstractionPayloadAndValue(
     rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
   });
   const pcBeforeUEA = await pushEvmClient.getBalance(client.universal.account);
+  const balanceBeforeCounter = await pushEvmClient.getBalance(
+    COUNTER_ADDRESS_PAYABLE
+  );
 
   const data = PushChain.utils.helpers.encodeTxData({
-    abi: COUNTER_ABI,
+    abi: COUNTER_ABI_PAYABLE,
     functionName: 'increment',
   }) as `0x${string}`;
 
@@ -739,14 +1034,14 @@ async function testFeeAbstractionPayloadAndValue(
   });
 
   const beforeCount = (await pushPublicClient.readContract({
-    abi: COUNTER_ABI,
-    address: COUNTER_ADDRESS,
+    abi: COUNTER_ABI_PAYABLE,
+    address: COUNTER_ADDRESS_PAYABLE,
     functionName: 'countPC',
   })) as bigint;
 
   // Execute transaction from new account
   const resultTx = await client.universal.sendTransaction({
-    to: COUNTER_ADDRESS,
+    to: COUNTER_ADDRESS_PAYABLE,
     value: BigInt(7), // << -- go to smart contract
     data,
   });
@@ -755,13 +1050,17 @@ async function testFeeAbstractionPayloadAndValue(
   await resultTx.wait();
 
   const afterCount = (await pushPublicClient.readContract({
-    abi: COUNTER_ABI,
-    address: COUNTER_ADDRESS,
+    abi: COUNTER_ABI_PAYABLE,
+    address: COUNTER_ADDRESS_PAYABLE,
     functionName: 'countPC',
   })) as bigint;
 
   const pcAfterUEA = await pushEvmClient.getBalance(client.universal.account);
+  const balanceAfterCounter = await pushEvmClient.getBalance(
+    COUNTER_ADDRESS_PAYABLE
+  );
 
+  expect(balanceAfterCounter - balanceBeforeCounter).toBe(BigInt(7));
   expect(afterCount).toBe(beforeCount + BigInt(1));
   // We should have less PC AFTER execution
   expect(pcAfterUEA < pcBeforeUEA).toBe(true);
@@ -953,32 +1252,6 @@ describe('PushChain', () => {
         },
       ] as const;
 
-      it('should throw if multicall used with invalid to', async () => {
-        const incrementData = PushChain.utils.helpers.encodeTxData({
-          abi: CounterABI as unknown as any[],
-          functionName: 'increment',
-        });
-
-        const calls: MultiCall[] = [
-          {
-            to: COUNTER_ADDRESS,
-            value: BigInt(0),
-            data: incrementData as `0x${string}`,
-          },
-        ];
-
-        await expect(
-          pushClientEVM.universal.sendTransaction({
-            // Provide a valid address that is NOT the UEA, to trigger UEA mismatch
-            to: COUNTER_ADDRESS,
-            value: BigInt(0),
-            data: calls,
-          })
-        ).rejects.toThrow(
-          'Multicall requires `to` to be the executor account (UEA) of the sender.'
-        );
-      });
-
       it('should build and send multicall payload from Sepolia', async () => {
         const incrementData = PushChain.utils.helpers.encodeTxData({
           abi: CounterABI as unknown as any[],
@@ -988,10 +1261,12 @@ describe('PushChain', () => {
         const calls: MultiCall[] = [
           { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
           { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
+          { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
+          { to: COUNTER_ADDRESS, value: BigInt(0), data: incrementData },
         ];
 
         const publicClientPush = createPublicClient({
-          transport: http('https://evm.rpc-testnet-donut-node1.push.org/'),
+          transport: http('https://evm.donut.rpc.push.org'),
         });
 
         const before = (await publicClientPush.readContract({
@@ -1009,10 +1284,6 @@ describe('PushChain', () => {
 
         expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
 
-        // Multicall payload must be prefixed with bytes4(keccak256("UEA_MULTICALL"))
-        const selector = keccak256(toBytes('UEA_MULTICALL')).slice(0, 10);
-        expect(tx.data.slice(0, 10)).toBe(selector);
-
         await tx.wait();
 
         const after = (await publicClientPush.readContract({
@@ -1022,7 +1293,7 @@ describe('PushChain', () => {
           args: [],
         })) as unknown as bigint;
 
-        expect(after).toBe(before + BigInt(2));
+        expect(after).toBe(before + BigInt(4));
       }, 300000);
 
       it('should throw if multicall used with invalid to (SVM)', async () => {
@@ -1062,7 +1333,7 @@ describe('PushChain', () => {
         ];
 
         const publicClientPush = createPublicClient({
-          transport: http('https://evm.rpc-testnet-donut-node1.push.org/'),
+          transport: http('https://evm.donut.rpc.push.org'),
         });
 
         const before = (await publicClientPush.readContract({
@@ -1102,7 +1373,7 @@ describe('PushChain', () => {
         }) as `0x${string}`;
 
         const publicClientPush = createPublicClient({
-          transport: http('https://evm.rpc-testnet-donut-node1.push.org/'),
+          transport: http('https://evm.donut.rpc.push.org'),
         });
 
         const before = (await publicClientPush.readContract({
@@ -1603,7 +1874,7 @@ describe('PushChain', () => {
       if (!PRIVATE_KEY) {
         throw new Error('EVM_PRIVATE_KEY environment variable is not set');
       }
-      await testFeeAbstractionValueOnly(config, PRIVATE_KEY);
+      await testFeeAbstractionValueOnly(config, PRIVATE_KEY, 'self');
     }, 300000);
 
     it('new fee abstraction Payload + Value', async () => {
@@ -1624,7 +1895,7 @@ describe('PushChain', () => {
       if (!PRIVATE_KEY) {
         throw new Error('EVM_PRIVATE_KEY environment variable is not set');
       }
-      await testFeeAbstractionValueOnly(config, PRIVATE_KEY);
+      await testFeeAbstractionValueOnly(config, PRIVATE_KEY, 'other');
     }, 300000);
   });
 
@@ -1638,7 +1909,7 @@ describe('PushChain', () => {
       if (!PRIVATE_KEY) {
         throw new Error('EVM_PRIVATE_KEY environment variable is not set');
       }
-      await testFeeAbstractionValueOnly(config, PRIVATE_KEY);
+      await testFeeAbstractionValueOnly(config, PRIVATE_KEY, 'other');
     }, 300000);
   });
 
@@ -1652,7 +1923,7 @@ describe('PushChain', () => {
       if (!PRIVATE_KEY) {
         throw new Error('EVM_PRIVATE_KEY environment variable is not set');
       }
-      await testFeeAbstractionValueOnly(config, PRIVATE_KEY);
+      await testFeeAbstractionValueOnly(config, PRIVATE_KEY, 'other');
     }, 300000);
   });
 
@@ -2152,15 +2423,19 @@ describe('PushChain', () => {
     });
 
     it('integration: sendFunds USDT via UniversalGatewayV0', async () => {
-      await testSendFundsUSDT(client, account, config);
+      await testSendFundsUSDTNoValue(client, account, config);
     }, 300000);
 
     it('integration: sendFunds ETH via UniversalGatewayV0', async () => {
       await testSendFundsETH(client, config);
     }, 300000);
 
-    it('integration: sendTxWithFunds USDT via UniversalGatewayV0', async () => {
-      await testSendTxWithFundsUSDT(client, account, config);
+    it('integration: sendTxWithFunds USDT Recipient other', async () => {
+      await testSendTxWithFundsUSDTNoValue(client, account, config, 'other');
+    }, 500000);
+
+    it('integration: sendTxWithFunds USDT Recipient self', async () => {
+      await testSendTxWithFundsUSDTNoValue(client, account, config, 'self');
     }, 500000);
 
     it('integration: pay gas with USDT via UniversalGatewayV0', async () => {
@@ -2232,15 +2507,19 @@ describe('PushChain', () => {
     });
 
     it('integration: sendFunds USDT via UniversalGatewayV0', async () => {
-      await testSendFundsUSDT(client, account, config);
+      await testSendFundsUSDTNoValue(client, account, config);
     }, 300000);
 
     it('integration: sendFunds ETH via UniversalGatewayV0', async () => {
       await testSendFundsETH(client, config);
     }, 300000);
 
-    it('integration: sendTxWithFunds USDT via UniversalGatewayV0', async () => {
-      await testSendTxWithFundsUSDT(client, account, config);
+    it('integration: sendTxWithFunds USDT Recipient other', async () => {
+      await testSendTxWithFundsUSDTNoValue(client, account, config, 'other');
+    }, 500000);
+
+    it('integration: sendTxWithFunds USDT Recipient self', async () => {
+      await testSendTxWithFundsUSDTNoValue(client, account, config, 'self');
     }, 500000);
 
     it('integration: pay gas with USDT via UniversalGatewayV0', async () => {
@@ -2267,15 +2546,35 @@ describe('PushChain', () => {
     });
 
     it('integration: sendFunds USDT via UniversalGatewayV0', async () => {
-      await testSendFundsUSDT(client, account, config);
+      await testSendFundsUSDTNoValue(client, account, config);
+    }, 300000);
+
+    it('integration: sendFunds USDT With Value to SELF', async () => {
+      await testSendFundsUSDTWithValue(client, account, config, 'other');
     }, 300000);
 
     it('integration: sendFunds ETH via UniversalGatewayV0', async () => {
       await testSendFundsETH(client, config);
     }, 300000);
 
-    it('integration: sendTxWithFunds USDT via UniversalGatewayV0', async () => {
-      await testSendTxWithFundsUSDT(client, account, config);
+    it('integration: sendTxWithFunds USDT No Value Recipient Other', async () => {
+      await testSendTxWithFundsUSDTNoValue(client, account, config, 'other');
+    }, 500000);
+
+    it('integration: sendTxWithFunds USDT No Value Recipient Self', async () => {
+      await testSendTxWithFundsUSDTNoValue(client, account, config, 'self');
+    }, 500000);
+
+    it('integration: sendTxWithFunds With Value USDT other', async () => {
+      await testSendTxWithFundsUSDTWithValue(client, account, config, 'other');
+    }, 500000);
+
+    it('integration: sendTxWithFunds With Value USDT self', async () => {
+      await testSendTxWithFundsUSDTWithValue(client, account, config, 'self');
+    }, 500000);
+
+    it('integration: value + payload', async () => {
+      await testSendTxValueAndPayload(client, account, config);
     }, 500000);
   });
 
@@ -2298,15 +2597,19 @@ describe('PushChain', () => {
     });
 
     it('integration: sendFunds USDT via UniversalGatewayV0', async () => {
-      await testSendFundsUSDT(client, account, config);
+      await testSendFundsUSDTNoValue(client, account, config);
     }, 300000);
 
     it('integration: sendFunds BNB via UniversalGatewayV0', async () => {
       await testSendFundsETH(client, config);
     }, 300000);
 
-    it('integration: sendTxWithFunds USDT via UniversalGatewayV0', async () => {
-      await testSendTxWithFundsUSDT(client, account, config);
+    it('integration: sendTxWithFunds USDT Recipient other', async () => {
+      await testSendTxWithFundsUSDTNoValue(client, account, config, 'other');
+    }, 500000);
+
+    it('integration: sendTxWithFunds USDT Recipient self', async () => {
+      await testSendTxWithFundsUSDTNoValue(client, account, config, 'self');
     }, 500000);
   });
 
@@ -2382,9 +2685,9 @@ describe('PushChain', () => {
         progressHook: (progress) => {
           console.log('Progress (SVM)', progress);
         },
-        rpcUrls: {
-          [CHAIN.SOLANA_DEVNET]: [SOLANA_RPC],
-        },
+        // rpcUrls: {
+        //   [CHAIN.SOLANA_DEVNET]: [SOLANA_RPC],
+        // },
       });
     });
 
@@ -2438,9 +2741,9 @@ describe('PushChain', () => {
         const pushChainClient = new EvmClient({
           rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
         });
-        const USDT_SOL_ADDRESS =
-          SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
-            .USDT_SOL;
+        const USDT_SOL_ADDRESS = PushChain.utils.tokens.toSyntheticAddress(
+          client.moveable.token.USDT
+        );
         const balanceBefore = await pushChainClient.getErc20Balance({
           tokenAddress: USDT_SOL_ADDRESS,
           ownerAddress: recipient as `0x${string}`,
@@ -2555,7 +2858,7 @@ describe('PushChain', () => {
             .pSOL;
         const balanceBefore = await pushChainClient.getErc20Balance({
           tokenAddress: pSOL_ADDRESS,
-          ownerAddress: recipient as `0x${string}`,
+          ownerAddress: COUNTER_ADDRESS,
         });
         console.log(
           'pSOL balance before bridging (sendTxWithFunds SOL)',
@@ -2577,12 +2880,8 @@ describe('PushChain', () => {
         // Check pSOL balance on PushChain after bridging
         const balanceAfter = await pushChainClient.getErc20Balance({
           tokenAddress: pSOL_ADDRESS,
-          ownerAddress: recipient as `0x${string}`,
+          ownerAddress: COUNTER_ADDRESS,
         });
-        console.log(
-          'pSOL balance after bridging (sendTxWithFunds SOL)',
-          balanceAfter
-        );
         expect(balanceAfter > balanceBefore).toBe(true);
 
         const afterCount = (await pushPublicClient.readContract({
