@@ -1,6 +1,11 @@
-@pushchain/core@2.1.12 (2025-11-10)
+@pushchain/core@3.0.0 (2025-11-10)
 
-- feat: add ERC20 transfer functions and enhance gas payment handling in Orchestrator
+- refactor: rename ExecuteParams.payWith to payGasWith (breaking)
+- refactor: implement _buildMulticallPayloadData; allow BSC for multicall; rename MulticallCall type MultiCall
+- refactor: update RPC URLs and rename currency in Push Testnet Donut config
+- chore: add new PRC20 token and contract addresses
+- feat: add toSyntheticAddress utility in utils
+- refactor: internal payload-builders improvements
 
 ---
 
@@ -142,4 +147,3 @@
 - fix: release fix
 
 ---
-
