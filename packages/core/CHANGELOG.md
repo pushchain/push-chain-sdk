@@ -1,3 +1,9 @@
+@pushchain/core@3.0.1 (2025-11-10)
+
+- release: bump to 3.0.0
+
+---
+
 @pushchain/core@3.0.0 (2025-11-10)
 
 - refactor: rename ExecuteParams.payWith to payGasWith (breaking)
