@@ -71,6 +71,9 @@ export class PayableTokenAccessor {
   get ETH(): PayableToken {
     return this.require('ETH');
   }
+  get USDT(): PayableToken {
+    return this.require('USDT');
+  }
   get USDC(): PayableToken {
     return this.require('USDC');
   }

@@ -11,7 +11,12 @@ import {
   toUniversalFromKeypair,
 } from './universal/signer';
 import { CHAIN, PUSH_NETWORK } from './constants/enums';
-import { MOVEABLE_TOKENS, PAYABLE_TOKENS } from './constants/tokens';
+import {
+  MOVEABLE_TOKENS,
+  PAYABLE_TOKENS,
+  type MoveableToken,
+} from './constants/tokens';
+import { SYNTHETIC_PUSH_ERC20 } from './constants/chain';
 import { UniversalAccount } from './universal/universal.types';
 import type { PushChain } from './push-chain/push-chain';
 import { ethers } from 'ethers';
@@ -634,6 +639,93 @@ export class Utils {
       }
 
       return { tokens };
+    },
+
+    /**
+     * Returns the Push Chain synthetic asset address for a given moveable token.
+     *
+     * @param {MoveableToken} token - A token from `pushChainClient.moveable.token.*`
+     * @returns {`0x${string}`} The synthetic asset address on Push Chain
+     * @throws {Error} If the token cannot be resolved to a supported synthetic asset
+     */
+    toSyntheticAddress(token: MoveableToken): `0x${string}` {
+      // Infer origin chain by matching symbol+address against the MOVEABLE_TOKENS registry
+      let originChain: CHAIN | undefined;
+      for (const [key, list] of Object.entries(MOVEABLE_TOKENS)) {
+        const k = key as CHAIN;
+        const found = (list ?? []).some(
+          (t) => t.symbol === token.symbol && t.address === token.address
+        );
+        if (found) {
+          originChain = k;
+          break;
+        }
+      }
+
+      if (!originChain) {
+        throw new Error('Unable to infer origin chain for token');
+      }
+
+      // Select Push network mapping (tests/use-cases use TESTNET_DONUT; identical to TESTNET here)
+      const network = PUSH_NETWORK.TESTNET_DONUT;
+      const map = SYNTHETIC_PUSH_ERC20[network];
+
+      // Map token → synthetic key by origin chain family
+      const isEthFamily =
+        originChain === CHAIN.ETHEREUM_MAINNET ||
+        originChain === CHAIN.ETHEREUM_SEPOLIA;
+      const isArbFamily = originChain === CHAIN.ARBITRUM_SEPOLIA;
+      const isBaseFamily = originChain === CHAIN.BASE_SEPOLIA;
+      const isBnbFamily = originChain === CHAIN.BNB_TESTNET;
+      const isSolFamily = originChain === CHAIN.SOLANA_DEVNET;
+
+      let key:
+        | 'pETH'
+        | 'pETH_ARB'
+        | 'pETH_BASE'
+        | 'pETH_BNB'
+        | 'pSOL'
+        | 'USDT_ETH'
+        | 'USDT_ARB'
+        | 'USDT_SOL'
+        | 'USDT_BNB'
+        | 'USDT_BASE';
+
+      switch (token.symbol) {
+        case 'ETH': {
+          if (isEthFamily) key = 'pETH';
+          else if (isArbFamily) key = 'pETH_ARB';
+          else if (isBaseFamily) key = 'pETH_BASE';
+          else if (isBnbFamily) key = 'pETH_BNB';
+          else
+            throw new Error(
+              'Unsupported ETH origin chain for synthetic mapping'
+            );
+          break;
+        }
+        case 'SOL': {
+          if (!isSolFamily)
+            throw new Error('SOL token provided but origin is not Solana');
+          key = 'pSOL';
+          break;
+        }
+        case 'USDT': {
+          if (isEthFamily) key = 'USDT_ETH';
+          else if (isArbFamily) key = 'USDT_ARB';
+          else if (isBaseFamily) key = 'USDT_BASE';
+          else if (isBnbFamily) key = 'USDT_BNB';
+          else if (isSolFamily) key = 'USDT_SOL';
+          else
+            throw new Error(
+              'Unsupported USDT origin chain for synthetic mapping'
+            );
+          break;
+        }
+        default:
+          throw new Error(`Unsupported token symbol: ${token.symbol}`);
+      }
+
+      return map[key];
     },
   };
 
