@@ -11,7 +11,8 @@ export const protobufPackage = "ue.v1";
 
 /** Signature verification types */
 export enum VerificationType {
-  /** signedVerification - Signed verification using a signature */
+  // Old, now we are using the universalTxVerification instead, so we pass the signedPayload as `0x` instead when using the universalTxVerification.
+  /** signedVerification - Signed verification using a signature */ // eip712 signature
   signedVerification = 0,
   /** universalTxVerification - Universal transaction verification */
   universalTxVerification = 1,
