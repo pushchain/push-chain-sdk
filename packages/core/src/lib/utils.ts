@@ -648,7 +648,7 @@ export class Utils {
      * @returns {`0x${string}`} The synthetic asset address on Push Chain
      * @throws {Error} If the token cannot be resolved to a supported synthetic asset
      */
-    toSyntheticAddress(token: MoveableToken): `0x${string}` {
+    getPRC20Mapping(token: MoveableToken): `0x${string}` {
       // Infer origin chain by matching symbol+address against the MOVEABLE_TOKENS registry
       let originChain: CHAIN | undefined;
       for (const [key, list] of Object.entries(MOVEABLE_TOKENS)) {
