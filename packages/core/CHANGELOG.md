@@ -1,3 +1,9 @@
+@pushchain/core@2.1.12 (2025-11-10)
+
+- feat: add ERC20 transfer functions and enhance gas payment handling in Orchestrator
+
+---
+
 @pushchain/core@2.1.1 (2025-10-26)
 
 - release: bump to 2.0.21
