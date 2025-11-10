@@ -2269,7 +2269,7 @@ export class Orchestrator {
       //   functionName: 'transfer',
       //   args: [execute.to, fundsValue],
       // });
-      // const pushChainTo = PushChain.utils.tokens.toSyntheticAddress(
+      // const pushChainTo = PushChain.utils.tokens.getPRC20Mapping(
       //   execute.funds!.token as MoveableToken
       // );
       const universalPayload = {

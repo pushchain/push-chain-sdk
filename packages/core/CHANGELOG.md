@@ -4,7 +4,7 @@
 - refactor: implement _buildMulticallPayloadData; allow BSC for multicall; rename MulticallCall type MultiCall
 - refactor: update RPC URLs and rename currency in Push Testnet Donut config
 - chore: add new PRC20 token and contract addresses
-- feat: add toSyntheticAddress utility in utils
+- feat: add getPRC20Mapping utility in utils
 - refactor: internal payload-builders improvements
 
 ---
