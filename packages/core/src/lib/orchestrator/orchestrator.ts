@@ -62,6 +62,7 @@ import {
   Signature,
   UniversalTxReceipt,
 } from './orchestrator.types';
+import { UniversalTx } from '../generated/uexecutor/v1/types';
 import {
   ConversionQuote,
   MOVEABLE_TOKENS,
@@ -272,18 +273,9 @@ export class Orchestrator {
                 revertCFG,
                 '0x',
               ]);
-              // @@@@@@ native. sendGas. temp
-              // txHash = await evmClient.writeContract({
-              //   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
-              //   address: gatewayAddress as `0x${string}`,
-              //   functionName: 'sendTxWithGas',
-              //   args: [universalPayload as unknown as never, revertCFG, '0x'],
-              //   signer: this.universalSigner,
-              //   value: nativeAmount,
-              // })
 
               const ueaAddress = this.computeUEAOffchain();
-              if (execute.to === ueaAddress) {
+              if (execute.to.toLowerCase() === ueaAddress.toLowerCase()) {
                 txHash = await evmClient.writeContract({
                   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                   address: gatewayAddress,
@@ -308,15 +300,6 @@ export class Orchestrator {
                   value: nativeAmount,
                 });
               }
-
-              // txHash = await evmClient.writeContract({
-              //   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
-              //   address: gatewayAddress,
-              //   functionName: 'sendFunds',
-              //   args: [recipient, bridgeToken, bridgeAmount, revertCFG],
-              //   signer: this.universalSigner,
-              //   value: isNative ? bridgeAmount : BigInt(0),
-              // });
             } catch (err) {
               this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_04);
               throw err;
@@ -337,17 +320,21 @@ export class Orchestrator {
               4,
               210000
             );
-            // After origin confirmations, query Push Chain for UniversalTx status
-            await this.queryUniversalTxStatusFromGatewayTx(
-              evmClient,
-              gatewayAddress,
-              txHash,
-              execute.to === ueaAddress ? 'sendFunds' : 'sendTxWithFunds'
-              // 'sendFunds'
-              // 'sendTxWithFunds'
+
+            const pushChainUniversalTx =
+              await this.queryUniversalTxStatusFromGatewayTx(
+                evmClient,
+                gatewayAddress,
+                txHash,
+                execute.to === ueaAddress ? 'sendFunds' : 'sendTxWithFunds'
+              );
+            const lastPcTransaction = pushChainUniversalTx?.pcTx.at(-1);
+            const tx = await this.pushClient.getTransaction(
+              lastPcTransaction?.txHash as `0x${string}`
             );
-            const tx = await evmClient.getTransaction(txHash);
-            return await this.transformToUniversalTxResponse(tx);
+            const response = await this.transformToUniversalTxResponse(tx);
+            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
+            return response;
           } else {
             // SVM path (Solana Devnet)
             const svmClient = new SvmClient({ rpcUrls });
@@ -545,65 +532,22 @@ export class Orchestrator {
               timeoutMs: 300000,
             });
             // After origin confirmations, query Push Chain for UniversalTx status (SVM)
-            await this.queryUniversalTxStatusFromGatewayTx(
-              undefined,
-              undefined,
-              txSignature,
-              'sendFunds'
-            );
+            const pushChainUniversalTx =
+              await this.queryUniversalTxStatusFromGatewayTx(
+                undefined,
+                undefined,
+                txSignature,
+                'sendFunds'
+              );
             this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_06);
 
-            // Build a minimal UniversalTxResponse for SVM origin
-            const chainId = CHAIN_INFO[chain].chainId;
-            const origin = `${VM_NAMESPACE[vm]}:${chainId}:${this.universalSigner.account.address}`;
-            const universalTxResponse: UniversalTxResponse = {
-              hash: txSignature,
-              origin,
-              blockNumber: BigInt(0),
-              blockHash: '',
-              transactionIndex: 0,
-              chainId,
-              from: this.universalSigner.account.address,
-              to: '0x0000000000000000000000000000000000000000',
-              nonce: 0,
-              data: '0x',
-              value: BigInt(0),
-              gasLimit: BigInt(0),
-              gasPrice: undefined,
-              maxFeePerGas: undefined,
-              maxPriorityFeePerGas: undefined,
-              accessList: [],
-              wait: async () => ({
-                hash: txSignature,
-                blockNumber: BigInt(0),
-                blockHash: '',
-                transactionIndex: 0,
-                from: this.universalSigner.account.address,
-                to: '0x0000000000000000000000000000000000000000',
-                contractAddress: null,
-                gasPrice: BigInt(0),
-                gasUsed: BigInt(0),
-                cumulativeGasUsed: BigInt(0),
-                logs: [],
-                logsBloom: '0x',
-                status: 1,
-                raw: {
-                  from: this.universalSigner.account.address,
-                  to: '0x0000000000000000000000000000000000000000',
-                },
-              }),
-              type: '99',
-              typeVerbose: 'universal',
-              signature: { r: '0x0', s: '0x0', v: 0 },
-              raw: {
-                from: this.universalSigner.account.address,
-                to: '0x0000000000000000000000000000000000000000',
-                nonce: 0,
-                data: '0x',
-                value: BigInt(0),
-              },
-            };
-            return universalTxResponse;
+            const lastPcTransaction = pushChainUniversalTx?.pcTx.at(-1);
+            const tx = await this.pushClient.getTransaction(
+              lastPcTransaction?.txHash as `0x${string}`
+            );
+            const response = await this.transformToUniversalTxResponse(tx);
+            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
+            return response;
           }
         } else {
           // Bridge funds + execute payload. Support:
@@ -959,39 +903,34 @@ export class Orchestrator {
           this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_06);
 
           // After sending Cosmos tx to Push Chain, query UniversalTx status
+          let pushChainUniversalTx: UniversalTx | undefined;
           if (CHAIN_INFO[this.universalSigner.account.chain].vm === VM.EVM) {
             const evmClientEvm = evmClient as EvmClient;
             const gatewayAddressEvm = gatewayAddress as `0x${string}`;
-            await this.queryUniversalTxStatusFromGatewayTx(
-              evmClientEvm,
-              gatewayAddressEvm,
-              txHash as `0x${string}`,
-              'sendTxWithFunds'
-            );
+            pushChainUniversalTx =
+              await this.queryUniversalTxStatusFromGatewayTx(
+                evmClientEvm,
+                gatewayAddressEvm,
+                txHash as `0x${string}`,
+                'sendTxWithFunds'
+              );
           } else {
-            await this.queryUniversalTxStatusFromGatewayTx(
-              undefined,
-              undefined,
-              txHash as string,
-              'sendTxWithFunds'
-            );
+            pushChainUniversalTx =
+              await this.queryUniversalTxStatusFromGatewayTx(
+                undefined,
+                undefined,
+                txHash as string,
+                'sendTxWithFunds'
+              );
           }
 
-          if (CHAIN_INFO[this.universalSigner.account.chain].vm === VM.EVM) {
-            const evmClientEvm = evmClient as EvmClient;
-            const evmTx = await evmClientEvm.getTransaction(
-              txHash as `0x${string}`
-            );
-            this.executeProgressHook(
-              PROGRESS_HOOK.SEND_TX_06_07,
-              bridgeAmount,
-              execute.funds.token.decimals,
-              symbol
-            );
-            return await this.transformToUniversalTxResponse(evmTx);
-          } else {
-            return txs[txs.length - 1];
-          }
+          const lastPcTransaction = pushChainUniversalTx?.pcTx.at(-1);
+          const tx = await this.pushClient.getTransaction(
+            lastPcTransaction?.txHash as `0x${string}`
+          );
+          const response = await this.transformToUniversalTxResponse(tx);
+          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
+          return response;
         }
       }
 
@@ -1048,9 +987,9 @@ export class Orchestrator {
         feeLockTxHash = bytesToHex(new Uint8Array(decoded));
       }
       // Fee locking is required if UEA is not deployed OR insufficient funds
-      // const feeLockingRequired =
-      //   (!isUEADeployed || funds < requiredFunds) && !feeLockTxHash;
-      const feeLockingRequired = true;
+      const feeLockingRequired =
+        (!isUEADeployed || funds < requiredFunds) && !feeLockTxHash;
+      // const feeLockingRequired = true;
 
       // Support multicall payload encoding when execute.data is an array
       let payloadData: `0x${string}`;
@@ -1075,6 +1014,10 @@ export class Orchestrator {
             buildExecuteMulticall({ execute, ueaAddress: UEA })
           );
         } else {
+          // For value only we don't check below. Only if there is payload to be executed
+          if (execute.data && execute.to.toLowerCase() === UEA.toLowerCase()) {
+            throw new Error(`You can't execute data on the UEA address`);
+          }
           payloadTo = execute.to;
           payloadData = execute.data || '0x';
         }
@@ -1159,12 +1102,13 @@ export class Orchestrator {
 
         // Query nodes via gRPC for Push Chain transaction
         const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
-        await this.queryUniversalTxStatusFromGatewayTx(
-          new EvmClient({ rpcUrls: this.rpcUrls[chain] || defaultRPC }),
-          lockerContract as `0x${string}`,
-          feeLockTxHash,
-          'sendTxWithGas'
-        );
+        const pushChainUniversalTx =
+          await this.queryUniversalTxStatusFromGatewayTx(
+            new EvmClient({ rpcUrls: this.rpcUrls[chain] || defaultRPC }),
+            lockerContract as `0x${string}`,
+            feeLockTxHash,
+            'sendTxWithGas'
+          );
 
         /**
          * Return response directly (skip sendUniversalTx for sendTxWithGas flow)
@@ -1174,77 +1118,20 @@ export class Orchestrator {
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06);
 
         // Transform to UniversalTxResponse (follow sendFunds pattern)
-        if (vm === VM.EVM) {
-          // Get EVM transaction for full response
-          const evmClient = new EvmClient({
-            rpcUrls: this.rpcUrls[chain] || CHAIN_INFO[chain].defaultRPC,
-          });
-          const tx = await evmClient.getTransaction(
-            feeLockTxHash as `0x${string}`
-          );
-          const response = await this.transformToUniversalTxResponse(tx);
-          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
-          return response;
-        } else {
-          // SVM: build minimal response (follow sendFunds SVM pattern)
-          const chainId = CHAIN_INFO[chain].chainId;
-          const origin = `${VM_NAMESPACE[vm]}:${chainId}:${this.universalSigner.account.address}`;
-          const response: UniversalTxResponse = {
-            hash: utils.bytes.bs58.encode(feeLockTxHashBytes),
-            origin,
-            blockNumber: BigInt(0),
-            blockHash: '',
-            transactionIndex: 0,
-            chainId,
-            from: this.universalSigner.account.address,
-            to: '0x0000000000000000000000000000000000000000',
-            nonce: 0,
-            data: '0x',
-            value: BigInt(0),
-            gasLimit: BigInt(0),
-            gasPrice: undefined,
-            maxFeePerGas: undefined,
-            maxPriorityFeePerGas: undefined,
-            accessList: [],
-            wait: async () => ({
-              hash: utils.bytes.bs58.encode(feeLockTxHashBytes),
-              blockNumber: BigInt(0),
-              blockHash: '',
-              transactionIndex: 0,
-              from: this.universalSigner.account.address,
-              to: '0x0000000000000000000000000000000000000000',
-              contractAddress: null,
-              gasPrice: BigInt(0),
-              gasUsed: BigInt(0),
-              cumulativeGasUsed: BigInt(0),
-              logs: [],
-              logsBloom: '0x',
-              status: 1 as 0 | 1,
-              raw: {
-                from: this.universalSigner.account.address,
-                to: '0x0000000000000000000000000000000000000000',
-              },
-            }),
-            type: '99',
-            typeVerbose: 'universal',
-            signature: { r: '0x0', s: '0x0', v: 0 },
-            raw: {
-              from: this.universalSigner.account.address,
-              to: '0x0000000000000000000000000000000000000000',
-              nonce: 0,
-              data: '0x',
-              value: BigInt(0),
-            },
-          };
-          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
-          return response;
-        }
+        const lastPcTransaction = pushChainUniversalTx?.pcTx.at(-1);
+        const tx = await this.pushClient.getTransaction(
+          lastPcTransaction?.txHash as `0x${string}`
+        );
+        const response = await this.transformToUniversalTxResponse(tx);
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
+        return response;
       }
       /**
        * Non-fee-locking path: Broadcasting Tx to PC via sendUniversalTx
        */
 
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06);
+      // We don't need to query via gRPC the PC transaction since it's getting returned it here already.
       const transactions = await this.sendUniversalTx(
         isUEADeployed,
         feeLockTxHash,
@@ -2718,7 +2605,7 @@ export class Orchestrator {
     gatewayAddress: `0x${string}` | undefined,
     txHash: string,
     evmGatewayMethod: 'sendFunds' | 'sendTxWithFunds' | 'sendTxWithGas'
-  ): Promise<any | undefined> {
+  ): Promise<UniversalTx | undefined> {
     try {
       const chain = this.universalSigner.account.chain;
       const { vm } = CHAIN_INFO[chain];
@@ -2788,7 +2675,7 @@ export class Orchestrator {
 
       // Fetch UniversalTx via gRPC with a brief retry window
       let universalTxObj: any | undefined;
-      for (let attempt = 0; attempt < 10; attempt++) {
+      for (let attempt = 0; attempt < 15; attempt++) {
         try {
           const universalTxResp = await this.pushClient.getUniversalTxById(
             idHex
