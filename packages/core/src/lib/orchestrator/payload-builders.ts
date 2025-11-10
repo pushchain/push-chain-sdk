@@ -1,4 +1,4 @@
-import { encodeFunctionData } from 'viem';
+import { encodeFunctionData, isAddress } from 'viem';
 import { PushChain } from '../push-chain/push-chain';
 import { ERC20_EVM } from '../constants/abi';
 import { MoveableToken } from '../constants/tokens';
@@ -36,8 +36,20 @@ export function buildExecuteMulticall({
     });
   }
   if (execute.data) {
-    if (execute.to === ueaAddress)
-      throw new Error(`You can't execute data on the UEA address`);
+    // *************************
+    // Check for `execute.to`
+    // *************************
+
+    // For multicall, there is no validation for execute.to. Only if that's a valid EVM address
+    if (Array.isArray(execute.data)) {
+      if (!isAddress(execute.to))
+        throw new Error(`Invalid EVM address at execute.to ${execute.to}`);
+    } else {
+      // We can't execute payload against our UEA.
+      if (execute.to === ueaAddress)
+        throw new Error(`You can't execute data on the UEA address`);
+    }
+
     if (Array.isArray(execute.data)) {
       multicallData.push(...(execute.data as MultiCall[]));
     } else {
