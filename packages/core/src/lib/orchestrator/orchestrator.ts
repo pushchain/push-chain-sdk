@@ -355,7 +355,7 @@ export class Orchestrator {
             const userPk = new PublicKey(this.universalSigner.account.address);
 
             // pay-with-token gas abstraction is not supported on Solana
-            if (execute.funds?.payWith !== undefined) {
+            if (execute.payGasWith !== undefined) {
               throw new Error('Pay-with token is not supported on Solana');
             }
 
@@ -742,7 +742,7 @@ export class Orchestrator {
               // });
               // New behavior: if user provided a gasTokenAddress, pay gas in that token via Uniswap quote
               // Determine pay-with token address, min-out and slippage
-              const payWith = execute.funds.payWith;
+              const payWith = execute.payGasWith;
               const gasTokenAddress = payWith?.token?.address as
                 | `0x${string}`
                 | undefined;
@@ -937,11 +937,6 @@ export class Orchestrator {
       // Set default value for value if undefined
       if (execute.value === undefined) {
         execute.value = BigInt(0);
-      }
-
-      // Validate fundGas property - must not be set for now
-      if (execute.fundGas) {
-        throw new Error('Unsupported token');
       }
 
       const chain = this.universalSigner.account.chain;
@@ -1713,7 +1708,7 @@ export class Orchestrator {
     );
 
     // pay-with-token gas abstraction is not supported on Solana
-    if (execute.funds?.payWith !== undefined) {
+    if (execute.payGasWith !== undefined) {
       throw new Error('Pay-with token is not supported on Solana');
     }
 

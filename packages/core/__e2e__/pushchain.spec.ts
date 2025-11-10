@@ -86,33 +86,6 @@ describe('PushChain (e2e)', () => {
         ).rejects.toThrow();
       }, 30000);
 
-      it('should fail to send universal.sendTransaction with fundGas property', async () => {
-        await expect(
-          pushClient.universal.sendTransaction({
-            to,
-            value: BigInt(1e3),
-            fundGas: {
-              chainToken: '0x1234567890123456789012345678901234567890',
-            },
-          })
-        ).rejects.toThrow('Unsupported token');
-      }, 30000);
-
-      it('should successfully send universal.sendTransaction without fundGas (default behavior)', async () => {
-        const tx = await pushClient.universal.sendTransaction({
-          to,
-          value: BigInt(1e3),
-          // fundGas not provided - should work fine
-        });
-        expect(tx).toBeDefined();
-        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-        await txValidator(
-          tx,
-          pushClient.universal.origin.address as `0x${string}`,
-          to
-        );
-      }, 300000);
-
       it('should successfully sendTransaction - Transfer Call', async () => {
         const tx = await pushClient.universal.sendTransaction({
           to,
@@ -224,33 +197,6 @@ describe('PushChain (e2e)', () => {
           })
         ).rejects.toThrow();
       }, 30000);
-
-      it('should fail to send universal.sendTransaction with fundGas property', async () => {
-        await expect(
-          pushClient.universal.sendTransaction({
-            to,
-            value: BigInt(1e3),
-            fundGas: {
-              chainToken: '0x1234567890123456789012345678901234567890',
-            },
-          })
-        ).rejects.toThrow('Unsupported token');
-      }, 30000);
-
-      it('should successfully send universal.sendTransaction without fundGas (default behavior)', async () => {
-        const tx = await pushClient.universal.sendTransaction({
-          to,
-          value: BigInt(1e3),
-          // fundGas not provided - should work fine
-        });
-        expect(tx).toBeDefined();
-        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-        await txValidator(
-          tx,
-          pushClient.universal.origin.address as `0x${string}`,
-          to
-        );
-      }, 300000);
 
       it('should successfully sendTransaction - Transfer Call', async () => {
         const tx = await pushClient.universal.sendTransaction({
@@ -364,33 +310,6 @@ describe('PushChain (e2e)', () => {
         ).rejects.toThrow();
       }, 30000);
 
-      it('should fail to send universal.sendTransaction with fundGas property', async () => {
-        await expect(
-          pushClient.universal.sendTransaction({
-            to,
-            value: BigInt(1e3),
-            fundGas: {
-              chainToken: '0x1234567890123456789012345678901234567890',
-            },
-          })
-        ).rejects.toThrow('Unsupported token');
-      }, 30000);
-
-      it('should successfully send universal.sendTransaction without fundGas (default behavior)', async () => {
-        const tx = await pushClient.universal.sendTransaction({
-          to,
-          value: BigInt(1e3),
-          // fundGas not provided - should work fine
-        });
-        expect(tx).toBeDefined();
-        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-        await txValidator(
-          tx,
-          pushClient.universal.origin.address as `0x${string}`,
-          to
-        );
-      }, 300000);
-
       it('should successfully sendTransaction - Transfer Call', async () => {
         const tx = await pushClient.universal.sendTransaction({
           to,
@@ -503,33 +422,6 @@ describe('PushChain (e2e)', () => {
         ).rejects.toThrow();
       }, 30000);
 
-      it('should fail to send universal.sendTransaction with fundGas property', async () => {
-        await expect(
-          pushClient.universal.sendTransaction({
-            to,
-            value: BigInt(1e3),
-            fundGas: {
-              chainToken: '0x1234567890123456789012345678901234567890',
-            },
-          })
-        ).rejects.toThrow('Unsupported token');
-      }, 30000);
-
-      it('should successfully send universal.sendTransaction without fundGas (default behavior)', async () => {
-        const tx = await pushClient.universal.sendTransaction({
-          to,
-          value: BigInt(1e3),
-          // fundGas not provided - should work fine
-        });
-        expect(tx).toBeDefined();
-        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-        await txValidator(
-          tx,
-          pushClient.universal.origin.address as `0x${string}`,
-          to
-        );
-      }, 300000);
-
       it('should successfully sendTransaction - Transfer Call', async () => {
         const tx = await pushClient.universal.sendTransaction({
           to,
@@ -617,16 +509,6 @@ describe('PushChain (e2e)', () => {
       });
     });
 
-    it('should fail to send universal.sendTransaction with fundGas property from Push origin', async () => {
-      await expect(
-        pushClient.universal.sendTransaction({
-          to,
-          value: BigInt(2),
-          fundGas: { chainToken: '0x1234567890123456789012345678901234567890' },
-        })
-      ).rejects.toThrow('Unsupported token');
-    }, 30000);
-
     it('should sendTransaction', async () => {
       const from = pushClient.universal.account;
       const tx = await pushClient.universal.sendTransaction({
@@ -673,18 +555,6 @@ describe('PushChain (e2e)', () => {
             value: BigInt(1e1),
           })
         ).rejects.toThrow();
-      }, 30000);
-
-      it('should fail to send universal.sendTransaction with fundGas property from Solana origin', async () => {
-        await expect(
-          pushClient.universal.sendTransaction({
-            to,
-            value: BigInt(1e1),
-            fundGas: {
-              chainToken: '0x1234567890123456789012345678901234567890',
-            },
-          })
-        ).rejects.toThrow('Unsupported token');
       }, 30000);
 
       it('should successfully send universal.sendTransaction', async () => {

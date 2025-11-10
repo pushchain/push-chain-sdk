@@ -853,9 +853,9 @@ async function testSendTxWithFundsPayGasUSDT(
     funds: {
       amount: bridgeAmount,
       token: usdt,
-      payWith: {
-        token: client.payable.token.USDT,
-      },
+    },
+    payGasWith: {
+      token: client.payable.token.USDT,
     },
   });
   console.log('txHash', res.hash);
@@ -3099,9 +3099,9 @@ describe('PushChain', () => {
             funds: {
               amount: bridgeAmount,
               token: client.moveable.token.USDT,
-              payWith: {
-                token: client.payable.token.USDT,
-              },
+            },
+            payGasWith: {
+              token: client.payable.token.USDT,
             },
           })
         ).rejects.toThrow('Pay-with token is not supported on Solana');
