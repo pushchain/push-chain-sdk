@@ -898,7 +898,14 @@ export class Orchestrator {
               feeLockTxHash = bytesToHex(new Uint8Array(decoded));
             }
           }
-          const txs = await this.sendUniversalTx(deployed, feeLockTxHash);
+
+          if (
+            chain === CHAIN.SOLANA_DEVNET ||
+            chain === CHAIN.SOLANA_TESTNET ||
+            chain === CHAIN.SOLANA_MAINNET
+          ) {
+            await this.sendUniversalTx(deployed, feeLockTxHash);
+          }
 
           this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_06);
 
