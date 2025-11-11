@@ -266,13 +266,6 @@ export class Orchestrator {
                 BigInt(0),
                 ueaBalanceForGas
               );
-              console.log([
-                tokenAddr,
-                bridgeAmount,
-                universalPayload,
-                revertCFG,
-                '0x',
-              ]);
 
               const ueaAddress = this.computeUEAOffchain();
               if (execute.to.toLowerCase() === ueaAddress.toLowerCase()) {
@@ -2683,9 +2676,6 @@ export class Orchestrator {
             idHex
           );
           universalTxObj = universalTxResp?.universalTx;
-          console.log('@@@@@');
-          console.log(universalTxObj);
-          console.log('@@@@@');
           if (universalTxObj) break;
         } catch (error) {
           // ignore and retry
