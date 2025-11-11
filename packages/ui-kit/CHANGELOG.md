@@ -1,3 +1,10 @@
+@pushchain/ui-kit@2.1.0 (2025-11-11)
+
+- chore: update core to v3.0.4, update rpc urls and fix progress toast
+- release: bump to 2.0.16
+
+---
+
 @pushchain/ui-kit@2.0.13 (2025-10-23)
 
 - feat: add bnb and other fixes
