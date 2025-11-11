@@ -1,3 +1,10 @@
+@pushchain/core@3.0.4 (2025-11-11)
+
+- refactor: remove debug console logs from Orchestrator class
+- refactor: fix sendTxWithFunds_new for new UEA
+
+---
+
 @pushchain/core@3.0.1 (2025-11-10)
 
 - release: bump to 3.0.0
