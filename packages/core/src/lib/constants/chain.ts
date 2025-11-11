@@ -182,7 +182,7 @@ export const CHAIN_INFO: Record<
     lockerContract: '0x05bD7a3D18324c1F7e216f7fBF2b15985aE5281A',
     defaultRPC: [sepolia.rpcUrls.default.http[0]],
     confirmations: 2,
-    timeout: 30000,
+    timeout: 120000,
     dex: {
       uniV3Factory: '0x0227628f3F023bb0B980b67D528571c95c6DaC1c',
       uniV3QuoterV2: '0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3',
@@ -247,7 +247,7 @@ export const CHAIN_INFO: Record<
     lockerContract: 'CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS',
     defaultRPC: ['https://api.devnet.solana.com'],
     confirmations: 2,
-    timeout: 35000,
+    timeout: 120000,
   },
 };
 
