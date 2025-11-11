@@ -56,8 +56,8 @@ export const usePushChainClient = (uid?: string) => {
             setProgress(progress);
 
             if (
-              progress.id === PROGRESS_HOOK.SEND_TX_99_01 ||
-              progress.id === PROGRESS_HOOK.SEND_TX_99_02
+              progress.level === 'SUCCESS' ||
+              progress.level === 'ERROR'
             ) {
               setTimeout(() => setProgress(null), 5000);
             }

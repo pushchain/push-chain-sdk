@@ -20,8 +20,8 @@ const PushWalletToast: FC<PushWalletToastProps> = ({ progress, setProgress }) =>
         <ToastContainer>
             <IconContainer>
                 {
-                    progress.id === PROGRESS_HOOK.SEND_TX_99_01 ? <TickIcon /> :
-                    progress.id === PROGRESS_HOOK.SEND_TX_99_02 ? <WarningIcon /> :
+                    progress.level === 'SUCCESS' ? <TickIcon /> :
+                    progress.level === 'ERROR' ? <WarningIcon /> :
                     <Spinner color='var(--pw-int-brand-primary-color)' />
                 }
             </IconContainer>
