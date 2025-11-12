@@ -3,6 +3,7 @@ import { PROGRESS_HOOK } from '@pushchain/core/src/lib/progress-hook/progress-ho
 import { usePushWalletContext } from './usePushWallet';
 import { useEffect, useState } from 'react';
 import { createGuardedPushChain } from '../helpers/txnAuthGuard';
+import { useRef } from 'react';
 
 export const usePushChainClient = (uid?: string) => {
   const {
@@ -19,6 +20,8 @@ export const usePushChainClient = (uid?: string) => {
   } = usePushWalletContext(uid);
   const [pushChain, setPushChain] = useState<PushChain | null>(null);
   const [error, setError] = useState<Error | null>(null);
+
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // initialise Push Chain instance here and export that
   useEffect(() => {
@@ -53,13 +56,17 @@ export const usePushChainClient = (uid?: string) => {
         const intializeProps = {
           network: config.network,
           progressHook: async (progress: any) => {
+            if (timeoutRef.current) {
+              clearTimeout(timeoutRef.current);
+              timeoutRef.current = null;
+            }
             setProgress(progress);
 
             if (
               progress.level === 'SUCCESS' ||
               progress.level === 'ERROR'
             ) {
-              setTimeout(() => setProgress(null), 5000);
+              timeoutRef.current = setTimeout(() => setProgress(null), 5000);
             }
           },
           rpcUrls: config.chainConfig?.rpcUrls,
