@@ -1,3 +1,11 @@
+@pushchain/ui-kit@2.1.3 (2025-11-17)
+
+- fix: fix metamask signTypedData to handle BigInt
+- release: bump to 2.1.2
+- release: bump to 2.1.1
+
+---
+
 @pushchain/ui-kit@2.1.0 (2025-11-11)
 
 - chore: update core to v3.0.4, update rpc urls and fix progress toast
