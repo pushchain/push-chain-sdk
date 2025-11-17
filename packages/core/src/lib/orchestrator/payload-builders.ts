@@ -12,13 +12,14 @@ export function buildExecuteMulticall({
   ueaAddress: `0x${string}`;
 }): MultiCall[] {
   const multicallData: MultiCall[] = [];
-  if (execute.value) {
-    multicallData.push({
-      to: execute.to,
-      value: execute.value,
-      data: '0x',
-    });
-  }
+  // *** We will pass the value alongside with the data in a single message now ***
+  // if (execute.value) {
+  //   multicallData.push({
+  //     to: execute.to,
+  //     value: execute.value,
+  //     data: '0x',
+  //   });
+  // }
   if (execute.funds?.amount) {
     const erc20Transfer = encodeFunctionData({
       abi: ERC20_EVM,
@@ -53,7 +54,7 @@ export function buildExecuteMulticall({
     } else {
       multicallData.push({
         to: execute.to,
-        value: BigInt(0),
+        value: execute.value ? execute.value : BigInt(0),
         data: execute.data as `0x${string}`,
       });
     }
