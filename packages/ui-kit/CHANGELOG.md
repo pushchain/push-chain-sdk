@@ -1,3 +1,9 @@
+@pushchain/ui-kit@2.1.5 (2025-11-17)
+
+- chore: update core sdk to v3.0.8
+
+---
+
 @pushchain/ui-kit@2.1.3 (2025-11-17)
 
 - fix: fix metamask signTypedData to handle BigInt
