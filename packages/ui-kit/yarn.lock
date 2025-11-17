@@ -794,9 +794,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pushchain/core@npm:^3.0.5":
-  version: 3.0.5
-  resolution: "@pushchain/core@npm:3.0.5"
+"@pushchain/core@npm:^3.0.8":
+  version: 3.0.8
+  resolution: "@pushchain/core@npm:3.0.8"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.0.0"
     "@coral-xyz/anchor": "npm:^0.31.0"
@@ -813,7 +813,7 @@ __metadata:
     tslib: "npm:^2.3.0"
     tweetnacl: "npm:^1.0.3"
     viem: "npm:2.27.2"
-  checksum: 10/b7cec4a713e6dba98b403c7ff1014a0d270551f266558ec2c2d02fb742b841e53087a58b29f902f07dc59524664b8aa3d8d779b2c1c62c502b0d17fef88599e0
+  checksum: 10/552338a2e98836b7b480856b2df1f605bb98aad24a6f89e69051d31c477bd0170416fc9b5b27f53c92916e58ea48e398c64aa0b82f2ec25e9a9f18781fa41197
   languageName: node
   linkType: hard
 
@@ -823,7 +823,7 @@ __metadata:
   dependencies:
     "@coral-xyz/anchor": "npm:^0.31.1"
     "@metamask/sdk": "npm:^0.32.0"
-    "@pushchain/core": "npm:^3.0.5"
+    "@pushchain/core": "npm:^3.0.8"
     "@solana/web3.js": "npm:^1.98.2"
     "@types/react": "npm:^18.3.13"
     "@types/react-is": "npm:^19"
