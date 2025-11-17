@@ -216,9 +216,15 @@ export class MetamaskProvider extends BaseWalletProvider {
         UniversalPayload: typedData.types['UniversalPayload'],
       }
 
+      const safeTypedData = JSON.parse(
+        JSON.stringify(typedData, (_key, value) =>
+          typeof value === 'bigint' ? value.toString() : value
+        )
+      );
+
       const signature = await provider.request({
         method: 'eth_signTypedData_v4',
-        params: [accounts[0], JSON.stringify(typedData)],
+        params: [accounts[0], JSON.stringify(safeTypedData)],
       });
 
       return hexToBytes(signature as `0x${string}`);
