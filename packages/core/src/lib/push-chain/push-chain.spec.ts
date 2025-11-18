@@ -433,10 +433,13 @@ async function testFundsUSDTNoValueNewWalletDeployUEA(
     progressHook: (progress) => console.log(progress),
   });
 
+  let recipientAddress: `0x${string}`;
+  if (transactionRecipient === 'self')
+    recipientAddress = pushClientNew.universal.account;
+  else recipientAddress = '0x0000000000000000000000000000000000042101';
+
   // Prepare target contract call on Push Chain
   const bridgeAmount = BigInt(1);
-  const COUNTER_ADDRESS =
-    '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
 
   const pushPublicClient = createPublicClient({
     transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
@@ -456,9 +459,9 @@ async function testFundsUSDTNoValueNewWalletDeployUEA(
     tokenAddress: pusdt,
     ownerAddress: executorInfo.address,
   });
-  const balanceBefore_pUSDT_COUNTER = await pushEvmClient.getErc20Balance({
+  const balanceBefore_pUSDT_RECIPIENT = await pushEvmClient.getErc20Balance({
     tokenAddress: pusdt,
-    ownerAddress: COUNTER_ADDRESS,
+    ownerAddress: recipientAddress,
   });
 
   // Log origin chain balances (ETH and USDT) before executing universal.sendTransaction
@@ -481,22 +484,8 @@ async function testFundsUSDTNoValueNewWalletDeployUEA(
     )}`
   );
 
-  if (transactionRecipient === 'self') {
-    await expect(
-      pushClientNew.universal.sendTransaction({
-        to: pushClientNew.universal.account,
-        value: BigInt(0),
-        funds: {
-          amount: bridgeAmount,
-          token: pushClientNew.moveable.token.USDT,
-        },
-      })
-    ).rejects.toThrow(`You can't execute data on the UEA address`);
-    return;
-  }
-
   const resUSDT = await pushClientNew.universal.sendTransaction({
-    to: COUNTER_ADDRESS,
+    to: recipientAddress,
     value: BigInt(0),
     funds: { amount: bridgeAmount, token: pushClientNew.moveable.token.USDT },
   });
@@ -513,15 +502,22 @@ async function testFundsUSDTNoValueNewWalletDeployUEA(
     tokenAddress: pusdt,
     ownerAddress: executorInfo.address,
   });
-  const balanceAfter_pUSDT_COUNTER = await pushEvmClient.getErc20Balance({
+  const balanceAfter_pUSDT_RECIPIENT = await pushEvmClient.getErc20Balance({
     tokenAddress: pusdt,
-    ownerAddress: COUNTER_ADDRESS,
+    ownerAddress: recipientAddress,
   });
 
-  // UEA USDT balance unchanged, Counter balance increased, counter incremented
-  expect(balanceAfter_pUSDT_UEA === balanceBefore_pUSDT_UEA).toBe(true);
-  expect(balanceAfter_pUSDT_COUNTER > balanceBefore_pUSDT_COUNTER).toBe(true);
-  console.log(`[${config.name}] Counter incremented successfully`);
+  if (transactionRecipient === 'self') {
+    expect(balanceAfter_pUSDT_UEA - balanceBefore_pUSDT_UEA).toBe(bridgeAmount);
+    expect(balanceAfter_pUSDT_RECIPIENT - balanceBefore_pUSDT_RECIPIENT).toBe(
+      bridgeAmount
+    );
+  } else {
+    expect(balanceAfter_pUSDT_UEA === balanceBefore_pUSDT_UEA).toBe(true);
+    expect(balanceAfter_pUSDT_RECIPIENT - balanceBefore_pUSDT_RECIPIENT).toBe(
+      bridgeAmount
+    );
+  }
 }
 
 async function testSendFundsWithPayloadUSDTWithValueNewWalletDeployUEA(
