@@ -1001,13 +1001,20 @@ export class Orchestrator {
           buildExecuteMulticall({ execute, ueaAddress: UEA })
         );
       } else {
-        // payloadData = (execute.data || '0x') as `0x${string}`;
         if (execute.to.toLowerCase() !== UEA.toLowerCase()) {
-          payloadTo = zeroAddress;
-          payloadData = this._buildMulticallPayloadData(
-            execute.to,
-            buildExecuteMulticall({ execute, ueaAddress: UEA })
-          );
+          // For Payload + Value we don't do multicall anymore.
+          // Multicall is only when Payload + Value;
+          // Payload + Value + Funds -> Multicall
+          if (execute.funds) {
+            payloadTo = zeroAddress;
+            payloadData = this._buildMulticallPayloadData(
+              execute.to,
+              buildExecuteMulticall({ execute, ueaAddress: UEA })
+            );
+          } else {
+            payloadTo = execute.to;
+            payloadData = execute.data || '0x';
+          }
         } else {
           // For value only we don't check below. Only if there is payload to be executed
           if (execute.data && execute.to.toLowerCase() === UEA.toLowerCase()) {

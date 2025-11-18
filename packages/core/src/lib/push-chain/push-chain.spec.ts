@@ -557,7 +557,7 @@ async function testSendFundsWithPayloadUSDTWithValueNewWalletDeployUEA(
   const nativeTxHash = await walletClientFunded.sendTransaction({
     to: newAccount.address,
     chain: config.viemChain,
-    value: PushChain.utils.helpers.parseUnits('0.00031', 18),
+    value: PushChain.utils.helpers.parseUnits('0.00051', 18),
   });
   await publicClient.waitForTransactionReceipt({ hash: nativeTxHash });
 
@@ -1584,7 +1584,7 @@ async function testFeeAbstractionValueOnly(
   const txHash = await walletClient.sendTransaction({
     to: newAccount.address,
     chain: config.viemChain,
-    value: PushChain.utils.helpers.parseUnits('0.00031', 18),
+    value: PushChain.utils.helpers.parseUnits('0.00051', 18),
   });
 
   // Wait for transaction to be mined
@@ -1769,7 +1769,7 @@ async function testFeeAbstractionPayloadAndValueNewWalletDeployUEA(
   const nativeTxHash = await walletClientFunded.sendTransaction({
     to: newAccount.address,
     chain: config.viemChain,
-    value: PushChain.utils.helpers.parseUnits('0.00031', 18),
+    value: PushChain.utils.helpers.parseUnits('0.00051', 18),
   });
   await publicClient.waitForTransactionReceipt({ hash: nativeTxHash });
 
