@@ -2639,9 +2639,9 @@ describe('PushChain', () => {
     });
   });
 
-  // TODO: THIS IS HOW TO TEST THE NEW FEE ABSTRACTION.
-  // TODO: WE ARE CREATING BRAND NEW WALLETS SO WE WILL NEED TO DEPLOY A UEA WHEN SENDING A TRANSCTION.
-  // TODO: THIS IS DONE SO WE TEST THE COMPLETE LOGIC THAT THE BACKEND IS INDEED CORRECTLY DEPLOYING THE UEA and funding the wallet.
+  // THIS IS HOW TO TEST THE NEW FEE ABSTRACTION.
+  // WE ARE CREATING BRAND NEW WALLETS SO WE WILL NEED TO DEPLOY A UEA WHEN SENDING A TRANSCTION.
+  // THIS IS DONE SO WE TEST THE COMPLETE LOGIC THAT THE BACKEND IS INDEED CORRECTLY DEPLOYING THE UEA and funding the wallet.
   describe('Test new fee abstraction - Ethereum Sepolia', () => {
     const config = EVM_CHAIN_CONFIGS[0]; // Ethereum Sepolia
     const PRIVATE_KEY = process.env['EVM_PRIVATE_KEY'] as
@@ -2736,7 +2736,7 @@ describe('PushChain', () => {
     }, 300000);
   });
 
-  // TODO: NEW FEE ABSTRACTION - SOLANA
+  // NEW FEE ABSTRACTION - SOLANA
   describe('Test new fee abstraction (Solana Devnet - random wallet funding)', () => {
     // Increase timeout for setup and network operations in this suite
     jest.setTimeout(300000);

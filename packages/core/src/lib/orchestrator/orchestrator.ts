@@ -1080,14 +1080,13 @@ export class Orchestrator {
         /**
          * Sign Universal Payload
          */
-        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_01, executionHash);
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_02);
         const signature = await this.signUniversalPayload(
           universalPayload,
           UEA,
           ueaVersion
         );
         verificationData = bytesToHex(signature);
-        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_02, verificationData);
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_03);
       } else {
         /**
