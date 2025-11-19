@@ -642,28 +642,57 @@ export class Utils {
     },
 
     /**
-     * Returns the Push Chain synthetic asset address for a given moveable token.
+     * Convert any supported origin-chain token into its mapped PRC20 token address on Push Chain.
      *
-     * @param {MoveableToken} token - A token from `pushChainClient.moveable.token.*`
-     * @returns {`0x${string}`} The synthetic asset address on Push Chain
-     * @throws {Error} If the token cannot be resolved to a supported synthetic asset
+     * @param token - Either a MoveableToken from `pushChainClient.moveable.token.*`
+     * or an object with the origin chain and token address.
+     * @returns {`0x${string}`} The synthetic asset address on Push Chain.
+     *
+     * @example
+     * ```jsx
+     * PushChain.utils.tokens.getPRC20Address(
+     *   token: MoveableToken | {
+     *     chain: CONSTANTS.CHAIN.ETHEREUM_SEPOLIA;
+     *     address: `0x${string}`;
+     *   }
+     * );
+     * // → `0x...`
+     * ```
      */
-    getPRC20Mapping(token: MoveableToken): `0x${string}` {
-      // Infer origin chain by matching symbol+address against the MOVEABLE_TOKENS registry
+    getPRC20Address(
+      token: MoveableToken | { chain: string; address: string }
+    ): `0x${string}` {
+      // Infer origin chain and symbol by matching against the MOVEABLE_TOKENS registry
       let originChain: CHAIN | undefined;
-      for (const [key, list] of Object.entries(MOVEABLE_TOKENS)) {
-        const k = key as CHAIN;
-        const found = (list ?? []).some(
-          (t) => t.symbol === token.symbol && t.address === token.address
-        );
-        if (found) {
-          originChain = k;
-          break;
+      let tokenSymbol: string | undefined;
+
+      if ('symbol' in token) {
+        // MoveableToken path: infer chain by symbol + address
+        for (const [key, list] of Object.entries(MOVEABLE_TOKENS)) {
+          const k = key as CHAIN;
+          const found = (list ?? []).some(
+            (t) => t.symbol === token.symbol && t.address === token.address
+          );
+          if (found) {
+            originChain = k;
+            tokenSymbol = token.symbol;
+            break;
+          }
+        }
+      } else {
+        // { chain, address } path: trust the provided chain and resolve symbol via registry
+        originChain = token.chain as CHAIN;
+        const list = MOVEABLE_TOKENS[originChain] ?? [];
+        const match = (list ?? []).find((t) => t.address === token.address);
+        if (match) {
+          tokenSymbol = match.symbol;
         }
       }
 
-      if (!originChain) {
-        throw new Error('Unable to infer origin chain for token');
+      if (!originChain || !tokenSymbol) {
+        throw new Error(
+          'Unable to infer origin chain or token symbol for token'
+        );
       }
 
       // Select Push network mapping (tests/use-cases use TESTNET_DONUT; identical to TESTNET here)
@@ -691,7 +720,7 @@ export class Utils {
         | 'USDT_BNB'
         | 'USDT_BASE';
 
-      switch (token.symbol) {
+      switch (tokenSymbol) {
         case 'ETH': {
           if (isEthFamily) key = 'pETH';
           else if (isArbFamily) key = 'pETH_ARB';
@@ -722,7 +751,7 @@ export class Utils {
           break;
         }
         default:
-          throw new Error(`Unsupported token symbol: ${token.symbol}`);
+          throw new Error(`Unsupported token symbol: ${tokenSymbol}`);
       }
 
       return map[key];

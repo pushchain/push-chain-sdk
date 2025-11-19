@@ -1,6 +1,8 @@
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { PushChain } from './push-chain/push-chain';
 import { CHAIN } from './constants/enums';
+import { MOVEABLE_TOKENS } from './constants/tokens';
+import { SYNTHETIC_PUSH_ERC20 } from './constants/chain';
 import { sepolia } from 'viem/chains';
 import { UniversalSigner } from './universal/universal.types';
 import { createWalletClient, http } from 'viem';
@@ -1712,6 +1714,45 @@ describe('Helpers Utils Namespace', () => {
       );
       expect(symbolsFromClient).toEqual(symbolsFromChain);
       expect(clientTokens.length).toBe(chainTokens.length);
+    });
+
+    it('should get PRC20 address from a MoveableToken', () => {
+      const ethMoveable = MOVEABLE_TOKENS[CHAIN.ETHEREUM_SEPOLIA]?.find(
+        (t) => t.symbol === 'ETH'
+      );
+      expect(ethMoveable).toBeDefined();
+
+      if (!ethMoveable) {
+        throw new Error('ETH moveable token not found');
+      }
+
+      const prc20Address = PushChain.utils.tokens.getPRC20Address(ethMoveable);
+
+      expect(prc20Address).toBe(
+        SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
+          .pETH
+      );
+    });
+
+    it('should get PRC20 address from a { chain, address } token input', () => {
+      const ethMoveable = MOVEABLE_TOKENS[CHAIN.ETHEREUM_SEPOLIA]?.find(
+        (t) => t.symbol === 'ETH'
+      );
+      expect(ethMoveable).toBeDefined();
+
+      if (!ethMoveable) {
+        throw new Error('ETH moveable token not found');
+      }
+
+      const prc20Address = PushChain.utils.tokens.getPRC20Address({
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+        address: ethMoveable.address,
+      });
+
+      expect(prc20Address).toBe(
+        SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
+          .pETH
+      );
     });
   });
 });

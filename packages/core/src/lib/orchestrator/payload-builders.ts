@@ -27,7 +27,7 @@ export function buildExecuteMulticall({
       args: [execute.to, execute.funds?.amount],
     });
     const token = (execute.funds as { token: MoveableToken }).token;
-    const pushChainTo = PushChain.utils.tokens.getPRC20Mapping(token);
+    const pushChainTo = PushChain.utils.tokens.getPRC20Address(token);
     multicallData.push({
       to: pushChainTo,
       value: BigInt(0),
