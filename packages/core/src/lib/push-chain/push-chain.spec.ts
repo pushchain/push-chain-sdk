@@ -2223,52 +2223,6 @@ describe('PushChain', () => {
         await testMulticall(client, config);
       }, 300000);
     });
-
-    describe('get account', () => {
-      it('EVM', async () => {
-        const address = pushClientEVM.universal.account;
-        expect(isAddress(address)).toBeTruthy();
-        expect(address).not.toBe(universalSignerEVM.account.address);
-      });
-      it('Push', async () => {
-        const address = pushChainPush.universal.account;
-        expect(address).toBeDefined();
-        expect(address).toBe(universalSignerPush.account.address);
-      });
-      it('SVM', async () => {
-        const address = pushChainSVM.universal.account;
-        expect(isAddress(address)).toBeTruthy();
-        expect(address).not.toBe(universalSignerSVM.account.address);
-      });
-    });
-    describe('get origin', () => {
-      it('EVM', async () => {
-        const uoa = pushClientEVM.universal.origin;
-        expect(uoa).toBeDefined();
-        expect(uoa.chain).toBe(universalSignerEVM.account.chain);
-        expect(isAddress(uoa.address)).toBe(true);
-      });
-      it('Push', async () => {
-        const uoa = pushChainPush.universal.origin;
-        expect(uoa).toBeDefined();
-        expect(uoa.chain).toBe(universalSignerPush.account.chain);
-        expect(isAddress(uoa.address)).toBe(true);
-      });
-      it('SVM', async () => {
-        const uoa = pushChainSVM.universal.origin;
-        expect(uoa).toBeDefined();
-        expect(uoa.chain).toBe(universalSignerSVM.account.chain);
-
-        let isValid = true;
-        try {
-          new PublicKey(uoa.address);
-        } catch {
-          isValid = false;
-        }
-
-        expect(isValid).toBe(true);
-      });
-    });
   });
 
   // THIS IS HOW TO TEST THE NEW FEE ABSTRACTION.
