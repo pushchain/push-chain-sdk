@@ -13,13 +13,13 @@ export function buildExecuteMulticall({
 }): MultiCall[] {
   const multicallData: MultiCall[] = [];
   // *** We will pass the value alongside with the data in a single message now ***
-  // if (execute.value) {
-  //   multicallData.push({
-  //     to: execute.to,
-  //     value: execute.value,
-  //     data: '0x',
-  //   });
-  // }
+  if (!execute.data && execute.value) {
+    multicallData.push({
+      to: execute.to,
+      value: execute.value,
+      data: '0x',
+    });
+  }
   if (execute.funds?.amount) {
     const erc20Transfer = encodeFunctionData({
       abi: ERC20_EVM,
@@ -27,7 +27,7 @@ export function buildExecuteMulticall({
       args: [execute.to, execute.funds?.amount],
     });
     const token = (execute.funds as { token: MoveableToken }).token;
-    const pushChainTo = PushChain.utils.tokens.getPRC20Mapping(token);
+    const pushChainTo = PushChain.utils.tokens.getPRC20Address(token);
     multicallData.push({
       to: pushChainTo,
       value: BigInt(0),

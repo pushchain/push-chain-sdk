@@ -13,7 +13,6 @@ import {
   getAddress,
   decodeFunctionData,
   parseAbi,
-  encodeFunctionData,
   zeroAddress,
 } from 'viem';
 import { PushChain } from '../push-chain/push-chain';
@@ -25,12 +24,7 @@ import {
 } from '../universal/universal.types';
 import { ExecuteParams, MultiCall } from './orchestrator.types';
 import { EvmClient } from '../vm-client/evm-client';
-import {
-  CHAIN_INFO,
-  SYNTHETIC_PUSH_ERC20,
-  UEA_PROXY,
-  VM_NAMESPACE,
-} from '../constants/chain';
+import { CHAIN_INFO, UEA_PROXY, VM_NAMESPACE } from '../constants/chain';
 import {
   FACTORY_V1,
   UEA_SVM,
@@ -127,26 +121,8 @@ export class Orchestrator {
    */
   async execute(execute: ExecuteParams): Promise<UniversalTxResponse> {
     try {
-      // FUNDS_TX short-circuit: Bridge tokens from origin chain to Push Chain
-      // - EVM (Sepolia): UniversalGatewayV0
-      // - SVM (Solana Devnet): pushsolanagateway
       if (execute.funds) {
         if (!execute.data || execute.data === '0x') {
-          // @@@@@@@@@@@@@@@
-          // @@@@@@@@@@@@@@@
-          // @@@@@@@@@@@@@@@
-          // @@@@@@@@@@@@@@@
-          // @@@@@@@@@@@@@@@
-          // @@@@@@@@@@@@@@@
-          // // Disallow user-provided `value` for funds-only bridging. The SDK derives
-          // // origin-chain msg.value automatically from the funds input:
-          // //  - Native path: msg.value = bridgeAmount
-          // //  - ERC-20 path: msg.value = 0
-          // if (execute.value !== undefined && execute.value !== BigInt(0)) {
-          //   throw new Error(
-          //     'Do not set `value` when using funds bridging; the SDK sets origin msg.value from `funds.amount` automatically'
-          //   );
-          // }
           const chain = this.universalSigner.account.chain;
           const { vm } = CHAIN_INFO[chain];
           if (
@@ -164,7 +140,11 @@ export class Orchestrator {
           }
 
           // Progress: Origin chain detected
-          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_01, chain);
+          this.executeProgressHook(
+            PROGRESS_HOOK.SEND_TX_01,
+            chain,
+            this.universalSigner.account.address
+          );
 
           const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
           const rpcUrls: string[] = this.rpcUrls[chain] || defaultRPC;
@@ -188,33 +168,6 @@ export class Orchestrator {
           const amount = execute.funds.amount;
           const symbol = execute.funds.token.symbol;
 
-          // Funds Flow: Preparing funds transfer
-          this.executeProgressHook(
-            PROGRESS_HOOK.SEND_TX_06_01,
-            amount,
-            execute.funds.token.decimals,
-            symbol
-          );
-
-          if (vm === VM.EVM) {
-            const evmClient = new EvmClient({ rpcUrls });
-            const gatewayAddress = lockerContract as `0x${string}`;
-            const tokenAddr = execute.funds.token.address as `0x${string}`;
-            // Approve gateway to pull tokens if ERC-20 (not native sentinel)
-            if (execute.funds.token.mechanism === 'approve') {
-              await this.ensureErc20Allowance(
-                evmClient,
-                tokenAddr,
-                gatewayAddress,
-                amount
-              );
-            } else if (execute.funds.token.mechanism === 'permit2') {
-              throw new Error('Permit2 is not supported yet');
-            } else if (execute.funds.token.mechanism === 'native') {
-              // Native flow uses msg.value == bridgeAmount and bridgeToken = address(0)
-            }
-          }
-
           const bridgeAmount = amount;
 
           const revertCFG = {
@@ -234,7 +187,7 @@ export class Orchestrator {
               execute.funds.token.mechanism === 'approve'
                 ? tokenAddr
                 : ('0x0000000000000000000000000000000000000000' as `0x${string}`);
-            const { nonce } = await this.getUeaStatusAndNonce();
+            const { nonce, deployed } = await this.getUeaStatusAndNonce();
             const { payload: universalPayload } =
               await this.buildGatewayPayloadAndGas(
                 execute,
@@ -243,31 +196,55 @@ export class Orchestrator {
                 bridgeAmount
               );
 
-            // Get UEA info
             const ueaAddress = this.computeUEAOffchain();
-            const ueaVersion = await this.fetchUEAVersion();
 
-            const eip712Signature = await this.signUniversalPayload(
-              universalPayload,
-              ueaAddress,
-              ueaVersion
+            // Compute minimal native amount to deposit for gas on Push Chain
+            const ueaBalanceForGas = await this.pushClient.getBalance(
+              ueaAddress
             );
-            const eip712SignatureHex = bytesToHex(eip712Signature);
+
+            const nativeAmount = await this.calculateNativeAmountForDeposit(
+              chain,
+              BigInt(0),
+              ueaBalanceForGas
+            );
+
+            // We log the SEND_TX_03_01 here because the progress hook for gas estimation should arrive before the resolving of UEA.
+            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_03_01);
+            this.executeProgressHook(
+              PROGRESS_HOOK.SEND_TX_03_02,
+              ueaAddress,
+              deployed
+            );
+
+            this.executeProgressHook(
+              PROGRESS_HOOK.SEND_TX_06_01,
+              amount,
+              execute.funds.token.decimals,
+              symbol
+            );
+
+            if (vm === VM.EVM) {
+              const evmClient = new EvmClient({ rpcUrls });
+              const gatewayAddress = lockerContract as `0x${string}`;
+              const tokenAddr = execute.funds.token.address as `0x${string}`;
+              // Approve gateway to pull tokens if ERC-20 (not native sentinel)
+              if (execute.funds.token.mechanism === 'approve') {
+                await this.ensureErc20Allowance(
+                  evmClient,
+                  tokenAddr,
+                  gatewayAddress,
+                  amount
+                );
+              } else if (execute.funds.token.mechanism === 'permit2') {
+                throw new Error('Permit2 is not supported yet');
+              } else if (execute.funds.token.mechanism === 'native') {
+                // Native flow uses msg.value == bridgeAmount and bridgeToken = address(0)
+              }
+            }
 
             let txHash: `0x${string}`;
             try {
-              // Compute minimal native amount to deposit for gas on Push Chain
-              const ueaAddressForGas = this.computeUEAOffchain();
-              const ueaBalanceForGas = await this.pushClient.getBalance(
-                ueaAddressForGas
-              );
-              const nativeAmount = await this.calculateNativeAmountForDeposit(
-                chain,
-                BigInt(0),
-                ueaBalanceForGas
-              );
-
-              const ueaAddress = this.computeUEAOffchain();
               if (execute.to.toLowerCase() === ueaAddress.toLowerCase()) {
                 txHash = await evmClient.writeContract({
                   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
@@ -298,13 +275,18 @@ export class Orchestrator {
               throw err;
             }
 
-            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_03);
+            const originTx = await this.fetchOriginChainTransactionForProgress(
+              chain,
+              txHash,
+              txHash
+            );
             this.executeProgressHook(
               PROGRESS_HOOK.SEND_TX_06_02,
               txHash,
               bridgeAmount,
               execute.funds.token.decimals,
-              symbol
+              symbol,
+              originTx
             );
 
             await this.waitForEvmConfirmationsWithCountdown(
@@ -321,11 +303,21 @@ export class Orchestrator {
                 txHash,
                 execute.to === ueaAddress ? 'sendFunds' : 'sendTxWithFunds'
               );
+
+            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_04);
+
             const lastPcTransaction = pushChainUniversalTx?.pcTx.at(-1);
             const tx = await this.pushClient.getTransaction(
               lastPcTransaction?.txHash as `0x${string}`
             );
             const response = await this.transformToUniversalTxResponse(tx);
+            // Funds Flow: Funds credited on Push Chain
+            this.executeProgressHook(
+              PROGRESS_HOOK.SEND_TX_06_05,
+              bridgeAmount,
+              execute.funds.token.decimals,
+              symbol
+            );
             this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
             return response;
           } else {
@@ -365,6 +357,14 @@ export class Orchestrator {
                 'hex'
               ).subarray(0, 20)
             );
+            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_03_01);
+            const ueaAddress = this.computeUEAOffchain();
+            const { nonce, deployed } = await this.getUeaStatusAndNonce();
+            this.executeProgressHook(
+              PROGRESS_HOOK.SEND_TX_03_02,
+              ueaAddress,
+              deployed
+            );
             if (execute.funds.token.mechanism === 'native') {
               // Native SOL funds-only
               // Compute a local whitelist PDA to avoid TS scope issues
@@ -383,7 +383,6 @@ export class Orchestrator {
               //////// @@@@@@@
               // DO THE SAME AS FOR BELOW, BUT NOW FOR NATIVE.
               // for sendTxWithFunds multicall
-              const ueaAddress = this.computeUEAOffchain();
               if (execute.to === ueaAddress) {
                 txSignature = await svmClient.writeContract({
                   abi: SVM_GATEWAY_IDL,
@@ -411,7 +410,6 @@ export class Orchestrator {
                   },
                 });
               } else {
-                const { nonce } = await this.getUeaStatusAndNonce();
                 const { payload: universalPayload } =
                   await this.buildGatewayPayloadAndGas(
                     execute,
@@ -461,9 +459,7 @@ export class Orchestrator {
                 ASSOCIATED_TOKEN_PROGRAM_ID
               )[0];
 
-              const ueaAddress = this.computeUEAOffchain();
               if (execute.to === ueaAddress) {
-                // vitalik
                 txSignature = await svmClient.writeContract({
                   abi: SVM_GATEWAY_IDL,
                   address: programId.toBase58(),
@@ -483,7 +479,6 @@ export class Orchestrator {
                   },
                 });
               } else {
-                const { nonce } = await this.getUeaStatusAndNonce();
                 const { payload: universalPayload } =
                   await this.buildGatewayPayloadAndGas(
                     execute,
@@ -510,20 +505,26 @@ export class Orchestrator {
               throw new Error('Unsupported token mechanism on Solana');
             }
 
-            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_03);
+            const originTx = await this.fetchOriginChainTransactionForProgress(
+              chain,
+              '0x',
+              txSignature
+            );
             this.executeProgressHook(
               PROGRESS_HOOK.SEND_TX_06_02,
               txSignature,
               bridgeAmount,
               execute.funds.token.decimals,
-              symbol
+              symbol,
+              originTx
             );
 
-            await svmClient.waitForConfirmations({
+            await this.waitForSvmConfirmationsWithCountdown(
+              svmClient,
               txSignature,
-              confirmations: 25,
-              timeoutMs: 300000,
-            });
+              25,
+              300000
+            );
             // After origin confirmations, query Push Chain for UniversalTx status (SVM)
             const pushChainUniversalTx =
               await this.queryUniversalTxStatusFromGatewayTx(
@@ -532,13 +533,20 @@ export class Orchestrator {
                 txSignature,
                 'sendFunds'
               );
-            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_06);
+            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_04);
 
             const lastPcTransaction = pushChainUniversalTx?.pcTx.at(-1);
             const tx = await this.pushClient.getTransaction(
               lastPcTransaction?.txHash as `0x${string}`
             );
             const response = await this.transformToUniversalTxResponse(tx);
+            // Funds Flow: Funds credited on Push Chain
+            this.executeProgressHook(
+              PROGRESS_HOOK.SEND_TX_06_05,
+              bridgeAmount,
+              execute.funds.token.decimals,
+              symbol
+            );
             this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
             return response;
           }
@@ -549,7 +557,11 @@ export class Orchestrator {
           const { chain, evmClient, gatewayAddress } =
             this.getOriginGatewayContext();
 
-          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_01, chain);
+          this.executeProgressHook(
+            PROGRESS_HOOK.SEND_TX_01,
+            chain,
+            this.universalSigner.account.address
+          );
 
           // Default token to native ETH if none provided
           if (!execute.funds.token) {
@@ -875,11 +887,12 @@ export class Orchestrator {
                 this.rpcUrls[CHAIN.SOLANA_DEVNET] ||
                 CHAIN_INFO[CHAIN.SOLANA_DEVNET].defaultRPC,
             });
-            await svmClient.waitForConfirmations({
-              txSignature: txHash as string,
-              confirmations: 25,
-              timeoutMs: 300000,
-            });
+            await this.waitForSvmConfirmationsWithCountdown(
+              svmClient,
+              txHash as string,
+              25,
+              300000
+            );
           }
 
           // Funds Flow: Confirmed on origin
@@ -900,7 +913,7 @@ export class Orchestrator {
             await this.sendUniversalTx(deployed, feeLockTxHash);
           }
 
-          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_06);
+          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_04);
 
           // After sending Cosmos tx to Push Chain, query UniversalTx status
           let pushChainUniversalTx: UniversalTx | undefined;
@@ -940,13 +953,17 @@ export class Orchestrator {
       }
 
       const chain = this.universalSigner.account.chain;
-      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_01, chain);
+      this.executeProgressHook(
+        PROGRESS_HOOK.SEND_TX_01,
+        chain,
+        this.universalSigner.account.address
+      );
       this.validateMainnetConnection(chain);
       /**
        * Push to Push Tx
        */
       if (this.isPushChain(chain)) {
-        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06);
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_07);
         const tx = await this.sendPushTx(execute);
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [tx]);
         return tx;
@@ -1063,14 +1080,14 @@ export class Orchestrator {
         /**
          * Sign Universal Payload
          */
-        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_01, executionHash);
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_02);
         const signature = await this.signUniversalPayload(
           universalPayload,
           UEA,
           ueaVersion
         );
         verificationData = bytesToHex(signature);
-        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_02, verificationData);
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_03);
       } else {
         /**
          * Fee Locking - For all chains, EVM and Solana
@@ -1081,7 +1098,6 @@ export class Orchestrator {
           funds < requiredFunds ? fundDifference : fixedPushAmount;
         const lockAmountInUSD = this.pushClient.pushToUSDC(lockAmount);
 
-        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_05_01, lockAmount);
         const feeLockTxHashBytes = await this.lockFee(
           lockAmountInUSD,
           universalPayload
@@ -1090,17 +1106,27 @@ export class Orchestrator {
         verificationData = bytesToHex(feeLockTxHashBytes);
 
         const { vm } = CHAIN_INFO[chain];
-        this.executeProgressHook(
-          PROGRESS_HOOK.SEND_TX_05_02,
+        const feeLockTxHashDisplay =
           vm === VM.SVM
             ? utils.bytes.bs58.encode(feeLockTxHashBytes)
-            : feeLockTxHash,
-          CHAIN_INFO[chain].confirmations
+            : feeLockTxHash;
+
+        // Gas Flow: Gas funding in progress (with full origin tx when available)
+        const originTx = await this.fetchOriginChainTransactionForProgress(
+          chain,
+          feeLockTxHash,
+          feeLockTxHashDisplay
+        );
+        this.executeProgressHook(
+          PROGRESS_HOOK.SEND_TX_05_01,
+          feeLockTxHashDisplay,
+          originTx
         );
 
         // Waiting for blocks confirmations
         await this.waitForLockerFeeConfirmation(feeLockTxHashBytes);
-        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_05_03);
+        // Gas Flow: Gas funding confirmed
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_05_02);
 
         // Query nodes via gRPC for Push Chain transaction
         const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
@@ -1117,8 +1143,6 @@ export class Orchestrator {
          * Note: queryTx may be undefined since validators don't recognize new UniversalTx event yet
          */
 
-        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06);
-
         // Transform to UniversalTxResponse (follow sendFunds pattern)
         const lastPcTransaction = pushChainUniversalTx?.pcTx.at(-1);
         const tx = await this.pushClient.getTransaction(
@@ -1132,7 +1156,7 @@ export class Orchestrator {
        * Non-fee-locking path: Broadcasting Tx to PC via sendUniversalTx
        */
 
-      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06);
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_07);
       // We don't need to query via gRPC the PC transaction since it's getting returned it here already.
       const transactions = await this.sendUniversalTx(
         isUEADeployed,
@@ -1956,6 +1980,45 @@ export class Orchestrator {
   }
 
   /**
+   * Internal helper: fetches the full origin-chain transaction for a given hash,
+   * used only for progress-hook context (EVM or Solana).
+   */
+  private async fetchOriginChainTransactionForProgress(
+    chain: CHAIN,
+    txHashHex: string,
+    txHashDisplay: string
+  ): Promise<object | undefined> {
+    const { vm, defaultRPC } = CHAIN_INFO[chain];
+    const rpcUrls = this.rpcUrls[chain] || defaultRPC;
+
+    try {
+      if (vm === VM.EVM) {
+        if (!txHashHex.startsWith('0x')) {
+          throw new Error('EVM transaction hash must be 0x-prefixed');
+        }
+        const evmClient = new EvmClient({ rpcUrls });
+        const tx = await evmClient.publicClient.getTransaction({
+          hash: txHashHex as `0x${string}`,
+        });
+        return tx ?? undefined;
+      }
+
+      if (vm === VM.SVM) {
+        const connection = new Connection(rpcUrls[0], 'confirmed');
+        const tx = await connection.getTransaction(txHashDisplay, {
+          maxSupportedTransactionVersion: 0,
+          commitment: 'confirmed',
+        } as any);
+        return tx ?? undefined;
+      }
+
+      return undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
    * Quotes exact-output on Uniswap V3 for EVM origin chains using QuoterV2.
    * Returns the minimum required input (amountIn) to receive the target amountOut.
    */
@@ -2276,7 +2339,7 @@ export class Orchestrator {
       //   functionName: 'transfer',
       //   args: [execute.to, fundsValue],
       // });
-      // const pushChainTo = PushChain.utils.tokens.getPRC20Mapping(
+      // const pushChainTo = PushChain.utils.tokens.getPRC20Address(
       //   execute.funds!.token as MoveableToken
       // );
       const universalPayload = {
@@ -2691,27 +2754,8 @@ export class Orchestrator {
         await new Promise((r) => setTimeout(r, 1500));
       }
 
-      this.executeProgressHook(
-        PROGRESS_HOOK.SEND_TX_06_06,
-        universalTxObj?.universalStatus || universalTxObj?.universal_status
-      );
-      // this.printLog(
-      //   `UniversalTx fetched via gRPC: ${JSON.stringify(
-      //     {
-      //       gatewayTx: txHashHex,
-      //       id: idHex,
-      //       status:
-      //         universalTxObj?.universalStatus ||
-      //         universalTxObj?.universal_status,
-      //     },
-      //     this.bigintReplacer,
-      //     2
-      //   )}`
-      // );
       return universalTxObj;
     } catch {
-      // Best-effort; do not fail flow if PC query is unavailable
-      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_06);
       return undefined;
     }
   }
@@ -2746,7 +2790,7 @@ export class Orchestrator {
         // Only emit if we haven't already shown this confirmation
         if (lastEmitted < confirmations) {
           this.executeProgressHook(
-            PROGRESS_HOOK.SEND_TX_06_04,
+            PROGRESS_HOOK.SEND_TX_06_03_02,
             confirmations,
             confirmations
           );
@@ -2760,7 +2804,9 @@ export class Orchestrator {
       // Only emit if this is a new confirmation count
       if (completed > lastEmitted) {
         this.executeProgressHook(
-          PROGRESS_HOOK.SEND_TX_06_04,
+          completed >= confirmations
+            ? PROGRESS_HOOK.SEND_TX_06_03_02
+            : PROGRESS_HOOK.SEND_TX_06_03_01,
           completed,
           confirmations
         );
@@ -2804,29 +2850,55 @@ export class Orchestrator {
       const status = value[0];
 
       if (status) {
-        const currentConfirms = status.confirmations ?? 0;
-        const hasEnoughConfirmations = currentConfirms >= confirmations;
-        const isSuccessfullyFinalized =
-          status.err === null && status.confirmationStatus !== null;
+        // Surface transaction failures explicitly
+        if (status.err) {
+          throw new Error(
+            `SVM transaction ${txSignature} failed: ${JSON.stringify(
+              status.err
+            )}`
+          );
+        }
 
-        // Emit progress if we have more confirmations than before OR if finalized
-        if (
-          currentConfirms > lastConfirmed ||
-          (isSuccessfullyFinalized && lastConfirmed === 0)
-        ) {
-          const confirmCount =
-            isSuccessfullyFinalized && currentConfirms === 0
-              ? confirmations
-              : currentConfirms;
+        const rawConfirmations = status.confirmations;
+        const hasNumericConfirmations = rawConfirmations != null;
+        const currentConfirms = hasNumericConfirmations ? rawConfirmations : 0;
+
+        // Align "finalized" semantics with SvmClient.waitForConfirmations:
+        // treat either an explicit "finalized" status or a rooted tx
+        // (confirmations === null) with no error as final.
+        const isFinalized =
+          status.err === null &&
+          (status.confirmationStatus === 'finalized' ||
+            status.confirmations === null);
+
+        const hasEnoughConfirmations =
+          hasNumericConfirmations && currentConfirms >= confirmations;
+
+        // Emit progress only when the visible confirmation count increases.
+        // We never "jump" straight to the requested confirmations unless
+        // we're finalizing and haven't yet emitted a final step.
+        if (currentConfirms > lastConfirmed) {
+          const clamped =
+            currentConfirms >= confirmations ? confirmations : currentConfirms;
           this.executeProgressHook(
-            PROGRESS_HOOK.SEND_TX_06_04,
-            Math.max(1, confirmCount),
+            clamped >= confirmations
+              ? PROGRESS_HOOK.SEND_TX_06_03_02
+              : PROGRESS_HOOK.SEND_TX_06_03_01,
+            Math.max(1, clamped),
             confirmations
           );
           lastConfirmed = currentConfirms;
         }
 
-        if (hasEnoughConfirmations || isSuccessfullyFinalized) {
+        if (hasEnoughConfirmations || isFinalized) {
+          // Ensure we emit a final "all confirmations" step if we haven't yet.
+          if (lastConfirmed < confirmations) {
+            this.executeProgressHook(
+              PROGRESS_HOOK.SEND_TX_06_03_02,
+              confirmations,
+              confirmations
+            );
+          }
           return;
         }
       }
@@ -2925,6 +2997,8 @@ export class Orchestrator {
     requiredFunds: bigint,
     ueaBalance: bigint
   ): Promise<bigint> {
+    this.executeProgressHook(PROGRESS_HOOK.SEND_TX_02_01);
+
     // Determine USD to deposit via gateway (8 decimals) with caps: min=$1, max=$10
     const oneUsd = PushChain.utils.helpers.parseUnits('1', 8);
     const tenUsd = PushChain.utils.helpers.parseUnits('10', 8);
@@ -2936,8 +3010,6 @@ export class Orchestrator {
     if (depositUsd < oneUsd) depositUsd = oneUsd;
     if (depositUsd > tenUsd)
       throw new Error('Deposit value exceeds max $10 worth of native token');
-
-    this.executeProgressHook(PROGRESS_HOOK.SEND_TX_02_02, depositUsd);
 
     // If SVM, clamp depositUsd to on-chain Config caps
     if (CHAIN_INFO[chain].vm === VM.SVM) {
@@ -2989,6 +3061,8 @@ export class Orchestrator {
       nativeTokenUsdPrice;
     // Add 1 unit safety to avoid BelowMinCap from rounding differences
     nativeAmount = nativeAmount + BigInt(1);
+
+    this.executeProgressHook(PROGRESS_HOOK.SEND_TX_02_02, nativeAmount);
 
     return nativeAmount;
   }

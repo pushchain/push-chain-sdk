@@ -4,6 +4,7 @@ import {
   PROGRESS_HOOK,
   ProgressEventFunction,
   ProgressEventFunctionWithoutTimestamp,
+  OriginChainTx,
 } from './progress-hook.types';
 
 // Helper to wrap a hook function with timestamp
@@ -20,17 +21,22 @@ const withTimestamp = (
 const RAW_HOOKS: {
   [K in PROGRESS_HOOK]: ProgressEventFunctionWithoutTimestamp;
 } = {
-  [PROGRESS_HOOK.SEND_TX_01]: (originChain: string) => ({
+  [PROGRESS_HOOK.SEND_TX_01]: (
+    originChainNamespace: string,
+    originChainAddress: string
+  ) => ({
     id: PROGRESS_HOOK.SEND_TX_01,
     title: 'Origin Chain Detected',
-    message: `Origin chain: ${originChain}`,
+    message: `Origin chain: ${
+      Utils.chains.getChainName(originChainNamespace) ?? originChainNamespace
+    } - Origin Address: ${originChainAddress}`,
     response: null,
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_02_01]: () => ({
     id: PROGRESS_HOOK.SEND_TX_02_01,
     title: 'Estimating Gas',
-    message: 'Estimating and fetching gas limit, gas price for Tx…',
+    message: 'Estimating and fetching gas limit, gas price for TX',
     response: null,
     level: 'INFO',
   }),
@@ -43,9 +49,9 @@ const RAW_HOOKS: {
   }),
   [PROGRESS_HOOK.SEND_TX_03_01]: () => ({
     id: PROGRESS_HOOK.SEND_TX_03_01,
-    title: 'Resolving UAE',
+    title: 'Resolving UEA',
     message:
-      'Resolving Execution Account (UEA) - Compunting address, checking deployment status, nonce and balance',
+      'Resolving Execution Account (UEA) – computing address, checking deployment status and balance',
     response: null,
     level: 'INFO',
   }),
@@ -59,19 +65,20 @@ const RAW_HOOKS: {
     response: null,
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_04_01]: (hash: string) => ({
+  // Payload flow (04-x)
+  [PROGRESS_HOOK.SEND_TX_04_01]: () => ({
     id: PROGRESS_HOOK.SEND_TX_04_01,
-    title: 'Awaiting Signature for Tx Execution',
-    message: `Universal Payload Hash: ${hash}`,
+    title: 'Awaiting Transaction',
+    message: 'Awaiting user transaction on origin chain',
     response: null,
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_04_02]: (signature: string) => ({
+  [PROGRESS_HOOK.SEND_TX_04_02]: () => ({
     id: PROGRESS_HOOK.SEND_TX_04_02,
-    title: 'Signature Completed',
-    message: `Signature: ${signature}`,
+    title: 'Awaiting Signature',
+    message: 'Awaiting user signature for universal payload',
     response: null,
-    level: 'SUCCESS',
+    level: 'INFO',
   }),
   // V2 Payload flow
   [PROGRESS_HOOK.SEND_TX_04_03]: () => ({
@@ -88,35 +95,27 @@ const RAW_HOOKS: {
     response: null,
     level: 'ERROR',
   }),
-  [PROGRESS_HOOK.SEND_TX_05_01]: (feeAmount: bigint) => ({
+  // Gas flow (05-x)
+  [PROGRESS_HOOK.SEND_TX_05_01]: (
+    originChainTxHash: string,
+    originChainTx?: OriginChainTx
+  ) => ({
     id: PROGRESS_HOOK.SEND_TX_05_01,
-    title: 'Locking Origin Chain Fee',
-    message: `Locking fee: ${feeAmount.toString()} UPC on origin chain`,
-    response: null,
+    title: 'Gas Funding In Progress',
+    message: `Gas funding tx sent: ${originChainTxHash}`,
+    // Attach the full origin-chain transaction object when provided
+    response: originChainTx ?? null,
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_05_02]: (txHash: string, confirmations: number) => ({
+  [PROGRESS_HOOK.SEND_TX_05_02]: () => ({
     id: PROGRESS_HOOK.SEND_TX_05_02,
-    title: 'Awaiting Origin Chain Confirmations',
-    message: `Tx sent: ${txHash}, waiting for ${confirmations} confirmations.`,
+    title: 'Gas Funding Confirmed',
+    message: 'Gas funding confirmed on origin chain',
     response: null,
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_05_03]: () => ({
-    id: PROGRESS_HOOK.SEND_TX_05_03,
-    title: 'Confirmations Received',
-    message: 'Required confirmations received.',
-    response: null,
-    level: 'SUCCESS',
-  }),
-  [PROGRESS_HOOK.SEND_TX_06]: () => ({
-    id: PROGRESS_HOOK.SEND_TX_06,
-    title: 'Broadcasting to Push Chain',
-    message: 'Sending Tx to Push Chain…',
-    response: null,
-    level: 'INFO',
-  }),
-  // V2 Funds flow
+
+  // V2 Funds flow (06-x)
   [PROGRESS_HOOK.SEND_TX_06_01]: (
     amount: bigint,
     decimals: number,
@@ -135,7 +134,8 @@ const RAW_HOOKS: {
     txHash: string,
     amount: bigint,
     decimals: number,
-    symbol: string
+    symbol: string,
+    originChainTx?: OriginChainTx
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_06_02,
     title: 'Funds Lock Submitted',
@@ -143,7 +143,8 @@ const RAW_HOOKS: {
       amount,
       decimals
     )} ${symbol} for transfer (Tx hash: ${txHash})`,
-    response: null,
+    // Attach the full origin-chain transaction object when available
+    response: originChainTx ?? null,
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_06_03]: (required: number) => ({
@@ -153,38 +154,54 @@ const RAW_HOOKS: {
     response: null,
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_06_04]: (current: number, required: number) => ({
-    id: PROGRESS_HOOK.SEND_TX_06_04,
-    title: `Confirmation ${current}/${required} Received`,
+  [PROGRESS_HOOK.SEND_TX_06_03_01]: (current: number, required: number) => ({
+    id: PROGRESS_HOOK.SEND_TX_06_03_01,
+    title: `Confirmation #${current} Received`,
     message: `${current}/${required} confirmations received`,
     response: null,
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_06_06]: () => ({
-    id: PROGRESS_HOOK.SEND_TX_06_06,
-    title: 'Funds Confirmed',
-    message: `Origin chain lock confirmed`,
+  [PROGRESS_HOOK.SEND_TX_06_03_02]: (current: number, required: number) => ({
+    id: PROGRESS_HOOK.SEND_TX_06_03_02,
+    title: `Confirmation #${current} Received`,
+    message: `${current}/${required} confirmations received`,
     response: null,
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_06_07]: (
+  [PROGRESS_HOOK.SEND_TX_06_04]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_06_04,
+    title: 'Funds Confirmed',
+    message: 'Origin chain lock confirmed',
+    response: null,
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_06_05]: (
     amount: bigint,
     decimals: number,
     symbol: string
   ) => ({
-    id: PROGRESS_HOOK.SEND_TX_06_07,
+    id: PROGRESS_HOOK.SEND_TX_06_05,
     title: 'Funds Credited on Push Chain',
     message: `Funds credited: ${Utils.helpers.formatUnits(
       amount,
       decimals
-    )} ${symbol} (minus fees)`,
+    )} ${symbol}`,
     response: null,
     level: 'SUCCESS',
+  }),
+
+  // Execution flow (07-x)
+  [PROGRESS_HOOK.SEND_TX_07]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_07,
+    title: 'Broadcasting to Push Chain',
+    message: 'Sending Tx to Push Chain',
+    response: null,
+    level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_99_01]: (txResponse: UniversalTxResponse[]) => ({
     id: PROGRESS_HOOK.SEND_TX_99_01,
     title: 'Push Chain Tx Success',
-    message: `Final Tx Hash: ${txResponse[txResponse.length - 1].hash}`,
+    message: 'Tx executed successfully on Push Chain',
     response: txResponse,
     level: 'SUCCESS',
   }),
