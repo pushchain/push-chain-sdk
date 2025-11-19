@@ -287,6 +287,10 @@ async function testSendFundsUSDTWithValue(
     ownerAddress: recipient as `0x${string}`,
   });
   const balancePCAfter = await pushChainClient.getBalance(recipient);
+  console.log('balancePCAfter', balancePCAfter);
+  console.log('balancePCBefore', balancePCBefore);
+  console.log('balanceUSDTAfter', balanceUSDTAfter);
+  console.log('balanceUSDTBefore', balanceUSDTBefore);
   expect(balancePCAfter > balancePCBefore).toBe(true);
   expect(balanceUSDTAfter > balanceUSDTBefore).toBe(true);
 }
@@ -2497,7 +2501,7 @@ describe('PushChain', () => {
       await testSendFundsETH(client, config, 'self');
     }, 300000);
 
-    it('integration: sendFunds ETH other', async () => {
+    it('integration: sendFunds ETH other - EXPECTED TO FAIL', async () => {
       await testSendFundsETH(client, config, 'other');
     }, 300000);
 
@@ -2608,7 +2612,7 @@ describe('PushChain', () => {
       await testSendFundsUSDTNoValue(client, account, config);
     }, 300000);
 
-    it('integration: sendFunds ETH other', async () => {
+    it('integration: sendFunds ETH other - EXPECTED TO FAIL', async () => {
       await testSendFundsETH(client, config, 'other');
     }, 300000);
 
@@ -2647,7 +2651,7 @@ describe('PushChain', () => {
       await testSendFundsUSDTNoValue(client, account, config);
     }, 300000);
 
-    it('integration: sendFunds USDT With Value to other', async () => {
+    it('integration: sendFunds USDT With Value to self - EXPECT TO FAIL', async () => {
       await testSendFundsUSDTWithValue(client, account, config, 'self');
     }, 300000);
 
@@ -2655,7 +2659,7 @@ describe('PushChain', () => {
       await testSendFundsUSDTWithValue(client, account, config, 'other');
     }, 300000);
 
-    it('integration: sendFunds ETH other', async () => {
+    it('integration: sendFunds ETH other - EXPECTED TO FAIL', async () => {
       await testSendFundsETH(client, config, 'other');
     }, 300000);
 
@@ -2706,7 +2710,7 @@ describe('PushChain', () => {
       await testSendFundsUSDTNoValue(client, account, config);
     }, 300000);
 
-    it('integration: sendFunds BNB other', async () => {
+    it('integration: sendFunds BNB other - EXPECTED TO FAIL', async () => {
       await testSendFundsETH(client, config, 'other');
     }, 300000);
 
