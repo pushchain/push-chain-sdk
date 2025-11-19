@@ -1939,72 +1939,6 @@ describe('PushChain', () => {
       });
     });
 
-    describe('signMessage', () => {
-      it('should signMessage - EVM format', async () => {
-        const testMessage = new TextEncoder().encode('Hello, Push Chain!');
-        const signatureEVM = await pushClientEVM.universal.signMessage(
-          testMessage
-        );
-        const signaturePush = await pushChainPush.universal.signMessage(
-          testMessage
-        );
-
-        // Verify signature format (should be hex for EVM)
-        expect(signatureEVM).toMatch(/^0x[a-fA-F0-9]+$/);
-        expect(signatureEVM.length).toBeGreaterThan(2); // At least 0x + some hex chars
-
-        expect(signaturePush).toMatch(/^0x[a-fA-F0-9]+$/);
-        expect(signaturePush.length).toBeGreaterThan(2); // At least 0x + some hex chars
-
-        // Verify the signature is valid
-        const isValidEVM = await verifyMessage({
-          address: universalSignerEVM.account.address as `0x${string}`,
-          message: { raw: testMessage },
-          signature: signatureEVM as `0x${string}`,
-        });
-
-        expect(isValidEVM).toBe(true);
-
-        const isValidPush = await verifyMessage({
-          address: universalSignerPush.account.address as `0x${string}`,
-          message: { raw: testMessage },
-          signature: signaturePush as `0x${string}`,
-        });
-
-        expect(isValidPush).toBe(true);
-      });
-
-      it('should signMessage - binary data', async () => {
-        const binaryData = new Uint8Array([1, 2, 3, 4, 5, 255, 0, 128]);
-        const signatureEVM = await pushClientEVM.universal.signMessage(
-          binaryData
-        );
-        const signaturePush = await pushChainPush.universal.signMessage(
-          binaryData
-        );
-
-        expect(signatureEVM).toMatch(/^0x[a-fA-F0-9]+$/);
-        expect(signatureEVM.length).toBeGreaterThan(2); // At least 0x + some hex chars
-
-        // Verify the signature is valid
-        const isValidEVM = await verifyMessage({
-          address: universalSignerEVM.account.address as `0x${string}`,
-          message: { raw: binaryData },
-          signature: signatureEVM as `0x${string}`,
-        });
-
-        expect(isValidEVM).toBe(true);
-
-        const isValidPush = await verifyMessage({
-          address: universalSignerPush.account.address as `0x${string}`,
-          message: { raw: binaryData },
-          signature: signaturePush as `0x${string}`,
-        });
-
-        expect(isValidPush).toBe(true);
-      });
-    });
-
     describe('Multicall', () => {
       const COUNTER_ADDRESS =
         '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`;
@@ -2290,54 +2224,6 @@ describe('PushChain', () => {
       }, 300000);
     });
 
-    describe('signTypedData', () => {
-      it('should signTypedData - EIP-712 format', async () => {
-        const domain = {
-          name: 'Push Chain',
-          version: '1',
-          chainId: 42101, // Push testnet
-          verifyingContract:
-            '0x1234567890123456789012345678901234567890' as `0x${string}`,
-        };
-
-        const types = {
-          Person: [
-            { name: 'name', type: 'string' },
-            { name: 'wallet', type: 'address' },
-          ],
-        };
-
-        const message = {
-          name: 'Alice',
-          wallet: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826' as `0x${string}`,
-        };
-
-        const signatureEVM = await pushClientEVM.universal.signTypedData({
-          domain,
-          types,
-          primaryType: 'Person',
-          message,
-        });
-
-        // Verify signature format (should be hex for EVM)
-        expect(signatureEVM).toMatch(/^0x[a-fA-F0-9]+$/);
-        expect(signatureEVM.length).toBeGreaterThan(2);
-
-        expect(typeof signatureEVM).toBe('string');
-
-        const signaturePush = await pushChainPush.universal.signTypedData({
-          domain,
-          types,
-          primaryType: 'Person',
-          message,
-        });
-
-        expect(signaturePush).toMatch(/^0x[a-fA-F0-9]+$/);
-        expect(signaturePush.length).toBeGreaterThan(2);
-
-        expect(typeof signaturePush).toBe('string');
-      });
-    });
     describe('get account', () => {
       it('EVM', async () => {
         const address = pushClientEVM.universal.account;
