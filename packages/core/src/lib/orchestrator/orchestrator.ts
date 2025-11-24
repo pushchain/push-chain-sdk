@@ -254,12 +254,12 @@ export class Orchestrator {
                 // const payloadBytes = this.encodeUniversalPayload(
                 //   universalPayload as unknown as UniversalPayload
                 // );
-                const req = this._buildUniversalTxRequest({
-                  recipient: zeroAddress,
-                  token: bridgeToken,
-                  amount: bridgeAmount,
-                  payload: '0x',
-                });
+                // const req = this._buildUniversalTxRequest({
+                //   recipient: zeroAddress,
+                //   token: bridgeToken,
+                //   amount: bridgeAmount,
+                //   payload: '0x',
+                // });
                 // const req: UniversalTxRequest = {
                 //   recipient: zeroAddress,
                 //   token: bridgeToken,

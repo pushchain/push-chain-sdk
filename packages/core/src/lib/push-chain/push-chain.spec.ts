@@ -215,6 +215,8 @@ async function testSendFundsUSDTNoValue(
     ownerAddress: recipient as `0x${string}`,
   });
 
+  console.log('UEA: ', client.universal.account)
+
   const resUSDT = await client.universal.sendTransaction({
     to: recipient,
     funds: { amount, token: usdt },
@@ -2147,6 +2149,8 @@ async function testFeeAbstractionPayloadOnlyDeployUEA(
     functionName: 'increment',
   });
 
+  console.log('UEA: ', pushClientNewAccount.universal.account)
+
   // Execute transaction from new account
   const resultTx = await pushClientNewAccount.universal.sendTransaction({
     to: recipient,
@@ -2328,6 +2332,9 @@ async function testFeeAbstractionPayloadAndValueNewWalletDeployUEA(
     ).rejects.toThrow(`You can't execute data on the UEA address`);
     return;
   }
+
+  console.log('UEA: ', pushClientNew.universal.account)
+
   const resultTx = await pushClientNew.universal.sendTransaction(
     executePayload
   );
