@@ -176,3 +176,31 @@ export type MultiCall = {
   value: bigint;
   data: `0x${string}`;
 };
+
+export interface UniversalTxRequest {
+  recipient: `0x${string}`;
+  token: `0x${string}`;
+  amount: bigint;
+  payload: `0x${string}`;
+  revertInstruction: {
+    fundRecipient: `0x${string}`;
+    revertMsg: `0x${string}`;
+  };
+  signatureData: `0x${string}`;
+}
+
+export interface UniversalTokenTxRequest {
+  recipient: `0x${string}`;
+  token: `0x${string}`;
+  amount: bigint;
+  gasToken: `0x${string}`;
+  gasAmount: bigint;
+  payload: `0x${string}`;
+  revertInstruction: {
+    fundRecipient: `0x${string}`;
+    revertMsg: `0x${string}`;
+  };
+  signatureData: `0x${string}`;
+  amountOutMinETH: bigint;
+  deadline: bigint;
+}

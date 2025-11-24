@@ -22,7 +22,12 @@ import {
   UniversalAccount,
   UniversalSigner,
 } from '../universal/universal.types';
-import { ExecuteParams, MultiCall } from './orchestrator.types';
+import {
+  ExecuteParams,
+  MultiCall,
+  UniversalTokenTxRequest,
+  UniversalTxRequest,
+} from './orchestrator.types';
 import { EvmClient } from '../vm-client/evm-client';
 import { CHAIN_INFO, UEA_PROXY, VM_NAMESPACE } from '../constants/chain';
 import {
@@ -180,7 +185,6 @@ export class Orchestrator {
             const evmClient = new EvmClient({ rpcUrls });
             const gatewayAddress = lockerContract as `0x${string}`;
             const tokenAddr = execute.funds.token.address as `0x${string}`;
-            // Call UniversalGatewayV0.sendFunds(recipient, bridgeToken, bridgeAmount, revertCFG)
             const recipient = execute.to; // funds to recipient on Push Chain
             const isNative = execute.funds.token.mechanism === 'native';
             const bridgeToken =
@@ -188,7 +192,7 @@ export class Orchestrator {
                 ? tokenAddr
                 : ('0x0000000000000000000000000000000000000000' as `0x${string}`);
             const { nonce, deployed } = await this.getUeaStatusAndNonce();
-            const { payload: universalPayload } =
+            const { payload: universalPayload, req } =
               await this.buildGatewayPayloadAndGas(
                 execute,
                 nonce,
@@ -245,27 +249,54 @@ export class Orchestrator {
 
             let txHash: `0x${string}`;
             try {
+              // FUNDS ONLY SELF
               if (execute.to.toLowerCase() === ueaAddress.toLowerCase()) {
+                // const payloadBytes = this.encodeUniversalPayload(
+                //   universalPayload as unknown as UniversalPayload
+                // );
+                const req = this._buildUniversalTxRequest({
+                  recipient: zeroAddress,
+                  token: bridgeToken,
+                  amount: bridgeAmount,
+                  payload: '0x',
+                });
+                // const req: UniversalTxRequest = {
+                //   recipient: zeroAddress,
+                //   token: bridgeToken,
+                //   amount: bridgeAmount,
+                //   payload: '0x',
+                //   // payload: payloadBytes,
+                //   revertInstruction: revertCFG,
+                //   signatureData: '0x',
+                // } as unknown as never;
+
                 txHash = await evmClient.writeContract({
                   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                   address: gatewayAddress,
-                  functionName: 'sendFunds',
-                  args: [recipient, bridgeToken, bridgeAmount, revertCFG],
+                  functionName: 'sendUniversalTx',
+                  args: [req],
                   signer: this.universalSigner,
                   value: isNative ? bridgeAmount : BigInt(0),
                 });
               } else {
+                // FUNDS ONLY OTHER
+                // const payloadBytes = this.encodeUniversalPayload(
+                //   universalPayload as unknown as UniversalPayload
+                // );
+                // const req: UniversalTxRequest = {
+                //   recipient,
+                //   token: bridgeToken,
+                //   amount: bridgeAmount,
+                //   payload: payloadBytes,
+                //   revertInstruction: revertCFG,
+                //   signatureData: '0x',
+                // } as unknown as never;
+
                 txHash = await evmClient.writeContract({
                   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                   address: gatewayAddress,
-                  functionName: 'sendTxWithFunds_new',
-                  args: [
-                    tokenAddr,
-                    bridgeAmount,
-                    universalPayload,
-                    revertCFG,
-                    '0x',
-                  ],
+                  functionName: 'sendUniversalTx',
+                  args: [req],
                   signer: this.universalSigner,
                   value: nativeAmount,
                 });
@@ -582,7 +613,7 @@ export class Orchestrator {
           const mechanism = execute.funds.token.mechanism;
 
           const { deployed, nonce } = await this.getUeaStatusAndNonce();
-          const { payload: universalPayload } =
+          const { payload: universalPayload, req } =
             await this.buildGatewayPayloadAndGas(
               execute,
               nonce,
@@ -716,7 +747,6 @@ export class Orchestrator {
           try {
             if (CHAIN_INFO[this.universalSigner.account.chain].vm === VM.EVM) {
               const tokenAddr = execute.funds.token.address as `0x${string}`;
-              // Compute EIP-712 signature for the universal payload and hash to bytes32
               this.executeProgressHook(PROGRESS_HOOK.SEND_TX_03_01);
               const ueaAddress = this.computeUEAOffchain();
               this.executeProgressHook(
@@ -730,21 +760,9 @@ export class Orchestrator {
               this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_03);
               const evmClientEvm = evmClient as EvmClient;
               const gatewayAddressEvm = gatewayAddress as `0x${string}`;
-              // @@@@@@@@@@@@
-              // txHash = await evmClientEvm.writeContract({
-              //   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
-              //   address: gatewayAddressEvm,
-              //   functionName: 'sendTxWithFunds',
-              //   args: [
-              //     tokenAddr,
-              //     bridgeAmount,
-              //     universalPayload,
-              //     revertCFG,
-              //     '0x',
-              //   ],
-              //   signer: this.universalSigner,
-              //   value: nativeAmount,
-              // });
+              const payloadBytes = this.encodeUniversalPayload(
+                universalPayload as unknown as UniversalPayload
+              );
               // New behavior: if user provided a gasTokenAddress, pay gas in that token via Uniswap quote
               // Determine pay-with token address, min-out and slippage
               const payWith = execute.payGasWith;
@@ -812,36 +830,56 @@ export class Orchestrator {
                 );
 
                 // Approve bridge token already done above; now call new gateway signature (nonpayable)
+                // const reqToken: UniversalTokenTxRequest = {
+                //   recipient: zeroAddress,
+                //   token: tokenAddr,
+                //   amount: bridgeAmount,
+                //   gasToken: gasTokenAddress,
+                //   gasAmount,
+                //   payload: payloadBytes,
+                //   revertInstruction: revertCFG,
+                //   signatureData: '0x',
+                //   amountOutMinETH,
+                //   deadline,
+                // } as unknown as never;
+                const reqToken: UniversalTokenTxRequest = {
+                  ...req,
+                  gasToken: gasTokenAddress,
+                  gasAmount,
+                  amountOutMinETH,
+                  deadline,
+                };
+
                 txHash = await evmClientEvm.writeContract({
                   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                   address: gatewayAddressEvm,
-                  functionName: 'sendTxWithFunds_new',
-                  args: [
-                    tokenAddr,
-                    bridgeAmount,
-                    gasTokenAddress,
-                    gasAmount,
-                    amountOutMinETH,
-                    deadline,
-                    universalPayload,
-                    revertCFG,
-                    '0x',
-                  ],
+                  functionName: 'sendUniversalTx',
+                  args: [reqToken],
                   signer: this.universalSigner,
                 });
               } else {
                 // Existing native-ETH value path
+                // const req: UniversalTxRequest = {
+                //   recipient: zeroAddress,
+                //   token: tokenAddr,
+                //   amount: bridgeAmount,
+                //   payload: payloadBytes,
+                //   revertInstruction: revertCFG,
+                //   signatureData: '0x',
+                // };
+                // const req = this._buildUniversalTxRequest({
+                //   recipient: zeroAddress,
+                //   token: tokenAddr,
+                //   amount: bridgeAmount,
+                //   payload: this.encodeUniversalPayload(universalPayload),
+                // });
+
+                // VALUE + PAYLOAD + FUNDS && PAYLOAD + FUNDS
                 txHash = await evmClientEvm.writeContract({
                   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                   address: gatewayAddressEvm,
-                  functionName: 'sendTxWithFunds_new',
-                  args: [
-                    tokenAddr,
-                    bridgeAmount,
-                    universalPayload,
-                    revertCFG,
-                    '0x',
-                  ],
+                  functionName: 'sendUniversalTx',
+                  args: [req],
                   signer: this.universalSigner,
                   value: nativeAmount,
                 });
@@ -1006,6 +1044,8 @@ export class Orchestrator {
       // Support multicall payload encoding when execute.data is an array
       let payloadData: `0x${string}`;
       let payloadTo: `0x${string}`;
+      let req: UniversalTxRequest;
+      // Here is only value and payload. No funds here
       if (Array.isArray(execute.data)) {
         // payloadData = this._buildMulticallPayloadData(execute.to, execute.data);
         // Normal multicall. We replace the `to` to zeroAddress. Then console.warn to let user know that it should be
@@ -1017,28 +1057,80 @@ export class Orchestrator {
           execute.to,
           buildExecuteMulticall({ execute, ueaAddress: UEA })
         );
+        req = this._buildUniversalTxRequest({
+          recipient: zeroAddress,
+          token: zeroAddress,
+          amount: BigInt(0),
+          payload: payloadData,
+        });
       } else {
         if (execute.to.toLowerCase() !== UEA.toLowerCase()) {
           // For Payload + Value we don't do multicall anymore.
           // Multicall is only when Payload + Value;
           // Payload + Value + Funds -> Multicall
+          // TODO: Check but I beleive this code section is never reached.
           if (execute.funds) {
             payloadTo = zeroAddress;
             payloadData = this._buildMulticallPayloadData(
               execute.to,
               buildExecuteMulticall({ execute, ueaAddress: UEA })
             );
+            req = this._buildUniversalTxRequest({
+              recipient: zeroAddress,
+              token: zeroAddress,
+              amount: BigInt(0),
+              payload: payloadData,
+            });
           } else {
+            // VALUE ONLY OTHER
+            // VALUE + PAYLOAD ONLY OTHER
             payloadTo = execute.to;
             payloadData = execute.data || '0x';
+            const reqData = this._buildMulticallPayloadData(
+              execute.to,
+              buildExecuteMulticall({ execute, ueaAddress: UEA })
+            );
+            const universalPayload = JSON.parse(
+              JSON.stringify(
+                {
+                  to: zeroAddress,
+                  value: execute.value,
+                  data: reqData,
+                  gasLimit: execute.gasLimit || BigInt(5e7),
+                  maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
+                  maxPriorityFeePerGas:
+                    execute.maxPriorityFeePerGas || BigInt(0),
+                  nonce,
+                  deadline: execute.deadline || BigInt(9999999999),
+                  vType: feeLockingRequired
+                    ? VerificationType.universalTxVerification
+                    : VerificationType.signedVerification,
+                },
+                this.bigintReplacer
+              )
+            ) as UniversalPayload;
+            req = this._buildUniversalTxRequest({
+              recipient: zeroAddress,
+              token: zeroAddress,
+              amount: BigInt(0),
+              payload: this.encodeUniversalPayload(universalPayload),
+            });
           }
         } else {
           // For value only we don't check below. Only if there is payload to be executed
           if (execute.data && execute.to.toLowerCase() === UEA.toLowerCase()) {
             throw new Error(`You can't execute data on the UEA address`);
           }
+          // VALUE ONLY SELF
           payloadTo = execute.to;
           payloadData = execute.data || '0x';
+          req = this._buildUniversalTxRequest({
+            // recipient: execute.to,
+            recipient: zeroAddress,
+            token: zeroAddress,
+            amount: BigInt(0),
+            payload: payloadData,
+          });
         }
       }
 
@@ -1060,12 +1152,6 @@ export class Orchestrator {
           this.bigintReplacer
         )
       ) as UniversalPayload;
-      const ueaVersion = await this.fetchUEAVersion();
-      const executionHash = this.computeExecutionHash({
-        verifyingContract: UEA,
-        payload: universalPayload,
-        version: ueaVersion,
-      });
       /**
        * Prepare verification data by either signature or fund locking
        */
@@ -1077,6 +1163,7 @@ export class Orchestrator {
        * 4. UEA not deployed + insufficient funds: Lock requiredFunds
        */
       if (!feeLockingRequired) {
+        const ueaVersion = await this.fetchUEAVersion();
         /**
          * Sign Universal Payload
          */
@@ -1100,7 +1187,8 @@ export class Orchestrator {
 
         const feeLockTxHashBytes = await this.lockFee(
           lockAmountInUSD,
-          universalPayload
+          universalPayload,
+          req
         );
         feeLockTxHash = bytesToHex(feeLockTxHashBytes);
         verificationData = bytesToHex(feeLockTxHashBytes);
@@ -1193,7 +1281,8 @@ export class Orchestrator {
    */
   private async lockFee(
     amount: bigint, // USD with 8 decimals
-    universalPayload: UniversalPayload
+    universalPayload: UniversalPayload,
+    req: UniversalTxRequest
   ): Promise<Uint8Array> {
     const chain = this.universalSigner.account.chain;
     const { lockerContract, vm, defaultRPC } = CHAIN_INFO[chain];
@@ -1225,30 +1314,20 @@ export class Orchestrator {
           nativeTokenUsdPrice;
         nativeAmount = nativeAmount + BigInt(1);
 
-        // Deposit-only funding via UniversalGatewayV0 (no payload execution)
-        const revertCFG = {
-          fundRecipient: this.universalSigner.account.address as `0x${string}`,
-          revertMsg: '0x',
-        } as unknown as never;
-
-        // Sign the universal payload
-        const ueaAddress = this.computeUEAOffchain();
-        const ueaVersion = await this.fetchUEAVersion();
-        const eip712Signature = await this.signUniversalPayload(
-          universalPayload,
-          ueaAddress,
-          ueaVersion
-        );
-        const eip712SignatureHex =
-          typeof eip712Signature === 'string'
-            ? (eip712Signature as `0x${string}`)
-            : (bytesToHex(eip712Signature) as `0x${string}`);
+        // const req: UniversalTxRequest = {
+        //   recipient: zeroAddress,
+        //   token: zeroAddress,
+        //   amount: BigInt(0),
+        //   payload: payloadBytes,
+        //   revertInstruction: revertCFG,
+        //   signatureData: '0x',
+        // } as unknown as never;
 
         const txHash: `0x${string}` = await evmClient.writeContract({
           abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
           address: lockerContract,
-          functionName: 'sendTxWithGas',
-          args: [universalPayload as unknown as never, revertCFG, '0x'],
+          functionName: 'sendUniversalTx',
+          args: [req],
           signer: this.universalSigner,
           value: nativeAmount,
         });
@@ -1326,6 +1405,32 @@ export class Orchestrator {
       default:
         throw new Error(`Unsupported VM type: ${vm}`);
     }
+  }
+
+  private _buildUniversalTxRequest({
+    recipient,
+    token,
+    amount,
+    payload,
+  }: {
+    recipient: `0x${string}`;
+    token: `0x${string}`;
+    amount: bigint;
+    payload: `0x${string}`;
+  }): UniversalTxRequest {
+    const revertInstruction = {
+      fundRecipient: this.universalSigner.account.address as `0x${string}`,
+      revertMsg: '0x' as `0x${string}`,
+    };
+
+    return {
+      recipient,
+      token,
+      amount,
+      payload,
+      revertInstruction,
+      signatureData: '0x',
+    };
   }
 
   private async signUniversalPayload(
@@ -1596,6 +1701,37 @@ export class Orchestrator {
         ['\x19\x01', domainSeparator, structHash]
       )
     );
+  }
+
+  /**
+   * ABI-encodes a UniversalPayload struct to bytes, matching the Solidity layout.
+   * This mirrors abi.encode(UniversalPayload) in the EVM contracts.
+   */
+  private encodeUniversalPayload(payload: UniversalPayload): `0x${string}` {
+    return encodeAbiParameters(
+      [
+        { name: 'to', type: 'address' },
+        { name: 'value', type: 'uint256' },
+        { name: 'data', type: 'bytes' },
+        { name: 'gasLimit', type: 'uint256' },
+        { name: 'maxFeePerGas', type: 'uint256' },
+        { name: 'maxPriorityFeePerGas', type: 'uint256' },
+        { name: 'nonce', type: 'uint256' },
+        { name: 'deadline', type: 'uint256' },
+        { name: 'vType', type: 'uint8' },
+      ],
+      [
+        payload.to as `0x${string}`,
+        BigInt(payload.value as unknown as bigint | string),
+        payload.data as `0x${string}`,
+        BigInt(payload.gasLimit as unknown as bigint | string),
+        BigInt(payload.maxFeePerGas as unknown as bigint | string),
+        BigInt(payload.maxPriorityFeePerGas as unknown as bigint | string),
+        BigInt(payload.nonce as unknown as bigint | string),
+        BigInt(payload.deadline as unknown as bigint | string),
+        Number(payload.vType),
+      ]
+    ) as `0x${string}`;
   }
 
   /**
@@ -2298,7 +2434,7 @@ export class Orchestrator {
     nonce: bigint,
     type: 'sendFunds' | 'sendTxWithFunds',
     fundsValue?: bigint
-  ): Promise<{ payload: never; gasAmount: bigint }> {
+  ): Promise<{ payload: never; gasAmount: bigint; req: UniversalTxRequest }> {
     const gasEstimate = execute.gasLimit || BigInt(1e7);
     const gasAmount = execute.value ?? BigInt(0);
 
@@ -2324,7 +2460,23 @@ export class Orchestrator {
         vType: VerificationType.universalTxVerification,
       } as unknown as never;
 
-      return { payload: universalPayload, gasAmount };
+      // Temporary while we don't change the native address from 0xeee... to 0x0000...
+      let tokenAddress = execute.funds?.token?.address as `0x${string}`;
+      if (
+        execute.funds?.token?.address ===
+        '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+      ) {
+        tokenAddress = zeroAddress;
+      }
+
+      const req = this._buildUniversalTxRequest({
+        recipient: zeroAddress,
+        token: tokenAddress,
+        amount: execute.funds?.amount as bigint,
+        payload: this.encodeUniversalPayload(universalPayload),
+      });
+
+      return { payload: universalPayload, gasAmount, req };
     } else {
       if (!fundsValue) throw new Error('fundsValue property must not be empty');
       const multicallData: MultiCall[] = buildExecuteMulticall({
@@ -2357,7 +2509,23 @@ export class Orchestrator {
         vType: VerificationType.universalTxVerification,
       } as unknown as never;
 
-      return { payload: universalPayload, gasAmount };
+      // Temporary while we don't change the native address from 0xeee... to 0x0000...
+      let tokenAddress = execute.funds?.token?.address as `0x${string}`;
+      if (
+        execute.funds?.token?.address ===
+        '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+      ) {
+        tokenAddress = zeroAddress;
+      }
+
+      const req = this._buildUniversalTxRequest({
+        recipient: zeroAddress,
+        token: tokenAddress,
+        amount: execute.funds?.amount as bigint,
+        payload: this.encodeUniversalPayload(universalPayload),
+      });
+
+      return { payload: universalPayload, gasAmount, req };
     }
   }
 
