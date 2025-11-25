@@ -278,7 +278,7 @@ export class PhantomProvider extends BaseWalletProvider {
 
     if (this.connectedChainType === ChainType.ETHEREUM && window.phantom?.ethereum) {
       this.connectedChainType = null;
-      //TOOD: find how to disconnect ethereum
+      //TODO: find how to disconnect ethereum
     }
 
     return Promise.resolve();
