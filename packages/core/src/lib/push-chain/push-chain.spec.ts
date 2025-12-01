@@ -215,7 +215,7 @@ async function testSendFundsUSDTNoValue(
     ownerAddress: recipient as `0x${string}`,
   });
 
-  console.log('UEA: ', client.universal.account)
+  console.log('UEA: ', client.universal.account);
 
   const resUSDT = await client.universal.sendTransaction({
     to: recipient,
@@ -2028,7 +2028,7 @@ async function testFeeAbstractionValueOnlyDeployUEA(
     pcBeforeRecipient.toString()
   );
 
-  console.log('UEA: ', pushClientNewAccount.universal.account)
+  console.log('UEA: ', pushClientNewAccount.universal.account);
 
   // Execute transaction from new account
   const resultTx = await pushClientNewAccount.universal.sendTransaction({
@@ -2149,7 +2149,7 @@ async function testFeeAbstractionPayloadOnlyDeployUEA(
     functionName: 'increment',
   });
 
-  console.log('UEA: ', pushClientNewAccount.universal.account)
+  console.log('UEA: ', pushClientNewAccount.universal.account);
 
   // Execute transaction from new account
   const resultTx = await pushClientNewAccount.universal.sendTransaction({
@@ -2333,7 +2333,7 @@ async function testFeeAbstractionPayloadAndValueNewWalletDeployUEA(
     return;
   }
 
-  console.log('UEA: ', pushClientNew.universal.account)
+  console.log('UEA: ', pushClientNew.universal.account);
 
   const resultTx = await pushClientNew.universal.sendTransaction(
     executePayload
