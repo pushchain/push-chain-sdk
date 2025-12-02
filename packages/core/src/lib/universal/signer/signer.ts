@@ -15,7 +15,13 @@ import {
   ViemSignerType,
 } from '../universal.types';
 import * as nacl from 'tweetnacl';
-import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js';
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  Transaction,
+  VersionedTransaction,
+} from '@solana/web3.js';
 import { CHAIN, LIBRARY } from '../../constants/enums';
 import { ethers, getBytes, hexlify } from 'ethers';
 import { CHAIN_INFO } from '../../constants/chain';
@@ -186,18 +192,29 @@ export async function toUniversalFromKeypair(
 
       // ✅ Sign and send the transaction to Solana network
       signAndSendTransaction = async (unsignedTx: Uint8Array) => {
-        // sign
-        const tx = Transaction.from(unsignedTx);
-        const messageBytes = tx.serializeMessage();
-        const signature = nacl.sign.detached(messageBytes, keypair.secretKey);
-        tx.addSignature(
-          new PublicKey(keypair.publicKey.toBase58()),
-          Buffer.from(signature)
-        );
-        const rawTx = tx.serialize();
         const endpoint = CHAIN_INFO[chain].defaultRPC[0];
         const connection = new Connection(endpoint, 'confirmed');
-        const txHash = await connection.sendRawTransaction(rawTx);
+
+        let txHash: string;
+
+        // Prefer handling as a versioned transaction; fall back to legacy if that fails.
+        try {
+          const vtx = VersionedTransaction.deserialize(unsignedTx);
+          vtx.sign([keypair]);
+          const rawVtx = vtx.serialize();
+          txHash = await connection.sendRawTransaction(rawVtx);
+        } catch {
+          const tx = Transaction.from(unsignedTx);
+          const messageBytes = tx.serializeMessage();
+          const signature = nacl.sign.detached(messageBytes, keypair.secretKey);
+          tx.addSignature(
+            new PublicKey(keypair.publicKey.toBase58()),
+            Buffer.from(signature)
+          );
+          const rawTx = tx.serialize();
+          txHash = await connection.sendRawTransaction(rawTx);
+        }
+
         return utils.bytes.bs58.decode(txHash);
       };
 

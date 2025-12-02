@@ -4,6 +4,7 @@ import {
   PublicKey,
   Transaction,
   TransactionInstruction,
+  TransactionMessage,
   VersionedTransaction,
 } from '@solana/web3.js';
 import {
@@ -15,6 +16,11 @@ import { AnchorProvider, Program, BN } from '@coral-xyz/anchor';
 import { UniversalSigner } from '../universal/universal.types';
 import type { Wallet } from '@coral-xyz/anchor';
 import { utils } from '@coral-xyz/anchor';
+
+// Universal Gateway ALT (shared with on-chain tests)
+const ALT_ADDRESS = new PublicKey(
+  'EWXJ1ERkMwizmSovjtQ2qBTDpm1vxrZZ4Y2RjEujbqBo'
+);
 /**
  * Solana-compatible VM client for reading and writing SVM-based chains.
  */
@@ -309,23 +315,29 @@ export class SvmClient {
     const connection = this.connections[this.currentConnectionIndex];
     const feePayer = new PublicKey(signer.account.address);
 
-    const { blockhash, lastValidBlockHeight } =
-      await connection.getLatestBlockhash('finalized');
-
-    const tx = new Transaction({
-      feePayer,
-      blockhash,
-      lastValidBlockHeight,
-    }).add(instruction);
-
-    if (extraSigners.length > 0) {
-      tx.partialSign(...extraSigners);
+    // Prefer an ALT-backed v0 transaction to avoid Solana's 1232-byte legacy limit
+    const { value: alt } = await connection.getAddressLookupTable(ALT_ADDRESS);
+    if (!alt) {
+      throw new Error(
+        `Lookup table ${ALT_ADDRESS.toBase58()} not found on chain`
+      );
     }
 
-    const txBytes = tx.serialize({
-      requireAllSignatures: false,
-      verifySignatures: false,
-    });
+    const { blockhash } = await connection.getLatestBlockhash('finalized');
+
+    const messageV0 = new TransactionMessage({
+      payerKey: feePayer,
+      recentBlockhash: blockhash,
+      instructions: [instruction],
+    }).compileToV0Message([alt]);
+
+    const vtx = new VersionedTransaction(messageV0);
+
+    if (extraSigners.length > 0) {
+      vtx.sign(extraSigners);
+    }
+
+    const txBytes = vtx.serialize();
 
     if (!signer.signAndSendTransaction) {
       throw new Error('signer.signTransaction is undefined');
