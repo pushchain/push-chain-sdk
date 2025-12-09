@@ -4,7 +4,6 @@ on:
   pull_request:
     branches:
       - main
-      - dev
     paths:
       - '**.md'
       - '**.mdx'
@@ -37,7 +36,6 @@ jobs:
             --no-progress
             --max-retries 3
             --timeout 20
-            --exclude-mail
             --exclude-path node_modules
             --exclude-path .git
             --exclude-path build
@@ -57,16 +55,6 @@ jobs:
           # Format of the output
           format: markdown
 
-      - name: Create Issue on Failure
-        if: failure()
-        uses: peter-evans/create-issue-from-file@v5
-        with:
-          title: 'Broken Links Detected'
-          content-filepath: lychee-results.md
-          labels: |
-            documentation
-            bug
-
       - name: Upload link check results
         if: always()
         uses: actions/upload-artifact@v4
@@ -74,18 +62,3 @@ jobs:
           name: link-check-results
           path: lychee-results.md
           retention-days: 30
-
-      - name: Comment PR with results
-        if: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const results = fs.readFileSync('lychee-results.md', 'utf8');
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## ⚠️ Broken Links Detected\n\n${results}\n\nPlease fix these broken links before merging.`
-            });

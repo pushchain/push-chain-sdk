@@ -43,7 +43,7 @@ Click on the packages to view more details.
 
 - **[Website](https://push.org)** To checkout our Product.
 - **[Docs](https://push.org/docs)** For comprehensive documentation.
-- **[Blog](https://medium.com/pushchain)** To learn more about our partners, new launches, etc.
+- **[Blog](https://medium.com/push-protocol)** To learn more about our partners, new launches, etc.
 - **[Discord](https://discord.com/invite/pushchain)** for support and discussions with the community and the team.
 - **[GitHub](https://github.com/pushchain)** for source code, project board, issues, and pull requests.
 - **[X/Twitter](https://x.com/pushchain)** for the latest updates on the product and published blogs.
