@@ -1,5 +1,7 @@
 import { MetamaskProvider } from './ethereum/metamask';
 import { PhantomProvider } from './solana/phantom';
+import { RabbyProvider } from './ethereum/rabby';
+import { ZerionProvider } from './ethereum/zerion';
 import { ChainType, IWalletProvider } from '../../types/wallet.types';
 import { WalletConnectProvider } from './ethereum/walletConnect';
 
@@ -11,6 +13,8 @@ class WalletProviderRegistry {
     this.registerProvider(new MetamaskProvider());
     this.registerProvider(new PhantomProvider());
     this.registerProvider(new WalletConnectProvider());
+    this.registerProvider(new RabbyProvider());
+    this.registerProvider(new ZerionProvider());
   }
 
   registerProvider(provider: IWalletProvider): void {

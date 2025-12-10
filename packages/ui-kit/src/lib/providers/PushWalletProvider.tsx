@@ -16,6 +16,7 @@ import {
   buttonThemeDefault,
 } from '../styles/token';
 import { mapCoreToInt } from '../utils/theme';
+import { startEIP6963Listener } from './walletProviders/utils/eip6963';
 
 interface CustomTheme extends DefaultTheme {
   themeMode: string;
@@ -76,6 +77,8 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
   themeOverrides = {},
   children,
 }) => {
+
+  startEIP6963Listener();
 
   const mergedConfig: ProviderConfigProps = {
     ...PushWalletConfigDefault,
