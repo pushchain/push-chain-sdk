@@ -22,11 +22,6 @@ export const UNIVERSAL_GATEWAY_V0 = [
   },
   {
     "inputs": [],
-    "name": "BlockCapLimitExceeded",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "DepositFailed",
     "type": "error"
   },
@@ -616,19 +611,6 @@ export const UNIVERSAL_GATEWAY_V0 = [
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "amountWei",
-        "type": "uint256"
-      }
-    ],
-    "name": "_checkBlockUSDCap",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
       }
@@ -690,30 +672,6 @@ export const UNIVERSAL_GATEWAY_V0 = [
       {
         "internalType": "uint256",
         "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "token",
-        "type": "address"
-      }
-    ],
-    "name": "currentTokenUsage",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "used",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "remaining",
         "type": "uint256"
       }
     ],
@@ -872,69 +830,6 @@ export const UNIVERSAL_GATEWAY_V0 = [
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "admin",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "pauser",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "tss",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "minCapUsd",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "maxCapUsd",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "factory",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "router",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_wethAddress",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_usdtAddress",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_usdtUsdPriceFeed",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_ethUsdPriceFeed",
-        "type": "address"
-      }
-    ],
-    "name": "initialize",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -1788,73 +1683,6 @@ export const UNIVERSAL_GATEWAY_V0 = [
       {
         "components": [
           {
-            "internalType": "enum TX_TYPE",
-            "name": "txType",
-            "type": "uint8"
-          },
-          {
-            "internalType": "address",
-            "name": "recipient",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "token",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bytes",
-            "name": "payload",
-            "type": "bytes"
-          },
-          {
-            "components": [
-              {
-                "internalType": "address",
-                "name": "fundRecipient",
-                "type": "address"
-              },
-              {
-                "internalType": "bytes",
-                "name": "revertMsg",
-                "type": "bytes"
-              }
-            ],
-            "internalType": "struct RevertInstructions",
-            "name": "revertInstruction",
-            "type": "tuple"
-          },
-          {
-            "internalType": "bytes",
-            "name": "signatureData",
-            "type": "bytes"
-          }
-        ],
-        "internalType": "struct UniversalTxRequest",
-        "name": "req",
-        "type": "tuple"
-      }
-    ],
-    "name": "sendUniversalTx",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": [
-          {
-            "internalType": "enum TX_TYPE",
-            "name": "txType",
-            "type": "uint8"
-          },
-          {
             "internalType": "address",
             "name": "recipient",
             "type": "address"
@@ -1930,14 +1758,58 @@ export const UNIVERSAL_GATEWAY_V0 = [
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "cap1e18",
-        "type": "uint256"
+        "components": [
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes",
+            "name": "payload",
+            "type": "bytes"
+          },
+          {
+            "components": [
+              {
+                "internalType": "address",
+                "name": "fundRecipient",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes",
+                "name": "revertMsg",
+                "type": "bytes"
+              }
+            ],
+            "internalType": "struct RevertInstructions",
+            "name": "revertInstruction",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes",
+            "name": "signatureData",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct UniversalTxRequest",
+        "name": "req",
+        "type": "tuple"
       }
     ],
-    "name": "setBlockUsdCap",
+    "name": "sendUniversalTx",
     "outputs": [],
-    "stateMutability": "nonpayable",
+    "stateMutability": "payable",
     "type": "function"
   },
   {
@@ -2162,37 +2034,6 @@ export const UNIVERSAL_GATEWAY_V0 = [
   {
     "inputs": [],
     "name": "unpause",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "newDurationSec",
-        "type": "uint256"
-      }
-    ],
-    "name": "updateEpochDuration",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address[]",
-        "name": "tokens",
-        "type": "address[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "thresholds",
-        "type": "uint256[]"
-      }
-    ],
-    "name": "updateTokenLimitThreshold",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
