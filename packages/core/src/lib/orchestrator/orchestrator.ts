@@ -320,8 +320,8 @@ export class Orchestrator {
             await this.waitForEvmConfirmationsWithCountdown(
               evmClient,
               txHash,
-              4,
-              210000
+              CHAIN_INFO[chain].confirmations,
+              CHAIN_INFO[chain].timeout
             );
 
             const pushChainUniversalTx =
@@ -557,8 +557,8 @@ export class Orchestrator {
             await this.waitForSvmConfirmationsWithCountdown(
               svmClient,
               txSignature,
-              25,
-              300000
+              CHAIN_INFO[chain].confirmations,
+              CHAIN_INFO[chain].timeout
             );
             // After origin confirmations, query Push Chain for UniversalTx status (SVM)
             const pushChainUniversalTx =
@@ -916,13 +916,14 @@ export class Orchestrator {
           );
 
           // Awaiting confirmations
-          if (CHAIN_INFO[this.universalSigner.account.chain].vm === VM.EVM) {
+          const signerChain = this.universalSigner.account.chain;
+          if (CHAIN_INFO[signerChain].vm === VM.EVM) {
             const evmClientEvm = evmClient as EvmClient;
             await this.waitForEvmConfirmationsWithCountdown(
               evmClientEvm,
               txHash as `0x${string}`,
-              4,
-              300000
+              CHAIN_INFO[signerChain].confirmations,
+              CHAIN_INFO[signerChain].timeout
             );
           } else {
             const svmClient = new SvmClient({
@@ -933,8 +934,8 @@ export class Orchestrator {
             await this.waitForSvmConfirmationsWithCountdown(
               svmClient,
               txHash as string,
-              25,
-              300000
+              CHAIN_INFO[signerChain].confirmations,
+              CHAIN_INFO[signerChain].timeout
             );
           }
 
@@ -3173,9 +3174,14 @@ export class Orchestrator {
       const idInput = `${sourceChain}:${txHashHex}:${logIndexStr}`;
       const idHex = sha256(stringToBytes(idInput)).slice(2);
 
-      // Fetch UniversalTx via gRPC with a brief retry window
+      // Fetch UniversalTx via gRPC with linear-then-exponential retry
+      const LINEAR_ATTEMPTS = 5;
+      const LINEAR_DELAY_MS = 1500;
+      const EXPONENTIAL_BASE_MS = 2000;
+      const MAX_ATTEMPTS = 15;
+
       let universalTxObj: any | undefined;
-      for (let attempt = 0; attempt < 15; attempt++) {
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         try {
           const universalTxResp = await this.pushClient.getUniversalTxById(
             idHex
@@ -3186,7 +3192,17 @@ export class Orchestrator {
           // ignore and retry
           // console.log(error);
         }
-        await new Promise((r) => setTimeout(r, 1500));
+
+        // Linear delay for first N attempts, then exponential backoff
+        let delay: number;
+        if (attempt < LINEAR_ATTEMPTS) {
+          delay = LINEAR_DELAY_MS;
+        } else {
+          // Exponential: 2000, 4000, 8000, 16000, ...
+          const exponentialAttempt = attempt - LINEAR_ATTEMPTS;
+          delay = EXPONENTIAL_BASE_MS * Math.pow(2, exponentialAttempt);
+        }
+        await new Promise((r) => setTimeout(r, delay));
       }
 
       return universalTxObj;
@@ -3202,6 +3218,12 @@ export class Orchestrator {
     confirmations: number,
     timeoutMs: number
   ): Promise<void> {
+    // Skip waiting if zero confirmations requested
+    if (confirmations <= 0) {
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_03_02, 0, 0);
+      return;
+    }
+
     // initial emit
     this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_03, confirmations);
     const start = Date.now();
@@ -3270,6 +3292,12 @@ export class Orchestrator {
     confirmations: number,
     timeoutMs: number
   ): Promise<void> {
+    // Skip waiting if zero confirmations requested
+    if (confirmations <= 0) {
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_03_02, 0, 0);
+      return;
+    }
+
     // initial emit
     this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_03, confirmations);
     const start = Date.now();

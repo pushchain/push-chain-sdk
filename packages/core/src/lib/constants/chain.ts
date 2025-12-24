@@ -173,7 +173,7 @@ export const CHAIN_INFO: Record<
     vm: VM.EVM,
     lockerContract: 'TBD',
     defaultRPC: [mainnet.rpcUrls.default.http[0]],
-    confirmations: 6,
+    confirmations: 2,
     timeout: 60000,
   },
   [CHAIN.ETHEREUM_SEPOLIA]: {
@@ -194,7 +194,7 @@ export const CHAIN_INFO: Record<
     vm: VM.EVM,
     lockerContract: '0x2cd870e0166Ba458dEC615168Fd659AacD795f34',
     defaultRPC: [arbitrumSepolia.rpcUrls.default.http[0]],
-    confirmations: 1,
+    confirmations: 2,
     timeout: 30000,
     dex: {
       uniV3Factory: '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
@@ -207,7 +207,7 @@ export const CHAIN_INFO: Record<
     vm: VM.EVM,
     lockerContract: '0xFD4fef1F43aFEc8b5bcdEEc47f35a1431479aC16',
     defaultRPC: [baseSepolia.rpcUrls.default.http[0]],
-    confirmations: 1,
+    confirmations: 2,
     timeout: 30000,
     dex: {
       uniV3Factory: '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
@@ -220,7 +220,7 @@ export const CHAIN_INFO: Record<
     vm: VM.EVM,
     lockerContract: '0x44aFFC61983F4348DdddB886349eb992C061EaC0',
     defaultRPC: [bscTestnet.rpcUrls.default.http[0]],
-    confirmations: 1,
+    confirmations: 2,
     timeout: 30000,
   },
 
@@ -230,7 +230,7 @@ export const CHAIN_INFO: Record<
     vm: VM.SVM,
     lockerContract: 'TBD',
     defaultRPC: [''],
-    confirmations: 6,
+    confirmations: 12,
     timeout: 15000,
   },
   [CHAIN.SOLANA_TESTNET]: {
@@ -238,7 +238,7 @@ export const CHAIN_INFO: Record<
     vm: VM.SVM,
     lockerContract: '',
     defaultRPC: ['https://api.testnet.solana.com'],
-    confirmations: 6,
+    confirmations: 12,
     timeout: 55000,
   },
   [CHAIN.SOLANA_DEVNET]: {
@@ -246,7 +246,7 @@ export const CHAIN_INFO: Record<
     vm: VM.SVM,
     lockerContract: 'CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS',
     defaultRPC: ['https://api.devnet.solana.com'],
-    confirmations: 2,
+    confirmations: 12,
     timeout: 120000,
   },
 };

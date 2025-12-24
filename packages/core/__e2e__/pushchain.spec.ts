@@ -65,7 +65,7 @@ describe('PushChain (e2e)', () => {
         const txHash = await walletClient.sendTransaction({
           to: randomAccount.address,
           chain: sepolia,
-          value: PushChain.utils.helpers.parseUnits('1', 14),
+          value: PushChain.utils.helpers.parseUnits('5', 14),
         });
         const publicClient = createPublicClient({
           chain: sepolia,
@@ -177,7 +177,7 @@ describe('PushChain (e2e)', () => {
         const txHash = await walletClient.sendTransaction({
           to: randomAccount.address,
           chain: arbitrumSepolia,
-          value: PushChain.utils.helpers.parseUnits('1', 14),
+          value: PushChain.utils.helpers.parseUnits('5', 14),
         });
         const publicClient = createPublicClient({
           chain: arbitrumSepolia,
@@ -289,7 +289,7 @@ describe('PushChain (e2e)', () => {
         const txHash = await walletClient.sendTransaction({
           to: randomAccount.address,
           chain: baseSepolia,
-          value: PushChain.utils.helpers.parseUnits('1', 14),
+          value: PushChain.utils.helpers.parseUnits('5', 14),
         });
         const publicClient = createPublicClient({
           chain: baseSepolia,
@@ -401,7 +401,7 @@ describe('PushChain (e2e)', () => {
         const txHash = await walletClient.sendTransaction({
           to: randomAccount.address,
           chain: bscTestnet,
-          value: PushChain.utils.helpers.parseUnits('1', 14),
+          value: PushChain.utils.helpers.parseUnits('5', 14),
         });
         const publicClient = createPublicClient({
           chain: bscTestnet,

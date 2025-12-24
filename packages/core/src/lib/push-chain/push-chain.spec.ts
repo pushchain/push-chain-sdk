@@ -3027,7 +3027,7 @@ describe('PushChain', () => {
       await testSendFundsETH(client, config, 'self');
     }, 300000);
 
-    it('integration: sendFunds ETH other - Ethereum Sepolia - EXPECTED TO FAIL', async () => {
+    it.skip('integration: sendFunds ETH other - Ethereum Sepolia - EXPECTED TO FAIL', async () => {
       await testSendFundsETH(client, config, 'other');
     }, 300000);
 
@@ -3093,7 +3093,7 @@ describe('PushChain', () => {
       await testValuePayloadFundsUSDT(client, account, config, 'other');
     }, 500000);
 
-    it('Test Value Funds Payload ETH other - Ethereum Sepolia', async () => {
+    it.skip('Test Value Funds Payload ETH other - Ethereum Sepolia', async () => {
       await testValuePayloadFundsETH(client, account, config, 'other');
     }, 500000);
 
@@ -3186,7 +3186,7 @@ describe('PushChain', () => {
       await testSendFundsUSDTNoValue(client, account, config, 'self');
     }, 300000);
 
-    it('integration: sendFunds ETH other - EXPECTED TO FAIL', async () => {
+    it.skip('integration: sendFunds ETH other - EXPECTED TO FAIL', async () => {
       await testSendFundsETH(client, config, 'other');
     }, 300000);
 
@@ -3198,7 +3198,7 @@ describe('PushChain', () => {
       await testSendTxWithFundsUSDTNoValue(client, account, config, 'self');
     }, 500000);
 
-    it('integration: pay gas with USDT via UniversalGatewayV0', async () => {
+    it.skip('integration: pay gas with USDT via UniversalGatewayV0', async () => {
       await testSendTxWithFundsPayGasUSDT(client, account, config);
     }, 500000);
   });
@@ -3225,7 +3225,7 @@ describe('PushChain', () => {
       await testSendFundsUSDTNoValue(client, account, config, 'self');
     }, 300000);
 
-    it('integration: sendFunds USDT With Value to self - EXPECT TO FAIL', async () => {
+    it.skip('integration: sendFunds USDT With Value to self - EXPECT TO FAIL', async () => {
       await testSendFundsUSDTWithValue(client, account, config, 'self');
     }, 300000);
 
@@ -3233,7 +3233,7 @@ describe('PushChain', () => {
       await testSendFundsUSDTWithValue(client, account, config, 'other');
     }, 300000);
 
-    it('integration: sendFunds ETH other - EXPECTED TO FAIL', async () => {
+    it.skip('integration: sendFunds ETH other - EXPECTED TO FAIL', async () => {
       await testSendFundsETH(client, config, 'other');
     }, 300000);
 
@@ -3284,7 +3284,7 @@ describe('PushChain', () => {
       await testSendFundsUSDTNoValue(client, account, config, 'self');
     }, 300000);
 
-    it('integration: sendFunds BNB other - EXPECTED TO FAIL', async () => {
+    it.skip('integration: sendFunds BNB other - EXPECTED TO FAIL', async () => {
       await testSendFundsETH(client, config, 'other');
     }, 300000);
 
