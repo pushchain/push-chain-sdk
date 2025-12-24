@@ -1,4 +1,4 @@
-import React, { FC, useState } from 'react';
+import React, { FC, useState, useRef, useEffect } from 'react';
 import { PROGRESS_HOOK, ProgressEvent } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
 import styled from 'styled-components';
 import { CrossIcon, Spinner, TickIcon, WarningIcon } from "../../components/common";
@@ -11,7 +11,10 @@ type PushWalletToastProps = {
 }
 
 const PushWalletToast: FC<PushWalletToastProps> = ({ progress, setProgress }) => {
-    const [isOpen, setIsOpen] = useState(false); 
+    const [isOpen, setIsOpen] = useState(false);
+    const [isOverflowing, setIsOverflowing] = useState(false);
+
+    const textRef = useRef<HTMLSpanElement | null>(null);
 
     const handleViewOnScan = (txnHash: string) => {
         if (txnHash) {
@@ -19,7 +22,17 @@ const PushWalletToast: FC<PushWalletToastProps> = ({ progress, setProgress }) =>
         }
     };
 
+    useEffect(() => {
+        if (textRef.current) {
+        const el = textRef.current;
+
+        const overflow = el.scrollWidth > el.clientWidth;
+        setIsOverflowing(overflow);
+        }
+    }, [progress?.message]);
+
     if (!progress) return <></>
+
     return (
         <ToastContainer>
             <IconContainer>
@@ -47,8 +60,14 @@ const PushWalletToast: FC<PushWalletToastProps> = ({ progress, setProgress }) =>
                     progress.message && 
                     (
                         <DescriptionContainer>
-                            <DescriptionText expanded={isOpen}>{progress.message}</DescriptionText>
-                            {isOpen ?
+                            <DescriptionText
+                                ref={textRef}
+                                expanded={isOpen}
+                            >
+                                {progress.message}
+                            </DescriptionText>
+                            {isOverflowing && (
+                                isOpen ?
                                 <ExpandButton onClick={() => setIsOpen(false)}>
                                     View Less
                                     <CaretUp height='18px' width='18px' color='#6B7280' />
@@ -57,7 +76,7 @@ const PushWalletToast: FC<PushWalletToastProps> = ({ progress, setProgress }) =>
                                     View More
                                     <CaretDown height='18px' width='18px' color='#6B7280' />
                                 </ExpandButton>
-                            }
+                            )}
                         </DescriptionContainer>
                     )
                 }
@@ -95,7 +114,6 @@ const ContentContainer = styled.div`
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    text-align: flex-start;
     width: 80%;
     gap: 2px;
 `
@@ -117,13 +135,14 @@ const DescriptionContainer = styled.div`
 `
 
 const DescriptionText = styled.span<{ expanded?: boolean }>`
-    font-size:12px;
+    font-size:14px;
     font-weight:400;
     line-height:18px;
     margin:0;
     font-family:var(--pw-int-font-family);
     color: #313338;
     width: 100%;
+    text-align: left;
     text-overflow: ellipsis;
     text-wrap: wrap;
     overflow: hidden;
@@ -144,9 +163,9 @@ const ExpandButton = styled.div`
 `
 
 const LinkText = styled.span`
-    font-size:12px;
+    font-size:14px;
     font-weight:400;
-    line-height:21px;
+    line-height:18px;
     cursor: pointer;
     color: #0056D0;
     font-family:var(--pw-int-font-family);
