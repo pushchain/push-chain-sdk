@@ -1,3 +1,9 @@
+@pushchain/ui-kit@4.0.2 (2025-12-25)
+
+- feat: add support for zerion and rabby
+
+---
+
 @pushchain/ui-kit@2.1.5 (2025-11-17)
 
 - chore: update core sdk to v3.0.8
