@@ -62,11 +62,8 @@ export const usePushChainClient = (uid?: string) => {
             }
             setProgress(progress);
 
-            if (
-              progress.level === 'SUCCESS' ||
-              progress.level === 'ERROR'
-            ) {
-              timeoutRef.current = setTimeout(() => setProgress(null), 5000);
+            if ( progress.id === PROGRESS_HOOK.SEND_TX_99_01 ) {
+              timeoutRef.current = setTimeout(() => setProgress(null), 10000);
             }
           },
           rpcUrls: config.chainConfig?.rpcUrls,

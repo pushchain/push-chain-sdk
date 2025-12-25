@@ -1,7 +1,9 @@
-import React, { FC } from 'react';
+import React, { FC, useState, useRef, useEffect } from 'react';
 import { PROGRESS_HOOK, ProgressEvent } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
 import styled from 'styled-components';
 import { CrossIcon, Spinner, TickIcon, WarningIcon } from "../../components/common";
+import CaretDown from '../common/icons/CaretDown';
+import CaretUp from '../common/icons/CaretUp';
 
 type PushWalletToastProps = {
     progress: ProgressEvent | null;
@@ -9,19 +11,34 @@ type PushWalletToastProps = {
 }
 
 const PushWalletToast: FC<PushWalletToastProps> = ({ progress, setProgress }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [isOverflowing, setIsOverflowing] = useState(false);
+
+    const textRef = useRef<HTMLSpanElement | null>(null);
+
     const handleViewOnScan = (txnHash: string) => {
         if (txnHash) {
             window.open(`https://donut.push.network/tx/${txnHash}`, '_blank');
         }
     };
 
+    useEffect(() => {
+        if (textRef.current) {
+        const el = textRef.current;
+
+        const overflow = el.scrollWidth > el.clientWidth;
+        setIsOverflowing(overflow);
+        }
+    }, [progress?.message]);
+
     if (!progress) return <></>
+
     return (
         <ToastContainer>
             <IconContainer>
                 {
-                    progress.level === 'SUCCESS' ? <TickIcon /> :
-                    progress.level === 'ERROR' ? <WarningIcon /> :
+                    progress.id === PROGRESS_HOOK.SEND_TX_99_01 ? <TickIcon /> :
+                    progress.id === PROGRESS_HOOK.SEND_TX_99_02 ? <WarningIcon /> :
                     <Spinner color='var(--pw-int-brand-primary-color)' />
                 }
             </IconContainer>
@@ -38,8 +55,36 @@ const PushWalletToast: FC<PushWalletToastProps> = ({ progress, setProgress }) =>
                         </LinkText>
                     )
                 }
+                {
+                    progress.id === PROGRESS_HOOK.SEND_TX_99_02 &&
+                    progress.message && 
+                    (
+                        <DescriptionContainer>
+                            <DescriptionText
+                                ref={textRef}
+                                expanded={isOpen}
+                            >
+                                {progress.message}
+                            </DescriptionText>
+                            {isOverflowing && (
+                                isOpen ?
+                                <ExpandButton onClick={() => setIsOpen(false)}>
+                                    View Less
+                                    <CaretUp height='18px' width='18px' color='#6B7280' />
+                                </ExpandButton> : 
+                                <ExpandButton onClick={() => setIsOpen(true)}>
+                                    View More
+                                    <CaretDown height='18px' width='18px' color='#6B7280' />
+                                </ExpandButton>
+                            )}
+                        </DescriptionContainer>
+                    )
+                }
             </ContentContainer>
-            <CloseContainer onClick={() => setProgress(null)}>
+            <CloseContainer onClick={() => {
+                setProgress(null);
+                setIsOpen(false);
+            }}>
                 <CrossIcon height='18px' width='18px' color='#000000' />
             </CloseContainer>
         </ToastContainer>
@@ -68,6 +113,9 @@ const ToastContainer = styled.div`
 const ContentContainer = styled.div`
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
+    width: 80%;
+    gap: 2px;
 `
 
 const TitleText = styled.h4`
@@ -79,10 +127,45 @@ const TitleText = styled.h4`
     color:#17181B;
 `
 
+const DescriptionContainer = styled.div`
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+`
+
+const DescriptionText = styled.span<{ expanded?: boolean }>`
+    font-size:14px;
+    font-weight:400;
+    line-height:18px;
+    margin:0;
+    font-family:var(--pw-int-font-family);
+    color: #313338;
+    width: 100%;
+    text-align: left;
+    text-overflow: ellipsis;
+    text-wrap: wrap;
+    overflow: hidden;
+    white-space: ${({ expanded }) => (expanded ? 'pre-wrap' : 'nowrap')};
+`
+
+const ExpandButton = styled.div`
+    display: flex;
+    align-items: center;
+    font-family: var(--pw-int-font-family);
+    font-size: 12px;
+    color: #6B7280;
+    cursor: pointer;
+
+    &:hover {
+        color: #4B5563;
+    }
+`
+
 const LinkText = styled.span`
     font-size:14px;
     font-weight:400;
-    line-height:21px;
+    line-height:18px;
     cursor: pointer;
     color: #0056D0;
     font-family:var(--pw-int-font-family);
