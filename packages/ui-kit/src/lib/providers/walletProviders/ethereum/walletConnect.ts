@@ -30,7 +30,16 @@ export class WalletConnectProvider extends BaseWalletProvider {
     console.log('Provder >>', this.provider);
 
     if (this.provider) {
-      return;
+      const hasSession = (this.provider as any).session
+        && (this.provider as any).session?.topic;
+
+      if (hasSession) {
+        return;
+      }
+
+      await this.provider.disconnect();
+
+      this.provider = null;
     }
 
     this.provider = await EthereumProvider.init({

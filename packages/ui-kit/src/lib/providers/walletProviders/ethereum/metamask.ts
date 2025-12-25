@@ -4,8 +4,7 @@ import { ChainType, ITypedData } from '../../../types/wallet.types';
 import { BrowserProvider, getAddress } from 'ethers';
 import { HexString } from 'ethers/lib.commonjs/utils/data';
 import { chains } from './chains';
-import { bytesToHex, Chain, hexToBytes } from 'viem';
-import { parseTransaction, toHex } from 'viem';
+import { bytesToHex, Chain, hexToBytes, parseTransaction, toHex } from 'viem';
 
 export class MetamaskProvider extends BaseWalletProvider {
   private sdk: MetaMaskSDK;
