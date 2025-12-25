@@ -196,7 +196,7 @@ const LoginModal: FC<LoginModalProps> = ({
               <MainFrameContainer>
                 <iframe
                   src={`
-                    ${WALLET_CONFIG_URL[config.network]}/auth?app=${window.location.origin}&version=3
+                    ${WALLET_CONFIG_URL[config.network]}/auth?app=${window.location.origin}&version=4
                   `}
                   allow="clipboard-write; clipboard-read; publickey-credentials-create; publickey-credentials-get; display-capture; *"
                   ref={iframeRef}
