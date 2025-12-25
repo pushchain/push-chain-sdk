@@ -33,6 +33,8 @@ const PushWalletToast: FC<PushWalletToastProps> = ({ progress, setProgress }) =>
 
     if (!progress) return <></>
 
+    const isInsufficientFundsError = progress?.message.includes('insufficient funds for gas');
+
     return (
         <ToastContainer>
             <IconContainer>
@@ -64,6 +66,7 @@ const PushWalletToast: FC<PushWalletToastProps> = ({ progress, setProgress }) =>
                                 ref={textRef}
                                 expanded={isOpen}
                             >
+                                {isInsufficientFundsError && 'Insufficient funds for gas: \n'}
                                 {progress.message}
                             </DescriptionText>
                             {isOverflowing && (
