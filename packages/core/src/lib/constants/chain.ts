@@ -1,7 +1,6 @@
 import { CHAIN, PUSH_NETWORK, VM } from './enums';
 import {
   mainnet,
-  sepolia,
   arbitrumSepolia,
   baseSepolia,
   bscTestnet,
@@ -180,7 +179,7 @@ export const CHAIN_INFO: Record<
     chainId: '11155111',
     vm: VM.EVM,
     lockerContract: '0x05bD7a3D18324c1F7e216f7fBF2b15985aE5281A',
-    defaultRPC: [sepolia.rpcUrls.default.http[0]],
+    defaultRPC: ['https://ethereum-sepolia-rpc.publicnode.com'],
     confirmations: 2,
     timeout: 120000,
     dex: {
