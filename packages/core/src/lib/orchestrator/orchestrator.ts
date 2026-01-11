@@ -2342,7 +2342,7 @@ export class Orchestrator {
     txHashBytes: Uint8Array
   ): Promise<void> {
     const chain = this.universalSigner.account.chain;
-    const { vm, defaultRPC, confirmations, timeout } = CHAIN_INFO[chain];
+    const { vm, defaultRPC, fastConfirmations, timeout } = CHAIN_INFO[chain];
     const rpcUrls = this.rpcUrls[chain] || defaultRPC;
 
     switch (vm) {
@@ -2351,7 +2351,7 @@ export class Orchestrator {
         await this.waitForEvmConfirmationsWithCountdown(
           evmClient,
           bytesToHex(txHashBytes),
-          confirmations,
+          fastConfirmations,
           timeout
         );
         return;
@@ -2362,7 +2362,7 @@ export class Orchestrator {
         await this.waitForSvmConfirmationsWithCountdown(
           svmClient,
           utils.bytes.bs58.encode(txHashBytes),
-          confirmations,
+          fastConfirmations,
           timeout
         );
         return;
