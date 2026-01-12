@@ -986,6 +986,13 @@ export class Orchestrator {
             lastPcTransaction?.txHash as `0x${string}`
           );
           const response = await this.transformToUniversalTxResponse(tx);
+          // Funds Flow: Funds credited on Push Chain
+          this.executeProgressHook(
+            PROGRESS_HOOK.SEND_TX_06_05,
+            bridgeAmount,
+            execute.funds.token.decimals,
+            symbol
+          );
           this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
           return response;
         }
