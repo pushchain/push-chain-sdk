@@ -9,10 +9,12 @@ import { CHAIN_LOGO } from '../../constants';
 type TogglePushWalletButtonProps = {
   uid?: string;
   universalAccount: UniversalAccount;
+  style?: React.CSSProperties;
 };
 const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
   uid,
   universalAccount,
+  style,
 }) => {
   const { setMinimiseWallet, isWalletMinimised, toggleButtonRef } =
     usePushWalletContext(uid);
@@ -43,6 +45,7 @@ const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
         gap='8px'
         padding='12px'
         ref={toggleButtonRef}
+        style={style}
       >
         {getChainIcon(chain)}
         {maskedAddress}

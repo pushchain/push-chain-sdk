@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import React, { FC } from 'react';
+import React, { FC, useEffect, useMemo } from 'react';
 import { ProviderConfigProps, PushWalletProviderProps } from '../types/index';
 import { WalletContextProvider } from '../context/WalletContext';
 import { PushUI } from '../constants';
@@ -49,26 +49,30 @@ const GlobalStyle = createGlobalStyle<{ uid: string }>`
       z-index: 9999 !important;
       position: fixed !important;
     }
-
-    ${(props) => {
-      const { themeMode, themeOverrides } = props.theme as CustomTheme;
-      const isLightMode = themeMode === PushUI.CONSTANTS.THEME.LIGHT;
-      const { dark, light, ...globalOverrides } = themeOverrides;
-      const newOverrides = {
-        ...{
-          ...themeDefault,
-          ...buttonThemeDefault,
-          ...(isLightMode ? lightThemeDefault : darkThemeDefault),
-        },
-        ...mapCoreToInt(globalOverrides),
-        ...mapCoreToInt((isLightMode ? light : dark) ?? {}),
-      };
-      return Object.entries(newOverrides)
-        .map(([key, value]) => `${key}: ${value};`)
-        .join('\n');
-    }}
   }
 `;
+
+const buildCssVars = (themeMode: string, themeOverrides: ThemeOverrides) => {
+  const isLightMode = themeMode === PushUI.CONSTANTS.THEME.LIGHT;
+  const { dark, light, ...globalOverrides } = themeOverrides;
+
+  const newOverrides = {
+    ...themeDefault,
+    ...buttonThemeDefault,
+    ...(isLightMode ? lightThemeDefault : darkThemeDefault),
+    ...mapCoreToInt(globalOverrides),
+    ...mapCoreToInt((isLightMode ? light : dark) ?? {}),
+  };
+
+  const cssVars: Record<string, string> = {};
+  for (const [key, value] of Object.entries(newOverrides)) {
+    if (value !== undefined && value !== null && value !== '') {
+      cssVars[key] = String(value);
+    }
+  }
+
+  return cssVars;
+};
 
 export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
   config,
@@ -78,7 +82,9 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
   children,
 }) => {
 
-  startEIP6963Listener();
+  useEffect(() => {
+    startEIP6963Listener();
+  }, []);
 
   const mergedConfig: ProviderConfigProps = {
     ...PushWalletConfigDefault,
@@ -97,10 +103,15 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
     },
   };
 
+  const wrapperStyle = useMemo(
+    () => buildCssVars(themeMode, themeOverrides),
+    [themeMode, themeOverrides]
+  );
+
   return (
     <ThemeProvider theme={{ themeMode, themeOverrides }}>
       <GlobalStyle uid={mergedConfig.uid!} />
-      <div data-pw-wrapper={mergedConfig.uid}>
+      <div data-pw-wrapper={mergedConfig.uid} style={wrapperStyle}>
         <WalletContextProvider
           config={mergedConfig}
           app={app}
