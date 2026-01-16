@@ -182,6 +182,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     setExternalWallet(null);
     setIsReadOnly(false);
     localStorage.removeItem("walletInfo");
+    document.body.style.overflow = '';
   };
 
   // sending events to wallet from dapp
