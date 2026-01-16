@@ -185,6 +185,7 @@ describe('Helpers Utils Namespace', () => {
           CHAIN.ETHEREUM_SEPOLIA,
           CHAIN.ARBITRUM_SEPOLIA,
           CHAIN.BASE_SEPOLIA,
+          CHAIN.BNB_TESTNET,
           CHAIN.SOLANA_DEVNET,
         ],
       });
@@ -199,6 +200,7 @@ describe('Helpers Utils Namespace', () => {
           CHAIN.ETHEREUM_SEPOLIA,
           CHAIN.ARBITRUM_SEPOLIA,
           CHAIN.BASE_SEPOLIA,
+          CHAIN.BNB_TESTNET,
           CHAIN.SOLANA_DEVNET,
         ],
       });
@@ -213,6 +215,7 @@ describe('Helpers Utils Namespace', () => {
           CHAIN.ETHEREUM_SEPOLIA,
           CHAIN.ARBITRUM_SEPOLIA,
           CHAIN.BASE_SEPOLIA,
+          CHAIN.BNB_TESTNET,
           CHAIN.SOLANA_DEVNET,
         ],
       });

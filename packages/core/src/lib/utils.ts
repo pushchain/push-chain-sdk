@@ -113,18 +113,21 @@ export class Utils {
           CHAIN.ETHEREUM_SEPOLIA,
           CHAIN.ARBITRUM_SEPOLIA,
           CHAIN.BASE_SEPOLIA,
+          CHAIN.BNB_TESTNET,
           CHAIN.SOLANA_DEVNET,
         ],
         [PUSH_NETWORK.TESTNET_DONUT]: [
           CHAIN.ETHEREUM_SEPOLIA,
           CHAIN.ARBITRUM_SEPOLIA,
           CHAIN.BASE_SEPOLIA,
+          CHAIN.BNB_TESTNET,
           CHAIN.SOLANA_DEVNET,
         ],
         [PUSH_NETWORK.LOCALNET]: [
           CHAIN.ETHEREUM_SEPOLIA,
           CHAIN.ARBITRUM_SEPOLIA,
           CHAIN.BASE_SEPOLIA,
+          CHAIN.BNB_TESTNET,
           CHAIN.SOLANA_DEVNET,
         ],
       };

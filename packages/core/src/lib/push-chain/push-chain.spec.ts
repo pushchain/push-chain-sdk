@@ -1969,7 +1969,7 @@ async function testFeeAbstractionValueOnlyDeployUEA(
   const txHash = await walletClient.sendTransaction({
     to: newAccount.address,
     chain: config.viemChain,
-    value: PushChain.utils.helpers.parseUnits('0.00051', 18),
+    value: PushChain.utils.helpers.parseUnits('0.001', 18),
   });
 
   // Wait for transaction to be mined
@@ -2092,7 +2092,7 @@ async function testFeeAbstractionPayloadOnlyDeployUEA(
   const txHash = await walletClient.sendTransaction({
     to: newAccount.address,
     chain: config.viemChain,
-    value: PushChain.utils.helpers.parseUnits('0.00051', 18),
+    value: PushChain.utils.helpers.parseUnits('0.001', 18),
   });
 
   // Wait for transaction to be mined
