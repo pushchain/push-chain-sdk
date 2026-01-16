@@ -175,12 +175,19 @@ const RAW_HOOKS: {
     response: null,
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_06_05]: (
+  [PROGRESS_HOOK.SEND_TX_06_05]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_06_05,
+    title: 'Syncing State with Push Chain',
+    message: 'Waiting for transaction to appear on Push Chain',
+    response: null,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_06_06]: (
     amount: bigint,
     decimals: number,
     symbol: string
   ) => ({
-    id: PROGRESS_HOOK.SEND_TX_06_05,
+    id: PROGRESS_HOOK.SEND_TX_06_06,
     title: 'Funds Credited on Push Chain',
     message: `Funds credited: ${Utils.helpers.formatUnits(
       amount,
@@ -190,9 +197,9 @@ const RAW_HOOKS: {
     level: 'SUCCESS',
   }),
 
-  // Execution flow (07-x)
-  [PROGRESS_HOOK.SEND_TX_07]: () => ({
-    id: PROGRESS_HOOK.SEND_TX_07,
+  // Execution flow (08-x)
+  [PROGRESS_HOOK.SEND_TX_08]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_08,
     title: 'Broadcasting to Push Chain',
     message: 'Sending Tx to Push Chain',
     response: null,

@@ -324,6 +324,11 @@ export class Orchestrator {
               CHAIN_INFO[chain].timeout
             );
 
+            // Funds Confirmed - emit immediately after confirmations
+            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_04);
+            // Syncing with Push Chain - emit before query
+            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_05);
+
             const pushChainUniversalTx =
               await this.queryUniversalTxStatusFromGatewayTx(
                 evmClient,
@@ -332,8 +337,6 @@ export class Orchestrator {
                 execute.to === ueaAddress ? 'sendFunds' : 'sendTxWithFunds'
               );
 
-            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_04);
-
             const lastPcTransaction = pushChainUniversalTx?.pcTx.at(-1);
             const tx = await this.pushClient.getTransaction(
               lastPcTransaction?.txHash as `0x${string}`
@@ -341,7 +344,7 @@ export class Orchestrator {
             const response = await this.transformToUniversalTxResponse(tx);
             // Funds Flow: Funds credited on Push Chain
             this.executeProgressHook(
-              PROGRESS_HOOK.SEND_TX_06_05,
+              PROGRESS_HOOK.SEND_TX_06_06,
               bridgeAmount,
               execute.funds.token.decimals,
               symbol
@@ -560,6 +563,12 @@ export class Orchestrator {
               CHAIN_INFO[chain].confirmations,
               CHAIN_INFO[chain].timeout
             );
+
+            // Funds Confirmed - emit immediately after confirmations
+            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_04);
+            // Syncing with Push Chain - emit before query
+            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_05);
+
             // After origin confirmations, query Push Chain for UniversalTx status (SVM)
             const pushChainUniversalTx =
               await this.queryUniversalTxStatusFromGatewayTx(
@@ -568,7 +577,6 @@ export class Orchestrator {
                 txSignature,
                 'sendFunds'
               );
-            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_04);
 
             const lastPcTransaction = pushChainUniversalTx?.pcTx.at(-1);
             const tx = await this.pushClient.getTransaction(
@@ -577,7 +585,7 @@ export class Orchestrator {
             const response = await this.transformToUniversalTxResponse(tx);
             // Funds Flow: Funds credited on Push Chain
             this.executeProgressHook(
-              PROGRESS_HOOK.SEND_TX_06_05,
+              PROGRESS_HOOK.SEND_TX_06_06,
               bridgeAmount,
               execute.funds.token.decimals,
               symbol
@@ -957,7 +965,10 @@ export class Orchestrator {
           //   await this.sendUniversalTx(deployed, feeLockTxHash);
           // }
 
+          // Funds Confirmed - emit immediately after confirmations
           this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_04);
+          // Syncing with Push Chain - emit before query
+          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_05);
 
           // After sending Cosmos tx to Push Chain, query UniversalTx status
           let pushChainUniversalTx: UniversalTx | undefined;
@@ -988,7 +999,7 @@ export class Orchestrator {
           const response = await this.transformToUniversalTxResponse(tx);
           // Funds Flow: Funds credited on Push Chain
           this.executeProgressHook(
-            PROGRESS_HOOK.SEND_TX_06_05,
+            PROGRESS_HOOK.SEND_TX_06_06,
             bridgeAmount,
             execute.funds.token.decimals,
             symbol
@@ -1014,7 +1025,7 @@ export class Orchestrator {
        * Push to Push Tx
        */
       if (this.isPushChain(chain)) {
-        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_07);
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_08);
         const tx = await this.sendPushTx(execute);
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [tx]);
         return tx;
@@ -1257,7 +1268,7 @@ export class Orchestrator {
        * Non-fee-locking path: Broadcasting Tx to PC via sendUniversalTx
        */
 
-      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_07);
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_08);
       // We don't need to query via gRPC the PC transaction since it's getting returned it here already.
       const transactions = await this.sendUniversalTx(
         isUEADeployed,

@@ -49,10 +49,11 @@ export enum PROGRESS_HOOK {
   SEND_TX_06_04 = 'SEND-TX-06-04',
   SEND_TX_06_03_01 = 'SEND-TX-06-03-01',
   SEND_TX_06_03_02 = 'SEND-TX-06-03-02',
-  SEND_TX_06_05 = 'SEND-TX-06-05',
+  SEND_TX_06_05 = 'SEND-TX-06-05', // Syncing with Push Chain
+  SEND_TX_06_06 = 'SEND-TX-06-06', // Funds Credited on Push Chain (was 06_05)
 
-  // 07-x: Execution / broadcasting flow
-  SEND_TX_07 = 'SEND-TX-07',
+  // 08-x: Execution / broadcasting flow
+  SEND_TX_08 = 'SEND-TX-08', // Broadcasting to Push Chain (was 07)
 
   // 99-x: Final outcome
   SEND_TX_99_01 = 'SEND-TX-99-01',

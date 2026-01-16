@@ -110,6 +110,7 @@ export class Utils {
       const mapping: Record<PUSH_NETWORK, CHAIN[]> = {
         [PUSH_NETWORK.MAINNET]: [],
         [PUSH_NETWORK.TESTNET]: [
+          CHAIN.PUSH_TESTNET_DONUT,
           CHAIN.ETHEREUM_SEPOLIA,
           CHAIN.ARBITRUM_SEPOLIA,
           CHAIN.BASE_SEPOLIA,
@@ -117,6 +118,7 @@ export class Utils {
           CHAIN.SOLANA_DEVNET,
         ],
         [PUSH_NETWORK.TESTNET_DONUT]: [
+          CHAIN.PUSH_TESTNET_DONUT,
           CHAIN.ETHEREUM_SEPOLIA,
           CHAIN.ARBITRUM_SEPOLIA,
           CHAIN.BASE_SEPOLIA,
@@ -124,6 +126,7 @@ export class Utils {
           CHAIN.SOLANA_DEVNET,
         ],
         [PUSH_NETWORK.LOCALNET]: [
+          CHAIN.PUSH_TESTNET_DONUT,
           CHAIN.ETHEREUM_SEPOLIA,
           CHAIN.ARBITRUM_SEPOLIA,
           CHAIN.BASE_SEPOLIA,
@@ -133,6 +136,30 @@ export class Utils {
       };
 
       return { chains: mapping[network] ?? [] };
+    },
+
+    /**
+     * Returns the list of supported chain names for a given Push network.
+     * Similar to getSupportedChains but returns chain names instead of namespaces.
+     *
+     * @param {PUSH_NETWORK} network - The Push network environment.
+     * @returns {{ chains: string[] }} Object containing supported chain names.
+     *
+     * @example
+     * Utils.chains.getSupportedChainsByName(PushChain.CONSTANTS.PUSH_NETWORK.TESTNET)
+     * // => { chains: ['PUSH_TESTNET_DONUT', 'ETHEREUM_SEPOLIA', 'ARBITRUM_SEPOLIA', ...] }
+     */
+    getSupportedChainsByName: (
+      network: PUSH_NETWORK
+    ): {
+      chains: string[];
+    } => {
+      const { chains } = Utils.chains.getSupportedChains(network);
+      return {
+        chains: chains
+          .map((chain) => Utils.chains.getChainName(chain))
+          .filter((name): name is string => name !== undefined),
+      };
     },
 
     getChainName: (chainNamespace: string): string | undefined => {
