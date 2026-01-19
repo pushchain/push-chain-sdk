@@ -3193,10 +3193,10 @@ export class Orchestrator {
       const idHex = sha256(stringToBytes(idInput)).slice(2);
 
       // Fetch UniversalTx via gRPC with linear-then-exponential retry
-      const LINEAR_ATTEMPTS = 5;
+      const LINEAR_ATTEMPTS = 15;
       const LINEAR_DELAY_MS = 1500;
       const EXPONENTIAL_BASE_MS = 2000;
-      const MAX_ATTEMPTS = 15;
+      const MAX_ATTEMPTS = 20;
 
       let universalTxObj: any | undefined;
       for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
