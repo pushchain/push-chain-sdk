@@ -66,6 +66,8 @@ export type WalletContextType = {
   themeOverrides: ThemeOverrides;
 
   toggleButtonRef: React.RefObject<HTMLButtonElement>;
+
+  progress: ProgressEvent | null;
   setProgress: React.Dispatch<React.SetStateAction<ProgressEvent | null>>;
 
   isReadOnly: boolean;
@@ -650,6 +652,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         handleSignAndSendTransaction,
         handleSignTypedData,
         toggleButtonRef,
+        progress,
         setProgress,
         isReadOnly,
         setIsReadOnly,
