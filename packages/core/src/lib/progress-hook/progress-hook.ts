@@ -197,11 +197,11 @@ const RAW_HOOKS: {
     level: 'SUCCESS',
   }),
 
-  // Execution flow (08-x)
-  [PROGRESS_HOOK.SEND_TX_08]: () => ({
-    id: PROGRESS_HOOK.SEND_TX_08,
+  // Execution flow (07-x)
+  [PROGRESS_HOOK.SEND_TX_07]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_07,
     title: 'Broadcasting to Push Chain',
-    message: 'Sending Tx to Push Chain',
+    message: 'Sending Tx to Push Chain...',
     response: null,
     level: 'INFO',
   }),

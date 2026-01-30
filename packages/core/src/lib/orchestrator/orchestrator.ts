@@ -1025,7 +1025,7 @@ export class Orchestrator {
        * Push to Push Tx
        */
       if (this.isPushChain(chain)) {
-        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_08);
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_07);
         const tx = await this.sendPushTx(execute);
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [tx]);
         return tx;
@@ -1268,7 +1268,7 @@ export class Orchestrator {
        * Non-fee-locking path: Broadcasting Tx to PC via sendUniversalTx
        */
 
-      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_08);
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_07);
       // We don't need to query via gRPC the PC transaction since it's getting returned it here already.
       const transactions = await this.sendUniversalTx(
         isUEADeployed,
