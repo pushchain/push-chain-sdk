@@ -204,3 +204,45 @@ export interface UniversalTokenTxRequest {
   amountOutMinETH: bigint;
   deadline: bigint;
 }
+
+/**
+ * Options for tracking a transaction by hash
+ */
+export interface TrackTransactionOptions {
+  /**
+   * Target chain to track transaction on. Defaults to Push Chain based on client network.
+   */
+  chain?: import('../constants/enums').CHAIN;
+
+  /**
+   * Progress callback for tracking events
+   */
+  progress?: (event: import('../progress-hook/progress-hook.types').ProgressEvent) => void;
+
+  /**
+   * Whether to wait for transaction confirmation before returning.
+   * - true: Blocks until transaction is confirmed (default)
+   * - false: Returns immediately with current status
+   */
+  waitForCompletion?: boolean;
+
+  /**
+   * Advanced configuration options
+   */
+  advanced?: {
+    /**
+     * Polling interval in milliseconds (default: 1000)
+     */
+    pollingIntervalMs?: number;
+
+    /**
+     * Timeout in milliseconds (default: 300000 = 5 minutes)
+     */
+    timeout?: number;
+
+    /**
+     * Custom RPC URLs per chain (overrides client defaults)
+     */
+    rpcUrls?: Partial<Record<import('../constants/enums').CHAIN, string[]>>;
+  };
+}

@@ -58,4 +58,11 @@ export enum PROGRESS_HOOK {
   // 99-x: Final outcome
   SEND_TX_99_01 = 'SEND-TX-99-01',
   SEND_TX_99_02 = 'SEND-TX-99-02',
+
+  // TRACK-TX-x: Transaction tracking flow
+  TRACK_TX_01 = 'TRACK-TX-01', // Tracking started
+  TRACK_TX_02 = 'TRACK-TX-02', // Querying transaction status
+  TRACK_TX_03 = 'TRACK-TX-03', // Status update
+  TRACK_TX_99_01 = 'TRACK-TX-99-01', // Tracking complete (success)
+  TRACK_TX_99_02 = 'TRACK-TX-99-02', // Tracking failed
 }

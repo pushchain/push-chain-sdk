@@ -1986,6 +1986,159 @@ export class Orchestrator {
   }
 
   /**
+   * Tracks a transaction by hash on Push Chain
+   * @param txHash - Transaction hash to track
+   * @param options - Tracking options (chain, progress hooks, polling config)
+   * @returns Promise resolving to UniversalTxReceipt when transaction is confirmed
+   */
+  async trackTransaction(
+    txHash: string,
+    options?: import('./orchestrator.types').TrackTransactionOptions
+  ): Promise<UniversalTxReceipt> {
+    const {
+      chain = this.getPushChainForNetwork(),
+      progress,
+      waitForCompletion = true,
+      advanced = {},
+    } = options ?? {};
+
+    const {
+      pollingIntervalMs = 1000,
+      timeout = 300000,
+      rpcUrls = {},
+    } = advanced;
+
+    // Use custom progress hook if provided, otherwise use instance hook
+    const progressHookFn = progress ?? this.progressHook;
+
+    // Emit TRACK_TX_01 - tracking started
+    if (progressHookFn) {
+      const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_01](
+        txHash,
+        chain
+      );
+      this.printLog(hookPayload.message);
+      progressHookFn(hookPayload);
+    }
+
+    // Create client for target chain with optional RPC override
+    const chainRPCs = rpcUrls[chain] || this.rpcUrls[chain] || CHAIN_INFO[chain].defaultRPC;
+    const client = new PushClient({
+      rpcUrls: chainRPCs,
+      network: this.pushNetwork,
+    });
+
+    // Try to get transaction immediately
+    try {
+      const tx = await client.getTransaction(txHash as `0x${string}`);
+
+      if (!waitForCompletion) {
+        // Non-blocking mode: return current receipt immediately
+        const receipt = await tx.wait(0);
+        const universalTxResponse = await this.transformToUniversalTxResponse(tx);
+        return this.transformToUniversalTxReceipt(receipt, universalTxResponse);
+      }
+
+      // Blocking mode: wait for confirmation
+      const receipt = await tx.wait(1);
+      const universalTxResponse = await this.transformToUniversalTxResponse(tx);
+
+      // Emit TRACK_TX_99_01 - tracking complete
+      if (progressHookFn) {
+        const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_99_01](
+          txHash,
+          universalTxResponse
+        );
+        this.printLog(hookPayload.message);
+        progressHookFn(hookPayload);
+      }
+
+      return this.transformToUniversalTxReceipt(receipt, universalTxResponse);
+    } catch (initialError) {
+      // Transaction not found yet - start polling if waitForCompletion is true
+      if (!waitForCompletion) {
+        // Non-blocking and tx not found - throw error
+        const errorMsg = initialError instanceof Error ? initialError.message : 'Transaction not found';
+        if (progressHookFn) {
+          const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_99_02](
+            txHash,
+            errorMsg
+          );
+          this.printLog(hookPayload.message);
+          progressHookFn(hookPayload);
+        }
+        throw new Error(`Transaction ${txHash} not found: ${errorMsg}`);
+      }
+
+      // Blocking mode: poll until found or timeout
+      const start = Date.now();
+
+      while (true) {
+        // Emit TRACK_TX_02 - querying status
+        if (progressHookFn) {
+          const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_02](txHash);
+          this.printLog(hookPayload.message);
+          progressHookFn(hookPayload);
+        }
+
+        try {
+          const tx = await client.getTransaction(txHash as `0x${string}`);
+          const receipt = await tx.wait(1);
+          const universalTxResponse = await this.transformToUniversalTxResponse(tx);
+
+          // Success - emit TRACK_TX_99_01
+          if (progressHookFn) {
+            const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_99_01](
+              txHash,
+              universalTxResponse
+            );
+            this.printLog(hookPayload.message);
+            progressHookFn(hookPayload);
+          }
+
+          return this.transformToUniversalTxReceipt(receipt, universalTxResponse);
+        } catch (err) {
+          // Transaction not found yet or error - continue polling
+          this.printLog(`Transaction ${txHash} not found yet, continuing to poll...`);
+        }
+
+        // Check timeout
+        if (Date.now() - start > timeout) {
+          const timeoutMsg = `Timeout: transaction ${txHash} not confirmed within ${timeout}ms`;
+          if (progressHookFn) {
+            const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_99_02](
+              txHash,
+              'Timeout'
+            );
+            this.printLog(hookPayload.message);
+            progressHookFn(hookPayload);
+          }
+          throw new Error(timeoutMsg);
+        }
+
+        // Wait before next poll
+        await new Promise((r) => setTimeout(r, pollingIntervalMs));
+      }
+    }
+  }
+
+  /**
+   * Returns the Push Chain enum value for the current network
+   */
+  private getPushChainForNetwork(): CHAIN {
+    if (this.pushNetwork === PUSH_NETWORK.MAINNET) {
+      return CHAIN.PUSH_MAINNET;
+    } else if (
+      this.pushNetwork === PUSH_NETWORK.TESTNET_DONUT ||
+      this.pushNetwork === PUSH_NETWORK.TESTNET
+    ) {
+      return CHAIN.PUSH_TESTNET_DONUT;
+    } else {
+      return CHAIN.PUSH_LOCALNET;
+    }
+  }
+
+  /**
    * Computes UEA for given UniversalAccount
    * @dev - This fn calls a view fn of Factory Contract
    * @dev - Don't use this fn in production - only used for testing
