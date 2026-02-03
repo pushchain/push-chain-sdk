@@ -337,9 +337,20 @@ export class Orchestrator {
                 execute.to === ueaAddress ? 'sendFunds' : 'sendTxWithFunds'
               );
 
-            const lastPcTransaction = pushChainUniversalTx?.pcTx.at(-1);
+            if (!pushChainUniversalTx?.pcTx?.length) {
+              throw new Error(
+                `Failed to retrieve Push Chain transaction status for gateway tx: ${txHash}. ` +
+                  `The transaction may have failed on Push Chain or not been indexed yet.`
+              );
+            }
+            const lastPcTransaction = pushChainUniversalTx.pcTx.at(-1);
+            if (!lastPcTransaction?.txHash) {
+              throw new Error(
+                `No transaction hash found in Push Chain response for gateway tx: ${txHash}`
+              );
+            }
             const tx = await this.pushClient.getTransaction(
-              lastPcTransaction?.txHash as `0x${string}`
+              lastPcTransaction.txHash as `0x${string}`
             );
             const response = await this.transformToUniversalTxResponse(tx);
             // Funds Flow: Funds credited on Push Chain
@@ -578,9 +589,20 @@ export class Orchestrator {
                 'sendFunds'
               );
 
-            const lastPcTransaction = pushChainUniversalTx?.pcTx.at(-1);
+            if (!pushChainUniversalTx?.pcTx?.length) {
+              throw new Error(
+                `Failed to retrieve Push Chain transaction status for gateway tx: ${txSignature}. ` +
+                  `The transaction may have failed on Push Chain or not been indexed yet.`
+              );
+            }
+            const lastPcTransaction = pushChainUniversalTx.pcTx.at(-1);
+            if (!lastPcTransaction?.txHash) {
+              throw new Error(
+                `No transaction hash found in Push Chain response for gateway tx: ${txSignature}`
+              );
+            }
             const tx = await this.pushClient.getTransaction(
-              lastPcTransaction?.txHash as `0x${string}`
+              lastPcTransaction.txHash as `0x${string}`
             );
             const response = await this.transformToUniversalTxResponse(tx);
             // Funds Flow: Funds credited on Push Chain
@@ -992,9 +1014,20 @@ export class Orchestrator {
               );
           }
 
-          const lastPcTransaction = pushChainUniversalTx?.pcTx.at(-1);
+          if (!pushChainUniversalTx?.pcTx?.length) {
+            throw new Error(
+              `Failed to retrieve Push Chain transaction status for gateway tx: ${txHash}. ` +
+                `The transaction may have failed on Push Chain or not been indexed yet.`
+            );
+          }
+          const lastPcTransaction = pushChainUniversalTx.pcTx.at(-1);
+          if (!lastPcTransaction?.txHash) {
+            throw new Error(
+              `No transaction hash found in Push Chain response for gateway tx: ${txHash}`
+            );
+          }
           const tx = await this.pushClient.getTransaction(
-            lastPcTransaction?.txHash as `0x${string}`
+            lastPcTransaction.txHash as `0x${string}`
           );
           const response = await this.transformToUniversalTxResponse(tx);
           // Funds Flow: Funds credited on Push Chain
@@ -1256,9 +1289,20 @@ export class Orchestrator {
          */
 
         // Transform to UniversalTxResponse (follow sendFunds pattern)
-        const lastPcTransaction = pushChainUniversalTx?.pcTx.at(-1);
+        if (!pushChainUniversalTx?.pcTx?.length) {
+          throw new Error(
+            `Failed to retrieve Push Chain transaction status for gateway tx: ${feeLockTxHash}. ` +
+              `The transaction may have failed on Push Chain or not been indexed yet.`
+          );
+        }
+        const lastPcTransaction = pushChainUniversalTx.pcTx.at(-1);
+        if (!lastPcTransaction?.txHash) {
+          throw new Error(
+            `No transaction hash found in Push Chain response for gateway tx: ${feeLockTxHash}`
+          );
+        }
         const tx = await this.pushClient.getTransaction(
-          lastPcTransaction?.txHash as `0x${string}`
+          lastPcTransaction.txHash as `0x${string}`
         );
         const response = await this.transformToUniversalTxResponse(tx);
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
