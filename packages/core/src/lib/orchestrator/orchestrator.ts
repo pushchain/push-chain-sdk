@@ -48,6 +48,7 @@ import {
   ProgressEvent,
 } from '../progress-hook/progress-hook.types';
 import { PushChain } from '../push-chain/push-chain';
+import { Utils } from '../utils';
 import { PushClient } from '../push-client/push-client';
 import {
   UniversalAccount,
@@ -273,7 +274,7 @@ export class Orchestrator {
                   functionName: 'sendUniversalTx',
                   args: [req],
                   signer: this.universalSigner,
-                  value: isNative ? bridgeAmount : BigInt(0),
+                  value: isNative ? bridgeAmount : nativeAmount,
                 });
               } else {
                 // FUNDS ONLY OTHER
@@ -677,8 +678,8 @@ export class Orchestrator {
           );
 
           // Determine USD to deposit via gateway (8 decimals) with caps: min=$1, max=$10
-          const oneUsd = PushChain.utils.helpers.parseUnits('1', 8);
-          const tenUsd = PushChain.utils.helpers.parseUnits('10', 8);
+          const oneUsd = Utils.helpers.parseUnits('1', 8);
+          const tenUsd = Utils.helpers.parseUnits('10', 8);
           const deficit =
             requiredFunds > ueaBalance ? requiredFunds - ueaBalance : BigInt(0);
           let depositUsd =
@@ -732,7 +733,7 @@ export class Orchestrator {
             this.rpcUrls
           ).getPrice(chain); // 8 decimals
           const nativeDecimals = CHAIN_INFO[chain].vm === VM.SVM ? 9 : 18;
-          const oneNativeUnit = PushChain.utils.helpers.parseUnits(
+          const oneNativeUnit = Utils.helpers.parseUnits(
             '1',
             nativeDecimals
           );
@@ -762,19 +763,20 @@ export class Orchestrator {
 
           if (CHAIN_INFO[this.universalSigner.account.chain].vm === VM.EVM) {
             const tokenAddr = execute.funds.token.address as `0x${string}`;
-            if (mechanism !== 'approve') {
-              throw new Error(
-                'Only ERC-20 tokens are supported for funds+payload on EVM; native and permit2 are not supported yet'
+            if (mechanism === 'approve') {
+              // ERC-20 tokens: ensure gateway has approval
+              const evmClientEvm = evmClient as EvmClient;
+              const gatewayAddressEvm = gatewayAddress as `0x${string}`;
+              await this.ensureErc20Allowance(
+                evmClientEvm,
+                tokenAddr,
+                gatewayAddressEvm,
+                bridgeAmount
               );
+            } else if (mechanism === 'permit2') {
+              throw new Error('Permit2 is not supported yet');
             }
-            const evmClientEvm = evmClient as EvmClient;
-            const gatewayAddressEvm = gatewayAddress as `0x${string}`;
-            await this.ensureErc20Allowance(
-              evmClientEvm,
-              tokenAddr,
-              gatewayAddressEvm,
-              bridgeAmount
-            );
+            // Native tokens (mechanism === 'native') don't need approval - handled via msg.value
           }
 
           let txHash: `0x${string}` | string;
@@ -842,11 +844,11 @@ export class Orchestrator {
                 if (gasTokenBalance < gasAmount) {
                   const sym = payWith?.token?.symbol ?? 'gas token';
                   const decimals = payWith?.token?.decimals ?? 18;
-                  const needFmt = PushChain.utils.helpers.formatUnits(
+                  const needFmt = Utils.helpers.formatUnits(
                     gasAmount,
                     decimals
                   );
-                  const haveFmt = PushChain.utils.helpers.formatUnits(
+                  const haveFmt = Utils.helpers.formatUnits(
                     gasTokenBalance,
                     decimals
                   );
@@ -909,6 +911,8 @@ export class Orchestrator {
                 // });
 
                 // VALUE + PAYLOAD + FUNDS && PAYLOAD + FUNDS
+                // For native tokens: msg.value = gas amount + bridge amount
+                // For ERC-20 tokens: msg.value = gas amount only (bridge handled via token transfer)
                 txHash = await evmClientEvm.writeContract({
                   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                   address: gatewayAddressEvm,
@@ -916,6 +920,7 @@ export class Orchestrator {
                   args: [req],
                   signer: this.universalSigner,
                   value: nativeAmount,
+                  value: totalValue,
                 });
               }
             } else {
@@ -1371,8 +1376,8 @@ export class Orchestrator {
 
         const nativeDecimals = 18; // ETH, MATIC, etc.
         // Ensure deposit respects gateway USD caps (min $1, max $10) and avoid rounding below min
-        const oneUsd = PushChain.utils.helpers.parseUnits('1', 8);
-        const tenUsd = PushChain.utils.helpers.parseUnits('10', 8);
+        const oneUsd = Utils.helpers.parseUnits('1', 8);
+        const tenUsd = Utils.helpers.parseUnits('10', 8);
         let depositUsd = amount < oneUsd ? oneUsd : amount;
         if (depositUsd > tenUsd) depositUsd = tenUsd;
         // Ceil division to avoid falling below on-chain min due to rounding, then add 1 wei safety
@@ -1410,8 +1415,8 @@ export class Orchestrator {
         ]);
         // Ensure deposit respects gateway USD caps (min $1, max $10) and avoid rounding below min
         const nativeDecimals = 9; // SOL lamports
-        const oneUsd = PushChain.utils.helpers.parseUnits('1', 8);
-        const tenUsd = PushChain.utils.helpers.parseUnits('10', 8);
+        const oneUsd = Utils.helpers.parseUnits('1', 8);
+        const tenUsd = Utils.helpers.parseUnits('10', 8);
         let depositUsd = amount < oneUsd ? oneUsd : amount;
         if (depositUsd > tenUsd) depositUsd = tenUsd;
         // Ceil division to avoid falling below on-chain min due to rounding, then add 1 lamport safety
@@ -2750,12 +2755,12 @@ export class Orchestrator {
 
     const amountInBig = BigInt(bestAmountIn);
     const amountInHuman = parseFloat(
-      PushChain.utils.helpers.formatUnits(amountInBig, {
+      Utils.helpers.formatUnits(amountInBig, {
         decimals: from.decimals,
       })
     );
     const amountOutHuman = parseFloat(
-      PushChain.utils.helpers.formatUnits(amountOut, { decimals: to.decimals })
+      Utils.helpers.formatUnits(amountOut, { decimals: to.decimals })
     );
     const rate = amountInHuman > 0 ? amountOutHuman / amountInHuman : 0;
 
@@ -3397,6 +3402,7 @@ export class Orchestrator {
 
       let universalTxObj: any | undefined;
       for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        console.log(`[Sync] Attempt ${attempt + 1}/${MAX_ATTEMPTS} | Query ID: ${idHex}`);
         try {
           const universalTxResp = await this.pushClient.getUniversalTxById(
             idHex
@@ -3678,8 +3684,8 @@ export class Orchestrator {
     this.executeProgressHook(PROGRESS_HOOK.SEND_TX_02_01);
 
     // Determine USD to deposit via gateway (8 decimals) with caps: min=$1, max=$10
-    const oneUsd = PushChain.utils.helpers.parseUnits('1', 8);
-    const tenUsd = PushChain.utils.helpers.parseUnits('10', 8);
+    const oneUsd = Utils.helpers.parseUnits('1', 8);
+    const tenUsd = Utils.helpers.parseUnits('10', 8);
     const deficit =
       requiredFunds > ueaBalance ? requiredFunds - ueaBalance : BigInt(0);
     let depositUsd =
@@ -3729,7 +3735,7 @@ export class Orchestrator {
       chain
     ); // 8 decimals
     const nativeDecimals = CHAIN_INFO[chain].vm === VM.SVM ? 9 : 18;
-    const oneNativeUnit = PushChain.utils.helpers.parseUnits(
+    const oneNativeUnit = Utils.helpers.parseUnits(
       '1',
       nativeDecimals
     );

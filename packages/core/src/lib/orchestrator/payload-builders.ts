@@ -21,18 +21,23 @@ export function buildExecuteMulticall({
     });
   }
   if (execute.funds?.amount) {
-    const erc20Transfer = encodeFunctionData({
-      abi: ERC20_EVM,
-      functionName: 'transfer',
-      args: [execute.to, execute.funds?.amount],
-    });
     const token = (execute.funds as { token: MoveableToken }).token;
-    const pushChainTo = PushChain.utils.tokens.getPRC20Address(token);
-    multicallData.push({
-      to: pushChainTo,
-      value: BigInt(0),
-      data: erc20Transfer,
-    });
+    // Only add ERC-20 transfer for non-native tokens
+    // Native tokens (ETH/SOL) are bridged as native PC on Push Chain, not as PRC-20
+    if (token.mechanism !== 'native') {
+      const erc20Transfer = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'transfer',
+        args: [execute.to, execute.funds?.amount],
+      });
+      const pushChainTo = PushChain.utils.tokens.getPRC20Address(token);
+      multicallData.push({
+        to: pushChainTo,
+        value: BigInt(0),
+        data: erc20Transfer,
+      });
+    }
+    // For native tokens, funds arrive as native PC in UEA - no PRC-20 transfer needed
   }
   if (execute.data) {
     // *************************

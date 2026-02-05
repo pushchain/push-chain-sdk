@@ -1,16 +1,17 @@
 import { Orchestrator } from './orchestrator';
 import { CHAIN, LIBRARY, PUSH_NETWORK } from '../constants/enums';
 import { UniversalSigner } from '../universal/universal.types';
-import { bytesToHex, createWalletClient, Hex, http } from 'viem';
+import { bytesToHex, createWalletClient, Hex, http, zeroAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { Keypair } from '@solana/web3.js';
 import { toUniversalFromKeypair } from '../universal/signer/signer';
 import { SvmClient } from '../vm-client/svm-client';
 import { CHAIN_INFO } from '../constants/chain';
-import { VerificationType } from '../generated/v1/tx';
+import { UniversalPayload, VerificationType } from '../generated/v1/tx';
 import { utils } from '@coral-xyz/anchor';
 import dotenv from 'dotenv';
 import path from 'path';
+import { UniversalTxRequest } from './orchestrator.types';
 
 // Adjust path as needed if your .env is in the root
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
@@ -27,6 +28,31 @@ describe('Orchestrator', () => {
     signAndSendTransaction: async (unsignedTx: Uint8Array) => {
       return unsignedTx;
     },
+  };
+
+  // Mock data for lockFee tests
+  const mockUniversalPayload: UniversalPayload = {
+    to: zeroAddress,
+    value: '0',
+    data: '0x',
+    gasLimit: '21000000',
+    maxFeePerGas: '10000000000000000',
+    maxPriorityFeePerGas: '2',
+    nonce: '1',
+    deadline: '9999999999',
+    vType: VerificationType.signedVerification,
+  };
+
+  const mockUniversalTxRequest: UniversalTxRequest = {
+    recipient: zeroAddress,
+    token: zeroAddress,
+    amount: BigInt(0),
+    payload: '0x',
+    revertInstruction: {
+      fundRecipient: zeroAddress,
+      revertMsg: '0x',
+    },
+    signatureData: '0x',
   };
 
   describe('lockFee', () => {
@@ -58,7 +84,11 @@ describe('Orchestrator', () => {
         ethSepoliaSigner,
         PUSH_NETWORK.TESTNET_DONUT
       );
-      const txHashBytes = await orchestrator['lockFee'](BigInt(1)); // 0.00000001 USDC
+      const txHashBytes = await orchestrator['lockFee'](
+        BigInt(1), // 0.00000001 USDC
+        mockUniversalPayload,
+        mockUniversalTxRequest
+      );
       const txHash = bytesToHex(txHashBytes);
       console.log('lockFee txHash:', txHash);
       expect(txHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
@@ -100,10 +130,12 @@ describe('Orchestrator', () => {
       );
 
       const amount = BigInt(100); // 0.000001 USDC
-      const dummyTxHash =
-        '25ytBco5ZxMaaatzKwcw28emNHD42JzCVe5wUy78mTA8ophwLCZN6dXKkXaRfxhgCdWdqSKpvGNuKvbqJQjzLKwy';
 
-      const txHashBytes = await orchestrator['lockFee'](amount, dummyTxHash);
+      const txHashBytes = await orchestrator['lockFee'](
+        amount,
+        mockUniversalPayload,
+        mockUniversalTxRequest
+      );
       const txHash = utils.bytes.bs58.encode(txHashBytes);
       console.log('lockFee txHash:', txHash);
       expect(txHash).toMatch(/^[1-9A-HJ-NP-Za-km-z]{87,88}$/);

@@ -1,7 +1,7 @@
 import { getAddress } from 'ethers';
 import { BaseWalletProvider } from '../BaseWalletProvider';
 import { ChainType, ITypedData } from '../../../types/wallet.types';
-import { Transaction } from '@solana/web3.js';
+import { Transaction, VersionedTransaction } from '@solana/web3.js';
 import { bytesToHex, createWalletClient, custom, hexToBytes, parseTransaction } from 'viem';
 import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
 import { sepolia } from 'viem/chains';
@@ -22,7 +22,7 @@ declare global {
           message: Uint8Array,
           encoding: string
         ) => Promise<{ signature: Uint8Array }>;
-        signAndSendTransaction: (txn: Transaction) => Promise<string>;
+        signAndSendTransaction: (txn: Transaction | VersionedTransaction) => Promise<string>;
       };
     };
     ethereum?: any;
@@ -174,7 +174,26 @@ export class PhantomProvider extends BaseWalletProvider {
       try {
         const provider = window.phantom?.solana;
 
-        const transaction = Transaction.from(txn);
+        // Detect if this is a versioned transaction by looking at the message portion.
+        // Transaction format: [signature_count (compact-u16)][signatures][message]
+        // For versioned messages, the first byte of the message has high bit set (>= 0x80)
+        let sigOffset = 1;
+        const sigCount = txn[0];
+        if (sigCount >= 0x80) {
+          // Two-byte compact-u16 encoding (unlikely for normal tx with 128+ signatures)
+          sigOffset = 2;
+        }
+        // Skip past signatures (64 bytes each) to get to the message
+        const messageOffset = sigOffset + sigCount * 64;
+        const isVersionedTx = txn[messageOffset] >= 0x80;
+
+        let transaction: Transaction | VersionedTransaction;
+        if (isVersionedTx) {
+          transaction = VersionedTransaction.deserialize(txn);
+        } else {
+          transaction = Transaction.from(txn);
+        }
+
         const signedTransaction = await provider.signAndSendTransaction(
           transaction
         );
