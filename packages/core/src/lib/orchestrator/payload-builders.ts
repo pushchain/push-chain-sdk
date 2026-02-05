@@ -22,9 +22,11 @@ export function buildExecuteMulticall({
   }
   if (execute.funds?.amount) {
     const token = (execute.funds as { token: MoveableToken }).token;
-    // Only add ERC-20 transfer for non-native tokens
-    // Native tokens (ETH/SOL) are bridged as native PC on Push Chain, not as PRC-20
-    if (token.mechanism !== 'native') {
+    // Only add ERC-20 transfer for non-native tokens AND when NOT in array multicall mode
+    // - Native tokens (ETH/SOL) are bridged as native PC on Push Chain, not as PRC-20
+    // - When execute.data is an array (explicit multicall), user handles fund transfers in their calls
+    const isArrayMulticall = Array.isArray(execute.data);
+    if (token.mechanism !== 'native' && !isArrayMulticall) {
       const erc20Transfer = encodeFunctionData({
         abi: ERC20_EVM,
         functionName: 'transfer',
@@ -37,7 +39,7 @@ export function buildExecuteMulticall({
         data: erc20Transfer,
       });
     }
-    // For native tokens, funds arrive as native PC in UEA - no PRC-20 transfer needed
+    // For native tokens or array multicall: funds arrive in UEA, user's multicall handles distribution
   }
   if (execute.data) {
     // *************************
