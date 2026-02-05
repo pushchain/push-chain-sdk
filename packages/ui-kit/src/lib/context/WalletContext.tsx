@@ -374,14 +374,18 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         return;
       }
 
+      setMinimiseWallet(false);
+
       signatureResolverRef.current = {
         success: (response: WalletEventRespoonse) => {
           resolve(response.signature!);
           signatureResolverRef.current = null; // Clean up
+          setMinimiseWallet(true);
         },
         error: (response: WalletEventRespoonse) => {
           signatureResolverRef.current = null; // Clean up
           reject(new Error('Signature request failed'));
+          setMinimiseWallet(true);
         },
       };
 
@@ -402,14 +406,18 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         return;
       }
 
+      setMinimiseWallet(false);
+
       signatureResolverRef.current = {
         success: (response: WalletEventRespoonse) => {
           resolve(response.signature!);
           signatureResolverRef.current = null; // Clean up
+          setMinimiseWallet(true);
         },
         error: (response: WalletEventRespoonse) => {
           signatureResolverRef.current = null; // Clean up
           reject(new Error('Signature request failed'));
+          setMinimiseWallet(true);
         },
       };
 
@@ -430,14 +438,18 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         return;
       }
 
+      setMinimiseWallet(false);
+
       signatureResolverRef.current = {
         success: (response: WalletEventRespoonse) => {
           resolve(response.signature!);
           signatureResolverRef.current = null; // Clean up
+          setMinimiseWallet(true);
         },
         error: (response: WalletEventRespoonse) => {
           signatureResolverRef.current = null; // Clean up
           reject(new Error('Signature request failed'));
+          setMinimiseWallet(true);
         },
       };
 
