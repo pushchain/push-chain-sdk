@@ -913,13 +913,17 @@ export class Orchestrator {
                 // VALUE + PAYLOAD + FUNDS && PAYLOAD + FUNDS
                 // For native tokens: msg.value = gas amount + bridge amount
                 // For ERC-20 tokens: msg.value = gas amount only (bridge handled via token transfer)
+                const isNativeToken = mechanism === 'native';
+                const totalValue = isNativeToken
+                  ? nativeAmount + bridgeAmount
+                  : nativeAmount;
+
                 txHash = await evmClientEvm.writeContract({
                   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                   address: gatewayAddressEvm,
                   functionName: 'sendUniversalTx',
                   args: [req],
                   signer: this.universalSigner,
-                  value: nativeAmount,
                   value: totalValue,
                 });
               }
@@ -1242,7 +1246,7 @@ export class Orchestrator {
          * Fee Locking - For all chains, EVM and Solana
          */
         const fundDifference = requiredFunds - funds;
-        const fixedPushAmount = PushChain.utils.helpers.parseUnits('0.001', 18); // Minimum lock 0.001 Push tokens
+        const fixedPushAmount = Utils.helpers.parseUnits('0.001', 18); // Minimum lock 0.001 Push tokens
         const lockAmount =
           funds < requiredFunds ? fundDifference : fixedPushAmount;
         const lockAmountInUSD = this.pushClient.pushToUSDC(lockAmount);
