@@ -14,11 +14,11 @@ export const pushWalletDonut = defineChain({
   rpcUrls: {
     default: {
       http: ['https://evm.donut.rpc.push.org/'],
-      webSocket: ['wss://evm.pn1.dev.push.org'],
+      webSocket: ['wss://evm.donut.rpc.push.org'],
     },
   },
   blockExplorers: {
-    default: { name: 'Explorer', url: 'https://explorer.testnet.push.org' },
+    default: { name: 'Push Testnet Explorer', url: 'https://donut.push.network/' },
   },
 });
 
