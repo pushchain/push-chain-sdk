@@ -435,13 +435,8 @@ export class Orchestrator {
                 programId
               );
 
-              const recipientNative =
-                execute.to === ueaAddress
-                  ? Array.from(Buffer.alloc(20, 0))
-                  : recipientEvm20;
-
               const reqNative = this._buildSvmUniversalTxRequest({
-                recipient: recipientNative,
+                recipient: recipientEvm20,
                 token: PublicKey.default,
                 amount: bridgeAmount,
                 payload: '0x',
@@ -503,9 +498,8 @@ export class Orchestrator {
               );
 
               if (execute.to === ueaAddress) {
-                const recipientSpl = Array.from(Buffer.alloc(20, 0));
                 const reqSpl = this._buildSvmUniversalTxRequest({
-                  recipient: recipientSpl,
+                  recipient: recipientEvm20,
                   token: mintPk,
                   amount: bridgeAmount,
                   payload: '0x',
@@ -3464,15 +3458,17 @@ export class Orchestrator {
               pcTx.txHash && pcTx.status === 'SUCCESS'
           );
           if (universalTxObj && successfulPcTx?.txHash) break;
-          // Also break if we have a terminal failure state (all pcTx entries have been processed)
-          const hasFailed =
-            universalTxObj?.universalStatus === 4 && // PC_EXECUTED_FAILED
+          // Also break if we have a terminal failure state
+          // universalStatus 4 = PC_EXECUTED_FAILED, 5 = REVERTED
+          const isTerminalFailure =
             universalTxObj?.pcTx?.length > 0 &&
+            (universalTxObj?.universalStatus === 4 ||
+              universalTxObj?.universalStatus === 5) &&
             universalTxObj.pcTx.some(
-              (pcTx: { txHash?: string; status?: string }) =>
-                pcTx.txHash && pcTx.status === 'SUCCESS'
+              (pcTx: { status?: string }) =>
+                pcTx.status === 'FAILED' || pcTx.status === 'REVERTED'
             );
-          if (hasFailed) break;
+          if (isTerminalFailure) break;
         } catch (error) {
           // ignore and retry
           // console.log(error);
