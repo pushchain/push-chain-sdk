@@ -1,7 +1,7 @@
 import { getAddress } from 'ethers';
 import { BaseWalletProvider } from '../BaseWalletProvider';
 import { ChainType, ITypedData } from '../../../types/wallet.types';
-import { Transaction } from '@solana/web3.js';
+import { Transaction, VersionedTransaction } from '@solana/web3.js';
 import { bytesToHex, createWalletClient, custom, hexToBytes, parseTransaction } from 'viem';
 import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
 import { sepolia } from 'viem/chains';
@@ -22,7 +22,7 @@ declare global {
           message: Uint8Array,
           encoding: string
         ) => Promise<{ signature: Uint8Array }>;
-        signAndSendTransaction: (txn: Transaction) => Promise<string>;
+        signAndSendTransaction: (txn: Transaction | VersionedTransaction) => Promise<string>;
       };
     };
     ethereum?: any;
@@ -174,7 +174,17 @@ export class PhantomProvider extends BaseWalletProvider {
       try {
         const provider = window.phantom?.solana;
 
-        const transaction = Transaction.from(txn);
+        // VersionedTransaction.deserialize handles both legacy and v0 transactions.
+        // Check the deserialized message version to decide the appropriate type
+        // for Phantom's signAndSendTransaction.
+        const deserialized = VersionedTransaction.deserialize(txn);
+        let transaction: Transaction | VersionedTransaction;
+        if (deserialized.message.version === 'legacy') {
+          transaction = Transaction.from(txn);
+        } else {
+          transaction = deserialized;
+        }
+
         const signedTransaction = await provider.signAndSendTransaction(
           transaction
         );
