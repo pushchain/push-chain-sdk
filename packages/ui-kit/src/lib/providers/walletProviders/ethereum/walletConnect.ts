@@ -43,7 +43,7 @@ export class WalletConnectProvider extends BaseWalletProvider {
     }
 
     this.provider = await EthereumProvider.init({
-      projectId: '575a3e339ad56f54669c32264c133172',
+      projectId: 'd73cf3ac4a677153d241b2bd5092fb1d',
       chains: [chainId],
       methods: ['eth_sendTransaction', 'personal_sign', 'eth_signTypedData_v4', 'eth_requestAccounts', 'eth_chainId', 'eth_accounts'],
       showQrModal: true,
