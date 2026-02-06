@@ -174,24 +174,15 @@ export class PhantomProvider extends BaseWalletProvider {
       try {
         const provider = window.phantom?.solana;
 
-        // Detect if this is a versioned transaction by looking at the message portion.
-        // Transaction format: [signature_count (compact-u16)][signatures][message]
-        // For versioned messages, the first byte of the message has high bit set (>= 0x80)
-        let sigOffset = 1;
-        const sigCount = txn[0];
-        if (sigCount >= 0x80) {
-          // Two-byte compact-u16 encoding (unlikely for normal tx with 128+ signatures)
-          sigOffset = 2;
-        }
-        // Skip past signatures (64 bytes each) to get to the message
-        const messageOffset = sigOffset + sigCount * 64;
-        const isVersionedTx = txn[messageOffset] >= 0x80;
-
+        // VersionedTransaction.deserialize handles both legacy and v0 transactions.
+        // Check the deserialized message version to decide the appropriate type
+        // for Phantom's signAndSendTransaction.
+        const deserialized = VersionedTransaction.deserialize(txn);
         let transaction: Transaction | VersionedTransaction;
-        if (isVersionedTx) {
-          transaction = VersionedTransaction.deserialize(txn);
-        } else {
+        if (deserialized.message.version === 'legacy') {
           transaction = Transaction.from(txn);
+        } else {
+          transaction = deserialized;
         }
 
         const signedTransaction = await provider.signAndSendTransaction(
