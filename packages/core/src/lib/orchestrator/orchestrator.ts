@@ -3440,23 +3440,7 @@ export class Orchestrator {
             idHex
           );
           universalTxObj = universalTxResp?.universalTx;
-          // Wait until pcTx has at least one successful entry with a valid txHash
-          const successfulPcTx = universalTxObj?.pcTx?.find(
-            (pcTx: { txHash?: string; status?: string }) =>
-              pcTx.txHash && pcTx.status === 'SUCCESS'
-          );
-          if (universalTxObj && successfulPcTx?.txHash) break;
-          // Also break if we have a terminal failure state
-          // universalStatus 4 = PC_EXECUTED_FAILED, 5 = REVERTED
-          const isTerminalFailure =
-            universalTxObj?.pcTx?.length > 0 &&
-            (universalTxObj?.universalStatus === 4 ||
-              universalTxObj?.universalStatus === 5) &&
-            universalTxObj.pcTx.some(
-              (pcTx: { status?: string }) =>
-                pcTx.status === 'FAILED' || pcTx.status === 'REVERTED'
-            );
-          if (isTerminalFailure) break;
+          if (universalTxObj) break;
         } catch (error) {
           // ignore and retry
           // console.log(error);
