@@ -344,14 +344,11 @@ export class Orchestrator {
                   `The transaction may have failed on Push Chain or not been indexed yet.`
               );
             }
-            // Find the first successful pcTx with a valid txHash
             // For sendFunds operations, MintPC (first) succeeds and executePayload (second) may fail
-            const successfulPcTx = pushChainUniversalTx.pcTx.find(
-              (pcTx: { txHash?: string; status?: string }) =>
-                pcTx.txHash && pcTx.status === 'SUCCESS'
-            );
-            if (!successfulPcTx?.txHash) {
-              // If no successful pcTx found, check for error messages in failed entries
+            // Always use the last pcTx entry as it represents the final execution result
+            const lastPcTransaction = pushChainUniversalTx.pcTx.at(-1);
+            if (!lastPcTransaction?.txHash) {
+              // Check for error messages in failed entries
               const failedPcTx = pushChainUniversalTx.pcTx.find(
                 (pcTx: { status?: string; errorMsg?: string }) =>
                   pcTx.status === 'FAILED' && pcTx.errorMsg
@@ -360,11 +357,11 @@ export class Orchestrator {
                 ? `: ${failedPcTx.errorMsg}`
                 : '';
               throw new Error(
-                `No successful transaction found in Push Chain response for gateway tx: ${txHash}${errorDetails}`
+                `No transaction hash found in Push Chain response for gateway tx: ${txHash}${errorDetails}`
               );
             }
             const tx = await this.pushClient.getTransaction(
-              successfulPcTx.txHash as `0x${string}`
+              lastPcTransaction.txHash as `0x${string}`
             );
             const response = await this.transformToUniversalTxResponse(tx);
             // Funds Flow: Funds credited on Push Chain
@@ -603,12 +600,9 @@ export class Orchestrator {
                   `The transaction may have failed on Push Chain or not been indexed yet.`
               );
             }
-            // Find the first successful pcTx with a valid txHash
-            const successfulPcTx = pushChainUniversalTx.pcTx.find(
-              (pcTx: { txHash?: string; status?: string }) =>
-                pcTx.txHash && pcTx.status === 'SUCCESS'
-            );
-            if (!successfulPcTx?.txHash) {
+            // Always use the last pcTx entry as it represents the final execution result
+            const lastPcTransaction = pushChainUniversalTx.pcTx.at(-1);
+            if (!lastPcTransaction?.txHash) {
               const failedPcTx = pushChainUniversalTx.pcTx.find(
                 (pcTx: { status?: string; errorMsg?: string }) =>
                   pcTx.status === 'FAILED' && pcTx.errorMsg
@@ -617,11 +611,11 @@ export class Orchestrator {
                 ? `: ${failedPcTx.errorMsg}`
                 : '';
               throw new Error(
-                `No successful transaction found in Push Chain response for gateway tx: ${txSignature}${errorDetails}`
+                `No transaction hash found in Push Chain response for gateway tx: ${txSignature}${errorDetails}`
               );
             }
             const tx = await this.pushClient.getTransaction(
-              successfulPcTx.txHash as `0x${string}`
+              lastPcTransaction.txHash as `0x${string}`
             );
             const response = await this.transformToUniversalTxResponse(tx);
             // Funds Flow: Funds credited on Push Chain
@@ -1047,12 +1041,9 @@ export class Orchestrator {
                 `The transaction may have failed on Push Chain or not been indexed yet.`
             );
           }
-          // Find the first successful pcTx with a valid txHash
-          const successfulPcTx = pushChainUniversalTx.pcTx.find(
-            (pcTx: { txHash?: string; status?: string }) =>
-              pcTx.txHash && pcTx.status === 'SUCCESS'
-          );
-          if (!successfulPcTx?.txHash) {
+          // Always use the last pcTx entry as it represents the final execution result
+          const lastPcTransaction = pushChainUniversalTx.pcTx.at(-1);
+          if (!lastPcTransaction?.txHash) {
             const failedPcTx = pushChainUniversalTx.pcTx.find(
               (pcTx: { status?: string; errorMsg?: string }) =>
                 pcTx.status === 'FAILED' && pcTx.errorMsg
@@ -1061,11 +1052,11 @@ export class Orchestrator {
               ? `: ${failedPcTx.errorMsg}`
               : '';
             throw new Error(
-              `No successful transaction found in Push Chain response for gateway tx: ${txHash}${errorDetails}`
+              `No transaction hash found in Push Chain response for gateway tx: ${txHash}${errorDetails}`
             );
           }
           const tx = await this.pushClient.getTransaction(
-            successfulPcTx.txHash as `0x${string}`
+            lastPcTransaction.txHash as `0x${string}`
           );
           const response = await this.transformToUniversalTxResponse(tx);
           // Funds Flow: Funds credited on Push Chain
@@ -1333,12 +1324,9 @@ export class Orchestrator {
               `The transaction may have failed on Push Chain or not been indexed yet.`
           );
         }
-        // Find the first successful pcTx with a valid txHash
-        const successfulPcTx = pushChainUniversalTx.pcTx.find(
-          (pcTx: { txHash?: string; status?: string }) =>
-            pcTx.txHash && pcTx.status === 'SUCCESS'
-        );
-        if (!successfulPcTx?.txHash) {
+        // Always use the last pcTx entry as it represents the final execution result
+        const lastPcTransaction = pushChainUniversalTx.pcTx.at(-1);
+        if (!lastPcTransaction?.txHash) {
           const failedPcTx = pushChainUniversalTx.pcTx.find(
             (pcTx: { status?: string; errorMsg?: string }) =>
               pcTx.status === 'FAILED' && pcTx.errorMsg
@@ -1347,11 +1335,11 @@ export class Orchestrator {
             ? `: ${failedPcTx.errorMsg}`
             : '';
           throw new Error(
-            `No successful transaction found in Push Chain response for gateway tx: ${feeLockTxHash}${errorDetails}`
+            `No transaction hash found in Push Chain response for gateway tx: ${feeLockTxHash}${errorDetails}`
           );
         }
         const tx = await this.pushClient.getTransaction(
-          successfulPcTx.txHash as `0x${string}`
+          lastPcTransaction.txHash as `0x${string}`
         );
         const response = await this.transformToUniversalTxResponse(tx);
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
