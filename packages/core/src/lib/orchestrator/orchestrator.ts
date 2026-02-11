@@ -200,6 +200,18 @@ export class Orchestrator {
 
             const ueaAddress = this.computeUEAOffchain();
 
+            console.log('[DEBUG] sendFunds — buildGatewayPayloadAndGas result:', JSON.stringify({
+              recipient: execute.to,
+              ueaAddress,
+              isSelfBridge: execute.to.toLowerCase() === ueaAddress.toLowerCase(),
+              bridgeAmount: bridgeAmount.toString(),
+              bridgeToken,
+              isNative,
+              tokenAddr,
+              nonce: nonce.toString(),
+              deployed,
+            }, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
+
             // Compute minimal native amount to deposit for gas on Push Chain
             const ueaBalanceForGas = await this.pushClient.getBalance(
               ueaAddress
@@ -210,6 +222,7 @@ export class Orchestrator {
               BigInt(0),
               ueaBalanceForGas
             );
+            console.log('[DEBUG] sendFunds — nativeAmount:', nativeAmount.toString(), 'ueaBalanceForGas:', ueaBalanceForGas.toString());
 
             // We log the SEND_TX_03_01 here because the progress hook for gas estimation should arrive before the resolving of UEA.
             this.executeProgressHook(PROGRESS_HOOK.SEND_TX_03_01);
@@ -218,6 +231,7 @@ export class Orchestrator {
               ueaAddress,
               deployed
             );
+            console.log('[DEBUG] UEA resolved:', ueaAddress, 'deployed:', deployed);
 
             this.executeProgressHook(
               PROGRESS_HOOK.SEND_TX_06_01,
@@ -268,13 +282,20 @@ export class Orchestrator {
                 //   signatureData: '0x',
                 // } as unknown as never;
 
+                console.log('[DEBUG] FUNDS ONLY SELF — gateway call payload:', JSON.stringify({
+                  gatewayAddress, functionName: 'sendUniversalTx', req,
+                  value: (isNative ? nativeAmount + bridgeAmount : nativeAmount).toString(),
+                  isNative, bridgeAmount: bridgeAmount.toString(),
+                  nativeAmount: nativeAmount.toString(), bridgeToken,
+                }, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
+
                 txHash = await evmClient.writeContract({
                   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                   address: gatewayAddress,
                   functionName: 'sendUniversalTx',
                   args: [req],
                   signer: this.universalSigner,
-                  value: isNative ? bridgeAmount : nativeAmount,
+                  value: isNative ? nativeAmount + bridgeAmount : nativeAmount,
                 });
               } else {
                 // FUNDS ONLY OTHER
@@ -290,13 +311,20 @@ export class Orchestrator {
                 //   signatureData: '0x',
                 // } as unknown as never;
 
+                console.log('[DEBUG] FUNDS ONLY OTHER — gateway call payload:', JSON.stringify({
+                  gatewayAddress, functionName: 'sendUniversalTx', req,
+                  value: nativeAmount.toString(),
+                  isNative, bridgeAmount: bridgeAmount.toString(),
+                  nativeAmount: nativeAmount.toString(), bridgeToken,
+                }, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
+
                 txHash = await evmClient.writeContract({
                   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                   address: gatewayAddress,
                   functionName: 'sendUniversalTx',
                   args: [req],
                   signer: this.universalSigner,
-                  value: nativeAmount,
+                  value: isNative ? nativeAmount + bridgeAmount : nativeAmount,
                 });
               }
             } catch (err) {
@@ -330,6 +358,11 @@ export class Orchestrator {
             // Syncing with Push Chain - emit before query
             this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_05);
 
+            console.log('[DEBUG] sendFunds — querying Push Chain status:', {
+              txHash,
+              evmGatewayMethod: execute.to === ueaAddress ? 'sendFunds' : 'sendTxWithFunds',
+            });
+
             const pushChainUniversalTx =
               await this.queryUniversalTxStatusFromGatewayTx(
                 evmClient,
@@ -347,6 +380,10 @@ export class Orchestrator {
             // For sendFunds operations, MintPC (first) succeeds and executePayload (second) may fail
             // Always use the last pcTx entry as it represents the final execution result
             const lastPcTransaction = pushChainUniversalTx.pcTx.at(-1);
+            console.log('[DEBUG] sendFunds — pushChainUniversalTx pcTx:', JSON.stringify(
+              pushChainUniversalTx?.pcTx?.map((p: any) => ({ txHash: p.txHash, status: p.status, errorMsg: p.errorMsg })),
+              null, 2));
+            console.log('[DEBUG] sendFunds — using lastPcTransaction:', JSON.stringify(lastPcTransaction, null, 2));
             if (!lastPcTransaction?.txHash) {
               // Check for error messages in failed entries
               const failedPcTx = pushChainUniversalTx.pcTx.find(
@@ -2270,6 +2307,8 @@ export class Orchestrator {
     to: `0x${string}`,
     data: MultiCall[]
   ): `0x${string}` {
+    console.log('[DEBUG] _buildMulticallPayloadData — input:', data.length, 'calls:', JSON.stringify(data, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
+
     const allowedChains = [
       CHAIN.ETHEREUM_SEPOLIA,
       CHAIN.ARBITRUM_SEPOLIA,
@@ -2969,6 +3008,8 @@ export class Orchestrator {
         deadline: execute.deadline || BigInt(9999999999),
         vType: VerificationType.universalTxVerification,
       } as unknown as never;
+      
+      console.log('[DEBUG] (universalPayload) ' +  universalPayload);
 
       // Temporary while we don't change the native address from 0xeee... to 0x0000...
       let tokenAddress = execute.funds?.token?.address as `0x${string}`;
@@ -3004,10 +3045,35 @@ export class Orchestrator {
       // const pushChainTo = PushChain.utils.tokens.getPRC20Address(
       //   execute.funds!.token as MoveableToken
       // );
+      console.log('[DEBUG] sendFunds — execute params:', JSON.stringify({
+        to: execute.to,
+        value: execute.value?.toString() ?? 'undefined',
+        data: execute.data ?? 'undefined',
+        fundsAmount: execute.funds?.amount?.toString(),
+        fundsToken: execute.funds?.token?.symbol,
+        tokenMechanism: execute.funds?.token?.mechanism,
+        tokenAddress: execute.funds?.token?.address,
+        gasLimit: execute.gasLimit?.toString() ?? 'undefined',
+      }, null, 2));
+
+      console.log('[DEBUG] sendFunds — multicallData:', JSON.stringify(
+        multicallData,
+        (_, v) => typeof v === 'bigint' ? v.toString() : v,
+        2
+      ), '(length:', multicallData.length, ')');
+
+      const multicallPayloadData =
+         this._buildMulticallPayloadData(execute.to, multicallData)
+      
+
+      
+      console.log('[DEBUG] sendFunds — multicallPayloadData (first 66 chars):', multicallPayloadData.slice(0, 66), '(full length:', multicallPayloadData.length, ')');
+
+     
       const universalPayload = {
         to: zeroAddress, // We can't simply do `0x` because we will get an error when eip712 signing the transaction.
         value: execute.value ?? BigInt(0),
-        data: this._buildMulticallPayloadData(execute.to, multicallData),
+        data: multicallPayloadData,
         // data: this._buildMulticallPayloadData(execute.to, [
         //   { to: pushChainTo, value: execute.value ?? BigInt(0), data },
         // ]),
@@ -3019,6 +3085,17 @@ export class Orchestrator {
         vType: VerificationType.universalTxVerification,
       } as unknown as never;
 
+      console.log('[DEBUG] sendFunds — universalPayload (pre-encode):', JSON.stringify({
+        to: zeroAddress,
+        value: (execute.value ?? BigInt(0)).toString(),
+        data: multicallPayloadData,
+        gasLimit: gasEstimate.toString(),
+        maxFeePerGas: (execute.maxFeePerGas || BigInt(1e10)).toString(),
+        maxPriorityFeePerGas: (execute.maxPriorityFeePerGas || BigInt(0)).toString(),
+        nonce: nonce.toString(),
+        deadline: (execute.deadline || BigInt(9999999999)).toString(),
+      }, null, 2));
+
       // Temporary while we don't change the native address from 0xeee... to 0x0000...
       let tokenAddress = execute.funds?.token?.address as `0x${string}`;
       if (
@@ -3028,12 +3105,22 @@ export class Orchestrator {
         tokenAddress = zeroAddress;
       }
 
+      const encodedPayload = this.encodeUniversalPayload(universalPayload);
+      console.log('[DEBUG] sendFunds — encodedPayload (first 66 chars):', encodedPayload.slice(0, 66), '(full length:', encodedPayload.length, ')');
+
       const req = this._buildUniversalTxRequest({
         recipient: zeroAddress,
         token: tokenAddress,
         amount: execute.funds?.amount as bigint,
-        payload: this.encodeUniversalPayload(universalPayload),
+        payload: encodedPayload,
       });
+
+      console.log('[DEBUG] sendFunds — final req:', JSON.stringify({
+        recipient: zeroAddress,
+        token: tokenAddress,
+        amount: (execute.funds?.amount as bigint)?.toString(),
+        payloadLength: encodedPayload.length,
+      }, null, 2));
 
       return { payload: universalPayload, gasAmount, req };
     }
@@ -3386,10 +3473,19 @@ export class Orchestrator {
           (l: any) =>
             (l.address || '').toLowerCase() === gatewayAddress.toLowerCase()
         );
-        const logIndexToUse = evmGatewayMethod === 'sendTxWithFunds' ? 1 : 0;
+        console.log('[DEBUG] queryUniversalTxStatus — receipt logs count:', receipt.logs?.length,
+          'gateway logs count:', gatewayLogs.length,
+          'evmGatewayMethod:', evmGatewayMethod);
+        console.log('[DEBUG] queryUniversalTxStatus — gatewayLogs:', JSON.stringify(
+          gatewayLogs.map((l: any) => ({ address: l.address, logIndex: l.logIndex, topics: l.topics?.[0] })),
+          null, 2));
+        // TEMP: use last gateway log instead of hardcoded 0/1 index
+        const logIndexToUse = gatewayLogs.length - 1;
         const firstLog = (gatewayLogs[logIndexToUse] ||
-          receipt.logs?.[logIndexToUse]) as any;
+          (receipt.logs || []).at(-1)) as any;
         const logIndexVal = firstLog?.logIndex ?? 0;
+        console.log('[DEBUG] queryUniversalTxStatus — logIndexToUse:', logIndexToUse,
+          'firstLog.logIndex:', firstLog?.logIndex, 'logIndexVal:', logIndexVal);
         logIndexStr =
           typeof logIndexVal === 'bigint'
             ? logIndexVal.toString()
@@ -3425,6 +3521,14 @@ export class Orchestrator {
       // ID = sha256("${sourceChain}:${txHash}:${logIndex}") as hex string (no 0x)
       const idInput = `${sourceChain}:${txHashHex}:${logIndexStr}`;
       const idHex = sha256(stringToBytes(idInput)).slice(2);
+
+      console.log('[DEBUG] Query ID extraction:', JSON.stringify({
+        sourceChain,
+        txHashHex,
+        logIndexStr,
+        idInput,
+        idHex,
+      }, null, 2));
 
       // Fetch UniversalTx via gRPC with linear-then-exponential retry
       const LINEAR_ATTEMPTS = 15;
