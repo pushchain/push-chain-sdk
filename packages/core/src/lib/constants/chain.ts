@@ -184,7 +184,11 @@ export const CHAIN_INFO: Record<
     chainId: '11155111',
     vm: VM.EVM,
     lockerContract: '0x05bD7a3D18324c1F7e216f7fBF2b15985aE5281A',
-    defaultRPC: ['https://ethereum-sepolia-rpc.publicnode.com'],
+    defaultRPC: [
+      'https://ethereum-sepolia-rpc.publicnode.com',
+      'https://rpc.sepolia.org',
+      'https://sepolia.drpc.org',
+    ],
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 120000,
@@ -198,7 +202,11 @@ export const CHAIN_INFO: Record<
     chainId: '421614',
     vm: VM.EVM,
     lockerContract: '0x2cd870e0166Ba458dEC615168Fd659AacD795f34',
-    defaultRPC: [arbitrumSepolia.rpcUrls.default.http[0]],
+    defaultRPC: [
+      arbitrumSepolia.rpcUrls.default.http[0],
+      'https://sepolia-rollup.arbitrum.io/rpc',
+      'https://arbitrum-sepolia-rpc.publicnode.com',
+    ],
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 30000,
@@ -212,7 +220,11 @@ export const CHAIN_INFO: Record<
     chainId: '84532',
     vm: VM.EVM,
     lockerContract: '0xFD4fef1F43aFEc8b5bcdEEc47f35a1431479aC16',
-    defaultRPC: [baseSepolia.rpcUrls.default.http[0]],
+    defaultRPC: [
+      baseSepolia.rpcUrls.default.http[0],
+      'https://sepolia.base.org',
+      'https://base-sepolia-rpc.publicnode.com',
+    ],
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 30000,
@@ -226,7 +238,11 @@ export const CHAIN_INFO: Record<
     chainId: '97',
     vm: VM.EVM,
     lockerContract: '0x44aFFC61983F4348DdddB886349eb992C061EaC0',
-    defaultRPC: [bscTestnet.rpcUrls.default.http[0]],
+    defaultRPC: [
+      bscTestnet.rpcUrls.default.http[0],
+      'https://bsc-testnet-rpc.publicnode.com',
+      'https://data-seed-prebsc-1-s1.bnbchain.org:8545',
+    ],
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 30000,
@@ -255,7 +271,10 @@ export const CHAIN_INFO: Record<
     chainId: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
     vm: VM.SVM,
     lockerContract: 'CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS',
-    defaultRPC: ['https://api.devnet.solana.com'],
+    defaultRPC: [
+      'https://api.devnet.solana.com',
+      'https://solana-devnet.g.alchemy.com/v2/demo',
+    ],
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 120000,
@@ -269,7 +288,7 @@ export const PUSH_CHAIN_INFO: Record<
   CHAIN.PUSH_MAINNET | CHAIN.PUSH_TESTNET_DONUT | CHAIN.PUSH_LOCALNET,
   (typeof CHAIN_INFO)[CHAIN.PUSH_MAINNET] & {
     denom: string;
-    tendermintRpc: string;
+    tendermintRpc: string[];
     prefix: string;
     factoryAddress: `0x${string}`;
     pushDecimals: bigint;
@@ -281,7 +300,7 @@ export const PUSH_CHAIN_INFO: Record<
   [CHAIN.PUSH_MAINNET]: {
     ...CHAIN_INFO[CHAIN.PUSH_MAINNET],
     denom: 'upc',
-    tendermintRpc: 'TBD',
+    tendermintRpc: ['TBD'],
     prefix: 'push',
     factoryAddress: '0xTBD',
     pushDecimals: BigInt(1e18),
@@ -292,7 +311,7 @@ export const PUSH_CHAIN_INFO: Record<
   [CHAIN.PUSH_TESTNET_DONUT]: {
     ...CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT],
     denom: 'upc',
-    tendermintRpc: 'https://donut.rpc.push.org/',
+    tendermintRpc: ['https://donut.rpc.push.org/'],
     prefix: 'push',
     factoryAddress: '0x00000000000000000000000000000000000000eA',
     pushDecimals: BigInt(1e18),
@@ -303,7 +322,7 @@ export const PUSH_CHAIN_INFO: Record<
   [CHAIN.PUSH_LOCALNET]: {
     ...CHAIN_INFO[CHAIN.PUSH_LOCALNET],
     denom: 'upc',
-    tendermintRpc: 'http://localhost:26657',
+    tendermintRpc: ['http://localhost:26657'],
     prefix: 'push',
     factoryAddress: '0x00000000000000000000000000000000000000eA',
     pushDecimals: BigInt(1e18),
