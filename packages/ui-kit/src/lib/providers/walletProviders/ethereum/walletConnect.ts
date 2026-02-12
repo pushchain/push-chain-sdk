@@ -30,11 +30,20 @@ export class WalletConnectProvider extends BaseWalletProvider {
     console.log('Provder >>', this.provider);
 
     if (this.provider) {
-      return;
+      const hasSession = (this.provider as any).session
+        && (this.provider as any).session?.topic;
+
+      if (hasSession) {
+        return;
+      }
+
+      await this.provider.disconnect();
+
+      this.provider = null;
     }
 
     this.provider = await EthereumProvider.init({
-      projectId: '575a3e339ad56f54669c32264c133172',
+      projectId: 'd73cf3ac4a677153d241b2bd5092fb1d',
       chains: [chainId],
       methods: ['eth_sendTransaction', 'personal_sign', 'eth_signTypedData_v4', 'eth_requestAccounts', 'eth_chainId', 'eth_accounts'],
       showQrModal: true,

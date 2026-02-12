@@ -26,22 +26,24 @@ interface CustomTheme extends DefaultTheme {
   themeMode: string;
 }
 
-const GlobalStyle = createGlobalStyle<{ uid: string }>`
-  [data-pw-wrapper='${(props) => props.uid}']{
-    ${(props) => {
-      const { themeOverrides, themeMode } = props.theme as CustomTheme;
-      const isLightMode = themeMode === 'light';
-      const { dark, light, ...globalOverrides } = themeOverrides;
-      const newTokens = {
-        ...mapButtonCoreToInt(globalOverrides),
-        ...mapButtonCoreToInt((isLightMode ? light : dark) ?? {}),
-      };
-      return Object.entries(newTokens)
-        .map(([key, value]) => `${key}: ${value};`)
-        .join('\n');
-    }}
+const buildButtonCssVars = (themeMode: string, themeOverrides: ThemeOverrides) => {
+  const isLightMode = themeMode === 'light';
+  const { dark, light, ...globalOverrides } = themeOverrides;
+
+  const newTokens = {
+    ...mapButtonCoreToInt(globalOverrides),
+    ...mapButtonCoreToInt((isLightMode ? light : dark) ?? {}),
+  };
+
+  const cssVars: Record<string, string> = {};
+  for (const [key, value] of Object.entries(newTokens)) {
+    if (value !== undefined && value !== null && value !== '') {
+      cssVars[key] = String(value);
+    }
   }
-`;
+
+  return cssVars;
+};
 
 const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
   uid = 'default',
@@ -64,6 +66,16 @@ const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
     if (loginAppOverride) updateWalletAppData(loginAppOverride);
   }, []);
 
+  const mergedButtonOverrides = useMemo(
+    () => ({ ...themeOverrides, ...ButtonThemeOverrides }),
+    [themeOverrides, ButtonThemeOverrides]
+  );
+
+  const wrapperStyle = useMemo(
+    () => buildButtonCssVars(themeMode, mergedButtonOverrides as unknown as ThemeOverrides),
+    [themeMode, mergedButtonOverrides]
+  );
+
   const Component = () => {
     if (universalAccount) {
       // Merge props with buttonDefaults, giving priority to direct props
@@ -72,7 +84,7 @@ const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
         universalAccount: universalAccount,
       };
 
-      return <TogglePushWalletButton {...toggleButtonProps} />;
+      return <TogglePushWalletButton {...toggleButtonProps} style={wrapperStyle} />;
     } else {
       // Merge props with buttonDefaults, giving priority to direct props
       const connectButtonProps = {
@@ -81,7 +93,7 @@ const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
         loadingComponent,
       };
 
-      return <ConnectWalletButton {...connectButtonProps} />;
+      return <ConnectWalletButton {...connectButtonProps} style={wrapperStyle} />;
     }
   };
 
@@ -92,7 +104,6 @@ const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
         themeOverrides: { ...themeOverrides, ...ButtonThemeOverrides },
       }}
     >
-      <GlobalStyle uid={uid} />
       <Component />
     </ThemeProvider>
   );

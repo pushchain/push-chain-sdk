@@ -8,12 +8,14 @@ export type ConnectPushWalletButtonProps = {
   uid?: string;
   connectButtonText?: string;
   loadingComponent?: React.ReactNode;
+  style?: React.CSSProperties;
 };
 
 const ConnectWalletButton: FC<ConnectPushWalletButtonProps> = ({
   uid,
   connectButtonText,
   loadingComponent,
+  style,
 }) => {
   const { connectionStatus, handleConnectToPushWallet } =
     usePushWalletContext(uid);
@@ -41,6 +43,7 @@ const ConnectWalletButton: FC<ConnectPushWalletButtonProps> = ({
       borderRadius="var(--pwauth-btn-connect-border-radius)"
       onClick={handleConnectWalletButton}
       disabled={isConnectButtonDisbaled || isLoading}
+      style={style}
     >
       {connectionStatus === PushUI.CONSTANTS.CONNECTION.STATUS.NOT_CONNECTED
         ? connectButtonText

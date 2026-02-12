@@ -66,6 +66,8 @@ export type WalletContextType = {
   themeOverrides: ThemeOverrides;
 
   toggleButtonRef: React.RefObject<HTMLButtonElement>;
+
+  progress: ProgressEvent | null;
   setProgress: React.Dispatch<React.SetStateAction<ProgressEvent | null>>;
 
   isReadOnly: boolean;
@@ -182,6 +184,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     setExternalWallet(null);
     setIsReadOnly(false);
     localStorage.removeItem("walletInfo");
+    document.body.style.overflow = '';
   };
 
   // sending events to wallet from dapp
@@ -649,6 +652,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         handleSignAndSendTransaction,
         handleSignTypedData,
         toggleButtonRef,
+        progress,
         setProgress,
         isReadOnly,
         setIsReadOnly,

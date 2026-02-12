@@ -20,6 +20,7 @@ export type ButtonProps = {
   padding?: React.CSSProperties['padding'];
   /* Sets button as disabled */
   disabled?: boolean;
+  style?: React.CSSProperties;
 } & TransformedHTMLAttributes<HTMLButtonElement>;
 
 const StyledButton = styled.button<{
@@ -60,9 +61,10 @@ const StyledButton = styled.button<{
 `;
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ disabled, bgColor, textColor, borderRadius, gap, padding, children, ...props }, ref) => (
+  ({ disabled, bgColor, textColor, borderRadius, gap, padding, style, children, ...props }, ref) => (
     <StyledButton
       {...(disabled ? { 'aria-disabled': true } : {})}
+      style={style}
       role="button"
       ref={ref}
       $bgColor={bgColor}
