@@ -72,6 +72,7 @@ export type ExecuteParams = {
     amount: bigint; // smallest units of the token
     token?: import('../constants').MoveableToken; // if omitted, defaults to native token for origin chain
   };
+
 };
 
 /**
@@ -106,6 +107,17 @@ export interface UniversalTxResponse {
 
   // 6. Utilities
   wait: () => Promise<UniversalTxReceipt>;
+
+  /**
+   * Register a progress callback for events during wait().
+   * Call this BEFORE calling wait() to receive tracking events.
+   * @param callback - Function called with each progress event
+   */
+  progressHook: (
+    callback: (
+      event: import('../progress-hook/progress-hook.types').ProgressEvent
+    ) => void
+  ) => void;
 
   // 7. Metadata
   type: string; // "99" (was typeHex), now string

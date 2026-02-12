@@ -22,14 +22,17 @@ export type MoveableTokenMap = Partial<{
   ETH: MoveableToken;
   SOL: MoveableToken;
   USDT: MoveableToken;
+  USDC: MoveableToken;
   WETH: MoveableToken;
+  stETH: MoveableToken;
 }>;
 
 export type PayableTokenMap = Partial<{
   ETH: PayableToken;
   USDT: PayableToken;
-  WETH: PayableToken;
   USDC: PayableToken;
+  WETH: PayableToken;
+  stETH: PayableToken;
 }>;
 
 // Strongly-typed accessors that throw at runtime if a token is unavailable,
@@ -56,6 +59,12 @@ export class MoveableTokenAccessor {
   get WETH(): MoveableToken {
     return this.require('WETH');
   }
+  get USDC(): MoveableToken {
+    return this.require('USDC');
+  }
+  get stETH(): MoveableToken {
+    return this.require('stETH');
+  }
 }
 
 export class PayableTokenAccessor {
@@ -80,6 +89,9 @@ export class PayableTokenAccessor {
   get WETH(): PayableToken {
     return this.require('WETH');
   }
+  get stETH(): PayableToken {
+    return this.require('stETH');
+  }
 }
 
 export interface ConversionQuote {
@@ -91,7 +103,7 @@ export interface ConversionQuote {
 }
 
 // Native token sentinel addresses
-const EVM_NATIVE: `0x${string}` = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const NATIVE: `0x${string}` = '0x0000000000000000000000000000000000000000';
 
 // Centralized token metadata by chain to avoid duplication (symbol, decimals, address, mechanism)
 type TokenMeta = {
@@ -107,7 +119,7 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     ETH: {
       symbol: 'ETH',
       decimals: 18,
-      address: EVM_NATIVE,
+      address: NATIVE,
       mechanism: 'native',
     },
     USDT: {
@@ -128,6 +140,12 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
       address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
       mechanism: 'approve',
     },
+    stETH: {
+      symbol: 'stETH',
+      decimals: 18,
+      address: '0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af',
+      mechanism: 'approve',
+    },
   },
 
   // Ethereum Mainnet
@@ -135,7 +153,7 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     ETH: {
       symbol: 'ETH',
       decimals: 18,
-      address: EVM_NATIVE,
+      address: NATIVE,
       mechanism: 'native',
     },
     USDT: {
@@ -157,13 +175,19 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     ETH: {
       symbol: 'ETH',
       decimals: 18,
-      address: EVM_NATIVE,
+      address: NATIVE,
       mechanism: 'native',
     },
     USDT: {
       symbol: 'USDT',
       decimals: 6,
       address: '0x1419d7C74D234fA6B73E06A2ce7822C1d37922f0',
+      mechanism: 'approve',
+    },
+    USDC: {
+      symbol: 'USDC',
+      decimals: 6,
+      address: '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d',
       mechanism: 'approve',
     },
     WETH: {
@@ -179,13 +203,19 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     ETH: {
       symbol: 'ETH',
       decimals: 18,
-      address: EVM_NATIVE,
+      address: NATIVE,
       mechanism: 'native',
     },
     USDT: {
       symbol: 'USDT',
       decimals: 6,
       address: '0x9FF5a186f53F6E6964B00320Da1D2024DE11E0cB',
+      mechanism: 'approve',
+    },
+    USDC: {
+      symbol: 'USDC',
+      decimals: 6,
+      address: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
       mechanism: 'approve',
     },
     WETH: {
@@ -202,13 +232,13 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     BNB: {
       symbol: 'BNB',
       decimals: 18,
-      address: EVM_NATIVE,
+      address: NATIVE,
       mechanism: 'native',
     },
     ETH: {
       symbol: 'ETH',
       decimals: 18,
-      address: EVM_NATIVE,
+      address: NATIVE,
       mechanism: 'native',
     },
     USDT: {
@@ -224,13 +254,19 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     SOL: {
       symbol: 'SOL',
       decimals: 9,
-      address: 'solana-native',
+      address: NATIVE,
       mechanism: 'native',
     },
     USDT: {
       symbol: 'USDT',
       decimals: 6,
       address: 'EiXDnrAg9ea2Q6vEPV7E5TpTU1vh41jcuZqKjU5Dc4ZF',
+      mechanism: 'approve',
+    },
+    USDC: {
+      symbol: 'USDC',
+      decimals: 6,
+      address: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
       mechanism: 'approve',
     },
   },
@@ -252,7 +288,9 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
   [CHAIN.ETHEREUM_SEPOLIA]: [
     makeToken(CHAIN.ETHEREUM_SEPOLIA, 'ETH'),
     makeToken(CHAIN.ETHEREUM_SEPOLIA, 'USDT'),
+    makeToken(CHAIN.ETHEREUM_SEPOLIA, 'USDC'),
     makeToken(CHAIN.ETHEREUM_SEPOLIA, 'WETH'),
+    makeToken(CHAIN.ETHEREUM_SEPOLIA, 'stETH'),
   ],
   [CHAIN.ETHEREUM_MAINNET]: [
     makeToken(CHAIN.ETHEREUM_MAINNET, 'ETH'),
@@ -262,11 +300,13 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
   [CHAIN.ARBITRUM_SEPOLIA]: [
     makeToken(CHAIN.ARBITRUM_SEPOLIA, 'ETH'),
     makeToken(CHAIN.ARBITRUM_SEPOLIA, 'USDT'),
+    makeToken(CHAIN.ARBITRUM_SEPOLIA, 'USDC'),
     makeToken(CHAIN.ARBITRUM_SEPOLIA, 'WETH'),
   ],
   [CHAIN.BASE_SEPOLIA]: [
     makeToken(CHAIN.BASE_SEPOLIA, 'ETH'),
     makeToken(CHAIN.BASE_SEPOLIA, 'USDT'),
+    makeToken(CHAIN.BASE_SEPOLIA, 'USDC'),
     makeToken(CHAIN.BASE_SEPOLIA, 'WETH'),
   ],
   [CHAIN.BNB_TESTNET]: [
@@ -276,6 +316,7 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
   [CHAIN.SOLANA_DEVNET]: [
     makeToken(CHAIN.SOLANA_DEVNET, 'SOL'),
     makeToken(CHAIN.SOLANA_DEVNET, 'USDT'),
+    makeToken(CHAIN.SOLANA_DEVNET, 'USDC'),
   ],
 };
 
@@ -285,6 +326,7 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
     makeToken(CHAIN.ETHEREUM_SEPOLIA, 'USDT'),
     makeToken(CHAIN.ETHEREUM_SEPOLIA, 'USDC'),
     makeToken(CHAIN.ETHEREUM_SEPOLIA, 'WETH'),
+    makeToken(CHAIN.ETHEREUM_SEPOLIA, 'stETH'),
   ],
   [CHAIN.ETHEREUM_MAINNET]: [
     makeToken(CHAIN.ETHEREUM_MAINNET, 'ETH'),
@@ -294,10 +336,12 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
   [CHAIN.ARBITRUM_SEPOLIA]: [
     makeToken(CHAIN.ARBITRUM_SEPOLIA, 'ETH'),
     makeToken(CHAIN.ARBITRUM_SEPOLIA, 'USDT'),
+    makeToken(CHAIN.ARBITRUM_SEPOLIA, 'USDC'),
   ],
   [CHAIN.BASE_SEPOLIA]: [
     makeToken(CHAIN.BASE_SEPOLIA, 'ETH'),
     makeToken(CHAIN.BASE_SEPOLIA, 'USDT'),
+    makeToken(CHAIN.BASE_SEPOLIA, 'USDC'),
   ],
   [CHAIN.BNB_TESTNET]: [
     makeToken(CHAIN.BNB_TESTNET, 'BNB'),
@@ -306,5 +350,6 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
   [CHAIN.SOLANA_DEVNET]: [
     makeToken(CHAIN.SOLANA_DEVNET, 'SOL'),
     makeToken(CHAIN.SOLANA_DEVNET, 'USDT'),
+    makeToken(CHAIN.SOLANA_DEVNET, 'USDC'),
   ],
 };

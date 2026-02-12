@@ -4,6 +4,7 @@ import { Any } from 'cosmjs-types/google/protobuf/any';
 import {
   Abi,
   bytesToHex,
+  decodeAbiParameters,
   decodeFunctionData,
   encodeAbiParameters,
   encodePacked,
@@ -123,6 +124,16 @@ export class Orchestrator {
    * Executes an interaction on Push Chain
    */
   async execute(execute: ExecuteParams): Promise<UniversalTxResponse> {
+    // Create buffer to collect events during execution for tx.progressHook() replay
+    const eventBuffer: ProgressEvent[] = [];
+
+    // Store original progressHook and wrap to collect events
+    const originalHook = this.progressHook;
+    this.progressHook = (event: ProgressEvent) => {
+      eventBuffer.push(event);
+      if (originalHook) originalHook(event);
+    };
+
     try {
       if (execute.funds) {
         if (!execute.data || execute.data === '0x') {
@@ -200,7 +211,7 @@ export class Orchestrator {
 
             const ueaAddress = this.computeUEAOffchain();
 
-            console.log('[DEBUG] sendFunds — buildGatewayPayloadAndGas result:', JSON.stringify({
+            this.printLog('sendFunds — buildGatewayPayloadAndGas result: ' + JSON.stringify({
               recipient: execute.to,
               ueaAddress,
               isSelfBridge: execute.to.toLowerCase() === ueaAddress.toLowerCase(),
@@ -222,7 +233,7 @@ export class Orchestrator {
               BigInt(0),
               ueaBalanceForGas
             );
-            console.log('[DEBUG] sendFunds — nativeAmount:', nativeAmount.toString(), 'ueaBalanceForGas:', ueaBalanceForGas.toString());
+            this.printLog(`sendFunds — nativeAmount: ${nativeAmount.toString()}, ueaBalanceForGas: ${ueaBalanceForGas.toString()}`);
 
             // We log the SEND_TX_03_01 here because the progress hook for gas estimation should arrive before the resolving of UEA.
             this.executeProgressHook(PROGRESS_HOOK.SEND_TX_03_01);
@@ -231,7 +242,7 @@ export class Orchestrator {
               ueaAddress,
               deployed
             );
-            console.log('[DEBUG] UEA resolved:', ueaAddress, 'deployed:', deployed);
+            this.printLog(`UEA resolved: ${ueaAddress}, deployed: ${deployed}`);
 
             this.executeProgressHook(
               PROGRESS_HOOK.SEND_TX_06_01,
@@ -282,7 +293,7 @@ export class Orchestrator {
                 //   signatureData: '0x',
                 // } as unknown as never;
 
-                console.log('[DEBUG] FUNDS ONLY SELF — gateway call payload:', JSON.stringify({
+                this.printLog('FUNDS ONLY SELF — gateway call payload: ' + JSON.stringify({
                   gatewayAddress, functionName: 'sendUniversalTx', req,
                   value: (isNative ? nativeAmount + bridgeAmount : nativeAmount).toString(),
                   isNative, bridgeAmount: bridgeAmount.toString(),
@@ -311,7 +322,7 @@ export class Orchestrator {
                 //   signatureData: '0x',
                 // } as unknown as never;
 
-                console.log('[DEBUG] FUNDS ONLY OTHER — gateway call payload:', JSON.stringify({
+                this.printLog('FUNDS ONLY OTHER — gateway call payload: ' + JSON.stringify({
                   gatewayAddress, functionName: 'sendUniversalTx', req,
                   value: nativeAmount.toString(),
                   isNative, bridgeAmount: bridgeAmount.toString(),
@@ -358,10 +369,10 @@ export class Orchestrator {
             // Syncing with Push Chain - emit before query
             this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_05);
 
-            console.log('[DEBUG] sendFunds — querying Push Chain status:', {
+            this.printLog('sendFunds — querying Push Chain status: ' + JSON.stringify({
               txHash,
               evmGatewayMethod: execute.to === ueaAddress ? 'sendFunds' : 'sendTxWithFunds',
-            });
+            }));
 
             const pushChainUniversalTx =
               await this.queryUniversalTxStatusFromGatewayTx(
@@ -380,10 +391,10 @@ export class Orchestrator {
             // For sendFunds operations, MintPC (first) succeeds and executePayload (second) may fail
             // Always use the last pcTx entry as it represents the final execution result
             const lastPcTransaction = pushChainUniversalTx.pcTx.at(-1);
-            console.log('[DEBUG] sendFunds — pushChainUniversalTx pcTx:', JSON.stringify(
+            this.printLog('sendFunds — pushChainUniversalTx pcTx: ' + JSON.stringify(
               pushChainUniversalTx?.pcTx?.map((p: any) => ({ txHash: p.txHash, status: p.status, errorMsg: p.errorMsg })),
               null, 2));
-            console.log('[DEBUG] sendFunds — using lastPcTransaction:', JSON.stringify(lastPcTransaction, null, 2));
+            this.printLog('sendFunds — using lastPcTransaction: ' + JSON.stringify(lastPcTransaction, null, 2));
             if (!lastPcTransaction?.txHash) {
               // Check for error messages in failed entries
               const failedPcTx = pushChainUniversalTx.pcTx.find(
@@ -400,7 +411,7 @@ export class Orchestrator {
             const tx = await this.pushClient.getTransaction(
               lastPcTransaction.txHash as `0x${string}`
             );
-            const response = await this.transformToUniversalTxResponse(tx);
+            const response = await this.transformToUniversalTxResponse(tx, eventBuffer);
             // Funds Flow: Funds credited on Push Chain
             this.executeProgressHook(
               PROGRESS_HOOK.SEND_TX_06_06,
@@ -654,7 +665,7 @@ export class Orchestrator {
             const tx = await this.pushClient.getTransaction(
               lastPcTransaction.txHash as `0x${string}`
             );
-            const response = await this.transformToUniversalTxResponse(tx);
+            const response = await this.transformToUniversalTxResponse(tx, eventBuffer);
             // Funds Flow: Funds credited on Push Chain
             this.executeProgressHook(
               PROGRESS_HOOK.SEND_TX_06_06,
@@ -1095,7 +1106,7 @@ export class Orchestrator {
           const tx = await this.pushClient.getTransaction(
             lastPcTransaction.txHash as `0x${string}`
           );
-          const response = await this.transformToUniversalTxResponse(tx);
+          const response = await this.transformToUniversalTxResponse(tx, eventBuffer);
           // Funds Flow: Funds credited on Push Chain
           this.executeProgressHook(
             PROGRESS_HOOK.SEND_TX_06_06,
@@ -1125,7 +1136,7 @@ export class Orchestrator {
        */
       if (this.isPushChain(chain)) {
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_07);
-        const tx = await this.sendPushTx(execute);
+        const tx = await this.sendPushTx(execute, eventBuffer);
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [tx]);
         return tx;
       }
@@ -1178,7 +1189,7 @@ export class Orchestrator {
         console.warn(`Multicalls should have execute.to as ${zeroAddress}`);
         payloadData = this._buildMulticallPayloadData(
           execute.to,
-          buildExecuteMulticall({ execute, ueaAddress: UEA })
+          buildExecuteMulticall({ execute, ueaAddress: UEA, logger: this.printLog.bind(this) })
         );
         req = this._buildUniversalTxRequest({
           recipient: zeroAddress,
@@ -1196,7 +1207,7 @@ export class Orchestrator {
             payloadTo = zeroAddress;
             payloadData = this._buildMulticallPayloadData(
               execute.to,
-              buildExecuteMulticall({ execute, ueaAddress: UEA })
+              buildExecuteMulticall({ execute, ueaAddress: UEA, logger: this.printLog.bind(this) })
             );
             req = this._buildUniversalTxRequest({
               recipient: zeroAddress,
@@ -1211,7 +1222,7 @@ export class Orchestrator {
             payloadData = execute.data || '0x';
             const reqData = this._buildMulticallPayloadData(
               execute.to,
-              buildExecuteMulticall({ execute, ueaAddress: UEA })
+              buildExecuteMulticall({ execute, ueaAddress: UEA, logger: this.printLog.bind(this) })
             );
             const universalPayload = JSON.parse(
               JSON.stringify(
@@ -1378,7 +1389,7 @@ export class Orchestrator {
         const tx = await this.pushClient.getTransaction(
           lastPcTransaction.txHash as `0x${string}`
         );
-        const response = await this.transformToUniversalTxResponse(tx);
+        const response = await this.transformToUniversalTxResponse(tx, eventBuffer);
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
         return response;
       }
@@ -1392,7 +1403,8 @@ export class Orchestrator {
         isUEADeployed,
         feeLockTxHash,
         universalPayload,
-        verificationData
+        verificationData,
+        eventBuffer
       );
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, transactions);
       return transactions[transactions.length - 1];
@@ -1411,6 +1423,9 @@ export class Orchestrator {
             })();
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_02, errMessage);
       throw err;
+    } finally {
+      // Restore original progressHook
+      this.progressHook = originalHook;
     }
   }
 
@@ -1752,7 +1767,8 @@ export class Orchestrator {
     isUEADeployed: boolean,
     feeLockTxHash?: string,
     universalPayload?: UniversalPayload,
-    verificationData?: `0x${string}`
+    verificationData?: `0x${string}`,
+    eventBuffer: ProgressEvent[] = []
   ): Promise<UniversalTxResponse[]> {
     const { chain, address } = this.universalSigner.account;
     const { vm, chainId } = CHAIN_INFO[chain];
@@ -1837,8 +1853,14 @@ export class Orchestrator {
       })
     );
 
+    // Pass eventBuffer only to the last transaction (which is the one returned to user)
     return await Promise.all(
-      evmTxs.map((tx) => this.transformToUniversalTxResponse(tx))
+      evmTxs.map((tx, index) =>
+        this.transformToUniversalTxResponse(
+          tx,
+          index === evmTxs.length - 1 ? eventBuffer : []
+        )
+      )
     );
   }
 
@@ -1849,7 +1871,8 @@ export class Orchestrator {
    * @returns Cosmos Tx Response for a given Evm Tx
    */
   private async sendPushTx(
-    execute: ExecuteParams
+    execute: ExecuteParams,
+    eventBuffer: ProgressEvent[] = []
   ): Promise<UniversalTxResponse> {
     // For PushChain, multicall is not supported. Ensure data is hex string.
     if (Array.isArray(execute.data)) {
@@ -1863,7 +1886,7 @@ export class Orchestrator {
       signer: this.universalSigner,
     });
     const txResponse = await this.pushClient.getTransaction(txHash);
-    return await this.transformToUniversalTxResponse(txResponse);
+    return await this.transformToUniversalTxResponse(txResponse, eventBuffer);
   }
 
   /**
@@ -2126,17 +2149,26 @@ export class Orchestrator {
       rpcUrls = {},
     } = advanced;
 
-    // Use custom progress hook if provided, otherwise use instance hook
-    const progressHookFn = progress ?? this.progressHook;
+    // Helper to invoke both per-transaction and orchestrator hooks
+    const invokeProgressHook = (hookPayload: ProgressEvent) => {
+      this.printLog(hookPayload.message);
+      // Per-transaction hook called FIRST
+      if (progress) {
+        progress(hookPayload);
+      }
+      // Orchestrator-level hook called SECOND
+      if (this.progressHook) {
+        this.progressHook(hookPayload);
+      }
+    };
 
     // Emit TRACK_TX_01 - tracking started
-    if (progressHookFn) {
+    if (progress || this.progressHook) {
       const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_01](
         txHash,
         chain
       );
-      this.printLog(hookPayload.message);
-      progressHookFn(hookPayload);
+      invokeProgressHook(hookPayload);
     }
 
     // Create client for target chain with optional RPC override
@@ -2162,13 +2194,12 @@ export class Orchestrator {
       const universalTxResponse = await this.transformToUniversalTxResponse(tx);
 
       // Emit TRACK_TX_99_01 - tracking complete
-      if (progressHookFn) {
+      if (progress || this.progressHook) {
         const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_99_01](
           txHash,
           universalTxResponse
         );
-        this.printLog(hookPayload.message);
-        progressHookFn(hookPayload);
+        invokeProgressHook(hookPayload);
       }
 
       return this.transformToUniversalTxReceipt(receipt, universalTxResponse);
@@ -2177,13 +2208,12 @@ export class Orchestrator {
       if (!waitForCompletion) {
         // Non-blocking and tx not found - throw error
         const errorMsg = initialError instanceof Error ? initialError.message : 'Transaction not found';
-        if (progressHookFn) {
+        if (progress || this.progressHook) {
           const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_99_02](
             txHash,
             errorMsg
           );
-          this.printLog(hookPayload.message);
-          progressHookFn(hookPayload);
+          invokeProgressHook(hookPayload);
         }
         throw new Error(`Transaction ${txHash} not found: ${errorMsg}`);
       }
@@ -2191,12 +2221,12 @@ export class Orchestrator {
       // Blocking mode: poll until found or timeout
       const start = Date.now();
 
+      // eslint-disable-next-line no-constant-condition
       while (true) {
         // Emit TRACK_TX_02 - querying status
-        if (progressHookFn) {
+        if (progress || this.progressHook) {
           const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_02](txHash);
-          this.printLog(hookPayload.message);
-          progressHookFn(hookPayload);
+          invokeProgressHook(hookPayload);
         }
 
         try {
@@ -2205,13 +2235,12 @@ export class Orchestrator {
           const universalTxResponse = await this.transformToUniversalTxResponse(tx);
 
           // Success - emit TRACK_TX_99_01
-          if (progressHookFn) {
+          if (progress || this.progressHook) {
             const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_99_01](
               txHash,
               universalTxResponse
             );
-            this.printLog(hookPayload.message);
-            progressHookFn(hookPayload);
+            invokeProgressHook(hookPayload);
           }
 
           return this.transformToUniversalTxReceipt(receipt, universalTxResponse);
@@ -2223,13 +2252,12 @@ export class Orchestrator {
         // Check timeout
         if (Date.now() - start > timeout) {
           const timeoutMsg = `Timeout: transaction ${txHash} not confirmed within ${timeout}ms`;
-          if (progressHookFn) {
+          if (progress || this.progressHook) {
             const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_99_02](
               txHash,
               'Timeout'
             );
-            this.printLog(hookPayload.message);
-            progressHookFn(hookPayload);
+            invokeProgressHook(hookPayload);
           }
           throw new Error(timeoutMsg);
         }
@@ -2307,7 +2335,7 @@ export class Orchestrator {
     to: `0x${string}`,
     data: MultiCall[]
   ): `0x${string}` {
-    console.log('[DEBUG] _buildMulticallPayloadData — input:', data.length, 'calls:', JSON.stringify(data, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
+    this.printLog('_buildMulticallPayloadData — input: ' + data.length + ' calls: ' + JSON.stringify(data, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
 
     const allowedChains = [
       CHAIN.ETHEREUM_SEPOLIA,
@@ -2994,6 +3022,7 @@ export class Orchestrator {
       const multicallData: MultiCall[] = buildExecuteMulticall({
         execute,
         ueaAddress: this.computeUEAOffchain(),
+        logger: this.printLog.bind(this),
       });
       // THIS ABOVE WILL CHANGE WHEN FUNDS ARE PASSED
       const universalPayload = {
@@ -3009,7 +3038,7 @@ export class Orchestrator {
         vType: VerificationType.universalTxVerification,
       } as unknown as never;
       
-      console.log('[DEBUG] (universalPayload) ' +  universalPayload);
+      this.printLog('(universalPayload) ' + universalPayload);
 
       // Temporary while we don't change the native address from 0xeee... to 0x0000...
       let tokenAddress = execute.funds?.token?.address as `0x${string}`;
@@ -3033,6 +3062,7 @@ export class Orchestrator {
       const multicallData: MultiCall[] = buildExecuteMulticall({
         execute,
         ueaAddress: this.computeUEAOffchain(),
+        logger: this.printLog.bind(this),
       });
 
       // // The data will be the abi-encoded transfer function from erc-20 function. The recipient will be `execute.to`, the value
@@ -3045,7 +3075,7 @@ export class Orchestrator {
       // const pushChainTo = PushChain.utils.tokens.getPRC20Address(
       //   execute.funds!.token as MoveableToken
       // );
-      console.log('[DEBUG] sendFunds — execute params:', JSON.stringify({
+      this.printLog('sendFunds — execute params: ' + JSON.stringify({
         to: execute.to,
         value: execute.value?.toString() ?? 'undefined',
         data: execute.data ?? 'undefined',
@@ -3056,18 +3086,18 @@ export class Orchestrator {
         gasLimit: execute.gasLimit?.toString() ?? 'undefined',
       }, null, 2));
 
-      console.log('[DEBUG] sendFunds — multicallData:', JSON.stringify(
+      this.printLog('sendFunds — multicallData: ' + JSON.stringify(
         multicallData,
         (_, v) => typeof v === 'bigint' ? v.toString() : v,
         2
-      ), '(length:', multicallData.length, ')');
+      ) + ' (length: ' + multicallData.length + ')');
 
       const multicallPayloadData =
          this._buildMulticallPayloadData(execute.to, multicallData)
       
 
       
-      console.log('[DEBUG] sendFunds — multicallPayloadData (first 66 chars):', multicallPayloadData.slice(0, 66), '(full length:', multicallPayloadData.length, ')');
+      this.printLog('sendFunds — multicallPayloadData (first 66 chars): ' + multicallPayloadData.slice(0, 66) + ' (full length: ' + multicallPayloadData.length + ')');
 
      
       const universalPayload = {
@@ -3085,7 +3115,7 @@ export class Orchestrator {
         vType: VerificationType.universalTxVerification,
       } as unknown as never;
 
-      console.log('[DEBUG] sendFunds — universalPayload (pre-encode):', JSON.stringify({
+      this.printLog('sendFunds — universalPayload (pre-encode): ' + JSON.stringify({
         to: zeroAddress,
         value: (execute.value ?? BigInt(0)).toString(),
         data: multicallPayloadData,
@@ -3106,7 +3136,7 @@ export class Orchestrator {
       }
 
       const encodedPayload = this.encodeUniversalPayload(universalPayload);
-      console.log('[DEBUG] sendFunds — encodedPayload (first 66 chars):', encodedPayload.slice(0, 66), '(full length:', encodedPayload.length, ')');
+      this.printLog('sendFunds — encodedPayload (first 66 chars): ' + encodedPayload.slice(0, 66) + ' (full length: ' + encodedPayload.length + ')');
 
       const req = this._buildUniversalTxRequest({
         recipient: zeroAddress,
@@ -3115,7 +3145,7 @@ export class Orchestrator {
         payload: encodedPayload,
       });
 
-      console.log('[DEBUG] sendFunds — final req:', JSON.stringify({
+      this.printLog('sendFunds — final req: ' + JSON.stringify({
         recipient: zeroAddress,
         token: tokenAddress,
         amount: (execute.funds?.amount as bigint)?.toString(),
@@ -3173,7 +3203,8 @@ export class Orchestrator {
    * Transforms a TxResponse to the new UniversalTxResponse format
    */
   private async transformToUniversalTxResponse(
-    tx: TxResponse
+    tx: TxResponse,
+    eventBuffer: ProgressEvent[] = []
   ): Promise<UniversalTxResponse> {
     const chain = this.universalSigner.account.chain;
     const { vm, chainId } = CHAIN_INFO[chain];
@@ -3227,6 +3258,39 @@ export class Orchestrator {
         to = universalPayload.to as `0x${string}`;
         value = BigInt(universalPayload.value);
         data = universalPayload.data;
+
+        // Extract 'to' from single-element multicall
+        if (data && data.length >= 10) {
+          const multicallSelector = keccak256(toBytes('UEA_MULTICALL')).slice(
+            0,
+            10
+          );
+          if (data.slice(0, 10) === multicallSelector) {
+            try {
+              const innerData = ('0x' + data.slice(10)) as `0x${string}`;
+              const [decodedCalls] = decodeAbiParameters(
+                [
+                  {
+                    type: 'tuple[]',
+                    components: [
+                      { name: 'to', type: 'address' },
+                      { name: 'value', type: 'uint256' },
+                      { name: 'data', type: 'bytes' },
+                    ],
+                  },
+                ],
+                innerData
+              );
+              // If single call, use its 'to' address
+              if (decodedCalls.length === 1) {
+                to = getAddress(decodedCalls[0].to) as `0x${string}`;
+              }
+            } catch {
+              // Keep original 'to' if decoding fails
+            }
+          }
+        }
+
         rawTransactionData = {
           from: getAddress(tx.from),
           to: getAddress(tx.to as `0x${string}`),
@@ -3303,6 +3367,9 @@ export class Orchestrator {
       }
     }
 
+    // Storage for registered progress callback (used by progressHook method)
+    let registeredProgressHook: ((event: ProgressEvent) => void) | undefined;
+
     const universalTxResponse: UniversalTxResponse = {
       // 1. Identity
       hash: tx.hash,
@@ -3332,8 +3399,28 @@ export class Orchestrator {
 
       // 6. Utilities
       wait: async (): Promise<UniversalTxReceipt> => {
+        // Use trackTransaction with registered hook if available
+        if (registeredProgressHook) {
+          return this.trackTransaction(tx.hash, {
+            waitForCompletion: true,
+            progress: registeredProgressHook,
+          });
+        }
         const receipt = await tx.wait();
         return this.transformToUniversalTxReceipt(receipt, universalTxResponse);
+      },
+
+      progressHook: (
+        callback: (event: ProgressEvent) => void
+      ): void => {
+        registeredProgressHook = callback;
+
+        // Immediately replay buffered events from execution
+        if (eventBuffer.length > 0) {
+          for (const event of eventBuffer) {
+            callback(event);
+          }
+        }
       },
 
       // 7. Metadata
@@ -3393,9 +3480,10 @@ export class Orchestrator {
     const hookEntry = PROGRESS_HOOKS[hookId];
     const hookPayload: ProgressEvent = hookEntry(...args);
     this.printLog(hookPayload.message);
-    if (!this.progressHook) return;
-    // invoke the user-provided callback
-    this.progressHook(hookPayload);
+
+    if (this.progressHook) {
+      this.progressHook(hookPayload);
+    }
   }
 
   // Derive the SVM gateway log index from a Solana transaction's log messages
@@ -3473,10 +3561,8 @@ export class Orchestrator {
           (l: any) =>
             (l.address || '').toLowerCase() === gatewayAddress.toLowerCase()
         );
-        console.log('[DEBUG] queryUniversalTxStatus — receipt logs count:', receipt.logs?.length,
-          'gateway logs count:', gatewayLogs.length,
-          'evmGatewayMethod:', evmGatewayMethod);
-        console.log('[DEBUG] queryUniversalTxStatus — gatewayLogs:', JSON.stringify(
+        this.printLog(`queryUniversalTxStatus — receipt logs count: ${receipt.logs?.length}, gateway logs count: ${gatewayLogs.length}, evmGatewayMethod: ${evmGatewayMethod}`);
+        this.printLog('queryUniversalTxStatus — gatewayLogs: ' + JSON.stringify(
           gatewayLogs.map((l: any) => ({ address: l.address, logIndex: l.logIndex, topics: l.topics?.[0] })),
           null, 2));
         // TEMP: use last gateway log instead of hardcoded 0/1 index
@@ -3484,8 +3570,7 @@ export class Orchestrator {
         const firstLog = (gatewayLogs[logIndexToUse] ||
           (receipt.logs || []).at(-1)) as any;
         const logIndexVal = firstLog?.logIndex ?? 0;
-        console.log('[DEBUG] queryUniversalTxStatus — logIndexToUse:', logIndexToUse,
-          'firstLog.logIndex:', firstLog?.logIndex, 'logIndexVal:', logIndexVal);
+        this.printLog(`queryUniversalTxStatus — logIndexToUse: ${logIndexToUse}, firstLog.logIndex: ${firstLog?.logIndex}, logIndexVal: ${logIndexVal}`);
         logIndexStr =
           typeof logIndexVal === 'bigint'
             ? logIndexVal.toString()
@@ -3522,7 +3607,7 @@ export class Orchestrator {
       const idInput = `${sourceChain}:${txHashHex}:${logIndexStr}`;
       const idHex = sha256(stringToBytes(idInput)).slice(2);
 
-      console.log('[DEBUG] Query ID extraction:', JSON.stringify({
+      this.printLog('Query ID extraction: ' + JSON.stringify({
         sourceChain,
         txHashHex,
         logIndexStr,
@@ -3538,7 +3623,7 @@ export class Orchestrator {
 
       let universalTxObj: any | undefined;
       for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-        console.log(`[Sync] Attempt ${attempt + 1}/${MAX_ATTEMPTS} | Query ID: ${idHex}`);
+        this.printLog(`[Sync] Attempt ${attempt + 1}/${MAX_ATTEMPTS} | Query ID: ${idHex}`);
         try {
           const universalTxResp = await this.pushClient.getUniversalTxById(
             idHex

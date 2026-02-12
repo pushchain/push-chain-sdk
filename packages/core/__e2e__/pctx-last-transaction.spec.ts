@@ -267,10 +267,13 @@ describe('pcTx last-transaction selection (e2e)', () => {
     });
 
     console.log(`TX Hash: ${tx.hash}`);
+   
     expect(tx.hash).toBeDefined();
     expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
 
     const receipt = await tx.wait();
+    console.log(`Receipt : ${JSON.stringify(receipt, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2)}`);
+
     console.log(`Receipt Status: ${receipt.status}`);
     expect(receipt.status).toBe(1);
 
