@@ -293,4 +293,139 @@ describe('Send USDT to Self vs Different Address (e2e)', () => {
 
     expect(receipt.status).toBe(1);
   }, 600000);
+
+  it('should send ETH value to self from a NEW wallet (Route 1)', async () => {
+    const originChain = CHAIN.ETHEREUM_SEPOLIA;
+    const mainPrivateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
+
+    // 1. Generate fresh wallet
+    const newPrivateKey = generatePrivateKey();
+    const newAccount = privateKeyToAccount(newPrivateKey);
+    console.log('\n=== TEST: SEND VALUE TO SELF (Route 1) ===');
+    console.log(`Generated new wallet: ${newAccount.address}`);
+
+    // 2. Fund new wallet with ETH from master
+    const mainAccount = privateKeyToAccount(mainPrivateKey);
+    const mainWalletClient = createWalletClient({
+      account: mainAccount,
+      chain: sepolia,
+      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+    });
+    const publicClient = createPublicClient({
+      chain: sepolia,
+      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+    });
+
+    console.log('Transferring ETH from master wallet...');
+    const ethTxHash = await mainWalletClient.sendTransaction({
+      to: newAccount.address,
+      value: parseEther('0.002'),
+    });
+    await publicClient.waitForTransactionReceipt({ hash: ethTxHash });
+    console.log('ETH transferred');
+
+    // 3. Initialize PushChain client for new wallet
+    const newWalletClient = createWalletClient({
+      account: newAccount,
+      chain: sepolia,
+      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+    });
+
+    const newSigner = await PushChain.utils.signer.toUniversal(newWalletClient);
+    const newPushClient = await PushChain.initialize(newSigner, {
+      network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET,
+      printTraces: true,
+      progressHook: (val: any) => {
+        console.log(`[Progress] ${val.id}: ${val.title}`);
+      },
+    });
+
+    console.log(`New User UEA: ${newPushClient.universal.account}`);
+
+    // 4. Send value to self
+    const value = parseEther('0.0000001');
+    console.log(`Value: 0.0000001 ETH`);
+    console.log(`To: ${newPushClient.universal.account}`);
+    console.log('Sending transaction...');
+
+    const res = await newPushClient.universal.sendTransaction({
+      to: newPushClient.universal.account,
+      value: value,
+    });
+
+    console.log(`Transaction sent! Hash: ${res.hash}`);
+
+    const receipt = await res.wait();
+    console.log('Receipt:', JSON.stringify(receipt, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
+
+    expect(receipt.status).toBe(1);
+  }, 300000);
+
+  it('should send ETH value to OTHER from a NEW wallet (Route 2)', async () => {
+    const originChain = CHAIN.ETHEREUM_SEPOLIA;
+    const mainPrivateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
+
+    // 1. Generate fresh wallet
+    const newPrivateKey = generatePrivateKey();
+    const newAccount = privateKeyToAccount(newPrivateKey);
+    console.log('\n=== TEST: SEND VALUE TO OTHER (Route 2) ===');
+    console.log(`Generated new wallet: ${newAccount.address}`);
+
+    // 2. Fund new wallet with ETH from master
+    const mainAccount = privateKeyToAccount(mainPrivateKey);
+    const mainWalletClient = createWalletClient({
+      account: mainAccount,
+      chain: sepolia,
+      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+    });
+    const publicClient = createPublicClient({
+      chain: sepolia,
+      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+    });
+
+    console.log('Transferring ETH from master wallet...');
+    const ethTxHash = await mainWalletClient.sendTransaction({
+      to: newAccount.address,
+      value: parseEther('0.002'),
+    });
+    await publicClient.waitForTransactionReceipt({ hash: ethTxHash });
+    console.log('ETH transferred');
+
+    // 3. Initialize PushChain client for new wallet
+    const newWalletClient = createWalletClient({
+      account: newAccount,
+      chain: sepolia,
+      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+    });
+
+    const newSigner = await PushChain.utils.signer.toUniversal(newWalletClient);
+    const newPushClient = await PushChain.initialize(newSigner, {
+      network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET,
+      printTraces: true,
+      progressHook: (val: any) => {
+        console.log(`[Progress] ${val.id}: ${val.title}`);
+      },
+    });
+
+    console.log(`New User UEA: ${newPushClient.universal.account}`);
+
+    // 4. Send value to different address
+    const differentAddress = '0x742d35Cc6634c0532925A3b844BC9e7595F5bE21' as `0x${string}`;
+    const value = parseEther('0.0000001');
+    console.log(`Value: 0.0000001 ETH`);
+    console.log(`To: ${differentAddress}`);
+    console.log('Sending transaction...');
+
+    const res = await newPushClient.universal.sendTransaction({
+      to: differentAddress,
+      value: value,
+    });
+
+    console.log(`Transaction sent! Hash: ${res.hash}`);
+
+    const receipt = await res.wait();
+    console.log('Receipt:', JSON.stringify(receipt, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
+
+    expect(receipt.status).toBe(1);
+  }, 300000);
 });
