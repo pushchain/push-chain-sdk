@@ -1189,7 +1189,7 @@ export class Orchestrator {
         console.warn(`Multicalls should have execute.to as ${zeroAddress}`);
         payloadData = this._buildMulticallPayloadData(
           execute.to,
-          buildExecuteMulticall({ execute, ueaAddress: UEA, logger: this.printLog.bind(this) })
+          buildExecuteMulticall({ execute, ueaAddress: UEA })
         );
         req = this._buildUniversalTxRequest({
           recipient: zeroAddress,
@@ -1207,7 +1207,7 @@ export class Orchestrator {
             payloadTo = zeroAddress;
             payloadData = this._buildMulticallPayloadData(
               execute.to,
-              buildExecuteMulticall({ execute, ueaAddress: UEA, logger: this.printLog.bind(this) })
+              buildExecuteMulticall({ execute, ueaAddress: UEA })
             );
             req = this._buildUniversalTxRequest({
               recipient: zeroAddress,
@@ -1222,7 +1222,7 @@ export class Orchestrator {
             payloadData = execute.data || '0x';
             const reqData = this._buildMulticallPayloadData(
               execute.to,
-              buildExecuteMulticall({ execute, ueaAddress: UEA, logger: this.printLog.bind(this) })
+              buildExecuteMulticall({ execute, ueaAddress: UEA })
             );
             const universalPayload = JSON.parse(
               JSON.stringify(
@@ -1255,15 +1255,36 @@ export class Orchestrator {
           if (execute.data && execute.to.toLowerCase() === UEA.toLowerCase()) {
             throw new Error(`You can't execute data on the UEA address`);
           }
-          // VALUE ONLY SELF
+          // VALUE ONLY SELF - using multicall for consistency
           payloadTo = execute.to;
           payloadData = execute.data || '0x';
+          const reqData = this._buildMulticallPayloadData(
+            execute.to,
+            buildExecuteMulticall({ execute, ueaAddress: UEA })
+          );
+          const universalPayloadSelf = JSON.parse(
+            JSON.stringify(
+              {
+                to: zeroAddress,
+                value: execute.value,
+                data: reqData,
+                gasLimit: execute.gasLimit || BigInt(5e7),
+                maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
+                maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
+                nonce,
+                deadline: execute.deadline || BigInt(9999999999),
+                vType: feeLockingRequired
+                  ? VerificationType.universalTxVerification
+                  : VerificationType.signedVerification,
+              },
+              this.bigintReplacer
+            )
+          ) as UniversalPayload;
           req = this._buildUniversalTxRequest({
-            // recipient: execute.to,
             recipient: zeroAddress,
             token: zeroAddress,
             amount: BigInt(0),
-            payload: payloadData,
+            payload: this.encodeUniversalPayload(universalPayloadSelf),
           });
         }
       }
@@ -3022,7 +3043,6 @@ export class Orchestrator {
       const multicallData: MultiCall[] = buildExecuteMulticall({
         execute,
         ueaAddress: this.computeUEAOffchain(),
-        logger: this.printLog.bind(this),
       });
       // THIS ABOVE WILL CHANGE WHEN FUNDS ARE PASSED
       const universalPayload = {
@@ -3062,7 +3082,6 @@ export class Orchestrator {
       const multicallData: MultiCall[] = buildExecuteMulticall({
         execute,
         ueaAddress: this.computeUEAOffchain(),
-        logger: this.printLog.bind(this),
       });
 
       // // The data will be the abi-encoded transfer function from erc-20 function. The recipient will be `execute.to`, the value
@@ -3323,6 +3342,39 @@ export class Orchestrator {
         data: tx.input,
         value: tx.value,
       };
+    }
+
+    // Extract 'to' and 'from' from depositPRC20WithAutoSwap (precompile call)
+    if (data && data.length >= 10) {
+      const depositPRC20Selector = '0x780ad827';
+      if (data.slice(0, 10) === depositPRC20Selector) {
+        try {
+          const decoded = decodeFunctionData({
+            abi: [
+              {
+                name: 'depositPRC20WithAutoSwap',
+                type: 'function',
+                inputs: [
+                  { name: 'prc20', type: 'address' },
+                  { name: 'amount', type: 'uint256' },
+                  { name: 'target', type: 'address' },
+                  { name: 'fee', type: 'uint24' },
+                  { name: 'minPCOut', type: 'uint256' },
+                  { name: 'deadline', type: 'uint256' },
+                ],
+              },
+            ] as const,
+            data: data as `0x${string}`,
+          });
+          if (decoded.args) {
+            const target = decoded.args[2] as `0x${string}`;
+            to = getAddress(target);
+            from = '0x0000000000000000000000000000000000000000';
+          }
+        } catch {
+          // Keep original values if decoding fails
+        }
+      }
     }
 
     const origin = `${VM_NAMESPACE[vm]}:${chainId}:${originAddress}`;
@@ -3616,10 +3668,10 @@ export class Orchestrator {
       }, null, 2));
 
       // Fetch UniversalTx via gRPC with linear-then-exponential retry
-      const LINEAR_ATTEMPTS = 15;
+      const LINEAR_ATTEMPTS = 25;
       const LINEAR_DELAY_MS = 1500;
       const EXPONENTIAL_BASE_MS = 2000;
-      const MAX_ATTEMPTS = 20;
+      const MAX_ATTEMPTS = 30;
 
       let universalTxObj: any | undefined;
       for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
