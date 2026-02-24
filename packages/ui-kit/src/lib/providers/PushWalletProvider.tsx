@@ -99,6 +99,10 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
     login: {
       ...loginDefaultConfig,
       ...(config?.login || {}),
+      socials: {
+        ...loginDefaultConfig.socials,
+        ...(config?.login?.socials || {}),
+      },
       wallet: {
         ...loginDefaultConfig.wallet,
         ...(config?.login?.wallet || {}),
