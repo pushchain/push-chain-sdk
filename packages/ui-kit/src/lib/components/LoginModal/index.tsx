@@ -111,7 +111,7 @@ const LoginModal: FC<LoginModalProps> = ({
           $modalDefaults={modal}
           $style={{ top, left }}
         >
-          {isIframeLoading && !isReadOnly && (
+          {(isIframeLoading && !isReadOnly) && (
             <FrameLoadingContainer>
               <CloseButtonContainer
                 onClick={() => {
@@ -131,6 +131,28 @@ const LoginModal: FC<LoginModalProps> = ({
                 <Spinner color="var(--pw-int-brand-primary-color)" />
               </LoadingTextContainer>
             </FrameLoadingContainer>
+          )}
+
+          {isIframeLoading && isReadOnly && !isWalletMinimised &&(
+            <FrameLoadingContainerSecondary>
+              <CloseButtonContainer
+                onClick={() => {
+                  setMinimiseWallet(true);
+                }}
+              >
+                <CrossIcon
+                  height="20px"
+                  width="20px"
+                  color={
+                    themeMode === PushUI.CONSTANTS.THEME.LIGHT ? '#000' : '#FFF'
+                  }
+                />
+              </CloseButtonContainer>
+              <LoadingTextContainerSecondary>
+                <LoadingText>Loading...</LoadingText>
+                <Spinner color="var(--pw-int-brand-primary-color)" />
+              </LoadingTextContainerSecondary>
+            </FrameLoadingContainerSecondary>
           )}
 
           <FrameSubContainer
@@ -192,33 +214,34 @@ const LoginModal: FC<LoginModalProps> = ({
                     </AppContainer>
                   </AppPreviewContainer>
                 )}
-
-              <MainFrameContainer>
-                <iframe
-                  src={`
-                    ${WALLET_CONFIG_URL[config.network]}/auth?app=${window.location.origin}&version=4
-                  `}
-                  allow="clipboard-write; clipboard-read; publickey-credentials-create; publickey-credentials-get; display-capture; *"
-                  ref={iframeRef}
-                  style={{
-                    border: 'none',
-                    width: '100%',
-                    height: universalAccount
-                      ? modal?.connectedLayout ===
-                        PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
-                        ? '100vh'
-                        : '675px'
-                      : '100vh',
-                    borderRadius: universalAccount ? '10px' : '0px',
-                  }}
-                  onLoad={() => {
-                    setTimeout(() => {
-                      setIframeLoading(false);
-                      sendWalletConfig();
-                    }, 100);
-                  }}
-                />
-              </MainFrameContainer>
+              {(
+                <MainFrameContainer>
+                  <iframe
+                    src={`
+                      ${WALLET_CONFIG_URL[config.network]}/auth?app=${window.location.origin}&version=5
+                    `}
+                    allow="clipboard-write; clipboard-read; publickey-credentials-create; publickey-credentials-get; display-capture; *"
+                    ref={iframeRef}
+                    style={{
+                      border: 'none',
+                      width: '100%',
+                      height: universalAccount
+                        ? modal?.connectedLayout ===
+                          PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
+                          ? '100vh'
+                          : '675px'
+                        : '100vh',
+                      borderRadius: universalAccount ? '10px' : '0px',
+                    }}
+                    onLoad={() => {
+                      setTimeout(() => {
+                        setIframeLoading(false);
+                        sendWalletConfig();
+                      }, 100);
+                    }}
+                  />
+                </MainFrameContainer>
+              )}
             </SplitContainer>
           </FrameSubContainer>
         </FrameContainer>
@@ -321,6 +344,15 @@ const LoadingTextContainer = styled.div`
   height: 100%;
 `;
 
+const LoadingTextContainerSecondary = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  height: 600px;
+`;
+
 const LoadingText = styled.p`
   font-size: 18px;
   font-weight: 500;
@@ -334,6 +366,20 @@ const LoadingText = styled.p`
 const FrameLoadingContainer = styled.div`
   height: 100%;
   width: 100%;
+  flex-direction: column;
+  display: flex;
+  padding: var(--spacing-xxs) var(--spacing-xxs);
+  color: var(--pw-int-text-primary-color);
+  background-color: var(--pw-int-bg-primary-color);
+  box-sizing: border-box;
+`;
+
+const FrameLoadingContainerSecondary = styled.div`
+  height: 600px;
+  width: 85%;
+  margin-top: 25px;
+  align-self: center;
+  border-radius: 24px;
   flex-direction: column;
   display: flex;
   padding: var(--spacing-xxs) var(--spacing-xxs);
