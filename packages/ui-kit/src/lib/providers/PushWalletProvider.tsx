@@ -26,6 +26,13 @@ interface CustomTheme extends DefaultTheme {
 const loginDefaultConfig = {
   email: true,
   google: true,
+  phone: true,
+  socials: {
+    discord: true,
+    github: true,
+    x: true,
+    bluesky: true,
+  },
   wallet: {
     enabled: true,
   },

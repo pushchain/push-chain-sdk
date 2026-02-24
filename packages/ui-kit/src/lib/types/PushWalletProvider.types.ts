@@ -5,6 +5,13 @@ import { ThemeOverrides } from '../styles/token';
 export type LoginMethodConfig = {
   email?: boolean;
   google?: boolean;
+  phone?: boolean;
+  socials?: {
+    discord?: boolean;
+    github?: boolean;
+    x?: boolean;
+    bluesky?: boolean;
+  };
   wallet?: {
     enabled?: boolean;
     chains?: (typeof PushUI.CONSTANTS.CHAIN)[keyof typeof PushUI.CONSTANTS.CHAIN][];

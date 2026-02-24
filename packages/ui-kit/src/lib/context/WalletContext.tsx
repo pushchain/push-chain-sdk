@@ -587,7 +587,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         },
       });
     }
-  }, [isIframeLoading])
+  }, [isIframeLoading, externalWallet])
 
   useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
