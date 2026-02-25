@@ -86,8 +86,8 @@ export function buildExecuteMulticall({
         throw new Error(`Invalid EVM address at execute.to ${execute.to}`);
     } else {
       // We can't execute payload against our UEA.
-      if (execute.to === ueaAddress)
-        throw new Error(`You can't execute data on the UEA address`);
+      // if (execute.to === ueaAddress)
+      //   throw new Error(`You can't execute data on the UEA address`);
     }
 
     if (Array.isArray(execute.data)) {

@@ -227,9 +227,9 @@ export interface TrackTransactionOptions {
   chain?: import('../constants/enums').CHAIN;
 
   /**
-   * Progress callback for tracking events
+   * Progress callback for tracking events (replays SEND-TX-* hooks)
    */
-  progress?: (event: import('../progress-hook/progress-hook.types').ProgressEvent) => void;
+  progressHook?: (event: import('../progress-hook/progress-hook.types').ProgressEvent) => void;
 
   /**
    * Whether to wait for transaction confirmation before returning.

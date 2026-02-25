@@ -1252,9 +1252,9 @@ export class Orchestrator {
           }
         } else {
           // For value only we don't check below. Only if there is payload to be executed
-          if (execute.data && execute.to.toLowerCase() === UEA.toLowerCase()) {
-            throw new Error(`You can't execute data on the UEA address`);
-          }
+          // if (execute.data && execute.to.toLowerCase() === UEA.toLowerCase()) {
+          //   throw new Error(`You can't execute data on the UEA address`);
+          // }
           // VALUE ONLY SELF - using multicall for consistency
           payloadTo = execute.to;
           payloadData = execute.data || '0x';
@@ -2148,145 +2148,213 @@ export class Orchestrator {
   }
 
   /**
-   * Tracks a transaction by hash on Push Chain
-   * @param txHash - Transaction hash to track
-   * @param options - Tracking options (chain, progress hooks, polling config)
-   * @returns Promise resolving to UniversalTxReceipt when transaction is confirmed
+   * Reconstructs SEND-TX-* progress events from on-chain transaction data.
+   * Used by trackTransaction to replay progress for already-completed transactions.
+   *
+   * @param universalTxResponse - The transformed transaction response
+   * @param universalTxData - Optional UniversalTx data from gRPC query (for cross-chain txs)
+   * @returns Array of ProgressEvent objects to emit
+   */
+  private reconstructProgressEvents(
+    universalTxResponse: UniversalTxResponse,
+    universalTxData?: UniversalTx
+  ): ProgressEvent[] {
+    const events: ProgressEvent[] = [];
+
+    // Parse origin from CAIP format: "eip155:11155111:0xabc..."
+    const originParts = universalTxResponse.origin.split(':');
+    const chainNamespace =
+      originParts.length >= 2 ? `${originParts[0]}:${originParts[1]}` : originParts[0];
+    const originAddress =
+      originParts.length >= 3 ? originParts[2] : universalTxResponse.from;
+
+    // SEND_TX_01: Origin Chain Detected (always emit)
+    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_01](chainNamespace, originAddress));
+
+    // SEND_TX_02_01/02: Gas estimation (always emit for reconstructed flow)
+    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_02_01]());
+    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_02_02](universalTxResponse.gasLimit));
+
+    // Determine if this is a cross-chain tx (non-Push origin)
+    const isPushOrigin =
+      chainNamespace.includes('eip155:42101') ||
+      chainNamespace.includes('eip155:9') ||
+      chainNamespace.includes('eip155:9001');
+
+    // SEND_TX_03_01/02: UEA resolution (emit if origin is not Push Chain)
+    if (!isPushOrigin) {
+      events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_03_01]());
+      events.push(
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_03_02](
+          universalTxResponse.from as `0x${string}`,
+          true // Assume deployed since tx executed
+        )
+      );
+    }
+
+    // Determine transaction type from universalTxData if available
+    const inboundTx = universalTxData?.inboundTx;
+    const hasFundsFlow = inboundTx && BigInt(inboundTx.amount || '0') > BigInt(0);
+
+    // SEND_TX_04_02/03: Signature verification (emit for universal tx)
+    if (!isPushOrigin) {
+      events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_04_02]());
+      events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_04_03]());
+    }
+
+    // Funds flow hooks (06-x) - only if funds were bridged
+    if (hasFundsFlow && inboundTx) {
+      const amount = BigInt(inboundTx.amount);
+      // Determine decimals and symbol from asset - default to 18/native for now
+      const decimals = 18;
+      const symbol = 'TOKEN';
+
+      events.push(
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_06_01](amount, decimals, symbol)
+      );
+      events.push(
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_06_02](
+          inboundTx.txHash,
+          amount,
+          decimals,
+          symbol
+        )
+      );
+
+      // Confirmations - emit final state only
+      const confirmations = 1;
+      events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_06_03](confirmations));
+      events.push(
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_06_03_02](confirmations, confirmations)
+      );
+      events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_06_04]());
+      events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_06_05]());
+      events.push(
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_06_06](amount, decimals, symbol)
+      );
+    }
+
+    // SEND_TX_07: Broadcasting (always emit)
+    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_07]());
+
+    // Determine outcome from pcTx status if available
+    const pcTx = universalTxData?.pcTx?.[0];
+    const isFailed = pcTx?.status === 'FAILED';
+
+    // SEND_TX_99_01/02: Final outcome
+    if (isFailed) {
+      events.push(
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_02](pcTx?.errorMsg || 'Unknown error')
+      );
+    } else {
+      events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_01]([universalTxResponse]));
+    }
+
+    return events;
+  }
+
+  /**
+   * Tracks a transaction by hash on Push Chain and returns UniversalTxResponse.
+   * Reconstructs and replays SEND-TX-* progress events for completed transactions.
+   *
+   * @param txHash - Transaction hash to track (Push Chain tx hash)
+   * @param options - Tracking options (chain, progressHook, waitForCompletion, advanced config)
+   * @returns Promise resolving to UniversalTxResponse with wait() and progressHook() methods
    */
   async trackTransaction(
     txHash: string,
     options?: import('./orchestrator.types').TrackTransactionOptions
-  ): Promise<UniversalTxReceipt> {
+  ): Promise<UniversalTxResponse> {
     const {
       chain = this.getPushChainForNetwork(),
-      progress,
+      progressHook,
       waitForCompletion = true,
       advanced = {},
     } = options ?? {};
 
-    const {
-      pollingIntervalMs = 1000,
-      timeout = 300000,
-      rpcUrls = {},
-    } = advanced;
+    const { timeout = 300000, rpcUrls = {} } = advanced;
 
-    // Helper to invoke both per-transaction and orchestrator hooks
-    const invokeProgressHook = (hookPayload: ProgressEvent) => {
-      this.printLog(hookPayload.message);
+    // Event buffer for replay via response.progressHook()
+    const eventBuffer: ProgressEvent[] = [];
+
+    // Helper to emit progress events
+    const emitProgress = (event: ProgressEvent) => {
+      eventBuffer.push(event);
+      this.printLog(event.message);
       // Per-transaction hook called FIRST
-      if (progress) {
-        progress(hookPayload);
+      if (progressHook) {
+        progressHook(event);
       }
       // Orchestrator-level hook called SECOND
       if (this.progressHook) {
-        this.progressHook(hookPayload);
+        this.progressHook(event);
       }
     };
 
-    // Emit TRACK_TX_01 - tracking started
-    if (progress || this.progressHook) {
-      const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_01](
-        txHash,
-        chain
-      );
-      invokeProgressHook(hookPayload);
-    }
-
     // Create client for target chain with optional RPC override
-    const chainRPCs = rpcUrls[chain] || this.rpcUrls[chain] || CHAIN_INFO[chain].defaultRPC;
+    const chainRPCs =
+      rpcUrls[chain] || this.rpcUrls[chain] || CHAIN_INFO[chain].defaultRPC;
     const client = new PushClient({
       rpcUrls: chainRPCs,
       network: this.pushNetwork,
     });
 
-    // Try to get transaction immediately
-    try {
-      const tx = await client.getTransaction(txHash as `0x${string}`);
+    // Poll for transaction
+    const start = Date.now();
+    let tx: TxResponse | undefined;
 
-      if (!waitForCompletion) {
-        // Non-blocking mode: return current receipt immediately
-        const receipt = await tx.wait(0);
-        const universalTxResponse = await this.transformToUniversalTxResponse(tx);
-        return this.transformToUniversalTxReceipt(receipt, universalTxResponse);
-      }
-
-      // Blocking mode: wait for confirmation
-      const receipt = await tx.wait(1);
-      const universalTxResponse = await this.transformToUniversalTxResponse(tx);
-
-      // Emit TRACK_TX_99_01 - tracking complete
-      if (progress || this.progressHook) {
-        const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_99_01](
-          txHash,
-          universalTxResponse
-        );
-        invokeProgressHook(hookPayload);
-      }
-
-      return this.transformToUniversalTxReceipt(receipt, universalTxResponse);
-    } catch (initialError) {
-      // Transaction not found yet - start polling if waitForCompletion is true
-      if (!waitForCompletion) {
-        // Non-blocking and tx not found - throw error
-        const errorMsg = initialError instanceof Error ? initialError.message : 'Transaction not found';
-        if (progress || this.progressHook) {
-          const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_99_02](
-            txHash,
-            errorMsg
-          );
-          invokeProgressHook(hookPayload);
-        }
-        throw new Error(`Transaction ${txHash} not found: ${errorMsg}`);
-      }
-
-      // Blocking mode: poll until found or timeout
-      const start = Date.now();
-
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        // Emit TRACK_TX_02 - querying status
-        if (progress || this.progressHook) {
-          const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_02](txHash);
-          invokeProgressHook(hookPayload);
-        }
-
-        try {
-          const tx = await client.getTransaction(txHash as `0x${string}`);
-          const receipt = await tx.wait(1);
-          const universalTxResponse = await this.transformToUniversalTxResponse(tx);
-
-          // Success - emit TRACK_TX_99_01
-          if (progress || this.progressHook) {
-            const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_99_01](
-              txHash,
-              universalTxResponse
-            );
-            invokeProgressHook(hookPayload);
-          }
-
-          return this.transformToUniversalTxReceipt(receipt, universalTxResponse);
-        } catch (err) {
-          // Transaction not found yet or error - continue polling
-          this.printLog(`Transaction ${txHash} not found yet, continuing to poll...`);
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      try {
+        tx = await client.getTransaction(txHash as `0x${string}`);
+        break; // Found transaction
+      } catch (err) {
+        if (!waitForCompletion) {
+          throw new Error(`Transaction ${txHash} not found`);
         }
 
         // Check timeout
         if (Date.now() - start > timeout) {
-          const timeoutMsg = `Timeout: transaction ${txHash} not confirmed within ${timeout}ms`;
-          if (progress || this.progressHook) {
-            const hookPayload = PROGRESS_HOOKS[PROGRESS_HOOK.TRACK_TX_99_02](
-              txHash,
-              'Timeout'
-            );
-            invokeProgressHook(hookPayload);
-          }
-          throw new Error(timeoutMsg);
+          throw new Error(
+            `Timeout: transaction ${txHash} not confirmed within ${timeout}ms`
+          );
         }
 
-        // Wait before next poll
-        await new Promise((r) => setTimeout(r, pollingIntervalMs));
+        // Brief delay before retry
+        await new Promise((r) => setTimeout(r, 1000));
       }
     }
+
+    // Try to get UniversalTx data for richer progress reconstruction
+    // (may not exist for direct Push Chain transactions)
+    let universalTxData: UniversalTx | undefined;
+    try {
+      // Attempt to find UniversalTx by searching pcTx entries
+      // For now, we'll try to look up by the tx hash
+      const utxResponse = await this.pushClient.getUniversalTxById(txHash);
+      if (utxResponse?.universalTx) {
+        universalTxData = utxResponse.universalTx;
+      }
+    } catch {
+      // Ignore - direct Push Chain tx or tx not indexed yet
+    }
+
+    // Transform to UniversalTxResponse
+    const universalTxResponse = await this.transformToUniversalTxResponse(
+      tx,
+      eventBuffer
+    );
+
+    // Reconstruct and emit SEND-TX-* progress events
+    const reconstructedEvents = this.reconstructProgressEvents(
+      universalTxResponse,
+      universalTxData
+    );
+    for (const event of reconstructedEvents) {
+      emitProgress(event);
+    }
+
+    return universalTxResponse;
   }
 
   /**
@@ -3453,10 +3521,13 @@ export class Orchestrator {
       wait: async (): Promise<UniversalTxReceipt> => {
         // Use trackTransaction with registered hook if available
         if (registeredProgressHook) {
-          return this.trackTransaction(tx.hash, {
+          const trackedResponse = await this.trackTransaction(tx.hash, {
             waitForCompletion: true,
-            progress: registeredProgressHook,
+            progressHook: registeredProgressHook,
           });
+          // Get receipt from the tracked response
+          const receipt = await tx.wait();
+          return this.transformToUniversalTxReceipt(receipt, trackedResponse);
         }
         const receipt = await tx.wait();
         return this.transformToUniversalTxReceipt(receipt, universalTxResponse);

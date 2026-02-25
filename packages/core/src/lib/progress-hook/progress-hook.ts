@@ -219,48 +219,6 @@ const RAW_HOOKS: {
     response: null,
     level: 'ERROR',
   }),
-
-  // Transaction tracking flow
-  [PROGRESS_HOOK.TRACK_TX_01]: (txHash: string, chain: string) => ({
-    id: PROGRESS_HOOK.TRACK_TX_01,
-    title: 'Tracking Started',
-    message: `Starting to track transaction ${txHash} on ${
-      Utils.chains.getChainName(chain) ?? chain
-    }`,
-    response: { txHash, chain },
-    level: 'INFO',
-  }),
-  [PROGRESS_HOOK.TRACK_TX_02]: (txHash: string) => ({
-    id: PROGRESS_HOOK.TRACK_TX_02,
-    title: 'Querying Status',
-    message: `Polling for transaction ${txHash} status`,
-    response: { txHash },
-    level: 'INFO',
-  }),
-  [PROGRESS_HOOK.TRACK_TX_03]: (txHash: string, status: string) => ({
-    id: PROGRESS_HOOK.TRACK_TX_03,
-    title: 'Status Update',
-    message: `Transaction ${txHash} status: ${status}`,
-    response: { txHash, status },
-    level: 'INFO',
-  }),
-  [PROGRESS_HOOK.TRACK_TX_99_01]: (
-    txHash: string,
-    receipt: UniversalTxResponse
-  ) => ({
-    id: PROGRESS_HOOK.TRACK_TX_99_01,
-    title: 'Tracking Complete',
-    message: `Transaction ${txHash} confirmed successfully`,
-    response: receipt,
-    level: 'SUCCESS',
-  }),
-  [PROGRESS_HOOK.TRACK_TX_99_02]: (txHash: string, reason: string) => ({
-    id: PROGRESS_HOOK.TRACK_TX_99_02,
-    title: 'Tracking Failed',
-    message: `Failed to track transaction ${txHash}: ${reason}`,
-    response: { txHash, reason },
-    level: 'ERROR',
-  }),
 };
 
 // Build final hooks with timestamp injection

@@ -57,7 +57,7 @@ describe('trackTransaction E2E', () => {
     console.log('Shared TX confirmed!\n');
   }, 120000);
 
-  it('should track a transaction and return receipt', async () => {
+  it('should track a transaction and return UniversalTxResponse with SEND-TX-* hooks', async () => {
     if (!pushClient || !sharedTxResponse) {
       console.log('Setup failed, skipping test');
       return;
@@ -66,11 +66,11 @@ describe('trackTransaction E2E', () => {
     const trackProgressEvents: ProgressEvent[] = [];
 
     console.log('\n=== Tracking Transaction ===');
-    const receipt = await pushClient.universal.trackTransaction(
+    const response = await pushClient.universal.trackTransaction(
       sharedTxResponse.hash,
       {
         waitForCompletion: true,
-        progress: (event) => {
+        progressHook: (event) => {
           console.log(`[TRACK] ${event.id}: ${event.message}`);
           trackProgressEvents.push(event);
         },
@@ -80,16 +80,20 @@ describe('trackTransaction E2E', () => {
       }
     );
 
-    console.log('Receipt Hash:', receipt.hash);
-    console.log('Receipt Status:', receipt.status === 1 ? 'SUCCESS' : 'FAILED');
-    console.log('Block Number:', receipt.blockNumber.toString());
+    console.log('Response Hash:', response.hash);
+    console.log('Response Origin:', response.origin);
+    console.log('Block Number:', response.blockNumber.toString());
 
-    // Verify results
-    expect(receipt.hash).toBe(sharedTxResponse.hash);
-    expect(receipt.blockNumber).toBeGreaterThan(BigInt(0));
-    expect(receipt.status).toBe(1);
-    expect(trackProgressEvents.some(e => e.id === 'TRACK-TX-01')).toBe(true);
-    expect(trackProgressEvents.some(e => e.id === 'TRACK-TX-99-01')).toBe(true);
+    // Verify results - now returns UniversalTxResponse
+    expect(response.hash).toBe(sharedTxResponse.hash);
+    expect(response.blockNumber).toBeGreaterThan(BigInt(0));
+    expect(typeof response.wait).toBe('function'); // Has wait() method
+    expect(typeof response.progressHook).toBe('function'); // Has progressHook() method
+
+    // Verify SEND-TX-* hooks are emitted (NOT TRACK-TX-*)
+    expect(trackProgressEvents.some((e) => e.id === 'SEND-TX-01')).toBe(true);
+    expect(trackProgressEvents.some((e) => e.id === 'SEND-TX-99-01')).toBe(true);
+    expect(trackProgressEvents.some((e) => e.id.startsWith('TRACK-TX'))).toBe(false);
 
     console.log('✓ All assertions passed');
   }, 60000);
@@ -123,43 +127,44 @@ describe('trackTransaction E2E', () => {
     const waitReceipt = await sharedTxResponse.wait();
     console.log('wait() receipt hash:', waitReceipt.hash);
 
-    // Get receipt using trackTransaction
-    const trackReceipt = await pushClient.universal.trackTransaction(
+    // Get response using trackTransaction (now returns UniversalTxResponse)
+    const trackResponse = await pushClient.universal.trackTransaction(
       sharedTxResponse.hash,
       { waitForCompletion: true }
     );
-    console.log('trackTransaction receipt hash:', trackReceipt.hash);
+    console.log('trackTransaction response hash:', trackResponse.hash);
 
-    // Compare results
-    expect(trackReceipt.hash).toBe(waitReceipt.hash);
-    expect(trackReceipt.status).toBe(waitReceipt.status);
-    expect(trackReceipt.blockNumber).toBe(waitReceipt.blockNumber);
-    expect(trackReceipt.gasUsed).toBe(waitReceipt.gasUsed);
+    // Compare core identifiers - trackTransaction returns UniversalTxResponse
+    expect(trackResponse.hash).toBe(waitReceipt.hash);
+    expect(trackResponse.blockNumber).toBe(waitReceipt.blockNumber);
 
-    console.log('✓ wait() and trackTransaction return identical results');
+    // Verify trackResponse has wait() method
+    expect(typeof trackResponse.wait).toBe('function');
+
+    console.log('✓ wait() and trackTransaction return consistent results');
   }, 60000);
 
-  it('should work without progress hook', async () => {
+  it('should work without progressHook', async () => {
     if (!pushClient || !sharedTxResponse) {
       console.log('Setup failed, skipping test');
       return;
     }
 
-    console.log('\n=== Testing without progress hook ===');
+    console.log('\n=== Testing without progressHook ===');
 
-    // Track without progress hook - should not throw
-    const receipt = await pushClient.universal.trackTransaction(
+    // Track without progressHook - should not throw
+    const response = await pushClient.universal.trackTransaction(
       sharedTxResponse.hash,
       {
         waitForCompletion: true,
-        // No progress hook provided
+        // No progressHook provided
       }
     );
 
-    expect(receipt.hash).toBe(sharedTxResponse.hash);
-    expect(receipt.status).toBe(1);
+    expect(response.hash).toBe(sharedTxResponse.hash);
+    expect(typeof response.wait).toBe('function');
 
-    console.log('✓ Works without progress hook');
+    console.log('✓ Works without progressHook');
   }, 60000);
 
   it('should track same transaction multiple times', async () => {
@@ -172,33 +177,62 @@ describe('trackTransaction E2E', () => {
     console.log('TX Hash:', sharedTxResponse.hash);
 
     // Track the same transaction 3 times (no new transaction needed!)
-    const receipt1 = await pushClient.universal.trackTransaction(
+    const response1 = await pushClient.universal.trackTransaction(
       sharedTxResponse.hash,
       { waitForCompletion: true }
     );
-    console.log('Track 1 - Hash:', receipt1.hash, 'Status:', receipt1.status);
+    console.log('Track 1 - Hash:', response1.hash, 'Origin:', response1.origin);
 
-    const receipt2 = await pushClient.universal.trackTransaction(
+    const response2 = await pushClient.universal.trackTransaction(
       sharedTxResponse.hash,
       { waitForCompletion: true }
     );
-    console.log('Track 2 - Hash:', receipt2.hash, 'Status:', receipt2.status);
+    console.log('Track 2 - Hash:', response2.hash, 'Origin:', response2.origin);
 
-    const receipt3 = await pushClient.universal.trackTransaction(
+    const response3 = await pushClient.universal.trackTransaction(
       sharedTxResponse.hash,
       { waitForCompletion: false } // Non-blocking since already confirmed
     );
-    console.log('Track 3 - Hash:', receipt3.hash, 'Status:', receipt3.status);
+    console.log('Track 3 - Hash:', response3.hash, 'Origin:', response3.origin);
 
     // All should return same results
-    expect(receipt1.hash).toBe(receipt2.hash);
-    expect(receipt2.hash).toBe(receipt3.hash);
-    expect(receipt1.status).toBe(receipt2.status);
-    expect(receipt2.status).toBe(receipt3.status);
-    expect(receipt1.blockNumber).toBe(receipt2.blockNumber);
-    expect(receipt2.blockNumber).toBe(receipt3.blockNumber);
+    expect(response1.hash).toBe(response2.hash);
+    expect(response2.hash).toBe(response3.hash);
+    expect(response1.origin).toBe(response2.origin);
+    expect(response2.origin).toBe(response3.origin);
+    expect(response1.blockNumber).toBe(response2.blockNumber);
+    expect(response2.blockNumber).toBe(response3.blockNumber);
 
     console.log('✓ Multiple tracks return consistent results');
+  }, 60000);
+
+  it('should replay events via response.progressHook()', async () => {
+    if (!pushClient || !sharedTxResponse) {
+      console.log('Setup failed, skipping test');
+      return;
+    }
+
+    console.log('\n=== Testing event replay via progressHook() ===');
+
+    // Track without inline progressHook
+    const response = await pushClient.universal.trackTransaction(
+      sharedTxResponse.hash,
+      { waitForCompletion: true }
+    );
+
+    // Now register a progressHook to replay buffered events
+    const replayedEvents: ProgressEvent[] = [];
+    response.progressHook((event) => {
+      console.log(`[REPLAY] ${event.id}: ${event.message}`);
+      replayedEvents.push(event);
+    });
+
+    // Verify events were replayed
+    expect(replayedEvents.length).toBeGreaterThan(0);
+    expect(replayedEvents.some((e) => e.id === 'SEND-TX-01')).toBe(true);
+    expect(replayedEvents.some((e) => e.id === 'SEND-TX-99-01')).toBe(true);
+
+    console.log(`✓ Replayed ${replayedEvents.length} events`);
   }, 60000);
 
   it('should respect custom timeout setting', async () => {
@@ -209,7 +243,8 @@ describe('trackTransaction E2E', () => {
 
     console.log('\n=== Testing custom timeout ===');
 
-    const nonExistentHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+    const nonExistentHash =
+      '0x0000000000000000000000000000000000000000000000000000000000000001';
     const shortTimeout = 2000; // 2 seconds
 
     const start = Date.now();
@@ -219,7 +254,6 @@ describe('trackTransaction E2E', () => {
         waitForCompletion: true,
         advanced: {
           timeout: shortTimeout,
-          pollingIntervalMs: 500,
         },
       })
     ).rejects.toThrow(/Timeout/);
@@ -227,8 +261,10 @@ describe('trackTransaction E2E', () => {
     const duration = Date.now() - start;
 
     expect(duration).toBeGreaterThanOrEqual(shortTimeout);
-    expect(duration).toBeLessThan(shortTimeout + 2000);
+    expect(duration).toBeLessThan(shortTimeout + 3000); // Allow for polling interval
 
-    console.log(`✓ Timeout respected (took ${duration}ms for ${shortTimeout}ms timeout)`);
+    console.log(
+      `✓ Timeout respected (took ${duration}ms for ${shortTimeout}ms timeout)`
+    );
   }, 30000);
 });
