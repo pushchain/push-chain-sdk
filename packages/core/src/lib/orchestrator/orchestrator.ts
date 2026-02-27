@@ -5,8 +5,10 @@ import {
   Abi,
   bytesToHex,
   decodeAbiParameters,
+  decodeEventLog,
   decodeFunctionData,
   encodeAbiParameters,
+  encodeFunctionData,
   encodePacked,
   getAddress,
   getCreate2Address,
@@ -25,9 +27,11 @@ import {
   SVM_GATEWAY_IDL,
   UEA_SVM,
   UNIVERSAL_GATEWAY_V0,
+  UNIVERSAL_GATEWAY_PC,
+  UNIVERSAL_CORE_EVM,
 } from '../constants/abi';
 import { UEA_EVM } from '../constants/abi/uea.evm';
-import { CHAIN_INFO, UEA_PROXY, VM_NAMESPACE } from '../constants/chain';
+import { CHAIN_INFO, UEA_PROXY, VM_NAMESPACE, SYNTHETIC_PUSH_ERC20, UNIVERSAL_GATEWAY_ADDRESSES } from '../constants/chain';
 import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
 import {
   ConversionQuote,
@@ -59,15 +63,40 @@ import { EvmClient } from '../vm-client/evm-client';
 import { SvmClient } from '../vm-client/svm-client';
 import { TxResponse } from '../vm-client/vm-client.types';
 import {
+  ChainTarget,
   ExecuteParams,
   MultiCall,
   Signature,
+  UniversalExecuteParams,
+  UniversalOutboundTxRequest,
   UniversalTokenTxRequest,
   UniversalTxReceipt,
   UniversalTxRequest,
   UniversalTxResponse,
+  PreparedUniversalTx,
+  ChainedTransactionBuilder,
+  MultiChainTxResponse,
 } from './orchestrator.types';
-import { buildExecuteMulticall } from './payload-builders';
+import {
+  buildExecuteMulticall,
+  buildCeaMulticallPayload,
+  buildOutboundRequest,
+  buildSendUniversalTxFromCEA,
+  buildApproveAndInteract,
+} from './payload-builders';
+import {
+  TransactionRoute,
+  detectRoute,
+  validateRouteParams,
+  isChainTarget,
+  isSupportedExternalChain,
+} from './route-detector';
+import {
+  getCEAAddress,
+  chainSupportsCEA,
+  getCEAFactoryAddress,
+} from './cea-utils';
+import { DEFAULT_OUTBOUND_GAS_LIMIT, ZERO_ADDRESS } from '../constants/selectors';
 
 export class Orchestrator {
   private pushClient: PushClient;
@@ -121,9 +150,31 @@ export class Orchestrator {
   }
 
   /**
-   * Executes an interaction on Push Chain
+   * Executes a transaction with automatic route detection.
+   *
+   * Supports both simple Push Chain transactions and multi-chain routing:
+   * - Route 1 (UOA_TO_PUSH): `to` is a simple address string
+   * - Route 2 (UOA_TO_CEA): `to` is `{ address, chain }` targeting external chain
+   * - Route 3 (CEA_TO_PUSH): `from.chain` specified, targeting Push Chain
+   * - Route 4 (CEA_TO_CEA): `from.chain` specified, targeting external chain
+   *
+   * @param params - ExecuteParams or UniversalExecuteParams
+   * @returns Transaction response
    */
-  async execute(execute: ExecuteParams): Promise<UniversalTxResponse> {
+  async execute(
+    params: ExecuteParams | UniversalExecuteParams
+  ): Promise<UniversalTxResponse> {
+    // Check if this is a multi-chain request (has ChainTarget or from.chain)
+    const isMultiChain =
+      isChainTarget(params.to) || ('from' in params && params.from?.chain);
+
+    if (isMultiChain) {
+      // Delegate to multi-chain routing logic
+      return this.executeMultiChain(params as UniversalExecuteParams);
+    }
+
+    // Standard Push Chain execution (Route 1)
+    const execute = params as ExecuteParams;
     // Create buffer to collect events during execution for tx.progressHook() replay
     const eventBuffer: ProgressEvent[] = [];
 
@@ -1150,17 +1201,32 @@ export class Orchestrator {
       const requiredFunds = requiredGasFee + execute.value;
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_02_02, requiredFunds);
       /**
-       * Fetch UEA Details
+       * Fetch UEA Details (or use pre-fetched status if available)
        */
-      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_03_01);
       const UEA = this.computeUEAOffchain();
-      const [code, funds] = await Promise.all([
-        this.pushClient.publicClient.getCode({ address: UEA }),
-        this.pushClient.getBalance(UEA),
-      ]);
-      const isUEADeployed = code !== undefined;
-      const nonce = isUEADeployed ? await this.getUEANonce(UEA) : BigInt(0);
-      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_03_02, UEA, isUEADeployed);
+      let isUEADeployed: boolean;
+      let nonce: bigint;
+      let funds: bigint;
+
+      if (execute._ueaStatus) {
+        // Use pre-fetched UEA status (from executeUoaToCea)
+        isUEADeployed = execute._ueaStatus.isDeployed;
+        nonce = execute._ueaStatus.nonce;
+        funds = execute._ueaStatus.balance;
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_03_01);
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_03_02, UEA, isUEADeployed);
+      } else {
+        // Fetch UEA status from Push Chain RPC
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_03_01);
+        const [code, balance] = await Promise.all([
+          this.pushClient.publicClient.getCode({ address: UEA }),
+          this.pushClient.getBalance(UEA),
+        ]);
+        isUEADeployed = code !== undefined;
+        nonce = isUEADeployed ? await this.getUEANonce(UEA) : BigInt(0);
+        funds = balance;
+        this.executeProgressHook(PROGRESS_HOOK.SEND_TX_03_02, UEA, isUEADeployed);
+      }
       /**
        * Compute Universal Payload Hash
        */
@@ -1173,7 +1239,6 @@ export class Orchestrator {
       // Fee locking is required if UEA is not deployed OR insufficient funds
       const feeLockingRequired =
         (!isUEADeployed || funds < requiredFunds) && !feeLockTxHash;
-      // const feeLockingRequired = true;
 
       // Support multicall payload encoding when execute.data is an array
       let payloadData: `0x${string}`;
@@ -1417,7 +1482,6 @@ export class Orchestrator {
       /**
        * Non-fee-locking path: Broadcasting Tx to PC via sendUniversalTx
        */
-
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_07);
       // We don't need to query via gRPC the PC transaction since it's getting returned it here already.
       const transactions = await this.sendUniversalTx(
@@ -1448,6 +1512,785 @@ export class Orchestrator {
       // Restore original progressHook
       this.progressHook = originalHook;
     }
+  }
+
+  // ============================================================================
+  // Multi-Chain Universal Transaction Methods
+  // ============================================================================
+
+  /**
+   * Executes a universal transaction with multi-chain routing support.
+   * Supports 4 routes:
+   * - Route 1: UOA → Push Chain (existing behavior)
+   * - Route 2: UOA → CEA (outbound to external chain)
+   * - Route 3: CEA → Push Chain (inbound from external chain)
+   * - Route 4: CEA → CEA (external chain to external chain via Push)
+   *
+   * @param params - Universal execution parameters with optional chain targets
+   * @returns UniversalTxResponse with chain information
+   */
+  /**
+   * Internal method for multi-chain transaction routing.
+   * Called by execute() when ChainTarget or from.chain is detected.
+   */
+  private async executeMultiChain(
+    params: UniversalExecuteParams
+  ): Promise<UniversalTxResponse> {
+    // Validate route parameters
+    validateRouteParams(params);
+
+    // Detect the transaction route
+    const route = detectRoute(params);
+
+    this.printLog(
+      `executeMultiChain — detected route: ${route}, params: ${JSON.stringify(
+        {
+          to:
+            typeof params.to === 'string'
+              ? params.to
+              : { address: params.to.address, chain: params.to.chain },
+          from: params.from,
+          hasValue: params.value !== undefined,
+          hasData: params.data !== undefined,
+          hasFunds: params.funds !== undefined,
+        },
+        null,
+        2
+      )}`
+    );
+
+    switch (route) {
+      case TransactionRoute.UOA_TO_PUSH:
+        // Route 1: Standard Push Chain execution
+        return this.execute(this.toExecuteParams(params));
+
+      case TransactionRoute.UOA_TO_CEA:
+        // Route 2: Outbound to external chain via CEA
+        return this.executeUoaToCea(params);
+
+      case TransactionRoute.CEA_TO_PUSH:
+        // Route 3: Inbound from CEA to Push Chain
+        return this.executeCeaToPush(params);
+
+      case TransactionRoute.CEA_TO_CEA:
+        // Route 4: CEA to CEA via Push Chain
+        return this.executeCeaToCea(params);
+
+      default:
+        throw new Error(`Unknown transaction route: ${route}`);
+    }
+  }
+
+  /**
+   * Prepare a universal transaction without executing it.
+   * Returns a PreparedUniversalTx that can be chained with thenOn() or sent with send().
+   *
+   * @param params - Universal execution parameters
+   * @returns PreparedUniversalTx with chaining capabilities
+   */
+  async prepareTransaction(
+    params: UniversalExecuteParams
+  ): Promise<PreparedUniversalTx> {
+    validateRouteParams(params);
+    const route = detectRoute(params);
+
+    const { nonce, deployed } = await this.getUeaStatusAndNonce();
+    const ueaAddress = this.computeUEAOffchain();
+
+    // Build the payload based on route
+    const { payload, gatewayRequest } = await this.buildPayloadForRoute(
+      params,
+      route,
+      nonce
+    );
+
+    const gasEstimate = params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT;
+    const deadline = params.deadline || BigInt(Math.floor(Date.now() / 1000) + 3600);
+
+    return {
+      route,
+      payload,
+      gatewayRequest,
+      estimatedGas: gasEstimate,
+      nonce,
+      deadline,
+      thenOn: (nextTx: UniversalExecuteParams) =>
+        this.createChainedBuilder([params, nextTx]),
+      send: () => this.execute(params),
+    };
+  }
+
+  /**
+   * Creates a chained transaction builder for sequential multi-chain execution.
+   *
+   * @param transactions - Array of transactions to execute in sequence
+   * @returns ChainedTransactionBuilder
+   */
+  createChainedBuilder(
+    transactions: UniversalExecuteParams[]
+  ): ChainedTransactionBuilder {
+    return {
+      thenOn: (nextTx: UniversalExecuteParams) =>
+        this.createChainedBuilder([...transactions, nextTx]),
+      send: async (): Promise<MultiChainTxResponse> => {
+        const responses: UniversalTxResponse[] = [];
+
+        for (let i = 0; i < transactions.length; i++) {
+          const response = await this.execute(transactions[i]);
+          response.hopIndex = i;
+
+          if (i > 0 && responses[i - 1]) {
+            response.parentTxHash = responses[i - 1].hash;
+            responses[i - 1].childTxHash = response.hash;
+          }
+
+          responses.push(response);
+        }
+
+        return {
+          transactions: responses,
+          chains: responses.map((r) => ({
+            chain: r.chain || CHAIN.PUSH_TESTNET_DONUT,
+            hash: r.hash,
+            blockNumber: r.blockNumber,
+            status: 'confirmed' as const,
+          })),
+        };
+      },
+    };
+  }
+
+  /**
+   * Route 2: Execute outbound transaction from Push Chain to external CEA
+   *
+   * This method builds a multicall that executes on Push Chain (from UEA context):
+   * 1. Approves the gateway to spend PRC-20 tokens (if needed)
+   * 2. Calls sendUniversalTxOutbound on UniversalGatewayPC precompile
+   *
+   * The multicall is executed through the normal execute() flow which handles
+   * fee-locking on the origin chain and signature verification.
+   *
+   * @param params - Universal execution parameters with ChainTarget
+   * @returns UniversalTxResponse
+   */
+  private async executeUoaToCea(
+    params: UniversalExecuteParams
+  ): Promise<UniversalTxResponse> {
+    const target = params.to as ChainTarget;
+    const targetChain = target.chain;
+    const targetAddress = target.address;
+
+    // Validate target address is not zero address
+    if (targetAddress.toLowerCase() === ZERO_ADDRESS.toLowerCase()) {
+      throw new Error(
+        `Cannot send to zero address (0x0000...0000). ` +
+          `This would result in permanent loss of funds.`
+      );
+    }
+
+    // Validate chain supports CEA
+    if (!chainSupportsCEA(targetChain)) {
+      throw new Error(
+        `Chain ${targetChain} does not support CEA operations. ` +
+          `Supported chains: BNB_TESTNET, ETHEREUM_SEPOLIA`
+      );
+    }
+
+    // Get UEA address
+    const ueaAddress = this.computeUEAOffchain();
+
+    this.printLog(
+      `executeUoaToCea — target chain: ${targetChain}, target address: ${targetAddress}, UEA: ${ueaAddress}`
+    );
+
+    // Get CEA address for this UEA on target chain
+    const { cea: ceaAddress, isDeployed: ceaDeployed } = await getCEAAddress(
+      ueaAddress,
+      targetChain,
+      this.rpcUrls[targetChain]?.[0]
+    );
+
+    this.printLog(
+      `executeUoaToCea — CEA address: ${ceaAddress}, deployed: ${ceaDeployed}`
+    );
+
+    // Build multicall for CEA execution on target chain
+    const ceaMulticalls: MultiCall[] = [];
+
+    // If there's data to execute on target
+    if (params.data) {
+      if (Array.isArray(params.data)) {
+        // User provided explicit multicall array
+        ceaMulticalls.push(...(params.data as MultiCall[]));
+      } else {
+        // Single call with data
+        ceaMulticalls.push({
+          to: targetAddress,
+          value: params.value || BigInt(0),
+          data: params.data as `0x${string}`,
+        });
+      }
+    } else if (params.value) {
+      // Native value transfer only
+      ceaMulticalls.push({
+        to: targetAddress,
+        value: params.value,
+        data: '0x',
+      });
+    }
+
+    // Build CEA multicall payload (this is what gets executed on the external chain)
+    const ceaPayload = buildCeaMulticallPayload(ceaMulticalls);
+
+    this.printLog(
+      `executeUoaToCea — CEA payload (first 100 chars): ${ceaPayload.slice(0, 100)}...`
+    );
+
+    // Determine token to burn on Push Chain
+    // NOTE: Even for PAYLOAD-only (no value), we need a valid PRC-20 token to:
+    // 1. Look up the target chain namespace in the gateway
+    // 2. Query and pay gas fees for the relay
+    let prc20Token: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+    let burnAmount = BigInt(0);
+
+    if (params.funds?.amount) {
+      // User explicitly specified funds with token
+      const token = (params.funds as { token: MoveableToken }).token;
+      if (token) {
+        prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+        burnAmount = params.funds.amount;
+      }
+    } else if (params.value && params.value > BigInt(0)) {
+      // Native value transfer: auto-select the PRC-20 token for target chain
+      prc20Token = this.getNativePRC20ForChain(targetChain);
+      burnAmount = params.value;
+      this.printLog(
+        `executeUoaToCea — auto-selected native PRC-20 ${prc20Token} for chain ${targetChain}, amount: ${burnAmount.toString()}`
+      );
+    } else if (params.data) {
+      // PAYLOAD-only (no value transfer): still need native token for chain namespace + gas fees
+      prc20Token = this.getNativePRC20ForChain(targetChain);
+      // WORKAROUND: Push Chain precompile requires non-zero amount even for payload-only transactions.
+      // The Solidity contract supports amount=0 (TX_TYPE.GAS_AND_PAYLOAD), but the precompile rejects it.
+      // We use 1 wei as minimum to satisfy the precompile while sending essentially nothing.
+      burnAmount = BigInt(1); // Minimum 1 wei required by precompile
+      this.printLog(
+        `executeUoaToCea — PAYLOAD-only: using native PRC-20 ${prc20Token} for chain ${targetChain} with minimum 1 wei (precompile requirement)`
+      );
+    }
+
+    // Build outbound request struct for the gateway
+    // NOTE: `target` is a LEGACY/DUMMY parameter for contract compatibility.
+    // The deployed UniversalGatewayPC still expects this field, but the relay does NOT use it
+    // to determine the actual destination. The relay determines destination from the PRC-20 token's
+    // SOURCE_CHAIN_NAMESPACE. We pass the CEA address as a non-zero placeholder.
+    // This field will be removed in future contract upgrades.
+    const targetBytes = ceaAddress; // Dummy value - any non-zero address works
+
+    const outboundReq: UniversalOutboundTxRequest = buildOutboundRequest(
+      targetBytes,
+      prc20Token,
+      burnAmount,
+      params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+      ceaPayload,
+      ueaAddress // revert recipient is the UEA
+    );
+
+    this.printLog(
+      `executeUoaToCea — outbound request: ${JSON.stringify(
+        {
+          target: outboundReq.target,
+          token: outboundReq.token,
+          amount: outboundReq.amount.toString(),
+          gasLimit: outboundReq.gasLimit.toString(),
+          payloadLength: outboundReq.payload.length,
+          revertRecipient: outboundReq.revertRecipient,
+        },
+        null,
+        2
+      )}`
+    );
+
+    // Get UniversalGatewayPC address
+    const gatewayPcAddress = this.getUniversalGatewayPCAddress();
+
+    // Build the multicall that will execute ON Push Chain from UEA context
+    // This includes: 1) approve PRC-20 (if needed), 2) call sendUniversalTxOutbound
+    const pushChainMulticalls: MultiCall[] = [];
+
+    // Query gas fee from UniversalCore contract (needed for approval amount)
+    // The gateway's sendUniversalTxOutbound requires approval for BOTH:
+    // 1. burnAmount - for _burnPRC20() which burns tokens (approved on prc20Token)
+    // 2. gasFee - for _moveFees() which transfers to VaultPC (approved on gasToken)
+    // NOTE: gasToken may differ from prc20Token! The gateway fetches gasToken via:
+    //   gasToken = gasTokenPRC20ByChainNamespace[chainNamespace]
+    // So we need separate approvals if they differ.
+    let gasFee = BigInt(0);
+    let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+    if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
+      const gasLimit = outboundReq.gasLimit;
+      try {
+        // First, get the UNIVERSAL_CORE address from the gateway
+        const universalCoreAddress = await this.pushClient.readContract<`0x${string}`>({
+          address: gatewayPcAddress,
+          abi: UNIVERSAL_GATEWAY_PC,
+          functionName: 'UNIVERSAL_CORE',
+          args: [],
+        });
+
+        // Then query gas fee from UniversalCore
+        const [queriedGasToken, estimatedGasFee] = await this.pushClient.readContract<[`0x${string}`, bigint]>({
+          address: universalCoreAddress,
+          abi: UNIVERSAL_CORE_EVM,
+          functionName: 'withdrawGasFeeWithGasLimit',
+          args: [prc20Token, gasLimit],
+        });
+        gasFee = estimatedGasFee;
+        gasToken = queriedGasToken;
+        this.printLog(
+          `executeUoaToCea — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}`
+        );
+      } catch (err) {
+        // Gas fee query is required for outbound transactions
+        throw new Error(`Failed to query outbound gas fee: ${err}`);
+      }
+    }
+
+    // Add approval calls for gas token and burn token
+    // Case 1: gasToken === prc20Token → single approval for burnAmount + gasFee
+    // Case 2: gasToken !== prc20Token → two separate approvals
+    const gasTokenLower = gasToken.toLowerCase();
+    const prc20TokenLower = prc20Token.toLowerCase();
+    const sameToken = gasTokenLower === prc20TokenLower;
+
+    if (sameToken) {
+      // Same token: single approval for burnAmount + gasFee
+      const totalApprovalAmount = burnAmount + gasFee;
+      if (totalApprovalAmount > BigInt(0) && prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
+        const approveData = encodeFunctionData({
+          abi: ERC20_EVM,
+          functionName: 'approve',
+          args: [gatewayPcAddress, totalApprovalAmount],
+        });
+
+        pushChainMulticalls.push({
+          to: prc20Token,
+          value: BigInt(0),
+          data: approveData,
+        });
+      }
+    } else {
+      // Different tokens: two separate approvals
+      // 1. Approve gasFee on gasToken (for _moveFees)
+      if (gasFee > BigInt(0) && gasToken !== (ZERO_ADDRESS as `0x${string}`)) {
+        const gasApproveData = encodeFunctionData({
+          abi: ERC20_EVM,
+          functionName: 'approve',
+          args: [gatewayPcAddress, gasFee],
+        });
+
+        pushChainMulticalls.push({
+          to: gasToken,
+          value: BigInt(0),
+          data: gasApproveData,
+        });
+      }
+
+      // 2. Approve burnAmount on prc20Token (for _burnPRC20)
+      if (burnAmount > BigInt(0) && prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
+        const burnApproveData = encodeFunctionData({
+          abi: ERC20_EVM,
+          functionName: 'approve',
+          args: [gatewayPcAddress, burnAmount],
+        });
+
+        pushChainMulticalls.push({
+          to: prc20Token,
+          value: BigInt(0),
+          data: burnApproveData,
+        });
+      }
+    }
+
+    // Add the sendUniversalTxOutbound call
+    const outboundCallData = encodeFunctionData({
+      abi: UNIVERSAL_GATEWAY_PC,
+      functionName: 'sendUniversalTxOutbound',
+      args: [outboundReq],
+    });
+
+    pushChainMulticalls.push({
+      to: gatewayPcAddress,
+      value: BigInt(0),
+      data: outboundCallData,
+    });
+
+    this.printLog(
+      `executeUoaToCea — Push Chain multicall has ${pushChainMulticalls.length} operations`
+    );
+
+    // Pre-fetch UEA status to avoid redundant RPC calls in execute()
+    const [ueaCode, ueaBalance] = await Promise.all([
+      this.pushClient.publicClient.getCode({ address: ueaAddress }),
+      this.pushClient.getBalance(ueaAddress),
+    ]);
+    const isUEADeployed = ueaCode !== undefined;
+    const ueaNonce = isUEADeployed ? await this.getUEANonce(ueaAddress) : BigInt(0);
+
+    // Execute through the normal execute() flow
+    // This handles fee-locking on origin chain and executes the multicall from UEA context
+    const executeParams: ExecuteParams = {
+      to: ueaAddress, // multicall executes from UEA
+      data: pushChainMulticalls, // array triggers multicall mode
+      _ueaStatus: {
+        isDeployed: isUEADeployed,
+        nonce: ueaNonce,
+        balance: ueaBalance,
+      },
+    };
+
+    const response = await this.execute(executeParams);
+
+    // Add chain info to response
+    response.chain = targetChain;
+    response.chainNamespace = this.getChainNamespace(targetChain);
+
+    return response;
+  }
+
+  /**
+   * Route 3: Execute inbound transaction from CEA to Push Chain
+   *
+   * This route instructs CEA on an external chain to call sendUniversalTxFromCEA,
+   * bridging funds/payloads back to Push Chain.
+   *
+   * Flow:
+   * 1. Build multicall for CEA: [approve Gateway (if ERC20), sendUniversalTxFromCEA]
+   * 2. Execute via Route 2 (UOA → CEA) with PAYLOAD-only (CEA uses its own funds)
+   * 3. CEA executes multicall, Gateway locks funds, relayer mints PRC-20 on Push Chain
+   *
+   * @param params - Universal execution parameters with from.chain specified
+   * @returns UniversalTxResponse
+   */
+  private async executeCeaToPush(
+    params: UniversalExecuteParams
+  ): Promise<UniversalTxResponse> {
+    // 1. Validate and extract source chain
+    if (!params.from?.chain) {
+      throw new Error('Route 3 (CEA → Push) requires from.chain to specify the source CEA chain');
+    }
+    const sourceChain = params.from.chain;
+
+    // 2. Extract destination on Push Chain
+    // For Route 3, 'to' is a Push Chain address (string), not a ChainTarget
+    const pushDestination = params.to as `0x${string}`;
+    if (typeof params.to !== 'string') {
+      throw new Error('Route 3 (CEA → Push): to must be a Push Chain address (string), not a ChainTarget');
+    }
+
+    // 3. Get UEA address (will be recipient on Push Chain from CEA's perspective)
+    const ueaAddress = this.computeUEAOffchain();
+
+    // 4. Get CEA address on source chain
+    const { cea: ceaAddress, isDeployed: ceaDeployed } = await getCEAAddress(
+      ueaAddress,
+      sourceChain,
+      this.rpcUrls[sourceChain]?.[0]
+    );
+
+    this.printLog(`executeCeaToPush — sourceChain: ${sourceChain}, CEA: ${ceaAddress}, deployed: ${ceaDeployed}`);
+
+    if (!ceaDeployed) {
+      throw new Error(
+        `CEA not deployed on ${sourceChain}. ` +
+          `Deploy CEA first using Route 2 (UOA → CEA) before using Route 3.`
+      );
+    }
+
+    // 5. Get UniversalGateway address on source chain
+    const gatewayAddress = UNIVERSAL_GATEWAY_ADDRESSES[sourceChain];
+    if (!gatewayAddress) {
+      throw new Error(`No UniversalGateway address configured for chain ${sourceChain}`);
+    }
+
+    // 6. Build multicall for CEA to execute on source chain
+    const ceaMulticalls: MultiCall[] = [];
+
+    // Determine token and amount for sendUniversalTxFromCEA
+    let tokenAddress: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+    let amount = BigInt(0);
+    let nativeValue = BigInt(0);
+
+    if (params.funds?.amount) {
+      // ERC20 token transfer from CEA
+      const token = (params.funds as { token: MoveableToken }).token;
+      if (token) {
+        if (token.mechanism === 'native') {
+          // Native token (e.g., BNB on BSC)
+          tokenAddress = ZERO_ADDRESS as `0x${string}`;
+          amount = params.funds.amount;
+          nativeValue = params.funds.amount; // Native value to send with call
+        } else {
+          // ERC20 token - need approval
+          tokenAddress = token.address as `0x${string}`;
+          amount = params.funds.amount;
+
+          // Add approve call for ERC20
+          const approveData = encodeFunctionData({
+            abi: ERC20_EVM,
+            functionName: 'approve',
+            args: [gatewayAddress, amount],
+          });
+          ceaMulticalls.push({
+            to: tokenAddress,
+            value: BigInt(0),
+            data: approveData,
+          });
+        }
+      }
+    } else if (params.value && params.value > BigInt(0)) {
+      // Native value transfer (e.g., BNB, ETH)
+      tokenAddress = ZERO_ADDRESS as `0x${string}`;
+      amount = params.value;
+      nativeValue = params.value;
+    }
+
+    // Build payload for Push Chain execution (if any)
+    // This is what happens AFTER funds arrive on Push Chain
+    let pushPayload: `0x${string}` = '0x';
+    if (params.data) {
+      // If there's data, build multicall for Push Chain execution
+      const multicallData = buildExecuteMulticall({
+        execute: {
+          to: pushDestination,
+          value: params.value,
+          data: params.data,
+        },
+        ueaAddress,
+      });
+      pushPayload = this._buildMulticallPayloadData(pushDestination, multicallData);
+    }
+
+    // Build sendUniversalTxFromCEA call
+    // IMPORTANT: recipient MUST be UEA (anti-spoof check in contract)
+    const sendUniversalTxCall = buildSendUniversalTxFromCEA(
+      gatewayAddress,
+      ueaAddress, // recipient on Push Chain (MUST be UEA for anti-spoof)
+      tokenAddress,
+      amount,
+      pushPayload,
+      ceaAddress, // revert recipient is CEA itself
+      '0x', // signature data (empty for CEA calls)
+      nativeValue // native value to send with the call
+    );
+    ceaMulticalls.push(sendUniversalTxCall);
+
+    // 7. Execute via Route 2 (UOA → CEA)
+    // We send PAYLOAD-only (no funds) because CEA uses its OWN funds on external chain
+    const route2Params: UniversalExecuteParams = {
+      to: {
+        address: ceaAddress,
+        chain: sourceChain,
+      },
+      data: ceaMulticalls, // CEA will execute this multicall
+      // No funds/value - CEA uses its own balance on external chain
+      gasLimit: params.gasLimit,
+      deadline: params.deadline,
+    };
+
+    // Execute and return
+    const response = await this.executeUoaToCea(route2Params);
+
+    // Add Route 3 context to response
+    response.chain = sourceChain;
+    response.chainNamespace = `eip155:${CHAIN_INFO[sourceChain].chainId}`;
+
+    return response;
+  }
+
+  /**
+   * Route 4: Execute CEA to CEA transaction via Push Chain
+   *
+   * @param params - Universal execution parameters with from.chain and to.chain
+   * @returns UniversalTxResponse
+   */
+  private async executeCeaToCea(
+    params: UniversalExecuteParams
+  ): Promise<UniversalTxResponse> {
+    // CEA → CEA requires chaining Route 3 (CEA → Push) and Route 2 (Push → CEA)
+    // This is a complex flow that requires coordination
+    throw new Error(
+      'CEA → CEA transactions are not yet fully implemented. ' +
+        'Use prepareTransaction().thenOn() to chain Route 3 → Route 2 manually.'
+    );
+  }
+
+  /**
+   * Build payload for a specific route
+   */
+  private async buildPayloadForRoute(
+    params: UniversalExecuteParams,
+    route: TransactionRoute,
+    nonce: bigint
+  ): Promise<{
+    payload: `0x${string}`;
+    gatewayRequest: UniversalTxRequest | UniversalOutboundTxRequest;
+  }> {
+    const ueaAddress = this.computeUEAOffchain();
+
+    switch (route) {
+      case TransactionRoute.UOA_TO_PUSH: {
+        // Build standard Push Chain payload
+        const executeParams = this.toExecuteParams(params);
+        const multicallData = buildExecuteMulticall({
+          execute: executeParams,
+          ueaAddress,
+        });
+        const payload = this._buildMulticallPayloadData(
+          executeParams.to,
+          multicallData
+        );
+        const req = this._buildUniversalTxRequest({
+          recipient: zeroAddress,
+          token: zeroAddress,
+          amount: BigInt(0),
+          payload,
+        });
+        return { payload, gatewayRequest: req };
+      }
+
+      case TransactionRoute.UOA_TO_CEA: {
+        // Build CEA outbound payload
+        const target = params.to as ChainTarget;
+        const multicalls: MultiCall[] = [];
+
+        if (params.data) {
+          if (Array.isArray(params.data)) {
+            multicalls.push(...(params.data as MultiCall[]));
+          } else {
+            multicalls.push({
+              to: target.address,
+              value: params.value || BigInt(0),
+              data: params.data as `0x${string}`,
+            });
+          }
+        } else if (params.value) {
+          multicalls.push({
+            to: target.address,
+            value: params.value,
+            data: '0x',
+          });
+        }
+
+        const payload = buildCeaMulticallPayload(multicalls);
+
+        let prc20Token: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+        let burnAmount = BigInt(0);
+        if (params.funds?.amount) {
+          const token = (params.funds as { token: MoveableToken }).token;
+          if (token) {
+            prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+            burnAmount = params.funds.amount;
+          }
+        }
+
+        // Get CEA address on target chain - this is the recipient of the outbound tx
+        const { cea: ceaAddress } = await getCEAAddress(
+          ueaAddress,
+          target.chain,
+          this.rpcUrls[target.chain]?.[0]
+        );
+        const targetBytes = ceaAddress;
+
+        const outboundReq = buildOutboundRequest(
+          targetBytes,
+          prc20Token,
+          burnAmount,
+          params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+          payload,
+          ueaAddress
+        );
+
+        return { payload, gatewayRequest: outboundReq };
+      }
+
+      default:
+        throw new Error(`Cannot build payload for route: ${route}`);
+    }
+  }
+
+  /**
+   * Convert UniversalExecuteParams to ExecuteParams for backwards compatibility
+   */
+  private toExecuteParams(params: UniversalExecuteParams): ExecuteParams {
+    // Extract address from ChainTarget if needed
+    const to =
+      typeof params.to === 'string'
+        ? params.to
+        : (params.to as ChainTarget).address;
+
+    return {
+      to,
+      value: params.value,
+      data: params.data,
+      funds: params.funds,
+      gasLimit: params.gasLimit,
+      maxFeePerGas: params.maxFeePerGas,
+      maxPriorityFeePerGas: params.maxPriorityFeePerGas,
+      deadline: params.deadline,
+      payGasWith: params.payGasWith,
+      feeLockTxHash: params.feeLockTxHash,
+    };
+  }
+
+  /**
+   * Get the UniversalGatewayPC address for the current Push network
+   */
+  private getUniversalGatewayPCAddress(): `0x${string}` {
+    // UniversalGatewayPC is a precompile at a fixed address on Push Chain
+    // Address: 0x00000000000000000000000000000000000000C1
+    return '0x00000000000000000000000000000000000000C1';
+  }
+
+  /**
+   * Get the native PRC-20 token address on Push Chain for a target external chain.
+   * Maps chains to their native asset representations on Push Chain.
+   *
+   * @param targetChain - The target external chain
+   * @returns PRC-20 token address on Push Chain
+   */
+  private getNativePRC20ForChain(targetChain: CHAIN): `0x${string}` {
+    const synthetics = SYNTHETIC_PUSH_ERC20[this.pushNetwork];
+
+    switch (targetChain) {
+      case CHAIN.ETHEREUM_SEPOLIA:
+      case CHAIN.ETHEREUM_MAINNET:
+        return synthetics.pETH;
+      case CHAIN.ARBITRUM_SEPOLIA:
+        return synthetics.pETH_ARB;
+      case CHAIN.BASE_SEPOLIA:
+        return synthetics.pETH_BASE;
+      case CHAIN.BNB_TESTNET:
+        return synthetics.pETH_BNB;
+      case CHAIN.SOLANA_DEVNET:
+      case CHAIN.SOLANA_TESTNET:
+      case CHAIN.SOLANA_MAINNET:
+        return synthetics.pSOL;
+      default:
+        throw new Error(
+          `No native PRC-20 token mapping for chain ${targetChain}. ` +
+            `Use 'funds' parameter to specify the token explicitly.`
+        );
+    }
+  }
+
+  /**
+   * Get CAIP-2 chain namespace for a chain
+   */
+  private getChainNamespace(chain: CHAIN): string {
+    const { vm, chainId } = CHAIN_INFO[chain];
+    const namespace = VM_NAMESPACE[vm];
+    return `${namespace}:${chainId}`;
   }
 
   /**
@@ -1491,15 +2334,6 @@ export class Orchestrator {
             (nativeTokenUsdPrice - BigInt(1))) /
           nativeTokenUsdPrice;
         nativeAmount = nativeAmount + BigInt(1);
-
-        // const req: UniversalTxRequest = {
-        //   recipient: zeroAddress,
-        //   token: zeroAddress,
-        //   amount: BigInt(0),
-        //   payload: payloadBytes,
-        //   revertInstruction: revertCFG,
-        //   signatureData: '0x',
-        // } as unknown as never;
 
         const txHash: `0x${string}` = await evmClient.writeContract({
           abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
@@ -1850,7 +2684,41 @@ export class Orchestrator {
     const txBody = await this.pushClient.createCosmosTxBody(msgs);
     const txRaw = await this.pushClient.signCosmosTx(txBody);
     const tx = await this.pushClient.broadcastCosmosTx(txRaw);
+
     if (tx.code !== 0) {
+      // Try to extract ethereum tx hash even from failed tx
+      const failedEthTxHashes = tx.events
+        ?.filter((e: any) => e.type === 'ethereum_tx')
+        .flatMap((e: any) =>
+          e.attributes
+            ?.filter((attr: any) => attr.key === 'ethereumTxHash')
+            .map((attr: any) => attr.value as `0x${string}`)
+        ) ?? [];
+
+      // Print clean transaction failure summary
+      console.error(`\n${'='.repeat(80)}`);
+      console.error(`PUSH CHAIN TRANSACTION FAILED`);
+      console.error(`${'='.repeat(80)}`);
+      console.error(`\n--- TRANSACTION INFO ---`);
+      console.error(`Cosmos TX Hash: ${tx.transactionHash}`);
+      console.error(`Block Height: ${tx.height}`);
+      console.error(`TX Code: ${tx.code} (error)`);
+      console.error(`Gas Used: ${tx.gasUsed}`);
+      console.error(`Gas Wanted: ${tx.gasWanted}`);
+      if (failedEthTxHashes.length > 0) {
+        console.error(`Ethereum TX Hash(es): ${failedEthTxHashes.join(', ')}`);
+      }
+      console.error(`\n--- ERROR ---`);
+      console.error(`${tx.rawLog}`);
+      console.error(`\n--- QUERY COMMANDS ---`);
+      console.error(`# Query via Cosmos RPC:`);
+      console.error(`curl -s "https://donut.rpc.push.org/tx?hash=0x${tx.transactionHash}"`);
+      if (failedEthTxHashes.length > 0) {
+        console.error(`\n# View on explorer:`);
+        console.error(`https://explorer.push.org/tx/${failedEthTxHashes[0]}`);
+      }
+      console.error(`\n${'='.repeat(80)}\n`);
+
       throw new Error(tx.rawLog);
     }
 
@@ -1875,7 +2743,7 @@ export class Orchestrator {
     );
 
     // Pass eventBuffer only to the last transaction (which is the one returned to user)
-    return await Promise.all(
+    const responses = await Promise.all(
       evmTxs.map((tx, index) =>
         this.transformToUniversalTxResponse(
           tx,
@@ -1883,6 +2751,7 @@ export class Orchestrator {
         )
       )
     );
+    return responses;
   }
 
   /**
@@ -2371,6 +3240,228 @@ export class Orchestrator {
     } else {
       return CHAIN.PUSH_LOCALNET;
     }
+  }
+
+  // ============================================================================
+  // Outbound Transaction Tracking
+  // ============================================================================
+
+  /**
+   * Compute UniversalTxId for Push Chain originated outbound transactions.
+   * Formula: keccak256("eip155:{pushChainId}:{pushChainTxHash}")
+   *
+   * @param pushChainTxHash - The Push Chain transaction hash
+   * @returns The UniversalTxId (keccak256 hash)
+   */
+  private computeUniversalTxId(pushChainTxHash: string): string {
+    const pushChain = this.getPushChainForNetwork();
+    const pushChainId = CHAIN_INFO[pushChain].chainId;
+    const input = `eip155:${pushChainId}:${pushChainTxHash}`;
+    return keccak256(toBytes(input));
+  }
+
+  /**
+   * Extract universalsubTxId from a Push Chain transaction by fetching Cosmos events.
+   * The universalsubTxId is found in the 'outbound_created' Cosmos event (attribute 'utx_id'),
+   * NOT in the EVM event data.
+   *
+   * @param pushChainTxHash - The Push Chain transaction hash
+   * @returns The universalsubTxId or null if not found
+   */
+  async extractUniversalSubTxIdFromTx(pushChainTxHash: string): Promise<string | null> {
+    this.printLog(
+      `[extractUniversalSubTxIdFromTx] Fetching Cosmos tx for: ${pushChainTxHash}`
+    );
+
+    try {
+      // Query Cosmos transaction to get events
+      const cosmosTx = await this.pushClient.getCosmosTx(pushChainTxHash);
+
+      if (!cosmosTx?.events) {
+        this.printLog(`[extractUniversalSubTxIdFromTx] No events in Cosmos tx`);
+        return null;
+      }
+
+      // Find the 'outbound_created' event which contains utx_id
+      for (const event of cosmosTx.events) {
+        if (event.type === 'outbound_created') {
+          // Find the utx_id attribute
+          const utxIdAttr = event.attributes?.find(
+            (attr: { key: string; value?: string }) => attr.key === 'utx_id'
+          );
+          if (utxIdAttr?.value) {
+            // The utx_id is stored without 0x prefix in Cosmos events
+            const universalsubTxId = utxIdAttr.value.startsWith('0x')
+              ? utxIdAttr.value
+              : `0x${utxIdAttr.value}`;
+            this.printLog(
+              `[extractUniversalSubTxIdFromTx] Found universalsubTxId from outbound_created event: ${universalsubTxId}`
+            );
+            return universalsubTxId;
+          }
+        }
+      }
+
+      this.printLog(`[extractUniversalSubTxIdFromTx] No outbound_created event found`);
+      return null;
+    } catch (error) {
+      this.printLog(
+        `[extractUniversalSubTxIdFromTx] Error: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Convert CAIP-2 namespace (e.g., "eip155:97") to CHAIN enum
+   *
+   * @param namespace - CAIP-2 chain namespace string
+   * @returns CHAIN enum value or null if not found
+   */
+  private chainFromNamespace(namespace: string): CHAIN | null {
+    for (const [chainKey, info] of Object.entries(CHAIN_INFO)) {
+      const expected = `${VM_NAMESPACE[info.vm]}:${info.chainId}`;
+      if (expected === namespace) {
+        return chainKey as CHAIN;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Get external chain transaction details for an outbound transaction.
+   * Returns null if the relay hasn't completed yet.
+   *
+   * For Push Chain originated outbound transactions, this method:
+   * 1. Fetches the Push Chain tx receipt
+   * 2. Parses the UniversalTxOutbound event to extract universalsubTxId
+   * 3. Queries gRPC using the extracted universalsubTxId (the ID in event DATA, not topics)
+   *
+   * @param pushChainTxHash - The Push Chain transaction hash
+   * @param universalSubTxId - Optional: pre-extracted universalsubTxId (avoids fetching receipt again)
+   * @returns External chain tx details or null if not yet available
+   */
+  async getOutboundTxDetails(
+    pushChainTxHash: string,
+    universalSubTxId?: string
+  ): Promise<import('./orchestrator.types').OutboundTxDetails | null> {
+    this.printLog(`[getOutboundTxDetails] Push Chain TX: ${pushChainTxHash}`);
+
+    // Get universalsubTxId either from parameter or by extracting from tx receipt
+    let universalTxId = universalSubTxId;
+    if (!universalTxId) {
+      this.printLog(
+        `[getOutboundTxDetails] No universalsubTxId provided, extracting from tx receipt...`
+      );
+      universalTxId = (await this.extractUniversalSubTxIdFromTx(pushChainTxHash)) ?? undefined;
+    }
+
+    if (!universalTxId) {
+      // Fallback to computed ID (for backwards compatibility, though this may not work)
+      this.printLog(
+        `[getOutboundTxDetails] Could not extract universalsubTxId, falling back to computed ID`
+      );
+      universalTxId = this.computeUniversalTxId(pushChainTxHash);
+    }
+
+    // gRPC expects ID without 0x prefix (consistent with inbound ID format)
+    const queryId = universalTxId.startsWith('0x')
+      ? universalTxId.slice(2)
+      : universalTxId;
+
+    this.printLog(`[getOutboundTxDetails] Using UniversalTxId: ${queryId}`);
+
+    try {
+      const utxResponse = await this.pushClient.getUniversalTxById(queryId);
+      this.printLog(
+        `[getOutboundTxDetails] gRPC response: ${JSON.stringify(utxResponse, (k, v) => (typeof v === 'bigint' ? v.toString() : v))}`
+      );
+
+      if (!utxResponse?.universalTx?.outboundTx?.txHash) {
+        this.printLog(`[getOutboundTxDetails] No outboundTx.txHash found`);
+        return null; // Relay not yet complete
+      }
+
+      const outbound = utxResponse.universalTx.outboundTx;
+      const chain = this.chainFromNamespace(outbound.destinationChain);
+
+      if (!chain) {
+        return null; // Unknown chain
+      }
+
+      const explorerBaseUrl = CHAIN_INFO[chain]?.explorerUrl;
+      const explorerUrl = explorerBaseUrl
+        ? `${explorerBaseUrl}/tx/${outbound.txHash}`
+        : '';
+
+      return {
+        externalTxHash: outbound.txHash,
+        destinationChain: chain,
+        explorerUrl,
+        recipient: outbound.recipient,
+        amount: outbound.amount,
+        assetAddr: outbound.assetAddr,
+      };
+    } catch (error) {
+      // Query failed - tx might not be indexed yet
+      this.printLog(
+        `[getOutboundTxDetails] Error: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Wait for outbound transaction to complete and return external chain details.
+   * Uses polling with configurable initial wait, interval, and timeout.
+   *
+   * Default strategy: 30s initial wait, then poll every 2s, 60s total timeout.
+   *
+   * @param pushChainTxHash - The Push Chain transaction hash
+   * @param options - Polling configuration options
+   * @returns External chain tx details
+   * @throws Error on timeout
+   */
+  async waitForOutboundTx(
+    pushChainTxHash: string,
+    options: import('./orchestrator.types').WaitForOutboundOptions = {}
+  ): Promise<import('./orchestrator.types').OutboundTxDetails> {
+    const {
+      initialWaitMs = 30000,
+      pollingIntervalMs = 2000,
+      timeout = 60000,
+      progressHook,
+    } = options;
+
+    const startTime = Date.now();
+
+    // Emit initial waiting status
+    progressHook?.({ status: 'waiting', elapsed: 0 });
+
+    // Initial wait before first poll
+    await new Promise((resolve) => setTimeout(resolve, initialWaitMs));
+
+    // Start polling
+    progressHook?.({ status: 'polling', elapsed: Date.now() - startTime });
+
+    while (Date.now() - startTime < timeout) {
+      const details = await this.getOutboundTxDetails(pushChainTxHash);
+
+      if (details) {
+        progressHook?.({ status: 'found', elapsed: Date.now() - startTime });
+        return details;
+      }
+
+      // Wait before next poll
+      await new Promise((resolve) => setTimeout(resolve, pollingIntervalMs));
+    }
+
+    progressHook?.({ status: 'timeout', elapsed: Date.now() - startTime });
+
+    throw new Error(
+      `Timeout waiting for outbound transaction. Push Chain TX: ${pushChainTxHash}. ` +
+        `Timeout: ${timeout}ms. The relay may still be processing.`
+    );
   }
 
   /**
@@ -3752,10 +4843,11 @@ export class Orchestrator {
             idHex
           );
           universalTxObj = universalTxResp?.universalTx;
-          if (universalTxObj) break;
+          if (universalTxObj) {
+            break;
+          }
         } catch (error) {
           // ignore and retry
-          // console.log(error);
         }
 
         // Linear delay for first N attempts, then exponential backoff
@@ -3771,7 +4863,7 @@ export class Orchestrator {
       }
 
       return universalTxObj;
-    } catch {
+    } catch (err) {
       return undefined;
     }
   }

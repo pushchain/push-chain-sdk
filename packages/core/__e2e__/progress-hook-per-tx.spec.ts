@@ -165,7 +165,7 @@ describe('tx.progressHook() Method (e2e)', () => {
       sharedTxResponse.hash,
       {
         waitForCompletion: true,
-        progress: (event: ProgressEvent) => {
+        progressHook: (event: ProgressEvent) => {
           console.log(`[TRACK] ${event.id}: ${event.message}`);
           trackEvents.push(event);
         },

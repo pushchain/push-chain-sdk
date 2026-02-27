@@ -1,6 +1,13 @@
 export const ERC20_EVM = [
   {
     type: 'function',
+    name: 'balanceOf',
+    inputs: [{ name: 'account', type: 'address', internalType: 'address' }],
+    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     name: 'allowance',
     inputs: [
       { name: 'owner', type: 'address', internalType: 'address' },

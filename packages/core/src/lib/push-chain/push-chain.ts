@@ -21,6 +21,12 @@ import {
   MoveableTokenAccessor,
   PayableTokenAccessor,
 } from '../constants/tokens';
+import type {
+  UniversalExecuteParams,
+  PreparedUniversalTx,
+  ChainedTransactionBuilder,
+  UniversalTxResponse,
+} from '../orchestrator/orchestrator.types';
 
 /**
  * @class PushChain
@@ -59,13 +65,55 @@ export class PushChain {
     // pushChainClient.universal.account. not a function, just a property. => Return UEA (wallet from push chain). If on push, return Push Chain wallet itself.
     get account(): ReturnType<Orchestrator['computeUEAOffchain']>;
     /**
-     * Executes a transaction on Push Chain
+     * Executes a transaction with automatic route detection.
+     *
+     * Supports both simple Push Chain transactions and multi-chain routing:
+     * - Route 1 (UOA_TO_PUSH): `to` is a simple address string → executes on Push Chain
+     * - Route 2 (UOA_TO_CEA): `to` is `{ address, chain }` → executes on external chain via CEA
+     * - Route 3 (CEA_TO_PUSH): `from.chain` specified, targeting Push Chain
+     * - Route 4 (CEA_TO_CEA): `from.chain` specified, targeting external chain
+     *
+     * @example
+     * // Route 1: Simple Push Chain transaction
+     * await client.universal.sendTransaction({ to: '0x...', value: parseEther('0.01') });
+     *
+     * @example
+     * // Route 2: Cross-chain to external chain
+     * await client.universal.sendTransaction({
+     *   to: { address: '0x...', chain: CHAIN.BNB_TESTNET },
+     *   value: parseEther('0.001')
+     * });
      */
     sendTransaction: Orchestrator['execute'];
+    /**
+     * Prepare a universal transaction without executing it.
+     * Returns a PreparedUniversalTx that can be chained with thenOn() or sent.
+     */
+    prepareTransaction: Orchestrator['prepareTransaction'];
+    /**
+     * Execute multiple transactions in sequence across chains.
+     * Returns a builder that supports .thenOn() for chaining.
+     */
+    executeTransactions: (
+      firstTx: UniversalExecuteParams
+    ) => {
+      thenOn: (nextTx: UniversalExecuteParams) => ChainedTransactionBuilder;
+      send: () => Promise<UniversalTxResponse>;
+    };
     /**
      * Tracks a transaction by hash on Push Chain
      */
     trackTransaction: Orchestrator['trackTransaction'];
+    /**
+     * Get external chain transaction details for an outbound transaction.
+     * Returns null if the relay hasn't completed yet.
+     */
+    getOutboundTxDetails: Orchestrator['getOutboundTxDetails'];
+    /**
+     * Wait for outbound transaction to complete and return external chain details.
+     * Default: 30s initial wait, then poll every 2s, 60s total timeout.
+     */
+    waitForOutboundTx: Orchestrator['waitForOutboundTx'];
     /**
      * Signs an arbitrary message
      */
@@ -131,8 +179,34 @@ export class PushChain {
         }
         return orchestrator.execute.bind(orchestrator)(...args);
       },
+      prepareTransaction: (params: UniversalExecuteParams) => {
+        if (this.isReadMode) {
+          throw new Error(
+            'Read only mode cannot call prepareTransaction function'
+          );
+        }
+        return orchestrator.prepareTransaction.bind(orchestrator)(params);
+      },
+      executeTransactions: (firstTx: UniversalExecuteParams) => {
+        if (this.isReadMode) {
+          throw new Error(
+            'Read only mode cannot call executeTransactions function'
+          );
+        }
+        return {
+          thenOn: (nextTx: UniversalExecuteParams) =>
+            orchestrator.createChainedBuilder([firstTx, nextTx]),
+          send: () => orchestrator.execute(firstTx),
+        };
+      },
       trackTransaction: (txHash: string, options?: import('../orchestrator/orchestrator.types').TrackTransactionOptions) => {
         return orchestrator.trackTransaction.bind(orchestrator)(txHash, options);
+      },
+      getOutboundTxDetails: (pushChainTxHash: string) => {
+        return orchestrator.getOutboundTxDetails.bind(orchestrator)(pushChainTxHash);
+      },
+      waitForOutboundTx: (pushChainTxHash: string, options?: import('../orchestrator/orchestrator.types').WaitForOutboundOptions) => {
+        return orchestrator.waitForOutboundTx.bind(orchestrator)(pushChainTxHash, options);
       },
       signMessage: async (data: Uint8Array) => {
         if (this.isReadMode) {

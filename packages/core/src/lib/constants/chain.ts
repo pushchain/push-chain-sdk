@@ -131,6 +131,7 @@ export const CHAIN_INFO: Record<
     confirmations: number; // Confirmations required to mark a tx as finalized
     fastConfirmations: number; // Confirmations for GAS tx types (0, 1) - typically 0 for fast mode
     timeout: number; // Wait timeout in ms for required confirmations : Ideal value = (confirmations + 1)* Avg Chain Block time
+    explorerUrl?: string; // Block explorer base URL for transaction links
     dex?: {
       uniV3Factory?: `0x${string}`;
       uniV3QuoterV2?: `0x${string}`;
@@ -146,6 +147,7 @@ export const CHAIN_INFO: Record<
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 30000,
+    explorerUrl: 'https://explorer.push.org',
   },
   [CHAIN.PUSH_TESTNET_DONUT]: {
     chainId: '42101',
@@ -154,6 +156,7 @@ export const CHAIN_INFO: Record<
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 30000,
+    explorerUrl: 'https://explorer.donut.push.org',
     // Push Chain AMM - Uniswap V3
     dex: {
       uniV3Factory: '0x81b8Bca02580C7d6b636051FDb7baAC436bFb454',
@@ -168,6 +171,7 @@ export const CHAIN_INFO: Record<
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 30000,
+    explorerUrl: 'http://localhost:8545',
   },
 
   // Ethereum
@@ -179,6 +183,7 @@ export const CHAIN_INFO: Record<
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 60000,
+    explorerUrl: 'https://etherscan.io',
   },
   [CHAIN.ETHEREUM_SEPOLIA]: {
     chainId: '11155111',
@@ -192,6 +197,7 @@ export const CHAIN_INFO: Record<
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 120000,
+    explorerUrl: 'https://sepolia.etherscan.io',
     dex: {
       uniV3Factory: '0x0227628f3F023bb0B980b67D528571c95c6DaC1c',
       uniV3QuoterV2: '0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3',
@@ -210,6 +216,7 @@ export const CHAIN_INFO: Record<
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 30000,
+    explorerUrl: 'https://sepolia.arbiscan.io',
     dex: {
       uniV3Factory: '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
       uniV3QuoterV2: '0xTBD',
@@ -228,6 +235,7 @@ export const CHAIN_INFO: Record<
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 30000,
+    explorerUrl: 'https://sepolia.basescan.org',
     dex: {
       uniV3Factory: '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
       uniV3QuoterV2: '0xTBD',
@@ -246,6 +254,7 @@ export const CHAIN_INFO: Record<
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 30000,
+    explorerUrl: 'https://testnet.bscscan.com',
   },
 
   // Solana
@@ -257,6 +266,7 @@ export const CHAIN_INFO: Record<
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 15000,
+    explorerUrl: 'https://explorer.solana.com',
   },
   [CHAIN.SOLANA_TESTNET]: {
     chainId: '4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z',
@@ -266,6 +276,7 @@ export const CHAIN_INFO: Record<
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 55000,
+    explorerUrl: 'https://explorer.solana.com?cluster=testnet',
   },
   [CHAIN.SOLANA_DEVNET]: {
     chainId: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
@@ -278,6 +289,7 @@ export const CHAIN_INFO: Record<
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 120000,
+    explorerUrl: 'https://explorer.solana.com?cluster=devnet',
   },
 };
 
@@ -331,3 +343,128 @@ export const PUSH_CHAIN_INFO: Record<
     pushToUsdcDenominator: BigInt(1e18),
   },
 };
+
+// ============================================================================
+// Multi-Chain Gateway & CEA Configuration
+// ============================================================================
+
+/**
+ * UniversalGateway contract addresses on external chains
+ * These are the contracts that handle inbound/outbound universal transactions
+ */
+export const UNIVERSAL_GATEWAY_ADDRESSES: Partial<Record<CHAIN, `0x${string}`>> = {
+  [CHAIN.ETHEREUM_SEPOLIA]: '0x4DCab975cDe839632db6695e2e936A29ce3e325E',
+  [CHAIN.BNB_TESTNET]: '0x44aFFC61983F4348DdddB886349eb992C061EaC0',
+  // Arbitrum Sepolia and Base Sepolia use same as locker for now
+  [CHAIN.ARBITRUM_SEPOLIA]: '0x2cd870e0166Ba458dEC615168Fd659AacD795f34',
+  [CHAIN.BASE_SEPOLIA]: '0xFD4fef1F43aFEc8b5bcdEEc47f35a1431479aC16',
+};
+
+/**
+ * Vault contract addresses on external chains
+ * Vaults hold locked assets for cross-chain operations
+ */
+export const VAULT_ADDRESSES: Partial<Record<CHAIN, `0x${string}`>> = {
+  [CHAIN.ETHEREUM_SEPOLIA]: '0xe8D77b8BC708aeA8E3735f686DcD33004a7Cd294',
+  [CHAIN.BNB_TESTNET]: '0xE52AC4f8DD3e0263bDF748F3390cdFA1f02be881',
+};
+
+/**
+ * CEAFactory contract addresses on external chains
+ * Factories deploy and manage Chain Executor Accounts
+ */
+export const CEA_FACTORY_ADDRESSES: Partial<Record<CHAIN, `0x${string}`>> = {
+  [CHAIN.ETHEREUM_SEPOLIA]: '0x8b9c9FfEc0507cf1BE9FCf3d91C8E1e98105D451',
+  [CHAIN.BNB_TESTNET]: '0xac52b7be327C1e6A617937CFfE90269aDccD211d',
+};
+
+/**
+ * Block explorer URLs for each chain
+ * Used to generate transaction and address URLs
+ */
+export const CHAIN_EXPLORERS: Partial<Record<CHAIN, { testnet?: string[]; mainnet?: string[] }>> = {
+  // Push Chain
+  [CHAIN.PUSH_TESTNET_DONUT]: {
+    testnet: ['https://donut.push.network'],
+  },
+  [CHAIN.PUSH_LOCALNET]: {
+    testnet: ['http://localhost:3000'],
+  },
+  // Ethereum
+  [CHAIN.ETHEREUM_MAINNET]: {
+    mainnet: ['https://etherscan.io'],
+  },
+  [CHAIN.ETHEREUM_SEPOLIA]: {
+    testnet: ['https://sepolia.etherscan.io'],
+  },
+  // Arbitrum
+  [CHAIN.ARBITRUM_SEPOLIA]: {
+    testnet: ['https://sepolia.arbiscan.io'],
+  },
+  // Base
+  [CHAIN.BASE_SEPOLIA]: {
+    testnet: ['https://sepolia.basescan.org'],
+  },
+  // BNB
+  [CHAIN.BNB_TESTNET]: {
+    testnet: ['https://testnet.bscscan.com'],
+  },
+  // Solana
+  [CHAIN.SOLANA_DEVNET]: {
+    testnet: ['https://explorer.solana.com?cluster=devnet'],
+  },
+  [CHAIN.SOLANA_TESTNET]: {
+    testnet: ['https://explorer.solana.com?cluster=testnet'],
+  },
+  [CHAIN.SOLANA_MAINNET]: {
+    mainnet: ['https://explorer.solana.com'],
+  },
+};
+
+/**
+ * Get explorer URL for a transaction on a specific chain
+ * @param txHash - Transaction hash
+ * @param chain - Target chain
+ * @param network - Network type (testnet/mainnet)
+ * @returns Explorer URL
+ */
+export function getExplorerTxUrl(
+  txHash: string,
+  chain: CHAIN,
+  network: 'testnet' | 'mainnet' = 'testnet'
+): string | undefined {
+  const explorers = CHAIN_EXPLORERS[chain];
+  const urls = network === 'mainnet' ? explorers?.mainnet : explorers?.testnet;
+  if (!urls?.length) return undefined;
+
+  // Solana uses different path format
+  if (CHAIN_INFO[chain].vm === VM.SVM) {
+    return `${urls[0]}/tx/${txHash}`;
+  }
+
+  return `${urls[0]}/tx/${txHash}`;
+}
+
+/**
+ * Get explorer URL for an address on a specific chain
+ * @param address - Address to explore
+ * @param chain - Target chain
+ * @param network - Network type (testnet/mainnet)
+ * @returns Explorer URL
+ */
+export function getExplorerAddressUrl(
+  address: string,
+  chain: CHAIN,
+  network: 'testnet' | 'mainnet' = 'testnet'
+): string | undefined {
+  const explorers = CHAIN_EXPLORERS[chain];
+  const urls = network === 'mainnet' ? explorers?.mainnet : explorers?.testnet;
+  if (!urls?.length) return undefined;
+
+  // Solana uses different path format
+  if (CHAIN_INFO[chain].vm === VM.SVM) {
+    return `${urls[0]}/address/${address}`;
+  }
+
+  return `${urls[0]}/address/${address}`;
+}

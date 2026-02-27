@@ -1,3 +1,47 @@
+import type { CHAIN } from '../constants/enums';
+
+// ============================================================================
+// Multi-Chain Transaction Types
+// ============================================================================
+
+/**
+ * Chain target for cross-chain routing (Routes 2, 3, 4)
+ * When `to` is a ChainTarget, the transaction executes on the specified external chain
+ */
+export type ChainTarget = {
+  address: `0x${string}`;
+  chain: CHAIN;
+};
+
+/**
+ * Source chain for CEA-originated transactions (Routes 3, 4)
+ * Specifies which CEA domain submits the transaction
+ * NOTE: This does NOT represent where the user signed from
+ */
+export type ChainSource = {
+  chain: CHAIN;
+};
+
+/**
+ * Union type for 'to' parameter - backwards compatible
+ * - string: Route 1 (UOA → Push)
+ * - ChainTarget: Routes 2, 3, 4 (cross-chain)
+ */
+export type UniversalTo = `0x${string}` | ChainTarget;
+
+/**
+ * Transaction route identifiers
+ */
+export type TransactionRouteType =
+  | 'UOA_TO_PUSH'
+  | 'UOA_TO_CEA'
+  | 'CEA_TO_PUSH'
+  | 'CEA_TO_CEA';
+
+// ============================================================================
+// Execute Parameters
+// ============================================================================
+
 export type ExecuteParams = {
   /**
    * The target contract or account on Push Chain.
@@ -73,6 +117,16 @@ export type ExecuteParams = {
     token?: import('../constants').MoveableToken; // if omitted, defaults to native token for origin chain
   };
 
+  /**
+   * Internal: Pre-fetched UEA status to avoid redundant RPC calls.
+   * Used by executeUoaToCea() to pass UEA state to execute().
+   * @internal
+   */
+  _ueaStatus?: {
+    isDeployed: boolean;
+    nonce: bigint;
+    balance: bigint;
+  };
 };
 
 /**
@@ -132,6 +186,20 @@ export interface UniversalTxResponse {
     data: string; // the actual raw data (was input)
     value: bigint; // the actual derived value
   };
+
+  // 9. Multi-Chain Context (NEW)
+  /** Target chain where transaction was executed */
+  chain?: CHAIN;
+  /** CAIP-2 chain namespace, e.g., "eip155:11155111" */
+  chainNamespace?: string;
+
+  // 10. Multi-Hop Tracking (NEW - for chained transactions)
+  /** Position in chain sequence (0-indexed) */
+  hopIndex?: number;
+  /** Previous transaction hash in chain */
+  parentTxHash?: string;
+  /** Next transaction hash in chain */
+  childTxHash?: string;
 }
 
 /**
@@ -168,6 +236,12 @@ export interface UniversalTxReceipt {
     from: string; // what happened on chain
     to: string; // what happened on chain
   };
+
+  // 8. Multi-Chain Context (NEW)
+  /** Target chain where transaction was executed */
+  chain?: CHAIN;
+  /** CAIP-2 chain namespace, e.g., "eip155:11155111" */
+  chainNamespace?: string;
 }
 
 /**
@@ -220,6 +294,122 @@ export interface UniversalTokenTxRequest {
 /**
  * Options for tracking a transaction by hash
  */
+// ============================================================================
+// Universal Execute Parameters (Multi-Chain Support)
+// ============================================================================
+
+/**
+ * Extended ExecuteParams for multi-chain transactions
+ * Supports all 4 routes:
+ * - Route 1: UOA → Push (to is string)
+ * - Route 2: UOA → CEA (to is ChainTarget, no from)
+ * - Route 3: CEA → Push (from.chain present, to.chain is Push)
+ * - Route 4: CEA → CEA (from.chain present, to.chain is external)
+ */
+export type UniversalExecuteParams = Omit<ExecuteParams, 'to'> & {
+  /**
+   * Source chain for CEA-originated transactions (Routes 3, 4)
+   * When present, transaction originates from CEA on this chain
+   */
+  from?: ChainSource;
+
+  /**
+   * Destination - where execution happens
+   * - string: Push Chain target (Route 1)
+   * - ChainTarget: External chain target (Routes 2, 3, 4)
+   */
+  to: UniversalTo;
+};
+
+// ============================================================================
+// Outbound Transaction Types (for Push → External Chain)
+// ============================================================================
+
+/**
+ * Request structure for sendUniversalTxOutbound on Push Chain
+ * Used for Routes 2, 3, 4 (outbound from Push)
+ *
+ * NOTE: The `target` field is a LEGACY parameter for contract compatibility.
+ * The deployed UniversalGatewayPC contract still expects this field, but it will
+ * be removed in future contract upgrades. Pass any non-zero address (e.g., CEA address).
+ * The actual destination is determined by the relay from the token's SOURCE_CHAIN_NAMESPACE.
+ */
+export interface UniversalOutboundTxRequest {
+  /**
+   * LEGACY/DUMMY: Raw destination address bytes for contract compatibility.
+   * Pass any non-zero address - this value is NOT used by the relay to determine
+   * the actual transaction destination. Will be removed in future contract upgrades.
+   */
+  target: `0x${string}`;
+  /** PRC20 token address on Push Chain to burn */
+  token: `0x${string}`;
+  /** Amount to burn (0 for no-burn, use existing CEA balance) */
+  amount: bigint;
+  /** Gas limit for fee quote (0 = default BASE_GAS_LIMIT) */
+  gasLimit: bigint;
+  /** ABI-encoded Multicall[] with MULTICALL_SELECTOR prefix */
+  payload: `0x${string}`;
+  /** Address to receive funds on revert */
+  revertRecipient: `0x${string}`;
+}
+
+// ============================================================================
+// Prepared Transaction & Chaining API
+// ============================================================================
+
+/**
+ * Prepared transaction for inspection before sending
+ * Returned by prepareTransaction()
+ */
+export interface PreparedUniversalTx {
+  /** Detected route for this transaction */
+  route: TransactionRouteType;
+  /** Encoded payload ready for submission */
+  payload: `0x${string}`;
+  /** Gateway request object (inbound or outbound) */
+  gatewayRequest: UniversalTxRequest | UniversalOutboundTxRequest;
+  /** Estimated gas for the transaction */
+  estimatedGas: bigint;
+  /** Nonce to use */
+  nonce: bigint;
+  /** Signature deadline */
+  deadline: bigint;
+  /** Chain additional transactions after this one */
+  thenOn: (nextTx: UniversalExecuteParams) => ChainedTransactionBuilder;
+  /** Execute this prepared transaction */
+  send: () => Promise<UniversalTxResponse>;
+}
+
+/**
+ * Builder for chaining multiple transactions across chains
+ * Returned by executeTransactions() and thenOn()
+ */
+export interface ChainedTransactionBuilder {
+  /** Add another transaction to the chain */
+  thenOn: (nextTx: UniversalExecuteParams) => ChainedTransactionBuilder;
+  /** Execute all chained transactions */
+  send: () => Promise<MultiChainTxResponse>;
+}
+
+/**
+ * Response for multi-chain chained transactions
+ */
+export interface MultiChainTxResponse {
+  /** All transaction responses in execution order */
+  transactions: UniversalTxResponse[];
+  /** Summary of each chain's execution */
+  chains: {
+    chain: CHAIN;
+    hash: string;
+    blockNumber: bigint;
+    status: 'pending' | 'confirmed' | 'failed';
+  }[];
+}
+
+// ============================================================================
+// Track Transaction Options
+// ============================================================================
+
 export interface TrackTransactionOptions {
   /**
    * Target chain to track transaction on. Defaults to Push Chain based on client network.
@@ -257,4 +447,53 @@ export interface TrackTransactionOptions {
      */
     rpcUrls?: Partial<Record<import('../constants/enums').CHAIN, string[]>>;
   };
+}
+
+// ============================================================================
+// Outbound Transaction Tracking
+// ============================================================================
+
+/**
+ * External chain transaction details after relay completion
+ */
+export interface OutboundTxDetails {
+  /** Transaction hash on the external chain */
+  externalTxHash: string;
+  /** Target chain enum */
+  destinationChain: import('../constants/enums').CHAIN;
+  /** Full explorer URL for the transaction */
+  explorerUrl: string;
+  /** Recipient address on the external chain */
+  recipient: string;
+  /** Amount transferred */
+  amount: string;
+  /** Asset address on external chain (address(0) for native) */
+  assetAddr: string;
+}
+
+/**
+ * Options for waitForOutboundTx polling
+ */
+export interface WaitForOutboundOptions {
+  /**
+   * Initial wait before first poll (default: 30000ms)
+   * Gives relay time to process before we start polling
+   */
+  initialWaitMs?: number;
+
+  /**
+   * Interval between polls (default: 2000ms)
+   */
+  pollingIntervalMs?: number;
+
+  /**
+   * Total timeout in milliseconds (default: 60000ms)
+   * Measured from start, includes initial wait
+   */
+  timeout?: number;
+
+  /**
+   * Progress callback for tracking events
+   */
+  progressHook?: (event: { status: 'waiting' | 'polling' | 'found' | 'timeout'; elapsed: number }) => void;
 }
