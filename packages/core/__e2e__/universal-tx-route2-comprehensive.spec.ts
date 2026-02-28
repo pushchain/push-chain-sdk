@@ -150,34 +150,10 @@ describe('Route 2: Comprehensive E2E Tests (BSC Testnet)', () => {
   // 2. PAYLOAD Only Tests
   // ============================================================================
   describe('2. PAYLOAD Only', () => {
-    it('should execute contract call without value', async () => {
-      if (skipE2E) return;
-
-      console.log('\n=== Test: Contract Call (No Value) ===');
-
-      // Encode an ERC20 transfer call
-      const payload = encodeFunctionData({
-        abi: ERC20_EVM,
-        functionName: 'transfer',
-        args: [TEST_TARGET, BigInt(1000)],
-      });
-
-      const params: UniversalExecuteParams = {
-        to: {
-          address: BSC_USDT_ADDRESS as `0x${string}`,
-          chain: CHAIN.BNB_TESTNET,
-        },
-        data: payload,
-        // No value - payload only (SDK auto-adds minimum 1 wei for precompile compatibility)
-      };
-
-      expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
-
-      const tx = await pushClient.universal.sendTransaction(params);
-
-      console.log(`Push Chain TX Hash: ${tx.hash}`);
-      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-    }, 180000);
+    // NOTE: Payload-only tests should use functions that don't require the CEA
+    // to have token balance. ERC20 `approve` is ideal because it sets allowance
+    // without requiring actual tokens. ERC20 `transfer` would fail because
+    // the CEA (msg.sender) doesn't have the tokens to transfer.
 
     it('should execute ERC20 approve call on BSC', async () => {
       if (skipE2E) return;
@@ -214,16 +190,18 @@ describe('Route 2: Comprehensive E2E Tests (BSC Testnet)', () => {
       console.log('\n=== Test: Multicall Payload ===');
 
       // Multiple operations in a single payload
+      // NOTE: Using approve calls since they don't require CEA to have token balance
       const call1 = encodeFunctionData({
         abi: ERC20_EVM,
         functionName: 'approve',
         args: [TEST_TARGET, BigInt(1000000)],
       });
 
+      const spender2 = '0x8888888888888888888888888888888888888888' as `0x${string}`;
       const call2 = encodeFunctionData({
         abi: ERC20_EVM,
-        functionName: 'transfer',
-        args: [TEST_TARGET, BigInt(100)],
+        functionName: 'approve',
+        args: [spender2, BigInt(500000)],
       });
 
       // For multicall, we use the data array format
@@ -251,24 +229,37 @@ describe('Route 2: Comprehensive E2E Tests (BSC Testnet)', () => {
   // 3. FUNDS + PAYLOAD Tests
   // ============================================================================
   describe('3. FUNDS + PAYLOAD', () => {
+    // NOTE: When combining native value transfer with non-payable function calls
+    // (like ERC20 approve/transfer), you MUST use multicall array format to
+    // separate them. Attaching value directly to a non-payable call will revert.
+    // Per SDK_Outbound_Flow_Guide.pdf Section 9.2 (Multi-Token Withdrawal).
+
     it('should transfer pBNB and execute contract call', async () => {
       if (skipE2E) return;
 
       console.log('\n=== Test: pBNB + Contract Call ===');
 
-      const payload = encodeFunctionData({
+      const approvePayload = encodeFunctionData({
         abi: ERC20_EVM,
         functionName: 'approve',
         args: [TEST_TARGET, BigInt(1000000)],
       });
 
+      // Per SDK_Outbound_Flow_Guide.pdf Section 9.2:
+      // Use multicall array to separate native transfer from non-payable call
+      // Top-level `value` burns pBNB on Push Chain → CEA receives BNB
       const params: UniversalExecuteParams = {
         to: {
-          address: BSC_USDT_ADDRESS as `0x${string}`,
+          address: TEST_TARGET,
           chain: CHAIN.BNB_TESTNET,
         },
-        value: parseEther('0.0001'), // Send 0.0001 BNB
-        data: payload, // Plus execute approve
+        value: parseEther('0.0001'), // Burns pBNB, funds CEA with BNB
+        data: [
+          // Call 1: CEA sends BNB (from burned pBNB) to recipient
+          { to: TEST_TARGET, value: parseEther('0.0001'), data: '0x' as `0x${string}` },
+          // Call 2: CEA calls approve (value=0, non-payable)
+          { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: approvePayload },
+        ],
       };
 
       expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
@@ -290,13 +281,18 @@ describe('Route 2: Comprehensive E2E Tests (BSC Testnet)', () => {
         args: [TEST_TARGET, BigInt(500000)],
       });
 
+      // Top-level `value` burns pBNB on Push Chain → CEA receives BNB
+      // Multicall array tells CEA how to use those funds
       const params: UniversalExecuteParams = {
         to: {
           address: TEST_TARGET,
           chain: CHAIN.BNB_TESTNET,
         },
-        value: parseEther('0.0001'),
+        value: parseEther('0.0001'), // Burns pBNB, funds CEA with BNB
         data: [
+          // Call 1: CEA sends BNB (from burned pBNB) to recipient
+          { to: TEST_TARGET, value: parseEther('0.0001'), data: '0x' as `0x${string}` },
+          // Call 2: CEA calls approve (value=0, non-payable)
           { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: approveCall },
         ],
       };
