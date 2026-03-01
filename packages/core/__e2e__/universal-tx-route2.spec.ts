@@ -193,8 +193,122 @@ describe('Route 2: UOA → CEA (Outbound Transactions)', () => {
         gasLimit: BigInt(2000000),
       });
 
+      console.log(`[TEST] ${new Date().toISOString()} Push Chain TX Hash: ${tx.hash}`);
+
       expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
       expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
     }, 180000);
+
+    it('should execute outbound and wait for complete sync using waitForOutboundTx', async () => {
+      if (skipE2E) return;
+
+      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+
+      console.log(`\n=== TEST: waitForOutboundTx ===`);
+      console.log(`[TEST] ${new Date().toISOString()} Sending outbound tx...`);
+
+      // Execute outbound transfer to BSC Testnet
+      const tx = await pushClient.universal.sendTransaction({
+        to: {
+          address: targetAddress,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        value: parseEther('0.00015'),
+        gasLimit: BigInt(2000000),
+      });
+
+      console.log(`[TEST] ${new Date().toISOString()} Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      // Wait for the outbound transaction to complete on BSC Testnet
+      // 60s initial wait (relay needs time), 10s poll, 5min timeout
+      const progressEvents: string[] = [];
+      console.log(`[TEST] ${new Date().toISOString()} Starting waitForOutboundTx (60s initial, 10s poll, 300s timeout)`);
+      const outboundDetails = await pushClient.universal.waitForOutboundTx(tx.hash, {
+        initialWaitMs: 60000,
+        pollingIntervalMs: 10000,
+        timeout: 300000,
+        progressHook: (event) => {
+          console.log(`[TEST:progressHook] ${new Date().toISOString()} Status: ${event.status}, Elapsed: ${event.elapsed}ms`);
+          progressEvents.push(event.status);
+        },
+      });
+
+      console.log(`[TEST] ${new Date().toISOString()} Outbound TX completed:`);
+      console.log(`  External TX Hash: ${outboundDetails.externalTxHash}`);
+      console.log(`  Destination Chain: ${outboundDetails.destinationChain}`);
+      console.log(`  Explorer URL: ${outboundDetails.explorerUrl}`);
+      console.log(`  Recipient: ${outboundDetails.recipient}`);
+      console.log(`  Amount: ${outboundDetails.amount}`);
+
+      // Verify the outbound details
+      expect(outboundDetails.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(outboundDetails.destinationChain).toBe(CHAIN.BNB_TESTNET);
+      expect(outboundDetails.explorerUrl).toContain(outboundDetails.externalTxHash);
+      expect(progressEvents).toContain('waiting');
+      expect(progressEvents).toContain('found');
+    }, 600000); // 10 min timeout for full E2E with relay
+
+    it('should execute outbound and sync using v2 API syncOutboundTransaction', async () => {
+      if (skipE2E) return;
+
+      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+
+      console.log(`\n=== TEST: syncOutboundTransaction v2 ===`);
+      console.log(`[TEST] ${new Date().toISOString()} Sending outbound tx...`);
+
+      // Execute outbound transfer to BSC Testnet
+      const tx = await pushClient.universal.sendTransaction({
+        to: {
+          address: targetAddress,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        value: parseEther('0.00015'),
+        gasLimit: BigInt(2000000),
+      });
+
+      console.log(`[TEST] ${new Date().toISOString()} Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      // Quick check: call getOutboundTxDetails immediately to see what state the tx is in
+      console.log(`[TEST] ${new Date().toISOString()} Immediate getOutboundTxDetails check (expecting null)...`);
+      const immediateCheck = await pushClient.universal.getOutboundTxDetails(tx.hash);
+      console.log(`[TEST] ${new Date().toISOString()} Immediate check result: ${JSON.stringify(immediateCheck)}`);
+
+      // Wait 5s then try again
+      console.log(`[TEST] ${new Date().toISOString()} Waiting 5s before second check...`);
+      await new Promise(resolve => setTimeout(resolve, 5000));
+
+      console.log(`[TEST] ${new Date().toISOString()} Second getOutboundTxDetails check...`);
+      let outboundDetails = await pushClient.universal.getOutboundTxDetails(tx.hash);
+      console.log(`[TEST] ${new Date().toISOString()} Second check result: ${JSON.stringify(outboundDetails)}`);
+
+      // If not ready yet, wait for it using waitForOutboundTx with reduced timeouts
+      if (!outboundDetails) {
+        console.log(`[TEST] ${new Date().toISOString()} Outbound not ready yet, starting waitForOutboundTx (60s initial, 10s poll, 300s timeout)...`);
+        const progressEvents: string[] = [];
+        outboundDetails = await pushClient.universal.waitForOutboundTx(tx.hash, {
+          initialWaitMs: 60000,
+          pollingIntervalMs: 10000,
+          timeout: 300000,
+          progressHook: (event) => {
+            console.log(`[TEST:progressHook] ${new Date().toISOString()} Status: ${event.status}, Elapsed: ${event.elapsed}ms`);
+            progressEvents.push(event.status);
+          },
+        });
+
+        // Verify progress hook was called
+        expect(progressEvents.length).toBeGreaterThan(0);
+      }
+
+      console.log(`[TEST] ${new Date().toISOString()} Outbound TX sync completed:`);
+      console.log(`  External TX Hash: ${outboundDetails.externalTxHash}`);
+      console.log(`  Destination Chain: ${outboundDetails.destinationChain}`);
+      console.log(`  Explorer URL: ${outboundDetails.explorerUrl}`);
+
+      // Verify the results
+      expect(outboundDetails.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(outboundDetails.destinationChain).toBe(CHAIN.BNB_TESTNET);
+    }, 600000); // 10 min timeout for full E2E with relay
   });
 });

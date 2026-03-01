@@ -472,6 +472,14 @@ export interface OutboundTxDetails {
 }
 
 /**
+ * Progress event for outbound sync operations
+ */
+export interface OutboundSyncProgress {
+  status: 'waiting' | 'polling' | 'success' | 'failed' | 'timeout';
+  elapsed: number;
+}
+
+/**
  * Options for waitForOutboundTx polling
  */
 export interface WaitForOutboundOptions {
@@ -482,12 +490,12 @@ export interface WaitForOutboundOptions {
   initialWaitMs?: number;
 
   /**
-   * Interval between polls (default: 2000ms)
+   * Interval between polls (default: 5000ms)
    */
   pollingIntervalMs?: number;
 
   /**
-   * Total timeout in milliseconds (default: 60000ms)
+   * Total timeout in milliseconds (default: 120000ms)
    * Measured from start, includes initial wait
    */
   timeout?: number;

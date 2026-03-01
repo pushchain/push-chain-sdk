@@ -40,7 +40,9 @@ import {
   PAYABLE_TOKENS,
   PayableToken,
 } from '../constants/tokens';
-import { UniversalTx } from '../generated/uexecutor/v1/types';
+import { UniversalTx, UniversalTxStatus } from '../generated/uexecutor/v1/types';
+import { UniversalTxV2 } from '../generated/uexecutor/v2/types';
+import { OutboundSyncProgress } from './orchestrator.types';
 import {
   UniversalAccountId,
   UniversalPayload,
@@ -3378,14 +3380,16 @@ export class Orchestrator {
       );
 
       if (!utxResponse?.universalTx?.outboundTx?.txHash) {
-        this.printLog(`[getOutboundTxDetails] No outboundTx.txHash found`);
+        this.printLog(`[getOutboundTxDetails] No outboundTx.txHash found | universalTx exists: ${!!utxResponse?.universalTx} | outboundTx exists: ${!!utxResponse?.universalTx?.outboundTx} | txHash value: '${utxResponse?.universalTx?.outboundTx?.txHash || ''}' | universalStatus: ${utxResponse?.universalTx?.universalStatus}`);
         return null; // Relay not yet complete
       }
 
       const outbound = utxResponse.universalTx.outboundTx;
       const chain = this.chainFromNamespace(outbound.destinationChain);
+      this.printLog(`[getOutboundTxDetails] outbound.destinationChain: '${outbound.destinationChain}' => resolved chain: ${chain}`);
 
       if (!chain) {
+        this.printLog(`[getOutboundTxDetails] Unknown chain from namespace: '${outbound.destinationChain}'`);
         return null; // Unknown chain
       }
 
@@ -3411,11 +3415,127 @@ export class Orchestrator {
     }
   }
 
+  // Outbound sync configuration constants
+  private static readonly OUTBOUND_INITIAL_WAIT_MS = 30000; // 30s
+  private static readonly OUTBOUND_POLL_INTERVAL_MS = 5000; // 5s
+  private static readonly OUTBOUND_MAX_TIMEOUT_MS = 120000; // 120s
+
+  /**
+   * Syncs outbound transaction state by polling Push Chain v2 API until:
+   * 1. outbound_tx[].observedTx.txHash is populated
+   * 2. universal_status === OUTBOUND_SUCCESS (or OUTBOUND_FAILED)
+   *
+   * @param universalTxId - The universal transaction ID to track (with or without 0x prefix)
+   * @param options - Sync options (initialWaitMs, pollingIntervalMs, timeout, progressHook)
+   * @returns The completed UniversalTxV2 or throws on timeout/failure
+   */
+  async syncOutboundTransaction(
+    universalTxId: string,
+    options: {
+      initialWaitMs?: number;
+      pollingIntervalMs?: number;
+      timeout?: number;
+      progressHook?: (event: OutboundSyncProgress) => void;
+    } = {}
+  ): Promise<UniversalTxV2> {
+    const {
+      initialWaitMs = Orchestrator.OUTBOUND_INITIAL_WAIT_MS,
+      pollingIntervalMs = Orchestrator.OUTBOUND_POLL_INTERVAL_MS,
+      timeout = Orchestrator.OUTBOUND_MAX_TIMEOUT_MS,
+      progressHook,
+    } = options;
+
+    const startTime = Date.now();
+
+    // Strip 0x prefix for gRPC query
+    const queryId = universalTxId.startsWith('0x')
+      ? universalTxId.slice(2)
+      : universalTxId;
+
+    console.log(`[syncOutbound] Starting sync | ID: ${queryId} | initialWait: ${initialWaitMs}ms | pollInterval: ${pollingIntervalMs}ms | timeout: ${timeout}ms`);
+    progressHook?.({ status: 'waiting', elapsed: 0 });
+
+    // Initial wait for relay processing
+    console.log(`[syncOutbound] Initial wait of ${initialWaitMs}ms...`);
+    await new Promise((resolve) => setTimeout(resolve, initialWaitMs));
+
+    console.log(`[syncOutbound] Initial wait done. Starting polling. Elapsed: ${Date.now() - startTime}ms`);
+    progressHook?.({ status: 'polling', elapsed: Date.now() - startTime });
+
+    let pollCount = 0;
+    while (Date.now() - startTime < timeout) {
+      pollCount++;
+      const pollStart = Date.now();
+      console.log(`[syncOutbound] Poll #${pollCount} | Elapsed: ${pollStart - startTime}ms / ${timeout}ms`);
+
+      try {
+        const response = await this.pushClient.getUniversalTxByIdV2(queryId);
+        const utx = response?.universalTx;
+
+        if (utx) {
+          console.log(
+            `[syncOutbound] Poll #${pollCount} | universalStatus: ${utx.universalStatus} | OutboundTx count: ${utx.outboundTx?.length ?? 0} | inboundTx: ${!!utx.inboundTx} | pcTx count: ${utx.pcTx?.length ?? 0}`
+          );
+
+          // Check completion criteria:
+          // 1. At least one outbound tx with populated observedTx.txHash
+          const hasCompletedOutbound = utx.outboundTx?.some(
+            (ob) => ob.observedTx?.txHash && ob.observedTx.txHash !== ''
+          );
+
+          // 2. Check universal status
+          const isSuccess =
+            utx.universalStatus === UniversalTxStatus.OUTBOUND_SUCCESS;
+          const isFailed =
+            utx.universalStatus === UniversalTxStatus.OUTBOUND_FAILED;
+
+          console.log(`[syncOutbound] Poll #${pollCount} | hasCompletedOutbound: ${hasCompletedOutbound} | isSuccess(${UniversalTxStatus.OUTBOUND_SUCCESS}): ${isSuccess} | isFailed(${UniversalTxStatus.OUTBOUND_FAILED}): ${isFailed}`);
+
+          if (hasCompletedOutbound && isSuccess) {
+            console.log(`[syncOutbound] SUCCESS on poll #${pollCount} | elapsed: ${Date.now() - startTime}ms`);
+            progressHook?.({ status: 'success', elapsed: Date.now() - startTime });
+            return utx;
+          }
+
+          if (isFailed) {
+            console.log(`[syncOutbound] FAILED on poll #${pollCount} | status: ${utx.universalStatus}`);
+            progressHook?.({ status: 'failed', elapsed: Date.now() - startTime });
+            throw new Error(
+              `Outbound transaction failed. Universal Status: ${utx.universalStatus}`
+            );
+          }
+        } else {
+          console.log(`[syncOutbound] Poll #${pollCount} | universalTx is NULL/undefined`);
+        }
+      } catch (error) {
+        // Log but continue polling (transient errors)
+        if (
+          error instanceof Error &&
+          error.message.includes('Outbound transaction failed')
+        ) {
+          throw error; // Re-throw failure errors
+        }
+        console.log(
+          `[syncOutbound] Poll #${pollCount} ERROR: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+
+      console.log(`[syncOutbound] Poll #${pollCount} done (${Date.now() - pollStart}ms). Waiting ${pollingIntervalMs}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, pollingIntervalMs));
+    }
+
+    console.log(`[syncOutbound] TIMEOUT after ${pollCount} polls | elapsed: ${Date.now() - startTime}ms`);
+    progressHook?.({ status: 'timeout', elapsed: Date.now() - startTime });
+    throw new Error(
+      `Timeout waiting for outbound sync. ID: ${universalTxId}. Timeout: ${timeout}ms.`
+    );
+  }
+
   /**
    * Wait for outbound transaction to complete and return external chain details.
    * Uses polling with configurable initial wait, interval, and timeout.
    *
-   * Default strategy: 30s initial wait, then poll every 2s, 60s total timeout.
+   * Default strategy: 30s initial wait, then poll every 5s, 120s total timeout.
    *
    * @param pushChainTxHash - The Push Chain transaction hash
    * @param options - Polling configuration options
@@ -3427,35 +3547,88 @@ export class Orchestrator {
     options: import('./orchestrator.types').WaitForOutboundOptions = {}
   ): Promise<import('./orchestrator.types').OutboundTxDetails> {
     const {
-      initialWaitMs = 30000,
-      pollingIntervalMs = 2000,
-      timeout = 60000,
+      initialWaitMs = Orchestrator.OUTBOUND_INITIAL_WAIT_MS,
+      pollingIntervalMs = Orchestrator.OUTBOUND_POLL_INTERVAL_MS,
+      timeout = Orchestrator.OUTBOUND_MAX_TIMEOUT_MS,
       progressHook,
     } = options;
 
     const startTime = Date.now();
 
+    console.log(`[waitForOutboundTx] Starting | txHash: ${pushChainTxHash} | initialWait: ${initialWaitMs}ms | pollInterval: ${pollingIntervalMs}ms | timeout: ${timeout}ms`);
+
     // Emit initial waiting status
     progressHook?.({ status: 'waiting', elapsed: 0 });
 
     // Initial wait before first poll
+    console.log(`[waitForOutboundTx] Initial wait of ${initialWaitMs}ms...`);
     await new Promise((resolve) => setTimeout(resolve, initialWaitMs));
 
     // Start polling
+    console.log(`[waitForOutboundTx] Initial wait done. Starting polling. Elapsed: ${Date.now() - startTime}ms`);
     progressHook?.({ status: 'polling', elapsed: Date.now() - startTime });
 
-    while (Date.now() - startTime < timeout) {
-      const details = await this.getOutboundTxDetails(pushChainTxHash);
+    // Cache the universalSubTxId after first extraction to avoid redundant receipt fetches
+    let cachedUniversalSubTxId: string | undefined;
 
-      if (details) {
-        progressHook?.({ status: 'found', elapsed: Date.now() - startTime });
-        return details;
+    let pollCount = 0;
+    while (Date.now() - startTime < timeout) {
+      pollCount++;
+      const pollStart = Date.now();
+      console.log(`[waitForOutboundTx] Poll #${pollCount} | Elapsed: ${pollStart - startTime}ms / ${timeout}ms`);
+
+      // First poll: extract the ID. Subsequent polls: reuse cached ID.
+      if (!cachedUniversalSubTxId) {
+        cachedUniversalSubTxId = (await this.extractUniversalSubTxIdFromTx(pushChainTxHash)) ?? undefined;
+        if (!cachedUniversalSubTxId) {
+          cachedUniversalSubTxId = this.computeUniversalTxId(pushChainTxHash);
+        }
+        console.log(`[waitForOutboundTx] Extracted & cached universalSubTxId: ${cachedUniversalSubTxId}`);
       }
+
+      // Query with cached ID — also fetch raw response for logging
+      const queryId = cachedUniversalSubTxId.startsWith('0x')
+        ? cachedUniversalSubTxId.slice(2)
+        : cachedUniversalSubTxId;
+
+      try {
+        const utxResponse = await this.pushClient.getUniversalTxById(queryId);
+
+        // Print the FULL raw response every poll
+        const statusName = UniversalTxStatus[utxResponse?.universalTx?.universalStatus as number] ?? utxResponse?.universalTx?.universalStatus;
+        console.log(`[waitForOutboundTx] Poll #${pollCount} RAW RESPONSE:`, JSON.stringify(utxResponse, (k, v) => (typeof v === 'bigint' ? v.toString() : v), 2));
+        console.log(`[waitForOutboundTx] Poll #${pollCount} SUMMARY | status: ${utxResponse?.universalTx?.universalStatus} (${statusName}) | outboundTx.txHash: '${utxResponse?.universalTx?.outboundTx?.txHash || ''}' | outboundTx.destinationChain: '${utxResponse?.universalTx?.outboundTx?.destinationChain || ''}'`);
+
+        if (utxResponse?.universalTx?.outboundTx?.txHash) {
+          const outbound = utxResponse.universalTx.outboundTx;
+          const chain = this.chainFromNamespace(outbound.destinationChain);
+          if (chain) {
+            const explorerBaseUrl = CHAIN_INFO[chain]?.explorerUrl;
+            const explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${outbound.txHash}` : '';
+            const details = {
+              externalTxHash: outbound.txHash,
+              destinationChain: chain,
+              explorerUrl,
+              recipient: outbound.recipient,
+              amount: outbound.amount,
+              assetAddr: outbound.assetAddr,
+            };
+            console.log(`[waitForOutboundTx] FOUND on poll #${pollCount} | elapsed: ${Date.now() - startTime}ms | details: ${JSON.stringify(details)}`);
+            progressHook?.({ status: 'found', elapsed: Date.now() - startTime });
+            return details;
+          }
+        }
+      } catch (error) {
+        console.log(`[waitForOutboundTx] Poll #${pollCount} ERROR: ${error instanceof Error ? error.message : String(error)}`);
+      }
+
+      console.log(`[waitForOutboundTx] Poll #${pollCount} not ready yet (${Date.now() - pollStart}ms). Waiting ${pollingIntervalMs}ms...`);
 
       // Wait before next poll
       await new Promise((resolve) => setTimeout(resolve, pollingIntervalMs));
     }
 
+    console.log(`[waitForOutboundTx] TIMEOUT after ${pollCount} polls | elapsed: ${Date.now() - startTime}ms`);
     progressHook?.({ status: 'timeout', elapsed: Date.now() - startTime });
 
     throw new Error(

@@ -15,6 +15,10 @@ import {
   QueryGetUniversalTxRequest,
   QueryGetUniversalTxResponse,
 } from '../generated/uexecutor/v1/query';
+import {
+  QueryGetUniversalTxRequestV2,
+  QueryGetUniversalTxResponseV2,
+} from '../generated/uexecutor/v2/query';
 import { Secp256k1 } from '@cosmjs/crypto';
 import { Tendermint34Client } from '@cosmjs/tendermint-rpc';
 import { BaseAccount } from 'cosmjs-types/cosmos/auth/v1beta1/auth';
@@ -234,6 +238,8 @@ export class PushClient extends EvmClient {
     id: string
   ): Promise<QueryGetUniversalTxResponse> {
     return this.executeWithRpcFallback(async (rpcUrl) => {
+      console.log(`[PushClient:getUniversalTxById] Querying v1 API | ID: ${id} | RPC: ${rpcUrl}`);
+      const t0 = Date.now();
       const tmClient = await Tendermint34Client.connect(rpcUrl);
       const queryClient = new QueryClient(tmClient);
       const rpc = createProtobufRpcClient(queryClient);
@@ -245,8 +251,41 @@ export class PushClient extends EvmClient {
         QueryGetUniversalTxRequest.encode(request).finish()
       );
       const response = QueryGetUniversalTxResponse.decode(responseBytes);
+      console.log(`[PushClient:getUniversalTxById] v1 response in ${Date.now() - t0}ms | universalTx exists: ${!!response?.universalTx} | outboundTx.txHash: ${response?.universalTx?.outboundTx?.txHash || 'EMPTY'} | status: ${response?.universalTx?.universalStatus}`);
       return response;
     }, 'getUniversalTxById');
+  }
+
+  /**
+   * Queries Push Chain's uexecutor v2 gRPC service for a UniversalTx by its ID.
+   * V2 returns expanded OutboundTx fields and repeated outbound_tx array.
+   */
+  public async getUniversalTxByIdV2(
+    id: string
+  ): Promise<QueryGetUniversalTxResponseV2> {
+    return this.executeWithRpcFallback(async (rpcUrl) => {
+      console.log(`[PushClient:getUniversalTxByIdV2] Querying v2 API | ID: ${id} | RPC: ${rpcUrl}`);
+      const t0 = Date.now();
+      const tmClient = await Tendermint34Client.connect(rpcUrl);
+      const queryClient = new QueryClient(tmClient);
+      const rpc = createProtobufRpcClient(queryClient);
+
+      const request = QueryGetUniversalTxRequestV2.fromPartial({ id });
+      const responseBytes = await rpc.request(
+        'uexecutor.v2.Query',
+        'GetUniversalTx',
+        QueryGetUniversalTxRequestV2.encode(request).finish()
+      );
+      const response = QueryGetUniversalTxResponseV2.decode(responseBytes);
+      const utx = response?.universalTx;
+      console.log(`[PushClient:getUniversalTxByIdV2] v2 response in ${Date.now() - t0}ms | universalTx exists: ${!!utx} | status: ${utx?.universalStatus} | outboundTx count: ${utx?.outboundTx?.length ?? 0}`);
+      if (utx?.outboundTx?.length) {
+        utx.outboundTx.forEach((ob, i) => {
+          console.log(`[PushClient:getUniversalTxByIdV2]   outbound[${i}]: id=${ob.id} | outboundStatus=${ob.outboundStatus} | observedTx.txHash=${ob.observedTx?.txHash || 'EMPTY'} | dest=${ob.destinationChain} | recipient=${ob.recipient}`);
+        });
+      }
+      return response;
+    }, 'getUniversalTxByIdV2');
   }
 
   /**
