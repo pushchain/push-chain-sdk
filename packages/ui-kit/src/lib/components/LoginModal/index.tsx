@@ -49,6 +49,8 @@ const LoginModal: FC<LoginModalProps> = ({
   sendMessageToPushWallet,
   isReadOnly
 }) => {
+  const [version, setVersion] = React.useState<number>(5);
+
   const { modal } = config;
   const { pushChainClient } = usePushChainClient(config?.uid || 'default');
 
@@ -72,6 +74,12 @@ const LoginModal: FC<LoginModalProps> = ({
       data: res.hash,
     });
   }
+
+  useEffect(() => {
+    if (config.version) {
+      setVersion(config.version);
+    }
+  }, [config])
 
   useEffect(() => {
     const pushMessageHandler = (event: MessageEvent) => {
@@ -218,7 +226,7 @@ const LoginModal: FC<LoginModalProps> = ({
                 <MainFrameContainer>
                   <iframe
                     src={`
-                      ${WALLET_CONFIG_URL[config.network]}/auth?app=${window.location.origin}&version=5
+                      ${WALLET_CONFIG_URL[config.network]}/auth?app=${window.location.origin}&version=${version}
                     `}
                     allow="clipboard-write; clipboard-read; publickey-credentials-create; publickey-credentials-get; display-capture; *"
                     ref={iframeRef}
@@ -283,7 +291,7 @@ const FrameContainer = styled.div<{
   };
   border-radius: ${({ $universalAccount }) =>
     $universalAccount ? '10px' : 'unset'};
-  z-index: 999;
+  z-index: 999999999;
 
   width: ${({ $universalAccount, $isWalletMinimised, $accountMenuVariant }) =>
     $isWalletMinimised

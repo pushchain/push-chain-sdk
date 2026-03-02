@@ -33,6 +33,7 @@ export type ProviderConfigProps = {
   login?: LoginMethodConfig;
   modal?: ModalProps;
   chainConfig?: ChainConfig;
+  version?: 4 | 5;
 };
 
 export type AppMetadata = {
