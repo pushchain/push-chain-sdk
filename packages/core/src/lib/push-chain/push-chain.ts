@@ -63,6 +63,10 @@ export class PushChain {
      */
     sendTransaction: Orchestrator['execute'];
     /**
+     * Tracks a transaction by hash on Push Chain
+     */
+    trackTransaction: Orchestrator['trackTransaction'];
+    /**
      * Signs an arbitrary message
      */
     signMessage: (data: Uint8Array) => Promise<string>;
@@ -126,6 +130,9 @@ export class PushChain {
           );
         }
         return orchestrator.execute.bind(orchestrator)(...args);
+      },
+      trackTransaction: (txHash: string, options?: import('../orchestrator/orchestrator.types').TrackTransactionOptions) => {
+        return orchestrator.trackTransaction.bind(orchestrator)(txHash, options);
       },
       signMessage: async (data: Uint8Array) => {
         if (this.isReadMode) {

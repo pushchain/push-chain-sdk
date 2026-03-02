@@ -156,14 +156,14 @@ const RAW_HOOKS: {
   }),
   [PROGRESS_HOOK.SEND_TX_06_03_01]: (current: number, required: number) => ({
     id: PROGRESS_HOOK.SEND_TX_06_03_01,
-    title: `Confirmation #${current} Received`,
+    title: `Confirmation ${current}/${required} received`,
     message: `${current}/${required} confirmations received`,
     response: null,
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_06_03_02]: (current: number, required: number) => ({
     id: PROGRESS_HOOK.SEND_TX_06_03_02,
-    title: `Confirmation #${current} Received`,
+    title: `Confirmation ${current}/${required} received`,
     message: `${current}/${required} confirmations received`,
     response: null,
     level: 'SUCCESS',
@@ -175,12 +175,19 @@ const RAW_HOOKS: {
     response: null,
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_06_05]: (
+  [PROGRESS_HOOK.SEND_TX_06_05]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_06_05,
+    title: 'Syncing State with Push Chain',
+    message: 'Waiting for transaction to appear on Push Chain',
+    response: null,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_06_06]: (
     amount: bigint,
     decimals: number,
     symbol: string
   ) => ({
-    id: PROGRESS_HOOK.SEND_TX_06_05,
+    id: PROGRESS_HOOK.SEND_TX_06_06,
     title: 'Funds Credited on Push Chain',
     message: `Funds credited: ${Utils.helpers.formatUnits(
       amount,
@@ -194,7 +201,7 @@ const RAW_HOOKS: {
   [PROGRESS_HOOK.SEND_TX_07]: () => ({
     id: PROGRESS_HOOK.SEND_TX_07,
     title: 'Broadcasting to Push Chain',
-    message: 'Sending Tx to Push Chain',
+    message: 'Sending Tx to Push Chain...',
     response: null,
     level: 'INFO',
   }),
