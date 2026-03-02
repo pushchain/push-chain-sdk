@@ -143,21 +143,21 @@ describe('Route 2: UOA → CEA (Outbound Transactions)', () => {
   });
 
   describe('executeTransactions Chaining API', () => {
-    it('should create chained builder', () => {
+    it('should create chained builder from prepared transactions', async () => {
       if (skipE2E) return;
 
-      const firstTx: UniversalExecuteParams = {
+      const firstPrepared = await pushClient.universal.prepareTransaction({
         to: '0x1234567890123456789012345678901234567890',
         value: parseEther('0.001'),
-      };
+      });
 
-      const builder = pushClient.universal.executeTransactions(firstTx);
+      const builder = pushClient.universal.executeTransactions(firstPrepared);
 
       expect(typeof builder.thenOn).toBe('function');
       expect(typeof builder.send).toBe('function');
 
-      // Test chaining
-      const chainedBuilder = builder.thenOn({
+      // Test chaining with a second prepared transaction
+      const secondPrepared = await pushClient.universal.prepareTransaction({
         to: {
           address: '0x1234567890123456789012345678901234567890',
           chain: CHAIN.BNB_TESTNET,
@@ -165,9 +165,11 @@ describe('Route 2: UOA → CEA (Outbound Transactions)', () => {
         value: parseEther('0.0001'),
       });
 
+      const chainedBuilder = builder.thenOn(secondPrepared);
+
       expect(typeof chainedBuilder.thenOn).toBe('function');
       expect(typeof chainedBuilder.send).toBe('function');
-    });
+    }, 60000);
   });
 
   // Note: The following test actually executes a transaction and requires:

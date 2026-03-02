@@ -1,6 +1,6 @@
 import { encodeFunctionData, encodeAbiParameters, isAddress } from 'viem';
 import { PushChain } from '../push-chain/push-chain';
-import { ERC20_EVM, UNIVERSAL_GATEWAY_V0 } from '../constants/abi';
+import { ERC20_EVM, UNIVERSAL_GATEWAY_V0, UNIVERSAL_GATEWAY_PC } from '../constants/abi';
 import { MoveableToken } from '../constants/tokens';
 import { ZERO_ADDRESS } from '../constants/selectors';
 import type {
@@ -332,4 +332,109 @@ export function buildErc20Transfer(
  */
 export function isZeroAddress(address: `0x${string}`): boolean {
   return address.toLowerCase() === ZERO_ADDRESS.toLowerCase();
+}
+
+// ============================================================================
+// Cascade Composition Helpers
+// ============================================================================
+
+/**
+ * Build approval multicalls + sendUniversalTxOutbound call for Push Chain.
+ *
+ * Extracted from executeUoaToCea to be reusable in cascade composition.
+ * Handles two cases:
+ * - gasToken === prc20Token: single approval for burnAmount + gasFee
+ * - gasToken !== prc20Token: two separate approvals
+ *
+ * @param opts.prc20Token - PRC-20 token to burn
+ * @param opts.gasToken - Gas token for fee payment
+ * @param opts.burnAmount - Amount to burn
+ * @param opts.gasFee - Gas fee amount
+ * @param opts.gatewayPcAddress - UniversalGatewayPC precompile address
+ * @param opts.outboundRequest - The outbound request struct
+ * @returns Array of MultiCall operations (approvals + outbound call)
+ */
+export function buildOutboundApprovalAndCall(opts: {
+  prc20Token: `0x${string}`;
+  gasToken: `0x${string}`;
+  burnAmount: bigint;
+  gasFee: bigint;
+  gatewayPcAddress: `0x${string}`;
+  outboundRequest: UniversalOutboundTxRequest;
+}): MultiCall[] {
+  const multicalls: MultiCall[] = [];
+  const { prc20Token, gasToken, burnAmount, gasFee, gatewayPcAddress, outboundRequest } = opts;
+
+  const sameToken =
+    gasToken.toLowerCase() === prc20Token.toLowerCase();
+
+  if (sameToken) {
+    // Same token: single approval for burnAmount + gasFee
+    const totalApprovalAmount = burnAmount + gasFee;
+    if (
+      totalApprovalAmount > BigInt(0) &&
+      prc20Token.toLowerCase() !== ZERO_ADDRESS.toLowerCase()
+    ) {
+      const approveData = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'approve',
+        args: [gatewayPcAddress, totalApprovalAmount],
+      });
+      multicalls.push({
+        to: prc20Token,
+        value: BigInt(0),
+        data: approveData,
+      });
+    }
+  } else {
+    // Different tokens: two separate approvals
+    // 1. Approve gasFee on gasToken (for _moveFees)
+    if (
+      gasFee > BigInt(0) &&
+      gasToken.toLowerCase() !== ZERO_ADDRESS.toLowerCase()
+    ) {
+      const gasApproveData = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'approve',
+        args: [gatewayPcAddress, gasFee],
+      });
+      multicalls.push({
+        to: gasToken,
+        value: BigInt(0),
+        data: gasApproveData,
+      });
+    }
+
+    // 2. Approve burnAmount on prc20Token (for _burnPRC20)
+    if (
+      burnAmount > BigInt(0) &&
+      prc20Token.toLowerCase() !== ZERO_ADDRESS.toLowerCase()
+    ) {
+      const burnApproveData = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'approve',
+        args: [gatewayPcAddress, burnAmount],
+      });
+      multicalls.push({
+        to: prc20Token,
+        value: BigInt(0),
+        data: burnApproveData,
+      });
+    }
+  }
+
+  // Add the sendUniversalTxOutbound call
+  const outboundCallData = encodeFunctionData({
+    abi: UNIVERSAL_GATEWAY_PC,
+    functionName: 'sendUniversalTxOutbound',
+    args: [outboundRequest],
+  });
+
+  multicalls.push({
+    to: gatewayPcAddress,
+    value: BigInt(0),
+    data: outboundCallData,
+  });
+
+  return multicalls;
 }

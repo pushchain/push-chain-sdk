@@ -78,6 +78,14 @@ import {
   PreparedUniversalTx,
   ChainedTransactionBuilder,
   MultiChainTxResponse,
+  HopDescriptor,
+  CascadeSegment,
+  CascadeSegmentType,
+  CascadedTransactionBuilder,
+  CascadedTxResponse,
+  CascadeHopInfo,
+  CascadeCompletionResult,
+  CascadeTrackOptions,
 } from './orchestrator.types';
 import {
   buildExecuteMulticall,
@@ -85,6 +93,7 @@ import {
   buildOutboundRequest,
   buildSendUniversalTxFromCEA,
   buildApproveAndInteract,
+  buildOutboundApprovalAndCall,
 } from './payload-builders';
 import {
   TransactionRoute,
@@ -1609,20 +1618,772 @@ export class Orchestrator {
     const gasEstimate = params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT;
     const deadline = params.deadline || BigInt(Math.floor(Date.now() / 1000) + 3600);
 
-    return {
+    // Build the HopDescriptor with all metadata needed for cascade nesting
+    const hop = await this.buildHopDescriptor(params, route, ueaAddress);
+
+    const prepared: PreparedUniversalTx = {
       route,
       payload,
       gatewayRequest,
       estimatedGas: gasEstimate,
       nonce,
       deadline,
-      thenOn: (nextTx: UniversalExecuteParams) =>
-        this.createChainedBuilder([params, nextTx]),
-      send: () => this.execute(params),
+      _hop: hop,
+      thenOn: (nextTx: PreparedUniversalTx) =>
+        this.createCascadedBuilder([prepared, nextTx]),
+      send: () => this.executeMultiChain(params),
+    };
+
+    return prepared;
+  }
+
+  /**
+   * Build a HopDescriptor for a prepared transaction.
+   * Resolves CEA addresses, queries gas fees, and builds multicall arrays.
+   *
+   * @param params - Original user params
+   * @param route - Detected route
+   * @param ueaAddress - UEA address
+   * @returns HopDescriptor with all metadata
+   */
+  private async buildHopDescriptor(
+    params: UniversalExecuteParams,
+    route: TransactionRoute,
+    ueaAddress: `0x${string}`
+  ): Promise<HopDescriptor> {
+    const gasLimit = params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT;
+    const routeStr = route as unknown as string;
+
+    const baseDescriptor: HopDescriptor = {
+      params,
+      route: routeStr as HopDescriptor['route'],
+      gasLimit,
+      ueaAddress,
+      revertRecipient: ueaAddress,
+    };
+
+    switch (route) {
+      case TransactionRoute.UOA_TO_PUSH: {
+        // Route 1: Build Push Chain multicalls
+        const executeParams = this.toExecuteParams(params);
+        const pushMulticalls = buildExecuteMulticall({
+          execute: executeParams,
+          ueaAddress,
+        });
+
+        return {
+          ...baseDescriptor,
+          pushMulticalls,
+        };
+      }
+
+      case TransactionRoute.UOA_TO_CEA: {
+        // Route 2: Build CEA multicalls + resolve outbound metadata
+        const target = params.to as ChainTarget;
+        const targetChain = target.chain;
+
+        // Resolve CEA address
+        const { cea: ceaAddress } = await getCEAAddress(
+          ueaAddress,
+          targetChain,
+          this.rpcUrls[targetChain]?.[0]
+        );
+
+        // Build CEA multicalls
+        const ceaMulticalls: MultiCall[] = [];
+        if (params.data) {
+          if (Array.isArray(params.data)) {
+            ceaMulticalls.push(...(params.data as MultiCall[]));
+          } else {
+            ceaMulticalls.push({
+              to: target.address,
+              value: params.value || BigInt(0),
+              data: params.data as `0x${string}`,
+            });
+          }
+        } else if (params.value) {
+          ceaMulticalls.push({
+            to: target.address,
+            value: params.value,
+            data: '0x',
+          });
+        }
+
+        // Determine PRC-20 token and burn amount
+        let prc20Token: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+        let burnAmount = BigInt(0);
+        if (params.funds?.amount) {
+          const token = (params.funds as { token: MoveableToken }).token;
+          if (token) {
+            prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+            burnAmount = params.funds.amount;
+          }
+        } else if (params.value && params.value > BigInt(0)) {
+          prc20Token = this.getNativePRC20ForChain(targetChain);
+          burnAmount = params.value;
+        } else if (params.data) {
+          prc20Token = this.getNativePRC20ForChain(targetChain);
+          burnAmount = BigInt(1); // Minimum for precompile
+        }
+
+        // Query gas fee
+        let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+        let gasFee = BigInt(0);
+        if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
+          const result = await this.queryOutboundGasFee(prc20Token, gasLimit);
+          gasToken = result.gasToken;
+          gasFee = result.gasFee;
+        }
+
+        return {
+          ...baseDescriptor,
+          targetChain,
+          ceaAddress,
+          ceaMulticalls,
+          prc20Token,
+          burnAmount,
+          gasToken,
+          gasFee,
+        };
+      }
+
+      case TransactionRoute.CEA_TO_PUSH: {
+        // Route 3: Build CEA multicalls for sendUniversalTxFromCEA
+        const sourceChain = params.from!.chain;
+
+        const { cea: ceaAddress, isDeployed } = await getCEAAddress(
+          ueaAddress,
+          sourceChain,
+          this.rpcUrls[sourceChain]?.[0]
+        );
+
+        // Determine token/amount for the inbound
+        let tokenAddress: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+        let amount = BigInt(0);
+        let nativeValue = BigInt(0);
+        if (params.funds?.amount) {
+          const token = (params.funds as { token: MoveableToken }).token;
+          if (token) {
+            if (token.mechanism === 'native') {
+              amount = params.funds.amount;
+              nativeValue = params.funds.amount;
+            } else {
+              tokenAddress = token.address as `0x${string}`;
+              amount = params.funds.amount;
+            }
+          }
+        } else if (params.value && params.value > BigInt(0)) {
+          amount = params.value;
+          nativeValue = params.value;
+        }
+
+        // The PRC-20 for the outbound wrapper (Route 2 to source chain)
+        const prc20Token = this.getNativePRC20ForChain(sourceChain);
+        let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+        let gasFee = BigInt(0);
+        if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
+          const result = await this.queryOutboundGasFee(prc20Token, gasLimit);
+          gasToken = result.gasToken;
+          gasFee = result.gasFee;
+        }
+
+        return {
+          ...baseDescriptor,
+          sourceChain,
+          ceaAddress,
+          prc20Token,
+          burnAmount: BigInt(1), // Payload-only outbound
+          gasToken,
+          gasFee,
+        };
+      }
+
+      default:
+        return baseDescriptor;
+    }
+  }
+
+  /**
+   * Query outbound gas fee from UniversalCore contract.
+   * Extracted from executeUoaToCea for reuse.
+   *
+   * @param prc20Token - PRC-20 token address
+   * @param gasLimit - Gas limit for the outbound
+   * @returns gasToken address and gasFee amount
+   */
+  async queryOutboundGasFee(
+    prc20Token: `0x${string}`,
+    gasLimit: bigint
+  ): Promise<{ gasToken: `0x${string}`; gasFee: bigint }> {
+    const gatewayPcAddress = this.getUniversalGatewayPCAddress();
+
+    const universalCoreAddress = await this.pushClient.readContract<`0x${string}`>({
+      address: gatewayPcAddress,
+      abi: UNIVERSAL_GATEWAY_PC,
+      functionName: 'UNIVERSAL_CORE',
+      args: [],
+    });
+
+    const [gasToken, gasFee] = await this.pushClient.readContract<[`0x${string}`, bigint]>({
+      address: universalCoreAddress,
+      abi: UNIVERSAL_CORE_EVM,
+      functionName: 'withdrawGasFeeWithGasLimit',
+      args: [prc20Token, gasLimit],
+    });
+
+    return { gasToken, gasFee };
+  }
+
+  // ============================================================================
+  // Cascade Composition (Advance Hopping)
+  // ============================================================================
+
+  /**
+   * Classify hops into segments for cascade composition.
+   * Consecutive same-type/same-chain hops are merged.
+   *
+   * @param hops - Array of HopDescriptors from prepared transactions
+   * @returns Array of CascadeSegments
+   */
+  classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
+    if (hops.length === 0) return [];
+
+    const segments: CascadeSegment[] = [];
+    let currentSegment: CascadeSegment | null = null;
+
+    for (const hop of hops) {
+      const segType = this.getSegmentType(hop.route);
+      const chain = hop.targetChain || hop.sourceChain;
+
+      const canMerge =
+        currentSegment &&
+        currentSegment.type === segType &&
+        // Same-chain merging for OUTBOUND_TO_CEA
+        (segType === 'OUTBOUND_TO_CEA'
+          ? currentSegment.targetChain === hop.targetChain
+          : segType === 'PUSH_EXECUTION');
+
+      if (canMerge && currentSegment) {
+        // Merge into current segment
+        currentSegment.hops.push(hop);
+
+        if (segType === 'OUTBOUND_TO_CEA') {
+          currentSegment.mergedCeaMulticalls = [
+            ...(currentSegment.mergedCeaMulticalls || []),
+            ...(hop.ceaMulticalls || []),
+          ];
+          currentSegment.totalBurnAmount =
+            (currentSegment.totalBurnAmount || BigInt(0)) +
+            (hop.burnAmount || BigInt(0));
+          // Gas fee: take the max gasLimit across merged hops
+          if (hop.gasLimit > (currentSegment.gasLimit || BigInt(0))) {
+            currentSegment.gasLimit = hop.gasLimit;
+          }
+          // Accumulate gas fees
+          currentSegment.gasFee =
+            (currentSegment.gasFee || BigInt(0)) +
+            (hop.gasFee || BigInt(0));
+        } else if (segType === 'PUSH_EXECUTION') {
+          currentSegment.mergedPushMulticalls = [
+            ...(currentSegment.mergedPushMulticalls || []),
+            ...(hop.pushMulticalls || []),
+          ];
+        }
+      } else {
+        // Start a new segment
+        currentSegment = {
+          type: segType,
+          hops: [hop],
+          targetChain: hop.targetChain,
+          sourceChain: hop.sourceChain,
+          mergedCeaMulticalls:
+            segType === 'OUTBOUND_TO_CEA' ? [...(hop.ceaMulticalls || [])] : undefined,
+          mergedPushMulticalls:
+            segType === 'PUSH_EXECUTION' ? [...(hop.pushMulticalls || [])] : undefined,
+          totalBurnAmount: hop.burnAmount,
+          prc20Token: hop.prc20Token,
+          gasToken: hop.gasToken,
+          gasFee: hop.gasFee,
+          gasLimit: hop.gasLimit,
+        };
+        segments.push(currentSegment);
+      }
+    }
+
+    return segments;
+  }
+
+  /**
+   * Map route to segment type
+   */
+  private getSegmentType(route: string): CascadeSegmentType {
+    switch (route) {
+      case 'UOA_TO_PUSH':
+        return 'PUSH_EXECUTION';
+      case 'UOA_TO_CEA':
+        return 'OUTBOUND_TO_CEA';
+      case 'CEA_TO_PUSH':
+        return 'INBOUND_FROM_CEA';
+      default:
+        return 'PUSH_EXECUTION';
+    }
+  }
+
+  /**
+   * Compose cascade from segments using bottom-to-top nesting.
+   * Processes segments in reverse order, building nested payloads.
+   *
+   * @param segments - Classified segments from classifyIntoSegments()
+   * @param ueaAddress - UEA address
+   * @returns Final MultiCall[] to execute as the initial UEA multicall
+   */
+  composeCascade(
+    segments: CascadeSegment[],
+    ueaAddress: `0x${string}`
+  ): MultiCall[] {
+    let accumulatedPushMulticalls: MultiCall[] = [];
+    const gatewayPcAddress = this.getUniversalGatewayPCAddress();
+
+    for (let i = segments.length - 1; i >= 0; i--) {
+      const segment = segments[i];
+
+      switch (segment.type) {
+        case 'PUSH_EXECUTION': {
+          // Prepend Push Chain multicalls to accumulated
+          accumulatedPushMulticalls = [
+            ...(segment.mergedPushMulticalls || []),
+            ...accumulatedPushMulticalls,
+          ];
+          break;
+        }
+
+        case 'OUTBOUND_TO_CEA': {
+          // Build CEA payload from merged multicalls
+          const ceaPayload = buildCeaMulticallPayload(
+            segment.mergedCeaMulticalls || []
+          );
+
+          // Get CEA address from the first hop
+          const ceaAddress =
+            segment.hops[0]?.ceaAddress || ueaAddress;
+
+          // Build outbound request
+          const outboundReq = buildOutboundRequest(
+            ceaAddress,
+            segment.prc20Token || (ZERO_ADDRESS as `0x${string}`),
+            segment.totalBurnAmount || BigInt(0),
+            segment.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+            ceaPayload,
+            ueaAddress
+          );
+
+          // Build approval + outbound multicalls
+          const outboundMulticalls = buildOutboundApprovalAndCall({
+            prc20Token: segment.prc20Token || (ZERO_ADDRESS as `0x${string}`),
+            gasToken: segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
+            burnAmount: segment.totalBurnAmount || BigInt(0),
+            gasFee: segment.gasFee || BigInt(0),
+            gatewayPcAddress,
+            outboundRequest: outboundReq,
+          });
+
+          // Prepend to accumulated
+          accumulatedPushMulticalls = [
+            ...outboundMulticalls,
+            ...accumulatedPushMulticalls,
+          ];
+          break;
+        }
+
+        case 'INBOUND_FROM_CEA': {
+          // The accumulated multicalls = what runs on Push Chain AFTER inbound arrives
+          let intermediatePayload: `0x${string}` = '0x';
+          if (accumulatedPushMulticalls.length > 0) {
+            intermediatePayload = this._buildMulticallPayloadData(
+              ueaAddress,
+              accumulatedPushMulticalls
+            );
+          }
+
+          const hop = segment.hops[0];
+          const sourceChain = hop.sourceChain!;
+          const ceaAddress = hop.ceaAddress || ueaAddress;
+
+          // Build CEA multicall: [approve?, sendUniversalTxFromCEA(payload)]
+          const ceaMulticalls: MultiCall[] = [];
+
+          // Add hop's own CEA operations if any
+          // (e.g., approve + swap before bridging back)
+          if (hop.ceaMulticalls && hop.ceaMulticalls.length > 0) {
+            ceaMulticalls.push(...hop.ceaMulticalls);
+          }
+
+          // Determine token/amount for inbound
+          let tokenAddress: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+          let amount = BigInt(0);
+          let nativeValue = BigInt(0);
+          const params = hop.params;
+          if (params.funds?.amount) {
+            const token = (params.funds as { token: MoveableToken }).token;
+            if (token) {
+              if (token.mechanism === 'native') {
+                amount = params.funds.amount;
+                nativeValue = params.funds.amount;
+              } else {
+                tokenAddress = token.address as `0x${string}`;
+                amount = params.funds.amount;
+                // Add approve for ERC20
+                const approveData = encodeFunctionData({
+                  abi: ERC20_EVM,
+                  functionName: 'approve',
+                  args: [UNIVERSAL_GATEWAY_ADDRESSES[sourceChain], amount],
+                });
+                ceaMulticalls.push({
+                  to: tokenAddress,
+                  value: BigInt(0),
+                  data: approveData,
+                });
+              }
+            }
+          } else if (params.value && params.value > BigInt(0)) {
+            amount = params.value;
+            nativeValue = params.value;
+          }
+
+          // Build sendUniversalTxFromCEA call
+          const gatewayAddress = UNIVERSAL_GATEWAY_ADDRESSES[sourceChain];
+          if (!gatewayAddress) {
+            throw new Error(`No gateway address for chain ${sourceChain}`);
+          }
+          const sendCall = buildSendUniversalTxFromCEA(
+            gatewayAddress,
+            ueaAddress,
+            tokenAddress,
+            amount,
+            intermediatePayload,
+            ceaAddress,
+            '0x',
+            nativeValue
+          );
+          ceaMulticalls.push(sendCall);
+
+          // Wrap CEA multicall in outbound from Push Chain
+          const ceaPayload = buildCeaMulticallPayload(ceaMulticalls);
+
+          const outboundReq = buildOutboundRequest(
+            ceaAddress,
+            segment.prc20Token || this.getNativePRC20ForChain(sourceChain),
+            segment.totalBurnAmount || BigInt(1),
+            segment.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+            ceaPayload,
+            ueaAddress
+          );
+
+          const outboundMulticalls = buildOutboundApprovalAndCall({
+            prc20Token:
+              segment.prc20Token || this.getNativePRC20ForChain(sourceChain),
+            gasToken: segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
+            burnAmount: segment.totalBurnAmount || BigInt(1),
+            gasFee: segment.gasFee || BigInt(0),
+            gatewayPcAddress,
+            outboundRequest: outboundReq,
+          });
+
+          // Reset accumulated -- everything is now inside this outbound
+          accumulatedPushMulticalls = [...outboundMulticalls];
+          break;
+        }
+      }
+    }
+
+    return accumulatedPushMulticalls;
+  }
+
+  /**
+   * Creates a cascaded transaction builder for nested multi-chain execution.
+   * The cascade composes all hops bottom-to-top into a single Push Chain tx.
+   *
+   * @param preparedTxs - Array of prepared transactions
+   * @returns CascadedTransactionBuilder
+   */
+  createCascadedBuilder(
+    preparedTxs: PreparedUniversalTx[]
+  ): CascadedTransactionBuilder {
+    return {
+      thenOn: (nextTx: PreparedUniversalTx) =>
+        this.createCascadedBuilder([...preparedTxs, nextTx]),
+
+      send: async (): Promise<CascadedTxResponse> => {
+        const ueaAddress = this.computeUEAOffchain();
+
+        // Extract HopDescriptors
+        const hops = preparedTxs.map((tx) => tx._hop);
+
+        // Classify into segments
+        const segments = this.classifyIntoSegments(hops);
+
+        // Check if this is a single-hop Route 1 (no composition needed)
+        if (
+          preparedTxs.length === 1 &&
+          preparedTxs[0].route === 'UOA_TO_PUSH'
+        ) {
+          const response = await this.executeMultiChain(hops[0].params);
+          return {
+            initialTxHash: response.hash,
+            initialTxResponse: response,
+            hops: [
+              {
+                hopIndex: 0,
+                route: hops[0].route,
+                executionChain: CHAIN.PUSH_TESTNET_DONUT,
+                status: 'confirmed',
+                txHash: response.hash,
+              },
+            ],
+            hopCount: 1,
+            waitForAll: async () => ({
+              success: true,
+              hops: [
+                {
+                  hopIndex: 0,
+                  route: hops[0].route,
+                  executionChain: CHAIN.PUSH_TESTNET_DONUT,
+                  status: 'confirmed' as const,
+                  txHash: response.hash,
+                },
+              ],
+            }),
+          };
+        }
+
+        // Check if single-hop Route 2 (just execute directly)
+        if (
+          preparedTxs.length === 1 &&
+          preparedTxs[0].route === 'UOA_TO_CEA'
+        ) {
+          const response = await this.executeMultiChain(hops[0].params);
+          const targetChain = hops[0].targetChain || CHAIN.PUSH_TESTNET_DONUT;
+          return {
+            initialTxHash: response.hash,
+            initialTxResponse: response,
+            hops: [
+              {
+                hopIndex: 0,
+                route: hops[0].route,
+                executionChain: targetChain,
+                status: 'confirmed',
+                txHash: response.hash,
+              },
+            ],
+            hopCount: 1,
+            waitForAll: async () => ({
+              success: true,
+              hops: [
+                {
+                  hopIndex: 0,
+                  route: hops[0].route,
+                  executionChain: targetChain,
+                  status: 'confirmed' as const,
+                  txHash: response.hash,
+                },
+              ],
+            }),
+          };
+        }
+
+        // Multi-hop: compose cascade bottom-to-top
+        const composedMulticalls = this.composeCascade(segments, ueaAddress);
+
+        // Execute the composed multicall as a single Push Chain tx
+        const executeParams: ExecuteParams = {
+          to: ueaAddress,
+          data: composedMulticalls,
+        };
+
+        const response = await this.execute(executeParams);
+
+        // Build hop info for tracking
+        const hopInfos: CascadeHopInfo[] = hops.map((hop, index) => ({
+          hopIndex: index,
+          route: hop.route,
+          executionChain:
+            hop.targetChain || hop.sourceChain || CHAIN.PUSH_TESTNET_DONUT,
+          status: 'pending' as const,
+        }));
+
+        // Mark first hop as submitted
+        if (hopInfos.length > 0) {
+          hopInfos[0].status = 'submitted';
+          hopInfos[0].txHash = response.hash;
+        }
+
+        const cascadeResponse: CascadedTxResponse = {
+          initialTxHash: response.hash,
+          initialTxResponse: response,
+          hops: hopInfos,
+          hopCount: hops.length,
+          waitForAll: async (
+            opts?: CascadeTrackOptions
+          ): Promise<CascadeCompletionResult> => {
+            const {
+              pollingIntervalMs = 10000,
+              timeout = 300000,
+              progressHook: cascadeProgressHook,
+            } = opts || {};
+            const startTime = Date.now();
+
+            try {
+              // 1. Wait for initial Push Chain tx confirmation
+              cascadeProgressHook?.({
+                hopIndex: 0,
+                route: hopInfos[0]?.route || 'UOA_TO_PUSH',
+                chain: CHAIN.PUSH_TESTNET_DONUT,
+                status: 'waiting',
+                elapsed: Date.now() - startTime,
+              });
+
+              await response.wait();
+
+              // Mark all Push Chain (Route 1) hops as confirmed
+              for (const hop of hopInfos) {
+                if (hop.route === 'UOA_TO_PUSH') {
+                  hop.status = 'confirmed';
+                  hop.txHash = response.hash;
+                  cascadeProgressHook?.({
+                    hopIndex: hop.hopIndex,
+                    route: hop.route,
+                    chain: CHAIN.PUSH_TESTNET_DONUT,
+                    status: 'confirmed',
+                    txHash: response.hash,
+                    elapsed: Date.now() - startTime,
+                  });
+                }
+              }
+
+              // 2. Track outbound hops (Route 2: UOA_TO_CEA)
+              const outboundHops = hopInfos.filter(
+                (h) => h.route === 'UOA_TO_CEA'
+              );
+              if (outboundHops.length > 0) {
+                // For cascaded transactions, the initial Push Chain tx triggers outbound
+                // Use waitForOutboundTx with the initial tx hash
+                for (const outboundHop of outboundHops) {
+                  const remainingTimeout =
+                    timeout - (Date.now() - startTime);
+                  if (remainingTimeout <= 0) {
+                    outboundHop.status = 'failed';
+                    cascadeProgressHook?.({
+                      hopIndex: outboundHop.hopIndex,
+                      route: outboundHop.route,
+                      chain: outboundHop.executionChain,
+                      status: 'timeout',
+                      elapsed: Date.now() - startTime,
+                    });
+                    return {
+                      success: false,
+                      hops: hopInfos,
+                      failedAt: outboundHop.hopIndex,
+                    };
+                  }
+
+                  cascadeProgressHook?.({
+                    hopIndex: outboundHop.hopIndex,
+                    route: outboundHop.route,
+                    chain: outboundHop.executionChain,
+                    status: 'polling',
+                    elapsed: Date.now() - startTime,
+                  });
+
+                  try {
+                    const outboundDetails =
+                      await this.waitForOutboundTx(response.hash, {
+                        initialWaitMs: Math.min(60000, remainingTimeout),
+                        pollingIntervalMs,
+                        timeout: remainingTimeout,
+                        progressHook: (event) => {
+                          cascadeProgressHook?.({
+                            hopIndex: outboundHop.hopIndex,
+                            route: outboundHop.route,
+                            chain: outboundHop.executionChain,
+                            status: event.status as
+                              | 'waiting'
+                              | 'polling'
+                              | 'found'
+                              | 'confirmed'
+                              | 'failed'
+                              | 'timeout',
+                            elapsed: Date.now() - startTime,
+                          });
+                        },
+                      });
+
+                    outboundHop.status = 'confirmed';
+                    outboundHop.txHash = outboundDetails.externalTxHash;
+                    outboundHop.outboundDetails = outboundDetails;
+
+                    cascadeProgressHook?.({
+                      hopIndex: outboundHop.hopIndex,
+                      route: outboundHop.route,
+                      chain: outboundHop.executionChain,
+                      status: 'confirmed',
+                      txHash: outboundDetails.externalTxHash,
+                      elapsed: Date.now() - startTime,
+                    });
+                  } catch (err) {
+                    outboundHop.status = 'failed';
+                    cascadeProgressHook?.({
+                      hopIndex: outboundHop.hopIndex,
+                      route: outboundHop.route,
+                      chain: outboundHop.executionChain,
+                      status: 'failed',
+                      elapsed: Date.now() - startTime,
+                    });
+                    return {
+                      success: false,
+                      hops: hopInfos,
+                      failedAt: outboundHop.hopIndex,
+                    };
+                  }
+                }
+              }
+
+              // 3. Route 3 (CEA_TO_PUSH) tracking - mark as submitted
+              // Full Route 3 tracking deferred until Route 3 is fixed
+              const inboundHops = hopInfos.filter(
+                (h) => h.route === 'CEA_TO_PUSH'
+              );
+              for (const inboundHop of inboundHops) {
+                inboundHop.status = 'submitted';
+                cascadeProgressHook?.({
+                  hopIndex: inboundHop.hopIndex,
+                  route: inboundHop.route,
+                  chain: inboundHop.executionChain,
+                  status: 'waiting',
+                  elapsed: Date.now() - startTime,
+                });
+              }
+
+              return { success: true, hops: hopInfos };
+            } catch (err) {
+              const failedIdx = hopInfos.findIndex(
+                (h) => h.status !== 'confirmed'
+              );
+              return {
+                success: false,
+                hops: hopInfos,
+                failedAt: failedIdx >= 0 ? failedIdx : 0,
+              };
+            }
+          },
+        };
+
+        return cascadeResponse;
+      },
     };
   }
 
   /**
+   * @deprecated Use createCascadedBuilder instead.
    * Creates a chained transaction builder for sequential multi-chain execution.
    *
    * @param transactions - Array of transactions to execute in sequence

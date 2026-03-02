@@ -25,6 +25,7 @@ import type {
   UniversalExecuteParams,
   PreparedUniversalTx,
   ChainedTransactionBuilder,
+  CascadedTransactionBuilder,
   UniversalTxResponse,
 } from '../orchestrator/orchestrator.types';
 
@@ -92,14 +93,12 @@ export class PushChain {
     prepareTransaction: Orchestrator['prepareTransaction'];
     /**
      * Execute multiple transactions in sequence across chains.
-     * Returns a builder that supports .thenOn() for chaining.
+     * Accepts PreparedUniversalTx (from prepareTransaction) and returns
+     * a CascadedTransactionBuilder that supports .thenOn() for chaining.
      */
     executeTransactions: (
-      firstTx: UniversalExecuteParams
-    ) => {
-      thenOn: (nextTx: UniversalExecuteParams) => ChainedTransactionBuilder;
-      send: () => Promise<UniversalTxResponse>;
-    };
+      firstTx: PreparedUniversalTx
+    ) => CascadedTransactionBuilder;
     /**
      * Tracks a transaction by hash on Push Chain
      */
@@ -193,17 +192,13 @@ export class PushChain {
         }
         return orchestrator.prepareTransaction.bind(orchestrator)(params);
       },
-      executeTransactions: (firstTx: UniversalExecuteParams) => {
+      executeTransactions: (firstTx: PreparedUniversalTx) => {
         if (this.isReadMode) {
           throw new Error(
             'Read only mode cannot call executeTransactions function'
           );
         }
-        return {
-          thenOn: (nextTx: UniversalExecuteParams) =>
-            orchestrator.createChainedBuilder([firstTx, nextTx]),
-          send: () => orchestrator.execute(firstTx),
-        };
+        return orchestrator.createCascadedBuilder([firstTx]);
       },
       trackTransaction: (txHash: string, options?: import('../orchestrator/orchestrator.types').TrackTransactionOptions) => {
         return orchestrator.trackTransaction.bind(orchestrator)(txHash, options);

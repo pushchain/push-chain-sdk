@@ -354,6 +354,89 @@ export interface UniversalOutboundTxRequest {
 }
 
 // ============================================================================
+// Hop Descriptor (Internal metadata for cascade nesting)
+// ============================================================================
+
+/**
+ * Internal metadata attached to each prepared transaction.
+ * Carries all information needed to nest this hop into a cascade.
+ * @internal
+ */
+export interface HopDescriptor {
+  /** Original user params */
+  params: UniversalExecuteParams;
+  /** Detected route */
+  route: TransactionRouteType;
+  /** Target chain for outbound (Route 2) */
+  targetChain?: CHAIN;
+  /** Source chain for inbound (Route 3) */
+  sourceChain?: CHAIN;
+  /** CEA address on the relevant external chain */
+  ceaAddress?: `0x${string}`;
+  /** Operations to execute on external chain CEA */
+  ceaMulticalls?: MultiCall[];
+  /** Operations to execute on Push Chain */
+  pushMulticalls?: MultiCall[];
+  /** PRC-20 token address to burn for outbound */
+  prc20Token?: `0x${string}`;
+  /** Amount of PRC-20 to burn */
+  burnAmount?: bigint;
+  /** Gas token address on Push Chain */
+  gasToken?: `0x${string}`;
+  /** Gas fee amount in gas token */
+  gasFee?: bigint;
+  /** Gas limit for outbound relay */
+  gasLimit: bigint;
+  /** UEA address */
+  ueaAddress: `0x${string}`;
+  /** Address to receive funds on revert */
+  revertRecipient: `0x${string}`;
+}
+
+// ============================================================================
+// Cascade Segment (Internal grouping for composition)
+// ============================================================================
+
+/**
+ * Segment types for cascade composition
+ * @internal
+ */
+export type CascadeSegmentType =
+  | 'PUSH_EXECUTION'
+  | 'OUTBOUND_TO_CEA'
+  | 'INBOUND_FROM_CEA';
+
+/**
+ * A segment groups one or more hops of the same type/direction.
+ * Consecutive same-chain hops are merged within a segment.
+ * @internal
+ */
+export interface CascadeSegment {
+  /** Segment type determines composition behavior */
+  type: CascadeSegmentType;
+  /** Hops in this segment */
+  hops: HopDescriptor[];
+  /** Target chain (for OUTBOUND_TO_CEA) */
+  targetChain?: CHAIN;
+  /** Source chain (for INBOUND_FROM_CEA) */
+  sourceChain?: CHAIN;
+  /** Merged CEA multicalls from all hops in segment */
+  mergedCeaMulticalls?: MultiCall[];
+  /** Merged Push Chain multicalls from all hops in segment */
+  mergedPushMulticalls?: MultiCall[];
+  /** Sum of burn amounts from merged hops */
+  totalBurnAmount?: bigint;
+  /** PRC-20 token for this segment */
+  prc20Token?: `0x${string}`;
+  /** Gas token for this segment */
+  gasToken?: `0x${string}`;
+  /** Total gas fee for this segment */
+  gasFee?: bigint;
+  /** Gas limit for this segment */
+  gasLimit?: bigint;
+}
+
+// ============================================================================
 // Prepared Transaction & Chaining API
 // ============================================================================
 
@@ -374,15 +457,17 @@ export interface PreparedUniversalTx {
   nonce: bigint;
   /** Signature deadline */
   deadline: bigint;
-  /** Chain additional transactions after this one */
-  thenOn: (nextTx: UniversalExecuteParams) => ChainedTransactionBuilder;
+  /** Internal hop descriptor for cascade nesting @internal */
+  _hop: HopDescriptor;
+  /** Chain additional transactions after this one (cascade) */
+  thenOn: (nextTx: PreparedUniversalTx) => CascadedTransactionBuilder;
   /** Execute this prepared transaction */
   send: () => Promise<UniversalTxResponse>;
 }
 
 /**
- * Builder for chaining multiple transactions across chains
- * Returned by executeTransactions() and thenOn()
+ * @deprecated Use CascadedTransactionBuilder instead.
+ * Kept for backward compatibility.
  */
 export interface ChainedTransactionBuilder {
   /** Add another transaction to the chain */
@@ -392,7 +477,8 @@ export interface ChainedTransactionBuilder {
 }
 
 /**
- * Response for multi-chain chained transactions
+ * @deprecated Use CascadedTxResponse instead.
+ * Kept for backward compatibility.
  */
 export interface MultiChainTxResponse {
   /** All transaction responses in execution order */
@@ -404,6 +490,101 @@ export interface MultiChainTxResponse {
     blockNumber: bigint;
     status: 'pending' | 'confirmed' | 'failed';
   }[];
+}
+
+// ============================================================================
+// Cascaded Transaction Builder (Advance Hopping)
+// ============================================================================
+
+/**
+ * Builder for composing cascaded (nested) multi-chain transactions.
+ * Each call to thenOn() adds another hop to the cascade.
+ * send() composes all hops bottom-to-top and executes a single Push Chain tx.
+ */
+export interface CascadedTransactionBuilder {
+  /** Add another hop to the cascade */
+  thenOn: (nextTx: PreparedUniversalTx) => CascadedTransactionBuilder;
+  /** Compose all hops bottom-to-top and execute the single initial tx */
+  send: () => Promise<CascadedTxResponse>;
+}
+
+/**
+ * Response for cascaded multi-chain transactions.
+ * Contains the initial tx and tracking info for all hops.
+ */
+export interface CascadedTxResponse {
+  /** The initial Push Chain transaction hash (user-signed) */
+  initialTxHash: string;
+  /** The initial transaction response */
+  initialTxResponse: UniversalTxResponse;
+  /** Ordered list of hops with their expected routing */
+  hops: CascadeHopInfo[];
+  /** Total number of hops in the cascade */
+  hopCount: number;
+  /** Wait for ALL hops to complete across all chains */
+  waitForAll: (opts?: CascadeTrackOptions) => Promise<CascadeCompletionResult>;
+}
+
+/**
+ * Information about a single hop in a cascade
+ */
+export interface CascadeHopInfo {
+  /** Index in the cascade (0 = first hop) */
+  hopIndex: number;
+  /** Route for this hop */
+  route: TransactionRouteType;
+  /** Chain where execution occurs */
+  executionChain: CHAIN;
+  /** Expected universalSubTxId (computed from parent) */
+  expectedSubTxId?: string;
+  /** Status tracking */
+  status: 'pending' | 'submitted' | 'confirmed' | 'failed';
+  /** Resolved tx hash once available */
+  txHash?: string;
+  /** External chain tx details (for outbound hops) */
+  outboundDetails?: OutboundTxDetails;
+}
+
+/**
+ * Options for cascade tracking
+ */
+export interface CascadeTrackOptions {
+  /** Polling interval (default: 5000ms) */
+  pollingIntervalMs?: number;
+  /** Total timeout (default: 600000ms = 10 min) */
+  timeout?: number;
+  /** Progress callback */
+  progressHook?: (event: CascadeProgressEvent) => void;
+}
+
+/**
+ * Progress event emitted during cascade tracking
+ */
+export interface CascadeProgressEvent {
+  hopIndex: number;
+  route: TransactionRouteType;
+  chain: CHAIN;
+  status:
+    | 'waiting'
+    | 'polling'
+    | 'found'
+    | 'confirmed'
+    | 'failed'
+    | 'timeout';
+  txHash?: string;
+  elapsed: number;
+}
+
+/**
+ * Final result of cascade completion tracking
+ */
+export interface CascadeCompletionResult {
+  /** Whether all hops completed successfully */
+  success: boolean;
+  /** Final state of all hops */
+  hops: CascadeHopInfo[];
+  /** Index of first failed hop (if any) */
+  failedAt?: number;
 }
 
 // ============================================================================

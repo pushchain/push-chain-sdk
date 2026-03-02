@@ -16,10 +16,16 @@ import {
 } from '@cosmjs/stargate';
 import { Tendermint34Client } from '@cosmjs/tendermint-rpc';
 import {
-  QueryGetUniversalTxRequest,
-  QueryGetUniversalTxResponse,
-} from '../src/lib/generated/uexecutor/v1/query';
-import { UniversalTxStatus } from '../src/lib/generated/uexecutor/v1/types';
+  QueryGetUniversalTxRequestV2,
+  QueryGetUniversalTxResponseV2,
+} from '../src/lib/generated/uexecutor/v2/query';
+import {
+  UniversalTxStatus,
+  OutboundStatus,
+  TxType,
+  outboundStatusToJSON,
+  txTypeToJSON,
+} from '../src/lib/generated/uexecutor/v2/types';
 
 // ── Config ──────────────────────────────────────────────────────────────
 const RPC_URL = 'https://donut.rpc.push.org/';
@@ -141,20 +147,24 @@ async function pollOutbound(
     const t0 = Date.now();
 
     try {
-      const request = QueryGetUniversalTxRequest.fromPartial({ id: queryId });
+      const request = QueryGetUniversalTxRequestV2.fromPartial({ id: queryId });
       const responseBytes = await rpc.request(
-        'uexecutor.v1.Query',
+        'uexecutor.v2.Query',
         'GetUniversalTx',
-        QueryGetUniversalTxRequest.encode(request).finish()
+        QueryGetUniversalTxRequestV2.encode(request).finish()
       );
-      const response = QueryGetUniversalTxResponse.decode(responseBytes);
+      const response = QueryGetUniversalTxResponseV2.decode(responseBytes);
       const rpcMs = Date.now() - t0;
 
       const utx = response?.universalTx;
       const statusNum = utx?.universalStatus ?? -1;
       const statusName =
         STATUS_NAMES[statusNum] ?? `UNKNOWN(${statusNum})`;
-      const outboundHash = utx?.outboundTx?.txHash || '';
+
+      // V2 has array of outboundTx
+      const outboundTxs = utx?.outboundTx || [];
+      const firstOutbound = outboundTxs[0];
+      const observedTxHash = firstOutbound?.observedTx?.txHash || '';
 
       // Full JSON response
       console.log(
@@ -167,18 +177,26 @@ async function pollOutbound(
           2
         )
       );
-      console.log(
-        `SUMMARY: status=${statusNum} (${statusName}) | outboundTx.txHash='${outboundHash}' | dest='${utx?.outboundTx?.destinationChain || ''}' | recipient='${utx?.outboundTx?.recipient || ''}' | amount='${utx?.outboundTx?.amount || ''}'`
-      );
 
-      // Check terminal states
-      if (outboundHash) {
-        console.log(`\n=== OUTBOUND TX FOUND ===`);
-        console.log(`External TX Hash: ${outboundHash}`);
-        console.log(`Destination: ${utx?.outboundTx?.destinationChain}`);
-        console.log(`Recipient: ${utx?.outboundTx?.recipient}`);
-        console.log(`Amount: ${utx?.outboundTx?.amount}`);
-        console.log(`Asset: ${utx?.outboundTx?.assetAddr}`);
+      // Summary for each outbound tx
+      for (let i = 0; i < outboundTxs.length; i++) {
+        const ob = outboundTxs[i];
+        console.log(
+          `OUTBOUND[${i}]: id='${ob.id}' | status=${outboundStatusToJSON(ob.outboundStatus)} | txType=${txTypeToJSON(ob.txType)} | dest='${ob.destinationChain}' | recipient='${ob.recipient}' | amount='${ob.amount}' | observedTxHash='${ob.observedTx?.txHash || ''}'`
+        );
+      }
+      console.log(`UNIVERSAL STATUS: ${statusNum} (${statusName})`);
+
+      // Check terminal states - look for observed tx hash
+      if (observedTxHash) {
+        console.log(`\n=== OUTBOUND TX OBSERVED ===`);
+        console.log(`External TX Hash: ${observedTxHash}`);
+        console.log(`Destination: ${firstOutbound?.destinationChain}`);
+        console.log(`Recipient: ${firstOutbound?.recipient}`);
+        console.log(`Amount: ${firstOutbound?.amount}`);
+        console.log(`External Asset: ${firstOutbound?.externalAssetAddr}`);
+        console.log(`PRC20 Asset: ${firstOutbound?.prc20AssetAddr}`);
+        console.log(`Outbound Status: ${outboundStatusToJSON(firstOutbound?.outboundStatus)}`);
         process.exit(0);
       }
 
