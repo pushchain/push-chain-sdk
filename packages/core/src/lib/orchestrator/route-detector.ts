@@ -14,6 +14,7 @@ import type {
   ChainTarget,
   TransactionRouteType,
 } from './orchestrator.types';
+import { isSvmChain, isValidSolanaHexAddress } from './payload-builders';
 
 // ============================================================================
 // Transaction Route Enum
@@ -82,14 +83,21 @@ const PUSH_CHAINS: CHAIN[] = [
 ];
 
 /**
- * External EVM chains supported for CEA operations
+ * External chains supported for outbound operations (Route 2).
+ * - EVM chains: use CEA (Chain Executor Account)
+ * - SVM chains: use gateway program directly (no CEA)
  */
 const SUPPORTED_CEA_CHAINS: CHAIN[] = [
+  // EVM chains (CEA-based)
   CHAIN.ETHEREUM_MAINNET,
   CHAIN.ETHEREUM_SEPOLIA,
   CHAIN.ARBITRUM_SEPOLIA,
   CHAIN.BASE_SEPOLIA,
   CHAIN.BNB_TESTNET,
+  // SVM chains (gateway-based, no CEA)
+  CHAIN.SOLANA_MAINNET,
+  CHAIN.SOLANA_TESTNET,
+  CHAIN.SOLANA_DEVNET,
 ];
 
 /**
@@ -235,6 +243,15 @@ export function validateRouteParams(params: UniversalExecuteParams): void {
       throw new RouteValidationError(
         `Invalid address format: ${params.to.address}`
       );
+    }
+    // SVM targets require 32-byte addresses (0x + 64 hex chars)
+    if (isSvmChain(params.to.chain)) {
+      if (!isValidSolanaHexAddress(params.to.address)) {
+        throw new RouteValidationError(
+          `Invalid Solana address format: ${params.to.address}. ` +
+            `Expected 32 bytes (0x + 64 hex chars).`
+        );
+      }
     }
   } else if (typeof params.to === 'string') {
     if (!params.to.startsWith('0x')) {

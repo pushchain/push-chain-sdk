@@ -11,7 +11,8 @@ import {
   baseSepolia,
   bscTestnet,
 } from 'viem/chains';
-import { CHAIN } from '../constants/enums';
+import { CHAIN, VM } from '../constants/enums';
+import { CHAIN_INFO } from '../constants/chain';
 import { CEA_FACTORY_EVM } from '../constants/abi';
 
 // ============================================================================
@@ -169,12 +170,27 @@ export async function isCEA(
 }
 
 /**
- * Check if a chain supports CEA operations
+ * Check if a chain supports CEA operations (EVM only)
  *
  * @param chain - Chain to check
  * @returns True if CEAFactory is available
  */
 export function chainSupportsCEA(chain: CHAIN): boolean {
+  return CEA_FACTORY_ADDRESSES[chain] !== undefined;
+}
+
+/**
+ * Check if a chain supports outbound operations (Route 2).
+ * - For EVM chains: checks CEAFactory availability
+ * - For SVM chains: always true (gateway-based, no CEA needed)
+ *
+ * @param chain - Chain to check
+ * @returns True if outbound transactions are supported
+ */
+export function chainSupportsOutbound(chain: CHAIN): boolean {
+  if (CHAIN_INFO[chain]?.vm === VM.SVM) {
+    return true; // SVM uses gateway program, not CEA
+  }
   return CEA_FACTORY_ADDRESSES[chain] !== undefined;
 }
 

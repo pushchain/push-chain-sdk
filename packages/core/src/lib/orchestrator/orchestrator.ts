@@ -91,9 +91,12 @@ import {
   buildExecuteMulticall,
   buildCeaMulticallPayload,
   buildOutboundRequest,
-  buildSendUniversalTxFromCEA,
+  buildSendUniversalTxToUEA,
   buildApproveAndInteract,
   buildOutboundApprovalAndCall,
+  isSvmChain,
+  isValidSolanaHexAddress,
+  encodeSvmExecutePayload,
 } from './payload-builders';
 import {
   TransactionRoute,
@@ -105,6 +108,7 @@ import {
 import {
   getCEAAddress,
   chainSupportsCEA,
+  chainSupportsOutbound,
   getCEAFactoryAddress,
 } from './cea-utils';
 import { DEFAULT_OUTBOUND_GAS_LIMIT, ZERO_ADDRESS } from '../constants/selectors';
@@ -1570,26 +1574,37 @@ export class Orchestrator {
       )}`
     );
 
+    let response: UniversalTxResponse;
+
     switch (route) {
       case TransactionRoute.UOA_TO_PUSH:
         // Route 1: Standard Push Chain execution
-        return this.execute(this.toExecuteParams(params));
+        response = await this.execute(this.toExecuteParams(params));
+        break;
 
       case TransactionRoute.UOA_TO_CEA:
         // Route 2: Outbound to external chain via CEA
-        return this.executeUoaToCea(params);
+        response = await this.executeUoaToCea(params);
+        break;
 
       case TransactionRoute.CEA_TO_PUSH:
         // Route 3: Inbound from CEA to Push Chain
-        return this.executeCeaToPush(params);
+        response = await this.executeCeaToPush(params);
+        break;
 
       case TransactionRoute.CEA_TO_CEA:
         // Route 4: CEA to CEA via Push Chain
-        return this.executeCeaToCea(params);
+        response = await this.executeCeaToCea(params);
+        break;
 
       default:
         throw new Error(`Unknown transaction route: ${route}`);
     }
+
+    // Set the route on the response for .wait() to use
+    response.route = route;
+
+    return response;
   }
 
   /**
@@ -1678,11 +1693,64 @@ export class Orchestrator {
       }
 
       case TransactionRoute.UOA_TO_CEA: {
-        // Route 2: Build CEA multicalls + resolve outbound metadata
+        // Route 2: Build outbound metadata
         const target = params.to as ChainTarget;
         const targetChain = target.chain;
 
-        // Resolve CEA address
+        // Branch: SVM vs EVM
+        if (isSvmChain(targetChain)) {
+          // SVM path: no CEA lookup, build SVM payload
+          const hasSvmExecute = !!params.svmExecute;
+          let svmPayload: `0x${string}` = '0x';
+
+          if (hasSvmExecute) {
+            const exec = params.svmExecute!;
+            svmPayload = encodeSvmExecutePayload({
+              targetProgram: exec.targetProgram,
+              accounts: exec.accounts,
+              ixData: exec.ixData,
+              rentFee: exec.rentFee ?? BigInt(0),
+              instructionId: 2,
+            });
+          }
+
+          let prc20Token: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+          let burnAmount = BigInt(0);
+          if (params.funds?.amount) {
+            const token = (params.funds as { token: MoveableToken }).token;
+            if (token) {
+              prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+              burnAmount = params.funds.amount;
+            }
+          } else if (params.value && params.value > BigInt(0)) {
+            prc20Token = this.getNativePRC20ForChain(targetChain);
+            burnAmount = params.value;
+          } else if (hasSvmExecute) {
+            prc20Token = this.getNativePRC20ForChain(targetChain);
+            burnAmount = BigInt(1);
+          }
+
+          let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+          let gasFee = BigInt(0);
+          if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
+            const result = await this.queryOutboundGasFee(prc20Token, gasLimit);
+            gasToken = result.gasToken;
+            gasFee = result.gasFee;
+          }
+
+          return {
+            ...baseDescriptor,
+            targetChain,
+            isSvmTarget: true,
+            svmPayload,
+            prc20Token,
+            burnAmount,
+            gasToken,
+            gasFee,
+          };
+        }
+
+        // EVM path: Resolve CEA address + build CEA multicalls
         const { cea: ceaAddress } = await getCEAAddress(
           ueaAddress,
           targetChain,
@@ -1702,11 +1770,15 @@ export class Orchestrator {
             });
           }
         } else if (params.value) {
-          ceaMulticalls.push({
-            to: target.address,
-            value: params.value,
-            data: '0x',
-          });
+          // Skip multicall when sending native value to own CEA — gateway deposits directly.
+          // Self-call with value would revert (CEA._handleMulticall rejects it).
+          if (target.address.toLowerCase() !== ceaAddress.toLowerCase()) {
+            ceaMulticalls.push({
+              to: target.address,
+              value: params.value,
+              data: '0x',
+            });
+          }
         }
 
         // Determine PRC-20 token and burn amount
@@ -1792,7 +1864,7 @@ export class Orchestrator {
           sourceChain,
           ceaAddress,
           prc20Token,
-          burnAmount: BigInt(1), // Payload-only outbound
+          burnAmount: amount > BigInt(0) ? amount : BigInt(1),
           gasToken,
           gasFee,
         };
@@ -1858,9 +1930,10 @@ export class Orchestrator {
       const canMerge =
         currentSegment &&
         currentSegment.type === segType &&
-        // Same-chain merging for OUTBOUND_TO_CEA
+        // Same-chain merging for OUTBOUND_TO_CEA (EVM only — SVM hops are atomic)
         (segType === 'OUTBOUND_TO_CEA'
-          ? currentSegment.targetChain === hop.targetChain
+          ? currentSegment.targetChain === hop.targetChain &&
+            !hop.isSvmTarget
           : segType === 'PUSH_EXECUTION');
 
       if (canMerge && currentSegment) {
@@ -1958,22 +2031,34 @@ export class Orchestrator {
         }
 
         case 'OUTBOUND_TO_CEA': {
-          // Build CEA payload from merged multicalls
-          const ceaPayload = buildCeaMulticallPayload(
-            segment.mergedCeaMulticalls || []
-          );
+          const firstHop = segment.hops[0];
+          const isSvmSegment = firstHop?.isSvmTarget === true;
 
-          // Get CEA address from the first hop
-          const ceaAddress =
-            segment.hops[0]?.ceaAddress || ueaAddress;
+          let outboundPayload: `0x${string}`;
+          let targetForOutbound: `0x${string}`;
+
+          if (isSvmSegment) {
+            // SVM: use the pre-built SVM payload from the hop descriptor
+            outboundPayload = firstHop.svmPayload ?? '0x';
+            // For SVM, target is the recipient/program from the hop params
+            const svmTarget = firstHop.params.to as ChainTarget;
+            targetForOutbound = firstHop.params.svmExecute?.targetProgram ?? svmTarget.address;
+          } else {
+            // EVM: build CEA payload from merged multicalls
+            outboundPayload = buildCeaMulticallPayload(
+              segment.mergedCeaMulticalls || []
+            );
+            // Get CEA address from the first hop
+            targetForOutbound = firstHop?.ceaAddress || ueaAddress;
+          }
 
           // Build outbound request
           const outboundReq = buildOutboundRequest(
-            ceaAddress,
+            targetForOutbound,
             segment.prc20Token || (ZERO_ADDRESS as `0x${string}`),
             segment.totalBurnAmount || BigInt(0),
             segment.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
-            ceaPayload,
+            outboundPayload,
             ueaAddress
           );
 
@@ -2021,22 +2106,21 @@ export class Orchestrator {
           // Determine token/amount for inbound
           let tokenAddress: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
           let amount = BigInt(0);
-          let nativeValue = BigInt(0);
           const params = hop.params;
           if (params.funds?.amount) {
             const token = (params.funds as { token: MoveableToken }).token;
             if (token) {
               if (token.mechanism === 'native') {
                 amount = params.funds.amount;
-                nativeValue = params.funds.amount;
               } else {
                 tokenAddress = token.address as `0x${string}`;
                 amount = params.funds.amount;
-                // Add approve for ERC20
+                // Add approve for ERC20 (CEA approves gateway)
+                const gatewayAddr = UNIVERSAL_GATEWAY_ADDRESSES[sourceChain];
                 const approveData = encodeFunctionData({
                   abi: ERC20_EVM,
                   functionName: 'approve',
-                  args: [UNIVERSAL_GATEWAY_ADDRESSES[sourceChain], amount],
+                  args: [gatewayAddr, amount],
                 });
                 ceaMulticalls.push({
                   to: tokenAddress,
@@ -2047,23 +2131,14 @@ export class Orchestrator {
             }
           } else if (params.value && params.value > BigInt(0)) {
             amount = params.value;
-            nativeValue = params.value;
           }
 
-          // Build sendUniversalTxFromCEA call
-          const gatewayAddress = UNIVERSAL_GATEWAY_ADDRESSES[sourceChain];
-          if (!gatewayAddress) {
-            throw new Error(`No gateway address for chain ${sourceChain}`);
-          }
-          const sendCall = buildSendUniversalTxFromCEA(
-            gatewayAddress,
-            ueaAddress,
+          // Build sendUniversalTxToUEA self-call on CEA (to=CEA, value=0)
+          const sendCall = buildSendUniversalTxToUEA(
+            ceaAddress,
             tokenAddress,
             amount,
-            intermediatePayload,
-            ceaAddress,
-            '0x',
-            nativeValue
+            intermediatePayload
           );
           ceaMulticalls.push(sendCall);
 
@@ -2442,22 +2517,48 @@ export class Orchestrator {
     const target = params.to as ChainTarget;
     const targetChain = target.chain;
     const targetAddress = target.address;
+    const isSvm = isSvmChain(targetChain);
 
-    // Validate target address is not zero address
-    if (targetAddress.toLowerCase() === ZERO_ADDRESS.toLowerCase()) {
+    // Validate target address based on VM type
+    if (isSvm) {
+      // SVM: 32-byte hex address
+      if (!isValidSolanaHexAddress(targetAddress)) {
+        throw new Error(
+          `Invalid Solana address: ${targetAddress}. ` +
+            `Expected 0x + 64 hex chars (32 bytes).`
+        );
+      }
+      const ZERO_32 = ('0x' + '0'.repeat(64)) as `0x${string}`;
+      if (targetAddress.toLowerCase() === ZERO_32.toLowerCase()) {
+        throw new Error(
+          `Cannot send to zero address on Solana. ` +
+            `This would result in permanent loss of funds.`
+        );
+      }
+    } else {
+      // EVM: 20-byte hex address
+      if (targetAddress.toLowerCase() === ZERO_ADDRESS.toLowerCase()) {
+        throw new Error(
+          `Cannot send to zero address (0x0000...0000). ` +
+            `This would result in permanent loss of funds.`
+        );
+      }
+    }
+
+    // Validate chain supports outbound operations
+    if (!chainSupportsOutbound(targetChain)) {
       throw new Error(
-        `Cannot send to zero address (0x0000...0000). ` +
-          `This would result in permanent loss of funds.`
+        `Chain ${targetChain} does not support outbound operations. ` +
+          `Supported chains: BNB_TESTNET, ETHEREUM_SEPOLIA, SOLANA_DEVNET, etc.`
       );
     }
 
-    // Validate chain supports CEA
-    if (!chainSupportsCEA(targetChain)) {
-      throw new Error(
-        `Chain ${targetChain} does not support CEA operations. ` +
-          `Supported chains: BNB_TESTNET, ETHEREUM_SEPOLIA`
-      );
+    // Branch based on VM type
+    if (isSvm) {
+      return this.executeUoaToCeaSvm(params, target);
     }
+
+    // ===== EVM path (existing logic) =====
 
     // Get UEA address
     const ueaAddress = this.computeUEAOffchain();
@@ -2494,12 +2595,17 @@ export class Orchestrator {
         });
       }
     } else if (params.value) {
-      // Native value transfer only
-      ceaMulticalls.push({
-        to: targetAddress,
-        value: params.value,
-        data: '0x',
-      });
+      // Native value transfer only.
+      // If sending to the CEA itself, skip the multicall — the gateway deposits native
+      // value directly to CEA. A self-call with value would revert (CEA._handleMulticall
+      // rejects value-bearing self-calls).
+      if (targetAddress.toLowerCase() !== ceaAddress.toLowerCase()) {
+        ceaMulticalls.push({
+          to: targetAddress,
+          value: params.value,
+          data: '0x',
+        });
+      }
     }
 
     // Build CEA multicall payload (this is what gets executed on the external chain)
@@ -2722,6 +2828,174 @@ export class Orchestrator {
   }
 
   /**
+   * Route 2 for SVM targets: Outbound from Push Chain to Solana.
+   *
+   * Three cases:
+   * 1. Withdraw SOL: Burn pSOL on Push Chain, recipient gets native SOL
+   * 2. Withdraw SPL: Burn PRC-20 on Push Chain, recipient gets SPL token
+   * 3. Execute (CPI): Burn pSOL + execute CPI on target Solana program
+   *
+   * @param params - Universal execution parameters
+   * @param target - ChainTarget with Solana chain and hex address
+   * @returns UniversalTxResponse
+   */
+  private async executeUoaToCeaSvm(
+    params: UniversalExecuteParams,
+    target: ChainTarget
+  ): Promise<UniversalTxResponse> {
+    const targetChain = target.chain;
+    const targetAddress = target.address; // 0x-prefixed, 32 bytes
+    const ueaAddress = this.computeUEAOffchain();
+    const hasSvmExecute = !!params.svmExecute;
+
+    this.printLog(
+      `executeUoaToCeaSvm — target: ${targetAddress}, chain: ${targetChain}, ` +
+        `hasSvmExecute: ${hasSvmExecute}, value: ${params.value?.toString() ?? '0'}`
+    );
+
+    // --- Build SVM payload ---
+    let svmPayload: `0x${string}` = '0x'; // empty for withdraw (SOL/SPL)
+
+    if (hasSvmExecute) {
+      // Execute case: encode the CPI payload
+      const exec = params.svmExecute!;
+      svmPayload = encodeSvmExecutePayload({
+        targetProgram: exec.targetProgram,
+        accounts: exec.accounts,
+        ixData: exec.ixData,
+        rentFee: exec.rentFee ?? BigInt(0),
+        instructionId: 2,
+      });
+
+      this.printLog(
+        `executeUoaToCeaSvm — encoded execute payload: ${(svmPayload.length - 2) / 2} bytes, ` +
+          `${exec.accounts.length} accounts`
+      );
+    }
+
+    // --- Determine PRC-20 token and burn amount ---
+    let prc20Token: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+    let burnAmount = BigInt(0);
+
+    if (params.funds?.amount) {
+      // User explicitly specified funds with token
+      const token = (params.funds as { token: MoveableToken }).token;
+      if (token) {
+        prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+        burnAmount = params.funds.amount;
+      }
+    } else if (params.value && params.value > BigInt(0)) {
+      // Native value transfer: auto-select pSOL for Solana chains
+      prc20Token = this.getNativePRC20ForChain(targetChain);
+      burnAmount = params.value;
+      this.printLog(
+        `executeUoaToCeaSvm — auto-selected native PRC-20 ${prc20Token} for chain ${targetChain}, amount: ${burnAmount.toString()}`
+      );
+    } else if (hasSvmExecute) {
+      // Execute-only (no value): still need native token for chain namespace + gas fees
+      prc20Token = this.getNativePRC20ForChain(targetChain);
+      burnAmount = BigInt(1); // Minimum for precompile
+      this.printLog(
+        `executeUoaToCeaSvm — EXECUTE-only: using native PRC-20 ${prc20Token} with minimum 1 wei (precompile requirement)`
+      );
+    }
+
+    // --- Determine target bytes ---
+    // For withdraw: target is the Solana recipient pubkey
+    // For execute: target is the target Solana program
+    const targetBytes = hasSvmExecute
+      ? params.svmExecute!.targetProgram
+      : targetAddress;
+
+    // --- Build outbound request ---
+    const outboundReq: UniversalOutboundTxRequest = buildOutboundRequest(
+      targetBytes,
+      prc20Token,
+      burnAmount,
+      params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+      svmPayload,
+      ueaAddress // revert recipient is the UEA
+    );
+
+    this.printLog(
+      `executeUoaToCeaSvm — outbound request: ${JSON.stringify(
+        {
+          target: outboundReq.target,
+          token: outboundReq.token,
+          amount: outboundReq.amount.toString(),
+          gasLimit: outboundReq.gasLimit.toString(),
+          payloadLength: (outboundReq.payload.length - 2) / 2,
+          revertRecipient: outboundReq.revertRecipient,
+        },
+        null,
+        2
+      )}`
+    );
+
+    // --- Query gas fee (identical to EVM path) ---
+    const gatewayPcAddress = this.getUniversalGatewayPCAddress();
+    let gasFee = BigInt(0);
+    let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+
+    if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
+      const gasLimit = outboundReq.gasLimit;
+      try {
+        const result = await this.queryOutboundGasFee(prc20Token, gasLimit);
+        gasFee = result.gasFee;
+        gasToken = result.gasToken;
+        this.printLog(
+          `executeUoaToCeaSvm — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}`
+        );
+      } catch (err) {
+        throw new Error(`Failed to query outbound gas fee: ${err}`);
+      }
+    }
+
+    // --- Build Push Chain multicalls (approve + sendUniversalTxOutbound) ---
+    // Reuse the same builder as EVM — this part is identical
+    const pushChainMulticalls: MultiCall[] = buildOutboundApprovalAndCall({
+      prc20Token,
+      gasToken,
+      burnAmount,
+      gasFee,
+      gatewayPcAddress,
+      outboundRequest: outboundReq,
+    });
+
+    this.printLog(
+      `executeUoaToCeaSvm — Push Chain multicall has ${pushChainMulticalls.length} operations`
+    );
+
+    // --- Execute through normal execute() flow ---
+    const [ueaCode, ueaBalance] = await Promise.all([
+      this.pushClient.publicClient.getCode({ address: ueaAddress }),
+      this.pushClient.getBalance(ueaAddress),
+    ]);
+    const isUEADeployed = ueaCode !== undefined;
+    const ueaNonce = isUEADeployed
+      ? await this.getUEANonce(ueaAddress)
+      : BigInt(0);
+
+    const executeParams: ExecuteParams = {
+      to: ueaAddress,
+      data: pushChainMulticalls,
+      _ueaStatus: {
+        isDeployed: isUEADeployed,
+        nonce: ueaNonce,
+        balance: ueaBalance,
+      },
+    };
+
+    const response = await this.execute(executeParams);
+
+    // Add chain info to response
+    response.chain = targetChain;
+    response.chainNamespace = this.getChainNamespace(targetChain);
+
+    return response;
+  }
+
+  /**
    * Route 3: Execute inbound transaction from CEA to Push Chain
    *
    * This route instructs CEA on an external chain to call sendUniversalTxFromCEA,
@@ -2776,13 +3050,12 @@ export class Orchestrator {
       throw new Error(`No UniversalGateway address configured for chain ${sourceChain}`);
     }
 
-    // 6. Build multicall for CEA to execute on source chain
+    // 6. Build multicall for CEA to execute on source chain (self-calls via sendUniversalTxToUEA)
     const ceaMulticalls: MultiCall[] = [];
 
-    // Determine token and amount for sendUniversalTxFromCEA
+    // Determine token and amount for sendUniversalTxToUEA
     let tokenAddress: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
     let amount = BigInt(0);
-    let nativeValue = BigInt(0);
 
     if (params.funds?.amount) {
       // ERC20 token transfer from CEA
@@ -2792,13 +3065,12 @@ export class Orchestrator {
           // Native token (e.g., BNB on BSC)
           tokenAddress = ZERO_ADDRESS as `0x${string}`;
           amount = params.funds.amount;
-          nativeValue = params.funds.amount; // Native value to send with call
         } else {
-          // ERC20 token - need approval
+          // ERC20 token - need approval for gateway before sendUniversalTxToUEA
           tokenAddress = token.address as `0x${string}`;
           amount = params.funds.amount;
 
-          // Add approve call for ERC20
+          // Add approve call for ERC20 (CEA approves gateway to spend tokens)
           const approveData = encodeFunctionData({
             abi: ERC20_EVM,
             functionName: 'approve',
@@ -2815,7 +3087,6 @@ export class Orchestrator {
       // Native value transfer (e.g., BNB, ETH)
       tokenAddress = ZERO_ADDRESS as `0x${string}`;
       amount = params.value;
-      nativeValue = params.value;
     }
 
     // Build payload for Push Chain execution (if any)
@@ -2834,35 +3105,114 @@ export class Orchestrator {
       pushPayload = this._buildMulticallPayloadData(pushDestination, multicallData);
     }
 
-    // Build sendUniversalTxFromCEA call
-    // IMPORTANT: recipient MUST be UEA (anti-spoof check in contract)
-    const sendUniversalTxCall = buildSendUniversalTxFromCEA(
-      gatewayAddress,
-      ueaAddress, // recipient on Push Chain (MUST be UEA for anti-spoof)
-      tokenAddress,
-      amount,
-      pushPayload,
-      ceaAddress, // revert recipient is CEA itself
-      '0x', // signature data (empty for CEA calls)
-      nativeValue // native value to send with the call
+    // Build sendUniversalTxToUEA self-call on CEA
+    // CEA multicall: to=CEA (self-call), value=0
+    // CEA internally calls gateway.sendUniversalTxFromCEA(...)
+    const sendUniversalTxCall = buildSendUniversalTxToUEA(
+      ceaAddress,    // to: CEA address (self-call)
+      tokenAddress,  // token: address(0) for native, ERC20 address otherwise
+      amount,        // amount: must be > 0 per CEA contract
+      pushPayload    // payload: Push Chain execution payload
     );
     ceaMulticalls.push(sendUniversalTxCall);
 
-    // 7. Execute via Route 2 (UOA → CEA)
-    // We send PAYLOAD-only (no funds) because CEA uses its OWN funds on external chain
-    const route2Params: UniversalExecuteParams = {
-      to: {
-        address: ceaAddress,
-        chain: sourceChain,
+    // 7. Encode CEA multicalls into outbound payload
+    // CEA will self-execute this multicall (to=CEA, value=0)
+    const ceaPayload = buildCeaMulticallPayload(ceaMulticalls);
+
+    this.printLog(
+      `executeCeaToPush — CEA payload (first 100 chars): ${ceaPayload.slice(0, 100)}...`
+    );
+
+    // 8. Determine PRC-20 token for chain namespace routing
+    // Even though CEA uses its own funds, we need the PRC-20 for the relay to determine destination chain
+    const prc20Token = this.getNativePRC20ForChain(sourceChain);
+    // burnAmount = actual amount needed by CEA. The Vault deposits this as msg.value to CEA.
+    // Fallback to BigInt(1) for payload-only outbound (precompile rejects amount=0).
+    const burnAmount = amount > BigInt(0) ? amount : BigInt(1);
+
+    this.printLog(
+      `executeCeaToPush — prc20Token: ${prc20Token}, burnAmount: ${burnAmount.toString()}`
+    );
+
+    // 9. Build outbound request (same structure as Route 2)
+    // target = CEA address (for self-execution), value = 0 in payload
+    const outboundReq: UniversalOutboundTxRequest = buildOutboundRequest(
+      ceaAddress,              // target: CEA address (to=CEA for self-execution)
+      prc20Token,              // token: native PRC-20 for source chain (for namespace lookup)
+      burnAmount,              // amount: 1 wei (precompile workaround)
+      params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+      ceaPayload,              // payload: ABI-encoded CEA multicall
+      ueaAddress               // revertRecipient: UEA
+    );
+
+    this.printLog(
+      `executeCeaToPush — outbound request: ${JSON.stringify(
+        {
+          target: outboundReq.target,
+          token: outboundReq.token,
+          amount: outboundReq.amount.toString(),
+          gasLimit: outboundReq.gasLimit.toString(),
+          payloadLength: outboundReq.payload.length,
+          revertRecipient: outboundReq.revertRecipient,
+        },
+        null,
+        2
+      )}`
+    );
+
+    // 10. Query gas fees from UniversalCore
+    const gatewayPcAddress = this.getUniversalGatewayPCAddress();
+    let gasFee = BigInt(0);
+    let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+    if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
+      const gasLimit = outboundReq.gasLimit;
+      try {
+        const result = await this.queryOutboundGasFee(prc20Token, gasLimit);
+        gasToken = result.gasToken;
+        gasFee = result.gasFee;
+        this.printLog(
+          `executeCeaToPush — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}`
+        );
+      } catch (err) {
+        throw new Error(`Failed to query outbound gas fee for Route 3: ${err}`);
+      }
+    }
+
+    // 11. Build Push Chain multicalls (approvals + sendUniversalTxOutbound)
+    const pushChainMulticalls: MultiCall[] = buildOutboundApprovalAndCall({
+      prc20Token,
+      gasToken,
+      burnAmount,
+      gasFee,
+      gatewayPcAddress,
+      outboundRequest: outboundReq,
+    });
+
+    this.printLog(
+      `executeCeaToPush — Push Chain multicall has ${pushChainMulticalls.length} operations`
+    );
+
+    // 12. Pre-fetch UEA status to avoid redundant RPC calls in execute()
+    const [ueaCode, ueaBalance] = await Promise.all([
+      this.pushClient.publicClient.getCode({ address: ueaAddress }),
+      this.pushClient.getBalance(ueaAddress),
+    ]);
+    const isUEADeployed = ueaCode !== undefined;
+    const ueaNonce = isUEADeployed ? await this.getUEANonce(ueaAddress) : BigInt(0);
+
+    // 13. Execute through the normal execute() flow
+    const executeParams: ExecuteParams = {
+      to: ueaAddress,
+      data: pushChainMulticalls,
+      _ueaStatus: {
+        isDeployed: isUEADeployed,
+        nonce: ueaNonce,
+        balance: ueaBalance,
       },
-      data: ceaMulticalls, // CEA will execute this multicall
-      // No funds/value - CEA uses its own balance on external chain
-      gasLimit: params.gasLimit,
-      deadline: params.deadline,
     };
 
-    // Execute and return
-    const response = await this.executeUoaToCea(route2Params);
+    const response = await this.execute(executeParams);
 
     // Add Route 3 context to response
     response.chain = sourceChain;
@@ -2923,8 +3273,60 @@ export class Orchestrator {
       }
 
       case TransactionRoute.UOA_TO_CEA: {
-        // Build CEA outbound payload
         const target = params.to as ChainTarget;
+
+        // Branch: SVM vs EVM
+        if (isSvmChain(target.chain)) {
+          // SVM: build SVM payload (binary or empty for withdraw)
+          let payload: `0x${string}` = '0x';
+          if (params.svmExecute) {
+            payload = encodeSvmExecutePayload({
+              targetProgram: params.svmExecute.targetProgram,
+              accounts: params.svmExecute.accounts,
+              ixData: params.svmExecute.ixData,
+              rentFee: params.svmExecute.rentFee ?? BigInt(0),
+              instructionId: 2,
+            });
+          }
+
+          const targetBytes = params.svmExecute?.targetProgram ?? target.address;
+
+          let prc20Token: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+          let burnAmount = BigInt(0);
+          if (params.funds?.amount) {
+            const token = (params.funds as { token: MoveableToken }).token;
+            if (token) {
+              prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+              burnAmount = params.funds.amount;
+            }
+          } else if (params.value && params.value > BigInt(0)) {
+            prc20Token = this.getNativePRC20ForChain(target.chain);
+            burnAmount = params.value;
+          } else if (params.svmExecute) {
+            prc20Token = this.getNativePRC20ForChain(target.chain);
+            burnAmount = BigInt(1);
+          }
+
+          const outboundReq = buildOutboundRequest(
+            targetBytes,
+            prc20Token,
+            burnAmount,
+            params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+            payload,
+            ueaAddress
+          );
+
+          return { payload, gatewayRequest: outboundReq };
+        }
+
+        // EVM path: Resolve CEA address first (needed for self-transfer check)
+        const { cea: ceaAddress } = await getCEAAddress(
+          ueaAddress,
+          target.chain,
+          this.rpcUrls[target.chain]?.[0]
+        );
+
+        // Build CEA outbound payload
         const multicalls: MultiCall[] = [];
 
         if (params.data) {
@@ -2938,11 +3340,15 @@ export class Orchestrator {
             });
           }
         } else if (params.value) {
-          multicalls.push({
-            to: target.address,
-            value: params.value,
-            data: '0x',
-          });
+          // Skip multicall when sending native value to own CEA — gateway deposits directly.
+          // Self-call with value would revert (CEA._handleMulticall rejects it).
+          if (target.address.toLowerCase() !== ceaAddress.toLowerCase()) {
+            multicalls.push({
+              to: target.address,
+              value: params.value,
+              data: '0x',
+            });
+          }
         }
 
         const payload = buildCeaMulticallPayload(multicalls);
@@ -2957,12 +3363,6 @@ export class Orchestrator {
           }
         }
 
-        // Get CEA address on target chain - this is the recipient of the outbound tx
-        const { cea: ceaAddress } = await getCEAAddress(
-          ueaAddress,
-          target.chain,
-          this.rpcUrls[target.chain]?.[0]
-        );
         const targetBytes = ceaAddress;
 
         const outboundReq = buildOutboundRequest(
@@ -2975,6 +3375,99 @@ export class Orchestrator {
         );
 
         return { payload, gatewayRequest: outboundReq };
+      }
+
+      case TransactionRoute.CEA_TO_PUSH: {
+        // Route 3: CEA → Push Chain
+        // Build CEA multicall (approve + sendUniversalTxFromCEA) and wrap in outbound
+        if (!params.from?.chain) {
+          throw new Error('Route 3 (CEA → Push) requires from.chain');
+        }
+        const sourceChain = params.from.chain;
+        const pushDestination = params.to as `0x${string}`;
+
+        const { cea: ceaAddress } = await getCEAAddress(
+          ueaAddress,
+          sourceChain,
+          this.rpcUrls[sourceChain]?.[0]
+        );
+
+        const gatewayAddr = UNIVERSAL_GATEWAY_ADDRESSES[sourceChain];
+        if (!gatewayAddr) {
+          throw new Error(`No UniversalGateway address configured for chain ${sourceChain}`);
+        }
+
+        // Build CEA multicalls (self-calls via sendUniversalTxToUEA)
+        const ceaMulticalls: MultiCall[] = [];
+        let tokenAddress: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+        let amount = BigInt(0);
+
+        if (params.funds?.amount) {
+          const token = (params.funds as { token: MoveableToken }).token;
+          if (token) {
+            if (token.mechanism === 'native') {
+              tokenAddress = ZERO_ADDRESS as `0x${string}`;
+              amount = params.funds.amount;
+            } else {
+              tokenAddress = token.address as `0x${string}`;
+              amount = params.funds.amount;
+              // Approve gateway for ERC20 (CEA self-call, value=0)
+              const approveData = encodeFunctionData({
+                abi: ERC20_EVM,
+                functionName: 'approve',
+                args: [gatewayAddr, amount],
+              });
+              ceaMulticalls.push({
+                to: tokenAddress,
+                value: BigInt(0),
+                data: approveData,
+              });
+            }
+          }
+        } else if (params.value && params.value > BigInt(0)) {
+          tokenAddress = ZERO_ADDRESS as `0x${string}`;
+          amount = params.value;
+        }
+
+        // Build Push Chain payload (what executes after inbound arrives)
+        let pushPayload: `0x${string}` = '0x';
+        if (params.data) {
+          const multicallData = buildExecuteMulticall({
+            execute: {
+              to: pushDestination,
+              value: params.value,
+              data: params.data,
+            },
+            ueaAddress,
+          });
+          pushPayload = this._buildMulticallPayloadData(pushDestination, multicallData);
+        }
+
+        // Build sendUniversalTxToUEA self-call on CEA (to=CEA, value=0)
+        const sendCall = buildSendUniversalTxToUEA(
+          ceaAddress,
+          tokenAddress,
+          amount,
+          pushPayload
+        );
+        ceaMulticalls.push(sendCall);
+
+        const ceaPayload = buildCeaMulticallPayload(ceaMulticalls);
+        const prc20Token = this.getNativePRC20ForChain(sourceChain);
+        // burnAmount = actual amount needed by CEA. Vault deposits this as msg.value.
+        // Fallback to BigInt(1) for payload-only outbound (precompile rejects amount=0).
+        const burnAmount = amount > BigInt(0) ? amount : BigInt(1);
+
+        const outboundReq = buildOutboundRequest(
+          ceaAddress,
+          prc20Token,
+          burnAmount,
+          params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+          ceaPayload,
+          ueaAddress
+        );
+
+        return { payload: ceaPayload, gatewayRequest: outboundReq };
       }
 
       default:
@@ -4091,209 +4584,14 @@ export class Orchestrator {
     return null;
   }
 
-  /**
-   * Get external chain transaction details for an outbound transaction.
-   * Returns null if the relay hasn't completed yet.
-   *
-   * For Push Chain originated outbound transactions, this method:
-   * 1. Fetches the Push Chain tx receipt
-   * 2. Parses the UniversalTxOutbound event to extract universalsubTxId
-   * 3. Queries gRPC using the extracted universalsubTxId (the ID in event DATA, not topics)
-   *
-   * @param pushChainTxHash - The Push Chain transaction hash
-   * @param universalSubTxId - Optional: pre-extracted universalsubTxId (avoids fetching receipt again)
-   * @returns External chain tx details or null if not yet available
-   */
-  async getOutboundTxDetails(
-    pushChainTxHash: string,
-    universalSubTxId?: string
-  ): Promise<import('./orchestrator.types').OutboundTxDetails | null> {
-    this.printLog(`[getOutboundTxDetails] Push Chain TX: ${pushChainTxHash}`);
-
-    // Get universalsubTxId either from parameter or by extracting from tx receipt
-    let universalTxId = universalSubTxId;
-    if (!universalTxId) {
-      this.printLog(
-        `[getOutboundTxDetails] No universalsubTxId provided, extracting from tx receipt...`
-      );
-      universalTxId = (await this.extractUniversalSubTxIdFromTx(pushChainTxHash)) ?? undefined;
-    }
-
-    if (!universalTxId) {
-      // Fallback to computed ID (for backwards compatibility, though this may not work)
-      this.printLog(
-        `[getOutboundTxDetails] Could not extract universalsubTxId, falling back to computed ID`
-      );
-      universalTxId = this.computeUniversalTxId(pushChainTxHash);
-    }
-
-    // gRPC expects ID without 0x prefix (consistent with inbound ID format)
-    const queryId = universalTxId.startsWith('0x')
-      ? universalTxId.slice(2)
-      : universalTxId;
-
-    this.printLog(`[getOutboundTxDetails] Using UniversalTxId: ${queryId}`);
-
-    try {
-      const utxResponse = await this.pushClient.getUniversalTxById(queryId);
-      this.printLog(
-        `[getOutboundTxDetails] gRPC response: ${JSON.stringify(utxResponse, (k, v) => (typeof v === 'bigint' ? v.toString() : v))}`
-      );
-
-      if (!utxResponse?.universalTx?.outboundTx?.txHash) {
-        this.printLog(`[getOutboundTxDetails] No outboundTx.txHash found | universalTx exists: ${!!utxResponse?.universalTx} | outboundTx exists: ${!!utxResponse?.universalTx?.outboundTx} | txHash value: '${utxResponse?.universalTx?.outboundTx?.txHash || ''}' | universalStatus: ${utxResponse?.universalTx?.universalStatus}`);
-        return null; // Relay not yet complete
-      }
-
-      const outbound = utxResponse.universalTx.outboundTx;
-      const chain = this.chainFromNamespace(outbound.destinationChain);
-      this.printLog(`[getOutboundTxDetails] outbound.destinationChain: '${outbound.destinationChain}' => resolved chain: ${chain}`);
-
-      if (!chain) {
-        this.printLog(`[getOutboundTxDetails] Unknown chain from namespace: '${outbound.destinationChain}'`);
-        return null; // Unknown chain
-      }
-
-      const explorerBaseUrl = CHAIN_INFO[chain]?.explorerUrl;
-      const explorerUrl = explorerBaseUrl
-        ? `${explorerBaseUrl}/tx/${outbound.txHash}`
-        : '';
-
-      return {
-        externalTxHash: outbound.txHash,
-        destinationChain: chain,
-        explorerUrl,
-        recipient: outbound.recipient,
-        amount: outbound.amount,
-        assetAddr: outbound.assetAddr,
-      };
-    } catch (error) {
-      // Query failed - tx might not be indexed yet
-      this.printLog(
-        `[getOutboundTxDetails] Error: ${error instanceof Error ? error.message : String(error)}`
-      );
-      return null;
-    }
-  }
-
   // Outbound sync configuration constants
   private static readonly OUTBOUND_INITIAL_WAIT_MS = 30000; // 30s
   private static readonly OUTBOUND_POLL_INTERVAL_MS = 5000; // 5s
   private static readonly OUTBOUND_MAX_TIMEOUT_MS = 120000; // 120s
 
   /**
-   * Syncs outbound transaction state by polling Push Chain v2 API until:
-   * 1. outbound_tx[].observedTx.txHash is populated
-   * 2. universal_status === OUTBOUND_SUCCESS (or OUTBOUND_FAILED)
-   *
-   * @param universalTxId - The universal transaction ID to track (with or without 0x prefix)
-   * @param options - Sync options (initialWaitMs, pollingIntervalMs, timeout, progressHook)
-   * @returns The completed UniversalTxV2 or throws on timeout/failure
-   */
-  async syncOutboundTransaction(
-    universalTxId: string,
-    options: {
-      initialWaitMs?: number;
-      pollingIntervalMs?: number;
-      timeout?: number;
-      progressHook?: (event: OutboundSyncProgress) => void;
-    } = {}
-  ): Promise<UniversalTxV2> {
-    const {
-      initialWaitMs = Orchestrator.OUTBOUND_INITIAL_WAIT_MS,
-      pollingIntervalMs = Orchestrator.OUTBOUND_POLL_INTERVAL_MS,
-      timeout = Orchestrator.OUTBOUND_MAX_TIMEOUT_MS,
-      progressHook,
-    } = options;
-
-    const startTime = Date.now();
-
-    // Strip 0x prefix for gRPC query
-    const queryId = universalTxId.startsWith('0x')
-      ? universalTxId.slice(2)
-      : universalTxId;
-
-    console.log(`[syncOutbound] Starting sync | ID: ${queryId} | initialWait: ${initialWaitMs}ms | pollInterval: ${pollingIntervalMs}ms | timeout: ${timeout}ms`);
-    progressHook?.({ status: 'waiting', elapsed: 0 });
-
-    // Initial wait for relay processing
-    console.log(`[syncOutbound] Initial wait of ${initialWaitMs}ms...`);
-    await new Promise((resolve) => setTimeout(resolve, initialWaitMs));
-
-    console.log(`[syncOutbound] Initial wait done. Starting polling. Elapsed: ${Date.now() - startTime}ms`);
-    progressHook?.({ status: 'polling', elapsed: Date.now() - startTime });
-
-    let pollCount = 0;
-    while (Date.now() - startTime < timeout) {
-      pollCount++;
-      const pollStart = Date.now();
-      console.log(`[syncOutbound] Poll #${pollCount} | Elapsed: ${pollStart - startTime}ms / ${timeout}ms`);
-
-      try {
-        const response = await this.pushClient.getUniversalTxByIdV2(queryId);
-        const utx = response?.universalTx;
-
-        if (utx) {
-          console.log(
-            `[syncOutbound] Poll #${pollCount} | universalStatus: ${utx.universalStatus} | OutboundTx count: ${utx.outboundTx?.length ?? 0} | inboundTx: ${!!utx.inboundTx} | pcTx count: ${utx.pcTx?.length ?? 0}`
-          );
-
-          // Check completion criteria:
-          // 1. At least one outbound tx with populated observedTx.txHash
-          const hasCompletedOutbound = utx.outboundTx?.some(
-            (ob) => ob.observedTx?.txHash && ob.observedTx.txHash !== ''
-          );
-
-          // 2. Check universal status
-          const isSuccess =
-            utx.universalStatus === UniversalTxStatus.OUTBOUND_SUCCESS;
-          const isFailed =
-            utx.universalStatus === UniversalTxStatus.OUTBOUND_FAILED;
-
-          console.log(`[syncOutbound] Poll #${pollCount} | hasCompletedOutbound: ${hasCompletedOutbound} | isSuccess(${UniversalTxStatus.OUTBOUND_SUCCESS}): ${isSuccess} | isFailed(${UniversalTxStatus.OUTBOUND_FAILED}): ${isFailed}`);
-
-          if (hasCompletedOutbound && isSuccess) {
-            console.log(`[syncOutbound] SUCCESS on poll #${pollCount} | elapsed: ${Date.now() - startTime}ms`);
-            progressHook?.({ status: 'success', elapsed: Date.now() - startTime });
-            return utx;
-          }
-
-          if (isFailed) {
-            console.log(`[syncOutbound] FAILED on poll #${pollCount} | status: ${utx.universalStatus}`);
-            progressHook?.({ status: 'failed', elapsed: Date.now() - startTime });
-            throw new Error(
-              `Outbound transaction failed. Universal Status: ${utx.universalStatus}`
-            );
-          }
-        } else {
-          console.log(`[syncOutbound] Poll #${pollCount} | universalTx is NULL/undefined`);
-        }
-      } catch (error) {
-        // Log but continue polling (transient errors)
-        if (
-          error instanceof Error &&
-          error.message.includes('Outbound transaction failed')
-        ) {
-          throw error; // Re-throw failure errors
-        }
-        console.log(
-          `[syncOutbound] Poll #${pollCount} ERROR: ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
-
-      console.log(`[syncOutbound] Poll #${pollCount} done (${Date.now() - pollStart}ms). Waiting ${pollingIntervalMs}ms...`);
-      await new Promise((resolve) => setTimeout(resolve, pollingIntervalMs));
-    }
-
-    console.log(`[syncOutbound] TIMEOUT after ${pollCount} polls | elapsed: ${Date.now() - startTime}ms`);
-    progressHook?.({ status: 'timeout', elapsed: Date.now() - startTime });
-    throw new Error(
-      `Timeout waiting for outbound sync. ID: ${universalTxId}. Timeout: ${timeout}ms.`
-    );
-  }
-
-  /**
    * Wait for outbound transaction to complete and return external chain details.
+   * @internal Used by .wait() for outbound routes - not part of public API.
    * Uses polling with configurable initial wait, interval, and timeout.
    *
    * Default strategy: 30s initial wait, then poll every 5s, 120s total timeout.
@@ -4303,7 +4601,7 @@ export class Orchestrator {
    * @returns External chain tx details
    * @throws Error on timeout
    */
-  async waitForOutboundTx(
+  private async waitForOutboundTx(
     pushChainTxHash: string,
     options: import('./orchestrator.types').WaitForOutboundOptions = {}
   ): Promise<import('./orchestrator.types').OutboundTxDetails> {
@@ -5545,6 +5843,7 @@ export class Orchestrator {
       // 6. Utilities
       wait: async (): Promise<UniversalTxReceipt> => {
         // Use trackTransaction with registered hook if available
+        let baseReceipt: UniversalTxReceipt;
         if (registeredProgressHook) {
           const trackedResponse = await this.trackTransaction(tx.hash, {
             waitForCompletion: true,
@@ -5552,10 +5851,41 @@ export class Orchestrator {
           });
           // Get receipt from the tracked response
           const receipt = await tx.wait();
-          return this.transformToUniversalTxReceipt(receipt, trackedResponse);
+          baseReceipt = this.transformToUniversalTxReceipt(receipt, trackedResponse);
+        } else {
+          const receipt = await tx.wait();
+          baseReceipt = this.transformToUniversalTxReceipt(receipt, universalTxResponse);
         }
-        const receipt = await tx.wait();
-        return this.transformToUniversalTxReceipt(receipt, universalTxResponse);
+
+        // If outbound route (UOA → CEA), poll for external chain details
+        if (universalTxResponse.route === TransactionRoute.UOA_TO_CEA) {
+          try {
+            const outboundDetails = await this.waitForOutboundTx(
+              tx.hash,
+              {
+                initialWaitMs: Orchestrator.OUTBOUND_INITIAL_WAIT_MS,
+                pollingIntervalMs: Orchestrator.OUTBOUND_POLL_INTERVAL_MS,
+                timeout: Orchestrator.OUTBOUND_MAX_TIMEOUT_MS,
+              }
+            );
+            // Merge external chain details into receipt
+            baseReceipt = {
+              ...baseReceipt,
+              externalTxHash: outboundDetails.externalTxHash,
+              externalChain: outboundDetails.destinationChain,
+              externalExplorerUrl: outboundDetails.explorerUrl,
+              externalRecipient: outboundDetails.recipient,
+              externalAmount: outboundDetails.amount,
+              externalAssetAddr: outboundDetails.assetAddr,
+            };
+          } catch (error) {
+            // Outbound polling timed out - return partial receipt (don't throw)
+            // Push Chain tx succeeded, external tracking can be retried later
+            console.warn(`[wait] External chain tracking failed: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
+
+        return baseReceipt;
       },
 
       progressHook: (

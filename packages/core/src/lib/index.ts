@@ -25,6 +25,10 @@ export type {
   MultiChainTxResponse,
   OutboundTxDetails,
   WaitForOutboundOptions,
+  // SVM (Solana) types
+  SvmGatewayAccountMeta,
+  SvmExecutePayloadFields,
+  SvmExecuteParams,
 } from './orchestrator/orchestrator.types';
 
 // Route detection utilities
@@ -36,8 +40,16 @@ export {
   getUEAForCEA,
   isCEA,
   chainSupportsCEA,
+  chainSupportsOutbound,
   getCEAFactoryAddress,
   getAllCEAAddresses,
 } from './orchestrator/cea-utils';
+
+// SVM (Solana) payload utilities
+export {
+  encodeSvmExecutePayload,
+  isSvmChain,
+  isValidSolanaHexAddress,
+} from './orchestrator/payload-builders';
 
 export { PushChain };

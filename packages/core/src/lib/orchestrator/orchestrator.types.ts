@@ -200,6 +200,10 @@ export interface UniversalTxResponse {
   parentTxHash?: string;
   /** Next transaction hash in chain */
   childTxHash?: string;
+
+  // 11. Transaction Route
+  /** Transaction route (UOA_TO_PUSH, UOA_TO_CEA, CEA_TO_PUSH, CEA_TO_CEA) */
+  route?: TransactionRouteType;
 }
 
 /**
@@ -242,6 +246,20 @@ export interface UniversalTxReceipt {
   chain?: CHAIN;
   /** CAIP-2 chain namespace, e.g., "eip155:11155111" */
   chainNamespace?: string;
+
+  // 9. External Chain Details (populated for outbound routes)
+  /** Transaction hash on external chain (outbound only) */
+  externalTxHash?: string;
+  /** External chain where tx executed */
+  externalChain?: CHAIN;
+  /** Explorer URL for external tx */
+  externalExplorerUrl?: string;
+  /** Recipient on external chain */
+  externalRecipient?: string;
+  /** Amount transferred to external chain */
+  externalAmount?: string;
+  /** Asset address on external chain */
+  externalAssetAddr?: string;
 }
 
 /**
@@ -319,7 +337,62 @@ export type UniversalExecuteParams = Omit<ExecuteParams, 'to'> & {
    * - ChainTarget: External chain target (Routes 2, 3, 4)
    */
   to: UniversalTo;
+
+  /**
+   * SVM-specific: CPI execution parameters for Solana targets (Route 2).
+   * When present, the outbound transaction will execute a Cross-Program Invocation
+   * on the specified Solana program with the given accounts and instruction data.
+   * Only applicable when `to.chain` is a Solana chain.
+   */
+  svmExecute?: SvmExecuteParams;
 };
+
+// ============================================================================
+// SVM (Solana) Types for Route 2 Outbound
+// ============================================================================
+
+/**
+ * Account metadata for SVM CPI execution (Solana Gateway pattern).
+ * Pubkey is 0x-prefixed hex encoding of a 32-byte Solana public key.
+ */
+export interface SvmGatewayAccountMeta {
+  /** Solana public key as 0x-prefixed hex (32 bytes = 0x + 64 hex chars) */
+  pubkey: `0x${string}`;
+  /** Whether this account is writable in the CPI */
+  isWritable: boolean;
+}
+
+/**
+ * Fields for encoding the SVM execute payload (binary format).
+ * Used internally by encodeSvmExecutePayload.
+ */
+export interface SvmExecutePayloadFields {
+  /** Target Solana program to CPI into (32 bytes, 0x-prefixed hex) */
+  targetProgram: `0x${string}`;
+  /** Accounts required for the CPI call */
+  accounts: SvmGatewayAccountMeta[];
+  /** Raw instruction data for the target program */
+  ixData: Uint8Array;
+  /** Rent fee in lamports for target program account creation (0 if none) */
+  rentFee: bigint;
+  /** Instruction ID: 2 = execute (default) */
+  instructionId?: number;
+}
+
+/**
+ * User-facing parameters for CPI execution on a Solana program via Route 2.
+ * Passed as `svmExecute` in UniversalExecuteParams when targeting SVM chains.
+ */
+export interface SvmExecuteParams {
+  /** Target Solana program to CPI into (32 bytes, 0x-prefixed hex) */
+  targetProgram: `0x${string}`;
+  /** Accounts required for the CPI call */
+  accounts: SvmGatewayAccountMeta[];
+  /** Raw instruction data for the target program */
+  ixData: Uint8Array;
+  /** Rent fee in lamports for target program account creation (default 0) */
+  rentFee?: bigint;
+}
 
 // ============================================================================
 // Outbound Transaction Types (for Push → External Chain)
@@ -391,6 +464,10 @@ export interface HopDescriptor {
   ueaAddress: `0x${string}`;
   /** Address to receive funds on revert */
   revertRecipient: `0x${string}`;
+  /** Whether this hop targets an SVM chain (Solana) */
+  isSvmTarget?: boolean;
+  /** SVM execute payload (binary-encoded, for Solana targets) */
+  svmPayload?: `0x${string}`;
 }
 
 // ============================================================================

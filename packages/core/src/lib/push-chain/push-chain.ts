@@ -104,22 +104,6 @@ export class PushChain {
      */
     trackTransaction: Orchestrator['trackTransaction'];
     /**
-     * Get external chain transaction details for an outbound transaction.
-     * Returns null if the relay hasn't completed yet.
-     */
-    getOutboundTxDetails: Orchestrator['getOutboundTxDetails'];
-    /**
-     * Wait for outbound transaction to complete and return external chain details.
-     * Default: 30s initial wait, then poll every 5s, 120s total timeout.
-     */
-    waitForOutboundTx: Orchestrator['waitForOutboundTx'];
-    /**
-     * Syncs outbound transaction state by polling Push Chain v2 API until completion.
-     * Checks for outbound_tx.observedTx.txHash populated AND OUTBOUND_SUCCESS status.
-     * Default: 30s initial wait, 5s poll interval, 120s timeout.
-     */
-    syncOutboundTransaction: Orchestrator['syncOutboundTransaction'];
-    /**
      * Signs an arbitrary message
      */
     signMessage: (data: Uint8Array) => Promise<string>;
@@ -202,15 +186,6 @@ export class PushChain {
       },
       trackTransaction: (txHash: string, options?: import('../orchestrator/orchestrator.types').TrackTransactionOptions) => {
         return orchestrator.trackTransaction.bind(orchestrator)(txHash, options);
-      },
-      getOutboundTxDetails: (pushChainTxHash: string) => {
-        return orchestrator.getOutboundTxDetails.bind(orchestrator)(pushChainTxHash);
-      },
-      waitForOutboundTx: (pushChainTxHash: string, options?: import('../orchestrator/orchestrator.types').WaitForOutboundOptions) => {
-        return orchestrator.waitForOutboundTx.bind(orchestrator)(pushChainTxHash, options);
-      },
-      syncOutboundTransaction: (universalTxId: string, options?: Parameters<Orchestrator['syncOutboundTransaction']>[1]) => {
-        return orchestrator.syncOutboundTransaction.bind(orchestrator)(universalTxId, options);
       },
       signMessage: async (data: Uint8Array) => {
         if (this.isReadMode) {

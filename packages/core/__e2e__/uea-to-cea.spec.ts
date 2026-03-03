@@ -1,19 +1,23 @@
 /**
- * Route 2 Comprehensive E2E Tests (UOA → CEA)
+ * UEA → CEA: Outbound Transactions (Route 2)
  *
- * Tests for outbound transactions from Push Chain to BSC Testnet via CEA.
- * Covers: FUNDS only, PAYLOAD only, FUNDS + PAYLOAD, Error Handling, Progress Hooks
+ * Tests for outbound transactions from Push Chain to external chains via CEA.
+ * Covers: Route Detection, CEA Utilities, Transaction Preparation, FUNDS only,
+ * PAYLOAD only, FUNDS + PAYLOAD, E2E Sync, Error Handling, Progress Hooks
+ *
+ * Primary test chain: BNB Testnet (Chain ID: 97)
  */
 import { PushChain } from '../src';
 import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
 import { CHAIN_INFO } from '../src/lib/constants/chain';
+import { MOVEABLE_TOKENS } from '../src/lib/constants/tokens';
 import { createWalletClient, http, Hex, parseEther, encodeFunctionData } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import dotenv from 'dotenv';
 import path from 'path';
-import { getCEAAddress } from '../src/lib/orchestrator/cea-utils';
-import { detectRoute, TransactionRoute } from '../src/lib/orchestrator/route-detector';
-import type { UniversalExecuteParams } from '../src/lib/orchestrator/orchestrator.types';
+import { getCEAAddress, chainSupportsCEA } from '../src/lib/orchestrator/cea-utils';
+import { TransactionRoute, detectRoute } from '../src/lib/orchestrator/route-detector';
+import type { UniversalExecuteParams, ChainTarget } from '../src/lib/orchestrator/orchestrator.types';
 import type { ProgressEvent } from '../src/lib/progress-hook/progress-hook.types';
 import { ERC20_EVM } from '../src/lib/constants/abi/erc20.evm';
 
@@ -26,11 +30,12 @@ const NATIVE_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
 // Test target address (random address for testing)
 const TEST_TARGET = '0x1234567890123456789012345678901234567890' as `0x${string}`;
 
-describe('Route 2: Comprehensive E2E Tests (BSC Testnet)', () => {
+describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
   let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
   let ueaAddress: `0x${string}`;
   let ceaAddress: `0x${string}`;
 
+  // Skip if no private key is set
   const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
   const skipE2E = !privateKey;
 
@@ -58,6 +63,9 @@ describe('Route 2: Comprehensive E2E Tests (BSC Testnet)', () => {
     pushClient = await PushChain.initialize(universalSigner, {
       network: PUSH_NETWORK.TESTNET_DONUT,
       printTraces: true,
+      progressHook: (val: any) => {
+        console.log(`[${val.id}] ${val.title}`);
+      },
     });
 
     ueaAddress = pushClient.universal.account;
@@ -70,9 +78,142 @@ describe('Route 2: Comprehensive E2E Tests (BSC Testnet)', () => {
   }, 60000);
 
   // ============================================================================
-  // 1. FUNDS Only Tests
+  // 1. Route Detection
   // ============================================================================
-  describe('1. FUNDS Only', () => {
+  describe('1. Route Detection', () => {
+    it('should detect UOA_TO_PUSH for simple address target', () => {
+      const params: UniversalExecuteParams = {
+        to: '0x1234567890123456789012345678901234567890',
+        value: parseEther('0.001'),
+      };
+      expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_PUSH);
+    });
+
+    it('should detect UOA_TO_CEA for ChainTarget', () => {
+      const params: UniversalExecuteParams = {
+        to: {
+          address: '0x1234567890123456789012345678901234567890',
+          chain: CHAIN.BNB_TESTNET,
+        } as ChainTarget,
+        value: parseEther('0.001'),
+      };
+      expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
+    });
+
+    it('should detect CEA_TO_PUSH when from.chain is specified with Push target', () => {
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: {
+          address: '0x1234567890123456789012345678901234567890',
+          chain: CHAIN.PUSH_TESTNET_DONUT,
+        } as ChainTarget,
+        value: parseEther('0.001'),
+      };
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+    });
+  });
+
+  // ============================================================================
+  // 2. CEA Address Utilities
+  // ============================================================================
+  describe('2. CEA Address Utilities', () => {
+    it('should report BNB Testnet supports CEA', () => {
+      expect(chainSupportsCEA(CHAIN.BNB_TESTNET)).toBe(true);
+    });
+
+    it('should report Ethereum Sepolia supports CEA', () => {
+      expect(chainSupportsCEA(CHAIN.ETHEREUM_SEPOLIA)).toBe(true);
+    });
+
+    it('should report Solana Devnet does not support CEA', () => {
+      expect(chainSupportsCEA(CHAIN.SOLANA_DEVNET)).toBe(false);
+    });
+
+    it('should compute CEA address for UEA on BNB Testnet', async () => {
+      if (skipE2E) return;
+
+      const result = await getCEAAddress(ueaAddress, CHAIN.BNB_TESTNET);
+      console.log(`CEA on BNB Testnet: ${result.cea}, deployed: ${result.isDeployed}`);
+
+      expect(result.cea).toMatch(/^0x[a-fA-F0-9]{40}$/);
+      expect(typeof result.isDeployed).toBe('boolean');
+    });
+
+    it('should compute deterministic CEA address', async () => {
+      if (skipE2E) return;
+
+      const result = await getCEAAddress(ueaAddress, CHAIN.BNB_TESTNET);
+
+      expect(result.cea).toMatch(/^0x[a-fA-F0-9]{40}$/);
+      expect(typeof result.isDeployed).toBe('boolean');
+
+      // CEA should be deterministic - calling again should return same address
+      const result2 = await getCEAAddress(ueaAddress, CHAIN.BNB_TESTNET);
+      expect(result2.cea).toBe(result.cea);
+    });
+  });
+
+  // ============================================================================
+  // 3. Transaction Preparation
+  // ============================================================================
+  describe('3. Transaction Preparation', () => {
+    it('should prepare outbound transaction without executing', async () => {
+      if (skipE2E) return;
+
+      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+      const params: UniversalExecuteParams = {
+        to: {
+          address: targetAddress,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        value: parseEther('0.0001'),
+      };
+
+      const prepared = await pushClient.universal.prepareTransaction(params);
+
+      console.log(`Prepared tx route: ${prepared.route}`);
+      console.log(`Estimated gas: ${prepared.estimatedGas}`);
+      console.log(`Nonce: ${prepared.nonce}`);
+
+      expect(prepared.route).toBe('UOA_TO_CEA');
+      expect(prepared.payload).toBeDefined();
+      expect(typeof prepared.thenOn).toBe('function');
+      expect(typeof prepared.send).toBe('function');
+    });
+
+    it('should create chained builder from prepared transactions', async () => {
+      if (skipE2E) return;
+
+      const firstPrepared = await pushClient.universal.prepareTransaction({
+        to: '0x1234567890123456789012345678901234567890',
+        value: parseEther('0.001'),
+      });
+
+      const builder = pushClient.universal.executeTransactions(firstPrepared);
+
+      expect(typeof builder.thenOn).toBe('function');
+      expect(typeof builder.send).toBe('function');
+
+      // Test chaining with a second prepared transaction
+      const secondPrepared = await pushClient.universal.prepareTransaction({
+        to: {
+          address: '0x1234567890123456789012345678901234567890',
+          chain: CHAIN.BNB_TESTNET,
+        },
+        value: parseEther('0.0001'),
+      });
+
+      const chainedBuilder = builder.thenOn(secondPrepared);
+
+      expect(typeof chainedBuilder.thenOn).toBe('function');
+      expect(typeof chainedBuilder.send).toBe('function');
+    }, 60000);
+  });
+
+  // ============================================================================
+  // 4. FUNDS Only
+  // ============================================================================
+  describe('4. FUNDS Only', () => {
     it('should transfer native pBNB to BSC Testnet', async () => {
       if (skipE2E) return;
 
@@ -147,9 +288,9 @@ describe('Route 2: Comprehensive E2E Tests (BSC Testnet)', () => {
   });
 
   // ============================================================================
-  // 2. PAYLOAD Only Tests
+  // 5. PAYLOAD Only
   // ============================================================================
-  describe('2. PAYLOAD Only', () => {
+  describe('5. PAYLOAD Only', () => {
     // NOTE: Payload-only tests should use functions that don't require the CEA
     // to have token balance. ERC20 `approve` is ideal because it sets allowance
     // without requiring actual tokens. ERC20 `transfer` would fail because
@@ -226,9 +367,9 @@ describe('Route 2: Comprehensive E2E Tests (BSC Testnet)', () => {
   });
 
   // ============================================================================
-  // 3. FUNDS + PAYLOAD Tests
+  // 6. FUNDS + PAYLOAD
   // ============================================================================
-  describe('3. FUNDS + PAYLOAD', () => {
+  describe('6. FUNDS + PAYLOAD', () => {
     // NOTE: When combining native value transfer with non-payable function calls
     // (like ERC20 approve/transfer), you MUST use multicall array format to
     // separate them. Attaching value directly to a non-payable call will revert.
@@ -307,9 +448,82 @@ describe('Route 2: Comprehensive E2E Tests (BSC Testnet)', () => {
   });
 
   // ============================================================================
-  // 4. Error Handling Tests
+  // 7. E2E Outbound with Sync
   // ============================================================================
-  describe('4. Error Handling', () => {
+  describe('7. E2E Outbound with Sync', () => {
+    it('should execute outbound transfer from UOA to CEA on BSC Testnet', async () => {
+      if (skipE2E) return;
+
+      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+
+      // The UOA already has pBNB balance on Push Chain
+      // We can directly test the outbound flow without bridging first
+
+      // Execute outbound transfer to BSC Testnet
+      const tx = await pushClient.universal.sendTransaction({
+        to: {
+          address: targetAddress,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        value: parseEther('0.00015'),
+        gasLimit: BigInt(2000000),
+      });
+
+      console.log(`[TEST] ${new Date().toISOString()} Push Chain TX Hash: ${tx.hash}`);
+
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+    }, 180000);
+
+    it('should include external chain details in receipt for outbound via unified .wait()', async () => {
+      if (skipE2E) return;
+
+      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+
+      console.log(`\n=== TEST: Unified .wait() with outbound ===`);
+      console.log(`[TEST] ${new Date().toISOString()} Sending outbound tx...`);
+
+      // Execute outbound transfer to BSC Testnet
+      const tx = await pushClient.universal.sendTransaction({
+        to: {
+          address: targetAddress,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        value: parseEther('0.00015'),
+        gasLimit: BigInt(2000000),
+      });
+
+      console.log(`[TEST] ${new Date().toISOString()} Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      // .wait() now automatically polls for external chain details for outbound routes
+      console.log(`[TEST] ${new Date().toISOString()} Calling tx.wait() - will poll for external chain details...`);
+      const receipt = await tx.wait();
+
+      console.log(`[TEST] ${new Date().toISOString()} Receipt received:`);
+      console.log(`  Push Chain TX Hash: ${receipt.hash}`);
+      console.log(`  Status: ${receipt.status}`);
+      console.log(`  External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`  External Chain: ${receipt.externalChain}`);
+      console.log(`  External Explorer URL: ${receipt.externalExplorerUrl}`);
+      console.log(`  External Recipient: ${receipt.externalRecipient}`);
+      console.log(`  External Amount: ${receipt.externalAmount}`);
+
+      // Verify Push Chain receipt
+      expect(receipt.hash).toBe(tx.hash);
+      expect(receipt.status).toBe('success');
+
+      // Verify external chain details are included (outbound route)
+      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+      expect(receipt.externalExplorerUrl).toContain(receipt.externalTxHash);
+    }, 600000); // 10 min timeout for full E2E with relay
+  });
+
+  // ============================================================================
+  // 8. Error Handling
+  // ============================================================================
+  describe('8. Error Handling', () => {
     it('should fail with unsupported chain', async () => {
       if (skipE2E) return;
 
@@ -351,9 +565,9 @@ describe('Route 2: Comprehensive E2E Tests (BSC Testnet)', () => {
   });
 
   // ============================================================================
-  // 5. Progress Hooks Tests
+  // 9. Progress Hooks
   // ============================================================================
-  describe('5. Progress Hooks', () => {
+  describe('9. Progress Hooks', () => {
     it('should emit correct hooks for FUNDS flow', async () => {
       if (skipE2E) return;
 
@@ -450,23 +664,5 @@ describe('Route 2: Comprehensive E2E Tests (BSC Testnet)', () => {
       expect(events.length).toBeGreaterThan(0);
       expect(events.some(e => e.id === 'SEND-TX-01')).toBe(true);
     }, 180000);
-  });
-
-  // ============================================================================
-  // 6. CEA Deployment Tests
-  // ============================================================================
-  describe('6. CEA Utilities', () => {
-    it('should compute deterministic CEA address', async () => {
-      if (skipE2E) return;
-
-      const result = await getCEAAddress(ueaAddress, CHAIN.BNB_TESTNET);
-
-      expect(result.cea).toMatch(/^0x[a-fA-F0-9]{40}$/);
-      expect(typeof result.isDeployed).toBe('boolean');
-
-      // CEA should be deterministic - calling again should return same address
-      const result2 = await getCEAAddress(ueaAddress, CHAIN.BNB_TESTNET);
-      expect(result2.cea).toBe(result.cea);
-    });
   });
 });

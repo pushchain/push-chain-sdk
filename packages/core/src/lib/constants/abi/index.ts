@@ -8,6 +8,7 @@ export { ERC20_EVM } from './erc20.evm';
 export { default as SVM_GATEWAY_IDL } from './universalGatewayV0.json';
 
 // Multi-chain ABIs
+export { CEA_EVM } from './cea.evm';
 export { CEA_FACTORY_EVM } from './ceaFactory.evm';
 export { UNIVERSAL_GATEWAY_PC } from './universalGatewayPC.evm';
 export { PRC20_EVM, UNIVERSAL_CORE_EVM } from './prc20.evm';

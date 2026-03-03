@@ -1,13 +1,16 @@
 import { encodeFunctionData, encodeAbiParameters, isAddress } from 'viem';
 import { PushChain } from '../push-chain/push-chain';
-import { ERC20_EVM, UNIVERSAL_GATEWAY_V0, UNIVERSAL_GATEWAY_PC } from '../constants/abi';
+import { CEA_EVM, ERC20_EVM, UNIVERSAL_GATEWAY_V0, UNIVERSAL_GATEWAY_PC } from '../constants/abi';
 import { MoveableToken } from '../constants/tokens';
 import { ZERO_ADDRESS } from '../constants/selectors';
+import { CHAIN_INFO } from '../constants/chain';
+import { VM, CHAIN } from '../constants/enums';
 import type {
   ExecuteParams,
   MultiCall,
   UniversalOutboundTxRequest,
   ChainTarget,
+  SvmExecutePayloadFields,
 } from './orchestrator.types';
 
 export function buildExecuteMulticall({
@@ -252,6 +255,38 @@ export function buildSendUniversalTxFromCEA(
 }
 
 /**
+ * Build sendUniversalTxToUEA call for CEA self-call (Route 3)
+ *
+ * The CEA contract has a `sendUniversalTxToUEA(token, amount, payload)` function
+ * that is only callable via self-call (multicall with to=CEA, value=0).
+ * It internally calls `gateway.sendUniversalTxFromCEA(...)`.
+ *
+ * @param ceaAddress - CEA contract address (multicall target = self)
+ * @param token - Token address (address(0) for native)
+ * @param amount - Amount to send
+ * @param payload - Payload for Push Chain execution
+ * @returns MultiCall for sendUniversalTxToUEA (to=CEA, value=0)
+ */
+export function buildSendUniversalTxToUEA(
+  ceaAddress: `0x${string}`,
+  token: `0x${string}`,
+  amount: bigint,
+  payload: `0x${string}`
+): MultiCall {
+  const calldata = encodeFunctionData({
+    abi: CEA_EVM,
+    functionName: 'sendUniversalTxToUEA',
+    args: [token, amount, payload],
+  });
+
+  return {
+    to: ceaAddress,
+    value: BigInt(0),
+    data: calldata,
+  };
+}
+
+/**
  * Build UniversalOutboundTxRequest for Push Chain outbound
  *
  * @param target - LEGACY/DUMMY: Any non-zero address for contract compatibility.
@@ -437,4 +472,112 @@ export function buildOutboundApprovalAndCall(opts: {
   });
 
   return multicalls;
+}
+
+// ============================================================================
+// SVM (Solana) Payload Builders
+// ============================================================================
+
+/**
+ * Check if a chain targets the SVM (Solana) virtual machine
+ */
+export function isSvmChain(chain: CHAIN): boolean {
+  return CHAIN_INFO[chain]?.vm === VM.SVM;
+}
+
+/**
+ * Validate a Solana address in 0x-prefixed hex format.
+ * Must be exactly 32 bytes (0x + 64 hex chars = 66 characters total).
+ */
+export function isValidSolanaHexAddress(address: string): boolean {
+  return /^0x[a-fA-F0-9]{64}$/.test(address);
+}
+
+/** Convert 0x-prefixed hex string to Uint8Array */
+function hexToBytes(hex: string): Uint8Array {
+  const h = hex.startsWith('0x') ? hex.slice(2) : hex;
+  const bytes = new Uint8Array(h.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(h.substr(i * 2, 2), 16);
+  }
+  return bytes;
+}
+
+/** Convert Uint8Array to hex string (no 0x prefix) */
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/**
+ * Encode SVM execute payload for CPI execution on Solana.
+ *
+ * Binary format (matching the Solana gateway contract expectation):
+ * ```
+ * [accounts_count: 4 bytes (u32 BE)]
+ * [account[i].pubkey: 32 bytes][account[i].is_writable: 1 byte] × N
+ * [ix_data_length: 4 bytes (u32 BE)]
+ * [ix_data: variable bytes]
+ * [rent_fee: 8 bytes (u64 BE)]
+ * [instruction_id: 1 byte (u8)]
+ * [target_program: 32 bytes]
+ * ```
+ *
+ * @param fields - SVM execute payload fields
+ * @returns 0x-prefixed hex string of the encoded payload
+ */
+export function encodeSvmExecutePayload(
+  fields: SvmExecutePayloadFields
+): `0x${string}` {
+  const {
+    targetProgram,
+    accounts,
+    ixData,
+    rentFee,
+    instructionId = 2,
+  } = fields;
+
+  // Total size:
+  // 4 (accounts_count) + 33*N (accounts) + 4 (ix_data_length) + M (ix_data) + 8 (rent_fee) + 1 (instruction_id) + 32 (target_program)
+  const totalSize =
+    4 + 33 * accounts.length + 4 + ixData.length + 8 + 1 + 32;
+  const buffer = new Uint8Array(totalSize);
+  const view = new DataView(buffer.buffer);
+  let offset = 0;
+
+  // accounts_count (u32 BE)
+  view.setUint32(offset, accounts.length, false);
+  offset += 4;
+
+  // Each account: pubkey (32 bytes) + is_writable (1 byte)
+  for (const account of accounts) {
+    const pubkeyBytes = hexToBytes(account.pubkey);
+    buffer.set(pubkeyBytes, offset);
+    offset += 32;
+    buffer[offset] = account.isWritable ? 1 : 0;
+    offset += 1;
+  }
+
+  // ix_data_length (u32 BE)
+  view.setUint32(offset, ixData.length, false);
+  offset += 4;
+
+  // ix_data
+  buffer.set(ixData, offset);
+  offset += ixData.length;
+
+  // rent_fee (u64 BE)
+  view.setBigUint64(offset, rentFee, false);
+  offset += 8;
+
+  // instruction_id (u8)
+  buffer[offset] = instructionId;
+  offset += 1;
+
+  // target_program (32 bytes)
+  const targetProgramBytes = hexToBytes(targetProgram);
+  buffer.set(targetProgramBytes, offset);
+
+  return `0x${bytesToHex(buffer)}` as `0x${string}`;
 }
