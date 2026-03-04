@@ -65,7 +65,7 @@ export type WalletContextType = {
   themeMode: ThemeMode;
   themeOverrides: ThemeOverrides;
 
-  toggleButtonRef: React.RefObject<HTMLButtonElement>;
+  toggleButtonRef: React.RefObject<HTMLDivElement>;
 
   progress: ProgressEvent | null;
   setProgress: React.Dispatch<React.SetStateAction<ProgressEvent | null>>;
@@ -131,7 +131,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       : undefined
   );
 
-  const toggleButtonRef = useRef<HTMLButtonElement>(null);
+  const toggleButtonRef = useRef<HTMLDivElement>(null);
 
   const updateModalAppData = (newData: Partial<ModalAppDetails>) => {
     setModalAppData((prevData) => ({

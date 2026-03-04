@@ -27,7 +27,7 @@ type LoginModalProps = {
   isWalletMinimised: boolean;
   setMinimiseWallet: (isWalletMinimised: boolean) => void;
   handleUserLogOutEvent: () => void;
-  toggleButtonRef: React.RefObject<HTMLButtonElement>;
+  toggleButtonRef: React.RefObject<HTMLDivElement>;
   sendMessageToPushWallet: (message: any) => void;
   isReadOnly: boolean;
 };
@@ -278,8 +278,21 @@ const FrameContainer = styled.div<{
   $style?: Record<'top' | 'left', number>;
 }>`
   position: fixed;
-  top: ${({ $style }) => `${$style?.top}px`};
-  left: ${({ $style }) => `${$style?.left}px`};
+  top: ${({ $universalAccount, $accountMenuVariant }) =>
+    $universalAccount
+      ? $accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
+        ? '0'
+        : '50px'
+      : '0'};
+  left: ${({ $style }) => ($style?.left != null ? `${$style.left}px` : 'auto')};
+  right: ${({ $style, $universalAccount, $accountMenuVariant }) =>
+    $style?.left != null
+      ? 'auto'
+      : $universalAccount
+      ? $accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
+        ? '0'
+        : '10px'
+      : '0'};
   display: flex;
   flex-direction: column;
   background-image: url(${({ $modalDefaults }) => $modalDefaults?.bgImage});
@@ -309,18 +322,6 @@ const FrameContainer = styled.div<{
         ? '100vw'
         : '675px'
       : '100vh'};
-  right: ${({ $universalAccount, $accountMenuVariant }) =>
-    $universalAccount
-      ? $accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
-        ? '0'
-        : '10px'
-      : '0'};
-  top: ${({ $universalAccount, $accountMenuVariant }) =>
-    $universalAccount
-      ? $accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
-        ? '0'
-        : '70px'
-      : '0'};
 
   @media (max-width: 425px) {
     width: ${({ $universalAccount, $isWalletMinimised }) =>

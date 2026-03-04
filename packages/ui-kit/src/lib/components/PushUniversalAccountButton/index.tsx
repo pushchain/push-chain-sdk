@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import React, { FC, useEffect, useMemo } from 'react';
 import { usePushWalletContext } from '../../hooks/usePushWallet';
-import { ConnectWalletButton } from './ConnectWalletButton';
-import { TogglePushWalletButton } from './TogglePushWalletButton';
+import { ConnectPushWalletButtonProps, ConnectWalletButton } from './ConnectWalletButton';
+import { TogglePushWalletButton, TogglePushWalletButtonProps } from './TogglePushWalletButton';
 import {
   createGlobalStyle,
   DefaultTheme,
@@ -19,6 +19,10 @@ type PushUniversalAccountButtonProps = {
   modalAppOverride?: AppMetadata;
   loginAppOverride?: AppMetadata;
   themeOverrides?: ButtonThemeOverrides;
+  customConnectComponent?: React.ReactNode;
+  customConnectedComponent?: React.ReactNode;
+  connectButtonClassName?: string;
+  connectedButtonClassName?: string;
 };
 
 interface CustomTheme extends DefaultTheme {
@@ -52,6 +56,10 @@ const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
   modalAppOverride,
   loginAppOverride,
   themeOverrides: ButtonThemeOverrides,
+  connectButtonClassName,
+  connectedButtonClassName,
+  customConnectComponent,
+  customConnectedComponent,
 }) => {
   const {
     universalAccount,
@@ -79,21 +87,27 @@ const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
   const Component = () => {
     if (universalAccount) {
       // Merge props with buttonDefaults, giving priority to direct props
-      const toggleButtonProps = {
+      const toggleButtonProps: TogglePushWalletButtonProps = {
         uid: uid,
         universalAccount: universalAccount,
+        style: wrapperStyle,
+        className: connectedButtonClassName,
+        customComponent: customConnectedComponent,
       };
 
-      return <TogglePushWalletButton {...toggleButtonProps} style={wrapperStyle} />;
+      return <TogglePushWalletButton {...toggleButtonProps} />;
     } else {
       // Merge props with buttonDefaults, giving priority to direct props
-      const connectButtonProps = {
+      const connectButtonProps: ConnectPushWalletButtonProps = {
         uid: uid,
         connectButtonText,
         loadingComponent,
+        style: wrapperStyle,
+        className: connectButtonClassName,
+        customComponent: customConnectComponent,
       };
 
-      return <ConnectWalletButton {...connectButtonProps} style={wrapperStyle} />;
+      return <ConnectWalletButton {...connectButtonProps} />;
     }
   };
 
