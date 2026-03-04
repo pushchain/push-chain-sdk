@@ -5,15 +5,20 @@ import { UniversalAccount } from '../../types';
 import { Button, PushLogo, PushMonotone } from '../common';
 import { centerMaskString, getChainId } from '../../helpers';
 import { CHAIN_LOGO } from '../../constants';
+import styled from 'styled-components';
 
-type TogglePushWalletButtonProps = {
+export type TogglePushWalletButtonProps = {
   uid?: string;
   universalAccount: UniversalAccount;
   style?: React.CSSProperties;
+  customComponent?: React.ReactNode;
+  className?: string;
 };
 const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
   uid,
   universalAccount,
+  customComponent,
+  className,
   style,
 }) => {
   const { setMinimiseWallet, isWalletMinimised, toggleButtonRef } =
@@ -36,22 +41,30 @@ const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
   const maskedAddress = centerMaskString(address);
 
   return (
-    <>
-      <Button
-        onClick={() => setMinimiseWallet(!isWalletMinimised)}
-        bgColor="var(--pwauth-btn-connected-bg-color)"
-        textColor="var(--pwauth-btn-connected-text-color)"
-        borderRadius="var(--pwauth-btn-connect-border-radius)"
-        gap='8px'
-        padding='12px'
-        ref={toggleButtonRef}
-        style={style}
-      >
-        {getChainIcon(chain)}
-        {maskedAddress}
-      </Button>
-    </>
+    <ButtonContainer
+      onClick={() => setMinimiseWallet(!isWalletMinimised)}
+      ref={toggleButtonRef}
+    >
+      {customComponent ? customComponent : (
+        <Button
+          bgColor="var(--pwauth-btn-connected-bg-color)"
+          textColor="var(--pwauth-btn-connected-text-color)"
+          borderRadius="var(--pwauth-btn-connect-border-radius)"
+          gap='8px'
+          padding='12px'
+          style={style}
+          className={className}
+        >
+          {getChainIcon(chain)}
+          {maskedAddress}
+        </Button>
+      )}
+    </ButtonContainer>
   );
 };
 
 export { TogglePushWalletButton };
+
+const ButtonContainer = styled.div`
+  cursor: pointer;
+`;
