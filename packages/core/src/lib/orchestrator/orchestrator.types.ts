@@ -345,6 +345,13 @@ export type UniversalExecuteParams = Omit<ExecuteParams, 'to'> & {
    * Only applicable when `to.chain` is a Solana chain.
    */
   svmExecute?: SvmExecuteParams;
+
+  /**
+   * When true, sends MIGRATION_SELECTOR as raw CEA payload (no multicall wrapping).
+   * Used for CEA contract upgrades. Incompatible with value/funds/data/svmExecute.
+   * Only applicable for Route 2 (UOA_TO_CEA) on EVM chains.
+   */
+  migration?: boolean;
 };
 
 // ============================================================================
@@ -468,6 +475,8 @@ export interface HopDescriptor {
   isSvmTarget?: boolean;
   /** SVM execute payload (binary-encoded, for Solana targets) */
   svmPayload?: `0x${string}`;
+  /** Whether this hop is a CEA migration (raw MIGRATION_SELECTOR payload) */
+  isMigration?: boolean;
 }
 
 // ============================================================================

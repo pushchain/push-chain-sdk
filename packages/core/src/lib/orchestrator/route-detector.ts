@@ -237,6 +237,40 @@ export function validateRouteParams(params: UniversalExecuteParams): void {
     }
   }
 
+  // Validate migration params
+  if (params.migration) {
+    if (route !== TransactionRoute.UOA_TO_CEA) {
+      throw new RouteValidationError(
+        'migration flag is only valid for Route 2 (UOA_TO_CEA)'
+      );
+    }
+    if (params.value && params.value > BigInt(0)) {
+      throw new RouteValidationError(
+        'migration is incompatible with value'
+      );
+    }
+    if (params.funds) {
+      throw new RouteValidationError(
+        'migration is incompatible with funds'
+      );
+    }
+    if (params.data) {
+      throw new RouteValidationError(
+        'migration is incompatible with data'
+      );
+    }
+    if (params.svmExecute) {
+      throw new RouteValidationError(
+        'migration is incompatible with svmExecute'
+      );
+    }
+    if (isChainTarget(params.to) && isSvmChain(params.to.chain)) {
+      throw new RouteValidationError(
+        'migration is not supported on SVM chains'
+      );
+    }
+  }
+
   // Validate address format
   if (isChainTarget(params.to)) {
     if (!params.to.address.startsWith('0x')) {

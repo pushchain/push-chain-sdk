@@ -104,6 +104,13 @@ export class PushChain {
      */
     trackTransaction: Orchestrator['trackTransaction'];
     /**
+     * Migrate the CEA contract on an external chain to the latest version.
+     * Sends a MIGRATION_SELECTOR payload to trigger CEA upgrade.
+     *
+     * @param chain - The external chain where the CEA should be migrated
+     */
+    migrateCEA: Orchestrator['migrateCEA'];
+    /**
      * Signs an arbitrary message
      */
     signMessage: (data: Uint8Array) => Promise<string>;
@@ -186,6 +193,12 @@ export class PushChain {
       },
       trackTransaction: (txHash: string, options?: import('../orchestrator/orchestrator.types').TrackTransactionOptions) => {
         return orchestrator.trackTransaction.bind(orchestrator)(txHash, options);
+      },
+      migrateCEA: (chain: CHAIN) => {
+        if (this.isReadMode) {
+          throw new Error('Read only mode cannot call migrateCEA function');
+        }
+        return orchestrator.migrateCEA.bind(orchestrator)(chain);
       },
       signMessage: async (data: Uint8Array) => {
         if (this.isReadMode) {

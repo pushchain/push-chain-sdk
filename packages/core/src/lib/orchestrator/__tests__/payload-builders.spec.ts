@@ -4,18 +4,21 @@
  * Tests all pure functions used for building multicall payloads,
  * outbound requests, and cascade composition helpers.
  */
-import { decodeAbiParameters, decodeFunctionData } from 'viem';
-import { ERC20_EVM, UNIVERSAL_GATEWAY_V0, UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
-import { ZERO_ADDRESS } from '../../constants/selectors';
+import { decodeAbiParameters, decodeFunctionData, keccak256, toBytes } from 'viem';
+import { ERC20_EVM, CEA_EVM, UNIVERSAL_GATEWAY_V0, UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
+import { ZERO_ADDRESS, MIGRATION_SELECTOR, MULTICALL_SELECTOR } from '../../constants/selectors';
 import type { MultiCall, UniversalOutboundTxRequest } from '../orchestrator.types';
 import {
   buildCeaMulticallPayload,
   buildSingleCeaCall,
   buildApproveAndInteract,
   buildSendUniversalTxFromCEA,
+  buildSendUniversalTxToUEA,
   buildOutboundRequest,
   buildNativeTransfer,
   buildErc20Transfer,
+  buildErc20WithdrawalMulticall,
+  buildMigrationPayload,
   isZeroAddress,
   buildOutboundApprovalAndCall,
 } from '../payload-builders';
@@ -36,6 +39,11 @@ const MULTICALL_TUPLE_TYPE = {
   ],
 };
 
+/** Strip the 4-byte MULTICALL_SELECTOR prefix to get raw ABI-encoded data */
+function stripSelector(encoded: `0x${string}`): `0x${string}` {
+  return `0x${encoded.slice(10)}` as `0x${string}`;
+}
+
 // ============================================================================
 // buildCeaMulticallPayload
 // ============================================================================
@@ -44,15 +52,21 @@ describe('buildCeaMulticallPayload', () => {
     expect(buildCeaMulticallPayload([])).toBe('0x');
   });
 
+  it('should prefix output with MULTICALL_SELECTOR', () => {
+    const calls: MultiCall[] = [{ to: ALICE, value: BigInt(100), data: '0x' }];
+    const encoded = buildCeaMulticallPayload(calls);
+    expect(encoded.startsWith(MULTICALL_SELECTOR)).toBe(true);
+  });
+
   it('should encode a single multicall entry', () => {
     const calls: MultiCall[] = [{ to: ALICE, value: BigInt(100), data: '0x' }];
     const encoded = buildCeaMulticallPayload(calls);
 
     expect(encoded).toMatch(/^0x/);
-    expect(encoded.length).toBeGreaterThan(2);
+    expect(encoded.length).toBeGreaterThan(10); // 4-byte selector + data
 
-    // Decode and verify roundtrip
-    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], encoded);
+    // Decode and verify roundtrip (strip selector first)
+    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], stripSelector(encoded));
     expect(decoded).toHaveLength(1);
     expect((decoded[0] as { to: string }).to.toLowerCase()).toBe(ALICE.toLowerCase());
     expect((decoded[0] as { value: bigint }).value).toBe(BigInt(100));
@@ -65,7 +79,7 @@ describe('buildCeaMulticallPayload', () => {
     ];
     const encoded = buildCeaMulticallPayload(calls);
 
-    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], encoded);
+    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], stripSelector(encoded));
     expect(decoded).toHaveLength(2);
     expect((decoded[1] as { to: string }).to.toLowerCase()).toBe(BOB.toLowerCase());
   });
@@ -77,7 +91,8 @@ describe('buildCeaMulticallPayload', () => {
 describe('buildSingleCeaCall', () => {
   it('should encode a single call using buildCeaMulticallPayload', () => {
     const encoded = buildSingleCeaCall(ALICE, BigInt(50), '0xabcd');
-    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], encoded);
+    expect(encoded.startsWith(MULTICALL_SELECTOR)).toBe(true);
+    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], stripSelector(encoded));
     expect(decoded).toHaveLength(1);
     expect((decoded[0] as { to: string }).to.toLowerCase()).toBe(ALICE.toLowerCase());
     expect((decoded[0] as { value: bigint }).value).toBe(BigInt(50));
@@ -401,5 +416,301 @@ describe('buildOutboundApprovalAndCall', () => {
       // Only outbound call
       expect(result).toHaveLength(1);
     });
+  });
+});
+
+// ============================================================================
+// MIGRATION_SELECTOR constant
+// ============================================================================
+describe('MIGRATION_SELECTOR', () => {
+  it('should equal keccak256("migrateCEA()") first 4 bytes', () => {
+    const expected = keccak256(toBytes('migrateCEA()')).slice(0, 10);
+    expect(MIGRATION_SELECTOR).toBe(expected);
+  });
+
+  it('should be exactly 10 hex characters (4 bytes)', () => {
+    expect(MIGRATION_SELECTOR).toMatch(/^0x[0-9a-f]{8}$/);
+    expect(MIGRATION_SELECTOR.length).toBe(10);
+  });
+});
+
+// ============================================================================
+// buildMigrationPayload
+// ============================================================================
+describe('buildMigrationPayload', () => {
+  it('should return the MIGRATION_SELECTOR value', () => {
+    expect(buildMigrationPayload()).toBe(MIGRATION_SELECTOR);
+  });
+
+  it('should return 0x0af1c213', () => {
+    expect(buildMigrationPayload()).toBe('0x0af1c213');
+  });
+
+  it('should return exactly 4 bytes (10 hex chars)', () => {
+    const payload = buildMigrationPayload();
+    expect(payload.length).toBe(10);
+    expect(payload).toMatch(/^0x[0-9a-f]{8}$/);
+  });
+});
+
+// ============================================================================
+// buildErc20WithdrawalMulticall
+// ============================================================================
+describe('buildErc20WithdrawalMulticall', () => {
+  it('should return a single-element MultiCall array', () => {
+    const result = buildErc20WithdrawalMulticall(TOKEN_A, ALICE, BigInt(5000));
+    expect(result).toHaveLength(1);
+  });
+
+  it('should target the token address', () => {
+    const result = buildErc20WithdrawalMulticall(TOKEN_A, ALICE, BigInt(5000));
+    expect(result[0].to).toBe(TOKEN_A);
+  });
+
+  it('should have value 0', () => {
+    const result = buildErc20WithdrawalMulticall(TOKEN_A, ALICE, BigInt(5000));
+    expect(result[0].value).toBe(BigInt(0));
+  });
+
+  it('should encode an ERC20 transfer call', () => {
+    const result = buildErc20WithdrawalMulticall(TOKEN_A, ALICE, BigInt(5000));
+    const decoded = decodeFunctionData({
+      abi: ERC20_EVM,
+      data: result[0].data as `0x${string}`,
+    });
+    expect(decoded.functionName).toBe('transfer');
+    expect(decoded.args![0]).toBe(ALICE);
+    expect(decoded.args![1]).toBe(BigInt(5000));
+  });
+
+  it('should produce output matching buildErc20Transfer wrapped in array', () => {
+    const result = buildErc20WithdrawalMulticall(TOKEN_A, BOB, BigInt(999));
+    const direct = buildErc20Transfer(TOKEN_A, BOB, BigInt(999));
+    expect(result).toEqual([direct]);
+  });
+});
+
+// ============================================================================
+// buildSendUniversalTxToUEA
+// ============================================================================
+describe('buildSendUniversalTxToUEA', () => {
+  const CEA_ADDRESS = '0xDDdDddDdDdddDDddDDddDDDDdDdDDdDDdDDDDDDd' as `0x${string}`;
+
+  it('should encode sendUniversalTxToUEA function call on CEA_EVM ABI', () => {
+    const result = buildSendUniversalTxToUEA(
+      CEA_ADDRESS,
+      TOKEN_A,
+      BigInt(1000),
+      '0xdeadbeef'
+    );
+
+    const decoded = decodeFunctionData({
+      abi: CEA_EVM,
+      data: result.data as `0x${string}`,
+    });
+    expect(decoded.functionName).toBe('sendUniversalTxToUEA');
+  });
+
+  it('should return MultiCall with to = ceaAddress and value = 0', () => {
+    const result = buildSendUniversalTxToUEA(
+      CEA_ADDRESS,
+      TOKEN_A,
+      BigInt(500),
+      '0xabcd'
+    );
+
+    expect(result.to).toBe(CEA_ADDRESS);
+    expect(result.value).toBe(BigInt(0));
+  });
+
+  it('should encode correct args (token, amount, payload)', () => {
+    const result = buildSendUniversalTxToUEA(
+      CEA_ADDRESS,
+      TOKEN_A,
+      BigInt(2000),
+      '0x12345678'
+    );
+
+    const decoded = decodeFunctionData({
+      abi: CEA_EVM,
+      data: result.data as `0x${string}`,
+    });
+    expect(decoded.args![0]).toBe(TOKEN_A); // token
+    expect(decoded.args![1]).toBe(BigInt(2000)); // amount
+    expect(decoded.args![2]).toBe('0x12345678'); // payload
+  });
+
+  it('should work with native token (ZERO_ADDRESS)', () => {
+    const result = buildSendUniversalTxToUEA(
+      CEA_ADDRESS,
+      ZERO_ADDRESS as `0x${string}`,
+      BigInt(1000),
+      '0x'
+    );
+
+    const decoded = decodeFunctionData({
+      abi: CEA_EVM,
+      data: result.data as `0x${string}`,
+    });
+    expect(decoded.functionName).toBe('sendUniversalTxToUEA');
+    expect(decoded.args![0]).toBe(ZERO_ADDRESS);
+    expect(decoded.args![1]).toBe(BigInt(1000));
+  });
+
+  it('should work with empty payload', () => {
+    const result = buildSendUniversalTxToUEA(
+      CEA_ADDRESS,
+      TOKEN_A,
+      BigInt(100),
+      '0x'
+    );
+
+    expect(result.data).toMatch(/^0x/);
+    expect(result.data.length).toBeGreaterThan(2);
+
+    const decoded = decodeFunctionData({
+      abi: CEA_EVM,
+      data: result.data as `0x${string}`,
+    });
+    expect(decoded.functionName).toBe('sendUniversalTxToUEA');
+    expect(decoded.args![2]).toBe('0x');
+  });
+});
+
+// ============================================================================
+// SVM Payload Builders
+// ============================================================================
+import {
+  encodeSvmExecutePayload,
+  encodeSvmCeaToUeaPayload,
+  isSvmChain,
+  isValidSolanaHexAddress,
+} from '../payload-builders';
+import { CHAIN } from '../../constants/enums';
+
+// 32-byte Solana addresses as hex
+const SOL_PROGRAM = '0x7673075a980bfd5d6b1dffe99c31f63e8938519cc1c2af009dda5e568a94460d' as `0x${string}`;
+const SOL_GATEWAY = '0xaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccdd' as `0x${string}`;
+const SOL_MINT = '0x1122334411223344112233441122334411223344112233441122334411223344' as `0x${string}`;
+
+describe('isSvmChain', () => {
+  it('should return true for Solana chains', () => {
+    expect(isSvmChain(CHAIN.SOLANA_DEVNET)).toBe(true);
+    expect(isSvmChain(CHAIN.SOLANA_TESTNET)).toBe(true);
+    expect(isSvmChain(CHAIN.SOLANA_MAINNET)).toBe(true);
+  });
+
+  it('should return false for EVM chains', () => {
+    expect(isSvmChain(CHAIN.ETHEREUM_SEPOLIA)).toBe(false);
+  });
+});
+
+describe('isValidSolanaHexAddress', () => {
+  it('should accept 32-byte hex addresses', () => {
+    expect(isValidSolanaHexAddress(SOL_PROGRAM)).toBe(true);
+  });
+
+  it('should reject 20-byte EVM addresses', () => {
+    expect(isValidSolanaHexAddress(ALICE)).toBe(false);
+  });
+
+  it('should reject addresses without 0x prefix', () => {
+    expect(isValidSolanaHexAddress(SOL_PROGRAM.slice(2))).toBe(false);
+  });
+});
+
+describe('encodeSvmExecutePayload', () => {
+  it('should encode a payload with no accounts', () => {
+    const ixData = new Uint8Array([1, 2, 3, 4]);
+    const result = encodeSvmExecutePayload({
+      targetProgram: SOL_PROGRAM,
+      accounts: [],
+      ixData,
+      rentFee: BigInt(0),
+      instructionId: 2,
+    });
+    expect(result).toMatch(/^0x/);
+    // 4 (accounts_count=0) + 0 (no accounts) + 4 (ix_data_length) + 4 (ixData) + 8 (rent_fee) + 1 (instruction_id) + 32 (target_program) = 53 bytes = 106 hex chars + "0x"
+    expect(result.length).toBe(108);
+  });
+
+  it('should encode a payload with accounts', () => {
+    const ixData = new Uint8Array([1, 2]);
+    const result = encodeSvmExecutePayload({
+      targetProgram: SOL_PROGRAM,
+      accounts: [
+        { pubkey: SOL_GATEWAY, isWritable: true },
+        { pubkey: SOL_MINT, isWritable: false },
+      ],
+      ixData,
+      rentFee: BigInt(1000),
+      instructionId: 2,
+    });
+    expect(result).toMatch(/^0x/);
+    // 4 + 33*2 + 4 + 2 + 8 + 1 + 32 = 117 bytes = 234 hex chars + "0x"
+    expect(result.length).toBe(236);
+  });
+});
+
+describe('encodeSvmCeaToUeaPayload', () => {
+  it('should encode SOL drain (no token mint, no extra payload)', () => {
+    const result = encodeSvmCeaToUeaPayload({
+      gatewayProgramHex: SOL_GATEWAY,
+      drainAmount: BigInt(50_000_000),
+    });
+    expect(result).toMatch(/^0x/);
+    expect(result.length).toBeGreaterThan(10);
+  });
+
+  it('should encode SPL drain (with token mint)', () => {
+    const result = encodeSvmCeaToUeaPayload({
+      gatewayProgramHex: SOL_GATEWAY,
+      drainAmount: BigInt(1_000_000),
+      tokenMintHex: SOL_MINT,
+    });
+    expect(result).toMatch(/^0x/);
+    expect(result.length).toBeGreaterThan(10);
+  });
+
+  it('should encode with extraPayload', () => {
+    const extraPayload = new Uint8Array([0xde, 0xad, 0xbe, 0xef]);
+    const withPayload = encodeSvmCeaToUeaPayload({
+      gatewayProgramHex: SOL_GATEWAY,
+      drainAmount: BigInt(50_000_000),
+      extraPayload,
+    });
+    const withoutPayload = encodeSvmCeaToUeaPayload({
+      gatewayProgramHex: SOL_GATEWAY,
+      drainAmount: BigInt(50_000_000),
+    });
+    // The payload with extraPayload should be longer (extra 4 bytes in ixData)
+    expect(withPayload.length).toBeGreaterThan(withoutPayload.length);
+  });
+
+  it('should produce different output with vs without extraPayload', () => {
+    const extraPayload = new Uint8Array([0xde, 0xad, 0xbe, 0xef]);
+    const withPayload = encodeSvmCeaToUeaPayload({
+      gatewayProgramHex: SOL_GATEWAY,
+      drainAmount: BigInt(50_000_000),
+      extraPayload,
+    });
+    const withoutPayload = encodeSvmCeaToUeaPayload({
+      gatewayProgramHex: SOL_GATEWAY,
+      drainAmount: BigInt(50_000_000),
+    });
+    expect(withPayload).not.toBe(withoutPayload);
+  });
+
+  it('should produce same output for empty extraPayload and no extraPayload', () => {
+    const emptyPayload = encodeSvmCeaToUeaPayload({
+      gatewayProgramHex: SOL_GATEWAY,
+      drainAmount: BigInt(50_000_000),
+      extraPayload: new Uint8Array(0),
+    });
+    const noPayload = encodeSvmCeaToUeaPayload({
+      gatewayProgramHex: SOL_GATEWAY,
+      drainAmount: BigInt(50_000_000),
+    });
+    expect(emptyPayload).toBe(noPayload);
   });
 });

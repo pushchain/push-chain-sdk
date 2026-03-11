@@ -1,8 +1,8 @@
-import { encodeFunctionData, encodeAbiParameters, isAddress } from 'viem';
+import { encodeFunctionData, encodeAbiParameters, isAddress, sha256, toBytes } from 'viem';
 import { PushChain } from '../push-chain/push-chain';
 import { CEA_EVM, ERC20_EVM, UNIVERSAL_GATEWAY_V0, UNIVERSAL_GATEWAY_PC } from '../constants/abi';
 import { MoveableToken } from '../constants/tokens';
-import { ZERO_ADDRESS } from '../constants/selectors';
+import { ZERO_ADDRESS, MIGRATION_SELECTOR, MULTICALL_SELECTOR } from '../constants/selectors';
 import { CHAIN_INFO } from '../constants/chain';
 import { VM, CHAIN } from '../constants/enums';
 import type {
@@ -135,21 +135,21 @@ const MULTICALL_TUPLE_TYPE = {
 
 /**
  * Build CEA multicall payload for outbound transactions
- * Format: abi.encode(Multicall[]) - raw encoded, NO selector
+ * Format: MULTICALL_SELECTOR + abi.encode(Multicall[])
  *
- * The CEA contract expects just the ABI-encoded Multicall[] array,
- * not a function call with selector.
+ * The payload is prefixed with the 4-byte MULTICALL_SELECTOR (0x1749e1e3)
+ * followed by the ABI-encoded Multicall[] array.
  *
  * @param multicalls - Array of multicall operations to execute on external chain
- * @returns Raw ABI-encoded Multicall[] array
+ * @returns MULTICALL_SELECTOR-prefixed ABI-encoded Multicall[] array
  */
 export function buildCeaMulticallPayload(multicalls: MultiCall[]): `0x${string}` {
   if (multicalls.length === 0) {
     return '0x';
   }
 
-  // Encode the multicall array (raw, no selector)
-  return encodeAbiParameters(
+  // Encode the multicall array and prefix with MULTICALL_SELECTOR
+  const encoded = encodeAbiParameters(
     [MULTICALL_TUPLE_TYPE],
     [multicalls.map((m) => ({
       to: m.to,
@@ -157,6 +157,8 @@ export function buildCeaMulticallPayload(multicalls: MultiCall[]): `0x${string}`
       data: m.data,
     }))]
   );
+
+  return `${MULTICALL_SELECTOR}${encoded.slice(2)}` as `0x${string}`;
 }
 
 /**
@@ -360,6 +362,34 @@ export function buildErc20Transfer(
     value: BigInt(0),
     data: transferData,
   };
+}
+
+/**
+ * Build a single-element MultiCall[] for an ERC20 withdrawal (Flow 2.2).
+ * Wraps buildErc20Transfer so callers of Route 2 (executeUoaToCea) don't
+ * need to manually construct the transfer() multicall step.
+ *
+ * @param tokenAddress - ERC20 token contract on the external chain
+ * @param recipientAddress - Withdrawal recipient on the external chain
+ * @param amount - Amount of tokens to transfer
+ * @returns MultiCall[] with a single ERC20 transfer call
+ */
+export function buildErc20WithdrawalMulticall(
+  tokenAddress: `0x${string}`,
+  recipientAddress: `0x${string}`,
+  amount: bigint
+): MultiCall[] {
+  return [buildErc20Transfer(tokenAddress, recipientAddress, amount)];
+}
+
+/**
+ * Build the 4-byte migration payload for CEA upgrade (Migration flow).
+ * Returns exactly MIGRATION_SELECTOR — no Multicall wrapping.
+ *
+ * @returns 4-byte hex string `0x0af1c213`
+ */
+export function buildMigrationPayload(): `0x${string}` {
+  return MIGRATION_SELECTOR as `0x${string}`;
 }
 
 /**
@@ -580,4 +610,74 @@ export function encodeSvmExecutePayload(
   buffer.set(targetProgramBytes, offset);
 
   return `0x${bytesToHex(buffer)}` as `0x${string}`;
+}
+
+/**
+ * Encode the SVM CEA-to-UEA payload for Route 3 on Solana.
+ *
+ * This builds a `send_universal_tx_to_uea` instruction wrapped in
+ * `encodeSvmExecutePayload`, targeting the gateway program as a self-call.
+ *
+ * Borsh ixData layout:
+ * ```
+ * [discriminator: 8 bytes (SHA-256("global:send_universal_tx_to_uea")[0..8])]
+ * [token: 32 bytes (PublicKey::default for SOL, mint pubkey for SPL)]
+ * [amount: 8 bytes (u64 LE)]
+ * [payload_len: 4 bytes (u32 LE)]
+ * [payload_bytes: variable]
+ * ```
+ */
+export function encodeSvmCeaToUeaPayload({
+  gatewayProgramHex,
+  drainAmount,
+  tokenMintHex,
+  extraPayload,
+}: {
+  gatewayProgramHex: `0x${string}`;
+  drainAmount: bigint;
+  tokenMintHex?: `0x${string}`;
+  extraPayload?: Uint8Array;
+}): `0x${string}` {
+  // Anchor discriminator: first 8 bytes of SHA-256("global:send_universal_tx_to_uea")
+  const discrimHash = sha256(toBytes('global:send_universal_tx_to_uea'));
+  const discrimBytes = hexToBytes(discrimHash.slice(0, 18) as `0x${string}`); // 0x + 16 hex chars = 8 bytes
+
+  // Token: 32 zero bytes for native SOL, or the SPL mint bytes
+  const tokenBytes = new Uint8Array(32);
+  if (tokenMintHex && tokenMintHex !== '0x' + '00'.repeat(32)) {
+    const mintBytes = hexToBytes(tokenMintHex);
+    tokenBytes.set(mintBytes, 0);
+  }
+
+  // Amount: u64 little-endian
+  const amountBuf = new Uint8Array(8);
+  const amountView = new DataView(amountBuf.buffer);
+  amountView.setBigUint64(0, drainAmount, true); // LE
+
+  // Extra payload (Vec<u8>: u32 LE length + bytes)
+  const payloadData = extraPayload ?? new Uint8Array(0);
+  const payloadLenBuf = new Uint8Array(4);
+  const payloadLenView = new DataView(payloadLenBuf.buffer);
+  payloadLenView.setUint32(0, payloadData.length, true); // LE
+
+  // Combine into Borsh ixData
+  const ixDataLen =
+    discrimBytes.length + tokenBytes.length + amountBuf.length +
+    payloadLenBuf.length + payloadData.length;
+  const ixData = new Uint8Array(ixDataLen);
+  let offset = 0;
+  ixData.set(discrimBytes, offset); offset += discrimBytes.length;
+  ixData.set(tokenBytes, offset); offset += tokenBytes.length;
+  ixData.set(amountBuf, offset); offset += amountBuf.length;
+  ixData.set(payloadLenBuf, offset); offset += payloadLenBuf.length;
+  ixData.set(payloadData, offset);
+
+  // Wrap in encodeSvmExecutePayload (self-call to gateway, no extra accounts)
+  return encodeSvmExecutePayload({
+    targetProgram: gatewayProgramHex,
+    accounts: [],
+    ixData,
+    rentFee: BigInt(0),
+    instructionId: 2,
+  });
 }

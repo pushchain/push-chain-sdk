@@ -94,9 +94,11 @@ import {
   buildSendUniversalTxToUEA,
   buildApproveAndInteract,
   buildOutboundApprovalAndCall,
+  buildMigrationPayload,
   isSvmChain,
   isValidSolanaHexAddress,
   encodeSvmExecutePayload,
+  encodeSvmCeaToUeaPayload,
 } from './payload-builders';
 import {
   TransactionRoute,
@@ -162,6 +164,39 @@ export class Orchestrator {
 
   public getProgressHook(): ((progress: ProgressEvent) => void) | undefined {
     return this.progressHook;
+  }
+
+  /**
+   * Migrate the CEA contract on an external chain to the latest version.
+   * Sends a MIGRATION_SELECTOR payload via Route 2 to trigger CEA upgrade.
+   *
+   * @param chain - The external chain where the CEA should be migrated
+   * @returns Transaction response
+   */
+  async migrateCEA(chain: CHAIN): Promise<UniversalTxResponse> {
+    if (this.isPushChain(chain)) {
+      throw new Error('Cannot migrate CEA on Push Chain');
+    }
+    if (!chainSupportsCEA(chain)) {
+      throw new Error(`Chain ${chain} does not support CEA`);
+    }
+
+    const ueaAddress = this.computeUEAOffchain();
+    const { cea, isDeployed } = await getCEAAddress(
+      ueaAddress,
+      chain,
+      this.rpcUrls[chain]?.[0]
+    );
+    if (!isDeployed) {
+      throw new Error(
+        `CEA not deployed on chain ${chain}. Deploy CEA first.`
+      );
+    }
+
+    return this.execute({
+      to: { address: cea, chain },
+      migration: true,
+    });
   }
 
   /**
@@ -1757,6 +1792,30 @@ export class Orchestrator {
           this.rpcUrls[targetChain]?.[0]
         );
 
+        // Migration path: raw MIGRATION_SELECTOR payload, no multicall wrapping
+        if (params.migration) {
+          const prc20Token = this.getNativePRC20ForChain(targetChain);
+          const burnAmount = BigInt(1); // 1 wei workaround (precompile rejects 0)
+          let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+          let gasFee = BigInt(0);
+          if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
+            const result = await this.queryOutboundGasFee(prc20Token, gasLimit);
+            gasToken = result.gasToken;
+            gasFee = result.gasFee;
+          }
+          return {
+            ...baseDescriptor,
+            targetChain,
+            ceaAddress,
+            ceaMulticalls: [],
+            prc20Token,
+            burnAmount,
+            gasToken,
+            gasFee,
+            isMigration: true,
+          };
+        }
+
         // Build CEA multicalls
         const ceaMulticalls: MultiCall[] = [];
         if (params.data) {
@@ -2037,12 +2096,18 @@ export class Orchestrator {
           let outboundPayload: `0x${string}`;
           let targetForOutbound: `0x${string}`;
 
+          const isMigration = firstHop?.isMigration === true;
+
           if (isSvmSegment) {
             // SVM: use the pre-built SVM payload from the hop descriptor
             outboundPayload = firstHop.svmPayload ?? '0x';
             // For SVM, target is the recipient/program from the hop params
             const svmTarget = firstHop.params.to as ChainTarget;
             targetForOutbound = firstHop.params.svmExecute?.targetProgram ?? svmTarget.address;
+          } else if (isMigration) {
+            // Migration: use raw 4-byte MIGRATION_SELECTOR, no multicall wrapping
+            outboundPayload = buildMigrationPayload();
+            targetForOutbound = firstHop?.ceaAddress || ueaAddress;
           } else {
             // EVM: build CEA payload from merged multicalls
             outboundPayload = buildCeaMulticallPayload(
@@ -2578,74 +2643,81 @@ export class Orchestrator {
       `executeUoaToCea — CEA address: ${ceaAddress}, deployed: ${ceaDeployed}`
     );
 
-    // Build multicall for CEA execution on target chain
-    const ceaMulticalls: MultiCall[] = [];
-
-    // If there's data to execute on target
-    if (params.data) {
-      if (Array.isArray(params.data)) {
-        // User provided explicit multicall array
-        ceaMulticalls.push(...(params.data as MultiCall[]));
-      } else {
-        // Single call with data
-        ceaMulticalls.push({
-          to: targetAddress,
-          value: params.value || BigInt(0),
-          data: params.data as `0x${string}`,
-        });
-      }
-    } else if (params.value) {
-      // Native value transfer only.
-      // If sending to the CEA itself, skip the multicall — the gateway deposits native
-      // value directly to CEA. A self-call with value would revert (CEA._handleMulticall
-      // rejects value-bearing self-calls).
-      if (targetAddress.toLowerCase() !== ceaAddress.toLowerCase()) {
-        ceaMulticalls.push({
-          to: targetAddress,
-          value: params.value,
-          data: '0x',
-        });
-      }
-    }
-
-    // Build CEA multicall payload (this is what gets executed on the external chain)
-    const ceaPayload = buildCeaMulticallPayload(ceaMulticalls);
-
-    this.printLog(
-      `executeUoaToCea — CEA payload (first 100 chars): ${ceaPayload.slice(0, 100)}...`
-    );
-
-    // Determine token to burn on Push Chain
-    // NOTE: Even for PAYLOAD-only (no value), we need a valid PRC-20 token to:
-    // 1. Look up the target chain namespace in the gateway
-    // 2. Query and pay gas fees for the relay
+    // Migration path: raw MIGRATION_SELECTOR payload, no multicall wrapping
+    let ceaPayload: `0x${string}`;
     let prc20Token: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
     let burnAmount = BigInt(0);
 
-    if (params.funds?.amount) {
-      // User explicitly specified funds with token
-      const token = (params.funds as { token: MoveableToken }).token;
-      if (token) {
-        prc20Token = PushChain.utils.tokens.getPRC20Address(token);
-        burnAmount = params.funds.amount;
+    if (params.migration) {
+      ceaPayload = buildMigrationPayload();
+      prc20Token = this.getNativePRC20ForChain(targetChain);
+      burnAmount = BigInt(1); // 1 wei workaround (precompile rejects 0)
+      this.printLog(
+        `executeUoaToCea — MIGRATION: using raw MIGRATION_SELECTOR payload (${ceaPayload}), native PRC-20 ${prc20Token}`
+      );
+    } else {
+      // Build multicall for CEA execution on target chain
+      const ceaMulticalls: MultiCall[] = [];
+
+      // If there's data to execute on target
+      if (params.data) {
+        if (Array.isArray(params.data)) {
+          // User provided explicit multicall array
+          ceaMulticalls.push(...(params.data as MultiCall[]));
+        } else {
+          // Single call with data
+          ceaMulticalls.push({
+            to: targetAddress,
+            value: params.value || BigInt(0),
+            data: params.data as `0x${string}`,
+          });
+        }
+      } else if (params.value) {
+        // Native value transfer only.
+        // If sending to the CEA itself, skip the multicall — the gateway deposits native
+        // value directly to CEA. A self-call with value would revert (CEA._handleMulticall
+        // rejects value-bearing self-calls).
+        if (targetAddress.toLowerCase() !== ceaAddress.toLowerCase()) {
+          ceaMulticalls.push({
+            to: targetAddress,
+            value: params.value,
+            data: '0x',
+          });
+        }
       }
-    } else if (params.value && params.value > BigInt(0)) {
-      // Native value transfer: auto-select the PRC-20 token for target chain
-      prc20Token = this.getNativePRC20ForChain(targetChain);
-      burnAmount = params.value;
-      this.printLog(
-        `executeUoaToCea — auto-selected native PRC-20 ${prc20Token} for chain ${targetChain}, amount: ${burnAmount.toString()}`
-      );
-    } else if (params.data) {
-      // PAYLOAD-only (no value transfer): still need native token for chain namespace + gas fees
-      prc20Token = this.getNativePRC20ForChain(targetChain);
-      // WORKAROUND: Push Chain precompile requires non-zero amount even for payload-only transactions.
-      // The Solidity contract supports amount=0 (TX_TYPE.GAS_AND_PAYLOAD), but the precompile rejects it.
-      // We use 1 wei as minimum to satisfy the precompile while sending essentially nothing.
-      burnAmount = BigInt(1); // Minimum 1 wei required by precompile
-      this.printLog(
-        `executeUoaToCea — PAYLOAD-only: using native PRC-20 ${prc20Token} for chain ${targetChain} with minimum 1 wei (precompile requirement)`
-      );
+
+      // Build CEA multicall payload (this is what gets executed on the external chain)
+      ceaPayload = buildCeaMulticallPayload(ceaMulticalls);
+
+      // Determine token to burn on Push Chain
+      // NOTE: Even for PAYLOAD-only (no value), we need a valid PRC-20 token to:
+      // 1. Look up the target chain namespace in the gateway
+      // 2. Query and pay gas fees for the relay
+      if (params.funds?.amount) {
+        // User explicitly specified funds with token
+        const token = (params.funds as { token: MoveableToken }).token;
+        if (token) {
+          prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+          burnAmount = params.funds.amount;
+        }
+      } else if (params.value && params.value > BigInt(0)) {
+        // Native value transfer: auto-select the PRC-20 token for target chain
+        prc20Token = this.getNativePRC20ForChain(targetChain);
+        burnAmount = params.value;
+        this.printLog(
+          `executeUoaToCea — auto-selected native PRC-20 ${prc20Token} for chain ${targetChain}, amount: ${burnAmount.toString()}`
+        );
+      } else if (params.data) {
+        // PAYLOAD-only (no value transfer): still need native token for chain namespace + gas fees
+        prc20Token = this.getNativePRC20ForChain(targetChain);
+        // WORKAROUND: Push Chain precompile requires non-zero amount even for payload-only transactions.
+        // The Solidity contract supports amount=0 (TX_TYPE.GAS_AND_PAYLOAD), but the precompile rejects it.
+        // We use 1 wei as minimum to satisfy the precompile while sending essentially nothing.
+        burnAmount = BigInt(1); // Minimum 1 wei required by precompile
+        this.printLog(
+          `executeUoaToCea — PAYLOAD-only: using native PRC-20 ${prc20Token} for chain ${targetChain} with minimum 1 wei (precompile requirement)`
+        );
+      }
     }
 
     // Build outbound request struct for the gateway
@@ -2892,11 +2964,16 @@ export class Orchestrator {
         `executeUoaToCeaSvm — auto-selected native PRC-20 ${prc20Token} for chain ${targetChain}, amount: ${burnAmount.toString()}`
       );
     } else if (hasSvmExecute) {
-      // Execute-only (no value): still need native token for chain namespace + gas fees
-      prc20Token = this.getNativePRC20ForChain(targetChain);
+      // Execute-only (no value): check if user specified an SPL token context
+      const token = params.funds && (params.funds as { token: MoveableToken }).token;
+      if (token) {
+        prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+      } else {
+        prc20Token = this.getNativePRC20ForChain(targetChain);
+      }
       burnAmount = BigInt(1); // Minimum for precompile
       this.printLog(
-        `executeUoaToCeaSvm — EXECUTE-only: using native PRC-20 ${prc20Token} with minimum 1 wei (precompile requirement)`
+        `executeUoaToCeaSvm — EXECUTE-only: using PRC-20 ${prc20Token} with minimum 1 wei (precompile requirement)`
       );
     }
 
@@ -3017,6 +3094,11 @@ export class Orchestrator {
       throw new Error('Route 3 (CEA → Push) requires from.chain to specify the source CEA chain');
     }
     const sourceChain = params.from.chain;
+
+    // SVM chains use a fundamentally different flow (gateway self-call, not CEA multicall)
+    if (isSvmChain(sourceChain)) {
+      return this.executeCeaToPushSvm(params, sourceChain);
+    }
 
     // 2. Extract destination on Push Chain
     // For Route 3, 'to' is a Push Chain address (string), not a ChainTarget
@@ -3216,7 +3298,151 @@ export class Orchestrator {
 
     // Add Route 3 context to response
     response.chain = sourceChain;
-    response.chainNamespace = `eip155:${CHAIN_INFO[sourceChain].chainId}`;
+    const chainInfo = CHAIN_INFO[sourceChain];
+    response.chainNamespace = `${VM_NAMESPACE[chainInfo.vm]}:${chainInfo.chainId}`;
+
+    return response;
+  }
+
+  /**
+   * Route 3 SVM: Execute CEA-to-Push for Solana chains.
+   *
+   * Unlike EVM Route 3 which builds CEA multicalls, SVM Route 3 encodes a
+   * `send_universal_tx_to_uea` instruction as an execute payload targeting
+   * the SVM gateway program (self-call). The drain amount is embedded in
+   * the instruction data, not in the outbound request amount.
+   */
+  private async executeCeaToPushSvm(
+    params: UniversalExecuteParams,
+    sourceChain: CHAIN
+  ): Promise<UniversalTxResponse> {
+    if (typeof params.to !== 'string') {
+      throw new Error('Route 3 SVM (CEA → Push): to must be a Push Chain address (string), not a ChainTarget');
+    }
+
+    const ueaAddress = this.computeUEAOffchain();
+
+    // Get gateway program ID from chain config and convert to 0x-hex 32 bytes
+    const lockerContract = CHAIN_INFO[sourceChain].lockerContract;
+    if (!lockerContract) {
+      throw new Error(`No SVM gateway program configured for chain ${sourceChain}`);
+    }
+    const programPk = new PublicKey(lockerContract);
+    const gatewayProgramHex = ('0x' + Buffer.from(programPk.toBytes()).toString('hex')) as `0x${string}`;
+
+    this.printLog(`executeCeaToPushSvm — sourceChain: ${sourceChain}, gateway: ${lockerContract}`);
+
+    // Determine drain amount and token
+    let drainAmount = BigInt(0);
+    let tokenMintHex: `0x${string}` | undefined;
+    let prc20Token: `0x${string}`;
+
+    if (params.funds?.amount && params.funds.amount > BigInt(0)) {
+      // SPL token drain
+      drainAmount = params.funds.amount;
+      const token = (params.funds as { token: MoveableToken }).token;
+      if (token && token.address) {
+        // Convert SPL mint address to 32-byte hex
+        const mintPk = new PublicKey(token.address);
+        tokenMintHex = ('0x' + Buffer.from(mintPk.toBytes()).toString('hex')) as `0x${string}`;
+        prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+      } else {
+        prc20Token = this.getNativePRC20ForChain(sourceChain);
+      }
+    } else if (params.value && params.value > BigInt(0)) {
+      // Native SOL drain
+      drainAmount = params.value;
+      prc20Token = this.getNativePRC20ForChain(sourceChain);
+    } else {
+      throw new Error('Route 3 SVM: must specify value (SOL) or funds.amount (SPL) to drain from CEA');
+    }
+
+    // Build the SVM CPI payload (send_universal_tx_to_uea wrapped in execute)
+    // If params.data is provided, pass it as extraPayload for Push Chain execution
+    let extraPayload: Uint8Array | undefined;
+    if (params.data && typeof params.data === 'string') {
+      extraPayload = hexToBytes(params.data as `0x${string}`);
+    }
+
+    const svmPayload = encodeSvmCeaToUeaPayload({
+      gatewayProgramHex,
+      drainAmount,
+      tokenMintHex,
+      extraPayload,
+    });
+
+    this.printLog(
+      `executeCeaToPushSvm — drainAmount: ${drainAmount.toString()}, payload length: ${(svmPayload.length - 2) / 2} bytes`
+    );
+
+    // burnAmount = 1 (minimum for precompile; drain amount lives inside the ixData)
+    // The precompile rejects amount=0, so we use BigInt(1) as a workaround.
+    const burnAmount = BigInt(1);
+
+    // Build outbound request: target = gateway program (self-call)
+    const outboundReq: UniversalOutboundTxRequest = buildOutboundRequest(
+      gatewayProgramHex,
+      prc20Token,
+      burnAmount,
+      params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+      svmPayload,
+      ueaAddress
+    );
+
+    this.printLog(
+      `executeCeaToPushSvm — outbound request: target=${outboundReq.target.slice(0, 20)}..., token=${outboundReq.token}`
+    );
+
+    // Query gas fees
+    const gatewayPcAddress = this.getUniversalGatewayPCAddress();
+    let gasFee = BigInt(0);
+    let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+    if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
+      try {
+        const result = await this.queryOutboundGasFee(prc20Token, outboundReq.gasLimit);
+        gasToken = result.gasToken;
+        gasFee = result.gasFee;
+        this.printLog(`executeCeaToPushSvm — gasFee: ${gasFee.toString()}, gasToken: ${gasToken}`);
+      } catch (err) {
+        throw new Error(`Failed to query outbound gas fee for SVM Route 3: ${err}`);
+      }
+    }
+
+    // Build Push Chain multicalls (approvals + sendUniversalTxOutbound)
+    const pushChainMulticalls: MultiCall[] = buildOutboundApprovalAndCall({
+      prc20Token,
+      gasToken,
+      burnAmount,
+      gasFee,
+      gatewayPcAddress,
+      outboundRequest: outboundReq,
+    });
+
+    // Pre-fetch UEA status
+    const [ueaCode, ueaBalance] = await Promise.all([
+      this.pushClient.publicClient.getCode({ address: ueaAddress }),
+      this.pushClient.getBalance(ueaAddress),
+    ]);
+    const isUEADeployed = ueaCode !== undefined;
+    const ueaNonce = isUEADeployed ? await this.getUEANonce(ueaAddress) : BigInt(0);
+
+    // Execute through the normal execute() flow
+    const executeParams: ExecuteParams = {
+      to: ueaAddress,
+      data: pushChainMulticalls,
+      _ueaStatus: {
+        isDeployed: isUEADeployed,
+        nonce: ueaNonce,
+        balance: ueaBalance,
+      },
+    };
+
+    const response = await this.execute(executeParams);
+
+    // Add Route 3 SVM context to response
+    response.chain = sourceChain;
+    const chainInfo = CHAIN_INFO[sourceChain];
+    response.chainNamespace = `${VM_NAMESPACE[chainInfo.vm]}:${chainInfo.chainId}`;
 
     return response;
   }
@@ -3385,6 +3611,56 @@ export class Orchestrator {
         }
         const sourceChain = params.from.chain;
         const pushDestination = params.to as `0x${string}`;
+
+        // SVM chains use gateway self-call, not CEA multicall
+        if (isSvmChain(sourceChain)) {
+          const lockerContract = CHAIN_INFO[sourceChain].lockerContract;
+          if (!lockerContract) {
+            throw new Error(`No SVM gateway program configured for chain ${sourceChain}`);
+          }
+          const programPk = new PublicKey(lockerContract);
+          const gatewayProgramHex = ('0x' + Buffer.from(programPk.toBytes()).toString('hex')) as `0x${string}`;
+
+          let drainAmount = BigInt(0);
+          let tokenMintHex: `0x${string}` | undefined;
+          let prc20Token: `0x${string}`;
+
+          if (params.funds?.amount && params.funds.amount > BigInt(0)) {
+            drainAmount = params.funds.amount;
+            const token = (params.funds as { token: MoveableToken }).token;
+            if (token && token.address) {
+              const mintPk = new PublicKey(token.address);
+              tokenMintHex = ('0x' + Buffer.from(mintPk.toBytes()).toString('hex')) as `0x${string}`;
+              prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+            } else {
+              prc20Token = this.getNativePRC20ForChain(sourceChain);
+            }
+          } else if (params.value && params.value > BigInt(0)) {
+            drainAmount = params.value;
+            prc20Token = this.getNativePRC20ForChain(sourceChain);
+          } else {
+            throw new Error('Route 3 SVM: must specify value (SOL) or funds.amount (SPL) to drain');
+          }
+
+          const svmPayload = encodeSvmCeaToUeaPayload({
+            gatewayProgramHex,
+            drainAmount,
+            tokenMintHex,
+          });
+
+          // burnAmount = 1 (minimum for precompile; drain amount lives inside the ixData)
+          const burnAmount = BigInt(1);
+          const outboundReq = buildOutboundRequest(
+            gatewayProgramHex,
+            prc20Token,
+            burnAmount,
+            params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+            svmPayload,
+            ueaAddress
+          );
+
+          return { payload: svmPayload, gatewayRequest: outboundReq };
+        }
 
         const { cea: ceaAddress } = await getCEAAddress(
           ueaAddress,

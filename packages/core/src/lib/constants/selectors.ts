@@ -17,6 +17,13 @@ export const MULTICALL_SELECTOR = '0x1749e1e3' as const;
 export const UEA_MULTICALL_SELECTOR = '0x8f6f1c5e' as const;
 
 /**
+ * MIGRATION_SELECTOR
+ * Selector for CEA migration execution
+ * Calculated as: keccak256("migrateCEA()")[:4]
+ */
+export const MIGRATION_SELECTOR = '0x0af1c213' as const;
+
+/**
  * TX_TYPE enum values (matches Solidity TX_TYPE enum)
  */
 export const TX_TYPE = {

@@ -23,6 +23,7 @@ import { TransactionRoute, detectRoute } from '../src/lib/orchestrator/route-det
 import type { UniversalExecuteParams, ChainTarget } from '../src/lib/orchestrator/orchestrator.types';
 import type { ProgressEvent } from '../src/lib/progress-hook/progress-hook.types';
 import { ERC20_EVM } from '../src/lib/constants/abi/erc20.evm';
+import { MOVEABLE_TOKENS, type MoveableToken } from '../src/lib/constants/tokens';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
@@ -33,6 +34,7 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
   let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
   let ueaAddress: `0x${string}`;
   let ceaAddress: `0x${string}`;
+  let usdtToken: MoveableToken | undefined;
 
   const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
   const skipE2E = !privateKey;
@@ -73,6 +75,13 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
     const ceaResult = await getCEAAddress(ueaAddress, CHAIN.BNB_TESTNET);
     ceaAddress = ceaResult.cea;
     console.log(`CEA Address on BSC: ${ceaAddress}, deployed: ${ceaResult.isDeployed}`);
+
+    // Get USDT token for ERC20 self-call flows
+    const tokens = MOVEABLE_TOKENS[CHAIN.BNB_TESTNET] || [];
+    usdtToken = tokens.find(t => t.symbol === 'USDT');
+    if (usdtToken) {
+      console.log(`USDT Token (BNB Testnet): ${usdtToken.address} (${usdtToken.decimals} decimals)`);
+    }
 
   }, 60000);
 
@@ -519,6 +528,101 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
       // Verify key events were emitted
       expect(events.some(e => e.id === 'SEND-TX-01')).toBe(true);
       expect(events.some(e => e.id.startsWith('SEND-TX-99'))).toBe(true);
+    }, 600000);
+  });
+
+  // ============================================================================
+  // 10. ERC20 Self-Call Flows (Flows 4.2, 4.6)
+  // ============================================================================
+  describe('10. ERC20 Self-Call Flows', () => {
+    it('should bridge ERC20 USDT back from CEA to Push Chain (Flow 4.2)', async () => {
+      if (skipE2E) return;
+      if (!usdtToken) {
+        console.log('Skipping - USDT token not found in MOVEABLE_TOKENS for BNB Testnet');
+        return;
+      }
+
+      console.log('\n=== Test: ERC20 Self-Call — Bridge USDT Back (Flow 4.2) ===');
+      console.log('Burns ERC20 on external chain, mints on Push Chain. SDK auto-adds approve step.');
+
+      const bridgeAmount = BigInt(10000); // 0.01 USDT (6 decimals)
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: ueaAddress, // Self — bridge back to own UEA
+        funds: {
+          amount: bridgeAmount,
+          token: usdtToken,
+        },
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+
+      // Wait for outbound relay
+      console.log('Calling tx.wait() - polling for external chain tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+    }, 600000);
+
+    it('should bridge ERC20 USDT with Push Chain payload (Flow 4.6)', async () => {
+      if (skipE2E) return;
+      if (!usdtToken) {
+        console.log('Skipping - USDT token not found');
+        return;
+      }
+
+      console.log('\n=== Test: ERC20 Self-Call + Payload (Flow 4.6) ===');
+      console.log('Burns ERC20 on external chain + executes payload on Push Chain.');
+
+      const bridgeAmount = BigInt(10000); // 0.01 USDT
+
+      // Payload to execute on Push Chain after inbound
+      const pushPayload = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'approve',
+        args: [TEST_TARGET, BigInt(1000000)],
+      });
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: TEST_TARGET, // Push Chain target for payload execution
+        funds: {
+          amount: bridgeAmount,
+          token: usdtToken,
+        },
+        data: pushPayload,
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+
+      // Wait for outbound relay
+      console.log('Calling tx.wait() - polling for external chain tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
     }, 600000);
   });
 });

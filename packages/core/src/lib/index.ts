@@ -45,11 +45,13 @@ export {
   getAllCEAAddresses,
 } from './orchestrator/cea-utils';
 
-// SVM (Solana) payload utilities
+// Payload builder utilities (SVM + EVM outbound helpers)
 export {
   encodeSvmExecutePayload,
   isSvmChain,
   isValidSolanaHexAddress,
+  buildMigrationPayload,
+  buildErc20WithdrawalMulticall,
 } from './orchestrator/payload-builders';
 
 export { PushChain };
