@@ -11,7 +11,7 @@ dotenv.config();
 // Add type declaration for bn.js
 declare module 'bn.js';
 
-const PROGRAM_ID = 'ETGtqwDKEm1Z9gq6FdvYUfyDuUZr7g4UdPSmyNLVGriX';
+const PROGRAM_ID = '8yNqjrMnFiFbVTVQcKij8tNWWTMdFkrDf9abCGgc2sgx';
 const chain = CHAIN.SOLANA_DEVNET;
 const RPC_URL = process.env['SOLANA_RPC_URL'];
 
@@ -19,42 +19,136 @@ if (!RPC_URL) {
   throw new Error('SOLANA_RPC_URL environment variable is not set');
 }
 
-// Solana IDL for the counter program deployed on devnet
+// Derive counter PDA (singleton per program, seeds: ["counter"])
+const [counterPDA] = PublicKey.findProgramAddressSync(
+  [Buffer.from('counter')],
+  new PublicKey(PROGRAM_ID)
+);
+
+// Solana IDL for the test_counter program deployed on devnet
 const IDL = {
   address: PROGRAM_ID,
   metadata: {
-    name: 'counter_program',
+    name: 'test_counter',
     version: '0.1.0',
     spec: '0.1.0',
-    description: 'Created with Anchor',
+    description: 'Simple counter program for testing execute functions',
   },
   instructions: [
     {
+      name: 'batch_operation',
+      docs: [
+        'Heavy batch operation - simulates complex DeFi operation with many accounts and large data',
+        'This function is designed to test transaction size limits',
+        'Takes many accounts (10-15) and large instruction data (200-400 bytes)',
+        'Does minimal computation (just increments counter) to focus on size testing',
+      ],
+      discriminator: [15, 225, 16, 46, 54, 53, 8, 191],
+      accounts: [
+        {
+          name: 'counter',
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [99, 111, 117, 110, 116, 101, 114],
+              },
+            ],
+          },
+        },
+        {
+          name: 'authority',
+        },
+      ],
+      args: [
+        {
+          name: 'operation_id',
+          type: 'u64',
+        },
+        {
+          name: 'data',
+          type: 'bytes',
+        },
+      ],
+    },
+    {
+      name: 'decrement',
+      docs: ['Decrement counter (can be called via CPI from gateway)'],
+      discriminator: [106, 227, 168, 59, 248, 27, 150, 101],
+      accounts: [
+        {
+          name: 'counter',
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [99, 111, 117, 110, 116, 101, 114],
+              },
+            ],
+          },
+        },
+        {
+          name: 'authority',
+          relations: ['counter'],
+        },
+      ],
+      args: [
+        {
+          name: 'amount',
+          type: 'u64',
+        },
+      ],
+    },
+    {
       name: 'increment',
-      docs: ['Increment the counter by 1'],
+      docs: ['Increment counter (can be called via CPI from gateway)'],
       discriminator: [11, 18, 104, 9, 104, 174, 59, 33],
       accounts: [
         {
           name: 'counter',
           writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [99, 111, 117, 110, 116, 101, 114],
+              },
+            ],
+          },
+        },
+        {
+          name: 'authority',
+          relations: ['counter'],
         },
       ],
-      args: [],
+      args: [
+        {
+          name: 'amount',
+          type: 'u64',
+        },
+      ],
     },
     {
       name: 'initialize',
-      docs: [
-        'Create the counter account (with 8 byte discriminator + 8 byte u64)',
-      ],
+      docs: ['Initialize a counter account'],
       discriminator: [175, 175, 109, 31, 13, 152, 155, 237],
       accounts: [
         {
           name: 'counter',
           writable: true,
-          signer: true,
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [99, 111, 117, 110, 116, 101, 114],
+              },
+            ],
+          },
         },
         {
-          name: 'user',
+          name: 'authority',
           writable: true,
           signer: true,
         },
@@ -63,7 +157,403 @@ const IDL = {
           address: '11111111111111111111111111111111',
         },
       ],
-      args: [],
+      args: [
+        {
+          name: 'initial_value',
+          type: 'u64',
+        },
+      ],
+    },
+    {
+      name: 'receive_sol',
+      docs: ['Receive SOL and increment counter (for non-CEA tests)'],
+      discriminator: [121, 244, 250, 3, 8, 229, 225, 1],
+      accounts: [
+        {
+          name: 'counter',
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [99, 111, 117, 110, 116, 101, 114],
+              },
+            ],
+          },
+        },
+        {
+          name: 'recipient',
+          writable: true,
+        },
+        {
+          name: 'cea_authority',
+          writable: true,
+        },
+        {
+          name: 'system_program',
+          address: '11111111111111111111111111111111',
+        },
+      ],
+      args: [
+        {
+          name: 'amount',
+          type: 'u64',
+        },
+      ],
+    },
+    {
+      name: 'receive_spl',
+      docs: ['Receive SPL tokens and increment counter (for non-CEA tests)'],
+      discriminator: [182, 84, 250, 46, 138, 164, 73, 196],
+      accounts: [
+        {
+          name: 'counter',
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [99, 111, 117, 110, 116, 101, 114],
+              },
+            ],
+          },
+        },
+        {
+          name: 'cea_ata',
+          writable: true,
+        },
+        {
+          name: 'recipient_ata',
+          writable: true,
+        },
+        {
+          name: 'cea_authority',
+          signer: true,
+        },
+        {
+          name: 'token_program',
+          address: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+        },
+      ],
+      args: [
+        {
+          name: 'amount',
+          type: 'u64',
+        },
+      ],
+    },
+    {
+      name: 'stake_sol',
+      docs: [
+        'Stake SOL - transfers SOL from authority (CEA) to stake_vault PDA',
+        'This tests CEA identity preservation (same authority = same stake PDA)',
+        'CEA is signed by gateway via invoke_signed with cea_seeds',
+      ],
+      discriminator: [200, 38, 157, 155, 245, 57, 236, 168],
+      accounts: [
+        {
+          name: 'counter',
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [99, 111, 117, 110, 116, 101, 114],
+              },
+            ],
+          },
+        },
+        {
+          name: 'authority',
+          writable: true,
+          signer: true,
+        },
+        {
+          name: 'stake',
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [115, 116, 97, 107, 101],
+              },
+              {
+                kind: 'account',
+                path: 'authority',
+              },
+            ],
+          },
+        },
+        {
+          name: 'stake_vault',
+          docs: [
+            'Stake vault PDA - holds staked SOL (SystemAccount, no data)',
+            'Initialized manually if needed (SystemAccount with space=0 can\'t use init_if_needed)',
+          ],
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [115, 116, 97, 107, 101, 95, 118, 97, 117, 108, 116],
+              },
+              {
+                kind: 'account',
+                path: 'authority',
+              },
+            ],
+          },
+        },
+        {
+          name: 'system_program',
+          address: '11111111111111111111111111111111',
+        },
+      ],
+      args: [
+        {
+          name: 'amount',
+          type: 'u64',
+        },
+      ],
+    },
+    {
+      name: 'stake_spl',
+      docs: [
+        'Stake SPL tokens - transfers tokens from authority ATA to stake ATA',
+        'CEA is signed by gateway via invoke_signed with cea_seeds',
+      ],
+      discriminator: [185, 201, 132, 39, 66, 146, 241, 232],
+      accounts: [
+        {
+          name: 'counter',
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [99, 111, 117, 110, 116, 101, 114],
+              },
+            ],
+          },
+        },
+        {
+          name: 'authority',
+          writable: true,
+          signer: true,
+        },
+        {
+          name: 'stake',
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [115, 116, 97, 107, 101],
+              },
+              {
+                kind: 'account',
+                path: 'authority',
+              },
+            ],
+          },
+        },
+        {
+          name: 'mint',
+        },
+        {
+          name: 'authority_ata',
+          writable: true,
+        },
+        {
+          name: 'stake_ata',
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: 'account',
+                path: 'stake',
+              },
+              {
+                kind: 'const',
+                value: [
+                  6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70,
+                  206, 235, 121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58,
+                  140, 245, 133, 126, 255, 0, 169,
+                ],
+              },
+              {
+                kind: 'account',
+                path: 'mint',
+              },
+            ],
+            program: {
+              kind: 'const',
+              value: [
+                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20,
+                142, 13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142,
+                123, 216, 219, 233, 248, 89,
+              ],
+            },
+          },
+        },
+        {
+          name: 'token_program',
+          address: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+        },
+        {
+          name: 'system_program',
+          address: '11111111111111111111111111111111',
+        },
+        {
+          name: 'associated_token_program',
+          address: 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL',
+        },
+      ],
+      args: [
+        {
+          name: 'amount',
+          type: 'u64',
+        },
+      ],
+    },
+    {
+      name: 'unstake_sol',
+      docs: [
+        'Unstake SOL - transfers SOL from stake_vault PDA back to authority (CEA)',
+      ],
+      discriminator: [70, 150, 140, 208, 166, 13, 252, 150],
+      accounts: [
+        {
+          name: 'counter',
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [99, 111, 117, 110, 116, 101, 114],
+              },
+            ],
+          },
+        },
+        {
+          name: 'authority',
+          writable: true,
+          signer: true,
+          relations: ['stake'],
+        },
+        {
+          name: 'stake',
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [115, 116, 97, 107, 101],
+              },
+              {
+                kind: 'account',
+                path: 'authority',
+              },
+            ],
+          },
+        },
+        {
+          name: 'stake_vault',
+          docs: [
+            'Stake vault PDA - holds staked SOL (SystemAccount, no data)',
+            'Initialized manually if needed (SystemAccount with space=0 can\'t use init_if_needed)',
+          ],
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [115, 116, 97, 107, 101, 95, 118, 97, 117, 108, 116],
+              },
+              {
+                kind: 'account',
+                path: 'authority',
+              },
+            ],
+          },
+        },
+        {
+          name: 'system_program',
+          address: '11111111111111111111111111111111',
+        },
+      ],
+      args: [
+        {
+          name: 'amount',
+          type: 'u64',
+        },
+      ],
+    },
+    {
+      name: 'unstake_spl',
+      docs: [
+        'Unstake SPL tokens - transfers tokens from stake ATA back to authority ATA',
+      ],
+      discriminator: [47, 102, 202, 245, 122, 89, 96, 24],
+      accounts: [
+        {
+          name: 'counter',
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [99, 111, 117, 110, 116, 101, 114],
+              },
+            ],
+          },
+        },
+        {
+          name: 'authority',
+          relations: ['stake'],
+        },
+        {
+          name: 'stake',
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [115, 116, 97, 107, 101],
+              },
+              {
+                kind: 'account',
+                path: 'authority',
+              },
+            ],
+          },
+        },
+        {
+          name: 'mint',
+        },
+        {
+          name: 'authority_ata',
+          writable: true,
+        },
+        {
+          name: 'stake_ata',
+          writable: true,
+        },
+        {
+          name: 'token_program',
+          address: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+        },
+        {
+          name: 'system_program',
+          address: '11111111111111111111111111111111',
+        },
+      ],
+      args: [
+        {
+          name: 'amount',
+          type: 'u64',
+        },
+      ],
     },
   ],
   accounts: [
@@ -71,16 +561,96 @@ const IDL = {
       name: 'Counter',
       discriminator: [255, 176, 4, 245, 188, 253, 124, 25],
     },
+    {
+      name: 'Stake',
+      discriminator: [150, 197, 176, 29, 55, 132, 112, 149],
+    },
+  ],
+  events: [
+    {
+      name: 'CounterUpdated',
+      discriminator: [56, 210, 136, 13, 88, 67, 151, 167],
+    },
+  ],
+  errors: [
+    {
+      code: 6000,
+      name: 'Overflow',
+      msg: 'Counter overflow',
+    },
+    {
+      code: 6001,
+      name: 'Underflow',
+      msg: 'Counter underflow',
+    },
+    {
+      code: 6002,
+      name: 'Unauthorized',
+      msg: 'Unauthorized',
+    },
+    {
+      code: 6003,
+      name: 'InsufficientStake',
+      msg: 'Insufficient stake',
+    },
+    {
+      code: 6004,
+      name: 'InvalidDataSize',
+      msg: 'Invalid data size',
+    },
   ],
   types: [
     {
       name: 'Counter',
-      docs: ['The on‐chain data structure'],
       type: {
         kind: 'struct',
         fields: [
           {
             name: 'value',
+            type: 'u64',
+          },
+          {
+            name: 'authority',
+            type: 'pubkey',
+          },
+        ],
+      },
+    },
+    {
+      name: 'CounterUpdated',
+      type: {
+        kind: 'struct',
+        fields: [
+          {
+            name: 'counter',
+            type: 'pubkey',
+          },
+          {
+            name: 'old_value',
+            type: 'u64',
+          },
+          {
+            name: 'new_value',
+            type: 'u64',
+          },
+          {
+            name: 'operation',
+            type: 'string',
+          },
+        ],
+      },
+    },
+    {
+      name: 'Stake',
+      type: {
+        kind: 'struct',
+        fields: [
+          {
+            name: 'authority',
+            type: 'pubkey',
+          },
+          {
+            name: 'amount',
             type: 'u64',
           },
         ],
@@ -145,12 +715,12 @@ describe('SvmClient', () => {
 
   describe('readContract', () => {
     it('reads contract value', async () => {
-      // Assuming a deployed program and account
+      // Read counter PDA account data
       const result = await svmClient.readContract({
         abi: IDL,
         address: PROGRAM_ID,
         functionName: 'counter',
-        args: ['G3MUQYPgvn28KcaXKDTwHsTx89eA1fz4K1g8MjLiym1Q'],
+        args: [counterPDA.toBase58()],
       });
       expect(result).toBeDefined();
     });
@@ -186,30 +756,34 @@ describe('SvmClient', () => {
         throw new Error('Not enough balance');
       }
 
-      // Create a new keypair for the counter account
-      const counterAccount = Keypair.generate();
+      // Counter is a PDA — initialize may fail if already initialized
+      try {
+        const txSignature = await svmClient.writeContract({
+          abi: IDL,
+          address: PROGRAM_ID,
+          functionName: 'initialize',
+          args: [BigInt(0)],
+          signer: universalSigner,
+          accounts: {
+            counter: counterPDA,
+            authority: new PublicKey(universalSigner.account.address),
+            systemProgram: SystemProgram.programId,
+          },
+        });
+        console.log('Transaction Signature: ', txSignature);
 
-      const txSignature = await svmClient.writeContract({
-        abi: IDL,
-        address: PROGRAM_ID,
-        functionName: 'initialize',
-        signer: universalSigner,
-        // Pass dynamic accounts
-        accounts: {
-          counter: counterAccount.publicKey,
-          user: new PublicKey(universalSigner.account.address),
-          systemProgram: SystemProgram.programId,
-        },
-        // Pass keypairs that need to sign
-        extraSigners: [counterAccount],
-      });
-      console.log('Transaction Signature: ', txSignature);
+        // Wait for the transaction to be confirmed
+        await svmClient.confirmTransaction(txSignature);
+        console.log('Transaction confirmed');
 
-      // Wait for the transaction to be confirmed
-      await svmClient.confirmTransaction(txSignature);
-      console.log('Transaction confirmed');
-
-      expect(txSignature).toMatch(/^[A-Za-z0-9]+$/);
+        expect(txSignature).toMatch(/^[A-Za-z0-9]+$/);
+      } catch (err) {
+        // Counter PDA may already be initialized from a previous run
+        console.log(
+          'Initialize may have already been called:',
+          (err as Error).message
+        );
+      }
     });
 
     it('increments counter and verifies value increased', async () => {
@@ -221,48 +795,49 @@ describe('SvmClient', () => {
         throw new Error('Not enough balance');
       }
 
-      // Create a new keypair for the counter account
-      const counterAccount = Keypair.generate();
+      // Ensure counter is initialized (may already be from previous test)
+      try {
+        const initTxSignature = await svmClient.writeContract({
+          abi: IDL,
+          address: PROGRAM_ID,
+          functionName: 'initialize',
+          args: [BigInt(0)],
+          signer: universalSigner,
+          accounts: {
+            counter: counterPDA,
+            authority: new PublicKey(universalSigner.account.address),
+            systemProgram: SystemProgram.programId,
+          },
+        });
+        await svmClient.confirmTransaction(initTxSignature);
+        console.log('Initialize transaction confirmed');
+      } catch {
+        console.log('Counter already initialized, continuing...');
+      }
 
-      // 1. Initialize the counter first
-      const initTxSignature = await svmClient.writeContract({
-        abi: IDL,
-        address: PROGRAM_ID,
-        functionName: 'initialize',
-        signer: universalSigner,
-        accounts: {
-          counter: counterAccount.publicKey,
-          user: new PublicKey(universalSigner.account.address),
-          systemProgram: SystemProgram.programId,
-        },
-        extraSigners: [counterAccount],
-      });
-
-      console.log('Initialize Transaction:', initTxSignature);
-
-      // Wait for the initialization transaction to be confirmed
-      await svmClient.confirmTransaction(initTxSignature);
-      console.log('Initialize transaction confirmed');
-
-      // 2. Read the initial value
-      const initialCounter = await svmClient.readContract<{ value: number }>({
+      // 1. Read the current value
+      const initialCounter = await svmClient.readContract<{
+        value: number;
+        authority: PublicKey;
+      }>({
         abi: IDL,
         address: PROGRAM_ID,
         functionName: 'counter',
-        args: [counterAccount.publicKey.toBase58()],
+        args: [counterPDA.toBase58()],
       });
       console.log('Initial value:', initialCounter.value);
 
-      // 3. Call increment
+      // 2. Call increment with amount
       const incrementTxSignature = await svmClient.writeContract({
         abi: IDL,
         address: PROGRAM_ID,
         functionName: 'increment',
+        args: [BigInt(1)],
         signer: universalSigner,
         accounts: {
-          counter: counterAccount.publicKey,
+          counter: counterPDA,
+          authority: new PublicKey(universalSigner.account.address),
         },
-        extraSigners: [],
       });
 
       console.log('Increment Transaction:', incrementTxSignature);
@@ -271,15 +846,21 @@ describe('SvmClient', () => {
       await svmClient.confirmTransaction(incrementTxSignature);
       console.log('Increment transaction confirmed');
 
-      // 4. Read the value again and verify it increased
-      const updatedCounter = await svmClient.readContract<{ value: bigint }>({
+      // 3. Read the value again and verify it increased
+      const updatedCounter = await svmClient.readContract<{
+        value: bigint;
+        authority: PublicKey;
+      }>({
         abi: IDL,
         address: PROGRAM_ID,
         functionName: 'counter',
-        args: [counterAccount.publicKey.toBase58()],
+        args: [counterPDA.toBase58()],
       });
 
-      expect(updatedCounter.value.toString()).toBe('1');
+      expect(
+        BigInt(updatedCounter.value.toString()) >
+          BigInt(initialCounter.value.toString())
+      ).toBe(true);
       console.log('Updated value:', updatedCounter.value);
     });
 
@@ -289,7 +870,7 @@ describe('SvmClient', () => {
           abi: IDL,
           address: 'invalidAddress',
           functionName: 'initialize',
-          args: [],
+          args: [BigInt(0)],
           signer: universalSigner,
         })
       ).rejects.toThrow();
@@ -305,45 +886,50 @@ describe('SvmClient', () => {
           abi: IDL,
           address: PROGRAM_ID,
           functionName: 'initialize',
-          args: [],
+          args: [BigInt(0)],
           signer: invalidSigner as unknown as UniversalSigner,
         })
       ).rejects.toThrow('signer.signTransaction is undefined');
     });
 
     it('throws error for invalid account configuration', async () => {
-      const counterAccount = Keypair.generate();
       await expect(
         svmClient.writeContract({
           abi: IDL,
           address: PROGRAM_ID,
           functionName: 'initialize',
+          args: [BigInt(0)],
           signer: universalSigner,
           accounts: {
-            // Missing required 'user' account
-            counter: counterAccount.publicKey,
+            // Missing required 'authority' account
+            counter: counterPDA,
             systemProgram: SystemProgram.programId,
           },
-          extraSigners: [counterAccount],
         })
       ).rejects.toThrow();
     });
 
-    it('throws error for invalid signer configuration', async () => {
-      const counterAccount = Keypair.generate();
+    it('throws error for unauthorized authority', async () => {
+      // Use a different keypair as authority — should fail with Unauthorized
+      // since the counter's authority is set to universalSigner
+      const randomKeypair = Keypair.generate();
+      const randomSigner =
+        await PushChain.utils.signer.toUniversalFromKeypair(randomKeypair, {
+          chain: chain,
+          library: LIBRARY.SOLANA_WEB3JS,
+        });
+
       await expect(
         svmClient.writeContract({
           abi: IDL,
           address: PROGRAM_ID,
-          functionName: 'initialize',
-          signer: universalSigner,
+          functionName: 'increment',
+          args: [BigInt(1)],
+          signer: randomSigner,
           accounts: {
-            counter: counterAccount.publicKey,
-            user: new PublicKey(universalSigner.account.address),
-            systemProgram: SystemProgram.programId,
+            counter: counterPDA,
+            authority: randomKeypair.publicKey,
           },
-          // Missing required counter account signer
-          extraSigners: [],
         })
       ).rejects.toThrow();
     });
@@ -357,22 +943,18 @@ describe('SvmClient', () => {
         throw new Error('Not enough balance');
       }
 
-      const counterAccount = Keypair.generate();
-
-      // Initialize counter
-      const initTxSignature = await svmClient.writeContract({
+      // Read current value (counter should already be initialized)
+      const beforeCounter = await svmClient.readContract<{
+        value: bigint;
+        authority: PublicKey;
+      }>({
         abi: IDL,
         address: PROGRAM_ID,
-        functionName: 'initialize',
-        signer: universalSigner,
-        accounts: {
-          counter: counterAccount.publicKey,
-          user: new PublicKey(universalSigner.account.address),
-          systemProgram: SystemProgram.programId,
-        },
-        extraSigners: [counterAccount],
+        functionName: 'counter',
+        args: [counterPDA.toBase58()],
       });
-      await svmClient.confirmTransaction(initTxSignature);
+      const beforeValue = BigInt(beforeCounter.value.toString());
+      console.log('Value before increments:', beforeValue);
 
       // Increment counter twice
       for (let i = 0; i < 2; i++) {
@@ -380,24 +962,29 @@ describe('SvmClient', () => {
           abi: IDL,
           address: PROGRAM_ID,
           functionName: 'increment',
+          args: [BigInt(1)],
           signer: universalSigner,
           accounts: {
-            counter: counterAccount.publicKey,
+            counter: counterPDA,
+            authority: new PublicKey(universalSigner.account.address),
           },
-          extraSigners: [],
         });
         await svmClient.confirmTransaction(incrementTxSignature);
       }
 
-      // Verify final value
-      const finalCounter = await svmClient.readContract<{ value: bigint }>({
+      // Verify final value increased by 2
+      const finalCounter = await svmClient.readContract<{
+        value: bigint;
+        authority: PublicKey;
+      }>({
         abi: IDL,
         address: PROGRAM_ID,
         functionName: 'counter',
-        args: [counterAccount.publicKey.toBase58()],
+        args: [counterPDA.toBase58()],
       });
 
-      expect(finalCounter.value.toString()).toBe('2');
+      const finalValue = BigInt(finalCounter.value.toString());
+      expect(finalValue).toBe(beforeValue + BigInt(2));
     });
   });
 

@@ -761,5 +761,5 @@ export interface WaitForOutboundOptions {
   /**
    * Progress callback for tracking events
    */
-  progressHook?: (event: { status: 'waiting' | 'polling' | 'found' | 'timeout'; elapsed: number }) => void;
+  progressHook?: (event: { status: 'waiting' | 'polling' | 'found' | 'failed' | 'timeout'; elapsed: number }) => void;
 }

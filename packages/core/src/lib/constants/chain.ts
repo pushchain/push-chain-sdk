@@ -276,7 +276,7 @@ export const CHAIN_INFO: Record<
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 55000,
-    explorerUrl: 'https://explorer.solana.com?cluster=testnet',
+    explorerUrl: 'https://explorer.solana.com',
   },
   [CHAIN.SOLANA_DEVNET]: {
     chainId: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
@@ -289,7 +289,7 @@ export const CHAIN_INFO: Record<
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 120000,
-    explorerUrl: 'https://explorer.solana.com?cluster=devnet',
+    explorerUrl: 'https://explorer.solana.com',
   },
 };
 
@@ -411,15 +411,24 @@ export const CHAIN_EXPLORERS: Partial<Record<CHAIN, { testnet?: string[]; mainne
   },
   // Solana
   [CHAIN.SOLANA_DEVNET]: {
-    testnet: ['https://explorer.solana.com?cluster=devnet'],
+    testnet: ['https://explorer.solana.com'],
   },
   [CHAIN.SOLANA_TESTNET]: {
-    testnet: ['https://explorer.solana.com?cluster=testnet'],
+    testnet: ['https://explorer.solana.com'],
   },
   [CHAIN.SOLANA_MAINNET]: {
     mainnet: ['https://explorer.solana.com'],
   },
 };
+
+/**
+ * Get the Solana cluster query param for a given chain
+ */
+function getSvmClusterParam(chain: CHAIN): string {
+  if (chain === CHAIN.SOLANA_DEVNET) return '?cluster=devnet';
+  if (chain === CHAIN.SOLANA_TESTNET) return '?cluster=testnet';
+  return '';
+}
 
 /**
  * Get explorer URL for a transaction on a specific chain
@@ -437,9 +446,9 @@ export function getExplorerTxUrl(
   const urls = network === 'mainnet' ? explorers?.mainnet : explorers?.testnet;
   if (!urls?.length) return undefined;
 
-  // Solana uses different path format
+  // Solana needs cluster query param appended after the path
   if (CHAIN_INFO[chain].vm === VM.SVM) {
-    return `${urls[0]}/tx/${txHash}`;
+    return `${urls[0]}/tx/${txHash}${getSvmClusterParam(chain)}`;
   }
 
   return `${urls[0]}/tx/${txHash}`;
@@ -461,9 +470,9 @@ export function getExplorerAddressUrl(
   const urls = network === 'mainnet' ? explorers?.mainnet : explorers?.testnet;
   if (!urls?.length) return undefined;
 
-  // Solana uses different path format
+  // Solana needs cluster query param appended after the path
   if (CHAIN_INFO[chain].vm === VM.SVM) {
-    return `${urls[0]}/address/${address}`;
+    return `${urls[0]}/address/${address}${getSvmClusterParam(chain)}`;
   }
 
   return `${urls[0]}/address/${address}`;

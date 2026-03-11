@@ -11,6 +11,7 @@ export const UNIVERSAL_GATEWAY_PC = [
       { indexed: true, internalType: 'address', name: 'sender', type: 'address' },
       { indexed: false, internalType: 'string', name: 'chainNamespace', type: 'string' },
       { indexed: true, internalType: 'address', name: 'token', type: 'address' },
+      { indexed: false, internalType: 'bytes', name: 'target', type: 'bytes' },
       { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' },
       { indexed: false, internalType: 'address', name: 'gasToken', type: 'address' },
       { indexed: false, internalType: 'uint256', name: 'gasFee', type: 'uint256' },

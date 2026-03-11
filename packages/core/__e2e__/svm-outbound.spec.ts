@@ -1,17 +1,22 @@
 /**
- * SVM (Solana) Outbound Transactions (Route 2)
+ * SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)
  *
- * Tests for outbound transactions from Push Chain to Solana via the SVM gateway.
+ * Tests for outbound transactions from Push Chain to Solana via the SVM gateway,
+ * and inbound CEA-to-UEA transactions from Solana back to Push Chain.
+ *
  * Covers: Route Detection, SVM Utilities, Withdraw SOL, Withdraw SPL,
- * Execute CPI, Error Handling, Progress Hooks
+ * Execute CPI, FUNDS + CPI, Small Amount, E2E Sync, Transaction Preparation,
+ * CEA-to-UEA SOL, CEA-to-UEA SPL, Error Handling, Progress Hooks
  *
  * Primary test chain: Solana Devnet
  */
 import { PushChain } from '../src';
 import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
 import { CHAIN_INFO } from '../src/lib/constants/chain';
+import { MOVEABLE_TOKENS } from '../src/lib/constants/tokens';
 import { createWalletClient, http, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { PublicKey } from '@solana/web3.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { chainSupportsOutbound, chainSupportsCEA } from '../src/lib/orchestrator/cea-utils';
@@ -24,6 +29,7 @@ import {
 import type {
   UniversalExecuteParams,
   ChainTarget,
+  ChainSource,
   SvmExecutePayloadFields,
 } from '../src/lib/orchestrator/orchestrator.types';
 import type { ProgressEvent } from '../src/lib/progress-hook/progress-hook.types';
@@ -31,21 +37,32 @@ import type { ProgressEvent } from '../src/lib/progress-hook/progress-hook.types
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 // 32-byte Solana addresses as 0x-prefixed hex
-// Random test address (32 bytes)
+// Gateway vault PDA on devnet (known existing account)
 const TEST_SOL_TARGET =
-  '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef' as `0x${string}`;
+  '0x6a44bb5ea802a001386a5b39708523e1a3e1bafc8164ffcb94d1f5afa4849c69' as `0x${string}`;
 
 // Zero address for Solana (32 bytes of zeros)
 const SOL_ZERO_ADDRESS =
   '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`;
 
-// Random program address for CPI tests
+// test_counter program deployed on Solana Devnet (8yNqjrMnFiFbVTVQcKij8tNWWTMdFkrDf9abCGgc2sgx)
 const TEST_PROGRAM =
-  '0xaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccdd' as `0x${string}`;
+  '0x7673075a980bfd5d6b1dffe99c31f63e8938519cc1c2af009dda5e568a94460d' as `0x${string}`;
 
-describe('SVM (Solana) Outbound Transactions (Route 2)', () => {
+// Counter PDA (seeds: ["counter"], program: TEST_PROGRAM) = 6Kg1NF5RRytjGwR6USttBLEYJrqwm65xtJzdPbbFwJKg
+const COUNTER_PDA =
+  '0x4f12fe6816ae7e33ebf7db0b154ec3b09e3bf1a7690481e8e9477d5a278ad3af' as `0x${string}`;
+
+// SVM Gateway program on devnet (for CEA PDA derivation)
+const SVM_GATEWAY_PROGRAM = new PublicKey('CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS');
+
+// Solana Devnet USDT token - must use this (not Ethereum USDT) so getPRC20Address maps to USDT_SOL
+const SOL_USDT_TOKEN = MOVEABLE_TOKENS[CHAIN.SOLANA_DEVNET]!.find(t => t.symbol === 'USDT')!;
+
+describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
   let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
   let ueaAddress: `0x${string}`;
+  let ceaPdaHex: `0x${string}`;
 
   // Skip if no private key is set
   const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
@@ -80,6 +97,17 @@ describe('SVM (Solana) Outbound Transactions (Route 2)', () => {
 
     ueaAddress = pushClient.universal.account;
     console.log(`UEA Address: ${ueaAddress}`);
+
+    // Derive CEA PDA from UEA (EVM address) for CPI tests
+    // Seeds: ["push_identity", sender_evm_address_20_bytes], Program: SVM Gateway
+    const senderBytes = Buffer.from(ueaAddress.slice(2), 'hex'); // 20 bytes
+    const [ceaPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('push_identity'), senderBytes],
+      SVM_GATEWAY_PROGRAM
+    );
+    ceaPdaHex = ('0x' + Buffer.from(ceaPda.toBytes()).toString('hex')) as `0x${string}`;
+    console.log(`CEA PDA: ${ceaPda.toBase58()}`);
+    console.log(`CEA PDA Hex: ${ceaPdaHex}`);
   }, 60000);
 
   // ============================================================================
@@ -224,7 +252,18 @@ describe('SVM (Solana) Outbound Transactions (Route 2)', () => {
 
       expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
       expect(tx.chain).toBe(CHAIN.SOLANA_DEVNET);
-    }, 180000);
+
+      // Wait for outbound relay and verify external chain details
+      console.log('Calling tx.wait() - polling for outbound tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Chain: ${receipt.externalChain}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
+
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+    }, 360000);
   });
 
   // ============================================================================
@@ -243,7 +282,7 @@ describe('SVM (Solana) Outbound Transactions (Route 2)', () => {
         },
         funds: {
           amount: BigInt(1_000_000), // 1 USDT (6 decimals)
-          token: pushClient.moveable.token.USDT,
+          token: SOL_USDT_TOKEN,
         },
       };
 
@@ -253,7 +292,19 @@ describe('SVM (Solana) Outbound Transactions (Route 2)', () => {
 
       console.log(`Push Chain TX Hash: ${tx.hash}`);
       expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-    }, 180000);
+
+      // Wait for outbound relay and verify external chain details
+      console.log('Calling tx.wait() - polling for outbound tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Chain: ${receipt.externalChain}`);
+
+      // Push Chain tx must succeed before outbound relay can happen
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+    }, 360000);
   });
 
   // ============================================================================
@@ -263,15 +314,16 @@ describe('SVM (Solana) Outbound Transactions (Route 2)', () => {
     it('should execute CPI on Solana program', async () => {
       if (skipE2E) return;
 
-      console.log('\n=== Test: Execute CPI ===');
+      console.log('\n=== Test: Execute CPI (receive_sol on test_counter) ===');
 
-      // Sample discriminator + args
-      const discriminator = new Uint8Array([0xe5, 0x17, 0xcb, 0x97, 0x7a, 0xe3, 0xad, 0x2a]);
-      const ixData = new Uint8Array([...discriminator, 0x01, 0x00, 0x00, 0x00]);
+      // receive_sol discriminator: [121, 244, 250, 3, 8, 229, 225, 1]
+      // args: amount (u64 LE) = 1 lamport
+      const discriminator = new Uint8Array([121, 244, 250, 3, 8, 229, 225, 1]);
+      const amountBuf = new Uint8Array(8);
+      new DataView(amountBuf.buffer).setBigUint64(0, BigInt(1), true); // LE
+      const ixData = new Uint8Array([...discriminator, ...amountBuf]);
 
-      const pdaAddress =
-        '0x1111111111111111111111111111111111111111111111111111111111111111' as `0x${string}`;
-
+      // receive_sol accounts: counter (writable), recipient (writable), cea_authority (writable), system_program
       const params: UniversalExecuteParams = {
         to: {
           address: TEST_PROGRAM,
@@ -281,11 +333,13 @@ describe('SVM (Solana) Outbound Transactions (Route 2)', () => {
         svmExecute: {
           targetProgram: TEST_PROGRAM,
           accounts: [
-            { pubkey: pdaAddress, isWritable: true },
-            { pubkey: TEST_SOL_TARGET, isWritable: false },
+            { pubkey: COUNTER_PDA, isWritable: true },       // counter PDA
+            { pubkey: TEST_SOL_TARGET, isWritable: true },    // recipient
+            { pubkey: ceaPdaHex, isWritable: true },           // cea_authority (actual CEA PDA)
+            { pubkey: SOL_ZERO_ADDRESS, isWritable: false },   // system_program (0x00...00)
           ],
           ixData,
-          rentFee: BigInt(1_500_000),
+          rentFee: BigInt(0),
         },
       };
 
@@ -295,15 +349,31 @@ describe('SVM (Solana) Outbound Transactions (Route 2)', () => {
 
       console.log(`Push Chain TX Hash: ${tx.hash}`);
       expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-    }, 180000);
+
+      // Wait for outbound relay and verify external chain details
+      console.log('Calling tx.wait() - polling for outbound tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Chain: ${receipt.externalChain}`);
+
+      // Push Chain tx must succeed before outbound relay can happen
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+    }, 360000);
 
     it('should execute CPI with no value (rent-only)', async () => {
       if (skipE2E) return;
 
-      console.log('\n=== Test: Execute CPI (rent-only) ===');
+      console.log('\n=== Test: Execute CPI (rent-only, receive_sol with 0 amount) ===');
 
-      const ixData = new Uint8Array([0x01, 0x02, 0x03, 0x04]);
+      // receive_sol discriminator + amount=0 (no SOL transfer, just counter increment)
+      const discriminator = new Uint8Array([121, 244, 250, 3, 8, 229, 225, 1]);
+      const amountBuf = new Uint8Array(8); // 0 amount
+      const ixData = new Uint8Array([...discriminator, ...amountBuf]);
 
+      // receive_sol accounts: counter (writable), recipient (writable), cea_authority (writable), system_program
       const params: UniversalExecuteParams = {
         to: {
           address: TEST_PROGRAM,
@@ -311,9 +381,14 @@ describe('SVM (Solana) Outbound Transactions (Route 2)', () => {
         },
         svmExecute: {
           targetProgram: TEST_PROGRAM,
-          accounts: [{ pubkey: TEST_SOL_TARGET, isWritable: true }],
+          accounts: [
+            { pubkey: COUNTER_PDA, isWritable: true },       // counter PDA
+            { pubkey: TEST_SOL_TARGET, isWritable: true },    // recipient
+            { pubkey: ceaPdaHex, isWritable: true },           // cea_authority (actual CEA PDA)
+            { pubkey: SOL_ZERO_ADDRESS, isWritable: false },   // system_program (0x00...00)
+          ],
           ixData,
-          rentFee: BigInt(2_000_000),
+          rentFee: BigInt(0),
         },
       };
 
@@ -323,13 +398,332 @@ describe('SVM (Solana) Outbound Transactions (Route 2)', () => {
 
       console.log(`Push Chain TX Hash: ${tx.hash}`);
       expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-    }, 180000);
+
+      // Wait for outbound relay and verify external chain details
+      console.log('Calling tx.wait() - polling for outbound tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Chain: ${receipt.externalChain}`);
+
+      // Push Chain tx must succeed before outbound relay can happen
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+    }, 360000);
   });
 
   // ============================================================================
-  // 6. Error Handling
+  // 6. FUNDS + CPI (SOL transfer + CPI execution)
   // ============================================================================
-  describe('6. Error Handling', () => {
+  describe('6. FUNDS + CPI', () => {
+    it('should withdraw SOL and execute CPI on Solana program in same tx', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: FUNDS + CPI (receive_sol on test_counter) ===');
+
+      // receive_sol discriminator + amount=1 lamport
+      const discriminator = new Uint8Array([121, 244, 250, 3, 8, 229, 225, 1]);
+      const amountBuf = new Uint8Array(8);
+      new DataView(amountBuf.buffer).setBigUint64(0, BigInt(1), true);
+      const ixData = new Uint8Array([...discriminator, ...amountBuf]);
+
+      // receive_sol accounts: counter (writable), recipient (writable), cea_authority (writable), system_program
+      const params: UniversalExecuteParams = {
+        to: {
+          address: TEST_PROGRAM,
+          chain: CHAIN.SOLANA_DEVNET,
+        },
+        value: BigInt(50_000_000), // 0.05 SOL transferred alongside CPI
+        svmExecute: {
+          targetProgram: TEST_PROGRAM,
+          accounts: [
+            { pubkey: COUNTER_PDA, isWritable: true },       // counter PDA
+            { pubkey: TEST_SOL_TARGET, isWritable: true },    // recipient
+            { pubkey: ceaPdaHex, isWritable: true },           // cea_authority (actual CEA PDA)
+            { pubkey: SOL_ZERO_ADDRESS, isWritable: false },   // system_program (0x00...00)
+          ],
+          ixData,
+        },
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(tx.chain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Wait for outbound relay
+      console.log('Calling tx.wait() - polling for outbound tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Chain: ${receipt.externalChain}`);
+
+      // Push Chain tx must succeed before outbound relay can happen
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+    }, 360000);
+  });
+
+  // ============================================================================
+  // 7. Small Amount Transfer
+  // ============================================================================
+  describe('7. Small Amount Transfer', () => {
+    it('should handle smallest possible SOL withdrawal (1 lamport)', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: Small Amount Transfer (1 lamport) ===');
+
+      const params: UniversalExecuteParams = {
+        to: {
+          address: TEST_SOL_TARGET,
+          chain: CHAIN.SOLANA_DEVNET,
+        },
+        value: BigInt(1), // 1 lamport - smallest possible
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+    }, 360000);
+  });
+
+  // ============================================================================
+  // 8. E2E Outbound with Sync
+  // ============================================================================
+  describe('8. E2E Outbound with Sync', () => {
+    it('should execute outbound SOL transfer and verify full receipt fields', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: E2E Outbound SOL with Full Receipt ===');
+
+      const tx = await pushClient.universal.sendTransaction({
+        to: {
+          address: TEST_SOL_TARGET,
+          chain: CHAIN.SOLANA_DEVNET,
+        },
+        value: BigInt(100_000_000), // 0.1 SOL
+      });
+
+      console.log(`[TEST] ${new Date().toISOString()} Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      // .wait() polls for external chain details
+      console.log(`[TEST] ${new Date().toISOString()} Calling tx.wait()...`);
+      const receipt = await tx.wait();
+
+      console.log(`[TEST] ${new Date().toISOString()} Receipt received:`);
+      console.log(`  Push Chain TX Hash: ${receipt.hash}`);
+      console.log(`  Status: ${receipt.status}`);
+      console.log(`  External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`  External Chain: ${receipt.externalChain}`);
+      console.log(`  External Explorer URL: ${receipt.externalExplorerUrl}`);
+      console.log(`  External Recipient: ${receipt.externalRecipient}`);
+      console.log(`  External Amount: ${receipt.externalAmount}`);
+
+      // Verify Push Chain receipt
+      expect(receipt.hash).toBe(tx.hash);
+      expect(receipt.status).toBe(1);
+
+      // Verify external chain details
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+      expect(receipt.externalExplorerUrl).toContain(receipt.externalTxHash);
+    }, 600000);
+
+    it('should execute outbound SOL transfer with custom gasLimit', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: Outbound SOL with gasLimit ===');
+
+      const tx = await pushClient.universal.sendTransaction({
+        to: {
+          address: TEST_SOL_TARGET,
+          chain: CHAIN.SOLANA_DEVNET,
+        },
+        value: BigInt(100_000_000), // 0.1 SOL
+        gasLimit: BigInt(2000000),
+      });
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(tx.chain).toBe(CHAIN.SOLANA_DEVNET);
+
+      const receipt = await tx.wait();
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+    }, 600000);
+  });
+
+  // ============================================================================
+  // 9. Transaction Preparation (SVM)
+  // ============================================================================
+  describe('9. Transaction Preparation', () => {
+    it('should prepare SVM outbound transaction without executing', async () => {
+      if (skipE2E) return;
+
+      const params: UniversalExecuteParams = {
+        to: {
+          address: TEST_SOL_TARGET,
+          chain: CHAIN.SOLANA_DEVNET,
+        },
+        value: BigInt(100_000_000),
+      };
+
+      const prepared = await pushClient.universal.prepareTransaction(params);
+
+      console.log(`Prepared tx route: ${prepared.route}`);
+      console.log(`Estimated gas: ${prepared.estimatedGas}`);
+      console.log(`Nonce: ${prepared.nonce}`);
+
+      expect(prepared.route).toBe('UOA_TO_CEA');
+      expect(prepared.payload).toBeDefined();
+      expect(typeof prepared.thenOn).toBe('function');
+      expect(typeof prepared.send).toBe('function');
+    }, 60000);
+
+    it('should create chained builder from prepared SVM transactions', async () => {
+      if (skipE2E) return;
+
+      const firstPrepared = await pushClient.universal.prepareTransaction({
+        to: {
+          address: TEST_SOL_TARGET,
+          chain: CHAIN.SOLANA_DEVNET,
+        },
+        value: BigInt(100_000_000),
+      });
+
+      const builder = pushClient.universal.executeTransactions(firstPrepared);
+
+      expect(typeof builder.thenOn).toBe('function');
+      expect(typeof builder.send).toBe('function');
+
+      // Chain with a second SVM outbound
+      const secondPrepared = await pushClient.universal.prepareTransaction({
+        to: {
+          address: TEST_SOL_TARGET,
+          chain: CHAIN.SOLANA_DEVNET,
+        },
+        value: BigInt(50_000_000),
+      });
+
+      const chainedBuilder = builder.thenOn(secondPrepared);
+
+      expect(typeof chainedBuilder.thenOn).toBe('function');
+      expect(typeof chainedBuilder.send).toBe('function');
+    }, 60000);
+  });
+
+  // ============================================================================
+  // 10. CEA-to-UEA SOL (Route 3 SVM)
+  // ============================================================================
+  describe('10. CEA-to-UEA SOL (Route 3 SVM)', () => {
+    it('should detect CEA_TO_PUSH when from.chain is Solana Devnet and to is string', () => {
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
+        to: '0x1234567890123456789012345678901234567890',
+        value: BigInt(50_000_000),
+      };
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+    });
+
+    it('should detect CEA_TO_PUSH when from.chain is Solana Devnet and to.chain is Push', () => {
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
+        to: {
+          address: '0x1234567890123456789012345678901234567890',
+          chain: CHAIN.PUSH_TESTNET_DONUT,
+        } as ChainTarget,
+        value: BigInt(50_000_000),
+      };
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+    });
+
+    it('should drain SOL from Solana gateway back to UEA on Push Chain', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: CEA-to-UEA SOL ===');
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
+        to: ueaAddress,
+        value: BigInt(50_000_000), // 0.05 SOL in lamports
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      console.log(`Source Chain: ${tx.chain}`);
+
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      // Wait for relay
+      console.log('Calling tx.wait() - polling for external chain details...');
+      const receipt = await tx.wait();
+
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Chain: ${receipt.externalChain}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+    }, 600000);
+  });
+
+  // ============================================================================
+  // 11. CEA-to-UEA SPL (Route 3 SVM)
+  // ============================================================================
+  describe('11. CEA-to-UEA SPL (Route 3 SVM)', () => {
+    it('should drain SPL token (USDT) from Solana gateway back to UEA', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: CEA-to-UEA SPL ===');
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
+        to: ueaAddress,
+        funds: {
+          amount: BigInt(1_000_000), // 1 USDT (6 decimals)
+          token: SOL_USDT_TOKEN,
+        },
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      // Wait for relay
+      console.log('Calling tx.wait() - polling for external chain details...');
+      const receipt = await tx.wait();
+
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Chain: ${receipt.externalChain}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+    }, 600000);
+  });
+
+  // ============================================================================
+  // 12. Error Handling
+  // ============================================================================
+  describe('12. Error Handling', () => {
     it('should reject invalid Solana address (EVM-length)', async () => {
       if (skipE2E) return;
 
@@ -366,12 +760,39 @@ describe('SVM (Solana) Outbound Transactions (Route 2)', () => {
         pushClient.universal.sendTransaction(params)
       ).rejects.toThrow();
     }, 60000);
+
+    it('should detect CEA_TO_CEA (not Route 3) when from is SVM and to is external', () => {
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
+        to: {
+          address: '0x1234567890123456789012345678901234567890',
+          chain: CHAIN.ETHEREUM_SEPOLIA,
+        } as ChainTarget,
+        value: BigInt(100_000_000),
+      };
+
+      // This is Route 4 (CEA_TO_CEA), not Route 3
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_CEA);
+    });
+
+    it('should treat missing from.chain as Route 2 for SVM ChainTarget', () => {
+      const params: UniversalExecuteParams = {
+        to: {
+          address: TEST_SOL_TARGET,
+          chain: CHAIN.SOLANA_DEVNET,
+        },
+        value: BigInt(100_000_000),
+      };
+
+      // Without from.chain, this is Route 2 (UOA_TO_CEA), not Route 3
+      expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
+    });
   });
 
   // ============================================================================
-  // 7. Progress Hooks
+  // 13. Progress Hooks
   // ============================================================================
-  describe('7. Progress Hooks', () => {
+  describe('13. Progress Hooks', () => {
     it('should emit correct hooks for SVM withdraw flow', async () => {
       if (skipE2E) return;
 
@@ -417,33 +838,49 @@ describe('SVM (Solana) Outbound Transactions (Route 2)', () => {
       expect(events.some((e) => e.id === 'SEND-TX-01')).toBe(true);
       expect(events.some((e) => e.id.startsWith('SEND-TX-99'))).toBe(true);
     }, 180000);
-  });
 
-  // ============================================================================
-  // 8. Transaction Preparation (SVM)
-  // ============================================================================
-  describe('8. Transaction Preparation', () => {
-    it('should prepare SVM outbound transaction without executing', async () => {
+    it('should emit correct hooks for CEA-to-UEA SOL flow (Route 3)', async () => {
       if (skipE2E) return;
 
-      const params: UniversalExecuteParams = {
-        to: {
-          address: TEST_SOL_TARGET,
-          chain: CHAIN.SOLANA_DEVNET,
+      console.log('\n=== Test: Progress Hooks (CEA-to-UEA SOL) ===');
+
+      const events: ProgressEvent[] = [];
+
+      const originChain = CHAIN.ETHEREUM_SEPOLIA;
+      const account = privateKeyToAccount(privateKey);
+      const walletClient = createWalletClient({
+        account,
+        transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+      });
+
+      const universalSigner =
+        await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
+          chain: originChain,
+          library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+        });
+
+      const clientWithHook = await PushChain.initialize(universalSigner, {
+        network: PUSH_NETWORK.TESTNET_DONUT,
+        progressHook: (event: ProgressEvent) => {
+          events.push(event);
+          console.log(`[HOOK] ${event.id}: ${event.title}`);
         },
-        value: BigInt(100_000_000),
+      });
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
+        to: clientWithHook.universal.account,
+        value: BigInt(10_000_000), // 0.01 SOL
       };
 
-      const prepared = await pushClient.universal.prepareTransaction(params);
+      await clientWithHook.universal.sendTransaction(params);
 
-      console.log(`Prepared tx route: ${prepared.route}`);
-      console.log(`Estimated gas: ${prepared.estimatedGas}`);
-      console.log(`Nonce: ${prepared.nonce}`);
+      // Verify we got progress events
+      expect(events.length).toBeGreaterThan(0);
 
-      expect(prepared.route).toBe('UOA_TO_CEA');
-      expect(prepared.payload).toBeDefined();
-      expect(typeof prepared.thenOn).toBe('function');
-      expect(typeof prepared.send).toBe('function');
-    }, 60000);
+      // Verify key events were emitted
+      expect(events.some((e) => e.id === 'SEND-TX-01')).toBe(true);
+      expect(events.some((e) => e.id.startsWith('SEND-TX-99'))).toBe(true);
+    }, 600000);
   });
 });

@@ -73,6 +73,7 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
     const ceaResult = await getCEAAddress(ueaAddress, CHAIN.BNB_TESTNET);
     ceaAddress = ceaResult.cea;
     console.log(`CEA Address on BSC: ${ceaAddress}, deployed: ${ceaResult.isDeployed}`);
+
   }, 60000);
 
   // ============================================================================
@@ -245,6 +246,18 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
 
       expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
       expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+
+      // Wait for outbound relay and verify external chain details
+      console.log('Calling tx.wait() - polling for outbound tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Chain: ${receipt.externalChain}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
     }, 600000);
 
     it('should handle small amount inbound transfer', async () => {
@@ -264,7 +277,19 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
 
       console.log(`Push Chain TX Hash: ${tx.hash}`);
       expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      // Wait for outbound relay and verify external chain details
+      console.log('Calling tx.wait() - polling for outbound tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
     }, 600000);
+
   });
 
   // ============================================================================
@@ -296,6 +321,17 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
 
       console.log(`Push Chain TX Hash: ${tx.hash}`);
       expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      // Wait for outbound relay and verify external chain details
+      console.log('Calling tx.wait() - polling for outbound tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
     }, 600000);
   });
 
@@ -329,6 +365,17 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
       console.log(`Push Chain TX Hash: ${tx.hash}`);
       expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
       expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+
+      // Wait for outbound relay and verify external chain details
+      console.log('Calling tx.wait() - polling for outbound tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
     }, 600000);
   });
 
@@ -360,7 +407,8 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
       console.log(`External Explorer URL: ${receipt.externalExplorerUrl}`);
 
       expect(receipt.hash).toBe(tx.hash);
-      expect(receipt.status).toBe('success');
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
       expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
       expect(receipt.externalExplorerUrl).toContain(receipt.externalTxHash);

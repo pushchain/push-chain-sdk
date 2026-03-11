@@ -4612,19 +4612,26 @@ export class Orchestrator {
       progressHook,
     } = options;
 
+    // Terminal failure states — fail fast instead of polling until timeout
+    const TERMINAL_FAILURE_STATES = new Set([
+      UniversalTxStatus.OUTBOUND_FAILED,
+      UniversalTxStatus.PC_EXECUTED_FAILED,
+      UniversalTxStatus.CANCELED,
+    ]);
+
     const startTime = Date.now();
 
-    console.log(`[waitForOutboundTx] Starting | txHash: ${pushChainTxHash} | initialWait: ${initialWaitMs}ms | pollInterval: ${pollingIntervalMs}ms | timeout: ${timeout}ms`);
+    this.printLog(`[waitForOutboundTx] Starting | txHash: ${pushChainTxHash} | initialWait: ${initialWaitMs}ms | pollInterval: ${pollingIntervalMs}ms | timeout: ${timeout}ms`);
 
     // Emit initial waiting status
     progressHook?.({ status: 'waiting', elapsed: 0 });
 
     // Initial wait before first poll
-    console.log(`[waitForOutboundTx] Initial wait of ${initialWaitMs}ms...`);
+    this.printLog(`[waitForOutboundTx] Initial wait of ${initialWaitMs}ms...`);
     await new Promise((resolve) => setTimeout(resolve, initialWaitMs));
 
     // Start polling
-    console.log(`[waitForOutboundTx] Initial wait done. Starting polling. Elapsed: ${Date.now() - startTime}ms`);
+    this.printLog(`[waitForOutboundTx] Initial wait done. Starting polling. Elapsed: ${Date.now() - startTime}ms`);
     progressHook?.({ status: 'polling', elapsed: Date.now() - startTime });
 
     // Cache the universalSubTxId after first extraction to avoid redundant receipt fetches
@@ -4634,7 +4641,7 @@ export class Orchestrator {
     while (Date.now() - startTime < timeout) {
       pollCount++;
       const pollStart = Date.now();
-      console.log(`[waitForOutboundTx] Poll #${pollCount} | Elapsed: ${pollStart - startTime}ms / ${timeout}ms`);
+      this.printLog(`[waitForOutboundTx] Poll #${pollCount} | Elapsed: ${pollStart - startTime}ms / ${timeout}ms`);
 
       // First poll: extract the ID. Subsequent polls: reuse cached ID.
       if (!cachedUniversalSubTxId) {
@@ -4642,10 +4649,10 @@ export class Orchestrator {
         if (!cachedUniversalSubTxId) {
           cachedUniversalSubTxId = this.computeUniversalTxId(pushChainTxHash);
         }
-        console.log(`[waitForOutboundTx] Extracted & cached universalSubTxId: ${cachedUniversalSubTxId}`);
+        this.printLog(`[waitForOutboundTx] Extracted & cached universalSubTxId: ${cachedUniversalSubTxId}`);
       }
 
-      // Query with cached ID — also fetch raw response for logging
+      // Query with cached ID
       const queryId = cachedUniversalSubTxId.startsWith('0x')
         ? cachedUniversalSubTxId.slice(2)
         : cachedUniversalSubTxId;
@@ -4653,17 +4660,39 @@ export class Orchestrator {
       try {
         const utxResponse = await this.pushClient.getUniversalTxById(queryId);
 
-        // Print the FULL raw response every poll
-        const statusName = UniversalTxStatus[utxResponse?.universalTx?.universalStatus as number] ?? utxResponse?.universalTx?.universalStatus;
-        console.log(`[waitForOutboundTx] Poll #${pollCount} RAW RESPONSE:`, JSON.stringify(utxResponse, (k, v) => (typeof v === 'bigint' ? v.toString() : v), 2));
-        console.log(`[waitForOutboundTx] Poll #${pollCount} SUMMARY | status: ${utxResponse?.universalTx?.universalStatus} (${statusName}) | outboundTx.txHash: '${utxResponse?.universalTx?.outboundTx?.txHash || ''}' | outboundTx.destinationChain: '${utxResponse?.universalTx?.outboundTx?.destinationChain || ''}'`);
+        const statusNum = utxResponse?.universalTx?.universalStatus as number;
+        const statusName = UniversalTxStatus[statusNum] ?? statusNum;
+        this.printLog(`[waitForOutboundTx] Poll #${pollCount} | status: ${statusNum} (${statusName}) | outboundTx.txHash: '${utxResponse?.universalTx?.outboundTx?.txHash || ''}' | outboundTx.destinationChain: '${utxResponse?.universalTx?.outboundTx?.destinationChain || ''}'`);
+
+        // Check for terminal failure states — fail fast
+        if (TERMINAL_FAILURE_STATES.has(statusNum)) {
+          this.printLog(`[waitForOutboundTx] Terminal failure state: ${statusName}`);
+          progressHook?.({ status: 'failed', elapsed: Date.now() - startTime });
+          throw new Error(
+            `Outbound transaction failed with status ${statusName}. Push Chain TX: ${pushChainTxHash}.`
+          );
+        }
 
         if (utxResponse?.universalTx?.outboundTx?.txHash) {
           const outbound = utxResponse.universalTx.outboundTx;
           const chain = this.chainFromNamespace(outbound.destinationChain);
           if (chain) {
             const explorerBaseUrl = CHAIN_INFO[chain]?.explorerUrl;
-            const explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${outbound.txHash}` : '';
+            const isSvm = CHAIN_INFO[chain]?.vm === VM.SVM;
+
+            // For SVM chains, convert hex txHash to base58 and append cluster param
+            let displayTxHash = outbound.txHash;
+            let explorerUrl = '';
+            if (isSvm && outbound.txHash.startsWith('0x')) {
+              const bytes = new Uint8Array(Buffer.from(outbound.txHash.slice(2), 'hex'));
+              displayTxHash = utils.bytes.bs58.encode(bytes);
+              const cluster = chain === CHAIN.SOLANA_DEVNET ? '?cluster=devnet'
+                : chain === CHAIN.SOLANA_TESTNET ? '?cluster=testnet' : '';
+              explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${displayTxHash}${cluster}` : '';
+            } else {
+              explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${outbound.txHash}` : '';
+            }
+
             const details = {
               externalTxHash: outbound.txHash,
               destinationChain: chain,
@@ -4672,22 +4701,26 @@ export class Orchestrator {
               amount: outbound.amount,
               assetAddr: outbound.assetAddr,
             };
-            console.log(`[waitForOutboundTx] FOUND on poll #${pollCount} | elapsed: ${Date.now() - startTime}ms | details: ${JSON.stringify(details)}`);
+            this.printLog(`[waitForOutboundTx] FOUND on poll #${pollCount} | elapsed: ${Date.now() - startTime}ms | externalTxHash: ${details.externalTxHash}`);
             progressHook?.({ status: 'found', elapsed: Date.now() - startTime });
             return details;
           }
         }
       } catch (error) {
-        console.log(`[waitForOutboundTx] Poll #${pollCount} ERROR: ${error instanceof Error ? error.message : String(error)}`);
+        // Re-throw terminal failure errors
+        if (error instanceof Error && error.message.includes('Outbound transaction failed')) {
+          throw error;
+        }
+        this.printLog(`[waitForOutboundTx] Poll #${pollCount} ERROR: ${error instanceof Error ? error.message : String(error)}`);
       }
 
-      console.log(`[waitForOutboundTx] Poll #${pollCount} not ready yet (${Date.now() - pollStart}ms). Waiting ${pollingIntervalMs}ms...`);
+      this.printLog(`[waitForOutboundTx] Poll #${pollCount} not ready yet (${Date.now() - pollStart}ms). Waiting ${pollingIntervalMs}ms...`);
 
       // Wait before next poll
       await new Promise((resolve) => setTimeout(resolve, pollingIntervalMs));
     }
 
-    console.log(`[waitForOutboundTx] TIMEOUT after ${pollCount} polls | elapsed: ${Date.now() - startTime}ms`);
+    this.printLog(`[waitForOutboundTx] TIMEOUT after ${pollCount} polls | elapsed: ${Date.now() - startTime}ms`);
     progressHook?.({ status: 'timeout', elapsed: Date.now() - startTime });
 
     throw new Error(
@@ -5857,8 +5890,11 @@ export class Orchestrator {
           baseReceipt = this.transformToUniversalTxReceipt(receipt, universalTxResponse);
         }
 
-        // If outbound route (UOA → CEA), poll for external chain details
-        if (universalTxResponse.route === TransactionRoute.UOA_TO_CEA) {
+        // If outbound route (Route 2: UOA → CEA, Route 3: CEA → Push), poll for external chain details
+        if (
+          universalTxResponse.route === TransactionRoute.UOA_TO_CEA ||
+          universalTxResponse.route === TransactionRoute.CEA_TO_PUSH
+        ) {
           try {
             const outboundDetails = await this.waitForOutboundTx(
               tx.hash,

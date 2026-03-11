@@ -19,6 +19,7 @@
     "@swc/core": "~1.5.7",
     "@swc/helpers": "~0.5.11",
     "@types/bn.js": "^5.1.6",
+    "@types/bs58": "^4.0.4",
     "@types/jest": "^29.5.12",
     "@types/node": "18.16.9",
     "@types/semver": "^7.7.0",

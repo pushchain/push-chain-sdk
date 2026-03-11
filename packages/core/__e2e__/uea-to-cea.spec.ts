@@ -511,7 +511,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
       // Verify Push Chain receipt
       expect(receipt.hash).toBe(tx.hash);
-      expect(receipt.status).toBe('success');
+      expect(receipt.status).toBe(1);
 
       // Verify external chain details are included (outbound route)
       expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
