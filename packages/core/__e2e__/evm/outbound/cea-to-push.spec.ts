@@ -22,7 +22,7 @@ import { TransactionRoute, detectRoute } from '../../../src/lib/orchestrator/rou
 import type { UniversalExecuteParams, ChainTarget } from '../../../src/lib/orchestrator/orchestrator.types';
 import type { ProgressEvent } from '../../../src/lib/progress-hook/progress-hook.types';
 import { ERC20_EVM } from '../../../src/lib/constants/abi/erc20.evm';
-import { MOVEABLE_TOKENS, type MoveableToken } from '../../../src/lib/constants/tokens';
+import { MOVEABLE_TOKEN_CONSTANTS, type MoveableToken } from '../../../src/lib/constants/tokens';
 
 
 // Test constants
@@ -75,8 +75,7 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
     console.log(`CEA Address on BSC: ${ceaAddress}, deployed: ${ceaResult.isDeployed}`);
 
     // Get USDT token for ERC20 self-call flows
-    const tokens = MOVEABLE_TOKENS[CHAIN.BNB_TESTNET] || [];
-    usdtToken = tokens.find(t => t.symbol === 'USDT');
+    usdtToken = MOVEABLE_TOKEN_CONSTANTS.BNB_TESTNET.USDT;
     if (usdtToken) {
       console.log(`USDT Token (BNB Testnet): ${usdtToken.address} (${usdtToken.decimals} decimals)`);
     }
@@ -661,12 +660,7 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
       if (skipE2E) return;
 
       // Look up USDT token for Ethereum Sepolia
-      const sepoliaTokens = MOVEABLE_TOKENS[CHAIN.ETHEREUM_SEPOLIA] || [];
-      const sepoliaUsdtToken = sepoliaTokens.find(t => t.symbol === 'USDT');
-      if (!sepoliaUsdtToken) {
-        console.log('Skipping - USDT token not found in MOVEABLE_TOKENS for Ethereum Sepolia');
-        return;
-      }
+      const sepoliaUsdtToken = MOVEABLE_TOKEN_CONSTANTS.ETHEREUM_SEPOLIA.USDT;
 
       console.log('\n=== Test: ERC20 Bridge USDT from Sepolia CEA Back to Push (Flow 4.2) ===');
       console.log(`Using Sepolia USDT: ${sepoliaUsdtToken.address} (${sepoliaUsdtToken.decimals} decimals)`);

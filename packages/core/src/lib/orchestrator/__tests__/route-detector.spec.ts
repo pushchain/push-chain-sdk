@@ -10,6 +10,8 @@ import {
   isPushChain,
   isSupportedExternalChain,
   RouteValidationError,
+  chainEnumToName,
+  findTokenChain,
 } from '../route-detector';
 import type { UniversalExecuteParams, ChainTarget } from '../orchestrator.types';
 
@@ -188,6 +190,230 @@ describe('route-detector', () => {
         },
       };
       expect(() => validateRouteParams(params)).toThrow(RouteValidationError);
+    });
+  });
+
+  describe('C-5: Enhanced unsupported token validation', () => {
+    describe('Route 2 (UOA_TO_CEA) token validation', () => {
+      it('should throw with clientChain in error message for unsupported token', () => {
+        // SOL is not available on Ethereum Sepolia
+        const params: UniversalExecuteParams = {
+          to: {
+            address: '0x1234567890123456789012345678901234567890',
+            chain: CHAIN.ETHEREUM_SEPOLIA,
+          },
+          funds: {
+            token: {
+              symbol: 'SOL',
+              decimals: 9,
+              address: '0x0000000000000000000000000000000000000000',
+              mechanism: 'native' as const,
+            },
+            amount: BigInt(1000),
+          },
+        };
+
+        expect(() =>
+          validateRouteParams(params, { clientChain: CHAIN.SOLANA_DEVNET })
+        ).toThrow(RouteValidationError);
+
+        try {
+          validateRouteParams(params, { clientChain: CHAIN.SOLANA_DEVNET });
+        } catch (e: unknown) {
+          const msg = (e as Error).message;
+          expect(msg).toContain('Unsupported moveable token');
+          expect(msg).toContain('clientChain=SOLANA_DEVNET');
+          expect(msg).toContain('destination=ETHEREUM_SEPOLIA');
+        }
+      });
+
+      it('should pass for USDT on Ethereum Sepolia (compatible token)', () => {
+        const params: UniversalExecuteParams = {
+          to: {
+            address: '0x1234567890123456789012345678901234567890',
+            chain: CHAIN.ETHEREUM_SEPOLIA,
+          },
+          funds: {
+            token: {
+              symbol: 'USDT',
+              decimals: 6,
+              address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
+              mechanism: 'approve' as const,
+            },
+            amount: BigInt(1000),
+          },
+        };
+
+        expect(() =>
+          validateRouteParams(params, { clientChain: CHAIN.ETHEREUM_SEPOLIA })
+        ).not.toThrow();
+      });
+
+      it('should show "unknown" clientChain when context is omitted', () => {
+        const params: UniversalExecuteParams = {
+          to: {
+            address: '0x1234567890123456789012345678901234567890',
+            chain: CHAIN.ETHEREUM_SEPOLIA,
+          },
+          funds: {
+            token: {
+              symbol: 'SOL',
+              decimals: 9,
+              address: '0x0000000000000000000000000000000000000000',
+              mechanism: 'native' as const,
+            },
+            amount: BigInt(1000),
+          },
+        };
+
+        try {
+          validateRouteParams(params);
+        } catch (e: unknown) {
+          const msg = (e as Error).message;
+          expect(msg).toContain('clientChain=unknown');
+        }
+      });
+    });
+
+    describe('Route 3 (CEA_TO_PUSH) token validation', () => {
+      it('should throw for incompatible token on source chain', () => {
+        // SOL is not available on Ethereum Sepolia
+        const params: UniversalExecuteParams = {
+          from: { chain: CHAIN.ETHEREUM_SEPOLIA },
+          to: '0x1234567890123456789012345678901234567890',
+          funds: {
+            token: {
+              symbol: 'SOL',
+              decimals: 9,
+              address: '0x0000000000000000000000000000000000000000',
+              mechanism: 'native' as const,
+            },
+            amount: BigInt(1000),
+          },
+        };
+
+        expect(() =>
+          validateRouteParams(params, { clientChain: CHAIN.ETHEREUM_SEPOLIA })
+        ).toThrow(RouteValidationError);
+
+        try {
+          validateRouteParams(params, { clientChain: CHAIN.ETHEREUM_SEPOLIA });
+        } catch (e: unknown) {
+          const msg = (e as Error).message;
+          expect(msg).toContain('Unsupported moveable token');
+          expect(msg).toContain('clientChain=ETHEREUM_SEPOLIA');
+          expect(msg).toContain('source=ETHEREUM_SEPOLIA');
+        }
+      });
+
+      it('should pass for compatible token on source chain', () => {
+        // USDT is available on Ethereum Sepolia
+        const params: UniversalExecuteParams = {
+          from: { chain: CHAIN.ETHEREUM_SEPOLIA },
+          to: '0x1234567890123456789012345678901234567890',
+          funds: {
+            token: {
+              symbol: 'USDT',
+              decimals: 6,
+              address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
+              mechanism: 'approve' as const,
+            },
+            amount: BigInt(1000),
+          },
+        };
+
+        expect(() =>
+          validateRouteParams(params, { clientChain: CHAIN.ETHEREUM_SEPOLIA })
+        ).not.toThrow();
+      });
+
+      it('should throw for ETH on Solana source chain', () => {
+        // ETH is not available on Solana Devnet
+        const params: UniversalExecuteParams = {
+          from: { chain: CHAIN.SOLANA_DEVNET },
+          to: '0x1234567890123456789012345678901234567890',
+          funds: {
+            token: {
+              symbol: 'ETH',
+              decimals: 18,
+              address: '0x0000000000000000000000000000000000000000',
+              mechanism: 'native' as const,
+            },
+            amount: BigInt(1000),
+          },
+        };
+
+        expect(() =>
+          validateRouteParams(params, { clientChain: CHAIN.SOLANA_DEVNET })
+        ).toThrow(RouteValidationError);
+      });
+    });
+
+    describe('error message format', () => {
+      it('should include token label with chain prefix when token is found in registry', () => {
+        // USDT from ETH Sepolia → send to Solana (USDT exists on both but let's use a
+        // token that doesn't exist on target)
+        const params: UniversalExecuteParams = {
+          to: {
+            address: '0x1234567890123456789012345678901234567890',
+            chain: CHAIN.BNB_TESTNET,
+          },
+          funds: {
+            token: {
+              // stETH exists on Ethereum Sepolia but NOT on BNB Testnet
+              symbol: 'stETH',
+              decimals: 18,
+              address: '0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af',
+              mechanism: 'approve' as const,
+            },
+            amount: BigInt(1000),
+          },
+        };
+
+        try {
+          validateRouteParams(params, { clientChain: CHAIN.ETHEREUM_SEPOLIA });
+        } catch (e: unknown) {
+          const msg = (e as Error).message;
+          // Token found in registry → label includes chain prefix
+          expect(msg).toContain('ETHEREUM_SEPOLIA.stETH');
+          expect(msg).toContain('clientChain=ETHEREUM_SEPOLIA');
+          expect(msg).toContain('destination=BNB_TESTNET');
+        }
+      });
+    });
+  });
+
+  describe('chainEnumToName', () => {
+    it('should return friendly name for known chains', () => {
+      expect(chainEnumToName(CHAIN.ETHEREUM_SEPOLIA)).toBe('ETHEREUM_SEPOLIA');
+      expect(chainEnumToName(CHAIN.SOLANA_DEVNET)).toBe('SOLANA_DEVNET');
+      expect(chainEnumToName(CHAIN.BNB_TESTNET)).toBe('BNB_TESTNET');
+    });
+
+    it('should return the raw value for unknown chains', () => {
+      expect(chainEnumToName('unknown:chain' as CHAIN)).toBe('unknown:chain');
+    });
+  });
+
+  describe('findTokenChain', () => {
+    it('should find USDT on Ethereum Sepolia by address match', () => {
+      const chain = findTokenChain({
+        symbol: 'USDT',
+        decimals: 6,
+        address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
+        mechanism: 'approve',
+      });
+      expect(chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+    });
+
+    it('should return undefined for unknown token', () => {
+      const chain = findTokenChain({
+        symbol: 'UNKNOWN',
+        decimals: 18,
+        address: '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
+        mechanism: 'approve',
+      });
+      expect(chain).toBeUndefined();
     });
   });
 });

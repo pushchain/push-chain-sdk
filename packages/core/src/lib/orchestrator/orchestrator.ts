@@ -1587,7 +1587,9 @@ export class Orchestrator {
     params: UniversalExecuteParams
   ): Promise<UniversalTxResponse> {
     // Validate route parameters
-    validateRouteParams(params);
+    validateRouteParams(params, {
+      clientChain: this.universalSigner.account.chain,
+    });
 
     // Detect the transaction route
     const route = detectRoute(params);
@@ -1652,7 +1654,9 @@ export class Orchestrator {
   async prepareTransaction(
     params: UniversalExecuteParams
   ): Promise<PreparedUniversalTx> {
-    validateRouteParams(params);
+    validateRouteParams(params, {
+      clientChain: this.universalSigner.account.chain,
+    });
     const route = detectRoute(params);
 
     const { nonce, deployed } = await this.getUeaStatusAndNonce();

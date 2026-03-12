@@ -441,6 +441,139 @@ describe('Advance Hopping: Cascade API E2E', () => {
   });
 
   // ============================================================================
+  // Multi-hop: 3-leg hops (MH-P-2, MH-F-2)
+  // ============================================================================
+  describe('3-leg multi-hop cascades', () => {
+    it('should send multi-hop: Payload to BNB + Payload to Push + Payload to Solana (MH-P-2)', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: 3-leg Payload Hop — BNB + Push + Solana (MH-P-2) ===');
+
+      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+      // Solana target: 32-byte hex address (gateway vault PDA on devnet)
+      const solanaTarget =
+        '0x6a44bb5ea802a001386a5b39708523e1a3e1bafc8164ffcb94d1f5afa4849c69' as `0x${string}`;
+
+      // Hop 1: Route 2 — Payload to BNB (ERC20 approve call)
+      const approvePayload = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'approve',
+        args: [targetAddress, BigInt(1000000)],
+      });
+
+      const tx1 = await pushClient.universal.prepareTransaction({
+        to: {
+          address: BSC_USDT_ADDRESS as `0x${string}`,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        data: approvePayload,
+      });
+
+      // Hop 2: Route 1 — Value transfer on Push Chain
+      const tx2 = await pushClient.universal.prepareTransaction({
+        to: targetAddress,
+        value: parseEther('0.001'),
+      });
+
+      // Hop 3: Route 2 — Value transfer to Solana Devnet
+      const tx3 = await pushClient.universal.prepareTransaction({
+        to: {
+          address: solanaTarget,
+          chain: CHAIN.SOLANA_DEVNET,
+        },
+        value: BigInt(10_000_000), // 0.01 SOL in lamports
+      });
+
+      // Chain all 3 hops and send
+      const result = await pushClient.universal
+        .executeTransactions(tx1)
+        .thenOn(tx2)
+        .thenOn(tx3)
+        .send();
+
+      console.log(`[TEST] 3-leg Payload TX Hash: ${result.initialTxHash}`);
+      console.log(`[TEST] Hop count: ${result.hopCount}`);
+
+      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(result.hopCount).toBe(3);
+      expect(result.hops).toHaveLength(3);
+      expect(typeof result.waitForAll).toBe('function');
+
+      // Wait for all hops to complete
+      const completion = await result.waitForAll({
+        timeout: 900000,
+        progressHook: (event) => {
+          console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
+        },
+      });
+
+      expect(completion.success).toBe(true);
+      expect(completion.hops).toHaveLength(3);
+    }, 1200000);
+
+    it('should send multi-hop: Funds to BNB + Funds to Push + Funds to Solana (MH-F-2)', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: 3-leg Funds Hop — BNB + Push + Solana (MH-F-2) ===');
+
+      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+      const solanaTarget =
+        '0x6a44bb5ea802a001386a5b39708523e1a3e1bafc8164ffcb94d1f5afa4849c69' as `0x${string}`;
+
+      // Hop 1: Route 2 — Value transfer to BNB
+      const tx1 = await pushClient.universal.prepareTransaction({
+        to: {
+          address: targetAddress,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        value: parseEther('0.0001'),
+        gasLimit: BigInt(2000000),
+      });
+
+      // Hop 2: Route 1 — Value transfer on Push Chain
+      const tx2 = await pushClient.universal.prepareTransaction({
+        to: targetAddress,
+        value: parseEther('0.001'),
+      });
+
+      // Hop 3: Route 2 — Value transfer to Solana Devnet
+      const tx3 = await pushClient.universal.prepareTransaction({
+        to: {
+          address: solanaTarget,
+          chain: CHAIN.SOLANA_DEVNET,
+        },
+        value: BigInt(10_000_000), // 0.01 SOL in lamports
+      });
+
+      // Chain all 3 hops and send
+      const result = await pushClient.universal
+        .executeTransactions(tx1)
+        .thenOn(tx2)
+        .thenOn(tx3)
+        .send();
+
+      console.log(`[TEST] 3-leg Funds TX Hash: ${result.initialTxHash}`);
+      console.log(`[TEST] Hop count: ${result.hopCount}`);
+
+      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(result.hopCount).toBe(3);
+      expect(result.hops).toHaveLength(3);
+      expect(typeof result.waitForAll).toBe('function');
+
+      // Wait for all hops to complete
+      const completion = await result.waitForAll({
+        timeout: 900000,
+        progressHook: (event) => {
+          console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
+        },
+      });
+
+      expect(completion.success).toBe(true);
+      expect(completion.hops).toHaveLength(3);
+    }, 1200000);
+  });
+
+  // ============================================================================
   // waitForAll tracking
   // ============================================================================
   describe('waitForAll tracking', () => {

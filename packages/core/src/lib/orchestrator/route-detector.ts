@@ -116,6 +116,14 @@ export function isSupportedExternalChain(chain: CHAIN): boolean {
 }
 
 /**
+ * Reverse-map a CHAIN enum value to its friendly name (e.g. CHAIN.ETHEREUM_SEPOLIA → 'ETHEREUM_SEPOLIA').
+ */
+export function chainEnumToName(chain: CHAIN): string {
+  const entry = Object.entries(CHAIN).find(([, v]) => v === chain);
+  return entry ? entry[0] : chain;
+}
+
+/**
  * Find which chain(s) a moveable token is registered for, by matching address.
  * Returns the first matching chain, or undefined if not found.
  */
@@ -222,7 +230,10 @@ export function detectRoute(
  * @throws RouteValidationError if validation fails
  * @throws ChainNotSupportedError if chain is not supported
  */
-export function validateRouteParams(params: UniversalExecuteParams): void {
+export function validateRouteParams(
+  params: UniversalExecuteParams,
+  context?: { clientChain?: CHAIN }
+): void {
   const route = detectRoute(params);
 
   // Validate from.chain is supported external chain (Routes 3, 4)
@@ -294,9 +305,44 @@ export function validateRouteParams(params: UniversalExecuteParams): void {
         t => t.symbol === params.funds!.token!.symbol
       );
       if (!hasSymbolOnTarget) {
+        const tokenChain = findTokenChain(params.funds.token as MoveableToken);
+        const tokenLabel = tokenChain
+          ? `${chainEnumToName(tokenChain)}.${params.funds.token.symbol}`
+          : params.funds.token.symbol;
+        const clientLabel = context?.clientChain
+          ? chainEnumToName(context.clientChain)
+          : 'unknown';
         throw new RouteValidationError(
-          `Unsupported moveable token for current client and route: ` +
-          `token=${params.funds.token.symbol}, destination=${targetChain}`
+          `Unsupported moveable token for current client and route:\n` +
+          `token=${tokenLabel}\n` +
+          `clientChain=${clientLabel}\n` +
+          `destination=${chainEnumToName(targetChain)}`
+        );
+      }
+    }
+  }
+
+  // Validate funds token is available on source chain (Route 3 inbound)
+  if (params.funds?.token && params.from?.chain) {
+    const sourceChain = params.from.chain;
+    if (!isPushChain(sourceChain)) {
+      const sourceTokens = MOVEABLE_TOKENS[sourceChain] || [];
+      const hasSymbolOnSource = sourceTokens.some(
+        t => t.symbol === params.funds!.token!.symbol
+      );
+      if (!hasSymbolOnSource) {
+        const tokenChain = findTokenChain(params.funds.token as MoveableToken);
+        const tokenLabel = tokenChain
+          ? `${chainEnumToName(tokenChain)}.${params.funds.token.symbol}`
+          : params.funds.token.symbol;
+        const clientLabel = context?.clientChain
+          ? chainEnumToName(context.clientChain)
+          : 'unknown';
+        throw new RouteValidationError(
+          `Unsupported moveable token for current client and route:\n` +
+          `token=${tokenLabel}\n` +
+          `clientChain=${clientLabel}\n` +
+          `source=${chainEnumToName(sourceChain)}`
         );
       }
     }

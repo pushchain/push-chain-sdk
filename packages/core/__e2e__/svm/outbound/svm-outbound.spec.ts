@@ -14,7 +14,7 @@ import '@e2e/shared/setup';
 import { PushChain } from '../../../src';
 import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
 import { CHAIN_INFO } from '../../../src/lib/constants/chain';
-import { MOVEABLE_TOKENS } from '../../../src/lib/constants/tokens';
+import { MOVEABLE_TOKEN_CONSTANTS } from '../../../src/lib/constants/tokens';
 import { createWalletClient, http, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { PublicKey } from '@solana/web3.js';
@@ -55,7 +55,7 @@ const COUNTER_PDA =
 const SVM_GATEWAY_PROGRAM = new PublicKey('CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS');
 
 // Solana Devnet USDT token - must use this (not Ethereum USDT) so getPRC20Address maps to USDT_SOL
-const SOL_USDT_TOKEN = MOVEABLE_TOKENS[CHAIN.SOLANA_DEVNET]!.find(t => t.symbol === 'USDT')!;
+const SOL_USDT_TOKEN = MOVEABLE_TOKEN_CONSTANTS.SOLANA_DEVNET.USDT;
 
 describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
   let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;

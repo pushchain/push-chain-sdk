@@ -1,12 +1,26 @@
 import { CHAIN, LIBRARY, PUSH_NETWORK } from './enums';
 import { TypedDataDomain, TypedData } from '../universal/signer/signer.types';
-export type { MoveableToken, PayableToken } from './tokens';
+import {
+  MOVEABLE_TOKEN_CONSTANTS,
+  PAYABLE_TOKEN_CONSTANTS,
+} from './tokens';
+export type {
+  MoveableToken,
+  PayableToken,
+  PushChainMoveableToken,
+  ChainSuffixAccessor,
+  PushChainMoveableTokenAccessor,
+  MoveableTokenConstantsMap,
+  PayableTokenConstantsMap,
+} from './tokens';
 
 // NOTE - Only include enums & constants which need to be exported to end user.
 export const CONSTANTS = {
   PUSH_NETWORK,
   CHAIN,
   LIBRARY,
+  MOVEABLE: { TOKEN: MOVEABLE_TOKEN_CONSTANTS },
+  PAYABLE: { TOKEN: PAYABLE_TOKEN_CONSTANTS },
 };
 
 export type { TypedDataDomain, TypedData };

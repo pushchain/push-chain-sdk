@@ -1,4 +1,5 @@
-import { CHAIN } from './enums';
+import { CHAIN, PUSH_NETWORK } from './enums';
+import { SYNTHETIC_PUSH_ERC20 } from './chain';
 
 export interface MoveableToken {
   symbol: string;
@@ -353,3 +354,191 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
     makeToken(CHAIN.SOLANA_DEVNET, 'USDC'),
   ],
 };
+
+// ---------------------------------------------------------------------------
+// C-2 / C-3 / C-4: Static CONSTANTS.MOVEABLE.TOKEN and CONSTANTS.PAYABLE.TOKEN
+// ---------------------------------------------------------------------------
+
+// Extends MoveableToken with Push Chain outbound context (C-3)
+export interface PushChainMoveableToken extends MoveableToken {
+  /** The external chain this synthetic PRC-20 asset is bridged from */
+  sourceChain: CHAIN;
+  /** The PRC-20 address on Push Chain */
+  prc20Address: `0x${string}`;
+}
+
+// Chain-suffix accessor for multi-origin tokens like USDT, USDC (C-3)
+export interface ChainSuffixAccessor {
+  readonly eth: PushChainMoveableToken;
+  readonly arb: PushChainMoveableToken;
+  readonly base: PushChainMoveableToken;
+  readonly bnb: PushChainMoveableToken;
+  readonly sol: PushChainMoveableToken;
+}
+
+// Push Chain outward token accessor type (C-3)
+export interface PushChainMoveableTokenAccessor {
+  readonly pEth: PushChainMoveableToken;
+  readonly pEthArb: PushChainMoveableToken;
+  readonly pEthBase: PushChainMoveableToken;
+  readonly pEthBnb: PushChainMoveableToken;
+  readonly pSol: PushChainMoveableToken;
+  readonly USDT: ChainSuffixAccessor;
+  readonly USDC: ChainSuffixAccessor;
+}
+
+// Combined type for CONSTANTS.MOVEABLE.TOKEN (C-2 + C-3)
+export type MoveableTokenConstantsMap = {
+  ETHEREUM_SEPOLIA: MoveableTokenAccessor;
+  ETHEREUM_MAINNET: MoveableTokenAccessor;
+  ARBITRUM_SEPOLIA: MoveableTokenAccessor;
+  BASE_SEPOLIA: MoveableTokenAccessor;
+  BNB_TESTNET: MoveableTokenAccessor;
+  SOLANA_DEVNET: MoveableTokenAccessor;
+  PUSH_TESTNET_DONUT: PushChainMoveableTokenAccessor;
+};
+
+// Type for CONSTANTS.PAYABLE.TOKEN (C-4)
+export type PayableTokenConstantsMap = {
+  ETHEREUM_SEPOLIA: PayableTokenAccessor;
+  ETHEREUM_MAINNET: PayableTokenAccessor;
+  ARBITRUM_SEPOLIA: PayableTokenAccessor;
+  BASE_SEPOLIA: PayableTokenAccessor;
+  BNB_TESTNET: PayableTokenAccessor;
+  SOLANA_DEVNET: PayableTokenAccessor;
+};
+
+// Helper: token array → Record<symbol, Token>
+const toSymbolMap = <T extends { symbol: string }>(
+  arr: T[] | undefined
+): Record<string, T> =>
+  (arr ?? []).reduce<Record<string, T>>((acc, t) => {
+    acc[t.symbol] = t;
+    return acc;
+  }, {});
+
+function buildPushChainMoveableTokenAccessor(): PushChainMoveableTokenAccessor {
+  const s = SYNTHETIC_PUSH_ERC20[PUSH_NETWORK.TESTNET_DONUT];
+
+  const mk = (
+    symbol: string,
+    decimals: number,
+    address: `0x${string}`,
+    sourceChain: CHAIN
+  ): PushChainMoveableToken => ({
+    symbol,
+    decimals,
+    address,
+    mechanism: 'approve',
+    sourceChain,
+    prc20Address: address,
+  });
+
+  return {
+    pEth: mk('pETH', 18, s.pETH, CHAIN.ETHEREUM_SEPOLIA),
+    pEthArb: mk('pETH_ARB', 18, s.pETH_ARB, CHAIN.ARBITRUM_SEPOLIA),
+    pEthBase: mk('pETH_BASE', 18, s.pETH_BASE, CHAIN.BASE_SEPOLIA),
+    pEthBnb: mk('pETH_BNB', 18, s.pETH_BNB, CHAIN.BNB_TESTNET),
+    pSol: mk('pSOL', 9, s.pSOL, CHAIN.SOLANA_DEVNET),
+    USDT: {
+      eth: mk('USDT', 6, s.USDT_ETH, CHAIN.ETHEREUM_SEPOLIA),
+      arb: mk('USDT', 6, s.USDT_ARB, CHAIN.ARBITRUM_SEPOLIA),
+      base: mk('USDT', 6, s.USDT_BASE, CHAIN.BASE_SEPOLIA),
+      bnb: mk('USDT', 6, s.USDT_BNB, CHAIN.BNB_TESTNET),
+      sol: mk('USDT', 6, s.USDT_SOL, CHAIN.SOLANA_DEVNET),
+    },
+    USDC: {
+      eth: mk('USDC', 6, s.USDC_ETH, CHAIN.ETHEREUM_SEPOLIA),
+      arb: mk('USDC', 6, s.USDC_ARB, CHAIN.ARBITRUM_SEPOLIA),
+      base: mk('USDC', 6, s.USDC_BASE, CHAIN.BASE_SEPOLIA),
+      bnb: mk('USDC', 6, s.USDT_BNB, CHAIN.BNB_TESTNET),
+      sol: mk('USDC', 6, s.USDC_SOL, CHAIN.SOLANA_DEVNET),
+    },
+  };
+}
+
+function buildMoveableTokenConstants(): MoveableTokenConstantsMap {
+  return {
+    ETHEREUM_SEPOLIA: new MoveableTokenAccessor(
+      toSymbolMap(MOVEABLE_TOKENS[CHAIN.ETHEREUM_SEPOLIA]) as Record<
+        string,
+        MoveableToken
+      >
+    ),
+    ETHEREUM_MAINNET: new MoveableTokenAccessor(
+      toSymbolMap(MOVEABLE_TOKENS[CHAIN.ETHEREUM_MAINNET]) as Record<
+        string,
+        MoveableToken
+      >
+    ),
+    ARBITRUM_SEPOLIA: new MoveableTokenAccessor(
+      toSymbolMap(MOVEABLE_TOKENS[CHAIN.ARBITRUM_SEPOLIA]) as Record<
+        string,
+        MoveableToken
+      >
+    ),
+    BASE_SEPOLIA: new MoveableTokenAccessor(
+      toSymbolMap(MOVEABLE_TOKENS[CHAIN.BASE_SEPOLIA]) as Record<
+        string,
+        MoveableToken
+      >
+    ),
+    BNB_TESTNET: new MoveableTokenAccessor(
+      toSymbolMap(MOVEABLE_TOKENS[CHAIN.BNB_TESTNET]) as Record<
+        string,
+        MoveableToken
+      >
+    ),
+    SOLANA_DEVNET: new MoveableTokenAccessor(
+      toSymbolMap(MOVEABLE_TOKENS[CHAIN.SOLANA_DEVNET]) as Record<
+        string,
+        MoveableToken
+      >
+    ),
+    PUSH_TESTNET_DONUT: buildPushChainMoveableTokenAccessor(),
+  };
+}
+
+function buildPayableTokenConstants(): PayableTokenConstantsMap {
+  return {
+    ETHEREUM_SEPOLIA: new PayableTokenAccessor(
+      toSymbolMap(PAYABLE_TOKENS[CHAIN.ETHEREUM_SEPOLIA]) as Record<
+        string,
+        PayableToken
+      >
+    ),
+    ETHEREUM_MAINNET: new PayableTokenAccessor(
+      toSymbolMap(PAYABLE_TOKENS[CHAIN.ETHEREUM_MAINNET]) as Record<
+        string,
+        PayableToken
+      >
+    ),
+    ARBITRUM_SEPOLIA: new PayableTokenAccessor(
+      toSymbolMap(PAYABLE_TOKENS[CHAIN.ARBITRUM_SEPOLIA]) as Record<
+        string,
+        PayableToken
+      >
+    ),
+    BASE_SEPOLIA: new PayableTokenAccessor(
+      toSymbolMap(PAYABLE_TOKENS[CHAIN.BASE_SEPOLIA]) as Record<
+        string,
+        PayableToken
+      >
+    ),
+    BNB_TESTNET: new PayableTokenAccessor(
+      toSymbolMap(PAYABLE_TOKENS[CHAIN.BNB_TESTNET]) as Record<
+        string,
+        PayableToken
+      >
+    ),
+    SOLANA_DEVNET: new PayableTokenAccessor(
+      toSymbolMap(PAYABLE_TOKENS[CHAIN.SOLANA_DEVNET]) as Record<
+        string,
+        PayableToken
+      >
+    ),
+  };
+}
+
+export const MOVEABLE_TOKEN_CONSTANTS = buildMoveableTokenConstants();
+export const PAYABLE_TOKEN_CONSTANTS = buildPayableTokenConstants();

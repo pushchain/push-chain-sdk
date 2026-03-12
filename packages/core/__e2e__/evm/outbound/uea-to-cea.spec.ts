@@ -11,7 +11,7 @@ import '@e2e/shared/setup';
 import { PushChain } from '../../../src';
 import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
 import { CHAIN_INFO } from '../../../src/lib/constants/chain';
-import { MOVEABLE_TOKENS, type MoveableToken } from '../../../src/lib/constants/tokens';
+import { MOVEABLE_TOKEN_CONSTANTS, type MoveableToken } from '../../../src/lib/constants/tokens';
 import { createWalletClient, http, Hex, parseEther, encodeFunctionData } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { getCEAAddress, chainSupportsCEA } from '../../../src/lib/orchestrator/cea-utils';
@@ -78,8 +78,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
     console.log(`CEA Address on BSC: ${ceaAddress}, deployed: ${ceaResult.isDeployed}`);
 
     // Get USDT token for ERC20 flows
-    const tokens = MOVEABLE_TOKENS[CHAIN.ETHEREUM_SEPOLIA] || [];
-    usdtToken = tokens.find(t => t.symbol === 'USDT');
+    usdtToken = MOVEABLE_TOKEN_CONSTANTS.ETHEREUM_SEPOLIA.USDT;
     if (usdtToken) {
       console.log(`USDT Token: ${usdtToken.address} (${usdtToken.decimals} decimals)`);
     }
@@ -902,12 +901,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
       if (skipE2E) return;
 
       // Use BNB Testnet USDT token (not Sepolia USDT) since destination is BNB Testnet
-      const bnbTokens = MOVEABLE_TOKENS[CHAIN.BNB_TESTNET] || [];
-      const bnbUsdtToken = bnbTokens.find(t => t.symbol === 'USDT');
-      if (!bnbUsdtToken) {
-        console.log('Skipping - USDT token not found in MOVEABLE_TOKENS for BNB Testnet');
-        return;
-      }
+      const bnbUsdtToken = MOVEABLE_TOKEN_CONSTANTS.BNB_TESTNET.USDT;
 
       console.log('\n=== Test: ERC20 pUSDT Transfer to Alternate Recipient ===');
 
