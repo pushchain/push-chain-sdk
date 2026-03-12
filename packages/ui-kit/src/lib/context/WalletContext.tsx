@@ -1,14 +1,12 @@
 import React, {
   createContext,
   FC,
-  useCallback,
   useEffect,
   useRef,
   useState,
 } from 'react';
 import { PushChain } from '@pushchain/core';
 import {
-  PROGRESS_HOOK,
   ProgressEvent,
 } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
 import {
@@ -65,14 +63,16 @@ export type WalletContextType = {
   themeMode: ThemeMode;
   themeOverrides: ThemeOverrides;
 
-  toggleButtonRef: React.RefObject<HTMLDivElement>;
-
   progress: ProgressEvent | null;
   setProgress: React.Dispatch<React.SetStateAction<ProgressEvent | null>>;
 
   isReadOnly: boolean;
   setIsReadOnly: React.Dispatch<React.SetStateAction<boolean>>;
   requestPushWalletConnection: () => Promise<{ chain: ChainType; provider: IWalletProvider["name"] }>;
+
+  activeTriggerId: string | undefined;
+  setActiveTriggerId: React.Dispatch<React.SetStateAction<string | undefined>>;
+  toggleButtonRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
 };
 
 export const WalletContext = createContext<WalletContextType | null>(null);
@@ -131,7 +131,10 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       : undefined
   );
 
-  const toggleButtonRef = useRef<HTMLDivElement>(null);
+  const [activeTriggerId, setActiveTriggerId] = useState<string>();
+
+  const toggleButtonRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
+  
 
   const updateModalAppData = (newData: Partial<ModalAppDetails>) => {
     setModalAppData((prevData) => ({
@@ -663,13 +666,15 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         handleSignMessage,
         handleSignAndSendTransaction,
         handleSignTypedData,
-        toggleButtonRef,
         progress,
         setProgress,
         isReadOnly,
         setIsReadOnly,
         handleExternalWalletConnection,
         requestPushWalletConnection,
+        activeTriggerId,
+        setActiveTriggerId,
+        toggleButtonRefs,
       }}
     >
       <LoginModal
@@ -685,9 +690,10 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         isWalletMinimised={isWalletMinimised}
         setMinimiseWallet={setMinimiseWallet}
         handleUserLogOutEvent={handleUserLogOutEvent}
-        toggleButtonRef={toggleButtonRef}
         sendMessageToPushWallet={sendMessageToPushWallet}
         isReadOnly={isReadOnly}
+        toggleButtonRefs={toggleButtonRefs}
+        activeTriggerId={activeTriggerId}
       />
       {progress && (
         <PushWalletToast progress={progress} setProgress={setProgress} />

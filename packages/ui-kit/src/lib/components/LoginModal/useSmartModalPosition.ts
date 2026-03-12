@@ -5,7 +5,8 @@ import { PushUI } from '../../constants';
 type Position = { top: number; left: number };
 
 export function useSmartModalPosition(
-  triggerRef: React.RefObject<HTMLElement>,
+  triggerId: string | null,
+  triggerRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>,
   modalWidth = 450,
   modalHeight = 675,
   uid?: string,
@@ -16,35 +17,43 @@ export function useSmartModalPosition(
 
   useEffect(() => {
     const calculatePosition = () => {
-      if (!triggerRef.current) return;
+      if (!triggerId || !triggerRefs.current[triggerId]) return;
+
+      const triggerRef = triggerRefs.current[triggerId];
 
       if (config.modal?.connectedLayout === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL) {
         setPosition({ top: 0, left: 0 });
         return;
       }
 
-      const triggerRect = triggerRef.current.getBoundingClientRect();
+      const triggerRect = triggerRef.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const viewportWidth = window.innerWidth;
 
       const spaceBelow = viewportHeight - triggerRect.bottom;
       const spaceAbove = triggerRect.top;
-      const spaceRight = viewportWidth - triggerRect.left;
-      const spaceLeft = triggerRect.right;
+      const spaceRight = viewportWidth - triggerRect.right;
+      const spaceLeft = triggerRect.left;
 
-      const top =
-        spaceBelow >= modalHeight
-          ? triggerRect.bottom - 16
-          : spaceAbove >= modalHeight
-          ? triggerRect.top - modalHeight + 16
-          : Math.max(viewportHeight - modalHeight, 0);
+      let top;
+      let left;
 
-      const left =
-        spaceRight >= modalWidth
-          ? triggerRect.left - 35
-          : spaceLeft >= modalWidth
-          ? triggerRect.right - modalWidth + 35
-          : Math.max(viewportWidth - modalWidth, 0);
+      if (spaceBelow >= modalHeight) {
+        top = triggerRect.bottom;
+      } else if (spaceAbove >= modalHeight) {
+        top = triggerRect.top - modalHeight;
+      } else {
+        top = Math.max(viewportHeight - modalHeight, 0) / 2;
+      }
+
+      // Horizontal
+      if ((spaceRight + triggerRect.width) >= modalWidth) {
+        left = triggerRect.left - 35;
+      } else if (spaceLeft >= modalWidth) {
+        left = triggerRect.right - modalWidth + 35;
+      } else {
+        left = Math.max(viewportWidth - modalWidth, 0) / 2;
+      }
 
       setPosition({ top, left });
     };
@@ -61,7 +70,7 @@ export function useSmartModalPosition(
       window.removeEventListener('resize', calculatePosition);
       document.body.style.overflow = '';
     };
-  }, [triggerRef, modalWidth, modalHeight, isWalletMinimised, config]);
+  }, [triggerId, triggerRefs, modalWidth, modalHeight, isWalletMinimised, config, uid]);
 
   useEffect(() => {
     if (!universalAccount) {

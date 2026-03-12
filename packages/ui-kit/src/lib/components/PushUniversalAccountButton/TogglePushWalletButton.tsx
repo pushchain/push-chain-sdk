@@ -2,7 +2,7 @@ import React from 'react';
 import { CHAIN } from '@pushchain/core/src/lib/constants/enums';
 import { usePushWalletContext } from '../../hooks/usePushWallet';
 import { UniversalAccount } from '../../types';
-import { Button, PushLogo, PushMonotone } from '../common';
+import { Button, PushMonotone } from '../common';
 import { centerMaskString, getChainId } from '../../helpers';
 import { CHAIN_LOGO } from '../../constants';
 import styled from 'styled-components';
@@ -14,14 +14,15 @@ export type TogglePushWalletButtonProps = {
   customComponent?: React.ReactNode;
   className?: string;
 };
+
 const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
   uid,
   universalAccount,
   customComponent,
-  className,
+  className = 'default',
   style,
 }) => {
-  const { setMinimiseWallet, isWalletMinimised, toggleButtonRef } =
+  const { setMinimiseWallet, isWalletMinimised, toggleButtonRefs , setActiveTriggerId } =
     usePushWalletContext(uid);
   const { chain, address } = universalAccount;
 
@@ -40,10 +41,26 @@ const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
 
   const maskedAddress = centerMaskString(address);
 
+  const handleClick = () => {
+    setActiveTriggerId(className);
+    setMinimiseWallet(!isWalletMinimised);
+  };
+
+  const setTriggerRef = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      if (node) {
+        toggleButtonRefs.current[className] = node;
+      } else {
+        delete toggleButtonRefs.current[className];
+      }
+    },
+    [className]
+  );
+
   return (
     <ButtonContainer
-      onClick={() => setMinimiseWallet(!isWalletMinimised)}
-      ref={toggleButtonRef}
+      onClick={handleClick}
+      ref={setTriggerRef}
     >
       {customComponent ? customComponent : (
         <Button

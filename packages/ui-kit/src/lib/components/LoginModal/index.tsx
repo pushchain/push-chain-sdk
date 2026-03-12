@@ -27,9 +27,10 @@ type LoginModalProps = {
   isWalletMinimised: boolean;
   setMinimiseWallet: (isWalletMinimised: boolean) => void;
   handleUserLogOutEvent: () => void;
-  toggleButtonRef: React.RefObject<HTMLDivElement>;
   sendMessageToPushWallet: (message: any) => void;
   isReadOnly: boolean;
+  toggleButtonRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
+  activeTriggerId: string | undefined;
 };
 
 const LoginModal: FC<LoginModalProps> = ({
@@ -45,9 +46,10 @@ const LoginModal: FC<LoginModalProps> = ({
   setMinimiseWallet,
   handleUserLogOutEvent,
   config,
-  toggleButtonRef,
   sendMessageToPushWallet,
-  isReadOnly
+  isReadOnly,
+  toggleButtonRefs,
+  activeTriggerId,
 }) => {
   const [version, setVersion] = React.useState<number>(5);
 
@@ -55,10 +57,11 @@ const LoginModal: FC<LoginModalProps> = ({
   const { pushChainClient } = usePushChainClient(config?.uid || 'default');
 
   const { top, left } = useSmartModalPosition(
-    toggleButtonRef,
+    activeTriggerId || null,
+    toggleButtonRefs,
     450,
     675,
-    config.uid
+    config.uid,
   );
 
   const handleSendTransaction = async (data: ExecuteParams) => {
@@ -278,10 +281,12 @@ const FrameContainer = styled.div<{
   $style?: Record<'top' | 'left', number>;
 }>`
   position: fixed;
-  top: ${({ $universalAccount, $accountMenuVariant }) =>
+  top: ${({ $universalAccount, $accountMenuVariant, $style }) =>
     $universalAccount
       ? $accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
         ? '0'
+        : $style?.top != null
+        ? `${$style.top}px`
         : '50px'
       : '0'};
   left: ${({ $style }) => ($style?.left != null ? `${$style.left}px` : 'auto')};

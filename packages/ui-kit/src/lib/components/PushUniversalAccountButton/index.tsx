@@ -4,7 +4,6 @@ import { usePushWalletContext } from '../../hooks/usePushWallet';
 import { ConnectPushWalletButtonProps, ConnectWalletButton } from './ConnectWalletButton';
 import { TogglePushWalletButton, TogglePushWalletButtonProps } from './TogglePushWalletButton';
 import {
-  createGlobalStyle,
   DefaultTheme,
   ThemeProvider,
 } from 'styled-components';
