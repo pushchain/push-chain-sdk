@@ -3155,24 +3155,58 @@ export class Orchestrator {
           // ERC20 token - need approval for gateway before sendUniversalTxToUEA
           tokenAddress = token.address as `0x${string}`;
           amount = params.funds.amount;
-
-          // Add approve call for ERC20 (CEA approves gateway to spend tokens)
-          const approveData = encodeFunctionData({
-            abi: ERC20_EVM,
-            functionName: 'approve',
-            args: [gatewayAddress, amount],
-          });
-          ceaMulticalls.push({
-            to: tokenAddress,
-            value: BigInt(0),
-            data: approveData,
-          });
         }
       }
     } else if (params.value && params.value > BigInt(0)) {
       // Native value transfer (e.g., BNB, ETH)
       tokenAddress = ZERO_ADDRESS as `0x${string}`;
       amount = params.value;
+    }
+
+    // Query CEA's existing balance on the external chain.
+    // If CEA has pre-existing funds (from prior activity), the bridge amount
+    // includes both the burned amount AND the pre-existing balance.
+    // This enables hybrid self-call flows (spec 4.3, 4.4, 4.7, 4.8).
+    let ceaExistingBalance = BigInt(0);
+    if (ceaDeployed && amount > BigInt(0)) {
+      const rpcUrl = this.rpcUrls[sourceChain]?.[0] || CHAIN_INFO[sourceChain]?.defaultRPC?.[0];
+      if (rpcUrl) {
+        const evmClient = new EvmClient({ rpcUrls: [rpcUrl] });
+        if (tokenAddress === (ZERO_ADDRESS as `0x${string}`)) {
+          ceaExistingBalance = await evmClient.getBalance(ceaAddress);
+        } else {
+          ceaExistingBalance = await evmClient.getErc20Balance({
+            tokenAddress,
+            ownerAddress: ceaAddress,
+          });
+        }
+      }
+    }
+
+    // bridgeAmount = burn amount + pre-existing CEA balance
+    // When ceaExistingBalance is 0, this equals amount (backward compatible)
+    const bridgeAmount = amount + ceaExistingBalance;
+
+    if (ceaExistingBalance > BigInt(0)) {
+      this.printLog(
+        `executeCeaToPush — CEA pre-existing balance: ${ceaExistingBalance.toString()}, ` +
+        `total bridge: ${bridgeAmount.toString()} (burn: ${amount.toString()} + existing: ${ceaExistingBalance.toString()})`
+      );
+    }
+
+    // For ERC20 tokens, add approve call for the FULL bridge amount
+    // (CEA approves gateway to spend burn + pre-existing balance)
+    if (tokenAddress !== (ZERO_ADDRESS as `0x${string}`) && bridgeAmount > BigInt(0)) {
+      const approveData = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'approve',
+        args: [gatewayAddress, bridgeAmount],
+      });
+      ceaMulticalls.push({
+        to: tokenAddress,
+        value: BigInt(0),
+        data: approveData,
+      });
     }
 
     // Build payload for Push Chain execution (if any)
@@ -3194,11 +3228,12 @@ export class Orchestrator {
     // Build sendUniversalTxToUEA self-call on CEA
     // CEA multicall: to=CEA (self-call), value=0
     // CEA internally calls gateway.sendUniversalTxFromCEA(...)
+    // Uses bridgeAmount (burn + CEA pre-existing) so the full balance is bridged back
     const sendUniversalTxCall = buildSendUniversalTxToUEA(
-      ceaAddress,    // to: CEA address (self-call)
-      tokenAddress,  // token: address(0) for native, ERC20 address otherwise
-      amount,        // amount: must be > 0 per CEA contract
-      pushPayload    // payload: Push Chain execution payload
+      ceaAddress,     // to: CEA address (self-call)
+      tokenAddress,   // token: address(0) for native, ERC20 address otherwise
+      bridgeAmount,   // amount: burn + pre-existing CEA balance
+      pushPayload     // payload: Push Chain execution payload
     );
     ceaMulticalls.push(sendUniversalTxCall);
 
@@ -3213,7 +3248,8 @@ export class Orchestrator {
     // 8. Determine PRC-20 token for chain namespace routing
     // Even though CEA uses its own funds, we need the PRC-20 for the relay to determine destination chain
     const prc20Token = this.getNativePRC20ForChain(sourceChain);
-    // burnAmount = actual amount needed by CEA. The Vault deposits this as msg.value to CEA.
+    // burnAmount = PRC20 to burn on Push Chain (NOT the bridge amount).
+    // Vault deposits burnAmount to CEA. CEA uses burnAmount + pre-existing balance for the bridge.
     // Fallback to BigInt(1) for payload-only outbound (precompile rejects amount=0).
     const burnAmount = amount > BigInt(0) ? amount : BigInt(1);
 

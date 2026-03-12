@@ -238,7 +238,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           address: TEST_SOL_TARGET,
           chain: CHAIN.SOLANA_DEVNET,
         },
-        value: BigInt(100_000_000), // 0.1 SOL in lamports
+        value: BigInt(10_000_000), // 0.01 SOL in lamports
       };
 
       expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
@@ -277,7 +277,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           address: TEST_SOL_TARGET,
           chain: CHAIN.SOLANA_DEVNET,
         },
-        value: BigInt(100_000_000), // 0.1 SOL in lamports
+        value: BigInt(10_000_000), // 0.01 SOL in lamports
         gasLimit: BigInt(2_000_000), // Custom compute unit limit
       };
 
@@ -323,7 +323,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           chain: CHAIN.SOLANA_DEVNET,
         },
         funds: {
-          amount: BigInt(1_000_000), // 1 USDT (6 decimals)
+          amount: BigInt(100_000), // 0.1 USDT (6 decimals)
           token: SOL_USDT_TOKEN,
         },
       };
@@ -341,6 +341,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       console.log(`Receipt status: ${receipt.status}`);
       console.log(`External TX Hash: ${receipt.externalTxHash}`);
       console.log(`External Chain: ${receipt.externalChain}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
 
       // Push Chain tx must succeed before outbound relay can happen
       expect(receipt.status).toBe(1);
@@ -374,7 +375,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           address: TEST_PROGRAM,
           chain: CHAIN.SOLANA_DEVNET,
         },
-        value: BigInt(50_000_000), // 0.05 SOL for CPI
+        value: BigInt(5_000_000), // 0.005 SOL for CPI
         svmExecute: {
           targetProgram: TEST_PROGRAM,
           accounts: [
@@ -401,6 +402,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       console.log(`Receipt status: ${receipt.status}`);
       console.log(`External TX Hash: ${receipt.externalTxHash}`);
       console.log(`External Chain: ${receipt.externalChain}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
 
       // Push Chain tx must succeed before outbound relay can happen
       expect(receipt.status).toBe(1);
@@ -453,6 +455,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       console.log(`Receipt status: ${receipt.status}`);
       console.log(`External TX Hash: ${receipt.externalTxHash}`);
       console.log(`External Chain: ${receipt.externalChain}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
 
       // Push Chain tx must succeed before outbound relay can happen
       expect(receipt.status).toBe(1);
@@ -479,7 +482,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           address: TEST_PROGRAM,
           chain: CHAIN.SOLANA_DEVNET,
         },
-        value: BigInt(50_000_000), // 0.05 SOL for CPI
+        value: BigInt(5_000_000), // 0.005 SOL for CPI
         svmExecute: {
           targetProgram: TEST_PROGRAM,
           accounts: [
@@ -489,7 +492,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
             { pubkey: SOL_ZERO_ADDRESS, isWritable: false },   // system_program (0x00...00)
           ],
           ixData,
-          rentFee: BigInt(1_500_000), // 1.5M lamports for rent-exempt account creation
+          rentFee: BigInt(0), // must be 0; TSS rejects rent_fee > gas_fee
         },
       };
 
@@ -505,6 +508,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       console.log(`Receipt status: ${receipt.status}`);
       console.log(`External TX Hash: ${receipt.externalTxHash}`);
       console.log(`External Chain: ${receipt.externalChain}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
 
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
@@ -535,7 +539,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           address: TEST_PROGRAM,
           chain: CHAIN.SOLANA_DEVNET,
         },
-        value: BigInt(50_000_000), // 0.05 SOL transferred alongside CPI
+        value: BigInt(5_000_000), // 0.005 SOL transferred alongside CPI
         svmExecute: {
           targetProgram: TEST_PROGRAM,
           accounts: [
@@ -562,6 +566,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       console.log(`Receipt status: ${receipt.status}`);
       console.log(`External TX Hash: ${receipt.externalTxHash}`);
       console.log(`External Chain: ${receipt.externalChain}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
 
       // Push Chain tx must succeed before outbound relay can happen
       expect(receipt.status).toBe(1);
@@ -594,7 +599,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           chain: CHAIN.SOLANA_DEVNET,
         },
         funds: {
-          amount: BigInt(1_000_000), // 1 USDT (6 decimals)
+          amount: BigInt(100_000), // 0.1 USDT (6 decimals)
           token: SOL_USDT_TOKEN,
         },
         svmExecute: {
@@ -622,6 +627,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       const receipt = await tx.wait();
       console.log(`Receipt status: ${receipt.status}`);
       console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
 
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
@@ -680,6 +686,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       const receipt = await tx.wait();
       console.log(`Receipt status: ${receipt.status}`);
       console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
 
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
@@ -745,7 +752,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           address: TEST_SOL_TARGET,
           chain: CHAIN.SOLANA_DEVNET,
         },
-        value: BigInt(100_000_000), // 0.1 SOL
+        value: BigInt(10_000_000), // 0.01 SOL
       });
 
       console.log(`[TEST] ${new Date().toISOString()} Push Chain TX Hash: ${tx.hash}`);
@@ -789,7 +796,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           address: TEST_SOL_TARGET,
           chain: CHAIN.SOLANA_DEVNET,
         },
-        value: BigInt(100_000_000), // 0.1 SOL
+        value: BigInt(10_000_000), // 0.01 SOL
         gasLimit: BigInt(2000000),
       });
 
@@ -798,6 +805,10 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       expect(tx.chain).toBe(CHAIN.SOLANA_DEVNET);
 
       const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
+
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
@@ -819,7 +830,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           address: TEST_SOL_TARGET,
           chain: CHAIN.SOLANA_DEVNET,
         },
-        value: BigInt(100_000_000),
+        value: BigInt(10_000_000),
       };
 
       const prepared = await pushClient.universal.prepareTransaction(params);
@@ -842,7 +853,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           address: TEST_SOL_TARGET,
           chain: CHAIN.SOLANA_DEVNET,
         },
-        value: BigInt(100_000_000),
+        value: BigInt(10_000_000),
       });
 
       const builder = pushClient.universal.executeTransactions(firstPrepared);
@@ -856,7 +867,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           address: TEST_SOL_TARGET,
           chain: CHAIN.SOLANA_DEVNET,
         },
-        value: BigInt(50_000_000),
+        value: BigInt(5_000_000),
       });
 
       const chainedBuilder = builder.thenOn(secondPrepared);
@@ -899,7 +910,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       const params: UniversalExecuteParams = {
         from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
         to: ueaAddress,
-        value: BigInt(50_000_000), // 0.05 SOL in lamports
+        value: BigInt(5_000_000), // 0.005 SOL in lamports
       };
 
       expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
@@ -918,6 +929,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       console.log(`Receipt status: ${receipt.status}`);
       console.log(`External TX Hash: ${receipt.externalTxHash}`);
       console.log(`External Chain: ${receipt.externalChain}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
 
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
@@ -941,7 +953,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
         from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
         to: ueaAddress,
         funds: {
-          amount: BigInt(1_000_000), // 1 USDT (6 decimals)
+          amount: BigInt(100_000), // 0.1 USDT (6 decimals)
           token: SOL_USDT_TOKEN,
         },
       };
@@ -960,6 +972,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       console.log(`Receipt status: ${receipt.status}`);
       console.log(`External TX Hash: ${receipt.externalTxHash}`);
       console.log(`External Chain: ${receipt.externalChain}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
 
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
@@ -982,8 +995,55 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       const params: UniversalExecuteParams = {
         from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
         to: ueaAddress,
-        value: BigInt(50_000_000), // 0.05 SOL drain amount
+        value: BigInt(5_000_000), // 0.005 SOL drain amount
         data: '0xdeadbeef', // arbitrary Push Chain payload
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      console.log('Calling tx.wait() - polling for external chain details...');
+      const receipt = await tx.wait();
+
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+    }, 600000);
+  });
+
+  // ============================================================================
+  // 11b. Hybrid Self-Call Flows (S-4.1, S-4.2, S-4.5, S-4.6)
+  //
+  // SVM gateway program auto-handles CEA pre-existing balance — it drains
+  // ALL funds from the CEA PDA, not just the burned amount. No SDK code
+  // changes are needed (unlike EVM). These tests confirm the behavior.
+  // ============================================================================
+  describe('11b. Hybrid Self-Call (CEA pre-existing balance, SVM auto-handles)', () => {
+    // S-4.1: SOL self-call with topUp > 0
+    // User burns X SOL on Push Chain. CEA PDA already holds Y SOL from prior activity.
+    // Gateway drains X + Y automatically.
+    it('S-4.1: should drain SOL including pre-existing CEA balance (hybrid)', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: S-4.1 SOL Hybrid Self-Call (burn + CEA pre-existing) ===');
+      console.log('SVM gateway auto-drains all CEA PDA balance — no extra SDK logic needed');
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
+        to: ueaAddress,
+        value: BigInt(1_000_000), // 0.001 SOL burn amount
+        // Gateway will drain this + any pre-existing SOL in CEA PDA
       };
 
       expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
@@ -1003,7 +1063,120 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
 
-      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+    }, 600000);
+
+    // S-4.2: SPL self-call with topUp > 0
+    // User burns X USDT on Push Chain. CEA PDA already holds Y USDT from prior activity.
+    // Gateway drains X + Y automatically.
+    it('S-4.2: should drain SPL USDT including pre-existing CEA balance (hybrid)', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: S-4.2 SPL Hybrid Self-Call (burn + CEA pre-existing) ===');
+      console.log('SVM gateway auto-drains all CEA PDA balance — no extra SDK logic needed');
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
+        to: ueaAddress,
+        funds: {
+          amount: BigInt(100_000), // 0.1 USDT burn amount (6 decimals)
+          token: SOL_USDT_TOKEN,
+        },
+        // Gateway will drain this + any pre-existing USDT in CEA PDA
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      console.log('Calling tx.wait() - polling for external chain details...');
+      const receipt = await tx.wait();
+
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+    }, 600000);
+
+    // S-4.5: SOL self-call + payload with topUp > 0
+    // Same as S-4.1 but includes a Push Chain execution payload.
+    it('S-4.5: should drain SOL (hybrid) with Push Chain payload', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: S-4.5 SOL Hybrid Self-Call + Payload ===');
+      console.log('SVM gateway auto-drains all CEA PDA balance — no extra SDK logic needed');
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
+        to: ueaAddress,
+        value: BigInt(1_000_000), // 0.001 SOL burn amount
+        data: '0xdeadbeef', // arbitrary Push Chain payload
+        // Gateway will drain this + any pre-existing SOL in CEA PDA
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      console.log('Calling tx.wait() - polling for external chain details...');
+      const receipt = await tx.wait();
+
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+    }, 600000);
+
+    // S-4.6: SPL self-call + payload with topUp > 0
+    // Same as S-4.2 but includes a Push Chain execution payload.
+    it('S-4.6: should drain SPL USDT (hybrid) with Push Chain payload', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: S-4.6 SPL Hybrid Self-Call + Payload ===');
+      console.log('SVM gateway auto-drains all CEA PDA balance — no extra SDK logic needed');
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
+        to: ueaAddress,
+        funds: {
+          amount: BigInt(100_000), // 0.1 USDT burn amount (6 decimals)
+          token: SOL_USDT_TOKEN,
+        },
+        data: '0xdeadbeef', // arbitrary Push Chain payload
+        // Gateway will drain this + any pre-existing USDT in CEA PDA
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      console.log('Calling tx.wait() - polling for external chain details...');
+      const receipt = await tx.wait();
+
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
       await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 600000);
   });
@@ -1023,7 +1196,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           address: '0x1234567890123456789012345678901234567890' as `0x${string}`,
           chain: CHAIN.SOLANA_DEVNET,
         },
-        value: BigInt(100_000_000),
+        value: BigInt(10_000_000),
       };
 
       await expect(
@@ -1041,7 +1214,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           address: SOL_ZERO_ADDRESS,
           chain: CHAIN.SOLANA_DEVNET,
         },
-        value: BigInt(100_000_000),
+        value: BigInt(10_000_000),
       };
 
       await expect(
@@ -1056,7 +1229,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           address: '0x1234567890123456789012345678901234567890',
           chain: CHAIN.ETHEREUM_SEPOLIA,
         } as ChainTarget,
-        value: BigInt(100_000_000),
+        value: BigInt(10_000_000),
       };
 
       // This is Route 4 (CEA_TO_CEA), not Route 3
@@ -1114,7 +1287,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           address: TEST_SOL_TARGET,
           chain: CHAIN.SOLANA_DEVNET,
         },
-        value: BigInt(10_000_000), // 0.01 SOL
+        value: BigInt(1_000_000), // 0.001 SOL
       };
 
       const tx = await clientWithHook.universal.sendTransaction(params);
@@ -1167,7 +1340,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       const params: UniversalExecuteParams = {
         from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
         to: clientWithHook.universal.account,
-        value: BigInt(10_000_000), // 0.01 SOL
+        value: BigInt(1_000_000), // 0.001 SOL
       };
 
       const tx = await clientWithHook.universal.sendTransaction(params);

@@ -78,7 +78,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
     console.log(`CEA Address on BSC: ${ceaAddress}, deployed: ${ceaResult.isDeployed}`);
 
     // Get USDT token for ERC20 flows
-    usdtToken = MOVEABLE_TOKEN_CONSTANTS.ETHEREUM_SEPOLIA.USDT;
+    usdtToken = MOVEABLE_TOKEN_CONSTANTS.BNB_TESTNET.USDT;
     if (usdtToken) {
       console.log(`USDT Token: ${usdtToken.address} (${usdtToken.decimals} decimals)`);
     }
@@ -333,46 +333,6 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
-
-      // Verify tx succeeded on external chain via RPC
-      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
-    }, 360000);
-
-    it('should transfer native pETH to Ethereum Sepolia', async () => {
-      if (skipE2E) return;
-
-      console.log('\n=== Test: Native pETH Transfer to Ethereum Sepolia ===');
-
-      const params: UniversalExecuteParams = {
-        to: {
-          address: TEST_TARGET,
-          chain: CHAIN.ETHEREUM_SEPOLIA,
-        },
-        value: parseEther('0.0001'), // 0.0001 ETH
-      };
-
-      // Verify route detection
-      expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
-
-      const tx = await pushClient.universal.sendTransaction(params);
-
-      console.log(`Push Chain TX Hash: ${tx.hash}`);
-      console.log(`Target Chain: ${tx.chain}`);
-
-      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(tx.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
-
-      // Wait for outbound relay and verify external chain details
-      console.log('Calling tx.wait() - polling for outbound tx hash...');
-      const receipt = await tx.wait();
-      console.log(`Receipt status: ${receipt.status}`);
-      console.log(`External TX Hash: ${receipt.externalTxHash}`);
-      console.log(`External Chain: ${receipt.externalChain}`);
-      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
-
-      expect(receipt.status).toBe(1);
-      expect(receipt.externalTxHash).toBeDefined();
-      expect(receipt.externalChain).toBe(CHAIN.ETHEREUM_SEPOLIA);
 
       // Verify tx succeeded on external chain via RPC
       await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);

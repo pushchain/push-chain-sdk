@@ -8,8 +8,14 @@ export default {
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/packages/core',
   testTimeout: 30000,
-  // Only run unit tests under src/
-  testMatch: ['<rootDir>/src/**/*.spec.ts', '<rootDir>/src/**/*.test.ts'],
+  testMatch: [
+    '<rootDir>/src/**/*.spec.ts',
+    '<rootDir>/src/**/*.test.ts',
+    '<rootDir>/__e2e__/**/*.spec.ts',
+  ],
+  moduleNameMapper: {
+    '^@e2e/shared/(.*)$': '<rootDir>/__e2e__/shared/$1',
+  },
   // Exclude integration tests that make real network calls
   testPathIgnorePatterns: [
     '/node_modules/',

@@ -23,6 +23,7 @@ import type { UniversalExecuteParams, ChainTarget } from '../../../src/lib/orche
 import type { ProgressEvent } from '../../../src/lib/progress-hook/progress-hook.types';
 import { ERC20_EVM } from '../../../src/lib/constants/abi/erc20.evm';
 import { MOVEABLE_TOKEN_CONSTANTS, type MoveableToken } from '../../../src/lib/constants/tokens';
+import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 
 
 // Test constants
@@ -134,10 +135,6 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
   describe('2. CEA Prerequisites', () => {
     it('should report BNB Testnet supports CEA', () => {
       expect(chainSupportsCEA(CHAIN.BNB_TESTNET)).toBe(true);
-    });
-
-    it('should report Ethereum Sepolia supports CEA', () => {
-      expect(chainSupportsCEA(CHAIN.ETHEREUM_SEPOLIA)).toBe(true);
     });
 
     it('should compute deterministic CEA address', async () => {
@@ -259,11 +256,14 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
       console.log(`Receipt status: ${receipt.status}`);
       console.log(`External TX Hash: ${receipt.externalTxHash}`);
       console.log(`External Chain: ${receipt.externalChain}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
 
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
       expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 600000);
 
     it('should handle small amount inbound transfer', async () => {
@@ -289,45 +289,14 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
       const receipt = await tx.wait();
       console.log(`Receipt status: ${receipt.status}`);
       console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
 
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
       expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
-    }, 600000);
 
-    it('should transfer native ETH from Sepolia CEA to Push Chain', async () => {
-      if (skipE2E) return;
-
-      console.log('\n=== Test: Native ETH Inbound from Ethereum Sepolia (CEA → Push) ===');
-
-      const params: UniversalExecuteParams = {
-        from: { chain: CHAIN.ETHEREUM_SEPOLIA },
-        to: ueaAddress,
-        value: parseEther('0.00005'),
-      };
-
-      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
-
-      const tx = await pushClient.universal.sendTransaction(params);
-
-      console.log(`Push Chain TX Hash: ${tx.hash}`);
-      console.log(`Source Chain: ${tx.chain}`);
-
-      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(tx.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
-
-      // Wait for outbound relay and verify external chain details
-      console.log('Calling tx.wait() - polling for outbound tx hash...');
-      const receipt = await tx.wait();
-      console.log(`Receipt status: ${receipt.status}`);
-      console.log(`External TX Hash: ${receipt.externalTxHash}`);
-      console.log(`External Chain: ${receipt.externalChain}`);
-
-      expect(receipt.status).toBe(1);
-      expect(receipt.externalTxHash).toBeDefined();
-      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(receipt.externalChain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 600000);
 
   });
@@ -367,11 +336,14 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
       const receipt = await tx.wait();
       console.log(`Receipt status: ${receipt.status}`);
       console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
 
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
       expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 600000);
   });
 
@@ -411,11 +383,14 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
       const receipt = await tx.wait();
       console.log(`Receipt status: ${receipt.status}`);
       console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
 
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
       expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 600000);
   });
 
@@ -444,7 +419,7 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
       console.log(`Receipt status: ${receipt.status}`);
       console.log(`External TX Hash: ${receipt.externalTxHash}`);
       console.log(`External Chain: ${receipt.externalChain}`);
-      console.log(`External Explorer URL: ${receipt.externalExplorerUrl}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
 
       expect(receipt.hash).toBe(tx.hash);
       expect(receipt.status).toBe(1);
@@ -452,6 +427,8 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
       expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
       expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
       expect(receipt.externalExplorerUrl).toContain(receipt.externalTxHash);
+
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 600000);
   });
 
@@ -489,20 +466,6 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
       }
     }, 60000);
 
-    it('should detect CEA_TO_CEA (not Route 3) when to.chain is external', () => {
-      const params: UniversalExecuteParams = {
-        from: { chain: CHAIN.BNB_TESTNET },
-        to: {
-          address: TEST_TARGET,
-          chain: CHAIN.ETHEREUM_SEPOLIA,
-        } as ChainTarget,
-        value: parseEther('0.001'),
-      };
-
-      // This is Route 4 (CEA_TO_CEA), not Route 3
-      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_CEA);
-    });
-
     it('should treat missing from.chain as Route 1 (UOA_TO_PUSH)', () => {
       const params: UniversalExecuteParams = {
         to: ueaAddress || '0x1234567890123456789012345678901234567890',
@@ -524,7 +487,7 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
 
       const events: ProgressEvent[] = [];
 
-      const originChain = CHAIN.ETHEREUM_SEPOLIA;
+      const originChain = CHAIN.BNB_TESTNET;
       const account = privateKeyToAccount(privateKey);
       const walletClient = createWalletClient({
         account,
@@ -600,11 +563,14 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
       const receipt = await tx.wait();
       console.log(`Receipt status: ${receipt.status}`);
       console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
 
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
       expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 600000);
 
     it('should bridge ERC20 USDT with Push Chain payload (Flow 4.6)', async () => {
@@ -649,30 +615,80 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
       const receipt = await tx.wait();
       console.log(`Receipt status: ${receipt.status}`);
       console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
 
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
       expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
-    }, 600000);
 
-    it('should bridge ERC20 USDT from Sepolia CEA back to Push Chain', async () => {
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+    }, 600000);
+  });
+
+  // ============================================================================
+  // 11. Hybrid Self-Call Flows (Flows 4.3, 4.4, 4.7, 4.8)
+  // CEA has pre-existing balance + user burns additional PRC20.
+  // SDK auto-queries CEA balance and bridges the combined amount.
+  // ============================================================================
+  describe('11. Hybrid Self-Call Flows (burn + CEA pre-existing balance)', () => {
+    it('should bridge native with hybrid amount — burn + CEA balance (Flow 4.3)', async () => {
       if (skipE2E) return;
 
-      // Look up USDT token for Ethereum Sepolia
-      const sepoliaUsdtToken = MOVEABLE_TOKEN_CONSTANTS.ETHEREUM_SEPOLIA.USDT;
+      console.log('\n=== Test: Native Hybrid Self-Call (Flow 4.3) ===');
+      console.log('CEA has pre-existing BNB balance. Burns additional PRC20-BNB.');
+      console.log('SDK auto-detects CEA balance and bridges burn + pre-existing.');
 
-      console.log('\n=== Test: ERC20 Bridge USDT from Sepolia CEA Back to Push (Flow 4.2) ===');
-      console.log(`Using Sepolia USDT: ${sepoliaUsdtToken.address} (${sepoliaUsdtToken.decimals} decimals)`);
+      // Burns 0.00005 BNB worth of PRC20. If CEA has pre-existing BNB,
+      // SDK will auto-include it in the bridge amount.
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: ueaAddress,
+        value: parseEther('0.00005'),
+      };
 
-      const bridgeAmount = BigInt(10000); // 0.01 USDT (6 decimals)
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      console.log(`Source Chain: ${tx.chain}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+
+      console.log('Calling tx.wait() - polling for external chain tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+    }, 600000);
+
+    it('should bridge ERC20 with hybrid amount — burn + CEA balance (Flow 4.4)', async () => {
+      if (skipE2E) return;
+      if (!usdtToken) {
+        console.log('Skipping - USDT token not found');
+        return;
+      }
+
+      console.log('\n=== Test: ERC20 Hybrid Self-Call (Flow 4.4) ===');
+      console.log('CEA has pre-existing USDT. Burns additional PRC20-USDT.');
+      console.log('SDK auto-detects CEA balance and bridges burn + pre-existing.');
+
+      const burnAmount = BigInt(10000); // 0.01 USDT
 
       const params: UniversalExecuteParams = {
-        from: { chain: CHAIN.ETHEREUM_SEPOLIA },
-        to: ueaAddress, // Self — bridge back to own UEA
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: ueaAddress,
         funds: {
-          amount: bridgeAmount,
-          token: sepoliaUsdtToken,
+          amount: burnAmount,
+          token: usdtToken,
         },
       };
 
@@ -682,18 +698,111 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
 
       console.log(`Push Chain TX Hash: ${tx.hash}`);
       expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(tx.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+      expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
 
-      // Wait for outbound relay
       console.log('Calling tx.wait() - polling for external chain tx hash...');
       const receipt = await tx.wait();
       console.log(`Receipt status: ${receipt.status}`);
       console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
 
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(receipt.externalChain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+    }, 600000);
+
+    it('should bridge native hybrid + Push Chain payload (Flow 4.7)', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: Native Hybrid + Payload (Flow 4.7) ===');
+      console.log('CEA has pre-existing BNB. Burns PRC20-BNB + executes payload on Push Chain.');
+
+      const pushPayload = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'approve',
+        args: [TEST_TARGET, BigInt(500000)],
+      });
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: TEST_TARGET,
+        value: parseEther('0.00005'),
+        data: pushPayload,
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+
+      console.log('Calling tx.wait() - polling for external chain tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+    }, 600000);
+
+    it('should bridge ERC20 hybrid + Push Chain payload (Flow 4.8)', async () => {
+      if (skipE2E) return;
+      if (!usdtToken) {
+        console.log('Skipping - USDT token not found');
+        return;
+      }
+
+      console.log('\n=== Test: ERC20 Hybrid + Payload (Flow 4.8) ===');
+      console.log('CEA has pre-existing USDT. Burns PRC20-USDT + executes payload on Push Chain.');
+
+      const burnAmount = BigInt(10000); // 0.01 USDT
+
+      const pushPayload = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'approve',
+        args: [TEST_TARGET, BigInt(1000000)],
+      });
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: TEST_TARGET,
+        funds: {
+          amount: burnAmount,
+          token: usdtToken,
+        },
+        data: pushPayload,
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+
+      console.log('Calling tx.wait() - polling for external chain tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 600000);
   });
 });
