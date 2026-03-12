@@ -4,16 +4,17 @@
  * Tests Route 1 and Route 2 via the new prepareTransaction + executeTransactions API.
  * Route 3 E2E deferred until Route 3 issues are fixed.
  */
-import { PushChain } from '../src';
-import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
-import { CHAIN_INFO } from '../src/lib/constants/chain';
-import { createWalletClient, http, Hex, parseEther } from 'viem';
+import '@e2e/shared/setup';
+import { PushChain } from '../../src';
+import { PUSH_NETWORK, CHAIN } from '../../src/lib/constants/enums';
+import { CHAIN_INFO } from '../../src/lib/constants/chain';
+import { createWalletClient, http, Hex, parseEther, encodeFunctionData } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import dotenv from 'dotenv';
-import path from 'path';
-import type { PreparedUniversalTx } from '../src/lib/orchestrator/orchestrator.types';
+import type { PreparedUniversalTx } from '../../src/lib/orchestrator/orchestrator.types';
+import { ERC20_EVM } from '../../src/lib/constants/abi/erc20.evm';
 
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+// BSC Testnet USDT address
+const BSC_USDT_ADDRESS = '0xBC14F348BC9667be46b35Edc9B68653d86013DC5' as const;
 
 describe('Advance Hopping: Cascade API E2E', () => {
   let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
@@ -287,6 +288,156 @@ describe('Advance Hopping: Cascade API E2E', () => {
 
       expect(typeof builder.send).toBe('function');
     }, 60000);
+
+    it('should send merged same-chain Route 2 hops', async () => {
+      if (skipE2E) return;
+
+      const addr1 = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+      const addr2 = '0x0987654321098765432109876543210987654321' as `0x${string}`;
+
+      const tx1 = await pushClient.universal.prepareTransaction({
+        to: {
+          address: addr1,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        value: parseEther('0.0001'),
+      });
+
+      const tx2 = await pushClient.universal.prepareTransaction({
+        to: {
+          address: addr2,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        value: parseEther('0.0001'),
+      });
+
+      // Send the merged same-chain hops
+      const result = await pushClient.universal
+        .executeTransactions(tx1)
+        .thenOn(tx2)
+        .send();
+
+      console.log(`[TEST] Merged same-chain hops TX Hash: ${result.initialTxHash}`);
+      console.log(`[TEST] Hop count: ${result.hopCount}`);
+
+      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(result.hopCount).toBeGreaterThanOrEqual(1);
+      expect(result.hops.length).toBeGreaterThanOrEqual(1);
+      expect(typeof result.waitForAll).toBe('function');
+
+      // Wait for all hops to complete
+      const completion = await result.waitForAll({
+        timeout: 300000,
+        progressHook: (event) => {
+          console.log(`[TEST:waitForAll] hop ${event.hopIndex} status: ${event.status}`);
+        },
+      });
+
+      expect(completion.success).toBe(true);
+    }, 600000);
+
+    it('should send multi-hop: Payload to BNB + Payload to Push (MH-P-1)', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: Multi-hop Payload BNB + Push ===');
+
+      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+
+      // Hop 1: Route 2 — Payload to BNB (ERC20 approve call)
+      const approvePayload = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'approve',
+        args: [targetAddress, BigInt(1000000)],
+      });
+
+      const tx1 = await pushClient.universal.prepareTransaction({
+        to: {
+          address: BSC_USDT_ADDRESS as `0x${string}`,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        data: approvePayload,
+      });
+
+      // Hop 2: Route 1 — Value transfer on Push Chain
+      const tx2 = await pushClient.universal.prepareTransaction({
+        to: targetAddress,
+        value: parseEther('0.001'),
+      });
+
+      // Chain and send
+      const result = await pushClient.universal
+        .executeTransactions(tx1)
+        .thenOn(tx2)
+        .send();
+
+      console.log(`[TEST] Multi-hop Payload TX Hash: ${result.initialTxHash}`);
+      console.log(`[TEST] Hop count: ${result.hopCount}`);
+
+      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(result.hopCount).toBe(2);
+      expect(result.hops).toHaveLength(2);
+      expect(typeof result.waitForAll).toBe('function');
+
+      // Wait for all hops to complete
+      const completion = await result.waitForAll({
+        timeout: 600000,
+        progressHook: (event) => {
+          console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
+        },
+      });
+
+      expect(completion.success).toBe(true);
+      expect(completion.hops).toHaveLength(2);
+    }, 900000);
+
+    it('should send multi-hop: Funds to BNB + Funds to Push (MH-F-1)', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: Multi-hop Funds BNB + Push ===');
+
+      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+
+      // Hop 1: Route 2 — Value transfer to BNB
+      const tx1 = await pushClient.universal.prepareTransaction({
+        to: {
+          address: targetAddress,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        value: parseEther('0.0001'),
+        gasLimit: BigInt(2000000),
+      });
+
+      // Hop 2: Route 1 — Value transfer on Push Chain
+      const tx2 = await pushClient.universal.prepareTransaction({
+        to: targetAddress,
+        value: parseEther('0.001'),
+      });
+
+      // Chain and send
+      const result = await pushClient.universal
+        .executeTransactions(tx1)
+        .thenOn(tx2)
+        .send();
+
+      console.log(`[TEST] Multi-hop Funds TX Hash: ${result.initialTxHash}`);
+      console.log(`[TEST] Hop count: ${result.hopCount}`);
+
+      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(result.hopCount).toBe(2);
+      expect(result.hops).toHaveLength(2);
+      expect(typeof result.waitForAll).toBe('function');
+
+      // Wait for all hops to complete
+      const completion = await result.waitForAll({
+        timeout: 600000,
+        progressHook: (event) => {
+          console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
+        },
+      });
+
+      expect(completion.success).toBe(true);
+      expect(completion.hops).toHaveLength(2);
+    }, 900000);
   });
 
   // ============================================================================

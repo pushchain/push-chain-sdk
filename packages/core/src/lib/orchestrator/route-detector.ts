@@ -9,6 +9,7 @@
  */
 
 import { CHAIN } from '../constants/enums';
+import { MOVEABLE_TOKENS, type MoveableToken } from '../constants/tokens';
 import type {
   UniversalExecuteParams,
   ChainTarget,
@@ -112,6 +113,19 @@ export function isPushChain(chain: CHAIN): boolean {
  */
 export function isSupportedExternalChain(chain: CHAIN): boolean {
   return SUPPORTED_CEA_CHAINS.includes(chain);
+}
+
+/**
+ * Find which chain(s) a moveable token is registered for, by matching address.
+ * Returns the first matching chain, or undefined if not found.
+ */
+export function findTokenChain(token: MoveableToken): CHAIN | undefined {
+  for (const [chain, tokens] of Object.entries(MOVEABLE_TOKENS)) {
+    if (tokens?.some(t => t.address.toLowerCase() === token.address.toLowerCase() && t.symbol === token.symbol)) {
+      return chain as CHAIN;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -268,6 +282,23 @@ export function validateRouteParams(params: UniversalExecuteParams): void {
       throw new RouteValidationError(
         'migration is not supported on SVM chains'
       );
+    }
+  }
+
+  // Validate funds token symbol is available on target chain (Route 2 outbound)
+  if (params.funds?.token && isChainTarget(params.to)) {
+    const targetChain = params.to.chain;
+    if (!isPushChain(targetChain)) {
+      const targetTokens = MOVEABLE_TOKENS[targetChain] || [];
+      const hasSymbolOnTarget = targetTokens.some(
+        t => t.symbol === params.funds!.token!.symbol
+      );
+      if (!hasSymbolOnTarget) {
+        throw new RouteValidationError(
+          `Unsupported moveable token for current client and route: ` +
+          `token=${params.funds.token.symbol}, destination=${targetChain}`
+        );
+      }
     }
   }
 

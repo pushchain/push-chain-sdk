@@ -135,20 +135,20 @@ const MULTICALL_TUPLE_TYPE = {
 
 /**
  * Build CEA multicall payload for outbound transactions
- * Format: MULTICALL_SELECTOR + abi.encode(Multicall[])
+ * Format: abi.encode(Multicall[]) - raw encoded, NO selector
  *
- * The payload is prefixed with the 4-byte MULTICALL_SELECTOR (0x1749e1e3)
- * followed by the ABI-encoded Multicall[] array.
+ * The CEA contract expects just the ABI-encoded Multicall[] array,
+ * not a function call with selector.
  *
  * @param multicalls - Array of multicall operations to execute on external chain
- * @returns MULTICALL_SELECTOR-prefixed ABI-encoded Multicall[] array
+ * @returns Raw ABI-encoded Multicall[] array
  */
 export function buildCeaMulticallPayload(multicalls: MultiCall[]): `0x${string}` {
   if (multicalls.length === 0) {
     return '0x';
   }
 
-  // Encode the multicall array and prefix with MULTICALL_SELECTOR
+  // Encode the multicall array (raw, no selector prefix)
   const encoded = encodeAbiParameters(
     [MULTICALL_TUPLE_TYPE],
     [multicalls.map((m) => ({
@@ -158,7 +158,7 @@ export function buildCeaMulticallPayload(multicalls: MultiCall[]): `0x${string}`
     }))]
   );
 
-  return `${MULTICALL_SELECTOR}${encoded.slice(2)}` as `0x${string}`;
+  return encoded;
 }
 
 /**

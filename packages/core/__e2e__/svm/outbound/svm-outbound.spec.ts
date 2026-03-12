@@ -10,31 +10,29 @@
  *
  * Primary test chain: Solana Devnet
  */
-import { PushChain } from '../src';
-import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
-import { CHAIN_INFO } from '../src/lib/constants/chain';
-import { MOVEABLE_TOKENS } from '../src/lib/constants/tokens';
+import '@e2e/shared/setup';
+import { PushChain } from '../../../src';
+import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
+import { CHAIN_INFO } from '../../../src/lib/constants/chain';
+import { MOVEABLE_TOKENS } from '../../../src/lib/constants/tokens';
 import { createWalletClient, http, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { PublicKey } from '@solana/web3.js';
-import dotenv from 'dotenv';
-import path from 'path';
-import { chainSupportsOutbound, chainSupportsCEA } from '../src/lib/orchestrator/cea-utils';
-import { TransactionRoute, detectRoute } from '../src/lib/orchestrator/route-detector';
+import { chainSupportsOutbound, chainSupportsCEA } from '../../../src/lib/orchestrator/cea-utils';
+import { TransactionRoute, detectRoute } from '../../../src/lib/orchestrator/route-detector';
 import {
   isSvmChain,
   isValidSolanaHexAddress,
   encodeSvmExecutePayload,
-} from '../src/lib/orchestrator/payload-builders';
+} from '../../../src/lib/orchestrator/payload-builders';
 import type {
   UniversalExecuteParams,
   ChainTarget,
   ChainSource,
   SvmExecutePayloadFields,
-} from '../src/lib/orchestrator/orchestrator.types';
-import type { ProgressEvent } from '../src/lib/progress-hook/progress-hook.types';
-
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+} from '../../../src/lib/orchestrator/orchestrator.types';
+import type { ProgressEvent } from '../../../src/lib/progress-hook/progress-hook.types';
+import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 
 // 32-byte Solana addresses as 0x-prefixed hex
 // Gateway vault PDA on devnet (known existing account)
@@ -264,6 +262,49 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+    }, 360000);
+
+    it('should withdraw SOL with custom gasLimit', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: Withdraw SOL with custom gasLimit ===');
+
+      const params: UniversalExecuteParams = {
+        to: {
+          address: TEST_SOL_TARGET,
+          chain: CHAIN.SOLANA_DEVNET,
+        },
+        value: BigInt(100_000_000), // 0.1 SOL in lamports
+        gasLimit: BigInt(2_000_000), // Custom compute unit limit
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      console.log(`Target Chain: ${tx.chain}`);
+
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(tx.chain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Wait for outbound relay and verify external chain details
+      console.log('Calling tx.wait() - polling for outbound tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Chain: ${receipt.externalChain}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 360000);
   });
 
@@ -305,6 +346,9 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 360000);
   });
 
@@ -362,6 +406,9 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 360000);
 
     it('should execute CPI with no value (rent-only)', async () => {
@@ -411,6 +458,59 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+    }, 360000);
+
+    it('should execute CPI with non-zero rent fee for account creation', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: Execute CPI with rent fee (1.5M lamports) ===');
+
+      // receive_sol discriminator + amount=1 lamport
+      const discriminator = new Uint8Array([121, 244, 250, 3, 8, 229, 225, 1]);
+      const amountBuf = new Uint8Array(8);
+      new DataView(amountBuf.buffer).setBigUint64(0, BigInt(1), true); // LE
+      const ixData = new Uint8Array([...discriminator, ...amountBuf]);
+
+      const params: UniversalExecuteParams = {
+        to: {
+          address: TEST_PROGRAM,
+          chain: CHAIN.SOLANA_DEVNET,
+        },
+        value: BigInt(50_000_000), // 0.05 SOL for CPI
+        svmExecute: {
+          targetProgram: TEST_PROGRAM,
+          accounts: [
+            { pubkey: COUNTER_PDA, isWritable: true },       // counter PDA
+            { pubkey: TEST_SOL_TARGET, isWritable: true },    // recipient
+            { pubkey: ceaPdaHex, isWritable: true },           // cea_authority (actual CEA PDA)
+            { pubkey: SOL_ZERO_ADDRESS, isWritable: false },   // system_program (0x00...00)
+          ],
+          ixData,
+          rentFee: BigInt(1_500_000), // 1.5M lamports for rent-exempt account creation
+        },
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      console.log('Calling tx.wait() - polling for outbound tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Chain: ${receipt.externalChain}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 360000);
   });
 
@@ -467,6 +567,9 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 360000);
   });
 
@@ -523,6 +626,9 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 360000);
   });
 
@@ -578,6 +684,9 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 360000);
   });
 
@@ -616,6 +725,9 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 360000);
   });
 
@@ -662,6 +774,9 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       // SVM explorer URLs use base58-encoded signatures, not hex
       expect(receipt.externalExplorerUrl).toContain('explorer.solana.com/tx/');
       expect(receipt.externalExplorerUrl).toContain('cluster=devnet');
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 600000);
 
     it('should execute outbound SOL transfer with custom gasLimit', async () => {
@@ -686,6 +801,9 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 600000);
   });
 
@@ -804,6 +922,9 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 600000);
   });
 
@@ -843,6 +964,9 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 600000);
   });
 
@@ -878,6 +1002,9 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 600000);
   });
 
@@ -1004,6 +1131,9 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 360000);
 
     it('should emit correct hooks for CEA-to-UEA SOL flow (Route 3)', async () => {
@@ -1054,6 +1184,9 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 600000);
   });
 });

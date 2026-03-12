@@ -427,7 +427,7 @@ export interface UniversalOutboundTxRequest {
   amount: bigint;
   /** Gas limit for fee quote (0 = default BASE_GAS_LIMIT) */
   gasLimit: bigint;
-  /** ABI-encoded Multicall[] with MULTICALL_SELECTOR prefix */
+  /** Raw ABI-encoded Multicall[] (no selector prefix) */
   payload: `0x${string}`;
   /** Address to receive funds on revert */
   revertRecipient: `0x${string}`;

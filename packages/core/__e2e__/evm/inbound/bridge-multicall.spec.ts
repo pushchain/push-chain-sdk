@@ -1,13 +1,11 @@
-import { PushChain } from '../src';
-import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
-import { CHAIN_INFO } from '../src/lib/constants/chain';
-import { MOVEABLE_TOKENS } from '../src/lib/constants/tokens';
+import '@e2e/shared/setup';
+import { PushChain } from '../../../src';
+import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
+import { CHAIN_INFO } from '../../../src/lib/constants/chain';
+import { MOVEABLE_TOKENS } from '../../../src/lib/constants/tokens';
 import { createWalletClient, http, Hex, encodeFunctionData } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import dotenv from 'dotenv';
-import path from 'path';
 
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 /**
  * E2E Tests for Bridge + Multicall functionality

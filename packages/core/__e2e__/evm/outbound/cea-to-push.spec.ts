@@ -1,3 +1,4 @@
+import '@e2e/shared/setup';
 /**
  * CEA → Push: Inbound Transactions (Route 3)
  *
@@ -11,21 +12,18 @@
  * - CEA must be deployed on the external chain
  * - The burn/deposit mechanism carries value through the relay (no pre-funding needed)
  */
-import { PushChain } from '../src';
-import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
-import { CHAIN_INFO, UNIVERSAL_GATEWAY_ADDRESSES } from '../src/lib/constants/chain';
+import { PushChain } from '../../../src';
+import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
+import { CHAIN_INFO, UNIVERSAL_GATEWAY_ADDRESSES } from '../../../src/lib/constants/chain';
 import { createWalletClient, http, Hex, parseEther, formatEther, createPublicClient, encodeFunctionData } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import dotenv from 'dotenv';
-import path from 'path';
-import { getCEAAddress, chainSupportsCEA } from '../src/lib/orchestrator/cea-utils';
-import { TransactionRoute, detectRoute } from '../src/lib/orchestrator/route-detector';
-import type { UniversalExecuteParams, ChainTarget } from '../src/lib/orchestrator/orchestrator.types';
-import type { ProgressEvent } from '../src/lib/progress-hook/progress-hook.types';
-import { ERC20_EVM } from '../src/lib/constants/abi/erc20.evm';
-import { MOVEABLE_TOKENS, type MoveableToken } from '../src/lib/constants/tokens';
+import { getCEAAddress, chainSupportsCEA } from '../../../src/lib/orchestrator/cea-utils';
+import { TransactionRoute, detectRoute } from '../../../src/lib/orchestrator/route-detector';
+import type { UniversalExecuteParams, ChainTarget } from '../../../src/lib/orchestrator/orchestrator.types';
+import type { ProgressEvent } from '../../../src/lib/progress-hook/progress-hook.types';
+import { ERC20_EVM } from '../../../src/lib/constants/abi/erc20.evm';
+import { MOVEABLE_TOKENS, type MoveableToken } from '../../../src/lib/constants/tokens';
 
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 // Test constants
 const TEST_TARGET = '0x1234567890123456789012345678901234567890' as `0x${string}`;
@@ -297,6 +295,40 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
       expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+    }, 600000);
+
+    it('should transfer native ETH from Sepolia CEA to Push Chain', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: Native ETH Inbound from Ethereum Sepolia (CEA → Push) ===');
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.ETHEREUM_SEPOLIA },
+        to: ueaAddress,
+        value: parseEther('0.00005'),
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      console.log(`Source Chain: ${tx.chain}`);
+
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(tx.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+
+      // Wait for outbound relay and verify external chain details
+      console.log('Calling tx.wait() - polling for outbound tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Chain: ${receipt.externalChain}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(receipt.externalChain).toBe(CHAIN.ETHEREUM_SEPOLIA);
     }, 600000);
 
   });
@@ -623,6 +655,51 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
       expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+    }, 600000);
+
+    it('should bridge ERC20 USDT from Sepolia CEA back to Push Chain', async () => {
+      if (skipE2E) return;
+
+      // Look up USDT token for Ethereum Sepolia
+      const sepoliaTokens = MOVEABLE_TOKENS[CHAIN.ETHEREUM_SEPOLIA] || [];
+      const sepoliaUsdtToken = sepoliaTokens.find(t => t.symbol === 'USDT');
+      if (!sepoliaUsdtToken) {
+        console.log('Skipping - USDT token not found in MOVEABLE_TOKENS for Ethereum Sepolia');
+        return;
+      }
+
+      console.log('\n=== Test: ERC20 Bridge USDT from Sepolia CEA Back to Push (Flow 4.2) ===');
+      console.log(`Using Sepolia USDT: ${sepoliaUsdtToken.address} (${sepoliaUsdtToken.decimals} decimals)`);
+
+      const bridgeAmount = BigInt(10000); // 0.01 USDT (6 decimals)
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.ETHEREUM_SEPOLIA },
+        to: ueaAddress, // Self — bridge back to own UEA
+        funds: {
+          amount: bridgeAmount,
+          token: sepoliaUsdtToken,
+        },
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(tx.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+
+      // Wait for outbound relay
+      console.log('Calling tx.wait() - polling for external chain tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(receipt.externalChain).toBe(CHAIN.ETHEREUM_SEPOLIA);
     }, 600000);
   });
 });

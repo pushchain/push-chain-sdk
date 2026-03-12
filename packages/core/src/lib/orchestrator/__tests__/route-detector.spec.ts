@@ -73,8 +73,8 @@ describe('route-detector', () => {
       expect(isSupportedExternalChain(CHAIN.PUSH_TESTNET_DONUT)).toBe(false);
     });
 
-    it('should return false for Solana (CEA not supported)', () => {
-      expect(isSupportedExternalChain(CHAIN.SOLANA_DEVNET)).toBe(false);
+    it('should return true for Solana', () => {
+      expect(isSupportedExternalChain(CHAIN.SOLANA_DEVNET)).toBe(true);
     });
   });
 

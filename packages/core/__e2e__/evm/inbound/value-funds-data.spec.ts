@@ -1,6 +1,8 @@
-import { PushChain } from '../src';
-import { CHAIN } from '../src/lib/constants/enums';
-import { MOVEABLE_TOKENS } from '../src/lib/constants/tokens';
+import '@e2e/shared/setup';
+import { PushChain } from '../../../src';
+import { CHAIN } from '../../../src/lib/constants/enums';
+import { COUNTER_ABI_PAYABLE } from '../../../src/lib/push-chain/helpers/abis';
+import { COUNTER_ADDRESS_PAYABLE } from '../../../src/lib/push-chain/helpers/addresses';
 import {
   createWalletClient,
   createPublicClient,
@@ -14,27 +16,24 @@ import {
   generatePrivateKey,
 } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
-import dotenv from 'dotenv';
-import path from 'path';
 
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 // Use a reliable Sepolia RPC (the default publicnode one can be flaky)
 const SEPOLIA_RPC = 'https://1rpc.io/sepolia';
 
 /**
- * E2E tests for pcTx `.at(-1)` fix.
+ * E2E tests for "Value + Funds + Data to Others" transaction route.
  *
- * The orchestrator returns the **last** pcTx entry from
- * queryUniversalTxStatusFromGatewayTx, which is the final execution result.
- * A prior regression used `.find()` (first match) instead of `.at(-1)`,
- * returning the MintPC tx instead of the executePayload tx.
+ * This test validates Test Case 14 from push-chain-examples:
+ * - Sends native value (ETH)
+ * - Sends ERC20 token funds (USDT)
+ * - Sends encoded contract call data (increment function)
+ * - To a different address (counter contract, not self)
  *
- * These tests use a **fresh wallet** (generated private key, undeployed UEA)
- * funded from the main wallet — matching the exact user scenario that
- * exposed the bug.
+ * Tests use a **fresh wallet** (generated private key, undeployed UEA)
+ * funded from the main wallet — simulating a new user scenario.
  */
-describe('pcTx last-transaction selection (e2e)', () => {
+describe('Value + Funds + Data to Others - New User (e2e)', () => {
   const originChain = CHAIN.ETHEREUM_SEPOLIA;
 
   // Main funded wallet used to fund fresh wallets
@@ -66,9 +65,10 @@ describe('pcTx last-transaction selection (e2e)', () => {
       rpcUrls: { [originChain]: [SEPOLIA_RPC] },
     });
 
-    console.log('\n=== PCTX LAST-TX TEST SETUP ===');
+    console.log('\n=== VALUE + FUNDS + DATA TO OTHERS TEST SETUP ===');
     console.log(`Main wallet: ${mainAccount.address}`);
     console.log(`USDT address: ${mainPushClient.moveable.token.USDT.address}`);
+    console.log(`Counter contract: ${COUNTER_ADDRESS_PAYABLE}`);
   }, 100000);
 
   /**
@@ -137,6 +137,7 @@ describe('pcTx last-transaction selection (e2e)', () => {
     const pushClient = await PushChain.initialize(newSigner, {
       network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET,
       rpcUrls: { [originChain]: [SEPOLIA_RPC] },
+      printTraces: true,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       progressHook: (val: any) => {
         const now = Date.now();
@@ -170,6 +171,7 @@ describe('pcTx last-transaction selection (e2e)', () => {
     const pushClient = await PushChain.initialize(mainSigner, {
       network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET,
       rpcUrls: { [originChain]: [SEPOLIA_RPC] },
+      printTraces: true,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       progressHook: (val: any) => {
         const now = Date.now();
@@ -183,21 +185,36 @@ describe('pcTx last-transaction selection (e2e)', () => {
     return { pushClient, progressEvents, startTime };
   }
 
-  it('should bridge USDT to self from fresh wallet (undeployed UEA)', async () => {
-    console.log('\n=== BRIDGE USDT TO SELF — FRESH WALLET ===');
+  // ========== FRESH WALLET (undeployed UEA) TESTS ==========
+
+  it('should send value + funds + data to counter contract from fresh wallet (undeployed UEA)', async () => {
+    console.log('\n=== VALUE + FUNDS + DATA TO OTHERS — FRESH WALLET ===');
     const { pushClient, progressEvents } = await createFreshFundedClient();
 
     const usdt = pushClient.moveable.token.USDT;
-    const amount = PushChain.utils.helpers.parseUnits('0.01', {
+
+    // Test 14 amounts (matching push-chain-examples)
+    const valueAmount = PushChain.utils.helpers.parseUnits('0.00000014', 18);
+    const fundsAmount = PushChain.utils.helpers.parseUnits('0.000014', {
       decimals: usdt.decimals,
     });
 
-    console.log(`Recipient: ${pushClient.universal.account} (self/UEA)`);
-    console.log(`Amount: 0.01 USDT`);
+    // Encode the increment function call
+    const incrementData = PushChain.utils.helpers.encodeTxData({
+      abi: COUNTER_ABI_PAYABLE as unknown as any[],
+      functionName: 'increment',
+    });
+
+    console.log(`Recipient: ${COUNTER_ADDRESS_PAYABLE} (counter contract)`);
+    console.log(`Value: 0.00000014 ETH`);
+    console.log(`Funds: 0.000014 USDT`);
+    console.log(`Data: ${incrementData} (increment function)`);
 
     const tx = await pushClient.universal.sendTransaction({
-      to: pushClient.universal.account,
-      funds: { amount, token: usdt },
+      to: COUNTER_ADDRESS_PAYABLE,
+      value: valueAmount,
+      funds: { amount: fundsAmount, token: usdt },
+      data: incrementData,
     });
 
     console.log(`TX Hash: ${tx.hash}`);
@@ -206,32 +223,47 @@ describe('pcTx last-transaction selection (e2e)', () => {
 
     const receipt = await tx.wait();
     console.log('Receipt:', JSON.stringify(receipt, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
+
     expect(receipt.status).toBe(1);
 
-    // Verify the full funds flow completed
+    // Verify the full transaction flow completed
     const hookIds = progressEvents.map((e) => e.event.id);
-    expect(hookIds).toContain('SEND-TX-01');
+    expect(hookIds).toContain('SEND-TX-01'); // Transaction initiated
     expect(hookIds).toContain('SEND-TX-06-06'); // Funds Credited on Push Chain
     expect(hookIds).toContain('SEND-TX-99-01'); // Completion
   }, 600000);
 
-  it('should bridge USDT to different address from fresh wallet', async () => {
-    console.log('\n=== BRIDGE USDT TO OTHER — FRESH WALLET ===');
+  it('should send value + funds + data to different address from fresh wallet', async () => {
+    console.log('\n=== VALUE + FUNDS + DATA TO OTHER ADDRESS — FRESH WALLET ===');
     const { pushClient, progressEvents } = await createFreshFundedClient();
 
     const usdt = pushClient.moveable.token.USDT;
-    const amount = PushChain.utils.helpers.parseUnits('0.01', {
+    const differentAddress =
+      '0x742d35Cc6634c0532925A3b844BC9e7595F5bE21' as `0x${string}`;
+
+    // Test 14 amounts
+    const valueAmount = PushChain.utils.helpers.parseUnits('0.00000014', 18);
+    const fundsAmount = PushChain.utils.helpers.parseUnits('0.000014', {
       decimals: usdt.decimals,
     });
-    const differentAddress =
-      '0x742d35Cc6634c0532925A3b844BC9e7595F5bE21' as `0x${string}`;
+
+    // Encode the increment function call (even if target isn't a contract,
+    // this tests the full data flow)
+    const incrementData = PushChain.utils.helpers.encodeTxData({
+      abi: COUNTER_ABI_PAYABLE as unknown as any[],
+      functionName: 'increment',
+    });
 
     console.log(`Recipient: ${differentAddress}`);
-    console.log(`Amount: 0.01 USDT`);
+    console.log(`Value: 0.00000014 ETH`);
+    console.log(`Funds: 0.000014 USDT`);
+    console.log(`Data: ${incrementData}`);
 
     const tx = await pushClient.universal.sendTransaction({
       to: differentAddress,
-      funds: { amount, token: usdt },
+      value: valueAmount,
+      funds: { amount: fundsAmount, token: usdt },
+      data: incrementData,
     });
 
     console.log(`TX Hash: ${tx.hash}`);
@@ -240,75 +272,6 @@ describe('pcTx last-transaction selection (e2e)', () => {
 
     const receipt = await tx.wait();
     console.log(`Receipt Status: ${receipt.status}`);
-    expect(receipt.status).toBe(1);
-
-    const hookIds = progressEvents.map((e) => e.event.id);
-    expect(hookIds).toContain('SEND-TX-01');
-    expect(hookIds).toContain('SEND-TX-06-06');
-    expect(hookIds).toContain('SEND-TX-99-01');
-  }, 600000);
-
-  it('should bridge native ETH to self from fresh wallet', async () => {
-    console.log('\n=== BRIDGE NATIVE ETH TO SELF — FRESH WALLET ===');
-    const { pushClient, progressEvents } = await createFreshFundedClient();
-
-    const tokens = MOVEABLE_TOKENS[originChain] || [];
-    const ethToken = tokens.find((t) => t.symbol === 'ETH');
-    if (!ethToken) throw new Error('ETH token not found for Sepolia');
-
-    const amount = PushChain.utils.helpers.parseUnits('0.0001', 18);
-
-    console.log(`Recipient: ${pushClient.universal.account} (self/UEA)`);
-    console.log(`Amount: 0.0001 ETH`);
-
-    const tx = await pushClient.universal.sendTransaction({
-      to: pushClient.universal.account,
-      funds: { amount, token: ethToken },
-    });
-
-    console.log(`TX Hash: ${tx.hash}`);
-   
-    expect(tx.hash).toBeDefined();
-    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-
-    const receipt = await tx.wait();
-    console.log(`Receipt : ${JSON.stringify(receipt, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2)}`);
-
-    console.log(`Receipt Status: ${receipt.status}`);
-    expect(receipt.status).toBe(1);
-
-    const hookIds = progressEvents.map((e) => e.event.id);
-    expect(hookIds).toContain('SEND-TX-01');
-    expect(hookIds).toContain('SEND-TX-06-06');
-    expect(hookIds).toContain('SEND-TX-99-01');
-  }, 600000);
-
-  it('should bridge native ETH to different address from fresh wallet', async () => {
-    console.log('\n=== BRIDGE NATIVE ETH TO OTHER — FRESH WALLET ===');
-    const { pushClient, progressEvents } = await createFreshFundedClient();
-
-    const tokens = MOVEABLE_TOKENS[originChain] || [];
-    const ethToken = tokens.find((t) => t.symbol === 'ETH');
-    if (!ethToken) throw new Error('ETH token not found for Sepolia');
-
-    const amount = PushChain.utils.helpers.parseUnits('0.0001', 18);
-    const differentAddress =
-      '0x742d35Cc6634c0532925A3b844BC9e7595F5bE21' as `0x${string}`;
-
-    console.log(`Recipient: ${differentAddress}`);
-    console.log(`Amount: 0.0001 ETH`);
-
-    const tx = await pushClient.universal.sendTransaction({
-      to: differentAddress,
-      funds: { amount, token: ethToken },
-    });
-
-    console.log(`TX Hash: ${tx.hash}`);
-    expect(tx.hash).toBeDefined();
-    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-
-    const receipt = await tx.wait();
-    console.log('Receipt:', JSON.stringify(receipt, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
     expect(receipt.status).toBe(1);
 
     const hookIds = progressEvents.map((e) => e.event.id);
@@ -319,21 +282,34 @@ describe('pcTx last-transaction selection (e2e)', () => {
 
   // ========== EXISTING WALLET (deployed UEA) TESTS ==========
 
-  it('should bridge USDT to self from existing wallet (deployed UEA)', async () => {
-    console.log('\n=== BRIDGE USDT TO SELF — EXISTING WALLET ===');
+  it('should send value + funds + data to counter contract from existing wallet (deployed UEA)', async () => {
+    console.log('\n=== VALUE + FUNDS + DATA TO OTHERS — EXISTING WALLET ===');
     const { pushClient, progressEvents } = await createMainWalletClientWithHook();
 
     const usdt = pushClient.moveable.token.USDT;
-    const amount = PushChain.utils.helpers.parseUnits('0.01', {
+
+    // Test 14 amounts
+    const valueAmount = PushChain.utils.helpers.parseUnits('0.00000014', 18);
+    const fundsAmount = PushChain.utils.helpers.parseUnits('0.000014', {
       decimals: usdt.decimals,
     });
 
-    console.log(`Recipient: ${pushClient.universal.account} (self/UEA)`);
-    console.log(`Amount: 0.01 USDT`);
+    // Encode the increment function call
+    const incrementData = PushChain.utils.helpers.encodeTxData({
+      abi: COUNTER_ABI_PAYABLE as unknown as any[],
+      functionName: 'increment',
+    });
+
+    console.log(`Recipient: ${COUNTER_ADDRESS_PAYABLE} (counter contract)`);
+    console.log(`Value: 0.00000014 ETH`);
+    console.log(`Funds: 0.000014 USDT`);
+    console.log(`Data: ${incrementData}`);
 
     const tx = await pushClient.universal.sendTransaction({
-      to: pushClient.universal.account,
-      funds: { amount, token: usdt },
+      to: COUNTER_ADDRESS_PAYABLE,
+      value: valueAmount,
+      funds: { amount: fundsAmount, token: usdt },
+      data: incrementData,
     });
 
     console.log(`TX Hash: ${tx.hash}`);
@@ -341,7 +317,14 @@ describe('pcTx last-transaction selection (e2e)', () => {
     expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
 
     const receipt = await tx.wait();
-    console.log('Receipt:', JSON.stringify(receipt, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
+    console.log(
+      'Receipt:',
+      JSON.stringify(
+        receipt,
+        (_, v) => (typeof v === 'bigint' ? v.toString() : v),
+        2
+      )
+    );
     expect(receipt.status).toBe(1);
 
     const hookIds = progressEvents.map((e) => e.event.id);
@@ -350,23 +333,36 @@ describe('pcTx last-transaction selection (e2e)', () => {
     expect(hookIds).toContain('SEND-TX-99-01');
   }, 600000);
 
-  it('should bridge USDT to different address from existing wallet (deployed UEA)', async () => {
-    console.log('\n=== BRIDGE USDT TO OTHER — EXISTING WALLET ===');
+  it('should send value + funds + data to different address from existing wallet', async () => {
+    console.log('\n=== VALUE + FUNDS + DATA TO OTHER ADDRESS — EXISTING WALLET ===');
     const { pushClient, progressEvents } = await createMainWalletClientWithHook();
 
     const usdt = pushClient.moveable.token.USDT;
-    const amount = PushChain.utils.helpers.parseUnits('0.01', {
+    const differentAddress =
+      '0x742d35Cc6634c0532925A3b844BC9e7595F5bE21' as `0x${string}`;
+
+    // Test 14 amounts
+    const valueAmount = PushChain.utils.helpers.parseUnits('0.00000014', 18);
+    const fundsAmount = PushChain.utils.helpers.parseUnits('0.000014', {
       decimals: usdt.decimals,
     });
-    const differentAddress =
-      '0x742d35Cc6634c0532925A3b844BC9e7595F5bE21' as `0x${string}`;
+
+    // Encode the increment function call
+    const incrementData = PushChain.utils.helpers.encodeTxData({
+      abi: COUNTER_ABI_PAYABLE as unknown as any[],
+      functionName: 'increment',
+    });
 
     console.log(`Recipient: ${differentAddress}`);
-    console.log(`Amount: 0.01 USDT`);
+    console.log(`Value: 0.00000014 ETH`);
+    console.log(`Funds: 0.000014 USDT`);
+    console.log(`Data: ${incrementData}`);
 
     const tx = await pushClient.universal.sendTransaction({
       to: differentAddress,
-      funds: { amount, token: usdt },
+      value: valueAmount,
+      funds: { amount: fundsAmount, token: usdt },
+      data: incrementData,
     });
 
     console.log(`TX Hash: ${tx.hash}`);
@@ -374,73 +370,14 @@ describe('pcTx last-transaction selection (e2e)', () => {
     expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
 
     const receipt = await tx.wait();
-    console.log('Receipt:', JSON.stringify(receipt, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
-    expect(receipt.status).toBe(1);
-
-    const hookIds = progressEvents.map((e) => e.event.id);
-    expect(hookIds).toContain('SEND-TX-01');
-    expect(hookIds).toContain('SEND-TX-06-06');
-    expect(hookIds).toContain('SEND-TX-99-01');
-  }, 600000);
-
-  it('should bridge native ETH to self from existing wallet (deployed UEA)', async () => {
-    console.log('\n=== BRIDGE NATIVE ETH TO SELF — EXISTING WALLET ===');
-    const { pushClient, progressEvents } = await createMainWalletClientWithHook();
-
-    const tokens = MOVEABLE_TOKENS[originChain] || [];
-    const ethToken = tokens.find((t) => t.symbol === 'ETH');
-    if (!ethToken) throw new Error('ETH token not found for Sepolia');
-
-    const amount = PushChain.utils.helpers.parseUnits('0.0001', 18);
-
-    console.log(`Recipient: ${pushClient.universal.account} (self/UEA)`);
-    console.log(`Amount: 0.0001 ETH`);
-
-    const tx = await pushClient.universal.sendTransaction({
-      to: pushClient.universal.account,
-      funds: { amount, token: ethToken },
-    });
-
-    console.log(`TX Hash: ${tx.hash}`);
-    expect(tx.hash).toBeDefined();
-    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-
-    const receipt = await tx.wait();
-    console.log('Receipt:', JSON.stringify(receipt, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
-    expect(receipt.status).toBe(1);
-
-    const hookIds = progressEvents.map((e) => e.event.id);
-    expect(hookIds).toContain('SEND-TX-01');
-    expect(hookIds).toContain('SEND-TX-06-06');
-    expect(hookIds).toContain('SEND-TX-99-01');
-  }, 600000);
-
-  it('should bridge native ETH to different address from existing wallet (deployed UEA)', async () => {
-    console.log('\n=== BRIDGE NATIVE ETH TO OTHER — EXISTING WALLET ===');
-    const { pushClient, progressEvents } = await createMainWalletClientWithHook();
-
-    const tokens = MOVEABLE_TOKENS[originChain] || [];
-    const ethToken = tokens.find((t) => t.symbol === 'ETH');
-    if (!ethToken) throw new Error('ETH token not found for Sepolia');
-
-    const amount = PushChain.utils.helpers.parseUnits('0.0001', 18);
-    const differentAddress =
-      '0x742d35Cc6634c0532925A3b844BC9e7595F5bE21' as `0x${string}`;
-
-    console.log(`Recipient: ${differentAddress}`);
-    console.log(`Amount: 0.0001 ETH`);
-
-    const tx = await pushClient.universal.sendTransaction({
-      to: differentAddress,
-      funds: { amount, token: ethToken },
-    });
-
-    console.log(`TX Hash: ${tx.hash}`);
-    expect(tx.hash).toBeDefined();
-    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-
-    const receipt = await tx.wait();
-    console.log('Receipt:', JSON.stringify(receipt, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
+    console.log(
+      'Receipt:',
+      JSON.stringify(
+        receipt,
+        (_, v) => (typeof v === 'bigint' ? v.toString() : v),
+        2
+      )
+    );
     expect(receipt.status).toBe(1);
 
     const hookIds = progressEvents.map((e) => e.event.id);

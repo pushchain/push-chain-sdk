@@ -1,14 +1,11 @@
+import '@e2e/shared/setup';
 import { privateKeyToAccount } from 'viem/accounts';
-import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
+import { PUSH_NETWORK, CHAIN } from '../../src/lib/constants/enums';
 import { createWalletClient, Hex, http } from 'viem';
-import { PushChain } from '../src';
-import { CHAIN_INFO } from '../src/lib/constants/chain';
-import dotenv from 'dotenv';
-import path from 'path';
-import { ProgressEvent } from '../src/lib/progress-hook/progress-hook.types';
-import { UniversalTxResponse } from '../src/lib/orchestrator/orchestrator.types';
-
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+import { PushChain } from '../../src';
+import { CHAIN_INFO } from '../../src/lib/constants/chain';
+import { ProgressEvent } from '../../src/lib/progress-hook/progress-hook.types';
+import { UniversalTxResponse } from '../../src/lib/orchestrator/orchestrator.types';
 
 describe('trackTransaction E2E', () => {
   const pushNetwork = PUSH_NETWORK.TESTNET_DONUT;

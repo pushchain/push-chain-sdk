@@ -1,6 +1,7 @@
-import { PushChain } from '../src';
-import { CHAIN } from '../src/lib/constants/enums';
-import { CHAIN_INFO } from '../src/lib/constants/chain';
+import '@e2e/shared/setup';
+import { PushChain } from '../../../src';
+import { CHAIN } from '../../../src/lib/constants/enums';
+import { CHAIN_INFO } from '../../../src/lib/constants/chain';
 import {
   createWalletClient,
   createPublicClient,
@@ -11,10 +12,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
-import dotenv from 'dotenv';
-import path from 'path';
 
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 describe('Send USDT to Self vs Different Address (e2e)', () => {
   let pushClient: PushChain;

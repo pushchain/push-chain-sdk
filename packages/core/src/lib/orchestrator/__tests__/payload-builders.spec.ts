@@ -39,11 +39,6 @@ const MULTICALL_TUPLE_TYPE = {
   ],
 };
 
-/** Strip the 4-byte MULTICALL_SELECTOR prefix to get raw ABI-encoded data */
-function stripSelector(encoded: `0x${string}`): `0x${string}` {
-  return `0x${encoded.slice(10)}` as `0x${string}`;
-}
-
 // ============================================================================
 // buildCeaMulticallPayload
 // ============================================================================
@@ -52,10 +47,12 @@ describe('buildCeaMulticallPayload', () => {
     expect(buildCeaMulticallPayload([])).toBe('0x');
   });
 
-  it('should prefix output with MULTICALL_SELECTOR', () => {
+  it('should return raw ABI-encoded data without selector prefix', () => {
     const calls: MultiCall[] = [{ to: ALICE, value: BigInt(100), data: '0x' }];
     const encoded = buildCeaMulticallPayload(calls);
-    expect(encoded.startsWith(MULTICALL_SELECTOR)).toBe(true);
+    expect(encoded.startsWith('0x')).toBe(true);
+    // Should NOT have a function selector prefix — raw abi.encode(Multicall[])
+    expect(encoded.startsWith(MULTICALL_SELECTOR)).toBe(false);
   });
 
   it('should encode a single multicall entry', () => {
@@ -63,10 +60,10 @@ describe('buildCeaMulticallPayload', () => {
     const encoded = buildCeaMulticallPayload(calls);
 
     expect(encoded).toMatch(/^0x/);
-    expect(encoded.length).toBeGreaterThan(10); // 4-byte selector + data
+    expect(encoded.length).toBeGreaterThan(2);
 
-    // Decode and verify roundtrip (strip selector first)
-    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], stripSelector(encoded));
+    // Decode and verify roundtrip (raw ABI-encoded, no selector to strip)
+    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], encoded);
     expect(decoded).toHaveLength(1);
     expect((decoded[0] as { to: string }).to.toLowerCase()).toBe(ALICE.toLowerCase());
     expect((decoded[0] as { value: bigint }).value).toBe(BigInt(100));
@@ -79,7 +76,7 @@ describe('buildCeaMulticallPayload', () => {
     ];
     const encoded = buildCeaMulticallPayload(calls);
 
-    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], stripSelector(encoded));
+    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], encoded);
     expect(decoded).toHaveLength(2);
     expect((decoded[1] as { to: string }).to.toLowerCase()).toBe(BOB.toLowerCase());
   });
@@ -91,8 +88,8 @@ describe('buildCeaMulticallPayload', () => {
 describe('buildSingleCeaCall', () => {
   it('should encode a single call using buildCeaMulticallPayload', () => {
     const encoded = buildSingleCeaCall(ALICE, BigInt(50), '0xabcd');
-    expect(encoded.startsWith(MULTICALL_SELECTOR)).toBe(true);
-    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], stripSelector(encoded));
+    expect(encoded.startsWith('0x')).toBe(true);
+    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], encoded);
     expect(decoded).toHaveLength(1);
     expect((decoded[0] as { to: string }).to.toLowerCase()).toBe(ALICE.toLowerCase());
     expect((decoded[0] as { value: bigint }).value).toBe(BigInt(50));
@@ -649,6 +646,141 @@ describe('encodeSvmExecutePayload', () => {
     expect(result).toMatch(/^0x/);
     // 4 + 33*2 + 4 + 2 + 8 + 1 + 32 = 117 bytes = 234 hex chars + "0x"
     expect(result.length).toBe(236);
+  });
+});
+
+// ============================================================================
+// Route Validation — Unsupported Token (C-5)
+// ============================================================================
+import {
+  validateRouteParams,
+  RouteValidationError,
+  findTokenChain,
+} from '../route-detector';
+import { MOVEABLE_TOKENS } from '../../constants/tokens';
+
+describe('findTokenChain', () => {
+  it('should find the chain for a chain-specific registered token', () => {
+    // Use a token unique to BNB Testnet (BNB native or BNB-specific USDT address)
+    const bnbTokens = MOVEABLE_TOKENS[CHAIN.BNB_TESTNET];
+    if (bnbTokens && bnbTokens.length > 0) {
+      // Find a token whose address is unique to BNB Testnet
+      const sepoliaTokens = MOVEABLE_TOKENS[CHAIN.ETHEREUM_SEPOLIA] || [];
+      const uniqueBnbToken = bnbTokens.find(
+        t => !sepoliaTokens.some(st => st.address.toLowerCase() === t.address.toLowerCase() && st.symbol === t.symbol)
+      );
+      if (uniqueBnbToken) {
+        const chain = findTokenChain(uniqueBnbToken);
+        expect(chain).toBe(CHAIN.BNB_TESTNET);
+      }
+    }
+  });
+
+  it('should return undefined for an unregistered token', () => {
+    const fakeToken = {
+      symbol: 'FAKE',
+      decimals: 18,
+      address: '0xFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFA',
+      mechanism: 'approve' as const,
+    };
+    expect(findTokenChain(fakeToken)).toBeUndefined();
+  });
+});
+
+describe('validateRouteParams — unsupported token', () => {
+  it('should throw RouteValidationError when token symbol is not available on target chain', () => {
+    // SOL token exists on Solana Devnet but NOT on BNB Testnet
+    const solTokens = MOVEABLE_TOKENS[CHAIN.SOLANA_DEVNET];
+    if (!solTokens || solTokens.length === 0) {
+      console.log('Skipping — no Solana Devnet tokens registered');
+      return;
+    }
+
+    const solToken = solTokens.find(t => t.symbol === 'SOL');
+    if (!solToken) {
+      console.log('Skipping — SOL not found in Solana Devnet');
+      return;
+    }
+
+    // Try to use SOL token with BNB Testnet target — BNB Testnet has no SOL, should fail
+    expect(() => {
+      validateRouteParams({
+        to: {
+          address: '0x1234567890123456789012345678901234567890',
+          chain: CHAIN.BNB_TESTNET,
+        },
+        funds: {
+          amount: BigInt(10000),
+          token: solToken,
+        },
+      });
+    }).toThrow(RouteValidationError);
+  });
+
+  it('should include token symbol and destination in error message', () => {
+    const solTokens = MOVEABLE_TOKENS[CHAIN.SOLANA_DEVNET];
+    if (!solTokens || solTokens.length === 0) return;
+
+    const solToken = solTokens.find(t => t.symbol === 'SOL');
+    if (!solToken) return;
+
+    expect(() => {
+      validateRouteParams({
+        to: {
+          address: '0x1234567890123456789012345678901234567890',
+          chain: CHAIN.BNB_TESTNET,
+        },
+        funds: {
+          amount: BigInt(10000),
+          token: solToken,
+        },
+      });
+    }).toThrow(/Unsupported moveable token.*token=SOL.*destination=/);
+  });
+
+  it('should NOT throw when token symbol exists on target chain', () => {
+    // USDT exists on both Sepolia and BNB Testnet, so using Sepolia USDT
+    // with BNB target should pass (the symbol is available on BNB)
+    const sepoliaTokens = MOVEABLE_TOKENS[CHAIN.ETHEREUM_SEPOLIA];
+    if (!sepoliaTokens || sepoliaTokens.length === 0) return;
+
+    const sepoliaUsdt = sepoliaTokens.find(t => t.symbol === 'USDT');
+    if (!sepoliaUsdt) return;
+
+    expect(() => {
+      validateRouteParams({
+        to: {
+          address: '0x1234567890123456789012345678901234567890',
+          chain: CHAIN.BNB_TESTNET,
+        },
+        funds: {
+          amount: BigInt(10000),
+          token: sepoliaUsdt,
+        },
+      });
+    }).not.toThrow();
+  });
+
+  it('should NOT throw when target is Push Chain', () => {
+    const solTokens = MOVEABLE_TOKENS[CHAIN.SOLANA_DEVNET];
+    if (!solTokens || solTokens.length === 0) return;
+
+    const solToken = solTokens.find(t => t.symbol === 'SOL');
+    if (!solToken) return;
+
+    // Push Chain target should allow any token
+    expect(() => {
+      validateRouteParams({
+        to: {
+          address: '0x1234567890123456789012345678901234567890',
+          chain: CHAIN.PUSH_TESTNET_DONUT,
+        },
+        funds: {
+          amount: BigInt(10000),
+          token: solToken,
+        },
+      });
+    }).not.toThrow();
   });
 });
 
