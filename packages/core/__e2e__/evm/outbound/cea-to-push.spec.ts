@@ -29,6 +29,105 @@ import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 // Test constants
 const TEST_TARGET = '0x1234567890123456789012345678901234567890' as `0x${string}`;
 
+/**
+ * Ensures CEA has at least `requiredAmount` of an ERC20 token on the external chain.
+ * If balance is insufficient, funds CEA via Route 2 (UEA → CEA) and waits for relay.
+ */
+async function ensureCeaErc20Balance(opts: {
+  pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
+  ceaAddress: `0x${string}`;
+  token: MoveableToken;
+  requiredAmount: bigint;
+  targetChain: CHAIN;
+}): Promise<void> {
+  const { pushClient, ceaAddress, token, requiredAmount, targetChain } = opts;
+
+  const publicClient = createPublicClient({
+    transport: http(CHAIN_INFO[targetChain].defaultRPC[0]),
+  });
+  const balance = await publicClient.readContract({
+    address: token.address as `0x${string}`,
+    abi: ERC20_EVM,
+    functionName: 'balanceOf',
+    args: [ceaAddress],
+  }) as bigint;
+
+  console.log(`[ensureCeaBalance] CEA ${token.symbol} balance: ${balance.toString()}, required: ${requiredAmount.toString()}`);
+
+  if (balance >= requiredAmount) {
+    console.log(`[ensureCeaBalance] Sufficient ${token.symbol} balance, no funding needed.`);
+    return;
+  }
+
+  const deficit = requiredAmount - balance;
+  const fundAmount = deficit + requiredAmount; // fund extra buffer
+  console.log(`[ensureCeaBalance] Insufficient ${token.symbol}. Funding CEA with ${fundAmount.toString()} via Route 2 (UEA → CEA)...`);
+
+  const tx = await pushClient.universal.sendTransaction({
+    to: {
+      address: ceaAddress,
+      chain: targetChain,
+    },
+    funds: {
+      amount: fundAmount,
+      token,
+    },
+  });
+  console.log(`[ensureCeaBalance] Funding TX hash: ${tx.hash}`);
+
+  const receipt = await tx.wait();
+  console.log(`[ensureCeaBalance] Funding complete. Status: ${receipt.status}, External TX: ${receipt.externalTxHash}`);
+
+  if (receipt.status !== 1) {
+    throw new Error(`CEA ERC20 funding failed with status ${receipt.status}`);
+  }
+}
+
+/**
+ * Ensures CEA has at least `requiredAmount` of native token (e.g. BNB) on the external chain.
+ * If balance is insufficient, funds CEA via Route 2 (UEA → CEA) and waits for relay.
+ */
+async function ensureCeaNativeBalance(opts: {
+  pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
+  ceaAddress: `0x${string}`;
+  requiredAmount: bigint;
+  targetChain: CHAIN;
+}): Promise<void> {
+  const { pushClient, ceaAddress, requiredAmount, targetChain } = opts;
+
+  const publicClient = createPublicClient({
+    transport: http(CHAIN_INFO[targetChain].defaultRPC[0]),
+  });
+  const balance = await publicClient.getBalance({ address: ceaAddress });
+
+  console.log(`[ensureCeaBalance] CEA native balance: ${formatEther(balance)}, required: ${formatEther(requiredAmount)}`);
+
+  if (balance >= requiredAmount) {
+    console.log(`[ensureCeaBalance] Sufficient native balance, no funding needed.`);
+    return;
+  }
+
+  const deficit = requiredAmount - balance;
+  const fundAmount = deficit + requiredAmount; // fund extra buffer
+  console.log(`[ensureCeaBalance] Insufficient native balance. Funding CEA with ${formatEther(fundAmount)} via Route 2 (UEA → CEA)...`);
+
+  const tx = await pushClient.universal.sendTransaction({
+    to: {
+      address: ceaAddress,
+      chain: targetChain,
+    },
+    value: fundAmount,
+  });
+  console.log(`[ensureCeaBalance] Funding TX hash: ${tx.hash}`);
+
+  const receipt = await tx.wait();
+  console.log(`[ensureCeaBalance] Funding complete. Status: ${receipt.status}, External TX: ${receipt.externalTxHash}`);
+
+  if (receipt.status !== 1) {
+    throw new Error(`CEA native funding failed with status ${receipt.status}`);
+  }
+}
+
 describe('CEA → Push: Inbound Transactions (Route 3)', () => {
   let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
   let ueaAddress: `0x${string}`;
@@ -229,6 +328,16 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
   // 4. FUNDS Only
   // ============================================================================
   describe('4. FUNDS Only', () => {
+    beforeAll(async () => {
+      if (skipE2E) return;
+      await ensureCeaNativeBalance({
+        pushClient,
+        ceaAddress,
+        requiredAmount: parseEther('0.0002'), // buffer for native transfer tests
+        targetChain: CHAIN.BNB_TESTNET,
+      });
+    }, 600000);
+
     it('should transfer native BNB from CEA to Push Chain', async () => {
       if (skipE2E) return;
 
@@ -529,6 +638,17 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
   // 10. ERC20 Self-Call Flows (Flows 4.2, 4.6)
   // ============================================================================
   describe('10. ERC20 Self-Call Flows', () => {
+    beforeAll(async () => {
+      if (skipE2E || !usdtToken) return;
+      await ensureCeaErc20Balance({
+        pushClient,
+        ceaAddress,
+        token: usdtToken,
+        requiredAmount: BigInt(20000), // 2 tests x 10000 (0.01 USDT each)
+        targetChain: CHAIN.BNB_TESTNET,
+      });
+    }, 600000);
+
     it('should bridge ERC20 USDT back from CEA to Push Chain (Flow 4.2)', async () => {
       if (skipE2E) return;
       if (!usdtToken) {
@@ -632,6 +752,27 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
   // SDK auto-queries CEA balance and bridges the combined amount.
   // ============================================================================
   describe('11. Hybrid Self-Call Flows (burn + CEA pre-existing balance)', () => {
+    /*beforeAll(async () => {
+      if (skipE2E) return;
+      // Fund native BNB for flows 4.3, 4.7
+      await ensureCeaNativeBalance({
+        pushClient,
+        ceaAddress,
+        requiredAmount: parseEther('0.0002'), // buffer for 2 native tests
+        targetChain: CHAIN.BNB_TESTNET,
+      });
+      // Fund ERC20 USDT for flows 4.4, 4.8
+      if (usdtToken) {
+        await ensureCeaErc20Balance({
+          pushClient,
+          ceaAddress,
+          token: usdtToken,
+          requiredAmount: BigInt(20000), // 2 tests x 10000
+          targetChain: CHAIN.BNB_TESTNET,
+        });
+      }
+    }, 600000);*/
+
     it('should bridge native with hybrid amount — burn + CEA balance (Flow 4.3)', async () => {
       if (skipE2E) return;
 

@@ -3185,7 +3185,12 @@ export class Orchestrator {
 
     // bridgeAmount = burn amount + pre-existing CEA balance
     // When ceaExistingBalance is 0, this equals amount (backward compatible)
-    const bridgeAmount = amount + ceaExistingBalance;
+    let bridgeAmount = amount + ceaExistingBalance;
+    // CEA contract rejects amount=0 in sendUniversalTxToUEA (CEAErrors.InvalidInput).
+    // For payload-only outbound, use minimum 1 wei (mirrors burnAmount workaround below).
+    if (bridgeAmount === BigInt(0) && params.data) {
+      bridgeAmount = BigInt(1);
+    }
 
     if (ceaExistingBalance > BigInt(0)) {
       this.printLog(
@@ -3245,9 +3250,16 @@ export class Orchestrator {
       `executeCeaToPush — CEA payload (first 100 chars): ${ceaPayload.slice(0, 100)}...`
     );
 
-    // 8. Determine PRC-20 token for chain namespace routing
-    // Even though CEA uses its own funds, we need the PRC-20 for the relay to determine destination chain
-    const prc20Token = this.getNativePRC20ForChain(sourceChain);
+    // 8. Determine PRC-20 token for the outbound burn on Push Chain.
+    // For ERC20 flows (params.funds with token), use the token's PRC-20 (e.g. pUSDT)
+    // so the Vault deposits ERC20 to CEA. For native flows, use the chain's native PRC-20 (e.g. pBNB).
+    let prc20Token: `0x${string}`;
+    if (params.funds?.amount && (params.funds as { token: MoveableToken }).token) {
+      const token = (params.funds as { token: MoveableToken }).token;
+      prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+    } else {
+      prc20Token = this.getNativePRC20ForChain(sourceChain);
+    }
     // burnAmount = PRC20 to burn on Push Chain (NOT the bridge amount).
     // Vault deposits burnAmount to CEA. CEA uses burnAmount + pre-existing balance for the bridge.
     // Fallback to BigInt(1) for payload-only outbound (precompile rejects amount=0).

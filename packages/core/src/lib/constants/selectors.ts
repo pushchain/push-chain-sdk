@@ -43,4 +43,4 @@ export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as cons
 /**
  * Default gas limit for outbound transactions
  */
-export const DEFAULT_OUTBOUND_GAS_LIMIT = BigInt(200_000);
+export const DEFAULT_OUTBOUND_GAS_LIMIT = BigInt(500_000);

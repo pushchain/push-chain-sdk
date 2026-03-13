@@ -2,8 +2,19 @@ import { CHAIN_INFO } from '../../src/lib/constants/chain';
 import { CHAIN, VM } from '../../src/lib/constants/enums';
 import bs58 from 'bs58';
 
-const RETRY_ATTEMPTS = 3;
-const RETRY_DELAY_MS = 5_000;
+const RETRY_ATTEMPTS = 5;
+const RETRY_DELAY_MS = 10_000;
+
+/**
+ * Thrown when the external chain receipt is found but indicates failure.
+ * This is a definitive (non-retriable) failure — no point retrying.
+ */
+class ExternalTxFailedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ExternalTxFailedError';
+  }
+}
 
 /**
  * Sleeps for the specified number of milliseconds.
@@ -64,12 +75,22 @@ async function verifyEvmTransaction(
         `[ExternalTxVerifier] EVM tx ${txHash} on ${chainName}: status=${status}`
       );
 
-      expect(status).toBe('0x1');
+      // Definitive failure — receipt exists but tx reverted. No point retrying.
+      if (status !== '0x1') {
+        throw new ExternalTxFailedError(
+          `[ExternalTxVerifier] EVM tx ${txHash} on ${chainName} FAILED on-chain: receipt status=${status} (expected 0x1). The external chain transaction reverted.`
+        );
+      }
+
       console.log(
         `[ExternalTxVerifier] EVM tx CONFIRMED SUCCESS on ${chainName}`
       );
       return;
     } catch (err) {
+      // Definitive failures must not be retried — re-throw immediately
+      if (err instanceof ExternalTxFailedError) {
+        throw err;
+      }
       lastError = err instanceof Error ? err : new Error(String(err));
       if (attempt < RETRY_ATTEMPTS) {
         console.log(
@@ -145,17 +166,27 @@ async function verifySvmTransaction(
         );
       }
 
-      const err = json.result.meta?.err;
+      const txErr = json.result.meta?.err;
       console.log(
-        `[ExternalTxVerifier] SVM tx ${signature} on ${chainName}: meta.err=${JSON.stringify(err)}`
+        `[ExternalTxVerifier] SVM tx ${signature} on ${chainName}: meta.err=${JSON.stringify(txErr)}`
       );
 
-      expect(err).toBeNull();
+      // Definitive failure — transaction exists but has an error. No point retrying.
+      if (txErr !== null) {
+        throw new ExternalTxFailedError(
+          `[ExternalTxVerifier] SVM tx ${signature} on ${chainName} FAILED on-chain: meta.err=${JSON.stringify(txErr)}. The external chain transaction failed.`
+        );
+      }
+
       console.log(
         `[ExternalTxVerifier] SVM tx CONFIRMED SUCCESS on ${chainName}`
       );
       return;
     } catch (err) {
+      // Definitive failures must not be retried — re-throw immediately
+      if (err instanceof ExternalTxFailedError) {
+        throw err;
+      }
       lastError = err instanceof Error ? err : new Error(String(err));
       if (attempt < RETRY_ATTEMPTS) {
         console.log(
