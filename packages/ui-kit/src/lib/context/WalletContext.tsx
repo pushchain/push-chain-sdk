@@ -186,7 +186,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     setIframeLoading(true);
     setExternalWallet(null);
     setIsReadOnly(false);
-    localStorage.removeItem("walletInfo");
+    localStorage.removeItem(`walletInfo_${config?.uid || 'default'}`);
     document.body.style.overflow = '';
   };
 
@@ -226,8 +226,11 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       setUniversalAccount(response.account);
     }
     localStorage.setItem(
-      "walletInfo",
-      JSON.stringify(response.account)
+      `walletInfo_${config?.uid || 'default'}`,
+      JSON.stringify({
+        account: response.account,
+        uid: config?.uid || 'default'
+      })
     );
   };
 
@@ -266,8 +269,11 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       };
 
       localStorage.setItem(
-        "walletInfo",
-        JSON.stringify(connectedWallet)
+        `walletInfo_${config?.uid || 'default'}`,
+        JSON.stringify({
+          wallet: connectedWallet,
+          uid: config?.uid || 'default'
+        })
       );
 
       setExternalWallet(connectedWallet);
@@ -553,16 +559,17 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
   }
 
   useEffect(() => {
-    const walletInfo = localStorage.getItem("walletInfo");
+    const walletInfo = localStorage.getItem(`walletInfo_${config?.uid || 'default'}`);
     const walletData = walletInfo ? JSON.parse(walletInfo) : null;
     if (!walletData) return;
-    if (walletData.providerName) {
+    if (walletData.uid !== config?.uid) return;
+    if (walletData?.wallet && walletData.wallet?.providerName) {
       setUniversalAccount(PushChain.utils.account.fromChainAgnostic(
-        walletData.address
+        walletData.wallet.address
       ));
-      setExternalWallet(walletData);
+      setExternalWallet(walletData.wallet);
     } else {
-      setUniversalAccount(walletData);
+      setUniversalAccount(walletData.account);
     }
     setIsReadOnly(true);
     setMinimiseWallet(true);

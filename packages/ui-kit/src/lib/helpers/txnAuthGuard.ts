@@ -14,6 +14,7 @@ export function createGuardedPushChain(
 	}>,
 	universalSigner: UniversalSigner,
 	intializeProps: any,
+  uid: string,
 	callback?: () => void,
 ): PushChain {
   const clientRef: { current: PushChain } = { current: baseClient };
@@ -25,7 +26,7 @@ export function createGuardedPushChain(
 
     if (!promoting) {
       promoting = (async () => {
-        const walletInfo = localStorage.getItem("walletInfo");
+        const walletInfo = localStorage.getItem(`walletInfo_${uid}`);
     		const walletData = walletInfo ? JSON.parse(walletInfo) : null;
 
 				if (!walletData) {

@@ -15,7 +15,7 @@ export const usePushChainClient = (uid?: string) => {
     config,
     setProgress,
     isReadOnly,
-    setIsReadOnly
+    setIsReadOnly,
   } = usePushWalletContext(uid);
 
   const [pushChain, setPushChain] = useState<PushChain | null>(null);
@@ -114,6 +114,7 @@ export const usePushChainClient = (uid?: string) => {
               requestPushWalletConnection,
               universalSigner,
               intializeProps,
+              config?.uid || 'default',
               () => {
                 setIsReadOnly(false);
               },
