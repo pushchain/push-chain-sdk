@@ -779,4 +779,12 @@ export interface WaitForOutboundOptions {
    * When provided, skips extraction from the Push Chain tx events.
    */
   _resolvedSubTxId?: string;
+
+  /**
+   * @internal Expected destination chain CAIP-2 namespace (e.g., 'eip155:97').
+   * When provided, only considers an outbound as found if its destinationChain
+   * matches this value. Used for multi-outbound cascades where a single utx_id
+   * has multiple outbound operations to different chains.
+   */
+  _expectedDestinationChain?: string;
 }

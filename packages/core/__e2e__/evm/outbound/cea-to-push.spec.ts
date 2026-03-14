@@ -28,6 +28,15 @@ import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 
 // Test constants
 const TEST_TARGET = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+const BSC_USDT_ADDRESS = '0xBC14F348BC9667be46b35Edc9B68653d86013DC5' as const;
+
+// Counter contract addresses (deployed on BNB Testnet 2026-03-14)
+const COUNTER_A = '0x7f0936bb90e7dcf3edb47199c2005e7184e44cf8' as `0x${string}`;
+const COUNTER_B = '0x7dd2f6d20cd2c8f24d8c6c7de48c4b39c6aa9b18' as `0x${string}`;
+const COUNTER_ABI = [
+  { type: 'function', name: 'count', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'increment', inputs: [], outputs: [], stateMutability: 'nonpayable' },
+] as const;
 
 /**
  * Ensures CEA has at least `requiredAmount` of an ERC20 token on the external chain.
@@ -945,5 +954,408 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
 
       await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 600000);
+  });
+
+  // ============================================================================
+  // 12. Counter Contract State Verification (Cascade)
+  // ============================================================================
+  describe('12. Counter Contract State Verification (Cascade)', () => {
+    let bscPublicClient: ReturnType<typeof createPublicClient>;
+
+    beforeAll(() => {
+      bscPublicClient = createPublicClient({
+        transport: http(CHAIN_INFO[CHAIN.BNB_TESTNET].defaultRPC[0]),
+      });
+    });
+
+    it('should increment counter then bridge BNB back (payload + funds bridge)', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: Cascade — Counter Increment + Bridge Back ===');
+
+      const incrementPayload = encodeFunctionData({ abi: COUNTER_ABI, functionName: 'increment' });
+
+      // Read counter BEFORE
+      const counterBefore = await bscPublicClient.readContract({
+        address: COUNTER_A,
+        abi: COUNTER_ABI,
+        functionName: 'count',
+      }) as bigint;
+      console.log(`CounterA BEFORE: ${counterBefore}`);
+
+      // Hop 1 (Route 2): Payload-only increment on BSC
+      const tx1 = await pushClient.universal.prepareTransaction({
+        to: {
+          address: COUNTER_A,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        data: incrementPayload,
+      });
+
+      // Hop 2 (Route 3): Bridge native BNB back to Push
+      const tx2 = await pushClient.universal.prepareTransaction({
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: ueaAddress,
+        value: parseEther('0.00005'),
+      });
+
+      const result = await pushClient.universal
+        .executeTransactions(tx1)
+        .thenOn(tx2)
+        .send();
+
+      console.log(`Initial TX Hash: ${result.initialTxHash}`);
+      console.log(`Hop count: ${result.hopCount}`);
+
+      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(result.hopCount).toBeGreaterThanOrEqual(2);
+
+      // Wait for all hops to complete
+      const completion = await result.waitForAll({
+        timeout: 900000,
+        progressHook: (event) => {
+          console.log(`[waitForAll] hop ${event.hopIndex} status: ${event.status}`);
+        },
+      });
+
+      expect(completion.success).toBe(true);
+
+      // Wait for RPC propagation
+      await new Promise((r) => setTimeout(r, 5000));
+
+      // Read counter AFTER
+      const counterAfter = await bscPublicClient.readContract({
+        address: COUNTER_A,
+        abi: COUNTER_ABI,
+        functionName: 'count',
+      }) as bigint;
+      console.log(`CounterA AFTER: ${counterAfter}`);
+
+      expect(counterAfter).toBeGreaterThan(counterBefore);
+    }, 900000);
+
+    it('should transfer BNB + increment counter then bridge back (native funds + payload cascade)', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: Cascade — Native Funds + Counter + Bridge Back ===');
+
+      const incrementPayload = encodeFunctionData({ abi: COUNTER_ABI, functionName: 'increment' });
+
+      // Read counter BEFORE
+      const counterBefore = await bscPublicClient.readContract({
+        address: COUNTER_A,
+        abi: COUNTER_ABI,
+        functionName: 'count',
+      }) as bigint;
+      console.log(`CounterA BEFORE: ${counterBefore}`);
+
+      // Hop 1 (Route 2): Native funds + counter increment
+      const tx1 = await pushClient.universal.prepareTransaction({
+        to: {
+          address: TEST_TARGET,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        value: parseEther('0.0001'),
+        data: [
+          { to: TEST_TARGET, value: parseEther('0.0001'), data: '0x' as `0x${string}` },
+          { to: COUNTER_A, value: BigInt(0), data: incrementPayload },
+        ],
+      });
+
+      // Hop 2 (Route 3): Bridge back
+      const tx2 = await pushClient.universal.prepareTransaction({
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: ueaAddress,
+        value: parseEther('0.00005'),
+      });
+
+      const result = await pushClient.universal
+        .executeTransactions(tx1)
+        .thenOn(tx2)
+        .send();
+
+      console.log(`Initial TX Hash: ${result.initialTxHash}`);
+      console.log(`Hop count: ${result.hopCount}`);
+
+      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(result.hopCount).toBeGreaterThanOrEqual(2);
+
+      const completion = await result.waitForAll({
+        timeout: 900000,
+        progressHook: (event) => {
+          console.log(`[waitForAll] hop ${event.hopIndex} status: ${event.status}`);
+        },
+      });
+
+      expect(completion.success).toBe(true);
+
+      // Wait for RPC propagation
+      await new Promise((r) => setTimeout(r, 5000));
+
+      // Read counter AFTER
+      const counterAfter = await bscPublicClient.readContract({
+        address: COUNTER_A,
+        abi: COUNTER_ABI,
+        functionName: 'count',
+      }) as bigint;
+      console.log(`CounterA AFTER: ${counterAfter}`);
+
+      expect(counterAfter).toBeGreaterThan(counterBefore);
+    }, 900000);
+
+    it('should transfer BNB + increment both counters then bridge back (native funds + multicall cascade)', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: Cascade — Native Funds + Multicall (Both Counters) + Bridge Back ===');
+
+      const incrementPayload = encodeFunctionData({ abi: COUNTER_ABI, functionName: 'increment' });
+
+      // Read both counters BEFORE
+      const counterABefore = await bscPublicClient.readContract({
+        address: COUNTER_A,
+        abi: COUNTER_ABI,
+        functionName: 'count',
+      }) as bigint;
+      const counterBBefore = await bscPublicClient.readContract({
+        address: COUNTER_B,
+        abi: COUNTER_ABI,
+        functionName: 'count',
+      }) as bigint;
+      console.log(`CounterA BEFORE: ${counterABefore}, CounterB BEFORE: ${counterBBefore}`);
+
+      // Hop 1 (Route 2): Native funds + multicall (both counters)
+      const tx1 = await pushClient.universal.prepareTransaction({
+        to: {
+          address: TEST_TARGET,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        value: parseEther('0.0001'),
+        data: [
+          { to: TEST_TARGET, value: parseEther('0.0001'), data: '0x' as `0x${string}` },
+          { to: COUNTER_A, value: BigInt(0), data: incrementPayload },
+          { to: COUNTER_B, value: BigInt(0), data: incrementPayload },
+        ],
+      });
+
+      // Hop 2 (Route 3): Bridge back
+      const tx2 = await pushClient.universal.prepareTransaction({
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: ueaAddress,
+        value: parseEther('0.00005'),
+      });
+
+      const result = await pushClient.universal
+        .executeTransactions(tx1)
+        .thenOn(tx2)
+        .send();
+
+      console.log(`Initial TX Hash: ${result.initialTxHash}`);
+      console.log(`Hop count: ${result.hopCount}`);
+
+      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(result.hopCount).toBeGreaterThanOrEqual(2);
+
+      const completion = await result.waitForAll({
+        timeout: 900000,
+        progressHook: (event) => {
+          console.log(`[waitForAll] hop ${event.hopIndex} status: ${event.status}`);
+        },
+      });
+
+      expect(completion.success).toBe(true);
+
+      // Wait for RPC propagation
+      await new Promise((r) => setTimeout(r, 5000));
+
+      // Read both counters AFTER
+      const counterAAfter = await bscPublicClient.readContract({
+        address: COUNTER_A,
+        abi: COUNTER_ABI,
+        functionName: 'count',
+      }) as bigint;
+      const counterBAfter = await bscPublicClient.readContract({
+        address: COUNTER_B,
+        abi: COUNTER_ABI,
+        functionName: 'count',
+      }) as bigint;
+      console.log(`CounterA AFTER: ${counterAAfter}, CounterB AFTER: ${counterBAfter}`);
+
+      expect(counterAAfter).toBeGreaterThan(counterABefore);
+      expect(counterBAfter).toBeGreaterThan(counterBBefore);
+    }, 900000);
+
+    it('should transfer USDT + increment counter then bridge back (ERC20 funds + payload cascade)', async () => {
+      if (skipE2E) return;
+      if (!usdtToken) {
+        console.log('Skipping - USDT token not found');
+        return;
+      }
+
+      console.log('\n=== Test: Cascade — ERC20 Funds + Counter + Bridge Back ===');
+
+      const incrementPayload = encodeFunctionData({ abi: COUNTER_ABI, functionName: 'increment' });
+      const erc20TransferPayload = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'transfer',
+        args: [TEST_TARGET, BigInt(10000)],
+      });
+
+      // Read counter BEFORE
+      const counterBefore = await bscPublicClient.readContract({
+        address: COUNTER_A,
+        abi: COUNTER_ABI,
+        functionName: 'count',
+      }) as bigint;
+      console.log(`CounterA BEFORE: ${counterBefore}`);
+
+      // Hop 1 (Route 2): ERC20 funds + counter increment
+      const tx1 = await pushClient.universal.prepareTransaction({
+        to: {
+          address: TEST_TARGET,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        funds: {
+          amount: BigInt(10000),
+          token: usdtToken,
+        },
+        data: [
+          { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: erc20TransferPayload },
+          { to: COUNTER_A, value: BigInt(0), data: incrementPayload },
+        ],
+      });
+
+      // Hop 2 (Route 3): Bridge native BNB back to Push
+      const tx2 = await pushClient.universal.prepareTransaction({
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: ueaAddress,
+        value: parseEther('0.00005'),
+      });
+
+      const result = await pushClient.universal
+        .executeTransactions(tx1)
+        .thenOn(tx2)
+        .send();
+
+      console.log(`Initial TX Hash: ${result.initialTxHash}`);
+      console.log(`Hop count: ${result.hopCount}`);
+
+      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(result.hopCount).toBeGreaterThanOrEqual(2);
+
+      const completion = await result.waitForAll({
+        timeout: 900000,
+        progressHook: (event) => {
+          console.log(`[waitForAll] hop ${event.hopIndex} status: ${event.status}`);
+        },
+      });
+
+      expect(completion.success).toBe(true);
+
+      // Wait for RPC propagation
+      await new Promise((r) => setTimeout(r, 5000));
+
+      // Read counter AFTER
+      const counterAfter = await bscPublicClient.readContract({
+        address: COUNTER_A,
+        abi: COUNTER_ABI,
+        functionName: 'count',
+      }) as bigint;
+      console.log(`CounterA AFTER: ${counterAfter}`);
+
+      expect(counterAfter).toBeGreaterThan(counterBefore);
+    }, 900000);
+
+    it('should transfer USDT + increment both counters then bridge back (ERC20 funds + multicall cascade)', async () => {
+      if (skipE2E) return;
+      if (!usdtToken) {
+        console.log('Skipping - USDT token not found');
+        return;
+      }
+
+      console.log('\n=== Test: Cascade — ERC20 Funds + Multicall (Both Counters) + Bridge Back ===');
+
+      const incrementPayload = encodeFunctionData({ abi: COUNTER_ABI, functionName: 'increment' });
+      const erc20TransferPayload = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'transfer',
+        args: [TEST_TARGET, BigInt(10000)],
+      });
+
+      // Read both counters BEFORE
+      const counterABefore = await bscPublicClient.readContract({
+        address: COUNTER_A,
+        abi: COUNTER_ABI,
+        functionName: 'count',
+      }) as bigint;
+      const counterBBefore = await bscPublicClient.readContract({
+        address: COUNTER_B,
+        abi: COUNTER_ABI,
+        functionName: 'count',
+      }) as bigint;
+      console.log(`CounterA BEFORE: ${counterABefore}, CounterB BEFORE: ${counterBBefore}`);
+
+      // Hop 1 (Route 2): ERC20 funds + multicall (both counters)
+      const tx1 = await pushClient.universal.prepareTransaction({
+        to: {
+          address: TEST_TARGET,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        funds: {
+          amount: BigInt(10000),
+          token: usdtToken,
+        },
+        data: [
+          { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: erc20TransferPayload },
+          { to: COUNTER_A, value: BigInt(0), data: incrementPayload },
+          { to: COUNTER_B, value: BigInt(0), data: incrementPayload },
+        ],
+      });
+
+      // Hop 2 (Route 3): Bridge back
+      const tx2 = await pushClient.universal.prepareTransaction({
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: ueaAddress,
+        value: parseEther('0.00005'),
+      });
+
+      const result = await pushClient.universal
+        .executeTransactions(tx1)
+        .thenOn(tx2)
+        .send();
+
+      console.log(`Initial TX Hash: ${result.initialTxHash}`);
+      console.log(`Hop count: ${result.hopCount}`);
+
+      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(result.hopCount).toBeGreaterThanOrEqual(2);
+
+      const completion = await result.waitForAll({
+        timeout: 900000,
+        progressHook: (event) => {
+          console.log(`[waitForAll] hop ${event.hopIndex} status: ${event.status}`);
+        },
+      });
+
+      expect(completion.success).toBe(true);
+
+      // Wait for RPC propagation
+      await new Promise((r) => setTimeout(r, 5000));
+
+      // Read both counters AFTER
+      const counterAAfter = await bscPublicClient.readContract({
+        address: COUNTER_A,
+        abi: COUNTER_ABI,
+        functionName: 'count',
+      }) as bigint;
+      const counterBAfter = await bscPublicClient.readContract({
+        address: COUNTER_B,
+        abi: COUNTER_ABI,
+        functionName: 'count',
+      }) as bigint;
+      console.log(`CounterA AFTER: ${counterAAfter}, CounterB AFTER: ${counterBAfter}`);
+
+      expect(counterAAfter).toBeGreaterThan(counterABefore);
+      expect(counterBAfter).toBeGreaterThan(counterBBefore);
+    }, 900000);
   });
 });

@@ -12,6 +12,7 @@ import { createWalletClient, http, Hex, parseEther, encodeFunctionData } from 'v
 import { privateKeyToAccount } from 'viem/accounts';
 import type { PreparedUniversalTx } from '../../src/lib/orchestrator/orchestrator.types';
 import { ERC20_EVM } from '../../src/lib/constants/abi/erc20.evm';
+import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 
 // BSC Testnet USDT address
 const BSC_USDT_ADDRESS = '0xBC14F348BC9667be46b35Edc9B68653d86013DC5' as const;
@@ -334,6 +335,19 @@ describe('Advance Hopping: Cascade API E2E', () => {
       });
 
       expect(completion.success).toBe(true);
+
+      // Verify outbound tx on external chain
+      const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
+      for (const hop of outboundHops) {
+        console.log(`  External TX Hash: ${hop.outboundDetails?.externalTxHash}`);
+        console.log(`  External Chain: ${hop.outboundDetails?.destinationChain}`);
+        console.log(`  External Explorer: ${hop.outboundDetails?.explorerUrl}`);
+
+        expect(hop.outboundDetails).toBeDefined();
+        expect(hop.outboundDetails?.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+
+        await verifyExternalTransaction(hop.outboundDetails!.externalTxHash, hop.outboundDetails!.destinationChain);
+      }
     }, 600000);
 
     it('should send multi-hop: Payload to BNB + Payload to Push (MH-P-1)', async () => {
@@ -388,6 +402,19 @@ describe('Advance Hopping: Cascade API E2E', () => {
 
       expect(completion.success).toBe(true);
       expect(completion.hops).toHaveLength(2);
+
+      // Verify outbound tx on external chain
+      const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
+      for (const hop of outboundHops) {
+        console.log(`  External TX Hash: ${hop.outboundDetails?.externalTxHash}`);
+        console.log(`  External Chain: ${hop.outboundDetails?.destinationChain}`);
+        console.log(`  External Explorer: ${hop.outboundDetails?.explorerUrl}`);
+
+        expect(hop.outboundDetails).toBeDefined();
+        expect(hop.outboundDetails?.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+
+        await verifyExternalTransaction(hop.outboundDetails!.externalTxHash, hop.outboundDetails!.destinationChain);
+      }
     }, 900000);
 
     it('should send multi-hop: Funds to BNB + Funds to Push (MH-F-1)', async () => {
@@ -437,6 +464,19 @@ describe('Advance Hopping: Cascade API E2E', () => {
 
       expect(completion.success).toBe(true);
       expect(completion.hops).toHaveLength(2);
+
+      // Verify outbound tx on external chain
+      const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
+      for (const hop of outboundHops) {
+        console.log(`  External TX Hash: ${hop.outboundDetails?.externalTxHash}`);
+        console.log(`  External Chain: ${hop.outboundDetails?.destinationChain}`);
+        console.log(`  External Explorer: ${hop.outboundDetails?.explorerUrl}`);
+
+        expect(hop.outboundDetails).toBeDefined();
+        expect(hop.outboundDetails?.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+
+        await verifyExternalTransaction(hop.outboundDetails!.externalTxHash, hop.outboundDetails!.destinationChain);
+      }
     }, 900000);
   });
 
@@ -509,6 +549,20 @@ describe('Advance Hopping: Cascade API E2E', () => {
 
       expect(completion.success).toBe(true);
       expect(completion.hops).toHaveLength(3);
+
+      // Verify outbound tx on external chains (BNB + Solana)
+      const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
+      expect(outboundHops.length).toBe(2);
+      for (const hop of outboundHops) {
+        console.log(`  External TX Hash: ${hop.outboundDetails?.externalTxHash}`);
+        console.log(`  External Chain: ${hop.outboundDetails?.destinationChain}`);
+        console.log(`  External Explorer: ${hop.outboundDetails?.explorerUrl}`);
+
+        expect(hop.outboundDetails).toBeDefined();
+        expect(hop.outboundDetails?.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+
+        await verifyExternalTransaction(hop.outboundDetails!.externalTxHash, hop.outboundDetails!.destinationChain);
+      }
     }, 1200000);
 
     it('should send multi-hop: Funds to BNB + Funds to Push + Funds to Solana (MH-F-2)', async () => {
@@ -570,6 +624,20 @@ describe('Advance Hopping: Cascade API E2E', () => {
 
       expect(completion.success).toBe(true);
       expect(completion.hops).toHaveLength(3);
+
+      // Verify outbound tx on external chains (BNB + Solana)
+      const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
+      expect(outboundHops.length).toBe(2);
+      for (const hop of outboundHops) {
+        console.log(`  External TX Hash: ${hop.outboundDetails?.externalTxHash}`);
+        console.log(`  External Chain: ${hop.outboundDetails?.destinationChain}`);
+        console.log(`  External Explorer: ${hop.outboundDetails?.explorerUrl}`);
+
+        expect(hop.outboundDetails).toBeDefined();
+        expect(hop.outboundDetails?.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+
+        await verifyExternalTransaction(hop.outboundDetails!.externalTxHash, hop.outboundDetails!.destinationChain);
+      }
     }, 1200000);
   });
 

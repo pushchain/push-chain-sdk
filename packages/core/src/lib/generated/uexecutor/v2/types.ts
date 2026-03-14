@@ -28,29 +28,42 @@ export { UniversalPayload, Inbound, PCTx };
 
 /**
  * TxType enum for outbound transaction types
+ * Matches chain proto: uexecutor/v1/types.proto TxType
  */
 export enum TxType {
-  TX_TYPE_UNSPECIFIED = 0,
+  UNSPECIFIED_TX = 0,
   GAS = 1,
-  PAYLOAD = 2,
-  FUNDS_AND_PAYLOAD = 3,
+  GAS_AND_PAYLOAD = 2,
+  FUNDS = 3,
+  FUNDS_AND_PAYLOAD = 4,
+  PAYLOAD = 5,
+  INBOUND_REVERT = 6,
   UNRECOGNIZED = -1,
 }
 
 export function txTypeFromJSON(object: any): TxType {
   switch (object) {
     case 0:
-    case 'TX_TYPE_UNSPECIFIED':
-      return TxType.TX_TYPE_UNSPECIFIED;
+    case 'UNSPECIFIED_TX':
+      return TxType.UNSPECIFIED_TX;
     case 1:
     case 'GAS':
       return TxType.GAS;
     case 2:
-    case 'PAYLOAD':
-      return TxType.PAYLOAD;
+    case 'GAS_AND_PAYLOAD':
+      return TxType.GAS_AND_PAYLOAD;
     case 3:
+    case 'FUNDS':
+      return TxType.FUNDS;
+    case 4:
     case 'FUNDS_AND_PAYLOAD':
       return TxType.FUNDS_AND_PAYLOAD;
+    case 5:
+    case 'PAYLOAD':
+      return TxType.PAYLOAD;
+    case 6:
+    case 'INBOUND_REVERT':
+      return TxType.INBOUND_REVERT;
     case -1:
     case 'UNRECOGNIZED':
     default:
@@ -60,14 +73,20 @@ export function txTypeFromJSON(object: any): TxType {
 
 export function txTypeToJSON(object: TxType): string {
   switch (object) {
-    case TxType.TX_TYPE_UNSPECIFIED:
-      return 'TX_TYPE_UNSPECIFIED';
+    case TxType.UNSPECIFIED_TX:
+      return 'UNSPECIFIED_TX';
     case TxType.GAS:
       return 'GAS';
-    case TxType.PAYLOAD:
-      return 'PAYLOAD';
+    case TxType.GAS_AND_PAYLOAD:
+      return 'GAS_AND_PAYLOAD';
+    case TxType.FUNDS:
+      return 'FUNDS';
     case TxType.FUNDS_AND_PAYLOAD:
       return 'FUNDS_AND_PAYLOAD';
+    case TxType.PAYLOAD:
+      return 'PAYLOAD';
+    case TxType.INBOUND_REVERT:
+      return 'INBOUND_REVERT';
     case TxType.UNRECOGNIZED:
     default:
       return 'UNRECOGNIZED';
@@ -124,31 +143,31 @@ export function outboundStatusToJSON(object: OutboundStatus): string {
 
 /**
  * OriginatingPcTx - Push Chain transaction that originated the outbound
+ * Matches chain proto: field 1 = tx_hash (string), field 2 = log_index (string)
  */
 export interface OriginatingPcTx {
   txHash: string;
-  sender: string;
-  gasUsed: string;
-  blockHeight: string;
-  status: string;
-  errorMsg: string;
+  logIndex: string;
 }
 
 /**
  * OutboundObservation - Observation of the outbound tx on destination chain
+ * Matches chain proto: field 1 = success (bool), field 2 = block_height (uint64),
+ *   field 3 = tx_hash (string), field 4 = error_msg (string)
  */
 export interface OutboundObservation {
+  success: boolean;
+  blockHeight: number;
   txHash: string;
-  blockHeight: string;
-  observedAt: string;
+  errorMsg: string;
 }
 
 /**
  * RevertInstructions - Instructions for reverting the transaction
+ * Matches chain proto: field 1 = fund_recipient (string)
  */
 export interface RevertInstructions {
   fundRecipient: string;
-  revertMsg: string;
 }
 
 /**
@@ -190,11 +209,7 @@ export interface UniversalTxV2 {
 function createBaseOriginatingPcTx(): OriginatingPcTx {
   return {
     txHash: '',
-    sender: '',
-    gasUsed: '',
-    blockHeight: '',
-    status: '',
-    errorMsg: '',
+    logIndex: '',
   };
 }
 
@@ -204,12 +219,7 @@ export const OriginatingPcTx: MessageFns<OriginatingPcTx> = {
     writer: BinaryWriter = new BinaryWriter()
   ): BinaryWriter {
     if (message.txHash !== '') writer.uint32(10).string(message.txHash);
-    if (message.sender !== '') writer.uint32(18).string(message.sender);
-    if (message.gasUsed !== '') writer.uint32(26).string(message.gasUsed);
-    if (message.blockHeight !== '')
-      writer.uint32(34).string(message.blockHeight);
-    if (message.status !== '') writer.uint32(42).string(message.status);
-    if (message.errorMsg !== '') writer.uint32(50).string(message.errorMsg);
+    if (message.logIndex !== '') writer.uint32(18).string(message.logIndex);
     return writer;
   },
 
@@ -225,19 +235,7 @@ export const OriginatingPcTx: MessageFns<OriginatingPcTx> = {
           message.txHash = reader.string();
           break;
         case 2:
-          message.sender = reader.string();
-          break;
-        case 3:
-          message.gasUsed = reader.string();
-          break;
-        case 4:
-          message.blockHeight = reader.string();
-          break;
-        case 5:
-          message.status = reader.string();
-          break;
-        case 6:
-          message.errorMsg = reader.string();
+          message.logIndex = reader.string();
           break;
         default:
           if ((tag & 7) === 4 || tag === 0) return message;
@@ -251,14 +249,8 @@ export const OriginatingPcTx: MessageFns<OriginatingPcTx> = {
   fromJSON(object: any): OriginatingPcTx {
     return {
       txHash: isSet(object.txHash) ? globalThis.String(object.txHash) : '',
-      sender: isSet(object.sender) ? globalThis.String(object.sender) : '',
-      gasUsed: isSet(object.gasUsed) ? globalThis.String(object.gasUsed) : '',
-      blockHeight: isSet(object.blockHeight)
-        ? globalThis.String(object.blockHeight)
-        : '',
-      status: isSet(object.status) ? globalThis.String(object.status) : '',
-      errorMsg: isSet(object.errorMsg)
-        ? globalThis.String(object.errorMsg)
+      logIndex: isSet(object.logIndex)
+        ? globalThis.String(object.logIndex)
         : '',
     };
   },
@@ -266,28 +258,20 @@ export const OriginatingPcTx: MessageFns<OriginatingPcTx> = {
   toJSON(message: OriginatingPcTx): unknown {
     const obj: any = {};
     if (message.txHash !== '') obj.txHash = message.txHash;
-    if (message.sender !== '') obj.sender = message.sender;
-    if (message.gasUsed !== '') obj.gasUsed = message.gasUsed;
-    if (message.blockHeight !== '') obj.blockHeight = message.blockHeight;
-    if (message.status !== '') obj.status = message.status;
-    if (message.errorMsg !== '') obj.errorMsg = message.errorMsg;
+    if (message.logIndex !== '') obj.logIndex = message.logIndex;
     return obj;
   },
 
   fromPartial(object: Partial<OriginatingPcTx>): OriginatingPcTx {
     const message = createBaseOriginatingPcTx();
     message.txHash = object.txHash ?? '';
-    message.sender = object.sender ?? '';
-    message.gasUsed = object.gasUsed ?? '';
-    message.blockHeight = object.blockHeight ?? '';
-    message.status = object.status ?? '';
-    message.errorMsg = object.errorMsg ?? '';
+    message.logIndex = object.logIndex ?? '';
     return message;
   },
 };
 
 function createBaseOutboundObservation(): OutboundObservation {
-  return { txHash: '', blockHeight: '', observedAt: '' };
+  return { success: false, blockHeight: 0, txHash: '', errorMsg: '' };
 }
 
 export const OutboundObservation: MessageFns<OutboundObservation> = {
@@ -295,10 +279,10 @@ export const OutboundObservation: MessageFns<OutboundObservation> = {
     message: OutboundObservation,
     writer: BinaryWriter = new BinaryWriter()
   ): BinaryWriter {
-    if (message.txHash !== '') writer.uint32(10).string(message.txHash);
-    if (message.blockHeight !== '')
-      writer.uint32(18).string(message.blockHeight);
-    if (message.observedAt !== '') writer.uint32(26).string(message.observedAt);
+    if (message.success !== false) writer.uint32(8).bool(message.success);
+    if (message.blockHeight !== 0) writer.uint32(16).uint64(message.blockHeight);
+    if (message.txHash !== '') writer.uint32(26).string(message.txHash);
+    if (message.errorMsg !== '') writer.uint32(34).string(message.errorMsg);
     return writer;
   },
 
@@ -314,13 +298,16 @@ export const OutboundObservation: MessageFns<OutboundObservation> = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.txHash = reader.string();
+          message.success = reader.bool();
           break;
         case 2:
-          message.blockHeight = reader.string();
+          message.blockHeight = Number(reader.uint64());
           break;
         case 3:
-          message.observedAt = reader.string();
+          message.txHash = reader.string();
+          break;
+        case 4:
+          message.errorMsg = reader.string();
           break;
         default:
           if ((tag & 7) === 4 || tag === 0) return message;
@@ -333,35 +320,40 @@ export const OutboundObservation: MessageFns<OutboundObservation> = {
 
   fromJSON(object: any): OutboundObservation {
     return {
-      txHash: isSet(object.txHash) ? globalThis.String(object.txHash) : '',
+      success: isSet(object.success)
+        ? globalThis.Boolean(object.success)
+        : false,
       blockHeight: isSet(object.blockHeight)
-        ? globalThis.String(object.blockHeight)
-        : '',
-      observedAt: isSet(object.observedAt)
-        ? globalThis.String(object.observedAt)
+        ? globalThis.Number(object.blockHeight)
+        : 0,
+      txHash: isSet(object.txHash) ? globalThis.String(object.txHash) : '',
+      errorMsg: isSet(object.errorMsg)
+        ? globalThis.String(object.errorMsg)
         : '',
     };
   },
 
   toJSON(message: OutboundObservation): unknown {
     const obj: any = {};
+    if (message.success !== false) obj.success = message.success;
+    if (message.blockHeight !== 0) obj.blockHeight = message.blockHeight;
     if (message.txHash !== '') obj.txHash = message.txHash;
-    if (message.blockHeight !== '') obj.blockHeight = message.blockHeight;
-    if (message.observedAt !== '') obj.observedAt = message.observedAt;
+    if (message.errorMsg !== '') obj.errorMsg = message.errorMsg;
     return obj;
   },
 
   fromPartial(object: Partial<OutboundObservation>): OutboundObservation {
     const message = createBaseOutboundObservation();
+    message.success = object.success ?? false;
+    message.blockHeight = object.blockHeight ?? 0;
     message.txHash = object.txHash ?? '';
-    message.blockHeight = object.blockHeight ?? '';
-    message.observedAt = object.observedAt ?? '';
+    message.errorMsg = object.errorMsg ?? '';
     return message;
   },
 };
 
 function createBaseRevertInstructions(): RevertInstructions {
-  return { fundRecipient: '', revertMsg: '' };
+  return { fundRecipient: '' };
 }
 
 export const RevertInstructions: MessageFns<RevertInstructions> = {
@@ -371,7 +363,6 @@ export const RevertInstructions: MessageFns<RevertInstructions> = {
   ): BinaryWriter {
     if (message.fundRecipient !== '')
       writer.uint32(10).string(message.fundRecipient);
-    if (message.revertMsg !== '') writer.uint32(18).string(message.revertMsg);
     return writer;
   },
 
@@ -385,9 +376,6 @@ export const RevertInstructions: MessageFns<RevertInstructions> = {
       switch (tag >>> 3) {
         case 1:
           message.fundRecipient = reader.string();
-          break;
-        case 2:
-          message.revertMsg = reader.string();
           break;
         default:
           if ((tag & 7) === 4 || tag === 0) return message;
@@ -403,23 +391,18 @@ export const RevertInstructions: MessageFns<RevertInstructions> = {
       fundRecipient: isSet(object.fundRecipient)
         ? globalThis.String(object.fundRecipient)
         : '',
-      revertMsg: isSet(object.revertMsg)
-        ? globalThis.String(object.revertMsg)
-        : '',
     };
   },
 
   toJSON(message: RevertInstructions): unknown {
     const obj: any = {};
     if (message.fundRecipient !== '') obj.fundRecipient = message.fundRecipient;
-    if (message.revertMsg !== '') obj.revertMsg = message.revertMsg;
     return obj;
   },
 
   fromPartial(object: Partial<RevertInstructions>): RevertInstructions {
     const message = createBaseRevertInstructions();
     message.fundRecipient = object.fundRecipient ?? '';
-    message.revertMsg = object.revertMsg ?? '';
     return message;
   },
 };
