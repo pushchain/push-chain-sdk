@@ -609,6 +609,8 @@ export interface CascadedTxResponse {
   hopCount: number;
   /** Wait for ALL hops to complete across all chains */
   waitForAll: (opts?: CascadeTrackOptions) => Promise<CascadeCompletionResult>;
+  /** Convenience alias for waitForAll() */
+  wait: (opts?: CascadeTrackOptions) => Promise<CascadeCompletionResult>;
 }
 
 /**
@@ -771,4 +773,10 @@ export interface WaitForOutboundOptions {
    * Progress callback for tracking events
    */
   progressHook?: (event: { status: 'waiting' | 'polling' | 'found' | 'failed' | 'timeout'; elapsed: number }) => void;
+
+  /**
+   * @internal Pre-resolved universalSubTxId for cascade per-hop tracking.
+   * When provided, skips extraction from the Push Chain tx events.
+   */
+  _resolvedSubTxId?: string;
 }

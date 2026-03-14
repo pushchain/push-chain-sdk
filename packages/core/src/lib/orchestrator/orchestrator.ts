@@ -219,8 +219,9 @@ export class Orchestrator {
       isChainTarget(params.to) || ('from' in params && params.from?.chain);
 
     if (isMultiChain) {
-      // Delegate to multi-chain routing logic
-      return this.executeMultiChain(params as UniversalExecuteParams);
+      // sendTransaction delegates to prepareTransaction().send() for multi-chain routes
+      const prepared = await this.prepareTransaction(params as UniversalExecuteParams);
+      return prepared.send();
     }
 
     // Standard Push Chain execution (Route 1)
@@ -2272,7 +2273,7 @@ export class Orchestrator {
           preparedTxs[0].route === 'UOA_TO_PUSH'
         ) {
           const response = await this.executeMultiChain(hops[0].params);
-          return {
+          const singleRoute1Result: CascadedTxResponse = {
             initialTxHash: response.hash,
             initialTxResponse: response,
             hops: [
@@ -2297,7 +2298,9 @@ export class Orchestrator {
                 },
               ],
             }),
+            wait: async (opts) => singleRoute1Result.waitForAll(opts),
           };
+          return singleRoute1Result;
         }
 
         // Check if single-hop Route 2 (just execute directly)
@@ -2307,7 +2310,7 @@ export class Orchestrator {
         ) {
           const response = await this.executeMultiChain(hops[0].params);
           const targetChain = hops[0].targetChain || CHAIN.PUSH_TESTNET_DONUT;
-          return {
+          const singleRoute2Result: CascadedTxResponse = {
             initialTxHash: response.hash,
             initialTxResponse: response,
             hops: [
@@ -2332,7 +2335,9 @@ export class Orchestrator {
                 },
               ],
             }),
+            wait: async (opts) => singleRoute2Result.waitForAll(opts),
           };
+          return singleRoute2Result;
         }
 
         // Multi-hop: compose cascade bottom-to-top
@@ -2409,31 +2414,60 @@ export class Orchestrator {
                 (h) => h.route === 'UOA_TO_CEA'
               );
               if (outboundHops.length > 0) {
-                // For cascaded transactions, the initial Push Chain tx triggers outbound
-                // Use waitForOutboundTx with the initial tx hash
-                for (const outboundHop of outboundHops) {
+                // For cascaded transactions, a single Push Chain tx may emit multiple
+                // outbound_created events. Extract ALL sub-tx IDs and assign each to
+                // its corresponding hop for independent tracking.
+                //
+                // When same-chain hops merge (e.g., 2 hops to BNB become 1 outbound),
+                // there are fewer sub-tx IDs than outbound hops. We deduplicate:
+                // track each unique sub-tx ID once, then mark all hops sharing that
+                // outbound as confirmed together.
+                const allSubTxIds = await this.extractAllUniversalSubTxIds(response.hash);
+
+                // Build a map: subTxId -> [hop indices] for deduplication
+                // When there are more hops than sub-tx IDs (merged same-chain hops),
+                // extra hops map to the last available sub-tx ID.
+                const uniqueSubTxIds = [...new Set(allSubTxIds)];
+                const subTxToHops = new Map<string | 'fallback', CascadeHopInfo[]>();
+                for (let hopIdx = 0; hopIdx < outboundHops.length; hopIdx++) {
+                  const subTxId = hopIdx < uniqueSubTxIds.length
+                    ? uniqueSubTxIds[hopIdx]
+                    : (uniqueSubTxIds.length > 0
+                        ? uniqueSubTxIds[uniqueSubTxIds.length - 1]
+                        : 'fallback');
+                  outboundHops[hopIdx].expectedSubTxId = subTxId === 'fallback' ? undefined : subTxId;
+                  const existing = subTxToHops.get(subTxId) || [];
+                  existing.push(outboundHops[hopIdx]);
+                  subTxToHops.set(subTxId, existing);
+                }
+
+                // Track each unique sub-tx ID once, confirm all associated hops
+                for (const [subTxId, associatedHops] of subTxToHops) {
+                  const representativeHop = associatedHops[0];
                   const remainingTimeout =
                     timeout - (Date.now() - startTime);
                   if (remainingTimeout <= 0) {
-                    outboundHop.status = 'failed';
+                    for (const hop of associatedHops) {
+                      hop.status = 'failed';
+                    }
                     cascadeProgressHook?.({
-                      hopIndex: outboundHop.hopIndex,
-                      route: outboundHop.route,
-                      chain: outboundHop.executionChain,
+                      hopIndex: representativeHop.hopIndex,
+                      route: representativeHop.route,
+                      chain: representativeHop.executionChain,
                       status: 'timeout',
                       elapsed: Date.now() - startTime,
                     });
                     return {
                       success: false,
                       hops: hopInfos,
-                      failedAt: outboundHop.hopIndex,
+                      failedAt: representativeHop.hopIndex,
                     };
                   }
 
                   cascadeProgressHook?.({
-                    hopIndex: outboundHop.hopIndex,
-                    route: outboundHop.route,
-                    chain: outboundHop.executionChain,
+                    hopIndex: representativeHop.hopIndex,
+                    route: representativeHop.route,
+                    chain: representativeHop.executionChain,
                     status: 'polling',
                     elapsed: Date.now() - startTime,
                   });
@@ -2446,9 +2480,9 @@ export class Orchestrator {
                         timeout: remainingTimeout,
                         progressHook: (event) => {
                           cascadeProgressHook?.({
-                            hopIndex: outboundHop.hopIndex,
-                            route: outboundHop.route,
-                            chain: outboundHop.executionChain,
+                            hopIndex: representativeHop.hopIndex,
+                            route: representativeHop.route,
+                            chain: representativeHop.executionChain,
                             status: event.status as
                               | 'waiting'
                               | 'polling'
@@ -2459,33 +2493,40 @@ export class Orchestrator {
                             elapsed: Date.now() - startTime,
                           });
                         },
+                        // Pass pre-resolved sub-tx ID to avoid re-extraction
+                        _resolvedSubTxId: subTxId === 'fallback' ? undefined : subTxId,
                       });
 
-                    outboundHop.status = 'confirmed';
-                    outboundHop.txHash = outboundDetails.externalTxHash;
-                    outboundHop.outboundDetails = outboundDetails;
+                    // Mark ALL hops sharing this outbound as confirmed
+                    for (const hop of associatedHops) {
+                      hop.status = 'confirmed';
+                      hop.txHash = outboundDetails.externalTxHash;
+                      hop.outboundDetails = outboundDetails;
 
-                    cascadeProgressHook?.({
-                      hopIndex: outboundHop.hopIndex,
-                      route: outboundHop.route,
-                      chain: outboundHop.executionChain,
-                      status: 'confirmed',
-                      txHash: outboundDetails.externalTxHash,
-                      elapsed: Date.now() - startTime,
-                    });
+                      cascadeProgressHook?.({
+                        hopIndex: hop.hopIndex,
+                        route: hop.route,
+                        chain: hop.executionChain,
+                        status: 'confirmed',
+                        txHash: outboundDetails.externalTxHash,
+                        elapsed: Date.now() - startTime,
+                      });
+                    }
                   } catch (err) {
-                    outboundHop.status = 'failed';
+                    for (const hop of associatedHops) {
+                      hop.status = 'failed';
+                    }
                     cascadeProgressHook?.({
-                      hopIndex: outboundHop.hopIndex,
-                      route: outboundHop.route,
-                      chain: outboundHop.executionChain,
+                      hopIndex: representativeHop.hopIndex,
+                      route: representativeHop.route,
+                      chain: representativeHop.executionChain,
                       status: 'failed',
                       elapsed: Date.now() - startTime,
                     });
                     return {
                       success: false,
                       hops: hopInfos,
-                      failedAt: outboundHop.hopIndex,
+                      failedAt: representativeHop.hopIndex,
                     };
                   }
                 }
@@ -2519,6 +2560,7 @@ export class Orchestrator {
               };
             }
           },
+          wait: async (opts?: CascadeTrackOptions) => cascadeResponse.waitForAll(opts),
         };
 
         return cascadeResponse;
@@ -4350,7 +4392,7 @@ export class Orchestrator {
   ): Promise<UniversalTxResponse> {
     // For PushChain, multicall is not supported. Ensure data is hex string.
     if (Array.isArray(execute.data)) {
-      throw new Error('Multicall is not supported on PushChain');
+      //throw new Error('Multicall is not supported on PushChain');
     }
 
     const txHash = await this.pushClient.sendTransaction({
@@ -4897,6 +4939,54 @@ export class Orchestrator {
   }
 
   /**
+   * Extract ALL universalSubTxIds from a Push Chain transaction.
+   * For cascaded transactions, a single Push Chain tx may emit multiple
+   * outbound_created events, each with its own utx_id.
+   *
+   * @param pushChainTxHash - The Push Chain transaction hash
+   * @returns Array of universalSubTxIds (may be empty)
+   */
+  async extractAllUniversalSubTxIds(pushChainTxHash: string): Promise<string[]> {
+    this.printLog(
+      `[extractAllUniversalSubTxIds] Fetching Cosmos tx for: ${pushChainTxHash}`
+    );
+
+    try {
+      const cosmosTx = await this.pushClient.getCosmosTx(pushChainTxHash);
+
+      if (!cosmosTx?.events) {
+        this.printLog(`[extractAllUniversalSubTxIds] No events in Cosmos tx`);
+        return [];
+      }
+
+      const subTxIds: string[] = [];
+      for (const event of cosmosTx.events) {
+        if (event.type === 'outbound_created') {
+          const utxIdAttr = event.attributes?.find(
+            (attr: { key: string; value?: string }) => attr.key === 'utx_id'
+          );
+          if (utxIdAttr?.value) {
+            const id = utxIdAttr.value.startsWith('0x')
+              ? utxIdAttr.value
+              : `0x${utxIdAttr.value}`;
+            subTxIds.push(id);
+          }
+        }
+      }
+
+      this.printLog(
+        `[extractAllUniversalSubTxIds] Found ${subTxIds.length} sub-tx IDs: ${subTxIds.join(', ')}`
+      );
+      return subTxIds;
+    } catch (error) {
+      this.printLog(
+        `[extractAllUniversalSubTxIds] Error: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return [];
+    }
+  }
+
+  /**
    * Convert CAIP-2 namespace (e.g., "eip155:97") to CHAIN enum
    *
    * @param namespace - CAIP-2 chain namespace string
@@ -4938,6 +5028,7 @@ export class Orchestrator {
       pollingIntervalMs = Orchestrator.OUTBOUND_POLL_INTERVAL_MS,
       timeout = Orchestrator.OUTBOUND_MAX_TIMEOUT_MS,
       progressHook,
+      _resolvedSubTxId,
     } = options;
 
     // Terminal failure states — fail fast instead of polling until timeout
@@ -4962,8 +5053,9 @@ export class Orchestrator {
     this.printLog(`[waitForOutboundTx] Initial wait done. Starting polling. Elapsed: ${Date.now() - startTime}ms`);
     progressHook?.({ status: 'polling', elapsed: Date.now() - startTime });
 
-    // Cache the universalSubTxId after first extraction to avoid redundant receipt fetches
-    let cachedUniversalSubTxId: string | undefined;
+    // Cache the universalSubTxId after first extraction to avoid redundant receipt fetches.
+    // If a pre-resolved ID was provided (cascade per-hop tracking), use it directly.
+    let cachedUniversalSubTxId: string | undefined = _resolvedSubTxId;
 
     let pollCount = 0;
     while (Date.now() - startTime < timeout) {

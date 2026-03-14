@@ -735,7 +735,7 @@ describe('validateRouteParams — unsupported token', () => {
           token: solToken,
         },
       });
-    }).toThrow(/Unsupported moveable token.*token=SOL.*destination=/);
+    }).toThrow(/Unsupported moveable token[\s\S]*token=SOLANA_DEVNET\.SOL[\s\S]*destination=/);
   });
 
   it('should NOT throw when token symbol exists on target chain', () => {
