@@ -72,6 +72,7 @@ export type ExecuteParams = {
     amount: bigint; // smallest units of the token
     token?: import('../constants').MoveableToken; // if omitted, defaults to native token for origin chain
   };
+
 };
 
 /**
@@ -106,6 +107,17 @@ export interface UniversalTxResponse {
 
   // 6. Utilities
   wait: () => Promise<UniversalTxReceipt>;
+
+  /**
+   * Register a progress callback for events during wait().
+   * Call this BEFORE calling wait() to receive tracking events.
+   * @param callback - Function called with each progress event
+   */
+  progressHook: (
+    callback: (
+      event: import('../progress-hook/progress-hook.types').ProgressEvent
+    ) => void
+  ) => void;
 
   // 7. Metadata
   type: string; // "99" (was typeHex), now string
@@ -203,4 +215,46 @@ export interface UniversalTokenTxRequest {
   signatureData: `0x${string}`;
   amountOutMinETH: bigint;
   deadline: bigint;
+}
+
+/**
+ * Options for tracking a transaction by hash
+ */
+export interface TrackTransactionOptions {
+  /**
+   * Target chain to track transaction on. Defaults to Push Chain based on client network.
+   */
+  chain?: import('../constants/enums').CHAIN;
+
+  /**
+   * Progress callback for tracking events (replays SEND-TX-* hooks)
+   */
+  progressHook?: (event: import('../progress-hook/progress-hook.types').ProgressEvent) => void;
+
+  /**
+   * Whether to wait for transaction confirmation before returning.
+   * - true: Blocks until transaction is confirmed (default)
+   * - false: Returns immediately with current status
+   */
+  waitForCompletion?: boolean;
+
+  /**
+   * Advanced configuration options
+   */
+  advanced?: {
+    /**
+     * Polling interval in milliseconds (default: 1000)
+     */
+    pollingIntervalMs?: number;
+
+    /**
+     * Timeout in milliseconds (default: 300000 = 5 minutes)
+     */
+    timeout?: number;
+
+    /**
+     * Custom RPC URLs per chain (overrides client defaults)
+     */
+    rpcUrls?: Partial<Record<import('../constants/enums').CHAIN, string[]>>;
+  };
 }

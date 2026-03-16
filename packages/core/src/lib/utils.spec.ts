@@ -175,16 +175,18 @@ describe('Helpers Utils Namespace', () => {
     });
   });
 
-  describe('getSupportedChain', () => {
+  describe('getSupportedChains', () => {
     it('should return supported chains for TESTNET', () => {
       const res = PushChain.utils.chains.getSupportedChains(
         PushChain.CONSTANTS.PUSH_NETWORK.TESTNET
       );
       expect(res).toEqual({
         chains: [
+          CHAIN.PUSH_TESTNET_DONUT,
           CHAIN.ETHEREUM_SEPOLIA,
           CHAIN.ARBITRUM_SEPOLIA,
           CHAIN.BASE_SEPOLIA,
+          CHAIN.BNB_TESTNET,
           CHAIN.SOLANA_DEVNET,
         ],
       });
@@ -196,9 +198,11 @@ describe('Helpers Utils Namespace', () => {
       );
       expect(res).toEqual({
         chains: [
+          CHAIN.PUSH_TESTNET_DONUT,
           CHAIN.ETHEREUM_SEPOLIA,
           CHAIN.ARBITRUM_SEPOLIA,
           CHAIN.BASE_SEPOLIA,
+          CHAIN.BNB_TESTNET,
           CHAIN.SOLANA_DEVNET,
         ],
       });
@@ -210,9 +214,11 @@ describe('Helpers Utils Namespace', () => {
       );
       expect(res).toEqual({
         chains: [
+          CHAIN.PUSH_TESTNET_DONUT,
           CHAIN.ETHEREUM_SEPOLIA,
           CHAIN.ARBITRUM_SEPOLIA,
           CHAIN.BASE_SEPOLIA,
+          CHAIN.BNB_TESTNET,
           CHAIN.SOLANA_DEVNET,
         ],
       });
@@ -220,6 +226,63 @@ describe('Helpers Utils Namespace', () => {
 
     it('should return empty list for MAINNET', () => {
       const res = PushChain.utils.chains.getSupportedChains(
+        PushChain.CONSTANTS.PUSH_NETWORK.MAINNET
+      );
+      expect(res).toEqual({ chains: [] });
+    });
+  });
+
+  describe('getSupportedChainsByName', () => {
+    it('should return supported chain names for TESTNET', () => {
+      const res = PushChain.utils.chains.getSupportedChainsByName(
+        PushChain.CONSTANTS.PUSH_NETWORK.TESTNET
+      );
+      expect(res).toEqual({
+        chains: [
+          'PUSH_TESTNET_DONUT',
+          'ETHEREUM_SEPOLIA',
+          'ARBITRUM_SEPOLIA',
+          'BASE_SEPOLIA',
+          'BNB_TESTNET',
+          'SOLANA_DEVNET',
+        ],
+      });
+    });
+
+    it('should return supported chain names for TESTNET_DONUT', () => {
+      const res = PushChain.utils.chains.getSupportedChainsByName(
+        PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT
+      );
+      expect(res).toEqual({
+        chains: [
+          'PUSH_TESTNET_DONUT',
+          'ETHEREUM_SEPOLIA',
+          'ARBITRUM_SEPOLIA',
+          'BASE_SEPOLIA',
+          'BNB_TESTNET',
+          'SOLANA_DEVNET',
+        ],
+      });
+    });
+
+    it('should return supported chain names for LOCALNET', () => {
+      const res = PushChain.utils.chains.getSupportedChainsByName(
+        PushChain.CONSTANTS.PUSH_NETWORK.LOCALNET
+      );
+      expect(res).toEqual({
+        chains: [
+          'PUSH_TESTNET_DONUT',
+          'ETHEREUM_SEPOLIA',
+          'ARBITRUM_SEPOLIA',
+          'BASE_SEPOLIA',
+          'BNB_TESTNET',
+          'SOLANA_DEVNET',
+        ],
+      });
+    });
+
+    it('should return empty list for MAINNET', () => {
+      const res = PushChain.utils.chains.getSupportedChainsByName(
         PushChain.CONSTANTS.PUSH_NETWORK.MAINNET
       );
       expect(res).toEqual({ chains: [] });

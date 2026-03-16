@@ -4,6 +4,7 @@ import { Any } from 'cosmjs-types/google/protobuf/any';
 import {
   Abi,
   bytesToHex,
+  decodeAbiParameters,
   decodeFunctionData,
   encodeAbiParameters,
   encodePacked,
@@ -48,6 +49,7 @@ import {
   ProgressEvent,
 } from '../progress-hook/progress-hook.types';
 import { PushChain } from '../push-chain/push-chain';
+import { Utils } from '../utils';
 import { PushClient } from '../push-client/push-client';
 import {
   UniversalAccount,
@@ -122,6 +124,16 @@ export class Orchestrator {
    * Executes an interaction on Push Chain
    */
   async execute(execute: ExecuteParams): Promise<UniversalTxResponse> {
+    // Create buffer to collect events during execution for tx.progressHook() replay
+    const eventBuffer: ProgressEvent[] = [];
+
+    // Store original progressHook and wrap to collect events
+    const originalHook = this.progressHook;
+    this.progressHook = (event: ProgressEvent) => {
+      eventBuffer.push(event);
+      if (originalHook) originalHook(event);
+    };
+
     try {
       if (execute.funds) {
         if (!execute.data || execute.data === '0x') {
@@ -199,6 +211,18 @@ export class Orchestrator {
 
             const ueaAddress = this.computeUEAOffchain();
 
+            this.printLog('sendFunds — buildGatewayPayloadAndGas result: ' + JSON.stringify({
+              recipient: execute.to,
+              ueaAddress,
+              isSelfBridge: execute.to.toLowerCase() === ueaAddress.toLowerCase(),
+              bridgeAmount: bridgeAmount.toString(),
+              bridgeToken,
+              isNative,
+              tokenAddr,
+              nonce: nonce.toString(),
+              deployed,
+            }, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
+
             // Compute minimal native amount to deposit for gas on Push Chain
             const ueaBalanceForGas = await this.pushClient.getBalance(
               ueaAddress
@@ -209,6 +233,7 @@ export class Orchestrator {
               BigInt(0),
               ueaBalanceForGas
             );
+            this.printLog(`sendFunds — nativeAmount: ${nativeAmount.toString()}, ueaBalanceForGas: ${ueaBalanceForGas.toString()}`);
 
             // We log the SEND_TX_03_01 here because the progress hook for gas estimation should arrive before the resolving of UEA.
             this.executeProgressHook(PROGRESS_HOOK.SEND_TX_03_01);
@@ -217,6 +242,7 @@ export class Orchestrator {
               ueaAddress,
               deployed
             );
+            this.printLog(`UEA resolved: ${ueaAddress}, deployed: ${deployed}`);
 
             this.executeProgressHook(
               PROGRESS_HOOK.SEND_TX_06_01,
@@ -267,13 +293,20 @@ export class Orchestrator {
                 //   signatureData: '0x',
                 // } as unknown as never;
 
+                this.printLog('FUNDS ONLY SELF — gateway call payload: ' + JSON.stringify({
+                  gatewayAddress, functionName: 'sendUniversalTx', req,
+                  value: (isNative ? nativeAmount + bridgeAmount : nativeAmount).toString(),
+                  isNative, bridgeAmount: bridgeAmount.toString(),
+                  nativeAmount: nativeAmount.toString(), bridgeToken,
+                }, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
+
                 txHash = await evmClient.writeContract({
                   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                   address: gatewayAddress,
                   functionName: 'sendUniversalTx',
                   args: [req],
                   signer: this.universalSigner,
-                  value: isNative ? bridgeAmount : BigInt(0),
+                  value: isNative ? nativeAmount + bridgeAmount : nativeAmount,
                 });
               } else {
                 // FUNDS ONLY OTHER
@@ -289,13 +322,20 @@ export class Orchestrator {
                 //   signatureData: '0x',
                 // } as unknown as never;
 
+                this.printLog('FUNDS ONLY OTHER — gateway call payload: ' + JSON.stringify({
+                  gatewayAddress, functionName: 'sendUniversalTx', req,
+                  value: nativeAmount.toString(),
+                  isNative, bridgeAmount: bridgeAmount.toString(),
+                  nativeAmount: nativeAmount.toString(), bridgeToken,
+                }, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
+
                 txHash = await evmClient.writeContract({
                   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                   address: gatewayAddress,
                   functionName: 'sendUniversalTx',
                   args: [req],
                   signer: this.universalSigner,
-                  value: nativeAmount,
+                  value: isNative ? nativeAmount + bridgeAmount : nativeAmount,
                 });
               }
             } catch (err) {
@@ -320,9 +360,19 @@ export class Orchestrator {
             await this.waitForEvmConfirmationsWithCountdown(
               evmClient,
               txHash,
-              4,
-              210000
+              CHAIN_INFO[chain].confirmations,
+              CHAIN_INFO[chain].timeout
             );
+
+            // Funds Confirmed - emit immediately after confirmations
+            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_04);
+            // Syncing with Push Chain - emit before query
+            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_05);
+
+            this.printLog('sendFunds — querying Push Chain status: ' + JSON.stringify({
+              txHash,
+              evmGatewayMethod: execute.to === ueaAddress ? 'sendFunds' : 'sendTxWithFunds',
+            }));
 
             const pushChainUniversalTx =
               await this.queryUniversalTxStatusFromGatewayTx(
@@ -332,16 +382,39 @@ export class Orchestrator {
                 execute.to === ueaAddress ? 'sendFunds' : 'sendTxWithFunds'
               );
 
-            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_04);
-
-            const lastPcTransaction = pushChainUniversalTx?.pcTx.at(-1);
+            if (!pushChainUniversalTx?.pcTx?.length) {
+              throw new Error(
+                `Failed to retrieve Push Chain transaction status for gateway tx: ${txHash}. ` +
+                  `The transaction may have failed on Push Chain or not been indexed yet.`
+              );
+            }
+            // For sendFunds operations, MintPC (first) succeeds and executePayload (second) may fail
+            // Always use the last pcTx entry as it represents the final execution result
+            const lastPcTransaction = pushChainUniversalTx.pcTx.at(-1);
+            this.printLog('sendFunds — pushChainUniversalTx pcTx: ' + JSON.stringify(
+              pushChainUniversalTx?.pcTx?.map((p: any) => ({ txHash: p.txHash, status: p.status, errorMsg: p.errorMsg })),
+              null, 2));
+            this.printLog('sendFunds — using lastPcTransaction: ' + JSON.stringify(lastPcTransaction, null, 2));
+            if (!lastPcTransaction?.txHash) {
+              // Check for error messages in failed entries
+              const failedPcTx = pushChainUniversalTx.pcTx.find(
+                (pcTx: { status?: string; errorMsg?: string }) =>
+                  pcTx.status === 'FAILED' && pcTx.errorMsg
+              );
+              const errorDetails = failedPcTx?.errorMsg
+                ? `: ${failedPcTx.errorMsg}`
+                : '';
+              throw new Error(
+                `No transaction hash found in Push Chain response for gateway tx: ${txHash}${errorDetails}`
+              );
+            }
             const tx = await this.pushClient.getTransaction(
-              lastPcTransaction?.txHash as `0x${string}`
+              lastPcTransaction.txHash as `0x${string}`
             );
-            const response = await this.transformToUniversalTxResponse(tx);
+            const response = await this.transformToUniversalTxResponse(tx, eventBuffer);
             // Funds Flow: Funds credited on Push Chain
             this.executeProgressHook(
-              PROGRESS_HOOK.SEND_TX_06_05,
+              PROGRESS_HOOK.SEND_TX_06_06,
               bridgeAmount,
               execute.funds.token.decimals,
               symbol
@@ -407,13 +480,8 @@ export class Orchestrator {
                 programId
               );
 
-              const recipientNative =
-                execute.to === ueaAddress
-                  ? Array.from(Buffer.alloc(20, 0))
-                  : recipientEvm20;
-
               const reqNative = this._buildSvmUniversalTxRequest({
-                recipient: recipientNative,
+                recipient: recipientEvm20,
                 token: PublicKey.default,
                 amount: bridgeAmount,
                 payload: '0x',
@@ -475,9 +543,8 @@ export class Orchestrator {
               );
 
               if (execute.to === ueaAddress) {
-                const recipientSpl = Array.from(Buffer.alloc(20, 0));
                 const reqSpl = this._buildSvmUniversalTxRequest({
-                  recipient: recipientSpl,
+                  recipient: recipientEvm20,
                   token: mintPk,
                   amount: bridgeAmount,
                   payload: '0x',
@@ -557,9 +624,15 @@ export class Orchestrator {
             await this.waitForSvmConfirmationsWithCountdown(
               svmClient,
               txSignature,
-              25,
-              300000
+              CHAIN_INFO[chain].confirmations,
+              CHAIN_INFO[chain].timeout
             );
+
+            // Funds Confirmed - emit immediately after confirmations
+            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_04);
+            // Syncing with Push Chain - emit before query
+            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_05);
+
             // After origin confirmations, query Push Chain for UniversalTx status (SVM)
             const pushChainUniversalTx =
               await this.queryUniversalTxStatusFromGatewayTx(
@@ -568,16 +641,34 @@ export class Orchestrator {
                 txSignature,
                 'sendFunds'
               );
-            this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_04);
 
-            const lastPcTransaction = pushChainUniversalTx?.pcTx.at(-1);
+            if (!pushChainUniversalTx?.pcTx?.length) {
+              throw new Error(
+                `Failed to retrieve Push Chain transaction status for gateway tx: ${txSignature}. ` +
+                  `The transaction may have failed on Push Chain or not been indexed yet.`
+              );
+            }
+            // Always use the last pcTx entry as it represents the final execution result
+            const lastPcTransaction = pushChainUniversalTx.pcTx.at(-1);
+            if (!lastPcTransaction?.txHash) {
+              const failedPcTx = pushChainUniversalTx.pcTx.find(
+                (pcTx: { status?: string; errorMsg?: string }) =>
+                  pcTx.status === 'FAILED' && pcTx.errorMsg
+              );
+              const errorDetails = failedPcTx?.errorMsg
+                ? `: ${failedPcTx.errorMsg}`
+                : '';
+              throw new Error(
+                `No transaction hash found in Push Chain response for gateway tx: ${txSignature}${errorDetails}`
+              );
+            }
             const tx = await this.pushClient.getTransaction(
-              lastPcTransaction?.txHash as `0x${string}`
+              lastPcTransaction.txHash as `0x${string}`
             );
-            const response = await this.transformToUniversalTxResponse(tx);
+            const response = await this.transformToUniversalTxResponse(tx, eventBuffer);
             // Funds Flow: Funds credited on Push Chain
             this.executeProgressHook(
-              PROGRESS_HOOK.SEND_TX_06_05,
+              PROGRESS_HOOK.SEND_TX_06_06,
               bridgeAmount,
               execute.funds.token.decimals,
               symbol
@@ -647,8 +738,8 @@ export class Orchestrator {
           );
 
           // Determine USD to deposit via gateway (8 decimals) with caps: min=$1, max=$10
-          const oneUsd = PushChain.utils.helpers.parseUnits('1', 8);
-          const tenUsd = PushChain.utils.helpers.parseUnits('10', 8);
+          const oneUsd = Utils.helpers.parseUnits('1', 8);
+          const tenUsd = Utils.helpers.parseUnits('10', 8);
           const deficit =
             requiredFunds > ueaBalance ? requiredFunds - ueaBalance : BigInt(0);
           let depositUsd =
@@ -702,7 +793,7 @@ export class Orchestrator {
             this.rpcUrls
           ).getPrice(chain); // 8 decimals
           const nativeDecimals = CHAIN_INFO[chain].vm === VM.SVM ? 9 : 18;
-          const oneNativeUnit = PushChain.utils.helpers.parseUnits(
+          const oneNativeUnit = Utils.helpers.parseUnits(
             '1',
             nativeDecimals
           );
@@ -732,19 +823,20 @@ export class Orchestrator {
 
           if (CHAIN_INFO[this.universalSigner.account.chain].vm === VM.EVM) {
             const tokenAddr = execute.funds.token.address as `0x${string}`;
-            if (mechanism !== 'approve') {
-              throw new Error(
-                'Only ERC-20 tokens are supported for funds+payload on EVM; native and permit2 are not supported yet'
+            if (mechanism === 'approve') {
+              // ERC-20 tokens: ensure gateway has approval
+              const evmClientEvm = evmClient as EvmClient;
+              const gatewayAddressEvm = gatewayAddress as `0x${string}`;
+              await this.ensureErc20Allowance(
+                evmClientEvm,
+                tokenAddr,
+                gatewayAddressEvm,
+                bridgeAmount
               );
+            } else if (mechanism === 'permit2') {
+              throw new Error('Permit2 is not supported yet');
             }
-            const evmClientEvm = evmClient as EvmClient;
-            const gatewayAddressEvm = gatewayAddress as `0x${string}`;
-            await this.ensureErc20Allowance(
-              evmClientEvm,
-              tokenAddr,
-              gatewayAddressEvm,
-              bridgeAmount
-            );
+            // Native tokens (mechanism === 'native') don't need approval - handled via msg.value
           }
 
           let txHash: `0x${string}` | string;
@@ -812,11 +904,11 @@ export class Orchestrator {
                 if (gasTokenBalance < gasAmount) {
                   const sym = payWith?.token?.symbol ?? 'gas token';
                   const decimals = payWith?.token?.decimals ?? 18;
-                  const needFmt = PushChain.utils.helpers.formatUnits(
+                  const needFmt = Utils.helpers.formatUnits(
                     gasAmount,
                     decimals
                   );
-                  const haveFmt = PushChain.utils.helpers.formatUnits(
+                  const haveFmt = Utils.helpers.formatUnits(
                     gasTokenBalance,
                     decimals
                   );
@@ -879,13 +971,20 @@ export class Orchestrator {
                 // });
 
                 // VALUE + PAYLOAD + FUNDS && PAYLOAD + FUNDS
+                // For native tokens: msg.value = gas amount + bridge amount
+                // For ERC-20 tokens: msg.value = gas amount only (bridge handled via token transfer)
+                const isNativeToken = mechanism === 'native';
+                const totalValue = isNativeToken
+                  ? nativeAmount + bridgeAmount
+                  : nativeAmount;
+
                 txHash = await evmClientEvm.writeContract({
                   abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
                   address: gatewayAddressEvm,
                   functionName: 'sendUniversalTx',
                   args: [req],
                   signer: this.universalSigner,
-                  value: nativeAmount,
+                  value: totalValue,
                 });
               }
             } else {
@@ -916,13 +1015,14 @@ export class Orchestrator {
           );
 
           // Awaiting confirmations
-          if (CHAIN_INFO[this.universalSigner.account.chain].vm === VM.EVM) {
+          const signerChain = this.universalSigner.account.chain;
+          if (CHAIN_INFO[signerChain].vm === VM.EVM) {
             const evmClientEvm = evmClient as EvmClient;
             await this.waitForEvmConfirmationsWithCountdown(
               evmClientEvm,
               txHash as `0x${string}`,
-              4,
-              300000
+              CHAIN_INFO[signerChain].confirmations,
+              CHAIN_INFO[signerChain].timeout
             );
           } else {
             const svmClient = new SvmClient({
@@ -933,8 +1033,8 @@ export class Orchestrator {
             await this.waitForSvmConfirmationsWithCountdown(
               svmClient,
               txHash as string,
-              25,
-              300000
+              CHAIN_INFO[signerChain].confirmations,
+              CHAIN_INFO[signerChain].timeout
             );
           }
 
@@ -956,7 +1056,10 @@ export class Orchestrator {
           //   await this.sendUniversalTx(deployed, feeLockTxHash);
           // }
 
+          // Funds Confirmed - emit immediately after confirmations
           this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_04);
+          // Syncing with Push Chain - emit before query
+          this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_05);
 
           // After sending Cosmos tx to Push Chain, query UniversalTx status
           let pushChainUniversalTx: UniversalTx | undefined;
@@ -980,11 +1083,37 @@ export class Orchestrator {
               );
           }
 
-          const lastPcTransaction = pushChainUniversalTx?.pcTx.at(-1);
+          if (!pushChainUniversalTx?.pcTx?.length) {
+            throw new Error(
+              `Failed to retrieve Push Chain transaction status for gateway tx: ${txHash}. ` +
+                `The transaction may have failed on Push Chain or not been indexed yet.`
+            );
+          }
+          // Always use the last pcTx entry as it represents the final execution result
+          const lastPcTransaction = pushChainUniversalTx.pcTx.at(-1);
+          if (!lastPcTransaction?.txHash) {
+            const failedPcTx = pushChainUniversalTx.pcTx.find(
+              (pcTx: { status?: string; errorMsg?: string }) =>
+                pcTx.status === 'FAILED' && pcTx.errorMsg
+            );
+            const errorDetails = failedPcTx?.errorMsg
+              ? `: ${failedPcTx.errorMsg}`
+              : '';
+            throw new Error(
+              `No transaction hash found in Push Chain response for gateway tx: ${txHash}${errorDetails}`
+            );
+          }
           const tx = await this.pushClient.getTransaction(
-            lastPcTransaction?.txHash as `0x${string}`
+            lastPcTransaction.txHash as `0x${string}`
           );
-          const response = await this.transformToUniversalTxResponse(tx);
+          const response = await this.transformToUniversalTxResponse(tx, eventBuffer);
+          // Funds Flow: Funds credited on Push Chain
+          this.executeProgressHook(
+            PROGRESS_HOOK.SEND_TX_06_06,
+            bridgeAmount,
+            execute.funds.token.decimals,
+            symbol
+          );
           this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
           return response;
         }
@@ -1007,7 +1136,7 @@ export class Orchestrator {
        */
       if (this.isPushChain(chain)) {
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_07);
-        const tx = await this.sendPushTx(execute);
+        const tx = await this.sendPushTx(execute, eventBuffer);
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [tx]);
         return tx;
       }
@@ -1123,18 +1252,39 @@ export class Orchestrator {
           }
         } else {
           // For value only we don't check below. Only if there is payload to be executed
-          if (execute.data && execute.to.toLowerCase() === UEA.toLowerCase()) {
-            throw new Error(`You can't execute data on the UEA address`);
-          }
-          // VALUE ONLY SELF
+          // if (execute.data && execute.to.toLowerCase() === UEA.toLowerCase()) {
+          //   throw new Error(`You can't execute data on the UEA address`);
+          // }
+          // VALUE ONLY SELF - using multicall for consistency
           payloadTo = execute.to;
           payloadData = execute.data || '0x';
+          const reqData = this._buildMulticallPayloadData(
+            execute.to,
+            buildExecuteMulticall({ execute, ueaAddress: UEA })
+          );
+          const universalPayloadSelf = JSON.parse(
+            JSON.stringify(
+              {
+                to: zeroAddress,
+                value: execute.value,
+                data: reqData,
+                gasLimit: execute.gasLimit || BigInt(5e7),
+                maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
+                maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
+                nonce,
+                deadline: execute.deadline || BigInt(9999999999),
+                vType: feeLockingRequired
+                  ? VerificationType.universalTxVerification
+                  : VerificationType.signedVerification,
+              },
+              this.bigintReplacer
+            )
+          ) as UniversalPayload;
           req = this._buildUniversalTxRequest({
-            // recipient: execute.to,
             recipient: zeroAddress,
             token: zeroAddress,
             amount: BigInt(0),
-            payload: payloadData,
+            payload: this.encodeUniversalPayload(universalPayloadSelf),
           });
         }
       }
@@ -1185,7 +1335,7 @@ export class Orchestrator {
          * Fee Locking - For all chains, EVM and Solana
          */
         const fundDifference = requiredFunds - funds;
-        const fixedPushAmount = PushChain.utils.helpers.parseUnits('0.001', 18); // Minimum lock 0.001 Push tokens
+        const fixedPushAmount = Utils.helpers.parseUnits('0.001', 18); // Minimum lock 0.001 Push tokens
         const lockAmount =
           funds < requiredFunds ? fundDifference : fixedPushAmount;
         const lockAmountInUSD = this.pushClient.pushToUSDC(lockAmount);
@@ -1237,11 +1387,30 @@ export class Orchestrator {
          */
 
         // Transform to UniversalTxResponse (follow sendFunds pattern)
-        const lastPcTransaction = pushChainUniversalTx?.pcTx.at(-1);
+        if (!pushChainUniversalTx?.pcTx?.length) {
+          throw new Error(
+            `Failed to retrieve Push Chain transaction status for gateway tx: ${feeLockTxHash}. ` +
+              `The transaction may have failed on Push Chain or not been indexed yet.`
+          );
+        }
+        // Always use the last pcTx entry as it represents the final execution result
+        const lastPcTransaction = pushChainUniversalTx.pcTx.at(-1);
+        if (!lastPcTransaction?.txHash) {
+          const failedPcTx = pushChainUniversalTx.pcTx.find(
+            (pcTx: { status?: string; errorMsg?: string }) =>
+              pcTx.status === 'FAILED' && pcTx.errorMsg
+          );
+          const errorDetails = failedPcTx?.errorMsg
+            ? `: ${failedPcTx.errorMsg}`
+            : '';
+          throw new Error(
+            `No transaction hash found in Push Chain response for gateway tx: ${feeLockTxHash}${errorDetails}`
+          );
+        }
         const tx = await this.pushClient.getTransaction(
-          lastPcTransaction?.txHash as `0x${string}`
+          lastPcTransaction.txHash as `0x${string}`
         );
-        const response = await this.transformToUniversalTxResponse(tx);
+        const response = await this.transformToUniversalTxResponse(tx, eventBuffer);
         this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, [response]);
         return response;
       }
@@ -1255,7 +1424,8 @@ export class Orchestrator {
         isUEADeployed,
         feeLockTxHash,
         universalPayload,
-        verificationData
+        verificationData,
+        eventBuffer
       );
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_01, transactions);
       return transactions[transactions.length - 1];
@@ -1274,6 +1444,9 @@ export class Orchestrator {
             })();
       this.executeProgressHook(PROGRESS_HOOK.SEND_TX_99_02, errMessage);
       throw err;
+    } finally {
+      // Restore original progressHook
+      this.progressHook = originalHook;
     }
   }
 
@@ -1308,8 +1481,8 @@ export class Orchestrator {
 
         const nativeDecimals = 18; // ETH, MATIC, etc.
         // Ensure deposit respects gateway USD caps (min $1, max $10) and avoid rounding below min
-        const oneUsd = PushChain.utils.helpers.parseUnits('1', 8);
-        const tenUsd = PushChain.utils.helpers.parseUnits('10', 8);
+        const oneUsd = Utils.helpers.parseUnits('1', 8);
+        const tenUsd = Utils.helpers.parseUnits('10', 8);
         let depositUsd = amount < oneUsd ? oneUsd : amount;
         if (depositUsd > tenUsd) depositUsd = tenUsd;
         // Ceil division to avoid falling below on-chain min due to rounding, then add 1 wei safety
@@ -1347,8 +1520,8 @@ export class Orchestrator {
         ]);
         // Ensure deposit respects gateway USD caps (min $1, max $10) and avoid rounding below min
         const nativeDecimals = 9; // SOL lamports
-        const oneUsd = PushChain.utils.helpers.parseUnits('1', 8);
-        const tenUsd = PushChain.utils.helpers.parseUnits('10', 8);
+        const oneUsd = Utils.helpers.parseUnits('1', 8);
+        const tenUsd = Utils.helpers.parseUnits('10', 8);
         let depositUsd = amount < oneUsd ? oneUsd : amount;
         if (depositUsd > tenUsd) depositUsd = tenUsd;
         // Ceil division to avoid falling below on-chain min due to rounding, then add 1 lamport safety
@@ -1615,7 +1788,8 @@ export class Orchestrator {
     isUEADeployed: boolean,
     feeLockTxHash?: string,
     universalPayload?: UniversalPayload,
-    verificationData?: `0x${string}`
+    verificationData?: `0x${string}`,
+    eventBuffer: ProgressEvent[] = []
   ): Promise<UniversalTxResponse[]> {
     const { chain, address } = this.universalSigner.account;
     const { vm, chainId } = CHAIN_INFO[chain];
@@ -1700,8 +1874,14 @@ export class Orchestrator {
       })
     );
 
+    // Pass eventBuffer only to the last transaction (which is the one returned to user)
     return await Promise.all(
-      evmTxs.map((tx) => this.transformToUniversalTxResponse(tx))
+      evmTxs.map((tx, index) =>
+        this.transformToUniversalTxResponse(
+          tx,
+          index === evmTxs.length - 1 ? eventBuffer : []
+        )
+      )
     );
   }
 
@@ -1712,7 +1892,8 @@ export class Orchestrator {
    * @returns Cosmos Tx Response for a given Evm Tx
    */
   private async sendPushTx(
-    execute: ExecuteParams
+    execute: ExecuteParams,
+    eventBuffer: ProgressEvent[] = []
   ): Promise<UniversalTxResponse> {
     // For PushChain, multicall is not supported. Ensure data is hex string.
     if (Array.isArray(execute.data)) {
@@ -1726,7 +1907,7 @@ export class Orchestrator {
       signer: this.universalSigner,
     });
     const txResponse = await this.pushClient.getTransaction(txHash);
-    return await this.transformToUniversalTxResponse(txResponse);
+    return await this.transformToUniversalTxResponse(txResponse, eventBuffer);
   }
 
   /**
@@ -1967,6 +2148,232 @@ export class Orchestrator {
   }
 
   /**
+   * Reconstructs SEND-TX-* progress events from on-chain transaction data.
+   * Used by trackTransaction to replay progress for already-completed transactions.
+   *
+   * @param universalTxResponse - The transformed transaction response
+   * @param universalTxData - Optional UniversalTx data from gRPC query (for cross-chain txs)
+   * @returns Array of ProgressEvent objects to emit
+   */
+  private reconstructProgressEvents(
+    universalTxResponse: UniversalTxResponse,
+    universalTxData?: UniversalTx
+  ): ProgressEvent[] {
+    const events: ProgressEvent[] = [];
+
+    // Parse origin from CAIP format: "eip155:11155111:0xabc..."
+    const originParts = universalTxResponse.origin.split(':');
+    const chainNamespace =
+      originParts.length >= 2 ? `${originParts[0]}:${originParts[1]}` : originParts[0];
+    const originAddress =
+      originParts.length >= 3 ? originParts[2] : universalTxResponse.from;
+
+    // SEND_TX_01: Origin Chain Detected (always emit)
+    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_01](chainNamespace, originAddress));
+
+    // SEND_TX_02_01/02: Gas estimation (always emit for reconstructed flow)
+    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_02_01]());
+    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_02_02](universalTxResponse.gasLimit));
+
+    // Determine if this is a cross-chain tx (non-Push origin)
+    const isPushOrigin =
+      chainNamespace.includes('eip155:42101') ||
+      chainNamespace.includes('eip155:9') ||
+      chainNamespace.includes('eip155:9001');
+
+    // SEND_TX_03_01/02: UEA resolution (emit if origin is not Push Chain)
+    if (!isPushOrigin) {
+      events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_03_01]());
+      events.push(
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_03_02](
+          universalTxResponse.from as `0x${string}`,
+          true // Assume deployed since tx executed
+        )
+      );
+    }
+
+    // Determine transaction type from universalTxData if available
+    const inboundTx = universalTxData?.inboundTx;
+    const hasFundsFlow = inboundTx && BigInt(inboundTx.amount || '0') > BigInt(0);
+
+    // SEND_TX_04_02/03: Signature verification (emit for universal tx)
+    if (!isPushOrigin) {
+      events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_04_02]());
+      events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_04_03]());
+    }
+
+    // Funds flow hooks (06-x) - only if funds were bridged
+    if (hasFundsFlow && inboundTx) {
+      const amount = BigInt(inboundTx.amount);
+      // Determine decimals and symbol from asset - default to 18/native for now
+      const decimals = 18;
+      const symbol = 'TOKEN';
+
+      events.push(
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_06_01](amount, decimals, symbol)
+      );
+      events.push(
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_06_02](
+          inboundTx.txHash,
+          amount,
+          decimals,
+          symbol
+        )
+      );
+
+      // Confirmations - emit final state only
+      const confirmations = 1;
+      events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_06_03](confirmations));
+      events.push(
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_06_03_02](confirmations, confirmations)
+      );
+      events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_06_04]());
+      events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_06_05]());
+      events.push(
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_06_06](amount, decimals, symbol)
+      );
+    }
+
+    // SEND_TX_07: Broadcasting (always emit)
+    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_07]());
+
+    // Determine outcome from pcTx status if available
+    const pcTx = universalTxData?.pcTx?.[0];
+    const isFailed = pcTx?.status === 'FAILED';
+
+    // SEND_TX_99_01/02: Final outcome
+    if (isFailed) {
+      events.push(
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_02](pcTx?.errorMsg || 'Unknown error')
+      );
+    } else {
+      events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_01]([universalTxResponse]));
+    }
+
+    return events;
+  }
+
+  /**
+   * Tracks a transaction by hash on Push Chain and returns UniversalTxResponse.
+   * Reconstructs and replays SEND-TX-* progress events for completed transactions.
+   *
+   * @param txHash - Transaction hash to track (Push Chain tx hash)
+   * @param options - Tracking options (chain, progressHook, waitForCompletion, advanced config)
+   * @returns Promise resolving to UniversalTxResponse with wait() and progressHook() methods
+   */
+  async trackTransaction(
+    txHash: string,
+    options?: import('./orchestrator.types').TrackTransactionOptions
+  ): Promise<UniversalTxResponse> {
+    const {
+      chain = this.getPushChainForNetwork(),
+      progressHook,
+      waitForCompletion = true,
+      advanced = {},
+    } = options ?? {};
+
+    const { timeout = 300000, rpcUrls = {} } = advanced;
+
+    // Event buffer for replay via response.progressHook()
+    const eventBuffer: ProgressEvent[] = [];
+
+    // Helper to emit progress events
+    const emitProgress = (event: ProgressEvent) => {
+      eventBuffer.push(event);
+      this.printLog(event.message);
+      // Per-transaction hook called FIRST
+      if (progressHook) {
+        progressHook(event);
+      }
+      // Orchestrator-level hook called SECOND
+      if (this.progressHook) {
+        this.progressHook(event);
+      }
+    };
+
+    // Create client for target chain with optional RPC override
+    const chainRPCs =
+      rpcUrls[chain] || this.rpcUrls[chain] || CHAIN_INFO[chain].defaultRPC;
+    const client = new PushClient({
+      rpcUrls: chainRPCs,
+      network: this.pushNetwork,
+    });
+
+    // Poll for transaction
+    const start = Date.now();
+    let tx: TxResponse | undefined;
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      try {
+        tx = await client.getTransaction(txHash as `0x${string}`);
+        break; // Found transaction
+      } catch (err) {
+        if (!waitForCompletion) {
+          throw new Error(`Transaction ${txHash} not found`);
+        }
+
+        // Check timeout
+        if (Date.now() - start > timeout) {
+          throw new Error(
+            `Timeout: transaction ${txHash} not confirmed within ${timeout}ms`
+          );
+        }
+
+        // Brief delay before retry
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+
+    // Try to get UniversalTx data for richer progress reconstruction
+    // (may not exist for direct Push Chain transactions)
+    let universalTxData: UniversalTx | undefined;
+    try {
+      // Attempt to find UniversalTx by searching pcTx entries
+      // For now, we'll try to look up by the tx hash
+      const utxResponse = await this.pushClient.getUniversalTxById(txHash);
+      if (utxResponse?.universalTx) {
+        universalTxData = utxResponse.universalTx;
+      }
+    } catch {
+      // Ignore - direct Push Chain tx or tx not indexed yet
+    }
+
+    // Transform to UniversalTxResponse
+    const universalTxResponse = await this.transformToUniversalTxResponse(
+      tx,
+      eventBuffer
+    );
+
+    // Reconstruct and emit SEND-TX-* progress events
+    const reconstructedEvents = this.reconstructProgressEvents(
+      universalTxResponse,
+      universalTxData
+    );
+    for (const event of reconstructedEvents) {
+      emitProgress(event);
+    }
+
+    return universalTxResponse;
+  }
+
+  /**
+   * Returns the Push Chain enum value for the current network
+   */
+  private getPushChainForNetwork(): CHAIN {
+    if (this.pushNetwork === PUSH_NETWORK.MAINNET) {
+      return CHAIN.PUSH_MAINNET;
+    } else if (
+      this.pushNetwork === PUSH_NETWORK.TESTNET_DONUT ||
+      this.pushNetwork === PUSH_NETWORK.TESTNET
+    ) {
+      return CHAIN.PUSH_TESTNET_DONUT;
+    } else {
+      return CHAIN.PUSH_LOCALNET;
+    }
+  }
+
+  /**
    * Computes UEA for given UniversalAccount
    * @dev - This fn calls a view fn of Factory Contract
    * @dev - Don't use this fn in production - only used for testing
@@ -2017,6 +2424,8 @@ export class Orchestrator {
     to: `0x${string}`,
     data: MultiCall[]
   ): `0x${string}` {
+    this.printLog('_buildMulticallPayloadData — input: ' + data.length + ' calls: ' + JSON.stringify(data, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
+
     const allowedChains = [
       CHAIN.ETHEREUM_SEPOLIA,
       CHAIN.ARBITRUM_SEPOLIA,
@@ -2341,7 +2750,7 @@ export class Orchestrator {
     txHashBytes: Uint8Array
   ): Promise<void> {
     const chain = this.universalSigner.account.chain;
-    const { vm, defaultRPC, confirmations, timeout } = CHAIN_INFO[chain];
+    const { vm, defaultRPC, fastConfirmations, timeout } = CHAIN_INFO[chain];
     const rpcUrls = this.rpcUrls[chain] || defaultRPC;
 
     switch (vm) {
@@ -2350,7 +2759,7 @@ export class Orchestrator {
         await this.waitForEvmConfirmationsWithCountdown(
           evmClient,
           bytesToHex(txHashBytes),
-          confirmations,
+          fastConfirmations,
           timeout
         );
         return;
@@ -2361,7 +2770,7 @@ export class Orchestrator {
         await this.waitForSvmConfirmationsWithCountdown(
           svmClient,
           utils.bytes.bs58.encode(txHashBytes),
-          confirmations,
+          fastConfirmations,
           timeout
         );
         return;
@@ -2534,12 +2943,12 @@ export class Orchestrator {
 
     const amountInBig = BigInt(bestAmountIn);
     const amountInHuman = parseFloat(
-      PushChain.utils.helpers.formatUnits(amountInBig, {
+      Utils.helpers.formatUnits(amountInBig, {
         decimals: from.decimals,
       })
     );
     const amountOutHuman = parseFloat(
-      PushChain.utils.helpers.formatUnits(amountOut, { decimals: to.decimals })
+      Utils.helpers.formatUnits(amountOut, { decimals: to.decimals })
     );
     const rate = amountInHuman > 0 ? amountOutHuman / amountInHuman : 0;
 
@@ -2716,6 +3125,8 @@ export class Orchestrator {
         deadline: execute.deadline || BigInt(9999999999),
         vType: VerificationType.universalTxVerification,
       } as unknown as never;
+      
+      this.printLog('(universalPayload) ' + universalPayload);
 
       // Temporary while we don't change the native address from 0xeee... to 0x0000...
       let tokenAddress = execute.funds?.token?.address as `0x${string}`;
@@ -2751,10 +3162,35 @@ export class Orchestrator {
       // const pushChainTo = PushChain.utils.tokens.getPRC20Address(
       //   execute.funds!.token as MoveableToken
       // );
+      this.printLog('sendFunds — execute params: ' + JSON.stringify({
+        to: execute.to,
+        value: execute.value?.toString() ?? 'undefined',
+        data: execute.data ?? 'undefined',
+        fundsAmount: execute.funds?.amount?.toString(),
+        fundsToken: execute.funds?.token?.symbol,
+        tokenMechanism: execute.funds?.token?.mechanism,
+        tokenAddress: execute.funds?.token?.address,
+        gasLimit: execute.gasLimit?.toString() ?? 'undefined',
+      }, null, 2));
+
+      this.printLog('sendFunds — multicallData: ' + JSON.stringify(
+        multicallData,
+        (_, v) => typeof v === 'bigint' ? v.toString() : v,
+        2
+      ) + ' (length: ' + multicallData.length + ')');
+
+      const multicallPayloadData =
+         this._buildMulticallPayloadData(execute.to, multicallData)
+      
+
+      
+      this.printLog('sendFunds — multicallPayloadData (first 66 chars): ' + multicallPayloadData.slice(0, 66) + ' (full length: ' + multicallPayloadData.length + ')');
+
+     
       const universalPayload = {
         to: zeroAddress, // We can't simply do `0x` because we will get an error when eip712 signing the transaction.
         value: execute.value ?? BigInt(0),
-        data: this._buildMulticallPayloadData(execute.to, multicallData),
+        data: multicallPayloadData,
         // data: this._buildMulticallPayloadData(execute.to, [
         //   { to: pushChainTo, value: execute.value ?? BigInt(0), data },
         // ]),
@@ -2766,6 +3202,17 @@ export class Orchestrator {
         vType: VerificationType.universalTxVerification,
       } as unknown as never;
 
+      this.printLog('sendFunds — universalPayload (pre-encode): ' + JSON.stringify({
+        to: zeroAddress,
+        value: (execute.value ?? BigInt(0)).toString(),
+        data: multicallPayloadData,
+        gasLimit: gasEstimate.toString(),
+        maxFeePerGas: (execute.maxFeePerGas || BigInt(1e10)).toString(),
+        maxPriorityFeePerGas: (execute.maxPriorityFeePerGas || BigInt(0)).toString(),
+        nonce: nonce.toString(),
+        deadline: (execute.deadline || BigInt(9999999999)).toString(),
+      }, null, 2));
+
       // Temporary while we don't change the native address from 0xeee... to 0x0000...
       let tokenAddress = execute.funds?.token?.address as `0x${string}`;
       if (
@@ -2775,12 +3222,22 @@ export class Orchestrator {
         tokenAddress = zeroAddress;
       }
 
+      const encodedPayload = this.encodeUniversalPayload(universalPayload);
+      this.printLog('sendFunds — encodedPayload (first 66 chars): ' + encodedPayload.slice(0, 66) + ' (full length: ' + encodedPayload.length + ')');
+
       const req = this._buildUniversalTxRequest({
         recipient: zeroAddress,
         token: tokenAddress,
         amount: execute.funds?.amount as bigint,
-        payload: this.encodeUniversalPayload(universalPayload),
+        payload: encodedPayload,
       });
+
+      this.printLog('sendFunds — final req: ' + JSON.stringify({
+        recipient: zeroAddress,
+        token: tokenAddress,
+        amount: (execute.funds?.amount as bigint)?.toString(),
+        payloadLength: encodedPayload.length,
+      }, null, 2));
 
       return { payload: universalPayload, gasAmount, req };
     }
@@ -2833,7 +3290,8 @@ export class Orchestrator {
    * Transforms a TxResponse to the new UniversalTxResponse format
    */
   private async transformToUniversalTxResponse(
-    tx: TxResponse
+    tx: TxResponse,
+    eventBuffer: ProgressEvent[] = []
   ): Promise<UniversalTxResponse> {
     const chain = this.universalSigner.account.chain;
     const { vm, chainId } = CHAIN_INFO[chain];
@@ -2887,6 +3345,39 @@ export class Orchestrator {
         to = universalPayload.to as `0x${string}`;
         value = BigInt(universalPayload.value);
         data = universalPayload.data;
+
+        // Extract 'to' from single-element multicall
+        if (data && data.length >= 10) {
+          const multicallSelector = keccak256(toBytes('UEA_MULTICALL')).slice(
+            0,
+            10
+          );
+          if (data.slice(0, 10) === multicallSelector) {
+            try {
+              const innerData = ('0x' + data.slice(10)) as `0x${string}`;
+              const [decodedCalls] = decodeAbiParameters(
+                [
+                  {
+                    type: 'tuple[]',
+                    components: [
+                      { name: 'to', type: 'address' },
+                      { name: 'value', type: 'uint256' },
+                      { name: 'data', type: 'bytes' },
+                    ],
+                  },
+                ],
+                innerData
+              );
+              // If single call, use its 'to' address
+              if (decodedCalls.length === 1) {
+                to = getAddress(decodedCalls[0].to) as `0x${string}`;
+              }
+            } catch {
+              // Keep original 'to' if decoding fails
+            }
+          }
+        }
+
         rawTransactionData = {
           from: getAddress(tx.from),
           to: getAddress(tx.to as `0x${string}`),
@@ -2919,6 +3410,39 @@ export class Orchestrator {
         data: tx.input,
         value: tx.value,
       };
+    }
+
+    // Extract 'to' and 'from' from depositPRC20WithAutoSwap (precompile call)
+    if (data && data.length >= 10) {
+      const depositPRC20Selector = '0x780ad827';
+      if (data.slice(0, 10) === depositPRC20Selector) {
+        try {
+          const decoded = decodeFunctionData({
+            abi: [
+              {
+                name: 'depositPRC20WithAutoSwap',
+                type: 'function',
+                inputs: [
+                  { name: 'prc20', type: 'address' },
+                  { name: 'amount', type: 'uint256' },
+                  { name: 'target', type: 'address' },
+                  { name: 'fee', type: 'uint24' },
+                  { name: 'minPCOut', type: 'uint256' },
+                  { name: 'deadline', type: 'uint256' },
+                ],
+              },
+            ] as const,
+            data: data as `0x${string}`,
+          });
+          if (decoded.args) {
+            const target = decoded.args[2] as `0x${string}`;
+            to = getAddress(target);
+            from = '0x0000000000000000000000000000000000000000';
+          }
+        } catch {
+          // Keep original values if decoding fails
+        }
+      }
     }
 
     const origin = `${VM_NAMESPACE[vm]}:${chainId}:${originAddress}`;
@@ -2963,6 +3487,9 @@ export class Orchestrator {
       }
     }
 
+    // Storage for registered progress callback (used by progressHook method)
+    let registeredProgressHook: ((event: ProgressEvent) => void) | undefined;
+
     const universalTxResponse: UniversalTxResponse = {
       // 1. Identity
       hash: tx.hash,
@@ -2992,8 +3519,31 @@ export class Orchestrator {
 
       // 6. Utilities
       wait: async (): Promise<UniversalTxReceipt> => {
+        // Use trackTransaction with registered hook if available
+        if (registeredProgressHook) {
+          const trackedResponse = await this.trackTransaction(tx.hash, {
+            waitForCompletion: true,
+            progressHook: registeredProgressHook,
+          });
+          // Get receipt from the tracked response
+          const receipt = await tx.wait();
+          return this.transformToUniversalTxReceipt(receipt, trackedResponse);
+        }
         const receipt = await tx.wait();
         return this.transformToUniversalTxReceipt(receipt, universalTxResponse);
+      },
+
+      progressHook: (
+        callback: (event: ProgressEvent) => void
+      ): void => {
+        registeredProgressHook = callback;
+
+        // Immediately replay buffered events from execution
+        if (eventBuffer.length > 0) {
+          for (const event of eventBuffer) {
+            callback(event);
+          }
+        }
       },
 
       // 7. Metadata
@@ -3053,9 +3603,10 @@ export class Orchestrator {
     const hookEntry = PROGRESS_HOOKS[hookId];
     const hookPayload: ProgressEvent = hookEntry(...args);
     this.printLog(hookPayload.message);
-    if (!this.progressHook) return;
-    // invoke the user-provided callback
-    this.progressHook(hookPayload);
+
+    if (this.progressHook) {
+      this.progressHook(hookPayload);
+    }
   }
 
   // Derive the SVM gateway log index from a Solana transaction's log messages
@@ -3133,10 +3684,16 @@ export class Orchestrator {
           (l: any) =>
             (l.address || '').toLowerCase() === gatewayAddress.toLowerCase()
         );
-        const logIndexToUse = evmGatewayMethod === 'sendTxWithFunds' ? 1 : 0;
+        this.printLog(`queryUniversalTxStatus — receipt logs count: ${receipt.logs?.length}, gateway logs count: ${gatewayLogs.length}, evmGatewayMethod: ${evmGatewayMethod}`);
+        this.printLog('queryUniversalTxStatus — gatewayLogs: ' + JSON.stringify(
+          gatewayLogs.map((l: any) => ({ address: l.address, logIndex: l.logIndex, topics: l.topics?.[0] })),
+          null, 2));
+        // TEMP: use last gateway log instead of hardcoded 0/1 index
+        const logIndexToUse = gatewayLogs.length - 1;
         const firstLog = (gatewayLogs[logIndexToUse] ||
-          receipt.logs?.[logIndexToUse]) as any;
+          (receipt.logs || []).at(-1)) as any;
         const logIndexVal = firstLog?.logIndex ?? 0;
+        this.printLog(`queryUniversalTxStatus — logIndexToUse: ${logIndexToUse}, firstLog.logIndex: ${firstLog?.logIndex}, logIndexVal: ${logIndexVal}`);
         logIndexStr =
           typeof logIndexVal === 'bigint'
             ? logIndexVal.toString()
@@ -3173,9 +3730,23 @@ export class Orchestrator {
       const idInput = `${sourceChain}:${txHashHex}:${logIndexStr}`;
       const idHex = sha256(stringToBytes(idInput)).slice(2);
 
-      // Fetch UniversalTx via gRPC with a brief retry window
+      this.printLog('Query ID extraction: ' + JSON.stringify({
+        sourceChain,
+        txHashHex,
+        logIndexStr,
+        idInput,
+        idHex,
+      }, null, 2));
+
+      // Fetch UniversalTx via gRPC with linear-then-exponential retry
+      const LINEAR_ATTEMPTS = 25;
+      const LINEAR_DELAY_MS = 1500;
+      const EXPONENTIAL_BASE_MS = 2000;
+      const MAX_ATTEMPTS = 30;
+
       let universalTxObj: any | undefined;
-      for (let attempt = 0; attempt < 15; attempt++) {
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        this.printLog(`[Sync] Attempt ${attempt + 1}/${MAX_ATTEMPTS} | Query ID: ${idHex}`);
         try {
           const universalTxResp = await this.pushClient.getUniversalTxById(
             idHex
@@ -3186,7 +3757,17 @@ export class Orchestrator {
           // ignore and retry
           // console.log(error);
         }
-        await new Promise((r) => setTimeout(r, 1500));
+
+        // Linear delay for first N attempts, then exponential backoff
+        let delay: number;
+        if (attempt < LINEAR_ATTEMPTS) {
+          delay = LINEAR_DELAY_MS;
+        } else {
+          // Exponential: 2000, 4000, 8000, 16000, ...
+          const exponentialAttempt = attempt - LINEAR_ATTEMPTS;
+          delay = EXPONENTIAL_BASE_MS * Math.pow(2, exponentialAttempt);
+        }
+        await new Promise((r) => setTimeout(r, delay));
       }
 
       return universalTxObj;
@@ -3202,6 +3783,12 @@ export class Orchestrator {
     confirmations: number,
     timeoutMs: number
   ): Promise<void> {
+    // Skip waiting if zero confirmations requested
+    if (confirmations <= 0) {
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_03_02, 0, 0);
+      return;
+    }
+
     // initial emit
     this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_03, confirmations);
     const start = Date.now();
@@ -3270,6 +3857,12 @@ export class Orchestrator {
     confirmations: number,
     timeoutMs: number
   ): Promise<void> {
+    // Skip waiting if zero confirmations requested
+    if (confirmations <= 0) {
+      this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_03_02, 0, 0);
+      return;
+    }
+
     // initial emit
     this.executeProgressHook(PROGRESS_HOOK.SEND_TX_06_03, confirmations);
     const start = Date.now();
@@ -3435,8 +4028,8 @@ export class Orchestrator {
     this.executeProgressHook(PROGRESS_HOOK.SEND_TX_02_01);
 
     // Determine USD to deposit via gateway (8 decimals) with caps: min=$1, max=$10
-    const oneUsd = PushChain.utils.helpers.parseUnits('1', 8);
-    const tenUsd = PushChain.utils.helpers.parseUnits('10', 8);
+    const oneUsd = Utils.helpers.parseUnits('1', 8);
+    const tenUsd = Utils.helpers.parseUnits('10', 8);
     const deficit =
       requiredFunds > ueaBalance ? requiredFunds - ueaBalance : BigInt(0);
     let depositUsd =
@@ -3486,7 +4079,7 @@ export class Orchestrator {
       chain
     ); // 8 decimals
     const nativeDecimals = CHAIN_INFO[chain].vm === VM.SVM ? 9 : 18;
-    const oneNativeUnit = PushChain.utils.helpers.parseUnits(
+    const oneNativeUnit = Utils.helpers.parseUnits(
       '1',
       nativeDecimals
     );

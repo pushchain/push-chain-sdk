@@ -1,7 +1,6 @@
 import { CHAIN, PUSH_NETWORK, VM } from './enums';
 import {
   mainnet,
-  sepolia,
   arbitrumSepolia,
   baseSepolia,
   bscTestnet,
@@ -130,6 +129,7 @@ export const CHAIN_INFO: Record<
     lockerContract?: string;
     defaultRPC: string[];
     confirmations: number; // Confirmations required to mark a tx as finalized
+    fastConfirmations: number; // Confirmations for GAS tx types (0, 1) - typically 0 for fast mode
     timeout: number; // Wait timeout in ms for required confirmations : Ideal value = (confirmations + 1)* Avg Chain Block time
     dex?: {
       uniV3Factory?: `0x${string}`;
@@ -143,14 +143,16 @@ export const CHAIN_INFO: Record<
     chainId: 'TBD',
     vm: VM.EVM,
     defaultRPC: [''],
-    confirmations: 6,
+    confirmations: 1,
+    fastConfirmations: 0,
     timeout: 30000,
   },
   [CHAIN.PUSH_TESTNET_DONUT]: {
     chainId: '42101',
     vm: VM.EVM,
     defaultRPC: ['https://evm.donut.rpc.push.org/'],
-    confirmations: 3,
+    confirmations: 1,
+    fastConfirmations: 0,
     timeout: 30000,
     // Push Chain AMM - Uniswap V3
     dex: {
@@ -163,7 +165,8 @@ export const CHAIN_INFO: Record<
     chainId: '9000',
     vm: VM.EVM,
     defaultRPC: ['http://localhost:8545'],
-    confirmations: 3,
+    confirmations: 1,
+    fastConfirmations: 0,
     timeout: 30000,
   },
 
@@ -173,15 +176,21 @@ export const CHAIN_INFO: Record<
     vm: VM.EVM,
     lockerContract: 'TBD',
     defaultRPC: [mainnet.rpcUrls.default.http[0]],
-    confirmations: 6,
+    confirmations: 1,
+    fastConfirmations: 0,
     timeout: 60000,
   },
   [CHAIN.ETHEREUM_SEPOLIA]: {
     chainId: '11155111',
     vm: VM.EVM,
     lockerContract: '0x05bD7a3D18324c1F7e216f7fBF2b15985aE5281A',
-    defaultRPC: [sepolia.rpcUrls.default.http[0]],
-    confirmations: 2,
+    defaultRPC: [
+      'https://ethereum-sepolia-rpc.publicnode.com',
+      'https://rpc.sepolia.org',
+      'https://sepolia.drpc.org',
+    ],
+    confirmations: 1,
+    fastConfirmations: 0,
     timeout: 120000,
     dex: {
       uniV3Factory: '0x0227628f3F023bb0B980b67D528571c95c6DaC1c',
@@ -193,8 +202,13 @@ export const CHAIN_INFO: Record<
     chainId: '421614',
     vm: VM.EVM,
     lockerContract: '0x2cd870e0166Ba458dEC615168Fd659AacD795f34',
-    defaultRPC: [arbitrumSepolia.rpcUrls.default.http[0]],
+    defaultRPC: [
+      arbitrumSepolia.rpcUrls.default.http[0],
+      'https://sepolia-rollup.arbitrum.io/rpc',
+      'https://arbitrum-sepolia-rpc.publicnode.com',
+    ],
     confirmations: 1,
+    fastConfirmations: 0,
     timeout: 30000,
     dex: {
       uniV3Factory: '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
@@ -206,8 +220,13 @@ export const CHAIN_INFO: Record<
     chainId: '84532',
     vm: VM.EVM,
     lockerContract: '0xFD4fef1F43aFEc8b5bcdEEc47f35a1431479aC16',
-    defaultRPC: [baseSepolia.rpcUrls.default.http[0]],
+    defaultRPC: [
+      baseSepolia.rpcUrls.default.http[0],
+      'https://sepolia.base.org',
+      'https://base-sepolia-rpc.publicnode.com',
+    ],
     confirmations: 1,
+    fastConfirmations: 0,
     timeout: 30000,
     dex: {
       uniV3Factory: '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
@@ -219,8 +238,13 @@ export const CHAIN_INFO: Record<
     chainId: '97',
     vm: VM.EVM,
     lockerContract: '0x44aFFC61983F4348DdddB886349eb992C061EaC0',
-    defaultRPC: [bscTestnet.rpcUrls.default.http[0]],
+    defaultRPC: [
+      bscTestnet.rpcUrls.default.http[0],
+      'https://bsc-testnet-rpc.publicnode.com',
+      'https://data-seed-prebsc-1-s1.bnbchain.org:8545',
+    ],
     confirmations: 1,
+    fastConfirmations: 0,
     timeout: 30000,
   },
 
@@ -230,7 +254,8 @@ export const CHAIN_INFO: Record<
     vm: VM.SVM,
     lockerContract: 'TBD',
     defaultRPC: [''],
-    confirmations: 6,
+    confirmations: 1,
+    fastConfirmations: 0,
     timeout: 15000,
   },
   [CHAIN.SOLANA_TESTNET]: {
@@ -238,15 +263,20 @@ export const CHAIN_INFO: Record<
     vm: VM.SVM,
     lockerContract: '',
     defaultRPC: ['https://api.testnet.solana.com'],
-    confirmations: 6,
+    confirmations: 1,
+    fastConfirmations: 0,
     timeout: 55000,
   },
   [CHAIN.SOLANA_DEVNET]: {
     chainId: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
     vm: VM.SVM,
     lockerContract: 'CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS',
-    defaultRPC: ['https://api.devnet.solana.com'],
-    confirmations: 2,
+    defaultRPC: [
+      'https://api.devnet.solana.com',
+      'https://solana-devnet.g.alchemy.com/v2/demo',
+    ],
+    confirmations: 1,
+    fastConfirmations: 0,
     timeout: 120000,
   },
 };
@@ -258,7 +288,7 @@ export const PUSH_CHAIN_INFO: Record<
   CHAIN.PUSH_MAINNET | CHAIN.PUSH_TESTNET_DONUT | CHAIN.PUSH_LOCALNET,
   (typeof CHAIN_INFO)[CHAIN.PUSH_MAINNET] & {
     denom: string;
-    tendermintRpc: string;
+    tendermintRpc: string[];
     prefix: string;
     factoryAddress: `0x${string}`;
     pushDecimals: bigint;
@@ -270,7 +300,7 @@ export const PUSH_CHAIN_INFO: Record<
   [CHAIN.PUSH_MAINNET]: {
     ...CHAIN_INFO[CHAIN.PUSH_MAINNET],
     denom: 'upc',
-    tendermintRpc: 'TBD',
+    tendermintRpc: ['TBD'],
     prefix: 'push',
     factoryAddress: '0xTBD',
     pushDecimals: BigInt(1e18),
@@ -281,7 +311,7 @@ export const PUSH_CHAIN_INFO: Record<
   [CHAIN.PUSH_TESTNET_DONUT]: {
     ...CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT],
     denom: 'upc',
-    tendermintRpc: 'https://donut.rpc.push.org/',
+    tendermintRpc: ['https://donut.rpc.push.org/'],
     prefix: 'push',
     factoryAddress: '0x00000000000000000000000000000000000000eA',
     pushDecimals: BigInt(1e18),
@@ -292,7 +322,7 @@ export const PUSH_CHAIN_INFO: Record<
   [CHAIN.PUSH_LOCALNET]: {
     ...CHAIN_INFO[CHAIN.PUSH_LOCALNET],
     denom: 'upc',
-    tendermintRpc: 'http://localhost:26657',
+    tendermintRpc: ['http://localhost:26657'],
     prefix: 'push',
     factoryAddress: '0x00000000000000000000000000000000000000eA',
     pushDecimals: BigInt(1e18),
