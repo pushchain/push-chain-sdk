@@ -127,6 +127,7 @@ export const CHAIN_INFO: Record<
     chainId: string;
     vm: VM;
     lockerContract?: string;
+    gatewayVersion?: 'v0' | 'v1'; // v0 = RevertInstructions struct, v1 = revertRecipient address
     defaultRPC: string[];
     confirmations: number; // Confirmations required to mark a tx as finalized
     fastConfirmations: number; // Confirmations for GAS tx types (0, 1) - typically 0 for fast mode
@@ -238,6 +239,7 @@ export const CHAIN_INFO: Record<
     chainId: '97',
     vm: VM.EVM,
     lockerContract: '0x44aFFC61983F4348DdddB886349eb992C061EaC0',
+    gatewayVersion: 'v1',
     defaultRPC: [
       bscTestnet.rpcUrls.default.http[0],
       'https://bsc-testnet-rpc.publicnode.com',
@@ -270,7 +272,7 @@ export const CHAIN_INFO: Record<
   [CHAIN.SOLANA_DEVNET]: {
     chainId: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
     vm: VM.SVM,
-    lockerContract: 'CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS',
+    lockerContract: 'DJoFYDpgbTfxbXBv1QYhYGc9FK4J5FUKpYXAfSkHryXp',
     defaultRPC: [
       'https://api.devnet.solana.com',
       'https://solana-devnet.g.alchemy.com/v2/demo',

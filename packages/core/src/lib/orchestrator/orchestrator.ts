@@ -25,6 +25,7 @@ import {
   SVM_GATEWAY_IDL,
   UEA_SVM,
   UNIVERSAL_GATEWAY_V0,
+  UNIVERSAL_GATEWAY_V1_SEND,
 } from '../constants/abi';
 import { UEA_EVM } from '../constants/abi/uea.evm';
 import { CHAIN_INFO, UEA_PROXY, VM_NAMESPACE } from '../constants/chain';
@@ -63,8 +64,10 @@ import {
   MultiCall,
   Signature,
   UniversalTokenTxRequest,
+  UniversalTokenTxRequestV1,
   UniversalTxReceipt,
   UniversalTxRequest,
+  UniversalTxRequestV1,
   UniversalTxResponse,
 } from './orchestrator.types';
 import { buildExecuteMulticall } from './payload-builders';
@@ -301,10 +304,10 @@ export class Orchestrator {
                 }, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
 
                 txHash = await evmClient.writeContract({
-                  abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
+                  abi: this.getGatewayAbi() as Abi,
                   address: gatewayAddress,
                   functionName: 'sendUniversalTx',
-                  args: [req],
+                  args: [this.toGatewayRequest(req)],
                   signer: this.universalSigner,
                   value: isNative ? nativeAmount + bridgeAmount : nativeAmount,
                 });
@@ -330,10 +333,10 @@ export class Orchestrator {
                 }, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
 
                 txHash = await evmClient.writeContract({
-                  abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
+                  abi: this.getGatewayAbi() as Abi,
                   address: gatewayAddress,
                   functionName: 'sendUniversalTx',
-                  args: [req],
+                  args: [this.toGatewayRequest(req)],
                   signer: this.universalSigner,
                   value: isNative ? nativeAmount + bridgeAmount : nativeAmount,
                 });
@@ -433,10 +436,8 @@ export class Orchestrator {
               [stringToBytes('vault')],
               programId
             );
-            const [whitelistPda] = PublicKey.findProgramAddressSync(
-              [stringToBytes('whitelist')],
-              programId
-            );
+            const { feeVaultPda, protocolFeeLamports } =
+              await this._getSvmProtocolFee(svmClient, programId);
             const [rateLimitConfigPda] = PublicKey.findProgramAddressSync(
               [stringToBytes('rate_limit_config')],
               programId
@@ -453,11 +454,6 @@ export class Orchestrator {
             }
 
             let txSignature: string;
-            // SVM-specific RevertSettings: bytes must be a Buffer
-            const revertSvm = {
-              fundRecipient: userPk,
-              revertMsg: Buffer.from([]),
-            } as unknown as never;
             // New gateway expects EVM recipient as [u8; 20]
             const recipientEvm20: number[] = Array.from(
               Buffer.from(
@@ -485,7 +481,7 @@ export class Orchestrator {
                 token: PublicKey.default,
                 amount: bridgeAmount,
                 payload: '0x',
-                fundRecipient: userPk,
+                revertRecipient: userPk,
                 signatureData: '0x',
               });
 
@@ -493,11 +489,12 @@ export class Orchestrator {
                 abi: SVM_GATEWAY_IDL,
                 address: programId.toBase58(),
                 functionName: 'sendUniversalTx',
-                args: [reqNative, bridgeAmount],
+                args: [reqNative, bridgeAmount + protocolFeeLamports],
                 signer: this.universalSigner,
                 accounts: {
                   config: configPda,
                   vault: vaultPda,
+                  feeVault: feeVaultPda,
                   userTokenAccount: vaultPda,
                   gatewayTokenAccount: vaultPda,
                   user: userPk,
@@ -548,7 +545,7 @@ export class Orchestrator {
                   token: mintPk,
                   amount: bridgeAmount,
                   payload: '0x',
-                  fundRecipient: userPk,
+                  revertRecipient: userPk,
                   signatureData: '0x',
                 });
 
@@ -556,11 +553,12 @@ export class Orchestrator {
                   abi: SVM_GATEWAY_IDL,
                   address: programId.toBase58(),
                   functionName: 'sendUniversalTx',
-                  args: [reqSpl, BigInt(0)],
+                  args: [reqSpl, protocolFeeLamports],
                   signer: this.universalSigner,
                   accounts: {
                     config: configPda,
                     vault: vaultPda,
+                    feeVault: feeVaultPda,
                     userTokenAccount: userAta,
                     gatewayTokenAccount: vaultAta,
                     user: userPk,
@@ -579,7 +577,7 @@ export class Orchestrator {
                   token: mintPk,
                   amount: bridgeAmount,
                   payload: '0x',
-                  fundRecipient: userPk,
+                  revertRecipient: userPk,
                   signatureData: '0x',
                 });
 
@@ -587,11 +585,12 @@ export class Orchestrator {
                   abi: SVM_GATEWAY_IDL,
                   address: programId.toBase58(),
                   functionName: 'sendUniversalTx',
-                  args: [reqSpl, BigInt(0)],
+                  args: [reqSpl, protocolFeeLamports],
                   signer: this.universalSigner,
                   accounts: {
                     config: configPda,
                     vault: vaultPda,
+                    feeVault: feeVaultPda,
                     userTokenAccount: userAta,
                     gatewayTokenAccount: vaultAta,
                     user: userPk,
@@ -947,10 +946,10 @@ export class Orchestrator {
                 };
 
                 txHash = await evmClientEvm.writeContract({
-                  abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
+                  abi: this.getGatewayAbi() as Abi,
                   address: gatewayAddressEvm,
                   functionName: 'sendUniversalTx',
-                  args: [reqToken],
+                  args: [this.toGatewayTokenRequest(reqToken)],
                   signer: this.universalSigner,
                 });
               } else {
@@ -979,10 +978,10 @@ export class Orchestrator {
                   : nativeAmount;
 
                 txHash = await evmClientEvm.writeContract({
-                  abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
+                  abi: this.getGatewayAbi() as Abi,
                   address: gatewayAddressEvm,
                   functionName: 'sendUniversalTx',
-                  args: [req],
+                  args: [this.toGatewayRequest(req)],
                   signer: this.universalSigner,
                   value: totalValue,
                 });
@@ -1502,10 +1501,10 @@ export class Orchestrator {
         // } as unknown as never;
 
         const txHash: `0x${string}` = await evmClient.writeContract({
-          abi: UNIVERSAL_GATEWAY_V0 as unknown as Abi,
+          abi: this.getGatewayAbi() as Abi,
           address: lockerContract,
           functionName: 'sendUniversalTx',
-          args: [req],
+          args: [this.toGatewayRequest(req)],
           signer: this.universalSigner,
           value: nativeAmount,
         });
@@ -1549,12 +1548,10 @@ export class Orchestrator {
           [stringToBytes('rate_limit'), PublicKey.default.toBuffer()],
           programId
         );
+        const { feeVaultPda, protocolFeeLamports } =
+          await this._getSvmProtocolFee(svmClient, programId);
 
         const userPk = new PublicKey(this.universalSigner.account.address);
-        const revertSvm = {
-          fundRecipient: userPk,
-          revertMsg: Buffer.from([]),
-        } as unknown as never;
 
         const gasReq = this._buildSvmUniversalTxRequestFromReq(req, userPk);
 
@@ -1563,11 +1560,12 @@ export class Orchestrator {
             abi: SVM_GATEWAY_IDL,
             address: programId.toBase58(),
             functionName: 'sendUniversalTx',
-            args: [gasReq, nativeAmount],
+            args: [gasReq, nativeAmount + protocolFeeLamports],
             signer: this.universalSigner,
             accounts: {
               config: configPda,
               vault: vaultPda,
+              feeVault: feeVaultPda,
               userTokenAccount: vaultPda,
               gatewayTokenAccount: vaultPda,
               user: userPk,
@@ -1620,13 +1618,67 @@ export class Orchestrator {
   }
 
   /**
+   * Returns true if the current origin chain uses the V1 gateway (revertRecipient address).
+   */
+  private isV1Gateway(): boolean {
+    return CHAIN_INFO[this.universalSigner.account.chain].gatewayVersion === 'v1';
+  }
+
+  /**
+   * Returns the correct gateway ABI based on the origin chain's gateway version.
+   */
+  private getGatewayAbi(): unknown[] {
+    return this.isV1Gateway()
+      ? (UNIVERSAL_GATEWAY_V1_SEND as unknown as unknown[])
+      : (UNIVERSAL_GATEWAY_V0 as unknown as unknown[]);
+  }
+
+  /**
+   * Converts a V0 UniversalTxRequest to V1 format if the chain uses V1 gateway.
+   */
+  private toGatewayRequest(
+    req: UniversalTxRequest
+  ): UniversalTxRequest | UniversalTxRequestV1 {
+    if (!this.isV1Gateway()) return req;
+    return {
+      recipient: req.recipient,
+      token: req.token,
+      amount: req.amount,
+      payload: req.payload,
+      revertRecipient: req.revertInstruction.fundRecipient,
+      signatureData: req.signatureData,
+    };
+  }
+
+  /**
+   * Converts a V0 UniversalTokenTxRequest to V1 format if the chain uses V1 gateway.
+   */
+  private toGatewayTokenRequest(
+    req: UniversalTokenTxRequest
+  ): UniversalTokenTxRequest | UniversalTokenTxRequestV1 {
+    if (!this.isV1Gateway()) return req;
+    return {
+      recipient: req.recipient,
+      token: req.token,
+      amount: req.amount,
+      gasToken: req.gasToken,
+      gasAmount: req.gasAmount,
+      payload: req.payload,
+      revertRecipient: req.revertInstruction.fundRecipient,
+      signatureData: req.signatureData,
+      amountOutMinETH: req.amountOutMinETH,
+      deadline: req.deadline,
+    };
+  }
+
+  /**
    * Builds the SVM UniversalTxRequest object from an existing EVM-style UniversalTxRequest.
    * This allows reusing the same request shape for both EVM and SVM while only translating
    * field encodings (addresses, bytes) to the Solana program format.
    */
   private _buildSvmUniversalTxRequestFromReq(
     req: UniversalTxRequest,
-    fundRecipient: PublicKey,
+    revertRecipient: PublicKey,
     signatureDataOverride?: Uint8Array | `0x${string}`
   ) {
     // recipient in EVM is a 20-byte address; the SVM gateway expects this as [u8; 20]
@@ -1660,9 +1712,35 @@ export class Orchestrator {
       token,
       amount: req.amount,
       payload: req.payload,
-      fundRecipient,
+      revertRecipient,
       signatureData: signatureDataOverride ?? req.signatureData,
     });
+  }
+
+  private async _getSvmProtocolFee(
+    svmClient: { readContract: (args: any) => Promise<any> },
+    programId: PublicKey
+  ) {
+    const [feeVaultPda] = PublicKey.findProgramAddressSync(
+      [stringToBytes('fee_vault')],
+      programId
+    );
+    try {
+      const feeVault: any = await svmClient.readContract({
+        abi: SVM_GATEWAY_IDL,
+        address: SVM_GATEWAY_IDL.address,
+        functionName: 'feeVault',
+        args: [feeVaultPda.toBase58()],
+      });
+      const protocolFeeLamports = BigInt(
+        (
+          feeVault.protocolFeeLamports ?? feeVault.protocol_fee_lamports
+        )?.toString() ?? '0'
+      );
+      return { feeVaultPda, protocolFeeLamports };
+    } catch {
+      return { feeVaultPda, protocolFeeLamports: BigInt(0) };
+    }
   }
 
   /**
@@ -1674,14 +1752,14 @@ export class Orchestrator {
     token,
     amount,
     payload,
-    fundRecipient,
+    revertRecipient,
     signatureData,
   }: {
     recipient: number[];
     token: PublicKey;
     amount: bigint;
     payload: `0x${string}` | Uint8Array;
-    fundRecipient: PublicKey;
+    revertRecipient: PublicKey;
     signatureData?: Uint8Array | `0x${string}`;
   }) {
     const payloadBuf =
@@ -1721,10 +1799,7 @@ export class Orchestrator {
       token,
       amount,
       payload: payloadBuf,
-      revertInstruction: {
-        fundRecipient,
-        revertMsg: Buffer.alloc(0),
-      },
+      revertRecipient: revertRecipient,
       signatureData: signatureBuf,
     };
   }
@@ -2519,6 +2594,8 @@ export class Orchestrator {
       [stringToBytes('rate_limit_config')],
       programId
     );
+    const { feeVaultPda, protocolFeeLamports } =
+      await this._getSvmProtocolFee(svmClient, programId);
 
     // pay-with-token gas abstraction is not supported on Solana
     if (execute.payGasWith !== undefined) {
@@ -2531,10 +2608,6 @@ export class Orchestrator {
 
     const isNative =
       mechanism === 'native' || execute.funds.token.symbol === 'SOL';
-    const revertSvm2 = {
-      fundRecipient: userPk,
-      revertMsg: Buffer.from([]),
-    } as unknown as never;
     // Compute signature for universal payload on SVM
     const ueaAddressSvm = this.computeUEAOffchain();
     const ueaVersion = await this.fetchUEAVersion();
@@ -2545,10 +2618,6 @@ export class Orchestrator {
     );
     if (isNative) {
       // Native SOL as bridge + gas
-      const [whitelistPdaLocal] = PublicKey.findProgramAddressSync(
-        [stringToBytes('whitelist')],
-        programId
-      );
       const [tokenRateLimitPda] = PublicKey.findProgramAddressSync(
         [stringToBytes('rate_limit'), PublicKey.default.toBuffer()],
         programId
@@ -2561,7 +2630,7 @@ export class Orchestrator {
         payload: Uint8Array.from(
           this.encodeUniversalPayloadSvm(universalPayload)
         ),
-        fundRecipient: userPk,
+        revertRecipient: userPk,
         signatureData: svmSignature,
       });
 
@@ -2569,14 +2638,14 @@ export class Orchestrator {
         abi: SVM_GATEWAY_IDL,
         address: programId.toBase58(),
         functionName: 'sendUniversalTx',
-        args: [nativeReq, nativeAmount],
+        args: [nativeReq, nativeAmount + protocolFeeLamports],
         signer: this.universalSigner,
         accounts: {
           config: configPda,
           vault: vaultPda,
-          tokenWhitelist: whitelistPdaLocal,
-          userTokenAccount: vaultPda, // dummy for native SOL
-          gatewayTokenAccount: vaultPda, // dummy for native SOL
+          feeVault: feeVaultPda,
+          userTokenAccount: vaultPda,
+          gatewayTokenAccount: vaultPda,
           user: userPk,
           priceUpdate: priceUpdatePk,
           tokenProgram: new PublicKey(
@@ -2608,10 +2677,6 @@ export class Orchestrator {
         ASSOCIATED_TOKEN_PROGRAM_ID
       )[0];
 
-      const [whitelistPdaLocal] = PublicKey.findProgramAddressSync(
-        [stringToBytes('whitelist')],
-        programId
-      );
       const [tokenRateLimitPda] = PublicKey.findProgramAddressSync(
         [stringToBytes('rate_limit'), mintPk.toBuffer()],
         programId
@@ -2624,7 +2689,7 @@ export class Orchestrator {
         payload: Uint8Array.from(
           this.encodeUniversalPayloadSvm(universalPayload)
         ),
-        fundRecipient: userPk,
+        revertRecipient: userPk,
         signatureData: svmSignature,
       });
 
@@ -2632,12 +2697,12 @@ export class Orchestrator {
         abi: SVM_GATEWAY_IDL,
         address: programId.toBase58(),
         functionName: 'sendUniversalTx',
-        args: [splReq, nativeAmount],
+        args: [splReq, nativeAmount + protocolFeeLamports],
         signer: this.universalSigner,
         accounts: {
           config: configPda,
           vault: vaultPda,
-          tokenWhitelist: whitelistPdaLocal,
+          feeVault: feeVaultPda,
           userTokenAccount: userAta,
           gatewayTokenAccount: vaultAta,
           user: userPk,
