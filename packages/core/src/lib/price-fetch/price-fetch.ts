@@ -30,10 +30,13 @@ export class PriceFetch {
         const result = await evmClient.readContract<[bigint, number]>({
           abi: FEE_LOCKER_EVM,
           address: lockerContract as `0x${string}`,
-          functionName: 'getEthUsdPrice_old',
+          functionName: 'getEthUsdPrice',
         });
 
-        const [price] = result;
+        // getEthUsdPrice returns price scaled to 1e18 and the chainlink feed decimals.
+        // Downstream lockFee math expects the price in 8 decimals, so scale down from 1e18 to 1e8.
+        const [price1e18] = result;
+        const price = price1e18 / BigInt(10 ** 10); // 1e18 -> 1e8
         return price;
       }
       case VM.SVM: {

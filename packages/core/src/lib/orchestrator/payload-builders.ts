@@ -259,7 +259,7 @@ export function buildSendUniversalTxFromCEA(
 /**
  * Build sendUniversalTxToUEA call for CEA self-call (Route 3)
  *
- * The CEA contract has a `sendUniversalTxToUEA(token, amount, payload)` function
+ * The CEA contract has a `sendUniversalTxToUEA(token, amount, payload, revertRecipient)` function
  * that is only callable via self-call (multicall with to=CEA, value=0).
  * It internally calls `gateway.sendUniversalTxFromCEA(...)`.
  *
@@ -267,18 +267,20 @@ export function buildSendUniversalTxFromCEA(
  * @param token - Token address (address(0) for native)
  * @param amount - Amount to send
  * @param payload - Payload for Push Chain execution
+ * @param revertRecipient - Address to receive funds on revert (on source chain)
  * @returns MultiCall for sendUniversalTxToUEA (to=CEA, value=0)
  */
 export function buildSendUniversalTxToUEA(
   ceaAddress: `0x${string}`,
   token: `0x${string}`,
   amount: bigint,
-  payload: `0x${string}`
+  payload: `0x${string}`,
+  revertRecipient: `0x${string}`
 ): MultiCall {
   const calldata = encodeFunctionData({
     abi: CEA_EVM,
     functionName: 'sendUniversalTxToUEA',
-    args: [token, amount, payload],
+    args: [token, amount, payload, revertRecipient],
   });
 
   return {
@@ -549,7 +551,6 @@ function bytesToHex(bytes: Uint8Array): string {
  * [account[i].pubkey: 32 bytes][account[i].is_writable: 1 byte] × N
  * [ix_data_length: 4 bytes (u32 BE)]
  * [ix_data: variable bytes]
- * [rent_fee: 8 bytes (u64 BE)]
  * [instruction_id: 1 byte (u8)]
  * [target_program: 32 bytes]
  * ```
@@ -564,14 +565,13 @@ export function encodeSvmExecutePayload(
     targetProgram,
     accounts,
     ixData,
-    rentFee,
     instructionId = 2,
   } = fields;
 
   // Total size:
-  // 4 (accounts_count) + 33*N (accounts) + 4 (ix_data_length) + M (ix_data) + 8 (rent_fee) + 1 (instruction_id) + 32 (target_program)
+  // 4 (accounts_count) + 33*N (accounts) + 4 (ix_data_length) + M (ix_data) + 1 (instruction_id) + 32 (target_program)
   const totalSize =
-    4 + 33 * accounts.length + 4 + ixData.length + 8 + 1 + 32;
+    4 + 33 * accounts.length + 4 + ixData.length + 1 + 32;
   const buffer = new Uint8Array(totalSize);
   const view = new DataView(buffer.buffer);
   let offset = 0;
@@ -597,10 +597,6 @@ export function encodeSvmExecutePayload(
   buffer.set(ixData, offset);
   offset += ixData.length;
 
-  // rent_fee (u64 BE)
-  view.setBigUint64(offset, rentFee, false);
-  offset += 8;
-
   // instruction_id (u8)
   buffer[offset] = instructionId;
   offset += 1;
@@ -625,6 +621,7 @@ export function encodeSvmExecutePayload(
  * [amount: 8 bytes (u64 LE)]
  * [payload_len: 4 bytes (u32 LE)]
  * [payload_bytes: variable]
+ * [revert_recipient: 32 bytes (PublicKey)]
  * ```
  */
 export function encodeSvmCeaToUeaPayload({
@@ -632,11 +629,14 @@ export function encodeSvmCeaToUeaPayload({
   drainAmount,
   tokenMintHex,
   extraPayload,
+  revertRecipientHex,
 }: {
   gatewayProgramHex: `0x${string}`;
   drainAmount: bigint;
   tokenMintHex?: `0x${string}`;
   extraPayload?: Uint8Array;
+  /** 32-byte Solana pubkey as 0x-hex for revert recipient (required) */
+  revertRecipientHex: `0x${string}`;
 }): `0x${string}` {
   // Anchor discriminator: first 8 bytes of SHA-256("global:send_universal_tx_to_uea")
   const discrimHash = sha256(toBytes('global:send_universal_tx_to_uea'));
@@ -660,24 +660,27 @@ export function encodeSvmCeaToUeaPayload({
   const payloadLenView = new DataView(payloadLenBuf.buffer);
   payloadLenView.setUint32(0, payloadData.length, true); // LE
 
+  // revertRecipient: 32 bytes (PublicKey)
+  const revertRecipientBytes = hexToBytes(revertRecipientHex);
+
   // Combine into Borsh ixData
   const ixDataLen =
     discrimBytes.length + tokenBytes.length + amountBuf.length +
-    payloadLenBuf.length + payloadData.length;
+    payloadLenBuf.length + payloadData.length + revertRecipientBytes.length;
   const ixData = new Uint8Array(ixDataLen);
   let offset = 0;
   ixData.set(discrimBytes, offset); offset += discrimBytes.length;
   ixData.set(tokenBytes, offset); offset += tokenBytes.length;
   ixData.set(amountBuf, offset); offset += amountBuf.length;
   ixData.set(payloadLenBuf, offset); offset += payloadLenBuf.length;
-  ixData.set(payloadData, offset);
+  ixData.set(payloadData, offset); offset += payloadData.length;
+  ixData.set(revertRecipientBytes, offset);
 
   // Wrap in encodeSvmExecutePayload (self-call to gateway, no extra accounts)
   return encodeSvmExecutePayload({
     targetProgram: gatewayProgramHex,
     accounts: [],
     ixData,
-    rentFee: BigInt(0),
     instructionId: 2,
   });
 }

@@ -24,7 +24,7 @@ import { CEA_FACTORY_EVM } from '../constants/abi';
  */
 export const CEA_FACTORY_ADDRESSES: Partial<Record<CHAIN, `0x${string}`>> = {
   // Testnets
-  [CHAIN.BNB_TESTNET]: '0xac52b7be327C1e6A617937CFfE90269aDccD211d',
+  [CHAIN.BNB_TESTNET]: '0xe2182dae2dc11cBF6AA6c8B1a7f9c8315A6B0719',
   [CHAIN.ETHEREUM_SEPOLIA]: '0x8b9c9FfEc0507cf1BE9FCf3d91C8E1e98105D451',
   // TODO: Add Arbitrum Sepolia and Base Sepolia when deployed
   // [CHAIN.ARBITRUM_SEPOLIA]: '0x...',

@@ -293,6 +293,16 @@ export interface UniversalTxRequest {
   signatureData: `0x${string}`;
 }
 
+/** V1 gateway request — uses a plain `revertRecipient` address instead of a struct. */
+export interface UniversalTxRequestV1 {
+  recipient: `0x${string}`;
+  token: `0x${string}`;
+  amount: bigint;
+  payload: `0x${string}`;
+  revertRecipient: `0x${string}`;
+  signatureData: `0x${string}`;
+}
+
 export interface UniversalTokenTxRequest {
   recipient: `0x${string}`;
   token: `0x${string}`;
@@ -304,6 +314,20 @@ export interface UniversalTokenTxRequest {
     fundRecipient: `0x${string}`;
     revertMsg: `0x${string}`;
   };
+  signatureData: `0x${string}`;
+  amountOutMinETH: bigint;
+  deadline: bigint;
+}
+
+/** V1 gateway token request — uses a plain `revertRecipient` address instead of a struct. */
+export interface UniversalTokenTxRequestV1 {
+  recipient: `0x${string}`;
+  token: `0x${string}`;
+  amount: bigint;
+  gasToken: `0x${string}`;
+  gasAmount: bigint;
+  payload: `0x${string}`;
+  revertRecipient: `0x${string}`;
   signatureData: `0x${string}`;
   amountOutMinETH: bigint;
   deadline: bigint;
@@ -380,8 +404,6 @@ export interface SvmExecutePayloadFields {
   accounts: SvmGatewayAccountMeta[];
   /** Raw instruction data for the target program */
   ixData: Uint8Array;
-  /** Rent fee in lamports for target program account creation (0 if none) */
-  rentFee: bigint;
   /** Instruction ID: 2 = execute (default) */
   instructionId?: number;
 }
@@ -397,8 +419,6 @@ export interface SvmExecuteParams {
   accounts: SvmGatewayAccountMeta[];
   /** Raw instruction data for the target program */
   ixData: Uint8Array;
-  /** Rent fee in lamports for target program account creation (default 0) */
-  rentFee?: bigint;
 }
 
 // ============================================================================

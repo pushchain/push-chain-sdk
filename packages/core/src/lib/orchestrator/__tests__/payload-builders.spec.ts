@@ -498,7 +498,8 @@ describe('buildSendUniversalTxToUEA', () => {
       CEA_ADDRESS,
       TOKEN_A,
       BigInt(1000),
-      '0xdeadbeef'
+      '0xdeadbeef',
+      CEA_ADDRESS
     );
 
     const decoded = decodeFunctionData({
@@ -513,19 +514,21 @@ describe('buildSendUniversalTxToUEA', () => {
       CEA_ADDRESS,
       TOKEN_A,
       BigInt(500),
-      '0xabcd'
+      '0xabcd',
+      CEA_ADDRESS
     );
 
     expect(result.to).toBe(CEA_ADDRESS);
     expect(result.value).toBe(BigInt(0));
   });
 
-  it('should encode correct args (token, amount, payload)', () => {
+  it('should encode correct args (token, amount, payload, revertRecipient)', () => {
     const result = buildSendUniversalTxToUEA(
       CEA_ADDRESS,
       TOKEN_A,
       BigInt(2000),
-      '0x12345678'
+      '0x12345678',
+      CEA_ADDRESS
     );
 
     const decoded = decodeFunctionData({
@@ -535,6 +538,7 @@ describe('buildSendUniversalTxToUEA', () => {
     expect(decoded.args![0]).toBe(TOKEN_A); // token
     expect(decoded.args![1]).toBe(BigInt(2000)); // amount
     expect(decoded.args![2]).toBe('0x12345678'); // payload
+    expect(decoded.args![3]).toBe(CEA_ADDRESS); // revertRecipient
   });
 
   it('should work with native token (ZERO_ADDRESS)', () => {
@@ -542,7 +546,8 @@ describe('buildSendUniversalTxToUEA', () => {
       CEA_ADDRESS,
       ZERO_ADDRESS as `0x${string}`,
       BigInt(1000),
-      '0x'
+      '0x',
+      CEA_ADDRESS
     );
 
     const decoded = decodeFunctionData({
@@ -559,7 +564,8 @@ describe('buildSendUniversalTxToUEA', () => {
       CEA_ADDRESS,
       TOKEN_A,
       BigInt(100),
-      '0x'
+      '0x',
+      CEA_ADDRESS
     );
 
     expect(result.data).toMatch(/^0x/);
@@ -623,12 +629,11 @@ describe('encodeSvmExecutePayload', () => {
       targetProgram: SOL_PROGRAM,
       accounts: [],
       ixData,
-      rentFee: BigInt(0),
       instructionId: 2,
     });
     expect(result).toMatch(/^0x/);
-    // 4 (accounts_count=0) + 0 (no accounts) + 4 (ix_data_length) + 4 (ixData) + 8 (rent_fee) + 1 (instruction_id) + 32 (target_program) = 53 bytes = 106 hex chars + "0x"
-    expect(result.length).toBe(108);
+    // 4 (accounts_count=0) + 0 (no accounts) + 4 (ix_data_length) + 4 (ixData) + 1 (instruction_id) + 32 (target_program) = 45 bytes = 90 hex chars + "0x"
+    expect(result.length).toBe(92);
   });
 
   it('should encode a payload with accounts', () => {
@@ -640,12 +645,11 @@ describe('encodeSvmExecutePayload', () => {
         { pubkey: SOL_MINT, isWritable: false },
       ],
       ixData,
-      rentFee: BigInt(1000),
       instructionId: 2,
     });
     expect(result).toMatch(/^0x/);
-    // 4 + 33*2 + 4 + 2 + 8 + 1 + 32 = 117 bytes = 234 hex chars + "0x"
-    expect(result.length).toBe(236);
+    // 4 + 33*2 + 4 + 2 + 1 + 32 = 109 bytes = 218 hex chars + "0x"
+    expect(result.length).toBe(220);
   });
 });
 
@@ -785,10 +789,13 @@ describe('validateRouteParams — unsupported token', () => {
 });
 
 describe('encodeSvmCeaToUeaPayload', () => {
+  const REVERT_RECIPIENT = SOL_PROGRAM; // dummy 32-byte revert recipient
+
   it('should encode SOL drain (no token mint, no extra payload)', () => {
     const result = encodeSvmCeaToUeaPayload({
       gatewayProgramHex: SOL_GATEWAY,
       drainAmount: BigInt(50_000_000),
+      revertRecipientHex: REVERT_RECIPIENT,
     });
     expect(result).toMatch(/^0x/);
     expect(result.length).toBeGreaterThan(10);
@@ -799,6 +806,7 @@ describe('encodeSvmCeaToUeaPayload', () => {
       gatewayProgramHex: SOL_GATEWAY,
       drainAmount: BigInt(1_000_000),
       tokenMintHex: SOL_MINT,
+      revertRecipientHex: REVERT_RECIPIENT,
     });
     expect(result).toMatch(/^0x/);
     expect(result.length).toBeGreaterThan(10);
@@ -810,10 +818,12 @@ describe('encodeSvmCeaToUeaPayload', () => {
       gatewayProgramHex: SOL_GATEWAY,
       drainAmount: BigInt(50_000_000),
       extraPayload,
+      revertRecipientHex: REVERT_RECIPIENT,
     });
     const withoutPayload = encodeSvmCeaToUeaPayload({
       gatewayProgramHex: SOL_GATEWAY,
       drainAmount: BigInt(50_000_000),
+      revertRecipientHex: REVERT_RECIPIENT,
     });
     // The payload with extraPayload should be longer (extra 4 bytes in ixData)
     expect(withPayload.length).toBeGreaterThan(withoutPayload.length);
@@ -825,10 +835,12 @@ describe('encodeSvmCeaToUeaPayload', () => {
       gatewayProgramHex: SOL_GATEWAY,
       drainAmount: BigInt(50_000_000),
       extraPayload,
+      revertRecipientHex: REVERT_RECIPIENT,
     });
     const withoutPayload = encodeSvmCeaToUeaPayload({
       gatewayProgramHex: SOL_GATEWAY,
       drainAmount: BigInt(50_000_000),
+      revertRecipientHex: REVERT_RECIPIENT,
     });
     expect(withPayload).not.toBe(withoutPayload);
   });
@@ -838,10 +850,12 @@ describe('encodeSvmCeaToUeaPayload', () => {
       gatewayProgramHex: SOL_GATEWAY,
       drainAmount: BigInt(50_000_000),
       extraPayload: new Uint8Array(0),
+      revertRecipientHex: REVERT_RECIPIENT,
     });
     const noPayload = encodeSvmCeaToUeaPayload({
       gatewayProgramHex: SOL_GATEWAY,
       drainAmount: BigInt(50_000_000),
+      revertRecipientHex: REVERT_RECIPIENT,
     });
     expect(emptyPayload).toBe(noPayload);
   });

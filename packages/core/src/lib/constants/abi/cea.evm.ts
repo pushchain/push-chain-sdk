@@ -15,6 +15,11 @@ export const CEA_EVM = [
         "internalType": "bytes",
         "name": "payload",
         "type": "bytes"
+      },
+      {
+        "internalType": "address",
+        "name": "revertRecipient",
+        "type": "address"
       }
     ],
     "name": "sendUniversalTxToUEA",

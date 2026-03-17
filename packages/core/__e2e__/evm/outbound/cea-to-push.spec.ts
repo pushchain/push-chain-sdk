@@ -23,6 +23,8 @@ import type { UniversalExecuteParams, ChainTarget } from '../../../src/lib/orche
 import type { ProgressEvent } from '../../../src/lib/progress-hook/progress-hook.types';
 import { ERC20_EVM } from '../../../src/lib/constants/abi/erc20.evm';
 import { MOVEABLE_TOKEN_CONSTANTS, type MoveableToken } from '../../../src/lib/constants/tokens';
+import { COUNTER_ABI_PAYABLE } from '../../../src/lib/push-chain/helpers/abis';
+import { COUNTER_ADDRESS_PAYABLE } from '../../../src/lib/push-chain/helpers/addresses';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 
 
@@ -1357,5 +1359,301 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
       expect(counterAAfter).toBeGreaterThan(counterABefore);
       expect(counterBAfter).toBeGreaterThan(counterBBefore);
     }, 900000);
+  });
+
+  // ============================================================================
+  // 13. UEA Multicall Only (Route 3) — Push Chain contract calls
+  // ============================================================================
+  describe('13. UEA Multicall Only (Route 3)', () => {
+    it('should execute multicall on Push Chain: increment counter + approve (no funds)', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: UEA Multicall Only (Route 3) — Counter Increment + Approve ===');
+
+      const incrementPayload = encodeFunctionData({
+        abi: COUNTER_ABI_PAYABLE,
+        functionName: 'increment',
+      });
+
+      const approvePayload = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'approve',
+        args: [TEST_TARGET, BigInt(1000000)],
+      });
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: ueaAddress,
+        data: [
+          { to: COUNTER_ADDRESS_PAYABLE, value: BigInt(0), data: incrementPayload },
+          { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: approvePayload },
+        ],
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+
+      // Wait for outbound relay
+      console.log('Calling tx.wait() - polling for external chain tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+    }, 600000);
+  });
+
+  // ============================================================================
+  // 14. UEA Funds + Multicall (Route 3) — ERC-20 bridge + Push Chain calls
+  // ============================================================================
+  describe('14. UEA Funds + Multicall (Route 3)', () => {
+    beforeAll(async () => {
+      if (skipE2E || !usdtToken) return;
+      await ensureCeaErc20Balance({
+        pushClient,
+        ceaAddress,
+        token: usdtToken,
+        requiredAmount: BigInt(20000),
+        targetChain: CHAIN.BNB_TESTNET,
+      });
+    }, 600000);
+
+    it('should bridge ERC-20 funds and execute multicall on Push Chain', async () => {
+      if (skipE2E) return;
+      if (!usdtToken) {
+        console.log('Skipping - USDT token not found');
+        return;
+      }
+
+      console.log('\n=== Test: UEA Funds + Multicall (Route 3) — ERC-20 + Counter + Approve ===');
+
+      const incrementPayload = encodeFunctionData({
+        abi: COUNTER_ABI_PAYABLE,
+        functionName: 'increment',
+      });
+
+      const approvePayload = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'approve',
+        args: [TEST_TARGET, BigInt(1000000)],
+      });
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: ueaAddress,
+        funds: {
+          amount: BigInt(10000),
+          token: usdtToken,
+        },
+        data: [
+          { to: COUNTER_ADDRESS_PAYABLE, value: BigInt(0), data: incrementPayload },
+          { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: approvePayload },
+        ],
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+
+      // Wait for outbound relay
+      console.log('Calling tx.wait() - polling for external chain tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+    }, 600000);
+  });
+});
+
+// =============================================================================
+// EOA CEA → Push: Inbound from Push Chain Native Account (Route 3)
+// =============================================================================
+describe('EOA CEA → Push: Inbound from Push Chain Native Account (Route 3)', () => {
+  let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
+  let eoaAddress: `0x${string}`;
+  let ceaAddress: `0x${string}`;
+  let usdtToken: MoveableToken | undefined;
+
+  // Uses PUSH_PRIVATE_KEY — a native Push Chain account (not derived from external chain)
+  const privateKey = process.env['PUSH_PRIVATE_KEY'] as Hex;
+  const skipE2E = !privateKey;
+
+  beforeAll(async () => {
+    if (skipE2E) {
+      console.log('Skipping E2E tests - PUSH_PRIVATE_KEY not set');
+      return;
+    }
+
+    // Key difference: origin is PUSH_TESTNET_DONUT (native Push Chain EOA)
+    const originChain = CHAIN.PUSH_TESTNET_DONUT;
+    const account = privateKeyToAccount(privateKey);
+    const walletClient = createWalletClient({
+      account,
+      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+    });
+
+    const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
+      walletClient,
+      {
+        chain: originChain,
+        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+      }
+    );
+
+    pushClient = await PushChain.initialize(universalSigner, {
+      network: PUSH_NETWORK.TESTNET_DONUT,
+      printTraces: true,
+      progressHook: (val: any) => {
+        console.log(`[${val.id}] ${val.title}`);
+      },
+    });
+
+    eoaAddress = pushClient.universal.account;
+    console.log(`Push EOA Address: ${eoaAddress}`);
+
+    // Get CEA address for BSC Testnet
+    const ceaResult = await getCEAAddress(eoaAddress, CHAIN.BNB_TESTNET);
+    ceaAddress = ceaResult.cea;
+    console.log(`CEA Address on BSC: ${ceaAddress}, deployed: ${ceaResult.isDeployed}`);
+
+    // Get USDT token for ERC20 flows
+    usdtToken = MOVEABLE_TOKEN_CONSTANTS.BNB_TESTNET.USDT;
+    if (usdtToken) {
+      console.log(`USDT Token (BNB Testnet): ${usdtToken.address} (${usdtToken.decimals} decimals)`);
+    }
+  }, 60000);
+
+  // ============================================================================
+  // EOA Native Funds Bridge Back (Route 3)
+  // ============================================================================
+  describe('EOA Native Funds Bridge Back (Route 3)', () => {
+    beforeAll(async () => {
+      if (skipE2E) return;
+      await ensureCeaNativeBalance({
+        pushClient,
+        ceaAddress,
+        requiredAmount: parseEther('0.0002'),
+        targetChain: CHAIN.BNB_TESTNET,
+      });
+    }, 600000);
+
+    it('should bridge native BNB back to Push Chain from EOA CEA', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: EOA Native BNB Inbound (CEA → Push, Route 3) ===');
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: eoaAddress,
+        value: parseEther('0.00005'),
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      console.log(`Source Chain: ${tx.chain}`);
+
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+
+      // Wait for outbound relay
+      console.log('Calling tx.wait() - polling for external chain tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Chain: ${receipt.externalChain}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+    }, 600000);
+  });
+
+  // ============================================================================
+  // EOA ERC-20 Funds Bridge Back (Route 3)
+  // ============================================================================
+  describe('EOA ERC-20 Funds Bridge Back (Route 3)', () => {
+    beforeAll(async () => {
+      if (skipE2E || !usdtToken) return;
+      await ensureCeaErc20Balance({
+        pushClient,
+        ceaAddress,
+        token: usdtToken,
+        requiredAmount: BigInt(20000),
+        targetChain: CHAIN.BNB_TESTNET,
+      });
+    }, 600000);
+
+    it('should bridge ERC-20 USDT back to Push Chain from EOA CEA', async () => {
+      if (skipE2E) return;
+      if (!usdtToken) {
+        console.log('Skipping - USDT token not found');
+        return;
+      }
+
+      console.log('\n=== Test: EOA ERC-20 USDT Inbound (CEA → Push, Route 3) ===');
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: eoaAddress,
+        funds: {
+          amount: BigInt(10000),
+          token: usdtToken,
+        },
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      console.log(`Source Chain: ${tx.chain}`);
+
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+
+      // Wait for outbound relay
+      console.log('Calling tx.wait() - polling for external chain tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Chain: ${receipt.externalChain}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+    }, 600000);
   });
 });

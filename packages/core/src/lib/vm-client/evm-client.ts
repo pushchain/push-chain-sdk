@@ -201,29 +201,39 @@ export class EvmClient {
     data,
     value = parseEther('0'),
     signer,
+    nonce: explicitNonce,
+    gas: explicitGas,
   }: {
     to: `0x${string}`;
     data: Hex;
     value?: bigint;
     signer: UniversalSigner;
+    nonce?: number;
+    gas?: bigint;
   }): Promise<Hex> {
-    const [nonce, gas, feePerGas] = await Promise.all([
-      this.publicClient.getTransactionCount({
-        address: signer.account.address as `0x${string}`,
-      }),
-      // Use fixed gas for simple transfers, estimate for contract interactions
-      data === '0x'
-        ? Promise.resolve(BigInt(21000))
-        : this.publicClient.estimateGas({
-            account: signer.account.address as `0x${string}`,
-            to,
-            data,
-            value,
-          }),
+    // Estimate gas and fees first (can run in parallel)
+    const [gas, feePerGas, chainId] = await Promise.all([
+      // Use explicit gas if provided (for batched txs where estimateGas may fail
+      // due to uncommitted state), fixed gas for simple transfers, or estimate
+      explicitGas
+        ? Promise.resolve(explicitGas)
+        : data === '0x'
+          ? Promise.resolve(BigInt(21000))
+          : this.publicClient.estimateGas({
+              account: signer.account.address as `0x${string}`,
+              to,
+              data,
+              value,
+            }),
       this.publicClient.estimateFeesPerGas(),
+      this.publicClient.getChainId(),
     ]);
 
-    const chainId = await this.publicClient.getChainId();
+    // Use explicit nonce if provided (for sequential tx batches),
+    // otherwise fetch after gas estimation to avoid stale nonce on Cosmos-EVM chains
+    const nonce = explicitNonce ?? await this.publicClient.getTransactionCount({
+      address: signer.account.address as `0x${string}`,
+    });
 
     const unsignedTx = serializeTransaction({
       chainId,
