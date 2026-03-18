@@ -317,15 +317,23 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
 
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
 
-        // Wait for RPC propagation
-        await new Promise((r) => setTimeout(r, 5000));
-
-        // Read Push Chain counter AFTER
-        const counterAfter = await pushPublicClient.readContract({
-          address: COUNTER_ADDRESS_PAYABLE,
-          abi: COUNTER_ABI_PAYABLE,
-          functionName: 'countPC',
-        }) as bigint;
+        // CEA-to-Push requires round-trip: Push → BSC → Push (inbound)
+        // The return inbound relay takes significant time, poll until counter increments
+        const maxInboundWait = 180000;
+        const pollInterval = 10000;
+        const pollStart = Date.now();
+        let counterAfter = counterBefore;
+        while (Date.now() - pollStart < maxInboundWait) {
+          await new Promise((r) => setTimeout(r, pollInterval));
+          counterAfter = await pushPublicClient.readContract({
+            address: COUNTER_ADDRESS_PAYABLE,
+            abi: COUNTER_ABI_PAYABLE,
+            functionName: 'countPC',
+          }) as bigint;
+          const elapsed = Math.round((Date.now() - pollStart) / 1000);
+          console.log(`Polling counter: ${counterAfter} (elapsed: ${elapsed}s)`);
+          if (counterAfter > counterBefore) break;
+        }
         console.log(`Push Chain Counter AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 600000);
@@ -390,15 +398,23 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
 
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
 
-        // Wait for RPC propagation
-        await new Promise((r) => setTimeout(r, 5000));
-
-        // Read Push Chain counter AFTER
-        const counterAfter = await pushPublicClient.readContract({
-          address: COUNTER_ADDRESS_PAYABLE,
-          abi: COUNTER_ABI_PAYABLE,
-          functionName: 'countPC',
-        }) as bigint;
+        // CEA-to-Push multicall requires round-trip: Push → BSC → Push (inbound)
+        // The return inbound relay takes significant time, poll until counter increments
+        const maxInboundWait = 180000; // 3 minutes for return inbound
+        const pollInterval = 10000;
+        const pollStart = Date.now();
+        let counterAfter = counterBefore;
+        while (Date.now() - pollStart < maxInboundWait) {
+          await new Promise((r) => setTimeout(r, pollInterval));
+          counterAfter = await pushPublicClient.readContract({
+            address: COUNTER_ADDRESS_PAYABLE,
+            abi: COUNTER_ABI_PAYABLE,
+            functionName: 'countPC',
+          }) as bigint;
+          const elapsed = Math.round((Date.now() - pollStart) / 1000);
+          console.log(`Polling counter: ${counterAfter} (elapsed: ${elapsed}s)`);
+          if (counterAfter > counterBefore) break;
+        }
         console.log(`Push Chain Counter AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 600000);
@@ -476,15 +492,22 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
 
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
 
-        // Wait for RPC propagation
-        await new Promise((r) => setTimeout(r, 5000));
-
-        // Read Push Chain counter AFTER
-        const counterAfter = await pushPublicClient.readContract({
-          address: COUNTER_ADDRESS_PAYABLE,
-          abi: COUNTER_ABI_PAYABLE,
-          functionName: 'countPC',
-        }) as bigint;
+        // CEA-to-Push requires round-trip: Push → BSC → Push (inbound)
+        const maxInboundWait = 180000;
+        const pollInterval = 10000;
+        const pollStart = Date.now();
+        let counterAfter = counterBefore;
+        while (Date.now() - pollStart < maxInboundWait) {
+          await new Promise((r) => setTimeout(r, pollInterval));
+          counterAfter = await pushPublicClient.readContract({
+            address: COUNTER_ADDRESS_PAYABLE,
+            abi: COUNTER_ABI_PAYABLE,
+            functionName: 'countPC',
+          }) as bigint;
+          const elapsed = Math.round((Date.now() - pollStart) / 1000);
+          console.log(`Polling counter: ${counterAfter} (elapsed: ${elapsed}s)`);
+          if (counterAfter > counterBefore) break;
+        }
         console.log(`Push Chain Counter AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 600000);
@@ -577,15 +600,22 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
           );
         }
 
-        // Wait for RPC propagation
-        await new Promise((r) => setTimeout(r, 5000));
-
-        // Read Push Chain counter AFTER
-        const counterAfter = await pushPublicClient.readContract({
-          address: COUNTER_ADDRESS_PAYABLE,
-          abi: COUNTER_ABI_PAYABLE,
-          functionName: 'countPC',
-        }) as bigint;
+        // CEA-to-Push requires round-trip: Push → BSC → Push (inbound)
+        const maxInboundWait = 180000;
+        const pollInterval = 10000;
+        const pollStart = Date.now();
+        let counterAfter = counterBefore;
+        while (Date.now() - pollStart < maxInboundWait) {
+          await new Promise((r) => setTimeout(r, pollInterval));
+          counterAfter = await pushPublicClient.readContract({
+            address: COUNTER_ADDRESS_PAYABLE,
+            abi: COUNTER_ABI_PAYABLE,
+            functionName: 'countPC',
+          }) as bigint;
+          const elapsed = Math.round((Date.now() - pollStart) / 1000);
+          console.log(`Polling counter: ${counterAfter} (elapsed: ${elapsed}s)`);
+          if (counterAfter > counterBefore) break;
+        }
         console.log(`Push Chain Counter AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 600000);
@@ -694,15 +724,22 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
 
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
 
-        // Wait for RPC propagation
-        await new Promise((r) => setTimeout(r, 5000));
-
-        // Read Push Chain counter AFTER
-        const counterAfter = await pushPublicClient.readContract({
-          address: COUNTER_ADDRESS_PAYABLE,
-          abi: COUNTER_ABI_PAYABLE,
-          functionName: 'countPC',
-        }) as bigint;
+        // CEA-to-Push requires round-trip: Push → BSC → Push (inbound)
+        const maxInboundWait = 180000;
+        const pollInterval = 10000;
+        const pollStart = Date.now();
+        let counterAfter = counterBefore;
+        while (Date.now() - pollStart < maxInboundWait) {
+          await new Promise((r) => setTimeout(r, pollInterval));
+          counterAfter = await pushPublicClient.readContract({
+            address: COUNTER_ADDRESS_PAYABLE,
+            abi: COUNTER_ABI_PAYABLE,
+            functionName: 'countPC',
+          }) as bigint;
+          const elapsed = Math.round((Date.now() - pollStart) / 1000);
+          console.log(`Polling counter: ${counterAfter} (elapsed: ${elapsed}s)`);
+          if (counterAfter > counterBefore) break;
+        }
         console.log(`Push Chain Counter AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 600000);
@@ -778,15 +815,22 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
 
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
 
-        // Wait for RPC propagation
-        await new Promise((r) => setTimeout(r, 5000));
-
-        // Read Push Chain counter AFTER
-        const counterAfter = await pushPublicClient.readContract({
-          address: COUNTER_ADDRESS_PAYABLE,
-          abi: COUNTER_ABI_PAYABLE,
-          functionName: 'countPC',
-        }) as bigint;
+        // CEA-to-Push requires round-trip: Push → BSC → Push (inbound)
+        const maxInboundWait = 180000;
+        const pollInterval = 10000;
+        const pollStart = Date.now();
+        let counterAfter = counterBefore;
+        while (Date.now() - pollStart < maxInboundWait) {
+          await new Promise((r) => setTimeout(r, pollInterval));
+          counterAfter = await pushPublicClient.readContract({
+            address: COUNTER_ADDRESS_PAYABLE,
+            abi: COUNTER_ABI_PAYABLE,
+            functionName: 'countPC',
+          }) as bigint;
+          const elapsed = Math.round((Date.now() - pollStart) / 1000);
+          console.log(`Polling counter: ${counterAfter} (elapsed: ${elapsed}s)`);
+          if (counterAfter > counterBefore) break;
+        }
         console.log(`Push Chain Counter AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 600000);

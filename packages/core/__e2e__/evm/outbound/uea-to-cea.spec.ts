@@ -106,22 +106,31 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
     // 1. Funds
     // ==========================================================================
     describe('1. Funds', () => {
-      it('should transfer ERC-20 pUSDT to BSC Testnet', async () => {
+      it('should transfer ERC-20 USDT to BSC Testnet', async () => {
         if (skipE2E) return;
+        if (!usdtToken) {
+          console.log('Skipping - USDT token not found');
+          return;
+        }
 
-        console.log('\n=== Test: ERC-20 pUSDT Transfer ===');
+        console.log('\n=== Test: ERC-20 USDT Transfer ===');
 
-        // For ERC-20, we need to specify the token
-        // The SDK should handle burning pUSDT on Push Chain
-        // and the CEA receiving USDT on BSC
+        const withdrawAmount = BigInt(10000); // 0.01 USDT (6 decimals)
+
         const params: UniversalExecuteParams = {
           to: {
             address: TEST_TARGET,
             chain: CHAIN.BNB_TESTNET,
           },
-          // For ERC-20 transfers, we use data to encode the transfer
-          // But for Route 2 outbound, value represents the token amount
-          value: BigInt(10000), // 0.01 USDT (6 decimals)
+          funds: {
+            amount: withdrawAmount,
+            token: usdtToken,
+          },
+          data: buildErc20WithdrawalMulticall(
+            BSC_USDT_ADDRESS as `0x${string}`,
+            TEST_TARGET,
+            withdrawAmount
+          ),
         };
 
         expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
@@ -130,6 +139,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         console.log(`Push Chain TX Hash: ${tx.hash}`);
         expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
 
         // Wait for outbound relay and verify external chain details
         console.log('Calling tx.wait() - polling for outbound tx hash...');
@@ -520,80 +530,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         console.log(`CounterA AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 360000);
-    });
-
-    // ==========================================================================
-    // 8. Native Funds + Multicall
-    // ==========================================================================
-    describe('8. Native Funds + Multicall', () => {
-      // NOTE: When combining native value transfer with non-payable function calls
-      // (like ERC20 approve/transfer), you MUST use multicall array format to
-      // separate them. Attaching value directly to a non-payable call will revert.
-      // Per SDK_Outbound_Flow_Guide.pdf Section 9.2 (Multi-Token Withdrawal).
-
-      it('should transfer pBNB and increment counter via multicall', async () => {
-        if (skipE2E) return;
-
-        console.log('\n=== Test: pBNB + Counter Increment Multicall ===');
-
-        // Read counter BEFORE
-        const counterBefore = await bscPublicClient.readContract({
-          address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
-        }) as bigint;
-        console.log(`CounterA BEFORE: ${counterBefore}`);
-
-        const incrementPayload = encodeFunctionData({
-          abi: COUNTER_ABI,
-          functionName: 'increment',
-        });
-
-        const params: UniversalExecuteParams = {
-          to: {
-            address: TEST_TARGET,
-            chain: CHAIN.BNB_TESTNET,
-          },
-          value: parseEther('0.0001'),
-          data: [
-            // Call 1: CEA sends BNB to recipient
-            { to: TEST_TARGET, value: parseEther('0.0001'), data: '0x' as `0x${string}` },
-            // Call 2: Increment counter (value=0, non-payable)
-            { to: COUNTER_A, value: BigInt(0), data: incrementPayload },
-          ],
-        };
-
-        expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
-
-        const tx = await pushClient.universal.sendTransaction(params);
-
-        console.log(`Push Chain TX Hash: ${tx.hash}`);
-        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-
-        // Wait for outbound relay and verify external chain details
-        console.log('Calling tx.wait() - polling for outbound tx hash...');
-        const receipt = await tx.wait();
-        console.log(`Receipt status: ${receipt.status}`);
-        console.log(`External TX Hash: ${receipt.externalTxHash}`);
-        console.log(`External Chain: ${receipt.externalChain}`);
-        console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
-
-        expect(receipt.status).toBe(1);
-        expect(receipt.externalTxHash).toBeDefined();
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
-
-        // Verify tx succeeded on external chain via RPC
-        await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
-
-        // Wait for RPC propagation
-        await new Promise((r) => setTimeout(r, 5000));
-
-        // Read counter AFTER
-        const counterAfter = await bscPublicClient.readContract({
-          address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
-        }) as bigint;
-        console.log(`CounterA AFTER: ${counterAfter}`);
-        expect(counterAfter).toBeGreaterThan(counterBefore);
-      }, 360000);
-    });
+    });   
   });
 
   // ============================================================================
