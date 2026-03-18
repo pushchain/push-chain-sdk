@@ -346,6 +346,112 @@ describe('EOA → CEA: Outbound from Push Chain Native Account (Route 2)', () =>
   });
 
   // ============================================================================
+  // R2-NFP: Push Chain native EOA sends native funds + single payload outbound
+  // ============================================================================
+  describe('R2-NFP: EOA NATIVE FUNDS + PAYLOAD', () => {
+    it('should transfer pBNB and execute single contract call from Push EOA', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: EOA Native pBNB + Single Payload (R2-NFP) ===');
+
+      const approvePayload = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'approve',
+        args: [TEST_TARGET, BigInt(1000000)],
+      });
+
+      const params: UniversalExecuteParams = {
+        to: {
+          address: BSC_USDT_ADDRESS as `0x${string}`,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        value: parseEther('0.0001'),
+        data: approvePayload,
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      // Wait for outbound relay
+      console.log('Calling tx.wait() - polling for outbound tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Chain: ${receipt.externalChain}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+    }, 360000);
+  });
+
+  // ============================================================================
+  // R2-FP: Push Chain native EOA sends ERC-20 funds + single payload outbound
+  // ============================================================================
+  describe('R2-FP: EOA FUNDS + PAYLOAD (ERC-20)', () => {
+    it('should transfer ERC-20 USDT and execute single contract call from Push EOA', async () => {
+      if (skipE2E) return;
+      if (!usdtToken) {
+        console.log('Skipping - USDT token not found');
+        return;
+      }
+
+      console.log('\n=== Test: EOA ERC-20 USDT + Single Payload (R2-FP) ===');
+
+      const withdrawAmount = BigInt(10000); // 0.01 USDT (6 decimals)
+
+      const approvePayload = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'approve',
+        args: [TEST_TARGET, BigInt(1000000)],
+      });
+
+      const params: UniversalExecuteParams = {
+        to: {
+          address: BSC_USDT_ADDRESS as `0x${string}`,
+          chain: CHAIN.BNB_TESTNET,
+        },
+        funds: {
+          amount: withdrawAmount,
+          token: usdtToken,
+        },
+        data: approvePayload,
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+
+      // Wait for outbound relay
+      console.log('Calling tx.wait() - polling for outbound tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Chain: ${receipt.externalChain}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+
+      // Verify tx succeeded on external chain via RPC
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+    }, 360000);
+  });
+
+  // ============================================================================
   // R2-FP-ERC20: Push Chain native EOA sends ERC-20 funds + payload outbound
   // ============================================================================
   describe('R2-FP-ERC20: EOA FUNDS + PAYLOAD (ERC-20)', () => {

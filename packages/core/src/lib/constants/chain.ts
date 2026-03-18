@@ -283,7 +283,7 @@ export const CHAIN_INFO: Record<
   [CHAIN.SOLANA_DEVNET]: {
     chainId: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
     vm: VM.SVM,
-    lockerContract: 'DJoFYDpgbTfxbXBv1QYhYGc9FK4J5FUKpYXAfSkHryXp',
+    lockerContract: 'CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS',
     defaultRPC: [
       'https://api.devnet.solana.com',
       'https://solana-devnet.g.alchemy.com/v2/demo',

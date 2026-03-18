@@ -1705,7 +1705,8 @@ export class Orchestrator {
     route: TransactionRoute,
     ueaAddress: `0x${string}`
   ): Promise<HopDescriptor> {
-    const gasLimit = params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT;
+    // Pass 0 when user omits gasLimit → contract uses per-chain baseGasLimitByChainNamespace
+    const gasLimit = params.gasLimit ?? BigInt(0);
     const routeStr = route as unknown as string;
 
     const baseDescriptor: HopDescriptor = {
@@ -1825,9 +1826,13 @@ export class Orchestrator {
           if (Array.isArray(params.data)) {
             ceaMulticalls.push(...(params.data as MultiCall[]));
           } else {
+            // Single call with data. Native value (if any) is already delivered to
+            // CEA by the Vault via executeUniversalTx{value: amount}(). Attaching
+            // value to the call would revert if the target function is not payable.
+            // To call a payable function with value, use explicit multicalls.
             ceaMulticalls.push({
               to: target.address,
-              value: params.value || BigInt(0),
+              value: BigInt(0),
               data: params.data as `0x${string}`,
             });
           }
@@ -1948,24 +1953,86 @@ export class Orchestrator {
   async queryOutboundGasFee(
     prc20Token: `0x${string}`,
     gasLimit: bigint
-  ): Promise<{ gasToken: `0x${string}`; gasFee: bigint }> {
+  ): Promise<{ gasToken: `0x${string}`; gasFee: bigint; protocolFee: bigint; nativeValueForGas: bigint }> {
     const gatewayPcAddress = this.getUniversalGatewayPCAddress();
+    const pushChain = this.getPushChainForNetwork();
+    const rpcUrl = CHAIN_INFO[pushChain]?.defaultRPC?.[0] || 'unknown';
 
-    const universalCoreAddress = await this.pushClient.readContract<`0x${string}`>({
-      address: gatewayPcAddress,
-      abi: UNIVERSAL_GATEWAY_PC,
-      functionName: 'UNIVERSAL_CORE',
-      args: [],
-    });
+    this.printLog(
+      `queryOutboundGasFee — [step 1] inputs: gateway=${gatewayPcAddress}, prc20Token=${prc20Token}, gasLimit=${gasLimit}, pushNetwork=${this.pushNetwork}, rpcUrl=${rpcUrl}`
+    );
 
-    const [gasToken, gasFee] = await this.pushClient.readContract<[`0x${string}`, bigint]>({
-      address: universalCoreAddress,
+    // Step 2: Get UNIVERSAL_CORE address from gateway
+    let universalCoreAddress: `0x${string}`;
+    try {
+      const gatewayCallData = encodeFunctionData({
+        abi: UNIVERSAL_GATEWAY_PC,
+        functionName: 'UNIVERSAL_CORE',
+        args: [],
+      });
+      this.printLog(
+        `queryOutboundGasFee — [step 2] reading UNIVERSAL_CORE from ${gatewayPcAddress}, callData=${gatewayCallData}`
+      );
+      universalCoreAddress = await this.pushClient.readContract<`0x${string}`>({
+        address: gatewayPcAddress,
+        abi: UNIVERSAL_GATEWAY_PC,
+        functionName: 'UNIVERSAL_CORE',
+        args: [],
+      });
+      this.printLog(
+        `queryOutboundGasFee — [step 2] UNIVERSAL_CORE resolved to: ${universalCoreAddress}`
+      );
+    } catch (err) {
+      this.printLog(
+        `queryOutboundGasFee — [step 2] FAILED to read UNIVERSAL_CORE: ${err instanceof Error ? err.message : String(err)}`
+      );
+      throw err;
+    }
+
+    // Step 3: Call getOutboundTxGasAndFees on UNIVERSAL_CORE
+    const callData = encodeFunctionData({
       abi: UNIVERSAL_CORE_EVM,
-      functionName: 'withdrawGasFeeWithGasLimit',
+      functionName: 'getOutboundTxGasAndFees',
       args: [prc20Token, gasLimit],
     });
+    this.printLog(
+      `queryOutboundGasFee — [step 3] calling getOutboundTxGasAndFees on ${universalCoreAddress}`
+    );
+    this.printLog(
+      `queryOutboundGasFee — [step 3] eth_call: {"method":"eth_call","params":[{"to":"${universalCoreAddress}","data":"${callData}"},"latest"]}`
+    );
 
-    return { gasToken, gasFee };
+    let gasToken: `0x${string}`;
+    let gasFee: bigint;
+    let protocolFee: bigint;
+    try {
+      const result = await this.pushClient.readContract<[`0x${string}`, bigint, bigint, bigint, string]>({
+        address: universalCoreAddress,
+        abi: UNIVERSAL_CORE_EVM,
+        functionName: 'getOutboundTxGasAndFees',
+        args: [prc20Token, gasLimit],
+      });
+      gasToken = result[0];
+      gasFee = result[1];
+      protocolFee = result[2];
+      this.printLog(
+        `queryOutboundGasFee — [step 4] success: gasToken=${gasToken}, gasFee=${gasFee}, protocolFee=${protocolFee}`
+      );
+    } catch (err) {
+      this.printLog(
+        `queryOutboundGasFee — [step 3] FAILED: ${err instanceof Error ? err.message : String(err)}`
+      );
+      throw err;
+    }
+
+    // gasFee is in gas token units — exchange rate to PC is unknown without quoter.
+    // Use 1000x buffer; excess is refunded by swapAndBurnGas to the UEA.
+    const nativeValueForGas = protocolFee + (gasFee * BigInt(1000));
+    this.printLog(
+      `queryOutboundGasFee — [step 5] using 1000x buffer: nativeValueForGas=${nativeValueForGas}`
+    );
+
+    return { gasToken, gasFee, protocolFee, nativeValueForGas };
   }
 
   // ============================================================================
@@ -2125,7 +2192,7 @@ export class Orchestrator {
             targetForOutbound,
             segment.prc20Token || (ZERO_ADDRESS as `0x${string}`),
             segment.totalBurnAmount || BigInt(0),
-            segment.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+            segment.gasLimit ?? BigInt(0),
             outboundPayload,
             ueaAddress
           );
@@ -2218,7 +2285,7 @@ export class Orchestrator {
             ceaAddress,
             segment.prc20Token || this.getNativePRC20ForChain(sourceChain),
             segment.totalBurnAmount || BigInt(1),
-            segment.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+            segment.gasLimit ?? BigInt(0),
             ceaPayload,
             ueaAddress
           );
@@ -2673,7 +2740,7 @@ export class Orchestrator {
     if (params.migration) {
       ceaPayload = buildMigrationPayload();
       prc20Token = this.getNativePRC20ForChain(targetChain);
-      burnAmount = BigInt(1); // 1 wei workaround (precompile rejects 0)
+      burnAmount = BigInt(0); // Migration is logic-only — no funds. CEA rejects msg.value != 0.
       this.printLog(
         `executeUoaToCea — MIGRATION: using raw MIGRATION_SELECTOR payload (${ceaPayload}), native PRC-20 ${prc20Token}`
       );
@@ -2687,10 +2754,13 @@ export class Orchestrator {
           // User provided explicit multicall array
           ceaMulticalls.push(...(params.data as MultiCall[]));
         } else {
-          // Single call with data
+          // Single call with data. Native value (if any) is already delivered to
+          // CEA by the Vault via executeUniversalTx{value: amount}(). Attaching
+          // value to the call would revert if the target function is not payable.
+          // To call a payable function with value, use explicit multicalls.
           ceaMulticalls.push({
             to: targetAddress,
-            value: params.value || BigInt(0),
+            value: BigInt(0),
             data: params.data as `0x${string}`,
           });
         }
@@ -2754,7 +2824,7 @@ export class Orchestrator {
       targetBytes,
       prc20Token,
       burnAmount,
-      params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+      params.gasLimit ?? BigInt(0),
       ceaPayload,
       ueaAddress // revert recipient is the UEA
     );
@@ -2777,122 +2847,7 @@ export class Orchestrator {
     // Get UniversalGatewayPC address
     const gatewayPcAddress = this.getUniversalGatewayPCAddress();
 
-    // Build the multicall that will execute ON Push Chain from UEA context
-    // This includes: 1) approve PRC-20 (if needed), 2) call sendUniversalTxOutbound
-    const pushChainMulticalls: MultiCall[] = [];
-
-    // Query gas fee from UniversalCore contract (needed for approval amount)
-    // The gateway's sendUniversalTxOutbound requires approval for BOTH:
-    // 1. burnAmount - for _burnPRC20() which burns tokens (approved on prc20Token)
-    // 2. gasFee - for _moveFees() which transfers to VaultPC (approved on gasToken)
-    // NOTE: gasToken may differ from prc20Token! The gateway fetches gasToken via:
-    //   gasToken = gasTokenPRC20ByChainNamespace[chainNamespace]
-    // So we need separate approvals if they differ.
-    let gasFee = BigInt(0);
-    let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
-    if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-      const gasLimit = outboundReq.gasLimit;
-      try {
-        // First, get the UNIVERSAL_CORE address from the gateway
-        const universalCoreAddress = await this.pushClient.readContract<`0x${string}`>({
-          address: gatewayPcAddress,
-          abi: UNIVERSAL_GATEWAY_PC,
-          functionName: 'UNIVERSAL_CORE',
-          args: [],
-        });
-
-        // Then query gas fee from UniversalCore
-        const [queriedGasToken, estimatedGasFee] = await this.pushClient.readContract<[`0x${string}`, bigint]>({
-          address: universalCoreAddress,
-          abi: UNIVERSAL_CORE_EVM,
-          functionName: 'withdrawGasFeeWithGasLimit',
-          args: [prc20Token, gasLimit],
-        });
-        gasFee = estimatedGasFee;
-        gasToken = queriedGasToken;
-        this.printLog(
-          `executeUoaToCea — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}`
-        );
-      } catch (err) {
-        // Gas fee query is required for outbound transactions
-        throw new Error(`Failed to query outbound gas fee: ${err}`);
-      }
-    }
-
-    // Add approval calls for gas token and burn token
-    // Case 1: gasToken === prc20Token → single approval for burnAmount + gasFee
-    // Case 2: gasToken !== prc20Token → two separate approvals
-    const gasTokenLower = gasToken.toLowerCase();
-    const prc20TokenLower = prc20Token.toLowerCase();
-    const sameToken = gasTokenLower === prc20TokenLower;
-
-    if (sameToken) {
-      // Same token: single approval for burnAmount + gasFee
-      const totalApprovalAmount = burnAmount + gasFee;
-      if (totalApprovalAmount > BigInt(0) && prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-        const approveData = encodeFunctionData({
-          abi: ERC20_EVM,
-          functionName: 'approve',
-          args: [gatewayPcAddress, totalApprovalAmount],
-        });
-
-        pushChainMulticalls.push({
-          to: prc20Token,
-          value: BigInt(0),
-          data: approveData,
-        });
-      }
-    } else {
-      // Different tokens: two separate approvals
-      // 1. Approve gasFee on gasToken (for _moveFees)
-      if (gasFee > BigInt(0) && gasToken !== (ZERO_ADDRESS as `0x${string}`)) {
-        const gasApproveData = encodeFunctionData({
-          abi: ERC20_EVM,
-          functionName: 'approve',
-          args: [gatewayPcAddress, gasFee],
-        });
-
-        pushChainMulticalls.push({
-          to: gasToken,
-          value: BigInt(0),
-          data: gasApproveData,
-        });
-      }
-
-      // 2. Approve burnAmount on prc20Token (for _burnPRC20)
-      if (burnAmount > BigInt(0) && prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-        const burnApproveData = encodeFunctionData({
-          abi: ERC20_EVM,
-          functionName: 'approve',
-          args: [gatewayPcAddress, burnAmount],
-        });
-
-        pushChainMulticalls.push({
-          to: prc20Token,
-          value: BigInt(0),
-          data: burnApproveData,
-        });
-      }
-    }
-
-    // Add the sendUniversalTxOutbound call
-    const outboundCallData = encodeFunctionData({
-      abi: UNIVERSAL_GATEWAY_PC,
-      functionName: 'sendUniversalTxOutbound',
-      args: [outboundReq],
-    });
-
-    pushChainMulticalls.push({
-      to: gatewayPcAddress,
-      value: BigInt(0),
-      data: outboundCallData,
-    });
-
-    this.printLog(
-      `executeUoaToCea — Push Chain multicall has ${pushChainMulticalls.length} operations`
-    );
-
-    // Pre-fetch UEA status to avoid redundant RPC calls in execute()
+    // Pre-fetch UEA status early — balance is needed for gas value calculation
     const [ueaCode, ueaBalance] = await Promise.all([
       this.pushClient.publicClient.getCode({ address: ueaAddress }),
       this.pushClient.getBalance(ueaAddress),
@@ -2900,10 +2855,77 @@ export class Orchestrator {
     const isUEADeployed = ueaCode !== undefined;
     const ueaNonce = isUEADeployed ? await this.getUEANonce(ueaAddress) : BigInt(0);
 
+    // Build the multicall that will execute ON Push Chain from UEA context
+    // This includes: 1) approve PRC-20 (if needed), 2) call sendUniversalTxOutbound
+    const pushChainMulticalls: MultiCall[] = [];
+
+    // Query gas fee from UniversalCore contract (needed for approval amount)
+    let gasFee = BigInt(0);
+    let nativeValueForGas = BigInt(0);
+    let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+    if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
+      try {
+        const result = await this.queryOutboundGasFee(prc20Token, outboundReq.gasLimit);
+        gasFee = result.gasFee;
+        gasToken = result.gasToken;
+        nativeValueForGas = result.nativeValueForGas;
+        this.printLog(
+          `executeUoaToCea — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}`
+        );
+      } catch (err) {
+        throw new Error(`Failed to query outbound gas fee: ${err}`);
+      }
+    }
+
+    // Adjust nativeValueForGas using UEA balance.
+    // The 1000x multiplier in queryOutboundGasFee may be insufficient when the
+    // WPC/gasToken exchange rate is unfavorable (e.g., PC is much cheaper than BNB).
+    // The contract's swapAndBurnGas refunds excess PC to the UEA, so sending more is safe.
+    // Re-fetch balance to minimize staleness — the gas fee query above involved multiple
+    // RPC roundtrips, during which other transactions may have changed the balance.
+    const currentBalance = await this.pushClient.getBalance(ueaAddress);
+    // Reserve covers gas for multicall TXs on Push Chain (~0.001 PC each).
+    // 0.1 PC provides ample margin for 2 ops (approve + outbound).
+    const OUTBOUND_GAS_RESERVE = BigInt(1e17);
+    if (currentBalance > OUTBOUND_GAS_RESERVE && currentBalance - OUTBOUND_GAS_RESERVE > nativeValueForGas) {
+      const adjustedValue = currentBalance - OUTBOUND_GAS_RESERVE;
+      this.printLog(
+        `executeUoaToCea — adjusting nativeValueForGas from ${nativeValueForGas.toString()} to ${adjustedValue.toString()} (UEA balance: ${currentBalance.toString()})`
+      );
+      nativeValueForGas = adjustedValue;
+    } else {
+      this.printLog(
+        `executeUoaToCea — no nativeValueForGas adjustment (UEA balance: ${currentBalance.toString()}, reserve: ${OUTBOUND_GAS_RESERVE.toString()}, nativeValueForGas: ${nativeValueForGas.toString()})`
+      );
+    }
+
+    // Build outbound multicalls (approve burn + sendUniversalTxOutbound with native value)
+    const outboundMulticalls = buildOutboundApprovalAndCall({
+      prc20Token,
+      gasToken,
+      burnAmount,
+      gasFee,
+      nativeValueForGas,
+      gatewayPcAddress,
+      outboundRequest: outboundReq,
+    });
+    pushChainMulticalls.push(...outboundMulticalls);
+
+    this.printLog(
+      `executeUoaToCea — Push Chain multicall has ${pushChainMulticalls.length} operations`
+    );
+
     // Execute through the normal execute() flow
     // This handles fee-locking on origin chain and executes the multicall from UEA context
+    // Sum native values from multicall entries for proper fee calculation
+    const multicallNativeValue = pushChainMulticalls.reduce(
+      (sum, mc) => sum + (mc.value ?? BigInt(0)),
+      BigInt(0)
+    );
+
     const executeParams: ExecuteParams = {
       to: ueaAddress, // multicall executes from UEA
+      value: multicallNativeValue, // ensures correct requiredFunds calculation
       data: pushChainMulticalls, // array triggers multicall mode
       _ueaStatus: {
         isDeployed: isUEADeployed,
@@ -3010,7 +3032,7 @@ export class Orchestrator {
       targetBytes,
       prc20Token,
       burnAmount,
-      params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+      params.gasLimit ?? BigInt(0),
       svmPayload,
       ueaAddress // revert recipient is the UEA
     );
@@ -3030,41 +3052,8 @@ export class Orchestrator {
       )}`
     );
 
-    // --- Query gas fee (identical to EVM path) ---
+    // --- Pre-fetch UEA status early — balance is needed for gas value calculation ---
     const gatewayPcAddress = this.getUniversalGatewayPCAddress();
-    let gasFee = BigInt(0);
-    let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
-
-    if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-      const gasLimit = outboundReq.gasLimit;
-      try {
-        const result = await this.queryOutboundGasFee(prc20Token, gasLimit);
-        gasFee = result.gasFee;
-        gasToken = result.gasToken;
-        this.printLog(
-          `executeUoaToCeaSvm — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}`
-        );
-      } catch (err) {
-        throw new Error(`Failed to query outbound gas fee: ${err}`);
-      }
-    }
-
-    // --- Build Push Chain multicalls (approve + sendUniversalTxOutbound) ---
-    // Reuse the same builder as EVM — this part is identical
-    const pushChainMulticalls: MultiCall[] = buildOutboundApprovalAndCall({
-      prc20Token,
-      gasToken,
-      burnAmount,
-      gasFee,
-      gatewayPcAddress,
-      outboundRequest: outboundReq,
-    });
-
-    this.printLog(
-      `executeUoaToCeaSvm — Push Chain multicall has ${pushChainMulticalls.length} operations`
-    );
-
-    // --- Execute through normal execute() flow ---
     const [ueaCode, ueaBalance] = await Promise.all([
       this.pushClient.publicClient.getCode({ address: ueaAddress }),
       this.pushClient.getBalance(ueaAddress),
@@ -3074,8 +3063,64 @@ export class Orchestrator {
       ? await this.getUEANonce(ueaAddress)
       : BigInt(0);
 
+    // --- Query gas fee (identical to EVM path) ---
+    let gasFee = BigInt(0);
+    let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+
+    let nativeValueForGas = BigInt(0);
+    if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
+      const gasLimit = outboundReq.gasLimit;
+      try {
+        const result = await this.queryOutboundGasFee(prc20Token, gasLimit);
+        gasFee = result.gasFee;
+        gasToken = result.gasToken;
+        nativeValueForGas = result.nativeValueForGas;
+        this.printLog(
+          `executeUoaToCeaSvm — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}`
+        );
+      } catch (err) {
+        throw new Error(`Failed to query outbound gas fee: ${err}`);
+      }
+    }
+
+    // Adjust nativeValueForGas using UEA balance (contract refunds excess)
+    // Re-fetch balance to minimize staleness from gas fee query RPC roundtrips
+    const currentBalance = await this.pushClient.getBalance(ueaAddress);
+    // Reserve covers gas for multicall TXs on Push Chain (~0.001 PC each).
+    const OUTBOUND_GAS_RESERVE_SVM = BigInt(1e17);
+    if (currentBalance > OUTBOUND_GAS_RESERVE_SVM && currentBalance - OUTBOUND_GAS_RESERVE_SVM > nativeValueForGas) {
+      const adjustedValue = currentBalance - OUTBOUND_GAS_RESERVE_SVM;
+      this.printLog(
+        `executeUoaToCeaSvm — adjusting nativeValueForGas from ${nativeValueForGas.toString()} to ${adjustedValue.toString()} (UEA balance: ${currentBalance.toString()})`
+      );
+      nativeValueForGas = adjustedValue;
+    }
+
+    // --- Build Push Chain multicalls (approve + sendUniversalTxOutbound) ---
+    // Reuse the same builder as EVM — this part is identical
+    const pushChainMulticalls: MultiCall[] = buildOutboundApprovalAndCall({
+      prc20Token,
+      gasToken,
+      burnAmount,
+      gasFee,
+      nativeValueForGas,
+      gatewayPcAddress,
+      outboundRequest: outboundReq,
+    });
+
+    this.printLog(
+      `executeUoaToCeaSvm — Push Chain multicall has ${pushChainMulticalls.length} operations`
+    );
+
+    // Sum native values from multicall entries for proper fee calculation
+    const multicallNativeValue = pushChainMulticalls.reduce(
+      (sum, mc) => sum + (mc.value ?? BigInt(0)),
+      BigInt(0)
+    );
+
     const executeParams: ExecuteParams = {
       to: ueaAddress,
+      value: multicallNativeValue, // ensures correct requiredFunds calculation
       data: pushChainMulticalls,
       _ueaStatus: {
         isDeployed: isUEADeployed,
@@ -3293,7 +3338,7 @@ export class Orchestrator {
       ceaAddress,              // target: CEA address (to=CEA for self-execution)
       prc20Token,              // token: native PRC-20 for source chain (for namespace lookup)
       burnAmount,              // amount: 1 wei (precompile workaround)
-      params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+      params.gasLimit ?? BigInt(0),
       ceaPayload,              // payload: ABI-encoded CEA multicall
       ueaAddress               // revertRecipient: UEA
     );
@@ -3313,9 +3358,18 @@ export class Orchestrator {
       )}`
     );
 
-    // 10. Query gas fees from UniversalCore
+    // 10. Pre-fetch UEA status early — balance is needed for gas value calculation
     const gatewayPcAddress = this.getUniversalGatewayPCAddress();
+    const [ueaCode, ueaBalance] = await Promise.all([
+      this.pushClient.publicClient.getCode({ address: ueaAddress }),
+      this.pushClient.getBalance(ueaAddress),
+    ]);
+    const isUEADeployed = ueaCode !== undefined;
+    const ueaNonce = isUEADeployed ? await this.getUEANonce(ueaAddress) : BigInt(0);
+
+    // 11. Query gas fees from UniversalCore
     let gasFee = BigInt(0);
+    let nativeValueForGas = BigInt(0);
     let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
     if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
       const gasLimit = outboundReq.gasLimit;
@@ -3323,20 +3377,35 @@ export class Orchestrator {
         const result = await this.queryOutboundGasFee(prc20Token, gasLimit);
         gasToken = result.gasToken;
         gasFee = result.gasFee;
+        nativeValueForGas = result.nativeValueForGas;
         this.printLog(
-          `executeCeaToPush — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}`
+          `executeCeaToPush — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}`
         );
       } catch (err) {
         throw new Error(`Failed to query outbound gas fee for Route 3: ${err}`);
       }
     }
 
-    // 11. Build Push Chain multicalls (approvals + sendUniversalTxOutbound)
+    // Adjust nativeValueForGas using UEA balance (contract refunds excess)
+    // Re-fetch balance to minimize staleness from gas fee query RPC roundtrips
+    const currentBalance = await this.pushClient.getBalance(ueaAddress);
+    // Reserve covers gas for multicall TXs on Push Chain (~0.001 PC each).
+    const OUTBOUND_GAS_RESERVE_R3 = BigInt(1e17);
+    if (currentBalance > OUTBOUND_GAS_RESERVE_R3 && currentBalance - OUTBOUND_GAS_RESERVE_R3 > nativeValueForGas) {
+      const adjustedValue = currentBalance - OUTBOUND_GAS_RESERVE_R3;
+      this.printLog(
+        `executeCeaToPush — adjusting nativeValueForGas from ${nativeValueForGas.toString()} to ${adjustedValue.toString()} (UEA balance: ${currentBalance.toString()})`
+      );
+      nativeValueForGas = adjustedValue;
+    }
+
+    // 12. Build Push Chain multicalls (approvals + sendUniversalTxOutbound)
     const pushChainMulticalls: MultiCall[] = buildOutboundApprovalAndCall({
       prc20Token,
       gasToken,
       burnAmount,
       gasFee,
+      nativeValueForGas,
       gatewayPcAddress,
       outboundRequest: outboundReq,
     });
@@ -3345,17 +3414,16 @@ export class Orchestrator {
       `executeCeaToPush — Push Chain multicall has ${pushChainMulticalls.length} operations`
     );
 
-    // 12. Pre-fetch UEA status to avoid redundant RPC calls in execute()
-    const [ueaCode, ueaBalance] = await Promise.all([
-      this.pushClient.publicClient.getCode({ address: ueaAddress }),
-      this.pushClient.getBalance(ueaAddress),
-    ]);
-    const isUEADeployed = ueaCode !== undefined;
-    const ueaNonce = isUEADeployed ? await this.getUEANonce(ueaAddress) : BigInt(0);
+    // Sum native values from multicall entries for proper fee calculation
+    const multicallNativeValue = pushChainMulticalls.reduce(
+      (sum, mc) => sum + (mc.value ?? BigInt(0)),
+      BigInt(0)
+    );
 
     // 13. Execute through the normal execute() flow
     const executeParams: ExecuteParams = {
       to: ueaAddress,
+      value: multicallNativeValue, // ensures correct requiredFunds calculation
       data: pushChainMulticalls,
       _ueaStatus: {
         isDeployed: isUEADeployed,
@@ -3463,7 +3531,7 @@ export class Orchestrator {
       gatewayProgramHex,
       prc20Token,
       burnAmount,
-      params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+      params.gasLimit ?? BigInt(0),
       svmPayload,
       ueaAddress
     );
@@ -3472,19 +3540,42 @@ export class Orchestrator {
       `executeCeaToPushSvm — outbound request: target=${outboundReq.target.slice(0, 20)}..., token=${outboundReq.token}`
     );
 
-    // Query gas fees
+    // Pre-fetch UEA status early — balance is needed for gas value calculation
     const gatewayPcAddress = this.getUniversalGatewayPCAddress();
+    const [ueaCode, ueaBalance] = await Promise.all([
+      this.pushClient.publicClient.getCode({ address: ueaAddress }),
+      this.pushClient.getBalance(ueaAddress),
+    ]);
+    const isUEADeployed = ueaCode !== undefined;
+    const ueaNonce = isUEADeployed ? await this.getUEANonce(ueaAddress) : BigInt(0);
+
+    // Query gas fees
     let gasFee = BigInt(0);
+    let nativeValueForGas = BigInt(0);
     let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
     if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
       try {
         const result = await this.queryOutboundGasFee(prc20Token, outboundReq.gasLimit);
         gasToken = result.gasToken;
         gasFee = result.gasFee;
-        this.printLog(`executeCeaToPushSvm — gasFee: ${gasFee.toString()}, gasToken: ${gasToken}`);
+        nativeValueForGas = result.nativeValueForGas;
+        this.printLog(`executeCeaToPushSvm — gasFee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}`);
       } catch (err) {
         throw new Error(`Failed to query outbound gas fee for SVM Route 3: ${err}`);
       }
+    }
+
+    // Adjust nativeValueForGas using UEA balance (contract refunds excess)
+    // Re-fetch balance to minimize staleness from gas fee query RPC roundtrips
+    const currentBalance = await this.pushClient.getBalance(ueaAddress);
+    // Reserve covers gas for multicall TXs on Push Chain (~0.001 PC each).
+    const OUTBOUND_GAS_RESERVE_R3_SVM = BigInt(1e17);
+    if (currentBalance > OUTBOUND_GAS_RESERVE_R3_SVM && currentBalance - OUTBOUND_GAS_RESERVE_R3_SVM > nativeValueForGas) {
+      const adjustedValue = currentBalance - OUTBOUND_GAS_RESERVE_R3_SVM;
+      this.printLog(
+        `executeCeaToPushSvm — adjusting nativeValueForGas from ${nativeValueForGas.toString()} to ${adjustedValue.toString()} (UEA balance: ${currentBalance.toString()})`
+      );
+      nativeValueForGas = adjustedValue;
     }
 
     // Build Push Chain multicalls (approvals + sendUniversalTxOutbound)
@@ -3493,21 +3584,21 @@ export class Orchestrator {
       gasToken,
       burnAmount,
       gasFee,
+      nativeValueForGas,
       gatewayPcAddress,
       outboundRequest: outboundReq,
     });
 
-    // Pre-fetch UEA status
-    const [ueaCode, ueaBalance] = await Promise.all([
-      this.pushClient.publicClient.getCode({ address: ueaAddress }),
-      this.pushClient.getBalance(ueaAddress),
-    ]);
-    const isUEADeployed = ueaCode !== undefined;
-    const ueaNonce = isUEADeployed ? await this.getUEANonce(ueaAddress) : BigInt(0);
+    // Sum native values from multicall entries for proper fee calculation
+    const multicallNativeValue = pushChainMulticalls.reduce(
+      (sum, mc) => sum + (mc.value ?? BigInt(0)),
+      BigInt(0)
+    );
 
     // Execute through the normal execute() flow
     const executeParams: ExecuteParams = {
       to: ueaAddress,
+      value: multicallNativeValue, // ensures correct requiredFunds calculation
       data: pushChainMulticalls,
       _ueaStatus: {
         isDeployed: isUEADeployed,
@@ -3615,7 +3706,7 @@ export class Orchestrator {
             targetBytes,
             prc20Token,
             burnAmount,
-            params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+            params.gasLimit ?? BigInt(0),
             payload,
             ueaAddress
           );
@@ -3637,9 +3728,13 @@ export class Orchestrator {
           if (Array.isArray(params.data)) {
             multicalls.push(...(params.data as MultiCall[]));
           } else {
+            // Single call with data. Native value (if any) is already delivered to
+            // CEA by the Vault via executeUniversalTx{value: amount}(). Attaching
+            // value to the call would revert if the target function is not payable.
+            // To call a payable function with value, use explicit multicalls.
             multicalls.push({
               to: target.address,
-              value: params.value || BigInt(0),
+              value: BigInt(0),
               data: params.data as `0x${string}`,
             });
           }
@@ -3673,7 +3768,7 @@ export class Orchestrator {
           targetBytes,
           prc20Token,
           burnAmount,
-          params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+          params.gasLimit ?? BigInt(0),
           payload,
           ueaAddress
         );
@@ -3741,7 +3836,7 @@ export class Orchestrator {
             gatewayProgramHex,
             prc20Token,
             burnAmount,
-            params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+            params.gasLimit ?? BigInt(0),
             svmPayload,
             ueaAddress
           );
@@ -3826,7 +3921,7 @@ export class Orchestrator {
           ceaAddress,
           prc20Token,
           burnAmount,
-          params.gasLimit || DEFAULT_OUTBOUND_GAS_LIMIT,
+          params.gasLimit ?? BigInt(0),
           ceaPayload,
           ueaAddress
         );
@@ -5116,7 +5211,7 @@ export class Orchestrator {
   // Outbound sync configuration constants
   private static readonly OUTBOUND_INITIAL_WAIT_MS = 30000; // 30s
   private static readonly OUTBOUND_POLL_INTERVAL_MS = 5000; // 5s
-  private static readonly OUTBOUND_MAX_TIMEOUT_MS = 120000; // 120s
+  private static readonly OUTBOUND_MAX_TIMEOUT_MS = 180000; // 180s (3 min)
 
   /**
    * Wait for outbound transaction to complete and return external chain details.

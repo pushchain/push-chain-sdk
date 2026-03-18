@@ -237,7 +237,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           chain: CHAIN.SOLANA_DEVNET,
         },
         value: BigInt(10_000_000), // 0.01 SOL in lamports
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → uses per-chain default from UniversalCore
       };
 
       expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
@@ -277,7 +277,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           chain: CHAIN.SOLANA_DEVNET,
         },
         value: BigInt(10_000_000), // 0.01 SOL in lamports
-        gasLimit: BigInt(300_000), // Custom compute unit limit (reduced)
+        gasLimit: BigInt(600_000), // Custom compute unit limit (must be >= per-chain base)
       };
 
       expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
@@ -325,7 +325,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           amount: BigInt(100_000), // 0.1 USDT (6 decimals)
           token: SOL_USDT_TOKEN,
         },
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
       };
 
       expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
@@ -376,7 +376,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           chain: CHAIN.SOLANA_DEVNET,
         },
         value: BigInt(5_000_000), // 0.005 SOL for CPI
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
         svmExecute: {
           targetProgram: TEST_PROGRAM,
           accounts: [
@@ -429,7 +429,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           address: TEST_PROGRAM,
           chain: CHAIN.SOLANA_DEVNET,
         },
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
         svmExecute: {
           targetProgram: TEST_PROGRAM,
           accounts: [
@@ -483,7 +483,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           chain: CHAIN.SOLANA_DEVNET,
         },
         value: BigInt(5_000_000), // 0.005 SOL for CPI
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
         svmExecute: {
           targetProgram: TEST_PROGRAM,
           accounts: [
@@ -540,7 +540,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           chain: CHAIN.SOLANA_DEVNET,
         },
         value: BigInt(5_000_000), // 0.005 SOL transferred alongside CPI
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
         svmExecute: {
           targetProgram: TEST_PROGRAM,
           accounts: [
@@ -603,7 +603,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           amount: BigInt(100_000), // 0.1 USDT (6 decimals)
           token: SOL_USDT_TOKEN,
         },
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
         svmExecute: {
           targetProgram: TEST_PROGRAM,
           accounts: [
@@ -662,7 +662,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           amount: BigInt(0),
           token: SOL_USDT_TOKEN,
         },
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
         svmExecute: {
           targetProgram: TEST_PROGRAM,
           accounts: [
@@ -713,7 +713,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           chain: CHAIN.SOLANA_DEVNET,
         },
         value: BigInt(1), // 1 lamport - smallest possible
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
       };
 
       expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
@@ -755,7 +755,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           chain: CHAIN.SOLANA_DEVNET,
         },
         value: BigInt(10_000_000), // 0.01 SOL
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
       });
 
       console.log(`[TEST] ${new Date().toISOString()} Push Chain TX Hash: ${tx.hash}`);
@@ -800,7 +800,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           chain: CHAIN.SOLANA_DEVNET,
         },
         value: BigInt(10_000_000), // 0.01 SOL
-        gasLimit: BigInt(300_000), // reduced from 2M to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
       });
 
       console.log(`Push Chain TX Hash: ${tx.hash}`);
@@ -834,7 +834,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           chain: CHAIN.SOLANA_DEVNET,
         },
         value: BigInt(10_000_000),
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
       };
 
       const prepared = await pushClient.universal.prepareTransaction(params);
@@ -858,7 +858,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           chain: CHAIN.SOLANA_DEVNET,
         },
         value: BigInt(10_000_000),
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
       });
 
       const builder = pushClient.universal.executeTransactions(firstPrepared);
@@ -873,7 +873,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           chain: CHAIN.SOLANA_DEVNET,
         },
         value: BigInt(5_000_000),
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
       });
 
       const chainedBuilder = builder.thenOn(secondPrepared);
@@ -917,7 +917,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
         from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
         to: ueaAddress,
         value: BigInt(5_000_000), // 0.005 SOL in lamports
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
       };
 
       expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
@@ -963,7 +963,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           amount: BigInt(100_000), // 0.1 USDT (6 decimals)
           token: SOL_USDT_TOKEN,
         },
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
       };
 
       expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
@@ -1004,7 +1004,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
         from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
         to: ueaAddress,
         value: BigInt(5_000_000), // 0.005 SOL drain amount
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
         data: '0xdeadbeef', // arbitrary Push Chain payload
       };
 
@@ -1052,7 +1052,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
         from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
         to: ueaAddress,
         value: BigInt(1_000_000), // 0.001 SOL burn amount
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
         // Gateway will drain this + any pre-existing SOL in CEA PDA
       };
 
@@ -1092,7 +1092,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           amount: BigInt(100_000), // 0.1 USDT burn amount (6 decimals)
           token: SOL_USDT_TOKEN,
         },
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
         // Gateway will drain this + any pre-existing USDT in CEA PDA
       };
 
@@ -1128,7 +1128,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
         from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
         to: ueaAddress,
         value: BigInt(1_000_000), // 0.001 SOL burn amount
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
         data: '0xdeadbeef', // arbitrary Push Chain payload
         // Gateway will drain this + any pre-existing SOL in CEA PDA
       };
@@ -1168,7 +1168,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           amount: BigInt(100_000), // 0.1 USDT burn amount (6 decimals)
           token: SOL_USDT_TOKEN,
         },
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
         data: '0xdeadbeef', // arbitrary Push Chain payload
         // Gateway will drain this + any pre-existing USDT in CEA PDA
       };
@@ -1301,7 +1301,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
           chain: CHAIN.SOLANA_DEVNET,
         },
         value: BigInt(1_000_000), // 0.001 SOL
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
       };
 
       const tx = await clientWithHook.universal.sendTransaction(params);
@@ -1355,7 +1355,7 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
         from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
         to: clientWithHook.universal.account,
         value: BigInt(1_000_000), // 0.001 SOL
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
       };
 
       const tx = await clientWithHook.universal.sendTransaction(params);
@@ -1452,7 +1452,7 @@ describe('EOA SVM (Solana) Outbound & Inbound (Routes 2 & 3)', () => {
           amount: BigInt(100_000), // 0.1 USDT (6 decimals)
           token: SOL_USDT_TOKEN,
         },
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
       };
 
       expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
@@ -1499,7 +1499,7 @@ describe('EOA SVM (Solana) Outbound & Inbound (Routes 2 & 3)', () => {
           address: TEST_PROGRAM,
           chain: CHAIN.SOLANA_DEVNET,
         },
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
         svmExecute: {
           targetProgram: TEST_PROGRAM,
           accounts: [
@@ -1560,7 +1560,7 @@ describe('EOA SVM (Solana) Outbound & Inbound (Routes 2 & 3)', () => {
           amount: BigInt(100_000), // 0.1 USDT (6 decimals)
           token: SOL_USDT_TOKEN,
         },
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
         svmExecute: {
           targetProgram: TEST_PROGRAM,
           accounts: [
@@ -1610,7 +1610,7 @@ describe('EOA SVM (Solana) Outbound & Inbound (Routes 2 & 3)', () => {
         from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
         to: eoaAddress,
         value: BigInt(5_000_000), // 0.005 SOL in lamports
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
       };
 
       expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
@@ -1656,7 +1656,7 @@ describe('EOA SVM (Solana) Outbound & Inbound (Routes 2 & 3)', () => {
           amount: BigInt(100_000), // 0.1 USDT (6 decimals)
           token: SOL_USDT_TOKEN,
         },
-        gasLimit: BigInt(200_000), // reduced gas to conserve pSOL
+        // gasLimit omitted → per-chain default from UniversalCore
       };
 
       expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);

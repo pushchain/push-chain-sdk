@@ -1415,6 +1415,70 @@ describe('CEA → Push: Inbound Transactions (Route 3)', () => {
   });
 
   // ============================================================================
+  // 13b. UEA Native Funds + Multicall (Route 3) — native BNB + Push Chain calls
+  // ============================================================================
+  describe('13b. UEA Native Funds + Multicall (Route 3)', () => {
+    beforeAll(async () => {
+      if (skipE2E) return;
+      await ensureCeaNativeBalance({
+        pushClient,
+        ceaAddress,
+        requiredAmount: parseEther('0.0002'),
+        targetChain: CHAIN.BNB_TESTNET,
+      });
+    }, 600000);
+
+    it('should bridge native BNB and execute multicall on Push Chain', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: UEA Native Funds + Multicall (Route 3) — BNB + Counter + Approve ===');
+
+      const incrementPayload = encodeFunctionData({
+        abi: COUNTER_ABI_PAYABLE,
+        functionName: 'increment',
+      });
+
+      const approvePayload = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'approve',
+        args: [TEST_TARGET, BigInt(1000000)],
+      });
+
+      const params: UniversalExecuteParams = {
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: ueaAddress,
+        value: parseEther('0.00005'),
+        data: [
+          { to: COUNTER_ADDRESS_PAYABLE, value: BigInt(0), data: incrementPayload },
+          { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: approvePayload },
+        ],
+      };
+
+      expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const tx = await pushClient.universal.sendTransaction(params);
+
+      console.log(`Push Chain TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+
+      // Wait for outbound relay
+      console.log('Calling tx.wait() - polling for external chain tx hash...');
+      const receipt = await tx.wait();
+      console.log(`Receipt status: ${receipt.status}`);
+      console.log(`External TX Hash: ${receipt.externalTxHash}`);
+      console.log(`External Explorer: ${receipt.externalExplorerUrl}`);
+
+      expect(receipt.status).toBe(1);
+      expect(receipt.externalTxHash).toBeDefined();
+      expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+
+      await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+    }, 600000);
+  });
+
+  // ============================================================================
   // 14. UEA Funds + Multicall (Route 3) — ERC-20 bridge + Push Chain calls
   // ============================================================================
   describe('14. UEA Funds + Multicall (Route 3)', () => {

@@ -6,7 +6,7 @@
  */
 import { decodeAbiParameters, decodeFunctionData, keccak256, toBytes } from 'viem';
 import { ERC20_EVM, CEA_EVM, UNIVERSAL_GATEWAY_V0, UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
-import { ZERO_ADDRESS, MIGRATION_SELECTOR, MULTICALL_SELECTOR } from '../../constants/selectors';
+import { ZERO_ADDRESS, MIGRATION_SELECTOR, MULTICALL_SELECTOR, UEA_MULTICALL_SELECTOR } from '../../constants/selectors';
 import type { MultiCall, UniversalOutboundTxRequest } from '../orchestrator.types';
 import {
   buildCeaMulticallPayload,
@@ -47,12 +47,12 @@ describe('buildCeaMulticallPayload', () => {
     expect(buildCeaMulticallPayload([])).toBe('0x');
   });
 
-  it('should return raw ABI-encoded data without selector prefix', () => {
+  it('should include UEA_MULTICALL_SELECTOR prefix', () => {
     const calls: MultiCall[] = [{ to: ALICE, value: BigInt(100), data: '0x' }];
     const encoded = buildCeaMulticallPayload(calls);
     expect(encoded.startsWith('0x')).toBe(true);
-    // Should NOT have a function selector prefix — raw abi.encode(Multicall[])
-    expect(encoded.startsWith(MULTICALL_SELECTOR)).toBe(false);
+    // Should have UEA_MULTICALL_SELECTOR prefix (0x8f6f1c5e) for CEA to recognize it
+    expect(encoded.startsWith(UEA_MULTICALL_SELECTOR)).toBe(true);
   });
 
   it('should encode a single multicall entry', () => {
@@ -62,8 +62,9 @@ describe('buildCeaMulticallPayload', () => {
     expect(encoded).toMatch(/^0x/);
     expect(encoded.length).toBeGreaterThan(2);
 
-    // Decode and verify roundtrip (raw ABI-encoded, no selector to strip)
-    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], encoded);
+    // Strip selector (first 4 bytes after 0x) and decode
+    const dataWithoutSelector = `0x${encoded.slice(10)}` as `0x${string}`;
+    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], dataWithoutSelector);
     expect(decoded).toHaveLength(1);
     expect((decoded[0] as { to: string }).to.toLowerCase()).toBe(ALICE.toLowerCase());
     expect((decoded[0] as { value: bigint }).value).toBe(BigInt(100));
@@ -76,7 +77,9 @@ describe('buildCeaMulticallPayload', () => {
     ];
     const encoded = buildCeaMulticallPayload(calls);
 
-    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], encoded);
+    // Strip selector (first 4 bytes after 0x) and decode
+    const dataWithoutSelector = `0x${encoded.slice(10)}` as `0x${string}`;
+    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], dataWithoutSelector);
     expect(decoded).toHaveLength(2);
     expect((decoded[1] as { to: string }).to.toLowerCase()).toBe(BOB.toLowerCase());
   });
@@ -89,7 +92,10 @@ describe('buildSingleCeaCall', () => {
   it('should encode a single call using buildCeaMulticallPayload', () => {
     const encoded = buildSingleCeaCall(ALICE, BigInt(50), '0xabcd');
     expect(encoded.startsWith('0x')).toBe(true);
-    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], encoded);
+    expect(encoded.startsWith(UEA_MULTICALL_SELECTOR)).toBe(true);
+    // Strip selector (first 4 bytes after 0x) and decode
+    const dataWithoutSelector = `0x${encoded.slice(10)}` as `0x${string}`;
+    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], dataWithoutSelector);
     expect(decoded).toHaveLength(1);
     expect((decoded[0] as { to: string }).to.toLowerCase()).toBe(ALICE.toLowerCase());
     expect((decoded[0] as { value: bigint }).value).toBe(BigInt(50));
@@ -267,152 +273,91 @@ describe('buildOutboundApprovalAndCall', () => {
     revertRecipient: BOB,
   };
 
-  describe('same token for gas and burn', () => {
-    it('should produce single approval + outbound call', () => {
-      const result = buildOutboundApprovalAndCall({
-        prc20Token: TOKEN_A,
-        gasToken: TOKEN_A,
-        burnAmount: BigInt(1000),
-        gasFee: BigInt(500),
-        gatewayPcAddress: GATEWAY,
-        outboundRequest,
-      });
-
-      // 1 approve + 1 outbound = 2 calls
-      expect(result).toHaveLength(2);
-
-      // First: approve for burnAmount + gasFee
-      const approveDecoded = decodeFunctionData({
-        abi: ERC20_EVM,
-        data: result[0].data as `0x${string}`,
-      });
-      expect(approveDecoded.functionName).toBe('approve');
-      expect(approveDecoded.args![0]).toBe(GATEWAY);
-      expect(approveDecoded.args![1]).toBe(BigInt(1500)); // 1000 + 500
-      expect(result[0].to).toBe(TOKEN_A);
-
-      // Second: sendUniversalTxOutbound
-      const outboundDecoded = decodeFunctionData({
-        abi: UNIVERSAL_GATEWAY_PC,
-        data: result[1].data as `0x${string}`,
-      });
-      expect(outboundDecoded.functionName).toBe('sendUniversalTxOutbound');
-      expect(result[1].to).toBe(GATEWAY);
+  it('should produce burn approval + outbound call with pre-computed native value', () => {
+    const result = buildOutboundApprovalAndCall({
+      prc20Token: TOKEN_A,
+      gasToken: TOKEN_A,
+      burnAmount: BigInt(1000),
+      gasFee: BigInt(500),
+      nativeValueForGas: BigInt(2600),
+      gatewayPcAddress: GATEWAY,
+      outboundRequest,
     });
 
-    it('should skip approval when zero address token', () => {
-      const result = buildOutboundApprovalAndCall({
-        prc20Token: ZERO_ADDRESS as `0x${string}`,
-        gasToken: ZERO_ADDRESS as `0x${string}`,
-        burnAmount: BigInt(1000),
-        gasFee: BigInt(500),
-        gatewayPcAddress: GATEWAY,
-        outboundRequest: { ...outboundRequest, token: ZERO_ADDRESS as `0x${string}` },
-      });
+    // 1 approve (burn) + 1 outbound = 2 calls
+    expect(result).toHaveLength(2);
 
-      // Only the outbound call (no approval for zero address)
-      expect(result).toHaveLength(1);
-      const outboundDecoded = decodeFunctionData({
-        abi: UNIVERSAL_GATEWAY_PC,
-        data: result[0].data as `0x${string}`,
-      });
-      expect(outboundDecoded.functionName).toBe('sendUniversalTxOutbound');
+    // First: approve burnAmount on prc20Token
+    const approveDecoded = decodeFunctionData({
+      abi: ERC20_EVM,
+      data: result[0].data as `0x${string}`,
     });
+    expect(approveDecoded.functionName).toBe('approve');
+    expect(approveDecoded.args![0]).toBe(GATEWAY);
+    expect(approveDecoded.args![1]).toBe(BigInt(1000)); // only burnAmount
+    expect(result[0].to).toBe(TOKEN_A);
 
-    it('should skip approval when amounts are zero', () => {
-      const result = buildOutboundApprovalAndCall({
-        prc20Token: TOKEN_A,
-        gasToken: TOKEN_A,
-        burnAmount: BigInt(0),
-        gasFee: BigInt(0),
-        gatewayPcAddress: GATEWAY,
-        outboundRequest,
-      });
-
-      // Only the outbound call
-      expect(result).toHaveLength(1);
+    // Second: sendUniversalTxOutbound with pre-computed native value
+    const outboundDecoded = decodeFunctionData({
+      abi: UNIVERSAL_GATEWAY_PC,
+      data: result[1].data as `0x${string}`,
     });
+    expect(outboundDecoded.functionName).toBe('sendUniversalTxOutbound');
+    expect(result[1].to).toBe(GATEWAY);
+    expect(result[1].value).toBe(BigInt(2600));
   });
 
-  describe('different tokens for gas and burn', () => {
-    it('should produce two separate approvals + outbound call', () => {
-      const result = buildOutboundApprovalAndCall({
-        prc20Token: TOKEN_A,
-        gasToken: TOKEN_B,
-        burnAmount: BigInt(1000),
-        gasFee: BigInt(500),
-        gatewayPcAddress: GATEWAY,
-        outboundRequest,
-      });
-
-      // 2 approves + 1 outbound = 3 calls
-      expect(result).toHaveLength(3);
-
-      // First: approve gasFee on gasToken
-      expect(result[0].to).toBe(TOKEN_B);
-      const gasApprove = decodeFunctionData({
-        abi: ERC20_EVM,
-        data: result[0].data as `0x${string}`,
-      });
-      expect(gasApprove.functionName).toBe('approve');
-      expect(gasApprove.args![1]).toBe(BigInt(500));
-
-      // Second: approve burnAmount on prc20Token
-      expect(result[1].to).toBe(TOKEN_A);
-      const burnApprove = decodeFunctionData({
-        abi: ERC20_EVM,
-        data: result[1].data as `0x${string}`,
-      });
-      expect(burnApprove.functionName).toBe('approve');
-      expect(burnApprove.args![1]).toBe(BigInt(1000));
-
-      // Third: sendUniversalTxOutbound
-      expect(result[2].to).toBe(GATEWAY);
+  it('should skip burn approval when zero address token', () => {
+    const result = buildOutboundApprovalAndCall({
+      prc20Token: ZERO_ADDRESS as `0x${string}`,
+      gasToken: ZERO_ADDRESS as `0x${string}`,
+      burnAmount: BigInt(1000),
+      gasFee: BigInt(500),
+      gatewayPcAddress: GATEWAY,
+      outboundRequest: { ...outboundRequest, token: ZERO_ADDRESS as `0x${string}` },
     });
 
-    it('should skip gas approval when gas token is zero address', () => {
-      const result = buildOutboundApprovalAndCall({
-        prc20Token: TOKEN_A,
-        gasToken: ZERO_ADDRESS as `0x${string}`,
-        burnAmount: BigInt(1000),
-        gasFee: BigInt(500),
-        gatewayPcAddress: GATEWAY,
-        outboundRequest,
-      });
+    // Only outbound call (no approval for zero address)
+    expect(result).toHaveLength(1);
+    const outboundDecoded = decodeFunctionData({
+      abi: UNIVERSAL_GATEWAY_PC,
+      data: result[0].data as `0x${string}`,
+    });
+    expect(outboundDecoded.functionName).toBe('sendUniversalTxOutbound');
+    // fallback: gasFee * 5 = 2500 (no nativeValueForGas passed)
+    expect(result[0].value).toBe(BigInt(2500));
+  });
 
-      // 1 burn approve + 1 outbound = 2 calls
-      expect(result).toHaveLength(2);
-      expect(result[0].to).toBe(TOKEN_A); // burn approval
+  it('should skip burn approval when burnAmount is zero', () => {
+    const result = buildOutboundApprovalAndCall({
+      prc20Token: TOKEN_A,
+      gasToken: TOKEN_A,
+      burnAmount: BigInt(0),
+      gasFee: BigInt(500),
+      nativeValueForGas: BigInt(2550),
+      gatewayPcAddress: GATEWAY,
+      outboundRequest,
     });
 
-    it('should skip burn approval when burn token is zero address', () => {
-      const result = buildOutboundApprovalAndCall({
-        prc20Token: ZERO_ADDRESS as `0x${string}`,
-        gasToken: TOKEN_B,
-        burnAmount: BigInt(1000),
-        gasFee: BigInt(500),
-        gatewayPcAddress: GATEWAY,
-        outboundRequest: { ...outboundRequest, token: ZERO_ADDRESS as `0x${string}` },
-      });
+    // Only outbound call (no approval for zero burn)
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toBe(BigInt(2550));
+  });
 
-      // 1 gas approve + 1 outbound = 2 calls
-      expect(result).toHaveLength(2);
-      expect(result[0].to).toBe(TOKEN_B); // gas approval
+  it('should fallback to 5x gasFee when nativeValueForGas not provided', () => {
+    const result = buildOutboundApprovalAndCall({
+      prc20Token: TOKEN_A,
+      gasToken: TOKEN_B,
+      burnAmount: BigInt(100),
+      gasFee: BigInt(50),
+      gatewayPcAddress: GATEWAY,
+      outboundRequest,
     });
 
-    it('should skip both approvals when both are zero address', () => {
-      const result = buildOutboundApprovalAndCall({
-        prc20Token: ZERO_ADDRESS as `0x${string}`,
-        gasToken: ZERO_ADDRESS as `0x${string}`,
-        burnAmount: BigInt(1000),
-        gasFee: BigInt(500),
-        gatewayPcAddress: GATEWAY,
-        outboundRequest: { ...outboundRequest, token: ZERO_ADDRESS as `0x${string}` },
-      });
-
-      // Only outbound call
-      expect(result).toHaveLength(1);
-    });
+    // approve + outbound
+    expect(result).toHaveLength(2);
+    // fallback: gasFee * 5 = 250
+    expect(result[1].value).toBe(BigInt(250));
   });
 });
 
@@ -420,8 +365,8 @@ describe('buildOutboundApprovalAndCall', () => {
 // MIGRATION_SELECTOR constant
 // ============================================================================
 describe('MIGRATION_SELECTOR', () => {
-  it('should equal keccak256("migrateCEA()") first 4 bytes', () => {
-    const expected = keccak256(toBytes('migrateCEA()')).slice(0, 10);
+  it('should equal bytes4(keccak256("UEA_MIGRATION"))', () => {
+    const expected = keccak256(toBytes('UEA_MIGRATION')).slice(0, 10);
     expect(MIGRATION_SELECTOR).toBe(expected);
   });
 
@@ -439,8 +384,8 @@ describe('buildMigrationPayload', () => {
     expect(buildMigrationPayload()).toBe(MIGRATION_SELECTOR);
   });
 
-  it('should return 0x0af1c213', () => {
-    expect(buildMigrationPayload()).toBe('0x0af1c213');
+  it('should return 0xcac656d6', () => {
+    expect(buildMigrationPayload()).toBe('0xcac656d6');
   });
 
   it('should return exactly 4 bytes (10 hex chars)', () => {

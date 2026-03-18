@@ -2,7 +2,7 @@ import { encodeFunctionData, encodeAbiParameters, isAddress, sha256, toBytes } f
 import { PushChain } from '../push-chain/push-chain';
 import { CEA_EVM, ERC20_EVM, UNIVERSAL_GATEWAY_V0, UNIVERSAL_GATEWAY_PC } from '../constants/abi';
 import { MoveableToken } from '../constants/tokens';
-import { ZERO_ADDRESS, MIGRATION_SELECTOR, MULTICALL_SELECTOR } from '../constants/selectors';
+import { ZERO_ADDRESS, MIGRATION_SELECTOR, MULTICALL_SELECTOR, UEA_MULTICALL_SELECTOR } from '../constants/selectors';
 import { CHAIN_INFO } from '../constants/chain';
 import { VM, CHAIN } from '../constants/enums';
 import type {
@@ -135,20 +135,21 @@ const MULTICALL_TUPLE_TYPE = {
 
 /**
  * Build CEA multicall payload for outbound transactions
- * Format: abi.encode(Multicall[]) - raw encoded, NO selector
+ * Format: UEA_MULTICALL_SELECTOR + abi.encode(Multicall[])
  *
- * The CEA contract expects just the ABI-encoded Multicall[] array,
- * not a function call with selector.
+ * The CEA contract checks for UEA_MULTICALL_SELECTOR (0x2cc2842d) at the
+ * start of the payload to route to _handleMulticall. Without this prefix,
+ * the CEA treats it as a single call and fails with InvalidRecipient.
  *
  * @param multicalls - Array of multicall operations to execute on external chain
- * @returns Raw ABI-encoded Multicall[] array
+ * @returns UEA_MULTICALL_SELECTOR + ABI-encoded Multicall[] array
  */
 export function buildCeaMulticallPayload(multicalls: MultiCall[]): `0x${string}` {
   if (multicalls.length === 0) {
     return '0x';
   }
 
-  // Encode the multicall array (raw, no selector prefix)
+  // Encode the multicall array
   const encoded = encodeAbiParameters(
     [MULTICALL_TUPLE_TYPE],
     [multicalls.map((m) => ({
@@ -158,7 +159,8 @@ export function buildCeaMulticallPayload(multicalls: MultiCall[]): `0x${string}`
     }))]
   );
 
-  return encoded;
+  // Prefix with UEA_MULTICALL_SELECTOR (0x8f6f1c5e) so CEA recognizes it as multicall
+  return `${UEA_MULTICALL_SELECTOR}${encoded.slice(2)}` as `0x${string}`;
 }
 
 /**
@@ -388,7 +390,7 @@ export function buildErc20WithdrawalMulticall(
  * Build the 4-byte migration payload for CEA upgrade (Migration flow).
  * Returns exactly MIGRATION_SELECTOR — no Multicall wrapping.
  *
- * @returns 4-byte hex string `0x0af1c213`
+ * @returns 4-byte hex string `0xcac656d6`
  */
 export function buildMigrationPayload(): `0x${string}` {
   return MIGRATION_SELECTOR as `0x${string}`;
@@ -426,80 +428,43 @@ export function buildOutboundApprovalAndCall(opts: {
   gasToken: `0x${string}`;
   burnAmount: bigint;
   gasFee: bigint;
+  nativeValueForGas?: bigint;
   gatewayPcAddress: `0x${string}`;
   outboundRequest: UniversalOutboundTxRequest;
 }): MultiCall[] {
+  const { prc20Token, burnAmount, gasFee, gatewayPcAddress, outboundRequest } = opts;
   const multicalls: MultiCall[] = [];
-  const { prc20Token, gasToken, burnAmount, gasFee, gatewayPcAddress, outboundRequest } = opts;
 
-  const sameToken =
-    gasToken.toLowerCase() === prc20Token.toLowerCase();
-
-  if (sameToken) {
-    // Same token: single approval for burnAmount + gasFee
-    const totalApprovalAmount = burnAmount + gasFee;
-    if (
-      totalApprovalAmount > BigInt(0) &&
-      prc20Token.toLowerCase() !== ZERO_ADDRESS.toLowerCase()
-    ) {
-      const approveData = encodeFunctionData({
-        abi: ERC20_EVM,
-        functionName: 'approve',
-        args: [gatewayPcAddress, totalApprovalAmount],
-      });
-      multicalls.push({
-        to: prc20Token,
-        value: BigInt(0),
-        data: approveData,
-      });
-    }
-  } else {
-    // Different tokens: two separate approvals
-    // 1. Approve gasFee on gasToken (for _moveFees)
-    if (
-      gasFee > BigInt(0) &&
-      gasToken.toLowerCase() !== ZERO_ADDRESS.toLowerCase()
-    ) {
-      const gasApproveData = encodeFunctionData({
-        abi: ERC20_EVM,
-        functionName: 'approve',
-        args: [gatewayPcAddress, gasFee],
-      });
-      multicalls.push({
-        to: gasToken,
-        value: BigInt(0),
-        data: gasApproveData,
-      });
-    }
-
-    // 2. Approve burnAmount on prc20Token (for _burnPRC20)
-    if (
-      burnAmount > BigInt(0) &&
-      prc20Token.toLowerCase() !== ZERO_ADDRESS.toLowerCase()
-    ) {
-      const burnApproveData = encodeFunctionData({
-        abi: ERC20_EVM,
-        functionName: 'approve',
-        args: [gatewayPcAddress, burnAmount],
-      });
-      multicalls.push({
-        to: prc20Token,
-        value: BigInt(0),
-        data: burnApproveData,
-      });
-    }
+  // ERC20 approve for burn amount (contract calls transferFrom for PRC20 burn)
+  if (
+    burnAmount > BigInt(0) &&
+    prc20Token.toLowerCase() !== ZERO_ADDRESS.toLowerCase()
+  ) {
+    const approveData = encodeFunctionData({
+      abi: ERC20_EVM,
+      functionName: 'approve',
+      args: [gatewayPcAddress, burnAmount],
+    });
+    multicalls.push({
+      to: prc20Token,
+      value: BigInt(0),
+      data: approveData,
+    });
   }
 
-  // Add the sendUniversalTxOutbound call
+  // Gas fee + protocol fee paid as native msg.value (no ERC20 approve for gas)
   const outboundCallData = encodeFunctionData({
     abi: UNIVERSAL_GATEWAY_PC,
     functionName: 'sendUniversalTxOutbound',
     args: [outboundRequest],
   });
 
+  // Use pre-computed nativeValueForGas (from Uniswap quoter) or fallback to 5x gasFee
+  const nativeValue = opts.nativeValueForGas ?? (gasFee * BigInt(5));
+
   multicalls.push({
     to: gatewayPcAddress,
-    value: BigInt(0),
+    value: nativeValue,
     data: outboundCallData,
   });
 
