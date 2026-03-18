@@ -58,615 +58,657 @@ describe('Advance Hopping: Cascade API E2E', () => {
   });
 
   // ============================================================================
-  // Route 1: prepareTransaction + send
+  // Core Scenarios
   // ============================================================================
-  describe('Route 1: prepareTransaction + send', () => {
-    it('should prepare a Push Chain transaction with HopDescriptor', async () => {
-      if (skipE2E) return;
+  describe('Core Scenarios', () => {
 
-      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+    // ==========================================================================
+    // 1. Single Hop — Funds (Route 1)
+    // ==========================================================================
+    describe('1. Single Hop — Funds (Route 1)', () => {
+      it('should send a prepared Route 1 transaction', async () => {
+        if (skipE2E) return;
 
-      const prepared = await pushClient.universal.prepareTransaction({
-        to: targetAddress,
-        value: parseEther('0.001'),
-      });
+        const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
 
-      console.log(`[TEST] Prepared Route: ${prepared.route}`);
+        const prepared = await pushClient.universal.prepareTransaction({
+          to: targetAddress,
+          value: parseEther('0.001'),
+        });
 
-      expect(prepared.route).toBe('UOA_TO_PUSH');
-      expect(prepared._hop).toBeDefined();
-      expect(prepared._hop.route).toBe('UOA_TO_PUSH');
-      expect(prepared._hop.ueaAddress).toBe(ueaAddress);
-      expect(prepared._hop.pushMulticalls).toBeDefined();
-      expect(prepared._hop.pushMulticalls!.length).toBeGreaterThan(0);
-      expect(typeof prepared.thenOn).toBe('function');
-      expect(typeof prepared.send).toBe('function');
+        expect(prepared.route).toBe('UOA_TO_PUSH');
+
+        const response = await prepared.send();
+        console.log(`[TEST] Route 1 TX Hash: ${response.hash}`);
+
+        expect(response.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      }, 180000);
     });
 
-    it('should send a prepared Route 1 transaction', async () => {
-      if (skipE2E) return;
+    // ==========================================================================
+    // 2. Single Hop — Funds (Route 2)
+    // ==========================================================================
+    describe('2. Single Hop — Funds (Route 2)', () => {
+      it('should send a prepared Route 2 transaction', async () => {
+        if (skipE2E) return;
 
-      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+        const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
 
-      const prepared = await pushClient.universal.prepareTransaction({
-        to: targetAddress,
-        value: parseEther('0.001'),
-      });
+        const prepared = await pushClient.universal.prepareTransaction({
+          to: {
+            address: targetAddress,
+            chain: CHAIN.BNB_TESTNET,
+          },
+          value: parseEther('0.00015'),
+          gasLimit: BigInt(2000000),
+        });
 
-      expect(prepared.route).toBe('UOA_TO_PUSH');
+        expect(prepared.route).toBe('UOA_TO_CEA');
 
-      const response = await prepared.send();
-      console.log(`[TEST] Route 1 TX Hash: ${response.hash}`);
+        const response = await prepared.send();
+        console.log(`[TEST] Route 2 TX Hash: ${response.hash}`);
 
-      expect(response.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-    }, 180000);
-  });
-
-  // ============================================================================
-  // Route 2: prepareTransaction + send
-  // ============================================================================
-  describe('Route 2: prepareTransaction + send', () => {
-    it('should prepare an outbound transaction with HopDescriptor', async () => {
-      if (skipE2E) return;
-
-      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
-
-      const prepared = await pushClient.universal.prepareTransaction({
-        to: {
-          address: targetAddress,
-          chain: CHAIN.BNB_TESTNET,
-        },
-        value: parseEther('0.0001'),
-      });
-
-      console.log(`[TEST] Prepared Route: ${prepared.route}`);
-      console.log(`[TEST] CEA Address: ${prepared._hop.ceaAddress}`);
-      console.log(`[TEST] PRC20 Token: ${prepared._hop.prc20Token}`);
-      console.log(`[TEST] Gas Token: ${prepared._hop.gasToken}`);
-      console.log(`[TEST] Gas Fee: ${prepared._hop.gasFee}`);
-
-      expect(prepared.route).toBe('UOA_TO_CEA');
-      expect(prepared._hop).toBeDefined();
-      expect(prepared._hop.route).toBe('UOA_TO_CEA');
-      expect(prepared._hop.targetChain).toBe(CHAIN.BNB_TESTNET);
-      expect(prepared._hop.ceaAddress).toMatch(/^0x[a-fA-F0-9]{40}$/);
-      expect(prepared._hop.prc20Token).toMatch(/^0x[a-fA-F0-9]{40}$/);
-      expect(prepared._hop.ceaMulticalls).toBeDefined();
-      expect(prepared._hop.ceaMulticalls!.length).toBeGreaterThan(0);
-    }, 60000);
-
-    it('should send a prepared Route 2 transaction', async () => {
-      if (skipE2E) return;
-
-      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
-
-      const prepared = await pushClient.universal.prepareTransaction({
-        to: {
-          address: targetAddress,
-          chain: CHAIN.BNB_TESTNET,
-        },
-        value: parseEther('0.00015'),
-        gasLimit: BigInt(2000000),
-      });
-
-      expect(prepared.route).toBe('UOA_TO_CEA');
-
-      const response = await prepared.send();
-      console.log(`[TEST] Route 2 TX Hash: ${response.hash}`);
-
-      expect(response.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(response.chain).toBe(CHAIN.BNB_TESTNET);
-    }, 180000);
-  });
-
-  // ============================================================================
-  // Cascade API: executeTransactions
-  // ============================================================================
-  describe('executeTransactions cascade API', () => {
-    it('should create cascaded builder from a single prepared tx', async () => {
-      if (skipE2E) return;
-
-      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
-
-      const tx1 = await pushClient.universal.prepareTransaction({
-        to: targetAddress,
-        value: parseEther('0.001'),
-      });
-
-      const builder = pushClient.universal.executeTransactions(tx1);
-
-      expect(typeof builder.thenOn).toBe('function');
-      expect(typeof builder.send).toBe('function');
+        expect(response.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(response.chain).toBe(CHAIN.BNB_TESTNET);
+      }, 180000);
     });
 
-    it('should chain two prepared transactions', async () => {
-      if (skipE2E) return;
+    // ==========================================================================
+    // 3. 2-Leg Cascade — Payload
+    // ==========================================================================
+    describe('3. 2-Leg Cascade — Payload', () => {
+      it('should send multi-hop: Payload to BNB + Payload to Push (MH-P-1)', async () => {
+        if (skipE2E) return;
 
-      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+        console.log('\n=== Test: Multi-hop Payload BNB + Push ===');
 
-      const tx1 = await pushClient.universal.prepareTransaction({
-        to: targetAddress,
-        value: parseEther('0.001'),
-      });
+        const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
 
-      const tx2 = await pushClient.universal.prepareTransaction({
-        to: {
-          address: targetAddress,
-          chain: CHAIN.BNB_TESTNET,
-        },
-        value: parseEther('0.0001'),
-      });
+        // Hop 1: Route 2 — Payload to BNB (ERC20 approve call)
+        const approvePayload = encodeFunctionData({
+          abi: ERC20_EVM,
+          functionName: 'approve',
+          args: [targetAddress, BigInt(1000000)],
+        });
 
-      const chainedBuilder = pushClient.universal
-        .executeTransactions(tx1)
-        .thenOn(tx2);
+        const tx1 = await pushClient.universal.prepareTransaction({
+          to: {
+            address: BSC_USDT_ADDRESS as `0x${string}`,
+            chain: CHAIN.BNB_TESTNET,
+          },
+          data: approvePayload,
+        });
 
-      expect(typeof chainedBuilder.thenOn).toBe('function');
-      expect(typeof chainedBuilder.send).toBe('function');
+        // Hop 2: Route 1 — Value transfer on Push Chain
+        const tx2 = await pushClient.universal.prepareTransaction({
+          to: targetAddress,
+          value: parseEther('0.001'),
+        });
+
+        // Chain and send
+        const result = await pushClient.universal
+          .executeTransactions(tx1)
+          .thenOn(tx2)
+          .send();
+
+        console.log(`[TEST] Multi-hop Payload TX Hash: ${result.initialTxHash}`);
+        console.log(`[TEST] Hop count: ${result.hopCount}`);
+
+        expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(result.hopCount).toBe(2);
+        expect(result.hops).toHaveLength(2);
+        expect(typeof result.waitForAll).toBe('function');
+
+        // Wait for all hops to complete
+        const completion = await result.waitForAll({
+          timeout: 600000,
+          progressHook: (event) => {
+            console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
+          },
+        });
+
+        expect(completion.success).toBe(true);
+        expect(completion.hops).toHaveLength(2);
+
+        // Verify outbound tx on external chain
+        const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
+        for (const hop of outboundHops) {
+          console.log(`  External TX Hash: ${hop.outboundDetails?.externalTxHash}`);
+          console.log(`  External Chain: ${hop.outboundDetails?.destinationChain}`);
+          console.log(`  External Explorer: ${hop.outboundDetails?.explorerUrl}`);
+
+          expect(hop.outboundDetails).toBeDefined();
+          expect(hop.outboundDetails?.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+
+          await verifyExternalTransaction(hop.outboundDetails!.externalTxHash, hop.outboundDetails!.destinationChain);
+        }
+      }, 900000);
     });
 
-    it('should send a single-hop cascade (Route 1)', async () => {
-      if (skipE2E) return;
+    // ==========================================================================
+    // 4. 2-Leg Cascade — Funds
+    // ==========================================================================
+    describe('4. 2-Leg Cascade — Funds', () => {
+      it('should send multi-hop: Funds to BNB + Funds to Push (MH-F-1)', async () => {
+        if (skipE2E) return;
 
-      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+        console.log('\n=== Test: Multi-hop Funds BNB + Push ===');
 
-      const tx1 = await pushClient.universal.prepareTransaction({
-        to: targetAddress,
-        value: parseEther('0.001'),
-      });
+        const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
 
-      const result = await pushClient.universal.executeTransactions(tx1).send();
+        // Hop 1: Route 2 — Value transfer to BNB
+        const tx1 = await pushClient.universal.prepareTransaction({
+          to: {
+            address: targetAddress,
+            chain: CHAIN.BNB_TESTNET,
+          },
+          value: parseEther('0.0001'),
+          gasLimit: BigInt(2000000),
+        });
 
-      console.log(`[TEST] Cascade initial TX Hash: ${result.initialTxHash}`);
-      console.log(`[TEST] Hop count: ${result.hopCount}`);
+        // Hop 2: Route 1 — Value transfer on Push Chain
+        const tx2 = await pushClient.universal.prepareTransaction({
+          to: targetAddress,
+          value: parseEther('0.001'),
+        });
 
-      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(result.hopCount).toBe(1);
-      expect(result.hops).toHaveLength(1);
-      expect(result.hops[0].route).toBe('UOA_TO_PUSH');
-      expect(result.hops[0].status).toBe('confirmed');
-      expect(typeof result.waitForAll).toBe('function');
-    }, 180000);
+        // Chain and send
+        const result = await pushClient.universal
+          .executeTransactions(tx1)
+          .thenOn(tx2)
+          .send();
 
-    it('should send a single-hop cascade (Route 2)', async () => {
-      if (skipE2E) return;
+        console.log(`[TEST] Multi-hop Funds TX Hash: ${result.initialTxHash}`);
+        console.log(`[TEST] Hop count: ${result.hopCount}`);
 
-      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+        expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(result.hopCount).toBe(2);
+        expect(result.hops).toHaveLength(2);
+        expect(typeof result.waitForAll).toBe('function');
 
-      const tx1 = await pushClient.universal.prepareTransaction({
-        to: {
-          address: targetAddress,
-          chain: CHAIN.BNB_TESTNET,
-        },
-        value: parseEther('0.00015'),
-        gasLimit: BigInt(2000000),
-      });
+        // Wait for all hops to complete
+        const completion = await result.waitForAll({
+          timeout: 600000,
+          progressHook: (event) => {
+            console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
+          },
+        });
 
-      const result = await pushClient.universal.executeTransactions(tx1).send();
+        expect(completion.success).toBe(true);
+        expect(completion.hops).toHaveLength(2);
 
-      console.log(`[TEST] Cascade Route 2 TX Hash: ${result.initialTxHash}`);
-      console.log(`[TEST] Hop count: ${result.hopCount}`);
+        // Verify outbound tx on external chain
+        const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
+        for (const hop of outboundHops) {
+          console.log(`  External TX Hash: ${hop.outboundDetails?.externalTxHash}`);
+          console.log(`  External Chain: ${hop.outboundDetails?.destinationChain}`);
+          console.log(`  External Explorer: ${hop.outboundDetails?.explorerUrl}`);
 
-      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(result.hopCount).toBe(1);
-      expect(result.hops).toHaveLength(1);
-      expect(result.hops[0].route).toBe('UOA_TO_CEA');
-      expect(result.hops[0].status).toBe('confirmed');
-    }, 180000);
+          expect(hop.outboundDetails).toBeDefined();
+          expect(hop.outboundDetails?.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
 
-    it('should prepare two Route 2 txs to same chain (for merging test)', async () => {
-      if (skipE2E) return;
+          await verifyExternalTransaction(hop.outboundDetails!.externalTxHash, hop.outboundDetails!.destinationChain);
+        }
+      }, 900000);
+    });
 
-      const addr1 = '0x1234567890123456789012345678901234567890' as `0x${string}`;
-      const addr2 = '0x0987654321098765432109876543210987654321' as `0x${string}`;
+    // ==========================================================================
+    // 5. 3-Leg Cascade — Payload
+    // ==========================================================================
+    describe('5. 3-Leg Cascade — Payload', () => {
+      it('should send multi-hop: Payload to BNB + Payload to Push + Payload to Solana (MH-P-2)', async () => {
+        if (skipE2E) return;
 
-      const tx1 = await pushClient.universal.prepareTransaction({
-        to: {
-          address: addr1,
-          chain: CHAIN.BNB_TESTNET,
-        },
-        value: parseEther('0.0001'),
-      });
+        console.log('\n=== Test: 3-leg Payload Hop — BNB + Push + Solana (MH-P-2) ===');
 
-      const tx2 = await pushClient.universal.prepareTransaction({
-        to: {
-          address: addr2,
-          chain: CHAIN.BNB_TESTNET,
-        },
-        value: parseEther('0.0001'),
-      });
+        const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+        // Solana target: 32-byte hex address (gateway vault PDA on devnet)
+        const solanaTarget =
+          '0x6a44bb5ea802a001386a5b39708523e1a3e1bafc8164ffcb94d1f5afa4849c69' as `0x${string}`;
 
-      // Both should be Route 2 targeting BNB Testnet
-      expect(tx1.route).toBe('UOA_TO_CEA');
-      expect(tx2.route).toBe('UOA_TO_CEA');
-      expect(tx1._hop.targetChain).toBe(CHAIN.BNB_TESTNET);
-      expect(tx2._hop.targetChain).toBe(CHAIN.BNB_TESTNET);
+        // Hop 1: Route 2 — Payload to BNB (ERC20 approve call)
+        const approvePayload = encodeFunctionData({
+          abi: ERC20_EVM,
+          functionName: 'approve',
+          args: [targetAddress, BigInt(1000000)],
+        });
 
-      // Verify the builder can chain them
-      const builder = pushClient.universal
-        .executeTransactions(tx1)
-        .thenOn(tx2);
+        const tx1 = await pushClient.universal.prepareTransaction({
+          to: {
+            address: BSC_USDT_ADDRESS as `0x${string}`,
+            chain: CHAIN.BNB_TESTNET,
+          },
+          data: approvePayload,
+        });
 
-      expect(typeof builder.send).toBe('function');
-    }, 60000);
+        // Hop 2: Route 1 — Value transfer on Push Chain
+        const tx2 = await pushClient.universal.prepareTransaction({
+          to: targetAddress,
+          value: parseEther('0.001'),
+        });
 
-    it('should send merged same-chain Route 2 hops', async () => {
-      if (skipE2E) return;
+        // Hop 3: Route 2 — Value transfer to Solana Devnet
+        const tx3 = await pushClient.universal.prepareTransaction({
+          to: {
+            address: solanaTarget,
+            chain: CHAIN.SOLANA_DEVNET,
+          },
+          value: BigInt(10_000_000), // 0.01 SOL in lamports
+        });
 
-      const addr1 = '0x1234567890123456789012345678901234567890' as `0x${string}`;
-      const addr2 = '0x0987654321098765432109876543210987654321' as `0x${string}`;
+        // Chain all 3 hops and send
+        const result = await pushClient.universal
+          .executeTransactions(tx1)
+          .thenOn(tx2)
+          .thenOn(tx3)
+          .send();
 
-      const tx1 = await pushClient.universal.prepareTransaction({
-        to: {
-          address: addr1,
-          chain: CHAIN.BNB_TESTNET,
-        },
-        value: parseEther('0.0001'),
-      });
+        console.log(`[TEST] 3-leg Payload TX Hash: ${result.initialTxHash}`);
+        console.log(`[TEST] Hop count: ${result.hopCount}`);
 
-      const tx2 = await pushClient.universal.prepareTransaction({
-        to: {
-          address: addr2,
-          chain: CHAIN.BNB_TESTNET,
-        },
-        value: parseEther('0.0001'),
-      });
+        expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(result.hopCount).toBe(3);
+        expect(result.hops).toHaveLength(3);
+        expect(typeof result.waitForAll).toBe('function');
 
-      // Send the merged same-chain hops
-      const result = await pushClient.universal
-        .executeTransactions(tx1)
-        .thenOn(tx2)
-        .send();
+        // Wait for all hops to complete
+        const completion = await result.waitForAll({
+          timeout: 900000,
+          progressHook: (event) => {
+            console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
+          },
+        });
 
-      console.log(`[TEST] Merged same-chain hops TX Hash: ${result.initialTxHash}`);
-      console.log(`[TEST] Hop count: ${result.hopCount}`);
+        expect(completion.success).toBe(true);
+        expect(completion.hops).toHaveLength(3);
 
-      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(result.hopCount).toBeGreaterThanOrEqual(1);
-      expect(result.hops.length).toBeGreaterThanOrEqual(1);
-      expect(typeof result.waitForAll).toBe('function');
+        // Verify outbound tx on external chains (BNB + Solana)
+        const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
+        expect(outboundHops.length).toBe(2);
+        for (const hop of outboundHops) {
+          console.log(`  External TX Hash: ${hop.outboundDetails?.externalTxHash}`);
+          console.log(`  External Chain: ${hop.outboundDetails?.destinationChain}`);
+          console.log(`  External Explorer: ${hop.outboundDetails?.explorerUrl}`);
 
-      // Wait for all hops to complete
-      const completion = await result.waitForAll({
-        timeout: 300000,
-        progressHook: (event) => {
-          console.log(`[TEST:waitForAll] hop ${event.hopIndex} status: ${event.status}`);
-        },
-      });
+          expect(hop.outboundDetails).toBeDefined();
+          expect(hop.outboundDetails?.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
 
-      expect(completion.success).toBe(true);
+          await verifyExternalTransaction(hop.outboundDetails!.externalTxHash, hop.outboundDetails!.destinationChain);
+        }
+      }, 1200000);
+    });
 
-      // Verify outbound tx on external chain
-      const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
-      for (const hop of outboundHops) {
-        console.log(`  External TX Hash: ${hop.outboundDetails?.externalTxHash}`);
-        console.log(`  External Chain: ${hop.outboundDetails?.destinationChain}`);
-        console.log(`  External Explorer: ${hop.outboundDetails?.explorerUrl}`);
+    // ==========================================================================
+    // 6. 3-Leg Cascade — Funds
+    // ==========================================================================
+    describe('6. 3-Leg Cascade — Funds', () => {
+      it('should send multi-hop: Funds to BNB + Funds to Push + Funds to Solana (MH-F-2)', async () => {
+        if (skipE2E) return;
 
-        expect(hop.outboundDetails).toBeDefined();
-        expect(hop.outboundDetails?.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+        console.log('\n=== Test: 3-leg Funds Hop — BNB + Push + Solana (MH-F-2) ===');
 
-        await verifyExternalTransaction(hop.outboundDetails!.externalTxHash, hop.outboundDetails!.destinationChain);
-      }
-    }, 600000);
+        const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+        const solanaTarget =
+          '0x6a44bb5ea802a001386a5b39708523e1a3e1bafc8164ffcb94d1f5afa4849c69' as `0x${string}`;
 
-    it('should send multi-hop: Payload to BNB + Payload to Push (MH-P-1)', async () => {
-      if (skipE2E) return;
+        // Hop 1: Route 2 — Value transfer to BNB
+        const tx1 = await pushClient.universal.prepareTransaction({
+          to: {
+            address: targetAddress,
+            chain: CHAIN.BNB_TESTNET,
+          },
+          value: parseEther('0.0001'),
+          gasLimit: BigInt(2000000),
+        });
 
-      console.log('\n=== Test: Multi-hop Payload BNB + Push ===');
+        // Hop 2: Route 1 — Value transfer on Push Chain
+        const tx2 = await pushClient.universal.prepareTransaction({
+          to: targetAddress,
+          value: parseEther('0.001'),
+        });
 
-      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+        // Hop 3: Route 2 — Value transfer to Solana Devnet
+        const tx3 = await pushClient.universal.prepareTransaction({
+          to: {
+            address: solanaTarget,
+            chain: CHAIN.SOLANA_DEVNET,
+          },
+          value: BigInt(10_000_000), // 0.01 SOL in lamports
+        });
 
-      // Hop 1: Route 2 — Payload to BNB (ERC20 approve call)
-      const approvePayload = encodeFunctionData({
-        abi: ERC20_EVM,
-        functionName: 'approve',
-        args: [targetAddress, BigInt(1000000)],
-      });
+        // Chain all 3 hops and send
+        const result = await pushClient.universal
+          .executeTransactions(tx1)
+          .thenOn(tx2)
+          .thenOn(tx3)
+          .send();
 
-      const tx1 = await pushClient.universal.prepareTransaction({
-        to: {
-          address: BSC_USDT_ADDRESS as `0x${string}`,
-          chain: CHAIN.BNB_TESTNET,
-        },
-        data: approvePayload,
-      });
+        console.log(`[TEST] 3-leg Funds TX Hash: ${result.initialTxHash}`);
+        console.log(`[TEST] Hop count: ${result.hopCount}`);
 
-      // Hop 2: Route 1 — Value transfer on Push Chain
-      const tx2 = await pushClient.universal.prepareTransaction({
-        to: targetAddress,
-        value: parseEther('0.001'),
-      });
+        expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(result.hopCount).toBe(3);
+        expect(result.hops).toHaveLength(3);
+        expect(typeof result.waitForAll).toBe('function');
 
-      // Chain and send
-      const result = await pushClient.universal
-        .executeTransactions(tx1)
-        .thenOn(tx2)
-        .send();
+        // Wait for all hops to complete
+        const completion = await result.waitForAll({
+          timeout: 900000,
+          progressHook: (event) => {
+            console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
+          },
+        });
 
-      console.log(`[TEST] Multi-hop Payload TX Hash: ${result.initialTxHash}`);
-      console.log(`[TEST] Hop count: ${result.hopCount}`);
+        expect(completion.success).toBe(true);
+        expect(completion.hops).toHaveLength(3);
 
-      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(result.hopCount).toBe(2);
-      expect(result.hops).toHaveLength(2);
-      expect(typeof result.waitForAll).toBe('function');
+        // Verify outbound tx on external chains (BNB + Solana)
+        const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
+        expect(outboundHops.length).toBe(2);
+        for (const hop of outboundHops) {
+          console.log(`  External TX Hash: ${hop.outboundDetails?.externalTxHash}`);
+          console.log(`  External Chain: ${hop.outboundDetails?.destinationChain}`);
+          console.log(`  External Explorer: ${hop.outboundDetails?.explorerUrl}`);
 
-      // Wait for all hops to complete
-      const completion = await result.waitForAll({
-        timeout: 600000,
-        progressHook: (event) => {
-          console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
-        },
-      });
+          expect(hop.outboundDetails).toBeDefined();
+          expect(hop.outboundDetails?.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
 
-      expect(completion.success).toBe(true);
-      expect(completion.hops).toHaveLength(2);
+          await verifyExternalTransaction(hop.outboundDetails!.externalTxHash, hop.outboundDetails!.destinationChain);
+        }
+      }, 1200000);
+    });
 
-      // Verify outbound tx on external chain
-      const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
-      for (const hop of outboundHops) {
-        console.log(`  External TX Hash: ${hop.outboundDetails?.externalTxHash}`);
-        console.log(`  External Chain: ${hop.outboundDetails?.destinationChain}`);
-        console.log(`  External Explorer: ${hop.outboundDetails?.explorerUrl}`);
+    // ==========================================================================
+    // 7. Same-Chain Merging
+    // ==========================================================================
+    describe('7. Same-Chain Merging', () => {
+      it('should send merged same-chain Route 2 hops', async () => {
+        if (skipE2E) return;
 
-        expect(hop.outboundDetails).toBeDefined();
-        expect(hop.outboundDetails?.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+        const addr1 = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+        const addr2 = '0x0987654321098765432109876543210987654321' as `0x${string}`;
 
-        await verifyExternalTransaction(hop.outboundDetails!.externalTxHash, hop.outboundDetails!.destinationChain);
-      }
-    }, 900000);
+        const tx1 = await pushClient.universal.prepareTransaction({
+          to: {
+            address: addr1,
+            chain: CHAIN.BNB_TESTNET,
+          },
+          value: parseEther('0.0001'),
+        });
 
-    it('should send multi-hop: Funds to BNB + Funds to Push (MH-F-1)', async () => {
-      if (skipE2E) return;
+        const tx2 = await pushClient.universal.prepareTransaction({
+          to: {
+            address: addr2,
+            chain: CHAIN.BNB_TESTNET,
+          },
+          value: parseEther('0.0001'),
+        });
 
-      console.log('\n=== Test: Multi-hop Funds BNB + Push ===');
+        // Send the merged same-chain hops
+        const result = await pushClient.universal
+          .executeTransactions(tx1)
+          .thenOn(tx2)
+          .send();
 
-      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+        console.log(`[TEST] Merged same-chain hops TX Hash: ${result.initialTxHash}`);
+        console.log(`[TEST] Hop count: ${result.hopCount}`);
 
-      // Hop 1: Route 2 — Value transfer to BNB
-      const tx1 = await pushClient.universal.prepareTransaction({
-        to: {
-          address: targetAddress,
-          chain: CHAIN.BNB_TESTNET,
-        },
-        value: parseEther('0.0001'),
-        gasLimit: BigInt(2000000),
-      });
+        expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(result.hopCount).toBeGreaterThanOrEqual(1);
+        expect(result.hops.length).toBeGreaterThanOrEqual(1);
+        expect(typeof result.waitForAll).toBe('function');
 
-      // Hop 2: Route 1 — Value transfer on Push Chain
-      const tx2 = await pushClient.universal.prepareTransaction({
-        to: targetAddress,
-        value: parseEther('0.001'),
-      });
+        // Wait for all hops to complete
+        const completion = await result.waitForAll({
+          timeout: 300000,
+          progressHook: (event) => {
+            console.log(`[TEST:waitForAll] hop ${event.hopIndex} status: ${event.status}`);
+          },
+        });
 
-      // Chain and send
-      const result = await pushClient.universal
-        .executeTransactions(tx1)
-        .thenOn(tx2)
-        .send();
+        expect(completion.success).toBe(true);
 
-      console.log(`[TEST] Multi-hop Funds TX Hash: ${result.initialTxHash}`);
-      console.log(`[TEST] Hop count: ${result.hopCount}`);
+        // Verify outbound tx on external chain
+        const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
+        for (const hop of outboundHops) {
+          console.log(`  External TX Hash: ${hop.outboundDetails?.externalTxHash}`);
+          console.log(`  External Chain: ${hop.outboundDetails?.destinationChain}`);
+          console.log(`  External Explorer: ${hop.outboundDetails?.explorerUrl}`);
 
-      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(result.hopCount).toBe(2);
-      expect(result.hops).toHaveLength(2);
-      expect(typeof result.waitForAll).toBe('function');
+          expect(hop.outboundDetails).toBeDefined();
+          expect(hop.outboundDetails?.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
 
-      // Wait for all hops to complete
-      const completion = await result.waitForAll({
-        timeout: 600000,
-        progressHook: (event) => {
-          console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
-        },
-      });
-
-      expect(completion.success).toBe(true);
-      expect(completion.hops).toHaveLength(2);
-
-      // Verify outbound tx on external chain
-      const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
-      for (const hop of outboundHops) {
-        console.log(`  External TX Hash: ${hop.outboundDetails?.externalTxHash}`);
-        console.log(`  External Chain: ${hop.outboundDetails?.destinationChain}`);
-        console.log(`  External Explorer: ${hop.outboundDetails?.explorerUrl}`);
-
-        expect(hop.outboundDetails).toBeDefined();
-        expect(hop.outboundDetails?.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
-
-        await verifyExternalTransaction(hop.outboundDetails!.externalTxHash, hop.outboundDetails!.destinationChain);
-      }
-    }, 900000);
+          await verifyExternalTransaction(hop.outboundDetails!.externalTxHash, hop.outboundDetails!.destinationChain);
+        }
+      }, 600000);
+    });
   });
 
   // ============================================================================
-  // Multi-hop: 3-leg hops (MH-P-2, MH-F-2)
+  // Additional Tests
   // ============================================================================
-  describe('3-leg multi-hop cascades', () => {
-    it('should send multi-hop: Payload to BNB + Payload to Push + Payload to Solana (MH-P-2)', async () => {
-      if (skipE2E) return;
+  describe('Additional Tests', () => {
 
-      console.log('\n=== Test: 3-leg Payload Hop — BNB + Push + Solana (MH-P-2) ===');
+    // ==========================================================================
+    // Transaction Preparation
+    // ==========================================================================
+    describe('Transaction Preparation', () => {
+      it('should prepare a Push Chain transaction with HopDescriptor', async () => {
+        if (skipE2E) return;
 
-      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
-      // Solana target: 32-byte hex address (gateway vault PDA on devnet)
-      const solanaTarget =
-        '0x6a44bb5ea802a001386a5b39708523e1a3e1bafc8164ffcb94d1f5afa4849c69' as `0x${string}`;
+        const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
 
-      // Hop 1: Route 2 — Payload to BNB (ERC20 approve call)
-      const approvePayload = encodeFunctionData({
-        abi: ERC20_EVM,
-        functionName: 'approve',
-        args: [targetAddress, BigInt(1000000)],
+        const prepared = await pushClient.universal.prepareTransaction({
+          to: targetAddress,
+          value: parseEther('0.001'),
+        });
+
+        console.log(`[TEST] Prepared Route: ${prepared.route}`);
+
+        expect(prepared.route).toBe('UOA_TO_PUSH');
+        expect(prepared._hop).toBeDefined();
+        expect(prepared._hop.route).toBe('UOA_TO_PUSH');
+        expect(prepared._hop.ueaAddress).toBe(ueaAddress);
+        expect(prepared._hop.pushMulticalls).toBeDefined();
+        expect(prepared._hop.pushMulticalls!.length).toBeGreaterThan(0);
+        expect(typeof prepared.thenOn).toBe('function');
+        expect(typeof prepared.send).toBe('function');
       });
 
-      const tx1 = await pushClient.universal.prepareTransaction({
-        to: {
-          address: BSC_USDT_ADDRESS as `0x${string}`,
-          chain: CHAIN.BNB_TESTNET,
-        },
-        data: approvePayload,
+      it('should prepare an outbound transaction with HopDescriptor', async () => {
+        if (skipE2E) return;
+
+        const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+
+        const prepared = await pushClient.universal.prepareTransaction({
+          to: {
+            address: targetAddress,
+            chain: CHAIN.BNB_TESTNET,
+          },
+          value: parseEther('0.0001'),
+        });
+
+        console.log(`[TEST] Prepared Route: ${prepared.route}`);
+        console.log(`[TEST] CEA Address: ${prepared._hop.ceaAddress}`);
+        console.log(`[TEST] PRC20 Token: ${prepared._hop.prc20Token}`);
+        console.log(`[TEST] Gas Token: ${prepared._hop.gasToken}`);
+        console.log(`[TEST] Gas Fee: ${prepared._hop.gasFee}`);
+
+        expect(prepared.route).toBe('UOA_TO_CEA');
+        expect(prepared._hop).toBeDefined();
+        expect(prepared._hop.route).toBe('UOA_TO_CEA');
+        expect(prepared._hop.targetChain).toBe(CHAIN.BNB_TESTNET);
+        expect(prepared._hop.ceaAddress).toMatch(/^0x[a-fA-F0-9]{40}$/);
+        expect(prepared._hop.prc20Token).toMatch(/^0x[a-fA-F0-9]{40}$/);
+        expect(prepared._hop.ceaMulticalls).toBeDefined();
+        expect(prepared._hop.ceaMulticalls!.length).toBeGreaterThan(0);
+      }, 60000);
+
+      it('should prepare two Route 2 txs to same chain (for merging test)', async () => {
+        if (skipE2E) return;
+
+        const addr1 = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+        const addr2 = '0x0987654321098765432109876543210987654321' as `0x${string}`;
+
+        const tx1 = await pushClient.universal.prepareTransaction({
+          to: {
+            address: addr1,
+            chain: CHAIN.BNB_TESTNET,
+          },
+          value: parseEther('0.0001'),
+        });
+
+        const tx2 = await pushClient.universal.prepareTransaction({
+          to: {
+            address: addr2,
+            chain: CHAIN.BNB_TESTNET,
+          },
+          value: parseEther('0.0001'),
+        });
+
+        // Both should be Route 2 targeting BNB Testnet
+        expect(tx1.route).toBe('UOA_TO_CEA');
+        expect(tx2.route).toBe('UOA_TO_CEA');
+        expect(tx1._hop.targetChain).toBe(CHAIN.BNB_TESTNET);
+        expect(tx2._hop.targetChain).toBe(CHAIN.BNB_TESTNET);
+
+        // Verify the builder can chain them
+        const builder = pushClient.universal
+          .executeTransactions(tx1)
+          .thenOn(tx2);
+
+        expect(typeof builder.send).toBe('function');
+      }, 60000);
+    });
+
+    // ==========================================================================
+    // Builder API
+    // ==========================================================================
+    describe('Builder API', () => {
+      it('should create cascaded builder from a single prepared tx', async () => {
+        if (skipE2E) return;
+
+        const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+
+        const tx1 = await pushClient.universal.prepareTransaction({
+          to: targetAddress,
+          value: parseEther('0.001'),
+        });
+
+        const builder = pushClient.universal.executeTransactions(tx1);
+
+        expect(typeof builder.thenOn).toBe('function');
+        expect(typeof builder.send).toBe('function');
       });
 
-      // Hop 2: Route 1 — Value transfer on Push Chain
-      const tx2 = await pushClient.universal.prepareTransaction({
-        to: targetAddress,
-        value: parseEther('0.001'),
+      it('should chain two prepared transactions', async () => {
+        if (skipE2E) return;
+
+        const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+
+        const tx1 = await pushClient.universal.prepareTransaction({
+          to: targetAddress,
+          value: parseEther('0.001'),
+        });
+
+        const tx2 = await pushClient.universal.prepareTransaction({
+          to: {
+            address: targetAddress,
+            chain: CHAIN.BNB_TESTNET,
+          },
+          value: parseEther('0.0001'),
+        });
+
+        const chainedBuilder = pushClient.universal
+          .executeTransactions(tx1)
+          .thenOn(tx2);
+
+        expect(typeof chainedBuilder.thenOn).toBe('function');
+        expect(typeof chainedBuilder.send).toBe('function');
       });
+    });
 
-      // Hop 3: Route 2 — Value transfer to Solana Devnet
-      const tx3 = await pushClient.universal.prepareTransaction({
-        to: {
-          address: solanaTarget,
-          chain: CHAIN.SOLANA_DEVNET,
-        },
-        value: BigInt(10_000_000), // 0.01 SOL in lamports
-      });
+    // ==========================================================================
+    // Cascade Execution
+    // ==========================================================================
+    describe('Cascade Execution', () => {
+      it('should send a single-hop cascade (Route 1)', async () => {
+        if (skipE2E) return;
 
-      // Chain all 3 hops and send
-      const result = await pushClient.universal
-        .executeTransactions(tx1)
-        .thenOn(tx2)
-        .thenOn(tx3)
-        .send();
+        const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
 
-      console.log(`[TEST] 3-leg Payload TX Hash: ${result.initialTxHash}`);
-      console.log(`[TEST] Hop count: ${result.hopCount}`);
+        const tx1 = await pushClient.universal.prepareTransaction({
+          to: targetAddress,
+          value: parseEther('0.001'),
+        });
 
-      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(result.hopCount).toBe(3);
-      expect(result.hops).toHaveLength(3);
-      expect(typeof result.waitForAll).toBe('function');
+        const result = await pushClient.universal.executeTransactions(tx1).send();
 
-      // Wait for all hops to complete
-      const completion = await result.waitForAll({
-        timeout: 900000,
-        progressHook: (event) => {
-          console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
-        },
-      });
+        console.log(`[TEST] Cascade initial TX Hash: ${result.initialTxHash}`);
+        console.log(`[TEST] Hop count: ${result.hopCount}`);
 
-      expect(completion.success).toBe(true);
-      expect(completion.hops).toHaveLength(3);
+        expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(result.hopCount).toBe(1);
+        expect(result.hops).toHaveLength(1);
+        expect(result.hops[0].route).toBe('UOA_TO_PUSH');
+        expect(result.hops[0].status).toBe('confirmed');
+        expect(typeof result.waitForAll).toBe('function');
+      }, 180000);
 
-      // Verify outbound tx on external chains (BNB + Solana)
-      const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
-      expect(outboundHops.length).toBe(2);
-      for (const hop of outboundHops) {
-        console.log(`  External TX Hash: ${hop.outboundDetails?.externalTxHash}`);
-        console.log(`  External Chain: ${hop.outboundDetails?.destinationChain}`);
-        console.log(`  External Explorer: ${hop.outboundDetails?.explorerUrl}`);
+      it('should send a single-hop cascade (Route 2)', async () => {
+        if (skipE2E) return;
 
-        expect(hop.outboundDetails).toBeDefined();
-        expect(hop.outboundDetails?.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+        const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
 
-        await verifyExternalTransaction(hop.outboundDetails!.externalTxHash, hop.outboundDetails!.destinationChain);
-      }
-    }, 1200000);
+        const tx1 = await pushClient.universal.prepareTransaction({
+          to: {
+            address: targetAddress,
+            chain: CHAIN.BNB_TESTNET,
+          },
+          value: parseEther('0.00015'),
+          gasLimit: BigInt(2000000),
+        });
 
-    it('should send multi-hop: Funds to BNB + Funds to Push + Funds to Solana (MH-F-2)', async () => {
-      if (skipE2E) return;
+        const result = await pushClient.universal.executeTransactions(tx1).send();
 
-      console.log('\n=== Test: 3-leg Funds Hop — BNB + Push + Solana (MH-F-2) ===');
+        console.log(`[TEST] Cascade Route 2 TX Hash: ${result.initialTxHash}`);
+        console.log(`[TEST] Hop count: ${result.hopCount}`);
 
-      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
-      const solanaTarget =
-        '0x6a44bb5ea802a001386a5b39708523e1a3e1bafc8164ffcb94d1f5afa4849c69' as `0x${string}`;
+        expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(result.hopCount).toBe(1);
+        expect(result.hops).toHaveLength(1);
+        expect(result.hops[0].route).toBe('UOA_TO_CEA');
+        expect(result.hops[0].status).toBe('confirmed');
+      }, 180000);
+    });
 
-      // Hop 1: Route 2 — Value transfer to BNB
-      const tx1 = await pushClient.universal.prepareTransaction({
-        to: {
-          address: targetAddress,
-          chain: CHAIN.BNB_TESTNET,
-        },
-        value: parseEther('0.0001'),
-        gasLimit: BigInt(2000000),
-      });
+    // ==========================================================================
+    // Execution Tracking
+    // ==========================================================================
+    describe('Execution Tracking', () => {
+      it('should track Route 1 cascade with waitForAll', async () => {
+        if (skipE2E) return;
 
-      // Hop 2: Route 1 — Value transfer on Push Chain
-      const tx2 = await pushClient.universal.prepareTransaction({
-        to: targetAddress,
-        value: parseEther('0.001'),
-      });
+        const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
 
-      // Hop 3: Route 2 — Value transfer to Solana Devnet
-      const tx3 = await pushClient.universal.prepareTransaction({
-        to: {
-          address: solanaTarget,
-          chain: CHAIN.SOLANA_DEVNET,
-        },
-        value: BigInt(10_000_000), // 0.01 SOL in lamports
-      });
+        const tx1 = await pushClient.universal.prepareTransaction({
+          to: targetAddress,
+          value: parseEther('0.001'),
+        });
 
-      // Chain all 3 hops and send
-      const result = await pushClient.universal
-        .executeTransactions(tx1)
-        .thenOn(tx2)
-        .thenOn(tx3)
-        .send();
+        const result = await pushClient.universal.executeTransactions(tx1).send();
 
-      console.log(`[TEST] 3-leg Funds TX Hash: ${result.initialTxHash}`);
-      console.log(`[TEST] Hop count: ${result.hopCount}`);
+        const completion = await result.waitForAll({
+          timeout: 60000,
+          progressHook: (event) => {
+            console.log(`[TEST:waitForAll] hop ${event.hopIndex} status: ${event.status}`);
+          },
+        });
 
-      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(result.hopCount).toBe(3);
-      expect(result.hops).toHaveLength(3);
-      expect(typeof result.waitForAll).toBe('function');
-
-      // Wait for all hops to complete
-      const completion = await result.waitForAll({
-        timeout: 900000,
-        progressHook: (event) => {
-          console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
-        },
-      });
-
-      expect(completion.success).toBe(true);
-      expect(completion.hops).toHaveLength(3);
-
-      // Verify outbound tx on external chains (BNB + Solana)
-      const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
-      expect(outboundHops.length).toBe(2);
-      for (const hop of outboundHops) {
-        console.log(`  External TX Hash: ${hop.outboundDetails?.externalTxHash}`);
-        console.log(`  External Chain: ${hop.outboundDetails?.destinationChain}`);
-        console.log(`  External Explorer: ${hop.outboundDetails?.explorerUrl}`);
-
-        expect(hop.outboundDetails).toBeDefined();
-        expect(hop.outboundDetails?.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
-
-        await verifyExternalTransaction(hop.outboundDetails!.externalTxHash, hop.outboundDetails!.destinationChain);
-      }
-    }, 1200000);
-  });
-
-  // ============================================================================
-  // waitForAll tracking
-  // ============================================================================
-  describe('waitForAll tracking', () => {
-    it('should track Route 1 cascade with waitForAll', async () => {
-      if (skipE2E) return;
-
-      const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
-
-      const tx1 = await pushClient.universal.prepareTransaction({
-        to: targetAddress,
-        value: parseEther('0.001'),
-      });
-
-      const result = await pushClient.universal.executeTransactions(tx1).send();
-
-      const completion = await result.waitForAll({
-        timeout: 60000,
-        progressHook: (event) => {
-          console.log(`[TEST:waitForAll] hop ${event.hopIndex} status: ${event.status}`);
-        },
-      });
-
-      expect(completion.success).toBe(true);
-      expect(completion.hops).toHaveLength(1);
-      expect(completion.hops[0].status).toBe('confirmed');
-    }, 180000);
+        expect(completion.success).toBe(true);
+        expect(completion.hops).toHaveLength(1);
+        expect(completion.hops[0].status).toBe('confirmed');
+      }, 180000);
+    });
   });
 });

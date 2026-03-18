@@ -2901,9 +2901,9 @@ export class Orchestrator {
     // Re-fetch balance to minimize staleness — the gas fee query above involved multiple
     // RPC roundtrips, during which other transactions may have changed the balance.
     const currentBalance = await this.pushClient.getBalance(ueaAddress);
-    // Reserve covers gas for multicall TXs on Push Chain (~0.001 PC each).
-    // 0.1 PC provides ample margin for 2 ops (approve + outbound).
-    const OUTBOUND_GAS_RESERVE = BigInt(1e17);
+    // Reserve covers gas for multicall TXs on Push Chain.
+    // Cosmos-EVM tx overhead costs ~1 PC per operation; 3 PC covers approve(s) + buffer.
+    const OUTBOUND_GAS_RESERVE = BigInt(3e18);
     if (currentBalance > OUTBOUND_GAS_RESERVE && currentBalance - OUTBOUND_GAS_RESERVE > nativeValueForGas) {
       const adjustedValue = currentBalance - OUTBOUND_GAS_RESERVE;
       this.printLog(
@@ -3103,8 +3103,8 @@ export class Orchestrator {
     // Adjust nativeValueForGas using UEA balance (contract refunds excess)
     // Re-fetch balance to minimize staleness from gas fee query RPC roundtrips
     const currentBalance = await this.pushClient.getBalance(ueaAddress);
-    // Reserve covers gas for multicall TXs on Push Chain (~0.001 PC each).
-    const OUTBOUND_GAS_RESERVE_SVM = BigInt(1e17);
+    // Cosmos-EVM tx overhead costs ~1 PC per operation; 3 PC covers approve(s) + buffer.
+    const OUTBOUND_GAS_RESERVE_SVM = BigInt(3e18);
     if (currentBalance > OUTBOUND_GAS_RESERVE_SVM && currentBalance - OUTBOUND_GAS_RESERVE_SVM > nativeValueForGas) {
       const adjustedValue = currentBalance - OUTBOUND_GAS_RESERVE_SVM;
       this.printLog(
@@ -3406,8 +3406,8 @@ export class Orchestrator {
     // Adjust nativeValueForGas using UEA balance (contract refunds excess)
     // Re-fetch balance to minimize staleness from gas fee query RPC roundtrips
     const currentBalance = await this.pushClient.getBalance(ueaAddress);
-    // Reserve covers gas for multicall TXs on Push Chain (~0.001 PC each).
-    const OUTBOUND_GAS_RESERVE_R3 = BigInt(1e17);
+    // Cosmos-EVM tx overhead costs ~1 PC per operation; 3 PC covers approve(s) + buffer.
+    const OUTBOUND_GAS_RESERVE_R3 = BigInt(3e18);
     if (currentBalance > OUTBOUND_GAS_RESERVE_R3 && currentBalance - OUTBOUND_GAS_RESERVE_R3 > nativeValueForGas) {
       const adjustedValue = currentBalance - OUTBOUND_GAS_RESERVE_R3;
       this.printLog(
@@ -3585,8 +3585,8 @@ export class Orchestrator {
     // Adjust nativeValueForGas using UEA balance (contract refunds excess)
     // Re-fetch balance to minimize staleness from gas fee query RPC roundtrips
     const currentBalance = await this.pushClient.getBalance(ueaAddress);
-    // Reserve covers gas for multicall TXs on Push Chain (~0.001 PC each).
-    const OUTBOUND_GAS_RESERVE_R3_SVM = BigInt(1e17);
+    // Cosmos-EVM tx overhead costs ~1 PC per operation; 3 PC covers approve(s) + buffer.
+    const OUTBOUND_GAS_RESERVE_R3_SVM = BigInt(3e18);
     if (currentBalance > OUTBOUND_GAS_RESERVE_R3_SVM && currentBalance - OUTBOUND_GAS_RESERVE_R3_SVM > nativeValueForGas) {
       const adjustedValue = currentBalance - OUTBOUND_GAS_RESERVE_R3_SVM;
       this.printLog(
