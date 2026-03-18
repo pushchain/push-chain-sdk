@@ -230,9 +230,11 @@ export class EvmClient {
     ]);
 
     // Use explicit nonce if provided (for sequential tx batches),
-    // otherwise fetch after gas estimation to avoid stale nonce on Cosmos-EVM chains
+    // otherwise fetch after gas estimation to avoid stale nonce on Cosmos-EVM chains.
+    // Use 'pending' blockTag to include mempool txs and prevent nonce collisions.
     const nonce = explicitNonce ?? await this.publicClient.getTransactionCount({
       address: signer.account.address as `0x${string}`,
+      blockTag: 'pending',
     });
 
     const unsignedTx = serializeTransaction({

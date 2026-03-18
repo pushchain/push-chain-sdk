@@ -159,7 +159,7 @@ export function buildCeaMulticallPayload(multicalls: MultiCall[]): `0x${string}`
     }))]
   );
 
-  // Prefix with UEA_MULTICALL_SELECTOR (0x8f6f1c5e) so CEA recognizes it as multicall
+  // Prefix with UEA_MULTICALL_SELECTOR (0x2cc2842d) so CEA recognizes it as multicall
   return `${UEA_MULTICALL_SELECTOR}${encoded.slice(2)}` as `0x${string}`;
 }
 

@@ -1799,7 +1799,7 @@ export class Orchestrator {
         // Migration path: raw MIGRATION_SELECTOR payload, no multicall wrapping
         if (params.migration) {
           const prc20Token = this.getNativePRC20ForChain(targetChain);
-          const burnAmount = BigInt(1); // 1 wei workaround (precompile rejects 0)
+          const burnAmount = BigInt(0); // Migration is logic-only — no funds. CEA rejects msg.value != 0.
           let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
           let gasFee = BigInt(0);
           if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
@@ -2141,10 +2141,21 @@ export class Orchestrator {
    */
   composeCascade(
     segments: CascadeSegment[],
-    ueaAddress: `0x${string}`
+    ueaAddress: `0x${string}`,
+    ueaBalance?: bigint
   ): MultiCall[] {
     let accumulatedPushMulticalls: MultiCall[] = [];
     const gatewayPcAddress = this.getUniversalGatewayPCAddress();
+
+    // Compute per-outbound nativeValueForGas from UEA balance
+    // Each outbound segment needs native value for the gas swap on the destination chain.
+    // The contract refunds excess, so over-allocating is safe.
+    const numOutbounds = segments.filter(s => s.type !== 'PUSH_EXECUTION').length;
+    const CASCADE_GAS_RESERVE = BigInt(3e18); // 3 PC reserve for gas costs
+    let perOutboundNativeValue: bigint | undefined;
+    if (ueaBalance && numOutbounds > 0 && ueaBalance > CASCADE_GAS_RESERVE) {
+      perOutboundNativeValue = (ueaBalance - CASCADE_GAS_RESERVE) / BigInt(numOutbounds);
+    }
 
     for (let i = segments.length - 1; i >= 0; i--) {
       const segment = segments[i];
@@ -2198,11 +2209,13 @@ export class Orchestrator {
           );
 
           // Build approval + outbound multicalls
+          const segGasFee = segment.gasFee || BigInt(0);
           const outboundMulticalls = buildOutboundApprovalAndCall({
             prc20Token: segment.prc20Token || (ZERO_ADDRESS as `0x${string}`),
             gasToken: segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
             burnAmount: segment.totalBurnAmount || BigInt(0),
-            gasFee: segment.gasFee || BigInt(0),
+            gasFee: segGasFee,
+            nativeValueForGas: perOutboundNativeValue ?? segGasFee * BigInt(1000),
             gatewayPcAddress,
             outboundRequest: outboundReq,
           });
@@ -2290,12 +2303,14 @@ export class Orchestrator {
             ueaAddress
           );
 
+          const inboundGasFee = segment.gasFee || BigInt(0);
           const outboundMulticalls = buildOutboundApprovalAndCall({
             prc20Token:
               segment.prc20Token || this.getNativePRC20ForChain(sourceChain),
             gasToken: segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
             burnAmount: segment.totalBurnAmount || BigInt(1),
-            gasFee: segment.gasFee || BigInt(0),
+            gasFee: inboundGasFee,
+            nativeValueForGas: perOutboundNativeValue ?? inboundGasFee * BigInt(1000),
             gatewayPcAddress,
             outboundRequest: outboundReq,
           });
@@ -2407,7 +2422,9 @@ export class Orchestrator {
         }
 
         // Multi-hop: compose cascade bottom-to-top
-        const composedMulticalls = this.composeCascade(segments, ueaAddress);
+        // Fetch UEA balance so composeCascade can allocate native value for gas swaps
+        const ueaBalance = await this.pushClient.getBalance(ueaAddress);
+        const composedMulticalls = this.composeCascade(segments, ueaAddress, ueaBalance);
 
         // Execute the composed multicall as a single Push Chain tx
         const executeParams: ExecuteParams = {
@@ -4563,25 +4580,52 @@ export class Orchestrator {
     // Each tx is confirmed before sending the next to ensure state visibility.
     if (Array.isArray(execute.data)) {
       const PUSH_CHAIN_GAS_LIMIT = BigInt(500000);
-      // Fetch nonce once before the batch
+      const MAX_NONCE_RETRIES = 3;
+      // Fetch nonce once before the batch using 'pending' to include mempool txs
       let nonce = await this.pushClient.publicClient.getTransactionCount({
         address: this.universalSigner.account.address as `0x${string}`,
+        blockTag: 'pending',
       });
       let lastTxHash: `0x${string}` = '0x';
       const calls = execute.data as MultiCall[];
       for (let i = 0; i < calls.length; i++) {
         const call = calls[i];
-        this.printLog(
-          `sendPushTx — executing multicall operation ${i + 1}/${calls.length} to: ${call.to} (nonce: ${nonce})`
-        );
-        lastTxHash = await this.pushClient.sendTransaction({
-          to: call.to as `0x${string}`,
-          data: (call.data || '0x') as `0x${string}`,
-          value: call.value,
-          signer: this.universalSigner,
-          nonce,
-          gas: PUSH_CHAIN_GAS_LIMIT,
-        });
+        let txSent = false;
+        for (let retry = 0; retry < MAX_NONCE_RETRIES && !txSent; retry++) {
+          try {
+            this.printLog(
+              `sendPushTx — executing multicall operation ${i + 1}/${calls.length} to: ${call.to} (nonce: ${nonce})`
+            );
+            lastTxHash = await this.pushClient.sendTransaction({
+              to: call.to as `0x${string}`,
+              data: (call.data || '0x') as `0x${string}`,
+              value: call.value,
+              signer: this.universalSigner,
+              nonce,
+              gas: PUSH_CHAIN_GAS_LIMIT,
+            });
+            txSent = true;
+          } catch (err: any) {
+            const msg = err?.message || err?.details || '';
+            if (msg.includes('invalid nonce') || msg.includes('invalid sequence')) {
+              // Re-fetch nonce from pending state and retry
+              this.printLog(
+                `sendPushTx — nonce mismatch on operation ${i + 1}/${calls.length} (retry ${retry + 1}/${MAX_NONCE_RETRIES}), re-fetching nonce`
+              );
+              nonce = await this.pushClient.publicClient.getTransactionCount({
+                address: this.universalSigner.account.address as `0x${string}`,
+                blockTag: 'pending',
+              });
+            } else {
+              throw err;
+            }
+          }
+        }
+        if (!txSent) {
+          throw new Error(
+            `sendPushTx — multicall operation ${i + 1}/${calls.length} failed after ${MAX_NONCE_RETRIES} nonce retries`
+          );
+        }
 
         // Wait for tx receipt and verify it succeeded before sending next tx
         const receipt = await this.pushClient.publicClient.waitForTransactionReceipt({
