@@ -1286,8 +1286,11 @@ export class Orchestrator {
         const decoded = utils.bytes.bs58.decode(feeLockTxHash);
         feeLockTxHash = bytesToHex(new Uint8Array(decoded));
       }
-      // Fee locking is required if UEA is not deployed OR insufficient funds
+      // Fee locking is required if UEA is not deployed OR insufficient funds.
+      // Skip for outbound flows (UEA→CEA) — those execute on Push Chain and
+      // don't need external-chain fee locking.
       const feeLockingRequired =
+        !execute._skipFeeLocking &&
         (!isUEADeployed || funds < requiredFunds) && !feeLockTxHash;
 
       // Support multicall payload encoding when execute.data is an array
@@ -1826,13 +1829,30 @@ export class Orchestrator {
           if (Array.isArray(params.data)) {
             ceaMulticalls.push(...(params.data as MultiCall[]));
           } else {
-            // Single call with data. Native value (if any) is already delivered to
-            // CEA by the Vault via executeUniversalTx{value: amount}(). Attaching
-            // value to the call would revert if the target function is not payable.
-            // To call a payable function with value, use explicit multicalls.
+            // When ERC-20 funds are provided with a single payload, auto-prepend a
+            // transfer() call so the tokens minted to the CEA are forwarded to the
+            // target address. This mirrors the Route 1 behavior in buildExecuteMulticall.
+            if (params.funds?.amount) {
+              const token = (params.funds as { token: MoveableToken }).token;
+              if (token && token.mechanism !== 'native') {
+                const erc20Transfer = encodeFunctionData({
+                  abi: ERC20_EVM,
+                  functionName: 'transfer',
+                  args: [target.address, params.funds.amount],
+                });
+                ceaMulticalls.push({
+                  to: token.address as `0x${string}`,
+                  value: BigInt(0),
+                  data: erc20Transfer,
+                });
+              }
+            }
+            // Single call with data. Forward native value (if any) so the target
+            // contract receives it alongside the payload call. The vault deposits
+            // native value to the CEA, and the multicall forwards it to the target.
             ceaMulticalls.push({
               to: target.address,
-              value: BigInt(0),
+              value: params.value ?? BigInt(0),
               data: params.data as `0x${string}`,
             });
           }
@@ -2026,10 +2046,10 @@ export class Orchestrator {
     }
 
     // gasFee is in gas token units — exchange rate to PC is unknown without quoter.
-    // Use 1000x buffer; excess is refunded by swapAndBurnGas to the UEA.
-    const nativeValueForGas = protocolFee + (gasFee * BigInt(1000));
+    // Use 1000000x buffer; excess is refunded by swapAndBurnGas to the UEA.
+    const nativeValueForGas = protocolFee + (gasFee * BigInt(1000000));
     this.printLog(
-      `queryOutboundGasFee — [step 5] using 1000x buffer: nativeValueForGas=${nativeValueForGas}`
+      `queryOutboundGasFee — [step 5] using 1000000x buffer: nativeValueForGas=${nativeValueForGas}`
     );
 
     return { gasToken, gasFee, protocolFee, nativeValueForGas };
@@ -2708,7 +2728,9 @@ export class Orchestrator {
       }
     } else {
       // EVM: 20-byte hex address
-      if (targetAddress.toLowerCase() === ZERO_ADDRESS.toLowerCase()) {
+      // Zero address is allowed for multicall (data is array) — the actual targets are in the data entries.
+      const isMulticall = Array.isArray(params.data);
+      if (targetAddress.toLowerCase() === ZERO_ADDRESS.toLowerCase() && !isMulticall) {
         throw new Error(
           `Cannot send to zero address (0x0000...0000). ` +
             `This would result in permanent loss of funds.`
@@ -2771,13 +2793,30 @@ export class Orchestrator {
           // User provided explicit multicall array
           ceaMulticalls.push(...(params.data as MultiCall[]));
         } else {
-          // Single call with data. Native value (if any) is already delivered to
-          // CEA by the Vault via executeUniversalTx{value: amount}(). Attaching
-          // value to the call would revert if the target function is not payable.
-          // To call a payable function with value, use explicit multicalls.
+          // When ERC-20 funds are provided with a single payload, auto-prepend a
+          // transfer() call so the tokens minted to the CEA are forwarded to the
+          // target address. This mirrors the Route 1 behavior in buildExecuteMulticall.
+          if (params.funds?.amount) {
+            const token = (params.funds as { token: MoveableToken }).token;
+            if (token && token.mechanism !== 'native') {
+              const erc20Transfer = encodeFunctionData({
+                abi: ERC20_EVM,
+                functionName: 'transfer',
+                args: [targetAddress, params.funds.amount],
+              });
+              ceaMulticalls.push({
+                to: token.address as `0x${string}`,
+                value: BigInt(0),
+                data: erc20Transfer,
+              });
+            }
+          }
+          // Single call with data. Forward native value (if any) so the target
+          // contract receives it alongside the payload call. The vault deposits
+          // native value to the CEA, and the multicall forwards it to the target.
           ceaMulticalls.push({
             to: targetAddress,
-            value: BigInt(0),
+            value: params.value ?? BigInt(0),
             data: params.data as `0x${string}`,
           });
         }
@@ -2819,12 +2858,9 @@ export class Orchestrator {
       } else if (params.data) {
         // PAYLOAD-only (no value transfer): still need native token for chain namespace + gas fees
         prc20Token = this.getNativePRC20ForChain(targetChain);
-        // WORKAROUND: Push Chain precompile requires non-zero amount even for payload-only transactions.
-        // The Solidity contract supports amount=0 (TX_TYPE.GAS_AND_PAYLOAD), but the precompile rejects it.
-        // We use 1 wei as minimum to satisfy the precompile while sending essentially nothing.
-        burnAmount = BigInt(1); // Minimum 1 wei required by precompile
+        burnAmount = BigInt(0);
         this.printLog(
-          `executeUoaToCea — PAYLOAD-only: using native PRC-20 ${prc20Token} for chain ${targetChain} with minimum 1 wei (precompile requirement)`
+          `executeUoaToCea — PAYLOAD-only: using native PRC-20 ${prc20Token} for chain ${targetChain} with zero burn amount`
         );
       }
     }
@@ -2949,6 +2985,7 @@ export class Orchestrator {
         nonce: ueaNonce,
         balance: ueaBalance,
       },
+      _skipFeeLocking: true, // outbound executes on Push Chain, no external fee locking
     };
 
     const response = await this.execute(executeParams);
@@ -3031,9 +3068,9 @@ export class Orchestrator {
       } else {
         prc20Token = this.getNativePRC20ForChain(targetChain);
       }
-      burnAmount = BigInt(1); // Minimum for precompile
+      burnAmount = BigInt(0);
       this.printLog(
-        `executeUoaToCeaSvm — EXECUTE-only: using PRC-20 ${prc20Token} with minimum 1 wei (precompile requirement)`
+        `executeUoaToCeaSvm — EXECUTE-only: using PRC-20 ${prc20Token} with zero burn amount`
       );
     }
 
@@ -3144,6 +3181,7 @@ export class Orchestrator {
         nonce: ueaNonce,
         balance: ueaBalance,
       },
+      _skipFeeLocking: true, // outbound executes on Push Chain, no external fee locking
     };
 
     const response = await this.execute(executeParams);
@@ -3248,11 +3286,8 @@ export class Orchestrator {
     // query and relay execution, causing sendUniversalTxToUEA to revert with
     // InsufficientBalance. Pre-existing CEA funds remain parked and can be swept separately.
     let bridgeAmount = amount;
-    // CEA contract rejects amount=0 in sendUniversalTxToUEA (CEAErrors.InvalidInput).
-    // For payload-only outbound, use minimum 1 wei (mirrors burnAmount workaround below).
-    if (bridgeAmount === BigInt(0) && params.data) {
-      bridgeAmount = BigInt(1);
-    }
+    // Note: CEA contract may reject amount=0 in sendUniversalTxToUEA.
+    // Keeping bridgeAmount as-is (0) for payload-only to test precompile behavior.
 
     // For ERC20 tokens, add approve call for the bridge amount
     // (CEA approves gateway to spend the Vault-deposited amount)
@@ -3318,8 +3353,7 @@ export class Orchestrator {
     }
     // burnAmount = PRC20 to burn on Push Chain (NOT the bridge amount).
     // Vault deposits burnAmount to CEA. CEA uses burnAmount + pre-existing balance for the bridge.
-    // Fallback to BigInt(1) for payload-only outbound (precompile rejects amount=0).
-    const burnAmount = amount > BigInt(0) ? amount : BigInt(1);
+    const burnAmount = amount;
 
     this.printLog(
       `executeCeaToPush — prc20Token: ${prc20Token}, burnAmount: ${burnAmount.toString()}`
@@ -3423,6 +3457,7 @@ export class Orchestrator {
         nonce: ueaNonce,
         balance: ueaBalance,
       },
+      _skipFeeLocking: true, // outbound executes on Push Chain, no external fee locking
     };
 
     const response = await this.execute(executeParams);
@@ -3598,6 +3633,7 @@ export class Orchestrator {
         nonce: ueaNonce,
         balance: ueaBalance,
       },
+      _skipFeeLocking: true, // outbound executes on Push Chain, no external fee locking
     };
 
     const response = await this.execute(executeParams);

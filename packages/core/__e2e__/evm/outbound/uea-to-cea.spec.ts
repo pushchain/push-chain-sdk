@@ -38,6 +38,13 @@ const COUNTER_ABI = [
   { type: 'function', name: 'increment', inputs: [], outputs: [], stateMutability: 'nonpayable' },
 ] as const;
 
+// Payable counter contract (deployed on BNB Testnet — accepts native BNB via increment)
+const COUNTER_PAYABLE = '0xf4bd8c13da0f5831d7b6dd3275a39f14ec7ddaa6' as `0x${string}`;
+const COUNTER_PAYABLE_ABI = [
+  { type: 'function', name: 'count', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'increment', inputs: [], outputs: [], stateMutability: 'payable' },
+] as const;
+
 describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
   let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
   let ueaAddress: `0x${string}`;
@@ -248,7 +255,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         const params: UniversalExecuteParams = {
           to: {
-            address: COUNTER_A,
+            address: NATIVE_ADDRESS as `0x${string}`,
             chain: CHAIN.BNB_TESTNET,
           },
           data: [
@@ -390,7 +397,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         const params: UniversalExecuteParams = {
           to: {
-            address: TEST_TARGET,
+            address: NATIVE_ADDRESS as `0x${string}`,
             chain: CHAIN.BNB_TESTNET,
           },
           funds: {
@@ -478,20 +485,20 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         console.log('\n=== Test: Native pBNB + Counter Increment ===');
 
-        // Read counter BEFORE
+        // Read counter BEFORE (using payable counter that accepts native BNB)
         const counterBefore = await bscPublicClient.readContract({
-          address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
+          address: COUNTER_PAYABLE, abi: COUNTER_PAYABLE_ABI, functionName: 'count',
         }) as bigint;
-        console.log(`CounterA BEFORE: ${counterBefore}`);
+        console.log(`CounterPayable BEFORE: ${counterBefore}`);
 
         const incrementPayload = encodeFunctionData({
-          abi: COUNTER_ABI,
+          abi: COUNTER_PAYABLE_ABI,
           functionName: 'increment',
         });
 
         const params: UniversalExecuteParams = {
           to: {
-            address: COUNTER_A,
+            address: COUNTER_PAYABLE,
             chain: CHAIN.BNB_TESTNET,
           },
           value: parseEther('0.0001'),
@@ -525,9 +532,9 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         // Read counter AFTER
         const counterAfter = await bscPublicClient.readContract({
-          address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
+          address: COUNTER_PAYABLE, abi: COUNTER_PAYABLE_ABI, functionName: 'count',
         }) as bigint;
-        console.log(`CounterA AFTER: ${counterAfter}`);
+        console.log(`CounterPayable AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 360000);
     });   
@@ -729,7 +736,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         const params: UniversalExecuteParams = {
           to: {
-            address: TEST_TARGET,
+            address: NATIVE_ADDRESS as `0x${string}`,
             chain: CHAIN.BNB_TESTNET,
           },
           value: parseEther('0.0001'),
@@ -1095,7 +1102,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         const params: UniversalExecuteParams = {
           to: {
-            address: BSC_USDT_ADDRESS as `0x${string}`,
+            address: NATIVE_ADDRESS as `0x${string}`,
             chain: CHAIN.BNB_TESTNET,
           },
           funds: {
@@ -1135,7 +1142,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         if (skipE2E) return;
 
         console.log('\n=== Test: ERC20 CEA-Only, No Burn (Flow 3.5) ===');
-        console.log('Note: SDK uses burnAmount = 1 wei workaround (precompile rejects 0)');
+        console.log('Note: Payload-only with burnAmount = 0 (precompile fix deployed)');
 
         // No funds, no value — only data. CEA uses existing balance.
         const approvePayload = encodeFunctionData({
@@ -1146,7 +1153,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         const params: UniversalExecuteParams = {
           to: {
-            address: BSC_USDT_ADDRESS as `0x${string}`,
+            address: NATIVE_ADDRESS as `0x${string}`,
             chain: CHAIN.BNB_TESTNET,
           },
           // No value, no funds — GAS_AND_PAYLOAD type
@@ -1200,7 +1207,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         const params: UniversalExecuteParams = {
           to: {
-            address: BSC_USDT_ADDRESS as `0x${string}`,
+            address: NATIVE_ADDRESS as `0x${string}`,
             chain: CHAIN.BNB_TESTNET,
           },
           funds: {
@@ -1246,7 +1253,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         const params: UniversalExecuteParams = {
           to: {
-            address: TEST_TARGET,
+            address: NATIVE_ADDRESS as `0x${string}`,
             chain: CHAIN.BNB_TESTNET,
           },
           value: burnAmount, // Burns this amount on Push Chain
@@ -1348,7 +1355,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         const params: UniversalExecuteParams = {
           to: {
-            address: TEST_TARGET,
+            address: NATIVE_ADDRESS as `0x${string}`,
             chain: CHAIN.BNB_TESTNET,
           },
           value: parseEther('0.0001'),
@@ -1406,7 +1413,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         const params: UniversalExecuteParams = {
           to: {
-            address: TEST_TARGET,
+            address: NATIVE_ADDRESS as `0x${string}`,
             chain: CHAIN.BNB_TESTNET,
           },
           value: parseEther('0.0001'),
@@ -1475,7 +1482,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         const params: UniversalExecuteParams = {
           to: {
-            address: TEST_TARGET,
+            address: NATIVE_ADDRESS as `0x${string}`,
             chain: CHAIN.BNB_TESTNET,
           },
           funds: {
@@ -1545,7 +1552,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         const params: UniversalExecuteParams = {
           to: {
-            address: TEST_TARGET,
+            address: NATIVE_ADDRESS as `0x${string}`,
             chain: CHAIN.BNB_TESTNET,
           },
           funds: {

@@ -32,6 +32,7 @@ import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 // Test constants
 const TEST_TARGET = '0x1234567890123456789012345678901234567890' as `0x${string}`;
 const BSC_USDT_ADDRESS = '0xBC14F348BC9667be46b35Edc9B68653d86013DC5' as const;
+const NATIVE_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
 
 // Counter contract addresses (deployed on BNB Testnet 2026-03-14)
 const COUNTER_A = '0x7f0936bb90e7dcf3edb47199c2005e7184e44cf8' as `0x${string}`;
@@ -369,7 +370,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
 
         const params: UniversalExecuteParams = {
           from: { chain: CHAIN.BNB_TESTNET },
-          to: ueaAddress,
+          to: NATIVE_ADDRESS as `0x${string}`,
           data: [
             { to: COUNTER_ADDRESS_PAYABLE, value: BigInt(0), data: incrementPayload },
             { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: approvePayload },
@@ -558,7 +559,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
 
         const params: UniversalExecuteParams = {
           from: { chain: CHAIN.BNB_TESTNET },
-          to: ueaAddress,
+          to: NATIVE_ADDRESS as `0x${string}`,
           funds: {
             amount: BigInt(10000),
             token: usdtToken,
@@ -785,7 +786,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
 
         const params: UniversalExecuteParams = {
           from: { chain: CHAIN.BNB_TESTNET },
-          to: ueaAddress,
+          to: NATIVE_ADDRESS as `0x${string}`,
           value: parseEther('0.00005'),
           data: [
             { to: COUNTER_ADDRESS_PAYABLE, value: BigInt(0), data: incrementPayload },
@@ -1441,7 +1442,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
         // Hop 1 (Route 2): Native funds + counter increment
         const tx1 = await pushClient.universal.prepareTransaction({
           to: {
-            address: TEST_TARGET,
+            address: NATIVE_ADDRESS as `0x${string}`,
             chain: CHAIN.BNB_TESTNET,
           },
           value: parseEther('0.0001'),
@@ -1515,7 +1516,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
         // Hop 1 (Route 2): Native funds + multicall (both counters)
         const tx1 = await pushClient.universal.prepareTransaction({
           to: {
-            address: TEST_TARGET,
+            address: NATIVE_ADDRESS as `0x${string}`,
             chain: CHAIN.BNB_TESTNET,
           },
           value: parseEther('0.0001'),
@@ -1600,7 +1601,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
         // Hop 1 (Route 2): ERC20 funds + counter increment
         const tx1 = await pushClient.universal.prepareTransaction({
           to: {
-            address: TEST_TARGET,
+            address: NATIVE_ADDRESS as `0x${string}`,
             chain: CHAIN.BNB_TESTNET,
           },
           funds: {
@@ -1686,7 +1687,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
         // Hop 1 (Route 2): ERC20 funds + multicall (both counters)
         const tx1 = await pushClient.universal.prepareTransaction({
           to: {
-            address: TEST_TARGET,
+            address: NATIVE_ADDRESS as `0x${string}`,
             chain: CHAIN.BNB_TESTNET,
           },
           funds: {

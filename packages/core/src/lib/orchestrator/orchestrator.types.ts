@@ -127,6 +127,14 @@ export type ExecuteParams = {
     nonce: bigint;
     balance: bigint;
   };
+
+  /**
+   * Internal: Skip fee locking for outbound flows (UEA→CEA).
+   * Outbound txs execute entirely on Push Chain and don't need
+   * external-chain fee locking.
+   * @internal
+   */
+  _skipFeeLocking?: boolean;
 };
 
 /**
