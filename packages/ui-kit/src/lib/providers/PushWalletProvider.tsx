@@ -51,11 +51,8 @@ const PushWalletConfigDefault: ProviderConfigProps = {
 };
 
 const GlobalStyle = createGlobalStyle<{ uid: string }>`
-  [data-pw-wrapper='${(props) => props.uid}']{
-    #w3m-modal {
-      z-index: 9999 !important;
-      position: fixed !important;
-    }
+  w3m-modal {
+    z-index: 1000000000 !important;
   }
 `;
 
