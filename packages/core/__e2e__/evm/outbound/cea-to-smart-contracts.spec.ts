@@ -457,6 +457,71 @@ function buildOutboundMulticallPayload(
 }
 
 // ============================================================================
+// Helper: Build ERC-20 round-trip multicall entries (approve + sendUniversalTxToUEA)
+// Appends these to existing outbound calls so the CEA also creates an inbound STAKE.
+// ============================================================================
+function buildErc20RoundTripCalls(
+  ceaAddress: `0x${string}`,
+  userAddress: `0x${string}`,
+  sendBackAmount: bigint,
+  revertRecipient: `0x${string}`
+): Array<{ to: `0x${string}`; value: bigint; data: `0x${string}` }> {
+  const payloadData = encodeAbiParameters(
+    [
+      { name: 'action', type: 'uint8' },
+      { name: 'user', type: 'address' },
+      { name: 'executionPayload', type: 'bytes' },
+    ],
+    [0, userAddress, '0x'] // action=0 (STAKE)
+  );
+
+  const universalPayload = encodeAbiParameters(
+    [{
+      type: 'tuple',
+      components: [
+        { name: 'to', type: 'address' },
+        { name: 'value', type: 'uint256' },
+        { name: 'data', type: 'bytes' },
+        { name: 'gasLimit', type: 'uint256' },
+        { name: 'maxFeePerGas', type: 'uint256' },
+        { name: 'maxPriorityFeePerGas', type: 'uint256' },
+        { name: 'nonce', type: 'uint256' },
+        { name: 'deadline', type: 'uint256' },
+        { name: 'vType', type: 'uint8' },
+      ],
+    }],
+    [{
+      to: ZERO_ADDRESS,
+      value: BigInt(0),
+      data: payloadData,
+      gasLimit: BigInt(0),
+      maxFeePerGas: BigInt(0),
+      maxPriorityFeePerGas: BigInt(0),
+      nonce: BigInt(0),
+      deadline: BigInt(0),
+      vType: 1,
+    }]
+  );
+
+  const approveCalldata = encodeFunctionData({
+    abi: ERC20_EVM,
+    functionName: 'approve',
+    args: [UNIVERSAL_GATEWAY_BSC, sendBackAmount],
+  });
+
+  const sendBackCalldata = encodeFunctionData({
+    abi: CEA_EVM,
+    functionName: 'sendUniversalTxToUEA',
+    args: [BSC_USDT_ADDRESS, sendBackAmount, universalPayload, revertRecipient],
+  });
+
+  return [
+    { to: BSC_USDT_ADDRESS, value: BigInt(0), data: approveCalldata },
+    { to: ceaAddress, value: BigInt(0), data: sendBackCalldata },
+  ];
+}
+
+// ============================================================================
 // Helper: Wait for outbound relay and return external chain details
 // ============================================================================
 // Since the SDK's wait() only polls for outbound on Route 2 (UOA_TO_CEA),
@@ -760,61 +825,78 @@ describe('CEA Custom Contract: StakingExample (Outbound & Inbound)', () => {
     // 2. Payload (Data) — single counter increment
     // ============================================================================
     describe('2. Payload (Data)', () => {
-      it('should increment counter on BSC via StakingExample.triggerOutbound()', async () => {
+      it('should increment counter on BSC and verify inbound STAKE via round-trip', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Core Scenario 2: Payload (Data) ===');
+        console.log('\n=== Core Scenario 2: Payload (Data) — Round-Trip ===');
 
         const bridgeAmount = BigInt(10000);
+        const sendBackAmount = BigInt(5000);
         await ensureStakingHasPRC20(PUSDT_BNB_TOKEN, bridgeAmount);
 
-        // Read counter BEFORE
         const counterBefore = await bscPublicClient.readContract({
           address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
         console.log(`CounterA BEFORE: ${counterBefore}`);
 
+        const stakeBefore = await pushPublicClient.readContract({
+          address: STAKING_PROXY, abi: STAKING_EXAMPLE_ABI, functionName: 'getStake',
+          args: [ueaAddress, PUSDT_BNB_TOKEN],
+        }) as bigint;
+        console.log(`USDT Stake BEFORE: ${stakeBefore}`);
+
         const incrementData = encodeFunctionData({
-          abi: COUNTER_ABI,
-          functionName: 'increment',
+          abi: COUNTER_ABI, functionName: 'increment',
         });
 
-        const recipient = encodeAbiParameters(
-          [{ name: 'addr', type: 'address' }],
-          [COUNTER_A]
-        ) as `0x${string}`;
-
-        const payload = buildOutboundMulticallPayload([
+        const outboundCalls: Array<{ to: `0x${string}`; value: bigint; data: `0x${string}` }> = [
           { to: COUNTER_A, value: BigInt(0), data: incrementData },
-        ]);
+          ...buildErc20RoundTripCalls(stakingCeaAddress, ueaAddress, sendBackAmount, ueaAddress),
+        ];
+        const payload = buildOutboundMulticallPayload(outboundCalls);
 
-        await callTriggerOutbound(PUSDT_BNB_TOKEN, bridgeAmount, recipient, payload);
+        await callTriggerOutbound(PUSDT_BNB_TOKEN, bridgeAmount, '0x' as `0x${string}`, payload);
 
-        // Wait for RPC propagation
         await new Promise((r) => setTimeout(r, 5000));
-
-        // Read counter AFTER
         const counterAfter = await bscPublicClient.readContract({
           address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
         console.log(`CounterA AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
-      }, 360000);
+
+        // Wait for inbound relay
+        console.log('Waiting for inbound relay (polling USDT stake)...');
+        await new Promise((r) => setTimeout(r, 30000));
+        const pollStart = Date.now();
+        let stakeAfter = stakeBefore;
+        while (Date.now() - pollStart < 300000) {
+          stakeAfter = await pushPublicClient.readContract({
+            address: STAKING_PROXY, abi: STAKING_EXAMPLE_ABI, functionName: 'getStake',
+            args: [ueaAddress, PUSDT_BNB_TOKEN],
+          }) as bigint;
+          const elapsed = Math.round((Date.now() - pollStart) / 1000);
+          console.log(`Polling USDT stake: ${stakeAfter} (elapsed: ${elapsed}s)`);
+          if (stakeAfter > stakeBefore) break;
+          await new Promise((r) => setTimeout(r, 10000));
+        }
+        console.log(`USDT Stake AFTER: ${stakeAfter}`);
+        expect(stakeAfter).toBeGreaterThan(stakeBefore);
+      }, 600000);
     });
 
     // ============================================================================
     // 3. Multicall — increment both counters
     // ============================================================================
     describe('3. Multicall', () => {
-      it('should increment both counters via multicall through StakingExample.triggerOutbound()', async () => {
+      it('should increment both counters on BSC and verify inbound STAKE via round-trip', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Core Scenario 3: Multicall ===');
+        console.log('\n=== Core Scenario 3: Multicall — Round-Trip ===');
 
         const bridgeAmount = BigInt(10000);
+        const sendBackAmount = BigInt(5000);
         await ensureStakingHasPRC20(PUSDT_BNB_TOKEN, bridgeAmount);
 
-        // Read both counters BEFORE
         const counterABefore = await bscPublicClient.readContract({
           address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
@@ -823,27 +905,26 @@ describe('CEA Custom Contract: StakingExample (Outbound & Inbound)', () => {
         }) as bigint;
         console.log(`CounterA BEFORE: ${counterABefore}, CounterB BEFORE: ${counterBBefore}`);
 
+        const stakeBefore = await pushPublicClient.readContract({
+          address: STAKING_PROXY, abi: STAKING_EXAMPLE_ABI, functionName: 'getStake',
+          args: [ueaAddress, PUSDT_BNB_TOKEN],
+        }) as bigint;
+        console.log(`USDT Stake BEFORE: ${stakeBefore}`);
+
         const incrementData = encodeFunctionData({
-          abi: COUNTER_ABI,
-          functionName: 'increment',
+          abi: COUNTER_ABI, functionName: 'increment',
         });
 
-        const recipient = encodeAbiParameters(
-          [{ name: 'addr', type: 'address' }],
-          [COUNTER_A]
-        ) as `0x${string}`;
-
-        const payload = buildOutboundMulticallPayload([
+        const outboundCalls: Array<{ to: `0x${string}`; value: bigint; data: `0x${string}` }> = [
           { to: COUNTER_A, value: BigInt(0), data: incrementData },
           { to: COUNTER_B, value: BigInt(0), data: incrementData },
-        ]);
+          ...buildErc20RoundTripCalls(stakingCeaAddress, ueaAddress, sendBackAmount, ueaAddress),
+        ];
+        const payload = buildOutboundMulticallPayload(outboundCalls);
 
-        await callTriggerOutbound(PUSDT_BNB_TOKEN, bridgeAmount, recipient, payload);
+        await callTriggerOutbound(PUSDT_BNB_TOKEN, bridgeAmount, '0x' as `0x${string}`, payload);
 
-        // Wait for RPC propagation
         await new Promise((r) => setTimeout(r, 5000));
-
-        // Read both counters AFTER
         const counterAAfter = await bscPublicClient.readContract({
           address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
@@ -853,138 +934,288 @@ describe('CEA Custom Contract: StakingExample (Outbound & Inbound)', () => {
         console.log(`CounterA AFTER: ${counterAAfter}, CounterB AFTER: ${counterBAfter}`);
         expect(counterAAfter).toBeGreaterThan(counterABefore);
         expect(counterBAfter).toBeGreaterThan(counterBBefore);
-      }, 360000);
+
+        console.log('Waiting for inbound relay (polling USDT stake)...');
+        await new Promise((r) => setTimeout(r, 30000));
+        const pollStart = Date.now();
+        let stakeAfter = stakeBefore;
+        while (Date.now() - pollStart < 300000) {
+          stakeAfter = await pushPublicClient.readContract({
+            address: STAKING_PROXY, abi: STAKING_EXAMPLE_ABI, functionName: 'getStake',
+            args: [ueaAddress, PUSDT_BNB_TOKEN],
+          }) as bigint;
+          const elapsed = Math.round((Date.now() - pollStart) / 1000);
+          console.log(`Polling USDT stake: ${stakeAfter} (elapsed: ${elapsed}s)`);
+          if (stakeAfter > stakeBefore) break;
+          await new Promise((r) => setTimeout(r, 10000));
+        }
+        console.log(`USDT Stake AFTER: ${stakeAfter}`);
+        expect(stakeAfter).toBeGreaterThan(stakeBefore);
+      }, 600000);
     });
 
     // ============================================================================
     // 4. Funds + Payload — ERC-20 funds + counter increment
     // ============================================================================
     describe('4. Funds + Payload', () => {
-      it('should send ERC-20 pUSDT and increment counter via StakingExample.triggerOutbound()', async () => {
+      it('should send ERC-20 pUSDT, increment counter, and verify inbound STAKE via round-trip', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Core Scenario 4: Funds + Payload ===');
+        console.log('\n=== Core Scenario 4: Funds + Payload — Round-Trip ===');
 
         const bridgeAmount = BigInt(10000);
+        const sendBackAmount = BigInt(5000);
         await ensureStakingHasPRC20(PUSDT_BNB_TOKEN, bridgeAmount);
 
-        // Read counter BEFORE
         const counterBefore = await bscPublicClient.readContract({
           address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
         console.log(`CounterA BEFORE: ${counterBefore}`);
 
+        const stakeBefore = await pushPublicClient.readContract({
+          address: STAKING_PROXY, abi: STAKING_EXAMPLE_ABI, functionName: 'getStake',
+          args: [ueaAddress, PUSDT_BNB_TOKEN],
+        }) as bigint;
+        console.log(`USDT Stake BEFORE: ${stakeBefore}`);
+
         const incrementData = encodeFunctionData({
-          abi: COUNTER_ABI,
-          functionName: 'increment',
+          abi: COUNTER_ABI, functionName: 'increment',
         });
 
-        const recipient = encodeAbiParameters(
-          [{ name: 'addr', type: 'address' }],
-          [COUNTER_A]
-        ) as `0x${string}`;
-
-        const payload = buildOutboundMulticallPayload([
+        const outboundCalls: Array<{ to: `0x${string}`; value: bigint; data: `0x${string}` }> = [
           { to: COUNTER_A, value: BigInt(0), data: incrementData },
-        ]);
+          ...buildErc20RoundTripCalls(stakingCeaAddress, ueaAddress, sendBackAmount, ueaAddress),
+        ];
+        const payload = buildOutboundMulticallPayload(outboundCalls);
 
-        await callTriggerOutbound(PUSDT_BNB_TOKEN, bridgeAmount, recipient, payload);
+        await callTriggerOutbound(PUSDT_BNB_TOKEN, bridgeAmount, '0x' as `0x${string}`, payload);
 
-        // Wait for RPC propagation
         await new Promise((r) => setTimeout(r, 5000));
-
-        // Read counter AFTER
         const counterAfter = await bscPublicClient.readContract({
           address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
         console.log(`CounterA AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
-      }, 360000);
+
+        console.log('Waiting for inbound relay (polling USDT stake)...');
+        await new Promise((r) => setTimeout(r, 30000));
+        const pollStart = Date.now();
+        let stakeAfter = stakeBefore;
+        while (Date.now() - pollStart < 300000) {
+          stakeAfter = await pushPublicClient.readContract({
+            address: STAKING_PROXY, abi: STAKING_EXAMPLE_ABI, functionName: 'getStake',
+            args: [ueaAddress, PUSDT_BNB_TOKEN],
+          }) as bigint;
+          const elapsed = Math.round((Date.now() - pollStart) / 1000);
+          console.log(`Polling USDT stake: ${stakeAfter} (elapsed: ${elapsed}s)`);
+          if (stakeAfter > stakeBefore) break;
+          await new Promise((r) => setTimeout(r, 10000));
+        }
+        console.log(`USDT Stake AFTER: ${stakeAfter}`);
+        expect(stakeAfter).toBeGreaterThan(stakeBefore);
+      }, 600000);
     });
 
     // ============================================================================
     // 5. Funds + Multicall — ERC-20 funds + transfer + counter increment
     // ============================================================================
     describe('5. Funds + Multicall', () => {
-      it('should send ERC-20 pUSDT with ERC20 transfer + counter increment via StakingExample.triggerOutbound()', async () => {
+      it('should send ERC-20 pUSDT, transfer + increment counter, and verify inbound STAKE via round-trip', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Core Scenario 5: Funds + Multicall ===');
+        console.log('\n=== Core Scenario 5: Funds + Multicall — Round-Trip ===');
 
-        const bridgeAmount = BigInt(10000);
+        const bridgeAmount = BigInt(20000); // extra to cover transfer + sendBack
+        const sendBackAmount = BigInt(5000);
+        const transferAmount = BigInt(10000);
         await ensureStakingHasPRC20(PUSDT_BNB_TOKEN, bridgeAmount);
 
-        // Read counter BEFORE
         const counterBefore = await bscPublicClient.readContract({
           address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
         console.log(`CounterA BEFORE: ${counterBefore}`);
 
+        const stakeBefore = await pushPublicClient.readContract({
+          address: STAKING_PROXY, abi: STAKING_EXAMPLE_ABI, functionName: 'getStake',
+          args: [ueaAddress, PUSDT_BNB_TOKEN],
+        }) as bigint;
+        console.log(`USDT Stake BEFORE: ${stakeBefore}`);
+
         const erc20TransferData = encodeFunctionData({
           abi: ERC20_EVM,
           functionName: 'transfer',
-          args: [TEST_TARGET, bridgeAmount],
+          args: [TEST_TARGET, transferAmount],
         });
 
         const incrementData = encodeFunctionData({
-          abi: COUNTER_ABI,
-          functionName: 'increment',
+          abi: COUNTER_ABI, functionName: 'increment',
         });
 
-        const recipient = encodeAbiParameters(
-          [{ name: 'addr', type: 'address' }],
-          [TEST_TARGET]
-        ) as `0x${string}`;
-
-        const payload = buildOutboundMulticallPayload([
+        const outboundCalls: Array<{ to: `0x${string}`; value: bigint; data: `0x${string}` }> = [
           { to: BSC_USDT_ADDRESS, value: BigInt(0), data: erc20TransferData },
           { to: COUNTER_A, value: BigInt(0), data: incrementData },
-        ]);
+          ...buildErc20RoundTripCalls(stakingCeaAddress, ueaAddress, sendBackAmount, ueaAddress),
+        ];
+        const payload = buildOutboundMulticallPayload(outboundCalls);
 
-        await callTriggerOutbound(PUSDT_BNB_TOKEN, bridgeAmount, recipient, payload);
+        await callTriggerOutbound(PUSDT_BNB_TOKEN, bridgeAmount, '0x' as `0x${string}`, payload);
 
-        // Wait for RPC propagation
         await new Promise((r) => setTimeout(r, 5000));
-
-        // Read counter AFTER
         const counterAfter = await bscPublicClient.readContract({
           address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
         console.log(`CounterA AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
-      }, 360000);
+
+        console.log('Waiting for inbound relay (polling USDT stake)...');
+        await new Promise((r) => setTimeout(r, 30000));
+        const pollStart = Date.now();
+        let stakeAfter = stakeBefore;
+        while (Date.now() - pollStart < 300000) {
+          stakeAfter = await pushPublicClient.readContract({
+            address: STAKING_PROXY, abi: STAKING_EXAMPLE_ABI, functionName: 'getStake',
+            args: [ueaAddress, PUSDT_BNB_TOKEN],
+          }) as bigint;
+          const elapsed = Math.round((Date.now() - pollStart) / 1000);
+          console.log(`Polling USDT stake: ${stakeAfter} (elapsed: ${elapsed}s)`);
+          if (stakeAfter > stakeBefore) break;
+          await new Promise((r) => setTimeout(r, 10000));
+        }
+        console.log(`USDT Stake AFTER: ${stakeAfter}`);
+        expect(stakeAfter).toBeGreaterThan(stakeBefore);
+      }, 600000);
     });
 
     // ============================================================================
     // 6. Native Funds — pBNB outbound
     // ============================================================================
     describe('6. Native Funds', () => {
-      it('should send native pBNB outbound via StakingExample.triggerOutbound()', async () => {
+      it('should send native pBNB outbound and verify inbound STAKE via round-trip', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Core Scenario 6: Native Funds (pBNB) ===');
+        console.log('\n=== Core Scenario 6: Native Funds (pBNB) — Round-Trip ===');
 
         const bridgeAmount = parseEther('0.0005');
+        const sendBackAmount = parseEther('0.00025'); // half goes back as inbound
+        await ensureStakingHasPRC20(PBNB_TOKEN, bridgeAmount);
 
-        const recipient = encodeAbiParameters(
-          [{ name: 'addr', type: 'address' }],
-          [TEST_TARGET]
-        ) as `0x${string}`;
+        // Read stake BEFORE
+        const stakeBefore = await pushPublicClient.readContract({
+          address: STAKING_PROXY,
+          abi: STAKING_EXAMPLE_ABI,
+          functionName: 'getStake',
+          args: [ueaAddress, PBNB_TOKEN],
+        }) as bigint;
+        console.log(`pBNB Stake BEFORE: ${stakeBefore}`);
 
-        await callTriggerOutbound(PBNB_TOKEN, bridgeAmount, recipient, '0x');
-      }, 360000);
+        // Build round-trip payload for native BNB:
+        // CEA on BSC calls sendUniversalTxToUEA with native BNB → creates inbound STAKE on Push Chain
+        const payloadData = encodeAbiParameters(
+          [
+            { name: 'action', type: 'uint8' },
+            { name: 'user', type: 'address' },
+            { name: 'executionPayload', type: 'bytes' },
+          ],
+          [0, ueaAddress, '0x'] // action=0 (STAKE)
+        );
+
+        const universalPayload = encodeAbiParameters(
+          [{
+            type: 'tuple',
+            components: [
+              { name: 'to', type: 'address' },
+              { name: 'value', type: 'uint256' },
+              { name: 'data', type: 'bytes' },
+              { name: 'gasLimit', type: 'uint256' },
+              { name: 'maxFeePerGas', type: 'uint256' },
+              { name: 'maxPriorityFeePerGas', type: 'uint256' },
+              { name: 'nonce', type: 'uint256' },
+              { name: 'deadline', type: 'uint256' },
+              { name: 'vType', type: 'uint8' },
+            ],
+          }],
+          [{
+            to: ZERO_ADDRESS,
+            value: BigInt(0),
+            data: payloadData,
+            gasLimit: BigInt(0),
+            maxFeePerGas: BigInt(0),
+            maxPriorityFeePerGas: BigInt(0),
+            nonce: BigInt(0),
+            deadline: BigInt(0),
+            vType: 1,
+          }]
+        );
+
+        // For native BNB: no approve needed, just sendUniversalTxToUEA with msg.value
+        const sendBackCalldata = encodeFunctionData({
+          abi: CEA_EVM,
+          functionName: 'sendUniversalTxToUEA',
+          args: [ZERO_ADDRESS, sendBackAmount, universalPayload, ueaAddress],
+        });
+
+        const multicallEncoded = encodeAbiParameters(
+          [{
+            type: 'tuple[]',
+            components: [
+              { name: 'to', type: 'address' },
+              { name: 'value', type: 'uint256' },
+              { name: 'data', type: 'bytes' },
+            ],
+          }],
+          [[{
+            to: stakingCeaAddress,
+            value: BigInt(0), // CEA already has native BNB from Vault; self-calls must have value=0
+            data: sendBackCalldata,
+          }]]
+        );
+
+        const outboundPayload = `${UEA_MULTICALL_SELECTOR}${multicallEncoded.slice(2)}` as `0x${string}`;
+        console.log(`Round-trip payload length: ${outboundPayload.length} chars`);
+
+        // Use empty recipient (park funds in CEA) + round-trip payload for inbound
+        await callTriggerOutbound(PBNB_TOKEN, bridgeAmount, '0x' as `0x${string}`, outboundPayload);
+
+        // Wait for inbound relay — poll stake balance on Push Chain
+        console.log('Waiting for inbound relay (polling pBNB stake balance)...');
+        const INBOUND_INITIAL_WAIT = 30000;
+        const INBOUND_POLL_INTERVAL = 10000;
+        const INBOUND_TIMEOUT = 300000;
+
+        await new Promise((r) => setTimeout(r, INBOUND_INITIAL_WAIT));
+
+        const pollStart = Date.now();
+        let stakeAfter = stakeBefore;
+        while (Date.now() - pollStart < INBOUND_TIMEOUT) {
+          stakeAfter = await pushPublicClient.readContract({
+            address: STAKING_PROXY,
+            abi: STAKING_EXAMPLE_ABI,
+            functionName: 'getStake',
+            args: [ueaAddress, PBNB_TOKEN],
+          }) as bigint;
+          const elapsed = Math.round((Date.now() - pollStart) / 1000);
+          console.log(`Polling pBNB stake: ${stakeAfter} (elapsed: ${elapsed}s)`);
+          if (stakeAfter > stakeBefore) break;
+          await new Promise((r) => setTimeout(r, INBOUND_POLL_INTERVAL));
+        }
+
+        console.log(`pBNB Stake AFTER: ${stakeAfter}`);
+        expect(stakeAfter).toBeGreaterThan(stakeBefore);
+      }, 600000);
     });
 
     // ============================================================================
     // 7. Native Funds + Payload — pBNB + counter increment
     // ============================================================================
     describe('7. Native Funds + Payload', () => {
-      it('should send native pBNB and increment counter via StakingExample.triggerOutbound()', async () => {
+      it('should send native pBNB, increment BSC counter, and verify inbound STAKE via round-trip', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Core Scenario 7: Native Funds + Payload (pBNB + counter) ===');
+        console.log('\n=== Core Scenario 7: Native Funds + Payload (pBNB + counter + round-trip) ===');
 
         const bridgeAmount = parseEther('0.0005');
+        const sendBackAmount = parseEther('0.00025');
+        await ensureStakingHasPRC20(PBNB_TOKEN, bridgeAmount);
 
         // Read counter BEFORE
         const counterBefore = await bscPublicClient.readContract({
@@ -992,32 +1223,125 @@ describe('CEA Custom Contract: StakingExample (Outbound & Inbound)', () => {
         }) as bigint;
         console.log(`CounterA BEFORE: ${counterBefore}`);
 
+        // Read pBNB stake BEFORE
+        const stakeBefore = await pushPublicClient.readContract({
+          address: STAKING_PROXY,
+          abi: STAKING_EXAMPLE_ABI,
+          functionName: 'getStake',
+          args: [ueaAddress, PBNB_TOKEN],
+        }) as bigint;
+        console.log(`pBNB Stake BEFORE: ${stakeBefore}`);
+
         const incrementData = encodeFunctionData({
           abi: COUNTER_ABI,
           functionName: 'increment',
         });
 
-        const recipient = encodeAbiParameters(
-          [{ name: 'addr', type: 'address' }],
-          [COUNTER_A]
-        ) as `0x${string}`;
+        // Build round-trip payload: increment counter on BSC + sendUniversalTxToUEA for inbound STAKE
+        const payloadData = encodeAbiParameters(
+          [
+            { name: 'action', type: 'uint8' },
+            { name: 'user', type: 'address' },
+            { name: 'executionPayload', type: 'bytes' },
+          ],
+          [0, ueaAddress, '0x'] // action=0 (STAKE)
+        );
 
-        const payload = buildOutboundMulticallPayload([
-          { to: COUNTER_A, value: BigInt(0), data: incrementData },
-        ]);
+        const universalPayload = encodeAbiParameters(
+          [{
+            type: 'tuple',
+            components: [
+              { name: 'to', type: 'address' },
+              { name: 'value', type: 'uint256' },
+              { name: 'data', type: 'bytes' },
+              { name: 'gasLimit', type: 'uint256' },
+              { name: 'maxFeePerGas', type: 'uint256' },
+              { name: 'maxPriorityFeePerGas', type: 'uint256' },
+              { name: 'nonce', type: 'uint256' },
+              { name: 'deadline', type: 'uint256' },
+              { name: 'vType', type: 'uint8' },
+            ],
+          }],
+          [{
+            to: ZERO_ADDRESS,
+            value: BigInt(0),
+            data: payloadData,
+            gasLimit: BigInt(0),
+            maxFeePerGas: BigInt(0),
+            maxPriorityFeePerGas: BigInt(0),
+            nonce: BigInt(0),
+            deadline: BigInt(0),
+            vType: 1,
+          }]
+        );
 
-        await callTriggerOutbound(PBNB_TOKEN, bridgeAmount, recipient, payload);
+        const sendBackCalldata = encodeFunctionData({
+          abi: CEA_EVM,
+          functionName: 'sendUniversalTxToUEA',
+          args: [ZERO_ADDRESS, sendBackAmount, universalPayload, ueaAddress],
+        });
 
-        // Wait for RPC propagation
+        // CEA multicall: increment counter + sendUniversalTxToUEA for inbound
+        const multicallEncoded = encodeAbiParameters(
+          [{
+            type: 'tuple[]',
+            components: [
+              { name: 'to', type: 'address' },
+              { name: 'value', type: 'uint256' },
+              { name: 'data', type: 'bytes' },
+            ],
+          }],
+          [[
+            { to: COUNTER_A, value: BigInt(0), data: incrementData },
+            {
+              to: stakingCeaAddress,
+              value: BigInt(0), // CEA already has native BNB from Vault; self-calls must have value=0
+              data: sendBackCalldata,
+            },
+          ]]
+        );
+
+        const outboundPayload = `${UEA_MULTICALL_SELECTOR}${multicallEncoded.slice(2)}` as `0x${string}`;
+        console.log(`Round-trip payload length: ${outboundPayload.length} chars`);
+
+        // Use empty recipient (park funds in CEA) + round-trip payload
+        await callTriggerOutbound(PBNB_TOKEN, bridgeAmount, '0x' as `0x${string}`, outboundPayload);
+
+        // Wait for RPC propagation then check counter
         await new Promise((r) => setTimeout(r, 5000));
 
-        // Read counter AFTER
         const counterAfter = await bscPublicClient.readContract({
           address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
         console.log(`CounterA AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
-      }, 360000);
+
+        // Wait for inbound relay — poll stake balance on Push Chain
+        console.log('Waiting for inbound relay (polling pBNB stake balance)...');
+        const INBOUND_INITIAL_WAIT = 30000;
+        const INBOUND_POLL_INTERVAL = 10000;
+        const INBOUND_TIMEOUT = 300000;
+
+        await new Promise((r) => setTimeout(r, INBOUND_INITIAL_WAIT));
+
+        const pollStart = Date.now();
+        let stakeAfter = stakeBefore;
+        while (Date.now() - pollStart < INBOUND_TIMEOUT) {
+          stakeAfter = await pushPublicClient.readContract({
+            address: STAKING_PROXY,
+            abi: STAKING_EXAMPLE_ABI,
+            functionName: 'getStake',
+            args: [ueaAddress, PBNB_TOKEN],
+          }) as bigint;
+          const elapsed = Math.round((Date.now() - pollStart) / 1000);
+          console.log(`Polling pBNB stake: ${stakeAfter} (elapsed: ${elapsed}s)`);
+          if (stakeAfter > stakeBefore) break;
+          await new Promise((r) => setTimeout(r, INBOUND_POLL_INTERVAL));
+        }
+
+        console.log(`pBNB Stake AFTER: ${stakeAfter}`);
+        expect(stakeAfter).toBeGreaterThan(stakeBefore);
+      }, 600000);
     });
 
     // ============================================================================
