@@ -34,6 +34,10 @@ const TEST_TARGET = '0x1234567890123456789012345678901234567890' as `0x${string}
 const BSC_USDT_ADDRESS = '0xBC14F348BC9667be46b35Edc9B68653d86013DC5' as const;
 const NATIVE_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
 
+// PRC-20 token on Push Chain (pUSDT for BNB chain) — used for multicall approve tests
+// that execute ON Push Chain (BSC_USDT_ADDRESS is NOT an ERC-20 on Push Chain)
+const PUSH_CHAIN_PUSDT = '0x2f98B4235FD2BA0173a2B056D722879360B12E7b' as `0x${string}`;
+
 // Counter contract addresses (deployed on BNB Testnet 2026-03-14)
 const COUNTER_A = '0x7f0936bb90e7dcf3edb47199c2005e7184e44cf8' as `0x${string}`;
 const COUNTER_B = '0x7dd2f6d20cd2c8f24d8c6c7de48c4b39c6aa9b18' as `0x${string}`;
@@ -373,7 +377,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
           to: NATIVE_ADDRESS as `0x${string}`,
           data: [
             { to: COUNTER_ADDRESS_PAYABLE, value: BigInt(0), data: incrementPayload },
-            { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: approvePayload },
+            { to: PUSH_CHAIN_PUSDT, value: BigInt(0), data: approvePayload },
           ],
         };
 
@@ -566,7 +570,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
           },
           data: [
             { to: COUNTER_ADDRESS_PAYABLE, value: BigInt(0), data: incrementPayload },
-            { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: approvePayload },
+            { to: PUSH_CHAIN_PUSDT, value: BigInt(0), data: approvePayload },
           ],
         };
 
@@ -790,7 +794,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
           value: parseEther('0.00005'),
           data: [
             { to: COUNTER_ADDRESS_PAYABLE, value: BigInt(0), data: incrementPayload },
-            { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: approvePayload },
+            { to: PUSH_CHAIN_PUSDT, value: BigInt(0), data: approvePayload },
           ],
         };
 

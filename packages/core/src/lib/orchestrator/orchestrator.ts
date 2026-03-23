@@ -93,6 +93,7 @@ import {
 import {
   buildExecuteMulticall,
   buildCeaMulticallPayload,
+  buildInboundUniversalPayload,
   buildOutboundRequest,
   buildSendUniversalTxToUEA,
   buildApproveAndInteract,
@@ -2162,7 +2163,8 @@ export class Orchestrator {
   composeCascade(
     segments: CascadeSegment[],
     ueaAddress: `0x${string}`,
-    ueaBalance?: bigint
+    ueaBalance?: bigint,
+    ueaNonce?: bigint
   ): MultiCall[] {
     let accumulatedPushMulticalls: MultiCall[] = [];
     const gatewayPcAddress = this.getUniversalGatewayPCAddress();
@@ -2249,13 +2251,16 @@ export class Orchestrator {
         }
 
         case 'INBOUND_FROM_CEA': {
-          // The accumulated multicalls = what runs on Push Chain AFTER inbound arrives
+          // The accumulated multicalls = what runs on Push Chain AFTER inbound arrives.
+          // Wrap in UniversalPayload struct with correct UEA nonce for the relay.
           let intermediatePayload: `0x${string}` = '0x';
           if (accumulatedPushMulticalls.length > 0) {
-            intermediatePayload = this._buildMulticallPayloadData(
+            const multicallPayload = this._buildMulticallPayloadData(
               ueaAddress,
               accumulatedPushMulticalls
             );
+            // +1: the outbound tx consumes one nonce via execute()
+            intermediatePayload = buildInboundUniversalPayload(multicallPayload, { nonce: (ueaNonce ?? BigInt(0)) + BigInt(1) });
           }
 
           const hop = segment.hops[0];
@@ -2442,9 +2447,11 @@ export class Orchestrator {
         }
 
         // Multi-hop: compose cascade bottom-to-top
-        // Fetch UEA balance so composeCascade can allocate native value for gas swaps
+        // Fetch UEA balance + nonce so composeCascade can allocate native value and build inbound payloads
         const ueaBalance = await this.pushClient.getBalance(ueaAddress);
-        const composedMulticalls = this.composeCascade(segments, ueaAddress, ueaBalance);
+        const ueaCodeCascade = await this.pushClient.publicClient.getCode({ address: ueaAddress });
+        const ueaNonceCascade = ueaCodeCascade !== undefined ? await this.getUEANonce(ueaAddress) : BigInt(0);
+        const composedMulticalls = this.composeCascade(segments, ueaAddress, ueaBalance, ueaNonceCascade);
 
         // Execute the composed multicall as a single Push Chain tx
         const executeParams: ExecuteParams = {
@@ -3304,11 +3311,17 @@ export class Orchestrator {
       });
     }
 
+    // Pre-fetch UEA nonce — needed for the inbound UniversalPayload struct
+    const ueaCode = await this.pushClient.publicClient.getCode({ address: ueaAddress });
+    const isUEADeployed = ueaCode !== undefined;
+    const ueaNonce = isUEADeployed ? await this.getUEANonce(ueaAddress) : BigInt(0);
+
     // Build payload for Push Chain execution (if any)
-    // This is what happens AFTER funds arrive on Push Chain
+    // This is what happens AFTER funds arrive on Push Chain.
+    // The relay expects a full UniversalPayload struct (to, value, data, gasLimit, ...),
+    // where `data` contains the multicall payload (with UEA_MULTICALL_SELECTOR prefix).
     let pushPayload: `0x${string}` = '0x';
     if (params.data) {
-      // If there's data, build multicall for Push Chain execution
       const multicallData = buildExecuteMulticall({
         execute: {
           to: pushDestination,
@@ -3317,7 +3330,10 @@ export class Orchestrator {
         },
         ueaAddress,
       });
-      pushPayload = this._buildMulticallPayloadData(pushDestination, multicallData);
+      const multicallPayload = this._buildMulticallPayloadData(pushDestination, multicallData);
+      // Use ueaNonce + 1: the outbound tx itself consumes one nonce via execute(),
+      // so the inbound will arrive when the UEA nonce is already incremented.
+      pushPayload = buildInboundUniversalPayload(multicallPayload, { nonce: ueaNonce + BigInt(1) });
     }
 
     // Build sendUniversalTxToUEA self-call on CEA
@@ -3385,14 +3401,10 @@ export class Orchestrator {
       )}`
     );
 
-    // 10. Pre-fetch UEA status early — balance is needed for gas value calculation
+    // 10. Fetch UEA balance — needed for gas value calculation
+    // (UEA code + nonce already fetched above for the inbound UniversalPayload)
     const gatewayPcAddress = this.getUniversalGatewayPCAddress();
-    const [ueaCode, ueaBalance] = await Promise.all([
-      this.pushClient.publicClient.getCode({ address: ueaAddress }),
-      this.pushClient.getBalance(ueaAddress),
-    ]);
-    const isUEADeployed = ueaCode !== undefined;
-    const ueaNonce = isUEADeployed ? await this.getUEANonce(ueaAddress) : BigInt(0);
+    const ueaBalance = await this.pushClient.getBalance(ueaAddress);
 
     // 11. Query gas fees from UniversalCore
     let gasFee = BigInt(0);
@@ -3916,7 +3928,12 @@ export class Orchestrator {
           amount = params.value;
         }
 
+        // Fetch UEA nonce for inbound UniversalPayload
+        const ueaCodeHop = await this.pushClient.publicClient.getCode({ address: ueaAddress });
+        const ueaNonceHop = ueaCodeHop !== undefined ? await this.getUEANonce(ueaAddress) : BigInt(0);
+
         // Build Push Chain payload (what executes after inbound arrives)
+        // Wrap in UniversalPayload struct for the relay.
         let pushPayload: `0x${string}` = '0x';
         if (params.data) {
           const multicallData = buildExecuteMulticall({
@@ -3927,7 +3944,8 @@ export class Orchestrator {
             },
             ueaAddress,
           });
-          pushPayload = this._buildMulticallPayloadData(pushDestination, multicallData);
+          const multicallPayload = this._buildMulticallPayloadData(pushDestination, multicallData);
+          pushPayload = buildInboundUniversalPayload(multicallPayload, { nonce: ueaNonceHop + BigInt(1) });
         }
 
         // Build sendUniversalTxToUEA self-call on CEA (to=CEA, value=0)

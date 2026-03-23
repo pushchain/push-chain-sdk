@@ -164,6 +164,61 @@ export function buildCeaMulticallPayload(multicalls: MultiCall[]): `0x${string}`
 }
 
 /**
+ * Build an ABI-encoded UniversalPayload struct for inbound relay (Route 3 CEA→Push).
+ *
+ * The relay and Push Chain gateway expect the payload parameter of sendUniversalTxToUEA
+ * to be a full UniversalPayload struct: (address to, uint256 value, bytes data, uint256 gasLimit,
+ * uint256 maxFeePerGas, uint256 maxPriorityFeePerGas, uint256 nonce, uint256 deadline, uint8 vType).
+ *
+ * The `data` field inside the struct contains the multicall payload (with UEA_MULTICALL_SELECTOR prefix)
+ * which the UEA uses to execute calls on Push Chain.
+ *
+ * @param multicallData - The multicall payload (selector + abi.encode(Multicall[]))
+ * @param opts - Optional overrides for gasLimit, nonce, deadline
+ * @returns ABI-encoded UniversalPayload struct
+ */
+export function buildInboundUniversalPayload(
+  multicallData: `0x${string}`,
+  opts?: {
+    gasLimit?: bigint;
+    nonce?: bigint;
+    deadline?: bigint;
+  }
+): `0x${string}` {
+  return encodeAbiParameters(
+    [
+      {
+        type: 'tuple',
+        components: [
+          { name: 'to', type: 'address' },
+          { name: 'value', type: 'uint256' },
+          { name: 'data', type: 'bytes' },
+          { name: 'gasLimit', type: 'uint256' },
+          { name: 'maxFeePerGas', type: 'uint256' },
+          { name: 'maxPriorityFeePerGas', type: 'uint256' },
+          { name: 'nonce', type: 'uint256' },
+          { name: 'deadline', type: 'uint256' },
+          { name: 'vType', type: 'uint8' },
+        ],
+      },
+    ],
+    [
+      {
+        to: ZERO_ADDRESS as `0x${string}`,
+        value: BigInt(0),
+        data: multicallData,
+        gasLimit: opts?.gasLimit ?? BigInt(10e7),
+        maxFeePerGas: BigInt(1e10),
+        maxPriorityFeePerGas: BigInt(0),
+        nonce: opts?.nonce ?? BigInt(0),
+        deadline: opts?.deadline ?? BigInt(9999999999),
+        vType: 1, // universalTxVerification
+      },
+    ]
+  );
+}
+
+/**
  * Build a single call as CEA multicall payload
  *
  * @param target - Target contract address

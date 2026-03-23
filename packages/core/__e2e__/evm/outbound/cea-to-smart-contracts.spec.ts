@@ -49,12 +49,13 @@ import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 // ============================================================================
 // Contract Addresses
 // ============================================================================
-const STAKING_PROXY = '0x8ab717A4836d0589E5f27Ff65e18804325Cd6540' as `0x${string}`;
+const STAKING_PROXY = '0xd5d727D5eCE07BD5557f50e58DA092FCEDC1bf29' as `0x${string}`;
 const PBNB_TOKEN = '0x7a9082dA308f3fa005beA7dB0d203b3b86664E36' as `0x${string}`;
 const PUSDT_BNB_TOKEN = '0x2f98B4235FD2BA0173a2B056D722879360B12E7b' as `0x${string}`;
 const BSC_USDT_ADDRESS = '0xBC14F348BC9667be46b35Edc9B68653d86013DC5' as `0x${string}`;
 const UGPC_PRECOMPILE = '0x00000000000000000000000000000000000000C1' as `0x${string}`;
 const CEA_FACTORY_BSC = '0xe2182dae2dc11cBF6AA6c8B1a7f9c8315A6B0719' as `0x${string}`;
+const UNIVERSAL_GATEWAY_BSC = '0x44aFFC61983F4348DdddB886349eb992C061EaC0' as `0x${string}`;
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`;
 
 // Counter contract addresses (deployed on BNB Testnet 2026-03-14)
@@ -80,6 +81,20 @@ const STAKING_EXAMPLE_ABI = [
       { name: 'revertRecipient', type: 'address' },
     ],
     name: 'triggerOutbound',
+    outputs: [],
+    stateMutability: 'payable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { name: 'sourceChainNamespace', type: 'string' },
+      { name: 'ceaAddress', type: 'bytes' },
+      { name: 'payload', type: 'bytes' },
+      { name: 'amount', type: 'uint256' },
+      { name: 'prc20', type: 'address' },
+      { name: 'txId', type: 'bytes32' },
+    ],
+    name: 'executeUniversalTx',
     outputs: [],
     stateMutability: 'payable',
     type: 'function',
@@ -150,6 +165,38 @@ const STAKING_EXAMPLE_ABI = [
     name: 'stakedBalance',
     outputs: [{ name: '', type: 'uint256' }],
     stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { name: '_ugpc', type: 'address' },
+      { name: '_universalExecutorModule', type: 'address' },
+      { name: '_owner', type: 'address' },
+    ],
+    name: 'initialize',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'newUgpc', type: 'address' }],
+    name: 'setUgpc',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'newModule', type: 'address' }],
+    name: 'setUniversalExecutorModule',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'newOwner', type: 'address' }],
+    name: 'transferOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
     type: 'function',
   },
   // Events
@@ -258,9 +305,13 @@ async function queryOutboundGasFees(
 }
 
 // ============================================================================
-// Helper: Compute msg.value matching SDK's UEA balance adjustment
+// Helper: Compute msg.value for UGPC gas swap
 // ============================================================================
-const OUTBOUND_GAS_RESERVE = BigInt(3e18); // 3 PC reserve (matches orchestrator.ts)
+// Unlike the SDK's own outbound flow (UEA → UGPC, refund → UEA), in these tests
+// the call path is UEA → StakingExample → UGPC, so refunds go to StakingExample.
+// We use a fixed generous value (25 PC) that covers the Uniswap swap without
+// draining the UEA balance across multiple test scenarios.
+const OUTBOUND_MSG_VALUE = parseEther('25'); // 25 PC — covers gas swap, excess refunded to StakingExample
 
 async function computeOutboundMsgValue(
   pushPublicClient: ReturnType<typeof createPublicClient>,
@@ -268,13 +319,9 @@ async function computeOutboundMsgValue(
   nativeValueForGas: bigint
 ): Promise<bigint> {
   const ueaBalance = await pushPublicClient.getBalance({ address: ueaAddress });
-  if (ueaBalance > OUTBOUND_GAS_RESERVE && ueaBalance - OUTBOUND_GAS_RESERVE > nativeValueForGas) {
-    const adjusted = ueaBalance - OUTBOUND_GAS_RESERVE;
-    console.log(`[MsgValue] Adjusted to UEA balance: ${adjusted} (balance: ${ueaBalance})`);
-    return adjusted;
-  }
-  console.log(`[MsgValue] Using 1000x floor: ${nativeValueForGas} (balance: ${ueaBalance})`);
-  return nativeValueForGas;
+  const value = nativeValueForGas > OUTBOUND_MSG_VALUE ? nativeValueForGas : OUTBOUND_MSG_VALUE;
+  console.log(`[MsgValue] Using ${value} (balance: ${ueaBalance})`);
+  return value;
 }
 
 // ============================================================================
@@ -286,7 +333,7 @@ function buildStakeRoundTripPayload(
   amountToSendBack: bigint,
   revertRecipient: `0x${string}`
 ): `0x${string}` {
-  // 1. Encode payload.data (what StakingExample._handleInboundPayload decodes)
+  // 1. Encode the action data (what StakingExample.executeUniversalTx ultimately decodes)
   //    (uint8 action, address user, bytes executionPayload)
   const payloadData = encodeAbiParameters(
     [
@@ -297,7 +344,11 @@ function buildStakeRoundTripPayload(
     [0, userAddress, '0x'] // action=0 (STAKE)
   );
 
-  // 2. Encode full UniversalPayload struct
+  // 2. Wrap in UniversalPayload struct — required for TSS to parse the inbound event.
+  //    The TSS decodes the payload as a UniversalPayload struct. Without this wrapping,
+  //    universalPayload shows as {} and the inbound is delivered with empty payload.
+  //    On Push Chain, the UNIVERSAL_EXECUTOR_MODULE extracts the `data` field from the
+  //    struct and passes it as the `bytes payload` to executeUniversalTx.
   const universalPayload = encodeAbiParameters(
     [
       {
@@ -330,19 +381,28 @@ function buildStakeRoundTripPayload(
     ]
   );
 
-  // 3. Encode sendUniversalTxToUEA call on the CEA
+  // 3. Encode ERC20 approve — CEA must approve the gateway to transferFrom its USDT
+  //    The gateway's sendUniversalTxFromCEA calls safeTransferFrom(CEA, VAULT, amount)
+  const approveCalldata = encodeFunctionData({
+    abi: ERC20_EVM,
+    functionName: 'approve',
+    args: [UNIVERSAL_GATEWAY_BSC, amountToSendBack],
+  });
+
+  // 4. Encode sendUniversalTxToUEA call on the CEA
+  //    Pass universalPayload (struct-wrapped) so TSS can parse it
   const sendBackCalldata = encodeFunctionData({
     abi: CEA_EVM,
     functionName: 'sendUniversalTxToUEA',
     args: [
       BSC_USDT_ADDRESS, // token: USDT on BSC Testnet
       amountToSendBack,
-      universalPayload,
+      universalPayload,  // struct-wrapped for TSS parsing
       revertRecipient,
     ],
   });
 
-  // 4. Wrap in MULTICALL format
+  // 5. Wrap in MULTICALL format (approve MUST come before sendUniversalTxToUEA)
   const multicallEncoded = encodeAbiParameters(
     [
       {
@@ -357,6 +417,11 @@ function buildStakeRoundTripPayload(
     [
       [
         {
+          to: BSC_USDT_ADDRESS,
+          value: BigInt(0),
+          data: approveCalldata,
+        },
+        {
           to: ceaAddress,
           value: BigInt(0),
           data: sendBackCalldata,
@@ -365,7 +430,7 @@ function buildStakeRoundTripPayload(
     ]
   );
 
-  // 5. Final payload = UEA_MULTICALL_SELECTOR + multicallEncoded
+  // 6. Final payload = UEA_MULTICALL_SELECTOR + multicallEncoded
   return `${UEA_MULTICALL_SELECTOR}${multicallEncoded.slice(2)}` as `0x${string}`;
 }
 
@@ -631,21 +696,64 @@ describe('CEA Custom Contract: StakingExample (Outbound & Inbound)', () => {
     // 1. Funds — ERC-20 USDT
     // ============================================================================
     describe('1. Funds', () => {
-      it('should send ERC-20 pUSDT outbound via StakingExample.triggerOutbound()', async () => {
+      it('should send ERC-20 pUSDT outbound and verify inbound STAKE via round-trip', async () => {
         if (skipE2E) return;
 
         console.log('\n=== Core Scenario 1: Funds (ERC-20 USDT) ===');
 
         const bridgeAmount = BigInt(10000); // 0.01 USDT (6 decimals)
+        const sendBackAmount = BigInt(5000); // Amount CEA sends back as inbound
         await ensureStakingHasPRC20(PUSDT_BNB_TOKEN, bridgeAmount);
 
-        const recipient = encodeAbiParameters(
-          [{ name: 'addr', type: 'address' }],
-          [TEST_TARGET]
-        ) as `0x${string}`;
+        // Read stake BEFORE
+        const stakeBefore = await pushPublicClient.readContract({
+          address: STAKING_PROXY,
+          abi: STAKING_EXAMPLE_ABI,
+          functionName: 'getStake',
+          args: [ueaAddress, PUSDT_BNB_TOKEN],
+        }) as bigint;
+        console.log(`Stake BEFORE: ${stakeBefore}`);
 
-        await callTriggerOutbound(PUSDT_BNB_TOKEN, bridgeAmount, recipient, '0x');
-      }, 360000);
+        // Build round-trip payload: CEA calls sendUniversalTxToUEA → STAKE inbound on Push Chain
+        // Without this payload, the CEA just parks funds and no inbound is created.
+        const outboundPayload = buildStakeRoundTripPayload(
+          stakingCeaAddress, ueaAddress, sendBackAmount, ueaAddress,
+        );
+        console.log(`Round-trip payload length: ${outboundPayload.length} chars`);
+
+        // Use empty recipient (park funds in CEA) + round-trip payload for inbound
+        await callTriggerOutbound(PUSDT_BNB_TOKEN, bridgeAmount, '0x' as `0x${string}`, outboundPayload);
+
+        // Wait for inbound relay — poll stake balance on Push Chain
+        console.log('Waiting for inbound relay (polling stake balance)...');
+        const INBOUND_INITIAL_WAIT = 30000;
+        const INBOUND_POLL_INTERVAL = 10000;
+        const INBOUND_TIMEOUT = 300000;
+
+        await new Promise((r) => setTimeout(r, INBOUND_INITIAL_WAIT));
+
+        const startTime = Date.now();
+        let stakeAfter = stakeBefore;
+
+        while (Date.now() - startTime < INBOUND_TIMEOUT) {
+          stakeAfter = await pushPublicClient.readContract({
+            address: STAKING_PROXY,
+            abi: STAKING_EXAMPLE_ABI,
+            functionName: 'getStake',
+            args: [ueaAddress, PUSDT_BNB_TOKEN],
+          }) as bigint;
+
+          if (stakeAfter > stakeBefore) {
+            console.log(`Stake AFTER: ${stakeAfter} (increased by ${stakeAfter - stakeBefore})`);
+            break;
+          }
+
+          console.log(`Stake unchanged: ${stakeAfter}, polling...`);
+          await new Promise((r) => setTimeout(r, INBOUND_POLL_INTERVAL));
+        }
+
+        expect(stakeAfter).toBeGreaterThan(stakeBefore);
+      }, 600000);
     });
 
     // ============================================================================
@@ -910,6 +1018,80 @@ describe('CEA Custom Contract: StakingExample (Outbound & Inbound)', () => {
         console.log(`CounterA AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 360000);
+    });
+
+    // ============================================================================
+    // 8. Round-Trip: CEA → PC STAKE (outbound + CEA inbound)
+    // ============================================================================
+    describe('8. Round-Trip: CEA → PC STAKE', () => {
+      it('should trigger outbound with round-trip payload, CEA sends STAKE inbound back to Push Chain', async () => {
+        if (skipE2E) return;
+
+        console.log('\n=== Core Scenario 8: Round-Trip CEA → PC STAKE ===');
+
+        // Verify CEA is deployed (should be deployed after Core Scenario 1)
+        const [ceaAddr, isDeployed] = await bscPublicClient.readContract({
+          address: CEA_FACTORY_BSC,
+          abi: CEA_FACTORY_ABI,
+          functionName: 'getCEAForPushAccount',
+          args: [STAKING_PROXY],
+        }) as [`0x${string}`, boolean];
+
+        console.log(`CEA: ${ceaAddr}, deployed: ${isDeployed}`);
+        expect(isDeployed).toBe(true);
+
+        const bridgeAmount = BigInt(10000); // 0.01 USDT (6 decimals)
+        const sendBackAmount = BigInt(5000); // 0.005 USDT (6 decimals)
+        await ensureStakingHasPRC20(PUSDT_BNB_TOKEN, bridgeAmount);
+
+        // Read stake BEFORE
+        const stakeBefore = await pushPublicClient.readContract({
+          address: STAKING_PROXY,
+          abi: STAKING_EXAMPLE_ABI,
+          functionName: 'getStake',
+          args: [ueaAddress, PUSDT_BNB_TOKEN],
+        }) as bigint;
+        console.log(`Stake BEFORE: ${stakeBefore}`);
+
+        // Build round-trip payload: CEA calls sendUniversalTxToUEA → STAKE inbound on Push Chain
+        const outboundPayload = buildStakeRoundTripPayload(
+          ceaAddr, ueaAddress, sendBackAmount, ueaAddress,
+        );
+        console.log(`Round-trip payload length: ${outboundPayload.length} chars`);
+
+        // Trigger outbound with round-trip payload (waits for outbound relay + verifies BSC tx)
+        await callTriggerOutbound(PUSDT_BNB_TOKEN, bridgeAmount, '0x' as `0x${string}`, outboundPayload);
+
+        // Wait for inbound relay — poll stake balance on Push Chain
+        console.log('Waiting for inbound relay (polling stake balance)...');
+        const INBOUND_INITIAL_WAIT = 30000;
+        const INBOUND_POLL_INTERVAL = 10000;
+        const INBOUND_TIMEOUT = 300000;
+
+        await new Promise((r) => setTimeout(r, INBOUND_INITIAL_WAIT));
+
+        const startTime = Date.now();
+        let stakeAfter = stakeBefore;
+
+        while (Date.now() - startTime < INBOUND_TIMEOUT) {
+          stakeAfter = await pushPublicClient.readContract({
+            address: STAKING_PROXY,
+            abi: STAKING_EXAMPLE_ABI,
+            functionName: 'getStake',
+            args: [ueaAddress, PUSDT_BNB_TOKEN],
+          }) as bigint;
+
+          if (stakeAfter > stakeBefore) {
+            console.log(`Stake AFTER: ${stakeAfter} (increased by ${stakeAfter - stakeBefore})`);
+            break;
+          }
+
+          console.log(`Stake unchanged: ${stakeAfter}, polling...`);
+          await new Promise((r) => setTimeout(r, INBOUND_POLL_INTERVAL));
+        }
+
+        expect(stakeAfter).toBeGreaterThan(stakeBefore);
+      }, 600000);
     });
   });
 
