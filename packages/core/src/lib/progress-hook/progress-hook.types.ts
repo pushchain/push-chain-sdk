@@ -58,4 +58,12 @@ export enum PROGRESS_HOOK {
   // 99-x: Final outcome
   SEND_TX_99_01 = 'SEND-TX-99-01',
   SEND_TX_99_02 = 'SEND-TX-99-02',
+
+  // UEA Migration hooks
+  UEA_MIG_01 = 'UEA-MIG-01',
+  UEA_MIG_02 = 'UEA-MIG-02',
+  UEA_MIG_03 = 'UEA-MIG-03',
+  UEA_MIG_9901 = 'UEA-MIG-9901',
+  UEA_MIG_9902 = 'UEA-MIG-9902',
+  UEA_MIG_9903 = 'UEA-MIG-9903',
 }

@@ -32,7 +32,8 @@ import {
   UNIVERSAL_GATEWAY_V1_SEND,
 } from '../constants/abi';
 import { UEA_EVM } from '../constants/abi/uea.evm';
-import { CHAIN_INFO, UEA_PROXY, VM_NAMESPACE, SYNTHETIC_PUSH_ERC20, UNIVERSAL_GATEWAY_ADDRESSES } from '../constants/chain';
+import { CHAIN_INFO, UEA_PROXY, UEA_FACTORY, VM_NAMESPACE, SYNTHETIC_PUSH_ERC20, UNIVERSAL_GATEWAY_ADDRESSES } from '../constants/chain';
+import { UEA_FACTORY_ABI } from '../constants/abi/uea-factory';
 import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
 import {
   ConversionQuote,
@@ -43,7 +44,11 @@ import {
 } from '../constants/tokens';
 import { UniversalTx, UniversalTxStatus } from '../generated/uexecutor/v1/types';
 import { UniversalTxV2, OutboundStatus } from '../generated/uexecutor/v2/types';
-import { OutboundSyncProgress } from './orchestrator.types';
+import {
+  OutboundSyncProgress,
+  AccountStatus,
+  parseUEAVersion,
+} from './orchestrator.types';
 import {
   UniversalAccountId,
   UniversalPayload,
@@ -117,11 +122,13 @@ import {
   chainSupportsOutbound,
   getCEAFactoryAddress,
 } from './cea-utils';
-import { DEFAULT_OUTBOUND_GAS_LIMIT, ZERO_ADDRESS } from '../constants/selectors';
+import { DEFAULT_OUTBOUND_GAS_LIMIT, ZERO_ADDRESS, MIGRATION_SELECTOR } from '../constants/selectors';
 
 export class Orchestrator {
   private pushClient: PushClient;
   private ueaVersionCache?: string;
+  private accountStatusCache: AccountStatus | null = null;
+  private _isUpgrading = false;
 
   constructor(
     private readonly universalSigner: UniversalSigner,
@@ -168,6 +175,155 @@ export class Orchestrator {
 
   public getProgressHook(): ((progress: ProgressEvent) => void) | undefined {
     return this.progressHook;
+  }
+
+  // =========================================================================
+  // Account Status & UEA Upgrade
+  // =========================================================================
+
+  /**
+   * Fetches account status including UEA deployment state and version info.
+   * Results are cached — pass forceRefresh to bypass cache.
+   */
+  async getAccountStatus(
+    options?: { forceRefresh?: boolean }
+  ): Promise<AccountStatus> {
+    if (this.accountStatusCache && !options?.forceRefresh) {
+      return this.accountStatusCache;
+    }
+
+    const chain = this.universalSigner.account.chain;
+    const { vm } = CHAIN_INFO[chain];
+    const isReadOnly = false; // This is called from Orchestrator which always has a signer
+
+    const { deployed } = await this.getUeaStatusAndNonce();
+
+    if (!deployed) {
+      const status: AccountStatus = {
+        mode: 'signer',
+        uea: {
+          loaded: true,
+          deployed: false,
+          version: '',
+          minRequiredVersion: '',
+          requiresUpgrade: false,
+        },
+      };
+      this.accountStatusCache = status;
+      return status;
+    }
+
+    // Fetch current version and minRequiredVersion in parallel (string format from chain)
+    const [currentVersion, minRequiredVersion] = await Promise.all([
+      this.fetchUEAVersion(),
+      this.fetchMinRequiredVersionString(vm),
+    ]);
+
+    const requiresUpgrade =
+      parseUEAVersion(currentVersion) < parseUEAVersion(minRequiredVersion);
+
+    const status: AccountStatus = {
+      mode: 'signer',
+      uea: {
+        loaded: true,
+        deployed: true,
+        version: currentVersion,
+        minRequiredVersion,
+        requiresUpgrade,
+      },
+    };
+    this.accountStatusCache = status;
+    return status;
+  }
+
+  /**
+   * Upgrades the UEA to the latest implementation version.
+   * Sends MIGRATION_SELECTOR to the UEA itself on Push Chain (Route 1).
+   * This triggers UEA_EVM._handleMigration() → delegatecall to UEAMigration.
+   */
+  async upgradeAccount(
+    options?: { progressHook?: (progress: ProgressEvent) => void }
+  ): Promise<void> {
+    const hook = options?.progressHook || this.progressHook;
+    const fireHook = (hookId: string, ...args: any[]) => {
+      const hookEntry = PROGRESS_HOOKS[hookId];
+      if (hookEntry && hook) {
+        hook(hookEntry(...args));
+      }
+    };
+
+    // Step 1: Check status
+    fireHook(PROGRESS_HOOK.UEA_MIG_01);
+    const status = await this.getAccountStatus({ forceRefresh: true });
+
+    if (!status.uea.requiresUpgrade) {
+      fireHook(PROGRESS_HOOK.UEA_MIG_9903);
+      return;
+    }
+
+    // Step 2: Awaiting signature
+    fireHook(PROGRESS_HOOK.UEA_MIG_02);
+
+    try {
+      // Step 3: Build and send migration tx to UEA itself
+      const ueaAddress = this.computeUEAOffchain();
+
+      // Set recursion guard to prevent execute() from calling upgradeAccount() again
+      this._isUpgrading = true;
+
+      fireHook(PROGRESS_HOOK.UEA_MIG_03);
+
+      await this.execute({
+        to: ueaAddress,
+        data: MIGRATION_SELECTOR as `0x${string}`,
+        value: BigInt(0),
+      });
+
+      this._isUpgrading = false;
+
+      // Clear version cache so next read picks up new version
+      this.ueaVersionCache = undefined;
+
+      // Refresh account status
+      const updated = await this.getAccountStatus({ forceRefresh: true });
+      fireHook(
+        PROGRESS_HOOK.UEA_MIG_9901,
+        updated.uea.version
+      );
+    } catch (err) {
+      this._isUpgrading = false;
+      fireHook(PROGRESS_HOOK.UEA_MIG_9902);
+      throw err;
+    }
+  }
+
+  /**
+   * Fetch the minimum required UEA version string from UEAFactory.
+   * Returns empty string if UEAFactory address is not configured (TBD).
+   */
+  private async fetchMinRequiredVersionString(vm: VM): Promise<string> {
+    const factoryAddress = UEA_FACTORY[this.pushNetwork];
+    if (!factoryAddress || factoryAddress === '0xTBD') {
+      // TODO: UEAFactory not deployed yet — return empty (no upgrade required)
+      return '';
+    }
+
+    try {
+      const vmHash =
+        vm === VM.EVM
+          ? keccak256(stringToBytes('evm'))
+          : keccak256(stringToBytes('svm'));
+
+      return await this.pushClient.readContract<string>({
+        address: factoryAddress,
+        abi: UEA_FACTORY_ABI as unknown as Abi,
+        functionName: 'UEA_VERSION',
+        args: [vmHash],
+      });
+    } catch {
+      // If factory call fails, don't block — no upgrade required
+      return '';
+    }
   }
 
   /**
@@ -218,6 +374,19 @@ export class Orchestrator {
   async execute(
     params: ExecuteParams | UniversalExecuteParams
   ): Promise<UniversalTxResponse> {
+    // Lazy UEA upgrade check — skip if already upgrading (recursion guard)
+    if (!this._isUpgrading) {
+      if (!this.accountStatusCache || !this.accountStatusCache.uea.loaded) {
+        await this.getAccountStatus();
+      }
+      if (
+        this.accountStatusCache?.uea.deployed &&
+        this.accountStatusCache?.uea.requiresUpgrade
+      ) {
+        await this.upgradeAccount({ progressHook: this.progressHook });
+      }
+    }
+
     // Check if this is a multi-chain request (has ChainTarget or from.chain)
     const isMultiChain =
       isChainTarget(params.to) || ('from' in params && params.from?.chain);

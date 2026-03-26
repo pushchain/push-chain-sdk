@@ -816,3 +816,50 @@ export interface WaitForOutboundOptions {
    */
   _expectedDestinationChain?: string;
 }
+
+// ============================================================================
+// Account Status Types (UEA Migration / Upgrade)
+// ============================================================================
+
+/**
+ * UEA deployment and version status.
+ * Versions are stored as strings (e.g. "1.0.2") matching the on-chain format.
+ * Comparison uses parseUEAVersion() to convert to numeric for ordering.
+ */
+export interface UEAStatus {
+  /** Whether status has been fetched from chain */
+  loaded: boolean;
+  /** Whether the UEA proxy is deployed on Push Chain */
+  deployed: boolean;
+  /** Current UEA implementation version string (e.g. "1.0.0", empty if not deployed) */
+  version: string;
+  /** Latest required version from UEAFactory (e.g. "1.0.2", empty if unknown) */
+  minRequiredVersion: string;
+  /** True when deployed && parseUEAVersion(version) < parseUEAVersion(minRequiredVersion) */
+  requiresUpgrade: boolean;
+}
+
+/**
+ * Account status returned by pushChainClient.getAccountStatus()
+ */
+export interface AccountStatus {
+  mode: 'read-only' | 'signer';
+  uea: UEAStatus;
+}
+
+// ============================================================================
+// UEA Version Utilities
+// ============================================================================
+
+/**
+ * Parse a semver string into the numeric UEA version format.
+ * e.g. "1.0.2" → 1000002
+ */
+export function parseUEAVersion(version: string): number {
+  const parts = version.split('.');
+  if (parts.length !== 3) return 0;
+  const major = parseInt(parts[0], 10) || 0;
+  const minor = parseInt(parts[1], 10) || 0;
+  const patch = parseInt(parts[2], 10) || 0;
+  return major * 1000000 + minor * 1000 + patch;
+}

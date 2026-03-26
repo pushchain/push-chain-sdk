@@ -27,6 +27,18 @@ export const UEA_PROXY: Record<PUSH_NETWORK, `0x${string}`> = {
 };
 
 /**
+ * UEAFactory contract address on Push Chain.
+ * Used to read UEA_VERSION (minRequiredVersion) and UEA_MIGRATION_CONTRACT.
+ * TODO: Replace '0xTBD' with actual deployed addresses once available.
+ */
+export const UEA_FACTORY: Record<PUSH_NETWORK, `0x${string}`> = {
+  [PUSH_NETWORK.MAINNET]: '0xTBD',
+  [PUSH_NETWORK.TESTNET_DONUT]: '0xTBD',
+  [PUSH_NETWORK.TESTNET]: '0xTBD',
+  [PUSH_NETWORK.LOCALNET]: '0xTBD',
+};
+
+/**
  * Addresses for wrapped ETH/SOL/ARBITRUM assets by Push network.
  * Includes pETH and PUSDT bridged from origin on test networks.
  */

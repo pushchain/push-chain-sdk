@@ -29,7 +29,13 @@ export type {
   SvmGatewayAccountMeta,
   SvmExecutePayloadFields,
   SvmExecuteParams,
+  // Account status types (UEA Migration)
+  AccountStatus,
+  UEAStatus,
 } from './orchestrator/orchestrator.types';
+
+// UEA version utility
+export { parseUEAVersion } from './orchestrator/orchestrator.types';
 
 // Route detection utilities
 export { TransactionRoute, detectRoute, isChainTarget } from './orchestrator/route-detector';

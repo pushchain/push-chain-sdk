@@ -11,6 +11,7 @@ import { Utils } from '../utils';
 import { utils } from '@coral-xyz/anchor';
 import { Abi, bytesToHex, parseAbi, TypedData, TypedDataDomain } from 'viem';
 import { ProgressEvent } from '../progress-hook/progress-hook.types';
+import type { AccountStatus } from '../orchestrator/orchestrator.types';
 import { EvmClient } from '../vm-client/evm-client';
 import {
   MOVEABLE_TOKENS,
@@ -152,6 +153,12 @@ export class PushChain {
     ) => Promise<ConversionQuote>;
   };
 
+  /**
+   * Account status including UEA deployment state and version info.
+   * Initially unloaded — call getAccountStatus() to populate.
+   */
+  accountStatus: AccountStatus;
+
   private constructor(
     private orchestrator: Orchestrator,
     private universalSigner: UniversalSigner,
@@ -159,6 +166,17 @@ export class PushChain {
     public isReadMode: boolean
   ) {
     this.orchestrator = orchestrator;
+
+    this.accountStatus = {
+      mode: isReadMode ? 'read-only' : 'signer',
+      uea: {
+        loaded: false,
+        deployed: false,
+        version: '',
+        minRequiredVersion: '',
+        requiresUpgrade: false,
+      },
+    };
 
     this.universal = {
       get origin() {
@@ -405,6 +423,37 @@ export class PushChain {
   }
 
   /**
+   * Fetches the account status including UEA deployment state and version info.
+   * Results are cached — pass forceRefresh to bypass cache.
+   */
+  async getAccountStatus(
+    options?: { forceRefresh?: boolean }
+  ): Promise<AccountStatus> {
+    const status = await this.orchestrator.getAccountStatus(options);
+    this.accountStatus = status;
+    return status;
+  }
+
+  /**
+   * Upgrades the UEA to the latest implementation version.
+   * This is a gasless operation that updates the UEA proxy on Push Chain.
+   *
+   * @throws Error if called in read-only mode
+   */
+  async upgradeAccount(
+    options?: { progressHook?: (progress: ProgressEvent) => void }
+  ): Promise<void> {
+    if (this.isReadMode) {
+      throw new Error('Read only mode cannot call upgradeAccount function');
+    }
+    await this.orchestrator.upgradeAccount(options);
+    // Refresh local accountStatus after upgrade
+    this.accountStatus = await this.orchestrator.getAccountStatus({
+      forceRefresh: true,
+    });
+  }
+
+  /**
    * @private
    * Internal method to create a PushChain instance with the given parameters.
    * Used by both initialize and reinitialize methods to avoid code duplication.
@@ -449,12 +498,25 @@ export class PushChain {
       options?.printTraces ?? false,
       options?.progressHook
     );
-    return new PushChain(
+    const instance = new PushChain(
       orchestrator,
       validatedUniversalSigner,
       blockExplorers,
       isReadOnly
     );
+
+    // Fire-and-forget: fetch account status in background (non-blocking, 30s timeout)
+    const ACCOUNT_STATUS_TIMEOUT = 30_000;
+    Promise.race([
+      instance.getAccountStatus(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Account status fetch timed out')), ACCOUNT_STATUS_TIMEOUT)
+      ),
+    ]).catch(() => {
+      // Silently ignore — lazy check in execute() will retry if needed
+    });
+
+    return instance;
   }
 
   /**

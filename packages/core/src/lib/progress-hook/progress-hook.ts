@@ -219,6 +219,50 @@ const RAW_HOOKS: {
     response: null,
     level: 'ERROR',
   }),
+
+  // UEA Migration hooks
+  [PROGRESS_HOOK.UEA_MIG_01]: () => ({
+    id: PROGRESS_HOOK.UEA_MIG_01,
+    title: 'Checking UEA',
+    message: 'Checking status for migration.',
+    response: null,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.UEA_MIG_02]: () => ({
+    id: PROGRESS_HOOK.UEA_MIG_02,
+    title: 'Awaiting Migration Signature',
+    message: 'Awaiting wallet signature for upgrading account.',
+    response: null,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.UEA_MIG_03]: () => ({
+    id: PROGRESS_HOOK.UEA_MIG_03,
+    title: 'Broadcasting Migration TX',
+    message: 'Broadcasting upgrade transaction to Push Chain...',
+    response: null,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.UEA_MIG_9901]: (newVersion: string) => ({
+    id: PROGRESS_HOOK.UEA_MIG_9901,
+    title: 'UEA Migration Successful',
+    message: `UEA migration is successful. UEA is now version ${newVersion}.`,
+    response: null,
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.UEA_MIG_9902]: () => ({
+    id: PROGRESS_HOOK.UEA_MIG_9902,
+    title: 'UEA Migration Failed',
+    message: 'UEA migration failed. Check transaction on explorer.',
+    response: null,
+    level: 'ERROR',
+  }),
+  [PROGRESS_HOOK.UEA_MIG_9903]: () => ({
+    id: PROGRESS_HOOK.UEA_MIG_9903,
+    title: 'UEA Migration Skipped',
+    message: 'UEA migration skipped.',
+    response: null,
+    level: 'INFO',
+  }),
 };
 
 // Build final hooks with timestamp injection
