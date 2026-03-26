@@ -1105,11 +1105,18 @@ describe('Advance Hopping: Cascade API E2E', () => {
         const receipt = await tx.wait();
         expect(receipt.status).toBe(1);
 
-        // Verify BSC counter incremented
-        await new Promise((r) => setTimeout(r, 60000)); // wait for outbound relay
-        const counterAfter = await bscPublicClient.readContract({
-          address: COUNTER_A_BSC, abi: COUNTER_ABI_BSC, functionName: 'count',
-        }) as bigint;
+        // Verify BSC counter incremented (poll — relay takes variable time)
+        console.log('Waiting for BSC counter increment...');
+        const counterPollStart = Date.now();
+        let counterAfter = counterBefore;
+        while (Date.now() - counterPollStart < 180000) {
+          await new Promise((r) => setTimeout(r, 10000));
+          counterAfter = await bscPublicClient.readContract({
+            address: COUNTER_A_BSC, abi: COUNTER_ABI_BSC, functionName: 'count',
+          }) as bigint;
+          console.log(`Polling BSC counter: ${counterAfter} (elapsed: ${Math.round((Date.now() - counterPollStart) / 1000)}s)`);
+          if (counterAfter > counterBefore) break;
+        }
         console.log(`BSC CounterA AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
 
