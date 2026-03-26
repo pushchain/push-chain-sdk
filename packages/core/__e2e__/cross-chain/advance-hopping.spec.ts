@@ -7,10 +7,12 @@ import '@e2e/shared/setup';
 import { PushChain } from '../../src';
 import { PUSH_NETWORK, CHAIN } from '../../src/lib/constants/enums';
 import { CHAIN_INFO } from '../../src/lib/constants/chain';
-import { createWalletClient, createPublicClient, http, Hex, parseEther, encodeFunctionData } from 'viem';
+import { createWalletClient, createPublicClient, http, Hex, parseEther, encodeFunctionData, encodeAbiParameters } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import type { PreparedUniversalTx } from '../../src/lib/orchestrator/orchestrator.types';
 import { ERC20_EVM } from '../../src/lib/constants/abi/erc20.evm';
+import { CEA_EVM } from '../../src/lib/constants/abi/cea.evm';
+import { UEA_MULTICALL_SELECTOR } from '../../src/lib/constants/selectors';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 import { PublicKey } from '@solana/web3.js';
 
@@ -40,12 +42,36 @@ const SOL_COUNTER_PDA = '0x4f12fe6816ae7e33ebf7db0b154ec3b09e3bf1a7690481e8e9477
 const SOL_ZERO_ADDRESS = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`;
 const SVM_GATEWAY_PROGRAM = new PublicKey('CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS');
 
+// StakingExample contract (Push Chain Donut)
+const STAKING_PROXY = '0xd5d727D5eCE07BD5557f50e58DA092FCEDC1bf29' as `0x${string}`;
+const PUSDT_BNB_TOKEN = '0x2f98B4235FD2BA0173a2B056D722879360B12E7b' as `0x${string}`;
+const UNIVERSAL_GATEWAY_BSC = '0x44aFFC61983F4348DdddB886349eb992C061EaC0' as `0x${string}`;
+const CEA_FACTORY_BSC = '0xe2182dae2dc11cBF6AA6c8B1a7f9c8315A6B0719' as `0x${string}`;
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`;
+
+// BSC nonpayable counter (for StakingExample outbound tests)
+const COUNTER_A_BSC = '0x7f0936bb90e7dcf3edb47199c2005e7184e44cf8' as `0x${string}`;
+const COUNTER_ABI_BSC = [
+  { type: 'function', name: 'count', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'increment', inputs: [], outputs: [], stateMutability: 'nonpayable' },
+] as const;
+
+const CEA_FACTORY_ABI = [
+  { type: 'function', name: 'getCEAForPushAccount', inputs: [{ name: '_pushAccount', type: 'address' }], outputs: [{ name: '', type: 'address' }, { name: '', type: 'bool' }], stateMutability: 'view' },
+] as const;
+
+const STAKING_EXAMPLE_ABI = [
+  { inputs: [{ name: 'token', type: 'address' }, { name: 'amount', type: 'uint256' }, { name: 'recipient', type: 'bytes' }, { name: 'gasLimit', type: 'uint256' }, { name: 'payload', type: 'bytes' }, { name: 'revertRecipient', type: 'address' }], name: 'triggerOutbound', outputs: [], stateMutability: 'payable', type: 'function' },
+  { inputs: [{ name: 'user', type: 'address' }, { name: 'token', type: 'address' }], name: 'getStake', outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
+] as const;
+
 describe('Advance Hopping: Cascade API E2E', () => {
   let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
   let ueaAddress: `0x${string}`;
   let pushPublicClient: ReturnType<typeof createPublicClient>;
   let bscPublicClient: ReturnType<typeof createPublicClient>;
   let ceaPdaHex: `0x${string}`;
+  let stakingCeaAddress: `0x${string}`;
 
   const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
   const skipE2E = !privateKey;
@@ -98,6 +124,14 @@ describe('Advance Hopping: Cascade API E2E', () => {
     );
     ceaPdaHex = ('0x' + Buffer.from(ceaPda.toBytes()).toString('hex')) as `0x${string}`;
     console.log(`CEA PDA: ${ceaPda.toBase58()} (${ceaPdaHex})`);
+
+    // Resolve StakingExample CEA on BSC
+    const [ceaAddr] = await bscPublicClient.readContract({
+      address: CEA_FACTORY_BSC, abi: CEA_FACTORY_ABI, functionName: 'getCEAForPushAccount',
+      args: [STAKING_PROXY],
+    }) as [`0x${string}`, boolean];
+    stakingCeaAddress = ceaAddr;
+    console.log(`StakingExample CEA on BSC: ${stakingCeaAddress}`);
   });
 
   // ============================================================================
@@ -977,6 +1011,124 @@ describe('Advance Hopping: Cascade API E2E', () => {
         console.log(`Push Chain Counter AFTER: ${pushCounterAfter}`);
         expect(pushCounterAfter).toBeGreaterThan(pushCounterBefore);
       }, 900000);
+    });
+
+    // ==========================================================================
+    // 10. StakingExample: STAKE Round-Trip (Smart Contract)
+    //
+    // On-chain execution flow:
+    //   StakingExample.triggerOutbound(pUSDT, amount, payload)
+    //     → BSC CEA multicall: [counter.increment, approve, sendUniversalTxToUEA(STAKE)]
+    //     → Inbound: StakingExample.executeUniversalTx(action=STAKE)
+    //     → stake balance increases
+    // ==========================================================================
+    describe('10. StakingExample: STAKE Round-Trip', () => {
+      it('should trigger outbound with counter increment + STAKE inbound via smart contract', async () => {
+        if (skipE2E) return;
+
+        console.log('\n=== Test: StakingExample STAKE Round-Trip ===');
+
+        const bridgeAmount = BigInt(10000);
+        const sendBackAmount = BigInt(5000);
+
+        // Ensure StakingExample has pUSDT
+        const contractBalance = await pushPublicClient.readContract({
+          address: PUSDT_BNB_TOKEN, abi: ERC20_EVM, functionName: 'balanceOf', args: [STAKING_PROXY],
+        }) as bigint;
+        if (contractBalance < bridgeAmount) {
+          const fundTx = await pushClient.universal.sendTransaction({
+            to: PUSDT_BNB_TOKEN,
+            data: encodeFunctionData({ abi: ERC20_EVM, functionName: 'transfer', args: [STAKING_PROXY, bridgeAmount * BigInt(2)] }),
+          });
+          await fundTx.wait();
+        }
+
+        // Read BSC counter BEFORE
+        const counterBefore = await bscPublicClient.readContract({
+          address: COUNTER_A_BSC, abi: COUNTER_ABI_BSC, functionName: 'count',
+        }) as bigint;
+        console.log(`BSC CounterA BEFORE: ${counterBefore}`);
+
+        // Read stake BEFORE
+        const stakeBefore = await pushPublicClient.readContract({
+          address: STAKING_PROXY, abi: STAKING_EXAMPLE_ABI, functionName: 'getStake',
+          args: [ueaAddress, PUSDT_BNB_TOKEN],
+        }) as bigint;
+        console.log(`USDT Stake BEFORE: ${stakeBefore}`);
+
+        // Build STAKE round-trip payload: counter.increment + approve + sendUniversalTxToUEA(STAKE)
+        const incrementData = encodeFunctionData({ abi: COUNTER_ABI_BSC, functionName: 'increment' });
+
+        const stakePayloadData = encodeAbiParameters(
+          [{ name: 'action', type: 'uint8' }, { name: 'user', type: 'address' }, { name: 'executionPayload', type: 'bytes' }],
+          [0, ueaAddress, '0x'] // action=0 (STAKE)
+        );
+        const universalPayload = encodeAbiParameters(
+          [{ type: 'tuple', components: [
+            { name: 'to', type: 'address' }, { name: 'value', type: 'uint256' }, { name: 'data', type: 'bytes' },
+            { name: 'gasLimit', type: 'uint256' }, { name: 'maxFeePerGas', type: 'uint256' },
+            { name: 'maxPriorityFeePerGas', type: 'uint256' }, { name: 'nonce', type: 'uint256' },
+            { name: 'deadline', type: 'uint256' }, { name: 'vType', type: 'uint8' },
+          ]}],
+          [{ to: ZERO_ADDRESS, value: BigInt(0), data: stakePayloadData, gasLimit: BigInt(0), maxFeePerGas: BigInt(0), maxPriorityFeePerGas: BigInt(0), nonce: BigInt(0), deadline: BigInt(0), vType: 1 }]
+        );
+        const approveCalldata = encodeFunctionData({
+          abi: ERC20_EVM, functionName: 'approve', args: [UNIVERSAL_GATEWAY_BSC, sendBackAmount],
+        });
+        const sendBackCalldata = encodeFunctionData({
+          abi: CEA_EVM, functionName: 'sendUniversalTxToUEA',
+          args: [BSC_USDT_ADDRESS, sendBackAmount, universalPayload, ueaAddress],
+        });
+
+        const ceaCalls = [
+          { to: COUNTER_A_BSC, value: BigInt(0), data: incrementData },
+          { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: approveCalldata },
+          { to: stakingCeaAddress, value: BigInt(0), data: sendBackCalldata },
+        ];
+        const encoded = encodeAbiParameters(
+          [{ type: 'tuple[]', components: [
+            { name: 'to', type: 'address' }, { name: 'value', type: 'uint256' }, { name: 'data', type: 'bytes' },
+          ]}],
+          [ceaCalls]
+        );
+        const outboundPayload = `${UEA_MULTICALL_SELECTOR}${encoded.slice(2)}` as `0x${string}`;
+
+        // Send triggerOutbound
+        const triggerData = encodeFunctionData({
+          abi: STAKING_EXAMPLE_ABI, functionName: 'triggerOutbound',
+          args: [PUSDT_BNB_TOKEN, bridgeAmount, '0x' as `0x${string}`, BigInt(0), outboundPayload, ueaAddress],
+        });
+        const tx = await pushClient.universal.sendTransaction({
+          to: STAKING_PROXY, data: triggerData, value: parseEther('25'),
+        });
+        console.log(`triggerOutbound TX: ${tx.hash}`);
+        const receipt = await tx.wait();
+        expect(receipt.status).toBe(1);
+
+        // Verify BSC counter incremented
+        await new Promise((r) => setTimeout(r, 60000)); // wait for outbound relay
+        const counterAfter = await bscPublicClient.readContract({
+          address: COUNTER_A_BSC, abi: COUNTER_ABI_BSC, functionName: 'count',
+        }) as bigint;
+        console.log(`BSC CounterA AFTER: ${counterAfter}`);
+        expect(counterAfter).toBeGreaterThan(counterBefore);
+
+        // Verify Push Chain stake increased (inbound STAKE)
+        console.log('Waiting for inbound STAKE...');
+        const pollStart = Date.now();
+        let stakeAfter = stakeBefore;
+        while (Date.now() - pollStart < 300000) {
+          stakeAfter = await pushPublicClient.readContract({
+            address: STAKING_PROXY, abi: STAKING_EXAMPLE_ABI, functionName: 'getStake',
+            args: [ueaAddress, PUSDT_BNB_TOKEN],
+          }) as bigint;
+          console.log(`Polling stake: ${stakeAfter} (elapsed: ${Math.round((Date.now() - pollStart) / 1000)}s)`);
+          if (stakeAfter > stakeBefore) break;
+          await new Promise((r) => setTimeout(r, 10000));
+        }
+        console.log(`Stake AFTER: ${stakeAfter}`);
+        expect(stakeAfter).toBeGreaterThan(stakeBefore);
+      }, 600000);
     });
   });
 
