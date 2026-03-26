@@ -2080,6 +2080,61 @@ export class Orchestrator {
         // Route 3: Build CEA multicalls for sendUniversalTxFromCEA
         const sourceChain = params.from!.chain;
 
+        // SVM chains use PDA-based CEA, not factory-deployed CEA
+        if (isSvmChain(sourceChain)) {
+          const lockerContract = CHAIN_INFO[sourceChain].lockerContract;
+          if (!lockerContract) {
+            throw new Error(`No SVM gateway program configured for chain ${sourceChain}`);
+          }
+          const programPk = new PublicKey(lockerContract);
+          const gatewayProgramHex = ('0x' + Buffer.from(programPk.toBytes()).toString('hex')) as `0x${string}`;
+
+          // Derive CEA PDA
+          const ueaBytes = Buffer.from(ueaAddress.slice(2), 'hex');
+          const [ceaPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from('push_identity'), ueaBytes],
+            programPk
+          );
+          const ceaPdaHex = ('0x' + Buffer.from(ceaPda.toBytes()).toString('hex')) as `0x${string}`;
+
+          let amount = BigInt(0);
+          let prc20Token: `0x${string}`;
+          if (params.funds?.amount && params.funds.amount > BigInt(0)) {
+            amount = params.funds.amount;
+            const token = (params.funds as { token: MoveableToken }).token;
+            if (token && token.address) {
+              prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+            } else {
+              prc20Token = this.getNativePRC20ForChain(sourceChain);
+            }
+          } else if (params.value && params.value > BigInt(0)) {
+            amount = params.value;
+            prc20Token = this.getNativePRC20ForChain(sourceChain);
+          } else {
+            // Payload-only Route 3 SVM
+            prc20Token = this.getNativePRC20ForChain(sourceChain);
+          }
+
+          let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+          let gasFee = BigInt(0);
+          if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
+            const result = await this.queryOutboundGasFee(prc20Token, gasLimit);
+            gasToken = result.gasToken;
+            gasFee = result.gasFee;
+          }
+
+          return {
+            ...baseDescriptor,
+            sourceChain,
+            ceaAddress: ceaPdaHex,
+            isSvmTarget: true,
+            prc20Token,
+            burnAmount: amount > BigInt(0) ? amount : BigInt(1),
+            gasToken,
+            gasFee,
+          };
+        }
+
         const { cea: ceaAddress, isDeployed } = await getCEAAddress(
           ueaAddress,
           sourceChain,
@@ -2456,7 +2511,75 @@ export class Orchestrator {
           const sourceChain = hop.sourceChain!;
           const ceaAddress = hop.ceaAddress || ueaAddress;
 
-          // Build CEA multicall: [approve?, sendUniversalTxFromCEA(payload)]
+          // SVM chains: build SVM CPI payload instead of EVM CEA multicall
+          if (isSvmChain(sourceChain)) {
+            const lockerContract = CHAIN_INFO[sourceChain].lockerContract;
+            if (!lockerContract) {
+              throw new Error(`No SVM gateway program configured for chain ${sourceChain}`);
+            }
+            const programPk = new PublicKey(lockerContract);
+            const gatewayProgramHex = ('0x' + Buffer.from(programPk.toBytes()).toString('hex')) as `0x${string}`;
+
+            let drainAmount = BigInt(0);
+            let tokenMintHex: `0x${string}` | undefined;
+            const params = hop.params;
+            if (params.funds?.amount && params.funds.amount > BigInt(0)) {
+              drainAmount = params.funds.amount;
+              const token = (params.funds as { token: MoveableToken }).token;
+              if (token && token.address) {
+                const mintPk = new PublicKey(token.address);
+                tokenMintHex = ('0x' + Buffer.from(mintPk.toBytes()).toString('hex')) as `0x${string}`;
+              }
+            } else if (params.value && params.value > BigInt(0)) {
+              drainAmount = params.value;
+            }
+
+            // Derive CEA PDA as revert recipient
+            const ueaBytes = Buffer.from(ueaAddress.slice(2), 'hex');
+            const [ceaPda] = PublicKey.findProgramAddressSync(
+              [Buffer.from('push_identity'), ueaBytes],
+              programPk
+            );
+            const ceaPdaHex = ('0x' + Buffer.from(ceaPda.toBytes()).toString('hex')) as `0x${string}`;
+
+            // Build SVM payload with intermediate Push Chain payload embedded
+            const svmPayload = encodeSvmCeaToUeaPayload({
+              gatewayProgramHex,
+              drainAmount,
+              tokenMintHex,
+              revertRecipientHex: ceaPdaHex,
+              extraPayload: intermediatePayload !== '0x'
+                ? new Uint8Array(Buffer.from(intermediatePayload.slice(2), 'hex'))
+                : undefined,
+            });
+
+            const burnAmount = BigInt(1);
+            const outboundReq = buildOutboundRequest(
+              gatewayProgramHex,
+              segment.prc20Token || this.getNativePRC20ForChain(sourceChain),
+              burnAmount,
+              segment.gasLimit ?? BigInt(0),
+              svmPayload,
+              ueaAddress
+            );
+
+            const inboundGasFee = segment.gasFee || BigInt(0);
+            const outboundMulticalls = buildOutboundApprovalAndCall({
+              prc20Token:
+                segment.prc20Token || this.getNativePRC20ForChain(sourceChain),
+              gasToken: segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
+              burnAmount,
+              gasFee: inboundGasFee,
+              nativeValueForGas: perOutboundNativeValue ?? inboundGasFee * BigInt(1000),
+              gatewayPcAddress,
+              outboundRequest: outboundReq,
+            });
+
+            accumulatedPushMulticalls = [...outboundMulticalls];
+            break;
+          }
+
+          // EVM path: Build CEA multicall: [approve?, sendUniversalTxFromCEA(payload)]
           const ceaMulticalls: MultiCall[] = [];
 
           // Add hop's own CEA operations if any
@@ -3740,7 +3863,9 @@ export class Orchestrator {
       drainAmount = params.value;
       prc20Token = this.getNativePRC20ForChain(sourceChain);
     } else {
-      throw new Error('Route 3 SVM: must specify value (SOL) or funds.amount (SPL) to drain from CEA');
+      // Payload-only Route 3 SVM: no funds to drain, just execute data on Push Chain
+      drainAmount = BigInt(0);
+      prc20Token = this.getNativePRC20ForChain(sourceChain);
     }
 
     // Build the SVM CPI payload (send_universal_tx_to_uea wrapped in execute)
@@ -4061,7 +4186,9 @@ export class Orchestrator {
             drainAmount = params.value;
             prc20Token = this.getNativePRC20ForChain(sourceChain);
           } else {
-            throw new Error('Route 3 SVM: must specify value (SOL) or funds.amount (SPL) to drain');
+            // Payload-only Route 3 SVM: no funds to drain, just execute data on Push Chain
+            drainAmount = BigInt(0);
+            prc20Token = this.getNativePRC20ForChain(sourceChain);
           }
 
           // Derive CEA PDA as revert recipient

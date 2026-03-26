@@ -12,6 +12,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import type { PreparedUniversalTx } from '../../src/lib/orchestrator/orchestrator.types';
 import { ERC20_EVM } from '../../src/lib/constants/abi/erc20.evm';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
+import { PublicKey } from '@solana/web3.js';
 
 // BSC Testnet USDT address
 const BSC_USDT_ADDRESS = '0xBC14F348BC9667be46b35Edc9B68653d86013DC5' as const;
@@ -23,21 +24,28 @@ const COUNTER_ABI_PAYABLE = [
   { type: 'function', name: 'countPC', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
 ] as const;
 
-// BSC Testnet counter (nonpayable increment)
-const COUNTER_A = '0x7f0936bb90e7dcf3edb47199c2005e7184e44cf8' as `0x${string}`;
-const COUNTER_ABI = [
+// BSC Testnet payable counter (accepts native BNB via increment)
+const BSC_COUNTER_PAYABLE = '0xf4bd8c13da0f5831d7b6dd3275a39f14ec7ddaa6' as `0x${string}`;
+const BSC_COUNTER_ABI = [
   { type: 'function', name: 'count', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
-  { type: 'function', name: 'increment', inputs: [], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'increment', inputs: [], outputs: [], stateMutability: 'payable' },
 ] as const;
 
 // Solana target (32-byte hex address)
 const SOLANA_TARGET = '0x6a44bb5ea802a001386a5b39708523e1a3e1bafc8164ffcb94d1f5afa4849c69' as `0x${string}`;
+
+// Solana test_counter program on devnet (8yNqjrMnFiFbVTVQcKij8tNWWTMdFkrDf9abCGgc2sgx)
+const SOL_TEST_PROGRAM = '0x7673075a980bfd5d6b1dffe99c31f63e8938519cc1c2af009dda5e568a94460d' as `0x${string}`;
+const SOL_COUNTER_PDA = '0x4f12fe6816ae7e33ebf7db0b154ec3b09e3bf1a7690481e8e9477d5a278ad3af' as `0x${string}`;
+const SOL_ZERO_ADDRESS = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`;
+const SVM_GATEWAY_PROGRAM = new PublicKey('CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS');
 
 describe('Advance Hopping: Cascade API E2E', () => {
   let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
   let ueaAddress: `0x${string}`;
   let pushPublicClient: ReturnType<typeof createPublicClient>;
   let bscPublicClient: ReturnType<typeof createPublicClient>;
+  let ceaPdaHex: `0x${string}`;
 
   const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
   const skipE2E = !privateKey;
@@ -81,6 +89,15 @@ describe('Advance Hopping: Cascade API E2E', () => {
     bscPublicClient = createPublicClient({
       transport: http(CHAIN_INFO[CHAIN.BNB_TESTNET].defaultRPC[0]),
     });
+
+    // Derive Solana CEA PDA for CPI tests
+    const senderBytes = Buffer.from(ueaAddress.slice(2), 'hex');
+    const [ceaPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('push_identity'), senderBytes],
+      SVM_GATEWAY_PROGRAM
+    );
+    ceaPdaHex = ('0x' + Buffer.from(ceaPda.toBytes()).toString('hex')) as `0x${string}`;
+    console.log(`CEA PDA: ${ceaPda.toBase58()} (${ceaPdaHex})`);
   });
 
   // ============================================================================
@@ -90,6 +107,10 @@ describe('Advance Hopping: Cascade API E2E', () => {
 
     // ==========================================================================
     // 1. Single Hop — Funds (Route 1)
+    //
+    // On-chain execution flow:
+    //   Push Chain tx:
+    //     └─ Value transfer (0.001 PC) to target address on Push Chain
     // ==========================================================================
     describe('1. Single Hop — Funds (Route 1)', () => {
       it('should send a prepared Route 1 transaction', async () => {
@@ -113,6 +134,18 @@ describe('Advance Hopping: Cascade API E2E', () => {
 
     // ==========================================================================
     // 2. 3-Leg Cascade — Route 2 (Payload) + Route 3 + Route 1
+    // ==========================================================================
+    // ==========================================================================
+    // 2. 3-Leg Cascade — Route 2 (Payload) + Route 3 + Route 1
+    //
+    // On-chain execution flow:
+    //   Push Chain tx (single multicall):
+    //     ├─ Outbound 1 → BSC: ERC20 approve call (payload only)
+    //     └─ Outbound 2 → BSC: Route 3 CEA payload (sendUniversalTxToUEA)
+    //          └─ BSC CEA creates inbound back to Push Chain
+    //               └─ Push Chain executePayload (multicall):
+    //                    ├─ counter.increment() on Push Chain
+    //                    └─ Value transfer (0.001 PC) to target
     // ==========================================================================
     describe('2. 3-Leg Cascade — Route 2 (Payload) + Route 3 + Route 1', () => {
       it('should send multi-hop: Payload to BNB + Inbound from BNB + Push transfer (MH-P-1)', async () => {
@@ -200,7 +233,16 @@ describe('Advance Hopping: Cascade API E2E', () => {
     });
 
     // ==========================================================================
-    // 4. 2-Leg Cascade — Funds
+    // 3. 3-Leg Cascade — Route 2 (Funds) + Route 3 + Route 1
+    //
+    // On-chain execution flow:
+    //   Push Chain tx (single multicall):
+    //     ├─ Outbound 1 → BSC: value transfer (0.0001 BNB)
+    //     └─ Outbound 2 → BSC: Route 3 CEA payload (sendUniversalTxToUEA)
+    //          └─ BSC CEA creates inbound back to Push Chain
+    //               └─ Push Chain executePayload (multicall):
+    //                    ├─ counter.increment() on Push Chain
+    //                    └─ Value transfer (0.001 PC) to target
     // ==========================================================================
     describe('3. 3-Leg Cascade — Route 2 (Funds) + Route 3 + Route 1', () => {
       it('should send multi-hop: Outbound to BNB + Inbound from BNB + Push Chain transfer (MH-F-1)', async () => {
@@ -306,7 +348,18 @@ describe('Advance Hopping: Cascade API E2E', () => {
     });
 
     // ==========================================================================
-    // 5. 3-Leg Cascade — Payload
+    // 4. 4-Leg Cascade — Route 2 (BNB Payload) + Route 3 + Route 1 + Route 2 (Solana)
+    //
+    // On-chain execution flow:
+    //   Push Chain tx (single multicall):
+    //     ├─ Outbound 1 → BSC: ERC20 approve call (payload only)
+    //     └─ Outbound 2 → BSC: Route 3 CEA payload (sendUniversalTxToUEA)
+    //          └─ BSC CEA creates inbound back to Push Chain
+    //               └─ Push Chain executePayload (multicall):
+    //                    ├─ counter.increment() on Push Chain
+    //                    ├─ Value transfer (0.001 PC) to target
+    //                    ├─ pSOL.approve(UGPC)
+    //                    └─ UGPC.sendOutbound → Solana (0.01 SOL)
     // ==========================================================================
     describe('4. 4-Leg Cascade — Route 2 (BNB Payload) + Route 3 + Route 1 + Route 2 (Solana)', () => {
       it('should send multi-hop: Payload to BNB + Inbound + Push + Solana (MH-P-2)', async () => {
@@ -398,7 +451,18 @@ describe('Advance Hopping: Cascade API E2E', () => {
     });
 
     // ==========================================================================
-    // 6. 3-Leg Cascade — Funds
+    // 5. 4-Leg Cascade — Route 2 (BNB Funds) + Route 3 + Route 1 + Route 2 (Solana)
+    //
+    // On-chain execution flow:
+    //   Push Chain tx (single multicall):
+    //     ├─ Outbound 1 → BSC: value transfer (0.0001 BNB)
+    //     └─ Outbound 2 → BSC: Route 3 CEA payload (sendUniversalTxToUEA)
+    //          └─ BSC CEA creates inbound back to Push Chain
+    //               └─ Push Chain executePayload (multicall):
+    //                    ├─ counter.increment() on Push Chain
+    //                    ├─ Value transfer (0.001 PC) to target
+    //                    ├─ pSOL.approve(UGPC)
+    //                    └─ UGPC.sendOutbound → Solana (0.01 SOL)
     // ==========================================================================
     describe('5. 4-Leg Cascade — Route 2 (BNB Funds) + Route 3 + Route 1 + Route 2 (Solana)', () => {
       it('should send multi-hop: Funds to BNB + Inbound + Push + Solana (MH-F-2)', async () => {
@@ -494,7 +558,15 @@ describe('Advance Hopping: Cascade API E2E', () => {
     });
 
     // ==========================================================================
-    // 7. Same-Chain Merging
+    // 6. Same-Chain Merging + Route 3 Inbound
+    //
+    // On-chain execution flow:
+    //   Push Chain tx (single multicall — merged same-chain outbounds):
+    //     ├─ Outbound → BSC: merged multicall [transfer to addr1, transfer to addr2]
+    //     └─ Outbound → BSC: Route 3 CEA payload (sendUniversalTxToUEA)
+    //          └─ BSC CEA creates inbound back to Push Chain
+    //               └─ Push Chain executePayload:
+    //                    └─ counter.increment() on Push Chain
     // ==========================================================================
     describe('6. Same-Chain Merging + Route 3 Inbound', () => {
       it('should send merged same-chain Route 2 hops then Route 3 inbound', async () => {
@@ -585,6 +657,16 @@ describe('Advance Hopping: Cascade API E2E', () => {
 
     // ==========================================================================
     // 7. Multi-Chain: BSC Payload + Inbound + Solana Bridge
+    //
+    // On-chain execution flow:
+    //   Push Chain tx (single multicall):
+    //     ├─ Outbound 1 → BSC: value (0.0001 BNB) + counter.increment() on BSC
+    //     └─ Outbound 2 → BSC: Route 3 CEA payload (sendUniversalTxToUEA)
+    //          └─ BSC CEA creates inbound back to Push Chain
+    //               └─ Push Chain executePayload (multicall):
+    //                    ├─ counter.increment() on Push Chain
+    //                    ├─ pSOL.approve(UGPC)
+    //                    └─ UGPC.sendOutbound → Solana (0.01 SOL)
     // ==========================================================================
     describe('7. Multi-Chain — R2(BSC payload) + R3(inbound) + R2(Solana)', () => {
       it('should bridge to BSC with counter increment, inbound to Push, then bridge to Solana', async () => {
@@ -594,7 +676,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
 
         // Read BSC counter BEFORE
         const bscCounterBefore = await bscPublicClient.readContract({
-          address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
+          address: BSC_COUNTER_PAYABLE, abi: BSC_COUNTER_ABI, functionName: 'count',
         }) as bigint;
         console.log(`BSC CounterA BEFORE: ${bscCounterBefore}`);
 
@@ -605,7 +687,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         console.log(`Push Chain Counter BEFORE: ${pushCounterBefore}`);
 
         const bscIncrementPayload = encodeFunctionData({
-          abi: COUNTER_ABI, functionName: 'increment',
+          abi: BSC_COUNTER_ABI, functionName: 'increment',
         });
         const pushIncrementPayload = encodeFunctionData({
           abi: COUNTER_ABI_PAYABLE, functionName: 'increment',
@@ -613,7 +695,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
 
         // Hop 1: Route 2 — BSC outbound (value + counter increment)
         const tx1 = await pushClient.universal.prepareTransaction({
-          to: { address: COUNTER_A, chain: CHAIN.BNB_TESTNET },
+          to: { address: BSC_COUNTER_PAYABLE, chain: CHAIN.BNB_TESTNET },
           value: parseEther('0.0001'),
           data: bscIncrementPayload,
           gasLimit: BigInt(2000000),
@@ -661,7 +743,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         // Verify BSC counter incremented
         await new Promise((r) => setTimeout(r, 5000));
         const bscCounterAfter = await bscPublicClient.readContract({
-          address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
+          address: BSC_COUNTER_PAYABLE, abi: BSC_COUNTER_ABI, functionName: 'count',
         }) as bigint;
         console.log(`BSC CounterA AFTER: ${bscCounterAfter}`);
         expect(bscCounterAfter).toBeGreaterThan(bscCounterBefore);
@@ -683,17 +765,28 @@ describe('Advance Hopping: Cascade API E2E', () => {
     });
 
     // ==========================================================================
-    // 8. Full Round-Trip: BSC + Inbound + Solana + Solana Inbound
+    // 8. Full Round-Trip: BSC + Solana CPI + BSC Inbound + Solana Inbound
+    //
+    // On-chain execution flow:
+    //   Push Chain tx (single multicall):
+    //     ├─ Outbound 1 → BSC: value (0.0001 BNB) + counter.increment() on BSC
+    //     ├─ Outbound 2 → Solana: CPI receive_sol on test_counter program
+    //     └─ Outbound 3 → BSC: Route 3 CEA payload (sendUniversalTxToUEA)
+    //          └─ BSC CEA creates inbound back to Push Chain
+    //               └─ Push Chain executePayload (merged multicall):
+    //                    ├─ counter.increment() on Push Chain (from both R3 hops)
+    //                    ├─ pSOL.approve(UGPC)
+    //                    └─ UGPC.sendOutbound → Solana (Solana R3 nested as child)
     // ==========================================================================
-    describe('8. Full Round-Trip — R2(BSC) + R3(BSC→Push) + R2(Solana) + R3(Solana→Push)', () => {
-      it('should cascade across BSC and Solana with inbounds from both chains', async () => {
+    describe('8. Full Round-Trip — R2(BSC payload) + R2(Solana CPI) + R3(BSC→Push) + R3(Sol→Push)', () => {
+      it('should cascade across BSC and Solana with CPI + dual inbounds', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Test: Full Round-Trip — BSC + Solana with dual inbounds ===');
+        console.log('\n=== Test: Full Round-Trip — BSC payload + Solana CPI + dual inbounds ===');
 
         // Read counters BEFORE
         const bscCounterBefore = await bscPublicClient.readContract({
-          address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
+          address: BSC_COUNTER_PAYABLE, abi: BSC_COUNTER_ABI, functionName: 'count',
         }) as bigint;
         console.log(`BSC CounterA BEFORE: ${bscCounterBefore}`);
 
@@ -703,34 +796,50 @@ describe('Advance Hopping: Cascade API E2E', () => {
         console.log(`Push Chain Counter BEFORE: ${pushCounterBefore}`);
 
         const bscIncrementPayload = encodeFunctionData({
-          abi: COUNTER_ABI, functionName: 'increment',
+          abi: BSC_COUNTER_ABI, functionName: 'increment',
         });
         const pushIncrementPayload = encodeFunctionData({
           abi: COUNTER_ABI_PAYABLE, functionName: 'increment',
         });
 
+        // Solana CPI: receive_sol on test_counter
+        const discriminator = new Uint8Array([121, 244, 250, 3, 8, 229, 225, 1]);
+        const amountBuf = new Uint8Array(8);
+        new DataView(amountBuf.buffer).setBigUint64(0, BigInt(1), true);
+        const ixData = new Uint8Array([...discriminator, ...amountBuf]);
+
         // Hop 1: Route 2 — BSC outbound (value + counter increment)
         const tx1 = await pushClient.universal.prepareTransaction({
-          to: { address: COUNTER_A, chain: CHAIN.BNB_TESTNET },
+          to: { address: BSC_COUNTER_PAYABLE, chain: CHAIN.BNB_TESTNET },
           value: parseEther('0.0001'),
           data: bscIncrementPayload,
           gasLimit: BigInt(2000000),
         });
 
-        // Hop 2: Route 3 — Inbound from BSC (increment Push Chain counter)
+        // Hop 2: Route 2 — Solana outbound (CPI: receive_sol on test_counter)
         const tx2 = await pushClient.universal.prepareTransaction({
+          to: { address: SOL_TEST_PROGRAM, chain: CHAIN.SOLANA_DEVNET },
+          value: BigInt(5_000_000),
+          svmExecute: {
+            targetProgram: SOL_TEST_PROGRAM,
+            accounts: [
+              { pubkey: SOL_COUNTER_PDA, isWritable: true },
+              { pubkey: SOLANA_TARGET, isWritable: true },
+              { pubkey: ceaPdaHex, isWritable: true },
+              { pubkey: SOL_ZERO_ADDRESS, isWritable: false },
+            ],
+            ixData,
+          },
+        });
+
+        // Hop 3: Route 3 — Inbound from BSC (increment Push Chain counter #1)
+        const tx3 = await pushClient.universal.prepareTransaction({
           from: { chain: CHAIN.BNB_TESTNET },
           to: COUNTER_ADDRESS_PAYABLE,
           data: pushIncrementPayload,
         });
 
-        // Hop 3: Route 2 — Solana outbound (value transfer)
-        const tx3 = await pushClient.universal.prepareTransaction({
-          to: { address: SOLANA_TARGET, chain: CHAIN.SOLANA_DEVNET },
-          value: BigInt(10_000_000),
-        });
-
-        // Hop 4: Route 3 — Inbound from Solana (increment Push Chain counter again)
+        // Hop 4: Route 3 — Inbound from Solana (increment Push Chain counter #2)
         const tx4 = await pushClient.universal.prepareTransaction({
           from: { chain: CHAIN.SOLANA_DEVNET },
           to: COUNTER_ADDRESS_PAYABLE,
@@ -766,27 +875,108 @@ describe('Advance Hopping: Cascade API E2E', () => {
         // Verify BSC counter incremented
         await new Promise((r) => setTimeout(r, 5000));
         const bscCounterAfter = await bscPublicClient.readContract({
-          address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
+          address: BSC_COUNTER_PAYABLE, abi: BSC_COUNTER_ABI, functionName: 'count',
         }) as bigint;
         console.log(`BSC CounterA AFTER: ${bscCounterAfter}`);
         expect(bscCounterAfter).toBeGreaterThan(bscCounterBefore);
 
-        // Verify Push Chain counter incremented (from BOTH inbounds: BSC + Solana)
-        // Expect at least +2 (one from BSC inbound, one from Solana inbound)
+        // Verify Push Chain counter incremented from BSC inbound
+        // Both R3 hops' payloads (BSC + Solana) get merged into a single inbound
+        // multicall by the cascade composition, so counter increments once (+1).
         const pollStart = Date.now();
         let pushCounterAfter = pushCounterBefore;
-        while (Date.now() - pollStart < 300000) {
+        while (Date.now() - pollStart < 180000) {
           await new Promise((r) => setTimeout(r, 10000));
           pushCounterAfter = await pushPublicClient.readContract({
             address: COUNTER_ADDRESS_PAYABLE, abi: COUNTER_ABI_PAYABLE, functionName: 'countPC',
           }) as bigint;
-          const diff = Number(pushCounterAfter - pushCounterBefore);
-          console.log(`Polling Push counter: ${pushCounterAfter} (+${diff}) (elapsed: ${Math.round((Date.now() - pollStart) / 1000)}s)`);
-          if (diff >= 2) break;
+          console.log(`Polling Push counter: ${pushCounterAfter} (elapsed: ${Math.round((Date.now() - pollStart) / 1000)}s)`);
+          if (pushCounterAfter > pushCounterBefore) break;
         }
         console.log(`Push Chain Counter AFTER: ${pushCounterAfter}`);
-        expect(pushCounterAfter).toBeGreaterThanOrEqual(pushCounterBefore + BigInt(2));
+        expect(pushCounterAfter).toBeGreaterThan(pushCounterBefore);
       }, 1200000);
+    });
+
+    // ==========================================================================
+    // 9. Solana-Originated Inbound — R2(Solana) + R3(Solana→Push)
+    //
+    // On-chain execution flow:
+    //   Push Chain tx (single multicall):
+    //     └─ Outbound → Solana: value transfer (0.01 SOL)
+    //          └─ Solana delivery confirmed
+    //               └─ Route 3 inbound from Solana → Push Chain
+    //                    └─ Push Chain executePayload:
+    //                         └─ counter.increment() on Push Chain
+    // ==========================================================================
+    describe('9. Solana-Originated Inbound — R2(Solana) + R3(Solana→Push)', () => {
+      it('should outbound to Solana then inbound from Solana to increment Push counter', async () => {
+        if (skipE2E) return;
+
+        console.log('\n=== Test: Solana-Originated Inbound ===');
+
+        const pushCounterBefore = await pushPublicClient.readContract({
+          address: COUNTER_ADDRESS_PAYABLE, abi: COUNTER_ABI_PAYABLE, functionName: 'countPC',
+        }) as bigint;
+        console.log(`Push Chain Counter BEFORE: ${pushCounterBefore}`);
+
+        const pushIncrementPayload = encodeFunctionData({
+          abi: COUNTER_ABI_PAYABLE, functionName: 'increment',
+        });
+
+        // Hop 1: Route 2 — Solana outbound (value transfer)
+        const tx1 = await pushClient.universal.prepareTransaction({
+          to: { address: SOLANA_TARGET, chain: CHAIN.SOLANA_DEVNET },
+          value: BigInt(10_000_000),
+        });
+
+        // Hop 2: Route 3 — Inbound from Solana (increment Push Chain counter)
+        const tx2 = await pushClient.universal.prepareTransaction({
+          from: { chain: CHAIN.SOLANA_DEVNET },
+          to: COUNTER_ADDRESS_PAYABLE,
+          data: pushIncrementPayload,
+        });
+
+        const result = await pushClient.universal
+          .executeTransactions(tx1).thenOn(tx2).send();
+
+        console.log(`[TEST] Solana Inbound TX Hash: ${result.initialTxHash}`);
+        console.log(`[TEST] Hop count: ${result.hopCount}`);
+
+        expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(result.hopCount).toBe(2);
+
+        const completion = await result.waitForAll({
+          timeout: 600000,
+          progressHook: (event) => {
+            console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
+          },
+        });
+        expect(completion.success).toBe(true);
+
+        // Verify Solana outbound
+        const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
+        for (const hop of outboundHops) {
+          if (hop.outboundDetails) {
+            expect(hop.outboundDetails.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+            await verifyExternalTransaction(hop.outboundDetails.externalTxHash, hop.outboundDetails.destinationChain);
+          }
+        }
+
+        // Verify Push Chain counter incremented (Route 3 inbound from Solana)
+        const pollStart = Date.now();
+        let pushCounterAfter = pushCounterBefore;
+        while (Date.now() - pollStart < 180000) {
+          await new Promise((r) => setTimeout(r, 10000));
+          pushCounterAfter = await pushPublicClient.readContract({
+            address: COUNTER_ADDRESS_PAYABLE, abi: COUNTER_ABI_PAYABLE, functionName: 'countPC',
+          }) as bigint;
+          console.log(`Polling Push counter: ${pushCounterAfter} (elapsed: ${Math.round((Date.now() - pollStart) / 1000)}s)`);
+          if (pushCounterAfter > pushCounterBefore) break;
+        }
+        console.log(`Push Chain Counter AFTER: ${pushCounterAfter}`);
+        expect(pushCounterAfter).toBeGreaterThan(pushCounterBefore);
+      }, 900000);
     });
   });
 
