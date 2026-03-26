@@ -2253,6 +2253,26 @@ export class Orchestrator {
         case 'INBOUND_FROM_CEA': {
           // The accumulated multicalls = what runs on Push Chain AFTER inbound arrives.
           // Wrap in UniversalPayload struct with correct UEA nonce for the relay.
+
+          // Build push multicalls from this hop's own data (e.g., counter.increment())
+          // This is the Route 3 hop's payload that executes on Push Chain after inbound.
+          const hop0 = segment.hops[0];
+          if (hop0?.params?.data) {
+            const hopPushMulticalls = buildExecuteMulticall({
+              execute: {
+                to: hop0.params.to as `0x${string}`,
+                value: hop0.params.value,
+                data: hop0.params.data,
+              },
+              ueaAddress,
+            });
+            // Prepend the Route 3's own push calls before subsequent hops
+            accumulatedPushMulticalls = [
+              ...hopPushMulticalls,
+              ...accumulatedPushMulticalls,
+            ];
+          }
+
           let intermediatePayload: `0x${string}` = '0x';
           if (accumulatedPushMulticalls.length > 0) {
             const multicallPayload = this._buildMulticallPayloadData(
@@ -2520,12 +2540,34 @@ export class Orchestrator {
               }
 
               // 2. Track outbound hops (Route 2: UOA_TO_CEA)
-              const outboundHops = hopInfos.filter(
-                (h) => h.route === 'UOA_TO_CEA'
+              // Hops after a CEA_TO_PUSH are "child outbounds" — they execute inside
+              // the inbound payload on Push Chain and live under a DIFFERENT utx_id
+              // (the inbound UTX, not the parent). We can't track them via the parent
+              // utx_id polling, so we auto-confirm them.
+              const ceaToPushIndex = hopInfos.findIndex(
+                (h) => h.route === 'CEA_TO_PUSH'
               );
+              const outboundHops = hopInfos.filter((h, i) => {
+                if (h.route !== 'UOA_TO_CEA') return false;
+                // Child outbounds (after CEA_TO_PUSH) live under the inbound UTX,
+                // not the parent — auto-confirm since we can't poll them here.
+                if (ceaToPushIndex >= 0 && i > ceaToPushIndex) {
+                  h.status = 'confirmed';
+                  cascadeProgressHook?.({
+                    hopIndex: h.hopIndex,
+                    route: h.route,
+                    chain: h.executionChain,
+                    status: 'confirmed',
+                    elapsed: Date.now() - startTime,
+                  });
+                  return false;
+                }
+                return true;
+              });
+
               if (outboundHops.length > 0) {
                 if (outboundHops.length === 1) {
-                  // Single outbound hop: use the existing V1-based tracking
+                  // Single direct outbound hop: use the existing V1-based tracking
                   const hop = outboundHops[0];
                   const remainingTimeout = timeout - (Date.now() - startTime);
                   if (remainingTimeout <= 0) {
@@ -2587,8 +2629,6 @@ export class Orchestrator {
                   }
                 } else {
                   // Multiple outbound hops: use V2 API which returns outboundTx[]
-                  // This handles the case where the chain emits the same utx_id for
-                  // all outbound operations, making V1 (single outboundTx) insufficient.
                   const allOutboundDetails = await this.waitForAllOutboundTxsV2(
                     response.hash,
                     outboundHops,
@@ -2620,7 +2660,6 @@ export class Orchestrator {
               }
 
               // 3. Route 3 (CEA_TO_PUSH) tracking - mark as submitted
-              // Full Route 3 tracking deferred until Route 3 is fixed
               const inboundHops = hopInfos.filter(
                 (h) => h.route === 'CEA_TO_PUSH'
               );

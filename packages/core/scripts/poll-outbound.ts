@@ -1,12 +1,13 @@
 /**
  * Standalone script to poll outbound transaction status on Push Chain.
+ * Supports cascaded txs: follows parent → child UTX chains via inbound events.
  *
  * Usage:
- *   npx ts-node packages/core/scripts/poll-outbound.ts <PUSH_TX_HASH> [--interval 10] [--timeout 300]
+ *   npx ts-node packages/core/scripts/poll-outbound.ts <PUSH_TX_HASH> [--interval 10] [--timeout 300] [--depth 2]
  *
  * Example:
- *   npx ts-node packages/core/scripts/poll-outbound.ts 0xf02deb97edcf51fbfb02123c9e8b99aacc3b90cb5d51d891bcc28db7919ea06a
- *   npx ts-node packages/core/scripts/poll-outbound.ts 0xf02deb97... --interval 5 --timeout 600
+ *   npx ts-node packages/core/scripts/poll-outbound.ts 0x5a711714c54bed06173bb113f674361995d4073c69cdc864586daf7e9bc81a62
+ *   npx ts-node packages/core/scripts/poll-outbound.ts 0x5a7117... --interval 5 --timeout 600 --depth 3
  */
 
 import {
@@ -22,7 +23,6 @@ import {
 import {
   UniversalTxStatus,
   OutboundStatus,
-  TxType,
   outboundStatusToJSON,
   txTypeToJSON,
 } from '../src/lib/generated/uexecutor/v2/types';
@@ -48,7 +48,7 @@ function parseArgs() {
   const args = process.argv.slice(2);
   if (args.length === 0 || args[0].startsWith('--')) {
     console.error(
-      'Usage: npx ts-node packages/core/scripts/poll-outbound.ts <PUSH_TX_HASH> [--interval 10] [--timeout 300]'
+      'Usage: npx ts-node packages/core/scripts/poll-outbound.ts <PUSH_TX_HASH> [--interval 10] [--timeout 300] [--depth 2]'
     );
     process.exit(1);
   }
@@ -56,23 +56,26 @@ function parseArgs() {
   const txHash = args[0];
   let interval = 10;
   let timeout = 300;
+  let depth = 2;
 
   for (let i = 1; i < args.length; i++) {
     if (args[i] === '--interval' && args[i + 1]) {
       interval = parseInt(args[++i], 10);
     } else if (args[i] === '--timeout' && args[i + 1]) {
       timeout = parseInt(args[++i], 10);
+    } else if (args[i] === '--depth' && args[i + 1]) {
+      depth = parseInt(args[++i], 10);
     }
   }
 
-  return { txHash, intervalMs: interval * 1000, timeoutMs: timeout * 1000 };
+  return { txHash, intervalMs: interval * 1000, timeoutMs: timeout * 1000, depth };
 }
 
-// ── Step A: Extract universalTx ID from Cosmos tx events ────────────────
-async function extractUniversalTxId(
+// ── Step A: Extract ALL utx_ids from Cosmos tx events ────────────────
+async function extractAllUtxIds(
   txHash: string,
   rpcUrl: string
-): Promise<string> {
+): Promise<{ utxIds: string[]; allEvents: Array<{ type: string; attrs: Record<string, string> }> }> {
   console.log(`\n[Step A] Fetching Cosmos tx for: ${txHash}`);
   const client = await StargateClient.connect(rpcUrl);
 
@@ -85,160 +88,258 @@ async function extractUniversalTxId(
 
   console.log(`[Step A] Found ${results.length} Cosmos tx result(s)`);
 
-  const cosmosTx = results[0];
-  for (const event of cosmosTx.events) {
-    if (event.type === 'outbound_created') {
-      const utxIdAttr = event.attributes?.find(
-        (attr: { key: string; value?: string }) => attr.key === 'utx_id'
-      );
-      if (utxIdAttr?.value) {
-        const id = utxIdAttr.value.startsWith('0x')
-          ? utxIdAttr.value
-          : `0x${utxIdAttr.value}`;
-        console.log(
-          `[Step A] Found utx_id from outbound_created event: ${id}`
-        );
-        return id;
+  const utxIds = new Set<string>();
+  const allEvents: Array<{ type: string; attrs: Record<string, string> }> = [];
+
+  for (const cosmosTx of results) {
+    for (const event of cosmosTx.events) {
+      const attrs: Record<string, string> = {};
+      for (const attr of event.attributes || []) {
+        if (attr.key && attr.value) attrs[attr.key] = attr.value;
+      }
+      allEvents.push({ type: event.type, attrs });
+
+      if (event.type === 'outbound_created') {
+        const utxId = attrs['utx_id'];
+        const txId = attrs['tx_id'];
+        if (utxId) {
+          const id = utxId.startsWith('0x') ? utxId : `0x${utxId}`;
+          utxIds.add(id);
+          console.log(`[Step A] outbound_created: utx_id=${id} tx_id=${txId || 'N/A'} dest=${attrs['destination_chain'] || 'N/A'}`);
+        }
       }
     }
   }
 
-  // Dump all events for debugging
-  console.log(`[Step A] No outbound_created event found. All events:`);
-  for (const event of cosmosTx.events) {
-    console.log(`  event.type: ${event.type}`);
-    for (const attr of event.attributes || []) {
-      console.log(`    ${attr.key} = ${attr.value}`);
+  if (utxIds.size === 0) {
+    console.log(`[Step A] No outbound_created events. Dumping all events:`);
+    for (const ev of allEvents) {
+      console.log(`  ${ev.type}: ${JSON.stringify(ev.attrs)}`);
     }
   }
 
-  throw new Error(
-    'Could not extract utx_id from outbound_created event. See events above.'
-  );
+  return { utxIds: [...utxIds], allEvents };
 }
 
-// ── Step B: Poll gRPC for universalTx status ────────────────────────────
-async function pollOutbound(
-  universalTxId: string,
-  rpcUrl: string,
-  intervalMs: number,
-  timeoutMs: number
-): Promise<void> {
-  // Strip 0x for gRPC query
-  const queryId = universalTxId.startsWith('0x')
-    ? universalTxId.slice(2)
-    : universalTxId;
+// ── Step B: Query a single UTX by ID ────────────────────────────────
+async function queryUtx(
+  queryId: string,
+  rpc: ReturnType<typeof createProtobufRpcClient>,
+  label: string
+): Promise<QueryGetUniversalTxResponseV2 | null> {
+  const id = queryId.startsWith('0x') ? queryId.slice(2) : queryId;
+  try {
+    const request = QueryGetUniversalTxRequestV2.fromPartial({ id });
+    const responseBytes = await rpc.request(
+      'uexecutor.v2.Query',
+      'GetUniversalTx',
+      QueryGetUniversalTxRequestV2.encode(request).finish()
+    );
+    return QueryGetUniversalTxResponseV2.decode(responseBytes);
+  } catch (error) {
+    console.log(`[${label}] Query failed: ${error instanceof Error ? error.message : String(error)}`);
+    return null;
+  }
+}
 
-  console.log(`\n[Step B] Polling universalTx ID: ${queryId}`);
-  console.log(
-    `[Step B] Interval: ${intervalMs / 1000}s | Timeout: ${timeoutMs / 1000}s | RPC: ${rpcUrl}\n`
-  );
-
-  const tmClient = await Tendermint34Client.connect(rpcUrl);
-  const queryClient = new QueryClient(tmClient);
-  const rpc = createProtobufRpcClient(queryClient);
-
-  const startTime = Date.now();
-  let pollCount = 0;
-
-  while (Date.now() - startTime < timeoutMs) {
-    pollCount++;
-    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    const t0 = Date.now();
-
-    try {
-      const request = QueryGetUniversalTxRequestV2.fromPartial({ id: queryId });
-      const responseBytes = await rpc.request(
-        'uexecutor.v2.Query',
-        'GetUniversalTx',
-        QueryGetUniversalTxRequestV2.encode(request).finish()
-      );
-      const response = QueryGetUniversalTxResponseV2.decode(responseBytes);
-      const rpcMs = Date.now() - t0;
-
-      const utx = response?.universalTx;
-      const statusNum = utx?.universalStatus ?? -1;
-      const statusName =
-        STATUS_NAMES[statusNum] ?? `UNKNOWN(${statusNum})`;
-
-      // V2 has array of outboundTx
-      const outboundTxs = utx?.outboundTx || [];
-      const firstOutbound = outboundTxs[0];
-      const observedTxHash = firstOutbound?.observedTx?.txHash || '';
-
-      // Full JSON response
-      console.log(
-        `── Poll #${pollCount} | ${elapsed}s elapsed | ${rpcMs}ms rpc ──`
-      );
-      console.log(
-        JSON.stringify(
-          response,
-          (k, v) => (typeof v === 'bigint' ? v.toString() : v),
-          2
-        )
-      );
-
-      // Summary for each outbound tx
-      for (let i = 0; i < outboundTxs.length; i++) {
-        const ob = outboundTxs[i];
-        console.log(
-          `OUTBOUND[${i}]: id='${ob.id}' | status=${outboundStatusToJSON(ob.outboundStatus)} | txType=${txTypeToJSON(ob.txType)} | dest='${ob.destinationChain}' | recipient='${ob.recipient}' | amount='${ob.amount}' | observedTxHash='${ob.observedTx?.txHash || ''}'`
-        );
-      }
-      console.log(`UNIVERSAL STATUS: ${statusNum} (${statusName})`);
-
-      // Check terminal states - look for observed tx hash
-      if (observedTxHash) {
-        console.log(`\n=== OUTBOUND TX OBSERVED ===`);
-        console.log(`External TX Hash: ${observedTxHash}`);
-        console.log(`Destination: ${firstOutbound?.destinationChain}`);
-        console.log(`Recipient: ${firstOutbound?.recipient}`);
-        console.log(`Amount: ${firstOutbound?.amount}`);
-        console.log(`External Asset: ${firstOutbound?.externalAssetAddr}`);
-        console.log(`PRC20 Asset: ${firstOutbound?.prc20AssetAddr}`);
-        console.log(`Outbound Status: ${outboundStatusToJSON(firstOutbound?.outboundStatus)}`);
-        process.exit(0);
-      }
-
-      if (
-        statusNum === UniversalTxStatus.OUTBOUND_FAILED ||
-        statusNum === UniversalTxStatus.PC_EXECUTED_FAILED ||
-        statusNum === UniversalTxStatus.CANCELED
-      ) {
-        console.log(`\n=== TERMINAL FAILURE STATE: ${statusName} ===`);
-        process.exit(1);
-      }
-    } catch (error) {
-      console.log(
-        `── Poll #${pollCount} | ${elapsed}s elapsed | ERROR ──`
-      );
-      console.log(
-        error instanceof Error ? error.message : String(error)
-      );
-    }
-
-    console.log('');
-
-    // Wait before next poll
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+// ── Step C: Print UTX details ────────────────────────────────────────
+function printUtx(response: QueryGetUniversalTxResponseV2, label: string): string[] {
+  const utx = response?.universalTx;
+  if (!utx) {
+    console.log(`[${label}] No universalTx in response`);
+    return [];
   }
 
-  console.log(
-    `\n=== TIMEOUT after ${pollCount} polls (${((Date.now() - startTime) / 1000).toFixed(1)}s) ===`
-  );
-  process.exit(2);
+  const statusNum = utx.universalStatus ?? -1;
+  const statusName = STATUS_NAMES[statusNum] ?? `UNKNOWN(${statusNum})`;
+
+  console.log(`\n${'═'.repeat(80)}`);
+  console.log(`${label} | UTX ID: ${utx.id}`);
+  console.log(`${'═'.repeat(80)}`);
+  console.log(`  Status: ${statusNum} (${statusName})`);
+
+  // Inbound info
+  if (utx.inboundTx) {
+    const ib = utx.inboundTx;
+    console.log(`  Inbound: chain=${ib.sourceChain} | txHash=${ib.txHash} | amount=${ib.amount} | txType=${ib.txType}`);
+    if (ib.universalPayload) {
+      console.log(`  Inbound Payload: to=${ib.universalPayload.to} | nonce=${ib.universalPayload.nonce} | dataLen=${ib.universalPayload.data?.length || 0}`);
+    }
+  }
+
+  // PC Txs
+  if (utx.pcTx?.length) {
+    for (let i = 0; i < utx.pcTx.length; i++) {
+      const pc = utx.pcTx[i];
+      console.log(`  PCTx[${i}]: hash=${pc.txHash} | gas=${pc.gasUsed} | sender=${pc.sender}`);
+    }
+  }
+
+  // Outbound Txs
+  const childTxHashes: string[] = [];
+  if (utx.outboundTx?.length) {
+    for (let i = 0; i < utx.outboundTx.length; i++) {
+      const ob = utx.outboundTx[i];
+      const obStatus = outboundStatusToJSON(ob.outboundStatus);
+      const txType = txTypeToJSON(ob.txType);
+      const extHash = ob.observedTx?.txHash || '';
+      console.log(`  Outbound[${i}]: id=${ob.id} | status=${obStatus} | type=${txType} | dest=${ob.destinationChain} | recipient=${ob.recipient} | amount=${ob.amount} | extTxHash=${extHash || 'EMPTY'}`);
+
+      // Collect observed external tx hashes for child UTX discovery
+      if (extHash && extHash !== 'EMPTY') {
+        childTxHashes.push(extHash);
+      }
+    }
+  } else {
+    console.log(`  No outbound txs`);
+  }
+
+  return childTxHashes;
+}
+
+// ── Step D: Find child UTX IDs from external tx hashes ───────────────
+async function findChildUtxIds(
+  externalTxHashes: string[],
+  rpcUrl: string
+): Promise<string[]> {
+  const client = await StargateClient.connect(rpcUrl);
+  const childUtxIds = new Set<string>();
+
+  for (const extHash of externalTxHashes) {
+    // Search for inbound events created from this external tx
+    try {
+      // Try searching by the external tx hash in inbound events
+      const query = `universal_tx_created.inbound_tx_hash='${extHash}'`;
+      const results = await client.searchTx(query);
+      for (const tx of results) {
+        for (const event of tx.events) {
+          if (event.type === 'universal_tx_created' || event.type === 'outbound_created') {
+            for (const attr of event.attributes || []) {
+              if (attr.key === 'utx_id' && attr.value) {
+                const id = attr.value.startsWith('0x') ? attr.value : `0x${attr.value}`;
+                childUtxIds.add(id);
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // Query might not be supported — skip
+    }
+  }
+
+  return [...childUtxIds];
 }
 
 // ── Main ────────────────────────────────────────────────────────────────
 async function main() {
-  const { txHash, intervalMs, timeoutMs } = parseArgs();
+  const { txHash, intervalMs, timeoutMs, depth } = parseArgs();
 
-  console.log(`Push Chain Outbound TX Poller`);
+  console.log(`Push Chain Cascade TX Inspector`);
   console.log(`TX Hash: ${txHash}`);
   console.log(`RPC: ${RPC_URL}`);
+  console.log(`Max depth: ${depth}`);
 
-  const universalTxId = await extractUniversalTxId(txHash, RPC_URL);
-  await pollOutbound(universalTxId, RPC_URL, intervalMs, timeoutMs);
+  // Connect RPC for queries
+  const tmClient = await Tendermint34Client.connect(RPC_URL);
+  const queryClient = new QueryClient(tmClient);
+  const rpc = createProtobufRpcClient(queryClient);
+
+  // Step 1: Extract parent UTX IDs
+  const { utxIds } = await extractAllUtxIds(txHash, RPC_URL);
+  if (utxIds.length === 0) {
+    console.error('No UTX IDs found. Exiting.');
+    process.exit(1);
+  }
+
+  // Step 2: Query parent UTX(s)
+  const visitedUtxIds = new Set<string>();
+  const queue: Array<{ utxId: string; level: number }> = utxIds.map(id => ({ utxId: id, level: 0 }));
+
+  while (queue.length > 0) {
+    const { utxId, level } = queue.shift()!;
+    const normalizedId = utxId.startsWith('0x') ? utxId : `0x${utxId}`;
+
+    if (visitedUtxIds.has(normalizedId)) continue;
+    visitedUtxIds.add(normalizedId);
+
+    if (level > depth) {
+      console.log(`\n[Depth ${level}] Skipping UTX ${normalizedId} (exceeds max depth ${depth})`);
+      continue;
+    }
+
+    const label = level === 0 ? `PARENT (L${level})` : `CHILD (L${level})`;
+    const response = await queryUtx(normalizedId, rpc, label);
+    if (!response) continue;
+
+    const externalTxHashes = printUtx(response, label);
+
+    // Step 3: For each outbound with an external tx hash, try to find child UTXs
+    if (level < depth && externalTxHashes.length > 0) {
+      console.log(`\n[${label}] Searching for child UTXs from ${externalTxHashes.length} external tx hash(es)...`);
+
+      // Try direct child UTX discovery
+      const childIds = await findChildUtxIds(externalTxHashes, RPC_URL);
+      if (childIds.length > 0) {
+        console.log(`[${label}] Found ${childIds.length} child UTX ID(s): ${childIds.join(', ')}`);
+        for (const childId of childIds) {
+          queue.push({ utxId: childId, level: level + 1 });
+        }
+      } else {
+        // Fallback: try querying each external hash as a potential Push Chain EVM tx
+        for (const extHash of externalTxHashes) {
+          try {
+            const { utxIds: childUtxIds } = await extractAllUtxIds(extHash, RPC_URL);
+            // These would be from the inbound execution on Push Chain
+            // But the extHash is a BSC hash, not a Push Chain hash — skip
+          } catch {
+            // Expected — external hashes are not Push Chain tx hashes
+          }
+        }
+        console.log(`[${label}] No child UTXs found via direct search. Child outbounds may be under inbound UTX.`);
+
+        // Try: search for inbound_created events that reference outbound IDs
+        const utx = response?.universalTx;
+        if (utx?.outboundTx) {
+          for (const ob of utx.outboundTx) {
+            if (ob.observedTx?.txHash) {
+              // Try searching cosmos events by the observed tx hash
+              try {
+                const client = await StargateClient.connect(RPC_URL);
+                // Search for vote_inbound events with this tx hash
+                const query = `vote_inbound.tx_hash='${ob.observedTx.txHash}'`;
+                const results = await client.searchTx(query);
+                for (const tx of results) {
+                  for (const event of tx.events) {
+                    if (event.type === 'outbound_created') {
+                      for (const attr of event.attributes || []) {
+                        if (attr.key === 'utx_id' && attr.value) {
+                          const id = attr.value.startsWith('0x') ? attr.value : `0x${attr.value}`;
+                          if (!visitedUtxIds.has(id)) {
+                            console.log(`[${label}] Found child UTX via vote_inbound: ${id}`);
+                            queue.push({ utxId: id, level: level + 1 });
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              } catch {
+                // Query not supported
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Summary
+  console.log(`\n${'═'.repeat(80)}`);
+  console.log(`INSPECTION COMPLETE`);
+  console.log(`${'═'.repeat(80)}`);
+  console.log(`Total UTXs inspected: ${visitedUtxIds.size}`);
+  console.log(`UTX IDs: ${[...visitedUtxIds].join(', ')}`);
 }
 
 main().catch((err) => {
