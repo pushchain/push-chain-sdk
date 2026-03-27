@@ -9,12 +9,16 @@ export type ConnectPushWalletButtonProps = {
   connectButtonText?: string;
   loadingComponent?: React.ReactNode;
   style?: React.CSSProperties;
+  customComponent?: React.ReactNode;
+  className?: string;
 };
 
 const ConnectWalletButton: FC<ConnectPushWalletButtonProps> = ({
   uid,
   connectButtonText,
   loadingComponent,
+  customComponent,
+  className,
   style,
 }) => {
   const { connectionStatus, handleConnectToPushWallet } =
@@ -37,31 +41,42 @@ const ConnectWalletButton: FC<ConnectPushWalletButtonProps> = ({
   const handleConnectWalletButton = () => handleConnectToPushWallet();
 
   return (
-    <Button
-      bgColor="var(--pwauth-btn-connect-bg-color)"
-      textColor="var(--pwauth-btn-connect-text-color)"
-      borderRadius="var(--pwauth-btn-connect-border-radius)"
+    <ButtonContainer
       onClick={handleConnectWalletButton}
-      disabled={isConnectButtonDisbaled || isLoading}
-      style={style}
     >
-      {connectionStatus === PushUI.CONSTANTS.CONNECTION.STATUS.NOT_CONNECTED
-        ? connectButtonText
-        : isLoading
-          ? loadingComponent
-            ? loadingComponent
-            : <>
-                {capitalize(connectionStatus)}
-                <SpinnerContainer>
-                  <Spinner />
-                </SpinnerContainer>
-              </>
-          : capitalize(connectionStatus)}
-    </Button>
+      {customComponent ? customComponent : (
+        <Button
+          bgColor="var(--pwauth-btn-connect-bg-color)"
+          textColor="var(--pwauth-btn-connect-text-color)"
+          borderRadius="var(--pwauth-btn-connect-border-radius)"
+          disabled={isConnectButtonDisbaled || isLoading}
+          style={style}
+          className={className}
+        >
+          {connectionStatus === PushUI.CONSTANTS.CONNECTION.STATUS.NOT_CONNECTED
+            ? connectButtonText
+            : isLoading
+              ? loadingComponent
+                ? loadingComponent
+                : <>
+                    {capitalize(connectionStatus)}
+                    <SpinnerContainer>
+                      <Spinner />
+                    </SpinnerContainer>
+                  </>
+              : capitalize(connectionStatus)}
+        </Button>
+      )}
+    </ButtonContainer>
   );
 };
 
 export { ConnectWalletButton };
+
+const ButtonContainer = styled.div`
+  cursor: pointer;
+  width: 100%;
+`;
 
 const SpinnerContainer = styled.div`
   padding: 0px 4px;

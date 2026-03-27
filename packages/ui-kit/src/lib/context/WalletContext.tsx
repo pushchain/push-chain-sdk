@@ -1,14 +1,12 @@
 import React, {
   createContext,
   FC,
-  useCallback,
   useEffect,
   useRef,
   useState,
 } from 'react';
 import { PushChain } from '@pushchain/core';
 import {
-  PROGRESS_HOOK,
   ProgressEvent,
 } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
 import {
@@ -65,14 +63,16 @@ export type WalletContextType = {
   themeMode: ThemeMode;
   themeOverrides: ThemeOverrides;
 
-  toggleButtonRef: React.RefObject<HTMLButtonElement>;
-
   progress: ProgressEvent | null;
   setProgress: React.Dispatch<React.SetStateAction<ProgressEvent | null>>;
 
   isReadOnly: boolean;
   setIsReadOnly: React.Dispatch<React.SetStateAction<boolean>>;
   requestPushWalletConnection: () => Promise<{ chain: ChainType; provider: IWalletProvider["name"] }>;
+
+  activeTriggerId: string | undefined;
+  setActiveTriggerId: React.Dispatch<React.SetStateAction<string | undefined>>;
+  toggleButtonRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
 };
 
 export const WalletContext = createContext<WalletContextType | null>(null);
@@ -131,7 +131,10 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       : undefined
   );
 
-  const toggleButtonRef = useRef<HTMLButtonElement>(null);
+  const [activeTriggerId, setActiveTriggerId] = useState<string>();
+
+  const toggleButtonRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
+  
 
   const updateModalAppData = (newData: Partial<ModalAppDetails>) => {
     setModalAppData((prevData) => ({
@@ -183,7 +186,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     setIframeLoading(true);
     setExternalWallet(null);
     setIsReadOnly(false);
-    localStorage.removeItem("walletInfo");
+    localStorage.removeItem(`walletInfo_${config?.uid || 'default'}`);
     document.body.style.overflow = '';
   };
 
@@ -223,8 +226,11 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       setUniversalAccount(response.account);
     }
     localStorage.setItem(
-      "walletInfo",
-      JSON.stringify(response.account)
+      `walletInfo_${config?.uid || 'default'}`,
+      JSON.stringify({
+        account: response.account,
+        uid: config?.uid || 'default'
+      })
     );
   };
 
@@ -263,8 +269,11 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       };
 
       localStorage.setItem(
-        "walletInfo",
-        JSON.stringify(connectedWallet)
+        `walletInfo_${config?.uid || 'default'}`,
+        JSON.stringify({
+          wallet: connectedWallet,
+          uid: config?.uid || 'default'
+        })
       );
 
       setExternalWallet(connectedWallet);
@@ -374,14 +383,18 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         return;
       }
 
+      setMinimiseWallet(false);
+
       signatureResolverRef.current = {
         success: (response: WalletEventRespoonse) => {
           resolve(response.signature!);
           signatureResolverRef.current = null; // Clean up
+          setMinimiseWallet(true);
         },
         error: (response: WalletEventRespoonse) => {
           signatureResolverRef.current = null; // Clean up
           reject(new Error('Signature request failed'));
+          setMinimiseWallet(true);
         },
       };
 
@@ -402,14 +415,18 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         return;
       }
 
+      setMinimiseWallet(false);
+
       signatureResolverRef.current = {
         success: (response: WalletEventRespoonse) => {
           resolve(response.signature!);
           signatureResolverRef.current = null; // Clean up
+          setMinimiseWallet(true);
         },
         error: (response: WalletEventRespoonse) => {
           signatureResolverRef.current = null; // Clean up
           reject(new Error('Signature request failed'));
+          setMinimiseWallet(true);
         },
       };
 
@@ -430,14 +447,18 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         return;
       }
 
+      setMinimiseWallet(false);
+
       signatureResolverRef.current = {
         success: (response: WalletEventRespoonse) => {
           resolve(response.signature!);
           signatureResolverRef.current = null; // Clean up
+          setMinimiseWallet(true);
         },
         error: (response: WalletEventRespoonse) => {
           signatureResolverRef.current = null; // Clean up
           reject(new Error('Signature request failed'));
+          setMinimiseWallet(true);
         },
       };
 
@@ -538,16 +559,17 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
   }
 
   useEffect(() => {
-    const walletInfo = localStorage.getItem("walletInfo");
+    const walletInfo = localStorage.getItem(`walletInfo_${config?.uid || 'default'}`);
     const walletData = walletInfo ? JSON.parse(walletInfo) : null;
     if (!walletData) return;
-    if (walletData.providerName) {
+    if (walletData.uid !== config?.uid) return;
+    if (walletData?.wallet && walletData.wallet?.providerName) {
       setUniversalAccount(PushChain.utils.account.fromChainAgnostic(
-        walletData.address
+        walletData.wallet.address
       ));
-      setExternalWallet(walletData);
+      setExternalWallet(walletData.wallet);
     } else {
-      setUniversalAccount(walletData);
+      setUniversalAccount(walletData.account);
     }
     setIsReadOnly(true);
     setMinimiseWallet(true);
@@ -575,7 +597,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         },
       });
     }
-  }, [isIframeLoading])
+  }, [isIframeLoading, externalWallet])
 
   useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
@@ -651,13 +673,15 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         handleSignMessage,
         handleSignAndSendTransaction,
         handleSignTypedData,
-        toggleButtonRef,
         progress,
         setProgress,
         isReadOnly,
         setIsReadOnly,
         handleExternalWalletConnection,
         requestPushWalletConnection,
+        activeTriggerId,
+        setActiveTriggerId,
+        toggleButtonRefs,
       }}
     >
       <LoginModal
@@ -673,9 +697,10 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         isWalletMinimised={isWalletMinimised}
         setMinimiseWallet={setMinimiseWallet}
         handleUserLogOutEvent={handleUserLogOutEvent}
-        toggleButtonRef={toggleButtonRef}
         sendMessageToPushWallet={sendMessageToPushWallet}
         isReadOnly={isReadOnly}
+        toggleButtonRefs={toggleButtonRefs}
+        activeTriggerId={activeTriggerId}
       />
       {progress && (
         <PushWalletToast progress={progress} setProgress={setProgress} />

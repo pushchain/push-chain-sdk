@@ -27,9 +27,10 @@ type LoginModalProps = {
   isWalletMinimised: boolean;
   setMinimiseWallet: (isWalletMinimised: boolean) => void;
   handleUserLogOutEvent: () => void;
-  toggleButtonRef: React.RefObject<HTMLButtonElement>;
   sendMessageToPushWallet: (message: any) => void;
   isReadOnly: boolean;
+  toggleButtonRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
+  activeTriggerId: string | undefined;
 };
 
 const LoginModal: FC<LoginModalProps> = ({
@@ -45,18 +46,22 @@ const LoginModal: FC<LoginModalProps> = ({
   setMinimiseWallet,
   handleUserLogOutEvent,
   config,
-  toggleButtonRef,
   sendMessageToPushWallet,
-  isReadOnly
+  isReadOnly,
+  toggleButtonRefs,
+  activeTriggerId,
 }) => {
+  const [version, setVersion] = React.useState<number>(5);
+
   const { modal } = config;
   const { pushChainClient } = usePushChainClient(config?.uid || 'default');
 
   const { top, left } = useSmartModalPosition(
-    toggleButtonRef,
+    activeTriggerId || null,
+    toggleButtonRefs,
     450,
     675,
-    config.uid
+    config.uid,
   );
 
   const handleSendTransaction = async (data: ExecuteParams) => {
@@ -72,6 +77,12 @@ const LoginModal: FC<LoginModalProps> = ({
       data: res.hash,
     });
   }
+
+  useEffect(() => {
+    if (config.version) {
+      setVersion(config.version);
+    }
+  }, [config])
 
   useEffect(() => {
     const pushMessageHandler = (event: MessageEvent) => {
@@ -111,7 +122,7 @@ const LoginModal: FC<LoginModalProps> = ({
           $modalDefaults={modal}
           $style={{ top, left }}
         >
-          {isIframeLoading && !isReadOnly && (
+          {(isIframeLoading && !isReadOnly) && (
             <FrameLoadingContainer>
               <CloseButtonContainer
                 onClick={() => {
@@ -131,6 +142,28 @@ const LoginModal: FC<LoginModalProps> = ({
                 <Spinner color="var(--pw-int-brand-primary-color)" />
               </LoadingTextContainer>
             </FrameLoadingContainer>
+          )}
+
+          {isIframeLoading && isReadOnly && !isWalletMinimised &&(
+            <FrameLoadingContainerSecondary>
+              <CloseButtonContainer
+                onClick={() => {
+                  setMinimiseWallet(true);
+                }}
+              >
+                <CrossIcon
+                  height="20px"
+                  width="20px"
+                  color={
+                    themeMode === PushUI.CONSTANTS.THEME.LIGHT ? '#000' : '#FFF'
+                  }
+                />
+              </CloseButtonContainer>
+              <LoadingTextContainerSecondary>
+                <LoadingText>Loading...</LoadingText>
+                <Spinner color="var(--pw-int-brand-primary-color)" />
+              </LoadingTextContainerSecondary>
+            </FrameLoadingContainerSecondary>
           )}
 
           <FrameSubContainer
@@ -192,33 +225,34 @@ const LoginModal: FC<LoginModalProps> = ({
                     </AppContainer>
                   </AppPreviewContainer>
                 )}
-
-              <MainFrameContainer>
-                <iframe
-                  src={`
-                    ${WALLET_CONFIG_URL[config.network]}/auth?app=${window.location.origin}&version=4
-                  `}
-                  allow="clipboard-write; clipboard-read; publickey-credentials-create; publickey-credentials-get; display-capture; *"
-                  ref={iframeRef}
-                  style={{
-                    border: 'none',
-                    width: '100%',
-                    height: universalAccount
-                      ? modal?.connectedLayout ===
-                        PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
-                        ? '100vh'
-                        : '675px'
-                      : '100vh',
-                    borderRadius: universalAccount ? '10px' : '0px',
-                  }}
-                  onLoad={() => {
-                    setTimeout(() => {
-                      setIframeLoading(false);
-                      sendWalletConfig();
-                    }, 100);
-                  }}
-                />
-              </MainFrameContainer>
+              {(
+                <MainFrameContainer>
+                  <iframe
+                    src={`
+                      ${WALLET_CONFIG_URL[config.network]}/auth?app=${window.location.origin}&version=${version}
+                    `}
+                    allow="clipboard-write; clipboard-read; publickey-credentials-create; publickey-credentials-get; display-capture; *"
+                    ref={iframeRef}
+                    style={{
+                      border: 'none',
+                      width: '100%',
+                      height: universalAccount
+                        ? modal?.connectedLayout ===
+                          PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
+                          ? '100vh'
+                          : '675px'
+                        : '100vh',
+                      borderRadius: universalAccount ? '10px' : '0px',
+                    }}
+                    onLoad={() => {
+                      setTimeout(() => {
+                        setIframeLoading(false);
+                        sendWalletConfig();
+                      }, 100);
+                    }}
+                  />
+                </MainFrameContainer>
+              )}
             </SplitContainer>
           </FrameSubContainer>
         </FrameContainer>
@@ -236,7 +270,7 @@ const BlurBackground = styled.div`
   left: 0px;
   right: 0px;
   backdrop-filter: blur(8px);
-  z-index: 99;
+  z-index: 999999998;
 `;
 
 const FrameContainer = styled.div<{
@@ -247,8 +281,23 @@ const FrameContainer = styled.div<{
   $style?: Record<'top' | 'left', number>;
 }>`
   position: fixed;
-  top: ${({ $style }) => `${$style?.top}px`};
-  left: ${({ $style }) => `${$style?.left}px`};
+  top: ${({ $universalAccount, $accountMenuVariant, $style }) =>
+    $universalAccount
+      ? $accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
+        ? '0'
+        : $style?.top != null
+        ? `${$style.top}px`
+        : '50px'
+      : '0'};
+  left: ${({ $style }) => ($style?.left != null ? `${$style.left}px` : 'auto')};
+  right: ${({ $style, $universalAccount, $accountMenuVariant }) =>
+    $style?.left != null
+      ? 'auto'
+      : $universalAccount
+      ? $accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
+        ? '0'
+        : '10px'
+      : '0'};
   display: flex;
   flex-direction: column;
   background-image: url(${({ $modalDefaults }) => $modalDefaults?.bgImage});
@@ -260,7 +309,7 @@ const FrameContainer = styled.div<{
   };
   border-radius: ${({ $universalAccount }) =>
     $universalAccount ? '10px' : 'unset'};
-  z-index: 999;
+  z-index: 999999999;
 
   width: ${({ $universalAccount, $isWalletMinimised, $accountMenuVariant }) =>
     $isWalletMinimised
@@ -278,18 +327,6 @@ const FrameContainer = styled.div<{
         ? '100vw'
         : '675px'
       : '100vh'};
-  right: ${({ $universalAccount, $accountMenuVariant }) =>
-    $universalAccount
-      ? $accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
-        ? '0'
-        : '10px'
-      : '0'};
-  top: ${({ $universalAccount, $accountMenuVariant }) =>
-    $universalAccount
-      ? $accountMenuVariant === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL
-        ? '0'
-        : '70px'
-      : '0'};
 
   @media (max-width: 425px) {
     width: ${({ $universalAccount, $isWalletMinimised }) =>
@@ -321,6 +358,15 @@ const LoadingTextContainer = styled.div`
   height: 100%;
 `;
 
+const LoadingTextContainerSecondary = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  height: 600px;
+`;
+
 const LoadingText = styled.p`
   font-size: 18px;
   font-weight: 500;
@@ -334,6 +380,20 @@ const LoadingText = styled.p`
 const FrameLoadingContainer = styled.div`
   height: 100%;
   width: 100%;
+  flex-direction: column;
+  display: flex;
+  padding: var(--spacing-xxs) var(--spacing-xxs);
+  color: var(--pw-int-text-primary-color);
+  background-color: var(--pw-int-bg-primary-color);
+  box-sizing: border-box;
+`;
+
+const FrameLoadingContainerSecondary = styled.div`
+  height: 600px;
+  width: 85%;
+  margin-top: 25px;
+  align-self: center;
+  border-radius: 24px;
   flex-direction: column;
   display: flex;
   padding: var(--spacing-xxs) var(--spacing-xxs);

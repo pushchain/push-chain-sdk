@@ -26,6 +26,13 @@ interface CustomTheme extends DefaultTheme {
 const loginDefaultConfig = {
   email: true,
   google: true,
+  phone: true,
+  socials: {
+    discord: true,
+    github: true,
+    x: true,
+    bluesky: true,
+  },
   wallet: {
     enabled: true,
   },
@@ -44,11 +51,8 @@ const PushWalletConfigDefault: ProviderConfigProps = {
 };
 
 const GlobalStyle = createGlobalStyle<{ uid: string }>`
-  [data-pw-wrapper='${(props) => props.uid}']{
-    #w3m-modal {
-      z-index: 9999 !important;
-      position: fixed !important;
-    }
+  w3m-modal {
+    z-index: 1000000000 !important;
   }
 `;
 
@@ -92,6 +96,10 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
     login: {
       ...loginDefaultConfig,
       ...(config?.login || {}),
+      socials: {
+        ...loginDefaultConfig.socials,
+        ...(config?.login?.socials || {}),
+      },
       wallet: {
         ...loginDefaultConfig.wallet,
         ...(config?.login?.wallet || {}),

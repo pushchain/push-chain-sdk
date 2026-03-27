@@ -15,13 +15,13 @@ export const usePushChainClient = (uid?: string) => {
     config,
     setProgress,
     isReadOnly,
-    setIsReadOnly
+    setIsReadOnly,
   } = usePushWalletContext(uid);
 
   const [pushChain, setPushChain] = useState<PushChain | null>(null);
   const [error, setError] = useState<Error | null>(null);
 
-  const MIN_VISIBLE_MS = 1500;
+  const MIN_VISIBLE_MS = 50;
   const SUCCESS_HIDE_MS = 10000;
 
   const queueRef = useRef<ProgressEvent[]>([]);
@@ -114,6 +114,7 @@ export const usePushChainClient = (uid?: string) => {
               requestPushWalletConnection,
               universalSigner,
               intializeProps,
+              config?.uid || 'default',
               () => {
                 setIsReadOnly(false);
               },
