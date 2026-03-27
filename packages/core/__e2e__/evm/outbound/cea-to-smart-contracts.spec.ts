@@ -261,7 +261,7 @@ const CEA_FACTORY_ABI = [
   },
   {
     inputs: [{ name: 'ceaAddress', type: 'address' }],
-    name: 'getUEAForCEA',
+    name: 'getPushAccountForCEA',
     outputs: [{ name: '', type: 'address' }],
     stateMutability: 'view',
     type: 'function',
@@ -1657,7 +1657,7 @@ describe('CEA Custom Contract: StakingExample (Outbound & Inbound)', () => {
         const pushAccount = await bscPublicClient.readContract({
           address: CEA_FACTORY_BSC,
           abi: CEA_FACTORY_ABI,
-          functionName: 'getUEAForCEA',
+          functionName: 'getPushAccountForCEA',
           args: [ceaAddr],
         }) as `0x${string}`;
 
@@ -1993,7 +1993,22 @@ describe('CEA Custom Contract: StakingExample (Outbound & Inbound)', () => {
         return;
       }
 
-      const unstakeAmount = stakeBefore; // Unstake all
+      // Check contract's actual token balance (may be less than staked if tokens were sent outbound)
+      const contractBalance = await pushPublicClient.readContract({
+        address: PUSDT_BNB_TOKEN,
+        abi: ERC20_EVM,
+        functionName: 'balanceOf',
+        args: [STAKING_PROXY],
+      }) as bigint;
+      console.log(`StakingExample pUSDT balance: ${contractBalance}`);
+
+      const unstakeAmount = contractBalance < stakeBefore ? contractBalance : stakeBefore;
+
+      if (unstakeAmount === BigInt(0)) {
+        console.log('Contract has no token balance to unstake — skipping');
+        return;
+      }
+      console.log(`Unstaking amount: ${unstakeAmount}`);
 
       const unstakePayload = encodeFunctionData({
         abi: STAKING_EXAMPLE_ABI,

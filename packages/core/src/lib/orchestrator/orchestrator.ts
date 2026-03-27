@@ -32,7 +32,7 @@ import {
   UNIVERSAL_GATEWAY_V1_SEND,
 } from '../constants/abi';
 import { UEA_EVM } from '../constants/abi/uea.evm';
-import { CHAIN_INFO, UEA_PROXY, UEA_FACTORY, UEA_MIGRATION, UEA_MIN_REQUIRED_VERSION, VM_NAMESPACE, SYNTHETIC_PUSH_ERC20, UNIVERSAL_GATEWAY_ADDRESSES } from '../constants/chain';
+import { CHAIN_INFO, UEA_PROXY, UEA_FACTORY, UEA_MIGRATION, VM_NAMESPACE, SYNTHETIC_PUSH_ERC20, UNIVERSAL_GATEWAY_ADDRESSES } from '../constants/chain';
 import { UEA_FACTORY_ABI } from '../constants/abi/uea-factory';
 import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
 import {
@@ -222,9 +222,11 @@ export class Orchestrator {
       return status;
     }
 
-    // Fetch current version from chain, minRequiredVersion from SDK constant
-    const currentVersion = await this.fetchUEAVersion();
-    const minRequiredVersion = this.getMinRequiredVersion();
+    // Fetch current version and latest version from factory in parallel
+    const [currentVersion, minRequiredVersion] = await Promise.all([
+      this.fetchUEAVersion(),
+      this.fetchLatestUEAVersion(vm),
+    ]);
 
     const requiresUpgrade =
       parseUEAVersion(currentVersion) < parseUEAVersion(minRequiredVersion);
@@ -362,10 +364,31 @@ export class Orchestrator {
   }
 
   /**
-   * Returns the minimum required UEA version from SDK constants.
+   * Fetches the latest UEA version from UEAFactory contract.
+   * This is the version of the newest registered implementation — used as minRequiredVersion.
+   * Returns empty string if factory is unavailable.
    */
-  private getMinRequiredVersion(): string {
-    return UEA_MIN_REQUIRED_VERSION[this.pushNetwork] || '';
+  private async fetchLatestUEAVersion(vm: VM): Promise<string> {
+    const factoryAddress = UEA_FACTORY[this.pushNetwork];
+    if (!factoryAddress || factoryAddress === '0xTBD') {
+      return '';
+    }
+
+    try {
+      const vmHash =
+        vm === VM.EVM
+          ? keccak256(encodeAbiParameters([{ type: 'string' }], ['EVM']))
+          : keccak256(encodeAbiParameters([{ type: 'string' }], ['SVM']));
+
+      return await this.pushClient.readContract<string>({
+        address: factoryAddress,
+        abi: UEA_FACTORY_ABI as unknown as Abi,
+        functionName: 'UEA_VERSION',
+        args: [vmHash],
+      });
+    } catch {
+      return '';
+    }
   }
 
   /**
@@ -416,16 +439,17 @@ export class Orchestrator {
   async execute(
     params: ExecuteParams | UniversalExecuteParams
   ): Promise<UniversalTxResponse> {
-    // Lazy UEA upgrade check
-    if (!this.accountStatusCache || !this.accountStatusCache.uea.loaded) {
-      await this.getAccountStatus();
-    }
-    if (
-      this.accountStatusCache?.uea.deployed &&
-      this.accountStatusCache?.uea.requiresUpgrade
-    ) {
-      await this.upgradeAccount({ progressHook: this.progressHook });
-    }
+    // TODO: Re-enable once UEA migration is fully rolled out
+    // // Lazy UEA upgrade check
+    // if (!this.accountStatusCache || !this.accountStatusCache.uea.loaded) {
+    //   await this.getAccountStatus();
+    // }
+    // if (
+    //   this.accountStatusCache?.uea.deployed &&
+    //   this.accountStatusCache?.uea.requiresUpgrade
+    // ) {
+    //   await this.upgradeAccount({ progressHook: this.progressHook });
+    // }
 
     // Check if this is a multi-chain request (has ChainTarget or from.chain)
     const isMultiChain =
@@ -2234,7 +2258,7 @@ export class Orchestrator {
   async queryOutboundGasFee(
     prc20Token: `0x${string}`,
     gasLimit: bigint
-  ): Promise<{ gasToken: `0x${string}`; gasFee: bigint; protocolFee: bigint; nativeValueForGas: bigint }> {
+  ): Promise<{ gasToken: `0x${string}`; gasFee: bigint; protocolFee: bigint; nativeValueForGas: bigint; gasPrice: bigint }> {
     const gatewayPcAddress = this.getUniversalGatewayPCAddress();
     const pushChain = this.getPushChainForNetwork();
     const rpcUrl = CHAIN_INFO[pushChain]?.defaultRPC?.[0] || 'unknown';
@@ -2286,6 +2310,7 @@ export class Orchestrator {
     let gasToken: `0x${string}`;
     let gasFee: bigint;
     let protocolFee: bigint;
+    let gasPrice: bigint = BigInt(0);
     try {
       const result = await this.pushClient.readContract<[`0x${string}`, bigint, bigint, bigint, string]>({
         address: universalCoreAddress,
@@ -2296,8 +2321,9 @@ export class Orchestrator {
       gasToken = result[0];
       gasFee = result[1];
       protocolFee = result[2];
+      gasPrice = result[3];
       this.printLog(
-        `queryOutboundGasFee — [step 4] success: gasToken=${gasToken}, gasFee=${gasFee}, protocolFee=${protocolFee}`
+        `queryOutboundGasFee — [step 4] success: gasToken=${gasToken}, gasFee=${gasFee}, protocolFee=${protocolFee}, gasPrice=${gasPrice}`
       );
     } catch (err) {
       this.printLog(
@@ -2313,7 +2339,7 @@ export class Orchestrator {
       `queryOutboundGasFee — [step 5] using 1000000x buffer: nativeValueForGas=${nativeValueForGas}`
     );
 
-    return { gasToken, gasFee, protocolFee, nativeValueForGas };
+    return { gasToken, gasFee, protocolFee, nativeValueForGas, gasPrice };
   }
 
   // ============================================================================
@@ -3307,26 +3333,31 @@ export class Orchestrator {
       }
     }
 
-    // Adjust nativeValueForGas using UEA balance.
-    // The 1000x multiplier in queryOutboundGasFee may be insufficient when the
-    // WPC/gasToken exchange rate is unfavorable (e.g., PC is much cheaper than BNB).
-    // The contract's swapAndBurnGas refunds excess PC to the UEA, so sending more is safe.
-    // Re-fetch balance to minimize staleness — the gas fee query above involved multiple
-    // RPC roundtrips, during which other transactions may have changed the balance.
+    // Adjust nativeValueForGas: the 1Mx multiplier from queryOutboundGasFee produces
+    // a value far too low for the actual WPC/gasToken swap price. Set it to 200 UPC
+    // (capped by balance) — enough for the swap, but avoids draining thin pools.
+    // The contract's swapAndBurnGas does exactOutputSingle and refunds excess PC.
+    const EVM_NATIVE_VALUE_TARGET = BigInt(200e18); // 200 UPC
+    const EVM_GAS_RESERVE = BigInt(3e18); // 3 UPC for tx overhead
     const currentBalance = await this.pushClient.getBalance(ueaAddress);
-    // Reserve covers gas for multicall TXs on Push Chain.
-    // Cosmos-EVM tx overhead costs ~1 PC per operation; 3 PC covers approve(s) + buffer.
-    const OUTBOUND_GAS_RESERVE = BigInt(3e18);
-    if (currentBalance > OUTBOUND_GAS_RESERVE && currentBalance - OUTBOUND_GAS_RESERVE > nativeValueForGas) {
-      const adjustedValue = currentBalance - OUTBOUND_GAS_RESERVE;
+
+    let adjustedValue: bigint;
+    if (currentBalance > EVM_NATIVE_VALUE_TARGET + EVM_GAS_RESERVE) {
+      // Enough balance: use 200 UPC target
+      adjustedValue = EVM_NATIVE_VALUE_TARGET;
+    } else if (currentBalance > EVM_GAS_RESERVE) {
+      // Low balance: use what's available minus reserve
+      adjustedValue = currentBalance - EVM_GAS_RESERVE;
+    } else {
+      // Very low balance: use original query value as-is
+      adjustedValue = nativeValueForGas;
+    }
+
+    if (adjustedValue !== nativeValueForGas) {
       this.printLog(
         `executeUoaToCea — adjusting nativeValueForGas from ${nativeValueForGas.toString()} to ${adjustedValue.toString()} (UEA balance: ${currentBalance.toString()})`
       );
       nativeValueForGas = adjustedValue;
-    } else {
-      this.printLog(
-        `executeUoaToCea — no nativeValueForGas adjustment (UEA balance: ${currentBalance.toString()}, reserve: ${OUTBOUND_GAS_RESERVE.toString()}, nativeValueForGas: ${nativeValueForGas.toString()})`
-      );
     }
 
     // Build outbound multicalls (approve burn + sendUniversalTxOutbound with native value)
@@ -3506,6 +3537,17 @@ export class Orchestrator {
         gasFee = result.gasFee;
         gasToken = result.gasToken;
         nativeValueForGas = result.nativeValueForGas;
+        // When user omits gasLimit (sent as 0), the contract computes fees using its internal
+        // baseGasLimitByChainNamespace. But the relay reads the stored gasLimit=0 from the
+        // on-chain outbound record and uses it as the Solana compute budget — 0 CU means the
+        // relay cannot execute the tx. Derive the effective limit from gasFee/gasPrice so
+        // the stored record has a non-zero compute budget the relay can use.
+        if (!params.gasLimit && result.gasPrice > BigInt(0)) {
+          outboundReq.gasLimit = result.gasFee / result.gasPrice;
+          this.printLog(
+            `executeUoaToCeaSvm — derived effectiveGasLimit: ${outboundReq.gasLimit} (gasFee=${result.gasFee} / gasPrice=${result.gasPrice})`
+          );
+        }
         this.printLog(
           `executeUoaToCeaSvm — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}`
         );
@@ -3514,13 +3556,27 @@ export class Orchestrator {
       }
     }
 
-    // Adjust nativeValueForGas using UEA balance (contract refunds excess)
-    // Re-fetch balance to minimize staleness from gas fee query RPC roundtrips
+    // Adjust nativeValueForGas: the 1Mx multiplier from queryOutboundGasFee produces
+    // a value far too low for the actual WPC/gasToken swap price. Set it to 200 UPC
+    // (capped by balance) — enough for the swap, but avoids draining thin pools.
+    // The contract's swapAndBurnGas does exactOutputSingle and refunds excess PC.
+    const SVM_NATIVE_VALUE_TARGET = BigInt(200e18); // 200 UPC
+    const SVM_GAS_RESERVE = BigInt(3e18); // 3 UPC for tx overhead
     const currentBalance = await this.pushClient.getBalance(ueaAddress);
-    // Cosmos-EVM tx overhead costs ~1 PC per operation; 3 PC covers approve(s) + buffer.
-    const OUTBOUND_GAS_RESERVE_SVM = BigInt(3e18);
-    if (currentBalance > OUTBOUND_GAS_RESERVE_SVM && currentBalance - OUTBOUND_GAS_RESERVE_SVM > nativeValueForGas) {
-      const adjustedValue = currentBalance - OUTBOUND_GAS_RESERVE_SVM;
+
+    let adjustedValue: bigint;
+    if (currentBalance > SVM_NATIVE_VALUE_TARGET + SVM_GAS_RESERVE) {
+      // Enough balance: use 200 UPC target
+      adjustedValue = SVM_NATIVE_VALUE_TARGET;
+    } else if (currentBalance > SVM_GAS_RESERVE) {
+      // Low balance: use what's available minus reserve
+      adjustedValue = currentBalance - SVM_GAS_RESERVE;
+    } else {
+      // Very low balance: use original query value as-is
+      adjustedValue = nativeValueForGas;
+    }
+
+    if (adjustedValue !== nativeValueForGas) {
       this.printLog(
         `executeUoaToCeaSvm — adjusting nativeValueForGas from ${nativeValueForGas.toString()} to ${adjustedValue.toString()} (UEA balance: ${currentBalance.toString()})`
       );

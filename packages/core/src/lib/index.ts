@@ -43,7 +43,7 @@ export { TransactionRoute, detectRoute, isChainTarget } from './orchestrator/rou
 // CEA utilities
 export {
   getCEAAddress,
-  getUEAForCEA,
+  getPushAccountForCEA,
   isCEA,
   chainSupportsCEA,
   chainSupportsOutbound,

@@ -38,18 +38,6 @@ export const UEA_FACTORY: Record<PUSH_NETWORK, `0x${string}`> = {
 };
 
 /**
- * Minimum required UEA version per network.
- * Bumped in the SDK when a new UEA implementation is deployed.
- * If the user's UEA version is below this, upgradeAccount() is required.
- */
-export const UEA_MIN_REQUIRED_VERSION: Record<PUSH_NETWORK, string> = {
-  [PUSH_NETWORK.MAINNET]: '0.1.0',
-  [PUSH_NETWORK.TESTNET_DONUT]: '1.0.0',
-  [PUSH_NETWORK.TESTNET]: '1.0.0',
-  [PUSH_NETWORK.LOCALNET]: '0.1.0',
-};
-
-/**
  * UEAMigration contract address on Push Chain.
  * Used in MsgMigrateUEA to specify which migration contract to delegatecall.
  */

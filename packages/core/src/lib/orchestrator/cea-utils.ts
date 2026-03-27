@@ -86,15 +86,15 @@ export async function getCEAAddress(
 }
 
 /**
- * Get UEA address for a CEA on a specific chain
+ * Get Push Account (UEA) address for a CEA on a specific chain
  *
  * @param ceaAddress - CEA address on external chain
  * @param chain - External chain where CEA is deployed
  * @param rpcUrl - Optional custom RPC URL
- * @returns UEA address on Push Chain
+ * @returns Push account address on Push Chain
  * @throws Error if chain doesn't have CEAFactory
  */
-export async function getUEAForCEA(
+export async function getPushAccountForCEA(
   ceaAddress: `0x${string}`,
   chain: CHAIN,
   rpcUrl?: string
@@ -113,7 +113,7 @@ export async function getUEAForCEA(
   const uea = await client.readContract({
     abi: CEA_FACTORY_EVM,
     address: factoryAddress,
-    functionName: 'getUEAForCEA',
+    functionName: 'getPushAccountForCEA',
     args: [ceaAddress],
   });
 

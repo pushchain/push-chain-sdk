@@ -1137,6 +1137,303 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(stakeAfter).toBeGreaterThan(stakeBefore);
       }, 600000);
     });
+
+    // ==========================================================================
+    // 11. Solana CPI + Inbound — R2(Solana CPI) + R3(Solana→Push)
+    //
+    // On-chain execution flow:
+    //   Push Chain tx:
+    //     └─ Outbound → Solana: CPI receive_sol on test_counter program
+    //          └─ Route 3 inbound from Solana → Push Chain
+    //               └─ counter.increment() on Push Chain
+    // ==========================================================================
+    describe('11. Solana CPI + Inbound — R2(Solana CPI) + R3(Solana→Push)', () => {
+      it('should cascade CPI outbound to Solana then inbound to Push counter', async () => {
+        if (skipE2E) return;
+
+        console.log('\n=== Test: Solana CPI + Inbound ===');
+
+        const pushCounterBefore = await pushPublicClient.readContract({
+          address: COUNTER_ADDRESS_PAYABLE, abi: COUNTER_ABI_PAYABLE, functionName: 'countPC',
+        }) as bigint;
+        console.log(`Push Chain Counter BEFORE: ${pushCounterBefore}`);
+
+        const pushIncrementPayload = encodeFunctionData({
+          abi: COUNTER_ABI_PAYABLE, functionName: 'increment',
+        });
+
+        const discriminator = new Uint8Array([121, 244, 250, 3, 8, 229, 225, 1]);
+        const amountBuf = new Uint8Array(8);
+        new DataView(amountBuf.buffer).setBigUint64(0, BigInt(1), true);
+        const ixData = new Uint8Array([...discriminator, ...amountBuf]);
+
+        // Hop 1: Route 2 — Solana CPI (receive_sol on test_counter)
+        const tx1 = await pushClient.universal.prepareTransaction({
+          to: { address: SOL_TEST_PROGRAM, chain: CHAIN.SOLANA_DEVNET },
+          value: BigInt(5_000_000),
+          svmExecute: {
+            targetProgram: SOL_TEST_PROGRAM,
+            accounts: [
+              { pubkey: SOL_COUNTER_PDA, isWritable: true },
+              { pubkey: SOLANA_TARGET, isWritable: true },
+              { pubkey: ceaPdaHex, isWritable: true },
+              { pubkey: SOL_ZERO_ADDRESS, isWritable: false },
+            ],
+            ixData,
+          },
+        });
+
+        // Hop 2: Route 3 — Inbound from Solana (increment Push counter)
+        const tx2 = await pushClient.universal.prepareTransaction({
+          from: { chain: CHAIN.SOLANA_DEVNET },
+          to: COUNTER_ADDRESS_PAYABLE,
+          data: pushIncrementPayload,
+        });
+
+        const result = await pushClient.universal
+          .executeTransactions(tx1).thenOn(tx2).send();
+
+        console.log(`[TEST] TX Hash: ${result.initialTxHash}`);
+        expect(result.hopCount).toBe(2);
+
+        const completion = await result.waitForAll({
+          timeout: 600000,
+          progressHook: (event) => {
+            console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
+          },
+        });
+        expect(completion.success).toBe(true);
+
+        for (const hop of completion.hops.filter(h => h.route === 'UOA_TO_CEA')) {
+          if (hop.outboundDetails) {
+            await verifyExternalTransaction(hop.outboundDetails.externalTxHash, hop.outboundDetails.destinationChain);
+          }
+        }
+
+        const pollStart = Date.now();
+        let pushCounterAfter = pushCounterBefore;
+        while (Date.now() - pollStart < 180000) {
+          await new Promise((r) => setTimeout(r, 10000));
+          pushCounterAfter = await pushPublicClient.readContract({
+            address: COUNTER_ADDRESS_PAYABLE, abi: COUNTER_ABI_PAYABLE, functionName: 'countPC',
+          }) as bigint;
+          console.log(`Polling Push counter: ${pushCounterAfter} (elapsed: ${Math.round((Date.now() - pollStart) / 1000)}s)`);
+          if (pushCounterAfter > pushCounterBefore) break;
+        }
+        expect(pushCounterAfter).toBeGreaterThan(pushCounterBefore);
+      }, 900000);
+    });
+
+    // ==========================================================================
+    // 12. Solana Value+CPI + Inbound — R2(Solana 0.01 SOL + CPI) + R3(Solana→Push)
+    //
+    // On-chain execution flow:
+    //   Push Chain tx:
+    //     └─ Outbound → Solana: value(0.01 SOL) + CPI receive_sol on test_counter
+    //          └─ Route 3 inbound from Solana → Push Chain
+    //               └─ counter.increment() on Push Chain
+    // ==========================================================================
+    describe('12. Solana Value+CPI + Inbound — R2(Solana FUNDS+CPI) + R3(Solana→Push)', () => {
+      it('should cascade FUNDS+CPI outbound to Solana then inbound to Push counter', async () => {
+        if (skipE2E) return;
+
+        console.log('\n=== Test: Solana Value+CPI + Inbound ===');
+
+        const pushCounterBefore = await pushPublicClient.readContract({
+          address: COUNTER_ADDRESS_PAYABLE, abi: COUNTER_ABI_PAYABLE, functionName: 'countPC',
+        }) as bigint;
+        console.log(`Push Chain Counter BEFORE: ${pushCounterBefore}`);
+
+        const pushIncrementPayload = encodeFunctionData({
+          abi: COUNTER_ABI_PAYABLE, functionName: 'increment',
+        });
+
+        const discriminator = new Uint8Array([121, 244, 250, 3, 8, 229, 225, 1]);
+        const amountBuf = new Uint8Array(8);
+        new DataView(amountBuf.buffer).setBigUint64(0, BigInt(1), true);
+        const ixData = new Uint8Array([...discriminator, ...amountBuf]);
+
+        // Hop 1: Route 2 — Solana FUNDS+CPI (0.01 SOL + receive_sol)
+        const tx1 = await pushClient.universal.prepareTransaction({
+          to: { address: SOL_TEST_PROGRAM, chain: CHAIN.SOLANA_DEVNET },
+          value: BigInt(10_000_000), // 0.01 SOL — larger value exercises FUNDS+CPI path
+          svmExecute: {
+            targetProgram: SOL_TEST_PROGRAM,
+            accounts: [
+              { pubkey: SOL_COUNTER_PDA, isWritable: true },
+              { pubkey: SOLANA_TARGET, isWritable: true },
+              { pubkey: ceaPdaHex, isWritable: true },
+              { pubkey: SOL_ZERO_ADDRESS, isWritable: false },
+            ],
+            ixData,
+          },
+        });
+
+        // Hop 2: Route 3 — Inbound from Solana (increment Push counter)
+        const tx2 = await pushClient.universal.prepareTransaction({
+          from: { chain: CHAIN.SOLANA_DEVNET },
+          to: COUNTER_ADDRESS_PAYABLE,
+          data: pushIncrementPayload,
+        });
+
+        const result = await pushClient.universal
+          .executeTransactions(tx1).thenOn(tx2).send();
+
+        console.log(`[TEST] TX Hash: ${result.initialTxHash}`);
+        expect(result.hopCount).toBe(2);
+
+        const completion = await result.waitForAll({
+          timeout: 600000,
+          progressHook: (event) => {
+            console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
+          },
+        });
+        expect(completion.success).toBe(true);
+
+        for (const hop of completion.hops.filter(h => h.route === 'UOA_TO_CEA')) {
+          if (hop.outboundDetails) {
+            await verifyExternalTransaction(hop.outboundDetails.externalTxHash, hop.outboundDetails.destinationChain);
+          }
+        }
+
+        const pollStart = Date.now();
+        let pushCounterAfter = pushCounterBefore;
+        while (Date.now() - pollStart < 180000) {
+          await new Promise((r) => setTimeout(r, 10000));
+          pushCounterAfter = await pushPublicClient.readContract({
+            address: COUNTER_ADDRESS_PAYABLE, abi: COUNTER_ABI_PAYABLE, functionName: 'countPC',
+          }) as bigint;
+          console.log(`Polling Push counter: ${pushCounterAfter} (elapsed: ${Math.round((Date.now() - pollStart) / 1000)}s)`);
+          if (pushCounterAfter > pushCounterBefore) break;
+        }
+        expect(pushCounterAfter).toBeGreaterThan(pushCounterBefore);
+      }, 900000);
+    });
+
+    // ==========================================================================
+    // 13. BSC + Solana CPI + Dual Inbound — R2(BSC) + R2(Sol CPI) + R3(BSC→Push) + R3(Sol→Push)
+    //
+    // On-chain execution flow:
+    //   Push Chain tx (single multicall):
+    //     ├─ Outbound 1 → BSC: value(0.0001 BNB) + counter.increment on BSC
+    //     ├─ Outbound 2 → Solana: CPI receive_sol on test_counter
+    //     └─ Outbound 3 → BSC: Route 3 CEA payload (sendUniversalTxToUEA)
+    //          └─ BSC inbound → Push Chain executePayload (merged multicall):
+    //               ├─ counter.increment() (from R3 BSC)
+    //               └─ counter.increment() (from R3 Solana, merged)
+    //               (both R3 payloads execute in single inbound, counter > before)
+    // ==========================================================================
+    describe('13. BSC + Solana CPI + Dual Inbound — explicit merge verification', () => {
+      it('should cascade dual outbounds (BSC+Solana CPI) then merged inbound', async () => {
+        if (skipE2E) return;
+
+        console.log('\n=== Test: BSC + Solana CPI + Dual Inbound ===');
+
+        const bscCounterBefore = await bscPublicClient.readContract({
+          address: BSC_COUNTER_PAYABLE, abi: BSC_COUNTER_ABI, functionName: 'count',
+        }) as bigint;
+        console.log(`BSC Counter BEFORE: ${bscCounterBefore}`);
+
+        const pushCounterBefore = await pushPublicClient.readContract({
+          address: COUNTER_ADDRESS_PAYABLE, abi: COUNTER_ABI_PAYABLE, functionName: 'countPC',
+        }) as bigint;
+        console.log(`Push Chain Counter BEFORE: ${pushCounterBefore}`);
+
+        const bscIncrementPayload = encodeFunctionData({
+          abi: BSC_COUNTER_ABI, functionName: 'increment',
+        });
+        const pushIncrementPayload = encodeFunctionData({
+          abi: COUNTER_ABI_PAYABLE, functionName: 'increment',
+        });
+
+        const discriminator = new Uint8Array([121, 244, 250, 3, 8, 229, 225, 1]);
+        const amountBuf = new Uint8Array(8);
+        new DataView(amountBuf.buffer).setBigUint64(0, BigInt(1), true);
+        const ixData = new Uint8Array([...discriminator, ...amountBuf]);
+
+        // Hop 1: Route 2 — BSC outbound (value + counter increment)
+        const tx1 = await pushClient.universal.prepareTransaction({
+          to: { address: BSC_COUNTER_PAYABLE, chain: CHAIN.BNB_TESTNET },
+          value: parseEther('0.0001'),
+          data: bscIncrementPayload,
+          gasLimit: BigInt(2000000),
+        });
+
+        // Hop 2: Route 2 — Solana CPI (receive_sol, direct outbound)
+        const tx2 = await pushClient.universal.prepareTransaction({
+          to: { address: SOL_TEST_PROGRAM, chain: CHAIN.SOLANA_DEVNET },
+          value: BigInt(5_000_000),
+          svmExecute: {
+            targetProgram: SOL_TEST_PROGRAM,
+            accounts: [
+              { pubkey: SOL_COUNTER_PDA, isWritable: true },
+              { pubkey: SOLANA_TARGET, isWritable: true },
+              { pubkey: ceaPdaHex, isWritable: true },
+              { pubkey: SOL_ZERO_ADDRESS, isWritable: false },
+            ],
+            ixData,
+          },
+        });
+
+        // Hop 3: Route 3 — Inbound from BSC (increment Push counter)
+        const tx3 = await pushClient.universal.prepareTransaction({
+          from: { chain: CHAIN.BNB_TESTNET },
+          to: COUNTER_ADDRESS_PAYABLE,
+          data: pushIncrementPayload,
+        });
+
+        // Hop 4: Route 3 — Inbound from Solana (merged into hop 3's inbound)
+        const tx4 = await pushClient.universal.prepareTransaction({
+          from: { chain: CHAIN.SOLANA_DEVNET },
+          to: COUNTER_ADDRESS_PAYABLE,
+          data: pushIncrementPayload,
+        });
+
+        const result = await pushClient.universal
+          .executeTransactions(tx1).thenOn(tx2).thenOn(tx3).thenOn(tx4).send();
+
+        console.log(`[TEST] TX Hash: ${result.initialTxHash}`);
+        expect(result.hopCount).toBe(4);
+
+        const completion = await result.waitForAll({
+          timeout: 900000,
+          progressHook: (event) => {
+            console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
+          },
+        });
+        expect(completion.success).toBe(true);
+
+        // Verify direct outbounds (both R2 hops are before R3)
+        for (const hop of completion.hops.filter(h => h.route === 'UOA_TO_CEA')) {
+          if (hop.outboundDetails) {
+            expect(hop.outboundDetails.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+            await verifyExternalTransaction(hop.outboundDetails.externalTxHash, hop.outboundDetails.destinationChain);
+          }
+        }
+
+        // BSC counter incremented
+        await new Promise((r) => setTimeout(r, 5000));
+        const bscCounterAfter = await bscPublicClient.readContract({
+          address: BSC_COUNTER_PAYABLE, abi: BSC_COUNTER_ABI, functionName: 'count',
+        }) as bigint;
+        console.log(`BSC Counter AFTER: ${bscCounterAfter}`);
+        expect(bscCounterAfter).toBeGreaterThan(bscCounterBefore);
+
+        // Push counter: both R3 payloads merge into single inbound
+        const pollStart = Date.now();
+        let pushCounterAfter = pushCounterBefore;
+        while (Date.now() - pollStart < 180000) {
+          await new Promise((r) => setTimeout(r, 10000));
+          pushCounterAfter = await pushPublicClient.readContract({
+            address: COUNTER_ADDRESS_PAYABLE, abi: COUNTER_ABI_PAYABLE, functionName: 'countPC',
+          }) as bigint;
+          console.log(`Polling Push counter: ${pushCounterAfter} (elapsed: ${Math.round((Date.now() - pollStart) / 1000)}s)`);
+          if (pushCounterAfter > pushCounterBefore) break;
+        }
+        console.log(`Push Chain Counter AFTER: ${pushCounterAfter} (delta: ${pushCounterAfter - pushCounterBefore})`);
+        expect(pushCounterAfter).toBeGreaterThan(pushCounterBefore);
+      }, 1200000);
+    });
   });
 
   // ============================================================================

@@ -29,8 +29,8 @@ export const CEA_FACTORY_EVM = [
   },
   {
     inputs: [{ internalType: 'address', name: '_cea', type: 'address' }],
-    name: 'getUEAForCEA',
-    outputs: [{ internalType: 'address', name: 'uea', type: 'address' }],
+    name: 'getPushAccountForCEA',
+    outputs: [{ internalType: 'address', name: 'pushAccount', type: 'address' }],
     stateMutability: 'view',
     type: 'function',
   },
