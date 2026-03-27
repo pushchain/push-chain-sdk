@@ -1,5 +1,5 @@
 import { hexToBytes, keccak256 } from 'viem';
-import { MsgDeployUEA, MsgExecutePayload, MsgMintPC } from '../generated/v1/tx';
+import { MsgDeployUEA, MsgExecutePayload, MsgMintPC, MsgMigrateUEA } from '../generated/v1/tx';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 import { SignDoc, TxBody, TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 import { Writer } from 'protobufjs';
@@ -15,6 +15,10 @@ import {
   QueryGetUniversalTxRequest,
   QueryGetUniversalTxResponse,
 } from '../generated/uexecutor/v1/query';
+import {
+  QueryGetUniversalTxRequestV2,
+  QueryGetUniversalTxResponseV2,
+} from '../generated/uexecutor/v2/query';
 import { Secp256k1 } from '@cosmjs/crypto';
 import { Tendermint34Client } from '@cosmjs/tendermint-rpc';
 import { BaseAccount } from 'cosmjs-types/cosmos/auth/v1beta1/auth';
@@ -28,14 +32,9 @@ import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 export class PushClient extends EvmClient {
   public pushChainInfo;
   private readonly ephemeralKey;
+  private currentRpcIndex = 0;
   constructor(clientOptions: PushClientOptions) {
     super(clientOptions);
-    this.pushChainInfo =
-      clientOptions.network === PUSH_NETWORK.MAINNET
-        ? PUSH_CHAIN_INFO[CHAIN.PUSH_MAINNET]
-        : clientOptions.network === PUSH_NETWORK.TESTNET_DONUT
-        ? PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT]
-        : PUSH_CHAIN_INFO[CHAIN.PUSH_LOCALNET];
 
     if (clientOptions.network === PUSH_NETWORK.MAINNET) {
       this.pushChainInfo = PUSH_CHAIN_INFO[CHAIN.PUSH_MAINNET];
@@ -49,6 +48,41 @@ export class PushClient extends EvmClient {
     }
 
     this.ephemeralKey = generatePrivateKey();
+  }
+
+  /**
+   * Executes an operation with automatic fallback to next RPC endpoint on failure.
+   * Follows the same pattern as SvmClient.executeWithFallback().
+   */
+  private async executeWithRpcFallback<T>(
+    operation: (rpcUrl: string) => Promise<T>,
+    operationName = 'operation'
+  ): Promise<T> {
+    const rpcUrls = this.pushChainInfo.tendermintRpc;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < rpcUrls.length; attempt++) {
+      const rpcIndex = (this.currentRpcIndex + attempt) % rpcUrls.length;
+      const rpcUrl = rpcUrls[rpcIndex];
+
+      try {
+        const result = await operation(rpcUrl);
+        if (rpcIndex !== this.currentRpcIndex) {
+          this.currentRpcIndex = rpcIndex;
+        }
+        return result;
+      } catch (error) {
+        lastError = error as Error;
+        if (attempt === rpcUrls.length - 1) {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+
+    throw new Error(
+      `All RPC endpoints failed for ${operationName}. Last error: ${lastError?.message}`
+    );
   }
 
   /**
@@ -96,6 +130,13 @@ export class PushClient extends EvmClient {
     };
   }
 
+  createMsgMigrateUEA(input: MsgMigrateUEA): Any {
+    return {
+      typeUrl: '/uexecutor.v1.MsgMigrateUEA',
+      value: MsgMigrateUEA.encode(MsgMigrateUEA.fromPartial(input)).finish(),
+    };
+  }
+
   // --- Tx Builder ---
 
   async createCosmosTxBody(messages: Any[], memo?: string): Promise<TxBody> {
@@ -125,70 +166,70 @@ export class PushClient extends EvmClient {
       hexToBytes(account.address)
     );
 
-    // 🔍 Get on-chain account info
-    const tmClient = await Tendermint34Client.connect(
-      this.pushChainInfo.tendermintRpc
-    );
-    const status = await tmClient.status();
-    const chainId = status.nodeInfo.network;
+    return this.executeWithRpcFallback(async (rpcUrl) => {
+      // 🔍 Get on-chain account info
+      const tmClient = await Tendermint34Client.connect(rpcUrl);
+      const status = await tmClient.status();
+      const chainId = status.nodeInfo.network;
 
-    const queryClient = QueryClient.withExtensions(
-      tmClient,
-      setupAuthExtension
-    );
-    let baseAccount: BaseAccount | null = null;
-    try {
-      const accountResp = await queryClient.auth.account(sender);
-      baseAccount = BaseAccount.decode(accountResp!.value);
-    } catch (err) {
-      // Ignore
-    }
+      const queryClient = QueryClient.withExtensions(
+        tmClient,
+        setupAuthExtension
+      );
+      let baseAccount: BaseAccount | null = null;
+      try {
+        const accountResp = await queryClient.auth.account(sender);
+        baseAccount = BaseAccount.decode(accountResp!.value);
+      } catch (err) {
+        // Ignore
+      }
 
-    // 📦 Encode pubkey
-    const uncompressedPubKey = hexToBytes(account.publicKey);
-    const compressedPubKey = Secp256k1.compressPubkey(uncompressedPubKey);
-    const pubkeyEncoded = {
-      typeUrl: '/cosmos.evm.crypto.v1.ethsecp256k1.PubKey',
-      value: Writer.create().uint32(10).bytes(compressedPubKey).finish(),
-    };
+      // 📦 Encode pubkey
+      const uncompressedPubKey = hexToBytes(account.publicKey);
+      const compressedPubKey = Secp256k1.compressPubkey(uncompressedPubKey);
+      const pubkeyEncoded = {
+        typeUrl: '/cosmos.evm.crypto.v1.ethsecp256k1.PubKey',
+        value: Writer.create().uint32(10).bytes(compressedPubKey).finish(),
+      };
 
-    const authInfoBytes = makeAuthInfoBytes(
-      [
-        {
-          pubkey: pubkeyEncoded,
-          sequence: baseAccount ? Number(baseAccount.sequence) : 0,
-        },
-      ],
-      [],
-      100000000000, // gas
-      undefined,
-      undefined
-    );
+      const authInfoBytes = makeAuthInfoBytes(
+        [
+          {
+            pubkey: pubkeyEncoded,
+            sequence: baseAccount ? Number(baseAccount.sequence) : 0,
+          },
+        ],
+        [],
+        100000000000, // gas
+        undefined,
+        undefined
+      );
 
-    const txBodyBytes = TxBody.encode(txBody).finish();
-    const signDoc = makeSignDoc(
-      txBodyBytes,
-      authInfoBytes,
-      chainId,
-      baseAccount ? Number(baseAccount.accountNumber) : 0
-    );
+      const txBodyBytes = TxBody.encode(txBody).finish();
+      const signDoc = makeSignDoc(
+        txBodyBytes,
+        authInfoBytes,
+        chainId,
+        baseAccount ? Number(baseAccount.accountNumber) : 0
+      );
 
-    const digest = keccak256(SignDoc.encode(signDoc).finish());
-    const signature = await account.sign({ hash: digest });
+      const digest = keccak256(SignDoc.encode(signDoc).finish());
+      const signature = await account.sign({ hash: digest });
 
-    return TxRaw.fromPartial({
-      bodyBytes: txBodyBytes,
-      authInfoBytes,
-      signatures: [hexToBytes(signature)],
-    });
+      return TxRaw.fromPartial({
+        bodyBytes: txBodyBytes,
+        authInfoBytes,
+        signatures: [hexToBytes(signature)],
+      });
+    }, 'signCosmosTx');
   }
 
   async broadcastCosmosTx(txRaw: TxRaw): Promise<DeliverTxResponse> {
-    const client = await StargateClient.connect(
-      this.pushChainInfo.tendermintRpc
-    );
-    const result = await client.broadcastTx(TxRaw.encode(txRaw).finish());
-    return result;
+    return this.executeWithRpcFallback(async (rpcUrl) => {
+      const client = await StargateClient.connect(rpcUrl);
+      const result = await client.broadcastTx(TxRaw.encode(txRaw).finish());
+      return result;
+    }, 'broadcastCosmosTx');
   }
 
   /**
@@ -197,53 +238,84 @@ export class PushClient extends EvmClient {
   public async getUniversalTxById(
     id: string
   ): Promise<QueryGetUniversalTxResponse> {
-    const tmClient = await Tendermint34Client.connect(
-      this.pushChainInfo.tendermintRpc
-    );
-    const queryClient = new QueryClient(tmClient);
-    const rpc = createProtobufRpcClient(queryClient);
+    return this.executeWithRpcFallback(async (rpcUrl) => {
+      const tmClient = await Tendermint34Client.connect(rpcUrl);
+      const queryClient = new QueryClient(tmClient);
+      const rpc = createProtobufRpcClient(queryClient);
 
-    const request = QueryGetUniversalTxRequest.fromPartial({ id });
-    const responseBytes = await rpc.request(
-      'uexecutor.v1.Query',
-      'GetUniversalTx',
-      QueryGetUniversalTxRequest.encode(request).finish()
-    );
-    const response = QueryGetUniversalTxResponse.decode(responseBytes);
-    return response;
+      const request = QueryGetUniversalTxRequest.fromPartial({ id });
+      const responseBytes = await rpc.request(
+        'uexecutor.v1.Query',
+        'GetUniversalTx',
+        QueryGetUniversalTxRequest.encode(request).finish()
+      );
+      const response = QueryGetUniversalTxResponse.decode(responseBytes);
+      return response;
+    }, 'getUniversalTxById');
+  }
+
+  /**
+   * Queries Push Chain's uexecutor v2 gRPC service for a UniversalTx by its ID.
+   * V2 returns expanded OutboundTx fields and repeated outbound_tx array.
+   */
+  public async getUniversalTxByIdV2(
+    id: string
+  ): Promise<QueryGetUniversalTxResponseV2> {
+    return this.executeWithRpcFallback(async (rpcUrl) => {
+      console.log(`[PushClient:getUniversalTxByIdV2] Querying v2 API | ID: ${id} | RPC: ${rpcUrl}`);
+      const t0 = Date.now();
+      const tmClient = await Tendermint34Client.connect(rpcUrl);
+      const queryClient = new QueryClient(tmClient);
+      const rpc = createProtobufRpcClient(queryClient);
+
+      const request = QueryGetUniversalTxRequestV2.fromPartial({ id });
+      const responseBytes = await rpc.request(
+        'uexecutor.v2.Query',
+        'GetUniversalTx',
+        QueryGetUniversalTxRequestV2.encode(request).finish()
+      );
+      const response = QueryGetUniversalTxResponseV2.decode(responseBytes);
+      const utx = response?.universalTx;
+      console.log(`[PushClient:getUniversalTxByIdV2] v2 response in ${Date.now() - t0}ms | universalTx exists: ${!!utx} | status: ${utx?.universalStatus} | outboundTx count: ${utx?.outboundTx?.length ?? 0}`);
+      if (utx?.outboundTx?.length) {
+        utx.outboundTx.forEach((ob, i) => {
+          console.log(`[PushClient:getUniversalTxByIdV2]   outbound[${i}]: id=${ob.id} | outboundStatus=${ob.outboundStatus} | observedTx.txHash=${ob.observedTx?.txHash || 'EMPTY'} | dest=${ob.destinationChain} | recipient=${ob.recipient}`);
+        });
+      }
+      return response;
+    }, 'getUniversalTxByIdV2');
   }
 
   /**
    * Fetches a Cosmos transaction by its hash.
-   * @param txHash The hex‐encoded transaction hash (without “0x” or with—both work).
+   * @param txHash The hex‐encoded transaction hash (without "0x" or with—both work).
    * @returns The indexed transaction (height, logs, events, etc.).
-   * @throws If the tx isn’t found.
+   * @throws If the tx isn't found.
    */
   public async getCosmosTx(txHash: string): Promise<DeliverTxResponse> {
-    // 1. Connect to the Tendermint RPC
-    const client = await StargateClient.connect(
-      this.pushChainInfo.tendermintRpc
-    );
+    return this.executeWithRpcFallback(async (rpcUrl) => {
+      const client = await StargateClient.connect(rpcUrl);
 
-    // Raw string query—must be one string, not a KV array:
-    const query = `ethereum_tx.ethereumTxHash='${txHash}'`;
+      // Raw string query—must be one string, not a KV array:
+      const query = `ethereum_tx.ethereumTxHash='${txHash}'`;
 
-    const results = await client.searchTx(query);
+      const results = await client.searchTx(query);
 
-    // Convert bigint values to strings in the results. This is done to avoid JSON.stringify()
-    // from converting bigint to string when on the client side.
-    // On documentation, one thing very common was to use JSON.stringify() to log the results, then we would get an error.
-    const convertedResults = results.map((result) =>
-      JSON.parse(
-        JSON.stringify(result, (key, value) =>
-          typeof value === 'bigint' ? value.toString() : value
+      // Convert bigint values to strings in the results. This is done to avoid JSON.stringify()
+      // from converting bigint to string when on the client side.
+      // On documentation, one thing very common was to use JSON.stringify() to log the results, then we would get an error.
+      const convertedResults = results.map((result) =>
+        JSON.parse(
+          JSON.stringify(result, (key, value) =>
+            typeof value === 'bigint' ? value.toString() : value
+          )
         )
-      )
-    );
+      );
 
-    if (convertedResults.length === 0) {
-      throw new Error(`No Cosmos-indexed tx for EVM hash ${txHash}`);
-    }
-    return { ...convertedResults[0], transactionHash: txHash };
+      if (convertedResults.length === 0) {
+        throw new Error(`No Cosmos-indexed tx for EVM hash ${txHash}`);
+      }
+      return { ...convertedResults[0], transactionHash: txHash };
+    }, 'getCosmosTx');
   }
 }

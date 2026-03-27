@@ -67,3 +67,25 @@ message MsgExecutePayload {
   // signature is the signature of the payload by user
   string verification_data = 4;
 }
+
+// MigrationPayload mirrors the Solidity MigrationPayload struct
+message MigrationPayload {
+  string migration = 1;  // Migration contract address
+  string nonce = 2;      // uint256 as string
+  string deadline = 3;   // uint256 as string
+}
+
+// MsgMigrateUEA defines a message for migrating Universal Executor Account
+message MsgMigrateUEA {
+  // signer is the Cosmos address initiating the tx
+  string signer = 1;
+
+  // universal_account_id is the identifier of the owner account
+  UniversalAccountId universal_account_id = 2;
+
+  // migration_payload is the migration payload to be executed
+  MigrationPayload migration_payload = 3;
+
+  // signature is the signed migration payload
+  string signature = 4;
+}

@@ -49,12 +49,21 @@ export enum PROGRESS_HOOK {
   SEND_TX_06_04 = 'SEND-TX-06-04',
   SEND_TX_06_03_01 = 'SEND-TX-06-03-01',
   SEND_TX_06_03_02 = 'SEND-TX-06-03-02',
-  SEND_TX_06_05 = 'SEND-TX-06-05',
+  SEND_TX_06_05 = 'SEND-TX-06-05', // Syncing with Push Chain
+  SEND_TX_06_06 = 'SEND-TX-06-06', // Funds Credited on Push Chain (was 06_05)
 
   // 07-x: Execution / broadcasting flow
-  SEND_TX_07 = 'SEND-TX-07',
+  SEND_TX_07 = 'SEND-TX-07', // Broadcasting to Push Chain
 
   // 99-x: Final outcome
   SEND_TX_99_01 = 'SEND-TX-99-01',
   SEND_TX_99_02 = 'SEND-TX-99-02',
+
+  // UEA Migration hooks
+  UEA_MIG_01 = 'UEA-MIG-01',
+  UEA_MIG_02 = 'UEA-MIG-02',
+  UEA_MIG_03 = 'UEA-MIG-03',
+  UEA_MIG_9901 = 'UEA-MIG-9901',
+  UEA_MIG_9902 = 'UEA-MIG-9902',
+  UEA_MIG_9903 = 'UEA-MIG-9903',
 }

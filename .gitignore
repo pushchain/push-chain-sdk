@@ -49,7 +49,11 @@ Thumbs.db
 .nx/cache
 .nx/workspace-data
 
+# E2E test logs
+e2e-logs/
+
 # Env files
 .env
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
+/packages/core/outbound-test-logs

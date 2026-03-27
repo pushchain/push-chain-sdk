@@ -11,6 +11,7 @@ import { Utils } from '../utils';
 import { utils } from '@coral-xyz/anchor';
 import { Abi, bytesToHex, parseAbi, TypedData, TypedDataDomain } from 'viem';
 import { ProgressEvent } from '../progress-hook/progress-hook.types';
+import type { AccountStatus } from '../orchestrator/orchestrator.types';
 import { EvmClient } from '../vm-client/evm-client';
 import {
   MOVEABLE_TOKENS,
@@ -21,6 +22,13 @@ import {
   MoveableTokenAccessor,
   PayableTokenAccessor,
 } from '../constants/tokens';
+import type {
+  UniversalExecuteParams,
+  PreparedUniversalTx,
+  ChainedTransactionBuilder,
+  CascadedTransactionBuilder,
+  UniversalTxResponse,
+} from '../orchestrator/orchestrator.types';
 
 /**
  * @class PushChain
@@ -59,9 +67,50 @@ export class PushChain {
     // pushChainClient.universal.account. not a function, just a property. => Return UEA (wallet from push chain). If on push, return Push Chain wallet itself.
     get account(): ReturnType<Orchestrator['computeUEAOffchain']>;
     /**
-     * Executes a transaction on Push Chain
+     * Executes a transaction with automatic route detection.
+     *
+     * Supports both simple Push Chain transactions and multi-chain routing:
+     * - Route 1 (UOA_TO_PUSH): `to` is a simple address string → executes on Push Chain
+     * - Route 2 (UOA_TO_CEA): `to` is `{ address, chain }` → executes on external chain via CEA
+     * - Route 3 (CEA_TO_PUSH): `from.chain` specified, targeting Push Chain
+     * - Route 4 (CEA_TO_CEA): `from.chain` specified, targeting external chain
+     *
+     * @example
+     * // Route 1: Simple Push Chain transaction
+     * await client.universal.sendTransaction({ to: '0x...', value: parseEther('0.01') });
+     *
+     * @example
+     * // Route 2: Cross-chain to external chain
+     * await client.universal.sendTransaction({
+     *   to: { address: '0x...', chain: CHAIN.BNB_TESTNET },
+     *   value: parseEther('0.001')
+     * });
      */
     sendTransaction: Orchestrator['execute'];
+    /**
+     * Prepare a universal transaction without executing it.
+     * Returns a PreparedUniversalTx that can be chained with thenOn() or sent.
+     */
+    prepareTransaction: Orchestrator['prepareTransaction'];
+    /**
+     * Execute multiple transactions in sequence across chains.
+     * Accepts PreparedUniversalTx (from prepareTransaction) and returns
+     * a CascadedTransactionBuilder that supports .thenOn() for chaining.
+     */
+    executeTransactions: (
+      firstTx: PreparedUniversalTx
+    ) => CascadedTransactionBuilder;
+    /**
+     * Tracks a transaction by hash on Push Chain
+     */
+    trackTransaction: Orchestrator['trackTransaction'];
+    /**
+     * Migrate the CEA contract on an external chain to the latest version.
+     * Sends a MIGRATION_SELECTOR payload to trigger CEA upgrade.
+     *
+     * @param chain - The external chain where the CEA should be migrated
+     */
+    migrateCEA: Orchestrator['migrateCEA'];
     /**
      * Signs an arbitrary message
      */
@@ -104,6 +153,19 @@ export class PushChain {
     ) => Promise<ConversionQuote>;
   };
 
+  /**
+   * Account status including UEA deployment state and version info.
+   * Initially unloaded — call getAccountStatus() to populate.
+   */
+  accountStatus: AccountStatus;
+
+  /**
+   * Promise for the background account status fetch started during initialize().
+   * Await this if you need to ensure account status is loaded before proceeding.
+   * Resolves to void (result is stored in accountStatus).
+   */
+  accountStatusReady: Promise<void>;
+
   private constructor(
     private orchestrator: Orchestrator,
     private universalSigner: UniversalSigner,
@@ -111,6 +173,20 @@ export class PushChain {
     public isReadMode: boolean
   ) {
     this.orchestrator = orchestrator;
+
+    this.accountStatus = {
+      mode: isReadMode ? 'read-only' : 'signer',
+      uea: {
+        loaded: false,
+        deployed: false,
+        version: '',
+        minRequiredVersion: '',
+        requiresUpgrade: false,
+      },
+    };
+
+    // Default — overwritten in createInstance() with the background fetch
+    this.accountStatusReady = Promise.resolve();
 
     this.universal = {
       get origin() {
@@ -126,6 +202,31 @@ export class PushChain {
           );
         }
         return orchestrator.execute.bind(orchestrator)(...args);
+      },
+      prepareTransaction: (params: UniversalExecuteParams) => {
+        if (this.isReadMode) {
+          throw new Error(
+            'Read only mode cannot call prepareTransaction function'
+          );
+        }
+        return orchestrator.prepareTransaction.bind(orchestrator)(params);
+      },
+      executeTransactions: (firstTx: PreparedUniversalTx) => {
+        if (this.isReadMode) {
+          throw new Error(
+            'Read only mode cannot call executeTransactions function'
+          );
+        }
+        return orchestrator.createCascadedBuilder([firstTx]);
+      },
+      trackTransaction: (txHash: string, options?: import('../orchestrator/orchestrator.types').TrackTransactionOptions) => {
+        return orchestrator.trackTransaction.bind(orchestrator)(txHash, options);
+      },
+      migrateCEA: (chain: CHAIN) => {
+        if (this.isReadMode) {
+          throw new Error('Read only mode cannot call migrateCEA function');
+        }
+        return orchestrator.migrateCEA.bind(orchestrator)(chain);
       },
       signMessage: async (data: Uint8Array) => {
         if (this.isReadMode) {
@@ -332,6 +433,37 @@ export class PushChain {
   }
 
   /**
+   * Fetches the account status including UEA deployment state and version info.
+   * Results are cached — pass forceRefresh to bypass cache.
+   */
+  async getAccountStatus(
+    options?: { forceRefresh?: boolean }
+  ): Promise<AccountStatus> {
+    const status = await this.orchestrator.getAccountStatus(options);
+    this.accountStatus = status;
+    return status;
+  }
+
+  /**
+   * Upgrades the UEA to the latest implementation version.
+   * This is a gasless operation that updates the UEA proxy on Push Chain.
+   *
+   * @throws Error if called in read-only mode
+   */
+  async upgradeAccount(
+    options?: { progressHook?: (progress: ProgressEvent) => void }
+  ): Promise<void> {
+    if (this.isReadMode) {
+      throw new Error('Read only mode cannot call upgradeAccount function');
+    }
+    await this.orchestrator.upgradeAccount(options);
+    // Refresh local accountStatus after upgrade
+    this.accountStatus = await this.orchestrator.getAccountStatus({
+      forceRefresh: true,
+    });
+  }
+
+  /**
    * @private
    * Internal method to create a PushChain instance with the given parameters.
    * Used by both initialize and reinitialize methods to avoid code duplication.
@@ -376,12 +508,27 @@ export class PushChain {
       options?.printTraces ?? false,
       options?.progressHook
     );
-    return new PushChain(
+    const instance = new PushChain(
       orchestrator,
       validatedUniversalSigner,
       blockExplorers,
       isReadOnly
     );
+
+    // TODO: Re-enable once UEA migration is fully rolled out
+    // // Background fetch account status (non-blocking, 30s timeout)
+    // // Stored on instance so consumers can await it if needed: await client.accountStatusReady
+    // const ACCOUNT_STATUS_TIMEOUT = 30_000;
+    // instance.accountStatusReady = Promise.race([
+    //   instance.getAccountStatus().then(() => {}),
+    //   new Promise<void>((_, reject) =>
+    //     setTimeout(() => reject(new Error('Account status fetch timed out')), ACCOUNT_STATUS_TIMEOUT)
+    //   ),
+    // ]).catch(() => {
+    //   // Silently ignore — lazy check in execute() will retry if needed
+    // });
+
+    return instance;
   }
 
   /**

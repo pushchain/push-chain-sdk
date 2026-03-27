@@ -111,7 +111,8 @@ describe('PushClient', () => {
       expect(txBody.memo).toBe('test memo');
     });
 
-    it('signs tx', async () => {
+    // Network-dependent tests - run via integration config
+    it.skip('signs tx', async () => {
       const msg1 = client.createMsgDeployUEA(MSG_DEPLOY_UEA);
       const msg2 = client.createMsgMintPC(MSG_MINT_PC);
       const msg3 = client.createMsgExecutePayload(MSG_EXECUTE_PAYLOAD);
@@ -119,7 +120,7 @@ describe('PushClient', () => {
       await client.signCosmosTx(txBody);
     });
 
-    it('get tx', async () => {
+    it.skip('get tx', async () => {
       const query =
         '0x7faf47ef206f8aa356fe60a14d998cef6403ae8753948a5d8cddff7b23965be7';
       const tx = await client.getCosmosTx(query);

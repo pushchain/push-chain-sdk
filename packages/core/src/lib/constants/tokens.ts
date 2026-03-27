@@ -1,4 +1,5 @@
-import { CHAIN } from './enums';
+import { CHAIN, PUSH_NETWORK } from './enums';
+import { SYNTHETIC_PUSH_ERC20 } from './chain';
 
 export interface MoveableToken {
   symbol: string;
@@ -22,14 +23,17 @@ export type MoveableTokenMap = Partial<{
   ETH: MoveableToken;
   SOL: MoveableToken;
   USDT: MoveableToken;
+  USDC: MoveableToken;
   WETH: MoveableToken;
+  stETH: MoveableToken;
 }>;
 
 export type PayableTokenMap = Partial<{
   ETH: PayableToken;
   USDT: PayableToken;
-  WETH: PayableToken;
   USDC: PayableToken;
+  WETH: PayableToken;
+  stETH: PayableToken;
 }>;
 
 // Strongly-typed accessors that throw at runtime if a token is unavailable,
@@ -56,6 +60,12 @@ export class MoveableTokenAccessor {
   get WETH(): MoveableToken {
     return this.require('WETH');
   }
+  get USDC(): MoveableToken {
+    return this.require('USDC');
+  }
+  get stETH(): MoveableToken {
+    return this.require('stETH');
+  }
 }
 
 export class PayableTokenAccessor {
@@ -80,6 +90,9 @@ export class PayableTokenAccessor {
   get WETH(): PayableToken {
     return this.require('WETH');
   }
+  get stETH(): PayableToken {
+    return this.require('stETH');
+  }
 }
 
 export interface ConversionQuote {
@@ -91,7 +104,7 @@ export interface ConversionQuote {
 }
 
 // Native token sentinel addresses
-const EVM_NATIVE: `0x${string}` = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const NATIVE: `0x${string}` = '0x0000000000000000000000000000000000000000';
 
 // Centralized token metadata by chain to avoid duplication (symbol, decimals, address, mechanism)
 type TokenMeta = {
@@ -107,7 +120,7 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     ETH: {
       symbol: 'ETH',
       decimals: 18,
-      address: EVM_NATIVE,
+      address: NATIVE,
       mechanism: 'native',
     },
     USDT: {
@@ -128,6 +141,12 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
       address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
       mechanism: 'approve',
     },
+    stETH: {
+      symbol: 'stETH',
+      decimals: 18,
+      address: '0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af',
+      mechanism: 'approve',
+    },
   },
 
   // Ethereum Mainnet
@@ -135,7 +154,7 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     ETH: {
       symbol: 'ETH',
       decimals: 18,
-      address: EVM_NATIVE,
+      address: NATIVE,
       mechanism: 'native',
     },
     USDT: {
@@ -157,13 +176,19 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     ETH: {
       symbol: 'ETH',
       decimals: 18,
-      address: EVM_NATIVE,
+      address: NATIVE,
       mechanism: 'native',
     },
     USDT: {
       symbol: 'USDT',
       decimals: 6,
       address: '0x1419d7C74D234fA6B73E06A2ce7822C1d37922f0',
+      mechanism: 'approve',
+    },
+    USDC: {
+      symbol: 'USDC',
+      decimals: 6,
+      address: '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d',
       mechanism: 'approve',
     },
     WETH: {
@@ -179,13 +204,19 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     ETH: {
       symbol: 'ETH',
       decimals: 18,
-      address: EVM_NATIVE,
+      address: NATIVE,
       mechanism: 'native',
     },
     USDT: {
       symbol: 'USDT',
       decimals: 6,
       address: '0x9FF5a186f53F6E6964B00320Da1D2024DE11E0cB',
+      mechanism: 'approve',
+    },
+    USDC: {
+      symbol: 'USDC',
+      decimals: 6,
+      address: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
       mechanism: 'approve',
     },
     WETH: {
@@ -202,13 +233,13 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     BNB: {
       symbol: 'BNB',
       decimals: 18,
-      address: EVM_NATIVE,
+      address: NATIVE,
       mechanism: 'native',
     },
     ETH: {
       symbol: 'ETH',
       decimals: 18,
-      address: EVM_NATIVE,
+      address: NATIVE,
       mechanism: 'native',
     },
     USDT: {
@@ -224,13 +255,19 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     SOL: {
       symbol: 'SOL',
       decimals: 9,
-      address: 'solana-native',
+      address: NATIVE,
       mechanism: 'native',
     },
     USDT: {
       symbol: 'USDT',
       decimals: 6,
       address: 'EiXDnrAg9ea2Q6vEPV7E5TpTU1vh41jcuZqKjU5Dc4ZF',
+      mechanism: 'approve',
+    },
+    USDC: {
+      symbol: 'USDC',
+      decimals: 6,
+      address: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
       mechanism: 'approve',
     },
   },
@@ -252,7 +289,9 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
   [CHAIN.ETHEREUM_SEPOLIA]: [
     makeToken(CHAIN.ETHEREUM_SEPOLIA, 'ETH'),
     makeToken(CHAIN.ETHEREUM_SEPOLIA, 'USDT'),
+    makeToken(CHAIN.ETHEREUM_SEPOLIA, 'USDC'),
     makeToken(CHAIN.ETHEREUM_SEPOLIA, 'WETH'),
+    makeToken(CHAIN.ETHEREUM_SEPOLIA, 'stETH'),
   ],
   [CHAIN.ETHEREUM_MAINNET]: [
     makeToken(CHAIN.ETHEREUM_MAINNET, 'ETH'),
@@ -262,11 +301,13 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
   [CHAIN.ARBITRUM_SEPOLIA]: [
     makeToken(CHAIN.ARBITRUM_SEPOLIA, 'ETH'),
     makeToken(CHAIN.ARBITRUM_SEPOLIA, 'USDT'),
+    makeToken(CHAIN.ARBITRUM_SEPOLIA, 'USDC'),
     makeToken(CHAIN.ARBITRUM_SEPOLIA, 'WETH'),
   ],
   [CHAIN.BASE_SEPOLIA]: [
     makeToken(CHAIN.BASE_SEPOLIA, 'ETH'),
     makeToken(CHAIN.BASE_SEPOLIA, 'USDT'),
+    makeToken(CHAIN.BASE_SEPOLIA, 'USDC'),
     makeToken(CHAIN.BASE_SEPOLIA, 'WETH'),
   ],
   [CHAIN.BNB_TESTNET]: [
@@ -276,6 +317,7 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
   [CHAIN.SOLANA_DEVNET]: [
     makeToken(CHAIN.SOLANA_DEVNET, 'SOL'),
     makeToken(CHAIN.SOLANA_DEVNET, 'USDT'),
+    makeToken(CHAIN.SOLANA_DEVNET, 'USDC'),
   ],
 };
 
@@ -285,6 +327,7 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
     makeToken(CHAIN.ETHEREUM_SEPOLIA, 'USDT'),
     makeToken(CHAIN.ETHEREUM_SEPOLIA, 'USDC'),
     makeToken(CHAIN.ETHEREUM_SEPOLIA, 'WETH'),
+    makeToken(CHAIN.ETHEREUM_SEPOLIA, 'stETH'),
   ],
   [CHAIN.ETHEREUM_MAINNET]: [
     makeToken(CHAIN.ETHEREUM_MAINNET, 'ETH'),
@@ -294,10 +337,12 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
   [CHAIN.ARBITRUM_SEPOLIA]: [
     makeToken(CHAIN.ARBITRUM_SEPOLIA, 'ETH'),
     makeToken(CHAIN.ARBITRUM_SEPOLIA, 'USDT'),
+    makeToken(CHAIN.ARBITRUM_SEPOLIA, 'USDC'),
   ],
   [CHAIN.BASE_SEPOLIA]: [
     makeToken(CHAIN.BASE_SEPOLIA, 'ETH'),
     makeToken(CHAIN.BASE_SEPOLIA, 'USDT'),
+    makeToken(CHAIN.BASE_SEPOLIA, 'USDC'),
   ],
   [CHAIN.BNB_TESTNET]: [
     makeToken(CHAIN.BNB_TESTNET, 'BNB'),
@@ -306,5 +351,194 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
   [CHAIN.SOLANA_DEVNET]: [
     makeToken(CHAIN.SOLANA_DEVNET, 'SOL'),
     makeToken(CHAIN.SOLANA_DEVNET, 'USDT'),
+    makeToken(CHAIN.SOLANA_DEVNET, 'USDC'),
   ],
 };
+
+// ---------------------------------------------------------------------------
+// C-2 / C-3 / C-4: Static CONSTANTS.MOVEABLE.TOKEN and CONSTANTS.PAYABLE.TOKEN
+// ---------------------------------------------------------------------------
+
+// Extends MoveableToken with Push Chain outbound context (C-3)
+export interface PushChainMoveableToken extends MoveableToken {
+  /** The external chain this synthetic PRC-20 asset is bridged from */
+  sourceChain: CHAIN;
+  /** The PRC-20 address on Push Chain */
+  prc20Address: `0x${string}`;
+}
+
+// Chain-suffix accessor for multi-origin tokens like USDT, USDC (C-3)
+export interface ChainSuffixAccessor {
+  readonly eth: PushChainMoveableToken;
+  readonly arb: PushChainMoveableToken;
+  readonly base: PushChainMoveableToken;
+  readonly bnb: PushChainMoveableToken;
+  readonly sol: PushChainMoveableToken;
+}
+
+// Push Chain outward token accessor type (C-3)
+export interface PushChainMoveableTokenAccessor {
+  readonly pEth: PushChainMoveableToken;
+  readonly pEthArb: PushChainMoveableToken;
+  readonly pEthBase: PushChainMoveableToken;
+  readonly pEthBnb: PushChainMoveableToken;
+  readonly pSol: PushChainMoveableToken;
+  readonly USDT: ChainSuffixAccessor;
+  readonly USDC: ChainSuffixAccessor;
+}
+
+// Combined type for CONSTANTS.MOVEABLE.TOKEN (C-2 + C-3)
+export type MoveableTokenConstantsMap = {
+  ETHEREUM_SEPOLIA: MoveableTokenAccessor;
+  ETHEREUM_MAINNET: MoveableTokenAccessor;
+  ARBITRUM_SEPOLIA: MoveableTokenAccessor;
+  BASE_SEPOLIA: MoveableTokenAccessor;
+  BNB_TESTNET: MoveableTokenAccessor;
+  SOLANA_DEVNET: MoveableTokenAccessor;
+  PUSH_TESTNET_DONUT: PushChainMoveableTokenAccessor;
+};
+
+// Type for CONSTANTS.PAYABLE.TOKEN (C-4)
+export type PayableTokenConstantsMap = {
+  ETHEREUM_SEPOLIA: PayableTokenAccessor;
+  ETHEREUM_MAINNET: PayableTokenAccessor;
+  ARBITRUM_SEPOLIA: PayableTokenAccessor;
+  BASE_SEPOLIA: PayableTokenAccessor;
+  BNB_TESTNET: PayableTokenAccessor;
+  SOLANA_DEVNET: PayableTokenAccessor;
+};
+
+// Helper: token array → Record<symbol, Token>
+const toSymbolMap = <T extends { symbol: string }>(
+  arr: T[] | undefined
+): Record<string, T> =>
+  (arr ?? []).reduce<Record<string, T>>((acc, t) => {
+    acc[t.symbol] = t;
+    return acc;
+  }, {});
+
+function buildPushChainMoveableTokenAccessor(): PushChainMoveableTokenAccessor {
+  const s = SYNTHETIC_PUSH_ERC20[PUSH_NETWORK.TESTNET_DONUT];
+
+  const mk = (
+    symbol: string,
+    decimals: number,
+    address: `0x${string}`,
+    sourceChain: CHAIN
+  ): PushChainMoveableToken => ({
+    symbol,
+    decimals,
+    address,
+    mechanism: 'approve',
+    sourceChain,
+    prc20Address: address,
+  });
+
+  return {
+    pEth: mk('pETH', 18, s.pETH, CHAIN.ETHEREUM_SEPOLIA),
+    pEthArb: mk('pETH_ARB', 18, s.pETH_ARB, CHAIN.ARBITRUM_SEPOLIA),
+    pEthBase: mk('pETH_BASE', 18, s.pETH_BASE, CHAIN.BASE_SEPOLIA),
+    pEthBnb: mk('pETH_BNB', 18, s.pETH_BNB, CHAIN.BNB_TESTNET),
+    pSol: mk('pSOL', 9, s.pSOL, CHAIN.SOLANA_DEVNET),
+    USDT: {
+      eth: mk('USDT', 6, s.USDT_ETH, CHAIN.ETHEREUM_SEPOLIA),
+      arb: mk('USDT', 6, s.USDT_ARB, CHAIN.ARBITRUM_SEPOLIA),
+      base: mk('USDT', 6, s.USDT_BASE, CHAIN.BASE_SEPOLIA),
+      bnb: mk('USDT', 6, s.USDT_BNB, CHAIN.BNB_TESTNET),
+      sol: mk('USDT', 6, s.USDT_SOL, CHAIN.SOLANA_DEVNET),
+    },
+    USDC: {
+      eth: mk('USDC', 6, s.USDC_ETH, CHAIN.ETHEREUM_SEPOLIA),
+      arb: mk('USDC', 6, s.USDC_ARB, CHAIN.ARBITRUM_SEPOLIA),
+      base: mk('USDC', 6, s.USDC_BASE, CHAIN.BASE_SEPOLIA),
+      bnb: mk('USDC', 6, s.USDC_BNB, CHAIN.BNB_TESTNET),
+      sol: mk('USDC', 6, s.USDC_SOL, CHAIN.SOLANA_DEVNET),
+    },
+  };
+}
+
+function buildMoveableTokenConstants(): MoveableTokenConstantsMap {
+  return {
+    ETHEREUM_SEPOLIA: new MoveableTokenAccessor(
+      toSymbolMap(MOVEABLE_TOKENS[CHAIN.ETHEREUM_SEPOLIA]) as Record<
+        string,
+        MoveableToken
+      >
+    ),
+    ETHEREUM_MAINNET: new MoveableTokenAccessor(
+      toSymbolMap(MOVEABLE_TOKENS[CHAIN.ETHEREUM_MAINNET]) as Record<
+        string,
+        MoveableToken
+      >
+    ),
+    ARBITRUM_SEPOLIA: new MoveableTokenAccessor(
+      toSymbolMap(MOVEABLE_TOKENS[CHAIN.ARBITRUM_SEPOLIA]) as Record<
+        string,
+        MoveableToken
+      >
+    ),
+    BASE_SEPOLIA: new MoveableTokenAccessor(
+      toSymbolMap(MOVEABLE_TOKENS[CHAIN.BASE_SEPOLIA]) as Record<
+        string,
+        MoveableToken
+      >
+    ),
+    BNB_TESTNET: new MoveableTokenAccessor(
+      toSymbolMap(MOVEABLE_TOKENS[CHAIN.BNB_TESTNET]) as Record<
+        string,
+        MoveableToken
+      >
+    ),
+    SOLANA_DEVNET: new MoveableTokenAccessor(
+      toSymbolMap(MOVEABLE_TOKENS[CHAIN.SOLANA_DEVNET]) as Record<
+        string,
+        MoveableToken
+      >
+    ),
+    PUSH_TESTNET_DONUT: buildPushChainMoveableTokenAccessor(),
+  };
+}
+
+function buildPayableTokenConstants(): PayableTokenConstantsMap {
+  return {
+    ETHEREUM_SEPOLIA: new PayableTokenAccessor(
+      toSymbolMap(PAYABLE_TOKENS[CHAIN.ETHEREUM_SEPOLIA]) as Record<
+        string,
+        PayableToken
+      >
+    ),
+    ETHEREUM_MAINNET: new PayableTokenAccessor(
+      toSymbolMap(PAYABLE_TOKENS[CHAIN.ETHEREUM_MAINNET]) as Record<
+        string,
+        PayableToken
+      >
+    ),
+    ARBITRUM_SEPOLIA: new PayableTokenAccessor(
+      toSymbolMap(PAYABLE_TOKENS[CHAIN.ARBITRUM_SEPOLIA]) as Record<
+        string,
+        PayableToken
+      >
+    ),
+    BASE_SEPOLIA: new PayableTokenAccessor(
+      toSymbolMap(PAYABLE_TOKENS[CHAIN.BASE_SEPOLIA]) as Record<
+        string,
+        PayableToken
+      >
+    ),
+    BNB_TESTNET: new PayableTokenAccessor(
+      toSymbolMap(PAYABLE_TOKENS[CHAIN.BNB_TESTNET]) as Record<
+        string,
+        PayableToken
+      >
+    ),
+    SOLANA_DEVNET: new PayableTokenAccessor(
+      toSymbolMap(PAYABLE_TOKENS[CHAIN.SOLANA_DEVNET]) as Record<
+        string,
+        PayableToken
+      >
+    ),
+  };
+}
+
+export const MOVEABLE_TOKEN_CONSTANTS = buildMoveableTokenConstants();
+export const PAYABLE_TOKEN_CONSTANTS = buildPayableTokenConstants();

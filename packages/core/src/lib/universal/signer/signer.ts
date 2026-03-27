@@ -197,13 +197,28 @@ export async function toUniversalFromKeypair(
 
         let txHash: string;
 
-        // Prefer handling as a versioned transaction; fall back to legacy if that fails.
-        try {
+        // Detect if this is a versioned transaction by looking at the message portion.
+        // Transaction format: [signature_count (compact-u16)][signatures][message]
+        // For versioned messages, the first byte of the message has high bit set (>= 0x80)
+        // Read signature count - if < 0x80, it's a single byte count
+        let sigOffset = 1;
+        const sigCount = unsignedTx[0];
+        if (sigCount >= 0x80) {
+          // Two-byte compact-u16 encoding
+          sigOffset = 2;
+        }
+        // Skip past signatures (64 bytes each) to get to the message
+        const messageOffset = sigOffset + sigCount * 64;
+        const isVersionedTx = unsignedTx[messageOffset] >= 0x80;
+
+        if (isVersionedTx) {
+          // Handle as versioned transaction (v0)
           const vtx = VersionedTransaction.deserialize(unsignedTx);
           vtx.sign([keypair]);
           const rawVtx = vtx.serialize();
           txHash = await connection.sendRawTransaction(rawVtx);
-        } catch {
+        } else {
+          // Handle as legacy transaction
           const tx = Transaction.from(unsignedTx);
           const messageBytes = tx.serializeMessage();
           const signature = nacl.sign.detached(messageBytes, keypair.secretKey);

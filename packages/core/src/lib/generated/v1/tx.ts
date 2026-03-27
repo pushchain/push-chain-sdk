@@ -717,6 +717,167 @@ export const MsgExecutePayload: MessageFns<MsgExecutePayload> = {
   },
 };
 
+// ============================================================================
+// MigrationPayload + MsgMigrateUEA
+// Generated from proto/v1/tx.proto — manually appended to preserve
+// compatibility with the existing protoc-gen-ts_proto v2.7.0 output.
+// ============================================================================
+
+/** MigrationPayload mirrors the Solidity MigrationPayload struct */
+export interface MigrationPayload {
+  /** Migration contract address */
+  migration: string;
+  /** uint256 as string */
+  nonce: string;
+  /** uint256 as string */
+  deadline: string;
+}
+
+/** MsgMigrateUEA defines a message for migrating Universal Executor Account */
+export interface MsgMigrateUEA {
+  /** signer is the Cosmos address initiating the tx */
+  signer: string;
+  /** universal_account_id is the identifier of the owner account */
+  universalAccountId?:
+    | UniversalAccountId
+    | undefined;
+  /** migration_payload is the migration payload to be executed */
+  migrationPayload?:
+    | MigrationPayload
+    | undefined;
+  /** signature is the signed migration payload */
+  signature: string;
+}
+
+function createBaseMigrationPayload(): MigrationPayload {
+  return { migration: "", nonce: "", deadline: "" };
+}
+
+export const MigrationPayload: MessageFns<MigrationPayload> = {
+  encode(message: MigrationPayload, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.migration !== "") {
+      writer.uint32(10).string(message.migration);
+    }
+    if (message.nonce !== "") {
+      writer.uint32(18).string(message.nonce);
+    }
+    if (message.deadline !== "") {
+      writer.uint32(26).string(message.deadline);
+    }
+    return writer;
+  },
+  decode(input: BinaryReader | Uint8Array, length?: number): MigrationPayload {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMigrationPayload();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: { if (tag !== 10) { break; } message.migration = reader.string(); continue; }
+        case 2: { if (tag !== 18) { break; } message.nonce = reader.string(); continue; }
+        case 3: { if (tag !== 26) { break; } message.deadline = reader.string(); continue; }
+      }
+      if ((tag & 7) === 4 || tag === 0) { break; }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+  fromJSON(object: any): MigrationPayload {
+    return {
+      migration: isSet(object.migration) ? globalThis.String(object.migration) : "",
+      nonce: isSet(object.nonce) ? globalThis.String(object.nonce) : "",
+      deadline: isSet(object.deadline) ? globalThis.String(object.deadline) : "",
+    };
+  },
+  toJSON(message: MigrationPayload): unknown {
+    const obj: any = {};
+    if (message.migration !== "") { obj.migration = message.migration; }
+    if (message.nonce !== "") { obj.nonce = message.nonce; }
+    if (message.deadline !== "") { obj.deadline = message.deadline; }
+    return obj;
+  },
+  create<I extends Exact<DeepPartial<MigrationPayload>, I>>(base?: I): MigrationPayload {
+    return MigrationPayload.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MigrationPayload>, I>>(object: I): MigrationPayload {
+    const message = createBaseMigrationPayload();
+    message.migration = object.migration ?? "";
+    message.nonce = object.nonce ?? "";
+    message.deadline = object.deadline ?? "";
+    return message;
+  },
+};
+
+function createBaseMsgMigrateUEA(): MsgMigrateUEA {
+  return { signer: "", universalAccountId: undefined, migrationPayload: undefined, signature: "" };
+}
+
+export const MsgMigrateUEA: MessageFns<MsgMigrateUEA> = {
+  encode(message: MsgMigrateUEA, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.signer !== "") {
+      writer.uint32(10).string(message.signer);
+    }
+    if (message.universalAccountId !== undefined) {
+      UniversalAccountId.encode(message.universalAccountId, writer.uint32(18).fork()).join();
+    }
+    if (message.migrationPayload !== undefined) {
+      MigrationPayload.encode(message.migrationPayload, writer.uint32(26).fork()).join();
+    }
+    if (message.signature !== "") {
+      writer.uint32(34).string(message.signature);
+    }
+    return writer;
+  },
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgMigrateUEA {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMsgMigrateUEA();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: { if (tag !== 10) { break; } message.signer = reader.string(); continue; }
+        case 2: { if (tag !== 18) { break; } message.universalAccountId = UniversalAccountId.decode(reader, reader.uint32()); continue; }
+        case 3: { if (tag !== 26) { break; } message.migrationPayload = MigrationPayload.decode(reader, reader.uint32()); continue; }
+        case 4: { if (tag !== 34) { break; } message.signature = reader.string(); continue; }
+      }
+      if ((tag & 7) === 4 || tag === 0) { break; }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+  fromJSON(object: any): MsgMigrateUEA {
+    return {
+      signer: isSet(object.signer) ? globalThis.String(object.signer) : "",
+      universalAccountId: isSet(object.universalAccountId) ? UniversalAccountId.fromJSON(object.universalAccountId) : undefined,
+      migrationPayload: isSet(object.migrationPayload) ? MigrationPayload.fromJSON(object.migrationPayload) : undefined,
+      signature: isSet(object.signature) ? globalThis.String(object.signature) : "",
+    };
+  },
+  toJSON(message: MsgMigrateUEA): unknown {
+    const obj: any = {};
+    if (message.signer !== "") { obj.signer = message.signer; }
+    if (message.universalAccountId !== undefined) { obj.universalAccountId = UniversalAccountId.toJSON(message.universalAccountId); }
+    if (message.migrationPayload !== undefined) { obj.migrationPayload = MigrationPayload.toJSON(message.migrationPayload); }
+    if (message.signature !== "") { obj.signature = message.signature; }
+    return obj;
+  },
+  create<I extends Exact<DeepPartial<MsgMigrateUEA>, I>>(base?: I): MsgMigrateUEA {
+    return MsgMigrateUEA.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgMigrateUEA>, I>>(object: I): MsgMigrateUEA {
+    const message = createBaseMsgMigrateUEA();
+    message.signer = object.signer ?? "";
+    message.universalAccountId = (object.universalAccountId !== undefined && object.universalAccountId !== null)
+      ? UniversalAccountId.fromPartial(object.universalAccountId)
+      : undefined;
+    message.migrationPayload = (object.migrationPayload !== undefined && object.migrationPayload !== null)
+      ? MigrationPayload.fromPartial(object.migrationPayload)
+      : undefined;
+    message.signature = object.signature ?? "";
+    return message;
+  },
+};
+
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
 export type DeepPartial<T> = T extends Builtin ? T
