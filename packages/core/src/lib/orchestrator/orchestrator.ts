@@ -32,7 +32,7 @@ import {
   UNIVERSAL_GATEWAY_V1_SEND,
 } from '../constants/abi';
 import { UEA_EVM } from '../constants/abi/uea.evm';
-import { CHAIN_INFO, UEA_PROXY, UEA_FACTORY, VM_NAMESPACE, SYNTHETIC_PUSH_ERC20, UNIVERSAL_GATEWAY_ADDRESSES } from '../constants/chain';
+import { CHAIN_INFO, UEA_PROXY, UEA_FACTORY, UEA_MIGRATION, UEA_MIN_REQUIRED_VERSION, VM_NAMESPACE, SYNTHETIC_PUSH_ERC20, UNIVERSAL_GATEWAY_ADDRESSES } from '../constants/chain';
 import { UEA_FACTORY_ABI } from '../constants/abi/uea-factory';
 import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
 import {
@@ -128,7 +128,12 @@ export class Orchestrator {
   private pushClient: PushClient;
   private ueaVersionCache?: string;
   private accountStatusCache: AccountStatus | null = null;
-  private _isUpgrading = false;
+  /**
+   * Per-chain cache for detected gateway version (v0 or v1).
+   * Populated on first successful gateway tx per chain via try-V1-then-V0 fallback.
+   * TODO: Remove this cache + fallback logic once all chains are upgraded to V1.
+   */
+  private gatewayVersionCache: Map<CHAIN, 'v0' | 'v1'> = new Map();
 
   constructor(
     private readonly universalSigner: UniversalSigner,
@@ -156,6 +161,10 @@ export class Orchestrator {
       rpcUrls: pushChainRPCs,
       network: pushNetwork,
     });
+
+    // BNB is already upgraded to V1 — pre-seed the cache so it never falls back to V0.
+    // TODO: Remove these entries once all chains are upgraded to V1.
+    this.gatewayVersionCache.set(CHAIN.BNB_TESTNET, 'v1');
   }
 
   /**
@@ -213,11 +222,9 @@ export class Orchestrator {
       return status;
     }
 
-    // Fetch current version and minRequiredVersion in parallel (string format from chain)
-    const [currentVersion, minRequiredVersion] = await Promise.all([
-      this.fetchUEAVersion(),
-      this.fetchMinRequiredVersionString(vm),
-    ]);
+    // Fetch current version from chain, minRequiredVersion from SDK constant
+    const currentVersion = await this.fetchUEAVersion();
+    const minRequiredVersion = this.getMinRequiredVersion();
 
     const requiresUpgrade =
       parseUEAVersion(currentVersion) < parseUEAVersion(minRequiredVersion);
@@ -238,8 +245,8 @@ export class Orchestrator {
 
   /**
    * Upgrades the UEA to the latest implementation version.
-   * Sends MIGRATION_SELECTOR to the UEA itself on Push Chain (Route 1).
-   * This triggers UEA_EVM._handleMigration() → delegatecall to UEAMigration.
+   * Sends MsgMigrateUEA Cosmos message with EIP-712 signed MigrationPayload.
+   * The UEA contract delegates to the UEAMigration contract to update implementation.
    */
   async upgradeAccount(
     options?: { progressHook?: (progress: ProgressEvent) => void }
@@ -265,65 +272,100 @@ export class Orchestrator {
     fireHook(PROGRESS_HOOK.UEA_MIG_02);
 
     try {
-      // Step 3: Build and send migration tx to UEA itself
+      const { chain, address } = this.universalSigner.account;
+      const { vm, chainId } = CHAIN_INFO[chain];
       const ueaAddress = this.computeUEAOffchain();
+      const migrationContractAddress = UEA_MIGRATION[this.pushNetwork];
 
-      // Set recursion guard to prevent execute() from calling upgradeAccount() again
-      this._isUpgrading = true;
+      if (!migrationContractAddress || migrationContractAddress === '0xTBD') {
+        throw new Error('UEA migration contract address not configured');
+      }
 
-      fireHook(PROGRESS_HOOK.UEA_MIG_03);
+      // Read UEA nonce
+      const { nonce } = await this.getUeaStatusAndNonce();
+      const deadline = BigInt(9999999999);
+      const ueaVersion = status.uea.version || '0.1.0';
 
-      await this.execute({
-        to: ueaAddress,
-        data: MIGRATION_SELECTOR as `0x${string}`,
-        value: BigInt(0),
+      // Sign MigrationPayload via EIP-712
+      if (!this.universalSigner.signTypedData) {
+        throw new Error('signTypedData not available on signer');
+      }
+
+      const signatureBytes = await this.universalSigner.signTypedData({
+        domain: {
+          version: ueaVersion,
+          chainId: Number(chainId),
+          verifyingContract: ueaAddress,
+        },
+        types: {
+          MigrationPayload: [
+            { name: 'migration', type: 'address' },
+            { name: 'nonce', type: 'uint256' },
+            { name: 'deadline', type: 'uint256' },
+          ],
+        },
+        primaryType: 'MigrationPayload',
+        message: {
+          migration: migrationContractAddress,
+          nonce,
+          deadline,
+        },
       });
 
-      this._isUpgrading = false;
+      const signature = bytesToHex(signatureBytes);
+
+      // Build Cosmos message
+      fireHook(PROGRESS_HOOK.UEA_MIG_03);
+
+      const universalAccountId: UniversalAccountId = {
+        chainNamespace: VM_NAMESPACE[vm],
+        chainId,
+        owner:
+          vm === VM.EVM
+            ? address
+            : vm === VM.SVM
+            ? bytesToHex(new Uint8Array(utils.bytes.bs58.decode(address)))
+            : address,
+      };
+
+      const { cosmosAddress: signer } = this.pushClient.getSignerAddress();
+
+      const msg = this.pushClient.createMsgMigrateUEA({
+        signer,
+        universalAccountId,
+        migrationPayload: {
+          migration: migrationContractAddress,
+          nonce: nonce.toString(),
+          deadline: deadline.toString(),
+        },
+        signature,
+      });
+
+      const txBody = await this.pushClient.createCosmosTxBody([msg]);
+      const txRaw = await this.pushClient.signCosmosTx(txBody);
+      const tx = await this.pushClient.broadcastCosmosTx(txRaw);
+
+      if (tx.code !== 0) {
+        throw new Error(tx.rawLog || 'UEA migration transaction failed');
+      }
 
       // Clear version cache so next read picks up new version
       this.ueaVersionCache = undefined;
 
       // Refresh account status
       const updated = await this.getAccountStatus({ forceRefresh: true });
-      fireHook(
-        PROGRESS_HOOK.UEA_MIG_9901,
-        updated.uea.version
-      );
+      fireHook(PROGRESS_HOOK.UEA_MIG_9901, updated.uea.version);
     } catch (err) {
-      this._isUpgrading = false;
       fireHook(PROGRESS_HOOK.UEA_MIG_9902);
       throw err;
     }
   }
 
   /**
-   * Fetch the minimum required UEA version string from UEAFactory.
-   * Returns empty string if UEAFactory address is not configured (TBD).
+   * Returns the minimum required UEA version from SDK constants.
    */
-  private async fetchMinRequiredVersionString(vm: VM): Promise<string> {
-    const factoryAddress = UEA_FACTORY[this.pushNetwork];
-    if (!factoryAddress || factoryAddress === '0xTBD') {
-      // TODO: UEAFactory not deployed yet — return empty (no upgrade required)
-      return '';
-    }
-
-    try {
-      const vmHash =
-        vm === VM.EVM
-          ? keccak256(stringToBytes('evm'))
-          : keccak256(stringToBytes('svm'));
-
-      return await this.pushClient.readContract<string>({
-        address: factoryAddress,
-        abi: UEA_FACTORY_ABI as unknown as Abi,
-        functionName: 'UEA_VERSION',
-        args: [vmHash],
-      });
-    } catch {
-      // If factory call fails, don't block — no upgrade required
-      return '';
-    }
+  private getMinRequiredVersion(): string {
+    return UEA_MIN_REQUIRED_VERSION[this.pushNetwork] || '';
   }
 
   /**
@@ -374,17 +416,15 @@ export class Orchestrator {
   async execute(
     params: ExecuteParams | UniversalExecuteParams
   ): Promise<UniversalTxResponse> {
-    // Lazy UEA upgrade check — skip if already upgrading (recursion guard)
-    if (!this._isUpgrading) {
-      if (!this.accountStatusCache || !this.accountStatusCache.uea.loaded) {
-        await this.getAccountStatus();
-      }
-      if (
-        this.accountStatusCache?.uea.deployed &&
-        this.accountStatusCache?.uea.requiresUpgrade
-      ) {
-        await this.upgradeAccount({ progressHook: this.progressHook });
-      }
+    // Lazy UEA upgrade check
+    if (!this.accountStatusCache || !this.accountStatusCache.uea.loaded) {
+      await this.getAccountStatus();
+    }
+    if (
+      this.accountStatusCache?.uea.deployed &&
+      this.accountStatusCache?.uea.requiresUpgrade
+    ) {
+      await this.upgradeAccount({ progressHook: this.progressHook });
     }
 
     // Check if this is a multi-chain request (has ChainTarget or from.chain)
@@ -575,14 +615,13 @@ export class Orchestrator {
                   nativeAmount: nativeAmount.toString(), bridgeToken,
                 }, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
 
-                txHash = await evmClient.writeContract({
-                  abi: this.getGatewayAbi() as Abi,
-                  address: gatewayAddress,
-                  functionName: 'sendUniversalTx',
-                  args: [this.toGatewayRequest(req)],
-                  signer: this.universalSigner,
-                  value: isNative ? nativeAmount + bridgeAmount : nativeAmount,
-                });
+                txHash = await this.sendGatewayTxWithFallback(
+                  evmClient,
+                  gatewayAddress,
+                  req,
+                  this.universalSigner,
+                  isNative ? nativeAmount + bridgeAmount : nativeAmount,
+                );
               } else {
                 // FUNDS ONLY OTHER
                 // const payloadBytes = this.encodeUniversalPayload(
@@ -604,14 +643,13 @@ export class Orchestrator {
                   nativeAmount: nativeAmount.toString(), bridgeToken,
                 }, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
 
-                txHash = await evmClient.writeContract({
-                  abi: this.getGatewayAbi() as Abi,
-                  address: gatewayAddress,
-                  functionName: 'sendUniversalTx',
-                  args: [this.toGatewayRequest(req)],
-                  signer: this.universalSigner,
-                  value: isNative ? nativeAmount + bridgeAmount : nativeAmount,
-                });
+                txHash = await this.sendGatewayTxWithFallback(
+                  evmClient,
+                  gatewayAddress,
+                  req,
+                  this.universalSigner,
+                  isNative ? nativeAmount + bridgeAmount : nativeAmount,
+                );
               }
             } catch (err) {
               this.executeProgressHook(PROGRESS_HOOK.SEND_TX_04_04);
@@ -1217,13 +1255,12 @@ export class Orchestrator {
                   deadline,
                 };
 
-                txHash = await evmClientEvm.writeContract({
-                  abi: this.getGatewayAbi() as Abi,
-                  address: gatewayAddressEvm,
-                  functionName: 'sendUniversalTx',
-                  args: [this.toGatewayTokenRequest(reqToken)],
-                  signer: this.universalSigner,
-                });
+                txHash = await this.sendGatewayTokenTxWithFallback(
+                  evmClientEvm,
+                  gatewayAddressEvm,
+                  reqToken,
+                  this.universalSigner,
+                );
               } else {
                 // Existing native-ETH value path
                 // const req: UniversalTxRequest = {
@@ -1249,14 +1286,13 @@ export class Orchestrator {
                   ? nativeAmount + bridgeAmount
                   : nativeAmount;
 
-                txHash = await evmClientEvm.writeContract({
-                  abi: this.getGatewayAbi() as Abi,
-                  address: gatewayAddressEvm,
-                  functionName: 'sendUniversalTx',
-                  args: [this.toGatewayRequest(req)],
-                  signer: this.universalSigner,
-                  value: totalValue,
-                });
+                txHash = await this.sendGatewayTxWithFallback(
+                  evmClientEvm,
+                  gatewayAddressEvm,
+                  req,
+                  this.universalSigner,
+                  totalValue,
+                );
               }
             } else {
               txHash = await this._sendSVMTxWithFunds({
@@ -2602,6 +2638,9 @@ export class Orchestrator {
                 amount = params.funds.amount;
                 // Add approve for ERC20 (CEA approves gateway)
                 const gatewayAddr = UNIVERSAL_GATEWAY_ADDRESSES[sourceChain];
+                if (!gatewayAddr) {
+                  throw new Error(`No UniversalGateway address configured for chain ${sourceChain}`);
+                }
                 const approveData = encodeFunctionData({
                   abi: ERC20_EVM,
                   functionName: 'approve',
@@ -4432,14 +4471,13 @@ export class Orchestrator {
           nativeTokenUsdPrice;
         nativeAmount = nativeAmount + BigInt(1);
 
-        const txHash: `0x${string}` = await evmClient.writeContract({
-          abi: this.getGatewayAbi() as Abi,
-          address: lockerContract,
-          functionName: 'sendUniversalTx',
-          args: [this.toGatewayRequest(req)],
-          signer: this.universalSigner,
-          value: nativeAmount,
-        });
+        const txHash: `0x${string}` = await this.sendGatewayTxWithFallback(
+          evmClient,
+          lockerContract as `0x${string}`,
+          req,
+          this.universalSigner,
+          nativeAmount,
+        );
         return hexToBytes(txHash);
       }
 
@@ -4550,28 +4588,48 @@ export class Orchestrator {
   }
 
   /**
+   * Returns the resolved gateway version for the current origin chain.
+   * Checks the per-chain runtime cache first, then falls back to static config.
+   * TODO: Remove V0 fallback once all chains are upgraded to V1.
+   */
+  private getGatewayVersion(): 'v0' | 'v1' {
+    const chain = this.universalSigner.account.chain;
+    // 1. Check runtime cache (set after a successful tx)
+    const cached = this.gatewayVersionCache.get(chain);
+    if (cached) return cached;
+    // 2. Fall back to static config
+    return CHAIN_INFO[chain].gatewayVersion ?? 'v0';
+  }
+
+  /**
    * Returns true if the current origin chain uses the V1 gateway (revertRecipient address).
    */
   private isV1Gateway(): boolean {
-    return CHAIN_INFO[this.universalSigner.account.chain].gatewayVersion === 'v1';
+    return this.getGatewayVersion() === 'v1';
+  }
+
+  /**
+   * Returns the correct gateway ABI for the given version.
+   */
+  private getGatewayAbiForVersion(version: 'v0' | 'v1'): unknown[] {
+    return version === 'v1'
+      ? (UNIVERSAL_GATEWAY_V1_SEND as unknown as unknown[])
+      : (UNIVERSAL_GATEWAY_V0 as unknown as unknown[]);
   }
 
   /**
    * Returns the correct gateway ABI based on the origin chain's gateway version.
    */
   private getGatewayAbi(): unknown[] {
-    return this.isV1Gateway()
-      ? (UNIVERSAL_GATEWAY_V1_SEND as unknown as unknown[])
-      : (UNIVERSAL_GATEWAY_V0 as unknown as unknown[]);
+    return this.getGatewayAbiForVersion(this.getGatewayVersion());
   }
 
   /**
-   * Converts a V0 UniversalTxRequest to V1 format if the chain uses V1 gateway.
+   * Converts a V0 UniversalTxRequest to V1 format.
    */
-  private toGatewayRequest(
+  private toGatewayRequestV1(
     req: UniversalTxRequest
-  ): UniversalTxRequest | UniversalTxRequestV1 {
-    if (!this.isV1Gateway()) return req;
+  ): UniversalTxRequestV1 {
     return {
       recipient: req.recipient,
       token: req.token,
@@ -4583,12 +4641,21 @@ export class Orchestrator {
   }
 
   /**
-   * Converts a V0 UniversalTokenTxRequest to V1 format if the chain uses V1 gateway.
+   * Converts a V0 UniversalTxRequest to the correct format based on gateway version.
    */
-  private toGatewayTokenRequest(
-    req: UniversalTokenTxRequest
-  ): UniversalTokenTxRequest | UniversalTokenTxRequestV1 {
+  private toGatewayRequest(
+    req: UniversalTxRequest
+  ): UniversalTxRequest | UniversalTxRequestV1 {
     if (!this.isV1Gateway()) return req;
+    return this.toGatewayRequestV1(req);
+  }
+
+  /**
+   * Converts a V0 UniversalTokenTxRequest to V1 format.
+   */
+  private toGatewayTokenRequestV1(
+    req: UniversalTokenTxRequest
+  ): UniversalTokenTxRequestV1 {
     return {
       recipient: req.recipient,
       token: req.token,
@@ -4601,6 +4668,156 @@ export class Orchestrator {
       amountOutMinETH: req.amountOutMinETH,
       deadline: req.deadline,
     };
+  }
+
+  /**
+   * Converts a V0 UniversalTokenTxRequest to the correct format based on gateway version.
+   */
+  private toGatewayTokenRequest(
+    req: UniversalTokenTxRequest
+  ): UniversalTokenTxRequest | UniversalTokenTxRequestV1 {
+    if (!this.isV1Gateway()) return req;
+    return this.toGatewayTokenRequestV1(req);
+  }
+
+  /**
+   * Sends a gateway transaction with V1-first, V0-fallback strategy.
+   *
+   * Strategy:
+   *   1. Try V1 (revertRecipient address format) first.
+   *   2. If V1 fails (contract not yet upgraded), retry with V0 (revertInstruction struct).
+   *   3. Cache the working version per chain so subsequent calls skip the fallback.
+   *
+   * TODO: Remove V0 fallback once all chains are upgraded to V1. After that,
+   *       delete this method and call writeContract directly with V1 ABI.
+   */
+  private async sendGatewayTxWithFallback(
+    evmClient: EvmClient,
+    address: `0x${string}`,
+    req: UniversalTxRequest,
+    signer: UniversalSigner,
+    value: bigint
+  ): Promise<`0x${string}`> {
+    const chain = this.universalSigner.account.chain;
+    const currentVersion = this.getGatewayVersion();
+
+    // If we already know the version (from cache or config), use it directly — no fallback needed.
+    if (this.gatewayVersionCache.has(chain)) {
+      return evmClient.writeContract({
+        abi: this.getGatewayAbiForVersion(currentVersion) as Abi,
+        address,
+        functionName: 'sendUniversalTx',
+        args: [currentVersion === 'v1' ? this.toGatewayRequestV1(req) : req],
+        signer,
+        value,
+      });
+    }
+
+    // No cached version yet — try V1 first, fall back to V0.
+    // TODO: Remove this try/catch block once all chains are on V1.
+    try {
+      this.printLog(`[Gateway] Trying V1 format for chain ${chain}...`);
+      const txHash = await evmClient.writeContract({
+        abi: this.getGatewayAbiForVersion('v1') as Abi,
+        address,
+        functionName: 'sendUniversalTx',
+        args: [this.toGatewayRequestV1(req)],
+        signer,
+        value,
+      });
+      // V1 succeeded — cache it
+      this.gatewayVersionCache.set(chain, 'v1');
+      this.printLog(`[Gateway] V1 succeeded for chain ${chain}, cached.`);
+      return txHash;
+    } catch (v1Error) {
+      this.printLog(`[Gateway] V1 failed for chain ${chain}, falling back to V0... Error: ${v1Error}`);
+    }
+
+    // V0 fallback — contract not yet upgraded on this chain
+    // TODO: Remove this block once all chains are upgraded to V1.
+    try {
+      const txHash = await evmClient.writeContract({
+        abi: this.getGatewayAbiForVersion('v0') as Abi,
+        address,
+        functionName: 'sendUniversalTx',
+        args: [req],
+        signer,
+        value,
+      });
+      // V0 succeeded — cache it
+      this.gatewayVersionCache.set(chain, 'v0');
+      this.printLog(`[Gateway] V0 succeeded for chain ${chain}, cached.`);
+      return txHash;
+    } catch (v0Error) {
+      // Both versions failed — throw the V0 error (more likely to be the real issue on non-upgraded chains)
+      throw v0Error;
+    }
+  }
+
+  /**
+   * Sends a gateway token transaction with V1-first, V0-fallback strategy.
+   * Same as sendGatewayTxWithFallback but for UniversalTokenTxRequest (gas token path).
+   *
+   * TODO: Remove V0 fallback once all chains are upgraded to V1.
+   */
+  private async sendGatewayTokenTxWithFallback(
+    evmClient: EvmClient,
+    address: `0x${string}`,
+    req: UniversalTokenTxRequest,
+    signer: UniversalSigner,
+    value?: bigint
+  ): Promise<`0x${string}`> {
+    const chain = this.universalSigner.account.chain;
+    const currentVersion = this.getGatewayVersion();
+
+    // If we already know the version (from cache or config), use it directly.
+    if (this.gatewayVersionCache.has(chain)) {
+      return evmClient.writeContract({
+        abi: this.getGatewayAbiForVersion(currentVersion) as Abi,
+        address,
+        functionName: 'sendUniversalTx',
+        args: [currentVersion === 'v1' ? this.toGatewayTokenRequestV1(req) : req],
+        signer,
+        ...(value !== undefined && { value }),
+      });
+    }
+
+    // No cached version yet — try V1 first, fall back to V0.
+    // TODO: Remove this try/catch block once all chains are on V1.
+    try {
+      this.printLog(`[Gateway] Trying V1 token format for chain ${chain}...`);
+      const txHash = await evmClient.writeContract({
+        abi: this.getGatewayAbiForVersion('v1') as Abi,
+        address,
+        functionName: 'sendUniversalTx',
+        args: [this.toGatewayTokenRequestV1(req)],
+        signer,
+        ...(value !== undefined && { value }),
+      });
+      this.gatewayVersionCache.set(chain, 'v1');
+      this.printLog(`[Gateway] V1 token tx succeeded for chain ${chain}, cached.`);
+      return txHash;
+    } catch (v1Error) {
+      this.printLog(`[Gateway] V1 token tx failed for chain ${chain}, falling back to V0... Error: ${v1Error}`);
+    }
+
+    // V0 fallback
+    // TODO: Remove this block once all chains are upgraded to V1.
+    try {
+      const txHash = await evmClient.writeContract({
+        abi: this.getGatewayAbiForVersion('v0') as Abi,
+        address,
+        functionName: 'sendUniversalTx',
+        args: [req],
+        signer,
+        ...(value !== undefined && { value }),
+      });
+      this.gatewayVersionCache.set(chain, 'v0');
+      this.printLog(`[Gateway] V0 token tx succeeded for chain ${chain}, cached.`);
+      return txHash;
+    } catch (v0Error) {
+      throw v0Error;
+    }
   }
 
   /**
@@ -5851,6 +6068,8 @@ export class Orchestrator {
     let cachedQueryId: string | undefined;
 
     let pollCount = 0;
+    let consecutiveErrors = 0;
+    const MAX_CONSECUTIVE_ERRORS = 10;
     while (Date.now() - startTime < timeout) {
       pollCount++;
       const elapsed = Date.now() - startTime;
@@ -5866,6 +6085,7 @@ export class Orchestrator {
 
       try {
         const v2Response = await this.pushClient.getUniversalTxByIdV2(cachedQueryId);
+        consecutiveErrors = 0; // Reset on successful RPC call
         const utx = v2Response?.universalTx;
         const statusNum = utx?.universalStatus as number;
         const statusName = UniversalTxStatus[statusNum] ?? statusNum;
@@ -5977,7 +6197,12 @@ export class Orchestrator {
           }
         }
       } catch (error) {
-        this.printLog(`[waitForAllOutboundTxsV2] Poll #${pollCount} ERROR: ${error instanceof Error ? error.message : String(error)}`);
+        consecutiveErrors++;
+        this.printLog(`[waitForAllOutboundTxsV2] Poll #${pollCount} ERROR (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}): ${error instanceof Error ? error.message : String(error)}`);
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+          this.printLog(`[waitForAllOutboundTxsV2] Aborting — ${MAX_CONSECUTIVE_ERRORS} consecutive RPC errors`);
+          break;
+        }
       }
 
       await new Promise((resolve) => setTimeout(resolve, pollingIntervalMs));
@@ -7180,7 +7405,7 @@ export class Orchestrator {
           } catch (error) {
             // Outbound polling timed out - return partial receipt (don't throw)
             // Push Chain tx succeeded, external tracking can be retried later
-            console.warn(`[wait] External chain tracking failed: ${error instanceof Error ? error.message : String(error)}`);
+            this.printLog(`[wait] External chain tracking failed: ${error instanceof Error ? error.message : String(error)}`);
           }
         }
 

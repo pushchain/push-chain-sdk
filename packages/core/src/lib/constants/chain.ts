@@ -29,12 +29,34 @@ export const UEA_PROXY: Record<PUSH_NETWORK, `0x${string}`> = {
 /**
  * UEAFactory contract address on Push Chain.
  * Used to read UEA_VERSION (minRequiredVersion) and UEA_MIGRATION_CONTRACT.
- * TODO: Replace '0xTBD' with actual deployed addresses once available.
  */
 export const UEA_FACTORY: Record<PUSH_NETWORK, `0x${string}`> = {
   [PUSH_NETWORK.MAINNET]: '0xTBD',
-  [PUSH_NETWORK.TESTNET_DONUT]: '0xTBD',
-  [PUSH_NETWORK.TESTNET]: '0xTBD',
+  [PUSH_NETWORK.TESTNET_DONUT]: '0x00000000000000000000000000000000000000eA',
+  [PUSH_NETWORK.TESTNET]: '0x00000000000000000000000000000000000000eA',
+  [PUSH_NETWORK.LOCALNET]: '0x00000000000000000000000000000000000000eA',
+};
+
+/**
+ * Minimum required UEA version per network.
+ * Bumped in the SDK when a new UEA implementation is deployed.
+ * If the user's UEA version is below this, upgradeAccount() is required.
+ */
+export const UEA_MIN_REQUIRED_VERSION: Record<PUSH_NETWORK, string> = {
+  [PUSH_NETWORK.MAINNET]: '0.1.0',
+  [PUSH_NETWORK.TESTNET_DONUT]: '1.0.0',
+  [PUSH_NETWORK.TESTNET]: '1.0.0',
+  [PUSH_NETWORK.LOCALNET]: '0.1.0',
+};
+
+/**
+ * UEAMigration contract address on Push Chain.
+ * Used in MsgMigrateUEA to specify which migration contract to delegatecall.
+ */
+export const UEA_MIGRATION: Record<PUSH_NETWORK, `0x${string}`> = {
+  [PUSH_NETWORK.MAINNET]: '0xTBD',
+  [PUSH_NETWORK.TESTNET_DONUT]: '0xaFCaC16b882a490FC71ADabA6D7Ac3cae8C6729d',
+  [PUSH_NETWORK.TESTNET]: '0xaFCaC16b882a490FC71ADabA6D7Ac3cae8C6729d',
   [PUSH_NETWORK.LOCALNET]: '0xTBD',
 };
 
@@ -57,6 +79,7 @@ export const SYNTHETIC_PUSH_ERC20: Record<
     USDT_SOL: `0x${string}`;
     USDC_SOL: `0x${string}`;
     USDT_BNB: `0x${string}`;
+    USDC_BNB: `0x${string}`;
     USDT_BASE: `0x${string}`;
     USDC_BASE: `0x${string}`;
   }
@@ -74,6 +97,7 @@ export const SYNTHETIC_PUSH_ERC20: Record<
     USDT_SOL: '0x4f1A3D22d170a2F4Bddb37845a962322e24f4e34',
     USDC_SOL: '0x04B8F634ABC7C879763F623e0f0550a4b5c4426F',
     USDT_BNB: '0x2f98B4235FD2BA0173a2B056D722879360B12E7b',
+    USDC_BNB: '0xTBD',
     USDT_BASE: '0x2C455189D2af6643B924A981a9080CcC63d5a567',
     USDC_BASE: '0x84B62e44F667F692F7739Ca6040cD17DA02068A8',
   },
@@ -90,6 +114,7 @@ export const SYNTHETIC_PUSH_ERC20: Record<
     USDT_SOL: '0x4f1A3D22d170a2F4Bddb37845a962322e24f4e34',
     USDC_SOL: '0x04B8F634ABC7C879763F623e0f0550a4b5c4426F',
     USDT_BNB: '0x2f98B4235FD2BA0173a2B056D722879360B12E7b',
+    USDC_BNB: '0xTBD',
     USDT_BASE: '0x2C455189D2af6643B924A981a9080CcC63d5a567',
     USDC_BASE: '0x84B62e44F667F692F7739Ca6040cD17DA02068A8',
   },
@@ -106,6 +131,7 @@ export const SYNTHETIC_PUSH_ERC20: Record<
     USDT_SOL: '0xTBD',
     USDC_SOL: '0xTBD',
     USDT_BNB: '0xTBD',
+    USDC_BNB: '0xTBD',
     USDT_BASE: '0xTBD',
     USDC_BASE: '0xTBD',
   },
@@ -122,6 +148,7 @@ export const SYNTHETIC_PUSH_ERC20: Record<
     USDT_SOL: '0xTBD',
     USDC_SOL: '0xTBD',
     USDT_BNB: '0xTBD',
+    USDC_BNB: '0xTBD',
     USDT_BASE: '0xTBD',
     USDC_BASE: '0xTBD',
   },
@@ -379,8 +406,10 @@ export const UNIVERSAL_GATEWAY_ADDRESSES: Partial<Record<CHAIN, `0x${string}`>> 
  * Vaults hold locked assets for cross-chain operations
  */
 export const VAULT_ADDRESSES: Partial<Record<CHAIN, `0x${string}`>> = {
-  [CHAIN.ETHEREUM_SEPOLIA]: '0xe8D77b8BC708aeA8E3735f686DcD33004a7Cd294',
+  [CHAIN.ETHEREUM_SEPOLIA]: '0xD019Eb12D0d6eF8D299661f22B4B7d262eD4b965',
   [CHAIN.BNB_TESTNET]: '0xE52AC4f8DD3e0263bDF748F3390cdFA1f02be881',
+  [CHAIN.ARBITRUM_SEPOLIA]: '0x233B1B1B378eb0Aa723097634025A47C4b73A8F7',
+  [CHAIN.BASE_SEPOLIA]: '0xb4Ba4D5542D1dD48BD3589543660B265B41f16CB',
 };
 
 /**
@@ -388,8 +417,10 @@ export const VAULT_ADDRESSES: Partial<Record<CHAIN, `0x${string}`>> = {
  * Factories deploy and manage Chain Executor Accounts
  */
 export const CEA_FACTORY_ADDRESSES: Partial<Record<CHAIN, `0x${string}`>> = {
-  [CHAIN.ETHEREUM_SEPOLIA]: '0x8b9c9FfEc0507cf1BE9FCf3d91C8E1e98105D451',
+  [CHAIN.ETHEREUM_SEPOLIA]: '0x8ED594A83301FEc545fC6c19fc12cF7111777029',
   [CHAIN.BNB_TESTNET]: '0xe2182dae2dc11cBF6AA6c8B1a7f9c8315A6B0719',
+  [CHAIN.ARBITRUM_SEPOLIA]: '0x88DC189275078Cf509E4Cc773F089c8ad07b7EA2',
+  [CHAIN.BASE_SEPOLIA]: '0x0A75ca7736b488Eb41675ADc3b3156BACF659F55',
 };
 
 /**

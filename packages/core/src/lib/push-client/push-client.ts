@@ -1,5 +1,5 @@
 import { hexToBytes, keccak256 } from 'viem';
-import { MsgDeployUEA, MsgExecutePayload, MsgMintPC } from '../generated/v1/tx';
+import { MsgDeployUEA, MsgExecutePayload, MsgMintPC, MsgMigrateUEA } from '../generated/v1/tx';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 import { SignDoc, TxBody, TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 import { Writer } from 'protobufjs';
@@ -35,12 +35,6 @@ export class PushClient extends EvmClient {
   private currentRpcIndex = 0;
   constructor(clientOptions: PushClientOptions) {
     super(clientOptions);
-    this.pushChainInfo =
-      clientOptions.network === PUSH_NETWORK.MAINNET
-        ? PUSH_CHAIN_INFO[CHAIN.PUSH_MAINNET]
-        : clientOptions.network === PUSH_NETWORK.TESTNET_DONUT
-        ? PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT]
-        : PUSH_CHAIN_INFO[CHAIN.PUSH_LOCALNET];
 
     if (clientOptions.network === PUSH_NETWORK.MAINNET) {
       this.pushChainInfo = PUSH_CHAIN_INFO[CHAIN.PUSH_MAINNET];
@@ -133,6 +127,13 @@ export class PushClient extends EvmClient {
       value: MsgExecutePayload.encode(
         MsgExecutePayload.fromPartial(input)
       ).finish(),
+    };
+  }
+
+  createMsgMigrateUEA(input: MsgMigrateUEA): Any {
+    return {
+      typeUrl: '/uexecutor.v1.MsgMigrateUEA',
+      value: MsgMigrateUEA.encode(MsgMigrateUEA.fromPartial(input)).finish(),
     };
   }
 
@@ -238,8 +239,6 @@ export class PushClient extends EvmClient {
     id: string
   ): Promise<QueryGetUniversalTxResponse> {
     return this.executeWithRpcFallback(async (rpcUrl) => {
-      console.log(`[PushClient:getUniversalTxById] Querying v1 API | ID: ${id} | RPC: ${rpcUrl}`);
-      const t0 = Date.now();
       const tmClient = await Tendermint34Client.connect(rpcUrl);
       const queryClient = new QueryClient(tmClient);
       const rpc = createProtobufRpcClient(queryClient);
@@ -251,7 +250,6 @@ export class PushClient extends EvmClient {
         QueryGetUniversalTxRequest.encode(request).finish()
       );
       const response = QueryGetUniversalTxResponse.decode(responseBytes);
-      console.log(`[PushClient:getUniversalTxById] v1 response in ${Date.now() - t0}ms | universalTx exists: ${!!response?.universalTx} | outboundTx.txHash: ${response?.universalTx?.outboundTx?.txHash || 'EMPTY'} | status: ${response?.universalTx?.universalStatus}`);
       return response;
     }, 'getUniversalTxById');
   }

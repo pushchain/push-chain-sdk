@@ -159,6 +159,13 @@ export class PushChain {
    */
   accountStatus: AccountStatus;
 
+  /**
+   * Promise for the background account status fetch started during initialize().
+   * Await this if you need to ensure account status is loaded before proceeding.
+   * Resolves to void (result is stored in accountStatus).
+   */
+  accountStatusReady: Promise<void>;
+
   private constructor(
     private orchestrator: Orchestrator,
     private universalSigner: UniversalSigner,
@@ -177,6 +184,9 @@ export class PushChain {
         requiresUpgrade: false,
       },
     };
+
+    // Default — overwritten in createInstance() with the background fetch
+    this.accountStatusReady = Promise.resolve();
 
     this.universal = {
       get origin() {
@@ -505,11 +515,12 @@ export class PushChain {
       isReadOnly
     );
 
-    // Fire-and-forget: fetch account status in background (non-blocking, 30s timeout)
+    // Background fetch account status (non-blocking, 30s timeout)
+    // Stored on instance so consumers can await it if needed: await client.accountStatusReady
     const ACCOUNT_STATUS_TIMEOUT = 30_000;
-    Promise.race([
-      instance.getAccountStatus(),
-      new Promise((_, reject) =>
+    instance.accountStatusReady = Promise.race([
+      instance.getAccountStatus().then(() => {}),
+      new Promise<void>((_, reject) =>
         setTimeout(() => reject(new Error('Account status fetch timed out')), ACCOUNT_STATUS_TIMEOUT)
       ),
     ]).catch(() => {

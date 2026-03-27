@@ -451,7 +451,7 @@ function buildPushChainMoveableTokenAccessor(): PushChainMoveableTokenAccessor {
       eth: mk('USDC', 6, s.USDC_ETH, CHAIN.ETHEREUM_SEPOLIA),
       arb: mk('USDC', 6, s.USDC_ARB, CHAIN.ARBITRUM_SEPOLIA),
       base: mk('USDC', 6, s.USDC_BASE, CHAIN.BASE_SEPOLIA),
-      bnb: mk('USDC', 6, s.USDT_BNB, CHAIN.BNB_TESTNET),
+      bnb: mk('USDC', 6, s.USDC_BNB, CHAIN.BNB_TESTNET),
       sol: mk('USDC', 6, s.USDC_SOL, CHAIN.SOLANA_DEVNET),
     },
   };
