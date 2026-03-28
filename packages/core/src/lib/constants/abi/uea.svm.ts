@@ -44,7 +44,7 @@ export const UEA_SVM = [
   },
   {
     type: 'function',
-    name: 'executePayload',
+    name: 'executeUniversalTx',
     inputs: [
       {
         name: 'payload',
@@ -109,7 +109,7 @@ export const UEA_SVM = [
   },
   {
     type: 'function',
-    name: 'getTransactionHash',
+    name: 'getUniversalPayloadHash',
     inputs: [
       {
         name: 'payload',
@@ -199,6 +199,11 @@ export const UEA_SVM = [
           },
         ],
       },
+      {
+        name: '_factory',
+        type: 'address',
+        internalType: 'address',
+      },
     ],
     outputs: [],
     stateMutability: 'nonpayable',
@@ -248,7 +253,7 @@ export const UEA_SVM = [
   },
   {
     type: 'function',
-    name: 'verifyPayloadSignature',
+    name: 'verifyUniversalPayloadSignature',
     inputs: [
       {
         name: 'messageHash',
@@ -281,23 +286,17 @@ export const UEA_SVM = [
         internalType: 'bytes',
       },
       {
-        name: 'target',
-        type: 'address',
+        name: 'nonce',
+        type: 'uint256',
         indexed: false,
-        internalType: 'address',
-      },
-      {
-        name: 'data',
-        type: 'bytes',
-        indexed: false,
-        internalType: 'bytes',
+        internalType: 'uint256',
       },
     ],
     anonymous: false,
   },
   {
     type: 'error',
-    name: 'AlreadyInitialized',
+    name: 'AccountAlreadyExists',
     inputs: [],
   },
   {

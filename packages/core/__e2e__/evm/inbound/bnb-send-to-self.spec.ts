@@ -43,7 +43,7 @@ describe('BNB Testnet - Send Value (e2e)', () => {
     console.log('Funding new wallet with BNB for gas...');
     const bnbTxHash = await mainWalletClient.sendTransaction({
       to: newAccount.address,
-      value: parseEther('0.01'),
+      value: parseEther('0.001'),
     });
     await publicClient.waitForTransactionReceipt({ hash: bnbTxHash });
     console.log(`BNB funded: ${bnbTxHash}`);

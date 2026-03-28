@@ -711,7 +711,7 @@ export class Orchestrator {
                   `The transaction may have failed on Push Chain or not been indexed yet.`
               );
             }
-            // For sendFunds operations, MintPC (first) succeeds and executePayload (second) may fail
+            // For sendFunds operations, MintPC (first) succeeds and executeUniversalTx (second) may fail
             // Always use the last pcTx entry as it represents the final execution result
             const lastPcTransaction = pushChainUniversalTx.pcTx.at(-1);
             this.printLog('sendFunds — pushChainUniversalTx pcTx: ' + JSON.stringify(
@@ -3295,7 +3295,13 @@ export class Orchestrator {
       this.pushClient.getBalance(ueaAddress),
     ]);
     const isUEADeployed = ueaCode !== undefined;
-    const ueaNonce = isUEADeployed ? await this.getUEANonce(ueaAddress) : BigInt(0);
+    if (!isUEADeployed) {
+      throw new Error(
+        'UEA is not deployed. Please send an inbound transaction to Push Chain first ' +
+        '(e.g. sendTransaction with value) to deploy your Universal Execution Account before using outbound transfers.'
+      );
+    }
+    const ueaNonce = await this.getUEANonce(ueaAddress);
 
     // Build the multicall that will execute ON Push Chain from UEA context
     // This includes: 1) approve PRC-20 (if needed), 2) call sendUniversalTxOutbound
@@ -3361,6 +3367,32 @@ export class Orchestrator {
     this.printLog(
       `executeUoaToCea — Push Chain multicall has ${pushChainMulticalls.length} operations`
     );
+
+    // TODO: Enable pre-flight balance checks once outbound flow is stable
+    // if (burnAmount > BigInt(0)) {
+    //   const prc20Balance = await this.pushClient.publicClient.readContract({
+    //     address: prc20Token,
+    //     abi: [{ name: 'balanceOf', type: 'function', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] }],
+    //     functionName: 'balanceOf',
+    //     args: [ueaAddress],
+    //   }) as bigint;
+    //   if (prc20Balance < burnAmount) {
+    //     throw new Error(
+    //       `Insufficient PRC-20 token balance on UEA. ` +
+    //       `Required: ${burnAmount.toString()}, Available: ${prc20Balance.toString()}, ` +
+    //       `Token: ${prc20Token}, UEA: ${ueaAddress}. ` +
+    //       `Please bridge tokens to Push Chain first.`
+    //     );
+    //   }
+    // }
+    // const currentUeaBalance = await this.pushClient.getBalance(ueaAddress);
+    // if (currentUeaBalance < nativeValueForGas) {
+    //   throw new Error(
+    //     `Insufficient native balance on UEA for outbound gas. ` +
+    //     `Required: ${nativeValueForGas.toString()} wei, Available: ${currentUeaBalance.toString()} wei, ` +
+    //     `UEA: ${ueaAddress}. Please send UPC to your UEA first.`
+    //   );
+    // }
 
     // Execute through the normal execute() flow
     // This handles fee-locking on origin chain and executes the multicall from UEA context
@@ -3507,9 +3539,13 @@ export class Orchestrator {
       this.pushClient.getBalance(ueaAddress),
     ]);
     const isUEADeployed = ueaCode !== undefined;
-    const ueaNonce = isUEADeployed
-      ? await this.getUEANonce(ueaAddress)
-      : BigInt(0);
+    if (!isUEADeployed) {
+      throw new Error(
+        'UEA is not deployed. Please send an inbound transaction to Push Chain first ' +
+        '(e.g. sendTransaction with value) to deploy your Universal Execution Account before using outbound transfers.'
+      );
+    }
+    const ueaNonce = await this.getUEANonce(ueaAddress);
 
     // --- Query gas fee (identical to EVM path) ---
     let gasFee = BigInt(0);
@@ -5211,34 +5247,6 @@ export class Orchestrator {
 
     const { cosmosAddress: signer } = this.pushClient.getSignerAddress();
     const msgs: Any[] = [];
-
-    if (!isUEADeployed) {
-      /**
-       * @dev - fee should be locked for UEA deployment to avoid spamming
-       */
-      if (!feeLockTxHash) {
-        throw new Error('UEA cannot be deployed without fee locking');
-      }
-      msgs.push(
-        this.pushClient.createMsgDeployUEA({
-          signer,
-          universalAccountId,
-          txHash: feeLockTxHash,
-        })
-      );
-
-      // TODO: pchaind q uexecutor all-universal-tx  --node https://rpc-testnet-donut-node1.push.org/
-    }
-
-    if (feeLockTxHash) {
-      msgs.push(
-        this.pushClient.createMsgMintPC({
-          signer,
-          universalAccountId,
-          txHash: feeLockTxHash,
-        })
-      );
-    }
 
     if (universalPayload && verificationData) {
       msgs.push(
