@@ -131,7 +131,6 @@ export const usePushChainClient = (uid?: string) => {
 
         setPushChain(guardedPushChainClient);
 
-        // Check upgrade only once per session
         if (!upgradeCheckRef.current) {
           upgradeCheckRef.current = true;
           await checkAndShowUpgradeIfNeeded(guardedPushChainClient);
