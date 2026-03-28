@@ -439,17 +439,16 @@ export class Orchestrator {
   async execute(
     params: ExecuteParams | UniversalExecuteParams
   ): Promise<UniversalTxResponse> {
-    // TODO: Re-enable once UEA migration is fully rolled out
-    // // Lazy UEA upgrade check
-    // if (!this.accountStatusCache || !this.accountStatusCache.uea.loaded) {
-    //   await this.getAccountStatus();
-    // }
-    // if (
-    //   this.accountStatusCache?.uea.deployed &&
-    //   this.accountStatusCache?.uea.requiresUpgrade
-    // ) {
-    //   await this.upgradeAccount({ progressHook: this.progressHook });
-    // }
+    // Lazy UEA upgrade check
+    if (!this.accountStatusCache || !this.accountStatusCache.uea.loaded) {
+      await this.getAccountStatus();
+    }
+    if (
+      this.accountStatusCache?.uea.deployed &&
+      this.accountStatusCache?.uea.requiresUpgrade
+    ) {
+      await this.upgradeAccount({ progressHook: this.progressHook });
+    }
 
     // Check if this is a multi-chain request (has ChainTarget or from.chain)
     const isMultiChain =

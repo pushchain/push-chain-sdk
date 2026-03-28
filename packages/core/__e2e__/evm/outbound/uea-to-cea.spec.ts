@@ -6,7 +6,8 @@ import '@e2e/shared/setup';
  * Covers: Route Detection, CEA Utilities, Transaction Preparation, FUNDS only,
  * PAYLOAD only, FUNDS + PAYLOAD, E2E Sync, Error Handling, Progress Hooks
  *
- * Primary test chain: BNB Testnet (Chain ID: 97)
+ * Core Scenarios are parameterised across all active EVM chains via chain-fixtures.
+ * Additional Tests run once against BNB Testnet only.
  */
 import { PushChain } from '../../../src';
 import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
@@ -21,33 +22,24 @@ import type { ProgressEvent } from '../../../src/lib/progress-hook/progress-hook
 import { ERC20_EVM } from '../../../src/lib/constants/abi/erc20.evm';
 import { buildErc20WithdrawalMulticall } from '../../../src/lib/orchestrator/payload-builders';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
+import { getToken } from '@e2e/shared/constants';
+import { getActiveFixtures, EVM_CHAIN_FIXTURES, type ChainTestFixture } from '@e2e/shared/chain-fixtures';
+import {
+  TEST_TARGET,
+  NATIVE_ADDRESS,
+  COUNTER_ABI,
+} from '@e2e/shared/outbound-helpers';
 
+const fixtures = getActiveFixtures();
 
-// BSC Testnet token addresses
-const BSC_USDT_ADDRESS = '0xBC14F348BC9667be46b35Edc9B68653d86013DC5' as const;
-const NATIVE_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
-
-// Test target address (random address for testing)
-const TEST_TARGET = '0x1234567890123456789012345678901234567890' as `0x${string}`;
-
-// Counter contract addresses (deployed on BNB Testnet 2026-03-14)
-const COUNTER_A = '0x7f0936bb90e7dcf3edb47199c2005e7184e44cf8' as `0x${string}`;
-const COUNTER_B = '0x7dd2f6d20cd2c8f24d8c6c7de48c4b39c6aa9b18' as `0x${string}`;
-const COUNTER_ABI = [
-  { type: 'function', name: 'count', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
-  { type: 'function', name: 'increment', inputs: [], outputs: [], stateMutability: 'nonpayable' },
-] as const;
-
-// Payable counter contract (deployed on BNB Testnet — accepts native BNB via increment)
-const COUNTER_PAYABLE = '0xf4bd8c13da0f5831d7b6dd3275a39f14ec7ddaa6' as `0x${string}`;
-const COUNTER_PAYABLE_ABI = [
-  { type: 'function', name: 'count', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
-  { type: 'function', name: 'increment', inputs: [], outputs: [], stateMutability: 'payable' },
-] as const;
+// BNB fixture for Additional Tests section (runs once, BNB-only)
+const bnbFixture = EVM_CHAIN_FIXTURES.find((f) => f.chain === CHAIN.BNB_TESTNET)!;
 
 describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
   let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
   let ueaAddress: `0x${string}`;
+
+  // BNB-specific variables used only by the Additional Tests section
   let ceaAddress: `0x${string}`;
   let usdtToken: MoveableToken | undefined;
   let bscPublicClient: ReturnType<typeof createPublicClient>;
@@ -88,12 +80,12 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
     ueaAddress = pushClient.universal.account;
     console.log(`UEA Address: ${ueaAddress}`);
 
-    // Get CEA address for BSC Testnet
+    // BNB-specific setup for Additional Tests section
     const ceaResult = await getCEAAddress(ueaAddress, CHAIN.BNB_TESTNET);
     ceaAddress = ceaResult.cea;
     console.log(`CEA Address on BSC: ${ceaAddress}, deployed: ${ceaResult.isDeployed}`);
 
-    // Get USDT token for ERC20 flows
+    // Get USDT token for ERC20 flows (BNB)
     usdtToken = MOVEABLE_TOKEN_CONSTANTS.BNB_TESTNET.USDT;
     if (usdtToken) {
       console.log(`USDT Token: ${usdtToken.address} (${usdtToken.decimals} decimals)`);
@@ -105,9 +97,28 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
   }, 60000);
 
   // ============================================================================
-  // Core Scenarios
+  // Core Scenarios — parameterised across EVM chains
   // ============================================================================
-  describe('Core Scenarios', () => {
+  describe.each(fixtures)('Core Scenarios [$label]', (fixture: ChainTestFixture) => {
+    let fixtureceaAddress: `0x${string}`;
+    let fixtureUsdtToken: MoveableToken | undefined;
+    let publicClient: ReturnType<typeof createPublicClient>;
+
+    beforeAll(async () => {
+      if (skipE2E) return;
+      const ceaResult = await getCEAAddress(ueaAddress, fixture.chain);
+      fixtureceaAddress = ceaResult.cea;
+      console.log(`CEA Address on ${fixture.label}: ${fixtureceaAddress}, deployed: ${ceaResult.isDeployed}`);
+
+      try {
+        fixtureUsdtToken = getToken(fixture.chain, 'USDT');
+        console.log(`USDT Token (${fixture.label}): ${fixtureUsdtToken.address} (${fixtureUsdtToken.decimals} decimals)`);
+      } catch { /* token not available */ }
+
+      publicClient = createPublicClient({
+        transport: http(CHAIN_INFO[fixture.chain].defaultRPC[0]),
+      });
+    }, 60000);
 
     // ==========================================================================
     // 1. Funds
@@ -115,26 +126,26 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
     describe('1. Funds', () => {
       it('should transfer ERC-20 USDT to BSC Testnet', async () => {
         if (skipE2E) return;
-        if (!usdtToken) {
+        if (!fixtureUsdtToken) {
           console.log('Skipping - USDT token not found');
           return;
         }
 
-        console.log('\n=== Test: ERC-20 USDT Transfer ===');
+        console.log(`\n=== Test: ERC-20 USDT Transfer [${fixture.label}] ===`);
 
         const withdrawAmount = BigInt(10000); // 0.01 USDT (6 decimals)
 
         const params: UniversalExecuteParams = {
           to: {
             address: TEST_TARGET,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           funds: {
             amount: withdrawAmount,
-            token: usdtToken,
+            token: fixtureUsdtToken,
           },
           data: buildErc20WithdrawalMulticall(
-            BSC_USDT_ADDRESS as `0x${string}`,
+            fixtureUsdtToken.address as `0x${string}`,
             TEST_TARGET,
             withdrawAmount
           ),
@@ -146,7 +157,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         console.log(`Push Chain TX Hash: ${tx.hash}`);
         expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-        expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+        expect(tx.chain).toBe(fixture.chain);
 
         // Wait for outbound relay and verify external chain details
         console.log('Calling tx.wait() - polling for outbound tx hash...');
@@ -158,7 +169,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         expect(receipt.status).toBe(1);
         expect(receipt.externalTxHash).toBeDefined();
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+        expect(receipt.externalChain).toBe(fixture.chain);
 
         // Verify tx succeeded on external chain via RPC
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
@@ -177,13 +188,13 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
       it('should increment counter on BSC via payload', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Test: Counter Increment via Payload ===');
+        console.log(`\n=== Test: Counter Increment via Payload [${fixture.label}] ===`);
 
         // Read counter BEFORE
-        const counterBefore = await bscPublicClient.readContract({
-          address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
+        const counterBefore = await publicClient.readContract({
+          address: fixture.contracts.counter, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
-        console.log(`CounterA BEFORE: ${counterBefore}`);
+        console.log(`Counter BEFORE: ${counterBefore}`);
 
         const payload = encodeFunctionData({
           abi: COUNTER_ABI,
@@ -192,8 +203,8 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         const params: UniversalExecuteParams = {
           to: {
-            address: COUNTER_A,
-            chain: CHAIN.BNB_TESTNET,
+            address: fixture.contracts.counter,
+            chain: fixture.chain,
           },
           data: payload,
         };
@@ -214,7 +225,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         expect(receipt.status).toBe(1);
         expect(receipt.externalTxHash).toBeDefined();
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+        expect(receipt.externalChain).toBe(fixture.chain);
 
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
 
@@ -222,10 +233,10 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         await new Promise((r) => setTimeout(r, 5000));
 
         // Read counter AFTER
-        const counterAfter = await bscPublicClient.readContract({
-          address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
+        const counterAfter = await publicClient.readContract({
+          address: fixture.contracts.counter, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
-        console.log(`CounterA AFTER: ${counterAfter}`);
+        console.log(`Counter AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 360000);
     });
@@ -234,19 +245,16 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
     // 3. Multicall
     // ==========================================================================
     describe('3. Multicall', () => {
-      it('should increment both counters via multicall', async () => {
+      it('should double increment counter via multicall', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Test: Multicall — Increment Both Counters ===');
+        console.log(`\n=== Test: Multicall — Double Increment [${fixture.label}] ===`);
 
-        // Read both counters BEFORE
-        const counterABefore = await bscPublicClient.readContract({
-          address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
+        // Read counter BEFORE
+        const counterBefore = await publicClient.readContract({
+          address: fixture.contracts.counter, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
-        const counterBBefore = await bscPublicClient.readContract({
-          address: COUNTER_B, abi: COUNTER_ABI, functionName: 'count',
-        }) as bigint;
-        console.log(`CounterA BEFORE: ${counterABefore}, CounterB BEFORE: ${counterBBefore}`);
+        console.log(`Counter BEFORE: ${counterBefore}`);
 
         const incrementPayload = encodeFunctionData({
           abi: COUNTER_ABI,
@@ -256,11 +264,11 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         const params: UniversalExecuteParams = {
           to: {
             address: NATIVE_ADDRESS as `0x${string}`,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           data: [
-            { to: COUNTER_A, value: BigInt(0), data: incrementPayload },
-            { to: COUNTER_B, value: BigInt(0), data: incrementPayload },
+            { to: fixture.contracts.counter, value: BigInt(0), data: incrementPayload },
+            { to: fixture.contracts.counter, value: BigInt(0), data: incrementPayload },
           ],
         };
 
@@ -280,23 +288,19 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         expect(receipt.status).toBe(1);
         expect(receipt.externalTxHash).toBeDefined();
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+        expect(receipt.externalChain).toBe(fixture.chain);
 
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
 
         // Wait for RPC propagation
         await new Promise((r) => setTimeout(r, 5000));
 
-        // Read both counters AFTER
-        const counterAAfter = await bscPublicClient.readContract({
-          address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
+        // Read counter AFTER
+        const counterAfter = await publicClient.readContract({
+          address: fixture.contracts.counter, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
-        const counterBAfter = await bscPublicClient.readContract({
-          address: COUNTER_B, abi: COUNTER_ABI, functionName: 'count',
-        }) as bigint;
-        console.log(`CounterA AFTER: ${counterAAfter}, CounterB AFTER: ${counterBAfter}`);
-        expect(counterAAfter).toBeGreaterThan(counterABefore);
-        expect(counterBAfter).toBeGreaterThan(counterBBefore);
+        console.log(`Counter AFTER: ${counterAfter}`);
+        expect(counterAfter).toBeGreaterThanOrEqual(counterBefore + BigInt(2));
       }, 360000);
     });
 
@@ -306,18 +310,18 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
     describe('4. Funds + Payload', () => {
       it('should transfer ERC-20 USDT and increment counter', async () => {
         if (skipE2E) return;
-        if (!usdtToken) {
+        if (!fixtureUsdtToken) {
           console.log('Skipping - USDT token not found');
           return;
         }
 
-        console.log('\n=== Test: ERC-20 USDT + Counter Increment ===');
+        console.log(`\n=== Test: ERC-20 USDT + Counter Increment [${fixture.label}] ===`);
 
         // Read counter BEFORE
-        const counterBefore = await bscPublicClient.readContract({
-          address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
+        const counterBefore = await publicClient.readContract({
+          address: fixture.contracts.counter, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
-        console.log(`CounterA BEFORE: ${counterBefore}`);
+        console.log(`Counter BEFORE: ${counterBefore}`);
 
         const withdrawAmount = BigInt(10000); // 0.01 USDT (6 decimals)
 
@@ -328,12 +332,12 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         const params: UniversalExecuteParams = {
           to: {
-            address: COUNTER_A,
-            chain: CHAIN.BNB_TESTNET,
+            address: fixture.contracts.counter,
+            chain: fixture.chain,
           },
           funds: {
             amount: withdrawAmount,
-            token: usdtToken,
+            token: fixtureUsdtToken,
           },
           data: incrementPayload,
         };
@@ -344,7 +348,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         console.log(`Push Chain TX Hash: ${tx.hash}`);
         expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-        expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+        expect(tx.chain).toBe(fixture.chain);
 
         // Wait for outbound relay and verify external chain details
         console.log('Calling tx.wait() - polling for outbound tx hash...');
@@ -356,7 +360,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         expect(receipt.status).toBe(1);
         expect(receipt.externalTxHash).toBeDefined();
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+        expect(receipt.externalChain).toBe(fixture.chain);
 
         // Verify tx succeeded on external chain via RPC
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
@@ -365,10 +369,10 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         await new Promise((r) => setTimeout(r, 5000));
 
         // Read counter AFTER
-        const counterAfter = await bscPublicClient.readContract({
-          address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
+        const counterAfter = await publicClient.readContract({
+          address: fixture.contracts.counter, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
-        console.log(`CounterA AFTER: ${counterAfter}`);
+        console.log(`Counter AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 360000);
     });
@@ -379,18 +383,18 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
     describe('5. Funds + Multicall', () => {
       it('should withdraw ERC20 using buildErc20WithdrawalMulticall helper', async () => {
         if (skipE2E) return;
-        if (!usdtToken) {
+        if (!fixtureUsdtToken) {
           console.log('Skipping - USDT token not found in MOVEABLE_TOKENS');
           return;
         }
 
-        console.log('\n=== Test: ERC20 Withdrawal via buildErc20WithdrawalMulticall (Flow 2.2) ===');
+        console.log(`\n=== Test: ERC20 Withdrawal via buildErc20WithdrawalMulticall (Flow 2.2) [${fixture.label}] ===`);
 
         const withdrawAmount = BigInt(10000); // 0.01 USDT (6 decimals)
 
         // Build the ERC20 transfer multicall using the new helper
         const multicall = buildErc20WithdrawalMulticall(
-          BSC_USDT_ADDRESS as `0x${string}`,
+          fixtureUsdtToken.address as `0x${string}`,
           TEST_TARGET,
           withdrawAmount
         );
@@ -398,11 +402,11 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         const params: UniversalExecuteParams = {
           to: {
             address: NATIVE_ADDRESS as `0x${string}`,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           funds: {
             amount: withdrawAmount,
-            token: usdtToken,
+            token: fixtureUsdtToken,
           },
           data: multicall,
         };
@@ -413,7 +417,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         console.log(`Push Chain TX Hash: ${tx.hash}`);
         expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-        expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+        expect(tx.chain).toBe(fixture.chain);
 
         // Wait for outbound relay
         console.log('Calling tx.wait() - polling for external chain tx hash...');
@@ -424,7 +428,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         expect(receipt.status).toBe(1);
         expect(receipt.externalTxHash).toBeDefined();
         expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+        expect(receipt.externalChain).toBe(fixture.chain);
 
         // Verify tx succeeded on external chain via RPC
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
@@ -438,14 +442,14 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
       it('should transfer native pBNB to BSC Testnet', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Test: Native pBNB Transfer ===');
+        console.log(`\n=== Test: Native Transfer [${fixture.label}] ===`);
 
         const params: UniversalExecuteParams = {
           to: {
             address: TEST_TARGET,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
-          value: parseEther('0.0001'), // 0.0001 BNB
+          value: parseEther('0.0001'), // 0.0001 native
         };
 
         // Verify route detection
@@ -457,7 +461,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         console.log(`Target Chain: ${tx.chain}`);
 
         expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-        expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+        expect(tx.chain).toBe(fixture.chain);
 
         // Wait for outbound relay and verify external chain details
         console.log('Calling tx.wait() - polling for outbound tx hash...');
@@ -469,7 +473,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         expect(receipt.status).toBe(1);
         expect(receipt.externalTxHash).toBeDefined();
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+        expect(receipt.externalChain).toBe(fixture.chain);
 
         // Verify tx succeeded on external chain via RPC
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
@@ -483,23 +487,23 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
       it('should transfer pBNB and increment counter', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Test: Native pBNB + Counter Increment ===');
+        console.log(`\n=== Test: Native + Counter Increment [${fixture.label}] ===`);
 
-        // Read counter BEFORE (using payable counter that accepts native BNB)
-        const counterBefore = await bscPublicClient.readContract({
-          address: COUNTER_PAYABLE, abi: COUNTER_PAYABLE_ABI, functionName: 'count',
+        // Read counter BEFORE
+        const counterBefore = await publicClient.readContract({
+          address: fixture.contracts.counter, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
-        console.log(`CounterPayable BEFORE: ${counterBefore}`);
+        console.log(`Counter BEFORE: ${counterBefore}`);
 
         const incrementPayload = encodeFunctionData({
-          abi: COUNTER_PAYABLE_ABI,
+          abi: COUNTER_ABI,
           functionName: 'increment',
         });
 
         const params: UniversalExecuteParams = {
           to: {
-            address: COUNTER_PAYABLE,
-            chain: CHAIN.BNB_TESTNET,
+            address: fixture.contracts.counter,
+            chain: fixture.chain,
           },
           value: parseEther('0.0001'),
           data: incrementPayload,
@@ -522,7 +526,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         expect(receipt.status).toBe(1);
         expect(receipt.externalTxHash).toBeDefined();
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+        expect(receipt.externalChain).toBe(fixture.chain);
 
         // Verify tx succeeded on external chain via RPC
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
@@ -531,13 +535,13 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         await new Promise((r) => setTimeout(r, 5000));
 
         // Read counter AFTER
-        const counterAfter = await bscPublicClient.readContract({
-          address: COUNTER_PAYABLE, abi: COUNTER_PAYABLE_ABI, functionName: 'count',
+        const counterAfter = await publicClient.readContract({
+          address: fixture.contracts.counter, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
-        console.log(`CounterPayable AFTER: ${counterAfter}`);
+        console.log(`Counter AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 360000);
-    });   
+    });
   });
 
   // ============================================================================
@@ -725,9 +729,9 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         // Read counter BEFORE
         const counterBefore = await bscPublicClient.readContract({
-          address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
+          address: bnbFixture.contracts.counter, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
-        console.log(`CounterA BEFORE: ${counterBefore}`);
+        console.log(`Counter BEFORE: ${counterBefore}`);
 
         const incrementPayload = encodeFunctionData({
           abi: COUNTER_ABI,
@@ -744,7 +748,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
             // Call 1: CEA sends BNB to recipient
             { to: TEST_TARGET, value: parseEther('0.0001'), data: '0x' as `0x${string}` },
             // Call 2: Increment counter
-            { to: COUNTER_A, value: BigInt(0), data: incrementPayload },
+            { to: bnbFixture.contracts.counter, value: BigInt(0), data: incrementPayload },
           ],
         };
 
@@ -775,9 +779,9 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         // Read counter AFTER
         const counterAfter = await bscPublicClient.readContract({
-          address: COUNTER_A, abi: COUNTER_ABI, functionName: 'count',
+          address: bnbFixture.contracts.counter, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
-        console.log(`CounterA AFTER: ${counterAfter}`);
+        console.log(`Counter AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 360000);
 
@@ -794,7 +798,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         // Build the ERC20 transfer multicall targeting alternate recipient
         const multicall = buildErc20WithdrawalMulticall(
-          BSC_USDT_ADDRESS as `0x${string}`,
+          usdtToken!.address as `0x${string}`,
           ALTERNATE_RECIPIENT,
           withdrawAmount
         );
@@ -1063,7 +1067,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         const params: UniversalExecuteParams = {
           to: {
-            address: BSC_USDT_ADDRESS as `0x${string}`,
+            address: usdtToken!.address as `0x${string}`,
             chain: CHAIN.BNB_TESTNET,
           },
           data: payload,
@@ -1111,7 +1115,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
           },
           data: [
             // Step 1: Approve spender for the burned token amount
-            { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: approvePayload },
+            { to: usdtToken.address as `0x${string}`, value: BigInt(0), data: approvePayload },
           ],
         };
 
@@ -1158,7 +1162,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
           },
           // No value, no funds — GAS_AND_PAYLOAD type
           data: [
-            { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: approvePayload },
+            { to: usdtToken!.address as `0x${string}`, value: BigInt(0), data: approvePayload },
           ],
         };
 
@@ -1216,7 +1220,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
           },
           data: [
             // Approve for combined amount (burn + existing CEA balance)
-            { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: approvePayload },
+            { to: usdtToken.address as `0x${string}`, value: BigInt(0), data: approvePayload },
           ],
         };
 
@@ -1298,15 +1302,15 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         // Read counter BEFORE
         const counterBefore = await bscPublicClient.readContract({
-          address: COUNTER_A,
+          address: bnbFixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
-        console.log(`CounterA BEFORE: ${counterBefore}`);
+        console.log(`Counter BEFORE: ${counterBefore}`);
 
         const params: UniversalExecuteParams = {
           to: {
-            address: COUNTER_A,
+            address: bnbFixture.contracts.counter,
             chain: CHAIN.BNB_TESTNET,
           },
           data: encodeFunctionData({ abi: COUNTER_ABI, functionName: 'increment' }),
@@ -1329,11 +1333,11 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         // Read counter AFTER
         const counterAfter = await bscPublicClient.readContract({
-          address: COUNTER_A,
+          address: bnbFixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
-        console.log(`CounterA AFTER: ${counterAfter}`);
+        console.log(`Counter AFTER: ${counterAfter}`);
 
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 600000);
@@ -1347,11 +1351,11 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         // Read counter BEFORE
         const counterBefore = await bscPublicClient.readContract({
-          address: COUNTER_A,
+          address: bnbFixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
-        console.log(`CounterA BEFORE: ${counterBefore}`);
+        console.log(`Counter BEFORE: ${counterBefore}`);
 
         const params: UniversalExecuteParams = {
           to: {
@@ -1361,7 +1365,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
           value: parseEther('0.0001'),
           data: [
             { to: TEST_TARGET, value: parseEther('0.0001'), data: '0x' as `0x${string}` },
-            { to: COUNTER_A, value: BigInt(0), data: incrementPayload },
+            { to: bnbFixture.contracts.counter, value: BigInt(0), data: incrementPayload },
           ],
         };
 
@@ -1382,34 +1386,29 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         // Read counter AFTER
         const counterAfter = await bscPublicClient.readContract({
-          address: COUNTER_A,
+          address: bnbFixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
-        console.log(`CounterA AFTER: ${counterAfter}`);
+        console.log(`Counter AFTER: ${counterAfter}`);
 
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 600000);
 
-      it('should transfer BNB + increment both counters via native funds + multicall', async () => {
+      it('should transfer BNB + double increment counter via native funds + multicall', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Test: Counter Native Funds + Multicall (Both Counters) ===');
+        console.log('\n=== Test: Counter Native Funds + Multicall (Double Increment) ===');
 
         const incrementPayload = encodeFunctionData({ abi: COUNTER_ABI, functionName: 'increment' });
 
-        // Read both counters BEFORE
-        const counterABefore = await bscPublicClient.readContract({
-          address: COUNTER_A,
+        // Read counter BEFORE
+        const counterBefore = await bscPublicClient.readContract({
+          address: bnbFixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
-        const counterBBefore = await bscPublicClient.readContract({
-          address: COUNTER_B,
-          abi: COUNTER_ABI,
-          functionName: 'count',
-        }) as bigint;
-        console.log(`CounterA BEFORE: ${counterABefore}, CounterB BEFORE: ${counterBBefore}`);
+        console.log(`Counter BEFORE: ${counterBefore}`);
 
         const params: UniversalExecuteParams = {
           to: {
@@ -1419,8 +1418,8 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
           value: parseEther('0.0001'),
           data: [
             { to: TEST_TARGET, value: parseEther('0.0001'), data: '0x' as `0x${string}` },
-            { to: COUNTER_A, value: BigInt(0), data: incrementPayload },
-            { to: COUNTER_B, value: BigInt(0), data: incrementPayload },
+            { to: bnbFixture.contracts.counter, value: BigInt(0), data: incrementPayload },
+            { to: bnbFixture.contracts.counter, value: BigInt(0), data: incrementPayload },
           ],
         };
 
@@ -1439,21 +1438,15 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         // Wait for RPC propagation
         await new Promise((r) => setTimeout(r, 5000));
 
-        // Read both counters AFTER
-        const counterAAfter = await bscPublicClient.readContract({
-          address: COUNTER_A,
+        // Read counter AFTER
+        const counterAfter = await bscPublicClient.readContract({
+          address: bnbFixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
-        const counterBAfter = await bscPublicClient.readContract({
-          address: COUNTER_B,
-          abi: COUNTER_ABI,
-          functionName: 'count',
-        }) as bigint;
-        console.log(`CounterA AFTER: ${counterAAfter}, CounterB AFTER: ${counterBAfter}`);
+        console.log(`Counter AFTER: ${counterAfter}`);
 
-        expect(counterAAfter).toBeGreaterThan(counterABefore);
-        expect(counterBAfter).toBeGreaterThan(counterBBefore);
+        expect(counterAfter).toBeGreaterThanOrEqual(counterBefore + BigInt(2));
       }, 600000);
 
       it('should transfer ERC20 USDT + increment counter via funds + payload', async () => {
@@ -1474,11 +1467,11 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         // Read counter BEFORE
         const counterBefore = await bscPublicClient.readContract({
-          address: COUNTER_A,
+          address: bnbFixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
-        console.log(`CounterA BEFORE: ${counterBefore}`);
+        console.log(`Counter BEFORE: ${counterBefore}`);
 
         const params: UniversalExecuteParams = {
           to: {
@@ -1490,8 +1483,8 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
             token: usdtToken,
           },
           data: [
-            { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: erc20TransferPayload },
-            { to: COUNTER_A, value: BigInt(0), data: incrementPayload },
+            { to: usdtToken.address as `0x${string}`, value: BigInt(0), data: erc20TransferPayload },
+            { to: bnbFixture.contracts.counter, value: BigInt(0), data: incrementPayload },
           ],
         };
 
@@ -1512,23 +1505,23 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         // Read counter AFTER
         const counterAfter = await bscPublicClient.readContract({
-          address: COUNTER_A,
+          address: bnbFixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
-        console.log(`CounterA AFTER: ${counterAfter}`);
+        console.log(`Counter AFTER: ${counterAfter}`);
 
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 600000);
 
-      it('should transfer ERC20 USDT + increment both counters via funds + multicall', async () => {
+      it('should transfer ERC20 USDT + double increment counter via funds + multicall', async () => {
         if (skipE2E) return;
         if (!usdtToken) {
           console.log('Skipping - USDT token not found');
           return;
         }
 
-        console.log('\n=== Test: Counter ERC20 Funds + Multicall — USDT Transfer + Both Counters ===');
+        console.log('\n=== Test: Counter ERC20 Funds + Multicall — USDT Transfer + Double Increment ===');
 
         const incrementPayload = encodeFunctionData({ abi: COUNTER_ABI, functionName: 'increment' });
         const erc20TransferPayload = encodeFunctionData({
@@ -1537,18 +1530,13 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
           args: [TEST_TARGET, BigInt(10000)],
         });
 
-        // Read both counters BEFORE
-        const counterABefore = await bscPublicClient.readContract({
-          address: COUNTER_A,
+        // Read counter BEFORE
+        const counterBefore = await bscPublicClient.readContract({
+          address: bnbFixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
-        const counterBBefore = await bscPublicClient.readContract({
-          address: COUNTER_B,
-          abi: COUNTER_ABI,
-          functionName: 'count',
-        }) as bigint;
-        console.log(`CounterA BEFORE: ${counterABefore}, CounterB BEFORE: ${counterBBefore}`);
+        console.log(`Counter BEFORE: ${counterBefore}`);
 
         const params: UniversalExecuteParams = {
           to: {
@@ -1560,9 +1548,9 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
             token: usdtToken,
           },
           data: [
-            { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: erc20TransferPayload },
-            { to: COUNTER_A, value: BigInt(0), data: incrementPayload },
-            { to: COUNTER_B, value: BigInt(0), data: incrementPayload },
+            { to: usdtToken.address as `0x${string}`, value: BigInt(0), data: erc20TransferPayload },
+            { to: bnbFixture.contracts.counter, value: BigInt(0), data: incrementPayload },
+            { to: bnbFixture.contracts.counter, value: BigInt(0), data: incrementPayload },
           ],
         };
 
@@ -1581,21 +1569,15 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         // Wait for RPC propagation
         await new Promise((r) => setTimeout(r, 5000));
 
-        // Read both counters AFTER
-        const counterAAfter = await bscPublicClient.readContract({
-          address: COUNTER_A,
+        // Read counter AFTER
+        const counterAfter = await bscPublicClient.readContract({
+          address: bnbFixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
-        const counterBAfter = await bscPublicClient.readContract({
-          address: COUNTER_B,
-          abi: COUNTER_ABI,
-          functionName: 'count',
-        }) as bigint;
-        console.log(`CounterA AFTER: ${counterAAfter}, CounterB AFTER: ${counterBAfter}`);
+        console.log(`Counter AFTER: ${counterAfter}`);
 
-        expect(counterAAfter).toBeGreaterThan(counterABefore);
-        expect(counterBAfter).toBeGreaterThan(counterBBefore);
+        expect(counterAfter).toBeGreaterThanOrEqual(counterBefore + BigInt(2));
       }, 600000);
 
       it('should migrate CEA on BNB Testnet via migrateCEA convenience method', async () => {

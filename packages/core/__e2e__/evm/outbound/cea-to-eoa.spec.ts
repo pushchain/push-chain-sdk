@@ -1,131 +1,34 @@
 import '@e2e/shared/setup';
 /**
- * CEA → EOA: Inbound to Push Chain Native Account (Route 3)
+ * CEA -> EOA: Inbound to Push Chain Native Account (Route 3)
  *
  * Tests for inbound transactions from external chains back to Push Chain via CEA,
  * targeting an EOA (native Push Chain account) signer (PUSH_PRIVATE_KEY).
  * Covers: ERC-20 bridge back, native bridge back.
  *
- * Primary test chain: BNB Testnet (Chain ID: 97)
+ * Parameterised across all active EVM chains via chain-fixtures.
  *
  * Coverage: R3-F (Native Bridge Back), R3-F-ERC20 (ERC-20 Bridge Back)
  */
 import { PushChain } from '../../../src';
 import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
 import { CHAIN_INFO } from '../../../src/lib/constants/chain';
-import { createWalletClient, http, Hex, parseEther, formatEther, createPublicClient } from 'viem';
+import { createWalletClient, http, Hex, parseEther } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { getCEAAddress } from '../../../src/lib/orchestrator/cea-utils';
 import { TransactionRoute, detectRoute } from '../../../src/lib/orchestrator/route-detector';
 import type { UniversalExecuteParams } from '../../../src/lib/orchestrator/orchestrator.types';
-import { ERC20_EVM } from '../../../src/lib/constants/abi/erc20.evm';
-import { MOVEABLE_TOKEN_CONSTANTS, type MoveableToken } from '../../../src/lib/constants/tokens';
+import type { MoveableToken } from '../../../src/lib/constants/tokens';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
+import { getToken } from '@e2e/shared/constants';
+import { getActiveFixtures } from '@e2e/shared/chain-fixtures';
+import { ensureCeaErc20Balance, ensureCeaNativeBalance } from '@e2e/shared/outbound-helpers';
 
-/**
- * Ensures CEA has at least `requiredAmount` of an ERC20 token on the external chain.
- * If balance is insufficient, funds CEA via Route 2 (UEA → CEA) and waits for relay.
- */
-async function ensureCeaErc20Balance(opts: {
-  pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
-  ceaAddress: `0x${string}`;
-  token: MoveableToken;
-  requiredAmount: bigint;
-  targetChain: CHAIN;
-}): Promise<void> {
-  const { pushClient, ceaAddress, token, requiredAmount, targetChain } = opts;
+const fixtures = getActiveFixtures();
 
-  const publicClient = createPublicClient({
-    transport: http(CHAIN_INFO[targetChain].defaultRPC[0]),
-  });
-  const balance = await publicClient.readContract({
-    address: token.address as `0x${string}`,
-    abi: ERC20_EVM,
-    functionName: 'balanceOf',
-    args: [ceaAddress],
-  }) as bigint;
-
-  console.log(`[ensureCeaBalance] CEA ${token.symbol} balance: ${balance.toString()}, required: ${requiredAmount.toString()}`);
-
-  if (balance >= requiredAmount) {
-    console.log(`[ensureCeaBalance] Sufficient ${token.symbol} balance, no funding needed.`);
-    return;
-  }
-
-  const deficit = requiredAmount - balance;
-  const fundAmount = deficit + requiredAmount; // fund extra buffer
-  console.log(`[ensureCeaBalance] Insufficient ${token.symbol}. Funding CEA with ${fundAmount.toString()} via Route 2 (UEA → CEA)...`);
-
-  const tx = await pushClient.universal.sendTransaction({
-    to: {
-      address: ceaAddress,
-      chain: targetChain,
-    },
-    funds: {
-      amount: fundAmount,
-      token,
-    },
-  });
-  console.log(`[ensureCeaBalance] Funding TX hash: ${tx.hash}`);
-
-  const receipt = await tx.wait();
-  console.log(`[ensureCeaBalance] Funding complete. Status: ${receipt.status}, External TX: ${receipt.externalTxHash}`);
-
-  if (receipt.status !== 1) {
-    throw new Error(`CEA ERC20 funding failed with status ${receipt.status}`);
-  }
-}
-
-/**
- * Ensures CEA has at least `requiredAmount` of native token (e.g. BNB) on the external chain.
- * If balance is insufficient, funds CEA via Route 2 (UEA → CEA) and waits for relay.
- */
-async function ensureCeaNativeBalance(opts: {
-  pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
-  ceaAddress: `0x${string}`;
-  requiredAmount: bigint;
-  targetChain: CHAIN;
-}): Promise<void> {
-  const { pushClient, ceaAddress, requiredAmount, targetChain } = opts;
-
-  const publicClient = createPublicClient({
-    transport: http(CHAIN_INFO[targetChain].defaultRPC[0]),
-  });
-  const balance = await publicClient.getBalance({ address: ceaAddress });
-
-  console.log(`[ensureCeaBalance] CEA native balance: ${formatEther(balance)}, required: ${formatEther(requiredAmount)}`);
-
-  if (balance >= requiredAmount) {
-    console.log(`[ensureCeaBalance] Sufficient native balance, no funding needed.`);
-    return;
-  }
-
-  const deficit = requiredAmount - balance;
-  const fundAmount = deficit + requiredAmount; // fund extra buffer
-  console.log(`[ensureCeaBalance] Insufficient native balance. Funding CEA with ${formatEther(fundAmount)} via Route 2 (UEA → CEA)...`);
-
-  const tx = await pushClient.universal.sendTransaction({
-    to: {
-      address: ceaAddress,
-      chain: targetChain,
-    },
-    value: fundAmount,
-  });
-  console.log(`[ensureCeaBalance] Funding TX hash: ${tx.hash}`);
-
-  const receipt = await tx.wait();
-  console.log(`[ensureCeaBalance] Funding complete. Status: ${receipt.status}, External TX: ${receipt.externalTxHash}`);
-
-  if (receipt.status !== 1) {
-    throw new Error(`CEA native funding failed with status ${receipt.status}`);
-  }
-}
-
-describe('CEA → EOA: Inbound to Push Chain Native Account (Route 3)', () => {
+describe('CEA -> EOA: Inbound to Push Chain Native Account (Route 3)', () => {
   let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
   let eoaAddress: `0x${string}`;
-  let ceaAddress: `0x${string}`;
-  let usdtToken: MoveableToken | undefined;
 
   // Uses PUSH_PRIVATE_KEY — a native Push Chain account (not derived from external chain)
   const privateKey = process.env['PUSH_PRIVATE_KEY'] as Hex;
@@ -163,23 +66,29 @@ describe('CEA → EOA: Inbound to Push Chain Native Account (Route 3)', () => {
 
     eoaAddress = pushClient.universal.account;
     console.log(`Push EOA Address: ${eoaAddress}`);
-
-    // Get CEA address for BSC Testnet — CEA Factory works for native Push EOA too
-    const ceaResult = await getCEAAddress(eoaAddress, CHAIN.BNB_TESTNET);
-    ceaAddress = ceaResult.cea;
-    console.log(`CEA Address on BSC: ${ceaAddress}, deployed: ${ceaResult.isDeployed}`);
-
-    // Get USDT token for ERC20 flows
-    usdtToken = MOVEABLE_TOKEN_CONSTANTS.BNB_TESTNET.USDT;
-    if (usdtToken) {
-      console.log(`USDT Token (BNB Testnet): ${usdtToken.address} (${usdtToken.decimals} decimals)`);
-    }
   }, 60000);
 
   // ============================================================================
-  // Core Scenarios
+  // Core Scenarios — parameterised across EVM chains
   // ============================================================================
-  describe('Core Scenarios', () => {
+  describe.each(fixtures)('Core Scenarios [$label]', (fixture) => {
+    let ceaAddress: `0x${string}`;
+    let usdtToken: MoveableToken | undefined;
+
+    beforeAll(async () => {
+      if (skipE2E) return;
+
+      const ceaResult = await getCEAAddress(eoaAddress, fixture.chain);
+      ceaAddress = ceaResult.cea;
+      console.log(`CEA Address on ${fixture.label}: ${ceaAddress}, deployed: ${ceaResult.isDeployed}`);
+
+      try {
+        usdtToken = getToken(fixture.chain, 'USDT');
+        console.log(`USDT Token (${fixture.label}): ${usdtToken.address} (${usdtToken.decimals} decimals)`);
+      } catch {
+        console.log(`USDT token not found for ${fixture.label}`);
+      }
+    }, 60000);
 
     // ============================================================================
     // 1. Funds — ERC-20 bridge back
@@ -192,7 +101,7 @@ describe('CEA → EOA: Inbound to Push Chain Native Account (Route 3)', () => {
           ceaAddress,
           token: usdtToken,
           requiredAmount: BigInt(20000),
-          targetChain: CHAIN.BNB_TESTNET,
+          targetChain: fixture.chain,
         });
       }, 600000);
 
@@ -203,10 +112,10 @@ describe('CEA → EOA: Inbound to Push Chain Native Account (Route 3)', () => {
           return;
         }
 
-        console.log('\n=== Test: EOA ERC-20 USDT Inbound (CEA → Push, Route 3) ===');
+        console.log(`\n=== Test: EOA ERC-20 USDT Inbound (CEA -> Push, Route 3) [${fixture.label}] ===`);
 
         const params: UniversalExecuteParams = {
-          from: { chain: CHAIN.BNB_TESTNET },
+          from: { chain: fixture.chain },
           to: eoaAddress,
           funds: {
             amount: BigInt(10000),
@@ -222,7 +131,7 @@ describe('CEA → EOA: Inbound to Push Chain Native Account (Route 3)', () => {
         console.log(`Source Chain: ${tx.chain}`);
 
         expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-        expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+        expect(tx.chain).toBe(fixture.chain);
 
         // Wait for outbound relay
         console.log('Calling tx.wait() - polling for external chain tx hash...');
@@ -235,7 +144,7 @@ describe('CEA → EOA: Inbound to Push Chain Native Account (Route 3)', () => {
         expect(receipt.status).toBe(1);
         expect(receipt.externalTxHash).toBeDefined();
         expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+        expect(receipt.externalChain).toBe(fixture.chain);
 
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
       }, 600000);
@@ -251,17 +160,17 @@ describe('CEA → EOA: Inbound to Push Chain Native Account (Route 3)', () => {
           pushClient,
           ceaAddress,
           requiredAmount: parseEther('0.0002'),
-          targetChain: CHAIN.BNB_TESTNET,
+          targetChain: fixture.chain,
         });
       }, 600000);
 
-      it('should bridge native BNB back to Push Chain from EOA CEA', async () => {
+      it('should bridge native token back to Push Chain from EOA CEA', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Test: EOA Native BNB Inbound (CEA → Push, Route 3) ===');
+        console.log(`\n=== Test: EOA Native Inbound (CEA -> Push, Route 3) [${fixture.label}] ===`);
 
         const params: UniversalExecuteParams = {
-          from: { chain: CHAIN.BNB_TESTNET },
+          from: { chain: fixture.chain },
           to: eoaAddress,
           value: parseEther('0.00005'),
         };
@@ -274,7 +183,7 @@ describe('CEA → EOA: Inbound to Push Chain Native Account (Route 3)', () => {
         console.log(`Source Chain: ${tx.chain}`);
 
         expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-        expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+        expect(tx.chain).toBe(fixture.chain);
 
         // Wait for outbound relay
         console.log('Calling tx.wait() - polling for external chain tx hash...');
@@ -287,7 +196,7 @@ describe('CEA → EOA: Inbound to Push Chain Native Account (Route 3)', () => {
         expect(receipt.status).toBe(1);
         expect(receipt.externalTxHash).toBeDefined();
         expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+        expect(receipt.externalChain).toBe(fixture.chain);
 
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
       }, 600000);
