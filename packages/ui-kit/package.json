@@ -1,6 +1,6 @@
 {
   "name": "@pushchain/ui-kit",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "homepage": "https://push.org",
   "keywords": [
     "pushchain",
@@ -27,7 +27,7 @@
     "react-is": "^19.1.0",
     "styled-components": "^6.1.0",
     "tslib": "^2.3.0",
-    "viem": "^2.23.9"
+    "viem": "2.27.2"
   },
   "peerDependencies": {
     "react": ">=18.3.0 <20.0.0",

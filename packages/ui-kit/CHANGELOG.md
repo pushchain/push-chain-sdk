@@ -1,3 +1,27 @@
+@pushchain/ui-kit@5.1.0 (2026-03-28)
+
+- release: bump to 5.0.0
+
+---
+
+@pushchain/ui-kit@5.0.3 (2026-03-28)
+
+- release: bump to 5.0.0
+
+---
+
+@pushchain/ui-kit@5.0.2 (2026-03-28)
+
+- release: bump to 5.0.0
+
+---
+
+@pushchain/ui-kit@5.0.1 (2026-03-28)
+
+- release: bump to 5.0.0
+
+---
+
 @pushchain/ui-kit@4.0.6 (2026-01-13)
 
 - fix: apply CSS variables via inline styles
