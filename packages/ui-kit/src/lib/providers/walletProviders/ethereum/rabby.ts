@@ -199,7 +199,9 @@ export class RabbyProvider extends BaseWalletProvider {
         { name: 'chainId', type: 'uint256' },
         { name: 'verifyingContract', type: 'address' },
       ],
-      UniversalPayload: typedData.types['UniversalPayload'],
+      ...(typedData.primaryType === 'MigrationPayload'
+        ? { MigrationPayload: typedData.types['MigrationPayload'] }
+        : { UniversalPayload: typedData.types['UniversalPayload'] }),
     };
 
     const safeTypedData = JSON.parse(

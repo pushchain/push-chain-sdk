@@ -16,6 +16,7 @@ export const usePushChainClient = (uid?: string) => {
     setProgress,
     isReadOnly,
     setIsReadOnly,
+    checkAndShowUpgradeIfNeeded,
   } = usePushWalletContext(uid);
 
   const [pushChain, setPushChain] = useState<PushChain | null>(null);
@@ -26,6 +27,7 @@ export const usePushChainClient = (uid?: string) => {
 
   const queueRef = useRef<ProgressEvent[]>([]);
   const lockRef = useRef(false);
+  const upgradeCheckRef = useRef(false);
 
   const minTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -102,27 +104,37 @@ export const usePushChainClient = (uid?: string) => {
           printTraces: config.chainConfig?.printTraces,
         };
 
+        let pushChainClient: PushChain;
+
         if (isReadOnly) {
-          const pushChainClient = await PushChain.initialize(universalAccount, {
+          pushChainClient = await PushChain.initialize(universalAccount, {
             network: config.network,
           });
 
-          setPushChain(
-            createGuardedPushChain(
-              pushChainClient,
-              handleExternalWalletConnection,
-              requestPushWalletConnection,
-              universalSigner,
-              intializeProps,
-              config?.uid || 'default',
-              () => {
-                setIsReadOnly(false);
-              },
-            )
-          );
+          
         } else {
-          const pushChainClient = await PushChain.initialize(universalSigner, intializeProps);
-          setPushChain(pushChainClient);
+          pushChainClient = await PushChain.initialize(universalSigner, intializeProps);
+        }
+
+        const guardedPushChainClient = createGuardedPushChain(
+          pushChainClient,
+          handleExternalWalletConnection,
+          requestPushWalletConnection,
+          checkAndShowUpgradeIfNeeded,
+          universalSigner,
+          intializeProps,
+          config?.uid || 'default',
+          () => {
+            setIsReadOnly(false);
+          },
+        )
+
+        setPushChain(guardedPushChainClient);
+
+        // Check upgrade only once per session
+        if (!upgradeCheckRef.current) {
+          upgradeCheckRef.current = true;
+          await checkAndShowUpgradeIfNeeded(guardedPushChainClient);
         }
 
         setError(null);
@@ -145,6 +157,6 @@ export const usePushChainClient = (uid?: string) => {
   return {
     pushChainClient: pushChain,
     error,
-    isInitialized: !!pushChain && !error,
+    isInitialized: !!pushChain,
   };
 };

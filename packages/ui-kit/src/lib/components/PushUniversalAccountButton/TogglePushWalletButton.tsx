@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { CHAIN } from '@pushchain/core/src/lib/constants/enums';
 import { usePushWalletContext } from '../../hooks/usePushWallet';
 import { UniversalAccount } from '../../types';
@@ -56,6 +56,10 @@ const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
     },
     [className]
   );
+
+  useEffect(() => {
+    setActiveTriggerId(className);
+  }, []);
 
   return (
     <ButtonContainer

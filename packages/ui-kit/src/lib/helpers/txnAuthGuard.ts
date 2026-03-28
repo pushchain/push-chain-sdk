@@ -12,6 +12,7 @@ export function createGuardedPushChain(
     chain: ChainType;
     provider: IWalletProvider["name"];
 	}>,
+  checkAndShowUpgradeIfNeeded: (pushChainClient: PushChain) => Promise<boolean>,
 	universalSigner: UniversalSigner,
 	intializeProps: any,
   uid: string,
@@ -33,10 +34,10 @@ export function createGuardedPushChain(
 					return;
 				}
 
-				if (walletData.providerName) {
+				if (walletData.wallet.providerName) {
 					await handleExternalWalletConnection({
-						chain: walletData.chainType,
-						provider: walletData.providerName
+						chain: walletData.wallet.chainType,
+						provider: walletData.wallet.providerName
 					});
 				} else {
 					await requestPushWalletConnection();
@@ -55,11 +56,19 @@ export function createGuardedPushChain(
     await promoting;
   };
 
+  const checkUpgradeNeeded = async () => {
+		const status = await checkAndShowUpgradeIfNeeded(clientRef.current);
+		if (!status) {
+			throw new Error('Account upgrade failed.');
+		}
+	};
+
   const wrapWrite = <A extends unknown[], R>(
     getter: () => (...args: A) => Promise<R>
 	) => {
 	const wrapped = async (...args: A): Promise<R> => {
 		await promoteIfNeeded();
+    await checkUpgradeNeeded();
 		const fn = getter();
 		return fn(...args);
 	};

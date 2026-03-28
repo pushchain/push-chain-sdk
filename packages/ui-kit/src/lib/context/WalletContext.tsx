@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { PushChain } from '@pushchain/core';
 import {
+  PROGRESS_HOOK,
   ProgressEvent,
 } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
 import {
@@ -69,6 +70,7 @@ export type WalletContextType = {
   isReadOnly: boolean;
   setIsReadOnly: React.Dispatch<React.SetStateAction<boolean>>;
   requestPushWalletConnection: () => Promise<{ chain: ChainType; provider: IWalletProvider["name"] }>;
+  checkAndShowUpgradeIfNeeded: (pushChainClient: PushChain) => Promise<boolean>;
 
   activeTriggerId: string | undefined;
   setActiveTriggerId: React.Dispatch<React.SetStateAction<string | undefined>>;
@@ -108,6 +110,17 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     success?: (data: WalletEventRespoonse) => void;
     error?: (data: WalletEventRespoonse) => void;
   } | null>(null);
+
+  const upgradeResolverRef = useRef<{
+    success?: () => void;
+    error?: (error: Error) => void;
+  } | null>(null);
+
+  const pushChainClientRef = useRef<PushChain | null>(null);
+
+  const setPushChainClient = (client: PushChain | null) => {
+    pushChainClientRef.current = client;
+  };
 
   const [modalAppData, setModalAppData] = useState<ModalAppDetails | undefined>(
     app
@@ -558,6 +571,107 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     });
   }
 
+  const checkAndShowUpgradeIfNeeded = async (pushChainClient: PushChain) => {
+    setPushChainClient(pushChainClient);
+
+    if (!pushChainClient) {
+      return false;
+    }
+
+    try {
+      await pushChainClient.accountStatusReady;
+      if (!pushChainClient.isReadMode && pushChainClient.accountStatus.uea.loaded && pushChainClient.accountStatus.uea.requiresUpgrade) {
+        setMinimiseWallet(false);
+        sendMessageToPushWallet({
+          type: APP_TO_WALLET_ACTION.SHOW_UPGRADE_DRAWER,
+          data: {
+            currentVersion: pushChainClient.accountStatus.uea.version,
+            newVersion: pushChainClient.accountStatus.uea.minRequiredVersion,
+          },
+        });
+
+        // Wait for upgrade button click from iframe
+        return new Promise<boolean>((resolve, reject) => {
+          upgradeResolverRef.current = {
+            success: () => {
+              upgradeResolverRef.current = null;
+              resolve(true);
+            },
+            error: (error: Error) => {
+              upgradeResolverRef.current = null;
+              resolve(false);
+            },
+          };
+        });
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error checking upgrade status:', error);
+      return false;
+    }
+  };
+
+  const handleUpgradeAccountSuccess = () => {
+    setMinimiseWallet(true);
+    
+    // Resolve any pending upgrade promise
+    if (upgradeResolverRef.current?.success) {
+      upgradeResolverRef.current.success();
+      upgradeResolverRef.current = null;
+    }
+  };
+
+  const handleUpgradeAccountError = (error?: any) => {
+    setMinimiseWallet(true);
+    
+    // Reject any pending upgrade promise
+    if (upgradeResolverRef.current?.error) {
+      upgradeResolverRef.current.error(error instanceof Error ? error : new Error('Upgrade failed'));
+      upgradeResolverRef.current = null;
+    }
+  };
+
+  const handleUpgradeAccount = async () => {
+    const pushChainClient = pushChainClientRef.current;
+    if (!pushChainClient) {
+      throw new Error('PushChain client not initialized');
+    }
+
+    try {
+      await pushChainClient.upgradeAccount({
+        progressHook: (progress: ProgressEvent) => {
+          setProgress(progress);
+          if (progress.id === PROGRESS_HOOK.UEA_MIG_9901) {
+            setTimeout(() => setProgress(null), 10000)
+          }
+        }
+      });
+      
+      // Send success response to iframe
+      sendMessageToPushWallet({
+        type: APP_TO_WALLET_ACTION.UPGRADE_ACCOUNT_RESPONSE,
+        data: { success: true },
+      });
+
+      handleUpgradeAccountSuccess();
+      
+    } catch (error) {
+      console.error('Error upgrading account:', error);
+      
+      // Send error response to iframe
+      sendMessageToPushWallet({
+        type: APP_TO_WALLET_ACTION.UPGRADE_ACCOUNT_RESPONSE,
+        data: { success: false, error: error instanceof Error ? error.message : 'Upgrade failed' },
+      });
+
+      // Reject the upgrade promise
+      if (upgradeResolverRef.current?.error) {
+        upgradeResolverRef.current.error(error instanceof Error ? error : new Error('Upgrade failed'));
+      }
+    }
+  };
+
   useEffect(() => {
     const walletInfo = localStorage.getItem(`walletInfo_${config?.uid || 'default'}`);
     const walletData = walletInfo ? JSON.parse(walletInfo) : null;
@@ -641,6 +755,15 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
           if (universalAccount) setMinimiseWallet(true);
           else handleUserLogOutEvent();
           break;
+        case WALLET_TO_APP_ACTION.UPGRADE_ACCOUNT_REQUEST:
+          handleUpgradeAccount();
+          break;
+        case WALLET_TO_APP_ACTION.UPGRADE_ACCOUNT_SUCCESS:
+          handleUpgradeAccountSuccess();
+          break;
+        case WALLET_TO_APP_ACTION.UPGRADE_ACCOUNT_ERROR:
+          handleUpgradeAccountError();
+          break;
         default:
           console.warn('Unknown message type:', event.data.type);
       }
@@ -679,6 +802,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         setIsReadOnly,
         handleExternalWalletConnection,
         requestPushWalletConnection,
+        checkAndShowUpgradeIfNeeded,
         activeTriggerId,
         setActiveTriggerId,
         toggleButtonRefs,

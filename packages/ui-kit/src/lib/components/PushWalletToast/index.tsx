@@ -39,7 +39,7 @@ const PushWalletToast: FC<PushWalletToastProps> = ({ progress, setProgress }) =>
         <ToastContainer>
             <IconContainer>
                 {
-                    progress.id === PROGRESS_HOOK.SEND_TX_99_01 ? <TickIcon /> :
+                    (progress.id === PROGRESS_HOOK.SEND_TX_99_01 || progress.id === PROGRESS_HOOK.UEA_MIG_9901) ? <TickIcon /> :
                     progress.id === PROGRESS_HOOK.SEND_TX_99_02 ? <WarningIcon /> :
                     <Spinner color='var(--pw-int-brand-primary-color)' />
                 }
@@ -108,7 +108,7 @@ const ToastContainer = styled.div`
     padding:16px;
     border-radius:16px;
     background-color:#fff;
-    z-index:9999;
+    z-index:999999999;
     width:320px;
     max-width: 100%;
 `
