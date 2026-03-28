@@ -1,6 +1,14 @@
 import '@e2e/shared/setup';
-import { privateKeyToAccount } from 'viem/accounts';
-import { createWalletClient, Hex, http } from 'viem';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+import {
+  createPublicClient,
+  createWalletClient,
+  Hex,
+  http,
+  parseEther,
+  WalletClient,
+} from 'viem';
+import { sepolia } from 'viem/chains';
 import { PushChain } from '../../src';
 import { UniversalSigner } from '../../src/lib/universal/universal.types';
 import { PUSH_NETWORK, CHAIN } from '../../src/lib/constants/enums';
@@ -21,19 +29,21 @@ describe('UEA Migration', () => {
   const originChain = CHAIN.ETHEREUM_SEPOLIA;
   let pushClient: PushChain;
   let universalSigner: UniversalSigner;
+  let mainWalletClient: WalletClient;
 
   beforeAll(async () => {
     const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
     if (!privateKey) throw new Error('EVM_PRIVATE_KEY not set');
 
     const account = privateKeyToAccount(privateKey);
-    const walletClient = createWalletClient({
+    mainWalletClient = createWalletClient({
       account,
+      chain: sepolia,
       transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
     });
 
     universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
-      walletClient,
+      mainWalletClient,
       {
         chain: originChain,
         library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
@@ -133,6 +143,113 @@ describe('UEA Migration', () => {
     );
     expect(updated.uea.requiresUpgrade).toBe(false);
   }, 120_000);
+
+  it('should deploy UEA via fresh wallet tx and require no migration', async () => {
+    // 1. Generate a brand new wallet
+    const freshPrivateKey = generatePrivateKey();
+    const freshAccount = privateKeyToAccount(freshPrivateKey);
+    console.log(`Fresh wallet address: ${freshAccount.address}`);
+
+    // 2. Fund fresh wallet with ETH on Sepolia (needed for fee-locking)
+    const publicClient = createPublicClient({
+      chain: sepolia,
+      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+    });
+
+    const fundTxHash = await mainWalletClient.sendTransaction({
+      to: freshAccount.address,
+      value: parseEther('0.01'),
+      account: mainWalletClient.account!,
+      chain: sepolia,
+    });
+    await publicClient.waitForTransactionReceipt({ hash: fundTxHash });
+    console.log(`Funded fresh wallet with 0.01 ETH: ${fundTxHash}`);
+
+    // 3. Initialize PushChain with fresh wallet
+    const freshWalletClient = createWalletClient({
+      account: freshAccount,
+      chain: sepolia,
+      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+    });
+
+    const freshSigner =
+      await PushChain.utils.signer.toUniversalFromKeypair(freshWalletClient, {
+        chain: originChain,
+        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+      });
+
+    const freshClient = await PushChain.initialize(freshSigner, {
+      network: pushNetwork,
+      progressHook: (event: any) => {
+        console.log(`[fresh] [${event.id}] ${event.title}: ${event.message}`);
+      },
+    });
+
+    // 4. Verify UEA is NOT deployed yet
+    const statusBefore = await freshClient.getAccountStatus({
+      forceRefresh: true,
+    });
+    console.log(
+      'Status before tx:',
+      JSON.stringify(statusBefore, null, 2)
+    );
+    expect(statusBefore.uea.deployed).toBe(false);
+
+    // 5. Fresh wallet sends a tx → triggers fee-lock which deploys the UEA.
+    //    executePayload may revert (empty UEA, no balance) but the UEA is
+    //    already created on-chain by the time the error is thrown — so we
+    //    catch and continue.
+    const mainUEA = pushClient.universal.account;
+    console.log('Fresh wallet sending tx to trigger UEA deployment...');
+    try {
+      const tx = await freshClient.universal.sendTransaction({
+        to: mainUEA,
+        value: BigInt(0),
+        data: '0x',
+      });
+      console.log(`Tx hash: ${tx.hash}`);
+      const receipt = await tx.wait();
+      console.log(`Tx status: ${receipt.status}`);
+    } catch (err) {
+      console.log(
+        `Expected executePayload revert (UEA still gets deployed): ${(err as Error).message}`
+      );
+    }
+
+    // 6. Re-check: UEA should now be deployed with latest version
+    const statusAfter = await freshClient.getAccountStatus({
+      forceRefresh: true,
+    });
+    console.log(
+      'Status after tx:',
+      JSON.stringify(statusAfter, null, 2)
+    );
+
+    expect(statusAfter.mode).toBe('signer');
+    expect(statusAfter.uea.loaded).toBe(true);
+    expect(statusAfter.uea.deployed).toBe(true);
+    expect(statusAfter.uea.version).not.toBe('');
+    // Freshly deployed UEA should be on the latest version → no migration
+    expect(statusAfter.uea.requiresUpgrade).toBe(false);
+    console.log(
+      `Fresh UEA deployed at version ${statusAfter.uea.version}, no migration needed`
+    );
+
+    // 7. upgradeAccount should be a no-op
+    const upgradeEvents: any[] = [];
+    await freshClient.upgradeAccount({
+      progressHook: (event) => {
+        upgradeEvents.push(event);
+        console.log(
+          `[fresh-upgrade] [${event.id}] ${event.title}: ${event.message}`
+        );
+      },
+    });
+
+    const upgradeEventIds = upgradeEvents.map((e) => e.id);
+    expect(upgradeEventIds).toContain('UEA-MIG-01'); // Checking
+    expect(upgradeEventIds).toContain('UEA-MIG-9903'); // No upgrade needed
+  }, 180_000);
 
   it('should send transaction after upgrade', async () => {
     const status = await pushClient.getAccountStatus();

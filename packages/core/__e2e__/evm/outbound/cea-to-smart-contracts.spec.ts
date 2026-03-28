@@ -717,20 +717,22 @@ describe('CEA Custom Contract: StakingExample (Outbound & Inbound)', () => {
       }
 
       // Helper: run triggerOutbound on StakingExample and wait for outbound relay
+      const OUTBOUND_GAS_LIMIT = BigInt(1_000_000); // 1M gas — covers CEA deployment + complex multicalls
+
       async function callTriggerOutbound(
         token: `0x${string}`,
         amount: bigint,
         recipient: `0x${string}`,
         payload: `0x${string}`,
       ) {
-        const fees = await queryOutboundGasFees(pushPublicClient, token);
+        const fees = await queryOutboundGasFees(pushPublicClient, token, OUTBOUND_GAS_LIMIT);
         const msgValue = await computeOutboundMsgValue(pushPublicClient, ueaAddress, fees.nativeValueForGas);
         console.log(`Bridge amount: ${amount}, msg.value: ${msgValue}`);
 
         const triggerPayload = encodeFunctionData({
           abi: STAKING_EXAMPLE_ABI,
           functionName: 'triggerOutbound',
-          args: [token, amount, recipient, BigInt(0), payload, ueaAddress],
+          args: [token, amount, recipient, OUTBOUND_GAS_LIMIT, payload, ueaAddress],
         });
 
         const tx = await pushClient.universal.sendTransaction({
