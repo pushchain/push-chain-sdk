@@ -1,3 +1,9 @@
+@pushchain/core@5.1.0 (2026-03-28)
+
+- release: bump to 5.0.0
+
+---
+
 @pushchain/core@3.0.4 (2025-11-11)
 
 - refactor: remove debug console logs from Orchestrator class

@@ -288,30 +288,13 @@ export class Orchestrator {
       const deadline = BigInt(9999999999);
       const ueaVersion = status.uea.version || '0.1.0';
 
-      // Sign MigrationPayload via EIP-712
-      if (!this.universalSigner.signTypedData) {
-        throw new Error('signTypedData not available on signer');
-      }
-
-      const signatureBytes = await this.universalSigner.signTypedData({
-        domain: {
-          version: ueaVersion,
-          chainId: Number(chainId),
-          verifyingContract: ueaAddress,
-        },
-        types: {
-          MigrationPayload: [
-            { name: 'migration', type: 'address' },
-            { name: 'nonce', type: 'uint256' },
-            { name: 'deadline', type: 'uint256' },
-          ],
-        },
-        primaryType: 'MigrationPayload',
-        message: {
-          migration: migrationContractAddress,
-          nonce,
-          deadline,
-        },
+      // Sign MigrationPayload
+      const signatureBytes = await this.signMigrationPayload({
+        migrationContractAddress,
+        nonce,
+        deadline,
+        ueaVersion,
+        ueaAddress,
       });
 
       const signature = bytesToHex(signatureBytes);
@@ -440,14 +423,18 @@ export class Orchestrator {
     params: ExecuteParams | UniversalExecuteParams
   ): Promise<UniversalTxResponse> {
     // Lazy UEA upgrade check
-    if (!this.accountStatusCache || !this.accountStatusCache.uea.loaded) {
-      await this.getAccountStatus();
-    }
-    if (
-      this.accountStatusCache?.uea.deployed &&
-      this.accountStatusCache?.uea.requiresUpgrade
-    ) {
-      await this.upgradeAccount({ progressHook: this.progressHook });
+    try {
+      if (!this.accountStatusCache || !this.accountStatusCache.uea.loaded) {
+        await this.getAccountStatus();
+      }
+      if (
+        this.accountStatusCache?.uea.deployed &&
+        this.accountStatusCache?.uea.requiresUpgrade
+      ) {
+        await this.upgradeAccount({ progressHook: this.progressHook });
+      }
+    } catch (err) {
+      this.printLog(`Lazy UEA upgrade check failed: ${err instanceof Error ? err.message : String(err)}. Proceeding with transaction.`);
     }
 
     // Check if this is a multi-chain request (has ChainTarget or from.chain)
@@ -5058,6 +5045,144 @@ export class Orchestrator {
         throw new Error(`Unsupported VM type: ${vm}`);
       }
     }
+  }
+
+  /**
+   * Signs a MigrationPayload for UEA upgrade.
+   * EVM: EIP-712 signTypedData. SVM: manual hash + signMessage (same pattern as signUniversalPayload).
+   */
+  private async signMigrationPayload({
+    migrationContractAddress,
+    nonce,
+    deadline,
+    ueaVersion,
+    ueaAddress,
+  }: {
+    migrationContractAddress: `0x${string}`;
+    nonce: bigint;
+    deadline: bigint;
+    ueaVersion: string;
+    ueaAddress: `0x${string}`;
+  }): Promise<Uint8Array> {
+    const chain = this.universalSigner.account.chain;
+    const { vm, chainId } = CHAIN_INFO[chain];
+
+    switch (vm) {
+      case VM.EVM: {
+        if (!this.universalSigner.signTypedData) {
+          throw new Error('signTypedData is not defined');
+        }
+        return this.universalSigner.signTypedData({
+          domain: {
+            version: ueaVersion,
+            chainId: Number(chainId),
+            verifyingContract: ueaAddress,
+          },
+          types: {
+            MigrationPayload: [
+              { name: 'migration', type: 'address' },
+              { name: 'nonce', type: 'uint256' },
+              { name: 'deadline', type: 'uint256' },
+            ],
+          },
+          primaryType: 'MigrationPayload',
+          message: {
+            migration: migrationContractAddress,
+            nonce: nonce.toString(),
+            deadline: deadline.toString(),
+          },
+        });
+      }
+
+      case VM.SVM: {
+        const digest = this.computeMigrationHash({
+          verifyingContract: ueaAddress,
+          migrationContractAddress,
+          nonce,
+          deadline,
+          version: ueaVersion,
+        });
+        return this.universalSigner.signMessage(stringToBytes(digest));
+      }
+
+      default:
+        throw new Error(`Unsupported VM type for migration: ${vm}`);
+    }
+  }
+
+  /**
+   * Computes the EIP-712 struct hash for MigrationPayload (used by SVM path).
+   * Mirrors computeExecutionHash but for the MigrationPayload type.
+   */
+  private computeMigrationHash({
+    verifyingContract,
+    migrationContractAddress,
+    nonce,
+    deadline,
+    version = '0.1.0',
+  }: {
+    verifyingContract: `0x${string}`;
+    migrationContractAddress: `0x${string}`;
+    nonce: bigint;
+    deadline: bigint;
+    version?: string;
+  }): `0x${string}` {
+    const chain = this.universalSigner.account.chain;
+    const { vm, chainId } = CHAIN_INFO[chain];
+
+    // 1. Type hash
+    const typeHash = keccak256(
+      toBytes(
+        'MigrationPayload(address migration,uint256 nonce,uint256 deadline)'
+      )
+    );
+
+    // 2. Domain separator
+    const domainTypeHash = keccak256(
+      toBytes(
+        vm === VM.EVM
+          ? 'EIP712Domain(string version,uint256 chainId,address verifyingContract)'
+          : 'EIP712Domain_SVM(string version,string chainId,address verifyingContract)'
+      )
+    );
+
+    const domainSeparator = keccak256(
+      encodeAbiParameters(
+        [
+          { name: 'typeHash', type: 'bytes32' },
+          { name: 'version', type: 'bytes32' },
+          { name: 'chainId', type: vm === VM.EVM ? 'uint256' : 'string' },
+          { name: 'verifyingContract', type: 'address' },
+        ],
+        [
+          domainTypeHash,
+          keccak256(toBytes(version)),
+          vm === VM.EVM ? BigInt(chainId) : chainId,
+          verifyingContract,
+        ]
+      )
+    );
+
+    // 3. Struct hash
+    const structHash = keccak256(
+      encodeAbiParameters(
+        [
+          { name: 'typeHash', type: 'bytes32' },
+          { name: 'migration', type: 'address' },
+          { name: 'nonce', type: 'uint256' },
+          { name: 'deadline', type: 'uint256' },
+        ],
+        [typeHash, migrationContractAddress, nonce, deadline]
+      )
+    );
+
+    // 4. Final digest
+    return keccak256(
+      encodePacked(
+        ['string', 'bytes32', 'bytes32'],
+        ['\x19\x01', domainSeparator, structHash]
+      )
+    );
   }
 
   /**
