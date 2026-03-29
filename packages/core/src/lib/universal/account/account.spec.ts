@@ -209,6 +209,38 @@ describe('Universal Account Utilities', () => {
     });
   });
 
+  // Unit tests for options.chain on convertOriginToExecutor (no network calls)
+  describe('convertOriginToExecutor() - with options.chain', () => {
+    it('should return same address for Push Chain input when options.chain is Push', async () => {
+      const pushAccount = {
+        chain: CHAIN.PUSH_TESTNET_DONUT,
+        address: '0x1234567890123456789012345678901234567890' as `0x${string}`,
+      };
+
+      const result = await convertOriginToExecutor(pushAccount, {
+        chain: CHAIN.PUSH_TESTNET_DONUT,
+        onlyCompute: true,
+      });
+
+      expect(result.address).toBe(pushAccount.address);
+      expect(result.deployed).toBe(false);
+    });
+
+    it('should default to UEA behavior when no chain is provided', async () => {
+      const pushAccount = {
+        chain: CHAIN.PUSH_TESTNET_DONUT,
+        address: '0x1234567890123456789012345678901234567890' as `0x${string}`,
+      };
+
+      const result = await convertOriginToExecutor(pushAccount, {
+        onlyCompute: true,
+      });
+
+      expect(result.address).toBe(pushAccount.address);
+      expect(result.deployed).toBe(false);
+    });
+  });
+
   describe('toUniversal()', () => {
     it('returns a checksummed address for EVM chains', () => {
       const account = PushChain.utils.account.toUniversal(

@@ -112,6 +112,7 @@ import {
 import {
   TransactionRoute,
   detectRoute,
+  getRouteInfo,
   validateRouteParams,
   isChainTarget,
   isSupportedExternalChain,
@@ -3290,18 +3291,20 @@ export class Orchestrator {
     const gatewayPcAddress = this.getUniversalGatewayPCAddress();
 
     // Pre-fetch UEA status early — balance is needed for gas value calculation
+    const signerChain = this.universalSigner.account.chain;
+    const isNativePushEOA = this.isPushChain(signerChain);
     const [ueaCode, ueaBalance] = await Promise.all([
       this.pushClient.publicClient.getCode({ address: ueaAddress }),
       this.pushClient.getBalance(ueaAddress),
     ]);
-    const isUEADeployed = ueaCode !== undefined;
+    const isUEADeployed = isNativePushEOA || ueaCode !== undefined;
     if (!isUEADeployed) {
       throw new Error(
         'UEA is not deployed. Please send an inbound transaction to Push Chain first ' +
         '(e.g. sendTransaction with value) to deploy your Universal Execution Account before using outbound transfers.'
       );
     }
-    const ueaNonce = await this.getUEANonce(ueaAddress);
+    const ueaNonce = isNativePushEOA ? BigInt(0) : await this.getUEANonce(ueaAddress);
 
     // Build the multicall that will execute ON Push Chain from UEA context
     // This includes: 1) approve PRC-20 (if needed), 2) call sendUniversalTxOutbound
@@ -3534,18 +3537,20 @@ export class Orchestrator {
 
     // --- Pre-fetch UEA status early — balance is needed for gas value calculation ---
     const gatewayPcAddress = this.getUniversalGatewayPCAddress();
+    const signerChainSvm = this.universalSigner.account.chain;
+    const isNativePushEOASvm = this.isPushChain(signerChainSvm);
     const [ueaCode, ueaBalance] = await Promise.all([
       this.pushClient.publicClient.getCode({ address: ueaAddress }),
       this.pushClient.getBalance(ueaAddress),
     ]);
-    const isUEADeployed = ueaCode !== undefined;
+    const isUEADeployed = isNativePushEOASvm || ueaCode !== undefined;
     if (!isUEADeployed) {
       throw new Error(
         'UEA is not deployed. Please send an inbound transaction to Push Chain first ' +
         '(e.g. sendTransaction with value) to deploy your Universal Execution Account before using outbound transfers.'
       );
     }
-    const ueaNonce = await this.getUEANonce(ueaAddress);
+    const ueaNonce = isNativePushEOASvm ? BigInt(0) : await this.getUEANonce(ueaAddress);
 
     // --- Query gas fee (identical to EVM path) ---
     let gasFee = BigInt(0);
@@ -5752,20 +5757,52 @@ export class Orchestrator {
     // SEND_TX_07: Broadcasting (always emit)
     events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_07]());
 
-    // Determine outcome from pcTx status if available
+    // Determine outcome from pcTx status and outbound status
     const pcTx = universalTxData?.pcTx?.[0];
-    const isFailed = pcTx?.status === 'FAILED';
+    const isOutboundFailed =
+      universalTxData?.universalStatus === UniversalTxStatus.OUTBOUND_FAILED;
+    const isPcFailed = pcTx?.status === 'FAILED';
+    const isFailed = isPcFailed || isOutboundFailed;
 
     // SEND_TX_99_01/02: Final outcome
     if (isFailed) {
+      const errorMsg = isOutboundFailed
+        ? 'Outbound transaction failed (status: OUTBOUND_FAILED)'
+        : (pcTx?.errorMsg || 'Unknown error');
       events.push(
-        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_02](pcTx?.errorMsg || 'Unknown error')
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_02](errorMsg)
       );
     } else {
       events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_01]([universalTxResponse]));
     }
 
     return events;
+  }
+
+  /**
+   * Detect the transaction route from UniversalTxV2 data.
+   * Used by trackTransaction to infer the route when it's not set by execute().
+   */
+  private detectRouteFromUniversalTxData(
+    universalTxData: UniversalTxV2 | undefined
+  ): TransactionRoute | undefined {
+    if (!universalTxData) return undefined;
+
+    const hasOutbound = universalTxData.outboundTx.length > 0;
+    const hasInbound = !!universalTxData.inboundTx;
+    const statusIndicatesOutbound = [
+      UniversalTxStatus.OUTBOUND_PENDING,
+      UniversalTxStatus.OUTBOUND_SUCCESS,
+      UniversalTxStatus.OUTBOUND_FAILED,
+    ].includes(universalTxData.universalStatus);
+
+    if (hasOutbound || statusIndicatesOutbound) {
+      return hasInbound
+        ? TransactionRoute.CEA_TO_CEA
+        : TransactionRoute.UOA_TO_CEA;
+    }
+    if (hasInbound) return TransactionRoute.CEA_TO_PUSH;
+    return TransactionRoute.UOA_TO_PUSH;
   }
 
   /**
@@ -5842,16 +5879,43 @@ export class Orchestrator {
 
     // Try to get UniversalTx data for richer progress reconstruction
     // (may not exist for direct Push Chain transactions)
+    // Three-tier lookup: direct hash → computed keccak ID → Cosmos event extraction
     let universalTxData: UniversalTxV2 | undefined;
     try {
-      // Attempt to find UniversalTx by searching pcTx entries
-      // For now, we'll try to look up by the tx hash
       const utxResponse = await this.pushClient.getUniversalTxByIdV2(txHash);
       if (utxResponse?.universalTx) {
         universalTxData = utxResponse.universalTx;
       }
     } catch {
-      // Ignore - direct Push Chain tx or tx not indexed yet
+      // Ignore - try computed ID next
+    }
+
+    if (!universalTxData) {
+      try {
+        const computedId = this.computeUniversalTxId(txHash);
+        const queryId = computedId.startsWith('0x') ? computedId.slice(2) : computedId;
+        const utxResponse = await this.pushClient.getUniversalTxByIdV2(queryId);
+        if (utxResponse?.universalTx) {
+          universalTxData = utxResponse.universalTx;
+        }
+      } catch {
+        // Ignore - try Cosmos event extraction next
+      }
+    }
+
+    if (!universalTxData) {
+      try {
+        const extractedId = await this.extractUniversalSubTxIdFromTx(txHash);
+        if (extractedId) {
+          const queryId = extractedId.startsWith('0x') ? extractedId.slice(2) : extractedId;
+          const utxResponse = await this.pushClient.getUniversalTxByIdV2(queryId);
+          if (utxResponse?.universalTx) {
+            universalTxData = utxResponse.universalTx;
+          }
+        }
+      } catch {
+        // Ignore - no universal tx data available
+      }
     }
 
     // Transform to UniversalTxResponse
@@ -5859,6 +5923,13 @@ export class Orchestrator {
       tx,
       eventBuffer
     );
+
+    // Detect route from UniversalTxV2 data and set on response
+    // This enables wait() to trigger outbound polling via waitForOutboundTx()
+    const detectedRoute = this.detectRouteFromUniversalTxData(universalTxData);
+    if (detectedRoute) {
+      universalTxResponse.route = detectedRoute;
+    }
 
     // Reconstruct and emit SEND-TX-* progress events
     const reconstructedEvents = this.reconstructProgressEvents(
@@ -7566,11 +7637,11 @@ export class Orchestrator {
           baseReceipt = this.transformToUniversalTxReceipt(receipt, universalTxResponse);
         }
 
-        // If outbound route (Route 2: UOA → CEA, Route 3: CEA → Push), poll for external chain details
-        if (
-          universalTxResponse.route === TransactionRoute.UOA_TO_CEA ||
-          universalTxResponse.route === TransactionRoute.CEA_TO_PUSH
-        ) {
+        // If outbound route, poll for external chain details
+        const routeInfo = universalTxResponse.route
+          ? getRouteInfo(universalTxResponse.route as TransactionRoute)
+          : undefined;
+        if (routeInfo?.isOutbound) {
           try {
             const outboundDetails = await this.waitForOutboundTx(
               tx.hash,

@@ -22,6 +22,10 @@ import { FACTORY_V1 } from '../../constants/abi';
 import { PushClient } from '../../push-client/push-client';
 import { Cache, CacheKeys } from '../../cache/cache';
 import { PushChain } from '../../push-chain/push-chain';
+import {
+  getCEAAddress,
+  getPushAccountForCEA,
+} from '../../orchestrator/cea-utils';
 
 /**
  * Formats a blockchain address based on the virtual machine type of the provided chain.
@@ -183,11 +187,38 @@ function getPushNetworkFromChain(chain: CHAIN): PUSH_NETWORK {
 export async function convertOriginToExecutor(
   account: UniversalAccount,
   options: {
+    chain?: CHAIN;
     onlyCompute?: boolean;
   } = { onlyCompute: true }
 ): Promise<ExecutorAccountInfo> {
   const { chain, address } = account;
   const { vm, chainId } = CHAIN_INFO[chain];
+
+  // If target chain is external, compute CEA on that chain
+  if (options.chain && !isPushChain(options.chain)) {
+    // Get UEA first — if input is already on Push chain, use directly
+    let ueaAddress: `0x${string}`;
+    if (isPushChain(chain)) {
+      ueaAddress = address as `0x${string}`;
+    } else {
+      // Compute UEA from origin account
+      const ueaResult = await convertOriginToExecutor(account, {
+        onlyCompute: false,
+      });
+      ueaAddress = ueaResult.address;
+    }
+
+    // Get CEA on the target external chain
+    const { cea, isDeployed } = await getCEAAddress(
+      ueaAddress,
+      options.chain
+    );
+
+    if (options.onlyCompute) {
+      return { address: cea, deployed: isDeployed };
+    }
+    return { address: cea };
+  }
 
   if (isPushChain(chain)) {
     if (options.onlyCompute) {
@@ -257,7 +288,7 @@ export async function convertOriginToExecutor(
           vm === VM.EVM
             ? address
             : vm === VM.SVM
-            ? bytesToHex(utils.bytes.bs58.decode(address))
+            ? bytesToHex(Uint8Array.from(utils.bytes.bs58.decode(address)))
             : address,
       },
     ],
@@ -334,6 +365,61 @@ export async function convertExecutorToOriginAccount(
   }
 
   return { account: universalAccount, exists: isUEA };
+}
+
+/**
+ * Convert Executor to Origin Account (with optional chain context)
+ *
+ * - Without `chain`: treats the address as a UEA on Push Chain and returns
+ *   the mapped origin account (same as convertExecutorToOriginAccount).
+ * - With `chain`: treats the address as a CEA on the specified external chain,
+ *   looks up the corresponding PushAccount (UEA) on Push Chain, and returns it.
+ */
+export async function convertExecutorToOrigin(
+  executorAddress: string,
+  options?: {
+    chain?: CHAIN;
+  }
+): Promise<OriginAccountInfo> {
+  if (options?.chain && !isPushChain(options.chain)) {
+    // CEA on external chain → look up PushAccount (UEA) on Push Chain
+    const pushAccountAddress = await getPushAccountForCEA(
+      executorAddress as `0x${string}`,
+      options.chain
+    );
+
+    if (
+      pushAccountAddress ===
+      '0x0000000000000000000000000000000000000000'
+    ) {
+      return { account: null, exists: false };
+    }
+
+    // Determine Push Chain from the external chain's network
+    const pushNetwork = getPushNetworkFromChain(options.chain);
+    let pushChain: CHAIN;
+    if (pushNetwork === PUSH_NETWORK.MAINNET) {
+      pushChain = CHAIN.PUSH_MAINNET;
+    } else if (
+      pushNetwork === PUSH_NETWORK.TESTNET_DONUT ||
+      pushNetwork === PUSH_NETWORK.TESTNET
+    ) {
+      pushChain = CHAIN.PUSH_TESTNET_DONUT;
+    } else {
+      pushChain = CHAIN.PUSH_LOCALNET;
+    }
+
+    return {
+      account: {
+        chain: pushChain,
+        address: pushAccountAddress,
+      },
+      exists: true,
+    };
+  }
+
+  // Default: UEA on Push Chain → origin account (existing behavior)
+  return convertExecutorToOriginAccount(executorAddress as `0x${string}`);
 }
 
 function isPushChain(chain: CHAIN): boolean {

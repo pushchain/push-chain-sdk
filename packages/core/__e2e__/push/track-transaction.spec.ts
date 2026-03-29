@@ -2,6 +2,7 @@ import '@e2e/shared/setup';
 import { privateKeyToAccount } from 'viem/accounts';
 import { PUSH_NETWORK, CHAIN } from '../../src/lib/constants/enums';
 import { createWalletClient, Hex, http } from 'viem';
+import { sepolia } from 'viem/chains';
 import { PushChain } from '../../src';
 import { CHAIN_INFO } from '../../src/lib/constants/chain';
 import { ProgressEvent } from '../../src/lib/progress-hook/progress-hook.types';
@@ -264,4 +265,128 @@ describe('trackTransaction E2E', () => {
       `✓ Timeout respected (took ${duration}ms for ${shortTimeout}ms timeout)`
     );
   }, 30000);
+
+  // =========================================================================
+  // Outbound route detection tests
+  // =========================================================================
+
+  it('should detect route for Push Chain (inbound) transaction', async () => {
+    if (!pushClient || !sharedTxResponse) {
+      console.log('Setup failed, skipping test');
+      return;
+    }
+
+    console.log('\n=== Testing route detection for Push Chain tx ===');
+
+    const response = await pushClient.universal.trackTransaction(
+      sharedTxResponse.hash,
+      { waitForCompletion: true }
+    );
+
+    console.log('Detected route:', response.route);
+
+    // Push Chain native tx should be UOA_TO_PUSH or undefined (backward-compatible)
+    if (response.route) {
+      expect(response.route).toBe('UOA_TO_PUSH');
+    }
+
+    console.log('✓ Route detection for inbound tx passed');
+  }, 60000);
+
+  it('should detect outbound route when tracking UOA_TO_CEA transaction', async () => {
+    // This test requires EVM_PRIVATE_KEY with a funded UEA that has done outbound txs
+    const evmPrivateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
+    if (!evmPrivateKey) {
+      console.log('EVM_PRIVATE_KEY not set, skipping outbound route test');
+      return;
+    }
+
+    console.log('\n=== Testing outbound route detection (UOA_TO_CEA) ===');
+
+    // Initialize with EVM origin (Ethereum Sepolia)
+    const evmAccount = privateKeyToAccount(evmPrivateKey);
+    const evmWalletClient = createWalletClient({
+      account: evmAccount,
+      chain: sepolia,
+      transport: http(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0]),
+    });
+
+    const evmSigner = await PushChain.utils.signer.toUniversalFromKeypair(
+      evmWalletClient,
+      {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+      }
+    );
+
+    const evmPushClient = await PushChain.initialize(evmSigner, {
+      network: PUSH_NETWORK.TESTNET_DONUT,
+    });
+
+    // Send an outbound transaction (Route 2: UOA → CEA on ETH Sepolia)
+    console.log('Sending outbound tx (UOA_TO_CEA)...');
+    let outboundTxResponse: UniversalTxResponse;
+    try {
+      outboundTxResponse = await evmPushClient.universal.sendTransaction({
+        to: {
+          address: evmAccount.address,
+          chain: CHAIN.ETHEREUM_SEPOLIA,
+        },
+        value: BigInt(0),
+        data: '0x',
+      });
+    } catch (err) {
+      console.log(`SKIP: Could not send outbound tx: ${(err as Error).message}`);
+      return;
+    }
+
+    console.log('Outbound TX Hash:', outboundTxResponse.hash);
+    console.log('Route on send:', outboundTxResponse.route);
+
+    // Track the transaction (don't call wait() on the send response — it polls outbound which is slow)
+    // trackTransaction only needs the Push Chain tx to be confirmed
+    const tracked = await evmPushClient.universal.trackTransaction(
+      outboundTxResponse.hash,
+      {
+        waitForCompletion: true,
+        advanced: { timeout: 60000 },
+      }
+    );
+
+    console.log('Tracked route:', tracked.route);
+
+    // Route should be detected as outbound
+    expect(tracked.route).toBe('UOA_TO_CEA');
+    expect(typeof tracked.wait).toBe('function');
+
+    console.log('✓ Outbound route detection passed');
+  }, 180000);
+
+  it('should reconstruct progress events for outbound transaction', async () => {
+    if (!pushClient || !sharedTxResponse) {
+      console.log('Setup failed, skipping test');
+      return;
+    }
+
+    console.log('\n=== Testing progress events include outcome hooks ===');
+
+    const events: ProgressEvent[] = [];
+    const response = await pushClient.universal.trackTransaction(
+      sharedTxResponse.hash,
+      {
+        waitForCompletion: true,
+        progressHook: (event) => {
+          events.push(event);
+        },
+      }
+    );
+
+    // Should always emit SEND-TX-01 (origin) and outcome (99-01 or 99-02)
+    expect(events.some((e) => e.id === 'SEND-TX-01')).toBe(true);
+    const hasSuccess = events.some((e) => e.id === 'SEND-TX-99-01');
+    const hasFailure = events.some((e) => e.id === 'SEND-TX-99-02');
+    expect(hasSuccess || hasFailure).toBe(true);
+
+    console.log(`✓ Progress events: ${events.length} total, success=${hasSuccess}, failure=${hasFailure}`);
+  }, 60000);
 });

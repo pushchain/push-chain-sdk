@@ -2,6 +2,7 @@ import {
   convertOriginToExecutor,
   fromChainAgnostic,
   convertExecutorToOriginAccount,
+  convertExecutorToOrigin,
   toChainAgnostic,
   toUniversal,
 } from './universal/account';
@@ -68,6 +69,8 @@ export class Utils {
     convertOriginToExecutor,
 
     convertExecutorToOriginAccount,
+
+    convertExecutorToOrigin,
   };
 
   static signer = {
