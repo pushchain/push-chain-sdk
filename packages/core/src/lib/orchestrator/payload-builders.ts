@@ -64,7 +64,7 @@ export function buildExecuteMulticall({
     // Only add ERC-20 transfer for non-native tokens AND when NOT in array multicall mode
     // - Native tokens (ETH/SOL) are bridged as native PC on Push Chain, not as PRC-20
     // - When execute.data is an array (explicit multicall), user handles fund transfers in their calls
-    if (!isArrayMulticall) {
+    if (!isNative && !isArrayMulticall) {
       const erc20Transfer = encodeFunctionData({
         abi: ERC20_EVM,
         functionName: 'transfer',
