@@ -93,12 +93,12 @@ describe('Universal Account Utilities', () => {
   });
 
   // Network-dependent tests - run via integration config
-  describe('convertExecutorToOriginAccount()', () => {
+  describe('convertExecutorToOrigin()', () => {
     it.skip('Solana: should return valid origin data for a UEA address', async () => {
       const testAddress = '0xbCfaD05E5f19Ae46feAab2F72Ad9977BC239b395';
 
       const result =
-        await PushChain.utils.account.convertExecutorToOriginAccount(
+        await PushChain.utils.account.convertExecutorToOrigin(
           testAddress
         );
 
@@ -122,7 +122,7 @@ describe('Universal Account Utilities', () => {
       const testAddress = '0x7AEE1699FeE2C906251863D24D35B3dEbe0932EC';
 
       const result =
-        await PushChain.utils.account.convertExecutorToOriginAccount(
+        await PushChain.utils.account.convertExecutorToOrigin(
           testAddress
         );
 

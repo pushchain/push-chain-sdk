@@ -265,8 +265,8 @@ describe('Read Only Mode', () => {
       expect(typeof txUrl).toBe('string');
       expect(txUrl).toContain('0x123');
 
-      const { urls } = readOnlyPushClientEVM.explorer.listUrls();
-      expect(Array.isArray(urls)).toBe(true);
+      const { explorers } = readOnlyPushClientEVM.explorer.listUrls();
+      expect(Array.isArray(explorers)).toBe(true);
     });
 
     it('should allow accessing static constants and utils on read-only client', () => {

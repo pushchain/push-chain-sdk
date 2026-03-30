@@ -320,10 +320,16 @@ export async function convertOriginToExecutor(
  *
  * Given a UEA (executor) address on Push Chain, returns the mapped origin
  * account and an existence flag.
+ *
+ * @deprecated Use `convertExecutorToOrigin()` instead, which supports both
+ *   UEA and CEA lookups via the optional `options.chain` parameter.
  */
 export async function convertExecutorToOriginAccount(
   ueaAddress: `0x${string}`
 ): Promise<OriginAccountInfo> {
+  console.warn(
+    '[PushChain] convertExecutorToOriginAccount() is deprecated. Use convertExecutorToOrigin() instead.'
+  );
   const RPC_URL = PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
   const FACTORY_ADDRESS =
     PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].factoryAddress;
@@ -418,8 +424,46 @@ export async function convertExecutorToOrigin(
     };
   }
 
-  // Default: UEA on Push Chain → origin account (existing behavior)
-  return convertExecutorToOriginAccount(executorAddress as `0x${string}`);
+  // Default: UEA on Push Chain → origin account
+  const RPC_URL = PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
+  const FACTORY_ADDRESS =
+    PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].factoryAddress;
+
+  const client = createPublicClient({
+    transport: http(RPC_URL),
+  });
+
+  const originResult = (await client.readContract({
+    address: FACTORY_ADDRESS,
+    abi: FACTORY_V1,
+    functionName: 'getOriginForUEA',
+    args: [executorAddress as `0x${string}`],
+  })) as [
+    { chainNamespace: string; chainId: string; owner: `0x${string}` },
+    boolean
+  ];
+
+  const [account, isUEA] = originResult;
+
+  if (
+    account.chainNamespace === '' ||
+    account.chainId === '' ||
+    account.owner === '0x'
+  ) {
+    return { account: null, exists: isUEA };
+  }
+
+  const universalAccount = PushChain.utils.account.fromChainAgnostic(
+    `${account.chainNamespace}:${account.chainId}:${account.owner}`
+  );
+  if (isUEA) {
+    if (universalAccount.chain.startsWith(VM_NAMESPACE[VM.SVM])) {
+      const hexBytes = hexToBytes(account.owner);
+      universalAccount.address = utils.bytes.bs58.encode(hexBytes);
+    }
+  }
+
+  return { account: universalAccount, exists: isUEA };
 }
 
 function isPushChain(chain: CHAIN): boolean {

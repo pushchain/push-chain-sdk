@@ -7,12 +7,12 @@ import '@e2e/shared/setup';
  * PAYLOAD only, FUNDS + PAYLOAD, E2E Sync, Error Handling, Progress Hooks
  *
  * Core Scenarios are parameterised across all active EVM chains via chain-fixtures.
- * Additional Tests run once against BNB Testnet only.
+ * Additional Tests are also parameterised across all active EVM chains.
  */
 import { PushChain } from '../../../src';
 import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
 import { CHAIN_INFO } from '../../../src/lib/constants/chain';
-import { MOVEABLE_TOKEN_CONSTANTS, type MoveableToken } from '../../../src/lib/constants/tokens';
+import { type MoveableToken } from '../../../src/lib/constants/tokens';
 import { createWalletClient, createPublicClient, http, Hex, parseEther, encodeFunctionData } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { getCEAAddress, chainSupportsCEA } from '../../../src/lib/orchestrator/cea-utils';
@@ -23,7 +23,7 @@ import { ERC20_EVM } from '../../../src/lib/constants/abi/erc20.evm';
 import { buildErc20WithdrawalMulticall } from '../../../src/lib/orchestrator/payload-builders';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 import { getToken } from '@e2e/shared/constants';
-import { getActiveFixtures, EVM_CHAIN_FIXTURES, type ChainTestFixture } from '@e2e/shared/chain-fixtures';
+import { getActiveFixtures, type ChainTestFixture } from '@e2e/shared/chain-fixtures';
 import {
   TEST_TARGET,
   NATIVE_ADDRESS,
@@ -32,17 +32,9 @@ import {
 
 const fixtures = getActiveFixtures();
 
-// BNB fixture for Additional Tests section (runs once, BNB-only)
-const bnbFixture = EVM_CHAIN_FIXTURES.find((f) => f.chain === CHAIN.BNB_TESTNET)!;
-
 describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
   let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
   let ueaAddress: `0x${string}`;
-
-  // BNB-specific variables used only by the Additional Tests section
-  let ceaAddress: `0x${string}`;
-  let usdtToken: MoveableToken | undefined;
-  let bscPublicClient: ReturnType<typeof createPublicClient>;
 
   // Skip if no private key is set
   const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
@@ -79,21 +71,6 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
     ueaAddress = pushClient.universal.account;
     console.log(`UEA Address: ${ueaAddress}`);
-
-    // BNB-specific setup for Additional Tests section
-    const ceaResult = await getCEAAddress(ueaAddress, CHAIN.BNB_TESTNET);
-    ceaAddress = ceaResult.cea;
-    console.log(`CEA Address on BSC: ${ceaAddress}, deployed: ${ceaResult.isDeployed}`);
-
-    // Get USDT token for ERC20 flows (BNB)
-    usdtToken = MOVEABLE_TOKEN_CONSTANTS.BNB_TESTNET.USDT;
-    if (usdtToken) {
-      console.log(`USDT Token: ${usdtToken.address} (${usdtToken.decimals} decimals)`);
-    }
-
-    bscPublicClient = createPublicClient({
-      transport: http(CHAIN_INFO[CHAIN.BNB_TESTNET].defaultRPC[0]),
-    });
   }, 60000);
 
   // ============================================================================
@@ -124,7 +101,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
     // 1. Funds
     // ==========================================================================
     describe('1. Funds', () => {
-      it('should transfer ERC-20 USDT to BSC Testnet', async () => {
+      it('should transfer ERC-20 USDT', async () => {
         if (skipE2E) return;
         if (!fixtureUsdtToken) {
           console.log('Skipping - USDT token not found');
@@ -185,7 +162,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
       // without requiring actual tokens. ERC20 `transfer` would fail because
       // the CEA (msg.sender) doesn't have the tokens to transfer.
 
-      it('should increment counter on BSC via payload', async () => {
+      it('should increment counter via payload', async () => {
         if (skipE2E) return;
 
         console.log(`\n=== Test: Counter Increment via Payload [${fixture.label}] ===`);
@@ -388,7 +365,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
           return;
         }
 
-        console.log(`\n=== Test: ERC20 Withdrawal via buildErc20WithdrawalMulticall (Flow 2.2) [${fixture.label}] ===`);
+        console.log(`\n=== Test: ERC20 Withdrawal via buildErc20WithdrawalMulticall [${fixture.label}] ===`);
 
         const withdrawAmount = BigInt(10000); // 0.01 USDT (6 decimals)
 
@@ -439,7 +416,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
     // 6. Native Funds
     // ==========================================================================
     describe('6. Native Funds', () => {
-      it('should transfer native pBNB to BSC Testnet', async () => {
+      it('should transfer native token', async () => {
         if (skipE2E) return;
 
         console.log(`\n=== Test: Native Transfer [${fixture.label}] ===`);
@@ -484,7 +461,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
     // 7. Native Funds + Payload
     // ==========================================================================
     describe('7. Native Funds + Payload', () => {
-      it('should transfer pBNB and increment counter', async () => {
+      it('should transfer native token and increment counter', async () => {
         if (skipE2E) return;
 
         console.log(`\n=== Test: Native + Counter Increment [${fixture.label}] ===`);
@@ -545,9 +522,29 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
   });
 
   // ============================================================================
-  // Additional Tests
+  // Additional Tests — parameterised across EVM chains
   // ============================================================================
-  describe('Additional Tests', () => {
+  describe.each(fixtures)('Additional Tests [$label]', (fixture: ChainTestFixture) => {
+    let fixtureCeaAddress: `0x${string}`;
+    let fixtureUsdtToken: MoveableToken | undefined;
+    let fixturePublicClient: ReturnType<typeof createPublicClient>;
+
+    beforeAll(async () => {
+      if (skipE2E) return;
+
+      const ceaResult = await getCEAAddress(ueaAddress, fixture.chain);
+      fixtureCeaAddress = ceaResult.cea;
+      console.log(`CEA Address on ${fixture.label}: ${fixtureCeaAddress}, deployed: ${ceaResult.isDeployed}`);
+
+      try {
+        fixtureUsdtToken = getToken(fixture.chain, 'USDT');
+        console.log(`USDT Token (${fixture.label}): ${fixtureUsdtToken.address} (${fixtureUsdtToken.decimals} decimals)`);
+      } catch { /* token not available for this chain */ }
+
+      fixturePublicClient = createPublicClient({
+        transport: http(CHAIN_INFO[fixture.chain].defaultRPC[0]),
+      });
+    }, 60000);
 
     // ==========================================================================
     // Route Detection
@@ -565,7 +562,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         const params: UniversalExecuteParams = {
           to: {
             address: '0x1234567890123456789012345678901234567890',
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           } as ChainTarget,
           value: parseEther('0.001'),
         };
@@ -574,7 +571,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
       it('should detect CEA_TO_PUSH when from.chain is specified with Push target', () => {
         const params: UniversalExecuteParams = {
-          from: { chain: CHAIN.BNB_TESTNET },
+          from: { chain: fixture.chain },
           to: {
             address: '0x1234567890123456789012345678901234567890',
             chain: CHAIN.PUSH_TESTNET_DONUT,
@@ -589,23 +586,19 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
     // CEA Utilities
     // ==========================================================================
     describe('CEA Utilities', () => {
-      it('should report BNB Testnet supports CEA', () => {
-        expect(chainSupportsCEA(CHAIN.BNB_TESTNET)).toBe(true);
-      });
-
-      it('should report Ethereum Sepolia supports CEA', () => {
-        expect(chainSupportsCEA(CHAIN.ETHEREUM_SEPOLIA)).toBe(true);
+      it('should report chain supports CEA', () => {
+        expect(chainSupportsCEA(fixture.chain)).toBe(true);
       });
 
       it('should report Solana Devnet does not support CEA', () => {
         expect(chainSupportsCEA(CHAIN.SOLANA_DEVNET)).toBe(false);
       });
 
-      it('should compute CEA address for UEA on BNB Testnet', async () => {
+      it('should compute CEA address for UEA', async () => {
         if (skipE2E) return;
 
-        const result = await getCEAAddress(ueaAddress, CHAIN.BNB_TESTNET);
-        console.log(`CEA on BNB Testnet: ${result.cea}, deployed: ${result.isDeployed}`);
+        const result = await getCEAAddress(ueaAddress, fixture.chain);
+        console.log(`CEA on ${fixture.label}: ${result.cea}, deployed: ${result.isDeployed}`);
 
         expect(result.cea).toMatch(/^0x[a-fA-F0-9]{40}$/);
         expect(typeof result.isDeployed).toBe('boolean');
@@ -614,13 +607,13 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
       it('should compute deterministic CEA address', async () => {
         if (skipE2E) return;
 
-        const result = await getCEAAddress(ueaAddress, CHAIN.BNB_TESTNET);
+        const result = await getCEAAddress(ueaAddress, fixture.chain);
 
         expect(result.cea).toMatch(/^0x[a-fA-F0-9]{40}$/);
         expect(typeof result.isDeployed).toBe('boolean');
 
         // CEA should be deterministic - calling again should return same address
-        const result2 = await getCEAAddress(ueaAddress, CHAIN.BNB_TESTNET);
+        const result2 = await getCEAAddress(ueaAddress, fixture.chain);
         expect(result2.cea).toBe(result.cea);
       });
     });
@@ -636,7 +629,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         const params: UniversalExecuteParams = {
           to: {
             address: targetAddress,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           value: parseEther('0.0001'),
         };
@@ -670,7 +663,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         const secondPrepared = await pushClient.universal.prepareTransaction({
           to: {
             address: '0x1234567890123456789012345678901234567890',
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           value: parseEther('0.0001'),
         });
@@ -689,12 +682,12 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
       it('should handle small amount transfer', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Test: Small Amount Transfer ===');
+        console.log(`\n=== Test: Small Amount Transfer [${fixture.label}] ===`);
 
         const params: UniversalExecuteParams = {
           to: {
             address: TEST_TARGET,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           value: BigInt(1), // 1 wei - smallest possible
         };
@@ -716,20 +709,20 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         expect(receipt.status).toBe(1);
         expect(receipt.externalTxHash).toBeDefined();
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+        expect(receipt.externalChain).toBe(fixture.chain);
 
         // Verify tx succeeded on external chain via RPC
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
       }, 360000);
 
-      it('should transfer pBNB and increment counter with multicall', async () => {
+      it('should transfer native token and increment counter with multicall', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Test: pBNB + Counter Increment Multicall (2) ===');
+        console.log(`\n=== Test: Native + Counter Increment Multicall [${fixture.label}] ===`);
 
         // Read counter BEFORE
-        const counterBefore = await bscPublicClient.readContract({
-          address: bnbFixture.contracts.counter, abi: COUNTER_ABI, functionName: 'count',
+        const counterBefore = await fixturePublicClient.readContract({
+          address: fixture.contracts.counter, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
         console.log(`Counter BEFORE: ${counterBefore}`);
 
@@ -741,14 +734,14 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         const params: UniversalExecuteParams = {
           to: {
             address: NATIVE_ADDRESS as `0x${string}`,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           value: parseEther('0.0001'),
           data: [
-            // Call 1: CEA sends BNB to recipient
+            // Call 1: CEA sends native token to recipient
             { to: TEST_TARGET, value: parseEther('0.0001'), data: '0x' as `0x${string}` },
             // Call 2: Increment counter
-            { to: bnbFixture.contracts.counter, value: BigInt(0), data: incrementPayload },
+            { to: fixture.contracts.counter, value: BigInt(0), data: incrementPayload },
           ],
         };
 
@@ -769,7 +762,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         expect(receipt.status).toBe(1);
         expect(receipt.externalTxHash).toBeDefined();
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+        expect(receipt.externalChain).toBe(fixture.chain);
 
         // Verify tx succeeded on external chain via RPC
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
@@ -778,27 +771,28 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         await new Promise((r) => setTimeout(r, 5000));
 
         // Read counter AFTER
-        const counterAfter = await bscPublicClient.readContract({
-          address: bnbFixture.contracts.counter, abi: COUNTER_ABI, functionName: 'count',
+        const counterAfter = await fixturePublicClient.readContract({
+          address: fixture.contracts.counter, abi: COUNTER_ABI, functionName: 'count',
         }) as bigint;
         console.log(`Counter AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 360000);
 
-      it('should transfer ERC-20 pUSDT to alternate BSC Testnet recipient', async () => {
+      it('should transfer ERC-20 USDT to alternate recipient', async () => {
         if (skipE2E) return;
+        if (!fixtureUsdtToken) {
+          console.log('Skipping - USDT token not found');
+          return;
+        }
 
-        // Use BNB Testnet USDT token (not Sepolia USDT) since destination is BNB Testnet
-        const bnbUsdtToken = MOVEABLE_TOKEN_CONSTANTS.BNB_TESTNET.USDT;
-
-        console.log('\n=== Test: ERC20 pUSDT Transfer to Alternate Recipient ===');
+        console.log(`\n=== Test: ERC20 USDT Transfer to Alternate Recipient [${fixture.label}] ===`);
 
         const ALTERNATE_RECIPIENT = '0x0987654321098765432109876543210987654321' as `0x${string}`;
         const withdrawAmount = BigInt(10000); // 0.01 USDT (6 decimals)
 
         // Build the ERC20 transfer multicall targeting alternate recipient
         const multicall = buildErc20WithdrawalMulticall(
-          usdtToken!.address as `0x${string}`,
+          fixtureUsdtToken.address as `0x${string}`,
           ALTERNATE_RECIPIENT,
           withdrawAmount
         );
@@ -806,11 +800,11 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         const params: UniversalExecuteParams = {
           to: {
             address: ALTERNATE_RECIPIENT,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           funds: {
             amount: withdrawAmount,
-            token: bnbUsdtToken,
+            token: fixtureUsdtToken,
           },
           data: multicall,
         };
@@ -821,7 +815,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         console.log(`Push Chain TX Hash: ${tx.hash}`);
         expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-        expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+        expect(tx.chain).toBe(fixture.chain);
 
         // Wait for outbound relay
         console.log('Calling tx.wait() - polling for external chain tx hash...');
@@ -832,7 +826,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         expect(receipt.status).toBe(1);
         expect(receipt.externalTxHash).toBeDefined();
         expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+        expect(receipt.externalChain).toBe(fixture.chain);
 
         // Verify tx succeeded on external chain via RPC
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
@@ -843,19 +837,16 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
     // E2E Sync
     // ==========================================================================
     describe('E2E Sync', () => {
-      it('should execute outbound transfer from UOA to CEA on BSC Testnet', async () => {
+      it('should execute outbound transfer from UOA to CEA', async () => {
         if (skipE2E) return;
 
         const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
 
-        // The UOA already has pBNB balance on Push Chain
-        // We can directly test the outbound flow without bridging first
-
-        // Execute outbound transfer to BSC Testnet
+        // Execute outbound transfer
         const tx = await pushClient.universal.sendTransaction({
           to: {
             address: targetAddress,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           value: parseEther('0.00015'),
           gasLimit: BigInt(2000000),
@@ -864,7 +855,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         console.log(`[TEST] ${new Date().toISOString()} Push Chain TX Hash: ${tx.hash}`);
 
         expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-        expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+        expect(tx.chain).toBe(fixture.chain);
 
         // Wait for outbound relay and verify external chain details
         console.log(`[TEST] ${new Date().toISOString()} Calling tx.wait() - polling for outbound tx hash...`);
@@ -877,8 +868,12 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         expect(receipt.status).toBe(1);
         expect(receipt.externalTxHash).toBeDefined();
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
-        expect(receipt.externalExplorerUrl).toContain('testnet.bscscan.com');
+        expect(receipt.externalChain).toBe(fixture.chain);
+
+        const expectedExplorerBase = CHAIN_INFO[fixture.chain].explorerUrl;
+        if (expectedExplorerBase) {
+          expect(receipt.externalExplorerUrl).toContain(expectedExplorerBase);
+        }
         expect(receipt.externalExplorerUrl).toContain(receipt.externalTxHash!);
 
         // Verify tx succeeded on external chain via RPC
@@ -890,14 +885,14 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
 
-        console.log(`\n=== TEST: Unified .wait() with outbound ===`);
+        console.log(`\n=== TEST: Unified .wait() with outbound [${fixture.label}] ===`);
         console.log(`[TEST] ${new Date().toISOString()} Sending outbound tx...`);
 
-        // Execute outbound transfer to BSC Testnet
+        // Execute outbound transfer
         const tx = await pushClient.universal.sendTransaction({
           to: {
             address: targetAddress,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           value: parseEther('0.00015'),
           gasLimit: BigInt(2000000),
@@ -925,8 +920,12 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         // Verify external chain details are included (outbound route)
         expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
-        expect(receipt.externalExplorerUrl).toContain('testnet.bscscan.com');
+        expect(receipt.externalChain).toBe(fixture.chain);
+
+        const expectedExplorerBase = CHAIN_INFO[fixture.chain].explorerUrl;
+        if (expectedExplorerBase) {
+          expect(receipt.externalExplorerUrl).toContain(expectedExplorerBase);
+        }
         expect(receipt.externalExplorerUrl).toContain(receipt.externalTxHash!);
 
         // Verify tx succeeded on external chain via RPC
@@ -966,7 +965,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         const params: UniversalExecuteParams = {
           to: {
             address: NATIVE_ADDRESS as `0x${string}`,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           value: parseEther('0.0001'),
         };
@@ -985,7 +984,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
       it('should emit correct hooks for FUNDS flow', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Test: Progress Hooks (FUNDS) ===');
+        console.log(`\n=== Test: Progress Hooks (FUNDS) [${fixture.label}] ===`);
 
         const events: ProgressEvent[] = [];
 
@@ -1016,7 +1015,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         const params: UniversalExecuteParams = {
           to: {
             address: TEST_TARGET,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           value: parseEther('0.00001'),
         };
@@ -1033,6 +1032,10 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
       it('should emit correct hooks for PAYLOAD flow', async () => {
         if (skipE2E) return;
+        if (!fixtureUsdtToken) {
+          console.log('Skipping - USDT token not found');
+          return;
+        }
 
         const events: ProgressEvent[] = [];
 
@@ -1067,8 +1070,8 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         const params: UniversalExecuteParams = {
           to: {
-            address: usdtToken!.address as `0x${string}`,
-            chain: CHAIN.BNB_TESTNET,
+            address: fixtureUsdtToken.address as `0x${string}`,
+            chain: fixture.chain,
           },
           data: payload,
         };
@@ -1086,14 +1089,14 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
     describe('DeFi Flows', () => {
       const SPENDER = '0x9999999999999999999999999999999999999999' as `0x${string}`;
 
-      it('should execute ERC20 burn + approve multicall (Flow 3.4)', async () => {
+      it('should execute ERC20 burn + approve multicall', async () => {
         if (skipE2E) return;
-        if (!usdtToken) {
+        if (!fixtureUsdtToken) {
           console.log('Skipping - USDT token not found');
           return;
         }
 
-        console.log('\n=== Test: ERC20 Burn + Approve Multicall (Flow 3.4) ===');
+        console.log(`\n=== Test: ERC20 Burn + Approve Multicall [${fixture.label}] ===`);
 
         const burnAmount = BigInt(10000); // 0.01 USDT
 
@@ -1107,15 +1110,15 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         const params: UniversalExecuteParams = {
           to: {
             address: NATIVE_ADDRESS as `0x${string}`,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           funds: {
             amount: burnAmount,
-            token: usdtToken,
+            token: fixtureUsdtToken,
           },
           data: [
             // Step 1: Approve spender for the burned token amount
-            { to: usdtToken.address as `0x${string}`, value: BigInt(0), data: approvePayload },
+            { to: fixtureUsdtToken.address as `0x${string}`, value: BigInt(0), data: approvePayload },
           ],
         };
 
@@ -1136,16 +1139,20 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         expect(receipt.status).toBe(1);
         expect(receipt.externalTxHash).toBeDefined();
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+        expect(receipt.externalChain).toBe(fixture.chain);
 
         // Verify tx succeeded on external chain via RPC
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
       }, 600000);
 
-      it('should execute ERC20 CEA-only with no burn (Flow 3.5)', async () => {
+      it('should execute ERC20 CEA-only with no burn', async () => {
         if (skipE2E) return;
+        if (!fixtureUsdtToken) {
+          console.log('Skipping - USDT token not found');
+          return;
+        }
 
-        console.log('\n=== Test: ERC20 CEA-Only, No Burn (Flow 3.5) ===');
+        console.log(`\n=== Test: ERC20 CEA-Only, No Burn [${fixture.label}] ===`);
         console.log('Note: Payload-only with burnAmount = 0 (precompile fix deployed)');
 
         // No funds, no value — only data. CEA uses existing balance.
@@ -1158,11 +1165,11 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         const params: UniversalExecuteParams = {
           to: {
             address: NATIVE_ADDRESS as `0x${string}`,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           // No value, no funds — GAS_AND_PAYLOAD type
           data: [
-            { to: usdtToken!.address as `0x${string}`, value: BigInt(0), data: approvePayload },
+            { to: fixtureUsdtToken.address as `0x${string}`, value: BigInt(0), data: approvePayload },
           ],
         };
 
@@ -1183,20 +1190,20 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         expect(receipt.status).toBe(1);
         expect(receipt.externalTxHash).toBeDefined();
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+        expect(receipt.externalChain).toBe(fixture.chain);
 
         // Verify tx succeeded on external chain via RPC
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
       }, 600000);
 
-      it('should execute ERC20 hybrid burn + CEA balance (Flow 3.6)', async () => {
+      it('should execute ERC20 hybrid burn + CEA balance', async () => {
         if (skipE2E) return;
-        if (!usdtToken) {
+        if (!fixtureUsdtToken) {
           console.log('Skipping - USDT token not found');
           return;
         }
 
-        console.log('\n=== Test: ERC20 Hybrid Burn + CEA Balance (Flow 3.6) ===');
+        console.log(`\n=== Test: ERC20 Hybrid Burn + CEA Balance [${fixture.label}] ===`);
         console.log('Note: Combined approval exceeds burn amount (draws on CEA existing balance)');
 
         const burnAmount = BigInt(10000); // 0.01 USDT burned on Push Chain
@@ -1212,15 +1219,15 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         const params: UniversalExecuteParams = {
           to: {
             address: NATIVE_ADDRESS as `0x${string}`,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           funds: {
             amount: burnAmount,
-            token: usdtToken,
+            token: fixtureUsdtToken,
           },
           data: [
             // Approve for combined amount (burn + existing CEA balance)
-            { to: usdtToken.address as `0x${string}`, value: BigInt(0), data: approvePayload },
+            { to: fixtureUsdtToken.address as `0x${string}`, value: BigInt(0), data: approvePayload },
           ],
         };
 
@@ -1241,7 +1248,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         expect(receipt.status).toBe(1);
         expect(receipt.externalTxHash).toBeDefined();
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+        expect(receipt.externalChain).toBe(fixture.chain);
 
         // Verify tx succeeded on external chain via RPC
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
@@ -1250,19 +1257,19 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
       it('should execute native hybrid: multicall value exceeds burnAmount', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Test: Native Hybrid — Multicall Value > Burn (Flow 3.3) ===');
-        console.log('Note: Burns 0.0001 BNB but multicall sends 0.0002 BNB (CEA balance covers diff)');
+        console.log(`\n=== Test: Native Hybrid — Multicall Value > Burn [${fixture.label}] ===`);
+        console.log('Note: Burns 0.0001 native but multicall sends 0.0002 native (CEA balance covers diff)');
 
         const burnAmount = parseEther('0.0001'); // Amount burned on Push Chain
 
         const params: UniversalExecuteParams = {
           to: {
             address: NATIVE_ADDRESS as `0x${string}`,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           value: burnAmount, // Burns this amount on Push Chain
           data: [
-            // Multicall sends more than burn — relies on CEA having pre-existing BNB balance
+            // Multicall sends more than burn — relies on CEA having pre-existing native balance
             { to: TEST_TARGET, value: parseEther('0.0002'), data: '0x' as `0x${string}` },
           ],
         };
@@ -1284,7 +1291,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         expect(receipt.status).toBe(1);
         expect(receipt.externalTxHash).toBeDefined();
-        expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+        expect(receipt.externalChain).toBe(fixture.chain);
 
         // Verify tx succeeded on external chain via RPC
         await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
@@ -1298,11 +1305,11 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
       it('should increment counter via payload-only outbound', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Test: Counter Payload Only — Single Increment ===');
+        console.log(`\n=== Test: Counter Payload Only — Single Increment [${fixture.label}] ===`);
 
         // Read counter BEFORE
-        const counterBefore = await bscPublicClient.readContract({
-          address: bnbFixture.contracts.counter,
+        const counterBefore = await fixturePublicClient.readContract({
+          address: fixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
@@ -1310,8 +1317,8 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         const params: UniversalExecuteParams = {
           to: {
-            address: bnbFixture.contracts.counter,
-            chain: CHAIN.BNB_TESTNET,
+            address: fixture.contracts.counter,
+            chain: fixture.chain,
           },
           data: encodeFunctionData({ abi: COUNTER_ABI, functionName: 'increment' }),
         };
@@ -1332,8 +1339,8 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         await new Promise((r) => setTimeout(r, 5000));
 
         // Read counter AFTER
-        const counterAfter = await bscPublicClient.readContract({
-          address: bnbFixture.contracts.counter,
+        const counterAfter = await fixturePublicClient.readContract({
+          address: fixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
@@ -1342,16 +1349,16 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 600000);
 
-      it('should transfer BNB + increment counter via native funds + payload', async () => {
+      it('should transfer native token + increment counter via native funds + payload', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Test: Counter Native Funds + Payload ===');
+        console.log(`\n=== Test: Counter Native Funds + Payload [${fixture.label}] ===`);
 
         const incrementPayload = encodeFunctionData({ abi: COUNTER_ABI, functionName: 'increment' });
 
         // Read counter BEFORE
-        const counterBefore = await bscPublicClient.readContract({
-          address: bnbFixture.contracts.counter,
+        const counterBefore = await fixturePublicClient.readContract({
+          address: fixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
@@ -1360,12 +1367,12 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         const params: UniversalExecuteParams = {
           to: {
             address: NATIVE_ADDRESS as `0x${string}`,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           value: parseEther('0.0001'),
           data: [
             { to: TEST_TARGET, value: parseEther('0.0001'), data: '0x' as `0x${string}` },
-            { to: bnbFixture.contracts.counter, value: BigInt(0), data: incrementPayload },
+            { to: fixture.contracts.counter, value: BigInt(0), data: incrementPayload },
           ],
         };
 
@@ -1385,8 +1392,8 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         await new Promise((r) => setTimeout(r, 5000));
 
         // Read counter AFTER
-        const counterAfter = await bscPublicClient.readContract({
-          address: bnbFixture.contracts.counter,
+        const counterAfter = await fixturePublicClient.readContract({
+          address: fixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
@@ -1395,16 +1402,16 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         expect(counterAfter).toBeGreaterThan(counterBefore);
       }, 600000);
 
-      it('should transfer BNB + double increment counter via native funds + multicall', async () => {
+      it('should transfer native token + double increment counter via native funds + multicall', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Test: Counter Native Funds + Multicall (Double Increment) ===');
+        console.log(`\n=== Test: Counter Native Funds + Multicall (Double Increment) [${fixture.label}] ===`);
 
         const incrementPayload = encodeFunctionData({ abi: COUNTER_ABI, functionName: 'increment' });
 
         // Read counter BEFORE
-        const counterBefore = await bscPublicClient.readContract({
-          address: bnbFixture.contracts.counter,
+        const counterBefore = await fixturePublicClient.readContract({
+          address: fixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
@@ -1413,13 +1420,13 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         const params: UniversalExecuteParams = {
           to: {
             address: NATIVE_ADDRESS as `0x${string}`,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           value: parseEther('0.0001'),
           data: [
             { to: TEST_TARGET, value: parseEther('0.0001'), data: '0x' as `0x${string}` },
-            { to: bnbFixture.contracts.counter, value: BigInt(0), data: incrementPayload },
-            { to: bnbFixture.contracts.counter, value: BigInt(0), data: incrementPayload },
+            { to: fixture.contracts.counter, value: BigInt(0), data: incrementPayload },
+            { to: fixture.contracts.counter, value: BigInt(0), data: incrementPayload },
           ],
         };
 
@@ -1439,8 +1446,8 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         await new Promise((r) => setTimeout(r, 5000));
 
         // Read counter AFTER
-        const counterAfter = await bscPublicClient.readContract({
-          address: bnbFixture.contracts.counter,
+        const counterAfter = await fixturePublicClient.readContract({
+          address: fixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
@@ -1451,12 +1458,12 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
       it('should transfer ERC20 USDT + increment counter via funds + payload', async () => {
         if (skipE2E) return;
-        if (!usdtToken) {
+        if (!fixtureUsdtToken) {
           console.log('Skipping - USDT token not found');
           return;
         }
 
-        console.log('\n=== Test: Counter ERC20 Funds + Payload — USDT Transfer + Increment ===');
+        console.log(`\n=== Test: Counter ERC20 Funds + Payload — USDT Transfer + Increment [${fixture.label}] ===`);
 
         const incrementPayload = encodeFunctionData({ abi: COUNTER_ABI, functionName: 'increment' });
         const erc20TransferPayload = encodeFunctionData({
@@ -1466,8 +1473,8 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         });
 
         // Read counter BEFORE
-        const counterBefore = await bscPublicClient.readContract({
-          address: bnbFixture.contracts.counter,
+        const counterBefore = await fixturePublicClient.readContract({
+          address: fixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
@@ -1476,15 +1483,15 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         const params: UniversalExecuteParams = {
           to: {
             address: NATIVE_ADDRESS as `0x${string}`,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           funds: {
             amount: BigInt(10000),
-            token: usdtToken,
+            token: fixtureUsdtToken,
           },
           data: [
-            { to: usdtToken.address as `0x${string}`, value: BigInt(0), data: erc20TransferPayload },
-            { to: bnbFixture.contracts.counter, value: BigInt(0), data: incrementPayload },
+            { to: fixtureUsdtToken.address as `0x${string}`, value: BigInt(0), data: erc20TransferPayload },
+            { to: fixture.contracts.counter, value: BigInt(0), data: incrementPayload },
           ],
         };
 
@@ -1504,8 +1511,8 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         await new Promise((r) => setTimeout(r, 5000));
 
         // Read counter AFTER
-        const counterAfter = await bscPublicClient.readContract({
-          address: bnbFixture.contracts.counter,
+        const counterAfter = await fixturePublicClient.readContract({
+          address: fixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
@@ -1516,12 +1523,12 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
       it('should transfer ERC20 USDT + double increment counter via funds + multicall', async () => {
         if (skipE2E) return;
-        if (!usdtToken) {
+        if (!fixtureUsdtToken) {
           console.log('Skipping - USDT token not found');
           return;
         }
 
-        console.log('\n=== Test: Counter ERC20 Funds + Multicall — USDT Transfer + Double Increment ===');
+        console.log(`\n=== Test: Counter ERC20 Funds + Multicall — USDT Transfer + Double Increment [${fixture.label}] ===`);
 
         const incrementPayload = encodeFunctionData({ abi: COUNTER_ABI, functionName: 'increment' });
         const erc20TransferPayload = encodeFunctionData({
@@ -1531,8 +1538,8 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         });
 
         // Read counter BEFORE
-        const counterBefore = await bscPublicClient.readContract({
-          address: bnbFixture.contracts.counter,
+        const counterBefore = await fixturePublicClient.readContract({
+          address: fixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
@@ -1541,16 +1548,16 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         const params: UniversalExecuteParams = {
           to: {
             address: NATIVE_ADDRESS as `0x${string}`,
-            chain: CHAIN.BNB_TESTNET,
+            chain: fixture.chain,
           },
           funds: {
             amount: BigInt(10000),
-            token: usdtToken,
+            token: fixtureUsdtToken,
           },
           data: [
-            { to: usdtToken.address as `0x${string}`, value: BigInt(0), data: erc20TransferPayload },
-            { to: bnbFixture.contracts.counter, value: BigInt(0), data: incrementPayload },
-            { to: bnbFixture.contracts.counter, value: BigInt(0), data: incrementPayload },
+            { to: fixtureUsdtToken.address as `0x${string}`, value: BigInt(0), data: erc20TransferPayload },
+            { to: fixture.contracts.counter, value: BigInt(0), data: incrementPayload },
+            { to: fixture.contracts.counter, value: BigInt(0), data: incrementPayload },
           ],
         };
 
@@ -1570,8 +1577,8 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         await new Promise((r) => setTimeout(r, 5000));
 
         // Read counter AFTER
-        const counterAfter = await bscPublicClient.readContract({
-          address: bnbFixture.contracts.counter,
+        const counterAfter = await fixturePublicClient.readContract({
+          address: fixture.contracts.counter,
           abi: COUNTER_ABI,
           functionName: 'count',
         }) as bigint;
@@ -1580,12 +1587,12 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         expect(counterAfter).toBeGreaterThanOrEqual(counterBefore + BigInt(2));
       }, 600000);
 
-      it('should migrate CEA on BNB Testnet via migrateCEA convenience method', async () => {
+      it('should migrate CEA via migrateCEA convenience method', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Test: CEA Migration via migrateCEA ===');
+        console.log(`\n=== Test: CEA Migration via migrateCEA [${fixture.label}] ===`);
 
-        const tx = await pushClient.universal.migrateCEA(CHAIN.BNB_TESTNET);
+        const tx = await pushClient.universal.migrateCEA(fixture.chain);
         console.log(`Push Chain TX Hash: ${tx.hash}`);
         expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
 
@@ -1597,18 +1604,18 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         expect(receipt.externalTxHash).toBeDefined();
 
         // Verify tx succeeded on external chain via RPC
-        await verifyExternalTransaction(receipt.externalTxHash!, CHAIN.BNB_TESTNET);
+        await verifyExternalTransaction(receipt.externalTxHash!, fixture.chain);
       }, 600000);
 
       it('should migrate CEA via sendTransaction with migration flag', async () => {
         if (skipE2E) return;
 
-        console.log('\n=== Test: CEA Migration via sendTransaction ===');
+        console.log(`\n=== Test: CEA Migration via sendTransaction [${fixture.label}] ===`);
 
         const params: UniversalExecuteParams = {
           to: {
-            address: ceaAddress,
-            chain: CHAIN.BNB_TESTNET,
+            address: fixtureCeaAddress,
+            chain: fixture.chain,
           },
           migration: true,
         };
@@ -1627,7 +1634,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         expect(receipt.externalTxHash).toBeDefined();
 
         // Verify tx succeeded on external chain via RPC
-        await verifyExternalTransaction(receipt.externalTxHash!, CHAIN.BNB_TESTNET);
+        await verifyExternalTransaction(receipt.externalTxHash!, fixture.chain);
       }, 600000);
     });
   });

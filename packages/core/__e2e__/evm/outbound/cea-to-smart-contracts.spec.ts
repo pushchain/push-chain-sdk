@@ -6,7 +6,7 @@ import '@e2e/shared/setup';
  * that triggers outbound transactions via UGPC and receives inbound calls from its CEA.
  *
  * Covers:
- * - Part 1: Transfer PRC20 (pBNB) to StakingExample contract
+ * - Part 1: Transfer PRC20 native token to StakingExample contract
  * - Part 2: Trigger outbound (CEA deployment) on external chain
  * - Part 3: Verify CEA deployment on external chain
  * - Part 4: Full round-trip (outbound + inbound STAKE action)

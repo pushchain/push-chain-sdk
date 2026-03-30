@@ -177,8 +177,8 @@ describe('Reinitialize Method', () => {
 
       expect(newClient).not.toBe(pushClientEVM);
 
-      const { urls } = newClient.explorer.listUrls();
-      expect(urls).toEqual([
+      const { explorers } = newClient.explorer.listUrls();
+      expect(explorers[0].urls).toEqual([
         'https://custom-explorer1.push.network',
         'https://custom-explorer2.push.network',
       ]);

@@ -389,4 +389,60 @@ describe('trackTransaction E2E', () => {
 
     console.log(`✓ Progress events: ${events.length} total, success=${hasSuccess}, failure=${hasFailure}`);
   }, 60000);
+
+  // =========================================================================
+  // Known outbound transaction tracking
+  // =========================================================================
+
+  it('should track a known outbound transaction and detect route', async () => {
+    if (!pushClient) {
+      console.log('Setup failed, skipping test');
+      return;
+    }
+
+    const KNOWN_OUTBOUND_TX = '0xd7bb53cf61c60ba17a2fd874e2e0bf5cb34e48c88c04bb47d6885e4152dcc5f0';
+
+    console.log('\n=== Tracking known outbound transaction ===');
+    console.log('TX Hash:', KNOWN_OUTBOUND_TX);
+
+    const events: ProgressEvent[] = [];
+    const response = await pushClient.universal.trackTransaction(
+      KNOWN_OUTBOUND_TX,
+      {
+        waitForCompletion: true,
+        progressHook: (event) => {
+          console.log(`[TRACK] ${event.id}: ${event.message}`);
+          events.push(event);
+        },
+        advanced: { timeout: 30000 },
+      }
+    );
+
+    console.log('Detected route:', response.route);
+    console.log('Block number:', response.blockNumber.toString());
+
+    // Should detect outbound route
+    expect(response.hash).toBe(KNOWN_OUTBOUND_TX);
+    expect(response.route).toBe('UOA_TO_CEA');
+    expect(response.blockNumber).toBeGreaterThan(BigInt(0));
+    expect(typeof response.wait).toBe('function');
+
+    // Should emit SEND-TX-* progress hooks
+    expect(events.some((e) => e.id === 'SEND-TX-01')).toBe(true);
+    expect(events.some((e) => e.id === 'SEND-TX-99-01' || e.id === 'SEND-TX-99-02')).toBe(true);
+
+    // Call wait() — should return outbound receipt with external chain details
+    console.log('Calling response.wait() for outbound receipt...');
+    const receipt = await response.wait();
+    console.log('Receipt status:', receipt.status);
+    console.log('External TX Hash:', receipt.externalTxHash);
+    console.log('External Chain:', receipt.externalChain);
+
+    expect(receipt.status).toBe(1);
+    expect(receipt.externalTxHash).toBeDefined();
+    expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+    expect(receipt.externalChain).toBeDefined();
+
+    console.log('✓ Known outbound transaction tracking passed');
+  }, 120000);
 });

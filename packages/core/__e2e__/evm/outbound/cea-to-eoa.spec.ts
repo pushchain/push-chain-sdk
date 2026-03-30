@@ -8,7 +8,7 @@ import '@e2e/shared/setup';
  *
  * Parameterised across all active EVM chains via chain-fixtures.
  *
- * Coverage: R3-F (Native Bridge Back), R3-F-ERC20 (ERC-20 Bridge Back)
+ * Coverage: Native Bridge Back, ERC-20 Bridge Back
  */
 import { PushChain } from '../../../src';
 import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';

@@ -7,7 +7,7 @@ import '@e2e/shared/setup';
  *
  * Parameterised across all active EVM chains via chain-fixtures.
  *
- * Coverage: R2-P-3 (Payload), R2-F-9 (Funds), R2-PF-10 (Payload + Funds)
+ * Coverage: Payload, Funds, Payload + Funds
  */
 import { PushChain } from '../../../src';
 import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
@@ -113,7 +113,7 @@ describe('EOA -> CEA: Outbound from Push Chain Native Account (Route 2)', () => 
           return;
         }
 
-        console.log(`\n=== Test: EOA ERC-20 USDT Transfer (R2-F-ERC20) [${fixture.label}] ===`);
+        console.log(`\n=== Test: EOA ERC-20 USDT Transfer [${fixture.label}] ===`);
 
         const withdrawAmount = BigInt(10000); // 0.01 USDT (6 decimals)
 
@@ -165,7 +165,7 @@ describe('EOA -> CEA: Outbound from Push Chain Native Account (Route 2)', () => 
       it('should increment counter from Push EOA', async () => {
         if (skipE2E) return;
 
-        console.log(`\n=== Test: EOA Counter Increment (R2-P-3) [${fixture.label}] ===`);
+        console.log(`\n=== Test: EOA Counter Increment [${fixture.label}] ===`);
 
         // Read counter BEFORE
         const counterBefore = await publicClient.readContract({
@@ -227,7 +227,7 @@ describe('EOA -> CEA: Outbound from Push Chain Native Account (Route 2)', () => 
       it('should increment counter twice via multicall from Push EOA', async () => {
         if (skipE2E) return;
 
-        console.log(`\n=== Test: EOA Multicall — Double Increment (R2-MC) [${fixture.label}] ===`);
+        console.log(`\n=== Test: EOA Multicall — Double Increment [${fixture.label}] ===`);
 
         // Read counter BEFORE
         const counterBefore = await publicClient.readContract({
@@ -296,7 +296,7 @@ describe('EOA -> CEA: Outbound from Push Chain Native Account (Route 2)', () => 
           return;
         }
 
-        console.log(`\n=== Test: EOA ERC-20 USDT + Counter Increment (R2-FP) [${fixture.label}] ===`);
+        console.log(`\n=== Test: EOA ERC-20 USDT + Counter Increment [${fixture.label}] ===`);
 
         // Read counter BEFORE
         const counterBefore = await publicClient.readContract({
@@ -369,7 +369,7 @@ describe('EOA -> CEA: Outbound from Push Chain Native Account (Route 2)', () => 
           return;
         }
 
-        console.log(`\n=== Test: EOA ERC-20 USDT + Counter Increment (R2-FP-ERC20) [${fixture.label}] ===`);
+        console.log(`\n=== Test: EOA ERC-20 USDT + Counter Increment [${fixture.label}] ===`);
 
         // Read counter BEFORE
         const counterBefore = await publicClient.readContract({
@@ -447,7 +447,7 @@ describe('EOA -> CEA: Outbound from Push Chain Native Account (Route 2)', () => 
       it('should transfer native token from Push EOA', async () => {
         if (skipE2E) return;
 
-        console.log(`\n=== Test: EOA Native Transfer (R2-F-9) [${fixture.label}] ===`);
+        console.log(`\n=== Test: EOA Native Transfer [${fixture.label}] ===`);
 
         const params: UniversalExecuteParams = {
           to: {
@@ -492,7 +492,7 @@ describe('EOA -> CEA: Outbound from Push Chain Native Account (Route 2)', () => 
       it('should transfer native token and increment counter from Push EOA', async () => {
         if (skipE2E) return;
 
-        console.log(`\n=== Test: EOA Native + Counter Increment (R2-NFP) [${fixture.label}] ===`);
+        console.log(`\n=== Test: EOA Native + Counter Increment [${fixture.label}] ===`);
 
         // Read counter BEFORE (using payable counter that accepts native token)
         const counterBefore = await publicClient.readContract({

@@ -1521,7 +1521,9 @@ export class Orchestrator {
         // passed as zeroAddress in the future.
         // execute.to = zeroAddress;
         payloadTo = zeroAddress;
-        console.warn(`Multicalls should have execute.to as ${zeroAddress}`);
+        if (execute.to.toLowerCase() !== zeroAddress) {
+          console.warn(`Multicalls should have execute.to as ${zeroAddress}`);
+        }
         payloadData = this._buildMulticallPayloadData(
           execute.to,
           buildExecuteMulticall({ execute, ueaAddress: UEA })
@@ -7411,7 +7413,7 @@ export class Orchestrator {
     };
 
     const ueaOrigin =
-      await PushChain.utils.account.convertExecutorToOriginAccount(
+      await PushChain.utils.account.convertExecutorToOrigin(
         tx.to as `0x${string}`
       );
     let originAddress: string;

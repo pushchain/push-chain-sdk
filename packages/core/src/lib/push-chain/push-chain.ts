@@ -1,6 +1,10 @@
 import { CONSTANTS } from '../constants';
 import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
-import { CHAIN_INFO } from '../constants/chain';
+import {
+  CHAIN_INFO,
+  CHAIN_EXPLORERS,
+  getExplorerTxUrl,
+} from '../constants/chain';
 import { Orchestrator } from '../orchestrator/orchestrator';
 import { createUniversalSigner } from '../universal/signer';
 import {
@@ -132,8 +136,24 @@ export class PushChain {
   };
 
   explorer: {
-    getTransactionUrl: (txHash: string) => string;
-    listUrls: () => { urls: string[] };
+    getTransactionUrl: (
+      txHash: string,
+      options?: { chain?: CHAIN }
+    ) => string;
+    listUrls: (options?: { chain?: CHAIN }) => {
+      explorers: Array<{
+        chain: string;
+        chainName: string;
+        urls: string[];
+      }>;
+    };
+    listAllUrls: () => {
+      explorers: Array<{
+        chain: string;
+        chainName: string;
+        urls: string[];
+      }>;
+    };
   };
 
   /**
@@ -250,12 +270,105 @@ export class PushChain {
       },
     };
 
+    const network =
+      orchestrator.getNetwork() === PUSH_NETWORK.MAINNET
+        ? 'mainnet'
+        : 'testnet';
+
     this.explorer = {
-      getTransactionUrl: (txHash: string) => {
+      getTransactionUrl: (
+        txHash: string,
+        options?: { chain?: CHAIN }
+      ): string => {
+        if (options?.chain) {
+          // Use user-provided block explorers first, then fall back to built-in
+          const userUrls = blockExplorers[options.chain];
+          if (userUrls?.length) {
+            return `${userUrls[0]}/tx/${txHash}`;
+          }
+          const builtInUrl = getExplorerTxUrl(txHash, options.chain, network);
+          if (builtInUrl) return builtInUrl;
+        }
+        // Default: Push Chain explorer
+        const pushUrls = blockExplorers[CHAIN.PUSH_TESTNET_DONUT];
+        if (pushUrls?.length) {
+          return `${pushUrls[0]}/tx/${txHash}`;
+        }
         return `https://donut.push.network/tx/${txHash}`;
       },
-      listUrls: () => {
-        return { urls: blockExplorers[CHAIN.PUSH_TESTNET_DONUT] ?? [] };
+
+      listUrls: (options?: { chain?: CHAIN }) => {
+        const targetChain = options?.chain ?? CHAIN.PUSH_TESTNET_DONUT;
+
+        // Check user-provided block explorers first
+        const userUrls = blockExplorers[targetChain];
+        if (userUrls?.length) {
+          return {
+            explorers: [
+              {
+                chain: targetChain,
+                chainName: Utils.chains.getChainName(targetChain) ?? targetChain,
+                urls: userUrls,
+              },
+            ],
+          };
+        }
+
+        // Fall back to built-in CHAIN_EXPLORERS
+        const explorers = CHAIN_EXPLORERS[targetChain];
+        const builtInUrls =
+          network === 'mainnet' ? explorers?.mainnet : explorers?.testnet;
+
+        return {
+          explorers: [
+            {
+              chain: targetChain,
+              chainName: Utils.chains.getChainName(targetChain) ?? targetChain,
+              urls: builtInUrls ?? [],
+            },
+          ],
+        };
+      },
+
+      listAllUrls: () => {
+        const result: Array<{
+          chain: string;
+          chainName: string;
+          urls: string[];
+        }> = [];
+
+        // Collect all chains from both built-in and user-provided explorers
+        const allChains = new Set<CHAIN>([
+          ...(Object.keys(CHAIN_EXPLORERS) as CHAIN[]),
+          ...(Object.keys(blockExplorers) as CHAIN[]),
+        ]);
+
+        for (const chain of allChains) {
+          // User overrides take precedence
+          const userUrls = blockExplorers[chain];
+          if (userUrls?.length) {
+            result.push({
+              chain,
+              chainName: Utils.chains.getChainName(chain) ?? chain,
+              urls: userUrls,
+            });
+            continue;
+          }
+
+          // Built-in CHAIN_EXPLORERS
+          const explorers = CHAIN_EXPLORERS[chain];
+          const builtInUrls =
+            network === 'mainnet' ? explorers?.mainnet : explorers?.testnet;
+          if (builtInUrls?.length) {
+            result.push({
+              chain,
+              chainName: Utils.chains.getChainName(chain) ?? chain,
+              urls: builtInUrls,
+            });
+          }
+        }
+
+        return { explorers: result };
       },
     };
 
