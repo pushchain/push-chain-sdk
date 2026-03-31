@@ -94,6 +94,7 @@ import {
   CascadeHopInfo,
   CascadeCompletionResult,
   CascadeTrackOptions,
+  RescueFundsParams,
 } from './orchestrator.types';
 import {
   buildExecuteMulticall,
@@ -406,6 +407,122 @@ export class Orchestrator {
       to: { address: cea, chain },
       migration: true,
     });
+  }
+
+  /**
+   * Rescue stuck funds on a source chain.
+   * When a CEA-to-Push inbound transaction fails, tokens get locked in the
+   * Vault on the source chain. This triggers a manual revert via TSS to
+   * release those funds back to the user.
+   *
+   * @param params - RescueFundsParams with universalTxId and prc20 token
+   * @returns Transaction response
+   */
+  async rescueFunds(params: RescueFundsParams): Promise<UniversalTxResponse> {
+    // Validate universalTxId format (bytes32: 0x + 64 hex chars)
+    if (
+      !params.universalTxId ||
+      params.universalTxId.length !== 66 ||
+      !/^0x[0-9a-fA-F]{64}$/.test(params.universalTxId)
+    ) {
+      throw new Error(
+        `Invalid universalTxId: expected 0x-prefixed bytes32 (66 chars), got "${params.universalTxId}"`
+      );
+    }
+
+    // Validate prc20 is not zero address
+    if (
+      !params.prc20 ||
+      params.prc20 === (ZERO_ADDRESS as `0x${string}`)
+    ) {
+      throw new Error('prc20 token address cannot be zero address');
+    }
+
+    const ueaAddress = this.computeUEAOffchain();
+    const gatewayPcAddress = this.getUniversalGatewayPCAddress();
+
+    this.printLog(
+      `rescueFunds — universalTxId=${params.universalTxId}, prc20=${params.prc20}, gateway=${gatewayPcAddress}`
+    );
+
+    // Pre-fetch UEA status
+    const [ueaCode, ueaBalance] = await Promise.all([
+      this.pushClient.publicClient.getCode({ address: ueaAddress }),
+      this.pushClient.getBalance(ueaAddress),
+    ]);
+    const isUEADeployed = ueaCode !== undefined;
+    const ueaNonce = isUEADeployed ? await this.getUEANonce(ueaAddress) : BigInt(0);
+
+    // Query rescue gas fee
+    let nativeValueForGas = BigInt(0);
+    try {
+      const result = await this.queryRescueGasFee(params.prc20);
+      nativeValueForGas = result.nativeValueForGas;
+      this.printLog(
+        `rescueFunds — queried gas fee: gasFee=${result.gasFee.toString()}, gasToken=${result.gasToken}, nativeValueForGas=${nativeValueForGas.toString()}`
+      );
+    } catch (err) {
+      throw new Error(`Failed to query rescue gas fee: ${err}`);
+    }
+
+    // Adjust nativeValueForGas using the same balance-capping pattern as outbound
+    const EVM_NATIVE_VALUE_TARGET = BigInt(200e18); // 200 UPC
+    const EVM_GAS_RESERVE = BigInt(3e18); // 3 UPC for tx overhead
+    const currentBalance = await this.pushClient.getBalance(ueaAddress);
+
+    let adjustedValue: bigint;
+    if (currentBalance > EVM_NATIVE_VALUE_TARGET + EVM_GAS_RESERVE) {
+      adjustedValue = EVM_NATIVE_VALUE_TARGET;
+    } else if (currentBalance > EVM_GAS_RESERVE) {
+      adjustedValue = currentBalance - EVM_GAS_RESERVE;
+    } else {
+      adjustedValue = nativeValueForGas;
+    }
+
+    if (adjustedValue !== nativeValueForGas) {
+      this.printLog(
+        `rescueFunds — adjusting nativeValueForGas from ${nativeValueForGas.toString()} to ${adjustedValue.toString()} (UEA balance: ${currentBalance.toString()})`
+      );
+      nativeValueForGas = adjustedValue;
+    }
+
+    // Build single rescue multicall (no PRC-20 approval needed — no burn)
+    const rescueCallData = encodeFunctionData({
+      abi: UNIVERSAL_GATEWAY_PC,
+      functionName: 'rescueFundsOnSourceChain',
+      args: [params.universalTxId, params.prc20],
+    });
+
+    const pushChainMulticalls: MultiCall[] = [
+      {
+        to: gatewayPcAddress,
+        value: nativeValueForGas,
+        data: rescueCallData,
+      },
+    ];
+
+    this.printLog(
+      `rescueFunds — built rescue multicall, nativeValueForGas=${nativeValueForGas.toString()}`
+    );
+
+    const multicallNativeValue = pushChainMulticalls.reduce(
+      (sum, mc) => sum + (mc.value ?? BigInt(0)),
+      BigInt(0)
+    );
+
+    const executeParams: ExecuteParams = {
+      to: ueaAddress,
+      value: multicallNativeValue,
+      data: pushChainMulticalls,
+      _ueaStatus: {
+        isDeployed: isUEADeployed,
+        nonce: ueaNonce,
+        balance: ueaBalance,
+      },
+      _skipFeeLocking: true,
+    };
+
+    return this.execute(executeParams);
   }
 
   /**
@@ -2329,6 +2446,76 @@ export class Orchestrator {
     );
 
     return { gasToken, gasFee, protocolFee, nativeValueForGas, gasPrice };
+  }
+
+  /**
+   * Query rescue gas fee from UniversalCore contract.
+   * Used by rescueFunds() to determine how much native PC to send.
+   *
+   * @param prc20Token - PRC-20 token address on Push Chain
+   * @returns Gas details for rescue operation
+   */
+  async queryRescueGasFee(
+    prc20Token: `0x${string}`
+  ): Promise<{ gasToken: `0x${string}`; gasFee: bigint; rescueGasLimit: bigint; gasPrice: bigint; nativeValueForGas: bigint }> {
+    const gatewayPcAddress = this.getUniversalGatewayPCAddress();
+
+    this.printLog(
+      `queryRescueGasFee — inputs: gateway=${gatewayPcAddress}, prc20Token=${prc20Token}`
+    );
+
+    // Get UNIVERSAL_CORE address from gateway
+    let universalCoreAddress: `0x${string}`;
+    try {
+      universalCoreAddress = await this.pushClient.readContract<`0x${string}`>({
+        address: gatewayPcAddress,
+        abi: UNIVERSAL_GATEWAY_PC,
+        functionName: 'UNIVERSAL_CORE',
+        args: [],
+      });
+      this.printLog(
+        `queryRescueGasFee — UNIVERSAL_CORE resolved to: ${universalCoreAddress}`
+      );
+    } catch (err) {
+      this.printLog(
+        `queryRescueGasFee — FAILED to read UNIVERSAL_CORE: ${err instanceof Error ? err.message : String(err)}`
+      );
+      throw err;
+    }
+
+    // Call getRescueFundsGasLimit on UNIVERSAL_CORE
+    let gasToken: `0x${string}`;
+    let gasFee: bigint;
+    let rescueGasLimit: bigint;
+    let gasPrice: bigint;
+    try {
+      const result = await this.pushClient.readContract<[`0x${string}`, bigint, bigint, bigint, string]>({
+        address: universalCoreAddress,
+        abi: UNIVERSAL_CORE_EVM,
+        functionName: 'getRescueFundsGasLimit',
+        args: [prc20Token],
+      });
+      gasToken = result[0];
+      gasFee = result[1];
+      rescueGasLimit = result[2];
+      gasPrice = result[3];
+      this.printLog(
+        `queryRescueGasFee — success: gasToken=${gasToken}, gasFee=${gasFee}, rescueGasLimit=${rescueGasLimit}, gasPrice=${gasPrice}`
+      );
+    } catch (err) {
+      this.printLog(
+        `queryRescueGasFee — FAILED: ${err instanceof Error ? err.message : String(err)}`
+      );
+      throw err;
+    }
+
+    // No protocolFee for rescue — all msg.value goes to gas fee swapping
+    const nativeValueForGas = gasFee * BigInt(1000000);
+    this.printLog(
+      `queryRescueGasFee — using 1000000x buffer: nativeValueForGas=${nativeValueForGas}`
+    );
+
+    return { gasToken, gasFee, rescueGasLimit, gasPrice, nativeValueForGas };
   }
 
   // ============================================================================

@@ -462,6 +462,22 @@ export interface UniversalOutboundTxRequest {
 }
 
 // ============================================================================
+// Rescue Funds (Manual revert for stuck inbound funds)
+// ============================================================================
+
+/**
+ * Parameters for rescuing stuck funds on a source chain.
+ * Used when a CEA-to-Push inbound transaction fails and tokens are
+ * locked in the Vault on the source chain.
+ */
+export interface RescueFundsParams {
+  /** The universalTxId of the failed inbound transaction (bytes32 hash, 0x-prefixed) */
+  universalTxId: `0x${string}`;
+  /** PRC-20 token address on Push Chain whose source-chain counterpart is locked */
+  prc20: `0x${string}`;
+}
+
+// ============================================================================
 // Hop Descriptor (Internal metadata for cascade nesting)
 // ============================================================================
 

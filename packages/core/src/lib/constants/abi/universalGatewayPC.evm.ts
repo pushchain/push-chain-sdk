@@ -63,4 +63,30 @@ export const UNIVERSAL_GATEWAY_PC = [
     stateMutability: 'view',
     type: 'function',
   },
+  // Rescue funds on source chain
+  {
+    inputs: [
+      { internalType: 'bytes32', name: 'universalTxId', type: 'bytes32' },
+      { internalType: 'address', name: 'prc20', type: 'address' },
+    ],
+    name: 'rescueFundsOnSourceChain',
+    outputs: [],
+    stateMutability: 'payable',
+    type: 'function',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: 'bytes32', name: 'universalTxId', type: 'bytes32' },
+      { indexed: true, internalType: 'address', name: 'prc20', type: 'address' },
+      { indexed: false, internalType: 'string', name: 'chainNamespace', type: 'string' },
+      { indexed: true, internalType: 'address', name: 'sender', type: 'address' },
+      { indexed: false, internalType: 'uint8', name: 'txType', type: 'uint8' },
+      { indexed: false, internalType: 'uint256', name: 'gasFee', type: 'uint256' },
+      { indexed: false, internalType: 'uint256', name: 'gasPrice', type: 'uint256' },
+      { indexed: false, internalType: 'uint256', name: 'gasLimit', type: 'uint256' },
+    ],
+    name: 'RescueFundsOnSourceChain',
+    type: 'event',
+  },
 ] as const;

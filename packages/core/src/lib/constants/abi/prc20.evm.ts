@@ -94,12 +94,20 @@ export const UNIVERSAL_CORE_EVM = [
     outputs: [{ name: '', type: 'address', internalType: 'address' }],
     stateMutability: 'view',
   },
-  // Rescue funds gas limit
+  // Rescue funds gas limit (returns gas details for a given PRC-20 token)
   {
     type: 'function',
     name: 'getRescueFundsGasLimit',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
+    inputs: [
+      { name: '_prc20', type: 'address', internalType: 'address' },
+    ],
+    outputs: [
+      { name: 'gasToken', type: 'address', internalType: 'address' },
+      { name: 'gasFee', type: 'uint256', internalType: 'uint256' },
+      { name: 'rescueGasLimit', type: 'uint256', internalType: 'uint256' },
+      { name: 'gasPrice', type: 'uint256', internalType: 'uint256' },
+      { name: 'chainNamespace', type: 'string', internalType: 'string' },
+    ],
     stateMutability: 'view',
   },
   // Swap and burn gas (gateway-only)

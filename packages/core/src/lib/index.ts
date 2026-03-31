@@ -32,6 +32,8 @@ export type {
   // Account status types (UEA Migration)
   AccountStatus,
   UEAStatus,
+  // Rescue funds
+  RescueFundsParams,
 } from './orchestrator/orchestrator.types';
 
 // UEA version utility

@@ -32,6 +32,7 @@ import type {
   ChainedTransactionBuilder,
   CascadedTransactionBuilder,
   UniversalTxResponse,
+  RescueFundsParams,
 } from '../orchestrator/orchestrator.types';
 
 /**
@@ -115,6 +116,12 @@ export class PushChain {
      * @param chain - The external chain where the CEA should be migrated
      */
     migrateCEA: Orchestrator['migrateCEA'];
+    /**
+     * Rescue stuck funds on a source chain.
+     * When a CEA-to-Push inbound tx fails, tokens get locked in the Vault.
+     * This triggers a manual revert via TSS to release those funds.
+     */
+    rescueFunds: Orchestrator['rescueFunds'];
     /**
      * Signs an arbitrary message
      */
@@ -247,6 +254,12 @@ export class PushChain {
           throw new Error('Read only mode cannot call migrateCEA function');
         }
         return orchestrator.migrateCEA.bind(orchestrator)(chain);
+      },
+      rescueFunds: (params: RescueFundsParams) => {
+        if (this.isReadMode) {
+          throw new Error('Read only mode cannot call rescueFunds function');
+        }
+        return orchestrator.rescueFunds.bind(orchestrator)(params);
       },
       signMessage: async (data: Uint8Array) => {
         if (this.isReadMode) {
