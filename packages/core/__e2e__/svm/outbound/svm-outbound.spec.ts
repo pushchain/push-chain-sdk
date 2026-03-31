@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-explicit-any */
 /**
  * SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)
  *
@@ -33,6 +34,7 @@ import type {
 } from '../../../src/lib/orchestrator/orchestrator.types';
 import type { ProgressEvent } from '../../../src/lib/progress-hook/progress-hook.types';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
+import { createEvmPushClient } from '@e2e/shared/evm-client';
 
 // 32-byte Solana addresses as 0x-prefixed hex
 // Gateway vault PDA on devnet (known existing account)
@@ -72,26 +74,15 @@ describe('SVM (Solana) Outbound & Inbound Transactions (Routes 2 & 3)', () => {
       return;
     }
 
-    const originChain = CHAIN.ETHEREUM_SEPOLIA;
-    const account = privateKeyToAccount(privateKey);
-    const walletClient = createWalletClient({
-      account,
-      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
-    });
-
-    const universalSigner =
-      await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
-        chain: originChain,
-        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-      });
-
-    pushClient = await PushChain.initialize(universalSigner, {
-      network: PUSH_NETWORK.TESTNET_DONUT,
+    const setup = await createEvmPushClient({
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      privateKey,
       printTraces: true,
       progressHook: (val: any) => {
         console.log(`[${val.id}] ${val.title}`);
       },
     });
+    pushClient = setup.pushClient;
 
     ueaAddress = pushClient.universal.account;
     console.log(`UEA Address: ${ueaAddress}`);

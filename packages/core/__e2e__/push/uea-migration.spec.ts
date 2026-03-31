@@ -1,4 +1,5 @@
 import '@e2e/shared/setup';
+import type { ProgressEvent } from '../../src/lib/progress-hook/progress-hook.types';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import {
   createPublicClient,
@@ -6,14 +7,13 @@ import {
   Hex,
   http,
   parseEther,
-  WalletClient,
 } from 'viem';
 import { sepolia } from 'viem/chains';
 import { PushChain } from '../../src';
-import { UniversalSigner } from '../../src/lib/universal/universal.types';
-import { PUSH_NETWORK, CHAIN } from '../../src/lib/constants/enums';
+import { CHAIN } from '../../src/lib/constants/enums';
 import { CHAIN_INFO } from '../../src/lib/constants/chain';
 import { parseUEAVersion } from '../../src/lib/orchestrator/orchestrator.types';
+import { createEvmPushClient } from '@e2e/shared/evm-client';
 
 /**
  * E2E test for UEA Migration / Upgrade flow.
@@ -25,37 +25,23 @@ import { parseUEAVersion } from '../../src/lib/orchestrator/orchestrator.types';
  * - New UEA_EVM/UEA_SVM implementations registered
  */
 describe('UEA Migration', () => {
-  const pushNetwork = PUSH_NETWORK.TESTNET_DONUT;
   const originChain = CHAIN.ETHEREUM_SEPOLIA;
   let pushClient: PushChain;
-  let universalSigner: UniversalSigner;
-  let mainWalletClient: WalletClient;
+  let mainWalletClient: ReturnType<typeof createWalletClient>;
 
   beforeAll(async () => {
     const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
     if (!privateKey) throw new Error('EVM_PRIVATE_KEY not set');
 
-    const account = privateKeyToAccount(privateKey);
-    mainWalletClient = createWalletClient({
-      account,
-      chain: sepolia,
-      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
-    });
-
-    universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
-      mainWalletClient,
-      {
-        chain: originChain,
-        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-      }
-    );
-
-    pushClient = await PushChain.initialize(universalSigner, {
-      network: pushNetwork,
-      progressHook: (event: any) => {
+    const setup = await createEvmPushClient({
+      chain: originChain,
+      privateKey,
+      progressHook: (event) => {
         console.log(`[${event.id}] ${event.title}: ${event.message}`);
       },
     });
+    pushClient = setup.pushClient;
+    mainWalletClient = setup.walletClient;
   }, 60_000);
 
   it('should have accountStatus populated after initialize', async () => {
@@ -120,7 +106,7 @@ describe('UEA Migration', () => {
       `Upgrading UEA from ${status.uea.version} to ${status.uea.minRequiredVersion}...`
     );
 
-    const events: any[] = [];
+    const events: ProgressEvent[] = [];
     await pushClient.upgradeAccount({
       progressHook: (event) => {
         events.push(event);
@@ -159,6 +145,7 @@ describe('UEA Migration', () => {
     const fundTxHash = await mainWalletClient.sendTransaction({
       to: freshAccount.address,
       value: parseEther('0.01'),
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       account: mainWalletClient.account!,
       chain: sepolia,
     });
@@ -180,7 +167,7 @@ describe('UEA Migration', () => {
 
     const freshClient = await PushChain.initialize(freshSigner, {
       network: pushNetwork,
-      progressHook: (event: any) => {
+      progressHook: (event) => {
         console.log(`[fresh] [${event.id}] ${event.title}: ${event.message}`);
       },
     });
@@ -236,7 +223,7 @@ describe('UEA Migration', () => {
     );
 
     // 7. upgradeAccount should be a no-op
-    const upgradeEvents: any[] = [];
+    const upgradeEvents: ProgressEvent[] = [];
     await freshClient.upgradeAccount({
       progressHook: (event) => {
         upgradeEvents.push(event);

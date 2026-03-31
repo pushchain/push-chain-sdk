@@ -1,21 +1,23 @@
 import {
   createWalletClient,
-  createPublicClient,
   http,
   parseEther,
   encodeFunctionData,
   WalletClient,
   PublicClient,
 } from 'viem';
+import type { Chain } from 'viem';
+import type { ProgressEvent } from '../../src/lib/progress-hook/progress-hook.types';
 import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 import { PushChain } from '../../src';
-import { CHAIN } from '../../src/lib/constants/enums';
+import { CHAIN, PUSH_NETWORK } from '../../src/lib/constants/enums';
+import { CHAIN_INFO } from '../../src/lib/constants/chain';
 import { SEPOLIA_RPC } from './constants';
 
 export interface FreshWalletResult {
   pushClient: PushChain;
-  progressEvents: { event: any; timestamp: number }[];
+  progressEvents: { event: ProgressEvent; timestamp: number }[];
   startTime: number;
 }
 
@@ -29,32 +31,36 @@ export async function createFreshFundedClient(
   mainPushClient: PushChain,
   opts?: {
     originChain?: CHAIN;
+    viemChain?: Chain;
     rpcUrl?: string;
     ethAmount?: string;
     usdtAmount?: string;
     printTraces?: boolean;
   }
 ): Promise<FreshWalletResult> {
-  const rpcUrl = opts?.rpcUrl ?? SEPOLIA_RPC;
+  const originChain = opts?.originChain ?? CHAIN.ETHEREUM_SEPOLIA;
+  const viemChain = opts?.viemChain ?? sepolia;
+  const rpcUrl = opts?.rpcUrl ?? CHAIN_INFO[originChain]?.defaultRPC[0] ?? SEPOLIA_RPC;
 
   const newPrivateKey = generatePrivateKey();
   const newAccount = privateKeyToAccount(newPrivateKey);
   console.log(`Fresh wallet: ${newAccount.address}`);
 
-  // Fund with ETH for gas
+  // Fund with ETH/native for gas
   const ethTxHash = await mainWalletClient.sendTransaction({
     to: newAccount.address,
-    value: parseEther(opts?.ethAmount ?? '0.01'),
+    value: parseEther(opts?.ethAmount ?? '0.001'),
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     account: mainWalletClient.account!,
-    chain: sepolia,
+    chain: viemChain,
   });
   await publicClient.waitForTransactionReceipt({ hash: ethTxHash });
-  console.log(`ETH funded: ${ethTxHash}`);
+  console.log(`Native funded: ${ethTxHash}`);
 
   // Fund with USDT
   const usdt = mainPushClient.moveable.token.USDT;
   const usdtAmount = PushChain.utils.helpers.parseUnits(
-    opts?.usdtAmount ?? '0.05',
+    opts?.usdtAmount ?? '0.005',
     { decimals: usdt.decimals }
   );
   const erc20TransferData = encodeFunctionData({
@@ -75,30 +81,33 @@ export async function createFreshFundedClient(
   const usdtTxHash = await mainWalletClient.sendTransaction({
     to: usdt.address as `0x${string}`,
     data: erc20TransferData,
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     account: mainWalletClient.account!,
-    chain: sepolia,
+    chain: viemChain,
   });
   await publicClient.waitForTransactionReceipt({ hash: usdtTxHash });
   console.log(`USDT funded: ${usdtTxHash}`);
 
   // Create PushChain client with fresh wallet
-  const originChain = opts?.originChain ?? CHAIN.ETHEREUM_SEPOLIA;
   const newWalletClient = createWalletClient({
     account: newAccount,
-    chain: sepolia,
+    chain: viemChain,
     transport: http(rpcUrl),
   });
 
-  const progressEvents: { event: any; timestamp: number }[] = [];
+  const progressEvents: { event: ProgressEvent; timestamp: number }[] = [];
   const startTime = Date.now();
 
-  const newSigner =
-    await PushChain.utils.signer.toUniversal(newWalletClient);
-  const pushClient = await PushChain.initialize(newSigner, {
-    network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET,
+  const universalSigner =
+    await PushChain.utils.signer.toUniversalFromKeypair(newWalletClient, {
+      chain: originChain,
+      library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+    });
+  const pushClient = await PushChain.initialize(universalSigner, {
+    network: PUSH_NETWORK.TESTNET_DONUT,
     rpcUrls: { [originChain]: [rpcUrl] },
     printTraces: opts?.printTraces,
-    progressHook: (val: any) => {
+    progressHook: (val: ProgressEvent) => {
       const now = Date.now();
       progressEvents.push({ event: val, timestamp: now });
       const elapsed = ((now - startTime) / 1000).toFixed(2);
@@ -118,28 +127,31 @@ export async function createMainWalletClientWithHook(
   mainWalletClient: WalletClient,
   opts?: {
     originChain?: CHAIN;
+    viemChain?: Chain;
     rpcUrl?: string;
     printTraces?: boolean;
   }
 ): Promise<FreshWalletResult> {
-  const rpcUrl = opts?.rpcUrl ?? SEPOLIA_RPC;
   const originChain = opts?.originChain ?? CHAIN.ETHEREUM_SEPOLIA;
+  const rpcUrl = opts?.rpcUrl ?? CHAIN_INFO[originChain]?.defaultRPC[0] ?? SEPOLIA_RPC;
 
-  const progressEvents: { event: any; timestamp: number }[] = [];
+  const progressEvents: { event: ProgressEvent; timestamp: number }[] = [];
   const startTime = Date.now();
 
   if (!mainWalletClient.account) {
     throw new Error('WalletClient must have an account set');
   }
-  const mainSigner =
-    await PushChain.utils.signer.toUniversal(
-      mainWalletClient as unknown as Parameters<typeof PushChain.utils.signer.toUniversal>[0]
-    );
-  const pushClient = await PushChain.initialize(mainSigner, {
-    network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET,
+
+  const universalSigner =
+    await PushChain.utils.signer.toUniversalFromKeypair(mainWalletClient, {
+      chain: originChain,
+      library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+    });
+  const pushClient = await PushChain.initialize(universalSigner, {
+    network: PUSH_NETWORK.TESTNET_DONUT,
     rpcUrls: { [originChain]: [rpcUrl] },
     printTraces: opts?.printTraces,
-    progressHook: (val: any) => {
+    progressHook: (val: ProgressEvent) => {
       const now = Date.now();
       progressEvents.push({ event: val, timestamp: now });
       const elapsed = ((now - startTime) / 1000).toFixed(2);

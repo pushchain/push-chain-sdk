@@ -11,10 +11,10 @@
  */
 import { CHAIN, PUSH_NETWORK } from '../../src/lib/constants/enums';
 import {
-  CEA_FACTORY_ADDRESSES,
-  UNIVERSAL_GATEWAY_ADDRESSES,
   SYNTHETIC_PUSH_ERC20,
 } from '../../src/lib/constants/chain';
+import type { Chain } from 'viem';
+import { sepolia, arbitrumSepolia, baseSepolia, bscTestnet } from 'viem/chains';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,6 +25,8 @@ export interface ChainTestFixture {
   chain: CHAIN;
   /** Human-readable label for describe block names */
   label: string;
+  /** Viem chain object for wallet/public client creation */
+  viemChain: Chain;
   /** Payable counter contract deployed on this external chain */
   contracts: {
     counter: `0x${string}`;
@@ -50,6 +52,7 @@ export const EVM_CHAIN_FIXTURES: ChainTestFixture[] = [
   {
     chain: CHAIN.BNB_TESTNET,
     label: 'BNB Testnet',
+    viemChain: bscTestnet,
     contracts: {
       counter: '0xf4bd8c13da0f5831d7b6dd3275a39f14ec7ddaa6',
     },
@@ -57,6 +60,7 @@ export const EVM_CHAIN_FIXTURES: ChainTestFixture[] = [
   {
     chain: CHAIN.ETHEREUM_SEPOLIA,
     label: 'Ethereum Sepolia',
+    viemChain: sepolia,
     contracts: {
       counter: '0xF1552eD5ac48C273570500bD10b10C00E1C418bB',
     },
@@ -64,6 +68,7 @@ export const EVM_CHAIN_FIXTURES: ChainTestFixture[] = [
   {
     chain: CHAIN.ARBITRUM_SEPOLIA,
     label: 'Arbitrum Sepolia',
+    viemChain: arbitrumSepolia,
     contracts: {
       counter: '0x7F0936bB90e7dcF3eDB47199C2005e7184E44Cf8',
     },
@@ -71,6 +76,7 @@ export const EVM_CHAIN_FIXTURES: ChainTestFixture[] = [
   {
     chain: CHAIN.BASE_SEPOLIA,
     label: 'Base Sepolia',
+    viemChain: baseSepolia,
     contracts: {
       counter: '0x25a62134B57C42b1733BDF577E48C91d13053138',
     },
@@ -79,6 +85,7 @@ export const EVM_CHAIN_FIXTURES: ChainTestFixture[] = [
 
 const s = SYNTHETIC_PUSH_ERC20[PUSH_NETWORK.TESTNET_DONUT];
 
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 export const STAKING_CHAIN_FIXTURES: StakingChainFixture[] = [
   {
     ...EVM_CHAIN_FIXTURES.find((f) => f.chain === CHAIN.BNB_TESTNET)!,
@@ -113,6 +120,7 @@ export const STAKING_CHAIN_FIXTURES: StakingChainFixture[] = [
     },
   },
 ];
+/* eslint-enable @typescript-eslint/no-non-null-assertion */
 
 // ---------------------------------------------------------------------------
 // Helpers

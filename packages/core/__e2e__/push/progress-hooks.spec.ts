@@ -1,11 +1,10 @@
 import '@e2e/shared/setup';
 import { PushChain } from '../../src';
-import { PUSH_NETWORK, CHAIN } from '../../src/lib/constants/enums';
-import { CHAIN_INFO } from '../../src/lib/constants/chain';
+import { CHAIN } from '../../src/lib/constants/enums';
 import { ProgressEvent } from '../../src/lib/progress-hook/progress-hook.types';
 import { UniversalTxResponse } from '../../src/lib/orchestrator/orchestrator.types';
-import { createWalletClient, http, Hex } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
+import { Hex } from 'viem';
+import { createEvmPushClient } from '@e2e/shared/evm-client';
 
 /**
  * E2E tests for tx.progressHook() method feature.
@@ -17,8 +16,6 @@ import { privateKeyToAccount } from 'viem/accounts';
  * 4. trackTransaction progress callback still works
  */
 describe('tx.progressHook() Method (e2e)', () => {
-  const pushNetwork = PUSH_NETWORK.TESTNET_DONUT;
-  const originChain = CHAIN.PUSH_TESTNET_DONUT;
   const to = '0x35B84d6848D16415177c64D64504663b998A6ab4';
 
   let pushClient: PushChain;
@@ -32,24 +29,11 @@ describe('tx.progressHook() Method (e2e)', () => {
       return;
     }
 
-    const account = privateKeyToAccount(privateKey);
-    const walletClient = createWalletClient({
-      account,
-      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
-    });
-
-    const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
-      walletClient,
-      {
-        chain: originChain,
-        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-      }
-    );
-
     // Initialize client WITH orchestrator-level hook to test both hook scenarios
     orchestratorEvents = [];
-    pushClient = await PushChain.initialize(universalSigner, {
-      network: pushNetwork,
+    const setup = await createEvmPushClient({
+      chain: CHAIN.PUSH_TESTNET_DONUT,
+      privateKey,
       progressHook: (event: ProgressEvent) => {
         orchestratorEvents.push({
           ...event,
@@ -57,6 +41,7 @@ describe('tx.progressHook() Method (e2e)', () => {
         } as ProgressEvent & { _source: string });
       },
     });
+    pushClient = setup.pushClient;
 
     // Send ONE transaction to be reused by tracking tests
     console.log('\n=== [beforeAll] Sending shared transaction ===');

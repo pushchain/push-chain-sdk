@@ -5,9 +5,9 @@
 import '@e2e/shared/setup';
 import { PushChain } from '../../src';
 import { PUSH_NETWORK, CHAIN } from '../../src/lib/constants/enums';
-import { CHAIN_INFO, SYNTHETIC_PUSH_ERC20 } from '../../src/lib/constants/chain';
-import { createPublicClient, createWalletClient, http, Hex, formatUnits, encodeFunctionData } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
+import { SYNTHETIC_PUSH_ERC20 } from '../../src/lib/constants/chain';
+import { createPublicClient, http, Hex, formatUnits, encodeFunctionData } from 'viem';
+import { createEvmPushClient } from '@e2e/shared/evm-client';
 
 const PUSH_RPC = 'https://evm.donut.rpc.push.org/';
 const pSOL_ADDRESS = SYNTHETIC_PUSH_ERC20[PUSH_NETWORK.TESTNET_DONUT].pSOL;
@@ -47,28 +47,16 @@ describe('Transfer pSOL from UEA to EOA', () => {
   beforeAll(async () => {
     if (skipE2E) return;
 
-    const originChain = CHAIN.ETHEREUM_SEPOLIA;
-    const account = privateKeyToAccount(privateKey);
-    eoaAddress = account.address;
-
-    const walletClient = createWalletClient({
-      account,
-      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
-    });
-
-    const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
-      chain: originChain,
-      library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-    });
-
-    pushClient = await PushChain.initialize(universalSigner, {
-      network: PUSH_NETWORK.TESTNET_DONUT,
+    const setup = await createEvmPushClient({
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      privateKey,
       printTraces: true,
-      progressHook: (val: any) => {
+      progressHook: (val) => {
         console.log(`[${val.id}] ${val.title}`);
       },
     });
-
+    pushClient = setup.pushClient;
+    eoaAddress = setup.account.address;
     ueaAddress = pushClient.universal.account;
   }, 60000);
 

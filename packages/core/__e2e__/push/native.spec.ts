@@ -1,11 +1,9 @@
 import '@e2e/shared/setup';
 import {
-  PrivateKeyAccount,
   privateKeyToAccount,
 } from 'viem/accounts';
 import { PUSH_NETWORK, CHAIN } from '../../src/lib/constants/enums';
 import {
-  createPublicClient,
   createWalletClient,
   Hex,
   http,
@@ -17,39 +15,22 @@ import { CHAIN_INFO } from '../../src/lib/constants/chain';
 import { sepolia } from 'viem/chains';
 import bs58 from 'bs58';
 import { txValidator } from '@e2e/shared/validators';
+import { createEvmPushClient } from '@e2e/shared/evm-client';
 
 describe('Origin - Push', () => {
-  const pushNetwork = PUSH_NETWORK.TESTNET_DONUT;
   const to = '0x35B84d6848D16415177c64D64504663b998A6ab4';
-  const originChain = CHAIN.PUSH_TESTNET_DONUT;
   let pushClient: PushChain;
-  let account: PrivateKeyAccount;
-  let universalSigner: UniversalSigner;
 
   beforeAll(async () => {
     const privateKey = process.env['PUSH_PRIVATE_KEY'] as Hex;
     if (!privateKey) throw new Error('PUSH_PRIVATE_KEY not set');
 
-    account = privateKeyToAccount(privateKey);
-    const walletClient = createWalletClient({
-      account,
-      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+    const setup = await createEvmPushClient({
+      chain: CHAIN.PUSH_TESTNET_DONUT,
+      privateKey,
+      progressHook: (val) => console.log(val),
     });
-
-    universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
-      walletClient,
-      {
-        chain: originChain,
-        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-      }
-    );
-
-    pushClient = await PushChain.initialize(universalSigner, {
-      network: pushNetwork,
-      progressHook: (val: any) => {
-        console.log(val);
-      },
-    });
+    pushClient = setup.pushClient;
   });
 
   it('should sendTransaction', async () => {

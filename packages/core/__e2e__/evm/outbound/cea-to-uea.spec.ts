@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import '@e2e/shared/setup';
 /**
  * CEA → UEA: Inbound Transactions (Route 3)
@@ -29,6 +30,7 @@ import { COUNTER_ADDRESS_PAYABLE } from '../../../src/lib/push-chain/helpers/add
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 import { getToken } from '@e2e/shared/constants';
 import { getActiveFixtures, type ChainTestFixture } from '@e2e/shared/chain-fixtures';
+import { createEvmPushClient } from '@e2e/shared/evm-client';
 import { TEST_TARGET, NATIVE_ADDRESS, COUNTER_ABI, ensureCeaErc20Balance, ensureCeaNativeBalance } from '@e2e/shared/outbound-helpers';
 
 // PRC-20 token on Push Chain (pUSDT) — used for multicall approve tests
@@ -51,28 +53,15 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
       return;
     }
 
-    const originChain = CHAIN.ETHEREUM_SEPOLIA;
-    const account = privateKeyToAccount(privateKey);
-    const walletClient = createWalletClient({
-      account,
-      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
-    });
-
-    const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
-      walletClient,
-      {
-        chain: originChain,
-        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-      }
-    );
-
-    pushClient = await PushChain.initialize(universalSigner, {
-      network: PUSH_NETWORK.TESTNET_DONUT,
+    const setup = await createEvmPushClient({
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      privateKey,
       printTraces: true,
-      progressHook: (val: any) => {
+      progressHook: (val: ProgressEvent) => {
         console.log(`[${val.id}] ${val.title}`);
       },
     });
+    pushClient = setup.pushClient;
 
     ueaAddress = pushClient.universal.account;
     console.log(`UEA Address: ${ueaAddress}`);
@@ -80,7 +69,6 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
     pushPublicClient = createPublicClient({
       transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
     });
-
   }, 60000);
 
   // ============================================================================
@@ -89,6 +77,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
   describe.each(fixtures)('Core Scenarios [$label]', (fixture: ChainTestFixture) => {
     let fixtureCeaAddress: `0x${string}`;
     let fixtureUsdtToken: MoveableToken | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let publicClient: ReturnType<typeof createPublicClient>;
 
     beforeAll(async () => {
@@ -96,7 +85,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
       const ceaResult = await getCEAAddress(ueaAddress, fixture.chain);
       fixtureCeaAddress = ceaResult.cea;
       console.log(`CEA Address on ${fixture.label}: ${fixtureCeaAddress}, deployed: ${ceaResult.isDeployed}`);
-      try { fixtureUsdtToken = getToken(fixture.chain, 'USDT'); } catch {}
+      try { fixtureUsdtToken = getToken(fixture.chain, 'USDT'); } catch { /* token not available */ }
       if (fixtureUsdtToken) {
         console.log(`USDT Token (${fixture.label}): ${fixtureUsdtToken.address} (${fixtureUsdtToken.decimals} decimals)`);
       }
@@ -746,7 +735,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
       const ceaResult = await getCEAAddress(ueaAddress, fixture.chain);
       fixtureCeaAddress = ceaResult.cea;
       console.log(`CEA Address on ${fixture.label}: ${fixtureCeaAddress}, deployed: ${ceaResult.isDeployed}`);
-      try { fixtureUsdtToken = getToken(fixture.chain, 'USDT'); } catch {}
+      try { fixtureUsdtToken = getToken(fixture.chain, 'USDT'); } catch { /* token not available */ }
       if (fixtureUsdtToken) {
         console.log(`USDT Token (${fixture.label}): ${fixtureUsdtToken.address} (${fixtureUsdtToken.decimals} decimals)`);
       }
@@ -993,7 +982,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
               pushClient.universal.sendTransaction(params)
             ).rejects.toThrow(/CEA not deployed/);
           } else {
-            console.log('CEA is deployed on ARBITRUM_SEPOLIA - skipping this test case');
+            console.log('  - skipping this test case');
           }
         } catch (err: any) {
           // If getCEAAddress throws (CEAFactory not available), that's also a valid outcome

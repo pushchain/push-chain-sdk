@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import '@e2e/shared/setup';
 /**
  * EOA -> CEA: Outbound Transactions (Route 2) from Push Chain Native EOA
@@ -10,10 +11,9 @@ import '@e2e/shared/setup';
  * Coverage: Payload, Funds, Payload + Funds
  */
 import { PushChain } from '../../../src';
-import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
+import { CHAIN } from '../../../src/lib/constants/enums';
 import { CHAIN_INFO } from '../../../src/lib/constants/chain';
-import { createWalletClient, http, Hex, parseEther, encodeFunctionData, createPublicClient } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
+import { http, Hex, parseEther, encodeFunctionData, createPublicClient } from 'viem';
 import { getCEAAddress } from '../../../src/lib/orchestrator/cea-utils';
 import { TransactionRoute, detectRoute } from '../../../src/lib/orchestrator/route-detector';
 import type { UniversalExecuteParams } from '../../../src/lib/orchestrator/orchestrator.types';
@@ -23,6 +23,7 @@ import { buildErc20WithdrawalMulticall } from '../../../src/lib/orchestrator/pay
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 import { getToken } from '@e2e/shared/constants';
 import { getActiveFixtures, type ChainTestFixture } from '@e2e/shared/chain-fixtures';
+import { createEvmPushClient } from '@e2e/shared/evm-client';
 import {
   TEST_TARGET,
   NATIVE_ADDRESS,
@@ -46,28 +47,15 @@ describe('EOA -> CEA: Outbound from Push Chain Native Account (Route 2)', () => 
     }
 
     // Key difference: origin is PUSH_TESTNET_DONUT (native Push Chain EOA)
-    const originChain = CHAIN.PUSH_TESTNET_DONUT;
-    const account = privateKeyToAccount(privateKey);
-    const walletClient = createWalletClient({
-      account,
-      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
-    });
-
-    const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
-      walletClient,
-      {
-        chain: originChain,
-        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-      }
-    );
-
-    pushClient = await PushChain.initialize(universalSigner, {
-      network: PUSH_NETWORK.TESTNET_DONUT,
+    const setup = await createEvmPushClient({
+      chain: CHAIN.PUSH_TESTNET_DONUT,
+      privateKey,
       printTraces: true,
-      progressHook: (val: any) => {
+      progressHook: (val) => {
         console.log(`[${val.id}] ${val.title}`);
       },
     });
+    pushClient = setup.pushClient;
 
     eoaAddress = pushClient.universal.account;
     console.log(`Push EOA Address: ${eoaAddress}`);

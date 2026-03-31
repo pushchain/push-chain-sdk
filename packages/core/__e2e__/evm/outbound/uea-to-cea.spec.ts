@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import '@e2e/shared/setup';
 /**
  * UEA → CEA: Outbound Transactions (Route 2)
@@ -24,6 +25,7 @@ import { buildErc20WithdrawalMulticall } from '../../../src/lib/orchestrator/pay
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 import { getToken } from '@e2e/shared/constants';
 import { getActiveFixtures, type ChainTestFixture } from '@e2e/shared/chain-fixtures';
+import { createEvmPushClient } from '@e2e/shared/evm-client';
 import {
   TEST_TARGET,
   NATIVE_ADDRESS,
@@ -46,28 +48,15 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
       return;
     }
 
-    const originChain = CHAIN.ETHEREUM_SEPOLIA;
-    const account = privateKeyToAccount(privateKey);
-    const walletClient = createWalletClient({
-      account,
-      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
-    });
-
-    const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
-      walletClient,
-      {
-        chain: originChain,
-        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-      }
-    );
-
-    pushClient = await PushChain.initialize(universalSigner, {
-      network: PUSH_NETWORK.TESTNET_DONUT,
+    const setup = await createEvmPushClient({
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      privateKey,
       printTraces: true,
-      progressHook: (val: any) => {
+      progressHook: (val: ProgressEvent) => {
         console.log(`[${val.id}] ${val.title}`);
       },
     });
+    pushClient = setup.pushClient;
 
     ueaAddress = pushClient.universal.account;
     console.log(`UEA Address: ${ueaAddress}`);
@@ -77,15 +66,15 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
   // Core Scenarios — parameterised across EVM chains
   // ============================================================================
   describe.each(fixtures)('Core Scenarios [$label]', (fixture: ChainTestFixture) => {
-    let fixtureceaAddress: `0x${string}`;
+    let fixtureCeaAddress: `0x${string}`;
     let fixtureUsdtToken: MoveableToken | undefined;
     let publicClient: ReturnType<typeof createPublicClient>;
 
     beforeAll(async () => {
       if (skipE2E) return;
       const ceaResult = await getCEAAddress(ueaAddress, fixture.chain);
-      fixtureceaAddress = ceaResult.cea;
-      console.log(`CEA Address on ${fixture.label}: ${fixtureceaAddress}, deployed: ${ceaResult.isDeployed}`);
+      fixtureCeaAddress = ceaResult.cea;
+      console.log(`CEA Address on ${fixture.label}: ${fixtureCeaAddress}, deployed: ${ceaResult.isDeployed}`);
 
       try {
         fixtureUsdtToken = getToken(fixture.chain, 'USDT');
@@ -1020,7 +1009,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
           value: parseEther('0.00001'),
         };
 
-        const tx = await clientWithHook.universal.sendTransaction(params);
+        await clientWithHook.universal.sendTransaction(params);
 
         // Verify we got progress events
         expect(events.length).toBeGreaterThan(0);
@@ -1076,7 +1065,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
           data: payload,
         };
 
-        const tx = await clientWithHook.universal.sendTransaction(params);
+        await clientWithHook.universal.sendTransaction(params);
 
         expect(events.length).toBeGreaterThan(0);
         expect(events.some(e => e.id === 'SEND-TX-01')).toBe(true);

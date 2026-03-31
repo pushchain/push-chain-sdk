@@ -1,16 +1,13 @@
 import '@e2e/shared/setup';
 import { privateKeyToAccount } from 'viem/accounts';
-import { PUSH_NETWORK, CHAIN } from '../../src/lib/constants/enums';
-import { createWalletClient, Hex, http } from 'viem';
-import { sepolia } from 'viem/chains';
+import { CHAIN } from '../../src/lib/constants/enums';
+import { Hex } from 'viem';
 import { PushChain } from '../../src';
-import { CHAIN_INFO } from '../../src/lib/constants/chain';
 import { ProgressEvent } from '../../src/lib/progress-hook/progress-hook.types';
 import { UniversalTxResponse } from '../../src/lib/orchestrator/orchestrator.types';
+import { createEvmPushClient } from '@e2e/shared/evm-client';
 
 describe('trackTransaction E2E', () => {
-  const pushNetwork = PUSH_NETWORK.TESTNET_DONUT;
-  const originChain = CHAIN.PUSH_TESTNET_DONUT;
   const to = '0x35B84d6848D16415177c64D64504663b998A6ab4';
 
   // Shared state - send ONE transaction and reuse across tests
@@ -24,23 +21,11 @@ describe('trackTransaction E2E', () => {
       return;
     }
 
-    const account = privateKeyToAccount(privateKey);
-    const walletClient = createWalletClient({
-      account,
-      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
+    const setup = await createEvmPushClient({
+      chain: CHAIN.PUSH_TESTNET_DONUT,
+      privateKey,
     });
-
-    const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
-      walletClient,
-      {
-        chain: originChain,
-        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-      }
-    );
-
-    pushClient = await PushChain.initialize(universalSigner, {
-      network: pushNetwork,
-    });
+    pushClient = setup.pushClient;
 
     // Send ONE transaction to be reused by multiple tests
     console.log('\n=== [beforeAll] Sending shared transaction ===');
@@ -305,22 +290,9 @@ describe('trackTransaction E2E', () => {
 
     // Initialize with EVM origin (Ethereum Sepolia)
     const evmAccount = privateKeyToAccount(evmPrivateKey);
-    const evmWalletClient = createWalletClient({
-      account: evmAccount,
-      chain: sepolia,
-      transport: http(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0]),
-    });
-
-    const evmSigner = await PushChain.utils.signer.toUniversalFromKeypair(
-      evmWalletClient,
-      {
-        chain: CHAIN.ETHEREUM_SEPOLIA,
-        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-      }
-    );
-
-    const evmPushClient = await PushChain.initialize(evmSigner, {
-      network: PUSH_NETWORK.TESTNET_DONUT,
+    const { pushClient: evmPushClient } = await createEvmPushClient({
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      privateKey: evmPrivateKey,
     });
 
     // Send an outbound transaction (Route 2: UOA → CEA on ETH Sepolia)
@@ -371,7 +343,7 @@ describe('trackTransaction E2E', () => {
     console.log('\n=== Testing progress events include outcome hooks ===');
 
     const events: ProgressEvent[] = [];
-    const response = await pushClient.universal.trackTransaction(
+    await pushClient.universal.trackTransaction(
       sharedTxResponse.hash,
       {
         waitForCompletion: true,

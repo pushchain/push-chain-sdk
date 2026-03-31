@@ -382,7 +382,7 @@ export const PUSH_CHAIN_INFO: Record<
  * These are the contracts that handle inbound/outbound universal transactions
  */
 export const UNIVERSAL_GATEWAY_ADDRESSES: Partial<Record<CHAIN, `0x${string}`>> = {
-  [CHAIN.ETHEREUM_SEPOLIA]: '0x4DCab975cDe839632db6695e2e936A29ce3e325E',
+  [CHAIN.ETHEREUM_SEPOLIA]: '0x05bD7a3D18324c1F7e216f7fBF2b15985aE5281A',
   [CHAIN.BNB_TESTNET]: '0x44aFFC61983F4348DdddB886349eb992C061EaC0',
   // Arbitrum Sepolia and Base Sepolia use same as locker for now
   [CHAIN.ARBITRUM_SEPOLIA]: '0x2cd870e0166Ba458dEC615168Fd659AacD795f34',

@@ -1,14 +1,16 @@
+import type { ProgressEvent } from '../../src/lib/progress-hook/progress-hook.types';
+
 /**
  * Creates a progress event tracker for use in beforeAll/test blocks.
  */
 export function createProgressTracker() {
-  const events: { event: any; timestamp: number }[] = [];
+  const events: { event: ProgressEvent; timestamp: number }[] = [];
   let startTime = Date.now();
 
   return {
     events,
     startTime,
-    hook: (val: any) => {
+    hook: (val: ProgressEvent) => {
       const now = Date.now();
       events.push({ event: val, timestamp: now });
       const elapsed = ((now - startTime) / 1000).toFixed(2);

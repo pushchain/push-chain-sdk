@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 /**
  * E2E Tests for Advance Hopping (Cascaded Transactions)
  *
@@ -5,15 +6,15 @@
  */
 import '@e2e/shared/setup';
 import { PushChain } from '../../src';
-import { PUSH_NETWORK, CHAIN } from '../../src/lib/constants/enums';
+import { CHAIN } from '../../src/lib/constants/enums';
 import { CHAIN_INFO } from '../../src/lib/constants/chain';
-import { createWalletClient, createPublicClient, http, Hex, parseEther, encodeFunctionData, encodeAbiParameters } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
+import { createPublicClient, http, Hex, parseEther, encodeFunctionData, encodeAbiParameters } from 'viem';
 import type { PreparedUniversalTx } from '../../src/lib/orchestrator/orchestrator.types';
 import { ERC20_EVM } from '../../src/lib/constants/abi/erc20.evm';
 import { CEA_EVM } from '../../src/lib/constants/abi/cea.evm';
 import { UEA_MULTICALL_SELECTOR } from '../../src/lib/constants/selectors';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
+import { createEvmPushClient } from '@e2e/shared/evm-client';
 import { PublicKey } from '@solana/web3.js';
 
 // BSC Testnet USDT address
@@ -82,28 +83,15 @@ describe('Advance Hopping: Cascade API E2E', () => {
       return;
     }
 
-    const originChain = CHAIN.ETHEREUM_SEPOLIA;
-    const account = privateKeyToAccount(privateKey);
-    const walletClient = createWalletClient({
-      account,
-      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
-    });
-
-    const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
-      walletClient,
-      {
-        chain: originChain,
-        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-      }
-    );
-
-    pushClient = await PushChain.initialize(universalSigner, {
-      network: PUSH_NETWORK.TESTNET_DONUT,
+    const setup = await createEvmPushClient({
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      privateKey,
       printTraces: true,
       progressHook: (val: any) => {
         console.log(`[${val.id}] ${val.title}`);
       },
     });
+    pushClient = setup.pushClient;
 
     ueaAddress = pushClient.universal.account;
     console.log(`UEA Address: ${ueaAddress}`);

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import '@e2e/shared/setup';
 /**
  * CEA Custom Contract: StakingExample Outbound & Inbound Tests
@@ -20,37 +21,36 @@ import '@e2e/shared/setup';
  * - UGPC precompile:        0x00000000000000000000000000000000000000C1 (Push Chain Donut)
  */
 import { PushChain } from '../../../src';
-import { PUSH_NETWORK, CHAIN, VM } from '../../../src/lib/constants/enums';
+import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
 import { CHAIN_INFO, CEA_FACTORY_ADDRESSES, UNIVERSAL_GATEWAY_ADDRESSES } from '../../../src/lib/constants/chain';
 import {
-  createWalletClient,
   createPublicClient,
   http,
   Hex,
   parseEther,
   encodeFunctionData,
-  encodeAbiParameters,
-  keccak256,
-  toBytes,
 } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
 import { getCEAAddress } from '../../../src/lib/orchestrator/cea-utils';
+import { createEvmPushClient } from '@e2e/shared/evm-client';
 import type { UniversalExecuteParams } from '../../../src/lib/orchestrator/orchestrator.types';
 import { ERC20_EVM } from '../../../src/lib/constants/abi/erc20.evm';
 import { CEA_EVM } from '../../../src/lib/constants/abi/cea.evm';
-import { UNIVERSAL_GATEWAY_PC } from '../../../src/lib/constants/abi/universalGatewayPC.evm';
-import { UNIVERSAL_CORE_EVM } from '../../../src/lib/constants/abi/prc20.evm';
-import { UEA_MULTICALL_SELECTOR } from '../../../src/lib/constants/selectors';
-import { PushClient } from '../../../src/lib/push-client/push-client';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 import { getToken, ZERO_ADDRESS } from '@e2e/shared/constants';
 import { getActiveStakingFixtures, type StakingChainFixture } from '@e2e/shared/chain-fixtures';
-import { TEST_TARGET, COUNTER_ABI } from '@e2e/shared/outbound-helpers';
+import {
+  TEST_TARGET,
+  COUNTER_ABI,
+  UGPC_PRECOMPILE,
+  CEA_FACTORY_ABI,
+  queryOutboundGasFees,
+  buildOutboundMulticallPayload,
+  waitForOutboundRelay,
+} from '@e2e/shared/outbound-helpers';
 
 // ============================================================================
-// Push Chain precompile (same for all chains)
+// Contract ABIs and constants
 // ============================================================================
-const UGPC_PRECOMPILE = '0x00000000000000000000000000000000000000C1' as `0x${string}`;
 
 // ============================================================================
 // StakingExample ABI (from deployed contract)
@@ -232,70 +232,9 @@ const STAKING_EXAMPLE_ABI = [
   { stateMutability: 'payable', type: 'receive' },
 ] as const;
 
-// CEAFactory ABI (for verification)
-const CEA_FACTORY_ABI = [
-  {
-    inputs: [{ name: 'pushAccount', type: 'address' }],
-    name: 'getCEAForPushAccount',
-    outputs: [
-      { name: 'cea', type: 'address' },
-      { name: 'isDeployed', type: 'bool' },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [{ name: 'ceaAddress', type: 'address' }],
-    name: 'getPushAccountForCEA',
-    outputs: [{ name: '', type: 'address' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-] as const;
-
 // ============================================================================
-// Helper: Query gas fees for outbound
+// Helper: Compute msg.value for UGPC gas swap (test-specific)
 // ============================================================================
-async function queryOutboundGasFees(
-  pushPublicClient: ReturnType<typeof createPublicClient>,
-  prc20Token: `0x${string}`,
-  gasLimit: bigint = BigInt(0)
-): Promise<{ gasFee: bigint; protocolFee: bigint; totalFee: bigint; nativeValueForGas: bigint }> {
-  // Step 1: Get UNIVERSAL_CORE address from UGPC precompile
-  const universalCoreAddress = await pushPublicClient.readContract({
-    address: UGPC_PRECOMPILE,
-    abi: UNIVERSAL_GATEWAY_PC,
-    functionName: 'UNIVERSAL_CORE',
-  }) as `0x${string}`;
-
-  console.log(`[GasFees] UniversalCore address: ${universalCoreAddress}`);
-
-  // Step 2: Query gas and fees
-  const result = await pushPublicClient.readContract({
-    address: universalCoreAddress,
-    abi: UNIVERSAL_CORE_EVM,
-    functionName: 'getOutboundTxGasAndFees',
-    args: [prc20Token, gasLimit],
-  }) as [string, bigint, bigint, bigint, string];
-
-  const gasFee = result[1];
-  const protocolFee = result[2];
-  const totalFee = gasFee + protocolFee;
-
-  const nativeValueForGas = protocolFee + (gasFee * BigInt(1000));
-
-  console.log(`[GasFees] gasFee: ${gasFee}, protocolFee: ${protocolFee}, totalFee: ${totalFee}, nativeValueForGas: ${nativeValueForGas}`);
-
-  return { gasFee, protocolFee, totalFee, nativeValueForGas };
-}
-
-// ============================================================================
-// Helper: Compute msg.value for UGPC gas swap
-// ============================================================================
-// Unlike the SDK's own outbound flow (UEA → UGPC, refund → UEA), in these tests
-// the call path is UEA → StakingExample → UGPC, so refunds go to StakingExample.
-// We use a fixed generous value (25 PC) that covers the Uniswap swap without
-// draining the UEA balance across multiple test scenarios.
 const OUTBOUND_MSG_VALUE = parseEther('25'); // 25 PC — covers gas swap, excess refunded to StakingExample
 
 async function computeOutboundMsgValue(
@@ -307,129 +246,6 @@ async function computeOutboundMsgValue(
   const value = nativeValueForGas > OUTBOUND_MSG_VALUE ? nativeValueForGas : OUTBOUND_MSG_VALUE;
   console.log(`[MsgValue] Using ${value} (balance: ${ueaBalance})`);
   return value;
-}
-
-// ============================================================================
-// Helper: Build multicall payload for outbound (wraps calls in UEA_MULTICALL_SELECTOR)
-// ============================================================================
-function buildOutboundMulticallPayload(
-  calls: Array<{ to: `0x${string}`; value: bigint; data: `0x${string}` }>
-): `0x${string}` {
-  const multicallEncoded = encodeAbiParameters(
-    [
-      {
-        type: 'tuple[]',
-        components: [
-          { name: 'to', type: 'address' },
-          { name: 'value', type: 'uint256' },
-          { name: 'data', type: 'bytes' },
-        ],
-      },
-    ],
-    [calls]
-  );
-  return `${UEA_MULTICALL_SELECTOR}${multicallEncoded.slice(2)}` as `0x${string}`;
-}
-
-// ============================================================================
-// Helper: Wait for outbound relay and return external chain details
-// ============================================================================
-// Since the SDK's wait() only polls for outbound on Route 2 (UOA_TO_CEA),
-// and these smart contract tests use Route 1 (UOA_TO_PUSH) where the contract
-// internally triggers outbound via UGPC, we manually poll for the relay.
-const OUTBOUND_INITIAL_WAIT_MS = 30000;
-const OUTBOUND_POLL_INTERVAL_MS = 5000;
-const OUTBOUND_TIMEOUT_MS = 180000;
-
-async function waitForOutboundRelay(
-  pushChainTxHash: string,
-  pushNetwork: PUSH_NETWORK
-): Promise<{ externalTxHash: string; externalChain: CHAIN; explorerUrl: string }> {
-  const pushChainEnum =
-    pushNetwork === PUSH_NETWORK.MAINNET ? CHAIN.PUSH_MAINNET : CHAIN.PUSH_TESTNET_DONUT;
-  const pushChainId = CHAIN_INFO[pushChainEnum].chainId;
-
-  // Compute universalTxId: keccak256("eip155:{chainId}:{txHash}")
-  const universalTxId = keccak256(toBytes(`eip155:${pushChainId}:${pushChainTxHash}`));
-  const queryId = universalTxId.startsWith('0x') ? universalTxId.slice(2) : universalTxId;
-
-  const client = new PushClient({
-    rpcUrls: CHAIN_INFO[pushChainEnum].defaultRPC,
-    network: pushNetwork,
-  });
-
-  console.log(`[waitForOutboundRelay] txHash: ${pushChainTxHash}, universalTxId: ${universalTxId}`);
-  console.log(`[waitForOutboundRelay] Initial wait ${OUTBOUND_INITIAL_WAIT_MS}ms...`);
-  await new Promise((r) => setTimeout(r, OUTBOUND_INITIAL_WAIT_MS));
-
-  // Also try extracting utx_id from cosmos events
-  let resolvedQueryId = queryId;
-  try {
-    const cosmosTx = await client.getCosmosTx(pushChainTxHash);
-    if (cosmosTx?.events) {
-      for (const event of cosmosTx.events) {
-        if (event.type === 'outbound_created') {
-          const utxIdAttr = event.attributes?.find(
-            (attr: { key: string; value?: string }) => attr.key === 'utx_id'
-          );
-          if (utxIdAttr?.value) {
-            resolvedQueryId = utxIdAttr.value.startsWith('0x')
-              ? utxIdAttr.value.slice(2)
-              : utxIdAttr.value;
-            console.log(`[waitForOutboundRelay] Resolved utx_id from cosmos event: ${resolvedQueryId}`);
-            break;
-          }
-        }
-      }
-    }
-  } catch (err) {
-    console.log(`[waitForOutboundRelay] Could not extract utx_id from cosmos events: ${err}`);
-  }
-
-  // Build a map of CAIP-2 namespace → CHAIN for matching
-  const namespaceToChain = new Map<string, CHAIN>();
-  for (const [chainKey, info] of Object.entries(CHAIN_INFO)) {
-    const vm = info.vm;
-    const ns = vm === VM.EVM ? 'eip155' : 'solana';
-    namespaceToChain.set(`${ns}:${info.chainId}`, chainKey as CHAIN);
-  }
-
-  const startTime = Date.now();
-  let pollCount = 0;
-
-  while (Date.now() - startTime < OUTBOUND_TIMEOUT_MS) {
-    pollCount++;
-    try {
-      const utxResponse = await client.getUniversalTxByIdV2(resolvedQueryId);
-      const outbounds = utxResponse?.universalTx?.outboundTx || [];
-
-      for (const ob of outbounds) {
-        if (ob.observedTx?.txHash) {
-          const chain = namespaceToChain.get(ob.destinationChain);
-          if (chain) {
-            const explorerBase = CHAIN_INFO[chain]?.explorerUrl;
-            const explorerUrl = explorerBase ? `${explorerBase}/tx/${ob.observedTx.txHash}` : '';
-
-            console.log(`[waitForOutboundRelay] FOUND on poll #${pollCount} | externalTxHash: ${ob.observedTx.txHash} | chain: ${chain}`);
-            console.log(`[waitForOutboundRelay] Explorer: ${explorerUrl}`);
-            return {
-              externalTxHash: ob.observedTx.txHash,
-              externalChain: chain,
-              explorerUrl,
-            };
-          }
-        }
-      }
-    } catch (err) {
-      console.log(`[waitForOutboundRelay] Poll #${pollCount} error: ${err}`);
-    }
-
-    await new Promise((r) => setTimeout(r, OUTBOUND_POLL_INTERVAL_MS));
-  }
-
-  throw new Error(
-    `[waitForOutboundRelay] Timeout after ${OUTBOUND_TIMEOUT_MS}ms waiting for outbound relay. Push Chain TX: ${pushChainTxHash}`
-  );
 }
 
 // ============================================================================
@@ -453,28 +269,15 @@ describe('CEA Custom Contract: StakingExample (Outbound & Inbound)', () => {
       return;
     }
 
-    const originChain = CHAIN.ETHEREUM_SEPOLIA;
-    const account = privateKeyToAccount(privateKey);
-    const walletClient = createWalletClient({
-      account,
-      transport: http(CHAIN_INFO[originChain].defaultRPC[0]),
-    });
-
-    const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
-      walletClient,
-      {
-        chain: originChain,
-        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-      }
-    );
-
-    pushClient = await PushChain.initialize(universalSigner, {
-      network: PUSH_NETWORK.TESTNET_DONUT,
+    const setup = await createEvmPushClient({
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      privateKey,
       printTraces: true,
-      progressHook: (val: any) => {
+      progressHook: (val) => {
         console.log(`[${val.id}] ${val.title}`);
       },
     });
+    pushClient = setup.pushClient;
 
     ueaAddress = pushClient.universal.account;
     console.log(`UEA Address: ${ueaAddress}`);
