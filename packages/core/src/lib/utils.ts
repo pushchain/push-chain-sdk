@@ -214,15 +214,19 @@ export class Utils {
      * Alias maintained for backwards compatibility. Logs a deprecation warning
      * and delegates to Utils.chains.getChainNamespace.
      */
-    getChainName: (chainName: string): string | undefined => {
-      // Emit deprecation warning on every call to surface migration need
-      // Note: Keeping message explicit for SDK consumers
-      console.warn(
-        '[DEPRECATED] PushChain.utils.helper.getChainName is deprecated. ' +
-          'Use PushChain.utils.chains.getChainNamespace(chainName) instead.'
-      );
-      return Utils.chains.getChainName(chainName);
-    },
+    getChainName: (() => {
+      let warned = false;
+      return (chainName: string): string | undefined => {
+        if (!warned) {
+          console.warn(
+            '[DEPRECATED] PushChain.utils.helper.getChainName is deprecated. ' +
+              'Use PushChain.utils.chains.getChainNamespace(chainName) instead.'
+          );
+          warned = true;
+        }
+        return Utils.chains.getChainName(chainName);
+      };
+    })(),
     encodeTxData({
       abi,
       functionName,
@@ -693,7 +697,8 @@ export class Utils {
      * ```
      */
     getPRC20Address(
-      token: MoveableToken | { chain: string; address: string }
+      token: MoveableToken | { chain: string; address: string },
+      options?: { network?: PUSH_NETWORK }
     ): `0x${string}` {
       // Infer origin chain and symbol by matching against the MOVEABLE_TOKENS registry
       let originChain: CHAIN | undefined;
@@ -728,8 +733,7 @@ export class Utils {
         );
       }
 
-      // Select Push network mapping (tests/use-cases use TESTNET_DONUT; identical to TESTNET here)
-      const network = PUSH_NETWORK.TESTNET_DONUT;
+      const network = options?.network ?? PUSH_NETWORK.TESTNET_DONUT;
       const map = SYNTHETIC_PUSH_ERC20[network];
 
       // Map token → synthetic key by origin chain family

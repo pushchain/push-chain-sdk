@@ -325,14 +325,16 @@ export async function convertOriginToExecutor(
  *   UEA and CEA lookups via the optional `options.chain` parameter.
  */
 export async function convertExecutorToOriginAccount(
-  ueaAddress: `0x${string}`
+  ueaAddress: `0x${string}`,
+  options?: { network?: PUSH_NETWORK }
 ): Promise<OriginAccountInfo> {
   console.warn(
     '[PushChain] convertExecutorToOriginAccount() is deprecated. Use convertExecutorToOrigin() instead.'
   );
-  const RPC_URL = PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
+  const pushChainKey = pushNetworkToChainKey(options?.network ?? PUSH_NETWORK.TESTNET_DONUT);
+  const RPC_URL = PUSH_CHAIN_INFO[pushChainKey].defaultRPC[0];
   const FACTORY_ADDRESS =
-    PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].factoryAddress;
+    PUSH_CHAIN_INFO[pushChainKey].factoryAddress;
 
   // Create viem public client
   const client = createPublicClient({
@@ -385,6 +387,7 @@ export async function convertExecutorToOrigin(
   executorAddress: string,
   options?: {
     chain?: CHAIN;
+    network?: PUSH_NETWORK;
   }
 ): Promise<OriginAccountInfo> {
   if (options?.chain && !isPushChain(options.chain)) {
@@ -425,9 +428,10 @@ export async function convertExecutorToOrigin(
   }
 
   // Default: UEA on Push Chain → origin account
-  const RPC_URL = PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
+  const pushChainKey = pushNetworkToChainKey(options?.network ?? PUSH_NETWORK.TESTNET_DONUT);
+  const RPC_URL = PUSH_CHAIN_INFO[pushChainKey].defaultRPC[0];
   const FACTORY_ADDRESS =
-    PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].factoryAddress;
+    PUSH_CHAIN_INFO[pushChainKey].factoryAddress;
 
   const client = createPublicClient({
     transport: http(RPC_URL),
@@ -464,6 +468,17 @@ export async function convertExecutorToOrigin(
   }
 
   return { account: universalAccount, exists: isUEA };
+}
+
+/**
+ * Maps a PUSH_NETWORK to the corresponding Push Chain key for PUSH_CHAIN_INFO lookup.
+ */
+function pushNetworkToChainKey(
+  network: PUSH_NETWORK
+): CHAIN.PUSH_MAINNET | CHAIN.PUSH_TESTNET_DONUT | CHAIN.PUSH_LOCALNET {
+  if (network === PUSH_NETWORK.MAINNET) return CHAIN.PUSH_MAINNET;
+  if (network === PUSH_NETWORK.TESTNET_DONUT || network === PUSH_NETWORK.TESTNET) return CHAIN.PUSH_TESTNET_DONUT;
+  return CHAIN.PUSH_LOCALNET;
 }
 
 function isPushChain(chain: CHAIN): boolean {

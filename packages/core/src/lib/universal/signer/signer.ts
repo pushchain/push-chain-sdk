@@ -28,6 +28,34 @@ import { CHAIN_INFO } from '../../constants/chain';
 import { utils } from '@coral-xyz/anchor';
 
 /**
+ * Maps an EVM numeric chainId to the corresponding CHAIN enum.
+ * Shared by all signer skeleton generators to avoid duplication.
+ */
+function chainIdToChain(chainId: string | number | bigint): CHAIN {
+  const id = chainId.toString();
+  switch (id) {
+    case '11155111':
+      return CHAIN.ETHEREUM_SEPOLIA;
+    case '421614':
+      return CHAIN.ARBITRUM_SEPOLIA;
+    case '84532':
+      return CHAIN.BASE_SEPOLIA;
+    case '97':
+      return CHAIN.BNB_TESTNET;
+    case '1':
+      return CHAIN.ETHEREUM_MAINNET;
+    case '9':
+      return CHAIN.PUSH_MAINNET;
+    case '42101':
+      return CHAIN.PUSH_TESTNET;
+    case '9000':
+      return CHAIN.PUSH_LOCALNET;
+    default:
+      throw new Error(`Unsupported chainId: ${chainId}`);
+  }
+}
+
+/**
  * Creates a `UniversalSigner` object for signing messages and transactions
  * on any supported chain.
  *
@@ -338,41 +366,7 @@ async function generateSkeletonFromEthersV5(
   const address = await signer.getAddress();
 
   const { chainId } = await signer.provider.getNetwork();
-
-  // Map chainId to CHAIN enum - this is a simplified mapping
-  let chain: CHAIN;
-  switch (chainId.toString()) {
-    case '11155111':
-      chain = CHAIN.ETHEREUM_SEPOLIA;
-      break;
-    case '421614':
-      chain = CHAIN.ARBITRUM_SEPOLIA;
-      break;
-    case '84532':
-      chain = CHAIN.BASE_SEPOLIA;
-      break;
-    case '97':
-      chain = CHAIN.BNB_TESTNET;
-      break;
-    case '1':
-      chain = CHAIN.ETHEREUM_MAINNET;
-      break;
-    case '9':
-      chain = CHAIN.PUSH_MAINNET;
-      break;
-    case '42101':
-      chain = CHAIN.PUSH_TESTNET;
-      break;
-    case '9000':
-      chain = CHAIN.PUSH_LOCALNET;
-      break;
-    default:
-      throw new Error(`Unsupported chainId: ${chainId}`);
-  }
-
-  if (!Object.values(CHAIN).includes(chain)) {
-    throw new Error(`Unsupported chainId: ${chainId}`);
-  }
+  const chain = chainIdToChain(chainId);
 
   return {
     signerId: `EthersSignerV5-${address}`,
@@ -408,41 +402,7 @@ async function generateSkeletonFromEthersV6(
   const address = await signer.getAddress();
 
   const { chainId } = await signer.provider.getNetwork();
-
-  // Map chainId to CHAIN enum - this is a simplified mapping
-  let chain: CHAIN;
-  switch (chainId.toString()) {
-    case '11155111':
-      chain = CHAIN.ETHEREUM_SEPOLIA;
-      break;
-    case '421614':
-      chain = CHAIN.ARBITRUM_SEPOLIA;
-      break;
-    case '84532':
-      chain = CHAIN.BASE_SEPOLIA;
-      break;
-    case '97':
-      chain = CHAIN.BNB_TESTNET;
-      break;
-    case '1':
-      chain = CHAIN.ETHEREUM_MAINNET;
-      break;
-    case '9':
-      chain = CHAIN.PUSH_MAINNET;
-      break;
-    case '42101':
-      chain = CHAIN.PUSH_TESTNET;
-      break;
-    case '9000':
-      chain = CHAIN.PUSH_LOCALNET;
-      break;
-    default:
-      throw new Error(`Unsupported chainId: ${chainId}`);
-  }
-
-  if (!Object.values(CHAIN).includes(chain)) {
-    throw new Error(`Unsupported chainId: ${chainId}`);
-  }
+  const chain = chainIdToChain(chainId);
 
   return {
     signerId: `EthersSignerV6-${address}`,
@@ -489,37 +449,7 @@ async function generateSkeletonFromViem(
   }
   const address = signer.account['address'];
   const chainId = await signer.getChainId();
-
-  // Map chainId to CHAIN enum
-  let chain: CHAIN;
-  switch (chainId.toString()) {
-    case '11155111':
-      chain = CHAIN.ETHEREUM_SEPOLIA;
-      break;
-    case '421614':
-      chain = CHAIN.ARBITRUM_SEPOLIA;
-      break;
-    case '84532':
-      chain = CHAIN.BASE_SEPOLIA;
-      break;
-    case '97':
-      chain = CHAIN.BNB_TESTNET;
-      break;
-    case '1':
-      chain = CHAIN.ETHEREUM_MAINNET;
-      break;
-    case '9':
-      chain = CHAIN.PUSH_MAINNET;
-      break;
-    case '42101':
-      chain = CHAIN.PUSH_TESTNET;
-      break;
-    case '9000':
-      chain = CHAIN.PUSH_LOCALNET;
-      break;
-    default:
-      throw new Error(`Unsupported chainId: ${chainId}`);
-  }
+  const chain = chainIdToChain(chainId);
 
   return {
     signerId: `ViemSigner-${address}`,

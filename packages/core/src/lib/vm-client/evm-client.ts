@@ -11,7 +11,7 @@ import {
   encodeFunctionData,
   hexToBytes,
   http,
-  parseEther,
+  parseAbi,
   PublicClient,
   serializeTransaction,
   Hex,
@@ -113,12 +113,11 @@ export class EvmClient {
     tokenAddress: `0x${string}`;
     ownerAddress: `0x${string}`;
   }): Promise<bigint> {
-    const { parseAbi } = await import('viem');
     const erc20Abi = parseAbi([
       'function balanceOf(address) view returns (uint256)',
     ]);
     return this.readContract<bigint>({
-      abi: erc20Abi as unknown as Abi,
+      abi: erc20Abi as Abi,
       address: tokenAddress,
       functionName: 'balanceOf',
       args: [ownerAddress],
@@ -159,7 +158,7 @@ export class EvmClient {
     address,
     functionName,
     args = [],
-    value = parseEther('0'),
+    value = BigInt(0),
     signer,
   }: WriteContractParams): Promise<Hex> {
     const data = encodeFunctionData({
@@ -199,7 +198,7 @@ export class EvmClient {
   async sendTransaction({
     to,
     data,
-    value = parseEther('0'),
+    value = BigInt(0),
     signer,
     nonce: explicitNonce,
     gas: explicitGas,

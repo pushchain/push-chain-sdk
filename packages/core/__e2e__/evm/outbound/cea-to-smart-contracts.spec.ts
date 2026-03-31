@@ -25,6 +25,7 @@ import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
 import { CHAIN_INFO, CEA_FACTORY_ADDRESSES, UNIVERSAL_GATEWAY_ADDRESSES } from '../../../src/lib/constants/chain';
 import {
   createPublicClient,
+  encodeAbiParameters,
   http,
   Hex,
   parseEther,
@@ -37,6 +38,7 @@ import { ERC20_EVM } from '../../../src/lib/constants/abi/erc20.evm';
 import { CEA_EVM } from '../../../src/lib/constants/abi/cea.evm';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 import { getToken, ZERO_ADDRESS } from '@e2e/shared/constants';
+import { UEA_MULTICALL_SELECTOR } from '../../../src/lib/constants/selectors';
 import { getActiveStakingFixtures, type StakingChainFixture } from '@e2e/shared/chain-fixtures';
 import {
   TEST_TARGET,
