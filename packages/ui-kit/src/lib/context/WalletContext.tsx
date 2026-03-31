@@ -75,6 +75,8 @@ export type WalletContextType = {
   activeTriggerId: string | undefined;
   setActiveTriggerId: React.Dispatch<React.SetStateAction<string | undefined>>;
   toggleButtonRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
+
+  connectionType: 'social' | 'external';
 };
 
 export const WalletContext = createContext<WalletContextType | null>(null);
@@ -806,6 +808,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         activeTriggerId,
         setActiveTriggerId,
         toggleButtonRefs,
+        connectionType: externalWallet ? 'external' : 'social',
       }}
     >
       <LoginModal

@@ -837,7 +837,7 @@ __metadata:
     styled-components: "npm:^6.1.0"
     tslib: "npm:^2.3.0"
     typescript-eslint: "npm:^8.32.1"
-    viem: "npm:^2.23.9"
+    viem: "npm:2.27.2"
   peerDependencies:
     react: ">=18.3.0 <20.0.0"
     react-dom: ">=18.3.0 <20.0.0"
@@ -5454,7 +5454,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"viem@npm:>=2.37.9, viem@npm:^2.1.1, viem@npm:^2.21.26, viem@npm:^2.23.9, viem@npm:^2.31.7":
+"viem@npm:>=2.37.9, viem@npm:^2.1.1, viem@npm:^2.21.26, viem@npm:^2.31.7":
   version: 2.47.6
   resolution: "viem@npm:2.47.6"
   dependencies:
