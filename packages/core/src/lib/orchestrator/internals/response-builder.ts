@@ -6,7 +6,6 @@
  */
 
 import { bs58 } from '../../internal/bs58';
-import { rpcLog, rpcLogDone, rpcSection } from '../../__debug_rpc_tracker';
 import { Connection } from '@solana/web3.js';
 import {
   bytesToHex,
@@ -157,10 +156,8 @@ export async function queryUniversalTxStatusFromGatewayTx(
     const EXPONENTIAL_BASE_MS = 4000;
     const MAX_ATTEMPTS = 15;
 
-    rpcSection(`queryUniversalTxStatus POLLING START (max ${MAX_ATTEMPTS} attempts, ${LINEAR_DELAY_MS}ms linear)`);
     let universalTxObj: any | undefined;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      rpcLog('Polling', `queryUniversalTxStatus attempt ${attempt + 1}/${MAX_ATTEMPTS}`, `id=${idHex.slice(0,16)}`);
       printLog(ctx, `[Sync] Attempt ${attempt + 1}/${MAX_ATTEMPTS} | Query ID: ${idHex}`);
       try {
         const universalTxResp = await ctx.pushClient.getUniversalTxById(
@@ -203,7 +200,6 @@ export async function trackTransaction(
   options?: TrackTransactionOptions,
   callbacks?: ResponseBuilderCallbacks
 ): Promise<UniversalTxResponse> {
-  rpcSection(`trackTransaction(${txHash.slice(0,14)}) — NEW PushClient will be created`);
   if (!callbacks) {
     throw new Error('trackTransaction requires ResponseBuilderCallbacks');
   }
@@ -359,10 +355,10 @@ export async function transformToUniversalTxResponse(
     value: bigint;
   };
 
-  rpcSection(`transformToUniversalTxResponse → convertExecutorToOrigin(${(tx.to as string).slice(0,10)}) — NEW publicClient`);
   const ueaOrigin =
     await convertExecutorToOrigin(
-      tx.to as `0x${string}`
+      tx.to as `0x${string}`,
+      { _internal: true }
     );
   let originAddress: string;
 

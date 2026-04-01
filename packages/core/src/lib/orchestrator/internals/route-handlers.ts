@@ -23,7 +23,6 @@ import {
 
 import type { OrchestratorContext } from './context';
 import { printLog } from './context';
-import { rpcSection } from '../../__debug_rpc_tracker';
 import {
   isPushChain,
   getChainNamespace,
@@ -120,27 +119,26 @@ export async function executeMultiChain(
     )}`
   );
 
-  rpcSection(`executeMultiChain → route=${route}`);
   let response: UniversalTxResponse;
 
   switch (route) {
     case TransactionRoute.UOA_TO_PUSH:
-      rpcSection('Route 1: UOA_TO_PUSH (standard)');
+
       response = await executeFn(toExecuteParams(params));
       break;
 
     case TransactionRoute.UOA_TO_CEA:
-      rpcSection('Route 2: UOA_TO_CEA (outbound to external chain)');
+
       response = await executeUoaToCea(ctx, params, executeFn);
       break;
 
     case TransactionRoute.CEA_TO_PUSH:
-      rpcSection('Route 3: CEA_TO_PUSH (inbound from CEA)');
+
       response = await executeCeaToPush(ctx, params, executeFn);
       break;
 
     case TransactionRoute.CEA_TO_CEA:
-      rpcSection('Route 4: CEA_TO_CEA (cross-chain via Push)');
+
       response = await executeCeaToCea(ctx, params, executeFn);
       break;
 
@@ -173,7 +171,7 @@ export async function executeUoaToCea(
   params: UniversalExecuteParams,
   executeFn: ExecuteFn
 ): Promise<UniversalTxResponse> {
-  rpcSection('executeUoaToCea (Route 2 EVM) entry — will call queryOutboundGasFee + executeFn');
+
   const target = params.to as ChainTarget;
   const targetChain = target.chain;
   const targetAddress = target.address;
@@ -784,7 +782,7 @@ export async function executeCeaToPush(
   params: UniversalExecuteParams,
   executeFn: ExecuteFn
 ): Promise<UniversalTxResponse> {
-  rpcSection('executeCeaToPush (Route 3 EVM) entry — will call getCEAAddress + executeFn');
+
   // 1. Validate and extract source chain
   if (!params.from?.chain) {
     throw new Error('Route 3 (CEA -> Push) requires from.chain to specify the source CEA chain');
@@ -1275,7 +1273,7 @@ export async function executeCeaToCea(
   params: UniversalExecuteParams,
   executeFn: ExecuteFn
 ): Promise<UniversalTxResponse> {
-  rpcSection('executeCeaToCea (Route 4) entry — chains Route 3 + Route 2');
+
   // CEA -> CEA requires chaining Route 3 (CEA -> Push) and Route 2 (Push -> CEA)
   // This is a complex flow that requires coordination
   throw new Error(

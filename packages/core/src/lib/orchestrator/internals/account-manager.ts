@@ -5,7 +5,6 @@
 
 import { bs58 } from '../../internal/bs58';
 import { Abi, bytesToHex, encodeAbiParameters, keccak256 } from 'viem';
-import { rpcSection } from '../../__debug_rpc_tracker';
 import { UEA_FACTORY_ABI } from '../../constants/abi/uea-factory';
 import { CHAIN_INFO, UEA_FACTORY, UEA_MIGRATION, VM_NAMESPACE } from '../../constants/chain';
 import { CHAIN, VM } from '../../constants/enums';
@@ -58,14 +57,11 @@ export async function getAccountStatus(
   options?: { forceRefresh?: boolean }
 ): Promise<AccountStatus> {
   if (ctx.accountStatusCache && !options?.forceRefresh) {
-    rpcSection('getAccountStatus → CACHED (no RPC)');
     return ctx.accountStatusCache;
   }
 
   const chain = ctx.universalSigner.account.chain;
   const { vm } = CHAIN_INFO[chain];
-
-  rpcSection('getAccountStatus → FETCH (forceRefresh or cache miss)');
   const { deployed } = await getUeaStatusAndNonce(ctx);
 
   if (!deployed) {

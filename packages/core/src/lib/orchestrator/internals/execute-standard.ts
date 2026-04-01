@@ -9,7 +9,6 @@
 
 import { bs58 } from '../../internal/bs58';
 import { bytesToHex, zeroAddress } from 'viem';
-import { rpcSection } from '../../__debug_rpc_tracker';
 import { CHAIN_INFO } from '../../constants/chain';
 import { VM } from '../../constants/enums';
 import {
@@ -80,7 +79,6 @@ export async function executeStandardPayload(
   }
 
   // Fetch Gas details and estimate cost of execution
-  rpcSection('executeStandardPayload → getGasPrice');
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_02_01);
   const gasEstimate = execute.gasLimit || BigInt(1e7);
   const gasPrice = await ctx.pushClient.getGasPrice();
@@ -96,7 +94,6 @@ export async function executeStandardPayload(
 
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_01);
   if (execute._ueaStatus) {
-    rpcSection('executeStandardPayload → UEA status from _ueaStatus (no RPC)');
     isUEADeployed = execute._ueaStatus.isDeployed;
     nonce = execute._ueaStatus.nonce;
     funds = execute._ueaStatus.balance;
@@ -104,7 +101,6 @@ export async function executeStandardPayload(
     // Skip getCode if accountStatusCache already confirmed deployment
     const deployedHint = ctx.accountStatusCache?.uea?.deployed;
     if (deployedHint) {
-      rpcSection('executeStandardPayload → UEA deployed (cached), skip getCode — fetch balance+nonce only');
       const [balance, ueaNonce] = await Promise.all([
         ctx.pushClient.getBalance(UEA),
         getUEANonce(ctx, UEA),
@@ -113,7 +109,6 @@ export async function executeStandardPayload(
       nonce = ueaNonce;
       funds = balance;
     } else {
-      rpcSection('executeStandardPayload → UEA status FETCH (getCode+getBalance+getNonce)');
       const [code, balance] = await Promise.all([
         ctx.pushClient.publicClient.getCode({ address: UEA }),
         ctx.pushClient.getBalance(UEA),

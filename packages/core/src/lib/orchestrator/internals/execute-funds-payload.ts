@@ -8,7 +8,6 @@
 import { bs58 } from '../../internal/bs58';
 import { PublicKey } from '@solana/web3.js';
 import { bytesToHex, stringToBytes } from 'viem';
-import { rpcSection } from '../../__debug_rpc_tracker';
 import SVM_GATEWAY_IDL from '../../constants/abi/universalGatewayV0.json';
 import { CHAIN_INFO } from '../../constants/chain';
 import { CHAIN, VM } from '../../constants/enums';
@@ -91,16 +90,13 @@ export async function executeFundsWithPayload(
   let deployed: boolean;
   const deployedHint = ctx.accountStatusCache?.uea?.deployed;
   if (deployedHint) {
-    rpcSection('executeFundsWithPayload → UEA deployed (cached), skip getCode — fetch nonce only');
     deployed = true;
     nonce = await getUEANonce(ctx, computeUEAOffchain(ctx));
   } else {
-    rpcSection('executeFundsWithPayload → getUeaStatusAndNonce (full fetch)');
     const status = await getUeaStatusAndNonce(ctx);
     nonce = status.nonce;
     deployed = status.deployed;
   }
-  rpcSection('executeFundsWithPayload → buildGatewayPayloadAndGas');
   const { payload: universalPayload, req } = await buildGatewayPayloadAndGas(
     ctx, execute, nonce, 'sendTxWithFunds', execute.funds!.amount
   );

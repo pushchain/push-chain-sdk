@@ -6,7 +6,6 @@ import {
   createPublicClient,
   hexToBytes,
 } from 'viem';
-import { rpcLog, rpcLogDone } from '../../__debug_rpc_tracker';
 import {
   CHAIN_INFO,
   PUSH_CHAIN_INFO,
@@ -343,13 +342,18 @@ export async function convertOriginToExecutor(
  * @deprecated Use `convertExecutorToOrigin()` instead, which supports both
  *   UEA and CEA lookups via the optional `options.chain` parameter.
  */
+let _convertExecutorToOriginAccountWarned = false;
+
 export async function convertExecutorToOriginAccount(
   ueaAddress: `0x${string}`,
   options?: { network?: PUSH_NETWORK }
 ): Promise<OriginAccountInfo> {
-  console.warn(
-    '[PushChain] convertExecutorToOriginAccount() is deprecated. Use convertExecutorToOrigin() instead.'
-  );
+  if (!_convertExecutorToOriginAccountWarned) {
+    console.warn(
+      '[PushChain] convertExecutorToOriginAccount() is deprecated. Use resolveControllerAccount() instead.'
+    );
+    _convertExecutorToOriginAccountWarned = true;
+  }
   const pushChainKey = pushNetworkToChainKey(options?.network ?? PUSH_NETWORK.TESTNET_DONUT);
   const RPC_URL = PUSH_CHAIN_INFO[pushChainKey].defaultRPC[0];
   const FACTORY_ADDRESS =
@@ -401,14 +405,28 @@ export async function convertExecutorToOriginAccount(
  *   the mapped origin account (same as convertExecutorToOriginAccount).
  * - With `chain`: treats the address as a CEA on the specified external chain,
  *   looks up the corresponding PushAccount (UEA) on Push Chain, and returns it.
+ *
+ * @deprecated Use `resolveControllerAccount()` instead, which accepts a CAIP-10
+ *   string and supports both UEA and CEA lookups via `options.chain`.
  */
+let _convertExecutorToOriginWarned = false;
+
 export async function convertExecutorToOrigin(
   executorAddress: string,
   options?: {
     chain?: CHAIN;
     network?: PUSH_NETWORK;
+    /** @internal Skip deprecation warning for SDK-internal calls */
+    _internal?: boolean;
   }
 ): Promise<OriginAccountInfo> {
+  if (!options?._internal && !_convertExecutorToOriginWarned) {
+    console.warn(
+      '[PushChain] convertExecutorToOrigin() is deprecated. Use resolveControllerAccount() instead.'
+    );
+    _convertExecutorToOriginWarned = true;
+  }
+
   if (options?.chain && !isPushChain(options.chain)) {
     // CEA on external chain → look up PushAccount (UEA) on Push Chain
     const pushAccountAddress = await getPushAccountForCEA(
@@ -451,7 +469,6 @@ export async function convertExecutorToOrigin(
   const cacheKey = `${executorAddress.toLowerCase()}:${network}`;
   const cached = executorToOriginCache.get(cacheKey);
   if (cached) {
-    rpcLog('Account', 'convertExecutorToOrigin.CACHED', `addr=${executorAddress.slice(0,10)}`);
     return cached;
   }
 
@@ -460,7 +477,6 @@ export async function convertExecutorToOrigin(
   const FACTORY_ADDRESS =
     PUSH_CHAIN_INFO[pushChainKey].factoryAddress;
 
-  const _id = rpcLog('Account', 'convertExecutorToOrigin.getOriginForUEA', `addr=${executorAddress.slice(0,10)}`);
   const client = createPublicClient({
     transport: http(RPC_URL),
   });
@@ -474,7 +490,6 @@ export async function convertExecutorToOrigin(
     { chainNamespace: string; chainId: string; owner: `0x${string}` },
     boolean
   ];
-  rpcLogDone(_id, `isUEA=${originResult[1]}`);
 
   const [account, isUEA] = originResult;
 

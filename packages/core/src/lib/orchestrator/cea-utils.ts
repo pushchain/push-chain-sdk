@@ -5,7 +5,6 @@
  */
 
 import { createPublicClient, http, type Chain } from 'viem';
-import { rpcLog, rpcLogDone, rpcSection } from '../__debug_rpc_tracker';
 import {
   sepolia,
   arbitrumSepolia,
@@ -85,12 +84,10 @@ export async function getCEAAddress(
 
   if (cachedAddress) {
     // Address is cached — only re-check deployment status
-    rpcSection(`getCEAAddress | chain=${chain} uea=${ueaAddress.slice(0,10)} — address CACHED, checking isDeployed only`);
     const code = await client.getCode({ address: cachedAddress });
     return { cea: cachedAddress, isDeployed: code !== undefined && code !== '0x' };
   }
 
-  rpcSection(`getCEAAddress | chain=${chain} uea=${ueaAddress.slice(0,10)} — FETCH from factory`);
   const [cea, isDeployed] = await client.readContract({
     abi: CEA_FACTORY_EVM,
     address: factoryAddress,

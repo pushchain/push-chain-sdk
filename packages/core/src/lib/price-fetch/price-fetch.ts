@@ -1,6 +1,5 @@
 import { CHAIN, VM } from '../constants/enums';
 import { CHAIN_INFO } from '../constants/chain';
-import { rpcSection } from '../__debug_rpc_tracker';
 import { EvmClient } from '../vm-client/evm-client';
 import { FEE_LOCKER_EVM } from '../constants/abi/feeLocker.evm';
 import FEE_LOCKER_SVM from '../constants/abi/feeLocker.json';
@@ -23,11 +22,8 @@ export class PriceFetch {
   async getPrice(chain: CHAIN): Promise<bigint> {
     const cached = priceCache.get(chain);
     if (cached && Date.now() < cached.expiry) {
-      rpcSection(`PriceFetch.getPrice(${chain}) — CACHED (ttl ${Math.round((cached.expiry - Date.now()) / 1000)}s remaining)`);
       return cached.price;
     }
-
-    rpcSection(`PriceFetch.getPrice(${chain}) — FETCH (cache miss or expired)`);
     const rpcUrls: string[] =
       this.rpcUrls[chain] || CHAIN_INFO[chain].defaultRPC;
 

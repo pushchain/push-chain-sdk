@@ -1,5 +1,4 @@
 import { TransactionReceipt } from 'viem';
-import { rpcSection, rpcSummary } from '../__debug_rpc_tracker';
 import { CHAIN_INFO } from '../constants/chain';
 import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
 import {
@@ -182,23 +181,19 @@ export class Orchestrator {
   async execute(
     params: ExecuteParams | UniversalExecuteParams
   ): Promise<UniversalTxResponse> {
-    rpcSection(`execute() entry | cacheLoaded=${!!this.accountStatusCache?.uea?.loaded}`);
     // Lazy UEA upgrade check
     try {
       if (!this.accountStatusCache || !this.accountStatusCache.uea.loaded) {
-        rpcSection('execute() → awaiting background accountStatusReady');
         await (this.accountStatusReadyPromise ?? this.getAccountStatus());
       }
       // If background resolved but cache still empty (timeout/error), fetch fresh
       if (!this.accountStatusCache || !this.accountStatusCache.uea.loaded) {
-        rpcSection('execute() → background failed, fetching fresh');
         await this.getAccountStatus();
       }
       if (
         this.accountStatusCache?.uea.deployed &&
         this.accountStatusCache?.uea.requiresUpgrade
       ) {
-        rpcSection('execute() → upgradeAccount (requiresUpgrade=true)');
         await this.upgradeAccount({ progressHook: this.progressHook });
       }
     } catch (err) {
@@ -210,7 +205,6 @@ export class Orchestrator {
       isChainTarget(params.to) || ('from' in params && params.from?.chain);
 
     if (isMultiChain) {
-      rpcSection('execute() → MULTI-CHAIN path');
       return _executeMultiChain(this.ctx, params as UniversalExecuteParams, this.execute.bind(this));
     }
 
@@ -218,7 +212,6 @@ export class Orchestrator {
     const execute = params as ExecuteParams;
     const hasFunds = !!execute.funds;
     const hasData = execute.data && execute.data !== '0x';
-    rpcSection(`execute() → Route1 | funds=${hasFunds} data=${!!hasData} to=${(execute.to||'').slice(0,10)}`);
     const eventBuffer: ProgressEvent[] = [];
     const originalHook = this.progressHook;
     this.progressHook = (event: ProgressEvent) => {
@@ -235,20 +228,16 @@ export class Orchestrator {
         // SVM two-phase: bridge funds first, then execute payload separately
         // (Push Chain node doesn't support FUNDS_AND_PAYLOAD payload decoding for SVM yet)
         if (hasData && isSVM) {
-          rpcSection('execute() → SVM_FUNDS_THEN_PAYLOAD (two-phase)');
           const fundsOnly: ExecuteParams = { ...execute, data: undefined };
           await _executeFundsOnly(this.ctx, fundsOnly, eventBuffer, rcb);
           const dataOnly: ExecuteParams = { ...execute, funds: undefined };
           return await _executeStandardPayload(this.ctx, dataOnly, eventBuffer, rcb);
         }
 
-        const path = !hasData ? 'FUNDS_ONLY' : 'FUNDS_WITH_PAYLOAD';
-        rpcSection(`execute() → ${path}`);
         return !hasData
           ? await _executeFundsOnly(this.ctx, execute, eventBuffer, rcb)
           : await _executeFundsWithPayload(this.ctx, execute, eventBuffer, rcb);
       }
-      rpcSection('execute() → STANDARD_PAYLOAD');
       return await _executeStandardPayload(this.ctx, execute, eventBuffer, rcb);
     } catch (err) {
       const errMessage =

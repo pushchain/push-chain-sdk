@@ -774,6 +774,165 @@ describe('UEA → Push Chain: Inbound Transactions (Route 1)', () => {
           expect(receipt.status).toBe(1);
         }, 300000);
       });
+
+      // ========================================================================
+      // 33. Data to Self (UTX-06)
+      // ========================================================================
+      describe('33. Data to Self (UTX-06)', () => {
+        it('should send empty data to own UEA', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Data to Self [${fixture.label}] ===`
+          );
+
+          const UEA = pushClient.universal.account as `0x${string}`;
+
+          const tx = await pushClient.universal.sendTransaction({
+            to: UEA,
+            data: '0x',
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          expect(receipt.status).toBe(1);
+        }, 300000);
+      });
+
+      // ========================================================================
+      // 34. Value + Data to Self (UTX-08)
+      // ========================================================================
+      describe('34. Value + Data to Self (UTX-08)', () => {
+        it('should send value + empty data to own UEA', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Value + Data to Self [${fixture.label}] ===`
+          );
+
+          const UEA = pushClient.universal.account as `0x${string}`;
+
+          const tx = await pushClient.universal.sendTransaction({
+            to: UEA,
+            value: BigInt(8),
+            data: '0x',
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          expect(receipt.status).toBe(1);
+        }, 300000);
+      });
+
+      // ========================================================================
+      // 35. Funds + Data to Self (UTX-12)
+      // ========================================================================
+      describe('35. Funds + Data to Self (UTX-12)', () => {
+        it('should send funds + empty data to own UEA', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Funds + Data to Self [${fixture.label}] ===`
+          );
+
+          const usdt = pushClient.moveable.token.USDT;
+          const UEA = pushClient.universal.account as `0x${string}`;
+
+          const tx = await pushClient.universal.sendTransaction({
+            to: UEA,
+            funds: {
+              amount: PushChain.utils.helpers.parseUnits('0.000001', {
+                decimals: usdt.decimals,
+              }),
+              token: usdt,
+            },
+            data: '0x',
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          expect(receipt.status).toBe(1);
+        }, 300000);
+      });
+
+      // ========================================================================
+      // 36. V+F+D to Self (UTX-14)
+      // ========================================================================
+      describe('36. V+F+D to Self (UTX-14)', () => {
+        it('should send value + funds + empty data to own UEA', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: V+F+D to Self [${fixture.label}] ===`
+          );
+
+          const usdt = pushClient.moveable.token.USDT;
+          const UEA = pushClient.universal.account as `0x${string}`;
+
+          const tx = await pushClient.universal.sendTransaction({
+            to: UEA,
+            value: BigInt(14),
+            funds: {
+              amount: PushChain.utils.helpers.parseUnits('0.000001', {
+                decimals: usdt.decimals,
+              }),
+              token: usdt,
+            },
+            data: '0x',
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          expect(receipt.status).toBe(1);
+        }, 300000);
+      });
+
+      // ========================================================================
+      // 37. Native Funds + Data to Self (UTX-18)
+      // ========================================================================
+      describe('37. Native Funds + Data to Self (UTX-18)', () => {
+        it('should send native funds + empty data to own UEA', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Native Funds + Data to Self [${fixture.label}] ===`
+          );
+
+          const tokens = MOVEABLE_TOKENS[fixture.chain] || [];
+          const nativeToken = tokens.find(
+            (t) => t.mechanism === 'native'
+          );
+          if (!nativeToken) {
+            console.log('Skipping - native token not found');
+            return;
+          }
+
+          const UEA = pushClient.universal.account as `0x${string}`;
+
+          const tx = await pushClient.universal.sendTransaction({
+            to: UEA,
+            funds: {
+              amount: PushChain.utils.helpers.parseUnits('0.00001', 18),
+              token: nativeToken,
+            },
+            data: '0x',
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          expect(receipt.status).toBe(1);
+        }, 300000);
+      });
     }
   );
 

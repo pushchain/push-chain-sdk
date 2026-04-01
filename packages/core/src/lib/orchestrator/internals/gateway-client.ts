@@ -6,7 +6,6 @@
 import { bs58 } from '../../internal/bs58';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { Abi, hexToBytes, stringToBytes } from 'viem';
-import { rpcSection } from '../../__debug_rpc_tracker';
 import { getOriginEvmClient } from './context';
 import {
   SVM_GATEWAY_IDL,
@@ -130,7 +129,6 @@ export async function lockFee(
 
   switch (vm) {
     case VM.EVM: {
-      rpcSection('lockFee(EVM) — PriceFetch + reused EvmClient');
       const evmClient = getOriginEvmClient(ctx);
       const nativeTokenUsdPrice = await new PriceFetch(ctx.rpcUrls).getPrice(chain);
 

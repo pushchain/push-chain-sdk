@@ -583,6 +583,7 @@ export class Utils {
     getMoveableTokens(chainOrClient?: CHAIN | PushChain): {
       tokens: Array<{
         chain: CHAIN;
+        chainName: string;
         symbol: string;
         decimals: number;
         address: string;
@@ -597,6 +598,7 @@ export class Utils {
         return {
           tokens: list.map((t) => ({
             chain,
+            chainName: Utils.chains.getChainName(chain) ?? chain,
             symbol: t.symbol,
             decimals: t.decimals,
             address: t.address,
@@ -607,6 +609,7 @@ export class Utils {
 
       const tokens: Array<{
         chain: CHAIN;
+        chainName: string;
         symbol: string;
         decimals: number;
         address: string;
@@ -618,6 +621,7 @@ export class Utils {
         for (const t of list ?? []) {
           tokens.push({
             chain: k,
+            chainName: Utils.chains.getChainName(k) ?? k,
             symbol: t.symbol,
             decimals: t.decimals,
             address: t.address,
@@ -637,6 +641,7 @@ export class Utils {
     getPayableTokens(chainOrClient?: CHAIN | PushChain): {
       tokens: Array<{
         chain: CHAIN;
+        chainName: string;
         symbol: string;
         decimals: number;
         address: string;
@@ -651,6 +656,7 @@ export class Utils {
         return {
           tokens: list.map((t) => ({
             chain,
+            chainName: Utils.chains.getChainName(chain) ?? chain,
             symbol: t.symbol,
             decimals: t.decimals,
             address: t.address,
@@ -661,6 +667,7 @@ export class Utils {
 
       const tokens: Array<{
         chain: CHAIN;
+        chainName: string;
         symbol: string;
         decimals: number;
         address: string;
@@ -672,6 +679,7 @@ export class Utils {
         for (const t of list ?? []) {
           tokens.push({
             chain: k,
+            chainName: Utils.chains.getChainName(k) ?? k,
             symbol: t.symbol,
             decimals: t.decimals,
             address: t.address,
@@ -760,7 +768,12 @@ export class Utils {
         | 'USDT_ARB'
         | 'USDT_SOL'
         | 'USDT_BNB'
-        | 'USDT_BASE';
+        | 'USDT_BASE'
+        | 'USDC_ETH'
+        | 'USDC_ARB'
+        | 'USDC_SOL'
+        | 'USDC_BNB'
+        | 'USDC_BASE';
 
       switch (tokenSymbol) {
         case 'ETH': {
@@ -789,6 +802,18 @@ export class Utils {
           else
             throw new Error(
               'Unsupported USDT origin chain for synthetic mapping'
+            );
+          break;
+        }
+        case 'USDC': {
+          if (isEthFamily) key = 'USDC_ETH';
+          else if (isArbFamily) key = 'USDC_ARB';
+          else if (isBaseFamily) key = 'USDC_BASE';
+          else if (isBnbFamily) key = 'USDC_BNB';
+          else if (isSolFamily) key = 'USDC_SOL';
+          else
+            throw new Error(
+              'Unsupported USDC origin chain for synthetic mapping'
             );
           break;
         }

@@ -4,7 +4,6 @@
  */
 
 import { bs58 } from '../../internal/bs58';
-import { rpcLog, rpcLogDone, rpcSection } from '../../__debug_rpc_tracker';
 import {
   Abi,
   bytesToHex,
@@ -152,10 +151,8 @@ export async function getUeaStatusAndNonce(ctx: OrchestratorContext): Promise<{
   nonce: bigint;
 }> {
   const UEA = computeUEAOffchain(ctx);
-  const _id = rpcLog('UEA', 'getUeaStatusAndNonce.getCode', UEA.slice(0,10));
   const code = await ctx.pushClient.publicClient.getCode({ address: UEA });
   const deployed = code !== undefined;
-  rpcLogDone(_id, `deployed=${deployed}`);
   const nonce = deployed ? await getUEANonce(ctx, UEA) : BigInt(0);
   return { deployed, nonce };
 }
@@ -166,20 +163,16 @@ export async function getUeaStatusAndNonce(ctx: OrchestratorContext): Promise<{
 
 export async function fetchUEAVersion(ctx: OrchestratorContext): Promise<string> {
   if (ctx.ueaVersionCache) {
-    rpcSection(`fetchUEAVersion → CACHED (${ctx.ueaVersionCache})`);
     return ctx.ueaVersionCache;
   }
-  rpcSection('fetchUEAVersion → FETCH (cache miss)');
   const chain = ctx.universalSigner.account.chain;
   const { vm } = CHAIN_INFO[chain];
   const abi: Abi =
     vm === VM.EVM ? (UEA_EVM as unknown as Abi) : (UEA_SVM as unknown as Abi);
   const predictedUEA = computeUEAOffchain(ctx);
-  const _id = rpcLog('UEA', 'fetchUEAVersion.getCode', predictedUEA.slice(0,10));
   const code = await ctx.pushClient.publicClient.getCode({
     address: predictedUEA,
   });
-  rpcLogDone(_id, code === undefined ? 'NOT_DEPLOYED' : 'DEPLOYED');
   if (code === undefined) {
     ctx.ueaVersionCache = '0.1.0';
     return '0.1.0';

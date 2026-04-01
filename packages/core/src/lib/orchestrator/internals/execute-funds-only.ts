@@ -7,7 +7,6 @@
 
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { stringToBytes } from 'viem';
-import { rpcSection } from '../../__debug_rpc_tracker';
 import SVM_GATEWAY_IDL from '../../constants/abi/universalGatewayV0.json';
 import { CHAIN_INFO, SVM_PYTH_PRICE_FEED } from '../../constants/chain';
 import { CHAIN, VM } from '../../constants/enums';
@@ -110,16 +109,13 @@ async function executeFundsOnlyEvm(
   let deployed: boolean;
   const deployedHint = ctx.accountStatusCache?.uea?.deployed;
   if (deployedHint) {
-    rpcSection('executeFundsOnlyEvm → UEA deployed (cached), skip getCode — fetch nonce only');
     deployed = true;
     nonce = await getUEANonce(ctx, computeUEAOffchain(ctx));
   } else {
-    rpcSection('executeFundsOnlyEvm → getUeaStatusAndNonce (full fetch)');
     const status = await getUeaStatusAndNonce(ctx);
     nonce = status.nonce;
     deployed = status.deployed;
   }
-  rpcSection('executeFundsOnlyEvm → buildGatewayPayloadAndGas');
   const { payload: universalPayload, req } = await buildGatewayPayloadAndGas(
     ctx, execute, nonce, 'sendFunds', bridgeAmount
   );

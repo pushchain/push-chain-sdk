@@ -19,8 +19,6 @@ import {
   fallback,
   TransactionReceipt,
 } from 'viem';
-import { rpcLog, rpcLogDone } from '../__debug_rpc_tracker';
-
 /**
  * EVM client for reading and writing to Ethereum-compatible chains
  *
@@ -60,10 +58,7 @@ export class EvmClient {
    * }
    */
   async getBalance(address: `0x${string}`): Promise<bigint> {
-    const _id = rpcLog('EvmClient', 'getBalance', address);
-    const r = await this.publicClient.getBalance({ address });
-    rpcLogDone(_id, r.toString());
-    return r;
+    return this.publicClient.getBalance({ address });
   }
 
   /**
@@ -96,15 +91,12 @@ export class EvmClient {
     functionName,
     args = [],
   }: ReadContractParams): Promise<T> {
-    const _id = rpcLog('EvmClient', `readContract(${functionName})`, `addr=${(address as string).slice(0,10)}..`);
-    const r = await this.publicClient.readContract({
+    return this.publicClient.readContract({
       abi: abi as Abi,
       address: address as `0x${string}`,
       functionName,
       args,
-    }) as T;
-    rpcLogDone(_id);
-    return r;
+    }) as Promise<T>;
   }
 
   /**
@@ -168,21 +160,18 @@ export class EvmClient {
     value = BigInt(0),
     signer,
   }: WriteContractParams): Promise<Hex> {
-    const _id = rpcLog('EvmClient', `writeContract(${functionName})`, `addr=${(address as string).slice(0,10)}.. value=${value}`);
     const data = encodeFunctionData({
       abi: abi as Abi,
       functionName,
       args,
     });
 
-    const r = await this.sendTransaction({
+    return this.sendTransaction({
       to: address as `0x${string}`,
       data,
       value,
       signer,
     });
-    rpcLogDone(_id, r);
-    return r;
   }
 
   /**
@@ -220,9 +209,7 @@ export class EvmClient {
     nonce?: number;
     gas?: bigint;
   }): Promise<Hex> {
-    const _id = rpcLog('EvmClient', 'sendTransaction', `to=${to.slice(0,10)}.. value=${value}`);
     // Estimate gas and fees first (can run in parallel)
-    const _id2 = rpcLog('EvmClient', 'sendTransaction.parallel', 'estimateGas+estimateFees+getChainId');
     const [gas, feePerGas, chainId] = await Promise.all([
       explicitGas
         ? Promise.resolve(explicitGas)
@@ -237,14 +224,11 @@ export class EvmClient {
       this.publicClient.estimateFeesPerGas(),
       this.publicClient.getChainId(),
     ]);
-    rpcLogDone(_id2, `gas=${gas} chainId=${chainId}`);
 
-    const _id3 = rpcLog('EvmClient', 'getTransactionCount', `nonce=${explicitNonce ?? 'fetch'}`);
     const nonce = explicitNonce ?? await this.publicClient.getTransactionCount({
       address: signer.account.address as `0x${string}`,
       blockTag: 'pending',
     });
-    rpcLogDone(_id3, `nonce=${nonce}`);
 
     const unsignedTx = serializeTransaction({
       chainId,
@@ -266,7 +250,6 @@ export class EvmClient {
       hexToBytes(unsignedTx)
     );
 
-    rpcLogDone(_id, bytesToHex(txHashBytes));
     return bytesToHex(txHashBytes);
   }
 
@@ -339,10 +322,7 @@ export class EvmClient {
    * console.log(`Estimated transaction cost: ${totalCost} wei`);
    */
   async getGasPrice(): Promise<bigint> {
-    const _id = rpcLog('EvmClient', 'getGasPrice');
-    const r = await this.publicClient.getGasPrice();
-    rpcLogDone(_id, r.toString());
-    return r;
+    return this.publicClient.getGasPrice();
   }
 
   /**
@@ -356,9 +336,7 @@ export class EvmClient {
    * console.log(tx?.from, tx?.to, tx?.value);
    */
   async getTransaction(txHash: `0x${string}`): Promise<TxResponse> {
-    const _id = rpcLog('EvmClient', 'getTransaction', txHash.slice(0,14));
     const tx = await this.publicClient.getTransaction({ hash: txHash });
-    rpcLogDone(_id);
     if (!tx) throw new Error('No transaction found!');
 
     const wait = async (confirmations = 1): Promise<TransactionReceipt> => {
@@ -394,22 +372,17 @@ export class EvmClient {
     pollIntervalMs?: number;
     timeoutMs?: number;
   }): Promise<void> {
-    const _id = rpcLog('EvmClient', 'waitForConfirmations', `${txHash.slice(0,14)} confs=${confirmations}`);
     const receipt = await this.publicClient.waitForTransactionReceipt({
       hash: txHash,
     });
-    rpcLog('EvmClient', 'waitForConfirmations.receiptObtained', `block=${receipt.blockNumber}`);
 
     const targetBlock = receipt.blockNumber + BigInt(confirmations);
     const startTime = Date.now();
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      const _pid = rpcLog('EvmClient', 'waitForConfirmations.getBlockNumber');
       const currentBlock = await this.publicClient.getBlockNumber();
-      rpcLogDone(_pid, `block=${currentBlock} target=${targetBlock}`);
       if (currentBlock >= targetBlock) {
-        rpcLogDone(_id);
         return;
       }
 

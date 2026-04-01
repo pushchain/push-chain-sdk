@@ -1,5 +1,4 @@
 import { hexToBytes, keccak256 } from 'viem';
-import { rpcLog, rpcLogDone } from '../__debug_rpc_tracker';
 import { MsgDeployUEA, MsgExecutePayload, MsgMintPC, MsgMigrateUEA } from '../generated/v1/tx';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 import { SignDoc, TxBody, TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
@@ -164,7 +163,6 @@ export class PushClient extends EvmClient {
    * In prod, signer should be passed in instead.
    */
   async signCosmosTx(txBody: TxBody): Promise<TxRaw> {
-    const _id = rpcLog('PushClient', 'signCosmosTx', 'connect+status+account');
     const sender = toBech32(
       this.pushChainInfo.prefix,
       hexToBytes(this.ephemeralAccount.address)
@@ -227,7 +225,6 @@ export class PushClient extends EvmClient {
       const digest = keccak256(SignDoc.encode(signDoc).finish());
       const signature = await this.ephemeralAccount.sign({ hash: digest });
 
-      rpcLogDone(_id);
       return TxRaw.fromPartial({
         bodyBytes: txBodyBytes,
         authInfoBytes,
@@ -237,12 +234,9 @@ export class PushClient extends EvmClient {
   }
 
   async broadcastCosmosTx(txRaw: TxRaw): Promise<DeliverTxResponse> {
-    const _id = rpcLog('PushClient', 'broadcastCosmosTx');
     return this.executeWithRpcFallback(async (rpcUrl) => {
       const client = await StargateClient.connect(rpcUrl);
-      const result = await client.broadcastTx(TxRaw.encode(txRaw).finish());
-      rpcLogDone(_id, `code=${result.code} hash=${result.transactionHash?.slice(0,14)}`);
-      return result;
+      return client.broadcastTx(TxRaw.encode(txRaw).finish());
     }, 'broadcastCosmosTx');
   }
 
@@ -252,7 +246,6 @@ export class PushClient extends EvmClient {
   public async getUniversalTxById(
     id: string
   ): Promise<QueryGetUniversalTxResponse> {
-    const _id = rpcLog('PushClient', 'getUniversalTxById(v1)', `id=${id.slice(0,16)}..`);
     return this.executeWithRpcFallback(async (rpcUrl) => {
       const tmClient = await Tendermint34Client.connect(rpcUrl);
       const queryClient = new QueryClient(tmClient);
@@ -264,9 +257,7 @@ export class PushClient extends EvmClient {
         'GetUniversalTx',
         QueryGetUniversalTxRequest.encode(request).finish()
       );
-      const response = QueryGetUniversalTxResponse.decode(responseBytes);
-      rpcLogDone(_id, response.universalTx ? 'FOUND' : 'NOT_FOUND');
-      return response;
+      return QueryGetUniversalTxResponse.decode(responseBytes);
     }, 'getUniversalTxById');
   }
 
@@ -277,7 +268,6 @@ export class PushClient extends EvmClient {
   public async getUniversalTxByIdV2(
     id: string
   ): Promise<QueryGetUniversalTxResponseV2> {
-    const _id = rpcLog('PushClient', 'getUniversalTxByIdV2', `id=${id.slice(0,16)}..`);
     return this.executeWithRpcFallback(async (rpcUrl) => {
       const tmClient = await Tendermint34Client.connect(rpcUrl);
       const queryClient = new QueryClient(tmClient);
@@ -289,9 +279,7 @@ export class PushClient extends EvmClient {
         'GetUniversalTx',
         QueryGetUniversalTxRequestV2.encode(request).finish()
       );
-      const response = QueryGetUniversalTxResponseV2.decode(responseBytes);
-      rpcLogDone(_id, response.universalTx ? 'FOUND' : 'NOT_FOUND');
-      return response;
+      return QueryGetUniversalTxResponseV2.decode(responseBytes);
     }, 'getUniversalTxByIdV2');
   }
 
@@ -302,7 +290,6 @@ export class PushClient extends EvmClient {
    * @throws If the tx isn't found.
    */
   public async getCosmosTx(txHash: string): Promise<DeliverTxResponse> {
-    const _id = rpcLog('PushClient', 'getCosmosTx', txHash.slice(0,14));
     return this.executeWithRpcFallback(async (rpcUrl) => {
       const client = await StargateClient.connect(rpcUrl);
 
@@ -324,7 +311,6 @@ export class PushClient extends EvmClient {
       if (convertedResults.length === 0) {
         throw new Error(`No Cosmos-indexed tx for EVM hash ${txHash}`);
       }
-      rpcLogDone(_id);
       return { ...convertedResults[0], transactionHash: txHash };
     }, 'getCosmosTx');
   }

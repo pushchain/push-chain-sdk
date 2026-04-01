@@ -6,7 +6,6 @@
  */
 
 import { bs58 } from '../../internal/bs58';
-import { rpcLog, rpcSection } from '../../__debug_rpc_tracker';
 import { CHAIN_INFO, VM_NAMESPACE } from '../../constants/chain';
 import { CHAIN, VM } from '../../constants/enums';
 import { UniversalTxStatus } from '../../generated/uexecutor/v1/types';
@@ -79,7 +78,6 @@ export async function waitForOutboundTx(
 
   const startTime = Date.now();
 
-  rpcSection(`waitForOutboundTx START | txHash=${pushChainTxHash.slice(0,14)} | initialWait=${initialWaitMs}ms | poll=${pollingIntervalMs}ms | timeout=${timeout}ms`);
   printLog(ctx, `[waitForOutboundTx] Starting | txHash: ${pushChainTxHash} | initialWait: ${initialWaitMs}ms | pollInterval: ${pollingIntervalMs}ms | timeout: ${timeout}ms`);
 
   progressHook?.({ status: 'waiting', elapsed: 0 });
@@ -99,11 +97,9 @@ export async function waitForOutboundTx(
   while (Date.now() - startTime < timeout) {
     pollCount++;
     const pollStart = Date.now();
-    rpcLog('OutboundSync', `waitForOutboundTx poll #${pollCount}`, `elapsed=${pollStart - startTime}ms`);
     printLog(ctx, `[waitForOutboundTx] Poll #${pollCount} | Elapsed: ${pollStart - startTime}ms / ${timeout}ms`);
 
     if (!cachedUniversalSubTxId) {
-      rpcSection('waitForOutboundTx → extractUniversalSubTxIdFromTx (1st poll, getCosmosTx)');
       cachedUniversalSubTxId = (await extractUniversalSubTxIdFromTx(ctx, pushChainTxHash)) ?? undefined;
       if (!cachedUniversalSubTxId) {
         cachedUniversalSubTxId = computeUniversalTxId(ctx.pushNetwork, pushChainTxHash);
@@ -248,7 +244,6 @@ export async function waitForAllOutboundTxsV2(
   }
 
   const expectedChains = [...chainToHops.keys()];
-  rpcSection(`waitForAllOutboundTxsV2 START | txHash=${pushChainTxHash.slice(0,14)} | chains=${expectedChains.join(',')} | timeout=${timeout}ms`);
   printLog(ctx, `[waitForAllOutboundTxsV2] Starting | txHash: ${pushChainTxHash} | expectedChains: ${expectedChains.join(', ')} | timeout: ${timeout}ms`);
 
   // Emit initial waiting status for all outbound hops
@@ -289,7 +284,6 @@ export async function waitForAllOutboundTxsV2(
 
     // Resolve query ID on first poll
     if (!cachedQueryId) {
-      rpcSection('waitForAllOutboundTxsV2 → extractAllUniversalSubTxIds (1st poll, getCosmosTx)');
       const allSubTxIds = await extractAllUniversalSubTxIds(ctx, pushChainTxHash);
       const subTxId = allSubTxIds.length > 0 ? allSubTxIds[0] : computeUniversalTxId(ctx.pushNetwork, pushChainTxHash);
       cachedQueryId = subTxId.startsWith('0x') ? subTxId.slice(2) : subTxId;
@@ -297,7 +291,6 @@ export async function waitForAllOutboundTxsV2(
     }
 
     try {
-      rpcLog('OutboundSync', `waitForAllOutboundTxsV2 poll #${pollCount}`, `queryId=${cachedQueryId.slice(0,16)}`);
       const v2Response = await ctx.pushClient.getUniversalTxByIdV2(cachedQueryId);
       consecutiveErrors = 0; // Reset on successful RPC call
       const utx = v2Response?.universalTx;

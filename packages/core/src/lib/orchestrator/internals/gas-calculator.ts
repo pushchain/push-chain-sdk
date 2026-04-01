@@ -5,7 +5,6 @@
 
 import { PublicKey } from '@solana/web3.js';
 import { Abi, encodeFunctionData, stringToBytes } from 'viem';
-import { rpcSection } from '../../__debug_rpc_tracker';
 import {
   ERC20_EVM,
   SVM_GATEWAY_IDL,
@@ -44,7 +43,6 @@ export async function ensureErc20Allowance(
   spender: `0x${string}`,
   requiredAmount: bigint
 ): Promise<void> {
-  rpcSection(`ensureErc20Allowance | token=${tokenAddress.slice(0,10)} spender=${spender.slice(0,10)} required=${requiredAmount}`);
   const chain = ctx.universalSigner.account.chain;
   const owner = ctx.universalSigner.account.address as `0x${string}`;
 
@@ -111,7 +109,6 @@ export async function queryOutboundGasFee(
   prc20Token: `0x${string}`,
   gasLimit: bigint
 ): Promise<{ gasToken: `0x${string}`; gasFee: bigint; protocolFee: bigint; nativeValueForGas: bigint; gasPrice: bigint }> {
-  rpcSection(`queryOutboundGasFee | prc20=${prc20Token.slice(0,10)} gasLimit=${gasLimit} — 2 readContract calls`);
   const gatewayPcAddress = getUniversalGatewayPCAddress();
   const pushChain = getPushChainForNetwork(ctx.pushNetwork);
   const rpcUrl = CHAIN_INFO[pushChain]?.defaultRPC?.[0] || 'unknown';
@@ -230,7 +227,6 @@ export async function calculateNativeAmountForDeposit(
   requiredFunds: bigint,
   ueaBalance: bigint
 ): Promise<bigint> {
-  rpcSection(`calculateNativeAmountForDeposit | chain=${chain} — PriceFetch(new EvmClient)`);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_02_01);
 
   const oneUsd = Utils.helpers.parseUnits('1', 8);

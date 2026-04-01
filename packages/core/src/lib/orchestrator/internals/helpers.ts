@@ -5,7 +5,6 @@
  */
 
 import { Connection } from '@solana/web3.js';
-import { rpcSection } from '../../__debug_rpc_tracker';
 import { CHAIN_INFO, VM_NAMESPACE, SYNTHETIC_PUSH_ERC20 } from '../../constants/chain';
 import { getOriginEvmClient } from './context';
 import { CHAIN, PUSH_NETWORK, VM } from '../../constants/enums';
@@ -186,7 +185,6 @@ export async function fetchOriginChainTransactionForProgress(
   txHashHex: string,
   txHashDisplay: string
 ): Promise<object | undefined> {
-  rpcSection('fetchOriginChainTransactionForProgress — reused EvmClient');
   const { vm, defaultRPC } = CHAIN_INFO[chain];
   const rpcUrls = ctx.rpcUrls[chain] || defaultRPC;
 

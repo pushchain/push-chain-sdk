@@ -4,7 +4,6 @@
 
 import { bs58 } from '../../internal/bs58';
 import { bytesToHex } from 'viem';
-import { rpcSection } from '../../__debug_rpc_tracker';
 import { CHAIN_INFO } from '../../constants/chain';
 import { getOriginEvmClient } from './context';
 import { VM } from '../../constants/enums';
@@ -149,7 +148,6 @@ export async function waitForLockerFeeConfirmation(
   ctx: OrchestratorContext,
   txHashBytes: Uint8Array
 ): Promise<void> {
-  rpcSection('waitForLockerFeeConfirmation — reused EvmClient');
   const chain = ctx.universalSigner.account.chain;
   const { vm, defaultRPC, fastConfirmations, timeout } = CHAIN_INFO[chain];
   const rpcUrls = ctx.rpcUrls[chain] || defaultRPC;

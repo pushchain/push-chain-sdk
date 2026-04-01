@@ -7,7 +7,6 @@
 
 import { PublicKey } from '@solana/web3.js';
 import { encodeFunctionData } from 'viem';
-import { rpcSection } from '../../__debug_rpc_tracker';
 import { ERC20_EVM } from '../../constants/abi/erc20.evm';
 import {
   CHAIN_INFO,
@@ -94,7 +93,6 @@ export async function prepareTransaction(
   params: UniversalExecuteParams,
   callbacks: CascadeCallbacks
 ): Promise<PreparedUniversalTx> {
-  rpcSection('prepareTransaction entry — will call getCEAAddress + queryOutboundGasFee');
   validateRouteParams(params, {
     clientChain: ctx.universalSigner.account.chain,
   });

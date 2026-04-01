@@ -579,4 +579,141 @@ describe('SVM UEA → Push Chain: Inbound Transactions (Route 1)', () => {
       expect(receipt.status).toBe(1);
     }, 300000);
   });
+
+  // ============================================================================
+  // 17. Data to Self (UTX-06)
+  // ============================================================================
+  describe('17. Data to Self (UTX-06)', () => {
+    it('should send empty data to own UEA', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: SVM Data to Self ===');
+
+      const UEA = pushClient.universal.account as `0x${string}`;
+
+      const tx = await pushClient.universal.sendTransaction({
+        to: UEA,
+        data: '0x',
+      });
+
+      console.log(`TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      const receipt = await tx.wait();
+      expect(receipt.status).toBe(1);
+    }, 300000);
+  });
+
+  // ============================================================================
+  // 18. Value + Data to Self (UTX-08)
+  // ============================================================================
+  describe('18. Value + Data to Self (UTX-08)', () => {
+    it('should send value + empty data to own UEA', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: SVM Value + Data to Self ===');
+
+      const UEA = pushClient.universal.account as `0x${string}`;
+
+      const tx = await pushClient.universal.sendTransaction({
+        to: UEA,
+        value: BigInt(8),
+        data: '0x',
+      });
+
+      console.log(`TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      const receipt = await tx.wait();
+      expect(receipt.status).toBe(1);
+    }, 300000);
+  });
+
+  // ============================================================================
+  // 19. Funds + Data to Self (UTX-12)
+  // ============================================================================
+  describe('19. Funds + Data to Self (UTX-12)', () => {
+    it('should send SOL funds + empty data to own UEA', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: SVM Funds + Data to Self ===');
+
+      const solToken = getToken(CHAIN.SOLANA_DEVNET, 'SOL');
+      const UEA = pushClient.universal.account as `0x${string}`;
+
+      const tx = await pushClient.universal.sendTransaction({
+        to: UEA,
+        funds: {
+          amount: PushChain.utils.helpers.parseUnits('0.00005', 9),
+          token: solToken,
+        },
+        data: '0x',
+      });
+
+      console.log(`TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      const receipt = await tx.wait();
+      expect(receipt.status).toBe(1);
+    }, 300000);
+  });
+
+  // ============================================================================
+  // 20. V+F+D to Self (UTX-14)
+  // ============================================================================
+  describe('20. V+F+D to Self (UTX-14)', () => {
+    it('should send value + SOL funds + empty data to own UEA', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: SVM V+F+D to Self ===');
+
+      const solToken = getToken(CHAIN.SOLANA_DEVNET, 'SOL');
+      const UEA = pushClient.universal.account as `0x${string}`;
+
+      const tx = await pushClient.universal.sendTransaction({
+        to: UEA,
+        value: BigInt(14),
+        funds: {
+          amount: PushChain.utils.helpers.parseUnits('0.00005', 9),
+          token: solToken,
+        },
+        data: '0x',
+      });
+
+      console.log(`TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      const receipt = await tx.wait();
+      expect(receipt.status).toBe(1);
+    }, 300000);
+  });
+
+  // ============================================================================
+  // 21. Native Funds + Data to Self (UTX-18)
+  // ============================================================================
+  describe('21. Native Funds + Data to Self (UTX-18)', () => {
+    it('should send native SOL funds + empty data to own UEA', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: SVM Native Funds + Data to Self ===');
+
+      const solToken = getToken(CHAIN.SOLANA_DEVNET, 'SOL');
+      const UEA = pushClient.universal.account as `0x${string}`;
+
+      const tx = await pushClient.universal.sendTransaction({
+        to: UEA,
+        funds: {
+          amount: PushChain.utils.helpers.parseUnits('0.00005', 9),
+          token: solToken,
+        },
+        data: '0x',
+      });
+
+      console.log(`TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      const receipt = await tx.wait();
+      expect(receipt.status).toBe(1);
+    }, 300000);
+  });
 });
