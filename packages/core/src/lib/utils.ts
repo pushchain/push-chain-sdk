@@ -20,7 +20,7 @@ import {
 import { SYNTHETIC_PUSH_ERC20 } from './constants/chain';
 import { UniversalAccount } from './universal/universal.types';
 import type { PushChain } from './push-chain/push-chain';
-import { ethers } from 'ethers';
+import { encodeFunctionData, formatUnits } from 'viem';
 
 /**
  * @dev - THESE UTILS ARE EXPORTED TO SDK CONSUMER
@@ -252,10 +252,8 @@ export class Utils {
       }
 
       try {
-        // Create ethers Interface and encode the function data
-        const abiInterface = new ethers.Interface(abi);
-        const data = abiInterface.encodeFunctionData(functionName, args);
-        return data as `0x${string}`;
+        const data = encodeFunctionData({ abi, functionName, args });
+        return data;
       } catch (error) {
         throw new Error(
           `Failed to encode function '${functionName}': ${
@@ -466,8 +464,12 @@ export class Utils {
         // Convert string to bigint if needed
         const bigintValue = typeof value === 'string' ? BigInt(value) : value;
 
-        // Use ethers to format the units
-        const formatted = ethers.formatUnits(bigintValue, decimals);
+        let formatted = formatUnits(bigintValue, decimals);
+        // Ensure at least one decimal place for backward compatibility
+        // (only when decimals > 0, matching prior ethers behavior)
+        if (decimals > 0 && !formatted.includes('.')) {
+          formatted = formatted + '.0';
+        }
 
         // Apply precision if specified
         if (precision !== undefined) {

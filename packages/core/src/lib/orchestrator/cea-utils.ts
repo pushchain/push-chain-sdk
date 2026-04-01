@@ -13,7 +13,7 @@ import {
 } from 'viem/chains';
 import { CHAIN, VM } from '../constants/enums';
 import { CHAIN_INFO, CEA_FACTORY_ADDRESSES } from '../constants/chain';
-import { CEA_FACTORY_EVM } from '../constants/abi';
+import { CEA_FACTORY_EVM } from '../constants/abi/ceaFactory.evm';
 
 /**
  * Map CHAIN enum to viem chain object

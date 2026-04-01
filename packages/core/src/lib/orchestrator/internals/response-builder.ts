@@ -5,7 +5,7 @@
  * transformToUniversalTxResponse, and the ResponseBuilderCallbacks interface.
  */
 
-import { utils } from '@coral-xyz/anchor';
+import { bs58 } from '../../internal/bs58';
 import { Connection } from '@solana/web3.js';
 import {
   bytesToHex,
@@ -112,13 +112,13 @@ export async function queryUniversalTxStatusFromGatewayTx(
       // Normalize Solana signature to 0x-hex for ID composition
       let txSignature = txHash;
       if (!txHash.startsWith('0x')) {
-        const decoded = utils.bytes.bs58.decode(txHash);
+        const decoded = bs58.decode(txHash);
         txHashHex = bytesToHex(new Uint8Array(decoded));
       } else {
         // When provided as hex, convert to base58 for RPC
         const hex = txHash.slice(2);
         const bytes = Uint8Array.from(Buffer.from(hex, 'hex'));
-        txSignature = utils.bytes.bs58.encode(bytes);
+        txSignature = bs58.encode(Buffer.from(bytes));
       }
 
       // Fetch transaction by initializing a Connection and calling Solana RPC

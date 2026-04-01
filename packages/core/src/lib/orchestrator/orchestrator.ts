@@ -37,6 +37,7 @@ import {
   executeFundsOnly as _executeFundsOnly,
   executeFundsWithPayload as _executeFundsWithPayload,
   executeStandardPayload as _executeStandardPayload,
+  executeMultiChain as _executeMultiChain,
   queryOutboundGasFee as _queryOutboundGasFee,
   extractUniversalSubTxIdFromTx as _extractUniversalSubTxIdFromTx,
   extractAllUniversalSubTxIds as _extractAllUniversalSubTxIds,
@@ -44,7 +45,14 @@ import {
 
 export class Orchestrator {
   // These fields are accessed via `this.ctx` (OrchestratorContext cast) by internal modules
-  /* @internal */ pushClient: PushClient;
+  private _pushClient: PushClient | null = null;
+  private _pushClientOptions: { rpcUrls: string[]; network: PUSH_NETWORK } | null = null;
+  /* @internal */ get pushClient(): PushClient {
+    if (!this._pushClient) {
+      this._pushClient = new PushClient(this._pushClientOptions!);
+    }
+    return this._pushClient;
+  }
   /* @internal */ accountStatusCache: AccountStatus | null = null;
 
   private get ctx(): OrchestratorContext { return this as unknown as OrchestratorContext; }
@@ -88,10 +96,10 @@ export class Orchestrator {
     const pushChainRPCs: string[] =
       this.rpcUrls[pushChain] || CHAIN_INFO[pushChain].defaultRPC;
 
-    this.pushClient = new PushClient({
+    this._pushClientOptions = {
       rpcUrls: pushChainRPCs,
       network: pushNetwork,
-    });
+    };
   }
 
   /**
@@ -192,8 +200,7 @@ export class Orchestrator {
       isChainTarget(params.to) || ('from' in params && params.from?.chain);
 
     if (isMultiChain) {
-      const prepared = await this.prepareTransaction(params as UniversalExecuteParams);
-      return prepared.send();
+      return _executeMultiChain(this.ctx, params as UniversalExecuteParams, this.execute.bind(this));
     }
 
     // Standard Push Chain execution (Route 1)

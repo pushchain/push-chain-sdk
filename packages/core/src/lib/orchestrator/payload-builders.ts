@@ -1,6 +1,9 @@
 import { encodeFunctionData, encodeAbiParameters, isAddress, sha256, toBytes } from 'viem';
 import { PushChain } from '../push-chain/push-chain';
-import { CEA_EVM, ERC20_EVM, UNIVERSAL_GATEWAY_V0, UNIVERSAL_GATEWAY_PC } from '../constants/abi';
+import { CEA_EVM } from '../constants/abi/cea.evm';
+import { ERC20_EVM } from '../constants/abi/erc20.evm';
+import { UNIVERSAL_GATEWAY_V0 } from '../constants/abi/universalGatewayV0.evm';
+import { UNIVERSAL_GATEWAY_PC } from '../constants/abi/universalGatewayPC.evm';
 import { MoveableToken } from '../constants/tokens';
 import { ZERO_ADDRESS, MIGRATION_SELECTOR, MULTICALL_SELECTOR, UEA_MULTICALL_SELECTOR } from '../constants/selectors';
 import { CHAIN_INFO } from '../constants/chain';

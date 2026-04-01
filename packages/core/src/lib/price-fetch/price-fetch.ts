@@ -1,7 +1,8 @@
 import { CHAIN, VM } from '../constants/enums';
 import { CHAIN_INFO } from '../constants/chain';
 import { EvmClient } from '../vm-client/evm-client';
-import { FEE_LOCKER_EVM, FEE_LOCKER_SVM } from '../constants/abi';
+import { FEE_LOCKER_EVM } from '../constants/abi/feeLocker.evm';
+import FEE_LOCKER_SVM from '../constants/abi/feeLocker.json';
 import { Program } from '@coral-xyz/anchor';
 import { Connection } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';

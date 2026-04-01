@@ -2,7 +2,7 @@
  * Transaction confirmation polling functions extracted from Orchestrator.
  */
 
-import { utils } from '@coral-xyz/anchor';
+import { bs58 } from '../../internal/bs58';
 import { bytesToHex } from 'viem';
 import { CHAIN_INFO } from '../../constants/chain';
 import { VM } from '../../constants/enums';
@@ -169,7 +169,7 @@ export async function waitForLockerFeeConfirmation(
       await waitForSvmConfirmationsWithCountdown(
         ctx,
         svmClient,
-        utils.bytes.bs58.encode(txHashBytes),
+        bs58.encode(Buffer.from(txHashBytes)),
         fastConfirmations,
         timeout
       );

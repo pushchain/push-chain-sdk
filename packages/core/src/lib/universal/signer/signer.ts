@@ -14,7 +14,11 @@ import {
   UniversalSignerSkeleton,
   ViemSignerType,
 } from '../universal.types';
-import * as nacl from 'tweetnacl';
+let _nacl: typeof import('tweetnacl') | null = null;
+async function getNacl() {
+  if (!_nacl) _nacl = await import('tweetnacl');
+  return _nacl;
+}
 import {
   Connection,
   Keypair,
@@ -23,9 +27,17 @@ import {
   VersionedTransaction,
 } from '@solana/web3.js';
 import { CHAIN, LIBRARY } from '../../constants/enums';
-import { ethers, getBytes, hexlify } from 'ethers';
 import { CHAIN_INFO } from '../../constants/chain';
-import { utils } from '@coral-xyz/anchor';
+import { bs58 } from '../../internal/bs58';
+
+/**
+ * Converts viem's parsed transaction to an ethers-compatible TransactionRequest.
+ * viem uses `gas` while ethers expects `gasLimit`.
+ */
+function toEthersTxRequest(viemTx: ReturnType<typeof parseTransaction>): Record<string, unknown> {
+  const { gas, ...rest } = viemTx as Record<string, unknown>;
+  return { ...rest, gasLimit: gas };
+}
 
 /**
  * Maps an EVM numeric chainId to the corresponding CHAIN enum.
@@ -91,12 +103,12 @@ export function createUniversalSigner({
 /**
  * Creates a UniversalSigner from either a viem, ethers, solana WalletClient or Account instance.
  *
- * @param {WalletClient | Account | Keypair | ethers.HDNodeWallet} clientOrAccount - The viem WalletClient or Account instance
+ * @param {WalletClient | Account | Keypair} clientOrAccount - The viem WalletClient or Account instance
  * @param {CHAIN} chain - The chain the signer will operate on
  * @returns {Promise<UniversalSigner>} A signer object configured for the specified chain
  */
 export async function toUniversalFromKeypair(
-  clientOrAccount: WalletClient | Keypair | ethers.Wallet | ethers.HDNodeWallet,
+  clientOrAccount: WalletClient | Keypair | EthersV6SignerType,
   { chain, library }: { chain: CHAIN; library: LIBRARY }
 ): Promise<UniversalSigner> {
   let address: string;
@@ -128,7 +140,7 @@ export async function toUniversalFromKeypair(
           'Expected an object with signMessage, sendTransaction, getAddress methods for ETHEREUM_ETHERSV6 library'
         );
       }
-      const wallet = clientOrAccount as ethers.Wallet | ethers.HDNodeWallet;
+      const wallet = clientOrAccount as EthersV6SignerType;
       if (!wallet.provider) {
         throw new Error('ethers.Wallet must have a provider attached');
       }
@@ -142,28 +154,28 @@ export async function toUniversalFromKeypair(
 
       address = await wallet.getAddress();
 
-      // raw bytes → ethers.signMessage → hex → back to bytes
+      // raw bytes → signMessage → hex → back to bytes
       signMessage = async (data) => {
         const sigHex = await wallet.signMessage(data);
-        return getBytes(sigHex);
+        return hexToBytes(sigHex as Hex);
       };
 
       // raw unsigned tx bytes → hex → parse → signAndSendTransaction → bytes
       signAndSendTransaction = async (raw) => {
-        const unsignedHex = hexlify(raw);
-        const tx = ethers.Transaction.from(unsignedHex);
+        const unsignedHex = bytesToHex(raw);
+        const tx = toEthersTxRequest(parseTransaction(unsignedHex));
         const txResponse = await wallet.sendTransaction(tx);
         return hexToBytes(txResponse.hash as Hex);
       };
 
-      // EIP-712 typed data → _signTypedData → hex → bytes
+      // EIP-712 typed data → signTypedData → hex → bytes
       signTypedData = async ({ domain, types, primaryType, message }) => {
         const sigHex = await wallet.signTypedData(
           domain,
           types as unknown as Record<string, any[]>,
           message
         );
-        return getBytes(sigHex);
+        return hexToBytes(sigHex as Hex);
       };
 
       break;
@@ -215,6 +227,7 @@ export async function toUniversalFromKeypair(
       address = keypair.publicKey.toBase58();
 
       signMessage = async (data: Uint8Array) => {
+        const nacl = await getNacl();
         return nacl.sign.detached(data, keypair.secretKey);
       };
 
@@ -249,6 +262,7 @@ export async function toUniversalFromKeypair(
           // Handle as legacy transaction
           const tx = Transaction.from(unsignedTx);
           const messageBytes = tx.serializeMessage();
+          const nacl = await getNacl();
           const signature = nacl.sign.detached(messageBytes, keypair.secretKey);
           tx.addSignature(
             new PublicKey(keypair.publicKey.toBase58()),
@@ -258,7 +272,7 @@ export async function toUniversalFromKeypair(
           txHash = await connection.sendRawTransaction(rawTx);
         }
 
-        return utils.bytes.bs58.decode(txHash);
+        return bs58.decode(txHash);
       };
 
       signTypedData = async () => {
@@ -374,13 +388,13 @@ async function generateSkeletonFromEthersV5(
 
     signMessage: async (data) => {
       const sigHex = await signer.signMessage(data);
-      return getBytes(sigHex);
+      return hexToBytes(sigHex as Hex);
     },
 
     // raw unsigned tx bytes → hex → parse → signTransaction → bytes
     signAndSendTransaction: async (raw) => {
-      const unsignedHex = hexlify(raw);
-      const tx = ethers.Transaction.from(unsignedHex);
+      const unsignedHex = bytesToHex(raw);
+      const tx = toEthersTxRequest(parseTransaction(unsignedHex));
       const txResponse = await signer.sendTransaction(tx);
       return hexToBytes(txResponse.hash as Hex);
     },
@@ -391,7 +405,7 @@ async function generateSkeletonFromEthersV5(
         types as unknown as Record<string, any[]>,
         message
       );
-      return getBytes(sigHex);
+      return hexToBytes(sigHex as Hex);
     },
   };
 }
@@ -410,13 +424,13 @@ async function generateSkeletonFromEthersV6(
 
     signMessage: async (data) => {
       const sigHex = await signer.signMessage(data);
-      return getBytes(sigHex);
+      return hexToBytes(sigHex as Hex);
     },
 
     // raw unsigned tx bytes → hex → parse → signTransaction → bytes
     signAndSendTransaction: async (raw) => {
-      const unsignedHex = hexlify(raw);
-      const tx = ethers.Transaction.from(unsignedHex);
+      const unsignedHex = bytesToHex(raw);
+      const tx = toEthersTxRequest(parseTransaction(unsignedHex));
       const txResponse = await signer.sendTransaction(tx);
       return hexToBytes(txResponse.hash as Hex);
     },
@@ -427,7 +441,7 @@ async function generateSkeletonFromEthersV6(
         types as unknown as Record<string, any[]>,
         message
       );
-      return getBytes(sigHex);
+      return hexToBytes(sigHex as Hex);
     },
   };
 }

@@ -8,6 +8,10 @@ import '@e2e/shared/setup';
  * Covers: Route Detection, CEA Prerequisites, Transaction Preparation, FUNDS only,
  * PAYLOAD only, FUNDS + PAYLOAD, E2E Sync, Error Handling, Progress Hooks
  *
+ * UTX Gap Coverage (S9-S12):
+ * UTX-02 Value to Others, UTX-04 Funds to Others, UTX-16 Native Funds to Others,
+ * UTX-13 Value+Funds+Data to Contract.
+ *
  * Parameterised across all active EVM chains via chain-fixtures.
  *
  * Prerequisites:
@@ -717,6 +721,409 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
         }
         console.log(`Push Chain Counter AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
+      }, 600000);
+    });
+
+    // ==========================================================================
+    // 9. Value to Others (UTX-02)
+    // ==========================================================================
+    describe('9. Value to Others (UTX-02)', () => {
+      beforeAll(async () => {
+        if (skipE2E) return;
+        await ensureCeaNativeBalance({
+          pushClient,
+          ceaAddress: fixtureCeaAddress,
+          requiredAmount: parseEther('0.0002'),
+          targetChain: fixture.chain,
+        });
+      }, 600000);
+
+      it('should transfer native value from CEA to different address', async () => {
+        if (skipE2E) return;
+
+        console.log(`\n=== Test: Value to Others via Route 3 [${fixture.label}] ===`);
+
+        const params: UniversalExecuteParams = {
+          from: { chain: fixture.chain },
+          to: '0x742d35Cc6634c0532925A3b844BC9e7595F5bE21' as `0x${string}`,
+          value: parseEther('0.00005'),
+        };
+
+        expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+        const tx = await pushClient.universal.sendTransaction(params);
+
+        console.log(`Push Chain TX Hash: ${tx.hash}`);
+        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(tx.chain).toBe(fixture.chain);
+
+        const receipt = await tx.wait();
+        console.log(`Receipt status: ${receipt.status}`);
+        console.log(`External TX Hash: ${receipt.externalTxHash}`);
+        expect(receipt.status).toBe(1);
+
+        if (receipt.externalTxHash) {
+          expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+          await verifyExternalTransaction(receipt.externalTxHash, receipt.externalChain!);
+        }
+      }, 600000);
+    });
+
+    // ==========================================================================
+    // 10. Funds to Others (UTX-04)
+    // ==========================================================================
+    describe('10. Funds to Others (UTX-04)', () => {
+      beforeAll(async () => {
+        if (skipE2E || !fixtureUsdtToken) return;
+        await ensureCeaErc20Balance({
+          pushClient,
+          ceaAddress: fixtureCeaAddress,
+          token: fixtureUsdtToken,
+          requiredAmount: BigInt(10000),
+          targetChain: fixture.chain,
+        });
+      }, 600000);
+
+      it('should bridge ERC20 USDT from CEA to different address', async () => {
+        if (skipE2E) return;
+        if (!fixtureUsdtToken) {
+          console.log(`Skipping [${fixture.label}] - USDT token not found`);
+          return;
+        }
+
+        console.log(`\n=== Test: Funds to Others via Route 3 [${fixture.label}] ===`);
+
+        const bridgeAmount = BigInt(10000); // 0.01 USDT
+
+        const params: UniversalExecuteParams = {
+          from: { chain: fixture.chain },
+          to: '0x742d35Cc6634c0532925A3b844BC9e7595F5bE21' as `0x${string}`,
+          funds: {
+            amount: bridgeAmount,
+            token: fixtureUsdtToken,
+          },
+        };
+
+        expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+        const tx = await pushClient.universal.sendTransaction(params);
+
+        console.log(`Push Chain TX Hash: ${tx.hash}`);
+        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(tx.chain).toBe(fixture.chain);
+
+        const receipt = await tx.wait();
+        console.log(`Receipt status: ${receipt.status}`);
+        console.log(`External TX Hash: ${receipt.externalTxHash}`);
+        expect(receipt.status).toBe(1);
+
+        if (receipt.externalTxHash) {
+          expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+          await verifyExternalTransaction(receipt.externalTxHash, receipt.externalChain!);
+        }
+      }, 600000);
+    });
+
+    // ==========================================================================
+    // 11. Native Funds to Others (UTX-16)
+    // ==========================================================================
+    describe('11. Native Funds to Others (UTX-16)', () => {
+      beforeAll(async () => {
+        if (skipE2E) return;
+        await ensureCeaNativeBalance({
+          pushClient,
+          ceaAddress: fixtureCeaAddress,
+          requiredAmount: parseEther('0.0002'),
+          targetChain: fixture.chain,
+        });
+      }, 600000);
+
+      it('should transfer native token from CEA to different address', async () => {
+        if (skipE2E) return;
+
+        console.log(`\n=== Test: Native Funds to Others via Route 3 [${fixture.label}] ===`);
+
+        const params: UniversalExecuteParams = {
+          from: { chain: fixture.chain },
+          to: '0x742d35Cc6634c0532925A3b844BC9e7595F5bE21' as `0x${string}`,
+          value: parseEther('0.00005'),
+        };
+
+        expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+        const tx = await pushClient.universal.sendTransaction(params);
+
+        console.log(`Push Chain TX Hash: ${tx.hash}`);
+        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+        const receipt = await tx.wait();
+        console.log(`Receipt status: ${receipt.status}`);
+        console.log(`External TX Hash: ${receipt.externalTxHash}`);
+        expect(receipt.status).toBe(1);
+
+        if (receipt.externalTxHash) {
+          expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+          await verifyExternalTransaction(receipt.externalTxHash, receipt.externalChain!);
+        }
+      }, 600000);
+    });
+
+    // ==========================================================================
+    // 12. Value + Funds + Data to Contract (UTX-13)
+    // ==========================================================================
+    describe('12. Value + Funds + Data to Contract (UTX-13)', () => {
+      beforeAll(async () => {
+        if (skipE2E || !fixtureUsdtToken) return;
+        await ensureCeaErc20Balance({
+          pushClient,
+          ceaAddress: fixtureCeaAddress,
+          token: fixtureUsdtToken,
+          requiredAmount: BigInt(10000),
+          targetChain: fixture.chain,
+        });
+        await ensureCeaNativeBalance({
+          pushClient,
+          ceaAddress: fixtureCeaAddress,
+          requiredAmount: parseEther('0.0002'),
+          targetChain: fixture.chain,
+        });
+      }, 600000);
+
+      it('should send value + funds + data to counter contract via Route 3', async () => {
+        if (skipE2E) return;
+        if (!fixtureUsdtToken) {
+          console.log(`Skipping [${fixture.label}] - USDT token not found`);
+          return;
+        }
+
+        console.log(`\n=== Test: V+F+D to Contract via Route 3 [${fixture.label}] ===`);
+
+        const pushPayload = encodeFunctionData({
+          abi: COUNTER_ABI,
+          functionName: 'increment',
+        });
+
+        const counterBefore = await pushPublicClient.readContract({
+          address: COUNTER_ADDRESS_PAYABLE,
+          abi: COUNTER_ABI_PAYABLE,
+          functionName: 'countPC',
+        }) as bigint;
+        console.log(`Counter BEFORE: ${counterBefore}`);
+
+        const params: UniversalExecuteParams = {
+          from: { chain: fixture.chain },
+          to: COUNTER_ADDRESS_PAYABLE,
+          value: parseEther('0.00001'),
+          funds: {
+            amount: BigInt(10000), // 0.01 USDT
+            token: fixtureUsdtToken,
+          },
+          data: pushPayload,
+        };
+
+        expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+        const tx = await pushClient.universal.sendTransaction(params);
+
+        console.log(`Push Chain TX Hash: ${tx.hash}`);
+        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+        const receipt = await tx.wait();
+        console.log(`Receipt status: ${receipt.status}`);
+        console.log(`External TX Hash: ${receipt.externalTxHash}`);
+        expect(receipt.status).toBe(1);
+
+        if (receipt.externalTxHash) {
+          expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+          await verifyExternalTransaction(receipt.externalTxHash, receipt.externalChain!);
+        }
+
+        // Poll for counter increment (round-trip relay — V+F+D is slower)
+        const maxInboundWait = 300000;
+        const pollInterval = 10000;
+        const pollStart = Date.now();
+        let counterAfter = counterBefore;
+        while (Date.now() - pollStart < maxInboundWait) {
+          await new Promise((r) => setTimeout(r, pollInterval));
+          counterAfter = await pushPublicClient.readContract({
+            address: COUNTER_ADDRESS_PAYABLE,
+            abi: COUNTER_ABI_PAYABLE,
+            functionName: 'countPC',
+          }) as bigint;
+          const elapsed = Math.round((Date.now() - pollStart) / 1000);
+          console.log(`Polling counter: ${counterAfter} (elapsed: ${elapsed}s)`);
+          if (counterAfter > counterBefore) break;
+        }
+        console.log(`Counter AFTER: ${counterAfter}`);
+        if (counterAfter <= counterBefore) {
+          console.warn('Counter did not increment within timeout — relay may be slow');
+        }
+        expect(counterAfter).toBeGreaterThan(counterBefore);
+      }, 600000);
+    });
+
+    // ==========================================================================
+    // 13. Value + Funds to Self (UTX-09)
+    // ==========================================================================
+    describe('13. Value + Funds to Self (UTX-09)', () => {
+      beforeAll(async () => {
+        if (skipE2E || !fixtureUsdtToken) return;
+        await ensureCeaErc20Balance({
+          pushClient,
+          ceaAddress: fixtureCeaAddress,
+          token: fixtureUsdtToken,
+          requiredAmount: BigInt(10000),
+          targetChain: fixture.chain,
+        });
+        await ensureCeaNativeBalance({
+          pushClient,
+          ceaAddress: fixtureCeaAddress,
+          requiredAmount: parseEther('0.0002'),
+          targetChain: fixture.chain,
+        });
+      }, 600000);
+
+      it('should bridge value + ERC20 funds to self via Route 3', async () => {
+        if (skipE2E) return;
+        if (!fixtureUsdtToken) {
+          console.log(`Skipping [${fixture.label}] - USDT token not found`);
+          return;
+        }
+
+        console.log(`\n=== Test: Value + Funds to Self via Route 3 [${fixture.label}] ===`);
+
+        const params: UniversalExecuteParams = {
+          from: { chain: fixture.chain },
+          to: ueaAddress,
+          value: parseEther('0.00005'),
+          funds: {
+            amount: BigInt(10000), // 0.01 USDT
+            token: fixtureUsdtToken,
+          },
+        };
+
+        expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+        const tx = await pushClient.universal.sendTransaction(params);
+
+        console.log(`Push Chain TX Hash: ${tx.hash}`);
+        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(tx.chain).toBe(fixture.chain);
+
+        const receipt = await tx.wait();
+        console.log(`Receipt status: ${receipt.status}`);
+        console.log(`External TX Hash: ${receipt.externalTxHash}`);
+        expect(receipt.status).toBe(1);
+
+        if (receipt.externalTxHash) {
+          expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+          await verifyExternalTransaction(receipt.externalTxHash, receipt.externalChain!);
+        }
+      }, 600000);
+    });
+
+    // ==========================================================================
+    // 14. Value + Funds to Others (UTX-10)
+    // ==========================================================================
+    describe('14. Value + Funds to Others (UTX-10)', () => {
+      beforeAll(async () => {
+        if (skipE2E || !fixtureUsdtToken) return;
+        await ensureCeaErc20Balance({
+          pushClient,
+          ceaAddress: fixtureCeaAddress,
+          token: fixtureUsdtToken,
+          requiredAmount: BigInt(10000),
+          targetChain: fixture.chain,
+        });
+        await ensureCeaNativeBalance({
+          pushClient,
+          ceaAddress: fixtureCeaAddress,
+          requiredAmount: parseEther('0.0002'),
+          targetChain: fixture.chain,
+        });
+      }, 600000);
+
+      it('should bridge value + ERC20 funds to different address via Route 3', async () => {
+        if (skipE2E) return;
+        if (!fixtureUsdtToken) {
+          console.log(`Skipping [${fixture.label}] - USDT token not found`);
+          return;
+        }
+
+        console.log(`\n=== Test: Value + Funds to Others via Route 3 [${fixture.label}] ===`);
+
+        const params: UniversalExecuteParams = {
+          from: { chain: fixture.chain },
+          to: '0x742d35Cc6634c0532925A3b844BC9e7595F5bE21' as `0x${string}`,
+          value: parseEther('0.00005'),
+          funds: {
+            amount: BigInt(10000), // 0.01 USDT
+            token: fixtureUsdtToken,
+          },
+        };
+
+        expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+        const tx = await pushClient.universal.sendTransaction(params);
+
+        console.log(`Push Chain TX Hash: ${tx.hash}`);
+        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(tx.chain).toBe(fixture.chain);
+
+        const receipt = await tx.wait();
+        console.log(`Receipt status: ${receipt.status}`);
+        console.log(`External TX Hash: ${receipt.externalTxHash}`);
+        expect(receipt.status).toBe(1);
+
+        if (receipt.externalTxHash) {
+          expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+          await verifyExternalTransaction(receipt.externalTxHash, receipt.externalChain!);
+        }
+      }, 600000);
+    });
+
+    // ==========================================================================
+    // 15. Value + Native Funds (UTX-19)
+    // ==========================================================================
+    describe('15. Value + Native Funds (UTX-19)', () => {
+      beforeAll(async () => {
+        if (skipE2E) return;
+        await ensureCeaNativeBalance({
+          pushClient,
+          ceaAddress: fixtureCeaAddress,
+          requiredAmount: parseEther('0.0004'),
+          targetChain: fixture.chain,
+        });
+      }, 600000);
+
+      it('should bridge value + native funds to self via Route 3', async () => {
+        if (skipE2E) return;
+
+        console.log(`\n=== Test: Value + Native Funds via Route 3 [${fixture.label}] ===`);
+
+        const params: UniversalExecuteParams = {
+          from: { chain: fixture.chain },
+          to: ueaAddress,
+          value: parseEther('0.0001'),
+        };
+
+        expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+        const tx = await pushClient.universal.sendTransaction(params);
+
+        console.log(`Push Chain TX Hash: ${tx.hash}`);
+        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(tx.chain).toBe(fixture.chain);
+
+        const receipt = await tx.wait();
+        console.log(`Receipt status: ${receipt.status}`);
+        console.log(`External TX Hash: ${receipt.externalTxHash}`);
+        expect(receipt.status).toBe(1);
+
+        if (receipt.externalTxHash) {
+          expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+          await verifyExternalTransaction(receipt.externalTxHash, receipt.externalChain!);
+        }
       }, 600000);
     });
 

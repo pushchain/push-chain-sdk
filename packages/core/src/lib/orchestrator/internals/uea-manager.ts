@@ -3,7 +3,7 @@
  * Covers: compute, nonce, version, deployment status.
  */
 
-import { utils } from '@coral-xyz/anchor';
+import { bs58 } from '../../internal/bs58';
 import {
   Abi,
   bytesToHex,
@@ -11,7 +11,8 @@ import {
   getCreate2Address,
   keccak256,
 } from 'viem';
-import { FACTORY_V1, UEA_SVM } from '../../constants/abi';
+import { FACTORY_V1 } from '../../constants/abi/factoryV1';
+import { UEA_SVM } from '../../constants/abi/uea.svm';
 import { UEA_EVM } from '../../constants/abi/uea.evm';
 import { CHAIN_INFO, UEA_PROXY, VM_NAMESPACE } from '../../constants/chain';
 import { VM } from '../../constants/enums';
@@ -34,7 +35,7 @@ export function computeUEAOffchain(ctx: OrchestratorContext): `0x${string}` {
   if (vm === VM.EVM) {
     ownerKey = address as `0x${string}`;
   } else if (vm === VM.SVM) {
-    ownerKey = bytesToHex(new Uint8Array(utils.bytes.bs58.decode(address)));
+    ownerKey = bytesToHex(new Uint8Array(bs58.decode(address)));
   } else {
     throw new Error(`Unsupported VM type: ${vm}`);
   }
@@ -96,7 +97,7 @@ export async function computeUEA(ctx: OrchestratorContext): Promise<{
           vm === VM.EVM
             ? address
             : vm === VM.SVM
-            ? bytesToHex(new Uint8Array(utils.bytes.bs58.decode(address)))
+            ? bytesToHex(new Uint8Array(bs58.decode(address)))
             : address,
       },
     ],

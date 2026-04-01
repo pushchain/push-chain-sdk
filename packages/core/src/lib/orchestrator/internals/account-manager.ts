@@ -3,7 +3,7 @@
  * Covers: getAccountStatus, upgradeAccount, fetchLatestUEAVersion, migrateCEA.
  */
 
-import { utils } from '@coral-xyz/anchor';
+import { bs58 } from '../../internal/bs58';
 import { Abi, bytesToHex, encodeAbiParameters, keccak256 } from 'viem';
 import { UEA_FACTORY_ABI } from '../../constants/abi/uea-factory';
 import { CHAIN_INFO, UEA_FACTORY, UEA_MIGRATION, VM_NAMESPACE } from '../../constants/chain';
@@ -161,7 +161,7 @@ export async function upgradeAccount(
         vm === VM.EVM
           ? address
           : vm === VM.SVM
-          ? bytesToHex(new Uint8Array(utils.bytes.bs58.decode(address)))
+          ? bytesToHex(new Uint8Array(bs58.decode(address)))
           : address,
     };
 

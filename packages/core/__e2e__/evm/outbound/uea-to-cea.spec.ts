@@ -1090,6 +1090,12 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         const burnAmount = BigInt(10000); // 0.01 USDT
 
         // User-provided multicall: approve spender for the burned amount
+        // USDT requires allowance reset to 0 before setting a new non-zero value
+        const approveZeroPayload = encodeFunctionData({
+          abi: ERC20_EVM,
+          functionName: 'approve',
+          args: [SPENDER, BigInt(0)],
+        });
         const approvePayload = encodeFunctionData({
           abi: ERC20_EVM,
           functionName: 'approve',
@@ -1106,6 +1112,8 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
             token: fixtureUsdtToken,
           },
           data: [
+            // Step 0: Reset USDT allowance to 0 (required by USDT before non-zero approve)
+            { to: fixtureUsdtToken.address as `0x${string}`, value: BigInt(0), data: approveZeroPayload },
             // Step 1: Approve spender for the burned token amount
             { to: fixtureUsdtToken.address as `0x${string}`, value: BigInt(0), data: approvePayload },
           ],
@@ -1145,6 +1153,12 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         console.log('Note: Payload-only with burnAmount = 0 (precompile fix deployed)');
 
         // No funds, no value — only data. CEA uses existing balance.
+        // USDT requires allowance reset to 0 before setting a new non-zero value
+        const approveZeroPayload = encodeFunctionData({
+          abi: ERC20_EVM,
+          functionName: 'approve',
+          args: [SPENDER, BigInt(0)],
+        });
         const approvePayload = encodeFunctionData({
           abi: ERC20_EVM,
           functionName: 'approve',
@@ -1158,6 +1172,8 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
           },
           // No value, no funds — GAS_AND_PAYLOAD type
           data: [
+            // Reset USDT allowance to 0 (required by USDT before non-zero approve)
+            { to: fixtureUsdtToken.address as `0x${string}`, value: BigInt(0), data: approveZeroPayload },
             { to: fixtureUsdtToken.address as `0x${string}`, value: BigInt(0), data: approvePayload },
           ],
         };
@@ -1199,6 +1215,12 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         // Approve for more than burn amount — the extra comes from CEA existing balance
         const combinedApproval = BigInt(20000); // 0.02 USDT total
 
+        // USDT requires allowance reset to 0 before setting a new non-zero value
+        const approveZeroPayload = encodeFunctionData({
+          abi: ERC20_EVM,
+          functionName: 'approve',
+          args: [SPENDER, BigInt(0)],
+        });
         const approvePayload = encodeFunctionData({
           abi: ERC20_EVM,
           functionName: 'approve',
@@ -1215,6 +1237,8 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
             token: fixtureUsdtToken,
           },
           data: [
+            // Reset USDT allowance to 0 (required by USDT before non-zero approve)
+            { to: fixtureUsdtToken.address as `0x${string}`, value: BigInt(0), data: approveZeroPayload },
             // Approve for combined amount (burn + existing CEA balance)
             { to: fixtureUsdtToken.address as `0x${string}`, value: BigInt(0), data: approvePayload },
           ],

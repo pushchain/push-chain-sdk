@@ -2,7 +2,6 @@ import { hexToBytes, keccak256 } from 'viem';
 import { MsgDeployUEA, MsgExecutePayload, MsgMintPC, MsgMigrateUEA } from '../generated/v1/tx';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 import { SignDoc, TxBody, TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
-import { Writer } from 'protobufjs';
 import { makeAuthInfoBytes, makeSignDoc } from '@cosmjs/proto-signing';
 import {
   DeliverTxResponse,
@@ -191,9 +190,16 @@ export class PushClient extends EvmClient {
       // 📦 Encode pubkey
       const uncompressedPubKey = hexToBytes(this.ephemeralAccount.publicKey);
       const compressedPubKey = Secp256k1.compressPubkey(uncompressedPubKey);
+      // Manual protobuf encode: field 1 (tag=10), length-delimited bytes
+      const keyLen = compressedPubKey.length;
+      const pubkeyValue = new Uint8Array(2 + keyLen);
+      pubkeyValue[0] = 10; // field 1, wire type 2 (length-delimited)
+      pubkeyValue[1] = keyLen;
+      pubkeyValue.set(compressedPubKey, 2);
+
       const pubkeyEncoded = {
         typeUrl: '/cosmos.evm.crypto.v1.ethsecp256k1.PubKey',
-        value: Writer.create().uint32(10).bytes(compressedPubKey).finish(),
+        value: pubkeyValue,
       };
 
       const authInfoBytes = makeAuthInfoBytes(

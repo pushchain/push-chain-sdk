@@ -6,6 +6,11 @@ import '@e2e/shared/setup';
  * Covers: Transfer, Funds (USDT/Native), Value+Funds+Data, Multicall,
  * Fresh Wallet, Progress Hooks, Error Handling, pcTx Regression.
  *
+ * UTX Gap Coverage (S15-S25):
+ * UTX-01 Value to Self, UTX-05 Data to Contract, UTX-07 Value+Data,
+ * UTX-09/10 Value+Funds, UTX-11 Funds+Data, UTX-19 Value+NativeFunds,
+ * UTX-21 Multicall (no funds). Fresh wallet variants for UTX-01/05/07/21.
+ *
  * Core Scenarios are parameterised across all active EVM chains via chain-fixtures.
  */
 import { PushChain } from '../../../src';
@@ -487,6 +492,288 @@ describe('UEA → Push Chain: Inbound Transactions (Route 1)', () => {
           expect(tx.hash).toBeDefined();
         }, 300000);
       });
+
+      // ========================================================================
+      // 15. Value to Self (UTX-01)
+      // ========================================================================
+      describe('15. Value to Self (UTX-01)', () => {
+        it('should send value to own UEA address', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Value to Self [${fixture.label}] ===`
+          );
+
+          const UEA = pushClient.universal.account as `0x${string}`;
+
+          const tx = await pushClient.universal.sendTransaction({
+            to: UEA,
+            value: BigInt(1e3),
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          await txValidator(
+            tx,
+            pushClient.universal.origin.address as `0x${string}`,
+            UEA
+          );
+        }, 300000);
+      });
+
+      // ========================================================================
+      // 16. Data to Contract (UTX-05)
+      // ========================================================================
+      describe('16. Data to Contract (UTX-05)', () => {
+        it('should send data-only to counter contract', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Data to Contract [${fixture.label}] ===`
+          );
+
+          const incrementData = PushChain.utils.helpers.encodeTxData({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            abi: COUNTER_ABI_PAYABLE as any[],
+            functionName: 'increment',
+          });
+
+          const tx = await pushClient.universal.sendTransaction({
+            to: COUNTER_ADDRESS_PAYABLE,
+            data: incrementData,
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          console.log(`Receipt Status: ${receipt.status}`);
+          expect(receipt.status).toBe(1);
+        }, 300000);
+      });
+
+      // ========================================================================
+      // 17. Value + Data to Contract (UTX-07)
+      // ========================================================================
+      describe('17. Value + Data to Contract (UTX-07)', () => {
+        it('should send value + data to counter contract', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Value + Data to Counter [${fixture.label}] ===`
+          );
+
+          const valueAmount = PushChain.utils.helpers.parseUnits(
+            '0.000000007',
+            18
+          );
+          const incrementData = PushChain.utils.helpers.encodeTxData({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            abi: COUNTER_ABI_PAYABLE as any[],
+            functionName: 'increment',
+          });
+
+          const tx = await pushClient.universal.sendTransaction({
+            to: COUNTER_ADDRESS_PAYABLE,
+            value: valueAmount,
+            data: incrementData,
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          console.log(`Receipt Status: ${receipt.status}`);
+          expect(receipt.status).toBe(1);
+        }, 300000);
+      });
+
+      // ========================================================================
+      // 18. Value + Funds (UTX-09, UTX-10)
+      // ========================================================================
+      describe('18. Value + Funds (UTX-09, UTX-10)', () => {
+        it('should send value + funds to self (UTX-09)', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Value + Funds to Self [${fixture.label}] ===`
+          );
+
+          const usdt = pushClient.moveable.token.USDT;
+          const valueAmount = PushChain.utils.helpers.parseUnits(
+            '0.000000009',
+            18
+          );
+          const fundsAmount = PushChain.utils.helpers.parseUnits(
+            '0.000001',
+            { decimals: usdt.decimals }
+          );
+
+          const tx = await pushClient.universal.sendTransaction({
+            to: pushClient.universal.account as `0x${string}`,
+            value: valueAmount,
+            funds: { amount: fundsAmount, token: usdt },
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          console.log(`Receipt Status: ${receipt.status}`);
+          expect(receipt.status).toBe(1);
+        }, 300000);
+
+        it('should send value + funds to others (UTX-10)', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Value + Funds to Others [${fixture.label}] ===`
+          );
+
+          const usdt = pushClient.moveable.token.USDT;
+          const valueAmount = PushChain.utils.helpers.parseUnits(
+            '0.000000010',
+            18
+          );
+          const fundsAmount = PushChain.utils.helpers.parseUnits(
+            '0.000001',
+            { decimals: usdt.decimals }
+          );
+
+          const tx = await pushClient.universal.sendTransaction({
+            to: DIFFERENT_ADDRESS,
+            value: valueAmount,
+            funds: { amount: fundsAmount, token: usdt },
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          console.log(`Receipt Status: ${receipt.status}`);
+          expect(receipt.status).toBe(1);
+        }, 300000);
+      });
+
+      // ========================================================================
+      // 19. Funds + Data to Contract (UTX-11)
+      // ========================================================================
+      describe('19. Funds + Data to Contract (UTX-11)', () => {
+        it('should send funds + data to counter contract', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Funds + Data to Counter [${fixture.label}] ===`
+          );
+
+          const usdt = pushClient.moveable.token.USDT;
+          const fundsAmount = PushChain.utils.helpers.parseUnits(
+            '0.000001',
+            { decimals: usdt.decimals }
+          );
+          const incrementData = PushChain.utils.helpers.encodeTxData({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            abi: COUNTER_ABI_PAYABLE as any[],
+            functionName: 'increment',
+          });
+
+          const tx = await pushClient.universal.sendTransaction({
+            to: COUNTER_ADDRESS_PAYABLE,
+            funds: { amount: fundsAmount, token: usdt },
+            data: incrementData,
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          console.log(`Receipt Status: ${receipt.status}`);
+          expect(receipt.status).toBe(1);
+        }, 300000);
+      });
+
+      // ========================================================================
+      // 20. Value + Native Funds (UTX-19)
+      // ========================================================================
+      describe('20. Value + Native Funds (UTX-19)', () => {
+        it('should send value + native funds to self', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Value + Native Funds [${fixture.label}] ===`
+          );
+
+          const tokens = MOVEABLE_TOKENS[fixture.chain] || [];
+          const nativeToken = tokens.find(
+            (t) => t.mechanism === 'native'
+          );
+          if (!nativeToken) {
+            console.log('Skipping - native token not found');
+            return;
+          }
+
+          const tx = await pushClient.universal.sendTransaction({
+            to: pushClient.universal.account as `0x${string}`,
+            value: BigInt(1e3),
+            funds: {
+              amount: PushChain.utils.helpers.parseUnits('0.00001', 18),
+              token: nativeToken,
+            },
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          console.log(`Receipt Status: ${receipt.status}`);
+          expect(receipt.status).toBe(1);
+        }, 300000);
+      });
+
+      // ========================================================================
+      // 21. Multicall — no Funds (UTX-21)
+      // ========================================================================
+      describe('21. Multicall — no Funds (UTX-21)', () => {
+        it('should execute multicall without funds', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Multicall no Funds [${fixture.label}] ===`
+          );
+
+          const incrementData = PushChain.utils.helpers.encodeTxData({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            abi: COUNTER_ABI_PAYABLE as any[],
+            functionName: 'increment',
+          });
+
+          const multicallData = [
+            {
+              to: COUNTER_ADDRESS_PAYABLE,
+              value: BigInt(0),
+              data: incrementData,
+            },
+            {
+              to: COUNTER_ADDRESS_PAYABLE,
+              value: BigInt(0),
+              data: incrementData,
+            },
+          ];
+
+          const tx = await pushClient.universal.sendTransaction({
+            to: COUNTER_ADDRESS_PAYABLE,
+            data: multicallData,
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          console.log(`Receipt Status: ${receipt.status}`);
+          expect(receipt.status).toBe(1);
+        }, 300000);
+      });
     }
   );
 
@@ -810,6 +1097,686 @@ describe('UEA → Push Chain: Inbound Transactions (Route 1)', () => {
 
           const hookIds = progressEvents.map((e) => e.event.id);
           expectBridgeHooks(hookIds, { expectConfirmation: true });
+        }, 600000);
+      });
+
+      // ========================================================================
+      // 22. Fresh Wallet — Value to Self (UTX-01)
+      // ========================================================================
+      describe('22. Fresh Wallet — Value to Self (UTX-01)', () => {
+        it('should send value to self from fresh wallet', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Fresh Value to Self [${fixture.label}] ===`
+          );
+
+          const newPrivateKey = generatePrivateKey();
+          const newAccount = privateKeyToAccount(newPrivateKey);
+          console.log(`Fresh wallet: ${newAccount.address}`);
+
+          const ethTxHash = await mainWalletClient.sendTransaction({
+            to: newAccount.address,
+            value: parseEther('0.0005'),
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            account: mainWalletClient.account!,
+            chain: fixture.viemChain,
+          });
+          await publicClient.waitForTransactionReceipt({
+            hash: ethTxHash,
+          });
+
+          const newWalletClient = createWalletClient({
+            account: newAccount,
+            chain: fixture.viemChain,
+            transport: http(
+              CHAIN_INFO[fixture.chain].defaultRPC[0]
+            ),
+          });
+          const newSigner =
+            await PushChain.utils.signer.toUniversalFromKeypair(
+              newWalletClient,
+              {
+                chain: fixture.chain,
+                library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+              }
+            );
+          const newPushClient = await PushChain.initialize(newSigner, {
+            network: PUSH_NETWORK.TESTNET_DONUT,
+          });
+
+          const tx = await newPushClient.universal.sendTransaction({
+            to: newPushClient.universal.account as `0x${string}`,
+            value: BigInt(1e3),
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          expect(receipt.status).toBe(1);
+        }, 600000);
+      });
+
+      // ========================================================================
+      // 23. Fresh Wallet — Data to Contract (UTX-05)
+      // ========================================================================
+      describe('23. Fresh Wallet — Data to Contract (UTX-05)', () => {
+        it('should send data-only to contract from fresh wallet', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Fresh Data to Contract [${fixture.label}] ===`
+          );
+
+          const newPrivateKey = generatePrivateKey();
+          const newAccount = privateKeyToAccount(newPrivateKey);
+          console.log(`Fresh wallet: ${newAccount.address}`);
+
+          const ethTxHash = await mainWalletClient.sendTransaction({
+            to: newAccount.address,
+            value: parseEther('0.0005'),
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            account: mainWalletClient.account!,
+            chain: fixture.viemChain,
+          });
+          await publicClient.waitForTransactionReceipt({
+            hash: ethTxHash,
+          });
+
+          const newWalletClient = createWalletClient({
+            account: newAccount,
+            chain: fixture.viemChain,
+            transport: http(
+              CHAIN_INFO[fixture.chain].defaultRPC[0]
+            ),
+          });
+          const newSigner =
+            await PushChain.utils.signer.toUniversalFromKeypair(
+              newWalletClient,
+              {
+                chain: fixture.chain,
+                library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+              }
+            );
+          const newPushClient = await PushChain.initialize(newSigner, {
+            network: PUSH_NETWORK.TESTNET_DONUT,
+          });
+
+          const incrementData = PushChain.utils.helpers.encodeTxData({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            abi: COUNTER_ABI_PAYABLE as any[],
+            functionName: 'increment',
+          });
+
+          const tx = await newPushClient.universal.sendTransaction({
+            to: COUNTER_ADDRESS_PAYABLE,
+            data: incrementData,
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          expect(receipt.status).toBe(1);
+        }, 600000);
+      });
+
+      // ========================================================================
+      // 24. Fresh Wallet — Value + Data (UTX-07)
+      // ========================================================================
+      describe('24. Fresh Wallet — Value + Data (UTX-07)', () => {
+        it('should send value + data to contract from fresh wallet', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Fresh V+D to Contract [${fixture.label}] ===`
+          );
+
+          const newPrivateKey = generatePrivateKey();
+          const newAccount = privateKeyToAccount(newPrivateKey);
+          console.log(`Fresh wallet: ${newAccount.address}`);
+
+          const ethTxHash = await mainWalletClient.sendTransaction({
+            to: newAccount.address,
+            value: parseEther('0.0005'),
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            account: mainWalletClient.account!,
+            chain: fixture.viemChain,
+          });
+          await publicClient.waitForTransactionReceipt({
+            hash: ethTxHash,
+          });
+
+          const newWalletClient = createWalletClient({
+            account: newAccount,
+            chain: fixture.viemChain,
+            transport: http(
+              CHAIN_INFO[fixture.chain].defaultRPC[0]
+            ),
+          });
+          const newSigner =
+            await PushChain.utils.signer.toUniversalFromKeypair(
+              newWalletClient,
+              {
+                chain: fixture.chain,
+                library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+              }
+            );
+          const newPushClient = await PushChain.initialize(newSigner, {
+            network: PUSH_NETWORK.TESTNET_DONUT,
+          });
+
+          const valueAmount = PushChain.utils.helpers.parseUnits(
+            '0.000000007',
+            18
+          );
+          const incrementData = PushChain.utils.helpers.encodeTxData({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            abi: COUNTER_ABI_PAYABLE as any[],
+            functionName: 'increment',
+          });
+
+          const tx = await newPushClient.universal.sendTransaction({
+            to: COUNTER_ADDRESS_PAYABLE,
+            value: valueAmount,
+            data: incrementData,
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          expect(receipt.status).toBe(1);
+        }, 600000);
+      });
+
+      // ========================================================================
+      // 25. Fresh Wallet — Multicall no Funds (UTX-21)
+      // ========================================================================
+      describe('25. Fresh Wallet — Multicall no Funds (UTX-21)', () => {
+        it('should execute multicall without funds from fresh wallet', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Fresh Multicall no Funds [${fixture.label}] ===`
+          );
+
+          const newPrivateKey = generatePrivateKey();
+          const newAccount = privateKeyToAccount(newPrivateKey);
+          console.log(`Fresh wallet: ${newAccount.address}`);
+
+          const ethTxHash = await mainWalletClient.sendTransaction({
+            to: newAccount.address,
+            value: parseEther('0.0005'),
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            account: mainWalletClient.account!,
+            chain: fixture.viemChain,
+          });
+          await publicClient.waitForTransactionReceipt({
+            hash: ethTxHash,
+          });
+
+          const newWalletClient = createWalletClient({
+            account: newAccount,
+            chain: fixture.viemChain,
+            transport: http(
+              CHAIN_INFO[fixture.chain].defaultRPC[0]
+            ),
+          });
+          const newSigner =
+            await PushChain.utils.signer.toUniversalFromKeypair(
+              newWalletClient,
+              {
+                chain: fixture.chain,
+                library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+              }
+            );
+          const newPushClient = await PushChain.initialize(newSigner, {
+            network: PUSH_NETWORK.TESTNET_DONUT,
+          });
+
+          const incrementData = PushChain.utils.helpers.encodeTxData({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            abi: COUNTER_ABI_PAYABLE as any[],
+            functionName: 'increment',
+          });
+
+          const multicallData = [
+            {
+              to: COUNTER_ADDRESS_PAYABLE,
+              value: BigInt(0),
+              data: incrementData,
+            },
+            {
+              to: COUNTER_ADDRESS_PAYABLE,
+              value: BigInt(0),
+              data: incrementData,
+            },
+          ];
+
+          const tx = await newPushClient.universal.sendTransaction({
+            to: COUNTER_ADDRESS_PAYABLE,
+            data: multicallData,
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          expect(receipt.status).toBe(1);
+        }, 600000);
+      });
+
+      // ========================================================================
+      // 26. Fresh Wallet — Native Funds + Data (UTX-17)
+      // ========================================================================
+      describe('26. Fresh Wallet — Native Funds + Data (UTX-17)', () => {
+        it('should bridge native + data to contract from fresh wallet', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Fresh Native + Data [${fixture.label}] ===`
+          );
+
+          const newPrivateKey = generatePrivateKey();
+          const newAccount = privateKeyToAccount(newPrivateKey);
+          console.log(`Fresh wallet: ${newAccount.address}`);
+
+          const ethTxHash = await mainWalletClient.sendTransaction({
+            to: newAccount.address,
+            value: parseEther('0.0005'),
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            account: mainWalletClient.account!,
+            chain: fixture.viemChain,
+          });
+          await publicClient.waitForTransactionReceipt({
+            hash: ethTxHash,
+          });
+
+          const newWalletClient = createWalletClient({
+            account: newAccount,
+            chain: fixture.viemChain,
+            transport: http(
+              CHAIN_INFO[fixture.chain].defaultRPC[0]
+            ),
+          });
+          const newSigner =
+            await PushChain.utils.signer.toUniversalFromKeypair(
+              newWalletClient,
+              {
+                chain: fixture.chain,
+                library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+              }
+            );
+          const newPushClient = await PushChain.initialize(newSigner, {
+            network: PUSH_NETWORK.TESTNET_DONUT,
+          });
+
+          const tokens = MOVEABLE_TOKENS[fixture.chain] || [];
+          const nativeToken = tokens.find(
+            (t) => t.mechanism === 'native'
+          );
+          if (!nativeToken) {
+            console.log('Skipping - native token not found');
+            return;
+          }
+
+          const incrementData = PushChain.utils.helpers.encodeTxData({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            abi: COUNTER_ABI_PAYABLE as any[],
+            functionName: 'increment',
+          });
+
+          const tx = await newPushClient.universal.sendTransaction({
+            to: COUNTER_ADDRESS_PAYABLE,
+            funds: {
+              amount: PushChain.utils.helpers.parseUnits('0.00001', 18),
+              token: nativeToken,
+            },
+            data: incrementData,
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          expect(receipt.status).toBe(1);
+        }, 600000);
+      });
+
+      // ========================================================================
+      // 27. Fresh Wallet — Funds + Multicall (UTX-22)
+      // ========================================================================
+      describe('27. Fresh Wallet — Funds + Multicall (UTX-22)', () => {
+        it('should bridge USDT + multicall from fresh wallet', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Fresh USDT + Multicall [${fixture.label}] ===`
+          );
+
+          const { pushClient: freshClient } =
+            await createFreshFundedClient(
+              mainWalletClient,
+              publicClient,
+              mainPushClient,
+              {
+                originChain: fixture.chain,
+                viemChain: fixture.viemChain,
+              }
+            );
+
+          const usdtToken = freshClient.moveable.token.USDT;
+          const UEA = freshClient.universal.account as `0x${string}`;
+
+          const multicallData = [
+            { to: UEA, value: BigInt(0), data: '0x' as `0x${string}` },
+            { to: UEA, value: BigInt(0), data: '0x' as `0x${string}` },
+          ];
+
+          const tx = await freshClient.universal.sendTransaction({
+            to: ZERO_ADDRESS,
+            funds: {
+              amount: PushChain.utils.helpers.parseUnits('0.0001', {
+                decimals: usdtToken.decimals,
+              }),
+              token: usdtToken,
+            },
+            data: multicallData,
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          expect(receipt.status).toBe(1);
+        }, 600000);
+      });
+
+      // ========================================================================
+      // 28. Fresh Wallet — Native Funds + Payload (UTX-23)
+      // ========================================================================
+      describe('28. Fresh Wallet — Native Funds + Payload (UTX-23)', () => {
+        it('should bridge native + single call from fresh wallet', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Fresh Native + Payload [${fixture.label}] ===`
+          );
+
+          const newPrivateKey = generatePrivateKey();
+          const newAccount = privateKeyToAccount(newPrivateKey);
+          console.log(`Fresh wallet: ${newAccount.address}`);
+
+          const ethTxHash = await mainWalletClient.sendTransaction({
+            to: newAccount.address,
+            value: parseEther('0.0005'),
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            account: mainWalletClient.account!,
+            chain: fixture.viemChain,
+          });
+          await publicClient.waitForTransactionReceipt({
+            hash: ethTxHash,
+          });
+
+          const newWalletClient = createWalletClient({
+            account: newAccount,
+            chain: fixture.viemChain,
+            transport: http(
+              CHAIN_INFO[fixture.chain].defaultRPC[0]
+            ),
+          });
+          const newSigner =
+            await PushChain.utils.signer.toUniversalFromKeypair(
+              newWalletClient,
+              {
+                chain: fixture.chain,
+                library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+              }
+            );
+          const newPushClient = await PushChain.initialize(newSigner, {
+            network: PUSH_NETWORK.TESTNET_DONUT,
+          });
+
+          const tokens = MOVEABLE_TOKENS[fixture.chain] || [];
+          const nativeToken = tokens.find(
+            (t) => t.mechanism === 'native'
+          );
+          if (!nativeToken) {
+            console.log('Skipping - native token not found');
+            return;
+          }
+
+          const UEA = newPushClient.universal.account as `0x${string}`;
+          const singleCall = [
+            { to: UEA, value: BigInt(0), data: '0x' as `0x${string}` },
+          ];
+
+          const tx = await newPushClient.universal.sendTransaction({
+            to: ZERO_ADDRESS,
+            funds: {
+              amount: PushChain.utils.helpers.parseUnits('0.00001', 18),
+              token: nativeToken,
+            },
+            data: singleCall,
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          expect(receipt.status).toBe(1);
+        }, 600000);
+      });
+
+      // ========================================================================
+      // 29. Fresh Wallet — Value + Funds to Self (UTX-09)
+      // ========================================================================
+      describe('29. Fresh Wallet — Value + Funds to Self (UTX-09)', () => {
+        it('should send value + funds to self from fresh wallet', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Fresh V+F to Self [${fixture.label}] ===`
+          );
+
+          const { pushClient: freshClient } =
+            await createFreshFundedClient(
+              mainWalletClient,
+              publicClient,
+              mainPushClient,
+              {
+                originChain: fixture.chain,
+                viemChain: fixture.viemChain,
+              }
+            );
+
+          const usdt = freshClient.moveable.token.USDT;
+          const valueAmount = PushChain.utils.helpers.parseUnits(
+            '0.000000009',
+            18
+          );
+          const fundsAmount = PushChain.utils.helpers.parseUnits(
+            '0.000001',
+            { decimals: usdt.decimals }
+          );
+
+          const tx = await freshClient.universal.sendTransaction({
+            to: freshClient.universal.account as `0x${string}`,
+            value: valueAmount,
+            funds: { amount: fundsAmount, token: usdt },
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          expect(receipt.status).toBe(1);
+        }, 600000);
+      });
+
+      // ========================================================================
+      // 30. Fresh Wallet — Value + Funds to Others (UTX-10)
+      // ========================================================================
+      describe('30. Fresh Wallet — Value + Funds to Others (UTX-10)', () => {
+        it('should send value + funds to others from fresh wallet', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Fresh V+F to Others [${fixture.label}] ===`
+          );
+
+          const { pushClient: freshClient } =
+            await createFreshFundedClient(
+              mainWalletClient,
+              publicClient,
+              mainPushClient,
+              {
+                originChain: fixture.chain,
+                viemChain: fixture.viemChain,
+              }
+            );
+
+          const usdt = freshClient.moveable.token.USDT;
+          const valueAmount = PushChain.utils.helpers.parseUnits(
+            '0.000000010',
+            18
+          );
+          const fundsAmount = PushChain.utils.helpers.parseUnits(
+            '0.000001',
+            { decimals: usdt.decimals }
+          );
+
+          const tx = await freshClient.universal.sendTransaction({
+            to: DIFFERENT_ADDRESS,
+            value: valueAmount,
+            funds: { amount: fundsAmount, token: usdt },
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          expect(receipt.status).toBe(1);
+        }, 600000);
+      });
+
+      // ========================================================================
+      // 31. Fresh Wallet — Funds + Data to Contract (UTX-11)
+      // ========================================================================
+      describe('31. Fresh Wallet — Funds + Data to Contract (UTX-11)', () => {
+        it('should send funds + data to contract from fresh wallet', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Fresh F+D to Contract [${fixture.label}] ===`
+          );
+
+          const { pushClient: freshClient } =
+            await createFreshFundedClient(
+              mainWalletClient,
+              publicClient,
+              mainPushClient,
+              {
+                originChain: fixture.chain,
+                viemChain: fixture.viemChain,
+              }
+            );
+
+          const usdt = freshClient.moveable.token.USDT;
+          const fundsAmount = PushChain.utils.helpers.parseUnits(
+            '0.000001',
+            { decimals: usdt.decimals }
+          );
+          const incrementData = PushChain.utils.helpers.encodeTxData({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            abi: COUNTER_ABI_PAYABLE as any[],
+            functionName: 'increment',
+          });
+
+          const tx = await freshClient.universal.sendTransaction({
+            to: COUNTER_ADDRESS_PAYABLE,
+            funds: { amount: fundsAmount, token: usdt },
+            data: incrementData,
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          expect(receipt.status).toBe(1);
+        }, 600000);
+      });
+
+      // ========================================================================
+      // 32. Fresh Wallet — Value + Native Funds (UTX-19)
+      // ========================================================================
+      describe('32. Fresh Wallet — Value + Native Funds (UTX-19)', () => {
+        it('should send value + native funds from fresh wallet', async () => {
+          if (skipE2E) return;
+
+          console.log(
+            `\n=== Test: Fresh V + Native Funds [${fixture.label}] ===`
+          );
+
+          const newPrivateKey = generatePrivateKey();
+          const newAccount = privateKeyToAccount(newPrivateKey);
+          console.log(`Fresh wallet: ${newAccount.address}`);
+
+          const ethTxHash = await mainWalletClient.sendTransaction({
+            to: newAccount.address,
+            value: parseEther('0.0005'),
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            account: mainWalletClient.account!,
+            chain: fixture.viemChain,
+          });
+          await publicClient.waitForTransactionReceipt({
+            hash: ethTxHash,
+          });
+
+          const newWalletClient = createWalletClient({
+            account: newAccount,
+            chain: fixture.viemChain,
+            transport: http(
+              CHAIN_INFO[fixture.chain].defaultRPC[0]
+            ),
+          });
+          const newSigner =
+            await PushChain.utils.signer.toUniversalFromKeypair(
+              newWalletClient,
+              {
+                chain: fixture.chain,
+                library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+              }
+            );
+          const newPushClient = await PushChain.initialize(newSigner, {
+            network: PUSH_NETWORK.TESTNET_DONUT,
+          });
+
+          const tokens = MOVEABLE_TOKENS[fixture.chain] || [];
+          const nativeToken = tokens.find(
+            (t) => t.mechanism === 'native'
+          );
+          if (!nativeToken) {
+            console.log('Skipping - native token not found');
+            return;
+          }
+
+          const tx = await newPushClient.universal.sendTransaction({
+            to: newPushClient.universal.account as `0x${string}`,
+            value: BigInt(1e3),
+            funds: {
+              amount: PushChain.utils.helpers.parseUnits('0.00001', 18),
+              token: nativeToken,
+            },
+          });
+
+          console.log(`TX Hash: ${tx.hash}`);
+          expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+          const receipt = await tx.wait();
+          expect(receipt.status).toBe(1);
         }, 600000);
       });
     }

@@ -106,6 +106,27 @@ export function getUniversalGatewayPCAddress(): `0x${string}` {
 // Validation
 // ============================================================================
 
+/**
+ * Validates that a feeLockTxHash is a well-formed transaction hash.
+ * EVM: must be 0x-prefixed 64-hex-char string (66 chars total).
+ * SVM (Base58): must be at least 32 chars.
+ */
+export function validateFeeLockTxHash(feeLockTxHash: string): void {
+  if (feeLockTxHash.startsWith('0x')) {
+    if (!/^0x[0-9a-fA-F]{64}$/.test(feeLockTxHash)) {
+      throw new Error(
+        `Invalid feeLockTxHash: expected 0x-prefixed 64-character hex string, got "${feeLockTxHash}"`
+      );
+    }
+  } else {
+    if (feeLockTxHash.length < 32) {
+      throw new Error(
+        `Invalid feeLockTxHash: expected Base58 transaction hash (>=32 chars), got "${feeLockTxHash}"`
+      );
+    }
+  }
+}
+
 export function validateMainnetConnection(
   chain: CHAIN,
   pushChainId: string

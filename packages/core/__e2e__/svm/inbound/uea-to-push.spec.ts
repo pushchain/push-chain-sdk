@@ -4,9 +4,15 @@ import '@e2e/shared/setup';
  *
  * Tests for inbound transactions from Solana Devnet to Push Chain.
  * Covers: Transfer, Error Handling, Funds (SOL Bridge), Progress Hooks.
+ *
+ * UTX Gap Coverage (S5-S12):
+ * UTX-01 Value to Self, UTX-05 Data to Contract, UTX-07 Value+Data,
+ * UTX-11 Funds+Data, UTX-17 Native Funds+Data, UTX-21 Multicall (no funds),
+ * UTX-22 Funds+Multicall, UTX-23 Native Funds+Payload.
  */
 import { PushChain } from '../../../src';
 import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
+import { MOVEABLE_TOKENS } from '../../../src/lib/constants/tokens';
 import { createSvmPushClient } from '@e2e/shared/svm-client';
 import {
   createProgressTracker,
@@ -14,6 +20,10 @@ import {
 } from '@e2e/shared/progress-tracker';
 import { txValidator } from '@e2e/shared/validators';
 import { getToken, DIFFERENT_ADDRESS, TEST_TARGET_ADDRESS } from '@e2e/shared/constants';
+import {
+  COUNTER_ADDRESS_PAYABLE,
+  COUNTER_ABI_PAYABLE,
+} from '@e2e/shared/inbound-helpers';
 
 const solanaPrivateKey = process.env['SOLANA_PRIVATE_KEY'];
 const skipE2E = !solanaPrivateKey;
@@ -105,7 +115,7 @@ describe('SVM UEA → Push Chain: Inbound Transactions (Route 1)', () => {
       const tx = await pushClient.universal.sendTransaction({
         to: DIFFERENT_ADDRESS,
         funds: {
-          amount: PushChain.utils.helpers.parseUnits('0.001', 9), // SOL has 9 decimals
+          amount: PushChain.utils.helpers.parseUnits('0.0001', 9), // SOL has 9 decimals
           token: solToken,
         },
       });
@@ -127,7 +137,7 @@ describe('SVM UEA → Push Chain: Inbound Transactions (Route 1)', () => {
       const tx = await pushClient.universal.sendTransaction({
         to: UEA,
         funds: {
-          amount: PushChain.utils.helpers.parseUnits('0.001', 9),
+          amount: PushChain.utils.helpers.parseUnits('0.0001', 9),
           token: solToken,
         },
       });
@@ -158,7 +168,7 @@ describe('SVM UEA → Push Chain: Inbound Transactions (Route 1)', () => {
       const tx = await pushClient.universal.sendTransaction({
         to: UEA,
         funds: {
-          amount: PushChain.utils.helpers.parseUnits('0.001', 9),
+          amount: PushChain.utils.helpers.parseUnits('0.0001', 9),
           token: solToken,
         },
       });
@@ -182,6 +192,271 @@ describe('SVM UEA → Push Chain: Inbound Transactions (Route 1)', () => {
       });
 
       expectBridgeHooks(tracker.getIds(), { expectConfirmation: true });
+    }, 300000);
+  });
+
+  // ============================================================================
+  // 5. Value to Self (UTX-01)
+  // ============================================================================
+  describe('5. Value to Self (UTX-01)', () => {
+    it('should send value to own UEA address', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: SVM Value to Self ===');
+
+      const UEA = pushClient.universal.account as `0x${string}`;
+
+      const tx = await pushClient.universal.sendTransaction({
+        to: UEA,
+        value: BigInt(1),
+      });
+
+      console.log(`TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      const receipt = await tx.wait();
+      expect(receipt.status).toBe(1);
+    }, 300000);
+  });
+
+  // ============================================================================
+  // 6. Data to Contract (UTX-05)
+  // ============================================================================
+  describe('6. Data to Contract (UTX-05)', () => {
+    it('should send data-only to counter contract', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: SVM Data to Contract ===');
+
+      const incrementData = PushChain.utils.helpers.encodeTxData({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        abi: COUNTER_ABI_PAYABLE as any[],
+        functionName: 'increment',
+      });
+
+      const tx = await pushClient.universal.sendTransaction({
+        to: COUNTER_ADDRESS_PAYABLE,
+        data: incrementData,
+      });
+
+      console.log(`TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      const receipt = await tx.wait();
+      expect(receipt.status).toBe(1);
+    }, 300000);
+  });
+
+  // ============================================================================
+  // 7. Value + Data to Contract (UTX-07)
+  // ============================================================================
+  describe('7. Value + Data to Contract (UTX-07)', () => {
+    it('should send value + data to counter contract', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: SVM Value + Data to Contract ===');
+
+      const incrementData = PushChain.utils.helpers.encodeTxData({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        abi: COUNTER_ABI_PAYABLE as any[],
+        functionName: 'increment',
+      });
+
+      const tx = await pushClient.universal.sendTransaction({
+        to: COUNTER_ADDRESS_PAYABLE,
+        value: BigInt(7),
+        data: incrementData,
+      });
+
+      console.log(`TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      const receipt = await tx.wait();
+      expect(receipt.status).toBe(1);
+    }, 300000);
+  });
+
+  // ============================================================================
+  // 8. Native Funds + Data (UTX-17)
+  // ============================================================================
+  describe('8. Native Funds + Data (UTX-17)', () => {
+    it('should bridge SOL + execute data on counter', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: SVM SOL + Data ===');
+
+      const solToken = getToken(CHAIN.SOLANA_DEVNET, 'SOL');
+      const incrementData = PushChain.utils.helpers.encodeTxData({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        abi: COUNTER_ABI_PAYABLE as any[],
+        functionName: 'increment',
+      });
+
+      const tx = await pushClient.universal.sendTransaction({
+        to: COUNTER_ADDRESS_PAYABLE,
+        funds: {
+          amount: PushChain.utils.helpers.parseUnits('0.0001', 9),
+          token: solToken,
+        },
+        data: incrementData,
+      });
+
+      console.log(`TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      const receipt = await tx.wait();
+      expect(receipt.status).toBe(1);
+    }, 300000);
+  });
+
+  // ============================================================================
+  // 9. Multicall — no Funds (UTX-21)
+  // ============================================================================
+  describe('9. Multicall — no Funds (UTX-21)', () => {
+    it('should execute multicall without funds', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: SVM Multicall no Funds ===');
+
+      const incrementData = PushChain.utils.helpers.encodeTxData({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        abi: COUNTER_ABI_PAYABLE as any[],
+        functionName: 'increment',
+      });
+
+      const multicallData = [
+        {
+          to: COUNTER_ADDRESS_PAYABLE,
+          value: BigInt(0),
+          data: incrementData,
+        },
+        {
+          to: COUNTER_ADDRESS_PAYABLE,
+          value: BigInt(0),
+          data: incrementData,
+        },
+      ];
+
+      const tx = await pushClient.universal.sendTransaction({
+        to: COUNTER_ADDRESS_PAYABLE,
+        data: multicallData,
+      });
+
+      console.log(`TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      const receipt = await tx.wait();
+      expect(receipt.status).toBe(1);
+    }, 300000);
+  });
+
+  // ============================================================================
+  // 10. Funds + Multicall (UTX-22)
+  // ============================================================================
+  describe('10. Funds + Multicall (UTX-22)', () => {
+    it('should bridge SOL + execute multicall', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: SVM SOL + Multicall ===');
+
+      const solToken = getToken(CHAIN.SOLANA_DEVNET, 'SOL');
+      const incrementData = PushChain.utils.helpers.encodeTxData({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        abi: COUNTER_ABI_PAYABLE as any[],
+        functionName: 'increment',
+      });
+
+      const UEA = pushClient.universal.account as `0x${string}`;
+
+      const multicallData = [
+        {
+          to: COUNTER_ADDRESS_PAYABLE,
+          value: BigInt(0),
+          data: incrementData,
+        },
+        { to: UEA, value: BigInt(0), data: '0x' as `0x${string}` },
+      ];
+
+      const tx = await pushClient.universal.sendTransaction({
+        to: COUNTER_ADDRESS_PAYABLE,
+        funds: {
+          amount: PushChain.utils.helpers.parseUnits('0.0001', 9),
+          token: solToken,
+        },
+        data: multicallData,
+      });
+
+      console.log(`TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      const receipt = await tx.wait();
+      expect(receipt.status).toBe(1);
+    }, 300000);
+  });
+
+  // ============================================================================
+  // 11. Native Funds + Payload (UTX-23)
+  // ============================================================================
+  describe('11. Native Funds + Payload (UTX-23)', () => {
+    it('should bridge SOL + execute single payload call', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: SVM SOL + Payload ===');
+
+      const solToken = getToken(CHAIN.SOLANA_DEVNET, 'SOL');
+      const UEA = pushClient.universal.account as `0x${string}`;
+
+      const singleCall = [
+        { to: UEA, value: BigInt(0), data: '0x' as `0x${string}` },
+      ];
+
+      const tx = await pushClient.universal.sendTransaction({
+        to: UEA,
+        funds: {
+          amount: PushChain.utils.helpers.parseUnits('0.0001', 9),
+          token: solToken,
+        },
+        data: singleCall,
+      });
+
+      console.log(`TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      const receipt = await tx.wait();
+      expect(receipt.status).toBe(1);
+    }, 300000);
+  });
+
+  // ============================================================================
+  // 12. Funds + Data to Contract (UTX-11)
+  // ============================================================================
+  describe('12. Funds + Data to Contract (UTX-11)', () => {
+    it('should bridge SOL + send data to counter contract', async () => {
+      if (skipE2E) return;
+
+      console.log('\n=== Test: SVM Funds + Data to Contract ===');
+
+      const solToken = getToken(CHAIN.SOLANA_DEVNET, 'SOL');
+      const incrementData = PushChain.utils.helpers.encodeTxData({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        abi: COUNTER_ABI_PAYABLE as any[],
+        functionName: 'increment',
+      });
+
+      const tx = await pushClient.universal.sendTransaction({
+        to: COUNTER_ADDRESS_PAYABLE,
+        funds: {
+          amount: PushChain.utils.helpers.parseUnits('0.0001', 9),
+          token: solToken,
+        },
+        data: incrementData,
+      });
+
+      console.log(`TX Hash: ${tx.hash}`);
+      expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      const receipt = await tx.wait();
+      expect(receipt.status).toBe(1);
     }, 300000);
   });
 });

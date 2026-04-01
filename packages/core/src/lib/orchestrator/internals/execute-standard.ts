@@ -7,7 +7,7 @@
  * - Signed verification path for deployed UEA with funds
  */
 
-import { utils } from '@coral-xyz/anchor';
+import { bs58 } from '../../internal/bs58';
 import { bytesToHex, zeroAddress } from 'viem';
 import { CHAIN_INFO } from '../../constants/chain';
 import { VM } from '../../constants/enums';
@@ -33,6 +33,7 @@ import { fireProgressHook } from './context';
 import {
   isPushChain,
   validateMainnetConnection,
+  validateFeeLockTxHash,
   bigintReplacer,
   fetchOriginChainTransactionForProgress,
 } from './helpers';
@@ -91,14 +92,12 @@ export async function executeStandardPayload(
   let nonce: bigint;
   let funds: bigint;
 
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_01);
   if (execute._ueaStatus) {
     isUEADeployed = execute._ueaStatus.isDeployed;
     nonce = execute._ueaStatus.nonce;
     funds = execute._ueaStatus.balance;
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_01);
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_02, UEA, isUEADeployed);
   } else {
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_01);
     const [code, balance] = await Promise.all([
       ctx.pushClient.publicClient.getCode({ address: UEA }),
       ctx.pushClient.getBalance(UEA),
@@ -106,14 +105,17 @@ export async function executeStandardPayload(
     isUEADeployed = code !== undefined;
     nonce = isUEADeployed ? await getUEANonce(ctx, UEA) : BigInt(0);
     funds = balance;
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_02, UEA, isUEADeployed);
   }
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_02, UEA, isUEADeployed);
 
-  // Compute Universal Payload Hash
+  // Validate and decode feeLockTxHash
   let feeLockTxHash: string | undefined = execute.feeLockTxHash;
-  if (feeLockTxHash && !feeLockTxHash.startsWith('0x')) {
-    const decoded = utils.bytes.bs58.decode(feeLockTxHash);
-    feeLockTxHash = bytesToHex(new Uint8Array(decoded));
+  if (feeLockTxHash) {
+    validateFeeLockTxHash(feeLockTxHash);
+    if (!feeLockTxHash.startsWith('0x')) {
+      const decoded = bs58.decode(feeLockTxHash);
+      feeLockTxHash = bytesToHex(new Uint8Array(decoded));
+    }
   }
 
   const feeLockingRequired =
@@ -130,8 +132,23 @@ export async function executeStandardPayload(
     payloadData = buildMulticallPayloadData(
       ctx, execute.to, buildExecuteMulticall({ execute, ueaAddress: UEA })
     );
+    // Wrap in full UniversalPayload encoding for gateway req (matches non-array paths)
+    const universalPayloadForReq = JSON.parse(
+      JSON.stringify({
+        to: zeroAddress, value: execute.value,
+        data: payloadData,
+        gasLimit: execute.gasLimit || BigInt(5e7),
+        maxFeePerGas: execute.maxFeePerGas || BigInt(1e10),
+        maxPriorityFeePerGas: execute.maxPriorityFeePerGas || BigInt(0),
+        nonce, deadline: execute.deadline || BigInt(9999999999),
+        vType: feeLockingRequired
+          ? VerificationType.universalTxVerification
+          : VerificationType.signedVerification,
+      }, bigintReplacer)
+    ) as UniversalPayload;
     req = buildUniversalTxRequest(ctx.universalSigner.account.address as `0x${string}`, {
-      recipient: zeroAddress, token: zeroAddress, amount: BigInt(0), payload: payloadData,
+      recipient: zeroAddress, token: zeroAddress, amount: BigInt(0),
+      payload: encodeUniversalPayload(universalPayloadForReq),
     });
   } else {
     if (execute.to.toLowerCase() !== UEA.toLowerCase()) {
@@ -228,7 +245,7 @@ export async function executeStandardPayload(
 
     const { vm } = CHAIN_INFO[chain];
     const feeLockTxHashDisplay = vm === VM.SVM
-      ? utils.bytes.bs58.encode(feeLockTxHashBytes)
+      ? bs58.encode(Buffer.from(feeLockTxHashBytes))
       : feeLockTxHash;
 
     const originTx = await fetchOriginChainTransactionForProgress(ctx, chain, feeLockTxHash, feeLockTxHashDisplay);

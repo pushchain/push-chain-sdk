@@ -71,7 +71,7 @@
 | UTX-17 | Native funds + data | COVERED | **GAP** | S5: Bridge native + single call | Only existing UEA tested |
 | UTX-18 | Native funds + data to self | SKIPPED | SKIPPED | -- | Can't execute data on own UEA |
 | UTX-19 | Value + native funds | **GAP** | **GAP** | -- | No value + native funds (without data) test |
-| UTX-20 | Value + funds + native funds | **GAP** | **GAP** | -- | Triple fund-type combo not tested anywhere |
+| UTX-20 | Value + funds + native funds | **UNSUPPORTED** | **UNSUPPORTED** | -- | Contract only supports one token type as funds per tx. Native ETH alongside ERC-20 acts as gas, not bridged funds. See Section 8. |
 | UTX-21 | Multicall (no funds) | **GAP** | **GAP** | -- | All multicall tests in S5 include funds bridging |
 | UTX-22 | Funds + multicall | COVERED | **GAP** | S5: USDT + multicall array | Only existing UEA tested |
 | UTX-23 | Native funds + payload | COVERED | **GAP** | S5: Native + single call | Only existing UEA tested |
@@ -101,7 +101,7 @@
 | UTX-17 | Native funds + data | **GAP** | **GAP** | -- | Not tested |
 | UTX-18 | Native funds + data to self | SKIPPED | SKIPPED | -- | |
 | UTX-19 | Value + native funds | **GAP** | **GAP** | -- | Not tested |
-| UTX-20 | Value + funds + native funds | **GAP** | **GAP** | -- | Not tested |
+| UTX-20 | Value + funds + native funds | **UNSUPPORTED** | **UNSUPPORTED** | -- | See Section 8. Single `funds` field; native acts as gas only. |
 | UTX-21 | Multicall (no funds) | **GAP** | **GAP** | -- | Not tested |
 | UTX-22 | Funds + multicall | **GAP** | **GAP** | -- | Not tested |
 | UTX-23 | Native funds + payload | **GAP** | **GAP** | -- | Not tested |
@@ -131,7 +131,7 @@
 | UTX-17 | Native funds + data | COVERED | S7: Native Funds + Payload | |
 | UTX-18 | Native funds + data to self | SKIPPED | -- | |
 | UTX-19 | Value + native funds | **GAP** | -- | Not tested |
-| UTX-20 | Value + funds + native funds | **GAP** | -- | Not tested |
+| UTX-20 | Value + funds + native funds | **UNSUPPORTED** | -- | See Section 8. |
 | UTX-21 | Multicall (no funds) | COVERED | S3: Multicall - counter + approve, no funds | |
 | UTX-22 | Funds + multicall | COVERED | S5: Funds + Multicall | |
 | UTX-23 | Native funds + payload | COVERED | S7: Native + Payload, S8: Native + Multicall | |
@@ -219,6 +219,7 @@ These scenarios are marked FALSE in the user matrix but should be corrected:
 | UTX-12 | Funds + Data to self | FALSE | **SKIPPED** | Can't execute data on own UEA |
 | UTX-14 | V+F+D to self | FALSE | **SKIPPED** | Can't execute data on own UEA |
 | UTX-18 | Native funds + Data to self | FALSE | **SKIPPED** | Can't execute data on own UEA |
+| UTX-20 | Value + Funds + Native Funds | FALSE | **UNSUPPORTED** | Contract only allows one token type as funds per tx; native ETH acts as gas, not bridged funds (see Section 8) |
 | UTX-21 | Multicall | UNSUPPORTED | **FALSE (testable)** | Multicall works on Push Chain (Route 3 S3 proves this) |
 
 ---
@@ -238,7 +239,7 @@ These are fundamental inbound scenarios missing from `evm/inbound/uea-to-push.sp
 | 5 | UTX-10 | Value + Funds to others | `{ to: DIFFERENT_ADDRESS, value: BigInt(1e3), funds: { amount: BigInt(100), token: usdt } }` |
 | 6 | UTX-11 | Funds + Data to contract (raw data, not multicall) | `{ to: COUNTER_ADDRESS_PAYABLE, funds: { amount: BigInt(100), token: usdt }, data: incrementData }` |
 | 7 | UTX-19 | Value + Native Funds | `{ to: pushClient.universal.account, value: BigInt(1e3), funds: { amount: parseUnits('0.00001', 18), token: nativeToken } }` |
-| 8 | UTX-20 | Value + Funds + Native Funds | Needs clarification -- SDK `funds` field is single token. May need multicall to combine ERC-20 + native bridge. |
+| ~~8~~ | ~~UTX-20~~ | ~~Value + Funds + Native Funds~~ | **UNSUPPORTED** -- contract only allows one token type as funds; native ETH acts as gas, not bridged funds. See Section 8. |
 | 9 | UTX-21 | Multicall (no funds) | `{ to: COUNTER_ADDRESS_PAYABLE, data: [{ to: COUNTER_ADDRESS_PAYABLE, value: 0n, data: incrementData }, { to: COUNTER_ADDRESS_PAYABLE, value: 0n, data: incrementData }] }` |
 
 ### Priority 2: Route 1 EVM Inbound (New UEA / Fresh Wallet)
@@ -346,15 +347,44 @@ Missing from `svm/outbound/svm-outbound.spec.ts`:
 
 ---
 
-## 8. Open Questions
+## 8. Resolved: UTX-20 (Value + Funds + Native Funds)
 
-1. **UTX-20 (Value + Funds + Native Funds)**: The SDK `funds` field accepts a single token. How should we combine ERC-20 funds + native funds in one transaction? Does this require multicall or is there a separate mechanism?
+### Finding: UNSUPPORTED at contract level
 
-2. **UTX numbering vs examples repo**: The user matrix numbering diverges from the examples repo after UTX-04. The examples repo has 22 routes numbered differently (e.g., Route 7 = "Value + Funds to self" but UTX-07 = "Value + Data to contract"). This document follows the **user matrix numbering**.
+After analyzing `push-chain-gateway-contracts`, `push-chain-core-contracts`, and `push-chain` relay code:
 
-3. **"To contract" vs "to others" distinction**: The user matrix distinguishes "to contract" and "to self" for data scenarios. The examples repo uses "to self" vs "to others". For testing purposes, "to contract" is a specific "to others" case where the recipient has executable code.
+**The gateway `UniversalTxRequest` struct has a single `token` + `amount` field.** You can only bridge ONE token type as funds per transaction.
 
-4. **Push Chain multicall (UTX-21)**: Marked UNSUPPORTED in user matrix, but Route 3 S3 in `cea-to-uea.spec.ts` proves multicall works on Push Chain without funds. Should be reclassified as testable.
+When both ERC-20 and native ETH are sent in a single user transaction (Case 2.3 in `UniversalGateway.sol`), they serve **different purposes**:
+
+| What's sent | Where it goes | Purpose |
+|-------------|---------------|---------|
+| `req.token` (ERC-20) + `req.amount` | **Vault** | Bridged as PRC-20 funds to recipient on Push Chain |
+| `msg.value` (native ETH) | **TSS** | Used as **gas** for payload execution, NOT as bridged funds |
+
+The gateway emits **two separate events** for Case 2.3:
+1. `GAS` event -- native ETH to TSS (instant route)
+2. `FUNDS_AND_PAYLOAD` event -- ERC-20 to Vault (standard route)
+
+At the relay level, each `Inbound` protobuf message carries exactly one `amount` + `asset_addr` pair. There is no `nativeFunds` field anywhere in the relay codebase.
+
+**Conclusion**: UTX-20 (Value + ERC-20 Funds + Native Funds all as user funds to recipient) is **UNSUPPORTED**. The native ETH alongside ERC-20 always acts as gas, not as bridged funds.
+
+**Key contract references**:
+- `push-chain-gateway-contracts/contracts/evm-gateway/src/UniversalGateway.sol` -- `_fetchTxType()` (line 904), Case 2.3 (lines 464-530)
+- `push-chain-gateway-contracts/contracts/evm-gateway/src/libraries/TypesUG.sol` -- `UniversalTxRequest` struct
+- `push-chain/proto/uexecutor/v1/types.proto` -- `Inbound` message (single `amount` + `asset_addr`)
+- `push-chain/x/uexecutor/keeper/handler.go` -- `depositPRC20()` (single token deposit)
+
+---
+
+## 9. Remaining Notes
+
+1. **UTX numbering vs examples repo**: The user matrix numbering diverges from the examples repo after UTX-04. The examples repo has 22 routes numbered differently (e.g., Route 7 = "Value + Funds to self" but UTX-07 = "Value + Data to contract"). This document follows the **user matrix numbering**.
+
+2. **"To contract" vs "to others" distinction**: The user matrix distinguishes "to contract" and "to self" for data scenarios. The examples repo uses "to self" vs "to others". For testing purposes, "to contract" is a specific "to others" case where the recipient has executable code.
+
+3. **Push Chain multicall (UTX-21)**: Marked UNSUPPORTED in user matrix, but Route 3 S3 in `cea-to-uea.spec.ts` proves multicall works on Push Chain without funds. Should be reclassified as testable.
 
 ---
 
@@ -373,4 +403,6 @@ If adding to `evm/inbound/uea-to-push.spec.ts`, suggested section numbering to a
 22. Fresh Wallet — Data Only (UTX-05 fresh)
 23. Fresh Wallet — Value + Data (UTX-07 fresh)
 24. Fresh Wallet — Multicall (UTX-21 fresh)
+
+Note: UTX-20 (Value + Funds + Native Funds) is UNSUPPORTED — no test needed.
 ```

@@ -61,7 +61,7 @@ import {
   encodeSvmCeaToUeaPayload,
 } from '../payload-builders';
 import { ZERO_ADDRESS } from '../../constants/selectors';
-import { ERC20_EVM } from '../../constants/abi';
+import { ERC20_EVM } from '../../constants/abi/erc20.evm';
 import { PushChain } from '../../push-chain/push-chain';
 import type {
   ChainTarget,

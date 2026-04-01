@@ -3,7 +3,7 @@
  * All chains use V1 gateway ABI.
  */
 
-import { utils } from '@coral-xyz/anchor';
+import { bs58 } from '../../internal/bs58';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { Abi, hexToBytes, stringToBytes } from 'viem';
 import {
@@ -217,7 +217,7 @@ export async function lockFee(
             systemProgram: SystemProgram.programId,
           },
         });
-        return new Uint8Array(utils.bytes.bs58.decode(txHash));
+        return new Uint8Array(bs58.decode(txHash));
       } catch (error) {
         printLog(ctx, `Error sending UniversalTx: ${error instanceof Error ? error.message : String(error)}`);
         throw error;

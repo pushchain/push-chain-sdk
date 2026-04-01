@@ -17,8 +17,8 @@ import {
   OriginAccountInfo,
   UniversalAccount,
 } from '../universal.types';
-import { utils } from '@coral-xyz/anchor';
-import { FACTORY_V1 } from '../../constants/abi';
+import { bs58 } from '../../internal/bs58';
+import { FACTORY_V1 } from '../../constants/abi/factoryV1';
 import { PushClient } from '../../push-client/push-client';
 import { Cache, CacheKeys } from '../../cache/cache';
 import { PushChain } from '../../push-chain/push-chain';
@@ -288,7 +288,7 @@ export async function convertOriginToExecutor(
           vm === VM.EVM
             ? address
             : vm === VM.SVM
-            ? bytesToHex(Uint8Array.from(utils.bytes.bs58.decode(address)))
+            ? bytesToHex(Uint8Array.from(bs58.decode(address)))
             : address,
       },
     ],
@@ -368,7 +368,7 @@ export async function convertExecutorToOriginAccount(
     if (universalAccount.chain.startsWith(VM_NAMESPACE[VM.SVM])) {
       // Convert hex-encoded owner to base58 address format
       const hexBytes = hexToBytes(account.owner);
-      universalAccount.address = utils.bytes.bs58.encode(hexBytes);
+      universalAccount.address = bs58.encode(Buffer.from(hexBytes));
     }
   }
 
@@ -463,7 +463,7 @@ export async function convertExecutorToOrigin(
   if (isUEA) {
     if (universalAccount.chain.startsWith(VM_NAMESPACE[VM.SVM])) {
       const hexBytes = hexToBytes(account.owner);
-      universalAccount.address = utils.bytes.bs58.encode(hexBytes);
+      universalAccount.address = bs58.encode(Buffer.from(hexBytes));
     }
   }
 

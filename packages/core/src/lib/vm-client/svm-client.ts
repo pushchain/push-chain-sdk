@@ -15,7 +15,7 @@ import {
 import { AnchorProvider, Program, BN } from '@coral-xyz/anchor';
 import { UniversalSigner } from '../universal/universal.types';
 import type { Wallet } from '@coral-xyz/anchor';
-import { utils } from '@coral-xyz/anchor';
+import { bs58 } from '../internal/bs58';
 
 // Universal Gateway ALT (shared with on-chain tests)
 const ALT_ADDRESS = new PublicKey(
@@ -347,7 +347,7 @@ export class SvmClient {
       new Uint8Array(txBytes)
     );
 
-    return utils.bytes.bs58.encode(txHashBytes); // Clean, readable tx hash
+    return bs58.encode(Buffer.from(txHashBytes)); // Clean, readable tx hash
   }
 
   /**

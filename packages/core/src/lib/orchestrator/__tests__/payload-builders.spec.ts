@@ -5,7 +5,10 @@
  * outbound requests, and cascade composition helpers.
  */
 import { decodeAbiParameters, decodeFunctionData, keccak256, toBytes } from 'viem';
-import { ERC20_EVM, CEA_EVM, UNIVERSAL_GATEWAY_V0, UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
+import { ERC20_EVM } from '../../constants/abi/erc20.evm';
+import { CEA_EVM } from '../../constants/abi/cea.evm';
+import { UNIVERSAL_GATEWAY_V0 } from '../../constants/abi/universalGatewayV0.evm';
+import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi/universalGatewayPC.evm';
 import { ZERO_ADDRESS, MIGRATION_SELECTOR, MULTICALL_SELECTOR, UEA_MULTICALL_SELECTOR } from '../../constants/selectors';
 import type { MultiCall, UniversalOutboundTxRequest } from '../orchestrator.types';
 import {

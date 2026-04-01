@@ -6,7 +6,7 @@
  */
 
 import { encodeFunctionData } from 'viem';
-import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
+import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi/universalGatewayPC.evm';
 import { ZERO_ADDRESS } from '../../constants/selectors';
 import type {
   ExecuteParams,

@@ -5,8 +5,8 @@
  * sendUniversalTx:  Cosmos-wrapped EVM tx via PushClient (gasless path)
  */
 
-import { utils } from '@coral-xyz/anchor';
-import { Any } from 'cosmjs-types/google/protobuf/any';
+import { bs58 } from '../../internal/bs58';
+type Any = { typeUrl: string; value: Uint8Array };
 import { bytesToHex } from 'viem';
 import { CHAIN_INFO, VM_NAMESPACE } from '../../constants/chain';
 import { VM } from '../../constants/enums';
@@ -155,7 +155,7 @@ export async function sendUniversalTx(
       vm === VM.EVM
         ? address
         : vm === VM.SVM
-        ? bytesToHex(new Uint8Array(utils.bytes.bs58.decode(address)))
+        ? bytesToHex(new Uint8Array(bs58.decode(address)))
         : address,
   };
 

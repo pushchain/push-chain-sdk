@@ -5,7 +5,7 @@
  * Extracted from Orchestrator.waitForOutboundTx / waitForAllOutboundTxsV2.
  */
 
-import { utils } from '@coral-xyz/anchor';
+import { bs58 } from '../../internal/bs58';
 import { CHAIN_INFO, VM_NAMESPACE } from '../../constants/chain';
 import { CHAIN, VM } from '../../constants/enums';
 import { UniversalTxStatus } from '../../generated/uexecutor/v1/types';
@@ -160,7 +160,7 @@ export async function waitForOutboundTx(
             let explorerUrl = '';
             if (isSvm && ob.observedTx.txHash.startsWith('0x')) {
               const bytes = new Uint8Array(Buffer.from(ob.observedTx.txHash.slice(2), 'hex'));
-              displayTxHash = utils.bytes.bs58.encode(bytes);
+              displayTxHash = bs58.encode(Buffer.from(bytes));
               const cluster = chain === CHAIN.SOLANA_DEVNET ? '?cluster=devnet'
                 : chain === CHAIN.SOLANA_TESTNET ? '?cluster=testnet' : '';
               explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${displayTxHash}${cluster}` : '';
@@ -336,7 +336,7 @@ export async function waitForAllOutboundTxsV2(
               const isSvm = CHAIN_INFO[chain]?.vm === VM.SVM;
               if (isSvm && externalTxHash.startsWith('0x')) {
                 const bytes = new Uint8Array(Buffer.from(externalTxHash.slice(2), 'hex'));
-                const base58Hash = utils.bytes.bs58.encode(bytes);
+                const base58Hash = bs58.encode(Buffer.from(bytes));
                 const cluster = chain === CHAIN.SOLANA_DEVNET ? '?cluster=devnet'
                   : chain === CHAIN.SOLANA_TESTNET ? '?cluster=testnet' : '';
                 explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${base58Hash}${cluster}` : '';

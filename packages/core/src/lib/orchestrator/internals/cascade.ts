@@ -7,7 +7,7 @@
 
 import { PublicKey } from '@solana/web3.js';
 import { encodeFunctionData } from 'viem';
-import { ERC20_EVM } from '../../constants/abi';
+import { ERC20_EVM } from '../../constants/abi/erc20.evm';
 import {
   CHAIN_INFO,
   UNIVERSAL_GATEWAY_ADDRESSES,

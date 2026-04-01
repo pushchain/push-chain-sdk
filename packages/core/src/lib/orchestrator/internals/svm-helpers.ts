@@ -4,7 +4,7 @@
 
 import { PublicKey } from '@solana/web3.js';
 import { bytesToHex, hexToBytes, stringToBytes, zeroAddress } from 'viem';
-import { SVM_GATEWAY_IDL } from '../../constants/abi';
+import SVM_GATEWAY_IDL from '../../constants/abi/universalGatewayV0.json';
 import type { UniversalTxRequest } from '../orchestrator.types';
 
 // ============================================================================

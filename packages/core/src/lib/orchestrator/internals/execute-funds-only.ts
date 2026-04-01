@@ -7,7 +7,7 @@
 
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { stringToBytes } from 'viem';
-import { SVM_GATEWAY_IDL } from '../../constants/abi';
+import SVM_GATEWAY_IDL from '../../constants/abi/universalGatewayV0.json';
 import { CHAIN_INFO, SVM_PYTH_PRICE_FEED } from '../../constants/chain';
 import { CHAIN, VM } from '../../constants/enums';
 import { MOVEABLE_TOKENS, MoveableToken } from '../../constants/tokens';

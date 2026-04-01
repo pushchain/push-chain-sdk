@@ -5,10 +5,10 @@
  * for both EVM and SVM origin chains.
  */
 
-import { utils } from '@coral-xyz/anchor';
+import { bs58 } from '../../internal/bs58';
 import { PublicKey } from '@solana/web3.js';
 import { bytesToHex, stringToBytes } from 'viem';
-import { SVM_GATEWAY_IDL } from '../../constants/abi';
+import SVM_GATEWAY_IDL from '../../constants/abi/universalGatewayV0.json';
 import { CHAIN_INFO } from '../../constants/chain';
 import { CHAIN, VM } from '../../constants/enums';
 import { MOVEABLE_TOKENS, MoveableToken } from '../../constants/tokens';
@@ -252,7 +252,7 @@ export async function executeFundsWithPayload(
   let feeLockTxHash = txHash;
   if (CHAIN_INFO[ctx.universalSigner.account.chain].vm === VM.SVM) {
     if (feeLockTxHash && !feeLockTxHash.startsWith('0x')) {
-      const decoded = utils.bytes.bs58.decode(feeLockTxHash);
+      const decoded = bs58.decode(feeLockTxHash);
       feeLockTxHash = bytesToHex(new Uint8Array(decoded));
     }
   }

@@ -21,20 +21,33 @@
   "license": "MIT",
   "dependencies": {
     "@bufbuild/protobuf": "^2.0.0",
-    "@coral-xyz/anchor": "^0.31.0",
     "@cosmjs/crypto": "0.33.1",
     "@cosmjs/encoding": "0.33.1",
     "@cosmjs/proto-signing": "^0.33.1",
     "@cosmjs/stargate": "^0.33.1",
     "@cosmjs/tendermint-rpc": "0.33.1",
     "@solana/web3.js": "^1.68.0",
+    "bs58": "^4.0.0",
     "buffer": "^6.0.3",
     "cosmjs-types": "0.9.0",
-    "ethers": "^6.14.3",
-    "protobufjs": "7.4.0",
     "tslib": "^2.3.0",
-    "tweetnacl": "^1.0.3",
-    "viem": "2.27.2"
+    "viem": "^2.27.2"
+  },
+  "peerDependencies": {
+    "@coral-xyz/anchor": "^0.31.0",
+    "ethers": "^6.0.0",
+    "tweetnacl": "^1.0.3"
+  },
+  "peerDependenciesMeta": {
+    "@coral-xyz/anchor": {
+      "optional": true
+    },
+    "ethers": {
+      "optional": true
+    },
+    "tweetnacl": {
+      "optional": true
+    }
   },
   "scripts": {
     "build:proto": "scripts/protoc-generate.sh"
@@ -42,6 +55,17 @@
   "type": "commonjs",
   "main": "./src/index.js",
   "typings": "./src/index.d.ts",
+  "sideEffects": [
+    "./src/lib/internal/global-buffer-polyfill.*"
+  ],
+  "files": [
+    "src/",
+    "!src/**/*.spec.ts",
+    "!src/**/__tests__/",
+    "!src/**/*.sol",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "devDependencies": {
     "secp256k1": "^5.0.1",
     "ts-proto": "^2.0.3"

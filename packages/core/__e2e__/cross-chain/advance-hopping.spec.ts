@@ -1060,6 +1060,10 @@ describe('Advance Hopping: Cascade API E2E', () => {
           ]}],
           [{ to: ZERO_ADDRESS, value: BigInt(0), data: stakePayloadData, gasLimit: BigInt(0), maxFeePerGas: BigInt(0), maxPriorityFeePerGas: BigInt(0), nonce: BigInt(0), deadline: BigInt(0), vType: 1 }]
         );
+        // USDT requires allowance reset to 0 before setting a new non-zero value
+        const approveZeroCalldata = encodeFunctionData({
+          abi: ERC20_EVM, functionName: 'approve', args: [UNIVERSAL_GATEWAY_BSC, BigInt(0)],
+        });
         const approveCalldata = encodeFunctionData({
           abi: ERC20_EVM, functionName: 'approve', args: [UNIVERSAL_GATEWAY_BSC, sendBackAmount],
         });
@@ -1070,6 +1074,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
 
         const ceaCalls = [
           { to: COUNTER_A_BSC, value: BigInt(0), data: incrementData },
+          { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: approveZeroCalldata },
           { to: BSC_USDT_ADDRESS as `0x${string}`, value: BigInt(0), data: approveCalldata },
           { to: stakingCeaAddress, value: BigInt(0), data: sendBackCalldata },
         ];

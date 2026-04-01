@@ -357,6 +357,12 @@ describe('CEA Custom Contract: StakingExample (Outbound & Inbound)', () => {
 
       // 3. Encode ERC20 approve — CEA must approve the gateway to transferFrom its USDT
       //    The gateway's sendUniversalTxFromCEA calls safeTransferFrom(CEA, VAULT, amount)
+      //    USDT requires allowance reset to 0 before setting a new non-zero value
+      const approveZeroCalldata = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'approve',
+        args: [universalGateway, BigInt(0)],
+      });
       const approveCalldata = encodeFunctionData({
         abi: ERC20_EVM,
         functionName: 'approve',
@@ -376,7 +382,7 @@ describe('CEA Custom Contract: StakingExample (Outbound & Inbound)', () => {
         ],
       });
 
-      // 5. Wrap in MULTICALL format (approve MUST come before sendUniversalTxToUEA)
+      // 5. Wrap in MULTICALL format (approve(0) + approve MUST come before sendUniversalTxToUEA)
       const multicallEncoded = encodeAbiParameters(
         [
           {
@@ -390,6 +396,11 @@ describe('CEA Custom Contract: StakingExample (Outbound & Inbound)', () => {
         ],
         [
           [
+            {
+              to: fixtureUsdtAddress,
+              value: BigInt(0),
+              data: approveZeroCalldata,
+            },
             {
               to: fixtureUsdtAddress,
               value: BigInt(0),
@@ -455,6 +466,12 @@ describe('CEA Custom Contract: StakingExample (Outbound & Inbound)', () => {
         }]
       );
 
+      // USDT requires allowance reset to 0 before setting a new non-zero value
+      const approveZeroCalldata = encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'approve',
+        args: [universalGateway, BigInt(0)],
+      });
       const approveCalldata = encodeFunctionData({
         abi: ERC20_EVM,
         functionName: 'approve',
@@ -468,6 +485,7 @@ describe('CEA Custom Contract: StakingExample (Outbound & Inbound)', () => {
       });
 
       return [
+        { to: fixtureUsdtAddress, value: BigInt(0), data: approveZeroCalldata },
         { to: fixtureUsdtAddress, value: BigInt(0), data: approveCalldata },
         { to: ceaAddress, value: BigInt(0), data: sendBackCalldata },
       ];
