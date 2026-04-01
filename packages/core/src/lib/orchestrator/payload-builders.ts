@@ -249,6 +249,14 @@ export function buildApproveAndInteract(
   amount: bigint,
   interactCall: MultiCall
 ): MultiCall[] {
+  // Reset allowance to 0 first to handle non-standard ERC-20 tokens (e.g. USDT)
+  // that revert if approve is called with non-zero value when current allowance is non-zero.
+  const approveZeroData = encodeFunctionData({
+    abi: ERC20_EVM,
+    functionName: 'approve',
+    args: [spender, BigInt(0)],
+  });
+
   const approveData = encodeFunctionData({
     abi: ERC20_EVM,
     functionName: 'approve',
@@ -256,6 +264,11 @@ export function buildApproveAndInteract(
   });
 
   return [
+    {
+      to: tokenAddress,
+      value: BigInt(0),
+      data: approveZeroData,
+    },
     {
       to: tokenAddress,
       value: BigInt(0),
@@ -491,14 +504,25 @@ export function buildOutboundApprovalAndCall(opts: {
   const multicalls: MultiCall[] = [];
 
   // ERC20 approve for burn amount (contract calls transferFrom for PRC20 burn)
+  // Reset to 0 first for USDT-style tokens that revert on non-zero to non-zero approve.
   if (
     burnAmount > BigInt(0) &&
     prc20Token.toLowerCase() !== ZERO_ADDRESS.toLowerCase()
   ) {
+    const approveZeroData = encodeFunctionData({
+      abi: ERC20_EVM,
+      functionName: 'approve',
+      args: [gatewayPcAddress, BigInt(0)],
+    });
     const approveData = encodeFunctionData({
       abi: ERC20_EVM,
       functionName: 'approve',
       args: [gatewayPcAddress, burnAmount],
+    });
+    multicalls.push({
+      to: prc20Token,
+      value: BigInt(0),
+      data: approveZeroData,
     });
     multicalls.push({
       to: prc20Token,

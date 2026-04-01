@@ -37,6 +37,9 @@ import {
   executeFundsOnly as _executeFundsOnly,
   executeFundsWithPayload as _executeFundsWithPayload,
   executeStandardPayload as _executeStandardPayload,
+  queryOutboundGasFee as _queryOutboundGasFee,
+  extractUniversalSubTxIdFromTx as _extractUniversalSubTxIdFromTx,
+  extractAllUniversalSubTxIds as _extractAllUniversalSubTxIds,
 } from './internals';
 
 export class Orchestrator {
@@ -256,6 +259,34 @@ export class Orchestrator {
     preparedTxs: PreparedUniversalTx[]
   ): CascadedTransactionBuilder {
     return _createCascadedBuilder(this.ctx, preparedTxs, this._getCascadeCallbacks());
+  }
+
+  /**
+   * Queries gas fee for an outbound transaction from the UniversalCore contract.
+   */
+  async queryOutboundGasFee(
+    prc20Token: `0x${string}`,
+    gasLimit: bigint
+  ): Promise<{ gasToken: `0x${string}`; gasFee: bigint; protocolFee: bigint; nativeValueForGas: bigint; gasPrice: bigint }> {
+    return _queryOutboundGasFee(this.ctx, prc20Token, gasLimit);
+  }
+
+/**
+   * Extracts the first universal sub-tx ID from a Push Chain transaction's Cosmos events.
+   */
+  async extractUniversalSubTxIdFromTx(
+    pushChainTxHash: string
+  ): Promise<string | null> {
+    return _extractUniversalSubTxIdFromTx(this.ctx, pushChainTxHash);
+  }
+
+  /**
+   * Extracts all universal sub-tx IDs from a cascaded Push Chain transaction.
+   */
+  async extractAllUniversalSubTxIds(
+    pushChainTxHash: string
+  ): Promise<string[]> {
+    return _extractAllUniversalSubTxIds(this.ctx, pushChainTxHash);
   }
 
   /**

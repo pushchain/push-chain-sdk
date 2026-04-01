@@ -46,6 +46,7 @@ export {
   buildSvmUniversalTxRequest,
   buildSvmUniversalTxRequestFromReq,
   getSvmProtocolFee,
+  getSvmGatewayLogIndexFromTx,
 } from './svm-helpers';
 
 // === Outbound Tracking ===

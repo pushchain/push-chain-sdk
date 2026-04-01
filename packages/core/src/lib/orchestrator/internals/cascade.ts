@@ -60,6 +60,7 @@ import {
   getUniversalGatewayPCAddress,
   getNativePRC20ForChain,
   toExecuteParams,
+  getPushChainForNetwork,
 } from './helpers';
 import { buildMulticallPayloadData } from './payload-builder';
 import { computeUEAOffchain, getUEANonce, getUeaStatusAndNonce } from './uea-manager';
@@ -803,6 +804,17 @@ export function composeCascade(
                   `No UniversalGateway address configured for chain ${sourceChain}`
                 );
               }
+              // Reset allowance to 0 first for USDT-style tokens
+              const approveZeroData = encodeFunctionData({
+                abi: ERC20_EVM,
+                functionName: 'approve',
+                args: [gatewayAddr, BigInt(0)],
+              });
+              ceaMulticalls.push({
+                to: tokenAddress,
+                value: BigInt(0),
+                data: approveZeroData,
+              });
               const approveData = encodeFunctionData({
                 abi: ERC20_EVM,
                 functionName: 'approve',
@@ -902,7 +914,7 @@ export function createCascadedBuilder(
             {
               hopIndex: 0,
               route: hops[0].route,
-              executionChain: CHAIN.PUSH_TESTNET_DONUT,
+              executionChain: getPushChainForNetwork(ctx.pushNetwork),
               status: 'confirmed',
               txHash: response.hash,
             },
@@ -914,7 +926,7 @@ export function createCascadedBuilder(
               {
                 hopIndex: 0,
                 route: hops[0].route,
-                executionChain: CHAIN.PUSH_TESTNET_DONUT,
+                executionChain: getPushChainForNetwork(ctx.pushNetwork),
                 status: 'confirmed' as const,
                 txHash: response.hash,
               },
@@ -932,7 +944,7 @@ export function createCascadedBuilder(
       ) {
         const response = await callbacks.executeFn(hops[0].params);
         const targetChain =
-          hops[0].targetChain || CHAIN.PUSH_TESTNET_DONUT;
+          hops[0].targetChain || getPushChainForNetwork(ctx.pushNetwork);
         const singleRoute2Result: CascadedTxResponse = {
           initialTxHash: response.hash,
           initialTxResponse: response,
@@ -994,7 +1006,7 @@ export function createCascadedBuilder(
         hopIndex: index,
         route: hop.route,
         executionChain:
-          hop.targetChain || hop.sourceChain || CHAIN.PUSH_TESTNET_DONUT,
+          hop.targetChain || hop.sourceChain || getPushChainForNetwork(ctx.pushNetwork),
         status: 'pending' as const,
       }));
 
@@ -1024,7 +1036,7 @@ export function createCascadedBuilder(
             cascadeProgressHook?.({
               hopIndex: 0,
               route: hopInfos[0]?.route || 'UOA_TO_PUSH',
-              chain: CHAIN.PUSH_TESTNET_DONUT,
+              chain: getPushChainForNetwork(ctx.pushNetwork),
               status: 'waiting',
               elapsed: Date.now() - startTime,
             });
@@ -1039,7 +1051,7 @@ export function createCascadedBuilder(
                 cascadeProgressHook?.({
                   hopIndex: hop.hopIndex,
                   route: hop.route,
-                  chain: CHAIN.PUSH_TESTNET_DONUT,
+                  chain: getPushChainForNetwork(ctx.pushNetwork),
                   status: 'confirmed',
                   txHash: response.hash,
                   elapsed: Date.now() - startTime,

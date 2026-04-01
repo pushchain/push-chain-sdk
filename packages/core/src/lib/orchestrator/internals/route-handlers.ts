@@ -850,7 +850,18 @@ export async function executeCeaToPush(
 
   // For ERC20 tokens, add approve call for the bridge amount
   // (CEA approves gateway to spend the Vault-deposited amount)
+  // Reset to 0 first for USDT-style tokens that revert on non-zero to non-zero approve.
   if (tokenAddress !== (ZERO_ADDRESS as `0x${string}`) && bridgeAmount > BigInt(0)) {
+    const approveZeroData = encodeFunctionData({
+      abi: ERC20_EVM,
+      functionName: 'approve',
+      args: [gatewayAddress, BigInt(0)],
+    });
+    ceaMulticalls.push({
+      to: tokenAddress,
+      value: BigInt(0),
+      data: approveZeroData,
+    });
     const approveData = encodeFunctionData({
       abi: ERC20_EVM,
       functionName: 'approve',
@@ -1493,7 +1504,17 @@ export async function buildPayloadForRoute(
           } else {
             tokenAddress = token.address as `0x${string}`;
             amount = params.funds.amount;
-            // Approve gateway for ERC20 (CEA self-call, value=0)
+            // Reset allowance to 0 first for USDT-style tokens, then approve
+            const approveZeroData = encodeFunctionData({
+              abi: ERC20_EVM,
+              functionName: 'approve',
+              args: [gatewayAddr, BigInt(0)],
+            });
+            ceaMulticalls.push({
+              to: tokenAddress,
+              value: BigInt(0),
+              data: approveZeroData,
+            });
             const approveData = encodeFunctionData({
               abi: ERC20_EVM,
               functionName: 'approve',
