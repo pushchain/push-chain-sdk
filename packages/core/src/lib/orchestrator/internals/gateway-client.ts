@@ -1,5 +1,6 @@
 /**
- * Gateway V0/V1 fallback logic, request conversion, and fee locking — extracted from Orchestrator.
+ * Gateway interaction: request conversion, tx sending, and fee locking.
+ * All chains use V1 gateway ABI.
  */
 
 import { utils } from '@coral-xyz/anchor';
@@ -7,14 +8,14 @@ import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { Abi, hexToBytes, stringToBytes } from 'viem';
 import {
   SVM_GATEWAY_IDL,
-  UNIVERSAL_GATEWAY_V0,
   UNIVERSAL_GATEWAY_V1_SEND,
 } from '../../constants/abi';
-import { CHAIN_INFO } from '../../constants/chain';
+import { CHAIN_INFO, SVM_PYTH_PRICE_FEED } from '../../constants/chain';
 import { CHAIN, VM } from '../../constants/enums';
 import { PriceFetch } from '../../price-fetch/price-fetch';
 import { Utils } from '../../utils';
 import { EvmClient } from '../../vm-client/evm-client';
+import { SUPPORTED_GATEWAY_CHAINS } from './helpers';
 import { SvmClient } from '../../vm-client/svm-client';
 import type { UniversalPayload } from '../../generated/v1/tx';
 import type {
@@ -30,36 +31,13 @@ import { buildSvmUniversalTxRequestFromReq } from './svm-helpers';
 import { getSvmProtocolFee } from './svm-helpers';
 
 // ============================================================================
-// Version Detection
+// ABI
 // ============================================================================
 
-export function getGatewayVersion(ctx: OrchestratorContext): 'v0' | 'v1' {
-  const chain = ctx.universalSigner.account.chain;
-  const cached = ctx.gatewayVersionCache.get(chain);
-  if (cached) return cached;
-  return CHAIN_INFO[chain].gatewayVersion ?? 'v0';
-}
-
-export function isV1Gateway(ctx: OrchestratorContext): boolean {
-  return getGatewayVersion(ctx) === 'v1';
-}
+const GATEWAY_ABI = UNIVERSAL_GATEWAY_V1_SEND as unknown as Abi;
 
 // ============================================================================
-// ABI Selection
-// ============================================================================
-
-export function getGatewayAbiForVersion(version: 'v0' | 'v1'): unknown[] {
-  return version === 'v1'
-    ? (UNIVERSAL_GATEWAY_V1_SEND as unknown as unknown[])
-    : (UNIVERSAL_GATEWAY_V0 as unknown as unknown[]);
-}
-
-export function getGatewayAbi(ctx: OrchestratorContext): unknown[] {
-  return getGatewayAbiForVersion(getGatewayVersion(ctx));
-}
-
-// ============================================================================
-// Request Conversion (V0 → V1)
+// Request Conversion (V0 struct → V1 flat format)
 // ============================================================================
 
 export function toGatewayRequestV1(req: UniversalTxRequest): UniversalTxRequestV1 {
@@ -71,14 +49,6 @@ export function toGatewayRequestV1(req: UniversalTxRequest): UniversalTxRequestV
     revertRecipient: req.revertInstruction.fundRecipient,
     signatureData: req.signatureData,
   };
-}
-
-export function toGatewayRequest(
-  ctx: OrchestratorContext,
-  req: UniversalTxRequest
-): UniversalTxRequest | UniversalTxRequestV1 {
-  if (!isV1Gateway(ctx)) return req;
-  return toGatewayRequestV1(req);
 }
 
 export function toGatewayTokenRequestV1(req: UniversalTokenTxRequest): UniversalTokenTxRequestV1 {
@@ -96,16 +66,8 @@ export function toGatewayTokenRequestV1(req: UniversalTokenTxRequest): Universal
   };
 }
 
-export function toGatewayTokenRequest(
-  ctx: OrchestratorContext,
-  req: UniversalTokenTxRequest
-): UniversalTokenTxRequest | UniversalTokenTxRequestV1 {
-  if (!isV1Gateway(ctx)) return req;
-  return toGatewayTokenRequestV1(req);
-}
-
 // ============================================================================
-// Send with V1→V0 Fallback
+// Send Gateway Tx (V1 only)
 // ============================================================================
 
 export async function sendGatewayTxWithFallback(
@@ -116,52 +78,14 @@ export async function sendGatewayTxWithFallback(
   signer: UniversalSigner,
   value: bigint
 ): Promise<`0x${string}`> {
-  const chain = ctx.universalSigner.account.chain;
-  const currentVersion = getGatewayVersion(ctx);
-
-  if (ctx.gatewayVersionCache.has(chain)) {
-    return evmClient.writeContract({
-      abi: getGatewayAbiForVersion(currentVersion) as Abi,
-      address,
-      functionName: 'sendUniversalTx',
-      args: [currentVersion === 'v1' ? toGatewayRequestV1(req) : req],
-      signer,
-      value,
-    });
-  }
-
-  try {
-    printLog(ctx, `[Gateway] Trying V1 format for chain ${chain}...`);
-    const txHash = await evmClient.writeContract({
-      abi: getGatewayAbiForVersion('v1') as Abi,
-      address,
-      functionName: 'sendUniversalTx',
-      args: [toGatewayRequestV1(req)],
-      signer,
-      value,
-    });
-    ctx.gatewayVersionCache.set(chain, 'v1');
-    printLog(ctx, `[Gateway] V1 succeeded for chain ${chain}, cached.`);
-    return txHash;
-  } catch (v1Error) {
-    printLog(ctx, `[Gateway] V1 failed for chain ${chain}, falling back to V0... Error: ${v1Error}`);
-  }
-
-  try {
-    const txHash = await evmClient.writeContract({
-      abi: getGatewayAbiForVersion('v0') as Abi,
-      address,
-      functionName: 'sendUniversalTx',
-      args: [req],
-      signer,
-      value,
-    });
-    ctx.gatewayVersionCache.set(chain, 'v0');
-    printLog(ctx, `[Gateway] V0 succeeded for chain ${chain}, cached.`);
-    return txHash;
-  } catch (v0Error) {
-    throw v0Error;
-  }
+  return evmClient.writeContract({
+    abi: GATEWAY_ABI,
+    address,
+    functionName: 'sendUniversalTx',
+    args: [toGatewayRequestV1(req)],
+    signer,
+    value,
+  });
 }
 
 export async function sendGatewayTokenTxWithFallback(
@@ -172,52 +96,14 @@ export async function sendGatewayTokenTxWithFallback(
   signer: UniversalSigner,
   value?: bigint
 ): Promise<`0x${string}`> {
-  const chain = ctx.universalSigner.account.chain;
-  const currentVersion = getGatewayVersion(ctx);
-
-  if (ctx.gatewayVersionCache.has(chain)) {
-    return evmClient.writeContract({
-      abi: getGatewayAbiForVersion(currentVersion) as Abi,
-      address,
-      functionName: 'sendUniversalTx',
-      args: [currentVersion === 'v1' ? toGatewayTokenRequestV1(req) : req],
-      signer,
-      ...(value !== undefined && { value }),
-    });
-  }
-
-  try {
-    printLog(ctx, `[Gateway] Trying V1 token format for chain ${chain}...`);
-    const txHash = await evmClient.writeContract({
-      abi: getGatewayAbiForVersion('v1') as Abi,
-      address,
-      functionName: 'sendUniversalTx',
-      args: [toGatewayTokenRequestV1(req)],
-      signer,
-      ...(value !== undefined && { value }),
-    });
-    ctx.gatewayVersionCache.set(chain, 'v1');
-    printLog(ctx, `[Gateway] V1 token tx succeeded for chain ${chain}, cached.`);
-    return txHash;
-  } catch (v1Error) {
-    printLog(ctx, `[Gateway] V1 token tx failed for chain ${chain}, falling back to V0... Error: ${v1Error}`);
-  }
-
-  try {
-    const txHash = await evmClient.writeContract({
-      abi: getGatewayAbiForVersion('v0') as Abi,
-      address,
-      functionName: 'sendUniversalTx',
-      args: [req],
-      signer,
-      ...(value !== undefined && { value }),
-    });
-    ctx.gatewayVersionCache.set(chain, 'v0');
-    printLog(ctx, `[Gateway] V0 token tx succeeded for chain ${chain}, cached.`);
-    return txHash;
-  } catch (v0Error) {
-    throw v0Error;
-  }
+  return evmClient.writeContract({
+    abi: GATEWAY_ABI,
+    address,
+    functionName: 'sendUniversalTx',
+    args: [toGatewayTokenRequestV1(req)],
+    signer,
+    ...(value !== undefined && { value }),
+  });
 }
 
 // ============================================================================
@@ -322,9 +208,7 @@ export async function lockFee(
             userTokenAccount: vaultPda,
             gatewayTokenAccount: vaultPda,
             user: userPk,
-            priceUpdate: new PublicKey(
-              '7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE'
-            ),
+            priceUpdate: new PublicKey(SVM_PYTH_PRICE_FEED),
             rateLimitConfig: rateLimitConfigPda,
             tokenRateLimit: tokenRateLimitPda,
             tokenProgram: new PublicKey(
@@ -335,7 +219,7 @@ export async function lockFee(
         });
         return new Uint8Array(utils.bytes.bs58.decode(txHash));
       } catch (error) {
-        console.error('Error sending UniversalTx:', error);
+        printLog(ctx, `Error sending UniversalTx: ${error instanceof Error ? error.message : String(error)}`);
         throw error;
       }
     }
@@ -343,4 +227,39 @@ export async function lockFee(
     default:
       throw new Error(`Unsupported VM type: ${vm}`);
   }
+}
+
+// ============================================================================
+// Origin Gateway Context
+// ============================================================================
+
+/**
+ * Creates an EVM client for the origin chain's gateway.
+ * Validates that the chain supports gateway operations.
+ */
+export function getOriginGatewayContext(ctx: OrchestratorContext): {
+  chain: CHAIN;
+  evmClient?: EvmClient;
+  gatewayAddress?: `0x${string}`;
+} {
+  const chain = ctx.universalSigner.account.chain;
+  if (!SUPPORTED_GATEWAY_CHAINS.includes(chain)) {
+    throw new Error(
+      'Funds + payload bridging is only supported on Ethereum Sepolia, Arbitrum Sepolia, Base Sepolia, BNB Testnet, and Solana Devnet for now'
+    );
+  }
+
+  if (CHAIN_INFO[chain].vm === VM.EVM) {
+    const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
+    const rpcUrls: string[] = ctx.rpcUrls[chain] || defaultRPC;
+    const evmClient = new EvmClient({ rpcUrls });
+    const gatewayAddress = lockerContract as `0x${string}`;
+    if (!gatewayAddress) {
+      throw new Error('Universal Gateway address not configured');
+    }
+    return { chain, evmClient, gatewayAddress };
+  }
+
+  // SVM path does not require evmClient/gatewayAddress
+  return { chain };
 }

@@ -4,6 +4,8 @@
  */
 
 import { TransactionReceipt } from 'viem';
+import { CHAIN_INFO } from '../../constants/chain';
+import { CHAIN } from '../../constants/enums';
 import { UniversalTxStatus } from '../../generated/uexecutor/v1/types';
 import type { UniversalTxV2 } from '../../generated/uexecutor/v2/types';
 import PROGRESS_HOOKS from '../../progress-hook/progress-hook';
@@ -60,10 +62,14 @@ export function reconstructProgressEvents(
   events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_02_01]());
   events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_02_02](universalTxResponse.gasLimit));
 
-  const isPushOrigin =
-    chainNamespace.includes('eip155:42101') ||
-    chainNamespace.includes('eip155:9') ||
-    chainNamespace.includes('eip155:9001');
+  const pushChainIds = [
+    CHAIN_INFO[CHAIN.PUSH_MAINNET].chainId,
+    CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId,
+    CHAIN_INFO[CHAIN.PUSH_LOCALNET].chainId,
+  ];
+  const isPushOrigin = pushChainIds.some(
+    (id) => chainNamespace.includes(`eip155:${id}`)
+  );
 
   if (!isPushOrigin) {
     events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_03_01]());

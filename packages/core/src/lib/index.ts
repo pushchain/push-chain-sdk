@@ -21,7 +21,6 @@ export type {
   CascadeTrackOptions,
   CascadeProgressEvent,
   CascadeCompletionResult,
-  ChainedTransactionBuilder,
   MultiChainTxResponse,
   OutboundTxDetails,
   WaitForOutboundOptions,

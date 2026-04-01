@@ -24,7 +24,6 @@ export interface OrchestratorContext {
   // Mutable caches (mutated in-place by submodules)
   ueaVersionCache?: string;
   accountStatusCache: AccountStatus | null;
-  gatewayVersionCache: Map<CHAIN, 'v0' | 'v1'>;
 }
 
 /**

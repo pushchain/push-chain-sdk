@@ -4,7 +4,7 @@
  */
 
 import { PublicKey } from '@solana/web3.js';
-import { Abi, encodeFunctionData, parseAbi, stringToBytes } from 'viem';
+import { Abi, encodeFunctionData, stringToBytes } from 'viem';
 import {
   ERC20_EVM,
   SVM_GATEWAY_IDL,
@@ -28,6 +28,9 @@ import { SvmClient } from '../../vm-client/svm-client';
 import type { OrchestratorContext } from './context';
 import { printLog, fireProgressHook } from './context';
 import { getUniversalGatewayPCAddress, getPushChainForNetwork } from './helpers';
+
+/** Buffer multiplier for nativeValueForGas. Excess is refunded by swapAndBurnGas to the UEA. */
+const GAS_FEE_BUFFER_MULTIPLIER = BigInt(1000000);
 
 // ============================================================================
 // ERC-20 Allowance
@@ -155,7 +158,7 @@ export async function queryOutboundGasFee(
     throw err;
   }
 
-  const nativeValueForGas = protocolFee + (gasFee * BigInt(1000000));
+  const nativeValueForGas = protocolFee + gasFee * GAS_FEE_BUFFER_MULTIPLIER;
   printLog(ctx, `queryOutboundGasFee — [step 5] using 1000000x buffer: nativeValueForGas=${nativeValueForGas}`);
 
   return { gasToken, gasFee, protocolFee, nativeValueForGas, gasPrice };
@@ -208,7 +211,7 @@ export async function queryRescueGasFee(
     throw err;
   }
 
-  const nativeValueForGas = gasFee * BigInt(1000000);
+  const nativeValueForGas = gasFee * GAS_FEE_BUFFER_MULTIPLIER;
   printLog(ctx, `queryRescueGasFee — using 1000000x buffer: nativeValueForGas=${nativeValueForGas}`);
 
   return { gasToken, gasFee, rescueGasLimit, gasPrice, nativeValueForGas };

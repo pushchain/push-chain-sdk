@@ -1,0 +1,278 @@
+/**
+ * Funds+payload execution flow — extracted from Orchestrator.execute().
+ *
+ * Handles bridging funds AND executing a payload on Push Chain
+ * for both EVM and SVM origin chains.
+ */
+
+import { utils } from '@coral-xyz/anchor';
+import { PublicKey } from '@solana/web3.js';
+import { bytesToHex, stringToBytes } from 'viem';
+import { SVM_GATEWAY_IDL } from '../../constants/abi';
+import { CHAIN_INFO } from '../../constants/chain';
+import { CHAIN, VM } from '../../constants/enums';
+import { MOVEABLE_TOKENS, MoveableToken } from '../../constants/tokens';
+import type { UniversalTx } from '../../generated/uexecutor/v1/types';
+import {
+  PROGRESS_HOOK,
+  ProgressEvent,
+} from '../../progress-hook/progress-hook.types';
+import { PriceFetch } from '../../price-fetch/price-fetch';
+import { PushChain } from '../../push-chain/push-chain';
+import { Utils } from '../../utils';
+import { EvmClient } from '../../vm-client/evm-client';
+import { SvmClient } from '../../vm-client/svm-client';
+import type { TxResponse } from '../../vm-client/vm-client.types';
+import type {
+  ExecuteParams,
+  UniversalTokenTxRequest,
+  UniversalTxResponse,
+} from '../orchestrator.types';
+import type { OrchestratorContext } from './context';
+import { fireProgressHook } from './context';
+import {
+  ensureErc20Allowance,
+  calculateGasAmountFromAmountOutMinETH,
+} from './gas-calculator';
+import {
+  sendGatewayTxWithFallback,
+  sendGatewayTokenTxWithFallback,
+  getOriginGatewayContext,
+} from './gateway-client';
+import { buildGatewayPayloadAndGas } from './payload-builder';
+import { computeUEAOffchain, getUeaStatusAndNonce } from './uea-manager';
+import {
+  waitForEvmConfirmationsWithCountdown,
+  waitForSvmConfirmationsWithCountdown,
+} from './confirmation';
+import {
+  queryUniversalTxStatusFromGatewayTx,
+  transformToUniversalTxResponse,
+  type ResponseBuilderCallbacks,
+} from './response-builder';
+import { extractPcTxAndTransform } from './push-chain-tx';
+import { sendSVMTxWithFunds } from './svm-bridge';
+import { encodeUniversalPayload } from './signing';
+import type { UniversalPayload } from '../../generated/v1/tx';
+import { quoteExactOutput } from './quote';
+
+export async function executeFundsWithPayload(
+  ctx: OrchestratorContext,
+  execute: ExecuteParams,
+  eventBuffer: ProgressEvent[],
+  getResponseCallbacks: () => ResponseBuilderCallbacks
+): Promise<UniversalTxResponse> {
+  const transformFn = (tx: TxResponse, buf: ProgressEvent[] = []) =>
+    transformToUniversalTxResponse(ctx, tx, buf, getResponseCallbacks());
+
+  const { chain, evmClient, gatewayAddress } = getOriginGatewayContext(ctx);
+
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_01, chain, ctx.universalSigner.account.address);
+
+  // Default token to native ETH if none provided
+  if (!execute.funds!.token) {
+    const available: MoveableToken[] =
+      (MOVEABLE_TOKENS[chain] as MoveableToken[] | undefined) || [];
+    const vm = CHAIN_INFO[chain].vm;
+    const preferredSymbol = vm === VM.EVM ? 'ETH' : vm === VM.SVM ? 'SOL' : undefined;
+    const nativeToken = preferredSymbol
+      ? available.find((t) => t.symbol === preferredSymbol)
+      : undefined;
+    if (!nativeToken) {
+      throw new Error('Native token not configured for this chain');
+    }
+    execute.funds!.token = nativeToken;
+  }
+
+  const mechanism = execute.funds!.token.mechanism;
+
+  const { deployed, nonce } = await getUeaStatusAndNonce(ctx);
+  const { payload: universalPayload, req } = await buildGatewayPayloadAndGas(
+    ctx, execute, nonce, 'sendTxWithFunds', execute.funds!.amount
+  );
+
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_02_01);
+
+  // Compute required gas funding on Push Chain and current UEA balance
+  const gasEstimate = execute.gasLimit || BigInt(1e7);
+  const gasPrice = await ctx.pushClient.getGasPrice();
+  const requiredGasFee = gasEstimate * gasPrice;
+  const payloadValue = execute.value ?? BigInt(0);
+  const requiredFunds = requiredGasFee + payloadValue;
+
+  const ueaAddress = computeUEAOffchain(ctx);
+  const ueaBalance = await ctx.pushClient.getBalance(ueaAddress);
+
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_02, ueaAddress, deployed);
+
+  // Determine USD to deposit via gateway (8 decimals) with caps: min=$1, max=$10
+  const oneUsd = Utils.helpers.parseUnits('1', 8);
+  const tenUsd = Utils.helpers.parseUnits('10', 8);
+  const deficit = requiredFunds > ueaBalance ? requiredFunds - ueaBalance : BigInt(0);
+  let depositUsd = deficit > BigInt(0) ? ctx.pushClient.pushToUSDC(deficit) : oneUsd;
+
+  if (depositUsd < oneUsd) depositUsd = oneUsd;
+  if (depositUsd > tenUsd)
+    throw new Error('Deposit value exceeds max $10 worth of native token');
+
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_02_02, depositUsd);
+
+  // If SVM, clamp depositUsd to on-chain Config caps
+  if (CHAIN_INFO[chain].vm === VM.SVM) {
+    const svmClient = new SvmClient({
+      rpcUrls: ctx.rpcUrls[CHAIN.SOLANA_DEVNET] || CHAIN_INFO[CHAIN.SOLANA_DEVNET].defaultRPC,
+    });
+    const programId = new PublicKey(SVM_GATEWAY_IDL.address);
+    const [configPda] = PublicKey.findProgramAddressSync([stringToBytes('config')], programId);
+    try {
+      const cfg: any = await svmClient.readContract({
+        abi: SVM_GATEWAY_IDL, address: SVM_GATEWAY_IDL.address,
+        functionName: 'config', args: [configPda.toBase58()],
+      });
+      const minCapUsd = BigInt((cfg.minCapUniversalTxUsd ?? cfg.min_cap_universal_tx_usd).toString());
+      const maxCapUsd = BigInt((cfg.maxCapUniversalTxUsd ?? cfg.max_cap_universal_tx_usd).toString());
+      if (depositUsd < minCapUsd) depositUsd = minCapUsd;
+      const withMargin = (minCapUsd * BigInt(12)) / BigInt(10);
+      if (depositUsd < withMargin) depositUsd = withMargin;
+      if (depositUsd > maxCapUsd) depositUsd = maxCapUsd;
+    } catch {
+      // best-effort
+    }
+  }
+
+  // Convert USD(8) -> native units
+  const nativeTokenUsdPrice = await new PriceFetch(ctx.rpcUrls).getPrice(chain);
+  const nativeDecimals = CHAIN_INFO[chain].vm === VM.SVM ? 9 : 18;
+  const oneNativeUnit = Utils.helpers.parseUnits('1', nativeDecimals);
+  let nativeAmount =
+    (depositUsd * oneNativeUnit + (nativeTokenUsdPrice - BigInt(1))) / nativeTokenUsdPrice;
+  nativeAmount = nativeAmount + BigInt(1);
+
+  const bridgeAmount = execute.funds!.amount;
+  const symbol = execute.funds!.token.symbol;
+
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_01, bridgeAmount, execute.funds!.token.decimals, symbol);
+
+  if (CHAIN_INFO[ctx.universalSigner.account.chain].vm === VM.EVM) {
+    const tokenAddr = execute.funds!.token.address as `0x${string}`;
+    if (mechanism === 'approve') {
+      const evmClientEvm = evmClient as EvmClient;
+      const gatewayAddressEvm = gatewayAddress as `0x${string}`;
+      await ensureErc20Allowance(ctx, evmClientEvm, tokenAddr, gatewayAddressEvm, bridgeAmount);
+    } else if (mechanism === 'permit2') {
+      throw new Error('Permit2 is not supported yet');
+    }
+  }
+
+  let txHash: `0x${string}` | string;
+  try {
+    if (CHAIN_INFO[ctx.universalSigner.account.chain].vm === VM.EVM) {
+      const tokenAddr = execute.funds!.token.address as `0x${string}`;
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_01);
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_02, ueaAddress, deployed);
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_04_01);
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_04_02);
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_04_03);
+      const evmClientEvm = evmClient as EvmClient;
+      const gatewayAddressEvm = gatewayAddress as `0x${string}`;
+      const payloadBytes = encodeUniversalPayload(universalPayload as unknown as UniversalPayload);
+      const payWith = execute.payGasWith;
+      const gasTokenAddress = payWith?.token?.address as `0x${string}` | undefined;
+
+      if (gasTokenAddress) {
+        if (chain !== CHAIN.ETHEREUM_SEPOLIA) {
+          throw new Error(
+            `Only ${PushChain.utils.chains.getChainName(CHAIN.ETHEREUM_SEPOLIA)} is supported for paying gas fees with ERC-20 tokens`
+          );
+        }
+        let amountOutMinETH = payWith?.minAmountOut !== undefined ? BigInt(payWith.minAmountOut) : nativeAmount;
+        const slippageBps = payWith?.slippageBps ?? 100;
+        amountOutMinETH = BigInt(
+          PushChain.utils.conversion.slippageToMinAmount(amountOutMinETH.toString(), { slippageBps })
+        );
+
+        const quoteExactOutputFn = (amountOut: bigint, opts: any) => quoteExactOutput(ctx, amountOut, opts);
+        const { gasAmount } = await calculateGasAmountFromAmountOutMinETH(
+          ctx, gasTokenAddress, amountOutMinETH, quoteExactOutputFn
+        );
+        const deadline = BigInt(0);
+
+        const ownerAddress = ctx.universalSigner.account.address as `0x${string}`;
+        const gasTokenBalance = await evmClientEvm.getErc20Balance({
+          tokenAddress: gasTokenAddress, ownerAddress,
+        });
+        if (gasTokenBalance < gasAmount) {
+          const sym = payWith?.token?.symbol ?? 'gas token';
+          const decimals = payWith?.token?.decimals ?? 18;
+          throw new Error(
+            `Insufficient ${sym} balance to cover gas fees: need ${Utils.helpers.formatUnits(gasAmount, decimals)}, have ${Utils.helpers.formatUnits(gasTokenBalance, decimals)}`
+          );
+        }
+
+        await ensureErc20Allowance(ctx, evmClientEvm, gasTokenAddress, gatewayAddressEvm, gasAmount);
+
+        const reqToken: UniversalTokenTxRequest = {
+          ...req, gasToken: gasTokenAddress, gasAmount, amountOutMinETH, deadline,
+        };
+        txHash = await sendGatewayTokenTxWithFallback(ctx, evmClientEvm, gatewayAddressEvm, reqToken, ctx.universalSigner);
+      } else {
+        const isNativeToken = mechanism === 'native';
+        const totalValue = isNativeToken ? nativeAmount + bridgeAmount : nativeAmount;
+        txHash = await sendGatewayTxWithFallback(ctx, evmClientEvm, gatewayAddressEvm, req, ctx.universalSigner, totalValue);
+      }
+    } else {
+      txHash = await sendSVMTxWithFunds(ctx, {
+        execute, mechanism, universalPayload, bridgeAmount, nativeAmount, req,
+      });
+    }
+  } catch (err) {
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_04_04);
+    throw err;
+  }
+
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_04_03);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_02, txHash, bridgeAmount, execute.funds!.token.decimals, symbol);
+
+  // Awaiting confirmations
+  const signerChain = ctx.universalSigner.account.chain;
+  if (CHAIN_INFO[signerChain].vm === VM.EVM) {
+    await waitForEvmConfirmationsWithCountdown(
+      ctx, evmClient as EvmClient, txHash as `0x${string}`, CHAIN_INFO[signerChain].confirmations, CHAIN_INFO[signerChain].timeout
+    );
+  } else {
+    const svmClient = new SvmClient({
+      rpcUrls: ctx.rpcUrls[CHAIN.SOLANA_DEVNET] || CHAIN_INFO[CHAIN.SOLANA_DEVNET].defaultRPC,
+    });
+    await waitForSvmConfirmationsWithCountdown(
+      ctx, svmClient, txHash as string, CHAIN_INFO[signerChain].confirmations, CHAIN_INFO[signerChain].timeout
+    );
+  }
+
+  // Funds Flow: Confirmed on origin
+  let feeLockTxHash = txHash;
+  if (CHAIN_INFO[ctx.universalSigner.account.chain].vm === VM.SVM) {
+    if (feeLockTxHash && !feeLockTxHash.startsWith('0x')) {
+      const decoded = utils.bytes.bs58.decode(feeLockTxHash);
+      feeLockTxHash = bytesToHex(new Uint8Array(decoded));
+    }
+  }
+
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_04);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_05);
+
+  let pushChainUniversalTx: UniversalTx | undefined;
+  if (CHAIN_INFO[ctx.universalSigner.account.chain].vm === VM.EVM) {
+    pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(
+      ctx, evmClient as EvmClient, gatewayAddress as `0x${string}`, txHash as `0x${string}`, 'sendTxWithFunds'
+    );
+  } else {
+    pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(
+      ctx, undefined, undefined, txHash as string, 'sendTxWithFunds'
+    );
+  }
+
+  const response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txHash as string, eventBuffer, 'sendTxWithFunds', transformFn);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_06, bridgeAmount, execute.funds!.token.decimals, symbol);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_99_01, [response]);
+  return response;
+}

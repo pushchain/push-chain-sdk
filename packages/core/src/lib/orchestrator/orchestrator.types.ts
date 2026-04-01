@@ -596,17 +596,6 @@ export interface PreparedUniversalTx {
 }
 
 /**
- * @deprecated Use CascadedTransactionBuilder instead.
- * Kept for backward compatibility.
- */
-export interface ChainedTransactionBuilder {
-  /** Add another transaction to the chain */
-  thenOn: (nextTx: UniversalExecuteParams) => ChainedTransactionBuilder;
-  /** Execute all chained transactions */
-  send: () => Promise<MultiChainTxResponse>;
-}
-
-/**
  * @deprecated Use CascadedTxResponse instead.
  * Kept for backward compatibility.
  */

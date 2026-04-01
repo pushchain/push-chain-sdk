@@ -5,24 +5,24 @@
  */
 
 import { Connection } from '@solana/web3.js';
-import {
-  encodeAbiParameters,
-  getAddress,
-  keccak256,
-  toBytes,
-} from 'viem';
 import { CHAIN_INFO, VM_NAMESPACE, SYNTHETIC_PUSH_ERC20 } from '../../constants/chain';
 import { CHAIN, PUSH_NETWORK, VM } from '../../constants/enums';
 import type {
   ChainTarget,
   ExecuteParams,
-  MultiCall,
   UniversalExecuteParams,
-  UniversalTxRequest,
 } from '../orchestrator.types';
 import { EvmClient } from '../../vm-client/evm-client';
 import type { OrchestratorContext } from './context';
-import { printLog } from './context';
+
+/** Chains that support gateway operations (multicall, funds bridging, etc.) */
+export const SUPPORTED_GATEWAY_CHAINS: CHAIN[] = [
+  CHAIN.ETHEREUM_SEPOLIA,
+  CHAIN.ARBITRUM_SEPOLIA,
+  CHAIN.BASE_SEPOLIA,
+  CHAIN.BNB_TESTNET,
+  CHAIN.SOLANA_DEVNET,
+];
 
 // ============================================================================
 // Chain Helpers
@@ -151,136 +151,6 @@ export function toExecuteParams(params: UniversalExecuteParams): ExecuteParams {
     payGasWith: params.payGasWith,
     feeLockTxHash: params.feeLockTxHash,
   };
-}
-
-// ============================================================================
-// Request Builders
-// ============================================================================
-
-export function buildUniversalTxRequest(
-  signerAddress: `0x${string}`,
-  {
-    recipient,
-    token,
-    amount,
-    payload,
-  }: {
-    recipient: `0x${string}`;
-    token: `0x${string}`;
-    amount: bigint;
-    payload: `0x${string}`;
-  }
-): UniversalTxRequest {
-  const revertInstruction = {
-    fundRecipient: signerAddress,
-    revertMsg: '0x' as `0x${string}`,
-  };
-  return {
-    recipient,
-    token,
-    amount,
-    payload,
-    revertInstruction,
-    signatureData: '0x',
-  };
-}
-
-// ============================================================================
-// Multicall Encoding
-// ============================================================================
-
-export function buildMulticallPayloadData(
-  ctx: OrchestratorContext,
-  to: `0x${string}`,
-  data: MultiCall[]
-): `0x${string}` {
-  printLog(
-    ctx,
-    '_buildMulticallPayloadData — input: ' +
-      data.length +
-      ' calls: ' +
-      JSON.stringify(data, (_: string, v: any) => (typeof v === 'bigint' ? v.toString() : v), 2)
-  );
-
-  const allowedChains = [
-    CHAIN.ETHEREUM_SEPOLIA,
-    CHAIN.ARBITRUM_SEPOLIA,
-    CHAIN.BASE_SEPOLIA,
-    CHAIN.SOLANA_DEVNET,
-    CHAIN.BNB_TESTNET,
-  ];
-  if (!allowedChains.includes(ctx.universalSigner.account.chain)) {
-    throw new Error(
-      'Multicall is only enabled for Ethereum Sepolia, Arbitrum Sepolia, Base Sepolia, Binance Smart Chain and Solana Devnet'
-    );
-  }
-
-  // Normalize and validate calls
-  const normalizedCalls = data.map((c: MultiCall) => ({
-    to: getAddress(c.to),
-    value: c.value,
-    data: c.data,
-  }));
-
-  // bytes4(keccak256("UEA_MULTICALL")) selector
-  const selector = keccak256(toBytes('UEA_MULTICALL')).slice(
-    0,
-    10
-  ) as `0x${string}`;
-
-  // abi.encode(Call[]), where Call = { address to; uint256 value; bytes data; }
-  const encodedCalls = encodeAbiParameters(
-    [
-      {
-        type: 'tuple[]',
-        components: [
-          { name: 'to', type: 'address' },
-          { name: 'value', type: 'uint256' },
-          { name: 'data', type: 'bytes' },
-        ],
-      },
-    ],
-    [normalizedCalls]
-  );
-
-  return (selector + encodedCalls.slice(2)) as `0x${string}`;
-}
-
-// ============================================================================
-// Gateway Context
-// ============================================================================
-
-export function getOriginGatewayContext(ctx: OrchestratorContext): {
-  chain: CHAIN;
-  evmClient?: EvmClient;
-  gatewayAddress?: `0x${string}`;
-} {
-  const chain = ctx.universalSigner.account.chain;
-  if (
-    chain !== CHAIN.ETHEREUM_SEPOLIA &&
-    chain !== CHAIN.ARBITRUM_SEPOLIA &&
-    chain !== CHAIN.BASE_SEPOLIA &&
-    chain !== CHAIN.BNB_TESTNET &&
-    chain !== CHAIN.SOLANA_DEVNET
-  ) {
-    throw new Error(
-      'Funds + payload bridging is only supported on Ethereum Sepolia, Arbitrum Sepolia, Base Sepolia, BNB Testnet, and Solana Devnet for now'
-    );
-  }
-
-  if (CHAIN_INFO[chain].vm === VM.EVM) {
-    const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
-    const rpcUrls: string[] = ctx.rpcUrls[chain] || defaultRPC;
-    const evmClient = new EvmClient({ rpcUrls });
-    const gatewayAddress = lockerContract as `0x${string}`;
-    if (!gatewayAddress) {
-      throw new Error('Universal Gateway address not configured');
-    }
-    return { chain, evmClient, gatewayAddress };
-  }
-
-  // SVM path does not require evmClient/gatewayAddress
-  return { chain };
 }
 
 // ============================================================================

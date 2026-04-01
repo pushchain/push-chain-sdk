@@ -132,6 +132,12 @@ export async function getSvmProtocolFee(
 // SVM Log Parsing
 // ============================================================================
 
+/** Anchor event discriminator for the SVM gateway's UniversalTxSent event */
+const SVM_GATEWAY_EVENT_DISCRIMINATOR = '6c9ad829b5ea1d7c';
+
+// ============================================================================
+// ============================================================================
+
 export function getSvmGatewayLogIndexFromTx(txResp: any): number {
   const logs: string[] = (txResp?.meta?.logMessages || []) as string[];
   if (!Array.isArray(logs) || logs.length === 0) return 0;
@@ -155,7 +161,7 @@ export function getSvmGatewayLogIndexFromTx(txResp: any): number {
     if (!decoded || decoded.length < 8) continue;
     const discriminatorHex = bytesToHex(decoded.slice(0, 8)).slice(2);
 
-    if (discriminatorHex === '6c9ad829b5ea1d7c') {
+    if (discriminatorHex === SVM_GATEWAY_EVENT_DISCRIMINATOR) {
       matchCount++;
       lastMatchIndex = i;
       if (matchCount === 2) return i;

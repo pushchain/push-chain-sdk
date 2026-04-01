@@ -15,6 +15,42 @@ import type { UniversalPayload } from '../../generated/v1/tx';
 import type { OrchestratorContext } from './context';
 
 // ============================================================================
+// EIP-712 Domain Separator (shared by execution & migration hashes)
+// ============================================================================
+
+function buildDomainSeparator(
+  vm: VM,
+  chainId: string,
+  version: string,
+  verifyingContract: `0x${string}`
+): `0x${string}` {
+  const domainTypeHash = keccak256(
+    toBytes(
+      vm === VM.EVM
+        ? 'EIP712Domain(string version,uint256 chainId,address verifyingContract)'
+        : 'EIP712Domain_SVM(string version,string chainId,address verifyingContract)'
+    )
+  );
+
+  return keccak256(
+    encodeAbiParameters(
+      [
+        { name: 'typeHash', type: 'bytes32' },
+        { name: 'version', type: 'bytes32' },
+        { name: 'chainId', type: vm === VM.EVM ? 'uint256' : 'string' },
+        { name: 'verifyingContract', type: 'address' },
+      ],
+      [
+        domainTypeHash,
+        keccak256(toBytes(version)),
+        vm === VM.EVM ? BigInt(chainId) : chainId,
+        verifyingContract,
+      ]
+    )
+  );
+}
+
+// ============================================================================
 // EIP-712 Hash Computation
 // ============================================================================
 
@@ -39,30 +75,7 @@ export function computeExecutionHash(
     )
   );
 
-  const domainTypeHash = keccak256(
-    toBytes(
-      vm === VM.EVM
-        ? 'EIP712Domain(string version,uint256 chainId,address verifyingContract)'
-        : 'EIP712Domain_SVM(string version,string chainId,address verifyingContract)'
-    )
-  );
-
-  const domainSeparator = keccak256(
-    encodeAbiParameters(
-      [
-        { name: 'typeHash', type: 'bytes32' },
-        { name: 'version', type: 'bytes32' },
-        { name: 'chainId', type: vm === VM.EVM ? 'uint256' : 'string' },
-        { name: 'verifyingContract', type: 'address' },
-      ],
-      [
-        domainTypeHash,
-        keccak256(toBytes(version)),
-        vm === VM.EVM ? BigInt(chainId) : chainId,
-        verifyingContract,
-      ]
-    )
-  );
+  const domainSeparator = buildDomainSeparator(vm, chainId, version, verifyingContract);
 
   const structHash = keccak256(
     encodeAbiParameters(
@@ -126,30 +139,7 @@ export function computeMigrationHash(
     )
   );
 
-  const domainTypeHash = keccak256(
-    toBytes(
-      vm === VM.EVM
-        ? 'EIP712Domain(string version,uint256 chainId,address verifyingContract)'
-        : 'EIP712Domain_SVM(string version,string chainId,address verifyingContract)'
-    )
-  );
-
-  const domainSeparator = keccak256(
-    encodeAbiParameters(
-      [
-        { name: 'typeHash', type: 'bytes32' },
-        { name: 'version', type: 'bytes32' },
-        { name: 'chainId', type: vm === VM.EVM ? 'uint256' : 'string' },
-        { name: 'verifyingContract', type: 'address' },
-      ],
-      [
-        domainTypeHash,
-        keccak256(toBytes(version)),
-        vm === VM.EVM ? BigInt(chainId) : chainId,
-        verifyingContract,
-      ]
-    )
-  );
+  const domainSeparator = buildDomainSeparator(vm, chainId, version, verifyingContract);
 
   const structHash = keccak256(
     encodeAbiParameters(

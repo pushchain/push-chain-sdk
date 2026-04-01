@@ -16,11 +16,10 @@ import {
   sha256,
   stringToBytes,
   toBytes,
-  TransactionReceipt,
 } from 'viem';
 import { UEA_EVM } from '../../constants/abi/uea.evm';
 import { CHAIN_INFO, VM_NAMESPACE } from '../../constants/chain';
-import { CHAIN, VM } from '../../constants/enums';
+import { VM } from '../../constants/enums';
 import { UniversalTx } from '../../generated/uexecutor/v1/types';
 import type { UniversalTxV2 } from '../../generated/uexecutor/v2/types';
 import { ProgressEvent } from '../../progress-hook/progress-hook.types';
@@ -37,13 +36,12 @@ import type {
 } from '../orchestrator.types';
 import type { OrchestratorContext } from './context';
 import { printLog } from './context';
-import { getPushChainForNetwork, chainFromNamespace } from './helpers';
+import { getPushChainForNetwork } from './helpers';
 import { getSvmGatewayLogIndexFromTx } from './svm-helpers';
 import { computeUniversalTxId, extractUniversalSubTxIdFromTx } from './outbound-tracker';
 import {
   reconstructProgressEvents,
   detectRouteFromUniversalTxData,
-  transformToUniversalTxReceipt as transformReceipt,
 } from './tx-transformer';
 
 // ============================================================================
@@ -525,7 +523,7 @@ export async function transformToUniversalTxResponse(
     } else if (txType === 'legacy') {
       type = '0';
       typeVerbose = 'legacy';
-    } else if (txType == 'eip4844') {
+    } else if (txType === 'eip4844') {
       type = '3';
       typeVerbose = 'eip4844';
     }

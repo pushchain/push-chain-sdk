@@ -29,7 +29,6 @@ import {
 import type {
   UniversalExecuteParams,
   PreparedUniversalTx,
-  ChainedTransactionBuilder,
   CascadedTransactionBuilder,
   UniversalTxResponse,
   RescueFundsParams,

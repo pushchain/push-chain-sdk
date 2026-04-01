@@ -22,47 +22,37 @@ import {
 } from 'viem';
 
 import type { OrchestratorContext } from './context';
-import { printLog, fireProgressHook } from './context';
+import { printLog } from './context';
 import {
   isPushChain,
   getChainNamespace,
   getNativePRC20ForChain,
   getUniversalGatewayPCAddress,
-  validateMainnetConnection,
-  bigintReplacer,
   toExecuteParams,
+} from './helpers';
+import {
   buildUniversalTxRequest,
   buildMulticallPayloadData,
-  getOriginGatewayContext,
-  fetchOriginChainTransactionForProgress,
-} from './helpers';
+} from './payload-builder';
 import {
   computeUEAOffchain,
   getUEANonce,
-  getUeaStatusAndNonce,
-  fetchUEAVersion,
 } from './uea-manager';
-import { signUniversalPayload, encodeUniversalPayload } from './signing';
 import {
   queryOutboundGasFee,
-  ensureErc20Allowance,
-  calculateNativeAmountForDeposit,
 } from './gas-calculator';
-import { sendGatewayTxWithFallback, sendGatewayTokenTxWithFallback } from './gateway-client';
-import { waitForEvmConfirmationsWithCountdown } from './confirmation';
 
-import { CHAIN_INFO, VM_NAMESPACE, SYNTHETIC_PUSH_ERC20, UNIVERSAL_GATEWAY_ADDRESSES } from '../../constants/chain';
-import { CHAIN, VM, PUSH_NETWORK } from '../../constants/enums';
-import { MOVEABLE_TOKENS, MoveableToken, PAYABLE_TOKENS, PayableToken } from '../../constants/tokens';
-import { TransactionRoute, detectRoute, getRouteInfo, validateRouteParams, isChainTarget } from '../route-detector';
-import { getCEAAddress, chainSupportsCEA, chainSupportsOutbound, getCEAFactoryAddress } from '../cea-utils';
+import { CHAIN_INFO, VM_NAMESPACE, UNIVERSAL_GATEWAY_ADDRESSES } from '../../constants/chain';
+import { CHAIN } from '../../constants/enums';
+import { MoveableToken } from '../../constants/tokens';
+import { TransactionRoute, detectRoute, validateRouteParams } from '../route-detector';
+import { getCEAAddress, chainSupportsOutbound } from '../cea-utils';
 import {
   buildExecuteMulticall,
   buildCeaMulticallPayload,
   buildInboundUniversalPayload,
   buildOutboundRequest,
   buildSendUniversalTxToUEA,
-  buildApproveAndInteract,
   buildOutboundApprovalAndCall,
   buildMigrationPayload,
   isSvmChain,
@@ -70,8 +60,7 @@ import {
   encodeSvmExecutePayload,
   encodeSvmCeaToUeaPayload,
 } from '../payload-builders';
-import { DEFAULT_OUTBOUND_GAS_LIMIT, ZERO_ADDRESS, MIGRATION_SELECTOR } from '../../constants/selectors';
-import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
+import { ZERO_ADDRESS } from '../../constants/selectors';
 import { ERC20_EVM } from '../../constants/abi';
 import { PushChain } from '../../push-chain/push-chain';
 import type {
@@ -88,7 +77,7 @@ import type {
 // Callback type for this.execute() replacement
 // ---------------------------------------------------------------------------
 
-export type ExecuteFn = (
+type ExecuteFn = (
   params: ExecuteParams | UniversalExecuteParams
 ) => Promise<UniversalTxResponse>;
 
