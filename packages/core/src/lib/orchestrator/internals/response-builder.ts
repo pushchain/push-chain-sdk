@@ -6,6 +6,7 @@
  */
 
 import { bs58 } from '../../internal/bs58';
+import { rpcLog, rpcLogDone, rpcSection } from '../../__debug_rpc_tracker';
 import { Connection } from '@solana/web3.js';
 import {
   bytesToHex,
@@ -24,6 +25,7 @@ import { UniversalTx } from '../../generated/uexecutor/v1/types';
 import type { UniversalTxV2 } from '../../generated/uexecutor/v2/types';
 import { ProgressEvent } from '../../progress-hook/progress-hook.types';
 import { PushChain } from '../../push-chain/push-chain';
+import { convertExecutorToOrigin } from '../../universal/account/account';
 import { PushClient } from '../../push-client/push-client';
 import { EvmClient } from '../../vm-client/evm-client';
 import type { TxResponse } from '../../vm-client/vm-client.types';
@@ -64,6 +66,7 @@ export async function queryUniversalTxStatusFromGatewayTx(
   ctx: OrchestratorContext,
   evmClient: EvmClient | undefined,
   gatewayAddress: `0x${string}` | undefined,
+  // DEBUG: section marker added
   txHash: string,
   evmGatewayMethod: 'sendFunds' | 'sendTxWithFunds' | 'sendTxWithGas'
 ): Promise<UniversalTx | undefined> {
@@ -149,13 +152,15 @@ export async function queryUniversalTxStatusFromGatewayTx(
     }, null, 2));
 
     // Fetch UniversalTx via gRPC with linear-then-exponential retry
-    const LINEAR_ATTEMPTS = 25;
-    const LINEAR_DELAY_MS = 1500;
-    const EXPONENTIAL_BASE_MS = 2000;
-    const MAX_ATTEMPTS = 30;
+    const LINEAR_ATTEMPTS = 10;
+    const LINEAR_DELAY_MS = 3000;
+    const EXPONENTIAL_BASE_MS = 4000;
+    const MAX_ATTEMPTS = 15;
 
+    rpcSection(`queryUniversalTxStatus POLLING START (max ${MAX_ATTEMPTS} attempts, ${LINEAR_DELAY_MS}ms linear)`);
     let universalTxObj: any | undefined;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      rpcLog('Polling', `queryUniversalTxStatus attempt ${attempt + 1}/${MAX_ATTEMPTS}`, `id=${idHex.slice(0,16)}`);
       printLog(ctx, `[Sync] Attempt ${attempt + 1}/${MAX_ATTEMPTS} | Query ID: ${idHex}`);
       try {
         const universalTxResp = await ctx.pushClient.getUniversalTxById(
@@ -198,6 +203,7 @@ export async function trackTransaction(
   options?: TrackTransactionOptions,
   callbacks?: ResponseBuilderCallbacks
 ): Promise<UniversalTxResponse> {
+  rpcSection(`trackTransaction(${txHash.slice(0,14)}) — NEW PushClient will be created`);
   if (!callbacks) {
     throw new Error('trackTransaction requires ResponseBuilderCallbacks');
   }
@@ -353,8 +359,9 @@ export async function transformToUniversalTxResponse(
     value: bigint;
   };
 
+  rpcSection(`transformToUniversalTxResponse → convertExecutorToOrigin(${(tx.to as string).slice(0,10)}) — NEW publicClient`);
   const ueaOrigin =
-    await PushChain.utils.account.convertExecutorToOrigin(
+    await convertExecutorToOrigin(
       tx.to as `0x${string}`
     );
   let originAddress: string;

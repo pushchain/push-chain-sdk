@@ -4,6 +4,11 @@ export type {
   UniversalSigner,
   UniversalAccount,
   UniversalSignerSkeleton,
+  DerivedExecutorAccount,
+  ResolvedAccount,
+  ResolvedControllerAccounts,
+  AccountType,
+  AccountRole,
 } from './universal/universal.types';
 
 // Multi-chain types

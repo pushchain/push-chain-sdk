@@ -5,7 +5,12 @@ import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { toUniversalFromKeypair } from '../signer';
 import { createWalletClient, getAddress, http } from 'viem';
 import { CHAIN_INFO } from '../../constants/chain';
-import { convertOriginToExecutor } from './account';
+import {
+  convertOriginToExecutor,
+  convertExecutorToOrigin,
+  deriveExecutorAccount,
+  resolveControllerAccount,
+} from './account';
 
 const EVM_ADDRESS = '0xeCba9a32A9823f1cb00cdD8344Bf2D1d87a8dd97';
 
@@ -58,7 +63,7 @@ describe('Universal Account Utilities', () => {
 
   // Network-dependent tests - run via integration config
   describe('convertOriginToExecutor() - Not Mocked', () => {
-    it.skip('should return same address and pushChainClient.universal.account', async () => {
+    it('should return same address and pushChainClient.universal.account', async () => {
       const account = privateKeyToAccount(generatePrivateKey());
       const walletClient = createWalletClient({
         account: account,
@@ -94,11 +99,11 @@ describe('Universal Account Utilities', () => {
 
   // Network-dependent tests - run via integration config
   describe('convertExecutorToOrigin()', () => {
-    it.skip('Solana: should return valid origin data for a UEA address', async () => {
+    it('Solana: should return valid origin data for a UEA address', async () => {
       const testAddress = '0xbCfaD05E5f19Ae46feAab2F72Ad9977BC239b395';
 
       const result =
-        await PushChain.utils.account.convertExecutorToOrigin(
+        await convertExecutorToOrigin(
           testAddress
         );
 
@@ -118,11 +123,11 @@ describe('Universal Account Utilities', () => {
       expect(exists).toBe(true);
     }, 30000); // 30 second timeout for network call
 
-    it.skip('Ethereum: should return valid origin data for a UEA address', async () => {
+    it('Ethereum: should return valid origin data for a UEA address', async () => {
       const testAddress = '0x7AEE1699FeE2C906251863D24D35B3dEbe0932EC';
 
       const result =
-        await PushChain.utils.account.convertExecutorToOrigin(
+        await convertExecutorToOrigin(
           testAddress
         );
 
@@ -185,7 +190,7 @@ describe('Universal Account Utilities', () => {
     });
 
     // Network-dependent test - run via integration config
-    it.skip('should compute and cache address for EVM chain', async () => {
+    it('should compute and cache address for EVM chain', async () => {
       const evmAccount = {
         chain: CHAIN.ETHEREUM_SEPOLIA,
         address: EVM_ADDRESS,
@@ -288,6 +293,54 @@ describe('Universal Account Utilities', () => {
 
       expect(account.address).toBe(solanaAddress);
       expect(account.chain).toBe(CHAIN.SOLANA_DEVNET);
+    });
+  });
+
+  describe('deriveExecutorAccount()', () => {
+    it('is accessible on PushChain.utils.account', () => {
+      expect(typeof PushChain.utils.account.deriveExecutorAccount).toBe(
+        'function'
+      );
+    });
+
+    it('returns same address for Push Chain CAIP-10 input with skipNetworkCheck', async () => {
+      const pushAddress =
+        '0x1234567890123456789012345678901234567890' as `0x${string}`;
+      const caip = `eip155:42101:${pushAddress}`;
+
+      const result = await deriveExecutorAccount(caip, {
+        skipNetworkCheck: true,
+      });
+
+      expect(result.address).toBe(getAddress(pushAddress));
+      expect(result.deployed).toBe(false);
+    });
+
+    it('always returns deployed as a boolean (not undefined)', async () => {
+      const pushAddress =
+        '0x1234567890123456789012345678901234567890' as `0x${string}`;
+      const caip = `eip155:42101:${pushAddress}`;
+
+      const result = await deriveExecutorAccount(caip, {
+        skipNetworkCheck: true,
+      });
+
+      expect(typeof result.deployed).toBe('boolean');
+    });
+
+    it('throws on invalid CAIP-10 input', async () => {
+      await expect(
+        deriveExecutorAccount('invalid-string', { skipNetworkCheck: true })
+      ).rejects.toThrow();
+    });
+
+  });
+
+  describe('resolveControllerAccount()', () => {
+    it('is accessible on PushChain.utils.account', () => {
+      expect(typeof PushChain.utils.account.resolveControllerAccount).toBe(
+        'function'
+      );
     });
   });
 });

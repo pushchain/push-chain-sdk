@@ -7,6 +7,7 @@
 
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { stringToBytes } from 'viem';
+import { rpcSection } from '../../__debug_rpc_tracker';
 import SVM_GATEWAY_IDL from '../../constants/abi/universalGatewayV0.json';
 import { CHAIN_INFO, SVM_PYTH_PRICE_FEED } from '../../constants/chain';
 import { CHAIN, VM } from '../../constants/enums';
@@ -16,6 +17,7 @@ import {
   ProgressEvent,
 } from '../../progress-hook/progress-hook.types';
 import { EvmClient } from '../../vm-client/evm-client';
+import { getOriginEvmClient } from './context';
 import { SvmClient } from '../../vm-client/svm-client';
 import type { TxResponse } from '../../vm-client/vm-client.types';
 import type {
@@ -28,7 +30,7 @@ import { calculateNativeAmountForDeposit, ensureErc20Allowance } from './gas-cal
 import { sendGatewayTxWithFallback } from './gateway-client';
 import { SUPPORTED_GATEWAY_CHAINS } from './helpers';
 import { buildGatewayPayloadAndGas } from './payload-builder';
-import { getUeaStatusAndNonce, computeUEAOffchain } from './uea-manager';
+import { getUeaStatusAndNonce, getUEANonce, computeUEAOffchain } from './uea-manager';
 import { waitForEvmConfirmationsWithCountdown, waitForSvmConfirmationsWithCountdown } from './confirmation';
 import { queryUniversalTxStatusFromGatewayTx } from './response-builder';
 import { extractPcTxAndTransform } from './push-chain-tx';
@@ -99,11 +101,25 @@ async function executeFundsOnlyEvm(
   bridgeAmount: bigint,
   symbol: string
 ): Promise<UniversalTxResponse> {
-  const evmClient = new EvmClient({ rpcUrls });
+  const evmClient = getOriginEvmClient(ctx);
   const gatewayAddress = lockerContract as `0x${string}`;
   const tokenAddr = execute.funds!.token!.address as `0x${string}`;
   const isNative = execute.funds!.token!.mechanism === 'native';
-  const { nonce, deployed } = await getUeaStatusAndNonce(ctx);
+  // Skip getCode if accountStatusCache already confirmed deployment
+  let nonce: bigint;
+  let deployed: boolean;
+  const deployedHint = ctx.accountStatusCache?.uea?.deployed;
+  if (deployedHint) {
+    rpcSection('executeFundsOnlyEvm → UEA deployed (cached), skip getCode — fetch nonce only');
+    deployed = true;
+    nonce = await getUEANonce(ctx, computeUEAOffchain(ctx));
+  } else {
+    rpcSection('executeFundsOnlyEvm → getUeaStatusAndNonce (full fetch)');
+    const status = await getUeaStatusAndNonce(ctx);
+    nonce = status.nonce;
+    deployed = status.deployed;
+  }
+  rpcSection('executeFundsOnlyEvm → buildGatewayPayloadAndGas');
   const { payload: universalPayload, req } = await buildGatewayPayloadAndGas(
     ctx, execute, nonce, 'sendFunds', bridgeAmount
   );

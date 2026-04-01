@@ -7,6 +7,7 @@
 
 import { PublicKey } from '@solana/web3.js';
 import { encodeFunctionData } from 'viem';
+import { rpcSection } from '../../__debug_rpc_tracker';
 import { ERC20_EVM } from '../../constants/abi/erc20.evm';
 import {
   CHAIN_INFO,
@@ -93,13 +94,22 @@ export async function prepareTransaction(
   params: UniversalExecuteParams,
   callbacks: CascadeCallbacks
 ): Promise<PreparedUniversalTx> {
+  rpcSection('prepareTransaction entry — will call getCEAAddress + queryOutboundGasFee');
   validateRouteParams(params, {
     clientChain: ctx.universalSigner.account.chain,
   });
   const route = detectRoute(params);
 
-  const { nonce, deployed } = await getUeaStatusAndNonce(ctx);
+  // Skip getCode if accountStatusCache already confirmed deployment
+  let nonce: bigint;
+  const deployedHintCascade = ctx.accountStatusCache?.uea?.deployed;
   const ueaAddress = computeUEAOffchain(ctx);
+  if (deployedHintCascade) {
+    nonce = await getUEANonce(ctx, ueaAddress);
+  } else {
+    const status = await getUeaStatusAndNonce(ctx);
+    nonce = status.nonce;
+  }
 
   // Build the payload based on route
   const { payload, gatewayRequest } = await buildPayloadForRoute(

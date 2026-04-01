@@ -6,6 +6,8 @@
 import { bs58 } from '../../internal/bs58';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { Abi, hexToBytes, stringToBytes } from 'viem';
+import { rpcSection } from '../../__debug_rpc_tracker';
+import { getOriginEvmClient } from './context';
 import {
   SVM_GATEWAY_IDL,
   UNIVERSAL_GATEWAY_V1_SEND,
@@ -114,6 +116,7 @@ export async function lockFee(
   ctx: OrchestratorContext,
   amount: bigint,
   universalPayload: UniversalPayload,
+  // DEBUG: lockFee entry
   req: UniversalTxRequest
 ): Promise<Uint8Array> {
   const chain = ctx.universalSigner.account.chain;
@@ -127,10 +130,9 @@ export async function lockFee(
 
   switch (vm) {
     case VM.EVM: {
-      const [nativeTokenUsdPrice, evmClient] = await Promise.all([
-        new PriceFetch(ctx.rpcUrls).getPrice(chain),
-        Promise.resolve(new EvmClient({ rpcUrls })),
-      ]);
+      rpcSection('lockFee(EVM) — PriceFetch + reused EvmClient');
+      const evmClient = getOriginEvmClient(ctx);
+      const nativeTokenUsdPrice = await new PriceFetch(ctx.rpcUrls).getPrice(chain);
 
       const nativeDecimals = 18;
       const oneUsd = Utils.helpers.parseUnits('1', 8);

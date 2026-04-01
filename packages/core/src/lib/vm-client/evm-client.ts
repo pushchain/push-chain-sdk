@@ -19,6 +19,7 @@ import {
   fallback,
   TransactionReceipt,
 } from 'viem';
+import { rpcLog, rpcLogDone } from '../__debug_rpc_tracker';
 
 /**
  * EVM client for reading and writing to Ethereum-compatible chains
@@ -59,7 +60,10 @@ export class EvmClient {
    * }
    */
   async getBalance(address: `0x${string}`): Promise<bigint> {
-    return this.publicClient.getBalance({ address });
+    const _id = rpcLog('EvmClient', 'getBalance', address);
+    const r = await this.publicClient.getBalance({ address });
+    rpcLogDone(_id, r.toString());
+    return r;
   }
 
   /**
@@ -92,12 +96,15 @@ export class EvmClient {
     functionName,
     args = [],
   }: ReadContractParams): Promise<T> {
-    return this.publicClient.readContract({
+    const _id = rpcLog('EvmClient', `readContract(${functionName})`, `addr=${(address as string).slice(0,10)}..`);
+    const r = await this.publicClient.readContract({
       abi: abi as Abi,
       address: address as `0x${string}`,
       functionName,
       args,
-    }) as Promise<T>;
+    }) as T;
+    rpcLogDone(_id);
+    return r;
   }
 
   /**
@@ -161,18 +168,21 @@ export class EvmClient {
     value = BigInt(0),
     signer,
   }: WriteContractParams): Promise<Hex> {
+    const _id = rpcLog('EvmClient', `writeContract(${functionName})`, `addr=${(address as string).slice(0,10)}.. value=${value}`);
     const data = encodeFunctionData({
       abi: abi as Abi,
       functionName,
       args,
     });
 
-    return this.sendTransaction({
+    const r = await this.sendTransaction({
       to: address as `0x${string}`,
       data,
       value,
       signer,
     });
+    rpcLogDone(_id, r);
+    return r;
   }
 
   /**
@@ -210,10 +220,10 @@ export class EvmClient {
     nonce?: number;
     gas?: bigint;
   }): Promise<Hex> {
+    const _id = rpcLog('EvmClient', 'sendTransaction', `to=${to.slice(0,10)}.. value=${value}`);
     // Estimate gas and fees first (can run in parallel)
+    const _id2 = rpcLog('EvmClient', 'sendTransaction.parallel', 'estimateGas+estimateFees+getChainId');
     const [gas, feePerGas, chainId] = await Promise.all([
-      // Use explicit gas if provided (for batched txs where estimateGas may fail
-      // due to uncommitted state), fixed gas for simple transfers, or estimate
       explicitGas
         ? Promise.resolve(explicitGas)
         : data === '0x'
@@ -227,14 +237,14 @@ export class EvmClient {
       this.publicClient.estimateFeesPerGas(),
       this.publicClient.getChainId(),
     ]);
+    rpcLogDone(_id2, `gas=${gas} chainId=${chainId}`);
 
-    // Use explicit nonce if provided (for sequential tx batches),
-    // otherwise fetch after gas estimation to avoid stale nonce on Cosmos-EVM chains.
-    // Use 'pending' blockTag to include mempool txs and prevent nonce collisions.
+    const _id3 = rpcLog('EvmClient', 'getTransactionCount', `nonce=${explicitNonce ?? 'fetch'}`);
     const nonce = explicitNonce ?? await this.publicClient.getTransactionCount({
       address: signer.account.address as `0x${string}`,
       blockTag: 'pending',
     });
+    rpcLogDone(_id3, `nonce=${nonce}`);
 
     const unsignedTx = serializeTransaction({
       chainId,
@@ -256,6 +266,7 @@ export class EvmClient {
       hexToBytes(unsignedTx)
     );
 
+    rpcLogDone(_id, bytesToHex(txHashBytes));
     return bytesToHex(txHashBytes);
   }
 
@@ -328,7 +339,10 @@ export class EvmClient {
    * console.log(`Estimated transaction cost: ${totalCost} wei`);
    */
   async getGasPrice(): Promise<bigint> {
-    return this.publicClient.getGasPrice();
+    const _id = rpcLog('EvmClient', 'getGasPrice');
+    const r = await this.publicClient.getGasPrice();
+    rpcLogDone(_id, r.toString());
+    return r;
   }
 
   /**
@@ -342,7 +356,9 @@ export class EvmClient {
    * console.log(tx?.from, tx?.to, tx?.value);
    */
   async getTransaction(txHash: `0x${string}`): Promise<TxResponse> {
+    const _id = rpcLog('EvmClient', 'getTransaction', txHash.slice(0,14));
     const tx = await this.publicClient.getTransaction({ hash: txHash });
+    rpcLogDone(_id);
     if (!tx) throw new Error('No transaction found!');
 
     const wait = async (confirmations = 1): Promise<TransactionReceipt> => {
@@ -378,19 +394,22 @@ export class EvmClient {
     pollIntervalMs?: number;
     timeoutMs?: number;
   }): Promise<void> {
-    // first, wait for the tx to land in a block
+    const _id = rpcLog('EvmClient', 'waitForConfirmations', `${txHash.slice(0,14)} confs=${confirmations}`);
     const receipt = await this.publicClient.waitForTransactionReceipt({
       hash: txHash,
     });
+    rpcLog('EvmClient', 'waitForConfirmations.receiptObtained', `block=${receipt.blockNumber}`);
 
     const targetBlock = receipt.blockNumber + BigInt(confirmations);
     const startTime = Date.now();
 
-    // poll until we hit the target block or timeout
     // eslint-disable-next-line no-constant-condition
     while (true) {
+      const _pid = rpcLog('EvmClient', 'waitForConfirmations.getBlockNumber');
       const currentBlock = await this.publicClient.getBlockNumber();
+      rpcLogDone(_pid, `block=${currentBlock} target=${targetBlock}`);
       if (currentBlock >= targetBlock) {
+        rpcLogDone(_id);
         return;
       }
 

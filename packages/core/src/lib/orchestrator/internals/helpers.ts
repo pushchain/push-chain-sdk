@@ -5,7 +5,9 @@
  */
 
 import { Connection } from '@solana/web3.js';
+import { rpcSection } from '../../__debug_rpc_tracker';
 import { CHAIN_INFO, VM_NAMESPACE, SYNTHETIC_PUSH_ERC20 } from '../../constants/chain';
+import { getOriginEvmClient } from './context';
 import { CHAIN, PUSH_NETWORK, VM } from '../../constants/enums';
 import type {
   ChainTarget,
@@ -184,6 +186,7 @@ export async function fetchOriginChainTransactionForProgress(
   txHashHex: string,
   txHashDisplay: string
 ): Promise<object | undefined> {
+  rpcSection('fetchOriginChainTransactionForProgress — reused EvmClient');
   const { vm, defaultRPC } = CHAIN_INFO[chain];
   const rpcUrls = ctx.rpcUrls[chain] || defaultRPC;
 
@@ -192,7 +195,7 @@ export async function fetchOriginChainTransactionForProgress(
       if (!txHashHex.startsWith('0x')) {
         throw new Error('EVM transaction hash must be 0x-prefixed');
       }
-      const evmClient = new EvmClient({ rpcUrls });
+      const evmClient = getOriginEvmClient(ctx);
       const tx = await evmClient.publicClient.getTransaction({
         hash: txHashHex as `0x${string}`,
       });

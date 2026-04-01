@@ -151,3 +151,49 @@ export interface ExecutorAccountInfo {
    */
   deployed?: boolean;
 }
+
+/**
+ * Account type in the Push Chain ecosystem.
+ */
+export type AccountType = 'uea' | 'cea' | 'uoa';
+
+/**
+ * Role of an account in the controller relationship.
+ */
+export type AccountRole = 'controller';
+
+/**
+ * Response from deriveExecutorAccount.
+ */
+export interface DerivedExecutorAccount {
+  /** The computed executor address on Push Chain (or CEA on external chain) */
+  address: `0x${string}`;
+  /** Whether the executor account is deployed on-chain */
+  deployed: boolean;
+}
+
+/**
+ * A single resolved account entry in the resolveControllerAccount response.
+ */
+export interface ResolvedAccount {
+  /** Fully qualified chain identifier (e.g., "eip155:42101") */
+  chain: string;
+  /** Human-readable chain name (e.g., "PUSH_TESTNET_DONUT") */
+  chainName: string;
+  /** The account address */
+  address: string;
+  /** Account type in the ecosystem */
+  type: AccountType;
+  /** Whether this account exists on-chain */
+  exists: boolean;
+  /** Role of this account (present only for controller accounts) */
+  role?: AccountRole;
+}
+
+/**
+ * Response from resolveControllerAccount.
+ */
+export interface ResolvedControllerAccounts {
+  /** List of resolved accounts in the controller chain */
+  accounts: ResolvedAccount[];
+}

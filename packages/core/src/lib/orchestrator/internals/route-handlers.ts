@@ -23,6 +23,7 @@ import {
 
 import type { OrchestratorContext } from './context';
 import { printLog } from './context';
+import { rpcSection } from '../../__debug_rpc_tracker';
 import {
   isPushChain,
   getChainNamespace,
@@ -119,26 +120,27 @@ export async function executeMultiChain(
     )}`
   );
 
+  rpcSection(`executeMultiChain → route=${route}`);
   let response: UniversalTxResponse;
 
   switch (route) {
     case TransactionRoute.UOA_TO_PUSH:
-      // Route 1: Standard Push Chain execution
+      rpcSection('Route 1: UOA_TO_PUSH (standard)');
       response = await executeFn(toExecuteParams(params));
       break;
 
     case TransactionRoute.UOA_TO_CEA:
-      // Route 2: Outbound to external chain via CEA
+      rpcSection('Route 2: UOA_TO_CEA (outbound to external chain)');
       response = await executeUoaToCea(ctx, params, executeFn);
       break;
 
     case TransactionRoute.CEA_TO_PUSH:
-      // Route 3: Inbound from CEA to Push Chain
+      rpcSection('Route 3: CEA_TO_PUSH (inbound from CEA)');
       response = await executeCeaToPush(ctx, params, executeFn);
       break;
 
     case TransactionRoute.CEA_TO_CEA:
-      // Route 4: CEA to CEA via Push Chain
+      rpcSection('Route 4: CEA_TO_CEA (cross-chain via Push)');
       response = await executeCeaToCea(ctx, params, executeFn);
       break;
 
@@ -171,6 +173,7 @@ export async function executeUoaToCea(
   params: UniversalExecuteParams,
   executeFn: ExecuteFn
 ): Promise<UniversalTxResponse> {
+  rpcSection('executeUoaToCea (Route 2 EVM) entry — will call queryOutboundGasFee + executeFn');
   const target = params.to as ChainTarget;
   const targetChain = target.chain;
   const targetAddress = target.address;
@@ -417,7 +420,8 @@ export async function executeUoaToCea(
   // The contract's swapAndBurnGas does exactOutputSingle and refunds excess PC.
   const EVM_NATIVE_VALUE_TARGET = BigInt(200e18); // 200 UPC
   const EVM_GAS_RESERVE = BigInt(3e18); // 3 UPC for tx overhead
-  const currentBalance = await ctx.pushClient.getBalance(ueaAddress);
+  // Reuse ueaBalance fetched earlier (line 383) — no tx sent between, balance is stable
+  const currentBalance = ueaBalance;
 
   let adjustedValue: bigint;
   if (currentBalance > EVM_NATIVE_VALUE_TARGET + EVM_GAS_RESERVE) {
@@ -631,11 +635,21 @@ export async function executeUoaToCeaSvm(
   const gatewayPcAddress = getUniversalGatewayPCAddress();
   const signerChainSvm = ctx.universalSigner.account.chain;
   const isNativePushEOASvm = isPushChain(signerChainSvm);
-  const [ueaCode, ueaBalance] = await Promise.all([
-    ctx.pushClient.publicClient.getCode({ address: ueaAddress }),
-    ctx.pushClient.getBalance(ueaAddress),
-  ]);
-  const isUEADeployed = isNativePushEOASvm || ueaCode !== undefined;
+  // Skip getCode if accountStatusCache already confirmed deployment
+  const deployedHintSvm = ctx.accountStatusCache?.uea?.deployed;
+  let ueaBalance: bigint;
+  let isUEADeployed: boolean;
+  if (deployedHintSvm || isNativePushEOASvm) {
+    isUEADeployed = true;
+    ueaBalance = await ctx.pushClient.getBalance(ueaAddress);
+  } else {
+    const [ueaCode, balance] = await Promise.all([
+      ctx.pushClient.publicClient.getCode({ address: ueaAddress }),
+      ctx.pushClient.getBalance(ueaAddress),
+    ]);
+    isUEADeployed = ueaCode !== undefined;
+    ueaBalance = balance;
+  }
   if (!isUEADeployed) {
     throw new Error(
       'UEA is not deployed. Please send an inbound transaction to Push Chain first ' +
@@ -683,7 +697,8 @@ export async function executeUoaToCeaSvm(
   // The contract's swapAndBurnGas does exactOutputSingle and refunds excess PC.
   const SVM_NATIVE_VALUE_TARGET = BigInt(200e18); // 200 UPC
   const SVM_GAS_RESERVE = BigInt(3e18); // 3 UPC for tx overhead
-  const currentBalance = await ctx.pushClient.getBalance(ueaAddress);
+  // Reuse ueaBalance from earlier fetch — no tx sent between, balance is stable
+  const currentBalance = ueaBalance;
 
   let adjustedValue: bigint;
   if (currentBalance > SVM_NATIVE_VALUE_TARGET + SVM_GAS_RESERVE) {
@@ -769,6 +784,7 @@ export async function executeCeaToPush(
   params: UniversalExecuteParams,
   executeFn: ExecuteFn
 ): Promise<UniversalTxResponse> {
+  rpcSection('executeCeaToPush (Route 3 EVM) entry — will call getCEAAddress + executeFn');
   // 1. Validate and extract source chain
   if (!params.from?.chain) {
     throw new Error('Route 3 (CEA -> Push) requires from.chain to specify the source CEA chain');
@@ -875,9 +891,18 @@ export async function executeCeaToPush(
   }
 
   // Pre-fetch UEA nonce — needed for the inbound UniversalPayload struct
-  const ueaCode = await ctx.pushClient.publicClient.getCode({ address: ueaAddress });
-  const isUEADeployed = ueaCode !== undefined;
-  const ueaNonce = isUEADeployed ? await getUEANonce(ctx, ueaAddress) : BigInt(0);
+  // Skip getCode if accountStatusCache already confirmed deployment
+  let isUEADeployed: boolean;
+  let ueaNonce: bigint;
+  const deployedHintR3 = ctx.accountStatusCache?.uea?.deployed;
+  if (deployedHintR3) {
+    isUEADeployed = true;
+    ueaNonce = await getUEANonce(ctx, ueaAddress);
+  } else {
+    const ueaCode = await ctx.pushClient.publicClient.getCode({ address: ueaAddress });
+    isUEADeployed = ueaCode !== undefined;
+    ueaNonce = isUEADeployed ? await getUEANonce(ctx, ueaAddress) : BigInt(0);
+  }
 
   // Build payload for Push Chain execution (if any)
   // This is what happens AFTER funds arrive on Push Chain.
@@ -993,8 +1018,8 @@ export async function executeCeaToPush(
   }
 
   // Adjust nativeValueForGas using UEA balance (contract refunds excess)
-  // Re-fetch balance to minimize staleness from gas fee query RPC roundtrips
-  const currentBalance = await ctx.pushClient.getBalance(ueaAddress);
+  // Reuse ueaBalance from line 978 — no tx sent between, balance is stable
+  const currentBalance = ueaBalance;
   // Cosmos-EVM tx overhead costs ~1 PC per operation; 3 PC covers approve(s) + buffer.
   const OUTBOUND_GAS_RESERVE_R3 = BigInt(3e18);
   if (currentBalance > OUTBOUND_GAS_RESERVE_R3 && currentBalance - OUTBOUND_GAS_RESERVE_R3 > nativeValueForGas) {
@@ -1250,6 +1275,7 @@ export async function executeCeaToCea(
   params: UniversalExecuteParams,
   executeFn: ExecuteFn
 ): Promise<UniversalTxResponse> {
+  rpcSection('executeCeaToCea (Route 4) entry — chains Route 3 + Route 2');
   // CEA -> CEA requires chaining Route 3 (CEA -> Push) and Route 2 (Push -> CEA)
   // This is a complex flow that requires coordination
   throw new Error(

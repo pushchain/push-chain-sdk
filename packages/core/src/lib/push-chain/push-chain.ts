@@ -652,6 +652,9 @@ export class PushChain {
       // Silently ignore — lazy check in execute() will retry if needed
     });
 
+    // Let execute() await the background fetch instead of re-fetching
+    orchestrator.accountStatusReadyPromise = instance.accountStatusReady;
+
     return instance;
   }
 

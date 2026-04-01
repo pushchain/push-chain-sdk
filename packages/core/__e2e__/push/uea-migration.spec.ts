@@ -10,7 +10,7 @@ import {
 } from 'viem';
 import { sepolia } from 'viem/chains';
 import { PushChain } from '../../src';
-import { CHAIN } from '../../src/lib/constants/enums';
+import { CHAIN, PUSH_NETWORK } from '../../src/lib/constants/enums';
 import { CHAIN_INFO } from '../../src/lib/constants/chain';
 import { parseUEAVersion } from '../../src/lib/orchestrator/orchestrator.types';
 import { createEvmPushClient } from '@e2e/shared/evm-client';
@@ -166,7 +166,7 @@ describe('UEA Migration', () => {
       });
 
     const freshClient = await PushChain.initialize(freshSigner, {
-      network: pushNetwork,
+      network: PUSH_NETWORK.TESTNET_DONUT,
       progressHook: (event) => {
         console.log(`[fresh] [${event.id}] ${event.title}: ${event.message}`);
       },

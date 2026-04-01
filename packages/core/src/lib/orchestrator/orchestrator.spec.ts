@@ -84,7 +84,7 @@ describe('Orchestrator', () => {
         ethSepoliaSigner,
         PUSH_NETWORK.TESTNET_DONUT
       );
-      const txHashBytes = await orchestrator['lockFee'](
+      const txHashBytes = await (orchestrator as any)['lockFee'](
         BigInt(1), // 0.00000001 USDC
         mockUniversalPayload,
         mockUniversalTxRequest
@@ -131,7 +131,7 @@ describe('Orchestrator', () => {
 
       const amount = BigInt(100); // 0.000001 USDC
 
-      const txHashBytes = await orchestrator['lockFee'](
+      const txHashBytes = await (orchestrator as any)['lockFee'](
         amount,
         mockUniversalPayload,
         mockUniversalTxRequest
@@ -159,7 +159,7 @@ describe('Orchestrator', () => {
         vType: VerificationType.signedVerification,
       };
 
-      const hash = orc['computeExecutionHash']({
+      const hash = (orc as any)['computeExecutionHash']({
         payload: value,
         verifyingContract: '0x48445e02796af0b076f96fc013536f1c879e282c',
       });
@@ -179,7 +179,7 @@ describe('Orchestrator', () => {
         vType: VerificationType.signedVerification,
       };
 
-      const hash = orc['computeExecutionHash']({
+      const hash = (orc as any)['computeExecutionHash']({
         payload: value,
         verifyingContract: '0x48445e02796af0b076f96fc013536f1c879e282c',
       });
