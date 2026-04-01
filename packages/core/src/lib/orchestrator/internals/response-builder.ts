@@ -98,7 +98,7 @@ export async function queryUniversalTxStatusFromGatewayTx(
       printLog(ctx, 'queryUniversalTxStatus — gatewayLogs: ' + JSON.stringify(
         gatewayLogs.map((l: any) => ({ address: l.address, logIndex: l.logIndex, topics: l.topics?.[0] })),
         null, 2));
-      // TEMP: use last gateway log instead of hardcoded 0/1 index
+      // Use the last gateway log to derive the log index
       const logIndexToUse = gatewayLogs.length - 1;
       const firstLog = (gatewayLogs[logIndexToUse] ||
         (receipt.logs || []).at(-1)) as any;
@@ -183,6 +183,7 @@ export async function queryUniversalTxStatusFromGatewayTx(
 
     return universalTxObj;
   } catch (err) {
+    printLog(ctx, `queryUniversalTxStatusFromGatewayTx failed: ${err instanceof Error ? err.message : String(err)}`);
     return undefined;
   }
 }
@@ -197,6 +198,9 @@ export async function trackTransaction(
   options?: TrackTransactionOptions,
   callbacks?: ResponseBuilderCallbacks
 ): Promise<UniversalTxResponse> {
+  if (!callbacks) {
+    throw new Error('trackTransaction requires ResponseBuilderCallbacks');
+  }
   const {
     chain = getPushChainForNetwork(ctx.pushNetwork),
     progressHook,
@@ -303,7 +307,7 @@ export async function trackTransaction(
     ctx,
     tx,
     eventBuffer,
-    callbacks!
+    callbacks
   );
 
   // Detect route from UniversalTxV2 data and set on response

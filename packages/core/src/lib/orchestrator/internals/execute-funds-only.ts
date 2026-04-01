@@ -26,9 +26,9 @@ import type { OrchestratorContext } from './context';
 import { fireProgressHook, printLog } from './context';
 import { calculateNativeAmountForDeposit, ensureErc20Allowance } from './gas-calculator';
 import { sendGatewayTxWithFallback } from './gateway-client';
+import { SUPPORTED_GATEWAY_CHAINS } from './helpers';
 import { buildGatewayPayloadAndGas } from './payload-builder';
-import { getUeaStatusAndNonce } from './uea-manager';
-import { computeUEAOffchain } from './uea-manager';
+import { getUeaStatusAndNonce, computeUEAOffchain } from './uea-manager';
 import { waitForEvmConfirmationsWithCountdown, waitForSvmConfirmationsWithCountdown } from './confirmation';
 import { queryUniversalTxStatusFromGatewayTx } from './response-builder';
 import { extractPcTxAndTransform } from './push-chain-tx';
@@ -48,17 +48,9 @@ export async function executeFundsOnly(
 
   const chain = ctx.universalSigner.account.chain;
   const { vm } = CHAIN_INFO[chain];
-  if (
-    !(
-      chain === CHAIN.ETHEREUM_SEPOLIA ||
-      chain === CHAIN.ARBITRUM_SEPOLIA ||
-      chain === CHAIN.BASE_SEPOLIA ||
-      chain === CHAIN.BNB_TESTNET ||
-      chain === CHAIN.SOLANA_DEVNET
-    )
-  ) {
+  if (!SUPPORTED_GATEWAY_CHAINS.includes(chain)) {
     throw new Error(
-      'Funds bridging is only supported on Ethereum Sepolia, Arbitrum Sepolia, Base Sepolia, BNB Testnet, and Solana Devnet for now'
+      `Funds bridging is not supported on chain ${chain}. Supported chains: ${SUPPORTED_GATEWAY_CHAINS.join(', ')}`
     );
   }
 

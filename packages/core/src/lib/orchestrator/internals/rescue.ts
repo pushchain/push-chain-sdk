@@ -91,7 +91,7 @@ export async function rescueFunds(
   // Adjust nativeValueForGas using the same balance-capping pattern as outbound
   const EVM_NATIVE_VALUE_TARGET = BigInt(200e18); // 200 UPC
   const EVM_GAS_RESERVE = BigInt(3e18); // 3 UPC for tx overhead
-  const currentBalance = await ctx.pushClient.getBalance(ueaAddress);
+  const currentBalance = ueaBalance;
 
   let adjustedValue: bigint;
   if (currentBalance > EVM_NATIVE_VALUE_TARGET + EVM_GAS_RESERVE) {
