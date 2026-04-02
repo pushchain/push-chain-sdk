@@ -104,8 +104,32 @@ export async function sendPushTx(
         hash: lastTxHash,
       });
       if (receipt.status === 'reverted') {
+        // Simulate the failed call to extract the revert reason
+        let revertReason = 'unknown';
+        try {
+          await ctx.pushClient.publicClient.call({
+            to: call.to as `0x${string}`,
+            data: (call.data || '0x') as `0x${string}`,
+            value: call.value,
+            account: ctx.universalSigner.account.address as `0x${string}`,
+            blockNumber: receipt.blockNumber,
+          });
+        } catch (simErr: any) {
+          // viem decodes common revert reasons into shortMessage
+          revertReason =
+            simErr?.shortMessage || simErr?.cause?.reason || simErr?.cause?.message || simErr?.message || String(simErr);
+          // Also log the raw revert data if available
+          const revertData = simErr?.cause?.data || simErr?.data;
+          if (revertData) {
+            revertReason += ` [data: ${revertData}]`;
+          }
+        }
+        printLog(
+          ctx,
+          `sendPushTx — multicall operation ${i + 1}/${calls.length} reverted (to: ${call.to}, txHash: ${lastTxHash}, revertReason: ${revertReason})`
+        );
         throw new Error(
-          `sendPushTx — multicall operation ${i + 1}/${calls.length} reverted (to: ${call.to}, txHash: ${lastTxHash})`
+          `sendPushTx — multicall operation ${i + 1}/${calls.length} reverted (to: ${call.to}, txHash: ${lastTxHash}, revertReason: ${revertReason})`
         );
       }
       printLog(

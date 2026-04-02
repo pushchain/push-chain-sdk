@@ -40,6 +40,7 @@ import {
 } from './uea-manager';
 import {
   queryOutboundGasFee,
+  estimateNativeValueForSwap,
 } from './gas-calculator';
 
 import { CHAIN_INFO, VM_NAMESPACE, UNIVERSAL_GATEWAY_ADDRESSES } from '../../constants/chain';
@@ -659,6 +660,7 @@ export async function executeUoaToCeaSvm(
   // --- Query gas fee (identical to EVM path) ---
   let gasFee = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+  let universalCoreAddress: `0x${string}` | undefined;
 
   let nativeValueForGas = BigInt(0);
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
@@ -668,6 +670,7 @@ export async function executeUoaToCeaSvm(
       gasFee = result.gasFee;
       gasToken = result.gasToken;
       nativeValueForGas = result.nativeValueForGas;
+      universalCoreAddress = result.universalCoreAddress;
       // When user omits gasLimit (sent as 0), the contract computes fees using its internal
       // baseGasLimitByChainNamespace. But the relay reads the stored gasLimit=0 from the
       // on-chain outbound record and uses it as the Solana compute budget — 0 CU means the
@@ -689,33 +692,22 @@ export async function executeUoaToCeaSvm(
     }
   }
 
-  // Adjust nativeValueForGas: the 1Mx multiplier from queryOutboundGasFee produces
-  // a value far too low for the actual WPC/gasToken swap price. Set it to 200 UPC
-  // (capped by balance) — enough for the swap, but avoids draining thin pools.
-  // The contract's swapAndBurnGas does exactOutputSingle and refunds excess PC.
-  const SVM_NATIVE_VALUE_TARGET = BigInt(200e18); // 200 UPC
-  const SVM_GAS_RESERVE = BigInt(3e18); // 3 UPC for tx overhead
-  // Reuse ueaBalance from earlier fetch — no tx sent between, balance is stable
-  const currentBalance = ueaBalance;
-
-  let adjustedValue: bigint;
-  if (currentBalance > SVM_NATIVE_VALUE_TARGET + SVM_GAS_RESERVE) {
-    // Enough balance: use 200 UPC target
-    adjustedValue = SVM_NATIVE_VALUE_TARGET;
-  } else if (currentBalance > SVM_GAS_RESERVE) {
-    // Low balance: use what's available minus reserve
-    adjustedValue = currentBalance - SVM_GAS_RESERVE;
-  } else {
-    // Very low balance: use original query value as-is
-    adjustedValue = nativeValueForGas;
-  }
-
-  if (adjustedValue !== nativeValueForGas) {
-    printLog(
-      ctx,
-      `executeUoaToCeaSvm — adjusting nativeValueForGas from ${nativeValueForGas.toString()} to ${adjustedValue.toString()} (UEA balance: ${currentBalance.toString()})`
+  // Estimate the actual WPC needed for the swap using on-chain pool price.
+  // The static 1Mx multiplier from queryOutboundGasFee doesn't reflect the real
+  // WPC/gasToken exchange rate. estimateNativeValueForSwap reads the Uniswap V3
+  // pool's slot0, computes the true cost, and adds a 2x buffer.
+  // Excess msg.value is refunded by the contract's swapAndBurnGas.
+  if (universalCoreAddress && gasFee > BigInt(0)) {
+    const estimated = await estimateNativeValueForSwap(
+      ctx, universalCoreAddress, gasToken, gasFee, ueaBalance
     );
-    nativeValueForGas = adjustedValue;
+    if (estimated > nativeValueForGas) {
+      printLog(
+        ctx,
+        `executeUoaToCeaSvm — adjusting nativeValueForGas from ${nativeValueForGas.toString()} to ${estimated.toString()} (pool-price estimate, UEA balance: ${ueaBalance.toString()})`
+      );
+      nativeValueForGas = estimated;
+    }
   }
 
   // --- Build Push Chain multicalls (approve + sendUniversalTxOutbound) ---

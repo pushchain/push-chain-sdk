@@ -32,6 +32,47 @@ import { getUniversalGatewayPCAddress, getPushChainForNetwork } from './helpers'
 /** Buffer multiplier for nativeValueForGas. Excess is refunded by swapAndBurnGas to the UEA. */
 const GAS_FEE_BUFFER_MULTIPLIER = BigInt(1000000);
 
+// Minimal ABIs for Uniswap V3 pool price estimation
+const UNISWAP_V3_POOL_SLOT0_ABI = [
+  {
+    type: 'function' as const,
+    name: 'slot0',
+    inputs: [],
+    outputs: [
+      { name: 'sqrtPriceX96', type: 'uint160', internalType: 'uint160' },
+      { name: 'tick', type: 'int24', internalType: 'int24' },
+      { name: 'observationIndex', type: 'uint16', internalType: 'uint16' },
+      { name: 'observationCardinality', type: 'uint16', internalType: 'uint16' },
+      { name: 'observationCardinalityNext', type: 'uint16', internalType: 'uint16' },
+      { name: 'feeProtocol', type: 'uint8', internalType: 'uint8' },
+      { name: 'unlocked', type: 'bool', internalType: 'bool' },
+    ],
+    stateMutability: 'view',
+  },
+];
+
+const UNISWAP_V3_FACTORY_ABI = [
+  {
+    type: 'function' as const,
+    name: 'getPool',
+    inputs: [
+      { name: 'tokenA', type: 'address', internalType: 'address' },
+      { name: 'tokenB', type: 'address', internalType: 'address' },
+      { name: 'fee', type: 'uint24', internalType: 'uint24' },
+    ],
+    outputs: [{ name: 'pool', type: 'address', internalType: 'address' }],
+    stateMutability: 'view',
+  },
+];
+
+const UNIVERSAL_CORE_SWAP_HELPERS_ABI = [
+  { type: 'function' as const, name: 'WPC', inputs: [], outputs: [{ name: '', type: 'address', internalType: 'address' }], stateMutability: 'view' },
+  { type: 'function' as const, name: 'uniswapV3Factory', inputs: [], outputs: [{ name: '', type: 'address', internalType: 'address' }], stateMutability: 'view' },
+  { type: 'function' as const, name: 'defaultFeeTier', inputs: [{ name: '', type: 'address', internalType: 'address' }], outputs: [{ name: '', type: 'uint24', internalType: 'uint24' }], stateMutability: 'view' },
+];
+
+const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
+
 // ============================================================================
 // ERC-20 Allowance
 // ============================================================================
@@ -108,7 +149,7 @@ export async function queryOutboundGasFee(
   ctx: OrchestratorContext,
   prc20Token: `0x${string}`,
   gasLimit: bigint
-): Promise<{ gasToken: `0x${string}`; gasFee: bigint; protocolFee: bigint; nativeValueForGas: bigint; gasPrice: bigint }> {
+): Promise<{ gasToken: `0x${string}`; gasFee: bigint; protocolFee: bigint; nativeValueForGas: bigint; gasPrice: bigint; universalCoreAddress: `0x${string}` }> {
   const gatewayPcAddress = getUniversalGatewayPCAddress();
   const pushChain = getPushChainForNetwork(ctx.pushNetwork);
   const rpcUrl = CHAIN_INFO[pushChain]?.defaultRPC?.[0] || 'unknown';
@@ -161,7 +202,130 @@ export async function queryOutboundGasFee(
   const nativeValueForGas = protocolFee + gasFee * GAS_FEE_BUFFER_MULTIPLIER;
   printLog(ctx, `queryOutboundGasFee — [step 5] using 1000000x buffer: nativeValueForGas=${nativeValueForGas}`);
 
-  return { gasToken, gasFee, protocolFee, nativeValueForGas, gasPrice };
+  return { gasToken, gasFee, protocolFee, nativeValueForGas, gasPrice, universalCoreAddress };
+}
+
+// ============================================================================
+// Uniswap V3 Pool Price Estimation
+// ============================================================================
+
+/**
+ * Estimate the native WPC amount needed to swap for `gasFee` of `gasToken`
+ * by reading the Uniswap V3 pool price on Push Chain.
+ * Returns the estimated amount with a 2x safety buffer (excess is refunded by the contract).
+ * Falls back to a percentage of accountBalance if any on-chain query fails.
+ */
+export async function estimateNativeValueForSwap(
+  ctx: OrchestratorContext,
+  universalCoreAddress: `0x${string}`,
+  gasToken: `0x${string}`,
+  gasFee: bigint,
+  accountBalance: bigint
+): Promise<bigint> {
+  const SWAP_BUFFER = BigInt(2); // 2x safety buffer; excess is refunded by swapAndBurnGas
+  const BALANCE_FALLBACK_DIVISOR = BigInt(10); // 10% of balance as fallback
+  const GAS_RESERVE = BigInt(3e18); // 3 UPC reserve for tx overhead
+
+  try {
+    // Read WPC, factory, and defaultFeeTier in parallel
+    const [wpcAddress, factoryAddress, feeTier] = await Promise.all([
+      ctx.pushClient.readContract<`0x${string}`>({
+        address: universalCoreAddress,
+        abi: UNIVERSAL_CORE_SWAP_HELPERS_ABI,
+        functionName: 'WPC',
+        args: [],
+      }),
+      ctx.pushClient.readContract<`0x${string}`>({
+        address: universalCoreAddress,
+        abi: UNIVERSAL_CORE_SWAP_HELPERS_ABI,
+        functionName: 'uniswapV3Factory',
+        args: [],
+      }),
+      ctx.pushClient.readContract<number>({
+        address: universalCoreAddress,
+        abi: UNIVERSAL_CORE_SWAP_HELPERS_ABI,
+        functionName: 'defaultFeeTier',
+        args: [gasToken],
+      }),
+    ]);
+
+    if (!feeTier) {
+      printLog(ctx, `estimateNativeValueForSwap — no fee tier for gasToken, using balance fallback`);
+      return balanceFallback(accountBalance, BALANCE_FALLBACK_DIVISOR, GAS_RESERVE);
+    }
+
+    // Get pool address from factory
+    const poolAddress = await ctx.pushClient.readContract<`0x${string}`>({
+      address: factoryAddress,
+      abi: UNISWAP_V3_FACTORY_ABI,
+      functionName: 'getPool',
+      args: [wpcAddress, gasToken, feeTier],
+    });
+
+    if (poolAddress === ZERO_ADDR) {
+      printLog(ctx, `estimateNativeValueForSwap — pool not found, using balance fallback`);
+      return balanceFallback(accountBalance, BALANCE_FALLBACK_DIVISOR, GAS_RESERVE);
+    }
+
+    // Read slot0 for current price
+    const slot0 = await ctx.pushClient.readContract<
+      [bigint, number, number, number, number, number, boolean]
+    >({
+      address: poolAddress,
+      abi: UNISWAP_V3_POOL_SLOT0_ABI,
+      functionName: 'slot0',
+      args: [],
+    });
+    const sqrtPriceX96 = slot0[0];
+    if (!sqrtPriceX96 || sqrtPriceX96 === BigInt(0)) {
+      printLog(ctx, `estimateNativeValueForSwap — pool not initialized, using balance fallback`);
+      return balanceFallback(accountBalance, BALANCE_FALLBACK_DIVISOR, GAS_RESERVE);
+    }
+
+    // price (token1/token0 in raw units) = (sqrtPriceX96)² / 2¹⁹²
+    const Q192 = BigInt(1) << BigInt(192);
+    const priceNum = sqrtPriceX96 * sqrtPriceX96; // sqrtPrice² in Q192
+
+    // Uniswap V3 sorts tokens: token0 < token1 by address
+    const isGasTokenToken0 = gasToken.toLowerCase() < wpcAddress.toLowerCase();
+
+    let wpcNeeded: bigint;
+    if (isGasTokenToken0) {
+      // price = WPC_per_gasToken → wpcNeeded = gasFee * price
+      wpcNeeded = (gasFee * priceNum) / Q192;
+    } else {
+      // price = gasToken_per_WPC → wpcNeeded = gasFee / price
+      wpcNeeded = (gasFee * Q192) / priceNum;
+    }
+
+    const result = wpcNeeded * SWAP_BUFFER;
+    printLog(
+      ctx,
+      `estimateNativeValueForSwap — pool=${poolAddress}, sqrtPriceX96=${sqrtPriceX96}, ` +
+        `wpcNeeded=${wpcNeeded}, withBuffer(2x)=${result}`
+    );
+
+    // Cap at (balance - reserve)
+    if (accountBalance > result + GAS_RESERVE) {
+      return result;
+    } else if (accountBalance > GAS_RESERVE) {
+      return accountBalance - GAS_RESERVE;
+    }
+    return result; // let caller decide if balance is too low
+  } catch (err) {
+    printLog(
+      ctx,
+      `estimateNativeValueForSwap — failed: ${err instanceof Error ? err.message : String(err)}, using balance fallback`
+    );
+    return balanceFallback(accountBalance, BALANCE_FALLBACK_DIVISOR, GAS_RESERVE);
+  }
+}
+
+function balanceFallback(balance: bigint, divisor: bigint, reserve: bigint): bigint {
+  const fraction = balance / divisor;
+  if (balance > fraction + reserve) return fraction;
+  if (balance > reserve) return balance - reserve;
+  return fraction;
 }
 
 // ============================================================================
