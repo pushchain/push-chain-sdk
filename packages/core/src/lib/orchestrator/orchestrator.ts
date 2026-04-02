@@ -1,6 +1,6 @@
 import { TransactionReceipt } from 'viem';
 import { CHAIN_INFO } from '../constants/chain';
-import { CHAIN, PUSH_NETWORK, VM } from '../constants/enums';
+import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 import {
   ConversionQuote,
   MoveableToken,
@@ -222,18 +222,6 @@ export class Orchestrator {
     try {
       const rcb = () => this._getResponseCallbacks();
       if (execute.funds) {
-        const hasData = execute.data && execute.data !== '0x';
-        const isSVM = CHAIN_INFO[this.ctx.universalSigner.account.chain]?.vm === VM.SVM;
-
-        // SVM two-phase: bridge funds first, then execute payload separately
-        // (Push Chain node doesn't support FUNDS_AND_PAYLOAD payload decoding for SVM yet)
-        if (hasData && isSVM) {
-          const fundsOnly: ExecuteParams = { ...execute, data: undefined };
-          await _executeFundsOnly(this.ctx, fundsOnly, eventBuffer, rcb);
-          const dataOnly: ExecuteParams = { ...execute, funds: undefined };
-          return await _executeStandardPayload(this.ctx, dataOnly, eventBuffer, rcb);
-        }
-
         return !hasData
           ? await _executeFundsOnly(this.ctx, execute, eventBuffer, rcb)
           : await _executeFundsWithPayload(this.ctx, execute, eventBuffer, rcb);
