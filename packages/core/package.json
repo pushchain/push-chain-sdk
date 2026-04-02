@@ -59,10 +59,9 @@
     "./src/lib/internal/global-buffer-polyfill.*"
   ],
   "files": [
-    "src/",
-    "!src/**/*.spec.ts",
-    "!src/**/__tests__/",
-    "!src/**/*.sol",
+    "src/**/*.js",
+    "src/**/*.d.ts",
+    "src/**/*.json",
     "README.md",
     "CHANGELOG.md"
   ],
