@@ -303,35 +303,27 @@ describe('Universal Account Utilities', () => {
       );
     });
 
-    it('returns same address for Push Chain CAIP-10 input with skipNetworkCheck', async () => {
+    it('returns same address for Push Chain input with skipNetworkCheck', async () => {
       const pushAddress =
         '0x1234567890123456789012345678901234567890' as `0x${string}`;
-      const caip = `eip155:42101:${pushAddress}`;
 
-      const result = await deriveExecutorAccount(caip, {
+      const result = await deriveExecutorAccount(pushAddress, {
         skipNetworkCheck: true,
       });
 
-      expect(result.address).toBe(getAddress(pushAddress));
+      expect(result.address).toBe(pushAddress);
       expect(result.deployed).toBe(false);
     });
 
     it('always returns deployed as a boolean (not undefined)', async () => {
       const pushAddress =
         '0x1234567890123456789012345678901234567890' as `0x${string}`;
-      const caip = `eip155:42101:${pushAddress}`;
 
-      const result = await deriveExecutorAccount(caip, {
+      const result = await deriveExecutorAccount(pushAddress, {
         skipNetworkCheck: true,
       });
 
       expect(typeof result.deployed).toBe('boolean');
-    });
-
-    it('throws on invalid CAIP-10 input', async () => {
-      await expect(
-        deriveExecutorAccount('invalid-string', { skipNetworkCheck: true })
-      ).rejects.toThrow();
     });
 
   });
