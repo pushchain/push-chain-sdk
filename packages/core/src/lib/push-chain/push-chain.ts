@@ -12,7 +12,7 @@ import {
   UniversalSigner,
 } from '../universal/universal.types';
 import { Utils } from '../utils';
-import { utils } from '@coral-xyz/anchor';
+import { bs58 } from '../internal/bs58';
 import { Abi, bytesToHex, parseAbi, TypedData, TypedDataDomain } from 'viem';
 import { ProgressEvent } from '../progress-hook/progress-hook.types';
 import type { AccountStatus } from '../orchestrator/orchestrator.types';
@@ -29,7 +29,6 @@ import {
 import type {
   UniversalExecuteParams,
   PreparedUniversalTx,
-  ChainedTransactionBuilder,
   CascadedTransactionBuilder,
   UniversalTxResponse,
   RescueFundsParams,
@@ -270,7 +269,7 @@ export class PushChain {
         if (CHAIN_INFO[chain].vm === VM.EVM) {
           return bytesToHex(sigBytes);
         } else if (CHAIN_INFO[chain].vm === VM.SVM) {
-          return utils.bytes.bs58.encode(sigBytes);
+          return bs58.encode(Buffer.from(sigBytes));
         }
         return bytesToHex(sigBytes);
       },
@@ -652,6 +651,9 @@ export class PushChain {
     ]).catch(() => {
       // Silently ignore — lazy check in execute() will retry if needed
     });
+
+    // Let execute() await the background fetch instead of re-fetching
+    orchestrator.accountStatusReadyPromise = instance.accountStatusReady;
 
     return instance;
   }

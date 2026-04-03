@@ -1,35 +1,17 @@
 /**
  * Unit tests for cascade composition logic:
  * - classifyIntoSegments
- * - composeCascade
  *
- * Since these are instance methods on Orchestrator, we create a minimal mock
- * that provides the required private methods.
+ * Tests import the pure function directly from cascade.ts
+ * (no Orchestrator instance needed).
  */
 import { CHAIN } from '../../constants/enums';
-import { ZERO_ADDRESS } from '../../constants/selectors';
-import { Orchestrator } from '../orchestrator';
+import { classifyIntoSegments } from '../internals/cascade';
 import type {
   HopDescriptor,
-  CascadeSegment,
   MultiCall,
   UniversalExecuteParams,
 } from '../orchestrator.types';
-
-// ============================================================================
-// Helper to create a minimal Orchestrator-like object with classifyIntoSegments
-// ============================================================================
-
-// We access the public methods by creating a partial mock
-function createMockOrchestrator() {
-  // Create a stub with just the methods we need
-  const proto = Orchestrator.prototype;
-  const mock = Object.create(proto);
-
-  // Override the private getSegmentType by defining it
-  // (it's actually accessible since JS doesn't enforce private at runtime)
-  return mock as Orchestrator;
-}
 
 // ============================================================================
 // Test data helpers
@@ -100,20 +82,14 @@ function makeRoute3Hop(
 // classifyIntoSegments
 // ============================================================================
 describe('classifyIntoSegments', () => {
-  let orch: Orchestrator;
-
-  beforeEach(() => {
-    orch = createMockOrchestrator();
-  });
-
   it('should return empty array for empty hops', () => {
-    const result = orch.classifyIntoSegments([]);
+    const result = classifyIntoSegments([]);
     expect(result).toEqual([]);
   });
 
   it('should create single PUSH_EXECUTION segment for one Route 1 hop', () => {
     const hop = makeRoute1Hop();
-    const result = orch.classifyIntoSegments([hop]);
+    const result = classifyIntoSegments([hop]);
 
     expect(result).toHaveLength(1);
     expect(result[0].type).toBe('PUSH_EXECUTION');
@@ -124,7 +100,7 @@ describe('classifyIntoSegments', () => {
   it('should merge consecutive Route 1 hops into single PUSH_EXECUTION segment', () => {
     const hop1 = makeRoute1Hop([{ to: ALICE, value: BigInt(100), data: '0x' }]);
     const hop2 = makeRoute1Hop([{ to: BOB, value: BigInt(200), data: '0x' }]);
-    const result = orch.classifyIntoSegments([hop1, hop2]);
+    const result = classifyIntoSegments([hop1, hop2]);
 
     expect(result).toHaveLength(1);
     expect(result[0].type).toBe('PUSH_EXECUTION');
@@ -134,7 +110,7 @@ describe('classifyIntoSegments', () => {
 
   it('should create single OUTBOUND_TO_CEA segment for one Route 2 hop', () => {
     const hop = makeRoute2Hop(CHAIN.BNB_TESTNET);
-    const result = orch.classifyIntoSegments([hop]);
+    const result = classifyIntoSegments([hop]);
 
     expect(result).toHaveLength(1);
     expect(result[0].type).toBe('OUTBOUND_TO_CEA');
@@ -150,7 +126,7 @@ describe('classifyIntoSegments', () => {
     const hop2 = makeRoute2Hop(CHAIN.BNB_TESTNET, [
       { to: BOB, value: BigInt(75), data: '0xbb' },
     ]);
-    const result = orch.classifyIntoSegments([hop1, hop2]);
+    const result = classifyIntoSegments([hop1, hop2]);
 
     expect(result).toHaveLength(1);
     expect(result[0].type).toBe('OUTBOUND_TO_CEA');
@@ -166,7 +142,7 @@ describe('classifyIntoSegments', () => {
   it('should NOT merge Route 2 hops targeting different chains', () => {
     const hop1 = makeRoute2Hop(CHAIN.BNB_TESTNET);
     const hop2 = makeRoute2Hop(CHAIN.ETHEREUM_SEPOLIA);
-    const result = orch.classifyIntoSegments([hop1, hop2]);
+    const result = classifyIntoSegments([hop1, hop2]);
 
     expect(result).toHaveLength(2);
     expect(result[0].type).toBe('OUTBOUND_TO_CEA');
@@ -177,7 +153,7 @@ describe('classifyIntoSegments', () => {
 
   it('should create INBOUND_FROM_CEA segment for Route 3 hop', () => {
     const hop = makeRoute3Hop(CHAIN.BNB_TESTNET);
-    const result = orch.classifyIntoSegments([hop]);
+    const result = classifyIntoSegments([hop]);
 
     expect(result).toHaveLength(1);
     expect(result[0].type).toBe('INBOUND_FROM_CEA');
@@ -187,7 +163,7 @@ describe('classifyIntoSegments', () => {
   it('should NOT merge consecutive Route 3 hops (direction change)', () => {
     const hop1 = makeRoute3Hop(CHAIN.BNB_TESTNET);
     const hop2 = makeRoute3Hop(CHAIN.BNB_TESTNET);
-    const result = orch.classifyIntoSegments([hop1, hop2]);
+    const result = classifyIntoSegments([hop1, hop2]);
 
     // Route 3 hops are INBOUND_FROM_CEA, which don't merge
     expect(result).toHaveLength(2);
@@ -197,7 +173,7 @@ describe('classifyIntoSegments', () => {
     const hop1 = makeRoute1Hop();
     const hop2 = makeRoute2Hop(CHAIN.BNB_TESTNET);
     const hop3 = makeRoute3Hop(CHAIN.ETHEREUM_SEPOLIA);
-    const result = orch.classifyIntoSegments([hop1, hop2, hop3]);
+    const result = classifyIntoSegments([hop1, hop2, hop3]);
 
     expect(result).toHaveLength(3);
     expect(result[0].type).toBe('PUSH_EXECUTION');
@@ -212,7 +188,7 @@ describe('classifyIntoSegments', () => {
     const hop2 = makeRoute2Hop(CHAIN.BNB_TESTNET, undefined, {
       gasLimit: BigInt(300000),
     });
-    const result = orch.classifyIntoSegments([hop1, hop2]);
+    const result = classifyIntoSegments([hop1, hop2]);
 
     expect(result).toHaveLength(1);
     expect(result[0].gasLimit).toBe(BigInt(300000));

@@ -13,7 +13,7 @@ import {
 } from 'viem/chains';
 import { CHAIN, VM } from '../constants/enums';
 import { CHAIN_INFO, CEA_FACTORY_ADDRESSES } from '../constants/chain';
-import { CEA_FACTORY_EVM } from '../constants/abi';
+import { CEA_FACTORY_EVM } from '../constants/abi/ceaFactory.evm';
 
 /**
  * Map CHAIN enum to viem chain object
@@ -59,11 +59,18 @@ export interface CEAAddressResult {
  * @returns CEA address and deployment status
  * @throws Error if chain doesn't have CEAFactory
  */
+// Cache CEA address per UEA+chain — address is deterministic (CREATE2), but
+// isDeployed can change during execution so we always re-fetch it.
+const ceaAddressCache = new Map<string, `0x${string}`>();
+
 export async function getCEAAddress(
   ueaAddress: `0x${string}`,
   chain: CHAIN,
   rpcUrl?: string
 ): Promise<CEAAddressResult> {
+  const cacheKey = `${ueaAddress.toLowerCase()}:${chain}`;
+  const cachedAddress = ceaAddressCache.get(cacheKey);
+
   const factoryAddress = CEA_FACTORY_ADDRESSES[chain];
   if (!factoryAddress) {
     throw new Error(`CEAFactory not available on chain ${chain}`);
@@ -75,6 +82,12 @@ export async function getCEAAddress(
     transport: http(rpcUrl),
   });
 
+  if (cachedAddress) {
+    // Address is cached — only re-check deployment status
+    const code = await client.getCode({ address: cachedAddress });
+    return { cea: cachedAddress, isDeployed: code !== undefined && code !== '0x' };
+  }
+
   const [cea, isDeployed] = await client.readContract({
     abi: CEA_FACTORY_EVM,
     address: factoryAddress,
@@ -82,6 +95,7 @@ export async function getCEAAddress(
     args: [ueaAddress],
   });
 
+  ceaAddressCache.set(cacheKey, cea);
   return { cea, isDeployed };
 }
 

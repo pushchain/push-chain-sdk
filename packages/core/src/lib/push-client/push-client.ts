@@ -2,7 +2,6 @@ import { hexToBytes, keccak256 } from 'viem';
 import { MsgDeployUEA, MsgExecutePayload, MsgMintPC, MsgMigrateUEA } from '../generated/v1/tx';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 import { SignDoc, TxBody, TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
-import { Writer } from 'protobufjs';
 import { makeAuthInfoBytes, makeSignDoc } from '@cosmjs/proto-signing';
 import {
   DeliverTxResponse,
@@ -30,8 +29,12 @@ import { PUSH_CHAIN_INFO } from '../constants/chain';
 import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 
 export class PushClient extends EvmClient {
+  /** Gas limit for Cosmos transactions on Push Chain */
+  private static readonly COSMOS_GAS_LIMIT = 100000000000;
+
   public pushChainInfo;
   private readonly ephemeralKey;
+  private readonly ephemeralAccount;
   private currentRpcIndex = 0;
   constructor(clientOptions: PushClientOptions) {
     super(clientOptions);
@@ -48,6 +51,7 @@ export class PushClient extends EvmClient {
     }
 
     this.ephemeralKey = generatePrivateKey();
+    this.ephemeralAccount = privateKeyToAccount(this.ephemeralKey);
   }
 
   /**
@@ -145,12 +149,11 @@ export class PushClient extends EvmClient {
 
   // --- Tx Signer ---
   getSignerAddress() {
-    const account = privateKeyToAccount(this.ephemeralKey);
     return {
-      evmAddress: account.address,
+      evmAddress: this.ephemeralAccount.address,
       cosmosAddress: toBech32(
         this.pushChainInfo.prefix,
-        hexToBytes(account.address)
+        hexToBytes(this.ephemeralAccount.address)
       ),
     };
   }
@@ -160,14 +163,12 @@ export class PushClient extends EvmClient {
    * In prod, signer should be passed in instead.
    */
   async signCosmosTx(txBody: TxBody): Promise<TxRaw> {
-    const account = privateKeyToAccount(this.ephemeralKey);
     const sender = toBech32(
       this.pushChainInfo.prefix,
-      hexToBytes(account.address)
+      hexToBytes(this.ephemeralAccount.address)
     );
 
     return this.executeWithRpcFallback(async (rpcUrl) => {
-      // 🔍 Get on-chain account info
       const tmClient = await Tendermint34Client.connect(rpcUrl);
       const status = await tmClient.status();
       const chainId = status.nodeInfo.network;
@@ -181,15 +182,23 @@ export class PushClient extends EvmClient {
         const accountResp = await queryClient.auth.account(sender);
         baseAccount = BaseAccount.decode(accountResp!.value);
       } catch (err) {
-        // Ignore
+        // Account may not exist on-chain yet; default to sequence=0 / accountNumber=0
+        console.warn(`[PushClient:signCosmosTx] Account lookup failed for ${sender}, defaulting to sequence=0:`, err);
       }
 
       // 📦 Encode pubkey
-      const uncompressedPubKey = hexToBytes(account.publicKey);
+      const uncompressedPubKey = hexToBytes(this.ephemeralAccount.publicKey);
       const compressedPubKey = Secp256k1.compressPubkey(uncompressedPubKey);
+      // Manual protobuf encode: field 1 (tag=10), length-delimited bytes
+      const keyLen = compressedPubKey.length;
+      const pubkeyValue = new Uint8Array(2 + keyLen);
+      pubkeyValue[0] = 10; // field 1, wire type 2 (length-delimited)
+      pubkeyValue[1] = keyLen;
+      pubkeyValue.set(compressedPubKey, 2);
+
       const pubkeyEncoded = {
         typeUrl: '/cosmos.evm.crypto.v1.ethsecp256k1.PubKey',
-        value: Writer.create().uint32(10).bytes(compressedPubKey).finish(),
+        value: pubkeyValue,
       };
 
       const authInfoBytes = makeAuthInfoBytes(
@@ -200,7 +209,7 @@ export class PushClient extends EvmClient {
           },
         ],
         [],
-        100000000000, // gas
+        PushClient.COSMOS_GAS_LIMIT,
         undefined,
         undefined
       );
@@ -214,7 +223,7 @@ export class PushClient extends EvmClient {
       );
 
       const digest = keccak256(SignDoc.encode(signDoc).finish());
-      const signature = await account.sign({ hash: digest });
+      const signature = await this.ephemeralAccount.sign({ hash: digest });
 
       return TxRaw.fromPartial({
         bodyBytes: txBodyBytes,
@@ -227,8 +236,7 @@ export class PushClient extends EvmClient {
   async broadcastCosmosTx(txRaw: TxRaw): Promise<DeliverTxResponse> {
     return this.executeWithRpcFallback(async (rpcUrl) => {
       const client = await StargateClient.connect(rpcUrl);
-      const result = await client.broadcastTx(TxRaw.encode(txRaw).finish());
-      return result;
+      return client.broadcastTx(TxRaw.encode(txRaw).finish());
     }, 'broadcastCosmosTx');
   }
 
@@ -249,8 +257,7 @@ export class PushClient extends EvmClient {
         'GetUniversalTx',
         QueryGetUniversalTxRequest.encode(request).finish()
       );
-      const response = QueryGetUniversalTxResponse.decode(responseBytes);
-      return response;
+      return QueryGetUniversalTxResponse.decode(responseBytes);
     }, 'getUniversalTxById');
   }
 
@@ -262,8 +269,6 @@ export class PushClient extends EvmClient {
     id: string
   ): Promise<QueryGetUniversalTxResponseV2> {
     return this.executeWithRpcFallback(async (rpcUrl) => {
-      console.log(`[PushClient:getUniversalTxByIdV2] Querying v2 API | ID: ${id} | RPC: ${rpcUrl}`);
-      const t0 = Date.now();
       const tmClient = await Tendermint34Client.connect(rpcUrl);
       const queryClient = new QueryClient(tmClient);
       const rpc = createProtobufRpcClient(queryClient);
@@ -274,15 +279,7 @@ export class PushClient extends EvmClient {
         'GetUniversalTx',
         QueryGetUniversalTxRequestV2.encode(request).finish()
       );
-      const response = QueryGetUniversalTxResponseV2.decode(responseBytes);
-      const utx = response?.universalTx;
-      console.log(`[PushClient:getUniversalTxByIdV2] v2 response in ${Date.now() - t0}ms | universalTx exists: ${!!utx} | status: ${utx?.universalStatus} | outboundTx count: ${utx?.outboundTx?.length ?? 0}`);
-      if (utx?.outboundTx?.length) {
-        utx.outboundTx.forEach((ob, i) => {
-          console.log(`[PushClient:getUniversalTxByIdV2]   outbound[${i}]: id=${ob.id} | outboundStatus=${ob.outboundStatus} | observedTx.txHash=${ob.observedTx?.txHash || 'EMPTY'} | dest=${ob.destinationChain} | recipient=${ob.recipient}`);
-        });
-      }
-      return response;
+      return QueryGetUniversalTxResponseV2.decode(responseBytes);
     }, 'getUniversalTxByIdV2');
   }
 
@@ -296,7 +293,6 @@ export class PushClient extends EvmClient {
     return this.executeWithRpcFallback(async (rpcUrl) => {
       const client = await StargateClient.connect(rpcUrl);
 
-      // Raw string query—must be one string, not a KV array:
       const query = `ethereum_tx.ethereumTxHash='${txHash}'`;
 
       const results = await client.searchTx(query);

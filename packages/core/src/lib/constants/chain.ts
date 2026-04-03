@@ -390,6 +390,11 @@ export const UNIVERSAL_GATEWAY_ADDRESSES: Partial<Record<CHAIN, `0x${string}`>> 
 };
 
 /**
+ * Pyth price feed account for SVM gateway gas estimation
+ */
+export const SVM_PYTH_PRICE_FEED = '7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE';
+
+/**
  * Vault contract addresses on external chains
  * Vaults hold locked assets for cross-chain operations
  */

@@ -1,12 +1,18 @@
 import { CHAIN, VM } from '../constants/enums';
 import { CHAIN_INFO } from '../constants/chain';
 import { EvmClient } from '../vm-client/evm-client';
-import { FEE_LOCKER_EVM, FEE_LOCKER_SVM } from '../constants/abi';
+import { FEE_LOCKER_EVM } from '../constants/abi/feeLocker.evm';
+import FEE_LOCKER_SVM from '../constants/abi/feeLocker.json';
 import { Program } from '@coral-xyz/anchor';
 import { Connection } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
 import { AnchorProvider } from '@coral-xyz/anchor';
 import { BN } from '@coral-xyz/anchor';
+
+// Module-level price cache — survives across PriceFetch instances.
+// Chainlink feeds update every 1-2h or on 0.5% price move; 30s TTL is safe.
+const PRICE_CACHE_TTL_MS = 30_000;
+const priceCache = new Map<CHAIN, { price: bigint; expiry: number }>();
 
 export class PriceFetch {
   constructor(
@@ -14,6 +20,10 @@ export class PriceFetch {
   ) {}
 
   async getPrice(chain: CHAIN): Promise<bigint> {
+    const cached = priceCache.get(chain);
+    if (cached && Date.now() < cached.expiry) {
+      return cached.price;
+    }
     const rpcUrls: string[] =
       this.rpcUrls[chain] || CHAIN_INFO[chain].defaultRPC;
 
@@ -22,6 +32,8 @@ export class PriceFetch {
     if (!lockerContract) {
       throw new Error(`Locker contract not configured for chain: ${chain}`);
     }
+
+    let price: bigint;
 
     switch (vm) {
       case VM.EVM: {
@@ -36,8 +48,8 @@ export class PriceFetch {
         // getEthUsdPrice returns price scaled to 1e18 and the chainlink feed decimals.
         // Downstream lockFee math expects the price in 8 decimals, so scale down from 1e18 to 1e8.
         const [price1e18] = result;
-        const price = price1e18 / BigInt(10 ** 10); // 1e18 -> 1e8
-        return price;
+        price = price1e18 / BigInt(10 ** 10); // 1e18 -> 1e8
+        break;
       }
       case VM.SVM: {
         const PRICE_ACCOUNT = new PublicKey(
@@ -69,12 +81,15 @@ export class PriceFetch {
         }
 
         // Exponent on this function is always NEGATIVE
-        const price = (result.price as BN).toNumber();
-        return BigInt(price);
+        price = BigInt((result.price as BN).toNumber());
+        break;
       }
       default: {
         throw new Error(`Unsupported VM ${vm}`);
       }
     }
+
+    priceCache.set(chain, { price, expiry: Date.now() + PRICE_CACHE_TTL_MS });
+    return price;
   }
 }

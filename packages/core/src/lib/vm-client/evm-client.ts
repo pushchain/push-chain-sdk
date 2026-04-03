@@ -11,7 +11,7 @@ import {
   encodeFunctionData,
   hexToBytes,
   http,
-  parseEther,
+  parseAbi,
   PublicClient,
   serializeTransaction,
   Hex,
@@ -19,7 +19,6 @@ import {
   fallback,
   TransactionReceipt,
 } from 'viem';
-
 /**
  * EVM client for reading and writing to Ethereum-compatible chains
  *
@@ -113,12 +112,11 @@ export class EvmClient {
     tokenAddress: `0x${string}`;
     ownerAddress: `0x${string}`;
   }): Promise<bigint> {
-    const { parseAbi } = await import('viem');
     const erc20Abi = parseAbi([
       'function balanceOf(address) view returns (uint256)',
     ]);
     return this.readContract<bigint>({
-      abi: erc20Abi as unknown as Abi,
+      abi: erc20Abi as Abi,
       address: tokenAddress,
       functionName: 'balanceOf',
       args: [ownerAddress],
@@ -159,7 +157,7 @@ export class EvmClient {
     address,
     functionName,
     args = [],
-    value = parseEther('0'),
+    value = BigInt(0),
     signer,
   }: WriteContractParams): Promise<Hex> {
     const data = encodeFunctionData({
@@ -199,7 +197,7 @@ export class EvmClient {
   async sendTransaction({
     to,
     data,
-    value = parseEther('0'),
+    value = BigInt(0),
     signer,
     nonce: explicitNonce,
     gas: explicitGas,
@@ -213,8 +211,6 @@ export class EvmClient {
   }): Promise<Hex> {
     // Estimate gas and fees first (can run in parallel)
     const [gas, feePerGas, chainId] = await Promise.all([
-      // Use explicit gas if provided (for batched txs where estimateGas may fail
-      // due to uncommitted state), fixed gas for simple transfers, or estimate
       explicitGas
         ? Promise.resolve(explicitGas)
         : data === '0x'
@@ -229,9 +225,6 @@ export class EvmClient {
       this.publicClient.getChainId(),
     ]);
 
-    // Use explicit nonce if provided (for sequential tx batches),
-    // otherwise fetch after gas estimation to avoid stale nonce on Cosmos-EVM chains.
-    // Use 'pending' blockTag to include mempool txs and prevent nonce collisions.
     const nonce = explicitNonce ?? await this.publicClient.getTransactionCount({
       address: signer.account.address as `0x${string}`,
       blockTag: 'pending',
@@ -379,7 +372,6 @@ export class EvmClient {
     pollIntervalMs?: number;
     timeoutMs?: number;
   }): Promise<void> {
-    // first, wait for the tx to land in a block
     const receipt = await this.publicClient.waitForTransactionReceipt({
       hash: txHash,
     });
@@ -387,7 +379,6 @@ export class EvmClient {
     const targetBlock = receipt.blockNumber + BigInt(confirmations);
     const startTime = Date.now();
 
-    // poll until we hit the target block or timeout
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const currentBlock = await this.publicClient.getBlockNumber();

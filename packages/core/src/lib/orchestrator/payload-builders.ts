@@ -1,6 +1,9 @@
 import { encodeFunctionData, encodeAbiParameters, isAddress, sha256, toBytes } from 'viem';
 import { PushChain } from '../push-chain/push-chain';
-import { CEA_EVM, ERC20_EVM, UNIVERSAL_GATEWAY_V0, UNIVERSAL_GATEWAY_PC } from '../constants/abi';
+import { CEA_EVM } from '../constants/abi/cea.evm';
+import { ERC20_EVM } from '../constants/abi/erc20.evm';
+import { UNIVERSAL_GATEWAY_V0 } from '../constants/abi/universalGatewayV0.evm';
+import { UNIVERSAL_GATEWAY_PC } from '../constants/abi/universalGatewayPC.evm';
 import { MoveableToken } from '../constants/tokens';
 import { ZERO_ADDRESS, MIGRATION_SELECTOR, MULTICALL_SELECTOR, UEA_MULTICALL_SELECTOR } from '../constants/selectors';
 import { CHAIN_INFO } from '../constants/chain';
@@ -249,6 +252,14 @@ export function buildApproveAndInteract(
   amount: bigint,
   interactCall: MultiCall
 ): MultiCall[] {
+  // Reset allowance to 0 first to handle non-standard ERC-20 tokens (e.g. USDT)
+  // that revert if approve is called with non-zero value when current allowance is non-zero.
+  const approveZeroData = encodeFunctionData({
+    abi: ERC20_EVM,
+    functionName: 'approve',
+    args: [spender, BigInt(0)],
+  });
+
   const approveData = encodeFunctionData({
     abi: ERC20_EVM,
     functionName: 'approve',
@@ -256,6 +267,11 @@ export function buildApproveAndInteract(
   });
 
   return [
+    {
+      to: tokenAddress,
+      value: BigInt(0),
+      data: approveZeroData,
+    },
     {
       to: tokenAddress,
       value: BigInt(0),
@@ -491,14 +507,25 @@ export function buildOutboundApprovalAndCall(opts: {
   const multicalls: MultiCall[] = [];
 
   // ERC20 approve for burn amount (contract calls transferFrom for PRC20 burn)
+  // Reset to 0 first for USDT-style tokens that revert on non-zero to non-zero approve.
   if (
     burnAmount > BigInt(0) &&
     prc20Token.toLowerCase() !== ZERO_ADDRESS.toLowerCase()
   ) {
+    const approveZeroData = encodeFunctionData({
+      abi: ERC20_EVM,
+      functionName: 'approve',
+      args: [gatewayPcAddress, BigInt(0)],
+    });
     const approveData = encodeFunctionData({
       abi: ERC20_EVM,
       functionName: 'approve',
       args: [gatewayPcAddress, burnAmount],
+    });
+    multicalls.push({
+      to: prc20Token,
+      value: BigInt(0),
+      data: approveZeroData,
     });
     multicalls.push({
       to: prc20Token,

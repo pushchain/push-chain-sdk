@@ -5,6 +5,8 @@ import { CHAIN_INFO } from '../../src/lib/constants/chain';
 import {
   convertOriginToExecutor,
   convertExecutorToOrigin,
+  deriveExecutorAccount,
+  resolveControllerAccount,
 } from '../../src/lib/universal/account/account';
 import { createWalletClient, getAddress, http, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -515,5 +517,426 @@ describe('Account Conversion Utilities', () => {
         `Round-trip: ${evmAddress} → UEA(${ueaResult.address}) → CEA(${ceaResult.address}) → PushAccount(${pushAccountResult.account!.address})`
       );
     }, 30000);
+  });
+
+  // =========================================================================
+  // deriveExecutorAccount — UEA (default)
+  // =========================================================================
+  describe('deriveExecutorAccount() — UEA (default)', () => {
+    it('should return same address for Push Chain CAIP-10 account', async () => {
+      if (skipPush) return;
+
+      const caip = `eip155:42101:${pushAddress}`;
+      const result = await deriveExecutorAccount(caip, {
+        skipNetworkCheck: true,
+      });
+
+      expect(result.address).toBe(pushAddress);
+      expect(result.deployed).toBe(false);
+    });
+
+    it('should check deployment for Push Chain account without skipNetworkCheck', async () => {
+      if (skipPush) return;
+
+      const caip = `eip155:42101:${pushAddress}`;
+      const result = await deriveExecutorAccount(caip);
+
+      expect(result.address).toBe(pushAddress);
+      expect(typeof result.deployed).toBe('boolean');
+    }, 30000);
+
+    it('should compute UEA for EVM origin account', async () => {
+      if (skipEVM) return;
+
+      const caip = `eip155:11155111:${evmAddress}`;
+      const result = await deriveExecutorAccount(caip);
+
+      expect(result.address).toMatch(/^0x[a-fA-F0-9]{40}$/);
+      expect(typeof result.deployed).toBe('boolean');
+      console.log(`[derive] EVM → UEA: ${evmAddress} → ${result.address} (deployed: ${result.deployed})`);
+    }, 30000);
+
+    it('should compute UEA for EVM origin with skipNetworkCheck', async () => {
+      if (skipEVM) return;
+
+      const caip = `eip155:11155111:${evmAddress}`;
+      const result = await deriveExecutorAccount(caip, {
+        skipNetworkCheck: true,
+      });
+
+      expect(result.address).toMatch(/^0x[a-fA-F0-9]{40}$/);
+      expect(result.deployed).toBe(false);
+    }, 30000);
+
+    it('should compute UEA for Solana origin account', async () => {
+      if (skipSolana) return;
+
+      const caip = `solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:${solanaAddress}`;
+      const result = await deriveExecutorAccount(caip);
+
+      expect(result.address).toMatch(/^0x[a-fA-F0-9]{40}$/);
+      expect(typeof result.deployed).toBe('boolean');
+      console.log(`[derive] Solana → UEA: ${solanaAddress} → ${result.address} (deployed: ${result.deployed})`);
+    }, 30000);
+
+    it('should return consistent results across calls (caching)', async () => {
+      if (skipEVM) return;
+
+      const caip = `eip155:11155111:${evmAddress}`;
+      const result1 = await deriveExecutorAccount(caip);
+      const result2 = await deriveExecutorAccount(caip);
+
+      expect(result1.address).toBe(result2.address);
+      expect(result1.deployed).toBe(result2.deployed);
+    }, 30000);
+
+    it('should match convertOriginToExecutor result', async () => {
+      if (skipEVM) return;
+
+      const caip = `eip155:11155111:${evmAddress}`;
+      const newResult = await deriveExecutorAccount(caip);
+      const oldResult = await convertOriginToExecutor(
+        { chain: CHAIN.ETHEREUM_SEPOLIA, address: evmAddress },
+        { onlyCompute: true }
+      );
+
+      expect(newResult.address).toBe(oldResult.address);
+    }, 30000);
+  });
+
+  // =========================================================================
+  // deriveExecutorAccount — CEA (with options.chain)
+  // =========================================================================
+  describe('deriveExecutorAccount() — CEA (with options.chain)', () => {
+    it('should return CEA on external chain for EVM origin', async () => {
+      if (skipEVM) return;
+
+      const caip = `eip155:11155111:${evmAddress}`;
+      const result = await deriveExecutorAccount(caip, {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+      });
+
+      expect(result.address).toMatch(/^0x[a-fA-F0-9]{40}$/);
+      expect(typeof result.deployed).toBe('boolean');
+      console.log(`[derive] EVM → CEA (ETH Sepolia): ${result.address} (deployed: ${result.deployed})`);
+    }, 30000);
+
+    it('should return CEA on external chain for Solana origin', async () => {
+      if (skipSolana) return;
+
+      const caip = `solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:${solanaAddress}`;
+      const result = await deriveExecutorAccount(caip, {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+      });
+
+      expect(result.address).toMatch(/^0x[a-fA-F0-9]{40}$/);
+      expect(typeof result.deployed).toBe('boolean');
+      console.log(`[derive] Solana → CEA (ETH Sepolia): ${result.address} (deployed: ${result.deployed})`);
+    }, 30000);
+
+    it('should return CEA for Push Chain account on external chain', async () => {
+      if (skipPush) return;
+
+      const caip = `eip155:42101:${pushAddress}`;
+      const result = await deriveExecutorAccount(caip, {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+      });
+
+      expect(result.address).toMatch(/^0x[a-fA-F0-9]{40}$/);
+      expect(typeof result.deployed).toBe('boolean');
+      console.log(`[derive] Push → CEA (ETH Sepolia): ${result.address} (deployed: ${result.deployed})`);
+    }, 30000);
+
+    it('should match direct getCEAAddress result', async () => {
+      if (skipEVM) return;
+
+      const caip = `eip155:11155111:${evmAddress}`;
+
+      // Get UEA first
+      const ueaResult = await deriveExecutorAccount(caip);
+
+      // Get CEA via deriveExecutorAccount with chain
+      const ceaViaDerived = await deriveExecutorAccount(caip, {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+      });
+
+      // Get CEA directly via getCEAAddress
+      const ceaDirect = await getCEAAddress(ueaResult.address, CHAIN.ETHEREUM_SEPOLIA);
+
+      expect(ceaViaDerived.address).toBe(ceaDirect.cea);
+    }, 30000);
+
+    it('should return different CEA addresses for different target chains', async () => {
+      if (skipEVM) return;
+
+      const caip = `eip155:11155111:${evmAddress}`;
+
+      const ceaEth = await deriveExecutorAccount(caip, { chain: CHAIN.ETHEREUM_SEPOLIA });
+      const ceaBnb = await deriveExecutorAccount(caip, { chain: CHAIN.BNB_TESTNET });
+      const ceaArb = await deriveExecutorAccount(caip, { chain: CHAIN.ARBITRUM_SEPOLIA });
+      const ceaBase = await deriveExecutorAccount(caip, { chain: CHAIN.BASE_SEPOLIA });
+
+      const addresses = [ceaEth.address, ceaBnb.address, ceaArb.address, ceaBase.address];
+      addresses.forEach((addr) => expect(addr).toMatch(/^0x[a-fA-F0-9]{40}$/));
+      expect(new Set(addresses).size).toBe(4);
+    }, 60000);
+
+    it('should throw for unsupported CEA chain (Solana has no CEAFactory)', async () => {
+      if (skipEVM) return;
+
+      const caip = `eip155:11155111:${evmAddress}`;
+      await expect(
+        deriveExecutorAccount(caip, { chain: CHAIN.SOLANA_DEVNET })
+      ).rejects.toThrow();
+    }, 30000);
+
+    it('should respect skipNetworkCheck on CEA derivation', async () => {
+      if (skipEVM) return;
+
+      const caip = `eip155:11155111:${evmAddress}`;
+      const result = await deriveExecutorAccount(caip, {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+        skipNetworkCheck: true,
+      });
+
+      expect(result.address).toMatch(/^0x[a-fA-F0-9]{40}$/);
+      expect(result.deployed).toBe(false);
+    }, 30000);
+  });
+
+  // =========================================================================
+  // resolveControllerAccount — UEA on Push → origin
+  // =========================================================================
+  describe('resolveControllerAccount() — UEA to origin', () => {
+    it('should resolve known Solana UEA to origin', async () => {
+      const ueaAddress = '0xbCfaD05E5f19Ae46feAab2F72Ad9977BC239b395';
+      const caip = `eip155:42101:${ueaAddress}`;
+
+      const result = await resolveControllerAccount(caip);
+
+      expect(result.accounts.length).toBeGreaterThan(0);
+
+      const controller = result.accounts.find((a) => a.role === 'controller');
+      expect(controller).toBeDefined();
+      expect(controller!.type).toBe('uoa');
+      expect(controller!.chain).toBe(CHAIN.SOLANA_DEVNET);
+      expect(controller!.address).toBe('72JBejJFXrRKpQ69Hmaqr7vWJr6pdZXFEL6jt3sadsXU');
+      expect(controller!.exists).toBe(true);
+      expect(controller!.chainName).toBe('SOLANA_DEVNET');
+    }, 30000);
+
+    it('should resolve known Ethereum UEA to origin', async () => {
+      const ueaAddress = '0x7AEE1699FeE2C906251863D24D35B3dEbe0932EC';
+      const caip = `eip155:42101:${ueaAddress}`;
+
+      const result = await resolveControllerAccount(caip);
+
+      expect(result.accounts.length).toBeGreaterThan(0);
+
+      const controller = result.accounts.find((a) => a.role === 'controller');
+      expect(controller).toBeDefined();
+      expect(controller!.type).toBe('uoa');
+      expect(controller!.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+      expect(controller!.address).toBe(
+        getAddress('0xFd6C2fE69bE13d8bE379CCB6c9306e74193EC1A9')
+      );
+      expect(controller!.exists).toBe(true);
+      expect(controller!.chainName).toBe('ETHEREUM_SEPOLIA');
+    }, 30000);
+
+    it('should resolve EVM UEA from env to origin', async () => {
+      if (skipEVM) return;
+
+      // Get UEA
+      const ueaResult = await convertOriginToExecutor(
+        { chain: CHAIN.ETHEREUM_SEPOLIA, address: evmAddress },
+        { onlyCompute: true }
+      );
+
+      if (!ueaResult.deployed) {
+        console.log('SKIP: EVM UEA not deployed');
+        return;
+      }
+
+      const caip = `eip155:42101:${ueaResult.address}`;
+      const result = await resolveControllerAccount(caip);
+
+      expect(result.accounts.length).toBeGreaterThan(0);
+
+      const controller = result.accounts.find((a) => a.role === 'controller');
+      expect(controller).toBeDefined();
+      expect(controller!.type).toBe('uoa');
+      expect(controller!.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+      expect(controller!.address.toLowerCase()).toBe(evmAddress.toLowerCase());
+    }, 30000);
+
+    it('should resolve Solana UEA from env to origin', async () => {
+      if (skipSolana) return;
+
+      const ueaResult = await convertOriginToExecutor(
+        { chain: CHAIN.SOLANA_DEVNET, address: solanaAddress },
+        { onlyCompute: true }
+      );
+
+      if (!ueaResult.deployed) {
+        console.log('SKIP: Solana UEA not deployed');
+        return;
+      }
+
+      const caip = `eip155:42101:${ueaResult.address}`;
+      const result = await resolveControllerAccount(caip);
+
+      const controller = result.accounts.find((a) => a.role === 'controller');
+      expect(controller).toBeDefined();
+      expect(controller!.type).toBe('uoa');
+      expect(controller!.chain).toBe(CHAIN.SOLANA_DEVNET);
+      expect(controller!.address).toBe(solanaAddress);
+    }, 30000);
+
+    it('should return Push EOA as controller for non-UEA address', async () => {
+      const eoaAddress = '0x0000000000000000000000000000000000000001';
+      const caip = `eip155:42101:${eoaAddress}`;
+
+      const result = await resolveControllerAccount(caip);
+
+      expect(result.accounts.length).toBe(1);
+      expect(result.accounts[0].type).toBe('uoa');
+      expect(result.accounts[0].role).toBe('controller');
+      expect(result.accounts[0].address).toBe(eoaAddress);
+      expect(result.accounts[0].chain).toBe(CHAIN.PUSH_TESTNET_DONUT);
+      expect(result.accounts[0].chainName).toBe('PUSH_TESTNET_DONUT');
+    }, 30000);
+  });
+
+  // =========================================================================
+  // resolveControllerAccount — CEA on external chain → UEA + origin
+  // =========================================================================
+  describe('resolveControllerAccount() — CEA to UEA + origin', () => {
+    it('should resolve CEA to UEA and origin', async () => {
+      if (skipEVM) return;
+
+      // Get UEA
+      const ueaResult = await convertOriginToExecutor(
+        { chain: CHAIN.ETHEREUM_SEPOLIA, address: evmAddress },
+        { onlyCompute: false }
+      );
+
+      // Get CEA on Ethereum Sepolia
+      const ceaResult = await getCEAAddress(ueaResult.address, CHAIN.ETHEREUM_SEPOLIA);
+
+      if (!ceaResult.isDeployed) {
+        console.log('SKIP: CEA not deployed — cannot verify resolve');
+        return;
+      }
+
+      const caip = `eip155:11155111:${ceaResult.cea}`;
+      const result = await resolveControllerAccount(caip);
+
+      expect(result.accounts.length).toBe(2);
+
+      // First should be UEA
+      const uea = result.accounts.find((a) => a.type === 'uea');
+      expect(uea).toBeDefined();
+      expect(uea!.chain).toBe(CHAIN.PUSH_TESTNET_DONUT);
+      expect(uea!.chainName).toBe('PUSH_TESTNET_DONUT');
+      expect(uea!.address.toLowerCase()).toBe(ueaResult.address.toLowerCase());
+      expect(uea!.exists).toBe(true);
+
+      // Second should be origin UOA
+      const controller = result.accounts.find((a) => a.role === 'controller');
+      expect(controller).toBeDefined();
+      expect(controller!.type).toBe('uoa');
+      expect(controller!.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+      expect(controller!.address.toLowerCase()).toBe(evmAddress.toLowerCase());
+
+      console.log(
+        `[resolve] CEA(${ceaResult.cea}) → UEA(${uea!.address}) → Origin(${controller!.chain}:${controller!.address})`
+      );
+    }, 60000);
+
+    it('should return empty accounts for unknown CEA', async () => {
+      const unknownAddress = '0x0000000000000000000000000000000000000001';
+      const caip = `eip155:11155111:${unknownAddress}`;
+
+      const result = await resolveControllerAccount(caip);
+
+      expect(result.accounts).toEqual([]);
+    }, 30000);
+  });
+
+  // =========================================================================
+  // deriveExecutorAccount + resolveControllerAccount — Round-trip
+  // =========================================================================
+  describe('Round-trip: deriveExecutorAccount → resolveControllerAccount', () => {
+    it('EVM origin → UEA → resolve should return original account', async () => {
+      if (skipEVM) return;
+
+      const caip = `eip155:11155111:${evmAddress}`;
+      const ueaResult = await deriveExecutorAccount(caip);
+
+      if (!ueaResult.deployed) {
+        console.log('SKIP: UEA not deployed — round-trip requires deployment');
+        return;
+      }
+
+      const ueaCaip = `eip155:42101:${ueaResult.address}`;
+      const resolved = await resolveControllerAccount(ueaCaip);
+
+      const controller = resolved.accounts.find((a) => a.role === 'controller');
+      expect(controller).toBeDefined();
+      expect(controller!.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+      expect(controller!.address.toLowerCase()).toBe(evmAddress.toLowerCase());
+    }, 30000);
+
+    it('Solana origin → UEA → resolve should return original account', async () => {
+      if (skipSolana) return;
+
+      const caip = `solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:${solanaAddress}`;
+      const ueaResult = await deriveExecutorAccount(caip);
+
+      if (!ueaResult.deployed) {
+        console.log('SKIP: UEA not deployed — round-trip requires deployment');
+        return;
+      }
+
+      const ueaCaip = `eip155:42101:${ueaResult.address}`;
+      const resolved = await resolveControllerAccount(ueaCaip);
+
+      const controller = resolved.accounts.find((a) => a.role === 'controller');
+      expect(controller).toBeDefined();
+      expect(controller!.chain).toBe(CHAIN.SOLANA_DEVNET);
+      expect(controller!.address).toBe(solanaAddress);
+    }, 30000);
+
+    it('EVM origin → CEA → resolve should return UEA + origin', async () => {
+      if (skipEVM) return;
+
+      const caip = `eip155:11155111:${evmAddress}`;
+      const ceaResult = await deriveExecutorAccount(caip, {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+      });
+
+      if (!ceaResult.deployed) {
+        console.log('SKIP: CEA not deployed — round-trip requires deployment');
+        return;
+      }
+
+      const ceaCaip = `eip155:11155111:${ceaResult.address}`;
+      const resolved = await resolveControllerAccount(ceaCaip);
+
+      expect(resolved.accounts.length).toBe(2);
+
+      const uea = resolved.accounts.find((a) => a.type === 'uea');
+      expect(uea).toBeDefined();
+
+      const controller = resolved.accounts.find((a) => a.role === 'controller');
+      expect(controller).toBeDefined();
+      expect(controller!.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+      expect(controller!.address.toLowerCase()).toBe(evmAddress.toLowerCase());
+
+      console.log(
+        `[round-trip] ${evmAddress} → CEA(${ceaResult.address}) → UEA(${uea!.address}) → Origin(${controller!.address})`
+      );
+    }, 60000);
   });
 });

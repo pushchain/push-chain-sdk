@@ -16,6 +16,10 @@ import { sepolia } from 'viem/chains';
 import bs58 from 'bs58';
 import { txValidator } from '@e2e/shared/validators';
 import { createEvmPushClient } from '@e2e/shared/evm-client';
+import {
+  COUNTER_ADDRESS_PAYABLE,
+  COUNTER_ABI_PAYABLE,
+} from '@e2e/shared/inbound-helpers';
 
 describe('Origin - Push', () => {
   const to = '0x35B84d6848D16415177c64D64504663b998A6ab4';
@@ -41,6 +45,105 @@ describe('Origin - Push', () => {
     });
     await txValidator(tx, from, to);
   });
+
+  // ==========================================================================
+  // UTX-01: Value to Self
+  // ==========================================================================
+  it('should send value to own UEA (UTX-01)', async () => {
+    const UEA = pushClient.universal.account;
+
+    const tx = await pushClient.universal.sendTransaction({
+      to: UEA,
+      value: BigInt(1e3),
+    });
+
+    console.log(`TX Hash: ${tx.hash}`);
+    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+    const receipt = await tx.wait();
+    expect(receipt.status).toBe(1);
+  });
+
+  // ==========================================================================
+  // UTX-05: Data to Contract
+  // ==========================================================================
+  it('should send data-only to counter contract (UTX-05)', async () => {
+    const incrementData = PushChain.utils.helpers.encodeTxData({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      abi: COUNTER_ABI_PAYABLE as any[],
+      functionName: 'increment',
+    });
+
+    const tx = await pushClient.universal.sendTransaction({
+      to: COUNTER_ADDRESS_PAYABLE,
+      data: incrementData,
+    });
+
+    console.log(`TX Hash: ${tx.hash}`);
+    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+    const receipt = await tx.wait();
+    expect(receipt.status).toBe(1);
+  });
+
+  // ==========================================================================
+  // UTX-07: Value + Data to Contract
+  // ==========================================================================
+  it('should send value + data to counter contract (UTX-07)', async () => {
+    const incrementData = PushChain.utils.helpers.encodeTxData({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      abi: COUNTER_ABI_PAYABLE as any[],
+      functionName: 'increment',
+    });
+
+    const tx = await pushClient.universal.sendTransaction({
+      to: COUNTER_ADDRESS_PAYABLE,
+      value: BigInt(7),
+      data: incrementData,
+    });
+
+    console.log(`TX Hash: ${tx.hash}`);
+    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+    const receipt = await tx.wait();
+    expect(receipt.status).toBe(1);
+  });
+
+  // ==========================================================================
+  // UTX-21: Multicall (no funds)
+  // ==========================================================================
+  it('should execute multicall without funds (UTX-21)', async () => {
+    // Multicall on Push Chain sends individual txs per call — needs extra time
+    const incrementData = PushChain.utils.helpers.encodeTxData({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      abi: COUNTER_ABI_PAYABLE as any[],
+      functionName: 'increment',
+    });
+
+    const multicallData = [
+      {
+        to: COUNTER_ADDRESS_PAYABLE,
+        value: BigInt(0),
+        data: incrementData,
+      },
+      {
+        to: COUNTER_ADDRESS_PAYABLE,
+        value: BigInt(0),
+        data: incrementData,
+      },
+    ];
+
+    const tx = await pushClient.universal.sendTransaction({
+      to: COUNTER_ADDRESS_PAYABLE,
+      data: multicallData,
+    });
+
+    console.log(`TX Hash: ${tx.hash}`);
+    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+    const receipt = await tx.wait();
+    expect(receipt.status).toBe(1);
+  }, 30000);
 });
 
 describe('UniversalTxReceipt Type Validation', () => {

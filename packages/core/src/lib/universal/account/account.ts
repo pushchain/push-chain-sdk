@@ -13,12 +13,14 @@ import {
 } from '../../constants/chain';
 import { CHAIN, VM, PUSH_NETWORK } from '../../constants/enums';
 import {
+  DerivedExecutorAccount,
   ExecutorAccountInfo,
   OriginAccountInfo,
+  ResolvedControllerAccounts,
   UniversalAccount,
 } from '../universal.types';
-import { utils } from '@coral-xyz/anchor';
-import { FACTORY_V1 } from '../../constants/abi';
+import { bs58 } from '../../internal/bs58';
+import { FACTORY_V1 } from '../../constants/abi/factoryV1';
 import { PushClient } from '../../push-client/push-client';
 import { Cache, CacheKeys } from '../../cache/cache';
 import { PushChain } from '../../push-chain/push-chain';
@@ -149,6 +151,10 @@ export function fromChainAgnostic(caip: string): UniversalAccount {
 // Global cache instance for convertOriginToExecutor
 const accountCache = new Cache();
 
+// Cache for convertExecutorToOrigin — UEA→origin mapping is immutable once deployed.
+// Keyed by `${address}:${network}` to handle different Push Chain networks.
+const executorToOriginCache = new Map<string, OriginAccountInfo>();
+
 /**
  * Determines the Push Network based on the chain type (testnet vs mainnet)
  */
@@ -184,6 +190,12 @@ function getPushNetworkFromChain(chain: CHAIN): PUSH_NETWORK {
   }
 }
 
+let _convertOriginToExecutorWarned = false;
+
+/**
+ * @deprecated Use `deriveExecutorAccount()` instead, which accepts a CAIP-10
+ *   string and uses `options.chain` to control UEA vs CEA derivation.
+ */
 export async function convertOriginToExecutor(
   account: UniversalAccount,
   options: {
@@ -191,6 +203,12 @@ export async function convertOriginToExecutor(
     onlyCompute?: boolean;
   } = { onlyCompute: true }
 ): Promise<ExecutorAccountInfo> {
+  if (!_convertOriginToExecutorWarned) {
+    console.warn(
+      '[PushChain] convertOriginToExecutor() is deprecated. Use deriveExecutorAccount() instead.'
+    );
+    _convertOriginToExecutorWarned = true;
+  }
   const { chain, address } = account;
   const { vm, chainId } = CHAIN_INFO[chain];
 
@@ -288,7 +306,7 @@ export async function convertOriginToExecutor(
           vm === VM.EVM
             ? address
             : vm === VM.SVM
-            ? bytesToHex(Uint8Array.from(utils.bytes.bs58.decode(address)))
+            ? bytesToHex(Uint8Array.from(bs58.decode(address)))
             : address,
       },
     ],
@@ -324,15 +342,22 @@ export async function convertOriginToExecutor(
  * @deprecated Use `convertExecutorToOrigin()` instead, which supports both
  *   UEA and CEA lookups via the optional `options.chain` parameter.
  */
+let _convertExecutorToOriginAccountWarned = false;
+
 export async function convertExecutorToOriginAccount(
-  ueaAddress: `0x${string}`
+  ueaAddress: `0x${string}`,
+  options?: { network?: PUSH_NETWORK }
 ): Promise<OriginAccountInfo> {
-  console.warn(
-    '[PushChain] convertExecutorToOriginAccount() is deprecated. Use convertExecutorToOrigin() instead.'
-  );
-  const RPC_URL = PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
+  if (!_convertExecutorToOriginAccountWarned) {
+    console.warn(
+      '[PushChain] convertExecutorToOriginAccount() is deprecated. Use resolveControllerAccount() instead.'
+    );
+    _convertExecutorToOriginAccountWarned = true;
+  }
+  const pushChainKey = pushNetworkToChainKey(options?.network ?? PUSH_NETWORK.TESTNET_DONUT);
+  const RPC_URL = PUSH_CHAIN_INFO[pushChainKey].defaultRPC[0];
   const FACTORY_ADDRESS =
-    PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].factoryAddress;
+    PUSH_CHAIN_INFO[pushChainKey].factoryAddress;
 
   // Create viem public client
   const client = createPublicClient({
@@ -366,7 +391,7 @@ export async function convertExecutorToOriginAccount(
     if (universalAccount.chain.startsWith(VM_NAMESPACE[VM.SVM])) {
       // Convert hex-encoded owner to base58 address format
       const hexBytes = hexToBytes(account.owner);
-      universalAccount.address = utils.bytes.bs58.encode(hexBytes);
+      universalAccount.address = bs58.encode(Buffer.from(hexBytes));
     }
   }
 
@@ -380,13 +405,28 @@ export async function convertExecutorToOriginAccount(
  *   the mapped origin account (same as convertExecutorToOriginAccount).
  * - With `chain`: treats the address as a CEA on the specified external chain,
  *   looks up the corresponding PushAccount (UEA) on Push Chain, and returns it.
+ *
+ * @deprecated Use `resolveControllerAccount()` instead, which accepts a CAIP-10
+ *   string and supports both UEA and CEA lookups via `options.chain`.
  */
+let _convertExecutorToOriginWarned = false;
+
 export async function convertExecutorToOrigin(
   executorAddress: string,
   options?: {
     chain?: CHAIN;
+    network?: PUSH_NETWORK;
+    /** @internal Skip deprecation warning for SDK-internal calls */
+    _internal?: boolean;
   }
 ): Promise<OriginAccountInfo> {
+  if (!options?._internal && !_convertExecutorToOriginWarned) {
+    console.warn(
+      '[PushChain] convertExecutorToOrigin() is deprecated. Use resolveControllerAccount() instead.'
+    );
+    _convertExecutorToOriginWarned = true;
+  }
+
   if (options?.chain && !isPushChain(options.chain)) {
     // CEA on external chain → look up PushAccount (UEA) on Push Chain
     const pushAccountAddress = await getPushAccountForCEA(
@@ -425,9 +465,17 @@ export async function convertExecutorToOrigin(
   }
 
   // Default: UEA on Push Chain → origin account
-  const RPC_URL = PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
+  const network = options?.network ?? PUSH_NETWORK.TESTNET_DONUT;
+  const cacheKey = `${executorAddress.toLowerCase()}:${network}`;
+  const cached = executorToOriginCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const pushChainKey = pushNetworkToChainKey(network);
+  const RPC_URL = PUSH_CHAIN_INFO[pushChainKey].defaultRPC[0];
   const FACTORY_ADDRESS =
-    PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].factoryAddress;
+    PUSH_CHAIN_INFO[pushChainKey].factoryAddress;
 
   const client = createPublicClient({
     transport: http(RPC_URL),
@@ -450,7 +498,9 @@ export async function convertExecutorToOrigin(
     account.chainId === '' ||
     account.owner === '0x'
   ) {
-    return { account: null, exists: isUEA };
+    const result: OriginAccountInfo = { account: null, exists: isUEA };
+    executorToOriginCache.set(cacheKey, result);
+    return result;
   }
 
   const universalAccount = PushChain.utils.account.fromChainAgnostic(
@@ -459,11 +509,24 @@ export async function convertExecutorToOrigin(
   if (isUEA) {
     if (universalAccount.chain.startsWith(VM_NAMESPACE[VM.SVM])) {
       const hexBytes = hexToBytes(account.owner);
-      universalAccount.address = utils.bytes.bs58.encode(hexBytes);
+      universalAccount.address = bs58.encode(Buffer.from(hexBytes));
     }
   }
 
-  return { account: universalAccount, exists: isUEA };
+  const result: OriginAccountInfo = { account: universalAccount, exists: isUEA };
+  executorToOriginCache.set(cacheKey, result);
+  return result;
+}
+
+/**
+ * Maps a PUSH_NETWORK to the corresponding Push Chain key for PUSH_CHAIN_INFO lookup.
+ */
+function pushNetworkToChainKey(
+  network: PUSH_NETWORK
+): CHAIN.PUSH_MAINNET | CHAIN.PUSH_TESTNET_DONUT | CHAIN.PUSH_LOCALNET {
+  if (network === PUSH_NETWORK.MAINNET) return CHAIN.PUSH_MAINNET;
+  if (network === PUSH_NETWORK.TESTNET_DONUT || network === PUSH_NETWORK.TESTNET) return CHAIN.PUSH_TESTNET_DONUT;
+  return CHAIN.PUSH_LOCALNET;
 }
 
 function isPushChain(chain: CHAIN): boolean {
@@ -472,4 +535,304 @@ function isPushChain(chain: CHAIN): boolean {
     chain === CHAIN.PUSH_TESTNET_DONUT ||
     chain === CHAIN.PUSH_LOCALNET
   );
+}
+
+/**
+ * Resolves the chain name (enum key) for a CHAIN value.
+ * e.g., CHAIN.PUSH_TESTNET_DONUT → "PUSH_TESTNET_DONUT"
+ */
+function getChainName(chain: CHAIN): string {
+  // Special case: prefer PUSH_TESTNET_DONUT over PUSH_TESTNET for 'eip155:42101'
+  if ((chain as string) === 'eip155:42101') {
+    return 'PUSH_TESTNET_DONUT';
+  }
+  const entry = Object.entries(CHAIN).find(([, val]) => val === chain);
+  return entry ? entry[0] : chain;
+}
+
+/**
+ * Derive the executor account (UEA or CEA) for a given origin account.
+ *
+ * @param account - CAIP-10 formatted address string (e.g., "eip155:11155111:0xABC...")
+ * @param options.chain - Target chain for CEA derivation. If omitted, derives UEA on Push Chain.
+ * @param options.skipNetworkCheck - If true, skip deployment check and return deployed: false.
+ * @returns The derived executor account address and deployment status.
+ */
+export async function deriveExecutorAccount(
+  account: string,
+  options?: {
+    chain?: CHAIN;
+    skipNetworkCheck?: boolean;
+  }
+): Promise<DerivedExecutorAccount> {
+  const { chain: originChain, address } = fromChainAgnostic(account);
+  const skipNetworkCheck = options?.skipNetworkCheck ?? false;
+  const targetChain = options?.chain;
+
+  // If target chain is external, derive CEA on that chain
+  if (targetChain && !isPushChain(targetChain)) {
+    // First get the UEA on Push Chain
+    let ueaAddress: `0x${string}`;
+    if (isPushChain(originChain)) {
+      ueaAddress = address as `0x${string}`;
+    } else {
+      const ueaResult = await deriveExecutorAccount(account);
+      ueaAddress = ueaResult.address;
+    }
+
+    // Get CEA on the target external chain
+    const { cea, isDeployed } = await getCEAAddress(ueaAddress, targetChain);
+    return { address: cea, deployed: skipNetworkCheck ? false : isDeployed };
+  }
+
+  // If origin is Push chain, return the address directly
+  if (isPushChain(originChain)) {
+    if (skipNetworkCheck) {
+      return { address: address as `0x${string}`, deployed: false };
+    }
+    const pushNetwork = getPushNetworkFromChain(originChain);
+    const pushChainKey = pushNetworkToChainKey(pushNetwork);
+    const pushClient = new PushClient({
+      rpcUrls: CHAIN_INFO[pushChainKey].defaultRPC,
+      network: pushNetwork,
+    });
+    const byteCode = await pushClient.publicClient.getCode({
+      address: address as `0x${string}`,
+    });
+    return { address: address as `0x${string}`, deployed: byteCode !== undefined };
+  }
+
+  // Origin is external chain → compute UEA on Push Chain
+  const { vm, chainId } = CHAIN_INFO[originChain];
+  const pushNetwork = getPushNetworkFromChain(originChain);
+
+  // Check cache
+  const cachedAddress = accountCache.get(
+    CacheKeys.ueaAddressOnchain(originChain, address, pushNetwork, vm)
+  );
+
+  if (cachedAddress) {
+    if (skipNetworkCheck) {
+      return { address: cachedAddress as `0x${string}`, deployed: false };
+    }
+    const cachedDeploymentStatus = accountCache.get(
+      CacheKeys.deploymentStatus(cachedAddress)
+    );
+    if (cachedDeploymentStatus !== null) {
+      return {
+        address: cachedAddress as `0x${string}`,
+        deployed: cachedDeploymentStatus,
+      };
+    }
+  }
+
+  const pushChainKey = pushNetworkToChainKey(pushNetwork);
+  const pushClient = new PushClient({
+    rpcUrls: CHAIN_INFO[pushChainKey].defaultRPC,
+    network: pushNetwork,
+  });
+
+  const computedAddress: `0x${string}` = await pushClient.readContract({
+    address: pushClient.pushChainInfo.factoryAddress,
+    abi: FACTORY_V1 as Abi,
+    functionName: 'computeUEA',
+    args: [
+      {
+        chainNamespace: VM_NAMESPACE[vm],
+        chainId: chainId,
+        owner:
+          vm === VM.EVM
+            ? address
+            : vm === VM.SVM
+            ? bytesToHex(Uint8Array.from(bs58.decode(address)))
+            : address,
+      },
+    ],
+  });
+
+  // Cache the computed address
+  accountCache.set(
+    CacheKeys.ueaAddressOnchain(originChain, address, pushNetwork, vm),
+    computedAddress
+  );
+
+  if (skipNetworkCheck) {
+    return { address: computedAddress, deployed: false };
+  }
+
+  const byteCode = await pushClient.publicClient.getCode({
+    address: computedAddress,
+  });
+  const isDeployed = byteCode !== undefined;
+
+  // Cache the deployment status
+  accountCache.set(CacheKeys.deploymentStatus(computedAddress), isDeployed);
+
+  return { address: computedAddress, deployed: isDeployed };
+}
+
+/**
+ * Resolve the controller (origin) accounts for a given executor address.
+ *
+ * Given a UEA or CEA address (as CAIP-10), resolves the full controller chain
+ * back to the origin account.
+ *
+ * @param account - CAIP-10 formatted address string of the executor account
+ * @param options.chain - Supplementary chain context (chain info is in CAIP-10)
+ * @param options.skipNetworkCheck - If true, skip existence checks, set exists: false
+ * @returns Resolved accounts in the controller chain
+ */
+export async function resolveControllerAccount(
+  account: string,
+  options?: {
+    chain?: CHAIN;
+    skipNetworkCheck?: boolean;
+  }
+): Promise<ResolvedControllerAccounts> {
+  const { chain: inputChain, address } = fromChainAgnostic(account);
+  const skipNetworkCheck = options?.skipNetworkCheck ?? false;
+
+  // Case A: Input is on an external chain (CEA)
+  if (!isPushChain(inputChain)) {
+    // Look up UEA on Push Chain from CEA
+    const pushAccountAddress = await getPushAccountForCEA(
+      address as `0x${string}`,
+      inputChain
+    );
+
+    if (
+      pushAccountAddress === '0x0000000000000000000000000000000000000000'
+    ) {
+      return { accounts: [] };
+    }
+
+    // Determine Push Chain from external chain's network
+    const pushNetwork = getPushNetworkFromChain(inputChain);
+    const pushChainKey = pushNetworkToChainKey(pushNetwork);
+
+    // Now resolve UEA → origin
+    const pushChainId = pushChainKey as CHAIN;
+    const RPC_URL = PUSH_CHAIN_INFO[pushChainKey].defaultRPC[0];
+    const FACTORY_ADDRESS = PUSH_CHAIN_INFO[pushChainKey].factoryAddress;
+
+    const client = createPublicClient({ transport: http(RPC_URL) });
+
+    const originResult = (await client.readContract({
+      address: FACTORY_ADDRESS,
+      abi: FACTORY_V1,
+      functionName: 'getOriginForUEA',
+      args: [pushAccountAddress],
+    })) as [
+      { chainNamespace: string; chainId: string; owner: `0x${string}` },
+      boolean
+    ];
+
+    const [originAccount, isUEA] = originResult;
+    const accounts: ResolvedControllerAccounts['accounts'] = [];
+
+    // Add UEA entry
+    accounts.push({
+      chain: pushChainId,
+      chainName: getChainName(pushChainId),
+      address: pushAccountAddress,
+      type: 'uea',
+      exists: skipNetworkCheck ? false : true,
+    });
+
+    // Add origin (UOA) entry if found
+    if (
+      isUEA &&
+      originAccount.chainNamespace !== '' &&
+      originAccount.chainId !== '' &&
+      originAccount.owner !== '0x'
+    ) {
+      const originUniversal = fromChainAgnostic(
+        `${originAccount.chainNamespace}:${originAccount.chainId}:${originAccount.owner}`
+      );
+
+      // Handle SVM address conversion
+      let originAddress = originUniversal.address;
+      if (originUniversal.chain.startsWith(VM_NAMESPACE[VM.SVM])) {
+        const hexBytes = hexToBytes(originAccount.owner);
+        originAddress = bs58.encode(Buffer.from(hexBytes));
+      }
+
+      accounts.push({
+        chain: originUniversal.chain,
+        chainName: getChainName(originUniversal.chain),
+        address: originAddress,
+        type: 'uoa',
+        exists: skipNetworkCheck ? false : true,
+        role: 'controller',
+      });
+    }
+
+    return { accounts };
+  }
+
+  // Case B: Input is on Push Chain (UEA or EOA)
+  const pushNetwork = getPushNetworkFromChain(inputChain);
+  const pushChainKey = pushNetworkToChainKey(pushNetwork);
+  const RPC_URL = PUSH_CHAIN_INFO[pushChainKey].defaultRPC[0];
+  const FACTORY_ADDRESS = PUSH_CHAIN_INFO[pushChainKey].factoryAddress;
+
+  const client = createPublicClient({ transport: http(RPC_URL) });
+
+  const originResult = (await client.readContract({
+    address: FACTORY_ADDRESS,
+    abi: FACTORY_V1,
+    functionName: 'getOriginForUEA',
+    args: [address as `0x${string}`],
+  })) as [
+    { chainNamespace: string; chainId: string; owner: `0x${string}` },
+    boolean
+  ];
+
+  const [originAccount, isUEA] = originResult;
+
+  // If it's a UEA, resolve to origin
+  if (
+    isUEA &&
+    originAccount.chainNamespace !== '' &&
+    originAccount.chainId !== '' &&
+    originAccount.owner !== '0x'
+  ) {
+    const originUniversal = fromChainAgnostic(
+      `${originAccount.chainNamespace}:${originAccount.chainId}:${originAccount.owner}`
+    );
+
+    // Handle SVM address conversion
+    let originAddress = originUniversal.address;
+    if (originUniversal.chain.startsWith(VM_NAMESPACE[VM.SVM])) {
+      const hexBytes = hexToBytes(originAccount.owner);
+      originAddress = bs58.encode(Buffer.from(hexBytes));
+    }
+
+    return {
+      accounts: [
+        {
+          chain: originUniversal.chain,
+          chainName: getChainName(originUniversal.chain),
+          address: originAddress,
+          type: 'uoa',
+          exists: skipNetworkCheck ? false : true,
+          role: 'controller',
+        },
+      ],
+    };
+  }
+
+  // Not a UEA — Push Chain EOA/smart contract, return as controller
+  return {
+    accounts: [
+      {
+        chain: inputChain,
+        chainName: getChainName(inputChain),
+        address: address,
+        type: 'uoa',
+        exists: skipNetworkCheck ? false : true,
+        role: 'controller',
+      },
+    ],
+  };
 }

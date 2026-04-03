@@ -2,9 +2,10 @@ import {
   convertOriginToExecutor,
   fromChainAgnostic,
   convertExecutorToOriginAccount,
-  convertExecutorToOrigin,
   toChainAgnostic,
   toUniversal,
+  deriveExecutorAccount,
+  resolveControllerAccount,
 } from './universal/account';
 import {
   construct,
@@ -20,7 +21,7 @@ import {
 import { SYNTHETIC_PUSH_ERC20 } from './constants/chain';
 import { UniversalAccount } from './universal/universal.types';
 import type { PushChain } from './push-chain/push-chain';
-import { ethers } from 'ethers';
+import { encodeFunctionData, formatUnits } from 'viem';
 
 /**
  * @dev - THESE UTILS ARE EXPORTED TO SDK CONSUMER
@@ -70,7 +71,9 @@ export class Utils {
 
     convertExecutorToOriginAccount,
 
-    convertExecutorToOrigin,
+    deriveExecutorAccount,
+
+    resolveControllerAccount,
   };
 
   static signer = {
@@ -214,15 +217,19 @@ export class Utils {
      * Alias maintained for backwards compatibility. Logs a deprecation warning
      * and delegates to Utils.chains.getChainNamespace.
      */
-    getChainName: (chainName: string): string | undefined => {
-      // Emit deprecation warning on every call to surface migration need
-      // Note: Keeping message explicit for SDK consumers
-      console.warn(
-        '[DEPRECATED] PushChain.utils.helper.getChainName is deprecated. ' +
-          'Use PushChain.utils.chains.getChainNamespace(chainName) instead.'
-      );
-      return Utils.chains.getChainName(chainName);
-    },
+    getChainName: (() => {
+      let warned = false;
+      return (chainName: string): string | undefined => {
+        if (!warned) {
+          console.warn(
+            '[DEPRECATED] PushChain.utils.helper.getChainName is deprecated. ' +
+              'Use PushChain.utils.chains.getChainNamespace(chainName) instead.'
+          );
+          warned = true;
+        }
+        return Utils.chains.getChainName(chainName);
+      };
+    })(),
     encodeTxData({
       abi,
       functionName,
@@ -248,10 +255,8 @@ export class Utils {
       }
 
       try {
-        // Create ethers Interface and encode the function data
-        const abiInterface = new ethers.Interface(abi);
-        const data = abiInterface.encodeFunctionData(functionName, args);
-        return data as `0x${string}`;
+        const data = encodeFunctionData({ abi, functionName, args });
+        return data;
       } catch (error) {
         throw new Error(
           `Failed to encode function '${functionName}': ${
@@ -462,8 +467,12 @@ export class Utils {
         // Convert string to bigint if needed
         const bigintValue = typeof value === 'string' ? BigInt(value) : value;
 
-        // Use ethers to format the units
-        const formatted = ethers.formatUnits(bigintValue, decimals);
+        let formatted = formatUnits(bigintValue, decimals);
+        // Ensure at least one decimal place for backward compatibility
+        // (only when decimals > 0, matching prior ethers behavior)
+        if (decimals > 0 && !formatted.includes('.')) {
+          formatted = formatted + '.0';
+        }
 
         // Apply precision if specified
         if (precision !== undefined) {
@@ -574,6 +583,7 @@ export class Utils {
     getMoveableTokens(chainOrClient?: CHAIN | PushChain): {
       tokens: Array<{
         chain: CHAIN;
+        chainName: string;
         symbol: string;
         decimals: number;
         address: string;
@@ -588,6 +598,7 @@ export class Utils {
         return {
           tokens: list.map((t) => ({
             chain,
+            chainName: Utils.chains.getChainName(chain) ?? chain,
             symbol: t.symbol,
             decimals: t.decimals,
             address: t.address,
@@ -598,6 +609,7 @@ export class Utils {
 
       const tokens: Array<{
         chain: CHAIN;
+        chainName: string;
         symbol: string;
         decimals: number;
         address: string;
@@ -609,6 +621,7 @@ export class Utils {
         for (const t of list ?? []) {
           tokens.push({
             chain: k,
+            chainName: Utils.chains.getChainName(k) ?? k,
             symbol: t.symbol,
             decimals: t.decimals,
             address: t.address,
@@ -628,6 +641,7 @@ export class Utils {
     getPayableTokens(chainOrClient?: CHAIN | PushChain): {
       tokens: Array<{
         chain: CHAIN;
+        chainName: string;
         symbol: string;
         decimals: number;
         address: string;
@@ -642,6 +656,7 @@ export class Utils {
         return {
           tokens: list.map((t) => ({
             chain,
+            chainName: Utils.chains.getChainName(chain) ?? chain,
             symbol: t.symbol,
             decimals: t.decimals,
             address: t.address,
@@ -652,6 +667,7 @@ export class Utils {
 
       const tokens: Array<{
         chain: CHAIN;
+        chainName: string;
         symbol: string;
         decimals: number;
         address: string;
@@ -663,6 +679,7 @@ export class Utils {
         for (const t of list ?? []) {
           tokens.push({
             chain: k,
+            chainName: Utils.chains.getChainName(k) ?? k,
             symbol: t.symbol,
             decimals: t.decimals,
             address: t.address,
@@ -693,7 +710,8 @@ export class Utils {
      * ```
      */
     getPRC20Address(
-      token: MoveableToken | { chain: string; address: string }
+      token: MoveableToken | { chain: string; address: string },
+      options?: { network?: PUSH_NETWORK }
     ): `0x${string}` {
       // Infer origin chain and symbol by matching against the MOVEABLE_TOKENS registry
       let originChain: CHAIN | undefined;
@@ -728,8 +746,7 @@ export class Utils {
         );
       }
 
-      // Select Push network mapping (tests/use-cases use TESTNET_DONUT; identical to TESTNET here)
-      const network = PUSH_NETWORK.TESTNET_DONUT;
+      const network = options?.network ?? PUSH_NETWORK.TESTNET_DONUT;
       const map = SYNTHETIC_PUSH_ERC20[network];
 
       // Map token → synthetic key by origin chain family
@@ -751,7 +768,12 @@ export class Utils {
         | 'USDT_ARB'
         | 'USDT_SOL'
         | 'USDT_BNB'
-        | 'USDT_BASE';
+        | 'USDT_BASE'
+        | 'USDC_ETH'
+        | 'USDC_ARB'
+        | 'USDC_SOL'
+        | 'USDC_BNB'
+        | 'USDC_BASE';
 
       switch (tokenSymbol) {
         case 'ETH': {
@@ -780,6 +802,18 @@ export class Utils {
           else
             throw new Error(
               'Unsupported USDT origin chain for synthetic mapping'
+            );
+          break;
+        }
+        case 'USDC': {
+          if (isEthFamily) key = 'USDC_ETH';
+          else if (isArbFamily) key = 'USDC_ARB';
+          else if (isBaseFamily) key = 'USDC_BASE';
+          else if (isBnbFamily) key = 'USDC_BNB';
+          else if (isSolFamily) key = 'USDC_SOL';
+          else
+            throw new Error(
+              'Unsupported USDC origin chain for synthetic mapping'
             );
           break;
         }

@@ -5,7 +5,10 @@
  * outbound requests, and cascade composition helpers.
  */
 import { decodeAbiParameters, decodeFunctionData, keccak256, toBytes } from 'viem';
-import { ERC20_EVM, CEA_EVM, UNIVERSAL_GATEWAY_V0, UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
+import { ERC20_EVM } from '../../constants/abi/erc20.evm';
+import { CEA_EVM } from '../../constants/abi/cea.evm';
+import { UNIVERSAL_GATEWAY_V0 } from '../../constants/abi/universalGatewayV0.evm';
+import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi/universalGatewayPC.evm';
 import { ZERO_ADDRESS, MIGRATION_SELECTOR, MULTICALL_SELECTOR, UEA_MULTICALL_SELECTOR } from '../../constants/selectors';
 import type { MultiCall, UniversalOutboundTxRequest } from '../orchestrator.types';
 import {
@@ -114,19 +117,24 @@ describe('buildApproveAndInteract', () => {
     };
     const result = buildApproveAndInteract(TOKEN_A, BOB, BigInt(1000), interactCall);
 
-    expect(result).toHaveLength(2);
+    expect(result).toHaveLength(3);
 
-    // First call: approve
+    // First call: approve to zero (USDT safety)
     expect(result[0].to).toBe(TOKEN_A);
-    expect(result[0].value).toBe(BigInt(0));
-    // Verify it's an approve call
-    const decoded = decodeFunctionData({ abi: ERC20_EVM, data: result[0].data as `0x${string}` });
+    const decodedZero = decodeFunctionData({ abi: ERC20_EVM, data: result[0].data as `0x${string}` });
+    expect(decodedZero.functionName).toBe('approve');
+    expect(decodedZero.args![1]).toBe(BigInt(0));
+
+    // Second call: approve actual amount
+    expect(result[1].to).toBe(TOKEN_A);
+    expect(result[1].value).toBe(BigInt(0));
+    const decoded = decodeFunctionData({ abi: ERC20_EVM, data: result[1].data as `0x${string}` });
     expect(decoded.functionName).toBe('approve');
     expect(decoded.args![0]).toBe(BOB); // spender
     expect(decoded.args![1]).toBe(BigInt(1000)); // amount
 
-    // Second call: the interaction
-    expect(result[1]).toBe(interactCall);
+    // Third call: the interaction
+    expect(result[2]).toBe(interactCall);
   });
 });
 
@@ -284,27 +292,35 @@ describe('buildOutboundApprovalAndCall', () => {
       outboundRequest,
     });
 
-    // 1 approve (burn) + 1 outbound = 2 calls
-    expect(result).toHaveLength(2);
+    // 1 approve-zero + 1 approve (burn) + 1 outbound = 3 calls
+    expect(result).toHaveLength(3);
 
-    // First: approve burnAmount on prc20Token
-    const approveDecoded = decodeFunctionData({
+    // First: approve to zero (USDT safety)
+    const approveZeroDecoded = decodeFunctionData({
       abi: ERC20_EVM,
       data: result[0].data as `0x${string}`,
+    });
+    expect(approveZeroDecoded.functionName).toBe('approve');
+    expect(approveZeroDecoded.args![1]).toBe(BigInt(0));
+
+    // Second: approve burnAmount on prc20Token
+    const approveDecoded = decodeFunctionData({
+      abi: ERC20_EVM,
+      data: result[1].data as `0x${string}`,
     });
     expect(approveDecoded.functionName).toBe('approve');
     expect(approveDecoded.args![0]).toBe(GATEWAY);
     expect(approveDecoded.args![1]).toBe(BigInt(1000)); // only burnAmount
-    expect(result[0].to).toBe(TOKEN_A);
+    expect(result[1].to).toBe(TOKEN_A);
 
-    // Second: sendUniversalTxOutbound with pre-computed native value
+    // Third: sendUniversalTxOutbound with pre-computed native value
     const outboundDecoded = decodeFunctionData({
       abi: UNIVERSAL_GATEWAY_PC,
-      data: result[1].data as `0x${string}`,
+      data: result[2].data as `0x${string}`,
     });
     expect(outboundDecoded.functionName).toBe('sendUniversalTxOutbound');
-    expect(result[1].to).toBe(GATEWAY);
-    expect(result[1].value).toBe(BigInt(2600));
+    expect(result[2].to).toBe(GATEWAY);
+    expect(result[2].value).toBe(BigInt(2600));
   });
 
   it('should skip burn approval when zero address token', () => {
@@ -354,10 +370,10 @@ describe('buildOutboundApprovalAndCall', () => {
       outboundRequest,
     });
 
-    // approve + outbound
-    expect(result).toHaveLength(2);
+    // approve-zero + approve + outbound
+    expect(result).toHaveLength(3);
     // fallback: gasFee * 5 = 250
-    expect(result[1].value).toBe(BigInt(250));
+    expect(result[2].value).toBe(BigInt(250));
   });
 });
 
