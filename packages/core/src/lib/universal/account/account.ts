@@ -551,149 +551,78 @@ function getChainName(chain: CHAIN): string {
 }
 
 /**
- * Derive the executor account (UEA or CEA) for a given origin account.
+ * Derive the executor account (UEA or CEA) for a given Push Chain account.
  *
- * @param account - CAIP-10 formatted address string (e.g., "eip155:11155111:0xABC...")
- * @param options.chain - Target chain for CEA derivation. If omitted, derives UEA on Push Chain.
+ * @param address - Plain address string (e.g., "0xABC...")
+ * @param options.chain - Target external chain for CEA derivation. If omitted, treats address as Push Chain account.
  * @param options.skipNetworkCheck - If true, skip deployment check and return deployed: false.
  * @returns The derived executor account address and deployment status.
  */
 export async function deriveExecutorAccount(
-  account: string,
+  address: string,
   options?: {
     chain?: CHAIN;
     skipNetworkCheck?: boolean;
   }
 ): Promise<DerivedExecutorAccount> {
-  const { chain: originChain, address } = fromChainAgnostic(account);
   const skipNetworkCheck = options?.skipNetworkCheck ?? false;
   const targetChain = options?.chain;
 
   // If target chain is external, derive CEA on that chain
   if (targetChain && !isPushChain(targetChain)) {
-    // First get the UEA on Push Chain
-    let ueaAddress: `0x${string}`;
-    if (isPushChain(originChain)) {
-      ueaAddress = address as `0x${string}`;
-    } else {
-      const ueaResult = await deriveExecutorAccount(account);
-      ueaAddress = ueaResult.address;
-    }
-
-    // Get CEA on the target external chain
-    const { cea, isDeployed } = await getCEAAddress(ueaAddress, targetChain);
+    const { cea, isDeployed } = await getCEAAddress(
+      address as `0x${string}`,
+      targetChain
+    );
     return { address: cea, deployed: skipNetworkCheck ? false : isDeployed };
   }
 
-  // If origin is Push chain, return the address directly
-  if (isPushChain(originChain)) {
-    if (skipNetworkCheck) {
-      return { address: address as `0x${string}`, deployed: false };
-    }
-    const pushNetwork = getPushNetworkFromChain(originChain);
-    const pushChainKey = pushNetworkToChainKey(pushNetwork);
-    const pushClient = new PushClient({
-      rpcUrls: CHAIN_INFO[pushChainKey].defaultRPC,
-      network: pushNetwork,
-    });
-    const byteCode = await pushClient.publicClient.getCode({
-      address: address as `0x${string}`,
-    });
-    return { address: address as `0x${string}`, deployed: byteCode !== undefined };
+  // Address is on Push Chain — return with deployment check
+  if (skipNetworkCheck) {
+    return { address: address as `0x${string}`, deployed: false };
   }
 
-  // Origin is external chain → compute UEA on Push Chain
-  const { vm, chainId } = CHAIN_INFO[originChain];
-  const pushNetwork = getPushNetworkFromChain(originChain);
-
-  // Check cache
-  const cachedAddress = accountCache.get(
-    CacheKeys.ueaAddressOnchain(originChain, address, pushNetwork, vm)
-  );
-
-  if (cachedAddress) {
-    if (skipNetworkCheck) {
-      return { address: cachedAddress as `0x${string}`, deployed: false };
-    }
-    const cachedDeploymentStatus = accountCache.get(
-      CacheKeys.deploymentStatus(cachedAddress)
-    );
-    if (cachedDeploymentStatus !== null) {
-      return {
-        address: cachedAddress as `0x${string}`,
-        deployed: cachedDeploymentStatus,
-      };
-    }
-  }
-
+  const pushNetwork =
+    targetChain && isPushChain(targetChain)
+      ? getPushNetworkFromChain(targetChain)
+      : PUSH_NETWORK.TESTNET_DONUT;
   const pushChainKey = pushNetworkToChainKey(pushNetwork);
   const pushClient = new PushClient({
     rpcUrls: CHAIN_INFO[pushChainKey].defaultRPC,
     network: pushNetwork,
   });
-
-  const computedAddress: `0x${string}` = await pushClient.readContract({
-    address: pushClient.pushChainInfo.factoryAddress,
-    abi: FACTORY_V1 as Abi,
-    functionName: 'computeUEA',
-    args: [
-      {
-        chainNamespace: VM_NAMESPACE[vm],
-        chainId: chainId,
-        owner:
-          vm === VM.EVM
-            ? address
-            : vm === VM.SVM
-            ? bytesToHex(Uint8Array.from(bs58.decode(address)))
-            : address,
-      },
-    ],
-  });
-
-  // Cache the computed address
-  accountCache.set(
-    CacheKeys.ueaAddressOnchain(originChain, address, pushNetwork, vm),
-    computedAddress
-  );
-
-  if (skipNetworkCheck) {
-    return { address: computedAddress, deployed: false };
-  }
-
   const byteCode = await pushClient.publicClient.getCode({
-    address: computedAddress,
+    address: address as `0x${string}`,
   });
-  const isDeployed = byteCode !== undefined;
-
-  // Cache the deployment status
-  accountCache.set(CacheKeys.deploymentStatus(computedAddress), isDeployed);
-
-  return { address: computedAddress, deployed: isDeployed };
+  return {
+    address: address as `0x${string}`,
+    deployed: byteCode !== undefined,
+  };
 }
 
 /**
  * Resolve the controller (origin) accounts for a given executor address.
  *
- * Given a UEA or CEA address (as CAIP-10), resolves the full controller chain
+ * Given a UEA or CEA plain address, resolves the full controller chain
  * back to the origin account.
  *
- * @param account - CAIP-10 formatted address string of the executor account
- * @param options.chain - Supplementary chain context (chain info is in CAIP-10)
+ * @param address - Plain address string of the executor account (e.g., "0xABC...")
+ * @param options.chain - Chain context. If external chain, address is treated as CEA on that chain. If omitted or Push chain, address is treated as UEA on Push Chain.
  * @param options.skipNetworkCheck - If true, skip existence checks, set exists: false
  * @returns Resolved accounts in the controller chain
  */
 export async function resolveControllerAccount(
-  account: string,
+  address: string,
   options?: {
     chain?: CHAIN;
     skipNetworkCheck?: boolean;
   }
 ): Promise<ResolvedControllerAccounts> {
-  const { chain: inputChain, address } = fromChainAgnostic(account);
+  const inputChain = options?.chain;
   const skipNetworkCheck = options?.skipNetworkCheck ?? false;
 
-  // Case A: Input is on an external chain (CEA)
-  if (!isPushChain(inputChain)) {
+  // Case A: External chain → address is a CEA on that chain
+  if (inputChain && !isPushChain(inputChain)) {
     // Look up UEA on Push Chain from CEA
     const pushAccountAddress = await getPushAccountForCEA(
       address as `0x${string}`,
@@ -770,9 +699,13 @@ export async function resolveControllerAccount(
     return { accounts };
   }
 
-  // Case B: Input is on Push Chain (UEA or EOA)
-  const pushNetwork = getPushNetworkFromChain(inputChain);
+  // Case B: No chain or Push chain → address is a UEA or EOA on Push Chain
+  const pushNetwork =
+    inputChain && isPushChain(inputChain)
+      ? getPushNetworkFromChain(inputChain)
+      : PUSH_NETWORK.TESTNET_DONUT;
   const pushChainKey = pushNetworkToChainKey(pushNetwork);
+  const pushChainId = pushChainKey as CHAIN;
   const RPC_URL = PUSH_CHAIN_INFO[pushChainKey].defaultRPC[0];
   const FACTORY_ADDRESS = PUSH_CHAIN_INFO[pushChainKey].factoryAddress;
 
@@ -826,8 +759,8 @@ export async function resolveControllerAccount(
   return {
     accounts: [
       {
-        chain: inputChain,
-        chainName: getChainName(inputChain),
+        chain: pushChainId,
+        chainName: getChainName(pushChainId),
         address: address,
         type: 'uoa',
         exists: skipNetworkCheck ? false : true,
