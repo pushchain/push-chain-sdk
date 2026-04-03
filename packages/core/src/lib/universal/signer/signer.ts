@@ -68,6 +68,34 @@ function chainIdToChain(chainId: string | number | bigint): CHAIN {
 }
 
 /**
+ * Maps an EVM numeric chainId to the corresponding CHAIN enum.
+ * Shared by all signer skeleton generators to avoid duplication.
+ */
+function chainIdToChain(chainId: string | number | bigint): CHAIN {
+  const id = chainId.toString();
+  switch (id) {
+    case '11155111':
+      return CHAIN.ETHEREUM_SEPOLIA;
+    case '421614':
+      return CHAIN.ARBITRUM_SEPOLIA;
+    case '84532':
+      return CHAIN.BASE_SEPOLIA;
+    case '97':
+      return CHAIN.BNB_TESTNET;
+    case '1':
+      return CHAIN.ETHEREUM_MAINNET;
+    case '9':
+      return CHAIN.PUSH_MAINNET;
+    case '42101':
+      return CHAIN.PUSH_TESTNET;
+    case '9000':
+      return CHAIN.PUSH_LOCALNET;
+    default:
+      throw new Error(`Unsupported chainId: ${chainId}`);
+  }
+}
+
+/**
  * Creates a `UniversalSigner` object for signing messages and transactions
  * on any supported chain.
  *
