@@ -307,9 +307,10 @@ describe('Universal Account Utilities', () => {
       const pushAddress =
         '0x1234567890123456789012345678901234567890' as `0x${string}`;
 
-      const result = await deriveExecutorAccount(pushAddress, {
-        skipNetworkCheck: true,
-      });
+      const result = await deriveExecutorAccount(
+        { chain: CHAIN.PUSH_TESTNET_DONUT, address: pushAddress },
+        { skipNetworkCheck: true },
+      );
 
       expect(result.address).toBe(pushAddress);
       expect(result.deployed).toBe(false);
@@ -319,9 +320,10 @@ describe('Universal Account Utilities', () => {
       const pushAddress =
         '0x1234567890123456789012345678901234567890' as `0x${string}`;
 
-      const result = await deriveExecutorAccount(pushAddress, {
-        skipNetworkCheck: true,
-      });
+      const result = await deriveExecutorAccount(
+        { chain: CHAIN.PUSH_TESTNET_DONUT, address: pushAddress },
+        { skipNetworkCheck: true },
+      );
 
       expect(typeof result.deployed).toBe('boolean');
     });

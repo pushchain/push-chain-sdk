@@ -181,7 +181,7 @@ export async function queryOutboundGasFee(
   let gasToken: `0x${string}`;
   let gasFee: bigint;
   let protocolFee: bigint;
-  let gasPrice: bigint = BigInt(0);
+  let gasPrice = BigInt(0);
   try {
     const result = await ctx.pushClient.readContract<[`0x${string}`, bigint, bigint, bigint, string]>({
       address: universalCoreAddress,

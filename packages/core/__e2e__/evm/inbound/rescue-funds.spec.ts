@@ -213,6 +213,7 @@ describe('Rescue Funds: Outbound CEA Inbound (Route 3)', () => {
       }
 
       // Get log index from the Sepolia tx receipt
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { createPublicClient: createPC, http: httpTransport } = require('viem');
       const sepoliaClient = createPC({
         transport: httpTransport(CHAIN_INFO[fixture.chain].defaultRPC[0]),

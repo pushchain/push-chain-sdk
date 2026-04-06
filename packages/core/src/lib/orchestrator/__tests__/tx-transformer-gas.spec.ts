@@ -657,6 +657,7 @@ describe('gas-calculator', () => {
   // calculateNativeAmountForDeposit
   // --------------------------------------------------------------------------
   describe('calculateNativeAmountForDeposit', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { PriceFetch } = require('../../price-fetch/price-fetch');
 
     beforeEach(() => {

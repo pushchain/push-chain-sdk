@@ -526,9 +526,10 @@ describe('Account Conversion Utilities', () => {
     it('should return same address for Push Chain account with skipNetworkCheck', async () => {
       if (skipPush) return;
 
-      const result = await deriveExecutorAccount(pushAddress, {
-        skipNetworkCheck: true,
-      });
+      const result = await deriveExecutorAccount(
+        { chain: CHAIN.PUSH_TESTNET_DONUT, address: pushAddress },
+        { skipNetworkCheck: true },
+      );
 
       expect(result.address).toBe(pushAddress);
       expect(result.deployed).toBe(false);
@@ -537,7 +538,9 @@ describe('Account Conversion Utilities', () => {
     it('should check deployment for Push Chain account without skipNetworkCheck', async () => {
       if (skipPush) return;
 
-      const result = await deriveExecutorAccount(pushAddress);
+      const result = await deriveExecutorAccount(
+        { chain: CHAIN.PUSH_TESTNET_DONUT, address: pushAddress },
+      );
 
       expect(result.address).toBe(pushAddress);
       expect(typeof result.deployed).toBe('boolean');
@@ -546,12 +549,14 @@ describe('Account Conversion Utilities', () => {
     it('should return consistent results across calls', async () => {
       if (skipPush) return;
 
-      const result1 = await deriveExecutorAccount(pushAddress, {
-        skipNetworkCheck: true,
-      });
-      const result2 = await deriveExecutorAccount(pushAddress, {
-        skipNetworkCheck: true,
-      });
+      const result1 = await deriveExecutorAccount(
+        { chain: CHAIN.PUSH_TESTNET_DONUT, address: pushAddress },
+        { skipNetworkCheck: true },
+      );
+      const result2 = await deriveExecutorAccount(
+        { chain: CHAIN.PUSH_TESTNET_DONUT, address: pushAddress },
+        { skipNetworkCheck: true },
+      );
 
       expect(result1.address).toBe(result2.address);
       expect(result1.deployed).toBe(result2.deployed);
@@ -565,40 +570,37 @@ describe('Account Conversion Utilities', () => {
     it('should return CEA for Push Chain account on external chain', async () => {
       if (skipPush) return;
 
-      const result = await deriveExecutorAccount(pushAddress, {
-        chain: CHAIN.ETHEREUM_SEPOLIA,
-      });
+      const result = await deriveExecutorAccount(
+        { chain: CHAIN.PUSH_TESTNET_DONUT, address: pushAddress },
+        { chain: CHAIN.ETHEREUM_SEPOLIA },
+      );
 
       expect(result.address).toMatch(/^0x[a-fA-F0-9]{40}$/);
       expect(typeof result.deployed).toBe('boolean');
       console.log(`[derive] Push → CEA (ETH Sepolia): ${result.address} (deployed: ${result.deployed})`);
     }, 30000);
 
-    it('should return CEA for EVM UEA on external chain', async () => {
+    it('should return CEA for EVM origin on external chain', async () => {
       if (skipEVM) return;
 
-      // Get UEA via deprecated helper
-      const ueaResult = await convertOriginToExecutor(
+      const result = await deriveExecutorAccount(
         { chain: CHAIN.ETHEREUM_SEPOLIA, address: evmAddress },
-        { onlyCompute: true }
+        { chain: CHAIN.ETHEREUM_SEPOLIA },
       );
-
-      const result = await deriveExecutorAccount(ueaResult.address, {
-        chain: CHAIN.ETHEREUM_SEPOLIA,
-      });
 
       expect(result.address).toMatch(/^0x[a-fA-F0-9]{40}$/);
       expect(typeof result.deployed).toBe('boolean');
-      console.log(`[derive] EVM UEA → CEA (ETH Sepolia): ${result.address} (deployed: ${result.deployed})`);
+      console.log(`[derive] EVM origin → CEA (ETH Sepolia): ${result.address} (deployed: ${result.deployed})`);
     }, 30000);
 
     it('should match direct getCEAAddress result', async () => {
       if (skipPush) return;
 
       // Get CEA via deriveExecutorAccount with chain
-      const ceaViaDerived = await deriveExecutorAccount(pushAddress, {
-        chain: CHAIN.ETHEREUM_SEPOLIA,
-      });
+      const ceaViaDerived = await deriveExecutorAccount(
+        { chain: CHAIN.PUSH_TESTNET_DONUT, address: pushAddress },
+        { chain: CHAIN.ETHEREUM_SEPOLIA },
+      );
 
       // Get CEA directly via getCEAAddress
       const ceaDirect = await getCEAAddress(pushAddress as `0x${string}`, CHAIN.ETHEREUM_SEPOLIA);
@@ -609,10 +611,11 @@ describe('Account Conversion Utilities', () => {
     it('should return different CEA addresses for different target chains', async () => {
       if (skipPush) return;
 
-      const ceaEth = await deriveExecutorAccount(pushAddress, { chain: CHAIN.ETHEREUM_SEPOLIA });
-      const ceaBnb = await deriveExecutorAccount(pushAddress, { chain: CHAIN.BNB_TESTNET });
-      const ceaArb = await deriveExecutorAccount(pushAddress, { chain: CHAIN.ARBITRUM_SEPOLIA });
-      const ceaBase = await deriveExecutorAccount(pushAddress, { chain: CHAIN.BASE_SEPOLIA });
+      const pushAccount = { chain: CHAIN.PUSH_TESTNET_DONUT, address: pushAddress };
+      const ceaEth = await deriveExecutorAccount(pushAccount, { chain: CHAIN.ETHEREUM_SEPOLIA });
+      const ceaBnb = await deriveExecutorAccount(pushAccount, { chain: CHAIN.BNB_TESTNET });
+      const ceaArb = await deriveExecutorAccount(pushAccount, { chain: CHAIN.ARBITRUM_SEPOLIA });
+      const ceaBase = await deriveExecutorAccount(pushAccount, { chain: CHAIN.BASE_SEPOLIA });
 
       const addresses = [ceaEth.address, ceaBnb.address, ceaArb.address, ceaBase.address];
       addresses.forEach((addr) => expect(addr).toMatch(/^0x[a-fA-F0-9]{40}$/));
@@ -623,17 +626,20 @@ describe('Account Conversion Utilities', () => {
       if (skipPush) return;
 
       await expect(
-        deriveExecutorAccount(pushAddress, { chain: CHAIN.SOLANA_DEVNET })
+        deriveExecutorAccount(
+          { chain: CHAIN.PUSH_TESTNET_DONUT, address: pushAddress },
+          { chain: CHAIN.SOLANA_DEVNET },
+        )
       ).rejects.toThrow();
     }, 30000);
 
     it('should respect skipNetworkCheck on CEA derivation', async () => {
       if (skipPush) return;
 
-      const result = await deriveExecutorAccount(pushAddress, {
-        chain: CHAIN.ETHEREUM_SEPOLIA,
-        skipNetworkCheck: true,
-      });
+      const result = await deriveExecutorAccount(
+        { chain: CHAIN.PUSH_TESTNET_DONUT, address: pushAddress },
+        { chain: CHAIN.ETHEREUM_SEPOLIA, skipNetworkCheck: true },
+      );
 
       expect(result.address).toMatch(/^0x[a-fA-F0-9]{40}$/);
       expect(result.deployed).toBe(false);
@@ -804,10 +810,8 @@ describe('Account Conversion Utilities', () => {
     it('EVM UEA → resolve should return original account', async () => {
       if (skipEVM) return;
 
-      // Get UEA via deprecated helper (since deriveExecutorAccount no longer computes UEA from external origin)
-      const ueaResult = await convertOriginToExecutor(
+      const ueaResult = await deriveExecutorAccount(
         { chain: CHAIN.ETHEREUM_SEPOLIA, address: evmAddress },
-        { onlyCompute: true }
       );
 
       if (!ueaResult.deployed) {
@@ -826,10 +830,8 @@ describe('Account Conversion Utilities', () => {
     it('Solana UEA → resolve should return original account', async () => {
       if (skipSolana) return;
 
-      // Get UEA via deprecated helper
-      const ueaResult = await convertOriginToExecutor(
+      const ueaResult = await deriveExecutorAccount(
         { chain: CHAIN.SOLANA_DEVNET, address: solanaAddress },
-        { onlyCompute: true }
       );
 
       if (!ueaResult.deployed) {
@@ -845,19 +847,14 @@ describe('Account Conversion Utilities', () => {
       expect(controller!.address).toBe(solanaAddress);
     }, 30000);
 
-    it('Push account → CEA → resolve should return UEA + origin', async () => {
+    it('EVM origin → CEA → resolve should return UEA + origin', async () => {
       if (skipEVM) return;
 
-      // Get UEA via deprecated helper
-      const ueaResult = await convertOriginToExecutor(
+      // Derive CEA from the EVM origin account
+      const ceaResult = await deriveExecutorAccount(
         { chain: CHAIN.ETHEREUM_SEPOLIA, address: evmAddress },
-        { onlyCompute: true }
+        { chain: CHAIN.ETHEREUM_SEPOLIA },
       );
-
-      // Derive CEA from the UEA using new API
-      const ceaResult = await deriveExecutorAccount(ueaResult.address, {
-        chain: CHAIN.ETHEREUM_SEPOLIA,
-      });
 
       if (!ceaResult.deployed) {
         console.log('SKIP: CEA not deployed — round-trip requires deployment');

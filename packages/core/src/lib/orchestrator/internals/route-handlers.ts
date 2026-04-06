@@ -382,13 +382,7 @@ export async function executeUoaToCea(
     ctx.pushClient.getBalance(ueaAddress),
   ]);
   const isUEADeployed = isNativePushEOA || ueaCode !== undefined;
-  if (!isUEADeployed) {
-    throw new Error(
-      'UEA is not deployed. Please send an inbound transaction to Push Chain first ' +
-      '(e.g. sendTransaction with value) to deploy your Universal Execution Account before using outbound transfers.'
-    );
-  }
-  const ueaNonce = isNativePushEOA ? BigInt(0) : await getUEANonce(ctx, ueaAddress);
+  const ueaNonce = (!isUEADeployed || isNativePushEOA) ? BigInt(0) : await getUEANonce(ctx, ueaAddress);
 
   // Build the multicall that will execute ON Push Chain from UEA context
   // This includes: 1) approve PRC-20 (if needed), 2) call sendUniversalTxOutbound
@@ -423,7 +417,10 @@ export async function executeUoaToCea(
   const currentBalance = ueaBalance;
 
   let adjustedValue: bigint;
-  if (currentBalance > EVM_NATIVE_VALUE_TARGET + EVM_GAS_RESERVE) {
+  if (!isUEADeployed) {
+    // UEA not yet deployed — fee-locking will deposit funds; use target value, excess is refunded
+    adjustedValue = nativeValueForGas > BigInt(0) ? EVM_NATIVE_VALUE_TARGET : nativeValueForGas;
+  } else if (currentBalance > EVM_NATIVE_VALUE_TARGET + EVM_GAS_RESERVE) {
     // Enough balance: use 200 UPC target
     adjustedValue = EVM_NATIVE_VALUE_TARGET;
   } else if (currentBalance > EVM_GAS_RESERVE) {
@@ -502,7 +499,7 @@ export async function executeUoaToCea(
       nonce: ueaNonce,
       balance: ueaBalance,
     },
-    _skipFeeLocking: true, // outbound executes on Push Chain, no external fee locking
+    _skipFeeLocking: isUEADeployed, // skip fee-locking only if UEA is already deployed
   };
 
   const response = await executeFn(executeParams);
@@ -649,13 +646,7 @@ export async function executeUoaToCeaSvm(
     isUEADeployed = ueaCode !== undefined;
     ueaBalance = balance;
   }
-  if (!isUEADeployed) {
-    throw new Error(
-      'UEA is not deployed. Please send an inbound transaction to Push Chain first ' +
-      '(e.g. sendTransaction with value) to deploy your Universal Execution Account before using outbound transfers.'
-    );
-  }
-  const ueaNonce = isNativePushEOASvm ? BigInt(0) : await getUEANonce(ctx, ueaAddress);
+  const ueaNonce = (!isUEADeployed || isNativePushEOASvm) ? BigInt(0) : await getUEANonce(ctx, ueaAddress);
 
   // --- Query gas fee (identical to EVM path) ---
   let gasFee = BigInt(0);
@@ -742,7 +733,7 @@ export async function executeUoaToCeaSvm(
       nonce: ueaNonce,
       balance: ueaBalance,
     },
-    _skipFeeLocking: true, // outbound executes on Push Chain, no external fee locking
+    _skipFeeLocking: isUEADeployed, // skip fee-locking only if UEA is already deployed
   };
 
   const response = await executeFn(executeParams);
@@ -850,7 +841,7 @@ export async function executeCeaToPush(
   // external chain), but that approach is racy: the balance can change between the SDK
   // query and relay execution, causing sendUniversalTxToUEA to revert with
   // InsufficientBalance. Pre-existing CEA funds remain parked and can be swept separately.
-  let bridgeAmount = amount;
+  const bridgeAmount = amount;
   // Note: CEA contract may reject amount=0 in sendUniversalTxToUEA.
   // Keeping bridgeAmount as-is (0) for payload-only to test precompile behavior.
 

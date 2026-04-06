@@ -644,6 +644,7 @@ export class PushChain {
     // Stored on instance so consumers can await it if needed: await client.accountStatusReady
     const ACCOUNT_STATUS_TIMEOUT = 30_000;
     instance.accountStatusReady = Promise.race([
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       instance.getAccountStatus().then(() => {}),
       new Promise<void>((_, reject) =>
         setTimeout(() => reject(new Error('Account status fetch timed out')), ACCOUNT_STATUS_TIMEOUT)
