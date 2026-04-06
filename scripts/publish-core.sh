@@ -92,7 +92,11 @@ if [ -f "packages/$SCOPE/README.md" ]; then
 fi
 
 # --- 8. Publish ---
-npm publish "$PACKAGE_DIR" --access public --otp="$OTP"
+if [ -n "$PREID" ]; then
+  npm publish "$PACKAGE_DIR" --access public --otp="$OTP" --tag alpha
+else
+  npm publish "$PACKAGE_DIR" --access public --otp="$OTP"
+fi
 
 # --- 9. Commit + tag + push ---
 git add "packages/$SCOPE/package.json" "packages/$SCOPE/CHANGELOG.md"
