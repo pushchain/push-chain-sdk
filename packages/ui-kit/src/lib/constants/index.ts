@@ -38,6 +38,7 @@ export const PushUI = {
 // events send by wallet to the dapp
 export enum WALLET_TO_APP_ACTION {
   CONNECT_EXTERNAL_WALLET = 'connectWallet',
+  CONNECT_SOCIAL = 'connectSocial',
 
   APP_CONNECTION_SUCCESS = 'appConnectionSuccess',
   APP_CONNECTION_REJECTED = 'appConnectionRejected',
@@ -66,9 +67,11 @@ export enum APP_TO_WALLET_ACTION {
   SIGN_MESSAGE = 'signMessage',
   SIGN_TRANSACTION = 'signTransaction',
   SIGN_TYPED_DATA = 'signTypedData',
+  ERROR = 'error',
   LOG_OUT = 'logOut',
 
   CONNECTION_STATUS = 'connectionStatus',
+  SOCIAL_CONNECTION_STATUS = "socialConnectionStatus",
   WALLET_CONFIG = 'walletConfig',
 
   PUSH_SEND_TRANSACTION_RESPONSE = 'pushSendTransactionResponse',

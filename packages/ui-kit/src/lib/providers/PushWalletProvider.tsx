@@ -17,6 +17,7 @@ import {
 } from '../styles/token';
 import { mapCoreToInt } from '../utils/theme';
 import { startEIP6963Listener } from './walletProviders/utils/eip6963';
+import { ensureWaapInit } from './waap/initWaap';
 
 interface CustomTheme extends DefaultTheme {
   themeMode: string;
@@ -86,10 +87,6 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
   children,
 }) => {
 
-  useEffect(() => {
-    startEIP6963Listener();
-  }, []);
-
   const mergedConfig: ProviderConfigProps = {
     ...PushWalletConfigDefault,
     ...config,
@@ -110,6 +107,11 @@ export const PushUniversalWalletProvider: FC<PushWalletProviderProps> = ({
       ...config.modal,
     },
   };
+
+  useEffect(() => {
+    startEIP6963Listener();
+    ensureWaapInit(themeMode === PushUI.CONSTANTS.THEME.DARK, mergedConfig.login || {});
+  }, []);
 
   const wrapperStyle = useMemo(
     () => buildCssVars(themeMode, themeOverrides),

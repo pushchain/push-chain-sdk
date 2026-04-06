@@ -34,6 +34,9 @@ import { PushWalletToast } from '../components/PushWalletToast';
 import { LoginModal } from '../components/LoginModal';
 import { getWalletContext } from './WalletContextMap';
 import { ThemeOverrides } from '../styles/token';
+import { useWaapAuth } from '../providers/waap/useWaapAuth';
+import { waapSignAndSendTransaction, waapSignMessage, waapSignTypedData } from '../providers/waap/waapProvider';
+import { TypedData, TypedDataDomain } from 'viem';
 
 export type WalletContextType = {
   universalAccount: UniversalAccount | null;
@@ -108,11 +111,6 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
 
   const [progress, setProgress] = useState<ProgressEvent | null>(null);
 
-  const signatureResolverRef = useRef<{
-    success?: (data: WalletEventRespoonse) => void;
-    error?: (data: WalletEventRespoonse) => void;
-  } | null>(null);
-
   const upgradeResolverRef = useRef<{
     success?: () => void;
     error?: (error: Error) => void;
@@ -147,6 +145,8 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
   );
 
   const [activeTriggerId, setActiveTriggerId] = useState<string>();
+
+  const { loginWithWaapSocial } = useWaapAuth();
 
   const toggleButtonRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
   
@@ -388,110 +388,99 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     }
   };
 
-  // handles Push wallet signature request
-  const handleSendSignRequestToPushWallet = (
-    data: Uint8Array
-  ): Promise<Uint8Array> => {
-    return new Promise((resolve, reject) => {
-      if (signatureResolverRef.current) {
-        reject(new Error('Another sign request is already in progress'));
-        return;
-      }
+  const handleSocialConnection = async () => {
+    const result = await loginWithWaapSocial();
+    if (!result) return;
 
-      setMinimiseWallet(false);
+    console.log(result);
 
-      signatureResolverRef.current = {
-        success: (response: WalletEventRespoonse) => {
-          resolve(response.signature!);
-          signatureResolverRef.current = null; // Clean up
-          setMinimiseWallet(true);
-        },
-        error: (response: WalletEventRespoonse) => {
-          signatureResolverRef.current = null; // Clean up
-          reject(new Error('Signature request failed'));
-          setMinimiseWallet(true);
-        },
-      };
+    const w = await PushChain.utils.account.convertExecutorToOriginAccount(result.address as `0x${string}`);
 
-      // Send the sign request to the wallet tab
+    if (!w.account) return;
+
+    // setUniversalAccount(w.account);
+
+    // localStorage.setItem(
+    //   `walletInfo_${config?.uid || 'default'}`,
+    //   JSON.stringify({
+    //     account: w.account,
+    //     uid: config?.uid || 'default'
+    //   })
+    // );
+
+    sendMessageToPushWallet({
+      type: APP_TO_WALLET_ACTION.SOCIAL_CONNECTION_STATUS,
+      data: {
+        account: w.account,
+      },
+    });
+  }
+
+  const handleSocialSignAndSendMessage = async (message: Uint8Array) => {
+    try {
+      const signature = await waapSignMessage(message);
+
       sendMessageToPushWallet({
         type: APP_TO_WALLET_ACTION.SIGN_MESSAGE,
-        data,
+        data: { signature },
       });
-    });
-  };
-
-  const handleSendSignTransactionRequestToPushWallet = (
-    data: Uint8Array
-  ): Promise<Uint8Array> => {
-    return new Promise((resolve, reject) => {
-      if (signatureResolverRef.current) {
-        reject(new Error('Another sign request is already in progress'));
-        return;
-      }
-
-      setMinimiseWallet(false);
-
-      signatureResolverRef.current = {
-        success: (response: WalletEventRespoonse) => {
-          resolve(response.signature!);
-          signatureResolverRef.current = null; // Clean up
-          setMinimiseWallet(true);
-        },
-        error: (response: WalletEventRespoonse) => {
-          signatureResolverRef.current = null; // Clean up
-          reject(new Error('Signature request failed'));
-          setMinimiseWallet(true);
-        },
-      };
-
-      // Send the sign request to the wallet tab
+    } catch (error) {
       sendMessageToPushWallet({
-        type: APP_TO_WALLET_ACTION.SIGN_TRANSACTION,
-        data,
+        type: APP_TO_WALLET_ACTION.ERROR,
+        data: {
+          error: error,
+        },
       });
-    });
+    }
   };
 
-  const handleSendSignTypedDataRequestToPushWallet = (
-    data: ITypedData
-  ): Promise<Uint8Array> => {
-    return new Promise((resolve, reject) => {
-      if (signatureResolverRef.current) {
-        reject(new Error('Another sign request is already in progress'));
-        return;
-      }
+  const handleSocialSignAndSendTransaction = async (txn: Uint8Array) => {
+    try {
+      const signature = await waapSignAndSendTransaction(txn);
 
-      setMinimiseWallet(false);
-
-      signatureResolverRef.current = {
-        success: (response: WalletEventRespoonse) => {
-          resolve(response.signature!);
-          signatureResolverRef.current = null; // Clean up
-          setMinimiseWallet(true);
-        },
-        error: (response: WalletEventRespoonse) => {
-          signatureResolverRef.current = null; // Clean up
-          reject(new Error('Signature request failed'));
-          setMinimiseWallet(true);
-        },
-      };
-
-      // Send the sign request to the wallet tab
       sendMessageToPushWallet({
-        type: APP_TO_WALLET_ACTION.SIGN_TYPED_DATA,
-        data,
+        type: WALLET_TO_APP_ACTION.SIGN_TRANSACTION,
+        data: { signature },
       });
-    });
+    } catch (error) {
+      sendMessageToPushWallet({
+        type: WALLET_TO_APP_ACTION.ERROR,
+        data: {
+          error: error,
+        },
+      });
+    }
   };
 
-  // sending Message sign request to wallet based on which wallet is connected (external or pushwallet)
+  const handleSocialSignTypedData = async (typedData: {
+    domain: TypedDataDomain;
+    types: TypedData;
+    primaryType: string;
+    message: Record<string, unknown>;
+  }) => {
+    try {
+      const signature = await waapSignTypedData(typedData);
+
+      sendMessageToPushWallet({
+        type: WALLET_TO_APP_ACTION.SIGN_TYPED_DATA,
+        data: { signature },
+      });
+    } catch (error) {
+      sendMessageToPushWallet({
+        type: WALLET_TO_APP_ACTION.ERROR,
+        data: {
+          error: error,
+        },
+      });
+    }
+  };
+
   const handleSignMessage = async (data: Uint8Array): Promise<Uint8Array> => {
     let signature;
     if (externalWallet) {
       signature = await handleExternalWalletSignRequest(data);
     } else {
-      signature = await handleSendSignRequestToPushWallet(data);
+      signature = await waapSignMessage(data);
     }
 
     return signature;
@@ -504,7 +493,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     if (externalWallet) {
       signature = await handleExternalWalletSignTransactionRequest(data);
     } else {
-      signature = await handleSendSignTransactionRequestToPushWallet(data);
+      signature = await waapSignAndSendTransaction(data);
     }
 
     return signature;
@@ -515,7 +504,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     if (externalWallet) {
       signature = await handleExternalWalletSignTypedDataRequest(data);
     } else {
-      signature = await handleSendSignTypedDataRequestToPushWallet(data);
+      signature = await waapSignTypedData(data);
     }
 
     return signature;
@@ -723,6 +712,9 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         case WALLET_TO_APP_ACTION.CONNECT_EXTERNAL_WALLET:
           handleExternalWalletConnection(event.data.data);
           break;
+        case WALLET_TO_APP_ACTION.CONNECT_SOCIAL:
+          handleSocialConnection();
+          break;
         case WALLET_TO_APP_ACTION.IS_LOGGED_IN:
           handleIsLoggedInAction();
           break;
@@ -732,26 +724,17 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         case WALLET_TO_APP_ACTION.APP_CONNECTION_REJECTED:
           handleAppConnectionRejection();
           break;
-        case WALLET_TO_APP_ACTION.SIGN_MESSAGE:
-          if (signatureResolverRef.current) {
-            signatureResolverRef?.current?.success?.(event.data.data);
-          }
+        case APP_TO_WALLET_ACTION.SIGN_MESSAGE:
+          handleSocialSignAndSendMessage(event.data.data);
           break;
-        case WALLET_TO_APP_ACTION.SIGN_TRANSACTION:
-          if (signatureResolverRef.current) {
-            signatureResolverRef?.current?.success?.(event.data.data);
-          }
+        case APP_TO_WALLET_ACTION.SIGN_TRANSACTION:
+          handleSocialSignAndSendTransaction(event.data.data);
           break;
-        case WALLET_TO_APP_ACTION.SIGN_TYPED_DATA:
-          if (signatureResolverRef.current) {
-            signatureResolverRef?.current?.success?.(event.data.data);
-          }
+        case APP_TO_WALLET_ACTION.SIGN_TYPED_DATA:
+          handleSocialSignTypedData(event.data.data);
           break;
         case WALLET_TO_APP_ACTION.IS_LOGGED_OUT:
           handleUserLogOutEvent();
-          break;
-        case WALLET_TO_APP_ACTION.ERROR:
-          signatureResolverRef?.current?.error?.(event.data.data);
           break;
         case WALLET_TO_APP_ACTION.CLOSE_IFRAME:
           if (universalAccount) setMinimiseWallet(true);
