@@ -12,5 +12,5 @@ export { default as SVM_GATEWAY_IDL } from './universalGatewayV0.json';
 export { CEA_EVM } from './cea.evm';
 export { CEA_FACTORY_EVM } from './ceaFactory.evm';
 export { UNIVERSAL_GATEWAY_PC } from './universalGatewayPC.evm';
-export { PRC20_EVM, UNIVERSAL_CORE_EVM } from './prc20.evm';
+export { UNIVERSAL_CORE_EVM } from './prc20.evm';
 export { UEA_FACTORY_ABI } from './uea-factory';

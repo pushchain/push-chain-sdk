@@ -3,7 +3,7 @@ import path from 'path';
 import semver from 'semver';
 import { execSync } from 'child_process';
 
-const [, , scope, bump] = process.argv;
+const [, , scope, bump, preid] = process.argv;
 
 if (!scope || !bump) {
   console.error(`❌ Usage: ts-node releasePackage.ts <scope> <bump>`);
@@ -35,7 +35,7 @@ const pkgPath = path.join(pkgDir, 'package.json');
 const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
 
 const currentVersion = pkg.version;
-const newVersion = semver.inc(currentVersion, bump as semver.ReleaseType);
+const newVersion = semver.inc(currentVersion, bump as semver.ReleaseType, preid);
 
 if (!newVersion) {
   console.error(`❌ Invalid bump type: ${bump}`);
