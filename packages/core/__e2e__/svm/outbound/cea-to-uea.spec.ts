@@ -1201,10 +1201,7 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
         value: BigInt(1_000_000), // 0.001 SOL
       });
 
-      const result = await pushClient.universal
-        .executeTransactions(tx1)
-        .thenOn(tx2)
-        .send();
+      const result = await pushClient.universal.executeTransactions([tx1, tx2]);
 
       console.log(`Initial TX Hash: ${result.initialTxHash}`);
       console.log(`Hop count: ${result.hopCount}`);
@@ -1243,10 +1240,7 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
         value: BigInt(1_000_000), // 0.001 SOL
       });
 
-      const result = await pushClient.universal
-        .executeTransactions(tx1)
-        .thenOn(tx2)
-        .send();
+      const result = await pushClient.universal.executeTransactions([tx1, tx2]);
 
       console.log(`Initial TX Hash: ${result.initialTxHash}`);
       console.log(`Hop count: ${result.hopCount}`);
@@ -1288,10 +1282,7 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
         value: BigInt(1_000_000), // 0.001 SOL
       });
 
-      const result = await pushClient.universal
-        .executeTransactions(tx1)
-        .thenOn(tx2)
-        .send();
+      const result = await pushClient.universal.executeTransactions([tx1, tx2]);
 
       console.log(`Initial TX Hash: ${result.initialTxHash}`);
       console.log(`Hop count: ${result.hopCount}`);
@@ -1336,10 +1327,7 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
         value: BigInt(1_000_000), // 0.001 SOL
       });
 
-      const result = await pushClient.universal
-        .executeTransactions(tx1)
-        .thenOn(tx2)
-        .send();
+      const result = await pushClient.universal.executeTransactions([tx1, tx2]);
 
       console.log(`Initial TX Hash: ${result.initialTxHash}`);
       console.log(`Hop count: ${result.hopCount}`);
@@ -1383,10 +1371,7 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
         data: incrementPayload,
       });
 
-      const result = await pushClient.universal
-        .executeTransactions(tx1)
-        .thenOn(tx2)
-        .send();
+      const result = await pushClient.universal.executeTransactions([tx1, tx2]);
 
       console.log(`Initial TX Hash: ${result.initialTxHash}`);
       console.log(`Hop count: ${result.hopCount}`);

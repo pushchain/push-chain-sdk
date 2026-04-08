@@ -51,7 +51,7 @@ const RAW_HOOKS: {
     id: PROGRESS_HOOK.SEND_TX_03_01,
     title: 'Resolving UEA',
     message:
-      'Resolving Execution Account (UEA) – computing address, checking deployment status and balance',
+      'Resolving Executor Account (UEA) – computing address, checking deployment status and balance',
     response: null,
     level: 'INFO',
   }),

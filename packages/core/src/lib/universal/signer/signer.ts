@@ -35,7 +35,7 @@ import { bs58 } from '../../internal/bs58';
  * viem uses `gas` while ethers expects `gasLimit`.
  */
 function toEthersTxRequest(viemTx: ReturnType<typeof parseTransaction>): Record<string, unknown> {
-  const { gas, ...rest } = viemTx as Record<string, unknown>;
+  const { gas, type, ...rest } = viemTx as Record<string, unknown>;
   return { ...rest, gasLimit: gas };
 }
 

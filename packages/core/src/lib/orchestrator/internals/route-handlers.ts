@@ -1261,7 +1261,7 @@ export async function executeCeaToCea(
   // This is a complex flow that requires coordination
   throw new Error(
     'CEA -> CEA transactions are not yet fully implemented. ' +
-      'Use prepareTransaction().thenOn() to chain Route 3 -> Route 2 manually.'
+      'Use prepareTransaction() and executeTransactions() to chain Route 3 -> Route 2 manually.'
   );
 }
 

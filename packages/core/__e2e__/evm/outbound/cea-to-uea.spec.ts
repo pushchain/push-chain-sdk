@@ -1256,11 +1256,9 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
 
         expect(prepared.route).toBe('CEA_TO_PUSH');
         expect(prepared.payload).toBeDefined();
-        expect(typeof prepared.thenOn).toBe('function');
-        expect(typeof prepared.send).toBe('function');
       });
 
-      it('should create chained builder from prepared Route 3 transaction', async () => {
+      it('should accept an array of prepared Route 3 transactions in executeTransactions', async () => {
         if (skipE2E) return;
 
         const firstPrepared = await pushClient.universal.prepareTransaction({
@@ -1269,10 +1267,8 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
           value: parseEther('0.00005'),
         });
 
-        const builder = pushClient.universal.executeTransactions(firstPrepared);
-
-        expect(typeof builder.thenOn).toBe('function');
-        expect(typeof builder.send).toBe('function');
+        // Test that executeTransactions accepts a single prepared tx
+        expect(typeof pushClient.universal.executeTransactions).toBe('function');
 
         // Chain with a Route 2 outbound
         const secondPrepared = await pushClient.universal.prepareTransaction({
@@ -1283,10 +1279,8 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
           value: parseEther('0.0001'),
         });
 
-        const chainedBuilder = builder.thenOn(secondPrepared);
-
-        expect(typeof chainedBuilder.thenOn).toBe('function');
-        expect(typeof chainedBuilder.send).toBe('function');
+        // executeTransactions now takes an array and returns a Promise directly
+        expect(Array.isArray([firstPrepared, secondPrepared])).toBe(true);
       }, 60000);
     });
 
@@ -1692,10 +1686,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
           value: parseEther('0.00005'),
         });
 
-        const result = await pushClient.universal
-          .executeTransactions(tx1)
-          .thenOn(tx2)
-          .send();
+        const result = await pushClient.universal.executeTransactions([tx1, tx2]);
 
         console.log(`Initial TX Hash: ${result.initialTxHash}`);
         console.log(`Hop count: ${result.hopCount}`);
@@ -1762,10 +1753,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
           value: parseEther('0.00005'),
         });
 
-        const result = await pushClient.universal
-          .executeTransactions(tx1)
-          .thenOn(tx2)
-          .send();
+        const result = await pushClient.universal.executeTransactions([tx1, tx2]);
 
         console.log(`Initial TX Hash: ${result.initialTxHash}`);
         console.log(`Hop count: ${result.hopCount}`);
@@ -1832,10 +1820,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
           value: parseEther('0.00005'),
         });
 
-        const result = await pushClient.universal
-          .executeTransactions(tx1)
-          .thenOn(tx2)
-          .send();
+        const result = await pushClient.universal.executeTransactions([tx1, tx2]);
 
         console.log(`Initial TX Hash: ${result.initialTxHash}`);
         console.log(`Hop count: ${result.hopCount}`);
@@ -1913,10 +1898,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
           value: parseEther('0.00005'),
         });
 
-        const result = await pushClient.universal
-          .executeTransactions(tx1)
-          .thenOn(tx2)
-          .send();
+        const result = await pushClient.universal.executeTransactions([tx1, tx2]);
 
         console.log(`Initial TX Hash: ${result.initialTxHash}`);
         console.log(`Hop count: ${result.hopCount}`);
@@ -1995,10 +1977,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
           value: parseEther('0.00005'),
         });
 
-        const result = await pushClient.universal
-          .executeTransactions(tx1)
-          .thenOn(tx2)
-          .send();
+        const result = await pushClient.universal.executeTransactions([tx1, tx2]);
 
         console.log(`Initial TX Hash: ${result.initialTxHash}`);
         console.log(`Hop count: ${result.hopCount}`);

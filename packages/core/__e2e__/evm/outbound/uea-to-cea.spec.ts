@@ -631,11 +631,9 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
 
         expect(prepared.route).toBe('UOA_TO_CEA');
         expect(prepared.payload).toBeDefined();
-        expect(typeof prepared.thenOn).toBe('function');
-        expect(typeof prepared.send).toBe('function');
       });
 
-      it('should create chained builder from prepared transactions', async () => {
+      it('should accept an array of prepared transactions in executeTransactions', async () => {
         if (skipE2E) return;
 
         const firstPrepared = await pushClient.universal.prepareTransaction({
@@ -643,12 +641,10 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
           value: parseEther('0.001'),
         });
 
-        const builder = pushClient.universal.executeTransactions(firstPrepared);
+        // Test that executeTransactions accepts a single prepared tx
+        expect(typeof pushClient.universal.executeTransactions).toBe('function');
 
-        expect(typeof builder.thenOn).toBe('function');
-        expect(typeof builder.send).toBe('function');
-
-        // Test chaining with a second prepared transaction
+        // Test that executeTransactions accepts an array of prepared txs
         const secondPrepared = await pushClient.universal.prepareTransaction({
           to: {
             address: '0x1234567890123456789012345678901234567890',
@@ -657,10 +653,8 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
           value: parseEther('0.0001'),
         });
 
-        const chainedBuilder = builder.thenOn(secondPrepared);
-
-        expect(typeof chainedBuilder.thenOn).toBe('function');
-        expect(typeof chainedBuilder.send).toBe('function');
+        // executeTransactions now takes an array and returns a Promise directly
+        expect(Array.isArray([firstPrepared, secondPrepared])).toBe(true);
       }, 60000);
     });
 

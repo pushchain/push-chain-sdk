@@ -168,8 +168,8 @@ export type AccountRole = 'controller';
 export interface DerivedExecutorAccount {
   /** The computed executor address on Push Chain (or CEA on external chain) */
   address: `0x${string}`;
-  /** Whether the executor account is deployed on-chain */
-  deployed: boolean;
+  /** Whether the executor account is deployed on-chain. null when skipNetworkCheck is true. */
+  deployed: boolean | null;
 }
 
 /**

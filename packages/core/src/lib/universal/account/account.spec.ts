@@ -313,10 +313,10 @@ describe('Universal Account Utilities', () => {
       );
 
       expect(result.address).toBe(pushAddress);
-      expect(result.deployed).toBe(false);
+      expect(result.deployed).toBeNull();
     });
 
-    it('always returns deployed as a boolean (not undefined)', async () => {
+    it('returns deployed as null when skipNetworkCheck is true', async () => {
       const pushAddress =
         '0x1234567890123456789012345678901234567890' as `0x${string}`;
 
@@ -325,7 +325,7 @@ describe('Universal Account Utilities', () => {
         { skipNetworkCheck: true },
       );
 
-      expect(typeof result.deployed).toBe('boolean');
+      expect(result.deployed).toBeNull();
     });
 
   });

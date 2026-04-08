@@ -147,10 +147,10 @@ describe('Advance Hopping: Cascade API E2E', () => {
 
         expect(prepared.route).toBe('UOA_TO_PUSH');
 
-        const response = await prepared.send();
-        console.log(`[TEST] Route 1 TX Hash: ${response.hash}`);
+        const response = await pushClient.universal.executeTransactions([prepared]);
+        console.log(`[TEST] Route 1 TX Hash: ${response.initialTxHash}`);
 
-        expect(response.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(response.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
       }, 180000);
     });
 
@@ -212,10 +212,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         });
 
         const result = await pushClient.universal
-          .executeTransactions(tx1)
-          .thenOn(tx2)
-          .thenOn(tx3)
-          .send();
+          .executeTransactions([tx1, tx2, tx3]);
 
         console.log(`[TEST] Multi-hop Payload TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -312,10 +309,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
 
         // Chain all 3 hops and send
         const result = await pushClient.universal
-          .executeTransactions(tx1)
-          .thenOn(tx2)
-          .thenOn(tx3)
-          .send();
+          .executeTransactions([tx1, tx2, tx3]);
 
         console.log(`[TEST] 3-leg Cascade TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -430,7 +424,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         });
 
         const result = await pushClient.universal
-          .executeTransactions(tx1).thenOn(tx2).thenOn(tx3).thenOn(tx4).send();
+          .executeTransactions([tx1, tx2, tx3, tx4]);
 
         console.log(`[TEST] 4-leg TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -531,7 +525,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         });
 
         const result = await pushClient.universal
-          .executeTransactions(tx1).thenOn(tx2).thenOn(tx3).thenOn(tx4).send();
+          .executeTransactions([tx1, tx2, tx3, tx4]);
 
         console.log(`[TEST] 4-leg Funds TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -625,10 +619,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
 
         // Send the merged same-chain hops + Route 3 inbound
         const result = await pushClient.universal
-          .executeTransactions(tx1)
-          .thenOn(tx2)
-          .thenOn(tx3)
-          .send();
+          .executeTransactions([tx1, tx2, tx3]);
 
         console.log(`[TEST] Merged same-chain hops TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -737,7 +728,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         });
 
         const result = await pushClient.universal
-          .executeTransactions(tx1).thenOn(tx2).thenOn(tx3).send();
+          .executeTransactions([tx1, tx2, tx3]);
 
         console.log(`[TEST] Multi-Chain TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -869,7 +860,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         });
 
         const result = await pushClient.universal
-          .executeTransactions(tx1).thenOn(tx2).thenOn(tx3).thenOn(tx4).send();
+          .executeTransactions([tx1, tx2, tx3, tx4]);
 
         console.log(`[TEST] Full Round-Trip TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -960,7 +951,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         });
 
         const result = await pushClient.universal
-          .executeTransactions(tx1).thenOn(tx2).send();
+          .executeTransactions([tx1, tx2]);
 
         console.log(`[TEST] Solana Inbound TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -1184,7 +1175,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         });
 
         const result = await pushClient.universal
-          .executeTransactions(tx1).thenOn(tx2).send();
+          .executeTransactions([tx1, tx2]);
 
         console.log(`[TEST] TX Hash: ${result.initialTxHash}`);
         expect(result.hopCount).toBe(2);
@@ -1270,7 +1261,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         });
 
         const result = await pushClient.universal
-          .executeTransactions(tx1).thenOn(tx2).send();
+          .executeTransactions([tx1, tx2]);
 
         console.log(`[TEST] TX Hash: ${result.initialTxHash}`);
         expect(result.hopCount).toBe(2);
@@ -1383,7 +1374,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         });
 
         const result = await pushClient.universal
-          .executeTransactions(tx1).thenOn(tx2).thenOn(tx3).thenOn(tx4).send();
+          .executeTransactions([tx1, tx2, tx3, tx4]);
 
         console.log(`[TEST] TX Hash: ${result.initialTxHash}`);
         expect(result.hopCount).toBe(4);
@@ -1456,8 +1447,9 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(prepared._hop.ueaAddress).toBe(ueaAddress);
         expect(prepared._hop.pushMulticalls).toBeDefined();
         expect(prepared._hop.pushMulticalls!.length).toBeGreaterThan(0);
-        expect(typeof prepared.thenOn).toBe('function');
-        expect(typeof prepared.send).toBe('function');
+        // PreparedUniversalTx no longer has thenOn/send; use executeTransactions([...]) instead
+        expect(prepared._hop).toBeDefined();
+        expect(prepared.route).toBeDefined();
       });
 
       it('should prepare an outbound transaction with HopDescriptor', async () => {
@@ -1517,20 +1509,17 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(tx1._hop.targetChain).toBe(CHAIN.BNB_TESTNET);
         expect(tx2._hop.targetChain).toBe(CHAIN.BNB_TESTNET);
 
-        // Verify the builder can chain them
-        const builder = pushClient.universal
-          .executeTransactions(tx1)
-          .thenOn(tx2);
-
-        expect(typeof builder.send).toBe('function');
+        // Verify executeTransactions accepts an array of prepared txs
+        const resultPromise = pushClient.universal.executeTransactions([tx1, tx2]);
+        expect(resultPromise).toBeInstanceOf(Promise);
       }, 60000);
     });
 
     // ==========================================================================
     // Builder API
     // ==========================================================================
-    describe('Builder API', () => {
-      it('should create cascaded builder from a single prepared tx', async () => {
+    describe('Array API', () => {
+      it('should accept an array with a single prepared tx and return a promise', async () => {
         if (skipE2E) return;
 
         const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
@@ -1540,13 +1529,16 @@ describe('Advance Hopping: Cascade API E2E', () => {
           value: parseEther('0.001'),
         });
 
-        const builder = pushClient.universal.executeTransactions(tx1);
+        const resultPromise = pushClient.universal.executeTransactions([tx1]);
+        expect(resultPromise).toBeInstanceOf(Promise);
 
-        expect(typeof builder.thenOn).toBe('function');
-        expect(typeof builder.send).toBe('function');
-      });
+        const result = await resultPromise;
+        expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(result.hopCount).toBe(1);
+        expect(typeof result.waitForAll).toBe('function');
+      }, 180000);
 
-      it('should chain two prepared transactions', async () => {
+      it('should accept an array with two prepared transactions and return a promise', async () => {
         if (skipE2E) return;
 
         const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
@@ -1564,13 +1556,14 @@ describe('Advance Hopping: Cascade API E2E', () => {
           value: parseEther('0.0001'),
         });
 
-        const chainedBuilder = pushClient.universal
-          .executeTransactions(tx1)
-          .thenOn(tx2);
+        const resultPromise = pushClient.universal.executeTransactions([tx1, tx2]);
+        expect(resultPromise).toBeInstanceOf(Promise);
 
-        expect(typeof chainedBuilder.thenOn).toBe('function');
-        expect(typeof chainedBuilder.send).toBe('function');
-      });
+        const result = await resultPromise;
+        expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(result.hopCount).toBe(2);
+        expect(typeof result.waitForAll).toBe('function');
+      }, 180000);
     });
 
     // ==========================================================================
@@ -1587,7 +1580,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           value: parseEther('0.001'),
         });
 
-        const result = await pushClient.universal.executeTransactions(tx1).send();
+        const result = await pushClient.universal.executeTransactions([tx1]);
 
         console.log(`[TEST] Cascade initial TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -1614,7 +1607,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           gasLimit: BigInt(2000000),
         });
 
-        const result = await pushClient.universal.executeTransactions(tx1).send();
+        const result = await pushClient.universal.executeTransactions([tx1]);
 
         console.log(`[TEST] Cascade Route 2 TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -1641,7 +1634,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           value: parseEther('0.001'),
         });
 
-        const result = await pushClient.universal.executeTransactions(tx1).send();
+        const result = await pushClient.universal.executeTransactions([tx1]);
 
         const completion = await result.waitForAll({
           timeout: 60000,

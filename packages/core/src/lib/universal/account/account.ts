@@ -630,12 +630,12 @@ export async function deriveExecutorAccount(
         ueaAddress,
         targetChain
       );
-      return { address: cea, deployed: skipNetworkCheck ? false : isDeployed };
+      return { address: cea, deployed: skipNetworkCheck ? null : isDeployed };
     }
 
     // Return UEA with deployment check
     if (skipNetworkCheck) {
-      return { address: ueaAddress, deployed: false };
+      return { address: ueaAddress, deployed: null };
     }
 
     const pushChainKey = pushNetworkToChainKey(pushNetwork);
@@ -659,12 +659,12 @@ export async function deriveExecutorAccount(
       address as `0x${string}`,
       targetChain
     );
-    return { address: cea, deployed: skipNetworkCheck ? false : isDeployed };
+    return { address: cea, deployed: skipNetworkCheck ? null : isDeployed };
   }
 
   // Push address, no external target — return with deployment check
   if (skipNetworkCheck) {
-    return { address: address as `0x${string}`, deployed: false };
+    return { address: address as `0x${string}`, deployed: null };
   }
 
   const pushNetwork =

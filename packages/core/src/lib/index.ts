@@ -20,7 +20,6 @@ export type {
   UniversalExecuteParams,
   UniversalOutboundTxRequest,
   PreparedUniversalTx,
-  CascadedTransactionBuilder,
   CascadedTxResponse,
   CascadeHopInfo,
   CascadeTrackOptions,

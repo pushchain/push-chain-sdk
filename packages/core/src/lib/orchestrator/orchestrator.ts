@@ -14,7 +14,7 @@ import {
   ExecuteParams,
   UniversalExecuteParams,
   PreparedUniversalTx,
-  CascadedTransactionBuilder,
+  CascadedTxResponse,
   CascadeHopInfo,
   RescueFundsParams,
 } from './orchestrator.types';
@@ -267,11 +267,11 @@ export class Orchestrator {
    * The cascade composes all hops bottom-to-top into a single Push Chain tx.
    *
    * @param preparedTxs - Array of prepared transactions
-   * @returns CascadedTransactionBuilder
+   * @returns Object with send() method
    */
   createCascadedBuilder(
     preparedTxs: PreparedUniversalTx[]
-  ): CascadedTransactionBuilder {
+  ): { send: () => Promise<CascadedTxResponse> } {
     return _createCascadedBuilder(this.ctx, preparedTxs, this._getCascadeCallbacks());
   }
 

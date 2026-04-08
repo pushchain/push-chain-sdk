@@ -661,11 +661,6 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
         // gasLimit omitted → per-chain default from UniversalCore
       });
 
-      const builder = pushClient.universal.executeTransactions(firstPrepared);
-
-      expect(typeof builder.thenOn).toBe('function');
-      expect(typeof builder.send).toBe('function');
-
       // Chain with a second SVM outbound
       const secondPrepared = await pushClient.universal.prepareTransaction({
         to: {
@@ -676,10 +671,13 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
         // gasLimit omitted → per-chain default from UniversalCore
       });
 
-      const chainedBuilder = builder.thenOn(secondPrepared);
+      // executeTransactions now accepts an array and returns a promise directly
+      const resultPromise = pushClient.universal.executeTransactions([
+        firstPrepared,
+        secondPrepared,
+      ]);
 
-      expect(typeof chainedBuilder.thenOn).toBe('function');
-      expect(typeof chainedBuilder.send).toBe('function');
+      expect(resultPromise).toBeInstanceOf(Promise);
     }, 60000);
   });
 
@@ -1037,10 +1035,7 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
         },
       });
 
-      const result = await pushClient.universal
-        .executeTransactions(tx1)
-        .thenOn(tx2)
-        .send();
+      const result = await pushClient.universal.executeTransactions([tx1, tx2]);
 
       console.log(`Initial TX Hash: ${result.initialTxHash}`);
       console.log(`Hop count: ${result.hopCount}`);
@@ -1086,10 +1081,7 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
         value: BigInt(1_000_000), // 0.001 SOL
       });
 
-      const result = await pushClient.universal
-        .executeTransactions(tx1)
-        .thenOn(tx2)
-        .send();
+      const result = await pushClient.universal.executeTransactions([tx1, tx2]);
 
       console.log(`Initial TX Hash: ${result.initialTxHash}`);
       console.log(`Hop count: ${result.hopCount}`);
@@ -1133,10 +1125,7 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
         value: BigInt(1_000_000), // 0.001 SOL
       });
 
-      const result = await pushClient.universal
-        .executeTransactions(tx1)
-        .thenOn(tx2)
-        .send();
+      const result = await pushClient.universal.executeTransactions([tx1, tx2]);
 
       console.log(`Initial TX Hash: ${result.initialTxHash}`);
       console.log(`Hop count: ${result.hopCount}`);

@@ -29,7 +29,7 @@ import {
 import type {
   UniversalExecuteParams,
   PreparedUniversalTx,
-  CascadedTransactionBuilder,
+  CascadedTxResponse,
   UniversalTxResponse,
   RescueFundsParams,
 } from '../orchestrator/orchestrator.types';
@@ -93,17 +93,16 @@ export class PushChain {
     sendTransaction: Orchestrator['execute'];
     /**
      * Prepare a universal transaction without executing it.
-     * Returns a PreparedUniversalTx that can be chained with thenOn() or sent.
+     * Returns a PreparedUniversalTx that can be passed to executeTransactions.
      */
     prepareTransaction: Orchestrator['prepareTransaction'];
     /**
-     * Execute multiple transactions in sequence across chains.
-     * Accepts PreparedUniversalTx (from prepareTransaction) and returns
-     * a CascadedTransactionBuilder that supports .thenOn() for chaining.
+     * Execute one or more prepared transactions as a cascade across chains.
+     * Accepts an array of PreparedUniversalTx (from prepareTransaction).
      */
     executeTransactions: (
-      firstTx: PreparedUniversalTx
-    ) => CascadedTransactionBuilder;
+      txs: PreparedUniversalTx[]
+    ) => Promise<CascadedTxResponse>;
     /**
      * Tracks a transaction by hash on Push Chain
      */
@@ -237,13 +236,13 @@ export class PushChain {
         }
         return orchestrator.prepareTransaction.bind(orchestrator)(params);
       },
-      executeTransactions: (firstTx: PreparedUniversalTx) => {
+      executeTransactions: async (txs: PreparedUniversalTx[]) => {
         if (this.isReadMode) {
           throw new Error(
             'Read only mode cannot call executeTransactions function'
           );
         }
-        return orchestrator.createCascadedBuilder([firstTx]);
+        return orchestrator.createCascadedBuilder(txs).send();
       },
       trackTransaction: (txHash: string, options?: import('../orchestrator/orchestrator.types').TrackTransactionOptions) => {
         return orchestrator.trackTransaction.bind(orchestrator)(txHash, options);

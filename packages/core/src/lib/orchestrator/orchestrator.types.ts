@@ -589,10 +589,6 @@ export interface PreparedUniversalTx {
   deadline: bigint;
   /** Internal hop descriptor for cascade nesting @internal */
   _hop: HopDescriptor;
-  /** Chain additional transactions after this one (cascade) */
-  thenOn: (nextTx: PreparedUniversalTx) => CascadedTransactionBuilder;
-  /** Execute this prepared transaction */
-  send: () => Promise<UniversalTxResponse>;
 }
 
 /**
@@ -609,22 +605,6 @@ export interface MultiChainTxResponse {
     blockNumber: bigint;
     status: 'pending' | 'confirmed' | 'failed';
   }[];
-}
-
-// ============================================================================
-// Cascaded Transaction Builder (Advance Hopping)
-// ============================================================================
-
-/**
- * Builder for composing cascaded (nested) multi-chain transactions.
- * Each call to thenOn() adds another hop to the cascade.
- * send() composes all hops bottom-to-top and executes a single Push Chain tx.
- */
-export interface CascadedTransactionBuilder {
-  /** Add another hop to the cascade */
-  thenOn: (nextTx: PreparedUniversalTx) => CascadedTransactionBuilder;
-  /** Compose all hops bottom-to-top and execute the single initial tx */
-  send: () => Promise<CascadedTxResponse>;
 }
 
 /**

@@ -42,7 +42,6 @@ import type {
   CascadeSegment,
   CascadeSegmentType,
   PreparedUniversalTx,
-  CascadedTransactionBuilder,
   CascadedTxResponse,
   CascadeHopInfo,
   CascadeCompletionResult,
@@ -132,9 +131,6 @@ export async function prepareTransaction(
     nonce,
     deadline,
     _hop: hop,
-    thenOn: (nextTx: PreparedUniversalTx) =>
-      createCascadedBuilder(ctx, [prepared, nextTx], callbacks),
-    send: () => callbacks.executeFn(params),
   };
 
   return prepared;
@@ -895,11 +891,8 @@ export function createCascadedBuilder(
   ctx: OrchestratorContext,
   preparedTxs: PreparedUniversalTx[],
   callbacks: CascadeCallbacks
-): CascadedTransactionBuilder {
+): { send: () => Promise<CascadedTxResponse> } {
   return {
-    thenOn: (nextTx: PreparedUniversalTx) =>
-      createCascadedBuilder(ctx, [...preparedTxs, nextTx], callbacks),
-
     send: async (): Promise<CascadedTxResponse> => {
       const ueaAddress = computeUEAOffchain(ctx);
 
