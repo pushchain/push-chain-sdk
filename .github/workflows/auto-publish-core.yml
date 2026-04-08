@@ -46,6 +46,10 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Configure npm for OIDC publish
+        run: |
+          echo "registry=https://registry.npmjs.org/" > .npmrc
+
       - name: Run automated release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
