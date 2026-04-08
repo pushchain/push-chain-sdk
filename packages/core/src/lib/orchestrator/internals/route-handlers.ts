@@ -416,11 +416,15 @@ export async function executeUoaToCea(
   // Reuse ueaBalance fetched earlier (line 383) — no tx sent between, balance is stable
   const currentBalance = ueaBalance;
 
+  // Balance-aware adjustment — same logic whether UEA is deployed or not.
+  // The old !isUEADeployed branch blindly used 200 UPC assuming fee-locking
+  // would deposit enough, but the actual deposit depends on origin-chain ETH
+  // locked — not a guaranteed 200 UPC. This caused executeUniversalTx to
+  // revert when UEA balance < 200 UPC. The contract's swapAndBurnGas does
+  // exactOutputSingle and refunds excess PC, so overshooting within balance
+  // is safe.
   let adjustedValue: bigint;
-  if (!isUEADeployed) {
-    // UEA not yet deployed — fee-locking will deposit funds; use target value, excess is refunded
-    adjustedValue = nativeValueForGas > BigInt(0) ? EVM_NATIVE_VALUE_TARGET : nativeValueForGas;
-  } else if (currentBalance > EVM_NATIVE_VALUE_TARGET + EVM_GAS_RESERVE) {
+  if (currentBalance > EVM_NATIVE_VALUE_TARGET + EVM_GAS_RESERVE) {
     // Enough balance: use 200 UPC target
     adjustedValue = EVM_NATIVE_VALUE_TARGET;
   } else if (currentBalance > EVM_GAS_RESERVE) {
