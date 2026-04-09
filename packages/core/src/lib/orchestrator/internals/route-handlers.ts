@@ -415,9 +415,15 @@ export async function executeUoaToCea(
   // pool's slot0, computes the true cost, and adds a 2x buffer.
   // This matches the SVM path (executeUoaToCeaSvm) which already uses this.
   // Excess msg.value is refunded by the contract's swapAndBurnGas.
+  const EVM_NATIVE_VALUE_TARGET = BigInt(200e18); // 200 UPC
+  const EVM_GAS_RESERVE = BigInt(3e18); // 3 UPC for tx overhead
+
   if (universalCoreAddress && gasFee > BigInt(0)) {
+    // When UEA balance is 0, pass EVM_NATIVE_VALUE_TARGET as the balance hint
+    // so the pool estimate isn't capped/fallback'd to zero.
+    const balanceHint = ueaBalance > BigInt(0) ? ueaBalance : EVM_NATIVE_VALUE_TARGET;
     const estimated = await estimateNativeValueForSwap(
-      ctx, universalCoreAddress, gasToken, gasFee, ueaBalance
+      ctx, universalCoreAddress, gasToken, gasFee, balanceHint
     );
     if (estimated > nativeValueForGas) {
       printLog(
@@ -429,11 +435,9 @@ export async function executeUoaToCea(
     }
   }
 
-  // Balance-aware cap: avoid draining the entire UEA balance for gas.
+  // Balance-aware adjustment: avoid draining the entire UEA balance for gas.
   // The contract's swapAndBurnGas does exactOutputSingle and refunds excess PC,
   // so overshooting within balance is safe.
-  const EVM_NATIVE_VALUE_TARGET = BigInt(200e18); // 200 UPC
-  const EVM_GAS_RESERVE = BigInt(3e18); // 3 UPC for tx overhead
   const currentBalance = ueaBalance;
 
   let adjustedValue: bigint;
@@ -446,10 +450,23 @@ export async function executeUoaToCea(
     // Low balance: use what's available minus reserve
     const available = currentBalance - EVM_GAS_RESERVE;
     adjustedValue = nativeValueForGas < available ? nativeValueForGas : available;
+  } else if (!isUEADeployed) {
+    // Fresh wallet: UEA not deployed, fee-locking WILL run and deposit funds.
+    // Use EVM_NATIVE_VALUE_TARGET (200 UPC) — fee-locking auto-covers this
+    // because requiredFunds includes nativeValueForGas, and lockFee converts
+    // the UPC amount to USD and deposits the equivalent ETH.
+    // The contract's swapAndBurnGas refunds any excess.
+    // If pool estimate produced a usable value, prefer it (capped at 200 UPC).
+    adjustedValue = nativeValueForGas > EVM_NATIVE_VALUE_TARGET
+      ? EVM_NATIVE_VALUE_TARGET
+      : nativeValueForGas > BigInt(0) ? nativeValueForGas : EVM_NATIVE_VALUE_TARGET;
+    printLog(
+      ctx,
+      `executeUoaToCea — fresh wallet (UEA not deployed): using ${adjustedValue.toString()} for nativeValueForGas`
+    );
   } else {
-    // Very low/zero balance (fresh wallet). The pool-price estimate (now in
-    // nativeValueForGas) is accurate. Fee-locking will deposit enough UPC
-    // because requiredFunds includes this value, and lockFee floors at $1.
+    // Deployed UEA with near-zero balance: best-effort with pool/1M estimate.
+    // User may need to add funds to UEA manually.
     adjustedValue = nativeValueForGas;
   }
 
