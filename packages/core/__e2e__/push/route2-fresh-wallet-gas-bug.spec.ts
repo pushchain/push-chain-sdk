@@ -15,6 +15,7 @@ import '@e2e/shared/setup';
  * PRE-FIX:  Test 1 (fresh wallet, no prior UEA) should FAIL with ExecutionFailed
  * POST-FIX: Test 1 should PASS (pool-price estimation produces correct nativeValueForGas)
  * Test 2 (deployed UEA baseline) should always PASS.
+ * Test 3 (ethers v6 fresh wallet) mirrors the dev's external script scenario.
  */
 import { PushChain } from '../../src';
 import { CHAIN, PUSH_NETWORK } from '../../src/lib/constants/enums';
@@ -41,6 +42,9 @@ import type { ProgressEvent } from '../../src/lib/progress-hook/progress-hook.ty
 
 // BNB Testnet counter from chain-fixtures.ts
 const COUNTER_ADDRESS = '0xf4bd8c13da0f5831d7b6dd3275a39f14ec7ddaa6' as `0x${string}`;
+
+// Counter address used by the dev's external script
+const COUNTER_ADDRESS_DEV = '0x7f0936bb90e7dcf3edb47199c2005e7184e44cf8' as `0x${string}`;
 
 // Sepolia RPC for funding fresh wallets
 const SEPOLIA_RPC = CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0];
@@ -229,5 +233,99 @@ describe('Route 2: Fresh Wallet nativeValueForGas Bug', () => {
     expect(receipt.status).toBe(1);
     expect(receipt.externalTxHash).toBeDefined();
     expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+  }, 360000);
+
+  // ==========================================================================
+  // Test 3: Ethers v6 fresh wallet — mirrors the dev's external script
+  //
+  // The dev's script uses ethers.js v6 (Wallet.createRandom + JsonRpcProvider)
+  // with toUniversal() (auto-detects chain), PUSH_NETWORK.TESTNET, and
+  // encodeTxData(). This test reproduces that exact setup to verify whether
+  // the issue is in the signer path or the route-handler balance logic.
+  // ==========================================================================
+  it('should execute Route 2 contract call from ethers v6 fresh wallet (dev script scenario)', async () => {
+    if (skipE2E) {
+      console.log('Skipping — EVM_PRIVATE_KEY not set');
+      return;
+    }
+
+    // Dynamically import ethers to match the dev's script
+    let ethers: typeof import('ethers');
+    try {
+      ethers = await import('ethers');
+    } catch {
+      console.log('Skipping — ethers not installed');
+      return;
+    }
+
+    // Create a fresh random wallet (same as dev script)
+    const wallet = ethers.Wallet.createRandom();
+    const provider = new ethers.JsonRpcProvider(SEPOLIA_RPC);
+    const signer = wallet.connect(provider);
+    console.log(`\n=== Ethers v6 fresh wallet: ${wallet.address} ===`);
+
+    // Fund from main wallet
+    const mainAccount = privateKeyToAccount(privateKey);
+    const fundTxHash = await mainWalletClient.sendTransaction({
+      to: wallet.address as `0x${string}`,
+      value: parseEther('0.008'),
+      account: mainAccount,
+      chain: sepolia,
+    });
+    await publicClient.waitForTransactionReceipt({ hash: fundTxHash });
+    console.log(`Funded ethers wallet: ${fundTxHash}`);
+
+    // Use toUniversal (auto-detects chain from provider) — same as dev script
+    const tracker = createProgressTracker();
+    const universalSigner = await PushChain.utils.signer.toUniversal(signer);
+    const pushClient = await PushChain.initialize(universalSigner, {
+      network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET,
+      printTraces: true,
+      progressHook: tracker.hook,
+    });
+
+    const ueaAddress = pushClient.universal.account;
+    console.log(`Ethers fresh wallet UEA: ${ueaAddress}`);
+
+    // Verify UEA is NOT deployed
+    const pushPublicClient = createPublicClient({
+      transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
+    });
+    const ueaCode = await pushPublicClient.getCode({ address: ueaAddress });
+    console.log(`UEA deployed before Route 2: ${ueaCode !== undefined}`);
+    expect(ueaCode).toBeUndefined();
+
+    // Use encodeTxData — same as dev script
+    const data = PushChain.utils.helpers.encodeTxData({
+      abi: [...COUNTER_ABI],
+      functionName: 'increment',
+    });
+
+    // Route 2: fresh ethers wallet → CEA contract call on BNB Testnet
+    // Uses the dev's counter address to reproduce their exact scenario
+    const tx = await pushClient.universal.sendTransaction({
+      to: {
+        address: COUNTER_ADDRESS_DEV,
+        chain: PushChain.CONSTANTS.CHAIN.BNB_TESTNET,
+      },
+      data,
+    });
+
+    console.log(`Push Chain TX Hash: ${tx.hash}`);
+    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+    // Wait for CEA relay
+    console.log('Waiting for outbound relay...');
+    const receipt = await tx.wait();
+    console.log(`Receipt status: ${receipt.status}`);
+    console.log(`External TX Hash: ${receipt.externalTxHash}`);
+    console.log(`External Chain: ${receipt.externalChain}`);
+    if (receipt.externalExplorerUrl) {
+      console.log(`Explorer: ${receipt.externalExplorerUrl}`);
+    }
+
+    expect(receipt.status).toBe(1);
+    expect(receipt.externalTxHash).toBeDefined();
+    expect(receipt.externalChain).toBe(PushChain.CONSTANTS.CHAIN.BNB_TESTNET);
   }, 360000);
 });

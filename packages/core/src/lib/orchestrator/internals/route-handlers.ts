@@ -1027,11 +1027,49 @@ export async function executeCeaToPush(
   const currentBalance = ueaBalance;
   // Cosmos-EVM tx overhead costs ~1 PC per operation; 3 PC covers approve(s) + buffer.
   const OUTBOUND_GAS_RESERVE_R3 = BigInt(3e18);
-  if (currentBalance > OUTBOUND_GAS_RESERVE_R3 && currentBalance - OUTBOUND_GAS_RESERVE_R3 > nativeValueForGas) {
-    const adjustedValue = currentBalance - OUTBOUND_GAS_RESERVE_R3;
+  const ROUTE3_MINIMUM_DEPOSIT_USD = Utils.helpers.parseUnits('10', 8); // $10
+
+  // For fresh wallets: predict post-fee-locking UPC balance using the same
+  // Uniswap V3 quoter the chain uses (pETH → WPC swap), matching Route 2 logic.
+  let effectiveBalance = currentBalance;
+  if (!isUEADeployed && effectiveBalance <= OUTBOUND_GAS_RESERVE_R3) {
+    const signerChain = ctx.universalSigner.account.chain;
+    const ethPrice = await new PriceFetch(ctx.rpcUrls).getPrice(signerChain);
+    const nativeAmountETH = ethPrice > BigInt(0)
+      ? (ROUTE3_MINIMUM_DEPOSIT_USD * BigInt(1e18) + (ethPrice - BigInt(1))) / ethPrice + BigInt(1)
+      : BigInt(0);
+
+    if (nativeAmountETH > BigInt(0)) {
+      const originPrc20 = getNativePRC20ForChain(signerChain, ctx.pushNetwork);
+      const predictedUPC = await estimateDepositFromLockedNative(ctx, nativeAmountETH, originPrc20);
+      if (predictedUPC > BigInt(0)) {
+        effectiveBalance = (predictedUPC * BigInt(90)) / BigInt(100);
+        printLog(ctx,
+          `executeCeaToPush — fresh wallet: Uniswap quote predicts ${predictedUPC.toString()} UPC ` +
+          `from ${nativeAmountETH.toString()} wei pETH, using ${effectiveBalance.toString()} (90%)`
+        );
+      }
+    }
+  }
+
+  // Balance-aware adjustment matching Route 2 logic:
+  // - If balance exceeds target + reserve: use target (200 UPC)
+  // - If balance exceeds reserve: use balance - reserve (maximize within budget)
+  // - Otherwise: keep original nativeValueForGas (fallback)
+  const EVM_NATIVE_VALUE_TARGET_R3 = BigInt(200e18); // 200 UPC
+  let adjustedValue: bigint;
+  if (effectiveBalance > EVM_NATIVE_VALUE_TARGET_R3 + OUTBOUND_GAS_RESERVE_R3) {
+    adjustedValue = EVM_NATIVE_VALUE_TARGET_R3;
+  } else if (effectiveBalance > OUTBOUND_GAS_RESERVE_R3) {
+    adjustedValue = effectiveBalance - OUTBOUND_GAS_RESERVE_R3;
+  } else {
+    adjustedValue = nativeValueForGas;
+  }
+
+  if (adjustedValue !== nativeValueForGas) {
     printLog(
       ctx,
-      `executeCeaToPush — adjusting nativeValueForGas from ${nativeValueForGas.toString()} to ${adjustedValue.toString()} (UEA balance: ${currentBalance.toString()})`
+      `executeCeaToPush — adjusting nativeValueForGas from ${nativeValueForGas.toString()} to ${adjustedValue.toString()} (effective balance: ${effectiveBalance.toString()})`
     );
     nativeValueForGas = adjustedValue;
   }
@@ -1068,7 +1106,9 @@ export async function executeCeaToPush(
       nonce: ueaNonce,
       balance: ueaBalance,
     },
-    _skipFeeLocking: true, // outbound executes on Push Chain, no external fee locking
+    _skipFeeLocking: isUEADeployed, // skip fee-locking only if UEA is already deployed
+    // For undeployed UEAs, ensure fee-locking deposits enough for the outbound swap
+    ...(!isUEADeployed ? { _minimumDepositUsd: ROUTE3_MINIMUM_DEPOSIT_USD } : {}),
   };
 
   const response = await executeFn(executeParams);
@@ -1255,7 +1295,9 @@ export async function executeCeaToPushSvm(
       nonce: ueaNonce,
       balance: ueaBalance,
     },
-    _skipFeeLocking: true, // outbound executes on Push Chain, no external fee locking
+    _skipFeeLocking: isUEADeployed, // skip fee-locking only if UEA is already deployed
+    // For undeployed UEAs, ensure fee-locking deposits enough for the outbound swap
+    ...(!isUEADeployed ? { _minimumDepositUsd: Utils.helpers.parseUnits('10', 8) } : {}),
   };
 
   const response = await executeFn(executeParams);
