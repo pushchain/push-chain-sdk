@@ -6,6 +6,7 @@ import {
   createPublicClient,
   hexToBytes,
 } from 'viem';
+import { PublicKey } from '@solana/web3.js';
 import {
   CHAIN_INFO,
   PUSH_CHAIN_INFO,
@@ -551,6 +552,39 @@ function getChainName(chain: CHAIN): string {
 }
 
 /**
+ * Derive the SVM CEA (PDA) for a UEA address on a Solana-based chain.
+ *
+ * Solana doesn't use a CEAFactory contract — instead, the CEA is a
+ * Program Derived Address (PDA) with seeds: ["push_identity", ueaBytes]
+ * and the SVM gateway program as the program ID.
+ *
+ * @param ueaAddress - The UEA (or Push EOA) hex address (20 bytes).
+ * @param targetChain - The SVM target chain.
+ * @param skipNetworkCheck - Whether to skip deployment status check.
+ * @returns The derived 32-byte Solana PDA address (as 0x-prefixed hex) and deployment status.
+ */
+function deriveSvmCeaPda(
+  ueaAddress: `0x${string}`,
+  targetChain: CHAIN,
+  skipNetworkCheck: boolean
+): DerivedExecutorAccount {
+  const gatewayAddress = CHAIN_INFO[targetChain].lockerContract;
+  if (!gatewayAddress) {
+    throw new Error(`SVM gateway program not configured for chain ${targetChain}`);
+  }
+  const gatewayProgramId = new PublicKey(gatewayAddress);
+  const ueaBytes = Buffer.from(ueaAddress.slice(2), 'hex'); // 20 bytes
+  const [ceaPda] = PublicKey.findProgramAddressSync(
+    [Buffer.from('push_identity'), ueaBytes],
+    gatewayProgramId
+  );
+  const ceaPdaHex = ('0x' +
+    Buffer.from(ceaPda.toBytes()).toString('hex')) as `0x${string}`;
+
+  return { address: ceaPdaHex, deployed: skipNetworkCheck ? null : null };
+}
+
+/**
  * Derive the executor account (UEA or CEA) for a given account.
  *
  * - If account is on an external chain (Ethereum, Solana, etc.):
@@ -626,6 +660,10 @@ export async function deriveExecutorAccount(
 
     // If target chain is external, derive CEA from the computed UEA
     if (targetChain && !isPushChain(targetChain)) {
+      // SVM chains use PDA derivation, not CEAFactory
+      if (CHAIN_INFO[targetChain].vm === VM.SVM) {
+        return deriveSvmCeaPda(ueaAddress, targetChain, skipNetworkCheck);
+      }
       const { cea, isDeployed } = await getCEAAddress(
         ueaAddress,
         targetChain
@@ -655,6 +693,14 @@ export async function deriveExecutorAccount(
   // --- Case 2: Input is on Push Chain ---
   // If target chain is external, derive CEA
   if (targetChain && !isPushChain(targetChain)) {
+    // SVM chains use PDA derivation, not CEAFactory
+    if (CHAIN_INFO[targetChain].vm === VM.SVM) {
+      return deriveSvmCeaPda(
+        address as `0x${string}`,
+        targetChain,
+        skipNetworkCheck
+      );
+    }
     const { cea, isDeployed } = await getCEAAddress(
       address as `0x${string}`,
       targetChain

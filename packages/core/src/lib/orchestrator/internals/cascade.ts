@@ -60,6 +60,7 @@ import {
   getNativePRC20ForChain,
   toExecuteParams,
   getPushChainForNetwork,
+  isPushChain,
 } from './helpers';
 import { buildMulticallPayloadData } from './payload-builder';
 import { computeUEAOffchain, getUEANonce, getUeaStatusAndNonce } from './uea-manager';
@@ -97,15 +98,31 @@ export async function prepareTransaction(
   });
   const route = detectRoute(params);
 
-  // Skip getCode if accountStatusCache already confirmed deployment
+  // Push native EOA: block Route 1 — use sendTransaction() for direct Push calls
+  const signerChain = ctx.universalSigner.account.chain;
+  const isPushNativeEOA = isPushChain(signerChain);
+
+  if (isPushNativeEOA && route === TransactionRoute.UOA_TO_PUSH) {
+    throw new Error(
+      'Push native accounts cannot use prepareTransaction for Push Chain transactions. ' +
+      'Use sendTransaction() instead for direct Push Chain calls.'
+    );
+  }
+
+  // Fetch UEA nonce (skip for Push native EOA — uses EVM nonce, not UEA contract nonce)
   let nonce: bigint;
-  const deployedHintCascade = ctx.accountStatusCache?.uea?.deployed;
   const ueaAddress = computeUEAOffchain(ctx);
-  if (deployedHintCascade) {
-    nonce = await getUEANonce(ctx, ueaAddress);
+
+  if (isPushNativeEOA) {
+    nonce = BigInt(0);
   } else {
-    const status = await getUeaStatusAndNonce(ctx);
-    nonce = status.nonce;
+    const deployedHintCascade = ctx.accountStatusCache?.uea?.deployed;
+    if (deployedHintCascade) {
+      nonce = await getUEANonce(ctx, ueaAddress);
+    } else {
+      const status = await getUeaStatusAndNonce(ctx);
+      nonce = status.nonce;
+    }
   }
 
   // Build the payload based on route
@@ -319,8 +336,13 @@ export async function buildHopDescriptor(
         prc20Token = getNativePRC20ForChain(targetChain, ctx.pushNetwork);
         burnAmount = params.value;
       } else if (params.data) {
+        // PAYLOAD-only (no value transfer): still need native PRC-20 token for
+        // chain namespace lookup + gas fees, but burn amount must be zero.
+        // Matches the direct executeUoaToCea path (route-handlers.ts).
+        // Using burnAmount=1 would trigger transferFrom on the PRC-20 token,
+        // which reverts when the UEA has no PRC-20 balance for that chain.
         prc20Token = getNativePRC20ForChain(targetChain, ctx.pushNetwork);
-        burnAmount = BigInt(1); // Minimum for precompile
+        burnAmount = BigInt(0);
       }
 
       // Query gas fee
@@ -403,7 +425,7 @@ export async function buildHopDescriptor(
           ceaAddress: ceaPdaHex,
           isSvmTarget: true,
           prc20Token,
-          burnAmount: amount > BigInt(0) ? amount : BigInt(1),
+          burnAmount: amount,
           gasToken,
           gasFee,
         };
@@ -450,7 +472,7 @@ export async function buildHopDescriptor(
         sourceChain,
         ceaAddress,
         prc20Token,
-        burnAmount: amount > BigInt(0) ? amount : BigInt(1),
+        burnAmount: amount,
         gasToken,
         gasFee,
       };
@@ -750,12 +772,12 @@ export function composeCascade(
                 : undefined,
           });
 
-          const burnAmount = BigInt(1);
+          const svmBurnAmount = segment.totalBurnAmount || BigInt(0);
           const outboundReq = buildOutboundRequest(
             gatewayProgramHex,
             segment.prc20Token ||
               getNativePRC20ForChain(sourceChain, ctx.pushNetwork),
-            burnAmount,
+            svmBurnAmount,
             segment.gasLimit ?? BigInt(0),
             svmPayload,
             ueaAddress
@@ -768,7 +790,7 @@ export function composeCascade(
               getNativePRC20ForChain(sourceChain, ctx.pushNetwork),
             gasToken:
               segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
-            burnAmount,
+            burnAmount: svmBurnAmount,
             gasFee: inboundGasFee,
             nativeValueForGas:
               perOutboundNativeValue ?? inboundGasFee * BigInt(1000),
@@ -852,7 +874,7 @@ export function composeCascade(
           ceaAddress,
           segment.prc20Token ||
             getNativePRC20ForChain(sourceChain, ctx.pushNetwork),
-          segment.totalBurnAmount || BigInt(1),
+          segment.totalBurnAmount || BigInt(0),
           segment.gasLimit ?? BigInt(0),
           ceaPayload,
           ueaAddress
@@ -865,7 +887,7 @@ export function composeCascade(
             getNativePRC20ForChain(sourceChain, ctx.pushNetwork),
           gasToken:
             segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
-          burnAmount: segment.totalBurnAmount || BigInt(1),
+          burnAmount: segment.totalBurnAmount || BigInt(0),
           gasFee: inboundGasFee,
           nativeValueForGas:
             perOutboundNativeValue ?? inboundGasFee * BigInt(1000),
