@@ -392,12 +392,14 @@ export async function executeUoaToCea(
   let gasFee = BigInt(0);
   let nativeValueForGas = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+  let universalCoreAddress: `0x${string}` | undefined;
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
     try {
       const result = await queryOutboundGasFee(ctx, prc20Token, outboundReq.gasLimit);
       gasFee = result.gasFee;
       gasToken = result.gasToken;
       nativeValueForGas = result.nativeValueForGas;
+      universalCoreAddress = result.universalCoreAddress;
       printLog(
         ctx,
         `executeUoaToCea — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}`
@@ -407,31 +409,47 @@ export async function executeUoaToCea(
     }
   }
 
-  // Adjust nativeValueForGas: the 1Mx multiplier from queryOutboundGasFee produces
-  // a value far too low for the actual WPC/gasToken swap price. Set it to 200 UPC
-  // (capped by balance) — enough for the swap, but avoids draining thin pools.
-  // The contract's swapAndBurnGas does exactOutputSingle and refunds excess PC.
+  // Estimate the actual WPC needed for the swap using on-chain pool price.
+  // The static 1Mx multiplier from queryOutboundGasFee doesn't reflect the real
+  // WPC/gasToken exchange rate. estimateNativeValueForSwap reads the Uniswap V3
+  // pool's slot0, computes the true cost, and adds a 2x buffer.
+  // This matches the SVM path (executeUoaToCeaSvm) which already uses this.
+  // Excess msg.value is refunded by the contract's swapAndBurnGas.
+  if (universalCoreAddress && gasFee > BigInt(0)) {
+    const estimated = await estimateNativeValueForSwap(
+      ctx, universalCoreAddress, gasToken, gasFee, ueaBalance
+    );
+    if (estimated > nativeValueForGas) {
+      printLog(
+        ctx,
+        `executeUoaToCea — pool-price estimate: ${estimated.toString()} ` +
+          `(was ${nativeValueForGas.toString()}), UEA balance: ${ueaBalance.toString()}`
+      );
+      nativeValueForGas = estimated;
+    }
+  }
+
+  // Balance-aware cap: avoid draining the entire UEA balance for gas.
+  // The contract's swapAndBurnGas does exactOutputSingle and refunds excess PC,
+  // so overshooting within balance is safe.
   const EVM_NATIVE_VALUE_TARGET = BigInt(200e18); // 200 UPC
   const EVM_GAS_RESERVE = BigInt(3e18); // 3 UPC for tx overhead
-  // Reuse ueaBalance fetched earlier (line 383) — no tx sent between, balance is stable
   const currentBalance = ueaBalance;
 
-  // Balance-aware adjustment — same logic whether UEA is deployed or not.
-  // The old !isUEADeployed branch blindly used 200 UPC assuming fee-locking
-  // would deposit enough, but the actual deposit depends on origin-chain ETH
-  // locked — not a guaranteed 200 UPC. This caused executeUniversalTx to
-  // revert when UEA balance < 200 UPC. The contract's swapAndBurnGas does
-  // exactOutputSingle and refunds excess PC, so overshooting within balance
-  // is safe.
   let adjustedValue: bigint;
   if (currentBalance > EVM_NATIVE_VALUE_TARGET + EVM_GAS_RESERVE) {
-    // Enough balance: use 200 UPC target
-    adjustedValue = EVM_NATIVE_VALUE_TARGET;
+    // Enough balance: cap at 200 UPC (pool estimate may be lower)
+    adjustedValue = nativeValueForGas < EVM_NATIVE_VALUE_TARGET
+      ? nativeValueForGas
+      : EVM_NATIVE_VALUE_TARGET;
   } else if (currentBalance > EVM_GAS_RESERVE) {
     // Low balance: use what's available minus reserve
-    adjustedValue = currentBalance - EVM_GAS_RESERVE;
+    const available = currentBalance - EVM_GAS_RESERVE;
+    adjustedValue = nativeValueForGas < available ? nativeValueForGas : available;
   } else {
-    // Very low balance: use original query value as-is
+    // Very low/zero balance (fresh wallet). The pool-price estimate (now in
+    // nativeValueForGas) is accurate. Fee-locking will deposit enough UPC
+    // because requiredFunds includes this value, and lockFee floors at $1.
     adjustedValue = nativeValueForGas;
   }
 
