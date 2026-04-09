@@ -800,12 +800,8 @@ export async function executeCeaToPush(
 
   printLog(ctx, `executeCeaToPush — sourceChain: ${sourceChain}, CEA: ${ceaAddress}, deployed: ${ceaDeployed}`);
 
-  if (!ceaDeployed) {
-    throw new Error(
-      `CEA not deployed on ${sourceChain}. ` +
-        `Deploy CEA first using Route 2 (UOA -> CEA) before using Route 3.`
-    );
-  }
+  // CEA auto-deploys on-chain: Vault.finalizeUniversalTx calls CEAFactory.deployCEA()
+  // if CEA doesn't exist yet. No SDK-side blocking needed.
 
   // 5. Get UniversalGateway address on source chain
   const gatewayAddress = UNIVERSAL_GATEWAY_ADDRESSES[sourceChain];
@@ -1495,6 +1491,9 @@ export async function buildPayloadForRoute(
         sourceChain,
         ctx.rpcUrls[sourceChain]?.[0]
       );
+
+      // CEA auto-deploys on-chain: Vault.finalizeUniversalTx calls CEAFactory.deployCEA()
+      // if CEA doesn't exist yet. No SDK-side blocking needed.
 
       const gatewayAddr = UNIVERSAL_GATEWAY_ADDRESSES[sourceChain];
       if (!gatewayAddr) {

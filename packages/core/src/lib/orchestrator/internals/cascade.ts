@@ -431,11 +431,14 @@ export async function buildHopDescriptor(
         };
       }
 
-      const { cea: ceaAddress, isDeployed } = await getCEAAddress(
+      const { cea: ceaAddress } = await getCEAAddress(
         ueaAddress,
         sourceChain,
         ctx.rpcUrls[sourceChain]?.[0]
       );
+
+      // CEA auto-deploys on-chain: Vault.finalizeUniversalTx calls CEAFactory.deployCEA()
+      // if CEA doesn't exist yet. No SDK-side blocking needed.
 
       // Determine token/amount for the inbound
       let tokenAddress: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
