@@ -41,11 +41,14 @@ import {
 import {
   queryOutboundGasFee,
   estimateNativeValueForSwap,
+  estimateDepositFromLockedNative,
 } from './gas-calculator';
 
 import { CHAIN_INFO, VM_NAMESPACE, UNIVERSAL_GATEWAY_ADDRESSES } from '../../constants/chain';
 import { CHAIN } from '../../constants/enums';
 import { MoveableToken } from '../../constants/tokens';
+import { Utils } from '../../utils';
+import { PriceFetch } from '../../price-fetch/price-fetch';
 import { TransactionRoute, detectRoute, validateRouteParams } from '../route-detector';
 import { getCEAAddress, chainSupportsOutbound } from '../cea-utils';
 import {
@@ -409,71 +412,55 @@ export async function executeUoaToCea(
     }
   }
 
-  // Estimate the actual WPC needed for the swap using on-chain pool price.
-  // The static 1Mx multiplier from queryOutboundGasFee doesn't reflect the real
-  // WPC/gasToken exchange rate. estimateNativeValueForSwap reads the Uniswap V3
-  // pool's slot0, computes the true cost, and adds a 2x buffer.
-  // This matches the SVM path (executeUoaToCeaSvm) which already uses this.
-  // Excess msg.value is refunded by the contract's swapAndBurnGas.
+  // Balance-aware adjustment: MAXIMIZE nativeValueForGas within available balance.
+  // The contract's swapAndBurnGas does exactOutputSingle and refunds excess PC,
+  // so overshooting within balance is safe. Undershooting causes the swap to revert.
   const EVM_NATIVE_VALUE_TARGET = BigInt(200e18); // 200 UPC
   const EVM_GAS_RESERVE = BigInt(3e18); // 3 UPC for tx overhead
+  const ROUTE2_MINIMUM_DEPOSIT_USD = Utils.helpers.parseUnits('10', 8); // $10
 
-  if (universalCoreAddress && gasFee > BigInt(0)) {
-    // When UEA balance is 0, pass EVM_NATIVE_VALUE_TARGET as the balance hint
-    // so the pool estimate isn't capped/fallback'd to zero.
-    const balanceHint = ueaBalance > BigInt(0) ? ueaBalance : EVM_NATIVE_VALUE_TARGET;
-    const estimated = await estimateNativeValueForSwap(
-      ctx, universalCoreAddress, gasToken, gasFee, balanceHint
-    );
-    if (estimated > nativeValueForGas) {
-      printLog(
-        ctx,
-        `executeUoaToCea — pool-price estimate: ${estimated.toString()} ` +
-          `(was ${nativeValueForGas.toString()}), UEA balance: ${ueaBalance.toString()}`
-      );
-      nativeValueForGas = estimated;
+  // Determine effective balance for the adjustment.
+  // For deployed UEAs: use real balance.
+  // For fresh wallets: predict the post-fee-locking balance by querying the same
+  // Uniswap V3 quoter the chain uses (pETH → WPC swap in execute_inbound_gas.go).
+  let effectiveBalance = ueaBalance;
+
+  if (!isUEADeployed && effectiveBalance <= EVM_GAS_RESERVE) {
+    // Calculate the ETH amount lockFee will send (same formula as lockFee)
+    const ethPrice = await new PriceFetch(ctx.rpcUrls).getPrice(signerChain);
+    const nativeAmountETH = ethPrice > BigInt(0)
+      ? (ROUTE2_MINIMUM_DEPOSIT_USD * BigInt(1e18) + (ethPrice - BigInt(1))) / ethPrice + BigInt(1)
+      : BigInt(0);
+
+    if (nativeAmountETH > BigInt(0)) {
+      // Query the real swap quote: how much WPC (UPC) for this pETH amount?
+      const originPrc20 = getNativePRC20ForChain(signerChain, ctx.pushNetwork);
+      const predictedUPC = await estimateDepositFromLockedNative(ctx, nativeAmountETH, originPrc20);
+
+      if (predictedUPC > BigInt(0)) {
+        // 10% safety margin for slippage between quote and actual execution
+        effectiveBalance = (predictedUPC * BigInt(90)) / BigInt(100);
+        printLog(ctx,
+          `executeUoaToCea — fresh wallet: Uniswap quote predicts ${predictedUPC.toString()} UPC ` +
+          `from ${nativeAmountETH.toString()} wei pETH, using ${effectiveBalance.toString()} (90%)`
+        );
+      }
     }
   }
 
-  // Balance-aware adjustment: avoid draining the entire UEA balance for gas.
-  // The contract's swapAndBurnGas does exactOutputSingle and refunds excess PC,
-  // so overshooting within balance is safe.
-  const currentBalance = ueaBalance;
-
   let adjustedValue: bigint;
-  if (currentBalance > EVM_NATIVE_VALUE_TARGET + EVM_GAS_RESERVE) {
-    // Enough balance: cap at 200 UPC (pool estimate may be lower)
-    adjustedValue = nativeValueForGas < EVM_NATIVE_VALUE_TARGET
-      ? nativeValueForGas
-      : EVM_NATIVE_VALUE_TARGET;
-  } else if (currentBalance > EVM_GAS_RESERVE) {
-    // Low balance: use what's available minus reserve
-    const available = currentBalance - EVM_GAS_RESERVE;
-    adjustedValue = nativeValueForGas < available ? nativeValueForGas : available;
-  } else if (!isUEADeployed) {
-    // Fresh wallet: UEA not deployed, fee-locking WILL run and deposit funds.
-    // Use EVM_NATIVE_VALUE_TARGET (200 UPC) — fee-locking auto-covers this
-    // because requiredFunds includes nativeValueForGas, and lockFee converts
-    // the UPC amount to USD and deposits the equivalent ETH.
-    // The contract's swapAndBurnGas refunds any excess.
-    // If pool estimate produced a usable value, prefer it (capped at 200 UPC).
-    adjustedValue = nativeValueForGas > EVM_NATIVE_VALUE_TARGET
-      ? EVM_NATIVE_VALUE_TARGET
-      : nativeValueForGas > BigInt(0) ? nativeValueForGas : EVM_NATIVE_VALUE_TARGET;
-    printLog(
-      ctx,
-      `executeUoaToCea — fresh wallet (UEA not deployed): using ${adjustedValue.toString()} for nativeValueForGas`
-    );
+  if (effectiveBalance > EVM_NATIVE_VALUE_TARGET + EVM_GAS_RESERVE) {
+    adjustedValue = EVM_NATIVE_VALUE_TARGET;
+  } else if (effectiveBalance > EVM_GAS_RESERVE) {
+    adjustedValue = effectiveBalance - EVM_GAS_RESERVE;
   } else {
-    // Deployed UEA with near-zero balance: best-effort with pool/1M estimate.
-    // User may need to add funds to UEA manually.
     adjustedValue = nativeValueForGas;
   }
 
   if (adjustedValue !== nativeValueForGas) {
-    printLog(
-      ctx,
-      `executeUoaToCea — adjusting nativeValueForGas from ${nativeValueForGas.toString()} to ${adjustedValue.toString()} (UEA balance: ${currentBalance.toString()})`
+    printLog(ctx,
+      `executeUoaToCea — adjusting nativeValueForGas from ${nativeValueForGas.toString()} ` +
+      `to ${adjustedValue.toString()} (effective balance: ${effectiveBalance.toString()})`
     );
     nativeValueForGas = adjustedValue;
   }
@@ -539,6 +526,8 @@ export async function executeUoaToCea(
       balance: ueaBalance,
     },
     _skipFeeLocking: isUEADeployed, // skip fee-locking only if UEA is already deployed
+    // For undeployed UEAs, ensure fee-locking deposits enough for the outbound swap
+    ...(!isUEADeployed ? { _minimumDepositUsd: ROUTE2_MINIMUM_DEPOSIT_USD } : {}),
   };
 
   const response = await executeFn(executeParams);

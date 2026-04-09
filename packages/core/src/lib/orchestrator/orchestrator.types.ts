@@ -135,6 +135,15 @@ export type ExecuteParams = {
    * @internal
    */
   _skipFeeLocking?: boolean;
+
+  /**
+   * Internal: Minimum fee-locking deposit in USD (8 decimals).
+   * Overrides the default $1 floor when the caller needs a larger deposit
+   * (e.g., Route 2 needs enough UPC for the outbound swap).
+   * Still capped at $10 by lockFee.
+   * @internal
+   */
+  _minimumDepositUsd?: bigint;
 };
 
 /**

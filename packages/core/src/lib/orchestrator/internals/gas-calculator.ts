@@ -502,3 +502,106 @@ export async function calculateGasAmountFromAmountOutMinETH(
 
   return { gasAmount };
 }
+
+// ============================================================================
+// Estimate UPC deposit from locked ETH via Uniswap V3 quote
+// ============================================================================
+
+/**
+ * Predicts how much UPC (WPC) the chain will deposit to the UEA from a given
+ * amount of locked native token (e.g., ETH on Sepolia). The chain converts
+ * locked ETH → pETH (PRC-20) → WPC via Uniswap V3 swap on Push Chain.
+ *
+ * Queries the same Uniswap V3 QuoterV2 the chain uses in execute_inbound_gas.go.
+ * Returns 0 on any failure (caller should fall back to other logic).
+ */
+export async function estimateDepositFromLockedNative(
+  ctx: OrchestratorContext,
+  nativeAmountForLocker: bigint,
+  prc20Token: `0x${string}`
+): Promise<bigint> {
+  try {
+    const pushChain = getPushChainForNetwork(ctx.pushNetwork);
+    const quoterAddress = CHAIN_INFO[pushChain]?.dex?.uniV3QuoterV2;
+    if (!quoterAddress || quoterAddress.startsWith('0xTBD')) return BigInt(0);
+
+    // Get UniversalCore → WPC address + fee tier (reuses existing ABI)
+    const gatewayPcAddress = getUniversalGatewayPCAddress();
+    const universalCoreAddress = await ctx.pushClient.readContract<`0x${string}`>({
+      address: gatewayPcAddress,
+      abi: UNIVERSAL_GATEWAY_PC,
+      functionName: 'UNIVERSAL_CORE',
+      args: [],
+    });
+
+    const [wpcAddress, feeTier] = await Promise.all([
+      ctx.pushClient.readContract<`0x${string}`>({
+        address: universalCoreAddress,
+        abi: UNIVERSAL_CORE_SWAP_HELPERS_ABI,
+        functionName: 'WPC',
+        args: [],
+      }),
+      ctx.pushClient.readContract<number>({
+        address: universalCoreAddress,
+        abi: UNIVERSAL_CORE_SWAP_HELPERS_ABI,
+        functionName: 'defaultFeeTier',
+        args: [prc20Token],
+      }),
+    ]);
+
+    if (!feeTier || !wpcAddress) return BigInt(0);
+
+    // QuoterV2.quoteExactInputSingle — same call the chain relay makes
+    const QUOTER_ABI = [
+      {
+        type: 'function' as const,
+        name: 'quoteExactInputSingle',
+        inputs: [
+          {
+            type: 'tuple',
+            components: [
+              { name: 'tokenIn', type: 'address' },
+              { name: 'tokenOut', type: 'address' },
+              { name: 'amountIn', type: 'uint256' },
+              { name: 'fee', type: 'uint24' },
+              { name: 'sqrtPriceLimitX96', type: 'uint160' },
+            ],
+          },
+        ],
+        outputs: [
+          { name: 'amountOut', type: 'uint256' },
+          { name: 'sqrtPriceX96After', type: 'uint160' },
+          { name: 'initializedTicksCrossed', type: 'uint32' },
+          { name: 'gasEstimate', type: 'uint256' },
+        ],
+        stateMutability: 'view' as const,
+      },
+    ];
+
+    const result = await ctx.pushClient.readContract<[bigint, bigint, number, bigint]>({
+      address: quoterAddress as `0x${string}`,
+      abi: QUOTER_ABI,
+      functionName: 'quoteExactInputSingle',
+      args: [
+        {
+          tokenIn: prc20Token,
+          tokenOut: wpcAddress,
+          amountIn: nativeAmountForLocker,
+          fee: feeTier,
+          sqrtPriceLimitX96: BigInt(0),
+        },
+      ],
+    });
+
+    const amountOut = result[0];
+    printLog(ctx,
+      `estimateDepositFromLockedNative — quote: ${nativeAmountForLocker.toString()} pETH → ${amountOut.toString()} WPC (fee tier: ${feeTier})`
+    );
+    return amountOut;
+  } catch (err) {
+    printLog(ctx,
+      `estimateDepositFromLockedNative — failed: ${err instanceof Error ? err.message : String(err)}`
+    );
+    return BigInt(0);
+  }
+}

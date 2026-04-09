@@ -68,14 +68,14 @@ describe('Route 2: Fresh Wallet nativeValueForGas Bug', () => {
   }, 30000);
 
   // ==========================================================================
-  // Test 1: Fresh wallet — Route 2 WITHOUT prior UEA deployment
+  // Test 1: Fresh wallet — Single-tx Route 2 with Uniswap V3 quote prediction
   //
-  // PRE-FIX:  This should FAIL with ExecutionFailed (0xacfdb444)
-  //           because nativeValueForGas is too low for the Uniswap swap.
-  // POST-FIX: This should PASS because pool-price estimation calculates
-  //           the correct nativeValueForGas.
+  // PRE-FIX:  FAILS with ExecutionFailed (0xacfdb444) because pushToUSDC
+  //           predicted 100 UPC from $10 but chain deposited only 18.3 UPC.
+  // POST-FIX: SDK queries the same Uniswap V3 quoter the chain uses
+  //           (pETH→WPC) to predict the real deposit. Single transaction.
   // ==========================================================================
-  it('should execute Route 2 contract call from a fresh wallet (UEA not deployed)', async () => {
+  it('should execute Route 2 contract call from a fresh wallet (uniswap quote prediction)', async () => {
     if (skipE2E) {
       console.log('Skipping — EVM_PRIVATE_KEY not set');
       return;
@@ -86,10 +86,12 @@ describe('Route 2: Fresh Wallet nativeValueForGas Bug', () => {
     const freshAccount = privateKeyToAccount(freshPrivateKey);
     console.log(`\n=== Fresh wallet: ${freshAccount.address} ===`);
 
-    // Fund the fresh wallet with enough Sepolia ETH for fee-locking + gas
+    // Fund the fresh wallet with enough Sepolia ETH for:
+    // 1. Auto-deploy self-transfer fee-locking (~0.001 ETH)
+    // 2. Route 2 signed path gas (no additional fee-locking needed)
     const fundTxHash = await mainWalletClient.sendTransaction({
       to: freshAccount.address,
-      value: parseEther('0.002'), // ~$5 at typical ETH prices
+      value: parseEther('0.008'), // $10 minimum deposit + Sepolia gas needs ~0.006 ETH
       account: mainWalletClient.account!,
       chain: sepolia,
     });
@@ -132,9 +134,9 @@ describe('Route 2: Fresh Wallet nativeValueForGas Bug', () => {
       functionName: 'increment',
     });
 
-    // Route 2: to is { address, chain } — fresh wallet, UEA not deployed
-    // PRE-FIX:  This throws ExecutionFailed (0xacfdb444)
-    // POST-FIX: This should succeed
+    // Route 2: fresh wallet, UEA not deployed.
+    // SDK predicts post-deposit balance and uses _minimumDepositUsd ($3).
+    // Chain auto-deploys UEA during fee-locking. Single transaction.
     const tx = await freshPushClient.universal.sendTransaction({
       to: {
         address: COUNTER_ADDRESS,

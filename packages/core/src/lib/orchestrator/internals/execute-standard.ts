@@ -250,8 +250,12 @@ export async function executeStandardPayload(
     const fixedPushAmount = Utils.helpers.parseUnits('0.001', 18);
     const lockAmount = funds < requiredFunds ? fundDifference : fixedPushAmount;
     const lockAmountInUSD = ctx.pushClient.pushToUSDC(lockAmount);
+    // Apply minimum deposit override (e.g., Route 2 needs enough UPC for outbound swap)
+    const effectiveLockAmountInUSD = execute._minimumDepositUsd && execute._minimumDepositUsd > lockAmountInUSD
+      ? execute._minimumDepositUsd
+      : lockAmountInUSD;
 
-    const feeLockTxHashBytes = await lockFee(ctx, lockAmountInUSD, universalPayload, req);
+    const feeLockTxHashBytes = await lockFee(ctx, effectiveLockAmountInUSD, universalPayload, req);
     feeLockTxHash = bytesToHex(feeLockTxHashBytes);
     verificationData = bytesToHex(feeLockTxHashBytes);
 
