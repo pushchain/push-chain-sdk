@@ -210,7 +210,7 @@ export async function trackTransaction(
     advanced = {},
   } = options ?? {};
 
-  const { timeout = 300000, rpcUrls = {} } = advanced;
+  const { timeout = 300000, pollingIntervalMs = 1000, rpcUrls = {} } = advanced;
 
   // Event buffer for replay via response.progressHook()
   const eventBuffer: ProgressEvent[] = [];
@@ -259,7 +259,7 @@ export async function trackTransaction(
       }
 
       // Brief delay before retry
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, pollingIntervalMs));
     }
   }
 

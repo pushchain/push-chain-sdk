@@ -11,7 +11,7 @@ import { createEvmPushClient } from '@e2e/shared/evm-client';
  *
  * Tests verify that:
  * 1. tx.progressHook() method registers callback
- * 2. Registered callback receives TRACK_TX_* events during wait()
+ * 2. Registered callback receives SEND-TX-* events during wait()
  * 3. Both tx.progressHook and orchestrator hooks work together
  * 4. trackTransaction progress callback still works
  */
@@ -84,10 +84,10 @@ describe('tx.progressHook() Method (e2e)', () => {
     // Wait triggers tracking events
     await tx.wait();
 
-    // Should have received TRACK_TX_* events
+    // Should have received SEND-TX-* events (replayed from execution buffer + tracking)
     expect(methodEvents.length).toBeGreaterThan(0);
-    expect(methodEvents.some((e) => e.id === 'TRACK-TX-01')).toBe(true);
-    expect(methodEvents.some((e) => e.id === 'TRACK-TX-99-01')).toBe(true);
+    expect(methodEvents.some((e) => e.id === 'SEND-TX-01')).toBe(true);
+    expect(methodEvents.some((e) => e.id === 'SEND-TX-99-01')).toBe(true);
 
     console.log(`✓ tx.progressHook() received ${methodEvents.length} events`);
   }, 60000);
@@ -115,7 +115,7 @@ describe('tx.progressHook() Method (e2e)', () => {
 
     await tx.wait();
 
-    // Both should have received TRACK_TX_* events
+    // Both should have received SEND-TX-* events
     expect(methodEvents.length).toBeGreaterThan(0);
     expect(orchestratorEvents.length).toBeGreaterThan(0);
 
@@ -157,8 +157,8 @@ describe('tx.progressHook() Method (e2e)', () => {
     );
 
     expect(receipt.hash).toBe(sharedTxResponse.hash);
-    expect(trackEvents.some((e) => e.id === 'TRACK-TX-01')).toBe(true);
-    expect(trackEvents.some((e) => e.id === 'TRACK-TX-99-01')).toBe(true);
+    expect(trackEvents.some((e) => e.id === 'SEND-TX-01')).toBe(true);
+    expect(trackEvents.some((e) => e.id === 'SEND-TX-99-01')).toBe(true);
 
     // Both per-tx and orchestrator hooks should have received events
     expect(orchestratorEvents.length).toBeGreaterThan(0);
@@ -230,9 +230,9 @@ describe('tx.progressHook() Method (e2e)', () => {
       expect(typeof event.timestamp).toBe('string');
     }
 
-    // Verify expected TRACK_TX events are present
-    expect(methodEvents.some((e) => e.id === 'TRACK-TX-01')).toBe(true);
-    expect(methodEvents.some((e) => e.id === 'TRACK-TX-99-01')).toBe(true);
+    // Verify expected SEND-TX events are present
+    expect(methodEvents.some((e) => e.id === 'SEND-TX-01')).toBe(true);
+    expect(methodEvents.some((e) => e.id === 'SEND-TX-99-01')).toBe(true);
 
     console.log(`✓ All ${methodEvents.length} events have valid structure`);
   }, 60000);
