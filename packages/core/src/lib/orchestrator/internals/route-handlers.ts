@@ -951,19 +951,17 @@ export async function executeCeaToPush(
     `executeCeaToPush — CEA payload (first 100 chars): ${ceaPayload.slice(0, 100)}...`
   );
 
-  // 8. Determine PRC-20 token for the outbound burn on Push Chain.
-  // For ERC20 flows (params.funds with token), use the token's PRC-20 (e.g. pUSDT)
-  // so the Vault deposits ERC20 to CEA. For native flows, use the chain's native PRC-20 (e.g. pBNB).
-  let prc20Token: `0x${string}`;
-  if (params.funds?.amount && (params.funds as { token: MoveableToken }).token) {
-    const token = (params.funds as { token: MoveableToken }).token;
-    prc20Token = PushChain.utils.tokens.getPRC20Address(token);
-  } else {
-    prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
-  }
-  // burnAmount = PRC20 to burn on Push Chain (NOT the bridge amount).
-  // Vault deposits burnAmount to CEA. CEA uses burnAmount + pre-existing balance for the bridge.
-  const burnAmount = amount;
+  // 8. Determine PRC-20 token for the outbound relay.
+  // Route 3: ALWAYS use native PRC-20 for chain namespace lookup + gas fees.
+  // The CEA uses its OWN pre-existing balance on the external chain to bridge
+  // tokens back — no PRC-20 burn is needed on Push Chain.
+  // burnAmount = 0 makes this a payload-only outbound relay.
+  //
+  // Previously this burned pUSDT/pToken equal to the bridge amount, which failed
+  // because the UEA never holds pUSDT — the whole point of Route 3 is to get
+  // tokens FROM the CEA back to Push Chain, not to round-trip them.
+  const prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
+  const burnAmount = BigInt(0);
 
   printLog(
     ctx,
@@ -975,7 +973,7 @@ export async function executeCeaToPush(
   const outboundReq: UniversalOutboundTxRequest = buildOutboundRequest(
     ceaAddress,              // target: CEA address (to=CEA for self-execution)
     prc20Token,              // token: native PRC-20 for source chain (for namespace lookup)
-    burnAmount,              // amount: 1 wei (precompile workaround)
+    burnAmount,              // amount: 0 (payload-only, CEA uses its own balance)
     params.gasLimit ?? BigInt(0),
     ceaPayload,              // payload: ABI-encoded CEA multicall
     ueaAddress               // revertRecipient: UEA
@@ -1158,7 +1156,6 @@ export async function executeCeaToPushSvm(
   // Determine drain amount and token
   let drainAmount = BigInt(0);
   let tokenMintHex: `0x${string}` | undefined;
-  let prc20Token: `0x${string}`;
 
   if (params.funds?.amount && params.funds.amount > BigInt(0)) {
     // SPL token drain
@@ -1168,19 +1165,15 @@ export async function executeCeaToPushSvm(
       // Convert SPL mint address to 32-byte hex
       const mintPk = new PublicKey(token.address);
       tokenMintHex = ('0x' + Buffer.from(mintPk.toBytes()).toString('hex')) as `0x${string}`;
-      prc20Token = PushChain.utils.tokens.getPRC20Address(token);
-    } else {
-      prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
     }
   } else if (params.value && params.value > BigInt(0)) {
     // Native SOL drain
     drainAmount = params.value;
-    prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
-  } else {
-    // Payload-only Route 3 SVM: no funds to drain, just execute data on Push Chain
-    drainAmount = BigInt(0);
-    prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
   }
+
+  // Route 3 SVM: ALWAYS use native PRC-20 for chain namespace lookup + gas fees.
+  // CEA uses its own pre-existing balance — no PRC-20 burn needed on Push Chain.
+  const prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
 
   // Build the SVM CPI payload (send_universal_tx_to_uea wrapped in execute)
   // If params.data is provided, pass it as extraPayload for Push Chain execution
@@ -1502,26 +1495,19 @@ export async function buildPayloadForRoute(
 
         let drainAmount = BigInt(0);
         let tokenMintHex: `0x${string}` | undefined;
-        let prc20Token: `0x${string}`;
-
         if (params.funds?.amount && params.funds.amount > BigInt(0)) {
           drainAmount = params.funds.amount;
           const token = (params.funds as { token: MoveableToken }).token;
           if (token && token.address) {
             const mintPk = new PublicKey(token.address);
             tokenMintHex = ('0x' + Buffer.from(mintPk.toBytes()).toString('hex')) as `0x${string}`;
-            prc20Token = PushChain.utils.tokens.getPRC20Address(token);
-          } else {
-            prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
           }
         } else if (params.value && params.value > BigInt(0)) {
           drainAmount = params.value;
-          prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
-        } else {
-          // Payload-only Route 3 SVM: no funds to drain, just execute data on Push Chain
-          drainAmount = BigInt(0);
-          prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
         }
+
+        // Route 3 SVM: ALWAYS use native PRC-20, CEA uses its own balance.
+        const prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
 
         // Derive CEA PDA as revert recipient
         const ueaBytes2 = Buffer.from(ueaAddress.slice(2), 'hex');
@@ -1640,9 +1626,9 @@ export async function buildPayloadForRoute(
 
       const ceaPayload = buildCeaMulticallPayload(ceaMulticalls);
       const prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
-      // burnAmount = actual amount needed by CEA. Vault deposits this as msg.value.
-      // Fallback to BigInt(1) for payload-only outbound (precompile rejects amount=0).
-      const burnAmount = amount > BigInt(0) ? amount : BigInt(1);
+      // Route 3: CEA uses its own pre-existing balance — no PRC-20 burn needed.
+      // burnAmount = 0 makes this a payload-only outbound relay.
+      const burnAmount = BigInt(0);
 
       const outboundReq = buildOutboundRequest(
         ceaAddress,

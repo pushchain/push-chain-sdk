@@ -342,7 +342,7 @@ export async function transformToUniversalTxResponse(
   callbacks: ResponseBuilderCallbacks
 ): Promise<UniversalTxResponse> {
   const chain = ctx.universalSigner.account.chain;
-  const { vm, chainId } = CHAIN_INFO[chain];
+  let { vm, chainId } = CHAIN_INFO[chain];
   let from: `0x${string}`;
   let to: `0x${string}`;
   let value: bigint;
@@ -367,6 +367,15 @@ export async function transformToUniversalTxResponse(
       throw new Error('UEA origin account is null');
     }
     originAddress = ueaOrigin.account.address;
+
+    // Use the resolved origin chain for vm/chainId so that the `origin`
+    // field reflects the transaction's actual origin, not the tracker's.
+    const resolvedChainInfo = CHAIN_INFO[ueaOrigin.account.chain];
+    if (resolvedChainInfo) {
+      vm = resolvedChainInfo.vm;
+      chainId = resolvedChainInfo.chainId;
+    }
+
     from = getAddress(tx.to as `0x${string}`);
 
     let decoded;

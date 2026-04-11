@@ -280,14 +280,27 @@ export async function extractPcTxAndTransform(
     pushChainUniversalTx.pcTx.map((p: any) => ({ txHash: p.txHash, status: p.status, errorMsg: p.errorMsg })),
     null, 2));
   printLog(ctx, `${label} — using lastPcTransaction: ` + JSON.stringify(lastPcTransaction, null, 2));
-  if (!lastPcTransaction?.txHash) {
-    const failedPcTx = pushChainUniversalTx.pcTx.find(
-      (pcTx: { status?: string; errorMsg?: string }) =>
-        pcTx.status === 'FAILED' && pcTx.errorMsg
-    );
+  if (!lastPcTransaction?.txHash || lastPcTransaction.status === 'FAILED') {
+    const failedPcTx = lastPcTransaction?.status === 'FAILED'
+      ? lastPcTransaction
+      : pushChainUniversalTx.pcTx.find(
+          (pcTx: { status?: string; errorMsg?: string }) =>
+            pcTx.status === 'FAILED' && pcTx.errorMsg
+        );
     const errorDetails = failedPcTx?.errorMsg ? `: ${failedPcTx.errorMsg}` : '';
+    // Parse known UEA error selectors for actionable hints
+    let hint = '';
+    if (failedPcTx?.errorMsg) {
+      if (failedPcTx.errorMsg.includes('0xacfdb444')) {
+        hint = ' [ExecutionFailed: the subcall to the target contract reverted. ' +
+          'Check that the target address can receive native tokens (has receive/fallback) ' +
+          'and that calldata matches a valid function signature.]';
+      } else if (failedPcTx.errorMsg.includes('0x179a867c')) {
+        hint = ' [ExpiredDeadline: the transaction deadline has passed.]';
+      }
+    }
     throw new Error(
-      `No transaction hash found in Push Chain response for gateway tx: ${gatewayTxHash}${errorDetails}`
+      `Push Chain transaction failed for gateway tx: ${gatewayTxHash}${errorDetails}${hint}`
     );
   }
   const tx = await ctx.pushClient.getTransaction(lastPcTransaction.txHash as `0x${string}`);

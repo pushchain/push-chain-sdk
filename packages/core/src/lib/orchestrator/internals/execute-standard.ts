@@ -29,7 +29,7 @@ import type {
 } from '../orchestrator.types';
 import { buildExecuteMulticall } from '../payload-builders';
 import type { OrchestratorContext } from './context';
-import { fireProgressHook } from './context';
+import { fireProgressHook, printLog } from './context';
 import {
   isPushChain,
   validateMainnetConnection,
@@ -51,6 +51,9 @@ import {
   type ResponseBuilderCallbacks,
 } from './response-builder';
 import { sendPushTx, sendUniversalTx, extractPcTxAndTransform } from './push-chain-tx';
+import { estimateDepositFromLockedNative } from './gas-calculator';
+import { getNativePRC20ForChain } from './helpers';
+import { PriceFetch } from '../../price-fetch/price-fetch';
 
 export async function executeStandardPayload(
   ctx: OrchestratorContext,
@@ -254,6 +257,59 @@ export async function executeStandardPayload(
     const effectiveLockAmountInUSD = execute._minimumDepositUsd && execute._minimumDepositUsd > lockAmountInUSD
       ? execute._minimumDepositUsd
       : lockAmountInUSD;
+
+    // Pre-flight: predict the actual $PC the UEA will receive after the
+    // on-chain pETH → WPC swap and validate it covers requiredFunds.
+    // Uses the same Uniswap V3 quoter the chain uses (execute_inbound_gas.go).
+    // Mirrors the pattern in route-handlers.ts (Route 2/3).
+    const { vm: originVm } = CHAIN_INFO[chain];
+    if (originVm === VM.EVM) {
+      try {
+        // Replicate lockFee's USD → native conversion (with its $1–$10 clamp)
+        const oneUsd = Utils.helpers.parseUnits('1', 8);
+        const tenUsd = Utils.helpers.parseUnits('10', 8);
+        let depositUsd = effectiveLockAmountInUSD < oneUsd ? oneUsd : effectiveLockAmountInUSD;
+        if (depositUsd > tenUsd) depositUsd = tenUsd;
+
+        const ethPrice = await new PriceFetch(ctx.rpcUrls).getPrice(chain);
+        if (ethPrice > BigInt(0)) {
+          const nativeAmountETH =
+            (depositUsd * BigInt(1e18) + (ethPrice - BigInt(1))) / ethPrice + BigInt(1);
+          const originPrc20 = getNativePRC20ForChain(chain, ctx.pushNetwork);
+          const predictedUPC = await estimateDepositFromLockedNative(ctx, nativeAmountETH, originPrc20);
+
+          if (predictedUPC > BigInt(0)) {
+            // 10% slippage margin (same as route-handlers.ts)
+            const safeUPC = (predictedUPC * BigInt(90)) / BigInt(100);
+            const totalAvailable = safeUPC + funds;
+            printLog(ctx,
+              `Fee-lock pre-flight: deposit ${depositUsd.toString()} USD → ` +
+              `~${nativeAmountETH.toString()} wei ETH → ~${predictedUPC.toString()} UPC ` +
+              `(safe: ${safeUPC.toString()}), existing: ${funds.toString()}, ` +
+              `total: ${totalAvailable.toString()}, required: ${requiredFunds.toString()}`
+            );
+
+            if (totalAvailable < requiredFunds) {
+              const shortfall = requiredFunds - totalAvailable;
+              throw new Error(
+                `Insufficient deposit: the fee-lock will deposit ~${(Number(safeUPC) / 1e18).toFixed(4)} $PC ` +
+                `but the transaction requires ~${(Number(requiredFunds) / 1e18).toFixed(4)} $PC ` +
+                `(shortfall: ~${(Number(shortfall) / 1e18).toFixed(4)} $PC). ` +
+                `The fee-lock deposit is capped at $10 USD. Reduce the transfer value or ` +
+                `pre-fund the UEA (${UEA}) on Push Chain.`
+              );
+            }
+          }
+        }
+      } catch (err) {
+        // If the error is our own insufficient-deposit error, rethrow it
+        if (err instanceof Error && err.message.startsWith('Insufficient deposit')) {
+          throw err;
+        }
+        // Otherwise quoter failed — log and continue (same fallback as route-handlers)
+        printLog(ctx, `Fee-lock pre-flight quote failed, proceeding without validation: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
 
     const feeLockTxHashBytes = await lockFee(ctx, effectiveLockAmountInUSD, universalPayload, req);
     feeLockTxHash = bytesToHex(feeLockTxHashBytes);
