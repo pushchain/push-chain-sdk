@@ -181,7 +181,10 @@ export interface UniversalTxResponse {
 
   /**
    * Register a progress callback for events during wait().
-   * Call this BEFORE calling wait() to receive tracking events.
+   * Call this BEFORE calling wait() to receive tracking events, including
+   * the SEND-TX-08-xx / SEND-TX-99-03/04/05 external chain polling events
+   * emitted on outbound routes. Registering after wait() resolves will
+   * replay the pre-execution event buffer but miss outbound polling events.
    * @param callback - Function called with each progress event
    */
   progressHook: (
@@ -647,8 +650,16 @@ export interface CascadeTrackOptions {
   pollingIntervalMs?: number;
   /** Total timeout (default: 600000ms = 10 min) */
   timeout?: number;
-  /** Progress callback */
+  /** Per-hop progress callback */
   progressHook?: (event: CascadeProgressEvent) => void;
+  /**
+   * Unified ProgressEvent stream for SEND-TX-08/99_03-05 telemetry.
+   * Fires per outbound hop during external chain polling. Use alongside
+   * `progressHook` — they emit complementary views of the same events.
+   */
+  eventHook?: (
+    event: import('../progress-hook/progress-hook.types').ProgressEvent
+  ) => void;
 }
 
 /**

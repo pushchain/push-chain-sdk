@@ -67,6 +67,8 @@ import { computeUEAOffchain, getUEANonce, getUeaStatusAndNonce } from './uea-man
 import { queryOutboundGasFee } from './gas-calculator';
 import { buildPayloadForRoute } from './route-handlers';
 import { buildSvmPayloadFromParams } from '../svm-idl/build-payload';
+import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
+import PROGRESS_HOOKS from '../../progress-hook/progress-hook';
 
 // ============================================================================
 // Callback interfaces
@@ -1048,6 +1050,7 @@ export function createCascadedBuilder(
             pollingIntervalMs = 10000,
             timeout = 300000,
             progressHook: cascadeProgressHook,
+            eventHook,
           } = opts || {};
           const startTime = Date.now();
 
@@ -1119,12 +1122,21 @@ export function createCascadedBuilder(
                     status: 'timeout',
                     elapsed: Date.now() - startTime,
                   });
+                  eventHook?.(
+                    PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_04](
+                      Date.now() - startTime
+                    )
+                  );
                   return {
                     success: false,
                     hops: hopInfos,
                     failedAt: hop.hopIndex,
                   };
                 }
+
+                eventHook?.(
+                  PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_08_01](hop.executionChain)
+                );
 
                 cascadeProgressHook?.({
                   hopIndex: hop.hopIndex,
@@ -1133,6 +1145,8 @@ export function createCascadedBuilder(
                   status: 'polling',
                   elapsed: Date.now() - startTime,
                 });
+
+                let lastEmittedStatus: string | undefined;
 
                 try {
                   const outboundDetails =
@@ -1154,11 +1168,25 @@ export function createCascadedBuilder(
                             | 'timeout',
                           elapsed: Date.now() - startTime,
                         });
+                        if (
+                          event.status === 'polling' &&
+                          lastEmittedStatus !== 'polling'
+                        ) {
+                          lastEmittedStatus = 'polling';
+                          eventHook?.(
+                            PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_08_02](
+                              event.elapsed
+                            )
+                          );
+                        }
                       },
                     });
                   hop.status = 'confirmed';
                   hop.txHash = outboundDetails.externalTxHash;
                   hop.outboundDetails = outboundDetails;
+                  eventHook?.(
+                    PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_03](outboundDetails)
+                  );
                   cascadeProgressHook?.({
                     hopIndex: hop.hopIndex,
                     route: hop.route,
@@ -1168,6 +1196,18 @@ export function createCascadedBuilder(
                     elapsed: Date.now() - startTime,
                   });
                 } catch (err) {
+                  const errMsg =
+                    err instanceof Error ? err.message : String(err);
+                  const isTimeout = errMsg.startsWith(
+                    'Timeout waiting for outbound transaction'
+                  );
+                  eventHook?.(
+                    isTimeout
+                      ? PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_04](
+                          remainingTimeout
+                        )
+                      : PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_05](errMsg)
+                  );
                   hop.status = 'failed';
                   cascadeProgressHook?.({
                     hopIndex: hop.hopIndex,
@@ -1184,6 +1224,19 @@ export function createCascadedBuilder(
                 }
               } else {
                 // Multiple outbound hops: use V2 API which returns outboundTx[]
+                // Emit "Awaiting External Chain" once per outbound hop before
+                // polling begins.
+                for (const outHop of outboundHops) {
+                  eventHook?.(
+                    PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_08_01](
+                      outHop.executionChain
+                    )
+                  );
+                }
+
+                const perHopLastStatus = new Map<number, string>();
+                const confirmedHops = new Set<number>();
+
                 const allOutboundDetails =
                   await callbacks.waitForAllOutboundTxsFn(
                     response.hash,
@@ -1210,15 +1263,61 @@ export function createCascadedBuilder(
                           txHash: event.txHash,
                           elapsed: Date.now() - startTime,
                         });
+
+                        const prev = perHopLastStatus.get(event.hopIndex);
+                        if (
+                          event.status === 'polling' &&
+                          prev !== 'polling'
+                        ) {
+                          perHopLastStatus.set(event.hopIndex, 'polling');
+                          eventHook?.(
+                            PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_08_02](
+                              Date.now() - startTime
+                            )
+                          );
+                        }
+
+                        if (
+                          event.status === 'confirmed' &&
+                          event.txHash &&
+                          !confirmedHops.has(event.hopIndex)
+                        ) {
+                          // waitForAllOutboundTxsV2 populates hop.outboundDetails
+                          // on the matched hop before emitting 'confirmed' (see
+                          // outbound-sync.ts:348-355). Auto-promotion paths
+                          // without a txHash are skipped by the `event.txHash`
+                          // guard above, so we only reach here with full details.
+                          const matchedHop = outboundHops.find(
+                            (h) => h.hopIndex === event.hopIndex
+                          );
+                          if (matchedHop?.outboundDetails) {
+                            confirmedHops.add(event.hopIndex);
+                            eventHook?.(
+                              PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_03](
+                                matchedHop.outboundDetails
+                              )
+                            );
+                          }
+                        }
                       },
                     }
                   );
 
                 if (!allOutboundDetails.success) {
+                  const failedIdx = allOutboundDetails.failedAt ?? 0;
+                  const failedHop = outboundHops.find(
+                    (h) => h.hopIndex === failedIdx
+                  );
+                  const failMsg = failedHop
+                    ? `Outbound failed for hop ${failedIdx} on ${failedHop.executionChain}`
+                    : `Outbound cascade failed at hop ${failedIdx}`;
+                  eventHook?.(
+                    PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_05](failMsg)
+                  );
                   return {
                     success: false,
                     hops: hopInfos,
-                    failedAt: allOutboundDetails.failedAt,
+                    failedAt: failedIdx,
                   };
                 }
               }

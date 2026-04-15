@@ -22,7 +22,8 @@ import { CHAIN_INFO, VM_NAMESPACE } from '../../constants/chain';
 import { VM } from '../../constants/enums';
 import { UniversalTx } from '../../generated/uexecutor/v1/types';
 import type { UniversalTxV2 } from '../../generated/uexecutor/v2/types';
-import { ProgressEvent } from '../../progress-hook/progress-hook.types';
+import { PROGRESS_HOOK, ProgressEvent } from '../../progress-hook/progress-hook.types';
+import PROGRESS_HOOKS from '../../progress-hook/progress-hook';
 import { PushChain } from '../../push-chain/push-chain';
 import { convertExecutorToOrigin } from '../../universal/account/account';
 import { PushClient } from '../../push-client/push-client';
@@ -597,6 +598,28 @@ export async function transformToUniversalTxResponse(
         ? getRouteInfo(universalTxResponse.route as TransactionRoute)
         : undefined;
       if (routeInfo?.isOutbound) {
+        // Response-level only — NOT routed through ctx.progressHook because
+        // the default ui-kit toast lacks icon/hide-timer handling for these
+        // events. A follow-up ui-kit PR will add handling and can route
+        // through both hooks.
+        registeredProgressHook?.(
+          PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_08_01]()
+        );
+
+        let lastEmittedStatus: string | undefined;
+        const outboundTranslator = (event: {
+          status: 'waiting' | 'polling' | 'found' | 'failed' | 'timeout';
+          elapsed: number;
+        }) => {
+          if (!registeredProgressHook) return;
+          if (event.status === 'polling' && lastEmittedStatus !== 'polling') {
+            lastEmittedStatus = 'polling';
+            registeredProgressHook(
+              PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_08_02](event.elapsed)
+            );
+          }
+        };
+
         try {
           const outboundDetails = await callbacks.waitForOutboundTx(
             tx.hash,
@@ -604,7 +627,11 @@ export async function transformToUniversalTxResponse(
               initialWaitMs: callbacks.outboundConstants.initialWaitMs,
               pollingIntervalMs: callbacks.outboundConstants.pollingIntervalMs,
               timeout: callbacks.outboundConstants.maxTimeoutMs,
+              progressHook: outboundTranslator,
             }
+          );
+          registeredProgressHook?.(
+            PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_03](outboundDetails)
           );
           // Merge external chain details into receipt
           baseReceipt = {
@@ -617,9 +644,22 @@ export async function transformToUniversalTxResponse(
             externalAssetAddr: outboundDetails.assetAddr,
           };
         } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          const isTimeout = errMsg.startsWith(
+            'Timeout waiting for outbound transaction'
+          );
+          registeredProgressHook?.(
+            isTimeout
+              ? PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_04](
+                  callbacks.outboundConstants.maxTimeoutMs
+                )
+              : PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_05](errMsg)
+          );
           // Outbound polling timed out - return partial receipt (don't throw)
           // Push Chain tx succeeded, external tracking can be retried later
-          callbacks.printLog(`[wait] External chain tracking failed: ${error instanceof Error ? error.message : String(error)}`);
+          callbacks.printLog(
+            `[wait] External chain tracking failed: ${errMsg}`
+          );
         }
       }
 

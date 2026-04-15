@@ -55,9 +55,16 @@ export enum PROGRESS_HOOK {
   // 07-x: Execution / broadcasting flow
   SEND_TX_07 = 'SEND-TX-07', // Broadcasting to Push Chain
 
+  // 08-x: External chain polling (after Push Chain tx success, outbound routes)
+  SEND_TX_08_01 = 'SEND-TX-08-01', // Awaiting External Chain
+  SEND_TX_08_02 = 'SEND-TX-08-02', // Polling External Chain
+
   // 99-x: Final outcome
   SEND_TX_99_01 = 'SEND-TX-99-01',
   SEND_TX_99_02 = 'SEND-TX-99-02',
+  SEND_TX_99_03 = 'SEND-TX-99-03', // External Chain Tx Confirmed (SUCCESS)
+  SEND_TX_99_04 = 'SEND-TX-99-04', // External Chain Tx Timeout (WARNING)
+  SEND_TX_99_05 = 'SEND-TX-99-05', // External Chain Tx Failed (ERROR)
 
   // UEA Migration hooks
   UEA_MIG_01 = 'UEA-MIG-01',

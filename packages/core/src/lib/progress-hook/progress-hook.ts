@@ -1,4 +1,4 @@
-import { UniversalTxResponse } from '../orchestrator/orchestrator.types';
+import { OutboundTxDetails, UniversalTxResponse } from '../orchestrator/orchestrator.types';
 import { Utils } from '../utils';
 import {
   PROGRESS_HOOK,
@@ -205,6 +205,29 @@ const RAW_HOOKS: {
     response: null,
     level: 'INFO',
   }),
+
+  // External chain polling (08-x) — emitted from .wait() / cascade.waitForAll()
+  // after Push Chain tx success, while the SDK polls the relay for the
+  // external chain tx hash on outbound routes.
+  [PROGRESS_HOOK.SEND_TX_08_01]: (destinationChain?: string) => ({
+    id: PROGRESS_HOOK.SEND_TX_08_01,
+    title: 'Awaiting External Chain',
+    message: destinationChain
+      ? `Waiting for relay to dispatch to ${destinationChain}...`
+      : 'Waiting for relay to dispatch to external chain...',
+    response: null,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_08_02]: (elapsedMs: number) => ({
+    id: PROGRESS_HOOK.SEND_TX_08_02,
+    title: 'Polling External Chain',
+    message: `Polling relay for external transaction hash (elapsed: ${Math.round(
+      elapsedMs / 1000
+    )}s)`,
+    response: null,
+    level: 'INFO',
+  }),
+
   [PROGRESS_HOOK.SEND_TX_99_01]: (txResponse: UniversalTxResponse[]) => ({
     id: PROGRESS_HOOK.SEND_TX_99_01,
     title: 'Push Chain Tx Success',
@@ -216,6 +239,29 @@ const RAW_HOOKS: {
     id: PROGRESS_HOOK.SEND_TX_99_02,
     title: 'Push Chain Tx Failed',
     message: errMessage,
+    response: null,
+    level: 'ERROR',
+  }),
+  [PROGRESS_HOOK.SEND_TX_99_03]: (details: OutboundTxDetails) => ({
+    id: PROGRESS_HOOK.SEND_TX_99_03,
+    title: 'External Chain Tx Confirmed',
+    message: `External tx confirmed on ${details.destinationChain}: ${details.externalTxHash}`,
+    response: details,
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_99_04]: (elapsedMs: number) => ({
+    id: PROGRESS_HOOK.SEND_TX_99_04,
+    title: 'External Chain Tx Timeout',
+    message: `Timed out waiting for external chain tx after ${Math.round(
+      elapsedMs / 1000
+    )}s. Push Chain tx succeeded; the relay may still be processing.`,
+    response: null,
+    level: 'WARNING',
+  }),
+  [PROGRESS_HOOK.SEND_TX_99_05]: (errorMessage: string) => ({
+    id: PROGRESS_HOOK.SEND_TX_99_05,
+    title: 'External Chain Tx Failed',
+    message: errorMessage,
     response: null,
     level: 'ERROR',
   }),
