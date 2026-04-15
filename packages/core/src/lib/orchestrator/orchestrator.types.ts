@@ -140,7 +140,7 @@ export type ExecuteParams = {
    * Internal: Minimum fee-locking deposit in USD (8 decimals).
    * Overrides the default $1 floor when the caller needs a larger deposit
    * (e.g., Route 2 needs enough UPC for the outbound swap).
-   * Still capped at $10 by lockFee.
+   * Still capped at $1000 by lockFee.
    * @internal
    */
   _minimumDepositUsd?: bigint;
@@ -380,16 +380,8 @@ export type UniversalExecuteParams = Omit<ExecuteParams, 'to'> & {
   to: UniversalTo;
 
   /**
-   * SVM-specific: CPI execution parameters for Solana targets (Route 2).
-   * When present, the outbound transaction will execute a Cross-Program Invocation
-   * on the specified Solana program with the given accounts and instruction data.
-   * Only applicable when `to.chain` is a Solana chain.
-   */
-  svmExecute?: SvmExecuteParams;
-
-  /**
    * When true, sends MIGRATION_SELECTOR as raw CEA payload (no multicall wrapping).
-   * Used for CEA contract upgrades. Incompatible with value/funds/data/svmExecute.
+   * Used for CEA contract upgrades. Incompatible with value/funds/data.
    * Only applicable for Route 2 (UOA_TO_CEA) on EVM chains.
    */
   migration?: boolean;
@@ -425,18 +417,10 @@ export interface SvmExecutePayloadFields {
   instructionId?: number;
 }
 
-/**
- * User-facing parameters for CPI execution on a Solana program via Route 2.
- * Passed as `svmExecute` in UniversalExecuteParams when targeting SVM chains.
- */
-export interface SvmExecuteParams {
-  /** Target Solana program to CPI into (32 bytes, 0x-prefixed hex) */
-  targetProgram: `0x${string}`;
-  /** Accounts required for the CPI call */
-  accounts: SvmGatewayAccountMeta[];
-  /** Raw instruction data for the target program */
-  ixData: Uint8Array;
-}
+// `SvmExecuteParams` (previously the user-facing CPI shape) has been removed —
+// callers now pass a plain `data: 0x${string}` (Anchor discriminator + Borsh args)
+// and the SDK resolves accounts via `svm-idl/resolve.ts` against a pre-registered
+// IDL (`PushChain.utils.svm.registerIdl`). See svm-idl/build-payload.ts.
 
 // ============================================================================
 // Outbound Transaction Types (for Push → External Chain)

@@ -66,6 +66,7 @@ import { buildMulticallPayloadData } from './payload-builder';
 import { computeUEAOffchain, getUEANonce, getUeaStatusAndNonce } from './uea-manager';
 import { queryOutboundGasFee } from './gas-calculator';
 import { buildPayloadForRoute } from './route-handlers';
+import { buildSvmPayloadFromParams } from '../svm-idl/build-payload';
 
 // ============================================================================
 // Callback interfaces
@@ -197,19 +198,13 @@ export async function buildHopDescriptor(
 
       // Branch: SVM vs EVM
       if (isSvmChain(targetChain)) {
-        // SVM path: no CEA lookup, build SVM payload
-        const hasSvmExecute = !!params.svmExecute;
-        let svmPayload: `0x${string}` = '0x';
-
-        if (hasSvmExecute) {
-          const exec = params.svmExecute!;
-          svmPayload = encodeSvmExecutePayload({
-            targetProgram: exec.targetProgram,
-            accounts: exec.accounts,
-            ixData: exec.ixData,
-            instructionId: 2,
+        // SVM path: no CEA lookup, build SVM payload via IDL resolver
+        const { svmPayload, hasExecute: hasSvmExecute } =
+          buildSvmPayloadFromParams({
+            data: params.data,
+            to: target,
+            senderUea: ueaAddress,
           });
-        }
 
         let prc20Token: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let burnAmount = BigInt(0);
@@ -630,10 +625,9 @@ export function composeCascade(
         if (isSvmSegment) {
           // SVM: use the pre-built SVM payload from the hop descriptor
           outboundPayload = firstHop.svmPayload ?? '0x';
-          // For SVM, target is the recipient/program from the hop params
+          // For SVM, to.address IS the target (program for execute, recipient for withdraw)
           const svmTarget = firstHop.params.to as ChainTarget;
-          targetForOutbound =
-            firstHop.params.svmExecute?.targetProgram ?? svmTarget.address;
+          targetForOutbound = svmTarget.address;
         } else if (isMigration) {
           // Migration: use raw 4-byte MIGRATION_SELECTOR, no multicall wrapping
           outboundPayload = buildMigrationPayload();

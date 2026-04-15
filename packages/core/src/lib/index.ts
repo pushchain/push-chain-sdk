@@ -28,10 +28,9 @@ export type {
   MultiChainTxResponse,
   OutboundTxDetails,
   WaitForOutboundOptions,
-  // SVM (Solana) types
+  // SVM (Solana) — internal-only types (SvmExecuteParams removed; callers now pass `data`)
   SvmGatewayAccountMeta,
   SvmExecutePayloadFields,
-  SvmExecuteParams,
   // Account status types (UEA Migration)
   AccountStatus,
   UEAStatus,

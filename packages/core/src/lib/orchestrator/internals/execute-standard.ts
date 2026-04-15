@@ -51,7 +51,10 @@ import {
   type ResponseBuilderCallbacks,
 } from './response-builder';
 import { sendPushTx, sendUniversalTx, extractPcTxAndTransform } from './push-chain-tx';
-import { estimateDepositFromLockedNative } from './gas-calculator';
+import {
+  estimateDepositFromLockedNative,
+  estimateNativeForDesiredDeposit,
+} from './gas-calculator';
 import { getNativePRC20ForChain } from './helpers';
 import { PriceFetch } from '../../price-fetch/price-fetch';
 
@@ -252,7 +255,42 @@ export async function executeStandardPayload(
     const fundDifference = requiredFunds - funds;
     const fixedPushAmount = Utils.helpers.parseUnits('0.001', 18);
     const lockAmount = funds < requiredFunds ? fundDifference : fixedPushAmount;
-    const lockAmountInUSD = ctx.pushClient.pushToUSDC(lockAmount);
+
+    // Size the USD deposit against the REAL Uniswap pool rate (not the fixed
+    // $0.10/PC SDK rate) for EVM origins. The pool typically prices PC much
+    // higher than $0.10, so pushToUSDC under-provisions and the resulting
+    // deposit gets clamped up to the $1 minimum, producing near-zero WPC.
+    // When the quoted USD exceeds the $1000 cap the later clamp kicks in
+    // (pool limit surfaces via the pre-flight capacity message).
+    // Falls back to pushToUSDC if the quoter is unavailable.
+    const { vm: sizingOriginVm } = CHAIN_INFO[chain];
+    let lockAmountInUSD: bigint = ctx.pushClient.pushToUSDC(lockAmount);
+    if (sizingOriginVm === VM.EVM && lockAmount > BigInt(0)) {
+      // Target lockAmount × 1.2 so that the 10% slippage margin applied by
+      // the pre-flight check (safeUPC = predictedUPC × 0.9) leaves enough
+      // headroom even when Uniswap V3 exactOutput↔exactInput quotes aren't
+      // perfectly symmetric (tick-math rounding).
+      const targetWPC = (lockAmount * BigInt(12)) / BigInt(10);
+      const originPrc20ForSizing = getNativePRC20ForChain(chain, ctx.pushNetwork);
+      const requiredNative = await estimateNativeForDesiredDeposit(
+        ctx,
+        targetWPC,
+        originPrc20ForSizing,
+      );
+      if (requiredNative > BigInt(0)) {
+        const ethPriceForSizing = await new PriceFetch(ctx.rpcUrls).getPrice(chain);
+        if (ethPriceForSizing > BigInt(0)) {
+          // requiredNative (18-dec wei) × ethPrice (8-dec USD/ETH) / 1e18 = USD in 8-dec
+          const poolBasedUsd = (requiredNative * ethPriceForSizing) / BigInt(1e18);
+          printLog(ctx,
+            `Fee-lock sizing: pushToUSDC=${lockAmountInUSD.toString()} (fixed $0.10/PC), ` +
+            `poolBased=${poolBasedUsd.toString()} (pool quote for ${targetWPC.toString()} WPC) — using poolBased`
+          );
+          lockAmountInUSD = poolBasedUsd;
+        }
+      }
+    }
+
     // Apply minimum deposit override (e.g., Route 2 needs enough UPC for outbound swap)
     const effectiveLockAmountInUSD = execute._minimumDepositUsd && execute._minimumDepositUsd > lockAmountInUSD
       ? execute._minimumDepositUsd
@@ -265,11 +303,11 @@ export async function executeStandardPayload(
     const { vm: originVm } = CHAIN_INFO[chain];
     if (originVm === VM.EVM) {
       try {
-        // Replicate lockFee's USD → native conversion (with its $1–$10 clamp)
+        // Replicate lockFee's USD → native conversion (with its $1–$1000 clamp)
         const oneUsd = Utils.helpers.parseUnits('1', 8);
-        const tenUsd = Utils.helpers.parseUnits('10', 8);
+        const maxUsd = Utils.helpers.parseUnits('1000', 8);
         let depositUsd = effectiveLockAmountInUSD < oneUsd ? oneUsd : effectiveLockAmountInUSD;
-        if (depositUsd > tenUsd) depositUsd = tenUsd;
+        if (depositUsd > maxUsd) depositUsd = maxUsd;
 
         const ethPrice = await new PriceFetch(ctx.rpcUrls).getPrice(chain);
         if (ethPrice > BigInt(0)) {
@@ -291,12 +329,41 @@ export async function executeStandardPayload(
 
             if (totalAvailable < requiredFunds) {
               const shortfall = requiredFunds - totalAvailable;
+
+              // On failure only: probe pool capacity at the max cap so the
+              // caller gets a readable "max transferable right now" number.
+              // One extra quoter call — not run on the success path.
+              let maxTransferableNote = '';
+              if (depositUsd < maxUsd) {
+                const maxNativeAmountETH =
+                  (maxUsd * BigInt(1e18) + (ethPrice - BigInt(1))) / ethPrice + BigInt(1);
+                const maxPredictedUPC = await estimateDepositFromLockedNative(
+                  ctx,
+                  maxNativeAmountETH,
+                  originPrc20,
+                );
+                if (maxPredictedUPC > BigInt(0)) {
+                  const maxSafeUPC = (maxPredictedUPC * BigInt(90)) / BigInt(100);
+                  const gasReserve = Utils.helpers.parseUnits('0.01', 18);
+                  const maxFromDeposit =
+                    maxSafeUPC > gasReserve ? maxSafeUPC - gasReserve : BigInt(0);
+                  const maxTransferable = funds + maxFromDeposit;
+                  maxTransferableNote =
+                    `Max transferable right now (at $1000 cap, pool-limited): ` +
+                    `~${(Number(maxTransferable) / 1e18).toFixed(4)} $PC ` +
+                    `(UEA balance ${(Number(funds) / 1e18).toFixed(4)} + ` +
+                    `pool-safe deposit ${(Number(maxFromDeposit) / 1e18).toFixed(4)} − gas).`;
+                  printLog(ctx, `Fee-lock capacity: ${maxTransferableNote}`);
+                }
+              }
+
               throw new Error(
                 `Insufficient deposit: the fee-lock will deposit ~${(Number(safeUPC) / 1e18).toFixed(4)} $PC ` +
                 `but the transaction requires ~${(Number(requiredFunds) / 1e18).toFixed(4)} $PC ` +
                 `(shortfall: ~${(Number(shortfall) / 1e18).toFixed(4)} $PC). ` +
-                `The fee-lock deposit is capped at $10 USD. Reduce the transfer value or ` +
-                `pre-fund the UEA (${UEA}) on Push Chain.`
+                `The fee-lock deposit is capped at $1000 USD. ` +
+                (maxTransferableNote ? maxTransferableNote + ' ' : '') +
+                `Reduce the transfer value or pre-fund the UEA (${UEA}) on Push Chain.`
               );
             }
           }

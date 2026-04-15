@@ -51,6 +51,7 @@ import { Utils } from '../../utils';
 import { PriceFetch } from '../../price-fetch/price-fetch';
 import { TransactionRoute, detectRoute, validateRouteParams } from '../route-detector';
 import { getCEAAddress, chainSupportsOutbound } from '../cea-utils';
+import { buildSvmPayloadFromParams } from '../svm-idl/build-payload';
 import {
   buildExecuteMulticall,
   buildCeaMulticallPayload,
@@ -560,7 +561,16 @@ export async function executeUoaToCeaSvm(
   const targetChain = target.chain;
   const targetAddress = target.address; // 0x-prefixed, 32 bytes
   const ueaAddress = computeUEAOffchain(ctx);
-  const hasSvmExecute = !!params.svmExecute;
+
+  const {
+    svmPayload,
+    targetBytes,
+    hasExecute: hasSvmExecute,
+  } = buildSvmPayloadFromParams({
+    data: params.data,
+    to: target,
+    senderUea: ueaAddress,
+  });
 
   printLog(
     ctx,
@@ -568,23 +578,12 @@ export async function executeUoaToCeaSvm(
       `hasSvmExecute: ${hasSvmExecute}, value: ${params.value?.toString() ?? '0'}`
   );
 
-  // --- Build SVM payload ---
-  let svmPayload: `0x${string}` = '0x'; // empty for withdraw (SOL/SPL)
-
   if (hasSvmExecute) {
-    // Execute case: encode the CPI payload
-    const exec = params.svmExecute!;
-    svmPayload = encodeSvmExecutePayload({
-      targetProgram: exec.targetProgram,
-      accounts: exec.accounts,
-      ixData: exec.ixData,
-      instructionId: 2,
-    });
-
     printLog(
       ctx,
-      `executeUoaToCeaSvm — encoded execute payload: ${(svmPayload.length - 2) / 2} bytes, ` +
-        `${exec.accounts.length} accounts`
+      `executeUoaToCeaSvm — encoded execute payload: ${
+        (svmPayload.length - 2) / 2
+      } bytes`
     );
   }
 
@@ -622,14 +621,8 @@ export async function executeUoaToCeaSvm(
     );
   }
 
-  // --- Determine target bytes ---
-  // For withdraw: target is the Solana recipient pubkey
-  // For execute: target is the target Solana program
-  const targetBytes = hasSvmExecute
-    ? params.svmExecute!.targetProgram
-    : targetAddress;
-
   // --- Build outbound request ---
+  // targetBytes: for execute = program id (resolver output); for withdraw = to.address
   const outboundReq: UniversalOutboundTxRequest = buildOutboundRequest(
     targetBytes,
     prc20Token,
@@ -1372,18 +1365,16 @@ export async function buildPayloadForRoute(
 
       // Branch: SVM vs EVM
       if (isSvmChain(target.chain)) {
-        // SVM: build SVM payload (binary or empty for withdraw)
-        let payload: `0x${string}` = '0x';
-        if (params.svmExecute) {
-          payload = encodeSvmExecutePayload({
-            targetProgram: params.svmExecute.targetProgram,
-            accounts: params.svmExecute.accounts,
-            ixData: params.svmExecute.ixData,
-            instructionId: 2,
-          });
-        }
-
-        const targetBytes = params.svmExecute?.targetProgram ?? target.address;
+        // SVM: build SVM payload (binary or empty for withdraw) via IDL resolver
+        const {
+          svmPayload: payload,
+          targetBytes,
+          hasExecute,
+        } = buildSvmPayloadFromParams({
+          data: params.data,
+          to: target,
+          senderUea: ueaAddress,
+        });
 
         let prc20Token: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let burnAmount = BigInt(0);
@@ -1396,7 +1387,7 @@ export async function buildPayloadForRoute(
         } else if (params.value && params.value > BigInt(0)) {
           prc20Token = getNativePRC20ForChain(target.chain, ctx.pushNetwork);
           burnAmount = params.value;
-        } else if (params.svmExecute) {
+        } else if (hasExecute) {
           prc20Token = getNativePRC20ForChain(target.chain, ctx.pushNetwork);
           burnAmount = BigInt(1);
         }

@@ -394,15 +394,15 @@ export async function calculateNativeAmountForDeposit(
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_02_01);
 
   const oneUsd = Utils.helpers.parseUnits('1', 8);
-  const tenUsd = Utils.helpers.parseUnits('10', 8);
+  const maxUsd = Utils.helpers.parseUnits('1000', 8);
   const deficit =
     requiredFunds > ueaBalance ? requiredFunds - ueaBalance : BigInt(0);
   let depositUsd =
     deficit > BigInt(0) ? ctx.pushClient.pushToUSDC(deficit) : oneUsd;
 
   if (depositUsd < oneUsd) depositUsd = oneUsd;
-  if (depositUsd > tenUsd)
-    throw new Error('Deposit value exceeds max $10 worth of native token');
+  if (depositUsd > maxUsd)
+    throw new Error('Deposit value exceeds max $1000 worth of native token');
 
   if (CHAIN_INFO[chain].vm === VM.SVM) {
     const svmClient = new SvmClient({
@@ -601,6 +601,106 @@ export async function estimateDepositFromLockedNative(
   } catch (err) {
     printLog(ctx,
       `estimateDepositFromLockedNative — failed: ${err instanceof Error ? err.message : String(err)}`
+    );
+    return BigInt(0);
+  }
+}
+
+/**
+ * Inverse of estimateDepositFromLockedNative: given a desired WPC output,
+ * asks the Push Chain Uniswap V3 pool how much native PRC-20 (pETH) input is
+ * required to produce exactly that output via QuoterV2.quoteExactOutputSingle.
+ *
+ * Used to size fee-lock deposits against the real on-chain pool rate instead
+ * of the fixed $0.10/PC SDK rate. Returns 0 on any failure (caller should
+ * fall back to the fixed-rate sizing).
+ */
+export async function estimateNativeForDesiredDeposit(
+  ctx: OrchestratorContext,
+  desiredWpc: bigint,
+  prc20Token: `0x${string}`
+): Promise<bigint> {
+  try {
+    if (desiredWpc <= BigInt(0)) return BigInt(0);
+
+    const pushChain = getPushChainForNetwork(ctx.pushNetwork);
+    const quoterAddress = CHAIN_INFO[pushChain]?.dex?.uniV3QuoterV2;
+    if (!quoterAddress || quoterAddress.startsWith('0xTBD')) return BigInt(0);
+
+    const gatewayPcAddress = getUniversalGatewayPCAddress();
+    const universalCoreAddress = await ctx.pushClient.readContract<`0x${string}`>({
+      address: gatewayPcAddress,
+      abi: UNIVERSAL_GATEWAY_PC,
+      functionName: 'UNIVERSAL_CORE',
+      args: [],
+    });
+
+    const [wpcAddress, feeTier] = await Promise.all([
+      ctx.pushClient.readContract<`0x${string}`>({
+        address: universalCoreAddress,
+        abi: UNIVERSAL_CORE_SWAP_HELPERS_ABI,
+        functionName: 'WPC',
+        args: [],
+      }),
+      ctx.pushClient.readContract<number>({
+        address: universalCoreAddress,
+        abi: UNIVERSAL_CORE_SWAP_HELPERS_ABI,
+        functionName: 'defaultFeeTier',
+        args: [prc20Token],
+      }),
+    ]);
+
+    if (!feeTier || !wpcAddress) return BigInt(0);
+
+    const QUOTER_ABI = [
+      {
+        type: 'function' as const,
+        name: 'quoteExactOutputSingle',
+        inputs: [
+          {
+            type: 'tuple',
+            components: [
+              { name: 'tokenIn', type: 'address' },
+              { name: 'tokenOut', type: 'address' },
+              { name: 'amount', type: 'uint256' },
+              { name: 'fee', type: 'uint24' },
+              { name: 'sqrtPriceLimitX96', type: 'uint160' },
+            ],
+          },
+        ],
+        outputs: [
+          { name: 'amountIn', type: 'uint256' },
+          { name: 'sqrtPriceX96After', type: 'uint160' },
+          { name: 'initializedTicksCrossed', type: 'uint32' },
+          { name: 'gasEstimate', type: 'uint256' },
+        ],
+        stateMutability: 'view' as const,
+      },
+    ];
+
+    const result = await ctx.pushClient.readContract<[bigint, bigint, number, bigint]>({
+      address: quoterAddress as `0x${string}`,
+      abi: QUOTER_ABI,
+      functionName: 'quoteExactOutputSingle',
+      args: [
+        {
+          tokenIn: prc20Token,
+          tokenOut: wpcAddress,
+          amount: desiredWpc,
+          fee: feeTier,
+          sqrtPriceLimitX96: BigInt(0),
+        },
+      ],
+    });
+
+    const amountIn = result[0];
+    printLog(ctx,
+      `estimateNativeForDesiredDeposit — quote: ${desiredWpc.toString()} WPC ← ${amountIn.toString()} pETH (fee tier: ${feeTier})`
+    );
+    return amountIn;
+  } catch (err) {
+    printLog(ctx,
+      `estimateNativeForDesiredDeposit — failed: ${err instanceof Error ? err.message : String(err)}`
     );
     return BigInt(0);
   }

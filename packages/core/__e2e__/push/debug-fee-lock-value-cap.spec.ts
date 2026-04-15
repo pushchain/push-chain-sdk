@@ -6,13 +6,10 @@ import '@e2e/shared/setup';
  * to identify why large value transfers fail silently.
  *
  * Key findings from code analysis:
- * - SDK lockFee() in gateway-client.ts caps deposit at $10 USD (tenUsd)
- * - 1 $PC = $0.10 USDC (fixed rate in push-client.ts)
- * - Max deposit ≈ 100 $PC after the cap
- * - If gas_cost + value > ~100 $PC, UEA won't have enough balance → ExecutionFailed
- *
- * Kolade's code: BigInt(nextFee) * BigInt(10 ** 18)
- * If nextFee >= ~100, value >= 100 $PC → exceeds cap → revert on Push Chain
+ * - SDK lockFee() in gateway-client.ts caps deposit at $1000 USD (maxUsd)
+ * - 1 $PC = $0.10 USDC (fixed rate in push-client.ts; Uniswap pool rate differs)
+ * - Max deposit ≈ 10000 $PC after the cap (at fixed rate)
+ * - If gas_cost + value exceeds the cap, UEA won't have enough balance → ExecutionFailed
  */
 import { PushChain } from '../../src';
 import { CHAIN, PUSH_NETWORK } from '../../src/lib/constants/enums';
@@ -87,8 +84,8 @@ describe('Debug: Fee-Lock Value Cap', () => {
     const gasCostUsd = Number(gasCost) / 1e18 * PC_TO_USD_RATE;
     console.log(`Gas cost (USD):  ~$${gasCostUsd.toFixed(4)}`);
 
-    const maxDepositUsd = 10.0; // $10 cap from lockFee()
-    const maxDepositPc = maxDepositUsd / PC_TO_USD_RATE; // 100 $PC
+    const maxDepositUsd = 1000.0; // $1000 cap from lockFee()
+    const maxDepositPc = maxDepositUsd / PC_TO_USD_RATE; // 10000 $PC (at fixed rate)
     const maxValuePcAfterGas = maxDepositPc - (Number(gasCost) / 1e18);
 
     console.log(`\nMax deposit (cap):       $${maxDepositUsd} USD`);
@@ -121,15 +118,14 @@ describe('Debug: Fee-Lock Value Cap', () => {
       console.log(
         `${label.padEnd(20)} | ${(Number(value) / 1e18).toFixed(3).padEnd(12)} | ` +
         `$${requiredUsd.toFixed(2).padEnd(13)} | ` +
-        `${(capped ? 'YES→$10' : 'no').padEnd(10)} | ` +
+        `${(capped ? 'YES→$1000' : 'no').padEnd(10)} | ` +
         `${shortfallPc > 0.001 ? `FAIL (short ~${shortfallPc.toFixed(3)} $PC)` : 'OK'}`
       );
     }
 
     console.log('\n=== Conclusion ===');
-    console.log(`SDK lockFee() in gateway-client.ts:139 caps deposit at $10 USD.`);
-    console.log(`At 1 $PC = $0.10 USDC, max ~${maxValuePcAfterGas.toFixed(1)} $PC can be transferred per tx.`);
-    console.log(`Kolade's "BigInt(nextFee) * BigInt(10**18)" will fail if nextFee > ~${Math.floor(maxValuePcAfterGas)}.`);
+    console.log(`SDK lockFee() in gateway-client.ts caps deposit at $1000 USD.`);
+    console.log(`At 1 $PC = $0.10 USDC (fixed rate), max ~${maxValuePcAfterGas.toFixed(1)} $PC can be transferred per tx.`);
   }, 30_000);
 
   // ==========================================================================

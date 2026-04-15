@@ -639,18 +639,28 @@ export class PushChain {
       isReadOnly
     );
 
-    // Background fetch account status (non-blocking, 30s timeout)
-    // Stored on instance so consumers can await it if needed: await client.accountStatusReady
+    // Background fetch account status (non-blocking, 30s timeout).
+    // The timer must be cleared once the race settles — otherwise the
+    // unref'd setTimeout keeps the Node event loop alive for the full
+    // 30s after the caller's work is done, making scripts appear "stuck".
     const ACCOUNT_STATUS_TIMEOUT = 30_000;
+    let accountStatusTimer: ReturnType<typeof setTimeout> | undefined;
     instance.accountStatusReady = Promise.race([
       // eslint-disable-next-line @typescript-eslint/no-empty-function
       instance.getAccountStatus().then(() => {}),
-      new Promise<void>((_, reject) =>
-        setTimeout(() => reject(new Error('Account status fetch timed out')), ACCOUNT_STATUS_TIMEOUT)
-      ),
-    ]).catch(() => {
-      // Silently ignore — lazy check in execute() will retry if needed
-    });
+      new Promise<void>((_, reject) => {
+        accountStatusTimer = setTimeout(
+          () => reject(new Error('Account status fetch timed out')),
+          ACCOUNT_STATUS_TIMEOUT
+        );
+      }),
+    ])
+      .catch(() => {
+        // Silently ignore — lazy check in execute() will retry if needed
+      })
+      .finally(() => {
+        if (accountStatusTimer) clearTimeout(accountStatusTimer);
+      });
 
     // Let execute() await the background fetch instead of re-fetching
     orchestrator.accountStatusReadyPromise = instance.accountStatusReady;

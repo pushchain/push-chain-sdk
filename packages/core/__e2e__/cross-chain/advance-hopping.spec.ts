@@ -15,6 +15,7 @@ import { CEA_EVM } from '../../src/lib/constants/abi/cea.evm';
 import { UEA_MULTICALL_SELECTOR } from '../../src/lib/constants/selectors';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 import { createEvmPushClient } from '@e2e/shared/evm-client';
+import { toHexData } from '@e2e/shared/svm-outbound-helpers';
 import { PublicKey } from '@solana/web3.js';
 
 // BSC Testnet USDT address
@@ -833,16 +834,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         const tx2 = await pushClient.universal.prepareTransaction({
           to: { address: SOL_TEST_PROGRAM, chain: CHAIN.SOLANA_DEVNET },
           value: BigInt(5_000_000),
-          svmExecute: {
-            targetProgram: SOL_TEST_PROGRAM,
-            accounts: [
-              { pubkey: SOL_COUNTER_PDA, isWritable: true },
-              { pubkey: SOLANA_TARGET, isWritable: true },
-              { pubkey: ceaPdaHex, isWritable: true },
-              { pubkey: SOL_ZERO_ADDRESS, isWritable: false },
-            ],
-            ixData,
-          },
+          data: toHexData(ixData),
         });
 
         // Hop 3: Route 3 — Inbound from BSC (increment Push Chain counter #1)
@@ -1155,16 +1147,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         const tx1 = await pushClient.universal.prepareTransaction({
           to: { address: SOL_TEST_PROGRAM, chain: CHAIN.SOLANA_DEVNET },
           value: BigInt(5_000_000),
-          svmExecute: {
-            targetProgram: SOL_TEST_PROGRAM,
-            accounts: [
-              { pubkey: SOL_COUNTER_PDA, isWritable: true },
-              { pubkey: SOLANA_TARGET, isWritable: true },
-              { pubkey: ceaPdaHex, isWritable: true },
-              { pubkey: SOL_ZERO_ADDRESS, isWritable: false },
-            ],
-            ixData,
-          },
+          data: toHexData(ixData),
         });
 
         // Hop 2: Route 3 — Inbound from Solana (increment Push counter)
@@ -1241,16 +1224,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         const tx1 = await pushClient.universal.prepareTransaction({
           to: { address: SOL_TEST_PROGRAM, chain: CHAIN.SOLANA_DEVNET },
           value: BigInt(10_000_000), // 0.01 SOL — larger value exercises FUNDS+CPI path
-          svmExecute: {
-            targetProgram: SOL_TEST_PROGRAM,
-            accounts: [
-              { pubkey: SOL_COUNTER_PDA, isWritable: true },
-              { pubkey: SOLANA_TARGET, isWritable: true },
-              { pubkey: ceaPdaHex, isWritable: true },
-              { pubkey: SOL_ZERO_ADDRESS, isWritable: false },
-            ],
-            ixData,
-          },
+          data: toHexData(ixData),
         });
 
         // Hop 2: Route 3 — Inbound from Solana (increment Push counter)
@@ -1347,16 +1321,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         const tx2 = await pushClient.universal.prepareTransaction({
           to: { address: SOL_TEST_PROGRAM, chain: CHAIN.SOLANA_DEVNET },
           value: BigInt(5_000_000),
-          svmExecute: {
-            targetProgram: SOL_TEST_PROGRAM,
-            accounts: [
-              { pubkey: SOL_COUNTER_PDA, isWritable: true },
-              { pubkey: SOLANA_TARGET, isWritable: true },
-              { pubkey: ceaPdaHex, isWritable: true },
-              { pubkey: SOL_ZERO_ADDRESS, isWritable: false },
-            ],
-            ixData,
-          },
+          data: toHexData(ixData),
         });
 
         // Hop 3: Route 3 — Inbound from BSC (increment Push counter)

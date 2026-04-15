@@ -39,6 +39,7 @@ import {
   deriveCeaPda,
   buildReceiveSolAccounts,
   buildReceiveSolIxData,
+  toHexData,
 } from '@e2e/shared/svm-outbound-helpers';
 
 describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
@@ -188,11 +189,7 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
           },
           value: BigInt(5_000_000), // 0.005 SOL for CPI
           // gasLimit omitted → per-chain default from UniversalCore
-          svmExecute: {
-            targetProgram: TEST_PROGRAM,
-            accounts: buildReceiveSolAccounts(ceaPdaHex),
-            ixData,
-          },
+          data: toHexData(ixData),
         };
 
         expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
@@ -233,11 +230,7 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
             chain: CHAIN.SOLANA_DEVNET,
           },
           // gasLimit omitted → per-chain default from UniversalCore
-          svmExecute: {
-            targetProgram: TEST_PROGRAM,
-            accounts: buildReceiveSolAccounts(ceaPdaHex),
-            ixData,
-          },
+          data: toHexData(ixData),
         };
 
         expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
@@ -278,11 +271,7 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
           },
           value: BigInt(5_000_000), // 0.005 SOL for CPI
           // gasLimit omitted → per-chain default from UniversalCore
-          svmExecute: {
-            targetProgram: TEST_PROGRAM,
-            accounts: buildReceiveSolAccounts(ceaPdaHex),
-            ixData,
-          },
+          data: toHexData(ixData),
         };
 
         expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
@@ -326,11 +315,7 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
           },
           value: BigInt(5_000_000), // 0.005 SOL transferred alongside CPI
           // gasLimit omitted → per-chain default from UniversalCore
-          svmExecute: {
-            targetProgram: TEST_PROGRAM,
-            accounts: buildReceiveSolAccounts(ceaPdaHex),
-            ixData,
-          },
+          data: toHexData(ixData),
         };
 
         expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
@@ -380,11 +365,7 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
             token: SOL_USDT_TOKEN,
           },
           // gasLimit omitted → per-chain default from UniversalCore
-          svmExecute: {
-            targetProgram: TEST_PROGRAM,
-            accounts: buildReceiveSolAccounts(ceaPdaHex),
-            ixData,
-          },
+          data: toHexData(ixData),
         };
 
         expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
@@ -431,11 +412,7 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
             token: SOL_USDT_TOKEN,
           },
           // gasLimit omitted → per-chain default from UniversalCore
-          svmExecute: {
-            targetProgram: TEST_PROGRAM,
-            accounts: buildReceiveSolAccounts(ceaPdaHex),
-            ixData,
-          },
+          data: toHexData(ixData),
         };
 
         expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
@@ -1028,11 +1005,7 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
           chain: CHAIN.SOLANA_DEVNET,
         },
         value: BigInt(5_000_000), // 0.005 SOL for CPI
-        svmExecute: {
-          targetProgram: TEST_PROGRAM,
-          accounts: buildReceiveSolAccounts(ceaPdaHex),
-          ixData,
-        },
+        data: toHexData(ixData),
       });
 
       const result = await pushClient.universal.executeTransactions([tx1, tx2]);
@@ -1065,11 +1038,7 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
           address: TEST_PROGRAM,
           chain: CHAIN.SOLANA_DEVNET,
         },
-        svmExecute: {
-          targetProgram: TEST_PROGRAM,
-          accounts: buildReceiveSolAccounts(ceaPdaHex),
-          ixData,
-        },
+        data: toHexData(ixData),
       });
 
       // Hop 2 (Route 2): Withdraw SOL to recipient

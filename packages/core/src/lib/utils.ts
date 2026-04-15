@@ -22,6 +22,16 @@ import { SYNTHETIC_PUSH_ERC20 } from './constants/chain';
 import { UniversalAccount } from './universal/universal.types';
 import type { PushChain } from './push-chain/push-chain';
 import { encodeFunctionData, formatUnits } from 'viem';
+import { Buffer } from 'buffer';
+import {
+  encodeAnchorIxData,
+  isAnchorIdl,
+} from './orchestrator/svm-idl/ix-encoder';
+import {
+  registerIdl as registerSvmIdl,
+  getRegisteredIdls as getRegisteredSvmIdls,
+  getIdl as getSvmIdl,
+} from './orchestrator/svm-idl/registry';
 
 /**
  * @dev - THESE UTILS ARE EXPORTED TO SDK CONSUMER
@@ -74,6 +84,25 @@ export class Utils {
     deriveExecutorAccount,
 
     resolveControllerAccount,
+  };
+
+  /**
+   * SVM (Solana) utilities for registering program Anchor IDLs.
+   *
+   * Register your program's Anchor IDL once per process; `prepareTransaction`
+   * then resolves accounts, PDAs, and signers from the IDL so you only need
+   * to pass `data` (discriminator + Borsh args), the same shape used for EVM.
+   *
+   * @example
+   * PushChain.utils.svm.registerIdl(
+   *   PROGRAM_ADDRESS_HEX,
+   *   testCounterIdl
+   * );
+   */
+  static svm = {
+    registerIdl: registerSvmIdl,
+    getRegisteredIdls: getRegisteredSvmIdls,
+    getIdl: getSvmIdl,
   };
 
   static signer = {
@@ -235,10 +264,18 @@ export class Utils {
       functionName,
       args = [],
     }: {
-      abi: any[];
+      abi: any;
       functionName: string;
       args?: any[];
     }): `0x${string}` {
+      if (isAnchorIdl(abi)) {
+        if (!Array.isArray(args)) {
+          throw new Error('Arguments must be an array');
+        }
+        const bytes = encodeAnchorIxData(abi, functionName, args);
+        return `0x${Buffer.from(bytes).toString('hex')}` as `0x${string}`;
+      }
+
       // Validate inputs
       if (!Array.isArray(abi)) {
         throw new Error('ABI must be an array');

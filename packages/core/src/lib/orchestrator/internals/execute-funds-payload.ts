@@ -115,15 +115,15 @@ export async function executeFundsWithPayload(
 
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_02, ueaAddress, deployed);
 
-  // Determine USD to deposit via gateway (8 decimals) with caps: min=$1, max=$10
+  // Determine USD to deposit via gateway (8 decimals) with caps: min=$1, max=$1000
   const oneUsd = Utils.helpers.parseUnits('1', 8);
-  const tenUsd = Utils.helpers.parseUnits('10', 8);
+  const maxUsd = Utils.helpers.parseUnits('1000', 8);
   const deficit = requiredFunds > ueaBalance ? requiredFunds - ueaBalance : BigInt(0);
   let depositUsd = deficit > BigInt(0) ? ctx.pushClient.pushToUSDC(deficit) : oneUsd;
 
   if (depositUsd < oneUsd) depositUsd = oneUsd;
-  if (depositUsd > tenUsd)
-    throw new Error('Deposit value exceeds max $10 worth of native token');
+  if (depositUsd > maxUsd)
+    throw new Error('Deposit value exceeds max $1000 worth of native token');
 
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_02_02, depositUsd);
 

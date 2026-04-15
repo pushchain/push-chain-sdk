@@ -39,6 +39,7 @@ import {
   buildReceiveSolAccounts,
   buildReceiveSolIxData,
   TEST_PROGRAM,
+  toHexData,
 } from '@e2e/shared/svm-outbound-helpers';
 
 // PRC-20 token on Push Chain (pUSDT) — used for multicall approve tests
@@ -1187,11 +1188,7 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
           address: TEST_PROGRAM,
           chain: CHAIN.SOLANA_DEVNET,
         },
-        svmExecute: {
-          targetProgram: TEST_PROGRAM,
-          accounts: buildReceiveSolAccounts(ceaPdaHex),
-          ixData,
-        },
+        data: toHexData(ixData),
       });
 
       // Hop 2 (Route 3): Drain SOL back from Solana to Push Chain

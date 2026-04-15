@@ -26,15 +26,8 @@ import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 import { createEvmPushClient } from '@e2e/shared/evm-client';
 import { createProgressTracker } from '@e2e/shared/progress-tracker';
-import {
-  TEST_PROGRAM as SOL_TEST_PROGRAM,
-  COUNTER_PDA as SOL_COUNTER_PDA,
-  TEST_SOL_TARGET as SOL_TARGET,
-  SOL_ZERO_ADDRESS as SOL_ZERO,
-  deriveCeaPda,
-  buildReceiveSolAccounts,
-  buildReceiveSolIxData,
-} from '@e2e/shared/svm-outbound-helpers';
+import { TEST_PROGRAM as SOL_TEST_PROGRAM } from '@e2e/shared/svm-outbound-helpers';
+import testCounterIdl from '../../src/lib/orchestrator/svm-idl/__fixtures__/test_counter.idl.json';
 
 const SEPOLIA_RPC = CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0];
 const PUSH_RPC = CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
@@ -181,21 +174,17 @@ describe('Multichain Docs Examples (Fresh Wallet)', () => {
     });
     console.log(`hop1 prepared - route: ${hop1.route}`);
 
-    // Derive Solana CEA PDA for svmExecute
-    const ueaAddress = client.universal.account;
-    const { ceaPdaHex } = deriveCeaPda(ueaAddress as `0x${string}`);
-    console.log(`Solana CEA PDA: ${ceaPdaHex}`);
-
-    // Solana requires svmExecute with Borsh-encoded instruction data (not EVM data)
-    // CPI-only (no value) — no pSOL burn needed
-    const ixData = buildReceiveSolIxData(BigInt(0));
+    // Hop 2: IDL-driven — matches docs verbatim. SDK resolves accounts from the registered IDL.
+    // CPI-only (no value) — no pSOL burn needed.
+    const solCalldata = PushChain.utils.helpers.encodeTxData({
+      abi: testCounterIdl,
+      functionName: 'receive_sol',
+      args: [BigInt(0)],
+    });
     const hop2 = await client.universal.prepareTransaction({
       to: { address: SOL_TEST_PROGRAM, chain: CHAIN.SOLANA_DEVNET },
-      svmExecute: {
-        targetProgram: SOL_TEST_PROGRAM,
-        accounts: buildReceiveSolAccounts(ceaPdaHex),
-        ixData,
-      },
+      value: BigInt(0),
+      data: solCalldata,
     });
     console.log(`hop2 prepared - route: ${hop2.route}`);
 

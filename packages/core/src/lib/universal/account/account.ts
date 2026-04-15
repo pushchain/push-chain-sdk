@@ -563,7 +563,7 @@ function getChainName(chain: CHAIN): string {
  * @param skipNetworkCheck - Whether to skip deployment status check.
  * @returns The derived 32-byte Solana PDA address (as 0x-prefixed hex) and deployment status.
  */
-function deriveSvmCeaPda(
+export function deriveSvmCeaPda(
   ueaAddress: `0x${string}`,
   targetChain: CHAIN,
   skipNetworkCheck: boolean

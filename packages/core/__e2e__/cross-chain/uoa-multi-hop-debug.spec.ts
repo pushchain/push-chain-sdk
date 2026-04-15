@@ -23,6 +23,7 @@ import { createPublicClient, http, Hex, encodeFunctionData } from 'viem';
 import { createEvmPushClient } from '@e2e/shared/evm-client';
 import { PublicKey } from '@solana/web3.js';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
+import { toHexData } from '@e2e/shared/svm-outbound-helpers';
 
 // ── Push Chain Counter (Route 1 target) ──
 // NOTE: The dev script used 0x5FbDB... which is a Hardhat default local address.
@@ -227,24 +228,14 @@ describe('UOA Multi-Hop Debug: Push + BNB + Solana', () => {
       //
       // CRITICAL differences from EVM hops:
       //   - `to.address` must be 32-byte hex (Solana pubkey)
-      //   - `data` is IGNORED for SVM chains — use `svmExecute`
-      //   - `svmExecute.accounts` lists all Solana account metas
-      //   - `svmExecute.ixData` is binary instruction data
+      //   - `data` is the Anchor-encoded ix bytes (discriminator + Borsh args)
+      //   - SDK resolves accounts from the pre-registered test_counter IDL
       //   - `value` is in lamports (not wei)
       // ────────────────────────────────────────────────
       const hop2 = await pushClient.universal.prepareTransaction({
         to: { address: SOL_TEST_PROGRAM, chain: CHAIN.SOLANA_DEVNET },
         value: BigInt(5_000_000), // 0.005 SOL in lamports
-        svmExecute: {
-          targetProgram: SOL_TEST_PROGRAM,
-          accounts: [
-            { pubkey: SOL_COUNTER_PDA, isWritable: true },
-            { pubkey: SOL_TARGET, isWritable: true },
-            { pubkey: ceaPdaHex, isWritable: true },
-            { pubkey: SOL_ZERO_ADDRESS, isWritable: false },
-          ],
-          ixData,
-        },
+        data: toHexData(ixData),
       });
       console.log('hop2 route:', hop2.route);
       expect(hop2.route).toBe('UOA_TO_CEA');

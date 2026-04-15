@@ -134,9 +134,9 @@ export async function lockFee(
 
       const nativeDecimals = 18;
       const oneUsd = Utils.helpers.parseUnits('1', 8);
-      const tenUsd = Utils.helpers.parseUnits('10', 8);
+      const maxUsd = Utils.helpers.parseUnits('1000', 8);
       let depositUsd = amount < oneUsd ? oneUsd : amount;
-      if (depositUsd > tenUsd) depositUsd = tenUsd;
+      if (depositUsd > maxUsd) depositUsd = maxUsd;
       let nativeAmount =
         (depositUsd * BigInt(10 ** nativeDecimals) +
           (nativeTokenUsdPrice - BigInt(1))) /
@@ -161,9 +161,9 @@ export async function lockFee(
       ]);
       const nativeDecimals = 9;
       const oneUsd = Utils.helpers.parseUnits('1', 8);
-      const tenUsd = Utils.helpers.parseUnits('10', 8);
+      const maxUsd = Utils.helpers.parseUnits('1000', 8);
       let depositUsd = amount < oneUsd ? oneUsd : amount;
-      if (depositUsd > tenUsd) depositUsd = tenUsd;
+      if (depositUsd > maxUsd) depositUsd = maxUsd;
       let nativeAmount =
         (depositUsd * BigInt(10 ** nativeDecimals) +
           (nativeTokenUsdPrice - BigInt(1))) /

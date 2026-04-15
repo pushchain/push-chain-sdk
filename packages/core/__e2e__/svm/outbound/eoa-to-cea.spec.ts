@@ -25,6 +25,7 @@ import {
   deriveCeaPda,
   buildReceiveSolAccounts,
   buildReceiveSolIxData,
+  toHexData,
 } from '@e2e/shared/svm-outbound-helpers';
 
 describe('EOA → CEA: SVM Outbound Transactions (Route 2)', () => {
@@ -174,11 +175,7 @@ describe('EOA → CEA: SVM Outbound Transactions (Route 2)', () => {
             address: TEST_PROGRAM,
             chain: CHAIN.SOLANA_DEVNET,
           },
-          svmExecute: {
-            targetProgram: TEST_PROGRAM,
-            accounts: buildReceiveSolAccounts(ceaPdaHex),
-            ixData,
-          },
+          data: toHexData(ixData),
         };
 
         expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
@@ -223,11 +220,7 @@ describe('EOA → CEA: SVM Outbound Transactions (Route 2)', () => {
             amount: BigInt(100_000), // 0.1 USDT (6 decimals)
             token: SOL_USDT_TOKEN,
           },
-          svmExecute: {
-            targetProgram: TEST_PROGRAM,
-            accounts: buildReceiveSolAccounts(ceaPdaHex),
-            ixData,
-          },
+          data: toHexData(ixData),
         };
 
         expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
@@ -269,11 +262,7 @@ describe('EOA → CEA: SVM Outbound Transactions (Route 2)', () => {
             chain: CHAIN.SOLANA_DEVNET,
           },
           value: BigInt(5_000_000), // 0.005 SOL for CPI
-          svmExecute: {
-            targetProgram: TEST_PROGRAM,
-            accounts: buildReceiveSolAccounts(ceaPdaHex),
-            ixData,
-          },
+          data: toHexData(ixData),
         };
 
         expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
@@ -354,11 +343,7 @@ describe('EOA → CEA: SVM Outbound Transactions (Route 2)', () => {
             chain: CHAIN.SOLANA_DEVNET,
           },
           value: BigInt(5_000_000), // 0.005 SOL
-          svmExecute: {
-            targetProgram: TEST_PROGRAM,
-            accounts: buildReceiveSolAccounts(ceaPdaHex),
-            ixData,
-          },
+          data: toHexData(ixData),
         };
 
         expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);

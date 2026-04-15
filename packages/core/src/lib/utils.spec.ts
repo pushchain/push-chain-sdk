@@ -455,6 +455,50 @@ describe('Helpers Utils Namespace', () => {
       });
       expect(result).toBe('0xd09de08a');
     });
+
+    describe('Anchor IDL input (Solana)', () => {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const testCounterIdl = require('./orchestrator/svm-idl/__fixtures__/test_counter.idl.json');
+
+      it('produces discriminator + Borsh-encoded args for receive_sol amount=0', () => {
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: testCounterIdl,
+          functionName: 'receive_sol',
+          args: [BigInt(0)],
+        });
+        // [121,244,250,3,8,229,225,1] + u64 LE 0
+        expect(result).toBe('0x79f4fa0308e5e1010000000000000000');
+      });
+
+      it('accepts camelCase function name', () => {
+        const result = PushChain.utils.helpers.encodeTxData({
+          abi: testCounterIdl,
+          functionName: 'receiveSol',
+          args: [BigInt(42)],
+        });
+        expect(result).toBe('0x79f4fa0308e5e1012a00000000000000');
+      });
+
+      it('throws when args is not an array on IDL path', () => {
+        expect(() =>
+          PushChain.utils.helpers.encodeTxData({
+            abi: testCounterIdl,
+            functionName: 'receive_sol',
+            args: 'bad' as any,
+          })
+        ).toThrow('Arguments must be an array');
+      });
+
+      it('throws when instruction is not in IDL', () => {
+        expect(() =>
+          PushChain.utils.helpers.encodeTxData({
+            abi: testCounterIdl,
+            functionName: 'nope',
+            args: [],
+          })
+        ).toThrow(/not found in IDL/);
+      });
+    });
   });
 
   describe('parseUnits', () => {

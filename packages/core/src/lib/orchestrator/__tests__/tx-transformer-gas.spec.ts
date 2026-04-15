@@ -713,11 +713,11 @@ describe('gas-calculator', () => {
       expect(result).toBeGreaterThan(BigInt(0));
     });
 
-    it('should throw if deposit exceeds $10', async () => {
+    it('should throw if deposit exceeds $1000', async () => {
       const ctx = makeMockOrchestratorContext({
         pushClient: {
-          // Returns > $10 in 8-dec format
-          pushToUSDC: jest.fn().mockReturnValue(BigInt(1100000000)), // $11
+          // Returns > $1000 in 8-dec format
+          pushToUSDC: jest.fn().mockReturnValue(BigInt(100100000000)), // $1001
         },
       });
 
@@ -728,7 +728,7 @@ describe('gas-calculator', () => {
           BigInt('100000000000000000000'), // huge required
           BigInt(0)
         )
-      ).rejects.toThrow('Deposit value exceeds max $10');
+      ).rejects.toThrow('Deposit value exceeds max $1000');
     });
 
     it('should clamp deposit up to $1 minimum', async () => {

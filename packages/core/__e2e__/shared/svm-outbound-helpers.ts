@@ -5,7 +5,10 @@
  * the split SVM outbound test files (uoa-to-cea, cea-to-uea, eoa-to-cea, cea-to-eoa).
  */
 import { PublicKey } from '@solana/web3.js';
+import { Buffer } from 'buffer';
 import { MOVEABLE_TOKEN_CONSTANTS } from '../../src/lib/constants/tokens';
+import { PushChain } from '../../src';
+import testCounterIdl from '../../src/lib/orchestrator/svm-idl/__fixtures__/test_counter.idl.json';
 
 // ---------------------------------------------------------------------------
 // SVM Constants
@@ -77,3 +80,19 @@ export function buildReceiveSolIxData(amount: bigint): Uint8Array {
   new DataView(amountBuf.buffer).setBigUint64(0, amount, true); // LE
   return new Uint8Array([...discriminator, ...amountBuf]);
 }
+
+/** receive_sol instruction data as 0x-hex, ready to pass as `data` to prepareTransaction. */
+export function buildReceiveSolCalldata(amount: bigint): `0x${string}` {
+  return ('0x' +
+    Buffer.from(buildReceiveSolIxData(amount)).toString('hex')) as `0x${string}`;
+}
+
+/** Convert a Uint8Array to a 0x-hex `data` string. */
+export function toHexData(bytes: Uint8Array): `0x${string}` {
+  return ('0x' + Buffer.from(bytes).toString('hex')) as `0x${string}`;
+}
+
+// Register the test_counter IDL so prepareTransaction can resolve accounts
+// for any `data` calldata targeting TEST_PROGRAM. Importing this helper file
+// anywhere in the e2e suite auto-registers it.
+PushChain.utils.svm.registerIdl(TEST_PROGRAM, testCounterIdl);

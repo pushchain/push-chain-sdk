@@ -284,11 +284,6 @@ export function validateRouteParams(
         'migration is incompatible with data'
       );
     }
-    if (params.svmExecute) {
-      throw new RouteValidationError(
-        'migration is incompatible with svmExecute'
-      );
-    }
     if (isChainTarget(params.to) && isSvmChain(params.to.chain)) {
       throw new RouteValidationError(
         'migration is not supported on SVM chains'
