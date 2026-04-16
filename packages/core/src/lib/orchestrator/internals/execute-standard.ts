@@ -73,24 +73,24 @@ export async function executeStandardPayload(
   }
 
   const chain = ctx.universalSigner.account.chain;
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_01, chain, ctx.universalSigner.account.address);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_101, chain, ctx.universalSigner.account.address);
   validateMainnetConnection(chain, ctx.pushClient.pushChainInfo.chainId);
 
   // Push to Push Tx
   if (isPushChain(chain)) {
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_07);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_107);
     const tx = await sendPushTx(ctx, execute, eventBuffer, transformFn);
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_99_01, [tx]);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_01, [tx]);
     return tx;
   }
 
   // Fetch Gas details and estimate cost of execution
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_02_01);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_102_01);
   const gasEstimate = execute.gasLimit || BigInt(1e7);
   const gasPrice = await ctx.pushClient.getGasPrice();
   const requiredGasFee = gasEstimate * gasPrice;
   const requiredFunds = requiredGasFee + execute.value;
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_02_02, requiredFunds);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_102_02, requiredFunds);
 
   // Fetch UEA Details (or use pre-fetched status if available)
   const UEA = computeUEAOffchain(ctx);
@@ -98,7 +98,7 @@ export async function executeStandardPayload(
   let nonce: bigint;
   let funds: bigint;
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_01);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_01);
   if (execute._ueaStatus) {
     isUEADeployed = execute._ueaStatus.isDeployed;
     nonce = execute._ueaStatus.nonce;
@@ -124,7 +124,7 @@ export async function executeStandardPayload(
       funds = balance;
     }
   }
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_02, UEA, isUEADeployed);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_02, UEA, isUEADeployed);
 
   // Validate and decode feeLockTxHash
   let feeLockTxHash: string | undefined = execute.feeLockTxHash;
@@ -246,10 +246,10 @@ export async function executeStandardPayload(
 
   if (!feeLockingRequired) {
     const ueaVersion = await fetchUEAVersion(ctx);
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_04_02);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_02);
     const signature = await signUniversalPayload(ctx, universalPayload, UEA, ueaVersion);
     verificationData = bytesToHex(signature);
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_04_03);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_03);
   } else {
     // Fee Locking
     const fundDifference = requiredFunds - funds;
@@ -388,10 +388,10 @@ export async function executeStandardPayload(
       : feeLockTxHash;
 
     const originTx = await fetchOriginChainTransactionForProgress(ctx, chain, feeLockTxHash, feeLockTxHashDisplay);
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_05_01, feeLockTxHashDisplay, originTx);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_105_01, feeLockTxHashDisplay, originTx);
 
     await waitForLockerFeeConfirmation(ctx, feeLockTxHashBytes);
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_05_02);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_105_02);
 
     const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
     const pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(
@@ -403,15 +403,15 @@ export async function executeStandardPayload(
     );
 
     const response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, feeLockTxHash, eventBuffer, 'sendTxWithGas', transformFn);
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_99_01, [response]);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_01, [response]);
     return response;
   }
 
   // Non-fee-locking path: Broadcasting Tx to PC via sendUniversalTx
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_07);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_107);
   const transactions = await sendUniversalTx(
     ctx, isUEADeployed, feeLockTxHash, universalPayload, verificationData, eventBuffer, transformFn
   );
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_99_01, transactions);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_01, transactions);
   return transactions[transactions.length - 1];
 }

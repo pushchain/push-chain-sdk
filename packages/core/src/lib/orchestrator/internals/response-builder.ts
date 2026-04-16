@@ -19,7 +19,7 @@ import {
 } from 'viem';
 import { UEA_EVM } from '../../constants/abi/uea.evm';
 import { CHAIN_INFO, VM_NAMESPACE } from '../../constants/chain';
-import { VM } from '../../constants/enums';
+import { CHAIN, VM } from '../../constants/enums';
 import { UniversalTx } from '../../generated/uexecutor/v1/types';
 import type { UniversalTxV2 } from '../../generated/uexecutor/v2/types';
 import { PROGRESS_HOOK, ProgressEvent } from '../../progress-hook/progress-hook.types';
@@ -41,6 +41,7 @@ import { printLog } from './context';
 import { getPushChainForNetwork } from './helpers';
 import { getSvmGatewayLogIndexFromTx } from './svm-helpers';
 import { computeUniversalTxId, extractUniversalSubTxIdFromTx } from './outbound-tracker';
+import { waitForInboundPushTx } from './inbound-tracker';
 import {
   reconstructProgressEvents,
   detectRouteFromUniversalTxData,
@@ -57,6 +58,8 @@ export interface ResponseBuilderCallbacks {
   printLog: (msg: string) => void;
   outboundConstants: { initialWaitMs: number; pollingIntervalMs: number; maxTimeoutMs: number };
 }
+
+import { pickWaitHooks } from './progress-route-hooks';
 
 // ============================================================================
 // queryUniversalTxStatusFromGatewayTx
@@ -318,6 +321,22 @@ export async function trackTransaction(
   const detectedRoute = detectRouteFromUniversalTxData(universalTxData);
   if (detectedRoute) {
     universalTxResponse.route = detectedRoute;
+    // Mirror the route on the context so emission code in wait()/cascade
+    // picks the correct ID range — keeps trackTransaction in lockstep with
+    // sendUniversalTransaction, which sets currentRoute in execute().
+    ctx.currentRoute = detectedRoute;
+
+    // Populate the destination/source chain on the response so
+    // reconstructR2/R3 (and any downstream emission that reads
+    // universalTxResponse.chain) emit the proper friendly chain name
+    // instead of the "external" fallback. The first outbound's destination
+    // is the target chain for R2 and the source CEA chain for R3.
+    const firstOutboundChain =
+      universalTxData?.outboundTx?.[0]?.destinationChain;
+    if (firstOutboundChain && !universalTxResponse.chain) {
+      universalTxResponse.chain = firstOutboundChain as CHAIN;
+      universalTxResponse.chainNamespace = firstOutboundChain;
+    }
   }
 
   // Reconstruct and emit SEND-TX-* progress events
@@ -328,6 +347,10 @@ export async function trackTransaction(
   for (const event of reconstructedEvents) {
     emitProgress(event);
   }
+  // Mark the response so the wait() closure (when later invoked) doesn't
+  // call trackTransaction a second time and re-emit the same reconstructed
+  // events to the user's progressHook.
+  universalTxResponse._eventsReconstructed = true;
 
   return universalTxResponse;
 }
@@ -580,43 +603,72 @@ export async function transformToUniversalTxResponse(
     wait: async (): Promise<UniversalTxReceipt> => {
       // Use trackTransaction with registered hook if available
       let baseReceipt: UniversalTxReceipt;
-      if (registeredProgressHook) {
+      // Track whether trackTransaction already reconstructed the route's
+      // intermediate Push-success marker (299-99 / 199-99-99). When it has,
+      // skip re-emitting from the outbound branch below to avoid duplicates.
+      let intermediateAlreadyEmitted = false;
+      // If THIS response itself was created by trackTransaction (the user
+      // did `tracked = trackTransaction(hash); tracked.wait()`), skip the
+      // inner trackTransaction call below — events were already replayed
+      // during the outer trackTransaction. Re-running it here would fire
+      // the same reconstructed events to registeredProgressHook a second
+      // time. We still need a receipt: derive it from tx.wait() + the
+      // existing universalTxResponse (which already has route + chain).
+      const alreadyReconstructed =
+        universalTxResponse._eventsReconstructed === true;
+      if (registeredProgressHook && !alreadyReconstructed) {
         const trackedResponse = await callbacks.trackTransaction(tx.hash, {
           waitForCompletion: true,
           progressHook: registeredProgressHook,
         });
+        intermediateAlreadyEmitted = true;
         // Get receipt from the tracked response
         const receipt = await tx.wait();
         baseReceipt = callbacks.transformToUniversalTxReceipt(receipt, trackedResponse);
       } else {
         const receipt = await tx.wait();
         baseReceipt = callbacks.transformToUniversalTxReceipt(receipt, universalTxResponse);
+        // Tracked response already replayed reconstructed events including
+        // the intermediate Push-success marker — don't fire it again below.
+        if (alreadyReconstructed) intermediateAlreadyEmitted = true;
       }
 
       // If outbound route, poll for external chain details
-      const routeInfo = universalTxResponse.route
-        ? getRouteInfo(universalTxResponse.route as TransactionRoute)
-        : undefined;
+      const route = universalTxResponse.route as TransactionRoute | undefined;
+      const routeInfo = route ? getRouteInfo(route) : undefined;
       if (routeInfo?.isOutbound) {
-        // Response-level only — NOT routed through ctx.progressHook because
-        // the default ui-kit toast lacks icon/hide-timer handling for these
-        // events. A follow-up ui-kit PR will add handling and can route
-        // through both hooks.
-        registeredProgressHook?.(
-          PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_08_01]()
-        );
+        // Pick route-specific hook builders. R4 (CEA_TO_CEA) currently has
+        // no spec'd IDs — pickWaitHooks returns a no-op set that yields
+        // events with `id: ''`. `emit` drops those so the consumer never
+        // sees placeholder events, while receipt mutation still runs.
+        const hooks = pickWaitHooks(route);
+        const targetChain = (universalTxResponse.chain ?? 'external') as string;
+        const emit = (event: ProgressEvent) => {
+          if (!event.id || !registeredProgressHook) return;
+          registeredProgressHook(event);
+        };
+
+        // Intermediate INFO marker — Push Chain tx confirmed, external/inbound
+        // leg still pending. Per spec, R1 keeps 199-01 as terminal; R2/R3
+        // reclassify Push success as intermediate. Skip when trackTransaction
+        // (called above) already reconstructed the same marker via
+        // reconstructR2/R3, otherwise the consumer sees 299-99 / 199-99-99
+        // twice in their stream.
+        if (hooks.intermediatePushOk && !intermediateAlreadyEmitted) {
+          emit(hooks.intermediatePushOk(targetChain, tx.hash));
+        }
+
+        // Awaiting relay
+        emit(hooks.awaiting(targetChain));
 
         let lastEmittedStatus: string | undefined;
         const outboundTranslator = (event: {
           status: 'waiting' | 'polling' | 'found' | 'failed' | 'timeout';
           elapsed: number;
         }) => {
-          if (!registeredProgressHook) return;
           if (event.status === 'polling' && lastEmittedStatus !== 'polling') {
             lastEmittedStatus = 'polling';
-            registeredProgressHook(
-              PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_08_02](event.elapsed)
-            );
+            emit(hooks.polling(targetChain, event.elapsed));
           }
         };
 
@@ -630,9 +682,7 @@ export async function transformToUniversalTxResponse(
               progressHook: outboundTranslator,
             }
           );
-          registeredProgressHook?.(
-            PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_03](outboundDetails)
-          );
+          emit(hooks.success(outboundDetails));
           // Merge external chain details into receipt
           baseReceipt = {
             ...baseReceipt,
@@ -643,17 +693,104 @@ export async function transformToUniversalTxResponse(
             externalAmount: outboundDetails.amount,
             externalAssetAddr: outboundDetails.assetAddr,
           };
+
+          // R3 round-trip: poll Push Chain for the inbound tx that the
+          // source-chain CEA's sendUniversalTxToUEA call produces. Correlate
+          // via the outbound external tx hash → child UTX id → child pcTx.
+          if (route === TransactionRoute.CEA_TO_PUSH) {
+            registeredProgressHook?.(
+              PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_310_01](targetChain)
+            );
+
+            let inboundLastEmitted: string | undefined;
+            try {
+              const inbound = await waitForInboundPushTx(
+                ctx,
+                outboundDetails.externalTxHash,
+                targetChain,
+                {
+                  initialWaitMs: callbacks.outboundConstants.initialWaitMs,
+                  pollingIntervalMs:
+                    callbacks.outboundConstants.pollingIntervalMs,
+                  timeout: callbacks.outboundConstants.maxTimeoutMs,
+                  progressHook: (event) => {
+                    if (!registeredProgressHook) return;
+                    if (
+                      event.status === 'polling' &&
+                      inboundLastEmitted !== 'polling'
+                    ) {
+                      inboundLastEmitted = 'polling';
+                      registeredProgressHook(
+                        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_310_02](
+                          targetChain,
+                          event.elapsedMs
+                        )
+                      );
+                    }
+                  },
+                }
+              );
+
+              if (inbound.status === 'confirmed') {
+                registeredProgressHook?.(
+                  PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_01](
+                    targetChain,
+                    inbound.pushTxHash,
+                    baseReceipt
+                  )
+                );
+                baseReceipt = {
+                  ...baseReceipt,
+                  pushInboundTxHash: inbound.pushTxHash,
+                  pushInboundUtxId: inbound.childUtxId,
+                };
+              } else {
+                // status === 'failed' (terminal failure status from chain)
+                registeredProgressHook?.(
+                  PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](
+                    inbound.errorMessage ??
+                      'inbound execution failed on Push Chain'
+                  )
+                );
+                baseReceipt = {
+                  ...baseReceipt,
+                  pushInboundUtxId: inbound.childUtxId,
+                  pushInboundTxHash: inbound.pushTxHash || undefined,
+                };
+              }
+            } catch (inboundErr) {
+              const errMsg =
+                inboundErr instanceof Error
+                  ? inboundErr.message
+                  : String(inboundErr);
+              const isTimeout = errMsg.startsWith(
+                'Timeout waiting for inbound Push tx'
+              );
+              registeredProgressHook?.(
+                isTimeout
+                  ? PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](
+                      targetChain,
+                      callbacks.outboundConstants.maxTimeoutMs
+                    )
+                  : PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](errMsg)
+              );
+              callbacks.printLog(
+                `[wait] R3 inbound tracking failed: ${errMsg}`
+              );
+            }
+          }
         } catch (error) {
           const errMsg = error instanceof Error ? error.message : String(error);
           const isTimeout = errMsg.startsWith(
             'Timeout waiting for outbound transaction'
           );
-          registeredProgressHook?.(
+          emit(
             isTimeout
-              ? PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_04](
+              ? hooks.timeout(
+                  targetChain,
                   callbacks.outboundConstants.maxTimeoutMs
                 )
-              : PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_99_05](errMsg)
+              : hooks.failed(errMsg)
           );
           // Outbound polling timed out - return partial receipt (don't throw)
           // Push Chain tx succeeded, external tracking can be retried later

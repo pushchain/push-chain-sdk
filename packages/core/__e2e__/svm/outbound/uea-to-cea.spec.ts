@@ -965,7 +965,7 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
       expect(events.length).toBeGreaterThan(0);
 
       // Verify key events were emitted
-      expect(events.some((e) => e.id === 'SEND-TX-01')).toBe(true);
+      expect(events.some((e) => e.id === 'SEND-TX-101')).toBe(true);
       expect(events.some((e) => e.id.startsWith('SEND-TX-99'))).toBe(true);
 
       // Wait for outbound relay and verify external chain details

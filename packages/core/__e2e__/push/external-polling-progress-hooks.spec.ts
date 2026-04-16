@@ -1,14 +1,19 @@
 import '@e2e/shared/setup';
 /**
- * E2E verification for the new external-chain polling progress hooks:
- *   SEND-TX-08-01  Awaiting External Chain
- *   SEND-TX-08-02  Polling External Chain
- *   SEND-TX-99-03  External Chain Tx Confirmed
- *   SEND-TX-99-04  External Chain Tx Timeout
- *   SEND-TX-99-05  External Chain Tx Failed
+ * E2E verification for the route-specific external-chain polling progress
+ * hooks emitted from response-builder.wait():
+ *   Route 2 (UOA_TO_CEA):
+ *     SEND-TX-209-01  Awaiting Push Chain Relay
+ *     SEND-TX-209-02  Syncing State with {ChainName}
+ *     SEND-TX-299-01  {ChainName} TX Success
+ *     SEND-TX-299-02  {ChainName} TX Failed
+ *     SEND-TX-299-03  Syncing State with {ChainName} Timeout
+ *     SEND-TX-299-99  Intermediate {ChainName} TX Completed
+ *   Route 3 (CEA_TO_PUSH):
+ *     SEND-TX-309-01/02/03, SEND-TX-310-01/02, SEND-TX-399-01/02/03
  *
- * These fire from response-builder.wait() via the response-level
- * progressHook (registered via tx.progressHook(cb)) on outbound routes.
+ * Fired from response-builder.wait() via the response-level progressHook
+ * (registered via tx.progressHook(cb)) on outbound routes.
  */
 import { CHAIN } from '../../src/lib/constants/enums';
 import { Hex, encodeFunctionData } from 'viem';
@@ -26,7 +31,7 @@ describe('External Chain Polling Progress Hooks (Routes 2 & 3)', () => {
     const privateKey = process.env['PUSH_PRIVATE_KEY'] as Hex;
     const skipE2E = !privateKey;
 
-    it('emits SEND-TX-08-01 / 08-02 / 99-03 during outbound polling', async () => {
+    it('emits SEND-TX-209-01 / 209-02 / 299-01 during outbound polling', async () => {
       if (skipE2E) {
         console.log('Skipping — PUSH_PRIVATE_KEY not set');
         return;
@@ -70,43 +75,47 @@ describe('External Chain Polling Progress Hooks (Routes 2 & 3)', () => {
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
 
-      // Core assertion: the new external-polling events fired
-      expect(ids).toContain('SEND-TX-08-01');
-      expect(ids).toContain('SEND-TX-99-03');
+      // Core assertion: the route-2 external-polling events fired
+      expect(ids).toContain('SEND-TX-209-01');
+      expect(ids).toContain('SEND-TX-299-01');
 
-      // 99-03 must carry the OutboundTxDetails in the `response` field
-      const confirmed = events.find((e) => e.id === 'SEND-TX-99-03')!;
+      // 299-01 must carry txHash + OutboundTxDetails in the `response` field
+      const confirmed = events.find((e) => e.id === 'SEND-TX-299-01')!;
       expect(confirmed.level).toBe('SUCCESS');
       expect(confirmed.response).toBeDefined();
       const details = confirmed.response as {
+        txHash: string;
         externalTxHash: string;
         destinationChain: CHAIN;
         explorerUrl: string;
       };
+      expect(details.txHash).toBe(receipt.externalTxHash);
       expect(details.externalTxHash).toBe(receipt.externalTxHash);
       expect(details.destinationChain).toBe(CHAIN.BNB_TESTNET);
       expect(details.explorerUrl).toContain('testnet.bscscan.com/tx/');
 
-      // 08-01 must fire BEFORE 99-03
-      expect(ids.indexOf('SEND-TX-08-01')).toBeLessThan(
-        ids.indexOf('SEND-TX-99-03')
+      // 209-01 must fire BEFORE 299-01
+      expect(ids.indexOf('SEND-TX-209-01')).toBeLessThan(
+        ids.indexOf('SEND-TX-299-01')
       );
 
-      // 08-02 is emitted by the translator on the 'polling' transition.
+      // 209-02 is emitted by the translator on the 'polling' transition.
       // It's optional because the mock/real relay may short-circuit if the
       // outbound hash is available immediately after the initial wait.
       // Log but don't hard-assert.
       console.log(
-        `SEND-TX-08-02 present: ${ids.includes('SEND-TX-08-02')}`
+        `SEND-TX-209-02 present: ${ids.includes('SEND-TX-209-02')}`
       );
     }, 360000);
   });
 
   // ========================================================================
-  // Route 3: CEA_TO_PUSH — shares the same response-builder.wait() code
-  // path as Route 2. getRouteInfo for CEA_TO_PUSH returns isOutbound=true,
-  // so the same `if (routeInfo?.isOutbound)` block handles both, emitting
-  // the same SEND-TX-08-01 / 08-02 / 99-03 sequence.
+  // Route 3: CEA_TO_PUSH — shares the same response-builder.wait() outbound
+  // branch as Route 2. getRouteInfo for CEA_TO_PUSH returns isOutbound=true,
+  // and pickWaitHooks(CEA_TO_PUSH) wires 309-01/02/03 for the source-chain
+  // CEA leg. After the outbound CEA tx confirms, wait() additionally drives
+  // waitForInboundPushTx and emits 310-01/02 → 399-01/02/03 to close the
+  // round-trip back on Push Chain.
   //
   // The Route 3 e2e path is currently blocked upstream by a pre-existing
   // SDK bug: buildInboundUniversalPayload (payload-builders.ts:210)
@@ -118,8 +127,8 @@ describe('External Chain Polling Progress Hooks (Routes 2 & 3)', () => {
   // Skipped here so the suite stays green. Route 2 already validates the
   // shared code path end-to-end.
   // ========================================================================
-  describe.skip('Route 3: CEA_TO_PUSH outbound [blocked: upstream bug in buildInboundUniversalPayload]', () => {
-    it('emits SEND-TX-08-01 and a terminal 99-03/04/05 event', () => {
+  describe.skip('Route 3: CEA_TO_PUSH round-trip [blocked: upstream bug in buildInboundUniversalPayload]', () => {
+    it('emits SEND-TX-309-01..03 → SEND-TX-310-01/02 → SEND-TX-399-01', () => {
       /* see block comment above */
     });
   });

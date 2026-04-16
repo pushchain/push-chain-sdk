@@ -284,6 +284,27 @@ export class PushClient extends EvmClient {
   }
 
   /**
+   * Generic Cosmos searchTx — returns the raw indexed results so callers can
+   * walk events themselves. Used by the inbound-tracker to find a child UTX
+   * created from an external tx hash (`universal_tx_created.inbound_tx_hash`).
+   */
+  public async searchCosmosByQuery(
+    query: string
+  ): Promise<DeliverTxResponse[]> {
+    return this.executeWithRpcFallback(async (rpcUrl) => {
+      const client = await StargateClient.connect(rpcUrl);
+      const results = await client.searchTx(query);
+      return results.map((result) =>
+        JSON.parse(
+          JSON.stringify(result, (_key, value) =>
+            typeof value === 'bigint' ? value.toString() : value
+          )
+        )
+      );
+    }, 'searchCosmosByQuery');
+  }
+
+  /**
    * Fetches a Cosmos transaction by its hash.
    * @param txHash The hex‐encoded transaction hash (without "0x" or with—both work).
    * @returns The indexed transaction (height, logs, events, etc.).

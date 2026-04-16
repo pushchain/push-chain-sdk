@@ -55,7 +55,7 @@ export async function executeFundsOnly(
     );
   }
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_01, chain, ctx.universalSigner.account.address);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_101, chain, ctx.universalSigner.account.address);
 
   const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
   const rpcUrls: string[] = ctx.rpcUrls[chain] || defaultRPC;
@@ -133,10 +133,10 @@ async function executeFundsOnlyEvm(
   const nativeAmount = await calculateNativeAmountForDeposit(ctx, chain, BigInt(0), ueaBalanceForGas);
   printLog(ctx, `sendFunds — nativeAmount: ${nativeAmount.toString()}, ueaBalanceForGas: ${ueaBalanceForGas.toString()}`);
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_01);
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_02, ueaAddress, deployed);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_01);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_02, ueaAddress, deployed);
   printLog(ctx, `UEA resolved: ${ueaAddress}, deployed: ${deployed}`);
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_01, execute.funds!.amount, execute.funds!.token!.decimals, symbol);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_01, execute.funds!.amount, execute.funds!.token!.decimals, symbol);
 
   // Approve gateway to pull tokens if ERC-20
   if (execute.funds!.token!.mechanism === 'approve') {
@@ -159,17 +159,17 @@ async function executeFundsOnlyEvm(
       isNative ? nativeAmount + bridgeAmount : nativeAmount,
     );
   } catch (err) {
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_04_04);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_04);
     throw err;
   }
 
   const originTx = await fetchOriginChainTransactionForProgress(ctx, chain, txHash, txHash);
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_02, txHash, bridgeAmount, execute.funds!.token!.decimals, symbol, originTx);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_02, txHash, bridgeAmount, execute.funds!.token!.decimals, symbol, originTx);
 
   await waitForEvmConfirmationsWithCountdown(ctx, evmClient, txHash, CHAIN_INFO[chain].confirmations, CHAIN_INFO[chain].timeout);
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_04);
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_05);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_04);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_05);
 
   printLog(ctx, 'sendFunds — querying Push Chain status: ' + JSON.stringify({
     txHash, evmGatewayMethod: execute.to === ueaAddress ? 'sendFunds' : 'sendTxWithFunds',
@@ -181,8 +181,8 @@ async function executeFundsOnlyEvm(
   );
 
   const response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txHash, eventBuffer, 'sendFunds', transformFn);
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_06, bridgeAmount, execute.funds!.token!.decimals, symbol);
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_99_01, [response]);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_06, bridgeAmount, execute.funds!.token!.decimals, symbol);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_01, [response]);
   return response;
 }
 
@@ -217,10 +217,10 @@ async function executeFundsOnlySvm(
     Buffer.from((execute.to as `0x${string}`).slice(2).padStart(40, '0'), 'hex').subarray(0, 20)
   );
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_01);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_01);
   const ueaAddress = computeUEAOffchain(ctx);
   const { nonce, deployed } = await getUeaStatusAndNonce(ctx);
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_02, ueaAddress, deployed);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_02, ueaAddress, deployed);
 
   let txSignature: string;
 
@@ -278,16 +278,16 @@ async function executeFundsOnlySvm(
   }
 
   const originTx = await fetchOriginChainTransactionForProgress(ctx, chain, '0x', txSignature);
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_02, txSignature, bridgeAmount, execute.funds!.token!.decimals, symbol, originTx);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_02, txSignature, bridgeAmount, execute.funds!.token!.decimals, symbol, originTx);
 
   await waitForSvmConfirmationsWithCountdown(ctx, svmClient, txSignature, CHAIN_INFO[chain].confirmations, CHAIN_INFO[chain].timeout);
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_04);
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_05);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_04);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_05);
 
   const pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(ctx, undefined, undefined, txSignature, 'sendFunds');
   const response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txSignature, eventBuffer, 'sendFunds (SVM)', transformFn);
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_06, bridgeAmount, execute.funds!.token!.decimals, symbol);
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_99_01, [response]);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_06, bridgeAmount, execute.funds!.token!.decimals, symbol);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_01, [response]);
   return response;
 }

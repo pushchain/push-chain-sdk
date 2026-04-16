@@ -226,15 +226,15 @@ describe('tx-transformer', () => {
   // reconstructProgressEvents
   // --------------------------------------------------------------------------
   describe('reconstructProgressEvents', () => {
-    it('should always include SEND_TX_01, SEND_TX_02_01, SEND_TX_02_02', () => {
+    it('should always include SEND_TX_101, SEND_TX_102_01, SEND_TX_102_02', () => {
       const txResponse = makeUniversalTxResponse();
 
       const events = reconstructProgressEvents(txResponse);
 
       const ids = events.map((e) => e.id);
-      expect(ids).toContain('SEND-TX-01');
-      expect(ids).toContain('SEND-TX-02-01');
-      expect(ids).toContain('SEND-TX-02-02');
+      expect(ids).toContain('SEND-TX-101');
+      expect(ids).toContain('SEND-TX-102-01');
+      expect(ids).toContain('SEND-TX-102-02');
     });
 
     it('should always end with a final event (success or error)', () => {
@@ -243,7 +243,7 @@ describe('tx-transformer', () => {
       const events = reconstructProgressEvents(txResponse);
 
       const lastEvent = events[events.length - 1];
-      expect(['SEND-TX-99-01', 'SEND-TX-99-02']).toContain(lastEvent.id);
+      expect(['SEND-TX-199-01', 'SEND-TX-199-02']).toContain(lastEvent.id);
     });
 
     it('should include UEA resolution events for non-Push origins', () => {
@@ -255,10 +255,10 @@ describe('tx-transformer', () => {
       const events = reconstructProgressEvents(txResponse);
       const ids = events.map((e) => e.id);
 
-      expect(ids).toContain('SEND-TX-03-01');
-      expect(ids).toContain('SEND-TX-03-02');
-      expect(ids).toContain('SEND-TX-04-02');
-      expect(ids).toContain('SEND-TX-04-03');
+      expect(ids).toContain('SEND-TX-103-01');
+      expect(ids).toContain('SEND-TX-103-02');
+      expect(ids).toContain('SEND-TX-104-02');
+      expect(ids).toContain('SEND-TX-104-03');
     });
 
     it('should NOT include UEA resolution events for Push Chain origins', () => {
@@ -270,10 +270,10 @@ describe('tx-transformer', () => {
       const events = reconstructProgressEvents(txResponse);
       const ids = events.map((e) => e.id);
 
-      expect(ids).not.toContain('SEND-TX-03-01');
-      expect(ids).not.toContain('SEND-TX-03-02');
-      expect(ids).not.toContain('SEND-TX-04-02');
-      expect(ids).not.toContain('SEND-TX-04-03');
+      expect(ids).not.toContain('SEND-TX-103-01');
+      expect(ids).not.toContain('SEND-TX-103-02');
+      expect(ids).not.toContain('SEND-TX-104-02');
+      expect(ids).not.toContain('SEND-TX-104-03');
     });
 
     it('should include funds flow events when inboundTx has non-zero amount', () => {
@@ -285,13 +285,13 @@ describe('tx-transformer', () => {
       const events = reconstructProgressEvents(txResponse, universalTxData);
       const ids = events.map((e) => e.id);
 
-      expect(ids).toContain('SEND-TX-06-01');
-      expect(ids).toContain('SEND-TX-06-02');
-      expect(ids).toContain('SEND-TX-06-03');
-      expect(ids).toContain('SEND-TX-06-03-02');
-      expect(ids).toContain('SEND-TX-06-04');
-      expect(ids).toContain('SEND-TX-06-05');
-      expect(ids).toContain('SEND-TX-06-06');
+      expect(ids).toContain('SEND-TX-106-01');
+      expect(ids).toContain('SEND-TX-106-02');
+      expect(ids).toContain('SEND-TX-106-03');
+      expect(ids).toContain('SEND-TX-106-03-02');
+      expect(ids).toContain('SEND-TX-106-04');
+      expect(ids).toContain('SEND-TX-106-05');
+      expect(ids).toContain('SEND-TX-106-06');
     });
 
     it('should NOT include funds flow events when inboundTx has zero amount', () => {
@@ -303,8 +303,8 @@ describe('tx-transformer', () => {
       const events = reconstructProgressEvents(txResponse, universalTxData);
       const ids = events.map((e) => e.id);
 
-      expect(ids).not.toContain('SEND-TX-06-01');
-      expect(ids).not.toContain('SEND-TX-06-02');
+      expect(ids).not.toContain('SEND-TX-106-01');
+      expect(ids).not.toContain('SEND-TX-106-02');
     });
 
     it('should NOT include funds flow events when inboundTx is undefined', () => {
@@ -314,16 +314,16 @@ describe('tx-transformer', () => {
       const events = reconstructProgressEvents(txResponse, universalTxData);
       const ids = events.map((e) => e.id);
 
-      expect(ids).not.toContain('SEND-TX-06-01');
+      expect(ids).not.toContain('SEND-TX-106-01');
     });
 
-    it('should include broadcasting event (SEND_TX_07)', () => {
+    it('should include broadcasting event (SEND_TX_107)', () => {
       const txResponse = makeUniversalTxResponse();
 
       const events = reconstructProgressEvents(txResponse);
       const ids = events.map((e) => e.id);
 
-      expect(ids).toContain('SEND-TX-07');
+      expect(ids).toContain('SEND-TX-107');
     });
 
     it('should emit error event for OUTBOUND_FAILED status', () => {
@@ -335,7 +335,7 @@ describe('tx-transformer', () => {
       const events = reconstructProgressEvents(txResponse, universalTxData);
       const lastEvent = events[events.length - 1];
 
-      expect(lastEvent.id).toBe('SEND-TX-99-02');
+      expect(lastEvent.id).toBe('SEND-TX-199-02');
       expect(lastEvent.level).toBe('ERROR');
       expect(lastEvent.message).toContain('Outbound transaction failed');
     });
@@ -349,7 +349,7 @@ describe('tx-transformer', () => {
       const events = reconstructProgressEvents(txResponse, universalTxData);
       const lastEvent = events[events.length - 1];
 
-      expect(lastEvent.id).toBe('SEND-TX-99-02');
+      expect(lastEvent.id).toBe('SEND-TX-199-02');
       expect(lastEvent.level).toBe('ERROR');
       expect(lastEvent.message).toContain('out of gas');
     });
@@ -364,7 +364,7 @@ describe('tx-transformer', () => {
       const events = reconstructProgressEvents(txResponse, universalTxData);
       const lastEvent = events[events.length - 1];
 
-      expect(lastEvent.id).toBe('SEND-TX-99-01');
+      expect(lastEvent.id).toBe('SEND-TX-199-01');
       expect(lastEvent.level).toBe('SUCCESS');
     });
 
@@ -377,7 +377,7 @@ describe('tx-transformer', () => {
       const events = reconstructProgressEvents(txResponse);
       const firstEvent = events[0];
 
-      expect(firstEvent.id).toBe('SEND-TX-01');
+      expect(firstEvent.id).toBe('SEND-TX-101');
       // The message should contain the from address as fallback
       expect(firstEvent.message).toContain('0xFromAddress');
     });
@@ -391,7 +391,7 @@ describe('tx-transformer', () => {
       const events = reconstructProgressEvents(txResponse, universalTxData);
       const lastEvent = events[events.length - 1];
 
-      expect(lastEvent.id).toBe('SEND-TX-99-02');
+      expect(lastEvent.id).toBe('SEND-TX-199-02');
       expect(lastEvent.message).toContain('Unknown error');
     });
 
@@ -401,7 +401,7 @@ describe('tx-transformer', () => {
       const events = reconstructProgressEvents(txResponse, undefined);
       const lastEvent = events[events.length - 1];
 
-      expect(lastEvent.id).toBe('SEND-TX-99-01');
+      expect(lastEvent.id).toBe('SEND-TX-199-01');
     });
   });
 
@@ -771,11 +771,11 @@ describe('gas-calculator', () => {
         BigInt('1000000000000000000')
       );
 
-      // Should fire SEND_TX_02_01 and SEND_TX_02_02 progress hooks
+      // Should fire SEND_TX_102_01 and SEND_TX_102_02 progress hooks
       expect(progressHook).toHaveBeenCalledTimes(2);
       const hookIds = progressHook.mock.calls.map((call: any) => call[0].id);
-      expect(hookIds).toContain('SEND-TX-02-01');
-      expect(hookIds).toContain('SEND-TX-02-02');
+      expect(hookIds).toContain('SEND-TX-102-01');
+      expect(hookIds).toContain('SEND-TX-102-02');
     });
   });
 

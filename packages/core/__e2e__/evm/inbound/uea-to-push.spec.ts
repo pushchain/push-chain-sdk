@@ -2397,7 +2397,7 @@ describe('UEA → Push Chain: Inbound Transactions (Route 1)', () => {
 
           // Log confirmations
           const confirmationHooks = tracker.events.filter((p) =>
-            p.event.id.startsWith('SEND-TX-06-03')
+            p.event.id.startsWith('SEND-TX-106-03')
           );
           console.log(
             `\nConfirmation hooks: ${confirmationHooks.length}`
@@ -2449,22 +2449,22 @@ describe('UEA → Push Chain: Inbound Transactions (Route 1)', () => {
           });
 
           expect(
-            txEvents.some((e) => e.id === 'SEND-TX-01')
+            txEvents.some((e) => e.id === 'SEND-TX-101')
           ).toBe(true);
           expect(
-            txEvents.some((e) => e.id === 'SEND-TX-06-01')
+            txEvents.some((e) => e.id === 'SEND-TX-106-01')
           ).toBe(true);
           expect(
-            txEvents.some((e) => e.id === 'SEND-TX-06-04')
+            txEvents.some((e) => e.id === 'SEND-TX-106-04')
           ).toBe(true);
           expect(
-            txEvents.some((e) => e.id === 'SEND-TX-06-05')
+            txEvents.some((e) => e.id === 'SEND-TX-106-05')
           ).toBe(true);
           expect(
-            txEvents.some((e) => e.id === 'SEND-TX-06-06')
+            txEvents.some((e) => e.id === 'SEND-TX-106-06')
           ).toBe(true);
           expect(
-            txEvents.some((e) => e.id === 'SEND-TX-99-01')
+            txEvents.some((e) => e.id === 'SEND-TX-199-01')
           ).toBe(true);
 
           // Verify orchestrator also received events
@@ -2517,22 +2517,22 @@ describe('UEA → Push Chain: Inbound Transactions (Route 1)', () => {
           });
 
           expect(
-            txEvents.some((e) => e.id === 'SEND-TX-01')
+            txEvents.some((e) => e.id === 'SEND-TX-101')
           ).toBe(true);
           expect(
-            txEvents.some((e) => e.id === 'SEND-TX-06-01')
+            txEvents.some((e) => e.id === 'SEND-TX-106-01')
           ).toBe(true);
           expect(
-            txEvents.some((e) => e.id === 'SEND-TX-06-04')
+            txEvents.some((e) => e.id === 'SEND-TX-106-04')
           ).toBe(true);
           expect(
-            txEvents.some((e) => e.id === 'SEND-TX-06-05')
+            txEvents.some((e) => e.id === 'SEND-TX-106-05')
           ).toBe(true);
           expect(
-            txEvents.some((e) => e.id === 'SEND-TX-06-06')
+            txEvents.some((e) => e.id === 'SEND-TX-106-06')
           ).toBe(true);
           expect(
-            txEvents.some((e) => e.id === 'SEND-TX-99-01')
+            txEvents.some((e) => e.id === 'SEND-TX-199-01')
           ).toBe(true);
 
           // Verify orchestrator also received events

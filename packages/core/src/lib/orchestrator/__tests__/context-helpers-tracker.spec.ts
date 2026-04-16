@@ -99,11 +99,11 @@ describe('context', () => {
       const hookCb = jest.fn();
       const ctx = makeMockCtx({ progressHook: hookCb, printTraces: false });
 
-      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_07);
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_107);
 
       expect(hookCb).toHaveBeenCalledTimes(1);
       const payload = hookCb.mock.calls[0][0];
-      expect(payload).toHaveProperty('id', PROGRESS_HOOK.SEND_TX_07);
+      expect(payload).toHaveProperty('id', PROGRESS_HOOK.SEND_TX_107);
       expect(payload).toHaveProperty('message');
       expect(payload).toHaveProperty('timestamp');
     });
@@ -111,12 +111,12 @@ describe('context', () => {
     it('should NOT call progressHook when callback is undefined', () => {
       const ctx = makeMockCtx({ progressHook: undefined, printTraces: false });
       // Should not throw
-      expect(() => fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_07)).not.toThrow();
+      expect(() => fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_107)).not.toThrow();
     });
 
     it('should also print the message via printLog when printTraces is true', () => {
       const ctx = makeMockCtx({ printTraces: true });
-      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_07);
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_107);
       expect(consoleSpy).toHaveBeenCalled();
       const loggedMsg = consoleSpy.mock.calls[0][0] as string;
       expect(loggedMsg).toContain('[Orchestrator]');
@@ -128,13 +128,13 @@ describe('context', () => {
 
       fireProgressHook(
         ctx,
-        PROGRESS_HOOK.SEND_TX_01,
+        PROGRESS_HOOK.SEND_TX_101,
         'eip155:11155111',
         '0xABC'
       );
 
       const payload = hookCb.mock.calls[0][0];
-      expect(payload.id).toBe(PROGRESS_HOOK.SEND_TX_01);
+      expect(payload.id).toBe(PROGRESS_HOOK.SEND_TX_101);
       expect(payload.message).toContain('0xABC');
     });
   });

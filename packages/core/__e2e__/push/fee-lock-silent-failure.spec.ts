@@ -176,14 +176,14 @@ describe('Fee-Lock Silent Failure Reproduction', () => {
 
     // Verify: did fee-locking happen?
     const ids = tracker.getIds();
-    if (ids.includes('SEND-TX-05-01')) {
+    if (ids.includes('SEND-TX-105-01')) {
       console.log('\n>> Fee-locking path was taken (user was debited on origin chain)');
     }
-    if (ids.includes('SEND-TX-99-01')) {
-      console.log('>> SDK reported SUCCESS (SEND-TX-99-01)');
+    if (ids.includes('SEND-TX-199-01')) {
+      console.log('>> SDK reported SUCCESS (SEND-TX-199-01)');
     }
-    if (ids.includes('SEND-TX-99-02')) {
-      console.log('>> SDK reported FAILURE (SEND-TX-99-02)');
+    if (ids.includes('SEND-TX-199-02')) {
+      console.log('>> SDK reported FAILURE (SEND-TX-199-02)');
     }
 
     expect(txResponse || caughtError).toBeDefined();
@@ -291,13 +291,13 @@ describe('Fee-Lock Silent Failure Reproduction', () => {
     }
 
     const ids = tracker.getIds();
-    if (ids.includes('SEND-TX-05-01')) {
+    if (ids.includes('SEND-TX-105-01')) {
       console.log('\n>> Fee-locking path was taken (user was DEBITED on origin chain)');
     }
-    if (ids.includes('SEND-TX-99-01') && caughtError === undefined) {
+    if (ids.includes('SEND-TX-199-01') && caughtError === undefined) {
       console.log('>> BUG: SDK fired SUCCESS event despite potential Push Chain revert');
     }
-    if (ids.includes('SEND-TX-99-02')) {
+    if (ids.includes('SEND-TX-199-02')) {
       console.log('>> SDK correctly fired FAILURE event');
     }
 

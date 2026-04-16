@@ -18,7 +18,7 @@ import {
   CascadeHopInfo,
   RescueFundsParams,
 } from './orchestrator.types';
-import { isChainTarget } from './route-detector';
+import { detectRoute, isChainTarget, TransactionRoute } from './route-detector';
 import {
   type OrchestratorContext,
   printLog as _printLog, fireProgressHook as _fireProgressHook,
@@ -55,6 +55,11 @@ export class Orchestrator {
   }
   /* @internal */ accountStatusCache: AccountStatus | null = null;
   /* @internal */ accountStatusReadyPromise?: Promise<void>;
+  /**
+   * @internal Mirrors `OrchestratorContext.currentRoute` — set at the top of
+   * execute()/trackTransaction() so emission sites pick the right ID range.
+   */
+  /* @internal */ currentRoute?: TransactionRoute;
 
   private get ctx(): OrchestratorContext { return this as unknown as OrchestratorContext; }
   private _getResponseCallbacks(): ResponseBuilderCallbacks {
@@ -181,70 +186,110 @@ export class Orchestrator {
   async execute(
     params: ExecuteParams | UniversalExecuteParams
   ): Promise<UniversalTxResponse> {
-    // Lazy UEA upgrade check
+    // Snapshot the caller's active route — `executeMultiChain` recurses into
+    // this same method for R2/R3's inner Push-side execution, and without
+    // snapshot/restore the recursive `detectRoute(params)` would clobber the
+    // outer R2/R3 route with UOA_TO_PUSH (the inner `to` is a string, no
+    // `from`), defeating R1-suppression in fireProgressHook.
+    const previousRoute = this.currentRoute;
+    const isRecursiveInnerCall = previousRoute !== undefined;
+
+    let detectedRoute: TransactionRoute;
     try {
-      if (!this.accountStatusCache || !this.accountStatusCache.uea.loaded) {
-        await (this.accountStatusReadyPromise ?? this.getAccountStatus());
-      }
-      // If background resolved but cache still empty (timeout/error), fetch fresh
-      if (!this.accountStatusCache || !this.accountStatusCache.uea.loaded) {
-        await this.getAccountStatus();
-      }
-      if (
-        this.accountStatusCache?.uea.deployed &&
-        this.accountStatusCache?.uea.requiresUpgrade
-      ) {
-        await this.upgradeAccount({ progressHook: this.progressHook });
-      }
-    } catch (err) {
-      _printLog(this.ctx, `Lazy UEA upgrade check failed: ${err instanceof Error ? err.message : String(err)}. Proceeding with transaction.`);
+      detectedRoute = detectRoute(params as UniversalExecuteParams);
+    } catch {
+      detectedRoute = TransactionRoute.UOA_TO_PUSH;
     }
 
-    // Check if this is a multi-chain request (has ChainTarget or from.chain)
-    const isMultiChain =
-      isChainTarget(params.to) || ('from' in params && params.from?.chain);
-
-    if (isMultiChain) {
-      return _executeMultiChain(this.ctx, params as UniversalExecuteParams, this.execute.bind(this));
-    }
-
-    // Standard Push Chain execution (Route 1)
-    const execute = params as ExecuteParams;
-    const hasFunds = !!execute.funds;
-    const hasData = execute.data && execute.data !== '0x';
-    const eventBuffer: ProgressEvent[] = [];
-    const originalHook = this.progressHook;
-    this.progressHook = (event: ProgressEvent) => {
-      eventBuffer.push(event);
-      if (originalHook) originalHook(event);
-    };
+    // Don't downgrade an outer R2/R3/R4 route when the recursive inner call
+    // resolves to R1 — keep the outer perspective so emission stays consistent.
+    const shouldPreserveOuter =
+      isRecursiveInnerCall &&
+      previousRoute !== TransactionRoute.UOA_TO_PUSH &&
+      detectedRoute === TransactionRoute.UOA_TO_PUSH;
+    this.currentRoute = shouldPreserveOuter ? previousRoute : detectedRoute;
 
     try {
-      const rcb = () => this._getResponseCallbacks();
-      if (execute.funds) {
-        return !hasData
-          ? await _executeFundsOnly(this.ctx, execute, eventBuffer, rcb)
-          : await _executeFundsWithPayload(this.ctx, execute, eventBuffer, rcb);
+      // Lazy UEA upgrade check
+      try {
+        if (!this.accountStatusCache || !this.accountStatusCache.uea.loaded) {
+          await (this.accountStatusReadyPromise ?? this.getAccountStatus());
+        }
+        // If background resolved but cache still empty (timeout/error), fetch fresh
+        if (!this.accountStatusCache || !this.accountStatusCache.uea.loaded) {
+          await this.getAccountStatus();
+        }
+        if (
+          this.accountStatusCache?.uea.deployed &&
+          this.accountStatusCache?.uea.requiresUpgrade
+        ) {
+          await this.upgradeAccount({ progressHook: this.progressHook });
+        }
+      } catch (err) {
+        _printLog(this.ctx, `Lazy UEA upgrade check failed: ${err instanceof Error ? err.message : String(err)}. Proceeding with transaction.`);
       }
-      return await _executeStandardPayload(this.ctx, execute, eventBuffer, rcb);
-    } catch (err) {
-      const errMessage =
-        err instanceof Error
-          ? err.message
-          : typeof err === 'string'
-          ? err
-          : (() => {
-              try {
-                return JSON.stringify(err);
-              } catch {
-                return 'Unknown error';
-              }
-            })();
-      _fireProgressHook(this.ctx, PROGRESS_HOOK.SEND_TX_99_02, errMessage);
-      throw err;
+
+      // Check if this is a multi-chain request (has ChainTarget or from.chain)
+      const isMultiChain =
+        isChainTarget(params.to) || ('from' in params && params.from?.chain);
+
+      if (isMultiChain) {
+        return await _executeMultiChain(this.ctx, params as UniversalExecuteParams, this.execute.bind(this));
+      }
+
+      // Standard Push Chain execution (Route 1)
+      const execute = params as ExecuteParams;
+      const hasFunds = !!execute.funds;
+      const hasData = execute.data && execute.data !== '0x';
+      const eventBuffer: ProgressEvent[] = [];
+      const originalHook = this.progressHook;
+      this.progressHook = (event: ProgressEvent) => {
+        eventBuffer.push(event);
+        if (originalHook) originalHook(event);
+      };
+
+      try {
+        const rcb = () => this._getResponseCallbacks();
+        if (execute.funds) {
+          return !hasData
+            ? await _executeFundsOnly(this.ctx, execute, eventBuffer, rcb)
+            : await _executeFundsWithPayload(this.ctx, execute, eventBuffer, rcb);
+        }
+        return await _executeStandardPayload(this.ctx, execute, eventBuffer, rcb);
+      } catch (err) {
+        const errMessage =
+          err instanceof Error
+            ? err.message
+            : typeof err === 'string'
+            ? err
+            : (() => {
+                try {
+                  return JSON.stringify(err);
+                } catch {
+                  return 'Unknown error';
+                }
+              })();
+        // Only the outermost frame emits the terminal error hook, and it picks
+        // the route-correct ID. Recursive inner frames just re-throw so the
+        // outer catch drives emission — avoids double-firing 199/299/399 events.
+        if (!isRecursiveInnerCall) {
+          const terminalId =
+            this.currentRoute === TransactionRoute.UOA_TO_CEA
+              ? PROGRESS_HOOK.SEND_TX_299_02
+              : this.currentRoute === TransactionRoute.CEA_TO_PUSH
+              ? PROGRESS_HOOK.SEND_TX_399_02
+              : PROGRESS_HOOK.SEND_TX_199_02;
+          _fireProgressHook(this.ctx, terminalId, errMessage);
+        }
+        throw err;
+      } finally {
+        // Restore original progressHook
+        this.progressHook = originalHook;
+      }
     } finally {
-      // Restore original progressHook
-      this.progressHook = originalHook;
+      // Restore the caller's route so a recursive inner R1 execute doesn't
+      // leak its UOA_TO_PUSH route back to the outer R2/R3 frame.
+      this.currentRoute = previousRoute;
     }
   }
 

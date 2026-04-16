@@ -21,11 +21,11 @@ export async function waitForEvmConfirmationsWithCountdown(
   timeoutMs: number
 ): Promise<void> {
   if (confirmations <= 0) {
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_03_02, 0, 0);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_03_02, 0, 0);
     return;
   }
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_03, confirmations);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_03, confirmations);
   const start = Date.now();
 
   const receipt = await evmClient.publicClient.waitForTransactionReceipt({
@@ -40,7 +40,7 @@ export async function waitForEvmConfirmationsWithCountdown(
 
     if (currentBlock >= targetBlock) {
       if (lastEmitted < confirmations) {
-        fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_03_02, confirmations, confirmations);
+        fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_03_02, confirmations, confirmations);
       }
       return;
     }
@@ -52,8 +52,8 @@ export async function waitForEvmConfirmationsWithCountdown(
       fireProgressHook(
         ctx,
         completed >= confirmations
-          ? PROGRESS_HOOK.SEND_TX_06_03_02
-          : PROGRESS_HOOK.SEND_TX_06_03_01,
+          ? PROGRESS_HOOK.SEND_TX_106_03_02
+          : PROGRESS_HOOK.SEND_TX_106_03_01,
         completed,
         confirmations
       );
@@ -79,11 +79,11 @@ export async function waitForSvmConfirmationsWithCountdown(
   timeoutMs: number
 ): Promise<void> {
   if (confirmations <= 0) {
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_03_02, 0, 0);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_03_02, 0, 0);
     return;
   }
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_03, confirmations);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_03, confirmations);
   const start = Date.now();
 
   let lastConfirmed = 0;
@@ -118,8 +118,8 @@ export async function waitForSvmConfirmationsWithCountdown(
         fireProgressHook(
           ctx,
           clamped >= confirmations
-            ? PROGRESS_HOOK.SEND_TX_06_03_02
-            : PROGRESS_HOOK.SEND_TX_06_03_01,
+            ? PROGRESS_HOOK.SEND_TX_106_03_02
+            : PROGRESS_HOOK.SEND_TX_106_03_01,
           Math.max(1, clamped),
           confirmations
         );
@@ -128,7 +128,7 @@ export async function waitForSvmConfirmationsWithCountdown(
 
       if (hasEnoughConfirmations || isFinalized) {
         if (lastConfirmed < confirmations) {
-          fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_03_02, confirmations, confirmations);
+          fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_03_02, confirmations, confirmations);
         }
         return;
       }

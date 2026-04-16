@@ -1,7 +1,16 @@
-import { OutboundTxDetails, UniversalTxResponse } from '../orchestrator/orchestrator.types';
+import {
+  OutboundTxDetails,
+  UniversalTxReceipt,
+  UniversalTxResponse,
+} from '../orchestrator/orchestrator.types';
+import { CHAIN } from '../constants/enums';
 import { Utils } from '../utils';
 import {
   PROGRESS_HOOK,
+  PROGRESS_HOOK_MIG,
+  PROGRESS_HOOK_R1,
+  PROGRESS_HOOK_R2,
+  PROGRESS_HOOK_R3,
   ProgressEventFunction,
   ProgressEventFunctionWithoutTimestamp,
   OriginChainTx,
@@ -18,255 +27,538 @@ const withTimestamp = (
   });
 };
 
-const RAW_HOOKS: {
-  [K in PROGRESS_HOOK]: ProgressEventFunctionWithoutTimestamp;
+const friendlyChain = (chainOrNs: string | CHAIN | undefined): string => {
+  if (!chainOrNs) return 'chain';
+  const asString = String(chainOrNs);
+  return Utils.chains.getChainName(asString) ?? asString;
+};
+
+// =============================================================================
+// Route 1 — UOA → Push Chain (101–199)
+// =============================================================================
+
+const RAW_HOOKS_R1: {
+  [K in PROGRESS_HOOK_R1]: ProgressEventFunctionWithoutTimestamp;
 } = {
-  [PROGRESS_HOOK.SEND_TX_01]: (
+  [PROGRESS_HOOK.SEND_TX_101]: (
     originChainNamespace: string,
     originChainAddress: string
   ) => ({
-    id: PROGRESS_HOOK.SEND_TX_01,
+    id: PROGRESS_HOOK.SEND_TX_101,
     title: 'Origin Chain Detected',
-    message: `Origin chain: ${
-      Utils.chains.getChainName(originChainNamespace) ?? originChainNamespace
-    } - Origin Address: ${originChainAddress}`,
-    response: null,
+    message: `Origin chain: ${friendlyChain(originChainNamespace)} — Address: ${originChainAddress}`,
+    response: { chain: originChainNamespace, address: originChainAddress },
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_02_01]: () => ({
-    id: PROGRESS_HOOK.SEND_TX_02_01,
+  [PROGRESS_HOOK.SEND_TX_102_01]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_102_01,
     title: 'Estimating Gas',
     message: 'Estimating and fetching gas limit, gas price for TX',
     response: null,
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_02_02]: (executionCost: bigint) => ({
-    id: PROGRESS_HOOK.SEND_TX_02_02,
+  [PROGRESS_HOOK.SEND_TX_102_02]: (executionCost: bigint) => ({
+    id: PROGRESS_HOOK.SEND_TX_102_02,
     title: 'Gas Estimated',
-    message: `Total execution cost (Gas cost + value): ${executionCost} UPC`,
-    response: null,
+    message: `Total execution cost: ${executionCost} UPC`,
+    response: { totalCost: executionCost, currency: 'UPC' },
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_03_01]: () => ({
-    id: PROGRESS_HOOK.SEND_TX_03_01,
+  [PROGRESS_HOOK.SEND_TX_103_01]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_103_01,
     title: 'Resolving UEA',
-    message:
-      'Resolving Executor Account (UEA) – computing address, checking deployment status and balance',
+    message: 'Resolving UEA – computing address, checking deployment and balance',
     response: null,
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_03_02]: (
+  [PROGRESS_HOOK.SEND_TX_103_02]: (
     ueaAddress: `0x${string}`,
     deployed: boolean
   ) => ({
-    id: PROGRESS_HOOK.SEND_TX_03_02,
+    id: PROGRESS_HOOK.SEND_TX_103_02,
     title: 'UEA Resolved',
     message: `UEA: ${ueaAddress}, Deployed: ${deployed}`,
-    response: null,
+    response: { uea: ueaAddress, deployed },
     level: 'SUCCESS',
   }),
-  // Payload flow (04-x)
-  [PROGRESS_HOOK.SEND_TX_04_01]: () => ({
-    id: PROGRESS_HOOK.SEND_TX_04_01,
+  [PROGRESS_HOOK.SEND_TX_104_01]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_104_01,
     title: 'Awaiting Transaction',
     message: 'Awaiting user transaction on origin chain',
     response: null,
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_04_02]: () => ({
-    id: PROGRESS_HOOK.SEND_TX_04_02,
+  [PROGRESS_HOOK.SEND_TX_104_02]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_104_02,
     title: 'Awaiting Signature',
     message: 'Awaiting user signature for universal payload',
     response: null,
     level: 'INFO',
   }),
-  // V2 Payload flow
-  [PROGRESS_HOOK.SEND_TX_04_03]: () => ({
-    id: PROGRESS_HOOK.SEND_TX_04_03,
+  [PROGRESS_HOOK.SEND_TX_104_03]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_104_03,
     title: 'Verification Success',
     message: 'Verification completed via Transaction or Signature',
     response: null,
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_04_04]: () => ({
-    id: PROGRESS_HOOK.SEND_TX_04_04,
+  [PROGRESS_HOOK.SEND_TX_104_04]: (errorMessage?: string) => ({
+    id: PROGRESS_HOOK.SEND_TX_104_04,
     title: 'Verification Declined',
     message: 'Verification declined by user',
-    response: null,
+    response: { error: errorMessage ?? 'Verification declined by user' },
     level: 'ERROR',
   }),
-  // Gas flow (05-x)
-  [PROGRESS_HOOK.SEND_TX_05_01]: (
+  [PROGRESS_HOOK.SEND_TX_105_01]: (
     originChainTxHash: string,
     originChainTx?: OriginChainTx
   ) => ({
-    id: PROGRESS_HOOK.SEND_TX_05_01,
+    id: PROGRESS_HOOK.SEND_TX_105_01,
     title: 'Gas Funding In Progress',
     message: `Gas funding tx sent: ${originChainTxHash}`,
-    // Attach the full origin-chain transaction object when provided
-    response: originChainTx ?? null,
+    response: { txHash: originChainTxHash, originChainTx: originChainTx ?? null },
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_05_02]: () => ({
-    id: PROGRESS_HOOK.SEND_TX_05_02,
+  [PROGRESS_HOOK.SEND_TX_105_02]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_105_02,
     title: 'Gas Funding Confirmed',
     message: 'Gas funding confirmed on origin chain',
     response: null,
     level: 'SUCCESS',
   }),
-
-  // V2 Funds flow (06-x)
-  [PROGRESS_HOOK.SEND_TX_06_01]: (
+  [PROGRESS_HOOK.SEND_TX_106_01]: (
     amount: bigint,
     decimals: number,
     symbol: string
   ) => ({
-    id: PROGRESS_HOOK.SEND_TX_06_01,
+    id: PROGRESS_HOOK.SEND_TX_106_01,
     title: 'Preparing Funds Transfer',
-    message: `Preparing to move ${Utils.helpers.formatUnits(
-      amount,
-      decimals
-    )} ${symbol} from origin chain`,
-    response: null,
+    message: `Preparing to move ${Utils.helpers.formatUnits(amount, decimals)} ${symbol} from origin chain`,
+    response: { amount, symbol },
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_06_02]: (
+  [PROGRESS_HOOK.SEND_TX_106_02]: (
     txHash: string,
     amount: bigint,
     decimals: number,
     symbol: string,
     originChainTx?: OriginChainTx
   ) => ({
-    id: PROGRESS_HOOK.SEND_TX_06_02,
+    id: PROGRESS_HOOK.SEND_TX_106_02,
     title: 'Funds Lock Submitted',
-    message: `Locking ${Utils.helpers.formatUnits(
+    message: `Locking ${Utils.helpers.formatUnits(amount, decimals)} ${symbol} — Tx: ${txHash}`,
+    response: {
+      txHash,
       amount,
-      decimals
-    )} ${symbol} for transfer (Tx hash: ${txHash})`,
-    // Attach the full origin-chain transaction object when available
-    response: originChainTx ?? null,
+      symbol,
+      originChainTx: originChainTx ?? null,
+    },
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_06_03]: (required: number) => ({
-    id: PROGRESS_HOOK.SEND_TX_06_03,
+  [PROGRESS_HOOK.SEND_TX_106_03]: (required: number) => ({
+    id: PROGRESS_HOOK.SEND_TX_106_03,
     title: 'Awaiting Confirmations',
     message: `Waiting for ${required} confirmations`,
-    response: null,
+    response: { current: 0, required },
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_06_03_01]: (current: number, required: number) => ({
-    id: PROGRESS_HOOK.SEND_TX_06_03_01,
-    title: `Confirmation ${current}/${required} received`,
+  [PROGRESS_HOOK.SEND_TX_106_03_01]: (current: number, required: number) => ({
+    id: PROGRESS_HOOK.SEND_TX_106_03_01,
+    title: `Confirmation ${current}/${required} Received`,
     message: `${current}/${required} confirmations received`,
-    response: null,
+    response: { current, required },
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_06_03_02]: (current: number, required: number) => ({
-    id: PROGRESS_HOOK.SEND_TX_06_03_02,
-    title: `Confirmation ${current}/${required} received`,
+  [PROGRESS_HOOK.SEND_TX_106_03_02]: (current: number, required: number) => ({
+    id: PROGRESS_HOOK.SEND_TX_106_03_02,
+    title: `Confirmation ${current}/${required} Received`,
     message: `${current}/${required} confirmations received`,
-    response: null,
+    response: { current, required },
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_06_04]: () => ({
-    id: PROGRESS_HOOK.SEND_TX_06_04,
+  [PROGRESS_HOOK.SEND_TX_106_04]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_106_04,
     title: 'Funds Confirmed',
     message: 'Origin chain lock confirmed',
     response: null,
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_06_05]: () => ({
-    id: PROGRESS_HOOK.SEND_TX_06_05,
-    title: 'Syncing State with Push Chain',
+  [PROGRESS_HOOK.SEND_TX_106_05]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_106_05,
+    title: 'Syncing with Push Chain',
     message: 'Waiting for transaction to appear on Push Chain',
     response: null,
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_06_06]: (
+  [PROGRESS_HOOK.SEND_TX_106_06]: (
     amount: bigint,
     decimals: number,
     symbol: string
   ) => ({
-    id: PROGRESS_HOOK.SEND_TX_06_06,
+    id: PROGRESS_HOOK.SEND_TX_106_06,
     title: 'Funds Credited on Push Chain',
-    message: `Funds credited: ${Utils.helpers.formatUnits(
-      amount,
-      decimals
-    )} ${symbol}`,
-    response: null,
+    message: `Funds credited: ${Utils.helpers.formatUnits(amount, decimals)} ${symbol}`,
+    response: { amount, symbol },
     level: 'SUCCESS',
   }),
-
-  // Execution flow (07-x)
-  [PROGRESS_HOOK.SEND_TX_07]: () => ({
-    id: PROGRESS_HOOK.SEND_TX_07,
+  [PROGRESS_HOOK.SEND_TX_107]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_107,
     title: 'Broadcasting to Push Chain',
-    message: 'Sending Tx to Push Chain...',
+    message: 'Sending TX to Push Chain...',
     response: null,
     level: 'INFO',
   }),
-
-  // External chain polling (08-x) — emitted from .wait() / cascade.waitForAll()
-  // after Push Chain tx success, while the SDK polls the relay for the
-  // external chain tx hash on outbound routes.
-  [PROGRESS_HOOK.SEND_TX_08_01]: (destinationChain?: string) => ({
-    id: PROGRESS_HOOK.SEND_TX_08_01,
-    title: 'Awaiting External Chain',
-    message: destinationChain
-      ? `Waiting for relay to dispatch to ${destinationChain}...`
-      : 'Waiting for relay to dispatch to external chain...',
-    response: null,
-    level: 'INFO',
-  }),
-  [PROGRESS_HOOK.SEND_TX_08_02]: (elapsedMs: number) => ({
-    id: PROGRESS_HOOK.SEND_TX_08_02,
-    title: 'Polling External Chain',
-    message: `Polling relay for external transaction hash (elapsed: ${Math.round(
-      elapsedMs / 1000
-    )}s)`,
-    response: null,
-    level: 'INFO',
-  }),
-
-  [PROGRESS_HOOK.SEND_TX_99_01]: (txResponse: UniversalTxResponse[]) => ({
-    id: PROGRESS_HOOK.SEND_TX_99_01,
-    title: 'Push Chain Tx Success',
-    message: 'Tx executed successfully on Push Chain',
-    response: txResponse,
-    level: 'SUCCESS',
-  }),
-  [PROGRESS_HOOK.SEND_TX_99_02]: (errMessage: string) => ({
-    id: PROGRESS_HOOK.SEND_TX_99_02,
-    title: 'Push Chain Tx Failed',
+  [PROGRESS_HOOK.SEND_TX_199_01]: (
+    txResponse: UniversalTxResponse[],
+    receipt?: UniversalTxReceipt
+  ) => {
+    const first = Array.isArray(txResponse) ? txResponse[0] : undefined;
+    const txHash = first?.hash ?? '';
+    return {
+      id: PROGRESS_HOOK.SEND_TX_199_01,
+      title: 'Push Chain TX Success',
+      message: `TX confirmed: ${txHash}`,
+      response: { txHash, response: txResponse, receipt: receipt ?? null },
+      level: 'SUCCESS',
+    };
+  },
+  [PROGRESS_HOOK.SEND_TX_199_02]: (errMessage: string) => ({
+    id: PROGRESS_HOOK.SEND_TX_199_02,
+    title: 'Push Chain TX Failed',
     message: errMessage,
-    response: null,
+    response: { error: errMessage },
     level: 'ERROR',
   }),
-  [PROGRESS_HOOK.SEND_TX_99_03]: (details: OutboundTxDetails) => ({
-    id: PROGRESS_HOOK.SEND_TX_99_03,
-    title: 'External Chain Tx Confirmed',
-    message: `External tx confirmed on ${details.destinationChain}: ${details.externalTxHash}`,
-    response: details,
+};
+
+// =============================================================================
+// Route 2 — UEA → UGPC → CEA on target chain (201–299, signature-only)
+// =============================================================================
+
+const RAW_HOOKS_R2: {
+  [K in PROGRESS_HOOK_R2]: ProgressEventFunctionWithoutTimestamp;
+} = {
+  [PROGRESS_HOOK.SEND_TX_201]: (
+    targetChain: string | CHAIN,
+    targetAddress: string
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_201,
+    title: `${friendlyChain(targetChain)} Detected`,
+    message: `External chain: ${targetChain} — Target address: ${targetAddress}`,
+    response: { chain: targetChain, address: targetAddress },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_202_01]: (targetChain: string | CHAIN) => ({
+    id: PROGRESS_HOOK.SEND_TX_202_01,
+    title: `Estimating ${friendlyChain(targetChain)} Chain Gas`,
+    message: 'Querying Push Chain gas and UGPC relay fee',
+    response: null,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_202_02]: (
+    targetChain: string | CHAIN,
+    pushGas: bigint,
+    relayFee: bigint
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_202_02,
+    title: `${friendlyChain(targetChain)} Chain Gas Estimated`,
+    message: `Push gas: ${pushGas} UPC + UGPC relay: ${relayFee} UPC = ${pushGas + relayFee} UPC`,
+    response: {
+      gasEstimate: pushGas,
+      relayFee,
+      totalCost: pushGas + relayFee,
+      currency: 'UPC',
+    },
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_99_04]: (elapsedMs: number) => ({
-    id: PROGRESS_HOOK.SEND_TX_99_04,
-    title: 'External Chain Tx Timeout',
-    message: `Timed out waiting for external chain tx after ${Math.round(
-      elapsedMs / 1000
-    )}s. Push Chain tx succeeded; the relay may still be processing.`,
+  [PROGRESS_HOOK.SEND_TX_203_01]: (targetChain: string | CHAIN) => ({
+    id: PROGRESS_HOOK.SEND_TX_203_01,
+    title: 'Resolving CEA',
+    message: `Resolving UEA on Push Chain and CEA on ${targetChain}`,
     response: null,
-    level: 'WARNING',
+    level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_99_05]: (errorMessage: string) => ({
-    id: PROGRESS_HOOK.SEND_TX_99_05,
-    title: 'External Chain Tx Failed',
-    message: errorMessage,
+  [PROGRESS_HOOK.SEND_TX_203_02]: (
+    ueaAddr: `0x${string}`,
+    ceaAddr: string,
+    targetChain: string | CHAIN,
+    deployed: boolean
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_203_02,
+    title: 'CEA Resolved',
+    message: `UEA: ${ueaAddr} · CEA: ${ceaAddr} on ${targetChain} · Deployed: ${deployed}`,
+    response: { uea: ueaAddr, cea: ceaAddr, chain: targetChain, deployed },
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_204_01]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_204_01,
+    title: 'Awaiting Signature',
+    message: 'Awaiting user signature for universal payload',
     response: null,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_204_02]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_204_02,
+    title: 'Signature Received',
+    message: 'Universal payload signed — preparing broadcast',
+    response: null,
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_204_03]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_204_03,
+    title: 'Verification Success',
+    message: 'Verification completed',
+    response: null,
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_204_04]: (errorMessage?: string) => ({
+    id: PROGRESS_HOOK.SEND_TX_204_04,
+    title: 'Verification Declined',
+    message: 'Verification declined by user',
+    response: { error: errorMessage ?? 'Verification declined by user' },
     level: 'ERROR',
   }),
+  [PROGRESS_HOOK.SEND_TX_207]: (targetChain: string | CHAIN) => ({
+    id: PROGRESS_HOOK.SEND_TX_207,
+    title: `Broadcasting from Push Chain → ${friendlyChain(targetChain)}`,
+    message: 'Sending TX to Push Chain...',
+    response: { chain: targetChain },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_209_01]: (targetChain: string | CHAIN) => ({
+    id: PROGRESS_HOOK.SEND_TX_209_01,
+    title: 'Awaiting Push Chain Relay',
+    message: `Waiting for UGPC to relay execution to ${targetChain}`,
+    response: { chain: targetChain },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_209_02]: (
+    targetChain: string | CHAIN,
+    elapsedMs: number
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_209_02,
+    title: `Syncing State with ${friendlyChain(targetChain)}`,
+    message: `Polling ${targetChain} for CEA execution`,
+    response: { chain: targetChain, elapsedMs },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_299_01]: (details: OutboundTxDetails) => ({
+    id: PROGRESS_HOOK.SEND_TX_299_01,
+    title: `${friendlyChain(details.destinationChain)} TX Success`,
+    message: `CEA executed on ${details.destinationChain} · Tx: ${details.externalTxHash}`,
+    response: { txHash: details.externalTxHash, ...details },
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_299_02]: (errorMessage: string) => ({
+    id: PROGRESS_HOOK.SEND_TX_299_02,
+    title: 'External TX Failed',
+    message: errorMessage,
+    response: { error: errorMessage },
+    level: 'ERROR',
+  }),
+  [PROGRESS_HOOK.SEND_TX_299_03]: (
+    targetChain: string | CHAIN,
+    elapsedMs: number
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_299_03,
+    title: `Syncing State with ${friendlyChain(targetChain)} Timeout`,
+    message: `Timed out waiting for UGPC relay to ${targetChain}`,
+    response: { error: 'relay timeout', chain: targetChain, elapsedMs },
+    level: 'ERROR',
+  }),
+  [PROGRESS_HOOK.SEND_TX_299_99]: (
+    targetChain: string | CHAIN,
+    txHash: string
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_299_99,
+    title: `${friendlyChain(targetChain)} TX Completed`,
+    message: `Intermediate ${friendlyChain(targetChain)} tx confirmed: ${txHash}, progressing to next phase`,
+    response: { chain: targetChain, txHash },
+    level: 'INFO',
+  }),
+};
 
-  // UEA Migration hooks
+// =============================================================================
+// Route 3 — UEA → UGPC → CEA → sendUniversalTxToUEA → Push Chain (301–399)
+// =============================================================================
+
+const RAW_HOOKS_R3: {
+  [K in PROGRESS_HOOK_R3]: ProgressEventFunctionWithoutTimestamp;
+} = {
+  [PROGRESS_HOOK.SEND_TX_199_99_99]: (txHash: string) => ({
+    id: PROGRESS_HOOK.SEND_TX_199_99_99,
+    title: 'Push Chain TX Completed',
+    message: `Intermediate Push Chain tx confirmed: ${txHash}, progressing to next phase`,
+    response: { txHash },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_301]: (
+    sourceChain: string | CHAIN,
+    ceaAddress: string
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_301,
+    title: `${friendlyChain(sourceChain)}'s CEA Detected`,
+    message: `Source chain: ${sourceChain} — CEA: ${ceaAddress}`,
+    response: { chain: sourceChain, address: ceaAddress },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_302_01]: (sourceChain: string | CHAIN) => ({
+    id: PROGRESS_HOOK.SEND_TX_302_01,
+    title: `Estimating ${friendlyChain(sourceChain)} Gas`,
+    message: 'Querying Push Chain gas and UGPC relay fee',
+    response: null,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_302_02]: (
+    sourceChain: string | CHAIN,
+    pushGas: bigint,
+    relayFee: bigint
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_302_02,
+    title: `${friendlyChain(sourceChain)} Gas Estimated`,
+    message: `Push gas: ${pushGas} UPC + UGPC relay: ${relayFee} UPC = ${pushGas + relayFee} UPC`,
+    response: {
+      gasEstimate: pushGas,
+      relayFee,
+      totalCost: pushGas + relayFee,
+      currency: 'UPC',
+    },
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_303_01]: (sourceChain: string | CHAIN) => ({
+    id: PROGRESS_HOOK.SEND_TX_303_01,
+    title: 'Resolving CEA → UEA',
+    message: `Resolving UEA on Push Chain and CEA on ${sourceChain}`,
+    response: null,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_303_02]: (
+    ueaAddr: `0x${string}`,
+    ceaAddr: string,
+    sourceChain: string | CHAIN
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_303_02,
+    title: 'CEA → UEA Resolved',
+    message: `UEA: ${ueaAddr} · CEA: ${ceaAddr} on ${sourceChain} · Deployed: true`,
+    response: { uea: ueaAddr, cea: ceaAddr, chain: sourceChain, deployed: true },
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_304_01]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_304_01,
+    title: 'Awaiting Signature',
+    message: 'Awaiting user signature for universal payload',
+    response: null,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_304_02]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_304_02,
+    title: 'Signature Received',
+    message: 'Universal payload signed — preparing broadcast',
+    response: null,
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_304_03]: () => ({
+    id: PROGRESS_HOOK.SEND_TX_304_03,
+    title: 'Verification Success',
+    message: 'Verification completed',
+    response: null,
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_304_04]: (errorMessage?: string) => ({
+    id: PROGRESS_HOOK.SEND_TX_304_04,
+    title: 'Verification Declined',
+    message: 'Verification declined by user',
+    response: { error: errorMessage ?? 'Verification declined by user' },
+    level: 'ERROR',
+  }),
+  [PROGRESS_HOOK.SEND_TX_307]: (sourceChain: string | CHAIN) => ({
+    id: PROGRESS_HOOK.SEND_TX_307,
+    title: `Broadcasting from Push Chain → ${friendlyChain(sourceChain)}`,
+    message: 'Sending TX from Push Chain...',
+    response: { chain: sourceChain },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_309_01]: (sourceChain: string | CHAIN) => ({
+    id: PROGRESS_HOOK.SEND_TX_309_01,
+    title: `Awaiting ${friendlyChain(sourceChain)} Relay`,
+    message: `Waiting for UGPC to relay to CEA on ${sourceChain}`,
+    response: { chain: sourceChain },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_309_02]: (
+    sourceChain: string | CHAIN,
+    elapsedMs: number
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_309_02,
+    title: `Syncing State with ${friendlyChain(sourceChain)}`,
+    message: `Polling ${sourceChain} for CEA execution`,
+    response: { chain: sourceChain, elapsedMs },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_309_03]: (
+    sourceChain: string | CHAIN,
+    txHash: string
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_309_03,
+    title: `${friendlyChain(sourceChain)} Tx Confirmed`,
+    message: `CEA executed on ${sourceChain}: ${txHash} — return inbound initiated`,
+    response: { chain: sourceChain, txHash },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_310_01]: (sourceChain: string | CHAIN) => ({
+    id: PROGRESS_HOOK.SEND_TX_310_01,
+    title: `${friendlyChain(sourceChain)} → Push Chain Inbound Tx Submitted`,
+    message: `CEA initiated return — waiting for Push Chain inbound from ${sourceChain}`,
+    response: { chain: sourceChain },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_310_02]: (
+    sourceChain: string | CHAIN,
+    elapsedMs: number
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_310_02,
+    title: 'Syncing State with Push Chain for Inbound Tx',
+    message: `Polling Push Chain for inbound from ${sourceChain}`,
+    response: { chain: sourceChain, elapsedMs },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_399_01]: (
+    sourceChain: string | CHAIN,
+    txHash: string,
+    receipt?: UniversalTxReceipt
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_399_01,
+    title: 'Push Chain Inbound Tx Confirmed',
+    message: `Inbound from ${sourceChain} confirmed · Push TX: ${txHash}`,
+    response: { chain: sourceChain, txHash, receipt: receipt ?? null },
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_399_02]: (errorMessage: string) => ({
+    id: PROGRESS_HOOK.SEND_TX_399_02,
+    title: 'Push Chain Inbound Tx Failed',
+    message: errorMessage,
+    response: { error: errorMessage },
+    level: 'ERROR',
+  }),
+  [PROGRESS_HOOK.SEND_TX_399_03]: (
+    sourceChain: string | CHAIN,
+    elapsedMs: number
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_399_03,
+    title: 'Push Chain Inbound Timeout',
+    message: `Timed out waiting for inbound from ${sourceChain}`,
+    response: { error: 'inbound timeout', chain: sourceChain, elapsedMs },
+    level: 'ERROR',
+  }),
+};
+
+// =============================================================================
+// UEA Migration hooks (unchanged)
+// =============================================================================
+
+const RAW_HOOKS_MIG: {
+  [K in PROGRESS_HOOK_MIG]: ProgressEventFunctionWithoutTimestamp;
+} = {
   [PROGRESS_HOOK.UEA_MIG_01]: () => ({
     id: PROGRESS_HOOK.UEA_MIG_01,
     title: 'Checking UEA',
@@ -292,14 +584,14 @@ const RAW_HOOKS: {
     id: PROGRESS_HOOK.UEA_MIG_9901,
     title: 'UEA Migration Successful',
     message: `UEA migration is successful. UEA is now version ${newVersion}.`,
-    response: null,
+    response: { version: newVersion },
     level: 'SUCCESS',
   }),
   [PROGRESS_HOOK.UEA_MIG_9902]: () => ({
     id: PROGRESS_HOOK.UEA_MIG_9902,
     title: 'UEA Migration Failed',
     message: 'UEA migration failed. Check transaction on explorer.',
-    response: null,
+    response: { error: 'UEA migration failed' },
     level: 'ERROR',
   }),
   [PROGRESS_HOOK.UEA_MIG_9903]: () => ({
@@ -309,6 +601,16 @@ const RAW_HOOKS: {
     response: null,
     level: 'INFO',
   }),
+};
+
+// Combine all routes into the master record
+const RAW_HOOKS: {
+  [K in PROGRESS_HOOK]: ProgressEventFunctionWithoutTimestamp;
+} = {
+  ...RAW_HOOKS_R1,
+  ...RAW_HOOKS_R2,
+  ...RAW_HOOKS_R3,
+  ...RAW_HOOKS_MIG,
 };
 
 // Build final hooks with timestamp injection

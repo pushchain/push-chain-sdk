@@ -208,13 +208,13 @@ describe('UEA Funded But Not Deployed Debug', () => {
     const ids = freshTracker.getIds();
     console.log('\n=== Path Analysis ===');
     console.log(`  Event IDs: ${ids.join(', ')}`);
-    if (ids.includes('SEND-TX-05-01')) {
+    if (ids.includes('SEND-TX-105-01')) {
       console.log('  >> Took FEE-LOCKING path (expected for undeployed UEA)');
     }
-    if (ids.includes('SEND-TX-04-02')) {
+    if (ids.includes('SEND-TX-104-02')) {
       console.log('  >> Took SIGNED VERIFICATION path');
     }
-    if (ids.includes('SEND-TX-03-02')) {
+    if (ids.includes('SEND-TX-103-02')) {
       console.log('  >> UEA status resolved');
     }
 

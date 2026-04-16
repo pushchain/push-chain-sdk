@@ -86,8 +86,8 @@ describe('tx.progressHook() Method (e2e)', () => {
 
     // Should have received SEND-TX-* events (replayed from execution buffer + tracking)
     expect(methodEvents.length).toBeGreaterThan(0);
-    expect(methodEvents.some((e) => e.id === 'SEND-TX-01')).toBe(true);
-    expect(methodEvents.some((e) => e.id === 'SEND-TX-99-01')).toBe(true);
+    expect(methodEvents.some((e) => e.id === 'SEND-TX-101')).toBe(true);
+    expect(methodEvents.some((e) => e.id === 'SEND-TX-199-01')).toBe(true);
 
     console.log(`✓ tx.progressHook() received ${methodEvents.length} events`);
   }, 60000);
@@ -157,8 +157,8 @@ describe('tx.progressHook() Method (e2e)', () => {
     );
 
     expect(receipt.hash).toBe(sharedTxResponse.hash);
-    expect(trackEvents.some((e) => e.id === 'SEND-TX-01')).toBe(true);
-    expect(trackEvents.some((e) => e.id === 'SEND-TX-99-01')).toBe(true);
+    expect(trackEvents.some((e) => e.id === 'SEND-TX-101')).toBe(true);
+    expect(trackEvents.some((e) => e.id === 'SEND-TX-199-01')).toBe(true);
 
     // Both per-tx and orchestrator hooks should have received events
     expect(orchestratorEvents.length).toBeGreaterThan(0);
@@ -187,8 +187,8 @@ describe('tx.progressHook() Method (e2e)', () => {
 
     // Orchestrator hook should still receive SEND_TX_* events
     expect(orchestratorEvents.length).toBeGreaterThan(0);
-    expect(orchestratorEvents.some((e) => e.id === 'SEND-TX-01')).toBe(true);
-    expect(orchestratorEvents.some((e) => e.id === 'SEND-TX-99-01')).toBe(true);
+    expect(orchestratorEvents.some((e) => e.id === 'SEND-TX-101')).toBe(true);
+    expect(orchestratorEvents.some((e) => e.id === 'SEND-TX-199-01')).toBe(true);
 
     console.log(
       `✓ Orchestrator hook received ${orchestratorEvents.length} events (no tx.progressHook)`
@@ -231,8 +231,8 @@ describe('tx.progressHook() Method (e2e)', () => {
     }
 
     // Verify expected SEND-TX events are present
-    expect(methodEvents.some((e) => e.id === 'SEND-TX-01')).toBe(true);
-    expect(methodEvents.some((e) => e.id === 'SEND-TX-99-01')).toBe(true);
+    expect(methodEvents.some((e) => e.id === 'SEND-TX-101')).toBe(true);
+    expect(methodEvents.some((e) => e.id === 'SEND-TX-199-01')).toBe(true);
 
     console.log(`✓ All ${methodEvents.length} events have valid structure`);
   }, 60000);

@@ -22,7 +22,8 @@ import {
 } from 'viem';
 
 import type { OrchestratorContext } from './context';
-import { printLog } from './context';
+import { printLog, fireProgressHook } from './context';
+import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import {
   isPushChain,
   getChainNamespace,
@@ -225,6 +226,10 @@ export async function executeUoaToCea(
 
   // ===== EVM path (existing logic) =====
 
+  // R2 pre-broadcast progress: external chain detected
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_201, targetChain, targetAddress);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_203_01, targetChain);
+
   // Get UEA address
   const ueaAddress = computeUEAOffchain(ctx);
 
@@ -238,6 +243,15 @@ export async function executeUoaToCea(
     ueaAddress,
     targetChain,
     ctx.rpcUrls[targetChain]?.[0]
+  );
+
+  fireProgressHook(
+    ctx,
+    PROGRESS_HOOK.SEND_TX_203_02,
+    ueaAddress,
+    ceaAddress,
+    targetChain,
+    ceaDeployed
   );
 
   printLog(
@@ -539,6 +553,10 @@ export async function executeUoaToCea(
     ...(!isUEADeployed ? { _minimumDepositUsd: ROUTE2_MINIMUM_DEPOSIT_USD } : {}),
   };
 
+  // R2 broadcast marker — emitted just before the inner executeFn dispatches
+  // to Push Chain. Replaces the suppressed 107 emission for this route.
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_207, targetChain);
+
   const response = await executeFn(executeParams);
 
   // Add chain info to response
@@ -569,6 +587,18 @@ export async function executeUoaToCeaSvm(
   const targetChain = target.chain;
   const targetAddress = target.address; // 0x-prefixed, 32 bytes
   const ueaAddress = computeUEAOffchain(ctx);
+
+  // R2 pre-broadcast progress (SVM)
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_201, targetChain, targetAddress);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_203_01, targetChain);
+  fireProgressHook(
+    ctx,
+    PROGRESS_HOOK.SEND_TX_203_02,
+    ueaAddress,
+    targetAddress,
+    targetChain,
+    true
+  );
 
   const {
     svmPayload,
@@ -765,6 +795,9 @@ export async function executeUoaToCeaSvm(
     _skipFeeLocking: isUEADeployed, // skip fee-locking only if UEA is already deployed
   };
 
+  // R2 broadcast marker (SVM)
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_207, targetChain);
+
   const response = await executeFn(executeParams);
 
   // Add chain info to response
@@ -821,6 +854,17 @@ export async function executeCeaToPush(
     ueaAddress,
     sourceChain,
     ctx.rpcUrls[sourceChain]?.[0]
+  );
+
+  // R3 pre-broadcast progress
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_301, sourceChain, ceaAddress);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_303_01, sourceChain);
+  fireProgressHook(
+    ctx,
+    PROGRESS_HOOK.SEND_TX_303_02,
+    ueaAddress,
+    ceaAddress,
+    sourceChain
   );
 
   printLog(ctx, `executeCeaToPush — sourceChain: ${sourceChain}, CEA: ${ceaAddress}, deployed: ${ceaDeployed}`);
@@ -1118,6 +1162,9 @@ export async function executeCeaToPush(
     ...(!isUEADeployed ? { _minimumDepositUsd: ROUTE3_MINIMUM_DEPOSIT_USD } : {}),
   };
 
+  // R3 broadcast marker
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_307, sourceChain);
+
   const response = await executeFn(executeParams);
 
   // Add Route 3 context to response
@@ -1159,6 +1206,17 @@ export async function executeCeaToPushSvm(
   }
   const programPk = new PublicKey(lockerContract);
   const gatewayProgramHex = ('0x' + Buffer.from(programPk.toBytes()).toString('hex')) as `0x${string}`;
+
+  // R3 pre-broadcast progress (SVM)
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_301, sourceChain, lockerContract);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_303_01, sourceChain);
+  fireProgressHook(
+    ctx,
+    PROGRESS_HOOK.SEND_TX_303_02,
+    ueaAddress,
+    lockerContract,
+    sourceChain
+  );
 
   printLog(ctx, `executeCeaToPushSvm — sourceChain: ${sourceChain}, gateway: ${lockerContract}`);
 
@@ -1301,6 +1359,9 @@ export async function executeCeaToPushSvm(
     // For undeployed UEAs, ensure fee-locking deposits enough for the outbound swap
     ...(!isUEADeployed ? { _minimumDepositUsd: Utils.helpers.parseUnits('10', 8) } : {}),
   };
+
+  // R3 broadcast marker (SVM)
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_307, sourceChain);
 
   const response = await executeFn(executeParams);
 

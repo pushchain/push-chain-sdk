@@ -321,13 +321,13 @@ describe('trackTransaction — response field accuracy', () => {
     );
 
     // Must have SEND-TX-01 (origin identification)
-    const startEvent = events.find((e) => e.id === 'SEND-TX-01');
+    const startEvent = events.find((e) => e.id === 'SEND-TX-101');
     expect(startEvent).toBeDefined();
     expect(startEvent!.message).toContain(signerAddress);
 
     // Must have outcome event (success or failure)
-    const successEvent = events.find((e) => e.id === 'SEND-TX-99-01');
-    const failEvent = events.find((e) => e.id === 'SEND-TX-99-02');
+    const successEvent = events.find((e) => e.id === 'SEND-TX-199-01');
+    const failEvent = events.find((e) => e.id === 'SEND-TX-199-02');
     expect(successEvent || failEvent).toBeTruthy();
 
     // No TRACK-TX-* events (those are deprecated)

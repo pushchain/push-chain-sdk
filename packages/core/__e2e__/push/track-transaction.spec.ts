@@ -74,8 +74,8 @@ describe('trackTransaction E2E', () => {
     expect(typeof response.progressHook).toBe('function'); // Has progressHook() method
 
     // Verify SEND-TX-* hooks are emitted (NOT TRACK-TX-*)
-    expect(trackProgressEvents.some((e) => e.id === 'SEND-TX-01')).toBe(true);
-    expect(trackProgressEvents.some((e) => e.id === 'SEND-TX-99-01')).toBe(true);
+    expect(trackProgressEvents.some((e) => e.id === 'SEND-TX-101')).toBe(true);
+    expect(trackProgressEvents.some((e) => e.id === 'SEND-TX-199-01')).toBe(true);
     expect(trackProgressEvents.some((e) => e.id.startsWith('TRACK-TX'))).toBe(false);
 
     console.log('✓ All assertions passed');
@@ -212,8 +212,8 @@ describe('trackTransaction E2E', () => {
 
     // Verify events were replayed
     expect(replayedEvents.length).toBeGreaterThan(0);
-    expect(replayedEvents.some((e) => e.id === 'SEND-TX-01')).toBe(true);
-    expect(replayedEvents.some((e) => e.id === 'SEND-TX-99-01')).toBe(true);
+    expect(replayedEvents.some((e) => e.id === 'SEND-TX-101')).toBe(true);
+    expect(replayedEvents.some((e) => e.id === 'SEND-TX-199-01')).toBe(true);
 
     console.log(`✓ Replayed ${replayedEvents.length} events`);
   }, 60000);
@@ -354,9 +354,9 @@ describe('trackTransaction E2E', () => {
     );
 
     // Should always emit SEND-TX-01 (origin) and outcome (99-01 or 99-02)
-    expect(events.some((e) => e.id === 'SEND-TX-01')).toBe(true);
-    const hasSuccess = events.some((e) => e.id === 'SEND-TX-99-01');
-    const hasFailure = events.some((e) => e.id === 'SEND-TX-99-02');
+    expect(events.some((e) => e.id === 'SEND-TX-101')).toBe(true);
+    const hasSuccess = events.some((e) => e.id === 'SEND-TX-199-01');
+    const hasFailure = events.some((e) => e.id === 'SEND-TX-199-02');
     expect(hasSuccess || hasFailure).toBe(true);
 
     console.log(`✓ Progress events: ${events.length} total, success=${hasSuccess}, failure=${hasFailure}`);
@@ -399,9 +399,19 @@ describe('trackTransaction E2E', () => {
     expect(response.blockNumber).toBeGreaterThan(BigInt(0));
     expect(typeof response.wait).toBe('function');
 
-    // Should emit SEND-TX-* progress hooks
-    expect(events.some((e) => e.id === 'SEND-TX-01')).toBe(true);
-    expect(events.some((e) => e.id === 'SEND-TX-99-01' || e.id === 'SEND-TX-99-02')).toBe(true);
+    // R2 trackTransaction reconstructs the route-correct sequence (no R1
+    // 101 leakage). 201 is the route entry, 299-99 marks the intermediate
+    // Push success, and wait() then drives the external poll terminal.
+    expect(events.some((e) => e.id === 'SEND-TX-201')).toBe(true);
+    expect(
+      events.some(
+        (e) =>
+          e.id === 'SEND-TX-299-99' || e.id === 'SEND-TX-299-02'
+      )
+    ).toBe(true);
+    // R1 IDs must not leak into an R2 stream
+    expect(events.some((e) => e.id === 'SEND-TX-101')).toBe(false);
+    expect(events.some((e) => e.id === 'SEND-TX-199-01')).toBe(false);
 
     // Call wait() — should return outbound receipt with external chain details
     console.log('Calling response.wait() for outbound receipt...');

@@ -189,7 +189,7 @@ describe('SVM UEA → Push Chain: Inbound Transactions (Route 1)', () => {
 
       // Log confirmations
       const confirmationHooks = tracker.events.filter((p) =>
-        p.event.id.startsWith('SEND-TX-06-03')
+        p.event.id.startsWith('SEND-TX-106-03')
       );
       console.log(`\nConfirmation hooks: ${confirmationHooks.length}`);
       confirmationHooks.forEach((c) => {

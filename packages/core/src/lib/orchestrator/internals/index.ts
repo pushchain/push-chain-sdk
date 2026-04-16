@@ -63,6 +63,17 @@ export {
   OUTBOUND_MAX_TIMEOUT_MS,
 } from './outbound-sync';
 
+// === Inbound Tracking (R3 round-trip) ===
+export {
+  findChildUtxIdFromExternalTx,
+  waitForInboundPushTx,
+} from './inbound-tracker';
+export type {
+  InboundPushTxDetails,
+  InboundPushTxStatus,
+  WaitForInboundOptions,
+} from './inbound-tracker';
+
 // === Transaction Transformation ===
 export {
   transformToUniversalTxReceipt,

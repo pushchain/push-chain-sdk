@@ -391,7 +391,7 @@ export async function calculateNativeAmountForDeposit(
   requiredFunds: bigint,
   ueaBalance: bigint
 ): Promise<bigint> {
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_02_01);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_102_01);
 
   const oneUsd = Utils.helpers.parseUnits('1', 8);
   const maxUsd = Utils.helpers.parseUnits('1000', 8);
@@ -443,7 +443,7 @@ export async function calculateNativeAmountForDeposit(
     nativeTokenUsdPrice;
   nativeAmount = nativeAmount + BigInt(1);
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_02_02, nativeAmount);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_102_02, nativeAmount);
 
   return nativeAmount;
 }

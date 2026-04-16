@@ -128,9 +128,9 @@ describe('Website Track Transaction Snippets (e2e)', () => {
     const trackEvents = events.filter((e) => e.id.startsWith('TRACK-TX'));
     expect(trackEvents).toHaveLength(0);
 
-    // Must include SEND-TX-01 (origin detection) and SEND-TX-99-01 (success)
-    expect(events.some((e) => e.id === 'SEND-TX-01')).toBe(true);
-    expect(events.some((e) => e.id === 'SEND-TX-99-01')).toBe(true);
+    // Must include SEND-TX-01 (origin detection) and SEND-TX-199-01 (success)
+    expect(events.some((e) => e.id === 'SEND-TX-101')).toBe(true);
+    expect(events.some((e) => e.id === 'SEND-TX-199-01')).toBe(true);
 
     console.log(
       'Event IDs:',

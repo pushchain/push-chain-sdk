@@ -1009,7 +1009,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         expect(events.length).toBeGreaterThan(0);
 
         // Verify key events were emitted
-        expect(events.some(e => e.id === 'SEND-TX-01')).toBe(true);
+        expect(events.some(e => e.id === 'SEND-TX-101')).toBe(true);
         expect(events.some(e => e.id.startsWith('SEND-TX-99'))).toBe(true);
       }, 180000);
 
@@ -1062,7 +1062,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         await clientWithHook.universal.sendTransaction(params);
 
         expect(events.length).toBeGreaterThan(0);
-        expect(events.some(e => e.id === 'SEND-TX-01')).toBe(true);
+        expect(events.some(e => e.id === 'SEND-TX-101')).toBe(true);
       }, 180000);
     });
 

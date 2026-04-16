@@ -11,9 +11,11 @@ import type { UniversalSigner } from '../../universal/universal.types';
 import type { CHAIN, PUSH_NETWORK } from '../../constants/enums';
 import type { ProgressEvent } from '../../progress-hook/progress-hook.types';
 import type { AccountStatus } from '../orchestrator.types';
+import { TransactionRoute } from '../route-detector';
 import { CHAIN_INFO } from '../../constants/chain';
 import { EvmClient } from '../../vm-client/evm-client';
 import PROGRESS_HOOKS from '../../progress-hook/progress-hook';
+import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 
 export interface OrchestratorContext {
   readonly pushClient: PushClient;
@@ -22,6 +24,15 @@ export interface OrchestratorContext {
   readonly rpcUrls: Partial<Record<CHAIN, string[]>>;
   readonly printTraces: boolean;
   progressHook?: (progress: ProgressEvent) => void;
+
+  /**
+   * The transaction route currently being executed. Set by
+   * `Orchestrator.execute()` and `Orchestrator.trackTransaction()` before any
+   * submodule fires progress hooks, so route-aware emission code can pick the
+   * correct ID range (101 / 201 / 301). Undefined when no transaction is in
+   * flight (e.g. during account-status reads).
+   */
+  currentRoute?: TransactionRoute;
 
   // Mutable caches (mutated in-place by submodules)
   ueaVersionCache?: string;
@@ -54,13 +65,67 @@ export function printLog(ctx: OrchestratorContext, msg: string): void {
 }
 
 /**
+ * IDs in the Route 1 range (101–199 + the funds/payload sub-IDs). When the
+ * orchestrator is executing a non-R1 route, these IDs are suppressed at the
+ * fire boundary so emission code in the inner R1 execute pipeline doesn't
+ * leak Route 1 events into a Route 2/3/4 progress stream. The route-specific
+ * IDs (201/207/299, 301/307/399, etc.) are emitted explicitly by the route
+ * handlers and by `wait()` in response-builder.ts.
+ *
+ * Exceptions kept in the stream regardless of route:
+ *   - The 199-99-99 intermediate marker (used by R3 itself).
+ *   - All UEA migration hooks.
+ */
+const R1_SUPPRESSED_IN_NON_R1: ReadonlySet<string> = new Set([
+  PROGRESS_HOOK.SEND_TX_101,
+  PROGRESS_HOOK.SEND_TX_102_01,
+  PROGRESS_HOOK.SEND_TX_102_02,
+  PROGRESS_HOOK.SEND_TX_103_01,
+  PROGRESS_HOOK.SEND_TX_103_02,
+  PROGRESS_HOOK.SEND_TX_104_01,
+  PROGRESS_HOOK.SEND_TX_104_02,
+  PROGRESS_HOOK.SEND_TX_104_03,
+  PROGRESS_HOOK.SEND_TX_104_04,
+  PROGRESS_HOOK.SEND_TX_105_01,
+  PROGRESS_HOOK.SEND_TX_105_02,
+  PROGRESS_HOOK.SEND_TX_106_01,
+  PROGRESS_HOOK.SEND_TX_106_02,
+  PROGRESS_HOOK.SEND_TX_106_03,
+  PROGRESS_HOOK.SEND_TX_106_03_01,
+  PROGRESS_HOOK.SEND_TX_106_03_02,
+  PROGRESS_HOOK.SEND_TX_106_04,
+  PROGRESS_HOOK.SEND_TX_106_05,
+  PROGRESS_HOOK.SEND_TX_106_06,
+  PROGRESS_HOOK.SEND_TX_107,
+  PROGRESS_HOOK.SEND_TX_199_01,
+  PROGRESS_HOOK.SEND_TX_199_02,
+]);
+
+function isR1Route(route: TransactionRoute | undefined): boolean {
+  return route === undefined || route === TransactionRoute.UOA_TO_PUSH;
+}
+
+/**
  * Fires a progress hook event by ID, forwarding args to the hook factory.
+ *
+ * Suppresses Route 1 IDs when the active route is not R1 — the inner R1
+ * execute pipeline still calls fireProgressHook for events like 101 / 107 /
+ * 199_01, but those describe a Push-perspective view that doesn't match the
+ * R2/R3/R4 lifecycle the consumer is observing. Route handlers emit the
+ * route-specific IDs (201/207/301/307/etc.) explicitly.
  */
 export function fireProgressHook(
   ctx: OrchestratorContext,
   hookId: string,
   ...args: any[]
 ): void {
+  if (
+    !isR1Route(ctx.currentRoute) &&
+    R1_SUPPRESSED_IN_NON_R1.has(hookId)
+  ) {
+    return;
+  }
+
   const hookEntry = PROGRESS_HOOKS[hookId];
   const hookPayload: ProgressEvent = hookEntry(...args);
   printLog(ctx, hookPayload.message);

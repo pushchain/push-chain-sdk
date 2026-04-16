@@ -182,8 +182,8 @@ export interface UniversalTxResponse {
   /**
    * Register a progress callback for events during wait().
    * Call this BEFORE calling wait() to receive tracking events, including
-   * the SEND-TX-08-xx / SEND-TX-99-03/04/05 external chain polling events
-   * emitted on outbound routes. Registering after wait() resolves will
+   * the route-specific external/inbound polling events: R2 emits the 209/299
+   * series, R3 emits 309/310/399. Registering after wait() resolves will
    * replay the pre-execution event buffer but miss outbound polling events.
    * @param callback - Function called with each progress event
    */
@@ -224,6 +224,16 @@ export interface UniversalTxResponse {
   // 11. Transaction Route
   /** Transaction route (UOA_TO_PUSH, UOA_TO_CEA, CEA_TO_PUSH, CEA_TO_CEA) */
   route?: TransactionRouteType;
+
+  // 12. Internal flags
+  /**
+   * @internal True when this response was produced by `trackTransaction` and
+   * its progress events have already been replayed via the registered hook.
+   * `wait()` checks this to skip a redundant inner trackTransaction call that
+   * would otherwise emit the same reconstructed events a second time when
+   * the user does `tracked = trackTransaction(...); tracked.wait()`.
+   */
+  _eventsReconstructed?: boolean;
 }
 
 /**
@@ -280,6 +290,12 @@ export interface UniversalTxReceipt {
   externalAmount?: string;
   /** Asset address on external chain */
   externalAssetAddr?: string;
+
+  // 10. Inbound Push Tx (populated for R3 round-trips)
+  /** Push Chain tx hash that closed the R3 round-trip (inbound from CEA). */
+  pushInboundTxHash?: string;
+  /** Child UTX id that owns the inbound execution. */
+  pushInboundUtxId?: string;
 }
 
 /**

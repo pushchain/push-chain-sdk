@@ -67,7 +67,7 @@ export async function executeFundsWithPayload(
 
   const { chain, evmClient, gatewayAddress } = getOriginGatewayContext(ctx);
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_01, chain, ctx.universalSigner.account.address);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_101, chain, ctx.universalSigner.account.address);
 
   // Default token to native ETH if none provided
   if (!execute.funds!.token) {
@@ -101,7 +101,7 @@ export async function executeFundsWithPayload(
     ctx, execute, nonce, 'sendTxWithFunds', execute.funds!.amount
   );
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_02_01);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_102_01);
 
   // Compute required gas funding on Push Chain and current UEA balance
   const gasEstimate = execute.gasLimit || BigInt(1e7);
@@ -113,7 +113,7 @@ export async function executeFundsWithPayload(
   const ueaAddress = computeUEAOffchain(ctx);
   const ueaBalance = await ctx.pushClient.getBalance(ueaAddress);
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_02, ueaAddress, deployed);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_02, ueaAddress, deployed);
 
   // Determine USD to deposit via gateway (8 decimals) with caps: min=$1, max=$1000
   const oneUsd = Utils.helpers.parseUnits('1', 8);
@@ -125,7 +125,7 @@ export async function executeFundsWithPayload(
   if (depositUsd > maxUsd)
     throw new Error('Deposit value exceeds max $1000 worth of native token');
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_02_02, depositUsd);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_102_02, depositUsd);
 
   // If SVM, clamp depositUsd to on-chain Config caps
   if (CHAIN_INFO[chain].vm === VM.SVM) {
@@ -161,7 +161,7 @@ export async function executeFundsWithPayload(
   const bridgeAmount = execute.funds!.amount;
   const symbol = execute.funds!.token.symbol;
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_01, bridgeAmount, execute.funds!.token.decimals, symbol);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_01, bridgeAmount, execute.funds!.token.decimals, symbol);
 
   if (CHAIN_INFO[ctx.universalSigner.account.chain].vm === VM.EVM) {
     const tokenAddr = execute.funds!.token.address as `0x${string}`;
@@ -178,11 +178,11 @@ export async function executeFundsWithPayload(
   try {
     if (CHAIN_INFO[ctx.universalSigner.account.chain].vm === VM.EVM) {
       const tokenAddr = execute.funds!.token.address as `0x${string}`;
-      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_01);
-      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_03_02, ueaAddress, deployed);
-      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_04_01);
-      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_04_02);
-      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_04_03);
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_01);
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_02, ueaAddress, deployed);
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_01);
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_02);
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_03);
       const evmClientEvm = evmClient as EvmClient;
       const gatewayAddressEvm = gatewayAddress as `0x${string}`;
       const payloadBytes = encodeUniversalPayload(universalPayload as unknown as UniversalPayload);
@@ -236,12 +236,12 @@ export async function executeFundsWithPayload(
       });
     }
   } catch (err) {
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_04_04);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_04);
     throw err;
   }
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_04_03);
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_02, txHash, bridgeAmount, execute.funds!.token.decimals, symbol);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_03);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_02, txHash, bridgeAmount, execute.funds!.token.decimals, symbol);
 
   // Awaiting confirmations
   const signerChain = ctx.universalSigner.account.chain;
@@ -267,8 +267,8 @@ export async function executeFundsWithPayload(
     }
   }
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_04);
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_05);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_04);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_05);
 
   let pushChainUniversalTx: UniversalTx | undefined;
   if (CHAIN_INFO[ctx.universalSigner.account.chain].vm === VM.EVM) {
@@ -282,7 +282,7 @@ export async function executeFundsWithPayload(
   }
 
   const response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txHash as string, eventBuffer, 'sendTxWithFunds', transformFn);
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_06_06, bridgeAmount, execute.funds!.token.decimals, symbol);
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_99_01, [response]);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_06, bridgeAmount, execute.funds!.token.decimals, symbol);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_01, [response]);
   return response;
 }
