@@ -454,8 +454,16 @@ export async function executeUoaToCea(
     adjustedValue = EVM_NATIVE_VALUE_TARGET;
   } else if (effectiveBalance > EVM_GAS_RESERVE) {
     adjustedValue = effectiveBalance - EVM_GAS_RESERVE;
+  } else if (effectiveBalance > BigInt(0)) {
+    // Drained UEA: overshoot would make the inner .call{value:...} return (false, "")
+    // and the UEA reverts with opaque ExecutionFailed(). Clamp to whatever we have so
+    // the gateway swap either succeeds or surfaces a concrete revert reason.
+    adjustedValue = effectiveBalance < nativeValueForGas ? effectiveBalance : nativeValueForGas;
   } else {
-    adjustedValue = nativeValueForGas;
+    throw new Error(
+      `UEA ${ueaAddress} has zero UPC balance; cannot fund outbound gas swap. ` +
+      `Bridge UPC to the UEA before retrying.`
+    );
   }
 
   if (adjustedValue !== nativeValueForGas) {
@@ -1053,8 +1061,16 @@ export async function executeCeaToPush(
     adjustedValue = EVM_NATIVE_VALUE_TARGET_R3;
   } else if (effectiveBalance > OUTBOUND_GAS_RESERVE_R3) {
     adjustedValue = effectiveBalance - OUTBOUND_GAS_RESERVE_R3;
+  } else if (effectiveBalance > BigInt(0)) {
+    // Drained UEA: overshoot would make the inner .call{value:...} return (false, "")
+    // and the UEA reverts with opaque ExecutionFailed(). Clamp to whatever we have so
+    // the gateway swap either succeeds or surfaces a concrete revert reason.
+    adjustedValue = effectiveBalance < nativeValueForGas ? effectiveBalance : nativeValueForGas;
   } else {
-    adjustedValue = nativeValueForGas;
+    throw new Error(
+      `UEA ${ueaAddress} has zero UPC balance; cannot fund outbound gas swap. ` +
+      `Bridge UPC to the UEA before retrying.`
+    );
   }
 
   if (adjustedValue !== nativeValueForGas) {

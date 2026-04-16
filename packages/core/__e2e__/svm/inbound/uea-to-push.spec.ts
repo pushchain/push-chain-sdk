@@ -10,6 +10,7 @@ import '@e2e/shared/setup';
  * UTX-11 Funds+Data, UTX-17 Native Funds+Data, UTX-21 Multicall (no funds),
  * UTX-22 Funds+Multicall, UTX-23 Native Funds+Payload.
  */
+import { Keypair } from '@solana/web3.js';
 import { PushChain } from '../../../src';
 import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
 import { MOVEABLE_TOKENS } from '../../../src/lib/constants/tokens';
@@ -24,6 +25,10 @@ import {
   COUNTER_ADDRESS_PAYABLE,
   COUNTER_ABI_PAYABLE,
 } from '@e2e/shared/inbound-helpers';
+import {
+  makeSolanaContext,
+  fundSolanaUoa,
+} from '../../docs-examples/_helpers/docs-fund';
 
 const solanaPrivateKey = process.env['SOLANA_PRIVATE_KEY'];
 const skipE2E = !solanaPrivateKey;
@@ -711,6 +716,54 @@ describe('SVM UEA → Push Chain: Inbound Transactions (Route 1)', () => {
 
       console.log(`TX Hash: ${tx.hash}`);
       expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+      const receipt = await tx.wait();
+      expect(receipt.status).toBe(1);
+    }, 300000);
+  });
+
+  // ============================================================================
+  // 22. Fresh-Key Repro (mirrors docs-examples `solana_basic`)
+  //
+  // The suite above uses the master Solana keypair whose UEA is already
+  // deployed on Push Chain. This test generates a brand-new keypair and
+  // relies on lazy UEA deployment via the SVM inbound relay — matching the
+  // failing `send_transaction_solana_basic` test at
+  // __e2e__/docs-examples/06-send-universal-transaction/send-universal-transaction.spec.ts.
+  //
+  // If this test fails with "stuck after Gas Funding Confirmed" while the
+  // master-key tests above pass, the failure is scoped to fresh-key / lazy-UEA
+  // SVM inbound (worth chain-infra attention). If both fail, it's a global
+  // SVM inbound regression.
+  // ============================================================================
+  describe('22. Fresh-Key Repro (solana_basic pattern)', () => {
+    it('should bridge 0.001 PC from a freshly generated Solana keypair', async () => {
+      if (skipE2E) return;
+
+      const ctx = makeSolanaContext(solanaPrivateKey as string);
+      const keypair = Keypair.generate();
+      // solana_basic funds 0.02 SOL; we use 0.013 here because master devnet
+      // wallet is tight and 0.013 is enough to pass deposit.rs:23 balance check
+      // (0.01 failed there) while still hitting the fresh-UEA Push-side path.
+      await fundSolanaUoa(ctx, keypair.publicKey.toBase58(), '0.013');
+
+      const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
+        keypair,
+        {
+          chain: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET,
+          library: PushChain.CONSTANTS.LIBRARY.SOLANA_WEB3JS,
+        }
+      );
+      const freshClient = await PushChain.initialize(universalSigner, {
+        network: PUSH_NETWORK.TESTNET_DONUT,
+        progressHook: (p) => console.log('Progress:', p.title || p.id),
+      });
+
+      const tx = await freshClient.universal.sendTransaction({
+        to: TEST_TARGET_ADDRESS,
+        value: PushChain.utils.helpers.parseUnits('0.001', 18),
+      });
+      expect(tx.hash).toBeDefined();
 
       const receipt = await tx.wait();
       expect(receipt.status).toBe(1);

@@ -291,15 +291,20 @@ export function validateRouteParams(
     }
   }
 
-  // Validate funds token symbol is available on target chain (Route 2 outbound)
+  // Validate funds token symbol is available on target chain (Route 2 outbound).
+  // A PushChainMoveableToken (e.g. pSOL, pETH_BNB) carries a `sourceChain` pointing at
+  // the external chain it mirrors — bridging it to that chain is always valid since
+  // the target receives the underlying asset (SOL, ETH, etc.).
   if (params.funds?.token && isChainTarget(params.to)) {
     const targetChain = params.to.chain;
     if (!isPushChain(targetChain)) {
+      const tokenSourceChain = (params.funds.token as { sourceChain?: CHAIN }).sourceChain;
+      const isBridgeBack = tokenSourceChain === targetChain;
       const targetTokens = MOVEABLE_TOKENS[targetChain] || [];
       const hasSymbolOnTarget = targetTokens.some(
         t => t.symbol === params.funds!.token!.symbol
       );
-      if (!hasSymbolOnTarget) {
+      if (!hasSymbolOnTarget && !isBridgeBack) {
         const tokenChain = findTokenChain(params.funds.token as MoveableToken);
         const tokenLabel = tokenChain
           ? `${chainEnumToName(tokenChain)}.${params.funds.token.symbol}`

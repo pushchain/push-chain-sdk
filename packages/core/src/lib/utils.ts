@@ -750,6 +750,13 @@ export class Utils {
       token: MoveableToken | { chain: string; address: string },
       options?: { network?: PUSH_NETWORK }
     ): `0x${string}` {
+      // PushChainMoveableToken (pETH, pSOL, pUSDT(BNB), …) carries its PRC-20 address
+      // directly. Return it as-is — no registry lookup needed.
+      const maybePrc20 = (token as { prc20Address?: `0x${string}` }).prc20Address;
+      if (maybePrc20) {
+        return maybePrc20;
+      }
+
       // Infer origin chain and symbol by matching against the MOVEABLE_TOKENS registry
       let originChain: CHAIN | undefined;
       let tokenSymbol: string | undefined;

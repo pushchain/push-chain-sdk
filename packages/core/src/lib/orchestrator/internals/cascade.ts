@@ -55,6 +55,7 @@ import type {
   OutboundTxDetails,
 } from '../orchestrator.types';
 import type { OrchestratorContext } from './context';
+import { printLog } from './context';
 import {
   getUniversalGatewayPCAddress,
   getNativePRC20ForChain,
@@ -64,7 +65,8 @@ import {
 } from './helpers';
 import { buildMulticallPayloadData } from './payload-builder';
 import { computeUEAOffchain, getUEANonce, getUeaStatusAndNonce } from './uea-manager';
-import { queryOutboundGasFee } from './gas-calculator';
+import { queryOutboundGasFee, estimateNativeValueForSwap } from './gas-calculator';
+import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
 import { buildPayloadForRoute } from './route-handlers';
 import { buildSvmPayloadFromParams } from '../svm-idl/build-payload';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
@@ -220,8 +222,13 @@ export async function buildHopDescriptor(
           prc20Token = getNativePRC20ForChain(targetChain, ctx.pushNetwork);
           burnAmount = params.value;
         } else if (hasSvmExecute) {
+          // PAYLOAD-only SVM execute: still need native PRC-20 for chain namespace
+          // + gas fees, but burn amount must be zero. Matches executeUoaToCeaSvm
+          // (route-handlers.ts) and the EVM cascade branch below.
+          // Using burnAmount=1 would trigger transferFrom on the PRC-20 token,
+          // which reverts with InsufficientBalance when the UEA has no pSOL balance.
           prc20Token = getNativePRC20ForChain(targetChain, ctx.pushNetwork);
-          burnAmount = BigInt(1);
+          burnAmount = BigInt(0);
         }
 
         let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
@@ -579,13 +586,13 @@ export function getSegmentType(route: string): CascadeSegmentType {
 // composeCascade
 // ============================================================================
 
-export function composeCascade(
+export async function composeCascade(
   ctx: OrchestratorContext,
   segments: CascadeSegment[],
   ueaAddress: `0x${string}`,
   ueaBalance?: bigint,
   ueaNonce?: bigint
-): MultiCall[] {
+): Promise<MultiCall[]> {
   let accumulatedPushMulticalls: MultiCall[] = [];
   const gatewayPcAddress = getUniversalGatewayPCAddress();
 
@@ -600,6 +607,61 @@ export function composeCascade(
   if (ueaBalance && numOutbounds > 0 && ueaBalance > CASCADE_GAS_RESERVE) {
     perOutboundNativeValue =
       (ueaBalance - CASCADE_GAS_RESERVE) / BigInt(numOutbounds);
+  }
+
+  // Pool-price-based native-value override for SVM outbounds.
+  // The flat split above works for EVM gas tokens (pBNB/pETH — cheap per unit),
+  // but pSOL has a much higher WPC/pSOL pool price, so the flat 1 PC split is
+  // insufficient to swap for gasFee wei of pSOL and Uniswap reverts "STF".
+  // Mirror executeUoaToCeaSvm's pool-price read (route-handlers.ts) per SVM segment.
+  const svmSegments = segments.filter(
+    (s) =>
+      s.type === 'OUTBOUND_TO_CEA' &&
+      s.hops[0]?.isSvmTarget === true &&
+      s.gasToken &&
+      s.gasFee &&
+      s.gasFee > BigInt(0)
+  );
+  const svmNativeValueBySegment = new Map<CascadeSegment, bigint>();
+  if (svmSegments.length > 0 && ueaBalance && ueaBalance > CASCADE_GAS_RESERVE) {
+    const universalCoreAddress = await ctx.pushClient.readContract<`0x${string}`>({
+      address: gatewayPcAddress,
+      abi: UNIVERSAL_GATEWAY_PC,
+      functionName: 'UNIVERSAL_CORE',
+      args: [],
+    });
+    // Compute per-SVM budget = ueaBalance − (PC needed for EVM outbounds) − 1 PC safety
+    // (outer-tx gas + refund headroom). Pass a huge accountBalance to the estimator so
+    // its internal cap is effectively disabled; we cap externally to the per-SVM budget.
+    const numEvmOutbounds = numOutbounds - svmSegments.length;
+    const evmReservation =
+      perOutboundNativeValue && numEvmOutbounds > 0
+        ? perOutboundNativeValue * BigInt(numEvmOutbounds)
+        : BigInt(0);
+    const outerSafety = BigInt(1e18); // 1 PC for outer-tx gas
+    const svmTotal =
+      ueaBalance > evmReservation + outerSafety
+        ? ueaBalance - evmReservation - outerSafety
+        : BigInt(0);
+    const perSvmCap = svmTotal / BigInt(svmSegments.length);
+    const UNCAPPED_BALANCE = BigInt(1e30); // effectively disable estimator's internal cap
+    for (const seg of svmSegments) {
+      const estimated = await estimateNativeValueForSwap(
+        ctx,
+        universalCoreAddress,
+        seg.gasToken as `0x${string}`,
+        seg.gasFee as bigint,
+        UNCAPPED_BALANCE
+      );
+      const flat = perOutboundNativeValue ?? BigInt(0);
+      let value = estimated > flat ? estimated : flat;
+      if (perSvmCap > BigInt(0) && value > perSvmCap) value = perSvmCap;
+      printLog(
+        ctx,
+        `composeCascade — SVM outbound to ${seg.hops[0]?.targetChain}: gasFee=${seg.gasFee}, estimatedWpc=${estimated}, flat=${flat}, perSvmCap=${perSvmCap}, chosen=${value}`
+      );
+      svmNativeValueBySegment.set(seg, value);
+    }
   }
 
   for (let i = segments.length - 1; i >= 0; i--) {
@@ -655,6 +717,9 @@ export function composeCascade(
 
         // Build approval + outbound multicalls
         const segGasFee = segment.gasFee || BigInt(0);
+        const svmOverride = svmNativeValueBySegment.get(segment);
+        const nativeValueForGas =
+          svmOverride ?? perOutboundNativeValue ?? segGasFee * BigInt(1000);
         const outboundMulticalls = buildOutboundApprovalAndCall({
           prc20Token:
             segment.prc20Token || (ZERO_ADDRESS as `0x${string}`),
@@ -662,8 +727,7 @@ export function composeCascade(
             segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
           burnAmount: segment.totalBurnAmount || BigInt(0),
           gasFee: segGasFee,
-          nativeValueForGas:
-            perOutboundNativeValue ?? segGasFee * BigInt(1000),
+          nativeValueForGas,
           gatewayPcAddress,
           outboundRequest: outboundReq,
         });
@@ -1007,7 +1071,7 @@ export function createCascadedBuilder(
         ueaCodeCascade !== undefined
           ? await getUEANonce(ctx, ueaAddress)
           : BigInt(0);
-      const composedMulticalls = composeCascade(
+      const composedMulticalls = await composeCascade(
         ctx,
         segments,
         ueaAddress,
