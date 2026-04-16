@@ -41,7 +41,7 @@ import {
   buildUniversalTxRequest,
   buildMulticallPayloadData,
 } from './payload-builder';
-import { encodeUniversalPayload, signUniversalPayload } from './signing';
+import { encodeUniversalPayload, encodeUniversalPayloadSvm, signUniversalPayload } from './signing';
 import { computeUEAOffchain, getUEANonce, fetchUEAVersion } from './uea-manager';
 import { waitForLockerFeeConfirmation } from './confirmation';
 import { lockFee } from './gateway-client';
@@ -57,6 +57,31 @@ import {
 } from './gas-calculator';
 import { getNativePRC20ForChain } from './helpers';
 import { PriceFetch } from '../../price-fetch/price-fetch';
+
+/**
+ * Encode a UniversalPayload for transport over the origin chain's gateway.
+ * - EVM origin → ABI encoding (chain decodes via DecodeUniversalPayloadEVM).
+ * - SVM origin → Borsh encoding (chain decodes via DecodeUniversalPayloadSolana).
+ *
+ * The encoded bytes are placed in the Solana gateway's UniversalTx event
+ * (or the EVM UniversalGateway's SendUniversalTx event) payload field. Push
+ * Chain's uexecutor module decodes from that same field using the source
+ * chain's namespace (see push-chain/x/uexecutor/types/decode_payload.go).
+ * Using the wrong encoder for SVM origin results in garbage fields — in
+ * particular gasLimit=0 — which surfaces as "intrinsic gas too low" when
+ * the chain calls executeUniversalTx on the (possibly lazy-deployed) UEA.
+ */
+function encodePayloadForOrigin(
+  ctx: OrchestratorContext,
+  payload: UniversalPayload
+): `0x${string}` {
+  const { vm } = CHAIN_INFO[ctx.universalSigner.account.chain];
+  if (vm === VM.SVM) {
+    const buf = encodeUniversalPayloadSvm(payload);
+    return ('0x' + buf.toString('hex')) as `0x${string}`;
+  }
+  return encodeUniversalPayload(payload);
+}
 
 export async function executeStandardPayload(
   ctx: OrchestratorContext,
@@ -166,7 +191,7 @@ export async function executeStandardPayload(
     ) as UniversalPayload;
     req = buildUniversalTxRequest(ctx.universalSigner.account.address as `0x${string}`, {
       recipient: zeroAddress, token: zeroAddress, amount: BigInt(0),
-      payload: encodeUniversalPayload(universalPayloadForReq),
+      payload: encodePayloadForOrigin(ctx, universalPayloadForReq),
     });
   } else {
     if (execute.to.toLowerCase() !== UEA.toLowerCase()) {
@@ -199,7 +224,7 @@ export async function executeStandardPayload(
         ) as UniversalPayload;
         req = buildUniversalTxRequest(ctx.universalSigner.account.address as `0x${string}`, {
           recipient: zeroAddress, token: zeroAddress, amount: BigInt(0),
-          payload: encodeUniversalPayload(universalPayloadOther),
+          payload: encodePayloadForOrigin(ctx, universalPayloadOther),
         });
       }
     } else {
@@ -223,7 +248,7 @@ export async function executeStandardPayload(
       ) as UniversalPayload;
       req = buildUniversalTxRequest(ctx.universalSigner.account.address as `0x${string}`, {
         recipient: zeroAddress, token: zeroAddress, amount: BigInt(0),
-        payload: encodeUniversalPayload(universalPayloadSelf),
+        payload: encodePayloadForOrigin(ctx, universalPayloadSelf),
       });
     }
   }

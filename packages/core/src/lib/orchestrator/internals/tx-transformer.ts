@@ -156,6 +156,13 @@ function reconstructR2(
     universalTxData?.outboundTx?.[0]?.recipient ?? universalTxResponse.to;
 
   events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_201](targetChain, targetAddress));
+  events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_202_01](targetChain));
+  // Reconstruction: gas split unavailable from historical data — pass zeroes
+  // so the shape matches live emission. totalCost derives to 0 in the message,
+  // which is acceptable for a tracked (past) transaction.
+  events.push(
+    PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_202_02](targetChain, BigInt(0), BigInt(0))
+  );
   events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_203_01](targetChain));
   events.push(
     PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_203_02](
@@ -198,6 +205,10 @@ function reconstructR3(
     universalTxData?.outboundTx?.[0]?.recipient ?? universalTxResponse.to;
 
   events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_301](sourceChain, ceaAddress));
+  events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_302_01](sourceChain));
+  events.push(
+    PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_302_02](sourceChain, BigInt(0), BigInt(0))
+  );
   events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_303_01](sourceChain));
   events.push(
     PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_303_02](

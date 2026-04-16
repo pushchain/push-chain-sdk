@@ -10,6 +10,7 @@ import { CHAIN } from '../../src/lib/constants/enums';
 import { CHAIN_INFO } from '../../src/lib/constants/chain';
 import { createPublicClient, http, Hex, parseEther, encodeFunctionData, encodeAbiParameters } from 'viem';
 import type { PreparedUniversalTx } from '../../src/lib/orchestrator/orchestrator.types';
+import type { ProgressEvent } from '../../src/lib/progress-hook/progress-hook.types';
 import { ERC20_EVM } from '../../src/lib/constants/abi/erc20.evm';
 import { CEA_EVM } from '../../src/lib/constants/abi/cea.evm';
 import { UEA_MULTICALL_SELECTOR } from '../../src/lib/constants/selectors';
@@ -78,6 +79,14 @@ describe('Advance Hopping: Cascade API E2E', () => {
   const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
   const skipE2E = !privateKey;
 
+  // Module-scoped events collector; cleared in beforeEach so each test asserts
+  // over its own progress sequence. Used by multihop progress-hook assertions.
+  const collectedProgressEvents: ProgressEvent[] = [];
+
+  beforeEach(() => {
+    collectedProgressEvents.length = 0;
+  });
+
   beforeAll(async () => {
     if (skipE2E) {
       console.log('Skipping E2E tests - EVM_PRIVATE_KEY not set');
@@ -90,6 +99,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
       printTraces: true,
       progressHook: (val: any) => {
         console.log(`[${val.id}] ${val.title}`);
+        collectedProgressEvents.push(val as ProgressEvent);
       },
     });
     pushClient = setup.pushClient;
@@ -1583,6 +1593,103 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(result.hops[0].route).toBe('UOA_TO_CEA');
         expect(result.hops[0].status).toBe('confirmed');
       }, 180000);
+
+      // ==========================================================================
+      // Multihop progress-hook sequence assertion
+      //
+      // Cascade semantics are different from single-tx: executeTransactions
+      // builds ONE Push-chain multicall that fans out to multiple external
+      // hops. It bypasses the per-route executeUoaToCea/executeCeaToPush
+      // helpers, so R2/R3 pre-broadcast IDs (201-207, 301-307) do NOT fire
+      // per-hop in cascades. Instead, the orchestrator emits the R1 sequence
+      // for the meta Push-chain dispatch, and per-hop lifecycle events are
+      // surfaced via result.waitForAll({ progressHook }).
+      //
+      // This test validates that:
+      //   1. R1 SEND-TX-101..199 fire for the meta Push-chain multicall
+      //   2. Every emitted event carries a non-null response (doc requirement)
+      //   3. waitForAll's hop-level progressHook receives per-hop events
+      //      with known hop indices and a terminal status
+      // Cheap: one 0.00015 BNB value transfer + one 0.001 PC Push transfer.
+      // ==========================================================================
+      it('multihop cascade emits R1 SEND-TX sequence + per-hop lifecycle events', async () => {
+        if (skipE2E) return;
+
+        const targetAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+
+        const tx1 = await pushClient.universal.prepareTransaction({
+          to: { address: targetAddress, chain: CHAIN.BNB_TESTNET },
+          value: parseEther('0.00015'),
+          gasLimit: BigInt(2000000),
+        });
+        const tx2 = await pushClient.universal.prepareTransaction({
+          to: targetAddress,
+          value: parseEther('0.001'),
+        });
+
+        const result = await pushClient.universal.executeTransactions([tx1, tx2]);
+        expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(result.hopCount).toBe(2);
+
+        const hopEvents: Array<{ hopIndex: number; status: string; route?: string }> = [];
+        await result.waitForAll({
+          timeout: 600000,
+          progressHook: (event: any) => {
+            hopEvents.push({
+              hopIndex: event.hopIndex,
+              status: event.status,
+              route: event.route,
+            });
+          },
+        });
+
+        const ids = collectedProgressEvents.map((e) => e.id);
+        console.log(
+          `Multihop cascade SEND-TX sequence (${ids.length} events):`,
+          ids.join(', ')
+        );
+        console.log(
+          `Multihop hop-lifecycle events (${hopEvents.length}):`,
+          hopEvents
+            .map((h) => `hop${h.hopIndex}:${h.status}`)
+            .join(', ')
+        );
+
+        // R1 meta-tx sequence fires for the Push-chain multicall
+        expect(ids).toContain('SEND-TX-101');
+        expect(ids).toContain('SEND-TX-107');
+        expect(ids).toContain('SEND-TX-199-01');
+        expect(ids.indexOf('SEND-TX-101')).toBeLessThan(
+          ids.indexOf('SEND-TX-199-01')
+        );
+
+        // Per-hop lifecycle events fired via waitForAll
+        const hopIndices = new Set(hopEvents.map((h) => h.hopIndex));
+        expect(hopIndices.has(0)).toBe(true);
+        expect(hopIndices.has(1)).toBe(true);
+        // Any hop reached a terminal status (found/confirmed/failed/timeout)
+        const terminalStatuses = new Set([
+          'found',
+          'confirmed',
+          'failed',
+          'timeout',
+        ]);
+        expect(
+          hopEvents.some((h) => terminalStatuses.has(h.status))
+        ).toBe(true);
+
+        // Doc requirement: every orchestrator SEND-TX event has non-null response
+        const nullResponseEvents = collectedProgressEvents.filter(
+          (e) => e.response === null
+        );
+        if (nullResponseEvents.length) {
+          console.log(
+            'Multihop events with null response:',
+            nullResponseEvents.map((e) => e.id)
+          );
+        }
+        expect(nullResponseEvents.length).toBe(0);
+      }, 900000);
     });
 
     // ==========================================================================

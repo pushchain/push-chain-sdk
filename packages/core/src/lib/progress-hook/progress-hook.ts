@@ -54,7 +54,7 @@ const RAW_HOOKS_R1: {
     id: PROGRESS_HOOK.SEND_TX_102_01,
     title: 'Estimating Gas',
     message: 'Estimating and fetching gas limit, gas price for TX',
-    response: null,
+    response: { stage: 'estimating-gas' },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_102_02]: (executionCost: bigint) => ({
@@ -68,7 +68,7 @@ const RAW_HOOKS_R1: {
     id: PROGRESS_HOOK.SEND_TX_103_01,
     title: 'Resolving UEA',
     message: 'Resolving UEA – computing address, checking deployment and balance',
-    response: null,
+    response: { stage: 'resolving-uea' },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_103_02]: (
@@ -85,21 +85,21 @@ const RAW_HOOKS_R1: {
     id: PROGRESS_HOOK.SEND_TX_104_01,
     title: 'Awaiting Transaction',
     message: 'Awaiting user transaction on origin chain',
-    response: null,
+    response: { stage: 'awaiting-transaction' },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_104_02]: () => ({
     id: PROGRESS_HOOK.SEND_TX_104_02,
     title: 'Awaiting Signature',
     message: 'Awaiting user signature for universal payload',
-    response: null,
+    response: { stage: 'awaiting-signature' },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_104_03]: () => ({
     id: PROGRESS_HOOK.SEND_TX_104_03,
     title: 'Verification Success',
     message: 'Verification completed via Transaction or Signature',
-    response: null,
+    response: { stage: 'verified' },
     level: 'SUCCESS',
   }),
   [PROGRESS_HOOK.SEND_TX_104_04]: (errorMessage?: string) => ({
@@ -119,11 +119,11 @@ const RAW_HOOKS_R1: {
     response: { txHash: originChainTxHash, originChainTx: originChainTx ?? null },
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_105_02]: () => ({
+  [PROGRESS_HOOK.SEND_TX_105_02]: (txHash?: string) => ({
     id: PROGRESS_HOOK.SEND_TX_105_02,
     title: 'Gas Funding Confirmed',
     message: 'Gas funding confirmed on origin chain',
-    response: null,
+    response: { stage: 'gas-funded', txHash: txHash ?? null },
     level: 'SUCCESS',
   }),
   [PROGRESS_HOOK.SEND_TX_106_01]: (
@@ -176,18 +176,18 @@ const RAW_HOOKS_R1: {
     response: { current, required },
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_106_04]: () => ({
+  [PROGRESS_HOOK.SEND_TX_106_04]: (txHash?: string) => ({
     id: PROGRESS_HOOK.SEND_TX_106_04,
     title: 'Funds Confirmed',
     message: 'Origin chain lock confirmed',
-    response: null,
+    response: { stage: 'funds-confirmed', txHash: txHash ?? null },
     level: 'SUCCESS',
   }),
   [PROGRESS_HOOK.SEND_TX_106_05]: () => ({
     id: PROGRESS_HOOK.SEND_TX_106_05,
     title: 'Syncing with Push Chain',
     message: 'Waiting for transaction to appear on Push Chain',
-    response: null,
+    response: { stage: 'syncing-push-chain' },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_106_06]: (
@@ -205,7 +205,7 @@ const RAW_HOOKS_R1: {
     id: PROGRESS_HOOK.SEND_TX_107,
     title: 'Broadcasting to Push Chain',
     message: 'Sending TX to Push Chain...',
-    response: null,
+    response: { stage: 'broadcasting', destination: 'push-chain' },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_199_01]: (
@@ -252,7 +252,7 @@ const RAW_HOOKS_R2: {
     id: PROGRESS_HOOK.SEND_TX_202_01,
     title: `Estimating ${friendlyChain(targetChain)} Chain Gas`,
     message: 'Querying Push Chain gas and UGPC relay fee',
-    response: null,
+    response: { stage: 'estimating-gas', chain: targetChain },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_202_02]: (
@@ -275,7 +275,7 @@ const RAW_HOOKS_R2: {
     id: PROGRESS_HOOK.SEND_TX_203_01,
     title: 'Resolving CEA',
     message: `Resolving UEA on Push Chain and CEA on ${targetChain}`,
-    response: null,
+    response: { stage: 'resolving-cea', chain: targetChain },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_203_02]: (
@@ -294,21 +294,21 @@ const RAW_HOOKS_R2: {
     id: PROGRESS_HOOK.SEND_TX_204_01,
     title: 'Awaiting Signature',
     message: 'Awaiting user signature for universal payload',
-    response: null,
+    response: { stage: 'awaiting-signature' },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_204_02]: () => ({
     id: PROGRESS_HOOK.SEND_TX_204_02,
     title: 'Signature Received',
     message: 'Universal payload signed — preparing broadcast',
-    response: null,
+    response: { stage: 'signed' },
     level: 'SUCCESS',
   }),
   [PROGRESS_HOOK.SEND_TX_204_03]: () => ({
     id: PROGRESS_HOOK.SEND_TX_204_03,
     title: 'Verification Success',
     message: 'Verification completed',
-    response: null,
+    response: { stage: 'verified' },
     level: 'SUCCESS',
   }),
   [PROGRESS_HOOK.SEND_TX_204_04]: (errorMessage?: string) => ({
@@ -406,7 +406,7 @@ const RAW_HOOKS_R3: {
     id: PROGRESS_HOOK.SEND_TX_302_01,
     title: `Estimating ${friendlyChain(sourceChain)} Gas`,
     message: 'Querying Push Chain gas and UGPC relay fee',
-    response: null,
+    response: { stage: 'estimating-gas', chain: sourceChain },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_302_02]: (
@@ -429,7 +429,7 @@ const RAW_HOOKS_R3: {
     id: PROGRESS_HOOK.SEND_TX_303_01,
     title: 'Resolving CEA → UEA',
     message: `Resolving UEA on Push Chain and CEA on ${sourceChain}`,
-    response: null,
+    response: { stage: 'resolving-cea-uea', chain: sourceChain },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_303_02]: (
@@ -447,21 +447,21 @@ const RAW_HOOKS_R3: {
     id: PROGRESS_HOOK.SEND_TX_304_01,
     title: 'Awaiting Signature',
     message: 'Awaiting user signature for universal payload',
-    response: null,
+    response: { stage: 'awaiting-signature' },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_304_02]: () => ({
     id: PROGRESS_HOOK.SEND_TX_304_02,
     title: 'Signature Received',
     message: 'Universal payload signed — preparing broadcast',
-    response: null,
+    response: { stage: 'signed' },
     level: 'SUCCESS',
   }),
   [PROGRESS_HOOK.SEND_TX_304_03]: () => ({
     id: PROGRESS_HOOK.SEND_TX_304_03,
     title: 'Verification Success',
     message: 'Verification completed',
-    response: null,
+    response: { stage: 'verified' },
     level: 'SUCCESS',
   }),
   [PROGRESS_HOOK.SEND_TX_304_04]: (errorMessage?: string) => ({

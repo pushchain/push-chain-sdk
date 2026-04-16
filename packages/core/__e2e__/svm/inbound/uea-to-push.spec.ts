@@ -742,10 +742,7 @@ describe('SVM UEA → Push Chain: Inbound Transactions (Route 1)', () => {
 
       const ctx = makeSolanaContext(solanaPrivateKey as string);
       const keypair = Keypair.generate();
-      // solana_basic funds 0.02 SOL; we use 0.013 here because master devnet
-      // wallet is tight and 0.013 is enough to pass deposit.rs:23 balance check
-      // (0.01 failed there) while still hitting the fresh-UEA Push-side path.
-      await fundSolanaUoa(ctx, keypair.publicKey.toBase58(), '0.013');
+      await fundSolanaUoa(ctx, keypair.publicKey.toBase58(), '0.02');
 
       const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(
         keypair,

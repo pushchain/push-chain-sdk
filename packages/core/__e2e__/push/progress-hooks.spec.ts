@@ -234,6 +234,16 @@ describe('tx.progressHook() Method (e2e)', () => {
     expect(methodEvents.some((e) => e.id === 'SEND-TX-101')).toBe(true);
     expect(methodEvents.some((e) => e.id === 'SEND-TX-199-01')).toBe(true);
 
+    // Doc requirement: progress.response must be present (non-null) on every event
+    const nullResponseEvents = methodEvents.filter((e) => e.response === null);
+    if (nullResponseEvents.length) {
+      console.log(
+        'R1 events with null response:',
+        nullResponseEvents.map((e) => e.id)
+      );
+    }
+    expect(nullResponseEvents.length).toBe(0);
+
     console.log(`✓ All ${methodEvents.length} events have valid structure`);
   }, 60000);
 });

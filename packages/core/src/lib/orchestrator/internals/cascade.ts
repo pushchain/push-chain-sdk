@@ -718,8 +718,19 @@ export async function composeCascade(
         // Build approval + outbound multicalls
         const segGasFee = segment.gasFee || BigInt(0);
         const svmOverride = svmNativeValueBySegment.get(segment);
+        // When UEA balance < CASCADE_GAS_RESERVE, perOutboundNativeValue is
+        // undefined. Mirror the drained-UEA branch in executeUoaToCea
+        // (route-handlers.ts): send the entire available balance divided
+        // across outbound segments. The contract refunds excess via
+        // swapAndBurnGas, so overshooting is safe; undershooting causes STF.
+        let evmFallbackValue: bigint;
+        if (ueaBalance && ueaBalance > BigInt(0)) {
+          evmFallbackValue = ueaBalance / BigInt(Math.max(numOutbounds, 1));
+        } else {
+          evmFallbackValue = segGasFee * BigInt(1000000);
+        }
         const nativeValueForGas =
-          svmOverride ?? perOutboundNativeValue ?? segGasFee * BigInt(1000);
+          svmOverride ?? perOutboundNativeValue ?? evmFallbackValue;
         const outboundMulticalls = buildOutboundApprovalAndCall({
           prc20Token:
             segment.prc20Token || (ZERO_ADDRESS as `0x${string}`),
@@ -847,6 +858,12 @@ export async function composeCascade(
           );
 
           const inboundGasFee = segment.gasFee || BigInt(0);
+          let svmInboundFallback: bigint;
+          if (ueaBalance && ueaBalance > BigInt(0)) {
+            svmInboundFallback = ueaBalance / BigInt(Math.max(numOutbounds, 1));
+          } else {
+            svmInboundFallback = inboundGasFee * BigInt(1000000);
+          }
           const outboundMulticalls = buildOutboundApprovalAndCall({
             prc20Token:
               segment.prc20Token ||
@@ -856,7 +873,7 @@ export async function composeCascade(
             burnAmount: svmBurnAmount,
             gasFee: inboundGasFee,
             nativeValueForGas:
-              perOutboundNativeValue ?? inboundGasFee * BigInt(1000),
+              perOutboundNativeValue ?? svmInboundFallback,
             gatewayPcAddress,
             outboundRequest: outboundReq,
           });
@@ -944,6 +961,12 @@ export async function composeCascade(
         );
 
         const inboundGasFee = segment.gasFee || BigInt(0);
+        let evmInboundFallback: bigint;
+        if (ueaBalance && ueaBalance > BigInt(0)) {
+          evmInboundFallback = ueaBalance / BigInt(Math.max(numOutbounds, 1));
+        } else {
+          evmInboundFallback = inboundGasFee * BigInt(1000000);
+        }
         const outboundMulticalls = buildOutboundApprovalAndCall({
           prc20Token:
             segment.prc20Token ||
@@ -953,7 +976,7 @@ export async function composeCascade(
           burnAmount: segment.totalBurnAmount || BigInt(0),
           gasFee: inboundGasFee,
           nativeValueForGas:
-            perOutboundNativeValue ?? inboundGasFee * BigInt(1000),
+            perOutboundNativeValue ?? evmInboundFallback,
           gatewayPcAddress,
           outboundRequest: outboundReq,
         });

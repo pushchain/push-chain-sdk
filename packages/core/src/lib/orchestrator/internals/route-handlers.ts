@@ -408,19 +408,29 @@ export async function executeUoaToCea(
 
   // Query gas fee from UniversalCore contract (needed for approval amount)
   let gasFee = BigInt(0);
+  let protocolFee = BigInt(0);
   let nativeValueForGas = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   let universalCoreAddress: `0x${string}` | undefined;
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_202_01, targetChain);
     try {
       const result = await queryOutboundGasFee(ctx, prc20Token, outboundReq.gasLimit);
       gasFee = result.gasFee;
+      protocolFee = result.protocolFee;
       gasToken = result.gasToken;
       nativeValueForGas = result.nativeValueForGas;
       universalCoreAddress = result.universalCoreAddress;
       printLog(
         ctx,
         `executeUoaToCea — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}`
+      );
+      fireProgressHook(
+        ctx,
+        PROGRESS_HOOK.SEND_TX_202_02,
+        targetChain,
+        protocolFee,
+        gasFee
       );
     } catch (err) {
       throw new Error(`Failed to query outbound gas fee: ${err}`);
@@ -557,7 +567,20 @@ export async function executeUoaToCea(
   // to Push Chain. Replaces the suppressed 107 emission for this route.
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_207, targetChain);
 
-  const response = await executeFn(executeParams);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_204_01);
+  let response: UniversalTxResponse;
+  try {
+    response = await executeFn(executeParams);
+  } catch (err) {
+    fireProgressHook(
+      ctx,
+      PROGRESS_HOOK.SEND_TX_204_04,
+      err instanceof Error ? err.message : String(err)
+    );
+    throw err;
+  }
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_204_02);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_204_03);
 
   // Add chain info to response
   response.chain = targetChain;
@@ -709,15 +732,18 @@ export async function executeUoaToCeaSvm(
 
   // --- Query gas fee (identical to EVM path) ---
   let gasFee = BigInt(0);
+  let protocolFeeSvm = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   let universalCoreAddress: `0x${string}` | undefined;
 
   let nativeValueForGas = BigInt(0);
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
     const gasLimit = outboundReq.gasLimit;
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_202_01, targetChain);
     try {
       const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit);
       gasFee = result.gasFee;
+      protocolFeeSvm = result.protocolFee;
       gasToken = result.gasToken;
       nativeValueForGas = result.nativeValueForGas;
       universalCoreAddress = result.universalCoreAddress;
@@ -736,6 +762,13 @@ export async function executeUoaToCeaSvm(
       printLog(
         ctx,
         `executeUoaToCeaSvm — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}`
+      );
+      fireProgressHook(
+        ctx,
+        PROGRESS_HOOK.SEND_TX_202_02,
+        targetChain,
+        protocolFeeSvm,
+        gasFee
       );
     } catch (err) {
       throw new Error(`Failed to query outbound gas fee: ${err}`);
@@ -798,7 +831,20 @@ export async function executeUoaToCeaSvm(
   // R2 broadcast marker (SVM)
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_207, targetChain);
 
-  const response = await executeFn(executeParams);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_204_01);
+  let response: UniversalTxResponse;
+  try {
+    response = await executeFn(executeParams);
+  } catch (err) {
+    fireProgressHook(
+      ctx,
+      PROGRESS_HOOK.SEND_TX_204_04,
+      err instanceof Error ? err.message : String(err)
+    );
+    throw err;
+  }
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_204_02);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_204_03);
 
   // Add chain info to response
   response.chain = targetChain;
@@ -1047,18 +1093,28 @@ export async function executeCeaToPush(
 
   // 11. Query gas fees from UniversalCore
   let gasFee = BigInt(0);
+  let protocolFeeR3 = BigInt(0);
   let nativeValueForGas = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
     const gasLimit = outboundReq.gasLimit;
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_302_01, sourceChain);
     try {
       const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit);
       gasToken = result.gasToken;
       gasFee = result.gasFee;
+      protocolFeeR3 = result.protocolFee;
       nativeValueForGas = result.nativeValueForGas;
       printLog(
         ctx,
         `executeCeaToPush — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}`
+      );
+      fireProgressHook(
+        ctx,
+        PROGRESS_HOOK.SEND_TX_302_02,
+        sourceChain,
+        protocolFeeR3,
+        gasFee
       );
     } catch (err) {
       throw new Error(`Failed to query outbound gas fee for Route 3: ${err}`);
@@ -1165,7 +1221,20 @@ export async function executeCeaToPush(
   // R3 broadcast marker
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_307, sourceChain);
 
-  const response = await executeFn(executeParams);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_304_01);
+  let response: UniversalTxResponse;
+  try {
+    response = await executeFn(executeParams);
+  } catch (err) {
+    fireProgressHook(
+      ctx,
+      PROGRESS_HOOK.SEND_TX_304_04,
+      err instanceof Error ? err.message : String(err)
+    );
+    throw err;
+  }
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_304_02);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_304_03);
 
   // Add Route 3 context to response
   response.chain = sourceChain;
@@ -1300,15 +1369,25 @@ export async function executeCeaToPushSvm(
 
   // Query gas fees
   let gasFee = BigInt(0);
+  let protocolFeeR3Svm = BigInt(0);
   let nativeValueForGas = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_302_01, sourceChain);
     try {
       const result = await queryOutboundGasFee(ctx, prc20Token, outboundReq.gasLimit);
       gasToken = result.gasToken;
       gasFee = result.gasFee;
+      protocolFeeR3Svm = result.protocolFee;
       nativeValueForGas = result.nativeValueForGas;
       printLog(ctx, `executeCeaToPushSvm — gasFee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}`);
+      fireProgressHook(
+        ctx,
+        PROGRESS_HOOK.SEND_TX_302_02,
+        sourceChain,
+        protocolFeeR3Svm,
+        gasFee
+      );
     } catch (err) {
       throw new Error(`Failed to query outbound gas fee for SVM Route 3: ${err}`);
     }
@@ -1363,7 +1442,20 @@ export async function executeCeaToPushSvm(
   // R3 broadcast marker (SVM)
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_307, sourceChain);
 
-  const response = await executeFn(executeParams);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_304_01);
+  let response: UniversalTxResponse;
+  try {
+    response = await executeFn(executeParams);
+  } catch (err) {
+    fireProgressHook(
+      ctx,
+      PROGRESS_HOOK.SEND_TX_304_04,
+      err instanceof Error ? err.message : String(err)
+    );
+    throw err;
+  }
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_304_02);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_304_03);
 
   // Add Route 3 SVM context to response
   response.chain = sourceChain;
