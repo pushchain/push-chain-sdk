@@ -19,7 +19,7 @@ export type WaitHookSet = {
   polling: (chain: string, elapsedMs: number) => ProgressEvent;
   success: (details: OutboundTxDetails) => ProgressEvent;
   timeout: (chain: string, elapsedMs: number) => ProgressEvent;
-  failed: (errMsg: string) => ProgressEvent;
+  failed: (chain: string, errMsg: string) => ProgressEvent;
 };
 
 export function pickWaitHooks(
@@ -36,7 +36,8 @@ export function pickWaitHooks(
         PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_01](details),
       timeout: (chain, elapsed) =>
         PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_03](chain, elapsed),
-      failed: (msg) => PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_02](msg),
+      failed: (chain, msg) =>
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_02](chain, msg),
     };
   }
   if (route === TransactionRoute.CEA_TO_PUSH) {
@@ -56,7 +57,7 @@ export function pickWaitHooks(
         ),
       timeout: (chain, elapsed) =>
         PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](chain, elapsed),
-      failed: (msg) => PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](msg),
+      failed: (_chain, msg) => PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](msg),
     };
   }
   // Route 4 (CEA_TO_CEA) has no spec'd ID range yet; cascade hops and

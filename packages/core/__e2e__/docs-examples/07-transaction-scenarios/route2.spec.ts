@@ -27,6 +27,28 @@ const COUNTER_ABI = [
   { type: 'function', name: 'increment', inputs: [], outputs: [], stateMutability: 'nonpayable' },
 ] as const;
 
+// test_counter program on Solana Devnet — base58, native Solana form.
+const SOL_TEST_PROGRAM = '8yNqjrMnFiFbVTVQcKij8tNWWTMdFkrDf9abCGgc2sgx';
+
+// Inlined Anchor IDL — trimmed to just the `receive_sol` instruction used below.
+const testCounterIdl = {
+  address: SOL_TEST_PROGRAM,
+  metadata: { name: 'test_counter', version: '0.1.0', spec: '0.1.0' },
+  instructions: [
+    {
+      name: 'receive_sol',
+      discriminator: [121, 244, 250, 3, 8, 229, 225, 1],
+      accounts: [
+        { name: 'counter', writable: true, pda: { seeds: [{ kind: 'const', value: [99, 111, 117, 110, 116, 101, 114] }] } },
+        { name: 'recipient', writable: true, address: '89q1AUFb7YREHtjc1aYaPywovPq6tb3GYNPyDUJ3rshi' },
+        { name: 'cea_authority', writable: true },
+        { name: 'system_program', address: '11111111111111111111111111111111' },
+      ],
+      args: [{ name: 'amount', type: 'u64' }],
+    },
+  ],
+} as const;
+
 const evmKey = process.env['EVM_PRIVATE_KEY'] as Hex | undefined;
 const pushKey = process.env['PUSH_PRIVATE_KEY'] as Hex | undefined;
 
@@ -223,6 +245,59 @@ describe('docs-examples › 07-transaction-scenarios › Route 2 (UOA_TO_CEA)', 
     expect(receipt.status).toBe(1);
     expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
   }, 360_000);
+
+  /**
+   * slug: send_transaction_route2_solana
+   * Sepolia UOA → test_counter.receive_sol on Solana Devnet via the sender's Solana CEA.
+   * Uses the native base58 program ID (the SDK accepts base58 or 0x-hex).
+   * Fund 0.005 ETH (UOA) + 5 PC (UEA — covers gas-token swap for the Solana outbound).
+   *
+   * Currently skipped: pSOL/WPC pool on Donut is ~100× mispriced, so the
+   * Uniswap V3 swap that buys pSOL for outbound gas reverts `STF`. Same root
+   * cause as the 3 skipped cascade tests in 08-multichain-transactions.spec.ts.
+   * Re-enable once the contracts team recalibrates the pool. See
+   * __e2e__/docs-examples/KNOWN_FAILURES.md.
+   */
+  it.skip('route2_solana — calls test_counter.receive_sol on Solana Devnet via Route 2 CEA', async () => {
+    const sepoliaCtx = makeSepoliaContext(evmKey as Hex);
+    const pushCtx = makePushContext(pushKey as Hex);
+    const account = privateKeyToAccount(generatePrivateKey());
+    const walletClient = createWalletClient({
+      account,
+      chain: sepolia,
+      transport: http(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0]),
+    });
+
+    const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+    });
+    const client = await PushChain.initialize(universalSigner, {
+      network: PUSH_NETWORK.TESTNET_DONUT,
+      progressHook: (p) => console.log('TX Progress:', p.title || p.id),
+    });
+
+    // One-time: teach the SDK how to resolve accounts/PDAs/CEA for this program.
+    PushChain.utils.svm.registerIdl(SOL_TEST_PROGRAM, testCounterIdl as any);
+
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+    await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, '5');
+
+    const data = PushChain.utils.helpers.encodeTxData({
+      abi: testCounterIdl as any,
+      functionName: 'receive_sol',
+      args: [BigInt(0)],
+    });
+    const tx = await client.universal.sendTransaction({
+      to: { address: SOL_TEST_PROGRAM, chain: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET },
+      value: BigInt(0),
+      data,
+    });
+    const receipt = await tx.wait();
+    expect(tx.hash).toMatch(/^0x[0-9a-fA-F]{64}$/);
+    expect(receipt.status).toBe(1);
+    expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+  }, 600_000);
 
   /**
    * slug: send_transaction_route2_multicall

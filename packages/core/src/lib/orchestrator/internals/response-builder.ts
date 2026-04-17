@@ -790,7 +790,7 @@ export async function transformToUniversalTxResponse(
                   targetChain,
                   callbacks.outboundConstants.maxTimeoutMs
                 )
-              : hooks.failed(errMsg)
+              : hooks.failed(targetChain, errMsg)
           );
           // Outbound polling timed out - return partial receipt (don't throw)
           // Push Chain tx succeeded, external tracking can be retried later

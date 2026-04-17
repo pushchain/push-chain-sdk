@@ -325,9 +325,10 @@ export class Orchestrator {
    */
   async queryOutboundGasFee(
     prc20Token: `0x${string}`,
-    gasLimit: bigint
+    gasLimit: bigint,
+    destinationChain?: CHAIN
   ): Promise<{ gasToken: `0x${string}`; gasFee: bigint; protocolFee: bigint; nativeValueForGas: bigint; gasPrice: bigint }> {
-    return _queryOutboundGasFee(this.ctx, prc20Token, gasLimit);
+    return _queryOutboundGasFee(this.ctx, prc20Token, gasLimit, destinationChain);
   }
 
 /**

@@ -6,10 +6,16 @@ import type { CHAIN } from '../constants/enums';
 
 /**
  * Chain target for cross-chain routing (Routes 2, 3, 4)
- * When `to` is a ChainTarget, the transaction executes on the specified external chain
+ * When `to` is a ChainTarget, the transaction executes on the specified external chain.
+ *
+ * `address` is typed as `string` because the accepted shape varies by VM:
+ *   - EVM chains expect a 0x-prefixed 20-byte hex address.
+ *   - SVM chains (Solana) accept either a base58 32-byte pubkey OR a 0x-prefixed
+ *     32-byte hex address; the SDK normalizes base58 to hex internally.
+ * Runtime validation happens in the route detector.
  */
 export type ChainTarget = {
-  address: `0x${string}`;
+  address: string;
   chain: CHAIN;
 };
 

@@ -28,8 +28,17 @@ import { SvmClient } from '../../vm-client/svm-client';
 import type { OrchestratorContext } from './context';
 import { printLog, fireProgressHook } from './context';
 import { getUniversalGatewayPCAddress, getPushChainForNetwork } from './helpers';
+import {
+  sizeOutboundGas,
+  type GasSizingDecision,
+} from './gas-usd-sizer';
 
-/** Buffer multiplier for nativeValueForGas. Excess is refunded by swapAndBurnGas to the UEA. */
+/**
+ * Legacy fallback buffer used ONLY when the caller does not supply a
+ * `destinationChain` and the USD sizer cannot be invoked. New code paths
+ * should always pass `destinationChain` so gas is sized against the real
+ * dollar cost (SDK 5.2). Excess is refunded by swapAndBurnGas to the UEA.
+ */
 const GAS_FEE_BUFFER_MULTIPLIER = BigInt(1000000);
 
 // Minimal ABIs for Uniswap V3 pool price estimation
@@ -148,8 +157,9 @@ export async function ensureErc20Allowance(
 export async function queryOutboundGasFee(
   ctx: OrchestratorContext,
   prc20Token: `0x${string}`,
-  gasLimit: bigint
-): Promise<{ gasToken: `0x${string}`; gasFee: bigint; protocolFee: bigint; nativeValueForGas: bigint; gasPrice: bigint; universalCoreAddress: `0x${string}` }> {
+  gasLimit: bigint,
+  destinationChain?: CHAIN
+): Promise<{ gasToken: `0x${string}`; gasFee: bigint; protocolFee: bigint; nativeValueForGas: bigint; gasPrice: bigint; universalCoreAddress: `0x${string}`; sizing?: GasSizingDecision }> {
   const gatewayPcAddress = getUniversalGatewayPCAddress();
   const pushChain = getPushChainForNetwork(ctx.pushNetwork);
   const rpcUrl = CHAIN_INFO[pushChain]?.defaultRPC?.[0] || 'unknown';
@@ -199,10 +209,42 @@ export async function queryOutboundGasFee(
     throw err;
   }
 
-  const nativeValueForGas = protocolFee + gasFee * GAS_FEE_BUFFER_MULTIPLIER;
-  printLog(ctx, `queryOutboundGasFee — [step 5] using 1000000x buffer: nativeValueForGas=${nativeValueForGas}`);
+  let nativeValueForGas: bigint;
+  let sizing: GasSizingDecision | undefined;
 
-  return { gasToken, gasFee, protocolFee, nativeValueForGas, gasPrice, universalCoreAddress };
+  if (destinationChain !== undefined) {
+    try {
+      sizing = await sizeOutboundGas(ctx, {
+        gasFee,
+        originChain: ctx.universalSigner.account.chain,
+        destinationChain,
+      });
+      // All categories — A, B, and C — return the sizer's calibrated gas leg.
+      // For Case C, the overflow is handled separately by route-handlers.ts,
+      // which composes `bridgeSwapEntries` on the UEA multicall before the
+      // outbound call (see bridge-swap-builder.ts).
+      nativeValueForGas = sizing.gasLegNativePc + protocolFee;
+      printLog(
+        ctx,
+        `queryOutboundGasFee — [step 5] sizer: category=${sizing.category}, gasUsd=${sizing.gasUsd}, ` +
+          `gasLegNativePc=${sizing.gasLegNativePc}, overflowNativePc=${sizing.overflowNativePc}, nativeValueForGas=${nativeValueForGas}`
+      );
+    } catch (err) {
+      printLog(
+        ctx,
+        `queryOutboundGasFee — [step 5] sizer failed (${err instanceof Error ? err.message : String(err)}); falling back to 1M buffer`
+      );
+      nativeValueForGas = protocolFee + gasFee * GAS_FEE_BUFFER_MULTIPLIER;
+    }
+  } else {
+    nativeValueForGas = protocolFee + gasFee * GAS_FEE_BUFFER_MULTIPLIER;
+    printLog(
+      ctx,
+      `queryOutboundGasFee — [step 5] no destinationChain provided; legacy 1M buffer: nativeValueForGas=${nativeValueForGas}`
+    );
+  }
+
+  return { gasToken, gasFee, protocolFee, nativeValueForGas, gasPrice, universalCoreAddress, sizing };
 }
 
 // ============================================================================
@@ -334,8 +376,9 @@ function balanceFallback(balance: bigint, divisor: bigint, reserve: bigint): big
 
 export async function queryRescueGasFee(
   ctx: OrchestratorContext,
-  prc20Token: `0x${string}`
-): Promise<{ gasToken: `0x${string}`; gasFee: bigint; rescueGasLimit: bigint; gasPrice: bigint; nativeValueForGas: bigint }> {
+  prc20Token: `0x${string}`,
+  destinationChain?: CHAIN
+): Promise<{ gasToken: `0x${string}`; gasFee: bigint; rescueGasLimit: bigint; gasPrice: bigint; nativeValueForGas: bigint; sizing?: GasSizingDecision }> {
   const gatewayPcAddress = getUniversalGatewayPCAddress();
 
   printLog(ctx, `queryRescueGasFee — inputs: gateway=${gatewayPcAddress}, prc20Token=${prc20Token}`);
@@ -375,10 +418,37 @@ export async function queryRescueGasFee(
     throw err;
   }
 
-  const nativeValueForGas = gasFee * GAS_FEE_BUFFER_MULTIPLIER;
-  printLog(ctx, `queryRescueGasFee — using 1000000x buffer: nativeValueForGas=${nativeValueForGas}`);
+  let nativeValueForGas: bigint;
+  let sizing: GasSizingDecision | undefined;
 
-  return { gasToken, gasFee, rescueGasLimit, gasPrice, nativeValueForGas };
+  if (destinationChain !== undefined) {
+    try {
+      sizing = await sizeOutboundGas(ctx, {
+        gasFee,
+        originChain: ctx.universalSigner.account.chain,
+        destinationChain,
+      });
+      nativeValueForGas = sizing.gasLegNativePc;
+      printLog(
+        ctx,
+        `queryRescueGasFee — sizer: category=${sizing.category}, gasUsd=${sizing.gasUsd}, nativeValueForGas=${nativeValueForGas}`
+      );
+    } catch (err) {
+      printLog(
+        ctx,
+        `queryRescueGasFee — sizer failed (${err instanceof Error ? err.message : String(err)}); falling back to 1M buffer`
+      );
+      nativeValueForGas = gasFee * GAS_FEE_BUFFER_MULTIPLIER;
+    }
+  } else {
+    nativeValueForGas = gasFee * GAS_FEE_BUFFER_MULTIPLIER;
+    printLog(
+      ctx,
+      `queryRescueGasFee — no destinationChain provided; legacy 1M buffer: nativeValueForGas=${nativeValueForGas}`
+    );
+  }
+
+  return { gasToken, gasFee, rescueGasLimit, gasPrice, nativeValueForGas, sizing };
 }
 
 // ============================================================================

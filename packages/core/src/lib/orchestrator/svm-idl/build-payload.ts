@@ -23,13 +23,13 @@ export function buildSvmPayloadFromParams(params: {
   if (!hasExecute) {
     return {
       svmPayload: '0x',
-      targetBytes: params.to.address,
+      targetBytes: params.to.address as `0x${string}`,
       hasExecute: false,
     };
   }
 
   const resolved = resolveSvmCall({
-    programAddress: params.to.address,
+    programAddress: params.to.address as `0x${string}`,
     data: hexToBytes(params.data as `0x${string}`),
     senderUea: params.senderUea,
     targetChain: params.to.chain as CHAIN,

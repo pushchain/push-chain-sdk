@@ -10,6 +10,7 @@ import '@e2e/shared/setup';
 import { createWalletClient, http, type Hex } from 'viem';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
+import { PublicKey } from '@solana/web3.js';
 import { PushChain } from '../../../src';
 import { CHAIN, PUSH_NETWORK } from '../../../src/lib/constants/enums';
 import { CHAIN_INFO } from '../../../src/lib/constants/chain';
@@ -20,6 +21,8 @@ import {
   deriveBnbCea,
   makeSepoliaContext,
   makeBnbContext,
+  makeSolanaContext,
+  fundSolanaUoa,
 } from '../_helpers/docs-fund';
 
 const COUNTER_PUSH = '0x70d8f7a0fF8e493fb9cbEE19Eb780E40Aa872aaf';
@@ -28,6 +31,7 @@ const COUNTER_ABI = [
 ] as const;
 
 const evmKey = process.env['EVM_PRIVATE_KEY'] as Hex | undefined;
+const solanaKey = process.env['SOLANA_PRIVATE_KEY'];
 
 describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)', () => {
   /**
@@ -192,6 +196,67 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
     expect(tx.hash).toMatch(/^0x[0-9a-fA-F]{64}$/);
     expect(receipt.status).toBe(1);
   }, 360_000);
+
+  /**
+   * slug: send_transaction_route3_solana
+   * Solana CEA → counter.increment() on Push Chain. Mirrors the BNB-CEA route3_payload pattern
+   * but originates from a Solana Devnet CEA. Fund 0.005 ETH (UOA) + 0.02 SOL (CEA).
+   *
+   * Currently skipped: the fresh-UEA fee-lock on the Push Chain side needs PC
+   * bought via the same pSOL/WPC pool swap that blocks route2_solana; the
+   * underpriced swap leaves the UEA with `InsufficientBalance` (0xf4d678b8).
+   * Re-enable once the contracts team recalibrates the pSOL/WPC pool. See
+   * __e2e__/docs-examples/KNOWN_FAILURES.md.
+   */
+  it.skip('route3_solana — Solana CEA → counter.increment() on Push Chain', async () => {
+    const sepoliaCtx = makeSepoliaContext(evmKey as Hex);
+    const solanaCtx = makeSolanaContext(solanaKey as string);
+    const account = privateKeyToAccount(generatePrivateKey());
+    const walletClient = createWalletClient({
+      account,
+      chain: sepolia,
+      transport: http(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0]),
+    });
+
+    const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+    });
+    const client = await PushChain.initialize(universalSigner, {
+      network: PUSH_NETWORK.TESTNET_DONUT,
+      progressHook: (p) => console.log('TX Progress:', p.title || p.id),
+    });
+
+    const uoa = PushChain.utils.account.toUniversal(account.address, {
+      chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+    });
+    const solanaCEA = await PushChain.utils.account.deriveExecutorAccount(uoa, {
+      chain: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET,
+      skipNetworkCheck: true,
+    });
+    // deriveExecutorAccount returns the SVM CEA as 0x-prefixed 32-byte hex.
+    // Convert to base58 for Solana RPCs / explorers / funding helpers.
+    const solanaCeaBase58 = new PublicKey(
+      Buffer.from(solanaCEA.address.slice(2), 'hex')
+    ).toBase58();
+    console.log('Solana CEA:', solanaCeaBase58);
+
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+    await fundSolanaUoa(solanaCtx, solanaCeaBase58, '0.02');
+
+    const data = PushChain.utils.helpers.encodeTxData({
+      abi: [...COUNTER_ABI],
+      functionName: 'increment',
+    });
+    const tx = await client.universal.sendTransaction({
+      from: { chain: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET },
+      to: COUNTER_PUSH,
+      data,
+    });
+    const receipt = await tx.wait();
+    expect(tx.hash).toMatch(/^0x[0-9a-fA-F]{64}$/);
+    expect(receipt.status).toBe(1);
+  }, 600_000);
 
   /**
    * slug: send_transaction_route3_multicall

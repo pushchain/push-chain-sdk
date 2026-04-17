@@ -14,3 +14,7 @@ export { CEA_FACTORY_EVM } from './ceaFactory.evm';
 export { UNIVERSAL_GATEWAY_PC } from './universalGatewayPC.evm';
 export { UNIVERSAL_CORE_EVM } from './prc20.evm';
 export { UEA_FACTORY_ABI } from './uea-factory';
+
+// SDK 5.2 gas abstraction (Case C overflow bridging)
+export { WPC_EVM } from './wpc.evm';
+export { UNIV3_SWAP_ROUTER_EVM } from './uniswap-v3-router.evm';

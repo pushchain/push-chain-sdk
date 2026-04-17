@@ -50,7 +50,8 @@ import { CHAIN } from '../../constants/enums';
 import { MoveableToken } from '../../constants/tokens';
 import { Utils } from '../../utils';
 import { PriceFetch } from '../../price-fetch/price-fetch';
-import { TransactionRoute, detectRoute, validateRouteParams } from '../route-detector';
+import { TransactionRoute, detectRoute, validateRouteParams, GasExceedsCategoryCWithErc20FundsError } from '../route-detector';
+import { buildBridgeSwapEntries } from './bridge-swap-builder';
 import { getCEAAddress, chainSupportsOutbound } from '../cea-utils';
 import { buildSvmPayloadFromParams } from '../svm-idl/build-payload';
 import {
@@ -86,6 +87,51 @@ import type {
 type ExecuteFn = (
   params: ExecuteParams | UniversalExecuteParams
 ) => Promise<UniversalTxResponse>;
+
+// ---------------------------------------------------------------------------
+// Sizing progress hook fan-out
+// ---------------------------------------------------------------------------
+
+import type { GasSizingDecision } from './gas-usd-sizer';
+
+const SIZER_HOOK_BY_ROUTE = {
+  R2: {
+    A: PROGRESS_HOOK.SEND_TX_202_03_A,
+    B: PROGRESS_HOOK.SEND_TX_202_03_B,
+    C: PROGRESS_HOOK.SEND_TX_202_03_C,
+  },
+  R3: {
+    A: PROGRESS_HOOK.SEND_TX_302_03_A,
+    B: PROGRESS_HOOK.SEND_TX_302_03_B,
+    C: PROGRESS_HOOK.SEND_TX_302_03_C,
+  },
+} as const;
+
+/**
+ * Fire the route-scoped sizing progress hook based on the sizer's decision.
+ * Case C carries the overflow amount as an extra arg so UIs can render the
+ * bridge leg separately.
+ */
+function fireSizingHook(
+  ctx: OrchestratorContext,
+  route: 'R2' | 'R3',
+  chain: CHAIN,
+  sizing: GasSizingDecision
+): void {
+  const hook = SIZER_HOOK_BY_ROUTE[route][sizing.category];
+  if (sizing.category === 'C') {
+    fireProgressHook(
+      ctx,
+      hook,
+      chain,
+      sizing.gasUsd,
+      sizing.gasLegNativePc,
+      sizing.overflowNativePc
+    );
+  } else {
+    fireProgressHook(ctx, hook, chain, sizing.gasUsd, sizing.gasLegNativePc);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // executeMultiChain
@@ -304,7 +350,7 @@ export async function executeUoaToCea(
         // contract receives it alongside the payload call. The vault deposits
         // native value to the CEA, and the multicall forwards it to the target.
         ceaMulticalls.push({
-          to: targetAddress,
+          to: targetAddress as `0x${string}`,
           value: params.value ?? BigInt(0),
           data: params.data as `0x${string}`,
         });
@@ -316,7 +362,7 @@ export async function executeUoaToCea(
       // rejects value-bearing self-calls).
       if (targetAddress.toLowerCase() !== ceaAddress.toLowerCase()) {
         ceaMulticalls.push({
-          to: targetAddress,
+          to: targetAddress as `0x${string}`,
           value: params.value,
           data: '0x',
         });
@@ -412,18 +458,20 @@ export async function executeUoaToCea(
   let nativeValueForGas = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   let universalCoreAddress: `0x${string}` | undefined;
+  let sizingDecision: GasSizingDecision | undefined;
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_202_01, targetChain);
     try {
-      const result = await queryOutboundGasFee(ctx, prc20Token, outboundReq.gasLimit);
+      const result = await queryOutboundGasFee(ctx, prc20Token, outboundReq.gasLimit, targetChain);
       gasFee = result.gasFee;
       protocolFee = result.protocolFee;
       gasToken = result.gasToken;
       nativeValueForGas = result.nativeValueForGas;
       universalCoreAddress = result.universalCoreAddress;
+      sizingDecision = result.sizing;
       printLog(
         ctx,
-        `executeUoaToCea — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}`
+        `executeUoaToCea — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}, sizing=${result.sizing?.category ?? 'legacy'}`
       );
       fireProgressHook(
         ctx,
@@ -432,36 +480,45 @@ export async function executeUoaToCea(
         protocolFee,
         gasFee
       );
+      if (result.sizing) {
+        fireSizingHook(ctx, 'R2', targetChain, result.sizing);
+      }
     } catch (err) {
       throw new Error(`Failed to query outbound gas fee: ${err}`);
     }
   }
 
-  // Balance-aware adjustment: MAXIMIZE nativeValueForGas within available balance.
-  // The contract's swapAndBurnGas does exactOutputSingle and refunds excess PC,
-  // so overshooting within balance is safe. Undershooting causes the swap to revert.
-  const EVM_NATIVE_VALUE_TARGET = BigInt(200e18); // 200 UPC
-  const EVM_GAS_RESERVE = BigInt(3e18); // 3 UPC for tx overhead
+  // ---------------------------------------------------------------------
+  // Native-value selection (SDK 5.2 gas abstraction)
+  //
+  // queryOutboundGasFee returns a sizer-calibrated `nativeValueForGas`
+  // for Case A/B (USD-anchored). Case C falls back to the legacy 1M
+  // buffer pending contract-team work.
+  //
+  // We cross-check against the actual WPC/gasToken Uniswap V3 pool price
+  // (estimateNativeValueForSwap) and take the MAX — if the pool demands
+  // more PC to produce `gasFee` of the destination gas token than the
+  // USD-oracle sizer predicts, trust the pool. Over-send is safe;
+  // under-send reverts on the swap.
+  //
+  // If the UEA can't afford the target, fall back to the legacy
+  // balance-starved behavior so the SDK stays compatible with drained
+  // and fresh-wallet scenarios.
+  // ---------------------------------------------------------------------
+  const EVM_GAS_RESERVE = BigInt(3e18); // 3 UPC for outer-tx gas
+  const EVM_NATIVE_VALUE_SAFETY_CAP = BigInt(200e18); // 200 UPC absolute ceiling
   const ROUTE2_MINIMUM_DEPOSIT_USD = Utils.helpers.parseUnits('10', 8); // $10
 
-  // Determine effective balance for the adjustment.
-  // For deployed UEAs: use real balance.
-  // For fresh wallets: predict the post-fee-locking balance by querying the same
-  // Uniswap V3 quoter the chain uses (pETH → WPC swap in execute_inbound_gas.go).
+  // Effective balance: real for deployed UEAs; predicted post-fee-lock for fresh.
   let effectiveBalance = ueaBalance;
-
   if (!isUEADeployed && effectiveBalance <= EVM_GAS_RESERVE) {
-    // Calculate the ETH amount lockFee will send (same formula as lockFee)
     const ethPrice = await new PriceFetch(ctx.rpcUrls).getPrice(signerChain);
     const nativeAmountETH = ethPrice > BigInt(0)
       ? (ROUTE2_MINIMUM_DEPOSIT_USD * BigInt(1e18) + (ethPrice - BigInt(1))) / ethPrice + BigInt(1)
       : BigInt(0);
-
     if (nativeAmountETH > BigInt(0)) {
-      // Query the real swap quote: how much WPC (UPC) for this pETH amount?
       const originPrc20 = getNativePRC20ForChain(signerChain, ctx.pushNetwork);
       const predictedUPC = await estimateDepositFromLockedNative(ctx, nativeAmountETH, originPrc20);
-
       if (predictedUPC > BigInt(0)) {
         // 10% safety margin for slippage between quote and actual execution
         effectiveBalance = (predictedUPC * BigInt(90)) / BigInt(100);
@@ -473,15 +530,40 @@ export async function executeUoaToCea(
     }
   }
 
+  // Pool-price floor — what the WPC/pETH pool actually needs.
+  // Passes ueaBalance as the fallback cap; excess is refunded post-swap.
+  if (universalCoreAddress && gasFee > BigInt(0)) {
+    const swapFloor = await estimateNativeValueForSwap(
+      ctx, universalCoreAddress, gasToken, gasFee, effectiveBalance
+    );
+    if (swapFloor > nativeValueForGas) {
+      printLog(ctx,
+        `executeUoaToCea — pool-price floor (${swapFloor.toString()}) exceeds sizer ` +
+        `(${nativeValueForGas.toString()}); using pool floor`
+      );
+      nativeValueForGas = swapFloor;
+    }
+  }
+
+  // Hard safety cap so a broken pool price can't drain the UEA.
+  if (nativeValueForGas > EVM_NATIVE_VALUE_SAFETY_CAP) {
+    printLog(ctx,
+      `executeUoaToCea — capping nativeValueForGas at 200 UPC ceiling (was ${nativeValueForGas.toString()})`
+    );
+    nativeValueForGas = EVM_NATIVE_VALUE_SAFETY_CAP;
+  }
+
   let adjustedValue: bigint;
-  if (effectiveBalance > EVM_NATIVE_VALUE_TARGET + EVM_GAS_RESERVE) {
-    adjustedValue = EVM_NATIVE_VALUE_TARGET;
+  if (effectiveBalance >= nativeValueForGas + EVM_GAS_RESERVE) {
+    // Happy path: balance covers the calibrated value + outer-tx reserve.
+    adjustedValue = nativeValueForGas;
   } else if (effectiveBalance > EVM_GAS_RESERVE) {
+    // Balance-starved: send everything we can afford. swapAndBurnGas
+    // refunds unused; undershoot will revert with a concrete error.
     adjustedValue = effectiveBalance - EVM_GAS_RESERVE;
   } else if (effectiveBalance > BigInt(0)) {
-    // Drained UEA: overshoot would make the inner .call{value:...} return (false, "")
-    // and the UEA reverts with opaque ExecutionFailed(). Clamp to whatever we have so
-    // the gateway swap either succeeds or surfaces a concrete revert reason.
+    // Drained UEA: overshoot would return (false, "") and surface as an
+    // opaque ExecutionFailed() — clamp to what we have.
     adjustedValue = effectiveBalance < nativeValueForGas ? effectiveBalance : nativeValueForGas;
   } else {
     throw new Error(
@@ -498,6 +580,36 @@ export async function executeUoaToCea(
     nativeValueForGas = adjustedValue;
   }
 
+  // Case C overflow bridging: if gasUsd > $10, split into $10 gas leg +
+  // overflow bridged via WPC→pETH swap on the SwapRouter. Composed as
+  // three prepended multicall entries; the swap-derived pETH is folded
+  // into the outbound burnAmount so the destination CEA mints it as
+  // native to the recipient.
+  let bridgeSwapEntries: MultiCall[] | undefined;
+  let extraBurnAmount: bigint | undefined;
+  if (
+    sizingDecision?.category === 'C' &&
+    sizingDecision.overflowNativePc > BigInt(0) &&
+    prc20Token !== (ZERO_ADDRESS as `0x${string}`)
+  ) {
+    const fundsToken = params.funds?.token;
+    if (fundsToken && fundsToken.mechanism !== 'native') {
+      throw new GasExceedsCategoryCWithErc20FundsError(fundsToken.symbol);
+    }
+    const swap = await buildBridgeSwapEntries(ctx, {
+      overflowNativePc: sizingDecision.overflowNativePc,
+      destinationPrc20: prc20Token,
+      ueaAddress,
+    });
+    bridgeSwapEntries = swap.entries;
+    extraBurnAmount = swap.expectedPrc20Out;
+    printLog(
+      ctx,
+      `executeUoaToCea — Case C bridge-swap composed: overflow=${sizingDecision.overflowNativePc}, ` +
+        `expectedPrc20Out=${swap.expectedPrc20Out}, feeTier=${swap.feeTier}`
+    );
+  }
+
   // Build outbound multicalls (approve burn + sendUniversalTxOutbound with native value)
   const outboundMulticalls = buildOutboundApprovalAndCall({
     prc20Token,
@@ -507,6 +619,8 @@ export async function executeUoaToCea(
     nativeValueForGas,
     gatewayPcAddress,
     outboundRequest: outboundReq,
+    bridgeSwapEntries,
+    extraBurnAmount,
   });
   pushChainMulticalls.push(...outboundMulticalls);
 
@@ -735,18 +849,20 @@ export async function executeUoaToCeaSvm(
   let protocolFeeSvm = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   let universalCoreAddress: `0x${string}` | undefined;
+  let sizingDecision: GasSizingDecision | undefined;
 
   let nativeValueForGas = BigInt(0);
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
     const gasLimit = outboundReq.gasLimit;
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_202_01, targetChain);
     try {
-      const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit);
+      const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, targetChain);
       gasFee = result.gasFee;
       protocolFeeSvm = result.protocolFee;
       gasToken = result.gasToken;
       nativeValueForGas = result.nativeValueForGas;
       universalCoreAddress = result.universalCoreAddress;
+      sizingDecision = result.sizing;
       // When user omits gasLimit (sent as 0), the contract computes fees using its internal
       // baseGasLimitByChainNamespace. But the relay reads the stored gasLimit=0 from the
       // on-chain outbound record and uses it as the Solana compute budget — 0 CU means the
@@ -770,6 +886,9 @@ export async function executeUoaToCeaSvm(
         protocolFeeSvm,
         gasFee
       );
+      if (result.sizing) {
+        fireSizingHook(ctx, 'R2', targetChain, result.sizing);
+      }
     } catch (err) {
       throw new Error(`Failed to query outbound gas fee: ${err}`);
     }
@@ -793,6 +912,33 @@ export async function executeUoaToCeaSvm(
     }
   }
 
+  // Case C overflow bridging (SDK 5.2). SVM destinations still use the
+  // SwapRouter + WPC wrap on Push Chain — same builder as EVM.
+  let bridgeSwapEntriesSvm: MultiCall[] | undefined;
+  let extraBurnAmountSvm: bigint | undefined;
+  if (
+    sizingDecision?.category === 'C' &&
+    sizingDecision.overflowNativePc > BigInt(0) &&
+    prc20Token !== (ZERO_ADDRESS as `0x${string}`)
+  ) {
+    const fundsToken = params.funds?.token;
+    if (fundsToken && fundsToken.mechanism !== 'native') {
+      throw new GasExceedsCategoryCWithErc20FundsError(fundsToken.symbol);
+    }
+    const swap = await buildBridgeSwapEntries(ctx, {
+      overflowNativePc: sizingDecision.overflowNativePc,
+      destinationPrc20: prc20Token,
+      ueaAddress,
+    });
+    bridgeSwapEntriesSvm = swap.entries;
+    extraBurnAmountSvm = swap.expectedPrc20Out;
+    printLog(
+      ctx,
+      `executeUoaToCeaSvm — Case C bridge-swap composed: overflow=${sizingDecision.overflowNativePc}, ` +
+        `expectedPrc20Out=${swap.expectedPrc20Out}, feeTier=${swap.feeTier}`
+    );
+  }
+
   // --- Build Push Chain multicalls (approve + sendUniversalTxOutbound) ---
   // Reuse the same builder as EVM — this part is identical
   const pushChainMulticalls: MultiCall[] = buildOutboundApprovalAndCall({
@@ -800,6 +946,8 @@ export async function executeUoaToCeaSvm(
     gasToken,
     burnAmount,
     gasFee,
+    bridgeSwapEntries: bridgeSwapEntriesSvm,
+    extraBurnAmount: extraBurnAmountSvm,
     nativeValueForGas,
     gatewayPcAddress,
     outboundRequest: outboundReq,
@@ -1096,18 +1244,20 @@ export async function executeCeaToPush(
   let protocolFeeR3 = BigInt(0);
   let nativeValueForGas = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+  let sizingDecisionR3: GasSizingDecision | undefined;
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
     const gasLimit = outboundReq.gasLimit;
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_302_01, sourceChain);
     try {
-      const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit);
+      const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, sourceChain);
       gasToken = result.gasToken;
       gasFee = result.gasFee;
       protocolFeeR3 = result.protocolFee;
       nativeValueForGas = result.nativeValueForGas;
+      sizingDecisionR3 = result.sizing;
       printLog(
         ctx,
-        `executeCeaToPush — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}`
+        `executeCeaToPush — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}, sizing=${result.sizing?.category ?? 'legacy'}`
       );
       fireProgressHook(
         ctx,
@@ -1116,9 +1266,29 @@ export async function executeCeaToPush(
         protocolFeeR3,
         gasFee
       );
+      if (result.sizing) {
+        fireSizingHook(ctx, 'R3', sourceChain, result.sizing);
+      }
     } catch (err) {
       throw new Error(`Failed to query outbound gas fee for Route 3: ${err}`);
     }
+  }
+
+  // R3 Case C: unlike R2, R3 has no destination funds-delivery semantic
+  // (CEA self-executes and bridges funds BACK to Push Chain). When the
+  // sizer returns Case C, we simply top up msg.value with the overflow so
+  // `swapAndBurnGas` can afford the full gas cost on destination. No
+  // bridge-swap entries, no fold-in — contract refunds any excess.
+  if (
+    sizingDecisionR3?.category === 'C' &&
+    sizingDecisionR3.overflowNativePc > BigInt(0)
+  ) {
+    const bumped = nativeValueForGas + sizingDecisionR3.overflowNativePc;
+    printLog(
+      ctx,
+      `executeCeaToPush — Case C: bumping nativeValueForGas from ${nativeValueForGas} to ${bumped} (overflow=${sizingDecisionR3.overflowNativePc})`
+    );
+    nativeValueForGas = bumped;
   }
 
   // Adjust nativeValueForGas using UEA balance (contract refunds excess)
@@ -1372,15 +1542,17 @@ export async function executeCeaToPushSvm(
   let protocolFeeR3Svm = BigInt(0);
   let nativeValueForGas = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
+  let sizingDecisionR3Svm: GasSizingDecision | undefined;
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_302_01, sourceChain);
     try {
-      const result = await queryOutboundGasFee(ctx, prc20Token, outboundReq.gasLimit);
+      const result = await queryOutboundGasFee(ctx, prc20Token, outboundReq.gasLimit, sourceChain);
       gasToken = result.gasToken;
       gasFee = result.gasFee;
       protocolFeeR3Svm = result.protocolFee;
       nativeValueForGas = result.nativeValueForGas;
-      printLog(ctx, `executeCeaToPushSvm — gasFee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}`);
+      sizingDecisionR3Svm = result.sizing;
+      printLog(ctx, `executeCeaToPushSvm — gasFee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}, sizing=${result.sizing?.category ?? 'legacy'}`);
       fireProgressHook(
         ctx,
         PROGRESS_HOOK.SEND_TX_302_02,
@@ -1388,9 +1560,27 @@ export async function executeCeaToPushSvm(
         protocolFeeR3Svm,
         gasFee
       );
+      if (result.sizing) {
+        fireSizingHook(ctx, 'R3', sourceChain, result.sizing);
+      }
     } catch (err) {
       throw new Error(`Failed to query outbound gas fee for SVM Route 3: ${err}`);
     }
+  }
+
+  // R3 SVM Case C: same minimal interpretation as R3 EVM — bump msg.value
+  // by the overflow so swapAndBurnGas can afford the full gas cost. No
+  // bridge-swap entries (R3 has no destination funds-delivery semantic).
+  if (
+    sizingDecisionR3Svm?.category === 'C' &&
+    sizingDecisionR3Svm.overflowNativePc > BigInt(0)
+  ) {
+    const bumped = nativeValueForGas + sizingDecisionR3Svm.overflowNativePc;
+    printLog(
+      ctx,
+      `executeCeaToPushSvm — Case C: bumping nativeValueForGas from ${nativeValueForGas} to ${bumped} (overflow=${sizingDecisionR3Svm.overflowNativePc})`
+    );
+    nativeValueForGas = bumped;
   }
 
   // Adjust nativeValueForGas using UEA balance (contract refunds excess)
@@ -1592,7 +1782,7 @@ export async function buildPayloadForRoute(
           // value to the call would revert if the target function is not payable.
           // To call a payable function with value, use explicit multicalls.
           multicalls.push({
-            to: target.address,
+            to: target.address as `0x${string}`,
             value: BigInt(0),
             data: params.data as `0x${string}`,
           });
@@ -1602,7 +1792,7 @@ export async function buildPayloadForRoute(
         // Self-call with value would revert (CEA._handleMulticall rejects it).
         if (target.address.toLowerCase() !== ceaAddress.toLowerCase()) {
           multicalls.push({
-            to: target.address,
+            to: target.address as `0x${string}`,
             value: params.value,
             data: '0x',
           });

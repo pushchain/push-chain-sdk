@@ -156,10 +156,12 @@ export function bigintReplacer(_key: string, value: any): any {
 // ============================================================================
 
 export function toExecuteParams(params: UniversalExecuteParams): ExecuteParams {
+  // Post-route-detector, ChainTarget.address has already been normalized to
+  // 0x-prefixed hex for SVM targets (see route-detector.ts), so the cast is safe.
   const to =
     typeof params.to === 'string'
       ? params.to
-      : (params.to as ChainTarget).address;
+      : ((params.to as ChainTarget).address as `0x${string}`);
 
   return {
     to,
