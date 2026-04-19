@@ -84,7 +84,7 @@ Branch: `feat/sdk-5.2-gas-abstraction` (not yet merged)
 - `pc-usd-oracle.ts` — per-route $PC/USD price from WPC/USDT.* Uniswap V3 pools on Push Chain. Falls back to `pushToUSDC` if pool missing.
 - `gas-usd-sizer.ts` — A/B/C categorizer. For Case C, already returns `{category: 'C', gasLegNativePc, overflowNativePc, gasUsd, overflowUsd}`.
 - `queryOutboundGasFee` (gas-calculator.ts) — integrates sizer; Case C currently falls back to the legacy `gasFee * 1_000_000` buffer (safe, swapAndBurnGas refunds excess) while we wait on your answers.
-- Progress hooks: `SEND_TX_202_03_C` / `SEND_TX_302_03_C` already fire and carry `overflowNativePc` in the payload — UIs can already render the "will bridge X UPC as funds" state.
+- Progress hooks: `SEND_TX_202_03_03` / `SEND_TX_302_03_03` already fire and carry `overflowNativePc` in the payload — UIs can already render the "will bridge X UPC as funds" state.
 - Unit tests cover Case C categorization (`gas-usd-sizer.spec.ts`).
 
 We've verified on testnet donut that:

@@ -124,9 +124,9 @@ export async function executeFundsWithPayload(
     originChain: chain,
   });
   const r1SizingHookId = {
-    A: PROGRESS_HOOK.SEND_TX_106_07_A,
-    B: PROGRESS_HOOK.SEND_TX_106_07_B,
-    C: PROGRESS_HOOK.SEND_TX_106_07_C,
+    A: PROGRESS_HOOK.SEND_TX_106_07_01,
+    B: PROGRESS_HOOK.SEND_TX_106_07_02,
+    C: PROGRESS_HOOK.SEND_TX_106_07_03,
   }[r1Sizing.category];
   fireProgressHook(
     ctx,

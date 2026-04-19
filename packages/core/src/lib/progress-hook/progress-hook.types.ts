@@ -47,9 +47,9 @@ export enum PROGRESS_HOOK {
   SEND_TX_106_04 = 'SEND-TX-106-04',
   SEND_TX_106_05 = 'SEND-TX-106-05',
   SEND_TX_106_06 = 'SEND-TX-106-06',
-  SEND_TX_106_07_A = 'SEND-TX-106-07-A', // R1 Sizer: Case A (push-gas < $1, padded to $1 floor)
-  SEND_TX_106_07_B = 'SEND-TX-106-07-B', // R1 Sizer: Case B (push-gas $1–$10, pass-through)
-  SEND_TX_106_07_C = 'SEND-TX-106-07-C', // R1 Sizer: Case C (push-gas > $10, pass-through to contract cap)
+  SEND_TX_106_07_01 = 'SEND-TX-106-07-01', // R1 Sizer: Case A (push-gas < $1, padded to $1 floor)
+  SEND_TX_106_07_02 = 'SEND-TX-106-07-02', // R1 Sizer: Case B (push-gas $1–$10, pass-through)
+  SEND_TX_106_07_03 = 'SEND-TX-106-07-03', // R1 Sizer: Case C (push-gas > $10, pass-through to contract cap)
   SEND_TX_107 = 'SEND-TX-107',
   SEND_TX_199_01 = 'SEND-TX-199-01', // R1 terminal Push success
   SEND_TX_199_02 = 'SEND-TX-199-02', // R1 terminal Push failure
@@ -77,9 +77,9 @@ export enum PROGRESS_HOOK {
   SEND_TX_301 = 'SEND-TX-301',
   SEND_TX_302_01 = 'SEND-TX-302-01',
   SEND_TX_302_02 = 'SEND-TX-302-02',
-  SEND_TX_302_03_A = 'SEND-TX-302-03-A', // Sizer: Case A (< $1, padded)
-  SEND_TX_302_03_B = 'SEND-TX-302-03-B', // Sizer: Case B ($1–$10, happy path)
-  SEND_TX_302_03_C = 'SEND-TX-302-03-C', // Sizer: Case C (> $10, split + overflow bridge)
+  SEND_TX_302_03_01 = 'SEND-TX-302-03-01', // Sizer: Case A (< $1, padded)
+  SEND_TX_302_03_02 = 'SEND-TX-302-03-02', // Sizer: Case B ($1–$10, happy path)
+  SEND_TX_302_03_03 = 'SEND-TX-302-03-03', // Sizer: Case C (> $10, split + overflow bridge)
   SEND_TX_303_01 = 'SEND-TX-303-01',
   SEND_TX_303_02 = 'SEND-TX-303-02',
   SEND_TX_304_01 = 'SEND-TX-304-01',
@@ -136,9 +136,9 @@ export type PROGRESS_HOOK_R1 =
   | PROGRESS_HOOK.SEND_TX_106_04
   | PROGRESS_HOOK.SEND_TX_106_05
   | PROGRESS_HOOK.SEND_TX_106_06
-  | PROGRESS_HOOK.SEND_TX_106_07_A
-  | PROGRESS_HOOK.SEND_TX_106_07_B
-  | PROGRESS_HOOK.SEND_TX_106_07_C
+  | PROGRESS_HOOK.SEND_TX_106_07_01
+  | PROGRESS_HOOK.SEND_TX_106_07_02
+  | PROGRESS_HOOK.SEND_TX_106_07_03
   | PROGRESS_HOOK.SEND_TX_107
   | PROGRESS_HOOK.SEND_TX_199_01
   | PROGRESS_HOOK.SEND_TX_199_02;
@@ -166,9 +166,9 @@ export type PROGRESS_HOOK_R3 =
   | PROGRESS_HOOK.SEND_TX_301
   | PROGRESS_HOOK.SEND_TX_302_01
   | PROGRESS_HOOK.SEND_TX_302_02
-  | PROGRESS_HOOK.SEND_TX_302_03_A
-  | PROGRESS_HOOK.SEND_TX_302_03_B
-  | PROGRESS_HOOK.SEND_TX_302_03_C
+  | PROGRESS_HOOK.SEND_TX_302_03_01
+  | PROGRESS_HOOK.SEND_TX_302_03_02
+  | PROGRESS_HOOK.SEND_TX_302_03_03
   | PROGRESS_HOOK.SEND_TX_303_01
   | PROGRESS_HOOK.SEND_TX_303_02
   | PROGRESS_HOOK.SEND_TX_304_01

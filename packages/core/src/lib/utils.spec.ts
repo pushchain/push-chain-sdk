@@ -515,6 +515,62 @@ describe('Helpers Utils Namespace', () => {
         expect(registered).toHaveLength(1);
         expect(registered[0].idl).toBe(testCounterIdl);
       });
+
+      describe("explicit 'idl' param", () => {
+        it('produces identical bytes to passing the IDL as abi', () => {
+          const viaIdl = PushChain.utils.helpers.encodeTxData({
+            idl: testCounterIdl,
+            functionName: 'receive_sol',
+            args: [BigInt(0)],
+          });
+          const viaAbi = PushChain.utils.helpers.encodeTxData({
+            abi: testCounterIdl,
+            functionName: 'receive_sol',
+            args: [BigInt(0)],
+          });
+          expect(viaIdl).toBe(viaAbi);
+          expect(viaIdl).toBe('0x79f4fa0308e5e1010000000000000000');
+        });
+
+        it('auto-registers the IDL when passed via the idl param', () => {
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const { clearRegistry } = require('./orchestrator/svm-idl/registry');
+          clearRegistry();
+
+          PushChain.utils.helpers.encodeTxData({
+            idl: testCounterIdl,
+            functionName: 'receive_sol',
+            args: [BigInt(0)],
+          });
+
+          const registered = PushChain.utils.svm.getRegisteredIdls();
+          expect(registered).toHaveLength(1);
+          expect(registered[0].idl).toBe(testCounterIdl);
+        });
+      });
+    });
+
+    describe('param validation', () => {
+      it("throws when both 'abi' and 'idl' are provided", () => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const testCounterIdl = require('./orchestrator/svm-idl/__fixtures__/test_counter.idl.json');
+        expect(() =>
+          PushChain.utils.helpers.encodeTxData({
+            abi: [],
+            idl: testCounterIdl,
+            functionName: 'receive_sol',
+            args: [],
+          })
+        ).toThrow(/pass either 'abi' .* or 'idl'/);
+      });
+
+      it("throws when neither 'abi' nor 'idl' is provided", () => {
+        expect(() =>
+          PushChain.utils.helpers.encodeTxData({
+            functionName: 'increment',
+          } as any)
+        ).toThrow(/either 'abi' .* or 'idl' .* must be provided/);
+      });
     });
   });
 

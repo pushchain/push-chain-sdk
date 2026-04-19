@@ -3865,7 +3865,7 @@ describe('PushChain', () => {
       const WETH9 =
         '0xfff9976782d46cc05630d1f6ebab18b2324d6b14' as `0x${string}`; // Sepolia WETH9
       const USDC =
-        '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238' as `0x${string}`; // Provided Sepolia USDC
+        '0x97F477B7f970D47a87B42869ceeace218106152a' as `0x${string}`; // Provided Sepolia USDC
 
       // Quote: 0.005 WETH -> USDC
       const amountIn = PushChain.utils.helpers.parseUnits('0.005', 18);

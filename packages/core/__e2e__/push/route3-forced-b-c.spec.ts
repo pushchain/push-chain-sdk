@@ -124,7 +124,7 @@ describe('Route 3: Forced sizer Case B + C (signed e2e)', () => {
 
       console.log(`Push Chain TX: ${tx.hash}`);
       expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(tracker.hasEvent('SEND-TX-302-03-B')).toBe(true);
+      expect(tracker.hasEvent('SEND-TX-302-03-02')).toBe(true);
 
       const receipt = await tx.wait();
       console.log(`Receipt status: ${receipt.status}`);
@@ -182,7 +182,7 @@ describe('Route 3: Forced sizer Case B + C (signed e2e)', () => {
 
       console.log(`Push Chain TX: ${tx.hash}`);
       expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(tracker.hasEvent('SEND-TX-302-03-C')).toBe(true);
+      expect(tracker.hasEvent('SEND-TX-302-03-03')).toBe(true);
 
       const receipt = await tx.wait();
       console.log(`Receipt status: ${receipt.status}`);

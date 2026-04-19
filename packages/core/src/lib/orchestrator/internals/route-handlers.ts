@@ -95,9 +95,9 @@ import type { GasSizingDecision } from './gas-usd-sizer';
 
 const SIZER_HOOK_BY_ROUTE = {
   R3: {
-    A: PROGRESS_HOOK.SEND_TX_302_03_A,
-    B: PROGRESS_HOOK.SEND_TX_302_03_B,
-    C: PROGRESS_HOOK.SEND_TX_302_03_C,
+    A: PROGRESS_HOOK.SEND_TX_302_03_01,
+    B: PROGRESS_HOOK.SEND_TX_302_03_02,
+    C: PROGRESS_HOOK.SEND_TX_302_03_03,
   },
 } as const;
 

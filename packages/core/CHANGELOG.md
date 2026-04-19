@@ -4,7 +4,7 @@
   Push-chain gas cost. Case A pads deposits to the $1 floor; Case B passes
   through; Case C is informational (deposits proceed up to the origin
   gateway's contract-enforced `MAX_CAP_UNIVERSAL_TX_USD`). The SDK's previous
-  $1000 ceiling has been removed. New progress hooks `SEND_TX_106_07_A/B/C`
+  $1000 ceiling has been removed. New progress hooks `SEND_TX_106_07_01/02/03`
   fire with the sizer's decision.
 
 - Gas abstraction scope narrowed to R1 (fee-lock USD caps) and R3 (outbound
