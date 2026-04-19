@@ -345,13 +345,34 @@ const RAW_HOOKS_R2: {
     response: { stage: 'verified' },
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_204_04]: (errorMessage?: string) => ({
-    id: PROGRESS_HOOK.SEND_TX_204_04,
-    title: 'Verification Declined',
-    message: 'Verification declined by user',
-    response: { error: errorMessage ?? 'Verification declined by user' },
-    level: 'ERROR',
-  }),
+  [PROGRESS_HOOK.SEND_TX_204_04]: (errorMessage?: string) => {
+    const msg = errorMessage ?? 'Verification declined by user';
+    // Heuristic: true "user decline" only when the error looks like an
+    // explicit wallet rejection (viem/ethers/EIP-1193 code 4001). Anything
+    // else (insufficient funds, RPC failure, contract revert during sign)
+    // surfaces the real error message to the caller instead of the
+    // generic "Verification declined by user".
+    //
+    // When errorMessage is omitted, treat it as a decline — the spec copy
+    // is already the decline copy ("Verification declined by user"), so
+    // flipping to "Signature Failed" would make the event self-contradict.
+    const isUserDecline =
+      errorMessage === undefined ||
+      /user\s*reject/i.test(msg) ||
+      /user\s*denied/i.test(msg) ||
+      /rejected\s*the\s*request/i.test(msg) ||
+      /UserRejectedRequestError/i.test(msg) ||
+      /ACTION_REJECTED/i.test(msg) ||
+      /declined\s*by\s*user/i.test(msg) ||
+      /\b4001\b/.test(msg);
+    return {
+      id: PROGRESS_HOOK.SEND_TX_204_04,
+      title: isUserDecline ? 'Verification Declined' : 'Signature Failed',
+      message: isUserDecline ? 'Verification declined by user' : msg,
+      response: { error: msg, isUserDecline },
+      level: 'ERROR',
+    };
+  },
   [PROGRESS_HOOK.SEND_TX_207]: (targetChain: string | CHAIN) => ({
     id: PROGRESS_HOOK.SEND_TX_207,
     title: `Broadcasting from Push Chain → ${friendlyChain(targetChain)}`,

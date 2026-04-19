@@ -35,13 +35,14 @@ import type {
   UniversalTxReceipt,
   UniversalTxResponse,
   TrackTransactionOptions,
+  WaitOptions,
 } from '../orchestrator.types';
 import type { OrchestratorContext } from './context';
 import { printLog } from './context';
 import { getPushChainForNetwork } from './helpers';
 import { getSvmGatewayLogIndexFromTx } from './svm-helpers';
 import { computeUniversalTxId, extractUniversalSubTxIdFromTx } from './outbound-tracker';
-import { waitForInboundPushTx } from './inbound-tracker';
+import { waitForInboundPushTx, InboundTimeoutError } from './inbound-tracker';
 import {
   reconstructProgressEvents,
   detectRouteFromUniversalTxData,
@@ -61,6 +62,23 @@ export interface ResponseBuilderCallbacks {
 }
 
 import { pickWaitHooks } from './progress-route-hooks';
+import { OutboundTimeoutError, OutboundFailedError } from './outbound-sync';
+
+/**
+ * Fan out a progress event to one or two registered callbacks, deduping
+ * when both slots hold the same reference. Keeps the emission policy in a
+ * single place shared by `emitProgress` (execute phase) and `emit` (wait
+ * phase) — so consumers that wire the same callback at multiple levels
+ * never see double-invocation.
+ */
+function fanOut(
+  event: ProgressEvent,
+  primary?: (e: ProgressEvent) => void,
+  secondary?: (e: ProgressEvent) => void
+): void {
+  if (primary) primary(event);
+  if (secondary && secondary !== primary) secondary(event);
+}
 
 // ============================================================================
 // queryUniversalTxStatusFromGatewayTx
@@ -220,18 +238,13 @@ export async function trackTransaction(
   // Event buffer for replay via response.progressHook()
   const eventBuffer: ProgressEvent[] = [];
 
-  // Helper to emit progress events
+  // Helper to emit progress events. Per-tx hook (passed to trackTransaction)
+  // fires first, then the orchestrator-level hook — deduped via `fanOut` so
+  // a caller that wires the same callback at both levels isn't double-fired.
   const emitProgress = (event: ProgressEvent) => {
     eventBuffer.push(event);
     printLog(ctx, event.message);
-    // Per-transaction hook called FIRST
-    if (progressHook) {
-      progressHook(event);
-    }
-    // Orchestrator-level hook called SECOND
-    if (ctx.progressHook) {
-      ctx.progressHook(event);
-    }
+    fanOut(event, progressHook, ctx.progressHook);
   };
 
   // Create client for target chain with optional RPC override
@@ -352,6 +365,16 @@ export async function trackTransaction(
   // call trackTransaction a second time and re-emit the same reconstructed
   // events to the user's progressHook.
   universalTxResponse._eventsReconstructed = true;
+
+  // Auto-register the caller's per-call progressHook as the response's
+  // registeredProgressHook so that tracked.wait() fires wait-phase events
+  // (209-xx / 299-xx / 399-xx) to the same callback without requiring
+  // tracked.progressHook(cb) to be called again. Skip replay of buffered
+  // events because we just fired them above via emitProgress — calling
+  // response.progressHook(cb) here would re-emit the reconstructed stream.
+  if (progressHook && universalTxResponse._setProgressHookNoReplay) {
+    universalTxResponse._setProgressHookNoReplay(progressHook);
+  }
 
   return universalTxResponse;
 }
@@ -601,7 +624,19 @@ export async function transformToUniversalTxResponse(
     accessList: Array.isArray(tx.accessList) ? [...tx.accessList] : [],
 
     // 6. Utilities
-    wait: async (): Promise<UniversalTxReceipt> => {
+    wait: async (waitOptions?: WaitOptions): Promise<UniversalTxReceipt> => {
+      const outboundTimeoutMs =
+        waitOptions?.outboundTimeoutMs ??
+        callbacks.outboundConstants.maxTimeoutMs;
+      const inboundTimeoutMs =
+        waitOptions?.inboundTimeoutMs ??
+        callbacks.inboundConstants.maxTimeoutMs;
+      const outboundInitialWaitMs =
+        waitOptions?.outboundInitialWaitMs ??
+        callbacks.outboundConstants.initialWaitMs;
+      const outboundPollingIntervalMs =
+        waitOptions?.outboundPollingIntervalMs ??
+        callbacks.outboundConstants.pollingIntervalMs;
       // Use trackTransaction with registered hook if available
       let baseReceipt: UniversalTxReceipt;
       // Track whether trackTransaction already reconstructed the route's
@@ -617,6 +652,12 @@ export async function transformToUniversalTxResponse(
       // existing universalTxResponse (which already has route + chain).
       const alreadyReconstructed =
         universalTxResponse._eventsReconstructed === true;
+      // The replay-via-trackTransaction path runs ONLY when the caller
+      // registered a hook after execute returned (tx.progressHook(cb)).
+      // Client-level ctx.progressHook already received live events during
+      // execute — replaying them here would emit duplicates. Wait-phase
+      // events (209-xx / 299-xx / 399-xx) still reach ctx.progressHook via
+      // the `emit` closure below.
       if (registeredProgressHook && !alreadyReconstructed) {
         const trackedResponse = await callbacks.trackTransaction(tx.hash, {
           waitForCompletion: true,
@@ -645,8 +686,8 @@ export async function transformToUniversalTxResponse(
         const hooks = pickWaitHooks(route);
         const targetChain = (universalTxResponse.chain ?? 'external') as string;
         const emit = (event: ProgressEvent) => {
-          if (!event.id || !registeredProgressHook) return;
-          registeredProgressHook(event);
+          if (!event.id) return;
+          fanOut(event, registeredProgressHook, ctx.progressHook);
         };
 
         // Intermediate INFO marker — Push Chain tx confirmed, external/inbound
@@ -677,9 +718,9 @@ export async function transformToUniversalTxResponse(
           const outboundDetails = await callbacks.waitForOutboundTx(
             tx.hash,
             {
-              initialWaitMs: callbacks.outboundConstants.initialWaitMs,
-              pollingIntervalMs: callbacks.outboundConstants.pollingIntervalMs,
-              timeout: callbacks.outboundConstants.maxTimeoutMs,
+              initialWaitMs: outboundInitialWaitMs,
+              pollingIntervalMs: outboundPollingIntervalMs,
+              timeout: outboundTimeoutMs,
               progressHook: outboundTranslator,
             }
           );
@@ -693,6 +734,7 @@ export async function transformToUniversalTxResponse(
             externalRecipient: outboundDetails.recipient,
             externalAmount: outboundDetails.amount,
             externalAssetAddr: outboundDetails.assetAddr,
+            externalStatus: 'success',
           };
 
           // R3 round-trip: poll Push Chain for the inbound tx that the
@@ -705,9 +747,7 @@ export async function transformToUniversalTxResponse(
             route === TransactionRoute.CEA_TO_PUSH &&
             universalTxResponse._expectsInboundRoundTrip === true
           ) {
-            registeredProgressHook?.(
-              PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_310_01](targetChain)
-            );
+            emit(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_310_01](targetChain));
 
             let inboundLastEmitted: string | undefined;
             try {
@@ -719,15 +759,14 @@ export async function transformToUniversalTxResponse(
                   initialWaitMs: callbacks.inboundConstants.initialWaitMs,
                   pollingIntervalMs:
                     callbacks.inboundConstants.pollingIntervalMs,
-                  timeout: callbacks.inboundConstants.maxTimeoutMs,
+                  timeout: inboundTimeoutMs,
                   progressHook: (event) => {
-                    if (!registeredProgressHook) return;
                     if (
                       event.status === 'polling' &&
                       inboundLastEmitted !== 'polling'
                     ) {
                       inboundLastEmitted = 'polling';
-                      registeredProgressHook(
+                      emit(
                         PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_310_02](
                           targetChain,
                           event.elapsedMs
@@ -739,7 +778,7 @@ export async function transformToUniversalTxResponse(
               );
 
               if (inbound.status === 'confirmed') {
-                registeredProgressHook?.(
+                emit(
                   PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_01](
                     targetChain,
                     inbound.pushTxHash,
@@ -750,19 +789,21 @@ export async function transformToUniversalTxResponse(
                   ...baseReceipt,
                   pushInboundTxHash: inbound.pushTxHash,
                   pushInboundUtxId: inbound.childUtxId,
+                  // Round-trip completed. externalStatus stays 'success'
+                  // (set on the outbound-found branch above).
                 };
               } else {
                 // status === 'failed' (terminal failure status from chain)
-                registeredProgressHook?.(
-                  PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](
-                    inbound.errorMessage ??
-                      'inbound execution failed on Push Chain'
-                  )
-                );
+                const failMsg =
+                  inbound.errorMessage ??
+                  'inbound execution failed on Push Chain';
+                emit(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](failMsg));
                 baseReceipt = {
                   ...baseReceipt,
                   pushInboundUtxId: inbound.childUtxId,
                   pushInboundTxHash: inbound.pushTxHash || undefined,
+                  externalStatus: 'failed',
+                  externalError: failMsg,
                 };
               }
             } catch (inboundErr) {
@@ -770,14 +811,18 @@ export async function transformToUniversalTxResponse(
                 inboundErr instanceof Error
                   ? inboundErr.message
                   : String(inboundErr);
-              const isTimeout = errMsg.startsWith(
-                'Timeout waiting for inbound Push tx'
-              );
-              registeredProgressHook?.(
+              const isTimeout = inboundErr instanceof InboundTimeoutError;
+              // Annotate receipt for inbound-leg outcome too.
+              baseReceipt = {
+                ...baseReceipt,
+                externalStatus: isTimeout ? 'timeout' : 'failed',
+                externalError: errMsg,
+              };
+              emit(
                 isTimeout
                   ? PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](
                       targetChain,
-                      callbacks.inboundConstants.maxTimeoutMs
+                      inboundTimeoutMs
                     )
                   : PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](errMsg)
               );
@@ -788,26 +833,42 @@ export async function transformToUniversalTxResponse(
           }
         } catch (error) {
           const errMsg = error instanceof Error ? error.message : String(error);
-          const isTimeout = errMsg.startsWith(
-            'Timeout waiting for outbound transaction'
-          );
+          const isTimeout = error instanceof OutboundTimeoutError;
           emit(
             isTimeout
-              ? hooks.timeout(
-                  targetChain,
-                  callbacks.outboundConstants.maxTimeoutMs
-                )
+              ? hooks.timeout(targetChain, outboundTimeoutMs)
               : hooks.failed(targetChain, errMsg)
           );
-          // Outbound polling timed out - return partial receipt (don't throw)
-          // Push Chain tx succeeded, external tracking can be retried later
+          // Annotate the receipt so callers can distinguish external-leg
+          // outcomes without sniffing errMsg. Push Chain leg still succeeded
+          // (status stays 1); inspect `externalStatus` / `externalError` for
+          // the external/inbound leg outcome.
+          baseReceipt = {
+            ...baseReceipt,
+            externalStatus: isTimeout ? 'timeout' : 'failed',
+            externalError: errMsg,
+          };
+          // Outbound polling timed out or failed — return the annotated
+          // receipt without throwing. Push Chain tx succeeded, external
+          // tracking can be retried later.
           callbacks.printLog(
-            `[wait] External chain tracking failed: ${errMsg}`
+            `[wait] External chain tracking ${isTimeout ? 'timed out' : 'failed'}: ${errMsg}`
           );
         }
       }
 
       return baseReceipt;
+    },
+
+    // Internal: register a wait-phase progressHook without replaying
+    // buffered events. Used by trackTransaction() after it has already
+    // emitted the reconstructed stream to the caller's per-call hook,
+    // so that tracked.wait() can deliver wait-phase events (209-xx /
+    // 299-xx / 399-xx) to the same callback without duplicating replay.
+    _setProgressHookNoReplay: (
+      callback: (event: ProgressEvent) => void
+    ): void => {
+      registeredProgressHook = callback;
     },
 
     progressHook: (

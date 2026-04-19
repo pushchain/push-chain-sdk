@@ -183,7 +183,20 @@ export interface UniversalTxResponse {
   accessList: any[]; // AccessList type
 
   // 6. Utilities
-  wait: () => Promise<UniversalTxReceipt>;
+  /**
+   * Wait for this transaction to reach its final state.
+   *
+   * For outbound routes (R2 / R3) the resolved receipt also includes external
+   * chain details. Pass `options.outboundTimeoutMs` / `options.inboundTimeoutMs`
+   * to override the default polling timeouts on a per-call basis — useful for
+   * latency-sensitive UIs that want to surface a provisional timeout and retry
+   * with a longer budget.
+   *
+   * When the outbound or inbound leg times out / fails, `.wait()` still
+   * resolves with a receipt (no throw); inspect `externalStatus` to classify
+   * the outcome.
+   */
+  wait: (options?: WaitOptions) => Promise<UniversalTxReceipt>;
 
   /**
    * Register a progress callback for events during wait().
@@ -194,6 +207,19 @@ export interface UniversalTxResponse {
    * @param callback - Function called with each progress event
    */
   progressHook: (
+    callback: (
+      event: import('../progress-hook/progress-hook.types').ProgressEvent
+    ) => void
+  ) => void;
+
+  /**
+   * @internal Register a wait-phase progressHook without replaying buffered
+   * events. Used by `trackTransaction()` to auto-attach the caller's per-call
+   * progressHook so `tracked.wait()` can deliver wait-phase events (209-xx /
+   * 299-xx / 399-xx) to the same callback — without re-emitting the
+   * reconstructed execute-phase stream that trackTransaction already fired.
+   */
+  _setProgressHookNoReplay?: (
     callback: (
       event: import('../progress-hook/progress-hook.types').ProgressEvent
     ) => void
@@ -253,6 +279,47 @@ export interface UniversalTxResponse {
 /**
  * New Universal Transaction Receipt interface for transaction receipts
  */
+/**
+ * Per-call options accepted by `UniversalTxResponse.wait()`.
+ *
+ * All fields are optional; omitted values fall back to the orchestrator's
+ * defaults (`OUTBOUND_MAX_TIMEOUT_MS`, `INBOUND_MAX_TIMEOUT_MS`).
+ */
+export interface WaitOptions {
+  /**
+   * Override the outbound polling budget (ms) — applies to R2 / R3 while
+   * waiting for the external-chain tx to land via UGPC relay. When exceeded,
+   * `wait()` resolves with `externalStatus: 'timeout'` and the progress-hook
+   * stream emits `SEND-TX-299-03` (R2) or `SEND-TX-399-03` (R3 inbound).
+   *
+   * The outbound-sync initial settle-wait is automatically clamped to this
+   * timeout, so a 200ms budget will throw in ~200ms rather than blocking for
+   * the default 20s.
+   */
+  outboundTimeoutMs?: number;
+  /**
+   * Override the inbound polling budget (ms) — applies to R3 only, for the
+   * round-trip Push tx produced by the external CEA. When exceeded,
+   * `wait()` resolves with `externalStatus: 'timeout'` and emits
+   * `SEND-TX-399-03`.
+   */
+  inboundTimeoutMs?: number;
+  /**
+   * Override the poll interval (ms) between outbound status checks. Default
+   * is 5000ms. Lower values give faster feedback on fast relays; higher
+   * values reduce RPC pressure. Only applies to R2 / R3 outbound polling.
+   */
+  outboundPollingIntervalMs?: number;
+  /**
+   * Override the initial settle-wait (ms) before the outbound polling loop
+   * starts. Default is 20000ms — a buffer for UGPC relay submission latency.
+   * Reducing this doesn't affect the timeout budget but may cause earlier
+   * polls that miss the relay submission and burn RPC. Rarely needed; prefer
+   * `outboundTimeoutMs` which auto-clamps the initial wait.
+   */
+  outboundInitialWaitMs?: number;
+}
+
 export interface UniversalTxReceipt {
   // 1. Identity
   hash: string; // changed from transactionHash
@@ -304,6 +371,16 @@ export interface UniversalTxReceipt {
   externalAmount?: string;
   /** Asset address on external chain */
   externalAssetAddr?: string;
+  /**
+   * Outcome of the external-chain leg for outbound routes (R2 / R3).
+   * - `success`: external tx landed and was confirmed (299-01 fired).
+   * - `failed`: external tx reverted or UGPC reported terminal failure (299-02 fired).
+   * - `timeout`: UGPC relay timed out before an external tx was observed (299-03 fired).
+   * Undefined on non-outbound receipts.
+   */
+  externalStatus?: 'success' | 'failed' | 'timeout';
+  /** Error message from the external-chain leg when `externalStatus !== 'success'`. */
+  externalError?: string;
 
   // 10. Inbound Push Tx (populated for R3 round-trips)
   /** Push Chain tx hash that closed the R3 round-trip (inbound from CEA). */

@@ -272,9 +272,27 @@ export async function waitForInboundPushTx(
   printLog(ctx, `[waitForInboundPushTx] TIMEOUT after ${pollCount} polls | elapsed: ${elapsed()}ms`);
 
   progressHook?.({ status: 'timeout', elapsedMs: elapsed() });
-  throw new Error(
-    `Timeout waiting for inbound Push tx after ${Math.round(
-      elapsed() / 1000
-    )}s (correlation key: ${outboundExternalTxHash}).`
-  );
+  throw new InboundTimeoutError(outboundExternalTxHash, elapsed());
+}
+
+/**
+ * Thrown by `waitForInboundPushTx` when the polling loop exceeds the
+ * configured timeout without observing a terminal inbound Push tx. Callers
+ * (response-builder) `instanceof`-check to distinguish timeout (→ 399-03)
+ * from generic failure (→ 399-02) without relying on error-message prefixes.
+ */
+export class InboundTimeoutError extends Error {
+  readonly code = 'INBOUND_TIMEOUT' as const;
+  readonly correlationKey: string;
+  readonly elapsedMs: number;
+  constructor(correlationKey: string, elapsedMs: number) {
+    super(
+      `Timeout waiting for inbound Push tx after ${Math.round(
+        elapsedMs / 1000
+      )}s (correlation key: ${correlationKey}).`
+    );
+    this.name = 'InboundTimeoutError';
+    this.correlationKey = correlationKey;
+    this.elapsedMs = elapsedMs;
+  }
 }
