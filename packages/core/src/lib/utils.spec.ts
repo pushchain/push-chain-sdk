@@ -498,6 +498,23 @@ describe('Helpers Utils Namespace', () => {
           })
         ).toThrow(/not found in IDL/);
       });
+
+      it('auto-registers the IDL in PushChain.utils.svm under idl.address', () => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { clearRegistry } = require('./orchestrator/svm-idl/registry');
+        clearRegistry();
+        expect(PushChain.utils.svm.getRegisteredIdls()).toHaveLength(0);
+
+        PushChain.utils.helpers.encodeTxData({
+          abi: testCounterIdl,
+          functionName: 'receive_sol',
+          args: [BigInt(0)],
+        });
+
+        const registered = PushChain.utils.svm.getRegisteredIdls();
+        expect(registered).toHaveLength(1);
+        expect(registered[0].idl).toBe(testCounterIdl);
+      });
     });
   });
 

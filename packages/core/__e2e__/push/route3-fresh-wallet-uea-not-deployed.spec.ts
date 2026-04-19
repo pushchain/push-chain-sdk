@@ -88,7 +88,7 @@ describe('Route 3: Fresh Wallet UEA Not Deployed Bug', () => {
     // Fund the fresh wallet with Sepolia ETH
     const fundTxHash = await mainWalletClient.sendTransaction({
       to: freshAccount.address,
-      value: parseEther('0.008'),
+      value: parseEther('0.005'),
       account: mainWalletClient.account!,
       chain: sepolia,
     });
@@ -184,7 +184,7 @@ describe('Route 3: Fresh Wallet UEA Not Deployed Bug', () => {
     const mainAccount = privateKeyToAccount(privateKey);
     const fundTxHash = await mainWalletClient.sendTransaction({
       to: wallet.address as `0x${string}`,
-      value: parseEther('0.008'),
+      value: parseEther('0.005'),
       account: mainAccount,
       chain: sepolia,
     });

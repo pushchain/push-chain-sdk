@@ -220,9 +220,8 @@ export async function queryOutboundGasFee(
         destinationChain,
       });
       // All categories — A, B, and C — return the sizer's calibrated gas leg.
-      // For Case C, the overflow is handled separately by route-handlers.ts,
-      // which composes `bridgeSwapEntries` on the UEA multicall before the
-      // outbound call (see bridge-swap-builder.ts).
+      // R3 consumers additionally bump `nativeValueForGas` by `overflowNativePc`
+      // when category === 'C' (see route-handlers.executeCeaToPush).
       nativeValueForGas = sizing.gasLegNativePc + protocolFee;
       printLog(
         ctx,

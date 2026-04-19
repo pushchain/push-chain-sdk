@@ -13,6 +13,7 @@ import { CHAIN, PUSH_NETWORK } from '../../constants/enums';
 import type { OrchestratorContext } from '../internals/context';
 import {
   sizeOutboundGas,
+  sizeR1PushGas,
   __THRESHOLDS,
 } from '../internals/gas-usd-sizer';
 import { __resetPcUsdCache } from '../internals/pc-usd-oracle';
@@ -308,5 +309,92 @@ describe('sizeOutboundGas — oracle fallback', () => {
 
     expect(decision.category).toBe('B');
     expect(decision.overflowNativePc).toBe(BigInt(0));
+  });
+});
+
+// Mock pool reads return $0.10 per WPC, so USD conversions work like:
+//   1 UPC wei * $0.10/PC / 1e18 = 1e-19 USD per wei. To land at specific
+//   USD targets (8-dec), input pushGasFeeWei = usd_8d * 1e10 / pcUsdPrice_8d.
+//   With pcUsdPrice = 1e7 ($0.10), that's pushGasFeeWei = usd_8d * 1000.
+// Simpler: pass the UPC wei amount directly and assert the oracle multiplied it.
+describe('sizeR1PushGas — R1 Push-chain gas sizing', () => {
+  it('Case A: pushGasUsd < $1 → category A, paddedDepositUsd = $1', async () => {
+    const ctx = makeCtx();
+
+    // $0.10 per PC. 3 PC = $0.30. Below $1 floor.
+    const pushGasFeeWei = BigInt(3) * BigInt(1e18);
+
+    const decision = await sizeR1PushGas(ctx, {
+      pushGasFeeWei,
+      originChain: CHAIN.ETHEREUM_SEPOLIA,
+    });
+
+    expect(decision.category).toBe('A');
+    expect(decision.pushGasUsd).toBe(BigInt(30_000_000)); // $0.30 in 8d
+    expect(decision.paddedDepositUsd).toBe(__THRESHOLDS.ONE_USD_8D); // padded to $1
+  });
+
+  it('Case B: $1 ≤ pushGasUsd ≤ $10 → category B, paddedDepositUsd = pushGasUsd (pass-through)', async () => {
+    const ctx = makeCtx();
+
+    // $0.10 per PC. 50 PC = $5.00. Inside $1-$10 window.
+    const pushGasFeeWei = BigInt(50) * BigInt(1e18);
+
+    const decision = await sizeR1PushGas(ctx, {
+      pushGasFeeWei,
+      originChain: CHAIN.ETHEREUM_SEPOLIA,
+    });
+
+    expect(decision.category).toBe('B');
+    expect(decision.pushGasUsd).toBe(BigInt(500_000_000)); // $5.00 in 8d
+    expect(decision.paddedDepositUsd).toBe(BigInt(500_000_000));
+  });
+
+  it('Case C: pushGasUsd > $10 → category C, paddedDepositUsd = pushGasUsd (pass-through, no cap)', async () => {
+    const ctx = makeCtx();
+
+    // $0.10 per PC. 500 PC = $50.00. Above $10 → Case C pass-through.
+    const pushGasFeeWei = BigInt(500) * BigInt(1e18);
+
+    const decision = await sizeR1PushGas(ctx, {
+      pushGasFeeWei,
+      originChain: CHAIN.ETHEREUM_SEPOLIA,
+    });
+
+    expect(decision.category).toBe('C');
+    expect(decision.pushGasUsd).toBe(BigInt(5_000_000_000)); // $50.00 in 8d
+    expect(decision.paddedDepositUsd).toBe(BigInt(5_000_000_000)); // no cap applied
+  });
+
+  it('boundary: pushGasUsd === $1 exactly → category B (not A)', async () => {
+    const ctx = makeCtx();
+
+    // $0.10 per PC. 10 PC = $1.00 exactly.
+    const pushGasFeeWei = BigInt(10) * BigInt(1e18);
+
+    const decision = await sizeR1PushGas(ctx, {
+      pushGasFeeWei,
+      originChain: CHAIN.ETHEREUM_SEPOLIA,
+    });
+
+    expect(decision.category).toBe('B');
+    expect(decision.pushGasUsd).toBe(__THRESHOLDS.ONE_USD_8D);
+    expect(decision.paddedDepositUsd).toBe(__THRESHOLDS.ONE_USD_8D);
+  });
+
+  it('boundary: pushGasUsd === $10 exactly → category B (not C)', async () => {
+    const ctx = makeCtx();
+
+    // $0.10 per PC. 100 PC = $10.00 exactly.
+    const pushGasFeeWei = BigInt(100) * BigInt(1e18);
+
+    const decision = await sizeR1PushGas(ctx, {
+      pushGasFeeWei,
+      originChain: CHAIN.ETHEREUM_SEPOLIA,
+    });
+
+    expect(decision.category).toBe('B');
+    expect(decision.pushGasUsd).toBe(__THRESHOLDS.TEN_USD_8D);
+    expect(decision.paddedDepositUsd).toBe(__THRESHOLDS.TEN_USD_8D);
   });
 });

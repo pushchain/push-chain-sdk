@@ -10,6 +10,13 @@ import { MOVEABLE_TOKEN_CONSTANTS } from '../../src/lib/constants/tokens';
 import { PushChain } from '../../src';
 import testCounterIdl from '../../src/lib/orchestrator/svm-idl/__fixtures__/test_counter.idl.json';
 
+// Register the test_counter IDL once at module load. E2E specs that build
+// `data` manually (raw Anchor discriminator + Borsh bytes) bypass
+// `encodeTxData` and wouldn't trigger auto-register — this boot-time call
+// covers them. Specs that use `encodeTxData({abi: testCounterIdl, ...})`
+// would register it anyway, so this is redundant but harmless in those cases.
+PushChain.utils.svm.registerIdl(testCounterIdl);
+
 // ---------------------------------------------------------------------------
 // SVM Constants
 // ---------------------------------------------------------------------------
@@ -92,7 +99,3 @@ export function toHexData(bytes: Uint8Array): `0x${string}` {
   return ('0x' + Buffer.from(bytes).toString('hex')) as `0x${string}`;
 }
 
-// Register the test_counter IDL so prepareTransaction can resolve accounts
-// for any `data` calldata targeting TEST_PROGRAM. Importing this helper file
-// anywhere in the e2e suite auto-registers it.
-PushChain.utils.svm.registerIdl(TEST_PROGRAM, testCounterIdl);

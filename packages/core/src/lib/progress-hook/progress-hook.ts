@@ -202,6 +202,39 @@ const RAW_HOOKS_R1: {
     response: { amount, symbol },
     level: 'SUCCESS',
   }),
+  [PROGRESS_HOOK.SEND_TX_106_07_A]: (
+    originChain: string | CHAIN,
+    pushGasUsd: bigint,
+    paddedDepositUsd: bigint
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_106_07_A,
+    title: `${friendlyChain(originChain)} Push Gas Sizing: Case A`,
+    message: `Push-chain gas < $1; padding deposit to $1 floor (pushGasUsd=${pushGasUsd}, paddedDepositUsd=${paddedDepositUsd})`,
+    response: { category: 'A', pushGasUsd, paddedDepositUsd, chain: originChain },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_106_07_B]: (
+    originChain: string | CHAIN,
+    pushGasUsd: bigint,
+    paddedDepositUsd: bigint
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_106_07_B,
+    title: `${friendlyChain(originChain)} Push Gas Sizing: Case B`,
+    message: `Push-chain gas within $1–$10; happy path (pushGasUsd=${pushGasUsd}, paddedDepositUsd=${paddedDepositUsd})`,
+    response: { category: 'B', pushGasUsd, paddedDepositUsd, chain: originChain },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_106_07_C]: (
+    originChain: string | CHAIN,
+    pushGasUsd: bigint,
+    paddedDepositUsd: bigint
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_106_07_C,
+    title: `${friendlyChain(originChain)} Push Gas Sizing: Case C`,
+    message: `Push-chain gas > $10; deposit passes through to origin gateway MAX_CAP_UNIVERSAL_TX_USD (pushGasUsd=${pushGasUsd}, paddedDepositUsd=${paddedDepositUsd})`,
+    response: { category: 'C', pushGasUsd, paddedDepositUsd, chain: originChain },
+    level: 'INFO',
+  }),
   [PROGRESS_HOOK.SEND_TX_107]: () => ({
     id: PROGRESS_HOOK.SEND_TX_107,
     title: 'Broadcasting to Push Chain',
@@ -271,46 +304,6 @@ const RAW_HOOKS_R2: {
       currency: 'UPC',
     },
     level: 'SUCCESS',
-  }),
-  [PROGRESS_HOOK.SEND_TX_202_03_A]: (
-    targetChain: string | CHAIN,
-    gasUsd: bigint,
-    gasLegNativePc: bigint
-  ) => ({
-    id: PROGRESS_HOOK.SEND_TX_202_03_A,
-    title: `${friendlyChain(targetChain)} Chain Gas Sizing: Case A`,
-    message: `Gas cost < $1; padding to $1 minimum (gasUsd=${gasUsd}, gasLeg=${gasLegNativePc} UPC)`,
-    response: { category: 'A', gasUsd, gasLegNativePc, chain: targetChain },
-    level: 'INFO',
-  }),
-  [PROGRESS_HOOK.SEND_TX_202_03_B]: (
-    targetChain: string | CHAIN,
-    gasUsd: bigint,
-    gasLegNativePc: bigint
-  ) => ({
-    id: PROGRESS_HOOK.SEND_TX_202_03_B,
-    title: `${friendlyChain(targetChain)} Chain Gas Sizing: Case B`,
-    message: `Gas cost within $1–$10 window; happy path (gasUsd=${gasUsd}, gasLeg=${gasLegNativePc} UPC)`,
-    response: { category: 'B', gasUsd, gasLegNativePc, chain: targetChain },
-    level: 'INFO',
-  }),
-  [PROGRESS_HOOK.SEND_TX_202_03_C]: (
-    targetChain: string | CHAIN,
-    gasUsd: bigint,
-    gasLegNativePc: bigint,
-    overflowNativePc: bigint
-  ) => ({
-    id: PROGRESS_HOOK.SEND_TX_202_03_C,
-    title: `${friendlyChain(targetChain)} Chain Gas Sizing: Case C`,
-    message: `Gas cost > $10; splitting into $10 gas leg + ${overflowNativePc} UPC overflow bridged as funds`,
-    response: {
-      category: 'C',
-      gasUsd,
-      gasLegNativePc,
-      overflowNativePc,
-      chain: targetChain,
-    },
-    level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_203_01]: (targetChain: string | CHAIN) => ({
     id: PROGRESS_HOOK.SEND_TX_203_01,

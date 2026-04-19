@@ -376,73 +376,7 @@ describe('buildOutboundApprovalAndCall', () => {
     expect(result[2].value).toBe(BigInt(250));
   });
 
-  it('Case C: prepends bridgeSwapEntries and bumps burnAmount by extraBurnAmount', () => {
-    // Simulate three bridge-swap entries that would come from buildBridgeSwapEntries.
-    const wrap: MultiCall = {
-      to: '0x1111111111111111111111111111111111111111',
-      value: BigInt(500),
-      data: '0xdeadbeef',
-    };
-    const approveRouter: MultiCall = {
-      to: '0x2222222222222222222222222222222222222222',
-      value: BigInt(0),
-      data: '0xcafebabe',
-    };
-    const swap: MultiCall = {
-      to: '0x3333333333333333333333333333333333333333',
-      value: BigInt(0),
-      data: '0xfacefeed',
-    };
-
-    const result = buildOutboundApprovalAndCall({
-      prc20Token: TOKEN_A,
-      gasToken: TOKEN_A,
-      burnAmount: BigInt(1000),
-      gasFee: BigInt(500),
-      nativeValueForGas: BigInt(2600),
-      gatewayPcAddress: GATEWAY,
-      outboundRequest,
-      bridgeSwapEntries: [wrap, approveRouter, swap],
-      extraBurnAmount: BigInt(400),
-    });
-
-    // 3 bridge entries + approve-zero + approve-total + outbound = 6 calls
-    expect(result).toHaveLength(6);
-
-    // First three are the bridge-swap entries, untouched, in order.
-    expect(result[0]).toEqual(wrap);
-    expect(result[1]).toEqual(approveRouter);
-    expect(result[2]).toEqual(swap);
-
-    // Next: approve-zero
-    const approveZero = decodeFunctionData({
-      abi: ERC20_EVM,
-      data: result[3].data as `0x${string}`,
-    });
-    expect(approveZero.functionName).toBe('approve');
-    expect(approveZero.args![1]).toBe(BigInt(0));
-
-    // Next: approve-total (burnAmount + extraBurnAmount = 1400)
-    const approveTotal = decodeFunctionData({
-      abi: ERC20_EVM,
-      data: result[4].data as `0x${string}`,
-    });
-    expect(approveTotal.functionName).toBe('approve');
-    expect(approveTotal.args![1]).toBe(BigInt(1400));
-
-    // Final: sendUniversalTxOutbound with bumped amount (1400) and msg.value = nativeValueForGas
-    const outbound = decodeFunctionData({
-      abi: UNIVERSAL_GATEWAY_PC,
-      data: result[5].data as `0x${string}`,
-    });
-    expect(outbound.functionName).toBe('sendUniversalTxOutbound');
-    expect(result[5].value).toBe(BigInt(2600));
-    // burnAmount bumped inside the request struct
-    const req = outbound.args![0] as any;
-    expect(req.amount).toBe(BigInt(1400));
-  });
-
-  it('no bridgeSwapEntries → existing Cases A/B emission unchanged', () => {
+  it('no bridge-swap entries → plain approve-zero + approve + outbound emission', () => {
     const result = buildOutboundApprovalAndCall({
       prc20Token: TOKEN_A,
       gasToken: TOKEN_A,

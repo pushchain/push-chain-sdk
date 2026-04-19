@@ -444,8 +444,8 @@ export interface SvmExecutePayloadFields {
 
 // `SvmExecuteParams` (previously the user-facing CPI shape) has been removed —
 // callers now pass a plain `data: 0x${string}` (Anchor discriminator + Borsh args)
-// and the SDK resolves accounts via `svm-idl/resolve.ts` against a pre-registered
-// IDL (`PushChain.utils.svm.registerIdl`). See svm-idl/build-payload.ts.
+// together with the Anchor IDL inline on `to.idl`. The SDK resolves accounts via
+// `svm-idl/resolve.ts`. See svm-idl/build-payload.ts.
 
 // ============================================================================
 // Outbound Transaction Types (for Push → External Chain)
@@ -539,6 +539,8 @@ export interface HopDescriptor {
   svmPayload?: `0x${string}`;
   /** Whether this hop is a CEA migration (raw MIGRATION_SELECTOR payload) */
   isMigration?: boolean;
+  /** SDK 5.2 gas-abstraction sizing decision for this hop. @internal */
+  sizing?: import('./internals/gas-usd-sizer').GasSizingDecision;
 }
 
 // ============================================================================
@@ -582,6 +584,13 @@ export interface CascadeSegment {
   gasFee?: bigint;
   /** Gas limit for this segment */
   gasLimit?: bigint;
+  /**
+   * SDK 5.2 gas-abstraction sizing decision for this segment. When the
+   * segment merges multiple hops, the strictest (highest category) sizing
+   * among them is taken (C > B > A).
+   * @internal
+   */
+  sizing?: import('./internals/gas-usd-sizer').GasSizingDecision;
 }
 
 // ============================================================================

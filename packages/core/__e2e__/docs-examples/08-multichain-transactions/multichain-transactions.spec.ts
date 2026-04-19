@@ -153,8 +153,6 @@ describe('docs-examples › 08-multichain-transactions', () => {
       network: PUSH_NETWORK.TESTNET_DONUT,
     });
 
-    PushChain.utils.svm.registerIdl(SOL_TEST_PROGRAM, testCounterIdl as any);
-
     await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
     await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, '5');
 
@@ -389,8 +387,6 @@ describe('docs-examples › 08-multichain-transactions', () => {
     const client = await PushChain.initialize(universalSigner, {
       network: PUSH_NETWORK.TESTNET_DONUT,
     });
-
-    PushChain.utils.svm.registerIdl(SOL_TEST_PROGRAM, testCounterIdl as any);
 
     await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
     await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, '5');

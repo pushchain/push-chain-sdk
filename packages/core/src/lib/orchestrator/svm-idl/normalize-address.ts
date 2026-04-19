@@ -2,7 +2,7 @@ import { bs58 } from '../../internal/bs58';
 
 /**
  * Canonical internal form of a Solana program / account address.
- * All registry and validation paths key off this `0x`-prefixed 32-byte hex string.
+ * All validation and payload paths key off this `0x`-prefixed 32-byte hex string.
  */
 export type SvmHexAddress = `0x${string}`;
 

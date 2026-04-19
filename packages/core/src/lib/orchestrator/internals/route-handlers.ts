@@ -50,8 +50,7 @@ import { CHAIN } from '../../constants/enums';
 import { MoveableToken } from '../../constants/tokens';
 import { Utils } from '../../utils';
 import { PriceFetch } from '../../price-fetch/price-fetch';
-import { TransactionRoute, detectRoute, validateRouteParams, GasExceedsCategoryCWithErc20FundsError } from '../route-detector';
-import { buildBridgeSwapEntries } from './bridge-swap-builder';
+import { TransactionRoute, detectRoute, validateRouteParams } from '../route-detector';
 import { getCEAAddress, chainSupportsOutbound } from '../cea-utils';
 import { buildSvmPayloadFromParams } from '../svm-idl/build-payload';
 import {
@@ -95,11 +94,6 @@ type ExecuteFn = (
 import type { GasSizingDecision } from './gas-usd-sizer';
 
 const SIZER_HOOK_BY_ROUTE = {
-  R2: {
-    A: PROGRESS_HOOK.SEND_TX_202_03_A,
-    B: PROGRESS_HOOK.SEND_TX_202_03_B,
-    C: PROGRESS_HOOK.SEND_TX_202_03_C,
-  },
   R3: {
     A: PROGRESS_HOOK.SEND_TX_302_03_A,
     B: PROGRESS_HOOK.SEND_TX_302_03_B,
@@ -114,7 +108,7 @@ const SIZER_HOOK_BY_ROUTE = {
  */
 function fireSizingHook(
   ctx: OrchestratorContext,
-  route: 'R2' | 'R3',
+  route: 'R3',
   chain: CHAIN,
   sizing: GasSizingDecision
 ): void {
@@ -455,10 +449,8 @@ export async function executeUoaToCea(
   // Query gas fee from UniversalCore contract (needed for approval amount)
   let gasFee = BigInt(0);
   let protocolFee = BigInt(0);
-  let nativeValueForGas = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   let universalCoreAddress: `0x${string}` | undefined;
-  let sizingDecision: GasSizingDecision | undefined;
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_202_01, targetChain);
     try {
@@ -466,12 +458,10 @@ export async function executeUoaToCea(
       gasFee = result.gasFee;
       protocolFee = result.protocolFee;
       gasToken = result.gasToken;
-      nativeValueForGas = result.nativeValueForGas;
       universalCoreAddress = result.universalCoreAddress;
-      sizingDecision = result.sizing;
       printLog(
         ctx,
-        `executeUoaToCea — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}, sizing=${result.sizing?.category ?? 'legacy'}`
+        `executeUoaToCea — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}`
       );
       fireProgressHook(
         ctx,
@@ -480,30 +470,22 @@ export async function executeUoaToCea(
         protocolFee,
         gasFee
       );
-      if (result.sizing) {
-        fireSizingHook(ctx, 'R2', targetChain, result.sizing);
-      }
     } catch (err) {
       throw new Error(`Failed to query outbound gas fee: ${err}`);
     }
   }
 
   // ---------------------------------------------------------------------
-  // Native-value selection (SDK 5.2 gas abstraction)
+  // Native-value selection — R2 does NOT use Case A/B/C gas abstraction.
+  // That feature is scoped to R1 (fee-lock USD caps) and R3 (CEA → Push
+  // outbound msg.value). For R2 we size `nativeValueForGas` from the
+  // live WPC/gasToken Uniswap V3 pool quote plus a 10% safety buffer;
+  // `swapAndBurnGas` refunds any excess as PC back to UEA via
+  // refundUnusedGas.
   //
-  // queryOutboundGasFee returns a sizer-calibrated `nativeValueForGas`
-  // for Case A/B (USD-anchored). Case C falls back to the legacy 1M
-  // buffer pending contract-team work.
-  //
-  // We cross-check against the actual WPC/gasToken Uniswap V3 pool price
-  // (estimateNativeValueForSwap) and take the MAX — if the pool demands
-  // more PC to produce `gasFee` of the destination gas token than the
-  // USD-oracle sizer predicts, trust the pool. Over-send is safe;
-  // under-send reverts on the swap.
-  //
-  // If the UEA can't afford the target, fall back to the legacy
-  // balance-starved behavior so the SDK stays compatible with drained
-  // and fresh-wallet scenarios.
+  // Fresh-wallet prediction (below) is retained: it estimates post-fee-lock
+  // UPC balance for UEAs that haven't been funded yet, independent of
+  // Case A/B/C sizing.
   // ---------------------------------------------------------------------
   const EVM_GAS_RESERVE = BigInt(3e18); // 3 UPC for outer-tx gas
   const EVM_NATIVE_VALUE_SAFETY_CAP = BigInt(200e18); // 200 UPC absolute ceiling
@@ -530,19 +512,16 @@ export async function executeUoaToCea(
     }
   }
 
-  // Pool-price floor — what the WPC/pETH pool actually needs.
-  // Passes ueaBalance as the fallback cap; excess is refunded post-swap.
+  // Pool-quote + 10% safety buffer. Over-send is refunded by the contract.
+  let nativeValueForGas = BigInt(0);
   if (universalCoreAddress && gasFee > BigInt(0)) {
-    const swapFloor = await estimateNativeValueForSwap(
+    const estimated = await estimateNativeValueForSwap(
       ctx, universalCoreAddress, gasToken, gasFee, effectiveBalance
     );
-    if (swapFloor > nativeValueForGas) {
-      printLog(ctx,
-        `executeUoaToCea — pool-price floor (${swapFloor.toString()}) exceeds sizer ` +
-        `(${nativeValueForGas.toString()}); using pool floor`
-      );
-      nativeValueForGas = swapFloor;
-    }
+    nativeValueForGas = (estimated * BigInt(110)) / BigInt(100);
+    printLog(ctx,
+      `executeUoaToCea — nativeValueForGas: pool-quote=${estimated.toString()}, with 10% buffer=${nativeValueForGas.toString()}`
+    );
   }
 
   // Hard safety cap so a broken pool price can't drain the UEA.
@@ -555,7 +534,6 @@ export async function executeUoaToCea(
 
   let adjustedValue: bigint;
   if (effectiveBalance >= nativeValueForGas + EVM_GAS_RESERVE) {
-    // Happy path: balance covers the calibrated value + outer-tx reserve.
     adjustedValue = nativeValueForGas;
   } else if (effectiveBalance > EVM_GAS_RESERVE) {
     // Balance-starved: send everything we can afford. swapAndBurnGas
@@ -580,36 +558,6 @@ export async function executeUoaToCea(
     nativeValueForGas = adjustedValue;
   }
 
-  // Case C overflow bridging: if gasUsd > $10, split into $10 gas leg +
-  // overflow bridged via WPC→pETH swap on the SwapRouter. Composed as
-  // three prepended multicall entries; the swap-derived pETH is folded
-  // into the outbound burnAmount so the destination CEA mints it as
-  // native to the recipient.
-  let bridgeSwapEntries: MultiCall[] | undefined;
-  let extraBurnAmount: bigint | undefined;
-  if (
-    sizingDecision?.category === 'C' &&
-    sizingDecision.overflowNativePc > BigInt(0) &&
-    prc20Token !== (ZERO_ADDRESS as `0x${string}`)
-  ) {
-    const fundsToken = params.funds?.token;
-    if (fundsToken && fundsToken.mechanism !== 'native') {
-      throw new GasExceedsCategoryCWithErc20FundsError(fundsToken.symbol);
-    }
-    const swap = await buildBridgeSwapEntries(ctx, {
-      overflowNativePc: sizingDecision.overflowNativePc,
-      destinationPrc20: prc20Token,
-      ueaAddress,
-    });
-    bridgeSwapEntries = swap.entries;
-    extraBurnAmount = swap.expectedPrc20Out;
-    printLog(
-      ctx,
-      `executeUoaToCea — Case C bridge-swap composed: overflow=${sizingDecision.overflowNativePc}, ` +
-        `expectedPrc20Out=${swap.expectedPrc20Out}, feeTier=${swap.feeTier}`
-    );
-  }
-
   // Build outbound multicalls (approve burn + sendUniversalTxOutbound with native value)
   const outboundMulticalls = buildOutboundApprovalAndCall({
     prc20Token,
@@ -619,8 +567,6 @@ export async function executeUoaToCea(
     nativeValueForGas,
     gatewayPcAddress,
     outboundRequest: outboundReq,
-    bridgeSwapEntries,
-    extraBurnAmount,
   });
   pushChainMulticalls.push(...outboundMulticalls);
 
@@ -849,9 +795,7 @@ export async function executeUoaToCeaSvm(
   let protocolFeeSvm = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   let universalCoreAddress: `0x${string}` | undefined;
-  let sizingDecision: GasSizingDecision | undefined;
 
-  let nativeValueForGas = BigInt(0);
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
     const gasLimit = outboundReq.gasLimit;
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_202_01, targetChain);
@@ -860,9 +804,7 @@ export async function executeUoaToCeaSvm(
       gasFee = result.gasFee;
       protocolFeeSvm = result.protocolFee;
       gasToken = result.gasToken;
-      nativeValueForGas = result.nativeValueForGas;
       universalCoreAddress = result.universalCoreAddress;
-      sizingDecision = result.sizing;
       // When user omits gasLimit (sent as 0), the contract computes fees using its internal
       // baseGasLimitByChainNamespace. But the relay reads the stored gasLimit=0 from the
       // on-chain outbound record and uses it as the Solana compute budget — 0 CU means the
@@ -877,7 +819,7 @@ export async function executeUoaToCeaSvm(
       }
       printLog(
         ctx,
-        `executeUoaToCeaSvm — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}`
+        `executeUoaToCeaSvm — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}`
       );
       fireProgressHook(
         ctx,
@@ -886,57 +828,57 @@ export async function executeUoaToCeaSvm(
         protocolFeeSvm,
         gasFee
       );
-      if (result.sizing) {
-        fireSizingHook(ctx, 'R2', targetChain, result.sizing);
-      }
     } catch (err) {
       throw new Error(`Failed to query outbound gas fee: ${err}`);
     }
   }
 
-  // Estimate the actual WPC needed for the swap using on-chain pool price.
-  // The static 1Mx multiplier from queryOutboundGasFee doesn't reflect the real
-  // WPC/gasToken exchange rate. estimateNativeValueForSwap reads the Uniswap V3
-  // pool's slot0, computes the true cost, and adds a 2x buffer.
-  // Excess msg.value is refunded by the contract's swapAndBurnGas.
+  // R2 does NOT use Case A/B/C gas abstraction (scoped to R1 + R3 only).
+  // Size msg.value from the live WPC/gasToken Uniswap V3 pool quote plus
+  // a 10% safety buffer. swapAndBurnGas refunds the excess as PC via
+  // refundUnusedGas.
+  //
+  // SVM pools (WPC/pSOL) are thinner than EVM pools so the pool-quote can
+  // easily exceed the UEA's balance. Apply a balance-aware clamp so the
+  // outer tx doesn't fail with InsufficientFunds before the swap runs.
+  // No hard safety cap here — pSOL pool skew means even legitimate swaps
+  // can need hundreds of PC; capping would trigger Uniswap STF reverts.
+  const SVM_GAS_RESERVE = BigInt(3e18); // 3 UPC for outer-tx gas
+
+  let nativeValueForGas = BigInt(0);
   if (universalCoreAddress && gasFee > BigInt(0)) {
     const estimated = await estimateNativeValueForSwap(
       ctx, universalCoreAddress, gasToken, gasFee, ueaBalance
     );
-    if (estimated > nativeValueForGas) {
-      printLog(
-        ctx,
-        `executeUoaToCeaSvm — adjusting nativeValueForGas from ${nativeValueForGas.toString()} to ${estimated.toString()} (pool-price estimate, UEA balance: ${ueaBalance.toString()})`
-      );
-      nativeValueForGas = estimated;
-    }
-  }
-
-  // Case C overflow bridging (SDK 5.2). SVM destinations still use the
-  // SwapRouter + WPC wrap on Push Chain — same builder as EVM.
-  let bridgeSwapEntriesSvm: MultiCall[] | undefined;
-  let extraBurnAmountSvm: bigint | undefined;
-  if (
-    sizingDecision?.category === 'C' &&
-    sizingDecision.overflowNativePc > BigInt(0) &&
-    prc20Token !== (ZERO_ADDRESS as `0x${string}`)
-  ) {
-    const fundsToken = params.funds?.token;
-    if (fundsToken && fundsToken.mechanism !== 'native') {
-      throw new GasExceedsCategoryCWithErc20FundsError(fundsToken.symbol);
-    }
-    const swap = await buildBridgeSwapEntries(ctx, {
-      overflowNativePc: sizingDecision.overflowNativePc,
-      destinationPrc20: prc20Token,
-      ueaAddress,
-    });
-    bridgeSwapEntriesSvm = swap.entries;
-    extraBurnAmountSvm = swap.expectedPrc20Out;
+    nativeValueForGas = (estimated * BigInt(110)) / BigInt(100);
     printLog(
       ctx,
-      `executeUoaToCeaSvm — Case C bridge-swap composed: overflow=${sizingDecision.overflowNativePc}, ` +
-        `expectedPrc20Out=${swap.expectedPrc20Out}, feeTier=${swap.feeTier}`
+      `executeUoaToCeaSvm — nativeValueForGas: pool-quote=${estimated.toString()}, with 10% buffer=${nativeValueForGas.toString()}`
     );
+  }
+
+  // Balance-aware clamp: if UEA balance can't cover target + gas reserve,
+  // send only what we can afford. swapAndBurnGas refunds any excess.
+  let adjustedValueSvm: bigint;
+  if (ueaBalance >= nativeValueForGas + SVM_GAS_RESERVE) {
+    adjustedValueSvm = nativeValueForGas;
+  } else if (ueaBalance > SVM_GAS_RESERVE) {
+    adjustedValueSvm = ueaBalance - SVM_GAS_RESERVE;
+  } else if (ueaBalance > BigInt(0)) {
+    adjustedValueSvm = ueaBalance < nativeValueForGas ? ueaBalance : nativeValueForGas;
+  } else {
+    throw new Error(
+      `UEA ${ueaAddress} has zero UPC balance; cannot fund outbound gas swap. ` +
+      `Bridge UPC to the UEA before retrying.`
+    );
+  }
+
+  if (adjustedValueSvm !== nativeValueForGas) {
+    printLog(ctx,
+      `executeUoaToCeaSvm — adjusting nativeValueForGas from ${nativeValueForGas.toString()} ` +
+      `to ${adjustedValueSvm.toString()} (UEA balance: ${ueaBalance.toString()})`
+    );
+    nativeValueForGas = adjustedValueSvm;
   }
 
   // --- Build Push Chain multicalls (approve + sendUniversalTxOutbound) ---
@@ -946,8 +888,6 @@ export async function executeUoaToCeaSvm(
     gasToken,
     burnAmount,
     gasFee,
-    bridgeSwapEntries: bridgeSwapEntriesSvm,
-    extraBurnAmount: extraBurnAmountSvm,
     nativeValueForGas,
     gatewayPcAddress,
     outboundRequest: outboundReq,

@@ -40,6 +40,7 @@ import {
   getOriginGatewayContext,
 } from './gateway-client';
 import { buildGatewayPayloadAndGas } from './payload-builder';
+import { sizeR1PushGas } from './gas-usd-sizer';
 import { computeUEAOffchain, getUeaStatusAndNonce, getUEANonce } from './uea-manager';
 import {
   waitForEvmConfirmationsWithCountdown,
@@ -115,15 +116,31 @@ export async function executeFundsWithPayload(
 
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_02, ueaAddress, deployed);
 
-  // Determine USD to deposit via gateway (8 decimals) with caps: min=$1, max=$1000
-  const oneUsd = Utils.helpers.parseUnits('1', 8);
-  const maxUsd = Utils.helpers.parseUnits('1000', 8);
-  const deficit = requiredFunds > ueaBalance ? requiredFunds - ueaBalance : BigInt(0);
-  let depositUsd = deficit > BigInt(0) ? ctx.pushClient.pushToUSDC(deficit) : oneUsd;
+  // SDK 5.2 Case A/B/C sizing on the Push-chain gas portion.
+  // Floor pad comes from the sizer ($1 for Case A); upper bound now lives in
+  // the origin gateway (MAX_CAP_UNIVERSAL_TX_USD) — the SDK no longer caps.
+  const r1Sizing = await sizeR1PushGas(ctx, {
+    pushGasFeeWei: requiredGasFee,
+    originChain: chain,
+  });
+  const r1SizingHookId = {
+    A: PROGRESS_HOOK.SEND_TX_106_07_A,
+    B: PROGRESS_HOOK.SEND_TX_106_07_B,
+    C: PROGRESS_HOOK.SEND_TX_106_07_C,
+  }[r1Sizing.category];
+  fireProgressHook(
+    ctx,
+    r1SizingHookId,
+    chain,
+    r1Sizing.pushGasUsd,
+    r1Sizing.paddedDepositUsd
+  );
 
-  if (depositUsd < oneUsd) depositUsd = oneUsd;
-  if (depositUsd > maxUsd)
-    throw new Error('Deposit value exceeds max $1000 worth of native token');
+  const deficit = requiredFunds > ueaBalance ? requiredFunds - ueaBalance : BigInt(0);
+  let depositUsd = deficit > BigInt(0) ? ctx.pushClient.pushToUSDC(deficit) : BigInt(0);
+
+  // Apply sizer floor: Case A pads to $1, Cases B/C pass-through.
+  if (depositUsd < r1Sizing.paddedDepositUsd) depositUsd = r1Sizing.paddedDepositUsd;
 
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_102_02, depositUsd);
 

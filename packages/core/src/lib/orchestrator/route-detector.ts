@@ -70,28 +70,6 @@ export class InvalidTransactionError extends Error {
   }
 }
 
-/**
- * Thrown when a Route 2/3/4 outbound tx falls into Case C
- * (destination gas cost > $10 → overflow-bridge path) AND the caller
- * specified `funds` with a non-native ERC-20 token.
- *
- * v1 limitation per SDK 5.2 spec: the overflow-bridge flow swaps PC →
- * destination PRC-20 and folds the result into the outbound burnAmount.
- * Mixing that with a separate ERC-20 `funds` leg would need a second
- * multi-token bridge — not supported yet.
- */
-export class GasExceedsCategoryCWithErc20FundsError extends Error {
-  constructor(tokenSymbol?: string) {
-    super(
-      `Cannot send > $10 of destination gas along with ERC-20 funds ` +
-        `(${tokenSymbol ?? 'token'}). This mixed case is not supported ` +
-        `in SDK 5.2. Either split into two transactions (one for funds, ` +
-        `one for gas) or omit the ERC-20 funds leg.`
-    );
-    this.name = 'GasExceedsCategoryCWithErc20FundsError';
-  }
-}
-
 // ============================================================================
 // Chain Helpers
 // ============================================================================

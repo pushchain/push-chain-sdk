@@ -277,9 +277,6 @@ describe('docs-examples › 07-transaction-scenarios › Route 2 (UOA_TO_CEA)', 
       progressHook: (p) => console.log('TX Progress:', p.title || p.id),
     });
 
-    // One-time: teach the SDK how to resolve accounts/PDAs/CEA for this program.
-    PushChain.utils.svm.registerIdl(SOL_TEST_PROGRAM, testCounterIdl as any);
-
     await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
     await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, '5');
 

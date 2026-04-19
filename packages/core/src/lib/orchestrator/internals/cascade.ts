@@ -66,6 +66,7 @@ import {
 import { buildMulticallPayloadData } from './payload-builder';
 import { computeUEAOffchain, getUEANonce, getUeaStatusAndNonce } from './uea-manager';
 import { queryOutboundGasFee, estimateNativeValueForSwap } from './gas-calculator';
+import type { GasSizingDecision } from './gas-usd-sizer';
 import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
 import { buildPayloadForRoute } from './route-handlers';
 import { pickWaitHooks } from './progress-route-hooks';
@@ -234,10 +235,12 @@ export async function buildHopDescriptor(
 
         let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let gasFee = BigInt(0);
+        let sizing: GasSizingDecision | undefined;
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-          const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit);
+          const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, targetChain);
           gasToken = result.gasToken;
           gasFee = result.gasFee;
+          sizing = result.sizing;
         }
 
         return {
@@ -249,6 +252,7 @@ export async function buildHopDescriptor(
           burnAmount,
           gasToken,
           gasFee,
+          sizing,
         };
       }
 
@@ -265,10 +269,12 @@ export async function buildHopDescriptor(
         const burnAmount = BigInt(0); // Migration is logic-only — no funds. CEA rejects msg.value != 0.
         let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let gasFee = BigInt(0);
+        let sizing: GasSizingDecision | undefined;
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-          const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit);
+          const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, targetChain);
           gasToken = result.gasToken;
           gasFee = result.gasFee;
+          sizing = result.sizing;
         }
         return {
           ...baseDescriptor,
@@ -280,6 +286,7 @@ export async function buildHopDescriptor(
           gasToken,
           gasFee,
           isMigration: true,
+          sizing,
         };
       }
 
@@ -353,10 +360,12 @@ export async function buildHopDescriptor(
       // Query gas fee
       let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
       let gasFee = BigInt(0);
+      let sizing: GasSizingDecision | undefined;
       if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-        const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit);
+        const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, targetChain);
         gasToken = result.gasToken;
         gasFee = result.gasFee;
+        sizing = result.sizing;
       }
 
       return {
@@ -368,6 +377,7 @@ export async function buildHopDescriptor(
         burnAmount,
         gasToken,
         gasFee,
+        sizing,
       };
     }
 
@@ -418,10 +428,12 @@ export async function buildHopDescriptor(
 
         let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let gasFee = BigInt(0);
+        let sizing: GasSizingDecision | undefined;
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-          const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit);
+          const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, sourceChain);
           gasToken = result.gasToken;
           gasFee = result.gasFee;
+          sizing = result.sizing;
         }
 
         return {
@@ -433,6 +445,7 @@ export async function buildHopDescriptor(
           burnAmount: amount,
           gasToken,
           gasFee,
+          sizing,
         };
       }
 
@@ -469,10 +482,12 @@ export async function buildHopDescriptor(
       const prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
       let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
       let gasFee = BigInt(0);
+      let sizing: GasSizingDecision | undefined;
       if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-        const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit);
+        const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, sourceChain);
         gasToken = result.gasToken;
         gasFee = result.gasFee;
+        sizing = result.sizing;
       }
 
       return {
@@ -483,6 +498,7 @@ export async function buildHopDescriptor(
         burnAmount: amount,
         gasToken,
         gasFee,
+        sizing,
       };
     }
 
@@ -538,6 +554,20 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
           ...(hop.pushMulticalls || []),
         ];
       }
+
+      // Merge sizing: take the strictest category (C > B > A). Overflow
+      // from a Case C hop wins so the segment's msg.value covers the
+      // highest-cost hop in the merge.
+      if (hop.sizing) {
+        if (!currentSegment.sizing) {
+          currentSegment.sizing = hop.sizing;
+        } else if (
+          categoryRank(hop.sizing.category) >
+          categoryRank(currentSegment.sizing.category)
+        ) {
+          currentSegment.sizing = hop.sizing;
+        }
+      }
     } else {
       // Start a new segment
       currentSegment = {
@@ -558,12 +588,18 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
         gasToken: hop.gasToken,
         gasFee: hop.gasFee,
         gasLimit: hop.gasLimit,
+        sizing: hop.sizing,
       };
       segments.push(currentSegment);
     }
   }
 
   return segments;
+}
+
+/** Ordering for sizing-category severity (higher = stricter). */
+function categoryRank(c: 'A' | 'B' | 'C'): number {
+  return c === 'C' ? 2 : c === 'B' ? 1 : 0;
 }
 
 // ============================================================================
@@ -731,8 +767,16 @@ export async function composeCascade(
         } else {
           evmFallbackValue = segGasFee * BigInt(1000000);
         }
-        const nativeValueForGas =
+        let nativeValueForGas =
           svmOverride ?? perOutboundNativeValue ?? evmFallbackValue;
+
+        // SDK 5.2 Case C: when the segment's sizing is category C, compose
+        // R2/OUTBOUND_TO_CEA segments no longer apply Case A/B/C sizing
+        // (scoped to R1 + R3 only). segment.sizing may still be populated
+        // from the hop descriptor merge, but it is not consulted here —
+        // nativeValueForGas is driven by pool-quote on the single-hop path
+        // and by the cascade-level per-outbound allocation above.
+
         const outboundMulticalls = buildOutboundApprovalAndCall({
           prc20Token:
             segment.prc20Token || (ZERO_ADDRESS as `0x${string}`),
@@ -866,6 +910,23 @@ export async function composeCascade(
           } else {
             svmInboundFallback = inboundGasFee * BigInt(1000000);
           }
+          let svmInboundNativeValue =
+            perOutboundNativeValue ?? svmInboundFallback;
+          // SDK 5.2 R3-style Case C bump: when the inbound segment's sizing
+          // is C, top up the swap budget by the overflow. No bridge-swap —
+          // R3 has no destination funds delivery.
+          if (
+            segment.sizing?.category === 'C' &&
+            segment.sizing.overflowNativePc > BigInt(0)
+          ) {
+            const bumped =
+              svmInboundNativeValue + segment.sizing.overflowNativePc;
+            printLog(
+              ctx,
+              `composeCascade — INBOUND_FROM_CEA (SVM) Case C: bumping nativeValueForGas from ${svmInboundNativeValue} to ${bumped} (overflow=${segment.sizing.overflowNativePc})`
+            );
+            svmInboundNativeValue = bumped;
+          }
           const outboundMulticalls = buildOutboundApprovalAndCall({
             prc20Token:
               segment.prc20Token ||
@@ -874,8 +935,7 @@ export async function composeCascade(
               segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
             burnAmount: svmBurnAmount,
             gasFee: inboundGasFee,
-            nativeValueForGas:
-              perOutboundNativeValue ?? svmInboundFallback,
+            nativeValueForGas: svmInboundNativeValue,
             gatewayPcAddress,
             outboundRequest: outboundReq,
           });
@@ -969,6 +1029,23 @@ export async function composeCascade(
         } else {
           evmInboundFallback = inboundGasFee * BigInt(1000000);
         }
+        let evmInboundNativeValue =
+          perOutboundNativeValue ?? evmInboundFallback;
+        // SDK 5.2 R3-style Case C bump: when the inbound segment's sizing
+        // is C, top up the swap budget by the overflow. No bridge-swap —
+        // R3 has no destination funds delivery.
+        if (
+          segment.sizing?.category === 'C' &&
+          segment.sizing.overflowNativePc > BigInt(0)
+        ) {
+          const bumped =
+            evmInboundNativeValue + segment.sizing.overflowNativePc;
+          printLog(
+            ctx,
+            `composeCascade — INBOUND_FROM_CEA (EVM) Case C: bumping nativeValueForGas from ${evmInboundNativeValue} to ${bumped} (overflow=${segment.sizing.overflowNativePc})`
+          );
+          evmInboundNativeValue = bumped;
+        }
         const outboundMulticalls = buildOutboundApprovalAndCall({
           prc20Token:
             segment.prc20Token ||
@@ -977,8 +1054,7 @@ export async function composeCascade(
             segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
           burnAmount: segment.totalBurnAmount || BigInt(0),
           gasFee: inboundGasFee,
-          nativeValueForGas:
-            perOutboundNativeValue ?? evmInboundFallback,
+          nativeValueForGas: evmInboundNativeValue,
           gatewayPcAddress,
           outboundRequest: outboundReq,
         });

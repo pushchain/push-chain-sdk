@@ -54,7 +54,7 @@ describe('buildSvmPayloadFromParams — prepareTransaction parity', () => {
   beforeEach(() => clearRegistry());
 
   it('produces byte-identical svmPayload vs legacy svmExecute for amount=0', () => {
-    registerIdl(TEST_PROGRAM, testCounterIdl);
+    registerIdl(testCounterIdl);
     const amount = BigInt(0);
     const calldata =
       ('0x' + Buffer.from(legacyReceiveSolIxData(amount)).toString('hex')) as `0x${string}`;
@@ -73,7 +73,7 @@ describe('buildSvmPayloadFromParams — prepareTransaction parity', () => {
   });
 
   it('produces byte-identical svmPayload for non-zero amount', () => {
-    registerIdl(TEST_PROGRAM, testCounterIdl);
+    registerIdl(testCounterIdl);
     const amount = BigInt(5_000_000);
     const calldata =
       ('0x' + Buffer.from(legacyReceiveSolIxData(amount)).toString('hex')) as `0x${string}`;
@@ -121,6 +121,6 @@ describe('buildSvmPayloadFromParams — prepareTransaction parity', () => {
         to: { address: TEST_PROGRAM, chain: CHAIN.SOLANA_DEVNET },
         senderUea: SENDER_UEA,
       })
-    ).toThrow(/no IDL registered/);
+    ).toThrow(/no IDL found/);
   });
 });

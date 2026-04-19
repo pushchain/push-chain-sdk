@@ -46,8 +46,11 @@ export function resolveSvmCall(input: ResolveInput): ResolvedSvmCall {
   const idl = getIdl(input.programAddress);
   if (!idl) {
     throw new Error(
-      `resolveSvmCall: no IDL registered for ${input.programAddress}. ` +
-        `Call PushChain.utils.svm.registerIdl(${input.programAddress}, idl) first.`
+      `resolveSvmCall: no IDL found for ${input.programAddress}. ` +
+        `The SDK auto-registers Anchor IDLs when you call ` +
+        `PushChain.utils.helpers.encodeTxData({abi: idl, ...}). ` +
+        `If you built 'data' manually, call PushChain.utils.svm.registerIdl(idl) ` +
+        `once before prepareTransaction.`
     );
   }
 

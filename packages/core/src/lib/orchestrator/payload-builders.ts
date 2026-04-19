@@ -502,42 +502,14 @@ export function buildOutboundApprovalAndCall(opts: {
   nativeValueForGas?: bigint;
   gatewayPcAddress: `0x${string}`;
   outboundRequest: UniversalOutboundTxRequest;
-  /**
-   * SDK 5.2 Case C: wrap + approve + swap multicall entries prepended
-   * before the approve-for-burn step. Produced by `buildBridgeSwapEntries`.
-   */
-  bridgeSwapEntries?: MultiCall[];
-  /**
-   * SDK 5.2 Case C: additional PRC-20 added to the outbound burnAmount
-   * and the approve amount (the `expectedPrc20Out` from the swap).
-   */
-  extraBurnAmount?: bigint;
 }): MultiCall[] {
-  const { prc20Token, gasFee, gatewayPcAddress } = opts;
+  const { prc20Token, gasFee, gatewayPcAddress, outboundRequest } = opts;
   const multicalls: MultiCall[] = [];
-
-  // Case C: prepend wrap + approve + swap so the UEA holds the swapped
-  // PRC-20 before the approve-for-burn step below runs.
-  if (opts.bridgeSwapEntries && opts.bridgeSwapEntries.length > 0) {
-    multicalls.push(...opts.bridgeSwapEntries);
-  }
-
-  // Final burn amount = original burn + any swap-derived overflow (Case C).
-  const extraBurn = opts.extraBurnAmount ?? BigInt(0);
-  const totalBurnAmount = opts.burnAmount + extraBurn;
-
-  // Rebuild outbound request with the bumped burn amount so the gateway
-  // transfers the full amount out of the UEA. (Struct field is `amount`,
-  // which the gateway reads as the PRC-20 amount to burn.)
-  const outboundRequest: UniversalOutboundTxRequest =
-    extraBurn > BigInt(0)
-      ? { ...opts.outboundRequest, amount: totalBurnAmount }
-      : opts.outboundRequest;
 
   // ERC20 approve for burn amount (contract calls transferFrom for PRC20 burn)
   // Reset to 0 first for USDT-style tokens that revert on non-zero to non-zero approve.
   if (
-    totalBurnAmount > BigInt(0) &&
+    opts.burnAmount > BigInt(0) &&
     prc20Token.toLowerCase() !== ZERO_ADDRESS.toLowerCase()
   ) {
     const approveZeroData = encodeFunctionData({
@@ -548,7 +520,7 @@ export function buildOutboundApprovalAndCall(opts: {
     const approveData = encodeFunctionData({
       abi: ERC20_EVM,
       functionName: 'approve',
-      args: [gatewayPcAddress, totalBurnAmount],
+      args: [gatewayPcAddress, opts.burnAmount],
     });
     multicalls.push({
       to: prc20Token,

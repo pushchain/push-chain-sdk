@@ -30,7 +30,6 @@ import {
 import {
   registerIdl as registerSvmIdl,
   getRegisteredIdls as getRegisteredSvmIdls,
-  getIdl as getSvmIdl,
 } from './orchestrator/svm-idl/registry';
 
 /**
@@ -87,22 +86,17 @@ export class Utils {
   };
 
   /**
-   * SVM (Solana) utilities for registering program Anchor IDLs.
+   * SVM (Solana) escape-hatch utilities.
    *
-   * Register your program's Anchor IDL once per process; `prepareTransaction`
-   * then resolves accounts, PDAs, and signers from the IDL so you only need
-   * to pass `data` (discriminator + Borsh args), the same shape used for EVM.
+   * `PushChain.utils.helpers.encodeTxData({ abi: idl, ... })` auto-registers
+   * the Anchor IDL internally, so normal callers never need these.
    *
-   * @example
-   * PushChain.utils.svm.registerIdl(
-   *   PROGRAM_ADDRESS_HEX,
-   *   testCounterIdl
-   * );
+   * Use `registerIdl` directly only when you build `data` manually (raw
+   * Anchor discriminator + Borsh bytes) and bypass `encodeTxData`.
    */
   static svm = {
     registerIdl: registerSvmIdl,
     getRegisteredIdls: getRegisteredSvmIdls,
-    getIdl: getSvmIdl,
   };
 
   static signer = {
@@ -272,6 +266,7 @@ export class Utils {
         if (!Array.isArray(args)) {
           throw new Error('Arguments must be an array');
         }
+        registerSvmIdl(abi);
         const bytes = encodeAnchorIxData(abi, functionName, args);
         return `0x${Buffer.from(bytes).toString('hex')}` as `0x${string}`;
       }

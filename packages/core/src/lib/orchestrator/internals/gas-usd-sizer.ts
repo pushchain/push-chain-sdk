@@ -165,6 +165,75 @@ async function passthroughAsCaseB(
   };
 }
 
+// ============================================================================
+// R1 (UOA → Push) sizing
+// ============================================================================
+//
+// Unlike R2/R3, R1 does not cross chains — the UEA executes the user's
+// payload natively on Push Chain. The sized quantity is the Push-chain gas
+// cost (requiredGasFee in UPC wei) converted to USD via the per-route
+// WPC/USD oracle.
+//
+// Case A (< $1): pad the deposit to $1 (existing floor behavior).
+// Case B ($1–$10): pass-through, deposit as computed.
+// Case C (> $10): pass-through. No overflow-bridge semantic (R1 has no
+//   destination chain). Upper bound enforced by the origin gateway's
+//   contract-level MAX_CAP_UNIVERSAL_TX_USD — the SDK no longer caps.
+
+export interface R1SizingInput {
+  /** Push-chain gas cost in UPC wei (18 decimals) */
+  pushGasFeeWei: bigint;
+  /** Origin chain — picks the WPC/USD oracle pool */
+  originChain: CHAIN;
+}
+
+export interface R1SizingDecision {
+  category: GasSizingCategory;
+  /** Push-gas cost in USD (8 decimals) */
+  pushGasUsd: bigint;
+  /** USD the SDK should request on the origin gateway (8 decimals) */
+  paddedDepositUsd: bigint;
+}
+
+export async function sizeR1PushGas(
+  ctx: OrchestratorContext,
+  input: R1SizingInput
+): Promise<R1SizingDecision> {
+  const { pushGasFeeWei, originChain } = input;
+
+  // 1) Convert pushGasFeeWei (UPC wei, 18d) → USD (8d) via per-route oracle.
+  const pcUsdPrice = await getPcUsdPrice(ctx, originChain);
+  const onePcUnit = parseUnits('1', 18);
+  const pushGasUsd = (pushGasFeeWei * pcUsdPrice) / onePcUnit;
+
+  printLog(
+    ctx,
+    `sizeR1PushGas — pushGasFeeWei=${pushGasFeeWei.toString()} UPC (18d), ` +
+      `pcUsdPrice=${pcUsdPrice.toString()} (1e8), pushGasUsd=${pushGasUsd.toString()} (1e8)`
+  );
+
+  // 2) Bucket.
+  let category: GasSizingCategory;
+  let paddedDepositUsd: bigint;
+  if (pushGasUsd < ONE_USD_8D) {
+    category = 'A';
+    paddedDepositUsd = ONE_USD_8D;
+  } else if (pushGasUsd <= TEN_USD_8D) {
+    category = 'B';
+    paddedDepositUsd = pushGasUsd;
+  } else {
+    category = 'C';
+    paddedDepositUsd = pushGasUsd;
+  }
+
+  printLog(
+    ctx,
+    `sizeR1PushGas — category=${category}, paddedDepositUsd=${paddedDepositUsd.toString()} (1e8)`
+  );
+
+  return { category, pushGasUsd, paddedDepositUsd };
+}
+
 /**
  * Given gasFee (in gasToken units) and destination VM, return gasFee in USD
  * (8 decimals). Exposed for direct use in places that already have the
