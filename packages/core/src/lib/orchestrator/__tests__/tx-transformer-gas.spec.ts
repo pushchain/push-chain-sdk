@@ -257,8 +257,6 @@ describe('tx-transformer', () => {
 
       expect(ids).toContain('SEND-TX-103-01');
       expect(ids).toContain('SEND-TX-103-02');
-      expect(ids).toContain('SEND-TX-104-02');
-      expect(ids).toContain('SEND-TX-104-03');
     });
 
     it('should NOT include UEA resolution events for Push Chain origins', () => {
@@ -272,12 +270,20 @@ describe('tx-transformer', () => {
 
       expect(ids).not.toContain('SEND-TX-103-01');
       expect(ids).not.toContain('SEND-TX-103-02');
-      expect(ids).not.toContain('SEND-TX-104-02');
-      expect(ids).not.toContain('SEND-TX-104-03');
     });
 
-    it('should include funds flow events when inboundTx has non-zero amount', () => {
-      const txResponse = makeUniversalTxResponse();
+    // R1 reconstruction emits only the safe backbone (101, 102-01/02,
+    // 103-01/02 for external origins, 107, 199-01/02). Sub-path hooks
+    // (104-xx signature, 105-xx fee-lock, 106-xx funds-bridge) are
+    // intentionally omitted because R1 has no UniversalTx registration
+    // on Push Chain, so we can't tell the three live sub-paths apart
+    // from universalTxData alone. Callers who want the full live sequence
+    // register progressHook at initialize() time or via tx.progressHook(cb)
+    // on the original response.
+    it('should NOT include sub-path-specific events in R1 reconstruction', () => {
+      const txResponse = makeUniversalTxResponse({
+        origin: 'eip155:11155111:0xSenderAddr',
+      });
       const universalTxData = makeUniversalTxV2({
         inboundTx: makeInbound({ amount: '5000000000000000000' }),
       });
@@ -285,36 +291,20 @@ describe('tx-transformer', () => {
       const events = reconstructProgressEvents(txResponse, universalTxData);
       const ids = events.map((e) => e.id);
 
-      expect(ids).toContain('SEND-TX-106-01');
-      expect(ids).toContain('SEND-TX-106-02');
-      expect(ids).toContain('SEND-TX-106-03');
-      expect(ids).toContain('SEND-TX-106-03-02');
-      expect(ids).toContain('SEND-TX-106-04');
-      expect(ids).toContain('SEND-TX-106-05');
-      expect(ids).toContain('SEND-TX-106-06');
-    });
-
-    it('should NOT include funds flow events when inboundTx has zero amount', () => {
-      const txResponse = makeUniversalTxResponse();
-      const universalTxData = makeUniversalTxV2({
-        inboundTx: makeInbound({ amount: '0' }),
-      });
-
-      const events = reconstructProgressEvents(txResponse, universalTxData);
-      const ids = events.map((e) => e.id);
-
+      // Signature-path hooks
+      expect(ids).not.toContain('SEND-TX-104-01');
+      expect(ids).not.toContain('SEND-TX-104-02');
+      expect(ids).not.toContain('SEND-TX-104-03');
+      // Fee-lock hooks
+      expect(ids).not.toContain('SEND-TX-105-01');
+      expect(ids).not.toContain('SEND-TX-105-02');
+      // Funds-bridge hooks
       expect(ids).not.toContain('SEND-TX-106-01');
       expect(ids).not.toContain('SEND-TX-106-02');
-    });
-
-    it('should NOT include funds flow events when inboundTx is undefined', () => {
-      const txResponse = makeUniversalTxResponse();
-      const universalTxData = makeUniversalTxV2({ inboundTx: undefined });
-
-      const events = reconstructProgressEvents(txResponse, universalTxData);
-      const ids = events.map((e) => e.id);
-
-      expect(ids).not.toContain('SEND-TX-106-01');
+      expect(ids).not.toContain('SEND-TX-106-03');
+      expect(ids).not.toContain('SEND-TX-106-04');
+      expect(ids).not.toContain('SEND-TX-106-05');
+      expect(ids).not.toContain('SEND-TX-106-06');
     });
 
     it('should include broadcasting event (SEND_TX_107)', () => {

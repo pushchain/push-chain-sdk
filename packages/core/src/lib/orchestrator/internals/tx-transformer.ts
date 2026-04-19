@@ -73,7 +73,16 @@ export function reconstructProgressEvents(
   }
 
   // Route 1 (and Route 4 fallback while R4 has no spec'd IDs) — emit the
-  // full R1 lifecycle.
+  // safe R1 backbone that applies to every sub-path: origin → gas → UEA
+  // (non-Push only) → broadcast → terminal. The sub-path-specific hooks
+  // (104-xx signature, 105-xx fee-lock, 106-xx funds-bridge) are intentionally
+  // omitted from reconstruction because R1 doesn't register a UniversalTx
+  // on Push Chain, so `universalTxData` is usually undefined here and we
+  // have no reliable signal to tell the three paths apart. Callers who want
+  // the full live sequence should either register `progressHook` at
+  // `initialize()` time (client-level) or call `tx.progressHook(cb)` after
+  // sendTransaction — both deliver the full stream from the execute-phase
+  // event buffer.
   const events: ProgressEvent[] = [];
 
   const originParts = universalTxResponse.origin.split(':');
@@ -105,31 +114,6 @@ export function reconstructProgressEvents(
     );
   }
 
-  const inboundTx = universalTxData?.inboundTx;
-  const hasFundsFlow = inboundTx && BigInt(inboundTx.amount || '0') > BigInt(0);
-
-  if (!isPushOrigin) {
-    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_104_02]());
-    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_104_03]());
-  }
-
-  if (hasFundsFlow && inboundTx) {
-    const amount = BigInt(inboundTx.amount);
-    const decimals = 18;
-    const symbol = 'TOKEN';
-
-    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_106_01](amount, decimals, symbol));
-    events.push(
-      PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_106_02](inboundTx.txHash, amount, decimals, symbol)
-    );
-
-    const confirmations = 1;
-    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_106_03](confirmations));
-    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_106_03_02](confirmations, confirmations));
-    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_106_04]());
-    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_106_05]());
-    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_106_06](amount, decimals, symbol));
-  }
 
   events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_107]());
 

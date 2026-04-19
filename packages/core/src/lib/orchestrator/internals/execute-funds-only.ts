@@ -32,7 +32,7 @@ import { buildGatewayPayloadAndGas } from './payload-builder';
 import { getUeaStatusAndNonce, getUEANonce, computeUEAOffchain } from './uea-manager';
 import { waitForEvmConfirmationsWithCountdown, waitForSvmConfirmationsWithCountdown } from './confirmation';
 import { queryUniversalTxStatusFromGatewayTx } from './response-builder';
-import { extractPcTxAndTransform } from './push-chain-tx';
+import { extractPcTxAndTransform, PushChainExecutionError } from './push-chain-tx';
 import { buildSvmUniversalTxRequest, getSvmProtocolFee } from './svm-helpers';
 import { fetchOriginChainTransactionForProgress } from './helpers';
 import type { ResponseBuilderCallbacks } from './response-builder';
@@ -175,13 +175,25 @@ async function executeFundsOnlyEvm(
     txHash, evmGatewayMethod: execute.to === ueaAddress ? 'sendFunds' : 'sendTxWithFunds',
   }));
 
-  const pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(
-    ctx, evmClient, gatewayAddress, txHash,
-    execute.to === ueaAddress ? 'sendFunds' : 'sendTxWithFunds'
-  );
-
-  const response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txHash, eventBuffer, 'sendFunds', transformFn);
+  let response: UniversalTxResponse;
+  try {
+    const pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(
+      ctx, evmClient, gatewayAddress, txHash,
+      execute.to === ueaAddress ? 'sendFunds' : 'sendTxWithFunds'
+    );
+    // extractPcTxAndTransform fires 199-02 itself on pcTx FAILED; only emit
+    // for non-typed failures (RPC lookup error, timeout).
+    response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txHash, eventBuffer, 'sendFunds', transformFn);
+  } catch (err) {
+    if (!(err instanceof PushChainExecutionError)) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, errMsg);
+      throw new PushChainExecutionError(errMsg, { gatewayTxHash: txHash });
+    }
+    throw err;
+  }
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_06, bridgeAmount, execute.funds!.token!.decimals, symbol);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_107);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_01, [response]);
   return response;
 }
@@ -285,9 +297,20 @@ async function executeFundsOnlySvm(
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_04);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_05);
 
-  const pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(ctx, undefined, undefined, txSignature, 'sendFunds');
-  const response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txSignature, eventBuffer, 'sendFunds (SVM)', transformFn);
+  let response: UniversalTxResponse;
+  try {
+    const pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(ctx, undefined, undefined, txSignature, 'sendFunds');
+    response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txSignature, eventBuffer, 'sendFunds (SVM)', transformFn);
+  } catch (err) {
+    if (!(err instanceof PushChainExecutionError)) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, errMsg);
+      throw new PushChainExecutionError(errMsg, { gatewayTxHash: txSignature });
+    }
+    throw err;
+  }
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_06, bridgeAmount, execute.funds!.token!.decimals, symbol);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_107);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_01, [response]);
   return response;
 }

@@ -51,7 +51,7 @@ import {
   transformToUniversalTxResponse,
   type ResponseBuilderCallbacks,
 } from './response-builder';
-import { extractPcTxAndTransform } from './push-chain-tx';
+import { extractPcTxAndTransform, PushChainExecutionError } from './push-chain-tx';
 import { sendSVMTxWithFunds } from './svm-bridge';
 import { encodeUniversalPayload } from './signing';
 import type { UniversalPayload } from '../../generated/v1/tx';
@@ -287,19 +287,29 @@ export async function executeFundsWithPayload(
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_04);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_05);
 
-  let pushChainUniversalTx: UniversalTx | undefined;
-  if (CHAIN_INFO[ctx.universalSigner.account.chain].vm === VM.EVM) {
-    pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(
-      ctx, evmClient as EvmClient, gatewayAddress as `0x${string}`, txHash as `0x${string}`, 'sendTxWithFunds'
-    );
-  } else {
-    pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(
-      ctx, undefined, undefined, txHash as string, 'sendTxWithFunds'
-    );
+  let response: UniversalTxResponse;
+  try {
+    let pushChainUniversalTx: UniversalTx | undefined;
+    if (CHAIN_INFO[ctx.universalSigner.account.chain].vm === VM.EVM) {
+      pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(
+        ctx, evmClient as EvmClient, gatewayAddress as `0x${string}`, txHash as `0x${string}`, 'sendTxWithFunds'
+      );
+    } else {
+      pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(
+        ctx, undefined, undefined, txHash as string, 'sendTxWithFunds'
+      );
+    }
+    response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txHash as string, eventBuffer, 'sendTxWithFunds', transformFn);
+  } catch (err) {
+    if (!(err instanceof PushChainExecutionError)) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, errMsg);
+      throw new PushChainExecutionError(errMsg, { gatewayTxHash: txHash as string });
+    }
+    throw err;
   }
-
-  const response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txHash as string, eventBuffer, 'sendTxWithFunds', transformFn);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_06, bridgeAmount, execute.funds!.token.decimals, symbol);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_107);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_01, [response]);
   return response;
 }

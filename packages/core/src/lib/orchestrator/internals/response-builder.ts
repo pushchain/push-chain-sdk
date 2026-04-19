@@ -637,43 +637,25 @@ export async function transformToUniversalTxResponse(
       const outboundPollingIntervalMs =
         waitOptions?.outboundPollingIntervalMs ??
         callbacks.outboundConstants.pollingIntervalMs;
-      // Use trackTransaction with registered hook if available
-      let baseReceipt: UniversalTxReceipt;
-      // Track whether trackTransaction already reconstructed the route's
+      // Track whether reconstruction already emitted the route's
       // intermediate Push-success marker (299-99 / 199-99-99). When it has,
       // skip re-emitting from the outbound branch below to avoid duplicates.
-      let intermediateAlreadyEmitted = false;
-      // If THIS response itself was created by trackTransaction (the user
-      // did `tracked = trackTransaction(hash); tracked.wait()`), skip the
-      // inner trackTransaction call below — events were already replayed
-      // during the outer trackTransaction. Re-running it here would fire
-      // the same reconstructed events to registeredProgressHook a second
-      // time. We still need a receipt: derive it from tx.wait() + the
-      // existing universalTxResponse (which already has route + chain).
+      // This flag is only true when `this` response was created by
+      // trackTransaction() and the reconstructed stream already fired.
       const alreadyReconstructed =
         universalTxResponse._eventsReconstructed === true;
-      // The replay-via-trackTransaction path runs ONLY when the caller
-      // registered a hook after execute returned (tx.progressHook(cb)).
-      // Client-level ctx.progressHook already received live events during
-      // execute — replaying them here would emit duplicates. Wait-phase
-      // events (209-xx / 299-xx / 399-xx) still reach ctx.progressHook via
-      // the `emit` closure below.
-      if (registeredProgressHook && !alreadyReconstructed) {
-        const trackedResponse = await callbacks.trackTransaction(tx.hash, {
-          waitForCompletion: true,
-          progressHook: registeredProgressHook,
-        });
-        intermediateAlreadyEmitted = true;
-        // Get receipt from the tracked response
-        const receipt = await tx.wait();
-        baseReceipt = callbacks.transformToUniversalTxReceipt(receipt, trackedResponse);
-      } else {
-        const receipt = await tx.wait();
-        baseReceipt = callbacks.transformToUniversalTxReceipt(receipt, universalTxResponse);
-        // Tracked response already replayed reconstructed events including
-        // the intermediate Push-success marker — don't fire it again below.
-        if (alreadyReconstructed) intermediateAlreadyEmitted = true;
-      }
+      let intermediateAlreadyEmitted = alreadyReconstructed;
+
+      // Build the base receipt directly from this response. Any per-call
+      // `tx.progressHook(cb)` already replayed buffered execute-phase events
+      // to `cb` via the progressHook setter — re-running trackTransaction
+      // here would duplicate the reconstructed stream on top of that replay,
+      // which is exactly what broke R1 parity. Wait-phase events (209-xx /
+      // 299-xx / 399-xx) still reach `registeredProgressHook` and
+      // `ctx.progressHook` via the `emit` closure in the outbound branch.
+      const receipt = await tx.wait();
+      let baseReceipt: UniversalTxReceipt =
+        callbacks.transformToUniversalTxReceipt(receipt, universalTxResponse);
 
       // If outbound route, poll for external chain details
       const route = universalTxResponse.route as TransactionRoute | undefined;

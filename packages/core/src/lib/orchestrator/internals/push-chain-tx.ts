@@ -11,7 +11,7 @@ import { bytesToHex } from 'viem';
 import { CHAIN_INFO, VM_NAMESPACE } from '../../constants/chain';
 import { VM } from '../../constants/enums';
 import type { UniversalTx } from '../../generated/uexecutor/v1/types';
-import { ProgressEvent } from '../../progress-hook/progress-hook.types';
+import { PROGRESS_HOOK, ProgressEvent } from '../../progress-hook/progress-hook.types';
 import {
   UniversalAccountId,
   UniversalPayload,
@@ -23,7 +23,31 @@ import type {
   UniversalTxResponse,
 } from '../orchestrator.types';
 import type { OrchestratorContext } from './context';
-import { printLog } from './context';
+import { fireProgressHook, printLog } from './context';
+
+// ============================================================================
+// PushChainExecutionError
+// ============================================================================
+
+/**
+ * Typed error for Route 1 Push Chain tx failures. Thrown by
+ * `extractPcTxAndTransform` when the final pcTx commits with `status === 'FAILED'`,
+ * and surfaced as `SEND_TX_199_02` on the live stream. The readonly `code`
+ * discriminator lets callers classify via `instanceof PushChainExecutionError`
+ * instead of sniffing error messages.
+ *
+ * Carries the origin-chain gateway tx hash. There is no successful Push Chain
+ * tx to reference on this path — by definition the pcTx committed `FAILED`.
+ */
+export class PushChainExecutionError extends Error {
+  readonly code = 'PUSH_CHAIN_EXECUTION_FAILED' as const;
+  readonly gatewayTxHash?: string;
+  constructor(message: string, opts: { gatewayTxHash?: string } = {}) {
+    super(message);
+    this.name = 'PushChainExecutionError';
+    this.gatewayTxHash = opts.gatewayTxHash;
+  }
+}
 
 // ============================================================================
 // Callback type — avoids circular dependency with response-builder
@@ -397,9 +421,13 @@ export async function extractPcTxAndTransform(
         hint = ' [ExpiredDeadline: the transaction deadline has passed.]';
       }
     }
-    throw new Error(
-      `Push Chain transaction failed for gateway tx: ${gatewayTxHash}${errorDetails}${hint}`
-    );
+    const fullMessage =
+      `Push Chain transaction failed for gateway tx: ${gatewayTxHash}${errorDetails}${hint}`;
+    // Live-emit 199-02 before throwing so the terminal failure hook reaches
+    // any caller-registered progress stream (parity with reconstructProgressEvents
+    // which emits 199-02 on replay).
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, fullMessage);
+    throw new PushChainExecutionError(fullMessage, { gatewayTxHash });
   }
   const tx = await ctx.pushClient.getTransaction(lastPcTransaction.txHash as `0x${string}`);
   return transformFn(tx, eventBuffer);
