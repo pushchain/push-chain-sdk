@@ -57,6 +57,7 @@ export interface ResponseBuilderCallbacks {
   transformToUniversalTxReceipt: (receipt: any, response: any) => UniversalTxReceipt;
   printLog: (msg: string) => void;
   outboundConstants: { initialWaitMs: number; pollingIntervalMs: number; maxTimeoutMs: number };
+  inboundConstants: { initialWaitMs: number; pollingIntervalMs: number; maxTimeoutMs: number };
 }
 
 import { pickWaitHooks } from './progress-route-hooks';
@@ -156,8 +157,8 @@ export async function queryUniversalTxStatusFromGatewayTx(
 
     // Fetch UniversalTx via gRPC with linear-then-exponential retry
     const LINEAR_ATTEMPTS = 10;
-    const LINEAR_DELAY_MS = 3000;
-    const EXPONENTIAL_BASE_MS = 4000;
+    const LINEAR_DELAY_MS = 3600;
+    const EXPONENTIAL_BASE_MS = 4800;
     const MAX_ATTEMPTS = 15;
 
     let universalTxObj: any | undefined;
@@ -697,7 +698,13 @@ export async function transformToUniversalTxResponse(
           // R3 round-trip: poll Push Chain for the inbound tx that the
           // source-chain CEA's sendUniversalTxToUEA call produces. Correlate
           // via the outbound external tx hash → child UTX id → child pcTx.
-          if (route === TransactionRoute.CEA_TO_PUSH) {
+          // Only run when the CEA payload actually fires sendUniversalTxToUEA;
+          // payload-only R3 (no funds flowing back) has no child UTX and would
+          // otherwise time out after 300s.
+          if (
+            route === TransactionRoute.CEA_TO_PUSH &&
+            universalTxResponse._expectsInboundRoundTrip === true
+          ) {
             registeredProgressHook?.(
               PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_310_01](targetChain)
             );
@@ -709,10 +716,10 @@ export async function transformToUniversalTxResponse(
                 outboundDetails.externalTxHash,
                 targetChain,
                 {
-                  initialWaitMs: callbacks.outboundConstants.initialWaitMs,
+                  initialWaitMs: callbacks.inboundConstants.initialWaitMs,
                   pollingIntervalMs:
-                    callbacks.outboundConstants.pollingIntervalMs,
-                  timeout: callbacks.outboundConstants.maxTimeoutMs,
+                    callbacks.inboundConstants.pollingIntervalMs,
+                  timeout: callbacks.inboundConstants.maxTimeoutMs,
                   progressHook: (event) => {
                     if (!registeredProgressHook) return;
                     if (
@@ -770,7 +777,7 @@ export async function transformToUniversalTxResponse(
                 isTimeout
                   ? PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](
                       targetChain,
-                      callbacks.outboundConstants.maxTimeoutMs
+                      callbacks.inboundConstants.maxTimeoutMs
                     )
                   : PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](errMsg)
               );

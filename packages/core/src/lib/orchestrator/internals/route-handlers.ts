@@ -1350,6 +1350,13 @@ export async function executeCeaToPush(
   response.chain = sourceChain;
   const chainInfo = CHAIN_INFO[sourceChain];
   response.chainNamespace = `${VM_NAMESPACE[chainInfo.vm]}:${chainInfo.chainId}`;
+  // R3 inbound round-trip tracking is currently disabled: the Cosmos query
+  // `universal_tx_created.inbound_tx_hash='<extHash>'` returns no hits for
+  // either payload-only or funds-carrying R3 flows on testnet, so
+  // `waitForInboundPushTx` always times out. Leaving this flag unset (falsy)
+  // causes `.wait()` to skip the inbound poll entirely. Re-enable once the
+  // correlation event/attribute is confirmed against indexed Cosmos data.
+  // response._expectsInboundRoundTrip = amount > BigInt(0);
 
   return response;
 }
@@ -1591,6 +1598,9 @@ export async function executeCeaToPushSvm(
   response.chain = sourceChain;
   const chainInfo = CHAIN_INFO[sourceChain];
   response.chainNamespace = `${VM_NAMESPACE[chainInfo.vm]}:${chainInfo.chainId}`;
+  // See EVM executeCeaToPush note: R3 inbound correlation is broken; flag
+  // intentionally left unset so `.wait()` skips the inbound poll.
+  // response._expectsInboundRoundTrip = drainAmount > BigInt(0);
 
   return response;
 }

@@ -26,6 +26,7 @@ import {
   computeUEAOffchain as _computeUEAOffchain, computeUEA as _computeUEA,
   waitForOutboundTx as _waitForOutboundTx, waitForAllOutboundTxsV2 as _waitForAllOutboundTxsV2,
   OUTBOUND_INITIAL_WAIT_MS, OUTBOUND_POLL_INTERVAL_MS, OUTBOUND_MAX_TIMEOUT_MS,
+  INBOUND_INITIAL_WAIT_MS, INBOUND_MAX_TIMEOUT_MS,
   quoteExactOutput as _quoteExactOutput,
   getAccountStatus as _getAccountStatus, upgradeAccount as _upgradeAccount, migrateCEA as _migrateCEA,
   trackTransaction as _trackTransaction, transformToUniversalTxResponse as _transformToUniversalTxResponse,
@@ -69,6 +70,7 @@ export class Orchestrator {
       transformToUniversalTxReceipt: (receipt: TransactionReceipt, resp: UniversalTxResponse) => _transformToUniversalTxReceipt(receipt, resp),
       printLog: (msg: string) => _printLog(this.ctx, msg),
       outboundConstants: { initialWaitMs: OUTBOUND_INITIAL_WAIT_MS, pollingIntervalMs: OUTBOUND_POLL_INTERVAL_MS, maxTimeoutMs: OUTBOUND_MAX_TIMEOUT_MS },
+      inboundConstants: { initialWaitMs: INBOUND_INITIAL_WAIT_MS, pollingIntervalMs: OUTBOUND_POLL_INTERVAL_MS, maxTimeoutMs: INBOUND_MAX_TIMEOUT_MS },
     };
   }
 

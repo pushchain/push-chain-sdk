@@ -240,6 +240,14 @@ export interface UniversalTxResponse {
    * the user does `tracked = trackTransaction(...); tracked.wait()`.
    */
   _eventsReconstructed?: boolean;
+  /**
+   * @internal True when the R3 (CEA_TO_PUSH) execution produces a child UTX
+   * on Push Chain — i.e., the source-chain CEA payload actually calls
+   * `sendUniversalTxToUEA` (funds flowing back to UEA). When false, `.wait()`
+   * skips `waitForInboundPushTx` to avoid a 300s timeout on payload-only R3
+   * flows that have no inbound leg.
+   */
+  _expectsInboundRoundTrip?: boolean;
 }
 
 /**

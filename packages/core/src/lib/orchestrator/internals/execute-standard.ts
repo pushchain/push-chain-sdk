@@ -432,10 +432,28 @@ export async function executeStandardPayload(
     return response;
   }
 
-  // Non-fee-locking path: Broadcasting Tx to PC via sendUniversalTx
+  // Non-fee-locking path: Broadcasting Tx to PC via sendUniversalTx.
+  // Provide a resign callback so sendUniversalTx can recover from the
+  // UEA-nonce race: the EIP-712 hash uses the UEA's live storage nonce
+  // (not payload.nonce), so if anything advances it between our read and
+  // Cosmos inclusion the tx reverts with InvalidEVMSignature(0xc7dbd31d).
+  const resignOnSigMismatch = async () => {
+    const freshNonce = await getUEANonce(ctx, UEA);
+    const freshUeaVersion = await fetchUEAVersion(ctx);
+    const freshPayload = JSON.parse(
+      JSON.stringify({ ...universalPayload, nonce: freshNonce }, bigintReplacer)
+    ) as UniversalPayload;
+    const freshSig = await signUniversalPayload(ctx, freshPayload, UEA, freshUeaVersion);
+    return {
+      universalPayload: freshPayload,
+      verificationData: bytesToHex(freshSig),
+    };
+  };
+
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_107);
   const transactions = await sendUniversalTx(
-    ctx, isUEADeployed, feeLockTxHash, universalPayload, verificationData, eventBuffer, transformFn
+    ctx, isUEADeployed, feeLockTxHash, universalPayload, verificationData, eventBuffer, transformFn,
+    resignOnSigMismatch,
   );
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_01, transactions);
   return transactions[transactions.length - 1];

@@ -53,11 +53,11 @@ export function expectBridgeHooks(
   hookIds: string[],
   opts?: { expectConfirmation?: boolean }
 ) {
-  expect(hookIds).toContain('SEND-TX-01');
+  expect(hookIds).toContain('SEND-TX-101');
   if (opts?.expectConfirmation) {
-    expect(hookIds).toContain('SEND-TX-06-04');
-    expect(hookIds).toContain('SEND-TX-06-05');
-    expect(hookIds).toContain('SEND-TX-06-06');
+    expect(hookIds).toContain('SEND-TX-106-04');
+    expect(hookIds).toContain('SEND-TX-106-05');
+    expect(hookIds).toContain('SEND-TX-106-06');
   }
-  expect(hookIds).toContain('SEND-TX-99-01');
+  expect(hookIds).toContain('SEND-TX-199-01');
 }

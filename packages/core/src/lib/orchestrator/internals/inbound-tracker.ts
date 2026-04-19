@@ -122,9 +122,15 @@ export async function waitForInboundPushTx(
   const startedAt = Date.now();
   const elapsed = () => Date.now() - startedAt;
 
+  printLog(
+    ctx,
+    `[waitForInboundPushTx] Starting | externalTxHash: ${outboundExternalTxHash} | sourceChain: ${sourceChain} | initialWait: ${initialWaitMs}ms | pollInterval: ${pollingIntervalMs}ms | timeout: ${timeout}ms`
+  );
   progressHook?.({ status: 'waiting', elapsedMs: 0 });
   if (initialWaitMs > 0) {
+    printLog(ctx, `[waitForInboundPushTx] Initial wait of ${initialWaitMs}ms...`);
     await new Promise((r) => setTimeout(r, Math.min(initialWaitMs, timeout)));
+    printLog(ctx, `[waitForInboundPushTx] Initial wait done. Starting polling. Elapsed: ${elapsed()}ms`);
   }
 
   let childUtxId: string | null = null;
@@ -133,6 +139,7 @@ export async function waitForInboundPushTx(
   let lastEmittedStatus: 'polling' | 'found' | undefined;
   let consecutiveRpcErrors = 0;
   let pendingTerminalSuccessRetries = 0;
+  let pollCount = 0;
   // Heuristic threshold — log a distinct warning when this many back-to-back
   // RPC failures happen so callers can see the difference between
   // "indexer hasn't seen it yet" and "RPC is down."
@@ -142,12 +149,16 @@ export async function waitForInboundPushTx(
   const MAX_PENDING_TERMINAL_RETRIES = 2;
 
   while (elapsed() < timeout) {
+    pollCount++;
+    const pollStart = Date.now();
+    printLog(ctx, `[waitForInboundPushTx] Poll #${pollCount} | Elapsed: ${elapsed()}ms / ${timeout}ms | phase: ${childUtxId ? 'utx-status' : 'child-search'}`);
     // Phase 1 — find child UTX id from the outbound external tx hash
     if (!childUtxId) {
       const search = await findChildUtxIdFromExternalTx(
         ctx,
         outboundExternalTxHash
       );
+      printLog(ctx, `[waitForInboundPushTx] Poll #${pollCount} child-search result: utxId=${search.utxId ?? 'null'}${search.error ? ` error=${search.error.message}` : ''}`);
       if (search.error) {
         consecutiveRpcErrors++;
         if (consecutiveRpcErrors === RPC_FAILURE_WARN_THRESHOLD) {
@@ -187,6 +198,7 @@ export async function waitForInboundPushTx(
         if (utx?.pcTx?.[0]?.txHash) {
           pushTxHash = utx.pcTx[0].txHash;
         }
+        printLog(ctx, `[waitForInboundPushTx] Poll #${pollCount} utx-status | status: ${status} | pcTx[0].txHash: '${pushTxHash ?? ''}' | pcTx len: ${utx?.pcTx?.length ?? 0}`);
 
         if (TERMINAL_SUCCESS_STATUSES.has(status)) {
           // Wait one more poll cycle if pcTx hasn't populated yet — the
@@ -254,8 +266,10 @@ export async function waitForInboundPushTx(
     }
 
     if (elapsed() >= timeout) break;
+    printLog(ctx, `[waitForInboundPushTx] Poll #${pollCount} not ready (${Date.now() - pollStart}ms). Waiting ${pollingIntervalMs}ms...`);
     await new Promise((r) => setTimeout(r, pollingIntervalMs));
   }
+  printLog(ctx, `[waitForInboundPushTx] TIMEOUT after ${pollCount} polls | elapsed: ${elapsed()}ms`);
 
   progressHook?.({ status: 'timeout', elapsedMs: elapsed() });
   throw new Error(

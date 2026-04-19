@@ -35,8 +35,14 @@ export const OUTBOUND_INITIAL_WAIT_MS = 20000; // 20s
 /** Interval between consecutive polls (ms). */
 export const OUTBOUND_POLL_INTERVAL_MS = 5000; // 5s
 
-/** Maximum total timeout for the polling loop (ms). */
-export const OUTBOUND_MAX_TIMEOUT_MS = 300000; // 300s (5 min) — covers R3 round-trip inbound latency on testnet
+/** Maximum total timeout for the outbound polling loop (ms). */
+export const OUTBOUND_MAX_TIMEOUT_MS = 180000; // 180s (3 min)
+
+/** Maximum total timeout for the R3 inbound round-trip polling loop (ms). */
+export const INBOUND_MAX_TIMEOUT_MS = 300000; // 300s (5 min) — covers R3 inbound latency on testnet
+
+/** Initial wait before the first inbound poll (ms). Set to 0 — the outbound just completed, so the indexer may already have the child UTX. */
+export const INBOUND_INITIAL_WAIT_MS = 0;
 
 // ============================================================================
 // waitForOutboundTx

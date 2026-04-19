@@ -183,7 +183,10 @@ export class PushClient extends EvmClient {
         baseAccount = BaseAccount.decode(accountResp!.value);
       } catch (err) {
         // Account may not exist on-chain yet; default to sequence=0 / accountNumber=0
-        console.warn(`[PushClient:signCosmosTx] Account lookup failed for ${sender}, defaulting to sequence=0:`, err);
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!msg.includes('NotFound') && !msg.includes('not found')) {
+          console.warn(`[PushClient:signCosmosTx] Account lookup failed for ${sender}:`, err);
+        }
       }
 
       // 📦 Encode pubkey
