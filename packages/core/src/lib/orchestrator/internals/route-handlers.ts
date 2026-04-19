@@ -713,6 +713,9 @@ export async function executeUoaToCea(
       PROGRESS_HOOK.SEND_TX_204_04,
       err instanceof Error ? err.message : String(err)
     );
+    // Suppress the outer orchestrator catch's 299-02 terminal — 204-04
+    // already surfaced the signature/broadcast failure to the consumer.
+    ctx._routeTerminalEmitted = true;
     throw err;
   }
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_204_02);
@@ -999,6 +1002,8 @@ export async function executeUoaToCeaSvm(
       PROGRESS_HOOK.SEND_TX_204_04,
       err instanceof Error ? err.message : String(err)
     );
+    // Suppress the outer orchestrator catch's 299-02 terminal.
+    ctx._routeTerminalEmitted = true;
     throw err;
   }
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_204_02);
@@ -1053,25 +1058,31 @@ export async function executeCeaToPush(
   }
 
   // 3. Get UEA address (will be recipient on Push Chain from CEA's perspective)
-  const ueaAddress = computeUEAOffchain(ctx);
-
   // 4. Get CEA address on source chain
-  const { cea: ceaAddress, isDeployed: ceaDeployed } = await getCEAAddress(
-    ueaAddress,
-    sourceChain,
-    ctx.rpcUrls[sourceChain]?.[0]
-  );
+  // Both happen before the 301 hook fires — wrap them so a pre-sign RPC
+  // failure produces a descriptive message in the subsequent 399-02 body
+  // instead of a bare "failed to fetch" surface.
+  let ueaAddress: `0x${string}`;
+  let ceaAddress: `0x${string}`;
+  let ceaDeployed: boolean;
+  try {
+    ueaAddress = computeUEAOffchain(ctx);
+    const ceaResult = await getCEAAddress(
+      ueaAddress,
+      sourceChain,
+      ctx.rpcUrls[sourceChain]?.[0]
+    );
+    ceaAddress = ceaResult.cea as `0x${string}`;
+    ceaDeployed = ceaResult.isDeployed;
+  } catch (err) {
+    throw new Error(
+      `Route 3 setup failed: could not resolve CEA on ${sourceChain}: ${
+        err instanceof Error ? err.message : String(err)
+      }`
+    );
+  }
 
-  // R3 pre-broadcast progress
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_301, sourceChain, ceaAddress);
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_303_01, sourceChain);
-  fireProgressHook(
-    ctx,
-    PROGRESS_HOOK.SEND_TX_303_02,
-    ueaAddress,
-    ceaAddress,
-    sourceChain
-  );
 
   printLog(ctx, `executeCeaToPush — sourceChain: ${sourceChain}, CEA: ${ceaAddress}, deployed: ${ceaDeployed}`);
 
@@ -1286,6 +1297,18 @@ export async function executeCeaToPush(
     }
   }
 
+  // Emit account-resolution checkpoint post-gas to match numeric-spec order
+  // (301 → 302-xx → 303-xx). UEA + CEA were resolved earlier so we can feed
+  // both into 303-02.
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_303_01, sourceChain);
+  fireProgressHook(
+    ctx,
+    PROGRESS_HOOK.SEND_TX_303_02,
+    ueaAddress,
+    ceaAddress,
+    sourceChain
+  );
+
   // R3 Case C: unlike R2, R3 has no destination funds-delivery semantic
   // (CEA self-executes and bridges funds BACK to Push Chain). When the
   // sizer returns Case C, we simply top up msg.value with the overflow so
@@ -1400,9 +1423,6 @@ export async function executeCeaToPush(
     ...(!isUEADeployed ? { _minimumDepositUsd: ROUTE3_MINIMUM_DEPOSIT_USD } : {}),
   };
 
-  // R3 broadcast marker
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_307, sourceChain);
-
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_304_01);
   let response: UniversalTxResponse;
   try {
@@ -1413,22 +1433,29 @@ export async function executeCeaToPush(
       PROGRESS_HOOK.SEND_TX_304_04,
       err instanceof Error ? err.message : String(err)
     );
+    // Suppress the outer orchestrator catch's 399-02 terminal — 304-04
+    // already surfaced the signature/broadcast failure to the consumer.
+    ctx._routeTerminalEmitted = true;
     throw err;
   }
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_304_02);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_304_03);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_307, sourceChain);
 
   // Add Route 3 context to response
   response.chain = sourceChain;
   const chainInfo = CHAIN_INFO[sourceChain];
   response.chainNamespace = `${VM_NAMESPACE[chainInfo.vm]}:${chainInfo.chainId}`;
-  // R3 inbound round-trip tracking is currently disabled: the Cosmos query
-  // `universal_tx_created.inbound_tx_hash='<extHash>'` returns no hits for
-  // either payload-only or funds-carrying R3 flows on testnet, so
-  // `waitForInboundPushTx` always times out. Leaving this flag unset (falsy)
-  // causes `.wait()` to skip the inbound poll entirely. Re-enable once the
-  // correlation event/attribute is confirmed against indexed Cosmos data.
-  // response._expectsInboundRoundTrip = amount > BigInt(0);
+  // R3 inbound round-trip tracking: enable only when funds actually flow
+  // back (amount > 0). Payload-only R3 has no child inbound UTX on Push
+  // Chain, so polling would hang until timeout — skip the inbound block
+  // for amount == 0.
+  //
+  // Child-utxId correlation uses the universal-tx-detector's deterministic
+  // sha256(caip:txHash:logIndex) derivation (see inbound-tracker.ts
+  // findChildUtxIdFromExternalTx), with the original cosmos
+  // `universal_tx_created.inbound_tx_hash` search kept as a fallback.
+  response._expectsInboundRoundTrip = amount > BigInt(0);
 
   return response;
 }
@@ -1465,16 +1492,7 @@ export async function executeCeaToPushSvm(
   const programPk = new PublicKey(lockerContract);
   const gatewayProgramHex = ('0x' + Buffer.from(programPk.toBytes()).toString('hex')) as `0x${string}`;
 
-  // R3 pre-broadcast progress (SVM)
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_301, sourceChain, lockerContract);
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_303_01, sourceChain);
-  fireProgressHook(
-    ctx,
-    PROGRESS_HOOK.SEND_TX_303_02,
-    ueaAddress,
-    lockerContract,
-    sourceChain
-  );
 
   printLog(ctx, `executeCeaToPushSvm — sourceChain: ${sourceChain}, gateway: ${lockerContract}`);
 
@@ -1587,6 +1605,18 @@ export async function executeCeaToPushSvm(
     }
   }
 
+  // Emit account-resolution checkpoint post-gas to match numeric-spec order
+  // (301 → 302-xx → 303-xx). UEA + gateway were resolved earlier so we can
+  // feed both into 303-02.
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_303_01, sourceChain);
+  fireProgressHook(
+    ctx,
+    PROGRESS_HOOK.SEND_TX_303_02,
+    ueaAddress,
+    lockerContract,
+    sourceChain
+  );
+
   // R3 SVM Case C: same minimal interpretation as R3 EVM — bump msg.value
   // by the overflow so swapAndBurnGas can afford the full gas cost. No
   // bridge-swap entries (R3 has no destination funds-delivery semantic).
@@ -1648,9 +1678,6 @@ export async function executeCeaToPushSvm(
     ...(!isUEADeployed ? { _minimumDepositUsd: Utils.helpers.parseUnits('10', 8) } : {}),
   };
 
-  // R3 broadcast marker (SVM)
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_307, sourceChain);
-
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_304_01);
   let response: UniversalTxResponse;
   try {
@@ -1661,18 +1688,25 @@ export async function executeCeaToPushSvm(
       PROGRESS_HOOK.SEND_TX_304_04,
       err instanceof Error ? err.message : String(err)
     );
+    // Suppress the outer orchestrator catch's 399-02 terminal.
+    ctx._routeTerminalEmitted = true;
     throw err;
   }
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_304_02);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_304_03);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_307, sourceChain);
 
   // Add Route 3 SVM context to response
   response.chain = sourceChain;
   const chainInfo = CHAIN_INFO[sourceChain];
   response.chainNamespace = `${VM_NAMESPACE[chainInfo.vm]}:${chainInfo.chainId}`;
-  // See EVM executeCeaToPush note: R3 inbound correlation is broken; flag
-  // intentionally left unset so `.wait()` skips the inbound poll.
-  // response._expectsInboundRoundTrip = drainAmount > BigInt(0);
+  // R3 SVM inbound round-trip tracking: enable only when funds flow back
+  // (drainAmount > 0). See the EVM executeCeaToPush note — child-utxId
+  // correlation uses the universal-tx-detector's deterministic derivation.
+  // NOTE: the detector is EVM-only today; SVM source-chain logs can't be
+  // decoded yet, so this branch will fall back to the (broken) cosmos
+  // search. Disable if SVM R3 tests start timing out in CI.
+  response._expectsInboundRoundTrip = drainAmount > BigInt(0);
 
   return response;
 }

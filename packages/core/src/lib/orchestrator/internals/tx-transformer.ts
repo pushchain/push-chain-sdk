@@ -55,6 +55,12 @@ export function reconstructProgressEvents(
   const isOutboundFailed =
     universalTxData?.universalStatus === UniversalTxStatus.OUTBOUND_FAILED;
   const isPcFailed = pcTx?.status === 'FAILED';
+  // R1 fallback keeps the inclusive view (any terminal failure → 199-02).
+  // R2 and R3 reconstructors narrow to Push-chain-only failures (see call
+  // sites below) — an outbound-leg revert is re-detected during wait() by
+  // `waitForOutboundTx` and emitted as 299-02 / 399-02 with the correctly
+  // scoped phase ('outbound' + source-chain). Emitting in both places
+  // would double-fire the terminal with a misleading 'push' title on top.
   const isFailed = isPcFailed || isOutboundFailed;
   const errorMsg = isOutboundFailed
     ? 'Outbound transaction failed (status: OUTBOUND_FAILED)'
@@ -65,11 +71,20 @@ export function reconstructProgressEvents(
   // R1 IDs via fireProgressHook). Skip the R1 101–107 sequence here; it would
   // only fire for R2/R3 because reconstructProgressEvents bypasses
   // fireProgressHook (writes to events[] directly).
+  // For R2/R3 we only emit the reconstructed terminal when the Push-chain
+  // leg itself failed — so prefer pcTx.errorMsg over the outbound-failed
+  // sentinel. The outer `errorMsg` above carries the outbound text when
+  // `isOutboundFailed` is set; that path is handled by wait() instead.
+  const pcErrorMsg = pcTx?.errorMsg || 'Unknown error';
+
   if (route === TransactionRoute.UOA_TO_CEA) {
-    return reconstructR2(universalTxResponse, universalTxData, isFailed, errorMsg);
+    // R2: only Push-chain revert triggers the 299-02 terminal here; a
+    // cosmos OUTBOUND_FAILED without pcTx.FAILED is handled by wait().
+    return reconstructR2(universalTxResponse, universalTxData, isPcFailed, pcErrorMsg);
   }
   if (route === TransactionRoute.CEA_TO_PUSH) {
-    return reconstructR3(universalTxResponse, universalTxData, isFailed, errorMsg);
+    // R3: same narrowing — only pcTx.FAILED triggers reconstructed 399-02.
+    return reconstructR3(universalTxResponse, universalTxData, isPcFailed, pcErrorMsg);
   }
 
   // Route 1 (and Route 4 fallback while R4 has no spec'd IDs) — emit the
@@ -207,7 +222,11 @@ function reconstructR3(
   events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_307](sourceChain));
 
   if (isFailed) {
-    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](errorMsg));
+    // Reconstructed Push-chain-tx failure — phase='push' so the title reads
+    // "Push Chain Tx Failed" rather than the inbound copy.
+    events.push(
+      PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](errorMsg, 'push')
+    );
   } else {
     // Push Chain success is intermediate for R3 — wait() drives the source-chain
     // CEA poll (309-xx) and the inbound-to-Push poll (310-xx / 399-xx) on top.

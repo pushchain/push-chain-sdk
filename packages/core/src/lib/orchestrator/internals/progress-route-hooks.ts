@@ -55,9 +55,13 @@ export function pickWaitHooks(
           details.destinationChain,
           details.externalTxHash
         ),
+      // R3 outbound (source-chain CEA) failures share the 399-02/03 IDs with
+      // R3 inbound; pass phase='outbound' so the title reflects the source
+      // chain instead of "Push Chain Inbound …".
       timeout: (chain, elapsed) =>
-        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](chain, elapsed),
-      failed: (_chain, msg) => PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](msg),
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](chain, elapsed, 'outbound'),
+      failed: (chain, msg) =>
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](msg, 'outbound', chain),
     };
   }
   // Route 4 (CEA_TO_CEA) has no spec'd ID range yet; cascade hops and

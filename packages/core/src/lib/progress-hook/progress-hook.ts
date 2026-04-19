@@ -35,9 +35,9 @@ const friendlyChain = (chainOrNs: string | CHAIN | undefined): string => {
 };
 
 /**
- * Shape of the `response` field emitted by `SEND_TX_104_04` (R1) and
- * `SEND_TX_204_04` (R2). Exported so consumers can read `isUserDecline`
- * without casting through `object`.
+ * Shape of the `response` field emitted by `SEND_TX_104_04` (R1),
+ * `SEND_TX_204_04` (R2), and `SEND_TX_304_04` (R3). Exported so consumers
+ * can read `isUserDecline` without casting through `object`.
  */
 export interface DeclineHookResponse {
   /** The underlying sign-time error message (decline copy when absent). */
@@ -51,8 +51,8 @@ export interface DeclineHookResponse {
  * (viem `UserRejectedRequestError`, ethers `ACTION_REJECTED`, EIP-1193 4001,
  * or textual "user rejected"/"user denied"/"declined by user") or a generic
  * signature failure (insufficient funds, RPC failure, contract revert
- * during sign, etc.). Shared by SEND_TX_104_04 (R1) and SEND_TX_204_04 (R2)
- * so the heuristic lives in one place.
+ * during sign, etc.). Shared by SEND_TX_104_04 (R1), SEND_TX_204_04 (R2),
+ * and SEND_TX_304_04 (R3) so the heuristic lives in one place.
  *
  * When `errorMessage` is omitted, treat it as a decline — the spec copy is
  * already the decline copy ("Verification declined by user"), so flipping
@@ -601,13 +601,20 @@ const RAW_HOOKS_R3: {
     response: { stage: 'verified' },
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_304_04]: (errorMessage?: string) => ({
-    id: PROGRESS_HOOK.SEND_TX_304_04,
-    title: 'Verification Declined',
-    message: 'Verification declined by user',
-    response: { error: errorMessage ?? 'Verification declined by user' },
-    level: 'ERROR',
-  }),
+  [PROGRESS_HOOK.SEND_TX_304_04]: (errorMessage?: string) => {
+    const { isUserDecline, title, message } = classifyDeclineError(errorMessage);
+    const response: DeclineHookResponse = {
+      error: errorMessage ?? 'Verification declined by user',
+      isUserDecline,
+    };
+    return {
+      id: PROGRESS_HOOK.SEND_TX_304_04,
+      title,
+      message,
+      response,
+      level: 'ERROR',
+    };
+  },
   [PROGRESS_HOOK.SEND_TX_307]: (sourceChain: string | CHAIN) => ({
     id: PROGRESS_HOOK.SEND_TX_307,
     title: `Broadcasting from Push Chain → ${friendlyChain(sourceChain)}`,
@@ -670,21 +677,58 @@ const RAW_HOOKS_R3: {
     response: { chain: sourceChain, txHash, receipt: receipt ?? null },
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_399_02]: (errorMessage: string) => ({
+  // 399-02 / 399-03 are multi-use terminal hooks for R3:
+  //   • 'inbound' (default) — round-trip Push tx failed/timed out (target: Push)
+  //   • 'outbound' — source-chain CEA tx failed/timed out (target: source chain)
+  //   • 'push' — Push Chain execution itself failed (gateway tx revert / pre-wait)
+  // Phase is passed by the emission site so the title matches the leg that
+  // actually failed. Default stays 'inbound' for callers that don't specify
+  // (backwards-compat with fixtures + response-builder's inbound block).
+  [PROGRESS_HOOK.SEND_TX_399_02]: (
+    errorMessage: string,
+    phase: 'outbound' | 'inbound' | 'push' = 'inbound',
+    chain?: string | CHAIN
+  ) => ({
     id: PROGRESS_HOOK.SEND_TX_399_02,
-    title: 'Push Chain Inbound Tx Failed',
+    title:
+      phase === 'outbound'
+        ? `${friendlyChain(chain)} Tx Failed`
+        : phase === 'push'
+        ? 'Push Chain Tx Failed'
+        : 'Push Chain Inbound Tx Failed',
     message: errorMessage,
-    response: { error: errorMessage },
+    response: { error: errorMessage, phase, chain: chain ?? null },
     level: 'ERROR',
   }),
   [PROGRESS_HOOK.SEND_TX_399_03]: (
     sourceChain: string | CHAIN,
-    elapsedMs: number
+    elapsedMs: number,
+    phase: 'outbound' | 'inbound' | 'push' = 'inbound'
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_399_03,
-    title: 'Push Chain Inbound Timeout',
-    message: `Timed out waiting for inbound from ${sourceChain}`,
-    response: { error: 'inbound timeout', chain: sourceChain, elapsedMs },
+    title:
+      phase === 'outbound'
+        ? `Syncing State with ${friendlyChain(sourceChain)} Timeout`
+        : phase === 'push'
+        ? 'Push Chain Tx Timeout'
+        : 'Push Chain Inbound Timeout',
+    message:
+      phase === 'outbound'
+        ? `Timed out waiting for ${friendlyChain(sourceChain)} relay`
+        : phase === 'push'
+        ? `Timed out waiting for Push Chain tx`
+        : `Timed out waiting for inbound from ${sourceChain}`,
+    response: {
+      error:
+        phase === 'outbound'
+          ? 'outbound timeout'
+          : phase === 'push'
+          ? 'push timeout'
+          : 'inbound timeout',
+      phase,
+      chain: sourceChain,
+      elapsedMs,
+    },
     level: 'ERROR',
   }),
 };

@@ -393,6 +393,76 @@ describe('tx-transformer', () => {
 
       expect(lastEvent.id).toBe('SEND-TX-199-01');
     });
+
+    // ------------------------------------------------------------------
+    // R2/R3 narrowing — only pcTx.FAILED emits the reconstructed terminal;
+    // universalStatus=OUTBOUND_FAILED with a successful pcTx must leave the
+    // intermediate marker so wait() emits 299-02/399-02 with phase='outbound'
+    // (and source-chain context) instead of double-firing the terminal.
+    // ------------------------------------------------------------------
+
+    it('R2 reconstruction: pcTx.FAILED emits 299-02 terminal', () => {
+      const txResponse = makeUniversalTxResponse({
+        route: TransactionRoute.UOA_TO_CEA,
+      });
+      const universalTxData = makeUniversalTxV2({
+        pcTx: [makePcTx({ status: 'FAILED', errorMsg: 'revert reason' })],
+      });
+
+      const events = reconstructProgressEvents(txResponse, universalTxData);
+      const lastEvent = events[events.length - 1];
+
+      expect(lastEvent.id).toBe('SEND-TX-299-02');
+      expect(lastEvent.level).toBe('ERROR');
+    });
+
+    it('R2 reconstruction: universalStatus=OUTBOUND_FAILED without pcFailed emits 299-99 intermediate (not 299-02)', () => {
+      const txResponse = makeUniversalTxResponse({
+        route: TransactionRoute.UOA_TO_CEA,
+      });
+      const universalTxData = makeUniversalTxV2({
+        universalStatus: UniversalTxStatus.OUTBOUND_FAILED,
+        pcTx: [makePcTx({ status: 'SUCCESS' })],
+      });
+
+      const events = reconstructProgressEvents(txResponse, universalTxData);
+      const ids = events.map((e) => e.id);
+
+      expect(ids).toContain('SEND-TX-299-99');
+      expect(ids).not.toContain('SEND-TX-299-02');
+    });
+
+    it('R3 reconstruction: pcTx.FAILED emits 399-02 terminal with phase=push', () => {
+      const txResponse = makeUniversalTxResponse({
+        route: TransactionRoute.CEA_TO_PUSH,
+      });
+      const universalTxData = makeUniversalTxV2({
+        pcTx: [makePcTx({ status: 'FAILED', errorMsg: 'revert reason' })],
+      });
+
+      const events = reconstructProgressEvents(txResponse, universalTxData);
+      const lastEvent = events[events.length - 1];
+
+      expect(lastEvent.id).toBe('SEND-TX-399-02');
+      expect(lastEvent.level).toBe('ERROR');
+      expect(lastEvent.title).toBe('Push Chain Tx Failed');
+    });
+
+    it('R3 reconstruction: universalStatus=OUTBOUND_FAILED without pcFailed emits 199-99-99 intermediate (not 399-02)', () => {
+      const txResponse = makeUniversalTxResponse({
+        route: TransactionRoute.CEA_TO_PUSH,
+      });
+      const universalTxData = makeUniversalTxV2({
+        universalStatus: UniversalTxStatus.OUTBOUND_FAILED,
+        pcTx: [makePcTx({ status: 'SUCCESS' })],
+      });
+
+      const events = reconstructProgressEvents(txResponse, universalTxData);
+      const ids = events.map((e) => e.id);
+
+      expect(ids).toContain('SEND-TX-199-99-99');
+      expect(ids).not.toContain('SEND-TX-399-02');
+    });
   });
 
   // --------------------------------------------------------------------------

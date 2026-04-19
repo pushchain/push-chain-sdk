@@ -131,6 +131,9 @@ export async function executeStandardPayload(
         isUserDecline ? PROGRESS_HOOK.SEND_TX_104_04 : PROGRESS_HOOK.SEND_TX_199_02,
         errMsg
       );
+      // Mark that a terminal-ish error hook has already fired so the
+      // outer orchestrator catch doesn't emit a second 199-02 on top.
+      ctx._routeTerminalEmitted = true;
       if (!isUserDecline && !(err instanceof PushChainExecutionError)) {
         throw new PushChainExecutionError(errMsg);
       }

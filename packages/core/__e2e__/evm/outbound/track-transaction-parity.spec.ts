@@ -33,8 +33,9 @@ const EXECUTE_IDS_EXPECTED = [
   'SEND-TX-207',
 ];
 
+// 299-99 is the intermediate Push-success marker — emitted internally but
+// suppressed at the consumer dispatch boundary.
 const WAIT_IDS_EXPECTED = [
-  'SEND-TX-299-99',
   'SEND-TX-209-01',
   'SEND-TX-209-02',
   'SEND-TX-299-01',
@@ -112,14 +113,11 @@ describe('Route 2 progress-hook parity (live vs trackTransaction replay)', () =>
       `Track client stream (${trackClientIds.length}): ${trackClientIds.join(' → ')}`
     );
 
-    // Replay stream must contain the full execute-phase sequence in spec
-    // order plus the intermediate 299-99 marker, followed by the wait-phase
-    // events delivered through the auto-registered per-call progressHook.
-    const REPLAY_EXPECTED = [
-      ...EXECUTE_IDS_EXPECTED,
-      'SEND-TX-299-99',
-      ...WAIT_IDS_EXPECTED.filter((id) => id !== 'SEND-TX-299-99'),
-    ];
+    // Replay stream = reconstructed execute-phase (in spec order) followed
+    // by the wait-phase events delivered through the auto-registered
+    // per-call progressHook. The intermediate 299-99 marker is emitted
+    // internally but suppressed at the consumer dispatch boundary.
+    const REPLAY_EXPECTED = [...EXECUTE_IDS_EXPECTED, ...WAIT_IDS_EXPECTED];
     expect(replayIds).toEqual(REPLAY_EXPECTED);
 
     // Same wait-phase IDs also reach the client-level hook.

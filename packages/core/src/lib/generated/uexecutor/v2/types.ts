@@ -160,6 +160,8 @@ export interface OutboundObservation {
   blockHeight: number;
   txHash: string;
   errorMsg: string;
+  /** Field 5 — actual gas fee consumed on destination chain (proto types.proto:143). */
+  gasFeeUsed: string;
 }
 
 /**
@@ -189,6 +191,18 @@ export interface OutboundTxV2 {
   outboundStatus: OutboundStatus;
   revertInstructions?: RevertInstructions | undefined;
   pcRevertExecution?: PCTx | undefined;
+  /** Field 16 — gas price on destination chain at time of outbound. */
+  gasPrice: string;
+  /** Field 17 — gas fee paid to relayer on destination chain. */
+  gasFee: string;
+  /** Field 18 — PC tx that executed the gas refund, non-nil if refund ran. */
+  pcRefundExecution?: PCTx | undefined;
+  /** Field 19 — non-empty if swap-refund failed and we fell back to no-swap. */
+  refundSwapError: string;
+  /** Field 20 — gas token PRC20 address used to pay relayer fee. */
+  gasToken: string;
+  /** Field 21 — Human-readable reason why the outbound was aborted. */
+  abortReason: string;
 }
 
 /**
@@ -271,7 +285,13 @@ export const OriginatingPcTx: MessageFns<OriginatingPcTx> = {
 };
 
 function createBaseOutboundObservation(): OutboundObservation {
-  return { success: false, blockHeight: 0, txHash: '', errorMsg: '' };
+  return {
+    success: false,
+    blockHeight: 0,
+    txHash: '',
+    errorMsg: '',
+    gasFeeUsed: '',
+  };
 }
 
 export const OutboundObservation: MessageFns<OutboundObservation> = {
@@ -283,6 +303,8 @@ export const OutboundObservation: MessageFns<OutboundObservation> = {
     if (message.blockHeight !== 0) writer.uint32(16).uint64(message.blockHeight);
     if (message.txHash !== '') writer.uint32(26).string(message.txHash);
     if (message.errorMsg !== '') writer.uint32(34).string(message.errorMsg);
+    if (message.gasFeeUsed !== '')
+      writer.uint32(42).string(message.gasFeeUsed);
     return writer;
   },
 
@@ -309,6 +331,9 @@ export const OutboundObservation: MessageFns<OutboundObservation> = {
         case 4:
           message.errorMsg = reader.string();
           break;
+        case 5:
+          message.gasFeeUsed = reader.string();
+          break;
         default:
           if ((tag & 7) === 4 || tag === 0) return message;
           reader.skip(tag & 7);
@@ -330,6 +355,9 @@ export const OutboundObservation: MessageFns<OutboundObservation> = {
       errorMsg: isSet(object.errorMsg)
         ? globalThis.String(object.errorMsg)
         : '',
+      gasFeeUsed: isSet(object.gasFeeUsed)
+        ? globalThis.String(object.gasFeeUsed)
+        : '',
     };
   },
 
@@ -339,6 +367,7 @@ export const OutboundObservation: MessageFns<OutboundObservation> = {
     if (message.blockHeight !== 0) obj.blockHeight = message.blockHeight;
     if (message.txHash !== '') obj.txHash = message.txHash;
     if (message.errorMsg !== '') obj.errorMsg = message.errorMsg;
+    if (message.gasFeeUsed !== '') obj.gasFeeUsed = message.gasFeeUsed;
     return obj;
   },
 
@@ -348,6 +377,7 @@ export const OutboundObservation: MessageFns<OutboundObservation> = {
     message.blockHeight = object.blockHeight ?? 0;
     message.txHash = object.txHash ?? '';
     message.errorMsg = object.errorMsg ?? '';
+    message.gasFeeUsed = object.gasFeeUsed ?? '';
     return message;
   },
 };
@@ -424,6 +454,12 @@ function createBaseOutboundTxV2(): OutboundTxV2 {
     outboundStatus: 0,
     revertInstructions: undefined,
     pcRevertExecution: undefined,
+    gasPrice: '',
+    gasFee: '',
+    pcRefundExecution: undefined,
+    refundSwapError: '',
+    gasToken: '',
+    abortReason: '',
   };
 }
 
@@ -467,6 +503,21 @@ export const OutboundTxV2Codec: MessageFns<OutboundTxV2> = {
         message.pcRevertExecution,
         writer.uint32(122).fork()
       ).join();
+    // Tag = (field<<3) | wire_type. wire_type=2 (length-delim) for string/msg.
+    if (message.gasPrice !== '')
+      writer.uint32(130).string(message.gasPrice); // field 16
+    if (message.gasFee !== '') writer.uint32(138).string(message.gasFee); // field 17
+    if (message.pcRefundExecution !== undefined)
+      PCTxCodec.encode(
+        message.pcRefundExecution,
+        writer.uint32(146).fork() // field 18
+      ).join();
+    if (message.refundSwapError !== '')
+      writer.uint32(154).string(message.refundSwapError); // field 19
+    if (message.gasToken !== '')
+      writer.uint32(162).string(message.gasToken); // field 20
+    if (message.abortReason !== '')
+      writer.uint32(170).string(message.abortReason); // field 21
     return writer;
   },
 
@@ -529,6 +580,24 @@ export const OutboundTxV2Codec: MessageFns<OutboundTxV2> = {
         case 15:
           message.pcRevertExecution = PCTxCodec.decode(reader, reader.uint32());
           break;
+        case 16:
+          message.gasPrice = reader.string();
+          break;
+        case 17:
+          message.gasFee = reader.string();
+          break;
+        case 18:
+          message.pcRefundExecution = PCTxCodec.decode(reader, reader.uint32());
+          break;
+        case 19:
+          message.refundSwapError = reader.string();
+          break;
+        case 20:
+          message.gasToken = reader.string();
+          break;
+        case 21:
+          message.abortReason = reader.string();
+          break;
         default:
           if ((tag & 7) === 4 || tag === 0) return message;
           reader.skip(tag & 7);
@@ -575,6 +644,22 @@ export const OutboundTxV2Codec: MessageFns<OutboundTxV2> = {
       pcRevertExecution: isSet(object.pcRevertExecution)
         ? PCTxCodec.fromJSON(object.pcRevertExecution)
         : undefined,
+      gasPrice: isSet(object.gasPrice)
+        ? globalThis.String(object.gasPrice)
+        : '',
+      gasFee: isSet(object.gasFee) ? globalThis.String(object.gasFee) : '',
+      pcRefundExecution: isSet(object.pcRefundExecution)
+        ? PCTxCodec.fromJSON(object.pcRefundExecution)
+        : undefined,
+      refundSwapError: isSet(object.refundSwapError)
+        ? globalThis.String(object.refundSwapError)
+        : '',
+      gasToken: isSet(object.gasToken)
+        ? globalThis.String(object.gasToken)
+        : '',
+      abortReason: isSet(object.abortReason)
+        ? globalThis.String(object.abortReason)
+        : '',
     };
   },
 
@@ -605,6 +690,14 @@ export const OutboundTxV2Codec: MessageFns<OutboundTxV2> = {
       );
     if (message.pcRevertExecution !== undefined)
       obj.pcRevertExecution = PCTxCodec.toJSON(message.pcRevertExecution);
+    if (message.gasPrice !== '') obj.gasPrice = message.gasPrice;
+    if (message.gasFee !== '') obj.gasFee = message.gasFee;
+    if (message.pcRefundExecution !== undefined)
+      obj.pcRefundExecution = PCTxCodec.toJSON(message.pcRefundExecution);
+    if (message.refundSwapError !== '')
+      obj.refundSwapError = message.refundSwapError;
+    if (message.gasToken !== '') obj.gasToken = message.gasToken;
+    if (message.abortReason !== '') obj.abortReason = message.abortReason;
     return obj;
   },
 
@@ -639,6 +732,16 @@ export const OutboundTxV2Codec: MessageFns<OutboundTxV2> = {
       object.pcRevertExecution !== null
         ? PCTxCodec.fromPartial(object.pcRevertExecution)
         : undefined;
+    message.gasPrice = object.gasPrice ?? '';
+    message.gasFee = object.gasFee ?? '';
+    message.pcRefundExecution =
+      object.pcRefundExecution !== undefined &&
+      object.pcRefundExecution !== null
+        ? PCTxCodec.fromPartial(object.pcRefundExecution)
+        : undefined;
+    message.refundSwapError = object.refundSwapError ?? '';
+    message.gasToken = object.gasToken ?? '';
+    message.abortReason = object.abortReason ?? '';
     return message;
   },
 };

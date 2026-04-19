@@ -5,6 +5,7 @@
  * Extracted from Orchestrator.waitForOutboundTx / waitForAllOutboundTxsV2.
  */
 
+import { createPublicClient, fallback, http } from 'viem';
 import { bs58 } from '../../internal/bs58';
 import { CHAIN_INFO, VM_NAMESPACE } from '../../constants/chain';
 import { CHAIN, VM } from '../../constants/enums';
@@ -77,21 +78,87 @@ export class OutboundFailedError extends Error {
   readonly code = 'OUTBOUND_FAILED' as const;
   readonly pushChainTxHash: string;
   readonly destinationChain?: string;
+  /** Observed tx hash on the destination chain (when available). Lets the
+   * receipt expose the reverted external tx so consumers can link to the
+   * explorer without parsing the error message. */
+  readonly externalTxHash?: string;
   constructor(
     message: string,
     pushChainTxHash: string,
-    destinationChain?: string
+    destinationChain?: string,
+    externalTxHash?: string
   ) {
     super(message);
     this.name = 'OutboundFailedError';
     this.pushChainTxHash = pushChainTxHash;
     this.destinationChain = destinationChain;
+    this.externalTxHash = externalTxHash;
   }
 }
 
 // ============================================================================
 // waitForOutboundTx
 // ============================================================================
+
+/**
+ * Source-chain RPC tiebreaker.
+ *
+ * Cosmos sometimes populates `observedTx.txHash` while the relayer is still
+ * voting on the outboundStatus update. The Push indexer can stay at
+ * UNSPECIFIED for the full 180s budget even though the destination tx mined
+ * minutes earlier. To avoid those false timeouts we ask the destination
+ * chain's own RPC: if it has a confirmed receipt with status=success, we
+ * trust it and return FOUND; if status=reverted, we throw OutboundFailedError
+ * (preserves the silent-success bug fix); if no receipt yet or RPC failure,
+ * we keep polling.
+ *
+ * EVM-only — SVM tiebreaker would need a separate signature lookup path.
+ */
+async function verifyExternalEvmReceipt(
+  ctx: OrchestratorContext,
+  destinationChain: CHAIN,
+  externalTxHash: string
+): Promise<'success' | 'reverted' | 'pending' | 'unsupported'> {
+  const chainInfo = CHAIN_INFO[destinationChain];
+  if (!chainInfo || chainInfo.vm !== VM.EVM) {
+    return 'unsupported';
+  }
+  // Guard against unit-test contexts that don't pass a real rpcUrls map —
+  // we'd otherwise hit live testnet RPC inside Jest.
+  if (!ctx.rpcUrls) return 'unsupported';
+  const rpcUrls =
+    ctx.rpcUrls?.[destinationChain] && ctx.rpcUrls[destinationChain]!.length > 0
+      ? ctx.rpcUrls[destinationChain]!
+      : chainInfo.defaultRPC;
+  if (!rpcUrls?.length) return 'unsupported';
+
+  try {
+    const client = createPublicClient({
+      transport: fallback(rpcUrls.map((url) => http(url))),
+    });
+    const receipt = await client.getTransactionReceipt({
+      hash: externalTxHash as `0x${string}`,
+    });
+    if (!receipt) return 'pending';
+    if (receipt.status === 'success') return 'success';
+    if (receipt.status === 'reverted') return 'reverted';
+    return 'pending';
+  } catch (err) {
+    // viem throws TransactionReceiptNotFoundError when the tx isn't mined
+    // yet — treat as 'pending' rather than 'unsupported' so we keep polling.
+    const msg = err instanceof Error ? err.message : String(err);
+    if (
+      /not found|TransactionReceiptNotFound|could not be found/i.test(msg)
+    ) {
+      return 'pending';
+    }
+    printLog(
+      ctx,
+      `[verifyExternalEvmReceipt] RPC error for ${destinationChain} tx ${externalTxHash}: ${msg}`
+    );
+    return 'pending';
+  }
+}
 
 /**
  * Wait for outbound transaction to complete and return external chain details.
@@ -204,10 +271,19 @@ export async function waitForOutboundTx(
           throw new OutboundFailedError(
             `Outbound to ${ob.destinationChain} reverted: ${ob.observedTx?.errorMsg || 'Unknown'}. Push Chain TX: ${pushChainTxHash}.`,
             pushChainTxHash,
-            ob.destinationChain
+            ob.destinationChain,
+            ob.observedTx?.txHash
           );
         }
 
+        // FOUND gating logic:
+        //   1. Primary path — cosmos has transitioned to OBSERVED (the
+        //      authoritative success signal from the indexer).
+        //   2. Tiebreaker — cosmos has the txHash but outboundStatus is
+        //      still UNSPECIFIED/PENDING (indexer lag). We ask the
+        //      destination chain's own RPC: if its receipt is success,
+        //      treat as FOUND; if reverted, throw OutboundFailedError.
+        //      Pending receipts keep polling.
         if (ob.observedTx?.txHash) {
           // If a destination chain filter is set, skip outbound entries that don't match
           if (_expectedDestinationChain && ob.destinationChain !== _expectedDestinationChain) {
@@ -216,7 +292,40 @@ export async function waitForOutboundTx(
           }
 
           const chain = chainFromNamespace(ob.destinationChain);
-          if (chain) {
+          if (!chain) continue;
+
+          const isCosmosObserved = ob.outboundStatus === OutboundStatus.OBSERVED;
+          if (!isCosmosObserved) {
+            // Tiebreaker: ask the destination-chain RPC directly.
+            const verdict = await verifyExternalEvmReceipt(
+              ctx,
+              chain,
+              ob.observedTx.txHash
+            );
+            if (verdict === 'reverted') {
+              printLog(
+                ctx,
+                `[waitForOutboundTx] Source-chain RPC reports REVERTED for ${ob.destinationChain} tx ${ob.observedTx.txHash} (cosmos still ${UniversalTxStatus[statusNum] ?? statusNum})`
+              );
+              progressHook?.({ status: 'failed', elapsed: Date.now() - startTime });
+              throw new OutboundFailedError(
+                `Outbound to ${ob.destinationChain} reverted on source-chain RPC (tx: ${ob.observedTx.txHash}). Push Chain TX: ${pushChainTxHash}.`,
+                pushChainTxHash,
+                ob.destinationChain,
+                ob.observedTx.txHash
+              );
+            }
+            if (verdict !== 'success') {
+              // 'pending' or 'unsupported' — keep polling, cosmos will catch up.
+              continue;
+            }
+            printLog(
+              ctx,
+              `[waitForOutboundTx] Source-chain RPC tiebreaker: ${chain} tx ${ob.observedTx.txHash} succeeded; treating as FOUND despite cosmos status ${UniversalTxStatus[statusNum] ?? statusNum}`
+            );
+          }
+
+          {
             const explorerBaseUrl = CHAIN_INFO[chain]?.explorerUrl;
             const isSvm = CHAIN_INFO[chain]?.vm === VM.SVM;
 

@@ -124,11 +124,32 @@ describe('Route 3: Forced sizer Case B + C (signed e2e)', () => {
 
       console.log(`Push Chain TX: ${tx.hash}`);
       expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(tracker.hasEvent('SEND-TX-302-03-02')).toBe(true);
 
-      const receipt = await tx.wait();
+      // Short timeout — payload-only R3 never reaches cosmos OBSERVED, so
+      // the deterministic terminal is 399-03 with phase='outbound'.
+      const receipt = await tx.wait({ outboundTimeoutMs: 30_000 });
       console.log(`Receipt status: ${receipt.status}`);
       expect(receipt.status).toBe(1);
+      expect(receipt.externalStatus).toBe('timeout');
+
+      // Strict live stream — 302-03-02 must appear between 302-02 and 303-01.
+      const liveIds = tracker.getIds();
+      console.log(`Forced-B stream (${liveIds.length}): ${liveIds.join(' → ')}`);
+      expect(liveIds).toEqual([
+        'SEND-TX-301',
+        'SEND-TX-302-01',
+        'SEND-TX-302-02',
+        'SEND-TX-302-03-02',
+        'SEND-TX-303-01',
+        'SEND-TX-303-02',
+        'SEND-TX-304-01',
+        'SEND-TX-304-02',
+        'SEND-TX-304-03',
+        'SEND-TX-307',
+        'SEND-TX-309-01',
+        'SEND-TX-309-02',
+        'SEND-TX-399-03',
+      ]);
     },
     360_000
   );
@@ -182,11 +203,30 @@ describe('Route 3: Forced sizer Case B + C (signed e2e)', () => {
 
       console.log(`Push Chain TX: ${tx.hash}`);
       expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(tracker.hasEvent('SEND-TX-302-03-03')).toBe(true);
 
-      const receipt = await tx.wait();
+      const receipt = await tx.wait({ outboundTimeoutMs: 30_000 });
       console.log(`Receipt status: ${receipt.status}`);
       expect(receipt.status).toBe(1);
+      expect(receipt.externalStatus).toBe('timeout');
+
+      // Strict live stream — 302-03-03 must appear between 302-02 and 303-01.
+      const liveIds = tracker.getIds();
+      console.log(`Forced-C stream (${liveIds.length}): ${liveIds.join(' → ')}`);
+      expect(liveIds).toEqual([
+        'SEND-TX-301',
+        'SEND-TX-302-01',
+        'SEND-TX-302-02',
+        'SEND-TX-302-03-03',
+        'SEND-TX-303-01',
+        'SEND-TX-303-02',
+        'SEND-TX-304-01',
+        'SEND-TX-304-02',
+        'SEND-TX-304-03',
+        'SEND-TX-307',
+        'SEND-TX-309-01',
+        'SEND-TX-309-02',
+        'SEND-TX-399-03',
+      ]);
     },
     360_000
   );

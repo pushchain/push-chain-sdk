@@ -65,17 +65,33 @@ import { pickWaitHooks } from './progress-route-hooks';
 import { OutboundTimeoutError, OutboundFailedError } from './outbound-sync';
 
 /**
+ * Intermediate Push-success markers (199-99-99 for R3, 299-99 for R2) are
+ * internal transition signals — they tell response-builder's wait-phase
+ * branch that the Push leg has settled so it can skip re-emitting the
+ * intermediate marker on top of a reconstructed stream. They are not part
+ * of the published 1XX/2XX/3XX/4XX spec and are suppressed at the consumer
+ * dispatch boundary. `printLog` still fires for these so internal traces
+ * retain the transition record.
+ */
+const INTERMEDIATE_INTERNAL_IDS: ReadonlySet<string> = new Set([
+  PROGRESS_HOOK.SEND_TX_199_99_99,
+  PROGRESS_HOOK.SEND_TX_299_99,
+]);
+
+/**
  * Fan out a progress event to one or two registered callbacks, deduping
  * when both slots hold the same reference. Keeps the emission policy in a
  * single place shared by `emitProgress` (execute phase) and `emit` (wait
  * phase) — so consumers that wire the same callback at multiple levels
- * never see double-invocation.
+ * never see double-invocation. Intermediate internal markers are dropped
+ * here so they never reach the consumer.
  */
 function fanOut(
   event: ProgressEvent,
   primary?: (e: ProgressEvent) => void,
   secondary?: (e: ProgressEvent) => void
 ): void {
+  if (INTERMEDIATE_INTERNAL_IDS.has(event.id)) return;
   if (primary) primary(event);
   if (secondary && secondary !== primary) secondary(event);
 }
@@ -351,6 +367,16 @@ export async function trackTransaction(
       universalTxResponse.chain = firstOutboundChain as CHAIN;
       universalTxResponse.chainNamespace = firstOutboundChain;
     }
+
+    // For R3 replays, enable inbound round-trip tracking so `.wait()` runs
+    // the 310-01 → 399-01 sequence. Live execute sets this in
+    // route-handlers.ts via `amount > 0n`; trackTransaction has no
+    // execute-phase args, so we enable it unconditionally for CEA_TO_PUSH.
+    // The inbound block tolerates no-inbound (payload-only R3) by timing
+    // out — same as live behaviour when the source tx has no round-trip.
+    if (detectedRoute === TransactionRoute.CEA_TO_PUSH) {
+      universalTxResponse._expectsInboundRoundTrip = true;
+    }
   }
 
   // Reconstruct and emit SEND-TX-* progress events
@@ -625,6 +651,11 @@ export async function transformToUniversalTxResponse(
 
     // 6. Utilities
     wait: async (waitOptions?: WaitOptions): Promise<UniversalTxReceipt> => {
+      // For trackTransaction replays the tx is historical — cosmos already
+      // has the full graph indexed, so the 20s/30s initial-wait buffers
+      // designed for live sends are pure deadweight. Default them to 0 when
+      // replaying; callers can still override via WaitOptions.
+      const isReplay = universalTxResponse._eventsReconstructed === true;
       const outboundTimeoutMs =
         waitOptions?.outboundTimeoutMs ??
         callbacks.outboundConstants.maxTimeoutMs;
@@ -633,10 +664,13 @@ export async function transformToUniversalTxResponse(
         callbacks.inboundConstants.maxTimeoutMs;
       const outboundInitialWaitMs =
         waitOptions?.outboundInitialWaitMs ??
-        callbacks.outboundConstants.initialWaitMs;
+        (isReplay ? 0 : callbacks.outboundConstants.initialWaitMs);
       const outboundPollingIntervalMs =
         waitOptions?.outboundPollingIntervalMs ??
         callbacks.outboundConstants.pollingIntervalMs;
+      const inboundInitialWaitMs = isReplay
+        ? 0
+        : callbacks.inboundConstants.initialWaitMs;
       // Track whether reconstruction already emitted the route's
       // intermediate Push-success marker (299-99 / 199-99-99). When it has,
       // skip re-emitting from the outbound branch below to avoid duplicates.
@@ -738,7 +772,7 @@ export async function transformToUniversalTxResponse(
                 outboundDetails.externalTxHash,
                 targetChain,
                 {
-                  initialWaitMs: callbacks.inboundConstants.initialWaitMs,
+                  initialWaitMs: inboundInitialWaitMs,
                   pollingIntervalMs:
                     callbacks.inboundConstants.pollingIntervalMs,
                   timeout: inboundTimeoutMs,
@@ -824,11 +858,18 @@ export async function transformToUniversalTxResponse(
           // Annotate the receipt so callers can distinguish external-leg
           // outcomes without sniffing errMsg. Push Chain leg still succeeded
           // (status stays 1); inspect `externalStatus` / `externalError` for
-          // the external/inbound leg outcome.
+          // the external/inbound leg outcome. On a reverted outbound the
+          // observed tx hash is carried by OutboundFailedError — expose it
+          // as externalTxHash so consumers can link to the explorer.
+          const failedExternalTxHash =
+            error instanceof OutboundFailedError ? error.externalTxHash : undefined;
           baseReceipt = {
             ...baseReceipt,
             externalStatus: isTimeout ? 'timeout' : 'failed',
             externalError: errMsg,
+            ...(failedExternalTxHash
+              ? { externalTxHash: failedExternalTxHash }
+              : {}),
           };
           // Outbound polling timed out or failed — return the annotated
           // receipt without throwing. Push Chain tx succeeded, external
