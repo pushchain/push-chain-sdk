@@ -41,6 +41,9 @@
   "workspaces": [
     "packages/*"
   ],
+  "resolutions": {
+    "viem": "2.27.2"
+  },
   "nx": {
     "includedScripts": []
   }
