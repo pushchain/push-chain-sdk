@@ -31,6 +31,7 @@ export async function createSvmPushClient(
 
   const pushClient = await PushChain.initialize(universalSigner, {
     network: opts.network ?? PUSH_NETWORK.TESTNET_DONUT,
+    printTraces: true,
     progressHook: opts.progressHook,
   });
 

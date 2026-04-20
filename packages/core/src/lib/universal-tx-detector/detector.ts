@@ -5,10 +5,11 @@
  *
  * Read-only. No signer required. No Push block-explorer dependency.
  *
- * TODO(svm): Solana/SVM detection is not implemented in v1. Add a branch on
- * CHAIN_INFO[chain].vm === VM.SVM that uses the SDK's SVM client
- * (packages/core/src/lib/vm-client/svm-client.ts) to fetch program logs and
- * decode the SVM-gateway universal-tx instruction.
+ * Dispatches on CHAIN_INFO[chain].vm — EVM uses viem's parseEventLogs below,
+ * SVM delegates to detector-svm.ts which decodes Anchor program-data logs
+ * with the gateway IDL. Both branches return an identical UniversalTxDetection
+ * shape so downstream consumers (classify, cascade, child-inbounds,
+ * inbound-tracker) are VM-agnostic.
  */
 import {
   createPublicClient,
@@ -31,6 +32,7 @@ import {
   deriveChildUniversalTxId,
   derivePcUniversalTxId,
 } from './child-inbounds';
+import { detectUniversalTxSvm } from './detector-svm';
 import type {
   DetectUniversalTxOptions,
   MatchingLog,
@@ -70,9 +72,12 @@ export async function detectUniversalTx(
   if (!chainInfo) {
     throw new Error(`detectUniversalTx: unknown chain ${chain}`);
   }
+  if (chainInfo.vm === VM.SVM) {
+    return detectUniversalTxSvm(txHash, chain, opts);
+  }
   if (chainInfo.vm !== VM.EVM) {
     throw new Error(
-      `detectUniversalTx: only EVM chains are supported in v1 (got vm=${chainInfo.vm} for ${chain})`
+      `detectUniversalTx: unsupported vm=${chainInfo.vm} for ${chain}`
     );
   }
 

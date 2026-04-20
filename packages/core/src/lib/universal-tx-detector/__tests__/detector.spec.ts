@@ -38,6 +38,18 @@ jest.mock('viem', () => {
   };
 });
 
+// SVM dispatch test needs a stub Connection so the detector-svm branch
+// short-circuits without any real RPC traffic.
+jest.mock('@solana/web3.js', () => {
+  const real = jest.requireActual('@solana/web3.js');
+  return {
+    ...real,
+    Connection: jest.fn().mockImplementation(() => ({
+      getTransaction: jest.fn(async () => null),
+    })),
+  };
+});
+
 // Import under test AFTER the mock is declared.
 import { detectUniversalTx } from '../detector';
 import type { PushClient } from '../../push-client/push-client';
@@ -440,10 +452,15 @@ describe('detectUniversalTx', () => {
     expect(out.notes.some((n) => n.includes('receipt fetch failed'))).toBe(true);
   });
 
-  it('rejects non-EVM chain', async () => {
-    await expect(
-      detectUniversalTx(TX_HASH, CHAIN.SOLANA_DEVNET)
-    ).rejects.toThrow(/only EVM chains/);
+  it('dispatches SVM chain to the SVM detector (no legacy EVM-only throw)', async () => {
+    // Full SVM decoding is covered by detector-svm.spec.ts + scenario
+    // catalogue. Here we only assert the dispatch no longer throws
+    // "only EVM chains" and returns the same detection shape.
+    const out = await detectUniversalTx(TX_HASH, CHAIN.SOLANA_DEVNET, {
+      skipPushChainLookup: true,
+    });
+    expect(out.kind).toBe('UNKNOWN');
+    expect(out.chain).toBe(CHAIN.SOLANA_DEVNET);
   });
 
   it('UNKNOWN when only a non-universal log (e.g. an ERC20 Transfer)', async () => {

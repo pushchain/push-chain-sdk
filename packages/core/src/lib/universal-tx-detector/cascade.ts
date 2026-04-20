@@ -144,7 +144,8 @@ async function walk(
   chain: CHAIN,
   depth: number,
   state: InternalState,
-  opts: TraceCascadeOptions
+  opts: TraceCascadeOptions,
+  knownUtxId?: `0x${string}`
 ): Promise<CascadeNode | null> {
   const key = `${chain}::${txHash.toLowerCase()}`;
   if (state.visited.has(key)) {
@@ -155,7 +156,8 @@ async function walk(
   state.visited.add(key);
 
   const chainInfo = CHAIN_INFO[chain];
-  if (!chainInfo || chainInfo.vm !== VM.EVM) return null;
+  if (!chainInfo) return null;
+  if (chainInfo.vm !== VM.EVM && chainInfo.vm !== VM.SVM) return null;
 
   const detection = await detectUniversalTx(txHash, chain, {
     pushClient: opts.pushClient,
@@ -175,7 +177,7 @@ async function walk(
 
   if (PUSH_CHAIN_CAIPS.has(chain)) {
     // Push Chain node — walk outbounds from the pc utx record.
-    await expandPushOutbounds(node, txHash, chain, state, opts);
+    await expandPushOutbounds(node, txHash, chain, state, opts, knownUtxId);
   } else {
     // External chain — walk child inbounds (CEA-originated UniversalTx logs).
     await expandExternalChildInbounds(node, detection, state, opts);
@@ -189,9 +191,14 @@ async function expandPushOutbounds(
   txHash: `0x${string}`,
   chain: CHAIN,
   state: InternalState,
-  opts: TraceCascadeOptions
+  opts: TraceCascadeOptions,
+  knownUtxId?: `0x${string}`
 ): Promise<void> {
-  const pcUtxId = derivePcUniversalTxId(chain, txHash);
+  // Prefer the caller-supplied utx id — this covers follow-up Push txs that
+  // were triggered by an external CEA inbound (their outbounds live under
+  // `sha256(externalCaip:externalHash:logIndex)`, not the PC-derived key).
+  // For root Push txs the caller omits it and we derive the PC key.
+  const pcUtxId = knownUtxId ?? derivePcUniversalTxId(chain, txHash);
   try {
     const resp = await opts.pushClient.getUniversalTxByIdV2(
       pcUtxId.slice(2)
@@ -231,11 +238,17 @@ async function expandPushOutbounds(
         });
       }
 
-      // Gas-refund edge: the chain records refund tx on outbound.pcRefundExecution
-      // (push-chain/x/uexecutor/keeper/outbound.go:228). Emit a pc-refund edge
-      // when present and recurse into the refund tx on Push Chain.
-      const refund = ob.pcRefundExecution;
-      if (refund && refund.txHash) {
+      // Refund edges: the chain records two refund-tx fields on each outbound.
+      //   - pcRefundExecution (field 18) — gas refund tx after a successful
+      //     outbound (push-chain/x/uexecutor/keeper/outbound.go).
+      //   - pcRevertExecution — revert/refund tx when the outbound reverted.
+      // Surface both as pc-refund edges and recurse into the refund tx on
+      // Push Chain.
+      const refundTxs: Array<NonNullable<typeof ob.pcRefundExecution>> = [];
+      if (ob.pcRefundExecution) refundTxs.push(ob.pcRefundExecution);
+      if (ob.pcRevertExecution) refundTxs.push(ob.pcRevertExecution);
+      for (const refund of refundTxs) {
+        if (!refund.txHash) continue;
         const refundSummary: PcRefundSummary = {
           txHash: refund.txHash,
           sender: refund.sender ?? '',
@@ -302,7 +315,8 @@ async function expandExternalChildInbounds(
         state.pushChain,
         node.depth + 1,
         state,
-        opts
+        opts,
+        res.universalTxId
       );
       node.children.push({
         edgeKind: 'child-inbound',
@@ -318,7 +332,8 @@ async function expandExternalChildInbounds(
 function isSupportedChainCaip(caip: string): boolean {
   if (!caip) return false;
   const info = CHAIN_INFO[caip as CHAIN];
-  return Boolean(info && info.vm === VM.EVM);
+  if (!info) return false;
+  return info.vm === VM.EVM || info.vm === VM.SVM;
 }
 
 function outboundStatusName(n: number | undefined): string {

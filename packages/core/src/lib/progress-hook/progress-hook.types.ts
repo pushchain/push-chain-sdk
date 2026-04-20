@@ -10,7 +10,7 @@ export type ProgressEvent = {
   id: string;
   title: string;
   message: string;
-  level: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
+  level: 'INFO' | 'SUCCESS' | 'ERROR';
   // Always a structured object (or null). Never a string — txHash and other
   // values are exposed as `response.txHash`, etc., so consumers can read them
   // programmatically instead of parsing the message string.

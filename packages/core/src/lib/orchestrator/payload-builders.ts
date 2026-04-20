@@ -127,7 +127,7 @@ export function buildExecuteMulticall({
 /**
  * Multicall tuple type definition for ABI encoding
  */
-const MULTICALL_TUPLE_TYPE = {
+export const MULTICALL_TUPLE_TYPE = {
   type: 'tuple[]',
   components: [
     { name: 'to', type: 'address' },

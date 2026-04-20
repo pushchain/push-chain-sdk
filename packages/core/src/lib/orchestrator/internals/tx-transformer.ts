@@ -3,13 +3,16 @@
  * extracted from Orchestrator.
  */
 
-import { TransactionReceipt } from 'viem';
+import { TransactionReceipt, decodeAbiParameters } from 'viem';
 import { CHAIN_INFO } from '../../constants/chain';
 import { CHAIN } from '../../constants/enums';
+import { UEA_MULTICALL_SELECTOR } from '../../constants/selectors';
 import { UniversalTxStatus } from '../../generated/uexecutor/v1/types';
 import type { UniversalTxV2 } from '../../generated/uexecutor/v2/types';
+import { OutboundStatus } from '../../generated/uexecutor/v2/types';
 import PROGRESS_HOOKS from '../../progress-hook/progress-hook';
 import { PROGRESS_HOOK, ProgressEvent } from '../../progress-hook/progress-hook.types';
+import { MULTICALL_TUPLE_TYPE } from '../payload-builders';
 import { TransactionRoute } from '../route-detector';
 import type { UniversalTxReceipt, UniversalTxResponse } from '../orchestrator.types';
 
@@ -76,6 +79,20 @@ export function reconstructProgressEvents(
   // sentinel. The outer `errorMsg` above carries the outbound text when
   // `isOutboundFailed` is set; that path is handled by wait() instead.
   const pcErrorMsg = pcTx?.errorMsg || 'Unknown error';
+
+  // Multichain cascade: a single Push-chain tx that fanned out into >1
+  // outbound legs (executeTransactions([tx1, tx2, …])). The cosmos record
+  // carries one UniversalTx with multiple outboundTx entries; wrap the
+  // per-leg R2/R3 backbones with the SEND-TX-001 / 002-xx / 999-xx markers
+  // so replay parity matches live cascade emission.
+  if ((universalTxData?.outboundTx?.length ?? 0) > 1) {
+    return reconstructMultichain(
+      universalTxResponse,
+      universalTxData!,
+      isFailed,
+      errorMsg
+    );
+  }
 
   if (route === TransactionRoute.UOA_TO_CEA) {
     // R2: only Push-chain revert triggers the 299-02 terminal here; a
@@ -233,6 +250,210 @@ function reconstructR3(
     events.push(
       PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_99_99](universalTxResponse.hash)
     );
+  }
+
+  return events;
+}
+
+// ============================================================================
+// Multichain cascade reconstruction
+// ============================================================================
+
+function decodeUeaMulticall(
+  data: string | undefined
+): readonly { to: string; value: bigint; data: string }[] | null {
+  if (!data) return null;
+  const normalized = data.startsWith('0x') ? data : `0x${data}`;
+  if (!normalized.toLowerCase().startsWith(UEA_MULTICALL_SELECTOR)) return null;
+  try {
+    const body = `0x${normalized.slice(10)}` as `0x${string}`;
+    const [tuples] = decodeAbiParameters(
+      [MULTICALL_TUPLE_TYPE],
+      body
+    ) as unknown as [readonly { to: string; value: bigint; data: string }[]];
+    return tuples;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Count the merged R1 calls embedded inside an R3 outbound's payload.
+ *
+ * The outbound payload on-chain is UEA_MULTICALL_SELECTOR + abi-encoded
+ * MultiCall[] targeting the CEA. One of those inner calls is
+ * `sendUniversalTxToUEA(token, amount, payload, revertRecipient)` whose
+ * `payload` argument is itself a UEA_MULTICALL_SELECTOR + MultiCall[] blob
+ * — that blob is what will execute on Push Chain after the round-trip. Its
+ * tuple count equals the number of user R1 hops merged into this R3 leg.
+ */
+function decodeR3MergedInnerCount(outboundPayload: string): number {
+  const outerCalls = decodeUeaMulticall(outboundPayload);
+  if (!outerCalls) return 0;
+  for (const call of outerCalls) {
+    const d = (call.data || '').toLowerCase();
+    if (!d.startsWith(`0x${SEND_UNIVERSAL_TX_TO_UEA_SELECTOR}`)) continue;
+    try {
+      const innerBody = `0x${d.slice(10)}` as `0x${string}`;
+      // sendUniversalTxToUEA(token, amount, payload, revertRecipient).
+      // The `payload` arg is an ABI-encoded UniversalPayload struct
+      // produced by buildInboundUniversalPayload() — its `.data` field is
+      // the UEA_MULTICALL bytes that will execute on Push after the
+      // round-trip.
+      const [, , upStructBytes] = decodeAbiParameters(
+        [
+          { type: 'address' },
+          { type: 'uint256' },
+          { type: 'bytes' },
+          { type: 'address' },
+        ],
+        innerBody
+      ) as unknown as [string, bigint, string, string];
+      const [universalPayload] = decodeAbiParameters(
+        [
+          {
+            type: 'tuple',
+            components: [
+              { name: 'to', type: 'address' },
+              { name: 'value', type: 'uint256' },
+              { name: 'data', type: 'bytes' },
+              { name: 'gasLimit', type: 'uint256' },
+              { name: 'maxFeePerGas', type: 'uint256' },
+              { name: 'maxPriorityFeePerGas', type: 'uint256' },
+              { name: 'nonce', type: 'uint256' },
+              { name: 'deadline', type: 'uint256' },
+              { name: 'vType', type: 'uint8' },
+            ],
+          },
+        ],
+        upStructBytes as `0x${string}`
+      ) as unknown as [{ data: string }];
+      const pushCalls = decodeUeaMulticall(universalPayload.data);
+      if (pushCalls) return pushCalls.length;
+    } catch {
+      // fall through to next outer call
+    }
+  }
+  return 0;
+}
+
+function reconstructMultichain(
+  universalTxResponse: UniversalTxResponse,
+  universalTxData: UniversalTxV2,
+  isFailed: boolean,
+  errorMsg: string
+): ProgressEvent[] {
+  const events: ProgressEvent[] = [];
+  const outbounds = universalTxData.outboundTx;
+  // Merged-R1 recovery: each R3 outbound's payload embeds the
+  // sendUniversalTxToUEA call whose `payload` arg is the UEA multicall that
+  // will execute on Push after the round-trip. Its tuple count equals the
+  // number of user R1 hops the orchestrator folded into that R3 leg.
+  // Total user-level hopCount =
+  //   (outbounds that are NOT R3) + Σ (merged inner-call count per R3 leg).
+  // Falls back to `outbounds.length` when no R3 legs or decode fails
+  // (pure R2 cascade).
+  let r3LegCount = 0;
+  let totalMergedInner = 0;
+  for (const ob of outbounds) {
+    const isR3 = (ob.payload || '')
+      .toLowerCase()
+      .includes(SEND_UNIVERSAL_TX_TO_UEA_SELECTOR);
+    if (!isR3) continue;
+    r3LegCount += 1;
+    const inner = decodeR3MergedInnerCount(ob.payload || '');
+    // When decode fails, assume the R3 leg represents 1 user hop so the
+    // fallback converges on outbounds.length.
+    totalMergedInner += inner > 0 ? inner : 1;
+  }
+  const recovered =
+    r3LegCount > 0
+      ? outbounds.length - r3LegCount + totalMergedInner
+      : outbounds.length;
+  // Defensive clamp: never under-count what's already visible on-chain.
+  const hopCount = Math.max(recovered, outbounds.length);
+
+  // Source chain for SEND-TX-001: the Push Chain (initiator of a cascade
+  // always executes a multicall on Push first). Fall back to the response's
+  // chain if origin parsing fails.
+  const pushChainId = CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId;
+  const sourceChain = `eip155:${pushChainId}`;
+  const destChains = outbounds.map((ob) => ob.destinationChain);
+
+  events.push(
+    PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_001](hopCount, [
+      sourceChain,
+      ...destChains,
+    ])
+  );
+
+  let failedAt: number | null = null;
+  let failureMsg = errorMsg;
+
+  outbounds.forEach((ob, i) => {
+    const hopNum = i + 1;
+    const fromChain = i === 0 ? sourceChain : outbounds[i - 1].destinationChain;
+    const toChain = ob.destinationChain;
+
+    events.push(
+      PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_002_01](
+        hopNum,
+        hopCount,
+        fromChain,
+        toChain
+      )
+    );
+
+    // Build a single-leg view so the per-leg reconstructors (R2/R3) emit
+    // their usual backbone. We narrow `outboundTx` to this leg so any field
+    // reads (e.g. `outboundTx[0].recipient`) resolve to this leg's data.
+    const legResponse: UniversalTxResponse = {
+      ...universalTxResponse,
+      chain: toChain as CHAIN,
+      chainNamespace: toChain,
+    };
+    const legData: UniversalTxV2 = {
+      ...universalTxData,
+      outboundTx: [ob],
+    };
+
+    const payload = (ob.payload || '').toLowerCase();
+    const isR3Leg = payload.includes(SEND_UNIVERSAL_TX_TO_UEA_SELECTOR);
+
+    const legFailed = ob.outboundStatus === OutboundStatus.REVERTED;
+    const legError =
+      ob.abortReason || ob.observedTx?.errorMsg || 'leg execution failed';
+
+    if (isR3Leg) {
+      events.push(...reconstructR3(legResponse, legData, legFailed, legError));
+    } else {
+      events.push(...reconstructR2(legResponse, legData, legFailed, legError));
+    }
+
+    if (!legFailed) {
+      events.push(
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_002_99_99](hopNum, hopCount)
+      );
+    } else if (failedAt === null) {
+      failedAt = hopNum;
+      failureMsg = legError;
+    }
+  });
+
+  if (failedAt !== null) {
+    events.push(
+      PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_02](
+        failedAt,
+        hopCount,
+        failureMsg
+      )
+    );
+  } else if (isFailed) {
+    events.push(
+      PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_02](hopCount, hopCount, errorMsg)
+    );
+  } else {
+    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_01](hopCount));
   }
 
   return events;

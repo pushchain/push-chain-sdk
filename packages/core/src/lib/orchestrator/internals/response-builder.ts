@@ -453,30 +453,44 @@ export async function transformToUniversalTxResponse(
     from = getAddress(tx.to as `0x${string}`);
 
     let decoded;
+    let decodedPayload: {
+      to: string;
+      value: bigint;
+      data: string;
+    } | null = null;
 
     if (tx.input !== '0x') {
-      decoded = decodeFunctionData({
-        abi: UEA_EVM,
-        data: tx.input,
-      });
-      if (!decoded?.args) {
-        throw new Error('Failed to decode function data');
+      // Try to decode the input as a known UEA_EVM call. Older txs — or
+      // txs sent to a UEA that was upgraded to expose a function not yet
+      // reflected in the bundled `uea.evm.ts` ABI — carry a selector that
+      // viem can't match. In that case the reconstructor should still
+      // produce a usable response (and emit progress hooks) using the raw
+      // tx fields, rather than throwing before any hook fires.
+      try {
+        decoded = decodeFunctionData({ abi: UEA_EVM, data: tx.input });
+        if (decoded?.args) {
+          decodedPayload = decoded.args[0] as {
+            to: string;
+            value: bigint;
+            data: string;
+          };
+        }
+      } catch {
+        decodedPayload = null;
       }
-      const universalPayload = decoded?.args[0] as {
-        to: string;
-        value: bigint;
-        data: string;
-        gasLimit: bigint;
-        maxFeePerGas: bigint;
-        maxPriorityFeePerGas: bigint;
-        nonce: bigint;
-        deadline: bigint;
-        vType: number;
-      };
 
-      to = universalPayload.to as `0x${string}`;
-      value = BigInt(universalPayload.value);
-      data = universalPayload.data;
+      if (decodedPayload) {
+        to = decodedPayload.to as `0x${string}`;
+        value = BigInt(decodedPayload.value);
+        data = decodedPayload.data;
+      } else {
+        // Unknown / unsupported UEA function — fall back to raw fields so
+        // transformToUniversalTxResponse can still return a valid response
+        // and downstream progress-hook reconstruction can proceed.
+        to = getAddress(tx.to as `0x${string}`);
+        value = tx.value;
+        data = tx.input;
+      }
 
       // Extract 'to' from single-element multicall
       if (data && data.length >= 10) {
@@ -813,7 +827,13 @@ export async function transformToUniversalTxResponse(
                 const failMsg =
                   inbound.errorMessage ??
                   'inbound execution failed on Push Chain';
-                emit(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](failMsg));
+                emit(
+                  PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](
+                    failMsg,
+                    'inbound',
+                    targetChain
+                  )
+                );
                 baseReceipt = {
                   ...baseReceipt,
                   pushInboundUtxId: inbound.childUtxId,
@@ -838,9 +858,14 @@ export async function transformToUniversalTxResponse(
                 isTimeout
                   ? PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](
                       targetChain,
-                      inboundTimeoutMs
+                      inboundTimeoutMs,
+                      'inbound'
                     )
-                  : PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](errMsg)
+                  : PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](
+                      errMsg,
+                      'inbound',
+                      targetChain
+                    )
               );
               callbacks.printLog(
                 `[wait] R3 inbound tracking failed: ${errMsg}`

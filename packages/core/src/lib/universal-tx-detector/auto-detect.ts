@@ -24,15 +24,17 @@ const PUSH_CHAIN_CAIPS: CHAIN[] = [
 ];
 
 /**
- * Every EVM chain registered in CHAIN_INFO, ordered Push-first.
+ * Every chain registered in CHAIN_INFO whose vm the detector supports
+ * (EVM + SVM), ordered Push-first.
  */
 export function listAutoProbeChains(): CHAIN[] {
-  const evm = Object.keys(CHAIN_INFO).filter(
-    (c) => CHAIN_INFO[c as CHAIN]?.vm === VM.EVM
-  ) as CHAIN[];
+  const supported = Object.keys(CHAIN_INFO).filter((c) => {
+    const vm = CHAIN_INFO[c as CHAIN]?.vm;
+    return vm === VM.EVM || vm === VM.SVM;
+  }) as CHAIN[];
   const push: CHAIN[] = [];
   const rest: CHAIN[] = [];
-  for (const c of evm) {
+  for (const c of supported) {
     if (PUSH_CHAIN_CAIPS.includes(c)) push.push(c);
     else rest.push(c);
   }
