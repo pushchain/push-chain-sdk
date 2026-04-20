@@ -40,7 +40,7 @@ import {
 const R1_PUSH_ORIGIN_EXPECTED = [
   'SEND-TX-101',
   'SEND-TX-102-01',
-  'SEND-TX-102-02',
+  'SEND-TX-103-03-04',
   'SEND-TX-107',
   'SEND-TX-199-01',
 ];
@@ -51,9 +51,15 @@ const R1_PUSH_ORIGIN_RECONSTRUCTED = R1_PUSH_ORIGIN_EXPECTED;
 const R1_FUNDS_BRIDGE_EXPECTED = [
   'SEND-TX-101',
   'SEND-TX-102-01',
-  'SEND-TX-102-02',
   'SEND-TX-103-01',
   'SEND-TX-103-02',
+  'SEND-TX-103-03',
+  // Case A natural on Push Chain testnet: gasEstimate (1e7) * PC gasPrice (gwei)
+  // ≈ 0.01 PC → pushGasUsd < $1 → sizeR1PushGas returns category 'A'. Pinned
+  // to match how r3-track-transaction-parity pins 303-03-01. If the $PC oracle
+  // price or PC gas baseline shifts so pushGasUsd ≥ $1, swap to 103-03-02.
+  'SEND-TX-103-03-01',
+  'SEND-TX-103-03-04',
   'SEND-TX-106-01',
   'SEND-TX-106-02',
   'SEND-TX-106-03',
@@ -71,9 +77,9 @@ const R1_FUNDS_BRIDGE_EXPECTED = [
 const R1_EXTERNAL_ORIGIN_RECONSTRUCTED = [
   'SEND-TX-101',
   'SEND-TX-102-01',
-  'SEND-TX-102-02',
   'SEND-TX-103-01',
   'SEND-TX-103-02',
+  'SEND-TX-103-03-04',
   'SEND-TX-107',
   'SEND-TX-199-01',
 ];
@@ -83,9 +89,9 @@ const R1_EXTERNAL_ORIGIN_RECONSTRUCTED = [
 const R1_FEE_LOCK_EXPECTED = [
   'SEND-TX-101',
   'SEND-TX-102-01',
-  'SEND-TX-102-02',
   'SEND-TX-103-01',
   'SEND-TX-103-02',
+  'SEND-TX-103-03-04',
   'SEND-TX-104-01',
   'SEND-TX-105-01',
   'SEND-TX-105-02',

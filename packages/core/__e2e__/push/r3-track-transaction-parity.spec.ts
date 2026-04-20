@@ -19,7 +19,7 @@ import '@e2e/shared/setup';
  *     receipt (`externalStatus: 'success'`).
  *
  * Reconstruction in `tx-transformer.reconstructR3` emits a backbone WITHOUT
- * the 302-03-XX sizer hook; live stream includes it (Case A natural for
+ * the 303-03-XX sizer hook; live stream includes it (Case A natural for
  * payload-only, Case A also natural for USDT bridge under current testnet
  * gas pricing). The expected live/replay arrays account for this.
  */
@@ -37,9 +37,9 @@ const EXECUTE_IDS_LIVE = [
   'SEND-TX-301',
   'SEND-TX-302-01',
   'SEND-TX-302-02',
-  'SEND-TX-302-03-01', // Case A — payload-only R3 has gasUsd < $1
   'SEND-TX-303-01',
   'SEND-TX-303-02',
+  'SEND-TX-303-03-01', // Case A — payload-only R3 has gasUsd < $1; fires after 303-02
   'SEND-TX-304-01',
   'SEND-TX-304-02',
   'SEND-TX-304-03',
@@ -50,7 +50,7 @@ const EXECUTE_IDS_LIVE = [
 // tx-transformer.ts — sizer requires gas-fee response which isn't available
 // during reconstruction).
 const EXECUTE_IDS_REPLAY = EXECUTE_IDS_LIVE.filter(
-  (id) => !id.startsWith('SEND-TX-302-03')
+  (id) => !id.startsWith('SEND-TX-303-03')
 );
 
 // With outboundTimeoutMs: 30_000 and initialWaitMs clamped to 20_000,

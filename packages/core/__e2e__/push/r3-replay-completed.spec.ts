@@ -21,7 +21,7 @@ import type { Hex } from 'viem';
 const PUSH_ROOT =
   '0x80fc70302f8eaac02649b18fe5a09b1580d0f6190b420d3a1058c39ecbf53443' as const;
 
-// Backbone (no sizer — reconstructR3 drops 302-03-XX since it needs the
+// Backbone (no sizer — reconstructR3 drops 303-03-XX since it needs the
 // live gas-fee response).
 const EXECUTE_IDS_REPLAY = [
   'SEND-TX-301',

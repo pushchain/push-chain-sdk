@@ -104,13 +104,6 @@ const RAW_HOOKS_R1: {
     response: { stage: 'estimating-gas' },
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_102_02]: (executionCost: bigint) => ({
-    id: PROGRESS_HOOK.SEND_TX_102_02,
-    title: 'Gas Estimated',
-    message: `Total execution cost: ${executionCost} UPC`,
-    response: { totalCost: executionCost, currency: 'UPC' },
-    level: 'SUCCESS',
-  }),
   [PROGRESS_HOOK.SEND_TX_103_01]: () => ({
     id: PROGRESS_HOOK.SEND_TX_103_01,
     title: 'Resolving Universal Execution Account',
@@ -126,6 +119,67 @@ const RAW_HOOKS_R1: {
     title: 'Universal Execution Account Resolved',
     message: `UEA: ${ueaAddress}, Deployed: ${deployed}`,
     response: { uea: ueaAddress, deployed },
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_103_03]: (
+    originChain: string | CHAIN,
+    requiredDepositUsd: bigint
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_103_03,
+    title: 'Calculating Prepaid Deposit',
+    message: `Computing required Push-chain deposit based on UEA balance and gas needs`,
+    response: {
+      stage: 'calculating-prepaid-deposit',
+      chain: originChain,
+      requiredDepositUsd,
+    },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_103_03_01]: (
+    originChain: string | CHAIN,
+    gasRequired: bigint,
+    extraDepositPC: bigint,
+    totalDepositUSD: bigint
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_103_03_01,
+    title: 'Adjusting Prepaid Deposit to be >$1',
+    message: `Required deposit below $1 minimum — padding to $1 floor (gasRequired=${gasRequired} UPC, extraDepositPC=${extraDepositPC} UPC, totalDepositUSD=$${totalDepositUSD})`,
+    response: { gasRequired, extraDepositPC, totalDepositUSD, chain: originChain },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_103_03_02]: (
+    originChain: string | CHAIN,
+    gasRequired: bigint,
+    extraDepositPC: bigint,
+    totalDepositUSD: bigint
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_103_03_02,
+    title: 'Prepaid Deposit in range (>=$1 and <$10)',
+    message: `Required deposit $${totalDepositUSD} within $1–$10 range — depositing as required`,
+    response: { gasRequired, extraDepositPC, totalDepositUSD, chain: originChain },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_103_03_03]: (
+    originChain: string | CHAIN,
+    gasRequired: bigint,
+    extraDepositPC: bigint,
+    totalDepositUSD: bigint
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_103_03_03,
+    title: 'Prepaid Deposit Exceeds $10 Cap, splitting Gas and Funds',
+    message: `Required deposit exceeds $10 cap — splitting: $10 gas leg + ${extraDepositPC} UPC overflow bridged as funds`,
+    response: { gasRequired, extraDepositPC, totalDepositUSD, chain: originChain },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_103_03_04]: (
+    totalPCDeposit: bigint,
+    totalDepositUSD: bigint,
+    originChain?: string | CHAIN
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_103_03_04,
+    title: 'Prepaid Deposit Estimated',
+    message: `Estimated prepaid deposit: $${totalDepositUSD} (${totalPCDeposit} UPC)`,
+    response: { totalPCDeposit, totalDepositUSD, chain: originChain ?? null },
     level: 'SUCCESS',
   }),
   [PROGRESS_HOOK.SEND_TX_104_01]: () => ({
@@ -254,39 +308,6 @@ const RAW_HOOKS_R1: {
     message: `Funds credited: ${Utils.helpers.formatUnits(amount, decimals)} ${symbol}`,
     response: { amount, symbol },
     level: 'SUCCESS',
-  }),
-  [PROGRESS_HOOK.SEND_TX_106_07_01]: (
-    originChain: string | CHAIN,
-    pushGasUsd: bigint,
-    paddedDepositUsd: bigint
-  ) => ({
-    id: PROGRESS_HOOK.SEND_TX_106_07_01,
-    title: `${friendlyChain(originChain)} Push Gas Sizing: Case A`,
-    message: `Push-chain gas < $1; padding deposit to $1 floor (pushGasUsd=${pushGasUsd}, paddedDepositUsd=${paddedDepositUsd})`,
-    response: { category: 'A', pushGasUsd, paddedDepositUsd, chain: originChain },
-    level: 'INFO',
-  }),
-  [PROGRESS_HOOK.SEND_TX_106_07_02]: (
-    originChain: string | CHAIN,
-    pushGasUsd: bigint,
-    paddedDepositUsd: bigint
-  ) => ({
-    id: PROGRESS_HOOK.SEND_TX_106_07_02,
-    title: `${friendlyChain(originChain)} Push Gas Sizing: Case B`,
-    message: `Push-chain gas within $1–$10; happy path (pushGasUsd=${pushGasUsd}, paddedDepositUsd=${paddedDepositUsd})`,
-    response: { category: 'B', pushGasUsd, paddedDepositUsd, chain: originChain },
-    level: 'INFO',
-  }),
-  [PROGRESS_HOOK.SEND_TX_106_07_03]: (
-    originChain: string | CHAIN,
-    pushGasUsd: bigint,
-    paddedDepositUsd: bigint
-  ) => ({
-    id: PROGRESS_HOOK.SEND_TX_106_07_03,
-    title: `${friendlyChain(originChain)} Push Gas Sizing: Case C`,
-    message: `Push-chain gas > $10; deposit passes through to origin gateway MAX_CAP_UNIVERSAL_TX_USD (pushGasUsd=${pushGasUsd}, paddedDepositUsd=${paddedDepositUsd})`,
-    response: { category: 'C', pushGasUsd, paddedDepositUsd, chain: originChain },
-    level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_107]: () => ({
     id: PROGRESS_HOOK.SEND_TX_107,
@@ -484,7 +505,7 @@ const RAW_HOOKS_R3: {
 } = {
   [PROGRESS_HOOK.SEND_TX_199_99_99]: (txHash: string) => ({
     id: PROGRESS_HOOK.SEND_TX_199_99_99,
-    title: 'Push Chain TX Completed',
+    title: 'Push Chain Tx Completed',
     message: `Intermediate Push Chain tx confirmed: ${txHash}, progressing to next phase`,
     response: { txHash },
     level: 'INFO',
@@ -522,44 +543,40 @@ const RAW_HOOKS_R3: {
     },
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_302_03_01]: (
+  [PROGRESS_HOOK.SEND_TX_303_03_01]: (
     sourceChain: string | CHAIN,
-    gasUsd: bigint,
-    gasLegNativePc: bigint
+    gasRequired: bigint,
+    extraDepositPC: bigint,
+    totalDepositUSD: bigint
   ) => ({
-    id: PROGRESS_HOOK.SEND_TX_302_03_01,
-    title: `${friendlyChain(sourceChain)} Gas Sizing: Case A`,
-    message: `Gas cost < $1; padding to $1 minimum (gasUsd=${gasUsd}, gasLeg=${gasLegNativePc} UPC)`,
-    response: { category: 'A', gasUsd, gasLegNativePc, chain: sourceChain },
+    id: PROGRESS_HOOK.SEND_TX_303_03_01,
+    title: 'Gas Sizing: Case A',
+    message: `Gas cost < $1; padding to $1 minimum (gasRequired=${gasRequired} UPC, extraDepositPC=${extraDepositPC} UPC, totalDepositUSD=$${totalDepositUSD})`,
+    response: { gasRequired, extraDepositPC, totalDepositUSD, chain: sourceChain },
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_302_03_02]: (
+  [PROGRESS_HOOK.SEND_TX_303_03_02]: (
     sourceChain: string | CHAIN,
-    gasUsd: bigint,
-    gasLegNativePc: bigint
+    gasRequired: bigint,
+    extraDepositPC: bigint,
+    totalDepositUSD: bigint
   ) => ({
-    id: PROGRESS_HOOK.SEND_TX_302_03_02,
-    title: `${friendlyChain(sourceChain)} Gas Sizing: Case B`,
-    message: `Gas cost within $1–$10 window; happy path (gasUsd=${gasUsd}, gasLeg=${gasLegNativePc} UPC)`,
-    response: { category: 'B', gasUsd, gasLegNativePc, chain: sourceChain },
+    id: PROGRESS_HOOK.SEND_TX_303_03_02,
+    title: 'Gas Sizing: Case B',
+    message: `Gas cost within $1–$10 window; happy path (gasRequired=${gasRequired} UPC, totalDepositUSD=$${totalDepositUSD})`,
+    response: { gasRequired, extraDepositPC, totalDepositUSD, chain: sourceChain },
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_302_03_03]: (
+  [PROGRESS_HOOK.SEND_TX_303_03_03]: (
     sourceChain: string | CHAIN,
-    gasUsd: bigint,
-    gasLegNativePc: bigint,
-    overflowNativePc: bigint
+    gasRequired: bigint,
+    extraDepositPC: bigint,
+    totalDepositUSD: bigint
   ) => ({
-    id: PROGRESS_HOOK.SEND_TX_302_03_03,
-    title: `${friendlyChain(sourceChain)} Gas Sizing: Case C`,
-    message: `Gas cost > $10; splitting into $10 gas leg + ${overflowNativePc} UPC overflow bridged as funds`,
-    response: {
-      category: 'C',
-      gasUsd,
-      gasLegNativePc,
-      overflowNativePc,
-      chain: sourceChain,
-    },
+    id: PROGRESS_HOOK.SEND_TX_303_03_03,
+    title: 'Gas Sizing: Case C',
+    message: `Gas cost > $10; splitting into $10 gas leg + ${extraDepositPC} UPC overflow bridged as funds`,
+    response: { gasRequired, extraDepositPC, totalDepositUSD, chain: sourceChain },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_303_01]: (sourceChain: string | CHAIN) => ({

@@ -1422,7 +1422,7 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
         expect(events.some(e => e.id === 'SEND-TX-301')).toBe(true);
         expect(events.some(e => e.id === 'SEND-TX-303-02')).toBe(true);
         expect(events.some(e => e.id === 'SEND-TX-302-02')).toBe(true);
-        expect(events.some(e => e.id?.startsWith('SEND-TX-302-03'))).toBe(true);
+        expect(events.some(e => e.id?.startsWith('SEND-TX-303-03'))).toBe(true);
         expect(events.some(e => e.id === 'SEND-TX-307')).toBe(true);
         expect(events.some(e => e.id === 'SEND-TX-304-03')).toBe(true);
       }, 600000);

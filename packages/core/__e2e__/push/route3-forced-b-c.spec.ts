@@ -132,16 +132,16 @@ describe('Route 3: Forced sizer Case B + C (signed e2e)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalStatus).toBe('timeout');
 
-      // Strict live stream — 302-03-02 must appear between 302-02 and 303-01.
+      // Strict live stream — 303-03-02 fires after 303-01/02 (sizing post-accounts).
       const liveIds = tracker.getIds();
       console.log(`Forced-B stream (${liveIds.length}): ${liveIds.join(' → ')}`);
       expect(liveIds).toEqual([
         'SEND-TX-301',
         'SEND-TX-302-01',
         'SEND-TX-302-02',
-        'SEND-TX-302-03-02',
         'SEND-TX-303-01',
         'SEND-TX-303-02',
+        'SEND-TX-303-03-02',
         'SEND-TX-304-01',
         'SEND-TX-304-02',
         'SEND-TX-304-03',
@@ -209,16 +209,16 @@ describe('Route 3: Forced sizer Case B + C (signed e2e)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalStatus).toBe('timeout');
 
-      // Strict live stream — 302-03-03 must appear between 302-02 and 303-01.
+      // Strict live stream — 303-03-03 fires after 303-01/02 (sizing post-accounts).
       const liveIds = tracker.getIds();
       console.log(`Forced-C stream (${liveIds.length}): ${liveIds.join(' → ')}`);
       expect(liveIds).toEqual([
         'SEND-TX-301',
         'SEND-TX-302-01',
         'SEND-TX-302-02',
-        'SEND-TX-302-03-03',
         'SEND-TX-303-01',
         'SEND-TX-303-02',
+        'SEND-TX-303-03-03',
         'SEND-TX-304-01',
         'SEND-TX-304-02',
         'SEND-TX-304-03',

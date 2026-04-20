@@ -44,11 +44,35 @@ const mockEvmConfirmations = jest.fn();
 const mockSvmConfirmations = jest.fn();
 
 jest.mock('../../vm-client/evm-client', () => ({
-  EvmClient: jest.fn().mockImplementation(() => ({ _tag: 'evm' })),
+  EvmClient: jest.fn().mockImplementation(() => ({
+    _tag: 'evm',
+    publicClient: {
+      waitForTransactionReceipt: jest
+        .fn()
+        .mockResolvedValue({ blockNumber: BigInt(0) }),
+      getBlockNumber: jest.fn().mockResolvedValue(BigInt(0)),
+    },
+  })),
 }));
 
 jest.mock('../../vm-client/svm-client', () => ({
-  SvmClient: jest.fn().mockImplementation(() => ({ _tag: 'svm' })),
+  SvmClient: jest.fn().mockImplementation(() => ({
+    _tag: 'svm',
+    connections: [
+      {
+        getSignatureStatuses: jest.fn().mockResolvedValue({
+          value: [
+            {
+              err: null,
+              confirmationStatus: 'finalized',
+              confirmations: null,
+            },
+          ],
+        }),
+      },
+    ],
+    currentConnectionIndex: 0,
+  })),
 }));
 
 jest.mock('../../constants/chain', () => {

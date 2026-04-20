@@ -10,7 +10,7 @@
  * just the code.
  *
  * Also covers the 199-99-99 intermediate marker (internally consumed,
- * suppressed at fanOut before consumer dispatch) and both 302-03-XX
+ * suppressed at fanOut before consumer dispatch) and both 303-03-XX
  * sizer hooks (emitted in live execute only).
  */
 import PROGRESS_HOOKS from '../progress-hook';
@@ -56,44 +56,46 @@ describe('Route 3 spec strings (301–399)', () => {
     expect(ev.level).toBe('SUCCESS');
   });
 
-  // 302-03-XX sizer hooks are emitted in live execute when queryOutboundGasFee
+  // 303-03-XX sizer hooks are emitted in live execute when queryOutboundGasFee
   // returns a sizing decision. Not part of the top-level spec image; covered
   // here because they're part of the live-stream contract.
 
-  it('302-03-01 — {Source Chain} Gas Sizing: Case A', () => {
-    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_302_03_01](
+  it('303-03-01 — Gas Sizing: Case A', () => {
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_303_03_01](
       sourceChain,
-      BigInt(50_000_000), // gasUsd (8-decimals = $0.50)
-      BigInt(1_000_000_000_000_000_000) // 1 UPC
+      BigInt(1_000_000_000_000_000_000), // gasRequired: 1 UPC
+      BigInt(0), // extraDepositPC: 0 for A
+      BigInt(100_000_000) // totalDepositUSD: $1 (padded)
     );
-    expect(ev.title).toBe(`${chainName} Gas Sizing: Case A`);
+    expect(ev.title).toBe('Gas Sizing: Case A');
     expect(ev.message).toBe(
-      'Gas cost < $1; padding to $1 minimum (gasUsd=50000000, gasLeg=1000000000000000000 UPC)'
+      'Gas cost < $1; padding to $1 minimum (gasRequired=1000000000000000000 UPC, extraDepositPC=0 UPC, totalDepositUSD=$100000000)'
     );
     expect(ev.level).toBe('INFO');
   });
 
-  it('302-03-02 — {Source Chain} Gas Sizing: Case B', () => {
-    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_302_03_02](
+  it('303-03-02 — Gas Sizing: Case B', () => {
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_303_03_02](
       sourceChain,
-      BigInt(500_000_000), // $5
-      BigInt(5_000_000_000_000_000_000) // 5 UPC
+      BigInt(5_000_000_000_000_000_000), // gasRequired: 5 UPC
+      BigInt(0), // extraDepositPC: 0 for B
+      BigInt(500_000_000) // totalDepositUSD: $5
     );
-    expect(ev.title).toBe(`${chainName} Gas Sizing: Case B`);
+    expect(ev.title).toBe('Gas Sizing: Case B');
     expect(ev.message).toBe(
-      'Gas cost within $1–$10 window; happy path (gasUsd=500000000, gasLeg=5000000000000000000 UPC)'
+      'Gas cost within $1–$10 window; happy path (gasRequired=5000000000000000000 UPC, totalDepositUSD=$500000000)'
     );
     expect(ev.level).toBe('INFO');
   });
 
-  it('302-03-03 — {Source Chain} Gas Sizing: Case C', () => {
-    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_302_03_03](
+  it('303-03-03 — Gas Sizing: Case C', () => {
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_303_03_03](
       sourceChain,
-      BigInt(1_500_000_000), // $15
-      BigInt(10_000_000_000_000_000_000), // 10 UPC gas leg
-      BigInt(5_000_000_000_000_000_000) // 5 UPC overflow
+      BigInt(10_000_000_000_000_000_000), // gasRequired: 10 UPC gas leg
+      BigInt(5_000_000_000_000_000_000), // extraDepositPC: 5 UPC overflow
+      BigInt(1_500_000_000) // totalDepositUSD: $15
     );
-    expect(ev.title).toBe(`${chainName} Gas Sizing: Case C`);
+    expect(ev.title).toBe('Gas Sizing: Case C');
     expect(ev.message).toBe(
       'Gas cost > $10; splitting into $10 gas leg + 5000000000000000000 UPC overflow bridged as funds'
     );
@@ -279,9 +281,9 @@ describe('Route 3 spec strings (301–399)', () => {
     expect(ev.level).toBe('ERROR');
   });
 
-  it('199-99-99 — Push Chain TX Completed (intermediate, internal)', () => {
+  it('199-99-99 — Push Chain Tx Completed (intermediate, internal)', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_99_99]('0xpushtx');
-    expect(ev.title).toBe('Push Chain TX Completed');
+    expect(ev.title).toBe('Push Chain Tx Completed');
     expect(ev.message).toBe(
       'Intermediate Push Chain tx confirmed: 0xpushtx, progressing to next phase'
     );

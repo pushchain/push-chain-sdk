@@ -35,15 +35,15 @@ describe('R3 execute-phase hook emission order (static guard)', () => {
   const src = fs.readFileSync(ROUTE_HANDLERS_PATH, 'utf8');
 
   // Happy-path emission sequence — what the hook stream should look like for
-  // a successful R3 sendTransaction. 302_03 (sizer) is fired via
+  // a successful R3 sendTransaction. 303_03 (sizer) is fired via
   // `fireSizingHook` not a direct enum reference, so check that marker too.
   const EXPECTED_ORDER = [
     'PROGRESS_HOOK.SEND_TX_301',
     'PROGRESS_HOOK.SEND_TX_302_01',
     'PROGRESS_HOOK.SEND_TX_302_02',
-    "fireSizingHook(ctx, 'R3'",
     'PROGRESS_HOOK.SEND_TX_303_01',
     'PROGRESS_HOOK.SEND_TX_303_02',
+    "fireSizingHook(ctx, 'R3'",
     'PROGRESS_HOOK.SEND_TX_304_01',
     'PROGRESS_HOOK.SEND_TX_304_02',
     'PROGRESS_HOOK.SEND_TX_304_03',

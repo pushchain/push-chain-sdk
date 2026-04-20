@@ -160,13 +160,32 @@ describe('classifyIntoSegments', () => {
     expect(result[0].sourceChain).toBe(CHAIN.BNB_TESTNET);
   });
 
-  it('should NOT merge consecutive Route 3 hops (direction change)', () => {
+  it('should merge consecutive Route 3 hops from the same source chain into one INBOUND_FROM_CEA segment', () => {
+    // Same-source R3 hops collapse into ONE CEA→UEA round-trip whose inbound
+    // multicall runs every hop's target op (cascade.ts classifyIntoSegments).
     const hop1 = makeRoute3Hop(CHAIN.BNB_TESTNET);
     const hop2 = makeRoute3Hop(CHAIN.BNB_TESTNET);
     const result = classifyIntoSegments([hop1, hop2]);
 
-    // Route 3 hops are INBOUND_FROM_CEA, which don't merge
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('INBOUND_FROM_CEA');
+    expect(result[0].hops).toHaveLength(2);
+    // Burn amounts summed across merged hops
+    expect(result[0].totalBurnAmount).toBe(BigInt(2));
+    // Gas fees accumulated
+    expect(result[0].gasFee).toBe(BigInt(400));
+  });
+
+  it('should NOT merge Route 3 hops from different source chains', () => {
+    const hop1 = makeRoute3Hop(CHAIN.BNB_TESTNET);
+    const hop2 = makeRoute3Hop(CHAIN.ETHEREUM_SEPOLIA);
+    const result = classifyIntoSegments([hop1, hop2]);
+
     expect(result).toHaveLength(2);
+    expect(result[0].type).toBe('INBOUND_FROM_CEA');
+    expect(result[0].sourceChain).toBe(CHAIN.BNB_TESTNET);
+    expect(result[1].type).toBe('INBOUND_FROM_CEA');
+    expect(result[1].sourceChain).toBe(CHAIN.ETHEREUM_SEPOLIA);
   });
 
   it('should handle mixed routes: Route 1 -> Route 2 -> Route 3', () => {

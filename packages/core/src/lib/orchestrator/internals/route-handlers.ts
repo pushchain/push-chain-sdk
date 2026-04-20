@@ -234,16 +234,19 @@ import type { GasSizingDecision } from './gas-usd-sizer';
 
 const SIZER_HOOK_BY_ROUTE = {
   R3: {
-    A: PROGRESS_HOOK.SEND_TX_302_03_01,
-    B: PROGRESS_HOOK.SEND_TX_302_03_02,
-    C: PROGRESS_HOOK.SEND_TX_302_03_03,
+    A: PROGRESS_HOOK.SEND_TX_303_03_01,
+    B: PROGRESS_HOOK.SEND_TX_303_03_02,
+    C: PROGRESS_HOOK.SEND_TX_303_03_03,
   },
 } as const;
 
 /**
  * Fire the route-scoped sizing progress hook based on the sizer's decision.
- * Case C carries the overflow amount as an extra arg so UIs can render the
- * bridge leg separately.
+ * Emits the consumer-facing shape { gasRequired, extraDepositPC, totalDepositUSD, chain }.
+ * - gasRequired   = sizer's gas leg in native PC wei
+ * - extraDepositPC = overflow in native PC wei (> 0 only for Case C)
+ * - totalDepositUSD = sized total in USD (8-dec): $1 for Case A (padded),
+ *   raw gasUsd for Case B/C (which for Case C equals gasLegUsd + overflowUsd).
  */
 function fireSizingHook(
   ctx: OrchestratorContext,
@@ -252,18 +255,17 @@ function fireSizingHook(
   sizing: GasSizingDecision
 ): void {
   const hook = SIZER_HOOK_BY_ROUTE[route][sizing.category];
-  if (sizing.category === 'C') {
-    fireProgressHook(
-      ctx,
-      hook,
-      chain,
-      sizing.gasUsd,
-      sizing.gasLegNativePc,
-      sizing.overflowNativePc
-    );
-  } else {
-    fireProgressHook(ctx, hook, chain, sizing.gasUsd, sizing.gasLegNativePc);
-  }
+  const ONE_USD_8D = BigInt(100_000_000);
+  const totalDepositUSD =
+    sizing.category === 'A' ? ONE_USD_8D : sizing.gasUsd;
+  fireProgressHook(
+    ctx,
+    hook,
+    chain,
+    sizing.gasLegNativePc,
+    sizing.overflowNativePc,
+    totalDepositUSD
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1289,17 +1291,14 @@ export async function executeCeaToPush(
         protocolFeeR3,
         gasFee
       );
-      if (result.sizing) {
-        fireSizingHook(ctx, 'R3', sourceChain, result.sizing);
-      }
     } catch (err) {
       throw new Error(`Failed to query outbound gas fee for Route 3: ${err}`);
     }
   }
 
-  // Emit account-resolution checkpoint post-gas to match numeric-spec order
-  // (301 → 302-xx → 303-xx). UEA + CEA were resolved earlier so we can feed
-  // both into 303-02.
+  // Account-resolution checkpoint fires before the gas-sizing sub-hook so
+  // consumers see the full account-resolution phase (303-xx) complete before
+  // the sizing decision is surfaced.
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_303_01, sourceChain);
   fireProgressHook(
     ctx,
@@ -1308,6 +1307,10 @@ export async function executeCeaToPush(
     ceaAddress,
     sourceChain
   );
+
+  if (sizingDecisionR3) {
+    fireSizingHook(ctx, 'R3', sourceChain, sizingDecisionR3);
+  }
 
   // R3 Case C: unlike R2, R3 has no destination funds-delivery semantic
   // (CEA self-executes and bridges funds BACK to Push Chain). When the
@@ -1597,17 +1600,14 @@ export async function executeCeaToPushSvm(
         protocolFeeR3Svm,
         gasFee
       );
-      if (result.sizing) {
-        fireSizingHook(ctx, 'R3', sourceChain, result.sizing);
-      }
     } catch (err) {
       throw new Error(`Failed to query outbound gas fee for SVM Route 3: ${err}`);
     }
   }
 
-  // Emit account-resolution checkpoint post-gas to match numeric-spec order
-  // (301 → 302-xx → 303-xx). UEA + gateway were resolved earlier so we can
-  // feed both into 303-02.
+  // Account-resolution checkpoint fires before the gas-sizing sub-hook so
+  // consumers see the full account-resolution phase (303-xx) complete before
+  // the sizing decision is surfaced.
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_303_01, sourceChain);
   fireProgressHook(
     ctx,
@@ -1616,6 +1616,10 @@ export async function executeCeaToPushSvm(
     lockerContract,
     sourceChain
   );
+
+  if (sizingDecisionR3Svm) {
+    fireSizingHook(ctx, 'R3', sourceChain, sizingDecisionR3Svm);
+  }
 
   // R3 SVM Case C: same minimal interpretation as R3 EVM — bump msg.value
   // by the overflow so swapAndBurnGas can afford the full gas cost. No

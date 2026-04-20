@@ -512,7 +512,13 @@ export async function calculateNativeAmountForDeposit(
     nativeTokenUsdPrice;
   nativeAmount = nativeAmount + BigInt(1);
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_102_02, nativeAmount);
+  fireProgressHook(
+    ctx,
+    PROGRESS_HOOK.SEND_TX_103_03_04,
+    nativeAmount,
+    depositUsd,
+    chain
+  );
 
   return nativeAmount;
 }

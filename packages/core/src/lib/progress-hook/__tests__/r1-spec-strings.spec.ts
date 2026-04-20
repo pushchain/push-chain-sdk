@@ -40,10 +40,15 @@ describe('Route 1 spec strings (101–199)', () => {
     expect(ev.level).toBe('INFO');
   });
 
-  it('102-02 — Gas Estimated', () => {
-    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_102_02](BigInt(21000));
-    expect(ev.title).toBe('Gas Estimated');
-    expect(ev.message).toBe('Total execution cost: 21000 UPC');
+  it('103-03-04 — Prepaid Deposit Estimated', () => {
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_103_03_04](
+      BigInt('1000000000000000000'),
+      BigInt(100_000_000)
+    );
+    expect(ev.title).toBe('Prepaid Deposit Estimated');
+    expect(ev.message).toBe(
+      'Estimated prepaid deposit: $100000000 (1000000000000000000 UPC)'
+    );
     expect(ev.level).toBe('SUCCESS');
   });
 

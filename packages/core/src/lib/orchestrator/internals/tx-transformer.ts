@@ -125,7 +125,6 @@ export function reconstructProgressEvents(
 
   events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_101](chainNamespace, originAddress));
   events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_102_01]());
-  events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_102_02](universalTxResponse.gasLimit));
 
   const pushChainIds = [
     CHAIN_INFO[CHAIN.PUSH_MAINNET].chainId,
@@ -145,6 +144,13 @@ export function reconstructProgressEvents(
       )
     );
   }
+
+  events.push(
+    PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_103_03_04](
+      universalTxResponse.gasLimit,
+      BigInt(0)
+    )
+  );
 
 
   events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_107]());

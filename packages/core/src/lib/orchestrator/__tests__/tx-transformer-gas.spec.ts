@@ -226,7 +226,7 @@ describe('tx-transformer', () => {
   // reconstructProgressEvents
   // --------------------------------------------------------------------------
   describe('reconstructProgressEvents', () => {
-    it('should always include SEND_TX_101, SEND_TX_102_01, SEND_TX_102_02', () => {
+    it('should always include SEND_TX_101, SEND_TX_102_01, SEND_TX_103_03_04', () => {
       const txResponse = makeUniversalTxResponse();
 
       const events = reconstructProgressEvents(txResponse);
@@ -234,7 +234,7 @@ describe('tx-transformer', () => {
       const ids = events.map((e) => e.id);
       expect(ids).toContain('SEND-TX-101');
       expect(ids).toContain('SEND-TX-102-01');
-      expect(ids).toContain('SEND-TX-102-02');
+      expect(ids).toContain('SEND-TX-103-03-04');
     });
 
     it('should always end with a final event (success or error)', () => {
@@ -831,11 +831,11 @@ describe('gas-calculator', () => {
         BigInt('1000000000000000000')
       );
 
-      // Should fire SEND_TX_102_01 and SEND_TX_102_02 progress hooks
+      // Should fire SEND_TX_102_01 and SEND_TX_103_03_04 progress hooks
       expect(progressHook).toHaveBeenCalledTimes(2);
       const hookIds = progressHook.mock.calls.map((call: any) => call[0].id);
       expect(hookIds).toContain('SEND-TX-102-01');
-      expect(hookIds).toContain('SEND-TX-102-02');
+      expect(hookIds).toContain('SEND-TX-103-03-04');
     });
   });
 

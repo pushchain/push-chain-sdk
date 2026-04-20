@@ -116,7 +116,13 @@ export async function executeStandardPayload(
 
   // Push to Push Tx
   if (isPushChain(chain)) {
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_102_02, execute.gasLimit ?? BigInt(21000));
+    fireProgressHook(
+      ctx,
+      PROGRESS_HOOK.SEND_TX_103_03_04,
+      execute.gasLimit ?? BigInt(21000),
+      BigInt(0),
+      chain
+    );
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_107);
     let tx: UniversalTxResponse;
     try {
@@ -148,7 +154,6 @@ export async function executeStandardPayload(
   const gasPrice = await ctx.pushClient.getGasPrice();
   const requiredGasFee = gasEstimate * gasPrice;
   const requiredFunds = requiredGasFee + execute.value;
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_102_02, requiredFunds);
 
   // Fetch UEA Details (or use pre-fetched status if available)
   const UEA = computeUEAOffchain(ctx);
@@ -183,6 +188,13 @@ export async function executeStandardPayload(
     }
   }
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_02, UEA, isUEADeployed);
+  fireProgressHook(
+    ctx,
+    PROGRESS_HOOK.SEND_TX_103_03_04,
+    requiredFunds,
+    BigInt(0),
+    chain
+  );
 
   // Validate and decode feeLockTxHash
   let feeLockTxHash: string | undefined = execute.feeLockTxHash;

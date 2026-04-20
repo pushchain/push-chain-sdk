@@ -114,6 +114,7 @@ export async function executeFundsWithPayload(
   const ueaAddress = computeUEAOffchain(ctx);
   const ueaBalance = await ctx.pushClient.getBalance(ueaAddress);
 
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_01);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_02, ueaAddress, deployed);
 
   // SDK 5.2 Case A/B/C sizing on the Push-chain gas portion.
@@ -123,16 +124,40 @@ export async function executeFundsWithPayload(
     pushGasFeeWei: requiredGasFee,
     originChain: chain,
   });
+
+  // Convert the sizer's USD result into planned PC native deposit so the
+  // sizer progress hook can surface the user-facing `extraDepositPC` =
+  // totalPCDeposit - gasRequired. The same conversion is reused below for
+  // the final nativeAmount calc (after SVM clamp).
+  const nativeTokenUsdPrice = await new PriceFetch(ctx.rpcUrls).getPrice(chain);
+  const nativeDecimals = CHAIN_INFO[chain].vm === VM.SVM ? 9 : 18;
+  const oneNativeUnit = Utils.helpers.parseUnits('1', nativeDecimals);
+  const usdToNative = (usd: bigint): bigint => {
+    if (nativeTokenUsdPrice === BigInt(0)) return BigInt(0);
+    const out = (usd * oneNativeUnit + (nativeTokenUsdPrice - BigInt(1))) / nativeTokenUsdPrice;
+    return out + BigInt(1);
+  };
+  const plannedPCDeposit = usdToNative(r1Sizing.paddedDepositUsd);
+  const extraDepositPC =
+    plannedPCDeposit > requiredGasFee ? plannedPCDeposit - requiredGasFee : BigInt(0);
+
+  fireProgressHook(
+    ctx,
+    PROGRESS_HOOK.SEND_TX_103_03,
+    chain,
+    r1Sizing.paddedDepositUsd
+  );
   const r1SizingHookId = {
-    A: PROGRESS_HOOK.SEND_TX_106_07_01,
-    B: PROGRESS_HOOK.SEND_TX_106_07_02,
-    C: PROGRESS_HOOK.SEND_TX_106_07_03,
+    A: PROGRESS_HOOK.SEND_TX_103_03_01,
+    B: PROGRESS_HOOK.SEND_TX_103_03_02,
+    C: PROGRESS_HOOK.SEND_TX_103_03_03,
   }[r1Sizing.category];
   fireProgressHook(
     ctx,
     r1SizingHookId,
     chain,
-    r1Sizing.pushGasUsd,
+    requiredGasFee,
+    extraDepositPC,
     r1Sizing.paddedDepositUsd
   );
 
@@ -141,8 +166,6 @@ export async function executeFundsWithPayload(
 
   // Apply sizer floor: Case A pads to $1, Cases B/C pass-through.
   if (depositUsd < r1Sizing.paddedDepositUsd) depositUsd = r1Sizing.paddedDepositUsd;
-
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_102_02, depositUsd);
 
   // If SVM, clamp depositUsd to on-chain Config caps
   if (CHAIN_INFO[chain].vm === VM.SVM) {
@@ -167,13 +190,16 @@ export async function executeFundsWithPayload(
     }
   }
 
-  // Convert USD(8) -> native units
-  const nativeTokenUsdPrice = await new PriceFetch(ctx.rpcUrls).getPrice(chain);
-  const nativeDecimals = CHAIN_INFO[chain].vm === VM.SVM ? 9 : 18;
-  const oneNativeUnit = Utils.helpers.parseUnits('1', nativeDecimals);
-  let nativeAmount =
-    (depositUsd * oneNativeUnit + (nativeTokenUsdPrice - BigInt(1))) / nativeTokenUsdPrice;
-  nativeAmount = nativeAmount + BigInt(1);
+  // Final USD(8) -> native conversion reusing the cached price fetched above.
+  let nativeAmount = usdToNative(depositUsd);
+
+  fireProgressHook(
+    ctx,
+    PROGRESS_HOOK.SEND_TX_103_03_04,
+    nativeAmount,
+    depositUsd,
+    chain
+  );
 
   const bridgeAmount = execute.funds!.amount;
   const symbol = execute.funds!.token.symbol;
@@ -195,8 +221,6 @@ export async function executeFundsWithPayload(
   try {
     if (CHAIN_INFO[ctx.universalSigner.account.chain].vm === VM.EVM) {
       const tokenAddr = execute.funds!.token.address as `0x${string}`;
-      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_01);
-      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_02, ueaAddress, deployed);
       fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_01);
       fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_02);
       fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_03);
