@@ -20,11 +20,30 @@ import {
   makeSepoliaContext,
   makePushContext,
 } from '../_helpers/docs-fund';
-import testCounterIdl from '../../../src/lib/orchestrator/svm-idl/__fixtures__/test_counter.idl.json';
-
 const COUNTER_PUSH = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
 const COUNTER_BNB = '0x7f0936bb90e7dcf3edb47199c2005e7184e44cf8';
-const SOL_TEST_PROGRAM = '0x7673075a980bfd5d6b1dffe99c31f63e8938519cc1c2af009dda5e568a94460d';
+const SOL_TEST_PROGRAM = '8yNqjrMnFiFbVTVQcKij8tNWWTMdFkrDf9abCGgc2sgx'; // Solana Devnet, base58
+
+// Inlined Anchor IDL — trimmed to just the `receive_sol` instruction used below.
+// The full program IDL lives at
+// `__fixtures__/test_counter.idl.json`; we inline here so docs readers see the shape.
+const testCounterIdl = {
+  address: SOL_TEST_PROGRAM,
+  metadata: { name: 'test_counter', version: '0.1.0', spec: '0.1.0' },
+  instructions: [
+    {
+      name: 'receive_sol',
+      discriminator: [121, 244, 250, 3, 8, 229, 225, 1],
+      accounts: [
+        { name: 'counter', writable: true, pda: { seeds: [{ kind: 'const', value: [99, 111, 117, 110, 116, 101, 114] }] } }, // 'counter'
+        { name: 'recipient', writable: true, address: '89q1AUFb7YREHtjc1aYaPywovPq6tb3GYNPyDUJ3rshi' },
+        { name: 'cea_authority', writable: true }, // auto-populated with sender's CEA
+        { name: 'system_program', address: '11111111111111111111111111111111' },
+      ],
+      args: [{ name: 'amount', type: 'u64' }],
+    },
+  ],
+} as const;
 const COUNTER_ABI = [
   { inputs: [], name: 'increment', outputs: [], stateMutability: 'nonpayable', type: 'function' },
   { inputs: [], name: 'count', outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
@@ -133,8 +152,6 @@ describe('docs-examples › 08-multichain-transactions', () => {
     const client = await PushChain.initialize(universalSigner, {
       network: PUSH_NETWORK.TESTNET_DONUT,
     });
-
-    PushChain.utils.svm.registerIdl(SOL_TEST_PROGRAM, testCounterIdl as any);
 
     await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
     await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, '5');
@@ -326,8 +343,13 @@ describe('docs-examples › 08-multichain-transactions', () => {
 
     const cascade = await client.universal.executeTransactions([hop0, hop1]);
     expect(cascade.hopCount).toBe(2);
+    const eventStream: string[] = [];
     const result = await cascade.wait({
       progressHook: (e: any) => console.log(`  [Hop ${e.hopIndex}] ${e.status} on ${e.chain}`),
+      eventHook: (event) => {
+        eventStream.push(event.id);
+        console.log(`  [event] ${event.id} | ${event.title}`);
+      },
     });
     expect(result.success).toBe(true);
 
@@ -335,6 +357,12 @@ describe('docs-examples › 08-multichain-transactions', () => {
     const bnbAfter = (await bnbCounter['count']()) as bigint;
     expect(pushAfter).toBe(pushBefore + BigInt(1));
     expect(bnbAfter).toBe(bnbBefore + BigInt(1));
+
+    // Multichain marker assertions — confirm 001/002/999 wired through cascade
+    expect(eventStream).toContain('SEND-TX-001');
+    expect(eventStream).toContain('SEND-TX-002-01');
+    expect(eventStream).toContain('SEND-TX-002-99-99');
+    expect(eventStream).toContain('SEND-TX-999-01');
   }, 600_000);
 
   /**
@@ -359,8 +387,6 @@ describe('docs-examples › 08-multichain-transactions', () => {
     const client = await PushChain.initialize(universalSigner, {
       network: PUSH_NETWORK.TESTNET_DONUT,
     });
-
-    PushChain.utils.svm.registerIdl(SOL_TEST_PROGRAM, testCounterIdl as any);
 
     await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
     await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, '5');

@@ -118,4 +118,8 @@ pnpm --filter @pushchain/core test __e2e__/docs-examples/07-transaction-scenario
 
 # one slug — use Jest's -t flag to match the it() title
 pnpm --filter @pushchain/core test __e2e__/docs-examples/07-transaction-scenarios/route2.spec.ts -t 'route2_funds'
+
+# new Solana-origin/target slugs (requires EVM_PRIVATE_KEY + PUSH_PRIVATE_KEY or SOLANA_PRIVATE_KEY)
+pnpm --filter @pushchain/core test __e2e__/docs-examples/07-transaction-scenarios/route2.spec.ts -t 'route2_solana'
+pnpm --filter @pushchain/core test __e2e__/docs-examples/07-transaction-scenarios/route3.spec.ts -t 'route3_solana'
 ```

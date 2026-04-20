@@ -375,6 +375,20 @@ describe('buildOutboundApprovalAndCall', () => {
     // fallback: gasFee * 5 = 250
     expect(result[2].value).toBe(BigInt(250));
   });
+
+  it('no bridge-swap entries → plain approve-zero + approve + outbound emission', () => {
+    const result = buildOutboundApprovalAndCall({
+      prc20Token: TOKEN_A,
+      gasToken: TOKEN_A,
+      burnAmount: BigInt(1000),
+      gasFee: BigInt(500),
+      nativeValueForGas: BigInt(2600),
+      gatewayPcAddress: GATEWAY,
+      outboundRequest,
+    });
+    // Same 3-entry shape as before (approve-zero, approve, outbound)
+    expect(result).toHaveLength(3);
+  });
 });
 
 // ============================================================================

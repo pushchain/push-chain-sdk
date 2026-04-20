@@ -23,6 +23,7 @@ import { UniversalAccount } from './universal/universal.types';
 import type { PushChain } from './push-chain/push-chain';
 import { encodeFunctionData, formatUnits } from 'viem';
 import { Buffer } from 'buffer';
+import type { Idl } from '@coral-xyz/anchor';
 import {
   encodeAnchorIxData,
   isAnchorIdl,
@@ -30,7 +31,6 @@ import {
 import {
   registerIdl as registerSvmIdl,
   getRegisteredIdls as getRegisteredSvmIdls,
-  getIdl as getSvmIdl,
 } from './orchestrator/svm-idl/registry';
 
 /**
@@ -87,22 +87,17 @@ export class Utils {
   };
 
   /**
-   * SVM (Solana) utilities for registering program Anchor IDLs.
+   * SVM (Solana) escape-hatch utilities.
    *
-   * Register your program's Anchor IDL once per process; `prepareTransaction`
-   * then resolves accounts, PDAs, and signers from the IDL so you only need
-   * to pass `data` (discriminator + Borsh args), the same shape used for EVM.
+   * `PushChain.utils.helpers.encodeTxData({ abi: idl, ... })` auto-registers
+   * the Anchor IDL internally, so normal callers never need these.
    *
-   * @example
-   * PushChain.utils.svm.registerIdl(
-   *   PROGRAM_ADDRESS_HEX,
-   *   testCounterIdl
-   * );
+   * Use `registerIdl` directly only when you build `data` manually (raw
+   * Anchor discriminator + Borsh bytes) and bypass `encodeTxData`.
    */
   static svm = {
     registerIdl: registerSvmIdl,
     getRegisteredIdls: getRegisteredSvmIdls,
-    getIdl: getSvmIdl,
   };
 
   static signer = {
@@ -259,33 +254,65 @@ export class Utils {
         return Utils.chains.getChainName(chainName);
       };
     })(),
+    /**
+     * Encode calldata for a universal tx.
+     *
+     * Pass `abi` for EVM targets, or `idl` for SVM (Anchor) targets. Exactly
+     * one of the two is required.
+     *
+     * @example EVM
+     * PushChain.utils.helpers.encodeTxData({
+     *   abi: erc20Abi,
+     *   functionName: 'transfer',
+     *   args: [to, amount],
+     * });
+     *
+     * @example SVM (Anchor)
+     * PushChain.utils.helpers.encodeTxData({
+     *   idl: counterIdl,
+     *   functionName: 'increment',
+     *   args: [],
+     * });
+     */
     encodeTxData({
       abi,
+      idl,
       functionName,
       args = [],
     }: {
-      abi: any;
+      abi?: any;
+      idl?: Idl;
       functionName: string;
       args?: any[];
     }): `0x${string}` {
-      if (isAnchorIdl(abi)) {
-        if (!Array.isArray(args)) {
-          throw new Error('Arguments must be an array');
-        }
-        const bytes = encodeAnchorIxData(abi, functionName, args);
-        return `0x${Buffer.from(bytes).toString('hex')}` as `0x${string}`;
+      if (abi !== undefined && idl !== undefined) {
+        throw new Error(
+          "encodeTxData: pass either 'abi' (EVM) or 'idl' (SVM), not both"
+        );
       }
-
-      // Validate inputs
-      if (!Array.isArray(abi)) {
-        throw new Error('ABI must be an array');
+      if (abi === undefined && idl === undefined) {
+        throw new Error(
+          "encodeTxData: either 'abi' (EVM) or 'idl' (SVM) must be provided"
+        );
       }
 
       if (!Array.isArray(args)) {
         throw new Error('Arguments must be an array');
       }
 
-      // Find the function in the ABI
+      // SVM path: explicit idl, or legacy abi-as-IDL for backward compat.
+      const svmIdl: Idl | undefined = idl ?? (isAnchorIdl(abi) ? abi : undefined);
+      if (svmIdl) {
+        registerSvmIdl(svmIdl);
+        const bytes = encodeAnchorIxData(svmIdl, functionName, args);
+        return `0x${Buffer.from(bytes).toString('hex')}` as `0x${string}`;
+      }
+
+      // EVM path
+      if (!Array.isArray(abi)) {
+        throw new Error('ABI must be an array');
+      }
+
       const functionAbi = abi.find((f: any) => f.name === functionName);
       if (!functionAbi) {
         throw new Error(`Function '${functionName}' not found in ABI`);

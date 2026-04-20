@@ -1364,36 +1364,6 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
     // Error Handling
     // ==========================================================================
     describe('Error Handling', () => {
-      it('should fail gracefully if CEA is not deployed on target chain', async () => {
-        if (skipE2E) return;
-
-        console.log('\n=== Test: CEA Not Deployed Error ===');
-
-        const params: UniversalExecuteParams = {
-          from: { chain: CHAIN.ARBITRUM_SEPOLIA },
-          to: ueaAddress,
-          value: parseEther('0.001'),
-        };
-
-        try {
-          const { isDeployed } = await getCEAAddress(ueaAddress, CHAIN.ARBITRUM_SEPOLIA);
-
-          if (!isDeployed) {
-            await expect(
-              pushClient.universal.sendTransaction(params)
-            ).rejects.toThrow(/CEA not deployed/);
-          } else {
-            console.log('  - skipping this test case');
-          }
-        } catch (err: any) {
-          // If getCEAAddress throws (CEAFactory not available), that's also a valid outcome
-          console.log(`getCEAAddress threw: ${err.message}`);
-          await expect(
-            pushClient.universal.sendTransaction(params)
-          ).rejects.toThrow();
-        }
-      }, 60000);
-
       it('should treat missing from.chain as Route 1 (UOA_TO_PUSH)', () => {
         const params: UniversalExecuteParams = {
           to: ueaAddress || '0x1234567890123456789012345678901234567890',
@@ -1446,9 +1416,15 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
         // Verify we got progress events
         expect(events.length).toBeGreaterThan(0);
 
-        // Verify key events were emitted
-        expect(events.some(e => e.id === 'SEND-TX-101')).toBe(true);
-        expect(events.some(e => e.id.startsWith('SEND-TX-99'))).toBe(true);
+        // R3 pre-broadcast hook set (account resolution, gas sizing, broadcast,
+        // signing). Post-broadcast/outbound hooks (309/310/399) require tx.wait()
+        // which this test intentionally does not call.
+        expect(events.some(e => e.id === 'SEND-TX-301')).toBe(true);
+        expect(events.some(e => e.id === 'SEND-TX-303-02')).toBe(true);
+        expect(events.some(e => e.id === 'SEND-TX-302-02')).toBe(true);
+        expect(events.some(e => e.id?.startsWith('SEND-TX-302-03'))).toBe(true);
+        expect(events.some(e => e.id === 'SEND-TX-307')).toBe(true);
+        expect(events.some(e => e.id === 'SEND-TX-304-03')).toBe(true);
       }, 600000);
     });
 

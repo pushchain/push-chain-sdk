@@ -232,10 +232,15 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(result.hopCount).toBe(3);
         expect(result.hops).toHaveLength(3);
 
+        const cascadeEventStream: string[] = [];
         const completion = await result.waitForAll({
           timeout: 600000,
           progressHook: (event) => {
             console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
+          },
+          eventHook: (event) => {
+            cascadeEventStream.push(event.id);
+            console.log(`[TEST:event] ${event.id} | ${event.title}`);
           },
         });
         expect(completion.success).toBe(true);
@@ -259,6 +264,16 @@ describe('Advance Hopping: Cascade API E2E', () => {
         }
         console.log(`Push Chain Counter AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
+
+        // Multichain marker assertions — 3-hop cascade with R3 inbound
+        expect(cascadeEventStream).toContain('SEND-TX-001');
+        expect(cascadeEventStream.filter(id => id === 'SEND-TX-002-01').length).toBeGreaterThanOrEqual(2);
+        expect(cascadeEventStream).toContain('SEND-TX-002-99-99');
+        expect(cascadeEventStream).toContain('SEND-TX-999-01');
+        // 001 must come first
+        expect(cascadeEventStream.indexOf('SEND-TX-001')).toBe(0);
+        // 999-01 must come last
+        expect(cascadeEventStream[cascadeEventStream.length - 1]).toBe('SEND-TX-999-01');
       }, 900000);
     });
 
@@ -331,10 +346,15 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(typeof result.waitForAll).toBe('function');
 
         // Wait for all hops to complete
+        const cascadeEventStream: string[] = [];
         const completion = await result.waitForAll({
           timeout: 600000,
           progressHook: (event) => {
             console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
+          },
+          eventHook: (event) => {
+            cascadeEventStream.push(event.id);
+            console.log(`[TEST:event] ${event.id} | ${event.title}`);
           },
         });
 
@@ -371,6 +391,14 @@ describe('Advance Hopping: Cascade API E2E', () => {
         }
         console.log(`Push Chain Counter AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
+
+        // Multichain marker assertions — 3-hop with funds bridge
+        expect(cascadeEventStream).toContain('SEND-TX-001');
+        expect(cascadeEventStream).toContain('SEND-TX-002-01');
+        expect(cascadeEventStream).toContain('SEND-TX-002-99-99');
+        expect(cascadeEventStream).toContain('SEND-TX-999-01');
+        expect(cascadeEventStream.indexOf('SEND-TX-001')).toBe(0);
+        expect(cascadeEventStream[cascadeEventStream.length - 1]).toBe('SEND-TX-999-01');
       }, 900000);
     });
 
@@ -641,10 +669,15 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(typeof result.waitForAll).toBe('function');
 
         // Wait for all hops to complete
+        const cascadeEventStream: string[] = [];
         const completion = await result.waitForAll({
           timeout: 300000,
           progressHook: (event) => {
             console.log(`[TEST:waitForAll] hop ${event.hopIndex} status: ${event.status}`);
+          },
+          eventHook: (event) => {
+            cascadeEventStream.push(event.id);
+            console.log(`[TEST:event] ${event.id} | ${event.title}`);
           },
         });
 
@@ -676,6 +709,11 @@ describe('Advance Hopping: Cascade API E2E', () => {
         }
         console.log(`Push Chain Counter AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
+
+        // Multichain marker assertions — same-chain merging keeps cascade markers
+        expect(cascadeEventStream).toContain('SEND-TX-001');
+        expect(cascadeEventStream).toContain('SEND-TX-002-01');
+        expect(cascadeEventStream).toContain('SEND-TX-999-01');
       }, 600000);
     });
 
@@ -1566,6 +1604,16 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(result.hops[0].route).toBe('UOA_TO_PUSH');
         expect(result.hops[0].status).toBe('confirmed');
         expect(typeof result.waitForAll).toBe('function');
+
+        // Negative assertion — single-hop cascades MUST NOT emit multichain markers
+        const cascadeEventStream: string[] = [];
+        await result.waitForAll({
+          eventHook: (event) => cascadeEventStream.push(event.id),
+        });
+        expect(cascadeEventStream).not.toContain('SEND-TX-001');
+        expect(cascadeEventStream).not.toContain('SEND-TX-002-01');
+        expect(cascadeEventStream).not.toContain('SEND-TX-002-99-99');
+        expect(cascadeEventStream).not.toContain('SEND-TX-999-01');
       }, 180000);
 
       it('should send a single-hop cascade (Route 2)', async () => {
@@ -1592,6 +1640,16 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(result.hops).toHaveLength(1);
         expect(result.hops[0].route).toBe('UOA_TO_CEA');
         expect(result.hops[0].status).toBe('confirmed');
+
+        // Negative assertion — single-hop cascades MUST NOT emit multichain markers
+        const cascadeEventStream: string[] = [];
+        await result.waitForAll({
+          eventHook: (event) => cascadeEventStream.push(event.id),
+        });
+        expect(cascadeEventStream).not.toContain('SEND-TX-001');
+        expect(cascadeEventStream).not.toContain('SEND-TX-002-01');
+        expect(cascadeEventStream).not.toContain('SEND-TX-002-99-99');
+        expect(cascadeEventStream).not.toContain('SEND-TX-999-01');
       }, 180000);
 
       // ==========================================================================

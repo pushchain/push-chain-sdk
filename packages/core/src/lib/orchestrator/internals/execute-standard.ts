@@ -42,6 +42,7 @@ import {
   buildMulticallPayloadData,
 } from './payload-builder';
 import { encodeUniversalPayload, encodeUniversalPayloadSvm, signUniversalPayload } from './signing';
+import { classifyDeclineError } from '../../progress-hook/progress-hook';
 import { computeUEAOffchain, getUEANonce, fetchUEAVersion } from './uea-manager';
 import { waitForLockerFeeConfirmation } from './confirmation';
 import { lockFee } from './gateway-client';
@@ -50,7 +51,12 @@ import {
   transformToUniversalTxResponse,
   type ResponseBuilderCallbacks,
 } from './response-builder';
-import { sendPushTx, sendUniversalTx, extractPcTxAndTransform } from './push-chain-tx';
+import {
+  sendPushTx,
+  sendUniversalTx,
+  extractPcTxAndTransform,
+  PushChainExecutionError,
+} from './push-chain-tx';
 import {
   estimateDepositFromLockedNative,
   estimateNativeForDesiredDeposit,
@@ -101,16 +107,43 @@ export async function executeStandardPayload(
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_101, chain, ctx.universalSigner.account.address);
   validateMainnetConnection(chain, ctx.pushClient.pushChainInfo.chainId);
 
+  // Gas estimation fires for both Push-to-Push and external-origin flows so
+  // reconstructProgressEvents (which always emits 102-01/02) and live execute
+  // stay in lockstep. For the Push-to-Push shortcut we have no origin-chain
+  // gas to estimate; surface the tx gas limit as the "cost" to match what
+  // the reconstruction path does (it reads universalTxResponse.gasLimit).
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_102_01);
+
   // Push to Push Tx
   if (isPushChain(chain)) {
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_102_02, execute.gasLimit ?? BigInt(21000));
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_107);
-    const tx = await sendPushTx(ctx, execute, eventBuffer, transformFn);
+    let tx: UniversalTxResponse;
+    try {
+      tx = await sendPushTx(ctx, execute, eventBuffer, transformFn);
+    } catch (err) {
+      // Push Chain broadcast failed. Wallet rejection surfaces as 104-04;
+      // everything else (RPC fail, on-chain revert) as 199-02.
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const { isUserDecline } = classifyDeclineError(errMsg);
+      fireProgressHook(
+        ctx,
+        isUserDecline ? PROGRESS_HOOK.SEND_TX_104_04 : PROGRESS_HOOK.SEND_TX_199_02,
+        errMsg
+      );
+      // Mark that a terminal-ish error hook has already fired so the
+      // outer orchestrator catch doesn't emit a second 199-02 on top.
+      ctx._routeTerminalEmitted = true;
+      if (!isUserDecline && !(err instanceof PushChainExecutionError)) {
+        throw new PushChainExecutionError(errMsg);
+      }
+      throw err;
+    }
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_01, [tx]);
     return tx;
   }
 
   // Fetch Gas details and estimate cost of execution
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_102_01);
   const gasEstimate = execute.gasLimit || BigInt(1e7);
   const gasPrice = await ctx.pushClient.getGasPrice();
   const requiredGasFee = gasEstimate * gasPrice;
@@ -272,7 +305,17 @@ export async function executeStandardPayload(
   if (!feeLockingRequired) {
     const ueaVersion = await fetchUEAVersion(ctx);
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_02);
-    const signature = await signUniversalPayload(ctx, universalPayload, UEA, ueaVersion);
+    let signature: Uint8Array;
+    try {
+      signature = await signUniversalPayload(ctx, universalPayload, UEA, ueaVersion);
+    } catch (err) {
+      // Wallet decline, contract revert during sign, or RPC failure — the
+      // 104-04 builder's classifyDeclineError heuristic picks the right
+      // copy (real decline → "Verification Declined"; else "Signature Failed").
+      const errMsg = err instanceof Error ? err.message : String(err);
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_04, errMsg);
+      throw err;
+    }
     verificationData = bytesToHex(signature);
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_03);
   } else {
@@ -403,7 +446,17 @@ export async function executeStandardPayload(
       }
     }
 
-    const feeLockTxHashBytes = await lockFee(ctx, effectiveLockAmountInUSD, universalPayload, req);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_01);
+    let feeLockTxHashBytes: Uint8Array;
+    try {
+      feeLockTxHashBytes = await lockFee(ctx, effectiveLockAmountInUSD, universalPayload, req);
+    } catch (err) {
+      // User declined the fee-lock tx submission or the origin-chain RPC
+      // rejected it — classifier picks decline vs generic signature failure.
+      const errMsg = err instanceof Error ? err.message : String(err);
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_04, errMsg);
+      throw err;
+    }
     feeLockTxHash = bytesToHex(feeLockTxHashBytes);
     verificationData = bytesToHex(feeLockTxHashBytes);
 
@@ -419,24 +472,70 @@ export async function executeStandardPayload(
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_105_02);
 
     const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
-    const pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(
-      ctx,
-      new EvmClient({ rpcUrls: ctx.rpcUrls[chain] || defaultRPC }),
-      lockerContract as `0x${string}`,
-      feeLockTxHash,
-      'sendTxWithGas'
-    );
-
-    const response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, feeLockTxHash, eventBuffer, 'sendTxWithGas', transformFn);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_107);
+    let response: UniversalTxResponse;
+    try {
+      const pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(
+        ctx,
+        new EvmClient({ rpcUrls: ctx.rpcUrls[chain] || defaultRPC }),
+        lockerContract as `0x${string}`,
+        feeLockTxHash,
+        'sendTxWithGas'
+      );
+      // extractPcTxAndTransform fires 199-02 itself on pcTx FAILED and throws
+      // PushChainExecutionError — don't double-emit. Anything else thrown
+      // here (gateway-tx lookup failure, RPC error) hasn't emitted 199-02
+      // yet, so the catch below surfaces it.
+      response = await extractPcTxAndTransform(
+        ctx, pushChainUniversalTx, feeLockTxHash, eventBuffer, 'sendTxWithGas', transformFn
+      );
+    } catch (err) {
+      if (!(err instanceof PushChainExecutionError)) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, errMsg);
+        throw new PushChainExecutionError(errMsg, { gatewayTxHash: feeLockTxHash });
+      }
+      throw err;
+    }
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_01, [response]);
     return response;
   }
 
-  // Non-fee-locking path: Broadcasting Tx to PC via sendUniversalTx
+  // Non-fee-locking path: Broadcasting Tx to PC via sendUniversalTx.
+  // Provide a resign callback so sendUniversalTx can recover from the
+  // UEA-nonce race: the EIP-712 hash uses the UEA's live storage nonce
+  // (not payload.nonce), so if anything advances it between our read and
+  // Cosmos inclusion the tx reverts with InvalidEVMSignature(0xc7dbd31d).
+  const resignOnSigMismatch = async () => {
+    const freshNonce = await getUEANonce(ctx, UEA);
+    const freshUeaVersion = await fetchUEAVersion(ctx);
+    const freshPayload = JSON.parse(
+      JSON.stringify({ ...universalPayload, nonce: freshNonce }, bigintReplacer)
+    ) as UniversalPayload;
+    const freshSig = await signUniversalPayload(ctx, freshPayload, UEA, freshUeaVersion);
+    return {
+      universalPayload: freshPayload,
+      verificationData: bytesToHex(freshSig),
+    };
+  };
+
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_107);
-  const transactions = await sendUniversalTx(
-    ctx, isUEADeployed, feeLockTxHash, universalPayload, verificationData, eventBuffer, transformFn
-  );
+  let transactions: UniversalTxResponse[];
+  try {
+    transactions = await sendUniversalTx(
+      ctx, isUEADeployed, feeLockTxHash, universalPayload, verificationData, eventBuffer, transformFn,
+      resignOnSigMismatch,
+    );
+  } catch (err) {
+    // Push Chain broadcast failed (Cosmos reject, UEA revert, nonce race
+    // exhaustion). Surface terminal 199-02 before re-throwing so the stream
+    // ends with the spec'd error hook. Typed PushChainExecutionError lets
+    // callers classify via instanceof without message sniffing.
+    const errMsg = err instanceof Error ? err.message : String(err);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, errMsg);
+    if (err instanceof PushChainExecutionError) throw err;
+    throw new PushChainExecutionError(errMsg);
+  }
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_01, transactions);
   return transactions[transactions.length - 1];
 }

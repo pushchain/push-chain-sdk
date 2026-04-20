@@ -8,6 +8,7 @@ import { Utils } from '../utils';
 import {
   PROGRESS_HOOK,
   PROGRESS_HOOK_MIG,
+  PROGRESS_HOOK_MULTICHAIN,
   PROGRESS_HOOK_R1,
   PROGRESS_HOOK_R2,
   PROGRESS_HOOK_R3,
@@ -32,6 +33,52 @@ const friendlyChain = (chainOrNs: string | CHAIN | undefined): string => {
   const asString = String(chainOrNs);
   return Utils.chains.getChainName(asString) ?? asString;
 };
+
+/**
+ * Shape of the `response` field emitted by `SEND_TX_104_04` (R1),
+ * `SEND_TX_204_04` (R2), and `SEND_TX_304_04` (R3). Exported so consumers
+ * can read `isUserDecline` without casting through `object`.
+ */
+export interface DeclineHookResponse {
+  /** The underlying sign-time error message (decline copy when absent). */
+  error: string;
+  /** True if the error looks like a real wallet rejection. */
+  isUserDecline: boolean;
+}
+
+/**
+ * Classify a sign-time error as either a true wallet user-decline
+ * (viem `UserRejectedRequestError`, ethers `ACTION_REJECTED`, EIP-1193 4001,
+ * or textual "user rejected"/"user denied"/"declined by user") or a generic
+ * signature failure (insufficient funds, RPC failure, contract revert
+ * during sign, etc.). Shared by SEND_TX_104_04 (R1), SEND_TX_204_04 (R2),
+ * and SEND_TX_304_04 (R3) so the heuristic lives in one place.
+ *
+ * When `errorMessage` is omitted, treat it as a decline — the spec copy is
+ * already the decline copy ("Verification declined by user"), so flipping
+ * to "Signature Failed" would make the event self-contradict.
+ */
+export function classifyDeclineError(errorMessage?: string): {
+  isUserDecline: boolean;
+  title: string;
+  message: string;
+} {
+  const msg = errorMessage ?? 'Verification declined by user';
+  const isUserDecline =
+    errorMessage === undefined ||
+    /user\s*reject/i.test(msg) ||
+    /user\s*denied/i.test(msg) ||
+    /rejected\s*the\s*request/i.test(msg) ||
+    /UserRejectedRequestError/i.test(msg) ||
+    /ACTION_REJECTED/i.test(msg) ||
+    /declined\s*by\s*user/i.test(msg) ||
+    /\b4001\b/.test(msg);
+  return {
+    isUserDecline,
+    title: isUserDecline ? 'Verification Declined' : 'Signature Failed',
+    message: isUserDecline ? 'Verification declined by user' : msg,
+  };
+}
 
 // =============================================================================
 // Route 1 — UOA → Push Chain (101–199)
@@ -66,7 +113,7 @@ const RAW_HOOKS_R1: {
   }),
   [PROGRESS_HOOK.SEND_TX_103_01]: () => ({
     id: PROGRESS_HOOK.SEND_TX_103_01,
-    title: 'Resolving UEA',
+    title: 'Resolving Universal Execution Account',
     message: 'Resolving UEA – computing address, checking deployment and balance',
     response: { stage: 'resolving-uea' },
     level: 'INFO',
@@ -76,7 +123,7 @@ const RAW_HOOKS_R1: {
     deployed: boolean
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_103_02,
-    title: 'UEA Resolved',
+    title: 'Universal Execution Account Resolved',
     message: `UEA: ${ueaAddress}, Deployed: ${deployed}`,
     response: { uea: ueaAddress, deployed },
     level: 'SUCCESS',
@@ -102,13 +149,20 @@ const RAW_HOOKS_R1: {
     response: { stage: 'verified' },
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_104_04]: (errorMessage?: string) => ({
-    id: PROGRESS_HOOK.SEND_TX_104_04,
-    title: 'Verification Declined',
-    message: 'Verification declined by user',
-    response: { error: errorMessage ?? 'Verification declined by user' },
-    level: 'ERROR',
-  }),
+  [PROGRESS_HOOK.SEND_TX_104_04]: (errorMessage?: string) => {
+    const { isUserDecline, title, message } = classifyDeclineError(errorMessage);
+    const response: DeclineHookResponse = {
+      error: errorMessage ?? 'Verification declined by user',
+      isUserDecline,
+    };
+    return {
+      id: PROGRESS_HOOK.SEND_TX_104_04,
+      title,
+      message,
+      response,
+      level: 'ERROR',
+    };
+  },
   [PROGRESS_HOOK.SEND_TX_105_01]: (
     originChainTxHash: string,
     originChainTx?: OriginChainTx
@@ -201,10 +255,43 @@ const RAW_HOOKS_R1: {
     response: { amount, symbol },
     level: 'SUCCESS',
   }),
+  [PROGRESS_HOOK.SEND_TX_106_07_01]: (
+    originChain: string | CHAIN,
+    pushGasUsd: bigint,
+    paddedDepositUsd: bigint
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_106_07_01,
+    title: `${friendlyChain(originChain)} Push Gas Sizing: Case A`,
+    message: `Push-chain gas < $1; padding deposit to $1 floor (pushGasUsd=${pushGasUsd}, paddedDepositUsd=${paddedDepositUsd})`,
+    response: { category: 'A', pushGasUsd, paddedDepositUsd, chain: originChain },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_106_07_02]: (
+    originChain: string | CHAIN,
+    pushGasUsd: bigint,
+    paddedDepositUsd: bigint
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_106_07_02,
+    title: `${friendlyChain(originChain)} Push Gas Sizing: Case B`,
+    message: `Push-chain gas within $1–$10; happy path (pushGasUsd=${pushGasUsd}, paddedDepositUsd=${paddedDepositUsd})`,
+    response: { category: 'B', pushGasUsd, paddedDepositUsd, chain: originChain },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_106_07_03]: (
+    originChain: string | CHAIN,
+    pushGasUsd: bigint,
+    paddedDepositUsd: bigint
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_106_07_03,
+    title: `${friendlyChain(originChain)} Push Gas Sizing: Case C`,
+    message: `Push-chain gas > $10; deposit passes through to origin gateway MAX_CAP_UNIVERSAL_TX_USD (pushGasUsd=${pushGasUsd}, paddedDepositUsd=${paddedDepositUsd})`,
+    response: { category: 'C', pushGasUsd, paddedDepositUsd, chain: originChain },
+    level: 'INFO',
+  }),
   [PROGRESS_HOOK.SEND_TX_107]: () => ({
     id: PROGRESS_HOOK.SEND_TX_107,
     title: 'Broadcasting to Push Chain',
-    message: 'Sending TX to Push Chain...',
+    message: 'Sending tx to Push Chain...',
     response: { stage: 'broadcasting', destination: 'push-chain' },
     level: 'INFO',
   }),
@@ -216,15 +303,15 @@ const RAW_HOOKS_R1: {
     const txHash = first?.hash ?? '';
     return {
       id: PROGRESS_HOOK.SEND_TX_199_01,
-      title: 'Push Chain TX Success',
-      message: `TX confirmed: ${txHash}`,
+      title: 'Push Chain Tx Success',
+      message: `Tx confirmed: ${txHash}`,
       response: { txHash, response: txResponse, receipt: receipt ?? null },
       level: 'SUCCESS',
     };
   },
   [PROGRESS_HOOK.SEND_TX_199_02]: (errMessage: string) => ({
     id: PROGRESS_HOOK.SEND_TX_199_02,
-    title: 'Push Chain TX Failed',
+    title: 'Push Chain Tx Failed',
     message: errMessage,
     response: { error: errMessage },
     level: 'ERROR',
@@ -273,7 +360,7 @@ const RAW_HOOKS_R2: {
   }),
   [PROGRESS_HOOK.SEND_TX_203_01]: (targetChain: string | CHAIN) => ({
     id: PROGRESS_HOOK.SEND_TX_203_01,
-    title: 'Resolving CEA',
+    title: `Resolving ${friendlyChain(targetChain)} Execution Account`,
     message: `Resolving UEA on Push Chain and CEA on ${targetChain}`,
     response: { stage: 'resolving-cea', chain: targetChain },
     level: 'INFO',
@@ -285,8 +372,8 @@ const RAW_HOOKS_R2: {
     deployed: boolean
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_203_02,
-    title: 'CEA Resolved',
-    message: `UEA: ${ueaAddr} · CEA: ${ceaAddr} on ${targetChain} · Deployed: ${deployed}`,
+    title: `${friendlyChain(targetChain)} Execution Account Ready`,
+    message: `UEA: ${ueaAddr}. CEA: ${ceaAddr} on ${targetChain}. Deployed: ${deployed}`,
     response: { uea: ueaAddr, cea: ceaAddr, chain: targetChain, deployed },
     level: 'SUCCESS',
   }),
@@ -311,17 +398,24 @@ const RAW_HOOKS_R2: {
     response: { stage: 'verified' },
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_204_04]: (errorMessage?: string) => ({
-    id: PROGRESS_HOOK.SEND_TX_204_04,
-    title: 'Verification Declined',
-    message: 'Verification declined by user',
-    response: { error: errorMessage ?? 'Verification declined by user' },
-    level: 'ERROR',
-  }),
+  [PROGRESS_HOOK.SEND_TX_204_04]: (errorMessage?: string) => {
+    const { isUserDecline, title, message } = classifyDeclineError(errorMessage);
+    const response: DeclineHookResponse = {
+      error: errorMessage ?? 'Verification declined by user',
+      isUserDecline,
+    };
+    return {
+      id: PROGRESS_HOOK.SEND_TX_204_04,
+      title,
+      message,
+      response,
+      level: 'ERROR',
+    };
+  },
   [PROGRESS_HOOK.SEND_TX_207]: (targetChain: string | CHAIN) => ({
     id: PROGRESS_HOOK.SEND_TX_207,
     title: `Broadcasting from Push Chain → ${friendlyChain(targetChain)}`,
-    message: 'Sending TX to Push Chain...',
+    message: 'Sending tx to Push Chain...',
     response: { chain: targetChain },
     level: 'INFO',
   }),
@@ -344,16 +438,19 @@ const RAW_HOOKS_R2: {
   }),
   [PROGRESS_HOOK.SEND_TX_299_01]: (details: OutboundTxDetails) => ({
     id: PROGRESS_HOOK.SEND_TX_299_01,
-    title: `${friendlyChain(details.destinationChain)} TX Success`,
-    message: `CEA executed on ${details.destinationChain} · Tx: ${details.externalTxHash}`,
+    title: `${friendlyChain(details.destinationChain)} Tx Success`,
+    message: `CEA executed on ${details.destinationChain} - tx: ${details.externalTxHash}`,
     response: { txHash: details.externalTxHash, ...details },
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_299_02]: (errorMessage: string) => ({
+  [PROGRESS_HOOK.SEND_TX_299_02]: (
+    targetChain: string | CHAIN,
+    errorMessage: string
+  ) => ({
     id: PROGRESS_HOOK.SEND_TX_299_02,
-    title: 'External TX Failed',
+    title: `${friendlyChain(targetChain)} Tx Failed`,
     message: errorMessage,
-    response: { error: errorMessage },
+    response: { error: errorMessage, chain: targetChain },
     level: 'ERROR',
   }),
   [PROGRESS_HOOK.SEND_TX_299_03]: (
@@ -371,7 +468,7 @@ const RAW_HOOKS_R2: {
     txHash: string
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_299_99,
-    title: `${friendlyChain(targetChain)} TX Completed`,
+    title: `${friendlyChain(targetChain)} Tx Completed`,
     message: `Intermediate ${friendlyChain(targetChain)} tx confirmed: ${txHash}, progressing to next phase`,
     response: { chain: targetChain, txHash },
     level: 'INFO',
@@ -397,7 +494,7 @@ const RAW_HOOKS_R3: {
     ceaAddress: string
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_301,
-    title: `${friendlyChain(sourceChain)}'s CEA Detected`,
+    title: `${friendlyChain(sourceChain)}'s Executor Account Detected`,
     message: `Source chain: ${sourceChain} — CEA: ${ceaAddress}`,
     response: { chain: sourceChain, address: ceaAddress },
     level: 'INFO',
@@ -425,9 +522,49 @@ const RAW_HOOKS_R3: {
     },
     level: 'SUCCESS',
   }),
+  [PROGRESS_HOOK.SEND_TX_302_03_01]: (
+    sourceChain: string | CHAIN,
+    gasUsd: bigint,
+    gasLegNativePc: bigint
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_302_03_01,
+    title: `${friendlyChain(sourceChain)} Gas Sizing: Case A`,
+    message: `Gas cost < $1; padding to $1 minimum (gasUsd=${gasUsd}, gasLeg=${gasLegNativePc} UPC)`,
+    response: { category: 'A', gasUsd, gasLegNativePc, chain: sourceChain },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_302_03_02]: (
+    sourceChain: string | CHAIN,
+    gasUsd: bigint,
+    gasLegNativePc: bigint
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_302_03_02,
+    title: `${friendlyChain(sourceChain)} Gas Sizing: Case B`,
+    message: `Gas cost within $1–$10 window; happy path (gasUsd=${gasUsd}, gasLeg=${gasLegNativePc} UPC)`,
+    response: { category: 'B', gasUsd, gasLegNativePc, chain: sourceChain },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_302_03_03]: (
+    sourceChain: string | CHAIN,
+    gasUsd: bigint,
+    gasLegNativePc: bigint,
+    overflowNativePc: bigint
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_302_03_03,
+    title: `${friendlyChain(sourceChain)} Gas Sizing: Case C`,
+    message: `Gas cost > $10; splitting into $10 gas leg + ${overflowNativePc} UPC overflow bridged as funds`,
+    response: {
+      category: 'C',
+      gasUsd,
+      gasLegNativePc,
+      overflowNativePc,
+      chain: sourceChain,
+    },
+    level: 'INFO',
+  }),
   [PROGRESS_HOOK.SEND_TX_303_01]: (sourceChain: string | CHAIN) => ({
     id: PROGRESS_HOOK.SEND_TX_303_01,
-    title: 'Resolving CEA → UEA',
+    title: 'Resolving Execution Accounts on Chains',
     message: `Resolving UEA on Push Chain and CEA on ${sourceChain}`,
     response: { stage: 'resolving-cea-uea', chain: sourceChain },
     level: 'INFO',
@@ -438,8 +575,8 @@ const RAW_HOOKS_R3: {
     sourceChain: string | CHAIN
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_303_02,
-    title: 'CEA → UEA Resolved',
-    message: `UEA: ${ueaAddr} · CEA: ${ceaAddr} on ${sourceChain} · Deployed: true`,
+    title: 'Execution Accounts Resolved',
+    message: `UEA: ${ueaAddr}. CEA: ${ceaAddr} on ${sourceChain}. Deployed: true`,
     response: { uea: ueaAddr, cea: ceaAddr, chain: sourceChain, deployed: true },
     level: 'SUCCESS',
   }),
@@ -464,17 +601,24 @@ const RAW_HOOKS_R3: {
     response: { stage: 'verified' },
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_304_04]: (errorMessage?: string) => ({
-    id: PROGRESS_HOOK.SEND_TX_304_04,
-    title: 'Verification Declined',
-    message: 'Verification declined by user',
-    response: { error: errorMessage ?? 'Verification declined by user' },
-    level: 'ERROR',
-  }),
+  [PROGRESS_HOOK.SEND_TX_304_04]: (errorMessage?: string) => {
+    const { isUserDecline, title, message } = classifyDeclineError(errorMessage);
+    const response: DeclineHookResponse = {
+      error: errorMessage ?? 'Verification declined by user',
+      isUserDecline,
+    };
+    return {
+      id: PROGRESS_HOOK.SEND_TX_304_04,
+      title,
+      message,
+      response,
+      level: 'ERROR',
+    };
+  },
   [PROGRESS_HOOK.SEND_TX_307]: (sourceChain: string | CHAIN) => ({
     id: PROGRESS_HOOK.SEND_TX_307,
     title: `Broadcasting from Push Chain → ${friendlyChain(sourceChain)}`,
-    message: 'Sending TX from Push Chain...',
+    message: 'Sending tx from Push Chain...',
     response: { chain: sourceChain },
     level: 'INFO',
   }),
@@ -528,26 +672,63 @@ const RAW_HOOKS_R3: {
     receipt?: UniversalTxReceipt
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_399_01,
-    title: 'Push Chain Inbound Tx Confirmed',
-    message: `Inbound from ${sourceChain} confirmed · Push TX: ${txHash}`,
+    title: 'Push Chain Inbound Tx Success',
+    message: `Inbound from ${sourceChain} confirmed · Push tx: ${txHash}`,
     response: { chain: sourceChain, txHash, receipt: receipt ?? null },
     level: 'SUCCESS',
   }),
-  [PROGRESS_HOOK.SEND_TX_399_02]: (errorMessage: string) => ({
+  // 399-02 / 399-03 are multi-use terminal hooks for R3:
+  //   • 'inbound' (default) — round-trip Push tx failed/timed out (target: Push)
+  //   • 'outbound' — source-chain CEA tx failed/timed out (target: source chain)
+  //   • 'push' — Push Chain execution itself failed (gateway tx revert / pre-wait)
+  // Phase is passed by the emission site so the title matches the leg that
+  // actually failed. Default stays 'inbound' for callers that don't specify
+  // (backwards-compat with fixtures + response-builder's inbound block).
+  [PROGRESS_HOOK.SEND_TX_399_02]: (
+    errorMessage: string,
+    phase: 'outbound' | 'inbound' | 'push' = 'inbound',
+    chain?: string | CHAIN
+  ) => ({
     id: PROGRESS_HOOK.SEND_TX_399_02,
-    title: 'Push Chain Inbound Tx Failed',
+    title:
+      phase === 'outbound'
+        ? `${friendlyChain(chain)} Tx Failed`
+        : phase === 'push'
+        ? 'Push Chain Tx Failed'
+        : 'Push Chain Inbound Tx Failed',
     message: errorMessage,
-    response: { error: errorMessage },
+    response: { error: errorMessage, phase, chain: chain ?? null },
     level: 'ERROR',
   }),
   [PROGRESS_HOOK.SEND_TX_399_03]: (
     sourceChain: string | CHAIN,
-    elapsedMs: number
+    elapsedMs: number,
+    phase: 'outbound' | 'inbound' | 'push' = 'inbound'
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_399_03,
-    title: 'Push Chain Inbound Timeout',
-    message: `Timed out waiting for inbound from ${sourceChain}`,
-    response: { error: 'inbound timeout', chain: sourceChain, elapsedMs },
+    title:
+      phase === 'outbound'
+        ? `Syncing State with ${friendlyChain(sourceChain)} Timeout`
+        : phase === 'push'
+        ? 'Push Chain Tx Timeout'
+        : 'Push Chain Inbound Timeout',
+    message:
+      phase === 'outbound'
+        ? `Timed out waiting for ${friendlyChain(sourceChain)} relay`
+        : phase === 'push'
+        ? `Timed out waiting for Push Chain tx`
+        : `Timed out waiting for inbound from ${sourceChain}`,
+    response: {
+      error:
+        phase === 'outbound'
+          ? 'outbound timeout'
+          : phase === 'push'
+          ? 'push timeout'
+          : 'inbound timeout',
+      phase,
+      chain: sourceChain,
+      elapsedMs,
+    },
     level: 'ERROR',
   }),
 };
@@ -603,6 +784,66 @@ const RAW_HOOKS_MIG: {
   }),
 };
 
+// =============================================================================
+// Multichain (multi-hop) cascade markers (001 / 002 / 999)
+// =============================================================================
+
+const RAW_HOOKS_MULTICHAIN: {
+  [K in PROGRESS_HOOK_MULTICHAIN]: ProgressEventFunctionWithoutTimestamp;
+} = {
+  [PROGRESS_HOOK.SEND_TX_001]: (hopCount: number, chains: string[]) => ({
+    id: PROGRESS_HOOK.SEND_TX_001,
+    title: 'Multichain Transactions Initiated',
+    message: `${hopCount}-hop transaction — ${chains.map(friendlyChain).join(' → ')}`,
+    response: { hopCount, chains },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_002_01]: (
+    n: number,
+    total: number,
+    fromChain: string,
+    toChain: string
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_002_01,
+    title: `Starting Intermediate Transaction #${n}/${total}`,
+    message: `Starting tx ${n} of ${total}: ${friendlyChain(fromChain)} → ${friendlyChain(toChain)}`,
+    response: { n, total, fromChain, toChain },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_002_99_99]: (n: number, total: number) => ({
+    id: PROGRESS_HOOK.SEND_TX_002_99_99,
+    title: `Intermediate Transaction #${n}/${total} Complete`,
+    message: `Tx ${n} of ${total} confirmed — proceeding to tx ${n + 1}`,
+    response: { n, total },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.SEND_TX_999_01]: (hopCount: number) => ({
+    id: PROGRESS_HOOK.SEND_TX_999_01,
+    title: 'All Multichain Transactions Successful',
+    message: `${hopCount}-hop transaction confirmed across all chains`,
+    response: { hopCount },
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_999_02]: (
+    failedAt: number,
+    total: number,
+    errorMessage: string
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_999_02,
+    title: 'Multichain Transactions Failed',
+    message: `Cascade failed at hop ${failedAt} of ${total}: ${errorMessage}`,
+    response: { failedAt, total, error: errorMessage },
+    level: 'ERROR',
+  }),
+  [PROGRESS_HOOK.SEND_TX_999_03]: (failedAt: number, total: number) => ({
+    id: PROGRESS_HOOK.SEND_TX_999_03,
+    title: 'Multichain Transactions Timeout',
+    message: `Cascade timed out at hop ${failedAt} of ${total}`,
+    response: { failedAt, total, error: 'cascade timeout' },
+    level: 'ERROR',
+  }),
+};
+
 // Combine all routes into the master record
 const RAW_HOOKS: {
   [K in PROGRESS_HOOK]: ProgressEventFunctionWithoutTimestamp;
@@ -610,6 +851,7 @@ const RAW_HOOKS: {
   ...RAW_HOOKS_R1,
   ...RAW_HOOKS_R2,
   ...RAW_HOOKS_R3,
+  ...RAW_HOOKS_MULTICHAIN,
   ...RAW_HOOKS_MIG,
 };
 

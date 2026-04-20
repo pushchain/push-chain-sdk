@@ -39,6 +39,15 @@ export interface OrchestratorContext {
   accountStatusCache: AccountStatus | null;
   /** Cached origin chain EvmClient — avoids creating new clients per call site */
   _originEvmClient?: EvmClient;
+
+  /**
+   * Set to `true` by inner route handlers after they emit a terminal-ish
+   * error hook (104-04 / 204-04 / 304-04 / 199-02 via execute-standard).
+   * Checked by `Orchestrator.execute()`'s outer catch so it doesn't fire a
+   * second terminal (199-02 / 299-02 / 399-02) on top of the inner one.
+   * Reset to `false` at the start of each `execute()` call.
+   */
+  _routeTerminalEmitted?: boolean;
 }
 
 /**
@@ -73,8 +82,11 @@ export function printLog(ctx: OrchestratorContext, msg: string): void {
  * handlers and by `wait()` in response-builder.ts.
  *
  * Exceptions kept in the stream regardless of route:
- *   - The 199-99-99 intermediate marker (used by R3 itself).
  *   - All UEA migration hooks.
+ *
+ * Separately, the intermediate Push-success markers 199-99-99 (R3) and
+ * 299-99 (R2) are suppressed at `fanOut` in response-builder.ts — they're
+ * internal transition signals, not consumer-facing spec events.
  */
 const R1_SUPPRESSED_IN_NON_R1: ReadonlySet<string> = new Set([
   PROGRESS_HOOK.SEND_TX_101,

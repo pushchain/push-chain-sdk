@@ -15,7 +15,8 @@ import type {
   ChainTarget,
   TransactionRouteType,
 } from './orchestrator.types';
-import { isSvmChain, isValidSolanaHexAddress } from './payload-builders';
+import { isSvmChain } from './payload-builders';
+import { toSvmHexAddress } from './svm-idl/normalize-address';
 
 // ============================================================================
 // Transaction Route Enum
@@ -350,19 +351,23 @@ export function validateRouteParams(
 
   // Validate address format
   if (isChainTarget(params.to)) {
-    if (!params.to.address.startsWith('0x')) {
+    if (isSvmChain(params.to.chain)) {
+      // SVM targets accept either base58 (native Solana form) or 0x-prefixed
+      // 32-byte hex. Normalize to hex up front so downstream handlers only see
+      // the canonical form.
+      try {
+        params.to.address = toSvmHexAddress(params.to.address);
+      } catch (err) {
+        throw new RouteValidationError(
+          `Invalid Solana address format: ${params.to.address}. ` +
+            `Expected base58 (32-byte pubkey) or 0x-prefixed 32-byte hex. ` +
+            `(${(err as Error).message})`
+        );
+      }
+    } else if (!params.to.address.startsWith('0x')) {
       throw new RouteValidationError(
         `Invalid address format: ${params.to.address}`
       );
-    }
-    // SVM targets require 32-byte addresses (0x + 64 hex chars)
-    if (isSvmChain(params.to.chain)) {
-      if (!isValidSolanaHexAddress(params.to.address)) {
-        throw new RouteValidationError(
-          `Invalid Solana address format: ${params.to.address}. ` +
-            `Expected 32 bytes (0x + 64 hex chars).`
-        );
-      }
     }
   } else if (typeof params.to === 'string') {
     if (!params.to.startsWith('0x')) {

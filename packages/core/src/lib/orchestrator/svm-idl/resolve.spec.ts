@@ -46,7 +46,7 @@ describe('resolveSvmCall — byte-for-byte parity against legacy svmExecute', ()
   beforeEach(() => clearRegistry());
 
   it('produces the same triple as hand-rolled buildReceiveSol* helpers (amount=0)', () => {
-    registerIdl(TEST_PROGRAM, testCounterIdl);
+    registerIdl(testCounterIdl);
     const amount = BigInt(0);
     const data = encodeAnchorIxData(testCounterIdl as any, 'receive_sol', [amount]);
 
@@ -67,7 +67,7 @@ describe('resolveSvmCall — byte-for-byte parity against legacy svmExecute', ()
   });
 
   it('preserves parity for non-zero amount', () => {
-    registerIdl(TEST_PROGRAM, testCounterIdl);
+    registerIdl(testCounterIdl);
     const amount = BigInt(42);
     const data = encodeAnchorIxData(testCounterIdl as any, 'receive_sol', [amount]);
 
@@ -95,11 +95,11 @@ describe('resolveSvmCall — byte-for-byte parity against legacy svmExecute', ()
         senderUea: SENDER_UEA,
         targetChain: CHAIN.SOLANA_DEVNET,
       })
-    ).toThrow(/no IDL registered/);
+    ).toThrow(/no IDL found/);
   });
 
   it('throws when discriminator does not match any instruction', () => {
-    registerIdl(TEST_PROGRAM, testCounterIdl);
+    registerIdl(testCounterIdl);
     const bogus = new Uint8Array(16).fill(0xaa);
     expect(() =>
       resolveSvmCall({

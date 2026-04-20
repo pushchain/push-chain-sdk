@@ -400,15 +400,12 @@ describe('trackTransaction E2E', () => {
     expect(typeof response.wait).toBe('function');
 
     // R2 trackTransaction reconstructs the route-correct sequence (no R1
-    // 101 leakage). 201 is the route entry, 299-99 marks the intermediate
-    // Push success, and wait() then drives the external poll terminal.
+    // 101 leakage). 201 is the route entry; 207 closes the execute backbone
+    // before wait() drives the external poll terminal. The intermediate
+    // 299-99 marker is emitted internally but suppressed at the consumer
+    // dispatch boundary, so we don't check for it here.
     expect(events.some((e) => e.id === 'SEND-TX-201')).toBe(true);
-    expect(
-      events.some(
-        (e) =>
-          e.id === 'SEND-TX-299-99' || e.id === 'SEND-TX-299-02'
-      )
-    ).toBe(true);
+    expect(events.some((e) => e.id === 'SEND-TX-207')).toBe(true);
     // R1 IDs must not leak into an R2 stream
     expect(events.some((e) => e.id === 'SEND-TX-101')).toBe(false);
     expect(events.some((e) => e.id === 'SEND-TX-199-01')).toBe(false);

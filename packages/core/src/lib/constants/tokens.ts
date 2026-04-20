@@ -138,7 +138,7 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     USDC: {
       symbol: 'USDC',
       decimals: 6,
-      address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+      address: '0x97F477B7f970D47a87B42869ceeace218106152a',
       mechanism: 'approve',
     },
     stETH: {
@@ -188,7 +188,7 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     USDC: {
       symbol: 'USDC',
       decimals: 6,
-      address: '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d',
+      address: '0x5dd39b0b3610F666F631a6506b7713EF83e1Ac5C',
       mechanism: 'approve',
     },
     WETH: {
@@ -216,7 +216,7 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     USDC: {
       symbol: 'USDC',
       decimals: 6,
-      address: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+      address: '0x5c3504F0E3bA28FDc1F74234fE936518276AaBB8',
       mechanism: 'approve',
     },
     WETH: {

@@ -1,41 +1,35 @@
 import type { Idl } from '@coral-xyz/anchor';
 import { isAnchorIdl } from './ix-encoder';
+import { toSvmHexAddress, type SvmHexAddress } from './normalize-address';
 
-type AddressKey = `0x${string}`;
+const store = new Map<SvmHexAddress, Idl>();
 
-const store = new Map<AddressKey, Idl>();
-
-function normalizeKey(address: string): AddressKey {
-  if (typeof address !== 'string' || !address.startsWith('0x')) {
-    throw new Error(
-      `registerIdl: programAddress must be 0x-prefixed 32-byte hex, got '${address}'`
-    );
-  }
-  const body = address.slice(2);
-  if (body.length !== 64 || !/^[0-9a-fA-F]+$/.test(body)) {
-    throw new Error(
-      `registerIdl: programAddress must be 32 bytes (66 chars incl. 0x), got length ${address.length}`
-    );
-  }
-  return ('0x' + body.toLowerCase()) as AddressKey;
-}
-
-export function registerIdl(programAddress: string, idl: unknown): void {
-  const key = normalizeKey(programAddress);
+/**
+ * Register an Anchor IDL so the SDK can resolve accounts, PDAs, and CEA
+ * authorities when building SVM gateway payloads.
+ *
+ * Normal usage never needs this — `PushChain.utils.helpers.encodeTxData`
+ * auto-registers the IDL whenever you pass it as `abi`. Use this only when
+ * building `data` manually (raw discriminator + Borsh bytes).
+ *
+ * The program address is pulled from `idl.address` (Anchor ≥ 0.30 spec).
+ */
+export function registerIdl(idl: unknown): void {
   if (!isAnchorIdl(idl)) {
     throw new Error(
-      `registerIdl: idl for ${programAddress} is not a recognized Anchor IDL (missing 'instructions' or 'address')`
+      `registerIdl: input is not a recognized Anchor IDL (missing 'instructions' or 'address')`
     );
   }
+  const key = toSvmHexAddress(idl.address);
   store.set(key, idl);
 }
 
 export function getIdl(programAddress: string): Idl | undefined {
-  const key = normalizeKey(programAddress);
+  const key = toSvmHexAddress(programAddress);
   return store.get(key);
 }
 
-export function getRegisteredIdls(): Array<{ address: AddressKey; idl: Idl }> {
+export function getRegisteredIdls(): Array<{ address: SvmHexAddress; idl: Idl }> {
   return Array.from(store.entries()).map(([address, idl]) => ({ address, idl }));
 }
 

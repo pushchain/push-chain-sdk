@@ -40,6 +40,7 @@ import {
   getOriginGatewayContext,
 } from './gateway-client';
 import { buildGatewayPayloadAndGas } from './payload-builder';
+import { sizeR1PushGas } from './gas-usd-sizer';
 import { computeUEAOffchain, getUeaStatusAndNonce, getUEANonce } from './uea-manager';
 import {
   waitForEvmConfirmationsWithCountdown,
@@ -50,7 +51,7 @@ import {
   transformToUniversalTxResponse,
   type ResponseBuilderCallbacks,
 } from './response-builder';
-import { extractPcTxAndTransform } from './push-chain-tx';
+import { extractPcTxAndTransform, PushChainExecutionError } from './push-chain-tx';
 import { sendSVMTxWithFunds } from './svm-bridge';
 import { encodeUniversalPayload } from './signing';
 import type { UniversalPayload } from '../../generated/v1/tx';
@@ -115,15 +116,31 @@ export async function executeFundsWithPayload(
 
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_02, ueaAddress, deployed);
 
-  // Determine USD to deposit via gateway (8 decimals) with caps: min=$1, max=$1000
-  const oneUsd = Utils.helpers.parseUnits('1', 8);
-  const maxUsd = Utils.helpers.parseUnits('1000', 8);
-  const deficit = requiredFunds > ueaBalance ? requiredFunds - ueaBalance : BigInt(0);
-  let depositUsd = deficit > BigInt(0) ? ctx.pushClient.pushToUSDC(deficit) : oneUsd;
+  // SDK 5.2 Case A/B/C sizing on the Push-chain gas portion.
+  // Floor pad comes from the sizer ($1 for Case A); upper bound now lives in
+  // the origin gateway (MAX_CAP_UNIVERSAL_TX_USD) — the SDK no longer caps.
+  const r1Sizing = await sizeR1PushGas(ctx, {
+    pushGasFeeWei: requiredGasFee,
+    originChain: chain,
+  });
+  const r1SizingHookId = {
+    A: PROGRESS_HOOK.SEND_TX_106_07_01,
+    B: PROGRESS_HOOK.SEND_TX_106_07_02,
+    C: PROGRESS_HOOK.SEND_TX_106_07_03,
+  }[r1Sizing.category];
+  fireProgressHook(
+    ctx,
+    r1SizingHookId,
+    chain,
+    r1Sizing.pushGasUsd,
+    r1Sizing.paddedDepositUsd
+  );
 
-  if (depositUsd < oneUsd) depositUsd = oneUsd;
-  if (depositUsd > maxUsd)
-    throw new Error('Deposit value exceeds max $1000 worth of native token');
+  const deficit = requiredFunds > ueaBalance ? requiredFunds - ueaBalance : BigInt(0);
+  let depositUsd = deficit > BigInt(0) ? ctx.pushClient.pushToUSDC(deficit) : BigInt(0);
+
+  // Apply sizer floor: Case A pads to $1, Cases B/C pass-through.
+  if (depositUsd < r1Sizing.paddedDepositUsd) depositUsd = r1Sizing.paddedDepositUsd;
 
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_102_02, depositUsd);
 
@@ -270,19 +287,29 @@ export async function executeFundsWithPayload(
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_04);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_05);
 
-  let pushChainUniversalTx: UniversalTx | undefined;
-  if (CHAIN_INFO[ctx.universalSigner.account.chain].vm === VM.EVM) {
-    pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(
-      ctx, evmClient as EvmClient, gatewayAddress as `0x${string}`, txHash as `0x${string}`, 'sendTxWithFunds'
-    );
-  } else {
-    pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(
-      ctx, undefined, undefined, txHash as string, 'sendTxWithFunds'
-    );
+  let response: UniversalTxResponse;
+  try {
+    let pushChainUniversalTx: UniversalTx | undefined;
+    if (CHAIN_INFO[ctx.universalSigner.account.chain].vm === VM.EVM) {
+      pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(
+        ctx, evmClient as EvmClient, gatewayAddress as `0x${string}`, txHash as `0x${string}`, 'sendTxWithFunds'
+      );
+    } else {
+      pushChainUniversalTx = await queryUniversalTxStatusFromGatewayTx(
+        ctx, undefined, undefined, txHash as string, 'sendTxWithFunds'
+      );
+    }
+    response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txHash as string, eventBuffer, 'sendTxWithFunds', transformFn);
+  } catch (err) {
+    if (!(err instanceof PushChainExecutionError)) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, errMsg);
+      throw new PushChainExecutionError(errMsg, { gatewayTxHash: txHash as string });
+    }
+    throw err;
   }
-
-  const response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txHash as string, eventBuffer, 'sendTxWithFunds', transformFn);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_06, bridgeAmount, execute.funds!.token.decimals, symbol);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_107);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_01, [response]);
   return response;
 }

@@ -1,3 +1,22 @@
+@pushchain/core@5.2.0 (unreleased)
+
+- Route 1 (UOA → Push) now applies Case A/B/C USD-bucket sizing to the
+  Push-chain gas cost. Case A pads deposits to the $1 floor; Case B passes
+  through; Case C is informational (deposits proceed up to the origin
+  gateway's contract-enforced `MAX_CAP_UNIVERSAL_TX_USD`). The SDK's previous
+  $1000 ceiling has been removed. New progress hooks `SEND_TX_106_07_01/02/03`
+  fire with the sizer's decision.
+
+- Gas abstraction scope narrowed to R1 (fee-lock USD caps) and R3 (outbound
+  msg.value sizing). R2 (UOA → CEA) and cascade outbound segments no longer
+  apply Case A/B/C; R2 `msg.value` now uses a live Uniswap V3 quote + 10%
+  safety buffer, and the contract refunds any excess as PC back to the UEA.
+  The `SEND_TX_202_03_A/B/C` progress hooks, the Case-C bridge-swap composer,
+  and the `GasExceedsCategoryCWithErc20FundsError` error class have all been
+  removed.
+
+---
+
 @pushchain/core@5.1.0 (2026-03-28)
 
 - release: bump to 5.0.0

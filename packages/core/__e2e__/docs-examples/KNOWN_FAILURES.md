@@ -22,13 +22,15 @@ After this session's SDK fixes, **3 tests still fail** — all blocked on pSOL/W
 
 ---
 
-## The 3 failing tests
+## The 5 failing tests
 
 | # | Test | File | Why | Owner |
 |---|---|---|---|---|
 | 1 | `execute_transactions_counter` | `08-multichain-transactions/multichain-transactions.spec.ts:119` | pSOL pool | Contracts |
 | 2 | `execute_transactions_batch` | `08-multichain-transactions/multichain-transactions.spec.ts:345` | pSOL pool | Contracts |
 | 3 | `execute_transactions` (AMM) | `08-multichain-transactions/multichain-transactions.spec.ts:178` | pSOL pool + test approval likely | Contracts + test |
+| 4 | `route2_solana` | `07-transaction-scenarios/route2.spec.ts` | pSOL pool (same STF revert) — currently `it.skip`, remove skip after pool fix | Contracts |
+| 5 | `route3_solana` | `07-transaction-scenarios/route3.spec.ts` | pSOL pool (fresh-UEA fee-lock `InsufficientBalance` 0xf4d678b8) — currently `it.skip`, remove skip after pool fix | Contracts |
 
 ---
 
@@ -77,5 +79,6 @@ Two separate issues in this test:
 ## Quick recovery checklist (come-back-to-it)
 
 - [ ] Top up master Solana devnet wallet `3nK8X1re4zLNrgz9Y3xKS4g2fKPJ6M3N9BhNuFfkjwAb` to ≥0.05 SOL (browser faucet at https://faucet.solana.com)
-- [ ] Ping contracts team about pSOL/WPC pool recalibration on Donut (Tests 1, 2, 3)
+- [ ] Ping contracts team about pSOL/WPC pool recalibration on Donut (Tests 1, 2, 3, 4, 5)
 - [ ] After pool is fixed, re-run Test 3; if it reverts with allowance error, add `pETH.approve(router)` multicall before hop1
+- [ ] After pool is fixed, flip `it.skip` → `(evmKey && pushKey) ? it : it.skip` in `route2.spec.ts` (`route2_solana`) and `(evmKey && solanaKey) ? it : it.skip` in `route3.spec.ts` (`route3_solana`)

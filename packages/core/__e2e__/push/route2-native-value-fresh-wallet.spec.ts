@@ -100,7 +100,7 @@ describe('Route 2: Docs Examples (Fresh Wallet)', () => {
       account: mainAccount, chain: sepolia, transport: http(SEPOLIA_RPC),
     });
     const fundHash = await mainWalletClient.sendTransaction({
-      to: freshAccount.address, value: parseEther('0.02'),
+      to: freshAccount.address, value: parseEther('0.005'),
     });
     await sepoliaPublicClient.waitForTransactionReceipt({ hash: fundHash });
 

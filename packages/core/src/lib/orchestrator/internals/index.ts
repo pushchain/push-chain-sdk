@@ -61,6 +61,8 @@ export {
   OUTBOUND_INITIAL_WAIT_MS,
   OUTBOUND_POLL_INTERVAL_MS,
   OUTBOUND_MAX_TIMEOUT_MS,
+  INBOUND_INITIAL_WAIT_MS,
+  INBOUND_MAX_TIMEOUT_MS,
 } from './outbound-sync';
 
 // === Inbound Tracking (R3 round-trip) ===

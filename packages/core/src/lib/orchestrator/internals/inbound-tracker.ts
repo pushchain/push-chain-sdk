@@ -14,6 +14,9 @@
 import { UniversalTxStatus } from '../../generated/uexecutor/v2/types';
 import type { OrchestratorContext } from './context';
 import { printLog } from './context';
+import type { CHAIN } from '../../constants/enums';
+import { detectUniversalTx } from '../../universal-tx-detector/detector';
+import { resolveChildInboundsFromDetection } from '../../universal-tx-detector/child-inbounds';
 
 export type InboundPushTxStatus = 'pending' | 'confirmed' | 'failed';
 
@@ -64,16 +67,70 @@ const ensureHex = (id: string): string =>
   id.startsWith('0x') ? id : `0x${id}`;
 
 /**
- * Searches Cosmos for a child UTX created by an inbound from the given external
- * tx. Returns `{ utxId: string }` on hit, `{ utxId: null }` on a successful
- * empty result (indexer hasn't seen it yet), or `{ utxId: null, error }` when
- * the RPC itself fails — lets the caller distinguish "not found yet" from
- * "RPC down" so a permanent outage doesn't look like an in-flight inbound.
+ * Resolves the child UTX id for an R3 round-trip from the source-chain tx.
+ *
+ * Primary path: use the universal-tx-detector to parse the source-chain
+ * receipt, locate the `UniversalTx(fromCEA=true)` log emitted by the CEA's
+ * `sendUniversalTxToUEA` call, and derive the child utxId via the
+ * deterministic `sha256(caip:txHash:logIndex)` formula. This bypasses the
+ * cosmos `universal_tx_created.inbound_tx_hash` indexer which has been
+ * unreliable on testnet.
+ *
+ * Fallback: the original cosmos text search, kept in place so if the
+ * indexer ever becomes the source of truth again (or the detector path
+ * hits an RPC snag for the source chain) we still have a second chance.
+ *
+ * Returns `{ utxId: string }` on hit, `{ utxId: null }` when neither path
+ * has seen it yet, or `{ utxId: null, error }` when both paths failed with
+ * recoverable RPC errors.
  */
 export async function findChildUtxIdFromExternalTx(
   ctx: OrchestratorContext,
-  externalTxHash: string
-): Promise<{ utxId: string | null; error?: Error }> {
+  externalTxHash: string,
+  sourceChain?: string
+): Promise<{
+  utxId: string | null;
+  error?: Error;
+  derivedFrom?: 'detector' | 'cosmos-fallback';
+}> {
+  // Primary: detector-based deterministic derivation.
+  if (sourceChain) {
+    try {
+      const detection = await detectUniversalTx(
+        externalTxHash as `0x${string}`,
+        sourceChain as CHAIN,
+        {
+          pushClient: ctx.pushClient,
+          rpcUrls: ctx.rpcUrls,
+          skipPushChainLookup: true,
+        }
+      );
+      const resolutions = await resolveChildInboundsFromDetection(
+        ctx.pushClient,
+        detection
+      );
+      // Pick the R3 return-trip child: prefer UniversalTx over RevertUniversalTx.
+      const match =
+        resolutions.find((r) => r.sourceEventName === 'UniversalTx') ??
+        resolutions[0];
+      if (match?.universalTxId) {
+        printLog(
+          ctx,
+          `[findChildUtxIdFromExternalTx] detector derived utxId ${match.universalTxId} for ${externalTxHash} on ${sourceChain}`
+        );
+        return { utxId: ensureHex(match.universalTxId), derivedFrom: 'detector' };
+      }
+    } catch (err) {
+      const wrapped = err instanceof Error ? err : new Error(String(err));
+      printLog(
+        ctx,
+        `[findChildUtxIdFromExternalTx] detector path failed: ${wrapped.message} — falling back to cosmos search`
+      );
+      // Fall through to cosmos search.
+    }
+  }
+
+  // Fallback: cosmos text search (original path).
   try {
     const query = `universal_tx_created.inbound_tx_hash='${externalTxHash}'`;
     const results = await ctx.pushClient.searchCosmosByQuery(query);
@@ -85,7 +142,10 @@ export async function findChildUtxIdFromExternalTx(
         ) {
           for (const attr of event.attributes ?? []) {
             if (attr.key === 'utx_id' && attr.value) {
-              return { utxId: ensureHex(attr.value) };
+              return {
+                utxId: ensureHex(attr.value),
+                derivedFrom: 'cosmos-fallback',
+              };
             }
           }
         }
@@ -96,7 +156,7 @@ export async function findChildUtxIdFromExternalTx(
     const wrapped = err instanceof Error ? err : new Error(String(err));
     printLog(
       ctx,
-      `[findChildUtxIdFromExternalTx] search failed: ${wrapped.message}`
+      `[findChildUtxIdFromExternalTx] cosmos fallback also failed: ${wrapped.message}`
     );
     return { utxId: null, error: wrapped };
   }
@@ -122,9 +182,15 @@ export async function waitForInboundPushTx(
   const startedAt = Date.now();
   const elapsed = () => Date.now() - startedAt;
 
+  printLog(
+    ctx,
+    `[waitForInboundPushTx] Starting | externalTxHash: ${outboundExternalTxHash} | sourceChain: ${sourceChain} | initialWait: ${initialWaitMs}ms | pollInterval: ${pollingIntervalMs}ms | timeout: ${timeout}ms`
+  );
   progressHook?.({ status: 'waiting', elapsedMs: 0 });
   if (initialWaitMs > 0) {
+    printLog(ctx, `[waitForInboundPushTx] Initial wait of ${initialWaitMs}ms...`);
     await new Promise((r) => setTimeout(r, Math.min(initialWaitMs, timeout)));
+    printLog(ctx, `[waitForInboundPushTx] Initial wait done. Starting polling. Elapsed: ${elapsed()}ms`);
   }
 
   let childUtxId: string | null = null;
@@ -133,6 +199,7 @@ export async function waitForInboundPushTx(
   let lastEmittedStatus: 'polling' | 'found' | undefined;
   let consecutiveRpcErrors = 0;
   let pendingTerminalSuccessRetries = 0;
+  let pollCount = 0;
   // Heuristic threshold — log a distinct warning when this many back-to-back
   // RPC failures happen so callers can see the difference between
   // "indexer hasn't seen it yet" and "RPC is down."
@@ -142,12 +209,17 @@ export async function waitForInboundPushTx(
   const MAX_PENDING_TERMINAL_RETRIES = 2;
 
   while (elapsed() < timeout) {
+    pollCount++;
+    const pollStart = Date.now();
+    printLog(ctx, `[waitForInboundPushTx] Poll #${pollCount} | Elapsed: ${elapsed()}ms / ${timeout}ms | phase: ${childUtxId ? 'utx-status' : 'child-search'}`);
     // Phase 1 — find child UTX id from the outbound external tx hash
     if (!childUtxId) {
       const search = await findChildUtxIdFromExternalTx(
         ctx,
-        outboundExternalTxHash
+        outboundExternalTxHash,
+        sourceChain
       );
+      printLog(ctx, `[waitForInboundPushTx] Poll #${pollCount} child-search result: utxId=${search.utxId ?? 'null'}${search.error ? ` error=${search.error.message}` : ''}`);
       if (search.error) {
         consecutiveRpcErrors++;
         if (consecutiveRpcErrors === RPC_FAILURE_WARN_THRESHOLD) {
@@ -187,6 +259,7 @@ export async function waitForInboundPushTx(
         if (utx?.pcTx?.[0]?.txHash) {
           pushTxHash = utx.pcTx[0].txHash;
         }
+        printLog(ctx, `[waitForInboundPushTx] Poll #${pollCount} utx-status | status: ${status} | pcTx[0].txHash: '${pushTxHash ?? ''}' | pcTx len: ${utx?.pcTx?.length ?? 0}`);
 
         if (TERMINAL_SUCCESS_STATUSES.has(status)) {
           // Wait one more poll cycle if pcTx hasn't populated yet — the
@@ -226,6 +299,68 @@ export async function waitForInboundPushTx(
             status: 'failed',
             errorMessage: errMsg,
           };
+        } else if (pushTxHash) {
+          // Tiebreaker: cosmos has the Push Chain tx hash populated but the
+          // indexer hasn't transitioned universalStatus to a terminal yet.
+          // Query Push RPC directly for the receipt — if it's confirmed on
+          // chain, treat as terminal-success; if it reverted, treat as
+          // terminal-failure. Cosmos-indexer lag stops blocking us here.
+          try {
+            const receipt = await ctx.pushClient.publicClient.getTransactionReceipt({
+              hash: pushTxHash as `0x${string}`,
+            });
+            if (receipt?.status === 'success') {
+              printLog(
+                ctx,
+                `[waitForInboundPushTx] Push RPC tiebreaker: ${pushTxHash} confirmed on chain (cosmos still status=${status}); treating as terminal-success`
+              );
+              progressHook?.({
+                status: 'confirmed',
+                elapsedMs: elapsed(),
+                childUtxId,
+                pushTxHash,
+              });
+              return {
+                childUtxId,
+                pushTxHash,
+                sourceChain,
+                outboundExternalTxHash,
+                status: 'confirmed',
+              };
+            }
+            if (receipt?.status === 'reverted') {
+              printLog(
+                ctx,
+                `[waitForInboundPushTx] Push RPC tiebreaker: ${pushTxHash} REVERTED on chain (cosmos still status=${status}); treating as terminal-failure`
+              );
+              progressHook?.({
+                status: 'failed',
+                elapsedMs: elapsed(),
+                childUtxId,
+                pushTxHash,
+              });
+              return {
+                childUtxId,
+                pushTxHash,
+                sourceChain,
+                outboundExternalTxHash,
+                status: 'failed',
+                errorMessage: 'Push Chain inbound tx reverted on chain',
+              };
+            }
+            // receipt missing / pending — keep polling.
+          } catch (rpcErr) {
+            // TransactionReceiptNotFoundError means not yet mined — continue
+            // polling. Other errors get logged but don't break the loop.
+            const msg =
+              rpcErr instanceof Error ? rpcErr.message : String(rpcErr);
+            if (!/not found|TransactionReceiptNotFound|could not be found/i.test(msg)) {
+              printLog(
+                ctx,
+                `[waitForInboundPushTx] Push RPC tiebreaker failed for ${pushTxHash}: ${msg}`
+              );
+            }
+          }
         }
       } catch (err) {
         consecutiveRpcErrors++;
@@ -254,13 +389,33 @@ export async function waitForInboundPushTx(
     }
 
     if (elapsed() >= timeout) break;
+    printLog(ctx, `[waitForInboundPushTx] Poll #${pollCount} not ready (${Date.now() - pollStart}ms). Waiting ${pollingIntervalMs}ms...`);
     await new Promise((r) => setTimeout(r, pollingIntervalMs));
   }
+  printLog(ctx, `[waitForInboundPushTx] TIMEOUT after ${pollCount} polls | elapsed: ${elapsed()}ms`);
 
   progressHook?.({ status: 'timeout', elapsedMs: elapsed() });
-  throw new Error(
-    `Timeout waiting for inbound Push tx after ${Math.round(
-      elapsed() / 1000
-    )}s (correlation key: ${outboundExternalTxHash}).`
-  );
+  throw new InboundTimeoutError(outboundExternalTxHash, elapsed());
+}
+
+/**
+ * Thrown by `waitForInboundPushTx` when the polling loop exceeds the
+ * configured timeout without observing a terminal inbound Push tx. Callers
+ * (response-builder) `instanceof`-check to distinguish timeout (→ 399-03)
+ * from generic failure (→ 399-02) without relying on error-message prefixes.
+ */
+export class InboundTimeoutError extends Error {
+  readonly code = 'INBOUND_TIMEOUT' as const;
+  readonly correlationKey: string;
+  readonly elapsedMs: number;
+  constructor(correlationKey: string, elapsedMs: number) {
+    super(
+      `Timeout waiting for inbound Push tx after ${Math.round(
+        elapsedMs / 1000
+      )}s (correlation key: ${correlationKey}).`
+    );
+    this.name = 'InboundTimeoutError';
+    this.correlationKey = correlationKey;
+    this.elapsedMs = elapsedMs;
+  }
 }

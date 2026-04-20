@@ -150,31 +150,70 @@ export async function waitForLockerFeeConfirmation(
 ): Promise<void> {
   const chain = ctx.universalSigner.account.chain;
   const { vm, defaultRPC, fastConfirmations, timeout } = CHAIN_INFO[chain];
-  const rpcUrls = ctx.rpcUrls[chain] || defaultRPC;
 
+  // Poll silently — the fee-lock path fires SEND-TX-105-02 as its terminal
+  // confirmation marker; emitting 106-xx here would leak funds-bridge hooks
+  // into a non-funds-bridge path. Uses the same underlying RPC wait as the
+  // funds-bridge confirmation helpers but without the 106-03 / 106-03-02
+  // emissions.
   switch (vm) {
     case VM.EVM: {
       const evmClient = getOriginEvmClient(ctx);
-      await waitForEvmConfirmationsWithCountdown(
-        ctx,
-        evmClient,
-        bytesToHex(txHashBytes),
-        fastConfirmations,
-        timeout
-      );
-      return;
+      const txHash = bytesToHex(txHashBytes);
+      const receipt = await evmClient.publicClient.waitForTransactionReceipt({
+        hash: txHash,
+      });
+      if (fastConfirmations <= 1) return;
+      const targetBlock = receipt.blockNumber + BigInt(fastConfirmations);
+      const start = Date.now();
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const currentBlock = await evmClient.publicClient.getBlockNumber();
+        if (currentBlock >= targetBlock) return;
+        if (Date.now() - start > timeout) {
+          throw new Error(
+            `Timeout: fee-lock tx ${txHash} not confirmed with ${fastConfirmations} confirmations within ${timeout} ms`
+          );
+        }
+        await new Promise((r) => setTimeout(r, 12000));
+      }
     }
 
     case VM.SVM: {
+      const rpcUrls = ctx.rpcUrls[chain] || defaultRPC;
       const svmClient = new SvmClient({ rpcUrls });
-      await waitForSvmConfirmationsWithCountdown(
-        ctx,
-        svmClient,
-        bs58.encode(Buffer.from(txHashBytes)),
-        fastConfirmations,
-        timeout
-      );
-      return;
+      const signature = bs58.encode(Buffer.from(txHashBytes));
+      const start = Date.now();
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const connection = (svmClient as any).connections[
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (svmClient as any).currentConnectionIndex
+        ];
+        const { value } = await connection.getSignatureStatuses([signature]);
+        const status = value[0];
+        if (status) {
+          if (status.err) {
+            throw new Error(
+              `SVM fee-lock tx ${signature} failed: ${JSON.stringify(status.err)}`
+            );
+          }
+          const isFinalized =
+            status.confirmationStatus === 'finalized' ||
+            status.confirmations === null;
+          const hasEnough =
+            status.confirmations != null &&
+            status.confirmations >= fastConfirmations;
+          if (isFinalized || hasEnough) return;
+        }
+        if (Date.now() - start > timeout) {
+          throw new Error(
+            `Timeout: fee-lock tx ${signature} not confirmed with ${fastConfirmations} confirmations within ${timeout} ms`
+          );
+        }
+        await new Promise((r) => setTimeout(r, 500));
+      }
     }
 
     default:

@@ -1008,9 +1008,12 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         // Verify we got progress events
         expect(events.length).toBeGreaterThan(0);
 
-        // Verify key events were emitted
-        expect(events.some(e => e.id === 'SEND-TX-101')).toBe(true);
-        expect(events.some(e => e.id.startsWith('SEND-TX-99'))).toBe(true);
+        // Route 2 (UEA→CEA) pre-broadcast hooks (fire during sendTransaction).
+        // Post-broadcast hooks (209-xx / 299-xx) require tx.wait() which this test intentionally does not call.
+        expect(events.some(e => e.id === 'SEND-TX-201')).toBe(true);
+        expect(events.some(e => e.id === 'SEND-TX-203-02')).toBe(true);
+        expect(events.some(e => e.id === 'SEND-TX-204-03')).toBe(true);
+        expect(events.some(e => e.id === 'SEND-TX-207')).toBe(true);
       }, 180000);
 
       it('should emit correct hooks for PAYLOAD flow', async () => {
@@ -1062,7 +1065,9 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         await clientWithHook.universal.sendTransaction(params);
 
         expect(events.length).toBeGreaterThan(0);
-        expect(events.some(e => e.id === 'SEND-TX-101')).toBe(true);
+        // Route 2 pre-broadcast hooks (sendTransaction only; 209/299 need tx.wait()).
+        expect(events.some(e => e.id === 'SEND-TX-201')).toBe(true);
+        expect(events.some(e => e.id === 'SEND-TX-207')).toBe(true);
       }, 180000);
     });
 

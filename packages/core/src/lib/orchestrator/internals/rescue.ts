@@ -78,7 +78,7 @@ export async function rescueFunds(
   // Query rescue gas fee
   let nativeValueForGas = BigInt(0);
   try {
-    const result = await queryRescueGasFee(ctx, params.prc20);
+    const result = await queryRescueGasFee(ctx, params.prc20, ctx.universalSigner.account.chain);
     nativeValueForGas = result.nativeValueForGas;
     printLog(
       ctx,

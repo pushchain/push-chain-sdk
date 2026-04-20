@@ -95,7 +95,7 @@ describe('Route 2: Fresh Wallet nativeValueForGas Bug', () => {
     // 2. Route 2 signed path gas (no additional fee-locking needed)
     const fundTxHash = await mainWalletClient.sendTransaction({
       to: freshAccount.address,
-      value: parseEther('0.008'), // $10 minimum deposit + Sepolia gas needs ~0.006 ETH
+      value: parseEther('0.005'),
       account: mainWalletClient.account!,
       chain: sepolia,
     });
@@ -268,7 +268,7 @@ describe('Route 2: Fresh Wallet nativeValueForGas Bug', () => {
     const mainAccount = privateKeyToAccount(privateKey);
     const fundTxHash = await mainWalletClient.sendTransaction({
       to: wallet.address as `0x${string}`,
-      value: parseEther('0.008'),
+      value: parseEther('0.005'),
       account: mainAccount,
       chain: sepolia,
     });

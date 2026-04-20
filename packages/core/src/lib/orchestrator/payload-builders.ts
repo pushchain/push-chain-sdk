@@ -127,7 +127,7 @@ export function buildExecuteMulticall({
 /**
  * Multicall tuple type definition for ABI encoding
  */
-const MULTICALL_TUPLE_TYPE = {
+export const MULTICALL_TUPLE_TYPE = {
   type: 'tuple[]',
   components: [
     { name: 'to', type: 'address' },
@@ -503,13 +503,13 @@ export function buildOutboundApprovalAndCall(opts: {
   gatewayPcAddress: `0x${string}`;
   outboundRequest: UniversalOutboundTxRequest;
 }): MultiCall[] {
-  const { prc20Token, burnAmount, gasFee, gatewayPcAddress, outboundRequest } = opts;
+  const { prc20Token, gasFee, gatewayPcAddress, outboundRequest } = opts;
   const multicalls: MultiCall[] = [];
 
   // ERC20 approve for burn amount (contract calls transferFrom for PRC20 burn)
   // Reset to 0 first for USDT-style tokens that revert on non-zero to non-zero approve.
   if (
-    burnAmount > BigInt(0) &&
+    opts.burnAmount > BigInt(0) &&
     prc20Token.toLowerCase() !== ZERO_ADDRESS.toLowerCase()
   ) {
     const approveZeroData = encodeFunctionData({
@@ -520,7 +520,7 @@ export function buildOutboundApprovalAndCall(opts: {
     const approveData = encodeFunctionData({
       abi: ERC20_EVM,
       functionName: 'approve',
-      args: [gatewayPcAddress, burnAmount],
+      args: [gatewayPcAddress, opts.burnAmount],
     });
     multicalls.push({
       to: prc20Token,

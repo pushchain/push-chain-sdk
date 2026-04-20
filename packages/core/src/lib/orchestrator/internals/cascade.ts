@@ -66,9 +66,12 @@ import {
 import { buildMulticallPayloadData } from './payload-builder';
 import { computeUEAOffchain, getUEANonce, getUeaStatusAndNonce } from './uea-manager';
 import { queryOutboundGasFee, estimateNativeValueForSwap } from './gas-calculator';
+import type { GasSizingDecision } from './gas-usd-sizer';
 import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
 import { buildPayloadForRoute } from './route-handlers';
 import { pickWaitHooks } from './progress-route-hooks';
+import PROGRESS_HOOKS from '../../progress-hook/progress-hook';
+import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import { buildSvmPayloadFromParams } from '../svm-idl/build-payload';
 
 // ============================================================================
@@ -232,10 +235,12 @@ export async function buildHopDescriptor(
 
         let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let gasFee = BigInt(0);
+        let sizing: GasSizingDecision | undefined;
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-          const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit);
+          const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, targetChain);
           gasToken = result.gasToken;
           gasFee = result.gasFee;
+          sizing = result.sizing;
         }
 
         return {
@@ -247,6 +252,7 @@ export async function buildHopDescriptor(
           burnAmount,
           gasToken,
           gasFee,
+          sizing,
         };
       }
 
@@ -263,10 +269,12 @@ export async function buildHopDescriptor(
         const burnAmount = BigInt(0); // Migration is logic-only — no funds. CEA rejects msg.value != 0.
         let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let gasFee = BigInt(0);
+        let sizing: GasSizingDecision | undefined;
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-          const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit);
+          const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, targetChain);
           gasToken = result.gasToken;
           gasFee = result.gasFee;
+          sizing = result.sizing;
         }
         return {
           ...baseDescriptor,
@@ -278,6 +286,7 @@ export async function buildHopDescriptor(
           gasToken,
           gasFee,
           isMigration: true,
+          sizing,
         };
       }
 
@@ -309,7 +318,7 @@ export async function buildHopDescriptor(
           // contract receives it alongside the payload call. The vault deposits
           // native value to the CEA, and the multicall forwards it to the target.
           ceaMulticalls.push({
-            to: target.address,
+            to: target.address as `0x${string}`,
             value: params.value ?? BigInt(0),
             data: params.data as `0x${string}`,
           });
@@ -319,7 +328,7 @@ export async function buildHopDescriptor(
         // Self-call with value would revert (CEA._handleMulticall rejects it).
         if (target.address.toLowerCase() !== ceaAddress.toLowerCase()) {
           ceaMulticalls.push({
-            to: target.address,
+            to: target.address as `0x${string}`,
             value: params.value,
             data: '0x',
           });
@@ -351,10 +360,12 @@ export async function buildHopDescriptor(
       // Query gas fee
       let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
       let gasFee = BigInt(0);
+      let sizing: GasSizingDecision | undefined;
       if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-        const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit);
+        const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, targetChain);
         gasToken = result.gasToken;
         gasFee = result.gasFee;
+        sizing = result.sizing;
       }
 
       return {
@@ -366,6 +377,7 @@ export async function buildHopDescriptor(
         burnAmount,
         gasToken,
         gasFee,
+        sizing,
       };
     }
 
@@ -416,10 +428,12 @@ export async function buildHopDescriptor(
 
         let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let gasFee = BigInt(0);
+        let sizing: GasSizingDecision | undefined;
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-          const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit);
+          const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, sourceChain);
           gasToken = result.gasToken;
           gasFee = result.gasFee;
+          sizing = result.sizing;
         }
 
         return {
@@ -431,6 +445,7 @@ export async function buildHopDescriptor(
           burnAmount: amount,
           gasToken,
           gasFee,
+          sizing,
         };
       }
 
@@ -467,10 +482,12 @@ export async function buildHopDescriptor(
       const prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
       let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
       let gasFee = BigInt(0);
+      let sizing: GasSizingDecision | undefined;
       if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-        const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit);
+        const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, sourceChain);
         gasToken = result.gasToken;
         gasFee = result.gasFee;
+        sizing = result.sizing;
       }
 
       return {
@@ -481,6 +498,7 @@ export async function buildHopDescriptor(
         burnAmount: amount,
         gasToken,
         gasFee,
+        sizing,
       };
     }
 
@@ -506,10 +524,20 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
     const canMerge =
       currentSegment &&
       currentSegment.type === segType &&
-      // Same-chain merging for OUTBOUND_TO_CEA (EVM only — SVM hops are atomic)
+      // Same-chain merging for OUTBOUND_TO_CEA (EVM only — SVM hops are atomic).
+      // Same-source merging for INBOUND_FROM_CEA (EVM only) — multiple R3 hops
+      // that share a source chain collapse into ONE CEA→UEA round-trip whose
+      // inbound multicall runs every hop's target op. Without this merge the
+      // cascade composer would nest the second R3 as an outbound from inside
+      // the first inbound's UEA multicall, which fails inside UGPC.
+      // sendUniversalTxOutbound because the UEA holds no PRC20 at that point
+      // (see cascade.ts composeCascade INBOUND_FROM_CEA branch).
       (segType === 'OUTBOUND_TO_CEA'
         ? currentSegment.targetChain === hop.targetChain && !hop.isSvmTarget
-        : segType === 'PUSH_EXECUTION');
+        : segType === 'INBOUND_FROM_CEA'
+          ? currentSegment.sourceChain === hop.sourceChain &&
+            !isSvmChain(hop.sourceChain as CHAIN)
+          : segType === 'PUSH_EXECUTION');
 
     if (canMerge && currentSegment) {
       // Merge into current segment
@@ -530,11 +558,36 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
         // Accumulate gas fees
         currentSegment.gasFee =
           (currentSegment.gasFee || BigInt(0)) + (hop.gasFee || BigInt(0));
+      } else if (segType === 'INBOUND_FROM_CEA') {
+        // Sum burn amounts so the single sendUniversalTxToUEA carries the
+        // combined native value forwarded from CEA back to the UEA.
+        currentSegment.totalBurnAmount =
+          (currentSegment.totalBurnAmount || BigInt(0)) +
+          (hop.burnAmount || BigInt(0));
+        if (hop.gasLimit > (currentSegment.gasLimit || BigInt(0))) {
+          currentSegment.gasLimit = hop.gasLimit;
+        }
+        currentSegment.gasFee =
+          (currentSegment.gasFee || BigInt(0)) + (hop.gasFee || BigInt(0));
       } else if (segType === 'PUSH_EXECUTION') {
         currentSegment.mergedPushMulticalls = [
           ...(currentSegment.mergedPushMulticalls || []),
           ...(hop.pushMulticalls || []),
         ];
+      }
+
+      // Merge sizing: take the strictest category (C > B > A). Overflow
+      // from a Case C hop wins so the segment's msg.value covers the
+      // highest-cost hop in the merge.
+      if (hop.sizing) {
+        if (!currentSegment.sizing) {
+          currentSegment.sizing = hop.sizing;
+        } else if (
+          categoryRank(hop.sizing.category) >
+          categoryRank(currentSegment.sizing.category)
+        ) {
+          currentSegment.sizing = hop.sizing;
+        }
       }
     } else {
       // Start a new segment
@@ -556,12 +609,18 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
         gasToken: hop.gasToken,
         gasFee: hop.gasFee,
         gasLimit: hop.gasLimit,
+        sizing: hop.sizing,
       };
       segments.push(currentSegment);
     }
   }
 
   return segments;
+}
+
+/** Ordering for sizing-category severity (higher = stricter). */
+function categoryRank(c: 'A' | 'B' | 'C'): number {
+  return c === 'C' ? 2 : c === 'B' ? 1 : 0;
 }
 
 // ============================================================================
@@ -691,7 +750,7 @@ export async function composeCascade(
           outboundPayload = firstHop.svmPayload ?? '0x';
           // For SVM, to.address IS the target (program for execute, recipient for withdraw)
           const svmTarget = firstHop.params.to as ChainTarget;
-          targetForOutbound = svmTarget.address;
+          targetForOutbound = svmTarget.address as `0x${string}`;
         } else if (isMigration) {
           // Migration: use raw 4-byte MIGRATION_SELECTOR, no multicall wrapping
           outboundPayload = buildMigrationPayload();
@@ -729,8 +788,16 @@ export async function composeCascade(
         } else {
           evmFallbackValue = segGasFee * BigInt(1000000);
         }
-        const nativeValueForGas =
+        let nativeValueForGas =
           svmOverride ?? perOutboundNativeValue ?? evmFallbackValue;
+
+        // SDK 5.2 Case C: when the segment's sizing is category C, compose
+        // R2/OUTBOUND_TO_CEA segments no longer apply Case A/B/C sizing
+        // (scoped to R1 + R3 only). segment.sizing may still be populated
+        // from the hop descriptor merge, but it is not consulted here —
+        // nativeValueForGas is driven by pool-quote on the single-hop path
+        // and by the cascade-level per-outbound allocation above.
+
         const outboundMulticalls = buildOutboundApprovalAndCall({
           prc20Token:
             segment.prc20Token || (ZERO_ADDRESS as `0x${string}`),
@@ -755,24 +822,32 @@ export async function composeCascade(
         // The accumulated multicalls = what runs on Push Chain AFTER inbound arrives.
         // Wrap in UniversalPayload struct with correct UEA nonce for the relay.
 
-        // Build push multicalls from this hop's own data (e.g., counter.increment())
-        // This is the Route 3 hop's payload that executes on Push Chain after inbound.
-        const hop0 = segment.hops[0];
-        if (hop0?.params?.data) {
-          const hopPushMulticalls = buildExecuteMulticall({
-            execute: {
-              to: hop0.params.to as `0x${string}`,
-              value: hop0.params.value,
-              data: hop0.params.data,
-            },
-            ueaAddress,
-          });
-          // Prepend the Route 3's own push calls before subsequent hops
+        // Build push multicalls from EVERY merged hop's own data in original
+        // order (e.g. counter.increment() + value transfer). Multi-hop R3
+        // segments (same sourceChain) bundle all target ops into the single
+        // UEA multicall so no nested outbound is needed.
+        const mergedHopMulticalls: MultiCall[] = [];
+        for (const h of segment.hops) {
+          if (h?.params?.data || h?.params?.value) {
+            const hopCalls = buildExecuteMulticall({
+              execute: {
+                to: h.params.to as `0x${string}`,
+                value: h.params.value,
+                data: h.params.data,
+              },
+              ueaAddress,
+            });
+            mergedHopMulticalls.push(...hopCalls);
+          }
+        }
+        if (mergedHopMulticalls.length > 0) {
           accumulatedPushMulticalls = [
-            ...hopPushMulticalls,
+            ...mergedHopMulticalls,
             ...accumulatedPushMulticalls,
           ];
         }
+        // Primary hop carries the sourceChain / CEA address (shared across merged hops).
+        const hop0 = segment.hops[0];
 
         let intermediatePayload: `0x${string}` = '0x';
         if (accumulatedPushMulticalls.length > 0) {
@@ -864,6 +939,23 @@ export async function composeCascade(
           } else {
             svmInboundFallback = inboundGasFee * BigInt(1000000);
           }
+          let svmInboundNativeValue =
+            perOutboundNativeValue ?? svmInboundFallback;
+          // SDK 5.2 R3-style Case C bump: when the inbound segment's sizing
+          // is C, top up the swap budget by the overflow. No bridge-swap —
+          // R3 has no destination funds delivery.
+          if (
+            segment.sizing?.category === 'C' &&
+            segment.sizing.overflowNativePc > BigInt(0)
+          ) {
+            const bumped =
+              svmInboundNativeValue + segment.sizing.overflowNativePc;
+            printLog(
+              ctx,
+              `composeCascade — INBOUND_FROM_CEA (SVM) Case C: bumping nativeValueForGas from ${svmInboundNativeValue} to ${bumped} (overflow=${segment.sizing.overflowNativePc})`
+            );
+            svmInboundNativeValue = bumped;
+          }
           const outboundMulticalls = buildOutboundApprovalAndCall({
             prc20Token:
               segment.prc20Token ||
@@ -872,8 +964,7 @@ export async function composeCascade(
               segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
             burnAmount: svmBurnAmount,
             gasFee: inboundGasFee,
-            nativeValueForGas:
-              perOutboundNativeValue ?? svmInboundFallback,
+            nativeValueForGas: svmInboundNativeValue,
             gatewayPcAddress,
             outboundRequest: outboundReq,
           });
@@ -885,56 +976,71 @@ export async function composeCascade(
         // EVM path: Build CEA multicall: [approve?, sendUniversalTxFromCEA(payload)]
         const ceaMulticalls: MultiCall[] = [];
 
-        // Add hop's own CEA operations if any
+        // Add primary hop's own CEA operations if any
         // (e.g., approve + swap before bridging back)
         if (hop.ceaMulticalls && hop.ceaMulticalls.length > 0) {
           ceaMulticalls.push(...hop.ceaMulticalls);
         }
 
-        // Determine token/amount for inbound
+        // Aggregate token/amount across all merged hops so the single
+        // sendUniversalTxToUEA call carries the combined forward amount.
+        // For multi-hop R3 segments (same sourceChain), ERC20 funds across
+        // hops must resolve to the same token — otherwise this path can't
+        // express it in one call and the caller should split manually.
         let tokenAddress: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let amount = BigInt(0);
-        const params = hop.params;
-        if (params.funds?.amount) {
-          const token = (params.funds as { token: MoveableToken }).token;
-          if (token) {
-            if (token.mechanism === 'native') {
-              amount = params.funds.amount;
-            } else {
-              tokenAddress = token.address as `0x${string}`;
-              amount = params.funds.amount;
-              // Add approve for ERC20 (CEA approves gateway)
-              const gatewayAddr = UNIVERSAL_GATEWAY_ADDRESSES[sourceChain];
-              if (!gatewayAddr) {
-                throw new Error(
-                  `No UniversalGateway address configured for chain ${sourceChain}`
-                );
+        for (const mergedHop of segment.hops) {
+          const hParams = mergedHop.params;
+          if (hParams.funds?.amount) {
+            const token = (hParams.funds as { token: MoveableToken }).token;
+            if (token) {
+              if (token.mechanism === 'native') {
+                amount += hParams.funds.amount;
+              } else {
+                const addr = token.address as `0x${string}`;
+                if (
+                  tokenAddress !== (ZERO_ADDRESS as `0x${string}`) &&
+                  tokenAddress.toLowerCase() !== addr.toLowerCase()
+                ) {
+                  throw new Error(
+                    `composeCascade: merged R3 hops target different ERC20 tokens (${tokenAddress} vs ${addr}); split into separate executeTransactions batches`
+                  );
+                }
+                tokenAddress = addr;
+                amount += hParams.funds.amount;
+                // CEA approves gateway once with the cumulative allowance.
+                const gatewayAddr = UNIVERSAL_GATEWAY_ADDRESSES[sourceChain];
+                if (!gatewayAddr) {
+                  throw new Error(
+                    `No UniversalGateway address configured for chain ${sourceChain}`
+                  );
+                }
+                // Reset allowance to 0 first for USDT-style tokens
+                const approveZeroData = encodeFunctionData({
+                  abi: ERC20_EVM,
+                  functionName: 'approve',
+                  args: [gatewayAddr, BigInt(0)],
+                });
+                ceaMulticalls.push({
+                  to: tokenAddress,
+                  value: BigInt(0),
+                  data: approveZeroData,
+                });
+                const approveData = encodeFunctionData({
+                  abi: ERC20_EVM,
+                  functionName: 'approve',
+                  args: [gatewayAddr, hParams.funds.amount],
+                });
+                ceaMulticalls.push({
+                  to: tokenAddress,
+                  value: BigInt(0),
+                  data: approveData,
+                });
               }
-              // Reset allowance to 0 first for USDT-style tokens
-              const approveZeroData = encodeFunctionData({
-                abi: ERC20_EVM,
-                functionName: 'approve',
-                args: [gatewayAddr, BigInt(0)],
-              });
-              ceaMulticalls.push({
-                to: tokenAddress,
-                value: BigInt(0),
-                data: approveZeroData,
-              });
-              const approveData = encodeFunctionData({
-                abi: ERC20_EVM,
-                functionName: 'approve',
-                args: [gatewayAddr, amount],
-              });
-              ceaMulticalls.push({
-                to: tokenAddress,
-                value: BigInt(0),
-                data: approveData,
-              });
             }
+          } else if (hParams.value && hParams.value > BigInt(0)) {
+            amount += hParams.value;
           }
-        } else if (params.value && params.value > BigInt(0)) {
-          amount = params.value;
         }
 
         // Build sendUniversalTxToUEA self-call on CEA (to=CEA, value=0)
@@ -950,12 +1056,22 @@ export async function composeCascade(
         // Wrap CEA multicall in outbound from Push Chain
         const ceaPayload = buildCeaMulticallPayload(ceaMulticalls);
 
+        // The nested outbound back to the source chain needs a non-zero
+        // gasLimit — UGPC.sendUniversalTxOutbound reverts with
+        // "Missing or invalid parameters" on 0. When the hop didn't supply
+        // one (typical for a pure-R3 leg composed inside a cascade), fall
+        // back to DEFAULT_OUTBOUND_GAS_LIMIT just like the initial outbound
+        // path does.
+        const effectiveGasLimit =
+          segment.gasLimit && segment.gasLimit > BigInt(0)
+            ? segment.gasLimit
+            : DEFAULT_OUTBOUND_GAS_LIMIT;
         const outboundReq = buildOutboundRequest(
           ceaAddress,
           segment.prc20Token ||
             getNativePRC20ForChain(sourceChain, ctx.pushNetwork),
           segment.totalBurnAmount || BigInt(0),
-          segment.gasLimit ?? BigInt(0),
+          effectiveGasLimit,
           ceaPayload,
           ueaAddress
         );
@@ -967,6 +1083,23 @@ export async function composeCascade(
         } else {
           evmInboundFallback = inboundGasFee * BigInt(1000000);
         }
+        let evmInboundNativeValue =
+          perOutboundNativeValue ?? evmInboundFallback;
+        // SDK 5.2 R3-style Case C bump: when the inbound segment's sizing
+        // is C, top up the swap budget by the overflow. No bridge-swap —
+        // R3 has no destination funds delivery.
+        if (
+          segment.sizing?.category === 'C' &&
+          segment.sizing.overflowNativePc > BigInt(0)
+        ) {
+          const bumped =
+            evmInboundNativeValue + segment.sizing.overflowNativePc;
+          printLog(
+            ctx,
+            `composeCascade — INBOUND_FROM_CEA (EVM) Case C: bumping nativeValueForGas from ${evmInboundNativeValue} to ${bumped} (overflow=${segment.sizing.overflowNativePc})`
+          );
+          evmInboundNativeValue = bumped;
+        }
         const outboundMulticalls = buildOutboundApprovalAndCall({
           prc20Token:
             segment.prc20Token ||
@@ -975,8 +1108,7 @@ export async function composeCascade(
             segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
           burnAmount: segment.totalBurnAmount || BigInt(0),
           gasFee: inboundGasFee,
-          nativeValueForGas:
-            perOutboundNativeValue ?? evmInboundFallback,
+          nativeValueForGas: evmInboundNativeValue,
           gatewayPcAddress,
           outboundRequest: outboundReq,
         });
@@ -1153,8 +1285,98 @@ export function createCascadedBuilder(
             hook(event);
           };
 
+          // ---- Multichain (multi-hop) cascade markers (001 / 002 / 999) ----
+          // Only fire when this is genuinely a multi-hop cascade. Single-hop
+          // R1/R2 takes the early-return paths above and never reaches here,
+          // but guard explicitly in case someone wires a 1-element prepared list.
+          const totalHops = hopInfos.length;
+          const isMulti = totalHops > 1;
+          const chainLabels = hops.map((h) =>
+            String(
+              h.targetChain ??
+                h.sourceChain ??
+                getPushChainForNetwork(ctx.pushNetwork)
+            )
+          );
+          const signerOriginChain = String(
+            ctx.universalSigner.account.chain ?? 'origin'
+          );
+
+          const emitHopStart = (hopIndex0: number) => {
+            if (!isMulti) return;
+            const n = hopIndex0 + 1;
+            const fromChain =
+              hopIndex0 === 0
+                ? signerOriginChain
+                : chainLabels[hopIndex0 - 1];
+            const toChain = chainLabels[hopIndex0];
+            emitHopEvent(
+              eventHook,
+              PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_002_01](
+                n,
+                totalHops,
+                fromChain,
+                toChain
+              )
+            );
+          };
+          const emitHopComplete = (hopIndex0: number) => {
+            if (!isMulti) return;
+            const n = hopIndex0 + 1;
+            if (n >= totalHops) return; // skip after final hop — 999-01 takes over
+            emitHopEvent(
+              eventHook,
+              PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_002_99_99](n, totalHops)
+            );
+          };
+          const emitCascadeSuccess = () => {
+            if (!isMulti) return;
+            emitHopEvent(
+              eventHook,
+              PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_01](totalHops)
+            );
+          };
+          const emitCascadeFailed = (failedIdx0: number, errMsg: string) => {
+            if (!isMulti) return;
+            emitHopEvent(
+              eventHook,
+              PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_02](
+                failedIdx0 + 1,
+                totalHops,
+                errMsg
+              )
+            );
+          };
+          const emitCascadeTimeout = (failedIdx0: number) => {
+            if (!isMulti) return;
+            emitHopEvent(
+              eventHook,
+              PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_03](
+                failedIdx0 + 1,
+                totalHops
+              )
+            );
+          };
+
+          if (isMulti) {
+            emitHopEvent(
+              eventHook,
+              PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_001](
+                totalHops,
+                chainLabels
+              )
+            );
+          }
+
           try {
             // 1. Wait for initial Push Chain tx confirmation
+            // Emit 002-01 for hop 0 ONLY when the first hop is a Push (R1) tx —
+            // its "start" coincides with submitting the composed Push tx. For
+            // cascades that begin with R2/R3, the per-outbound/inbound branches
+            // below own the emitHopStart for hop 0 to avoid a duplicate marker.
+            if (hopInfos[0]?.route === 'UOA_TO_PUSH') {
+              emitHopStart(0);
+            }
             cascadeProgressHook?.({
               hopIndex: 0,
               route: hopInfos[0]?.route || 'UOA_TO_PUSH',
@@ -1178,6 +1400,7 @@ export function createCascadedBuilder(
                   txHash: response.hash,
                   elapsed: Date.now() - startTime,
                 });
+                emitHopComplete(hop.hopIndex);
               }
             }
 
@@ -1225,6 +1448,7 @@ export function createCascadedBuilder(
                   emitHopEvent(eventHook,
                     hopHooks.timeout(hop.executionChain, Date.now() - startTime)
                   );
+                  emitCascadeTimeout(hop.hopIndex);
                   return {
                     success: false,
                     hops: hopInfos,
@@ -1232,6 +1456,7 @@ export function createCascadedBuilder(
                   };
                 }
 
+                emitHopStart(hop.hopIndex);
                 emitHopEvent(eventHook,hopHooks.awaiting(hop.executionChain));
 
                 cascadeProgressHook?.({
@@ -1279,6 +1504,7 @@ export function createCascadedBuilder(
                   hop.txHash = outboundDetails.externalTxHash;
                   hop.outboundDetails = outboundDetails;
                   emitHopEvent(eventHook,hopHooks.success(outboundDetails));
+                  emitHopComplete(hop.hopIndex);
                   cascadeProgressHook?.({
                     hopIndex: hop.hopIndex,
                     route: hop.route,
@@ -1296,8 +1522,13 @@ export function createCascadedBuilder(
                   emitHopEvent(eventHook,
                     isTimeout
                       ? hopHooks.timeout(hop.executionChain, remainingTimeout)
-                      : hopHooks.failed(errMsg)
+                      : hopHooks.failed(hop.executionChain, errMsg)
                   );
+                  if (isTimeout) {
+                    emitCascadeTimeout(hop.hopIndex);
+                  } else {
+                    emitCascadeFailed(hop.hopIndex, errMsg);
+                  }
                   hop.status = 'failed';
                   cascadeProgressHook?.({
                     hopIndex: hop.hopIndex,
@@ -1317,6 +1548,7 @@ export function createCascadedBuilder(
                 // Emit "Awaiting External Chain" once per outbound hop before
                 // polling begins, using the route-specific awaiting hook.
                 for (const outHop of outboundHops) {
+                  emitHopStart(outHop.hopIndex);
                   emitHopEvent(eventHook,
                     pickWaitHooks(outHop.route).awaiting(outHop.executionChain)
                   );
@@ -1386,6 +1618,7 @@ export function createCascadedBuilder(
                             emitHopEvent(eventHook,
                               eventHooks.success(matchedHop.outboundDetails)
                             );
+                            emitHopComplete(event.hopIndex);
                           }
                         }
                       },
@@ -1400,7 +1633,14 @@ export function createCascadedBuilder(
                   const failMsg = failedHop
                     ? `Outbound failed for hop ${failedIdx} on ${failedHop.executionChain}`
                     : `Outbound cascade failed at hop ${failedIdx}`;
-                  emitHopEvent(eventHook,pickWaitHooks(failedHop?.route).failed(failMsg));
+                  emitHopEvent(
+                    eventHook,
+                    pickWaitHooks(failedHop?.route).failed(
+                      failedHop?.executionChain ?? '',
+                      failMsg
+                    )
+                  );
+                  emitCascadeFailed(failedIdx, failMsg);
                   return {
                     success: false,
                     hops: hopInfos,
@@ -1411,11 +1651,15 @@ export function createCascadedBuilder(
             }
 
             // 3. Route 3 (CEA_TO_PUSH) tracking - mark as submitted
+            // Cascade does not poll inbound completion; we surface the hop-start
+            // marker so consumers see a "Starting tx N" event for the inbound,
+            // but skip emitHopComplete since we never observe terminal state.
             const inboundHops = hopInfos.filter(
               (h) => h.route === 'CEA_TO_PUSH'
             );
             for (const inboundHop of inboundHops) {
               inboundHop.status = 'submitted';
+              emitHopStart(inboundHop.hopIndex);
               cascadeProgressHook?.({
                 hopIndex: inboundHop.hopIndex,
                 route: inboundHop.route,
@@ -1425,15 +1669,24 @@ export function createCascadedBuilder(
               });
             }
 
+            emitCascadeSuccess();
             return { success: true, hops: hopInfos };
           } catch (err) {
             const failedIdx = hopInfos.findIndex(
               (h) => h.status !== 'confirmed'
             );
+            const errMsg = err instanceof Error ? err.message : String(err);
+            const failedAt = failedIdx >= 0 ? failedIdx : 0;
+            const isTimeout = errMsg.startsWith('Timeout');
+            if (isTimeout) {
+              emitCascadeTimeout(failedAt);
+            } else {
+              emitCascadeFailed(failedAt, errMsg);
+            }
             return {
               success: false,
               hops: hopInfos,
-              failedAt: failedIdx >= 0 ? failedIdx : 0,
+              failedAt,
             };
           }
         },

@@ -144,13 +144,13 @@ describe('UEA Migration', () => {
 
     const fundTxHash = await mainWalletClient.sendTransaction({
       to: freshAccount.address,
-      value: parseEther('0.01'),
+      value: parseEther('0.005'),
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       account: mainWalletClient.account!,
       chain: sepolia,
     });
     await publicClient.waitForTransactionReceipt({ hash: fundTxHash });
-    console.log(`Funded fresh wallet with 0.01 ETH: ${fundTxHash}`);
+    console.log(`Funded fresh wallet with 0.005 ETH: ${fundTxHash}`);
 
     // 3. Initialize PushChain with fresh wallet
     const freshWalletClient = createWalletClient({

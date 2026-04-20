@@ -26,6 +26,7 @@ import {
   computeUEAOffchain as _computeUEAOffchain, computeUEA as _computeUEA,
   waitForOutboundTx as _waitForOutboundTx, waitForAllOutboundTxsV2 as _waitForAllOutboundTxsV2,
   OUTBOUND_INITIAL_WAIT_MS, OUTBOUND_POLL_INTERVAL_MS, OUTBOUND_MAX_TIMEOUT_MS,
+  INBOUND_INITIAL_WAIT_MS, INBOUND_MAX_TIMEOUT_MS,
   quoteExactOutput as _quoteExactOutput,
   getAccountStatus as _getAccountStatus, upgradeAccount as _upgradeAccount, migrateCEA as _migrateCEA,
   trackTransaction as _trackTransaction, transformToUniversalTxResponse as _transformToUniversalTxResponse,
@@ -69,6 +70,7 @@ export class Orchestrator {
       transformToUniversalTxReceipt: (receipt: TransactionReceipt, resp: UniversalTxResponse) => _transformToUniversalTxReceipt(receipt, resp),
       printLog: (msg: string) => _printLog(this.ctx, msg),
       outboundConstants: { initialWaitMs: OUTBOUND_INITIAL_WAIT_MS, pollingIntervalMs: OUTBOUND_POLL_INTERVAL_MS, maxTimeoutMs: OUTBOUND_MAX_TIMEOUT_MS },
+      inboundConstants: { initialWaitMs: INBOUND_INITIAL_WAIT_MS, pollingIntervalMs: OUTBOUND_POLL_INTERVAL_MS, maxTimeoutMs: INBOUND_MAX_TIMEOUT_MS },
     };
   }
 
@@ -209,6 +211,12 @@ export class Orchestrator {
       detectedRoute === TransactionRoute.UOA_TO_PUSH;
     this.currentRoute = shouldPreserveOuter ? previousRoute : detectedRoute;
 
+    // Reset the terminal-emitted flag at the start of each execute call so
+    // the outer catch below can tell whether a route handler already fired
+    // a terminal-ish error hook (104-04 / 204-04 / 304-04 / 199-02) and
+    // should suppress the second terminal (199-02 / 299-02 / 399-02).
+    this.ctx._routeTerminalEmitted = false;
+
     try {
       // Lazy UEA upgrade check
       try {
@@ -272,14 +280,27 @@ export class Orchestrator {
         // Only the outermost frame emits the terminal error hook, and it picks
         // the route-correct ID. Recursive inner frames just re-throw so the
         // outer catch drives emission — avoids double-firing 199/299/399 events.
-        if (!isRecursiveInnerCall) {
-          const terminalId =
-            this.currentRoute === TransactionRoute.UOA_TO_CEA
-              ? PROGRESS_HOOK.SEND_TX_299_02
-              : this.currentRoute === TransactionRoute.CEA_TO_PUSH
-              ? PROGRESS_HOOK.SEND_TX_399_02
-              : PROGRESS_HOOK.SEND_TX_199_02;
-          _fireProgressHook(this.ctx, terminalId, errMessage);
+        // Additionally, if an inner route handler already fired a terminal-ish
+        // error (104-04/204-04/304-04/199-02 via execute-standard), the flag is
+        // set on ctx and we skip emitting a second terminal here.
+        if (!isRecursiveInnerCall && !this.ctx._routeTerminalEmitted) {
+          // For R3, the failure surfaced during execute-phase (pre-wait) is a
+          // Push-chain-side failure — tag phase='push' so 399-02 renders the
+          // correct "Push Chain Tx Failed" title instead of the inbound copy.
+          if (this.currentRoute === TransactionRoute.CEA_TO_PUSH) {
+            _fireProgressHook(
+              this.ctx,
+              PROGRESS_HOOK.SEND_TX_399_02,
+              errMessage,
+              'push'
+            );
+          } else {
+            const terminalId =
+              this.currentRoute === TransactionRoute.UOA_TO_CEA
+                ? PROGRESS_HOOK.SEND_TX_299_02
+                : PROGRESS_HOOK.SEND_TX_199_02;
+            _fireProgressHook(this.ctx, terminalId, errMessage);
+          }
         }
         throw err;
       } finally {
@@ -325,9 +346,10 @@ export class Orchestrator {
    */
   async queryOutboundGasFee(
     prc20Token: `0x${string}`,
-    gasLimit: bigint
+    gasLimit: bigint,
+    destinationChain?: CHAIN
   ): Promise<{ gasToken: `0x${string}`; gasFee: bigint; protocolFee: bigint; nativeValueForGas: bigint; gasPrice: bigint }> {
-    return _queryOutboundGasFee(this.ctx, prc20Token, gasLimit);
+    return _queryOutboundGasFee(this.ctx, prc20Token, gasLimit, destinationChain);
   }
 
 /**
