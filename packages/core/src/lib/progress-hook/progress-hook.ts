@@ -550,8 +550,8 @@ const RAW_HOOKS_R3: {
     totalDepositUSD: bigint
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_303_03_01,
-    title: 'Gas Sizing: Case A',
-    message: `Gas cost < $1; padding to $1 minimum (gasRequired=${gasRequired} UPC, extraDepositPC=${extraDepositPC} UPC, totalDepositUSD=$${totalDepositUSD})`,
+    title: 'Adjusting Prepaid Deposit to be >$1',
+    message: `Required deposit below $1 minimum — padding to $1 floor (gasRequired=${gasRequired} UPC, extraDepositPC=${extraDepositPC} UPC, totalDepositUSD=$${totalDepositUSD})`,
     response: { gasRequired, extraDepositPC, totalDepositUSD, chain: sourceChain },
     level: 'INFO',
   }),
@@ -562,8 +562,8 @@ const RAW_HOOKS_R3: {
     totalDepositUSD: bigint
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_303_03_02,
-    title: 'Gas Sizing: Case B',
-    message: `Gas cost within $1–$10 window; happy path (gasRequired=${gasRequired} UPC, totalDepositUSD=$${totalDepositUSD})`,
+    title: 'Prepaid Deposit in range (>=$1 and <$10)',
+    message: `Required deposit $${totalDepositUSD} within $1–$10 range — depositing as required`,
     response: { gasRequired, extraDepositPC, totalDepositUSD, chain: sourceChain },
     level: 'INFO',
   }),
@@ -574,8 +574,8 @@ const RAW_HOOKS_R3: {
     totalDepositUSD: bigint
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_303_03_03,
-    title: 'Gas Sizing: Case C',
-    message: `Gas cost > $10; splitting into $10 gas leg + ${extraDepositPC} UPC overflow bridged as funds`,
+    title: 'Prepaid Deposit Exceeds $10 Cap, splitting Gas and Funds',
+    message: `Required deposit exceeds $10 cap — splitting: $10 gas leg + ${extraDepositPC} UPC overflow bridged as funds`,
     response: { gasRequired, extraDepositPC, totalDepositUSD, chain: sourceChain },
     level: 'INFO',
   }),

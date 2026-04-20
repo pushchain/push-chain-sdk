@@ -60,44 +60,44 @@ describe('Route 3 spec strings (301–399)', () => {
   // returns a sizing decision. Not part of the top-level spec image; covered
   // here because they're part of the live-stream contract.
 
-  it('303-03-01 — Gas Sizing: Case A', () => {
+  it('303-03-01 — Adjusting Prepaid Deposit to be >$1', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_303_03_01](
       sourceChain,
       BigInt(1_000_000_000_000_000_000), // gasRequired: 1 UPC
       BigInt(0), // extraDepositPC: 0 for A
       BigInt(100_000_000) // totalDepositUSD: $1 (padded)
     );
-    expect(ev.title).toBe('Gas Sizing: Case A');
+    expect(ev.title).toBe('Adjusting Prepaid Deposit to be >$1');
     expect(ev.message).toBe(
-      'Gas cost < $1; padding to $1 minimum (gasRequired=1000000000000000000 UPC, extraDepositPC=0 UPC, totalDepositUSD=$100000000)'
+      'Required deposit below $1 minimum — padding to $1 floor (gasRequired=1000000000000000000 UPC, extraDepositPC=0 UPC, totalDepositUSD=$100000000)'
     );
     expect(ev.level).toBe('INFO');
   });
 
-  it('303-03-02 — Gas Sizing: Case B', () => {
+  it('303-03-02 — Prepaid Deposit in range (>=$1 and <$10)', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_303_03_02](
       sourceChain,
       BigInt(5_000_000_000_000_000_000), // gasRequired: 5 UPC
       BigInt(0), // extraDepositPC: 0 for B
       BigInt(500_000_000) // totalDepositUSD: $5
     );
-    expect(ev.title).toBe('Gas Sizing: Case B');
+    expect(ev.title).toBe('Prepaid Deposit in range (>=$1 and <$10)');
     expect(ev.message).toBe(
-      'Gas cost within $1–$10 window; happy path (gasRequired=5000000000000000000 UPC, totalDepositUSD=$500000000)'
+      'Required deposit $500000000 within $1–$10 range — depositing as required'
     );
     expect(ev.level).toBe('INFO');
   });
 
-  it('303-03-03 — Gas Sizing: Case C', () => {
+  it('303-03-03 — Prepaid Deposit Exceeds $10 Cap, splitting Gas and Funds', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_303_03_03](
       sourceChain,
       BigInt(10_000_000_000_000_000_000), // gasRequired: 10 UPC gas leg
       BigInt(5_000_000_000_000_000_000), // extraDepositPC: 5 UPC overflow
       BigInt(1_500_000_000) // totalDepositUSD: $15
     );
-    expect(ev.title).toBe('Gas Sizing: Case C');
+    expect(ev.title).toBe('Prepaid Deposit Exceeds $10 Cap, splitting Gas and Funds');
     expect(ev.message).toBe(
-      'Gas cost > $10; splitting into $10 gas leg + 5000000000000000000 UPC overflow bridged as funds'
+      'Required deposit exceeds $10 cap — splitting: $10 gas leg + 5000000000000000000 UPC overflow bridged as funds'
     );
     expect(ev.level).toBe('INFO');
   });
