@@ -10,6 +10,24 @@ type PushWalletToastProps = {
     setProgress: React.Dispatch<React.SetStateAction<ProgressEvent | null>>;
 }
 
+const SUCCESS_TERMINAL_IDS: ReadonlyArray<string> = [
+    PROGRESS_HOOK.SEND_TX_199_01,
+    PROGRESS_HOOK.SEND_TX_299_01,
+    PROGRESS_HOOK.SEND_TX_399_01,
+    PROGRESS_HOOK.SEND_TX_999_01,
+    PROGRESS_HOOK.UEA_MIG_9901,
+];
+
+const FAILURE_TERMINAL_IDS: ReadonlyArray<string> = [
+    PROGRESS_HOOK.SEND_TX_199_02,
+    PROGRESS_HOOK.SEND_TX_299_02,
+    PROGRESS_HOOK.SEND_TX_299_03,
+    PROGRESS_HOOK.SEND_TX_399_02,
+    PROGRESS_HOOK.SEND_TX_399_03,
+    PROGRESS_HOOK.SEND_TX_999_02,
+    PROGRESS_HOOK.SEND_TX_999_03,
+];
+
 const PushWalletToast: FC<PushWalletToastProps> = ({ progress, setProgress }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isOverflowing, setIsOverflowing] = useState(false);
@@ -34,32 +52,35 @@ const PushWalletToast: FC<PushWalletToastProps> = ({ progress, setProgress }) =>
     if (!progress) return <></>
 
     const isInsufficientFundsError = progress?.message.includes('insufficient funds for gas');
+    const isSuccess = SUCCESS_TERMINAL_IDS.includes(progress.id);
+    const isFailure = FAILURE_TERMINAL_IDS.includes(progress.id);
+    const txHash = (progress.response as { txHash?: string } | null)?.txHash;
 
     return (
         <ToastContainer>
             <IconContainer>
                 {
-                    (progress.id === PROGRESS_HOOK.SEND_TX_99_01 || progress.id === PROGRESS_HOOK.UEA_MIG_9901) ? <TickIcon /> :
-                    progress.id === PROGRESS_HOOK.SEND_TX_99_02 ? <WarningIcon /> :
+                    isSuccess ? <TickIcon /> :
+                    isFailure ? <WarningIcon /> :
                     <Spinner color='var(--pw-int-brand-primary-color)' />
                 }
             </IconContainer>
             <ContentContainer>
                 <TitleText>{progress.title}</TitleText>
                 {
-                    progress.id === PROGRESS_HOOK.SEND_TX_99_01 &&
-                    progress.response && 
+                    isSuccess &&
+                    txHash &&
                     (
                         <LinkText
-                            onClick={() => handleViewOnScan((progress.response as Array<Record<string, any>>)[0]['hash'])}
+                            onClick={() => handleViewOnScan(txHash)}
                         >
                             View in Explorer
                         </LinkText>
                     )
                 }
                 {
-                    progress.id === PROGRESS_HOOK.SEND_TX_99_02 &&
-                    progress.message && 
+                    isFailure &&
+                    progress.message &&
                     (
                         <DescriptionContainer>
                             <DescriptionText

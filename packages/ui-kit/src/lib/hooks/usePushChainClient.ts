@@ -59,7 +59,13 @@ export const usePushChainClient = (uid?: string) => {
       }
     }, MIN_VISIBLE_MS);
 
-    if (p.id === PROGRESS_HOOK.SEND_TX_99_01) {
+    if (
+      p.id === PROGRESS_HOOK.SEND_TX_199_01 ||
+      p.id === PROGRESS_HOOK.SEND_TX_299_01 ||
+      p.id === PROGRESS_HOOK.SEND_TX_399_01 ||
+      p.id === PROGRESS_HOOK.SEND_TX_999_01 ||
+      p.id === PROGRESS_HOOK.UEA_MIG_9901
+    ) {
       successTimerRef.current = setTimeout(() => setProgress(null), SUCCESS_HIDE_MS);
     }
   };
