@@ -55,8 +55,8 @@ const PushUniversalAccountButton: FC<PushUniversalAccountButtonProps> = ({
   modalAppOverride,
   loginAppOverride,
   themeOverrides: ButtonThemeOverrides,
-  connectButtonClassName,
-  connectedButtonClassName,
+  connectButtonClassName = 'PUABConnect',
+  connectedButtonClassName = 'PUABConnected',
   customConnectComponent,
   customConnectedComponent,
 }) => {

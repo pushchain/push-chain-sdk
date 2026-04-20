@@ -74,8 +74,7 @@ const ConnectWalletButton: FC<ConnectPushWalletButtonProps> = ({
 export { ConnectWalletButton };
 
 const ButtonContainer = styled.div`
-  cursor: pointer;
-  width: 100%;
+  cursor: inherit;
 `;
 
 const SpinnerContainer = styled.div`
