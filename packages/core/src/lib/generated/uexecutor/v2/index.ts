@@ -2,11 +2,7 @@
 export {
   protobufPackage,
   TxType,
-  txTypeFromJSON,
-  txTypeToJSON,
   OutboundStatus,
-  outboundStatusFromJSON,
-  outboundStatusToJSON,
   OriginatingPcTx,
   OutboundObservation,
   RevertInstructions,
@@ -16,11 +12,7 @@ export {
   UniversalTxV2Codec,
   // Re-exported from v1
   VerificationType,
-  verificationTypeFromJSON,
-  verificationTypeToJSON,
   UniversalTxStatus,
-  universalTxStatusFromJSON,
-  universalTxStatusToJSON,
   UniversalPayload,
   Inbound,
   PCTx,

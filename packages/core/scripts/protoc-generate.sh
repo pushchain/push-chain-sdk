@@ -20,5 +20,6 @@ mkdir "${OUT_DIR}"
 protoc \
     --plugin="protoc-gen-ts=${PROTOC_GEN_TS_PATH}" \
     --ts_proto_out="${OUT_DIR}" \
+    --ts_proto_opt="outputJsonMethods=false" \
     --proto_path="${SRC_DIR}" \
     $(find "${SRC_DIR}" -iname "*.proto")

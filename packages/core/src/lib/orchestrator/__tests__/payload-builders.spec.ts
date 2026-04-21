@@ -7,22 +7,16 @@
 import { decodeAbiParameters, decodeFunctionData, keccak256, toBytes } from 'viem';
 import { ERC20_EVM } from '../../constants/abi/erc20.evm';
 import { CEA_EVM } from '../../constants/abi/cea.evm';
-import { UNIVERSAL_GATEWAY_V0 } from '../../constants/abi/universalGatewayV0.evm';
 import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi/universalGatewayPC.evm';
 import { ZERO_ADDRESS, MIGRATION_SELECTOR, MULTICALL_SELECTOR, UEA_MULTICALL_SELECTOR } from '../../constants/selectors';
 import type { MultiCall, UniversalOutboundTxRequest } from '../orchestrator.types';
 import {
   buildCeaMulticallPayload,
-  buildSingleCeaCall,
-  buildApproveAndInteract,
-  buildSendUniversalTxFromCEA,
   buildSendUniversalTxToUEA,
   buildOutboundRequest,
-  buildNativeTransfer,
   buildErc20Transfer,
   buildErc20WithdrawalMulticall,
   buildMigrationPayload,
-  isZeroAddress,
   buildOutboundApprovalAndCall,
 } from '../payload-builders';
 
@@ -89,98 +83,6 @@ describe('buildCeaMulticallPayload', () => {
 });
 
 // ============================================================================
-// buildSingleCeaCall
-// ============================================================================
-describe('buildSingleCeaCall', () => {
-  it('should encode a single call using buildCeaMulticallPayload', () => {
-    const encoded = buildSingleCeaCall(ALICE, BigInt(50), '0xabcd');
-    expect(encoded.startsWith('0x')).toBe(true);
-    expect(encoded.startsWith(UEA_MULTICALL_SELECTOR)).toBe(true);
-    // Strip selector (first 4 bytes after 0x) and decode
-    const dataWithoutSelector = `0x${encoded.slice(10)}` as `0x${string}`;
-    const [decoded] = decodeAbiParameters([MULTICALL_TUPLE_TYPE], dataWithoutSelector);
-    expect(decoded).toHaveLength(1);
-    expect((decoded[0] as { to: string }).to.toLowerCase()).toBe(ALICE.toLowerCase());
-    expect((decoded[0] as { value: bigint }).value).toBe(BigInt(50));
-  });
-});
-
-// ============================================================================
-// buildApproveAndInteract
-// ============================================================================
-describe('buildApproveAndInteract', () => {
-  it('should return approve call followed by interaction call', () => {
-    const interactCall: MultiCall = {
-      to: BOB,
-      value: BigInt(0),
-      data: '0x12345678',
-    };
-    const result = buildApproveAndInteract(TOKEN_A, BOB, BigInt(1000), interactCall);
-
-    expect(result).toHaveLength(3);
-
-    // First call: approve to zero (USDT safety)
-    expect(result[0].to).toBe(TOKEN_A);
-    const decodedZero = decodeFunctionData({ abi: ERC20_EVM, data: result[0].data as `0x${string}` });
-    expect(decodedZero.functionName).toBe('approve');
-    expect(decodedZero.args![1]).toBe(BigInt(0));
-
-    // Second call: approve actual amount
-    expect(result[1].to).toBe(TOKEN_A);
-    expect(result[1].value).toBe(BigInt(0));
-    const decoded = decodeFunctionData({ abi: ERC20_EVM, data: result[1].data as `0x${string}` });
-    expect(decoded.functionName).toBe('approve');
-    expect(decoded.args![0]).toBe(BOB); // spender
-    expect(decoded.args![1]).toBe(BigInt(1000)); // amount
-
-    // Third call: the interaction
-    expect(result[2]).toBe(interactCall);
-  });
-});
-
-// ============================================================================
-// buildSendUniversalTxFromCEA
-// ============================================================================
-describe('buildSendUniversalTxFromCEA', () => {
-  it('should encode sendUniversalTxFromCEA function call', () => {
-    const result = buildSendUniversalTxFromCEA(
-      GATEWAY,
-      ALICE, // recipient
-      TOKEN_A, // token
-      BigInt(500),
-      '0xdeadbeef',
-      BOB, // revertRecipient
-    );
-
-    expect(result.to).toBe(GATEWAY);
-    expect(result.value).toBe(BigInt(0)); // default nativeValue
-    expect(result.data).toMatch(/^0x/);
-
-    // Decode the function call
-    const decoded = decodeFunctionData({
-      abi: UNIVERSAL_GATEWAY_V0,
-      data: result.data as `0x${string}`,
-    });
-    expect(decoded.functionName).toBe('sendUniversalTxFromCEA');
-  });
-
-  it('should pass nativeValue as MultiCall value', () => {
-    const result = buildSendUniversalTxFromCEA(
-      GATEWAY,
-      ALICE,
-      ZERO_ADDRESS as `0x${string}`,
-      BigInt(1000),
-      '0x',
-      BOB,
-      '0x',
-      BigInt(999),
-    );
-
-    expect(result.value).toBe(BigInt(999));
-  });
-});
-
-// ============================================================================
 // buildOutboundRequest
 // ============================================================================
 describe('buildOutboundRequest', () => {
@@ -218,19 +120,6 @@ describe('buildOutboundRequest', () => {
 });
 
 // ============================================================================
-// buildNativeTransfer
-// ============================================================================
-describe('buildNativeTransfer', () => {
-  it('should create a MultiCall with 0x data', () => {
-    const result = buildNativeTransfer(ALICE, BigInt(1000));
-
-    expect(result.to).toBe(ALICE);
-    expect(result.value).toBe(BigInt(1000));
-    expect(result.data).toBe('0x');
-  });
-});
-
-// ============================================================================
 // buildErc20Transfer
 // ============================================================================
 describe('buildErc20Transfer', () => {
@@ -248,23 +137,6 @@ describe('buildErc20Transfer', () => {
     expect(decoded.functionName).toBe('transfer');
     expect(decoded.args![0]).toBe(ALICE); // to
     expect(decoded.args![1]).toBe(BigInt(5000)); // amount
-  });
-});
-
-// ============================================================================
-// isZeroAddress
-// ============================================================================
-describe('isZeroAddress', () => {
-  it('should return true for zero address', () => {
-    expect(isZeroAddress(ZERO_ADDRESS as `0x${string}`)).toBe(true);
-  });
-
-  it('should return true for zero address with mixed case', () => {
-    expect(isZeroAddress('0x0000000000000000000000000000000000000000')).toBe(true);
-  });
-
-  it('should return false for non-zero address', () => {
-    expect(isZeroAddress(ALICE)).toBe(false);
   });
 });
 

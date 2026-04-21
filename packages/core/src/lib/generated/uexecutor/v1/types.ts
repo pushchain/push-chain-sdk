@@ -15,33 +15,6 @@ export enum VerificationType {
   UNRECOGNIZED = -1,
 }
 
-export function verificationTypeFromJSON(object: any): VerificationType {
-  switch (object) {
-    case 0:
-    case "signedVerification":
-      return VerificationType.signedVerification;
-    case 1:
-    case "universalTxVerification":
-      return VerificationType.universalTxVerification;
-    case -1:
-    case "UNRECOGNIZED":
-    default:
-      return VerificationType.UNRECOGNIZED;
-  }
-}
-
-export function verificationTypeToJSON(object: VerificationType): string {
-  switch (object) {
-    case VerificationType.signedVerification:
-      return "signedVerification";
-    case VerificationType.universalTxVerification:
-      return "universalTxVerification";
-    case VerificationType.UNRECOGNIZED:
-    default:
-      return "UNRECOGNIZED";
-  }
-}
-
 export enum UniversalTxStatus {
   UNIVERSAL_TX_STATUS_UNSPECIFIED = 0,
   INBOUND_SUCCESS = 1,
@@ -54,73 +27,6 @@ export enum UniversalTxStatus {
   OUTBOUND_FAILED = 8,
   CANCELED = 9,
   UNRECOGNIZED = -1,
-}
-
-export function universalTxStatusFromJSON(object: any): UniversalTxStatus {
-  switch (object) {
-    case 0:
-    case "UNIVERSAL_TX_STATUS_UNSPECIFIED":
-      return UniversalTxStatus.UNIVERSAL_TX_STATUS_UNSPECIFIED;
-    case 1:
-    case "INBOUND_SUCCESS":
-      return UniversalTxStatus.INBOUND_SUCCESS;
-    case 2:
-    case "PENDING_INBOUND_EXECUTION":
-      return UniversalTxStatus.PENDING_INBOUND_EXECUTION;
-    case 3:
-    case "PC_EXECUTED_SUCCESS":
-      return UniversalTxStatus.PC_EXECUTED_SUCCESS;
-    case 4:
-    case "PC_EXECUTED_FAILED":
-      return UniversalTxStatus.PC_EXECUTED_FAILED;
-    case 5:
-    case "PC_PENDING_REVERT":
-      return UniversalTxStatus.PC_PENDING_REVERT;
-    case 6:
-    case "OUTBOUND_PENDING":
-      return UniversalTxStatus.OUTBOUND_PENDING;
-    case 7:
-    case "OUTBOUND_SUCCESS":
-      return UniversalTxStatus.OUTBOUND_SUCCESS;
-    case 8:
-    case "OUTBOUND_FAILED":
-      return UniversalTxStatus.OUTBOUND_FAILED;
-    case 9:
-    case "CANCELED":
-      return UniversalTxStatus.CANCELED;
-    case -1:
-    case "UNRECOGNIZED":
-    default:
-      return UniversalTxStatus.UNRECOGNIZED;
-  }
-}
-
-export function universalTxStatusToJSON(object: UniversalTxStatus): string {
-  switch (object) {
-    case UniversalTxStatus.UNIVERSAL_TX_STATUS_UNSPECIFIED:
-      return "UNIVERSAL_TX_STATUS_UNSPECIFIED";
-    case UniversalTxStatus.INBOUND_SUCCESS:
-      return "INBOUND_SUCCESS";
-    case UniversalTxStatus.PENDING_INBOUND_EXECUTION:
-      return "PENDING_INBOUND_EXECUTION";
-    case UniversalTxStatus.PC_EXECUTED_SUCCESS:
-      return "PC_EXECUTED_SUCCESS";
-    case UniversalTxStatus.PC_EXECUTED_FAILED:
-      return "PC_EXECUTED_FAILED";
-    case UniversalTxStatus.PC_PENDING_REVERT:
-      return "PC_PENDING_REVERT";
-    case UniversalTxStatus.OUTBOUND_PENDING:
-      return "OUTBOUND_PENDING";
-    case UniversalTxStatus.OUTBOUND_SUCCESS:
-      return "OUTBOUND_SUCCESS";
-    case UniversalTxStatus.OUTBOUND_FAILED:
-      return "OUTBOUND_FAILED";
-    case UniversalTxStatus.CANCELED:
-      return "CANCELED";
-    case UniversalTxStatus.UNRECOGNIZED:
-    default:
-      return "UNRECOGNIZED";
-  }
 }
 
 export interface UniversalPayload {
@@ -305,52 +211,6 @@ export const UniversalPayload: MessageFns<UniversalPayload> = {
     return message;
   },
 
-  fromJSON(object: any): UniversalPayload {
-    return {
-      to: isSet(object.to) ? globalThis.String(object.to) : "",
-      value: isSet(object.value) ? globalThis.String(object.value) : "",
-      data: isSet(object.data) ? globalThis.String(object.data) : "",
-      gasLimit: isSet(object.gasLimit) ? globalThis.String(object.gasLimit) : "",
-      maxFeePerGas: isSet(object.maxFeePerGas) ? globalThis.String(object.maxFeePerGas) : "",
-      maxPriorityFeePerGas: isSet(object.maxPriorityFeePerGas) ? globalThis.String(object.maxPriorityFeePerGas) : "",
-      nonce: isSet(object.nonce) ? globalThis.String(object.nonce) : "",
-      deadline: isSet(object.deadline) ? globalThis.String(object.deadline) : "",
-      vType: isSet(object.vType) ? verificationTypeFromJSON(object.vType) : 0,
-    };
-  },
-
-  toJSON(message: UniversalPayload): unknown {
-    const obj: any = {};
-    if (message.to !== "") {
-      obj.to = message.to;
-    }
-    if (message.value !== "") {
-      obj.value = message.value;
-    }
-    if (message.data !== "") {
-      obj.data = message.data;
-    }
-    if (message.gasLimit !== "") {
-      obj.gasLimit = message.gasLimit;
-    }
-    if (message.maxFeePerGas !== "") {
-      obj.maxFeePerGas = message.maxFeePerGas;
-    }
-    if (message.maxPriorityFeePerGas !== "") {
-      obj.maxPriorityFeePerGas = message.maxPriorityFeePerGas;
-    }
-    if (message.nonce !== "") {
-      obj.nonce = message.nonce;
-    }
-    if (message.deadline !== "") {
-      obj.deadline = message.deadline;
-    }
-    if (message.vType !== 0) {
-      obj.vType = verificationTypeToJSON(message.vType);
-    }
-    return obj;
-  },
-
   create<I extends Exact<DeepPartial<UniversalPayload>, I>>(base?: I): UniversalPayload {
     return UniversalPayload.fromPartial(base ?? ({} as any));
   },
@@ -503,52 +363,6 @@ export const Inbound: MessageFns<Inbound> = {
     return message;
   },
 
-  fromJSON(object: any): Inbound {
-    return {
-      sourceChain: isSet(object.sourceChain) ? globalThis.String(object.sourceChain) : "",
-      txHash: isSet(object.txHash) ? globalThis.String(object.txHash) : "",
-      sender: isSet(object.sender) ? globalThis.String(object.sender) : "",
-      recipient: isSet(object.recipient) ? globalThis.String(object.recipient) : "",
-      amount: isSet(object.amount) ? globalThis.String(object.amount) : "",
-      assetAddr: isSet(object.assetAddr) ? globalThis.String(object.assetAddr) : "",
-      txType: isSet(object.txType) ? globalThis.Number(object.txType) : 0,
-      universalPayload: isSet(object.universalPayload) ? UniversalPayload.fromJSON(object.universalPayload) : undefined,
-      verificationData: isSet(object.verificationData) ? globalThis.String(object.verificationData) : "",
-    };
-  },
-
-  toJSON(message: Inbound): unknown {
-    const obj: any = {};
-    if (message.sourceChain !== "") {
-      obj.sourceChain = message.sourceChain;
-    }
-    if (message.txHash !== "") {
-      obj.txHash = message.txHash;
-    }
-    if (message.sender !== "") {
-      obj.sender = message.sender;
-    }
-    if (message.recipient !== "") {
-      obj.recipient = message.recipient;
-    }
-    if (message.amount !== "") {
-      obj.amount = message.amount;
-    }
-    if (message.assetAddr !== "") {
-      obj.assetAddr = message.assetAddr;
-    }
-    if (message.txType !== 0) {
-      obj.txType = Math.round(message.txType);
-    }
-    if (message.universalPayload !== undefined) {
-      obj.universalPayload = UniversalPayload.toJSON(message.universalPayload);
-    }
-    if (message.verificationData !== "") {
-      obj.verificationData = message.verificationData;
-    }
-    return obj;
-  },
-
   create<I extends Exact<DeepPartial<Inbound>, I>>(base?: I): Inbound {
     return Inbound.fromPartial(base ?? ({} as any));
   },
@@ -660,40 +474,6 @@ export const PCTx: MessageFns<PCTx> = {
     return message;
   },
 
-  fromJSON(object: any): PCTx {
-    return {
-      txHash: isSet(object.txHash) ? globalThis.String(object.txHash) : "",
-      sender: isSet(object.sender) ? globalThis.String(object.sender) : "",
-      gasUsed: isSet(object.gasUsed) ? globalThis.Number(object.gasUsed) : 0,
-      blockHeight: isSet(object.blockHeight) ? globalThis.Number(object.blockHeight) : 0,
-      status: isSet(object.status) ? globalThis.String(object.status) : "",
-      errorMsg: isSet(object.errorMsg) ? globalThis.String(object.errorMsg) : "",
-    };
-  },
-
-  toJSON(message: PCTx): unknown {
-    const obj: any = {};
-    if (message.txHash !== "") {
-      obj.txHash = message.txHash;
-    }
-    if (message.sender !== "") {
-      obj.sender = message.sender;
-    }
-    if (message.gasUsed !== 0) {
-      obj.gasUsed = Math.round(message.gasUsed);
-    }
-    if (message.blockHeight !== 0) {
-      obj.blockHeight = Math.round(message.blockHeight);
-    }
-    if (message.status !== "") {
-      obj.status = message.status;
-    }
-    if (message.errorMsg !== "") {
-      obj.errorMsg = message.errorMsg;
-    }
-    return obj;
-  },
-
   create<I extends Exact<DeepPartial<PCTx>, I>>(base?: I): PCTx {
     return PCTx.fromPartial(base ?? ({} as any));
   },
@@ -789,36 +569,6 @@ export const OutboundTx: MessageFns<OutboundTx> = {
     return message;
   },
 
-  fromJSON(object: any): OutboundTx {
-    return {
-      destinationChain: isSet(object.destinationChain) ? globalThis.String(object.destinationChain) : "",
-      txHash: isSet(object.txHash) ? globalThis.String(object.txHash) : "",
-      recipient: isSet(object.recipient) ? globalThis.String(object.recipient) : "",
-      amount: isSet(object.amount) ? globalThis.String(object.amount) : "",
-      assetAddr: isSet(object.assetAddr) ? globalThis.String(object.assetAddr) : "",
-    };
-  },
-
-  toJSON(message: OutboundTx): unknown {
-    const obj: any = {};
-    if (message.destinationChain !== "") {
-      obj.destinationChain = message.destinationChain;
-    }
-    if (message.txHash !== "") {
-      obj.txHash = message.txHash;
-    }
-    if (message.recipient !== "") {
-      obj.recipient = message.recipient;
-    }
-    if (message.amount !== "") {
-      obj.amount = message.amount;
-    }
-    if (message.assetAddr !== "") {
-      obj.assetAddr = message.assetAddr;
-    }
-    return obj;
-  },
-
   create<I extends Exact<DeepPartial<OutboundTx>, I>>(base?: I): OutboundTx {
     return OutboundTx.fromPartial(base ?? ({} as any));
   },
@@ -902,32 +652,6 @@ export const UniversalTx: MessageFns<UniversalTx> = {
     return message;
   },
 
-  fromJSON(object: any): UniversalTx {
-    return {
-      inboundTx: isSet(object.inboundTx) ? Inbound.fromJSON(object.inboundTx) : undefined,
-      pcTx: globalThis.Array.isArray(object?.pcTx) ? object.pcTx.map((e: any) => PCTx.fromJSON(e)) : [],
-      outboundTx: isSet(object.outboundTx) ? OutboundTx.fromJSON(object.outboundTx) : undefined,
-      universalStatus: isSet(object.universalStatus) ? universalTxStatusFromJSON(object.universalStatus) : 0,
-    };
-  },
-
-  toJSON(message: UniversalTx): unknown {
-    const obj: any = {};
-    if (message.inboundTx !== undefined) {
-      obj.inboundTx = Inbound.toJSON(message.inboundTx);
-    }
-    if (message.pcTx?.length) {
-      obj.pcTx = message.pcTx.map((e) => PCTx.toJSON(e));
-    }
-    if (message.outboundTx !== undefined) {
-      obj.outboundTx = OutboundTx.toJSON(message.outboundTx);
-    }
-    if (message.universalStatus !== 0) {
-      obj.universalStatus = universalTxStatusToJSON(message.universalStatus);
-    }
-    return obj;
-  },
-
   create<I extends Exact<DeepPartial<UniversalTx>, I>>(base?: I): UniversalTx {
     return UniversalTx.fromPartial(base ?? ({} as any));
   },
@@ -975,8 +699,6 @@ function isSet(value: any): boolean {
 export interface MessageFns<T> {
   encode(message: T, writer?: BinaryWriter): BinaryWriter;
   decode(input: BinaryReader | Uint8Array, length?: number): T;
-  fromJSON(object: any): T;
-  toJSON(message: T): unknown;
   create<I extends Exact<DeepPartial<T>, I>>(base?: I): T;
   fromPartial<I extends Exact<DeepPartial<T>, I>>(object: I): T;
 }

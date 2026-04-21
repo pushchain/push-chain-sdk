@@ -6,14 +6,7 @@ import { BinaryReader, BinaryWriter } from '@bufbuild/protobuf/wire';
 export const protobufPackage = 'uexecutor.v2';
 
 // Re-export enums from v1 that are unchanged
-export {
-  VerificationType,
-  verificationTypeFromJSON,
-  verificationTypeToJSON,
-  UniversalTxStatus,
-  universalTxStatusFromJSON,
-  universalTxStatusToJSON,
-} from '../v1/types';
+export { VerificationType, UniversalTxStatus } from '../v1/types';
 
 // Import types from v1 that are unchanged
 import {
@@ -41,58 +34,6 @@ export enum TxType {
   UNRECOGNIZED = -1,
 }
 
-export function txTypeFromJSON(object: any): TxType {
-  switch (object) {
-    case 0:
-    case 'UNSPECIFIED_TX':
-      return TxType.UNSPECIFIED_TX;
-    case 1:
-    case 'GAS':
-      return TxType.GAS;
-    case 2:
-    case 'GAS_AND_PAYLOAD':
-      return TxType.GAS_AND_PAYLOAD;
-    case 3:
-    case 'FUNDS':
-      return TxType.FUNDS;
-    case 4:
-    case 'FUNDS_AND_PAYLOAD':
-      return TxType.FUNDS_AND_PAYLOAD;
-    case 5:
-    case 'PAYLOAD':
-      return TxType.PAYLOAD;
-    case 6:
-    case 'INBOUND_REVERT':
-      return TxType.INBOUND_REVERT;
-    case -1:
-    case 'UNRECOGNIZED':
-    default:
-      return TxType.UNRECOGNIZED;
-  }
-}
-
-export function txTypeToJSON(object: TxType): string {
-  switch (object) {
-    case TxType.UNSPECIFIED_TX:
-      return 'UNSPECIFIED_TX';
-    case TxType.GAS:
-      return 'GAS';
-    case TxType.GAS_AND_PAYLOAD:
-      return 'GAS_AND_PAYLOAD';
-    case TxType.FUNDS:
-      return 'FUNDS';
-    case TxType.FUNDS_AND_PAYLOAD:
-      return 'FUNDS_AND_PAYLOAD';
-    case TxType.PAYLOAD:
-      return 'PAYLOAD';
-    case TxType.INBOUND_REVERT:
-      return 'INBOUND_REVERT';
-    case TxType.UNRECOGNIZED:
-    default:
-      return 'UNRECOGNIZED';
-  }
-}
-
 /**
  * OutboundStatus enum for outbound transaction status
  */
@@ -102,43 +43,6 @@ export enum OutboundStatus {
   OBSERVED = 2,
   REVERTED = 3,
   UNRECOGNIZED = -1,
-}
-
-export function outboundStatusFromJSON(object: any): OutboundStatus {
-  switch (object) {
-    case 0:
-    case 'OUTBOUND_STATUS_UNSPECIFIED':
-      return OutboundStatus.OUTBOUND_STATUS_UNSPECIFIED;
-    case 1:
-    case 'PENDING':
-      return OutboundStatus.PENDING;
-    case 2:
-    case 'OBSERVED':
-      return OutboundStatus.OBSERVED;
-    case 3:
-    case 'REVERTED':
-      return OutboundStatus.REVERTED;
-    case -1:
-    case 'UNRECOGNIZED':
-    default:
-      return OutboundStatus.UNRECOGNIZED;
-  }
-}
-
-export function outboundStatusToJSON(object: OutboundStatus): string {
-  switch (object) {
-    case OutboundStatus.OUTBOUND_STATUS_UNSPECIFIED:
-      return 'OUTBOUND_STATUS_UNSPECIFIED';
-    case OutboundStatus.PENDING:
-      return 'PENDING';
-    case OutboundStatus.OBSERVED:
-      return 'OBSERVED';
-    case OutboundStatus.REVERTED:
-      return 'REVERTED';
-    case OutboundStatus.UNRECOGNIZED:
-    default:
-      return 'UNRECOGNIZED';
-  }
 }
 
 /**
@@ -260,22 +164,6 @@ export const OriginatingPcTx: MessageFns<OriginatingPcTx> = {
     return message;
   },
 
-  fromJSON(object: any): OriginatingPcTx {
-    return {
-      txHash: isSet(object.txHash) ? globalThis.String(object.txHash) : '',
-      logIndex: isSet(object.logIndex)
-        ? globalThis.String(object.logIndex)
-        : '',
-    };
-  },
-
-  toJSON(message: OriginatingPcTx): unknown {
-    const obj: any = {};
-    if (message.txHash !== '') obj.txHash = message.txHash;
-    if (message.logIndex !== '') obj.logIndex = message.logIndex;
-    return obj;
-  },
-
   fromPartial(object: Partial<OriginatingPcTx>): OriginatingPcTx {
     const message = createBaseOriginatingPcTx();
     message.txHash = object.txHash ?? '';
@@ -343,34 +231,6 @@ export const OutboundObservation: MessageFns<OutboundObservation> = {
     return message;
   },
 
-  fromJSON(object: any): OutboundObservation {
-    return {
-      success: isSet(object.success)
-        ? globalThis.Boolean(object.success)
-        : false,
-      blockHeight: isSet(object.blockHeight)
-        ? globalThis.Number(object.blockHeight)
-        : 0,
-      txHash: isSet(object.txHash) ? globalThis.String(object.txHash) : '',
-      errorMsg: isSet(object.errorMsg)
-        ? globalThis.String(object.errorMsg)
-        : '',
-      gasFeeUsed: isSet(object.gasFeeUsed)
-        ? globalThis.String(object.gasFeeUsed)
-        : '',
-    };
-  },
-
-  toJSON(message: OutboundObservation): unknown {
-    const obj: any = {};
-    if (message.success !== false) obj.success = message.success;
-    if (message.blockHeight !== 0) obj.blockHeight = message.blockHeight;
-    if (message.txHash !== '') obj.txHash = message.txHash;
-    if (message.errorMsg !== '') obj.errorMsg = message.errorMsg;
-    if (message.gasFeeUsed !== '') obj.gasFeeUsed = message.gasFeeUsed;
-    return obj;
-  },
-
   fromPartial(object: Partial<OutboundObservation>): OutboundObservation {
     const message = createBaseOutboundObservation();
     message.success = object.success ?? false;
@@ -414,20 +274,6 @@ export const RevertInstructions: MessageFns<RevertInstructions> = {
       }
     }
     return message;
-  },
-
-  fromJSON(object: any): RevertInstructions {
-    return {
-      fundRecipient: isSet(object.fundRecipient)
-        ? globalThis.String(object.fundRecipient)
-        : '',
-    };
-  },
-
-  toJSON(message: RevertInstructions): unknown {
-    const obj: any = {};
-    if (message.fundRecipient !== '') obj.fundRecipient = message.fundRecipient;
-    return obj;
   },
 
   fromPartial(object: Partial<RevertInstructions>): RevertInstructions {
@@ -607,100 +453,6 @@ export const OutboundTxV2Codec: MessageFns<OutboundTxV2> = {
     return message;
   },
 
-  fromJSON(object: any): OutboundTxV2 {
-    return {
-      destinationChain: isSet(object.destinationChain)
-        ? globalThis.String(object.destinationChain)
-        : '',
-      recipient: isSet(object.recipient)
-        ? globalThis.String(object.recipient)
-        : '',
-      amount: isSet(object.amount) ? globalThis.String(object.amount) : '',
-      externalAssetAddr: isSet(object.externalAssetAddr)
-        ? globalThis.String(object.externalAssetAddr)
-        : '',
-      prc20AssetAddr: isSet(object.prc20AssetAddr)
-        ? globalThis.String(object.prc20AssetAddr)
-        : '',
-      sender: isSet(object.sender) ? globalThis.String(object.sender) : '',
-      payload: isSet(object.payload) ? globalThis.String(object.payload) : '',
-      gasLimit: isSet(object.gasLimit)
-        ? globalThis.String(object.gasLimit)
-        : '',
-      txType: isSet(object.txType) ? txTypeFromJSON(object.txType) : 0,
-      pcTx: isSet(object.pcTx)
-        ? OriginatingPcTx.fromJSON(object.pcTx)
-        : undefined,
-      observedTx: isSet(object.observedTx)
-        ? OutboundObservation.fromJSON(object.observedTx)
-        : undefined,
-      id: isSet(object.id) ? globalThis.String(object.id) : '',
-      outboundStatus: isSet(object.outboundStatus)
-        ? outboundStatusFromJSON(object.outboundStatus)
-        : 0,
-      revertInstructions: isSet(object.revertInstructions)
-        ? RevertInstructions.fromJSON(object.revertInstructions)
-        : undefined,
-      pcRevertExecution: isSet(object.pcRevertExecution)
-        ? PCTxCodec.fromJSON(object.pcRevertExecution)
-        : undefined,
-      gasPrice: isSet(object.gasPrice)
-        ? globalThis.String(object.gasPrice)
-        : '',
-      gasFee: isSet(object.gasFee) ? globalThis.String(object.gasFee) : '',
-      pcRefundExecution: isSet(object.pcRefundExecution)
-        ? PCTxCodec.fromJSON(object.pcRefundExecution)
-        : undefined,
-      refundSwapError: isSet(object.refundSwapError)
-        ? globalThis.String(object.refundSwapError)
-        : '',
-      gasToken: isSet(object.gasToken)
-        ? globalThis.String(object.gasToken)
-        : '',
-      abortReason: isSet(object.abortReason)
-        ? globalThis.String(object.abortReason)
-        : '',
-    };
-  },
-
-  toJSON(message: OutboundTxV2): unknown {
-    const obj: any = {};
-    if (message.destinationChain !== '')
-      obj.destinationChain = message.destinationChain;
-    if (message.recipient !== '') obj.recipient = message.recipient;
-    if (message.amount !== '') obj.amount = message.amount;
-    if (message.externalAssetAddr !== '')
-      obj.externalAssetAddr = message.externalAssetAddr;
-    if (message.prc20AssetAddr !== '')
-      obj.prc20AssetAddr = message.prc20AssetAddr;
-    if (message.sender !== '') obj.sender = message.sender;
-    if (message.payload !== '') obj.payload = message.payload;
-    if (message.gasLimit !== '') obj.gasLimit = message.gasLimit;
-    if (message.txType !== 0) obj.txType = txTypeToJSON(message.txType);
-    if (message.pcTx !== undefined)
-      obj.pcTx = OriginatingPcTx.toJSON(message.pcTx);
-    if (message.observedTx !== undefined)
-      obj.observedTx = OutboundObservation.toJSON(message.observedTx);
-    if (message.id !== '') obj.id = message.id;
-    if (message.outboundStatus !== 0)
-      obj.outboundStatus = outboundStatusToJSON(message.outboundStatus);
-    if (message.revertInstructions !== undefined)
-      obj.revertInstructions = RevertInstructions.toJSON(
-        message.revertInstructions
-      );
-    if (message.pcRevertExecution !== undefined)
-      obj.pcRevertExecution = PCTxCodec.toJSON(message.pcRevertExecution);
-    if (message.gasPrice !== '') obj.gasPrice = message.gasPrice;
-    if (message.gasFee !== '') obj.gasFee = message.gasFee;
-    if (message.pcRefundExecution !== undefined)
-      obj.pcRefundExecution = PCTxCodec.toJSON(message.pcRefundExecution);
-    if (message.refundSwapError !== '')
-      obj.refundSwapError = message.refundSwapError;
-    if (message.gasToken !== '') obj.gasToken = message.gasToken;
-    if (message.abortReason !== '') obj.abortReason = message.abortReason;
-    return obj;
-  },
-
   fromPartial(object: Partial<OutboundTxV2>): OutboundTxV2 {
     const message = createBaseOutboundTxV2();
     message.destinationChain = object.destinationChain ?? '';
@@ -812,40 +564,6 @@ export const UniversalTxV2Codec: MessageFns<UniversalTxV2> = {
     return message;
   },
 
-  fromJSON(object: any): UniversalTxV2 {
-    return {
-      id: isSet(object.id) ? globalThis.String(object.id) : '',
-      inboundTx: isSet(object.inboundTx)
-        ? InboundCodec.fromJSON(object.inboundTx)
-        : undefined,
-      pcTx: globalThis.Array.isArray(object?.pcTx)
-        ? object.pcTx.map((e: any) => PCTxCodec.fromJSON(e))
-        : [],
-      outboundTx: globalThis.Array.isArray(object?.outboundTx)
-        ? object.outboundTx.map((e: any) => OutboundTxV2Codec.fromJSON(e))
-        : [],
-      universalStatus: isSet(object.universalStatus)
-        ? (object.universalStatus as UniversalTxStatus)
-        : 0,
-    };
-  },
-
-  toJSON(message: UniversalTxV2): unknown {
-    const obj: any = {};
-    if (message.id !== '') obj.id = message.id;
-    if (message.inboundTx !== undefined)
-      obj.inboundTx = InboundCodec.toJSON(message.inboundTx);
-    if (message.pcTx?.length)
-      obj.pcTx = message.pcTx.map((e) => PCTxCodec.toJSON(e));
-    if (message.outboundTx?.length)
-      obj.outboundTx = message.outboundTx.map((e) =>
-        OutboundTxV2Codec.toJSON(e)
-      );
-    if (message.universalStatus !== 0)
-      obj.universalStatus = message.universalStatus;
-    return obj;
-  },
-
   fromPartial(object: Partial<UniversalTxV2>): UniversalTxV2 {
     const message = createBaseUniversalTxV2();
     message.id = object.id ?? '';
@@ -869,7 +587,5 @@ function isSet(value: any): boolean {
 export interface MessageFns<T> {
   encode(message: T, writer?: BinaryWriter): BinaryWriter;
   decode(input: BinaryReader | Uint8Array, length?: number): T;
-  fromJSON(object: any): T;
-  toJSON(message: T): unknown;
   fromPartial(object: Partial<T>): T;
 }

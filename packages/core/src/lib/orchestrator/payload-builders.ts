@@ -2,7 +2,6 @@ import { encodeFunctionData, encodeAbiParameters, isAddress, sha256, toBytes } f
 import { PushChain } from '../push-chain/push-chain';
 import { CEA_EVM } from '../constants/abi/cea.evm';
 import { ERC20_EVM } from '../constants/abi/erc20.evm';
-import { UNIVERSAL_GATEWAY_V0 } from '../constants/abi/universalGatewayV0.evm';
 import { UNIVERSAL_GATEWAY_PC } from '../constants/abi/universalGatewayPC.evm';
 import { MoveableToken } from '../constants/tokens';
 import { ZERO_ADDRESS, MIGRATION_SELECTOR, MULTICALL_SELECTOR, UEA_MULTICALL_SELECTOR } from '../constants/selectors';
@@ -222,114 +221,6 @@ export function buildInboundUniversalPayload(
 }
 
 /**
- * Build a single call as CEA multicall payload
- *
- * @param target - Target contract address
- * @param value - Native value to send
- * @param data - Calldata to execute
- * @returns Encoded payload with selector prefix
- */
-export function buildSingleCeaCall(
-  target: `0x${string}`,
-  value: bigint,
-  data: `0x${string}`
-): `0x${string}` {
-  return buildCeaMulticallPayload([{ to: target, value, data }]);
-}
-
-/**
- * Build approve + interact pattern for ERC20 operations on external chains
- *
- * @param tokenAddress - ERC20 token address
- * @param spender - Address to approve (e.g., DEX router)
- * @param amount - Amount to approve
- * @param interactCall - The interaction call (e.g., swap)
- * @returns Array of multicall operations
- */
-export function buildApproveAndInteract(
-  tokenAddress: `0x${string}`,
-  spender: `0x${string}`,
-  amount: bigint,
-  interactCall: MultiCall
-): MultiCall[] {
-  // Reset allowance to 0 first to handle non-standard ERC-20 tokens (e.g. USDT)
-  // that revert if approve is called with non-zero value when current allowance is non-zero.
-  const approveZeroData = encodeFunctionData({
-    abi: ERC20_EVM,
-    functionName: 'approve',
-    args: [spender, BigInt(0)],
-  });
-
-  const approveData = encodeFunctionData({
-    abi: ERC20_EVM,
-    functionName: 'approve',
-    args: [spender, amount],
-  });
-
-  return [
-    {
-      to: tokenAddress,
-      value: BigInt(0),
-      data: approveZeroData,
-    },
-    {
-      to: tokenAddress,
-      value: BigInt(0),
-      data: approveData,
-    },
-    interactCall,
-  ];
-}
-
-/**
- * Build sendUniversalTxFromCEA call for CEA → Push routing (Route 3)
- *
- * @param gatewayAddress - UniversalGateway address on external chain
- * @param recipient - Recipient on Push Chain (usually UEA)
- * @param token - Token address (address(0) for native)
- * @param amount - Amount to send
- * @param payload - Payload for Push Chain execution
- * @param revertRecipient - Address to receive funds on revert
- * @param signatureData - Signature data (usually empty for CEA calls)
- * @param nativeValue - Native value to send with the call
- * @returns MultiCall for sendUniversalTxFromCEA
- */
-export function buildSendUniversalTxFromCEA(
-  gatewayAddress: `0x${string}`,
-  recipient: `0x${string}`,
-  token: `0x${string}`,
-  amount: bigint,
-  payload: `0x${string}`,
-  revertRecipient: `0x${string}`,
-  signatureData: `0x${string}` = '0x',
-  nativeValue = BigInt(0)
-): MultiCall {
-  const calldata = encodeFunctionData({
-    abi: UNIVERSAL_GATEWAY_V0,
-    functionName: 'sendUniversalTxFromCEA',
-    args: [
-      {
-        recipient,
-        token,
-        amount,
-        payload,
-        revertInstruction: {
-          fundRecipient: revertRecipient,
-          revertMsg: '0x',
-        },
-        signatureData,
-      },
-    ],
-  });
-
-  return {
-    to: gatewayAddress,
-    value: nativeValue,
-    data: calldata,
-  };
-}
-
-/**
  * Build sendUniversalTxToUEA call for CEA self-call (Route 3)
  *
  * The CEA contract has a `sendUniversalTxToUEA(token, amount, payload, revertRecipient)` function
@@ -396,24 +287,6 @@ export function buildOutboundRequest(
 }
 
 /**
- * Build native transfer multicall
- *
- * @param to - Recipient address
- * @param value - Native value to transfer
- * @returns MultiCall for native transfer
- */
-export function buildNativeTransfer(
-  to: `0x${string}`,
-  value: bigint
-): MultiCall {
-  return {
-    to,
-    value,
-    data: '0x',
-  };
-}
-
-/**
  * Build ERC20 transfer multicall
  *
  * @param tokenAddress - ERC20 token address
@@ -465,13 +338,6 @@ export function buildErc20WithdrawalMulticall(
  */
 export function buildMigrationPayload(): `0x${string}` {
   return MIGRATION_SELECTOR as `0x${string}`;
-}
-
-/**
- * Check if an address is the zero address
- */
-export function isZeroAddress(address: `0x${string}`): boolean {
-  return address.toLowerCase() === ZERO_ADDRESS.toLowerCase();
 }
 
 // ============================================================================

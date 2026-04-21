@@ -284,8 +284,38 @@ function makeToken(chain: CHAIN, symbol: string) {
   };
 }
 
+// Flat PRC-20 list for Push Chain — synthetic ERC-20 representations of
+// origin-chain assets that can be moved out of Push Chain back to their source.
+// Source of truth: SYNTHETIC_PUSH_ERC20 in ./chain.
+function buildPushChainMoveableTokenList(): MoveableToken[] {
+  const s = SYNTHETIC_PUSH_ERC20[PUSH_NETWORK.TESTNET_DONUT];
+  const mk = (
+    symbol: string,
+    decimals: number,
+    address: `0x${string}`
+  ): MoveableToken => ({ symbol, decimals, address, mechanism: 'approve' });
+  return [
+    mk('pETH', 18, s.pETH),
+    mk('pETH_ARB', 18, s.pETH_ARB),
+    mk('pETH_BASE', 18, s.pETH_BASE),
+    mk('pETH_BNB', 18, s.pETH_BNB),
+    mk('pSOL', 9, s.pSOL),
+    mk('USDT', 6, s.USDT_ETH),
+    mk('USDT', 6, s.USDT_ARB),
+    mk('USDT', 6, s.USDT_BASE),
+    mk('USDT', 6, s.USDT_BNB),
+    mk('USDT', 6, s.USDT_SOL),
+    mk('USDC', 6, s.USDC_ETH),
+    mk('USDC', 6, s.USDC_ARB),
+    mk('USDC', 6, s.USDC_BASE),
+    mk('USDC', 6, s.USDC_BNB),
+    mk('USDC', 6, s.USDC_SOL),
+  ];
+}
+
 // Minimal initial registries. These can be extended safely without breaking the API.
 export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
+  [CHAIN.PUSH_TESTNET_DONUT]: buildPushChainMoveableTokenList(),
   [CHAIN.ETHEREUM_SEPOLIA]: [
     makeToken(CHAIN.ETHEREUM_SEPOLIA, 'ETH'),
     makeToken(CHAIN.ETHEREUM_SEPOLIA, 'USDT'),

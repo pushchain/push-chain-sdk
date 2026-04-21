@@ -1779,6 +1779,59 @@ describe('Helpers Utils Namespace', () => {
       ).toBe(true);
     });
 
+    it('should list moveable tokens for Push Chain (PRC-20 synthetics)', () => {
+      const { tokens } = PushChain.utils.tokens.getMoveableTokens(
+        CHAIN.PUSH_TESTNET_DONUT
+      );
+      expect(Array.isArray(tokens)).toBe(true);
+
+      // 5 pETH variants + pSOL + USDT × 5 origins + USDC × 5 origins = 15
+      expect(tokens.length).toBe(15);
+
+      // Every entry must be on Push Chain and use the approve mechanism
+      for (const t of tokens) {
+        expect(t.chain).toBe(CHAIN.PUSH_TESTNET_DONUT);
+        expect(t.mechanism).toBe('approve');
+        expect(t.address.startsWith('0x')).toBe(true);
+      }
+
+      const symbols = tokens.map((t) => t.symbol);
+      expect(symbols).toContain('pETH');
+      expect(symbols).toContain('pETH_ARB');
+      expect(symbols).toContain('pETH_BASE');
+      expect(symbols).toContain('pETH_BNB');
+      expect(symbols).toContain('pSOL');
+      // USDT/USDC appear once per origin chain (5 each)
+      expect(symbols.filter((s) => s === 'USDT').length).toBe(5);
+      expect(symbols.filter((s) => s === 'USDC').length).toBe(5);
+
+      // All addresses are unique (no duplicate entries)
+      const addresses = tokens.map((t) => t.address.toLowerCase());
+      expect(new Set(addresses).size).toBe(addresses.length);
+
+      // Decimals match source-chain assets
+      expect(tokens.find((t) => t.symbol === 'pETH')?.decimals).toBe(18);
+      expect(tokens.find((t) => t.symbol === 'pSOL')?.decimals).toBe(9);
+      expect(tokens.find((t) => t.symbol === 'USDT')?.decimals).toBe(6);
+      expect(tokens.find((t) => t.symbol === 'USDC')?.decimals).toBe(6);
+    });
+
+    it('should include Push Chain PRC-20s in the all-chains moveable list', () => {
+      const { tokens } = PushChain.utils.tokens.getMoveableTokens();
+      const pushTokens = tokens.filter(
+        (t) => t.chain === CHAIN.PUSH_TESTNET_DONUT
+      );
+      expect(pushTokens.length).toBe(15);
+      expect(pushTokens.some((t) => t.symbol === 'pETH')).toBe(true);
+      expect(pushTokens.some((t) => t.symbol === 'pSOL')).toBe(true);
+    });
+
+    it('should return Push Chain PRC-20s via MOVEABLE_TOKENS registry lookup', () => {
+      const list = MOVEABLE_TOKENS[CHAIN.PUSH_TESTNET_DONUT];
+      expect(list).toBeDefined();
+      expect(list?.length).toBe(15);
+    });
+
     it('should list all payable tokens across all chains', () => {
       const { tokens } = PushChain.utils.tokens.getPayableTokens();
       expect(Array.isArray(tokens)).toBe(true);

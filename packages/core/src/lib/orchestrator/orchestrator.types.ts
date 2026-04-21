@@ -874,14 +874,6 @@ export interface OutboundTxDetails {
 }
 
 /**
- * Progress event for outbound sync operations
- */
-export interface OutboundSyncProgress {
-  status: 'waiting' | 'polling' | 'success' | 'failed' | 'timeout';
-  elapsed: number;
-}
-
-/**
  * Options for waitForOutboundTx polling
  */
 export interface WaitForOutboundOptions {

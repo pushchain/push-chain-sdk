@@ -19,33 +19,6 @@ export enum VerificationType {
   UNRECOGNIZED = -1,
 }
 
-export function verificationTypeFromJSON(object: any): VerificationType {
-  switch (object) {
-    case 0:
-    case "signedVerification":
-      return VerificationType.signedVerification;
-    case 1:
-    case "universalTxVerification":
-      return VerificationType.universalTxVerification;
-    case -1:
-    case "UNRECOGNIZED":
-    default:
-      return VerificationType.UNRECOGNIZED;
-  }
-}
-
-export function verificationTypeToJSON(object: VerificationType): string {
-  switch (object) {
-    case VerificationType.signedVerification:
-      return "signedVerification";
-    case VerificationType.universalTxVerification:
-      return "universalTxVerification";
-    case VerificationType.UNRECOGNIZED:
-    default:
-      return "UNRECOGNIZED";
-  }
-}
-
 /** UniversalAccount is the identifier of a owner account */
 export interface UniversalAccountId {
   /** chain_namespace is the CAIP-2 namespace of the chain where the owner is located (e.g. "eip155" for Ethereum) */
@@ -179,28 +152,6 @@ export const UniversalAccountId: MessageFns<UniversalAccountId> = {
     return message;
   },
 
-  fromJSON(object: any): UniversalAccountId {
-    return {
-      chainNamespace: isSet(object.chainNamespace) ? globalThis.String(object.chainNamespace) : "",
-      chainId: isSet(object.chainId) ? globalThis.String(object.chainId) : "",
-      owner: isSet(object.owner) ? globalThis.String(object.owner) : "",
-    };
-  },
-
-  toJSON(message: UniversalAccountId): unknown {
-    const obj: any = {};
-    if (message.chainNamespace !== "") {
-      obj.chainNamespace = message.chainNamespace;
-    }
-    if (message.chainId !== "") {
-      obj.chainId = message.chainId;
-    }
-    if (message.owner !== "") {
-      obj.owner = message.owner;
-    }
-    return obj;
-  },
-
   create<I extends Exact<DeepPartial<UniversalAccountId>, I>>(base?: I): UniversalAccountId {
     return UniversalAccountId.fromPartial(base ?? ({} as any));
   },
@@ -269,30 +220,6 @@ export const MsgDeployUEA: MessageFns<MsgDeployUEA> = {
       reader.skip(tag & 7);
     }
     return message;
-  },
-
-  fromJSON(object: any): MsgDeployUEA {
-    return {
-      signer: isSet(object.signer) ? globalThis.String(object.signer) : "",
-      universalAccountId: isSet(object.universalAccountId)
-        ? UniversalAccountId.fromJSON(object.universalAccountId)
-        : undefined,
-      txHash: isSet(object.txHash) ? globalThis.String(object.txHash) : "",
-    };
-  },
-
-  toJSON(message: MsgDeployUEA): unknown {
-    const obj: any = {};
-    if (message.signer !== "") {
-      obj.signer = message.signer;
-    }
-    if (message.universalAccountId !== undefined) {
-      obj.universalAccountId = UniversalAccountId.toJSON(message.universalAccountId);
-    }
-    if (message.txHash !== "") {
-      obj.txHash = message.txHash;
-    }
-    return obj;
   },
 
   create<I extends Exact<DeepPartial<MsgDeployUEA>, I>>(base?: I): MsgDeployUEA {
@@ -365,30 +292,6 @@ export const MsgMintPC: MessageFns<MsgMintPC> = {
       reader.skip(tag & 7);
     }
     return message;
-  },
-
-  fromJSON(object: any): MsgMintPC {
-    return {
-      signer: isSet(object.signer) ? globalThis.String(object.signer) : "",
-      universalAccountId: isSet(object.universalAccountId)
-        ? UniversalAccountId.fromJSON(object.universalAccountId)
-        : undefined,
-      txHash: isSet(object.txHash) ? globalThis.String(object.txHash) : "",
-    };
-  },
-
-  toJSON(message: MsgMintPC): unknown {
-    const obj: any = {};
-    if (message.signer !== "") {
-      obj.signer = message.signer;
-    }
-    if (message.universalAccountId !== undefined) {
-      obj.universalAccountId = UniversalAccountId.toJSON(message.universalAccountId);
-    }
-    if (message.txHash !== "") {
-      obj.txHash = message.txHash;
-    }
-    return obj;
   },
 
   create<I extends Exact<DeepPartial<MsgMintPC>, I>>(base?: I): MsgMintPC {
@@ -539,52 +442,6 @@ export const UniversalPayload: MessageFns<UniversalPayload> = {
     return message;
   },
 
-  fromJSON(object: any): UniversalPayload {
-    return {
-      to: isSet(object.to) ? globalThis.String(object.to) : "",
-      value: isSet(object.value) ? globalThis.String(object.value) : "",
-      data: isSet(object.data) ? globalThis.String(object.data) : "",
-      gasLimit: isSet(object.gasLimit) ? globalThis.String(object.gasLimit) : "",
-      maxFeePerGas: isSet(object.maxFeePerGas) ? globalThis.String(object.maxFeePerGas) : "",
-      maxPriorityFeePerGas: isSet(object.maxPriorityFeePerGas) ? globalThis.String(object.maxPriorityFeePerGas) : "",
-      nonce: isSet(object.nonce) ? globalThis.String(object.nonce) : "",
-      deadline: isSet(object.deadline) ? globalThis.String(object.deadline) : "",
-      vType: isSet(object.vType) ? verificationTypeFromJSON(object.vType) : 0,
-    };
-  },
-
-  toJSON(message: UniversalPayload): unknown {
-    const obj: any = {};
-    if (message.to !== "") {
-      obj.to = message.to;
-    }
-    if (message.value !== "") {
-      obj.value = message.value;
-    }
-    if (message.data !== "") {
-      obj.data = message.data;
-    }
-    if (message.gasLimit !== "") {
-      obj.gasLimit = message.gasLimit;
-    }
-    if (message.maxFeePerGas !== "") {
-      obj.maxFeePerGas = message.maxFeePerGas;
-    }
-    if (message.maxPriorityFeePerGas !== "") {
-      obj.maxPriorityFeePerGas = message.maxPriorityFeePerGas;
-    }
-    if (message.nonce !== "") {
-      obj.nonce = message.nonce;
-    }
-    if (message.deadline !== "") {
-      obj.deadline = message.deadline;
-    }
-    if (message.vType !== 0) {
-      obj.vType = verificationTypeToJSON(message.vType);
-    }
-    return obj;
-  },
-
   create<I extends Exact<DeepPartial<UniversalPayload>, I>>(base?: I): UniversalPayload {
     return UniversalPayload.fromPartial(base ?? ({} as any));
   },
@@ -672,34 +529,6 @@ export const MsgExecutePayload: MessageFns<MsgExecutePayload> = {
     return message;
   },
 
-  fromJSON(object: any): MsgExecutePayload {
-    return {
-      signer: isSet(object.signer) ? globalThis.String(object.signer) : "",
-      universalAccountId: isSet(object.universalAccountId)
-        ? UniversalAccountId.fromJSON(object.universalAccountId)
-        : undefined,
-      universalPayload: isSet(object.universalPayload) ? UniversalPayload.fromJSON(object.universalPayload) : undefined,
-      verificationData: isSet(object.verificationData) ? globalThis.String(object.verificationData) : "",
-    };
-  },
-
-  toJSON(message: MsgExecutePayload): unknown {
-    const obj: any = {};
-    if (message.signer !== "") {
-      obj.signer = message.signer;
-    }
-    if (message.universalAccountId !== undefined) {
-      obj.universalAccountId = UniversalAccountId.toJSON(message.universalAccountId);
-    }
-    if (message.universalPayload !== undefined) {
-      obj.universalPayload = UniversalPayload.toJSON(message.universalPayload);
-    }
-    if (message.verificationData !== "") {
-      obj.verificationData = message.verificationData;
-    }
-    return obj;
-  },
-
   create<I extends Exact<DeepPartial<MsgExecutePayload>, I>>(base?: I): MsgExecutePayload {
     return MsgExecutePayload.fromPartial(base ?? ({} as any));
   },
@@ -782,20 +611,6 @@ export const MigrationPayload: MessageFns<MigrationPayload> = {
     }
     return message;
   },
-  fromJSON(object: any): MigrationPayload {
-    return {
-      migration: isSet(object.migration) ? globalThis.String(object.migration) : "",
-      nonce: isSet(object.nonce) ? globalThis.String(object.nonce) : "",
-      deadline: isSet(object.deadline) ? globalThis.String(object.deadline) : "",
-    };
-  },
-  toJSON(message: MigrationPayload): unknown {
-    const obj: any = {};
-    if (message.migration !== "") { obj.migration = message.migration; }
-    if (message.nonce !== "") { obj.nonce = message.nonce; }
-    if (message.deadline !== "") { obj.deadline = message.deadline; }
-    return obj;
-  },
   create<I extends Exact<DeepPartial<MigrationPayload>, I>>(base?: I): MigrationPayload {
     return MigrationPayload.fromPartial(base ?? ({} as any));
   },
@@ -845,22 +660,6 @@ export const MsgMigrateUEA: MessageFns<MsgMigrateUEA> = {
     }
     return message;
   },
-  fromJSON(object: any): MsgMigrateUEA {
-    return {
-      signer: isSet(object.signer) ? globalThis.String(object.signer) : "",
-      universalAccountId: isSet(object.universalAccountId) ? UniversalAccountId.fromJSON(object.universalAccountId) : undefined,
-      migrationPayload: isSet(object.migrationPayload) ? MigrationPayload.fromJSON(object.migrationPayload) : undefined,
-      signature: isSet(object.signature) ? globalThis.String(object.signature) : "",
-    };
-  },
-  toJSON(message: MsgMigrateUEA): unknown {
-    const obj: any = {};
-    if (message.signer !== "") { obj.signer = message.signer; }
-    if (message.universalAccountId !== undefined) { obj.universalAccountId = UniversalAccountId.toJSON(message.universalAccountId); }
-    if (message.migrationPayload !== undefined) { obj.migrationPayload = MigrationPayload.toJSON(message.migrationPayload); }
-    if (message.signature !== "") { obj.signature = message.signature; }
-    return obj;
-  },
   create<I extends Exact<DeepPartial<MsgMigrateUEA>, I>>(base?: I): MsgMigrateUEA {
     return MsgMigrateUEA.fromPartial(base ?? ({} as any));
   },
@@ -897,8 +696,6 @@ function isSet(value: any): boolean {
 export interface MessageFns<T> {
   encode(message: T, writer?: BinaryWriter): BinaryWriter;
   decode(input: BinaryReader | Uint8Array, length?: number): T;
-  fromJSON(object: any): T;
-  toJSON(message: T): unknown;
   create<I extends Exact<DeepPartial<T>, I>>(base?: I): T;
   fromPartial<I extends Exact<DeepPartial<T>, I>>(object: I): T;
 }
