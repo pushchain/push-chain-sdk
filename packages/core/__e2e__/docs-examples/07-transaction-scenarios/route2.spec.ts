@@ -164,7 +164,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 2 (UOA_TO_CEA)', 
     });
 
     const usdt = PushChain.CONSTANTS.MOVEABLE.TOKEN.BNB_TESTNET.USDT;
-    const pUSDTBnbAddress = PushChain.utils.tokens.getPRC20Address(usdt) as `0x${string}`;
+    const pUSDTBnbAddress = PushChain.utils.tokens.getPRC20Address(usdt).address;
 
     await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
     await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, '1');
@@ -215,7 +215,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 2 (UOA_TO_CEA)', 
     });
 
     const usdt = PushChain.CONSTANTS.MOVEABLE.TOKEN.BNB_TESTNET.USDT;
-    const pUSDTBnbAddress = PushChain.utils.tokens.getPRC20Address(usdt) as `0x${string}`;
+    const pUSDTBnbAddress = PushChain.utils.tokens.getPRC20Address(usdt).address;
 
     await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
     await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, '1');

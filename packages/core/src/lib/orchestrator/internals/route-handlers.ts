@@ -105,7 +105,7 @@ function resolveR2Prc20TokenEvm(
     // User explicitly specified funds with token
     const token = (params.funds as { token: MoveableToken }).token;
     if (token) {
-      prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+      prc20Token = PushChain.utils.tokens.getPRC20Address(token).address;
       burnAmount = params.funds.amount;
     }
   } else if (params.value && params.value > BigInt(0)) {
@@ -138,7 +138,7 @@ function resolveR2Prc20TokenSvm(
   if (params.funds?.amount) {
     const token = (params.funds as { token: MoveableToken }).token;
     if (token) {
-      prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+      prc20Token = PushChain.utils.tokens.getPRC20Address(token).address;
       burnAmount = params.funds.amount;
     }
   } else if (params.value && params.value > BigInt(0)) {
@@ -147,7 +147,7 @@ function resolveR2Prc20TokenSvm(
   } else if (hasSvmExecute) {
     const token = params.funds && (params.funds as { token: MoveableToken }).token;
     if (token) {
-      prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+      prc20Token = PushChain.utils.tokens.getPRC20Address(token).address;
     } else {
       prc20Token = getNativePRC20ForChain(targetChain, pushNetwork);
     }
@@ -1800,7 +1800,7 @@ export async function buildPayloadForRoute(
         if (params.funds?.amount) {
           const token = (params.funds as { token: MoveableToken }).token;
           if (token) {
-            prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+            prc20Token = PushChain.utils.tokens.getPRC20Address(token).address;
             burnAmount = params.funds.amount;
           }
         } else if (params.value && params.value > BigInt(0)) {
@@ -1866,7 +1866,7 @@ export async function buildPayloadForRoute(
       if (params.funds?.amount) {
         const token = (params.funds as { token: MoveableToken }).token;
         if (token) {
-          prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+          prc20Token = PushChain.utils.tokens.getPRC20Address(token).address;
           burnAmount = params.funds.amount;
         }
       }

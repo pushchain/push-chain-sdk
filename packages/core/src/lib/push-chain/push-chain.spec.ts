@@ -209,7 +209,7 @@ async function testSendFundsUSDTNoValue(
     rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
   });
 
-  const pusdt = PushChain.utils.tokens.getPRC20Address(usdt);
+  const { address: pusdt } = PushChain.utils.tokens.getPRC20Address(usdt);
   const balanceBefore = await pushChainClient.getErc20Balance({
     tokenAddress: pusdt,
     ownerAddress: recipient as `0x${string}`,
@@ -270,7 +270,7 @@ async function testSendFundsUSDTWithValue(
     rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
   });
 
-  const pusdt = PushChain.utils.tokens.getPRC20Address(usdt);
+  const { address: pusdt } = PushChain.utils.tokens.getPRC20Address(usdt);
   const balanceUSDTBefore = await pushChainClient.getErc20Balance({
     tokenAddress: pusdt,
     ownerAddress: recipient,
@@ -462,7 +462,7 @@ async function testFundsUSDTNoValueNewWalletDeployUEA(
     { onlyCompute: true }
   );
 
-  const pusdt = PushChain.utils.tokens.getPRC20Address(usdt);
+  const { address: pusdt } = PushChain.utils.tokens.getPRC20Address(usdt);
   const balanceBefore_pUSDT_UEA = await pushEvmClient.getErc20Balance({
     tokenAddress: pusdt,
     ownerAddress: executorInfo.address,
@@ -659,7 +659,7 @@ async function testSendFundsWithPayloadUSDTWithValueNewWalletDeployUEA(
     { onlyCompute: true }
   );
 
-  const pusdt = PushChain.utils.tokens.getPRC20Address(usdt);
+  const { address: pusdt } = PushChain.utils.tokens.getPRC20Address(usdt);
   const balanceBefore_pUSDT_UEA = await pushEvmClient.getErc20Balance({
     tokenAddress: pusdt,
     ownerAddress: executorInfo.address,
@@ -1018,7 +1018,7 @@ async function testSendTxWithFundsUSDTNoValue(
     { onlyCompute: true }
   );
 
-  const pusdt = PushChain.utils.tokens.getPRC20Address(usdt);
+  const { address: pusdt } = PushChain.utils.tokens.getPRC20Address(usdt);
   const balanceBefore_pUSDT_ETH_UEA = await pushEvmClient.getErc20Balance({
     tokenAddress: pusdt,
     ownerAddress: executorInfo.address,
@@ -1302,7 +1302,7 @@ async function testValuePayloadFundsUSDT(
     rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
   });
 
-  const pusdt = PushChain.utils.tokens.getPRC20Address(usdt);
+  const { address: pusdt } = PushChain.utils.tokens.getPRC20Address(usdt);
   const balanceBefore_pUSDT_UEA = await pushEvmClient.getErc20Balance({
     tokenAddress: pusdt,
     ownerAddress: client.universal.account,
@@ -1419,7 +1419,7 @@ async function testValuePayloadFundsETH(
     rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
   });
 
-  const peth = PushChain.utils.tokens.getPRC20Address(eth);
+  const { address: peth } = PushChain.utils.tokens.getPRC20Address(eth);
   const balanceBefore_pETH_UEA = await pushEvmClient.getErc20Balance({
     tokenAddress: peth,
     ownerAddress: client.universal.account,
@@ -1533,7 +1533,7 @@ async function testValueFundsUSDT(
     rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
   });
 
-  const pusdt = PushChain.utils.tokens.getPRC20Address(usdt);
+  const { address: pusdt } = PushChain.utils.tokens.getPRC20Address(usdt);
   const balanceBefore_pUSDT_UEA = await pushEvmClient.getErc20Balance({
     tokenAddress: pusdt,
     ownerAddress: client.universal.account,
@@ -1670,7 +1670,7 @@ async function testPayloadFundsUSDT(
     rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
   });
 
-  const pusdt = PushChain.utils.tokens.getPRC20Address(usdt);
+  const { address: pusdt } = PushChain.utils.tokens.getPRC20Address(usdt);
   const balanceBefore_pUSDT_UEA = await pushEvmClient.getErc20Balance({
     tokenAddress: pusdt,
     ownerAddress: client.universal.account,
@@ -3426,9 +3426,8 @@ describe('PushChain', () => {
         const pushChainClient = new EvmClient({
           rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
         });
-        const USDT_SOL_ADDRESS = PushChain.utils.tokens.getPRC20Address(
-          client.moveable.token.USDT
-        );
+        const { address: USDT_SOL_ADDRESS } =
+          PushChain.utils.tokens.getPRC20Address(client.moveable.token.USDT);
         const balanceBefore = await pushChainClient.getErc20Balance({
           tokenAddress: USDT_SOL_ADDRESS,
           ownerAddress: recipient as `0x${string}`,
@@ -3635,9 +3634,8 @@ describe('PushChain', () => {
         const pushChainClient = new EvmClient({
           rpcUrls: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
         });
-        const USDT_SOL_ADDRESS = PushChain.utils.tokens.getPRC20Address(
-          client.moveable.token.USDT
-        );
+        const { address: USDT_SOL_ADDRESS } =
+          PushChain.utils.tokens.getPRC20Address(client.moveable.token.USDT);
         const balanceBefore = await pushChainClient.getErc20Balance({
           tokenAddress: USDT_SOL_ADDRESS,
           ownerAddress: COUNTER_ADDRESS,

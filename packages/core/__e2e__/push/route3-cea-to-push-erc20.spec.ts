@@ -83,7 +83,8 @@ describe('Route 3: CEA → Push Chain ERC20 Bridge', () => {
       CHAIN.BNB_TESTNET,
       PUSH_NETWORK.TESTNET_DONUT
     );
-    const pUsdtAddress = PushChain.utils.tokens.getPRC20Address(usdt);
+    const { address: pUsdtAddress } =
+      PushChain.utils.tokens.getPRC20Address(usdt);
 
     console.log('  expected native PRC-20 (pBNB):', expectedNativePrc20);
     console.log('  pUSDT address (should NOT match):', pUsdtAddress);

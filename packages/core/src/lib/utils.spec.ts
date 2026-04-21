@@ -1959,11 +1959,17 @@ describe('Helpers Utils Namespace', () => {
         throw new Error('ETH moveable token not found');
       }
 
-      const prc20Address = PushChain.utils.tokens.getPRC20Address(ethMoveable);
+      const result = PushChain.utils.tokens.getPRC20Address(ethMoveable);
 
-      expect(prc20Address).toBe(
+      expect(result.address).toBe(
         SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
           .pETH
+      );
+      expect(result.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+      expect(result.symbol).toBe('ETH');
+      expect(result.decimals).toBe(ethMoveable.decimals);
+      expect(result.network).toBe(
+        PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT
       );
     });
 
@@ -1977,15 +1983,30 @@ describe('Helpers Utils Namespace', () => {
         throw new Error('ETH moveable token not found');
       }
 
-      const prc20Address = PushChain.utils.tokens.getPRC20Address({
+      const result = PushChain.utils.tokens.getPRC20Address({
         chain: CHAIN.ETHEREUM_SEPOLIA,
         address: ethMoveable.address,
       });
 
-      expect(prc20Address).toBe(
+      expect(result.address).toBe(
         SYNTHETIC_PUSH_ERC20[PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT]
           .pETH
       );
+      expect(result.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+      expect(result.symbol).toBe('ETH');
+    });
+
+    it('should throw when the PRC20 address is unresolved on the target network', () => {
+      const ethMoveable = MOVEABLE_TOKENS[CHAIN.ETHEREUM_SEPOLIA]?.find(
+        (t) => t.symbol === 'ETH'
+      );
+      if (!ethMoveable) throw new Error('ETH moveable token not found');
+
+      expect(() =>
+        PushChain.utils.tokens.getPRC20Address(ethMoveable, {
+          network: PushChain.CONSTANTS.PUSH_NETWORK.MAINNET,
+        })
+      ).toThrow(/PRC20 address not available/);
     });
   });
 });

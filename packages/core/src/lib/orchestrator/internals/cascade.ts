@@ -217,7 +217,7 @@ export async function buildHopDescriptor(
         if (params.funds?.amount) {
           const token = (params.funds as { token: MoveableToken }).token;
           if (token) {
-            prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+            prc20Token = PushChain.utils.tokens.getPRC20Address(token).address;
             burnAmount = params.funds.amount;
           }
         } else if (params.value && params.value > BigInt(0)) {
@@ -341,7 +341,7 @@ export async function buildHopDescriptor(
       if (params.funds?.amount) {
         const token = (params.funds as { token: MoveableToken }).token;
         if (token) {
-          prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+          prc20Token = PushChain.utils.tokens.getPRC20Address(token).address;
           burnAmount = params.funds.amount;
         }
       } else if (params.value && params.value > BigInt(0)) {
@@ -414,7 +414,7 @@ export async function buildHopDescriptor(
           amount = params.funds.amount;
           const token = (params.funds as { token: MoveableToken }).token;
           if (token && token.address) {
-            prc20Token = PushChain.utils.tokens.getPRC20Address(token);
+            prc20Token = PushChain.utils.tokens.getPRC20Address(token).address;
           } else {
             prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
           }

@@ -756,48 +756,82 @@ export class Utils {
     },
 
     /**
-     * Convert any supported origin-chain token into its mapped PRC20 token address on Push Chain.
+     * Convert any supported origin-chain token into its mapped PRC20 token on Push Chain.
      *
      * @param token - Either a MoveableToken from `pushChainClient.moveable.token.*`
      * or an object with the origin chain and token address.
-     * @returns {`0x${string}`} The synthetic asset address on Push Chain.
+     * @returns An object describing the synthetic PRC-20 on Push Chain.
      *
      * @example
      * ```jsx
-     * PushChain.utils.tokens.getPRC20Address(
-     *   token: MoveableToken | {
-     *     chain: CONSTANTS.CHAIN.ETHEREUM_SEPOLIA;
-     *     address: `0x${string}`;
-     *   }
-     * );
-     * // → `0x...`
+     * const { address, chain, symbol, decimals, network } =
+     *   PushChain.utils.tokens.getPRC20Address({
+     *     chain: CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
+     *     address: '0x...',
+     *   });
      * ```
      */
     getPRC20Address(
       token: MoveableToken | { chain: string; address: string },
       options?: { network?: PUSH_NETWORK }
-    ): `0x${string}` {
+    ): {
+      address: `0x${string}`;
+      chain: CHAIN;
+      symbol: string;
+      decimals: number;
+      network: PUSH_NETWORK;
+    } {
+      const network = options?.network ?? PUSH_NETWORK.TESTNET_DONUT;
+
+      const assertDeployed = (
+        addr: string | undefined,
+        ctx: string
+      ): `0x${string}` => {
+        if (!addr || addr === '0xTBD') {
+          throw new Error(
+            `PRC20 address not available for ${ctx} on network ${network}`
+          );
+        }
+        return addr as `0x${string}`;
+      };
+
       // PushChainMoveableToken (pETH, pSOL, pUSDT(BNB), …) carries its PRC-20 address
-      // directly. Return it as-is — no registry lookup needed.
-      const maybePrc20 = (token as { prc20Address?: `0x${string}` }).prc20Address;
-      if (maybePrc20) {
-        return maybePrc20;
+      // and origin `sourceChain` directly — no registry lookup needed.
+      const pcToken = token as Partial<{
+        prc20Address: `0x${string}`;
+        sourceChain: CHAIN;
+        symbol: string;
+        decimals: number;
+      }>;
+      if (pcToken.prc20Address) {
+        return {
+          address: assertDeployed(
+            pcToken.prc20Address,
+            `${pcToken.symbol ?? 'token'} (${pcToken.sourceChain ?? 'unknown'})`
+          ),
+          chain: pcToken.sourceChain as CHAIN,
+          symbol: pcToken.symbol as string,
+          decimals: pcToken.decimals as number,
+          network,
+        };
       }
 
-      // Infer origin chain and symbol by matching against the MOVEABLE_TOKENS registry
+      // Infer origin chain, symbol, decimals by matching against MOVEABLE_TOKENS
       let originChain: CHAIN | undefined;
       let tokenSymbol: string | undefined;
+      let tokenDecimals: number | undefined;
 
       if ('symbol' in token) {
         // MoveableToken path: infer chain by symbol + address
         for (const [key, list] of Object.entries(MOVEABLE_TOKENS)) {
           const k = key as CHAIN;
-          const found = (list ?? []).some(
+          const match = (list ?? []).find(
             (t) => t.symbol === token.symbol && t.address === token.address
           );
-          if (found) {
+          if (match) {
             originChain = k;
-            tokenSymbol = token.symbol;
+            tokenSymbol = match.symbol;
+            tokenDecimals = match.decimals;
             break;
           }
         }
@@ -805,20 +839,25 @@ export class Utils {
         // { chain, address } path: trust the provided chain and resolve symbol via registry
         originChain = token.chain as CHAIN;
         const list = MOVEABLE_TOKENS[originChain] ?? [];
-        const match = (list ?? []).find((t) => t.address === token.address);
+        const match = list.find((t) => t.address === token.address);
         if (match) {
           tokenSymbol = match.symbol;
+          tokenDecimals = match.decimals;
         }
       }
 
-      if (!originChain || !tokenSymbol) {
+      if (!originChain || !tokenSymbol || tokenDecimals === undefined) {
         throw new Error(
           'Unable to infer origin chain or token symbol for token'
         );
       }
 
-      const network = options?.network ?? PUSH_NETWORK.TESTNET_DONUT;
       const map = SYNTHETIC_PUSH_ERC20[network];
+      if (!map) {
+        throw new Error(
+          `No PRC20 address map configured for network: ${network}`
+        );
+      }
 
       // Map token → synthetic key by origin chain family
       const isEthFamily =
@@ -892,7 +931,13 @@ export class Utils {
           throw new Error(`Unsupported token symbol: ${tokenSymbol}`);
       }
 
-      return map[key];
+      return {
+        address: assertDeployed(map[key], `${tokenSymbol} on ${originChain}`),
+        chain: originChain,
+        symbol: tokenSymbol,
+        decimals: tokenDecimals,
+        network,
+      };
     },
   };
 

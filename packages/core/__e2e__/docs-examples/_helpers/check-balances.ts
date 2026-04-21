@@ -120,7 +120,7 @@ function requireEnv(name: string): string {
   const pUsdtBnbPush = getAddress(
     PushChain.utils.tokens.getPRC20Address(
       PushChain.CONSTANTS.MOVEABLE.TOKEN.BNB_TESTNET.USDT
-    )
+    ).address
   );
 
   const sep = createPublicClient({ chain: sepolia, transport: http('https://1rpc.io/sepolia') });

@@ -72,7 +72,7 @@ export function buildExecuteMulticall({
         functionName: 'transfer',
         args: [execute.to, execute.funds?.amount],
       });
-      const pushChainTo = PushChain.utils.tokens.getPRC20Address(token);
+      const { address: pushChainTo } = PushChain.utils.tokens.getPRC20Address(token);
       multicallData.push({
         to: pushChainTo,
         value: BigInt(0),
