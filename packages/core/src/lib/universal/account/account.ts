@@ -9,6 +9,7 @@ import {
 import { PublicKey } from '@solana/web3.js';
 import {
   CHAIN_INFO,
+  getPushViemChain,
   PUSH_CHAIN_INFO,
   VM_NAMESPACE,
 } from '../../constants/chain';
@@ -362,6 +363,7 @@ export async function convertExecutorToOriginAccount(
 
   // Create viem public client
   const client = createPublicClient({
+    chain: getPushViemChain(pushChainKey),
     transport: http(RPC_URL),
   });
 
@@ -479,6 +481,7 @@ export async function convertExecutorToOrigin(
     PUSH_CHAIN_INFO[pushChainKey].factoryAddress;
 
   const client = createPublicClient({
+    chain: getPushViemChain(pushChainKey),
     transport: http(RPC_URL),
   });
 
@@ -775,7 +778,10 @@ export async function resolveControllerAccount(
     const RPC_URL = PUSH_CHAIN_INFO[pushChainKey].defaultRPC[0];
     const FACTORY_ADDRESS = PUSH_CHAIN_INFO[pushChainKey].factoryAddress;
 
-    const client = createPublicClient({ transport: http(RPC_URL) });
+    const client = createPublicClient({
+      chain: getPushViemChain(pushChainKey),
+      transport: http(RPC_URL),
+    });
 
     const originResult = (await client.readContract({
       address: FACTORY_ADDRESS,
@@ -840,7 +846,10 @@ export async function resolveControllerAccount(
   const RPC_URL = PUSH_CHAIN_INFO[pushChainKey].defaultRPC[0];
   const FACTORY_ADDRESS = PUSH_CHAIN_INFO[pushChainKey].factoryAddress;
 
-  const client = createPublicClient({ transport: http(RPC_URL) });
+  const client = createPublicClient({
+    chain: getPushViemChain(pushChainKey),
+    transport: http(RPC_URL),
+  });
 
   const originResult = (await client.readContract({
     address: FACTORY_ADDRESS,

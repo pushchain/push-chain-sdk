@@ -31,9 +31,10 @@ import {
 export class EvmClient {
   public publicClient: PublicClient;
 
-  constructor({ rpcUrls }: ClientOptions) {
+  constructor({ rpcUrls, chain }: ClientOptions) {
     const transports = rpcUrls.map((rpcUrl) => http(rpcUrl));
     this.publicClient = createPublicClient({
+      chain,
       transport: fallback(transports),
     });
   }

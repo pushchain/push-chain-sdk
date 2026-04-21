@@ -2401,7 +2401,7 @@ describe('PushChain', () => {
         nativeCurrency: {
           decimals: 18,
           name: 'PC',
-          symbol: '$PC',
+          symbol: 'PC',
         },
         rpcUrls: {
           default: {
@@ -3727,7 +3727,7 @@ describe('PushChain', () => {
       const pushTestnet = defineChain({
         id: parseInt(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId),
         name: 'Push Testnet',
-        nativeCurrency: { decimals: 18, name: 'PC', symbol: '$PC' },
+        nativeCurrency: { decimals: 18, name: 'PC', symbol: 'PC' },
         rpcUrls: {
           default: {
             http: [CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]],
@@ -3779,7 +3779,7 @@ describe('PushChain', () => {
         chain: defineChain({
           id: parseInt(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId),
           name: 'Push Testnet',
-          nativeCurrency: { decimals: 18, name: 'PC', symbol: '$PC' },
+          nativeCurrency: { decimals: 18, name: 'PC', symbol: 'PC' },
           rpcUrls: {
             default: {
               http: [CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]],

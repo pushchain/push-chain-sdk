@@ -25,8 +25,20 @@ import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { toBech32 } from '@cosmjs/encoding';
 import { EvmClient } from '../vm-client/evm-client';
 import { PushClientOptions } from './push-client.types';
-import { PUSH_CHAIN_INFO } from '../constants/chain';
+import { getPushViemChain, PUSH_CHAIN_INFO } from '../constants/chain';
 import { CHAIN, PUSH_NETWORK } from '../constants/enums';
+
+function pushNetworkToChain(
+  network: PUSH_NETWORK
+): CHAIN.PUSH_MAINNET | CHAIN.PUSH_TESTNET_DONUT | CHAIN.PUSH_LOCALNET {
+  if (network === PUSH_NETWORK.MAINNET) return CHAIN.PUSH_MAINNET;
+  if (
+    network === PUSH_NETWORK.TESTNET_DONUT ||
+    network === PUSH_NETWORK.TESTNET
+  )
+    return CHAIN.PUSH_TESTNET_DONUT;
+  return CHAIN.PUSH_LOCALNET;
+}
 
 export class PushClient extends EvmClient {
   /** Gas limit for Cosmos transactions on Push Chain */
@@ -37,18 +49,13 @@ export class PushClient extends EvmClient {
   private readonly ephemeralAccount;
   private currentRpcIndex = 0;
   constructor(clientOptions: PushClientOptions) {
-    super(clientOptions);
+    const pushChainKey = pushNetworkToChain(clientOptions.network);
+    super({
+      ...clientOptions,
+      chain: clientOptions.chain ?? getPushViemChain(pushChainKey),
+    });
 
-    if (clientOptions.network === PUSH_NETWORK.MAINNET) {
-      this.pushChainInfo = PUSH_CHAIN_INFO[CHAIN.PUSH_MAINNET];
-    } else if (
-      clientOptions.network === PUSH_NETWORK.TESTNET_DONUT ||
-      clientOptions.network === PUSH_NETWORK.TESTNET
-    ) {
-      this.pushChainInfo = PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT];
-    } else {
-      this.pushChainInfo = PUSH_CHAIN_INFO[CHAIN.PUSH_LOCALNET];
-    }
+    this.pushChainInfo = PUSH_CHAIN_INFO[pushChainKey];
 
     this.ephemeralKey = generatePrivateKey();
     this.ephemeralAccount = privateKeyToAccount(this.ephemeralKey);

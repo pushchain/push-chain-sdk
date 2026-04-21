@@ -1,5 +1,5 @@
 import { UniversalSigner } from '../universal/universal.types';
-import { Abi, Transaction, TransactionReceipt } from 'viem';
+import { Abi, Chain, Transaction, TransactionReceipt } from 'viem';
 import { Keypair, PublicKey } from '@solana/web3.js';
 
 /**
@@ -7,6 +7,10 @@ import { Keypair, PublicKey } from '@solana/web3.js';
  */
 export interface ClientOptions {
   rpcUrls: string[];
+  // When set, viem formats error messages (e.g. InsufficientFundsError)
+  // using this chain's `nativeCurrency.symbol`. Leave unset for external
+  // chains where viem's default ETH formatting is already correct.
+  chain?: Chain;
 }
 
 /**

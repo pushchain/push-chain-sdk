@@ -1,4 +1,5 @@
 import { CHAIN, PUSH_NETWORK, VM } from './enums';
+import { defineChain, type Chain } from 'viem';
 import {
   mainnet,
   arbitrumSepolia,
@@ -375,6 +376,63 @@ export const PUSH_CHAIN_INFO: Record<
     pushToUsdcDenominator: BigInt(1e18),
   },
 };
+
+// ============================================================================
+// Push Chain viem definitions
+// ============================================================================
+
+// viem uses `chain.nativeCurrency.symbol` to format error messages
+// (e.g. `value: 1 PC` in InsufficientFundsError). A PublicClient built
+// without a chain falls back to "ETH".
+export const PUSH_VIEM_CHAINS: Record<
+  CHAIN.PUSH_MAINNET | CHAIN.PUSH_TESTNET_DONUT | CHAIN.PUSH_LOCALNET,
+  Chain
+> = {
+  [CHAIN.PUSH_MAINNET]: defineChain({
+    id: Number.isFinite(parseInt(CHAIN_INFO[CHAIN.PUSH_MAINNET].chainId))
+      ? parseInt(CHAIN_INFO[CHAIN.PUSH_MAINNET].chainId)
+      : 0,
+    name: 'Push Mainnet',
+    nativeCurrency: { name: 'PC', symbol: 'PC', decimals: 18 },
+    rpcUrls: {
+      default: { http: CHAIN_INFO[CHAIN.PUSH_MAINNET].defaultRPC },
+    },
+    blockExplorers: CHAIN_INFO[CHAIN.PUSH_MAINNET].explorerUrl
+      ? {
+          default: {
+            name: 'Push Explorer',
+            url: CHAIN_INFO[CHAIN.PUSH_MAINNET].explorerUrl as string,
+          },
+        }
+      : undefined,
+  }),
+  [CHAIN.PUSH_TESTNET_DONUT]: defineChain({
+    id: parseInt(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId),
+    name: 'Push Testnet Donut',
+    nativeCurrency: { name: 'PC', symbol: 'PC', decimals: 18 },
+    rpcUrls: {
+      default: { http: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC },
+    },
+    blockExplorers: {
+      default: {
+        name: 'Push Explorer',
+        url: CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].explorerUrl as string,
+      },
+    },
+  }),
+  [CHAIN.PUSH_LOCALNET]: defineChain({
+    id: parseInt(CHAIN_INFO[CHAIN.PUSH_LOCALNET].chainId),
+    name: 'Push Localnet',
+    nativeCurrency: { name: 'PC', symbol: 'PC', decimals: 18 },
+    rpcUrls: {
+      default: { http: CHAIN_INFO[CHAIN.PUSH_LOCALNET].defaultRPC },
+    },
+  }),
+};
+
+export function getPushViemChain(chain: CHAIN): Chain | undefined {
+  return (PUSH_VIEM_CHAINS as Partial<Record<CHAIN, Chain>>)[chain];
+}
 
 // ============================================================================
 // Multi-Chain Gateway & CEA Configuration

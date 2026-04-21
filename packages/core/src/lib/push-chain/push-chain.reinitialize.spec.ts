@@ -57,7 +57,7 @@ describe('Reinitialize Method', () => {
       nativeCurrency: {
         decimals: 18,
         name: 'PC',
-        symbol: '$PC',
+        symbol: 'PC',
       },
       rpcUrls: {
         default: {
