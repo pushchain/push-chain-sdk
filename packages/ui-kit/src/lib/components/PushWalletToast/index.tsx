@@ -129,7 +129,7 @@ const ToastContainer = styled.div`
     padding:16px;
     border-radius:16px;
     background-color:#fff;
-    z-index:999999999;
+    z-index:999999990;
     width:320px;
     max-width: 100%;
 `

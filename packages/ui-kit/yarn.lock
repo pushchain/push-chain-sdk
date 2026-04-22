@@ -931,9 +931,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pushchain/core@npm:^5.1.7":
-  version: 5.1.7
-  resolution: "@pushchain/core@npm:5.1.7"
+"@pushchain/core@npm:^5.1.10":
+  version: 5.1.10
+  resolution: "@pushchain/core@npm:5.1.10"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.0.0"
     "@cosmjs/crypto": "npm:0.33.1"
@@ -958,7 +958,7 @@ __metadata:
       optional: true
     tweetnacl:
       optional: true
-  checksum: 10/1c939d782f976a624a24cb1374af909272ac075474b2bd5a2b2db6a301c1893d60b0b005dccfaeb1862b9758031c359b8dde589c3ca265adad00bea683faaed4
+  checksum: 10/bf5205ce5cf86bc083c24939533d50356094067657312f61a33e58ca5527104d25c4ede93543ab7465d16df5e10a4456b5fda0c7b235cb8667736f2486736635
   languageName: node
   linkType: hard
 
@@ -969,7 +969,7 @@ __metadata:
     "@coral-xyz/anchor": "npm:^0.31.1"
     "@human.tech/waap-sdk": "npm:^1.3.0"
     "@metamask/sdk": "npm:^0.32.0"
-    "@pushchain/core": "npm:^5.1.7"
+    "@pushchain/core": "npm:^5.1.10"
     "@solana/web3.js": "npm:^1.98.2"
     "@types/react": "npm:^18.3.13"
     "@types/react-is": "npm:^19"
