@@ -306,8 +306,8 @@ describe('helpers', () => {
       expect(getNativePRC20ForChain(CHAIN.BASE_SEPOLIA, network)).toBe(synthetics.pETH_BASE);
     });
 
-    it('should return pETH_BNB for BNB Testnet', () => {
-      expect(getNativePRC20ForChain(CHAIN.BNB_TESTNET, network)).toBe(synthetics.pETH_BNB);
+    it('should return pBNB for BNB Testnet', () => {
+      expect(getNativePRC20ForChain(CHAIN.BNB_TESTNET, network)).toBe(synthetics.pBNB);
     });
 
     it('should return pSOL for Solana Devnet', () => {

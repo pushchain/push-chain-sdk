@@ -14,6 +14,7 @@ import {
   findTokenChain,
 } from '../route-detector';
 import type { UniversalExecuteParams, ChainTarget } from '../orchestrator.types';
+import { MOVEABLE_TOKEN_CONSTANTS } from '../../constants/tokens';
 
 describe('route-detector', () => {
   describe('isChainTarget', () => {
@@ -249,6 +250,67 @@ describe('route-detector', () => {
         ).not.toThrow();
       });
 
+      it('should throw for Push PRC-20 whose sourceChain does not match destination', () => {
+        // pEth represents ETHEREUM_SEPOLIA ETH → sending to BASE_SEPOLIA is invalid.
+        const params: UniversalExecuteParams = {
+          to: {
+            address: '0xFaE3594C68EDFc2A61b7527164BDAe80bC302108',
+            chain: CHAIN.BASE_SEPOLIA,
+          },
+          funds: {
+            token: MOVEABLE_TOKEN_CONSTANTS.PUSH_TESTNET_DONUT.pEth,
+            amount: BigInt(1000),
+          },
+        };
+
+        expect(() =>
+          validateRouteParams(params, { clientChain: CHAIN.ETHEREUM_SEPOLIA })
+        ).toThrow(RouteValidationError);
+
+        try {
+          validateRouteParams(params, { clientChain: CHAIN.ETHEREUM_SEPOLIA });
+        } catch (e: unknown) {
+          const msg = (e as Error).message;
+          expect(msg).toContain('Unsupported moveable token');
+          expect(msg).toContain('destination=BASE_SEPOLIA');
+        }
+      });
+
+      it('should pass for Push PRC-20 whose sourceChain matches destination', () => {
+        // pEthBase (sourceChain=BASE_SEPOLIA) → BASE_SEPOLIA is valid.
+        const params: UniversalExecuteParams = {
+          to: {
+            address: '0xFaE3594C68EDFc2A61b7527164BDAe80bC302108',
+            chain: CHAIN.BASE_SEPOLIA,
+          },
+          funds: {
+            token: MOVEABLE_TOKEN_CONSTANTS.PUSH_TESTNET_DONUT.pEthBase,
+            amount: BigInt(1000),
+          },
+        };
+
+        expect(() =>
+          validateRouteParams(params, { clientChain: CHAIN.ETHEREUM_SEPOLIA })
+        ).not.toThrow();
+      });
+
+      it('should pass for Push PRC-20 USDT variant matching destination', () => {
+        const params: UniversalExecuteParams = {
+          to: {
+            address: '0xFaE3594C68EDFc2A61b7527164BDAe80bC302108',
+            chain: CHAIN.BASE_SEPOLIA,
+          },
+          funds: {
+            token: MOVEABLE_TOKEN_CONSTANTS.PUSH_TESTNET_DONUT.USDT.base,
+            amount: BigInt(1000),
+          },
+        };
+
+        expect(() =>
+          validateRouteParams(params, { clientChain: CHAIN.ETHEREUM_SEPOLIA })
+        ).not.toThrow();
+      });
+
       it('should show "unknown" clientChain when context is omitted', () => {
         const params: UniversalExecuteParams = {
           to: {
@@ -325,6 +387,38 @@ describe('route-detector', () => {
         expect(() =>
           validateRouteParams(params, { clientChain: CHAIN.ETHEREUM_SEPOLIA })
         ).not.toThrow();
+      });
+
+      it('should pass for Push PRC-20 whose sourceChain matches from.chain', () => {
+        // pEth (sourceChain=ETHEREUM_SEPOLIA) with from=ETHEREUM_SEPOLIA is valid.
+        const params: UniversalExecuteParams = {
+          from: { chain: CHAIN.ETHEREUM_SEPOLIA },
+          to: '0x1234567890123456789012345678901234567890',
+          funds: {
+            token: MOVEABLE_TOKEN_CONSTANTS.PUSH_TESTNET_DONUT.pEth,
+            amount: BigInt(1000),
+          },
+        };
+
+        expect(() =>
+          validateRouteParams(params, { clientChain: CHAIN.ETHEREUM_SEPOLIA })
+        ).not.toThrow();
+      });
+
+      it('should throw for Push PRC-20 whose sourceChain does not match from.chain', () => {
+        // pEthBase (sourceChain=BASE_SEPOLIA) with from=ETHEREUM_SEPOLIA is invalid.
+        const params: UniversalExecuteParams = {
+          from: { chain: CHAIN.ETHEREUM_SEPOLIA },
+          to: '0x1234567890123456789012345678901234567890',
+          funds: {
+            token: MOVEABLE_TOKEN_CONSTANTS.PUSH_TESTNET_DONUT.pEthBase,
+            amount: BigInt(1000),
+          },
+        };
+
+        expect(() =>
+          validateRouteParams(params, { clientChain: CHAIN.ETHEREUM_SEPOLIA })
+        ).toThrow(RouteValidationError);
       });
 
       it('should throw for ETH on Solana source chain', () => {

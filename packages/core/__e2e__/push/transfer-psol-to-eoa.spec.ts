@@ -24,7 +24,7 @@ const TOKEN_LIST: { name: string; address: `0x${string}`; decimals: number }[] =
     { name: 'pETH', address: TOKENS.pETH, decimals: 18 },
     { name: 'pETH.base', address: TOKENS.pETH_BASE, decimals: 18 },
     { name: 'pETH.arb', address: TOKENS.pETH_ARB, decimals: 18 },
-    { name: 'pBNB', address: TOKENS.pETH_BNB, decimals: 18 },
+    { name: 'pBNB', address: TOKENS.pBNB, decimals: 18 },
     { name: 'pSOL', address: TOKENS.pSOL, decimals: 9 },
     { name: 'USDT.eth', address: TOKENS.USDT_ETH, decimals: 6 },
     { name: 'USDT.arb', address: TOKENS.USDT_ARB, decimals: 6 },

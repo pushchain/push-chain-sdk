@@ -91,7 +91,7 @@ export const STAKING_CHAIN_FIXTURES: StakingChainFixture[] = [
     ...EVM_CHAIN_FIXTURES.find((f) => f.chain === CHAIN.BNB_TESTNET)!,
     staking: {
       stakingProxy: '0xd5d727D5eCE07BD5557f50e58DA092FCEDC1bf29',
-      pNativeToken: s.pETH_BNB,
+      pNativeToken: s.pBNB,
       pUsdtToken: s.USDT_BNB,
     },
   },

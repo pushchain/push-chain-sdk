@@ -1785,7 +1785,7 @@ describe('Helpers Utils Namespace', () => {
       );
       expect(Array.isArray(tokens)).toBe(true);
 
-      // pETH/pETH_ARB/pETH_BASE/pETH_BNB/pSOL + USDT × 5 + USDC × 5 + WETH + stETH + DAI = 18
+      // pETH/pETH_ARB/pETH_BASE/pBNB/pSOL + USDT × 5 + USDC × 5 + WETH + stETH + DAI = 18
       expect(tokens.length).toBe(18);
 
       // Every entry must be on Push Chain and use the approve mechanism
@@ -1799,7 +1799,7 @@ describe('Helpers Utils Namespace', () => {
       expect(symbols).toContain('pETH');
       expect(symbols).toContain('pETH_ARB');
       expect(symbols).toContain('pETH_BASE');
-      expect(symbols).toContain('pETH_BNB');
+      expect(symbols).toContain('pBNB');
       expect(symbols).toContain('pSOL');
       // USDT/USDC appear once per origin chain (5 each)
       expect(symbols.filter((s) => s === 'USDT').length).toBe(5);

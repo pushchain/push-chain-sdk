@@ -134,11 +134,11 @@ describe('MOVEABLE_TOKEN_CONSTANTS.PUSH_TESTNET_DONUT (C-3: outward tokens)', ()
       expect(t.prc20Address).toBe(synth.pETH_BASE);
     });
 
-    it('should expose pEthBnb sourced from BNB', () => {
-      const t = pushTokens.pEthBnb;
-      expect(t.symbol).toBe('pETH_BNB');
+    it('should expose pBnb sourced from BNB', () => {
+      const t = pushTokens.pBnb;
+      expect(t.symbol).toBe('pBNB');
       expect(t.sourceChain).toBe(CHAIN.BNB_TESTNET);
-      expect(t.prc20Address).toBe(synth.pETH_BNB);
+      expect(t.prc20Address).toBe(synth.pBNB);
     });
 
     it('should expose pSol sourced from Solana', () => {
@@ -217,7 +217,7 @@ describe('MOVEABLE_TOKEN_CONSTANTS.PUSH_TESTNET_DONUT (C-3: outward tokens)', ()
         pushTokens.pEth,
         pushTokens.pEthArb,
         pushTokens.pEthBase,
-        pushTokens.pEthBnb,
+        pushTokens.pBnb,
         pushTokens.pSol,
         pushTokens.USDT.eth,
         pushTokens.USDT.arb,

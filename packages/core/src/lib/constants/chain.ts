@@ -59,7 +59,7 @@ export const SYNTHETIC_PUSH_ERC20: Record<
     pETH: `0x${string}`;
     pETH_ARB: `0x${string}`;
     pETH_BASE: `0x${string}`;
-    pETH_BNB: `0x${string}`;
+    pBNB: `0x${string}`;
     pSOL: `0x${string}`;
     USDT_ETH: `0x${string}`;
     USDC_ETH: `0x${string}`;
@@ -80,7 +80,7 @@ export const SYNTHETIC_PUSH_ERC20: Record<
     pETH: '0x2971824Db68229D087931155C2b8bB820B275809',
     pETH_ARB: '0xc0a821a1AfEd1322c5e15f1F4586C0B8cE65400e',
     pETH_BASE: '0xc7007af2B24D4eb963fc9633B0c66e1d2D90Fc21',
-    pETH_BNB: '0x7a9082dA308f3fa005beA7dB0d203b3b86664E36',
+    pBNB: '0x7a9082dA308f3fa005beA7dB0d203b3b86664E36',
     pSOL: '0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed',
     USDT_ETH: '0xCA0C5E6F002A389E1580F0DB7cd06e4549B5F9d3',
     USDC_ETH: '0x7A58048036206bB898008b5bBDA85697DB1e5d66',
@@ -100,7 +100,7 @@ export const SYNTHETIC_PUSH_ERC20: Record<
     pETH: '0x2971824Db68229D087931155C2b8bB820B275809',
     pETH_ARB: '0xc0a821a1AfEd1322c5e15f1F4586C0B8cE65400e',
     pETH_BASE: '0xc7007af2B24D4eb963fc9633B0c66e1d2D90Fc21',
-    pETH_BNB: '0x7a9082dA308f3fa005beA7dB0d203b3b86664E36',
+    pBNB: '0x7a9082dA308f3fa005beA7dB0d203b3b86664E36',
     pSOL: '0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed',
     USDT_ETH: '0xCA0C5E6F002A389E1580F0DB7cd06e4549B5F9d3',
     USDC_ETH: '0x7A58048036206bB898008b5bBDA85697DB1e5d66',
@@ -120,7 +120,7 @@ export const SYNTHETIC_PUSH_ERC20: Record<
     pETH: '0xTBD',
     pETH_ARB: '0xTBD',
     pETH_BASE: '0xTBD',
-    pETH_BNB: '0xTBD',
+    pBNB: '0xTBD',
     pSOL: '0xTBD',
     USDT_ETH: '0xTBD',
     USDC_ETH: '0xTBD',
@@ -140,7 +140,7 @@ export const SYNTHETIC_PUSH_ERC20: Record<
     pETH: '0xTBD',
     pETH_ARB: '0xTBD',
     pETH_BASE: '0xTBD',
-    pETH_BNB: '0xTBD',
+    pBNB: '0xTBD',
     pSOL: '0xTBD',
     USDT_ETH: '0xTBD',
     USDC_ETH: '0xTBD',
@@ -265,8 +265,8 @@ export const CHAIN_INFO: Record<
     timeout: 30000,
     explorerUrl: 'https://sepolia.arbiscan.io',
     dex: {
-      uniV3Factory: '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
-      uniV3QuoterV2: '0xTBD',
+      uniV3Factory: '0x248AB79Bbb9bC29bB72f7Cd42F17e054Fc40188e',
+      uniV3QuoterV2: '0x2779a0CC1c3e0E44D2542EC3e79e3864Ae93Ef0B',
       weth: '0x980B62Da83eFf3D4576C647993b0c1D7faf17c73',
     },
   },
@@ -285,7 +285,7 @@ export const CHAIN_INFO: Record<
     explorerUrl: 'https://sepolia.basescan.org',
     dex: {
       uniV3Factory: '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24',
-      uniV3QuoterV2: '0xTBD',
+      uniV3QuoterV2: '0xC5290058841028F1614F3A6F0F5816cAd0df5E27',
       weth: '0x4200000000000000000000000000000000000006',
     },
   },

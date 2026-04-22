@@ -872,7 +872,7 @@ export class Utils {
         | 'pETH'
         | 'pETH_ARB'
         | 'pETH_BASE'
-        | 'pETH_BNB'
+        | 'pBNB'
         | 'pSOL'
         | 'USDT_ETH'
         | 'USDT_ARB'
@@ -890,7 +890,6 @@ export class Utils {
           if (isEthFamily) key = 'pETH';
           else if (isArbFamily) key = 'pETH_ARB';
           else if (isBaseFamily) key = 'pETH_BASE';
-          else if (isBnbFamily) key = 'pETH_BNB';
           else
             throw new Error(
               'Unsupported ETH origin chain for synthetic mapping'
@@ -901,6 +900,12 @@ export class Utils {
           if (!isSolFamily)
             throw new Error('SOL token provided but origin is not Solana');
           key = 'pSOL';
+          break;
+        }
+        case 'BNB': {
+          if (!isBnbFamily)
+            throw new Error('BNB token provided but origin is not BNB Testnet');
+          key = 'pBNB';
           break;
         }
         case 'USDT': {

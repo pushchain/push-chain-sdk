@@ -81,7 +81,7 @@ export function getNativePRC20ForChain(
     case CHAIN.BASE_SEPOLIA:
       return synthetics.pETH_BASE;
     case CHAIN.BNB_TESTNET:
-      return synthetics.pETH_BNB;
+      return synthetics.pBNB;
     case CHAIN.SOLANA_DEVNET:
     case CHAIN.SOLANA_TESTNET:
     case CHAIN.SOLANA_MAINNET:

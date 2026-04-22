@@ -292,60 +292,51 @@ export function validateRouteParams(
     }
   }
 
-  // Validate funds token symbol is available on target chain (Route 2 outbound).
-  // A PushChainMoveableToken (e.g. pSOL, pETH_BNB) carries a `sourceChain` pointing at
-  // the external chain it mirrors — bridging it to that chain is always valid since
-  // the target receives the underlying asset (SOL, ETH, etc.).
-  if (params.funds?.token && isChainTarget(params.to)) {
-    const targetChain = params.to.chain;
-    if (!isPushChain(targetChain)) {
-      const tokenSourceChain = (params.funds.token as { sourceChain?: CHAIN }).sourceChain;
-      const isBridgeBack = tokenSourceChain === targetChain;
-      const targetTokens = MOVEABLE_TOKENS[targetChain] || [];
-      const hasSymbolOnTarget = targetTokens.some(
-        t => t.symbol === params.funds!.token!.symbol
-      );
-      if (!hasSymbolOnTarget && !isBridgeBack) {
-        const tokenChain = findTokenChain(params.funds.token as MoveableToken);
-        const tokenLabel = tokenChain
-          ? `${chainEnumToName(tokenChain)}.${params.funds.token.symbol}`
-          : params.funds.token.symbol;
-        const clientLabel = context?.clientChain
-          ? chainEnumToName(context.clientChain)
-          : 'unknown';
-        throw new RouteValidationError(
-          `Unsupported moveable token for current client and route:\n` +
-          `token=${tokenLabel}\n` +
-          `clientChain=${clientLabel}\n` +
-          `destination=${chainEnumToName(targetChain)}`
-        );
-      }
-    }
-  }
+  // Validate funds.token against the route-relevant chain.
+  // - Route 1 (UOA_TO_PUSH): no bridging, nothing to validate here.
+  // - Route 2 (UOA_TO_CEA): validate against to.chain.
+  // - Route 3/4 (CEA_TO_PUSH, CEA_TO_CEA): validate against from.chain.
+  // For a Push-registered PRC-20 the token's own `sourceChain` must match; for a
+  // non-Push token, the token's symbol must be registered on the chain.
+  if (params.funds?.token) {
+    const token = params.funds.token as MoveableToken;
+    const clientLabel = context?.clientChain
+      ? chainEnumToName(context.clientChain)
+      : 'unknown';
+    const registeredOn = findTokenChain(token);
+    const tokenLabel = registeredOn
+      ? `${chainEnumToName(registeredOn)}.${token.symbol}`
+      : token.symbol;
+    const isPushToken = registeredOn !== undefined && isPushChain(registeredOn);
 
-  // Validate funds token is available on source chain (Route 3 inbound)
-  if (params.funds?.token && params.from?.chain) {
-    const sourceChain = params.from.chain;
-    if (!isPushChain(sourceChain)) {
-      const sourceTokens = MOVEABLE_TOKENS[sourceChain] || [];
-      const hasSymbolOnSource = sourceTokens.some(
-        t => t.symbol === params.funds!.token!.symbol
-      );
-      if (!hasSymbolOnSource) {
-        const tokenChain = findTokenChain(params.funds.token as MoveableToken);
-        const tokenLabel = tokenChain
-          ? `${chainEnumToName(tokenChain)}.${params.funds.token.symbol}`
-          : params.funds.token.symbol;
-        const clientLabel = context?.clientChain
-          ? chainEnumToName(context.clientChain)
-          : 'unknown';
+    const validateAgainst = (
+      chain: CHAIN,
+      direction: 'destination' | 'source'
+    ): void => {
+      if (isPushChain(chain)) return;
+      const ok = isPushToken
+        ? (token as { sourceChain?: CHAIN }).sourceChain === chain
+        : (MOVEABLE_TOKENS[chain] || []).some(t => t.symbol === token.symbol);
+      if (!ok) {
         throw new RouteValidationError(
           `Unsupported moveable token for current client and route:\n` +
-          `token=${tokenLabel}\n` +
-          `clientChain=${clientLabel}\n` +
-          `source=${chainEnumToName(sourceChain)}`
+            `token=${tokenLabel}\n` +
+            `clientChain=${clientLabel}\n` +
+            `${direction}=${chainEnumToName(chain)}`
         );
       }
+    };
+
+    switch (route) {
+      case TransactionRoute.UOA_TO_PUSH:
+        break;
+      case TransactionRoute.UOA_TO_CEA:
+        validateAgainst((params.to as ChainTarget).chain, 'destination');
+        break;
+      case TransactionRoute.CEA_TO_PUSH:
+      case TransactionRoute.CEA_TO_CEA:
+        validateAgainst(params.from!.chain!, 'source');
+        break;
     }
   }
 

@@ -22,6 +22,7 @@ export interface PayableToken {
 export type MoveableTokenMap = Partial<{
   ETH: MoveableToken;
   SOL: MoveableToken;
+  BNB: MoveableToken;
   USDT: MoveableToken;
   USDC: MoveableToken;
   WETH: MoveableToken;
@@ -31,6 +32,7 @@ export type MoveableTokenMap = Partial<{
 
 export type PayableTokenMap = Partial<{
   ETH: PayableToken;
+  BNB: PayableToken;
   USDT: PayableToken;
   USDC: PayableToken;
   WETH: PayableToken;
@@ -55,6 +57,9 @@ export class MoveableTokenAccessor {
   }
   get SOL(): MoveableToken {
     return this.require('SOL');
+  }
+  get BNB(): MoveableToken {
+    return this.require('BNB');
   }
   get USDT(): MoveableToken {
     return this.require('USDT');
@@ -85,6 +90,9 @@ export class PayableTokenAccessor {
 
   get ETH(): PayableToken {
     return this.require('ETH');
+  }
+  get BNB(): PayableToken {
+    return this.require('BNB');
   }
   get USDT(): PayableToken {
     return this.require('USDT');
@@ -234,15 +242,8 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
 
   // BNB Testnet
   [CHAIN.BNB_TESTNET]: {
-    // NOTE: Both symbols are provided to mirror existing usage across maps
     BNB: {
       symbol: 'BNB',
-      decimals: 18,
-      address: NATIVE,
-      mechanism: 'native',
-    },
-    ETH: {
-      symbol: 'ETH',
       decimals: 18,
       address: NATIVE,
       mechanism: 'native',
@@ -253,10 +254,10 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
       address: '0xBC14F348BC9667be46b35Edc9B68653d86013DC5',
       mechanism: 'approve',
     },
-    DAI: {
-      symbol: 'DAI',
-      decimals: 18,
-      address: '0xEC5dCb5Dbf4B114C9d0F65BcCAb49EC54F6A0867',
+    USDC: {
+      symbol: 'USDC',
+      decimals: 6,
+      address: '0x64544969ed7EBf5f083679233325356EbE738930',
       mechanism: 'approve',
     },
   },
@@ -315,7 +316,7 @@ function buildPushChainMoveableTokenList(): MoveableToken[] {
     mk('pETH', 18, s.pETH),
     mk('pETH_ARB', 18, s.pETH_ARB),
     mk('pETH_BASE', 18, s.pETH_BASE),
-    mk('pETH_BNB', 18, s.pETH_BNB),
+    mk('pBNB', 18, s.pBNB),
     mk('pSOL', 9, s.pSOL),
     mk('USDT', 6, s.USDT_ETH),
     mk('USDT', 6, s.USDT_ARB),
@@ -361,9 +362,9 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
     makeToken(CHAIN.BASE_SEPOLIA, 'WETH'),
   ],
   [CHAIN.BNB_TESTNET]: [
-    makeToken(CHAIN.BNB_TESTNET, 'ETH'),
+    makeToken(CHAIN.BNB_TESTNET, 'BNB'),
     makeToken(CHAIN.BNB_TESTNET, 'USDT'),
-    makeToken(CHAIN.BNB_TESTNET, 'DAI'),
+    makeToken(CHAIN.BNB_TESTNET, 'USDC'),
   ],
   [CHAIN.SOLANA_DEVNET]: [
     makeToken(CHAIN.SOLANA_DEVNET, 'SOL'),
@@ -433,7 +434,7 @@ export interface PushChainMoveableTokenAccessor {
   readonly pEth: PushChainMoveableToken;
   readonly pEthArb: PushChainMoveableToken;
   readonly pEthBase: PushChainMoveableToken;
-  readonly pEthBnb: PushChainMoveableToken;
+  readonly pBnb: PushChainMoveableToken;
   readonly pSol: PushChainMoveableToken;
   readonly pWeth: PushChainMoveableToken;
   readonly pStEth: PushChainMoveableToken;
@@ -493,7 +494,7 @@ function buildPushChainMoveableTokenAccessor(): PushChainMoveableTokenAccessor {
     pEth: mk('pETH', 18, s.pETH, CHAIN.ETHEREUM_SEPOLIA),
     pEthArb: mk('pETH_ARB', 18, s.pETH_ARB, CHAIN.ARBITRUM_SEPOLIA),
     pEthBase: mk('pETH_BASE', 18, s.pETH_BASE, CHAIN.BASE_SEPOLIA),
-    pEthBnb: mk('pETH_BNB', 18, s.pETH_BNB, CHAIN.BNB_TESTNET),
+    pBnb: mk('pBNB', 18, s.pBNB, CHAIN.BNB_TESTNET),
     pSol: mk('pSOL', 9, s.pSOL, CHAIN.SOLANA_DEVNET),
     pWeth: mk('WETH', 18, s.WETH_ETH, CHAIN.ETHEREUM_SEPOLIA),
     pStEth: mk('stETH', 18, s.stETH_ETH, CHAIN.ETHEREUM_SEPOLIA),
