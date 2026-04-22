@@ -26,6 +26,7 @@ export type MoveableTokenMap = Partial<{
   USDC: MoveableToken;
   WETH: MoveableToken;
   stETH: MoveableToken;
+  DAI: MoveableToken;
 }>;
 
 export type PayableTokenMap = Partial<{
@@ -34,6 +35,7 @@ export type PayableTokenMap = Partial<{
   USDC: PayableToken;
   WETH: PayableToken;
   stETH: PayableToken;
+  DAI: PayableToken;
 }>;
 
 // Strongly-typed accessors that throw at runtime if a token is unavailable,
@@ -65,6 +67,9 @@ export class MoveableTokenAccessor {
   }
   get stETH(): MoveableToken {
     return this.require('stETH');
+  }
+  get DAI(): MoveableToken {
+    return this.require('DAI');
   }
 }
 
@@ -248,6 +253,12 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
       address: '0xBC14F348BC9667be46b35Edc9B68653d86013DC5',
       mechanism: 'approve',
     },
+    DAI: {
+      symbol: 'DAI',
+      decimals: 18,
+      address: '0xEC5dCb5Dbf4B114C9d0F65BcCAb49EC54F6A0867',
+      mechanism: 'approve',
+    },
   },
 
   // Solana Devnet
@@ -268,6 +279,12 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
       symbol: 'USDC',
       decimals: 6,
       address: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
+      mechanism: 'approve',
+    },
+    DAI: {
+      symbol: 'DAI',
+      decimals: 18,
+      address: 'G2ZLaRhpohW23KTEX3fBjZXtNTFFwemqCaWWnWVTj4TB',
       mechanism: 'approve',
     },
   },
@@ -310,6 +327,9 @@ function buildPushChainMoveableTokenList(): MoveableToken[] {
     mk('USDC', 6, s.USDC_BASE),
     mk('USDC', 6, s.USDC_BNB),
     mk('USDC', 6, s.USDC_SOL),
+    mk('WETH', 18, s.WETH_ETH),
+    mk('stETH', 18, s.stETH_ETH),
+    mk('DAI', 18, s.DAI_SOL),
   ];
 }
 
@@ -343,11 +363,13 @@ export const MOVEABLE_TOKENS: Partial<Record<CHAIN, MoveableToken[]>> = {
   [CHAIN.BNB_TESTNET]: [
     makeToken(CHAIN.BNB_TESTNET, 'ETH'),
     makeToken(CHAIN.BNB_TESTNET, 'USDT'),
+    makeToken(CHAIN.BNB_TESTNET, 'DAI'),
   ],
   [CHAIN.SOLANA_DEVNET]: [
     makeToken(CHAIN.SOLANA_DEVNET, 'SOL'),
     makeToken(CHAIN.SOLANA_DEVNET, 'USDT'),
     makeToken(CHAIN.SOLANA_DEVNET, 'USDC'),
+    makeToken(CHAIN.SOLANA_DEVNET, 'DAI'),
   ],
 };
 
@@ -413,6 +435,9 @@ export interface PushChainMoveableTokenAccessor {
   readonly pEthBase: PushChainMoveableToken;
   readonly pEthBnb: PushChainMoveableToken;
   readonly pSol: PushChainMoveableToken;
+  readonly pWeth: PushChainMoveableToken;
+  readonly pStEth: PushChainMoveableToken;
+  readonly pDai: PushChainMoveableToken;
   readonly USDT: ChainSuffixAccessor;
   readonly USDC: ChainSuffixAccessor;
 }
@@ -470,6 +495,9 @@ function buildPushChainMoveableTokenAccessor(): PushChainMoveableTokenAccessor {
     pEthBase: mk('pETH_BASE', 18, s.pETH_BASE, CHAIN.BASE_SEPOLIA),
     pEthBnb: mk('pETH_BNB', 18, s.pETH_BNB, CHAIN.BNB_TESTNET),
     pSol: mk('pSOL', 9, s.pSOL, CHAIN.SOLANA_DEVNET),
+    pWeth: mk('WETH', 18, s.WETH_ETH, CHAIN.ETHEREUM_SEPOLIA),
+    pStEth: mk('stETH', 18, s.stETH_ETH, CHAIN.ETHEREUM_SEPOLIA),
+    pDai: mk('DAI', 18, s.DAI_SOL, CHAIN.SOLANA_DEVNET),
     USDT: {
       eth: mk('USDT', 6, s.USDT_ETH, CHAIN.ETHEREUM_SEPOLIA),
       arb: mk('USDT', 6, s.USDT_ARB, CHAIN.ARBITRUM_SEPOLIA),

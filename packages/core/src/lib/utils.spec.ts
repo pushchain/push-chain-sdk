@@ -1785,8 +1785,8 @@ describe('Helpers Utils Namespace', () => {
       );
       expect(Array.isArray(tokens)).toBe(true);
 
-      // 5 pETH variants + pSOL + USDT × 5 origins + USDC × 5 origins = 15
-      expect(tokens.length).toBe(15);
+      // pETH/pETH_ARB/pETH_BASE/pETH_BNB/pSOL + USDT × 5 + USDC × 5 + WETH + stETH + DAI = 18
+      expect(tokens.length).toBe(18);
 
       // Every entry must be on Push Chain and use the approve mechanism
       for (const t of tokens) {
@@ -1821,7 +1821,7 @@ describe('Helpers Utils Namespace', () => {
       const pushTokens = tokens.filter(
         (t) => t.chain === CHAIN.PUSH_TESTNET_DONUT
       );
-      expect(pushTokens.length).toBe(15);
+      expect(pushTokens.length).toBe(18);
       expect(pushTokens.some((t) => t.symbol === 'pETH')).toBe(true);
       expect(pushTokens.some((t) => t.symbol === 'pSOL')).toBe(true);
     });
