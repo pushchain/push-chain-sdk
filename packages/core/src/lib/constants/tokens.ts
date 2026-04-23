@@ -305,32 +305,40 @@ function makeToken(chain: CHAIN, symbol: string) {
 // Flat PRC-20 list for Push Chain — synthetic ERC-20 representations of
 // origin-chain assets that can be moved out of Push Chain back to their source.
 // Source of truth: SYNTHETIC_PUSH_ERC20 in ./chain.
-function buildPushChainMoveableTokenList(): MoveableToken[] {
+function buildPushChainMoveableTokenList(): PushChainMoveableToken[] {
   const s = SYNTHETIC_PUSH_ERC20[PUSH_NETWORK.TESTNET_DONUT];
   const mk = (
     symbol: string,
     decimals: number,
-    address: `0x${string}`
-  ): MoveableToken => ({ symbol, decimals, address, mechanism: 'approve' });
+    address: `0x${string}`,
+    sourceChain: CHAIN
+  ): PushChainMoveableToken => ({
+    symbol,
+    decimals,
+    address,
+    mechanism: 'approve',
+    sourceChain,
+    prc20Address: address,
+  });
   return [
-    mk('pETH', 18, s.pETH),
-    mk('pETH_ARB', 18, s.pETH_ARB),
-    mk('pETH_BASE', 18, s.pETH_BASE),
-    mk('pBNB', 18, s.pBNB),
-    mk('pSOL', 9, s.pSOL),
-    mk('USDT', 6, s.USDT_ETH),
-    mk('USDT', 6, s.USDT_ARB),
-    mk('USDT', 6, s.USDT_BASE),
-    mk('USDT', 6, s.USDT_BNB),
-    mk('USDT', 6, s.USDT_SOL),
-    mk('USDC', 6, s.USDC_ETH),
-    mk('USDC', 6, s.USDC_ARB),
-    mk('USDC', 6, s.USDC_BASE),
-    mk('USDC', 6, s.USDC_BNB),
-    mk('USDC', 6, s.USDC_SOL),
-    mk('WETH', 18, s.WETH_ETH),
-    mk('stETH', 18, s.stETH_ETH),
-    mk('DAI', 18, s.DAI_SOL),
+    mk('pETH', 18, s.pETH, CHAIN.ETHEREUM_SEPOLIA),
+    mk('pETH_ARB', 18, s.pETH_ARB, CHAIN.ARBITRUM_SEPOLIA),
+    mk('pETH_BASE', 18, s.pETH_BASE, CHAIN.BASE_SEPOLIA),
+    mk('pBNB', 18, s.pBNB, CHAIN.BNB_TESTNET),
+    mk('pSOL', 9, s.pSOL, CHAIN.SOLANA_DEVNET),
+    mk('USDT', 6, s.USDT_ETH, CHAIN.ETHEREUM_SEPOLIA),
+    mk('USDT', 6, s.USDT_ARB, CHAIN.ARBITRUM_SEPOLIA),
+    mk('USDT', 6, s.USDT_BASE, CHAIN.BASE_SEPOLIA),
+    mk('USDT', 6, s.USDT_BNB, CHAIN.BNB_TESTNET),
+    mk('USDT', 6, s.USDT_SOL, CHAIN.SOLANA_DEVNET),
+    mk('USDC', 6, s.USDC_ETH, CHAIN.ETHEREUM_SEPOLIA),
+    mk('USDC', 6, s.USDC_ARB, CHAIN.ARBITRUM_SEPOLIA),
+    mk('USDC', 6, s.USDC_BASE, CHAIN.BASE_SEPOLIA),
+    mk('USDC', 6, s.USDC_BNB, CHAIN.BNB_TESTNET),
+    mk('USDC', 6, s.USDC_SOL, CHAIN.SOLANA_DEVNET),
+    mk('WETH', 18, s.WETH_ETH, CHAIN.ETHEREUM_SEPOLIA),
+    mk('stETH', 18, s.stETH_ETH, CHAIN.ETHEREUM_SEPOLIA),
+    mk('DAI', 18, s.DAI_SOL, CHAIN.SOLANA_DEVNET),
   ];
 }
 

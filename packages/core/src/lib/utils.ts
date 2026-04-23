@@ -652,48 +652,40 @@ export class Utils {
         decimals: number;
         address: string;
         mechanism: 'approve' | 'permit2' | 'native';
+        sourceChain?: CHAIN;
+        prc20Address?: `0x${string}`;
       }>;
     } {
       const chain: CHAIN | undefined =
         Utils.resolveChainFromInput(chainOrClient);
 
+      const map = (k: CHAIN, t: MoveableToken) => {
+        const extra = t as Partial<{
+          sourceChain: CHAIN;
+          prc20Address: `0x${string}`;
+        }>;
+        return {
+          chain: k,
+          chainName: Utils.chains.getChainName(k) ?? k,
+          symbol: t.symbol,
+          decimals: t.decimals,
+          address: t.address,
+          mechanism: t.mechanism,
+          ...(extra.sourceChain ? { sourceChain: extra.sourceChain } : {}),
+          ...(extra.prc20Address ? { prc20Address: extra.prc20Address } : {}),
+        };
+      };
+
       if (chain) {
         const list = MOVEABLE_TOKENS[chain] ?? [];
-        return {
-          tokens: list.map((t) => ({
-            chain,
-            chainName: Utils.chains.getChainName(chain) ?? chain,
-            symbol: t.symbol,
-            decimals: t.decimals,
-            address: t.address,
-            mechanism: t.mechanism,
-          })),
-        };
+        return { tokens: list.map((t) => map(chain, t)) };
       }
 
-      const tokens: Array<{
-        chain: CHAIN;
-        chainName: string;
-        symbol: string;
-        decimals: number;
-        address: string;
-        mechanism: 'approve' | 'permit2' | 'native';
-      }> = [];
-
+      const tokens = [] as ReturnType<typeof map>[];
       for (const [key, list] of Object.entries(MOVEABLE_TOKENS)) {
         const k = key as CHAIN;
-        for (const t of list ?? []) {
-          tokens.push({
-            chain: k,
-            chainName: Utils.chains.getChainName(k) ?? k,
-            symbol: t.symbol,
-            decimals: t.decimals,
-            address: t.address,
-            mechanism: t.mechanism,
-          });
-        }
+        for (const t of list ?? []) tokens.push(map(k, t));
       }
-
       return { tokens };
     },
 

@@ -1829,7 +1829,7 @@ describe('Helpers Utils Namespace', () => {
     it('should return Push Chain PRC-20s via MOVEABLE_TOKENS registry lookup', () => {
       const list = MOVEABLE_TOKENS[CHAIN.PUSH_TESTNET_DONUT];
       expect(list).toBeDefined();
-      expect(list?.length).toBe(15);
+      expect(list?.length).toBe(18);
     });
 
     it('should list all payable tokens across all chains', () => {

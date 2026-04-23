@@ -309,13 +309,27 @@ export function validateRouteParams(
       : token.symbol;
     const isPushToken = registeredOn !== undefined && isPushChain(registeredOn);
 
+    // For Push-registered tokens the caller may pass a stripped clone (e.g. via
+    // utils.tokens.getMoveableTokens), so look up the authoritative sourceChain
+    // from the registry rather than trusting only the caller-supplied field.
+    const registrySourceChain = registeredOn
+      ? (MOVEABLE_TOKENS[registeredOn] || []).find(
+          t =>
+            t.address.toLowerCase() === token.address.toLowerCase() &&
+            t.symbol === token.symbol
+        ) as { sourceChain?: CHAIN } | undefined
+      : undefined;
+    const effectiveSourceChain =
+      (token as { sourceChain?: CHAIN }).sourceChain ??
+      registrySourceChain?.sourceChain;
+
     const validateAgainst = (
       chain: CHAIN,
       direction: 'destination' | 'source'
     ): void => {
       if (isPushChain(chain)) return;
       const ok = isPushToken
-        ? (token as { sourceChain?: CHAIN }).sourceChain === chain
+        ? effectiveSourceChain === chain
         : (MOVEABLE_TOKENS[chain] || []).some(t => t.symbol === token.symbol);
       if (!ok) {
         throw new RouteValidationError(
