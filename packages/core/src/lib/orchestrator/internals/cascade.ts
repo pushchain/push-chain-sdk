@@ -333,6 +333,33 @@ export async function buildHopDescriptor(
             data: '0x',
           });
         }
+      } else if (params.funds?.amount) {
+        // Funds-only transfer (no data, no value). Without this branch the
+        // CEA multicall is empty and relayed funds stay in the CEA instead
+        // of reaching the caller's recipient.
+        const token = (params.funds as { token: MoveableToken }).token;
+        if (token) {
+          if (token.mechanism === 'native') {
+            if (target.address.toLowerCase() !== ceaAddress.toLowerCase()) {
+              ceaMulticalls.push({
+                to: target.address as `0x${string}`,
+                value: params.funds.amount,
+                data: '0x',
+              });
+            }
+          } else {
+            const erc20Transfer = encodeFunctionData({
+              abi: ERC20_EVM,
+              functionName: 'transfer',
+              args: [target.address, params.funds.amount],
+            });
+            ceaMulticalls.push({
+              to: token.address as `0x${string}`,
+              value: BigInt(0),
+              data: erc20Transfer,
+            });
+          }
+        }
       }
 
       // Determine PRC-20 token and burn amount

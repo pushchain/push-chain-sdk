@@ -213,6 +213,36 @@ function buildR2CeaPayloadEvm(
         data: '0x',
       });
     }
+  } else if (params.funds?.amount) {
+    // Funds-only transfer (no data, no value). Without this branch the CEA
+    // multicall is empty and the relayed funds sit in the CEA instead of
+    // being forwarded to the caller's recipient.
+    const token = (params.funds as { token: MoveableToken }).token;
+    if (token) {
+      if (token.mechanism === 'native') {
+        // Native funds (e.g. pETH → ETH): forward value to the recipient.
+        // Self-CEA is skipped — the gateway already deposits into the CEA.
+        if (targetAddress.toLowerCase() !== ceaAddress.toLowerCase()) {
+          ceaMulticalls.push({
+            to: targetAddress,
+            value: params.funds.amount,
+            data: '0x',
+          });
+        }
+      } else {
+        // ERC-20 funds: forward via ERC20.transfer from the CEA.
+        const erc20Transfer = encodeFunctionData({
+          abi: ERC20_EVM,
+          functionName: 'transfer',
+          args: [targetAddress, params.funds.amount],
+        });
+        ceaMulticalls.push({
+          to: token.address as `0x${string}`,
+          value: BigInt(0),
+          data: erc20Transfer,
+        });
+      }
+    }
   }
 
   return buildCeaMulticallPayload(ceaMulticalls);

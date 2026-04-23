@@ -28,10 +28,23 @@ const withTimestamp = (
   });
 };
 
+const ACRONYMS = new Set(['BNB']);
+
+const toTitleCase = (key: string): string =>
+  key
+    .split('_')
+    .map((part) =>
+      ACRONYMS.has(part)
+        ? part
+        : part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+    )
+    .join(' ');
+
 const friendlyChain = (chainOrNs: string | CHAIN | undefined): string => {
   if (!chainOrNs) return 'chain';
   const asString = String(chainOrNs);
-  return Utils.chains.getChainName(asString) ?? asString;
+  const key = Utils.chains.getChainName(asString);
+  return key ? toTitleCase(key) : asString;
 };
 
 /**

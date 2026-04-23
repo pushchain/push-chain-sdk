@@ -15,7 +15,7 @@ import { PROGRESS_HOOK } from '../progress-hook.types';
 // but deterministic strings. `friendlyChain` is used inside the code for
 // the `{ChainName}` title slot; `eip155:11155111` → `Ethereum Sepolia`.
 const targetChain = 'eip155:11155111';
-const chainName = 'ETHEREUM_SEPOLIA'; // friendlyChain(targetChain) returns the CHAIN enum key
+const chainName = 'Ethereum Sepolia'; // friendlyChain(targetChain) returns the human-readable chain name
 const targetAddress = '0x1111111111111111111111111111111111111111';
 const ueaAddr = '0x2222222222222222222222222222222222222222' as `0x${string}`;
 const ceaAddr = '0x3333333333333333333333333333333333333333';

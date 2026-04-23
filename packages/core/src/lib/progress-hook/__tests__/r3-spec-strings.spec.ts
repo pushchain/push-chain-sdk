@@ -19,9 +19,9 @@ import { PROGRESS_HOOK } from '../progress-hook.types';
 // Concrete values used for interpolation — chosen so that spec-style
 // placeholders (`{sourceChain}`, `{ueaAddr}`, etc.) resolve to readable
 // but deterministic strings. `friendlyChain` is used inside the code for
-// the `{Source Chain}` title slot; `eip155:11155111` → `ETHEREUM_SEPOLIA`.
+// the `{Source Chain}` title slot; `eip155:11155111` → `Ethereum Sepolia`.
 const sourceChain = 'eip155:11155111';
-const chainName = 'ETHEREUM_SEPOLIA'; // friendlyChain(sourceChain) returns the CHAIN enum key
+const chainName = 'Ethereum Sepolia'; // friendlyChain(sourceChain) returns the human-readable chain name
 const ceaAddress = '0x1111111111111111111111111111111111111111';
 const ueaAddr = '0x2222222222222222222222222222222222222222' as `0x${string}`;
 const txHash = '0xabcdef0123456789';
