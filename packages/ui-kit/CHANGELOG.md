@@ -1,3 +1,11 @@
+@pushchain/ui-kit@5.2.7 (2026-04-24)
+
+- release: bump to 5.2.6
+- release: bump to 5.2.5
+- release: bump to 5.2.4
+
+---
+
 @pushchain/ui-kit@5.2.3 (2026-04-20)
 
 - release: bump to 5.1.1
