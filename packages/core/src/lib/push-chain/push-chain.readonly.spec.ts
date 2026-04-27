@@ -10,6 +10,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { CHAIN } from '../constants/enums';
 import { CHAIN_INFO } from '../constants/chain';
+import { PreparedUniversalTx } from '../orchestrator/orchestrator.types';
 
 dotenv.config({ path: path.resolve(process.cwd(), 'packages/core/.env') }) ||
   dotenv.config({ path: path.resolve(__dirname, '../../.env') });
@@ -223,6 +224,14 @@ describe('Read Only Mode', () => {
       ).toThrow('Read only mode cannot call sendTransaction function');
     });
 
+    it('should throw error when calling executeTransactions on read-only EVM client', () => {
+      const mockPreparedTx = {} as PreparedUniversalTx;
+
+      expect(() =>
+        readOnlyPushClientEVM.universal.executeTransactions([mockPreparedTx])
+      ).toThrow('Read only mode cannot call executeTransactions function');
+    });
+
     it('should throw error when calling signTypedData on read-only EVM client', async () => {
       const typedData = {
         domain: {
@@ -272,6 +281,15 @@ describe('Read Only Mode', () => {
     it('should allow accessing static constants and utils on read-only client', () => {
       expect(PushChain.CONSTANTS).toBeDefined();
       expect(PushChain.utils).toBeDefined();
+    });
+
+    it('should allow calling prepareTransaction on read-only EVM client', async () => {
+      const prepared = await readOnlyPushClientEVM.universal.prepareTransaction({
+        to: '0x1234567890123456789012345678901234567890',
+        value: BigInt(0),
+        data: '0x',
+      });
+      expect(prepared).toBeDefined();
     });
   });
 

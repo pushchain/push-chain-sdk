@@ -31,10 +31,10 @@ import {
 // ============================================================================
 
 /** Initial wait before the first poll (ms). */
-export const OUTBOUND_INITIAL_WAIT_MS = 20000; // 20s
+export const OUTBOUND_INITIAL_WAIT_MS = 15000; // 15s
 
 /** Interval between consecutive polls (ms). */
-export const OUTBOUND_POLL_INTERVAL_MS = 5000; // 5s
+export const OUTBOUND_POLL_INTERVAL_MS = 3000; // 3s
 
 /** Maximum total timeout for the outbound polling loop (ms). */
 export const OUTBOUND_MAX_TIMEOUT_MS = 180000; // 180s (3 min)
@@ -165,7 +165,7 @@ async function verifyExternalEvmReceipt(
  * @internal Used by .wait() for outbound routes - not part of public API.
  * Uses polling with configurable initial wait, interval, and timeout.
  *
- * Default strategy: 30s initial wait, then poll every 5s, 120s total timeout.
+ * Default strategy: 15s initial wait, then poll every 3s, 180s total timeout.
  *
  * @param ctx - Orchestrator context
  * @param pushChainTxHash - The Push Chain transaction hash

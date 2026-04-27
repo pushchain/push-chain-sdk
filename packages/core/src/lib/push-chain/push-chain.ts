@@ -229,11 +229,6 @@ export class PushChain {
         return orchestrator.execute.bind(orchestrator)(...args);
       },
       prepareTransaction: (params: UniversalExecuteParams) => {
-        if (this.isReadMode) {
-          throw new Error(
-            'Read only mode cannot call prepareTransaction function'
-          );
-        }
         return orchestrator.prepareTransaction.bind(orchestrator)(params);
       },
       executeTransactions: async (txs: PreparedUniversalTx[]) => {

@@ -67,7 +67,7 @@ export async function waitForEvmConfirmationsWithCountdown(
       );
     }
 
-    await new Promise((r) => setTimeout(r, 12000));
+    await new Promise((r) => setTimeout(r, 3000));
   }
 }
 
@@ -175,7 +175,7 @@ export async function waitForLockerFeeConfirmation(
             `Timeout: fee-lock tx ${txHash} not confirmed with ${fastConfirmations} confirmations within ${timeout} ms`
           );
         }
-        await new Promise((r) => setTimeout(r, 12000));
+        await new Promise((r) => setTimeout(r, 3000));
       }
     }
 
