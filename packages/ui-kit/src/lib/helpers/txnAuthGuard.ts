@@ -81,6 +81,12 @@ export function createGuardedPushChain(
       if (p === "sendTransaction") {
         return wrapWrite(() => clientRef.current.universal.sendTransaction);
       }
+      if (p === "executeTransactions") {
+        return wrapWrite(() => clientRef.current.universal.executeTransactions);
+      }
+      if (p === "prepareTransaction") {
+        return wrapWrite(() => clientRef.current.universal.prepareTransaction);
+      }
       if (p === "signMessage") {
         return wrapWrite(() => clientRef.current.universal.signMessage);
       }

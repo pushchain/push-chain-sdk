@@ -97,11 +97,16 @@ export const usePushChainClient = (uid?: string) => {
         const intializeProps = {
           network: config.network,
 
-          progressHook: async (incoming: ProgressEvent) => {
-            if (!lockRef.current) {
-              showProgress(incoming);
-            } else {
-              queueRef.current.push(incoming);
+          progressHook: async (progress: ProgressEvent) => {
+            setProgress(progress);
+            if (
+              progress.id === PROGRESS_HOOK.SEND_TX_199_01 ||
+              progress.id === PROGRESS_HOOK.SEND_TX_299_01 ||
+              progress.id === PROGRESS_HOOK.SEND_TX_399_01 ||
+              progress.id === PROGRESS_HOOK.SEND_TX_999_01 ||
+              progress.id === PROGRESS_HOOK.UEA_MIG_9901
+            ) {
+              successTimerRef.current = setTimeout(() => setProgress(null), SUCCESS_HIDE_MS);
             }
           },
 
