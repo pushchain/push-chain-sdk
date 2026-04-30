@@ -42,8 +42,8 @@ export const OUTBOUND_MAX_TIMEOUT_MS = 180000; // 180s (3 min)
 /** Maximum total timeout for the R3 inbound round-trip polling loop (ms). */
 export const INBOUND_MAX_TIMEOUT_MS = 300000; // 300s (5 min) — covers R3 inbound latency on testnet
 
-/** Initial wait before the first inbound poll (ms). Set to 0 — the outbound just completed, so the indexer may already have the child UTX. */
-export const INBOUND_INITIAL_WAIT_MS = 0;
+/** Initial wait before the first inbound poll (ms). Validator observation + Push commit + indexer ingestion realistically take 15-25 s on testnet (esp. SVM source), so polling immediately just burns RPC on guaranteed-empty results. */
+export const INBOUND_INITIAL_WAIT_MS = 15000;
 
 // ============================================================================
 // Typed errors

@@ -1734,13 +1734,17 @@ export async function executeCeaToPushSvm(
   response.chain = sourceChain;
   const chainInfo = CHAIN_INFO[sourceChain];
   response.chainNamespace = `${VM_NAMESPACE[chainInfo.vm]}:${chainInfo.chainId}`;
-  // R3 SVM inbound round-trip tracking: enable only when funds flow back
-  // (drainAmount > 0). See the EVM executeCeaToPush note — child-utxId
-  // correlation uses the universal-tx-detector's deterministic derivation.
-  // NOTE: the detector is EVM-only today; SVM source-chain logs can't be
-  // decoded yet, so this branch will fall back to the (broken) cosmos
-  // search. Disable if SVM R3 tests start timing out in CI.
-  response._expectsInboundRoundTrip = drainAmount > BigInt(0);
+  // R3 SVM inbound round-trip tracking is disabled.
+  //
+  // For Route 3 SVM drains (rescue_funds-style flow, txType=RESCUE_FUNDS),
+  // empirical check on donut showed the keeper does NOT create a child
+  // universalTxId on Push for the Solana-side `UniversalTx(fromCEA=true)`
+  // log — the parent utxId's `outboundStatus=OBSERVED` is the terminal state.
+  // Polling for a deterministically-derived child id therefore never
+  // resolves, and the cosmos `inbound_tx_hash` text-search fallback also
+  // returns 0 hits. Receipts now resolve as soon as the Solana outbound is
+  // observed instead of timing out at 300s.
+  response._expectsInboundRoundTrip = false;
 
   return response;
 }

@@ -33,43 +33,22 @@ function logPrepared(label: string, p: PreparedUniversalTx) {
   console.log('  estimatedGas:', p.estimatedGas.toString());
   console.log('  deadline:', p.deadline.toString());
   console.log('  payload (first 66):', p.payload.slice(0, 66) + '...');
-  console.log(
-    '  _hop.ueaAddress:',
-    (p._hop as Record<string, unknown>).ueaAddress
-  );
+  console.log('  _hop.ueaAddress:', p._hop.ueaAddress);
   console.log(
     '  _hop.pushMulticalls:',
-    JSON.stringify((p._hop as Record<string, unknown>).pushMulticalls, bigintReplacer, 2)
+    JSON.stringify(p._hop.pushMulticalls, bigintReplacer, 2)
   );
-  if ((p._hop as Record<string, unknown>).ceaAddress) {
-    console.log(
-      '  _hop.ceaAddress:',
-      (p._hop as Record<string, unknown>).ceaAddress
-    );
+  if (p._hop.ceaAddress) {
+    console.log('  _hop.ceaAddress:', p._hop.ceaAddress);
   }
-  if ((p._hop as Record<string, unknown>).targetChain) {
-    console.log(
-      '  _hop.targetChain:',
-      (p._hop as Record<string, unknown>).targetChain
-    );
+  if (p._hop.targetChain) {
+    console.log('  _hop.targetChain:', p._hop.targetChain);
   }
-  if ((p._hop as Record<string, unknown>).prc20Token) {
-    console.log(
-      '  _hop.prc20Token:',
-      (p._hop as Record<string, unknown>).prc20Token
-    );
-    console.log(
-      '  _hop.burnAmount:',
-      String((p._hop as Record<string, unknown>).burnAmount)
-    );
-    console.log(
-      '  _hop.gasToken:',
-      (p._hop as Record<string, unknown>).gasToken
-    );
-    console.log(
-      '  _hop.gasFee:',
-      String((p._hop as Record<string, unknown>).gasFee)
-    );
+  if (p._hop.prc20Token) {
+    console.log('  _hop.prc20Token:', p._hop.prc20Token);
+    console.log('  _hop.burnAmount:', String(p._hop.burnAmount));
+    console.log('  _hop.gasToken:', p._hop.gasToken);
+    console.log('  _hop.gasFee:', String(p._hop.gasFee));
   }
   console.log(
     '  gatewayRequest:',
@@ -207,7 +186,7 @@ describe('prepareTransaction Push Native EOA Debug', () => {
       expect(prepared.route).toBe('UOA_TO_PUSH');
 
       // Sepolia signer should have a real UEA address (not the signer EOA)
-      const hopUea = (prepared._hop as Record<string, unknown>).ueaAddress;
+      const hopUea = prepared._hop.ueaAddress;
       console.log('  Sepolia ueaAddress:', hopUea);
       console.log('  Sepolia ueaAddress !== signer EOA:', hopUea !== sepoliaAccount);
     }, 30000);
@@ -232,8 +211,8 @@ describe('prepareTransaction Push Native EOA Debug', () => {
       expect(prepared.nonce).toBe(BigInt(0)); // Push native EOA uses nonce 0
 
       // For Push native EOA, ueaAddress = EOA address (valid — gateway doesn't check sender type)
-      const hopUea = (prepared._hop as Record<string, unknown>).ueaAddress;
-      const hopCea = (prepared._hop as Record<string, unknown>).ceaAddress;
+      const hopUea = prepared._hop.ueaAddress;
+      const hopCea = prepared._hop.ceaAddress;
       console.log('\n  ueaAddress (= Push EOA):', hopUea);
       console.log('  CEA derived from Push EOA:', hopCea);
     }, 60000);
@@ -255,10 +234,10 @@ describe('prepareTransaction Push Native EOA Debug', () => {
       logPrepared('Push Native — Route 2', pushPrepared);
       logPrepared('Sepolia — Route 2', sepoliaPrepared);
 
-      const pushCea = (pushPrepared._hop as Record<string, unknown>).ceaAddress;
-      const sepoliaCea = (sepoliaPrepared._hop as Record<string, unknown>).ceaAddress;
-      const pushUea = (pushPrepared._hop as Record<string, unknown>).ueaAddress;
-      const sepoliaUea = (sepoliaPrepared._hop as Record<string, unknown>).ueaAddress;
+      const pushCea = pushPrepared._hop.ceaAddress;
+      const sepoliaCea = sepoliaPrepared._hop.ceaAddress;
+      const pushUea = pushPrepared._hop.ueaAddress;
+      const sepoliaUea = sepoliaPrepared._hop.ueaAddress;
 
       console.log('\n--- Route 2 Side-by-Side ---');
       console.log('  Push ueaAddress (= EOA):', pushUea);

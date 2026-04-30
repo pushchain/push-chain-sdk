@@ -532,7 +532,7 @@ describe('Account Conversion Utilities', () => {
       );
 
       expect(result.address).toBe(pushAddress);
-      expect(result.deployed).toBe(false);
+      expect(result.deployed).toBeNull();
     });
 
     it('should check deployment for Push Chain account without skipNetworkCheck', async () => {
@@ -622,15 +622,15 @@ describe('Account Conversion Utilities', () => {
       expect(new Set(addresses).size).toBe(4);
     }, 60000);
 
-    it('should throw for unsupported CEA chain (Solana has no CEAFactory)', async () => {
+    it('should return SVM CEA (PDA) for Solana target', async () => {
       if (skipPush) return;
 
-      await expect(
-        deriveExecutorAccount(
-          { chain: CHAIN.PUSH_TESTNET_DONUT, address: pushAddress },
-          { chain: CHAIN.SOLANA_DEVNET },
-        )
-      ).rejects.toThrow();
+      const result = await deriveExecutorAccount(
+        { chain: CHAIN.PUSH_TESTNET_DONUT, address: pushAddress },
+        { chain: CHAIN.SOLANA_DEVNET },
+      );
+
+      expect(result.address).toMatch(/^0x[a-fA-F0-9]{64}$/);
     }, 30000);
 
     it('should respect skipNetworkCheck on CEA derivation', async () => {
@@ -642,7 +642,7 @@ describe('Account Conversion Utilities', () => {
       );
 
       expect(result.address).toMatch(/^0x[a-fA-F0-9]{40}$/);
-      expect(result.deployed).toBe(false);
+      expect(result.deployed).toBeNull();
     }, 30000);
   });
 

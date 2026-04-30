@@ -600,7 +600,7 @@ export function deriveSvmCeaPda(
  *
  * @param account - UniversalAccount with chain and address.
  * @param options.chain - Target external chain for CEA derivation. If omitted, returns UEA.
- * @param options.skipNetworkCheck - If true, skip deployment check and return deployed: false.
+ * @param options.skipNetworkCheck - If true, skip deployment check and return deployed: null.
  * @returns The derived executor account address and deployment status.
  */
 export async function deriveExecutorAccount(

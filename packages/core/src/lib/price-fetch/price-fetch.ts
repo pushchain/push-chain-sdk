@@ -70,11 +70,35 @@ export class PriceFetch {
 
         const program = new Program(FEE_LOCKER_SVM, provider);
 
-        const result = await program.methods['getSolPrice']()
-          .accounts({
-            priceUpdate: PRICE_ACCOUNT,
-          })
-          .view();
+        let result: { price?: BN } | undefined;
+        try {
+          result = await program.methods['getSolPrice']()
+            .accounts({
+              priceUpdate: PRICE_ACCOUNT,
+            })
+            .view();
+        } catch (err) {
+          const e = err as {
+            message?: string;
+            logs?: string[];
+            simulationResponse?: unknown;
+            programErrorStack?: unknown;
+          };
+          console.error('[price-fetch][SVM getSolPrice] FAILED');
+          console.error('  rpc:', rpcUrls[0]);
+          console.error('  locker:', lockerContract);
+          console.error('  priceAccount:', PRICE_ACCOUNT.toBase58());
+          console.error('  message:', e?.message);
+          if (e?.logs) console.error('  logs:', e.logs);
+          if (e?.simulationResponse)
+            console.error(
+              '  simulationResponse:',
+              JSON.stringify(e.simulationResponse, null, 2)
+            );
+          if (e?.programErrorStack)
+            console.error('  programErrorStack:', e.programErrorStack);
+          throw err;
+        }
 
         if (!result || !result.price) {
           throw new Error('Invalid price data returned');

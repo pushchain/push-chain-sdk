@@ -109,7 +109,7 @@ describe('Route 3 progress-hook parity (live vs trackTransaction replay)', () =>
     expect(
       (terminalEvent.response as { phase?: string } | null)?.phase
     ).toBe('outbound');
-    expect(terminalEvent.title).toContain('BNB_TESTNET');
+    expect(terminalEvent.title).toContain('BNB Testnet');
 
     // --- trackTransaction replay ---------------------------------------
     const trackReplayEvents: ProgressEvent[] = [];

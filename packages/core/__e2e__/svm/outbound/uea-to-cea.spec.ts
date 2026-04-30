@@ -622,8 +622,8 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
 
       expect(prepared.route).toBe('UOA_TO_CEA');
       expect(prepared.payload).toBeDefined();
-      expect(typeof prepared.thenOn).toBe('function');
-      expect(typeof prepared.send).toBe('function');
+      expect(prepared.estimatedGas).toBeDefined();
+      expect(prepared.nonce).toBeDefined();
     }, 60000);
 
     it('should create chained builder from prepared SVM transactions', async () => {

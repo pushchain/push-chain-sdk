@@ -186,6 +186,21 @@ export async function resolveChildInboundsFromLogs(
           err instanceof Error ? err.message : String(err)
         }`
       );
+      // Cosmos lookup failed (commonly NotFound while the indexer is still
+      // catching up). The utxId is deterministically derived from the source
+      // log, so surface it as notFound rather than dropping the entry —
+      // otherwise callers like inbound-tracker repeatedly re-run the full
+      // detector pass instead of advancing to lightweight status polling.
+      out.push({
+        universalTxId: utxIdHex,
+        sourceLogIndex: log.logIndex,
+        sourceEventName: log.eventName,
+        status: 0,
+        statusName: STATUS_NAMES[0],
+        pcTxHashes: [],
+        outboundHashes: [],
+        notFound: true,
+      });
     }
   }
   return out;
