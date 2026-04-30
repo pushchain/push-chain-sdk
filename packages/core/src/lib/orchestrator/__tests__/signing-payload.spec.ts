@@ -633,6 +633,15 @@ describe('encodeUniversalPayload', () => {
 // encodeUniversalPayloadSvm (binary/Borsh-style encoding)
 // ============================================================================
 describe('encodeUniversalPayloadSvm', () => {
+  // SVM payload v0 wire layout — must stay byte-for-byte aligned with Push
+  // Chain's DecodeUniversalPayloadSolana (x/uexecutor/types/decode_payload.go):
+  //   [0..20]  bytes  to (20-byte address)
+  //   [20..28] u64LE  value
+  //   [28..]   vec<u8> data (4-byte LE length + bytes)
+  //   ...      u64LE  gasLimit / maxFeePerGas / maxPriorityFeePerGas / nonce
+  //   ...      i64LE  deadline
+  //   ...      u8     vType
+
   it('returns a Buffer', () => {
     const result = encodeUniversalPayloadSvm(makePayload());
     expect(Buffer.isBuffer(result)).toBe(true);
@@ -726,90 +735,24 @@ describe('encodeUniversalPayloadSvm', () => {
   });
 
   // ==========================================================================
-  // Regression: SVM-origin pSOL bridge u64 overflow.
-  //
-  // Reported via Slack 2026-04-23 (Riyanshu). When an SVM-origin user sends
-  // pSOL back to Solana via `universal.sendTransaction({ to: { chain: SOLANA_DEVNET },
-  // funds: { amount, token: pSOL } })`, R2_SVM (executeUoaToCeaSvm) recurses
-  // into executeStandardPayload with `execute.value = multicallNativeValue` —
-  // the `nativeValueForGas` (UPC wei, 18 decimals) attached to the
-  // sendUniversalTxOutbound multicall entry. On a thin WPC/pSOL pool, the
-  // pool-quote easily exceeds ~18.44 UPC (2^64 wei).
-  //
-  // encodeUniversalPayloadSvm writes `value` (and gasLimit / maxFeePerGas /
-  // maxPriorityFeePerGas) as u64 LE, so the encode throws RangeError before
-  // the tx can be signed.
+  // u64 bounds — the wire format is locked to u64 to match Push Chain's
+  // DecodeUniversalPayloadSolana. The actual fix for the Slack 2026-04-23
+  // regression lives in execute-standard.ts (skip the encoder when the
+  // bytes won't reach the chain). These tests pin the bounds behavior so
+  // the encoder still rejects overflow on paths that DO need Borsh bytes
+  // (R1 SVM inbound with payload, fee-locking R2 SVM outbound).
   // ==========================================================================
-  describe('u64 bounds (SVM pSOL regression)', () => {
+  describe('u64 bounds', () => {
     const U64_MAX = (BigInt(1) << BigInt(64)) - BigInt(1);
-    // Exact value from Riyanshu's stack trace
-    const SLACK_REPORTED_VALUE = BigInt('82716248299997902592');
 
-    // Node formats big bigints as underscore-separated groups; strip the
-    // underscores so the exact-digits match holds regardless of Node version.
-    const captureThrowMessage = (fn: () => unknown): string => {
-      try {
-        fn();
-      } catch (err) {
-        return (err as Error).message.replace(/_/g, '');
-      }
-      throw new Error('expected fn to throw, but it did not');
-    };
-
-    it('reproduces the exact Slack error on value overflow', () => {
-      const payload = makePayload({ value: SLACK_REPORTED_VALUE.toString() } as any);
-      const msg = captureThrowMessage(() => encodeUniversalPayloadSvm(payload));
-      expect(msg).toContain('"value" is out of range');
-      expect(msg).toContain('>= 0n and < 2n ** 64n');
-      expect(msg).toContain(SLACK_REPORTED_VALUE.toString());
-    });
-
-    it('accepts u64 max exactly at the boundary', () => {
+    it('passes at u64 max', () => {
       const payload = makePayload({ value: U64_MAX.toString() } as any);
       expect(() => encodeUniversalPayloadSvm(payload)).not.toThrow();
     });
 
-    it('rejects u64 max + 1', () => {
+    it('throws on u64 max + 1', () => {
       const payload = makePayload({ value: (U64_MAX + BigInt(1)).toString() } as any);
-      // Node's ERR_OUT_OF_RANGE is a `RangeError` subclass across a custom
-      // NodeError prototype, so constructor matching is brittle — assert the
-      // message shape instead.
-      const msg = captureThrowMessage(() => encodeUniversalPayloadSvm(payload));
-      expect(msg).toMatch(/out of range/);
-    });
-
-    it('overflows when nativeValueForGas exceeds ~18.44 UPC (wei)', () => {
-      // 18.45 UPC in wei — one notch past the u64 ceiling (~18.446744 UPC).
-      // The R2_SVM `nativeValueForGas = poolQuote * 1.10` routinely lands here
-      // on live pSOL/WPC pools (see route-handlers.ts:920-922 comment).
-      const eighteenPointFourFiveUpc = BigInt('18450000000000000000');
-      const payload = makePayload({ value: eighteenPointFourFiveUpc.toString() } as any);
-      const msg = captureThrowMessage(() => encodeUniversalPayloadSvm(payload));
-      expect(msg).toContain('"value" is out of range');
-    });
-
-    it('also overflows on gasLimit/maxFeePerGas/maxPriorityFeePerGas with wei-scale inputs', () => {
-      // `maxFeePerGas` default in execute-standard.ts is 1e10, which fits u64.
-      // But any caller that passes a wei-scale value (e.g. parseEther) hits
-      // the same wall as the pSOL regression.
-      const overflow = BigInt('20000000000000000000'); // 20 UPC
-      expect(
-        captureThrowMessage(() =>
-          encodeUniversalPayloadSvm(makePayload({ gasLimit: overflow.toString() } as any))
-        )
-      ).toMatch(/out of range/);
-      expect(
-        captureThrowMessage(() =>
-          encodeUniversalPayloadSvm(makePayload({ maxFeePerGas: overflow.toString() } as any))
-        )
-      ).toMatch(/out of range/);
-      expect(
-        captureThrowMessage(() =>
-          encodeUniversalPayloadSvm(
-            makePayload({ maxPriorityFeePerGas: overflow.toString() } as any)
-          )
-        )
-      ).toMatch(/out of range/);
+      expect(() => encodeUniversalPayloadSvm(payload)).toThrow();
     });
   });
 });

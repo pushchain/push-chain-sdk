@@ -89,6 +89,33 @@ function encodePayloadForOrigin(
   return encodeUniversalPayload(payload);
 }
 
+/**
+ * Lazy variant of `encodePayloadForOrigin`. The encoded bytes only ride to
+ * the chain on the fee-locking branch (consumed by `lockFee` → origin
+ * gateway → relayer → `DecodeUniversalPayloadSolana`). On the non-fee-
+ * locking branch the bytes are placed into `req` but `req` is never sent —
+ * `sendUniversalTx` ships the proto-struct UniversalPayload via
+ * `MsgExecutePayload` instead.
+ *
+ * Skipping the encode on the non-fee-locking branch sidesteps the SVM
+ * encoder's u64 ceiling for the R2 SVM outbound recursive seam (Slack
+ * 2026-04-23 regression), which sets `execute.value = multicallNativeValue`
+ * — a wei-scale UPC budget that routinely exceeds 2^64 on thin pSOL/WPC
+ * pools. The chain decoder is u64-only, so we can't widen the wire format
+ * without coordinated chain work; this skip is the SDK-only fix that
+ * unblocks Riyanshu's case without changing the wire format.
+ */
+function encodePayloadForOriginIfNeeded(
+  ctx: OrchestratorContext,
+  payload: UniversalPayload,
+  feeLockingRequired: boolean
+): `0x${string}` {
+  if (!feeLockingRequired) {
+    return '0x';
+  }
+  return encodePayloadForOrigin(ctx, payload);
+}
+
 export async function executeStandardPayload(
   ctx: OrchestratorContext,
   execute: ExecuteParams,
@@ -236,7 +263,7 @@ export async function executeStandardPayload(
     ) as UniversalPayload;
     req = buildUniversalTxRequest(ctx.universalSigner.account.address as `0x${string}`, {
       recipient: zeroAddress, token: zeroAddress, amount: BigInt(0),
-      payload: encodePayloadForOrigin(ctx, universalPayloadForReq),
+      payload: encodePayloadForOriginIfNeeded(ctx, universalPayloadForReq, feeLockingRequired),
     });
   } else {
     if (execute.to.toLowerCase() !== UEA.toLowerCase()) {
@@ -269,7 +296,7 @@ export async function executeStandardPayload(
         ) as UniversalPayload;
         req = buildUniversalTxRequest(ctx.universalSigner.account.address as `0x${string}`, {
           recipient: zeroAddress, token: zeroAddress, amount: BigInt(0),
-          payload: encodePayloadForOrigin(ctx, universalPayloadOther),
+          payload: encodePayloadForOriginIfNeeded(ctx, universalPayloadOther, feeLockingRequired),
         });
       }
     } else {
@@ -293,7 +320,7 @@ export async function executeStandardPayload(
       ) as UniversalPayload;
       req = buildUniversalTxRequest(ctx.universalSigner.account.address as `0x${string}`, {
         recipient: zeroAddress, token: zeroAddress, amount: BigInt(0),
-        payload: encodePayloadForOrigin(ctx, universalPayloadSelf),
+        payload: encodePayloadForOriginIfNeeded(ctx, universalPayloadSelf, feeLockingRequired),
       });
     }
   }
