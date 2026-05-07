@@ -135,6 +135,27 @@ describe('runPreflight', () => {
     expect((events[1].response as any).kind).toBe('PRC20');
   });
 
+  it('skips PRC-20 check when burnToken/burnAmount/prc20Balance are undefined (native value transfer)', () => {
+    // Mirrors the route-handler behaviour: when prc20Token === gasToken on a
+    // native value transfer, the route handler passes undefined to skip the
+    // PRC-20 pre-check (swapAndBurnGas mints+burns atomically from msg.value).
+    const { ctx, events } = makeCtx();
+    const result = runPreflight({
+      ctx,
+      ueaAddress: UEA,
+      ueaBalance: BigInt('1000000000000000000000'),
+      requiredValue: BigInt('1000000000000000000'),
+      gasReserve: BigInt(3e18),
+      pathTag: 'R2_SVM',
+      // burnToken / burnAmount / prc20Balance intentionally omitted
+    });
+    expect(result.ok).toBe(true);
+    // Only 1 hook fires — the native UPC check. PRC-20 path fully skipped.
+    expect(events).toHaveLength(1);
+    expect(events[0].id).toBe(PROGRESS_HOOK.SEND_TX_203_03);
+    expect((events[0].response as any).kind).toBe('NATIVE');
+  });
+
   it('PRC-20 sufficient + native sufficient → 203_03 INFO twice, no throw', () => {
     const { ctx, events } = makeCtx();
     const result = runPreflight({

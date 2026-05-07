@@ -863,7 +863,10 @@ export async function composeCascade(
 
         // Per-segment PRC-20 burn-balance pre-check (cascade R2-style segments
         // only — INBOUND_FROM_CEA segments are payload-only with totalBurnAmount=0
-        // per the 2026-03-19 fix). Skip MIGRATION (totalBurnAmount=0).
+        // per the 2026-03-19 fix). Skip MIGRATION (totalBurnAmount=0). Fires
+        // whenever burnAmount > 0 even when burn token equals gas token — the
+        // gateway's transferFrom happens BEFORE the gas swap, so user must
+        // pre-hold the burn amount.
         const segBurnAmount = segment.totalBurnAmount || BigInt(0);
         const segBurnToken = segment.prc20Token;
         if (segBurnAmount > BigInt(0) && segBurnToken && !isMigration) {

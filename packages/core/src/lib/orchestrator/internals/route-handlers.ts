@@ -648,7 +648,9 @@ export async function executeUoaToCea(
   // Pre-flight: throws InsufficientUEABalanceError when UEA cannot cover
   // (nativeValueForGas + gasReserve) or the PRC-20 burn amount. Replaces the
   // legacy silent-clamp that previously submitted under-funded swaps and
-  // bubbled up as Uniswap STF reverts.
+  // bubbled up as Uniswap STF reverts. PRC-20 check fires whenever
+  // burnAmount > 0 — user must pre-hold the burn token, even when it equals
+  // the gas token (the gateway does transferFrom BEFORE the gas swap).
   let prc20BalanceR2Evm: bigint | undefined;
   if (burnAmount > BigInt(0)) {
     prc20BalanceR2Evm = await ctx.pushClient.readContract<bigint>({
@@ -961,6 +963,12 @@ export async function executeUoaToCeaSvm(
   // (nativeValueForGas + SVM_GAS_RESERVE) or the PRC-20 burn amount.
   // Replaces the legacy silent-clamp that previously submitted under-funded
   // swaps and bubbled up as Uniswap STF reverts.
+  // PRC-20 burn-balance pre-check fires whenever `burnAmount > 0`, regardless
+  // of whether `prc20Token` happens to equal `gasToken`. The gateway's
+  // `sendUniversalTxOutbound` does `transferFrom(user, gateway, burnAmount)`
+  // BEFORE the gas swap, so user must pre-hold `burnAmount` of `prc20Token`
+  // even when it's the same asset as the gas token (verified empirically:
+  // EOA with 77k units of pSOL reverted on-chain when trying to burn 10M).
   let prc20BalanceR2Svm: bigint | undefined;
   if (burnAmount > BigInt(0)) {
     prc20BalanceR2Svm = await ctx.pushClient.readContract<bigint>({
