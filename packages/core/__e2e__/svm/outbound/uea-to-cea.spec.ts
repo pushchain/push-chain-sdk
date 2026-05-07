@@ -453,7 +453,7 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
             chain: CHAIN.SOLANA_DEVNET,
           },
           value: BigInt(10_000_000), // 0.01 SOL in lamports
-          gasLimit: BigInt(600_000), // Custom compute unit limit (must be >= per-chain base)
+          gasLimit: BigInt(2_000), // Custom compute unit limit (~2x SVM base of 960; exercises custom-CU path without ballooning the WPC/pSOL pool quote)
         };
 
         expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);

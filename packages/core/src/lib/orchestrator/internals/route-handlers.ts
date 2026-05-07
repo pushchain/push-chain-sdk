@@ -49,6 +49,7 @@ import {
   maybeFireSvmWarnThreshold,
   SVM_NATIVE_VALUE_WARN_THRESHOLD,
 } from './preflight';
+import { maybeBumpForCeaAtaRent } from './svm-rent';
 
 import { CHAIN_INFO, VM_NAMESPACE, UNIVERSAL_GATEWAY_ADDRESSES } from '../../constants/chain';
 import { CHAIN } from '../../constants/enums';
@@ -832,6 +833,24 @@ export async function executeUoaToCeaSvm(
   // gasLimit, it'll be derived from the gasFee/gasPrice response so the
   // on-chain record carries a non-zero compute budget the relay can use.
   let effectiveGasLimit = params.gasLimit ?? BigInt(0);
+
+  // Conditional CEA-ATA rent bump: when the SPL outbound's destination ATA
+  // does not yet exist on Solana, the gateway needs an extra ~2.04M lamports
+  // for ATA-create rent. The on-chain quote does NOT include this, so bump
+  // effectiveGasLimit BEFORE queryOutboundGasFee so the returned gasFee
+  // already covers the rent.
+  const splMintBase58 =
+    burnAmount > BigInt(0)
+      ? (params.funds as { token?: MoveableToken } | undefined)?.token?.address
+      : undefined;
+  effectiveGasLimit = await maybeBumpForCeaAtaRent({
+    ctx,
+    ueaAddress,
+    targetChain,
+    splMintBase58,
+    burnAmount,
+    effectiveGasLimit,
+  });
 
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_202_01, targetChain);

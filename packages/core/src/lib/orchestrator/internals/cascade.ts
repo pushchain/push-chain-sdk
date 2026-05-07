@@ -77,6 +77,7 @@ import {
   runPreflight,
   maybeFireSvmWarnThreshold,
 } from './preflight';
+import { maybeBumpForCeaAtaRent } from './svm-rent';
 import { InsufficientUEABalanceError } from './errors';
 import { fireProgressHook } from './context';
 
@@ -275,8 +276,24 @@ export async function buildHopDescriptor(
         let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let gasFee = BigInt(0);
         let sizing: GasSizingDecision | undefined;
+
+        // Conditional CEA-ATA rent bump (SPL-only). Mirrors single-route
+        // executeUoaToCeaSvm path. See svm-rent.ts for rationale.
+        const splMintBase58 =
+          burnAmount > BigInt(0)
+            ? (params.funds as { token?: MoveableToken } | undefined)?.token?.address
+            : undefined;
+        const effectiveGasLimit = await maybeBumpForCeaAtaRent({
+          ctx,
+          ueaAddress,
+          targetChain,
+          splMintBase58,
+          burnAmount,
+          effectiveGasLimit: gasLimit,
+        });
+
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-          const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, targetChain);
+          const result = await queryOutboundGasFee(ctx, prc20Token, effectiveGasLimit, targetChain);
           gasToken = result.gasToken;
           gasFee = result.gasFee;
           sizing = result.sizing;
