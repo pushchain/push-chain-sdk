@@ -166,3 +166,112 @@ describe('reconstructProgressEvents — cascade multichain replay', () => {
     expect((fail!.response as { failedAt: number }).failedAt).toBe(1);
   });
 });
+
+// =============================================================================
+// Single-route (R2 / R3) reconstruction — 203-03 pre-flight events
+// =============================================================================
+
+import { TransactionRoute } from '../route-detector';
+
+function makeR2Response(): UniversalTxResponse {
+  return {
+    ...makeResponse(),
+    route: TransactionRoute.UOA_TO_CEA,
+    chain: 'eip155:11155111',
+  } as unknown as UniversalTxResponse;
+}
+
+function makeR3Response(): UniversalTxResponse {
+  return {
+    ...makeResponse(),
+    route: TransactionRoute.CEA_TO_PUSH,
+    chain: 'eip155:11155111',
+  } as unknown as UniversalTxResponse;
+}
+
+function makeR2DataWithBurn(burnAmount: string): UniversalTxV2 {
+  return {
+    id: 'utxid',
+    pcTx: [],
+    outboundTx: [
+      {
+        destinationChain: 'eip155:11155111',
+        recipient: TARGET,
+        amount: burnAmount,
+        externalAssetAddr: '',
+        prc20AssetAddr: '',
+        sender: '',
+        payload: '0x',
+        gasLimit: '0',
+        txType: 0 as unknown as UniversalTxV2['outboundTx'][number]['txType'],
+        id: '',
+        outboundStatus: OutboundStatus.OBSERVED,
+        gasPrice: '0',
+        gasFee: '0',
+        refundSwapError: '',
+        gasToken: '',
+        abortReason: '',
+      },
+    ],
+    universalStatus: UniversalTxStatus.UNIVERSAL_TX_STATUS_UNSPECIFIED,
+  };
+}
+
+describe('reconstructProgressEvents — single-route R2 pre-flight reconstruction', () => {
+  it('reconstructs R2 stream with NATIVE 203-03 only (no funds.amount → no PRC-20 hook)', () => {
+    const data = makeR2DataWithBurn('0'); // no burn → no PRC-20 leg
+    const events = reconstructProgressEvents(makeR2Response(), data);
+    const ids = events.map((e) => e.id);
+
+    // Must include the new pre-flight info hook between 203-02 and 204-01.
+    expect(ids).toContain('SEND-TX-203-03');
+    const idx203_03 = ids.indexOf('SEND-TX-203-03');
+    expect(ids.indexOf('SEND-TX-203-02')).toBeLessThan(idx203_03);
+    expect(idx203_03).toBeLessThan(ids.indexOf('SEND-TX-204-01'));
+
+    // Without funds.amount, only ONE 203-03 (NATIVE) — no PRC-20 hook.
+    const count203_03 = ids.filter((id) => id === 'SEND-TX-203-03').length;
+    expect(count203_03).toBe(1);
+
+    // The single 203-03 carries kind: 'NATIVE'.
+    const e = events.find((ev) => ev.id === 'SEND-TX-203-03')!;
+    expect((e.response as { kind: string }).kind).toBe('NATIVE');
+  });
+
+  it('reconstructs R2 stream with both PRC-20 and NATIVE 203-03 when funds.amount > 0', () => {
+    const data = makeR2DataWithBurn('100'); // burnAmount > 0 → user supplied funds
+    const events = reconstructProgressEvents(makeR2Response(), data);
+    const ids = events.map((e) => e.id);
+
+    // Two 203-03 events: PRC-20 first, then NATIVE.
+    const indices203_03 = ids.reduce<number[]>((acc, id, i) => {
+      if (id === 'SEND-TX-203-03') acc.push(i);
+      return acc;
+    }, []);
+    expect(indices203_03.length).toBe(2);
+
+    // The two 203-03 events have PRC-20 and NATIVE kinds in that order.
+    const evs203_03 = events.filter((ev) => ev.id === 'SEND-TX-203-03');
+    expect((evs203_03[0].response as { kind: string }).kind).toBe('PRC20');
+    expect((evs203_03[1].response as { kind: string }).kind).toBe('NATIVE');
+  });
+});
+
+describe('reconstructProgressEvents — single-route R3 pre-flight reconstruction', () => {
+  it('reconstructs R3 stream with single NATIVE 203-03 (R3 has burnAmount=0)', () => {
+    const data = makeR2DataWithBurn('0');
+    const events = reconstructProgressEvents(makeR3Response(), data);
+    const ids = events.map((e) => e.id);
+
+    // 203-03 between 303-02 and 304-01.
+    expect(ids).toContain('SEND-TX-203-03');
+    expect(ids.indexOf('SEND-TX-303-02')).toBeLessThan(ids.indexOf('SEND-TX-203-03'));
+    expect(ids.indexOf('SEND-TX-203-03')).toBeLessThan(ids.indexOf('SEND-TX-304-01'));
+
+    // R3 always emits ONE 203-03 (NATIVE only — burnAmount=0).
+    const count = ids.filter((id) => id === 'SEND-TX-203-03').length;
+    expect(count).toBe(1);
+    const e = events.find((ev) => ev.id === 'SEND-TX-203-03')!;
+    expect((e.response as { kind: string }).kind).toBe('NATIVE');
+  });
+});

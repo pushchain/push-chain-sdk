@@ -48,6 +48,16 @@ const friendlyChain = (chainOrNs: string | CHAIN | undefined): string => {
 };
 
 /**
+ * Format a wei-denominated UPC bigint as a human-readable PC string for use
+ * in progress-hook `message` fields. Used by the pre-flight hooks
+ * (203-03/04/05 + 003-03/04/05) so consumers see "956.7834 PC" instead of
+ * "956783432238079848707 wei UPC". Response payload bigints are NOT
+ * transformed — programmatic consumers still get raw wei.
+ */
+const formatPC = (wei: bigint, precision = 4): string =>
+  `${Utils.helpers.formatUnits(wei, { decimals: 18, precision })} PC`;
+
+/**
  * Shape of the `response` field emitted by `SEND_TX_104_04` (R1),
  * `SEND_TX_204_04` (R2), and `SEND_TX_304_04` (R3). Exported so consumers
  * can read `isUserDecline` without casting through `object`.
@@ -343,11 +353,22 @@ const RAW_HOOKS_R1: {
       level: 'SUCCESS',
     };
   },
-  [PROGRESS_HOOK.SEND_TX_199_02]: (errMessage: string) => ({
+  [PROGRESS_HOOK.SEND_TX_199_02]: (
+    errMessage: string,
+    decodedError?: {
+      name?: string;
+      hint?: string;
+      selector?: string;
+      decoded?: string;
+    }
+  ) => ({
     id: PROGRESS_HOOK.SEND_TX_199_02,
     title: 'Push Chain Tx Failed',
     message: errMessage,
-    response: { error: errMessage },
+    response: {
+      error: errMessage,
+      ...(decodedError ? { decodedError } : {}),
+    },
     level: 'ERROR',
   }),
 };
@@ -410,6 +431,82 @@ const RAW_HOOKS_R2: {
     message: `UEA: ${ueaAddr}. CEA: ${ceaAddr} on ${targetChain}. Deployed: ${deployed}`,
     response: { uea: ueaAddr, cea: ceaAddr, chain: targetChain, deployed },
     level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.SEND_TX_203_03]: (
+    required: bigint,
+    available: bigint,
+    sufficient: boolean,
+    ueaAddress: `0x${string}`,
+    pathTag: string,
+    extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
+  ) => {
+    const kind = extra?.kind ?? 'NATIVE';
+    const availableStr = kind === 'PRC20' ? `${available} units` : formatPC(available);
+    const requiredStr = kind === 'PRC20' ? `${required} units` : formatPC(required);
+    return {
+      id: PROGRESS_HOOK.SEND_TX_203_03,
+      title: 'Pre-flight Balance Check',
+      message:
+        `UEA balance: ${availableStr}; required: ${requiredStr}; ` +
+        `${sufficient ? 'sufficient' : 'INSUFFICIENT'} (${pathTag})`,
+      response: {
+        required,
+        available,
+        sufficient,
+        ueaAddress,
+        pathTag,
+        kind,
+        burnToken: extra?.burnToken ?? null,
+        segmentIndex: extra?.segmentIndex ?? null,
+      },
+      level: sufficient ? 'INFO' : 'ERROR',
+    };
+  },
+  [PROGRESS_HOOK.SEND_TX_203_04]: (
+    required: bigint,
+    available: bigint,
+    shortfall: bigint,
+    ueaAddress: `0x${string}`,
+    pathTag: string,
+    extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
+  ) => {
+    const kind = extra?.kind ?? 'NATIVE';
+    const shortfallStr = kind === 'PRC20' ? `${shortfall} units` : formatPC(shortfall);
+    const remediation =
+      kind === 'PRC20'
+        ? `Bridge the burn token (${extra?.burnToken ?? 'PRC-20'}) to UEA ${ueaAddress} before retrying.`
+        : `Bridge >=${shortfallStr} to UEA ${ueaAddress} before retrying.`;
+    return {
+      id: PROGRESS_HOOK.SEND_TX_203_04,
+      title: 'Insufficient UEA Balance',
+      message: `Shortfall ${shortfallStr} on ${pathTag}. ${remediation}`,
+      response: {
+        required,
+        available,
+        shortfall,
+        ueaAddress,
+        pathTag,
+        kind,
+        burnToken: extra?.burnToken ?? null,
+        segmentIndex: extra?.segmentIndex ?? null,
+      },
+      level: 'ERROR',
+    };
+  },
+  [PROGRESS_HOOK.SEND_TX_203_05]: (
+    quoted: bigint,
+    threshold: bigint,
+    gasToken: `0x${string}`,
+    pathTag: string
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_203_05,
+    title: 'SVM Native-Value Warn Threshold',
+    message:
+      `Buffered pool quote ${formatPC(quoted)} exceeds warn threshold ${formatPC(threshold)} ` +
+      `for ${gasToken} (${pathTag}). Pool may be skewed or quote is unusually large. ` +
+      `No action taken — pre-flight will determine if balance covers it.`,
+    response: { quoted, threshold, gasToken, pathTag },
+    level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_204_01]: () => ({
     id: PROGRESS_HOOK.SEND_TX_204_01,
@@ -479,12 +576,22 @@ const RAW_HOOKS_R2: {
   }),
   [PROGRESS_HOOK.SEND_TX_299_02]: (
     targetChain: string | CHAIN,
-    errorMessage: string
+    errorMessage: string,
+    decodedError?: {
+      name?: string;
+      hint?: string;
+      selector?: string;
+      decoded?: string;
+    }
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_299_02,
     title: `${friendlyChain(targetChain)} Tx Failed`,
     message: errorMessage,
-    response: { error: errorMessage, chain: targetChain },
+    response: {
+      error: errorMessage,
+      chain: targetChain,
+      ...(decodedError ? { decodedError } : {}),
+    },
     level: 'ERROR',
   }),
   [PROGRESS_HOOK.SEND_TX_299_03]: (
@@ -717,7 +824,13 @@ const RAW_HOOKS_R3: {
   [PROGRESS_HOOK.SEND_TX_399_02]: (
     errorMessage: string,
     phase: 'outbound' | 'inbound' | 'push' = 'inbound',
-    chain?: string | CHAIN
+    chain?: string | CHAIN,
+    decodedError?: {
+      name?: string;
+      hint?: string;
+      selector?: string;
+      decoded?: string;
+    }
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_399_02,
     title:
@@ -727,7 +840,12 @@ const RAW_HOOKS_R3: {
         ? 'Push Chain Tx Failed'
         : 'Push Chain Inbound Tx Failed',
     message: errorMessage,
-    response: { error: errorMessage, phase, chain: chain ?? null },
+    response: {
+      error: errorMessage,
+      phase,
+      chain: chain ?? null,
+      ...(decodedError ? { decodedError } : {}),
+    },
     level: 'ERROR',
   }),
   [PROGRESS_HOOK.SEND_TX_399_03]: (
@@ -845,6 +963,86 @@ const RAW_HOOKS_MULTICHAIN: {
     title: `Intermediate Transaction #${n}/${total} Complete`,
     message: `Tx ${n} of ${total} confirmed — proceeding to tx ${n + 1}`,
     response: { n, total },
+    level: 'INFO',
+  }),
+  // Cascade pre-flight balance check. Mirrors SEND_TX_203_03 from the
+  // single-route bucket but lives in the cascade 0xx range so cascade
+  // streams remain self-consistent. `runPreflight` switches between
+  // 203-xx and 003-xx based on pathTag === 'CASCADE'.
+  [PROGRESS_HOOK.SEND_TX_003_03]: (
+    required: bigint,
+    available: bigint,
+    sufficient: boolean,
+    ueaAddress: `0x${string}`,
+    pathTag: string,
+    extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
+  ) => {
+    const kind = extra?.kind ?? 'NATIVE';
+    const availableStr = kind === 'PRC20' ? `${available} units` : formatPC(available);
+    const requiredStr = kind === 'PRC20' ? `${required} units` : formatPC(required);
+    return {
+      id: PROGRESS_HOOK.SEND_TX_003_03,
+      title: 'Cascade Pre-flight Balance Check',
+      message:
+        `UEA balance: ${availableStr}; required: ${requiredStr}; ` +
+        `${sufficient ? 'sufficient' : 'INSUFFICIENT'} (${pathTag})`,
+      response: {
+        required,
+        available,
+        sufficient,
+        ueaAddress,
+        pathTag,
+        kind,
+        burnToken: extra?.burnToken ?? null,
+        segmentIndex: extra?.segmentIndex ?? null,
+      },
+      level: sufficient ? 'INFO' : 'ERROR',
+    };
+  },
+  [PROGRESS_HOOK.SEND_TX_003_04]: (
+    required: bigint,
+    available: bigint,
+    shortfall: bigint,
+    ueaAddress: `0x${string}`,
+    pathTag: string,
+    extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
+  ) => {
+    const kind = extra?.kind ?? 'NATIVE';
+    const shortfallStr = kind === 'PRC20' ? `${shortfall} units` : formatPC(shortfall);
+    const remediation =
+      kind === 'PRC20'
+        ? `Bridge the burn token (${extra?.burnToken ?? 'PRC-20'}) to UEA ${ueaAddress} before retrying.`
+        : `Bridge >=${shortfallStr} to UEA ${ueaAddress} before retrying.`;
+    return {
+      id: PROGRESS_HOOK.SEND_TX_003_04,
+      title: 'Cascade Insufficient UEA Balance',
+      message: `Shortfall ${shortfallStr} on ${pathTag}. ${remediation}`,
+      response: {
+        required,
+        available,
+        shortfall,
+        ueaAddress,
+        pathTag,
+        kind,
+        burnToken: extra?.burnToken ?? null,
+        segmentIndex: extra?.segmentIndex ?? null,
+      },
+      level: 'ERROR',
+    };
+  },
+  [PROGRESS_HOOK.SEND_TX_003_05]: (
+    quoted: bigint,
+    threshold: bigint,
+    gasToken: `0x${string}`,
+    pathTag: string
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_003_05,
+    title: 'Cascade SVM Native-Value Warn Threshold',
+    message:
+      `Buffered pool quote ${formatPC(quoted)} exceeds warn threshold ${formatPC(threshold)} ` +
+      `for ${gasToken} (${pathTag}). Pool may be skewed or quote is unusually large. ` +
+      `No action taken — pre-flight will determine if balance covers it.`,
+    response: { quoted, threshold, gasToken, pathTag },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_999_01]: (hopCount: number) => ({

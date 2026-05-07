@@ -194,6 +194,36 @@ function reconstructR2(
       true
     )
   );
+  // Pre-flight reconstruction. Live R2 fires SEND_TX_203_03 once for PRC-20
+  // (when funds.amount > 0) and once for native — but historical chain data
+  // doesn't preserve the pre-flight values. Emit the native check unconditionally
+  // (every R2 outbound has one) and a second copy when the recorded outbound
+  // had a non-zero burn amount (proxy for "user supplied funds.amount > 0").
+  // Values are zero-placeholders matching the existing 202-02 pattern.
+  const ueaFrom = universalTxResponse.from as `0x${string}`;
+  const burnAmount = BigInt(universalTxData?.outboundTx?.[0]?.amount ?? '0');
+  if (burnAmount > BigInt(0)) {
+    events.push(
+      PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_203_03](
+        BigInt(0),
+        BigInt(0),
+        true,
+        ueaFrom,
+        'R2_EVM',
+        { kind: 'PRC20' }
+      )
+    );
+  }
+  events.push(
+    PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_203_03](
+      BigInt(0),
+      BigInt(0),
+      true,
+      ueaFrom,
+      'R2_EVM',
+      { kind: 'NATIVE' }
+    )
+  );
   events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_204_01]());
   events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_204_02]());
   events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_204_03]());
@@ -237,6 +267,18 @@ function reconstructR3(
       universalTxResponse.from as `0x${string}`,
       ceaAddress,
       sourceChain
+    )
+  );
+  // R3 pre-flight reconstruction — R3 EVM burnAmount=0, R3 SVM burnAmount=0
+  // (post-fix). Only the NATIVE pre-flight check fires; no PRC-20 second hook.
+  events.push(
+    PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_203_03](
+      BigInt(0),
+      BigInt(0),
+      true,
+      universalTxResponse.from as `0x${string}`,
+      'R3_EVM',
+      { kind: 'NATIVE' }
     )
   );
   events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_304_01]());

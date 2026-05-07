@@ -73,6 +73,13 @@ import { pickWaitHooks } from './progress-route-hooks';
 import PROGRESS_HOOKS from '../../progress-hook/progress-hook';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import { buildSvmPayloadFromParams } from '../svm-idl/build-payload';
+import {
+  runPreflight,
+  maybeFireSvmWarnThreshold,
+} from './preflight';
+import { maybeBumpForCeaAtaRent } from './svm-rent';
+import { InsufficientUEABalanceError } from './errors';
+import { fireProgressHook } from './context';
 
 // ============================================================================
 // Callback interfaces
@@ -89,6 +96,39 @@ export interface CascadeCallbacks {
     hops: CascadeHopInfo[],
     opts: any
   ) => Promise<{ success: boolean; failedAt?: number }>;
+}
+
+// ============================================================================
+// dispatchCascadeProgressEvent
+// ============================================================================
+
+/**
+ * Fan out a cascade progress event to up to two listeners with dedup.
+ *
+ * The two listener slots are:
+ *   - `primary`: explicit `eventHook` from CascadeTrackOptions (passed at call
+ *     time to `waitForAll` / `wait`).
+ *   - `secondary`: init-time `ctx.progressHook` from PushChain.initialize.
+ *
+ * Both may be undefined; if both reference the same function we invoke once.
+ * Events with an empty `id` (the no-op sentinel returned by pickWaitHooks for
+ * R4/unknown routes) are dropped so consumers don't see placeholder frames.
+ *
+ * Exported for unit testing. Production code calls this from the
+ * `emitHopEvent` closure inside `createCascadedBuilder.waitForAll`.
+ */
+export function dispatchCascadeProgressEvent(
+  event: import('../../progress-hook/progress-hook.types').ProgressEvent,
+  primary?: (
+    e: import('../../progress-hook/progress-hook.types').ProgressEvent
+  ) => void,
+  secondary?: (
+    e: import('../../progress-hook/progress-hook.types').ProgressEvent
+  ) => void
+): void {
+  if (!event.id) return;
+  if (primary) primary(event);
+  if (secondary && secondary !== primary) secondary(event);
 }
 
 // ============================================================================
@@ -236,8 +276,24 @@ export async function buildHopDescriptor(
         let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let gasFee = BigInt(0);
         let sizing: GasSizingDecision | undefined;
+
+        // Conditional CEA-ATA rent bump (SPL-only). Mirrors single-route
+        // executeUoaToCeaSvm path. See svm-rent.ts for rationale.
+        const splMintBase58 =
+          burnAmount > BigInt(0)
+            ? (params.funds as { token?: MoveableToken } | undefined)?.token?.address
+            : undefined;
+        const effectiveGasLimit = await maybeBumpForCeaAtaRent({
+          ctx,
+          ueaAddress,
+          targetChain,
+          splMintBase58,
+          burnAmount,
+          effectiveGasLimit: gasLimit,
+        });
+
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-          const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, targetChain);
+          const result = await queryOutboundGasFee(ctx, prc20Token, effectiveGasLimit, targetChain);
           gasToken = result.gasToken;
           gasFee = result.gasFee;
           sizing = result.sizing;
@@ -689,6 +745,33 @@ export async function composeCascade(
     (s) => s.type !== 'PUSH_EXECUTION'
   ).length;
   const CASCADE_GAS_RESERVE = BigInt(3e18); // 3 PC reserve for gas costs
+
+  // Cascade pre-flight: catches the zero-balance silent-segment-zero failure
+  // mode. When `ueaBalance <= CASCADE_GAS_RESERVE`, `perOutboundNativeValue`
+  // is left undefined and downstream segments silently allocate value=0,
+  // producing under-funded swaps that revert inside Uniswap. Throw early
+  // with a structured error so the caller knows which path / hop failed.
+  // Honor the per-call opt-out from the first non-PUSH segment (segments share
+  // the same UniversalExecuteParams.options.allowUnderfundedSwap shape).
+  const firstOutboundSegment = segments.find(
+    (s) => s.type !== 'PUSH_EXECUTION'
+  );
+  const cascadeAllowUnderfunded =
+    firstOutboundSegment?.hops?.[0]?.params?.options?.allowUnderfundedSwap ===
+    true;
+  if (numOutbounds > 0) {
+    runPreflight({
+      ctx,
+      ueaAddress,
+      ueaBalance: ueaBalance ?? BigInt(0),
+      // Required = at least one wei of allocatable PC after reserve. The
+      // per-segment min-swap check below catches finer-grained shortfalls.
+      requiredValue: BigInt(1),
+      gasReserve: CASCADE_GAS_RESERVE,
+      pathTag: 'CASCADE',
+      allowUnderfundedSwap: cascadeAllowUnderfunded,
+    });
+  }
   let perOutboundNativeValue: bigint | undefined;
   if (ueaBalance && numOutbounds > 0 && ueaBalance > CASCADE_GAS_RESERVE) {
     perOutboundNativeValue =
@@ -732,6 +815,9 @@ export async function composeCascade(
     const perSvmCap = svmTotal / BigInt(svmSegments.length);
     const UNCAPPED_BALANCE = BigInt(1e30); // effectively disable estimator's internal cap
     for (const seg of svmSegments) {
+      // Cascade-level segment index (position in `segments`, not in `svmSegments`)
+      // so the error's `segmentIndex` lines up with what the caller sees.
+      const cascadeIdx = segments.indexOf(seg);
       const estimated = await estimateNativeValueForSwap(
         ctx,
         universalCoreAddress,
@@ -739,19 +825,74 @@ export async function composeCascade(
         seg.gasFee as bigint,
         UNCAPPED_BALANCE
       );
+      // SVM warn-threshold telemetry (no truncation — pre-flight handles drain protection).
+      maybeFireSvmWarnThreshold(
+        ctx,
+        estimated,
+        seg.gasToken as `0x${string}`,
+        'CASCADE'
+      );
       const flat = perOutboundNativeValue ?? BigInt(0);
       let value = estimated > flat ? estimated : flat;
       if (perSvmCap > BigInt(0) && value > perSvmCap) value = perSvmCap;
+      // Upward-allocation ceiling (mirrors R3 SVM Fix #4 in route-handlers.ts:1690).
+      // When UEA balance is huge, the flat split or perSvmCap can produce a value
+      // far above what the swap actually needs. Submitting that into a Uniswap
+      // pool moves the price for other users. Cap at max(200 PC, 5×estimated):
+      //   - fair pool (estimated ≈ 100 PC): cap = 500 PC → caps voluntary excess
+      //   - skewed pool (estimated > 200 PC): cap = 5×estimated → still allows
+      //     pool-skew margin; min-swap check below still fires if value < estimated
+      // The contract still refunds excess via swapAndBurnGas, so this is purely
+      // a guard against submitting wasteful msg.value to fair-priced pools.
+      const UPWARD_BASE_CEILING_CASCADE_SVM = BigInt(200) * BigInt(1e18);
+      const upwardCeilingCascadeSvm =
+        estimated * BigInt(5) > UPWARD_BASE_CEILING_CASCADE_SVM
+          ? estimated * BigInt(5)
+          : UPWARD_BASE_CEILING_CASCADE_SVM;
+      if (value > upwardCeilingCascadeSvm) {
+        printLog(
+          ctx,
+          `composeCascade — SVM outbound to ${seg.hops[0]?.targetChain}: capping value from ${value} to upwardCeiling=${upwardCeilingCascadeSvm} (pool quote=${estimated})`
+        );
+        value = upwardCeilingCascadeSvm;
+      }
       printLog(
         ctx,
-        `composeCascade — SVM outbound to ${seg.hops[0]?.targetChain}: gasFee=${seg.gasFee}, estimatedWpc=${estimated}, flat=${flat}, perSvmCap=${perSvmCap}, chosen=${value}`
+        `composeCascade — SVM outbound to ${seg.hops[0]?.targetChain}: gasFee=${seg.gasFee}, estimatedWpc=${estimated}, flat=${flat}, perSvmCap=${perSvmCap}, upwardCeiling=${upwardCeilingCascadeSvm}, chosen=${value}`
       );
+      // Per-segment minimum-viable-swap check: if the chosen `value` is below
+      // the live pool quote (`estimated`), the cap squeezed the budget below
+      // what the swap actually needs and the segment will revert inside
+      // Uniswap with STF. Throw cleanly with `segmentIndex` so the caller
+      // knows which hop's pool is misbehaving.
+      if (estimated > BigInt(0) && value < estimated && !cascadeAllowUnderfunded) {
+        const shortfall = estimated - value;
+        fireProgressHook(
+          ctx,
+          PROGRESS_HOOK.SEND_TX_003_04,
+          estimated,
+          value,
+          shortfall,
+          ueaAddress,
+          'CASCADE',
+          { kind: 'NATIVE', segmentIndex: cascadeIdx }
+        );
+        throw new InsufficientUEABalanceError({
+          required: estimated,
+          available: value,
+          shortfall,
+          ueaAddress,
+          pathTag: 'CASCADE',
+          reason: 'NATIVE',
+          segmentIndex: cascadeIdx,
+        });
+      }
       svmNativeValueBySegment.set(seg, value);
     }
   }
 
-  for (let i = segments.length - 1; i >= 0; i--) {
-    const segment = segments[i];
+  for (let segIdxLoop = segments.length - 1; segIdxLoop >= 0; segIdxLoop--) {
+    const segment = segments[segIdxLoop];
 
     switch (segment.type) {
       case 'PUSH_EXECUTION': {
@@ -789,6 +930,57 @@ export async function composeCascade(
           );
           // Get CEA address from the first hop
           targetForOutbound = firstHop?.ceaAddress || ueaAddress;
+        }
+
+        // Per-segment PRC-20 burn-balance pre-check (cascade R2-style segments
+        // only — INBOUND_FROM_CEA segments are payload-only with totalBurnAmount=0
+        // per the 2026-03-19 fix). Skip MIGRATION (totalBurnAmount=0). Fires
+        // whenever burnAmount > 0 even when burn token equals gas token — the
+        // gateway's transferFrom happens BEFORE the gas swap, so user must
+        // pre-hold the burn amount.
+        const segBurnAmount = segment.totalBurnAmount || BigInt(0);
+        const segBurnToken = segment.prc20Token;
+        if (segBurnAmount > BigInt(0) && segBurnToken && !isMigration) {
+          const onHand = await ctx.pushClient.readContract<bigint>({
+            address: segBurnToken,
+            abi: ERC20_EVM,
+            functionName: 'balanceOf',
+            args: [ueaAddress],
+          });
+          const sufficient = onHand >= segBurnAmount;
+          fireProgressHook(
+            ctx,
+            PROGRESS_HOOK.SEND_TX_003_03,
+            segBurnAmount,
+            onHand,
+            sufficient,
+            ueaAddress,
+            'CASCADE',
+            { kind: 'PRC20', burnToken: segBurnToken, segmentIndex: segIdxLoop }
+          );
+          if (!sufficient && !cascadeAllowUnderfunded) {
+            const shortfall = segBurnAmount - onHand;
+            fireProgressHook(
+              ctx,
+              PROGRESS_HOOK.SEND_TX_003_04,
+              segBurnAmount,
+              onHand,
+              shortfall,
+              ueaAddress,
+              'CASCADE',
+              { kind: 'PRC20', burnToken: segBurnToken, segmentIndex: segIdxLoop }
+            );
+            throw new InsufficientUEABalanceError({
+              required: segBurnAmount,
+              available: onHand,
+              shortfall,
+              ueaAddress,
+              pathTag: 'CASCADE',
+              reason: 'PRC20',
+              burnToken: segBurnToken,
+              segmentIndex: segIdxLoop,
+            });
+          }
         }
 
         // Build outbound request
@@ -1253,13 +1445,33 @@ export function createCascadedBuilder(
         ueaCodeCascade !== undefined
           ? await getUEANonce(ctx, ueaAddress)
           : BigInt(0);
-      const composedMulticalls = await composeCascade(
-        ctx,
-        segments,
-        ueaAddress,
-        ueaBalance,
-        ueaNonceCascade
-      );
+      let composedMulticalls: MultiCall[];
+      try {
+        composedMulticalls = await composeCascade(
+          ctx,
+          segments,
+          ueaAddress,
+          ueaBalance,
+          ueaNonceCascade
+        );
+      } catch (err) {
+        // Pre-flight or per-segment min-swap failure inside composeCascade
+        // throws before the cascade ever broadcasts. Fire 999-02 with the
+        // segmentIndex (1-indexed for the failedAt slot) so consumers see a
+        // terminal "cascade failed" frame instead of the stream stopping
+        // silently after 203-04.
+        if (err instanceof InsufficientUEABalanceError) {
+          const failedHopIndex = err.segmentIndex ?? 0;
+          fireProgressHook(
+            ctx,
+            PROGRESS_HOOK.SEND_TX_999_02,
+            failedHopIndex + 1,
+            preparedTxs.length,
+            err.message
+          );
+        }
+        throw err;
+      }
 
       // Execute the composed multicall as a single Push Chain tx
       const executeParams: ExecuteParams = {
@@ -1300,16 +1512,19 @@ export function createCascadedBuilder(
           } = opts || {};
           const startTime = Date.now();
 
-          // Per-hop progress emission. Drops events whose id is '' (the no-op
-          // sentinel returned by pickWaitHooks for R4/unknown routes), so
-          // consumers don't see placeholder events while the cascade still
-          // drives its own state machine.
+          // Per-hop progress emission. Fans out cascade markers to BOTH the
+          // explicit `eventHook` (passed into waitForAll) AND the init-time
+          // `ctx.progressHook` (set on PushChain.initialize), deduping if the
+          // two are the same reference. This is the bridge that lets UI-kit
+          // consumers — which only listen on `ctx.progressHook` — receive the
+          // cascade-level marker stream (001 / 002-xx / 203-xx / 204-xx /
+          // 209-xx / 299-01 / 999-xx) without having to manually wire
+          // `eventHook` at every call site. Drops events whose id is '' (the
+          // no-op sentinel returned by pickWaitHooks for R4/unknown routes).
           const emitHopEvent = (
-            hook: ((event: import('../../progress-hook/progress-hook.types').ProgressEvent) => void) | undefined,
             event: import('../../progress-hook/progress-hook.types').ProgressEvent
           ) => {
-            if (!hook || !event.id) return;
-            hook(event);
+            dispatchCascadeProgressEvent(event, eventHook, ctx.progressHook);
           };
 
           // ---- Multichain (multi-hop) cascade markers (001 / 002 / 999) ----
@@ -1338,7 +1553,6 @@ export function createCascadedBuilder(
                 : chainLabels[hopIndex0 - 1];
             const toChain = chainLabels[hopIndex0];
             emitHopEvent(
-              eventHook,
               PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_002_01](
                 n,
                 totalHops,
@@ -1352,21 +1566,18 @@ export function createCascadedBuilder(
             const n = hopIndex0 + 1;
             if (n >= totalHops) return; // skip after final hop — 999-01 takes over
             emitHopEvent(
-              eventHook,
               PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_002_99_99](n, totalHops)
             );
           };
           const emitCascadeSuccess = () => {
             if (!isMulti) return;
             emitHopEvent(
-              eventHook,
               PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_01](totalHops)
             );
           };
           const emitCascadeFailed = (failedIdx0: number, errMsg: string) => {
             if (!isMulti) return;
             emitHopEvent(
-              eventHook,
               PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_02](
                 failedIdx0 + 1,
                 totalHops,
@@ -1377,7 +1588,6 @@ export function createCascadedBuilder(
           const emitCascadeTimeout = (failedIdx0: number) => {
             if (!isMulti) return;
             emitHopEvent(
-              eventHook,
               PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_03](
                 failedIdx0 + 1,
                 totalHops
@@ -1387,7 +1597,6 @@ export function createCascadedBuilder(
 
           if (isMulti) {
             emitHopEvent(
-              eventHook,
               PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_001](
                 totalHops,
                 chainLabels
@@ -1472,7 +1681,7 @@ export function createCascadedBuilder(
                     status: 'timeout',
                     elapsed: Date.now() - startTime,
                   });
-                  emitHopEvent(eventHook,
+                  emitHopEvent(
                     hopHooks.timeout(hop.executionChain, Date.now() - startTime)
                   );
                   emitCascadeTimeout(hop.hopIndex);
@@ -1484,7 +1693,7 @@ export function createCascadedBuilder(
                 }
 
                 emitHopStart(hop.hopIndex);
-                emitHopEvent(eventHook,hopHooks.awaiting(hop.executionChain));
+                emitHopEvent(hopHooks.awaiting(hop.executionChain));
 
                 cascadeProgressHook?.({
                   hopIndex: hop.hopIndex,
@@ -1521,7 +1730,7 @@ export function createCascadedBuilder(
                           lastEmittedStatus !== 'polling'
                         ) {
                           lastEmittedStatus = 'polling';
-                          emitHopEvent(eventHook,
+                          emitHopEvent(
                             hopHooks.polling(hop.executionChain, event.elapsed)
                           );
                         }
@@ -1530,7 +1739,7 @@ export function createCascadedBuilder(
                   hop.status = 'confirmed';
                   hop.txHash = outboundDetails.externalTxHash;
                   hop.outboundDetails = outboundDetails;
-                  emitHopEvent(eventHook,hopHooks.success(outboundDetails));
+                  emitHopEvent(hopHooks.success(outboundDetails));
                   emitHopComplete(hop.hopIndex);
                   cascadeProgressHook?.({
                     hopIndex: hop.hopIndex,
@@ -1546,7 +1755,7 @@ export function createCascadedBuilder(
                   const isTimeout = errMsg.startsWith(
                     'Timeout waiting for outbound transaction'
                   );
-                  emitHopEvent(eventHook,
+                  emitHopEvent(
                     isTimeout
                       ? hopHooks.timeout(hop.executionChain, remainingTimeout)
                       : hopHooks.failed(hop.executionChain, errMsg)
@@ -1576,7 +1785,7 @@ export function createCascadedBuilder(
                 // polling begins, using the route-specific awaiting hook.
                 for (const outHop of outboundHops) {
                   emitHopStart(outHop.hopIndex);
-                  emitHopEvent(eventHook,
+                  emitHopEvent(
                     pickWaitHooks(outHop.route).awaiting(outHop.executionChain)
                   );
                 }
@@ -1622,7 +1831,7 @@ export function createCascadedBuilder(
                           prev !== 'polling'
                         ) {
                           perHopLastStatus.set(event.hopIndex, 'polling');
-                          emitHopEvent(eventHook,
+                          emitHopEvent(
                             eventHooks.polling(
                               matchedHop?.executionChain ?? event.chain ?? '',
                               Date.now() - startTime
@@ -1642,7 +1851,7 @@ export function createCascadedBuilder(
                           // guard above, so we only reach here with full details.
                           if (matchedHop?.outboundDetails) {
                             confirmedHops.add(event.hopIndex);
-                            emitHopEvent(eventHook,
+                            emitHopEvent(
                               eventHooks.success(matchedHop.outboundDetails)
                             );
                             emitHopComplete(event.hopIndex);
@@ -1661,7 +1870,6 @@ export function createCascadedBuilder(
                     ? `Outbound failed for hop ${failedIdx} on ${failedHop.executionChain}`
                     : `Outbound cascade failed at hop ${failedIdx}`;
                   emitHopEvent(
-                    eventHook,
                     pickWaitHooks(failedHop?.route).failed(
                       failedHop?.executionChain ?? '',
                       failMsg

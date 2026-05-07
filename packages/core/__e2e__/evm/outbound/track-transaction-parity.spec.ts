@@ -27,6 +27,11 @@ const EXECUTE_IDS_EXPECTED = [
   'SEND-TX-202-02',
   'SEND-TX-203-01',
   'SEND-TX-203-02',
+  // Pre-flight balance check — fires once per balance check. The R2 SVM /
+  // EVM path with funds.amount > 0 fires twice: once for the PRC-20 burn
+  // balance, once for the native UPC balance (added by the pre-flight fix).
+  'SEND-TX-203-03',
+  'SEND-TX-203-03',
   'SEND-TX-204-01',
   'SEND-TX-204-02',
   'SEND-TX-204-03',
