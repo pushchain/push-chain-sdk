@@ -818,9 +818,30 @@ export async function composeCascade(
       const flat = perOutboundNativeValue ?? BigInt(0);
       let value = estimated > flat ? estimated : flat;
       if (perSvmCap > BigInt(0) && value > perSvmCap) value = perSvmCap;
+      // Upward-allocation ceiling (mirrors R3 SVM Fix #4 in route-handlers.ts:1690).
+      // When UEA balance is huge, the flat split or perSvmCap can produce a value
+      // far above what the swap actually needs. Submitting that into a Uniswap
+      // pool moves the price for other users. Cap at max(200 PC, 5×estimated):
+      //   - fair pool (estimated ≈ 100 PC): cap = 500 PC → caps voluntary excess
+      //   - skewed pool (estimated > 200 PC): cap = 5×estimated → still allows
+      //     pool-skew margin; min-swap check below still fires if value < estimated
+      // The contract still refunds excess via swapAndBurnGas, so this is purely
+      // a guard against submitting wasteful msg.value to fair-priced pools.
+      const UPWARD_BASE_CEILING_CASCADE_SVM = BigInt(200) * BigInt(1e18);
+      const upwardCeilingCascadeSvm =
+        estimated * BigInt(5) > UPWARD_BASE_CEILING_CASCADE_SVM
+          ? estimated * BigInt(5)
+          : UPWARD_BASE_CEILING_CASCADE_SVM;
+      if (value > upwardCeilingCascadeSvm) {
+        printLog(
+          ctx,
+          `composeCascade — SVM outbound to ${seg.hops[0]?.targetChain}: capping value from ${value} to upwardCeiling=${upwardCeilingCascadeSvm} (pool quote=${estimated})`
+        );
+        value = upwardCeilingCascadeSvm;
+      }
       printLog(
         ctx,
-        `composeCascade — SVM outbound to ${seg.hops[0]?.targetChain}: gasFee=${seg.gasFee}, estimatedWpc=${estimated}, flat=${flat}, perSvmCap=${perSvmCap}, chosen=${value}`
+        `composeCascade — SVM outbound to ${seg.hops[0]?.targetChain}: gasFee=${seg.gasFee}, estimatedWpc=${estimated}, flat=${flat}, perSvmCap=${perSvmCap}, upwardCeiling=${upwardCeilingCascadeSvm}, chosen=${value}`
       );
       // Per-segment minimum-viable-swap check: if the chosen `value` is below
       // the live pool quote (`estimated`), the cap squeezed the budget below
