@@ -784,9 +784,19 @@ export interface CascadeTrackOptions {
   /** Per-hop progress callback */
   progressHook?: (event: CascadeProgressEvent) => void;
   /**
-   * Unified ProgressEvent stream for SEND-TX-08/99_03-05 telemetry.
-   * Fires per outbound hop during external chain polling. Use alongside
-   * `progressHook` — they emit complementary views of the same events.
+   * Unified ProgressEvent stream for the cascade marker set
+   * (001 / 002-xx / 203-xx / 204-xx / 209-xx / 299-01 / 999-xx and per-route
+   * awaiting/polling/success/failed/timeout hooks).
+   *
+   * Cascade markers ALSO fan out to the init-time `progressHook` set on
+   * `PushChain.initialize` (see `OrchestratorContext.progressHook`), so
+   * UI-kit consumers that wired progress at init receive the cascade stream
+   * without having to plumb `eventHook` through. When BOTH this `eventHook`
+   * and the init-time `ctx.progressHook` are wired, events are delivered to
+   * both with dedup (no double-fire if they reference the same function).
+   * If you don't want the global init-time `progressHook` to react to
+   * cascade markers, filter them inside that handler — there is no
+   * cascade-level opt-out for the init-time channel.
    */
   eventHook?: (
     event: import('../progress-hook/progress-hook.types').ProgressEvent

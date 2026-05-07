@@ -98,6 +98,39 @@ export interface CascadeCallbacks {
 }
 
 // ============================================================================
+// dispatchCascadeProgressEvent
+// ============================================================================
+
+/**
+ * Fan out a cascade progress event to up to two listeners with dedup.
+ *
+ * The two listener slots are:
+ *   - `primary`: explicit `eventHook` from CascadeTrackOptions (passed at call
+ *     time to `waitForAll` / `wait`).
+ *   - `secondary`: init-time `ctx.progressHook` from PushChain.initialize.
+ *
+ * Both may be undefined; if both reference the same function we invoke once.
+ * Events with an empty `id` (the no-op sentinel returned by pickWaitHooks for
+ * R4/unknown routes) are dropped so consumers don't see placeholder frames.
+ *
+ * Exported for unit testing. Production code calls this from the
+ * `emitHopEvent` closure inside `createCascadedBuilder.waitForAll`.
+ */
+export function dispatchCascadeProgressEvent(
+  event: import('../../progress-hook/progress-hook.types').ProgressEvent,
+  primary?: (
+    e: import('../../progress-hook/progress-hook.types').ProgressEvent
+  ) => void,
+  secondary?: (
+    e: import('../../progress-hook/progress-hook.types').ProgressEvent
+  ) => void
+): void {
+  if (!event.id) return;
+  if (primary) primary(event);
+  if (secondary && secondary !== primary) secondary(event);
+}
+
+// ============================================================================
 // prepareTransaction
 // ============================================================================
 
@@ -1441,16 +1474,19 @@ export function createCascadedBuilder(
           } = opts || {};
           const startTime = Date.now();
 
-          // Per-hop progress emission. Drops events whose id is '' (the no-op
-          // sentinel returned by pickWaitHooks for R4/unknown routes), so
-          // consumers don't see placeholder events while the cascade still
-          // drives its own state machine.
+          // Per-hop progress emission. Fans out cascade markers to BOTH the
+          // explicit `eventHook` (passed into waitForAll) AND the init-time
+          // `ctx.progressHook` (set on PushChain.initialize), deduping if the
+          // two are the same reference. This is the bridge that lets UI-kit
+          // consumers — which only listen on `ctx.progressHook` — receive the
+          // cascade-level marker stream (001 / 002-xx / 203-xx / 204-xx /
+          // 209-xx / 299-01 / 999-xx) without having to manually wire
+          // `eventHook` at every call site. Drops events whose id is '' (the
+          // no-op sentinel returned by pickWaitHooks for R4/unknown routes).
           const emitHopEvent = (
-            hook: ((event: import('../../progress-hook/progress-hook.types').ProgressEvent) => void) | undefined,
             event: import('../../progress-hook/progress-hook.types').ProgressEvent
           ) => {
-            if (!hook || !event.id) return;
-            hook(event);
+            dispatchCascadeProgressEvent(event, eventHook, ctx.progressHook);
           };
 
           // ---- Multichain (multi-hop) cascade markers (001 / 002 / 999) ----
@@ -1479,7 +1515,6 @@ export function createCascadedBuilder(
                 : chainLabels[hopIndex0 - 1];
             const toChain = chainLabels[hopIndex0];
             emitHopEvent(
-              eventHook,
               PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_002_01](
                 n,
                 totalHops,
@@ -1493,21 +1528,18 @@ export function createCascadedBuilder(
             const n = hopIndex0 + 1;
             if (n >= totalHops) return; // skip after final hop — 999-01 takes over
             emitHopEvent(
-              eventHook,
               PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_002_99_99](n, totalHops)
             );
           };
           const emitCascadeSuccess = () => {
             if (!isMulti) return;
             emitHopEvent(
-              eventHook,
               PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_01](totalHops)
             );
           };
           const emitCascadeFailed = (failedIdx0: number, errMsg: string) => {
             if (!isMulti) return;
             emitHopEvent(
-              eventHook,
               PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_02](
                 failedIdx0 + 1,
                 totalHops,
@@ -1518,7 +1550,6 @@ export function createCascadedBuilder(
           const emitCascadeTimeout = (failedIdx0: number) => {
             if (!isMulti) return;
             emitHopEvent(
-              eventHook,
               PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_03](
                 failedIdx0 + 1,
                 totalHops
@@ -1528,7 +1559,6 @@ export function createCascadedBuilder(
 
           if (isMulti) {
             emitHopEvent(
-              eventHook,
               PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_001](
                 totalHops,
                 chainLabels
@@ -1613,7 +1643,7 @@ export function createCascadedBuilder(
                     status: 'timeout',
                     elapsed: Date.now() - startTime,
                   });
-                  emitHopEvent(eventHook,
+                  emitHopEvent(
                     hopHooks.timeout(hop.executionChain, Date.now() - startTime)
                   );
                   emitCascadeTimeout(hop.hopIndex);
@@ -1625,7 +1655,7 @@ export function createCascadedBuilder(
                 }
 
                 emitHopStart(hop.hopIndex);
-                emitHopEvent(eventHook,hopHooks.awaiting(hop.executionChain));
+                emitHopEvent(hopHooks.awaiting(hop.executionChain));
 
                 cascadeProgressHook?.({
                   hopIndex: hop.hopIndex,
@@ -1662,7 +1692,7 @@ export function createCascadedBuilder(
                           lastEmittedStatus !== 'polling'
                         ) {
                           lastEmittedStatus = 'polling';
-                          emitHopEvent(eventHook,
+                          emitHopEvent(
                             hopHooks.polling(hop.executionChain, event.elapsed)
                           );
                         }
@@ -1671,7 +1701,7 @@ export function createCascadedBuilder(
                   hop.status = 'confirmed';
                   hop.txHash = outboundDetails.externalTxHash;
                   hop.outboundDetails = outboundDetails;
-                  emitHopEvent(eventHook,hopHooks.success(outboundDetails));
+                  emitHopEvent(hopHooks.success(outboundDetails));
                   emitHopComplete(hop.hopIndex);
                   cascadeProgressHook?.({
                     hopIndex: hop.hopIndex,
@@ -1687,7 +1717,7 @@ export function createCascadedBuilder(
                   const isTimeout = errMsg.startsWith(
                     'Timeout waiting for outbound transaction'
                   );
-                  emitHopEvent(eventHook,
+                  emitHopEvent(
                     isTimeout
                       ? hopHooks.timeout(hop.executionChain, remainingTimeout)
                       : hopHooks.failed(hop.executionChain, errMsg)
@@ -1717,7 +1747,7 @@ export function createCascadedBuilder(
                 // polling begins, using the route-specific awaiting hook.
                 for (const outHop of outboundHops) {
                   emitHopStart(outHop.hopIndex);
-                  emitHopEvent(eventHook,
+                  emitHopEvent(
                     pickWaitHooks(outHop.route).awaiting(outHop.executionChain)
                   );
                 }
@@ -1763,7 +1793,7 @@ export function createCascadedBuilder(
                           prev !== 'polling'
                         ) {
                           perHopLastStatus.set(event.hopIndex, 'polling');
-                          emitHopEvent(eventHook,
+                          emitHopEvent(
                             eventHooks.polling(
                               matchedHop?.executionChain ?? event.chain ?? '',
                               Date.now() - startTime
@@ -1783,7 +1813,7 @@ export function createCascadedBuilder(
                           // guard above, so we only reach here with full details.
                           if (matchedHop?.outboundDetails) {
                             confirmedHops.add(event.hopIndex);
-                            emitHopEvent(eventHook,
+                            emitHopEvent(
                               eventHooks.success(matchedHop.outboundDetails)
                             );
                             emitHopComplete(event.hopIndex);
@@ -1802,7 +1832,6 @@ export function createCascadedBuilder(
                     ? `Outbound failed for hop ${failedIdx} on ${failedHop.executionChain}`
                     : `Outbound cascade failed at hop ${failedIdx}`;
                   emitHopEvent(
-                    eventHook,
                     pickWaitHooks(failedHop?.route).failed(
                       failedHop?.executionChain ?? '',
                       failMsg
