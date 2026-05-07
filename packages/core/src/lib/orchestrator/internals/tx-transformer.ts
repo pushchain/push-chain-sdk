@@ -271,8 +271,9 @@ function reconstructR3(
   );
   // R3 pre-flight reconstruction — R3 EVM burnAmount=0, R3 SVM burnAmount=0
   // (post-fix). Only the NATIVE pre-flight check fires; no PRC-20 second hook.
+  // R3 single-route uses 303-04 (R3 bucket); see runPreflight in preflight.ts.
   events.push(
-    PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_203_03](
+    PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_303_04](
       BigInt(0),
       BigInt(0),
       true,

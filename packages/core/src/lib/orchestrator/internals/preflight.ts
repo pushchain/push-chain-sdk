@@ -104,16 +104,22 @@ export function runPreflight(opts: RunPreflightOpts): PreflightResult {
     allowUnderfundedSwap,
   } = opts;
 
-  // Cascade context emits 003-xx (cascade 0xx bucket); single routes (R2/R3)
-  // emit 203-xx (R2 bucket). The two ID sets share an identical formatter
+  // Each route bucket gets its own preflight IDs so hook streams stay
+  // self-consistent within their convention (R2 → 203-xx, R3 → 303-xx,
+  // cascade → 003-xx). The three hook formatters share an identical
   // signature, so the runtime branching is just an ID swap at each fire site.
   const isCascade = pathTag === 'CASCADE';
+  const isR3 = pathTag === 'R3_EVM' || pathTag === 'R3_SVM';
   const HOOK_PRE_INFO = isCascade
     ? PROGRESS_HOOK.SEND_TX_003_03
-    : PROGRESS_HOOK.SEND_TX_203_03;
+    : isR3
+      ? PROGRESS_HOOK.SEND_TX_303_04
+      : PROGRESS_HOOK.SEND_TX_203_03;
   const HOOK_PRE_FAIL = isCascade
     ? PROGRESS_HOOK.SEND_TX_003_04
-    : PROGRESS_HOOK.SEND_TX_203_04;
+    : isR3
+      ? PROGRESS_HOOK.SEND_TX_303_05
+      : PROGRESS_HOOK.SEND_TX_203_04;
 
   // 1. PRC-20 burn-balance check (skipped when burnAmount = 0 — R3 paths
   //    structurally hold zero of the source-chain native PRC-20; see plan §9 #4).
@@ -219,19 +225,19 @@ export function runPreflight(opts: RunPreflightOpts): PreflightResult {
 
 /**
  * SVM-only telemetry threshold. Buffered pool quotes above this value
- * fire `SEND-TX-203-05` (single-route) or `SEND-TX-003-05` (cascade).
- * The threshold is for visibility, not truncation — pre-flight handles
- * drain protection. v2 may add a hard cap once telemetry justifies a
- * number.
+ * fire `SEND-TX-203-05` (R2 single-route), `SEND-TX-303-06` (R3
+ * single-route), or `SEND-TX-003-05` (cascade). The threshold is for
+ * visibility, not truncation — pre-flight handles drain protection.
+ * v2 may add a hard cap once telemetry justifies a number.
  */
 export const SVM_NATIVE_VALUE_WARN_THRESHOLD = BigInt(5000) * BigInt(1e18);
 
 /**
  * Fire the SVM warn-threshold hook + log line if the buffered quote
  * exceeds the threshold. Non-blocking; `nativeValueForGas` is not
- * truncated by the caller. The hook ID switches to the cascade 0xx
- * bucket (`003-05`) when `pathTag === 'CASCADE'` so cascade streams
- * stay self-consistent.
+ * truncated by the caller. The hook ID switches between buckets so
+ * each stream stays self-consistent within its convention (R2 → 203,
+ * R3 → 303, cascade → 003).
  */
 export function maybeFireSvmWarnThreshold(
   ctx: OrchestratorContext,
@@ -243,7 +249,9 @@ export function maybeFireSvmWarnThreshold(
   const HOOK_WARN =
     pathTag === 'CASCADE'
       ? PROGRESS_HOOK.SEND_TX_003_05
-      : PROGRESS_HOOK.SEND_TX_203_05;
+      : pathTag === 'R3_EVM' || pathTag === 'R3_SVM'
+        ? PROGRESS_HOOK.SEND_TX_303_06
+        : PROGRESS_HOOK.SEND_TX_203_05;
   fireProgressHook(
     ctx,
     HOOK_WARN,

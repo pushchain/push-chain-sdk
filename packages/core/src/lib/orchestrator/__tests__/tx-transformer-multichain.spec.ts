@@ -258,20 +258,20 @@ describe('reconstructProgressEvents — single-route R2 pre-flight reconstructio
 });
 
 describe('reconstructProgressEvents — single-route R3 pre-flight reconstruction', () => {
-  it('reconstructs R3 stream with single NATIVE 203-03 (R3 has burnAmount=0)', () => {
+  it('reconstructs R3 stream with single NATIVE 303-04 (R3 has burnAmount=0)', () => {
     const data = makeR2DataWithBurn('0');
     const events = reconstructProgressEvents(makeR3Response(), data);
     const ids = events.map((e) => e.id);
 
-    // 203-03 between 303-02 and 304-01.
-    expect(ids).toContain('SEND-TX-203-03');
-    expect(ids.indexOf('SEND-TX-303-02')).toBeLessThan(ids.indexOf('SEND-TX-203-03'));
-    expect(ids.indexOf('SEND-TX-203-03')).toBeLessThan(ids.indexOf('SEND-TX-304-01'));
+    // 303-04 between 303-02 and 304-01 (R3 single-route preflight bucket).
+    expect(ids).toContain('SEND-TX-303-04');
+    expect(ids.indexOf('SEND-TX-303-02')).toBeLessThan(ids.indexOf('SEND-TX-303-04'));
+    expect(ids.indexOf('SEND-TX-303-04')).toBeLessThan(ids.indexOf('SEND-TX-304-01'));
 
-    // R3 always emits ONE 203-03 (NATIVE only — burnAmount=0).
-    const count = ids.filter((id) => id === 'SEND-TX-203-03').length;
+    // R3 always emits ONE 303-04 (NATIVE only — burnAmount=0).
+    const count = ids.filter((id) => id === 'SEND-TX-303-04').length;
     expect(count).toBe(1);
-    const e = events.find((ev) => ev.id === 'SEND-TX-203-03')!;
+    const e = events.find((ev) => ev.id === 'SEND-TX-303-04')!;
     expect((e.response as { kind: string }).kind).toBe('NATIVE');
   });
 });

@@ -90,6 +90,14 @@ export enum PROGRESS_HOOK {
   SEND_TX_303_03_01 = 'SEND-TX-303-03-01', // Sizer: Case A (< $1, padded)
   SEND_TX_303_03_02 = 'SEND-TX-303-03-02', // Sizer: Case B ($1–$10, happy path)
   SEND_TX_303_03_03 = 'SEND-TX-303-03-03', // Sizer: Case C (> $10, split + overflow bridge)
+  // R3 single-route pre-flight balance check. Mirror of R2's 203-03/04/05
+  // semantics scoped to the R3 (3xx) bucket. Slots 303-03/-03-* are already
+  // owned by the sizer cluster so preflight uses the next free slots
+  // (304-01..04 are sign/verify), inserted between sizer and signature
+  // burst because that is the temporal point where UEA balance is checked.
+  SEND_TX_303_04 = 'SEND-TX-303-04', // R3 pre-flight balance check (INFO when sufficient, ERROR when insufficient)
+  SEND_TX_303_05 = 'SEND-TX-303-05', // R3 pre-flight FAILED (ERROR, terminal precursor before 399-02)
+  SEND_TX_303_06 = 'SEND-TX-303-06', // R3 SVM warn-threshold tripped (INFO, no action)
   SEND_TX_304_01 = 'SEND-TX-304-01',
   SEND_TX_304_02 = 'SEND-TX-304-02',
   SEND_TX_304_03 = 'SEND-TX-304-03',
@@ -181,12 +189,12 @@ export type PROGRESS_HOOK_R2 =
   | PROGRESS_HOOK.SEND_TX_299_03
   | PROGRESS_HOOK.SEND_TX_299_99;
 
-// NOTE: pre-flight hooks (203-03/04/05) live under PROGRESS_HOOK_R2 only.
-// The runPreflight helper is shared across R2 and R3 paths and emits the
-// same 203-xx IDs from R3 callers — that's fine at runtime, but the route
-// union types are scoped to per-route emission discipline at *new* call sites.
-// R3 emission of pre-flight events flows through the shared helper so it
-// does not need to widen this union.
+// NOTE: pre-flight hooks live in route-scoped buckets:
+//   - R2 single-route: 203-03/04/05 (PROGRESS_HOOK_R2)
+//   - R3 single-route: 303-04/05/06 (PROGRESS_HOOK_R3)
+//   - Cascade:         003-03/04/05 (PROGRESS_HOOK_MULTICHAIN)
+// The shared runPreflight helper switches IDs based on `pathTag` so each
+// stream stays self-consistent within its bucket convention.
 export type PROGRESS_HOOK_R3 =
   | PROGRESS_HOOK.SEND_TX_199_99_99
   | PROGRESS_HOOK.SEND_TX_301
@@ -197,6 +205,9 @@ export type PROGRESS_HOOK_R3 =
   | PROGRESS_HOOK.SEND_TX_303_03_01
   | PROGRESS_HOOK.SEND_TX_303_03_02
   | PROGRESS_HOOK.SEND_TX_303_03_03
+  | PROGRESS_HOOK.SEND_TX_303_04
+  | PROGRESS_HOOK.SEND_TX_303_05
+  | PROGRESS_HOOK.SEND_TX_303_06
   | PROGRESS_HOOK.SEND_TX_304_01
   | PROGRESS_HOOK.SEND_TX_304_02
   | PROGRESS_HOOK.SEND_TX_304_03

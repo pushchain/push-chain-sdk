@@ -717,6 +717,83 @@ const RAW_HOOKS_R3: {
     response: { uea: ueaAddr, cea: ceaAddr, chain: sourceChain, deployed: true },
     level: 'SUCCESS',
   }),
+  // R3 single-route pre-flight balance check. Same payload shape as 203-03/04/05.
+  [PROGRESS_HOOK.SEND_TX_303_04]: (
+    required: bigint,
+    available: bigint,
+    sufficient: boolean,
+    ueaAddress: `0x${string}`,
+    pathTag: string,
+    extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
+  ) => {
+    const kind = extra?.kind ?? 'NATIVE';
+    const availableStr = kind === 'PRC20' ? `${available} units` : formatPC(available);
+    const requiredStr = kind === 'PRC20' ? `${required} units` : formatPC(required);
+    return {
+      id: PROGRESS_HOOK.SEND_TX_303_04,
+      title: 'Pre-flight Balance Check',
+      message:
+        `UEA balance: ${availableStr}; required: ${requiredStr}; ` +
+        `${sufficient ? 'sufficient' : 'INSUFFICIENT'} (${pathTag})`,
+      response: {
+        required,
+        available,
+        sufficient,
+        ueaAddress,
+        pathTag,
+        kind,
+        burnToken: extra?.burnToken ?? null,
+        segmentIndex: extra?.segmentIndex ?? null,
+      },
+      level: sufficient ? 'INFO' : 'ERROR',
+    };
+  },
+  [PROGRESS_HOOK.SEND_TX_303_05]: (
+    required: bigint,
+    available: bigint,
+    shortfall: bigint,
+    ueaAddress: `0x${string}`,
+    pathTag: string,
+    extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
+  ) => {
+    const kind = extra?.kind ?? 'NATIVE';
+    const shortfallStr = kind === 'PRC20' ? `${shortfall} units` : formatPC(shortfall);
+    const remediation =
+      kind === 'PRC20'
+        ? `Bridge the burn token (${extra?.burnToken ?? 'PRC-20'}) to UEA ${ueaAddress} before retrying.`
+        : `Bridge >=${shortfallStr} to UEA ${ueaAddress} before retrying.`;
+    return {
+      id: PROGRESS_HOOK.SEND_TX_303_05,
+      title: 'Insufficient UEA Balance',
+      message: `Shortfall ${shortfallStr} on ${pathTag}. ${remediation}`,
+      response: {
+        required,
+        available,
+        shortfall,
+        ueaAddress,
+        pathTag,
+        kind,
+        burnToken: extra?.burnToken ?? null,
+        segmentIndex: extra?.segmentIndex ?? null,
+      },
+      level: 'ERROR',
+    };
+  },
+  [PROGRESS_HOOK.SEND_TX_303_06]: (
+    quoted: bigint,
+    threshold: bigint,
+    gasToken: `0x${string}`,
+    pathTag: string
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_303_06,
+    title: 'SVM Native-Value Warn Threshold',
+    message:
+      `Buffered pool quote ${formatPC(quoted)} exceeds warn threshold ${formatPC(threshold)} ` +
+      `for ${gasToken} (${pathTag}). Pool may be skewed or quote is unusually large. ` +
+      `No action taken — pre-flight will determine if balance covers it.`,
+    response: { quoted, threshold, gasToken, pathTag },
+    level: 'INFO',
+  }),
   [PROGRESS_HOOK.SEND_TX_304_01]: () => ({
     id: PROGRESS_HOOK.SEND_TX_304_01,
     title: 'Awaiting Signature',

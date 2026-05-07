@@ -290,7 +290,7 @@ describe('runPreflight', () => {
     expect((fail04?.response as any).segmentIndex).toBe(1);
   });
 
-  it('R2_SVM pathTag continues to fire 203-03/04 (single-route bucket unchanged)', () => {
+  it('R2_SVM pathTag fires 203-03/04 (R2 single-route bucket)', () => {
     const { ctx, events } = makeCtx();
     try {
       runPreflight({
@@ -308,8 +308,54 @@ describe('runPreflight', () => {
     const ids = events.map((e) => e.id);
     expect(ids).toContain(PROGRESS_HOOK.SEND_TX_203_03);
     expect(ids).toContain(PROGRESS_HOOK.SEND_TX_203_04);
+    expect(ids).not.toContain(PROGRESS_HOOK.SEND_TX_303_04);
+    expect(ids).not.toContain(PROGRESS_HOOK.SEND_TX_303_05);
     expect(ids).not.toContain(PROGRESS_HOOK.SEND_TX_003_03);
     expect(ids).not.toContain(PROGRESS_HOOK.SEND_TX_003_04);
+  });
+
+  it('R3_EVM pathTag fires 303-04/05 (R3 single-route bucket, not R2)', () => {
+    const { ctx, events } = makeCtx();
+    try {
+      runPreflight({
+        ctx,
+        ueaAddress: UEA,
+        ueaBalance: BigInt(0),
+        requiredValue: BigInt(1),
+        gasReserve: BigInt(3e18),
+        pathTag: 'R3_EVM',
+      });
+      fail('expected throw');
+    } catch {
+      // expected
+    }
+    const ids = events.map((e) => e.id);
+    expect(ids).toContain(PROGRESS_HOOK.SEND_TX_303_04);
+    expect(ids).toContain(PROGRESS_HOOK.SEND_TX_303_05);
+    expect(ids).not.toContain(PROGRESS_HOOK.SEND_TX_203_03);
+    expect(ids).not.toContain(PROGRESS_HOOK.SEND_TX_203_04);
+    expect(ids).not.toContain(PROGRESS_HOOK.SEND_TX_003_03);
+  });
+
+  it('R3_SVM pathTag fires 303-04/05 (R3 single-route bucket)', () => {
+    const { ctx, events } = makeCtx();
+    try {
+      runPreflight({
+        ctx,
+        ueaAddress: UEA,
+        ueaBalance: BigInt(0),
+        requiredValue: BigInt(1),
+        gasReserve: BigInt(3e18),
+        pathTag: 'R3_SVM',
+      });
+      fail('expected throw');
+    } catch {
+      // expected
+    }
+    const ids = events.map((e) => e.id);
+    expect(ids).toContain(PROGRESS_HOOK.SEND_TX_303_04);
+    expect(ids).toContain(PROGRESS_HOOK.SEND_TX_303_05);
+    expect(ids).not.toContain(PROGRESS_HOOK.SEND_TX_203_03);
   });
 
   it('cascade segmentIndex propagates through to error and hook payload', () => {
@@ -350,7 +396,7 @@ describe('maybeFireSvmWarnThreshold', () => {
     expect(events).toHaveLength(0);
   });
 
-  it('fires SEND_TX_203_05 INFO when buffered quote exceeds threshold (single-route)', () => {
+  it('fires SEND_TX_203_05 INFO when R2_SVM buffered quote exceeds threshold', () => {
     const { ctx, events } = makeCtx();
     const overThreshold =
       SVM_NATIVE_VALUE_WARN_THRESHOLD + BigInt('1000000000000000000');
@@ -365,6 +411,22 @@ describe('maybeFireSvmWarnThreshold', () => {
     expect(events[0].level).toBe('INFO');
     expect((events[0].response as any).quoted).toBe(overThreshold);
     expect((events[0].response as any).pathTag).toBe('R2_SVM');
+  });
+
+  it('fires SEND_TX_303_06 INFO (R3 bucket) when pathTag is R3_SVM', () => {
+    const { ctx, events } = makeCtx();
+    const overThreshold =
+      SVM_NATIVE_VALUE_WARN_THRESHOLD + BigInt('1000000000000000000');
+    maybeFireSvmWarnThreshold(
+      ctx,
+      overThreshold,
+      '0xabc' as `0x${string}`,
+      'R3_SVM'
+    );
+    expect(events).toHaveLength(1);
+    expect(events[0].id).toBe(PROGRESS_HOOK.SEND_TX_303_06);
+    expect(events[0].level).toBe('INFO');
+    expect((events[0].response as any).pathTag).toBe('R3_SVM');
   });
 
   it('fires SEND_TX_003_05 INFO (cascade bucket) when pathTag is CASCADE', () => {
