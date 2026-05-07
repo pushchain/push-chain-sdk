@@ -62,6 +62,13 @@ export enum PROGRESS_HOOK {
   SEND_TX_202_02 = 'SEND-TX-202-02',
   SEND_TX_203_01 = 'SEND-TX-203-01',
   SEND_TX_203_02 = 'SEND-TX-203-02',
+  // Pre-flight balance check (203-03 INFO when sufficient or burn-token check passes;
+  // 203-04 ERROR terminal precursor on shortfall; 203-05 INFO SVM warn-threshold tripped).
+  // 203 bucket choice is temporal (sits between 203-02 CEA-resolved and 204-01 sign),
+  // not strictly semantic — UEA balance is on Push Chain, not the destination CEA.
+  SEND_TX_203_03 = 'SEND-TX-203-03',
+  SEND_TX_203_04 = 'SEND-TX-203-04',
+  SEND_TX_203_05 = 'SEND-TX-203-05',
   SEND_TX_204_01 = 'SEND-TX-204-01',
   SEND_TX_204_02 = 'SEND-TX-204-02',
   SEND_TX_204_03 = 'SEND-TX-204-03',
@@ -101,6 +108,14 @@ export enum PROGRESS_HOOK {
   SEND_TX_001 = 'SEND-TX-001',
   SEND_TX_002_01 = 'SEND-TX-002-01',
   SEND_TX_002_99_99 = 'SEND-TX-002-99-99',
+  // Cascade-scoped pre-flight hooks. Mirror the single-route 203-03/04/05
+  // semantics but live in the 0xx bucket so cascade hook streams stay
+  // self-consistent (rest of cascade uses 001 / 002-xx / 999-xx). The
+  // runPreflight helper switches between 203-xx and 003-xx based on
+  // pathTag === 'CASCADE'.
+  SEND_TX_003_03 = 'SEND-TX-003-03', // Cascade pre-flight balance check (INFO when sufficient, ERROR when insufficient)
+  SEND_TX_003_04 = 'SEND-TX-003-04', // Cascade pre-flight FAILED (ERROR, terminal precursor before 999-02)
+  SEND_TX_003_05 = 'SEND-TX-003-05', // Cascade SVM warn-threshold tripped (INFO, no action)
   SEND_TX_999_01 = 'SEND-TX-999-01',
   SEND_TX_999_02 = 'SEND-TX-999-02',
   SEND_TX_999_03 = 'SEND-TX-999-03',
@@ -151,6 +166,9 @@ export type PROGRESS_HOOK_R2 =
   | PROGRESS_HOOK.SEND_TX_202_02
   | PROGRESS_HOOK.SEND_TX_203_01
   | PROGRESS_HOOK.SEND_TX_203_02
+  | PROGRESS_HOOK.SEND_TX_203_03
+  | PROGRESS_HOOK.SEND_TX_203_04
+  | PROGRESS_HOOK.SEND_TX_203_05
   | PROGRESS_HOOK.SEND_TX_204_01
   | PROGRESS_HOOK.SEND_TX_204_02
   | PROGRESS_HOOK.SEND_TX_204_03
@@ -163,6 +181,12 @@ export type PROGRESS_HOOK_R2 =
   | PROGRESS_HOOK.SEND_TX_299_03
   | PROGRESS_HOOK.SEND_TX_299_99;
 
+// NOTE: pre-flight hooks (203-03/04/05) live under PROGRESS_HOOK_R2 only.
+// The runPreflight helper is shared across R2 and R3 paths and emits the
+// same 203-xx IDs from R3 callers — that's fine at runtime, but the route
+// union types are scoped to per-route emission discipline at *new* call sites.
+// R3 emission of pre-flight events flows through the shared helper so it
+// does not need to widen this union.
 export type PROGRESS_HOOK_R3 =
   | PROGRESS_HOOK.SEND_TX_199_99_99
   | PROGRESS_HOOK.SEND_TX_301
@@ -191,6 +215,9 @@ export type PROGRESS_HOOK_MULTICHAIN =
   | PROGRESS_HOOK.SEND_TX_001
   | PROGRESS_HOOK.SEND_TX_002_01
   | PROGRESS_HOOK.SEND_TX_002_99_99
+  | PROGRESS_HOOK.SEND_TX_003_03
+  | PROGRESS_HOOK.SEND_TX_003_04
+  | PROGRESS_HOOK.SEND_TX_003_05
   | PROGRESS_HOOK.SEND_TX_999_01
   | PROGRESS_HOOK.SEND_TX_999_02
   | PROGRESS_HOOK.SEND_TX_999_03;

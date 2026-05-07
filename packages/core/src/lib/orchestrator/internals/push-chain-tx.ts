@@ -24,30 +24,17 @@ import type {
 } from '../orchestrator.types';
 import type { OrchestratorContext } from './context';
 import { fireProgressHook, printLog } from './context';
+import { decodeRevert } from './error-decoder';
+import { PushChainExecutionError } from './errors';
 
 // ============================================================================
 // PushChainExecutionError
 // ============================================================================
-
-/**
- * Typed error for Route 1 Push Chain tx failures. Thrown by
- * `extractPcTxAndTransform` when the final pcTx commits with `status === 'FAILED'`,
- * and surfaced as `SEND_TX_199_02` on the live stream. The readonly `code`
- * discriminator lets callers classify via `instanceof PushChainExecutionError`
- * instead of sniffing error messages.
- *
- * Carries the origin-chain gateway tx hash. There is no successful Push Chain
- * tx to reference on this path — by definition the pcTx committed `FAILED`.
- */
-export class PushChainExecutionError extends Error {
-  readonly code = 'PUSH_CHAIN_EXECUTION_FAILED' as const;
-  readonly gatewayTxHash?: string;
-  constructor(message: string, opts: { gatewayTxHash?: string } = {}) {
-    super(message);
-    this.name = 'PushChainExecutionError';
-    this.gatewayTxHash = opts.gatewayTxHash;
-  }
-}
+// Lives in `errors.ts` so the pre-flight `InsufficientUEABalanceError` can
+// extend it without creating a circular import. Re-exported here so existing
+// `import { PushChainExecutionError } from './push-chain-tx'` callers
+// continue to work.
+export { PushChainExecutionError };
 
 // ============================================================================
 // Callback type — avoids circular dependency with response-builder
@@ -326,17 +313,52 @@ export async function sendUniversalTx(
           .map((attr: any) => attr.value as `0x${string}`)
       ) ?? [];
 
+    // Decode known revert selectors (e.g. `ret 0xacfdb444`) from the cosmos
+    // rawLog so the consumer-facing error AND the diagnostic failureSummary
+    // log carry an actionable hint instead of raw 4-byte hex. Mirrors the
+    // wiring in `extractPcTxAndTransform` for the post-success `pcTx FAILED`
+    // path. Also feeds the structured `decodedError` payload through to the
+    // terminal hook (199-02 / 299-02 / 399-02 / 999-02).
+    let augmentedMessage = tx.rawLog ?? '';
+    let decodedForPayload:
+      | { name?: string; hint?: string; selector?: string; decoded?: string }
+      | undefined;
+    const decoded = decodeRevert(augmentedMessage);
+    if (decoded?.kind === 'custom') {
+      augmentedMessage = `${augmentedMessage} [${decoded.name}: ${decoded.hint}]`;
+      decodedForPayload = {
+        name: decoded.name,
+        hint: decoded.hint,
+        selector: decoded.selector,
+      };
+    } else if (decoded?.kind === 'string') {
+      augmentedMessage = `${augmentedMessage} [Error(string): "${decoded.decoded}"]`;
+      decodedForPayload = {
+        decoded: decoded.decoded,
+        selector: decoded.selector,
+      };
+    } else if (decoded?.kind === 'unknown') {
+      printLog(
+        ctx,
+        `[error-decoder] unknown selector ${decoded.selector} — consider adding to KNOWN_ERROR_SELECTORS`
+      );
+    }
+
     const failureSummary = [
       `PUSH CHAIN TRANSACTION FAILED`,
       `Cosmos TX Hash: ${tx.transactionHash}`,
       `Block Height: ${tx.height}, TX Code: ${tx.code} (error)`,
       `Gas Used: ${tx.gasUsed}, Gas Wanted: ${tx.gasWanted}`,
       ...(failedEthTxHashes.length > 0 ? [`Ethereum TX Hash(es): ${failedEthTxHashes.join(', ')}`] : []),
-      `Error: ${tx.rawLog}`,
+      `Error: ${augmentedMessage}`,
     ].join(' | ');
     printLog(ctx, failureSummary);
 
-    throw new Error(tx.rawLog);
+    // Throw a typed error so the orchestrator's outer catch can lift the
+    // structured `decodedError` straight onto the terminal-hook payload.
+    throw new PushChainExecutionError(augmentedMessage, {
+      decodedError: decodedForPayload,
+    });
   }
 
   if (!tx || tx.code !== 0) {
@@ -410,24 +432,43 @@ export async function extractPcTxAndTransform(
             pcTx.status === 'FAILED' && pcTx.errorMsg
         );
     const errorDetails = failedPcTx?.errorMsg ? `: ${failedPcTx.errorMsg}` : '';
-    // Parse known UEA error selectors for actionable hints
+    // Decode known revert selectors and ABI-encoded `Error(string)` reverts
+    // into actionable hints. Unknown selectors are logged at INFO so the
+    // table can grow from real reverts.
     let hint = '';
-    if (failedPcTx?.errorMsg) {
-      if (failedPcTx.errorMsg.includes('0xacfdb444')) {
-        hint = ' [ExecutionFailed: the subcall to the target contract reverted. ' +
-          'Check that the target address can receive native tokens (has receive/fallback) ' +
-          'and that calldata matches a valid function signature.]';
-      } else if (failedPcTx.errorMsg.includes('0x179a867c')) {
-        hint = ' [ExpiredDeadline: the transaction deadline has passed.]';
-      }
+    let decodedForPayload:
+      | { name?: string; hint?: string; selector?: string; decoded?: string }
+      | undefined;
+    const decoded = decodeRevert(failedPcTx?.errorMsg ?? '');
+    if (decoded?.kind === 'custom') {
+      hint = ` [${decoded.name}: ${decoded.hint}]`;
+      decodedForPayload = {
+        name: decoded.name,
+        hint: decoded.hint,
+        selector: decoded.selector,
+      };
+    } else if (decoded?.kind === 'string') {
+      hint = ` [Error(string): "${decoded.decoded}"]`;
+      decodedForPayload = {
+        decoded: decoded.decoded,
+        selector: decoded.selector,
+      };
+    } else if (decoded?.kind === 'unknown') {
+      printLog(
+        ctx,
+        `[error-decoder] unknown selector ${decoded.selector} — consider adding to KNOWN_ERROR_SELECTORS`
+      );
     }
     const fullMessage =
       `Push Chain transaction failed for gateway tx: ${gatewayTxHash}${errorDetails}${hint}`;
     // Live-emit 199-02 before throwing so the terminal failure hook reaches
     // any caller-registered progress stream (parity with reconstructProgressEvents
     // which emits 199-02 on replay).
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, fullMessage);
-    throw new PushChainExecutionError(fullMessage, { gatewayTxHash });
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, fullMessage, decodedForPayload);
+    throw new PushChainExecutionError(fullMessage, {
+      gatewayTxHash,
+      decodedError: decodedForPayload,
+    });
   }
   const tx = await ctx.pushClient.getTransaction(lastPcTransaction.txHash as `0x${string}`);
   return transformFn(tx, eventBuffer);

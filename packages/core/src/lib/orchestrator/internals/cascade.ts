@@ -73,6 +73,12 @@ import { pickWaitHooks } from './progress-route-hooks';
 import PROGRESS_HOOKS from '../../progress-hook/progress-hook';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import { buildSvmPayloadFromParams } from '../svm-idl/build-payload';
+import {
+  runPreflight,
+  maybeFireSvmWarnThreshold,
+} from './preflight';
+import { InsufficientUEABalanceError } from './errors';
+import { fireProgressHook } from './context';
 
 // ============================================================================
 // Callback interfaces
@@ -689,6 +695,33 @@ export async function composeCascade(
     (s) => s.type !== 'PUSH_EXECUTION'
   ).length;
   const CASCADE_GAS_RESERVE = BigInt(3e18); // 3 PC reserve for gas costs
+
+  // Cascade pre-flight: catches the zero-balance silent-segment-zero failure
+  // mode. When `ueaBalance <= CASCADE_GAS_RESERVE`, `perOutboundNativeValue`
+  // is left undefined and downstream segments silently allocate value=0,
+  // producing under-funded swaps that revert inside Uniswap. Throw early
+  // with a structured error so the caller knows which path / hop failed.
+  // Honor the per-call opt-out from the first non-PUSH segment (segments share
+  // the same UniversalExecuteParams.options.allowUnderfundedSwap shape).
+  const firstOutboundSegment = segments.find(
+    (s) => s.type !== 'PUSH_EXECUTION'
+  );
+  const cascadeAllowUnderfunded =
+    firstOutboundSegment?.hops?.[0]?.params?.options?.allowUnderfundedSwap ===
+    true;
+  if (numOutbounds > 0) {
+    runPreflight({
+      ctx,
+      ueaAddress,
+      ueaBalance: ueaBalance ?? BigInt(0),
+      // Required = at least one wei of allocatable PC after reserve. The
+      // per-segment min-swap check below catches finer-grained shortfalls.
+      requiredValue: BigInt(1),
+      gasReserve: CASCADE_GAS_RESERVE,
+      pathTag: 'CASCADE',
+      allowUnderfundedSwap: cascadeAllowUnderfunded,
+    });
+  }
   let perOutboundNativeValue: bigint | undefined;
   if (ueaBalance && numOutbounds > 0 && ueaBalance > CASCADE_GAS_RESERVE) {
     perOutboundNativeValue =
@@ -732,12 +765,22 @@ export async function composeCascade(
     const perSvmCap = svmTotal / BigInt(svmSegments.length);
     const UNCAPPED_BALANCE = BigInt(1e30); // effectively disable estimator's internal cap
     for (const seg of svmSegments) {
+      // Cascade-level segment index (position in `segments`, not in `svmSegments`)
+      // so the error's `segmentIndex` lines up with what the caller sees.
+      const cascadeIdx = segments.indexOf(seg);
       const estimated = await estimateNativeValueForSwap(
         ctx,
         universalCoreAddress,
         seg.gasToken as `0x${string}`,
         seg.gasFee as bigint,
         UNCAPPED_BALANCE
+      );
+      // SVM warn-threshold telemetry (no truncation — pre-flight handles drain protection).
+      maybeFireSvmWarnThreshold(
+        ctx,
+        estimated,
+        seg.gasToken as `0x${string}`,
+        'CASCADE'
       );
       const flat = perOutboundNativeValue ?? BigInt(0);
       let value = estimated > flat ? estimated : flat;
@@ -746,12 +789,39 @@ export async function composeCascade(
         ctx,
         `composeCascade — SVM outbound to ${seg.hops[0]?.targetChain}: gasFee=${seg.gasFee}, estimatedWpc=${estimated}, flat=${flat}, perSvmCap=${perSvmCap}, chosen=${value}`
       );
+      // Per-segment minimum-viable-swap check: if the chosen `value` is below
+      // the live pool quote (`estimated`), the cap squeezed the budget below
+      // what the swap actually needs and the segment will revert inside
+      // Uniswap with STF. Throw cleanly with `segmentIndex` so the caller
+      // knows which hop's pool is misbehaving.
+      if (estimated > BigInt(0) && value < estimated && !cascadeAllowUnderfunded) {
+        const shortfall = estimated - value;
+        fireProgressHook(
+          ctx,
+          PROGRESS_HOOK.SEND_TX_003_04,
+          estimated,
+          value,
+          shortfall,
+          ueaAddress,
+          'CASCADE',
+          { kind: 'NATIVE', segmentIndex: cascadeIdx }
+        );
+        throw new InsufficientUEABalanceError({
+          required: estimated,
+          available: value,
+          shortfall,
+          ueaAddress,
+          pathTag: 'CASCADE',
+          reason: 'NATIVE',
+          segmentIndex: cascadeIdx,
+        });
+      }
       svmNativeValueBySegment.set(seg, value);
     }
   }
 
-  for (let i = segments.length - 1; i >= 0; i--) {
-    const segment = segments[i];
+  for (let segIdxLoop = segments.length - 1; segIdxLoop >= 0; segIdxLoop--) {
+    const segment = segments[segIdxLoop];
 
     switch (segment.type) {
       case 'PUSH_EXECUTION': {
@@ -789,6 +859,54 @@ export async function composeCascade(
           );
           // Get CEA address from the first hop
           targetForOutbound = firstHop?.ceaAddress || ueaAddress;
+        }
+
+        // Per-segment PRC-20 burn-balance pre-check (cascade R2-style segments
+        // only — INBOUND_FROM_CEA segments are payload-only with totalBurnAmount=0
+        // per the 2026-03-19 fix). Skip MIGRATION (totalBurnAmount=0).
+        const segBurnAmount = segment.totalBurnAmount || BigInt(0);
+        const segBurnToken = segment.prc20Token;
+        if (segBurnAmount > BigInt(0) && segBurnToken && !isMigration) {
+          const onHand = await ctx.pushClient.readContract<bigint>({
+            address: segBurnToken,
+            abi: ERC20_EVM,
+            functionName: 'balanceOf',
+            args: [ueaAddress],
+          });
+          const sufficient = onHand >= segBurnAmount;
+          fireProgressHook(
+            ctx,
+            PROGRESS_HOOK.SEND_TX_003_03,
+            segBurnAmount,
+            onHand,
+            sufficient,
+            ueaAddress,
+            'CASCADE',
+            { kind: 'PRC20', burnToken: segBurnToken, segmentIndex: segIdxLoop }
+          );
+          if (!sufficient && !cascadeAllowUnderfunded) {
+            const shortfall = segBurnAmount - onHand;
+            fireProgressHook(
+              ctx,
+              PROGRESS_HOOK.SEND_TX_003_04,
+              segBurnAmount,
+              onHand,
+              shortfall,
+              ueaAddress,
+              'CASCADE',
+              { kind: 'PRC20', burnToken: segBurnToken, segmentIndex: segIdxLoop }
+            );
+            throw new InsufficientUEABalanceError({
+              required: segBurnAmount,
+              available: onHand,
+              shortfall,
+              ueaAddress,
+              pathTag: 'CASCADE',
+              reason: 'PRC20',
+              burnToken: segBurnToken,
+              segmentIndex: segIdxLoop,
+            });
+          }
         }
 
         // Build outbound request
@@ -1253,13 +1371,33 @@ export function createCascadedBuilder(
         ueaCodeCascade !== undefined
           ? await getUEANonce(ctx, ueaAddress)
           : BigInt(0);
-      const composedMulticalls = await composeCascade(
-        ctx,
-        segments,
-        ueaAddress,
-        ueaBalance,
-        ueaNonceCascade
-      );
+      let composedMulticalls: MultiCall[];
+      try {
+        composedMulticalls = await composeCascade(
+          ctx,
+          segments,
+          ueaAddress,
+          ueaBalance,
+          ueaNonceCascade
+        );
+      } catch (err) {
+        // Pre-flight or per-segment min-swap failure inside composeCascade
+        // throws before the cascade ever broadcasts. Fire 999-02 with the
+        // segmentIndex (1-indexed for the failedAt slot) so consumers see a
+        // terminal "cascade failed" frame instead of the stream stopping
+        // silently after 203-04.
+        if (err instanceof InsufficientUEABalanceError) {
+          const failedHopIndex = err.segmentIndex ?? 0;
+          fireProgressHook(
+            ctx,
+            PROGRESS_HOOK.SEND_TX_999_02,
+            failedHopIndex + 1,
+            preparedTxs.length,
+            err.message
+          );
+        }
+        throw err;
+      }
 
       // Execute the composed multicall as a single Push Chain tx
       const executeParams: ExecuteParams = {

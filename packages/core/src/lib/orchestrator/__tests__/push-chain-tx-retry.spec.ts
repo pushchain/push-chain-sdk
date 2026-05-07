@@ -8,6 +8,7 @@
  * tx.rawLog, invoke resignFn, and re-broadcast.
  */
 import { sendUniversalTx } from '../internals/push-chain-tx';
+import { PushChainExecutionError } from '../internals/errors';
 import { CHAIN, PUSH_NETWORK, VM } from '../../constants/enums';
 import { VerificationType } from '../../generated/v1/tx';
 import type { UniversalPayload } from '../../generated/v1/tx';
@@ -220,5 +221,76 @@ describe('sendUniversalTx — InvalidEVMSignature retry', () => {
 
     expect(broadcast).toHaveBeenCalledTimes(1);
     expect(resignFn).not.toHaveBeenCalled();
+  });
+});
+
+describe('sendUniversalTx — decoder on broadcast-failed path', () => {
+  const transformFn = jest.fn().mockResolvedValue({ hash: '0xabc' } as any);
+  beforeEach(() => transformFn.mockClear());
+
+  it('attaches [InsufficientBalance: …] hint + decodedError on 0xf4d678b8', async () => {
+    const broadcast = jest.fn().mockResolvedValueOnce(OTHER_FAILURE_TX);
+    const ctx = makeCtx(broadcast);
+    const resignFn = jest.fn();
+
+    let caught: unknown;
+    try {
+      await sendUniversalTx(
+        ctx,
+        true,
+        undefined,
+        makePayload(),
+        '0xsig' as `0x${string}`,
+        [],
+        transformFn,
+        resignFn,
+      );
+      fail('expected throw');
+    } catch (e) {
+      caught = e;
+    }
+
+    expect(caught).toBeInstanceOf(PushChainExecutionError);
+    const err = caught as PushChainExecutionError;
+    // Original rawLog still embedded in the message (regex compat with pre-existing tests).
+    expect(err.message).toMatch(/0xf4d678b8/);
+    // New: decoder appended the [Name: hint] block.
+    expect(err.message).toMatch(/\[InsufficientBalance:/);
+    // New: structured payload available for terminal-hook consumers.
+    expect(err.decodedError).toBeDefined();
+    expect(err.decodedError?.name).toBe('InsufficientBalance');
+    expect(err.decodedError?.selector).toBe('0xf4d678b8');
+    expect(typeof err.decodedError?.hint).toBe('string');
+  });
+
+  it('logs unknown selectors at INFO and still throws PushChainExecutionError without decodedError', async () => {
+    const broadcast = jest.fn().mockResolvedValueOnce(SIG_MISMATCH_TX);
+    const ctx = makeCtx(broadcast);
+    const resignFn = jest.fn(); // signature retry not exercised here
+
+    let caught: unknown;
+    try {
+      await sendUniversalTx(
+        ctx,
+        true,
+        undefined,
+        makePayload(),
+        '0xsig' as `0x${string}`,
+        [],
+        transformFn,
+        undefined, // no resignFn → falls through to terminal failure
+      );
+      fail('expected throw');
+    } catch (e) {
+      caught = e;
+    }
+
+    expect(caught).toBeInstanceOf(PushChainExecutionError);
+    const err = caught as PushChainExecutionError;
+    // 0xc7dbd31d is NOT in KNOWN_ERROR_SELECTORS, so no hint is appended.
+    expect(err.message).toMatch(/0xc7dbd31d/);
+    expect(err.message).not.toMatch(/\[/); // no decoded brackets
+    expect(err.decodedError).toBeUndefined();
+    void resignFn;
   });
 });

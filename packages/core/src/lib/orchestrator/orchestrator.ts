@@ -242,7 +242,60 @@ export class Orchestrator {
         isChainTarget(params.to) || ('from' in params && params.from?.chain);
 
       if (isMultiChain) {
-        return await _executeMultiChain(this.ctx, params as UniversalExecuteParams, this.execute.bind(this));
+        try {
+          return await _executeMultiChain(this.ctx, params as UniversalExecuteParams, this.execute.bind(this));
+        } catch (err) {
+          // R2/R3/R4 outer catch — fires the route-correct terminal failure
+          // hook (299-02 / 399-02) when an inner route handler throws BEFORE
+          // its own try/catch around executeFn (e.g. pre-flight balance
+          // check throws). Without this, the hook stream ends mid-flight and
+          // consumers have no terminal close-out marker.
+          if (!isRecursiveInnerCall && !this.ctx._routeTerminalEmitted) {
+            const errMessage =
+              err instanceof Error
+                ? err.message
+                : typeof err === 'string'
+                ? err
+                : 'Unknown error';
+            // Lift any structured `decodedError` off the typed error so the
+            // formatter's optional payload field gets populated.
+            const decodedError =
+              err instanceof Error && (err as unknown as { decodedError?: unknown }).decodedError
+                ? ((err as unknown as { decodedError: unknown }).decodedError as
+                    | { name?: string; hint?: string; selector?: string; decoded?: string }
+                    | undefined)
+                : undefined;
+            if (this.currentRoute === TransactionRoute.CEA_TO_PUSH) {
+              _fireProgressHook(
+                this.ctx,
+                PROGRESS_HOOK.SEND_TX_399_02,
+                errMessage,
+                'push',
+                undefined,
+                decodedError
+              );
+            } else if (this.currentRoute === TransactionRoute.UOA_TO_CEA) {
+              // 299-02 needs the target chain — pull it off ChainTarget.
+              const targetChain =
+                isChainTarget(params.to) && params.to ? params.to.chain : 'unknown';
+              _fireProgressHook(
+                this.ctx,
+                PROGRESS_HOOK.SEND_TX_299_02,
+                targetChain,
+                errMessage,
+                decodedError
+              );
+            } else {
+              _fireProgressHook(
+                this.ctx,
+                PROGRESS_HOOK.SEND_TX_199_02,
+                errMessage,
+                decodedError
+              );
+            }
+          }
+          throw err;
+        }
       }
 
       // Standard Push Chain execution (Route 1)

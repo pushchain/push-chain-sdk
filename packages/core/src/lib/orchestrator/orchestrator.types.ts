@@ -495,6 +495,21 @@ export type UniversalExecuteParams = Omit<ExecuteParams, 'to'> & {
    * Only applicable for Route 2 (UOA_TO_CEA) on EVM chains.
    */
   migration?: boolean;
+
+  /**
+   * Per-call SDK behaviour overrides. Reserved for opt-out flags that must
+   * not affect the global orchestrator config.
+   */
+  options?: {
+    /**
+     * Restore the legacy clamp-and-refund behaviour for outbound paths whose
+     * UEA balance is below the buffered pool quote. Default `false` — the
+     * SDK throws `InsufficientUEABalanceError` (see `runPreflight`) and does
+     * NOT submit a cosmos tx. Set `true` only when the caller intentionally
+     * relies on `swapAndBurnGas` refunds to power through low balances.
+     */
+    allowUnderfundedSwap?: boolean;
+  };
 };
 
 // ============================================================================

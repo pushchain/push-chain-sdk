@@ -1,0 +1,151 @@
+/**
+ * Decoder for revert-error messages surfaced by Cosmos `tx.rawLog`.
+ *
+ * Two extraction paths:
+ *   1. 4-byte custom selector (e.g. `0xacfdb444:` or `0xf4d678b8000000…`) —
+ *      looked up against `KNOWN_ERROR_SELECTORS` for a friendly name + hint.
+ *   2. `Error(string)` ABI-encoded revert (`0x08c379a0` selector + offset +
+ *      length + data) — decoded into the original UTF-8 string.
+ *
+ * Unknown selectors fall through with `kind: 'unknown'` so callers can log
+ * them at INFO and grow the table from real reverts.
+ *
+ * The selector→name mappings below are EMPIRICAL: they were observed in
+ * production e2e logs and SDK test fixtures. `keccak256` of the obvious
+ * parameterless signatures (e.g. `keccak256("InsufficientBalance()")` =
+ * `0x01e1e567`) does NOT reproduce the listed selectors, so the deployed-
+ * source mapping is still unverified. Names and hints are worded as
+ * "likely cause" until the bytecode-source trace lands.
+ */
+
+export interface KnownErrorSelector {
+  /** Best-effort error name. Worded as a likely cause until source-traced. */
+  name: string;
+  /** User-facing remediation hint. */
+  hint: string;
+  /** Where this mapping was first observed (log path or fixture). */
+  provenance: string;
+}
+
+export const KNOWN_ERROR_SELECTORS: Record<`0x${string}`, KnownErrorSelector> = {
+  '0xacfdb444': {
+    name: 'ExecutionFailed',
+    hint:
+      'Likely cause: subcall reverted (target contract or internal gas-swap precompile). ' +
+      'Check that the target accepts native value (has receive/fallback) and that calldata matches a valid signature. ' +
+      'Note: this selector also fires from internal SDK paths (e.g. fresh-wallet gas-swap) — see route2-fresh-wallet-gas-bug.spec.ts.',
+    provenance:
+      'Production e2e: e2e-2026-04-09T13-58-42-237Z.log:103 (R2 EVM target revert)',
+  },
+  '0x179a867c': {
+    name: 'ExpiredDeadline',
+    hint:
+      'Likely cause: transaction deadline passed before relay. Retry — the SDK will set a new deadline.',
+    provenance:
+      'Production e2e (associated with deadline-related reverts)',
+  },
+  '0xf4d678b8': {
+    name: 'InsufficientBalance',
+    hint:
+      'Likely cause: UEA does not hold enough of the burn token (PRC-20 mapped from the outbound `funds.token`). ' +
+      'For Solana SPL outbounds, ensure UEA holds the corresponding pUSDT.sol / pUSDC.sol mint before retrying. ' +
+      'Same selector may also surface from other balance-check reverters; verify burn-token balance first.',
+    provenance:
+      'Production e2e: e2e-2026-04-16T16-27-58-082Z.log:342 (R2 SPL fresh-UEA, no pUSDT.sol)',
+  },
+  '0x66f9d09e': {
+    name: 'GasLimitBelowBase',
+    hint:
+      'Likely cause: provided gasLimit is below the chain minimum. Omit `gasLimit` to use the per-chain default.',
+    provenance:
+      'Observed in dev (selector source unverified — see plan §9 #5)',
+  },
+};
+
+/** Selector for `Error(string)` (Solidity `require(false, "msg")`). */
+export const ERROR_STRING_SELECTOR = '0x08c379a0' as `0x${string}`;
+
+/** Hard cap on the decoded string length; protects against malformed data. */
+const MAX_DECODED_STRING_LEN = 1024;
+
+export type DecodedRevertCustom = {
+  kind: 'custom';
+  selector: `0x${string}`;
+  name: string;
+  hint: string;
+  provenance: string;
+};
+
+export type DecodedRevertString = {
+  kind: 'string';
+  selector: `0x${string}`;
+  decoded: string;
+};
+
+export type DecodedRevertUnknown = {
+  kind: 'unknown';
+  selector: `0x${string}`;
+};
+
+export type DecodedRevert =
+  | DecodedRevertCustom
+  | DecodedRevertString
+  | DecodedRevertUnknown;
+
+/**
+ * Extracts the first hex blob after `ret ` from a Cosmos tx error message,
+ * pulls the 4-byte selector, and looks it up. Returns `null` when no blob
+ * is found.
+ *
+ * **Assumption**: today's Cosmos `tx.rawLog` format contains a single
+ * `ret 0x…:` substring per failed message. If a future log format includes
+ * nested call traces with multiple `ret` substrings, this regex will pick
+ * the first selector — which may not be the most relevant one. Revisit
+ * if multi-revert log formats appear in production.
+ */
+export function decodeRevert(errorMsg: string): DecodedRevert | null {
+  if (!errorMsg) return null;
+  const m = errorMsg.match(/ret (0x[0-9a-fA-F]+)/);
+  if (!m) return null;
+  const blob = m[1].toLowerCase();
+  if (blob.length < 10) return null;
+  const sel = blob.slice(0, 10) as `0x${string}`;
+
+  const entry = KNOWN_ERROR_SELECTORS[sel];
+  if (entry) {
+    return {
+      kind: 'custom',
+      selector: sel,
+      name: entry.name,
+      hint: entry.hint,
+      provenance: entry.provenance,
+    };
+  }
+
+  if (sel === ERROR_STRING_SELECTOR) {
+    try {
+      const data = blob.slice(10);
+      // Error(string) ABI: offset(32 bytes) + length(32 bytes) + data
+      // Skip the 32-byte offset (always 0x20).
+      const lengthHex = data.slice(64, 128);
+      if (lengthHex.length === 64) {
+        const length = parseInt(lengthHex, 16);
+        if (
+          Number.isFinite(length) &&
+          length > 0 &&
+          length < MAX_DECODED_STRING_LEN
+        ) {
+          const strHex = data.slice(128, 128 + length * 2);
+          if (strHex.length === length * 2) {
+            const decoded = Buffer.from(strHex, 'hex').toString('utf8');
+            return { kind: 'string', selector: sel, decoded };
+          }
+        }
+      }
+    } catch {
+      /* fall through to unknown */
+    }
+  }
+
+  return { kind: 'unknown', selector: sel };
+}

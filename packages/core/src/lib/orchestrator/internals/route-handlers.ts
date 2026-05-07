@@ -44,6 +44,11 @@ import {
   estimateNativeValueForSwap,
   estimateDepositFromLockedNative,
 } from './gas-calculator';
+import {
+  runPreflight,
+  maybeFireSvmWarnThreshold,
+  SVM_NATIVE_VALUE_WARN_THRESHOLD,
+} from './preflight';
 
 import { CHAIN_INFO, VM_NAMESPACE, UNIVERSAL_GATEWAY_ADDRESSES } from '../../constants/chain';
 import { CHAIN } from '../../constants/enums';
@@ -640,31 +645,41 @@ export async function executeUoaToCea(
     nativeValueForGas = EVM_NATIVE_VALUE_SAFETY_CAP;
   }
 
-  let adjustedValue: bigint;
-  if (effectiveBalance >= nativeValueForGas + EVM_GAS_RESERVE) {
-    adjustedValue = nativeValueForGas;
-  } else if (effectiveBalance > EVM_GAS_RESERVE) {
-    // Balance-starved: send everything we can afford. swapAndBurnGas
-    // refunds unused; undershoot will revert with a concrete error.
-    adjustedValue = effectiveBalance - EVM_GAS_RESERVE;
-  } else if (effectiveBalance > BigInt(0)) {
-    // Drained UEA: overshoot would return (false, "") and surface as an
-    // opaque ExecutionFailed() — clamp to what we have.
-    adjustedValue = effectiveBalance < nativeValueForGas ? effectiveBalance : nativeValueForGas;
-  } else {
-    throw new Error(
-      `UEA ${ueaAddress} has zero UPC balance; cannot fund outbound gas swap. ` +
-      `Bridge UPC to the UEA before retrying.`
+  // Pre-flight: throws InsufficientUEABalanceError when UEA cannot cover
+  // (nativeValueForGas + gasReserve) or the PRC-20 burn amount. Replaces the
+  // legacy silent-clamp that previously submitted under-funded swaps and
+  // bubbled up as Uniswap STF reverts.
+  let prc20BalanceR2Evm: bigint | undefined;
+  if (burnAmount > BigInt(0)) {
+    prc20BalanceR2Evm = await ctx.pushClient.readContract<bigint>({
+      address: prc20Token,
+      abi: ERC20_EVM,
+      functionName: 'balanceOf',
+      args: [ueaAddress],
+    });
+  }
+  const allowUnderfundedR2Evm =
+    params.options?.allowUnderfundedSwap === true;
+  const preflightR2Evm = runPreflight({
+    ctx,
+    ueaAddress,
+    ueaBalance: effectiveBalance,
+    requiredValue: nativeValueForGas,
+    gasReserve: EVM_GAS_RESERVE,
+    pathTag: 'R2_EVM',
+    burnToken: prc20Token,
+    burnAmount,
+    prc20Balance: prc20BalanceR2Evm,
+    allowUnderfundedSwap: allowUnderfundedR2Evm,
+  });
+  if (!preflightR2Evm.ok) {
+    nativeValueForGas = preflightR2Evm.legacyClampedValue;
+    printLog(
+      ctx,
+      `executeUoaToCea — allowUnderfundedSwap=true; using legacy clamped value ${nativeValueForGas.toString()}`
     );
   }
-
-  if (adjustedValue !== nativeValueForGas) {
-    printLog(ctx,
-      `executeUoaToCea — adjusting nativeValueForGas from ${nativeValueForGas.toString()} ` +
-      `to ${adjustedValue.toString()} (effective balance: ${effectiveBalance.toString()})`
-    );
-    nativeValueForGas = adjustedValue;
-  }
+  // ok=true → nativeValueForGas already covers required + reserve; no adjust needed.
 
   // Build outbound multicalls (approve burn + sendUniversalTxOutbound with native value)
   const outboundMulticalls = buildOutboundApprovalAndCall({
@@ -682,32 +697,6 @@ export async function executeUoaToCea(
     ctx,
     `executeUoaToCea — Push Chain multicall has ${pushChainMulticalls.length} operations`
   );
-
-  // TODO: Enable pre-flight balance checks once outbound flow is stable
-  // if (burnAmount > BigInt(0)) {
-  //   const prc20Balance = await ctx.pushClient.publicClient.readContract({
-  //     address: prc20Token,
-  //     abi: [{ name: 'balanceOf', type: 'function', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] }],
-  //     functionName: 'balanceOf',
-  //     args: [ueaAddress],
-  //   }) as bigint;
-  //   if (prc20Balance < burnAmount) {
-  //     throw new Error(
-  //       `Insufficient PRC-20 token balance on UEA. ` +
-  //       `Required: ${burnAmount.toString()}, Available: ${prc20Balance.toString()}, ` +
-  //       `Token: ${prc20Token}, UEA: ${ueaAddress}. ` +
-  //       `Please bridge tokens to Push Chain first.`
-  //     );
-  //   }
-  // }
-  // const currentUeaBalance = await ctx.pushClient.getBalance(ueaAddress);
-  // if (currentUeaBalance < nativeValueForGas) {
-  //   throw new Error(
-  //     `Insufficient native balance on UEA for outbound gas. ` +
-  //     `Required: ${nativeValueForGas.toString()} wei, Available: ${currentUeaBalance.toString()} wei, ` +
-  //     `UEA: ${ueaAddress}. Please send UPC to your UEA first.`
-  //   );
-  // }
 
   // Execute through the normal execute() flow
   // This handles fee-locking on origin chain and executes the multicall from UEA context
@@ -945,10 +934,14 @@ export async function executeUoaToCeaSvm(
   // refundUnusedGas.
   //
   // SVM pools (WPC/pSOL) are thinner than EVM pools so the pool-quote can
-  // easily exceed the UEA's balance. Apply a balance-aware clamp so the
-  // outer tx doesn't fail with InsufficientFunds before the swap runs.
-  // No hard safety cap here — pSOL pool skew means even legitimate swaps
-  // can need hundreds of PC; capping would trigger Uniswap STF reverts.
+  // easily exceed the UEA's balance. Pre-flight (`runPreflight`) handles
+  // drain protection: an under-funded quote throws cleanly with
+  // `InsufficientUEABalanceError` and no cosmos tx is submitted. The
+  // SVM_NATIVE_VALUE_WARN_THRESHOLD below is telemetry-only; it does NOT
+  // truncate `nativeValueForGas`. v2 may add a hard cap once telemetry
+  // justifies a number — until then the original engineer's pool-skew
+  // warning still applies (capping risks false-positive truncation of
+  // legitimate quotes).
   const SVM_GAS_RESERVE = BigInt(3e18); // 3 UPC for outer-tx gas
 
   let nativeValueForGas = BigInt(0);
@@ -961,30 +954,42 @@ export async function executeUoaToCeaSvm(
       ctx,
       `executeUoaToCeaSvm — nativeValueForGas: pool-quote=${estimated.toString()}, with 10% buffer=${nativeValueForGas.toString()}`
     );
+    maybeFireSvmWarnThreshold(ctx, nativeValueForGas, gasToken, 'R2_SVM');
   }
 
-  // Balance-aware clamp: if UEA balance can't cover target + gas reserve,
-  // send only what we can afford. swapAndBurnGas refunds any excess.
-  let adjustedValueSvm: bigint;
-  if (ueaBalance >= nativeValueForGas + SVM_GAS_RESERVE) {
-    adjustedValueSvm = nativeValueForGas;
-  } else if (ueaBalance > SVM_GAS_RESERVE) {
-    adjustedValueSvm = ueaBalance - SVM_GAS_RESERVE;
-  } else if (ueaBalance > BigInt(0)) {
-    adjustedValueSvm = ueaBalance < nativeValueForGas ? ueaBalance : nativeValueForGas;
-  } else {
-    throw new Error(
-      `UEA ${ueaAddress} has zero UPC balance; cannot fund outbound gas swap. ` +
-      `Bridge UPC to the UEA before retrying.`
-    );
+  // Pre-flight: throws InsufficientUEABalanceError when UEA cannot cover
+  // (nativeValueForGas + SVM_GAS_RESERVE) or the PRC-20 burn amount.
+  // Replaces the legacy silent-clamp that previously submitted under-funded
+  // swaps and bubbled up as Uniswap STF reverts.
+  let prc20BalanceR2Svm: bigint | undefined;
+  if (burnAmount > BigInt(0)) {
+    prc20BalanceR2Svm = await ctx.pushClient.readContract<bigint>({
+      address: prc20Token,
+      abi: ERC20_EVM,
+      functionName: 'balanceOf',
+      args: [ueaAddress],
+    });
   }
-
-  if (adjustedValueSvm !== nativeValueForGas) {
-    printLog(ctx,
-      `executeUoaToCeaSvm — adjusting nativeValueForGas from ${nativeValueForGas.toString()} ` +
-      `to ${adjustedValueSvm.toString()} (UEA balance: ${ueaBalance.toString()})`
+  const allowUnderfundedR2Svm =
+    params.options?.allowUnderfundedSwap === true;
+  const preflightR2Svm = runPreflight({
+    ctx,
+    ueaAddress,
+    ueaBalance,
+    requiredValue: nativeValueForGas,
+    gasReserve: SVM_GAS_RESERVE,
+    pathTag: 'R2_SVM',
+    burnToken: prc20Token,
+    burnAmount,
+    prc20Balance: prc20BalanceR2Svm,
+    allowUnderfundedSwap: allowUnderfundedR2Svm,
+  });
+  if (!preflightR2Svm.ok) {
+    nativeValueForGas = preflightR2Svm.legacyClampedValue;
+    printLog(
+      ctx,
+      `executeUoaToCeaSvm — allowUnderfundedSwap=true; using legacy clamped value ${nativeValueForGas.toString()}`
     );
-    nativeValueForGas = adjustedValueSvm;
   }
 
   // --- Build Push Chain multicalls (approve + sendUniversalTxOutbound) ---
@@ -1389,34 +1394,51 @@ export async function executeCeaToPush(
     }
   }
 
-  // Balance-aware adjustment matching Route 2 logic:
-  // - If balance exceeds target + reserve: use target (200 UPC)
-  // - If balance exceeds reserve: use balance - reserve (maximize within budget)
-  // - Otherwise: keep original nativeValueForGas (fallback)
-  const EVM_NATIVE_VALUE_TARGET_R3 = BigInt(200e18); // 200 UPC
-  let adjustedValue: bigint;
+  // Balance-aware *upward* allocation. The previous behaviour silently
+  // clamped to a 200 PC target whenever balance had headroom — which was
+  // a downward clamp when the calibrated value already exceeded 200 PC,
+  // masking under-funded swaps with opaque ExecutionFailed reverts. The
+  // new logic preserves the "consume extra to reduce STF risk" intent for
+  // small calibrated values while never reducing a calibrated value that
+  // happened to land above 200 PC. Down-clamp + zero-balance throws live
+  // in `runPreflight` below.
+  const EVM_NATIVE_VALUE_TARGET_R3 = BigInt(200e18); // 200 UPC target floor
   if (effectiveBalance > EVM_NATIVE_VALUE_TARGET_R3 + OUTBOUND_GAS_RESERVE_R3) {
-    adjustedValue = EVM_NATIVE_VALUE_TARGET_R3;
-  } else if (effectiveBalance > OUTBOUND_GAS_RESERVE_R3) {
-    adjustedValue = effectiveBalance - OUTBOUND_GAS_RESERVE_R3;
-  } else if (effectiveBalance > BigInt(0)) {
-    // Drained UEA: overshoot would make the inner .call{value:...} return (false, "")
-    // and the UEA reverts with opaque ExecutionFailed(). Clamp to whatever we have so
-    // the gateway swap either succeeds or surfaces a concrete revert reason.
-    adjustedValue = effectiveBalance < nativeValueForGas ? effectiveBalance : nativeValueForGas;
-  } else {
-    throw new Error(
-      `UEA ${ueaAddress} has zero UPC balance; cannot fund outbound gas swap. ` +
-      `Bridge UPC to the UEA before retrying.`
-    );
+    // Balance can cover the target. Bump nativeValueForGas UP to 200 PC,
+    // but never reduce a calibrated value already above 200.
+    const newValue =
+      nativeValueForGas > EVM_NATIVE_VALUE_TARGET_R3
+        ? nativeValueForGas
+        : EVM_NATIVE_VALUE_TARGET_R3;
+    if (newValue !== nativeValueForGas) {
+      printLog(
+        ctx,
+        `executeCeaToPush — adjusting nativeValueForGas UP from ${nativeValueForGas.toString()} to ${newValue.toString()} (EVM_NATIVE_VALUE_TARGET_R3 floor)`
+      );
+      nativeValueForGas = newValue;
+    }
   }
 
-  if (adjustedValue !== nativeValueForGas) {
+  // Pre-flight (R3 EVM): no PRC-20 burn check — `burnAmount = 0` makes this
+  // payload-only (UEA never holds the source-chain PRC-20; see plan §9 #4).
+  // Native UPC check still applies for the gas swap.
+  const allowUnderfundedR3Evm =
+    params.options?.allowUnderfundedSwap === true;
+  const preflightR3Evm = runPreflight({
+    ctx,
+    ueaAddress,
+    ueaBalance: effectiveBalance,
+    requiredValue: nativeValueForGas,
+    gasReserve: OUTBOUND_GAS_RESERVE_R3,
+    pathTag: 'R3_EVM',
+    allowUnderfundedSwap: allowUnderfundedR3Evm,
+  });
+  if (!preflightR3Evm.ok) {
+    nativeValueForGas = preflightR3Evm.legacyClampedValue;
     printLog(
       ctx,
-      `executeCeaToPush — adjusting nativeValueForGas from ${nativeValueForGas.toString()} to ${adjustedValue.toString()} (effective balance: ${effectiveBalance.toString()})`
+      `executeCeaToPush — allowUnderfundedSwap=true; using legacy clamped value ${nativeValueForGas.toString()}`
     );
-    nativeValueForGas = adjustedValue;
   }
 
   // 12. Build Push Chain multicalls (approvals + sendUniversalTxOutbound)
@@ -1579,9 +1601,13 @@ export async function executeCeaToPushSvm(
     `executeCeaToPushSvm — drainAmount: ${drainAmount.toString()}, payload length: ${(svmPayload.length - 2) / 2} bytes`
   );
 
-  // burnAmount = 1 (minimum for precompile; drain amount lives inside the ixData)
-  // The precompile rejects amount=0, so we use BigInt(1) as a workaround.
-  const burnAmount = BigInt(1);
+  // burnAmount = 0 (payload-only outbound — drain amount lives inside ixData).
+  // Mirrors the 2026-03-19 cascade fix that removed the 1-wei workaround for
+  // SVM payload-only hops because it caused `InsufficientBalance (0xf4d678b8)`
+  // reverts on fresh UEAs that don't hold the source-chain native PRC-20
+  // (e.g. pSOL). The UGPC upgrade post-2026-03-19 already accepts amount = 0
+  // on the cascade path, and the same precompile is used here.
+  const burnAmount = BigInt(0);
 
   // Build outbound request: target = gateway program (self-call)
   const outboundReq: UniversalOutboundTxRequest = buildOutboundRequest(
@@ -1666,18 +1692,72 @@ export async function executeCeaToPushSvm(
     nativeValueForGas = bumped;
   }
 
-  // Adjust nativeValueForGas using UEA balance (contract refunds excess)
-  // Re-fetch balance to minimize staleness from gas fee query RPC roundtrips
+  // Re-fetch balance to minimize staleness from gas fee query RPC roundtrips.
   const currentBalance = await ctx.pushClient.getBalance(ueaAddress);
   // Cosmos-EVM tx overhead costs ~1 PC per operation; 3 PC covers approve(s) + buffer.
   const OUTBOUND_GAS_RESERVE_R3_SVM = BigInt(3e18);
-  if (currentBalance > OUTBOUND_GAS_RESERVE_R3_SVM && currentBalance - OUTBOUND_GAS_RESERVE_R3_SVM > nativeValueForGas) {
-    const adjustedValue = currentBalance - OUTBOUND_GAS_RESERVE_R3_SVM;
+  // Upward-allocation ceiling: cap the upward adjust at max(200 PC, 5x calibrated)
+  // so a UEA with a giant balance doesn't submit msg.value=balance for a small
+  // gas swap. The contract refunds excess via swapAndBurnGas, but pushing
+  // hundreds of thousands of PC into a Uniswap pool moves the price for other
+  // users. 200 PC mirrors EVM's safety cap; 5x calibrated covers pool-skew
+  // scenarios where the calibrated value itself is > 40 PC (5x40 = 200).
+  const UPWARD_BASE_CEILING_R3_SVM = BigInt(200) * BigInt(1e18);
+  const calibratedCeiling = nativeValueForGas * BigInt(5);
+  const upwardCeiling =
+    calibratedCeiling > UPWARD_BASE_CEILING_R3_SVM
+      ? calibratedCeiling
+      : UPWARD_BASE_CEILING_R3_SVM;
+
+  // Upward-only allocation: when balance has headroom over the calibrated
+  // value, consume more of it (up to the ceiling above). Down-clamp +
+  // zero-balance throws live in pre-flight.
+  // Ordering note: pre-flight runs AFTER the upward adjust below; the
+  // semantics are equivalent to running it before — when upward adjust
+  // applies it sets nativeValueForGas to balance-reserve (capped), and the
+  // post-adjust pre-flight check is always satisfied. When upward adjust is
+  // skipped (balance too low), pre-flight runs against the calibrated value
+  // and throws cleanly on shortfall.
+  if (
+    currentBalance > OUTBOUND_GAS_RESERVE_R3_SVM &&
+    currentBalance - OUTBOUND_GAS_RESERVE_R3_SVM > nativeValueForGas
+  ) {
+    const balanceDriven = currentBalance - OUTBOUND_GAS_RESERVE_R3_SVM;
+    const adjustedValue =
+      balanceDriven > upwardCeiling ? upwardCeiling : balanceDriven;
+    if (adjustedValue !== nativeValueForGas) {
+      printLog(
+        ctx,
+        `executeCeaToPushSvm — adjusting nativeValueForGas from ${nativeValueForGas.toString()} to ${adjustedValue.toString()} ` +
+          `(UEA balance: ${currentBalance.toString()}, upwardCeiling: ${upwardCeiling.toString()})`
+      );
+      nativeValueForGas = adjustedValue;
+    }
+  }
+
+  // SVM warn-threshold telemetry (no truncation — pre-flight handles drain protection).
+  maybeFireSvmWarnThreshold(ctx, nativeValueForGas, gasToken, 'R3_SVM');
+
+  // Pre-flight (R3 SVM): no PRC-20 burn check — `burnAmount = 1` is a legacy
+  // precompile-validation shim against a token UEAs structurally don't hold
+  // (see plan §9 #4 / §10.2 latent-bug ticket). Native UPC check still applies.
+  const allowUnderfundedR3Svm =
+    params.options?.allowUnderfundedSwap === true;
+  const preflightR3Svm = runPreflight({
+    ctx,
+    ueaAddress,
+    ueaBalance: currentBalance,
+    requiredValue: nativeValueForGas,
+    gasReserve: OUTBOUND_GAS_RESERVE_R3_SVM,
+    pathTag: 'R3_SVM',
+    allowUnderfundedSwap: allowUnderfundedR3Svm,
+  });
+  if (!preflightR3Svm.ok) {
+    nativeValueForGas = preflightR3Svm.legacyClampedValue;
     printLog(
       ctx,
-      `executeCeaToPushSvm — adjusting nativeValueForGas from ${nativeValueForGas.toString()} to ${adjustedValue.toString()} (UEA balance: ${currentBalance.toString()})`
+      `executeCeaToPushSvm — allowUnderfundedSwap=true; using legacy clamped value ${nativeValueForGas.toString()}`
     );
-    nativeValueForGas = adjustedValue;
   }
 
   // Build Push Chain multicalls (approvals + sendUniversalTxOutbound)
