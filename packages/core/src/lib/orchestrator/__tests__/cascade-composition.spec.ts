@@ -29,6 +29,7 @@ function makeBaseHop(overrides: Partial<HopDescriptor> = {}): HopDescriptor {
     params: { to: ALICE, value: BigInt(100) } as UniversalExecuteParams,
     route: 'UOA_TO_PUSH',
     gasLimit: BigInt(200000),
+    maxPCForGas: BigInt(0),
     ueaAddress: UEA,
     revertRecipient: UEA,
     ...overrides,
@@ -211,5 +212,31 @@ describe('classifyIntoSegments', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].gasLimit).toBe(BigInt(300000));
+  });
+
+  it('should sum non-zero maxPCForGas caps across merged outbound hops', () => {
+    const hop1 = makeRoute2Hop(CHAIN.BNB_TESTNET, undefined, {
+      maxPCForGas: BigInt(1000),
+    });
+    const hop2 = makeRoute2Hop(CHAIN.BNB_TESTNET, undefined, {
+      maxPCForGas: BigInt(2000),
+    });
+    const result = classifyIntoSegments([hop1, hop2]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].maxPCForGas).toBe(BigInt(3000));
+  });
+
+  it('should keep merged outbound cap uncapped when any hop is uncapped', () => {
+    const hop1 = makeRoute2Hop(CHAIN.BNB_TESTNET, undefined, {
+      maxPCForGas: BigInt(1000),
+    });
+    const hop2 = makeRoute2Hop(CHAIN.BNB_TESTNET, undefined, {
+      maxPCForGas: BigInt(0),
+    });
+    const result = classifyIntoSegments([hop1, hop2]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].maxPCForGas).toBe(BigInt(0));
   });
 });

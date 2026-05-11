@@ -159,7 +159,7 @@ export async function queryOutboundGasFee(
   prc20Token: `0x${string}`,
   gasLimit: bigint,
   destinationChain?: CHAIN
-): Promise<{ gasToken: `0x${string}`; gasFee: bigint; protocolFee: bigint; nativeValueForGas: bigint; gasPrice: bigint; universalCoreAddress: `0x${string}`; sizing?: GasSizingDecision }> {
+): Promise<{ gasToken: `0x${string}`; gasFee: bigint; protocolFee: bigint; nativeValueForGas: bigint; gasPrice: bigint; gasLimitUsed: bigint; universalCoreAddress: `0x${string}`; sizing?: GasSizingDecision }> {
   const gatewayPcAddress = getUniversalGatewayPCAddress();
   const pushChain = getPushChainForNetwork(ctx.pushNetwork);
   const rpcUrl = CHAIN_INFO[pushChain]?.defaultRPC?.[0] || 'unknown';
@@ -171,12 +171,12 @@ export async function queryOutboundGasFee(
     universalCoreAddress = await ctx.pushClient.readContract<`0x${string}`>({
       address: gatewayPcAddress,
       abi: UNIVERSAL_GATEWAY_PC,
-      functionName: 'UNIVERSAL_CORE',
+      functionName: 'universalCore',
       args: [],
     });
-    printLog(ctx, `queryOutboundGasFee — [step 2] UNIVERSAL_CORE resolved to: ${universalCoreAddress}`);
+    printLog(ctx, `queryOutboundGasFee — [step 2] universalCore resolved to: ${universalCoreAddress}`);
   } catch (err) {
-    printLog(ctx, `queryOutboundGasFee — [step 2] FAILED to read UNIVERSAL_CORE: ${err instanceof Error ? err.message : String(err)}`);
+    printLog(ctx, `queryOutboundGasFee — [step 2] FAILED to read universalCore: ${err instanceof Error ? err.message : String(err)}`);
     throw err;
   }
 
@@ -192,8 +192,9 @@ export async function queryOutboundGasFee(
   let gasFee: bigint;
   let protocolFee: bigint;
   let gasPrice = BigInt(0);
+  let gasLimitUsed = gasLimit;
   try {
-    const result = await ctx.pushClient.readContract<[`0x${string}`, bigint, bigint, bigint, string]>({
+    const result = await ctx.pushClient.readContract<[`0x${string}`, bigint, bigint, bigint, string, bigint]>({
       address: universalCoreAddress,
       abi: UNIVERSAL_CORE_EVM,
       functionName: 'getOutboundTxGasAndFees',
@@ -203,7 +204,8 @@ export async function queryOutboundGasFee(
     gasFee = result[1];
     protocolFee = result[2];
     gasPrice = result[3];
-    printLog(ctx, `queryOutboundGasFee — [step 4] success: gasToken=${gasToken}, gasFee=${gasFee}, protocolFee=${protocolFee}, gasPrice=${gasPrice}`);
+    gasLimitUsed = result[5] ?? gasLimit;
+    printLog(ctx, `queryOutboundGasFee — [step 4] success: gasToken=${gasToken}, gasFee=${gasFee}, protocolFee=${protocolFee}, gasPrice=${gasPrice}, gasLimitUsed=${gasLimitUsed}`);
   } catch (err) {
     printLog(ctx, `queryOutboundGasFee — [step 3] FAILED: ${err instanceof Error ? err.message : String(err)}`);
     throw err;
@@ -243,7 +245,7 @@ export async function queryOutboundGasFee(
     );
   }
 
-  return { gasToken, gasFee, protocolFee, nativeValueForGas, gasPrice, universalCoreAddress, sizing };
+  return { gasToken, gasFee, protocolFee, nativeValueForGas, gasPrice, gasLimitUsed, universalCoreAddress, sizing };
 }
 
 // ============================================================================
@@ -398,12 +400,12 @@ export async function queryRescueGasFee(
     universalCoreAddress = await ctx.pushClient.readContract<`0x${string}`>({
       address: gatewayPcAddress,
       abi: UNIVERSAL_GATEWAY_PC,
-      functionName: 'UNIVERSAL_CORE',
+      functionName: 'universalCore',
       args: [],
     });
-    printLog(ctx, `queryRescueGasFee — UNIVERSAL_CORE resolved to: ${universalCoreAddress}`);
+    printLog(ctx, `queryRescueGasFee — universalCore resolved to: ${universalCoreAddress}`);
   } catch (err) {
-    printLog(ctx, `queryRescueGasFee — FAILED to read UNIVERSAL_CORE: ${err instanceof Error ? err.message : String(err)}`);
+    printLog(ctx, `queryRescueGasFee — FAILED to read universalCore: ${err instanceof Error ? err.message : String(err)}`);
     throw err;
   }
 
@@ -616,7 +618,7 @@ export async function estimateDepositFromLockedNative(
     const universalCoreAddress = await ctx.pushClient.readContract<`0x${string}`>({
       address: gatewayPcAddress,
       abi: UNIVERSAL_GATEWAY_PC,
-      functionName: 'UNIVERSAL_CORE',
+      functionName: 'universalCore',
       args: [],
     });
 
@@ -717,7 +719,7 @@ export async function estimateNativeForDesiredDeposit(
     const universalCoreAddress = await ctx.pushClient.readContract<`0x${string}`>({
       address: gatewayPcAddress,
       abi: UNIVERSAL_GATEWAY_PC,
-      functionName: 'UNIVERSAL_CORE',
+      functionName: 'universalCore',
       args: [],
     });
 

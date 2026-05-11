@@ -6,8 +6,10 @@ import {
   encodeAbiParameters,
   encodePacked,
   keccak256,
+  padHex,
   stringToBytes,
   toBytes,
+  toHex,
 } from 'viem';
 import { CHAIN_INFO } from '../../constants/chain';
 import { VM } from '../../constants/enums';
@@ -22,29 +24,34 @@ function buildDomainSeparator(
   vm: VM,
   chainId: string,
   version: string,
-  verifyingContract: `0x${string}`
+  verifyingContract: `0x${string}`,
+  pushChainId: string
 ): `0x${string}` {
   const domainTypeHash = keccak256(
     toBytes(
       vm === VM.EVM
-        ? 'EIP712Domain(string version,uint256 chainId,address verifyingContract)'
-        : 'EIP712Domain_SVM(string version,string chainId,address verifyingContract)'
+        ? 'EIP712Domain(string version,uint256 chainId,address verifyingContract,bytes32 salt)'
+        : 'EIP712Domain_SVM(string version,string chainId,address verifyingContract,bytes32 salt)'
     )
   );
+
+  const salt = padHex(toHex(BigInt(pushChainId)), { size: 32 });
 
   return keccak256(
     encodeAbiParameters(
       [
         { name: 'typeHash', type: 'bytes32' },
         { name: 'version', type: 'bytes32' },
-        { name: 'chainId', type: vm === VM.EVM ? 'uint256' : 'string' },
+        { name: 'chainId', type: vm === VM.EVM ? 'uint256' : 'bytes32' },
         { name: 'verifyingContract', type: 'address' },
+        { name: 'salt', type: 'bytes32' },
       ],
       [
         domainTypeHash,
         keccak256(toBytes(version)),
-        vm === VM.EVM ? BigInt(chainId) : chainId,
+        vm === VM.EVM ? BigInt(chainId) : keccak256(toBytes(chainId)),
         verifyingContract,
+        salt,
       ]
     )
   );
@@ -68,6 +75,7 @@ export function computeExecutionHash(
 ): `0x${string}` {
   const chain = ctx.universalSigner.account.chain;
   const { vm, chainId } = CHAIN_INFO[chain];
+  const pushChainId = ctx.pushClient.pushChainInfo.chainId;
 
   const typeHash = keccak256(
     toBytes(
@@ -75,7 +83,13 @@ export function computeExecutionHash(
     )
   );
 
-  const domainSeparator = buildDomainSeparator(vm, chainId, version, verifyingContract);
+  const domainSeparator = buildDomainSeparator(
+    vm,
+    chainId,
+    version,
+    verifyingContract,
+    pushChainId
+  );
 
   const structHash = keccak256(
     encodeAbiParameters(
@@ -132,6 +146,7 @@ export function computeMigrationHash(
 ): `0x${string}` {
   const chain = ctx.universalSigner.account.chain;
   const { vm, chainId } = CHAIN_INFO[chain];
+  const pushChainId = ctx.pushClient.pushChainInfo.chainId;
 
   const typeHash = keccak256(
     toBytes(
@@ -139,7 +154,13 @@ export function computeMigrationHash(
     )
   );
 
-  const domainSeparator = buildDomainSeparator(vm, chainId, version, verifyingContract);
+  const domainSeparator = buildDomainSeparator(
+    vm,
+    chainId,
+    version,
+    verifyingContract,
+    pushChainId
+  );
 
   const structHash = keccak256(
     encodeAbiParameters(
@@ -173,6 +194,7 @@ export async function signUniversalPayload(
 ): Promise<Uint8Array> {
   const chain = ctx.universalSigner.account.chain;
   const { vm, chainId } = CHAIN_INFO[chain];
+  const pushChainId = ctx.pushClient.pushChainInfo.chainId;
 
   switch (vm) {
     case VM.EVM: {
@@ -184,6 +206,7 @@ export async function signUniversalPayload(
           version: version || '0.1.0',
           chainId: Number(chainId),
           verifyingContract,
+          salt: padHex(toHex(BigInt(pushChainId)), { size: 32 }),
         },
         types: {
           UniversalPayload: [
@@ -235,6 +258,7 @@ export async function signMigrationPayload(
 ): Promise<Uint8Array> {
   const chain = ctx.universalSigner.account.chain;
   const { vm, chainId } = CHAIN_INFO[chain];
+  const pushChainId = ctx.pushClient.pushChainInfo.chainId;
 
   switch (vm) {
     case VM.EVM: {
@@ -246,6 +270,7 @@ export async function signMigrationPayload(
           version: ueaVersion,
           chainId: Number(chainId),
           verifyingContract: ueaAddress,
+          salt: padHex(toHex(BigInt(pushChainId)), { size: 32 }),
         },
         types: {
           MigrationPayload: [

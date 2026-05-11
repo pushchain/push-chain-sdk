@@ -119,7 +119,10 @@ export async function getSvmProtocolFee(
     });
     const protocolFeeLamports = BigInt(
       (
-        feeVault.protocolFeeLamports ?? feeVault.protocol_fee_lamports
+        feeVault.inboundFeeLamports ??
+        feeVault.inbound_fee_lamports ??
+        feeVault.protocolFeeLamports ??
+        feeVault.protocol_fee_lamports
       )?.toString() ?? '0'
     );
     return { feeVaultPda, protocolFeeLamports };

@@ -1,5 +1,5 @@
 /**
- * Read gasFee, gasPrice, BASE_GAS_LIMIT from UniversalCore on Push Chain.
+ * Read gasFee, gasPrice, and gas-limit metadata from UniversalCore on Push Chain.
  *
  * Calls the contract directly via viem — no private SDK access needed.
  * Reads getOutboundTxGasAndFees for pSOL and pETH to show the raw values.
@@ -22,7 +22,7 @@ async function getUniversalCoreAddress(): Promise<`0x${string}`> {
   return pushPublicClient.readContract({
     address: GATEWAY_PC,
     abi: UNIVERSAL_GATEWAY_PC,
-    functionName: 'UNIVERSAL_CORE',
+    functionName: 'universalCore',
   }) as Promise<`0x${string}`>;
 }
 
@@ -37,20 +37,21 @@ describe('Read gasFee from UniversalCore', () => {
   it('should read gasFee for pSOL (Solana namespace)', async () => {
     const synthetics = SYNTHETIC_PUSH_ERC20[PUSH_NETWORK.TESTNET_DONUT];
     const pSOL = synthetics.pSOL;
-    const gasLimit = BigInt(0); // 0 = contract uses BASE_GAS_LIMIT
+    const gasLimit = BigInt(0); // 0 = UniversalCore resolves the per-chain default
 
-    const [gasToken, gasFee, protocolFee, gasPrice, chainNamespace] =
+    const [gasToken, gasFee, protocolFee, gasPrice, chainNamespace, gasLimitUsed] =
       (await pushPublicClient.readContract({
         address: universalCore,
         abi: UNIVERSAL_CORE_EVM,
         functionName: 'getOutboundTxGasAndFees',
         args: [pSOL, gasLimit],
-      })) as [string, bigint, bigint, bigint, string];
+      })) as readonly [`0x${string}`, bigint, bigint, bigint, string, bigint];
 
     console.log('\n=== pSOL (Solana) ===');
     console.log(`chainNamespace:   ${chainNamespace}`);
     console.log(`gasToken:         ${gasToken}`);
     console.log(`gasPrice:         ${gasPrice}`);
+    console.log(`gasLimitUsed:     ${gasLimitUsed}`);
     console.log(`gasFee (raw):     ${gasFee}`);
     console.log(`gasFee (pSOL):    ${formatUnits(gasFee, 9)}`);
     console.log(`protocolFee:      ${protocolFee}`);
@@ -74,18 +75,19 @@ describe('Read gasFee from UniversalCore', () => {
     const pETH = synthetics.pETH;
     const gasLimit = BigInt(0);
 
-    const [gasToken, gasFee, protocolFee, gasPrice, chainNamespace] =
+    const [gasToken, gasFee, protocolFee, gasPrice, chainNamespace, gasLimitUsed] =
       (await pushPublicClient.readContract({
         address: universalCore,
         abi: UNIVERSAL_CORE_EVM,
         functionName: 'getOutboundTxGasAndFees',
         args: [pETH, gasLimit],
-      })) as [string, bigint, bigint, bigint, string];
+      })) as readonly [`0x${string}`, bigint, bigint, bigint, string, bigint];
 
     console.log('\n=== pETH (Ethereum) ===');
     console.log(`chainNamespace:   ${chainNamespace}`);
     console.log(`gasToken:         ${gasToken}`);
     console.log(`gasPrice:         ${gasPrice}`);
+    console.log(`gasLimitUsed:     ${gasLimitUsed}`);
     console.log(`gasFee (raw):     ${gasFee}`);
     console.log(`gasFee (pETH):    ${formatUnits(gasFee, 18)}`);
     console.log(`protocolFee:      ${protocolFee}`);

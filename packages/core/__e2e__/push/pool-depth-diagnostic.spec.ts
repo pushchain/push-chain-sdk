@@ -354,7 +354,7 @@ describe('Pool depth diagnostic — pETH/WPC + pSOL/WPC Uniswap V3 (Push Testnet
     const universalCore = await pushPublic.readContract({
       address: gatewayPc,
       abi: UNIVERSAL_GATEWAY_PC,
-      functionName: 'UNIVERSAL_CORE',
+      functionName: 'universalCore',
       args: [],
     }) as `0x${string}`;
 

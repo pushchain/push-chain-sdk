@@ -17,15 +17,8 @@ export const UNIVERSAL_CORE_EVM = [
       { name: 'protocolFee', type: 'uint256', internalType: 'uint256' },
       { name: 'gasPrice', type: 'uint256', internalType: 'uint256' },
       { name: 'chainNamespace', type: 'string', internalType: 'string' },
+      { name: 'gasLimitUsed', type: 'uint256', internalType: 'uint256' },
     ],
-    stateMutability: 'view',
-  },
-  // Base gas limit (legacy global — use baseGasLimitByChainNamespace for per-chain)
-  {
-    type: 'function',
-    name: 'BASE_GAS_LIMIT',
-    inputs: [],
-    outputs: [{ name: 'baseGasLimit', type: 'uint256', internalType: 'uint256' }],
     stateMutability: 'view',
   },
   // Per-chain base gas limit
@@ -90,4 +83,22 @@ export const UNIVERSAL_CORE_EVM = [
       { name: 'minimum', type: 'uint256', internalType: 'uint256' },
     ],
   },
+  { type: 'error', name: 'CorePaused', inputs: [] },
+  { type: 'error', name: 'ZeroBaseGasLimit', inputs: [] },
+  { type: 'error', name: 'ZeroRescueGasLimit', inputs: [] },
+  {
+    type: 'error',
+    name: 'StaleGasData',
+    inputs: [
+      { name: 'observedAt', type: 'uint256', internalType: 'uint256' },
+      { name: 'nowTimestamp', type: 'uint256', internalType: 'uint256' },
+      { name: 'maxAge', type: 'uint256', internalType: 'uint256' },
+    ],
+  },
+  { type: 'error', name: 'PRC20OperationFailed', inputs: [] },
+  { type: 'error', name: 'InsufficientBalance', inputs: [] },
+  { type: 'error', name: 'InsufficientAllowance', inputs: [] },
+  { type: 'error', name: 'TransferFailed', inputs: [] },
+  { type: 'error', name: 'EmptyString', inputs: [] },
+  { type: 'error', name: 'NonDigitCharacter', inputs: [] },
 ] as const;

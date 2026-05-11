@@ -214,7 +214,7 @@ export async function queryOutboundGasFees(
   const universalCoreAddress = (await pushPublicClient.readContract({
     address: UGPC_PRECOMPILE,
     abi: UNIVERSAL_GATEWAY_PC,
-    functionName: 'UNIVERSAL_CORE',
+    functionName: 'universalCore',
   })) as `0x${string}`;
 
   console.log(`[GasFees] UniversalCore address: ${universalCoreAddress}`);
@@ -224,7 +224,7 @@ export async function queryOutboundGasFees(
     abi: UNIVERSAL_CORE_EVM,
     functionName: 'getOutboundTxGasAndFees',
     args: [prc20Token, gasLimit],
-  })) as [string, bigint, bigint, bigint, string];
+  })) as readonly [`0x${string}`, bigint, bigint, bigint, string, bigint];
 
   const gasFee = result[1];
   const protocolFee = result[2];

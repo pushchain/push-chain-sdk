@@ -8,10 +8,7 @@
 import { PublicKey } from '@solana/web3.js';
 import { encodeFunctionData } from 'viem';
 import { ERC20_EVM } from '../../constants/abi/erc20.evm';
-import {
-  CHAIN_INFO,
-  UNIVERSAL_GATEWAY_ADDRESSES,
-} from '../../constants/chain';
+import { CHAIN_INFO } from '../../constants/chain';
 import { CHAIN } from '../../constants/enums';
 import { MoveableToken } from '../../constants/tokens';
 import {
@@ -32,6 +29,7 @@ import {
   buildSendUniversalTxToUEA,
   buildOutboundApprovalAndCall,
   buildMigrationPayload,
+  assertCeaFundsParkingInvariant,
   isSvmChain,
   encodeSvmExecutePayload,
   encodeSvmCeaToUeaPayload,
@@ -219,6 +217,7 @@ export async function buildHopDescriptor(
     params,
     route: routeStr as HopDescriptor['route'],
     gasLimit,
+    maxPCForGas: params.maxPCForGas ?? BigInt(0),
     ueaAddress,
     revertRecipient: ueaAddress,
   };
@@ -642,6 +641,10 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
         // Accumulate gas fees
         currentSegment.gasFee =
           (currentSegment.gasFee || BigInt(0)) + (hop.gasFee || BigInt(0));
+        currentSegment.maxPCForGas = mergeMaxPCForGas(
+          currentSegment.maxPCForGas,
+          hop.maxPCForGas
+        );
       } else if (segType === 'INBOUND_FROM_CEA') {
         // Sum burn amounts so the single sendUniversalTxToUEA carries the
         // combined native value forwarded from CEA back to the UEA.
@@ -653,6 +656,10 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
         }
         currentSegment.gasFee =
           (currentSegment.gasFee || BigInt(0)) + (hop.gasFee || BigInt(0));
+        currentSegment.maxPCForGas = mergeMaxPCForGas(
+          currentSegment.maxPCForGas,
+          hop.maxPCForGas
+        );
       } else if (segType === 'PUSH_EXECUTION') {
         currentSegment.mergedPushMulticalls = [
           ...(currentSegment.mergedPushMulticalls || []),
@@ -693,6 +700,7 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
         gasToken: hop.gasToken,
         gasFee: hop.gasFee,
         gasLimit: hop.gasLimit,
+        maxPCForGas: hop.maxPCForGas,
         sizing: hop.sizing,
       };
       segments.push(currentSegment);
@@ -705,6 +713,13 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
 /** Ordering for sizing-category severity (higher = stricter). */
 function categoryRank(c: 'A' | 'B' | 'C'): number {
   return c === 'C' ? 2 : c === 'B' ? 1 : 0;
+}
+
+function mergeMaxPCForGas(current?: bigint, next?: bigint): bigint {
+  const a = current ?? BigInt(0);
+  const b = next ?? BigInt(0);
+  if (a === BigInt(0) || b === BigInt(0)) return BigInt(0);
+  return a + b;
 }
 
 // ============================================================================
@@ -797,7 +812,7 @@ export async function composeCascade(
     const universalCoreAddress = await ctx.pushClient.readContract<`0x${string}`>({
       address: gatewayPcAddress,
       abi: UNIVERSAL_GATEWAY_PC,
-      functionName: 'UNIVERSAL_CORE',
+      functionName: 'universalCore',
       args: [],
     });
     // Compute per-SVM budget = ueaBalance − (PC needed for EVM outbounds) − 1 PC safety
@@ -930,7 +945,10 @@ export async function composeCascade(
             segment.mergedCeaMulticalls || []
           );
           // Get CEA address from the first hop
-          targetForOutbound = firstHop?.ceaAddress || ueaAddress;
+          targetForOutbound = outboundPayload === '0x'
+            ? (ZERO_ADDRESS as `0x${string}`)
+            : firstHop?.ceaAddress || ueaAddress;
+          assertCeaFundsParkingInvariant(targetForOutbound, outboundPayload);
         }
 
         // Per-segment PRC-20 burn-balance pre-check (cascade R2-style segments
@@ -991,7 +1009,8 @@ export async function composeCascade(
           segment.totalBurnAmount || BigInt(0),
           segment.gasLimit ?? BigInt(0),
           outboundPayload,
-          ueaAddress
+          ueaAddress,
+          segment.maxPCForGas ?? BigInt(0)
         );
 
         // Build approval + outbound multicalls
@@ -1149,7 +1168,8 @@ export async function composeCascade(
             svmBurnAmount,
             segment.gasLimit ?? BigInt(0),
             svmPayload,
-            ueaAddress
+            ueaAddress,
+            segment.maxPCForGas ?? BigInt(0)
           );
 
           const inboundGasFee = segment.gasFee || BigInt(0);
@@ -1193,7 +1213,8 @@ export async function composeCascade(
           break;
         }
 
-        // EVM path: Build CEA multicall: [approve?, sendUniversalTxFromCEA(payload)]
+        // EVM path: Build CEA multicall: sendUniversalTxToUEA(payload).
+        // CEA handles ERC20 gateway approval internally.
         const ceaMulticalls: MultiCall[] = [];
 
         // Add primary hop's own CEA operations if any
@@ -1228,34 +1249,6 @@ export async function composeCascade(
                 }
                 tokenAddress = addr;
                 amount += hParams.funds.amount;
-                // CEA approves gateway once with the cumulative allowance.
-                const gatewayAddr = UNIVERSAL_GATEWAY_ADDRESSES[sourceChain];
-                if (!gatewayAddr) {
-                  throw new Error(
-                    `No UniversalGateway address configured for chain ${sourceChain}`
-                  );
-                }
-                // Reset allowance to 0 first for USDT-style tokens
-                const approveZeroData = encodeFunctionData({
-                  abi: ERC20_EVM,
-                  functionName: 'approve',
-                  args: [gatewayAddr, BigInt(0)],
-                });
-                ceaMulticalls.push({
-                  to: tokenAddress,
-                  value: BigInt(0),
-                  data: approveZeroData,
-                });
-                const approveData = encodeFunctionData({
-                  abi: ERC20_EVM,
-                  functionName: 'approve',
-                  args: [gatewayAddr, hParams.funds.amount],
-                });
-                ceaMulticalls.push({
-                  to: tokenAddress,
-                  value: BigInt(0),
-                  data: approveData,
-                });
               }
             }
           } else if (hParams.value && hParams.value > BigInt(0)) {
@@ -1293,7 +1286,8 @@ export async function composeCascade(
           segment.totalBurnAmount || BigInt(0),
           effectiveGasLimit,
           ceaPayload,
-          ueaAddress
+          ueaAddress,
+          segment.maxPCForGas ?? BigInt(0)
         );
 
         const inboundGasFee = segment.gasFee || BigInt(0);
@@ -1951,4 +1945,3 @@ export function createCascadedBuilder(
     },
   };
 }
-

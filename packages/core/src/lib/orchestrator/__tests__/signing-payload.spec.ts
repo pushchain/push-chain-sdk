@@ -19,7 +19,9 @@ import {
   encodeAbiParameters,
   encodePacked,
   keccak256,
+  padHex,
   toBytes,
+  toHex,
   zeroAddress,
 } from 'viem';
 import { CHAIN, PUSH_NETWORK, VM } from '../../constants/enums';
@@ -47,6 +49,10 @@ const BOB = '0x1111111111111111111111111111111111111111' as `0x${string}`;
 const TOKEN_A = '0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa' as `0x${string}`;
 const VERIFYING_CONTRACT = '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC' as `0x${string}`;
 const MIGRATION_CONTRACT = '0xDDdDddDdDdddDDddDDddDDDDdDdDDdDDdDDDDDDd' as `0x${string}`;
+const PUSH_CHAIN_SALT = padHex(
+  toHex(BigInt(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId)),
+  { size: 32 }
+);
 
 const FAKE_SIGNATURE = new Uint8Array([0xaa, 0xbb, 0xcc]);
 
@@ -199,7 +205,7 @@ describe('computeExecutionHash', () => {
   it('uses the correct EIP-712 domain type string for EVM', () => {
     // Verify the EVM domain type hash matches the expected keccak of the canonical string
     const expectedTypeHash = keccak256(
-      toBytes('EIP712Domain(string version,uint256 chainId,address verifyingContract)')
+      toBytes('EIP712Domain(string version,uint256 chainId,address verifyingContract,bytes32 salt)')
     );
     // The hash is embedded inside the domain separator; we verify indirectly by
     // checking that the computation doesn't throw and produces a valid hash
@@ -212,7 +218,7 @@ describe('computeExecutionHash', () => {
 
   it('uses SVM domain type string for SVM chains', () => {
     const expectedSvmTypeHash = keccak256(
-      toBytes('EIP712Domain_SVM(string version,string chainId,address verifyingContract)')
+      toBytes('EIP712Domain_SVM(string version,string chainId,address verifyingContract,bytes32 salt)')
     );
     const ctx = makeSvmCtx();
     const hash = computeExecutionHash(ctx, { verifyingContract: VERIFYING_CONTRACT, payload: makePayload() });
@@ -402,6 +408,7 @@ describe('signUniversalPayload', () => {
         version: '0.1.0',
         chainId: Number(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].chainId),
         verifyingContract: VERIFYING_CONTRACT,
+        salt: PUSH_CHAIN_SALT,
       });
 
       // Verify primaryType
@@ -504,6 +511,7 @@ describe('signMigrationPayload', () => {
         version: '0.2.0',
         chainId: Number(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].chainId),
         verifyingContract: VERIFYING_CONTRACT,
+        salt: PUSH_CHAIN_SALT,
       });
 
       // Types

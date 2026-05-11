@@ -257,14 +257,13 @@ export function buildSendUniversalTxToUEA(
 /**
  * Build UniversalOutboundTxRequest for Push Chain outbound
  *
- * @param target - LEGACY/DUMMY: Any non-zero address for contract compatibility.
- *                 This value is NOT used by the relay to determine the actual destination.
- *                 The relay determines the destination from the PRC-20 token's SOURCE_CHAIN_NAMESPACE.
- *                 Will be removed in future contract upgrades.
+ * @param target - Raw recipient bytes for the destination chain. For EVM CEA
+ *                 funds-parking, use the zero recipient when payload is empty.
  * @param prc20Token - PRC20 token address to burn (or address(0) for native)
  * @param amount - Amount to burn
  * @param gasLimit - Gas limit for fee calculation
- * @param payload - CEA multicall payload
+ * @param maxPCForGas - Max native PC used for gas swap (0 = uncapped)
+ * @param payload - Destination execution payload
  * @param revertRecipient - Address to receive funds on revert
  * @returns UniversalOutboundTxRequest object
  */
@@ -274,16 +273,31 @@ export function buildOutboundRequest(
   amount: bigint,
   gasLimit: bigint,
   payload: `0x${string}`,
-  revertRecipient: `0x${string}`
+  revertRecipient: `0x${string}`,
+  maxPCForGas: bigint = BigInt(0)
 ): UniversalOutboundTxRequest {
   return {
     target,
     token: prc20Token,
     amount,
     gasLimit,
+    maxPCForGas,
     payload,
     revertRecipient,
   };
+}
+
+export function assertCeaFundsParkingInvariant(
+  recipient: `0x${string}`,
+  payload: `0x${string}`
+): void {
+  if (payload !== '0x') return;
+  if (recipient === '0x') return;
+  if (recipient.toLowerCase() === ZERO_ADDRESS.toLowerCase()) return;
+
+  throw new Error(
+    'Empty CEA payloads must use the zero recipient to park funds'
+  );
 }
 
 /**

@@ -288,6 +288,47 @@ export const UEA_EVM = [
   },
   {
     type: 'error',
+    name: 'UEAAlreadyRegistered',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'InvalidCall',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'InvalidInputArgs',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'InvalidSVMSignature',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'NonceMismatch',
+    inputs: [
+      {
+        name: 'expected',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+      {
+        name: 'provided',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+  },
+  {
+    type: 'error',
+    name: 'PrecompileCallFailed',
+    inputs: [],
+  },
+  {
+    type: 'error',
     name: 'ECDSAInvalidSignature',
     inputs: [],
   },

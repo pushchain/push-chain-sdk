@@ -171,6 +171,7 @@ export function toExecuteParams(params: UniversalExecuteParams): ExecuteParams {
     data: params.data,
     funds: params.funds,
     gasLimit: params.gasLimit,
+    maxPCForGas: params.maxPCForGas,
     maxFeePerGas: params.maxFeePerGas,
     maxPriorityFeePerGas: params.maxPriorityFeePerGas,
     deadline: params.deadline,

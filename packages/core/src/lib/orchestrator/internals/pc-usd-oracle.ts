@@ -184,7 +184,7 @@ export async function getPcUsdPrice(
       await ctx.pushClient.readContract<`0x${string}`>({
         address: gatewayPcAddress,
         abi: UNIVERSAL_GATEWAY_PC,
-        functionName: 'UNIVERSAL_CORE',
+        functionName: 'universalCore',
         args: [],
       });
 
