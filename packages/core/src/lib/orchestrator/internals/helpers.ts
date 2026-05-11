@@ -37,6 +37,14 @@ export function isPushChain(chain: CHAIN): boolean {
   );
 }
 
+// `toExternalTxHashDisplay` moved to ../../utils/external-tx-hash so the
+// detector module can use it without back-importing from orchestrator/internals
+// (inbound-tracker.ts already imports universal-tx-detector — a back-import
+// from detector would create a cross-layer tangle). Re-exported here so
+// existing call sites (outbound-sync.ts / response-builder.ts / cascade.ts)
+// keep their current import path unchanged.
+export { toExternalTxHashDisplay } from '../../utils/external-tx-hash';
+
 export function getPushChainForNetwork(pushNetwork: PUSH_NETWORK): CHAIN {
   if (pushNetwork === PUSH_NETWORK.MAINNET) {
     return CHAIN.PUSH_MAINNET;
@@ -56,15 +64,9 @@ export function getChainNamespace(chain: CHAIN): string {
   return `${namespace}:${chainId}`;
 }
 
-export function chainFromNamespace(namespace: string): CHAIN | null {
-  for (const [chainKey, info] of Object.entries(CHAIN_INFO)) {
-    const expected = `${VM_NAMESPACE[info.vm]}:${info.chainId}`;
-    if (expected === namespace) {
-      return chainKey as CHAIN;
-    }
-  }
-  return null;
-}
+// Moved to ../../utils/external-tx-hash alongside `toExternalTxHashDisplay`
+// so both the orchestrator and the detector module share one implementation.
+export { chainFromNamespace } from '../../utils/external-tx-hash';
 
 export function getNativePRC20ForChain(
   targetChain: CHAIN,

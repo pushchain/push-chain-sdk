@@ -26,6 +26,7 @@ import {
   type ChildInboundResolution,
 } from './child-inbounds';
 import { detectUniversalTx } from './detector';
+import { normalizeCascadeNodeForUser } from './normalize';
 import type {
   PushChainOutboundSummary,
   UniversalTxDetection,
@@ -118,8 +119,10 @@ export async function traceUniversalTxCascade(
   const root = await walk(startHash, startChain, 0, state, opts);
   if (!root) {
     // Should never happen for depth=0; return an empty detection node so the
-    // caller has something to render.
-    return {
+    // caller has something to render. No outbound summaries → nothing to
+    // normalize, but we still pass through `normalizeCascadeNodeForUser`
+    // for symmetry with the happy path below.
+    return normalizeCascadeNodeForUser({
       detection: {
         txHash: startHash,
         chain: startChain,
@@ -132,9 +135,16 @@ export async function traceUniversalTxCascade(
       },
       children: [],
       depth: 0,
-    };
+    });
   }
-  return root;
+  // User-facing normalization pass — recursively rewrites every
+  // `PushChainOutboundSummary.externalTxHash` in the tree to base58 for SVM
+  // destinations. Each internal `detectUniversalTx` call (in `walk`) already
+  // produced a normalized detection; this final pass also normalizes the
+  // edge-level `relation` summaries inside `expandPushOutbounds` /
+  // `expandExternalChildInbounds` which build summaries DIRECTLY (without
+  // going through `detectUniversalTx`).
+  return normalizeCascadeNodeForUser(root);
 }
 
 // ── Core recursion ────────────────────────────────────────────────────

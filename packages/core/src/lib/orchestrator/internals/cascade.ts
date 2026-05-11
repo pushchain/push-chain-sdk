@@ -62,6 +62,7 @@ import {
   toExecuteParams,
   getPushChainForNetwork,
   isPushChain,
+  toExternalTxHashDisplay,
 } from './helpers';
 import { buildMulticallPayloadData } from './payload-builder';
 import { computeUEAOffchain, getUEANonce, getUeaStatusAndNonce } from './uea-manager';
@@ -1739,17 +1740,31 @@ export function createCascadedBuilder(
                         }
                       },
                     });
+                  // `outboundDetails.externalTxHash` from waitForOutboundTx
+                  // is the raw `0x`-hex form (internal canonical). For the
+                  // user-facing `hop.txHash`, `hop.outboundDetails`, and
+                  // cascade progress event, normalize to base58 for SVM so
+                  // consumers can paste it straight into a Solana explorer.
+                  const displayTxHash =
+                    toExternalTxHashDisplay(
+                      outboundDetails.destinationChain,
+                      outboundDetails.externalTxHash
+                    ) ?? outboundDetails.externalTxHash;
+                  const userFacingOutboundDetails = {
+                    ...outboundDetails,
+                    externalTxHash: displayTxHash,
+                  };
                   hop.status = 'confirmed';
-                  hop.txHash = outboundDetails.externalTxHash;
-                  hop.outboundDetails = outboundDetails;
-                  emitHopEvent(hopHooks.success(outboundDetails));
+                  hop.txHash = displayTxHash;
+                  hop.outboundDetails = userFacingOutboundDetails;
+                  emitHopEvent(hopHooks.success(userFacingOutboundDetails));
                   emitHopComplete(hop.hopIndex);
                   cascadeProgressHook?.({
                     hopIndex: hop.hopIndex,
                     route: hop.route,
                     chain: hop.executionChain,
                     status: 'confirmed',
-                    txHash: outboundDetails.externalTxHash,
+                    txHash: displayTxHash,
                     elapsed: Date.now() - startTime,
                   });
                 } catch (err) {

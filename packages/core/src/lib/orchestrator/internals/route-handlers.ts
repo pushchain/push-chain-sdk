@@ -626,15 +626,19 @@ export async function executeUoaToCea(
     }
   }
 
-  // Pool-quote + 10% safety buffer. Over-send is refunded by the contract.
+  // estimateNativeValueForSwap applies the full 2.2x safety buffer
+  // internally (pool-slippage cushion + the 10% headroom that used to be
+  // multiplied here). Folded into one place so the function's cap branch
+  // bounds the final value — the previous outer ×110/100 on top of the
+  // inner cap broke preflight whenever the cap fired. Over-send is refunded
+  // by the contract.
   let nativeValueForGas = BigInt(0);
   if (universalCoreAddress && gasFee > BigInt(0)) {
-    const estimated = await estimateNativeValueForSwap(
+    nativeValueForGas = await estimateNativeValueForSwap(
       ctx, universalCoreAddress, gasToken, gasFee, effectiveBalance
     );
-    nativeValueForGas = (estimated * BigInt(110)) / BigInt(100);
     printLog(ctx,
-      `executeUoaToCea — nativeValueForGas: pool-quote=${estimated.toString()}, with 10% buffer=${nativeValueForGas.toString()}`
+      `executeUoaToCea — nativeValueForGas=${nativeValueForGas.toString()} (includes 2.2x buffer)`
     );
   }
 
@@ -950,8 +954,10 @@ export async function executeUoaToCeaSvm(
   const ueaNonce = (!isUEADeployed || isNativePushEOASvm) ? BigInt(0) : await getUEANonce(ctx, ueaAddress);
 
   // R2 does NOT use Case A/B/C gas abstraction (scoped to R1 + R3 only).
-  // Size msg.value from the live WPC/gasToken Uniswap V3 pool quote plus
-  // a 10% safety buffer. swapAndBurnGas refunds the excess as PC via
+  // Size msg.value from the live WPC/gasToken Uniswap V3 pool quote. The
+  // 2.2x safety buffer is applied inside estimateNativeValueForSwap (was
+  // split as inner 2x + outer 10% — combined to keep the cap branch
+  // mathematically correct). swapAndBurnGas refunds the excess as PC via
   // refundUnusedGas.
   //
   // SVM pools (WPC/pSOL) are thinner than EVM pools so the pool-quote can
@@ -967,13 +973,14 @@ export async function executeUoaToCeaSvm(
 
   let nativeValueForGas = BigInt(0);
   if (universalCoreAddress && gasFee > BigInt(0)) {
-    const estimated = await estimateNativeValueForSwap(
+    // 2.2x safety buffer is applied inside estimateNativeValueForSwap so
+    // the function's balance-cap branch bounds the final value correctly.
+    nativeValueForGas = await estimateNativeValueForSwap(
       ctx, universalCoreAddress, gasToken, gasFee, ueaBalance
     );
-    nativeValueForGas = (estimated * BigInt(110)) / BigInt(100);
     printLog(
       ctx,
-      `executeUoaToCeaSvm — nativeValueForGas: pool-quote=${estimated.toString()}, with 10% buffer=${nativeValueForGas.toString()}`
+      `executeUoaToCeaSvm — nativeValueForGas=${nativeValueForGas.toString()} (includes 2.2x buffer)`
     );
     maybeFireSvmWarnThreshold(ctx, nativeValueForGas, gasToken, 'R2_SVM');
   }

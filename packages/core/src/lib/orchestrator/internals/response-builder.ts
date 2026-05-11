@@ -39,7 +39,11 @@ import type {
 } from '../orchestrator.types';
 import type { OrchestratorContext } from './context';
 import { printLog } from './context';
-import { getPushChainForNetwork } from './helpers';
+import {
+  chainFromNamespace,
+  getPushChainForNetwork,
+  toExternalTxHashDisplay,
+} from './helpers';
 import { getSvmGatewayLogIndexFromTx } from './svm-helpers';
 import { computeUniversalTxId, extractUniversalSubTxIdFromTx } from './outbound-tracker';
 import { waitForInboundPushTx, InboundTimeoutError } from './inbound-tracker';
@@ -754,11 +758,26 @@ export async function transformToUniversalTxResponse(
               progressHook: outboundTranslator,
             }
           );
-          emit(hooks.success(outboundDetails));
-          // Merge external chain details into receipt
+          // `outboundDetails.externalTxHash` is the raw `0x`-hex form (kept
+          // internally so the R3 inbound tracker below can query Cosmos with
+          // it via `waitForInboundPushTx → findChildUtxIdFromExternalTx`).
+          // For every USER-FACING surface (progress hook event + receipt) we
+          // want the chain-native form so consumers can paste it straight
+          // into an explorer / RPC: base58 for SVM, hex for EVM. Build a
+          // display copy and use it for both the hook and the receipt.
+          const displayExternalTxHash =
+            toExternalTxHashDisplay(
+              outboundDetails.destinationChain,
+              outboundDetails.externalTxHash
+            ) ?? outboundDetails.externalTxHash;
+          const userFacingOutboundDetails = {
+            ...outboundDetails,
+            externalTxHash: displayExternalTxHash,
+          };
+          emit(hooks.success(userFacingOutboundDetails));
           baseReceipt = {
             ...baseReceipt,
-            externalTxHash: outboundDetails.externalTxHash,
+            externalTxHash: displayExternalTxHash,
             externalChain: outboundDetails.destinationChain,
             externalExplorerUrl: outboundDetails.explorerUrl,
             externalRecipient: outboundDetails.recipient,
@@ -888,12 +907,23 @@ export async function transformToUniversalTxResponse(
           // as externalTxHash so consumers can link to the explorer.
           const failedExternalTxHash =
             error instanceof OutboundFailedError ? error.externalTxHash : undefined;
+          // Normalize to chain-native display form for SVM (base58); EVM hex
+          // passes through unchanged. `OutboundFailedError.destinationChain`
+          // is a chain namespace string (e.g., 'solana:devnet') — convert to
+          // the CHAIN enum via the same helper used in outbound-sync.
+          const failedChain =
+            error instanceof OutboundFailedError && error.destinationChain
+              ? chainFromNamespace(error.destinationChain) ?? undefined
+              : undefined;
+          const failedExternalTxHashDisplay =
+            toExternalTxHashDisplay(failedChain, failedExternalTxHash) ??
+            failedExternalTxHash;
           baseReceipt = {
             ...baseReceipt,
             externalStatus: isTimeout ? 'timeout' : 'failed',
             externalError: errMsg,
-            ...(failedExternalTxHash
-              ? { externalTxHash: failedExternalTxHash }
+            ...(failedExternalTxHashDisplay
+              ? { externalTxHash: failedExternalTxHashDisplay }
               : {}),
           };
           // Outbound polling timed out or failed — return the annotated

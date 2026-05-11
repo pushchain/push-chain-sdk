@@ -15,6 +15,7 @@
  */
 import { sha256, toBytes, toHex } from 'viem';
 import type { PushClient } from '../push-client/push-client';
+import { normalizeChildInboundResolutionForUser } from './normalize';
 import type {
   MatchingLog,
   PushChainOutboundSummary,
@@ -106,13 +107,20 @@ export async function resolveChildInboundsFromDetection(
     .filter((d) => INBOUND_EVENT_NAMES.has(d.log.eventName))
     .map((d) => d.log);
 
-  return resolveChildInboundsFromLogs(
+  const resolutions = await resolveChildInboundsFromLogs(
     pushClient,
     detection.chain,
     detection.txHash,
     inboundLogs,
     diagnostics
   );
+  // User-facing normalization pass: rewrites nested
+  // `outboundHashes[n].externalTxHash` to base58 for SVM destinations.
+  // `pcTxHashes` is Push Chain (EVM) and stays hex by chain type. The lower-
+  // level `resolveChildInboundsFromLogs` is left producing raw hex so
+  // internal callers (`findChildUtxIdFromExternalTx` via the detector path)
+  // that go through it directly still see the canonical form.
+  return resolutions.map(normalizeChildInboundResolutionForUser);
 }
 
 /**

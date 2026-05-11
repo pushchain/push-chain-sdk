@@ -19,7 +19,7 @@ import type {
 } from '../orchestrator.types';
 import type { OrchestratorContext } from './context';
 import { printLog } from './context';
-import { chainFromNamespace } from './helpers';
+import { chainFromNamespace, toExternalTxHashDisplay } from './helpers';
 import {
   extractUniversalSubTxIdFromTx,
   extractAllUniversalSubTxIds,
@@ -342,6 +342,11 @@ export async function waitForOutboundTx(
               explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${ob.observedTx.txHash}` : '';
             }
 
+            // OutboundTxDetails carries the raw `0x`-hex form so internal
+            // consumers (R3 inbound tracker in response-builder.ts:786 →
+            // findChildUtxIdFromExternalTx → Cosmos query) keep working.
+            // The base58 display form is applied at every user-facing
+            // boundary via `toExternalTxHashDisplay` (helpers.ts).
             const details: OutboundTxDetails = {
               externalTxHash: ob.observedTx.txHash,
               destinationChain: chain,
@@ -504,26 +509,33 @@ export async function waitForAllOutboundTxsV2(
           const externalTxHash = ob.observedTx?.txHash;
           if (externalTxHash && (ob.outboundStatus === OutboundStatus.OBSERVED || ob.outboundStatus as number === 0)) {
             const chain = chainFromNamespace(destChain);
+            // Build the display form for SVM (base58) used in `hop.txHash` /
+            // `hop.outboundDetails.externalTxHash` / the progressHook event —
+            // these are USER-FACING. The internal raw-hex form stays only
+            // inside this function; it's not exposed to consumers from the
+            // cascade path (cascade.ts doesn't call findChildUtxIdFromExternalTx
+            // for the cascade outbound hash).
+            const displayTxHash =
+              toExternalTxHashDisplay(chain ?? undefined, externalTxHash) ??
+              externalTxHash;
             let explorerUrl = '';
             if (chain && externalTxHash) {
               const explorerBaseUrl = CHAIN_INFO[chain]?.explorerUrl;
               const isSvm = CHAIN_INFO[chain]?.vm === VM.SVM;
-              if (isSvm && externalTxHash.startsWith('0x')) {
-                const bytes = new Uint8Array(Buffer.from(externalTxHash.slice(2), 'hex'));
-                const base58Hash = bs58.encode(Buffer.from(bytes));
+              if (isSvm) {
                 const cluster = chain === CHAIN.SOLANA_DEVNET ? '?cluster=devnet'
                   : chain === CHAIN.SOLANA_TESTNET ? '?cluster=testnet' : '';
-                explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${base58Hash}${cluster}` : '';
+                explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${displayTxHash}${cluster}` : '';
               } else {
-                explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${externalTxHash}` : '';
+                explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${displayTxHash}` : '';
               }
             }
 
             for (const hop of unconfirmedForChain) {
               hop.status = 'confirmed';
-              hop.txHash = externalTxHash;
+              hop.txHash = displayTxHash;
               hop.outboundDetails = {
-                externalTxHash,
+                externalTxHash: displayTxHash,
                 destinationChain: chain || hop.executionChain,
                 explorerUrl,
                 recipient: ob.recipient,
@@ -531,13 +543,13 @@ export async function waitForAllOutboundTxsV2(
                 assetAddr: ob.externalAssetAddr,
               };
 
-              printLog(ctx, `[waitForAllOutboundTxsV2] FOUND outbound for ${destChain} | hop ${hop.hopIndex} | externalTxHash: ${externalTxHash}`);
+              printLog(ctx, `[waitForAllOutboundTxsV2] FOUND outbound for ${destChain} | hop ${hop.hopIndex} | externalTxHash: ${displayTxHash}`);
               progressHook?.({
                 hopIndex: hop.hopIndex,
                 route: hop.route,
                 chain: hop.executionChain,
                 status: 'confirmed',
-                txHash: externalTxHash,
+                txHash: displayTxHash,
               });
             }
           }

@@ -263,7 +263,18 @@ export async function estimateNativeValueForSwap(
   gasFee: bigint,
   accountBalance: bigint
 ): Promise<bigint> {
-  const SWAP_BUFFER = BigInt(2); // 2x safety buffer; excess is refunded by swapAndBurnGas
+  // 2.2x safety buffer applied to the pool quote; excess is refunded by
+  // swapAndBurnGas. Composed of a 2x pool-slippage cushion plus 10%
+  // headroom that used to live in the R2 route-handler callers (×110/100
+  // after this function returned). Folded into one place here so the cap
+  // branch below correctly bounds the FINAL inflated value — the previous
+  // arrangement (outer ×1.10 on top of an inner cap that returned
+  // `balance - GAS_RESERVE`) caused a deterministic preflight failure
+  // whenever the cap fired: required = 1.10 × (balance − 3 PC) + 3 PC ≈
+  // balance × 1.10 − 0.3 PC > balance for any non-trivial balance. See
+  // preflight.ts:215.
+  const SWAP_BUFFER_NUM = BigInt(22);
+  const SWAP_BUFFER_DEN = BigInt(10);
   const BALANCE_FALLBACK_DIVISOR = BigInt(10); // 10% of balance as fallback
   const GAS_RESERVE = BigInt(3e18); // 3 UPC reserve for tx overhead
 
@@ -339,11 +350,11 @@ export async function estimateNativeValueForSwap(
       wpcNeeded = (gasFee * Q192) / priceNum;
     }
 
-    const result = wpcNeeded * SWAP_BUFFER;
+    const result = (wpcNeeded * SWAP_BUFFER_NUM) / SWAP_BUFFER_DEN;
     printLog(
       ctx,
       `estimateNativeValueForSwap — pool=${poolAddress}, sqrtPriceX96=${sqrtPriceX96}, ` +
-        `wpcNeeded=${wpcNeeded}, withBuffer(2x)=${result}`
+        `wpcNeeded=${wpcNeeded}, withBuffer(2.2x)=${result}`
     );
 
     // Cap at (balance - reserve)

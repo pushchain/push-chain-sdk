@@ -33,6 +33,7 @@ import {
   derivePcUniversalTxId,
 } from './child-inbounds';
 import { detectUniversalTxSvm } from './detector-svm';
+import { normalizeDetectionForUser } from './normalize';
 import type {
   DetectUniversalTxOptions,
   MatchingLog,
@@ -73,7 +74,9 @@ export async function detectUniversalTx(
     throw new Error(`detectUniversalTx: unknown chain ${chain}`);
   }
   if (chainInfo.vm === VM.SVM) {
-    return detectUniversalTxSvm(txHash, chain, opts);
+    return normalizeDetectionForUser(
+      await detectUniversalTxSvm(txHash, chain, opts)
+    );
   }
   if (chainInfo.vm !== VM.EVM) {
     throw new Error(
@@ -188,7 +191,12 @@ export async function detectUniversalTx(
 
   const detections = classifyAll(classified.matchingLogs);
 
-  return {
+  // User-facing normalization pass: rewrites `pushChainTx.outboundHashes[n]
+  // .externalTxHash` to base58 for SVM destinations. The raw `0x`-hex form
+  // never leaves this function — internal consumers (findChildUtxIdFromExternalTx,
+  // Cosmos `inbound_tx_hash=` queries) work off their own input parameters,
+  // not the detection result's outbound summaries.
+  return normalizeDetectionForUser({
     txHash,
     chain,
     kind: classified.kind,
@@ -198,7 +206,7 @@ export async function detectUniversalTx(
     detections,
     pushChainTx,
     notes,
-  };
+  });
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
