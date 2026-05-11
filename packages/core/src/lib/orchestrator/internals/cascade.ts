@@ -1349,7 +1349,10 @@ export async function composeCascade(
 export function createCascadedBuilder(
   ctx: OrchestratorContext,
   preparedTxs: PreparedUniversalTx[],
-  callbacks: CascadeCallbacks
+  callbacks: CascadeCallbacks,
+  defaultEventHook?: (
+    event: import('../../progress-hook/progress-hook.types').ProgressEvent
+  ) => void
 ): { send: () => Promise<CascadedTxResponse> } {
   return {
     send: async (): Promise<CascadedTxResponse> => {
@@ -1508,7 +1511,7 @@ export function createCascadedBuilder(
             pollingIntervalMs = 10000,
             timeout = 300000,
             progressHook: cascadeProgressHook,
-            eventHook,
+            eventHook = defaultEventHook,
           } = opts || {};
           const startTime = Date.now();
 

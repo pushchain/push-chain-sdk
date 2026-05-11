@@ -386,12 +386,56 @@ export class Orchestrator {
    * The cascade composes all hops bottom-to-top into a single Push Chain tx.
    *
    * @param preparedTxs - Array of prepared transactions
+   * @param options - Optional per-call options. `progressHook` is additive with
+   *   the init-time hook from `PushChain.initialize` and receives every
+   *   `ProgressEvent` emitted during this cascade (pre-flight, broadcast, and
+   *   tracking). Dedups by reference if it matches the init-time hook.
    * @returns Object with send() method
    */
   createCascadedBuilder(
-    preparedTxs: PreparedUniversalTx[]
+    preparedTxs: PreparedUniversalTx[],
+    options?: { progressHook?: (event: ProgressEvent) => void }
   ): { send: () => Promise<CascadedTxResponse> } {
-    return _createCascadedBuilder(this.ctx, preparedTxs, this._getCascadeCallbacks());
+    const perCallHook = options?.progressHook;
+    if (!perCallHook) {
+      return _createCascadedBuilder(this.ctx, preparedTxs, this._getCascadeCallbacks());
+    }
+
+    // Wrap ctx.progressHook for the synchronous send() phase — captures every
+    // fireProgressHook(ctx, ...) call during pre-flight, composeCascade, and
+    // the Push Chain broadcast. Restored when send() resolves/rejects so the
+    // wrapper doesn't leak across calls.
+    //
+    // For the asynchronous tracking phase (waitForAll), we pass perCallHook as
+    // the cascade builder's `defaultEventHook` — waitForAll falls back to it
+    // when callers don't pass their own `eventHook`, and the existing
+    // `dispatchCascadeProgressEvent` path delivers events to BOTH that hook
+    // and ctx.progressHook (the init-time hook, restored by then) with
+    // reference-dedup.
+    const innerBuilder = _createCascadedBuilder(
+      this.ctx,
+      preparedTxs,
+      this._getCascadeCallbacks(),
+      perCallHook
+    );
+
+    return {
+      send: async () => {
+        const originalHook = this.progressHook;
+        const wrapped = (event: ProgressEvent) => {
+          if (originalHook && originalHook !== perCallHook) {
+            originalHook(event);
+          }
+          perCallHook(event);
+        };
+        this.progressHook = wrapped;
+        try {
+          return await innerBuilder.send();
+        } finally {
+          this.progressHook = originalHook;
+        }
+      },
+    };
   }
 
   /**

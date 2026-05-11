@@ -99,9 +99,18 @@ export class PushChain {
     /**
      * Execute one or more prepared transactions as a cascade across chains.
      * Accepts an array of PreparedUniversalTx (from prepareTransaction).
+     *
+     * @param txs - Prepared transactions to execute as a cascade.
+     * @param options.progressHook - Optional per-call progress callback.
+     *   Additive with the init-time `progressHook` passed to `initialize`:
+     *   both hooks receive every `ProgressEvent` emitted during this call
+     *   (pre-flight, broadcast, and cascade tracking). Dedups by reference
+     *   if it matches the init-time hook. Note: concurrent calls on the
+     *   same instance share the hook channel during the broadcast phase.
      */
     executeTransactions: (
-      txs: PreparedUniversalTx[]
+      txs: PreparedUniversalTx[],
+      options?: { progressHook?: (event: ProgressEvent) => void }
     ) => Promise<CascadedTxResponse>;
     /**
      * Tracks a transaction by hash on Push Chain
@@ -231,13 +240,16 @@ export class PushChain {
       prepareTransaction: (params: UniversalExecuteParams) => {
         return orchestrator.prepareTransaction.bind(orchestrator)(params);
       },
-      executeTransactions: async (txs: PreparedUniversalTx[]) => {
+      executeTransactions: async (
+        txs: PreparedUniversalTx[],
+        options?: { progressHook?: (event: ProgressEvent) => void }
+      ) => {
         if (this.isReadMode) {
           throw new Error(
             'Read only mode cannot call executeTransactions function'
           );
         }
-        return orchestrator.createCascadedBuilder(txs).send();
+        return orchestrator.createCascadedBuilder(txs, options).send();
       },
       trackTransaction: (txHash: string, options?: import('../orchestrator/orchestrator.types').TrackTransactionOptions) => {
         return orchestrator.trackTransaction.bind(orchestrator)(txHash, options);
