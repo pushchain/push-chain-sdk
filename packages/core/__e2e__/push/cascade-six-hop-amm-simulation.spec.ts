@@ -189,6 +189,7 @@ function route1Hop(label: string, to: `0x${string}`): HopDescriptor {
       { to, value: BigInt(0), data: `0x${label}` as `0x${string}` },
     ],
     gasLimit: BigInt(0),
+    maxPCForGas: BigInt(0),
     ueaAddress: UEA,
     revertRecipient: UEA,
   };
@@ -273,6 +274,7 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
       gasToken: PSOL,
       gasFee: BigInt(1),
       gasLimit: BigInt(0),
+      maxPCForGas: BigInt(0),
       ueaAddress: UEA,
       revertRecipient: UEA,
     };
@@ -371,6 +373,7 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
       gasToken: PSOL,
       gasFee: BigInt(1),
       gasLimit: BigInt(0),
+      maxPCForGas: BigInt(0),
       ueaAddress: UEA,
       revertRecipient: UEA,
     };
@@ -715,6 +718,7 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
       gasToken: PSOL,
       gasFee: BigInt(1),
       gasLimit: BigInt(0),
+      maxPCForGas: BigInt(0),
       ueaAddress: UEA,
       revertRecipient: UEA,
     };
@@ -1048,6 +1052,7 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
       gasToken: PSOL,
       gasFee: BigInt(1),
       gasLimit: BigInt(0),
+      maxPCForGas: BigInt(0),
       ueaAddress: UEA,
       revertRecipient: UEA,
     };
@@ -1128,6 +1133,7 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
       gasToken: PSOL,
       gasFee: BigInt(1),
       gasLimit: BigInt(0),
+      maxPCForGas: BigInt(0),
       ueaAddress: UEA,
       revertRecipient: UEA,
     };

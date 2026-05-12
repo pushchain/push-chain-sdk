@@ -1719,9 +1719,8 @@ export async function executeCeaToPushSvm(
   // SVM warn-threshold telemetry (no truncation — pre-flight handles drain protection).
   maybeFireSvmWarnThreshold(ctx, nativeValueForGas, gasToken, 'R3_SVM');
 
-  // Pre-flight (R3 SVM): no PRC-20 burn check — `burnAmount = 1` is a legacy
-  // precompile-validation shim against a token UEAs structurally don't hold
-  // (see plan §9 #4 / §10.2 latent-bug ticket). Native UPC check still applies.
+  // Pre-flight (R3 SVM): no PRC-20 burn check. R3 SVM uses burnAmount=0
+  // because the drain amount lives inside the SVM instruction data.
   runPreflight({
     ctx,
     ueaAddress,
