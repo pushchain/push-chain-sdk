@@ -133,14 +133,6 @@ function pad(s: string, n: number): string {
   return s.length >= n ? s : s + ' '.repeat(n - s.length);
 }
 
-function formatPcFromWei(wei: bigint): string {
-  return (Number(wei) / 1e18).toFixed(6);
-}
-
-function formatEthFromWei(wei: bigint): string {
-  return (Number(wei) / 1e18).toFixed(6);
-}
-
 type PoolProbeArgs = {
   label: string;
   prc20Address: `0x${string}`;

@@ -1,6 +1,7 @@
 import 'dotenv/config';
-import { createPublicClient, http, formatEther, defineChain } from 'viem';
+import { createPublicClient, http, defineChain } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { formatPc } from '../../src/lib/formatters';
 
 const pushDonut = defineChain({
   id: 42101,
@@ -21,7 +22,7 @@ async function main() {
   ];
   for (const t of targets) {
     const bal = await pub.getBalance({ address: t.addr });
-    console.log(`${t.label} ${t.addr}  ${formatEther(bal)} PC`);
+    console.log(`${t.label} ${t.addr}  ${formatPc(bal)}`);
   }
 }
 

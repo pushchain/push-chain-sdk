@@ -680,6 +680,337 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
     expect(executeParams.data[0].to).toBe(getUniversalGatewayPCAddress());
   });
 
+  it('rejects when prior inbound funds are for a different outbound burn token', async () => {
+    const ctx = makeCtx();
+    const amount = PushChain.utils.helpers.parseUnits('0.001', 18);
+    const pSolAmount = BigInt(123_456_789);
+
+    const hop0 = await buildHopDescriptor(
+      ctx,
+      {
+        from: { chain: CHAIN.ETHEREUM_SEPOLIA },
+        to: UEA,
+        value: BigInt(5) * PC,
+        data: '0x',
+        funds: {
+          amount,
+          token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
+        },
+      },
+      TransactionRoute.CEA_TO_PUSH,
+      UEA
+    );
+    const hop1: HopDescriptor = {
+      params: {
+        to: { address: SOLANA_CEA, chain: CHAIN.SOLANA_DEVNET },
+        value: BigInt(0),
+        data: '0x',
+        funds: {
+          amount: pSolAmount,
+          token: PushChain.CONSTANTS.MOVEABLE.TOKEN.PUSH_TESTNET_DONUT.pSol,
+        },
+      },
+      route: 'UOA_TO_CEA',
+      targetChain: CHAIN.SOLANA_DEVNET,
+      isSvmTarget: true,
+      svmPayload: '0x',
+      prc20Token: PSOL,
+      burnAmount: pSolAmount,
+      gasToken: PSOL,
+      gasFee: BigInt(1),
+      gasLimit: BigInt(0),
+      ueaAddress: UEA,
+      revertRecipient: UEA,
+    };
+
+    const builder = createCascadedBuilder(
+      ctx,
+      [hop0, hop1].map(prepared),
+      {
+        executeFn: jest.fn(),
+        waitForOutboundTxFn: jest.fn(),
+        waitForAllOutboundTxsFn: jest.fn(),
+      } as never
+    );
+
+    await expect(builder.send()).rejects.toMatchObject({
+      reason: 'PRC20',
+      burnToken: PSOL,
+      required: pSolAmount,
+      available: BigInt(0),
+      shortfall: pSolAmount,
+    });
+  });
+
+  it('rejects when prior inbound funds only partially cover a later outbound burn', async () => {
+    const ctx = makeCtx();
+    const inboundAmount = PushChain.utils.helpers.parseUnits('0.001', 18);
+    const outboundAmount = PushChain.utils.helpers.parseUnits('0.002', 18);
+
+    const hop0 = await buildHopDescriptor(
+      ctx,
+      {
+        from: { chain: CHAIN.ETHEREUM_SEPOLIA },
+        to: UEA,
+        value: BigInt(5) * PC,
+        data: '0x',
+        funds: {
+          amount: inboundAmount,
+          token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
+        },
+      },
+      TransactionRoute.CEA_TO_PUSH,
+      UEA
+    );
+    const hop1 = await buildHopDescriptor(
+      ctx,
+      {
+        to: {
+          address: '0x7777777777777777777777777777777777777777',
+          chain: CHAIN.ETHEREUM_SEPOLIA,
+        },
+        value: BigInt(0),
+        data: '0x',
+        funds: {
+          amount: outboundAmount,
+          token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
+        },
+      },
+      TransactionRoute.UOA_TO_CEA,
+      UEA
+    );
+
+    const builder = createCascadedBuilder(
+      ctx,
+      [hop0, hop1].map(prepared),
+      {
+        executeFn: jest.fn(),
+        waitForOutboundTxFn: jest.fn(),
+        waitForAllOutboundTxsFn: jest.fn(),
+      } as never
+    );
+
+    await expect(builder.send()).rejects.toMatchObject({
+      reason: 'PRC20',
+      burnToken: PETH,
+      required: outboundAmount,
+      available: inboundAmount,
+      shortfall: outboundAmount - inboundAmount,
+    });
+  });
+
+  it('splits seeded native value across multiple downstream outbound hops', async () => {
+    (getCEAAddress as jest.Mock).mockImplementation(
+      async (_uea: string, chain: CHAIN) => ({
+        cea: chain === CHAIN.BNB_TESTNET ? CEA_BNB : CEA_SEPOLIA,
+      })
+    );
+
+    const ctx = makeCtx();
+    const seedAmount = BigInt(15) * PC;
+    const incrementData = PushChain.utils.helpers.encodeTxData({
+      abi: [...COUNTER_ABI],
+      functionName: 'increment',
+    });
+
+    const hop0 = await buildHopDescriptor(
+      ctx,
+      { to: UEA, value: seedAmount, data: '0x' },
+      TransactionRoute.UOA_TO_PUSH,
+      UEA
+    );
+    const hop1 = await buildHopDescriptor(
+      ctx,
+      {
+        to: {
+          address: '0x7777777777777777777777777777777777777777',
+          chain: CHAIN.BNB_TESTNET,
+        },
+        value: BigInt(0),
+        data: incrementData,
+      },
+      TransactionRoute.UOA_TO_CEA,
+      UEA
+    );
+    const hop2 = await buildHopDescriptor(
+      ctx,
+      {
+        to: {
+          address: '0x8888888888888888888888888888888888888888',
+          chain: CHAIN.ETHEREUM_SEPOLIA,
+        },
+        value: BigInt(0),
+        data: incrementData,
+      },
+      TransactionRoute.UOA_TO_CEA,
+      UEA
+    );
+
+    const executeFn = jest.fn(async (params: unknown) => ({
+      hash: `0x${'34'.repeat(32)}`,
+      params,
+    }));
+    const builder = createCascadedBuilder(
+      ctx,
+      [hop0, hop1, hop2].map(prepared),
+      {
+        executeFn,
+        waitForOutboundTxFn: jest.fn(),
+        waitForAllOutboundTxsFn: jest.fn(),
+      } as never
+    );
+
+    await builder.send();
+
+    const executeParams = executeFn.mock.calls[0][0] as {
+      value: bigint;
+      data: MultiCall[];
+    };
+    expect(executeParams.value).toBe(seedAmount);
+    expect(executeParams.data).toHaveLength(2);
+    expect(executeParams.data.every((call) => call.value === BigInt(6) * PC))
+      .toBe(true);
+    expect(executeParams.data.every((call) => call.to === getUniversalGatewayPCAddress()))
+      .toBe(true);
+  });
+
+  it('keeps seed-only and real CEA_TO_PUSH hops from the same source chain in separate segments', async () => {
+    const ctx = makeCtx();
+    const seedAmount = BigInt(5) * PC;
+    const inboundPayloadSeed = PC;
+    const amount = PushChain.utils.helpers.parseUnits('0.001', 18);
+
+    const hop0 = await buildHopDescriptor(
+      ctx,
+      {
+        from: { chain: CHAIN.ETHEREUM_SEPOLIA },
+        to: UEA,
+        value: seedAmount,
+        data: '0x',
+      },
+      TransactionRoute.CEA_TO_PUSH,
+      UEA
+    );
+    const hop1 = await buildHopDescriptor(
+      ctx,
+      {
+        from: { chain: CHAIN.ETHEREUM_SEPOLIA },
+        to: UEA,
+        value: inboundPayloadSeed,
+        data: '0x',
+        funds: {
+          amount,
+          token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
+        },
+      },
+      TransactionRoute.CEA_TO_PUSH,
+      UEA
+    );
+
+    const segments = classifyIntoSegments([hop0, hop1]);
+    expect(segments.map((s) => s.type)).toEqual([
+      'INBOUND_FROM_CEA',
+      'INBOUND_FROM_CEA',
+    ]);
+    expect(segments[0].hops).toHaveLength(1);
+    expect(segments[1].hops).toHaveLength(1);
+
+    const executeFn = jest.fn(async (params: unknown) => ({
+      hash: `0x${'56'.repeat(32)}`,
+      params,
+    }));
+    const builder = createCascadedBuilder(
+      ctx,
+      [hop0, hop1].map(prepared),
+      {
+        executeFn,
+        waitForOutboundTxFn: jest.fn(),
+        waitForAllOutboundTxsFn: jest.fn(),
+      } as never
+    );
+
+    await builder.send();
+
+    const executeParams = executeFn.mock.calls[0][0] as {
+      value: bigint;
+      data: MultiCall[];
+    };
+    expect(executeParams.value).toBe(seedAmount);
+    expect(executeParams.data).toHaveLength(1);
+    expect(executeParams.data[0].to).toBe(getUniversalGatewayPCAddress());
+  });
+
+  it('allows R3 inbound funds to pass through a Push hop before a same-token outbound burn', async () => {
+    const ctx = makeCtx();
+    const amount = PushChain.utils.helpers.parseUnits('0.001', 18);
+    const seedAmount = BigInt(5) * PC;
+
+    const hop0 = await buildHopDescriptor(
+      ctx,
+      {
+        from: { chain: CHAIN.ETHEREUM_SEPOLIA },
+        to: UEA,
+        value: seedAmount,
+        data: '0x',
+        funds: {
+          amount,
+          token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
+        },
+      },
+      TransactionRoute.CEA_TO_PUSH,
+      UEA
+    );
+    const hop1 = route1Hop('01', PETH);
+    const hop2 = await buildHopDescriptor(
+      ctx,
+      {
+        to: {
+          address: '0x7777777777777777777777777777777777777777',
+          chain: CHAIN.ETHEREUM_SEPOLIA,
+        },
+        value: BigInt(0),
+        data: '0x',
+        funds: {
+          amount,
+          token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
+        },
+      },
+      TransactionRoute.UOA_TO_CEA,
+      UEA
+    );
+
+    const segments = classifyIntoSegments([hop0, hop1, hop2]);
+    expect(segments.map((s) => s.type)).toEqual([
+      'INBOUND_FROM_CEA',
+      'PUSH_EXECUTION',
+      'OUTBOUND_TO_CEA',
+    ]);
+
+    const executeFn = jest.fn(async (params: unknown) => ({
+      hash: `0x${'78'.repeat(32)}`,
+      params,
+    }));
+    const builder = createCascadedBuilder(
+      ctx,
+      [hop0, hop1, hop2].map(prepared),
+      {
+        executeFn,
+        waitForOutboundTxFn: jest.fn(),
+        waitForAllOutboundTxsFn: jest.fn(),
+      } as never
+    );
+
+    await builder.send();
+
+    const executeParams = executeFn.mock.calls[0][0] as {
+      value: bigint;
+      data: MultiCall[];
+    };
+    expect(executeParams.value).toBe(BigInt(7) * PC);
+    expect(executeParams.data).toHaveLength(1);
+    expect(executeParams.data[0].to).toBe(getUniversalGatewayPCAddress());
+  });
+
   it('does not report success when the Route 3 source-chain tx reverts', async () => {
     const ctx = makeCtx();
     const amountIn = PushChain.utils.helpers.parseUnits('0.001', 18);

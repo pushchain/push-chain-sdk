@@ -26,11 +26,12 @@ import {
   InsufficientUEABalanceError,
   type PreflightPathTag,
 } from './errors';
+import { formatPc } from '../../formatters';
 
 export interface RunPreflightOpts {
   ctx: OrchestratorContext;
   ueaAddress: `0x${string}`;
-  /** Effective UEA balance in wei UPC (already includes fresh-wallet prediction). */
+  /** Effective UEA balance in native PC wei (already includes fresh-wallet prediction). */
   ueaBalance: bigint;
   /** Buffered pool quote (pre-clamp) — what the SDK would actually attempt. */
   requiredValue: bigint;
@@ -195,7 +196,7 @@ export function runPreflight(opts: RunPreflightOpts): PreflightResult {
     const clamped = legacyClamp(ueaBalance, requiredValue, gasReserve);
     printLog(
       ctx,
-      `[preflight ${pathTag}] UPC shortfall ${shortfall} wei; ` +
+      `[preflight ${pathTag}] PC shortfall ${formatPc(shortfall)}; ` +
         `allowUnderfundedSwap=true — proceeding with legacy clamped value ${clamped}, ` +
         `swap may revert inside Uniswap with Error("STF") if the clamp under-funds the pool quote.`
     );

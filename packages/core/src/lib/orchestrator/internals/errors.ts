@@ -9,6 +9,8 @@
  * callers.
  */
 
+import { formatPc } from '../../formatters';
+
 /**
  * Structured decoded-error payload attached to terminal failure hooks
  * (199-02 / 299-02 / 399-02). Mirrors the optional formatter parameter
@@ -67,7 +69,7 @@ export interface InsufficientUEABalanceErrorOpts {
   shortfall: bigint;
   ueaAddress: `0x${string}`;
   pathTag: PreflightPathTag;
-  /** 'NATIVE' = UPC shortfall; 'PRC20' = burn-token shortfall. */
+  /** 'NATIVE' = native PC shortfall; 'PRC20' = burn-token shortfall. */
   reason?: PreflightShortfallReason;
   /** Burn token address (only set when reason === 'PRC20'). */
   burnToken?: `0x${string}`;
@@ -99,15 +101,20 @@ export class InsufficientUEABalanceError extends PushChainExecutionError {
       reason === 'PRC20' && opts.burnToken
         ? ` of token ${opts.burnToken}`
         : '';
-    const currencyLabel = reason === 'PRC20' ? 'units' : 'wei UPC';
+    const availableLabel =
+      reason === 'PRC20' ? `${opts.available} units` : formatPc(opts.available);
+    const requiredLabel =
+      reason === 'PRC20' ? `${opts.required} units` : formatPc(opts.required);
+    const shortfallLabel =
+      reason === 'PRC20' ? `${opts.shortfall} units` : formatPc(opts.shortfall);
     const remediation =
       reason === 'PRC20'
         ? `Bridge the burn token to UEA on Push Chain before retrying.`
-        : `Bridge >=${opts.shortfall} wei UPC to the UEA on Push Chain before retrying.`;
+        : `Bridge >=${shortfallLabel} to the UEA on Push Chain before retrying.`;
     const message =
       `InsufficientUEABalance [${opts.pathTag}${segLabel}:${reason}]: ` +
-      `UEA ${opts.ueaAddress} has ${opts.available} ${currencyLabel}${tokenSuffix}; ` +
-      `outbound requires ${opts.required} ${currencyLabel}; shortfall ${opts.shortfall} ${currencyLabel}. ` +
+      `UEA ${opts.ueaAddress} has ${availableLabel}${tokenSuffix}; ` +
+      `outbound requires ${requiredLabel}; shortfall ${shortfallLabel}. ` +
       remediation;
     // Lift the structured info into the parent's decodedError so the
     // orchestrator's outer catch can pass it straight through to the
