@@ -10,12 +10,8 @@
  * Unknown selectors fall through with `kind: 'unknown'` so callers can log
  * them at INFO and grow the table from real reverts.
  *
- * The selector→name mappings below are EMPIRICAL: they were observed in
- * production e2e logs and SDK test fixtures. `keccak256` of the obvious
- * parameterless signatures (e.g. `keccak256("InsufficientBalance()")` =
- * `0x01e1e567`) does NOT reproduce the listed selectors, so the deployed-
- * source mapping is still unverified. Names and hints are worded as
- * "likely cause" until the bytecode-source trace lands.
+ * The selector→name mappings below come from source-verified custom errors
+ * where available, with production/e2e observations kept as provenance.
  */
 
 export interface KnownErrorSelector {
@@ -47,11 +43,17 @@ export const KNOWN_ERROR_SELECTORS: Record<`0x${string}`, KnownErrorSelector> = 
   '0xf4d678b8': {
     name: 'InsufficientBalance',
     hint:
-      'Likely cause: UEA does not hold enough of the burn token (PRC-20 mapped from the outbound `funds.token`). ' +
-      'For Solana SPL outbounds, ensure UEA holds the corresponding pUSDT.sol / pUSDC.sol mint before retrying. ' +
-      'Same selector may also surface from other balance-check reverters; verify burn-token balance first.',
+      'Likely cause: the executing account does not hold enough of the token being moved. ' +
+      'For Push outbounds, verify the UEA PRC-20 burn-token balance. For CEA→Push routes, verify the source-chain CEA balance.',
     provenance:
-      'Production e2e: e2e-2026-04-16T16-27-58-082Z.log:342 (R2 SPL fresh-UEA, no pUSDT.sol)',
+      'CommonErrors/CEAErrors.InsufficientBalance(); production e2e: e2e-2026-04-16T16-27-58-082Z.log:342',
+  },
+  '0xb4fa3fb3': {
+    name: 'InvalidInput',
+    hint:
+      'Likely cause: contract-level input validation failed. For CEA self-calls, the multicall entry must use value=0 and the encoded sendUniversalTxToUEA amount/revertRecipient must be valid.',
+    provenance:
+      'CommonErrors/CEAErrors.InvalidInput(); observed while replaying failed Route 3 CEA self-call tx 0x6fc0635d76edae0659ff131fd4bbf3349e01946708ce56dc2668d878f34a6077',
   },
   '0x66f9d09e': {
     name: 'GasLimitBelowBase',

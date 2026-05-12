@@ -39,6 +39,18 @@ describe('decodeRevert', () => {
     }
   });
 
+  it('decodes InvalidInput from CEA self-call validation', () => {
+    const msg =
+      "execution reverted: ret 0xb4fa3fb3: evm transaction execution failed";
+    const decoded = decodeRevert(msg);
+    expect(decoded?.kind).toBe('custom');
+    if (decoded?.kind === 'custom') {
+      expect(decoded.selector).toBe('0xb4fa3fb3');
+      expect(decoded.name).toBe('InvalidInput');
+      expect(decoded.hint).toContain('CEA self-calls');
+    }
+  });
+
   it('decodes ABI-encoded Error(string) ("STF")', () => {
     // Error(string) encoding for "STF":
     //   selector(0x08c379a0) + offset(0x20) + length(0x03) + "STF" + zero-padded

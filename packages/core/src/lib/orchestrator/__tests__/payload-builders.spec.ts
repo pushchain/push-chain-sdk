@@ -356,7 +356,7 @@ describe('buildSendUniversalTxToUEA', () => {
     expect(decoded.functionName).toBe('sendUniversalTxToUEA');
   });
 
-  it('should return MultiCall with to = ceaAddress and value = 0', () => {
+  it('should return ERC20 MultiCall with to = ceaAddress and value = 0', () => {
     const result = buildSendUniversalTxToUEA(
       CEA_ADDRESS,
       TOKEN_A,
@@ -388,7 +388,7 @@ describe('buildSendUniversalTxToUEA', () => {
     expect(decoded.args![3]).toBe(CEA_ADDRESS); // revertRecipient
   });
 
-  it('should work with native token (ZERO_ADDRESS)', () => {
+  it('should work with native token (ZERO_ADDRESS) without forwarding call value', () => {
     const result = buildSendUniversalTxToUEA(
       CEA_ADDRESS,
       ZERO_ADDRESS as `0x${string}`,
@@ -396,6 +396,10 @@ describe('buildSendUniversalTxToUEA', () => {
       '0x',
       CEA_ADDRESS
     );
+
+    // CEA self-calls inside _handleMulticall must have value=0. Native funds
+    // are spent by sendUniversalTxToUEA from the CEA's existing balance.
+    expect(result.value).toBe(BigInt(0));
 
     const decoded = decodeFunctionData({
       abi: CEA_EVM,

@@ -74,6 +74,32 @@ const UNISWAP_V3_FACTORY_ABI = [
   },
 ];
 
+const UNISWAP_V3_QUOTER_EXACT_OUTPUT_ABI = [
+  {
+    type: 'function' as const,
+    name: 'quoteExactOutputSingle',
+    inputs: [
+      {
+        type: 'tuple',
+        components: [
+          { name: 'tokenIn', type: 'address' },
+          { name: 'tokenOut', type: 'address' },
+          { name: 'amount', type: 'uint256' },
+          { name: 'fee', type: 'uint24' },
+          { name: 'sqrtPriceLimitX96', type: 'uint160' },
+        ],
+      },
+    ],
+    outputs: [
+      { name: 'amountIn', type: 'uint256' },
+      { name: 'sqrtPriceX96After', type: 'uint160' },
+      { name: 'initializedTicksCrossed', type: 'uint32' },
+      { name: 'gasEstimate', type: 'uint256' },
+    ],
+    stateMutability: 'view',
+  },
+];
+
 const UNIVERSAL_CORE_SWAP_HELPERS_ABI = [
   { type: 'function' as const, name: 'WPC', inputs: [], outputs: [{ name: '', type: 'address', internalType: 'address' }], stateMutability: 'view' },
   { type: 'function' as const, name: 'uniswapV3Factory', inputs: [], outputs: [{ name: '', type: 'address', internalType: 'address' }], stateMutability: 'view' },
@@ -306,6 +332,45 @@ export async function estimateNativeValueForSwap(
       return balanceFallback(accountBalance, BALANCE_FALLBACK_DIVISOR, GAS_RESERVE);
     }
 
+    const pushChain = getPushChainForNetwork(ctx.pushNetwork);
+    const quoterAddress = CHAIN_INFO[pushChain]?.dex?.uniV3QuoterV2;
+    if (quoterAddress && !quoterAddress.startsWith('0xTBD')) {
+      try {
+        const quote = await ctx.pushClient.readContract<
+          [bigint, bigint, number, bigint]
+        >({
+          address: quoterAddress as `0x${string}`,
+          abi: UNISWAP_V3_QUOTER_EXACT_OUTPUT_ABI,
+          functionName: 'quoteExactOutputSingle',
+          args: [
+            {
+              tokenIn: wpcAddress,
+              tokenOut: gasToken,
+              amount: gasFee,
+              fee: feeTier,
+              sqrtPriceLimitX96: BigInt(0),
+            },
+          ],
+        });
+        const exactWpcNeeded = quote[0];
+        const result =
+          (exactWpcNeeded * SWAP_BUFFER_NUM) / SWAP_BUFFER_DEN;
+        printLog(
+          ctx,
+          `estimateNativeValueForSwap — exactOutput quoter=${quoterAddress}, ` +
+            `wpcNeeded=${exactWpcNeeded}, withBuffer(2.2x)=${result}`
+        );
+        return capSwapEstimate(result, accountBalance, GAS_RESERVE);
+      } catch (quoteErr) {
+        printLog(
+          ctx,
+          `estimateNativeValueForSwap — exactOutput quote failed: ${
+            quoteErr instanceof Error ? quoteErr.message : String(quoteErr)
+          }, falling back to slot0 price`
+        );
+      }
+    }
+
     // Get pool address from factory
     const poolAddress = await ctx.pushClient.readContract<`0x${string}`>({
       address: factoryAddress,
@@ -357,13 +422,7 @@ export async function estimateNativeValueForSwap(
         `wpcNeeded=${wpcNeeded}, withBuffer(2.2x)=${result}`
     );
 
-    // Cap at (balance - reserve)
-    if (accountBalance > result + GAS_RESERVE) {
-      return result;
-    } else if (accountBalance > GAS_RESERVE) {
-      return accountBalance - GAS_RESERVE;
-    }
-    return result; // let caller decide if balance is too low
+    return capSwapEstimate(result, accountBalance, GAS_RESERVE);
   } catch (err) {
     printLog(
       ctx,
@@ -371,6 +430,20 @@ export async function estimateNativeValueForSwap(
     );
     return balanceFallback(accountBalance, BALANCE_FALLBACK_DIVISOR, GAS_RESERVE);
   }
+}
+
+function capSwapEstimate(
+  result: bigint,
+  accountBalance: bigint,
+  reserve: bigint
+): bigint {
+  if (accountBalance > result + reserve) {
+    return result;
+  }
+  if (accountBalance > reserve) {
+    return accountBalance - reserve;
+  }
+  return result; // let caller decide if balance is too low
 }
 
 function balanceFallback(balance: bigint, divisor: bigint, reserve: bigint): bigint {

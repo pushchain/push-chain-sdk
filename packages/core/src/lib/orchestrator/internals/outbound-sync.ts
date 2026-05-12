@@ -262,6 +262,27 @@ export async function waitForOutboundTx(
         );
       }
 
+      const pcTxs = utxResponse?.universalTx?.pcTx || [];
+      const failedPcTx = pcTxs.find((pcTx) => {
+        const status = String(pcTx.status || '').toUpperCase();
+        return status === 'FAILED' || Boolean(pcTx.errorMsg);
+      });
+      if (failedPcTx) {
+        const failedTxHash = failedPcTx.txHash || pushChainTxHash;
+        const reason = failedPcTx.errorMsg || 'Push Chain execution failed';
+        printLog(
+          ctx,
+          `[waitForOutboundTx] Push Chain execution failed before outbound emission: ${reason}`
+        );
+        progressHook?.({ status: 'failed', elapsed: Date.now() - startTime });
+        throw new OutboundFailedError(
+          `Push Chain execution failed before outbound emission: ${reason}. Push Chain TX: ${failedTxHash}.`,
+          pushChainTxHash,
+          undefined,
+          failedPcTx.txHash || undefined
+        );
+      }
+
       // Iterate V2 outbound array
       for (const ob of outbounds) {
         // Fail fast on per-outbound REVERTED status
@@ -401,6 +422,7 @@ export async function waitForAllOutboundTxsV2(
     initialWaitMs: number;
     pollingIntervalMs: number;
     timeout: number;
+    _resolvedSubTxId?: string;
     progressHook?: (event: {
       hopIndex: number;
       route: TransactionRouteType;
@@ -410,7 +432,13 @@ export async function waitForAllOutboundTxsV2(
     }) => void;
   }
 ): Promise<{ success: boolean; failedAt?: number }> {
-  const { initialWaitMs, pollingIntervalMs, timeout, progressHook } = options;
+  const {
+    initialWaitMs,
+    pollingIntervalMs,
+    timeout,
+    progressHook,
+    _resolvedSubTxId,
+  } = options;
   const startTime = Date.now();
 
   // Build a map: CAIP-2 namespace -> hop(s) for matching outbound entries
@@ -454,7 +482,11 @@ export async function waitForAllOutboundTxsV2(
   }
 
   // Extract sub-tx ID for V2 query
-  let cachedQueryId: string | undefined;
+  let cachedQueryId: string | undefined = _resolvedSubTxId
+    ? _resolvedSubTxId.startsWith('0x')
+      ? _resolvedSubTxId.slice(2)
+      : _resolvedSubTxId
+    : undefined;
 
   let pollCount = 0;
   let consecutiveErrors = 0;
@@ -490,11 +522,23 @@ export async function waitForAllOutboundTxsV2(
           const unconfirmedForChain = hopsForChain.filter((h) => h.status !== 'confirmed' && h.status !== 'failed');
           if (unconfirmedForChain.length === 0) continue;
 
-          // Fail fast on per-outbound REVERTED
-          if (ob.outboundStatus === OutboundStatus.REVERTED) {
+          const externalTxHash = ob.observedTx?.txHash;
+          const hasObservedTxHash =
+            !!externalTxHash && externalTxHash !== 'EMPTY';
+          const observedFailure =
+            hasObservedTxHash &&
+            ob.observedTx?.success === false &&
+            Boolean(
+              ob.observedTx?.errorMsg ||
+                ob.abortReason ||
+                (ob.outboundStatus as number) >= OutboundStatus.REVERTED
+            );
+
+          // Fail fast on per-outbound REVERTED or observed destination failure.
+          if (ob.outboundStatus === OutboundStatus.REVERTED || observedFailure) {
             for (const hop of unconfirmedForChain) {
               hop.status = 'failed';
-              printLog(ctx, `[waitForAllOutboundTxsV2] Outbound to ${destChain} REVERTED | hop ${hop.hopIndex} | error: ${ob.observedTx?.errorMsg || 'Unknown'}`);
+              printLog(ctx, `[waitForAllOutboundTxsV2] Outbound to ${destChain} REVERTED | hop ${hop.hopIndex} | error: ${ob.abortReason || ob.observedTx?.errorMsg || 'Unknown'}`);
               progressHook?.({
                 hopIndex: hop.hopIndex,
                 route: hop.route,
@@ -505,10 +549,37 @@ export async function waitForAllOutboundTxsV2(
             return { success: false, failedAt: unconfirmedForChain[0].hopIndex };
           }
 
-          // Check for OBSERVED with txHash
-          const externalTxHash = ob.observedTx?.txHash;
-          if (externalTxHash && (ob.outboundStatus === OutboundStatus.OBSERVED || ob.outboundStatus as number === 0)) {
+          // Check for observed tx hash. Cosmos may lag the status transition,
+          // so EVM destinations are verified against the destination receipt.
+          if (hasObservedTxHash && externalTxHash) {
             const chain = chainFromNamespace(destChain);
+            if (!chain) continue;
+
+            const isCosmosObserved = ob.outboundStatus === OutboundStatus.OBSERVED;
+            if (!isCosmosObserved) {
+              const verdict = await verifyExternalEvmReceipt(
+                ctx,
+                chain,
+                externalTxHash
+              );
+              if (verdict === 'reverted') {
+                for (const hop of unconfirmedForChain) {
+                  hop.status = 'failed';
+                  printLog(ctx, `[waitForAllOutboundTxsV2] Source-chain RPC reports REVERTED for ${destChain} tx ${externalTxHash} | hop ${hop.hopIndex}`);
+                  progressHook?.({
+                    hopIndex: hop.hopIndex,
+                    route: hop.route,
+                    chain: hop.executionChain,
+                    status: 'failed',
+                  });
+                }
+                return { success: false, failedAt: unconfirmedForChain[0].hopIndex };
+              }
+              if (verdict !== 'success') {
+                continue;
+              }
+            }
+
             // Build the display form for SVM (base58) used in `hop.txHash` /
             // `hop.outboundDetails.externalTxHash` / the progressHook event —
             // these are USER-FACING. The internal raw-hex form stays only

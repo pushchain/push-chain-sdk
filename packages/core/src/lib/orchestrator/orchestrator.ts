@@ -25,6 +25,7 @@ import {
   transformToUniversalTxReceipt as _transformToUniversalTxReceipt,
   computeUEAOffchain as _computeUEAOffchain, computeUEA as _computeUEA,
   waitForOutboundTx as _waitForOutboundTx, waitForAllOutboundTxsV2 as _waitForAllOutboundTxsV2,
+  waitForInboundPushTx as _waitForInboundPushTx,
   OUTBOUND_INITIAL_WAIT_MS, OUTBOUND_POLL_INTERVAL_MS, OUTBOUND_MAX_TIMEOUT_MS,
   INBOUND_INITIAL_WAIT_MS, INBOUND_MAX_TIMEOUT_MS,
   quoteExactOutput as _quoteExactOutput,
@@ -78,6 +79,7 @@ export class Orchestrator {
     return {
       executeFn: this.execute.bind(this),
       waitForOutboundTxFn: (hash: string, opts?: any) => _waitForOutboundTx(this.ctx, hash, opts),
+      waitForInboundPushTxFn: (hash: string, sourceChain: string, opts?: any) => _waitForInboundPushTx(this.ctx, hash, sourceChain, opts),
       waitForAllOutboundTxsFn: (hash: string, hops: CascadeHopInfo[], opts: any) => _waitForAllOutboundTxsV2(this.ctx, hash, hops, opts),
     };
   }

@@ -72,7 +72,10 @@ import {
   encodeSvmExecutePayload,
   encodeSvmCeaToUeaPayload,
 } from '../payload-builders';
-import { ZERO_ADDRESS } from '../../constants/selectors';
+import {
+  DEFAULT_CEA_TO_PUSH_GAS_LIMIT,
+  ZERO_ADDRESS,
+} from '../../constants/selectors';
 import { ERC20_EVM } from '../../constants/abi/erc20.evm';
 import { PushChain } from '../../push-chain/push-chain';
 import type {
@@ -1262,8 +1265,8 @@ export async function executeCeaToPush(
     pushPayload = buildInboundUniversalPayload(multicallPayload, { nonce: ueaNonce + BigInt(1) });
   }
 
-  // Build sendUniversalTxToUEA self-call on CEA
-  // CEA multicall: to=CEA (self-call), value=0
+  // Build sendUniversalTxToUEA self-call on CEA. CEA self-calls must always
+  // use value=0; native sends spend from the CEA's existing balance.
   // CEA internally calls gateway.sendUniversalTxFromCEA(...)
   // Uses bridgeAmount (= burn amount deposited by Vault)
   const sendUniversalTxCall = buildSendUniversalTxToUEA(
@@ -1295,6 +1298,8 @@ export async function executeCeaToPush(
   // tokens FROM the CEA back to Push Chain, not to round-trip them.
   const prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
   const burnAmount = BigInt(0);
+  const outboundGasLimit =
+    params.gasLimit ?? DEFAULT_CEA_TO_PUSH_GAS_LIMIT;
 
   printLog(
     ctx,
@@ -1307,7 +1312,7 @@ export async function executeCeaToPush(
     ceaAddress,              // target: CEA address (to=CEA for self-execution)
     prc20Token,              // token: native PRC-20 for source chain (for namespace lookup)
     burnAmount,              // amount: 0 (payload-only, CEA uses its own balance)
-    params.gasLimit ?? BigInt(0),
+    outboundGasLimit,
     ceaPayload,              // payload: ABI-encoded CEA multicall
     ueaAddress               // revertRecipient: UEA
   );
@@ -1340,10 +1345,9 @@ export async function executeCeaToPush(
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   let sizingDecisionR3: GasSizingDecision | undefined;
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-    const gasLimit = outboundReq.gasLimit;
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_302_01, sourceChain);
     try {
-      const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, sourceChain);
+      const result = await queryOutboundGasFee(ctx, prc20Token, outboundGasLimit, sourceChain);
       gasToken = result.gasToken;
       gasFee = result.gasFee;
       protocolFeeR3 = result.protocolFee;
@@ -2172,7 +2176,8 @@ export async function buildPayloadForRoute(
         pushPayload = buildInboundUniversalPayload(multicallPayload, { nonce: ueaNonceHop + BigInt(1) });
       }
 
-      // Build sendUniversalTxToUEA self-call on CEA (to=CEA, value=0)
+      // Build sendUniversalTxToUEA self-call on CEA. CEA self-calls must
+      // always use value=0; native sends spend from the CEA balance.
       const sendCall = buildSendUniversalTxToUEA(
         ceaAddress,
         tokenAddress,
@@ -2187,12 +2192,14 @@ export async function buildPayloadForRoute(
       // Route 3: CEA uses its own pre-existing balance — no PRC-20 burn needed.
       // burnAmount = 0 makes this a payload-only outbound relay.
       const burnAmount = BigInt(0);
+      const outboundGasLimit =
+        params.gasLimit ?? DEFAULT_CEA_TO_PUSH_GAS_LIMIT;
 
       const outboundReq = buildOutboundRequest(
         ceaAddress,
         prc20Token,
         burnAmount,
-        params.gasLimit ?? BigInt(0),
+        outboundGasLimit,
         ceaPayload,
         ueaAddress
       );

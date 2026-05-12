@@ -43,4 +43,5 @@ export {
   TX_TYPE,
   ZERO_ADDRESS,
   DEFAULT_OUTBOUND_GAS_LIMIT,
+  DEFAULT_CEA_TO_PUSH_GAS_LIMIT,
 } from './selectors';
