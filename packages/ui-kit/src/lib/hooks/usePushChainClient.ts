@@ -98,6 +98,9 @@ export const usePushChainClient = (uid?: string) => {
           network: config.network,
 
           progressHook: async (progress: ProgressEvent) => {
+            if (successTimerRef.current) {
+              clearTimeout(successTimerRef.current);
+            }
             setProgress(progress);
             if (
               progress.id === PROGRESS_HOOK.SEND_TX_199_01 ||
