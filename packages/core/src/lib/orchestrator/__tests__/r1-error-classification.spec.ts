@@ -74,6 +74,20 @@ describe('R1 error classification', () => {
       expect(response.isUserDecline).toBe(false);
     });
 
+    it('normalizes Push Chain native balance errors in 199-02 copy', () => {
+      const event = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_02](
+        'Details: failed with 16777216 gas: insufficient funds for gas * price + value: address 0x36cDbAfcDEea9CF912D285017f246e55BaF14f0F have 8000000000000000 want 20517277398607022'
+      );
+
+      expect(event.message).toContain(
+        'have 0.008 PC (8000000000000000 wei)'
+      );
+      expect(event.message).toContain(
+        'want 0.020517277398607022 PC (20517277398607022 wei)'
+      );
+      expect((event.response as { error: string }).error).toBe(event.message);
+    });
+
     it('treats undefined errorMessage as a decline', () => {
       const event = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_104_04]();
       expect(event.title).toBe('Verification Declined');

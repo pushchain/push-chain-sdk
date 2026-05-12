@@ -17,6 +17,7 @@ import { printLog } from './context';
 import type { CHAIN } from '../../constants/enums';
 import { detectUniversalTx } from '../../universal-tx-detector/detector';
 import { resolveChildInboundsFromDetection } from '../../universal-tx-detector/child-inbounds';
+import { normalizePcInsufficientFundsError } from '../../formatters';
 
 export type InboundPushTxStatus = 'pending' | 'confirmed' | 'failed';
 
@@ -283,8 +284,9 @@ export async function waitForInboundPushTx(
           }
         } else if (TERMINAL_FAILURE_STATUSES.has(status)) {
           const errMsg =
-            utx?.pcTx?.[0]?.errorMsg ||
-            `inbound terminated with status ${status}`;
+            utx?.pcTx?.[0]?.errorMsg
+              ? normalizePcInsufficientFundsError(utx.pcTx[0].errorMsg)
+              : `inbound terminated with status ${status}`;
           progressHook?.({
             status: 'failed',
             elapsedMs: elapsed(),

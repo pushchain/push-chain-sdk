@@ -37,3 +37,24 @@ function formatTokenUnits(
 export function formatPc(valueWei: bigint, precision?: number): string {
   return `${formatTokenUnits(valueWei, PC_DECIMALS, precision)} PC`;
 }
+
+/**
+ * Push Chain EVM/RPC insufficient-funds errors surface native balances as raw
+ * wei, usually in the form "have <wei> want <wei>". Preserve the raw value for
+ * debugging but prefix it with the human PC amount users can reason about.
+ */
+export function normalizePcInsufficientFundsError(message: string): string {
+  if (!/insufficient funds for gas \* price \+ value/i.test(message)) {
+    return message;
+  }
+
+  return message
+    .replace(/\bhave\s+([0-9]+)(?=\s+want\b)/gi, (_match, value: string) =>
+      `have ${formatPc(BigInt(value))} (${value} wei)`
+    )
+    .replace(
+      /\bwant\s+([0-9]+)(?![\d.]|\s*(?:wei|PC))/gi,
+      (_match, value: string) =>
+        `want ${formatPc(BigInt(value))} (${value} wei)`
+    );
+}

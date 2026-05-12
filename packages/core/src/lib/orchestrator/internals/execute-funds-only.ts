@@ -37,6 +37,7 @@ import { buildSvmUniversalTxRequest, getSvmProtocolFee } from './svm-helpers';
 import { fetchOriginChainTransactionForProgress } from './helpers';
 import type { ResponseBuilderCallbacks } from './response-builder';
 import { transformToUniversalTxResponse } from './response-builder';
+import { normalizePcInsufficientFundsError } from '../../formatters';
 
 export async function executeFundsOnly(
   ctx: OrchestratorContext,
@@ -186,7 +187,9 @@ async function executeFundsOnlyEvm(
     response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txHash, eventBuffer, 'sendFunds', transformFn);
   } catch (err) {
     if (!(err instanceof PushChainExecutionError)) {
-      const errMsg = err instanceof Error ? err.message : String(err);
+      const errMsg = normalizePcInsufficientFundsError(
+        err instanceof Error ? err.message : String(err)
+      );
       fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, errMsg);
       throw new PushChainExecutionError(errMsg, { gatewayTxHash: txHash });
     }
@@ -303,7 +306,9 @@ async function executeFundsOnlySvm(
     response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txSignature, eventBuffer, 'sendFunds (SVM)', transformFn);
   } catch (err) {
     if (!(err instanceof PushChainExecutionError)) {
-      const errMsg = err instanceof Error ? err.message : String(err);
+      const errMsg = normalizePcInsufficientFundsError(
+        err instanceof Error ? err.message : String(err)
+      );
       fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, errMsg);
       throw new PushChainExecutionError(errMsg, { gatewayTxHash: txSignature });
     }

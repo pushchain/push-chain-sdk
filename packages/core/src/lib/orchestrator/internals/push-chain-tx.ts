@@ -26,6 +26,7 @@ import type { OrchestratorContext } from './context';
 import { fireProgressHook, printLog } from './context';
 import { decodeRevert } from './error-decoder';
 import { PushChainExecutionError } from './errors';
+import { normalizePcInsufficientFundsError } from '../../formatters';
 
 // ============================================================================
 // PushChainExecutionError
@@ -431,7 +432,10 @@ export async function extractPcTxAndTransform(
           (pcTx: { status?: string; errorMsg?: string }) =>
             pcTx.status === 'FAILED' && pcTx.errorMsg
         );
-    const errorDetails = failedPcTx?.errorMsg ? `: ${failedPcTx.errorMsg}` : '';
+    const failedPcTxErrorMsg = failedPcTx?.errorMsg
+      ? normalizePcInsufficientFundsError(failedPcTx.errorMsg)
+      : '';
+    const errorDetails = failedPcTxErrorMsg ? `: ${failedPcTxErrorMsg}` : '';
     // Decode known revert selectors and ABI-encoded `Error(string)` reverts
     // into actionable hints. Unknown selectors are logged at INFO so the
     // table can grow from real reverts.

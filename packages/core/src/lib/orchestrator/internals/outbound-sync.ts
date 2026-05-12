@@ -10,6 +10,7 @@ import { CHAIN_INFO, VM_NAMESPACE } from '../../constants/chain';
 import { CHAIN, VM } from '../../constants/enums';
 import { UniversalTxStatus } from '../../generated/uexecutor/v1/types';
 import { OutboundStatus } from '../../generated/uexecutor/v2/types';
+import { normalizePcInsufficientFundsError } from '../../formatters';
 import type {
   CascadeHopInfo,
   WaitForOutboundOptions,
@@ -279,7 +280,9 @@ export async function waitForOutboundTx(
       });
       if (failedPcTx) {
         const failedTxHash = failedPcTx.txHash || pushChainTxHash;
-        const reason = failedPcTx.errorMsg || 'Push Chain execution failed';
+        const reason = failedPcTx.errorMsg
+          ? normalizePcInsufficientFundsError(failedPcTx.errorMsg)
+          : 'Push Chain execution failed';
         printLog(
           ctx,
           `[waitForOutboundTx] Push Chain execution failed before outbound emission: ${reason}`

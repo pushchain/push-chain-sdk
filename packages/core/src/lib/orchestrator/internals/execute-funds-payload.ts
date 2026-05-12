@@ -56,6 +56,7 @@ import { sendSVMTxWithFunds } from './svm-bridge';
 import { encodeUniversalPayload } from './signing';
 import type { UniversalPayload } from '../../generated/v1/tx';
 import { quoteExactOutput } from './quote';
+import { normalizePcInsufficientFundsError } from '../../formatters';
 
 export async function executeFundsWithPayload(
   ctx: OrchestratorContext,
@@ -326,7 +327,9 @@ export async function executeFundsWithPayload(
     response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txHash as string, eventBuffer, 'sendTxWithFunds', transformFn);
   } catch (err) {
     if (!(err instanceof PushChainExecutionError)) {
-      const errMsg = err instanceof Error ? err.message : String(err);
+      const errMsg = normalizePcInsufficientFundsError(
+        err instanceof Error ? err.message : String(err)
+      );
       fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, errMsg);
       throw new PushChainExecutionError(errMsg, { gatewayTxHash: txHash as string });
     }

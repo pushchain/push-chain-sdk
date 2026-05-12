@@ -19,7 +19,7 @@ import {
   PROGRESS_HOOK,
   ProgressEvent,
 } from '../../progress-hook/progress-hook.types';
-import { formatPc } from '../../formatters';
+import { formatPc, normalizePcInsufficientFundsError } from '../../formatters';
 import { Utils } from '../../utils';
 import { EvmClient } from '../../vm-client/evm-client';
 import type { TxResponse } from '../../vm-client/vm-client.types';
@@ -158,7 +158,9 @@ export async function executeStandardPayload(
     } catch (err) {
       // Push Chain broadcast failed. Wallet rejection surfaces as 104-04;
       // everything else (RPC fail, on-chain revert) as 199-02.
-      const errMsg = err instanceof Error ? err.message : String(err);
+      const errMsg = normalizePcInsufficientFundsError(
+        err instanceof Error ? err.message : String(err)
+      );
       const { isUserDecline } = classifyDeclineError(errMsg);
       fireProgressHook(
         ctx,
@@ -352,7 +354,9 @@ export async function executeStandardPayload(
       // Wallet decline, contract revert during sign, or RPC failure — the
       // 104-04 builder's classifyDeclineError heuristic picks the right
       // copy (real decline → "Verification Declined"; else "Signature Failed").
-      const errMsg = err instanceof Error ? err.message : String(err);
+      const errMsg = normalizePcInsufficientFundsError(
+        err instanceof Error ? err.message : String(err)
+      );
       fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_04, errMsg);
       throw err;
     }
@@ -531,7 +535,9 @@ export async function executeStandardPayload(
       );
     } catch (err) {
       if (!(err instanceof PushChainExecutionError)) {
-        const errMsg = err instanceof Error ? err.message : String(err);
+        const errMsg = normalizePcInsufficientFundsError(
+          err instanceof Error ? err.message : String(err)
+        );
         fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, errMsg);
         throw new PushChainExecutionError(errMsg, { gatewayTxHash: feeLockTxHash });
       }
@@ -571,7 +577,9 @@ export async function executeStandardPayload(
     // exhaustion). Surface terminal 199-02 before re-throwing so the stream
     // ends with the spec'd error hook. Typed PushChainExecutionError lets
     // callers classify via instanceof without message sniffing.
-    const errMsg = err instanceof Error ? err.message : String(err);
+    const errMsg = normalizePcInsufficientFundsError(
+      err instanceof Error ? err.message : String(err)
+    );
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, errMsg);
     if (err instanceof PushChainExecutionError) throw err;
     throw new PushChainExecutionError(errMsg);

@@ -205,6 +205,34 @@ describe('waitForOutboundTx OBSERVED gate', () => {
     }
   });
 
+  it('normalizes Push Chain native balance errors from child pcTx before outbound emission', async () => {
+    const rawError =
+      'Details: failed with 16777216 gas: insufficient funds for gas * price + value: address 0x36cDbAfcDEea9CF912D285017f246e55BaF14f0F have 8000000000000000 want 20517277398607022';
+    const ctx = makeCtx([
+      response(
+        [],
+        UniversalTxStatus.UNIVERSAL_TX_STATUS_UNSPECIFIED,
+        [
+          {
+            txHash: '',
+            status: 'FAILED',
+            errorMsg: rawError,
+          },
+        ]
+      ),
+    ]);
+
+    await expect(
+      waitForOutboundTx(ctx, '0xpushtx', {
+        initialWaitMs: 0,
+        pollingIntervalMs: 20,
+        timeout: 1000,
+      })
+    ).rejects.toThrow(
+      'have 0.008 PC (8000000000000000 wei) want 0.020517277398607022 PC (20517277398607022 wei)'
+    );
+  });
+
   it('multi-outbound: picks the OBSERVED entry even when an UNSPECIFIED entry with txHash appears first in the array', async () => {
     const ctx = makeCtx([
       response([

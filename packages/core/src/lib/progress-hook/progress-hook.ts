@@ -4,7 +4,7 @@ import {
   UniversalTxResponse,
 } from '../orchestrator/orchestrator.types';
 import { CHAIN } from '../constants/enums';
-import { formatPc } from '../formatters';
+import { formatPc, normalizePcInsufficientFundsError } from '../formatters';
 import { Utils } from '../utils';
 import {
   PROGRESS_HOOK,
@@ -352,16 +352,19 @@ const RAW_HOOKS_R1: {
       selector?: string;
       decoded?: string;
     }
-  ) => ({
-    id: PROGRESS_HOOK.SEND_TX_199_02,
-    title: 'Push Chain Tx Failed',
-    message: errMessage,
-    response: {
-      error: errMessage,
-      ...(decodedError ? { decodedError } : {}),
-    },
-    level: 'ERROR',
-  }),
+  ) => {
+    const normalizedErrMessage = normalizePcInsufficientFundsError(errMessage);
+    return {
+      id: PROGRESS_HOOK.SEND_TX_199_02,
+      title: 'Push Chain Tx Failed',
+      message: normalizedErrMessage,
+      response: {
+        error: normalizedErrMessage,
+        ...(decodedError ? { decodedError } : {}),
+      },
+      level: 'ERROR',
+    };
+  },
 };
 
 // =============================================================================
@@ -899,23 +902,29 @@ const RAW_HOOKS_R3: {
       selector?: string;
       decoded?: string;
     }
-  ) => ({
-    id: PROGRESS_HOOK.SEND_TX_399_02,
-    title:
-      phase === 'outbound'
-        ? `${friendlyChain(chain)} Tx Failed`
-        : phase === 'push'
-        ? 'Push Chain Tx Failed'
-        : 'Push Chain Inbound Tx Failed',
-    message: errorMessage,
-    response: {
-      error: errorMessage,
-      phase,
-      chain: chain ?? null,
-      ...(decodedError ? { decodedError } : {}),
-    },
-    level: 'ERROR',
-  }),
+  ) => {
+    const normalizedErrorMessage =
+      phase === 'push'
+        ? normalizePcInsufficientFundsError(errorMessage)
+        : errorMessage;
+    return {
+      id: PROGRESS_HOOK.SEND_TX_399_02,
+      title:
+        phase === 'outbound'
+          ? `${friendlyChain(chain)} Tx Failed`
+          : phase === 'push'
+          ? 'Push Chain Tx Failed'
+          : 'Push Chain Inbound Tx Failed',
+      message: normalizedErrorMessage,
+      response: {
+        error: normalizedErrorMessage,
+        phase,
+        chain: chain ?? null,
+        ...(decodedError ? { decodedError } : {}),
+      },
+      level: 'ERROR',
+    };
+  },
   [PROGRESS_HOOK.SEND_TX_399_03]: (
     sourceChain: string | CHAIN,
     elapsedMs: number,

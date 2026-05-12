@@ -12,8 +12,12 @@
 jest.mock('../../universal-tx-detector/detector');
 jest.mock('../../universal-tx-detector/child-inbounds');
 
-import { findChildUtxIdFromExternalTx } from '../internals/inbound-tracker';
+import {
+  findChildUtxIdFromExternalTx,
+  waitForInboundPushTx,
+} from '../internals/inbound-tracker';
 import type { OrchestratorContext } from '../internals/context';
+import { UniversalTxStatus } from '../../generated/uexecutor/v2/types';
 import { detectUniversalTx } from '../../universal-tx-detector/detector';
 import {
   resolveChildInboundsFromDetection,
@@ -201,5 +205,49 @@ describe('findChildUtxIdFromExternalTx — detector-first derivation', () => {
     expect(result.utxId).toBeNull();
     expect(result.error).toBeInstanceOf(Error);
     expect(result.error?.message).toContain('cosmos RPC down');
+  });
+
+  it('normalizes Push Chain native balance errors from failed inbound pcTx', async () => {
+    const rawError =
+      'Details: failed with 16777216 gas: insufficient funds for gas * price + value: address 0x36cDbAfcDEea9CF912D285017f246e55BaF14f0F have 8000000000000000 want 20517277398607022';
+    const ctx = makeCtx();
+    (ctx.pushClient.getUniversalTxByIdV2 as jest.Mock).mockResolvedValue({
+      universalTx: {
+        universalStatus: UniversalTxStatus.PC_EXECUTED_FAILED,
+        pcTx: [
+          {
+            txHash: '0xpush',
+            errorMsg: rawError,
+          },
+        ],
+      },
+    });
+    mockedDetect.mockResolvedValueOnce({
+      txHash: '0xext',
+      chain: 'eip155:11155111',
+      kind: 'INBOUND_FROM_CEA',
+    } as never);
+    mockedResolve.mockResolvedValueOnce([
+      resolution({
+        universalTxId: '0xabc123' as `0x${string}`,
+        sourceEventName: 'UniversalTx',
+      }),
+    ]);
+
+    const result = await waitForInboundPushTx(
+      ctx,
+      '0xext',
+      'eip155:11155111',
+      {
+        initialWaitMs: 0,
+        pollingIntervalMs: 1,
+        timeout: 1000,
+      }
+    );
+
+    expect(result.status).toBe('failed');
+    expect(result.errorMessage).toContain(
+      'have 0.008 PC (8000000000000000 wei) want 0.020517277398607022 PC (20517277398607022 wei)'
+    );
   });
 });

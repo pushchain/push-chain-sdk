@@ -9,7 +9,7 @@
  * callers.
  */
 
-import { formatPc } from '../../formatters';
+import { formatPc, normalizePcInsufficientFundsError } from '../../formatters';
 
 /**
  * Structured decoded-error payload attached to terminal failure hooks
@@ -47,7 +47,7 @@ export class PushChainExecutionError extends Error {
     message: string,
     opts: { gatewayTxHash?: string; decodedError?: DecodedErrorPayload } = {}
   ) {
-    super(message);
+    super(normalizePcInsufficientFundsError(message));
     this.name = 'PushChainExecutionError';
     this.gatewayTxHash = opts.gatewayTxHash;
     this.decodedError = opts.decodedError;

@@ -12,6 +12,7 @@ import type { UniversalTxV2 } from '../../generated/uexecutor/v2/types';
 import { OutboundStatus } from '../../generated/uexecutor/v2/types';
 import PROGRESS_HOOKS from '../../progress-hook/progress-hook';
 import { PROGRESS_HOOK, ProgressEvent } from '../../progress-hook/progress-hook.types';
+import { normalizePcInsufficientFundsError } from '../../formatters';
 import { MULTICALL_TUPLE_TYPE } from '../payload-builders';
 import { TransactionRoute } from '../route-detector';
 import type { UniversalTxReceipt, UniversalTxResponse } from '../orchestrator.types';
@@ -65,9 +66,13 @@ export function reconstructProgressEvents(
   // scoped phase ('outbound' + source-chain). Emitting in both places
   // would double-fire the terminal with a misleading 'push' title on top.
   const isFailed = isPcFailed || isOutboundFailed;
+  const pcErrorMsg =
+    pcTx?.errorMsg
+      ? normalizePcInsufficientFundsError(pcTx.errorMsg)
+      : 'Unknown error';
   const errorMsg = isOutboundFailed
     ? 'Outbound transaction failed (status: OUTBOUND_FAILED)'
-    : (pcTx?.errorMsg || 'Unknown error');
+    : pcErrorMsg;
 
   // Route 2 / 3 reconstruction — keep parity with live emission from
   // route-handlers.ts (which fires 201/203/207 or 301/303/307 then suppresses
@@ -78,8 +83,6 @@ export function reconstructProgressEvents(
   // leg itself failed — so prefer pcTx.errorMsg over the outbound-failed
   // sentinel. The outer `errorMsg` above carries the outbound text when
   // `isOutboundFailed` is set; that path is handled by wait() instead.
-  const pcErrorMsg = pcTx?.errorMsg || 'Unknown error';
-
   // Multichain cascade: a single Push-chain tx that fanned out into >1
   // outbound legs (executeTransactions([tx1, tx2, …])). The cosmos record
   // carries one UniversalTx with multiple outboundTx entries; wrap the
