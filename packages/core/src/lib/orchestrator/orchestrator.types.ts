@@ -639,6 +639,10 @@ export interface HopDescriptor {
   svmPayload?: `0x${string}`;
   /** Whether this hop is a CEA migration (raw MIGRATION_SELECTOR payload) */
   isMigration?: boolean;
+  /** Whether this Route 3 hop only seeds native PC into the UEA. @internal */
+  nativeSeedOnly?: boolean;
+  /** Native PC amount seeded by a value-only Route 3 hop. @internal */
+  nativeSeedAmount?: bigint;
   /** SDK 5.2 gas-abstraction sizing decision for this hop. @internal */
   sizing?: import('./internals/gas-usd-sizer').GasSizingDecision;
 }

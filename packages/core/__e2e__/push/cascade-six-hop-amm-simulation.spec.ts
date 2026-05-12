@@ -28,6 +28,7 @@ import type {
 } from '../../src/lib/orchestrator/orchestrator.types';
 import * as gasCalculator from '../../src/lib/orchestrator/internals/gas-calculator';
 import { getCEAAddress } from '../../src/lib/orchestrator/cea-utils';
+import { getUniversalGatewayPCAddress } from '../../src/lib/orchestrator/internals/helpers';
 
 jest.mock('../../src/lib/orchestrator/cea-utils', () => ({
   ...jest.requireActual('../../src/lib/orchestrator/cea-utils'),
@@ -40,6 +41,7 @@ const UEA = '0xce83ed95b1DD7141451a522F8cc5B6858Ee67bcc' as `0x${string}`;
 const UOA = '0x1111111111111111111111111111111111111111' as `0x${string}`;
 const CEA_SEPOLIA =
   '0x2222222222222222222222222222222222222222' as `0x${string}`;
+const CEA_BNB = '0x5555555555555555555555555555555555555555' as `0x${string}`;
 const SWAP_ROUTER =
   '0x5D548bB9E305AAe0d6dc6e6fdc3ab419f6aC0037' as `0x${string}`;
 const PETH = '0x2971824Db68229D087931155C2b8bB820B275809' as `0x${string}`;
@@ -52,7 +54,10 @@ const SOLANA_CEA =
   '0x6a44bb5ea802a001386a5b39708523e1a3e1bafc8164ffcb94d1f5afa4849c69' as `0x${string}`;
 const RPC_SEPOLIA = 'https://ethereum-sepolia-rpc.publicnode.com';
 const RPC_PUSH = 'https://evm.donut.rpc.push.org/';
+const RPC_BNB = 'https://bsc-testnet-rpc.publicnode.com';
 const SWAP_DEADLINE = BigInt(9_999_999_999);
+const COUNTER_PUSH = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+const COUNTER_BNB = '0x7f0936bb90e7dcf3edb47199c2005e7184e44cf8';
 
 const ERC20_APPROVE_ABI = [
   {
@@ -63,6 +68,30 @@ const ERC20_APPROVE_ABI = [
     name: 'approve',
     outputs: [{ type: 'bool' }],
     stateMutability: 'nonpayable',
+    type: 'function',
+  },
+] as const;
+
+const COUNTER_ABI = [
+  {
+    inputs: [],
+    name: 'increment',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'count',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'countPC',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
     type: 'function',
   },
 ] as const;
@@ -420,6 +449,92 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
     expect(data.slice(0, 10)).toBe('0x414bf389');
   });
 
+  it('treats value-only CEA_TO_PUSH as a root PC seed for downstream Push and EVM outbound hops', async () => {
+    (getCEAAddress as jest.Mock).mockImplementation(
+      async (_uea: string, chain: CHAIN) => ({
+        cea: chain === CHAIN.BNB_TESTNET ? CEA_BNB : CEA_SEPOLIA,
+      })
+    );
+
+    const ctx = makeCtx();
+    const seedAmount = BigInt(15) * PC;
+    const incrementData = PushChain.utils.helpers.encodeTxData({
+      abi: [...COUNTER_ABI],
+      functionName: 'increment',
+    });
+
+    const hop0 = await buildHopDescriptor(
+      ctx,
+      {
+        from: { chain: CHAIN.ETHEREUM_SEPOLIA },
+        to: UEA,
+        value: seedAmount,
+        data: '0x',
+        options: { allowUnderfundedSwap: true },
+      },
+      TransactionRoute.CEA_TO_PUSH,
+      UEA
+    );
+    const hop1 = route1Hop('01', PETH);
+    const hop2 = await buildHopDescriptor(
+      ctx,
+      {
+        to: {
+          address: '0x7777777777777777777777777777777777777777',
+          chain: CHAIN.BNB_TESTNET,
+        },
+        value: BigInt(0),
+        data: incrementData,
+        options: { allowUnderfundedSwap: true },
+      },
+      TransactionRoute.UOA_TO_CEA,
+      UEA
+    );
+
+    const executeFn = jest.fn(async (params: unknown) => ({
+      hash: `0x${'cd'.repeat(32)}`,
+      params,
+    }));
+    const builder = createCascadedBuilder(
+      ctx,
+      [hop0, hop1, hop2].map(prepared),
+      {
+        executeFn,
+        waitForOutboundTxFn: jest.fn(),
+        waitForAllOutboundTxsFn: jest.fn(),
+      } as never
+    );
+
+    await builder.send();
+
+    const executeParams = executeFn.mock.calls[0][0] as {
+      value: bigint;
+      data: MultiCall[];
+    };
+
+    expect(executeParams.value).toBe(seedAmount);
+    expect(executeParams.data).toHaveLength(2);
+    expect(executeParams.data[0]).toMatchObject({
+      to: PETH,
+      value: BigInt(0),
+      data: '0x01',
+    });
+
+    const outboundCall = executeParams.data[1];
+    expect(outboundCall.to).toBe(getUniversalGatewayPCAddress());
+    const decoded = decodeFunctionData({
+      abi: UNIVERSAL_GATEWAY_PC,
+      data: outboundCall.data,
+    });
+    expect(decoded.functionName).toBe('sendUniversalTxOutbound');
+    const [req] = decoded.args as unknown as [
+      { target: `0x${string}`; amount: bigint; payload: `0x${string}` },
+    ];
+    expect(req.target).toBe(CEA_BNB);
+    expect(req.amount).toBe(BigInt(0));
+    expect(req.payload).not.toBe('0x');
+  });
+
   it('does not report success when the Route 3 source-chain tx reverts', async () => {
     const ctx = makeCtx();
     const amountIn = PushChain.utils.helpers.parseUnits('0.001', 18);
@@ -692,6 +807,116 @@ describe('6-hop AMM cascade live e2e (funded Sepolia CEA)', () => {
       });
       console.log(`cascade success: ${result.success}`);
       expect(result.success).toBe(true);
+    },
+    1_200_000
+  );
+});
+
+describe('value-only PC seed cascade live e2e (Sepolia -> Push -> BNB)', () => {
+  const evmKey = process.env['EVM_PRIVATE_KEY'] as `0x${string}` | undefined;
+  const runLive =
+    evmKey && process.env['RUN_LIVE_VALUE_SEED_BNB_CASCADE'] === '1';
+
+  (runLive ? it : it.skip)(
+    'executes fresh UEA PC seed, Push counter, then BNB counter without pre-funding UEA',
+    async () => {
+      const actualCeaUtils = jest.requireActual(
+        '../../src/lib/orchestrator/cea-utils'
+      ) as typeof import('../../src/lib/orchestrator/cea-utils');
+      (getCEAAddress as jest.Mock).mockImplementation(
+        actualCeaUtils.getCEAAddress
+      );
+
+      const sepoliaProvider = new ethers.JsonRpcProvider(RPC_SEPOLIA);
+      const pushProvider = new ethers.JsonRpcProvider(RPC_PUSH);
+      const bnbProvider = new ethers.JsonRpcProvider(RPC_BNB);
+      const sponsor = new ethers.Wallet(evmKey!, sepoliaProvider);
+      const wallet = ethers.Wallet.createRandom();
+      const signer = wallet.connect(sepoliaProvider);
+
+      console.log(`fresh Sepolia UOA: ${wallet.address}`);
+      const fundTx = await sponsor.sendTransaction({
+        to: wallet.address,
+        value: ethers.parseEther('0.02'),
+      });
+      console.log(`funded fresh UOA: ${fundTx.hash}`);
+      await fundTx.wait(1);
+
+      const universalSigner = await PushChain.utils.signer.toUniversal(signer);
+      const client = await PushChain.initialize(universalSigner, {
+        network: PUSH_NETWORK.TESTNET_DONUT,
+        printTraces: true,
+        progressHook: (event) => {
+          console.log(`[${event.id}] ${event.title}`);
+        },
+      });
+      console.log(`fresh UEA: ${client.universal.account}`);
+
+      const pushCounter = new ethers.Contract(
+        COUNTER_PUSH,
+        COUNTER_ABI,
+        pushProvider
+      );
+      const bnbCounter = new ethers.Contract(
+        COUNTER_BNB,
+        COUNTER_ABI,
+        bnbProvider
+      );
+      const pushBefore = (await pushCounter['countPC']()) as bigint;
+      const bnbBefore = (await bnbCounter['count']()) as bigint;
+      console.log(`push counter before: ${pushBefore.toString()}`);
+      console.log(`bnb counter before: ${bnbBefore.toString()}`);
+
+      const incrementData = PushChain.utils.helpers.encodeTxData({
+        abi: [...COUNTER_ABI],
+        functionName: 'increment',
+      });
+
+      const hop0 = await client.universal.prepareTransaction({
+        from: { chain: CHAIN.ETHEREUM_SEPOLIA },
+        to: client.universal.account,
+        value: BigInt(15) * PC,
+        data: '0x',
+        options: { allowUnderfundedSwap: true },
+      });
+      const hop1 = await client.universal.prepareTransaction({
+        to: COUNTER_PUSH,
+        value: BigInt(0),
+        data: incrementData,
+        options: { allowUnderfundedSwap: true },
+      });
+      const hop2 = await client.universal.prepareTransaction({
+        to: { address: COUNTER_BNB, chain: CHAIN.BNB_TESTNET },
+        value: BigInt(0),
+        data: incrementData,
+        options: { allowUnderfundedSwap: true },
+      });
+
+      const cascade = await client.universal.executeTransactions([
+        hop0,
+        hop1,
+        hop2,
+      ]);
+      console.log(`cascade initialTxHash: ${cascade.initialTxHash}`);
+      expect(cascade.hopCount).toBe(3);
+
+      const result = await cascade.wait({
+        timeout: 900_000,
+        progressHook: (event) => {
+          console.log(
+            `  [Hop ${event.hopIndex}] ${event.status} on ${event.chain}`
+          );
+        },
+      });
+      console.log(`cascade success: ${result.success}`);
+      expect(result.success).toBe(true);
+
+      const pushAfter = (await pushCounter['countPC']()) as bigint;
+      const bnbAfter = (await bnbCounter['count']()) as bigint;
+      console.log(`push counter after: ${pushAfter.toString()}`);
+      console.log(`bnb counter after: ${bnbAfter.toString()}`);
+      expect(pushAfter).toBe(pushBefore + BigInt(1));
+      expect(bnbAfter).toBe(bnbBefore + BigInt(1));
     },
     1_200_000
   );

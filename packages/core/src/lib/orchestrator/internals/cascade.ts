@@ -513,6 +513,27 @@ export async function buildHopDescriptor(
     case TransactionRoute.CEA_TO_PUSH: {
       // Route 3: Build CEA multicalls for sendUniversalTxFromCEA
       const sourceChain = params.from!.chain;
+      const seedAmount = params.value ?? BigInt(0);
+      const isSeedToOwnUea =
+        typeof params.to === 'string' &&
+        params.to.toLowerCase() === ueaAddress.toLowerCase();
+      const isValueOnlyNativeSeed =
+        seedAmount > BigInt(0) &&
+        !params.funds?.amount &&
+        isEmptyPayloadData(params.data) &&
+        isSeedToOwnUea;
+
+      if (isValueOnlyNativeSeed) {
+        return {
+          ...baseDescriptor,
+          sourceChain,
+          burnAmount: BigInt(0),
+          gasToken: ZERO_ADDRESS as `0x${string}`,
+          gasFee: BigInt(0),
+          nativeSeedOnly: true,
+          nativeSeedAmount: seedAmount,
+        };
+      }
 
       // SVM chains use PDA-based CEA, not factory-deployed CEA
       if (isSvmChain(sourceChain)) {
@@ -678,7 +699,9 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
         ? currentSegment.targetChain === hop.targetChain && !hop.isSvmTarget
         : segType === 'INBOUND_FROM_CEA'
         ? currentSegment.sourceChain === hop.sourceChain &&
-          !isSvmChain(hop.sourceChain as CHAIN)
+          !isSvmChain(hop.sourceChain as CHAIN) &&
+          isNativeSeedOnlyHop(currentSegment.hops[0]) ===
+            isNativeSeedOnlyHop(hop)
         : segType === 'PUSH_EXECUTION');
 
     if (canMerge && currentSegment) {
@@ -798,6 +821,37 @@ function sumMulticallNativeValue(multicalls?: MultiCall[]): bigint {
   );
 }
 
+function isEmptyPayloadData(data: UniversalExecuteParams['data']): boolean {
+  return (
+    data === undefined ||
+    data === '0x' ||
+    (Array.isArray(data) && data.length === 0)
+  );
+}
+
+function isNativeSeedOnlyHop(hop: HopDescriptor | undefined): boolean {
+  return hop?.nativeSeedOnly === true;
+}
+
+function isNativeSeedOnlySegment(segment: CascadeSegment): boolean {
+  return (
+    segment.type === 'INBOUND_FROM_CEA' &&
+    segment.hops.length > 0 &&
+    segment.hops.every((hop) => isNativeSeedOnlyHop(hop))
+  );
+}
+
+function segmentNeedsOutboundGas(segment: CascadeSegment): boolean {
+  return segment.type !== 'PUSH_EXECUTION' && !isNativeSeedOnlySegment(segment);
+}
+
+function sumNativeSeedAmount(hops: HopDescriptor[]): bigint {
+  return hops.reduce(
+    (sum, hop) => sum + (hop.nativeSeedAmount ?? BigInt(0)),
+    BigInt(0)
+  );
+}
+
 function getInboundPayloadNativeSeed(segments: CascadeSegment[]): bigint {
   let total = BigInt(0);
   for (const segment of segments) {
@@ -807,7 +861,14 @@ function getInboundPayloadNativeSeed(segments: CascadeSegment[]): bigint {
       // In a CEA->Push hop that also supplies `funds`, `value` is native PC
       // forwarded inside the inbound UEA payload. That value is available to
       // later Push-side cascade calls and must be counted for sizing fresh UEAs.
-      if (value > BigInt(0) && hop.params.funds?.amount) {
+      //
+      // A value-only seed hop has no source-chain CEA amount to bridge. It is
+      // still native PC made available by the root fee-lock and must be counted
+      // before sizing downstream Push-side outbounds in the same cascade.
+      if (
+        value > BigInt(0) &&
+        (hop.params.funds?.amount || isNativeSeedOnlyHop(hop))
+      ) {
         total += value;
       }
     }
@@ -839,9 +900,7 @@ export async function composeCascadeDetailed(
   // Compute per-outbound nativeValueForGas from UEA balance
   // Each outbound segment needs native value for the gas swap on the destination chain.
   // The contract refunds excess, so over-allocating is safe.
-  const numOutbounds = segments.filter(
-    (s) => s.type !== 'PUSH_EXECUTION'
-  ).length;
+  const numOutbounds = segments.filter(segmentNeedsOutboundGas).length;
   const CASCADE_GAS_RESERVE = BigInt(3e18); // 3 PC reserve for gas costs
 
   // Cascade pre-flight: catches the zero-balance silent-segment-zero failure
@@ -851,9 +910,7 @@ export async function composeCascadeDetailed(
   // with a structured error so the caller knows which path / hop failed.
   // Honor the per-call opt-out from the first non-PUSH segment (segments share
   // the same UniversalExecuteParams.options.allowUnderfundedSwap shape).
-  const firstOutboundSegment = segments.find(
-    (s) => s.type !== 'PUSH_EXECUTION'
-  );
+  const firstOutboundSegment = segments.find(segmentNeedsOutboundGas);
   const cascadeAllowUnderfunded =
     firstOutboundSegment?.hops?.[0]?.params?.options?.allowUnderfundedSwap ===
     true;
@@ -1171,6 +1228,18 @@ export async function composeCascadeDetailed(
       case 'INBOUND_FROM_CEA': {
         // The accumulated multicalls = what runs on Push Chain AFTER inbound arrives.
         // Wrap in UniversalPayload struct with correct UEA nonce for the relay.
+
+        if (isNativeSeedOnlySegment(segment)) {
+          const seedAmount = sumNativeSeedAmount(segment.hops);
+          if (seedAmount > requiredNativeValue) {
+            requiredNativeValue = seedAmount;
+          }
+          printLog(
+            ctx,
+            `composeCascade — value-only CEA_TO_PUSH seed ${seedAmount.toString()} folded into root Push execution; no source-chain outbound needed`
+          );
+          break;
+        }
 
         // Build push multicalls from EVERY merged hop's own data in original
         // order (e.g. counter.increment() + value transfer). Multi-hop R3
@@ -1771,7 +1840,8 @@ export function createCascadedBuilder(
             await response.wait();
 
             const ceaToPushIndex = hopInfos.findIndex(
-              (h) => h.route === 'CEA_TO_PUSH'
+              (h, index) =>
+                h.route === 'CEA_TO_PUSH' && !isNativeSeedOnlyHop(hops[index])
             );
             const isAfterCeaToPush = (index: number) =>
               ceaToPushIndex >= 0 && index > ceaToPushIndex;
@@ -2017,6 +2087,26 @@ export function createCascadedBuilder(
             // Mark only root Push Chain (Route 1) hops as confirmed. Route 1
             // hops after a Route 3 leg execute in the child inbound Push tx and
             // must wait for that child UTX to reach terminal success.
+            for (const hop of hopInfos) {
+              if (
+                hop.route === 'CEA_TO_PUSH' &&
+                isNativeSeedOnlyHop(hops[hop.hopIndex])
+              ) {
+                emitHopStart(hop.hopIndex);
+                hop.status = 'confirmed';
+                hop.txHash = response.hash;
+                cascadeProgressHook?.({
+                  hopIndex: hop.hopIndex,
+                  route: hop.route,
+                  chain: getPushChainForNetwork(ctx.pushNetwork),
+                  status: 'confirmed',
+                  txHash: response.hash,
+                  elapsed: Date.now() - startTime,
+                });
+                emitHopComplete(hop.hopIndex);
+              }
+            }
+
             for (const hop of hopInfos) {
               if (hop.route === 'UOA_TO_PUSH' && !isAfterCeaToPush(hop.hopIndex)) {
                 hop.status = 'confirmed';
