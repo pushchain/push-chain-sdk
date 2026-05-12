@@ -28,6 +28,7 @@ import { sepolia } from 'viem/chains';
 import { createEvmPushClient } from '@e2e/shared/evm-client';
 import { createProgressTracker } from '@e2e/shared/progress-tracker';
 import { TEST_TARGET_ADDRESS } from '@e2e/shared/constants';
+import { formatPc } from '../../src/lib/formatters';
 
 const SEPOLIA_RPC = CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0];
 const PUSH_RPC = CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
@@ -79,7 +80,7 @@ describe('Debug: Fee-Lock Value Cap', () => {
     console.log('\n=== Fee-Lock Cap Analysis ===');
     console.log(`Gas price:       ${gasPrice} wei`);
     console.log(`Gas limit:       ${gasLimit}`);
-    console.log(`Gas cost:        ${gasCost} wei = ${Number(gasCost) / 1e18} $PC`);
+    console.log(`Gas cost:        ${gasCost} wei = ${formatPc(gasCost)}`);
 
     const gasCostUsd = Number(gasCost) / 1e18 * PC_TO_USD_RATE;
     console.log(`Gas cost (USD):  ~$${gasCostUsd.toFixed(4)}`);
@@ -191,7 +192,7 @@ describe('Debug: Fee-Lock Value Cap', () => {
 
     // Check UEA balance AFTER tx — leftover from fee-lock deposit
     const ueaBalanceAfter = await pushPublicClient.getBalance({ address: freshUEA });
-    console.log(`\nUEA balance after tx: ${ueaBalanceAfter} wei = ${Number(ueaBalanceAfter) / 1e18} $PC`);
+    console.log(`\nUEA balance after tx: ${ueaBalanceAfter} wei = ${formatPc(ueaBalanceAfter)}`);
     console.log(`This shows $PC deposited by fee-lock minus gas and value used`);
 
     expect(receipt.status).toBe(1);

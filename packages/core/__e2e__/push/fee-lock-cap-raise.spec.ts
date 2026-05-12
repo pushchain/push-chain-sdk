@@ -24,6 +24,7 @@ import { CHAIN } from '../../src/lib/constants/enums';
 import { CHAIN_INFO } from '../../src/lib/constants/chain';
 import { createEvmPushClient } from '@e2e/shared/evm-client';
 import { TEST_TARGET_ADDRESS, SEPOLIA_RPC } from '@e2e/shared/constants';
+import { formatPc } from '../../src/lib/formatters';
 
 const PUSH_RPC = CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
 
@@ -69,7 +70,7 @@ describe('Fee-Lock Cap Raised to $1000 USD (Sepolia → Push)', () => {
     console.log(`Main (Sepolia EOA): ${mainAddress}`);
     console.log(`  Sepolia ETH:      ${formatEther(sepoliaBalance)} ETH`);
     console.log(`UEA (Push):         ${ueaAddress}`);
-    console.log(`  Push PC:          ${formatEther(ueaBalance)} PC`);
+    console.log(`  Push PC:          ${formatPc(ueaBalance)}`);
   }, 60_000);
 
   // ==========================================================================
@@ -116,7 +117,7 @@ describe('Fee-Lock Cap Raised to $1000 USD (Sepolia → Push)', () => {
           address: TEST_TARGET_ADDRESS,
         });
         const diff = recipientBalanceAfter - recipientBalanceBefore;
-        console.log(`Recipient balance diff: ${formatEther(diff)} PC`);
+        console.log(`Recipient balance diff: ${formatPc(diff)}`);
         expect(diff).toBeGreaterThanOrEqual(transferValue);
       } else {
         console.warn(
@@ -159,7 +160,7 @@ describe('Fee-Lock Cap Raised to $1000 USD (Sepolia → Push)', () => {
     const TOP_UP_TARGET = PushChain.utils.helpers.parseUnits('15', 18);
 
     let ueaBalanceBefore = await pushPublicClient.getBalance({ address: ueaAddress });
-    console.log(`UEA balance before: ${formatEther(ueaBalanceBefore)} PC`);
+    console.log(`UEA balance before: ${formatPc(ueaBalanceBefore)}`);
 
     // Top up the UEA from the main wallet (same key, on Push Chain directly)
     // if it's too low to cover a 13 PC transfer after the fee-lock cycle.
@@ -170,7 +171,7 @@ describe('Fee-Lock Cap Raised to $1000 USD (Sepolia → Push)', () => {
       });
       const topUp = TOP_UP_TARGET - ueaBalanceBefore;
       console.log(
-        `Topping up UEA by ${formatEther(topUp)} PC from main wallet on Push Chain...`
+        `Topping up UEA by ${formatPc(topUp)} from main wallet on Push Chain...`
       );
       const fundHash = await pushWalletClient.sendTransaction({
         to: ueaAddress,
@@ -179,7 +180,7 @@ describe('Fee-Lock Cap Raised to $1000 USD (Sepolia → Push)', () => {
       });
       await pushPublicClient.waitForTransactionReceipt({ hash: fundHash });
       ueaBalanceBefore = await pushPublicClient.getBalance({ address: ueaAddress });
-      console.log(`UEA balance after top-up: ${formatEther(ueaBalanceBefore)} PC`);
+      console.log(`UEA balance after top-up: ${formatPc(ueaBalanceBefore)}`);
     }
 
     const recipientBalanceBefore = await pushPublicClient.getBalance({
@@ -203,7 +204,7 @@ describe('Fee-Lock Cap Raised to $1000 USD (Sepolia → Push)', () => {
       address: TEST_TARGET_ADDRESS,
     });
     const diff = recipientBalanceAfter - recipientBalanceBefore;
-    console.log(`Recipient received: ${formatEther(diff)} PC`);
+    console.log(`Recipient received: ${formatPc(diff)}`);
     expect(diff).toBeGreaterThanOrEqual(transferValue);
   }, 300_000);
 

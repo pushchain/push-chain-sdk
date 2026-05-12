@@ -47,7 +47,6 @@ import {
 import {
   runPreflight,
   maybeFireSvmWarnThreshold,
-  SVM_NATIVE_VALUE_WARN_THRESHOLD,
 } from './preflight';
 import { maybeBumpForCeaAtaRent } from './svm-rent';
 
@@ -70,10 +69,12 @@ import {
   assertCeaFundsParkingInvariant,
   isSvmChain,
   isValidSolanaHexAddress,
-  encodeSvmExecutePayload,
   encodeSvmCeaToUeaPayload,
 } from '../payload-builders';
-import { ZERO_ADDRESS } from '../../constants/selectors';
+import {
+  DEFAULT_CEA_TO_PUSH_GAS_LIMIT,
+  ZERO_ADDRESS,
+} from '../../constants/selectors';
 import { ERC20_EVM } from '../../constants/abi/erc20.evm';
 import { PushChain } from '../../push-chain/push-chain';
 import type {
@@ -668,9 +669,7 @@ export async function executeUoaToCea(
       args: [ueaAddress],
     });
   }
-  const allowUnderfundedR2Evm =
-    params.options?.allowUnderfundedSwap === true;
-  const preflightR2Evm = runPreflight({
+  runPreflight({
     ctx,
     ueaAddress,
     ueaBalance: effectiveBalance,
@@ -680,16 +679,8 @@ export async function executeUoaToCea(
     burnToken: prc20Token,
     burnAmount,
     prc20Balance: prc20BalanceR2Evm,
-    allowUnderfundedSwap: allowUnderfundedR2Evm,
   });
-  if (!preflightR2Evm.ok) {
-    nativeValueForGas = preflightR2Evm.legacyClampedValue;
-    printLog(
-      ctx,
-      `executeUoaToCea — allowUnderfundedSwap=true; using legacy clamped value ${nativeValueForGas.toString()}`
-    );
-  }
-  // ok=true → nativeValueForGas already covers required + reserve; no adjust needed.
+  // Preflight success means nativeValueForGas already covers required + reserve; no adjust needed.
 
   // Build outbound multicalls (approve burn + sendUniversalTxOutbound with native value)
   const outboundMulticalls = buildOutboundApprovalAndCall({
@@ -1009,9 +1000,7 @@ export async function executeUoaToCeaSvm(
       args: [ueaAddress],
     });
   }
-  const allowUnderfundedR2Svm =
-    params.options?.allowUnderfundedSwap === true;
-  const preflightR2Svm = runPreflight({
+  runPreflight({
     ctx,
     ueaAddress,
     ueaBalance,
@@ -1021,15 +1010,7 @@ export async function executeUoaToCeaSvm(
     burnToken: prc20Token,
     burnAmount,
     prc20Balance: prc20BalanceR2Svm,
-    allowUnderfundedSwap: allowUnderfundedR2Svm,
   });
-  if (!preflightR2Svm.ok) {
-    nativeValueForGas = preflightR2Svm.legacyClampedValue;
-    printLog(
-      ctx,
-      `executeUoaToCeaSvm — allowUnderfundedSwap=true; using legacy clamped value ${nativeValueForGas.toString()}`
-    );
-  }
 
   // --- Build Push Chain multicalls (approve + sendUniversalTxOutbound) ---
   // Reuse the same builder as EVM — this part is identical
@@ -1234,8 +1215,8 @@ export async function executeCeaToPush(
     pushPayload = buildInboundUniversalPayload(multicallPayload, { nonce: ueaNonce + BigInt(1) });
   }
 
-  // Build sendUniversalTxToUEA self-call on CEA
-  // CEA multicall: to=CEA (self-call), value=0
+  // Build sendUniversalTxToUEA self-call on CEA. CEA self-calls must always
+  // use value=0; native sends spend from the CEA's existing balance.
   // CEA internally calls gateway.sendUniversalTxFromCEA(...)
   // Uses bridgeAmount (= burn amount deposited by Vault)
   const sendUniversalTxCall = buildSendUniversalTxToUEA(
@@ -1267,6 +1248,8 @@ export async function executeCeaToPush(
   // tokens FROM the CEA back to Push Chain, not to round-trip them.
   const prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
   const burnAmount = BigInt(0);
+  const outboundGasLimit =
+    params.gasLimit ?? DEFAULT_CEA_TO_PUSH_GAS_LIMIT;
 
   printLog(
     ctx,
@@ -1279,7 +1262,7 @@ export async function executeCeaToPush(
     ceaAddress,              // target: CEA address (to=CEA for self-execution)
     prc20Token,              // token: native PRC-20 for source chain (for namespace lookup)
     burnAmount,              // amount: 0 (payload-only, CEA uses its own balance)
-    params.gasLimit ?? BigInt(0),
+    outboundGasLimit,
     ceaPayload,              // payload: ABI-encoded CEA multicall
     ueaAddress,              // revertRecipient: UEA
     params.maxPCForGas ?? BigInt(0)
@@ -1314,10 +1297,9 @@ export async function executeCeaToPush(
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   let sizingDecisionR3: GasSizingDecision | undefined;
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-    const gasLimit = outboundReq.gasLimit;
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_302_01, sourceChain);
     try {
-      const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, sourceChain);
+      const result = await queryOutboundGasFee(ctx, prc20Token, outboundGasLimit, sourceChain);
       gasToken = result.gasToken;
       gasFee = result.gasFee;
       protocolFeeR3 = result.protocolFee;
@@ -1430,24 +1412,14 @@ export async function executeCeaToPush(
   // Pre-flight (R3 EVM): no PRC-20 burn check — `burnAmount = 0` makes this
   // payload-only (UEA never holds the source-chain PRC-20; see plan §9 #4).
   // Native UPC check still applies for the gas swap.
-  const allowUnderfundedR3Evm =
-    params.options?.allowUnderfundedSwap === true;
-  const preflightR3Evm = runPreflight({
+  runPreflight({
     ctx,
     ueaAddress,
     ueaBalance: effectiveBalance,
     requiredValue: nativeValueForGas,
     gasReserve: OUTBOUND_GAS_RESERVE_R3,
     pathTag: 'R3_EVM',
-    allowUnderfundedSwap: allowUnderfundedR3Evm,
   });
-  if (!preflightR3Evm.ok) {
-    nativeValueForGas = preflightR3Evm.legacyClampedValue;
-    printLog(
-      ctx,
-      `executeCeaToPush — allowUnderfundedSwap=true; using legacy clamped value ${nativeValueForGas.toString()}`
-    );
-  }
 
   // 12. Build Push Chain multicalls (approvals + sendUniversalTxOutbound)
   const pushChainMulticalls: MultiCall[] = buildOutboundApprovalAndCall({
@@ -1747,26 +1719,17 @@ export async function executeCeaToPushSvm(
   // SVM warn-threshold telemetry (no truncation — pre-flight handles drain protection).
   maybeFireSvmWarnThreshold(ctx, nativeValueForGas, gasToken, 'R3_SVM');
 
-  // Pre-flight (R3 SVM): no PRC-20 burn check. R3 SVM uses burnAmount=0
-  // because the drain amount lives inside the SVM instruction data.
-  const allowUnderfundedR3Svm =
-    params.options?.allowUnderfundedSwap === true;
-  const preflightR3Svm = runPreflight({
+  // Pre-flight (R3 SVM): no PRC-20 burn check — `burnAmount = 1` is a legacy
+  // precompile-validation shim against a token UEAs structurally don't hold
+  // (see plan §9 #4 / §10.2 latent-bug ticket). Native UPC check still applies.
+  runPreflight({
     ctx,
     ueaAddress,
     ueaBalance: currentBalance,
     requiredValue: nativeValueForGas,
     gasReserve: OUTBOUND_GAS_RESERVE_R3_SVM,
     pathTag: 'R3_SVM',
-    allowUnderfundedSwap: allowUnderfundedR3Svm,
   });
-  if (!preflightR3Svm.ok) {
-    nativeValueForGas = preflightR3Svm.legacyClampedValue;
-    printLog(
-      ctx,
-      `executeCeaToPushSvm — allowUnderfundedSwap=true; using legacy clamped value ${nativeValueForGas.toString()}`
-    );
-  }
 
   // Build Push Chain multicalls (approvals + sendUniversalTxOutbound)
   const pushChainMulticalls: MultiCall[] = buildOutboundApprovalAndCall({
@@ -2126,7 +2089,8 @@ export async function buildPayloadForRoute(
         pushPayload = buildInboundUniversalPayload(multicallPayload, { nonce: ueaNonceHop + BigInt(1) });
       }
 
-      // Build sendUniversalTxToUEA self-call on CEA (to=CEA, value=0)
+      // Build sendUniversalTxToUEA self-call on CEA. CEA self-calls must
+      // always use value=0; native sends spend from the CEA balance.
       const sendCall = buildSendUniversalTxToUEA(
         ceaAddress,
         tokenAddress,
@@ -2141,12 +2105,14 @@ export async function buildPayloadForRoute(
       // Route 3: CEA uses its own pre-existing balance — no PRC-20 burn needed.
       // burnAmount = 0 makes this a payload-only outbound relay.
       const burnAmount = BigInt(0);
+      const outboundGasLimit =
+        params.gasLimit ?? DEFAULT_CEA_TO_PUSH_GAS_LIMIT;
 
       const outboundReq = buildOutboundRequest(
         ceaAddress,
         prc20Token,
         burnAmount,
-        params.gasLimit ?? BigInt(0),
+        outboundGasLimit,
         ceaPayload,
         ueaAddress,
         params.maxPCForGas ?? BigInt(0)

@@ -19,6 +19,7 @@ import {
   PROGRESS_HOOK,
   ProgressEvent,
 } from '../../progress-hook/progress-hook.types';
+import { formatPc } from '../../formatters';
 import { Utils } from '../../utils';
 import { EvmClient } from '../../vm-client/evm-client';
 import type { TxResponse } from '../../vm-client/vm-client.types';
@@ -457,17 +458,17 @@ export async function executeStandardPayload(
                   const maxTransferable = funds + maxFromDeposit;
                   maxTransferableNote =
                     `Max transferable right now (at $1000 cap, pool-limited): ` +
-                    `~${(Number(maxTransferable) / 1e18).toFixed(4)} $PC ` +
-                    `(UEA balance ${(Number(funds) / 1e18).toFixed(4)} + ` +
-                    `pool-safe deposit ${(Number(maxFromDeposit) / 1e18).toFixed(4)} − gas).`;
+                    `~${formatPc(maxTransferable, 4)} ` +
+                    `(UEA balance ${formatPc(funds, 4)} + ` +
+                    `pool-safe deposit ${formatPc(maxFromDeposit, 4)} - gas).`;
                   printLog(ctx, `Fee-lock capacity: ${maxTransferableNote}`);
                 }
               }
 
               throw new Error(
-                `Insufficient deposit: the fee-lock will deposit ~${(Number(safeUPC) / 1e18).toFixed(4)} $PC ` +
-                `but the transaction requires ~${(Number(requiredFunds) / 1e18).toFixed(4)} $PC ` +
-                `(shortfall: ~${(Number(shortfall) / 1e18).toFixed(4)} $PC). ` +
+                `Insufficient deposit: the fee-lock will deposit ~${formatPc(safeUPC, 4)} ` +
+                `but the transaction requires ~${formatPc(requiredFunds, 4)} ` +
+                `(shortfall: ~${formatPc(shortfall, 4)}). ` +
                 `The fee-lock deposit is capped at $1000 USD. ` +
                 (maxTransferableNote ? maxTransferableNote + ' ' : '') +
                 `Reduce the transfer value or pre-fund the UEA (${UEA}) on Push Chain.`

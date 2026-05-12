@@ -30,6 +30,7 @@ import { sepolia } from 'viem/chains';
 import { createEvmPushClient } from '@e2e/shared/evm-client';
 import { createProgressTracker } from '@e2e/shared/progress-tracker';
 import { COUNTER_ABI } from '@e2e/shared/outbound-helpers';
+import { formatPc } from '../../src/lib/formatters';
 
 // ── Addresses ──
 const TARGET = '0x1234567890123456789012345678901234567890' as `0x${string}`;
@@ -127,7 +128,7 @@ describe('Route 2: Docs Examples (Fresh Wallet)', () => {
         to: freshUea as `0x${string}`, value: opts.nativePC,
       });
       await pushPublicClient.waitForTransactionReceipt({ hash: h });
-      console.log(`  Funded ${formatEther(opts.nativePC)} PC`);
+      console.log(`  Funded ${formatPc(opts.nativePC)}`);
     }
     if (opts.pEth) {
       await transferPrc20OnPushChain(mainPushClient, PETH_ADDRESS, freshUea as `0x${string}`, opts.pEth, 'pETH');
@@ -189,7 +190,7 @@ describe('Route 2: Docs Examples (Fresh Wallet)', () => {
       queryBalance(pushPublicClient, PETH_ADDRESS, mainUeaAddress),
       queryBalance(pushPublicClient, PUSDT_BNB_ADDRESS, mainUeaAddress),
     ]);
-    console.log(`\nMain UEA ready: ${formatEther(pc)} PC | ${formatEther(peth)} pETH | ${formatUnits(pusdt, 6)} pUSDT_BNB`);
+    console.log(`\nMain UEA ready: ${formatPc(pc)} | ${formatEther(peth)} pETH | ${formatUnits(pusdt, 6)} pUSDT_BNB`);
   }, 300000);
 
   // =========================================================================

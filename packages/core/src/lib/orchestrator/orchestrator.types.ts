@@ -503,20 +503,6 @@ export type UniversalExecuteParams = Omit<ExecuteParams, 'to'> & {
    */
   migration?: boolean;
 
-  /**
-   * Per-call SDK behaviour overrides. Reserved for opt-out flags that must
-   * not affect the global orchestrator config.
-   */
-  options?: {
-    /**
-     * Restore the legacy clamp-and-refund behaviour for outbound paths whose
-     * UEA balance is below the buffered pool quote. Default `false` — the
-     * SDK throws `InsufficientUEABalanceError` (see `runPreflight`) and does
-     * NOT submit a cosmos tx. Set `true` only when the caller intentionally
-     * relies on `swapAndBurnGas` refunds to power through low balances.
-     */
-    allowUnderfundedSwap?: boolean;
-  };
 };
 
 // ============================================================================
@@ -647,6 +633,10 @@ export interface HopDescriptor {
   svmPayload?: `0x${string}`;
   /** Whether this hop is a CEA migration (raw MIGRATION_SELECTOR payload) */
   isMigration?: boolean;
+  /** Whether this Route 3 hop only seeds native PC into the UEA. @internal */
+  nativeSeedOnly?: boolean;
+  /** Native PC amount seeded by a value-only Route 3 hop. @internal */
+  nativeSeedAmount?: bigint;
   /** SDK 5.2 gas-abstraction sizing decision for this hop. @internal */
   sizing?: import('./internals/gas-usd-sizer').GasSizingDecision;
 }

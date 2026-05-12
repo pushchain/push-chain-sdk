@@ -22,6 +22,14 @@ import { UniversalTxStatus } from '../../generated/uexecutor/v1/types';
 type CosmosResponse = {
   universalTx: {
     universalStatus: UniversalTxStatus;
+    pcTx?: Array<{
+      txHash: string;
+      sender?: string;
+      gasUsed?: number;
+      blockHeight?: number;
+      status: string;
+      errorMsg?: string;
+    }>;
     outboundTx: Array<{
       destinationChain: string;
       recipient: string;
@@ -73,9 +81,10 @@ function outbound(
 
 function response(
   outbounds: Array<ReturnType<typeof outbound>>,
-  universalStatus: UniversalTxStatus = UniversalTxStatus.UNIVERSAL_TX_STATUS_UNSPECIFIED
+  universalStatus: UniversalTxStatus = UniversalTxStatus.UNIVERSAL_TX_STATUS_UNSPECIFIED,
+  pcTx: CosmosResponse['universalTx']['pcTx'] = []
 ): CosmosResponse {
-  return { universalTx: { universalStatus, outboundTx: outbounds } };
+  return { universalTx: { universalStatus, outboundTx: outbounds, pcTx } };
 }
 
 describe('waitForOutboundTx OBSERVED gate', () => {
@@ -159,6 +168,40 @@ describe('waitForOutboundTx OBSERVED gate', () => {
       expect(typed.code).toBe('OUTBOUND_FAILED');
       expect(typed.destinationChain).toBe('eip155:97');
       expect(typed.message).toContain('execution reverted');
+    }
+  });
+
+  it('throws OutboundFailedError when a child pcTx fails before outbound emission', async () => {
+    const ctx = makeCtx([
+      response(
+        [],
+        UniversalTxStatus.UNIVERSAL_TX_STATUS_UNSPECIFIED,
+        [
+          {
+            txHash: '',
+            status: 'FAILED',
+            errorMsg:
+              "contract call failed: method 'executeUniversalTx': execution reverted: ret 0xacfdb444",
+          },
+        ]
+      ),
+    ]);
+
+    try {
+      await waitForOutboundTx(ctx, '0xpushtx', {
+        initialWaitMs: 0,
+        pollingIntervalMs: 20,
+        timeout: 1000,
+      });
+      throw new Error('expected throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(OutboundFailedError);
+      const typed = err as OutboundFailedError;
+      expect(typed.code).toBe('OUTBOUND_FAILED');
+      expect(typed.message).toContain(
+        'Push Chain execution failed before outbound emission'
+      );
+      expect(typed.message).toContain('0xacfdb444');
     }
   });
 

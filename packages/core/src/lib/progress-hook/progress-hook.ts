@@ -4,6 +4,7 @@ import {
   UniversalTxResponse,
 } from '../orchestrator/orchestrator.types';
 import { CHAIN } from '../constants/enums';
+import { formatPc } from '../formatters';
 import { Utils } from '../utils';
 import {
   PROGRESS_HOOK,
@@ -46,16 +47,6 @@ const friendlyChain = (chainOrNs: string | CHAIN | undefined): string => {
   const key = Utils.chains.getChainName(asString);
   return key ? toTitleCase(key) : asString;
 };
-
-/**
- * Format a wei-denominated UPC bigint as a human-readable PC string for use
- * in progress-hook `message` fields. Used by the pre-flight hooks
- * (203-03/04/05 + 003-03/04/05) so consumers see "956.7834 PC" instead of
- * "956783432238079848707 wei UPC". Response payload bigints are NOT
- * transformed — programmatic consumers still get raw wei.
- */
-const formatPC = (wei: bigint, precision = 4): string =>
-  `${Utils.helpers.formatUnits(wei, { decimals: 18, precision })} PC`;
 
 /**
  * Shape of the `response` field emitted by `SEND_TX_104_04` (R1),
@@ -441,8 +432,8 @@ const RAW_HOOKS_R2: {
     extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
   ) => {
     const kind = extra?.kind ?? 'NATIVE';
-    const availableStr = kind === 'PRC20' ? `${available} units` : formatPC(available);
-    const requiredStr = kind === 'PRC20' ? `${required} units` : formatPC(required);
+    const availableStr = kind === 'PRC20' ? `${available} units` : formatPc(available, 4);
+    const requiredStr = kind === 'PRC20' ? `${required} units` : formatPc(required, 4);
     return {
       id: PROGRESS_HOOK.SEND_TX_203_03,
       title: 'Pre-flight Balance Check',
@@ -471,7 +462,7 @@ const RAW_HOOKS_R2: {
     extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
   ) => {
     const kind = extra?.kind ?? 'NATIVE';
-    const shortfallStr = kind === 'PRC20' ? `${shortfall} units` : formatPC(shortfall);
+    const shortfallStr = kind === 'PRC20' ? `${shortfall} units` : formatPc(shortfall, 4);
     const remediation =
       kind === 'PRC20'
         ? `Bridge the burn token (${extra?.burnToken ?? 'PRC-20'}) to UEA ${ueaAddress} before retrying.`
@@ -502,7 +493,7 @@ const RAW_HOOKS_R2: {
     id: PROGRESS_HOOK.SEND_TX_203_05,
     title: 'SVM Native-Value Warn Threshold',
     message:
-      `Buffered pool quote ${formatPC(quoted)} exceeds warn threshold ${formatPC(threshold)} ` +
+      `Buffered pool quote ${formatPc(quoted, 4)} exceeds warn threshold ${formatPc(threshold, 4)} ` +
       `for ${gasToken} (${pathTag}). Pool may be skewed or quote is unusually large. ` +
       `No action taken — pre-flight will determine if balance covers it.`,
     response: { quoted, threshold, gasToken, pathTag },
@@ -727,8 +718,8 @@ const RAW_HOOKS_R3: {
     extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
   ) => {
     const kind = extra?.kind ?? 'NATIVE';
-    const availableStr = kind === 'PRC20' ? `${available} units` : formatPC(available);
-    const requiredStr = kind === 'PRC20' ? `${required} units` : formatPC(required);
+    const availableStr = kind === 'PRC20' ? `${available} units` : formatPc(available, 4);
+    const requiredStr = kind === 'PRC20' ? `${required} units` : formatPc(required, 4);
     return {
       id: PROGRESS_HOOK.SEND_TX_303_04,
       title: 'Pre-flight Balance Check',
@@ -757,7 +748,7 @@ const RAW_HOOKS_R3: {
     extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
   ) => {
     const kind = extra?.kind ?? 'NATIVE';
-    const shortfallStr = kind === 'PRC20' ? `${shortfall} units` : formatPC(shortfall);
+    const shortfallStr = kind === 'PRC20' ? `${shortfall} units` : formatPc(shortfall, 4);
     const remediation =
       kind === 'PRC20'
         ? `Bridge the burn token (${extra?.burnToken ?? 'PRC-20'}) to UEA ${ueaAddress} before retrying.`
@@ -788,7 +779,7 @@ const RAW_HOOKS_R3: {
     id: PROGRESS_HOOK.SEND_TX_303_06,
     title: 'SVM Native-Value Warn Threshold',
     message:
-      `Buffered pool quote ${formatPC(quoted)} exceeds warn threshold ${formatPC(threshold)} ` +
+      `Buffered pool quote ${formatPc(quoted, 4)} exceeds warn threshold ${formatPc(threshold, 4)} ` +
       `for ${gasToken} (${pathTag}). Pool may be skewed or quote is unusually large. ` +
       `No action taken — pre-flight will determine if balance covers it.`,
     response: { quoted, threshold, gasToken, pathTag },
@@ -1055,8 +1046,8 @@ const RAW_HOOKS_MULTICHAIN: {
     extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
   ) => {
     const kind = extra?.kind ?? 'NATIVE';
-    const availableStr = kind === 'PRC20' ? `${available} units` : formatPC(available);
-    const requiredStr = kind === 'PRC20' ? `${required} units` : formatPC(required);
+    const availableStr = kind === 'PRC20' ? `${available} units` : formatPc(available, 4);
+    const requiredStr = kind === 'PRC20' ? `${required} units` : formatPc(required, 4);
     return {
       id: PROGRESS_HOOK.SEND_TX_003_03,
       title: 'Cascade Pre-flight Balance Check',
@@ -1085,7 +1076,7 @@ const RAW_HOOKS_MULTICHAIN: {
     extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
   ) => {
     const kind = extra?.kind ?? 'NATIVE';
-    const shortfallStr = kind === 'PRC20' ? `${shortfall} units` : formatPC(shortfall);
+    const shortfallStr = kind === 'PRC20' ? `${shortfall} units` : formatPc(shortfall, 4);
     const remediation =
       kind === 'PRC20'
         ? `Bridge the burn token (${extra?.burnToken ?? 'PRC-20'}) to UEA ${ueaAddress} before retrying.`
@@ -1116,7 +1107,7 @@ const RAW_HOOKS_MULTICHAIN: {
     id: PROGRESS_HOOK.SEND_TX_003_05,
     title: 'Cascade SVM Native-Value Warn Threshold',
     message:
-      `Buffered pool quote ${formatPC(quoted)} exceeds warn threshold ${formatPC(threshold)} ` +
+      `Buffered pool quote ${formatPc(quoted, 4)} exceeds warn threshold ${formatPc(threshold, 4)} ` +
       `for ${gasToken} (${pathTag}). Pool may be skewed or quote is unusually large. ` +
       `No action taken — pre-flight will determine if balance covers it.`,
     response: { quoted, threshold, gasToken, pathTag },

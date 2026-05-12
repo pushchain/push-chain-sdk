@@ -30,7 +30,7 @@ import {
 export interface RunPreflightOpts {
   ctx: OrchestratorContext;
   ueaAddress: `0x${string}`;
-  /** Effective UEA balance in wei UPC (already includes fresh-wallet prediction). */
+  /** Effective UEA balance in native PC wei (already includes fresh-wallet prediction). */
   ueaBalance: bigint;
   /** Buffered pool quote (pre-clamp) — what the SDK would actually attempt. */
   requiredValue: bigint;
@@ -43,51 +43,18 @@ export interface RunPreflightOpts {
   prc20Balance?: bigint;
   /** Cascade-only: identifies which segment failed. */
   segmentIndex?: number;
-  /**
-   * Per-call opt-out (`params.options.allowUnderfundedSwap`). When `true`,
-   * pre-flight logs the shortfall but does NOT fire 203-04 or throw —
-   * caller can fall back to the legacy clamp-and-refund branch.
-   */
-  allowUnderfundedSwap?: boolean;
 }
 
-export type PreflightResult =
-  | {
-      ok: true;
-      /** What `nativeValueForGas` should be (== requiredValue when sufficient). */
-      adjustedValue: bigint;
-    }
-  | {
-      ok: false;
-      /** Set when allowUnderfundedSwap=true: the legacy clamped value. */
-      legacyClampedValue: bigint;
-    };
-
-/**
- * Internal: compute the legacy clamp value (matches the pre-existing
- * branches in route-handlers.ts:643-659 / :968-980 / :1396-1412).
- * Returned only when `allowUnderfundedSwap=true`.
- */
-function legacyClamp(
-  ueaBalance: bigint,
-  requiredValue: bigint,
-  gasReserve: bigint
-): bigint {
-  if (ueaBalance >= requiredValue + gasReserve) return requiredValue;
-  if (ueaBalance > gasReserve) return ueaBalance - gasReserve;
-  if (ueaBalance > BigInt(0))
-    return ueaBalance < requiredValue ? ueaBalance : requiredValue;
-  return BigInt(0);
-}
+export type PreflightResult = {
+  ok: true;
+  /** What `nativeValueForGas` should be (== requiredValue when sufficient). */
+  adjustedValue: bigint;
+};
 
 /**
  * Pre-flight check. PRC-20 balance is checked before the native check —
  * a missing burn token fails before the gas-balance check, so the user
- * sees the actionable PRC-20 shortfall instead of a stale UPC error.
- *
- * Returns a result object instead of throwing for the legacy opt-out
- * path. The throw happens here (not in the caller) for the default
- * `allowUnderfundedSwap=false` case so all 6 paths share one throw site.
+ * sees the actionable PRC-20 shortfall instead of a stale native PC error.
  */
 export function runPreflight(opts: RunPreflightOpts): PreflightResult {
   const {
@@ -101,7 +68,6 @@ export function runPreflight(opts: RunPreflightOpts): PreflightResult {
     burnAmount,
     prc20Balance,
     segmentIndex,
-    allowUnderfundedSwap,
   } = opts;
 
   // Each route bucket gets its own preflight IDs so hook streams stay
@@ -138,18 +104,6 @@ export function runPreflight(opts: RunPreflightOpts): PreflightResult {
     );
     if (!sufficient) {
       const shortfall = burnAmount - onHand;
-      if (allowUnderfundedSwap) {
-        printLog(
-          ctx,
-          `[preflight ${pathTag}] PRC-20 shortfall ${shortfall} of ${burnToken}; ` +
-            `allowUnderfundedSwap=true — proceeding with legacy clamp behaviour, ` +
-            `swap is expected to revert with InsufficientBalance(0xf4d678b8) on-chain.`
-        );
-        return {
-          ok: false,
-          legacyClampedValue: legacyClamp(ueaBalance, requiredValue, gasReserve),
-        };
-      }
       fireProgressHook(
         ctx,
         HOOK_PRE_FAIL,
@@ -191,16 +145,6 @@ export function runPreflight(opts: RunPreflightOpts): PreflightResult {
   }
 
   const shortfall = totalRequired - ueaBalance;
-  if (allowUnderfundedSwap) {
-    const clamped = legacyClamp(ueaBalance, requiredValue, gasReserve);
-    printLog(
-      ctx,
-      `[preflight ${pathTag}] UPC shortfall ${shortfall} wei; ` +
-        `allowUnderfundedSwap=true — proceeding with legacy clamped value ${clamped}, ` +
-        `swap may revert inside Uniswap with Error("STF") if the clamp under-funds the pool quote.`
-    );
-    return { ok: false, legacyClampedValue: clamped };
-  }
 
   fireProgressHook(
     ctx,

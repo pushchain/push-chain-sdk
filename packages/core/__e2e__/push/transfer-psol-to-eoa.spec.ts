@@ -14,6 +14,7 @@ import {
   parseEther,
 } from 'viem';
 import { createEvmPushClient } from '@e2e/shared/evm-client';
+import { formatPc } from '../../src/lib/formatters';
 
 const PUSH_RPC = 'https://evm.donut.rpc.push.org/';
 const TOKENS = SYNTHETIC_PUSH_ERC20[PUSH_NETWORK.TESTNET_DONUT];
@@ -95,7 +96,7 @@ describe('Transfer ALL tokens from UEA to EOA', () => {
       address: ueaAddress,
     });
     console.log(
-      `\nNative PC: ${formatUnits(pcBalance, 18)} PC (reserve ${formatUnits(GAS_RESERVE, 18)} PC for gas)`
+      `\nNative PC: ${formatPc(pcBalance)} (reserve ${formatPc(GAS_RESERVE)} for gas)`
     );
 
     // ERC-20 balances
@@ -162,7 +163,7 @@ describe('Transfer ALL tokens from UEA to EOA', () => {
     // Native PC transfer (send to EOA directly)
     if (pcTransferAmount > BigInt(0)) {
       console.log(
-        `Native PC: transferring ${formatUnits(pcTransferAmount, 18)} PC`
+        `Native PC: transferring ${formatPc(pcTransferAmount)}`
       );
       data.push({
         to: eoaAddress,
@@ -192,7 +193,7 @@ describe('Transfer ALL tokens from UEA to EOA', () => {
     const pcAfter = await pushPublicClient.getBalance({
       address: ueaAddress,
     });
-    console.log(`UEA Native PC: ${formatUnits(pcAfter, 18)} PC`);
+    console.log(`UEA Native PC: ${formatPc(pcAfter)}`);
 
     for (const token of TOKEN_LIST) {
       const ueaBal = (await pushPublicClient.readContract({

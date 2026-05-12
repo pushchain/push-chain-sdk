@@ -47,3 +47,12 @@ export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as cons
  * Default gas limit for outbound transactions
  */
 export const DEFAULT_OUTBOUND_GAS_LIMIT = BigInt(500_000);
+
+/**
+ * Default gas limit for EVM Route 3 (CEA -> Push) source-chain execution.
+ *
+ * This path can deploy the CEA and then execute sendUniversalTxToUEA with a
+ * nested Push payload. Live Sepolia traces estimate ~540k gas for that shape,
+ * so the generic 500k outbound default is too tight.
+ */
+export const DEFAULT_CEA_TO_PUSH_GAS_LIMIT = BigInt(750_000);

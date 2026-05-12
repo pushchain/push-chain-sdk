@@ -4,11 +4,11 @@ import {
   createPublicClient,
   http,
   parseEther,
-  formatEther,
   defineChain,
   Hex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { formatPc } from '../../src/lib/formatters';
 
 const pushDonut = defineChain({
   id: 42101,
@@ -36,13 +36,13 @@ async function main() {
   const eoaBal = await pub.getBalance({ address: account.address });
   const ueaBalBefore = await pub.getBalance({ address: uea });
   console.log(`EOA:        ${account.address}`);
-  console.log(`EOA bal:    ${formatEther(eoaBal)} PC`);
+  console.log(`EOA bal:    ${formatPc(eoaBal)}`);
   console.log(`UEA:        ${uea}`);
-  console.log(`UEA bal:    ${formatEther(ueaBalBefore)} PC`);
+  console.log(`UEA bal:    ${formatPc(ueaBalBefore)}`);
   console.log(`Sending:    ${amountArg} PC`);
 
   if (eoaBal < amount + parseEther('1')) {
-    throw new Error(`EOA balance too low: ${formatEther(eoaBal)} PC < ${amountArg}+1 PC`);
+    throw new Error(`EOA balance too low: ${formatPc(eoaBal)} < ${amountArg}+1 PC`);
   }
 
   const hash = await wallet.sendTransaction({ to: uea, value: amount });
@@ -51,7 +51,7 @@ async function main() {
   console.log(`Status:     ${r.status}`);
 
   const ueaBalAfter = await pub.getBalance({ address: uea });
-  console.log(`UEA bal new: ${formatEther(ueaBalAfter)} PC`);
+  console.log(`UEA bal new: ${formatPc(ueaBalAfter)}`);
 }
 
 main().catch((e) => {

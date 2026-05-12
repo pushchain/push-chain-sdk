@@ -60,8 +60,30 @@ describe('InsufficientUEABalanceError carries decodedError', () => {
     const err = new InsufficientUEABalanceError(baseOpts);
     expect(err.decodedError?.name).toBe('InsufficientUEABalance');
     expect(err.decodedError?.hint).toMatch(/Bridge/);
-    // Native hint mentions wei/UPC, not the burn token
+    expect(err.decodedError?.hint).toContain('0.0000000000000005 PC');
+    // Native hint mentions PC, not the burn token
     expect(err.decodedError?.hint).not.toMatch(/burn token/i);
+  });
+
+  it('formats native UPC amounts as decimal PC in the thrown message', () => {
+    const err = new InsufficientUEABalanceError({
+      ...baseOpts,
+      required: BigInt('7410755801443190242892'),
+      available: BigInt('5500000000000000000'),
+      shortfall: BigInt('7405255801443190242892'),
+    });
+
+    expect(err.message).toContain('has 5.5 PC');
+    expect(err.message).toContain(
+      'outbound requires 7410.755801443190242892 PC'
+    );
+    expect(err.message).toContain(
+      'shortfall 7405.255801443190242892 PC'
+    );
+    expect(err.message).toContain(
+      'Bridge >=7405.255801443190242892 PC to the UEA on Push Chain before retrying.'
+    );
+    expect(err.message).not.toContain('wei UPC');
   });
 
   it('PRC20 shortfall populates decodedError with PRC-20-flavoured hint', () => {

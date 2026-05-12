@@ -1,8 +1,9 @@
 import '@e2e/shared/setup';
-import { type Hex, createPublicClient, http, formatUnits } from 'viem';
+import { type Hex, createPublicClient, http } from 'viem';
 import { PushChain } from '../../src';
 import { CHAIN } from '../../src/lib/constants/enums';
 import { CHAIN_INFO } from '../../src/lib/constants/chain';
+import { formatPc } from '../../src/lib/formatters';
 import { createEvmPushClient } from '@e2e/shared/evm-client';
 
 const RECIPIENT = '0xFaE3594C68EDFc2A61b7527164BDAe80bC302108' as `0x${string}`;
@@ -11,10 +12,6 @@ const TRANSFER_VALUE = PushChain.utils.helpers.parseUnits('0.001', 18);
 const pushPublicClient = createPublicClient({
   transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
 });
-
-function formatPC(wei: bigint): string {
-  return `${wei} wei (${formatUnits(wei, 18)} PC)`;
-}
 
 async function getBalance(address: `0x${string}`): Promise<bigint> {
   return pushPublicClient.getBalance({ address });
@@ -43,7 +40,7 @@ describe('Value Transfer Debug — data: "0x" vs undefined', () => {
 
       const balanceBefore = await getBalance(RECIPIENT);
       console.log('--- Push native | data: "0x" ---');
-      console.log('Balance before:', formatPC(balanceBefore));
+      console.log('Balance before:', formatPc(balanceBefore));
 
       const tx = await pushClient.universal.sendTransaction({
         to: RECIPIENT,
@@ -60,8 +57,8 @@ describe('Value Transfer Debug — data: "0x" vs undefined', () => {
 
       const balanceAfter = await getBalance(RECIPIENT);
       const diff = balanceAfter - balanceBefore;
-      console.log('Balance after:', formatPC(balanceAfter));
-      console.log('Balance diff:', formatPC(diff));
+      console.log('Balance after:', formatPc(balanceAfter));
+      console.log('Balance diff:', formatPc(diff));
 
       expect(balanceAfter).toBeGreaterThanOrEqual(balanceBefore + TRANSFER_VALUE);
     }, 60000);
@@ -71,7 +68,7 @@ describe('Value Transfer Debug — data: "0x" vs undefined', () => {
 
       const balanceBefore = await getBalance(RECIPIENT);
       console.log('--- Push native | data: undefined ---');
-      console.log('Balance before:', formatPC(balanceBefore));
+      console.log('Balance before:', formatPc(balanceBefore));
 
       const tx = await pushClient.universal.sendTransaction({
         to: RECIPIENT,
@@ -87,8 +84,8 @@ describe('Value Transfer Debug — data: "0x" vs undefined', () => {
 
       const balanceAfter = await getBalance(RECIPIENT);
       const diff = balanceAfter - balanceBefore;
-      console.log('Balance after:', formatPC(balanceAfter));
-      console.log('Balance diff:', formatPC(diff));
+      console.log('Balance after:', formatPc(balanceAfter));
+      console.log('Balance diff:', formatPc(diff));
 
       expect(balanceAfter).toBeGreaterThanOrEqual(balanceBefore + TRANSFER_VALUE);
     }, 60000);
@@ -116,7 +113,7 @@ describe('Value Transfer Debug — data: "0x" vs undefined', () => {
 
       const balanceBefore = await getBalance(RECIPIENT);
       console.log('--- Sepolia | data: "0x" ---');
-      console.log('Balance before:', formatPC(balanceBefore));
+      console.log('Balance before:', formatPc(balanceBefore));
 
       const tx = await sepoliaClient.universal.sendTransaction({
         to: RECIPIENT,
@@ -133,8 +130,8 @@ describe('Value Transfer Debug — data: "0x" vs undefined', () => {
 
       const balanceAfter = await getBalance(RECIPIENT);
       const diff = balanceAfter - balanceBefore;
-      console.log('Balance after:', formatPC(balanceAfter));
-      console.log('Balance diff:', formatPC(diff));
+      console.log('Balance after:', formatPc(balanceAfter));
+      console.log('Balance diff:', formatPc(diff));
 
       expect(balanceAfter).toBeGreaterThanOrEqual(balanceBefore + TRANSFER_VALUE);
     }, 120000);
@@ -144,7 +141,7 @@ describe('Value Transfer Debug — data: "0x" vs undefined', () => {
 
       const balanceBefore = await getBalance(RECIPIENT);
       console.log('--- Sepolia | data: undefined ---');
-      console.log('Balance before:', formatPC(balanceBefore));
+      console.log('Balance before:', formatPc(balanceBefore));
 
       const tx = await sepoliaClient.universal.sendTransaction({
         to: RECIPIENT,
@@ -160,8 +157,8 @@ describe('Value Transfer Debug — data: "0x" vs undefined', () => {
 
       const balanceAfter = await getBalance(RECIPIENT);
       const diff = balanceAfter - balanceBefore;
-      console.log('Balance after:', formatPC(balanceAfter));
-      console.log('Balance diff:', formatPC(diff));
+      console.log('Balance after:', formatPc(balanceAfter));
+      console.log('Balance diff:', formatPc(diff));
 
       expect(balanceAfter).toBeGreaterThanOrEqual(balanceBefore + TRANSFER_VALUE);
     }, 120000);

@@ -8,10 +8,11 @@
 import { PublicKey } from '@solana/web3.js';
 import { encodeFunctionData } from 'viem';
 import { ERC20_EVM } from '../../constants/abi/erc20.evm';
-import { CHAIN_INFO } from '../../constants/chain';
-import { CHAIN } from '../../constants/enums';
+import { CHAIN_INFO, UNIVERSAL_GATEWAY_ADDRESSES } from '../../constants/chain';
+import { CHAIN, PUSH_NETWORK } from '../../constants/enums';
 import { MoveableToken } from '../../constants/tokens';
 import {
+  DEFAULT_CEA_TO_PUSH_GAS_LIMIT,
   DEFAULT_OUTBOUND_GAS_LIMIT,
   ZERO_ADDRESS,
 } from '../../constants/selectors';
@@ -63,8 +64,15 @@ import {
   toExternalTxHashDisplay,
 } from './helpers';
 import { buildMulticallPayloadData } from './payload-builder';
-import { computeUEAOffchain, getUEANonce, getUeaStatusAndNonce } from './uea-manager';
-import { queryOutboundGasFee, estimateNativeValueForSwap } from './gas-calculator';
+import {
+  computeUEAOffchain,
+  getUEANonce,
+  getUeaStatusAndNonce,
+} from './uea-manager';
+import {
+  queryOutboundGasFee,
+  estimateNativeValueForSwap,
+} from './gas-calculator';
 import type { GasSizingDecision } from './gas-usd-sizer';
 import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
 import { buildPayloadForRoute } from './route-handlers';
@@ -72,13 +80,16 @@ import { pickWaitHooks } from './progress-route-hooks';
 import PROGRESS_HOOKS from '../../progress-hook/progress-hook';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import { buildSvmPayloadFromParams } from '../svm-idl/build-payload';
-import {
-  runPreflight,
-  maybeFireSvmWarnThreshold,
-} from './preflight';
+import { runPreflight, maybeFireSvmWarnThreshold } from './preflight';
 import { maybeBumpForCeaAtaRent } from './svm-rent';
 import { InsufficientUEABalanceError } from './errors';
 import { fireProgressHook } from './context';
+import {
+  InboundTimeoutError,
+  waitForInboundPushTx,
+  type InboundPushTxDetails,
+  type WaitForInboundOptions,
+} from './inbound-tracker';
 
 // ============================================================================
 // Callback interfaces
@@ -90,6 +101,11 @@ export interface CascadeCallbacks {
     hash: string,
     opts?: WaitForOutboundOptions
   ) => Promise<OutboundTxDetails>;
+  waitForInboundPushTxFn?: (
+    outboundExternalTxHash: string,
+    sourceChain: string,
+    opts?: WaitForInboundOptions
+  ) => Promise<InboundPushTxDetails>;
   waitForAllOutboundTxsFn: (
     hash: string,
     hops: CascadeHopInfo[],
@@ -151,7 +167,7 @@ export async function prepareTransaction(
   if (isPushNativeEOA && route === TransactionRoute.UOA_TO_PUSH) {
     throw new Error(
       'Push native accounts cannot use prepareTransaction for Push Chain transactions. ' +
-      'Use sendTransaction() instead for direct Push Chain calls.'
+        'Use sendTransaction() instead for direct Push Chain calls.'
     );
   }
 
@@ -209,8 +225,16 @@ export async function buildHopDescriptor(
   route: TransactionRoute,
   ueaAddress: `0x${string}`
 ): Promise<HopDescriptor> {
-  // Pass 0 when user omits gasLimit → contract uses per-chain baseGasLimitByChainNamespace
-  const gasLimit = params.gasLimit ?? BigInt(0);
+  // Pass 0 when user omits gasLimit so the contract uses the per-chain base,
+  // except EVM Route 3 where a CEA deploy + sendUniversalTxToUEA needs more
+  // than the generic 500k source-chain base.
+  const defaultGasLimit =
+    route === TransactionRoute.CEA_TO_PUSH &&
+    params.from?.chain &&
+    !isSvmChain(params.from.chain)
+      ? DEFAULT_CEA_TO_PUSH_GAS_LIMIT
+      : BigInt(0);
+  const gasLimit = params.gasLimit ?? defaultGasLimit;
   const routeStr = route as unknown as string;
 
   const baseDescriptor: HopDescriptor = {
@@ -225,6 +249,16 @@ export async function buildHopDescriptor(
   switch (route) {
     case TransactionRoute.UOA_TO_PUSH: {
       // Route 1: Build Push Chain multicalls
+      const seedAmount = params.value ?? BigInt(0);
+      if (isValueOnlyNativeSeedToOwnUea(params, ueaAddress)) {
+        return {
+          ...baseDescriptor,
+          pushMulticalls: [],
+          nativeSeedOnly: true,
+          nativeSeedAmount: seedAmount,
+        };
+      }
+
       const executeParams = toExecuteParams(params);
       const pushMulticalls = buildExecuteMulticall({
         execute: executeParams,
@@ -281,9 +315,10 @@ export async function buildHopDescriptor(
         // executeUoaToCeaSvm path. See svm-rent.ts for rationale.
         const splMintBase58 =
           burnAmount > BigInt(0)
-            ? (params.funds as { token?: MoveableToken } | undefined)?.token?.address
+            ? (params.funds as { token?: MoveableToken } | undefined)?.token
+                ?.address
             : undefined;
-        const effectiveGasLimit = await maybeBumpForCeaAtaRent({
+        let effectiveGasLimit = await maybeBumpForCeaAtaRent({
           ctx,
           ueaAddress,
           targetChain,
@@ -293,10 +328,22 @@ export async function buildHopDescriptor(
         });
 
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-          const result = await queryOutboundGasFee(ctx, prc20Token, effectiveGasLimit, targetChain);
+          const result = await queryOutboundGasFee(
+            ctx,
+            prc20Token,
+            effectiveGasLimit,
+            targetChain
+          );
           gasToken = result.gasToken;
           gasFee = result.gasFee;
           sizing = result.sizing;
+          if (!params.gasLimit && result.gasPrice > BigInt(0)) {
+            effectiveGasLimit = result.gasFee / result.gasPrice;
+            printLog(
+              ctx,
+              `buildHopDescriptor — SVM derived effectiveGasLimit: ${effectiveGasLimit} (gasFee=${result.gasFee} / gasPrice=${result.gasPrice})`
+            );
+          }
         }
 
         return {
@@ -308,6 +355,7 @@ export async function buildHopDescriptor(
           burnAmount,
           gasToken,
           gasFee,
+          gasLimit: effectiveGasLimit,
           sizing,
         };
       }
@@ -327,7 +375,12 @@ export async function buildHopDescriptor(
         let gasFee = BigInt(0);
         let sizing: GasSizingDecision | undefined;
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-          const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, targetChain);
+          const result = await queryOutboundGasFee(
+            ctx,
+            prc20Token,
+            gasLimit,
+            targetChain
+          );
           gasToken = result.gasToken;
           gasFee = result.gasFee;
           sizing = result.sizing;
@@ -445,7 +498,12 @@ export async function buildHopDescriptor(
       let gasFee = BigInt(0);
       let sizing: GasSizingDecision | undefined;
       if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-        const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, targetChain);
+        const result = await queryOutboundGasFee(
+          ctx,
+          prc20Token,
+          gasLimit,
+          targetChain
+        );
         gasToken = result.gasToken;
         gasFee = result.gasFee;
         sizing = result.sizing;
@@ -467,6 +525,18 @@ export async function buildHopDescriptor(
     case TransactionRoute.CEA_TO_PUSH: {
       // Route 3: Build CEA multicalls for sendUniversalTxFromCEA
       const sourceChain = params.from!.chain;
+      const seedAmount = params.value ?? BigInt(0);
+      if (isValueOnlyNativeSeedToOwnUea(params, ueaAddress)) {
+        return {
+          ...baseDescriptor,
+          sourceChain,
+          burnAmount: BigInt(0),
+          gasToken: ZERO_ADDRESS as `0x${string}`,
+          gasFee: BigInt(0),
+          nativeSeedOnly: true,
+          nativeSeedAmount: seedAmount,
+        };
+      }
 
       // SVM chains use PDA-based CEA, not factory-deployed CEA
       if (isSvmChain(sourceChain)) {
@@ -478,9 +548,7 @@ export async function buildHopDescriptor(
         }
         const programPk = new PublicKey(lockerContract);
         const gatewayProgramHex = ('0x' +
-          Buffer.from(programPk.toBytes()).toString(
-            'hex'
-          )) as `0x${string}`;
+          Buffer.from(programPk.toBytes()).toString('hex')) as `0x${string}`;
 
         // Derive CEA PDA
         const ueaBytes = Buffer.from(ueaAddress.slice(2), 'hex');
@@ -513,7 +581,12 @@ export async function buildHopDescriptor(
         let gasFee = BigInt(0);
         let sizing: GasSizingDecision | undefined;
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-          const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, sourceChain);
+          const result = await queryOutboundGasFee(
+            ctx,
+            prc20Token,
+            gasLimit,
+            sourceChain
+          );
           gasToken = result.gasToken;
           gasFee = result.gasFee;
           sizing = result.sizing;
@@ -525,7 +598,9 @@ export async function buildHopDescriptor(
           ceaAddress: ceaPdaHex,
           isSvmTarget: true,
           prc20Token,
-          burnAmount: amount,
+          // Route 3 is payload-only on Push: the drain amount lives inside the
+          // SVM payload. Burning here would require the UEA to pre-hold pSOL.
+          burnAmount: BigInt(0),
           gasToken,
           gasFee,
           sizing,
@@ -567,7 +642,12 @@ export async function buildHopDescriptor(
       let gasFee = BigInt(0);
       let sizing: GasSizingDecision | undefined;
       if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-        const result = await queryOutboundGasFee(ctx, prc20Token, gasLimit, sourceChain);
+        const result = await queryOutboundGasFee(
+          ctx,
+          prc20Token,
+          gasLimit,
+          sourceChain
+        );
         gasToken = result.gasToken;
         gasFee = result.gasFee;
         sizing = result.sizing;
@@ -578,7 +658,10 @@ export async function buildHopDescriptor(
         sourceChain,
         ceaAddress,
         prc20Token,
-        burnAmount: amount,
+        // Route 3 is payload-only on Push: the CEA-side sendUniversalTxToUEA
+        // carries `amount`. Burning here would require the UEA to pre-hold the
+        // token it is trying to receive from the external CEA.
+        burnAmount: BigInt(0),
         gasToken,
         gasFee,
         sizing,
@@ -618,9 +701,11 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
       (segType === 'OUTBOUND_TO_CEA'
         ? currentSegment.targetChain === hop.targetChain && !hop.isSvmTarget
         : segType === 'INBOUND_FROM_CEA'
-          ? currentSegment.sourceChain === hop.sourceChain &&
-            !isSvmChain(hop.sourceChain as CHAIN)
-          : segType === 'PUSH_EXECUTION');
+        ? currentSegment.sourceChain === hop.sourceChain &&
+          !isSvmChain(hop.sourceChain as CHAIN) &&
+          isNativeSeedOnlyHop(currentSegment.hops[0]) ===
+            isNativeSeedOnlyHop(hop)
+        : segType === 'PUSH_EXECUTION');
 
     if (canMerge && currentSegment) {
       // Merge into current segment
@@ -739,27 +824,158 @@ export function getSegmentType(route: string): CascadeSegmentType {
   }
 }
 
-
 // ============================================================================
 // composeCascade
 // ============================================================================
 
-export async function composeCascade(
+export interface ComposeCascadeResult {
+  multicalls: MultiCall[];
+  requiredNativeValue: bigint;
+}
+
+function sumMulticallNativeValue(multicalls?: MultiCall[]): bigint {
+  return (multicalls ?? []).reduce(
+    (sum, mc) => sum + (mc.value ?? BigInt(0)),
+    BigInt(0)
+  );
+}
+
+function isEmptyPayloadData(data: UniversalExecuteParams['data']): boolean {
+  return (
+    data === undefined ||
+    data === '0x' ||
+    (Array.isArray(data) && data.length === 0)
+  );
+}
+
+function isValueOnlyNativeSeedToOwnUea(
+  params: UniversalExecuteParams,
+  ueaAddress: `0x${string}`
+): boolean {
+  return (
+    (params.value ?? BigInt(0)) > BigInt(0) &&
+    !params.funds?.amount &&
+    isEmptyPayloadData(params.data) &&
+    typeof params.to === 'string' &&
+    params.to.toLowerCase() === ueaAddress.toLowerCase()
+  );
+}
+
+function isNativeSeedOnlyHop(hop: HopDescriptor | undefined): boolean {
+  return hop?.nativeSeedOnly === true;
+}
+
+function isNativeSeedOnlySegment(segment: CascadeSegment): boolean {
+  return (
+    segment.type === 'INBOUND_FROM_CEA' &&
+    segment.hops.length > 0 &&
+    segment.hops.every((hop) => isNativeSeedOnlyHop(hop))
+  );
+}
+
+function segmentNeedsOutboundGas(segment: CascadeSegment): boolean {
+  return segment.type !== 'PUSH_EXECUTION' && !isNativeSeedOnlySegment(segment);
+}
+
+function sumNativeSeedAmount(hops: HopDescriptor[]): bigint {
+  return hops.reduce(
+    (sum, hop) => sum + (hop.nativeSeedAmount ?? BigInt(0)),
+    BigInt(0)
+  );
+}
+
+function getCascadeNativeSeed(segments: CascadeSegment[]): bigint {
+  let total = BigInt(0);
+  for (const segment of segments) {
+    for (const hop of segment.hops) {
+      const value = hop.params.value ?? BigInt(0);
+      if (isNativeSeedOnlyHop(hop)) {
+        total += hop.nativeSeedAmount ?? value;
+        continue;
+      }
+
+      // In a CEA->Push hop that also supplies `funds`, `value` is native PC
+      // forwarded inside the inbound UEA payload. That value is available to
+      // later Push-side cascade calls and must be counted for sizing fresh UEAs.
+      if (
+        segment.type === 'INBOUND_FROM_CEA' &&
+        value > BigInt(0) &&
+        hop.params.funds?.amount
+      ) {
+        total += value;
+      }
+    }
+  }
+  return total;
+}
+
+function getInboundFundingForBurnToken(
+  segments: CascadeSegment[],
+  beforeSegmentIndex: number,
+  burnToken: `0x${string}`,
+  pushNetwork: PUSH_NETWORK
+): bigint {
+  let total = BigInt(0);
+  const normalizedBurnToken = burnToken.toLowerCase();
+
+  for (const segment of segments.slice(0, beforeSegmentIndex)) {
+    if (segment.type !== 'INBOUND_FROM_CEA') continue;
+
+    for (const hop of segment.hops) {
+      const params = hop.params;
+      let fundedToken: `0x${string}` | undefined;
+      let fundedAmount = BigInt(0);
+
+      if (params.funds?.amount) {
+        const token = (params.funds as { token?: MoveableToken }).token;
+        if (token) {
+          fundedToken = PushChain.utils.tokens.getPRC20Address(token).address;
+          fundedAmount = params.funds.amount;
+        }
+      } else if (
+        params.value &&
+        params.value > BigInt(0) &&
+        hop.sourceChain &&
+        !isNativeSeedOnlyHop(hop)
+      ) {
+        fundedToken = getNativePRC20ForChain(hop.sourceChain, pushNetwork);
+        fundedAmount = params.value;
+      }
+
+      if (fundedToken?.toLowerCase() === normalizedBurnToken) {
+        total += fundedAmount;
+      }
+    }
+  }
+
+  return total;
+}
+
+export async function composeCascadeDetailed(
   ctx: OrchestratorContext,
   segments: CascadeSegment[],
   ueaAddress: `0x${string}`,
   ueaBalance?: bigint,
   ueaNonce?: bigint
-): Promise<MultiCall[]> {
+): Promise<ComposeCascadeResult> {
   let accumulatedPushMulticalls: MultiCall[] = [];
+  let requiredNativeValue = BigInt(0);
   const gatewayPcAddress = getUniversalGatewayPCAddress();
+  const currentUeaBalance = ueaBalance ?? BigInt(0);
+  const cascadeNativeSeed = getCascadeNativeSeed(segments);
+  const effectiveUeaBalance = currentUeaBalance + cascadeNativeSeed;
+
+  if (cascadeNativeSeed > BigInt(0)) {
+    printLog(
+      ctx,
+      `composeCascade — counting cascade native seed ${cascadeNativeSeed.toString()} for cascade sizing (current UEA balance ${currentUeaBalance.toString()})`
+    );
+  }
 
   // Compute per-outbound nativeValueForGas from UEA balance
   // Each outbound segment needs native value for the gas swap on the destination chain.
   // The contract refunds excess, so over-allocating is safe.
-  const numOutbounds = segments.filter(
-    (s) => s.type !== 'PUSH_EXECUTION'
-  ).length;
+  const numOutbounds = segments.filter(segmentNeedsOutboundGas).length;
   const CASCADE_GAS_RESERVE = BigInt(3e18); // 3 PC reserve for gas costs
 
   // Cascade pre-flight: catches the zero-balance silent-segment-zero failure
@@ -767,31 +983,22 @@ export async function composeCascade(
   // is left undefined and downstream segments silently allocate value=0,
   // producing under-funded swaps that revert inside Uniswap. Throw early
   // with a structured error so the caller knows which path / hop failed.
-  // Honor the per-call opt-out from the first non-PUSH segment (segments share
-  // the same UniversalExecuteParams.options.allowUnderfundedSwap shape).
-  const firstOutboundSegment = segments.find(
-    (s) => s.type !== 'PUSH_EXECUTION'
-  );
-  const cascadeAllowUnderfunded =
-    firstOutboundSegment?.hops?.[0]?.params?.options?.allowUnderfundedSwap ===
-    true;
   if (numOutbounds > 0) {
     runPreflight({
       ctx,
       ueaAddress,
-      ueaBalance: ueaBalance ?? BigInt(0),
+      ueaBalance: effectiveUeaBalance,
       // Required = at least one wei of allocatable PC after reserve. The
       // per-segment min-swap check below catches finer-grained shortfalls.
       requiredValue: BigInt(1),
       gasReserve: CASCADE_GAS_RESERVE,
       pathTag: 'CASCADE',
-      allowUnderfundedSwap: cascadeAllowUnderfunded,
     });
   }
   let perOutboundNativeValue: bigint | undefined;
-  if (ueaBalance && numOutbounds > 0 && ueaBalance > CASCADE_GAS_RESERVE) {
+  if (numOutbounds > 0 && effectiveUeaBalance > CASCADE_GAS_RESERVE) {
     perOutboundNativeValue =
-      (ueaBalance - CASCADE_GAS_RESERVE) / BigInt(numOutbounds);
+      (effectiveUeaBalance - CASCADE_GAS_RESERVE) / BigInt(numOutbounds);
   }
 
   // Pool-price-based native-value override for SVM outbounds.
@@ -808,13 +1015,14 @@ export async function composeCascade(
       s.gasFee > BigInt(0)
   );
   const svmNativeValueBySegment = new Map<CascadeSegment, bigint>();
-  if (svmSegments.length > 0 && ueaBalance && ueaBalance > CASCADE_GAS_RESERVE) {
-    const universalCoreAddress = await ctx.pushClient.readContract<`0x${string}`>({
-      address: gatewayPcAddress,
-      abi: UNIVERSAL_GATEWAY_PC,
-      functionName: 'universalCore',
-      args: [],
-    });
+  if (svmSegments.length > 0 && effectiveUeaBalance > CASCADE_GAS_RESERVE) {
+    const universalCoreAddress =
+      await ctx.pushClient.readContract<`0x${string}`>({
+        address: gatewayPcAddress,
+        abi: UNIVERSAL_GATEWAY_PC,
+        functionName: 'universalCore',
+        args: [],
+      });
     // Compute per-SVM budget = ueaBalance − (PC needed for EVM outbounds) − 1 PC safety
     // (outer-tx gas + refund headroom). Pass a huge accountBalance to the estimator so
     // its internal cap is effectively disabled; we cap externally to the per-SVM budget.
@@ -825,11 +1033,11 @@ export async function composeCascade(
         : BigInt(0);
     const outerSafety = BigInt(1e18); // 1 PC for outer-tx gas
     const svmTotal =
-      ueaBalance > evmReservation + outerSafety
-        ? ueaBalance - evmReservation - outerSafety
+      effectiveUeaBalance > evmReservation + outerSafety
+        ? effectiveUeaBalance - evmReservation - outerSafety
         : BigInt(0);
     const perSvmCap = svmTotal / BigInt(svmSegments.length);
-    const UNCAPPED_BALANCE = BigInt(1e30); // effectively disable estimator's internal cap
+    const UNCAPPED_BALANCE = BigInt('1000000000000000000000000000000'); // effectively disable estimator's internal cap
     for (const seg of svmSegments) {
       // Cascade-level segment index (position in `segments`, not in `svmSegments`)
       // so the error's `segmentIndex` lines up with what the caller sees.
@@ -850,7 +1058,16 @@ export async function composeCascade(
       );
       const flat = perOutboundNativeValue ?? BigInt(0);
       let value = estimated > flat ? estimated : flat;
-      if (perSvmCap > BigInt(0) && value > perSvmCap) value = perSvmCap;
+      if (perSvmCap > BigInt(0) && value > perSvmCap) {
+        const cappedValue = perSvmCap >= estimated ? perSvmCap : estimated;
+        if (cappedValue !== perSvmCap) {
+          printLog(
+            ctx,
+            `composeCascade — SVM outbound to ${seg.hops[0]?.targetChain}: perSvmCap=${perSvmCap} is below live pool quote=${estimated}; using quote to avoid underfunded gas swap`
+          );
+        }
+        value = cappedValue;
+      }
       // Upward-allocation ceiling (mirrors R3 SVM Fix #4 in route-handlers.ts:1690).
       // When UEA balance is huge, the flat split or perSvmCap can produce a value
       // far above what the swap actually needs. Submitting that into a Uniswap
@@ -881,7 +1098,7 @@ export async function composeCascade(
       // what the swap actually needs and the segment will revert inside
       // Uniswap with STF. Throw cleanly with `segmentIndex` so the caller
       // knows which hop's pool is misbehaving.
-      if (estimated > BigInt(0) && value < estimated && !cascadeAllowUnderfunded) {
+      if (estimated > BigInt(0) && value < estimated) {
         const shortfall = estimated - value;
         fireProgressHook(
           ctx,
@@ -913,6 +1130,13 @@ export async function composeCascade(
     switch (segment.type) {
       case 'PUSH_EXECUTION': {
         // Prepend Push Chain multicalls to accumulated
+        const seedAmount = sumNativeSeedAmount(segment.hops);
+        if (seedAmount > requiredNativeValue) {
+          requiredNativeValue = seedAmount;
+        }
+        requiredNativeValue += sumMulticallNativeValue(
+          segment.mergedPushMulticalls
+        );
         accumulatedPushMulticalls = [
           ...(segment.mergedPushMulticalls || []),
           ...accumulatedPushMulticalls,
@@ -977,21 +1201,41 @@ export async function composeCascade(
             'CASCADE',
             { kind: 'PRC20', burnToken: segBurnToken, segmentIndex: segIdxLoop }
           );
-          if (!sufficient && !cascadeAllowUnderfunded) {
-            const shortfall = segBurnAmount - onHand;
+          const priorPushExecutionMayFundBurn = segments
+            .slice(0, segIdxLoop)
+            .some((s) => s.type === 'PUSH_EXECUTION');
+          const priorInboundFundingForBurn = getInboundFundingForBurnToken(
+            segments,
+            segIdxLoop,
+            segBurnToken,
+            ctx.pushNetwork
+          );
+          const priorInboundMayFundBurn =
+            onHand + priorInboundFundingForBurn >= segBurnAmount;
+          if (
+            !sufficient &&
+            !priorPushExecutionMayFundBurn &&
+            !priorInboundMayFundBurn
+          ) {
+            const projectedOnHand = onHand + priorInboundFundingForBurn;
+            const shortfall = segBurnAmount - projectedOnHand;
             fireProgressHook(
               ctx,
               PROGRESS_HOOK.SEND_TX_003_04,
               segBurnAmount,
-              onHand,
+              projectedOnHand,
               shortfall,
               ueaAddress,
               'CASCADE',
-              { kind: 'PRC20', burnToken: segBurnToken, segmentIndex: segIdxLoop }
+              {
+                kind: 'PRC20',
+                burnToken: segBurnToken,
+                segmentIndex: segIdxLoop,
+              }
             );
             throw new InsufficientUEABalanceError({
               required: segBurnAmount,
-              available: onHand,
+              available: projectedOnHand,
               shortfall,
               ueaAddress,
               pathTag: 'CASCADE',
@@ -999,6 +1243,16 @@ export async function composeCascade(
               burnToken: segBurnToken,
               segmentIndex: segIdxLoop,
             });
+          } else if (!sufficient && priorPushExecutionMayFundBurn) {
+            printLog(
+              ctx,
+              `composeCascade — skipping PRC-20 preflight failure for segment ${segIdxLoop}; earlier Push execution may fund ${segBurnToken} before this outbound runs`
+            );
+          } else if (!sufficient && priorInboundMayFundBurn) {
+            printLog(
+              ctx,
+              `composeCascade — skipping PRC-20 preflight failure for segment ${segIdxLoop}; earlier inbound funds ${priorInboundFundingForBurn.toString()} units of ${segBurnToken} before this outbound runs`
+            );
           }
         }
 
@@ -1022,8 +1276,9 @@ export async function composeCascade(
         // across outbound segments. The contract refunds excess via
         // swapAndBurnGas, so overshooting is safe; undershooting causes STF.
         let evmFallbackValue: bigint;
-        if (ueaBalance && ueaBalance > BigInt(0)) {
-          evmFallbackValue = ueaBalance / BigInt(Math.max(numOutbounds, 1));
+        if (effectiveUeaBalance > BigInt(0)) {
+          evmFallbackValue =
+            effectiveUeaBalance / BigInt(Math.max(numOutbounds, 1));
         } else {
           evmFallbackValue = segGasFee * BigInt(1000000);
         }
@@ -1038,16 +1293,15 @@ export async function composeCascade(
         // and by the cascade-level per-outbound allocation above.
 
         const outboundMulticalls = buildOutboundApprovalAndCall({
-          prc20Token:
-            segment.prc20Token || (ZERO_ADDRESS as `0x${string}`),
-          gasToken:
-            segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
+          prc20Token: segment.prc20Token || (ZERO_ADDRESS as `0x${string}`),
+          gasToken: segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
           burnAmount: segment.totalBurnAmount || BigInt(0),
           gasFee: segGasFee,
           nativeValueForGas,
           gatewayPcAddress,
           outboundRequest: outboundReq,
         });
+        requiredNativeValue += sumMulticallNativeValue(outboundMulticalls);
 
         // Prepend to accumulated
         accumulatedPushMulticalls = [
@@ -1060,6 +1314,18 @@ export async function composeCascade(
       case 'INBOUND_FROM_CEA': {
         // The accumulated multicalls = what runs on Push Chain AFTER inbound arrives.
         // Wrap in UniversalPayload struct with correct UEA nonce for the relay.
+
+        if (isNativeSeedOnlySegment(segment)) {
+          const seedAmount = sumNativeSeedAmount(segment.hops);
+          if (seedAmount > requiredNativeValue) {
+            requiredNativeValue = seedAmount;
+          }
+          printLog(
+            ctx,
+            `composeCascade — value-only CEA_TO_PUSH seed ${seedAmount.toString()} folded into root Push execution; no source-chain outbound needed`
+          );
+          break;
+        }
 
         // Build push multicalls from EVERY merged hop's own data in original
         // order (e.g. counter.increment() + value transfer). Multi-hop R3
@@ -1080,6 +1346,7 @@ export async function composeCascade(
           }
         }
         if (mergedHopMulticalls.length > 0) {
+          requiredNativeValue += sumMulticallNativeValue(mergedHopMulticalls);
           accumulatedPushMulticalls = [
             ...mergedHopMulticalls,
             ...accumulatedPushMulticalls,
@@ -1096,10 +1363,9 @@ export async function composeCascade(
             accumulatedPushMulticalls
           );
           // +1: the outbound tx consumes one nonce via execute()
-          intermediatePayload = buildInboundUniversalPayload(
-            multicallPayload,
-            { nonce: (ueaNonce ?? BigInt(0)) + BigInt(1) }
-          );
+          intermediatePayload = buildInboundUniversalPayload(multicallPayload, {
+            nonce: (ueaNonce ?? BigInt(0)) + BigInt(1),
+          });
         }
 
         const hop = segment.hops[0];
@@ -1116,9 +1382,7 @@ export async function composeCascade(
           }
           const programPk = new PublicKey(lockerContract);
           const gatewayProgramHex = ('0x' +
-            Buffer.from(programPk.toBytes()).toString(
-              'hex'
-            )) as `0x${string}`;
+            Buffer.from(programPk.toBytes()).toString('hex')) as `0x${string}`;
 
           let drainAmount = BigInt(0);
           let tokenMintHex: `0x${string}` | undefined;
@@ -1129,9 +1393,7 @@ export async function composeCascade(
             if (token && token.address) {
               const mintPk = new PublicKey(token.address);
               tokenMintHex = ('0x' +
-                Buffer.from(mintPk.toBytes()).toString(
-                  'hex'
-                )) as `0x${string}`;
+                Buffer.from(mintPk.toBytes()).toString('hex')) as `0x${string}`;
             }
           } else if (params.value && params.value > BigInt(0)) {
             drainAmount = params.value;
@@ -1174,8 +1436,9 @@ export async function composeCascade(
 
           const inboundGasFee = segment.gasFee || BigInt(0);
           let svmInboundFallback: bigint;
-          if (ueaBalance && ueaBalance > BigInt(0)) {
-            svmInboundFallback = ueaBalance / BigInt(Math.max(numOutbounds, 1));
+          if (effectiveUeaBalance > BigInt(0)) {
+            svmInboundFallback =
+              effectiveUeaBalance / BigInt(Math.max(numOutbounds, 1));
           } else {
             svmInboundFallback = inboundGasFee * BigInt(1000000);
           }
@@ -1200,14 +1463,14 @@ export async function composeCascade(
             prc20Token:
               segment.prc20Token ||
               getNativePRC20ForChain(sourceChain, ctx.pushNetwork),
-            gasToken:
-              segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
+            gasToken: segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
             burnAmount: svmBurnAmount,
             gasFee: inboundGasFee,
             nativeValueForGas: svmInboundNativeValue,
             gatewayPcAddress,
             outboundRequest: outboundReq,
           });
+          requiredNativeValue += sumMulticallNativeValue(outboundMulticalls);
 
           accumulatedPushMulticalls = [...outboundMulticalls];
           break;
@@ -1256,7 +1519,8 @@ export async function composeCascade(
           }
         }
 
-        // Build sendUniversalTxToUEA self-call on CEA (to=CEA, value=0)
+        // Build sendUniversalTxToUEA self-call on CEA. CEA self-calls must
+        // always use value=0; native funds are spent from the CEA balance.
         const sendCall = buildSendUniversalTxToUEA(
           ceaAddress,
           tokenAddress,
@@ -1273,12 +1537,11 @@ export async function composeCascade(
         // gasLimit — UGPC.sendUniversalTxOutbound reverts with
         // "Missing or invalid parameters" on 0. When the hop didn't supply
         // one (typical for a pure-R3 leg composed inside a cascade), fall
-        // back to DEFAULT_OUTBOUND_GAS_LIMIT just like the initial outbound
-        // path does.
+        // back to the EVM Route 3 default.
         const effectiveGasLimit =
           segment.gasLimit && segment.gasLimit > BigInt(0)
             ? segment.gasLimit
-            : DEFAULT_OUTBOUND_GAS_LIMIT;
+            : DEFAULT_CEA_TO_PUSH_GAS_LIMIT;
         const outboundReq = buildOutboundRequest(
           ceaAddress,
           segment.prc20Token ||
@@ -1292,8 +1555,9 @@ export async function composeCascade(
 
         const inboundGasFee = segment.gasFee || BigInt(0);
         let evmInboundFallback: bigint;
-        if (ueaBalance && ueaBalance > BigInt(0)) {
-          evmInboundFallback = ueaBalance / BigInt(Math.max(numOutbounds, 1));
+        if (effectiveUeaBalance > BigInt(0)) {
+          evmInboundFallback =
+            effectiveUeaBalance / BigInt(Math.max(numOutbounds, 1));
         } else {
           evmInboundFallback = inboundGasFee * BigInt(1000000);
         }
@@ -1318,14 +1582,14 @@ export async function composeCascade(
           prc20Token:
             segment.prc20Token ||
             getNativePRC20ForChain(sourceChain, ctx.pushNetwork),
-          gasToken:
-            segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
+          gasToken: segment.gasToken || (ZERO_ADDRESS as `0x${string}`),
           burnAmount: segment.totalBurnAmount || BigInt(0),
           gasFee: inboundGasFee,
           nativeValueForGas: evmInboundNativeValue,
           gatewayPcAddress,
           outboundRequest: outboundReq,
         });
+        requiredNativeValue += sumMulticallNativeValue(outboundMulticalls);
 
         // Reset accumulated -- everything is now inside this outbound
         accumulatedPushMulticalls = [...outboundMulticalls];
@@ -1334,7 +1598,27 @@ export async function composeCascade(
     }
   }
 
-  return accumulatedPushMulticalls;
+  return {
+    multicalls: accumulatedPushMulticalls,
+    requiredNativeValue,
+  };
+}
+
+export async function composeCascade(
+  ctx: OrchestratorContext,
+  segments: CascadeSegment[],
+  ueaAddress: `0x${string}`,
+  ueaBalance?: bigint,
+  ueaNonce?: bigint
+): Promise<MultiCall[]> {
+  const result = await composeCascadeDetailed(
+    ctx,
+    segments,
+    ueaAddress,
+    ueaBalance,
+    ueaNonce
+  );
+  return result.multicalls;
 }
 
 // ============================================================================
@@ -1360,10 +1644,7 @@ export function createCascadedBuilder(
       const segments = classifyIntoSegments(hops);
 
       // Check if this is a single-hop Route 1 (no composition needed)
-      if (
-        preparedTxs.length === 1 &&
-        preparedTxs[0].route === 'UOA_TO_PUSH'
-      ) {
+      if (preparedTxs.length === 1 && preparedTxs[0].route === 'UOA_TO_PUSH') {
         const response = await callbacks.executeFn(hops[0].params);
         const singleRoute1Result: CascadedTxResponse = {
           initialTxHash: response.hash,
@@ -1396,10 +1677,7 @@ export function createCascadedBuilder(
       }
 
       // Check if single-hop Route 2 (just execute directly)
-      if (
-        preparedTxs.length === 1 &&
-        preparedTxs[0].route === 'UOA_TO_CEA'
-      ) {
+      if (preparedTxs.length === 1 && preparedTxs[0].route === 'UOA_TO_CEA') {
         const response = await callbacks.executeFn(hops[0].params);
         const targetChain =
           hops[0].targetChain || getPushChainForNetwork(ctx.pushNetwork);
@@ -1444,14 +1722,17 @@ export function createCascadedBuilder(
           ? await getUEANonce(ctx, ueaAddress)
           : BigInt(0);
       let composedMulticalls: MultiCall[];
+      let cascadeRequiredNativeValue = BigInt(0);
       try {
-        composedMulticalls = await composeCascade(
+        const composed = await composeCascadeDetailed(
           ctx,
           segments,
           ueaAddress,
           ueaBalance,
           ueaNonceCascade
         );
+        composedMulticalls = composed.multicalls;
+        cascadeRequiredNativeValue = composed.requiredNativeValue;
       } catch (err) {
         // Pre-flight or per-segment min-swap failure inside composeCascade
         // throws before the cascade ever broadcasts. Fire 999-02 with the
@@ -1474,6 +1755,7 @@ export function createCascadedBuilder(
       // Execute the composed multicall as a single Push Chain tx
       const executeParams: ExecuteParams = {
         to: ueaAddress,
+        value: cascadeRequiredNativeValue,
         data: composedMulticalls,
       };
 
@@ -1484,7 +1766,9 @@ export function createCascadedBuilder(
         hopIndex: index,
         route: hop.route,
         executionChain:
-          hop.targetChain || hop.sourceChain || getPushChainForNetwork(ctx.pushNetwork),
+          hop.targetChain ||
+          hop.sourceChain ||
+          getPushChainForNetwork(ctx.pushNetwork),
         status: 'pending' as const,
       }));
 
@@ -1546,9 +1830,7 @@ export function createCascadedBuilder(
             if (!isMulti) return;
             const n = hopIndex0 + 1;
             const fromChain =
-              hopIndex0 === 0
-                ? signerOriginChain
-                : chainLabels[hopIndex0 - 1];
+              hopIndex0 === 0 ? signerOriginChain : chainLabels[hopIndex0 - 1];
             const toChain = chainLabels[hopIndex0];
             emitHopEvent(
               PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_002_01](
@@ -1595,10 +1877,7 @@ export function createCascadedBuilder(
 
           if (isMulti) {
             emitHopEvent(
-              PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_001](
-                totalHops,
-                chainLabels
-              )
+              PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_001](totalHops, chainLabels)
             );
           }
 
@@ -1621,52 +1900,21 @@ export function createCascadedBuilder(
 
             await response.wait();
 
-            // Mark all Push Chain (Route 1) hops as confirmed
-            for (const hop of hopInfos) {
-              if (hop.route === 'UOA_TO_PUSH') {
-                hop.status = 'confirmed';
-                hop.txHash = response.hash;
-                cascadeProgressHook?.({
-                  hopIndex: hop.hopIndex,
-                  route: hop.route,
-                  chain: getPushChainForNetwork(ctx.pushNetwork),
-                  status: 'confirmed',
-                  txHash: response.hash,
-                  elapsed: Date.now() - startTime,
-                });
-                emitHopComplete(hop.hopIndex);
-              }
-            }
-
-            // 2. Track outbound hops (Route 2: UOA_TO_CEA)
-            // Hops after a CEA_TO_PUSH are "child outbounds" — they execute inside
-            // the inbound payload on Push Chain and live under a DIFFERENT utx_id
-            // (the inbound UTX, not the parent). We can't track them via the parent
-            // utx_id polling, so we auto-confirm them.
             const ceaToPushIndex = hopInfos.findIndex(
-              (h) => h.route === 'CEA_TO_PUSH'
+              (h, index) =>
+                h.route === 'CEA_TO_PUSH' && !isNativeSeedOnlyHop(hops[index])
             );
-            const outboundHops = hopInfos.filter((h, i) => {
-              if (h.route !== 'UOA_TO_CEA') return false;
-              // Child outbounds (after CEA_TO_PUSH) live under the inbound UTX,
-              // not the parent — auto-confirm since we can't poll them here.
-              if (ceaToPushIndex >= 0 && i > ceaToPushIndex) {
-                h.status = 'confirmed';
-                cascadeProgressHook?.({
-                  hopIndex: h.hopIndex,
-                  route: h.route,
-                  chain: h.executionChain,
-                  status: 'confirmed',
-                  elapsed: Date.now() - startTime,
-                });
-                return false;
-              }
-              return true;
-            });
+            const isAfterCeaToPush = (index: number) =>
+              ceaToPushIndex >= 0 && index > ceaToPushIndex;
 
-            if (outboundHops.length > 0) {
+            const trackOutboundHops = async (
+              outboundHops: CascadeHopInfo[],
+              pushTxHash: string,
+              resolvedSubTxId?: string
+            ): Promise<CascadeCompletionResult | null> => {
+              if (outboundHops.length === 0) return null;
+
               if (outboundHops.length === 1) {
-                // Single direct outbound hop: use the existing V1-based tracking
                 const hop = outboundHops[0];
                 const hopHooks = pickWaitHooks(hop.route);
                 const remainingTimeout = timeout - (Date.now() - startTime);
@@ -1704,11 +1952,14 @@ export function createCascadedBuilder(
                 let lastEmittedStatus: string | undefined;
 
                 try {
-                  const outboundDetails =
-                    await callbacks.waitForOutboundTxFn(response.hash, {
+                  const outboundDetails = await callbacks.waitForOutboundTxFn(
+                    pushTxHash,
+                    {
                       initialWaitMs: Math.min(60000, remainingTimeout),
                       pollingIntervalMs,
                       timeout: remainingTimeout,
+                      _resolvedSubTxId: resolvedSubTxId,
+                      _expectedDestinationChain: hop.executionChain,
                       progressHook: (event) => {
                         cascadeProgressHook?.({
                           hopIndex: hop.hopIndex,
@@ -1733,7 +1984,8 @@ export function createCascadedBuilder(
                           );
                         }
                       },
-                    });
+                    }
+                  );
                   // `outboundDetails.externalTxHash` from waitForOutboundTx
                   // is the raw `0x`-hex form (internal canonical). For the
                   // user-facing `hop.txHash`, `hop.outboundDetails`, and
@@ -1792,9 +2044,6 @@ export function createCascadedBuilder(
                   };
                 }
               } else {
-                // Multiple outbound hops: use V2 API which returns outboundTx[]
-                // Emit "Awaiting External Chain" once per outbound hop before
-                // polling begins, using the route-specific awaiting hook.
                 for (const outHop of outboundHops) {
                   emitHopStart(outHop.hopIndex);
                   emitHopEvent(
@@ -1807,7 +2056,7 @@ export function createCascadedBuilder(
 
                 const allOutboundDetails =
                   await callbacks.waitForAllOutboundTxsFn(
-                    response.hash,
+                    pushTxHash,
                     outboundHops,
                     {
                       initialWaitMs: Math.min(
@@ -1816,6 +2065,7 @@ export function createCascadedBuilder(
                       ),
                       pollingIntervalMs,
                       timeout: timeout - (Date.now() - startTime),
+                      _resolvedSubTxId: resolvedSubTxId,
                       progressHook: (event: any) => {
                         cascadeProgressHook?.({
                           hopIndex: event.hopIndex,
@@ -1838,10 +2088,7 @@ export function createCascadedBuilder(
                         const eventHooks = pickWaitHooks(matchedHop?.route);
 
                         const prev = perHopLastStatus.get(event.hopIndex);
-                        if (
-                          event.status === 'polling' &&
-                          prev !== 'polling'
-                        ) {
+                        if (event.status === 'polling' && prev !== 'polling') {
                           perHopLastStatus.set(event.hopIndex, 'polling');
                           emitHopEvent(
                             eventHooks.polling(
@@ -1895,25 +2142,321 @@ export function createCascadedBuilder(
                   };
                 }
               }
+              return null;
+            };
+
+            // Mark only root Push Chain (Route 1) hops as confirmed. Route 1
+            // hops after a Route 3 leg execute in the child inbound Push tx and
+            // must wait for that child UTX to reach terminal success.
+            for (const hop of hopInfos) {
+              if (
+                hop.route === 'CEA_TO_PUSH' &&
+                isNativeSeedOnlyHop(hops[hop.hopIndex])
+              ) {
+                emitHopStart(hop.hopIndex);
+                hop.status = 'confirmed';
+                hop.txHash = response.hash;
+                cascadeProgressHook?.({
+                  hopIndex: hop.hopIndex,
+                  route: hop.route,
+                  chain: getPushChainForNetwork(ctx.pushNetwork),
+                  status: 'confirmed',
+                  txHash: response.hash,
+                  elapsed: Date.now() - startTime,
+                });
+                emitHopComplete(hop.hopIndex);
+              }
             }
 
-            // 3. Route 3 (CEA_TO_PUSH) tracking - mark as submitted
-            // Cascade does not poll inbound completion; we surface the hop-start
-            // marker so consumers see a "Starting tx N" event for the inbound,
-            // but skip emitHopComplete since we never observe terminal state.
-            const inboundHops = hopInfos.filter(
-              (h) => h.route === 'CEA_TO_PUSH'
+            for (const hop of hopInfos) {
+              if (hop.route === 'UOA_TO_PUSH' && !isAfterCeaToPush(hop.hopIndex)) {
+                hop.status = 'confirmed';
+                hop.txHash = response.hash;
+                cascadeProgressHook?.({
+                  hopIndex: hop.hopIndex,
+                  route: hop.route,
+                  chain: getPushChainForNetwork(ctx.pushNetwork),
+                  status: 'confirmed',
+                  txHash: response.hash,
+                  elapsed: Date.now() - startTime,
+                });
+                emitHopComplete(hop.hopIndex);
+              }
+            }
+
+            // 2. Track direct outbound hops (Route 2: UOA_TO_CEA) that belong
+            // to the root Push UTX.
+            const rootOutboundHops = hopInfos.filter(
+              (h) => h.route === 'UOA_TO_CEA' && !isAfterCeaToPush(h.hopIndex)
             );
-            for (const inboundHop of inboundHops) {
-              inboundHop.status = 'submitted';
+            const rootOutboundFailure = await trackOutboundHops(
+              rootOutboundHops,
+              response.hash
+            );
+            if (rootOutboundFailure) return rootOutboundFailure;
+
+            let childInbound: InboundPushTxDetails | undefined;
+            if (ceaToPushIndex >= 0) {
+              const inboundHop = hopInfos[ceaToPushIndex];
+              const hopHooks = pickWaitHooks(inboundHop.route);
+              const remainingTimeout = timeout - (Date.now() - startTime);
+              if (remainingTimeout <= 0) {
+                inboundHop.status = 'failed';
+                emitHopEvent(
+                  hopHooks.timeout(inboundHop.executionChain, Date.now() - startTime)
+                );
+                emitCascadeTimeout(inboundHop.hopIndex);
+                return {
+                  success: false,
+                  hops: hopInfos,
+                  failedAt: inboundHop.hopIndex,
+                };
+              }
+
               emitHopStart(inboundHop.hopIndex);
+              emitHopEvent(hopHooks.awaiting(inboundHop.executionChain));
               cascadeProgressHook?.({
                 hopIndex: inboundHop.hopIndex,
                 route: inboundHop.route,
                 chain: inboundHop.executionChain,
-                status: 'waiting',
+                status: 'polling',
                 elapsed: Date.now() - startTime,
               });
+
+              let outboundLastStatus: string | undefined;
+              let sourceOutboundDetails: OutboundTxDetails;
+              try {
+                sourceOutboundDetails = await callbacks.waitForOutboundTxFn(
+                  response.hash,
+                  {
+                    initialWaitMs: Math.min(60000, remainingTimeout),
+                    pollingIntervalMs,
+                    timeout: remainingTimeout,
+                    _expectedDestinationChain: inboundHop.executionChain,
+                    progressHook: (event) => {
+                      cascadeProgressHook?.({
+                        hopIndex: inboundHop.hopIndex,
+                        route: inboundHop.route,
+                        chain: inboundHop.executionChain,
+                        status: event.status as
+                          | 'waiting'
+                          | 'polling'
+                          | 'found'
+                          | 'confirmed'
+                          | 'failed'
+                          | 'timeout',
+                        elapsed: Date.now() - startTime,
+                      });
+                      if (
+                        event.status === 'polling' &&
+                        outboundLastStatus !== 'polling'
+                      ) {
+                        outboundLastStatus = 'polling';
+                        emitHopEvent(
+                          hopHooks.polling(
+                            inboundHop.executionChain,
+                            event.elapsed
+                          )
+                        );
+                      }
+                    },
+                  }
+                );
+              } catch (err) {
+                const errMsg =
+                  err instanceof Error ? err.message : String(err);
+                const isTimeout = errMsg.startsWith(
+                  'Timeout waiting for outbound transaction'
+                );
+                emitHopEvent(
+                  isTimeout
+                    ? hopHooks.timeout(inboundHop.executionChain, remainingTimeout)
+                    : hopHooks.failed(inboundHop.executionChain, errMsg)
+                );
+                if (isTimeout) emitCascadeTimeout(inboundHop.hopIndex);
+                else emitCascadeFailed(inboundHop.hopIndex, errMsg);
+                inboundHop.status = 'failed';
+                const failedExternalTxHash = (err as { externalTxHash?: string })
+                  ?.externalTxHash;
+                const failedDisplayTxHash =
+                  toExternalTxHashDisplay(
+                    inboundHop.executionChain,
+                    failedExternalTxHash
+                  ) ?? failedExternalTxHash;
+                if (failedDisplayTxHash) inboundHop.txHash = failedDisplayTxHash;
+                cascadeProgressHook?.({
+                  hopIndex: inboundHop.hopIndex,
+                  route: inboundHop.route,
+                  chain: inboundHop.executionChain,
+                  status: 'failed',
+                  txHash: failedDisplayTxHash,
+                  elapsed: Date.now() - startTime,
+                });
+                return {
+                  success: false,
+                  hops: hopInfos,
+                  failedAt: inboundHop.hopIndex,
+                };
+              }
+
+              const displayExternalTxHash =
+                toExternalTxHashDisplay(
+                  sourceOutboundDetails.destinationChain,
+                  sourceOutboundDetails.externalTxHash
+                ) ?? sourceOutboundDetails.externalTxHash;
+              inboundHop.outboundDetails = {
+                ...sourceOutboundDetails,
+                externalTxHash: displayExternalTxHash,
+              };
+              inboundHop.txHash = displayExternalTxHash;
+              emitHopEvent(hopHooks.success(inboundHop.outboundDetails));
+              emitHopEvent(
+                PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_310_01](
+                  inboundHop.executionChain
+                )
+              );
+
+              let inboundLastStatus: string | undefined;
+              const inboundRemainingTimeout =
+                timeout - (Date.now() - startTime);
+              try {
+                childInbound = await (
+                  callbacks.waitForInboundPushTxFn ??
+                  ((externalTxHash, sourceChain, opts) =>
+                    waitForInboundPushTx(ctx, externalTxHash, sourceChain, opts))
+                )(sourceOutboundDetails.externalTxHash, inboundHop.executionChain, {
+                  initialWaitMs: Math.min(60000, inboundRemainingTimeout),
+                  pollingIntervalMs,
+                  timeout: inboundRemainingTimeout,
+                  progressHook: (event) => {
+                    if (
+                      event.status === 'polling' &&
+                      inboundLastStatus !== 'polling'
+                    ) {
+                      inboundLastStatus = 'polling';
+                      emitHopEvent(
+                        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_310_02](
+                          inboundHop.executionChain,
+                          event.elapsedMs
+                        )
+                      );
+                    }
+                  },
+                });
+              } catch (err) {
+                const errMsg =
+                  err instanceof Error ? err.message : String(err);
+                const isTimeout = err instanceof InboundTimeoutError;
+                emitHopEvent(
+                  isTimeout
+                    ? PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](
+                        inboundHop.executionChain,
+                        inboundRemainingTimeout,
+                        'inbound'
+                      )
+                    : PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](
+                        errMsg,
+                        'inbound',
+                        inboundHop.executionChain
+                      )
+                );
+                if (isTimeout) emitCascadeTimeout(inboundHop.hopIndex);
+                else emitCascadeFailed(inboundHop.hopIndex, errMsg);
+                inboundHop.status = 'failed';
+                cascadeProgressHook?.({
+                  hopIndex: inboundHop.hopIndex,
+                  route: inboundHop.route,
+                  chain: inboundHop.executionChain,
+                  status: 'failed',
+                  elapsed: Date.now() - startTime,
+                });
+                return {
+                  success: false,
+                  hops: hopInfos,
+                  failedAt: inboundHop.hopIndex,
+                };
+              }
+
+              if (childInbound.status !== 'confirmed') {
+                const failMsg =
+                  childInbound.errorMessage ??
+                  'inbound execution failed on Push Chain';
+                inboundHop.status = 'failed';
+                inboundHop.txHash =
+                  childInbound.pushTxHash || displayExternalTxHash;
+                emitHopEvent(
+                  PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](
+                    failMsg,
+                    'inbound',
+                    inboundHop.executionChain
+                  )
+                );
+                emitCascadeFailed(inboundHop.hopIndex, failMsg);
+                cascadeProgressHook?.({
+                  hopIndex: inboundHop.hopIndex,
+                  route: inboundHop.route,
+                  chain: inboundHop.executionChain,
+                  status: 'failed',
+                  txHash: inboundHop.txHash,
+                  elapsed: Date.now() - startTime,
+                });
+                return {
+                  success: false,
+                  hops: hopInfos,
+                  failedAt: inboundHop.hopIndex,
+                };
+              }
+
+              inboundHop.status = 'confirmed';
+              inboundHop.txHash =
+                childInbound.pushTxHash || displayExternalTxHash;
+              emitHopEvent(
+                PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_01](
+                  inboundHop.executionChain,
+                  childInbound.pushTxHash
+                )
+              );
+              emitHopComplete(inboundHop.hopIndex);
+              cascadeProgressHook?.({
+                hopIndex: inboundHop.hopIndex,
+                route: inboundHop.route,
+                chain: inboundHop.executionChain,
+                status: 'confirmed',
+                txHash: inboundHop.txHash,
+                elapsed: Date.now() - startTime,
+              });
+            }
+
+            if (childInbound) {
+              for (const hop of hopInfos) {
+                if (
+                  hop.route === 'UOA_TO_PUSH' &&
+                  isAfterCeaToPush(hop.hopIndex)
+                ) {
+                  emitHopStart(hop.hopIndex);
+                  hop.status = 'confirmed';
+                  hop.txHash = childInbound.pushTxHash;
+                  cascadeProgressHook?.({
+                    hopIndex: hop.hopIndex,
+                    route: hop.route,
+                    chain: getPushChainForNetwork(ctx.pushNetwork),
+                    status: 'confirmed',
+                    txHash: childInbound.pushTxHash,
+                    elapsed: Date.now() - startTime,
+                  });
+                  emitHopComplete(hop.hopIndex);
+                }
+              }
+
+              const childOutboundHops = hopInfos.filter(
+                (h) => h.route === 'UOA_TO_CEA' && isAfterCeaToPush(h.hopIndex)
+              );
+              const childOutboundFailure = await trackOutboundHops(
+                childOutboundHops,
+                childInbound.pushTxHash || response.hash,
+                childInbound.childUtxId
+              );
+              if (childOutboundFailure) return childOutboundFailure;
             }
 
             emitCascadeSuccess();
