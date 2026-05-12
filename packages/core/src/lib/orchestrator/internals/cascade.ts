@@ -9,7 +9,7 @@ import { PublicKey } from '@solana/web3.js';
 import { encodeFunctionData } from 'viem';
 import { ERC20_EVM } from '../../constants/abi/erc20.evm';
 import { CHAIN_INFO, UNIVERSAL_GATEWAY_ADDRESSES } from '../../constants/chain';
-import { CHAIN } from '../../constants/enums';
+import { CHAIN, PUSH_NETWORK } from '../../constants/enums';
 import { MoveableToken } from '../../constants/tokens';
 import {
   DEFAULT_CEA_TO_PUSH_GAS_LIMIT,
@@ -247,6 +247,16 @@ export async function buildHopDescriptor(
   switch (route) {
     case TransactionRoute.UOA_TO_PUSH: {
       // Route 1: Build Push Chain multicalls
+      const seedAmount = params.value ?? BigInt(0);
+      if (isValueOnlyNativeSeedToOwnUea(params, ueaAddress)) {
+        return {
+          ...baseDescriptor,
+          pushMulticalls: [],
+          nativeSeedOnly: true,
+          nativeSeedAmount: seedAmount,
+        };
+      }
+
       const executeParams = toExecuteParams(params);
       const pushMulticalls = buildExecuteMulticall({
         execute: executeParams,
@@ -514,16 +524,7 @@ export async function buildHopDescriptor(
       // Route 3: Build CEA multicalls for sendUniversalTxFromCEA
       const sourceChain = params.from!.chain;
       const seedAmount = params.value ?? BigInt(0);
-      const isSeedToOwnUea =
-        typeof params.to === 'string' &&
-        params.to.toLowerCase() === ueaAddress.toLowerCase();
-      const isValueOnlyNativeSeed =
-        seedAmount > BigInt(0) &&
-        !params.funds?.amount &&
-        isEmptyPayloadData(params.data) &&
-        isSeedToOwnUea;
-
-      if (isValueOnlyNativeSeed) {
+      if (isValueOnlyNativeSeedToOwnUea(params, ueaAddress)) {
         return {
           ...baseDescriptor,
           sourceChain,
@@ -829,6 +830,19 @@ function isEmptyPayloadData(data: UniversalExecuteParams['data']): boolean {
   );
 }
 
+function isValueOnlyNativeSeedToOwnUea(
+  params: UniversalExecuteParams,
+  ueaAddress: `0x${string}`
+): boolean {
+  return (
+    (params.value ?? BigInt(0)) > BigInt(0) &&
+    !params.funds?.amount &&
+    isEmptyPayloadData(params.data) &&
+    typeof params.to === 'string' &&
+    params.to.toLowerCase() === ueaAddress.toLowerCase()
+  );
+}
+
 function isNativeSeedOnlyHop(hop: HopDescriptor | undefined): boolean {
   return hop?.nativeSeedOnly === true;
 }
@@ -852,27 +866,70 @@ function sumNativeSeedAmount(hops: HopDescriptor[]): bigint {
   );
 }
 
-function getInboundPayloadNativeSeed(segments: CascadeSegment[]): bigint {
+function getCascadeNativeSeed(segments: CascadeSegment[]): bigint {
   let total = BigInt(0);
   for (const segment of segments) {
-    if (segment.type !== 'INBOUND_FROM_CEA') continue;
     for (const hop of segment.hops) {
       const value = hop.params.value ?? BigInt(0);
+      if (isNativeSeedOnlyHop(hop)) {
+        total += hop.nativeSeedAmount ?? value;
+        continue;
+      }
+
       // In a CEA->Push hop that also supplies `funds`, `value` is native PC
       // forwarded inside the inbound UEA payload. That value is available to
       // later Push-side cascade calls and must be counted for sizing fresh UEAs.
-      //
-      // A value-only seed hop has no source-chain CEA amount to bridge. It is
-      // still native PC made available by the root fee-lock and must be counted
-      // before sizing downstream Push-side outbounds in the same cascade.
       if (
+        segment.type === 'INBOUND_FROM_CEA' &&
         value > BigInt(0) &&
-        (hop.params.funds?.amount || isNativeSeedOnlyHop(hop))
+        hop.params.funds?.amount
       ) {
         total += value;
       }
     }
   }
+  return total;
+}
+
+function getInboundFundingForBurnToken(
+  segments: CascadeSegment[],
+  beforeSegmentIndex: number,
+  burnToken: `0x${string}`,
+  pushNetwork: PUSH_NETWORK
+): bigint {
+  let total = BigInt(0);
+  const normalizedBurnToken = burnToken.toLowerCase();
+
+  for (const segment of segments.slice(0, beforeSegmentIndex)) {
+    if (segment.type !== 'INBOUND_FROM_CEA') continue;
+
+    for (const hop of segment.hops) {
+      const params = hop.params;
+      let fundedToken: `0x${string}` | undefined;
+      let fundedAmount = BigInt(0);
+
+      if (params.funds?.amount) {
+        const token = (params.funds as { token?: MoveableToken }).token;
+        if (token) {
+          fundedToken = PushChain.utils.tokens.getPRC20Address(token).address;
+          fundedAmount = params.funds.amount;
+        }
+      } else if (
+        params.value &&
+        params.value > BigInt(0) &&
+        hop.sourceChain &&
+        !isNativeSeedOnlyHop(hop)
+      ) {
+        fundedToken = getNativePRC20ForChain(hop.sourceChain, pushNetwork);
+        fundedAmount = params.value;
+      }
+
+      if (fundedToken?.toLowerCase() === normalizedBurnToken) {
+        total += fundedAmount;
+      }
+    }
+  }
+
   return total;
 }
 
@@ -887,13 +944,13 @@ export async function composeCascadeDetailed(
   let requiredNativeValue = BigInt(0);
   const gatewayPcAddress = getUniversalGatewayPCAddress();
   const currentUeaBalance = ueaBalance ?? BigInt(0);
-  const inboundPayloadNativeSeed = getInboundPayloadNativeSeed(segments);
-  const effectiveUeaBalance = currentUeaBalance + inboundPayloadNativeSeed;
+  const cascadeNativeSeed = getCascadeNativeSeed(segments);
+  const effectiveUeaBalance = currentUeaBalance + cascadeNativeSeed;
 
-  if (inboundPayloadNativeSeed > BigInt(0)) {
+  if (cascadeNativeSeed > BigInt(0)) {
     printLog(
       ctx,
-      `composeCascade — counting inbound payload native seed ${inboundPayloadNativeSeed.toString()} for cascade sizing (current UEA balance ${currentUeaBalance.toString()})`
+      `composeCascade — counting cascade native seed ${cascadeNativeSeed.toString()} for cascade sizing (current UEA balance ${currentUeaBalance.toString()})`
     );
   }
 
@@ -1066,6 +1123,10 @@ export async function composeCascadeDetailed(
     switch (segment.type) {
       case 'PUSH_EXECUTION': {
         // Prepend Push Chain multicalls to accumulated
+        const seedAmount = sumNativeSeedAmount(segment.hops);
+        if (seedAmount > requiredNativeValue) {
+          requiredNativeValue = seedAmount;
+        }
         requiredNativeValue += sumMulticallNativeValue(
           segment.mergedPushMulticalls
         );
@@ -1133,17 +1194,27 @@ export async function composeCascadeDetailed(
           const priorPushExecutionMayFundBurn = segments
             .slice(0, segIdxLoop)
             .some((s) => s.type === 'PUSH_EXECUTION');
+          const priorInboundFundingForBurn = getInboundFundingForBurnToken(
+            segments,
+            segIdxLoop,
+            segBurnToken,
+            ctx.pushNetwork
+          );
+          const priorInboundMayFundBurn =
+            onHand + priorInboundFundingForBurn >= segBurnAmount;
           if (
             !sufficient &&
             !cascadeAllowUnderfunded &&
-            !priorPushExecutionMayFundBurn
+            !priorPushExecutionMayFundBurn &&
+            !priorInboundMayFundBurn
           ) {
-            const shortfall = segBurnAmount - onHand;
+            const projectedOnHand = onHand + priorInboundFundingForBurn;
+            const shortfall = segBurnAmount - projectedOnHand;
             fireProgressHook(
               ctx,
               PROGRESS_HOOK.SEND_TX_003_04,
               segBurnAmount,
-              onHand,
+              projectedOnHand,
               shortfall,
               ueaAddress,
               'CASCADE',
@@ -1155,7 +1226,7 @@ export async function composeCascadeDetailed(
             );
             throw new InsufficientUEABalanceError({
               required: segBurnAmount,
-              available: onHand,
+              available: projectedOnHand,
               shortfall,
               ueaAddress,
               pathTag: 'CASCADE',
@@ -1167,6 +1238,11 @@ export async function composeCascadeDetailed(
             printLog(
               ctx,
               `composeCascade — skipping PRC-20 preflight failure for segment ${segIdxLoop}; earlier Push execution may fund ${segBurnToken} before this outbound runs`
+            );
+          } else if (!sufficient && priorInboundMayFundBurn) {
+            printLog(
+              ctx,
+              `composeCascade — skipping PRC-20 preflight failure for segment ${segIdxLoop}; earlier inbound funds ${priorInboundFundingForBurn.toString()} units of ${segBurnToken} before this outbound runs`
             );
           }
         }

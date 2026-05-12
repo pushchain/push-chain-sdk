@@ -535,6 +535,151 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
     expect(req.payload).not.toBe('0x');
   });
 
+  it('treats value-only UOA_TO_PUSH to the UEA as a root PC seed for a downstream outbound hop', async () => {
+    (getCEAAddress as jest.Mock).mockImplementation(
+      async (_uea: string, chain: CHAIN) => ({
+        cea: chain === CHAIN.BNB_TESTNET ? CEA_BNB : CEA_SEPOLIA,
+      })
+    );
+
+    const ctx = makeCtx();
+    const seedAmount = BigInt(15) * PC;
+    const incrementData = PushChain.utils.helpers.encodeTxData({
+      abi: [...COUNTER_ABI],
+      functionName: 'increment',
+    });
+
+    const hop0 = await buildHopDescriptor(
+      ctx,
+      {
+        to: UEA,
+        value: seedAmount,
+        data: '0x',
+      },
+      TransactionRoute.UOA_TO_PUSH,
+      UEA
+    );
+    const hop1 = await buildHopDescriptor(
+      ctx,
+      {
+        to: {
+          address: '0x7777777777777777777777777777777777777777',
+          chain: CHAIN.BNB_TESTNET,
+        },
+        value: BigInt(0),
+        data: incrementData,
+      },
+      TransactionRoute.UOA_TO_CEA,
+      UEA
+    );
+
+    const executeFn = jest.fn(async (params: unknown) => ({
+      hash: `0x${'ef'.repeat(32)}`,
+      params,
+    }));
+    const builder = createCascadedBuilder(
+      ctx,
+      [hop0, hop1].map(prepared),
+      {
+        executeFn,
+        waitForOutboundTxFn: jest.fn(),
+        waitForAllOutboundTxsFn: jest.fn(),
+      } as never
+    );
+
+    await builder.send();
+
+    const executeParams = executeFn.mock.calls[0][0] as {
+      value: bigint;
+      data: MultiCall[];
+    };
+
+    expect(executeParams.value).toBe(seedAmount);
+    expect(executeParams.data).toHaveLength(1);
+    expect(executeParams.data[0].to).toBe(getUniversalGatewayPCAddress());
+
+    const decoded = decodeFunctionData({
+      abi: UNIVERSAL_GATEWAY_PC,
+      data: executeParams.data[0].data,
+    });
+    expect(decoded.functionName).toBe('sendUniversalTxOutbound');
+    const [req] = decoded.args as unknown as [
+      { target: `0x${string}`; amount: bigint; payload: `0x${string}` },
+    ];
+    expect(req.target).toBe(CEA_BNB);
+    expect(req.amount).toBe(BigInt(0));
+    expect(req.payload).not.toBe('0x');
+  });
+
+  it('allows CEA_TO_PUSH inbound funds to satisfy a later outbound burn without an intermediate Push hop', async () => {
+    const ctx = makeCtx();
+    const amount = PushChain.utils.helpers.parseUnits('0.001', 18);
+    const seedAmount = BigInt(5) * PC;
+
+    const hop0 = await buildHopDescriptor(
+      ctx,
+      {
+        from: { chain: CHAIN.ETHEREUM_SEPOLIA },
+        to: UEA,
+        value: seedAmount,
+        data: '0x',
+        funds: {
+          amount,
+          token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
+        },
+      },
+      TransactionRoute.CEA_TO_PUSH,
+      UEA
+    );
+    const hop1 = await buildHopDescriptor(
+      ctx,
+      {
+        to: {
+          address: '0x7777777777777777777777777777777777777777',
+          chain: CHAIN.ETHEREUM_SEPOLIA,
+        },
+        value: BigInt(0),
+        data: '0x',
+        funds: {
+          amount,
+          token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
+        },
+      },
+      TransactionRoute.UOA_TO_CEA,
+      UEA
+    );
+
+    const segments = classifyIntoSegments([hop0, hop1]);
+    expect(segments.map((s) => s.type)).toEqual([
+      'INBOUND_FROM_CEA',
+      'OUTBOUND_TO_CEA',
+    ]);
+
+    const executeFn = jest.fn(async (params: unknown) => ({
+      hash: `0x${'12'.repeat(32)}`,
+      params,
+    }));
+    const builder = createCascadedBuilder(
+      ctx,
+      [hop0, hop1].map(prepared),
+      {
+        executeFn,
+        waitForOutboundTxFn: jest.fn(),
+        waitForAllOutboundTxsFn: jest.fn(),
+      } as never
+    );
+
+    await builder.send();
+
+    const executeParams = executeFn.mock.calls[0][0] as {
+      value: bigint;
+      data: MultiCall[];
+    };
+    expect(executeParams.value).toBe(BigInt(7) * PC);
+    expect(executeParams.data).toHaveLength(1);
+    expect(executeParams.data[0].to).toBe(getUniversalGatewayPCAddress());
+  });
+
   it('does not report success when the Route 3 source-chain tx reverts', async () => {
     const ctx = makeCtx();
     const amountIn = PushChain.utils.helpers.parseUnits('0.001', 18);
