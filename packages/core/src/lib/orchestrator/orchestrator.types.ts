@@ -563,6 +563,8 @@ export interface UniversalOutboundTxRequest {
   amount: bigint;
   /** Gas limit for fee quote (0 = per-chain default resolved by UniversalCore) */
   gasLimit: bigint;
+  /** Gas price override for destination-chain gas (0 = UniversalCore default) */
+  gasPrice: bigint;
   /** Max native PC that may be used for gas swap (0 = uncapped legacy behavior) */
   maxPCForGas: bigint;
   /** Destination execution payload; empty only for explicit funds parking */

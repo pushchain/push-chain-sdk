@@ -26,7 +26,7 @@
 **Hard blockers — must ship in lockstep with contracts:**
 1. EIP-712 domain separator: add `bytes32 salt = block.chainid` (EVM); add salt + hash chainId with keccak256 (SVM) — `signing.ts`
 2. `getOutboundTxGasAndFees` ABI return tuple expanded 5 → 6 (added `gasLimitUsed`) — `prc20.evm.ts` + tuple type in `gas-calculator.ts`
-3. `UniversalOutboundTxRequest` struct gains `uint256 maxPCForGas` between `gasLimit` and `payload` — `universalGatewayPC.evm.ts` + `orchestrator.types.ts`
+3. `UniversalOutboundTxRequest` struct gains `uint256 gasPrice` and `uint256 maxPCForGas` between `gasLimit` and `payload` — `universalGatewayPC.evm.ts` + `orchestrator.types.ts`
 4. CEA `_handleSingleCall` funds-parking: requires BOTH `payload.length == 0` AND `recipient == address(0)` — audit any payload-only multicall the SDK builds
 5. CEA `_handleMigration`: requires `recipient == address(this)` — `upgradeAccount` flow must target self
 
@@ -65,7 +65,7 @@
 | `getOutboundTxGasAndFees` returns 6-tuple (added `uint256 gasLimitUsed` as 6th output) | 🔴 BREAKING (ABI) | (a) Update `outputs` array in `prc20.evm.ts:14-20` to add `{ name: 'gasLimitUsed', type: 'uint256', internalType: 'uint256' }`. (b) Update tuple type in `gas-calculator.ts:196` from `[address, bigint, bigint, bigint, string]` → `[address, bigint, bigint, bigint, string, bigint]`. **viem will throw a decode error against the new contract until the ABI is updated.** SDK can ignore the 6th value initially, but the type widening must happen for compile/decode. |
 | Reverts `ZeroBaseGasLimit()` if base limit not configured for chain | 🟡 NON-BREAKING | Add to error decoder; surface to caller as a typed quoting failure. |
 | New `_validateGasDataFreshness` — reverts `StaleGasData(uint256 observedAt, uint256 nowTs, uint256 maxAge)` when chain price is older than configured `maxStalenessByChainNamespace` | 🟡 NON-BREAKING (functional) | Add `StaleGasData(uint256, uint256, uint256)` to error decoder. Surface a clear "stale relay data" message to caller — actionable: "wait for relayer to push fresh chain meta". |
-| `setChainMeta` rejects `price == 0` (`ZeroGasPrice` error) | 🟢 Admin-only setter — no SDK impact. |
+| `ZeroGasPrice()` can be raised when chain gas price is unset/zero | 🟡 NON-BREAKING (functional) | Add `ZeroGasPrice()` to `prc20.evm.ts` error ABI. This is not only admin-side: both `getOutboundTxGasAndFees` and `getRescueFundsGasLimit` revert with it when the configured gas price is zero. |
 | `BASE_GAS_LIMIT()` removed from `IUniversalCore` interface | 🟡 NON-BREAKING | The ABI entry at `prc20.evm.ts:25-30` is dead code. SDK does not call this function from `src/`. Remove the entry; update doc comment at `orchestrator.types.ts:559` from "0 = default BASE_GAS_LIMIT" to "0 = per-chain default (resolved by UniversalCore)". |
 | New `isSupportedToken(address) → bool` on `IUniversalCore` | 🟡 NON-BREAKING (optional) | Optional pre-flight check before `sendUniversalTxOutbound`. UGPC validates server-side anyway (audit Gateway UGPC #3), so SDK can rely on contract revert and skip the extra read. |
 | UVCore admin setters renamed `set*` → `update*` (12 functions: `setProtocolFeeByToken`, `setGasPCPool`, `setGasTokenPRC20`, `setAutoSwapSupported`, `setWPC`, `setUniversalGatewayPC`, `setUniswapV3Addresses`, `setDefaultFeeTier`, `setDefaultDeadlineMins`, `setBaseGasLimitByChain`, `setRescueFundsGasLimitByChain`). `setChainMeta` NOT renamed. | 🟢 Admin-only — none in current SDK ABI surface. |
@@ -82,7 +82,7 @@
 
 | Change | Severity | Required SDK action |
 |---|---|---|
-| `UniversalOutboundTxRequest` struct gains NEW field `uint256 maxPCForGas` between `gasLimit` and `payload` | 🔴 BREAKING (calldata layout) | (a) Add `{ internalType: 'uint256', name: 'maxPCForGas', type: 'uint256' }` to ABI tuple at `universalGatewayPC.evm.ts:45` between `gasLimit` and `payload`. (b) Add `maxPCForGas: bigint;` field to TS interface at `orchestrator.types.ts:548-565` in the same position. (c) Default to `0n` (= no cap, preserves old behavior) in every call site that builds this struct: `route-handlers.ts` (multiple sites including `buildOutboundRequest` callers), `cascade.ts`. **If SDK omits it, abi.encoded calldata misaligns — `payload`/`revertRecipient` decode as garbage and the call reverts or worse, mis-routes funds.** |
+| `UniversalOutboundTxRequest` struct gains NEW fields `uint256 gasPrice` and `uint256 maxPCForGas` between `gasLimit` and `payload` | 🔴 BREAKING (function selector + calldata layout) | (a) Add `{ internalType: 'uint256', name: 'gasPrice', type: 'uint256' }` and `{ internalType: 'uint256', name: 'maxPCForGas', type: 'uint256' }` to the ABI tuple after `gasLimit`. (b) Add `gasPrice: bigint;` and `maxPCForGas: bigint;` to the TS interface in the same position. (c) Let `gasPrice` default to `0n` and keep `maxPCForGas` defaulting to `0n` in every call site that builds this struct. **If the SDK omits `gasPrice`, it generates the old 7-field selector `0x2a494d31` instead of the current `0x77b86bec`, so UGPC reverts before decoding.** |
 | New `updateUniversalCore(address)` admin setter + `UniversalCoreUpdated` event | 🟢 Admin-only. |
 | `UNIVERSAL_CORE()` accessor renamed to `universalCore()`; `VAULT_PC()` → `vaultPC()` | 🔴 BREAKING for SDK live reads | ABI at `universalGatewayPC.evm.ts:60-65` declares `name: 'UNIVERSAL_CORE'`, and live `readContract` callers exist in `gas-calculator.ts`, `pc-usd-oracle.ts`, and `cascade.ts`. Rename the ABI entry and all call sites to `universalCore`. |
 | `_burnPRC20` reverts `TokenTransferFailed(token, amount)` on PRC20 `transferFrom` returning false | 🟡 NON-BREAKING | Add to error decoder. Existing flows already use compliant tokens. |
@@ -234,14 +234,14 @@ Severity: 🟡 NON-BREAKING (developer-experience improvement)
 | 2 | 🔴 P0 | `packages/core/src/lib/orchestrator/internals/signing.ts:182-203` | EVM `signTypedData` domain: add `salt: padHex(toHex(BigInt(pushChainId)), { size: 32 })`. Decide source of pushChainId — likely Push Chain mainnet/testnet chainId, NOT the source chain. | 15 min |
 | 3 | 🔴 P0 | `packages/core/src/lib/constants/abi/prc20.evm.ts:14-20` | Add 6th output `gasLimitUsed: uint256` to `getOutboundTxGasAndFees`. Remove dead `BASE_GAS_LIMIT` ABI entry (lines 25-30). | 5 min |
 | 4 | 🔴 P0 | `packages/core/src/lib/orchestrator/internals/gas-calculator.ts:196` | Widen tuple type `[address, bigint, bigint, bigint, string]` → `[address, bigint, bigint, bigint, string, bigint]`. Optionally read `gasLimitUsed` from index 5. | 5 min |
-| 5 | 🔴 P0 | `packages/core/src/lib/constants/abi/universalGatewayPC.evm.ts:42-48` | Insert `{ internalType: 'uint256', name: 'maxPCForGas', type: 'uint256' }` between `gasLimit` and `payload` in struct components. | 2 min |
-| 6 | 🔴 P0 | `packages/core/src/lib/orchestrator/orchestrator.types.ts:548-565` | Add `maxPCForGas: bigint;` field to `UniversalOutboundTxRequest` interface between `gasLimit` and `payload`. Update jsdoc. | 2 min |
-| 7 | 🔴 P0 | All callers of `buildOutboundRequest` (multiple sites in `route-handlers.ts`, `cascade.ts`) | Pass `maxPCForGas: 0n` (no cap) by default. Optionally expose as user param. | 30 min |
+| 5 | 🔴 P0 | `packages/core/src/lib/constants/abi/universalGatewayPC.evm.ts:42-49` | Insert `{ internalType: 'uint256', name: 'gasPrice', type: 'uint256' }` and `{ internalType: 'uint256', name: 'maxPCForGas', type: 'uint256' }` after `gasLimit` in struct components. | 5 min |
+| 6 | 🔴 P0 | `packages/core/src/lib/orchestrator/orchestrator.types.ts:548-566` | Add `gasPrice: bigint;` and `maxPCForGas: bigint;` fields to `UniversalOutboundTxRequest` after `gasLimit`. Update jsdoc. | 5 min |
+| 7 | 🔴 P0 | All callers of `buildOutboundRequest` (multiple sites in `route-handlers.ts`, `cascade.ts`) | Preserve the existing `maxPCForGas` argument; let optional `gasPrice` default to `0n`. Keep `maxPCForGas` exposed as user param. | 30 min |
 | 8 | 🔴 P0 | `packages/core/src/lib/orchestrator/internals/account-manager.ts:108-189` (upgradeAccount) | Verify migration call sets `recipient = ueaAddress` (CEA-self-target). Add unit test. | 30 min |
 | 9 | 🟡 P1 | `packages/core/src/lib/orchestrator/internals/cascade.ts:1045-1065` | **Remove** redundant `[approve(0), approve(amount)]` pre-calls before `sendUniversalTxToUEA` — contract handles internally now. | 10 min |
 | 10 | 🟡 P1 | `packages/core/src/lib/orchestrator/internals/route-handlers.ts:1166-1190` | Same: remove `[approve(0), approve(amount)]` pre-calls. | 10 min |
 | 11 | 🟡 P1 | `packages/core/src/lib/orchestrator/internals/route-handlers.ts:2013-2033` | Same: remove `[approve(0), approve(amount)]` pre-calls. | 10 min |
-| 12 | 🟡 P1 | All ABIs (`prc20.evm.ts`, `uea.evm.ts`, `cea.evm.ts`, `universalGatewayPC.evm.ts`) | Add new error definitions: `CorePaused`, `ZeroBaseGasLimit`, `StaleGasData`, `PRC20OperationFailed`, `NonceMismatch`, `UEAAlreadyRegistered`, `TokenTransferFailed`. | 30 min |
+| 12 | 🟡 P1 | All ABIs (`prc20.evm.ts`, `uea.evm.ts`, `cea.evm.ts`, `universalGatewayPC.evm.ts`) | Add new error definitions: `CorePaused`, `ZeroBaseGasLimit`, `ZeroGasPrice`, `ZeroAddress`, `StaleGasData`, `PRC20OperationFailed`, `NonceMismatch`, `UEAAlreadyRegistered`, `TokenTransferFailed`. | 30 min |
 | 13 | 🔴 P0 | `packages/core/src/lib/constants/abi/universalGatewayPC.evm.ts:61`; callers in `gas-calculator.ts`, `pc-usd-oracle.ts`, `cascade.ts` | Rename ABI and `readContract` calls from `UNIVERSAL_CORE` → `universalCore`. | 15 min |
 | 14 | 🟡 P1 | `packages/core/src/lib/universal-tx-detector/events.ts:5-10` | Update comment block: `UniversalTxExecuted → ICEA.sol` (was `IUniversalGateway.sol`). | 1 min |
 | 15 | 🟡 P2 | `packages/core/src/lib/orchestrator/internals/route-handlers.ts:1584, 1845, 1972` | Drop the `burnAmount = BigInt(1)` workarounds for paths that now flow through `sendUniversalTxToUEA` (Core #22 allows amount=0). Verify per-call-site whether path is Push→Source via UGPC (already permitted) or via CEA→UG (newly permitted). | 30 min + tests |
@@ -261,7 +261,7 @@ From the audit doc's Review Tasks tables, these tests need updating:
 | CEA `_handleMigration` | Update upgradeAccount tests to assert `recipient == ueaAddress`. Files: `account-manager` tests. |
 | UEAFactory `getOriginForUEA` | Confirm SDK doesn't break when `pushChainId` is configurable (different value mainnet vs testnet). Add test using mocked non-"42101" return. |
 | UEA `domainSeparator` (EVM + SVM) | Verify signatures verify against new `bytes32 salt` domain. Files: `signing-payload.spec.ts`, `push-chain.signing.spec.ts`. |
-| UGPC `sendUniversalTxOutbound` | Verify new `maxPCForGas` field doesn't break encoding when set to 0. Add test for non-zero cap with refund path. |
+| UGPC `sendUniversalTxOutbound` | Verify new `gasPrice` + `maxPCForGas` fields encode the 8-field selector `0x77b86bec` with defaults set to 0. Add test for non-zero cap with refund path. |
 | UGPC `_fetchOutboundTxGasAndFees` | Verify gas+fee quoting returns 6-tuple correctly; SDK ignores 6th value safely. |
 | UG `sendUniversalTx (token overload)` | Regression test: assert no `msg.value` is sent in token-overload path (already correct in `execute-funds-payload.ts:268`). |
 
@@ -353,7 +353,7 @@ return keccak256(
 );
 ```
 
-### 14.2 — `maxPCForGas` user-facing API ✅ INFORMED
+### 14.2 — `gasPrice` + `maxPCForGas` outbound request fields ✅ CONFIRMED
 
 **Source:** `gateway-contracts:contracts/evm-gateway/src/UniversalGatewayPC.sol:138-148` and `libraries/TypesUGPC.sol`.
 
@@ -364,7 +364,8 @@ struct UniversalOutboundTxRequest {
     address token;
     uint256 amount;
     uint256 gasLimit;
-    uint256 maxPCForGas;             // ← NEW field, between gasLimit and payload
+    uint256 gasPrice;                // ← NEW field, between gasLimit and maxPCForGas
+    uint256 maxPCForGas;             // ← NEW field, between gasPrice and payload
     bytes   payload;
     address revertRecipient;
 }
@@ -372,6 +373,12 @@ struct UniversalOutboundTxRequest {
 
 **Confirmed contract logic:**
 ```solidity
+if (req.gasPrice > 0) {
+    if (req.gasPrice < gasPrice) revert Errors.GasPriceBelowBase();
+    gasPrice = req.gasPrice;
+    gasFee = gasPrice * gasLimitUsed;
+}
+
 uint256 pcForSwap = msg.value - protocolFee;
 if (req.maxPCForGas != 0) {
     if (req.maxPCForGas > pcForSwap) revert Errors.InvalidAmount();
@@ -386,14 +393,17 @@ _swapAndCollectFees(gasToken, pcForSwap, gasFee);
 ```
 
 **Semantics:**
+- `gasPrice == 0` → use UniversalCore's per-chain default gas price.
+- `gasPrice > 0` → override destination-chain gas price. UGPC rejects values below the base quote with `GasPriceBelowBase`.
 - `maxPCForGas == 0` → no cap (legacy behavior). All `msg.value − protocolFee` swapped for gas token.
 - `maxPCForGas > 0` → cap the PC used for gas swap; refund excess back to caller (`msg.sender`).
 - `maxPCForGas > pcForSwap` → reverts `InvalidAmount`.
 - Use case: protects user against gas-token-vs-PC price slippage; without it, a price drop could spend the entire forwarded msg.value on the swap.
 
 **SDK recommendation:**
-- **Phase 1 (audit-cutover):** Default `maxPCForGas: 0n` in all SDK callers (preserves current behavior, prevents struct-layout breakage).
+- **Phase 1 (audit-cutover):** Default `gasPrice: 0n` and `maxPCForGas: 0n` in all SDK callers (preserves current behavior, prevents selector/layout breakage). Preserve `buildOutboundRequest` compatibility by keeping `maxPCForGas` as the 7th argument and adding `gasPrice` as the optional 8th argument.
 - **Phase 2 (current SDK branch):** Keep the runtime default at `0n`, expose `maxPCForGas?: bigint`, and provide opt-in helper APIs `quoteMaxPCForGasCap()` / `quoteMaxPCForGasCapFromNativeValue()` with a default 10% buffer. Revisit automatic defaults only after post-deploy e2e/telemetry confirms the cap does not create unexpected `InvalidAmount` or under-funded gas behavior.
+- Add `GasPriceBelowBase()` to the UGPC ABI error list for typed override failure decoding.
 
 ### 14.3 — `gasLimitUsed` 6-tuple ordering ✅ CONFIRMED
 
@@ -543,10 +553,10 @@ Adding these as P0 to the punch list (Section 11):
 | Repo | Required change | Owner |
 |---|---|---|
 | `push-chain-core-contracts` | Already on `audit-main-fixes`. SDK pulls from this. | Contracts team |
-| `push-chain-gateway-contracts` | Already on `origin/audit-main-fixes`. NOTE: user's local checkout is BEHIND origin by 10 commits — `git pull origin audit-main-fixes` to sync. | Gateway team |
+| `push-chain-gateway-contracts` | Local checkout is on `audit-main-fixes` at `d696777` / `origin/audit-main-fixes`, including `abd0ee0` (`upgc gasPrice fix`). | Gateway team |
 | `push-chain` (Cosmos module — latest checked branches) | Verified on 2026-05-11: local `cherry/release-pipeline-onto-audit-fixes` tracks `origin/audit-fixes` at `7d748bdf` and is current, but `x/uexecutor/keeper/evm.go:194 CallUEAMigrateUEA` still calls obsolete `migrateUEA` ABI fn (line 221). README says the standalone message path was removed, so code/docs disagree. **Decide:** keep `MsgMigrateUEA` proto as a wrapper around execute-payload or delete it entirely. | Push-chain Go team |
 | `push-chain-sdk` (this repo) | All items in the punch list above. | SDK team (Shoaib) |
 
 ---
 
-*End of document. Branch comparison: `audit-main` → `audit-main-fixes`. Generated 2026-05-06. Open questions resolved by direct contract inspection on 2026-05-06.*
+*End of document. Branch comparison: `audit-main` → `audit-main-fixes`. Generated 2026-05-06. Open questions resolved by direct contract inspection on 2026-05-06; UGPC gasPrice selector issue rechecked on 2026-05-12 against `d696777`.*

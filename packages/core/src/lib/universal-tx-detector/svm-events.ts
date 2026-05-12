@@ -14,7 +14,7 @@ const toHex = (bytes: number[]): string =>
 /**
  * Mapping: 8-byte discriminator (lowercase hex, no 0x) → Anchor event name.
  * Only events with EVM classifier parity are listed; the keeper-agnostic
- * ones (BlockUsdCapUpdated, ProtocolFeeCollected, etc.) are intentionally
+ * ones (BlockUsdCapUpdated, inbound-fee events, etc.) are intentionally
  * skipped — they wouldn't classify to any UniversalTxKind anyway.
  */
 export const SVM_EVENT_DISCRIMINATORS: Record<string, string> = {

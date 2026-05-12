@@ -3,7 +3,7 @@
 **Coordinates with:** Contracts team (push-chain-core-contracts), Gateway team (push-chain-gateway-contracts — covers EVM Gateway + SVM Gateway), Cosmos module team (push-chain)
 **Contract branches:** `audit-main` (pre) → `audit-main-fixes` (post)
 **Date:** 2026-05-06
-**Last checked:** 2026-05-11
+**Last checked:** 2026-05-12
 
 ---
 
@@ -20,13 +20,13 @@ Without these SDK updates, every UEA-signed tx, every Push-Chain-outbound tx, an
 
 The biggest surprise: **migration is no longer a separate signing surface** — it's now dispatched inside `executeUniversalTx` via a 4-byte selector. The current `signMigrationPayload` flow is obsolete and needs a full refactor. The latest checked `push-chain` branch is current, but its Go/proto implementation still exposes the legacy `MsgMigrateUEA -> migrateUEA` path while its README describes the new execute-payload design; treat this as a cross-repo implementation mismatch, not a stale-branch issue.
 
-### Implementation status — 2026-05-11
+### Implementation status — 2026-05-12
 
 Completed in the SDK branch:
 
 - EIP-712 domain salt for EVM and SVM signing.
 - UniversalCore 6-tuple ABI and `gasLimitUsed` propagation.
-- UGPC `UniversalOutboundTxRequest.maxPCForGas` ABI/type/call-site propagation, exposed as optional `ExecuteParams.maxPCForGas` with `0n` legacy default.
+- UGPC `UniversalOutboundTxRequest.gasPrice` + `maxPCForGas` ABI/type/call-site propagation. `gasPrice` defaults to `0n` (UniversalCore default), and `maxPCForGas` is exposed as optional `ExecuteParams.maxPCForGas` with `0n` legacy default.
 - UGPC `UNIVERSAL_CORE()` → `universalCore()` ABI/call-site rename.
 - SVM Gateway IDL updates for `UniversalTxFinalized`, `Config`, `OperatorChanged`, `InsufficientGasBudget`, and `TssPda.authority` docs.
 - CEA funds-parking invariant in SDK builders, redundant CEA pre-approvals removed, zero-amount SVM/CEA workarounds dropped where no longer needed.
@@ -43,7 +43,7 @@ Verification in this branch:
 
 - `yarn tsc -p packages/core/tsconfig.lib.json --noEmit` passes.
 - `yarn tsc -p packages/core/tsconfig.spec.json --noEmit` passes.
-- Focused audit regression suites for signing, builders/cascade, gas sizing, `maxPCForGas` helpers, and universal-tx detector pass.
+- Focused audit regression suites for signing, builders/cascade, gas sizing, `maxPCForGas` helpers, outbound selector encoding, and universal-tx detector pass.
 - `NX_DAEMON=false NX_ISOLATE_PLUGINS=false yarn nx build core` passes. Plain Nx still has an environment/config issue: daemon socket creation is denied in the sandbox, and `nx report` shows root `nx@20.8.0` with `@nx/*@20.1.4` plugins.
 - Full `packages/core/src` Jest run passes all local suites except `universal/account/account.spec.ts`, which performs live Push RPC calls and fails in the sandbox with DNS resolution errors.
 
@@ -189,9 +189,9 @@ Also remove the dead `BASE_GAS_LIMIT` ABI entry at `prc20.evm.ts:25-30` (functio
 
 ---
 
-### 1.3. `UniversalOutboundTxRequest` struct gains `maxPCForGas` field
+### 1.3. `UniversalOutboundTxRequest` struct gains `gasPrice` and `maxPCForGas` fields
 
-**Why it matters:** struct field order matters in ABI encoding. If SDK omits the new field, calldata misaligns and `payload`/`revertRecipient` decode as garbage — the call reverts or worse, mis-routes funds.
+**Why it matters:** struct field order matters in ABI encoding, and the tuple arity changes the `sendUniversalTxOutbound` selector. The old 7-field request produces selector `0x2a494d31`; the current 8-field request on `audit-main-fixes` produces selector `0x77b86bec`. If the SDK omits `gasPrice`, the call hits the wrong selector and reverts before decoding.
 
 **Contract change** (`TypesUGPC.sol`):
 
@@ -201,7 +201,8 @@ struct UniversalOutboundTxRequest {
     address token;
     uint256 amount;
     uint256 gasLimit;
-    uint256 maxPCForGas;     // NEW — between gasLimit and payload
+    uint256 gasPrice;        // NEW — between gasLimit and maxPCForGas
+    uint256 maxPCForGas;     // NEW — between gasPrice and payload
     bytes   payload;
     address revertRecipient;
 }
@@ -209,6 +210,8 @@ struct UniversalOutboundTxRequest {
 
 **Semantics:**
 
+- `gasPrice == 0` → use UniversalCore's per-chain default gas price
+- `gasPrice > 0` → override destination-chain gas price; must be at least the UniversalCore base gas price or UGPC reverts `GasPriceBelowBase`
 - `maxPCForGas == 0` → no cap (legacy behavior; safe default)
 - `maxPCForGas > 0` → caps PC used for gas swap; refunds excess to caller
 - `maxPCForGas > (msg.value − protocolFee)` → reverts `InvalidAmount`
@@ -222,12 +225,13 @@ struct UniversalOutboundTxRequest {
 **SDK action:**
 
 ```ts
-// universalGatewayPC.evm.ts — insert maxPCForGas in the tuple
+// universalGatewayPC.evm.ts — insert gasPrice and maxPCForGas in the tuple
 components: [
   { internalType: 'bytes',   name: 'recipient',       type: 'bytes'   },
   { internalType: 'address', name: 'token',           type: 'address' },
   { internalType: 'uint256', name: 'amount',          type: 'uint256' },
   { internalType: 'uint256', name: 'gasLimit',        type: 'uint256' },
+  { internalType: 'uint256', name: 'gasPrice',        type: 'uint256' },  // NEW
   { internalType: 'uint256', name: 'maxPCForGas',     type: 'uint256' },  // NEW
   { internalType: 'bytes',   name: 'payload',         type: 'bytes'   },
   { internalType: 'address', name: 'revertRecipient', type: 'address' },
@@ -241,13 +245,16 @@ export interface UniversalOutboundTxRequest {
   token:            `0x${string}`;
   amount:           bigint;
   gasLimit:         bigint;
+  gasPrice:         bigint;  // NEW — 0 = UniversalCore per-chain default
   maxPCForGas:      bigint;  // NEW — 0 = no cap on PC used for gas swap
   payload:          `0x${string}`;
   revertRecipient:  `0x${string}`;
 }
 ```
 
-Pass `maxPCForGas: 0n` in every site that constructs this struct (preserves legacy behavior). Optional follow-up: expose `maxPCForGas` as user-controllable param in `UniversalExecuteParams`.
+Let `gasPrice` default to `0n` in every site that constructs this struct, and keep `maxPCForGas` defaulting to `0n` unless callers opt in (preserves legacy behavior). For API compatibility, `buildOutboundRequest` keeps `maxPCForGas` as its existing 7th argument and adds `gasPrice` as an optional 8th argument. Optional follow-up: expose `gasPrice` as an advanced override only if callers have a real use case; keep `maxPCForGas` user-controllable via `UniversalExecuteParams`.
+
+Also add `GasPriceBelowBase()` to the UGPC ABI error list so override failures decode as typed errors.
 
 ---
 
@@ -664,12 +671,13 @@ We checked but no SDK changes are needed for:
 - `update_tss` authority moved admin → operator — admin-only
 - `init_tss` no longer writes legacy `authority` field — admin-only
 - `set_token_rate_limit` adds `trusted_mint_authority` / `trusted_freeze_authority` args — admin-only
-- `set_protocol_fee` adds `MAX_PROTOCOL_FEE_LAMPORTS` cap — admin-only
+- inbound-fee setter/fee-cap changes — admin-only
 - `revert_universal_tx` now binds `revert_msg_hash` into TSS message — TSS-side only, SDK doesn't sign these
 - `RescueFunds` / `RevertUniversalTx` SPL vault account constraints tightened to canonical ATA — TSS-side only
 - `send_tx_with_funds_route` / `send_tx_with_gas_route` internal validation tightening — payload-shape rules now derived from route, no SDK-visible difference for valid requests
 - `send_universal_tx_to_uea` payload-only allowance (CEA-side change) — internal CEA helper, not invoked by SDK directly
 - New event `OperatorChanged` — not consumed by SDK detector classifier (unknown discriminator gets skipped by `discriminatorHex` lookup)
+- Canonical generated SVM IDL is still pending from Gateway. Current SDK send/detector runtime paths were checked, but the checked-in JSON still has stale admin/inbound-fee/TSS PDA metadata (`protocol_fee` names, `tsspda_v2` seed, admin instruction shapes). Do not hand-edit discriminators; replace with the canonical generated artifact when available.
 
 (Full mapping in companion doc `docs/audit-2026-05/sdk-audit-deep-dive.md` Section 13.)
 
@@ -684,9 +692,9 @@ We checked but no SDK changes are needed for:
 | 2   | 🔴 P0    | `signing.ts:182-203`                                                   | EVM `signTypedData`: add `salt` to domain object                                                                                                                    |
 | 3   | 🔴 P0    | `prc20.evm.ts:14-20`                                                   | Add 6th output `gasLimitUsed` to `getOutboundTxGasAndFees`. Delete dead `BASE_GAS_LIMIT` entry at lines 25-30.                                                      |
 | 4   | 🔴 P0    | `gas-calculator.ts:196`                                                | Widen tuple type to 6 elements                                                                                                                                      |
-| 5   | 🔴 P0    | `universalGatewayPC.evm.ts:42-48`                                      | Insert `maxPCForGas: uint256` between `gasLimit` and `payload`                                                                                                      |
-| 6   | 🔴 P0    | `orchestrator.types.ts:548-565`                                        | Add `maxPCForGas: bigint` field to `UniversalOutboundTxRequest`                                                                                                     |
-| 7   | 🔴 P0    | `route-handlers.ts`, `cascade.ts` (all `buildOutboundRequest` callers) | Pass `maxPCForGas: 0n` (no cap)                                                                                                                                     |
+| 5   | 🔴 P0    | `universalGatewayPC.evm.ts:42-49`                                      | Insert `gasPrice: uint256` and `maxPCForGas: uint256` between `gasLimit` and `payload`                                                                               |
+| 6   | 🔴 P0    | `orchestrator.types.ts:548-566`                                        | Add `gasPrice: bigint` and `maxPCForGas: bigint` fields to `UniversalOutboundTxRequest`                                                                              |
+| 7   | 🔴 P0    | `route-handlers.ts`, `cascade.ts` (all `buildOutboundRequest` callers) | Preserve existing `maxPCForGas` argument; let optional `gasPrice` default to `0n`                                                                                     |
 | 8   | 🔴 P0    | `constants/migration.ts` (NEW)                                         | Define `MIGRATION_SELECTOR = bytes4(keccak256("UEA_MIGRATION"))`                                                                                                    |
 | 9   | 🔴 P0    | `account-manager.ts:108-189`                                           | Refactor `upgradeAccount` to build a UniversalPayload with `data = MIGRATION_SELECTOR`, `to = ueaAddress`, sign via `signUniversalPayload`, submit via execute path |
 | 10  | 🔴 P0    | `signing.ts:117-162, 220-280`                                          | Delete `computeMigrationHash` and `signMigrationPayload` (or repurpose as thin wrapper)                                                                             |
@@ -695,7 +703,7 @@ We checked but no SDK changes are needed for:
 | 13  | 🟡 P1    | `cascade.ts:1045-1065`                                                 | Remove redundant `[approve(0), approve(amount)]` pre-calls before `sendUniversalTxToUEA`                                                                            |
 | 14  | 🟡 P1    | `route-handlers.ts:1166-1190`                                          | Same removal                                                                                                                                                        |
 | 15  | 🟡 P1    | `route-handlers.ts:2013-2033`                                          | Same removal                                                                                                                                                        |
-| 16  | 🟡 P1    | All ABIs                                                               | Add new error definitions for typed decoding                                                                                                                        |
+| 16  | 🟢 Done  | `prc20.evm.ts`                                                         | Added UniversalCore/Common custom errors for typed decoding, including quote-path `ZeroGasPrice()` and `ZeroAddress()`.                                             |
 | 17  | 🔴 P0    | `universalGatewayPC.evm.ts:61`; callers in `gas-calculator.ts`, `pc-usd-oracle.ts`, `cascade.ts` | Rename ABI entry and `readContract` calls from `UNIVERSAL_CORE` → `universalCore`                                                                                   |
 | 18  | 🟡 P1    | `events.ts:5-10`                                                       | Update source comment: `UniversalTxExecuted → ICEA.sol`                                                                                                             |
 | 19  | 🟡 P1    | `payload-builders.ts`                                                  | Add invariant + test: `payload.length === 0 ⇒ recipient === ZERO_ADDRESS`                                                                                           |
@@ -718,8 +726,8 @@ We checked but no SDK changes are needed for:
 | Repo                           | Required change                                                                                                                                                                                                                                                                                                              | Blocks SDK?                                                    |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | `push-chain-core-contracts`    | On `audit-main-fixes`. Ready.                                                                                                                                                                                                                                                                                                | No — already done.                                             |
-| `push-chain-gateway-contracts` (EVM Gateway) | On `audit-main-fixes`. **Local checkout 10 commits behind origin** — `git pull origin audit-main-fixes` to sync. Ready after pull.                                                                                                                                                                                                       | No — sync only.                                                |
-| `push-chain-gateway-contracts` (SVM Gateway) | Same repo, post-audit changes deployed to existing SVM program address (no PDA seed changes, no program re-deploy required). The SDK-local IDL has been updated for the audited event/struct schemas. **Confirm with Gateway team:** whether the canonical post-audit IDL artifact exactly matches the SDK-local JSON. | No for the current SDK branch unless canonical IDL differs. |
+| `push-chain-gateway-contracts` (EVM Gateway) | On `audit-main-fixes` at `d696777` / `origin/audit-main-fixes`, including `abd0ee0` (`upgc gasPrice fix`). `UniversalOutboundTxRequest` now has `gasPrice` between `gasLimit` and `maxPCForGas`.                                                                                                      | No — SDK ABI/types/call sites updated.                         |
+| `push-chain-gateway-contracts` (SVM Gateway) | Same repo, post-audit source checked. Runtime SDK send/detector paths are compatible, but the SDK-local IDL still needs replacement with the canonical generated artifact to capture admin instruction, inbound-fee event, and TSS PDA seed metadata exactly. | No for current SDK send/detector paths; yes for full IDL/API parity. |
 | `push-chain` (Cosmos module — latest checked branch) | Verified on 2026-05-11: local `cherry/release-pipeline-onto-audit-fixes` tracks `origin/audit-fixes` at `7d748bdf` and is current, but `x/uexecutor/keeper/evm.go:194 CallUEAMigrateUEA` still calls obsolete `migrateUEA` ABI fn at line 221. The README says this standalone path was removed, so code/docs disagree. Must confirm whether `MsgMigrateUEA` becomes a wrapper around `MsgExecutePayload` or is deleted entirely. | **YES for `upgradeAccount()` only** — other SDK signing/ABI/IDL changes can proceed. |
 
 
@@ -732,7 +740,7 @@ We checked but no SDK changes are needed for:
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | EIP-712 (EVM + SVM)                     | Verify signatures verify against new `bytes32 salt` domain. Files: `signing-payload.spec.ts`, `push-chain.signing.spec.ts`. Add new fixtures using post-audit typehash. |
 | `getOutboundTxGasAndFees`               | Confirm 6-tuple decode works; SDK ignores 6th value safely.                                                                                                             |
-| `UniversalOutboundTxRequest`            | Verify new `maxPCForGas` field doesn't break encoding when set to `0n`. Add test for non-zero cap with refund path.                                                     |
+| `UniversalOutboundTxRequest`            | Verify new `gasPrice` + `maxPCForGas` fields encode the 8-field selector `0x77b86bec` with defaults set to `0n`. Add test for non-zero cap with refund path.              |
 | `sendUniversalTxToUEA`                  | New tests: zero-amount payload-only sends now succeed; ERC-20 lifecycle (no SDK pre-approves needed).                                                                   |
 | `_handleMulticall` revert bubbling      | Update tests pinned to `ExecutionFailed`; assert bubbled revert reasons.                                                                                                |
 | `_handleSingleCall` funds-parking guard | Add test: payload-only with non-zero recipient is rejected SDK-side (or by contract).                                                                                   |

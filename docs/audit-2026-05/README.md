@@ -3,7 +3,7 @@
 This folder contains everything related to the May 2026 contract audit and the resulting SDK changes required.
 
 **Audit comparison:** `audit-main` (pre-audit) → `audit-main-fixes` (post-audit)
-**Date:** 2026-05-11
+**Date:** 2026-05-12
 **SDK owner:** Shoaib
 
 ---
@@ -38,7 +38,7 @@ These were inspected directly via `git show` against the post-audit branches to 
 | Repo | Path | Branch checked |
 |---|---|---|
 | `push-chain-core-contracts` | `/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-core-contracts` | `origin/audit-main-fixes` |
-| `push-chain-gateway-contracts` | `/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-gateway-contracts` | `origin/audit-main-fixes` (note: local checkout was 10 commits behind origin during analysis) |
+| `push-chain-gateway-contracts` | `/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-gateway-contracts` | Local `audit-main-fixes` at `d696777` / `origin/audit-main-fixes` |
 | `push-chain` (Cosmos module) | `/Users/shoaibmohammed/Desktop/work/PUSH/push-chain` | Local `cherry/release-pipeline-onto-audit-fixes` tracking `origin/audit-fixes` at `7d748bdf` as of 2026-05-11; also checked `origin/cherry/release-pipeline-onto-audit-fixes` |
 
 ### Specific contract files inspected
@@ -54,9 +54,9 @@ These were inspected directly via `git show` against the post-audit branches to 
 - `src/Interfaces/IUEAFactory.sol`
 - `src/libraries/Types.sol` — `MIGRATION_SELECTOR = bytes4(keccak256("UEA_MIGRATION"))`
 
-**push-chain-gateway-contracts (`origin/audit-main-fixes`):**
-- `contracts/evm-gateway/src/UniversalGatewayPC.sol` — sendUniversalTxOutbound + maxPCForGas refund logic (lines 102-175)
-- `contracts/evm-gateway/src/libraries/TypesUGPC.sol` — confirmed `UniversalOutboundTxRequest` struct field order with `maxPCForGas` between `gasLimit` and `payload`
+**push-chain-gateway-contracts (`audit-main-fixes` / `origin/audit-main-fixes`):**
+- `contracts/evm-gateway/src/UniversalGatewayPC.sol` — sendUniversalTxOutbound + gasPrice override + maxPCForGas refund logic
+- `contracts/evm-gateway/src/libraries/TypesUGPC.sol` — confirmed `UniversalOutboundTxRequest` struct field order with `gasPrice` between `gasLimit` and `maxPCForGas`
 - `contracts/evm-gateway/src/UniversalGateway.sol` — TX_TYPE post-fee inference, token-overload msg.value rejection
 - `contracts/evm-gateway/src/Vault.sol`, `VaultPC.sol`
 
@@ -108,7 +108,7 @@ These external repos must ship changes before the SDK can fully cut over. Tracke
 |---|---|---|
 | `push-chain-core-contracts` | Done — on `audit-main-fixes` | No |
 | `push-chain-gateway-contracts` (EVM Gateway) | Done — on `origin/audit-main-fixes` | No |
-| `push-chain-gateway-contracts` (SVM Gateway IDL artifact) | SDK-local IDL schema updated for audited event/config changes; still prefer canonical artifact confirmation from Gateway team | No for current SDK branch unless canonical IDL differs |
+| `push-chain-gateway-contracts` (SVM Gateway IDL artifact) | Runtime send path checked against source; canonical generated IDL still needed to sync admin instructions, inbound-fee event names, and TSS PDA seed metadata | No for current SDK send/detector paths; yes for full IDL/API parity |
 | `push-chain` Cosmos module migration refactor | Current branch checked; implementation still calls obsolete `migrateUEA` while README describes execute-payload migration | Yes for `upgradeAccount()` only — other SDK audit changes can proceed |
 
 ## Current execution note

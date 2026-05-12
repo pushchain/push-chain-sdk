@@ -262,9 +262,10 @@ export function buildSendUniversalTxToUEA(
  * @param prc20Token - PRC20 token address to burn (or address(0) for native)
  * @param amount - Amount to burn
  * @param gasLimit - Gas limit for fee calculation
- * @param maxPCForGas - Max native PC used for gas swap (0 = uncapped)
  * @param payload - Destination execution payload
  * @param revertRecipient - Address to receive funds on revert
+ * @param maxPCForGas - Max native PC used for gas swap (0 = uncapped)
+ * @param gasPrice - Destination-chain gas price override (0 = UniversalCore default)
  * @returns UniversalOutboundTxRequest object
  */
 export function buildOutboundRequest(
@@ -274,13 +275,15 @@ export function buildOutboundRequest(
   gasLimit: bigint,
   payload: `0x${string}`,
   revertRecipient: `0x${string}`,
-  maxPCForGas: bigint = BigInt(0)
+  maxPCForGas: bigint = BigInt(0),
+  gasPrice: bigint = BigInt(0)
 ): UniversalOutboundTxRequest {
   return {
     target,
     token: prc20Token,
     amount,
     gasLimit,
+    gasPrice,
     maxPCForGas,
     payload,
     revertRecipient,
