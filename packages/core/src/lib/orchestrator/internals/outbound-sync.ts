@@ -6,7 +6,6 @@
  */
 
 import { createPublicClient, fallback, http } from 'viem';
-import { bs58 } from '../../internal/bs58';
 import { CHAIN_INFO, VM_NAMESPACE } from '../../constants/chain';
 import { CHAIN, VM } from '../../constants/enums';
 import { UniversalTxStatus } from '../../generated/uexecutor/v1/types';
@@ -250,7 +249,18 @@ export async function waitForOutboundTx(
       const statusNum = utxResponse?.universalTx?.universalStatus as number;
       const statusName = UniversalTxStatus[statusNum] ?? statusNum;
       const outbounds = utxResponse?.universalTx?.outboundTx || [];
-      printLog(ctx, `[waitForOutboundTx] Poll #${pollCount} | status: ${statusNum} (${statusName}) | outboundTx count: ${outbounds.length} | first txHash: '${outbounds[0]?.observedTx?.txHash || ''}' | first dest: '${outbounds[0]?.destinationChain || ''}'`);
+      const firstOutbound = outbounds[0];
+      const firstOutboundChain = firstOutbound?.destinationChain
+        ? chainFromNamespace(firstOutbound.destinationChain)
+        : undefined;
+      const firstDisplayTxHash =
+        toExternalTxHashDisplay(
+          firstOutboundChain ?? undefined,
+          firstOutbound?.observedTx?.txHash
+        ) ??
+        firstOutbound?.observedTx?.txHash ??
+        '';
+      printLog(ctx, `[waitForOutboundTx] Poll #${pollCount} | status: ${statusNum} (${statusName}) | outboundTx count: ${outbounds.length} | first txHash: '${firstDisplayTxHash}' | first dest: '${firstOutbound?.destinationChain || ''}'`);
 
       // Check for terminal failure states — fail fast
       if (TERMINAL_FAILURE_STATES.has(statusNum)) {
@@ -349,18 +359,16 @@ export async function waitForOutboundTx(
           {
             const explorerBaseUrl = CHAIN_INFO[chain]?.explorerUrl;
             const isSvm = CHAIN_INFO[chain]?.vm === VM.SVM;
-
-            // For SVM chains, convert hex txHash to base58 and append cluster param
-            let displayTxHash = ob.observedTx.txHash;
+            const displayTxHash =
+              toExternalTxHashDisplay(chain, ob.observedTx.txHash) ??
+              ob.observedTx.txHash;
             let explorerUrl = '';
-            if (isSvm && ob.observedTx.txHash.startsWith('0x')) {
-              const bytes = new Uint8Array(Buffer.from(ob.observedTx.txHash.slice(2), 'hex'));
-              displayTxHash = bs58.encode(Buffer.from(bytes));
+            if (isSvm) {
               const cluster = chain === CHAIN.SOLANA_DEVNET ? '?cluster=devnet'
                 : chain === CHAIN.SOLANA_TESTNET ? '?cluster=testnet' : '';
               explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${displayTxHash}${cluster}` : '';
             } else {
-              explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${ob.observedTx.txHash}` : '';
+              explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${displayTxHash}` : '';
             }
 
             // OutboundTxDetails carries the raw `0x`-hex form so internal
@@ -376,7 +384,7 @@ export async function waitForOutboundTx(
               amount: ob.amount,
               assetAddr: ob.externalAssetAddr,
             };
-            printLog(ctx, `[waitForOutboundTx] FOUND on poll #${pollCount} | elapsed: ${Date.now() - startTime}ms | externalTxHash: ${details.externalTxHash}`);
+            printLog(ctx, `[waitForOutboundTx] FOUND on poll #${pollCount} | elapsed: ${Date.now() - startTime}ms | externalTxHash: ${displayTxHash}`);
             progressHook?.({ status: 'found', elapsed: Date.now() - startTime });
             return details;
           }

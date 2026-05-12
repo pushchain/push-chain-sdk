@@ -668,9 +668,7 @@ export async function executeUoaToCea(
       args: [ueaAddress],
     });
   }
-  const allowUnderfundedR2Evm =
-    params.options?.allowUnderfundedSwap === true;
-  const preflightR2Evm = runPreflight({
+  runPreflight({
     ctx,
     ueaAddress,
     ueaBalance: effectiveBalance,
@@ -680,16 +678,8 @@ export async function executeUoaToCea(
     burnToken: prc20Token,
     burnAmount,
     prc20Balance: prc20BalanceR2Evm,
-    allowUnderfundedSwap: allowUnderfundedR2Evm,
   });
-  if (!preflightR2Evm.ok) {
-    nativeValueForGas = preflightR2Evm.legacyClampedValue;
-    printLog(
-      ctx,
-      `executeUoaToCea — allowUnderfundedSwap=true; using legacy clamped value ${nativeValueForGas.toString()}`
-    );
-  }
-  // ok=true → nativeValueForGas already covers required + reserve; no adjust needed.
+  // Preflight success means nativeValueForGas already covers required + reserve; no adjust needed.
 
   // Build outbound multicalls (approve burn + sendUniversalTxOutbound with native value)
   const outboundMulticalls = buildOutboundApprovalAndCall({
@@ -1007,9 +997,7 @@ export async function executeUoaToCeaSvm(
       args: [ueaAddress],
     });
   }
-  const allowUnderfundedR2Svm =
-    params.options?.allowUnderfundedSwap === true;
-  const preflightR2Svm = runPreflight({
+  runPreflight({
     ctx,
     ueaAddress,
     ueaBalance,
@@ -1019,15 +1007,7 @@ export async function executeUoaToCeaSvm(
     burnToken: prc20Token,
     burnAmount,
     prc20Balance: prc20BalanceR2Svm,
-    allowUnderfundedSwap: allowUnderfundedR2Svm,
   });
-  if (!preflightR2Svm.ok) {
-    nativeValueForGas = preflightR2Svm.legacyClampedValue;
-    printLog(
-      ctx,
-      `executeUoaToCeaSvm — allowUnderfundedSwap=true; using legacy clamped value ${nativeValueForGas.toString()}`
-    );
-  }
 
   // --- Build Push Chain multicalls (approve + sendUniversalTxOutbound) ---
   // Reuse the same builder as EVM — this part is identical
@@ -1460,24 +1440,14 @@ export async function executeCeaToPush(
   // Pre-flight (R3 EVM): no PRC-20 burn check — `burnAmount = 0` makes this
   // payload-only (UEA never holds the source-chain PRC-20; see plan §9 #4).
   // Native UPC check still applies for the gas swap.
-  const allowUnderfundedR3Evm =
-    params.options?.allowUnderfundedSwap === true;
-  const preflightR3Evm = runPreflight({
+  runPreflight({
     ctx,
     ueaAddress,
     ueaBalance: effectiveBalance,
     requiredValue: nativeValueForGas,
     gasReserve: OUTBOUND_GAS_RESERVE_R3,
     pathTag: 'R3_EVM',
-    allowUnderfundedSwap: allowUnderfundedR3Evm,
   });
-  if (!preflightR3Evm.ok) {
-    nativeValueForGas = preflightR3Evm.legacyClampedValue;
-    printLog(
-      ctx,
-      `executeCeaToPush — allowUnderfundedSwap=true; using legacy clamped value ${nativeValueForGas.toString()}`
-    );
-  }
 
   // 12. Build Push Chain multicalls (approvals + sendUniversalTxOutbound)
   const pushChainMulticalls: MultiCall[] = buildOutboundApprovalAndCall({
@@ -1779,24 +1749,14 @@ export async function executeCeaToPushSvm(
   // Pre-flight (R3 SVM): no PRC-20 burn check — `burnAmount = 1` is a legacy
   // precompile-validation shim against a token UEAs structurally don't hold
   // (see plan §9 #4 / §10.2 latent-bug ticket). Native UPC check still applies.
-  const allowUnderfundedR3Svm =
-    params.options?.allowUnderfundedSwap === true;
-  const preflightR3Svm = runPreflight({
+  runPreflight({
     ctx,
     ueaAddress,
     ueaBalance: currentBalance,
     requiredValue: nativeValueForGas,
     gasReserve: OUTBOUND_GAS_RESERVE_R3_SVM,
     pathTag: 'R3_SVM',
-    allowUnderfundedSwap: allowUnderfundedR3Svm,
   });
-  if (!preflightR3Svm.ok) {
-    nativeValueForGas = preflightR3Svm.legacyClampedValue;
-    printLog(
-      ctx,
-      `executeCeaToPushSvm — allowUnderfundedSwap=true; using legacy clamped value ${nativeValueForGas.toString()}`
-    );
-  }
 
   // Build Push Chain multicalls (approvals + sendUniversalTxOutbound)
   const pushChainMulticalls: MultiCall[] = buildOutboundApprovalAndCall({

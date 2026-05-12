@@ -965,12 +965,6 @@ export async function composeCascadeDetailed(
   // is left undefined and downstream segments silently allocate value=0,
   // producing under-funded swaps that revert inside Uniswap. Throw early
   // with a structured error so the caller knows which path / hop failed.
-  // Honor the per-call opt-out from the first non-PUSH segment (segments share
-  // the same UniversalExecuteParams.options.allowUnderfundedSwap shape).
-  const firstOutboundSegment = segments.find(segmentNeedsOutboundGas);
-  const cascadeAllowUnderfunded =
-    firstOutboundSegment?.hops?.[0]?.params?.options?.allowUnderfundedSwap ===
-    true;
   if (numOutbounds > 0) {
     runPreflight({
       ctx,
@@ -981,7 +975,6 @@ export async function composeCascadeDetailed(
       requiredValue: BigInt(1),
       gasReserve: CASCADE_GAS_RESERVE,
       pathTag: 'CASCADE',
-      allowUnderfundedSwap: cascadeAllowUnderfunded,
     });
   }
   let perOutboundNativeValue: bigint | undefined;
@@ -1087,11 +1080,7 @@ export async function composeCascadeDetailed(
       // what the swap actually needs and the segment will revert inside
       // Uniswap with STF. Throw cleanly with `segmentIndex` so the caller
       // knows which hop's pool is misbehaving.
-      if (
-        estimated > BigInt(0) &&
-        value < estimated &&
-        !cascadeAllowUnderfunded
-      ) {
+      if (estimated > BigInt(0) && value < estimated) {
         const shortfall = estimated - value;
         fireProgressHook(
           ctx,
@@ -1204,7 +1193,6 @@ export async function composeCascadeDetailed(
             onHand + priorInboundFundingForBurn >= segBurnAmount;
           if (
             !sufficient &&
-            !cascadeAllowUnderfunded &&
             !priorPushExecutionMayFundBurn &&
             !priorInboundMayFundBurn
           ) {
@@ -2293,13 +2281,18 @@ export function createCascadedBuilder(
                 inboundHop.status = 'failed';
                 const failedExternalTxHash = (err as { externalTxHash?: string })
                   ?.externalTxHash;
-                if (failedExternalTxHash) inboundHop.txHash = failedExternalTxHash;
+                const failedDisplayTxHash =
+                  toExternalTxHashDisplay(
+                    inboundHop.executionChain,
+                    failedExternalTxHash
+                  ) ?? failedExternalTxHash;
+                if (failedDisplayTxHash) inboundHop.txHash = failedDisplayTxHash;
                 cascadeProgressHook?.({
                   hopIndex: inboundHop.hopIndex,
                   route: inboundHop.route,
                   chain: inboundHop.executionChain,
                   status: 'failed',
-                  txHash: failedExternalTxHash,
+                  txHash: failedDisplayTxHash,
                   elapsed: Date.now() - startTime,
                 });
                 return {

@@ -242,7 +242,6 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
         amount: amountIn,
         token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
       },
-      options: { allowUnderfundedSwap: true },
     };
     const hop0 = await buildHopDescriptor(
       ctx,
@@ -348,7 +347,6 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
           amount: amountIn,
           token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
         },
-        options: { allowUnderfundedSwap: true },
       },
       TransactionRoute.CEA_TO_PUSH,
       UEA
@@ -398,7 +396,7 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
     };
     // 5 PC Hop 0 payload seed + 4 PC live SVM quote + 1 PC R3 wrapper gas.
     // Before the fix the 4 PC quote was truncated to the 3 PC per-SVM budget
-    // because hop0's allowUnderfundedSwap option suppressed the min check.
+    // because the cascade seed budget was previously squeezed below the quote.
     expect(executeParams.value).toBe(BigInt(10) * PC);
   });
 
@@ -470,7 +468,6 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
         to: UEA,
         value: seedAmount,
         data: '0x',
-        options: { allowUnderfundedSwap: true },
       },
       TransactionRoute.CEA_TO_PUSH,
       UEA
@@ -485,7 +482,6 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
         },
         value: BigInt(0),
         data: incrementData,
-        options: { allowUnderfundedSwap: true },
       },
       TransactionRoute.UOA_TO_CEA,
       UEA
@@ -1028,7 +1024,6 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
           amount: amountIn,
           token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
         },
-        options: { allowUnderfundedSwap: true },
       },
       TransactionRoute.CEA_TO_PUSH,
       UEA
@@ -1096,6 +1091,179 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
     expect(result.hops[2].status).toBe('pending');
     expect(waitForInboundPushTxFn).not.toHaveBeenCalled();
     expect(waitForAllOutboundTxsFn).not.toHaveBeenCalled();
+  });
+
+  it('exposes Solana outbound tx hashes as base58 in cascade results and progress', async () => {
+    const ctx = makeCtx();
+    const seedAmount = BigInt(5) * PC;
+    const rawSolanaTxHash = `0x${'25'.repeat(64)}`;
+    const progressEvents: Array<{
+      chain: CHAIN;
+      status: string;
+      txHash?: string;
+    }> = [];
+
+    const seedHop = await buildHopDescriptor(
+      ctx,
+      {
+        to: UEA,
+        value: seedAmount,
+        data: '0x',
+      },
+      TransactionRoute.UOA_TO_PUSH,
+      UEA
+    );
+    const solanaOutbound: HopDescriptor = {
+      params: {
+        to: { address: SOLANA_CEA, chain: CHAIN.SOLANA_DEVNET },
+        value: BigInt(0),
+        data: '0x',
+      },
+      route: 'UOA_TO_CEA',
+      targetChain: CHAIN.SOLANA_DEVNET,
+      isSvmTarget: true,
+      svmPayload: '0x',
+      prc20Token: PSOL,
+      burnAmount: BigInt(0),
+      gasToken: PSOL,
+      gasFee: BigInt(1),
+      gasLimit: BigInt(0),
+      ueaAddress: UEA,
+      revertRecipient: UEA,
+    };
+
+    const executeFn = jest.fn(async () => ({
+      hash: `0x${'ab'.repeat(32)}`,
+      wait: jest.fn(async () => undefined),
+    }));
+    const waitForOutboundTxFn = jest.fn(async () => ({
+      externalTxHash: rawSolanaTxHash,
+      destinationChain: CHAIN.SOLANA_DEVNET,
+      explorerUrl: '',
+      recipient: SOLANA_CEA,
+      amount: '0',
+      assetAddr: PSOL,
+    }));
+    const builder = createCascadedBuilder(
+      ctx,
+      [seedHop, solanaOutbound].map(prepared),
+      {
+        executeFn,
+        waitForOutboundTxFn,
+        waitForInboundPushTxFn: jest.fn(),
+        waitForAllOutboundTxsFn: jest.fn(),
+      } as never
+    );
+
+    const cascade = await builder.send();
+    const result = await cascade.waitForAll({
+      timeout: 10_000,
+      pollingIntervalMs: 1,
+      progressHook: (event) => {
+        progressEvents.push({
+          chain: event.chain,
+          status: event.status,
+          txHash: event.txHash,
+        });
+      },
+    });
+
+    const solanaHop = result.hops[1];
+    expect(result.success).toBe(true);
+    expect(solanaHop.status).toBe('confirmed');
+    expect(solanaHop.txHash).toBeDefined();
+    expect(solanaHop.txHash).not.toBe(rawSolanaTxHash);
+    expect(solanaHop.txHash).not.toMatch(/^0x/);
+    expect(solanaHop.txHash).toMatch(/^[1-9A-HJ-NP-Za-km-z]{86,90}$/);
+    expect(solanaHop.outboundDetails?.externalTxHash).toBe(solanaHop.txHash);
+
+    const confirmedEvent = progressEvents.find(
+      (event) =>
+        event.chain === CHAIN.SOLANA_DEVNET &&
+        event.status === 'confirmed' &&
+        event.txHash
+    );
+    expect(confirmedEvent?.txHash).toBe(solanaHop.txHash);
+  });
+
+  it('exposes Solana Route 3 failure tx hashes as base58 in cascade results and progress', async () => {
+    const ctx = makeCtx();
+    (ctx.pushClient.getBalance as jest.Mock).mockResolvedValue(
+      UNCAPPED_BALANCE
+    );
+    const rawSolanaTxHash = `0x${'35'.repeat(64)}`;
+    const progressEvents: Array<{
+      chain: CHAIN;
+      status: string;
+      txHash?: string;
+    }> = [];
+
+    const solanaInbound = await buildHopDescriptor(
+      ctx,
+      {
+        from: { chain: CHAIN.SOLANA_DEVNET },
+        to: UEA,
+        value: BigInt(5_000_000),
+        data: '0x01',
+      },
+      TransactionRoute.CEA_TO_PUSH,
+      UEA
+    );
+    const pushHop = route1Hop('01', PETH);
+
+    const executeFn = jest.fn(async () => ({
+      hash: `0x${'ab'.repeat(32)}`,
+      wait: jest.fn(async () => undefined),
+    }));
+    const waitForOutboundTxFn = jest.fn(async () => {
+      throw Object.assign(
+        new Error(
+          `Outbound to ${CHAIN.SOLANA_DEVNET} reverted on source-chain RPC (tx: ${rawSolanaTxHash}).`
+        ),
+        { externalTxHash: rawSolanaTxHash }
+      );
+    });
+
+    const builder = createCascadedBuilder(
+      ctx,
+      [solanaInbound, pushHop].map(prepared),
+      {
+        executeFn,
+        waitForOutboundTxFn,
+        waitForInboundPushTxFn: jest.fn(),
+        waitForAllOutboundTxsFn: jest.fn(),
+      } as never
+    );
+
+    const cascade = await builder.send();
+    const result = await cascade.waitForAll({
+      timeout: 10_000,
+      pollingIntervalMs: 1,
+      progressHook: (event) => {
+        progressEvents.push({
+          chain: event.chain,
+          status: event.status,
+          txHash: event.txHash,
+        });
+      },
+    });
+
+    const solanaHop = result.hops[0];
+    expect(result.success).toBe(false);
+    expect(result.failedAt).toBe(0);
+    expect(solanaHop.status).toBe('failed');
+    expect(solanaHop.txHash).toBeDefined();
+    expect(solanaHop.txHash).not.toBe(rawSolanaTxHash);
+    expect(solanaHop.txHash).not.toMatch(/^0x/);
+    expect(solanaHop.txHash).toMatch(/^[1-9A-HJ-NP-Za-km-z]{86,90}$/);
+
+    const failedEvent = progressEvents.find(
+      (event) =>
+        event.chain === CHAIN.SOLANA_DEVNET &&
+        event.status === 'failed' &&
+        event.txHash
+    );
+    expect(failedEvent?.txHash).toBe(solanaHop.txHash);
   });
 });
 
@@ -1192,7 +1360,6 @@ describe('6-hop AMM cascade live e2e (funded Sepolia CEA)', () => {
           amount: amountIn,
           token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
         },
-        options: { allowUnderfundedSwap: true },
       });
       const hop1 = await client.universal.prepareTransaction({
         to: PETH,
@@ -1353,19 +1520,16 @@ describe('value-only PC seed cascade live e2e (Sepolia -> Push -> BNB)', () => {
         to: client.universal.account,
         value: BigInt(15) * PC,
         data: '0x',
-        options: { allowUnderfundedSwap: true },
       });
       const hop1 = await client.universal.prepareTransaction({
         to: COUNTER_PUSH,
         value: BigInt(0),
         data: incrementData,
-        options: { allowUnderfundedSwap: true },
       });
       const hop2 = await client.universal.prepareTransaction({
         to: { address: COUNTER_BNB, chain: CHAIN.BNB_TESTNET },
         value: BigInt(0),
         data: incrementData,
-        options: { allowUnderfundedSwap: true },
       });
 
       const cascade = await client.universal.executeTransactions([

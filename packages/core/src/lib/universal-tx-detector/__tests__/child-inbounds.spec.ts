@@ -109,7 +109,7 @@ describe('resolveChildInboundsFromLogs', () => {
     expect(out[0].pcTxHashes).toEqual([]);
   });
 
-  it('records diagnostic + skips the log when getUniversalTxByIdV2 throws', async () => {
+  it('records diagnostic + marks notFound when getUniversalTxByIdV2 throws', async () => {
     const pushClient = {
       getUniversalTxByIdV2: jest.fn().mockRejectedValue(new Error('boom')),
     } as unknown as PushClient;
@@ -121,7 +121,17 @@ describe('resolveChildInboundsFromLogs', () => {
       [makeInboundLog('UniversalTx', SEPOLIA_LOG_INDEX)],
       notes
     );
-    expect(out).toEqual([]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      universalTxId: EXPECTED_CHILD_UTX_HEX,
+      sourceLogIndex: SEPOLIA_LOG_INDEX,
+      sourceEventName: 'UniversalTx',
+      status: 0,
+      statusName: 'UNIVERSAL_TX_STATUS_UNSPECIFIED',
+      pcTxHashes: [],
+      outboundHashes: [],
+      notFound: true,
+    });
     expect(notes.some((n) => n.includes('getUniversalTxByIdV2'))).toBe(true);
   });
 

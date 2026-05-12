@@ -177,26 +177,6 @@ describe('runPreflight', () => {
     expect((events[1].response as any).kind).toBe('NATIVE');
   });
 
-  it('allowUnderfundedSwap=true skips throw and returns legacy clamped value', () => {
-    const { ctx, events } = makeCtx();
-    const result = runPreflight({
-      ctx,
-      ueaAddress: UEA,
-      ueaBalance: BigInt('50000000000000000000'), // 50 PC
-      requiredValue: BigInt('100000000000000000000'), // 100 PC
-      gasReserve: BigInt(3e18),
-      pathTag: 'R2_SVM',
-      allowUnderfundedSwap: true,
-    });
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      // 50 PC > 3 PC reserve → ueaBalance - reserve
-      expect(result.legacyClampedValue).toBe(BigInt('50000000000000000000') - BigInt(3e18));
-    }
-    // 203_04 should NOT fire under opt-out — only 203_03 (insufficient) for telemetry.
-    expect(events.find((e) => e.id === PROGRESS_HOOK.SEND_TX_203_04)).toBeUndefined();
-  });
-
   it('InsufficientUEABalanceError auto-populates decodedError for terminal hook payload', () => {
     const { ctx } = makeCtx();
     try {
