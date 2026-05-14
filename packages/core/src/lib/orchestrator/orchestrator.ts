@@ -447,7 +447,7 @@ export class Orchestrator {
     prc20Token: `0x${string}`,
     gasLimit: bigint,
     destinationChain?: CHAIN
-  ): Promise<{ gasToken: `0x${string}`; gasFee: bigint; protocolFee: bigint; nativeValueForGas: bigint; gasPrice: bigint }> {
+  ): Promise<{ gasToken: `0x${string}`; gasFee: bigint; protocolFee: bigint; nativeValueForGas: bigint; gasPrice: bigint; gasLimitUsed: bigint }> {
     return _queryOutboundGasFee(this.ctx, prc20Token, gasLimit, destinationChain);
   }
 

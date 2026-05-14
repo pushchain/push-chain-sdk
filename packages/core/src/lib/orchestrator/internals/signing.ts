@@ -17,6 +17,11 @@ import type { OrchestratorContext } from './context';
 // ============================================================================
 // EIP-712 Domain Separator (shared by execution & migration hashes)
 // ============================================================================
+// NOTE: Push Chain testnet UEA implementation (UEA_VM[EVM] =
+// 0x4C8401F885c79b0e6e0241812f089e8529045d11) still uses the pre-audit
+// 4-field domain (typehash 0x2aef22f9…) — the salted post-audit typehash
+// 0xb90aaffa… in the audit-fixes contracts hasn't been deployed yet. Drop
+// `salt` until the contracts redeploy. See docs/audit-2026-05/sdk-changes-required.md#11.
 
 function buildDomainSeparator(
   vm: VM,
@@ -37,13 +42,13 @@ function buildDomainSeparator(
       [
         { name: 'typeHash', type: 'bytes32' },
         { name: 'version', type: 'bytes32' },
-        { name: 'chainId', type: vm === VM.EVM ? 'uint256' : 'string' },
+        { name: 'chainId', type: vm === VM.EVM ? 'uint256' : 'bytes32' },
         { name: 'verifyingContract', type: 'address' },
       ],
       [
         domainTypeHash,
         keccak256(toBytes(version)),
-        vm === VM.EVM ? BigInt(chainId) : chainId,
+        vm === VM.EVM ? BigInt(chainId) : keccak256(toBytes(chainId)),
         verifyingContract,
       ]
     )
@@ -75,7 +80,12 @@ export function computeExecutionHash(
     )
   );
 
-  const domainSeparator = buildDomainSeparator(vm, chainId, version, verifyingContract);
+  const domainSeparator = buildDomainSeparator(
+    vm,
+    chainId,
+    version,
+    verifyingContract
+  );
 
   const structHash = keccak256(
     encodeAbiParameters(
@@ -139,7 +149,12 @@ export function computeMigrationHash(
     )
   );
 
-  const domainSeparator = buildDomainSeparator(vm, chainId, version, verifyingContract);
+  const domainSeparator = buildDomainSeparator(
+    vm,
+    chainId,
+    version,
+    verifyingContract
+  );
 
   const structHash = keccak256(
     encodeAbiParameters(

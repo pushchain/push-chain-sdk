@@ -1,11 +1,17 @@
 /**
- * Unit tests for the conditional CEA-ATA rent bump (svm-rent.ts).
+ * Unit tests for SVM finalize gas-budget helpers (svm-rent.ts).
  */
 import {
   maybeBumpForCeaAtaRent,
   CEA_ATA_RENT_LAMPORTS_BUMP,
+  SVM_EXECUTED_SUB_TX_RENT_FALLBACK,
+  SVM_FINALIZE_COMPUTE_BUFFER_LAMPORTS,
+  SVM_SIGNATURE_FEE_LAMPORTS,
+  SVM_TOKEN_ACCOUNT_RENT_FALLBACK,
   deriveSvmCeaPda,
   deriveAtaPubkey,
+  gasLimitForSvmGasFeeBudget,
+  getSvmFinalizeGasBudget,
 } from '../internals/svm-rent';
 import { CHAIN } from '../../constants/enums';
 import type { OrchestratorContext } from '../internals/context';
@@ -57,6 +63,125 @@ describe('svm-rent — derivations', () => {
     expect(ata.toBase58()).toMatch(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
     // Idempotent
     expect(deriveAtaPubkey(owner, mint).equals(ata)).toBe(true);
+  });
+});
+
+describe('getSvmFinalizeGasBudget', () => {
+  let restoreLog: (() => void) | undefined;
+
+  afterEach(() => {
+    restoreLog?.();
+    restoreLog = undefined;
+    jest.restoreAllMocks();
+  });
+
+  it('returns base finalize budget for native SOL / payload-only SVM outbounds', async () => {
+    const { ctx, logs } = makeCtx();
+    restoreLog = (logs as unknown as { restore: () => void }).restore;
+    jest
+      .spyOn(web3.Connection.prototype, 'getMinimumBalanceForRentExemption')
+      .mockImplementation(async (span: number) =>
+        span === 8 ? Number(SVM_EXECUTED_SUB_TX_RENT_FALLBACK) : 0
+      );
+
+    const out = await getSvmFinalizeGasBudget({
+      ctx,
+      ueaAddress: UEA,
+      targetChain: CHAIN.SOLANA_DEVNET,
+      splMintBase58: undefined,
+      burnAmount: BigInt(0),
+    });
+
+    expect(out).toBe(
+      SVM_SIGNATURE_FEE_LAMPORTS +
+        SVM_EXECUTED_SUB_TX_RENT_FALLBACK +
+        SVM_FINALIZE_COMPUTE_BUFFER_LAMPORTS
+    );
+  });
+
+  it('includes CEA ATA rent when an SPL outbound ATA does not exist yet', async () => {
+    const { ctx, logs } = makeCtx();
+    restoreLog = (logs as unknown as { restore: () => void }).restore;
+    jest
+      .spyOn(web3.Connection.prototype, 'getMinimumBalanceForRentExemption')
+      .mockImplementation(async (span: number) =>
+        span === 8
+          ? Number(SVM_EXECUTED_SUB_TX_RENT_FALLBACK)
+          : Number(SVM_TOKEN_ACCOUNT_RENT_FALLBACK)
+      );
+    jest
+      .spyOn(web3.Connection.prototype, 'getAccountInfo')
+      .mockResolvedValue(null);
+
+    const out = await getSvmFinalizeGasBudget({
+      ctx,
+      ueaAddress: UEA,
+      targetChain: CHAIN.SOLANA_DEVNET,
+      splMintBase58: SOL_USDT_MINT,
+      burnAmount: BigInt(100_000),
+    });
+
+    expect(out).toBe(CEA_ATA_RENT_LAMPORTS_BUMP);
+    expect(logs.some((l) => l.includes('including'))).toBe(true);
+  });
+
+  it('does not include CEA ATA rent when the SPL outbound ATA already exists', async () => {
+    const { ctx, logs } = makeCtx();
+    restoreLog = (logs as unknown as { restore: () => void }).restore;
+    jest
+      .spyOn(web3.Connection.prototype, 'getMinimumBalanceForRentExemption')
+      .mockImplementation(async (span: number) =>
+        span === 8 ? Number(SVM_EXECUTED_SUB_TX_RENT_FALLBACK) : 0
+      );
+    jest
+      .spyOn(web3.Connection.prototype, 'getAccountInfo')
+      .mockResolvedValue({
+        executable: false,
+        owner: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
+        lamports: 2_039_280,
+        data: Buffer.alloc(165),
+        rentEpoch: 0,
+      } as unknown as web3.AccountInfo<Buffer>);
+
+    const out = await getSvmFinalizeGasBudget({
+      ctx,
+      ueaAddress: UEA,
+      targetChain: CHAIN.SOLANA_DEVNET,
+      splMintBase58: SOL_USDT_MINT,
+      burnAmount: BigInt(100_000),
+    });
+
+    expect(out).toBe(
+      SVM_SIGNATURE_FEE_LAMPORTS +
+        SVM_EXECUTED_SUB_TX_RENT_FALLBACK +
+        SVM_FINALIZE_COMPUTE_BUFFER_LAMPORTS
+    );
+    expect(logs.some((l) => l.includes('already deployed'))).toBe(true);
+  });
+
+  it('falls back to protocol rent constants on RPC failure', async () => {
+    const { ctx, logs } = makeCtx();
+    restoreLog = (logs as unknown as { restore: () => void }).restore;
+    jest
+      .spyOn(web3.Connection.prototype, 'getMinimumBalanceForRentExemption')
+      .mockRejectedValue(new Error('connection refused'));
+
+    const out = await getSvmFinalizeGasBudget({
+      ctx,
+      ueaAddress: UEA,
+      targetChain: CHAIN.SOLANA_DEVNET,
+      splMintBase58: SOL_USDT_MINT,
+      burnAmount: BigInt(100_000),
+    });
+
+    expect(out).toBe(CEA_ATA_RENT_LAMPORTS_BUMP);
+    expect(logs.some((l) => l.includes('using fallback rents'))).toBe(true);
+  });
+
+  it('rounds required gas fee up to the next whole gasLimit unit', () => {
+    expect(gasLimitForSvmGasFeeBudget(BigInt(1_051_560), BigInt(1_000))).toBe(
+      BigInt(1_052)
+    );
   });
 });
 
@@ -186,8 +311,8 @@ describe('maybeBumpForCeaAtaRent', () => {
     expect(out).toBe(CEA_ATA_RENT_LAMPORTS_BUMP);
   });
 
-  it('CEA_ATA_RENT_LAMPORTS_BUMP equals 2_148_480 (gateway test-utils.ts mirror)', () => {
-    // 2_039_280 (ATA rent) + 9_200 (exec rent) + 100_000 (compute buffer)
-    expect(CEA_ATA_RENT_LAMPORTS_BUMP).toBe(BigInt(2_148_480));
+  it('CEA_ATA_RENT_LAMPORTS_BUMP equals 3_090_840 (gateway finalize budget with ATA)', () => {
+    // 5_000 signature fee + 946_560 ExecutedSubTx rent + 2_039_280 ATA rent + 100_000 buffer
+    expect(CEA_ATA_RENT_LAMPORTS_BUMP).toBe(BigInt(3_090_840));
   });
 });

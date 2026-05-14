@@ -40,6 +40,7 @@ const EXECUTE_IDS_LIVE = [
   'SEND-TX-303-01',
   'SEND-TX-303-02',
   'SEND-TX-303-03-01', // Case A — payload-only R3 has gasUsd < $1; fires after 303-02
+  'SEND-TX-303-04', // R3 pre-flight balance check — fires after sizer, before signing burst
   'SEND-TX-304-01',
   'SEND-TX-304-02',
   'SEND-TX-304-03',

@@ -332,7 +332,7 @@ export async function deriveBnbCea(
   ctx: BnbContext,
   pushAddress: `0x${string}`
 ): Promise<`0x${string}`> {
-  const CEA_FACTORY = '0xe2182dae2dc11cBF6AA6c8B1a7f9c8315A6B0719' as `0x${string}`;
+  const CEA_FACTORY = '0x3f1B16e0B072d472951C4563d29d3da6a3EE3Ce8' as `0x${string}`;
   const result = (await ctx.publicClient.readContract({
     address: CEA_FACTORY,
     abi: [

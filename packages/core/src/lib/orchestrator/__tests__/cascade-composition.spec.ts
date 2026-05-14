@@ -5,11 +5,16 @@
  * Tests import the pure function directly from cascade.ts
  * (no Orchestrator instance needed).
  */
+import { decodeFunctionData } from 'viem';
 import { CHAIN } from '../../constants/enums';
-import { classifyIntoSegments } from '../internals/cascade';
+import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
+import { classifyIntoSegments, composeCascadeDetailed } from '../internals/cascade';
+import type { OrchestratorContext } from '../internals/context';
 import type {
+  CascadeSegment,
   HopDescriptor,
   MultiCall,
+  UniversalOutboundTxRequest,
   UniversalExecuteParams,
 } from '../orchestrator.types';
 
@@ -19,7 +24,7 @@ import type {
 
 const ALICE = '0xABCDEF1234567890ABCDEF1234567890ABCDEF12' as `0x${string}`;
 const BOB = '0x1111111111111111111111111111111111111111' as `0x${string}`;
-const TOKEN_A = '0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' as `0x${string}`;
+const TOKEN_A = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as `0x${string}`;
 const UEA = '0x2222222222222222222222222222222222222222' as `0x${string}`;
 const CEA_BNB = '0x3333333333333333333333333333333333333333' as `0x${string}`;
 const CEA_ETH = '0x4444444444444444444444444444444444444444' as `0x${string}`;
@@ -29,6 +34,7 @@ function makeBaseHop(overrides: Partial<HopDescriptor> = {}): HopDescriptor {
     params: { to: ALICE, value: BigInt(100) } as UniversalExecuteParams,
     route: 'UOA_TO_PUSH',
     gasLimit: BigInt(200000),
+    maxPCForGas: BigInt(0),
     ueaAddress: UEA,
     revertRecipient: UEA,
     ...overrides,
@@ -58,6 +64,7 @@ function makeRoute2Hop(
     burnAmount: BigInt(1000),
     gasToken: TOKEN_A,
     gasFee: BigInt(200),
+    gasPrice: BigInt(50_000_000),
     ...opts,
   });
 }
@@ -74,6 +81,7 @@ function makeRoute3Hop(
     burnAmount: BigInt(1),
     gasToken: TOKEN_A,
     gasFee: BigInt(200),
+    gasPrice: BigInt(50_000_000),
     ...opts,
   });
 }
@@ -211,5 +219,104 @@ describe('classifyIntoSegments', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].gasLimit).toBe(BigInt(300000));
+  });
+
+  it('should sum non-zero maxPCForGas caps across merged outbound hops', () => {
+    const hop1 = makeRoute2Hop(CHAIN.BNB_TESTNET, undefined, {
+      maxPCForGas: BigInt(1000),
+    });
+    const hop2 = makeRoute2Hop(CHAIN.BNB_TESTNET, undefined, {
+      maxPCForGas: BigInt(2000),
+    });
+    const result = classifyIntoSegments([hop1, hop2]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].maxPCForGas).toBe(BigInt(3000));
+  });
+
+  it('should keep merged outbound cap uncapped when any hop is uncapped', () => {
+    const hop1 = makeRoute2Hop(CHAIN.BNB_TESTNET, undefined, {
+      maxPCForGas: BigInt(1000),
+    });
+    const hop2 = makeRoute2Hop(CHAIN.BNB_TESTNET, undefined, {
+      maxPCForGas: BigInt(0),
+    });
+    const result = classifyIntoSegments([hop1, hop2]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].maxPCForGas).toBe(BigInt(0));
+  });
+
+  it('should retain quoted gasPrice on outbound segments', () => {
+    const hop = makeRoute2Hop(CHAIN.BNB_TESTNET, undefined, {
+      gasPrice: BigInt(12345),
+    });
+    const result = classifyIntoSegments([hop]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].gasPrice).toBe(BigInt(12345));
+  });
+
+  it('should keep the highest gasPrice across merged outbound hops', () => {
+    const hop1 = makeRoute2Hop(CHAIN.BNB_TESTNET, undefined, {
+      gasPrice: BigInt(100),
+    });
+    const hop2 = makeRoute2Hop(CHAIN.BNB_TESTNET, undefined, {
+      gasPrice: BigInt(250),
+    });
+    const result = classifyIntoSegments([hop1, hop2]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].gasPrice).toBe(BigInt(250));
+  });
+});
+
+describe('composeCascadeDetailed', () => {
+  it('writes the quoted gasPrice into nested outbound requests', async () => {
+    const gasPrice = BigInt(50_000_000);
+    const hop = makeRoute2Hop(CHAIN.BNB_TESTNET, [], {
+      burnAmount: BigInt(0),
+      gasLimit: BigInt(2_000_000),
+      gasPrice,
+    });
+    const segment: CascadeSegment = {
+      type: 'OUTBOUND_TO_CEA',
+      hops: [hop],
+      targetChain: CHAIN.BNB_TESTNET,
+      mergedCeaMulticalls: [],
+      totalBurnAmount: BigInt(0),
+      prc20Token: TOKEN_A,
+      gasToken: TOKEN_A,
+      gasFee: BigInt(100),
+      gasPrice,
+      gasLimit: BigInt(2_000_000),
+      maxPCForGas: BigInt(0),
+    };
+    const ctx = {
+      printTraces: false,
+      progressHook: () => undefined,
+      pushNetwork: 'TESTNET_DONUT',
+      pushClient: { readContract: jest.fn() },
+    } as unknown as OrchestratorContext;
+
+    const { multicalls } = await composeCascadeDetailed(
+      ctx,
+      [segment],
+      UEA,
+      BigInt('100000000000000000000')
+    );
+    const outboundCall = multicalls.find((call) =>
+      call.data.startsWith('0x77b86bec')
+    );
+
+    expect(outboundCall).toBeDefined();
+    const decoded = decodeFunctionData({
+      abi: UNIVERSAL_GATEWAY_PC,
+      data: outboundCall!.data,
+    });
+    const [request] = decoded.args as [UniversalOutboundTxRequest];
+
+    expect(request.gasLimit).toBe(BigInt(2_000_000));
+    expect(request.gasPrice).toBe(gasPrice);
   });
 });

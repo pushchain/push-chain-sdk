@@ -26,5 +26,70 @@ export const CEA_EVM = [
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
-  }
+  },
+  {
+    inputs: [],
+    name: 'AlreadyInitialized',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'ZeroAddress',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'NotVault',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'InvalidTarget',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'InsufficientBalance',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'PayloadExecuted',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'InvalidUEA',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'InvalidInput',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'ExecutionFailed',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'InvalidCall',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'InvalidRecipient',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'InvalidImplementation',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'CEAAlreadyDeployed',
+    type: 'error',
+  },
 ] as const;

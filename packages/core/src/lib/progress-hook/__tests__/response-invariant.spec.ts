@@ -95,14 +95,12 @@ const STUB_ARGS: Record<PROGRESS_HOOK, unknown[]> = {
   [PROGRESS_HOOK.SEND_TX_303_03_01]: ['eip155:11155111', BigInt('1000000000000000000'), BigInt(0), BigInt(100_000_000)],
   [PROGRESS_HOOK.SEND_TX_303_03_02]: ['eip155:11155111', BigInt('5000000000000000000'), BigInt(0), BigInt(500_000_000)],
   [PROGRESS_HOOK.SEND_TX_303_03_03]: ['eip155:11155111', BigInt('10000000000000000000'), BigInt('5000000000000000000'), BigInt(1_500_000_000)],
-  [PROGRESS_HOOK.SEND_TX_303_01]: ['eip155:11155111'],
-  [PROGRESS_HOOK.SEND_TX_303_02]: ['0xuea', '0xcea', 'eip155:11155111'],
   [PROGRESS_HOOK.SEND_TX_303_04]: [
     BigInt('1000000000000000000'),
     BigInt('500000000000000000'),
     false,
     '0xuea',
-    'R3_SVM',
+    'R3_EVM',
     { kind: 'NATIVE' },
   ],
   [PROGRESS_HOOK.SEND_TX_303_05]: [
@@ -110,7 +108,7 @@ const STUB_ARGS: Record<PROGRESS_HOOK, unknown[]> = {
     BigInt('500000000000000000'),
     BigInt('500000000000000000'),
     '0xuea',
-    'R3_SVM',
+    'R3_EVM',
     { kind: 'NATIVE' },
   ],
   [PROGRESS_HOOK.SEND_TX_303_06]: [
@@ -119,6 +117,8 @@ const STUB_ARGS: Record<PROGRESS_HOOK, unknown[]> = {
     '0xpsol',
     'R3_SVM',
   ],
+  [PROGRESS_HOOK.SEND_TX_303_01]: ['eip155:11155111'],
+  [PROGRESS_HOOK.SEND_TX_303_02]: ['0xuea', '0xcea', 'eip155:11155111'],
   [PROGRESS_HOOK.SEND_TX_304_01]: [],
   [PROGRESS_HOOK.SEND_TX_304_02]: [],
   [PROGRESS_HOOK.SEND_TX_304_03]: [],

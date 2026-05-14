@@ -34,13 +34,13 @@ const STABLE_PER_WPC_6D = BigInt(100_000); // 0.10 USDT in 6 decimals
 
 function makeCtx(overrides: Record<string, any> = {}): OrchestratorContext {
   // `readContract` is called in this order by pc-usd-oracle.ts:getPcUsdPrice
-  //   1. UNIVERSAL_GATEWAY_PC.UNIVERSAL_CORE
+  //   1. UNIVERSAL_GATEWAY_PC.universalCore
   //   2. UniversalCore.WPC + UniversalCore.defaultFeeTier (Promise.all)
   //   3. QuoterV2.quoteExactInputSingle
   // Use a named-arg mock so order matters less than content.
   const readContract = jest.fn(async ({ functionName }: any) => {
     switch (functionName) {
-      case 'UNIVERSAL_CORE':
+      case 'universalCore':
         return '0x0000000000000000000000000000000000001111';
       case 'WPC':
         return '0x0000000000000000000000000000000000002222';
@@ -216,7 +216,7 @@ describe('sizeOutboundGas — oracle fallback', () => {
       if (functionName === 'quoteExactInputSingle') {
         return [BigInt(0), BigInt(0), 0, BigInt(0)];
       }
-      if (functionName === 'UNIVERSAL_CORE')
+      if (functionName === 'universalCore')
         return '0x0000000000000000000000000000000000001111';
       if (functionName === 'WPC')
         return '0x0000000000000000000000000000000000002222';
@@ -251,7 +251,7 @@ describe('sizeOutboundGas — oracle fallback', () => {
     const probedTiers: number[] = [];
     const readContract = jest.fn(async ({ functionName, args }: any) => {
       switch (functionName) {
-        case 'UNIVERSAL_CORE':
+        case 'universalCore':
           return '0x0000000000000000000000000000000000001111';
         case 'WPC':
           return '0x0000000000000000000000000000000000002222';

@@ -60,6 +60,7 @@ const HASH = {
   sL: '0x0c01000000000000000000000000000000000000000000000000000000000001' as `0x${string}`,
   sM: '0x0d01000000000000000000000000000000000000000000000000000000000001' as `0x${string}`,
   sN: '0x0e01000000000000000000000000000000000000000000000000000000000001' as `0x${string}`,
+  sO: '0x0f01000000000000000000000000000000000000000000000000000000000001' as `0x${string}`,
   // Destinations for cascade follow-ups.
   bscDest: '0xbcbc000000000000000000000000000000000000000000000000000000000001' as `0x${string}`,
   sepoliaDest: '0x5e5e000000000000000000000000000000000000000000000000000000000001' as `0x${string}`,
@@ -790,6 +791,43 @@ export const SCENARIOS: ScenarioFixture[] = [
       // point at HASH.bscDest, so the second walk returns null (cycle guard).
       totalFlatNodes: 4,
     },
+  },
+
+  // S-O — SVM CEA payload-only self-call (GasAndPayload)
+  {
+    id: 'S-O',
+    name: 'SVM CEA payload-only self-call — GasAndPayload',
+    kind: 'INBOUND_FROM_CEA',
+    chain: CHAIN.SOLANA_DEVNET,
+    txHash: HASH.sO,
+    to: ADDR.gatewaySepolia,
+    logs: [
+      {
+        event: EVENT_UNIVERSAL_TX,
+        args: {
+          sender: ADDR.sender,
+          recipient: ADDR.recipient,
+          token: ADDR.token,
+          amount: BigInt(0),
+          payload: '0xdeadbeef',
+          revertRecipient: ADDR.revertTo,
+          txType: 1,
+          signatureData: '0x',
+          fromCEA: true,
+        },
+        address: ADDR.gatewaySepolia,
+        logIndex: 0,
+      },
+    ],
+    expectedDecoded: {
+      fromCEA: true,
+      txType: 1,
+      txTypeName: 'GAS_AND_PAYLOAD',
+      amount: BigInt(0),
+      payloadLength: 4,
+      payloadPreview: '0xdeadbeef',
+    },
+    expectedClassifyAll: ['INBOUND_FROM_CEA'],
   },
 ];
 

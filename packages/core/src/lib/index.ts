@@ -44,6 +44,19 @@ export { parseUEAVersion } from './orchestrator/orchestrator.types';
 // Route detection utilities
 export { TransactionRoute, detectRoute, isChainTarget } from './orchestrator/route-detector';
 
+// Outbound gas cap helpers
+export {
+  DEFAULT_MAX_PC_FOR_GAS_BUFFER_BPS,
+  MAX_PC_FOR_GAS_BUFFER_BPS_LIMIT,
+  quoteMaxPCForGasCap,
+  quoteMaxPCForGasCapFromNativeValue,
+} from './orchestrator/max-pc-for-gas';
+export type {
+  MaxPCForGasCapInput,
+  MaxPCForGasCapFromNativeValueInput,
+  MaxPCForGasCapQuote,
+} from './orchestrator/max-pc-for-gas';
+
 // CEA utilities
 export {
   getCEAAddress,

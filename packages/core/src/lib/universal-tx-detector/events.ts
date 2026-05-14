@@ -2,8 +2,10 @@
  * Event ABI fragments used by the universal-tx detector.
  *
  * Sourced from push-chain-gateway-contracts and push-chain-core-contracts:
- *   - UniversalTx, UniversalTxExecuted, RevertUniversalTx, FundsRescued
+ *   - UniversalTx, RevertUniversalTx, FundsRescued
  *       → contracts/evm-gateway/src/interfaces/IUniversalGateway.sol
+ *   - UniversalTxExecuted
+ *       → push-chain-core-contracts/src/Interfaces/ICEA.sol
  *   - UniversalTxFinalized, UniversalTxReverted, FundsRescued (vault)
  *       → contracts/evm-gateway/src/interfaces/IVault.sol
  *   - UniversalTxOutbound

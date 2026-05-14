@@ -71,7 +71,7 @@ describe('SDK 5.2 gas sizer — testnet smoke', () => {
       const universalCore = (await pushClient.readContract({
         address: gatewayPC,
         abi: UNIVERSAL_GATEWAY_PC,
-        functionName: 'UNIVERSAL_CORE',
+        functionName: 'universalCore',
         args: [],
       })) as `0x${string}`;
 
@@ -81,7 +81,7 @@ describe('SDK 5.2 gas sizer — testnet smoke', () => {
         abi: UNIVERSAL_CORE_EVM,
         functionName: 'getOutboundTxGasAndFees',
         args: [pETH, BigInt(0)],
-      })) as [string, bigint, bigint, bigint, string];
+      })) as readonly [`0x${string}`, bigint, bigint, bigint, string, bigint];
       const gasFee = result[1];
       console.log(`[smoke] live pETH gasFee = ${gasFee}`);
 

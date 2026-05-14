@@ -72,6 +72,13 @@ export type ExecuteParams = {
   gasLimit?: bigint;
 
   /**
+   * Optional cap on native PC used for outbound gas swap.
+   * Applies only to Push -> external-chain outbound legs. Omit or set 0n for
+   * uncapped legacy behavior.
+   */
+  maxPCForGas?: bigint;
+
+  /**
    * Optional override for the EIP-1559 max fee per gas (in wei).
    * @reason Gives callers direct control over total gas price to speed up or save cost.
    */
@@ -541,25 +548,26 @@ export interface SvmExecutePayloadFields {
  * Request structure for sendUniversalTxOutbound on Push Chain
  * Used for Routes 2, 3, 4 (outbound from Push)
  *
- * NOTE: The `target` field is a LEGACY parameter for contract compatibility.
- * The deployed UniversalGatewayPC contract still expects this field, but it will
- * be removed in future contract upgrades. Pass any non-zero address (e.g., CEA address).
- * The actual destination is determined by the relay from the token's SOURCE_CHAIN_NAMESPACE.
+ * NOTE: The `target` field is raw recipient bytes for the destination chain.
+ * For EVM CEA funds-parking, use the zero recipient when `payload` is empty.
  */
 export interface UniversalOutboundTxRequest {
   /**
-   * LEGACY/DUMMY: Raw destination address bytes for contract compatibility.
-   * Pass any non-zero address - this value is NOT used by the relay to determine
-   * the actual transaction destination. Will be removed in future contract upgrades.
+   * Raw destination recipient bytes. EVM routes usually pass a 20-byte address;
+   * SVM routes pass a 32-byte program/account address.
    */
   target: `0x${string}`;
   /** PRC20 token address on Push Chain to burn */
   token: `0x${string}`;
   /** Amount to burn (0 for no-burn, use existing CEA balance) */
   amount: bigint;
-  /** Gas limit for fee quote (0 = default BASE_GAS_LIMIT) */
+  /** Gas limit for fee quote (0 = per-chain default resolved by UniversalCore) */
   gasLimit: bigint;
-  /** Raw ABI-encoded Multicall[] (no selector prefix) */
+  /** Gas price override for destination-chain gas (0 = UniversalCore default) */
+  gasPrice: bigint;
+  /** Max native PC that may be used for gas swap (0 = uncapped legacy behavior) */
+  maxPCForGas: bigint;
+  /** Destination execution payload; empty only for explicit funds parking */
   payload: `0x${string}`;
   /** Address to receive funds on revert */
   revertRecipient: `0x${string}`;
@@ -613,8 +621,12 @@ export interface HopDescriptor {
   gasToken?: `0x${string}`;
   /** Gas fee amount in gas token */
   gasFee?: bigint;
+  /** Destination-chain gas price quoted by UniversalCore */
+  gasPrice?: bigint;
   /** Gas limit for outbound relay */
   gasLimit: bigint;
+  /** Max native PC used for outbound gas swap (0 = uncapped) */
+  maxPCForGas: bigint;
   /** UEA address */
   ueaAddress: `0x${string}`;
   /** Address to receive funds on revert */
@@ -672,8 +684,12 @@ export interface CascadeSegment {
   gasToken?: `0x${string}`;
   /** Total gas fee for this segment */
   gasFee?: bigint;
+  /** Destination-chain gas price quoted by UniversalCore */
+  gasPrice?: bigint;
   /** Gas limit for this segment */
   gasLimit?: bigint;
+  /** Max native PC used for outbound gas swap (0 = uncapped) */
+  maxPCForGas?: bigint;
   /**
    * SDK 5.2 gas-abstraction sizing decision for this segment. When the
    * segment merges multiple hops, the strictest (highest category) sizing
@@ -927,6 +943,14 @@ export interface WaitForOutboundOptions {
    * has multiple outbound operations to different chains.
    */
   _expectedDestinationChain?: string;
+
+  /**
+   * @internal Zero-based index among outbound entries that match
+   * `_expectedDestinationChain`. Used when a composed cascade emits multiple
+   * outbound operations to the same chain and a later hop must track the later
+   * observed tx rather than the first one.
+   */
+  _outboundIndex?: number;
 }
 
 // ============================================================================

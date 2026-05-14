@@ -70,7 +70,7 @@ describe('Read Uniswap V3 pool info for Solana namespace', () => {
     const universalCore = await client.readContract({
       address: GATEWAY_PC,
       abi: UNIVERSAL_GATEWAY_PC,
-      functionName: 'UNIVERSAL_CORE',
+      functionName: 'universalCore',
     }) as `0x${string}`;
     console.log(`UniversalCore: ${universalCore}`);
 

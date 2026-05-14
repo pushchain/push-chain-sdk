@@ -30,6 +30,7 @@ import {
   buildSendUniversalTxToUEA,
   buildOutboundApprovalAndCall,
   buildMigrationPayload,
+  assertCeaFundsParkingInvariant,
   isSvmChain,
   encodeSvmExecutePayload,
   encodeSvmCeaToUeaPayload,
@@ -80,7 +81,7 @@ import PROGRESS_HOOKS from '../../progress-hook/progress-hook';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import { buildSvmPayloadFromParams } from '../svm-idl/build-payload';
 import { runPreflight, maybeFireSvmWarnThreshold } from './preflight';
-import { maybeBumpForCeaAtaRent } from './svm-rent';
+import { ensureSvmFinalizeGasBudgetQuote } from './svm-rent';
 import { InsufficientUEABalanceError } from './errors';
 import { fireProgressHook } from './context';
 import {
@@ -240,6 +241,7 @@ export async function buildHopDescriptor(
     params,
     route: routeStr as HopDescriptor['route'],
     gasLimit,
+    maxPCForGas: params.maxPCForGas ?? BigInt(0),
     ueaAddress,
     revertRecipient: ueaAddress,
   };
@@ -307,39 +309,49 @@ export async function buildHopDescriptor(
 
         let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let gasFee = BigInt(0);
+        let gasPrice = BigInt(0);
         let sizing: GasSizingDecision | undefined;
 
-        // Conditional CEA-ATA rent bump (SPL-only). Mirrors single-route
-        // executeUoaToCeaSvm path. See svm-rent.ts for rationale.
-        const splMintBase58 =
+        // SVM finalize budget: compare the quoted gasFee in lamports against
+        // the gateway finalize minimum, then re-query with a bumped gasLimit
+        // if the default quote is too low.
+        const svmFundsToken =
           burnAmount > BigInt(0)
             ? (params.funds as { token?: MoveableToken } | undefined)?.token
-                ?.address
             : undefined;
-        let effectiveGasLimit = await maybeBumpForCeaAtaRent({
-          ctx,
-          ueaAddress,
-          targetChain,
-          splMintBase58,
-          burnAmount,
-          effectiveGasLimit: gasLimit,
-        });
+        const splMintBase58 =
+          svmFundsToken?.mechanism === 'approve'
+            ? svmFundsToken.address
+            : undefined;
+        let effectiveGasLimit = gasLimit;
 
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-          const result = await queryOutboundGasFee(
+          let result = await queryOutboundGasFee(
             ctx,
             prc20Token,
             effectiveGasLimit,
             targetChain
           );
+          result = await ensureSvmFinalizeGasBudgetQuote({
+            ctx,
+            ueaAddress,
+            targetChain,
+            prc20Token,
+            quote: result,
+            splMintBase58,
+            burnAmount,
+            pathTag: 'buildHopDescriptor',
+          });
           gasToken = result.gasToken;
           gasFee = result.gasFee;
+          gasPrice = result.gasPrice;
           sizing = result.sizing;
-          if (!params.gasLimit && result.gasPrice > BigInt(0)) {
-            effectiveGasLimit = result.gasFee / result.gasPrice;
+          effectiveGasLimit = result.gasLimitUsed;
+          if (!params.gasLimit) {
             printLog(
               ctx,
-              `buildHopDescriptor — SVM derived effectiveGasLimit: ${effectiveGasLimit} (gasFee=${result.gasFee} / gasPrice=${result.gasPrice})`
+              `buildHopDescriptor — SVM resolved effectiveGasLimit: ${effectiveGasLimit} ` +
+                `(gasFee=${result.gasFee}, gasPrice=${result.gasPrice})`
             );
           }
         }
@@ -353,6 +365,7 @@ export async function buildHopDescriptor(
           burnAmount,
           gasToken,
           gasFee,
+          gasPrice,
           gasLimit: effectiveGasLimit,
           sizing,
         };
@@ -371,6 +384,7 @@ export async function buildHopDescriptor(
         const burnAmount = BigInt(0); // Migration is logic-only — no funds. CEA rejects msg.value != 0.
         let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let gasFee = BigInt(0);
+        let gasPrice = BigInt(0);
         let sizing: GasSizingDecision | undefined;
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
           const result = await queryOutboundGasFee(
@@ -381,6 +395,7 @@ export async function buildHopDescriptor(
           );
           gasToken = result.gasToken;
           gasFee = result.gasFee;
+          gasPrice = result.gasPrice;
           sizing = result.sizing;
         }
         return {
@@ -392,6 +407,7 @@ export async function buildHopDescriptor(
           burnAmount,
           gasToken,
           gasFee,
+          gasPrice,
           isMigration: true,
           sizing,
         };
@@ -494,6 +510,7 @@ export async function buildHopDescriptor(
       // Query gas fee
       let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
       let gasFee = BigInt(0);
+      let gasPrice = BigInt(0);
       let sizing: GasSizingDecision | undefined;
       if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
         const result = await queryOutboundGasFee(
@@ -504,6 +521,7 @@ export async function buildHopDescriptor(
         );
         gasToken = result.gasToken;
         gasFee = result.gasFee;
+        gasPrice = result.gasPrice;
         sizing = result.sizing;
       }
 
@@ -516,6 +534,7 @@ export async function buildHopDescriptor(
         burnAmount,
         gasToken,
         gasFee,
+        gasPrice,
         sizing,
       };
     }
@@ -577,17 +596,31 @@ export async function buildHopDescriptor(
 
         let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let gasFee = BigInt(0);
+        let gasPrice = BigInt(0);
         let sizing: GasSizingDecision | undefined;
+        let effectiveGasLimit = gasLimit;
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-          const result = await queryOutboundGasFee(
+          let result = await queryOutboundGasFee(
             ctx,
             prc20Token,
-            gasLimit,
+            effectiveGasLimit,
             sourceChain
           );
+          result = await ensureSvmFinalizeGasBudgetQuote({
+            ctx,
+            ueaAddress,
+            targetChain: sourceChain,
+            prc20Token,
+            quote: result,
+            splMintBase58: undefined,
+            burnAmount: BigInt(0),
+            pathTag: 'buildHopDescriptor',
+          });
           gasToken = result.gasToken;
           gasFee = result.gasFee;
+          gasPrice = result.gasPrice;
           sizing = result.sizing;
+          effectiveGasLimit = result.gasLimitUsed;
         }
 
         return {
@@ -601,6 +634,8 @@ export async function buildHopDescriptor(
           burnAmount: BigInt(0),
           gasToken,
           gasFee,
+          gasPrice,
+          gasLimit: effectiveGasLimit,
           sizing,
         };
       }
@@ -638,6 +673,7 @@ export async function buildHopDescriptor(
       const prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
       let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
       let gasFee = BigInt(0);
+      let gasPrice = BigInt(0);
       let sizing: GasSizingDecision | undefined;
       if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
         const result = await queryOutboundGasFee(
@@ -648,6 +684,7 @@ export async function buildHopDescriptor(
         );
         gasToken = result.gasToken;
         gasFee = result.gasFee;
+        gasPrice = result.gasPrice;
         sizing = result.sizing;
       }
 
@@ -662,6 +699,7 @@ export async function buildHopDescriptor(
         burnAmount: BigInt(0),
         gasToken,
         gasFee,
+        gasPrice,
         sizing,
       };
     }
@@ -724,6 +762,14 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
         // Accumulate gas fees
         currentSegment.gasFee =
           (currentSegment.gasFee || BigInt(0)) + (hop.gasFee || BigInt(0));
+        currentSegment.gasPrice = mergeGasPrice(
+          currentSegment.gasPrice,
+          hop.gasPrice
+        );
+        currentSegment.maxPCForGas = mergeMaxPCForGas(
+          currentSegment.maxPCForGas,
+          hop.maxPCForGas
+        );
       } else if (segType === 'INBOUND_FROM_CEA') {
         // Sum burn amounts so the single sendUniversalTxToUEA carries the
         // combined native value forwarded from CEA back to the UEA.
@@ -735,6 +781,14 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
         }
         currentSegment.gasFee =
           (currentSegment.gasFee || BigInt(0)) + (hop.gasFee || BigInt(0));
+        currentSegment.gasPrice = mergeGasPrice(
+          currentSegment.gasPrice,
+          hop.gasPrice
+        );
+        currentSegment.maxPCForGas = mergeMaxPCForGas(
+          currentSegment.maxPCForGas,
+          hop.maxPCForGas
+        );
       } else if (segType === 'PUSH_EXECUTION') {
         currentSegment.mergedPushMulticalls = [
           ...(currentSegment.mergedPushMulticalls || []),
@@ -774,7 +828,9 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
         prc20Token: hop.prc20Token,
         gasToken: hop.gasToken,
         gasFee: hop.gasFee,
+        gasPrice: hop.gasPrice,
         gasLimit: hop.gasLimit,
+        maxPCForGas: hop.maxPCForGas,
         sizing: hop.sizing,
       };
       segments.push(currentSegment);
@@ -787,6 +843,19 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
 /** Ordering for sizing-category severity (higher = stricter). */
 function categoryRank(c: 'A' | 'B' | 'C'): number {
   return c === 'C' ? 2 : c === 'B' ? 1 : 0;
+}
+
+function mergeMaxPCForGas(current?: bigint, next?: bigint): bigint {
+  const a = current ?? BigInt(0);
+  const b = next ?? BigInt(0);
+  if (a === BigInt(0) || b === BigInt(0)) return BigInt(0);
+  return a + b;
+}
+
+function mergeGasPrice(current?: bigint, next?: bigint): bigint {
+  const a = current ?? BigInt(0);
+  const b = next ?? BigInt(0);
+  return a > b ? a : b;
 }
 
 // ============================================================================
@@ -857,6 +926,42 @@ function isNativeSeedOnlySegment(segment: CascadeSegment): boolean {
 
 function segmentNeedsOutboundGas(segment: CascadeSegment): boolean {
   return segment.type !== 'PUSH_EXECUTION' && !isNativeSeedOnlySegment(segment);
+}
+
+function buildRootOutboundIndexByHop(
+  segments: CascadeSegment[],
+  hops: HopDescriptor[]
+): Map<number, number> {
+  const hopIndexByDescriptor = new Map<HopDescriptor, number>();
+  hops.forEach((hop, index) => hopIndexByDescriptor.set(hop, index));
+
+  const nextIndexByChain = new Map<CHAIN, number>();
+  const result = new Map<number, number>();
+
+  for (const segment of segments) {
+    let chain: CHAIN | undefined;
+    if (segment.type === 'OUTBOUND_TO_CEA') {
+      chain = segment.targetChain;
+    } else if (
+      segment.type === 'INBOUND_FROM_CEA' &&
+      !isNativeSeedOnlySegment(segment)
+    ) {
+      chain = segment.sourceChain;
+    }
+
+    if (!chain) continue;
+
+    const outboundIndex = nextIndexByChain.get(chain) ?? 0;
+    for (const hop of segment.hops) {
+      const hopIndex = hopIndexByDescriptor.get(hop);
+      if (hopIndex !== undefined) {
+        result.set(hopIndex, outboundIndex);
+      }
+    }
+    nextIndexByChain.set(chain, outboundIndex + 1);
+  }
+
+  return result;
 }
 
 function sumNativeSeedAmount(hops: HopDescriptor[]): bigint {
@@ -1002,7 +1107,7 @@ export async function composeCascadeDetailed(
       await ctx.pushClient.readContract<`0x${string}`>({
         address: gatewayPcAddress,
         abi: UNIVERSAL_GATEWAY_PC,
-        functionName: 'UNIVERSAL_CORE',
+        functionName: 'universalCore',
         args: [],
       });
     // Compute per-SVM budget = ueaBalance − (PC needed for EVM outbounds) − 1 PC safety
@@ -1151,7 +1256,10 @@ export async function composeCascadeDetailed(
             segment.mergedCeaMulticalls || []
           );
           // Get CEA address from the first hop
-          targetForOutbound = firstHop?.ceaAddress || ueaAddress;
+          targetForOutbound = outboundPayload === '0x'
+            ? (ZERO_ADDRESS as `0x${string}`)
+            : firstHop?.ceaAddress || ueaAddress;
+          assertCeaFundsParkingInvariant(targetForOutbound, outboundPayload);
         }
 
         // Per-segment PRC-20 burn-balance pre-check (cascade R2-style segments
@@ -1242,7 +1350,9 @@ export async function composeCascadeDetailed(
           segment.totalBurnAmount || BigInt(0),
           segment.gasLimit ?? BigInt(0),
           outboundPayload,
-          ueaAddress
+          ueaAddress,
+          segment.maxPCForGas ?? BigInt(0),
+          segment.gasPrice ?? BigInt(0)
         );
 
         // Build approval + outbound multicalls
@@ -1408,7 +1518,9 @@ export async function composeCascadeDetailed(
             svmBurnAmount,
             segment.gasLimit ?? BigInt(0),
             svmPayload,
-            ueaAddress
+            ueaAddress,
+            segment.maxPCForGas ?? BigInt(0),
+            segment.gasPrice ?? BigInt(0)
           );
 
           const inboundGasFee = segment.gasFee || BigInt(0);
@@ -1453,7 +1565,8 @@ export async function composeCascadeDetailed(
           break;
         }
 
-        // EVM path: Build CEA multicall: [approve?, sendUniversalTxFromCEA(payload)]
+        // EVM path: Build CEA multicall: sendUniversalTxToUEA(payload).
+        // CEA handles ERC20 gateway approval internally.
         const ceaMulticalls: MultiCall[] = [];
 
         // Add primary hop's own CEA operations if any
@@ -1488,34 +1601,6 @@ export async function composeCascadeDetailed(
                 }
                 tokenAddress = addr;
                 amount += hParams.funds.amount;
-                // CEA approves gateway once with the cumulative allowance.
-                const gatewayAddr = UNIVERSAL_GATEWAY_ADDRESSES[sourceChain];
-                if (!gatewayAddr) {
-                  throw new Error(
-                    `No UniversalGateway address configured for chain ${sourceChain}`
-                  );
-                }
-                // Reset allowance to 0 first for USDT-style tokens
-                const approveZeroData = encodeFunctionData({
-                  abi: ERC20_EVM,
-                  functionName: 'approve',
-                  args: [gatewayAddr, BigInt(0)],
-                });
-                ceaMulticalls.push({
-                  to: tokenAddress,
-                  value: BigInt(0),
-                  data: approveZeroData,
-                });
-                const approveData = encodeFunctionData({
-                  abi: ERC20_EVM,
-                  functionName: 'approve',
-                  args: [gatewayAddr, hParams.funds.amount],
-                });
-                ceaMulticalls.push({
-                  to: tokenAddress,
-                  value: BigInt(0),
-                  data: approveData,
-                });
               }
             }
           } else if (hParams.value && hParams.value > BigInt(0)) {
@@ -1553,7 +1638,9 @@ export async function composeCascadeDetailed(
           segment.totalBurnAmount || BigInt(0),
           effectiveGasLimit,
           ceaPayload,
-          ueaAddress
+          ueaAddress,
+          segment.maxPCForGas ?? BigInt(0),
+          segment.gasPrice ?? BigInt(0)
         );
 
         const inboundGasFee = segment.gasFee || BigInt(0);
@@ -1909,11 +1996,16 @@ export function createCascadedBuilder(
             );
             const isAfterCeaToPush = (index: number) =>
               ceaToPushIndex >= 0 && index > ceaToPushIndex;
+            const rootOutboundIndexByHop = buildRootOutboundIndexByHop(
+              segments,
+              hops
+            );
 
             const trackOutboundHops = async (
               outboundHops: CascadeHopInfo[],
               pushTxHash: string,
-              resolvedSubTxId?: string
+              resolvedSubTxId?: string,
+              outboundIndexByHop?: Map<number, number>
             ): Promise<CascadeCompletionResult | null> => {
               if (outboundHops.length === 0) return null;
 
@@ -1963,6 +2055,12 @@ export function createCascadedBuilder(
                       timeout: remainingTimeout,
                       _resolvedSubTxId: resolvedSubTxId,
                       _expectedDestinationChain: hop.executionChain,
+                      ...(outboundIndexByHop
+                        ? {
+                            _outboundIndex:
+                              outboundIndexByHop.get(hop.hopIndex) ?? 0,
+                          }
+                        : {}),
                       progressHook: (event) => {
                         cascadeProgressHook?.({
                           hopIndex: hop.hopIndex,
@@ -2194,7 +2292,9 @@ export function createCascadedBuilder(
             );
             const rootOutboundFailure = await trackOutboundHops(
               rootOutboundHops,
-              response.hash
+              response.hash,
+              undefined,
+              rootOutboundIndexByHop
             );
             if (rootOutboundFailure) return rootOutboundFailure;
 
@@ -2236,6 +2336,8 @@ export function createCascadedBuilder(
                     pollingIntervalMs,
                     timeout: remainingTimeout,
                     _expectedDestinationChain: inboundHop.executionChain,
+                    _outboundIndex:
+                      rootOutboundIndexByHop.get(inboundHop.hopIndex) ?? 0,
                     progressHook: (event) => {
                       cascadeProgressHook?.({
                         hopIndex: inboundHop.hopIndex,

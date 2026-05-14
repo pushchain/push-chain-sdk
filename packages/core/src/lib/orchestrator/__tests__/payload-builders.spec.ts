@@ -18,6 +18,7 @@ import {
   buildErc20WithdrawalMulticall,
   buildMigrationPayload,
   buildOutboundApprovalAndCall,
+  assertCeaFundsParkingInvariant,
 } from '../payload-builders';
 
 // Use checksummed addresses (viem validates checksums)
@@ -100,13 +101,46 @@ describe('buildOutboundRequest', () => {
     expect(result.token).toBe(TOKEN_A);
     expect(result.amount).toBe(BigInt(1000));
     expect(result.gasLimit).toBe(BigInt(200000));
+    expect(result.gasPrice).toBe(BigInt(0));
+    expect(result.maxPCForGas).toBe(BigInt(0));
     expect(result.payload).toBe('0xabcdef');
     expect(result.revertRecipient).toBe(BOB);
   });
 
-  it('should handle zero address token', () => {
+  it('should allow custom maxPCForGas cap', () => {
     const result = buildOutboundRequest(
       ALICE,
+      TOKEN_A,
+      BigInt(1000),
+      BigInt(200000),
+      '0xabcdef',
+      BOB,
+      BigInt(12345),
+    );
+
+    expect(result.gasPrice).toBe(BigInt(0));
+    expect(result.maxPCForGas).toBe(BigInt(12345));
+  });
+
+  it('should allow custom outbound gasPrice override', () => {
+    const result = buildOutboundRequest(
+      ALICE,
+      TOKEN_A,
+      BigInt(1000),
+      BigInt(200000),
+      '0xabcdef',
+      BOB,
+      BigInt(0),
+      BigInt(42),
+    );
+
+    expect(result.gasPrice).toBe(BigInt(42));
+    expect(result.maxPCForGas).toBe(BigInt(0));
+  });
+
+  it('should handle zero address token', () => {
+    const result = buildOutboundRequest(
+      ZERO_ADDRESS as `0x${string}`,
       ZERO_ADDRESS as `0x${string}`,
       BigInt(0),
       BigInt(100000),
@@ -116,6 +150,18 @@ describe('buildOutboundRequest', () => {
 
     expect(result.token).toBe(ZERO_ADDRESS);
     expect(result.amount).toBe(BigInt(0));
+  });
+
+  it('should reject empty CEA payloads unless recipient parks funds', () => {
+    expect(() =>
+      assertCeaFundsParkingInvariant(ALICE, '0x')
+    ).toThrow('Empty CEA payloads must use the zero recipient');
+  });
+
+  it('should allow empty CEA payloads with zero recipient', () => {
+    expect(() =>
+      assertCeaFundsParkingInvariant(ZERO_ADDRESS as `0x${string}`, '0x')
+    ).not.toThrow();
   });
 });
 
@@ -149,6 +195,8 @@ describe('buildOutboundApprovalAndCall', () => {
     token: TOKEN_A,
     amount: BigInt(1000),
     gasLimit: BigInt(200000),
+    gasPrice: BigInt(0),
+    maxPCForGas: BigInt(0),
     payload: '0x',
     revertRecipient: BOB,
   };
@@ -191,6 +239,7 @@ describe('buildOutboundApprovalAndCall', () => {
       data: result[2].data as `0x${string}`,
     });
     expect(outboundDecoded.functionName).toBe('sendUniversalTxOutbound');
+    expect(result[2].data.startsWith('0x77b86bec')).toBe(true);
     expect(result[2].to).toBe(GATEWAY);
     expect(result[2].value).toBe(BigInt(2600));
   });

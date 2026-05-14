@@ -88,8 +88,9 @@ Branch: `feat/sdk-5.2-gas-abstraction` (not yet merged)
 - Unit tests cover Case C categorization (`gas-usd-sizer.spec.ts`).
 
 We've verified on testnet donut that:
-- WPC/USDT.eth pool exists at fee 500 and returns ~$0.279 / PC (vs hardcoded $0.10 — 2.8× difference)
-- WPC/USDT.* pools exist for ETH, ARB, BASE, BNB routes. **WPC/USDT_SOL missing** — SDK falls back to hardcoded rate for Solana origin. Pool deployment would be appreciated.
+- WPC/stable pools exist for ETH, ARB, BASE, and BNB routes. Confirmed token and pool addresses are tracked in `docs/audit-2026-05/pc-stable-pool-addresses.md`.
+- BSC currently has both `USDC.bsc` and `USDT.bsc` pool entries available.
+- **WPC/USDT_SOL is still missing** — SDK falls back to the hardcoded rate for Solana origin. Pool deployment would be appreciated.
 
 ## Ask
 

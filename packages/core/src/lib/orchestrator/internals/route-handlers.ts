@@ -47,11 +47,10 @@ import {
 import {
   runPreflight,
   maybeFireSvmWarnThreshold,
-  SVM_NATIVE_VALUE_WARN_THRESHOLD,
 } from './preflight';
-import { maybeBumpForCeaAtaRent } from './svm-rent';
+import { ensureSvmFinalizeGasBudgetQuote } from './svm-rent';
 
-import { CHAIN_INFO, VM_NAMESPACE, UNIVERSAL_GATEWAY_ADDRESSES } from '../../constants/chain';
+import { CHAIN_INFO, VM_NAMESPACE } from '../../constants/chain';
 import { CHAIN } from '../../constants/enums';
 import { MoveableToken } from '../../constants/tokens';
 import { Utils } from '../../utils';
@@ -67,9 +66,9 @@ import {
   buildSendUniversalTxToUEA,
   buildOutboundApprovalAndCall,
   buildMigrationPayload,
+  assertCeaFundsParkingInvariant,
   isSvmChain,
   isValidSolanaHexAddress,
-  encodeSvmExecutePayload,
   encodeSvmCeaToUeaPayload,
 } from '../payload-builders';
 import {
@@ -164,6 +163,68 @@ function resolveR2Prc20TokenSvm(
   }
 
   return { prc20Token, burnAmount };
+}
+
+function resolveR3SvmDrain(
+  params: UniversalExecuteParams,
+  sourceChain: CHAIN,
+  pushNetwork: PUSH_NETWORK
+): {
+  prc20Token: `0x${string}`;
+  drainAmount: bigint;
+  tokenMintHex: `0x${string}` | undefined;
+} {
+  let drainAmount = BigInt(0);
+  let tokenMintHex: `0x${string}` | undefined;
+  let prc20Token = getNativePRC20ForChain(sourceChain, pushNetwork);
+
+  if (params.funds?.amount && params.funds.amount > BigInt(0)) {
+    drainAmount = params.funds.amount;
+    const token = (params.funds as { token?: MoveableToken }).token;
+    if (token?.mechanism === 'approve') {
+      const mintPk = new PublicKey(token.address);
+      tokenMintHex = ('0x' + Buffer.from(mintPk.toBytes()).toString('hex')) as `0x${string}`;
+      prc20Token = PushChain.utils.tokens.getPRC20Address(token).address;
+    }
+  } else if (params.value && params.value > BigInt(0)) {
+    drainAmount = params.value;
+  }
+
+  return { prc20Token, drainAmount, tokenMintHex };
+}
+
+function buildR3SvmExtraPayload(
+  ctx: OrchestratorContext,
+  params: UniversalExecuteParams,
+  ueaAddress: `0x${string}`,
+  sourceChain: CHAIN,
+  inboundNonce?: bigint
+): Uint8Array | undefined {
+  if (!params.data) {
+    return undefined;
+  }
+
+  const executeParams = toExecuteParams(params);
+  const multicallCtx = {
+    ...ctx,
+    universalSigner: {
+      ...ctx.universalSigner,
+      account: {
+        ...ctx.universalSigner.account,
+        chain: sourceChain,
+      },
+    },
+  } as OrchestratorContext;
+  const multicallPayload = buildMulticallPayloadData(
+    multicallCtx,
+    executeParams.to,
+    buildExecuteMulticall({ execute: executeParams, ueaAddress })
+  );
+  const inboundPayload = buildInboundUniversalPayload(multicallPayload, {
+    nonce: inboundNonce ?? BigInt(0),
+  });
+
+  return hexToBytes(inboundPayload);
 }
 
 /**
@@ -482,6 +543,7 @@ export async function executeUoaToCea(
   // --- 202: Gas estimation (spec-ordered before 203) ---
   let gasFee = BigInt(0);
   let protocolFee = BigInt(0);
+  let outboundGasPrice = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   let universalCoreAddress: `0x${string}` | undefined;
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
@@ -490,6 +552,7 @@ export async function executeUoaToCea(
       const result = await queryOutboundGasFee(ctx, prc20Token, gasLimitForQuery, targetChain);
       gasFee = result.gasFee;
       protocolFee = result.protocolFee;
+      outboundGasPrice = result.gasPrice;
       gasToken = result.gasToken;
       universalCoreAddress = result.universalCoreAddress;
       printLog(
@@ -553,12 +616,12 @@ export async function executeUoaToCea(
   }
 
   // Build outbound request struct for the gateway
-  // NOTE: `target` is a LEGACY/DUMMY parameter for contract compatibility.
-  // The deployed UniversalGatewayPC still expects this field, but the relay does NOT use it
-  // to determine the actual destination. The relay determines destination from the PRC-20 token's
-  // SOURCE_CHAIN_NAMESPACE. We pass the CEA address as a non-zero placeholder.
-  // This field will be removed in future contract upgrades.
-  const targetBytes = ceaAddress; // Dummy value - any non-zero address works
+  // Empty CEA payloads intentionally use zero recipient to park funds in the
+  // CEA under the post-audit single-call guard.
+  const targetBytes = ceaPayload === '0x'
+    ? (ZERO_ADDRESS as `0x${string}`)
+    : ceaAddress;
+  assertCeaFundsParkingInvariant(targetBytes, ceaPayload);
 
   const outboundReq: UniversalOutboundTxRequest = buildOutboundRequest(
     targetBytes,
@@ -566,7 +629,9 @@ export async function executeUoaToCea(
     burnAmount,
     gasLimitForQuery,
     ceaPayload,
-    ueaAddress // revert recipient is the UEA
+    ueaAddress, // revert recipient is the UEA
+    params.maxPCForGas ?? BigInt(0),
+    outboundGasPrice
   );
 
   printLog(
@@ -577,6 +642,7 @@ export async function executeUoaToCea(
         token: outboundReq.token,
         amount: outboundReq.amount.toString(),
         gasLimit: outboundReq.gasLimit.toString(),
+        maxPCForGas: outboundReq.maxPCForGas.toString(),
         payloadLength: outboundReq.payload.length,
         revertRecipient: outboundReq.revertRecipient,
       },
@@ -824,49 +890,55 @@ export async function executeUoaToCeaSvm(
   // --- 202: Gas estimation (spec-ordered before 203) ---
   let gasFee = BigInt(0);
   let protocolFeeSvm = BigInt(0);
+  let outboundGasPriceSvm = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   let universalCoreAddress: `0x${string}` | undefined;
   // Effective gas limit seeded from the user param. When the user omits
-  // gasLimit, it'll be derived from the gasFee/gasPrice response so the
-  // on-chain record carries a non-zero compute budget the relay can use.
+  // gasLimit, it'll be derived from the gas quote so the on-chain record
+  // carries a non-zero compute budget the relay can use.
   let effectiveGasLimit = params.gasLimit ?? BigInt(0);
 
-  // Conditional CEA-ATA rent bump: when the SPL outbound's destination ATA
-  // does not yet exist on Solana, the gateway needs an extra ~2.04M lamports
-  // for ATA-create rent. The on-chain quote does NOT include this, so bump
-  // effectiveGasLimit BEFORE queryOutboundGasFee so the returned gasFee
-  // already covers the rent.
-  const splMintBase58 =
+  // SVM finalize budget: the Solana gateway requires gas_fee to cover the
+  // relayer signature fee, ExecutedSubTx rent, a compute buffer, and
+  // conditionally CEA ATA rent for SPL outbounds. The on-chain quote can be
+  // below that floor, so we compare the quoted fee in lamports and re-query
+  // with a bumped gasLimit when required.
+  const svmFundsToken =
     burnAmount > BigInt(0)
-      ? (params.funds as { token?: MoveableToken } | undefined)?.token?.address
+      ? (params.funds as { token?: MoveableToken } | undefined)?.token
       : undefined;
-  effectiveGasLimit = await maybeBumpForCeaAtaRent({
-    ctx,
-    ueaAddress,
-    targetChain,
-    splMintBase58,
-    burnAmount,
-    effectiveGasLimit,
-  });
+  const splMintBase58 =
+    svmFundsToken?.mechanism === 'approve' ? svmFundsToken.address : undefined;
 
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_202_01, targetChain);
     try {
-      const result = await queryOutboundGasFee(ctx, prc20Token, effectiveGasLimit, targetChain);
+      let result = await queryOutboundGasFee(ctx, prc20Token, effectiveGasLimit, targetChain);
+      result = await ensureSvmFinalizeGasBudgetQuote({
+        ctx,
+        ueaAddress,
+        targetChain,
+        prc20Token,
+        quote: result,
+        splMintBase58,
+        burnAmount,
+        pathTag: 'executeUoaToCeaSvm',
+      });
       gasFee = result.gasFee;
       protocolFeeSvm = result.protocolFee;
+      outboundGasPriceSvm = result.gasPrice;
       gasToken = result.gasToken;
       universalCoreAddress = result.universalCoreAddress;
-      // When user omits gasLimit (sent as 0), the contract computes fees using its internal
-      // baseGasLimitByChainNamespace. But the relay reads the stored gasLimit=0 from the
-      // on-chain outbound record and uses it as the Solana compute budget — 0 CU means the
-      // relay cannot execute the tx. Derive the effective limit from gasFee/gasPrice so
-      // the stored record has a non-zero compute budget the relay can use.
-      if (!params.gasLimit && result.gasPrice > BigInt(0)) {
-        effectiveGasLimit = result.gasFee / result.gasPrice;
+      // When user omits gasLimit (sent as 0), the contract computes fees using
+      // its internal baseGasLimitByChainNamespace. But the relay reads the
+      // stored gasLimit from the outbound record. Store the resolved value from
+      // UniversalCore so the relayer has a non-zero SVM budget.
+      effectiveGasLimit = result.gasLimitUsed;
+      if (!params.gasLimit) {
         printLog(
           ctx,
-          `executeUoaToCeaSvm — derived effectiveGasLimit: ${effectiveGasLimit} (gasFee=${result.gasFee} / gasPrice=${result.gasPrice})`
+          `executeUoaToCeaSvm — resolved effectiveGasLimit: ${effectiveGasLimit} ` +
+            `(gasFee=${result.gasFee}, gasPrice=${result.gasPrice})`
         );
       }
       printLog(
@@ -906,7 +978,9 @@ export async function executeUoaToCeaSvm(
     burnAmount,
     effectiveGasLimit,
     svmPayload,
-    ueaAddress // revert recipient is the UEA
+    ueaAddress, // revert recipient is the UEA
+    params.maxPCForGas ?? BigInt(0),
+    outboundGasPriceSvm
   );
 
   printLog(
@@ -917,6 +991,7 @@ export async function executeUoaToCeaSvm(
         token: outboundReq.token,
         amount: outboundReq.amount.toString(),
         gasLimit: outboundReq.gasLimit.toString(),
+        maxPCForGas: outboundReq.maxPCForGas.toString(),
         payloadLength: (outboundReq.payload.length - 2) / 2,
         revertRecipient: outboundReq.revertRecipient,
       },
@@ -1143,12 +1218,6 @@ export async function executeCeaToPush(
   // CEA auto-deploys on-chain: Vault.finalizeUniversalTx calls CEAFactory.deployCEA()
   // if CEA doesn't exist yet. No SDK-side blocking needed.
 
-  // 5. Get UniversalGateway address on source chain
-  const gatewayAddress = UNIVERSAL_GATEWAY_ADDRESSES[sourceChain];
-  if (!gatewayAddress) {
-    throw new Error(`No UniversalGateway address configured for chain ${sourceChain}`);
-  }
-
   // 6. Build multicall for CEA to execute on source chain (self-calls via sendUniversalTxToUEA)
   const ceaMulticalls: MultiCall[] = [];
 
@@ -1165,7 +1234,7 @@ export async function executeCeaToPush(
         tokenAddress = ZERO_ADDRESS as `0x${string}`;
         amount = params.funds.amount;
       } else {
-        // ERC20 token - need approval for gateway before sendUniversalTxToUEA
+        // ERC20 token. CEA handles gateway approval internally around sendUniversalTxToUEA.
         tokenAddress = token.address as `0x${string}`;
         amount = params.funds.amount;
       }
@@ -1182,34 +1251,7 @@ export async function executeCeaToPush(
   // query and relay execution, causing sendUniversalTxToUEA to revert with
   // InsufficientBalance. Pre-existing CEA funds remain parked and can be swept separately.
   const bridgeAmount = amount;
-  // Note: CEA contract may reject amount=0 in sendUniversalTxToUEA.
-  // Keeping bridgeAmount as-is (0) for payload-only to test precompile behavior.
-
-  // For ERC20 tokens, add approve call for the bridge amount
-  // (CEA approves gateway to spend the Vault-deposited amount)
-  // Reset to 0 first for USDT-style tokens that revert on non-zero to non-zero approve.
-  if (tokenAddress !== (ZERO_ADDRESS as `0x${string}`) && bridgeAmount > BigInt(0)) {
-    const approveZeroData = encodeFunctionData({
-      abi: ERC20_EVM,
-      functionName: 'approve',
-      args: [gatewayAddress, BigInt(0)],
-    });
-    ceaMulticalls.push({
-      to: tokenAddress,
-      value: BigInt(0),
-      data: approveZeroData,
-    });
-    const approveData = encodeFunctionData({
-      abi: ERC20_EVM,
-      functionName: 'approve',
-      args: [gatewayAddress, bridgeAmount],
-    });
-    ceaMulticalls.push({
-      to: tokenAddress,
-      value: BigInt(0),
-      data: approveData,
-    });
-  }
+  // The post-audit CEA allows amount=0 for payload-only sendUniversalTxToUEA.
 
   // Pre-fetch UEA nonce — needed for the inbound UniversalPayload struct
   // Skip getCode if accountStatusCache already confirmed deployment
@@ -1288,13 +1330,14 @@ export async function executeCeaToPush(
 
   // 9. Build outbound request (same structure as Route 2)
   // target = CEA address (for self-execution), value = 0 in payload
-  const outboundReq: UniversalOutboundTxRequest = buildOutboundRequest(
+  let outboundReq: UniversalOutboundTxRequest = buildOutboundRequest(
     ceaAddress,              // target: CEA address (to=CEA for self-execution)
     prc20Token,              // token: native PRC-20 for source chain (for namespace lookup)
     burnAmount,              // amount: 0 (payload-only, CEA uses its own balance)
     outboundGasLimit,
     ceaPayload,              // payload: ABI-encoded CEA multicall
-    ueaAddress               // revertRecipient: UEA
+    ueaAddress,              // revertRecipient: UEA
+    params.maxPCForGas ?? BigInt(0)
   );
 
   printLog(
@@ -1305,6 +1348,7 @@ export async function executeCeaToPush(
         token: outboundReq.token,
         amount: outboundReq.amount.toString(),
         gasLimit: outboundReq.gasLimit.toString(),
+        maxPCForGas: outboundReq.maxPCForGas.toString(),
         payloadLength: outboundReq.payload.length,
         revertRecipient: outboundReq.revertRecipient,
       },
@@ -1321,6 +1365,7 @@ export async function executeCeaToPush(
   // 11. Query gas fees from UniversalCore
   let gasFee = BigInt(0);
   let protocolFeeR3 = BigInt(0);
+  let outboundGasPriceR3 = BigInt(0);
   let nativeValueForGas = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   let sizingDecisionR3: GasSizingDecision | undefined;
@@ -1330,9 +1375,20 @@ export async function executeCeaToPush(
       const result = await queryOutboundGasFee(ctx, prc20Token, outboundGasLimit, sourceChain);
       gasToken = result.gasToken;
       gasFee = result.gasFee;
+      outboundGasPriceR3 = result.gasPrice;
       protocolFeeR3 = result.protocolFee;
       nativeValueForGas = result.nativeValueForGas;
       sizingDecisionR3 = result.sizing;
+      outboundReq = buildOutboundRequest(
+        ceaAddress,
+        prc20Token,
+        burnAmount,
+        outboundGasLimit,
+        ceaPayload,
+        ueaAddress,
+        params.maxPCForGas ?? BigInt(0),
+        outboundGasPriceR3
+      );
       printLog(
         ctx,
         `executeCeaToPush — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}, sizing=${result.sizing?.category ?? 'legacy'}`
@@ -1559,34 +1615,15 @@ export async function executeCeaToPushSvm(
 
   printLog(ctx, `executeCeaToPushSvm — sourceChain: ${sourceChain}, gateway: ${lockerContract}`);
 
-  // Determine drain amount and token
-  let drainAmount = BigInt(0);
-  let tokenMintHex: `0x${string}` | undefined;
-
-  if (params.funds?.amount && params.funds.amount > BigInt(0)) {
-    // SPL token drain
-    drainAmount = params.funds.amount;
-    const token = (params.funds as { token: MoveableToken }).token;
-    if (token && token.address) {
-      // Convert SPL mint address to 32-byte hex
-      const mintPk = new PublicKey(token.address);
-      tokenMintHex = ('0x' + Buffer.from(mintPk.toBytes()).toString('hex')) as `0x${string}`;
-    }
-  } else if (params.value && params.value > BigInt(0)) {
-    // Native SOL drain
-    drainAmount = params.value;
-  }
-
-  // Route 3 SVM: ALWAYS use native PRC-20 for chain namespace lookup + gas fees.
-  // CEA uses its own pre-existing balance — no PRC-20 burn needed on Push Chain.
-  const prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
-
-  // Build the SVM CPI payload (send_universal_tx_to_uea wrapped in execute)
-  // If params.data is provided, pass it as extraPayload for Push Chain execution
-  let extraPayload: Uint8Array | undefined;
-  if (params.data && typeof params.data === 'string') {
-    extraPayload = hexToBytes(params.data as `0x${string}`);
-  }
+  // Route 3 SVM: CEA uses its own pre-existing balance — no PRC-20 burn
+  // needed on Push Chain. The outer request token must still match the source
+  // asset so the relayer supplies the same Solana mint that the payload
+  // encodes; otherwise the gateway rejects with InvalidMint.
+  const { prc20Token, drainAmount, tokenMintHex } = resolveR3SvmDrain(
+    params,
+    sourceChain,
+    ctx.pushNetwork
+  );
 
   // Derive CEA PDA as revert recipient: ["push_identity", ueaAddress_20_bytes]
   const ueaBytes = Buffer.from(ueaAddress.slice(2), 'hex'); // 20 bytes
@@ -1596,11 +1633,29 @@ export async function executeCeaToPushSvm(
   );
   const ceaPdaHex = ('0x' + Buffer.from(ceaPda.toBytes()).toString('hex')) as `0x${string}`;
 
+  // Pre-fetch UEA status before payload construction. The inbound
+  // UniversalPayload must use the nonce after this outbound execution, because
+  // the Push-side execute() below consumes one UEA nonce before the Solana
+  // round-trip payload returns.
+  const gatewayPcAddress = getUniversalGatewayPCAddress();
+  const [ueaCode, ueaBalance] = await Promise.all([
+    ctx.pushClient.publicClient.getCode({ address: ueaAddress }),
+    ctx.pushClient.getBalance(ueaAddress),
+  ]);
+  const isUEADeployed = ueaCode !== undefined;
+  const ueaNonce = isUEADeployed ? await getUEANonce(ctx, ueaAddress) : BigInt(0);
+
   const svmPayload = encodeSvmCeaToUeaPayload({
     gatewayProgramHex,
     drainAmount,
     tokenMintHex,
-    extraPayload,
+    extraPayload: buildR3SvmExtraPayload(
+      ctx,
+      params,
+      ueaAddress,
+      sourceChain,
+      ueaNonce + BigInt(1)
+    ),
     revertRecipientHex: ceaPdaHex,
   });
 
@@ -1617,45 +1672,67 @@ export async function executeCeaToPushSvm(
   // on the cascade path, and the same precompile is used here.
   const burnAmount = BigInt(0);
 
+  let effectiveGasLimit = params.gasLimit ?? BigInt(0);
+
   // Build outbound request: target = gateway program (self-call)
-  const outboundReq: UniversalOutboundTxRequest = buildOutboundRequest(
+  let outboundReq: UniversalOutboundTxRequest = buildOutboundRequest(
     gatewayProgramHex,
     prc20Token,
     burnAmount,
-    params.gasLimit ?? BigInt(0),
+    effectiveGasLimit,
     svmPayload,
-    ueaAddress
+    ueaAddress,
+    params.maxPCForGas ?? BigInt(0)
   );
 
   printLog(
     ctx,
-    `executeCeaToPushSvm — outbound request: target=${outboundReq.target.slice(0, 20)}..., token=${outboundReq.token}`
+    `executeCeaToPushSvm — outbound request: target=${outboundReq.target.slice(0, 20)}..., token=${outboundReq.token}, maxPCForGas=${outboundReq.maxPCForGas}`
   );
-
-  // Pre-fetch UEA status early — balance is needed for gas value calculation
-  const gatewayPcAddress = getUniversalGatewayPCAddress();
-  const [ueaCode, ueaBalance] = await Promise.all([
-    ctx.pushClient.publicClient.getCode({ address: ueaAddress }),
-    ctx.pushClient.getBalance(ueaAddress),
-  ]);
-  const isUEADeployed = ueaCode !== undefined;
-  const ueaNonce = isUEADeployed ? await getUEANonce(ctx, ueaAddress) : BigInt(0);
 
   // Query gas fees
   let gasFee = BigInt(0);
   let protocolFeeR3Svm = BigInt(0);
+  let outboundGasPriceR3Svm = BigInt(0);
   let nativeValueForGas = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   let sizingDecisionR3Svm: GasSizingDecision | undefined;
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_302_01, sourceChain);
     try {
-      const result = await queryOutboundGasFee(ctx, prc20Token, outboundReq.gasLimit, sourceChain);
+      let result = await queryOutboundGasFee(ctx, prc20Token, outboundReq.gasLimit, sourceChain);
+      result = await ensureSvmFinalizeGasBudgetQuote({
+        ctx,
+        ueaAddress,
+        targetChain: sourceChain,
+        prc20Token,
+        quote: result,
+        splMintBase58: undefined,
+        burnAmount: BigInt(0),
+        pathTag: 'executeCeaToPushSvm',
+      });
       gasToken = result.gasToken;
       gasFee = result.gasFee;
+      outboundGasPriceR3Svm = result.gasPrice;
       protocolFeeR3Svm = result.protocolFee;
       nativeValueForGas = result.nativeValueForGas;
       sizingDecisionR3Svm = result.sizing;
+      effectiveGasLimit = result.gasLimitUsed;
+      outboundReq = buildOutboundRequest(
+        gatewayProgramHex,
+        prc20Token,
+        burnAmount,
+        effectiveGasLimit,
+        svmPayload,
+        ueaAddress,
+        params.maxPCForGas ?? BigInt(0),
+        outboundGasPriceR3Svm
+      );
+      printLog(
+        ctx,
+        `executeCeaToPushSvm — resolved effectiveGasLimit: ${effectiveGasLimit} ` +
+          `(gasFee=${result.gasFee}, gasPrice=${result.gasPrice})`
+      );
       printLog(ctx, `executeCeaToPushSvm — gasFee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}, sizing=${result.sizing?.category ?? 'legacy'}`);
       fireProgressHook(
         ctx,
@@ -1746,9 +1823,8 @@ export async function executeCeaToPushSvm(
   // SVM warn-threshold telemetry (no truncation — pre-flight handles drain protection).
   maybeFireSvmWarnThreshold(ctx, nativeValueForGas, gasToken, 'R3_SVM');
 
-  // Pre-flight (R3 SVM): no PRC-20 burn check — `burnAmount = 1` is a legacy
-  // precompile-validation shim against a token UEAs structurally don't hold
-  // (see plan §9 #4 / §10.2 latent-bug ticket). Native UPC check still applies.
+  // Pre-flight (R3 SVM): no PRC-20 burn check. R3 SVM uses burnAmount=0
+  // because the drain amount lives inside the SVM instruction data.
   runPreflight({
     ctx,
     ueaAddress,
@@ -1812,17 +1888,11 @@ export async function executeCeaToPushSvm(
   response.chain = sourceChain;
   const chainInfo = CHAIN_INFO[sourceChain];
   response.chainNamespace = `${VM_NAMESPACE[chainInfo.vm]}:${chainInfo.chainId}`;
-  // R3 SVM inbound round-trip tracking is disabled.
-  //
-  // For Route 3 SVM drains (rescue_funds-style flow, txType=RESCUE_FUNDS),
-  // empirical check on donut showed the keeper does NOT create a child
-  // universalTxId on Push for the Solana-side `UniversalTx(fromCEA=true)`
-  // log — the parent utxId's `outboundStatus=OBSERVED` is the terminal state.
-  // Polling for a deterministically-derived child id therefore never
-  // resolves, and the cosmos `inbound_tx_hash` text-search fallback also
-  // returns 0 hits. Receipts now resolve as soon as the Solana outbound is
-  // observed instead of timing out at 300s.
-  response._expectsInboundRoundTrip = false;
+  // R3 SVM mirrors EVM R3: when funds drain back to Push, the Solana-side
+  // send_universal_tx_to_uea emits an inbound leg whose payload can execute on
+  // Push. Payload-only R3 has no child inbound UTX, so skip round-trip tracking
+  // when no amount is being drained.
+  response._expectsInboundRoundTrip = drainAmount > BigInt(0);
 
   return response;
 }
@@ -1920,7 +1990,7 @@ export async function buildPayloadForRoute(
           burnAmount = params.value;
         } else if (hasExecute) {
           prc20Token = getNativePRC20ForChain(target.chain, ctx.pushNetwork);
-          burnAmount = BigInt(1);
+          burnAmount = BigInt(0);
         }
 
         const outboundReq = buildOutboundRequest(
@@ -1929,7 +1999,8 @@ export async function buildPayloadForRoute(
           burnAmount,
           params.gasLimit ?? BigInt(0),
           payload,
-          ueaAddress
+          ueaAddress,
+          params.maxPCForGas ?? BigInt(0)
         );
 
         return { payload, gatewayRequest: outboundReq };
@@ -1983,7 +2054,10 @@ export async function buildPayloadForRoute(
         }
       }
 
-      const targetBytes = ceaAddress;
+      const targetBytes = payload === '0x'
+        ? (ZERO_ADDRESS as `0x${string}`)
+        : ceaAddress;
+      assertCeaFundsParkingInvariant(targetBytes, payload);
 
       const outboundReq = buildOutboundRequest(
         targetBytes,
@@ -1991,7 +2065,8 @@ export async function buildPayloadForRoute(
         burnAmount,
         params.gasLimit ?? BigInt(0),
         payload,
-        ueaAddress
+        ueaAddress,
+        params.maxPCForGas ?? BigInt(0)
       );
 
       return { payload, gatewayRequest: outboundReq };
@@ -1999,7 +2074,7 @@ export async function buildPayloadForRoute(
 
     case TransactionRoute.CEA_TO_PUSH: {
       // Route 3: CEA -> Push Chain
-      // Build CEA multicall (approve + sendUniversalTxFromCEA) and wrap in outbound
+      // Build CEA multicall (sendUniversalTxToUEA self-call) and wrap in outbound
       if (!params.from?.chain) {
         throw new Error('Route 3 (CEA -> Push) requires from.chain');
       }
@@ -2015,21 +2090,11 @@ export async function buildPayloadForRoute(
         const programPk = new PublicKey(lockerContract);
         const gatewayProgramHex = ('0x' + Buffer.from(programPk.toBytes()).toString('hex')) as `0x${string}`;
 
-        let drainAmount = BigInt(0);
-        let tokenMintHex: `0x${string}` | undefined;
-        if (params.funds?.amount && params.funds.amount > BigInt(0)) {
-          drainAmount = params.funds.amount;
-          const token = (params.funds as { token: MoveableToken }).token;
-          if (token && token.address) {
-            const mintPk = new PublicKey(token.address);
-            tokenMintHex = ('0x' + Buffer.from(mintPk.toBytes()).toString('hex')) as `0x${string}`;
-          }
-        } else if (params.value && params.value > BigInt(0)) {
-          drainAmount = params.value;
-        }
-
-        // Route 3 SVM: ALWAYS use native PRC-20, CEA uses its own balance.
-        const prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
+        const { prc20Token, drainAmount, tokenMintHex } = resolveR3SvmDrain(
+          params,
+          sourceChain,
+          ctx.pushNetwork
+        );
 
         // Derive CEA PDA as revert recipient
         const ueaBytes2 = Buffer.from(ueaAddress.slice(2), 'hex');
@@ -2043,18 +2108,26 @@ export async function buildPayloadForRoute(
           gatewayProgramHex,
           drainAmount,
           tokenMintHex,
+          extraPayload: buildR3SvmExtraPayload(
+            ctx,
+            params,
+            ueaAddress,
+            sourceChain,
+            nonce + BigInt(1)
+          ),
           revertRecipientHex: ceaPdaHex2,
         });
 
-        // burnAmount = 1 (minimum for precompile; drain amount lives inside the ixData)
-        const burnAmount = BigInt(1);
+        // Payload-only outbound: drain amount lives inside ixData.
+        const burnAmount = BigInt(0);
         const outboundReq = buildOutboundRequest(
           gatewayProgramHex,
           prc20Token,
           burnAmount,
           params.gasLimit ?? BigInt(0),
           svmPayload,
-          ueaAddress
+          ueaAddress,
+          params.maxPCForGas ?? BigInt(0)
         );
 
         return { payload: svmPayload, gatewayRequest: outboundReq };
@@ -2068,11 +2141,6 @@ export async function buildPayloadForRoute(
 
       // CEA auto-deploys on-chain: Vault.finalizeUniversalTx calls CEAFactory.deployCEA()
       // if CEA doesn't exist yet. No SDK-side blocking needed.
-
-      const gatewayAddr = UNIVERSAL_GATEWAY_ADDRESSES[sourceChain];
-      if (!gatewayAddr) {
-        throw new Error(`No UniversalGateway address configured for chain ${sourceChain}`);
-      }
 
       // Build CEA multicalls (self-calls via sendUniversalTxToUEA)
       const ceaMulticalls: MultiCall[] = [];
@@ -2088,27 +2156,6 @@ export async function buildPayloadForRoute(
           } else {
             tokenAddress = token.address as `0x${string}`;
             amount = params.funds.amount;
-            // Reset allowance to 0 first for USDT-style tokens, then approve
-            const approveZeroData = encodeFunctionData({
-              abi: ERC20_EVM,
-              functionName: 'approve',
-              args: [gatewayAddr, BigInt(0)],
-            });
-            ceaMulticalls.push({
-              to: tokenAddress,
-              value: BigInt(0),
-              data: approveZeroData,
-            });
-            const approveData = encodeFunctionData({
-              abi: ERC20_EVM,
-              functionName: 'approve',
-              args: [gatewayAddr, amount],
-            });
-            ceaMulticalls.push({
-              to: tokenAddress,
-              value: BigInt(0),
-              data: approveData,
-            });
           }
         }
       } else if (params.value && params.value > BigInt(0)) {
@@ -2161,7 +2208,8 @@ export async function buildPayloadForRoute(
         burnAmount,
         outboundGasLimit,
         ceaPayload,
-        ueaAddress
+        ueaAddress,
+        params.maxPCForGas ?? BigInt(0)
       );
 
       return { payload: ceaPayload, gatewayRequest: outboundReq };
