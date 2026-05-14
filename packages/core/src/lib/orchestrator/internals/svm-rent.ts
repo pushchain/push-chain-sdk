@@ -165,6 +165,21 @@ export function gasLimitForSvmGasFeeBudget(
 
 type OutboundGasQuote = Awaited<ReturnType<typeof queryOutboundGasFee>>;
 
+function resolveSvmGasLimitUsed<T extends OutboundGasQuote>(quote: T): T {
+  if (
+    quote.gasLimitUsed > BigInt(0) ||
+    quote.gasFee <= BigInt(0) ||
+    quote.gasPrice <= BigInt(0)
+  ) {
+    return quote;
+  }
+
+  return {
+    ...quote,
+    gasLimitUsed: gasLimitForSvmGasFeeBudget(quote.gasFee, quote.gasPrice),
+  };
+}
+
 export async function ensureSvmFinalizeGasBudgetQuote({
   ctx,
   ueaAddress,
@@ -193,12 +208,13 @@ export async function ensureSvmFinalizeGasBudgetQuote({
   });
 
   if (quote.gasFee >= minGasFee) {
+    const resolvedQuote = resolveSvmGasLimitUsed(quote);
     printLog(
       ctx,
-      `${pathTag} — SVM finalize gas budget ok: gasFee=${quote.gasFee.toString()}, ` +
-        `minimum=${minGasFee.toString()}, gasLimit=${quote.gasLimitUsed.toString()}`
+      `${pathTag} — SVM finalize gas budget ok: gasFee=${resolvedQuote.gasFee.toString()}, ` +
+        `minimum=${minGasFee.toString()}, gasLimit=${resolvedQuote.gasLimitUsed.toString()}`
     );
-    return quote;
+    return resolvedQuote;
   }
 
   const bumpedGasLimit = gasLimitForSvmGasFeeBudget(
@@ -224,7 +240,7 @@ export async function ensureSvmFinalizeGasBudgetQuote({
         `still below finalize minimum=${minGasFee.toString()}`
     );
   }
-  return bumpedQuote;
+  return resolveSvmGasLimitUsed(bumpedQuote);
 }
 
 /**
