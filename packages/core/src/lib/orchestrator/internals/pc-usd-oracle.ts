@@ -7,8 +7,9 @@
  *   - Ethereum / Arbitrum / Base / BNB → WPC/USDT.<route>
  *   - Solana → WPC/USDT.sol
  *
- * Pool pair (USDT vs USDC) is pending Zaryab/Zartaj confirmation — flip the
- * ORIGIN_TO_STABLE map below if they pick USDC.
+ * Confirmed testnet pool-token addresses are sourced from
+ * SYNTHETIC_PUSH_ERC20. Flip ORIGIN_TO_STABLE if a route should use USDC
+ * instead of USDT.
  *
  * Returns price in **8 decimals** (USD per 1 WPC) to match the convention
  * used by PriceFetch.getPrice.
@@ -30,6 +31,7 @@ type StableKey =
   | 'USDT_ARB'
   | 'USDT_BASE'
   | 'USDT_BNB'
+  | 'USDC_BNB'
   | 'USDT_SOL';
 
 /**

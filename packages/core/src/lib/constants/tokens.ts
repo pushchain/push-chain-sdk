@@ -408,6 +408,7 @@ export const PAYABLE_TOKENS: Partial<Record<CHAIN, PayableToken[]>> = {
   [CHAIN.BNB_TESTNET]: [
     makeToken(CHAIN.BNB_TESTNET, 'BNB'),
     makeToken(CHAIN.BNB_TESTNET, 'USDT'),
+    makeToken(CHAIN.BNB_TESTNET, 'USDC'),
   ],
   [CHAIN.SOLANA_DEVNET]: [
     makeToken(CHAIN.SOLANA_DEVNET, 'SOL'),

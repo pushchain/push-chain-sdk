@@ -15,6 +15,7 @@ This folder contains everything related to the May 2026 contract audit and the r
 | [`sdk-changes-required.md`](./sdk-changes-required.md) | **Action-oriented** punch list of SDK changes with file paths, severities, and ready-to-paste code snippets. Optimized for engineers picking up tickets. | SDK team |
 | [`sdk-audit-deep-dive.md`](./sdk-audit-deep-dive.md) | **Reference** doc with full audit-item-by-item mapping, contract source quotes, and all "verified non-impact" rationale. The "show your work" companion to the punch list. | SDK team (deep dive); engineering lead (audit traceability) |
 | [`cea-factory-proxy-addresses.md`](./cea-factory-proxy-addresses.md) | Post-audit `CEAFactory (proxy)` addresses for ETH Sepolia, Base Sepolia, Arbitrum Sepolia, and BNB Testnet. | SDK + contracts team |
+| [`pc-stable-pool-addresses.md`](./pc-stable-pool-addresses.md) | Confirmed Push Chain PRC-20 stable-token addresses and WPC/stable pool addresses for moveable/payable token resolution, gas sizing, and PC/USD oracle reads. | SDK + contracts team |
 | [`route2-usdt-e2e-contract-mismatch.md`](./route2-usdt-e2e-contract-mismatch.md) | **Investigation note** for the BNB Testnet Route 2 USDT E2E failure: test command, failure sequence, UEA domain workaround, current C0/C1 interface mismatch, and required contract fix. | SDK + contracts team |
 
 ---

@@ -12,7 +12,7 @@
 
 Routes that target Push Chain (Route 1) already use USD-based sizing ($1–$1000 caps in `execute-funds-payload.ts:118-126`) and remain unchanged.
 
-**Alignment with contracts.** Origin gateways already enforce $1/$10 USD caps via Chainlink (EVM) and Pyth (SVM); multi-fund bridge (Edge Case 1) is already deployed. The $PC oracle does not exist on-chain — per Harsh's direction (2026-04-17), derive $PC/USD from the per-route WPC/stable Uniswap V3 pool on Push Chain (WPC/USDT.eth or USDC.eth for Ethereum routes, WPC/USDT.sol or USDC.sol for Solana routes), pool pair pending Zaryab/Zartaj confirmation.
+**Alignment with contracts.** Origin gateways already enforce $1/$10 USD caps via Chainlink (EVM) and Pyth (SVM); multi-fund bridge (Edge Case 1) is already deployed. The $PC oracle does not exist on-chain — per Harsh's direction (2026-04-17), derive $PC/USD from the per-route WPC/stable Uniswap V3 pool on Push Chain. Confirmed testnet PRC-20 stable-token and pool addresses are tracked in `docs/audit-2026-05/pc-stable-pool-addresses.md`.
 
 ## Recommended approach
 
@@ -20,7 +20,7 @@ Routes that target Push Chain (Route 1) already use USD-based sizing ($1–$1000
 
 1. **`packages/core/src/lib/orchestrator/internals/pc-usd-oracle.ts`** — new.
    - `getPcUsdPrice(ctx, originChain): Promise<bigint>` (returns PC price in 8-dec USD, aligned with `PriceFetch`).
-   - Config map keyed by `CHAIN` → `{ quoteToken: PRC20Address, decimals }`. Start with `USDT.eth` / `USDT.sol`; flip to USDC if Zaryab/Zartaj says so (one-line change).
+   - Config map keyed by `CHAIN` → `{ quoteToken: PRC20Address, decimals }`, sourced from `docs/audit-2026-05/pc-stable-pool-addresses.md`.
    - Implementation reuses the existing QuoterV2 plumbing in `gas-calculator.ts:618` (`estimateNativeForDesiredDeposit`). Extract the quoter-read part into a private helper in the new file.
    - 30-second cache mirroring `price-fetch.ts:14`.
    - Deprecate `pushToUSDC` (`push-client.ts:95`) for oracle use; keep it only as the fallback when the pool quote fails.

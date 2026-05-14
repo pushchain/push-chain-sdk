@@ -209,6 +209,12 @@ describe('MOVEABLE_TOKEN_CONSTANTS.PUSH_TESTNET_DONUT (C-3: outward tokens)', ()
     it('should expose USDC.sol from Solana', () => {
       expect(pushTokens.USDC.sol.prc20Address).toBe(synth.USDC_SOL);
     });
+
+    it('should expose USDC.bnb from BNB', () => {
+      const t = pushTokens.USDC.bnb;
+      expect(t.sourceChain).toBe(CHAIN.BNB_TESTNET);
+      expect(t.prc20Address).toBe(synth.USDC_BNB);
+    });
   });
 
   describe('PushChainMoveableToken interface compliance', () => {
@@ -227,6 +233,7 @@ describe('MOVEABLE_TOKEN_CONSTANTS.PUSH_TESTNET_DONUT (C-3: outward tokens)', ()
         pushTokens.USDC.eth,
         pushTokens.USDC.arb,
         pushTokens.USDC.base,
+        pushTokens.USDC.bnb,
         pushTokens.USDC.sol,
       ];
 
@@ -274,10 +281,8 @@ describe('PAYABLE_TOKEN_CONSTANTS (C-4: payable tokens)', () => {
       expect(PAYABLE_TOKEN_CONSTANTS.BNB_TESTNET.USDT.symbol).toBe('USDT');
     });
 
-    it('should throw for USDC (unavailable on BNB)', () => {
-      expect(() => PAYABLE_TOKEN_CONSTANTS.BNB_TESTNET.USDC).toThrow(
-        'USDC token not available on this chain'
-      );
+    it('should expose USDC', () => {
+      expect(PAYABLE_TOKEN_CONSTANTS.BNB_TESTNET.USDC.symbol).toBe('USDC');
     });
   });
 

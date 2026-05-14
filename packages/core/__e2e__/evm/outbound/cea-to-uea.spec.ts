@@ -39,7 +39,7 @@ import { TEST_TARGET, NATIVE_ADDRESS, COUNTER_ABI, ensureCeaErc20Balance, ensure
 
 // PRC-20 token on Push Chain (pUSDT) — used for multicall approve tests
 // that execute ON Push Chain (this is NOT an ERC-20 on external chains)
-const PUSH_CHAIN_PUSDT = '0x2f98B4235FD2BA0173a2B056D722879360B12E7b' as `0x${string}`;
+const PUSH_CHAIN_PUSDT = '0x731aF1Da5365259d27528557EE4aFBA4baC90ef2' as `0x${string}`;
 
 const fixtures = getActiveFixtures();
 

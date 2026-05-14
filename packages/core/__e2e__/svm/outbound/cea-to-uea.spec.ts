@@ -43,7 +43,7 @@ import {
 } from '@e2e/shared/svm-outbound-helpers';
 
 // PRC-20 token on Push Chain (pUSDT) — used for multicall approve tests
-const PUSH_CHAIN_PUSDT = '0x2f98B4235FD2BA0173a2B056D722879360B12E7b' as `0x${string}`;
+const PUSH_CHAIN_PUSDT = '0x731aF1Da5365259d27528557EE4aFBA4baC90ef2' as `0x${string}`;
 
 describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
   let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
