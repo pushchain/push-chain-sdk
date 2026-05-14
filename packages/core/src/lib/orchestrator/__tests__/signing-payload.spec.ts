@@ -19,9 +19,7 @@ import {
   encodeAbiParameters,
   encodePacked,
   keccak256,
-  padHex,
   toBytes,
-  toHex,
   zeroAddress,
 } from 'viem';
 import { CHAIN, PUSH_NETWORK, VM } from '../../constants/enums';
@@ -49,10 +47,6 @@ const BOB = '0x1111111111111111111111111111111111111111' as `0x${string}`;
 const TOKEN_A = '0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa' as `0x${string}`;
 const VERIFYING_CONTRACT = '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC' as `0x${string}`;
 const MIGRATION_CONTRACT = '0xDDdDddDdDdddDDddDDddDDDDdDdDDdDDdDDDDDDd' as `0x${string}`;
-const PUSH_CHAIN_SALT = padHex(
-  toHex(BigInt(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId)),
-  { size: 32 }
-);
 
 const FAKE_SIGNATURE = new Uint8Array([0xaa, 0xbb, 0xcc]);
 
@@ -408,7 +402,6 @@ describe('signUniversalPayload', () => {
         version: '0.1.0',
         chainId: Number(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].chainId),
         verifyingContract: VERIFYING_CONTRACT,
-        salt: PUSH_CHAIN_SALT,
       });
 
       // Verify primaryType
@@ -511,7 +504,6 @@ describe('signMigrationPayload', () => {
         version: '0.2.0',
         chainId: Number(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].chainId),
         verifyingContract: VERIFYING_CONTRACT,
-        salt: PUSH_CHAIN_SALT,
       });
 
       // Types

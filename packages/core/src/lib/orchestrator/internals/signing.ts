@@ -6,10 +6,8 @@ import {
   encodeAbiParameters,
   encodePacked,
   keccak256,
-  padHex,
   stringToBytes,
   toBytes,
-  toHex,
 } from 'viem';
 import { CHAIN_INFO } from '../../constants/chain';
 import { VM } from '../../constants/enums';
@@ -19,23 +17,25 @@ import type { OrchestratorContext } from './context';
 // ============================================================================
 // EIP-712 Domain Separator (shared by execution & migration hashes)
 // ============================================================================
+// NOTE: Push Chain testnet UEA implementation (UEA_VM[EVM] =
+// 0x4C8401F885c79b0e6e0241812f089e8529045d11) still uses the pre-audit
+// 4-field domain (typehash 0x2aef22f9…) — the salted post-audit typehash
+// 0xb90aaffa… in the audit-fixes contracts hasn't been deployed yet. Drop
+// `salt` until the contracts redeploy. See docs/audit-2026-05/sdk-changes-required.md#11.
 
 function buildDomainSeparator(
   vm: VM,
   chainId: string,
   version: string,
-  verifyingContract: `0x${string}`,
-  pushChainId: string
+  verifyingContract: `0x${string}`
 ): `0x${string}` {
   const domainTypeHash = keccak256(
     toBytes(
       vm === VM.EVM
-        ? 'EIP712Domain(string version,uint256 chainId,address verifyingContract,bytes32 salt)'
-        : 'EIP712Domain_SVM(string version,string chainId,address verifyingContract,bytes32 salt)'
+        ? 'EIP712Domain(string version,uint256 chainId,address verifyingContract)'
+        : 'EIP712Domain_SVM(string version,string chainId,address verifyingContract)'
     )
   );
-
-  const salt = padHex(toHex(BigInt(pushChainId)), { size: 32 });
 
   return keccak256(
     encodeAbiParameters(
@@ -44,14 +44,12 @@ function buildDomainSeparator(
         { name: 'version', type: 'bytes32' },
         { name: 'chainId', type: vm === VM.EVM ? 'uint256' : 'bytes32' },
         { name: 'verifyingContract', type: 'address' },
-        { name: 'salt', type: 'bytes32' },
       ],
       [
         domainTypeHash,
         keccak256(toBytes(version)),
         vm === VM.EVM ? BigInt(chainId) : keccak256(toBytes(chainId)),
         verifyingContract,
-        salt,
       ]
     )
   );
@@ -75,7 +73,6 @@ export function computeExecutionHash(
 ): `0x${string}` {
   const chain = ctx.universalSigner.account.chain;
   const { vm, chainId } = CHAIN_INFO[chain];
-  const pushChainId = ctx.pushClient.pushChainInfo.chainId;
 
   const typeHash = keccak256(
     toBytes(
@@ -87,8 +84,7 @@ export function computeExecutionHash(
     vm,
     chainId,
     version,
-    verifyingContract,
-    pushChainId
+    verifyingContract
   );
 
   const structHash = keccak256(
@@ -146,7 +142,6 @@ export function computeMigrationHash(
 ): `0x${string}` {
   const chain = ctx.universalSigner.account.chain;
   const { vm, chainId } = CHAIN_INFO[chain];
-  const pushChainId = ctx.pushClient.pushChainInfo.chainId;
 
   const typeHash = keccak256(
     toBytes(
@@ -158,8 +153,7 @@ export function computeMigrationHash(
     vm,
     chainId,
     version,
-    verifyingContract,
-    pushChainId
+    verifyingContract
   );
 
   const structHash = keccak256(
@@ -194,7 +188,6 @@ export async function signUniversalPayload(
 ): Promise<Uint8Array> {
   const chain = ctx.universalSigner.account.chain;
   const { vm, chainId } = CHAIN_INFO[chain];
-  const pushChainId = ctx.pushClient.pushChainInfo.chainId;
 
   switch (vm) {
     case VM.EVM: {
@@ -206,7 +199,6 @@ export async function signUniversalPayload(
           version: version || '0.1.0',
           chainId: Number(chainId),
           verifyingContract,
-          salt: padHex(toHex(BigInt(pushChainId)), { size: 32 }),
         },
         types: {
           UniversalPayload: [
@@ -258,7 +250,6 @@ export async function signMigrationPayload(
 ): Promise<Uint8Array> {
   const chain = ctx.universalSigner.account.chain;
   const { vm, chainId } = CHAIN_INFO[chain];
-  const pushChainId = ctx.pushClient.pushChainInfo.chainId;
 
   switch (vm) {
     case VM.EVM: {
@@ -270,7 +261,6 @@ export async function signMigrationPayload(
           version: ueaVersion,
           chainId: Number(chainId),
           verifyingContract: ueaAddress,
-          salt: padHex(toHex(BigInt(pushChainId)), { size: 32 }),
         },
         types: {
           MigrationPayload: [
