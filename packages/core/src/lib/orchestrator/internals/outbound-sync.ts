@@ -184,6 +184,7 @@ export async function waitForOutboundTx(
     progressHook,
     _resolvedSubTxId,
     _expectedDestinationChain,
+    _outboundIndex,
   } = options;
 
   // Terminal failure states — fail fast instead of polling until timeout
@@ -293,8 +294,25 @@ export async function waitForOutboundTx(
         );
       }
 
-      // Iterate V2 outbound array
+      // Iterate V2 outbound array. For cascade tracking, multiple outbound
+      // entries can target the same destination chain (for example R2 BSC
+      // followed by R3 BSC -> Push). `_outboundIndex` disambiguates those
+      // same-chain entries by order after `_expectedDestinationChain` filtering.
+      let matchingOutboundIndex = 0;
       for (const ob of outbounds) {
+        // If a destination chain filter is set, skip outbound entries that don't match.
+        if (_expectedDestinationChain && ob.destinationChain !== _expectedDestinationChain) {
+          printLog(ctx, `[waitForOutboundTx] Poll #${pollCount} | outbound chain '${ob.destinationChain}' does not match expected '${_expectedDestinationChain}', skipping`);
+          continue;
+        }
+
+        const currentOutboundIndex = matchingOutboundIndex;
+        matchingOutboundIndex += 1;
+        if (_outboundIndex !== undefined && currentOutboundIndex !== _outboundIndex) {
+          printLog(ctx, `[waitForOutboundTx] Poll #${pollCount} | outbound index ${currentOutboundIndex} for '${ob.destinationChain}' does not match expected index ${_outboundIndex}, skipping`);
+          continue;
+        }
+
         // Fail fast on per-outbound REVERTED status
         if (ob.outboundStatus === OutboundStatus.REVERTED) {
           printLog(ctx, `[waitForOutboundTx] Outbound to ${ob.destinationChain} REVERTED`);
@@ -316,12 +334,6 @@ export async function waitForOutboundTx(
         //      treat as FOUND; if reverted, throw OutboundFailedError.
         //      Pending receipts keep polling.
         if (ob.observedTx?.txHash) {
-          // If a destination chain filter is set, skip outbound entries that don't match
-          if (_expectedDestinationChain && ob.destinationChain !== _expectedDestinationChain) {
-            printLog(ctx, `[waitForOutboundTx] Poll #${pollCount} | outbound chain '${ob.destinationChain}' does not match expected '${_expectedDestinationChain}', skipping`);
-            continue;
-          }
-
           const chain = chainFromNamespace(ob.destinationChain);
           if (!chain) continue;
 
@@ -522,13 +534,23 @@ export async function waitForAllOutboundTxsV2(
       printLog(ctx, `[waitForAllOutboundTxsV2] Poll #${pollCount} | status: ${statusNum} (${statusName}) | outboundTx count: ${utx?.outboundTx?.length ?? 0}`);
 
       if (utx?.outboundTx?.length) {
+        const outboundOrdinalByChain = new Map<string, number>();
         for (const ob of utx.outboundTx) {
           const destChain = ob.destinationChain;
           const hopsForChain = chainToHops.get(destChain);
           if (!hopsForChain) continue;
 
-          const unconfirmedForChain = hopsForChain.filter((h) => h.status !== 'confirmed' && h.status !== 'failed');
-          if (unconfirmedForChain.length === 0) continue;
+          const outboundOrdinal = outboundOrdinalByChain.get(destChain) ?? 0;
+          outboundOrdinalByChain.set(destChain, outboundOrdinal + 1);
+
+          const targetHop = hopsForChain[outboundOrdinal];
+          if (
+            !targetHop ||
+            targetHop.status === 'confirmed' ||
+            targetHop.status === 'failed'
+          ) {
+            continue;
+          }
 
           const externalTxHash = ob.observedTx?.txHash;
           const hasObservedTxHash =
@@ -544,17 +566,15 @@ export async function waitForAllOutboundTxsV2(
 
           // Fail fast on per-outbound REVERTED or observed destination failure.
           if (ob.outboundStatus === OutboundStatus.REVERTED || observedFailure) {
-            for (const hop of unconfirmedForChain) {
-              hop.status = 'failed';
-              printLog(ctx, `[waitForAllOutboundTxsV2] Outbound to ${destChain} REVERTED | hop ${hop.hopIndex} | error: ${ob.abortReason || ob.observedTx?.errorMsg || 'Unknown'}`);
-              progressHook?.({
-                hopIndex: hop.hopIndex,
-                route: hop.route,
-                chain: hop.executionChain,
-                status: 'failed',
-              });
-            }
-            return { success: false, failedAt: unconfirmedForChain[0].hopIndex };
+            targetHop.status = 'failed';
+            printLog(ctx, `[waitForAllOutboundTxsV2] Outbound to ${destChain} REVERTED | outboundIndex ${outboundOrdinal} | hop ${targetHop.hopIndex} | error: ${ob.abortReason || ob.observedTx?.errorMsg || 'Unknown'}`);
+            progressHook?.({
+              hopIndex: targetHop.hopIndex,
+              route: targetHop.route,
+              chain: targetHop.executionChain,
+              status: 'failed',
+            });
+            return { success: false, failedAt: targetHop.hopIndex };
           }
 
           // Check for observed tx hash. Cosmos may lag the status transition,
@@ -571,17 +591,15 @@ export async function waitForAllOutboundTxsV2(
                 externalTxHash
               );
               if (verdict === 'reverted') {
-                for (const hop of unconfirmedForChain) {
-                  hop.status = 'failed';
-                  printLog(ctx, `[waitForAllOutboundTxsV2] Source-chain RPC reports REVERTED for ${destChain} tx ${externalTxHash} | hop ${hop.hopIndex}`);
-                  progressHook?.({
-                    hopIndex: hop.hopIndex,
-                    route: hop.route,
-                    chain: hop.executionChain,
-                    status: 'failed',
-                  });
-                }
-                return { success: false, failedAt: unconfirmedForChain[0].hopIndex };
+                targetHop.status = 'failed';
+                printLog(ctx, `[waitForAllOutboundTxsV2] Source-chain RPC reports REVERTED for ${destChain} tx ${externalTxHash} | outboundIndex ${outboundOrdinal} | hop ${targetHop.hopIndex}`);
+                progressHook?.({
+                  hopIndex: targetHop.hopIndex,
+                  route: targetHop.route,
+                  chain: targetHop.executionChain,
+                  status: 'failed',
+                });
+                return { success: false, failedAt: targetHop.hopIndex };
               }
               if (verdict !== 'success') {
                 continue;
@@ -610,27 +628,25 @@ export async function waitForAllOutboundTxsV2(
               }
             }
 
-            for (const hop of unconfirmedForChain) {
-              hop.status = 'confirmed';
-              hop.txHash = displayTxHash;
-              hop.outboundDetails = {
-                externalTxHash: displayTxHash,
-                destinationChain: chain || hop.executionChain,
-                explorerUrl,
-                recipient: ob.recipient,
-                amount: ob.amount,
-                assetAddr: ob.externalAssetAddr,
-              };
+            targetHop.status = 'confirmed';
+            targetHop.txHash = displayTxHash;
+            targetHop.outboundDetails = {
+              externalTxHash: displayTxHash,
+              destinationChain: chain || targetHop.executionChain,
+              explorerUrl,
+              recipient: ob.recipient,
+              amount: ob.amount,
+              assetAddr: ob.externalAssetAddr,
+            };
 
-              printLog(ctx, `[waitForAllOutboundTxsV2] FOUND outbound for ${destChain} | hop ${hop.hopIndex} | externalTxHash: ${displayTxHash}`);
-              progressHook?.({
-                hopIndex: hop.hopIndex,
-                route: hop.route,
-                chain: hop.executionChain,
-                status: 'confirmed',
-                txHash: displayTxHash,
-              });
-            }
+            printLog(ctx, `[waitForAllOutboundTxsV2] FOUND outbound for ${destChain} | outboundIndex ${outboundOrdinal} | hop ${targetHop.hopIndex} | externalTxHash: ${displayTxHash}`);
+            progressHook?.({
+              hopIndex: targetHop.hopIndex,
+              route: targetHop.route,
+              chain: targetHop.executionChain,
+              status: 'confirmed',
+              txHash: displayTxHash,
+            });
           }
         }
       }

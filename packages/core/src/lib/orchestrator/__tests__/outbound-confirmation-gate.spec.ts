@@ -12,10 +12,13 @@
  */
 import {
   waitForOutboundTx,
+  waitForAllOutboundTxsV2,
   OutboundTimeoutError,
   OutboundFailedError,
 } from '../internals/outbound-sync';
 import type { OrchestratorContext } from '../internals/context';
+import type { CascadeHopInfo } from '../orchestrator.types';
+import { CHAIN } from '../../constants/enums';
 import { OutboundStatus } from '../../generated/uexecutor/v2/types';
 import { UniversalTxStatus } from '../../generated/uexecutor/v1/types';
 
@@ -225,5 +228,57 @@ describe('waitForOutboundTx OBSERVED gate', () => {
       timeout: 1000,
     });
     expect(details.externalTxHash).toBe('0xobserved');
+  });
+
+  it('multi-outbound same-chain: _outboundIndex selects the later matching destination entry', async () => {
+    const ctx = makeCtx([
+      response([
+        outbound(OutboundStatus.OBSERVED, '0xfirst', 'eip155:97'),
+        outbound(OutboundStatus.OBSERVED, '0xsecond', 'eip155:97'),
+      ]),
+    ]);
+
+    const details = await waitForOutboundTx(ctx, '0xpushtx', {
+      initialWaitMs: 0,
+      pollingIntervalMs: 20,
+      timeout: 1000,
+      _expectedDestinationChain: 'eip155:97',
+      _outboundIndex: 1,
+    });
+
+    expect(details.externalTxHash).toBe('0xsecond');
+  });
+
+  it('waitForAllOutboundTxsV2 maps same-chain outbounds to hops by ordinal', async () => {
+    const ctx = makeCtx([
+      response([
+        outbound(OutboundStatus.OBSERVED, '0xfirst', 'eip155:97'),
+        outbound(OutboundStatus.OBSERVED, '0xsecond', 'eip155:97'),
+      ]),
+    ]);
+    const hops: CascadeHopInfo[] = [
+      {
+        hopIndex: 0,
+        route: 'UOA_TO_CEA',
+        executionChain: CHAIN.BNB_TESTNET,
+        status: 'pending',
+      },
+      {
+        hopIndex: 1,
+        route: 'UOA_TO_CEA',
+        executionChain: CHAIN.BNB_TESTNET,
+        status: 'pending',
+      },
+    ];
+
+    const result = await waitForAllOutboundTxsV2(ctx, '0xpushtx', hops, {
+      initialWaitMs: 0,
+      pollingIntervalMs: 20,
+      timeout: 1000,
+    });
+
+    expect(result.success).toBe(true);
+    expect(hops[0].txHash).toBe('0xfirst');
+    expect(hops[1].txHash).toBe('0xsecond');
   });
 });

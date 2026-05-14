@@ -621,6 +621,8 @@ export interface HopDescriptor {
   gasToken?: `0x${string}`;
   /** Gas fee amount in gas token */
   gasFee?: bigint;
+  /** Destination-chain gas price quoted by UniversalCore */
+  gasPrice?: bigint;
   /** Gas limit for outbound relay */
   gasLimit: bigint;
   /** Max native PC used for outbound gas swap (0 = uncapped) */
@@ -682,6 +684,8 @@ export interface CascadeSegment {
   gasToken?: `0x${string}`;
   /** Total gas fee for this segment */
   gasFee?: bigint;
+  /** Destination-chain gas price quoted by UniversalCore */
+  gasPrice?: bigint;
   /** Gas limit for this segment */
   gasLimit?: bigint;
   /** Max native PC used for outbound gas swap (0 = uncapped) */
@@ -939,6 +943,14 @@ export interface WaitForOutboundOptions {
    * has multiple outbound operations to different chains.
    */
   _expectedDestinationChain?: string;
+
+  /**
+   * @internal Zero-based index among outbound entries that match
+   * `_expectedDestinationChain`. Used when a composed cascade emits multiple
+   * outbound operations to the same chain and a later hop must track the later
+   * observed tx rather than the first one.
+   */
+  _outboundIndex?: number;
 }
 
 // ============================================================================

@@ -78,7 +78,7 @@ const SWAP_ROUTER_ABI = [
 ] as const;
 const pETH_ADDRESS = '0x2971824Db68229D087931155C2b8bB820B275809' as `0x${string}`;
 const pSOL_ADDRESS = '0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed' as `0x${string}`;
-const SEPOLIA_CEA_FACTORY = '0x8ED594A83301FEc545fC6c19fc12cF7111777029' as `0x${string}`;
+const SEPOLIA_CEA_FACTORY = '0x5E191fbBe22F8866C5e4250557664fCE760e8870' as `0x${string}`;
 
 const evmKey = process.env['EVM_PRIVATE_KEY'] as Hex | undefined;
 const pushKey = process.env['PUSH_PRIVATE_KEY'] as Hex | undefined;

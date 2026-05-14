@@ -544,6 +544,7 @@ export async function executeUoaToCea(
   // --- 202: Gas estimation (spec-ordered before 203) ---
   let gasFee = BigInt(0);
   let protocolFee = BigInt(0);
+  let outboundGasPrice = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   let universalCoreAddress: `0x${string}` | undefined;
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
@@ -552,6 +553,7 @@ export async function executeUoaToCea(
       const result = await queryOutboundGasFee(ctx, prc20Token, gasLimitForQuery, targetChain);
       gasFee = result.gasFee;
       protocolFee = result.protocolFee;
+      outboundGasPrice = result.gasPrice;
       gasToken = result.gasToken;
       universalCoreAddress = result.universalCoreAddress;
       printLog(
@@ -629,7 +631,8 @@ export async function executeUoaToCea(
     gasLimitForQuery,
     ceaPayload,
     ueaAddress, // revert recipient is the UEA
-    params.maxPCForGas ?? BigInt(0)
+    params.maxPCForGas ?? BigInt(0),
+    outboundGasPrice
   );
 
   printLog(
@@ -888,6 +891,7 @@ export async function executeUoaToCeaSvm(
   // --- 202: Gas estimation (spec-ordered before 203) ---
   let gasFee = BigInt(0);
   let protocolFeeSvm = BigInt(0);
+  let outboundGasPriceSvm = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   let universalCoreAddress: `0x${string}` | undefined;
   // Effective gas limit seeded from the user param. When the user omits
@@ -923,6 +927,7 @@ export async function executeUoaToCeaSvm(
       });
       gasFee = result.gasFee;
       protocolFeeSvm = result.protocolFee;
+      outboundGasPriceSvm = result.gasPrice;
       gasToken = result.gasToken;
       universalCoreAddress = result.universalCoreAddress;
       // When user omits gasLimit (sent as 0), the contract computes fees using
@@ -975,7 +980,8 @@ export async function executeUoaToCeaSvm(
     effectiveGasLimit,
     svmPayload,
     ueaAddress, // revert recipient is the UEA
-    params.maxPCForGas ?? BigInt(0)
+    params.maxPCForGas ?? BigInt(0),
+    outboundGasPriceSvm
   );
 
   printLog(
@@ -1325,7 +1331,7 @@ export async function executeCeaToPush(
 
   // 9. Build outbound request (same structure as Route 2)
   // target = CEA address (for self-execution), value = 0 in payload
-  const outboundReq: UniversalOutboundTxRequest = buildOutboundRequest(
+  let outboundReq: UniversalOutboundTxRequest = buildOutboundRequest(
     ceaAddress,              // target: CEA address (to=CEA for self-execution)
     prc20Token,              // token: native PRC-20 for source chain (for namespace lookup)
     burnAmount,              // amount: 0 (payload-only, CEA uses its own balance)
@@ -1360,6 +1366,7 @@ export async function executeCeaToPush(
   // 11. Query gas fees from UniversalCore
   let gasFee = BigInt(0);
   let protocolFeeR3 = BigInt(0);
+  let outboundGasPriceR3 = BigInt(0);
   let nativeValueForGas = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   let sizingDecisionR3: GasSizingDecision | undefined;
@@ -1369,9 +1376,20 @@ export async function executeCeaToPush(
       const result = await queryOutboundGasFee(ctx, prc20Token, outboundGasLimit, sourceChain);
       gasToken = result.gasToken;
       gasFee = result.gasFee;
+      outboundGasPriceR3 = result.gasPrice;
       protocolFeeR3 = result.protocolFee;
       nativeValueForGas = result.nativeValueForGas;
       sizingDecisionR3 = result.sizing;
+      outboundReq = buildOutboundRequest(
+        ceaAddress,
+        prc20Token,
+        burnAmount,
+        outboundGasLimit,
+        ceaPayload,
+        ueaAddress,
+        params.maxPCForGas ?? BigInt(0),
+        outboundGasPriceR3
+      );
       printLog(
         ctx,
         `executeCeaToPush — queried gas fee: ${gasFee.toString()}, gasToken: ${gasToken}, nativeValueForGas: ${nativeValueForGas.toString()}, sizing=${result.sizing?.category ?? 'legacy'}`
@@ -1667,6 +1685,7 @@ export async function executeCeaToPushSvm(
   // Query gas fees
   let gasFee = BigInt(0);
   let protocolFeeR3Svm = BigInt(0);
+  let outboundGasPriceR3Svm = BigInt(0);
   let nativeValueForGas = BigInt(0);
   let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
   let sizingDecisionR3Svm: GasSizingDecision | undefined;
@@ -1686,6 +1705,7 @@ export async function executeCeaToPushSvm(
       });
       gasToken = result.gasToken;
       gasFee = result.gasFee;
+      outboundGasPriceR3Svm = result.gasPrice;
       protocolFeeR3Svm = result.protocolFee;
       nativeValueForGas = result.nativeValueForGas;
       sizingDecisionR3Svm = result.sizing;
@@ -1697,7 +1717,8 @@ export async function executeCeaToPushSvm(
         effectiveGasLimit,
         svmPayload,
         ueaAddress,
-        params.maxPCForGas ?? BigInt(0)
+        params.maxPCForGas ?? BigInt(0),
+        outboundGasPriceR3Svm
       );
       printLog(
         ctx,

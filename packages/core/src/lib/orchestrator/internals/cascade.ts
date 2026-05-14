@@ -309,6 +309,7 @@ export async function buildHopDescriptor(
 
         let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let gasFee = BigInt(0);
+        let gasPrice = BigInt(0);
         let sizing: GasSizingDecision | undefined;
 
         // SVM finalize budget: compare the quoted gasFee in lamports against
@@ -343,6 +344,7 @@ export async function buildHopDescriptor(
           });
           gasToken = result.gasToken;
           gasFee = result.gasFee;
+          gasPrice = result.gasPrice;
           sizing = result.sizing;
           effectiveGasLimit = result.gasLimitUsed;
           if (!params.gasLimit) {
@@ -363,6 +365,7 @@ export async function buildHopDescriptor(
           burnAmount,
           gasToken,
           gasFee,
+          gasPrice,
           gasLimit: effectiveGasLimit,
           sizing,
         };
@@ -381,6 +384,7 @@ export async function buildHopDescriptor(
         const burnAmount = BigInt(0); // Migration is logic-only — no funds. CEA rejects msg.value != 0.
         let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let gasFee = BigInt(0);
+        let gasPrice = BigInt(0);
         let sizing: GasSizingDecision | undefined;
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
           const result = await queryOutboundGasFee(
@@ -391,6 +395,7 @@ export async function buildHopDescriptor(
           );
           gasToken = result.gasToken;
           gasFee = result.gasFee;
+          gasPrice = result.gasPrice;
           sizing = result.sizing;
         }
         return {
@@ -402,6 +407,7 @@ export async function buildHopDescriptor(
           burnAmount,
           gasToken,
           gasFee,
+          gasPrice,
           isMigration: true,
           sizing,
         };
@@ -504,6 +510,7 @@ export async function buildHopDescriptor(
       // Query gas fee
       let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
       let gasFee = BigInt(0);
+      let gasPrice = BigInt(0);
       let sizing: GasSizingDecision | undefined;
       if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
         const result = await queryOutboundGasFee(
@@ -514,6 +521,7 @@ export async function buildHopDescriptor(
         );
         gasToken = result.gasToken;
         gasFee = result.gasFee;
+        gasPrice = result.gasPrice;
         sizing = result.sizing;
       }
 
@@ -526,6 +534,7 @@ export async function buildHopDescriptor(
         burnAmount,
         gasToken,
         gasFee,
+        gasPrice,
         sizing,
       };
     }
@@ -587,6 +596,7 @@ export async function buildHopDescriptor(
 
         let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let gasFee = BigInt(0);
+        let gasPrice = BigInt(0);
         let sizing: GasSizingDecision | undefined;
         let effectiveGasLimit = gasLimit;
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
@@ -608,6 +618,7 @@ export async function buildHopDescriptor(
           });
           gasToken = result.gasToken;
           gasFee = result.gasFee;
+          gasPrice = result.gasPrice;
           sizing = result.sizing;
           effectiveGasLimit = result.gasLimitUsed;
         }
@@ -623,6 +634,7 @@ export async function buildHopDescriptor(
           burnAmount: BigInt(0),
           gasToken,
           gasFee,
+          gasPrice,
           gasLimit: effectiveGasLimit,
           sizing,
         };
@@ -661,6 +673,7 @@ export async function buildHopDescriptor(
       const prc20Token = getNativePRC20ForChain(sourceChain, ctx.pushNetwork);
       let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
       let gasFee = BigInt(0);
+      let gasPrice = BigInt(0);
       let sizing: GasSizingDecision | undefined;
       if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
         const result = await queryOutboundGasFee(
@@ -671,6 +684,7 @@ export async function buildHopDescriptor(
         );
         gasToken = result.gasToken;
         gasFee = result.gasFee;
+        gasPrice = result.gasPrice;
         sizing = result.sizing;
       }
 
@@ -685,6 +699,7 @@ export async function buildHopDescriptor(
         burnAmount: BigInt(0),
         gasToken,
         gasFee,
+        gasPrice,
         sizing,
       };
     }
@@ -747,6 +762,10 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
         // Accumulate gas fees
         currentSegment.gasFee =
           (currentSegment.gasFee || BigInt(0)) + (hop.gasFee || BigInt(0));
+        currentSegment.gasPrice = mergeGasPrice(
+          currentSegment.gasPrice,
+          hop.gasPrice
+        );
         currentSegment.maxPCForGas = mergeMaxPCForGas(
           currentSegment.maxPCForGas,
           hop.maxPCForGas
@@ -762,6 +781,10 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
         }
         currentSegment.gasFee =
           (currentSegment.gasFee || BigInt(0)) + (hop.gasFee || BigInt(0));
+        currentSegment.gasPrice = mergeGasPrice(
+          currentSegment.gasPrice,
+          hop.gasPrice
+        );
         currentSegment.maxPCForGas = mergeMaxPCForGas(
           currentSegment.maxPCForGas,
           hop.maxPCForGas
@@ -805,6 +828,7 @@ export function classifyIntoSegments(hops: HopDescriptor[]): CascadeSegment[] {
         prc20Token: hop.prc20Token,
         gasToken: hop.gasToken,
         gasFee: hop.gasFee,
+        gasPrice: hop.gasPrice,
         gasLimit: hop.gasLimit,
         maxPCForGas: hop.maxPCForGas,
         sizing: hop.sizing,
@@ -826,6 +850,12 @@ function mergeMaxPCForGas(current?: bigint, next?: bigint): bigint {
   const b = next ?? BigInt(0);
   if (a === BigInt(0) || b === BigInt(0)) return BigInt(0);
   return a + b;
+}
+
+function mergeGasPrice(current?: bigint, next?: bigint): bigint {
+  const a = current ?? BigInt(0);
+  const b = next ?? BigInt(0);
+  return a > b ? a : b;
 }
 
 // ============================================================================
@@ -896,6 +926,42 @@ function isNativeSeedOnlySegment(segment: CascadeSegment): boolean {
 
 function segmentNeedsOutboundGas(segment: CascadeSegment): boolean {
   return segment.type !== 'PUSH_EXECUTION' && !isNativeSeedOnlySegment(segment);
+}
+
+function buildRootOutboundIndexByHop(
+  segments: CascadeSegment[],
+  hops: HopDescriptor[]
+): Map<number, number> {
+  const hopIndexByDescriptor = new Map<HopDescriptor, number>();
+  hops.forEach((hop, index) => hopIndexByDescriptor.set(hop, index));
+
+  const nextIndexByChain = new Map<CHAIN, number>();
+  const result = new Map<number, number>();
+
+  for (const segment of segments) {
+    let chain: CHAIN | undefined;
+    if (segment.type === 'OUTBOUND_TO_CEA') {
+      chain = segment.targetChain;
+    } else if (
+      segment.type === 'INBOUND_FROM_CEA' &&
+      !isNativeSeedOnlySegment(segment)
+    ) {
+      chain = segment.sourceChain;
+    }
+
+    if (!chain) continue;
+
+    const outboundIndex = nextIndexByChain.get(chain) ?? 0;
+    for (const hop of segment.hops) {
+      const hopIndex = hopIndexByDescriptor.get(hop);
+      if (hopIndex !== undefined) {
+        result.set(hopIndex, outboundIndex);
+      }
+    }
+    nextIndexByChain.set(chain, outboundIndex + 1);
+  }
+
+  return result;
 }
 
 function sumNativeSeedAmount(hops: HopDescriptor[]): bigint {
@@ -1285,7 +1351,8 @@ export async function composeCascadeDetailed(
           segment.gasLimit ?? BigInt(0),
           outboundPayload,
           ueaAddress,
-          segment.maxPCForGas ?? BigInt(0)
+          segment.maxPCForGas ?? BigInt(0),
+          segment.gasPrice ?? BigInt(0)
         );
 
         // Build approval + outbound multicalls
@@ -1452,7 +1519,8 @@ export async function composeCascadeDetailed(
             segment.gasLimit ?? BigInt(0),
             svmPayload,
             ueaAddress,
-            segment.maxPCForGas ?? BigInt(0)
+            segment.maxPCForGas ?? BigInt(0),
+            segment.gasPrice ?? BigInt(0)
           );
 
           const inboundGasFee = segment.gasFee || BigInt(0);
@@ -1571,7 +1639,8 @@ export async function composeCascadeDetailed(
           effectiveGasLimit,
           ceaPayload,
           ueaAddress,
-          segment.maxPCForGas ?? BigInt(0)
+          segment.maxPCForGas ?? BigInt(0),
+          segment.gasPrice ?? BigInt(0)
         );
 
         const inboundGasFee = segment.gasFee || BigInt(0);
@@ -1927,11 +1996,16 @@ export function createCascadedBuilder(
             );
             const isAfterCeaToPush = (index: number) =>
               ceaToPushIndex >= 0 && index > ceaToPushIndex;
+            const rootOutboundIndexByHop = buildRootOutboundIndexByHop(
+              segments,
+              hops
+            );
 
             const trackOutboundHops = async (
               outboundHops: CascadeHopInfo[],
               pushTxHash: string,
-              resolvedSubTxId?: string
+              resolvedSubTxId?: string,
+              outboundIndexByHop?: Map<number, number>
             ): Promise<CascadeCompletionResult | null> => {
               if (outboundHops.length === 0) return null;
 
@@ -1981,6 +2055,12 @@ export function createCascadedBuilder(
                       timeout: remainingTimeout,
                       _resolvedSubTxId: resolvedSubTxId,
                       _expectedDestinationChain: hop.executionChain,
+                      ...(outboundIndexByHop
+                        ? {
+                            _outboundIndex:
+                              outboundIndexByHop.get(hop.hopIndex) ?? 0,
+                          }
+                        : {}),
                       progressHook: (event) => {
                         cascadeProgressHook?.({
                           hopIndex: hop.hopIndex,
@@ -2212,7 +2292,9 @@ export function createCascadedBuilder(
             );
             const rootOutboundFailure = await trackOutboundHops(
               rootOutboundHops,
-              response.hash
+              response.hash,
+              undefined,
+              rootOutboundIndexByHop
             );
             if (rootOutboundFailure) return rootOutboundFailure;
 
@@ -2254,6 +2336,8 @@ export function createCascadedBuilder(
                     pollingIntervalMs,
                     timeout: remainingTimeout,
                     _expectedDestinationChain: inboundHop.executionChain,
+                    _outboundIndex:
+                      rootOutboundIndexByHop.get(inboundHop.hopIndex) ?? 0,
                     progressHook: (event) => {
                       cascadeProgressHook?.({
                         hopIndex: inboundHop.hopIndex,
