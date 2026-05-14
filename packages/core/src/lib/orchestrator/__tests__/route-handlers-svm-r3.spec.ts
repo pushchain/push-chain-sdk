@@ -2,6 +2,7 @@
  * Unit coverage for SVM Route 3 payload/request construction.
  */
 import { PushChain } from '../../push-chain/push-chain';
+import { decodeAbiParameters } from 'viem';
 import { CHAIN, PUSH_NETWORK } from '../../constants/enums';
 import { MOVEABLE_TOKEN_CONSTANTS } from '../../constants/tokens';
 import { UEA_MULTICALL_SELECTOR, ZERO_ADDRESS } from '../../constants/selectors';
@@ -58,6 +59,33 @@ function extractSendToUeaPayload(svmPayload: `0x${string}`): `0x${string}` {
   return `0x${Buffer.from(payloadBytes).toString('hex')}`;
 }
 
+function decodeInboundUniversalPayload(payload: `0x${string}`): {
+  data: `0x${string}`;
+  nonce: bigint;
+} {
+  const [decoded] = decodeAbiParameters(
+    [
+      {
+        type: 'tuple',
+        components: [
+          { name: 'to', type: 'address' },
+          { name: 'value', type: 'uint256' },
+          { name: 'data', type: 'bytes' },
+          { name: 'gasLimit', type: 'uint256' },
+          { name: 'maxFeePerGas', type: 'uint256' },
+          { name: 'maxPriorityFeePerGas', type: 'uint256' },
+          { name: 'nonce', type: 'uint256' },
+          { name: 'deadline', type: 'uint256' },
+          { name: 'vType', type: 'uint8' },
+        ],
+      },
+    ],
+    payload
+  );
+
+  return decoded as unknown as { data: `0x${string}`; nonce: bigint };
+}
+
 describe('buildPayloadForRoute — SVM Route 3', () => {
   it('uses the SPL asset PRC-20 in the outer request so relayer mint matches payload mint', async () => {
     const token = MOVEABLE_TOKEN_CONSTANTS.SOLANA_DEVNET.USDT;
@@ -84,7 +112,7 @@ describe('buildPayloadForRoute — SVM Route 3', () => {
     expect(outbound.amount).toBe(BigInt(0));
   });
 
-  it('embeds array data as a non-empty Push multicall payload', async () => {
+  it('wraps array data in an inbound UniversalPayload carrying a Push multicall', async () => {
     const params: UniversalExecuteParams = {
       from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
       to: ZERO_ADDRESS,
@@ -102,10 +130,35 @@ describe('buildPayloadForRoute — SVM Route 3', () => {
 
     const outbound = gatewayRequest as UniversalOutboundTxRequest;
     const sendToUeaPayload = extractSendToUeaPayload(payload);
+    const inboundPayload = decodeInboundUniversalPayload(sendToUeaPayload);
 
     expect(outbound.amount).toBe(BigInt(0));
     expect(sendToUeaPayload).toMatch(/^0x[0-9a-f]+$/);
     expect(sendToUeaPayload.length).toBeGreaterThan(2);
-    expect(sendToUeaPayload.startsWith(UEA_MULTICALL_SELECTOR)).toBe(true);
+    expect(inboundPayload.data.startsWith(UEA_MULTICALL_SELECTOR)).toBe(true);
+    expect(inboundPayload.nonce).toBe(BigInt(1));
+  });
+
+  it('wraps single calldata in an inbound UniversalPayload instead of sending raw calldata', async () => {
+    const params: UniversalExecuteParams = {
+      from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
+      to: PUSH_EOA,
+      value: BigInt(5_000),
+      data: '0x12345678',
+    };
+
+    const { payload } = await buildPayloadForRoute(
+      makeCtx(),
+      params,
+      TransactionRoute.CEA_TO_PUSH,
+      BigInt(0)
+    );
+
+    const sendToUeaPayload = extractSendToUeaPayload(payload);
+    const inboundPayload = decodeInboundUniversalPayload(sendToUeaPayload);
+
+    expect(sendToUeaPayload.startsWith('0x12345678')).toBe(false);
+    expect(inboundPayload.data.startsWith(UEA_MULTICALL_SELECTOR)).toBe(true);
+    expect(inboundPayload.nonce).toBe(BigInt(1));
   });
 });

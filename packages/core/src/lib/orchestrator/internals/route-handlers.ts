@@ -197,15 +197,11 @@ function buildR3SvmExtraPayload(
   ctx: OrchestratorContext,
   params: UniversalExecuteParams,
   ueaAddress: `0x${string}`,
-  sourceChain: CHAIN
+  sourceChain: CHAIN,
+  inboundNonce?: bigint
 ): Uint8Array | undefined {
   if (!params.data) {
     return undefined;
-  }
-
-  if (typeof params.data === 'string') {
-    const data = hexToBytes(params.data as `0x${string}`);
-    return data.length > 0 ? data : undefined;
   }
 
   const executeParams = toExecuteParams(params);
@@ -224,8 +220,11 @@ function buildR3SvmExtraPayload(
     executeParams.to,
     buildExecuteMulticall({ execute: executeParams, ueaAddress })
   );
+  const inboundPayload = buildInboundUniversalPayload(multicallPayload, {
+    nonce: inboundNonce ?? BigInt(0),
+  });
 
-  return hexToBytes(multicallPayload);
+  return hexToBytes(inboundPayload);
 }
 
 /**
@@ -1634,11 +1633,29 @@ export async function executeCeaToPushSvm(
   );
   const ceaPdaHex = ('0x' + Buffer.from(ceaPda.toBytes()).toString('hex')) as `0x${string}`;
 
+  // Pre-fetch UEA status before payload construction. The inbound
+  // UniversalPayload must use the nonce after this outbound execution, because
+  // the Push-side execute() below consumes one UEA nonce before the Solana
+  // round-trip payload returns.
+  const gatewayPcAddress = getUniversalGatewayPCAddress();
+  const [ueaCode, ueaBalance] = await Promise.all([
+    ctx.pushClient.publicClient.getCode({ address: ueaAddress }),
+    ctx.pushClient.getBalance(ueaAddress),
+  ]);
+  const isUEADeployed = ueaCode !== undefined;
+  const ueaNonce = isUEADeployed ? await getUEANonce(ctx, ueaAddress) : BigInt(0);
+
   const svmPayload = encodeSvmCeaToUeaPayload({
     gatewayProgramHex,
     drainAmount,
     tokenMintHex,
-    extraPayload: buildR3SvmExtraPayload(ctx, params, ueaAddress, sourceChain),
+    extraPayload: buildR3SvmExtraPayload(
+      ctx,
+      params,
+      ueaAddress,
+      sourceChain,
+      ueaNonce + BigInt(1)
+    ),
     revertRecipientHex: ceaPdaHex,
   });
 
@@ -1672,15 +1689,6 @@ export async function executeCeaToPushSvm(
     ctx,
     `executeCeaToPushSvm — outbound request: target=${outboundReq.target.slice(0, 20)}..., token=${outboundReq.token}, maxPCForGas=${outboundReq.maxPCForGas}`
   );
-
-  // Pre-fetch UEA status early — balance is needed for gas value calculation
-  const gatewayPcAddress = getUniversalGatewayPCAddress();
-  const [ueaCode, ueaBalance] = await Promise.all([
-    ctx.pushClient.publicClient.getCode({ address: ueaAddress }),
-    ctx.pushClient.getBalance(ueaAddress),
-  ]);
-  const isUEADeployed = ueaCode !== undefined;
-  const ueaNonce = isUEADeployed ? await getUEANonce(ctx, ueaAddress) : BigInt(0);
 
   // Query gas fees
   let gasFee = BigInt(0);
@@ -1880,17 +1888,11 @@ export async function executeCeaToPushSvm(
   response.chain = sourceChain;
   const chainInfo = CHAIN_INFO[sourceChain];
   response.chainNamespace = `${VM_NAMESPACE[chainInfo.vm]}:${chainInfo.chainId}`;
-  // R3 SVM inbound round-trip tracking is disabled.
-  //
-  // For Route 3 SVM drains (rescue_funds-style flow, txType=RESCUE_FUNDS),
-  // empirical check on donut showed the keeper does NOT create a child
-  // universalTxId on Push for the Solana-side `UniversalTx(fromCEA=true)`
-  // log — the parent utxId's `outboundStatus=OBSERVED` is the terminal state.
-  // Polling for a deterministically-derived child id therefore never
-  // resolves, and the cosmos `inbound_tx_hash` text-search fallback also
-  // returns 0 hits. Receipts now resolve as soon as the Solana outbound is
-  // observed instead of timing out at 300s.
-  response._expectsInboundRoundTrip = false;
+  // R3 SVM mirrors EVM R3: when funds drain back to Push, the Solana-side
+  // send_universal_tx_to_uea emits an inbound leg whose payload can execute on
+  // Push. Payload-only R3 has no child inbound UTX, so skip round-trip tracking
+  // when no amount is being drained.
+  response._expectsInboundRoundTrip = drainAmount > BigInt(0);
 
   return response;
 }
@@ -2106,7 +2108,13 @@ export async function buildPayloadForRoute(
           gatewayProgramHex,
           drainAmount,
           tokenMintHex,
-          extraPayload: buildR3SvmExtraPayload(ctx, params, ueaAddress, sourceChain),
+          extraPayload: buildR3SvmExtraPayload(
+            ctx,
+            params,
+            ueaAddress,
+            sourceChain,
+            nonce + BigInt(1)
+          ),
           revertRecipientHex: ceaPdaHex2,
         });
 
