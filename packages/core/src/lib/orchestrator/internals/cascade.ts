@@ -81,7 +81,7 @@ import PROGRESS_HOOKS from '../../progress-hook/progress-hook';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import { buildSvmPayloadFromParams } from '../svm-idl/build-payload';
 import { runPreflight, maybeFireSvmWarnThreshold } from './preflight';
-import { maybeBumpForCeaAtaRent } from './svm-rent';
+import { ensureSvmFinalizeGasBudgetQuote } from './svm-rent';
 import { InsufficientUEABalanceError } from './errors';
 import { fireProgressHook } from './context';
 import {
@@ -311,37 +311,45 @@ export async function buildHopDescriptor(
         let gasFee = BigInt(0);
         let sizing: GasSizingDecision | undefined;
 
-        // Conditional CEA-ATA rent bump (SPL-only). Mirrors single-route
-        // executeUoaToCeaSvm path. See svm-rent.ts for rationale.
-        const splMintBase58 =
+        // SVM finalize budget: compare the quoted gasFee in lamports against
+        // the gateway finalize minimum, then re-query with a bumped gasLimit
+        // if the default quote is too low.
+        const svmFundsToken =
           burnAmount > BigInt(0)
             ? (params.funds as { token?: MoveableToken } | undefined)?.token
-                ?.address
             : undefined;
-        let effectiveGasLimit = await maybeBumpForCeaAtaRent({
-          ctx,
-          ueaAddress,
-          targetChain,
-          splMintBase58,
-          burnAmount,
-          effectiveGasLimit: gasLimit,
-        });
+        const splMintBase58 =
+          svmFundsToken?.mechanism === 'approve'
+            ? svmFundsToken.address
+            : undefined;
+        let effectiveGasLimit = gasLimit;
 
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-          const result = await queryOutboundGasFee(
+          let result = await queryOutboundGasFee(
             ctx,
             prc20Token,
             effectiveGasLimit,
             targetChain
           );
+          result = await ensureSvmFinalizeGasBudgetQuote({
+            ctx,
+            ueaAddress,
+            targetChain,
+            prc20Token,
+            quote: result,
+            splMintBase58,
+            burnAmount,
+            pathTag: 'buildHopDescriptor',
+          });
           gasToken = result.gasToken;
           gasFee = result.gasFee;
           sizing = result.sizing;
-          if (!params.gasLimit && result.gasPrice > BigInt(0)) {
-            effectiveGasLimit = result.gasFee / result.gasPrice;
+          effectiveGasLimit = result.gasLimitUsed;
+          if (!params.gasLimit) {
             printLog(
               ctx,
-              `buildHopDescriptor — SVM derived effectiveGasLimit: ${effectiveGasLimit} (gasFee=${result.gasFee} / gasPrice=${result.gasPrice})`
+              `buildHopDescriptor — SVM resolved effectiveGasLimit: ${effectiveGasLimit} ` +
+                `(gasFee=${result.gasFee}, gasPrice=${result.gasPrice})`
             );
           }
         }
@@ -580,16 +588,28 @@ export async function buildHopDescriptor(
         let gasToken: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let gasFee = BigInt(0);
         let sizing: GasSizingDecision | undefined;
+        let effectiveGasLimit = gasLimit;
         if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
-          const result = await queryOutboundGasFee(
+          let result = await queryOutboundGasFee(
             ctx,
             prc20Token,
-            gasLimit,
+            effectiveGasLimit,
             sourceChain
           );
+          result = await ensureSvmFinalizeGasBudgetQuote({
+            ctx,
+            ueaAddress,
+            targetChain: sourceChain,
+            prc20Token,
+            quote: result,
+            splMintBase58: undefined,
+            burnAmount: BigInt(0),
+            pathTag: 'buildHopDescriptor',
+          });
           gasToken = result.gasToken;
           gasFee = result.gasFee;
           sizing = result.sizing;
+          effectiveGasLimit = result.gasLimitUsed;
         }
 
         return {
@@ -603,6 +623,7 @@ export async function buildHopDescriptor(
           burnAmount: BigInt(0),
           gasToken,
           gasFee,
+          gasLimit: effectiveGasLimit,
           sizing,
         };
       }

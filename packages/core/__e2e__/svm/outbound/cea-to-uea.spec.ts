@@ -166,7 +166,7 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
           from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
           to: ueaAddress,
           funds: {
-            amount: BigInt(100_000), // 0.1 USDT (6 decimals)
+            amount: BigInt(8_000), // 0.008 USDT (6 decimals) — lowered to fit CEA PDA testnet balance
             token: SOL_USDT_TOKEN,
           },
         };
@@ -504,7 +504,7 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
           from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
           to: COUNTER_ADDRESS_PAYABLE,
           funds: {
-            amount: BigInt(100_000), // 0.1 USDT
+            amount: BigInt(8_000), // 0.008 USDT — lowered to fit CEA PDA testnet balance
             token: SOL_USDT_TOKEN,
           },
           data: pushPayload,
@@ -579,7 +579,7 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
           from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
           to: NATIVE_ADDRESS as `0x${string}`,
           funds: {
-            amount: BigInt(100_000), // 0.1 USDT
+            amount: BigInt(8_000), // 0.008 USDT — lowered to fit CEA PDA testnet balance
             token: SOL_USDT_TOKEN,
           },
           data: [
@@ -673,7 +673,7 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
           from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
           to: DIFFERENT_ADDRESS,
           funds: {
-            amount: BigInt(100_000), // 0.1 USDT
+            amount: BigInt(8_000), // 0.008 USDT — lowered to fit CEA PDA testnet balance
             token: SOL_USDT_TOKEN,
           },
         };
@@ -757,7 +757,7 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
           to: COUNTER_ADDRESS_PAYABLE,
           value: BigInt(1_000_000), // 0.001 SOL
           funds: {
-            amount: BigInt(100_000), // 0.1 USDT
+            amount: BigInt(8_000), // 0.008 USDT — lowered to fit CEA PDA testnet balance
             token: SOL_USDT_TOKEN,
           },
           data: pushPayload,
@@ -814,7 +814,7 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
           to: ueaAddress,
           value: BigInt(1_000_000), // 0.001 SOL
           funds: {
-            amount: BigInt(100_000), // 0.1 USDT
+            amount: BigInt(8_000), // 0.008 USDT — lowered to fit CEA PDA testnet balance
             token: SOL_USDT_TOKEN,
           },
         };
@@ -851,7 +851,7 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
           to: DIFFERENT_ADDRESS,
           value: BigInt(1_000_000), // 0.001 SOL
           funds: {
-            amount: BigInt(100_000), // 0.1 USDT
+            amount: BigInt(8_000), // 0.008 USDT — lowered to fit CEA PDA testnet balance
             token: SOL_USDT_TOKEN,
           },
         };
@@ -1001,7 +1001,7 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
         from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
         to: ueaAddress,
         funds: {
-          amount: BigInt(100_000), // 0.1 USDT burn amount (6 decimals)
+          amount: BigInt(8_000), // 0.008 USDT burn amount (6 decimals) — lowered to fit CEA PDA testnet balance
           token: SOL_USDT_TOKEN,
         },
       };
@@ -1069,7 +1069,7 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
         from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
         to: ueaAddress,
         funds: {
-          amount: BigInt(100_000), // 0.1 USDT burn amount (6 decimals)
+          amount: BigInt(8_000), // 0.008 USDT burn amount (6 decimals) — lowered to fit CEA PDA testnet balance
           token: SOL_USDT_TOKEN,
         },
         data: '0xdeadbeef', // arbitrary Push Chain payload
@@ -1265,7 +1265,7 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
         from: { chain: CHAIN.SOLANA_DEVNET },
         to: ueaAddress,
         funds: {
-          amount: BigInt(100_000), // 0.1 USDT
+          amount: BigInt(8_000), // 0.008 USDT — lowered to fit CEA PDA testnet balance
           token: SOL_USDT_TOKEN,
         },
       });

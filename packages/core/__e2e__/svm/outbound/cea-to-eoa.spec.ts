@@ -136,7 +136,7 @@ describe('CEA → EOA: SVM Inbound Transactions (Route 3)', () => {
           from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
           to: eoaAddress,
           funds: {
-            amount: BigInt(100_000), // 0.1 USDT (6 decimals)
+            amount: BigInt(8_000), // 0.008 USDT (6 decimals) — lowered to fit CEA PDA testnet balance
             token: SOL_USDT_TOKEN,
           },
         };
@@ -255,7 +255,7 @@ describe('CEA → EOA: SVM Inbound Transactions (Route 3)', () => {
           from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
           to: COUNTER_ADDRESS_PAYABLE,
           funds: {
-            amount: BigInt(100_000), // 0.1 USDT
+            amount: BigInt(8_000), // 0.008 USDT — lowered to fit CEA PDA testnet balance
             token: SOL_USDT_TOKEN,
           },
           data: pushPayload,
