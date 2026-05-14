@@ -30,6 +30,7 @@ import {
   TEST_TARGET,
   NATIVE_ADDRESS,
   COUNTER_ABI,
+  ensureCeaNativeBalance,
 } from '@e2e/shared/outbound-helpers';
 
 const fixtures = getActiveFixtures();
@@ -1273,6 +1274,14 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
         console.log('Note: Burns 0.0001 native but multicall sends 0.0002 native (CEA balance covers diff)');
 
         const burnAmount = parseEther('0.0001'); // Amount burned on Push Chain
+        const multicallNativeValue = parseEther('0.0002');
+
+        await ensureCeaNativeBalance({
+          pushClient,
+          ceaAddress: fixtureCeaAddress,
+          requiredAmount: multicallNativeValue,
+          targetChain: fixture.chain,
+        });
 
         const params: UniversalExecuteParams = {
           to: {
@@ -1282,7 +1291,7 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
           value: burnAmount, // Burns this amount on Push Chain
           data: [
             // Multicall sends more than burn — relies on CEA having pre-existing native balance
-            { to: TEST_TARGET, value: parseEther('0.0002'), data: '0x' as `0x${string}` },
+            { to: TEST_TARGET, value: multicallNativeValue, data: '0x' as `0x${string}` },
           ],
         };
 

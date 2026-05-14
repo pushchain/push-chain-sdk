@@ -29,6 +29,7 @@ const EXECUTE_IDS_REPLAY = [
   'SEND-TX-302-02',
   'SEND-TX-303-01',
   'SEND-TX-303-02',
+  'SEND-TX-303-04', // R3 pre-flight balance check — reconstructR3 emits one NATIVE 303-04
   'SEND-TX-304-01',
   'SEND-TX-304-02',
   'SEND-TX-304-03',

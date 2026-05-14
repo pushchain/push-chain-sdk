@@ -53,10 +53,19 @@ describe('External Chain Polling Progress Hooks (Routes 2 & 3)', () => {
         return;
       }
 
+      // Pre-broadcast events (201/202-xx/204-xx/207) fire during
+      // sendTransaction() and land on the ctx-level hook — register it here,
+      // since tx.progressHook() below is only wired up after sendTransaction()
+      // returns and so only sees wait()-phase events.
+      const orchestratorEvents: ProgressEvent[] = [];
       const { pushClient } = await createEvmPushClient({
         chain: CHAIN.PUSH_TESTNET_DONUT,
         privateKey,
         printTraces: false,
+        progressHook: (event: ProgressEvent) => {
+          orchestratorEvents.push(event);
+          console.log(`[ctx ${event.id}] ${event.title} (${event.level})`);
+        },
       });
 
       const tx = await pushClient.universal.sendTransaction({
@@ -86,7 +95,10 @@ describe('External Chain Polling Progress Hooks (Routes 2 & 3)', () => {
       console.log(`Route 2 External TX Hash: ${receipt.externalTxHash}`);
       console.log(`Route 2 External Chain: ${receipt.externalChain}`);
 
-      const ids = events.map((e) => e.id);
+      // Pre-broadcast events land on the ctx hook; wait()-phase events on the
+      // response hook — assert against the union.
+      const allEvents = [...orchestratorEvents, ...events];
+      const ids = allEvents.map((e) => e.id);
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
@@ -110,7 +122,7 @@ describe('External Chain Polling Progress Hooks (Routes 2 & 3)', () => {
       ].forEach((id) => expect(ids).toContain(id));
 
       // Doc requirement: progress.response must be present (non-null) on every event
-      const nullResponseEvents = events.filter((e) => e.response === null);
+      const nullResponseEvents = allEvents.filter((e) => e.response === null);
       if (nullResponseEvents.length) {
         console.log(
           'Events with null response:',
