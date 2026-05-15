@@ -9,6 +9,7 @@ export type {
   PayableToken,
   PushChainMoveableToken,
   ChainSuffixAccessor,
+  UsdcChainSuffixAccessor,
   PushChainMoveableTokenAccessor,
   MoveableTokenConstantsMap,
   PayableTokenConstantsMap,

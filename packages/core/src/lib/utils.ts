@@ -874,7 +874,7 @@ export class Utils {
         | 'USDC_ETH'
         | 'USDC_ARB'
         | 'USDC_SOL'
-        | 'USDC_BNB'
+        | 'USDC_BSC'
         | 'USDC_BASE';
 
       switch (tokenSymbol) {
@@ -916,7 +916,7 @@ export class Utils {
           if (isEthFamily) key = 'USDC_ETH';
           else if (isArbFamily) key = 'USDC_ARB';
           else if (isBaseFamily) key = 'USDC_BASE';
-          else if (isBnbFamily) key = 'USDC_BNB';
+          else if (isBnbFamily) key = 'USDC_BSC';
           else if (isSolFamily) key = 'USDC_SOL';
           else
             throw new Error(

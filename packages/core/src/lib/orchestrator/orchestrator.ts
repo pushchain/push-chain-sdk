@@ -16,6 +16,8 @@ import {
   PreparedUniversalTx,
   CascadedTxResponse,
   CascadeHopInfo,
+  CascadeExecutionOptions,
+  TransactionExecutionOptions,
   RescueFundsParams,
 } from './orchestrator.types';
 import { detectRoute, isChainTarget, TransactionRoute } from './route-detector';
@@ -188,8 +190,19 @@ export class Orchestrator {
    * Route 1 (Push Chain) dispatches to extracted sub-flow modules.
    */
   async execute(
-    params: ExecuteParams | UniversalExecuteParams
+    params: ExecuteParams | UniversalExecuteParams,
+    options?: TransactionExecutionOptions
   ): Promise<UniversalTxResponse> {
+    if (options) {
+      params = {
+        ...params,
+        options: {
+          ...params.options,
+          ...options,
+        },
+      } as ExecuteParams | UniversalExecuteParams;
+    }
+
     // Snapshot the caller's active route — `executeMultiChain` recurses into
     // this same method for R2/R3's inner Push-side execution, and without
     // snapshot/restore the recursive `detectRoute(params)` would clobber the
@@ -374,11 +387,22 @@ export class Orchestrator {
    * Returns a PreparedUniversalTx that can be chained with thenOn() or sent with send().
    *
    * @param params - Universal execution parameters
+   * @param options - Optional transaction behavior switches.
    * @returns PreparedUniversalTx with chaining capabilities
    */
   async prepareTransaction(
-    params: UniversalExecuteParams
+    params: UniversalExecuteParams,
+    options?: TransactionExecutionOptions
   ): Promise<PreparedUniversalTx> {
+    if (options) {
+      params = {
+        ...params,
+        options: {
+          ...params.options,
+          ...options,
+        },
+      };
+    }
     return _prepareTransaction(this.ctx, params, this._getCascadeCallbacks());
   }
 
@@ -396,11 +420,16 @@ export class Orchestrator {
    */
   createCascadedBuilder(
     preparedTxs: PreparedUniversalTx[],
-    options?: { progressHook?: (event: ProgressEvent) => void }
+    options?: CascadeExecutionOptions
   ): { send: () => Promise<CascadedTxResponse> } {
     const perCallHook = options?.progressHook;
     if (!perCallHook) {
-      return _createCascadedBuilder(this.ctx, preparedTxs, this._getCascadeCallbacks());
+      return _createCascadedBuilder(
+        this.ctx,
+        preparedTxs,
+        this._getCascadeCallbacks(),
+        undefined
+      );
     }
 
     // Wrap ctx.progressHook for the synchronous send() phase — captures every

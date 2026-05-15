@@ -334,7 +334,7 @@ function buildPushChainMoveableTokenList(): PushChainMoveableToken[] {
     mk('USDC', 6, s.USDC_ETH, CHAIN.ETHEREUM_SEPOLIA),
     mk('USDC', 6, s.USDC_ARB, CHAIN.ARBITRUM_SEPOLIA),
     mk('USDC', 6, s.USDC_BASE, CHAIN.BASE_SEPOLIA),
-    mk('USDC', 6, s.USDC_BNB, CHAIN.BNB_TESTNET),
+    mk('USDC', 6, s.USDC_BSC, CHAIN.BNB_TESTNET),
     mk('USDC', 6, s.USDC_SOL, CHAIN.SOLANA_DEVNET),
     mk('WETH', 18, s.WETH_ETH, CHAIN.ETHEREUM_SEPOLIA),
     mk('stETH', 18, s.stETH_ETH, CHAIN.ETHEREUM_SEPOLIA),
@@ -438,6 +438,17 @@ export interface ChainSuffixAccessor {
   readonly sol: PushChainMoveableToken;
 }
 
+// Preferred chain-suffix accessor for USDC. BNB remains for compatibility.
+export interface UsdcChainSuffixAccessor {
+  readonly eth: PushChainMoveableToken;
+  readonly arb: PushChainMoveableToken;
+  readonly base: PushChainMoveableToken;
+  readonly bsc: PushChainMoveableToken;
+  /** @deprecated Use `bsc` instead. */
+  readonly bnb: PushChainMoveableToken;
+  readonly sol: PushChainMoveableToken;
+}
+
 // Push Chain outward token accessor type (C-3)
 export interface PushChainMoveableTokenAccessor {
   readonly pEth: PushChainMoveableToken;
@@ -449,7 +460,7 @@ export interface PushChainMoveableTokenAccessor {
   readonly pStEth: PushChainMoveableToken;
   readonly pDai: PushChainMoveableToken;
   readonly USDT: ChainSuffixAccessor;
-  readonly USDC: ChainSuffixAccessor;
+  readonly USDC: UsdcChainSuffixAccessor;
 }
 
 // Combined type for CONSTANTS.MOVEABLE.TOKEN (C-2 + C-3)
@@ -499,6 +510,8 @@ function buildPushChainMoveableTokenAccessor(): PushChainMoveableTokenAccessor {
     prc20Address: address,
   });
 
+  const usdcBsc = mk('USDC', 6, s.USDC_BSC, CHAIN.BNB_TESTNET);
+
   return {
     pEth: mk('pETH', 18, s.pETH, CHAIN.ETHEREUM_SEPOLIA),
     pEthArb: mk('pETH_ARB', 18, s.pETH_ARB, CHAIN.ARBITRUM_SEPOLIA),
@@ -519,7 +532,8 @@ function buildPushChainMoveableTokenAccessor(): PushChainMoveableTokenAccessor {
       eth: mk('USDC', 6, s.USDC_ETH, CHAIN.ETHEREUM_SEPOLIA),
       arb: mk('USDC', 6, s.USDC_ARB, CHAIN.ARBITRUM_SEPOLIA),
       base: mk('USDC', 6, s.USDC_BASE, CHAIN.BASE_SEPOLIA),
-      bnb: mk('USDC', 6, s.USDC_BNB, CHAIN.BNB_TESTNET),
+      bsc: usdcBsc,
+      bnb: usdcBsc,
       sol: mk('USDC', 6, s.USDC_SOL, CHAIN.SOLANA_DEVNET),
     },
   };

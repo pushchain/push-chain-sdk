@@ -210,10 +210,15 @@ describe('MOVEABLE_TOKEN_CONSTANTS.PUSH_TESTNET_DONUT (C-3: outward tokens)', ()
       expect(pushTokens.USDC.sol.prc20Address).toBe(synth.USDC_SOL);
     });
 
-    it('should expose USDC.bnb from BNB', () => {
-      const t = pushTokens.USDC.bnb;
+    it('should expose USDC.bsc from BSC', () => {
+      const t = pushTokens.USDC.bsc;
       expect(t.sourceChain).toBe(CHAIN.BNB_TESTNET);
-      expect(t.prc20Address).toBe(synth.USDC_BNB);
+      expect(t.prc20Address).toBe(synth.USDC_BSC);
+    });
+
+    it('should keep USDC.bnb as a deprecated alias', () => {
+      expect(pushTokens.USDC.bnb).toBe(pushTokens.USDC.bsc);
+      expect(synth.USDC_BNB).toBe(synth.USDC_BSC);
     });
   });
 
@@ -233,7 +238,7 @@ describe('MOVEABLE_TOKEN_CONSTANTS.PUSH_TESTNET_DONUT (C-3: outward tokens)', ()
         pushTokens.USDC.eth,
         pushTokens.USDC.arb,
         pushTokens.USDC.base,
-        pushTokens.USDC.bnb,
+        pushTokens.USDC.bsc,
         pushTokens.USDC.sol,
       ];
 

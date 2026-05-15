@@ -54,7 +54,26 @@ describe('runPreflight', () => {
     expect((events[0].response as any).sufficient).toBe(true);
   });
 
-  it('emits 203_03 ERROR + 203_04 and throws InsufficientUEABalanceError on shortfall', () => {
+  it('defaults to warning-only and proceeds on native shortfall', () => {
+    const { ctx, events } = makeCtx();
+    const result = runPreflight({
+      ctx,
+      ueaAddress: UEA,
+      ueaBalance: BigInt('50000000000000000000'), // 50 PC
+      requiredValue: BigInt('100000000000000000000'), // 100 PC
+      gasReserve: BigInt(3e18),
+      pathTag: 'R2_SVM',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(events).toHaveLength(1);
+    expect(events[0].id).toBe(PROGRESS_HOOK.SEND_TX_203_03);
+    expect(events[0].level).toBe('WARNING');
+    expect((events[0].response as any).sufficient).toBe(false);
+    expect((events[0].response as any).warningOnly).toBe(true);
+  });
+
+  it('emits 203_03 ERROR + 203_04 and throws when enforceGasCheck=true', () => {
     const { ctx, events } = makeCtx();
     expect(() =>
       runPreflight({
@@ -64,6 +83,7 @@ describe('runPreflight', () => {
         requiredValue: BigInt('100000000000000000000'), // 100 PC
         gasReserve: BigInt(3e18),
         pathTag: 'R2_SVM',
+        enforceGasCheck: true,
       })
     ).toThrow(InsufficientUEABalanceError);
 
@@ -71,6 +91,7 @@ describe('runPreflight', () => {
     expect(events[0].id).toBe(PROGRESS_HOOK.SEND_TX_203_03);
     expect(events[0].level).toBe('ERROR');
     expect((events[0].response as any).sufficient).toBe(false);
+    expect((events[0].response as any).warningOnly).toBe(false);
     expect(events[1].id).toBe(PROGRESS_HOOK.SEND_TX_203_04);
     expect(events[1].level).toBe('ERROR');
     expect((events[1].response as any).pathTag).toBe('R2_SVM');
@@ -89,6 +110,7 @@ describe('runPreflight', () => {
         requiredValue: required,
         gasReserve: reserve,
         pathTag: 'R2_SVM',
+        enforceGasCheck: true,
       });
       fail('expected throw');
     } catch (e) {
@@ -116,6 +138,7 @@ describe('runPreflight', () => {
         burnToken: TOKEN,
         burnAmount: BigInt(100),
         prc20Balance: BigInt(0),
+        enforceGasCheck: true,
       });
       fail('expected throw');
     } catch (e) {
@@ -187,6 +210,7 @@ describe('runPreflight', () => {
         requiredValue: BigInt('100000000000000000000'),
         gasReserve: BigInt(3e18),
         pathTag: 'R2_SVM',
+        enforceGasCheck: true,
       });
       fail('expected throw');
     } catch (e) {
@@ -213,6 +237,7 @@ describe('runPreflight', () => {
         burnToken: TOKEN,
         burnAmount: BigInt(100),
         prc20Balance: BigInt(0),
+        enforceGasCheck: true,
       });
       fail('expected throw');
     } catch (e) {
@@ -232,6 +257,7 @@ describe('runPreflight', () => {
         requiredValue: BigInt(1),
         gasReserve: BigInt(3e18),
         pathTag: 'R2_EVM',
+        enforceGasCheck: true,
       });
       fail('expected throw');
     } catch (e) {
@@ -254,6 +280,7 @@ describe('runPreflight', () => {
         gasReserve: BigInt(3e18),
         pathTag: 'CASCADE',
         segmentIndex: 1,
+        enforceGasCheck: true,
       });
       fail('expected throw');
     } catch {
@@ -280,6 +307,7 @@ describe('runPreflight', () => {
         requiredValue: BigInt(1),
         gasReserve: BigInt(3e18),
         pathTag: 'R2_SVM',
+        enforceGasCheck: true,
       });
       fail('expected throw');
     } catch {
@@ -304,6 +332,7 @@ describe('runPreflight', () => {
         requiredValue: BigInt(1),
         gasReserve: BigInt(3e18),
         pathTag: 'R3_EVM',
+        enforceGasCheck: true,
       });
       fail('expected throw');
     } catch {
@@ -327,6 +356,7 @@ describe('runPreflight', () => {
         requiredValue: BigInt(1),
         gasReserve: BigInt(3e18),
         pathTag: 'R3_SVM',
+        enforceGasCheck: true,
       });
       fail('expected throw');
     } catch {
@@ -349,6 +379,7 @@ describe('runPreflight', () => {
         gasReserve: BigInt(3e18),
         pathTag: 'CASCADE',
         segmentIndex: 2,
+        enforceGasCheck: true,
       });
       fail('expected throw');
     } catch (e) {

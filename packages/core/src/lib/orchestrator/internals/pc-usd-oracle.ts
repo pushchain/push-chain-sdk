@@ -31,7 +31,7 @@ type StableKey =
   | 'USDT_ARB'
   | 'USDT_BASE'
   | 'USDT_BNB'
-  | 'USDC_BNB'
+  | 'USDC_BSC'
   | 'USDT_SOL';
 
 /**

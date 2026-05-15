@@ -447,6 +447,7 @@ describe('helpers', () => {
         deadline: BigInt(999),
         maxFeePerGas: BigInt(50),
         maxPriorityFeePerGas: BigInt(2),
+        options: { enforceGasCheck: true },
       };
       const result = toExecuteParams(params);
       expect(result.value).toBe(BigInt(100));
@@ -455,6 +456,7 @@ describe('helpers', () => {
       expect(result.deadline).toBe(BigInt(999));
       expect(result.maxFeePerGas).toBe(BigInt(50));
       expect(result.maxPriorityFeePerGas).toBe(BigInt(2));
+      expect(result.options).toEqual({ enforceGasCheck: true });
     });
 
     it('should forward feeLockTxHash when present', () => {

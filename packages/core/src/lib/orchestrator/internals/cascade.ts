@@ -1043,7 +1043,8 @@ export async function composeCascadeDetailed(
   segments: CascadeSegment[],
   ueaAddress: `0x${string}`,
   ueaBalance?: bigint,
-  ueaNonce?: bigint
+  ueaNonce?: bigint,
+  options?: { enforceGasCheck?: boolean }
 ): Promise<ComposeCascadeResult> {
   let accumulatedPushMulticalls: MultiCall[] = [];
   let requiredNativeValue = BigInt(0);
@@ -1051,6 +1052,11 @@ export async function composeCascadeDetailed(
   const currentUeaBalance = ueaBalance ?? BigInt(0);
   const cascadeNativeSeed = getCascadeNativeSeed(segments);
   const effectiveUeaBalance = currentUeaBalance + cascadeNativeSeed;
+  const enforceGasCheck =
+    options?.enforceGasCheck === true ||
+    segments.some((segment) =>
+      segment.hops.some((hop) => hop.params.options?.enforceGasCheck === true)
+    );
 
   if (cascadeNativeSeed > BigInt(0)) {
     printLog(
@@ -1068,8 +1074,8 @@ export async function composeCascadeDetailed(
   // Cascade pre-flight: catches the zero-balance silent-segment-zero failure
   // mode. When `ueaBalance <= CASCADE_GAS_RESERVE`, `perOutboundNativeValue`
   // is left undefined and downstream segments silently allocate value=0,
-  // producing under-funded swaps that revert inside Uniswap. Throw early
-  // with a structured error so the caller knows which path / hop failed.
+  // producing under-funded swaps that revert inside Uniswap. Warn by default
+  // and throw only when enforceGasCheck=true.
   if (numOutbounds > 0) {
     runPreflight({
       ctx,
@@ -1080,6 +1086,7 @@ export async function composeCascadeDetailed(
       requiredValue: BigInt(1),
       gasReserve: CASCADE_GAS_RESERVE,
       pathTag: 'CASCADE',
+      enforceGasCheck,
     });
   }
   let perOutboundNativeValue: bigint | undefined;
@@ -1189,6 +1196,29 @@ export async function composeCascadeDetailed(
         const shortfall = estimated - value;
         fireProgressHook(
           ctx,
+          PROGRESS_HOOK.SEND_TX_003_03,
+          estimated,
+          value,
+          false,
+          ueaAddress,
+          'CASCADE',
+          {
+            kind: 'NATIVE',
+            segmentIndex: cascadeIdx,
+            enforceGasCheck,
+            shortfall,
+          }
+        );
+        if (!enforceGasCheck) {
+          printLog(
+            ctx,
+            `composeCascade — SVM outbound segment ${cascadeIdx} has native shortfall ${shortfall.toString()}; proceeding because enforceGasCheck=false`
+          );
+          svmNativeValueBySegment.set(seg, value);
+          continue;
+        }
+        fireProgressHook(
+          ctx,
           PROGRESS_HOOK.SEND_TX_003_04,
           estimated,
           value,
@@ -1286,7 +1316,13 @@ export async function composeCascadeDetailed(
             sufficient,
             ueaAddress,
             'CASCADE',
-            { kind: 'PRC20', burnToken: segBurnToken, segmentIndex: segIdxLoop }
+            {
+              kind: 'PRC20',
+              burnToken: segBurnToken,
+              segmentIndex: segIdxLoop,
+              enforceGasCheck,
+              shortfall: sufficient ? BigInt(0) : segBurnAmount - onHand,
+            }
           );
           const priorPushExecutionMayFundBurn = segments
             .slice(0, segIdxLoop)
@@ -1306,30 +1342,37 @@ export async function composeCascadeDetailed(
           ) {
             const projectedOnHand = onHand + priorInboundFundingForBurn;
             const shortfall = segBurnAmount - projectedOnHand;
-            fireProgressHook(
-              ctx,
-              PROGRESS_HOOK.SEND_TX_003_04,
-              segBurnAmount,
-              projectedOnHand,
-              shortfall,
-              ueaAddress,
-              'CASCADE',
-              {
-                kind: 'PRC20',
+            if (!enforceGasCheck) {
+              printLog(
+                ctx,
+                `composeCascade — PRC-20 shortfall ${shortfall.toString()} for segment ${segIdxLoop}; proceeding because enforceGasCheck=false`
+              );
+            } else {
+              fireProgressHook(
+                ctx,
+                PROGRESS_HOOK.SEND_TX_003_04,
+                segBurnAmount,
+                projectedOnHand,
+                shortfall,
+                ueaAddress,
+                'CASCADE',
+                {
+                  kind: 'PRC20',
+                  burnToken: segBurnToken,
+                  segmentIndex: segIdxLoop,
+                }
+              );
+              throw new InsufficientUEABalanceError({
+                required: segBurnAmount,
+                available: projectedOnHand,
+                shortfall,
+                ueaAddress,
+                pathTag: 'CASCADE',
+                reason: 'PRC20',
                 burnToken: segBurnToken,
                 segmentIndex: segIdxLoop,
-              }
-            );
-            throw new InsufficientUEABalanceError({
-              required: segBurnAmount,
-              available: projectedOnHand,
-              shortfall,
-              ueaAddress,
-              pathTag: 'CASCADE',
-              reason: 'PRC20',
-              burnToken: segBurnToken,
-              segmentIndex: segIdxLoop,
-            });
+              });
+            }
           } else if (!sufficient && priorPushExecutionMayFundBurn) {
             printLog(
               ctx,
@@ -1729,13 +1772,28 @@ export function createCascadedBuilder(
 
       // Extract HopDescriptors
       const hops = preparedTxs.map((tx) => tx._hop);
+      const enforceGasCheck = hops.some(
+        (hop) => hop.params.options?.enforceGasCheck === true
+      );
+      const withCascadeOptions = (params: UniversalExecuteParams) =>
+        enforceGasCheck
+          ? {
+              ...params,
+              options: {
+                ...params.options,
+                enforceGasCheck: true,
+              },
+            }
+          : params;
 
       // Classify into segments
       const segments = classifyIntoSegments(hops);
 
       // Check if this is a single-hop Route 1 (no composition needed)
       if (preparedTxs.length === 1 && preparedTxs[0].route === 'UOA_TO_PUSH') {
-        const response = await callbacks.executeFn(hops[0].params);
+        const response = await callbacks.executeFn(
+          withCascadeOptions(hops[0].params)
+        );
         const singleRoute1Result: CascadedTxResponse = {
           initialTxHash: response.hash,
           initialTxResponse: response,
@@ -1768,7 +1826,9 @@ export function createCascadedBuilder(
 
       // Check if single-hop Route 2 (just execute directly)
       if (preparedTxs.length === 1 && preparedTxs[0].route === 'UOA_TO_CEA') {
-        const response = await callbacks.executeFn(hops[0].params);
+        const response = await callbacks.executeFn(
+          withCascadeOptions(hops[0].params)
+        );
         const targetChain =
           hops[0].targetChain || getPushChainForNetwork(ctx.pushNetwork);
         const singleRoute2Result: CascadedTxResponse = {
@@ -1819,7 +1879,8 @@ export function createCascadedBuilder(
           segments,
           ueaAddress,
           ueaBalance,
-          ueaNonceCascade
+          ueaNonceCascade,
+          { enforceGasCheck }
         );
         composedMulticalls = composed.multicalls;
         cascadeRequiredNativeValue = composed.requiredNativeValue;

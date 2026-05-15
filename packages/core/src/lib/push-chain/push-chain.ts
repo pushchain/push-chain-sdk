@@ -32,6 +32,8 @@ import type {
   CascadedTxResponse,
   UniversalTxResponse,
   RescueFundsParams,
+  CascadeExecutionOptions,
+  TransactionExecutionOptions,
 } from '../orchestrator/orchestrator.types';
 
 /**
@@ -89,11 +91,19 @@ export class PushChain {
      *   to: { address: '0x...', chain: CHAIN.BNB_TESTNET },
      *   value: parseEther('0.001')
      * });
+     *
+     * @param options.enforceGasCheck - Defaults to false. When true, the
+     *   SDK stops on pre-flight gas/balance shortfall instead of warning
+     *   and proceeding.
      */
     sendTransaction: Orchestrator['execute'];
     /**
      * Prepare a universal transaction without executing it.
      * Returns a PreparedUniversalTx that can be passed to executeTransactions.
+     *
+     * @param options.enforceGasCheck - Defaults to false. When true, the
+     *   prepared transaction carries strict pre-flight gas/balance enforcement
+     *   into executeTransactions.
      */
     prepareTransaction: Orchestrator['prepareTransaction'];
     /**
@@ -110,7 +120,7 @@ export class PushChain {
      */
     executeTransactions: (
       txs: PreparedUniversalTx[],
-      options?: { progressHook?: (event: ProgressEvent) => void }
+      options?: CascadeExecutionOptions
     ) => Promise<CascadedTxResponse>;
     /**
      * Tracks a transaction by hash on Push Chain
@@ -237,12 +247,18 @@ export class PushChain {
         }
         return orchestrator.execute.bind(orchestrator)(...args);
       },
-      prepareTransaction: (params: UniversalExecuteParams) => {
-        return orchestrator.prepareTransaction.bind(orchestrator)(params);
+      prepareTransaction: (
+        params: UniversalExecuteParams,
+        options?: TransactionExecutionOptions
+      ) => {
+        return orchestrator.prepareTransaction.bind(orchestrator)(
+          params,
+          options
+        );
       },
       executeTransactions: async (
         txs: PreparedUniversalTx[],
-        options?: { progressHook?: (event: ProgressEvent) => void }
+        options?: CascadeExecutionOptions
       ) => {
         if (this.isReadMode) {
           throw new Error(

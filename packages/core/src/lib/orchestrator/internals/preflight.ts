@@ -8,12 +8,13 @@
  * with `Error("STF")`, fees are burned, and the user sees an opaque
  * library string with no balance signal.
  *
- * `runPreflight` replaces that branch: it checks the **pre-clamp**
- * buffered pool quote against UEA balance (and optionally a PRC-20 burn
- * balance) and either:
- *   - emits `SEND-TX-203-03` (INFO, sufficient) and lets the caller proceed; or
+ * `runPreflight` checks the **pre-clamp** buffered pool quote against UEA
+ * balance (and optionally a PRC-20 burn balance) and either:
+ *   - emits `SEND-TX-203-03` (INFO, sufficient) and lets the caller proceed;
+ *   - emits `SEND-TX-203-03` (WARNING, insufficient) and proceeds when
+ *     enforceGasCheck is false/omitted; or
  *   - emits `SEND-TX-203-03` (ERROR, insufficient) + `SEND-TX-203-04` and
- *     throws `InsufficientUEABalanceError`.
+ *     throws `InsufficientUEABalanceError` when enforceGasCheck is true.
  *
  * The helper is intentionally not "pure" — it emits hooks and may throw.
  * Callers fetch all balances (so the helper itself does no I/O).
@@ -41,6 +42,8 @@ export interface RunPreflightOpts {
   burnToken?: `0x${string}`;
   burnAmount?: bigint;
   prc20Balance?: bigint;
+  /** Defaults to false: warn on shortfall and proceed. */
+  enforceGasCheck?: boolean;
   /** Cascade-only: identifies which segment failed. */
   segmentIndex?: number;
 }
@@ -67,6 +70,7 @@ export function runPreflight(opts: RunPreflightOpts): PreflightResult {
     burnToken,
     burnAmount,
     prc20Balance,
+    enforceGasCheck = false,
     segmentIndex,
   } = opts;
 
@@ -92,6 +96,7 @@ export function runPreflight(opts: RunPreflightOpts): PreflightResult {
   if (burnAmount && burnAmount > BigInt(0) && burnToken) {
     const onHand = prc20Balance ?? BigInt(0);
     const sufficient = onHand >= burnAmount;
+    const shortfall = sufficient ? BigInt(0) : burnAmount - onHand;
     fireProgressHook(
       ctx,
       HOOK_PRE_INFO,
@@ -100,10 +105,15 @@ export function runPreflight(opts: RunPreflightOpts): PreflightResult {
       sufficient,
       ueaAddress,
       pathTag,
-      { kind: 'PRC20', burnToken, segmentIndex }
+      {
+        kind: 'PRC20',
+        burnToken,
+        segmentIndex,
+        enforceGasCheck,
+        shortfall,
+      }
     );
-    if (!sufficient) {
-      const shortfall = burnAmount - onHand;
+    if (!sufficient && enforceGasCheck) {
       fireProgressHook(
         ctx,
         HOOK_PRE_FAIL,
@@ -124,12 +134,18 @@ export function runPreflight(opts: RunPreflightOpts): PreflightResult {
         burnToken,
         segmentIndex,
       });
+    } else if (!sufficient) {
+      printLog(
+        ctx,
+        `[preflight ${pathTag}] PRC-20 shortfall ${shortfall.toString()} for ${burnToken}; proceeding because enforceGasCheck=false`
+      );
     }
   }
 
   // 2. Native (UPC) balance check.
   const totalRequired = requiredValue + gasReserve;
   const sufficient = ueaBalance >= totalRequired;
+  const shortfall = sufficient ? BigInt(0) : totalRequired - ueaBalance;
   fireProgressHook(
     ctx,
     HOOK_PRE_INFO,
@@ -138,33 +154,39 @@ export function runPreflight(opts: RunPreflightOpts): PreflightResult {
     sufficient,
     ueaAddress,
     pathTag,
-    { kind: 'NATIVE', segmentIndex }
+    { kind: 'NATIVE', segmentIndex, enforceGasCheck, shortfall }
   );
   if (sufficient) {
     return { ok: true, adjustedValue: requiredValue };
   }
 
-  const shortfall = totalRequired - ueaBalance;
+  if (enforceGasCheck) {
+    fireProgressHook(
+      ctx,
+      HOOK_PRE_FAIL,
+      totalRequired,
+      ueaBalance,
+      shortfall,
+      ueaAddress,
+      pathTag,
+      { kind: 'NATIVE', segmentIndex }
+    );
+    throw new InsufficientUEABalanceError({
+      required: totalRequired,
+      available: ueaBalance,
+      shortfall,
+      ueaAddress,
+      pathTag,
+      reason: 'NATIVE',
+      segmentIndex,
+    });
+  }
 
-  fireProgressHook(
+  printLog(
     ctx,
-    HOOK_PRE_FAIL,
-    totalRequired,
-    ueaBalance,
-    shortfall,
-    ueaAddress,
-    pathTag,
-    { kind: 'NATIVE', segmentIndex }
+    `[preflight ${pathTag}] native shortfall ${shortfall.toString()}; proceeding because enforceGasCheck=false`
   );
-  throw new InsufficientUEABalanceError({
-    required: totalRequired,
-    available: ueaBalance,
-    shortfall,
-    ueaAddress,
-    pathTag,
-    reason: 'NATIVE',
-    segmentIndex,
-  });
+  return { ok: true, adjustedValue: requiredValue };
 }
 
 /**

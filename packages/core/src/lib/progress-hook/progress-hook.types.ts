@@ -10,7 +10,7 @@ export type ProgressEvent = {
   id: string;
   title: string;
   message: string;
-  level: 'INFO' | 'SUCCESS' | 'ERROR';
+  level: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
   // Always a structured object (or null). Never a string — txHash and other
   // values are exposed as `response.txHash`, etc., so consumers can read them
   // programmatically instead of parsing the message string.
@@ -62,8 +62,10 @@ export enum PROGRESS_HOOK {
   SEND_TX_202_02 = 'SEND-TX-202-02',
   SEND_TX_203_01 = 'SEND-TX-203-01',
   SEND_TX_203_02 = 'SEND-TX-203-02',
-  // Pre-flight balance check (203-03 INFO when sufficient or burn-token check passes;
-  // 203-04 ERROR terminal precursor on shortfall; 203-05 INFO SVM warn-threshold tripped).
+  // Pre-flight balance check (203-03 INFO when sufficient, WARNING when
+  // short but enforceGasCheck=false, ERROR when enforceGasCheck=true;
+  // 203-04 ERROR terminal precursor on enforced shortfall;
+  // 203-05 INFO SVM warn-threshold tripped).
   // 203 bucket choice is temporal (sits between 203-02 CEA-resolved and 204-01 sign),
   // not strictly semantic — UEA balance is on Push Chain, not the destination CEA.
   SEND_TX_203_03 = 'SEND-TX-203-03',
@@ -95,7 +97,7 @@ export enum PROGRESS_HOOK {
   // owned by the sizer cluster so preflight uses the next free slots
   // (304-01..04 are sign/verify), inserted between sizer and signature
   // burst because that is the temporal point where UEA balance is checked.
-  SEND_TX_303_04 = 'SEND-TX-303-04', // R3 pre-flight balance check (INFO when sufficient, ERROR when insufficient)
+  SEND_TX_303_04 = 'SEND-TX-303-04', // R3 pre-flight balance check (INFO/WARNING/ERROR per enforceGasCheck)
   SEND_TX_303_05 = 'SEND-TX-303-05', // R3 pre-flight FAILED (ERROR, terminal precursor before 399-02)
   SEND_TX_303_06 = 'SEND-TX-303-06', // R3 SVM warn-threshold tripped (INFO, no action)
   SEND_TX_304_01 = 'SEND-TX-304-01',
@@ -121,7 +123,7 @@ export enum PROGRESS_HOOK {
   // self-consistent (rest of cascade uses 001 / 002-xx / 999-xx). The
   // runPreflight helper switches between 203-xx and 003-xx based on
   // pathTag === 'CASCADE'.
-  SEND_TX_003_03 = 'SEND-TX-003-03', // Cascade pre-flight balance check (INFO when sufficient, ERROR when insufficient)
+  SEND_TX_003_03 = 'SEND-TX-003-03', // Cascade pre-flight balance check (INFO/WARNING/ERROR per enforceGasCheck)
   SEND_TX_003_04 = 'SEND-TX-003-04', // Cascade pre-flight FAILED (ERROR, terminal precursor before 999-02)
   SEND_TX_003_05 = 'SEND-TX-003-05', // Cascade SVM warn-threshold tripped (INFO, no action)
   SEND_TX_999_01 = 'SEND-TX-999-01',

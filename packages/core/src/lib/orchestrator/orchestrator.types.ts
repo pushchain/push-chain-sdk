@@ -44,6 +44,15 @@ export type TransactionRouteType =
   | 'CEA_TO_PUSH'
   | 'CEA_TO_CEA';
 
+export interface TransactionExecutionOptions {
+  /**
+   * Enforce the SDK pre-flight gas/balance check.
+   * - false/omitted: emit a warning on shortfall and continue
+   * - true: emit the failure hook, throw InsufficientUEABalanceError, and stop
+   */
+  enforceGasCheck?: boolean;
+}
+
 // ============================================================================
 // Execute Parameters
 // ============================================================================
@@ -106,6 +115,11 @@ export type ExecuteParams = {
    * Optional for signature expiry
    */
   deadline?: bigint;
+
+  /**
+   * Optional transaction behavior switches.
+   */
+  options?: TransactionExecutionOptions;
 
   /**
    * Optional: pay gas in a specific token. If not provided, use `token` (bridge token) when present; otherwise, native token.
@@ -807,6 +821,11 @@ export interface CascadeTrackOptions {
   eventHook?: (
     event: import('../progress-hook/progress-hook.types').ProgressEvent
   ) => void;
+}
+
+export interface CascadeExecutionOptions {
+  /** Per-call progress callback. */
+  progressHook?: (event: import('../progress-hook/progress-hook.types').ProgressEvent) => void;
 }
 
 /**

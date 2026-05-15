@@ -719,10 +719,9 @@ export async function executeUoaToCea(
     nativeValueForGas = EVM_NATIVE_VALUE_SAFETY_CAP;
   }
 
-  // Pre-flight: throws InsufficientUEABalanceError when UEA cannot cover
-  // (nativeValueForGas + gasReserve) or the PRC-20 burn amount. Replaces the
-  // legacy silent-clamp that previously submitted under-funded swaps and
-  // bubbled up as Uniswap STF reverts. PRC-20 check fires whenever
+  // Pre-flight: warns by default when UEA cannot cover (nativeValueForGas +
+  // gasReserve) or the PRC-20 burn amount; throws only when
+  // options.enforceGasCheck=true. PRC-20 check fires whenever
   // burnAmount > 0 — user must pre-hold the burn token, even when it equals
   // the gas token (the gateway does transferFrom BEFORE the gas swap).
   let prc20BalanceR2Evm: bigint | undefined;
@@ -744,6 +743,7 @@ export async function executeUoaToCea(
     burnToken: prc20Token,
     burnAmount,
     prc20Balance: prc20BalanceR2Evm,
+    enforceGasCheck: params.options?.enforceGasCheck === true,
   });
   // Preflight success means nativeValueForGas already covers required + reserve; no adjust needed.
 
@@ -1053,10 +1053,9 @@ export async function executeUoaToCeaSvm(
     maybeFireSvmWarnThreshold(ctx, nativeValueForGas, gasToken, 'R2_SVM');
   }
 
-  // Pre-flight: throws InsufficientUEABalanceError when UEA cannot cover
-  // (nativeValueForGas + SVM_GAS_RESERVE) or the PRC-20 burn amount.
-  // Replaces the legacy silent-clamp that previously submitted under-funded
-  // swaps and bubbled up as Uniswap STF reverts.
+  // Pre-flight: warns by default when UEA cannot cover (nativeValueForGas +
+  // SVM_GAS_RESERVE) or the PRC-20 burn amount; throws only when
+  // options.enforceGasCheck=true.
   // PRC-20 burn-balance pre-check fires whenever `burnAmount > 0`, regardless
   // of whether `prc20Token` happens to equal `gasToken`. The gateway's
   // `sendUniversalTxOutbound` does `transferFrom(user, gateway, burnAmount)`
@@ -1082,6 +1081,7 @@ export async function executeUoaToCeaSvm(
     burnToken: prc20Token,
     burnAmount,
     prc20Balance: prc20BalanceR2Svm,
+    enforceGasCheck: params.options?.enforceGasCheck === true,
   });
 
   // --- Build Push Chain multicalls (approve + sendUniversalTxOutbound) ---
@@ -1495,7 +1495,8 @@ export async function executeCeaToPush(
 
   // Pre-flight (R3 EVM): no PRC-20 burn check — `burnAmount = 0` makes this
   // payload-only (UEA never holds the source-chain PRC-20; see plan §9 #4).
-  // Native UPC check still applies for the gas swap.
+  // Native UPC check still applies for the gas swap. It warns by default and
+  // throws only when options.enforceGasCheck=true.
   runPreflight({
     ctx,
     ueaAddress,
@@ -1503,6 +1504,7 @@ export async function executeCeaToPush(
     requiredValue: nativeValueForGas,
     gasReserve: OUTBOUND_GAS_RESERVE_R3,
     pathTag: 'R3_EVM',
+    enforceGasCheck: params.options?.enforceGasCheck === true,
   });
 
   // 12. Build Push Chain multicalls (approvals + sendUniversalTxOutbound)
@@ -1796,13 +1798,13 @@ export async function executeCeaToPushSvm(
 
   // Upward-only allocation: when balance has headroom over the calibrated
   // value, consume more of it (up to the ceiling above). Down-clamp +
-  // zero-balance throws live in pre-flight.
+  // zero-balance handling lives in pre-flight.
   // Ordering note: pre-flight runs AFTER the upward adjust below; the
   // semantics are equivalent to running it before — when upward adjust
   // applies it sets nativeValueForGas to balance-reserve (capped), and the
   // post-adjust pre-flight check is always satisfied. When upward adjust is
   // skipped (balance too low), pre-flight runs against the calibrated value
-  // and throws cleanly on shortfall.
+  // and either warns or throws based on options.enforceGasCheck.
   if (
     currentBalance > OUTBOUND_GAS_RESERVE_R3_SVM &&
     currentBalance - OUTBOUND_GAS_RESERVE_R3_SVM > nativeValueForGas
@@ -1832,6 +1834,7 @@ export async function executeCeaToPushSvm(
     requiredValue: nativeValueForGas,
     gasReserve: OUTBOUND_GAS_RESERVE_R3_SVM,
     pathTag: 'R3_SVM',
+    enforceGasCheck: params.options?.enforceGasCheck === true,
   });
 
   // Build Push Chain multicalls (approvals + sendUniversalTxOutbound)

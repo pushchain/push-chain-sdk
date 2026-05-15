@@ -175,6 +175,7 @@ export function toExecuteParams(params: UniversalExecuteParams): ExecuteParams {
     maxFeePerGas: params.maxFeePerGas,
     maxPriorityFeePerGas: params.maxPriorityFeePerGas,
     deadline: params.deadline,
+    options: params.options,
     payGasWith: params.payGasWith,
     feeLockTxHash: params.feeLockTxHash,
   };

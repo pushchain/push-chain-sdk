@@ -60,6 +60,33 @@ export interface DeclineHookResponse {
   isUserDecline: boolean;
 }
 
+type PreflightHookExtra = {
+  kind?: 'NATIVE' | 'PRC20';
+  burnToken?: `0x${string}`;
+  segmentIndex?: number;
+  enforceGasCheck?: boolean;
+  shortfall?: bigint;
+};
+
+function preflightLevel(
+  sufficient: boolean,
+  enforceGasCheck?: boolean
+): 'INFO' | 'WARNING' | 'ERROR' {
+  if (sufficient) return 'INFO';
+  return enforceGasCheck === false ? 'WARNING' : 'ERROR';
+}
+
+function preflightSuffix(
+  sufficient: boolean,
+  pathTag: string,
+  enforceGasCheck?: boolean
+): string {
+  if (sufficient) return `sufficient (${pathTag})`;
+  return enforceGasCheck === false
+    ? `INSUFFICIENT (${pathTag}); warning only, proceeding`
+    : `INSUFFICIENT (${pathTag})`;
+}
+
 /**
  * Classify a sign-time error as either a true wallet user-decline
  * (viem `UserRejectedRequestError`, ethers `ACTION_REJECTED`, EIP-1193 4001,
@@ -432,17 +459,18 @@ const RAW_HOOKS_R2: {
     sufficient: boolean,
     ueaAddress: `0x${string}`,
     pathTag: string,
-    extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
+    extra?: PreflightHookExtra
   ) => {
     const kind = extra?.kind ?? 'NATIVE';
     const availableStr = kind === 'PRC20' ? `${available} units` : formatPc(available, 4);
     const requiredStr = kind === 'PRC20' ? `${required} units` : formatPc(required, 4);
+    const enforceGasCheck = extra?.enforceGasCheck;
     return {
       id: PROGRESS_HOOK.SEND_TX_203_03,
       title: 'Pre-flight Balance Check',
       message:
         `UEA balance: ${availableStr}; required: ${requiredStr}; ` +
-        `${sufficient ? 'sufficient' : 'INSUFFICIENT'} (${pathTag})`,
+        preflightSuffix(sufficient, pathTag, enforceGasCheck),
       response: {
         required,
         available,
@@ -452,8 +480,11 @@ const RAW_HOOKS_R2: {
         kind,
         burnToken: extra?.burnToken ?? null,
         segmentIndex: extra?.segmentIndex ?? null,
+        enforceGasCheck: enforceGasCheck ?? null,
+        warningOnly: !sufficient && enforceGasCheck === false,
+        shortfall: extra?.shortfall ?? null,
       },
-      level: sufficient ? 'INFO' : 'ERROR',
+      level: preflightLevel(sufficient, enforceGasCheck),
     };
   },
   [PROGRESS_HOOK.SEND_TX_203_04]: (
@@ -462,7 +493,7 @@ const RAW_HOOKS_R2: {
     shortfall: bigint,
     ueaAddress: `0x${string}`,
     pathTag: string,
-    extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
+    extra?: PreflightHookExtra
   ) => {
     const kind = extra?.kind ?? 'NATIVE';
     const shortfallStr = kind === 'PRC20' ? `${shortfall} units` : formatPc(shortfall, 4);
@@ -718,17 +749,18 @@ const RAW_HOOKS_R3: {
     sufficient: boolean,
     ueaAddress: `0x${string}`,
     pathTag: string,
-    extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
+    extra?: PreflightHookExtra
   ) => {
     const kind = extra?.kind ?? 'NATIVE';
     const availableStr = kind === 'PRC20' ? `${available} units` : formatPc(available, 4);
     const requiredStr = kind === 'PRC20' ? `${required} units` : formatPc(required, 4);
+    const enforceGasCheck = extra?.enforceGasCheck;
     return {
       id: PROGRESS_HOOK.SEND_TX_303_04,
       title: 'Pre-flight Balance Check',
       message:
         `UEA balance: ${availableStr}; required: ${requiredStr}; ` +
-        `${sufficient ? 'sufficient' : 'INSUFFICIENT'} (${pathTag})`,
+        preflightSuffix(sufficient, pathTag, enforceGasCheck),
       response: {
         required,
         available,
@@ -738,8 +770,11 @@ const RAW_HOOKS_R3: {
         kind,
         burnToken: extra?.burnToken ?? null,
         segmentIndex: extra?.segmentIndex ?? null,
+        enforceGasCheck: enforceGasCheck ?? null,
+        warningOnly: !sufficient && enforceGasCheck === false,
+        shortfall: extra?.shortfall ?? null,
       },
-      level: sufficient ? 'INFO' : 'ERROR',
+      level: preflightLevel(sufficient, enforceGasCheck),
     };
   },
   [PROGRESS_HOOK.SEND_TX_303_05]: (
@@ -748,7 +783,7 @@ const RAW_HOOKS_R3: {
     shortfall: bigint,
     ueaAddress: `0x${string}`,
     pathTag: string,
-    extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
+    extra?: PreflightHookExtra
   ) => {
     const kind = extra?.kind ?? 'NATIVE';
     const shortfallStr = kind === 'PRC20' ? `${shortfall} units` : formatPc(shortfall, 4);
@@ -1052,17 +1087,18 @@ const RAW_HOOKS_MULTICHAIN: {
     sufficient: boolean,
     ueaAddress: `0x${string}`,
     pathTag: string,
-    extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
+    extra?: PreflightHookExtra
   ) => {
     const kind = extra?.kind ?? 'NATIVE';
     const availableStr = kind === 'PRC20' ? `${available} units` : formatPc(available, 4);
     const requiredStr = kind === 'PRC20' ? `${required} units` : formatPc(required, 4);
+    const enforceGasCheck = extra?.enforceGasCheck;
     return {
       id: PROGRESS_HOOK.SEND_TX_003_03,
       title: 'Cascade Pre-flight Balance Check',
       message:
         `UEA balance: ${availableStr}; required: ${requiredStr}; ` +
-        `${sufficient ? 'sufficient' : 'INSUFFICIENT'} (${pathTag})`,
+        preflightSuffix(sufficient, pathTag, enforceGasCheck),
       response: {
         required,
         available,
@@ -1072,8 +1108,11 @@ const RAW_HOOKS_MULTICHAIN: {
         kind,
         burnToken: extra?.burnToken ?? null,
         segmentIndex: extra?.segmentIndex ?? null,
+        enforceGasCheck: enforceGasCheck ?? null,
+        warningOnly: !sufficient && enforceGasCheck === false,
+        shortfall: extra?.shortfall ?? null,
       },
-      level: sufficient ? 'INFO' : 'ERROR',
+      level: preflightLevel(sufficient, enforceGasCheck),
     };
   },
   [PROGRESS_HOOK.SEND_TX_003_04]: (
@@ -1082,7 +1121,7 @@ const RAW_HOOKS_MULTICHAIN: {
     shortfall: bigint,
     ueaAddress: `0x${string}`,
     pathTag: string,
-    extra?: { kind?: 'NATIVE' | 'PRC20'; burnToken?: `0x${string}`; segmentIndex?: number }
+    extra?: PreflightHookExtra
   ) => {
     const kind = extra?.kind ?? 'NATIVE';
     const shortfallStr = kind === 'PRC20' ? `${shortfall} units` : formatPc(shortfall, 4);
