@@ -31,6 +31,8 @@ import {
   parseEther,
   encodeFunctionData,
 } from 'viem';
+import { bscTestnet } from 'viem/chains';
+import type { ProgressEvent } from '../../../src/lib/progress-hook/progress-hook.types';
 import { getCEAAddress } from '../../../src/lib/orchestrator/cea-utils';
 import { createEvmPushClient } from '@e2e/shared/evm-client';
 import type { UniversalExecuteParams } from '../../../src/lib/orchestrator/orchestrator.types';
@@ -1928,4 +1930,107 @@ describe('CEA Custom Contract: StakingExample (Outbound & Inbound)', () => {
 
     }); // end Additional
   }); // end describe.each
+});
+
+// ============================================================================
+// Route 2: CEA Outbound Contract Call (BNB Testnet)
+// Executes counter.increment() on BNB Testnet via CEA — UOA → CEA outbound
+// flow with payload-only (no funds transfer).
+// ============================================================================
+describe('Route 2: CEA Outbound Contract Call (BNB Testnet)', () => {
+  const COUNTER_ADDRESS_R2BNB = '0xf4bd8c13da0f5831d7b6dd3275a39f14ec7ddaa6' as `0x${string}`;
+
+  const privateKeyR2BNB = process.env['EVM_PRIVATE_KEY'] as Hex;
+  const skipE2E_R2BNB = !privateKeyR2BNB;
+  let pushClientR2BNB: Awaited<ReturnType<typeof PushChain.initialize>>;
+
+  const publicClientR2BNB = createPublicClient({
+    chain: bscTestnet,
+    transport: http(CHAIN_INFO[CHAIN.BNB_TESTNET].defaultRPC[0]),
+  });
+
+  beforeAll(async () => {
+    if (skipE2E_R2BNB) {
+      console.log('Skipping E2E tests - EVM_PRIVATE_KEY not set');
+      return;
+    }
+
+    const setup = await createEvmPushClient({
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      privateKey: privateKeyR2BNB,
+      printTraces: true,
+      progressHook: (val: ProgressEvent) => {
+        console.log(`[init] [${val.id}] ${val.title}: ${val.message ?? ''}`);
+      },
+    });
+    pushClientR2BNB = setup.pushClient;
+    const ueaAddress = pushClientR2BNB.universal.account;
+    console.log(`UEA Address: ${ueaAddress}`);
+
+    const pushPublicClient = createPublicClient({
+      transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
+    });
+    const code = await pushPublicClient.getCode({ address: ueaAddress });
+    if (code === undefined) {
+      console.log('UEA not deployed — sending self-transfer to trigger deployment...');
+      const deployTx = await pushClientR2BNB.universal.sendTransaction({
+        to: ueaAddress,
+        value: BigInt(1),
+      });
+      const deployReceipt = await deployTx.wait();
+      console.log(`UEA deployed via self-transfer — status: ${deployReceipt.status}`);
+    }
+  }, 120000);
+
+  it('should increment counter on BNB Testnet via CEA', async () => {
+    if (skipE2E_R2BNB) return;
+
+    const counterBefore = (await publicClientR2BNB.readContract({
+      address: COUNTER_ADDRESS_R2BNB,
+      abi: COUNTER_ABI,
+      functionName: 'count',
+    })) as bigint;
+    console.log(`Counter BEFORE: ${counterBefore}`);
+
+    const data = encodeFunctionData({
+      abi: COUNTER_ABI,
+      functionName: 'increment',
+    });
+
+    const tx = await pushClientR2BNB.universal.sendTransaction({
+      to: {
+        address: COUNTER_ADDRESS_R2BNB,
+        chain: CHAIN.BNB_TESTNET,
+      },
+      data,
+    });
+
+    console.log(`Push Chain TX Hash: ${tx.hash}`);
+    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+    expect(tx.chain).toBe(CHAIN.BNB_TESTNET);
+
+    console.log('Calling tx.wait() - polling for outbound tx hash...');
+    const receipt = await tx.wait();
+    console.log(`Receipt status: ${receipt.status}`);
+    console.log(`External TX Hash: ${receipt.externalTxHash}`);
+
+    expect(receipt.status).toBe(1);
+    expect(receipt.externalTxHash).toBeDefined();
+    expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+
+    await verifyExternalTransaction(
+      receipt.externalTxHash!,
+      receipt.externalChain!
+    );
+
+    await new Promise((r) => setTimeout(r, 5000));
+
+    const counterAfter = (await publicClientR2BNB.readContract({
+      address: COUNTER_ADDRESS_R2BNB,
+      abi: COUNTER_ABI,
+      functionName: 'count',
+    })) as bigint;
+    console.log(`Counter AFTER: ${counterAfter}`);
+    expect(counterAfter).toBeGreaterThan(counterBefore);
+  }, 360000);
 });

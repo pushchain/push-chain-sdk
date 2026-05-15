@@ -12,10 +12,26 @@ import '@e2e/shared/setup';
  */
 import { PushChain } from '../../../src';
 import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
-import { CHAIN_INFO } from '../../../src/lib/constants/chain';
+import { CHAIN_INFO, SYNTHETIC_PUSH_ERC20 } from '../../../src/lib/constants/chain';
 import { type MoveableToken } from '../../../src/lib/constants/tokens';
-import { createWalletClient, createPublicClient, http, Hex, parseEther, encodeFunctionData } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
+import {
+  createWalletClient,
+  createPublicClient,
+  http,
+  Hex,
+  parseEther,
+  parseUnits,
+  formatEther,
+  formatUnits,
+  encodeFunctionData,
+  defineChain,
+  type WalletClient,
+  type PublicClient,
+} from 'viem';
+import { sepolia } from 'viem/chains';
+import { createProgressTracker } from '@e2e/shared/progress-tracker';
+import { formatPc } from '../../../src/lib/formatters';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { getCEAAddress, chainSupportsCEA } from '../../../src/lib/orchestrator/cea-utils';
 import { TransactionRoute, detectRoute } from '../../../src/lib/orchestrator/route-detector';
 import type { UniversalExecuteParams, ChainTarget } from '../../../src/lib/orchestrator/orchestrator.types';
@@ -1659,4 +1675,747 @@ describe('UEA → CEA: Outbound Transactions (Route 2)', () => {
       }, 600000);
     });
   });
+});
+
+// ============================================================================
+// Route 2 outbound timeout (299-03)
+// Verifies the full 299-03 path: a real R2 FUNDS tx is sent, then
+// `tx.wait({ outboundTimeoutMs })` forces the outbound-polling loop to time
+// out before the relay lands.
+// ============================================================================
+describe('Route 2 outbound timeout (299-03)', () => {
+  const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
+  const skip = !privateKey;
+
+  it('short outboundTimeoutMs triggers 299-03 + externalStatus=timeout', async () => {
+    if (skip) {
+      console.log('Skipping — EVM_PRIVATE_KEY unset');
+      return;
+    }
+
+    const events: ProgressEvent[] = [];
+    const setup = await createEvmPushClient({
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      privateKey,
+      progressHook: (e: ProgressEvent) => events.push(e),
+    });
+
+    const usdt = getToken(CHAIN.ETHEREUM_SEPOLIA, 'USDT');
+    const amount = BigInt(10000); // 0.01 USDT
+    const params: UniversalExecuteParams = {
+      to: { address: TEST_TARGET, chain: CHAIN.ETHEREUM_SEPOLIA },
+      funds: { amount, token: usdt },
+      data: buildErc20WithdrawalMulticall(
+        usdt.address as `0x${string}`,
+        TEST_TARGET,
+        amount
+      ),
+    };
+    expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
+
+    const tx = await setup.pushClient.universal.sendTransaction(params);
+    console.log(`Push Chain TX Hash: ${tx.hash}`);
+    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+    const shortTimeoutMs = 3_000;
+    const t0 = Date.now();
+    const receipt = await tx.wait({ outboundTimeoutMs: shortTimeoutMs });
+    const elapsed = Date.now() - t0;
+    console.log(`wait() resolved in ${elapsed}ms`);
+    console.log(`receipt.externalStatus = ${receipt.externalStatus}`);
+    console.log(`receipt.externalError = ${receipt.externalError}`);
+
+    expect(elapsed).toBeLessThan(shortTimeoutMs + 15_000);
+
+    expect(receipt.status).toBe(1);
+    expect(receipt.externalStatus).toBe('timeout');
+    expect(receipt.externalError).toMatch(/Timeout/i);
+    expect(receipt.externalTxHash).toBeUndefined();
+
+    const ids = events.map((e) => e.id);
+    console.log(`hook stream: ${ids.join(' → ')}`);
+    expect(ids).toContain('SEND-TX-299-03');
+    expect(ids).not.toContain('SEND-TX-299-01');
+    expect(ids).not.toContain('SEND-TX-299-02');
+
+    const timeoutEvent = events.find((e) => e.id === 'SEND-TX-299-03')!;
+    const resp = timeoutEvent.response as { elapsedMs?: number };
+    expect(resp.elapsedMs).toBe(shortTimeoutMs);
+  }, 120_000);
+});
+
+// ============================================================================
+// R2 Funds-only → Recipient forwarding
+// Regression coverage for the SDK payload bug where funds-only sendTransaction
+// produced an empty CEA multicall payload, leaving funds stranded in the CEA.
+// ============================================================================
+describe('R2 Funds-only → Recipient forwarding (Route 2)', () => {
+  const TARGET_CHAIN = CHAIN.ETHEREUM_SEPOLIA;
+  let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
+  let ueaAddress: `0x${string}`;
+  let ceaAddress: `0x${string}`;
+  let publicClient: ReturnType<typeof createPublicClient>;
+
+  const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
+  const skipE2E = !privateKey;
+
+  beforeAll(async () => {
+    if (skipE2E) {
+      console.log('Skipping E2E tests - EVM_PRIVATE_KEY not set');
+      return;
+    }
+
+    const setup = await createEvmPushClient({
+      chain: TARGET_CHAIN,
+      privateKey,
+      printTraces: true,
+      progressHook: (val: ProgressEvent) => {
+        console.log(`[${val.id}] ${val.title}`);
+      },
+    });
+    pushClient = setup.pushClient;
+    ueaAddress = pushClient.universal.account;
+
+    const ceaResult = await getCEAAddress(ueaAddress, TARGET_CHAIN);
+    ceaAddress = ceaResult.cea;
+
+    publicClient = createPublicClient({
+      transport: http(CHAIN_INFO[TARGET_CHAIN].defaultRPC[0]),
+    });
+
+    console.log(`UEA: ${ueaAddress}`);
+    console.log(`CEA on ${TARGET_CHAIN}: ${ceaAddress} (deployed=${ceaResult.isDeployed})`);
+  }, 60_000);
+
+  it('native funds: recipient receives ETH (not CEA)', async () => {
+    if (skipE2E) return;
+
+    const recipient = privateKeyToAccount(generatePrivateKey()).address;
+    const amount = parseEther('0.00005');
+
+    const recipientBefore = await publicClient.getBalance({ address: recipient });
+    const ceaBefore = await publicClient.getBalance({ address: ceaAddress });
+    console.log(`Recipient ${recipient} balance before: ${recipientBefore}`);
+    console.log(`CEA ${ceaAddress} balance before: ${ceaBefore}`);
+    expect(recipientBefore).toBe(BigInt(0));
+
+    const pethToken = getToken(TARGET_CHAIN, 'ETH') as MoveableToken;
+
+    const params: UniversalExecuteParams = {
+      to: {
+        address: recipient,
+        chain: TARGET_CHAIN,
+      },
+      funds: {
+        amount,
+        token: pethToken,
+      },
+    };
+
+    expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
+
+    const tx = await pushClient.universal.sendTransaction(params);
+    console.log(`Push Chain TX: ${tx.hash}`);
+    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+    const receipt = await tx.wait();
+    console.log(`Outbound external TX: ${receipt.externalTxHash}`);
+    expect(receipt.status).toBe(1);
+    expect(receipt.externalChain).toBe(TARGET_CHAIN);
+    expect(receipt.externalTxHash).toBeDefined();
+    await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+
+    const recipientAfter = await publicClient.getBalance({ address: recipient });
+    const ceaAfter = await publicClient.getBalance({ address: ceaAddress });
+    console.log(`Recipient balance after: ${recipientAfter}`);
+    console.log(`CEA balance after: ${ceaAfter}`);
+
+    expect(recipientAfter).toBe(amount);
+    const ceaDelta = ceaAfter - ceaBefore;
+    expect(ceaDelta).toBeLessThan(amount);
+  }, 600_000);
+
+  it('ERC-20 funds: recipient receives USDT (not CEA)', async () => {
+    if (skipE2E) return;
+
+    let usdtToken: MoveableToken | undefined;
+    try {
+      usdtToken = getToken(TARGET_CHAIN, 'USDT');
+    } catch {
+      console.log('Skipping - USDT not configured for this chain');
+      return;
+    }
+    if (!usdtToken) return;
+
+    const recipient = privateKeyToAccount(generatePrivateKey()).address;
+    const amount = BigInt(10_000);
+
+    const pcPublicClient = createPublicClient({
+      transport: http('https://evm.donut.rpc.push.org/'),
+    });
+    const pUsdtPrc20 = PushChain.utils.tokens.getPRC20Address(usdtToken).address as `0x${string}`;
+    const readUeaPusdt = async (): Promise<bigint> =>
+      (await pcPublicClient.readContract({
+        address: pUsdtPrc20,
+        abi: ERC20_EVM,
+        functionName: 'balanceOf',
+        args: [ueaAddress],
+      })) as bigint;
+
+    const ueaPusdtBefore = await readUeaPusdt();
+    const prefundTarget = amount * BigInt(5);
+    console.log(`UEA pUSDT before prefund: ${ueaPusdtBefore}, target: ${prefundTarget}`);
+
+    if (ueaPusdtBefore < amount) {
+      const deficit = prefundTarget - ueaPusdtBefore;
+      console.log(`Prefunding UEA with ${deficit} pUSDT via R1 inbound bridge...`);
+      const prefundTx = await pushClient.universal.sendTransaction({
+        to: ueaAddress,
+        funds: {
+          amount: deficit,
+          token: usdtToken,
+        },
+      });
+      console.log(`Prefund push tx: ${prefundTx.hash}`);
+      const prefundReceipt = await prefundTx.wait();
+      console.log(`Prefund receipt status: ${prefundReceipt.status}`);
+      expect(prefundReceipt.status).toBe(1);
+
+      const deadline = Date.now() + 180_000;
+      while (Date.now() < deadline) {
+        const bal = await readUeaPusdt();
+        if (bal >= amount) {
+          console.log(`UEA pUSDT after prefund: ${bal}`);
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 5000));
+      }
+      const finalBal = await readUeaPusdt();
+      if (finalBal < amount) {
+        throw new Error(
+          `Prefund did not land in time: UEA pUSDT=${finalBal}, need ${amount}`
+        );
+      }
+    }
+
+    const readUsdt = async (addr: `0x${string}`): Promise<bigint> =>
+      (await publicClient.readContract({
+        address: usdtToken!.address as `0x${string}`,
+        abi: ERC20_EVM,
+        functionName: 'balanceOf',
+        args: [addr],
+      })) as bigint;
+
+    const recipientBefore = await readUsdt(recipient);
+    const ceaBefore = await readUsdt(ceaAddress);
+    console.log(`Recipient ${recipient} USDT before: ${recipientBefore}`);
+    console.log(`CEA ${ceaAddress} USDT before: ${ceaBefore}`);
+    expect(recipientBefore).toBe(BigInt(0));
+
+    const params: UniversalExecuteParams = {
+      to: {
+        address: recipient,
+        chain: TARGET_CHAIN,
+      },
+      funds: {
+        amount,
+        token: usdtToken,
+      },
+    };
+
+    expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
+
+    const tx = await pushClient.universal.sendTransaction(params);
+    console.log(`Push Chain TX: ${tx.hash}`);
+    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+    const receipt = await tx.wait();
+    console.log(`Outbound external TX: ${receipt.externalTxHash}`);
+    expect(receipt.status).toBe(1);
+    expect(receipt.externalChain).toBe(TARGET_CHAIN);
+    expect(receipt.externalTxHash).toBeDefined();
+    await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+
+    const recipientAfter = await readUsdt(recipient);
+    const ceaAfter = await readUsdt(ceaAddress);
+    console.log(`Recipient USDT after: ${recipientAfter}`);
+    console.log(`CEA USDT after: ${ceaAfter}`);
+
+    expect(recipientAfter).toBe(amount);
+    expect(ceaAfter - ceaBefore).toBeLessThan(amount);
+  }, 600_000);
+});
+
+// ============================================================================
+// Route 2: Fresh Wallet nativeValueForGas Bug
+// Reproduces the ExecutionFailed (0xacfdb444) revert that occurs when a fresh
+// wallet (UEA not yet deployed) attempts a Route 2 outbound contract call.
+// ============================================================================
+describe('Route 2: Fresh Wallet nativeValueForGas Bug', () => {
+  // BNB Testnet counter from chain-fixtures.ts
+  const COUNTER_ADDRESS_R2FW = '0xf4bd8c13da0f5831d7b6dd3275a39f14ec7ddaa6' as `0x${string}`;
+  // Counter address used by the dev's external script
+  const COUNTER_ADDRESS_DEV = '0x7f0936bb90e7dcf3edb47199c2005e7184e44cf8' as `0x${string}`;
+  const SEPOLIA_RPC_R2FW = CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0];
+
+  const privateKeyR2FW = process.env['EVM_PRIVATE_KEY'] as Hex;
+  const skipE2E_R2FW = !privateKeyR2FW;
+  let mainWalletClientR2FW: WalletClient;
+  let publicClientR2FW: PublicClient;
+
+  beforeAll(async () => {
+    if (skipE2E_R2FW) return;
+
+    const mainAccount = privateKeyToAccount(privateKeyR2FW);
+    mainWalletClientR2FW = createWalletClient({
+      account: mainAccount,
+      chain: sepolia,
+      transport: http(SEPOLIA_RPC_R2FW),
+    });
+    publicClientR2FW = createPublicClient({
+      chain: sepolia,
+      transport: http(SEPOLIA_RPC_R2FW),
+    });
+  }, 30000);
+
+  it('should execute Route 2 contract call from a fresh wallet (uniswap quote prediction)', async () => {
+    if (skipE2E_R2FW) {
+      console.log('Skipping — EVM_PRIVATE_KEY not set');
+      return;
+    }
+
+    const freshPrivateKey = generatePrivateKey();
+    const freshAccount = privateKeyToAccount(freshPrivateKey);
+    console.log(`\n=== Fresh wallet: ${freshAccount.address} ===`);
+
+    const fundTxHash = await mainWalletClientR2FW.sendTransaction({
+      to: freshAccount.address,
+      value: parseEther('0.005'),
+      account: mainWalletClientR2FW.account!,
+      chain: sepolia,
+    });
+    await publicClientR2FW.waitForTransactionReceipt({ hash: fundTxHash });
+    console.log(`Funded fresh wallet: ${fundTxHash}`);
+
+    const freshWalletClient = createWalletClient({
+      account: freshAccount,
+      chain: sepolia,
+      transport: http(SEPOLIA_RPC_R2FW),
+    });
+
+    const tracker = createProgressTracker();
+    const universalSigner =
+      await PushChain.utils.signer.toUniversalFromKeypair(freshWalletClient, {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+      });
+    const freshPushClient = await PushChain.initialize(universalSigner, {
+      network: PUSH_NETWORK.TESTNET_DONUT,
+      printTraces: true,
+      progressHook: tracker.hook,
+    });
+
+    const ueaAddrR2FW = freshPushClient.universal.account;
+    console.log(`Fresh wallet UEA: ${ueaAddrR2FW}`);
+
+    const pushPublicClient = createPublicClient({
+      transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
+    });
+    const ueaCode = await pushPublicClient.getCode({ address: ueaAddrR2FW });
+    console.log(`UEA deployed before Route 2: ${ueaCode !== undefined}`);
+    expect(ueaCode).toBeUndefined();
+
+    const data = encodeFunctionData({
+      abi: COUNTER_ABI,
+      functionName: 'increment',
+    });
+
+    const tx = await freshPushClient.universal.sendTransaction({
+      to: {
+        address: COUNTER_ADDRESS_R2FW,
+        chain: CHAIN.BNB_TESTNET,
+      },
+      data,
+    });
+
+    console.log(`Push Chain TX Hash: ${tx.hash}`);
+    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+    console.log('Waiting for outbound relay...');
+    const receipt = await tx.wait();
+    console.log(`Receipt status: ${receipt.status}`);
+    console.log(`External TX Hash: ${receipt.externalTxHash}`);
+
+    expect(receipt.status).toBe(1);
+    expect(receipt.externalTxHash).toBeDefined();
+    expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+  }, 360000);
+
+  it('should execute Route 2 contract call from a deployed UEA (baseline)', async () => {
+    if (skipE2E_R2FW) {
+      console.log('Skipping — EVM_PRIVATE_KEY not set');
+      return;
+    }
+
+    console.log('\n=== Baseline: deployed UEA ===');
+
+    const tracker = createProgressTracker();
+    const setup = await createEvmPushClient({
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      privateKey: privateKeyR2FW,
+      printTraces: true,
+      progressHook: tracker.hook,
+    });
+    const pushClientR2FW = setup.pushClient;
+    const ueaAddrR2FW = pushClientR2FW.universal.account;
+    console.log(`Main wallet UEA: ${ueaAddrR2FW}`);
+
+    const pushPublicClient = createPublicClient({
+      transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
+    });
+    const code = await pushPublicClient.getCode({ address: ueaAddrR2FW });
+    if (code === undefined) {
+      console.log('UEA not deployed — deploying via self-transfer...');
+      const deployTx = await pushClientR2FW.universal.sendTransaction({
+        to: ueaAddrR2FW,
+        value: BigInt(1),
+      });
+      const deployReceipt = await deployTx.wait();
+      console.log(`UEA deployed — status: ${deployReceipt.status}`);
+    }
+
+    const data = encodeFunctionData({
+      abi: COUNTER_ABI,
+      functionName: 'increment',
+    });
+
+    const tx = await pushClientR2FW.universal.sendTransaction({
+      to: {
+        address: COUNTER_ADDRESS_R2FW,
+        chain: CHAIN.BNB_TESTNET,
+      },
+      data,
+    });
+
+    console.log(`Push Chain TX Hash: ${tx.hash}`);
+    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+    console.log('Waiting for outbound relay...');
+    const receipt = await tx.wait();
+    console.log(`Receipt status: ${receipt.status}`);
+    console.log(`External TX Hash: ${receipt.externalTxHash}`);
+
+    expect(receipt.status).toBe(1);
+    expect(receipt.externalTxHash).toBeDefined();
+    expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+  }, 360000);
+
+  it('should execute Route 2 contract call from ethers v6 fresh wallet (dev script scenario)', async () => {
+    if (skipE2E_R2FW) {
+      console.log('Skipping — EVM_PRIVATE_KEY not set');
+      return;
+    }
+
+    let ethers: typeof import('ethers');
+    try {
+      ethers = await import('ethers');
+    } catch {
+      console.log('Skipping — ethers not installed');
+      return;
+    }
+
+    const wallet = ethers.Wallet.createRandom();
+    const provider = new ethers.JsonRpcProvider(SEPOLIA_RPC_R2FW);
+    const signer = wallet.connect(provider);
+    console.log(`\n=== Ethers v6 fresh wallet: ${wallet.address} ===`);
+
+    const mainAccount = privateKeyToAccount(privateKeyR2FW);
+    const fundTxHash = await mainWalletClientR2FW.sendTransaction({
+      to: wallet.address as `0x${string}`,
+      value: parseEther('0.005'),
+      account: mainAccount,
+      chain: sepolia,
+    });
+    await publicClientR2FW.waitForTransactionReceipt({ hash: fundTxHash });
+    console.log(`Funded ethers wallet: ${fundTxHash}`);
+
+    const tracker = createProgressTracker();
+    const universalSigner = await PushChain.utils.signer.toUniversal(signer);
+    const pushClientR2FW = await PushChain.initialize(universalSigner, {
+      network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET,
+      printTraces: true,
+      progressHook: tracker.hook,
+    });
+
+    const ueaAddrR2FW = pushClientR2FW.universal.account;
+    console.log(`Ethers fresh wallet UEA: ${ueaAddrR2FW}`);
+
+    const pushPublicClient = createPublicClient({
+      transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
+    });
+    const ueaCode = await pushPublicClient.getCode({ address: ueaAddrR2FW });
+    console.log(`UEA deployed before Route 2: ${ueaCode !== undefined}`);
+    expect(ueaCode).toBeUndefined();
+
+    const data = PushChain.utils.helpers.encodeTxData({
+      abi: [...COUNTER_ABI],
+      functionName: 'increment',
+    });
+
+    const tx = await pushClientR2FW.universal.sendTransaction({
+      to: {
+        address: COUNTER_ADDRESS_DEV,
+        chain: PushChain.CONSTANTS.CHAIN.BNB_TESTNET,
+      },
+      data,
+    });
+
+    console.log(`Push Chain TX Hash: ${tx.hash}`);
+    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+    console.log('Waiting for outbound relay...');
+    const receipt = await tx.wait();
+    console.log(`Receipt status: ${receipt.status}`);
+    console.log(`External TX Hash: ${receipt.externalTxHash}`);
+
+    expect(receipt.status).toBe(1);
+    expect(receipt.externalTxHash).toBeDefined();
+    expect(receipt.externalChain).toBe(PushChain.CONSTANTS.CHAIN.BNB_TESTNET);
+  }, 360000);
+});
+
+// ============================================================================
+// Route 2: Docs Examples (Fresh Wallet)
+// Mirrors docs examples — random wallet + prompt-driven funding + exact
+// sendTransaction calls.
+// ============================================================================
+describe('Route 2: Docs Examples (Fresh Wallet)', () => {
+  const TARGET_R2DE = '0x1234567890123456789012345678901234567890' as `0x${string}`;
+  const COUNTER_BNB_R2DE = '0x7f0936bb90e7dcf3edb47199c2005e7184e44cf8' as `0x${string}`;
+  const SEPOLIA_RPC_R2DE = CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0];
+  const PUSH_RPC_R2DE = CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
+  const PUSH_CHAIN_DEF_R2DE = defineChain({
+    id: Number(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].chainId),
+    name: 'Push Testnet',
+    nativeCurrency: { name: 'PC', symbol: 'PC', decimals: 18 },
+    rpcUrls: { default: { http: [PUSH_RPC_R2DE] } },
+  });
+
+  const synthetics = SYNTHETIC_PUSH_ERC20[PUSH_NETWORK.TESTNET_DONUT];
+  const PETH_ADDRESS = synthetics.pETH as `0x${string}`;
+  const PUSDT_BNB_ADDRESS = synthetics.USDT_BNB as `0x${string}`;
+
+  const privateKeyR2DE = process.env['EVM_PRIVATE_KEY'] as Hex;
+  const skipE2E_R2DE = !privateKeyR2DE;
+
+  let mainPushClient: PushChain;
+  let mainAccount: ReturnType<typeof privateKeyToAccount>;
+  let mainUeaAddress: `0x${string}`;
+  let sepoliaPublicClient: ReturnType<typeof createPublicClient>;
+  let pushPublicClient: ReturnType<typeof createPublicClient>;
+  let pushEoaWallet: ReturnType<typeof createWalletClient>;
+
+  async function queryBalance(
+    client: ReturnType<typeof createPublicClient>,
+    token: `0x${string}`,
+    owner: `0x${string}`
+  ): Promise<bigint> {
+    return (await client.readContract({
+      address: token, abi: ERC20_EVM, functionName: 'balanceOf', args: [owner],
+    })) as bigint;
+  }
+
+  async function transferPrc20OnPushChain(
+    pushClient: PushChain,
+    token: `0x${string}`,
+    to: `0x${string}`,
+    amount: bigint,
+    label: string
+  ): Promise<void> {
+    const data = encodeFunctionData({
+      abi: ERC20_EVM, functionName: 'transfer', args: [to, amount],
+    });
+    const tx = await pushClient.universal.sendTransaction({ to: token, data });
+    const r = await tx.wait();
+    console.log(`  [${label}] transfer: ${tx.hash} status=${r.status}`);
+  }
+
+  async function createFundedFreshWallet(opts: {
+    pEth?: bigint;
+    pUsdtBnb?: bigint;
+    nativePC?: bigint;
+  }): Promise<PushChain> {
+    const freshKey = generatePrivateKey();
+    const freshAccount = privateKeyToAccount(freshKey);
+    console.log(`\n  Fresh wallet: ${freshAccount.address}`);
+
+    const mainWalletClient = createWalletClient({
+      account: mainAccount, chain: sepolia, transport: http(SEPOLIA_RPC_R2DE),
+    });
+    const fundHash = await mainWalletClient.sendTransaction({
+      to: freshAccount.address, value: parseEther('0.005'),
+    });
+    await sepoliaPublicClient.waitForTransactionReceipt({ hash: fundHash });
+
+    const freshWalletClient = createWalletClient({
+      account: freshAccount, chain: sepolia, transport: http(SEPOLIA_RPC_R2DE),
+    });
+    const tracker = createProgressTracker();
+    const signer = await PushChain.utils.signer.toUniversalFromKeypair(
+      freshWalletClient,
+      { chain: CHAIN.ETHEREUM_SEPOLIA, library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM },
+    );
+    const freshPushClient = await PushChain.initialize(signer, {
+      network: PUSH_NETWORK.TESTNET_DONUT,
+      printTraces: true,
+      progressHook: tracker.hook,
+    });
+    const freshUea = freshPushClient.universal.account;
+    console.log(`  Fresh UEA: ${freshUea}`);
+
+    if (opts.nativePC) {
+      const h = await (pushEoaWallet as any).sendTransaction({
+        to: freshUea as `0x${string}`, value: opts.nativePC,
+      });
+      await pushPublicClient.waitForTransactionReceipt({ hash: h });
+      console.log(`  Funded ${formatPc(opts.nativePC)}`);
+    }
+    if (opts.pEth) {
+      await transferPrc20OnPushChain(mainPushClient, PETH_ADDRESS, freshUea as `0x${string}`, opts.pEth, 'pETH');
+    }
+    if (opts.pUsdtBnb) {
+      await transferPrc20OnPushChain(mainPushClient, PUSDT_BNB_ADDRESS, freshUea as `0x${string}`, opts.pUsdtBnb, 'pUSDT_BNB');
+    }
+
+    return freshPushClient;
+  }
+
+  beforeAll(async () => {
+    if (skipE2E_R2DE) return;
+
+    mainAccount = privateKeyToAccount(privateKeyR2DE);
+    const mainSetup = await createEvmPushClient({
+      chain: CHAIN.ETHEREUM_SEPOLIA, privateKey: privateKeyR2DE, printTraces: true,
+    });
+    mainPushClient = mainSetup.pushClient;
+    mainUeaAddress = mainPushClient.universal.account;
+
+    sepoliaPublicClient = createPublicClient({ chain: sepolia, transport: http(SEPOLIA_RPC_R2DE) });
+    pushPublicClient = createPublicClient({ transport: http(PUSH_RPC_R2DE) });
+    pushEoaWallet = createWalletClient({
+      account: mainAccount, chain: PUSH_CHAIN_DEF_R2DE, transport: http(PUSH_RPC_R2DE),
+    });
+
+    const mainPeth = await queryBalance(pushPublicClient, PETH_ADDRESS, mainUeaAddress);
+    console.log(`Main UEA pETH: ${formatEther(mainPeth)}`);
+    if (mainPeth < parseEther('0.002')) {
+      console.log('Bridging ETH as pETH to main UEA...');
+      const bridgeTx = await mainPushClient.universal.sendTransaction({
+        to: mainUeaAddress,
+        funds: { amount: parseEther('0.005'), token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH },
+      });
+      await bridgeTx.wait();
+      console.log(`Bridged pETH: ${bridgeTx.hash}`);
+    }
+
+    const ueaPusdt = await queryBalance(pushPublicClient, PUSDT_BNB_ADDRESS, mainUeaAddress);
+    if (ueaPusdt < parseUnits('0.04', 6)) {
+      const eoaPusdt = await queryBalance(pushPublicClient, PUSDT_BNB_ADDRESS, mainAccount.address);
+      if (eoaPusdt > BigInt(0)) {
+        console.log('Moving pUSDT_BNB from EOA to UEA...');
+        const data = encodeFunctionData({
+          abi: ERC20_EVM, functionName: 'transfer',
+          args: [mainUeaAddress, eoaPusdt],
+        });
+        const h = await (pushEoaWallet as any).sendTransaction({ to: PUSDT_BNB_ADDRESS, data });
+        await pushPublicClient.waitForTransactionReceipt({ hash: h });
+      }
+    }
+
+    const [pc, peth, pusdt] = await Promise.all([
+      pushPublicClient.getBalance({ address: mainUeaAddress }),
+      queryBalance(pushPublicClient, PETH_ADDRESS, mainUeaAddress),
+      queryBalance(pushPublicClient, PUSDT_BNB_ADDRESS, mainUeaAddress),
+    ]);
+    console.log(`\nMain UEA ready: ${formatPc(pc)} | ${formatEther(peth)} pETH | ${formatUnits(pusdt, 6)} pUSDT_BNB`);
+  }, 300000);
+
+  it('#2 Native Value: burn pETH → ETH to Sepolia', async () => {
+    if (skipE2E_R2DE) return;
+    console.log('\n=== #2 Native Value Transfer ===');
+
+    const client = await createFundedFreshWallet({
+      pEth: parseEther('0.001'),
+      nativePC: parseEther('5'),
+    });
+
+    const tx = await client.universal.sendTransaction({
+      to: { address: TARGET_R2DE, chain: CHAIN.ETHEREUM_SEPOLIA },
+      value: PushChain.utils.helpers.parseUnits('0.0005', 18),
+    });
+    console.log(`TX: ${tx.hash}`);
+    const receipt = await tx.wait();
+    console.log(`Status: ${receipt.status} | External TX: ${receipt.externalTxHash} | Chain: ${receipt.externalChain}`);
+
+    expect(receipt.status).toBe(1);
+    expect(receipt.externalTxHash).toBeDefined();
+    expect(receipt.externalChain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+  }, 360000);
+
+  it('#3 Assets: burn pUSDT_BNB → USDT to BNB Testnet', async () => {
+    if (skipE2E_R2DE) return;
+    console.log('\n=== #3 Assets Transfer ===');
+
+    const client = await createFundedFreshWallet({
+      pUsdtBnb: parseUnits('0.01', 6),
+      nativePC: parseEther('5'),
+    });
+
+    const usdt = PushChain.CONSTANTS.MOVEABLE.TOKEN.BNB_TESTNET.USDT;
+    const tx = await client.universal.sendTransaction({
+      to: { address: TARGET_R2DE, chain: CHAIN.BNB_TESTNET },
+      funds: {
+        amount: PushChain.utils.helpers.parseUnits('0.01', { decimals: usdt.decimals }),
+        token: usdt,
+      },
+    });
+    console.log(`TX: ${tx.hash}`);
+    const receipt = await tx.wait();
+    console.log(`Status: ${receipt.status} | External TX: ${receipt.externalTxHash} | Chain: ${receipt.externalChain}`);
+
+    expect(receipt.status).toBe(1);
+    expect(receipt.externalTxHash).toBeDefined();
+    expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+  }, 360000);
+
+  it('#4 Funds+Payload: burn pUSDT_BNB + counter.increment() on BNB', async () => {
+    if (skipE2E_R2DE) return;
+    console.log('\n=== #4 Funds + Payload ===');
+
+    const client = await createFundedFreshWallet({
+      pUsdtBnb: parseUnits('0.01', 6),
+      nativePC: parseEther('5'),
+    });
+
+    const usdt = PushChain.CONSTANTS.MOVEABLE.TOKEN.BNB_TESTNET.USDT;
+    const data = PushChain.utils.helpers.encodeTxData({
+      abi: [...COUNTER_ABI], functionName: 'increment',
+    });
+
+    const tx = await client.universal.sendTransaction({
+      to: { address: COUNTER_BNB_R2DE, chain: CHAIN.BNB_TESTNET },
+      data,
+      funds: {
+        amount: PushChain.utils.helpers.parseUnits('0.01', { decimals: usdt.decimals }),
+        token: usdt,
+      },
+    });
+    console.log(`TX: ${tx.hash}`);
+    const receipt = await tx.wait();
+    console.log(`Status: ${receipt.status} | External TX: ${receipt.externalTxHash} | Chain: ${receipt.externalChain}`);
+
+    expect(receipt.status).toBe(1);
+    expect(receipt.externalTxHash).toBeDefined();
+    expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
+  }, 360000);
 });

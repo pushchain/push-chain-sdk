@@ -46,7 +46,7 @@ const SEPOLIA_RPC = CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0];
 const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
 const skipE2E = !privateKey;
 
-describe('Route 3: Fresh Wallet UEA Not Deployed Bug', () => {
+describe('Route 3: Fresh Wallet (UEA Not Deployed)', () => {
   let mainWalletClient: WalletClient;
   let publicClient: PublicClient;
 

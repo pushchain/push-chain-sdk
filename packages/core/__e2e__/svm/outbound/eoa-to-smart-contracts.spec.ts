@@ -24,7 +24,7 @@
  *
  * Run:
  *   PUSH_PRIVATE_KEY=0x... npx nx test core \
- *     --testPathPattern='svm/outbound/option3-push-eoa-to-solana-counter'
+ *     --testPathPattern='svm/outbound/eoa-to-smart-contracts'
  */
 import '@e2e/shared/setup';
 import { PushChain } from '../../../src';
@@ -68,7 +68,8 @@ const TEST_COUNTER_IDL = {
   ],
 } as const;
 
-describe('Option 3 — Push-native EOA → test_counter.receive_sol on Solana Devnet (e2e)', () => {
+describe('EOA → Smart Contract: SVM Outbound (Route 2)', () => {
+  describe('Push-native EOA → test_counter.receive_sol on Solana Devnet', () => {
   let pushClient: PushChain;
   const events: ProgressEvent[] = [];
 
@@ -160,4 +161,5 @@ describe('Option 3 — Push-native EOA → test_counter.receive_sol on Solana De
     },
     600_000
   );
+  });
 });

@@ -28,7 +28,7 @@ import type {
 
 const RECIPIENT = '0xFaE3594C68EDFc2A61b7527164BDAe80bC302108' as `0x${string}`;
 
-describe('Repro: pETH bridge-back to Sepolia (Riyanshu payload)', () => {
+describe('Route 3: pETH bridge-back to Sepolia', () => {
   describe('Static validation (no signer needed)', () => {
     it('detects UOA_TO_CEA and passes validation with canonical pEth constant', () => {
       const params: UniversalExecuteParams = {

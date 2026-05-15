@@ -1,21 +1,28 @@
 import '@e2e/shared/setup';
 import {
+  generatePrivateKey,
   privateKeyToAccount,
 } from 'viem/accounts';
 import { PUSH_NETWORK, CHAIN } from '../../src/lib/constants/enums';
 import {
+  createPublicClient,
   createWalletClient,
+  encodeFunctionData,
+  formatUnits,
   Hex,
   http,
+  parseEther,
 } from 'viem';
 import { Keypair } from '@solana/web3.js';
 import { PushChain } from '../../src';
 import { UniversalSigner } from '../../src/lib/universal/universal.types';
-import { CHAIN_INFO } from '../../src/lib/constants/chain';
+import { CHAIN_INFO, SYNTHETIC_PUSH_ERC20 } from '../../src/lib/constants/chain';
 import { sepolia } from 'viem/chains';
 import bs58 from 'bs58';
 import { txValidator } from '@e2e/shared/validators';
 import { createEvmPushClient } from '@e2e/shared/evm-client';
+import { createProgressTracker } from '@e2e/shared/progress-tracker';
+import { formatPc } from '../../src/lib/formatters';
 import {
   COUNTER_ADDRESS_PAYABLE,
   COUNTER_ABI_PAYABLE,
@@ -364,4 +371,387 @@ describe('UniversalTxReceipt Type Validation', () => {
       expect(waitResult.raw.to).toMatch(/^0x[a-fA-F0-9]{40}$/);
     }, 60000);
   });
+});
+
+// ============================================================================
+// EOA → UEA Transfers
+// EOA sending value to another EOA's UEA, and EOA sending value to its own UEA.
+// Both use fresh wallets (undeployed UEAs) funded on origin + Push Chain.
+// ============================================================================
+describe('EOA → UEA Transfers', () => {
+  const SEPOLIA_RPC_E2U = CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0];
+  const PUSH_RPC_E2U = CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
+
+  const privateKeyE2U = process.env['EVM_PRIVATE_KEY'] as Hex;
+  const skipE2E_E2U = !privateKeyE2U;
+
+  let mainPushClient: PushChain;
+  let mainWalletClient: ReturnType<typeof createWalletClient>;
+
+  const sepoliaPublicClient = createPublicClient({
+    chain: sepolia,
+    transport: http(SEPOLIA_RPC_E2U),
+  });
+
+  const pushPublicClient = createPublicClient({
+    transport: http(PUSH_RPC_E2U),
+  });
+
+  beforeAll(async () => {
+    if (skipE2E_E2U) return;
+
+    const setup = await createEvmPushClient({
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      privateKey: privateKeyE2U,
+      progressHook: (v) => console.log('[main]', v.id, v.title),
+    });
+    mainPushClient = setup.pushClient;
+    mainWalletClient = setup.walletClient;
+  }, 120_000);
+
+  it('should transfer value from random EOA to a different random UEA', async () => {
+    if (skipE2E_E2U) {
+      console.log('Skipping — EVM_PRIVATE_KEY not set');
+      return;
+    }
+
+    const tracker = createProgressTracker();
+
+    const senderKey = generatePrivateKey();
+    const senderAccount = privateKeyToAccount(senderKey);
+    console.log(`\nSender EOA: ${senderAccount.address}`);
+
+    const fundSenderHash = await mainWalletClient.sendTransaction({
+      to: senderAccount.address,
+      value: BigInt(1e15),
+      account: mainWalletClient.account!,
+      chain: sepolia,
+    });
+    await sepoliaPublicClient.waitForTransactionReceipt({ hash: fundSenderHash });
+    console.log(`Sender funded on Sepolia: ${fundSenderHash}`);
+
+    const senderWalletClient = createWalletClient({
+      account: senderAccount,
+      chain: sepolia,
+      transport: http(SEPOLIA_RPC_E2U),
+    });
+    const senderSigner = await PushChain.utils.signer.toUniversalFromKeypair(
+      senderWalletClient,
+      {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+      }
+    );
+    const senderPushClient = await PushChain.initialize(senderSigner, {
+      network: PUSH_NETWORK.TESTNET_DONUT,
+      progressHook: tracker.hook,
+    });
+    const senderUEA = senderPushClient.universal.account;
+    console.log(`Sender UEA: ${senderUEA}`);
+
+    const receiverKey = generatePrivateKey();
+    const receiverAccount = privateKeyToAccount(receiverKey);
+    console.log(`Receiver EOA: ${receiverAccount.address}`);
+
+    const receiverWalletClient = createWalletClient({
+      account: receiverAccount,
+      chain: sepolia,
+      transport: http(SEPOLIA_RPC_E2U),
+    });
+    const receiverSigner = await PushChain.utils.signer.toUniversalFromKeypair(
+      receiverWalletClient,
+      {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+      }
+    );
+    const receiverUEA = await PushChain.utils.account.convertOriginToExecutor(
+      receiverSigner.account,
+      { onlyCompute: true }
+    );
+    console.log(`Receiver UEA: ${receiverUEA.address} (deployed: ${receiverUEA.deployed})`);
+
+    const sendAmount = BigInt(100);
+    console.log(`\nSending ${sendAmount} wei from sender UEA → receiver UEA...`);
+
+    const tx = await senderPushClient.universal.sendTransaction({
+      to: receiverUEA.address,
+      value: sendAmount,
+    });
+
+    console.log(`TX Hash: ${tx.hash}`);
+    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+    const receipt = await tx.wait();
+    console.log(`Receipt status: ${receipt.status}`);
+    expect(receipt.status).toBe(1);
+
+    const receiverBalance = await pushPublicClient.getBalance({
+      address: receiverUEA.address,
+    });
+    console.log(`Receiver UEA balance after transfer: ${receiverBalance} wei`);
+    expect(receiverBalance).toBeGreaterThanOrEqual(sendAmount);
+
+    console.log('\n=== Progress Events ===');
+    for (const { event } of tracker.events) {
+      console.log(`  [${event.id}] (${event.level}) ${event.title}: ${event.message}`);
+    }
+  }, 300_000);
+
+  it('should transfer value from random EOA to its own UEA (self-transfer)', async () => {
+    if (skipE2E_E2U) {
+      console.log('Skipping — EVM_PRIVATE_KEY not set');
+      return;
+    }
+
+    const tracker = createProgressTracker();
+
+    const freshKey = generatePrivateKey();
+    const freshAccount = privateKeyToAccount(freshKey);
+    console.log(`\nFresh EOA: ${freshAccount.address}`);
+
+    const fundHash = await mainWalletClient.sendTransaction({
+      to: freshAccount.address,
+      value: BigInt(1e15),
+      account: mainWalletClient.account!,
+      chain: sepolia,
+    });
+    await sepoliaPublicClient.waitForTransactionReceipt({ hash: fundHash });
+    console.log(`Fresh wallet funded on Sepolia: ${fundHash}`);
+
+    const freshWalletClient = createWalletClient({
+      account: freshAccount,
+      chain: sepolia,
+      transport: http(SEPOLIA_RPC_E2U),
+    });
+    const freshSigner = await PushChain.utils.signer.toUniversalFromKeypair(
+      freshWalletClient,
+      {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+        library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+      }
+    );
+    const freshPushClient = await PushChain.initialize(freshSigner, {
+      network: PUSH_NETWORK.TESTNET_DONUT,
+      progressHook: tracker.hook,
+    });
+    const freshUEA = freshPushClient.universal.account;
+    console.log(`Fresh UEA: ${freshUEA}`);
+
+    const codeBefore = await pushPublicClient.getCode({ address: freshUEA });
+    const balanceBefore = await pushPublicClient.getBalance({ address: freshUEA });
+    console.log(`UEA deployed before: ${codeBefore !== undefined}`);
+    console.log(`UEA balance before:  ${balanceBefore} wei`);
+
+    const sendAmount = BigInt(1e3);
+    console.log(`\nSending ${sendAmount} wei to self UEA...`);
+
+    const tx = await freshPushClient.universal.sendTransaction({
+      to: freshUEA,
+      value: sendAmount,
+    });
+
+    console.log(`TX Hash: ${tx.hash}`);
+    expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+    const receipt = await tx.wait();
+    console.log(`Receipt status: ${receipt.status}`);
+    expect(receipt.status).toBe(1);
+
+    const codeAfter = await pushPublicClient.getCode({ address: freshUEA });
+    console.log(`UEA deployed after: ${codeAfter !== undefined}`);
+
+    console.log('\n=== Progress Events ===');
+    for (const { event } of tracker.events) {
+      console.log(`  [${event.id}] (${event.level}) ${event.title}: ${event.message}`);
+    }
+  }, 300_000);
+});
+
+// ============================================================================
+// Transfer ALL tokens from UEA to EOA (Push Chain native multicall)
+// ============================================================================
+describe('Transfer ALL tokens from UEA to EOA', () => {
+  const PUSH_RPC_TALL = 'https://evm.donut.rpc.push.org/';
+  const TOKENS_TALL = SYNTHETIC_PUSH_ERC20[PUSH_NETWORK.TESTNET_DONUT];
+
+  const TOKEN_LIST: { name: string; address: `0x${string}`; decimals: number }[] = [
+    { name: 'pETH', address: TOKENS_TALL.pETH, decimals: 18 },
+    { name: 'pETH.base', address: TOKENS_TALL.pETH_BASE, decimals: 18 },
+    { name: 'pETH.arb', address: TOKENS_TALL.pETH_ARB, decimals: 18 },
+    { name: 'pBNB', address: TOKENS_TALL.pBNB, decimals: 18 },
+    { name: 'pSOL', address: TOKENS_TALL.pSOL, decimals: 9 },
+    { name: 'USDT.eth', address: TOKENS_TALL.USDT_ETH, decimals: 6 },
+    { name: 'USDT.arb', address: TOKENS_TALL.USDT_ARB, decimals: 6 },
+    { name: 'USDT.sol', address: TOKENS_TALL.USDT_SOL, decimals: 6 },
+    { name: 'USDT.bsc', address: TOKENS_TALL.USDT_BNB, decimals: 6 },
+    { name: 'USDT.base', address: TOKENS_TALL.USDT_BASE, decimals: 6 },
+  ];
+
+  const ERC20_ABI_TALL = [
+    {
+      type: 'function',
+      name: 'balanceOf',
+      inputs: [{ name: 'account', type: 'address' }],
+      outputs: [{ name: '', type: 'uint256' }],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'transfer',
+      inputs: [
+        { name: 'to', type: 'address' },
+        { name: 'amount', type: 'uint256' },
+      ],
+      outputs: [{ name: '', type: 'bool' }],
+      stateMutability: 'nonpayable',
+    },
+  ] as const;
+
+  const pushPublicClientTALL = createPublicClient({
+    transport: http(PUSH_RPC_TALL),
+  });
+
+  const GAS_RESERVE = parseEther('1');
+
+  let pushClientTALL: PushChain;
+  let ueaAddressTALL: `0x${string}`;
+  let eoaAddressTALL: `0x${string}`;
+
+  const privateKeyTALL = process.env['EVM_PRIVATE_KEY'] as Hex;
+  const skipE2E_TALL = !privateKeyTALL;
+
+  beforeAll(async () => {
+    if (skipE2E_TALL) return;
+
+    const setup = await createEvmPushClient({
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      privateKey: privateKeyTALL,
+      printTraces: true,
+      progressHook: (val) => {
+        console.log(`[${val.id}] ${val.title}`);
+      },
+    });
+    pushClientTALL = setup.pushClient;
+    eoaAddressTALL = setup.account.address;
+    ueaAddressTALL = pushClientTALL.universal.account;
+  }, 60000);
+
+  it('should check all balances on UEA', async () => {
+    if (skipE2E_TALL) return;
+
+    console.log(`\nUEA: ${ueaAddressTALL}`);
+    console.log(`EOA: ${eoaAddressTALL}`);
+
+    const pcBalance = await pushPublicClientTALL.getBalance({
+      address: ueaAddressTALL,
+    });
+    console.log(
+      `\nNative PC: ${formatPc(pcBalance)} (reserve ${formatPc(GAS_RESERVE)} for gas)`
+    );
+
+    for (const token of TOKEN_LIST) {
+      const balance = (await pushPublicClientTALL.readContract({
+        address: token.address,
+        abi: ERC20_ABI_TALL,
+        functionName: 'balanceOf',
+        args: [ueaAddressTALL],
+      })) as bigint;
+      console.log(
+        `${token.name}: ${formatUnits(balance, token.decimals)} (${token.address})`
+      );
+    }
+  }, 30000);
+
+  it('should transfer ALL tokens from UEA to EOA', async () => {
+    if (skipE2E_TALL) return;
+
+    const balances: { name: string; address: `0x${string}`; balance: bigint; decimals: number }[] = [];
+
+    for (const token of TOKEN_LIST) {
+      const balance = (await pushPublicClientTALL.readContract({
+        address: token.address,
+        abi: ERC20_ABI_TALL,
+        functionName: 'balanceOf',
+        args: [ueaAddressTALL],
+      })) as bigint;
+      balances.push({ ...token, balance });
+    }
+
+    const pcBalance = await pushPublicClientTALL.getBalance({
+      address: ueaAddressTALL,
+    });
+    const pcTransferAmount =
+      pcBalance > GAS_RESERVE ? pcBalance - GAS_RESERVE : BigInt(0);
+
+    const data: { to: `0x${string}`; value: bigint; data: `0x${string}` }[] = [];
+
+    for (const t of balances) {
+      if (t.balance === BigInt(0)) {
+        console.log(`${t.name}: 0 — skipping`);
+        continue;
+      }
+      console.log(
+        `${t.name}: transferring ${formatUnits(t.balance, t.decimals)}`
+      );
+      data.push({
+        to: t.address,
+        value: BigInt(0),
+        data: encodeFunctionData({
+          abi: ERC20_ABI_TALL,
+          functionName: 'transfer',
+          args: [eoaAddressTALL, t.balance],
+        }),
+      });
+    }
+
+    if (pcTransferAmount > BigInt(0)) {
+      console.log(`Native PC: transferring ${formatPc(pcTransferAmount)}`);
+      data.push({
+        to: eoaAddressTALL,
+        value: pcTransferAmount,
+        data: '0x' as `0x${string}`,
+      });
+    } else {
+      console.log('Native PC: insufficient balance after gas reserve — skipping');
+    }
+
+    if (data.length === 0) {
+      console.log('\nNothing to transfer');
+      return;
+    }
+
+    console.log(`\nSending multicall with ${data.length} operations...`);
+
+    const result = await pushClientTALL.universal.sendTransaction({
+      to: ueaAddressTALL,
+      data,
+    });
+
+    console.log(`\nTx hash: ${result.hash}`);
+
+    console.log('\n--- After transfer ---');
+    const pcAfter = await pushPublicClientTALL.getBalance({
+      address: ueaAddressTALL,
+    });
+    console.log(`UEA Native PC: ${formatPc(pcAfter)}`);
+
+    for (const token of TOKEN_LIST) {
+      const ueaBal = (await pushPublicClientTALL.readContract({
+        address: token.address,
+        abi: ERC20_ABI_TALL,
+        functionName: 'balanceOf',
+        args: [ueaAddressTALL],
+      })) as bigint;
+      const eoaBal = (await pushPublicClientTALL.readContract({
+        address: token.address,
+        abi: ERC20_ABI_TALL,
+        functionName: 'balanceOf',
+        args: [eoaAddressTALL],
+      })) as bigint;
+      console.log(
+        `${token.name} — UEA: ${formatUnits(ueaBal, token.decimals)}, EOA: ${formatUnits(eoaBal, token.decimals)}`
+      );
+    }
+  }, 120000);
 });

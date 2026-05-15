@@ -45,7 +45,7 @@ const SOL_TARGET = '0x6a44bb5ea802a001386a5b39708523e1a3e1bafc8164ffcb94d1f5afa4
 const SOL_ZERO_ADDRESS = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`;
 const SVM_GATEWAY_PROGRAM = new PublicKey('CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS');
 
-describe('UOA Multi-Hop Debug: Push + BNB + Solana', () => {
+describe('UOA Multi-Hop: Push + BNB + Solana', () => {
   let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
   let ceaPdaHex: `0x${string}`;
   let bscPublicClient: ReturnType<typeof createPublicClient>;

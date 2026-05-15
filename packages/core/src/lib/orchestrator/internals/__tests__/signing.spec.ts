@@ -32,15 +32,15 @@
  * the network spec at svm-signer-pSOL-bridge.network.spec.ts.
  */
 import { zeroAddress } from 'viem';
-import { CHAIN, PUSH_NETWORK, VM } from '../../../src/lib/constants/enums';
-import { CHAIN_INFO } from '../../../src/lib/constants/chain';
-import { VerificationType } from '../../../src/lib/generated/v1/tx';
-import type { UniversalPayload } from '../../../src/lib/generated/v1/tx';
-import type { OrchestratorContext } from '../../../src/lib/orchestrator/internals/context';
+import { CHAIN, PUSH_NETWORK, VM } from '../../../constants/enums';
+import { CHAIN_INFO } from '../../../constants/chain';
+import { VerificationType } from '../../../generated/v1/tx';
+import type { UniversalPayload } from '../../../generated/v1/tx';
+import type { OrchestratorContext } from '../context';
 import {
   encodeUniversalPayload,
   encodeUniversalPayloadSvm,
-} from '../../../src/lib/orchestrator/internals/signing';
+} from '../signing';
 
 const RIYANSHU_NATIVE_VALUE = BigInt('82716248299997902592');
 const U64_MAX = (BigInt(1) << BigInt(64)) - BigInt(1);

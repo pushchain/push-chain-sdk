@@ -16,6 +16,8 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { TransactionRoute, detectRoute } from '../../../src/lib/orchestrator/route-detector';
 import type { UniversalExecuteParams } from '../../../src/lib/orchestrator/orchestrator.types';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
+import { getToken } from '@e2e/shared/constants';
+import { createSvmPushClient } from '@e2e/shared/svm-client';
 import {
   TEST_SOL_TARGET,
   SOL_ZERO_ADDRESS,
@@ -368,4 +370,91 @@ describe('EOA → CEA: SVM Outbound Transactions (Route 2)', () => {
       }, 360000);
     });
   });
+});
+
+// ============================================================================
+// SVM signer pSOL → SOL bridge (Slack 2026-04-23 regression)
+// Network-level e2e verifying the SVM-signer pSOL → SOL bridge no longer
+// crashes at encode-time with RangeError on Riyanshu's exact call shape.
+// ============================================================================
+describe('SVM signer pSOL → SOL bridge (Slack 2026-04-23 regression)', () => {
+  const solanaPrivateKey = process.env['SOLANA_PRIVATE_KEY'];
+  const solRecipient =
+    process.env['SOL_RECIPIENT'] ||
+    '71jL2ZNfS7ygAGe9x14ptawKWitaeRFpuPfwyE9LYcCY';
+  const skipE2E_PSOL = !solanaPrivateKey;
+  let pushClientPSOL: PushChain;
+
+  beforeAll(async () => {
+    if (skipE2E_PSOL) {
+      console.log('Skipping — SOLANA_PRIVATE_KEY not set');
+      return;
+    }
+    const setup = await createSvmPushClient({
+      privateKeyBase58: solanaPrivateKey as string,
+      chain: CHAIN.SOLANA_DEVNET,
+      network: PUSH_NETWORK.TESTNET_DONUT,
+    });
+    pushClientPSOL = setup.pushClient;
+    console.log(`SVM signer UEA: ${pushClientPSOL.universal.account}`);
+  }, 60000);
+
+  it('does not crash at encode-time on Riyanshu’s exact call shape', async () => {
+    if (skipE2E_PSOL) return;
+
+    const sol = getToken(CHAIN.SOLANA_DEVNET, 'SOL');
+
+    const params = {
+      to: {
+        address: solRecipient,
+        chain: CHAIN.SOLANA_DEVNET,
+      },
+      funds: {
+        amount: PushChain.utils.helpers.parseUnits('0.001', sol.decimals),
+        token: sol,
+      },
+    };
+
+    let encoderRangeError: Error | null = null;
+    try {
+      const tx = await pushClientPSOL.universal.sendTransaction(params as any);
+      console.log(`Tx submitted: ${tx.hash}`);
+    } catch (err) {
+      const e = err as Error;
+      if (
+        e.name === 'RangeError' &&
+        /value of "value" is out of range/i.test(e.message) &&
+        /< 2n \*\* 64n/.test(e.message)
+      ) {
+        encoderRangeError = e;
+      } else {
+        console.log(`Downstream error (not the encoder bug): ${e.message}`);
+      }
+    }
+
+    expect(encoderRangeError).toBeNull();
+  }, 300000);
+
+  it('encoder still rejects pool-magnitude values (chain decoder is u64-only)', async () => {
+    if (skipE2E_PSOL) return;
+
+    const { encodeUniversalPayloadSvm } = await import(
+      '../../../src/lib/orchestrator/internals/signing'
+    );
+
+    const eightSeventyTwoUpc = BigInt(872) * BigInt('1000000000000000000');
+    const payload = {
+      to: '0x0000000000000000000000000000000000000000',
+      value: eightSeventyTwoUpc.toString(),
+      data: '0xdeadbeef',
+      gasLimit: BigInt(5e7).toString(),
+      maxFeePerGas: BigInt(1e10).toString(),
+      maxPriorityFeePerGas: '0',
+      nonce: '0',
+      deadline: '9999999999',
+      vType: 0,
+    };
+
+    expect(() => encodeUniversalPayloadSvm(payload as any)).toThrow();
+  }, 60000);
 });

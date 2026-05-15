@@ -22,7 +22,7 @@ import { PushChain } from '../../../src';
 import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
 import { CHAIN_INFO, UNIVERSAL_GATEWAY_ADDRESSES } from '../../../src/lib/constants/chain';
 import { createWalletClient, http, Hex, parseEther, formatEther, createPublicClient, encodeFunctionData } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { getCEAAddress, chainSupportsCEA } from '../../../src/lib/orchestrator/cea-utils';
 import { TransactionRoute, detectRoute } from '../../../src/lib/orchestrator/route-detector';
 import type { UniversalExecuteParams, ChainTarget } from '../../../src/lib/orchestrator/orchestrator.types';
@@ -1986,4 +1986,230 @@ describe('CEA → UEA: Inbound Transactions (Route 3)', () => {
     });
 
   });
+});
+
+// ============================================================================
+// CEA Auto-Deployment Diagnostic
+// Validates CEA address determinism (CREATE2), Route 2 auto-deploy via relay,
+// Route 3 prepareTransaction with undeployed CEA, and Route 3 after deploy.
+// ============================================================================
+describe('CEA Auto-Deployment Diagnostic', () => {
+  const fixturesCAD = getActiveFixtures();
+  let mainClient: Awaited<ReturnType<typeof PushChain.initialize>>;
+  let mainUeaAddress: `0x${string}`;
+
+  const evmKey = process.env['EVM_PRIVATE_KEY'] as Hex;
+  const skipE2E_CAD = !evmKey;
+
+  beforeAll(async () => {
+    if (skipE2E_CAD) {
+      console.log('Skipping E2E tests - EVM_PRIVATE_KEY not set');
+      return;
+    }
+
+    const setup = await createEvmPushClient({
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      privateKey: evmKey,
+      printTraces: true,
+      progressHook: (val) => {
+        console.log(`[${val.id}] ${val.title}`);
+      },
+    });
+    mainClient = setup.pushClient;
+    mainUeaAddress = mainClient.universal.account as `0x${string}`;
+    console.log(`Main UEA Address: ${mainUeaAddress}`);
+  }, 60000);
+
+  describe.each(fixturesCAD)(
+    '1. CEA Address Determinism [$label]',
+    (fixture: ChainTestFixture) => {
+      it('should compute CEA address even when not deployed', async () => {
+        if (skipE2E_CAD) return;
+
+        const freshKey = generatePrivateKey();
+        const freshAccount = privateKeyToAccount(freshKey);
+        const freshAddress = freshAccount.address;
+
+        console.log(`\n=== CEA Determinism Test [${fixture.label}] ===`);
+        console.log(`Fresh address (never used): ${freshAddress}`);
+
+        const result = await getCEAAddress(freshAddress, fixture.chain);
+
+        console.log(`CEA address: ${result.cea}`);
+        console.log(`Is deployed: ${result.isDeployed}`);
+
+        expect(result.cea).toMatch(/^0x[a-fA-F0-9]{40}$/);
+        expect(result.cea).not.toBe(
+          '0x0000000000000000000000000000000000000000'
+        );
+        expect(result.isDeployed).toBe(false);
+
+        const result2 = await getCEAAddress(freshAddress, fixture.chain);
+        expect(result2.cea.toLowerCase()).toBe(result.cea.toLowerCase());
+      }, 30000);
+    }
+  );
+
+  describe.each(fixturesCAD)(
+    '2. Route 2 CEA Auto-Deploy [$label]',
+    (fixture: ChainTestFixture) => {
+      it('should verify CEA deployment status for main wallet', async () => {
+        if (skipE2E_CAD) return;
+
+        console.log(`\n=== Route 2 CEA Status Check [${fixture.label}] ===`);
+
+        const ceaResult = await getCEAAddress(mainUeaAddress, fixture.chain);
+
+        console.log(`UEA: ${mainUeaAddress}`);
+        console.log(`CEA on ${fixture.label}: ${ceaResult.cea}`);
+        console.log(`CEA deployed: ${ceaResult.isDeployed}`);
+
+        if (ceaResult.isDeployed) {
+          console.log('CEA already deployed — prior Route 2 tx deployed it via relay');
+        } else {
+          console.log('CEA NOT deployed — will be auto-deployed on next Route 2 tx');
+        }
+
+        expect(ceaResult.cea).toMatch(/^0x[a-fA-F0-9]{40}$/);
+      }, 30000);
+
+      it('should send Route 2 outbound and verify CEA exists after relay', async () => {
+        if (skipE2E_CAD) return;
+
+        console.log(`\n=== Route 2 Outbound + CEA Deploy [${fixture.label}] ===`);
+
+        const before = await getCEAAddress(mainUeaAddress, fixture.chain);
+        console.log(`CEA before: ${before.cea}, deployed: ${before.isDeployed}`);
+
+        const incrementData = encodeFunctionData({
+          abi: COUNTER_ABI,
+          functionName: 'increment',
+        });
+
+        const params: UniversalExecuteParams = {
+          to: {
+            address: fixture.contracts.counter,
+            chain: fixture.chain,
+          },
+          data: incrementData,
+        };
+
+        expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
+
+        const tx = await mainClient.universal.sendTransaction(params);
+        console.log(`Route 2 TX hash: ${tx.hash}`);
+        expect(tx.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+        console.log('Waiting for relay...');
+        const receipt = await tx.wait();
+        console.log(`Receipt status: ${receipt.status}`);
+        console.log(`External TX: ${receipt.externalTxHash}`);
+
+        expect(receipt.status).toBe(1);
+        expect(receipt.externalTxHash).toBeDefined();
+
+        await verifyExternalTransaction(
+          receipt.externalTxHash!,
+          receipt.externalChain!
+        );
+
+        const after = await getCEAAddress(mainUeaAddress, fixture.chain);
+        console.log(`CEA after: ${after.cea}, deployed: ${after.isDeployed}`);
+
+        expect(after.isDeployed).toBe(true);
+        expect(after.cea.toLowerCase()).toBe(before.cea.toLowerCase());
+
+        const extPublicClient = createPublicClient({
+          transport: http(CHAIN_INFO[fixture.chain].defaultRPC[0]),
+        });
+        const code = await extPublicClient.getCode({
+          address: after.cea,
+        });
+        console.log(`CEA on-chain code length: ${code ? (code.length - 2) / 2 : 0} bytes`);
+        expect(code).toBeDefined();
+        expect(code).not.toBe('0x');
+      }, 360000);
+    }
+  );
+
+  describe('3. Route 3 prepareTransaction — CEA undeployed', () => {
+    it('should succeed at prepareTransaction even when CEA is not deployed (on-chain auto-deploys)', async () => {
+      if (skipE2E_CAD) return;
+
+      console.log('\n=== Route 3 prepareTransaction — undeployed CEA (should succeed) ===');
+
+      const freshKey = generatePrivateKey();
+      const freshSetup = await createEvmPushClient({
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+        privateKey: freshKey,
+        printTraces: true,
+      });
+      const freshClient = freshSetup.pushClient;
+      const freshUea = freshClient.universal.account as `0x${string}`;
+      console.log(`Fresh UEA: ${freshUea}`);
+
+      const ceaResult = await getCEAAddress(freshUea, CHAIN.BNB_TESTNET);
+      console.log(`CEA on BNB: ${ceaResult.cea}, deployed: ${ceaResult.isDeployed}`);
+      expect(ceaResult.isDeployed).toBe(false);
+
+      const route3Params: UniversalExecuteParams = {
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: freshUea,
+        value: BigInt(1),
+      };
+
+      expect(detectRoute(route3Params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+      const prepared = await freshClient.universal.prepareTransaction(route3Params);
+
+      console.log(`Route: ${prepared.route}`);
+      console.log(`Nonce: ${prepared.nonce.toString()}`);
+      console.log(`Estimated gas: ${prepared.estimatedGas.toString()}`);
+      console.log(`Payload (first 66): ${prepared.payload.slice(0, 66)}...`);
+
+      expect(prepared.route).toBe('CEA_TO_PUSH');
+      expect(prepared.payload).toBeDefined();
+      expect(prepared.payload.length).toBeGreaterThan(2);
+
+      console.log('prepareTransaction succeeded — on-chain will auto-deploy CEA when tx is executed');
+    }, 60000);
+  });
+
+  describe.each(fixturesCAD)(
+    '4. Route 3 prepareTransaction — CEA deployed [$label]',
+    (fixture: ChainTestFixture) => {
+      it('should succeed at prepareTransaction when CEA exists', async () => {
+        if (skipE2E_CAD) return;
+
+        console.log(`\n=== Route 3 prepareTransaction — deployed CEA [${fixture.label}] ===`);
+
+        const ceaResult = await getCEAAddress(mainUeaAddress, fixture.chain);
+        console.log(`CEA: ${ceaResult.cea}, deployed: ${ceaResult.isDeployed}`);
+
+        if (!ceaResult.isDeployed) {
+          console.log('Skipping — CEA not deployed (run section 2 test first)');
+          return;
+        }
+
+        const route3Params: UniversalExecuteParams = {
+          from: { chain: fixture.chain },
+          to: mainUeaAddress,
+          value: BigInt(1),
+        };
+
+        expect(detectRoute(route3Params)).toBe(TransactionRoute.CEA_TO_PUSH);
+
+        const prepared = await mainClient.universal.prepareTransaction(route3Params);
+
+        console.log(`Route: ${prepared.route}`);
+        console.log(`Nonce: ${prepared.nonce.toString()}`);
+        console.log(`Estimated gas: ${prepared.estimatedGas.toString()}`);
+        console.log(`Payload (first 66): ${prepared.payload.slice(0, 66)}...`);
+
+        expect(prepared.route).toBe('CEA_TO_PUSH');
+        expect(prepared.payload).toBeDefined();
+        expect(prepared.payload.length).toBeGreaterThan(2);
+      }, 60000);
+    }
+  );
 });
