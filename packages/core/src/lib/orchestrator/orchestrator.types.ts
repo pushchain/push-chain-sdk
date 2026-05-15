@@ -548,7 +548,7 @@ export interface SvmExecutePayloadFields {
  * Request structure for sendUniversalTxOutbound on Push Chain
  * Used for Routes 2, 3, 4 (outbound from Push)
  *
- * NOTE: The `target` field is raw recipient bytes for the destination chain.
+ * NOTE: The `recipient` field is raw recipient bytes for the destination chain.
  * For EVM CEA funds-parking, use the zero recipient when `payload` is empty.
  */
 export interface UniversalOutboundTxRequest {
@@ -556,7 +556,7 @@ export interface UniversalOutboundTxRequest {
    * Raw destination recipient bytes. EVM routes usually pass a 20-byte address;
    * SVM routes pass a 32-byte program/account address.
    */
-  target: `0x${string}`;
+  recipient: `0x${string}`;
   /** PRC20 token address on Push Chain to burn */
   token: `0x${string}`;
   /** Amount to burn (0 for no-burn, use existing CEA balance) */

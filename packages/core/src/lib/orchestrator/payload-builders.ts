@@ -257,8 +257,8 @@ export function buildSendUniversalTxToUEA(
 /**
  * Build UniversalOutboundTxRequest for Push Chain outbound
  *
- * @param target - Raw recipient bytes for the destination chain. For EVM CEA
- *                 funds-parking, use the zero recipient when payload is empty.
+ * @param recipient - Raw recipient bytes for the destination chain. For EVM CEA
+ *                    funds-parking, use the zero recipient when payload is empty.
  * @param prc20Token - PRC20 token address to burn (or address(0) for native)
  * @param amount - Amount to burn
  * @param gasLimit - Gas limit for fee calculation
@@ -269,7 +269,7 @@ export function buildSendUniversalTxToUEA(
  * @returns UniversalOutboundTxRequest object
  */
 export function buildOutboundRequest(
-  target: `0x${string}`,
+  recipient: `0x${string}`,
   prc20Token: `0x${string}`,
   amount: bigint,
   gasLimit: bigint,
@@ -279,7 +279,7 @@ export function buildOutboundRequest(
   gasPrice: bigint = BigInt(0)
 ): UniversalOutboundTxRequest {
   return {
-    target,
+    recipient,
     token: prc20Token,
     amount,
     gasLimit,

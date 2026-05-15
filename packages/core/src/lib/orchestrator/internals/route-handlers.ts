@@ -638,7 +638,7 @@ export async function executeUoaToCea(
     ctx,
     `executeUoaToCea — outbound request: ${JSON.stringify(
       {
-        target: outboundReq.target,
+        recipient: outboundReq.recipient,
         token: outboundReq.token,
         amount: outboundReq.amount.toString(),
         gasLimit: outboundReq.gasLimit.toString(),
@@ -987,7 +987,7 @@ export async function executeUoaToCeaSvm(
     ctx,
     `executeUoaToCeaSvm — outbound request: ${JSON.stringify(
       {
-        target: outboundReq.target,
+        recipient: outboundReq.recipient,
         token: outboundReq.token,
         amount: outboundReq.amount.toString(),
         gasLimit: outboundReq.gasLimit.toString(),
@@ -1329,9 +1329,9 @@ export async function executeCeaToPush(
   );
 
   // 9. Build outbound request (same structure as Route 2)
-  // target = CEA address (for self-execution), value = 0 in payload
+  // recipient = CEA address (for self-execution), value = 0 in payload
   let outboundReq: UniversalOutboundTxRequest = buildOutboundRequest(
-    ceaAddress,              // target: CEA address (to=CEA for self-execution)
+    ceaAddress,              // recipient: CEA address (to=CEA for self-execution)
     prc20Token,              // token: native PRC-20 for source chain (for namespace lookup)
     burnAmount,              // amount: 0 (payload-only, CEA uses its own balance)
     outboundGasLimit,
@@ -1344,7 +1344,7 @@ export async function executeCeaToPush(
     ctx,
     `executeCeaToPush — outbound request: ${JSON.stringify(
       {
-        target: outboundReq.target,
+        recipient: outboundReq.recipient,
         token: outboundReq.token,
         amount: outboundReq.amount.toString(),
         gasLimit: outboundReq.gasLimit.toString(),
@@ -1674,7 +1674,7 @@ export async function executeCeaToPushSvm(
 
   let effectiveGasLimit = params.gasLimit ?? BigInt(0);
 
-  // Build outbound request: target = gateway program (self-call)
+  // Build outbound request: recipient = gateway program (self-call)
   let outboundReq: UniversalOutboundTxRequest = buildOutboundRequest(
     gatewayProgramHex,
     prc20Token,
@@ -1687,7 +1687,7 @@ export async function executeCeaToPushSvm(
 
   printLog(
     ctx,
-    `executeCeaToPushSvm — outbound request: target=${outboundReq.target.slice(0, 20)}..., token=${outboundReq.token}, maxPCForGas=${outboundReq.maxPCForGas}`
+    `executeCeaToPushSvm — outbound request: recipient=${outboundReq.recipient.slice(0, 20)}..., token=${outboundReq.token}, maxPCForGas=${outboundReq.maxPCForGas}`
   );
 
   // Query gas fees

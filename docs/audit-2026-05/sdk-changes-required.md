@@ -241,7 +241,7 @@ components: [
 ```ts
 // orchestrator.types.ts:548 — UniversalOutboundTxRequest interface
 export interface UniversalOutboundTxRequest {
-  target:           `0x${string}`;
+  recipient:        `0x${string}`;
   token:            `0x${string}`;
   amount:           bigint;
   gasLimit:         bigint;

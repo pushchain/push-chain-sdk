@@ -89,7 +89,7 @@ describe('buildCeaMulticallPayload', () => {
 describe('buildOutboundRequest', () => {
   it('should build correct UniversalOutboundTxRequest struct', () => {
     const result = buildOutboundRequest(
-      ALICE, // target (legacy)
+      ALICE, // recipient
       TOKEN_A, // prc20Token
       BigInt(1000),
       BigInt(200000),
@@ -97,7 +97,8 @@ describe('buildOutboundRequest', () => {
       BOB, // revertRecipient
     );
 
-    expect(result.target).toBe(ALICE);
+    expect(result.recipient).toBe(ALICE);
+    expect('target' in result).toBe(false);
     expect(result.token).toBe(TOKEN_A);
     expect(result.amount).toBe(BigInt(1000));
     expect(result.gasLimit).toBe(BigInt(200000));
@@ -191,7 +192,7 @@ describe('buildErc20Transfer', () => {
 // ============================================================================
 describe('buildOutboundApprovalAndCall', () => {
   const outboundRequest: UniversalOutboundTxRequest = {
-    target: ALICE,
+    recipient: ALICE,
     token: TOKEN_A,
     amount: BigInt(1000),
     gasLimit: BigInt(200000),

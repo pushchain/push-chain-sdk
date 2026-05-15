@@ -39,7 +39,7 @@ export const UNIVERSAL_GATEWAY_PC = [
     inputs: [
       {
         components: [
-          { internalType: 'bytes', name: 'target', type: 'bytes' },
+          { internalType: 'bytes', name: 'recipient', type: 'bytes' },
           { internalType: 'address', name: 'token', type: 'address' },
           { internalType: 'uint256', name: 'amount', type: 'uint256' },
           { internalType: 'uint256', name: 'gasLimit', type: 'uint256' },

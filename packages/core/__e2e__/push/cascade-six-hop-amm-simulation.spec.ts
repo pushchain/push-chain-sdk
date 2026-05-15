@@ -531,9 +531,9 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
     });
     expect(decoded.functionName).toBe('sendUniversalTxOutbound');
     const [req] = decoded.args as unknown as [
-      { target: `0x${string}`; amount: bigint; payload: `0x${string}` },
+      { recipient: `0x${string}`; amount: bigint; payload: `0x${string}` },
     ];
-    expect(req.target).toBe(CEA_BNB);
+    expect(req.recipient).toBe(CEA_BNB);
     expect(req.amount).toBe(BigInt(0));
     expect(req.payload).not.toBe('0x');
   });
@@ -607,9 +607,9 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
     });
     expect(decoded.functionName).toBe('sendUniversalTxOutbound');
     const [req] = decoded.args as unknown as [
-      { target: `0x${string}`; amount: bigint; payload: `0x${string}` },
+      { recipient: `0x${string}`; amount: bigint; payload: `0x${string}` },
     ];
-    expect(req.target).toBe(CEA_BNB);
+    expect(req.recipient).toBe(CEA_BNB);
     expect(req.amount).toBe(BigInt(0));
     expect(req.payload).not.toBe('0x');
   });
