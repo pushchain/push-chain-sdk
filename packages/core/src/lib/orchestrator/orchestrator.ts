@@ -47,6 +47,11 @@ import {
   extractAllUniversalSubTxIds as _extractAllUniversalSubTxIds,
 } from './internals';
 
+type ProgressHook = (progress: ProgressEvent) => void;
+type WrappedProgressHook = ProgressHook & {
+  __pushPerCallHook?: ProgressHook;
+};
+
 export class Orchestrator {
   // These fields are accessed via `this.ctx` (OrchestratorContext cast) by internal modules
   private _pushClient: PushClient | null = null;
@@ -203,6 +208,34 @@ export class Orchestrator {
       } as ExecuteParams | UniversalExecuteParams;
     }
 
+    const perCallHook = params.options?.progressHook;
+    const originalExecuteHook = this.progressHook;
+    const currentHook = this.progressHook as WrappedProgressHook | undefined;
+    const shouldWrapPerCallHook =
+      !!perCallHook &&
+      perCallHook !== currentHook &&
+      currentHook?.__pushPerCallHook !== perCallHook;
+    const attachPerCallHookForWait = (
+      response: UniversalTxResponse
+    ): UniversalTxResponse => {
+      if (perCallHook && response._setProgressHookNoReplay) {
+        response._setProgressHookNoReplay(perCallHook);
+      }
+      return response;
+    };
+
+    if (shouldWrapPerCallHook) {
+      const baseHook = this.progressHook;
+      const wrappedHook = ((event: ProgressEvent) => {
+        if (baseHook && baseHook !== perCallHook) {
+          baseHook(event);
+        }
+        perCallHook(event);
+      }) as WrappedProgressHook;
+      wrappedHook.__pushPerCallHook = perCallHook;
+      this.progressHook = wrappedHook;
+    }
+
     // Snapshot the caller's active route — `executeMultiChain` recurses into
     // this same method for R2/R3's inner Push-side execution, and without
     // snapshot/restore the recursive `detectRoute(params)` would clobber the
@@ -258,7 +291,13 @@ export class Orchestrator {
 
       if (isMultiChain) {
         try {
-          return await _executeMultiChain(this.ctx, params as UniversalExecuteParams, this.execute.bind(this));
+          return attachPerCallHookForWait(
+            await _executeMultiChain(
+              this.ctx,
+              params as UniversalExecuteParams,
+              this.execute.bind(this)
+            )
+          );
         } catch (err) {
           // R2/R3/R4 outer catch — fires the route-correct terminal failure
           // hook (299-02 / 399-02) when an inner route handler throws BEFORE
@@ -327,11 +366,15 @@ export class Orchestrator {
       try {
         const rcb = () => this._getResponseCallbacks();
         if (execute.funds) {
-          return !hasData
-            ? await _executeFundsOnly(this.ctx, execute, eventBuffer, rcb)
-            : await _executeFundsWithPayload(this.ctx, execute, eventBuffer, rcb);
+          return attachPerCallHookForWait(
+            !hasData
+              ? await _executeFundsOnly(this.ctx, execute, eventBuffer, rcb)
+              : await _executeFundsWithPayload(this.ctx, execute, eventBuffer, rcb)
+          );
         }
-        return await _executeStandardPayload(this.ctx, execute, eventBuffer, rcb);
+        return attachPerCallHookForWait(
+          await _executeStandardPayload(this.ctx, execute, eventBuffer, rcb)
+        );
       } catch (err) {
         const errMessage =
           err instanceof Error
@@ -376,6 +419,9 @@ export class Orchestrator {
         this.progressHook = originalHook;
       }
     } finally {
+      if (shouldWrapPerCallHook) {
+        this.progressHook = originalExecuteHook;
+      }
       // Restore the caller's route so a recursive inner R1 execute doesn't
       // leak its UOA_TO_PUSH route back to the outer R2/R3 frame.
       this.currentRoute = previousRoute;

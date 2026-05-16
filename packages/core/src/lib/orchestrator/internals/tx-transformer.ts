@@ -114,10 +114,10 @@ export function reconstructProgressEvents(
   // omitted from reconstruction because R1 doesn't register a UniversalTx
   // on Push Chain, so `universalTxData` is usually undefined here and we
   // have no reliable signal to tell the three paths apart. Callers who want
-  // the full live sequence should either register `progressHook` at
-  // `initialize()` time (client-level) or call `tx.progressHook(cb)` after
-  // sendTransaction — both deliver the full stream from the execute-phase
-  // event buffer.
+  // the full live sequence should register a progress hook at initialize
+  // time, pass `sendTransaction(params, { progressHook })`, or call
+  // `tx.progressHook(cb)` after sendTransaction — all deliver the full stream
+  // from the execute-phase event buffer.
   const events: ProgressEvent[] = [];
 
   const originParts = universalTxResponse.origin.split(':');

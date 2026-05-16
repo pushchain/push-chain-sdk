@@ -51,6 +51,18 @@ export interface TransactionExecutionOptions {
    * - true: emit the failure hook, throw InsufficientUEABalanceError, and stop
    */
   enforceGasCheck?: boolean;
+
+  /**
+   * Optional per-call progress callback for sendTransaction().
+   * Additive with the init-time `progressHook` passed to `PushChain.initialize`:
+   * both hooks receive every `ProgressEvent` emitted during this call. The
+   * callback is also registered on the returned response for wait-phase
+   * progress without replaying already-fired events. Dedups by reference if it
+   * matches the init-time hook.
+   */
+  progressHook?: (
+    event: import('../progress-hook/progress-hook.types').ProgressEvent
+  ) => void;
 }
 
 // ============================================================================
@@ -235,10 +247,11 @@ export interface UniversalTxResponse {
 
   /**
    * @internal Register a wait-phase progressHook without replaying buffered
-   * events. Used by `trackTransaction()` to auto-attach the caller's per-call
-   * progressHook so `tracked.wait()` can deliver wait-phase events (209-xx /
-   * 299-xx / 399-xx) to the same callback — without re-emitting the
-   * reconstructed execute-phase stream that trackTransaction already fired.
+   * events. Used by `sendTransaction(..., { progressHook })` and
+   * `trackTransaction()` to auto-attach the caller's per-call progressHook so
+   * `.wait()` can deliver wait-phase events (209-xx / 299-xx / 399-xx) to the
+   * same callback — without re-emitting the execute/reconstructed stream that
+   * already fired.
    */
   _setProgressHookNoReplay?: (
     callback: (
