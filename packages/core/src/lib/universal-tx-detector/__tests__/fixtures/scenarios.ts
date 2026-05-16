@@ -41,7 +41,7 @@ const ADDR = {
   sender: '0xaaaa000000000000000000000000000000000001' as `0x${string}`,
   recipient: '0xbbbb000000000000000000000000000000000002' as `0x${string}`,
   token: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-  pushToken: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06' as `0x${string}`,
+  pushToken: '0x0f97A213207703923F5f0C613C9827f7C9A0f96B' as `0x${string}`,
   revertTo: '0xdddd000000000000000000000000000000000004' as `0x${string}`,
 };
 

@@ -214,7 +214,7 @@ describe('classify()', () => {
       {
         sender: '0x30a9dB8E3cCe83e8A8720EB61B8728F98449ee6b',
         recipient: '0x4A701114F991bf75685584c8156Db983c0DF95a0',
-        token: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
+        token: '0x0f97A213207703923F5f0C613C9827f7C9A0f96B',
         amount: BigInt(10000),
         payload: '0x',
         revertRecipient: '0x4A701114F991bf75685584c8156Db983c0DF95a0',

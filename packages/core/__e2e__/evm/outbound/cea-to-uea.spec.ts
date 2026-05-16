@@ -20,7 +20,7 @@ import '@e2e/shared/setup';
  */
 import { PushChain } from '../../../src';
 import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
-import { CHAIN_INFO, UNIVERSAL_GATEWAY_ADDRESSES } from '../../../src/lib/constants/chain';
+import { CHAIN_INFO, UNIVERSAL_GATEWAY_ADDRESSES, SYNTHETIC_PUSH_ERC20 } from '../../../src/lib/constants/chain';
 import { createWalletClient, http, Hex, parseEther, formatEther, createPublicClient, encodeFunctionData } from 'viem';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { getCEAAddress, chainSupportsCEA } from '../../../src/lib/orchestrator/cea-utils';
@@ -39,7 +39,8 @@ import { TEST_TARGET, NATIVE_ADDRESS, COUNTER_ABI, ensureCeaErc20Balance, ensure
 
 // PRC-20 token on Push Chain (pUSDT) — used for multicall approve tests
 // that execute ON Push Chain (this is NOT an ERC-20 on external chains)
-const PUSH_CHAIN_PUSDT = '0x731aF1Da5365259d27528557EE4aFBA4baC90ef2' as `0x${string}`;
+const PUSH_CHAIN_PUSDT =
+  SYNTHETIC_PUSH_ERC20[PUSH_NETWORK.TESTNET_DONUT].USDT_BSC;
 
 const fixtures = getActiveFixtures();
 

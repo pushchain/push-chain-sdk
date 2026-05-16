@@ -139,7 +139,7 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     USDT: {
       symbol: 'USDT',
       decimals: 6,
-      address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
+      address: '0xC4230aEaFcF6b8B49a7b4e53886420f00ff71876',
       mechanism: 'approve',
     },
     WETH: {
@@ -195,7 +195,7 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     USDT: {
       symbol: 'USDT',
       decimals: 6,
-      address: '0x1419d7C74D234fA6B73E06A2ce7822C1d37922f0',
+      address: '0xE30928528f52CAEeB75fB07837e22d77D47e9c07',
       mechanism: 'approve',
     },
     USDC: {
@@ -223,7 +223,7 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     USDT: {
       symbol: 'USDT',
       decimals: 6,
-      address: '0x9FF5a186f53F6E6964B00320Da1D2024DE11E0cB',
+      address: '0x4D7646B9eE3D68F4b0F135B5cbc66B00819F6b61',
       mechanism: 'approve',
     },
     USDC: {
@@ -251,13 +251,13 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     USDT: {
       symbol: 'USDT',
       decimals: 6,
-      address: '0xBC14F348BC9667be46b35Edc9B68653d86013DC5',
+      address: '0xE935d9c9C24D02E61186c640cc01d713C876d40F',
       mechanism: 'approve',
     },
     USDC: {
       symbol: 'USDC',
       decimals: 6,
-      address: '0x64544969ed7EBf5f083679233325356EbE738930',
+      address: '0xA8802F96cAd0d45343d9bc660B6f7d80050A660b',
       mechanism: 'approve',
     },
   },
@@ -329,7 +329,7 @@ function buildPushChainMoveableTokenList(): PushChainMoveableToken[] {
     mk('USDT', 6, s.USDT_ETH, CHAIN.ETHEREUM_SEPOLIA),
     mk('USDT', 6, s.USDT_ARB, CHAIN.ARBITRUM_SEPOLIA),
     mk('USDT', 6, s.USDT_BASE, CHAIN.BASE_SEPOLIA),
-    mk('USDT', 6, s.USDT_BNB, CHAIN.BNB_TESTNET),
+    mk('USDT', 6, s.USDT_BSC, CHAIN.BNB_TESTNET),
     mk('USDT', 6, s.USDT_SOL, CHAIN.SOLANA_DEVNET),
     mk('USDC', 6, s.USDC_ETH, CHAIN.ETHEREUM_SEPOLIA),
     mk('USDC', 6, s.USDC_ARB, CHAIN.ARBITRUM_SEPOLIA),
@@ -434,6 +434,8 @@ export interface ChainSuffixAccessor {
   readonly eth: PushChainMoveableToken;
   readonly arb: PushChainMoveableToken;
   readonly base: PushChainMoveableToken;
+  readonly bsc: PushChainMoveableToken;
+  /** @deprecated Use `bsc` instead. */
   readonly bnb: PushChainMoveableToken;
   readonly sol: PushChainMoveableToken;
 }
@@ -510,6 +512,7 @@ function buildPushChainMoveableTokenAccessor(): PushChainMoveableTokenAccessor {
     prc20Address: address,
   });
 
+  const usdtBsc = mk('USDT', 6, s.USDT_BSC, CHAIN.BNB_TESTNET);
   const usdcBsc = mk('USDC', 6, s.USDC_BSC, CHAIN.BNB_TESTNET);
 
   return {
@@ -525,7 +528,8 @@ function buildPushChainMoveableTokenAccessor(): PushChainMoveableTokenAccessor {
       eth: mk('USDT', 6, s.USDT_ETH, CHAIN.ETHEREUM_SEPOLIA),
       arb: mk('USDT', 6, s.USDT_ARB, CHAIN.ARBITRUM_SEPOLIA),
       base: mk('USDT', 6, s.USDT_BASE, CHAIN.BASE_SEPOLIA),
-      bnb: mk('USDT', 6, s.USDT_BNB, CHAIN.BNB_TESTNET),
+      bsc: usdtBsc,
+      bnb: usdtBsc,
       sol: mk('USDT', 6, s.USDT_SOL, CHAIN.SOLANA_DEVNET),
     },
     USDC: {

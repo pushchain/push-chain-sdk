@@ -13,7 +13,7 @@
 import '@e2e/shared/setup';
 import { PushChain } from '../../../src';
 import { PUSH_NETWORK, CHAIN } from '../../../src/lib/constants/enums';
-import { CHAIN_INFO } from '../../../src/lib/constants/chain';
+import { CHAIN_INFO, SYNTHETIC_PUSH_ERC20 } from '../../../src/lib/constants/chain';
 import { createWalletClient, createPublicClient, http, Hex, encodeFunctionData } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { TransactionRoute, detectRoute } from '../../../src/lib/orchestrator/route-detector';
@@ -43,7 +43,8 @@ import {
 } from '@e2e/shared/svm-outbound-helpers';
 
 // PRC-20 token on Push Chain (pUSDT) — used for multicall approve tests
-const PUSH_CHAIN_PUSDT = '0x731aF1Da5365259d27528557EE4aFBA4baC90ef2' as `0x${string}`;
+const PUSH_CHAIN_PUSDT =
+  SYNTHETIC_PUSH_ERC20[PUSH_NETWORK.TESTNET_DONUT].USDT_BSC;
 
 describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
   let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;

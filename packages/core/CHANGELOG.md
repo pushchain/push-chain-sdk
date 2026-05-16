@@ -1,4 +1,70 @@
-@pushchain/core@5.2.0 (unreleased)
+@pushchain/core@6.0.2 (unreleased)
+
+- Token constants now expose the missing `USDT.bsc` chain-suffix accessor,
+  while keeping `USDT.bnb` as a deprecated alias for backward compatibility.
+
+- Updated Donut testnet stable token metadata to match the current source of
+  truth: external moveable token addresses are kept separate from Push Chain
+  PRC20 addresses, and the WPC/stable pool address audit table now reflects the
+  documented PRC20/pool pairs.
+
+---
+
+@pushchain/core@6.0.1 (2026-05-15)
+
+- Pre-flight UEA balance checks now default to warning-only behavior and
+  proceed when short. `sendTransaction` and `prepareTransaction` accept
+  `options.enforceGasCheck: true` to restore fail-fast behavior with
+  `InsufficientUEABalanceError`; pre-flight progress hooks now report
+  `WARNING` vs `ERROR` with shortfall metadata.
+
+- Token constants added the `USDC.bsc` BSC suffix accessor while retaining
+  `USDC.bnb` as a deprecated compatibility alias.
+
+- Consolidated tests, renamed transaction `target` fields to `recipient`, and
+  fixed SVM test cases around the release.
+
+---
+
+@pushchain/core@6.0.0 (2026-05-14)
+
+- Updated audit-driven contract and pool configuration, including BNB CEA
+  address changes and refreshed pool addresses.
+
+- Fixed cascade, SVM payload, and SVM execution flows, with additional test-case
+  coverage for the audited scenarios.
+
+- Improved PC amount formatting in transaction output and diagnostics.
+
+---
+
+@pushchain/core@5.1.18 (2026-05-12)
+
+- Added `executeTransactions` progress-hook coverage and fixed cascade
+  scenarios, including fresh-UEA and six-hop flows.
+
+- Removed the `allowUnderfundedSwap` parameter and tightened native PC
+  formatting.
+
+---
+
+@pushchain/core@5.1.17 (2026-05-07)
+
+- Fixed the R3 EVM path tag so progress hooks emit the `303` route family
+  instead of `203`.
+
+---
+
+@pushchain/core@5.1.16 (2026-05-07)
+
+- Added pre-flight balance-check progress hooks.
+
+- Fixed SVM rent checks, SVM upward ceiling behavior, cascade progress-hook
+  handling, and shared PC formatting.
+
+---
+
+@pushchain/core@5.1.5 (2026-04-20)
 
 - Route 1 (UOA → Push) now applies Case A/B/C USD-bucket sizing to the
   Push-chain gas cost. Case A pads deposits to the $1 floor; Case B passes

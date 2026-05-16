@@ -1,5 +1,7 @@
 import 'dotenv/config';
 import { createPublicClient, http, defineChain, formatUnits } from 'viem';
+import { SYNTHETIC_PUSH_ERC20 } from '../../src/lib/constants/chain';
+import { PUSH_NETWORK } from '../../src/lib/constants/enums';
 
 const pushDonut = defineChain({
   id: 42101,
@@ -38,11 +40,13 @@ const symbolAbi = [
   },
 ] as const;
 
+const synth = SYNTHETIC_PUSH_ERC20[PUSH_NETWORK.TESTNET_DONUT];
+
 const tokens: { sym: string; addr: `0x${string}` }[] = [
-  { sym: 'pETH      ', addr: '0x2971824Db68229D087931155C2b8bB820B275809' },
-  { sym: 'pUSDT.eth ', addr: '0x0f97A213207703923F5f0C613C9827f7C9A0f96B' },
-  { sym: 'pUSDT.sol ', addr: '0x4f1A3D22d170a2F4Bddb37845a962322e24f4e34' },
-  { sym: 'pUSDC.sol ', addr: '0x04B8F634ABC7C879763F623e0f0550a4b5c4426F' },
+  { sym: 'pETH      ', addr: synth.pETH },
+  { sym: 'pUSDT.eth ', addr: synth.USDT_ETH },
+  { sym: 'pUSDT.sol ', addr: synth.USDT_SOL },
+  { sym: 'pUSDC.sol ', addr: synth.USDC_SOL },
 ];
 
 const wallets: { lbl: string; addr: `0x${string}` }[] = [

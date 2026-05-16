@@ -30,7 +30,7 @@ type StableKey =
   | 'USDT_ETH'
   | 'USDT_ARB'
   | 'USDT_BASE'
-  | 'USDT_BNB'
+  | 'USDT_BSC'
   | 'USDC_BSC'
   | 'USDT_SOL';
 
@@ -43,7 +43,7 @@ const ORIGIN_TO_STABLE: Partial<Record<CHAIN, StableKey>> = {
   [CHAIN.ETHEREUM_SEPOLIA]: 'USDT_ETH',
   [CHAIN.ARBITRUM_SEPOLIA]: 'USDT_ARB',
   [CHAIN.BASE_SEPOLIA]: 'USDT_BASE',
-  [CHAIN.BNB_TESTNET]: 'USDT_BNB',
+  [CHAIN.BNB_TESTNET]: 'USDT_BSC',
   [CHAIN.SOLANA_DEVNET]: 'USDT_SOL',
 };
 

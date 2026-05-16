@@ -6,8 +6,8 @@
  */
 import '@e2e/shared/setup';
 import { PushChain } from '../../src';
-import { CHAIN } from '../../src/lib/constants/enums';
-import { CHAIN_INFO } from '../../src/lib/constants/chain';
+import { CHAIN, PUSH_NETWORK } from '../../src/lib/constants/enums';
+import { CHAIN_INFO, SYNTHETIC_PUSH_ERC20 } from '../../src/lib/constants/chain';
 import { createPublicClient, http, Hex, parseEther, encodeFunctionData, encodeAbiParameters } from 'viem';
 import type { PreparedUniversalTx } from '../../src/lib/orchestrator/orchestrator.types';
 import type { ProgressEvent } from '../../src/lib/progress-hook/progress-hook.types';
@@ -20,7 +20,7 @@ import { toHexData } from '@e2e/shared/svm-outbound-helpers';
 import { PublicKey } from '@solana/web3.js';
 
 // BSC Testnet USDT address
-const BSC_USDT_ADDRESS = '0xBC14F348BC9667be46b35Edc9B68653d86013DC5' as const;
+const BSC_USDT_ADDRESS = '0xE935d9c9C24D02E61186c640cc01d713C876d40F' as const;
 
 // Push Chain payable counter (for Route 3 inbound tests)
 const COUNTER_ADDRESS_PAYABLE = '0x70d8f7a0fF8e493fb9cbEE19Eb780E40Aa872aaf' as `0x${string}`;
@@ -47,7 +47,8 @@ const SVM_GATEWAY_PROGRAM = new PublicKey('CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBup
 
 // StakingExample contract (Push Chain Donut)
 const STAKING_PROXY = '0xd5d727D5eCE07BD5557f50e58DA092FCEDC1bf29' as `0x${string}`;
-const PUSDT_BNB_TOKEN = '0x731aF1Da5365259d27528557EE4aFBA4baC90ef2' as `0x${string}`;
+const PUSDT_BNB_TOKEN =
+  SYNTHETIC_PUSH_ERC20[PUSH_NETWORK.TESTNET_DONUT].USDT_BSC;
 const UNIVERSAL_GATEWAY_BSC = '0x44aFFC61983F4348DdddB886349eb992C061EaC0' as `0x${string}`;
 const CEA_FACTORY_BSC = '0x3f1B16e0B072d472951C4563d29d3da6a3EE3Ce8' as `0x${string}`;
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`;

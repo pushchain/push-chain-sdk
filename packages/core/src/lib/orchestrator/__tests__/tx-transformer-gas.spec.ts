@@ -898,7 +898,7 @@ describe('gas-calculator', () => {
       const quoteExactOutputFn = jest.fn().mockResolvedValue(mockQuote);
 
       // Use real USDT address on Ethereum Sepolia from token registry
-      const usdtAddress = '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06' as `0x${string}`;
+      const usdtAddress = '0xC4230aEaFcF6b8B49a7b4e53886420f00ff71876' as `0x${string}`;
 
       const result = await calculateGasAmountFromAmountOutMinETH(
         ctx,

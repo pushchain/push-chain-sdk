@@ -13,7 +13,7 @@ describe('MOVEABLE_TOKEN_CONSTANTS (C-2: external chain tokens)', () => {
       const usdt = MOVEABLE_TOKEN_CONSTANTS.ETHEREUM_SEPOLIA.USDT;
       expect(usdt.symbol).toBe('USDT');
       expect(usdt.decimals).toBe(6);
-      expect(usdt.address).toBe('0x7169D38820dfd117C3FA1f22a697dBA58d90BA06');
+      expect(usdt.address).toBe('0xC4230aEaFcF6b8B49a7b4e53886420f00ff71876');
       expect(usdt.mechanism).toBe('approve');
     });
 
@@ -49,7 +49,7 @@ describe('MOVEABLE_TOKEN_CONSTANTS (C-2: external chain tokens)', () => {
       const usdt = MOVEABLE_TOKEN_CONSTANTS.ARBITRUM_SEPOLIA.USDT;
       expect(usdt.symbol).toBe('USDT');
       expect(usdt.decimals).toBe(6);
-      expect(usdt.address).toBe('0x1419d7C74D234fA6B73E06A2ce7822C1d37922f0');
+      expect(usdt.address).toBe('0xE30928528f52CAEeB75fB07837e22d77D47e9c07');
     });
 
     it('should expose ETH as native', () => {
@@ -61,6 +61,9 @@ describe('MOVEABLE_TOKEN_CONSTANTS (C-2: external chain tokens)', () => {
   describe('BASE_SEPOLIA', () => {
     it('should expose USDT and USDC', () => {
       expect(MOVEABLE_TOKEN_CONSTANTS.BASE_SEPOLIA.USDT.symbol).toBe('USDT');
+      expect(MOVEABLE_TOKEN_CONSTANTS.BASE_SEPOLIA.USDT.address).toBe(
+        '0x4D7646B9eE3D68F4b0F135B5cbc66B00819F6b61'
+      );
       expect(MOVEABLE_TOKEN_CONSTANTS.BASE_SEPOLIA.USDC.symbol).toBe('USDC');
     });
   });
@@ -68,6 +71,15 @@ describe('MOVEABLE_TOKEN_CONSTANTS (C-2: external chain tokens)', () => {
   describe('BNB_TESTNET', () => {
     it('should expose USDT', () => {
       expect(MOVEABLE_TOKEN_CONSTANTS.BNB_TESTNET.USDT.symbol).toBe('USDT');
+      expect(MOVEABLE_TOKEN_CONSTANTS.BNB_TESTNET.USDT.address).toBe(
+        '0xE935d9c9C24D02E61186c640cc01d713C876d40F'
+      );
+    });
+
+    it('should expose USDC', () => {
+      expect(MOVEABLE_TOKEN_CONSTANTS.BNB_TESTNET.USDC.address).toBe(
+        '0xA8802F96cAd0d45343d9bc660B6f7d80050A660b'
+      );
     });
 
     it('should throw for SOL (unavailable on BNB)', () => {
@@ -108,6 +120,31 @@ describe('MOVEABLE_TOKEN_CONSTANTS (C-2: external chain tokens)', () => {
 describe('MOVEABLE_TOKEN_CONSTANTS.PUSH_TESTNET_DONUT (C-3: outward tokens)', () => {
   const pushTokens = MOVEABLE_TOKEN_CONSTANTS.PUSH_TESTNET_DONUT;
   const synth = SYNTHETIC_PUSH_ERC20['TESTNET_DONUT'];
+
+  describe('deployed stable PRC-20 addresses on Push Chain', () => {
+    it('should use the current USDT deployment addresses', () => {
+      expect(synth.USDT_ETH).toBe(
+        '0x0f97A213207703923F5f0C613C9827f7C9A0f96B'
+      );
+      expect(synth.USDT_ARB).toBe(
+        '0xFE6E9DF2BbC9ce05D98b83B1365df6DcA9951891'
+      );
+      expect(synth.USDT_BASE).toBe(
+        '0x148823809B853e1db187BC09A9ac909BC42F971a'
+      );
+      expect(synth.USDT_BSC).toBe(
+        '0x731aF1Da5365259d27528557EE4aFBA4baC90ef2'
+      );
+      expect(synth.USDT_BNB).toBe(synth.USDT_BSC);
+    });
+
+    it('should use the current USDC BSC deployment address', () => {
+      expect(synth.USDC_BSC).toBe(
+        '0x120EBf25Dad7D6a09Ad2316f23f9Be95DBb90639'
+      );
+      expect(synth.USDC_BNB).toBe(synth.USDC_BSC);
+    });
+  });
 
   describe('native wrapped tokens', () => {
     it('should expose pEth with correct sourceChain and prc20Address', () => {
@@ -171,10 +208,15 @@ describe('MOVEABLE_TOKEN_CONSTANTS.PUSH_TESTNET_DONUT (C-3: outward tokens)', ()
       expect(t.prc20Address).toBe(synth.USDT_BASE);
     });
 
-    it('should expose USDT.bnb from BNB', () => {
-      const t = pushTokens.USDT.bnb;
+    it('should expose USDT.bsc from BSC', () => {
+      const t = pushTokens.USDT.bsc;
       expect(t.sourceChain).toBe(CHAIN.BNB_TESTNET);
-      expect(t.prc20Address).toBe(synth.USDT_BNB);
+      expect(t.prc20Address).toBe(synth.USDT_BSC);
+    });
+
+    it('should keep USDT.bnb as a deprecated alias', () => {
+      expect(pushTokens.USDT.bnb).toBe(pushTokens.USDT.bsc);
+      expect(synth.USDT_BNB).toBe(synth.USDT_BSC);
     });
 
     it('should expose USDT.sol from Solana', () => {
@@ -233,7 +275,7 @@ describe('MOVEABLE_TOKEN_CONSTANTS.PUSH_TESTNET_DONUT (C-3: outward tokens)', ()
         pushTokens.USDT.eth,
         pushTokens.USDT.arb,
         pushTokens.USDT.base,
-        pushTokens.USDT.bnb,
+        pushTokens.USDT.bsc,
         pushTokens.USDT.sol,
         pushTokens.USDC.eth,
         pushTokens.USDC.arb,

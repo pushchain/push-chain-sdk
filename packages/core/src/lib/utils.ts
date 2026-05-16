@@ -869,7 +869,7 @@ export class Utils {
         | 'USDT_ETH'
         | 'USDT_ARB'
         | 'USDT_SOL'
-        | 'USDT_BNB'
+        | 'USDT_BSC'
         | 'USDT_BASE'
         | 'USDC_ETH'
         | 'USDC_ARB'
@@ -904,7 +904,7 @@ export class Utils {
           if (isEthFamily) key = 'USDT_ETH';
           else if (isArbFamily) key = 'USDT_ARB';
           else if (isBaseFamily) key = 'USDT_BASE';
-          else if (isBnbFamily) key = 'USDT_BNB';
+          else if (isBnbFamily) key = 'USDT_BSC';
           else if (isSolFamily) key = 'USDT_SOL';
           else
             throw new Error(

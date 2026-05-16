@@ -78,7 +78,7 @@ const EVM_CHAIN_CONFIGS: EVMChainTestConfig[] = [
     gatewayAddress: '0x05bD7a3D18324c1F7e216f7fBF2b15985aE5281A',
     tokens: {
       usdt: {
-        address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
+        address: '0xC4230aEaFcF6b8B49a7b4e53886420f00ff71876',
         decimals: 6,
       },
       eth: {
@@ -94,7 +94,7 @@ const EVM_CHAIN_CONFIGS: EVMChainTestConfig[] = [
     gatewayAddress: '0x2cd870e0166Ba458dEC615168Fd659AacD795f34',
     tokens: {
       usdt: {
-        address: '0x1419d7C74D234fA6B73E06A2ce7822C1d37922f0',
+        address: '0xE30928528f52CAEeB75fB07837e22d77D47e9c07',
         decimals: 6,
       },
       eth: {
@@ -110,7 +110,7 @@ const EVM_CHAIN_CONFIGS: EVMChainTestConfig[] = [
     gatewayAddress: '0xe91addb5a01b4fb4ac2599b171f56e765fc8903c',
     tokens: {
       usdt: {
-        address: '0x9FF5a186f53F6E6964B00320Da1D2024DE11E0cB',
+        address: '0x4D7646B9eE3D68F4b0F135B5cbc66B00819F6b61',
         decimals: 6,
       },
       eth: {
@@ -126,7 +126,7 @@ const EVM_CHAIN_CONFIGS: EVMChainTestConfig[] = [
     gatewayAddress: '0x44aFFC61983F4348DdddB886349eb992C061EaC0',
     tokens: {
       usdt: {
-        address: '0xBC14F348BC9667be46b35Edc9B68653d86013DC5',
+        address: '0xE935d9c9C24D02E61186c640cc01d713C876d40F',
         decimals: 6,
       },
       eth: {

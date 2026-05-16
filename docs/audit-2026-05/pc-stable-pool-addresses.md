@@ -1,6 +1,6 @@
 # Push Chain Stable Pool Config
 
-Last updated: 2026-05-14
+Last updated: 2026-05-16
 
 Confirmed Push Chain PRC-20 stable-token addresses and their WPC/stable Uniswap V3 pool addresses for testnet moveable/payable token resolution, gas sizing, and oracle reads.
 

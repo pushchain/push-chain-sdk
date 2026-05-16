@@ -238,7 +238,7 @@ describe('route-detector', () => {
             token: {
               symbol: 'USDT',
               decimals: 6,
-              address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
+              address: '0xC4230aEaFcF6b8B49a7b4e53886420f00ff71876',
               mechanism: 'approve' as const,
             },
             amount: BigInt(1000),
@@ -377,7 +377,7 @@ describe('route-detector', () => {
             token: {
               symbol: 'USDT',
               decimals: 6,
-              address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
+              address: '0xC4230aEaFcF6b8B49a7b4e53886420f00ff71876',
               mechanism: 'approve' as const,
             },
             amount: BigInt(1000),
@@ -494,7 +494,7 @@ describe('route-detector', () => {
       const chain = findTokenChain({
         symbol: 'USDT',
         decimals: 6,
-        address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
+        address: '0xC4230aEaFcF6b8B49a7b4e53886420f00ff71876',
         mechanism: 'approve',
       });
       expect(chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
