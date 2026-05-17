@@ -73,7 +73,7 @@ describe('runPreflight', () => {
     expect((events[0].response as any).warningOnly).toBe(true);
   });
 
-  it('emits 203_03 ERROR + 203_04 and throws when enforceGasCheck=true', () => {
+  it('emits 203_03 WARNING + 203_04 ERROR and throws when enforceGasCheck=true', () => {
     const { ctx, events } = makeCtx();
     expect(() =>
       runPreflight({
@@ -89,7 +89,7 @@ describe('runPreflight', () => {
 
     expect(events).toHaveLength(2);
     expect(events[0].id).toBe(PROGRESS_HOOK.SEND_TX_203_03);
-    expect(events[0].level).toBe('ERROR');
+    expect(events[0].level).toBe('WARNING');
     expect((events[0].response as any).sufficient).toBe(false);
     expect((events[0].response as any).warningOnly).toBe(false);
     expect(events[1].id).toBe(PROGRESS_HOOK.SEND_TX_203_04);

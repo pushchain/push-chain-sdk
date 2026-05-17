@@ -11,6 +11,7 @@ import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi/universalGatewayPC.evm
 import { ZERO_ADDRESS, MIGRATION_SELECTOR, MULTICALL_SELECTOR, UEA_MULTICALL_SELECTOR } from '../../constants/selectors';
 import type { MultiCall, UniversalOutboundTxRequest } from '../orchestrator.types';
 import {
+  buildExecuteMulticall,
   buildCeaMulticallPayload,
   buildSendUniversalTxToUEA,
   buildOutboundRequest,
@@ -20,6 +21,7 @@ import {
   buildOutboundApprovalAndCall,
   assertCeaFundsParkingInvariant,
 } from '../payload-builders';
+import type { MoveableToken } from '../../constants/tokens';
 
 // Use checksummed addresses (viem validates checksums)
 const ALICE = '0xabCDEF1234567890ABcDEF1234567890aBCDeF12' as `0x${string}`;
@@ -27,6 +29,12 @@ const BOB = '0x1111111111111111111111111111111111111111' as `0x${string}`;
 const TOKEN_A = '0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa' as `0x${string}`;
 const TOKEN_B = '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB' as `0x${string}`;
 const GATEWAY = '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC' as `0x${string}`;
+const NATIVE_TOKEN: MoveableToken = {
+  symbol: 'ETH',
+  decimals: 18,
+  address: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+  mechanism: 'native',
+};
 
 const MULTICALL_TUPLE_TYPE = {
   type: 'tuple[]' as const,
@@ -36,6 +44,49 @@ const MULTICALL_TUPLE_TYPE = {
     { name: 'data' as const, type: 'bytes' as const },
   ],
 };
+
+// ============================================================================
+// buildExecuteMulticall
+// ============================================================================
+describe('buildExecuteMulticall', () => {
+  it('should not emit a native value self-call when funds park PC on the UEA', () => {
+    const calls = buildExecuteMulticall({
+      execute: {
+        to: ALICE,
+        value: BigInt(20),
+        funds: {
+          amount: BigInt(1),
+          token: NATIVE_TOKEN,
+        },
+      },
+      ueaAddress: ALICE,
+    });
+
+    expect(calls).toHaveLength(0);
+  });
+
+  it('should keep native value transfers for non-self recipients', () => {
+    const calls = buildExecuteMulticall({
+      execute: {
+        to: BOB,
+        value: BigInt(20),
+        funds: {
+          amount: BigInt(1),
+          token: NATIVE_TOKEN,
+        },
+      },
+      ueaAddress: ALICE,
+    });
+
+    expect(calls).toEqual([
+      {
+        to: BOB,
+        value: BigInt(20),
+        data: '0x',
+      },
+    ]);
+  });
+});
 
 // ============================================================================
 // buildCeaMulticallPayload

@@ -25,9 +25,13 @@ import type {
 } from '../orchestrator.types';
 import type { OrchestratorContext } from './context';
 import { fireProgressHook, printLog } from './context';
-import { calculateNativeAmountForDeposit, ensureErc20Allowance } from './gas-calculator';
+import {
+  calculateNativeAmountForDeposit,
+  ensureErc20Allowance,
+  estimateNativeForDesiredDeposit,
+} from './gas-calculator';
 import { sendGatewayTxWithFallback } from './gateway-client';
-import { SUPPORTED_GATEWAY_CHAINS } from './helpers';
+import { getNativePRC20ForChain, SUPPORTED_GATEWAY_CHAINS } from './helpers';
 import { buildGatewayPayloadAndGas } from './payload-builder';
 import { getUeaStatusAndNonce, getUEANonce, computeUEAOffchain } from './uea-manager';
 import { waitForEvmConfirmationsWithCountdown, waitForSvmConfirmationsWithCountdown } from './confirmation';
@@ -131,8 +135,46 @@ async function executeFundsOnlyEvm(
   }, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2));
 
   const ueaBalanceForGas = await ctx.pushClient.getBalance(ueaAddress);
-  const nativeAmount = await calculateNativeAmountForDeposit(ctx, chain, BigInt(0), ueaBalanceForGas);
-  printLog(ctx, `sendFunds — nativeAmount: ${nativeAmount.toString()}, ueaBalanceForGas: ${ueaBalanceForGas.toString()}`);
+  const gasEstimate = execute.gasLimit || BigInt(1e7);
+  const gasPrice = await ctx.pushClient.getGasPrice();
+  const requiredGasFee = gasEstimate * gasPrice;
+  const requiredFunds = requiredGasFee + (execute.value ?? BigInt(0));
+  let nativeAmount = await calculateNativeAmountForDeposit(
+    ctx,
+    chain,
+    requiredFunds,
+    ueaBalanceForGas
+  );
+
+  // For EVM fee-locking, fixed-rate PC→USD sizing can underfund when the
+  // live WPC/native pool prices PC above the SDK's fallback price. Size the
+  // native deposit against the same Push Chain pool used by the gateway.
+  if (CHAIN_INFO[chain].vm === VM.EVM && requiredFunds > ueaBalanceForGas) {
+    const deficit = requiredFunds - ueaBalanceForGas;
+    const targetWpc = (deficit * BigInt(12)) / BigInt(10);
+    const originPrc20 = getNativePRC20ForChain(chain, ctx.pushNetwork);
+    const poolNativeAmount = await estimateNativeForDesiredDeposit(
+      ctx,
+      targetWpc,
+      originPrc20
+    );
+
+    if (poolNativeAmount > nativeAmount) {
+      printLog(
+        ctx,
+        `sendFunds — pool-based deposit sizing overrides fixed-rate estimate: fixedNative=${nativeAmount.toString()}, ` +
+          `poolNative=${poolNativeAmount.toString()}, requiredFunds=${requiredFunds.toString()}, ` +
+          `ueaBalance=${ueaBalanceForGas.toString()}`
+      );
+      nativeAmount = poolNativeAmount;
+    }
+  }
+
+  printLog(
+    ctx,
+    `sendFunds — nativeAmount: ${nativeAmount.toString()}, ueaBalanceForGas: ${ueaBalanceForGas.toString()}, ` +
+      `requiredFunds: ${requiredFunds.toString()}`
+  );
 
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_01);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_02, ueaAddress, deployed);

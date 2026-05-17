@@ -134,6 +134,13 @@ export type ExecuteParams = {
   options?: TransactionExecutionOptions;
 
   /**
+   * Optional per-call progress callback.
+   * Alias for `sendTransaction(params, { progressHook })`, kept so docs/UI
+   * examples can pass the hook inside the transaction object.
+   */
+  progressHook?: TransactionExecutionOptions['progressHook'];
+
+  /**
    * Optional: pay gas in a specific token. If not provided, use `token` (bridge token) when present; otherwise, native token.
    */
   payGasWith?: {

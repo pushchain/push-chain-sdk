@@ -134,6 +134,22 @@ describe('Orchestrator.execute — sendTransaction per-call progressHook', () =>
     expect(orchestrator.getProgressHook()).toBe(initHook);
   });
 
+  it('delivers events to the init-time hook when no per-call hook is configured', async () => {
+    const initHook = jest.fn();
+    const orchestrator = makeOrchestrator(initHook);
+
+    await orchestrator.execute({
+      to: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+      value: BigInt(1),
+    });
+
+    expect(initHook.mock.calls.map((call) => call[0].id)).toEqual([
+      PROGRESS_HOOK.SEND_TX_101,
+      PROGRESS_HOOK.SEND_TX_199_01,
+    ]);
+    expect(orchestrator.getProgressHook()).toBe(initHook);
+  });
+
   it('does not double-fire when the per-call hook is the init-time hook', async () => {
     const sharedHook = jest.fn();
     const orchestrator = makeOrchestrator(sharedHook);
@@ -170,6 +186,25 @@ describe('Orchestrator.execute — sendTransaction per-call progressHook', () =>
       PROGRESS_HOOK.SEND_TX_199_01,
     ]);
     expect(orchestrator.getProgressHook()).toBeUndefined();
+  });
+
+  it('delivers per-call events when progressHook is embedded in sendTransaction params', async () => {
+    const perCallHook = jest.fn();
+    const orchestrator = makeOrchestrator(undefined);
+
+    await orchestrator.execute({
+      to: '0x35B84d6848D16415177c64D64504663b998A6ab4',
+      value: BigInt(1),
+      progressHook: perCallHook,
+    } as any);
+
+    expect(perCallHook.mock.calls.map((call) => call[0].id)).toEqual([
+      PROGRESS_HOOK.SEND_TX_101,
+      PROGRESS_HOOK.SEND_TX_199_01,
+    ]);
+    expect(fakeResponse._setProgressHookNoReplay).toHaveBeenCalledWith(
+      perCallHook
+    );
   });
 
   it('restores the init-time hook when execution rejects', async () => {

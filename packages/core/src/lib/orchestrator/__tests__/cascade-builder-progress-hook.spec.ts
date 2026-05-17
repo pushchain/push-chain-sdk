@@ -123,6 +123,7 @@ describe('Orchestrator.createCascadedBuilder — per-call progressHook', () => {
     mockedCreateCascadedBuilder.mockReturnValue({
       send: async () => {
         observedDuringSend = ctx.progressHook;
+        fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_101, 'eip155:11155111');
         return { initialTxHash: '0xfake' };
       },
     });
@@ -132,6 +133,8 @@ describe('Orchestrator.createCascadedBuilder — per-call progressHook', () => {
     // No wrapping: it's the init-time hook itself.
     expect(observedDuringSend).toBe(originalHook);
     expect(observedDuringSend).toBe(initHook);
+    expect(initHook).toHaveBeenCalledTimes(1);
+    expect(initHook.mock.calls[0][0].id).toBe(TEST_EVENT_101.id);
     // And no `defaultEventHook` (4th arg) was passed.
     expect(mockedCreateCascadedBuilder.mock.calls[0][3]).toBeUndefined();
   });

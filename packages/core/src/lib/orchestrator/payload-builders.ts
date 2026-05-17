@@ -43,12 +43,21 @@ export function buildExecuteMulticall({
   const branch1 = !execute.data && execute.value;
   log(`buildExecuteMulticall — Branch 1 (!data && value): ${branch1} | !execute.data: ${!execute.data} | execute.value: ${execute.value?.toString() ?? 'undefined'}`);
   if (!execute.data && execute.value) {
-    multicallData.push({
-      to: execute.to,
-      value: execute.value,
-      data: '0x',
-    });
-    log(`buildExecuteMulticall — Branch 1 ENTERED: pushed native value transfer to ${execute.to}`);
+    const isValueToSelf =
+      execute.to.toLowerCase() === ueaAddress.toLowerCase();
+
+    if (isValueToSelf) {
+      log(
+        'buildExecuteMulticall — Branch 1 SKIPPED: native value targets the UEA itself; parking value via gateway deposit'
+      );
+    } else {
+      multicallData.push({
+        to: execute.to,
+        value: execute.value,
+        data: '0x',
+      });
+      log(`buildExecuteMulticall — Branch 1 ENTERED: pushed native value transfer to ${execute.to}`);
+    }
   }
 
   if (execute.funds?.amount) {

@@ -198,11 +198,13 @@ export class Orchestrator {
     params: ExecuteParams | UniversalExecuteParams,
     options?: TransactionExecutionOptions
   ): Promise<UniversalTxResponse> {
-    if (options) {
+    const inlineProgressHook = params.progressHook;
+    if (options || inlineProgressHook) {
       params = {
         ...params,
         options: {
           ...params.options,
+          ...(inlineProgressHook ? { progressHook: inlineProgressHook } : {}),
           ...options,
         },
       } as ExecuteParams | UniversalExecuteParams;

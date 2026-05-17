@@ -260,6 +260,101 @@ describe('tx.progressHook() Method (e2e)', () => {
 });
 
 // ============================================================================
+// ProgressHook registration surfaces (e2e)
+// Confirms the three public ways to register hooks:
+// 1. PushChain.initialize(..., { progressHook })
+// 2. sendTransaction({ ..., progressHook })
+// 3. executeTransactions(txs, { progressHook })
+// ============================================================================
+describe('ProgressHook registration surfaces (e2e)', () => {
+  const to = '0x35B84d6848D16415177c64D64504663b998A6ab4';
+
+  it('Initialize: init-time progressHook receives sendTransaction events', async () => {
+    const privateKey = process.env['PUSH_PRIVATE_KEY'] as Hex | undefined;
+    if (!privateKey) {
+      console.log('Skipping - PUSH_PRIVATE_KEY not set');
+      return;
+    }
+
+    const initEvents: ProgressEvent[] = [];
+    const { pushClient } = await createEvmPushClient({
+      chain: CHAIN.PUSH_TESTNET_DONUT,
+      privateKey,
+      progressHook: (event: ProgressEvent) => {
+        initEvents.push(event);
+      },
+    });
+
+    const tx = await pushClient.universal.sendTransaction({
+      to,
+      value: BigInt(100),
+    });
+    await tx.wait();
+
+    const ids = initEvents.map((event) => event.id);
+    expect(ids).toContain('SEND-TX-101');
+    expect(ids).toContain('SEND-TX-199-01');
+  }, 120_000);
+
+  it('SendTransaction: inline progressHook receives sendTransaction events', async () => {
+    const privateKey = process.env['PUSH_PRIVATE_KEY'] as Hex | undefined;
+    if (!privateKey) {
+      console.log('Skipping - PUSH_PRIVATE_KEY not set');
+      return;
+    }
+
+    const inlineEvents: ProgressEvent[] = [];
+    const { pushClient } = await createEvmPushClient({
+      chain: CHAIN.PUSH_TESTNET_DONUT,
+      privateKey,
+    });
+
+    const tx = await pushClient.universal.sendTransaction({
+      to,
+      value: BigInt(100),
+      progressHook: (event: ProgressEvent) => {
+        inlineEvents.push(event);
+      },
+    });
+    await tx.wait();
+
+    const ids = inlineEvents.map((event) => event.id);
+    expect(ids).toContain('SEND-TX-101');
+    expect(ids).toContain('SEND-TX-199-01');
+  }, 120_000);
+
+  it('ExecuteTransaction: per-call progressHook receives executeTransactions events', async () => {
+    const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex | undefined;
+    if (!privateKey) {
+      console.log('Skipping - EVM_PRIVATE_KEY not set');
+      return;
+    }
+
+    const perCallEvents: ProgressEvent[] = [];
+    const { pushClient } = await createEvmPushClient({
+      chain: CHAIN.ETHEREUM_SEPOLIA,
+      privateKey,
+    });
+
+    const prepared = await pushClient.universal.prepareTransaction({
+      to,
+      value: BigInt(100),
+    });
+    const result = await pushClient.universal.executeTransactions([prepared], {
+      progressHook: (event: ProgressEvent) => {
+        perCallEvents.push(event);
+      },
+    });
+
+    expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+
+    const ids = perCallEvents.map((event) => event.id);
+    expect(ids).toContain('SEND-TX-101');
+    expect(ids).toContain('SEND-TX-199-01');
+  }, 120_000);
+});
+
+// ============================================================================
 // executeTransactions per-call progressHook (e2e)
 // Validates that executeTransactions(txs, { progressHook }) fires the per-call
 // hook ADDITIVE with the init-time hook, with reference-dedup.

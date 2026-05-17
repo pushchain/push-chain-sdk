@@ -13,8 +13,9 @@
  *   - emits `SEND-TX-203-03` (INFO, sufficient) and lets the caller proceed;
  *   - emits `SEND-TX-203-03` (WARNING, insufficient) and proceeds when
  *     enforceGasCheck is false/omitted; or
- *   - emits `SEND-TX-203-03` (ERROR, insufficient) + `SEND-TX-203-04` and
- *     throws `InsufficientUEABalanceError` when enforceGasCheck is true.
+ *   - emits `SEND-TX-203-03` (WARNING, insufficient) + `SEND-TX-203-04`
+ *     (ERROR, terminal shortfall) and throws `InsufficientUEABalanceError`
+ *     when enforceGasCheck is true.
  *
  * The helper is intentionally not "pure" — it emits hooks and may throw.
  * Callers fetch all balances (so the helper itself does no I/O).

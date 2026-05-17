@@ -68,12 +68,9 @@ type PreflightHookExtra = {
   shortfall?: bigint;
 };
 
-function preflightLevel(
-  sufficient: boolean,
-  enforceGasCheck?: boolean
-): 'INFO' | 'WARNING' | 'ERROR' {
+function preflightLevel(sufficient: boolean): 'INFO' | 'WARNING' {
   if (sufficient) return 'INFO';
-  return enforceGasCheck === false ? 'WARNING' : 'ERROR';
+  return 'WARNING';
 }
 
 function preflightSuffix(
@@ -484,7 +481,7 @@ const RAW_HOOKS_R2: {
         warningOnly: !sufficient && enforceGasCheck === false,
         shortfall: extra?.shortfall ?? null,
       },
-      level: preflightLevel(sufficient, enforceGasCheck),
+      level: preflightLevel(sufficient),
     };
   },
   [PROGRESS_HOOK.SEND_TX_203_04]: (
@@ -774,7 +771,7 @@ const RAW_HOOKS_R3: {
         warningOnly: !sufficient && enforceGasCheck === false,
         shortfall: extra?.shortfall ?? null,
       },
-      level: preflightLevel(sufficient, enforceGasCheck),
+      level: preflightLevel(sufficient),
     };
   },
   [PROGRESS_HOOK.SEND_TX_303_05]: (
@@ -1112,7 +1109,7 @@ const RAW_HOOKS_MULTICHAIN: {
         warningOnly: !sufficient && enforceGasCheck === false,
         shortfall: extra?.shortfall ?? null,
       },
-      level: preflightLevel(sufficient, enforceGasCheck),
+      level: preflightLevel(sufficient),
     };
   },
   [PROGRESS_HOOK.SEND_TX_003_04]: (

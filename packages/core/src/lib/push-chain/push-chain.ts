@@ -95,6 +95,8 @@ export class PushChain {
      * @param options.enforceGasCheck - Defaults to false. When true, the
      *   SDK stops on pre-flight gas/balance shortfall instead of warning
      *   and proceeding.
+     * @param params.progressHook - Optional per-call progress callback.
+     *   Alias for `sendTransaction(params, { progressHook })`.
      * @param options.progressHook - Optional per-call progress callback.
      *   Additive with the init-time `progressHook` passed to `initialize`:
      *   both hooks receive every `ProgressEvent` emitted during this call.
