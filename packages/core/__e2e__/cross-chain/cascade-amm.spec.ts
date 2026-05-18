@@ -60,6 +60,8 @@ const RPC_BNB = 'https://bsc-testnet-rpc.publicnode.com';
 const SWAP_DEADLINE = BigInt(9_999_999_999);
 const COUNTER_PUSH = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
 const COUNTER_BNB = '0x7f0936bb90e7dcf3edb47199c2005e7184e44cf8';
+const COUNTER_PUSH_PAYABLE =
+  '0x70d8f7a0fF8e493fb9cbEE19Eb780E40Aa872aaf' as `0x${string}`;
 
 const ERC20_APPROVE_ABI = [
   {
@@ -87,6 +89,23 @@ const COUNTER_ABI = [
     name: 'count',
     outputs: [{ name: '', type: 'uint256' }],
     stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'countPC',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const;
+
+const COUNTER_PAYABLE_ABI = [
+  {
+    inputs: [],
+    name: 'increment',
+    outputs: [],
+    stateMutability: 'payable',
     type: 'function',
   },
   {
@@ -262,6 +281,7 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
         to: { address: SOLANA_CEA, chain: CHAIN.SOLANA_DEVNET },
         value: BigInt(0),
         data: '0x',
+        options: { enforceGasCheck: true },
         funds: {
           amount: pSolAmount,
           token: PushChain.CONSTANTS.MOVEABLE.TOKEN.PUSH_TESTNET_DONUT.pSol,
@@ -616,6 +636,235 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
     expect(req.payload).not.toBe('0x');
   });
 
+  it('keeps Route 1 self-deposit funds while using its value as the root PC seed', async () => {
+    const ctx = makeCtx();
+    const seedAmount = BigInt(250) * PC;
+    const amountIn = PushChain.utils.helpers.parseUnits('0.001', 18);
+
+    const hop0 = await buildHopDescriptor(
+      ctx,
+      {
+        to: UEA,
+        value: seedAmount,
+        data: '0x',
+        funds: {
+          amount: amountIn,
+          token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
+        },
+      },
+      TransactionRoute.UOA_TO_PUSH,
+      UEA
+    );
+    const hop1 = route1Hop('01', PETH);
+    const hop2 = route1Hop('02', WPC);
+
+    const segments = classifyIntoSegments([hop0, hop1, hop2]);
+    expect(segments.map((s) => s.type)).toEqual(['PUSH_EXECUTION']);
+
+    const executeFn = jest.fn(async (params: unknown) => ({
+      hash: `0x${'12'.repeat(32)}`,
+      params,
+    }));
+    const builder = createCascadedBuilder(
+      ctx,
+      [hop0, hop1, hop2].map(prepared),
+      {
+        executeFn,
+        waitForOutboundTxFn: jest.fn(),
+        waitForAllOutboundTxsFn: jest.fn(),
+      } as never
+    );
+
+    await builder.send();
+
+    const executeParams = executeFn.mock.calls[0][0] as {
+      value: bigint;
+      data: MultiCall[];
+      funds?: {
+        amount: bigint;
+        token?: { symbol: string; mechanism: string; address: string };
+      };
+    };
+
+    expect(executeParams.value).toBe(seedAmount);
+    expect(executeParams.funds?.amount).toBe(amountIn);
+    expect(executeParams.funds?.token?.symbol).toBe('ETH');
+    expect(executeParams.funds?.token?.mechanism).toBe('native');
+    expect(executeParams.data).toEqual([
+      { to: PETH, value: BigInt(0), data: '0x01' },
+      { to: WPC, value: BigInt(0), data: '0x02' },
+    ]);
+  });
+
+  it('keeps Route 1 funds on a leading non-self Push payload hop', async () => {
+    const ctx = makeCtx();
+    const amount = PushChain.utils.helpers.parseUnits('0.01', {
+      decimals:
+        PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.USDT.decimals,
+    });
+    const usdt = PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.USDT;
+
+    const hop0 = await buildHopDescriptor(
+      ctx,
+      {
+        to: COUNTER_PUSH as `0x${string}`,
+        value: BigInt(0),
+        data: '0xabcdef12',
+        funds: {
+          amount,
+          token: usdt,
+        },
+      },
+      TransactionRoute.UOA_TO_PUSH,
+      UEA
+    );
+    const hop1 = route1Hop('01', WPC);
+
+    const executeFn = jest.fn(async (params: unknown) => ({
+      hash: `0x${'34'.repeat(32)}`,
+      params,
+    }));
+    const builder = createCascadedBuilder(
+      ctx,
+      [hop0, hop1].map(prepared),
+      {
+        executeFn,
+        waitForOutboundTxFn: jest.fn(),
+        waitForAllOutboundTxsFn: jest.fn(),
+      } as never
+    );
+
+    await builder.send();
+
+    const executeParams = executeFn.mock.calls[0][0] as {
+      value: bigint;
+      data: MultiCall[];
+      funds?: {
+        amount: bigint;
+        token?: { symbol: string; mechanism: string; address: string };
+      };
+    };
+
+    expect(executeParams.funds?.amount).toBe(amount);
+    expect(executeParams.funds?.token?.symbol).toBe(usdt.symbol);
+    expect(executeParams.data.some((call) => call.to === COUNTER_PUSH)).toBe(
+      true
+    );
+    expect(executeParams.data.some((call) => call.to === WPC)).toBe(true);
+  });
+
+  it('sums same-token funds across leading Route 1 Push hops', async () => {
+    const ctx = makeCtx();
+    const usdt = PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.USDT;
+    const amountA = PushChain.utils.helpers.parseUnits('0.01', {
+      decimals: usdt.decimals,
+    });
+    const amountB = PushChain.utils.helpers.parseUnits('0.02', {
+      decimals: usdt.decimals,
+    });
+
+    const hop0 = await buildHopDescriptor(
+      ctx,
+      {
+        to: COUNTER_PUSH as `0x${string}`,
+        data: '0xaaaaaaaa',
+        funds: {
+          amount: amountA,
+          token: usdt,
+        },
+      },
+      TransactionRoute.UOA_TO_PUSH,
+      UEA
+    );
+    const hop1 = await buildHopDescriptor(
+      ctx,
+      {
+        to: WPC,
+        data: '0xbbbbbbbb',
+        funds: {
+          amount: amountB,
+          token: usdt,
+        },
+      },
+      TransactionRoute.UOA_TO_PUSH,
+      UEA
+    );
+
+    const executeFn = jest.fn(async (params: unknown) => ({
+      hash: `0x${'56'.repeat(32)}`,
+      params,
+    }));
+    const builder = createCascadedBuilder(
+      ctx,
+      [hop0, hop1].map(prepared),
+      {
+        executeFn,
+        waitForOutboundTxFn: jest.fn(),
+        waitForAllOutboundTxsFn: jest.fn(),
+      } as never
+    );
+
+    await builder.send();
+
+    const executeParams = executeFn.mock.calls[0][0] as {
+      funds?: {
+        amount: bigint;
+        token?: { symbol: string; mechanism: string; address: string };
+      };
+    };
+
+    expect(executeParams.funds?.amount).toBe(amountA + amountB);
+    expect(executeParams.funds?.token?.symbol).toBe(usdt.symbol);
+  });
+
+  it('rejects mixed-token funds across leading Route 1 Push hops', async () => {
+    const ctx = makeCtx();
+    const usdt = PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.USDT;
+
+    const hop0 = await buildHopDescriptor(
+      ctx,
+      {
+        to: COUNTER_PUSH as `0x${string}`,
+        data: '0xaaaaaaaa',
+        funds: {
+          amount: PushChain.utils.helpers.parseUnits('0.001', 18),
+          token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
+        },
+      },
+      TransactionRoute.UOA_TO_PUSH,
+      UEA
+    );
+    const hop1 = await buildHopDescriptor(
+      ctx,
+      {
+        to: WPC,
+        data: '0xbbbbbbbb',
+        funds: {
+          amount: PushChain.utils.helpers.parseUnits('0.01', {
+            decimals: usdt.decimals,
+          }),
+          token: usdt,
+        },
+      },
+      TransactionRoute.UOA_TO_PUSH,
+      UEA
+    );
+
+    const builder = createCascadedBuilder(
+      ctx,
+      [hop0, hop1].map(prepared),
+      {
+        executeFn: jest.fn(),
+        waitForOutboundTxFn: jest.fn(),
+        waitForAllOutboundTxsFn: jest.fn(),
+      } as never
+    );
+
+    await expect(builder.send()).rejects.toThrow(
+      /Cascade can only bridge one origin token/
+    );
+  });
+
   it('allows CEA_TO_PUSH inbound funds to satisfy a later outbound burn without an intermediate Push hop', async () => {
     const ctx = makeCtx();
     const amount = PushChain.utils.helpers.parseUnits('0.001', 18);
@@ -697,6 +946,7 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
         to: UEA,
         value: BigInt(5) * PC,
         data: '0x',
+        options: { enforceGasCheck: true },
         funds: {
           amount,
           token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
@@ -777,6 +1027,7 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
         },
         value: BigInt(0),
         data: '0x',
+        options: { enforceGasCheck: true },
         funds: {
           amount: outboundAmount,
           token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
@@ -1623,6 +1874,357 @@ describe('6-hop AMM cascade live e2e (funded Sepolia CEA)', () => {
       expect(result.success).toBe(true);
     },
     1_200_000
+  );
+});
+
+describe('Route 1 self-deposit cascade live e2e (fresh Sepolia UOA)', () => {
+  const evmKey = process.env['EVM_PRIVATE_KEY'] as `0x${string}` | undefined;
+  const runLive =
+    evmKey && process.env['RUN_LIVE_ROUTE1_SELF_DEPOSIT_CASCADE'] === '1';
+
+  (runLive ? it : it.skip)(
+    'seats >200 PC and bridges ETH to pETH before Push-side hops',
+    async () => {
+      const sepoliaProvider = new ethers.JsonRpcProvider(RPC_SEPOLIA);
+      const pushProvider = new ethers.JsonRpcProvider(RPC_PUSH);
+      const sponsor = new ethers.Wallet(evmKey!, sepoliaProvider);
+      const wallet = ethers.Wallet.createRandom();
+      const signer = wallet.connect(sepoliaProvider);
+
+      console.log(`fresh Sepolia UOA: ${wallet.address}`);
+      const fundTx = await sponsor.sendTransaction({
+        to: wallet.address,
+        value: ethers.parseEther('0.12'),
+      });
+      console.log(`funded fresh UOA: ${fundTx.hash}`);
+      await fundTx.wait(1);
+
+      const universalSigner = await PushChain.utils.signer.toUniversal(signer);
+      const client = await PushChain.initialize(universalSigner, {
+        network: PUSH_NETWORK.TESTNET_DONUT,
+        printTraces: true,
+        progressHook: (event) => {
+          console.log(`[${event.id}] ${event.title}`);
+        },
+      });
+      const uea = client.universal.account as `0x${string}`;
+      console.log(`fresh UEA: ${uea}`);
+
+      const pEth = new ethers.Contract(
+        PETH,
+        ['function balanceOf(address) view returns (uint256)'],
+        pushProvider
+      );
+      const [pcBefore, pEthBefore] = await Promise.all([
+        pushProvider.getBalance(uea),
+        pEth['balanceOf'](uea) as Promise<bigint>,
+      ]);
+      console.log(`UEA PC before: ${pcBefore.toString()}`);
+      console.log(`UEA pETH before: ${pEthBefore.toString()}`);
+
+      const seedAmount = BigInt(250) * PC;
+      const amountIn = PushChain.utils.helpers.parseUnits('0.001', 18);
+
+      const hop0 = await client.universal.prepareTransaction({
+        to: uea,
+        value: seedAmount,
+        data: '0x',
+        funds: {
+          amount: amountIn,
+          token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
+        },
+      });
+      const hop1 = await client.universal.prepareTransaction({
+        to: PETH,
+        value: BigInt(0),
+        data: PushChain.utils.helpers.encodeTxData({
+          abi: [...ERC20_APPROVE_ABI],
+          functionName: 'approve',
+          args: [SWAP_ROUTER, ethers.MaxUint256],
+        }),
+      });
+      const hop2 = await client.universal.prepareTransaction({
+        to: WPC,
+        value: BigInt(0),
+        data: PushChain.utils.helpers.encodeTxData({
+          abi: [...ERC20_APPROVE_ABI],
+          functionName: 'approve',
+          args: [SWAP_ROUTER, ethers.MaxUint256],
+        }),
+      });
+
+      const cascade = await client.universal.executeTransactions([
+        hop0,
+        hop1,
+        hop2,
+      ]);
+      console.log(`cascade initialTxHash: ${cascade.initialTxHash}`);
+      expect(cascade.hopCount).toBe(3);
+
+      const result = await cascade.wait({ timeout: 300_000 });
+      console.log(`cascade success: ${result.success}`);
+      expect(result.success).toBe(true);
+
+      const [pcAfter, pEthAfter] = await Promise.all([
+        pushProvider.getBalance(uea),
+        pEth['balanceOf'](uea) as Promise<bigint>,
+      ]);
+      const pcDelta = pcAfter - pcBefore;
+      const pEthDelta = pEthAfter - pEthBefore;
+      console.log(`UEA PC after: ${pcAfter.toString()}`);
+      console.log(`UEA PC delta: ${pcDelta.toString()}`);
+      console.log(`UEA pETH after: ${pEthAfter.toString()}`);
+      console.log(`UEA pETH delta: ${pEthDelta.toString()}`);
+
+      expect(pcDelta).toBeGreaterThan(BigInt(200) * PC);
+      expect(pEthDelta).toBe(amountIn);
+    },
+    900_000
+  );
+});
+
+describe('Route 1 funds + Push payload cascade live e2e (fresh Sepolia UOA)', () => {
+  const evmKey = process.env['EVM_PRIVATE_KEY'] as `0x${string}` | undefined;
+  const runLive =
+    evmKey && process.env['RUN_LIVE_ROUTE1_FUNDS_PAYLOAD_CASCADE'] === '1';
+
+  (runLive ? it : it.skip)(
+    'bridges ETH to pETH while executing a leading non-self Push payload hop',
+    async () => {
+      const sepoliaProvider = new ethers.JsonRpcProvider(RPC_SEPOLIA);
+      const pushProvider = new ethers.JsonRpcProvider(RPC_PUSH);
+      const sponsor = new ethers.Wallet(evmKey!, sepoliaProvider);
+      const wallet = ethers.Wallet.createRandom();
+      const signer = wallet.connect(sepoliaProvider);
+
+      console.log(`fresh Sepolia UOA: ${wallet.address}`);
+      const fundTx = await sponsor.sendTransaction({
+        to: wallet.address,
+        value: ethers.parseEther('0.05'),
+      });
+      console.log(`funded fresh UOA: ${fundTx.hash}`);
+      await fundTx.wait(1);
+
+      const universalSigner = await PushChain.utils.signer.toUniversal(signer);
+      const client = await PushChain.initialize(universalSigner, {
+        network: PUSH_NETWORK.TESTNET_DONUT,
+        printTraces: true,
+      });
+      const uea = client.universal.account as `0x${string}`;
+      console.log(`fresh UEA: ${uea}`);
+
+      const pEth = new ethers.Contract(
+        PETH,
+        ['function balanceOf(address) view returns (uint256)'],
+        pushProvider
+      );
+      const counter = new ethers.Contract(
+        COUNTER_PUSH_PAYABLE,
+        [...COUNTER_PAYABLE_ABI],
+        pushProvider
+      );
+      const [pEthBefore, counterBefore] = await Promise.all([
+        pEth['balanceOf'](uea) as Promise<bigint>,
+        counter['countPC']() as Promise<bigint>,
+      ]);
+      console.log(`UEA pETH before: ${pEthBefore.toString()}`);
+      console.log(`Counter before: ${counterBefore.toString()}`);
+
+      const amountIn = PushChain.utils.helpers.parseUnits('0.001', 18);
+      const hop0 = await client.universal.prepareTransaction({
+        to: COUNTER_PUSH_PAYABLE,
+        data: PushChain.utils.helpers.encodeTxData({
+          abi: [...COUNTER_PAYABLE_ABI],
+          functionName: 'increment',
+        }),
+        funds: {
+          amount: amountIn,
+          token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
+        },
+      });
+      const hop1 = await client.universal.prepareTransaction({
+        to: WPC,
+        value: BigInt(0),
+        data: PushChain.utils.helpers.encodeTxData({
+          abi: [...ERC20_APPROVE_ABI],
+          functionName: 'approve',
+          args: [SWAP_ROUTER, ethers.MaxUint256],
+        }),
+      });
+
+      const cascade = await client.universal.executeTransactions([hop0, hop1]);
+      console.log(`cascade initialTxHash: ${cascade.initialTxHash}`);
+      expect(cascade.hopCount).toBe(2);
+
+      const result = await cascade.wait({ timeout: 300_000 });
+      console.log(`cascade success: ${result.success}`);
+      expect(result.success).toBe(true);
+
+      const [pEthAfter, counterAfter] = await Promise.all([
+        pEth['balanceOf'](uea) as Promise<bigint>,
+        counter['countPC']() as Promise<bigint>,
+      ]);
+      const pEthDelta = pEthAfter - pEthBefore;
+      console.log(`UEA pETH after: ${pEthAfter.toString()}`);
+      console.log(`UEA pETH delta: ${pEthDelta.toString()}`);
+      console.log(`Counter after: ${counterAfter.toString()}`);
+
+      expect(pEthDelta).toBe(amountIn);
+      expect(counterAfter).toBeGreaterThan(counterBefore);
+    },
+    900_000
+  );
+});
+
+describe('Route 1 sendTransaction single-hop live e2e (fresh Sepolia UOA)', () => {
+  const evmKey = process.env['EVM_PRIVATE_KEY'] as `0x${string}` | undefined;
+  const runLive =
+    evmKey && process.env['RUN_LIVE_ROUTE1_SEND_SINGLE_HOP'] === '1';
+
+  (runLive ? it : it.skip)(
+    'self-deposits PC value and bridges ETH funds into pETH',
+    async () => {
+      const sepoliaProvider = new ethers.JsonRpcProvider(RPC_SEPOLIA);
+      const pushProvider = new ethers.JsonRpcProvider(RPC_PUSH);
+      const sponsor = new ethers.Wallet(evmKey!, sepoliaProvider);
+      const wallet = ethers.Wallet.createRandom();
+      const signer = wallet.connect(sepoliaProvider);
+
+      console.log(`fresh Sepolia UOA: ${wallet.address}`);
+      const fundTx = await sponsor.sendTransaction({
+        to: wallet.address,
+        value: ethers.parseEther('0.12'),
+      });
+      console.log(`funded fresh UOA: ${fundTx.hash}`);
+      await fundTx.wait(1);
+
+      const universalSigner = await PushChain.utils.signer.toUniversal(signer);
+      const client = await PushChain.initialize(universalSigner, {
+        network: PUSH_NETWORK.TESTNET_DONUT,
+        printTraces: true,
+      });
+      const uea = client.universal.account as `0x${string}`;
+      console.log(`fresh UEA: ${uea}`);
+
+      const pEth = new ethers.Contract(
+        PETH,
+        ['function balanceOf(address) view returns (uint256)'],
+        pushProvider
+      );
+      const [pcBefore, pEthBefore] = await Promise.all([
+        pushProvider.getBalance(uea),
+        pEth['balanceOf'](uea) as Promise<bigint>,
+      ]);
+      console.log(`UEA PC before: ${pcBefore.toString()}`);
+      console.log(`UEA pETH before: ${pEthBefore.toString()}`);
+
+      const seedAmount = BigInt(250) * PC;
+      const amountIn = PushChain.utils.helpers.parseUnits('0.001', 18);
+      const tx = await client.universal.sendTransaction({
+        to: uea,
+        value: seedAmount,
+        data: '0x',
+        funds: {
+          amount: amountIn,
+          token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
+        },
+      });
+      console.log(`sendTransaction hash: ${tx.hash}`);
+
+      const receipt = await tx.wait();
+      console.log(`receipt status: ${receipt.status}`);
+      expect(receipt.status).toBe(1);
+
+      const [pcAfter, pEthAfter] = await Promise.all([
+        pushProvider.getBalance(uea),
+        pEth['balanceOf'](uea) as Promise<bigint>,
+      ]);
+      const pcDelta = pcAfter - pcBefore;
+      const pEthDelta = pEthAfter - pEthBefore;
+      console.log(`UEA PC after: ${pcAfter.toString()}`);
+      console.log(`UEA PC delta: ${pcDelta.toString()}`);
+      console.log(`UEA pETH after: ${pEthAfter.toString()}`);
+      console.log(`UEA pETH delta: ${pEthDelta.toString()}`);
+
+      expect(pcDelta).toBeGreaterThan(BigInt(200) * PC);
+      expect(pEthDelta).toBe(amountIn);
+    },
+    900_000
+  );
+
+  (runLive ? it : it.skip)(
+    'bridges ETH funds while executing a Push payload',
+    async () => {
+      const sepoliaProvider = new ethers.JsonRpcProvider(RPC_SEPOLIA);
+      const pushProvider = new ethers.JsonRpcProvider(RPC_PUSH);
+      const sponsor = new ethers.Wallet(evmKey!, sepoliaProvider);
+      const wallet = ethers.Wallet.createRandom();
+      const signer = wallet.connect(sepoliaProvider);
+
+      console.log(`fresh Sepolia UOA: ${wallet.address}`);
+      const fundTx = await sponsor.sendTransaction({
+        to: wallet.address,
+        value: ethers.parseEther('0.05'),
+      });
+      console.log(`funded fresh UOA: ${fundTx.hash}`);
+      await fundTx.wait(1);
+
+      const universalSigner = await PushChain.utils.signer.toUniversal(signer);
+      const client = await PushChain.initialize(universalSigner, {
+        network: PUSH_NETWORK.TESTNET_DONUT,
+        printTraces: true,
+      });
+      const uea = client.universal.account as `0x${string}`;
+      console.log(`fresh UEA: ${uea}`);
+
+      const pEth = new ethers.Contract(
+        PETH,
+        ['function balanceOf(address) view returns (uint256)'],
+        pushProvider
+      );
+      const counter = new ethers.Contract(
+        COUNTER_PUSH_PAYABLE,
+        [...COUNTER_PAYABLE_ABI],
+        pushProvider
+      );
+      const [pEthBefore, counterBefore] = await Promise.all([
+        pEth['balanceOf'](uea) as Promise<bigint>,
+        counter['countPC']() as Promise<bigint>,
+      ]);
+      console.log(`UEA pETH before: ${pEthBefore.toString()}`);
+      console.log(`Counter before: ${counterBefore.toString()}`);
+
+      const amountIn = PushChain.utils.helpers.parseUnits('0.001', 18);
+      const tx = await client.universal.sendTransaction({
+        to: COUNTER_PUSH_PAYABLE,
+        data: PushChain.utils.helpers.encodeTxData({
+          abi: [...COUNTER_PAYABLE_ABI],
+          functionName: 'increment',
+        }),
+        funds: {
+          amount: amountIn,
+          token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH,
+        },
+      });
+      console.log(`sendTransaction hash: ${tx.hash}`);
+
+      const receipt = await tx.wait();
+      console.log(`receipt status: ${receipt.status}`);
+      expect(receipt.status).toBe(1);
+
+      const [pEthAfter, counterAfter] = await Promise.all([
+        pEth['balanceOf'](uea) as Promise<bigint>,
+        counter['countPC']() as Promise<bigint>,
+      ]);
+      const pEthDelta = pEthAfter - pEthBefore;
+      console.log(`UEA pETH after: ${pEthAfter.toString()}`);
+      console.log(`UEA pETH delta: ${pEthDelta.toString()}`);
+      console.log(`Counter after: ${counterAfter.toString()}`);
+
+      expect(pEthDelta).toBe(amountIn);
+      expect(counterAfter).toBeGreaterThan(counterBefore);
+    },
+    900_000
   );
 });
 

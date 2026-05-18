@@ -254,7 +254,11 @@ export async function buildHopDescriptor(
     case TransactionRoute.UOA_TO_PUSH: {
       // Route 1: Build Push Chain multicalls
       const seedAmount = params.value ?? BigInt(0);
-      if (isValueOnlyNativeSeedToOwnUea(params, ueaAddress)) {
+      if (
+        isValueOnlyNativeSeedToOwnUea(params, ueaAddress, {
+          allowFunds: true,
+        })
+      ) {
         return {
           ...baseDescriptor,
           pushMulticalls: [],
@@ -898,15 +902,58 @@ function sumMulticallNativeValue(multicalls?: MultiCall[]): bigint {
 
 function isValueOnlyNativeSeedToOwnUea(
   params: UniversalExecuteParams,
-  ueaAddress: `0x${string}`
+  ueaAddress: `0x${string}`,
+  options?: { allowFunds?: boolean }
 ): boolean {
   return (
     (params.value ?? BigInt(0)) > BigInt(0) &&
-    !params.funds?.amount &&
+    (options?.allowFunds === true || !params.funds?.amount) &&
     isEmptyPayloadData(params.data) &&
     typeof params.to === 'string' &&
     params.to.toLowerCase() === ueaAddress.toLowerCase()
   );
+}
+
+function getRootFundsDeposit(hops: HopDescriptor[]): ExecuteParams['funds'] | undefined {
+  let rootFunds: ExecuteParams['funds'] | undefined;
+
+  for (const hop of hops) {
+    // Only the leading Push execution segment is submitted through the root
+    // source-chain gateway tx. Later UOA_TO_PUSH hops may be nested inside a
+    // Route 3 child inbound and must not attach origin-chain funds to root.
+    if (hop.route !== 'UOA_TO_PUSH') break;
+
+    const funds = hop.params.funds;
+    if (!funds?.amount || funds.amount <= BigInt(0)) continue;
+
+    if (!rootFunds) {
+      rootFunds = { ...funds };
+      continue;
+    }
+
+    const currentToken = rootFunds.token;
+    const nextToken = funds.token;
+    const sameToken =
+      currentToken === nextToken ||
+      (!!currentToken &&
+        !!nextToken &&
+        currentToken.address.toLowerCase() === nextToken.address.toLowerCase() &&
+        currentToken.symbol === nextToken.symbol &&
+        currentToken.mechanism === nextToken.mechanism);
+
+    if (!sameToken) {
+      throw new Error(
+        'Cascade can only bridge one origin token in root Push execution hops. Split mixed-token deposits into separate transactions.'
+      );
+    }
+
+    rootFunds = {
+      ...rootFunds,
+      amount: rootFunds.amount + funds.amount,
+    };
+  }
+
+  return rootFunds;
 }
 
 function isNativeSeedOnlyHop(hop: HopDescriptor | undefined): boolean {
@@ -1949,6 +1996,10 @@ export function createCascadedBuilder(
         value: cascadeRequiredNativeValue,
         data: composedMulticalls,
       };
+      const rootFundsDeposit = getRootFundsDeposit(hops);
+      if (rootFundsDeposit) {
+        executeParams.funds = rootFundsDeposit;
+      }
 
       const response = await withMultihopRootProgressMapping(ctx, () =>
         callbacks.executeFn(executeParams)

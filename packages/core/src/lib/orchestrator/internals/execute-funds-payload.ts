@@ -29,10 +29,11 @@ import type {
   UniversalTxResponse,
 } from '../orchestrator.types';
 import type { OrchestratorContext } from './context';
-import { fireProgressHook } from './context';
+import { fireProgressHook, printLog } from './context';
 import {
   ensureErc20Allowance,
   calculateGasAmountFromAmountOutMinETH,
+  estimateNativeForDesiredDeposit,
 } from './gas-calculator';
 import {
   sendGatewayTxWithFallback,
@@ -57,6 +58,7 @@ import { encodeUniversalPayload } from './signing';
 import type { UniversalPayload } from '../../generated/v1/tx';
 import { quoteExactOutput } from './quote';
 import { normalizePcInsufficientFundsError } from '../../formatters';
+import { getNativePRC20ForChain } from './helpers';
 
 export async function executeFundsWithPayload(
   ctx: OrchestratorContext,
@@ -167,6 +169,35 @@ export async function executeFundsWithPayload(
 
   // Apply sizer floor: Case A pads to $1, Cases B/C pass-through.
   if (depositUsd < r1Sizing.paddedDepositUsd) depositUsd = r1Sizing.paddedDepositUsd;
+
+  // Match funds-only and standard fee-lock sizing: fixed PC→USD conversion can
+  // underfund large PC deposits when the live pETH/WPC pool has meaningful
+  // slippage. Quote the native amount required for the target WPC output and
+  // raise the USD deposit before converting back to source-chain native value.
+  if (CHAIN_INFO[chain].vm === VM.EVM && requiredFunds > ueaBalance) {
+    const deficit = requiredFunds - ueaBalance;
+    const targetWpc = (deficit * BigInt(12)) / BigInt(10);
+    const originPrc20 = getNativePRC20ForChain(chain, ctx.pushNetwork);
+    const poolNativeAmount = await estimateNativeForDesiredDeposit(
+      ctx,
+      targetWpc,
+      originPrc20
+    );
+
+    if (poolNativeAmount > BigInt(0)) {
+      const poolBasedUsd =
+        (poolNativeAmount * nativeTokenUsdPrice) / oneNativeUnit;
+      if (poolBasedUsd > depositUsd) {
+        printLog(
+          ctx,
+          `sendFundsWithPayload — pool-based deposit sizing overrides fixed-rate estimate: ` +
+            `fixedUsd=${depositUsd.toString()}, poolBasedUsd=${poolBasedUsd.toString()}, ` +
+            `requiredFunds=${requiredFunds.toString()}, ueaBalance=${ueaBalance.toString()}`
+        );
+        depositUsd = poolBasedUsd;
+      }
+    }
+  }
 
   // If SVM, clamp depositUsd to on-chain Config caps
   if (CHAIN_INFO[chain].vm === VM.SVM) {
