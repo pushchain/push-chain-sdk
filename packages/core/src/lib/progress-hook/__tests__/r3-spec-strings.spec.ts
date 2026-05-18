@@ -247,47 +247,47 @@ describe('Route 3 spec strings (301–399)', () => {
     expect(ev.level).toBe('ERROR');
   });
 
-  it('399-03 [inbound] — Push Chain Inbound Timeout', () => {
+  it('399-03 [inbound] — Push Chain Inbound Tx Timeout', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](
       sourceChain,
       300_000,
       'inbound'
     );
-    expect(ev.title).toBe('Push Chain Inbound Timeout');
+    expect(ev.title).toBe('Push Chain Inbound Tx Timeout');
     expect(ev.message).toBe(`Timed out waiting for inbound from ${sourceChain}`);
     expect(ev.level).toBe('ERROR');
   });
 
-  it('399-03 [outbound] — Syncing State with {Source Chain} Timeout', () => {
+  it('399-03 [outbound] — Push Chain Inbound Tx Timeout', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](
       sourceChain,
       30_000,
       'outbound'
     );
-    expect(ev.title).toBe(`Syncing State with ${chainName} Timeout`);
+    expect(ev.title).toBe('Push Chain Inbound Tx Timeout');
     expect(ev.message).toBe(`Timed out waiting for ${chainName} relay`);
     expect(ev.level).toBe('ERROR');
   });
 
-  it('399-03 [push] — Push Chain Tx Timeout', () => {
+  it('399-03 [push] — Push Chain Inbound Tx Timeout', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](
       sourceChain,
       60_000,
       'push'
     );
-    expect(ev.title).toBe('Push Chain Tx Timeout');
+    expect(ev.title).toBe('Push Chain Inbound Tx Timeout');
     expect(ev.message).toBe('Timed out waiting for Push Chain tx');
     expect(ev.level).toBe('ERROR');
   });
 
-  it('399-99 — {Source Chain} Tx Completed (multihop intermediate)', () => {
+  it('399-99 — Intermediate {Source Chain} to Push Tx Completed', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_99](
       sourceChain,
       '0xpushtx'
     );
-    expect(ev.title).toBe(`${chainName} Tx Completed`);
+    expect(ev.title).toBe(`Intermediate ${chainName} to Push Tx Completed`);
     expect(ev.message).toBe(
-      `Intermediate ${chainName} tx confirmed: 0xpushtx, progressing to next phase`
+      `Intermediate ${chainName} to Push tx confirmed: 0xpushtx, progressing to next phase`
     );
     expect(ev.level).toBe('INFO');
   });

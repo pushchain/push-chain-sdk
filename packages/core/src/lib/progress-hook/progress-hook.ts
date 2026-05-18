@@ -84,6 +84,9 @@ function preflightSuffix(
     : `INSUFFICIENT (${pathTag})`;
 }
 
+const displayPathTag = (pathTag: string): string =>
+  pathTag === 'CASCADE' ? 'MULTICHAIN' : pathTag;
+
 /**
  * Classify a sign-time error as either a true wallet user-decline
  * (viem `UserRejectedRequestError`, ethers `ACTION_REJECTED`, EIP-1193 4001,
@@ -394,14 +397,14 @@ const RAW_HOOKS_R1: {
     elapsedMs: number
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_199_03,
-    title: `Syncing State with ${friendlyChain(targetChain)} Timeout`,
-    message: `Timed out waiting for UGPC relay to ${targetChain}`,
+    title: 'Syncing State with Push Chain Timeout',
+    message: 'Timed out waiting for relay to Push Chain',
     response: { error: 'relay timeout', chain: targetChain, elapsedMs },
     level: 'ERROR',
   }),
   [PROGRESS_HOOK.SEND_TX_199_99]: (txHash: string) => ({
     id: PROGRESS_HOOK.SEND_TX_199_99,
-    title: 'Push Chain Tx Completed',
+    title: 'Intermediate Push Chain Tx Completed',
     message: `Intermediate Push Chain tx confirmed: ${txHash}, progressing to next phase`,
     response: { txHash },
     level: 'INFO',
@@ -481,7 +484,7 @@ const RAW_HOOKS_R2: {
     const enforceGasCheck = extra?.enforceGasCheck;
     return {
       id: PROGRESS_HOOK.SEND_TX_203_03,
-      title: 'Pre-flight Balance Check',
+      title: 'Checking Balance Requirements',
       message:
         `UEA balance: ${availableStr}; required: ${requiredStr}; ` +
         preflightSuffix(sufficient, pathTag, enforceGasCheck),
@@ -648,7 +651,7 @@ const RAW_HOOKS_R2: {
     txHash: string
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_299_99,
-    title: `${friendlyChain(targetChain)} Tx Completed`,
+    title: `Intermediate ${friendlyChain(targetChain)} Tx Completed`,
     message: `Intermediate ${friendlyChain(targetChain)} tx confirmed: ${txHash}, progressing to next phase`,
     response: { chain: targetChain, txHash },
     level: 'INFO',
@@ -764,7 +767,7 @@ const RAW_HOOKS_R3: {
     const enforceGasCheck = extra?.enforceGasCheck;
     return {
       id: PROGRESS_HOOK.SEND_TX_303_04,
-      title: 'Pre-flight Balance Check',
+      title: 'Checking Balance Requirements',
       message:
         `UEA balance: ${availableStr}; required: ${requiredStr}; ` +
         preflightSuffix(sufficient, pathTag, enforceGasCheck),
@@ -973,12 +976,7 @@ const RAW_HOOKS_R3: {
     phase: 'outbound' | 'inbound' | 'push' = 'inbound'
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_399_03,
-    title:
-      phase === 'outbound'
-        ? `Syncing State with ${friendlyChain(sourceChain)} Timeout`
-        : phase === 'push'
-        ? 'Push Chain Tx Timeout'
-        : 'Push Chain Inbound Timeout',
+    title: 'Push Chain Inbound Tx Timeout',
     message:
       phase === 'outbound'
         ? `Timed out waiting for ${friendlyChain(sourceChain)} relay`
@@ -1003,8 +1001,8 @@ const RAW_HOOKS_R3: {
     txHash: string
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_399_99,
-    title: `${friendlyChain(sourceChain)} Tx Completed`,
-    message: `Intermediate ${friendlyChain(sourceChain)} tx confirmed: ${txHash}, progressing to next phase`,
+    title: `Intermediate ${friendlyChain(sourceChain)} to Push Tx Completed`,
+    message: `Intermediate ${friendlyChain(sourceChain)} to Push tx confirmed: ${txHash}, progressing to next phase`,
     response: { chain: sourceChain, txHash },
     level: 'INFO',
   }),
@@ -1110,12 +1108,13 @@ const RAW_HOOKS_MULTICHAIN: {
     const availableStr = kind === 'PRC20' ? `${available} units` : formatPc(available, 4);
     const requiredStr = kind === 'PRC20' ? `${required} units` : formatPc(required, 4);
     const enforceGasCheck = extra?.enforceGasCheck;
+    const visiblePathTag = displayPathTag(pathTag);
     return {
       id: PROGRESS_HOOK.SEND_TX_003_03,
-      title: 'Cascade Pre-flight Balance Check',
+      title: 'Checking Balance Requirements',
       message:
         `UEA balance: ${availableStr}; required: ${requiredStr}; ` +
-        preflightSuffix(sufficient, pathTag, enforceGasCheck),
+        preflightSuffix(sufficient, visiblePathTag, enforceGasCheck),
       response: {
         required,
         available,
@@ -1142,14 +1141,15 @@ const RAW_HOOKS_MULTICHAIN: {
   ) => {
     const kind = extra?.kind ?? 'NATIVE';
     const shortfallStr = kind === 'PRC20' ? `${shortfall} units` : formatPc(shortfall, 4);
+    const visiblePathTag = displayPathTag(pathTag);
     const remediation =
       kind === 'PRC20'
         ? `Bridge the burn token (${extra?.burnToken ?? 'PRC-20'}) to UEA ${ueaAddress} before retrying.`
         : `Bridge >=${shortfallStr} to UEA ${ueaAddress} before retrying.`;
     return {
       id: PROGRESS_HOOK.SEND_TX_003_04,
-      title: 'Cascade Insufficient UEA Balance',
-      message: `Shortfall ${shortfallStr} on ${pathTag}. ${remediation}`,
+      title: 'Multichain Insufficient UEA Balance',
+      message: `Shortfall ${shortfallStr} on ${visiblePathTag}. ${remediation}`,
       response: {
         required,
         available,
@@ -1170,10 +1170,10 @@ const RAW_HOOKS_MULTICHAIN: {
     pathTag: string
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_003_05,
-    title: 'Cascade SVM Native-Value Warn Threshold',
+    title: 'Multichain SVM Native-Value Warn Threshold',
     message:
       `Buffered pool quote ${formatPc(quoted, 4)} exceeds warn threshold ${formatPc(threshold, 4)} ` +
-      `for ${gasToken} (${pathTag}). Pool may be skewed or quote is unusually large. ` +
+      `for ${gasToken} (${displayPathTag(pathTag)}). Pool may be skewed or quote is unusually large. ` +
       `No action taken — pre-flight will determine if balance covers it.`,
     response: { quoted, threshold, gasToken, pathTag },
     level: 'INFO',
@@ -1192,15 +1192,15 @@ const RAW_HOOKS_MULTICHAIN: {
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_999_02,
     title: 'Multichain Transactions Failed',
-    message: `Cascade failed at hop ${failedAt} of ${total}: ${errorMessage}`,
+    message: `Multichain failed at hop ${failedAt} of ${total}: ${errorMessage}`,
     response: { failedAt, total, error: errorMessage },
     level: 'ERROR',
   }),
   [PROGRESS_HOOK.SEND_TX_999_03]: (failedAt: number, total: number) => ({
     id: PROGRESS_HOOK.SEND_TX_999_03,
     title: 'Multichain Transactions Timeout',
-    message: `Cascade timed out at hop ${failedAt} of ${total}`,
-    response: { failedAt, total, error: 'cascade timeout' },
+    message: `Multichain timed out at hop ${failedAt} of ${total}`,
+    response: { failedAt, total, error: 'multichain timeout' },
     level: 'ERROR',
   }),
 };

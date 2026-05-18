@@ -209,19 +209,19 @@ describe('Route 1 spec strings (101–199)', () => {
     expect(ev.level).toBe('ERROR');
   });
 
-  it('199-03 — Syncing State with {ChainName} Timeout', () => {
+  it('199-03 — Syncing State with Push Chain Timeout', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_03](
       originChain,
       60_000
     );
-    expect(ev.title).toBe(`Syncing State with ${chainName} Timeout`);
-    expect(ev.message).toBe(`Timed out waiting for UGPC relay to ${originChain}`);
+    expect(ev.title).toBe('Syncing State with Push Chain Timeout');
+    expect(ev.message).toBe('Timed out waiting for relay to Push Chain');
     expect(ev.level).toBe('ERROR');
   });
 
-  it('199-99 — Push Chain Tx Completed (multihop intermediate)', () => {
+  it('199-99 — Intermediate Push Chain Tx Completed', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_99](txHash);
-    expect(ev.title).toBe('Push Chain Tx Completed');
+    expect(ev.title).toBe('Intermediate Push Chain Tx Completed');
     expect(ev.message).toBe(
       `Intermediate Push Chain tx confirmed: ${txHash}, progressing to next phase`
     );

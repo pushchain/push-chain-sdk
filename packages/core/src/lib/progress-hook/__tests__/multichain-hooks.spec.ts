@@ -44,7 +44,23 @@ describe('multichain (multi-hop) progress hooks', () => {
     expect(event.message).toMatch(/proceeding to tx 2/);
   });
 
-  it('SEND_TX_999_01 emits cascade success', () => {
+  it('SEND_TX_003_03 uses Multichain user-facing text', () => {
+    const event = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_003_03](
+      BigInt(2),
+      BigInt(1),
+      false,
+      '0x1111111111111111111111111111111111111111',
+      'CASCADE'
+    );
+
+    expect(event.id).toBe('SEND-TX-003-03');
+    expect(event.title).toBe('Checking Balance Requirements');
+    expect(event.message).toContain('INSUFFICIENT (MULTICHAIN)');
+    expect(event.message).not.toContain('CASCADE');
+    expect(event.message).not.toContain('Cascade');
+  });
+
+  it('SEND_TX_999_01 emits multichain success', () => {
     const event = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_01](3);
     expect(event.id).toBe('SEND-TX-999-01');
     expect(event.level).toBe('SUCCESS');
@@ -59,7 +75,7 @@ describe('multichain (multi-hop) progress hooks', () => {
     );
     expect(event.id).toBe('SEND-TX-999-02');
     expect(event.level).toBe('ERROR');
-    expect(event.message).toBe('Cascade failed at hop 2 of 3: cea revert');
+    expect(event.message).toBe('Multichain failed at hop 2 of 3: cea revert');
     expect(event.response).toMatchObject({
       failedAt: 2,
       total: 3,
@@ -71,6 +87,11 @@ describe('multichain (multi-hop) progress hooks', () => {
     const event = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_03](2, 3);
     expect(event.id).toBe('SEND-TX-999-03');
     expect(event.level).toBe('ERROR');
-    expect(event.message).toBe('Cascade timed out at hop 2 of 3');
+    expect(event.message).toBe('Multichain timed out at hop 2 of 3');
+    expect(event.response).toMatchObject({
+      failedAt: 2,
+      total: 3,
+      error: 'multichain timeout',
+    });
   });
 });

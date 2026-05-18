@@ -158,9 +158,9 @@ describe('Route 2 spec strings (201–299)', () => {
     expect(ev.level).toBe('ERROR');
   });
 
-  it('299-99 — {ChainName} Tx Completed (intermediate)', () => {
+  it('299-99 — Intermediate {ChainName} Tx Completed', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_99](targetChain, '0xpushtx');
-    expect(ev.title).toBe(`${chainName} Tx Completed`);
+    expect(ev.title).toBe(`Intermediate ${chainName} Tx Completed`);
     expect(ev.message).toBe(
       `Intermediate ${chainName} tx confirmed: 0xpushtx, progressing to next phase`
     );
