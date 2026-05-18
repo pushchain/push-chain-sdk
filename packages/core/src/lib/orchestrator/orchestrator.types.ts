@@ -787,6 +787,8 @@ export interface CascadedTxResponse {
   hops: CascadeHopInfo[];
   /** Total number of hops in the cascade */
   hopCount: number;
+  /** Final tx hash resolved by waitForAll()/wait(), when available */
+  finalTxHash?: string;
   /** Wait for ALL hops to complete across all chains */
   waitForAll: (opts?: CascadeTrackOptions) => Promise<CascadeCompletionResult>;
   /** Convenience alias for waitForAll() */
@@ -874,6 +876,10 @@ export interface CascadeCompletionResult {
   success: boolean;
   /** Final state of all hops */
   hops: CascadeHopInfo[];
+  /** Final tx hash for the last confirmed hop, when available */
+  finalTxHash?: string;
+  /** Original cascaded response object for consumers that need the full context */
+  finalTxResponse?: CascadedTxResponse;
   /** Index of first failed hop (if any) */
   failedAt?: number;
 }

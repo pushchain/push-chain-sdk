@@ -7,8 +7,8 @@
  * change, update both this test and the spec image together — never just
  * the code.
  *
- * Hooks not in the R1 spec image (106-07-01/02/03 sizer hooks, 199-99-99
- * shared intermediate marker) are intentionally excluded.
+ * Hooks not in the R1 spec image (106-07-01/02/03 sizer hooks) are
+ * intentionally excluded.
  */
 import PROGRESS_HOOKS from '../progress-hook';
 import { PROGRESS_HOOK } from '../progress-hook.types';
@@ -207,5 +207,24 @@ describe('Route 1 spec strings (101–199)', () => {
       'Push Chain transaction failed for gateway tx: 0xabc: ExecutionReverted'
     );
     expect(ev.level).toBe('ERROR');
+  });
+
+  it('199-03 — Syncing State with {ChainName} Timeout', () => {
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_03](
+      originChain,
+      60_000
+    );
+    expect(ev.title).toBe(`Syncing State with ${chainName} Timeout`);
+    expect(ev.message).toBe(`Timed out waiting for UGPC relay to ${originChain}`);
+    expect(ev.level).toBe('ERROR');
+  });
+
+  it('199-99 — Push Chain Tx Completed (multihop intermediate)', () => {
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_99](txHash);
+    expect(ev.title).toBe('Push Chain Tx Completed');
+    expect(ev.message).toBe(
+      `Intermediate Push Chain tx confirmed: ${txHash}, progressing to next phase`
+    );
+    expect(ev.level).toBe('INFO');
   });
 });

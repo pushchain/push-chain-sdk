@@ -84,9 +84,8 @@ export function printLog(ctx: OrchestratorContext, msg: string): void {
  * Exceptions kept in the stream regardless of route:
  *   - All UEA migration hooks.
  *
- * Separately, the intermediate Push-success markers 199-99-99 (R3) and
- * 299-99 (R2) are suppressed at `fanOut` in response-builder.ts — they're
- * internal transition signals, not consumer-facing spec events.
+ * Multihop-only intermediate success markers (199-99 / 299-99 / 399-99)
+ * are emitted by cascade tracking, not by the single-route wait path.
  */
 const R1_SUPPRESSED_IN_NON_R1: ReadonlySet<string> = new Set([
   PROGRESS_HOOK.SEND_TX_101,

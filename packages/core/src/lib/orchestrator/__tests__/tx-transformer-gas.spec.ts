@@ -416,7 +416,7 @@ describe('tx-transformer', () => {
       expect(lastEvent.level).toBe('ERROR');
     });
 
-    it('R2 reconstruction: universalStatus=OUTBOUND_FAILED without pcFailed emits 299-99 intermediate (not 299-02)', () => {
+    it('R2 reconstruction: universalStatus=OUTBOUND_FAILED without pcFailed does not emit terminal failure', () => {
       const txResponse = makeUniversalTxResponse({
         route: TransactionRoute.UOA_TO_CEA,
       });
@@ -428,7 +428,6 @@ describe('tx-transformer', () => {
       const events = reconstructProgressEvents(txResponse, universalTxData);
       const ids = events.map((e) => e.id);
 
-      expect(ids).toContain('SEND-TX-299-99');
       expect(ids).not.toContain('SEND-TX-299-02');
     });
 
@@ -448,7 +447,7 @@ describe('tx-transformer', () => {
       expect(lastEvent.title).toBe('Push Chain Tx Failed');
     });
 
-    it('R3 reconstruction: universalStatus=OUTBOUND_FAILED without pcFailed emits 199-99-99 intermediate (not 399-02)', () => {
+    it('R3 reconstruction: universalStatus=OUTBOUND_FAILED without pcFailed does not emit terminal failure', () => {
       const txResponse = makeUniversalTxResponse({
         route: TransactionRoute.CEA_TO_PUSH,
       });
@@ -460,7 +459,6 @@ describe('tx-transformer', () => {
       const events = reconstructProgressEvents(txResponse, universalTxData);
       const ids = events.map((e) => e.id);
 
-      expect(ids).toContain('SEND-TX-199-99-99');
       expect(ids).not.toContain('SEND-TX-399-02');
     });
   });

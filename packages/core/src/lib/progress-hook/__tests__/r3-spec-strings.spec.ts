@@ -9,8 +9,7 @@
  * change, update both this test and the spec image together — never
  * just the code.
  *
- * Also covers the 199-99-99 intermediate marker (internally consumed,
- * suppressed at fanOut before consumer dispatch) and both 303-03-XX
+ * Also covers the 399-99 multihop intermediate marker and both 303-03-XX
  * sizer hooks (emitted in live execute only).
  */
 import PROGRESS_HOOKS from '../progress-hook';
@@ -281,11 +280,14 @@ describe('Route 3 spec strings (301–399)', () => {
     expect(ev.level).toBe('ERROR');
   });
 
-  it('199-99-99 — Push Chain Tx Completed (intermediate, internal)', () => {
-    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_99_99]('0xpushtx');
-    expect(ev.title).toBe('Push Chain Tx Completed');
+  it('399-99 — {Source Chain} Tx Completed (multihop intermediate)', () => {
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_99](
+      sourceChain,
+      '0xpushtx'
+    );
+    expect(ev.title).toBe(`${chainName} Tx Completed`);
     expect(ev.message).toBe(
-      'Intermediate Push Chain tx confirmed: 0xpushtx, progressing to next phase'
+      `Intermediate ${chainName} tx confirmed: 0xpushtx, progressing to next phase`
     );
     expect(ev.level).toBe('INFO');
   });

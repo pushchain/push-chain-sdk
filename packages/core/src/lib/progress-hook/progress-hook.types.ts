@@ -54,7 +54,8 @@ export enum PROGRESS_HOOK {
   SEND_TX_107 = 'SEND-TX-107',
   SEND_TX_199_01 = 'SEND-TX-199-01', // R1 terminal Push success
   SEND_TX_199_02 = 'SEND-TX-199-02', // R1 terminal Push failure
-  SEND_TX_199_99_99 = 'SEND-TX-199-99-99', // R3 intermediate Push success
+  SEND_TX_199_03 = 'SEND-TX-199-03',
+  SEND_TX_199_99 = 'SEND-TX-199-99', // R1 multihop intermediate Push success
 
   // Route 2: UEA → UGPC → CEA on target chain (201–299)
   SEND_TX_201 = 'SEND-TX-201',
@@ -112,6 +113,7 @@ export enum PROGRESS_HOOK {
   SEND_TX_399_01 = 'SEND-TX-399-01',
   SEND_TX_399_02 = 'SEND-TX-399-02',
   SEND_TX_399_03 = 'SEND-TX-399-03',
+  SEND_TX_399_99 = 'SEND-TX-399-99', // R3 multihop intermediate round-trip success
 
   // Multichain (multi-hop) cascade markers
   SEND_TX_001 = 'SEND-TX-001',
@@ -167,7 +169,9 @@ export type PROGRESS_HOOK_R1 =
   | PROGRESS_HOOK.SEND_TX_106_06
   | PROGRESS_HOOK.SEND_TX_107
   | PROGRESS_HOOK.SEND_TX_199_01
-  | PROGRESS_HOOK.SEND_TX_199_02;
+  | PROGRESS_HOOK.SEND_TX_199_02
+  | PROGRESS_HOOK.SEND_TX_199_03
+  | PROGRESS_HOOK.SEND_TX_199_99;
 
 export type PROGRESS_HOOK_R2 =
   | PROGRESS_HOOK.SEND_TX_201
@@ -197,7 +201,6 @@ export type PROGRESS_HOOK_R2 =
 // The shared runPreflight helper switches IDs based on `pathTag` so each
 // stream stays self-consistent within its bucket convention.
 export type PROGRESS_HOOK_R3 =
-  | PROGRESS_HOOK.SEND_TX_199_99_99
   | PROGRESS_HOOK.SEND_TX_301
   | PROGRESS_HOOK.SEND_TX_302_01
   | PROGRESS_HOOK.SEND_TX_302_02
@@ -221,7 +224,8 @@ export type PROGRESS_HOOK_R3 =
   | PROGRESS_HOOK.SEND_TX_310_02
   | PROGRESS_HOOK.SEND_TX_399_01
   | PROGRESS_HOOK.SEND_TX_399_02
-  | PROGRESS_HOOK.SEND_TX_399_03;
+  | PROGRESS_HOOK.SEND_TX_399_03
+  | PROGRESS_HOOK.SEND_TX_399_99;
 
 export type PROGRESS_HOOK_MULTICHAIN =
   | PROGRESS_HOOK.SEND_TX_001

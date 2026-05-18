@@ -234,15 +234,6 @@ function reconstructR2(
 
   if (isFailed) {
     events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_02](errorMsg));
-  } else {
-    // Push Chain success is intermediate for R2 — the wait() outbound poll
-    // appends the real terminal (299-01/02/03) once the external leg resolves.
-    events.push(
-      PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_99](
-        targetChain,
-        universalTxResponse.hash
-      )
-    );
   }
 
   return events;
@@ -295,12 +286,6 @@ function reconstructR3(
     // "Push Chain Tx Failed" rather than the inbound copy.
     events.push(
       PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](errorMsg, 'push')
-    );
-  } else {
-    // Push Chain success is intermediate for R3 — wait() drives the source-chain
-    // CEA poll (309-xx) and the inbound-to-Push poll (310-xx / 399-xx) on top.
-    events.push(
-      PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_99_99](universalTxResponse.hash)
     );
   }
 
@@ -483,6 +468,14 @@ function reconstructMultichain(
     }
 
     if (!legFailed) {
+      if (hopNum < hopCount) {
+        const txHash = ob.observedTx?.txHash || legResponse.hash;
+        events.push(
+          isR3Leg
+            ? PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_99](toChain, txHash)
+            : PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_99](toChain, txHash)
+        );
+      }
       events.push(
         PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_002_99_99](hopNum, hopCount)
       );

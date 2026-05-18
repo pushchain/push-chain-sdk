@@ -389,6 +389,23 @@ const RAW_HOOKS_R1: {
       level: 'ERROR',
     };
   },
+  [PROGRESS_HOOK.SEND_TX_199_03]: (
+    targetChain: string | CHAIN,
+    elapsedMs: number
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_199_03,
+    title: `Syncing State with ${friendlyChain(targetChain)} Timeout`,
+    message: `Timed out waiting for UGPC relay to ${targetChain}`,
+    response: { error: 'relay timeout', chain: targetChain, elapsedMs },
+    level: 'ERROR',
+  }),
+  [PROGRESS_HOOK.SEND_TX_199_99]: (txHash: string) => ({
+    id: PROGRESS_HOOK.SEND_TX_199_99,
+    title: 'Push Chain Tx Completed',
+    message: `Intermediate Push Chain tx confirmed: ${txHash}, progressing to next phase`,
+    response: { txHash },
+    level: 'INFO',
+  }),
 };
 
 // =============================================================================
@@ -645,13 +662,6 @@ const RAW_HOOKS_R2: {
 const RAW_HOOKS_R3: {
   [K in PROGRESS_HOOK_R3]: ProgressEventFunctionWithoutTimestamp;
 } = {
-  [PROGRESS_HOOK.SEND_TX_199_99_99]: (txHash: string) => ({
-    id: PROGRESS_HOOK.SEND_TX_199_99_99,
-    title: 'Push Chain Tx Completed',
-    message: `Intermediate Push Chain tx confirmed: ${txHash}, progressing to next phase`,
-    response: { txHash },
-    level: 'INFO',
-  }),
   [PROGRESS_HOOK.SEND_TX_301]: (
     sourceChain: string | CHAIN,
     ceaAddress: string
@@ -987,6 +997,16 @@ const RAW_HOOKS_R3: {
       elapsedMs,
     },
     level: 'ERROR',
+  }),
+  [PROGRESS_HOOK.SEND_TX_399_99]: (
+    sourceChain: string | CHAIN,
+    txHash: string
+  ) => ({
+    id: PROGRESS_HOOK.SEND_TX_399_99,
+    title: `${friendlyChain(sourceChain)} Tx Completed`,
+    message: `Intermediate ${friendlyChain(sourceChain)} tx confirmed: ${txHash}, progressing to next phase`,
+    response: { chain: sourceChain, txHash },
+    level: 'INFO',
   }),
 };
 

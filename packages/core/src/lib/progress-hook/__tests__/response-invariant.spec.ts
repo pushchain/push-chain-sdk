@@ -39,7 +39,8 @@ const STUB_ARGS: Record<PROGRESS_HOOK, unknown[]> = {
     [{ hash: '0xpushtx', from: '0xfrom', to: '0xto' } as never],
   ],
   [PROGRESS_HOOK.SEND_TX_199_02]: ['err'],
-  [PROGRESS_HOOK.SEND_TX_199_99_99]: ['0xpushtx'],
+  [PROGRESS_HOOK.SEND_TX_199_03]: ['eip155:11155111', 60000],
+  [PROGRESS_HOOK.SEND_TX_199_99]: ['0xpushtx'],
   // R2 (201–299)
   [PROGRESS_HOOK.SEND_TX_201]: ['eip155:11155111', '0xtarget'],
   [PROGRESS_HOOK.SEND_TX_202_01]: ['eip155:11155111'],
@@ -132,6 +133,7 @@ const STUB_ARGS: Record<PROGRESS_HOOK, unknown[]> = {
   [PROGRESS_HOOK.SEND_TX_399_01]: ['eip155:11155111', '0xpushtx', undefined],
   [PROGRESS_HOOK.SEND_TX_399_02]: ['err'],
   [PROGRESS_HOOK.SEND_TX_399_03]: ['eip155:11155111', 60000],
+  [PROGRESS_HOOK.SEND_TX_399_99]: ['eip155:11155111', '0xpushtx'],
   // Multichain (multi-hop)
   [PROGRESS_HOOK.SEND_TX_001]: [3, ['eip155:1', 'eip155:11155111', 'solana:devnet']],
   [PROGRESS_HOOK.SEND_TX_002_01]: [1, 3, 'eip155:1', 'eip155:11155111'],

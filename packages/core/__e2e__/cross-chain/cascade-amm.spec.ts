@@ -29,6 +29,8 @@ import type {
 import * as gasCalculator from '../../src/lib/orchestrator/internals/gas-calculator';
 import { getCEAAddress } from '../../src/lib/orchestrator/cea-utils';
 import { getUniversalGatewayPCAddress } from '../../src/lib/orchestrator/internals/helpers';
+import PROGRESS_HOOKS from '../../src/lib/progress-hook/progress-hook';
+import { PROGRESS_HOOK } from '../../src/lib/progress-hook/progress-hook.types';
 
 jest.mock('../../src/lib/orchestrator/cea-utils', () => ({
   ...jest.requireActual('../../src/lib/orchestrator/cea-utils'),
@@ -1194,6 +1196,165 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
         event.txHash
     );
     expect(confirmedEvent?.txHash).toBe(solanaHop.txHash);
+  });
+
+  it('uses multihop intermediate terminal IDs and exposes final tx response metadata', async () => {
+    const ctx = makeCtx();
+    (ctx.pushClient.getBalance as jest.Mock).mockResolvedValue(
+      UNCAPPED_BALANCE
+    );
+    const rootHash = `0x${'ab'.repeat(32)}`;
+    const externalHash = `0x${'cd'.repeat(32)}`;
+    const eventIds: string[] = [];
+    ctx.progressHook = (event) => {
+      eventIds.push(event.id);
+    };
+
+    const hop0 = route1Hop('01', PETH);
+    const hop1: HopDescriptor = {
+      params: {
+        to: { address: CEA_BNB, chain: CHAIN.BNB_TESTNET },
+        value: BigInt(0),
+        data: '0x',
+      },
+      route: 'UOA_TO_CEA',
+      targetChain: CHAIN.BNB_TESTNET,
+      isSvmTarget: false,
+      prc20Token: PETH,
+      burnAmount: BigInt(0),
+      gasToken: PETH,
+      gasFee: BigInt(1),
+      gasLimit: BigInt(0),
+      maxPCForGas: BigInt(0),
+      ueaAddress: UEA,
+      revertRecipient: UEA,
+    };
+    const hop2 = route1Hop('02', WPC);
+
+    const executeFn = jest.fn(async () => {
+      ctx.progressHook?.(
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_01]([
+          { hash: rootHash } as never,
+        ])
+      );
+      return {
+        hash: rootHash,
+        wait: jest.fn(async () => undefined),
+      };
+    });
+    const waitForOutboundTxFn = jest.fn(async () => ({
+      externalTxHash: externalHash,
+      destinationChain: CHAIN.BNB_TESTNET,
+      explorerUrl: '',
+      recipient: CEA_BNB,
+      amount: '0',
+      assetAddr: PETH,
+    }));
+
+    const builder = createCascadedBuilder(
+      ctx,
+      [hop0, hop1, hop2].map(prepared),
+      {
+        executeFn,
+        waitForOutboundTxFn,
+        waitForInboundPushTxFn: jest.fn(),
+        waitForAllOutboundTxsFn: jest.fn(),
+      } as never
+    );
+
+    const cascade = await builder.send();
+    const result = await cascade.waitForAll({
+      timeout: 10_000,
+      pollingIntervalMs: 1,
+    });
+
+    expect(result.success).toBe(true);
+    expect(eventIds).toContain('SEND-TX-199-99');
+    expect(eventIds).toContain('SEND-TX-299-99');
+    expect(eventIds).toContain('SEND-TX-999-01');
+    expect(eventIds).not.toContain('SEND-TX-199-01');
+    expect(eventIds).not.toContain('SEND-TX-299-01');
+    expect(result.finalTxHash).toBeDefined();
+    expect(result.finalTxResponse).toBe(cascade);
+    expect(cascade.finalTxHash).toBe(result.finalTxHash);
+  });
+
+  it('uses 399-99 instead of 399-01 for multihop Route 3 completion', async () => {
+    const ctx = makeCtx();
+    (ctx.pushClient.getBalance as jest.Mock).mockResolvedValue(
+      UNCAPPED_BALANCE
+    );
+    const rootHash = `0x${'ab'.repeat(32)}`;
+    const externalHash = `0x${'de'.repeat(32)}`;
+    const childPushHash = `0x${'ef'.repeat(32)}`;
+    const eventIds: string[] = [];
+    ctx.progressHook = (event) => {
+      eventIds.push(event.id);
+    };
+
+    const hop0 = await buildHopDescriptor(
+      ctx,
+      {
+        from: { chain: CHAIN.BNB_TESTNET },
+        to: UEA,
+        value: PC,
+        data: '0x01',
+      },
+      TransactionRoute.CEA_TO_PUSH,
+      UEA
+    );
+    const hop1 = route1Hop('02', WPC);
+
+    const executeFn = jest.fn(async () => {
+      ctx.progressHook?.(
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_01]([
+          { hash: rootHash } as never,
+        ])
+      );
+      return {
+        hash: rootHash,
+        wait: jest.fn(async () => undefined),
+      };
+    });
+    const waitForOutboundTxFn = jest.fn(async () => ({
+      externalTxHash: externalHash,
+      destinationChain: CHAIN.BNB_TESTNET,
+      explorerUrl: '',
+      recipient: CEA_BNB,
+      amount: '0',
+      assetAddr: PETH,
+    }));
+    const waitForInboundPushTxFn = jest.fn(async () => ({
+      pushTxHash: childPushHash,
+      childUtxId: `0x${'12'.repeat(32)}`,
+      sourceChain: CHAIN.BNB_TESTNET,
+      outboundExternalTxHash: externalHash,
+      status: 'confirmed' as const,
+    }));
+
+    const builder = createCascadedBuilder(
+      ctx,
+      [hop0, hop1].map(prepared),
+      {
+        executeFn,
+        waitForOutboundTxFn,
+        waitForInboundPushTxFn,
+        waitForAllOutboundTxsFn: jest.fn(),
+      } as never
+    );
+
+    const cascade = await builder.send();
+    const result = await cascade.waitForAll({
+      timeout: 10_000,
+      pollingIntervalMs: 1,
+    });
+
+    expect(result.success).toBe(true);
+    expect(eventIds).toContain('SEND-TX-399-99');
+    expect(eventIds).toContain('SEND-TX-999-01');
+    expect(eventIds).not.toContain('SEND-TX-399-01');
+    expect(result.finalTxHash).toBe(childPushHash);
+    expect(result.finalTxResponse).toBe(cascade);
   });
 
   it('exposes Solana Route 3 failure tx hashes as base58 in cascade results and progress', async () => {

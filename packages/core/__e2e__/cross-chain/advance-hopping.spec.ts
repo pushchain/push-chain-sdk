@@ -1665,7 +1665,9 @@ describe('Advance Hopping: Cascade API E2E', () => {
       // surfaced via result.waitForAll({ progressHook }).
       //
       // This test validates that:
-      //   1. R1 SEND-TX-101..199 fire for the meta Push-chain multicall
+      //   1. R1 SEND-TX-101..199 fire for the meta Push-chain multicall,
+      //      with multihop terminal success mapped to 199-99 and final
+      //      cascade success mapped to 999-01.
       //   2. Every emitted event carries a non-null response (doc requirement)
       //   3. waitForAll's hop-level progressHook receives per-hop events
       //      with known hop indices and a terminal status
@@ -1717,9 +1719,11 @@ describe('Advance Hopping: Cascade API E2E', () => {
         // R1 meta-tx sequence fires for the Push-chain multicall
         expect(ids).toContain('SEND-TX-101');
         expect(ids).toContain('SEND-TX-107');
-        expect(ids).toContain('SEND-TX-199-01');
+        expect(ids).toContain('SEND-TX-199-99');
+        expect(ids).toContain('SEND-TX-999-01');
+        expect(ids).not.toContain('SEND-TX-199-01');
         expect(ids.indexOf('SEND-TX-101')).toBeLessThan(
-          ids.indexOf('SEND-TX-199-01')
+          ids.indexOf('SEND-TX-199-99')
         );
 
         // Per-hop lifecycle events fired via waitForAll

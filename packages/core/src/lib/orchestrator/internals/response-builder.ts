@@ -69,33 +69,17 @@ import { pickWaitHooks } from './progress-route-hooks';
 import { OutboundTimeoutError, OutboundFailedError } from './outbound-sync';
 
 /**
- * Intermediate Push-success markers (199-99-99 for R3, 299-99 for R2) are
- * internal transition signals — they tell response-builder's wait-phase
- * branch that the Push leg has settled so it can skip re-emitting the
- * intermediate marker on top of a reconstructed stream. They are not part
- * of the published 1XX/2XX/3XX/4XX spec and are suppressed at the consumer
- * dispatch boundary. `printLog` still fires for these so internal traces
- * retain the transition record.
- */
-const INTERMEDIATE_INTERNAL_IDS: ReadonlySet<string> = new Set([
-  PROGRESS_HOOK.SEND_TX_199_99_99,
-  PROGRESS_HOOK.SEND_TX_299_99,
-]);
-
-/**
  * Fan out a progress event to one or two registered callbacks, deduping
  * when both slots hold the same reference. Keeps the emission policy in a
  * single place shared by `emitProgress` (execute phase) and `emit` (wait
  * phase) — so consumers that wire the same callback at multiple levels
- * never see double-invocation. Intermediate internal markers are dropped
- * here so they never reach the consumer.
+ * never see double-invocation.
  */
 function fanOut(
   event: ProgressEvent,
   primary?: (e: ProgressEvent) => void,
   secondary?: (e: ProgressEvent) => void
 ): void {
-  if (INTERMEDIATE_INTERNAL_IDS.has(event.id)) return;
   if (primary) primary(event);
   if (secondary && secondary !== primary) secondary(event);
 }
@@ -689,15 +673,6 @@ export async function transformToUniversalTxResponse(
       const inboundInitialWaitMs = isReplay
         ? 0
         : callbacks.inboundConstants.initialWaitMs;
-      // Track whether reconstruction already emitted the route's
-      // intermediate Push-success marker (299-99 / 199-99-99). When it has,
-      // skip re-emitting from the outbound branch below to avoid duplicates.
-      // This flag is only true when `this` response was created by
-      // trackTransaction() and the reconstructed stream already fired.
-      const alreadyReconstructed =
-        universalTxResponse._eventsReconstructed === true;
-      let intermediateAlreadyEmitted = alreadyReconstructed;
-
       // Build the base receipt directly from this response. Any per-call
       // `tx.progressHook(cb)` already replayed buffered execute-phase events
       // to `cb` via the progressHook setter — re-running trackTransaction
@@ -723,16 +698,6 @@ export async function transformToUniversalTxResponse(
           if (!event.id) return;
           fanOut(event, registeredProgressHook, ctx.progressHook);
         };
-
-        // Intermediate INFO marker — Push Chain tx confirmed, external/inbound
-        // leg still pending. Per spec, R1 keeps 199-01 as terminal; R2/R3
-        // reclassify Push success as intermediate. Skip when trackTransaction
-        // (called above) already reconstructed the same marker via
-        // reconstructR2/R3, otherwise the consumer sees 299-99 / 199-99-99
-        // twice in their stream.
-        if (hooks.intermediatePushOk && !intermediateAlreadyEmitted) {
-          emit(hooks.intermediatePushOk(targetChain, tx.hash));
-        }
 
         // Awaiting relay
         emit(hooks.awaiting(targetChain));

@@ -14,7 +14,6 @@ import PROGRESS_HOOKS from '../../progress-hook/progress-hook';
 import { TransactionRoute } from '../route-detector';
 
 export type WaitHookSet = {
-  intermediatePushOk?: (chain: string, pushTxHash: string) => ProgressEvent;
   awaiting: (chain: string) => ProgressEvent;
   polling: (chain: string, elapsedMs: number) => ProgressEvent;
   success: (details: OutboundTxDetails) => ProgressEvent;
@@ -27,8 +26,6 @@ export function pickWaitHooks(
 ): WaitHookSet {
   if (route === TransactionRoute.UOA_TO_CEA) {
     return {
-      intermediatePushOk: (chain, txHash) =>
-        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_99](chain, txHash),
       awaiting: (chain) => PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_209_01](chain),
       polling: (chain, elapsed) =>
         PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_209_02](chain, elapsed),
@@ -42,8 +39,6 @@ export function pickWaitHooks(
   }
   if (route === TransactionRoute.CEA_TO_PUSH) {
     return {
-      intermediatePushOk: (_chain, txHash) =>
-        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_99_99](txHash),
       awaiting: (chain) => PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_309_01](chain),
       polling: (chain, elapsed) =>
         PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_309_02](chain, elapsed),

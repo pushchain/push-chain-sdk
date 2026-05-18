@@ -82,7 +82,7 @@ import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
 import { buildPayloadForRoute } from './route-handlers';
 import { pickWaitHooks } from './progress-route-hooks';
 import PROGRESS_HOOKS from '../../progress-hook/progress-hook';
-import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
+import { PROGRESS_HOOK, type ProgressEvent } from '../../progress-hook/progress-hook.types';
 import { buildSvmPayloadFromParams } from '../svm-idl/build-payload';
 import { runPreflight, maybeFireSvmWarnThreshold } from './preflight';
 import { ensureSvmFinalizeGasBudgetQuote } from './svm-rent';
@@ -1756,6 +1756,42 @@ export async function composeCascade(
 // createCascadedBuilder
 // ============================================================================
 
+function txHashFromProgressEvent(event: ProgressEvent): string {
+  const response = event.response as
+    | {
+        txHash?: string;
+        response?: Array<{ hash?: string }>;
+      }
+    | null;
+  return response?.txHash ?? response?.response?.[0]?.hash ?? '';
+}
+
+async function withMultihopRootProgressMapping<T>(
+  ctx: OrchestratorContext,
+  run: () => Promise<T>
+): Promise<T> {
+  const originalHook = ctx.progressHook;
+  if (!originalHook) return run();
+
+  ctx.progressHook = (event) => {
+    if (event.id === PROGRESS_HOOK.SEND_TX_199_01) {
+      originalHook(
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_99](
+          txHashFromProgressEvent(event)
+        )
+      );
+      return;
+    }
+    originalHook(event);
+  };
+
+  try {
+    return await run();
+  } finally {
+    ctx.progressHook = originalHook;
+  }
+}
+
 export function createCascadedBuilder(
   ctx: OrchestratorContext,
   preparedTxs: PreparedUniversalTx[],
@@ -1805,6 +1841,7 @@ export function createCascadedBuilder(
             },
           ],
           hopCount: 1,
+          finalTxHash: response.hash,
           waitForAll: async () => ({
             success: true,
             hops: [
@@ -1816,6 +1853,8 @@ export function createCascadedBuilder(
                 txHash: response.hash,
               },
             ],
+            finalTxHash: response.hash,
+            finalTxResponse: singleRoute1Result,
           }),
           wait: async (opts) => singleRoute1Result.waitForAll(opts),
         };
@@ -1842,6 +1881,7 @@ export function createCascadedBuilder(
             },
           ],
           hopCount: 1,
+          finalTxHash: response.hash,
           waitForAll: async () => ({
             success: true,
             hops: [
@@ -1853,6 +1893,8 @@ export function createCascadedBuilder(
                 txHash: response.hash,
               },
             ],
+            finalTxHash: response.hash,
+            finalTxResponse: singleRoute2Result,
           }),
           wait: async (opts) => singleRoute2Result.waitForAll(opts),
         };
@@ -1908,7 +1950,9 @@ export function createCascadedBuilder(
         data: composedMulticalls,
       };
 
-      const response = await callbacks.executeFn(executeParams);
+      const response = await withMultihopRootProgressMapping(ctx, () =>
+        callbacks.executeFn(executeParams)
+      );
 
       // Build hop info for tracking
       const hopInfos: CascadeHopInfo[] = hops.map((hop, index) => ({
@@ -2023,6 +2067,56 @@ export function createCascadedBuilder(
               )
             );
           };
+          const emitRouteIntermediateComplete = (
+            hop: CascadeHopInfo,
+            txHash?: string
+          ) => {
+            if (!isMulti) return;
+            const n = hop.hopIndex + 1;
+            if (n >= totalHops) return; // final terminal is 999-01
+            const resolvedTxHash = txHash ?? hop.txHash ?? response.hash;
+            if (hop.route === 'UOA_TO_PUSH') {
+              emitHopEvent(
+                PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_99](resolvedTxHash)
+              );
+              return;
+            }
+            if (hop.route === 'UOA_TO_CEA') {
+              emitHopEvent(
+                PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_99](
+                  hop.executionChain,
+                  resolvedTxHash
+                )
+              );
+              return;
+            }
+            if (hop.route === 'CEA_TO_PUSH') {
+              emitHopEvent(
+                PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_99](
+                  hop.executionChain,
+                  resolvedTxHash
+                )
+              );
+            }
+          };
+          const buildCompletionResult = (
+            success: boolean,
+            failedAt?: number
+          ): CascadeCompletionResult => {
+            const finalTxHash =
+              [...hopInfos]
+                .reverse()
+                .find((hop) => hop.status === 'confirmed' && hop.txHash)
+                ?.txHash ?? response.hash;
+            cascadeResponse.finalTxHash = finalTxHash;
+            return {
+              success,
+              hops: hopInfos,
+              finalTxHash,
+              finalTxResponse: cascadeResponse,
+              ...(failedAt !== undefined ? { failedAt } : {}),
+            };
+          };
 
           if (isMulti) {
             emitHopEvent(
@@ -2085,11 +2179,7 @@ export function createCascadedBuilder(
                     hopHooks.timeout(hop.executionChain, Date.now() - startTime)
                   );
                   emitCascadeTimeout(hop.hopIndex);
-                  return {
-                    success: false,
-                    hops: hopInfos,
-                    failedAt: hop.hopIndex,
-                  };
+                  return buildCompletionResult(false, hop.hopIndex);
                 }
 
                 emitHopStart(hop.hopIndex);
@@ -2163,7 +2253,11 @@ export function createCascadedBuilder(
                   hop.status = 'confirmed';
                   hop.txHash = displayTxHash;
                   hop.outboundDetails = userFacingOutboundDetails;
-                  emitHopEvent(hopHooks.success(userFacingOutboundDetails));
+                  if (isMulti) {
+                    emitRouteIntermediateComplete(hop, displayTxHash);
+                  } else {
+                    emitHopEvent(hopHooks.success(userFacingOutboundDetails));
+                  }
                   emitHopComplete(hop.hopIndex);
                   cascadeProgressHook?.({
                     hopIndex: hop.hopIndex,
@@ -2197,11 +2291,7 @@ export function createCascadedBuilder(
                     status: 'failed',
                     elapsed: Date.now() - startTime,
                   });
-                  return {
-                    success: false,
-                    hops: hopInfos,
-                    failedAt: hop.hopIndex,
-                  };
+                  return buildCompletionResult(false, hop.hopIndex);
                 }
               } else {
                 for (const outHop of outboundHops) {
@@ -2270,9 +2360,16 @@ export function createCascadedBuilder(
                           // guard above, so we only reach here with full details.
                           if (matchedHop?.outboundDetails) {
                             confirmedHops.add(event.hopIndex);
-                            emitHopEvent(
-                              eventHooks.success(matchedHop.outboundDetails)
-                            );
+                            if (isMulti) {
+                              emitRouteIntermediateComplete(
+                                matchedHop,
+                                event.txHash
+                              );
+                            } else {
+                              emitHopEvent(
+                                eventHooks.success(matchedHop.outboundDetails)
+                              );
+                            }
                             emitHopComplete(event.hopIndex);
                           }
                         }
@@ -2295,11 +2392,7 @@ export function createCascadedBuilder(
                     )
                   );
                   emitCascadeFailed(failedIdx, failMsg);
-                  return {
-                    success: false,
-                    hops: hopInfos,
-                    failedAt: failedIdx,
-                  };
+                  return buildCompletionResult(false, failedIdx);
                 }
               }
               return null;
@@ -2368,11 +2461,7 @@ export function createCascadedBuilder(
                   hopHooks.timeout(inboundHop.executionChain, Date.now() - startTime)
                 );
                 emitCascadeTimeout(inboundHop.hopIndex);
-                return {
-                  success: false,
-                  hops: hopInfos,
-                  failedAt: inboundHop.hopIndex,
-                };
+                return buildCompletionResult(false, inboundHop.hopIndex);
               }
 
               emitHopStart(inboundHop.hopIndex);
@@ -2456,11 +2545,7 @@ export function createCascadedBuilder(
                   txHash: failedDisplayTxHash,
                   elapsed: Date.now() - startTime,
                 });
-                return {
-                  success: false,
-                  hops: hopInfos,
-                  failedAt: inboundHop.hopIndex,
-                };
+                return buildCompletionResult(false, inboundHop.hopIndex);
               }
 
               const displayExternalTxHash =
@@ -2534,11 +2619,7 @@ export function createCascadedBuilder(
                   status: 'failed',
                   elapsed: Date.now() - startTime,
                 });
-                return {
-                  success: false,
-                  hops: hopInfos,
-                  failedAt: inboundHop.hopIndex,
-                };
+                return buildCompletionResult(false, inboundHop.hopIndex);
               }
 
               if (childInbound.status !== 'confirmed') {
@@ -2564,22 +2645,22 @@ export function createCascadedBuilder(
                   txHash: inboundHop.txHash,
                   elapsed: Date.now() - startTime,
                 });
-                return {
-                  success: false,
-                  hops: hopInfos,
-                  failedAt: inboundHop.hopIndex,
-                };
+                return buildCompletionResult(false, inboundHop.hopIndex);
               }
 
               inboundHop.status = 'confirmed';
               inboundHop.txHash =
                 childInbound.pushTxHash || displayExternalTxHash;
-              emitHopEvent(
-                PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_01](
-                  inboundHop.executionChain,
-                  childInbound.pushTxHash
-                )
-              );
+              if (isMulti) {
+                emitRouteIntermediateComplete(inboundHop, inboundHop.txHash);
+              } else {
+                emitHopEvent(
+                  PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_01](
+                    inboundHop.executionChain,
+                    childInbound.pushTxHash
+                  )
+                );
+              }
               emitHopComplete(inboundHop.hopIndex);
               cascadeProgressHook?.({
                 hopIndex: inboundHop.hopIndex,
@@ -2608,6 +2689,7 @@ export function createCascadedBuilder(
                     txHash: childInbound.pushTxHash,
                     elapsed: Date.now() - startTime,
                   });
+                  emitRouteIntermediateComplete(hop, childInbound.pushTxHash);
                   emitHopComplete(hop.hopIndex);
                 }
               }
@@ -2624,7 +2706,7 @@ export function createCascadedBuilder(
             }
 
             emitCascadeSuccess();
-            return { success: true, hops: hopInfos };
+            return buildCompletionResult(true);
           } catch (err) {
             const failedIdx = hopInfos.findIndex(
               (h) => h.status !== 'confirmed'
@@ -2637,11 +2719,7 @@ export function createCascadedBuilder(
             } else {
               emitCascadeFailed(failedAt, errMsg);
             }
-            return {
-              success: false,
-              hops: hopInfos,
-              failedAt,
-            };
+            return buildCompletionResult(false, failedAt);
           }
         },
         wait: async (opts?: CascadeTrackOptions) =>
