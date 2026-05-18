@@ -35,6 +35,10 @@ import {
   encodeSvmExecutePayload,
   encodeSvmCeaToUeaPayload,
 } from '../payload-builders';
+import {
+  hasExecutablePayloadData,
+  isEmptyPayloadData,
+} from '../data-utils';
 import { PushChain } from '../../push-chain/push-chain';
 import type {
   HopDescriptor,
@@ -415,7 +419,8 @@ export async function buildHopDescriptor(
 
       // Build CEA multicalls
       const ceaMulticalls: MultiCall[] = [];
-      if (params.data) {
+      const hasData = hasExecutablePayloadData(params.data);
+      if (hasData) {
         if (Array.isArray(params.data)) {
           ceaMulticalls.push(...(params.data as MultiCall[]));
         } else {
@@ -446,40 +451,40 @@ export async function buildHopDescriptor(
             data: params.data as `0x${string}`,
           });
         }
-      } else if (params.value) {
-        // Skip multicall when sending native value to own CEA — gateway deposits directly.
-        // Self-call with value would revert (CEA._handleMulticall rejects it).
-        if (target.address.toLowerCase() !== ceaAddress.toLowerCase()) {
+      } else {
+        const token = params.funds?.amount
+          ? (params.funds as { token: MoveableToken }).token
+          : undefined;
+
+        if (params.funds?.amount && token && token.mechanism !== 'native') {
+          const erc20Transfer = encodeFunctionData({
+            abi: ERC20_EVM,
+            functionName: 'transfer',
+            args: [target.address, params.funds.amount],
+          });
           ceaMulticalls.push({
-            to: target.address as `0x${string}`,
-            value: params.value,
-            data: '0x',
+            to: token.address as `0x${string}`,
+            value: BigInt(0),
+            data: erc20Transfer,
           });
         }
-      } else if (params.funds?.amount) {
-        // Funds-only transfer (no data, no value). Without this branch the
-        // CEA multicall is empty and relayed funds stay in the CEA instead
-        // of reaching the caller's recipient.
-        const token = (params.funds as { token: MoveableToken }).token;
-        if (token) {
-          if (token.mechanism === 'native') {
-            if (target.address.toLowerCase() !== ceaAddress.toLowerCase()) {
-              ceaMulticalls.push({
-                to: target.address as `0x${string}`,
-                value: params.funds.amount,
-                data: '0x',
-              });
-            }
-          } else {
-            const erc20Transfer = encodeFunctionData({
-              abi: ERC20_EVM,
-              functionName: 'transfer',
-              args: [target.address, params.funds.amount],
-            });
+
+        if (params.value) {
+          // Skip multicall when sending native value to own CEA — gateway deposits directly.
+          // Self-call with value would revert (CEA._handleMulticall rejects it).
+          if (target.address.toLowerCase() !== ceaAddress.toLowerCase()) {
             ceaMulticalls.push({
-              to: token.address as `0x${string}`,
-              value: BigInt(0),
-              data: erc20Transfer,
+              to: target.address as `0x${string}`,
+              value: params.value,
+              data: '0x',
+            });
+          }
+        } else if (params.funds?.amount && token?.mechanism === 'native') {
+          if (target.address.toLowerCase() !== ceaAddress.toLowerCase()) {
+            ceaMulticalls.push({
+              to: target.address as `0x${string}`,
+              value: params.funds.amount,
+              data: '0x',
             });
           }
         }
@@ -497,7 +502,7 @@ export async function buildHopDescriptor(
       } else if (params.value && params.value > BigInt(0)) {
         prc20Token = getNativePRC20ForChain(targetChain, ctx.pushNetwork);
         burnAmount = params.value;
-      } else if (params.data) {
+      } else if (hasExecutablePayloadData(params.data)) {
         // PAYLOAD-only (no value transfer): still need native PRC-20 token for
         // chain namespace lookup + gas fees, but burn amount must be zero.
         // Matches the direct executeUoaToCea path (route-handlers.ts).
@@ -888,14 +893,6 @@ function sumMulticallNativeValue(multicalls?: MultiCall[]): bigint {
   return (multicalls ?? []).reduce(
     (sum, mc) => sum + (mc.value ?? BigInt(0)),
     BigInt(0)
-  );
-}
-
-function isEmptyPayloadData(data: UniversalExecuteParams['data']): boolean {
-  return (
-    data === undefined ||
-    data === '0x' ||
-    (Array.isArray(data) && data.length === 0)
   );
 }
 
@@ -1464,7 +1461,7 @@ export async function composeCascadeDetailed(
         // UEA multicall so no nested outbound is needed.
         const mergedHopMulticalls: MultiCall[] = [];
         for (const h of segment.hops) {
-          if (h?.params?.data || h?.params?.value) {
+          if (hasExecutablePayloadData(h?.params?.data) || h?.params?.value) {
             const hopCalls = buildExecuteMulticall({
               execute: {
                 to: h.params.to as `0x${string}`,
@@ -1472,6 +1469,7 @@ export async function composeCascadeDetailed(
                 data: h.params.data,
               },
               ueaAddress,
+              allowSelfValueCall: true,
             });
             mergedHopMulticalls.push(...hopCalls);
           }

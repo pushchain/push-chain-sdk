@@ -65,6 +65,47 @@ describe('buildExecuteMulticall', () => {
     expect(calls).toHaveLength(0);
   });
 
+  it('should treat 0x as empty data when parking value + funds on the UEA', () => {
+    const calls = buildExecuteMulticall({
+      execute: {
+        to: ALICE,
+        value: BigInt(20),
+        data: '0x',
+        funds: {
+          amount: BigInt(1),
+          token: NATIVE_TOKEN,
+        },
+      },
+      ueaAddress: ALICE,
+    });
+
+    expect(calls).toHaveLength(0);
+  });
+
+  it('should allow Route 3 inbound payloads to carry a self value seed', () => {
+    const calls = buildExecuteMulticall({
+      execute: {
+        to: ALICE,
+        value: BigInt(20),
+        data: '0x',
+        funds: {
+          amount: BigInt(1),
+          token: NATIVE_TOKEN,
+        },
+      },
+      ueaAddress: ALICE,
+      allowSelfValueCall: true,
+    });
+
+    expect(calls).toEqual([
+      {
+        to: ALICE,
+        value: BigInt(20),
+        data: '0x',
+      },
+    ]);
+  });
+
   it('should keep native value transfers for non-self recipients', () => {
     const calls = buildExecuteMulticall({
       execute: {
@@ -85,6 +126,34 @@ describe('buildExecuteMulticall', () => {
         data: '0x',
       },
     ]);
+  });
+
+  it('should treat an empty multicall array as empty data for ERC-20 funds forwarding', () => {
+    const erc20Token = MOVEABLE_TOKENS[CHAIN.ETHEREUM_SEPOLIA]!.find(
+      (token) => token.symbol === 'USDT'
+    )!;
+
+    const calls = buildExecuteMulticall({
+      execute: {
+        to: BOB,
+        data: [],
+        funds: {
+          amount: BigInt(100),
+          token: erc20Token,
+        },
+      },
+      ueaAddress: ALICE,
+    });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].value).toBe(BigInt(0));
+    const decoded = decodeFunctionData({
+      abi: ERC20_EVM,
+      data: calls[0].data,
+    });
+    expect(decoded.functionName).toBe('transfer');
+    expect(decoded.args![0]).toBe(BOB);
+    expect(decoded.args![1]).toBe(BigInt(100));
   });
 });
 

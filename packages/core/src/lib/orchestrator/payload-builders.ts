@@ -14,23 +14,27 @@ import type {
   ChainTarget,
   SvmExecutePayloadFields,
 } from './orchestrator.types';
+import { hasExecutablePayloadData } from './data-utils';
 
 export function buildExecuteMulticall({
   execute,
   ueaAddress,
   logger,
+  allowSelfValueCall = false,
 }: {
   execute: ExecuteParams;
   ueaAddress: `0x${string}`;
   logger?: (msg: string) => void;
+  allowSelfValueCall?: boolean;
 }): MultiCall[] {
   const log = (msg: string) => logger?.(msg);
+  const hasData = hasExecutablePayloadData(execute.data);
 
   log('buildExecuteMulticall — input: ' + JSON.stringify({
     to: execute.to,
     value: execute.value?.toString() ?? 'undefined',
     data: execute.data ? (Array.isArray(execute.data) ? `Array(${execute.data.length})` : execute.data.slice(0, 20) + '...') : 'undefined',
-    hasData: !!execute.data,
+    hasData,
     fundsAmount: execute.funds?.amount?.toString() ?? 'undefined',
     fundsTokenSymbol: (execute.funds as { token?: MoveableToken })?.token?.symbol ?? 'undefined',
     fundsTokenMechanism: (execute.funds as { token?: MoveableToken })?.token?.mechanism ?? 'undefined',
@@ -40,13 +44,13 @@ export function buildExecuteMulticall({
   const multicallData: MultiCall[] = [];
 
   // *** We will pass the value alongside with the data in a single message now ***
-  const branch1 = !execute.data && execute.value;
-  log(`buildExecuteMulticall — Branch 1 (!data && value): ${branch1} | !execute.data: ${!execute.data} | execute.value: ${execute.value?.toString() ?? 'undefined'}`);
-  if (!execute.data && execute.value) {
+  const branch1 = !hasData && execute.value;
+  log(`buildExecuteMulticall — Branch 1 (!data && value): ${branch1} | !hasData: ${!hasData} | execute.value: ${execute.value?.toString() ?? 'undefined'}`);
+  if (!hasData && execute.value) {
     const isValueToSelf =
       execute.to.toLowerCase() === ueaAddress.toLowerCase();
 
-    if (isValueToSelf) {
+    if (isValueToSelf && !allowSelfValueCall) {
       log(
         'buildExecuteMulticall — Branch 1 SKIPPED: native value targets the UEA itself; parking value via gateway deposit'
       );
@@ -62,7 +66,7 @@ export function buildExecuteMulticall({
 
   if (execute.funds?.amount) {
     const token = (execute.funds as { token: MoveableToken }).token;
-    const isArrayMulticall = Array.isArray(execute.data);
+    const isArrayMulticall = Array.isArray(execute.data) && execute.data.length > 0;
     const isNative = token.mechanism === 'native';
     log('buildExecuteMulticall — Branch 2 (funds): ' + JSON.stringify({
       amount: execute.funds.amount.toString(),
@@ -94,8 +98,8 @@ export function buildExecuteMulticall({
     log('buildExecuteMulticall — Branch 2 SKIPPED: no funds.amount');
   }
 
-  log(`buildExecuteMulticall — Branch 3 (execute.data): ${!!execute.data}`);
-  if (execute.data) {
+  log(`buildExecuteMulticall — Branch 3 (execute.data): ${hasData}`);
+  if (hasData) {
     // *************************
     // Check for `execute.to`
     // *************************

@@ -21,6 +21,7 @@ import {
   RescueFundsParams,
 } from './orchestrator.types';
 import { detectRoute, isChainTarget, TransactionRoute } from './route-detector';
+import { hasExecutablePayloadData } from './data-utils';
 import {
   type OrchestratorContext,
   printLog as _printLog, fireProgressHook as _fireProgressHook,
@@ -356,8 +357,7 @@ export class Orchestrator {
 
       // Standard Push Chain execution (Route 1)
       const execute = params as ExecuteParams;
-      const hasFunds = !!execute.funds;
-      const hasData = execute.data && execute.data !== '0x';
+      const hasData = hasExecutablePayloadData(execute.data);
       const eventBuffer: ProgressEvent[] = [];
       const originalHook = this.progressHook;
       this.progressHook = (event: ProgressEvent) => {

@@ -16,6 +16,7 @@ import type {
   TransactionRouteType,
 } from './orchestrator.types';
 import { isSvmChain } from './payload-builders';
+import { hasExecutablePayloadData } from './data-utils';
 import { toSvmHexAddress } from './svm-idl/normalize-address';
 
 // ============================================================================
@@ -280,7 +281,7 @@ export function validateRouteParams(
         'migration is incompatible with funds'
       );
     }
-    if (params.data) {
+    if (hasExecutablePayloadData(params.data)) {
       throw new RouteValidationError(
         'migration is incompatible with data'
       );
