@@ -1457,8 +1457,10 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
     const rootHash = `0x${'ab'.repeat(32)}`;
     const externalHash = `0x${'cd'.repeat(32)}`;
     const eventIds: string[] = [];
+    const events: Array<{ id: string; title: string }> = [];
     ctx.progressHook = (event) => {
       eventIds.push(event.id);
+      events.push({ id: event.id, title: event.title });
     };
 
     const hop0 = route1Hop('01', PETH);
@@ -1523,6 +1525,9 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
     expect(eventIds).toContain('SEND-TX-199-99');
     expect(eventIds).toContain('SEND-TX-299-99');
     expect(eventIds).toContain('SEND-TX-999-01');
+    expect(events.find((event) => event.id === 'SEND-TX-299-99')?.title).toBe(
+      'Intermediate BNB Testnet Tx Completed'
+    );
     expect(eventIds).not.toContain('SEND-TX-199-01');
     expect(eventIds).not.toContain('SEND-TX-299-01');
     expect(result.finalTxHash).toBeDefined();
