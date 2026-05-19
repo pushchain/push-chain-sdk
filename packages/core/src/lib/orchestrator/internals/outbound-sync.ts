@@ -37,7 +37,7 @@ export const OUTBOUND_INITIAL_WAIT_MS = 15000; // 15s
 export const OUTBOUND_POLL_INTERVAL_MS = 3000; // 3s
 
 /** Maximum total timeout for the outbound polling loop (ms). */
-export const OUTBOUND_MAX_TIMEOUT_MS = 180000; // 180s (3 min)
+export const OUTBOUND_MAX_TIMEOUT_MS = 300000; // 300s (5 min)
 
 /** Maximum total timeout for the R3 inbound round-trip polling loop (ms). */
 export const INBOUND_MAX_TIMEOUT_MS = 300000; // 300s (5 min) — covers R3 inbound latency on testnet
@@ -105,7 +105,7 @@ export class OutboundFailedError extends Error {
  *
  * Cosmos sometimes populates `observedTx.txHash` while the relayer is still
  * voting on the outboundStatus update. The Push indexer can stay at
- * UNSPECIFIED for the full 180s budget even though the destination tx mined
+ * UNSPECIFIED for the full timeout budget even though the destination tx mined
  * minutes earlier. To avoid those false timeouts we ask the destination
  * chain's own RPC: if it has a confirmed receipt with status=success, we
  * trust it and return FOUND; if status=reverted, we throw OutboundFailedError
@@ -165,7 +165,7 @@ async function verifyExternalEvmReceipt(
  * @internal Used by .wait() for outbound routes - not part of public API.
  * Uses polling with configurable initial wait, interval, and timeout.
  *
- * Default strategy: 15s initial wait, then poll every 3s, 180s total timeout.
+ * Default strategy: 15s initial wait, then poll every 3s, 300s total timeout.
  *
  * @param ctx - Orchestrator context
  * @param pushChainTxHash - The Push Chain transaction hash

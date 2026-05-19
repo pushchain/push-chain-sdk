@@ -347,7 +347,7 @@ export interface WaitOptions {
   inboundTimeoutMs?: number;
   /**
    * Override the poll interval (ms) between outbound status checks. Default
-   * is 5000ms. Lower values give faster feedback on fast relays; higher
+   * is 3000ms. Lower values give faster feedback on fast relays; higher
    * values reduce RPC pressure. Only applies to R2 / R3 outbound polling.
    */
   outboundPollingIntervalMs?: number;
@@ -821,7 +821,7 @@ export interface CascadeHopInfo {
 export interface CascadeTrackOptions {
   /** Polling interval (default: 5000ms) */
   pollingIntervalMs?: number;
-  /** Total timeout (default: 600000ms = 10 min) */
+  /** Total timeout (default: 300000ms = 5 min) */
   timeout?: number;
   /** Per-hop progress callback */
   progressHook?: (event: CascadeProgressEvent) => void;
@@ -954,18 +954,18 @@ export interface OutboundTxDetails {
  */
 export interface WaitForOutboundOptions {
   /**
-   * Initial wait before first poll (default: 30000ms)
+   * Initial wait before first poll (default: 15000ms)
    * Gives relay time to process before we start polling
    */
   initialWaitMs?: number;
 
   /**
-   * Interval between polls (default: 5000ms)
+   * Interval between polls (default: 3000ms)
    */
   pollingIntervalMs?: number;
 
   /**
-   * Total timeout in milliseconds (default: 120000ms)
+   * Total timeout in milliseconds (default: 300000ms)
    * Measured from start, includes initial wait
    */
   timeout?: number;

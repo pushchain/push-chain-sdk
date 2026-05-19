@@ -272,7 +272,7 @@ describe('classifyIntoSegments', () => {
 });
 
 describe('composeCascadeDetailed', () => {
-  it('writes the quoted gasPrice into nested outbound requests', async () => {
+  it('keeps nested outbound request gasPrice at zero so UGPC resolves the current base price', async () => {
     const gasPrice = BigInt(50_000_000);
     const hop = makeRoute2Hop(CHAIN.BNB_TESTNET, [], {
       burnAmount: BigInt(0),
@@ -317,6 +317,6 @@ describe('composeCascadeDetailed', () => {
     const [request] = decoded.args as [UniversalOutboundTxRequest];
 
     expect(request.gasLimit).toBe(BigInt(2_000_000));
-    expect(request.gasPrice).toBe(gasPrice);
+    expect(request.gasPrice).toBe(BigInt(0));
   });
 });

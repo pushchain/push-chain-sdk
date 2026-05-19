@@ -79,7 +79,10 @@ import {
 } from './gas-calculator';
 import type { GasSizingDecision } from './gas-usd-sizer';
 import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
-import { buildPayloadForRoute } from './route-handlers';
+import {
+  buildPayloadForRoute,
+  resolveR2DestinationFundsToken,
+} from './route-handlers';
 import { pickWaitHooks } from './progress-route-hooks';
 import PROGRESS_HOOKS from '../../progress-hook/progress-hook';
 import { PROGRESS_HOOK, type ProgressEvent } from '../../progress-hook/progress-hook.types';
@@ -424,6 +427,18 @@ export async function buildHopDescriptor(
       // Build CEA multicalls
       const ceaMulticalls: MultiCall[] = [];
       const hasData = hasExecutablePayloadData(params.data);
+      const fundsToken = params.funds?.amount
+        ? resolveR2DestinationFundsToken(
+            (params.funds as { token: MoveableToken }).token,
+            targetChain,
+            ctx.pushNetwork
+          )
+        : undefined;
+      const nativeFundsValue =
+        params.funds?.amount && fundsToken?.mechanism === 'native'
+          ? params.funds.amount
+          : BigInt(0);
+
       if (hasData) {
         if (Array.isArray(params.data)) {
           ceaMulticalls.push(...(params.data as MultiCall[]));
@@ -432,15 +447,14 @@ export async function buildHopDescriptor(
           // transfer() call so the tokens minted to the CEA are forwarded to the
           // target address. This mirrors the Route 1 behavior in buildExecuteMulticall.
           if (params.funds?.amount) {
-            const token = (params.funds as { token: MoveableToken }).token;
-            if (token && token.mechanism !== 'native') {
+            if (fundsToken && fundsToken.mechanism !== 'native') {
               const erc20Transfer = encodeFunctionData({
                 abi: ERC20_EVM,
                 functionName: 'transfer',
                 args: [target.address, params.funds.amount],
               });
               ceaMulticalls.push({
-                to: token.address as `0x${string}`,
+                to: fundsToken.address as `0x${string}`,
                 value: BigInt(0),
                 data: erc20Transfer,
               });
@@ -451,23 +465,19 @@ export async function buildHopDescriptor(
           // native value to the CEA, and the multicall forwards it to the target.
           ceaMulticalls.push({
             to: target.address as `0x${string}`,
-            value: params.value ?? BigInt(0),
+            value: (params.value ?? BigInt(0)) + nativeFundsValue,
             data: params.data as `0x${string}`,
           });
         }
       } else {
-        const token = params.funds?.amount
-          ? (params.funds as { token: MoveableToken }).token
-          : undefined;
-
-        if (params.funds?.amount && token && token.mechanism !== 'native') {
+        if (params.funds?.amount && fundsToken && fundsToken.mechanism !== 'native') {
           const erc20Transfer = encodeFunctionData({
             abi: ERC20_EVM,
             functionName: 'transfer',
             args: [target.address, params.funds.amount],
           });
           ceaMulticalls.push({
-            to: token.address as `0x${string}`,
+            to: fundsToken.address as `0x${string}`,
             value: BigInt(0),
             data: erc20Transfer,
           });
@@ -483,11 +493,11 @@ export async function buildHopDescriptor(
               data: '0x',
             });
           }
-        } else if (params.funds?.amount && token?.mechanism === 'native') {
+        } else if (nativeFundsValue > BigInt(0)) {
           if (target.address.toLowerCase() !== ceaAddress.toLowerCase()) {
             ceaMulticalls.push({
               to: target.address as `0x${string}`,
-              value: params.funds.amount,
+              value: nativeFundsValue,
               data: '0x',
             });
           }
@@ -1438,8 +1448,7 @@ export async function composeCascadeDetailed(
           segment.gasLimit ?? BigInt(0),
           outboundPayload,
           ueaAddress,
-          segment.maxPCForGas ?? BigInt(0),
-          segment.gasPrice ?? BigInt(0)
+          segment.maxPCForGas ?? BigInt(0)
         );
 
         // Build approval + outbound multicalls
@@ -1607,8 +1616,7 @@ export async function composeCascadeDetailed(
             segment.gasLimit ?? BigInt(0),
             svmPayload,
             ueaAddress,
-            segment.maxPCForGas ?? BigInt(0),
-            segment.gasPrice ?? BigInt(0)
+            segment.maxPCForGas ?? BigInt(0)
           );
 
           const inboundGasFee = segment.gasFee || BigInt(0);
@@ -1727,8 +1735,7 @@ export async function composeCascadeDetailed(
           effectiveGasLimit,
           ceaPayload,
           ueaAddress,
-          segment.maxPCForGas ?? BigInt(0),
-          segment.gasPrice ?? BigInt(0)
+          segment.maxPCForGas ?? BigInt(0)
         );
 
         const inboundGasFee = segment.gasFee || BigInt(0);

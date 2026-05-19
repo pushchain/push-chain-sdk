@@ -352,7 +352,7 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
     ];
     expect(req.amount).toBe(BigInt(0));
     expect(req.gasLimit).toBeGreaterThan(BigInt(0));
-    expect(req.gasPrice).toBe(BigInt(1));
+    expect(req.gasPrice).toBe(BigInt(0));
   });
 
   it('does not clamp SVM gas funding below the live pool quote', async () => {

@@ -8,7 +8,7 @@
  *  - InboundTimeoutError → 399-03 (`externalStatus: 'timeout'`)
  *  - Generic inbound Error → 399-02 (`externalStatus: 'failed'`)
  *
- * These assertions stand in for a full live E2E — triggering a real 180s
+ * These assertions stand in for a full live E2E — triggering a real timeout
  * outbound timeout wastes CI time, and deliberately reverting an external
  * tx requires contrived on-chain fixtures. The logic under test is pure
  * classification + receipt mutation, so a focused unit test is sufficient.

@@ -51,6 +51,18 @@ describe('decodeRevert', () => {
     }
   });
 
+  it('decodes GasPriceBelowBase from stale outbound gas-price overrides', () => {
+    const msg =
+      "execution reverted: ret 0x05aab006: evm transaction execution failed";
+    const decoded = decodeRevert(msg);
+    expect(decoded?.kind).toBe('custom');
+    if (decoded?.kind === 'custom') {
+      expect(decoded.selector).toBe('0x05aab006');
+      expect(decoded.name).toBe('GasPriceBelowBase');
+      expect(decoded.hint).toContain('gasPrice');
+    }
+  });
+
   it('decodes ABI-encoded Error(string) ("STF")', () => {
     // Error(string) encoding for "STF":
     //   selector(0x08c379a0) + offset(0x20) + length(0x03) + "STF" + zero-padded

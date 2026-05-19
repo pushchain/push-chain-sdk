@@ -62,6 +62,14 @@ export const KNOWN_ERROR_SELECTORS: Record<`0x${string}`, KnownErrorSelector> = 
     provenance:
       'Observed in dev (selector source unverified — see plan §9 #5)',
   },
+  '0x05aab006': {
+    name: 'GasPriceBelowBase',
+    hint:
+      'Likely cause: an explicit outbound gasPrice override is below the current UniversalCore base price. ' +
+      'Omit gasPrice so the gateway resolves the live base price at execution time.',
+    provenance:
+      'TypesUGPC/UniversalGatewayPC live Route 2 docs e2e, 2026-05-19: gateway tx 0xe1b549eb47c3cbf1abc69ba6e85927832e482147b49a01a0364206098367dbf7.',
+  },
 };
 
 /** Selector for `Error(string)` (Solidity `require(false, "msg")`). */
