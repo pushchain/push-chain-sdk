@@ -5,7 +5,7 @@ import { CrossIcon, Spinner, TickIcon, WarningIcon } from '../../components/comm
 import CaretDown from '../common/icons/CaretDown';
 import CaretUp from '../common/icons/CaretUp';
 
-export const TOAST_POSITION = {
+const TOAST_POSITION = {
     TOP_LEFT: 'top-left',
     TOP_MIDDLE: 'top-middle',
     TOP_RIGHT: 'top-right',
@@ -14,7 +14,7 @@ export const TOAST_POSITION = {
     BOTTOM_RIGHT: 'bottom-right',
 } as const;
 
-export type ToastPosition = typeof TOAST_POSITION[keyof typeof TOAST_POSITION];
+type ToastPosition = typeof TOAST_POSITION[keyof typeof TOAST_POSITION];
 
 type PushWalletToastProps = {
     progress: ProgressEvent | null;
@@ -142,7 +142,7 @@ const PushWalletToast: FC<PushWalletToastProps> = ({
     );
 };
 
-export { PushWalletToast };
+export { PushWalletToast, TOAST_POSITION };
 export type { ToastPosition };
 
 const getToastPositionStyles = (position: ToastPosition) => {
