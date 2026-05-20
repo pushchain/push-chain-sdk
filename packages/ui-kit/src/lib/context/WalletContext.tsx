@@ -813,7 +813,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         activeTriggerId={activeTriggerId}
       />
       {progress && (
-        <PushWalletToast progress={progress} setProgress={setProgress} />
+        <PushWalletToast progress={progress} setProgress={setProgress} toastPosition={config?.toast?.position} />
       )}
       {children}
     </WalletContext.Provider>

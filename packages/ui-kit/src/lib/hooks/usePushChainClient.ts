@@ -102,6 +102,7 @@ export const usePushChainClient = (uid?: string) => {
               clearTimeout(successTimerRef.current);
             }
             setProgress(progress);
+            console.log("Progress:", progress);
             if (
               progress.id === PROGRESS_HOOK.SEND_TX_199_01 ||
               progress.id === PROGRESS_HOOK.SEND_TX_299_01 ||

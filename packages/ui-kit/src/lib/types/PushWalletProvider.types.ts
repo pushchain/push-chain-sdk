@@ -1,6 +1,7 @@
 import { CHAIN, PUSH_NETWORK } from '@pushchain/core/src/lib/constants/enums';
 import { PushUI } from '../constants';
 import { ThemeOverrides } from '../styles/token';
+import { ToastPosition } from '../components/PushWalletToast';
 
 export type LoginMethodConfig = {
   email?: boolean;
@@ -34,6 +35,7 @@ export type ProviderConfigProps = {
   modal?: ModalProps;
   chainConfig?: ChainConfig;
   version?: 4 | 5;
+  toast?: ToastProps;
 };
 
 export type AppMetadata = {
@@ -88,3 +90,8 @@ export type WalletAppDetails = {
   title?: string;
   description?: string;
 };
+
+export type ToastProps = {
+  hidden?: boolean;
+  position?: ToastPosition;
+}

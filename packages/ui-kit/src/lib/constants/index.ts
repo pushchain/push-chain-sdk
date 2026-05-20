@@ -11,6 +11,7 @@ import {
 } from '../components/common';
 import { ConnectionStatus } from '../types';
 import BaseMonotone from '../components/common/icons/BaseMonotone';
+import { TOAST_POSITION } from '../components/PushWalletToast';
 
 export const PushUI = {
   CONSTANTS: {
@@ -32,6 +33,9 @@ export const PushUI = {
     },
     CONNECTION: { STATUS: ConnectionStatus },
     CHAIN_CONFIG: PushChain.CONSTANTS.CHAIN,
+    TOAST: {
+      POSITION: TOAST_POSITION,
+    }
   },
 };
 

@@ -27,6 +27,31 @@
         ]
       }
     },
+    "build-skip-deps": {
+      "executor": "@nx/js:tsc",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "outputPath": "dist/packages/ui-kit",
+        "main": "packages/ui-kit/src/index.ts",
+        "tsConfig": "packages/ui-kit/tsconfig.lib.json",
+        "assets": [
+          "packages/ui-kit/*.md"
+        ],
+        "skipDeps": true
+      }
+    },
+    "build-direct": {
+      "executor": "@nx/run-commands",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "command": "npx tsc --project packages/ui-kit/tsconfig.lib.json --noPropertyAccessFromIndexSignature false --skipLibCheck",
+        "outputPath": "dist/packages/ui-kit"
+      }
+    },
     "nx-release-publish": {
       "executor": "nx:run-commands",
       "options": {

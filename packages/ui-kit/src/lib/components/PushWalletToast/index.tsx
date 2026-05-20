@@ -1,14 +1,28 @@
 import React, { FC, useState, useRef, useEffect } from 'react';
 import { PROGRESS_HOOK, ProgressEvent } from '@pushchain/core/src/lib/progress-hook/progress-hook.types';
-import styled from 'styled-components';
-import { CrossIcon, Spinner, TickIcon, WarningIcon } from "../../components/common";
+import styled, { css } from 'styled-components';
+import { CrossIcon, Spinner, TickIcon, WarningIcon } from '../../components/common';
 import CaretDown from '../common/icons/CaretDown';
 import CaretUp from '../common/icons/CaretUp';
+
+export const TOAST_POSITION = {
+    TOP_LEFT: 'top-left',
+    TOP_MIDDLE: 'top-middle',
+    TOP_RIGHT: 'top-right',
+    BOTTOM_LEFT: 'bottom-left',
+    BOTTOM_MIDDLE: 'bottom-middle',
+    BOTTOM_RIGHT: 'bottom-right',
+} as const;
+
+export type ToastPosition = typeof TOAST_POSITION[keyof typeof TOAST_POSITION];
 
 type PushWalletToastProps = {
     progress: ProgressEvent | null;
     setProgress: React.Dispatch<React.SetStateAction<ProgressEvent | null>>;
-}
+    className?: string;
+    toastPosition?: ToastPosition;
+    hidden?: boolean;
+};
 
 const SUCCESS_TERMINAL_IDS: ReadonlyArray<string> = [
     PROGRESS_HOOK.SEND_TX_199_01,
@@ -28,7 +42,16 @@ const FAILURE_TERMINAL_IDS: ReadonlyArray<string> = [
     PROGRESS_HOOK.SEND_TX_999_03,
 ];
 
-const PushWalletToast: FC<PushWalletToastProps> = ({ progress, setProgress }) => {
+const PushWalletToast: FC<PushWalletToastProps> = ({
+    progress,
+    setProgress,
+    className = 'PUAToast',
+    toastPosition = 'bottom-right',
+    hidden = false,
+}) => {
+
+    if (hidden) return;
+
     const [isOpen, setIsOpen] = useState(false);
     const [isOverflowing, setIsOverflowing] = useState(false);
 
@@ -41,98 +64,146 @@ const PushWalletToast: FC<PushWalletToastProps> = ({ progress, setProgress }) =>
     };
 
     useEffect(() => {
-        if (textRef.current) {
-        const el = textRef.current;
+        setIsOpen(false);
+    }, [progress?.id]);
 
-        const overflow = el.scrollWidth > el.clientWidth;
-        setIsOverflowing(overflow);
+    useEffect(() => {
+        if (textRef.current) {
+            const el = textRef.current;
+            const overflow = el.scrollWidth > el.clientWidth;
+            setIsOverflowing(overflow);
+        } else {
+            setIsOverflowing(false);
         }
     }, [progress?.message]);
 
-    if (!progress) return <></>
+    if (!progress) return null;
 
-    const isInsufficientFundsError = progress?.message.includes('insufficient funds for gas');
+    const progressMessage = progress.message ?? '';
+    const isInsufficientFundsError = progressMessage.includes('insufficient funds for gas');
     const isSuccess = SUCCESS_TERMINAL_IDS.includes(progress.id);
     const isFailure = FAILURE_TERMINAL_IDS.includes(progress.id);
     const txHash = (progress.response as { txHash?: string } | null)?.txHash;
 
     return (
-        <ToastContainer>
+        <ToastContainer className={className} $position={toastPosition}>
             <IconContainer>
-                {
-                    isSuccess ? <TickIcon /> :
-                    isFailure ? <WarningIcon /> :
-                    <Spinner color='var(--pw-int-brand-primary-color)' />
-                }
+                {isSuccess ? (
+                    <TickIcon />
+                ) : isFailure ? (
+                    <WarningIcon />
+                ) : (
+                    <Spinner color="var(--pw-int-brand-primary-color)" />
+                )}
             </IconContainer>
+
             <ContentContainer>
                 <TitleText>{progress.title}</TitleText>
-                {
-                    isSuccess &&
-                    txHash &&
-                    (
-                        <LinkText
-                            onClick={() => handleViewOnScan(txHash)}
-                        >
-                            View in Explorer
-                        </LinkText>
-                    )
-                }
-                {
-                    isFailure &&
-                    progress.message &&
-                    (
-                        <DescriptionContainer>
-                            <DescriptionText
-                                ref={textRef}
-                                expanded={isOpen}
-                            >
-                                {isInsufficientFundsError && 'Insufficient funds for gas: \n'}
-                                {progress.message}
-                            </DescriptionText>
-                            {isOverflowing && (
-                                isOpen ?
+
+                {isSuccess && txHash && (
+                    <LinkText onClick={() => handleViewOnScan(txHash)}>
+                        View in Explorer
+                    </LinkText>
+                )}
+
+                {isFailure && progressMessage && (
+                    <DescriptionContainer>
+                        <DescriptionText ref={textRef} $expanded={isOpen}>
+                            {isInsufficientFundsError && 'Insufficient funds for gas: \n'}
+                            {progressMessage}
+                        </DescriptionText>
+
+                        {isOverflowing && (
+                            isOpen ? (
                                 <ExpandButton onClick={() => setIsOpen(false)}>
                                     View Less
-                                    <CaretUp height='18px' width='18px' color='#6B7280' />
-                                </ExpandButton> : 
+                                    <CaretUp height="18px" width="18px" color="#6B7280" />
+                                </ExpandButton>
+                            ) : (
                                 <ExpandButton onClick={() => setIsOpen(true)}>
                                     View More
-                                    <CaretDown height='18px' width='18px' color='#6B7280' />
+                                    <CaretDown height="18px" width="18px" color="#6B7280" />
                                 </ExpandButton>
-                            )}
-                        </DescriptionContainer>
-                    )
-                }
+                            )
+                        )}
+                    </DescriptionContainer>
+                )}
             </ContentContainer>
-            <CloseContainer onClick={() => {
-                setProgress(null);
-                setIsOpen(false);
-            }}>
-                <CrossIcon height='18px' width='18px' color='#000000' />
+
+            <CloseContainer
+                onClick={() => {
+                    setProgress(null);
+                    setIsOpen(false);
+                }}
+            >
+                <CrossIcon height="18px" width="18px" color="#000000" />
             </CloseContainer>
         </ToastContainer>
     );
 };
 
 export { PushWalletToast };
+export type { ToastPosition };
 
-const ToastContainer = styled.div`
+const getToastPositionStyles = (position: ToastPosition) => {
+    switch (position) {
+        case 'top-left':
+            return css`
+                top: 40px;
+                left: 30px;
+            `;
+
+        case 'top-middle':
+            return css`
+                top: 40px;
+                left: 50%;
+                transform: translateX(-50%);
+            `;
+
+        case 'top-right':
+            return css`
+                top: 40px;
+                right: 30px;
+            `;
+
+        case 'bottom-left':
+            return css`
+                bottom: 40px;
+                left: 30px;
+            `;
+
+        case 'bottom-middle':
+            return css`
+                bottom: 40px;
+                left: 50%;
+                transform: translateX(-50%);
+            `;
+
+        case 'bottom-right':
+        default:
+            return css`
+                bottom: 40px;
+                right: 30px;
+            `;
+    }
+};
+
+const ToastContainer = styled.div<{ $position: ToastPosition }>`
     position: fixed;
-    bottom: 40px;
-    right: 30px;
-    display:flex;
-    flex-direction:row;
-    gap:8px;
+    ${({ $position }) => getToastPositionStyles($position)}
+
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
     align-items: flex-start;
-    border:1px solid #EAEBF2;
-    padding:16px;
-    border-radius:16px;
-    background-color:#fff;
-    z-index:999999990;
-    width:320px;
-    max-width: 100%;
-`
+    border: 1px solid #EAEBF2;
+    padding: 16px;
+    border-radius: 16px;
+    background-color: #fff;
+    z-index: 999999990;
+    width: 320px;
+    max-width: calc(100vw - 32px);
+`;
 
 const ContentContainer = styled.div`
     display: flex;
@@ -140,38 +211,38 @@ const ContentContainer = styled.div`
     align-items: flex-start;
     width: 80%;
     gap: 2px;
-`
+`;
 
 const TitleText = styled.h4`
-    font-size:14px;
-    font-weight:500;
-    line-height:21px;
-    margin:0;
-    font-family:var(--pw-int-font-family);
-    color:#17181B;
-`
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 21px;
+    margin: 0;
+    font-family: var(--pw-int-font-family);
+    color: #17181B;
+`;
 
 const DescriptionContainer = styled.div`
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     width: 100%;
-`
+`;
 
-const DescriptionText = styled.span<{ expanded?: boolean }>`
-    font-size:14px;
-    font-weight:400;
-    line-height:18px;
-    margin:0;
-    font-family:var(--pw-int-font-family);
+const DescriptionText = styled.span<{ $expanded?: boolean }>`
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 18px;
+    margin: 0;
+    font-family: var(--pw-int-font-family);
     color: #313338;
     width: 100%;
     text-align: left;
     text-overflow: ellipsis;
-    text-wrap: wrap;
     overflow: hidden;
-    white-space: ${({ expanded }) => (expanded ? 'pre-wrap' : 'nowrap')};
-`
+    overflow-wrap: anywhere;
+    white-space: ${({ $expanded }) => ($expanded ? 'pre-wrap' : 'nowrap')};
+`;
 
 const ExpandButton = styled.div`
     display: flex;
@@ -184,23 +255,23 @@ const ExpandButton = styled.div`
     &:hover {
         color: #4B5563;
     }
-`
+`;
 
 const LinkText = styled.span`
-    font-size:14px;
-    font-weight:400;
-    line-height:18px;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 18px;
     cursor: pointer;
     color: #0056D0;
-    font-family:var(--pw-int-font-family);
-`
+    font-family: var(--pw-int-font-family);
+`;
 
 const IconContainer = styled.div`
     height: 21px;
     width: 18px;
     display: flex;
     align-items: center;
-`
+`;
 
 const CloseContainer = styled.div`
     display: flex;
@@ -208,4 +279,4 @@ const CloseContainer = styled.div`
     align-items: center;
     cursor: pointer;
     height: 21px;
-`
+`;
