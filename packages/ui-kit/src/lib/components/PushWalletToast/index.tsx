@@ -50,7 +50,7 @@ const PushWalletToast: FC<PushWalletToastProps> = ({
     hidden = false,
 }) => {
 
-    if (hidden) return;
+    if (hidden) return null;
 
     const [isOpen, setIsOpen] = useState(false);
     const [isOverflowing, setIsOverflowing] = useState(false);
