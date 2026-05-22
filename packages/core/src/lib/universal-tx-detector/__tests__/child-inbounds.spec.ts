@@ -29,6 +29,15 @@ const EXPECTED_PC_UTX_HEX =
 const PUSH_FOLLOW_UP_HASH =
   '0xd938ea14e1945ec47cb5a46b2db6debf57447acc50fda810d62df5c3ce56c459';
 
+const SOLANA_DEVNET_CAIP = 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1';
+const SOLANA_SIG_BASE58 =
+  'KQkJoXd3xFtauANM1pSASWLc5oeF13Jmd5wpnrx6JRH6JtePFdmXkSd618YjpgRNs5CAAHRrdEHfXnab7AcEQsc';
+const SOLANA_SIG_HEX =
+  '0x0fe026a46ebd8afa6fc396794c278e1cdb942260111db9564c1a61a0251f488af1a3f88363d7e3c7583c5eca61657515563283859dfabbb5e31333325ccaff0b';
+const SOLANA_UNIVERSAL_TX_LOG_INDEX = 14;
+const SOLANA_EXPECTED_CHILD_UTX_HEX =
+  '0xbe6c4edcfa2f57acf145b8a7e08f10495cdd00c75042a5ae53f4ccaa4b318c3b';
+
 function makeInboundLog(eventName: string, logIndex: number): MatchingLog {
   return {
     eventName,
@@ -53,6 +62,28 @@ describe('deriveChildUniversalTxId (sha256 formula)', () => {
     const a = deriveChildUniversalTxId(SEPOLIA_CAIP, SEPOLIA_HASH, 0);
     const b = deriveChildUniversalTxId(SEPOLIA_CAIP, SEPOLIA_HASH, 1);
     expect(a).not.toBe(b);
+  });
+
+  it('normalizes SVM base58 signatures to the keeper hex form', () => {
+    const fromBase58 = deriveChildUniversalTxId(
+      SOLANA_DEVNET_CAIP,
+      SOLANA_SIG_BASE58,
+      SOLANA_UNIVERSAL_TX_LOG_INDEX
+    );
+    const fromHex = deriveChildUniversalTxId(
+      SOLANA_DEVNET_CAIP,
+      SOLANA_SIG_HEX,
+      SOLANA_UNIVERSAL_TX_LOG_INDEX
+    );
+    const fromBareHex = deriveChildUniversalTxId(
+      SOLANA_DEVNET_CAIP,
+      SOLANA_SIG_HEX.slice(2),
+      SOLANA_UNIVERSAL_TX_LOG_INDEX
+    );
+
+    expect(fromBase58).toBe(SOLANA_EXPECTED_CHILD_UTX_HEX);
+    expect(fromHex).toBe(SOLANA_EXPECTED_CHILD_UTX_HEX);
+    expect(fromBareHex).toBe(SOLANA_EXPECTED_CHILD_UTX_HEX);
   });
 });
 

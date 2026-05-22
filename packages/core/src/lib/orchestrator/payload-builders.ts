@@ -15,6 +15,8 @@ import type {
   SvmExecutePayloadFields,
 } from './orchestrator.types';
 import { hasExecutablePayloadData } from './data-utils';
+import { VerificationType, type UniversalPayload } from '../generated/v1/tx';
+import { encodeUniversalPayloadSvm } from './internals/signing';
 
 export function buildExecuteMulticall({
   execute,
@@ -179,7 +181,8 @@ export function buildCeaMulticallPayload(multicalls: MultiCall[]): `0x${string}`
 }
 
 /**
- * Build an ABI-encoded UniversalPayload struct for inbound relay (Route 3 CEA→Push).
+ * Build an ABI-encoded UniversalPayload struct for EVM-origin inbound relay
+ * (Route 3 CEA→Push).
  *
  * The relay and Push Chain gateway expect the payload parameter of sendUniversalTxToUEA
  * to be a full UniversalPayload struct: (address to, uint256 value, bytes data, uint256 gasLimit,
@@ -231,6 +234,34 @@ export function buildInboundUniversalPayload(
       },
     ]
   );
+}
+
+/**
+ * Build a Borsh-encoded UniversalPayload for SVM-origin inbound relay.
+ *
+ * Push Chain decodes SVM-origin UniversalTx payloads with
+ * DecodeUniversalPayloadSolana, not the EVM ABI decoder used for EVM origins.
+ */
+export function buildInboundUniversalPayloadSvm(
+  multicallData: `0x${string}`,
+  opts?: {
+    gasLimit?: bigint;
+    nonce?: bigint;
+    deadline?: bigint;
+  }
+): `0x${string}` {
+  const payload: UniversalPayload = {
+    to: ZERO_ADDRESS,
+    value: BigInt(0).toString(),
+    data: multicallData,
+    gasLimit: (opts?.gasLimit ?? BigInt(100_000_000)).toString(),
+    maxFeePerGas: BigInt(10_000_000_000).toString(),
+    maxPriorityFeePerGas: BigInt(0).toString(),
+    nonce: (opts?.nonce ?? BigInt(0)).toString(),
+    deadline: (opts?.deadline ?? BigInt(9_999_999_999)).toString(),
+    vType: VerificationType.universalTxVerification,
+  };
+  return `0x${encodeUniversalPayloadSvm(payload).toString('hex')}`;
 }
 
 /**

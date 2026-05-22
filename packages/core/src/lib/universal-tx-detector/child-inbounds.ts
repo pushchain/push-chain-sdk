@@ -6,6 +6,9 @@
  *   utxId = sha256(`<sourceChainCaip>:<txHash>:<logIndex>`)
  * See push-chain/x/uexecutor/types/keys.go:49-53 (GetInboundUniversalTxKey).
  *
+ * For SVM sources, `<txHash>` is the 0x-prefixed hex encoding of the 64-byte
+ * Solana signature and `<logIndex>` is the event's index in `meta.logMessages`.
+ *
  * For Push-initiated outbounds (pcTx entries) the formula drops the log index:
  *   utxId = sha256(`<pcChainCaip>:<pcTxHash>`)
  * See push-chain/x/uexecutor/types/keys.go:63-67 (GetPcUniversalTxKey).
@@ -14,6 +17,7 @@
  * `pushClient.getUniversalTxByIdV2`, no event-attribute predicate needed.
  */
 import { sha256, toBytes, toHex } from 'viem';
+import { bs58 } from '../internal/bs58';
 import type { PushClient } from '../push-client/push-client';
 import { normalizeChildInboundResolutionForUser } from './normalize';
 import type {
@@ -47,6 +51,23 @@ const INBOUND_EVENT_NAMES = new Set([
   'RevertUniversalTx',
 ]);
 
+const HEX_64_BYTE_RE = /^(?:0x)?[0-9a-fA-F]{128}$/;
+
+function normalizeInboundTxHashForKey(
+  sourceChainCaip: string,
+  externalTxHash: string
+): string {
+  if (!sourceChainCaip.startsWith('solana:')) {
+    return externalTxHash.startsWith('0x')
+      ? externalTxHash
+      : `0x${externalTxHash}`;
+  }
+
+  if (externalTxHash.startsWith('0x')) return externalTxHash;
+  if (HEX_64_BYTE_RE.test(externalTxHash)) return `0x${externalTxHash}`;
+  return toHex(bs58.decode(externalTxHash));
+}
+
 export interface ChildInboundResolution {
   /** Deterministically derived universalTxId for this inbound log. */
   universalTxId: `0x${string}`;
@@ -72,9 +93,10 @@ export function deriveChildUniversalTxId(
   externalTxHash: string,
   logIndex: number | string
 ): `0x${string}` {
-  const normHash = externalTxHash.startsWith('0x')
-    ? externalTxHash
-    : `0x${externalTxHash}`;
+  const normHash = normalizeInboundTxHashForKey(
+    sourceChainCaip,
+    externalTxHash
+  );
   const input = `${sourceChainCaip}:${normHash}:${logIndex}`;
   return sha256(toBytes(input));
 }

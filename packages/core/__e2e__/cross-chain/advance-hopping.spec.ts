@@ -1124,7 +1124,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           args: [PUSDT_BNB_TOKEN, bridgeAmount, '0x' as `0x${string}`, BigInt(0), outboundPayload, ueaAddress],
         });
         const tx = await pushClient.universal.sendTransaction({
-          to: STAKING_PROXY, data: triggerData, value: parseEther('25'),
+          to: STAKING_PROXY, data: triggerData, value: parseEther('50'),
         });
         console.log(`triggerOutbound TX: ${tx.hash}`);
         const receipt = await tx.wait();

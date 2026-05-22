@@ -26,6 +26,7 @@ import {
   buildExecuteMulticall,
   buildCeaMulticallPayload,
   buildInboundUniversalPayload,
+  buildInboundUniversalPayloadSvm,
   buildOutboundRequest,
   buildSendUniversalTxToUEA,
   buildOutboundApprovalAndCall,
@@ -648,8 +649,8 @@ export async function buildHopDescriptor(
           ceaAddress: ceaPdaHex,
           isSvmTarget: true,
           prc20Token,
-          // Route 3 is payload-only on Push: the drain amount lives inside the
-          // SVM payload. Burning here would require the UEA to pre-hold pSOL.
+          // Route 3 drains pre-existing funds from the external CEA. The
+          // Push-side outbound is a payload relay, so no PRC-20 is burned.
           burnAmount: BigInt(0),
           gasToken,
           gasFee,
@@ -1346,12 +1347,10 @@ export async function composeCascadeDetailed(
           assertCeaFundsParkingInvariant(targetForOutbound, outboundPayload);
         }
 
-        // Per-segment PRC-20 burn-balance pre-check (cascade R2-style segments
-        // only — INBOUND_FROM_CEA segments are payload-only with totalBurnAmount=0
-        // per the 2026-03-19 fix). Skip MIGRATION (totalBurnAmount=0). Fires
-        // whenever burnAmount > 0 even when burn token equals gas token — the
-        // gateway's transferFrom happens BEFORE the gas swap, so user must
-        // pre-hold the burn amount.
+        // Per-segment PRC-20 burn-balance pre-check. Fires whenever
+        // burnAmount > 0 even when burn token equals gas token — the gateway's
+        // transferFrom happens BEFORE the gas swap, so user must pre-hold the
+        // burn amount.
         const segBurnAmount = segment.totalBurnAmount || BigInt(0);
         const segBurnToken = segment.prc20Token;
         if (segBurnAmount > BigInt(0) && segBurnToken && !isMigration) {
@@ -1538,8 +1537,9 @@ export async function composeCascadeDetailed(
           ];
         }
         // Primary hop carries the sourceChain / CEA address (shared across merged hops).
-        const hop0 = segment.hops[0];
-
+        const hop = segment.hops[0];
+        const sourceChain = hop.sourceChain!;
+        const ceaAddress = hop.ceaAddress || ueaAddress;
         let intermediatePayload: `0x${string}` = '0x';
         if (accumulatedPushMulticalls.length > 0) {
           const multicallPayload = buildMulticallPayloadData(
@@ -1548,14 +1548,11 @@ export async function composeCascadeDetailed(
             accumulatedPushMulticalls
           );
           // +1: the outbound tx consumes one nonce via execute()
-          intermediatePayload = buildInboundUniversalPayload(multicallPayload, {
-            nonce: (ueaNonce ?? BigInt(0)) + BigInt(1),
-          });
+          const nonce = (ueaNonce ?? BigInt(0)) + BigInt(1);
+          intermediatePayload = isSvmChain(sourceChain)
+            ? buildInboundUniversalPayloadSvm(multicallPayload, { nonce })
+            : buildInboundUniversalPayload(multicallPayload, { nonce });
         }
-
-        const hop = segment.hops[0];
-        const sourceChain = hop.sourceChain!;
-        const ceaAddress = hop.ceaAddress || ueaAddress;
 
         // SVM chains: build SVM CPI payload instead of EVM CEA multicall
         if (isSvmChain(sourceChain)) {

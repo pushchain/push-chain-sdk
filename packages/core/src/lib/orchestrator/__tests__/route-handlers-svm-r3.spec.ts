@@ -2,7 +2,6 @@
  * Unit coverage for SVM Route 3 payload/request construction.
  */
 import { PushChain } from '../../push-chain/push-chain';
-import { decodeAbiParameters } from 'viem';
 import { CHAIN, PUSH_NETWORK } from '../../constants/enums';
 import { MOVEABLE_TOKEN_CONSTANTS } from '../../constants/tokens';
 import { UEA_MULTICALL_SELECTOR, ZERO_ADDRESS } from '../../constants/selectors';
@@ -39,7 +38,10 @@ function hexToBytes(hex: `0x${string}`): Uint8Array {
   return out;
 }
 
-function extractSendToUeaPayload(svmPayload: `0x${string}`): `0x${string}` {
+function extractSendToUeaArgs(svmPayload: `0x${string}`): {
+  amount: bigint;
+  payload: `0x${string}`;
+} {
   const bytes = hexToBytes(svmPayload);
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 
@@ -51,43 +53,65 @@ function extractSendToUeaPayload(svmPayload: `0x${string}`): `0x${string}` {
 
   // send_universal_tx_to_uea ix_data layout:
   // 8-byte discriminator, 32-byte token, u64 amount LE, u32 payload_len LE, payload, revert pubkey.
-  const payloadLenOffset = ixDataOffset + 8 + 32 + 8;
+  const amountOffset = ixDataOffset + 8 + 32;
+  const amount = view.getBigUint64(amountOffset, true);
+  const payloadLenOffset = amountOffset + 8;
   const payloadLen = view.getUint32(payloadLenOffset, true);
   const payloadOffset = payloadLenOffset + 4;
   const payloadBytes = bytes.slice(payloadOffset, payloadOffset + payloadLen);
 
-  return `0x${Buffer.from(payloadBytes).toString('hex')}`;
+  return {
+    amount,
+    payload: `0x${Buffer.from(payloadBytes).toString('hex')}`,
+  };
 }
 
-function decodeInboundUniversalPayload(payload: `0x${string}`): {
+function extractSendToUeaPayload(svmPayload: `0x${string}`): `0x${string}` {
+  return extractSendToUeaArgs(svmPayload).payload;
+}
+
+function decodeSvmInboundUniversalPayload(payload: `0x${string}`): {
   data: `0x${string}`;
   nonce: bigint;
 } {
-  const [decoded] = decodeAbiParameters(
-    [
-      {
-        type: 'tuple',
-        components: [
-          { name: 'to', type: 'address' },
-          { name: 'value', type: 'uint256' },
-          { name: 'data', type: 'bytes' },
-          { name: 'gasLimit', type: 'uint256' },
-          { name: 'maxFeePerGas', type: 'uint256' },
-          { name: 'maxPriorityFeePerGas', type: 'uint256' },
-          { name: 'nonce', type: 'uint256' },
-          { name: 'deadline', type: 'uint256' },
-          { name: 'vType', type: 'uint8' },
-        ],
-      },
-    ],
-    payload
-  );
+  const bytes = hexToBytes(payload);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const dataLenOffset = 20 + 8;
+  const dataLen = view.getUint32(dataLenOffset, true);
+  const dataOffset = dataLenOffset + 4;
+  const data = bytes.slice(dataOffset, dataOffset + dataLen);
+  const nonceOffset = dataOffset + dataLen + 8 + 8 + 8;
+  const nonce = view.getBigUint64(nonceOffset, true);
 
-  return decoded as unknown as { data: `0x${string}`; nonce: bigint };
+  return {
+    data: `0x${Buffer.from(data).toString('hex')}`,
+    nonce,
+  };
 }
 
 describe('buildPayloadForRoute — SVM Route 3', () => {
-  it('uses the SPL asset PRC-20 in the outer request so relayer mint matches payload mint', async () => {
+  it('keeps native SOL drains payload-only on Push while ixData carries the drain amount', async () => {
+    const params: UniversalExecuteParams = {
+      from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
+      to: PUSH_EOA,
+      value: BigInt(5_000_000),
+    };
+
+    const { payload, gatewayRequest } = await buildPayloadForRoute(
+      makeCtx(),
+      params,
+      TransactionRoute.CEA_TO_PUSH,
+      BigInt(0)
+    );
+
+    const outbound = gatewayRequest as UniversalOutboundTxRequest;
+    const sendToUea = extractSendToUeaArgs(payload);
+
+    expect(outbound.amount).toBe(BigInt(0));
+    expect(sendToUea.amount).toBe(BigInt(5_000_000));
+  });
+
+  it('keeps SPL drains payload-only on Push while ixData carries the drain amount', async () => {
     const token = MOVEABLE_TOKEN_CONSTANTS.SOLANA_DEVNET.USDT;
     const expectedPrc20 = PushChain.utils.tokens.getPRC20Address(token).address;
 
@@ -100,7 +124,7 @@ describe('buildPayloadForRoute — SVM Route 3', () => {
       },
     };
 
-    const { gatewayRequest } = await buildPayloadForRoute(
+    const { payload, gatewayRequest } = await buildPayloadForRoute(
       makeCtx(),
       params,
       TransactionRoute.CEA_TO_PUSH,
@@ -108,8 +132,11 @@ describe('buildPayloadForRoute — SVM Route 3', () => {
     );
 
     const outbound = gatewayRequest as UniversalOutboundTxRequest;
+    const sendToUea = extractSendToUeaArgs(payload);
+
     expect(outbound.token).toBe(expectedPrc20);
     expect(outbound.amount).toBe(BigInt(0));
+    expect(sendToUea.amount).toBe(BigInt(8_000));
   });
 
   it('wraps array data in an inbound UniversalPayload carrying a Push multicall', async () => {
@@ -130,7 +157,7 @@ describe('buildPayloadForRoute — SVM Route 3', () => {
 
     const outbound = gatewayRequest as UniversalOutboundTxRequest;
     const sendToUeaPayload = extractSendToUeaPayload(payload);
-    const inboundPayload = decodeInboundUniversalPayload(sendToUeaPayload);
+    const inboundPayload = decodeSvmInboundUniversalPayload(sendToUeaPayload);
 
     expect(outbound.amount).toBe(BigInt(0));
     expect(sendToUeaPayload).toMatch(/^0x[0-9a-f]+$/);
@@ -147,17 +174,21 @@ describe('buildPayloadForRoute — SVM Route 3', () => {
       data: '0x12345678',
     };
 
-    const { payload } = await buildPayloadForRoute(
+    const { payload, gatewayRequest } = await buildPayloadForRoute(
       makeCtx(),
       params,
       TransactionRoute.CEA_TO_PUSH,
       BigInt(0)
     );
 
-    const sendToUeaPayload = extractSendToUeaPayload(payload);
-    const inboundPayload = decodeInboundUniversalPayload(sendToUeaPayload);
+    const sendToUeaArgs = extractSendToUeaArgs(payload);
+    const sendToUeaPayload = sendToUeaArgs.payload;
+    const inboundPayload = decodeSvmInboundUniversalPayload(sendToUeaPayload);
+    const outbound = gatewayRequest as UniversalOutboundTxRequest;
 
     expect(sendToUeaPayload.startsWith('0x12345678')).toBe(false);
+    expect(outbound.amount).toBe(BigInt(0));
+    expect(sendToUeaArgs.amount).toBe(BigInt(5_000));
     expect(inboundPayload.data.startsWith(UEA_MULTICALL_SELECTOR)).toBe(true);
     expect(inboundPayload.nonce).toBe(BigInt(1));
   });

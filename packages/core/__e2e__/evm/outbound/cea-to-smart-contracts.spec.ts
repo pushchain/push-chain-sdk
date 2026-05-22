@@ -239,7 +239,7 @@ const STAKING_EXAMPLE_ABI = [
 // ============================================================================
 // Helper: Compute msg.value for UGPC gas swap (test-specific)
 // ============================================================================
-const OUTBOUND_MSG_VALUE = parseEther('25'); // 25 PC — covers gas swap, excess refunded to StakingExample
+const OUTBOUND_MSG_VALUE = parseEther('50'); // 50 PC — covers current gas swap, excess refunded to StakingExample
 
 async function computeOutboundMsgValue(
   pushPublicClient: ReturnType<typeof createPublicClient>,

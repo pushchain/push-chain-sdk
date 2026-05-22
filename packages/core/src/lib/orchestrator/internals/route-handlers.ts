@@ -63,6 +63,7 @@ import {
   buildExecuteMulticall,
   buildCeaMulticallPayload,
   buildInboundUniversalPayload,
+  buildInboundUniversalPayloadSvm,
   buildOutboundRequest,
   buildSendUniversalTxToUEA,
   buildOutboundApprovalAndCall,
@@ -208,9 +209,11 @@ function resolveR3SvmDrain(
   prc20Token: `0x${string}`;
   drainAmount: bigint;
   tokenMintHex: `0x${string}` | undefined;
+  splMintBase58: string | undefined;
 } {
   let drainAmount = BigInt(0);
   let tokenMintHex: `0x${string}` | undefined;
+  let splMintBase58: string | undefined;
   let prc20Token = getNativePRC20ForChain(sourceChain, pushNetwork);
 
   if (params.funds?.amount && params.funds.amount > BigInt(0)) {
@@ -219,13 +222,14 @@ function resolveR3SvmDrain(
     if (token?.mechanism === 'approve') {
       const mintPk = new PublicKey(token.address);
       tokenMintHex = ('0x' + Buffer.from(mintPk.toBytes()).toString('hex')) as `0x${string}`;
+      splMintBase58 = token.address;
       prc20Token = PushChain.utils.tokens.getPRC20Address(token).address;
     }
   } else if (params.value && params.value > BigInt(0)) {
     drainAmount = params.value;
   }
 
-  return { prc20Token, drainAmount, tokenMintHex };
+  return { prc20Token, drainAmount, tokenMintHex, splMintBase58 };
 }
 
 function buildR3SvmExtraPayload(
@@ -263,7 +267,7 @@ function buildR3SvmExtraPayload(
       allowSelfValueCall: true,
     })
   );
-  const inboundPayload = buildInboundUniversalPayload(multicallPayload, {
+  const inboundPayload = buildInboundUniversalPayloadSvm(multicallPayload, {
     nonce: inboundNonce ?? BigInt(0),
   });
 
@@ -1643,8 +1647,8 @@ export async function executeCeaToPush(
  *
  * Unlike EVM Route 3 which builds CEA multicalls, SVM Route 3 encodes a
  * `send_universal_tx_to_uea` instruction as an execute payload targeting
- * the SVM gateway program (self-call). The drain amount is embedded in
- * the instruction data, not in the outbound request amount.
+ * the SVM gateway program (self-call). For funds-bearing calls the outbound
+ * request amount must match the drain amount embedded in the instruction data.
  */
 export async function executeCeaToPushSvm(
   ctx: OrchestratorContext,
@@ -1670,10 +1674,9 @@ export async function executeCeaToPushSvm(
 
   printLog(ctx, `executeCeaToPushSvm — sourceChain: ${sourceChain}, gateway: ${lockerContract}`);
 
-  // Route 3 SVM: CEA uses its own pre-existing balance — no PRC-20 burn
-  // needed on Push Chain. The outer request token must still match the source
-  // asset so the relayer supplies the same Solana mint that the payload
-  // encodes; otherwise the gateway rejects with InvalidMint.
+  // Route 3 SVM drains pre-existing funds from the Solana CEA. The Push-side
+  // outbound is a payload relay; do not burn pSOL/pSPL from the UEA for the
+  // drain amount.
   const { prc20Token, drainAmount, tokenMintHex } = resolveR3SvmDrain(
     params,
     sourceChain,
@@ -1719,12 +1722,6 @@ export async function executeCeaToPushSvm(
     `executeCeaToPushSvm — drainAmount: ${drainAmount.toString()}, payload length: ${(svmPayload.length - 2) / 2} bytes`
   );
 
-  // burnAmount = 0 (payload-only outbound — drain amount lives inside ixData).
-  // Mirrors the 2026-03-19 cascade fix that removed the 1-wei workaround for
-  // SVM payload-only hops because it caused `InsufficientBalance (0xf4d678b8)`
-  // reverts on fresh UEAs that don't hold the source-chain native PRC-20
-  // (e.g. pSOL). The UGPC upgrade post-2026-03-19 already accepts amount = 0
-  // on the cascade path, and the same precompile is used here.
   const burnAmount = BigInt(0);
 
   let effectiveGasLimit = params.gasLimit ?? BigInt(0);
@@ -1762,7 +1759,7 @@ export async function executeCeaToPushSvm(
         prc20Token,
         quote: result,
         splMintBase58: undefined,
-        burnAmount: BigInt(0),
+        burnAmount,
         pathTag: 'executeCeaToPushSvm',
       });
       gasToken = result.gasToken;
@@ -1875,8 +1872,8 @@ export async function executeCeaToPushSvm(
   // SVM warn-threshold telemetry (no truncation — pre-flight handles drain protection).
   maybeFireSvmWarnThreshold(ctx, nativeValueForGas, gasToken, 'R3_SVM');
 
-  // Pre-flight (R3 SVM): no PRC-20 burn check. R3 SVM uses burnAmount=0
-  // because the drain amount lives inside the SVM instruction data.
+  // Pre-flight (R3 SVM): no PRC-20 burn check. The drain amount lives in the
+  // embedded Solana instruction and is withdrawn from the external CEA.
   runPreflight({
     ctx,
     ueaAddress,

@@ -10,12 +10,9 @@
  * return, same universalTxId derivation strategy (primary-log fallback
  * via deriveChildUniversalTxId on source-chain inbounds).
  *
- * Open contract with the push-chain cosmos keeper (documented in the
- * plan): the keeper must derive SVM inbound universalTxIds using the
- * Solana base58 signature verbatim inside `${caip}:${sig}:${logIndex}`.
- * If the keeper uses a different representation (hex bytes, sub_tx_id
- * field, etc.) the `rawSource` argument to deriveChildUniversalTxId below
- * needs to swap — single line.
+ * The Push keeper stores SVM inbound ids using the 0x-prefixed hex encoding
+ * of the 64-byte Solana signature and the index of the Anchor event inside
+ * `meta.logMessages`: `${caip}:${hexSig}:${logMessageIndex}`.
  */
 import { BorshEventCoder } from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
@@ -122,12 +119,11 @@ export async function detectUniversalTxSvm(
   const eventCoder = new BorshEventCoder(SVM_GATEWAY_IDL as never);
   const matchingLogs: MatchingLog[] = [];
 
-  // Walk logMessages for `Program data:` entries. Each matched event gets
-  // assigned an ordinal logIndex — its position among matching events.
-  // This is the deterministic integer the cosmos keeper is expected to use
-  // when it derives an inbound universalTxId for SVM sources.
-  let ordinal = 0;
-  for (const rawLog of logMessages) {
+  // Walk logMessages for `Program data:` entries. Each matched event keeps
+  // the actual Solana log-message index because that is the value validators
+  // submit as the inbound log_index and the keeper uses for the UTX key.
+  for (let logIndex = 0; logIndex < logMessages.length; logIndex++) {
+    const rawLog = logMessages[logIndex];
     if (typeof rawLog !== 'string') continue;
     const prefix = 'Program data: ';
     if (!rawLog.startsWith(prefix)) continue;
@@ -166,10 +162,9 @@ export async function detectUniversalTxSvm(
     matchingLogs.push({
       eventName,
       address: emitter,
-      logIndex: ordinal,
+      logIndex,
       args,
     });
-    ordinal += 1;
   }
 
   if (matchingLogs.length === 0) {
@@ -183,8 +178,7 @@ export async function detectUniversalTxSvm(
   const decoded = { ...classified.decoded };
 
   // Inbound fallback for universalTxId: same formula the EVM branch uses,
-  // but the raw signature flows through untouched (no 0x-prefix rewrite,
-  // see deriveSvmChildUniversalTxId in child-inbounds.ts).
+  // with the canonical 0x-hex Solana signature and log-message index.
   if (!decoded.universalTxId) {
     const caip: string = chain;
     if (
