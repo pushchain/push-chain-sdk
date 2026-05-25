@@ -250,4 +250,46 @@ describe('findChildUtxIdFromExternalTx — detector-first derivation', () => {
       'have 0.008 PC (8000000000000000 wei) want 0.020517277398607022 PC (20517277398607022 wei)'
     );
   });
+
+  it('fails fast when inbound pcTx is failed before universalStatus becomes terminal', async () => {
+    const ctx = makeCtx();
+    (ctx.pushClient.getUniversalTxByIdV2 as jest.Mock).mockResolvedValue({
+      universalTx: {
+        universalStatus: UniversalTxStatus.UNIVERSAL_TX_STATUS_UNSPECIFIED,
+        pcTx: [
+          {
+            txHash: '',
+            status: 'FAILED',
+            errorMsg:
+              "contract call failed: method 'executeUniversalTx', contract '0x4A701114F991bf75685584c8156Db983c0DF95a0': execution reverted: ret 0x05aab006: evm transaction execution failed",
+          },
+        ],
+      },
+    });
+    mockedDetect.mockResolvedValueOnce({
+      txHash: '0xext',
+      chain: 'eip155:97',
+      kind: 'INBOUND_FROM_CEA',
+    } as never);
+    mockedResolve.mockResolvedValueOnce([
+      resolution({
+        universalTxId: '0xabc123' as `0x${string}`,
+        sourceEventName: 'UniversalTx',
+      }),
+    ]);
+
+    const result = await waitForInboundPushTx(
+      ctx,
+      '0xext',
+      'eip155:97',
+      {
+        initialWaitMs: 0,
+        pollingIntervalMs: 1,
+        timeout: 1000,
+      }
+    );
+
+    expect(result.status).toBe('failed');
+    expect(result.errorMessage).toContain('0x05aab006');
+  });
 });

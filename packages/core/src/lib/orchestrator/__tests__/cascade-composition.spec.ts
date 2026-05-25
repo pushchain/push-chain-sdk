@@ -5,10 +5,12 @@
  * Tests import the pure function directly from cascade.ts
  * (no Orchestrator instance needed).
  */
-import { decodeFunctionData } from 'viem';
+import { decodeAbiParameters, decodeFunctionData } from 'viem';
 import { CHAIN } from '../../constants/enums';
 import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
+import { CEA_EVM } from '../../constants/abi/cea.evm';
 import { classifyIntoSegments, composeCascadeDetailed } from '../internals/cascade';
+import { MULTICALL_TUPLE_TYPE } from '../payload-builders';
 import type { OrchestratorContext } from '../internals/context';
 import type {
   CascadeSegment,
@@ -272,7 +274,7 @@ describe('classifyIntoSegments', () => {
 });
 
 describe('composeCascadeDetailed', () => {
-  it('keeps nested outbound request gasPrice at zero so UGPC resolves the current base price', async () => {
+  it('keeps the quoted gasPrice on immediate outbound requests', async () => {
     const gasPrice = BigInt(50_000_000);
     const hop = makeRoute2Hop(CHAIN.BNB_TESTNET, [], {
       burnAmount: BigInt(0),
@@ -297,6 +299,9 @@ describe('composeCascadeDetailed', () => {
       progressHook: () => undefined,
       pushNetwork: 'TESTNET_DONUT',
       pushClient: { readContract: jest.fn() },
+      universalSigner: {
+        account: { chain: CHAIN.ETHEREUM_SEPOLIA, address: ALICE },
+      },
     } as unknown as OrchestratorContext;
 
     const { multicalls } = await composeCascadeDetailed(
@@ -317,6 +322,121 @@ describe('composeCascadeDetailed', () => {
     const [request] = decoded.args as [UniversalOutboundTxRequest];
 
     expect(request.gasLimit).toBe(BigInt(2_000_000));
-    expect(request.gasPrice).toBe(BigInt(0));
+    expect(request.gasPrice).toBe(gasPrice);
+  });
+
+  it('uses live gas price resolution for inbound outbounds delayed behind another inbound', async () => {
+    const bnbGasPrice = BigInt(50_000_000);
+    const ethGasPrice = BigInt(75_000_000);
+    const bnbHop = makeRoute3Hop(CHAIN.BNB_TESTNET, {
+      burnAmount: BigInt(0),
+      gasPrice: bnbGasPrice,
+    });
+    const delayedEthHop = makeRoute3Hop(CHAIN.ETHEREUM_SEPOLIA, {
+      burnAmount: BigInt(0),
+      gasPrice: ethGasPrice,
+    });
+    const segments: CascadeSegment[] = [
+      {
+        type: 'INBOUND_FROM_CEA',
+        hops: [bnbHop],
+        sourceChain: CHAIN.BNB_TESTNET,
+        totalBurnAmount: BigInt(0),
+        prc20Token: TOKEN_A,
+        gasToken: TOKEN_A,
+        gasFee: BigInt(100),
+        gasPrice: bnbGasPrice,
+        gasLimit: BigInt(750_000),
+        maxPCForGas: BigInt(0),
+      },
+      {
+        type: 'INBOUND_FROM_CEA',
+        hops: [delayedEthHop],
+        sourceChain: CHAIN.ETHEREUM_SEPOLIA,
+        totalBurnAmount: BigInt(0),
+        prc20Token: TOKEN_A,
+        gasToken: TOKEN_A,
+        gasFee: BigInt(100),
+        gasPrice: ethGasPrice,
+        gasLimit: BigInt(750_000),
+        maxPCForGas: BigInt(0),
+      },
+    ];
+    const ctx = {
+      printTraces: false,
+      progressHook: () => undefined,
+      pushNetwork: 'TESTNET_DONUT',
+      pushClient: { readContract: jest.fn() },
+      universalSigner: {
+        account: { chain: CHAIN.ETHEREUM_SEPOLIA, address: ALICE },
+      },
+    } as unknown as OrchestratorContext;
+
+    const { multicalls } = await composeCascadeDetailed(
+      ctx,
+      segments,
+      UEA,
+      BigInt('100000000000000000000')
+    );
+    const topOutboundCall = multicalls.find((call) =>
+      call.data.startsWith('0x77b86bec')
+    );
+    expect(topOutboundCall).toBeDefined();
+
+    const topDecoded = decodeFunctionData({
+      abi: UNIVERSAL_GATEWAY_PC,
+      data: topOutboundCall!.data,
+    });
+    const [topRequest] = topDecoded.args as [UniversalOutboundTxRequest];
+    expect(topRequest.gasPrice).toBe(bnbGasPrice);
+
+    const [ceaCalls] = decodeAbiParameters(
+      [MULTICALL_TUPLE_TYPE],
+      `0x${topRequest.payload.slice(10)}` as `0x${string}`
+    ) as [MultiCall[]];
+    const sendToUeaCall = ceaCalls.find((call) =>
+      call.data.startsWith('0xe7c1e3fc')
+    );
+    expect(sendToUeaCall).toBeDefined();
+
+    const sendToUeaDecoded = decodeFunctionData({
+      abi: CEA_EVM,
+      data: sendToUeaCall!.data,
+    });
+    const intermediatePayload = sendToUeaDecoded.args[2] as `0x${string}`;
+    const [universalPayload] = decodeAbiParameters(
+      [
+        {
+          type: 'tuple',
+          components: [
+            { name: 'to', type: 'address' },
+            { name: 'value', type: 'uint256' },
+            { name: 'data', type: 'bytes' },
+            { name: 'gasLimit', type: 'uint256' },
+            { name: 'maxFeePerGas', type: 'uint256' },
+            { name: 'maxPriorityFeePerGas', type: 'uint256' },
+            { name: 'nonce', type: 'uint256' },
+            { name: 'deadline', type: 'uint256' },
+            { name: 'vType', type: 'uint8' },
+          ],
+        },
+      ],
+      intermediatePayload
+    ) as unknown as readonly [{ data: `0x${string}` }];
+    const [nestedPushCalls] = decodeAbiParameters(
+      [MULTICALL_TUPLE_TYPE],
+      `0x${universalPayload.data.slice(10)}` as `0x${string}`
+    ) as [MultiCall[]];
+    const delayedOutboundCall = nestedPushCalls.find((call) =>
+      call.data.startsWith('0x77b86bec')
+    );
+    expect(delayedOutboundCall).toBeDefined();
+
+    const delayedDecoded = decodeFunctionData({
+      abi: UNIVERSAL_GATEWAY_PC,
+      data: delayedOutboundCall!.data,
+    });
+    const [delayedRequest] = delayedDecoded.args as [UniversalOutboundTxRequest];
+    expect(delayedRequest.gasPrice).toBe(BigInt(0));
   });
 });

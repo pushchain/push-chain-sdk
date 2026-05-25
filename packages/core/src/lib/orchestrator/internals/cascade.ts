@@ -1298,6 +1298,25 @@ export async function composeCascadeDetailed(
 
   for (let segIdxLoop = segments.length - 1; segIdxLoop >= 0; segIdxLoop--) {
     const segment = segments[segIdxLoop];
+    const gasPriceForOutboundRequest = (chainForLog?: CHAIN): bigint => {
+      const quotedGasPrice = segment.gasPrice ?? BigInt(0);
+      // If this outbound is being accumulated into an earlier Route 3
+      // inbound payload, it may execute minutes after the quote. Keep
+      // immediate outbounds pinned to the quote, but let delayed nested
+      // outbounds resolve the live base gas price at execution time.
+      const executesAfterInbound = segments
+        .slice(0, segIdxLoop)
+        .some((s) => s.type === 'INBOUND_FROM_CEA');
+
+      if (executesAfterInbound && quotedGasPrice > BigInt(0)) {
+        printLog(
+          ctx,
+          `composeCascade — delayed outbound to ${chainForLog ?? 'unknown chain'}: using gasPrice=0 instead of quoted ${quotedGasPrice} so UGPC resolves the live base price at execution time`
+        );
+      }
+
+      return executesAfterInbound ? BigInt(0) : quotedGasPrice;
+    };
 
     switch (segment.type) {
       case 'PUSH_EXECUTION': {
@@ -1447,7 +1466,8 @@ export async function composeCascadeDetailed(
           segment.gasLimit ?? BigInt(0),
           outboundPayload,
           ueaAddress,
-          segment.maxPCForGas ?? BigInt(0)
+          segment.maxPCForGas ?? BigInt(0),
+          gasPriceForOutboundRequest(firstHop?.targetChain)
         );
 
         // Build approval + outbound multicalls
@@ -1613,7 +1633,8 @@ export async function composeCascadeDetailed(
             segment.gasLimit ?? BigInt(0),
             svmPayload,
             ueaAddress,
-            segment.maxPCForGas ?? BigInt(0)
+            segment.maxPCForGas ?? BigInt(0),
+            gasPriceForOutboundRequest(sourceChain)
           );
 
           const inboundGasFee = segment.gasFee || BigInt(0);
@@ -1732,7 +1753,8 @@ export async function composeCascadeDetailed(
           effectiveGasLimit,
           ceaPayload,
           ueaAddress,
-          segment.maxPCForGas ?? BigInt(0)
+          segment.maxPCForGas ?? BigInt(0),
+          gasPriceForOutboundRequest(sourceChain)
         );
 
         const inboundGasFee = segment.gasFee || BigInt(0);

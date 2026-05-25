@@ -206,7 +206,7 @@ async function verifySvmTransaction(
  * Verifies that an outbound transaction succeeded on the external chain.
  * Dispatches to EVM or SVM verifier based on the chain's VM type.
  *
- * @param txHash - The external transaction hash (hex for both EVM and SVM)
+ * @param txHash - The external transaction hash (EVM hex; SVM base58 or raw hex)
  * @param chain  - The target CHAIN enum value
  */
 export async function verifyExternalTransaction(

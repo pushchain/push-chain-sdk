@@ -262,6 +262,11 @@ export async function waitForInboundPushTx(
         }
         printLog(ctx, `[waitForInboundPushTx] Poll #${pollCount} utx-status | status: ${status} | pcTx[0].txHash: '${pushTxHash ?? ''}' | pcTx len: ${utx?.pcTx?.length ?? 0}`);
 
+        const failedPcTx = utx?.pcTx?.find((pcTx) => {
+          const pcTxStatus = String(pcTx.status || '').toUpperCase();
+          return pcTxStatus === 'FAILED' || Boolean(pcTx.errorMsg);
+        });
+
         if (TERMINAL_SUCCESS_STATUSES.has(status)) {
           // Wait one more poll cycle if pcTx hasn't populated yet — the
           // indexer occasionally flips status before the pcTx hash is queryable.
@@ -284,9 +289,27 @@ export async function waitForInboundPushTx(
           }
         } else if (TERMINAL_FAILURE_STATUSES.has(status)) {
           const errMsg =
-            utx?.pcTx?.[0]?.errorMsg
-              ? normalizePcInsufficientFundsError(utx.pcTx[0].errorMsg)
+            failedPcTx?.errorMsg
+              ? normalizePcInsufficientFundsError(failedPcTx.errorMsg)
               : `inbound terminated with status ${status}`;
+          progressHook?.({
+            status: 'failed',
+            elapsedMs: elapsed(),
+            childUtxId,
+            pushTxHash,
+          });
+          return {
+            childUtxId,
+            pushTxHash: pushTxHash ?? '',
+            sourceChain,
+            outboundExternalTxHash,
+            status: 'failed',
+            errorMessage: errMsg,
+          };
+        } else if (failedPcTx) {
+          const errMsg = failedPcTx.errorMsg
+            ? normalizePcInsufficientFundsError(failedPcTx.errorMsg)
+            : `inbound Push tx failed while universalStatus=${status}`;
           progressHook?.({
             status: 'failed',
             elapsedMs: elapsed(),

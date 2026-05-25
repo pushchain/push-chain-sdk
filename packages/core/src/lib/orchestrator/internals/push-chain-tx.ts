@@ -46,6 +46,49 @@ type TransformToResponseFn = (
   eventBuffer: ProgressEvent[]
 ) => Promise<UniversalTxResponse>;
 
+const PUSH_TX_INDEX_TIMEOUT_MS = 30000;
+const PUSH_TX_INDEX_POLL_MS = 1000;
+const TX_NOT_INDEXED_RE =
+  /not found|TransactionNotFound|TransactionReceiptNotFound|could not be found|No transaction found/i;
+
+async function getIndexedPushTransaction(
+  ctx: OrchestratorContext,
+  txHash: `0x${string}`,
+  label: string
+): Promise<TxResponse> {
+  const startedAt = Date.now();
+  let receiptWaited = false;
+  let retryLogged = false;
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      if (!receiptWaited) {
+        await ctx.pushClient.publicClient.waitForTransactionReceipt({
+          hash: txHash,
+        });
+        receiptWaited = true;
+      }
+      return await ctx.pushClient.getTransaction(txHash);
+    } catch (err: any) {
+      const msg = err?.shortMessage || err?.message || String(err);
+      const retryable = TX_NOT_INDEXED_RE.test(msg);
+      if (!retryable || Date.now() - startedAt >= PUSH_TX_INDEX_TIMEOUT_MS) {
+        throw err;
+      }
+
+      if (!retryLogged) {
+        printLog(
+          ctx,
+          `${label} — Push tx ${txHash} has a receipt but is not indexed yet; retrying transaction lookup`
+        );
+        retryLogged = true;
+      }
+      await new Promise((r) => setTimeout(r, PUSH_TX_INDEX_POLL_MS));
+    }
+  }
+}
+
 // ============================================================================
 // sendPushTx
 // ============================================================================
@@ -150,7 +193,11 @@ export async function sendPushTx(
       );
       nonce++;
     }
-    const txResponse = await ctx.pushClient.getTransaction(lastTxHash);
+    const txResponse = await getIndexedPushTransaction(
+      ctx,
+      lastTxHash,
+      'sendPushTx'
+    );
     return await transformFn(txResponse, eventBuffer);
   }
 
@@ -160,7 +207,11 @@ export async function sendPushTx(
     value: execute.value,
     signer: ctx.universalSigner,
   });
-  const txResponse = await ctx.pushClient.getTransaction(txHash);
+  const txResponse = await getIndexedPushTransaction(
+    ctx,
+    txHash,
+    'sendPushTx'
+  );
   return await transformFn(txResponse, eventBuffer);
 }
 
@@ -382,9 +433,9 @@ export async function sendUniversalTx(
   }
 
   const evmTxs = await Promise.all(
-    ethTxHashes.map(async (hash) => {
-      return await ctx.pushClient.getTransaction(hash);
-    })
+    ethTxHashes.map(async (hash) =>
+      getIndexedPushTransaction(ctx, hash, 'sendUniversalTx')
+    )
   );
 
   const responses = await Promise.all(
@@ -474,6 +525,10 @@ export async function extractPcTxAndTransform(
       decodedError: decodedForPayload,
     });
   }
-  const tx = await ctx.pushClient.getTransaction(lastPcTransaction.txHash as `0x${string}`);
+  const tx = await getIndexedPushTransaction(
+    ctx,
+    lastPcTransaction.txHash as `0x${string}`,
+    label
+  );
   return transformFn(tx, eventBuffer);
 }

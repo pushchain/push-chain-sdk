@@ -6,7 +6,7 @@
  */
 import '@e2e/shared/setup';
 import { PushChain } from '../../src';
-import { CHAIN, PUSH_NETWORK } from '../../src/lib/constants/enums';
+import { CHAIN, PUSH_NETWORK, VM } from '../../src/lib/constants/enums';
 import { CHAIN_INFO, SYNTHETIC_PUSH_ERC20 } from '../../src/lib/constants/chain';
 import { createPublicClient, http, Hex, parseEther, encodeFunctionData, encodeAbiParameters } from 'viem';
 import type { PreparedUniversalTx } from '../../src/lib/orchestrator/orchestrator.types';
@@ -68,6 +68,19 @@ const STAKING_EXAMPLE_ABI = [
   { inputs: [{ name: 'token', type: 'address' }, { name: 'amount', type: 'uint256' }, { name: 'recipient', type: 'bytes' }, { name: 'gasLimit', type: 'uint256' }, { name: 'payload', type: 'bytes' }, { name: 'revertRecipient', type: 'address' }], name: 'triggerOutbound', outputs: [], stateMutability: 'payable', type: 'function' },
   { inputs: [{ name: 'user', type: 'address' }, { name: 'token', type: 'address' }], name: 'getStake', outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
 ] as const;
+
+const EVM_TX_HASH_REGEX = /^0x[a-fA-F0-9]{64}$/;
+const SVM_TX_HASH_REGEX = /^(0x[a-fA-F0-9]{128}|[1-9A-HJ-NP-Za-km-z]{86,90})$/;
+
+function expectExternalTxHashForChain(
+  txHash: string | undefined,
+  chain: CHAIN
+): asserts txHash is string {
+  expect(txHash).toBeDefined();
+  expect(txHash).toMatch(
+    CHAIN_INFO[chain].vm === VM.SVM ? SVM_TX_HASH_REGEX : EVM_TX_HASH_REGEX
+  );
+}
 
 describe('Advance Hopping: Cascade API E2E', () => {
   let pushClient: Awaited<ReturnType<typeof PushChain.initialize>>;
@@ -370,7 +383,10 @@ describe('Advance Hopping: Cascade API E2E', () => {
           console.log(`  External Explorer: ${hop.outboundDetails?.explorerUrl}`);
 
           expect(hop.outboundDetails).toBeDefined();
-          expect(hop.outboundDetails?.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+          expectExternalTxHashForChain(
+            hop.outboundDetails?.externalTxHash,
+            hop.outboundDetails!.destinationChain
+          );
 
           await verifyExternalTransaction(hop.outboundDetails!.externalTxHash, hop.outboundDetails!.destinationChain);
         }
@@ -485,7 +501,10 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(outboundHops.length).toBe(2);
         for (const hop of outboundHops) {
           if (hop.outboundDetails) {
-            expect(hop.outboundDetails.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+            expectExternalTxHashForChain(
+              hop.outboundDetails.externalTxHash,
+              hop.outboundDetails.destinationChain
+            );
             await verifyExternalTransaction(hop.outboundDetails.externalTxHash, hop.outboundDetails.destinationChain);
           }
         }
@@ -592,7 +611,10 @@ describe('Advance Hopping: Cascade API E2E', () => {
           // Direct outbounds have outboundDetails; child outbounds (nested inside
           // Route 3 inbound) are auto-confirmed without external tx tracking.
           if (hop.outboundDetails) {
-            expect(hop.outboundDetails.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+            expectExternalTxHashForChain(
+              hop.outboundDetails.externalTxHash,
+              hop.outboundDetails.destinationChain
+            );
             await verifyExternalTransaction(hop.outboundDetails.externalTxHash, hop.outboundDetails.destinationChain);
           }
         }
@@ -692,7 +714,10 @@ describe('Advance Hopping: Cascade API E2E', () => {
           console.log(`  External Explorer: ${hop.outboundDetails?.explorerUrl}`);
 
           expect(hop.outboundDetails).toBeDefined();
-          expect(hop.outboundDetails?.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+          expectExternalTxHashForChain(
+            hop.outboundDetails?.externalTxHash,
+            hop.outboundDetails!.destinationChain
+          );
 
           await verifyExternalTransaction(hop.outboundDetails!.externalTxHash, hop.outboundDetails!.destinationChain);
         }
@@ -798,7 +823,10 @@ describe('Advance Hopping: Cascade API E2E', () => {
         const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
         for (const hop of outboundHops) {
           if (hop.outboundDetails) {
-            expect(hop.outboundDetails.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+            expectExternalTxHashForChain(
+              hop.outboundDetails.externalTxHash,
+              hop.outboundDetails.destinationChain
+            );
             await verifyExternalTransaction(hop.outboundDetails.externalTxHash, hop.outboundDetails.destinationChain);
           }
         }
@@ -921,7 +949,10 @@ describe('Advance Hopping: Cascade API E2E', () => {
         const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
         for (const hop of outboundHops) {
           if (hop.outboundDetails) {
-            expect(hop.outboundDetails.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+            expectExternalTxHashForChain(
+              hop.outboundDetails.externalTxHash,
+              hop.outboundDetails.destinationChain
+            );
             await verifyExternalTransaction(hop.outboundDetails.externalTxHash, hop.outboundDetails.destinationChain);
           }
         }
@@ -1012,7 +1043,10 @@ describe('Advance Hopping: Cascade API E2E', () => {
         const outboundHops = completion.hops.filter(h => h.route === 'UOA_TO_CEA');
         for (const hop of outboundHops) {
           if (hop.outboundDetails) {
-            expect(hop.outboundDetails.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+            expectExternalTxHashForChain(
+              hop.outboundDetails.externalTxHash,
+              hop.outboundDetails.destinationChain
+            );
             await verifyExternalTransaction(hop.outboundDetails.externalTxHash, hop.outboundDetails.destinationChain);
           }
         }
@@ -1404,7 +1438,10 @@ describe('Advance Hopping: Cascade API E2E', () => {
         // Verify direct outbounds (both R2 hops are before R3)
         for (const hop of completion.hops.filter(h => h.route === 'UOA_TO_CEA')) {
           if (hop.outboundDetails) {
-            expect(hop.outboundDetails.externalTxHash).toMatch(/^0x[a-fA-F0-9]+$/);
+            expectExternalTxHashForChain(
+              hop.outboundDetails.externalTxHash,
+              hop.outboundDetails.destinationChain
+            );
             await verifyExternalTransaction(hop.outboundDetails.externalTxHash, hop.outboundDetails.destinationChain);
           }
         }

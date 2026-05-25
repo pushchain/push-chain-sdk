@@ -40,6 +40,12 @@ function makeCtx(broadcastImpl: jest.Mock): OrchestratorContext {
       createCosmosTxBody: jest.fn().mockResolvedValue({}),
       signCosmosTx: jest.fn().mockResolvedValue({}),
       broadcastCosmosTx: broadcastImpl,
+      publicClient: {
+        waitForTransactionReceipt: jest.fn().mockResolvedValue({
+          status: 'success',
+          blockNumber: BigInt(123),
+        }),
+      },
       getTransaction: jest.fn().mockResolvedValue({ hash: '0xabc', from: ALICE } as any),
     },
     universalSigner: {
@@ -221,6 +227,33 @@ describe('sendUniversalTx — InvalidEVMSignature retry', () => {
 
     expect(broadcast).toHaveBeenCalledTimes(1);
     expect(resignFn).not.toHaveBeenCalled();
+  });
+
+  it('retries Push transaction lookup after receipt when RPC indexing lags', async () => {
+    const broadcast = jest.fn().mockResolvedValueOnce(SUCCESS_TX);
+    const ctx = makeCtx(broadcast);
+    (ctx.pushClient.getTransaction as jest.Mock)
+      .mockRejectedValueOnce(
+        new Error('Transaction with hash "0xabc" could not be found.')
+      )
+      .mockResolvedValueOnce({ hash: '0xabc', from: ALICE } as any);
+
+    await sendUniversalTx(
+      ctx,
+      true,
+      undefined,
+      makePayload(),
+      '0xsig' as `0x${string}`,
+      [],
+      transformFn,
+      undefined,
+    );
+
+    expect(ctx.pushClient.publicClient.waitForTransactionReceipt).toHaveBeenCalledWith({
+      hash: '0xabc',
+    });
+    expect(ctx.pushClient.getTransaction).toHaveBeenCalledTimes(2);
+    expect(transformFn).toHaveBeenCalledTimes(1);
   });
 });
 
