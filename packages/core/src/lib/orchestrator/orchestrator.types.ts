@@ -428,6 +428,23 @@ export interface UniversalTxReceipt {
   pushInboundTxHash?: string;
   /** Child UTX id that owns the inbound execution. */
   pushInboundUtxId?: string;
+
+  // 11. Terminal hash convenience
+  /**
+   * The terminal on-chain tx hash for this transaction's journey — one "where
+   * did it ultimately land" hash, so callers don't have to branch on route:
+   *   - R1 (UOA_TO_PUSH): the Push Chain tx          → `hash`
+   *   - R2 (UOA_TO_CEA):  the external outbound tx    → `externalTxHash`
+   *   - R3 (CEA_TO_PUSH): the inbound Push tx that closed the round-trip
+   *                       → `pushInboundTxHash` (falls back to `externalTxHash`)
+   *
+   * Resolved as `pushInboundTxHash ?? externalTxHash ?? hash`. This is the
+   * single-transaction analogue of `CascadeCompletionResult.finalTxHash`,
+   * which points at the last confirmed hop of an `executeTransactions`
+   * cascade. The leg-specific fields above stay available when you need to
+   * distinguish the outbound vs inbound leg explicitly.
+   */
+  finalTxHash?: string;
 }
 
 /**

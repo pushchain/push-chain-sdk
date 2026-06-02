@@ -1043,6 +1043,17 @@ export async function transformToUniversalTxResponse(
         }
       }
 
+      // Resolve the terminal hash for the whole journey: inbound (R3) >
+      // external outbound (R2) > the Push tx itself (R1). Single-tx analogue
+      // of CascadeCompletionResult.finalTxHash.
+      baseReceipt = {
+        ...baseReceipt,
+        finalTxHash:
+          baseReceipt.pushInboundTxHash ??
+          baseReceipt.externalTxHash ??
+          baseReceipt.hash,
+      };
+
       return baseReceipt;
     },
 

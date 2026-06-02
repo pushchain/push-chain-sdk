@@ -443,6 +443,8 @@ describe('trackTransaction E2E', () => {
     expect(receipt.externalTxHash).toBeDefined();
     expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
     expect(receipt.externalChain).toBeDefined();
+    // R2 (no inbound round-trip): finalTxHash resolves to the external outbound leg.
+    expect(receipt.finalTxHash).toBe(receipt.externalTxHash);
 
     console.log('✓ Known outbound transaction tracking passed');
   }, 120000);
@@ -1257,6 +1259,8 @@ describe('Route 3 replay parity (trackTransaction on a completed round-trip)', (
       expect(receipt.externalTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
       expect(receipt.pushInboundTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
       expect(receipt.pushInboundUtxId).toMatch(/^0x[a-fA-F0-9]+$/);
+      // R3 success: finalTxHash resolves to the inbound Push tx that closed the round-trip.
+      expect(receipt.finalTxHash).toBe(receipt.pushInboundTxHash);
 
       const replayIds = replayEvents.map((e) => e.id);
       const clientIds = clientEvents.map((e) => e.id);

@@ -43,6 +43,9 @@ export function transformToUniversalTxReceipt(
       from: originalTxResponse.from,
       to: originalTxResponse.to,
     },
+    // Terminal-hash baseline = this Push tx. `wait()` upgrades it to the
+    // external/inbound leg for R2/R3 (see UniversalTxReceipt.finalTxHash).
+    finalTxHash: receipt.transactionHash,
   };
 }
 
