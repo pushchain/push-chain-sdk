@@ -1527,3 +1527,125 @@ describe('Website Track Transaction Snippets (e2e)', () => {
     expect(perCallIds).toEqual(orchestratorIds);
   }, 60000);
 });
+
+// ============================================================================
+// Source-leg hash tracking (EVM + SVM origin)
+// trackTransaction can be given an ORIGIN/source-leg hash on a non-Push
+// `chain` — a source EVM tx hash or a Solana signature — and resolves it to the
+// universal tx via the detector, reconstructing from the Push side. Tracking is
+// read-only (the client is initialized only to obtain a Push RPC connection).
+// Hashes are real, finalized testnet-donut universal transactions.
+// ============================================================================
+describe('trackTransaction — source-leg hash tracking (EVM + SVM origin)', () => {
+  // Originating from Push Chain (native Push root hash)
+  const UNIVERSAL_TX_FROM_PUSH =
+    '0x169929f61574baf62b84ce68b944e09faf566129d0175b2ee1e020c76ae7bd2f';
+  // Originating from Ethereum Sepolia (source tx hash)
+  const UNIVERSAL_TX_FROM_ETH_SEPOLIA =
+    '0x9b4743376689eb6f90f3aeb9eea58381b3bcc033e1de4709281fd58a77b85098';
+  // Originating from Solana devnet (base58 signature)
+  const UNIVERSAL_TX_FROM_SOLANA =
+    '22SirqSwhcSjgyb3wdrW9Zis19dxcLHD5yy3BtRbRoLmykrv8eCzKnPaRGxrrZ7a4A7yKGRMGMehqKpTcdF2ByFR';
+
+  let pushClient: PushChain;
+  const evmPrivateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
+  const skipE2E = !evmPrivateKey;
+
+  beforeAll(async () => {
+    if (skipE2E) {
+      console.log('EVM_PRIVATE_KEY not set — skipping source-leg tracking tests');
+      return;
+    }
+    const setup = await createEvmPushClient({
+      chain: CHAIN.PUSH_TESTNET_DONUT,
+      privateKey: evmPrivateKey,
+    });
+    pushClient = setup.pushClient;
+  }, 60000);
+
+  it('SVM origin: tracks a Solana-origin tx by its base58 signature', async () => {
+    if (skipE2E) return;
+
+    const events: ProgressEvent[] = [];
+    const res = await pushClient.universal.trackTransaction(
+      UNIVERSAL_TX_FROM_SOLANA,
+      {
+        chain: CHAIN.SOLANA_DEVNET,
+        waitForCompletion: true,
+        advanced: { timeout: 30000 },
+        progressHook: (e) => events.push(e),
+      }
+    );
+
+    // Resolves to the Push root hash (not the Solana signature), which the
+    // EVM-only client could never have fetched directly.
+    expect(res.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+    expect(res.hash).not.toBe(UNIVERSAL_TX_FROM_SOLANA);
+    expect(res.blockNumber).toBeGreaterThan(BigInt(0));
+
+    // Route + source chain/origin reflect the Solana origin.
+    expect(res.route).toBe(TransactionRoute.CEA_TO_PUSH);
+    expect(res.chain).toBe(CHAIN.SOLANA_DEVNET);
+    expect(res.origin.startsWith(`${CHAIN.SOLANA_DEVNET}:`)).toBe(true);
+
+    // Reconstructed SEND-TX-* sequence (no TRACK-TX-* leakage).
+    expect(events.length).toBeGreaterThan(0);
+    expect(events.every((e) => e.id.startsWith('SEND-TX-'))).toBe(true);
+    expect(events.some((e) => e.id === 'SEND-TX-301')).toBe(true);
+  }, 60000);
+
+  it('EVM origin: tracks an Ethereum-Sepolia-origin tx by its source tx hash', async () => {
+    if (skipE2E) return;
+
+    const events: ProgressEvent[] = [];
+    const res = await pushClient.universal.trackTransaction(
+      UNIVERSAL_TX_FROM_ETH_SEPOLIA,
+      {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+        waitForCompletion: true,
+        advanced: { timeout: 30000 },
+        progressHook: (e) => events.push(e),
+      }
+    );
+
+    expect(res.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+    expect(res.blockNumber).toBeGreaterThan(BigInt(0));
+    expect(res.route).toBe(TransactionRoute.CEA_TO_PUSH);
+    expect(res.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+    expect(res.origin.startsWith(`${CHAIN.ETHEREUM_SEPOLIA}:`)).toBe(true);
+    expect(events.length).toBeGreaterThan(0);
+    expect(events.every((e) => e.id.startsWith('SEND-TX-'))).toBe(true);
+    expect(events.some((e) => e.id === 'SEND-TX-301')).toBe(true);
+  }, 60000);
+
+  it('Push origin: default chain still tracks a Push root hash unchanged', async () => {
+    if (skipE2E) return;
+
+    const events: ProgressEvent[] = [];
+    const res = await pushClient.universal.trackTransaction(
+      UNIVERSAL_TX_FROM_PUSH,
+      {
+        waitForCompletion: true,
+        advanced: { timeout: 30000 },
+        progressHook: (e) => events.push(e),
+      }
+    );
+
+    // Push-native path: the response hash is the hash you passed.
+    expect(res.hash).toBe(UNIVERSAL_TX_FROM_PUSH);
+    expect(res.blockNumber).toBeGreaterThan(BigInt(0));
+    expect(events.length).toBeGreaterThan(0);
+    expect(events.every((e) => e.id.startsWith('SEND-TX-'))).toBe(true);
+  }, 60000);
+
+  it('rejects an unsupported chain with an actionable error', async () => {
+    if (skipE2E) return;
+
+    await expect(
+      pushClient.universal.trackTransaction(UNIVERSAL_TX_FROM_ETH_SEPOLIA, {
+        chain: 'eip155:99999999' as CHAIN,
+        waitForCompletion: false,
+      })
+    ).rejects.toThrow(/unsupported chain/i);
+  }, 30000);
+});

@@ -890,7 +890,16 @@ export interface CascadeCompletionResult {
 
 export interface TrackTransactionOptions {
   /**
-   * Target chain to track transaction on. Defaults to Push Chain based on client network.
+   * Chain the `txHash` belongs to. Defaults to Push Chain based on the client
+   * network — pass the Push Chain root hash in that case.
+   *
+   * Pass a NON-Push chain (e.g. `CHAIN.ETHEREUM_SEPOLIA`, `CHAIN.SOLANA_DEVNET`)
+   * to track by an ORIGIN/source-leg hash — a source EVM tx hash or a Solana
+   * signature. The universal transaction is resolved from the source hash via
+   * the universal-tx detector and reconstructed from the Push side.
+   *
+   * Must be a supported chain (present in CHAIN_INFO); `trackTransaction`
+   * throws on an unsupported value.
    */
   chain?: import('../constants/enums').CHAIN;
 

@@ -59,14 +59,14 @@ describe('Route 2 spec strings (201–299)', () => {
     expect(ev.level).toBe('INFO');
   });
 
-  it('203-02 — {ChainName} Execution Account Ready', () => {
+  it('203-02 — {ChainName} Execution Account Resolved', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_203_02](
       ueaAddr,
       ceaAddr,
       targetChain,
       true
     );
-    expect(ev.title).toBe(`${chainName} Execution Account Ready`);
+    expect(ev.title).toBe(`${chainName} Execution Account Resolved`);
     expect(ev.message).toBe(
       `UEA: ${ueaAddr}. CEA: ${ceaAddr} on ${targetChain}. Deployed: true`
     );

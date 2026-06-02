@@ -51,6 +51,7 @@ import {
   reconstructProgressEvents,
   detectRouteFromUniversalTxData,
 } from './tx-transformer';
+import { detectUniversalTx } from '../../universal-tx-detector/detector';
 
 // ============================================================================
 // Callback interface for transformToUniversalTxResponse closures
@@ -221,6 +222,78 @@ export async function queryUniversalTxStatusFromGatewayTx(
 // trackTransaction
 // ============================================================================
 
+/** Push Chain CHAIN ids — tracking these uses the Push-native path. */
+const PUSH_CHAINS = new Set<CHAIN>([
+  CHAIN.PUSH_MAINNET,
+  CHAIN.PUSH_TESTNET_DONUT,
+  CHAIN.PUSH_LOCALNET,
+]);
+
+/**
+ * Source-hash resolution for trackTransaction.
+ *
+ * When the caller tracks by an ORIGIN/source-leg hash (a Sepolia tx hash, a
+ * Solana signature, …) instead of the Push Chain root hash, the universal
+ * record can't be fetched by that hash: `PushClient` is EVM-only (so it can't
+ * even read a Solana tx), and external-inbound records are keyed by a derived
+ * `universalTxId`, not by the source hash. Delegate to the universal-tx
+ * detector (which dispatches EVM/SVM) to derive the `universalTxId`, then load
+ * the universal record and its first Push pcTx so the caller can reconstruct
+ * from the Push side.
+ */
+export async function resolveUniversalTxFromSourceHash(
+  ctx: OrchestratorContext,
+  sourceHash: string,
+  sourceChain: CHAIN,
+  rpcUrls: Partial<Record<CHAIN, string[]>>
+): Promise<{
+  universalTxData: UniversalTxV2;
+  pushTxHash: string;
+  sourceSender?: string;
+}> {
+  const detection = await detectUniversalTx(
+    sourceHash as `0x${string}`,
+    sourceChain,
+    {
+      pushClient: ctx.pushClient,
+      rpcUrls: { ...ctx.rpcUrls, ...rpcUrls },
+      // We do our own getUniversalTxByIdV2 below; the detector's cosmos
+      // cross-ref can come back empty for SVM even when the record exists.
+      skipPushChainLookup: true,
+    }
+  );
+
+  const utxId = detection.decoded.universalTxId;
+  if (!utxId) {
+    throw new Error(
+      `trackTransaction: could not resolve a universal transaction from hash ` +
+        `"${sourceHash}" on ${sourceChain} (detected kind: ${detection.kind}). ` +
+        `Pass the Push Chain root hash, or a source hash that emitted a ` +
+        `UniversalTx event.`
+    );
+  }
+
+  const utxResponse = await ctx.pushClient.getUniversalTxByIdV2(utxId);
+  const universalTxData = utxResponse?.universalTx;
+  if (!universalTxData) {
+    throw new Error(
+      `trackTransaction: resolved universalTxId ${utxId} from ${sourceChain} ` +
+        `hash "${sourceHash}", but no universal transaction record exists on ` +
+        `Push Chain yet (it may still be relaying).`
+    );
+  }
+
+  const pushTxHash = universalTxData.pcTx?.[0]?.txHash;
+  if (!pushTxHash) {
+    throw new Error(
+      `trackTransaction: universal tx ${utxId} (from ${sourceChain} hash ` +
+        `"${sourceHash}") has no Push Chain tx recorded yet.`
+    );
+  }
+
+  return { universalTxData, pushTxHash, sourceSender: detection.decoded.sender };
+}
+
 export async function trackTransaction(
   ctx: OrchestratorContext,
   txHash: string,
@@ -237,7 +310,44 @@ export async function trackTransaction(
     advanced = {},
   } = options ?? {};
 
+  // Fail fast on an unsupported `chain`. It defaults to Push Chain when the
+  // caller omits it; an explicitly-passed value that isn't a known CHAIN_INFO
+  // entry (a raw numeric chainId, a typo, or a chain from a plain-JS caller
+  // that skips the CHAIN type) would otherwise throw an opaque "Cannot read
+  // properties of undefined (reading 'defaultRPC')" at the RPC lookup below.
+  if (!CHAIN_INFO[chain]) {
+    throw new Error(
+      `trackTransaction: unsupported chain "${String(chain)}". Pass a ` +
+        `PushChain.CONSTANTS.CHAIN value. Supported: ${Object.keys(
+          CHAIN_INFO
+        ).join(', ')}`
+    );
+  }
+
   const { timeout = 300000, pollingIntervalMs = 1000, rpcUrls = {} } = advanced;
+
+  // Source-hash mode: a non-Push `chain` means `txHash` is an origin/source-leg
+  // hash (a Sepolia tx hash, a Solana signature, …), not a Push Chain hash.
+  // Resolve it to the universal record + its Push pcTx via the detector, then
+  // reconstruct from the Push side. Push-native tracking (below) is unchanged.
+  let preResolvedUtxData: UniversalTxV2 | undefined;
+  let sourceOriginChain: CHAIN | undefined;
+  let sourceSender: string | undefined;
+  let trackChain = chain;
+  let trackHash = txHash;
+  if (!PUSH_CHAINS.has(chain)) {
+    const resolved = await resolveUniversalTxFromSourceHash(
+      ctx,
+      txHash,
+      chain,
+      rpcUrls
+    );
+    preResolvedUtxData = resolved.universalTxData;
+    sourceOriginChain = chain;
+    sourceSender = resolved.sourceSender;
+    trackHash = resolved.pushTxHash;
+    trackChain = getPushChainForNetwork(ctx.pushNetwork);
+  }
 
   // Event buffer for replay via response.progressHook()
   const eventBuffer: ProgressEvent[] = [];
@@ -251,9 +361,12 @@ export async function trackTransaction(
     fanOut(event, progressHook, ctx.progressHook);
   };
 
-  // Create client for target chain with optional RPC override
+  // Create client for target chain with optional RPC override. In source-hash
+  // mode `trackChain` is Push (the resolved pcTx lives on Push Chain).
   const chainRPCs =
-    rpcUrls[chain] || ctx.rpcUrls[chain] || CHAIN_INFO[chain].defaultRPC;
+    rpcUrls[trackChain] ||
+    ctx.rpcUrls[trackChain] ||
+    CHAIN_INFO[trackChain].defaultRPC;
   const client = new PushClient({
     rpcUrls: chainRPCs,
     network: ctx.pushNetwork,
@@ -266,17 +379,17 @@ export async function trackTransaction(
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
-      tx = await client.getTransaction(txHash as `0x${string}`);
+      tx = await client.getTransaction(trackHash as `0x${string}`);
       break; // Found transaction
     } catch (err) {
       if (!waitForCompletion) {
-        throw new Error(`Transaction ${txHash} not found`);
+        throw new Error(`Transaction ${trackHash} not found`);
       }
 
       // Check timeout
       if (Date.now() - start > timeout) {
         throw new Error(
-          `Timeout: transaction ${txHash} not confirmed within ${timeout}ms`
+          `Timeout: transaction ${trackHash} not confirmed within ${timeout}ms`
         );
       }
 
@@ -285,22 +398,24 @@ export async function trackTransaction(
     }
   }
 
-  // Try to get UniversalTx data for richer progress reconstruction
-  // (may not exist for direct Push Chain transactions)
-  // Three-tier lookup: direct hash → computed keccak ID → Cosmos event extraction
-  let universalTxData: UniversalTxV2 | undefined;
-  try {
-    const utxResponse = await ctx.pushClient.getUniversalTxByIdV2(txHash);
-    if (utxResponse?.universalTx) {
-      universalTxData = utxResponse.universalTx;
+  // Try to get UniversalTx data for richer progress reconstruction.
+  // In source-hash mode we already resolved the record above; otherwise run the
+  // three-tier lookup: direct hash → computed keccak ID → Cosmos extraction.
+  let universalTxData: UniversalTxV2 | undefined = preResolvedUtxData;
+  if (!universalTxData) {
+    try {
+      const utxResponse = await ctx.pushClient.getUniversalTxByIdV2(trackHash);
+      if (utxResponse?.universalTx) {
+        universalTxData = utxResponse.universalTx;
+      }
+    } catch {
+      // Ignore - try computed ID next
     }
-  } catch {
-    // Ignore - try computed ID next
   }
 
   if (!universalTxData) {
     try {
-      const computedId = computeUniversalTxId(ctx.pushNetwork, txHash);
+      const computedId = computeUniversalTxId(ctx.pushNetwork, trackHash);
       const queryId = computedId.startsWith('0x') ? computedId.slice(2) : computedId;
       const utxResponse = await ctx.pushClient.getUniversalTxByIdV2(queryId);
       if (utxResponse?.universalTx) {
@@ -313,7 +428,7 @@ export async function trackTransaction(
 
   if (!universalTxData) {
     try {
-      const extractedId = await extractUniversalSubTxIdFromTx(ctx, txHash);
+      const extractedId = await extractUniversalSubTxIdFromTx(ctx, trackHash);
       if (extractedId) {
         const queryId = extractedId.startsWith('0x') ? extractedId.slice(2) : extractedId;
         const utxResponse = await ctx.pushClient.getUniversalTxByIdV2(queryId);
@@ -365,6 +480,34 @@ export async function trackTransaction(
     if (detectedRoute === TransactionRoute.CEA_TO_PUSH) {
       universalTxResponse._expectsInboundRoundTrip = true;
     }
+  }
+
+  // Source-hash mode: the pcTx we fetched lives on Push Chain, so the
+  // transform resolves chain to the Push side. Surface the true source chain
+  // the caller tracked so `chain`/`chainNamespace` reflect where the universal
+  // tx actually originated. (An outbound-derived chain above, if any, wins.)
+  if (sourceOriginChain && !universalTxResponse.chain) {
+    universalTxResponse.chain = sourceOriginChain;
+    universalTxResponse.chainNamespace = sourceOriginChain;
+  }
+
+  // Override `origin` with the true source account. The transform derives
+  // origin from the Push pcTx (whose `from` is the keeper that submitted the
+  // inbound), so in source-hash mode it would otherwise read as a Push
+  // address. Rebuild it as `<sourceChainCaip>:<sourceSender>` using the
+  // chain's native address encoding (0x for EVM, base58 for SVM).
+  if (sourceOriginChain && sourceSender) {
+    let originAddr = sourceSender;
+    try {
+      originAddr =
+        CHAIN_INFO[sourceOriginChain].vm === VM.SVM
+          ? bs58.encode(toBytes(sourceSender as `0x${string}`))
+          : getAddress(sourceSender as `0x${string}`);
+    } catch {
+      // Keep the raw sender if re-encoding fails.
+    }
+    universalTxResponse.origin = `${sourceOriginChain}:${originAddr}`;
+    universalTxResponse.chainId = CHAIN_INFO[sourceOriginChain].chainId;
   }
 
   // Reconstruct and emit SEND-TX-* progress events

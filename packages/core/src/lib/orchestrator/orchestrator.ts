@@ -550,9 +550,14 @@ export class Orchestrator {
    * Tracks a transaction by hash on Push Chain and returns UniversalTxResponse.
    * Reconstructs and replays SEND-TX-* progress events for completed transactions.
    *
-   * @param txHash - Transaction hash to track (Push Chain tx hash)
+   * @param txHash - Transaction hash to track. A Push Chain root hash by
+   *   default; when `options.chain` is a non-Push chain, an origin/source-leg
+   *   hash (a source EVM tx hash or a Solana signature) that is resolved to the
+   *   universal transaction via the universal-tx detector.
    * @param options - Tracking options (chain, progressHook, waitForCompletion, advanced config)
    * @returns Promise resolving to UniversalTxResponse with wait() and progressHook() methods
+   * @throws If `options.chain` is provided but is not a supported chain (not present in CHAIN_INFO)
+   * @throws If a source-leg hash cannot be resolved to a universal transaction on Push Chain
    */
   async trackTransaction(
     txHash: string,

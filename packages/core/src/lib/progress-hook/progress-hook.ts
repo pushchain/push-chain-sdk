@@ -465,7 +465,7 @@ const RAW_HOOKS_R2: {
     deployed: boolean
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_203_02,
-    title: `${friendlyChain(targetChain)} Execution Account Ready`,
+    title: `${friendlyChain(targetChain)} Execution Account Resolved`,
     message: `UEA: ${ueaAddr}. CEA: ${ceaAddr} on ${targetChain}. Deployed: ${deployed}`,
     response: { uea: ueaAddr, cea: ceaAddr, chain: targetChain, deployed },
     level: 'SUCCESS',
