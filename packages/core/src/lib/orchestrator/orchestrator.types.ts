@@ -198,6 +198,15 @@ export type ExecuteParams = {
 export interface UniversalTxResponse {
   // 1. Identity
   hash: string; // tx hash
+  /**
+   * Terminal tx hash for this transaction. On the RESPONSE (returned by
+   * sendTransaction/prepareTransaction, before any cross-chain leg lands) this
+   * equals `hash` — the Push Chain tx. After `.wait()`, the receipt's
+   * `finalTxHash` resolves to the external/inbound leg for R2/R3
+   * (`pushInboundTxHash ?? externalTxHash ?? hash`). Provided so callers can
+   * read one terminal hash off either the response or the receipt.
+   */
+  finalTxHash?: string;
   origin: string; // origin, e.g. "eip155:1:0xabc"
 
   // 2. Block Info

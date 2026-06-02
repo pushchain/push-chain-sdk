@@ -770,6 +770,7 @@ export async function transformToUniversalTxResponse(
   const universalTxResponse: UniversalTxResponse = {
     // 1. Identity
     hash: tx.hash,
+    finalTxHash: tx.hash, // Push tx hash; .wait()'s receipt refines it for R2/R3
     origin,
 
     // 2. Block Info
