@@ -27,7 +27,10 @@ import type {
   ChainTarget,
   SvmExecutePayloadFields,
 } from '../../../src/lib/orchestrator/orchestrator.types';
-import type { ProgressEvent } from '../../../src/lib/progress-hook/progress-hook.types';
+import {
+  PROGRESS_HOOK,
+  type ProgressEvent,
+} from '../../../src/lib/progress-hook/progress-hook.types';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 import { createEvmPushClient } from '@e2e/shared/evm-client';
 import {
@@ -626,7 +629,7 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
       expect(prepared.nonce).toBeDefined();
     }, 60000);
 
-    it('should create chained builder from prepared SVM transactions', async () => {
+    it('should prepare multiple SVM outbound transactions for cascade execution', async () => {
       if (skipE2E) return;
 
       const firstPrepared = await pushClient.universal.prepareTransaction({
@@ -648,13 +651,16 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
         // gasLimit omitted → per-chain default from UniversalCore
       });
 
-      // executeTransactions now accepts an array and returns a promise directly
-      const resultPromise = pushClient.universal.executeTransactions([
-        firstPrepared,
-        secondPrepared,
-      ]);
-
-      expect(resultPromise).toBeInstanceOf(Promise);
+      // Do not call executeTransactions here: that broadcasts immediately and
+      // belongs in the cascade execution tests, not the preparation suite.
+      expect(firstPrepared.route).toBe('UOA_TO_CEA');
+      expect(secondPrepared.route).toBe('UOA_TO_CEA');
+      expect(firstPrepared._hop.targetChain).toBe(CHAIN.SOLANA_DEVNET);
+      expect(secondPrepared._hop.targetChain).toBe(CHAIN.SOLANA_DEVNET);
+      expect(firstPrepared._hop.isSvmTarget).toBe(true);
+      expect(secondPrepared._hop.isSvmTarget).toBe(true);
+      expect(firstPrepared._hop.svmPayload).toBeDefined();
+      expect(secondPrepared._hop.svmPayload).toBeDefined();
     }, 60000);
   });
 
@@ -964,12 +970,24 @@ describe('UOA → CEA: SVM Outbound Transactions (Route 2)', () => {
       // Verify we got progress events
       expect(events.length).toBeGreaterThan(0);
 
-      // Verify key events were emitted
-      expect(events.some((e) => e.id === 'SEND-TX-101')).toBe(true);
-      expect(events.some((e) => e.id.startsWith('SEND-TX-99'))).toBe(true);
+      // Verify key Route 2 send-phase events were emitted.
+      const sendPhaseIds = events.map((event) => event.id);
+      expect(sendPhaseIds).toContain(PROGRESS_HOOK.SEND_TX_201);
+      expect(sendPhaseIds).toContain(PROGRESS_HOOK.SEND_TX_202_01);
+      expect(sendPhaseIds).toContain(PROGRESS_HOOK.SEND_TX_202_02);
+      expect(sendPhaseIds).toContain(PROGRESS_HOOK.SEND_TX_203_01);
+      expect(sendPhaseIds).toContain(PROGRESS_HOOK.SEND_TX_203_02);
+      expect(sendPhaseIds).toContain(PROGRESS_HOOK.SEND_TX_203_03);
+      expect(sendPhaseIds).toContain(PROGRESS_HOOK.SEND_TX_204_01);
+      expect(sendPhaseIds).toContain(PROGRESS_HOOK.SEND_TX_204_02);
+      expect(sendPhaseIds).toContain(PROGRESS_HOOK.SEND_TX_204_03);
+      expect(sendPhaseIds).toContain(PROGRESS_HOOK.SEND_TX_207);
 
       // Wait for outbound relay and verify external chain details
       const receipt = await tx.wait();
+      const waitPhaseIds = events.map((event) => event.id);
+      expect(waitPhaseIds).toContain(PROGRESS_HOOK.SEND_TX_209_01);
+      expect(waitPhaseIds).toContain(PROGRESS_HOOK.SEND_TX_299_01);
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);

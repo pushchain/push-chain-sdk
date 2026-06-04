@@ -13,18 +13,18 @@ import {
 } from '../../src/lib/orchestrator/orchestrator.types';
 import { TransactionRoute, detectRoute } from '../../src/lib/orchestrator/route-detector';
 import { getCEAAddress } from '../../src/lib/orchestrator/cea-utils';
-import { buildErc20WithdrawalMulticall } from '../../src/lib/orchestrator/payload-builders';
 import { createEvmPushClient } from '@e2e/shared/evm-client';
-import { getToken } from '@e2e/shared/constants';
-import { TEST_TARGET, ensureCeaErc20Balance } from '@e2e/shared/outbound-helpers';
+import { TEST_SOL_TARGET } from '@e2e/shared/svm-outbound-helpers';
 import {
   COUNTER_ADDRESS_PAYABLE,
   COUNTER_ABI_PAYABLE,
 } from '@e2e/shared/inbound-helpers';
 import {
   PUSH_CHAIN_DEF,
+  fundBnbCea,
   fundSepoliaUoa,
   fundUeaPC,
+  makeBnbContext,
   makeSepoliaContext,
   makePushContext,
 } from '../docs-examples/_helpers/docs-fund';
@@ -939,16 +939,9 @@ describe('Route 2 progress-hook parity (live vs trackTransaction replay)', () =>
       progressHook: (e: ProgressEvent) => liveClientEvents.push(e),
     });
 
-    const usdt = getToken(CHAIN.ETHEREUM_SEPOLIA, 'USDT');
-    const amount = BigInt(10000);
     const params: UniversalExecuteParams = {
-      to: { address: TEST_TARGET, chain: CHAIN.ETHEREUM_SEPOLIA },
-      funds: { amount, token: usdt },
-      data: buildErc20WithdrawalMulticall(
-        usdt.address as `0x${string}`,
-        TEST_TARGET,
-        amount
-      ),
+      to: { address: TEST_SOL_TARGET, chain: CHAIN.SOLANA_DEVNET },
+      value: BigInt(1_000_000),
     };
     expect(detectRoute(params)).toBe(TransactionRoute.UOA_TO_CEA);
 
@@ -1059,7 +1052,8 @@ describe('Route 3 progress-hook parity (live vs trackTransaction replay)', () =>
     expect(
       (terminalEvent.response as { phase?: string } | null)?.phase
     ).toBe('outbound');
-    expect(terminalEvent.title).toContain('BNB Testnet');
+    expect(terminalEvent.title).toBe('Push Chain Inbound Tx Timeout');
+    expect(terminalEvent.message).toContain('BNB Testnet');
 
     const trackReplayEvents: ProgressEvent[] = [];
     const trackClientEvents: ProgressEvent[] = [];
@@ -1099,9 +1093,6 @@ describe('Route 3 progress-hook parity (live vs trackTransaction replay)', () =>
         return;
       }
 
-      const usdt = getToken(CHAIN.ETHEREUM_SEPOLIA, 'USDT');
-      const bridgeAmount = BigInt(10000);
-
       const liveClientEvents: ProgressEvent[] = [];
       const liveSetup = await createEvmPushClient({
         chain: CHAIN.ETHEREUM_SEPOLIA,
@@ -1109,25 +1100,20 @@ describe('Route 3 progress-hook parity (live vs trackTransaction replay)', () =>
         progressHook: (e: ProgressEvent) => liveClientEvents.push(e),
       });
 
-      const ueaAddress = liveSetup.pushClient.universal.account;
+      const ueaAddress = liveSetup.pushClient.universal.account as `0x${string}`;
+      const bnbCtx = makeBnbContext(privateKeyR3P);
       const { cea: ceaAddress } = await getCEAAddress(
         ueaAddress,
-        CHAIN.ETHEREUM_SEPOLIA
+        CHAIN.BNB_TESTNET
       );
-      await ensureCeaErc20Balance({
-        pushClient: liveSetup.pushClient,
-        ceaAddress,
-        token: usdt,
-        requiredAmount: bridgeAmount,
-        targetChain: CHAIN.ETHEREUM_SEPOLIA,
-      });
+      await fundBnbCea(bnbCtx, ceaAddress, '0.01');
 
       liveClientEvents.length = 0;
 
       const params: UniversalExecuteParams = {
-        from: { chain: CHAIN.ETHEREUM_SEPOLIA },
+        from: { chain: CHAIN.BNB_TESTNET },
         to: ueaAddress,
-        funds: { amount: bridgeAmount, token: usdt },
+        value: PushChain.utils.helpers.parseUnits('0.00005', 18),
       };
 
       const liveTx = await liveSetup.pushClient.universal.sendTransaction(

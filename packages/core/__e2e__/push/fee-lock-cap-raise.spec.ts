@@ -22,6 +22,7 @@ import { sepolia } from 'viem/chains';
 import { PushChain } from '../../src';
 import { CHAIN } from '../../src/lib/constants/enums';
 import { CHAIN_INFO } from '../../src/lib/constants/chain';
+import { calculateNativeAmountForDeposit } from '../../src/lib/orchestrator/internals/gas-calculator';
 import { createEvmPushClient } from '@e2e/shared/evm-client';
 import { TEST_TARGET_ADDRESS, SEPOLIA_RPC } from '@e2e/shared/constants';
 import { formatPc } from '../../src/lib/formatters';
@@ -209,20 +210,27 @@ describe('Fee-Lock Cap Raised to $1000 USD (Sepolia → Push)', () => {
   }, 300_000);
 
   // ==========================================================================
-  // NEGATIVE: transfer above the new $1000 cap should surface the new error
+  // NEGATIVE: deposit sizing above the new $1000 cap should surface the new error
   // ==========================================================================
-  it('should throw "$1000 USD" error for a transfer well above the new cap', async () => {
+  it('should throw "$1000 USD" error without broadcasting when required deposit exceeds cap', async () => {
     if (skipE2E) return;
 
-    // 10,000 PC is far above any plausible UEA balance + maxed-out $1000 deposit,
-    // so the pre-flight cap check fires deterministically regardless of existing funds.
-    const oversizedValue = PushChain.utils.helpers.parseUnits('10000', 18);
+    const overCapUsd = PushChain.utils.helpers.parseUnits('1001', 8);
+    const capCtx = {
+      printTraces: false,
+      progressHook: undefined,
+      pushClient: {
+        pushToUSDC: () => overCapUsd,
+      },
+    } as unknown as Parameters<typeof calculateNativeAmountForDeposit>[0];
 
     await expect(
-      sepoliaClient.universal.sendTransaction({
-        to: TEST_TARGET_ADDRESS,
-        value: oversizedValue,
-      })
-    ).rejects.toThrow(/capped at \$1000 USD/);
-  }, 120_000);
+      calculateNativeAmountForDeposit(
+        capCtx,
+        CHAIN.ETHEREUM_SEPOLIA,
+        PushChain.utils.helpers.parseUnits('1', 18),
+        BigInt(0)
+      )
+    ).rejects.toThrow(/max \$1000/);
+  }, 30_000);
 });

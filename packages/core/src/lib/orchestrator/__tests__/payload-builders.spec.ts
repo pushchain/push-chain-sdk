@@ -20,6 +20,9 @@ import {
   buildMigrationPayload,
   buildOutboundApprovalAndCall,
   assertCeaFundsParkingInvariant,
+  assertSvmPayloadWithinRelayLimit,
+  getHexPayloadByteLength,
+  SVM_RELAYABLE_PAYLOAD_MAX_BYTES,
 } from '../payload-builders';
 import type { MoveableToken } from '../../constants/tokens';
 
@@ -35,6 +38,23 @@ const NATIVE_TOKEN: MoveableToken = {
   address: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
   mechanism: 'native',
 };
+
+describe('SVM relayable payload size guard', () => {
+  it('reports hex payload byte length', () => {
+    expect(getHexPayloadByteLength('0x')).toBe(0);
+    expect(getHexPayloadByteLength('0x1234')).toBe(2);
+  });
+
+  it('throws a clear error when instruction payload exceeds the safe limit', () => {
+    const oversized = `0x${'11'.repeat(
+      SVM_RELAYABLE_PAYLOAD_MAX_BYTES + 1
+    )}` as `0x${string}`;
+
+    expect(() =>
+      assertSvmPayloadWithinRelayLimit(oversized, 'test route')
+    ).toThrow(/SVM outbound payload for test route is 1001 bytes/);
+  });
+});
 
 const MULTICALL_TUPLE_TYPE = {
   type: 'tuple[]' as const,

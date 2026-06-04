@@ -69,6 +69,7 @@ import {
   buildOutboundApprovalAndCall,
   buildMigrationPayload,
   assertCeaFundsParkingInvariant,
+  assertSvmPayloadWithinRelayLimit,
   isSvmChain,
   isValidSolanaHexAddress,
   encodeSvmCeaToUeaPayload,
@@ -89,6 +90,28 @@ import type {
   UniversalTxResponse,
 } from '../orchestrator.types';
 import type { PUSH_NETWORK } from '../../constants/enums';
+
+export function getRequiredNativeBalanceForOutbound(
+  nativeValueForGas: bigint,
+  gasReserve: bigint
+): bigint {
+  return nativeValueForGas + gasReserve;
+}
+
+export function shouldSkipFeeLockingForOutbound(opts: {
+  isUEADeployed: boolean;
+  balance: bigint;
+  nativeValueForGas: bigint;
+  gasReserve: bigint;
+}): boolean {
+  return (
+    opts.isUEADeployed &&
+    opts.balance >= getRequiredNativeBalanceForOutbound(
+      opts.nativeValueForGas,
+      opts.gasReserve
+    )
+  );
+}
 
 // =============================================================================
 // Route 2 (UEA → CEA) phase helpers
@@ -792,6 +815,17 @@ export async function executeUoaToCea(
       args: [ueaAddress],
     });
   }
+  const requiredNativeBalanceR2Evm = getRequiredNativeBalanceForOutbound(
+    nativeValueForGas,
+    EVM_GAS_RESERVE
+  );
+  const skipFeeLockingR2Evm = shouldSkipFeeLockingForOutbound({
+    isUEADeployed,
+    balance: effectiveBalance,
+    nativeValueForGas,
+    gasReserve: EVM_GAS_RESERVE,
+  });
+
   runPreflight({
     ctx,
     ueaAddress,
@@ -840,9 +874,10 @@ export async function executeUoaToCea(
       nonce: ueaNonce,
       balance: ueaBalance,
     },
-    _skipFeeLocking: isUEADeployed, // skip fee-locking only if UEA is already deployed
-    // For undeployed UEAs, ensure fee-locking deposits enough for the outbound swap
-    ...(!isUEADeployed ? { _minimumDepositUsd: ROUTE2_MINIMUM_DEPOSIT_USD } : {}),
+    _skipFeeLocking: skipFeeLockingR2Evm,
+    _requiredFundsOverride: requiredNativeBalanceR2Evm,
+    // Ensure fee-locking deposits enough for the outbound swap whenever it is needed.
+    ...(!skipFeeLockingR2Evm ? { _minimumDepositUsd: ROUTE2_MINIMUM_DEPOSIT_USD } : {}),
   };
 
   // Signature request — user is prompted to sign the universal payload.
@@ -926,6 +961,7 @@ export async function executeUoaToCeaSvm(
       } bytes`
     );
   }
+  assertSvmPayloadWithinRelayLimit(svmPayload, `Route 2 SVM ${targetChain}`);
 
   // --- Determine PRC-20 token and burn amount (chain-local, pre-203) ---
   const { prc20Token, burnAmount } = resolveR2Prc20TokenSvm(
@@ -1127,6 +1163,17 @@ export async function executeUoaToCeaSvm(
       args: [ueaAddress],
     });
   }
+  const requiredNativeBalanceR2Svm = getRequiredNativeBalanceForOutbound(
+    nativeValueForGas,
+    SVM_GAS_RESERVE
+  );
+  const skipFeeLockingR2Svm = shouldSkipFeeLockingForOutbound({
+    isUEADeployed,
+    balance: ueaBalance,
+    nativeValueForGas,
+    gasReserve: SVM_GAS_RESERVE,
+  });
+
   runPreflight({
     ctx,
     ueaAddress,
@@ -1172,7 +1219,8 @@ export async function executeUoaToCeaSvm(
       nonce: ueaNonce,
       balance: ueaBalance,
     },
-    _skipFeeLocking: isUEADeployed, // skip fee-locking only if UEA is already deployed
+    _skipFeeLocking: skipFeeLockingR2Svm,
+    _requiredFundsOverride: requiredNativeBalanceR2Svm,
   };
 
   // Signature request — user is prompted to sign the universal payload.
@@ -1554,6 +1602,17 @@ export async function executeCeaToPush(
   // payload-only (UEA never holds the source-chain PRC-20; see plan §9 #4).
   // Native UPC check still applies for the gas swap. It warns by default and
   // throws only when options.enforceGasCheck=true.
+  const requiredNativeBalanceR3Evm = getRequiredNativeBalanceForOutbound(
+    nativeValueForGas,
+    OUTBOUND_GAS_RESERVE_R3
+  );
+  const skipFeeLockingR3Evm = shouldSkipFeeLockingForOutbound({
+    isUEADeployed,
+    balance: effectiveBalance,
+    nativeValueForGas,
+    gasReserve: OUTBOUND_GAS_RESERVE_R3,
+  });
+
   runPreflight({
     ctx,
     ueaAddress,
@@ -1596,9 +1655,10 @@ export async function executeCeaToPush(
       nonce: ueaNonce,
       balance: ueaBalance,
     },
-    _skipFeeLocking: isUEADeployed, // skip fee-locking only if UEA is already deployed
-    // For undeployed UEAs, ensure fee-locking deposits enough for the outbound swap
-    ...(!isUEADeployed ? { _minimumDepositUsd: ROUTE3_MINIMUM_DEPOSIT_USD } : {}),
+    _skipFeeLocking: skipFeeLockingR3Evm,
+    _requiredFundsOverride: requiredNativeBalanceR3Evm,
+    // Ensure fee-locking deposits enough for the outbound swap whenever it is needed.
+    ...(!skipFeeLockingR3Evm ? { _minimumDepositUsd: ROUTE3_MINIMUM_DEPOSIT_USD } : {}),
   };
 
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_304_01);
@@ -1716,6 +1776,10 @@ export async function executeCeaToPushSvm(
     ),
     revertRecipientHex: ceaPdaHex,
   });
+  assertSvmPayloadWithinRelayLimit(
+    svmPayload,
+    `Route 3 SVM ${sourceChain}`
+  );
 
   printLog(
     ctx,
@@ -1872,6 +1936,17 @@ export async function executeCeaToPushSvm(
   // SVM warn-threshold telemetry (no truncation — pre-flight handles drain protection).
   maybeFireSvmWarnThreshold(ctx, nativeValueForGas, gasToken, 'R3_SVM');
 
+  const requiredNativeBalanceR3Svm = getRequiredNativeBalanceForOutbound(
+    nativeValueForGas,
+    OUTBOUND_GAS_RESERVE_R3_SVM
+  );
+  const skipFeeLockingR3Svm = shouldSkipFeeLockingForOutbound({
+    isUEADeployed,
+    balance: currentBalance,
+    nativeValueForGas,
+    gasReserve: OUTBOUND_GAS_RESERVE_R3_SVM,
+  });
+
   // Pre-flight (R3 SVM): no PRC-20 burn check. The drain amount lives in the
   // embedded Solana instruction and is withdrawn from the external CEA.
   runPreflight({
@@ -1909,11 +1984,12 @@ export async function executeCeaToPushSvm(
     _ueaStatus: {
       isDeployed: isUEADeployed,
       nonce: ueaNonce,
-      balance: ueaBalance,
+      balance: currentBalance,
     },
-    _skipFeeLocking: isUEADeployed, // skip fee-locking only if UEA is already deployed
-    // For undeployed UEAs, ensure fee-locking deposits enough for the outbound swap
-    ...(!isUEADeployed ? { _minimumDepositUsd: Utils.helpers.parseUnits('10', 8) } : {}),
+    _skipFeeLocking: skipFeeLockingR3Svm,
+    _requiredFundsOverride: requiredNativeBalanceR3Svm,
+    // Ensure fee-locking deposits enough for the outbound swap whenever it is needed.
+    ...(!skipFeeLockingR3Svm ? { _minimumDepositUsd: Utils.helpers.parseUnits('10', 8) } : {}),
   };
 
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_304_01);
@@ -2026,6 +2102,10 @@ export async function buildPayloadForRoute(
           to: target,
           senderUea: ueaAddress,
         });
+        assertSvmPayloadWithinRelayLimit(
+          payload,
+          `Route 2 SVM ${target.chain}`
+        );
 
         let prc20Token: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let burnAmount = BigInt(0);
@@ -2139,6 +2219,10 @@ export async function buildPayloadForRoute(
           ),
           revertRecipientHex: ceaPdaHex2,
         });
+        assertSvmPayloadWithinRelayLimit(
+          svmPayload,
+          `Route 3 SVM ${sourceChain}`
+        );
 
         // Payload-only outbound: drain amount lives inside ixData.
         const burnAmount = BigInt(0);

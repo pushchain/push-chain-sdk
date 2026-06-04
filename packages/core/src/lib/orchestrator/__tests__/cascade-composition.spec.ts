@@ -439,4 +439,177 @@ describe('composeCascadeDetailed', () => {
     const [delayedRequest] = delayedDecoded.args as [UniversalOutboundTxRequest];
     expect(delayedRequest.gasPrice).toBe(BigInt(0));
   });
+
+  it('uses pool-quoted native value for SVM Route 3 inbound cascade outbounds', async () => {
+    const wei = BigInt('1000000000000000000');
+    const exactWpcNeeded = BigInt(25) * wei;
+    const quotedWithBuffer = (exactWpcNeeded * BigInt(22)) / BigInt(10);
+    const hop = makeRoute3Hop(CHAIN.SOLANA_DEVNET, {
+      sourceChain: CHAIN.SOLANA_DEVNET,
+      isSvmTarget: true,
+      burnAmount: BigInt(0),
+      gasFee: BigInt(1_000_000),
+      gasPrice: BigInt(1),
+      gasLimit: BigInt(1_000_000),
+      params: {
+        from: { chain: CHAIN.SOLANA_DEVNET },
+        to: ALICE,
+        value: BigInt(1_000_000),
+      } as UniversalExecuteParams,
+    });
+    const segment: CascadeSegment = {
+      type: 'INBOUND_FROM_CEA',
+      hops: [hop],
+      sourceChain: CHAIN.SOLANA_DEVNET,
+      totalBurnAmount: BigInt(0),
+      prc20Token: TOKEN_A,
+      gasToken: TOKEN_A,
+      gasFee: BigInt(1_000_000),
+      gasPrice: BigInt(1),
+      gasLimit: BigInt(1_000_000),
+      maxPCForGas: BigInt(0),
+    };
+    const readContract = jest.fn(async ({ functionName }) => {
+      switch (functionName) {
+        case 'universalCore':
+          return '0x5555555555555555555555555555555555555555';
+        case 'WPC':
+          return '0x1000000000000000000000000000000000000000';
+        case 'uniswapV3Factory':
+          return '0x2000000000000000000000000000000000000000';
+        case 'defaultFeeTier':
+          return 3000;
+        case 'quoteExactOutputSingle':
+          return [exactWpcNeeded, BigInt(0), 0, BigInt(0)];
+        default:
+          throw new Error(`unexpected readContract: ${String(functionName)}`);
+      }
+    });
+    const ctx = {
+      printTraces: false,
+      progressHook: () => undefined,
+      pushNetwork: 'TESTNET_DONUT',
+      pushClient: { readContract },
+      universalSigner: {
+        account: { chain: CHAIN.ETHEREUM_SEPOLIA, address: ALICE },
+      },
+    } as unknown as OrchestratorContext;
+
+    const { multicalls, requiredNativeValue } = await composeCascadeDetailed(
+      ctx,
+      [segment],
+      UEA,
+      BigInt(30) * wei
+    );
+    const outboundCall = multicalls.find((call) =>
+      call.data.startsWith('0x77b86bec')
+    );
+
+    expect(outboundCall).toBeDefined();
+    expect(outboundCall!.value).toBe(quotedWithBuffer);
+    expect(requiredNativeValue).toBe(quotedWithBuffer + BigInt(1_000_000));
+  });
+
+  it('uses pool-quoted native value for EVM cascade outbounds instead of flat balance split', async () => {
+    const wei = BigInt('1000000000000000000');
+    const exactWpcNeeded = BigInt(50) * wei;
+    const quotedWithBuffer = (exactWpcNeeded * BigInt(22)) / BigInt(10);
+    const hop = makeRoute2Hop(CHAIN.ETHEREUM_SEPOLIA, [], {
+      burnAmount: BigInt(0),
+      gasFee: BigInt(1_000_000),
+      gasPrice: BigInt(1),
+      gasLimit: BigInt(500_000),
+    });
+    const segment: CascadeSegment = {
+      type: 'OUTBOUND_TO_CEA',
+      hops: [hop],
+      targetChain: CHAIN.ETHEREUM_SEPOLIA,
+      mergedCeaMulticalls: [],
+      totalBurnAmount: BigInt(0),
+      prc20Token: TOKEN_A,
+      gasToken: TOKEN_A,
+      gasFee: BigInt(1_000_000),
+      gasPrice: BigInt(1),
+      gasLimit: BigInt(500_000),
+      maxPCForGas: BigInt(0),
+    };
+    const readContract = jest.fn(async ({ functionName }) => {
+      switch (functionName) {
+        case 'universalCore':
+          return '0x5555555555555555555555555555555555555555';
+        case 'WPC':
+          return '0x1000000000000000000000000000000000000000';
+        case 'uniswapV3Factory':
+          return '0x2000000000000000000000000000000000000000';
+        case 'defaultFeeTier':
+          return 3000;
+        case 'quoteExactOutputSingle':
+          return [exactWpcNeeded, BigInt(0), 0, BigInt(0)];
+        default:
+          throw new Error(`unexpected readContract: ${String(functionName)}`);
+      }
+    });
+    const ctx = {
+      printTraces: false,
+      progressHook: () => undefined,
+      pushNetwork: 'TESTNET_DONUT',
+      pushClient: { readContract },
+      universalSigner: {
+        account: { chain: CHAIN.ETHEREUM_SEPOLIA, address: ALICE },
+      },
+    } as unknown as OrchestratorContext;
+
+    const { multicalls, requiredNativeValue } = await composeCascadeDetailed(
+      ctx,
+      [segment],
+      UEA,
+      BigInt(30) * wei
+    );
+    const outboundCall = multicalls.find((call) =>
+      call.data.startsWith('0x77b86bec')
+    );
+
+    expect(outboundCall).toBeDefined();
+    expect(outboundCall!.value).toBe(quotedWithBuffer);
+    expect(requiredNativeValue).toBe(quotedWithBuffer);
+  });
+
+  it('rejects oversized SVM Route 3 cascade payloads before broadcast', async () => {
+    const oversizedData = `0x${'11'.repeat(950)}` as `0x${string}`;
+    const hop = makeRoute3Hop(CHAIN.SOLANA_DEVNET, {
+      sourceChain: CHAIN.SOLANA_DEVNET,
+      isSvmTarget: true,
+      params: {
+        from: { chain: CHAIN.SOLANA_DEVNET },
+        to: ALICE,
+        data: oversizedData,
+      } as UniversalExecuteParams,
+    });
+    const segment: CascadeSegment = {
+      type: 'INBOUND_FROM_CEA',
+      hops: [hop],
+      sourceChain: CHAIN.SOLANA_DEVNET,
+      totalBurnAmount: BigInt(0),
+      prc20Token: TOKEN_A,
+      gasToken: TOKEN_A,
+      gasFee: BigInt(0),
+      gasPrice: BigInt(0),
+      gasLimit: BigInt(1052),
+      maxPCForGas: BigInt(0),
+    };
+    const ctx = {
+      printTraces: false,
+      progressHook: () => undefined,
+      pushNetwork: 'TESTNET_DONUT',
+      universalSigner: {
+        account: { chain: CHAIN.ETHEREUM_SEPOLIA, address: ALICE },
+      },
+    } as unknown as OrchestratorContext;
+
+    await expect(
+      composeCascadeDetailed(ctx, [segment], UEA, BigInt(100) * BigInt(1e18))
+    ).rejects.toThrow(
+      /SVM outbound payload for Route 3 SVM cascade .* exceeding relay-safe limit/
+    );
+  });
 });

@@ -6,7 +6,11 @@ import { CHAIN, PUSH_NETWORK } from '../../constants/enums';
 import { MOVEABLE_TOKEN_CONSTANTS } from '../../constants/tokens';
 import { UEA_MULTICALL_SELECTOR, ZERO_ADDRESS } from '../../constants/selectors';
 import type { OrchestratorContext } from '../internals/context';
-import { buildPayloadForRoute } from '../internals/route-handlers';
+import {
+  buildPayloadForRoute,
+  getRequiredNativeBalanceForOutbound,
+  shouldSkipFeeLockingForOutbound,
+} from '../internals/route-handlers';
 import type { ChainSource, UniversalExecuteParams, UniversalOutboundTxRequest } from '../orchestrator.types';
 import { TransactionRoute } from '../route-detector';
 
@@ -191,5 +195,38 @@ describe('buildPayloadForRoute — SVM Route 3', () => {
     expect(sendToUeaArgs.amount).toBe(BigInt(5_000));
     expect(inboundPayload.data.startsWith(UEA_MULTICALL_SELECTOR)).toBe(true);
     expect(inboundPayload.nonce).toBe(BigInt(1));
+  });
+});
+
+describe('outbound fee-locking skip decision', () => {
+  it('requires deployed UEA balance to cover native gas value plus reserve', () => {
+    const nativeValueForGas = BigInt(200);
+    const gasReserve = BigInt(3);
+
+    expect(getRequiredNativeBalanceForOutbound(
+      nativeValueForGas,
+      gasReserve
+    )).toBe(BigInt(203));
+
+    expect(shouldSkipFeeLockingForOutbound({
+      isUEADeployed: true,
+      balance: BigInt(203),
+      nativeValueForGas,
+      gasReserve,
+    })).toBe(true);
+
+    expect(shouldSkipFeeLockingForOutbound({
+      isUEADeployed: true,
+      balance: BigInt(202),
+      nativeValueForGas,
+      gasReserve,
+    })).toBe(false);
+
+    expect(shouldSkipFeeLockingForOutbound({
+      isUEADeployed: false,
+      balance: BigInt(1000),
+      nativeValueForGas,
+      gasReserve,
+    })).toBe(false);
   });
 });

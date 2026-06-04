@@ -90,7 +90,7 @@ describe('UEA → Push Chain: Inbound Transactions (Route 1)', () => {
           chain: fixture.viemChain,
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           account: walletClient.account!,
-          value: PushChain.utils.helpers.parseUnits('1', 15),
+          value: PushChain.utils.helpers.parseUnits('3', 15),
         });
         const publicClient = createPublicClient({
           chain: fixture.viemChain,
@@ -1052,7 +1052,7 @@ describe('UEA → Push Chain: Inbound Transactions (Route 1)', () => {
 
           const ethTxHash = await mainWalletClient.sendTransaction({
             to: newAccount.address,
-            value: parseEther('0.0005'),
+            value: parseEther('0.01'),
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             account: mainWalletClient.account!,
             chain: fixture.viemChain,
@@ -1109,7 +1109,7 @@ describe('UEA → Push Chain: Inbound Transactions (Route 1)', () => {
 
           const ethTxHash = await mainWalletClient.sendTransaction({
             to: newAccount.address,
-            value: parseEther('0.0005'),
+            value: parseEther('0.01'),
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             account: mainWalletClient.account!,
             chain: fixture.viemChain,
@@ -1276,7 +1276,7 @@ describe('UEA → Push Chain: Inbound Transactions (Route 1)', () => {
 
           const ethTxHash = await mainWalletClient.sendTransaction({
             to: newAccount.address,
-            value: parseEther('0.0005'),
+            value: parseEther('0.01'),
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             account: mainWalletClient.account!,
             chain: fixture.viemChain,
@@ -1334,7 +1334,7 @@ describe('UEA → Push Chain: Inbound Transactions (Route 1)', () => {
 
           const ethTxHash = await mainWalletClient.sendTransaction({
             to: newAccount.address,
-            value: parseEther('0.0005'),
+            value: parseEther('0.01'),
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             account: mainWalletClient.account!,
             chain: fixture.viemChain,
@@ -1398,7 +1398,7 @@ describe('UEA → Push Chain: Inbound Transactions (Route 1)', () => {
 
           const ethTxHash = await mainWalletClient.sendTransaction({
             to: newAccount.address,
-            value: parseEther('0.0005'),
+            value: parseEther('0.01'),
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             account: mainWalletClient.account!,
             chain: fixture.viemChain,
@@ -1467,7 +1467,7 @@ describe('UEA → Push Chain: Inbound Transactions (Route 1)', () => {
 
           const ethTxHash = await mainWalletClient.sendTransaction({
             to: newAccount.address,
-            value: parseEther('0.0005'),
+            value: parseEther('0.01'),
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             account: mainWalletClient.account!,
             chain: fixture.viemChain,
@@ -1544,7 +1544,7 @@ describe('UEA → Push Chain: Inbound Transactions (Route 1)', () => {
 
           const ethTxHash = await mainWalletClient.sendTransaction({
             to: newAccount.address,
-            value: parseEther('0.0005'),
+            value: parseEther('0.01'),
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             account: mainWalletClient.account!,
             chain: fixture.viemChain,
@@ -1670,7 +1670,7 @@ describe('UEA → Push Chain: Inbound Transactions (Route 1)', () => {
 
           const ethTxHash = await mainWalletClient.sendTransaction({
             to: newAccount.address,
-            value: parseEther('0.0005'),
+            value: parseEther('0.01'),
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             account: mainWalletClient.account!,
             chain: fixture.viemChain,
@@ -1885,7 +1885,7 @@ describe('UEA → Push Chain: Inbound Transactions (Route 1)', () => {
 
           const ethTxHash = await mainWalletClient.sendTransaction({
             to: newAccount.address,
-            value: parseEther('0.0005'),
+            value: parseEther('0.01'),
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             account: mainWalletClient.account!,
             chain: fixture.viemChain,

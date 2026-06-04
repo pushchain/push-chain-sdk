@@ -13,6 +13,43 @@ import { SvmClient } from '../../vm-client/svm-client';
 import type { OrchestratorContext } from './context';
 import { fireProgressHook } from './context';
 
+const EVM_RECEIPT_POLL_MS = 3000;
+const EVM_RECEIPT_NOT_FOUND_RE =
+  /not found|TransactionNotFound|TransactionReceiptNotFound|could not be found|No transaction found/i;
+
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'object' && err !== null) {
+    const maybe = err as { shortMessage?: unknown; message?: unknown };
+    return String(maybe.shortMessage ?? maybe.message ?? err);
+  }
+  return String(err);
+}
+
+async function waitForEvmReceipt(
+  evmClient: EvmClient,
+  txHash: `0x${string}`,
+  timeoutMs: number
+): Promise<{ blockNumber: bigint }> {
+  const start = Date.now();
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      return await evmClient.publicClient.getTransactionReceipt({
+        hash: txHash,
+      });
+    } catch (err) {
+      const msg = getErrorMessage(err);
+      const retryable = EVM_RECEIPT_NOT_FOUND_RE.test(msg);
+      if (!retryable || Date.now() - start > timeoutMs) {
+        throw err;
+      }
+      await new Promise((r) => setTimeout(r, EVM_RECEIPT_POLL_MS));
+    }
+  }
+}
+
 export async function waitForEvmConfirmationsWithCountdown(
   ctx: OrchestratorContext,
   evmClient: EvmClient,
@@ -28,9 +65,7 @@ export async function waitForEvmConfirmationsWithCountdown(
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_03, confirmations);
   const start = Date.now();
 
-  const receipt = await evmClient.publicClient.waitForTransactionReceipt({
-    hash: txHash,
-  });
+  const receipt = await waitForEvmReceipt(evmClient, txHash, timeoutMs);
   const targetBlock = receipt.blockNumber + BigInt(confirmations);
   let lastEmitted = 0;
 
@@ -160,9 +195,7 @@ export async function waitForLockerFeeConfirmation(
     case VM.EVM: {
       const evmClient = getOriginEvmClient(ctx);
       const txHash = bytesToHex(txHashBytes);
-      const receipt = await evmClient.publicClient.waitForTransactionReceipt({
-        hash: txHash,
-      });
+      const receipt = await waitForEvmReceipt(evmClient, txHash, timeout);
       if (fastConfirmations <= 1) return;
       const targetBlock = receipt.blockNumber + BigInt(fastConfirmations);
       const start = Date.now();

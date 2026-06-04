@@ -499,6 +499,33 @@ export function isValidSolanaHexAddress(address: string): boolean {
   return /^0x[a-fA-F0-9]{64}$/.test(address);
 }
 
+/**
+ * Conservative upper bound for SVM outbound instruction data. Solana's packet
+ * limit is 1232 bytes before the transaction envelope, accounts, blockhash,
+ * and signatures, so SDK-built instruction data must stay well below that.
+ */
+export const SVM_RELAYABLE_PAYLOAD_MAX_BYTES = 1000;
+
+export function getHexPayloadByteLength(payload: `0x${string}`): number {
+  return Math.max(0, (payload.length - 2) / 2);
+}
+
+export function assertSvmPayloadWithinRelayLimit(
+  payload: `0x${string}`,
+  context: string,
+  maxBytes = SVM_RELAYABLE_PAYLOAD_MAX_BYTES
+): void {
+  const payloadBytes = getHexPayloadByteLength(payload);
+  if (payloadBytes <= maxBytes) return;
+
+  throw new Error(
+    `SVM outbound payload for ${context} is ${payloadBytes} bytes, ` +
+      `exceeding relay-safe limit ${maxBytes} bytes. Solana cannot carry ` +
+      `this much instruction data in one transaction; split the cascade into ` +
+      `separate transactions or reduce the nested payload.`
+  );
+}
+
 /** Convert 0x-prefixed hex string to Uint8Array */
 function hexToBytes(hex: string): Uint8Array {
   const h = hex.startsWith('0x') ? hex.slice(2) : hex;

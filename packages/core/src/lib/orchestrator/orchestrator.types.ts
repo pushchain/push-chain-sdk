@@ -176,11 +176,20 @@ export type ExecuteParams = {
 
   /**
    * Internal: Skip fee locking for outbound flows (UEA→CEA).
-   * Outbound txs execute entirely on Push Chain and don't need
-   * external-chain fee locking.
+   * Outbound txs can skip external-chain fee locking only when the executing
+   * Push account already has enough native PC for the outbound gas swap plus
+   * Push-side execution reserve.
    * @internal
    */
   _skipFeeLocking?: boolean;
+
+  /**
+   * Internal: Minimum native PC balance required before standard execution may
+   * skip fee locking. Route handlers use this to include their own outbound
+   * gas-swap reserve in executeStandardPayload's fee-locking decision.
+   * @internal
+   */
+  _requiredFundsOverride?: bigint;
 
   /**
    * Internal: Minimum fee-locking deposit in USD (8 decimals).

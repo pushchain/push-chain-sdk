@@ -117,6 +117,17 @@ function encodePayloadForOriginIfNeeded(
   return encodePayloadForOrigin(ctx, payload);
 }
 
+export function resolveRequiredFunds(
+  requiredGasFee: bigint,
+  executeValue: bigint,
+  requiredFundsOverride?: bigint
+): bigint {
+  const baseRequiredFunds = requiredGasFee + executeValue;
+  return requiredFundsOverride && requiredFundsOverride > baseRequiredFunds
+    ? requiredFundsOverride
+    : baseRequiredFunds;
+}
+
 export async function executeStandardPayload(
   ctx: OrchestratorContext,
   execute: ExecuteParams,
@@ -183,7 +194,11 @@ export async function executeStandardPayload(
   const gasEstimate = execute.gasLimit || BigInt(1e7);
   const gasPrice = await ctx.pushClient.getGasPrice();
   const requiredGasFee = gasEstimate * gasPrice;
-  const requiredFunds = requiredGasFee + execute.value;
+  const requiredFunds = resolveRequiredFunds(
+    requiredGasFee,
+    execute.value,
+    execute._requiredFundsOverride
+  );
 
   // Fetch UEA Details (or use pre-fetched status if available)
   const UEA = computeUEAOffchain(ctx);

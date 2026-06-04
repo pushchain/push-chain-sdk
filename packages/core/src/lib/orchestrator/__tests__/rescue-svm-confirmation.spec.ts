@@ -47,6 +47,9 @@ jest.mock('../../vm-client/evm-client', () => ({
   EvmClient: jest.fn().mockImplementation(() => ({
     _tag: 'evm',
     publicClient: {
+      getTransactionReceipt: jest
+        .fn()
+        .mockResolvedValue({ blockNumber: BigInt(0) }),
       waitForTransactionReceipt: jest
         .fn()
         .mockResolvedValue({ blockNumber: BigInt(0) }),

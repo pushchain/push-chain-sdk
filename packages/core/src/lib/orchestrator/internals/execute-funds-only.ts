@@ -31,6 +31,9 @@ import {
   estimateNativeForDesiredDeposit,
 } from './gas-calculator';
 import { sendGatewayTxWithFallback } from './gateway-client';
+import { sizeR1PushGas } from './gas-usd-sizer';
+import { PriceFetch } from '../../price-fetch/price-fetch';
+import { Utils } from '../../utils';
 import { getNativePRC20ForChain, SUPPORTED_GATEWAY_CHAINS } from './helpers';
 import { buildGatewayPayloadAndGas } from './payload-builder';
 import { getUeaStatusAndNonce, getUEANonce, computeUEAOffchain } from './uea-manager';
@@ -143,7 +146,11 @@ async function executeFundsOnlyEvm(
     ctx,
     chain,
     requiredFunds,
-    ueaBalanceForGas
+    ueaBalanceForGas,
+    // Defer the 103-03-04 ("Prepaid Deposit Estimated") hook — we emit the full
+    // 103-03 sizing sequence below, after 103-01/103-02 (UEA resolution), to
+    // match the funds-payload path ordering.
+    { emitDepositEstimated: false }
   );
 
   // For EVM fee-locking, fixed-rate PC→USD sizing can underfund when the
@@ -179,6 +186,69 @@ async function executeFundsOnlyEvm(
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_01);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_103_02, ueaAddress, deployed);
   printLog(ctx, `UEA resolved: ${ueaAddress}, deployed: ${deployed}`);
+
+  // SDK 5.2 R1 deposit-sizing progress (parent + Case A/B/C + terminal),
+  // emitted here — after UEA resolution — to match the funds-payload path's
+  // ordering. The terminal 103-03-04 hook was suppressed inside
+  // calculateNativeAmountForDeposit above so it lands in this position instead
+  // of before 103-01/103-02. Purely cosmetic: a pool/price read failure here
+  // must never block the bridge, so we fall back to the terminal hook alone.
+  try {
+    const r1Sizing = await sizeR1PushGas(ctx, {
+      pushGasFeeWei: requiredGasFee,
+      originChain: chain,
+    });
+    const nativeTokenUsdPrice = await new PriceFetch(ctx.rpcUrls).getPrice(chain);
+    const nativeDecimals = CHAIN_INFO[chain].vm === VM.SVM ? 9 : 18;
+    const oneNativeUnit = Utils.helpers.parseUnits('1', nativeDecimals);
+    const plannedPCDeposit =
+      nativeTokenUsdPrice === BigInt(0)
+        ? BigInt(0)
+        : (r1Sizing.paddedDepositUsd * oneNativeUnit +
+            (nativeTokenUsdPrice - BigInt(1))) /
+            nativeTokenUsdPrice +
+          BigInt(1);
+    const extraDepositPC =
+      plannedPCDeposit > requiredGasFee
+        ? plannedPCDeposit - requiredGasFee
+        : BigInt(0);
+
+    fireProgressHook(
+      ctx,
+      PROGRESS_HOOK.SEND_TX_103_03,
+      chain,
+      r1Sizing.paddedDepositUsd
+    );
+    const r1SizingHookId = {
+      A: PROGRESS_HOOK.SEND_TX_103_03_01,
+      B: PROGRESS_HOOK.SEND_TX_103_03_02,
+      C: PROGRESS_HOOK.SEND_TX_103_03_03,
+    }[r1Sizing.category];
+    fireProgressHook(
+      ctx,
+      r1SizingHookId,
+      chain,
+      requiredGasFee,
+      extraDepositPC,
+      r1Sizing.paddedDepositUsd
+    );
+    fireProgressHook(
+      ctx,
+      PROGRESS_HOOK.SEND_TX_103_03_04,
+      nativeAmount,
+      r1Sizing.paddedDepositUsd,
+      chain
+    );
+  } catch {
+    fireProgressHook(
+      ctx,
+      PROGRESS_HOOK.SEND_TX_103_03_04,
+      nativeAmount,
+      BigInt(0),
+      chain
+    );
+  }
+
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_01, execute.funds!.amount, execute.funds!.token!.decimals, symbol);
 
   // Approve gateway to pull tokens if ERC-20

@@ -32,6 +32,7 @@ import {
   buildOutboundApprovalAndCall,
   buildMigrationPayload,
   assertCeaFundsParkingInvariant,
+  assertSvmPayloadWithinRelayLimit,
   isSvmChain,
   encodeSvmExecutePayload,
   encodeSvmCeaToUeaPayload,
@@ -297,6 +298,10 @@ export async function buildHopDescriptor(
             to: target,
             senderUea: ueaAddress,
           });
+        assertSvmPayloadWithinRelayLimit(
+          svmPayload,
+          `Route 2 SVM ${targetChain}`
+        );
 
         let prc20Token: `0x${string}` = ZERO_ADDRESS as `0x${string}`;
         let burnAmount = BigInt(0);
@@ -1150,28 +1155,43 @@ export async function composeCascadeDetailed(
       (effectiveUeaBalance - CASCADE_GAS_RESERVE) / BigInt(numOutbounds);
   }
 
+  let universalCoreAddressForSwap: `0x${string}` | undefined;
+  const getUniversalCoreAddressForSwap = async (): Promise<`0x${string}`> => {
+    if (!universalCoreAddressForSwap) {
+      universalCoreAddressForSwap =
+        await ctx.pushClient.readContract<`0x${string}`>({
+          address: gatewayPcAddress,
+          abi: UNIVERSAL_GATEWAY_PC,
+          functionName: 'universalCore',
+          args: [],
+        });
+    }
+    return universalCoreAddressForSwap;
+  };
+
   // Pool-price-based native-value override for SVM outbounds.
   // The flat split above works for EVM gas tokens (pBNB/pETH — cheap per unit),
-  // but pSOL has a much higher WPC/pSOL pool price, so the flat 1 PC split is
-  // insufficient to swap for gasFee wei of pSOL and Uniswap reverts "STF".
-  // Mirror executeUoaToCeaSvm's pool-price read (route-handlers.ts) per SVM segment.
+  // but pSOL has a much higher WPC/pSOL pool price, so a flat balance split can
+  // underfund the gas swap and make Uniswap revert with "STF". Mirror the
+  // direct SVM route handlers' pool-price read for every SVM outbound-bearing
+  // segment, including Route 3 SVM inbound round trips.
   const svmSegments = segments.filter(
     (s) =>
-      s.type === 'OUTBOUND_TO_CEA' &&
-      s.hops[0]?.isSvmTarget === true &&
+      (
+        (s.type === 'OUTBOUND_TO_CEA' && s.hops[0]?.isSvmTarget === true) ||
+        (
+          s.type === 'INBOUND_FROM_CEA' &&
+          !isNativeSeedOnlySegment(s) &&
+          isSvmChain(s.sourceChain as CHAIN)
+        )
+      ) &&
       s.gasToken &&
       s.gasFee &&
       s.gasFee > BigInt(0)
   );
   const svmNativeValueBySegment = new Map<CascadeSegment, bigint>();
   if (svmSegments.length > 0 && effectiveUeaBalance > CASCADE_GAS_RESERVE) {
-    const universalCoreAddress =
-      await ctx.pushClient.readContract<`0x${string}`>({
-        address: gatewayPcAddress,
-        abi: UNIVERSAL_GATEWAY_PC,
-        functionName: 'universalCore',
-        args: [],
-      });
+    const universalCoreAddress = await getUniversalCoreAddressForSwap();
     // Compute per-SVM budget = ueaBalance − (PC needed for EVM outbounds) − 1 PC safety
     // (outer-tx gas + refund headroom). Pass a huge accountBalance to the estimator so
     // its internal cap is effectively disabled; we cap externally to the per-SVM budget.
@@ -1212,7 +1232,7 @@ export async function composeCascadeDetailed(
         if (cappedValue !== perSvmCap) {
           printLog(
             ctx,
-            `composeCascade — SVM outbound to ${seg.hops[0]?.targetChain}: perSvmCap=${perSvmCap} is below live pool quote=${estimated}; using quote to avoid underfunded gas swap`
+            `composeCascade — SVM outbound to ${seg.targetChain ?? seg.sourceChain}: perSvmCap=${perSvmCap} is below live pool quote=${estimated}; using quote to avoid underfunded gas swap`
           );
         }
         value = cappedValue;
@@ -1234,13 +1254,13 @@ export async function composeCascadeDetailed(
       if (value > upwardCeilingCascadeSvm) {
         printLog(
           ctx,
-          `composeCascade — SVM outbound to ${seg.hops[0]?.targetChain}: capping value from ${value} to upwardCeiling=${upwardCeilingCascadeSvm} (pool quote=${estimated})`
+          `composeCascade — SVM outbound to ${seg.targetChain ?? seg.sourceChain}: capping value from ${value} to upwardCeiling=${upwardCeilingCascadeSvm} (pool quote=${estimated})`
         );
         value = upwardCeilingCascadeSvm;
       }
       printLog(
         ctx,
-        `composeCascade — SVM outbound to ${seg.hops[0]?.targetChain}: gasFee=${seg.gasFee}, estimatedWpc=${estimated}, flat=${flat}, perSvmCap=${perSvmCap}, upwardCeiling=${upwardCeilingCascadeSvm}, chosen=${value}`
+        `composeCascade — SVM outbound to ${seg.targetChain ?? seg.sourceChain}: gasFee=${seg.gasFee}, estimatedWpc=${estimated}, flat=${flat}, perSvmCap=${perSvmCap}, upwardCeiling=${upwardCeilingCascadeSvm}, chosen=${value}`
       );
       // Per-segment minimum-viable-swap check: if the chosen `value` is below
       // the live pool quote (`estimated`), the cap squeezed the budget below
@@ -1293,6 +1313,47 @@ export async function composeCascadeDetailed(
         });
       }
       svmNativeValueBySegment.set(seg, value);
+    }
+  }
+
+  // EVM cascade outbounds should follow the direct R2 path: use the live
+  // WPC/gasToken quote instead of blindly spending the flat balance split.
+  // Over-allocating into thin pETH/pBNB pools can revert with Uniswap "STF"
+  // before the gateway has a chance to refund unused PC.
+  const evmSegments = segments.filter(
+    (s) =>
+      s.type === 'OUTBOUND_TO_CEA' &&
+      s.hops[0]?.isSvmTarget !== true &&
+      s.gasToken &&
+      s.gasFee &&
+      s.gasFee > BigInt(0)
+  );
+  const evmNativeValueBySegment = new Map<CascadeSegment, bigint>();
+  if (evmSegments.length > 0 && effectiveUeaBalance > CASCADE_GAS_RESERVE) {
+    const universalCoreAddress = await getUniversalCoreAddressForSwap();
+    const ONE_PC = BigInt('1000000000000000000');
+    const EVM_NATIVE_VALUE_SAFETY_CAP_CASCADE = BigInt(200) * ONE_PC;
+    const UNCAPPED_BALANCE = BigInt('1000000000000000000000000000000');
+    for (const seg of evmSegments) {
+      let value = await estimateNativeValueForSwap(
+        ctx,
+        universalCoreAddress,
+        seg.gasToken as `0x${string}`,
+        seg.gasFee as bigint,
+        UNCAPPED_BALANCE
+      );
+      if (value > EVM_NATIVE_VALUE_SAFETY_CAP_CASCADE) {
+        printLog(
+          ctx,
+          `composeCascade — EVM outbound to ${seg.targetChain}: capping nativeValueForGas at 200 PC ceiling (was ${value.toString()})`
+        );
+        value = EVM_NATIVE_VALUE_SAFETY_CAP_CASCADE;
+      }
+      printLog(
+        ctx,
+        `composeCascade — EVM outbound to ${seg.targetChain}: gasFee=${seg.gasFee}, quotedNativeValue=${value}, flat=${perOutboundNativeValue ?? BigInt(0)}`
+      );
+      evmNativeValueBySegment.set(seg, value);
     }
   }
 
@@ -1486,7 +1547,10 @@ export async function composeCascadeDetailed(
           evmFallbackValue = segGasFee * BigInt(1000000);
         }
         let nativeValueForGas =
-          svmOverride ?? perOutboundNativeValue ?? evmFallbackValue;
+          svmOverride ??
+          evmNativeValueBySegment.get(segment) ??
+          perOutboundNativeValue ??
+          evmFallbackValue;
 
         // SDK 5.2 Case C: when the segment's sizing is category C, compose
         // R2/OUTBOUND_TO_CEA segments no longer apply Case A/B/C sizing
@@ -1623,6 +1687,10 @@ export async function composeCascadeDetailed(
                   )
                 : undefined,
           });
+          assertSvmPayloadWithinRelayLimit(
+            svmPayload,
+            `Route 3 SVM cascade ${sourceChain}`
+          );
 
           const svmBurnAmount = segment.totalBurnAmount || BigInt(0);
           const outboundReq = buildOutboundRequest(
@@ -1646,7 +1714,9 @@ export async function composeCascadeDetailed(
             svmInboundFallback = inboundGasFee * BigInt(1000000);
           }
           let svmInboundNativeValue =
-            perOutboundNativeValue ?? svmInboundFallback;
+            svmNativeValueBySegment.get(segment) ??
+            perOutboundNativeValue ??
+            svmInboundFallback;
           // SDK 5.2 R3-style Case C bump: when the inbound segment's sizing
           // is C, top up the swap budget by the overflow. No bridge-swap —
           // R3 has no destination funds delivery.

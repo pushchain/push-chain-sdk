@@ -1560,9 +1560,12 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(tx1._hop.targetChain).toBe(CHAIN.BNB_TESTNET);
         expect(tx2._hop.targetChain).toBe(CHAIN.BNB_TESTNET);
 
-        // Verify executeTransactions accepts an array of prepared txs
-        const resultPromise = pushClient.universal.executeTransactions([tx1, tx2]);
-        expect(resultPromise).toBeInstanceOf(Promise);
+        // Do not call executeTransactions here: it broadcasts immediately.
+        // Execution behavior is covered by the cascade execution tests below.
+        expect(tx1._hop.ceaMulticalls).toBeDefined();
+        expect(tx2._hop.ceaMulticalls).toBeDefined();
+        expect(tx1._hop.ceaMulticalls!.length).toBeGreaterThan(0);
+        expect(tx2._hop.ceaMulticalls!.length).toBeGreaterThan(0);
       }, 60000);
     });
 

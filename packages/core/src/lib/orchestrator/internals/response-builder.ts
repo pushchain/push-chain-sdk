@@ -1068,6 +1068,16 @@ export async function transformToUniversalTxResponse(
           baseReceipt.pushInboundTxHash ??
           baseReceipt.externalTxHash ??
           baseReceipt.hash,
+        // Ensure `externalChain` is populated whenever an external/inbound leg
+        // surfaced an `externalTxHash`. The outbound-success branch already sets
+        // it to the destination chain (so this `??` never overrides it); this
+        // only fills the inbound/R3 and failed/timeout paths, where it should be
+        // the route's external chain (= the response's `chain`).
+        externalChain:
+          baseReceipt.externalChain ??
+          (baseReceipt.externalTxHash
+            ? universalTxResponse.chain
+            : baseReceipt.externalChain),
       };
 
       return baseReceipt;

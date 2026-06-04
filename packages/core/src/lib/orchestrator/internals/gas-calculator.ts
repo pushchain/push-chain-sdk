@@ -544,7 +544,12 @@ export async function calculateNativeAmountForDeposit(
   ctx: OrchestratorContext,
   chain: CHAIN,
   requiredFunds: bigint,
-  ueaBalance: bigint
+  ueaBalance: bigint,
+  // When false, suppress the SEND-TX-103-03-04 ("Prepaid Deposit Estimated")
+  // progress hook so the caller can emit the full 103-03 sizing sequence
+  // (parent + Case A/B/C + terminal) AFTER 103-01/103-02, matching the
+  // funds-payload path ordering. The deposit math is unaffected.
+  opts?: { emitDepositEstimated?: boolean }
 ): Promise<bigint> {
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_102_01);
 
@@ -598,13 +603,15 @@ export async function calculateNativeAmountForDeposit(
     nativeTokenUsdPrice;
   nativeAmount = nativeAmount + BigInt(1);
 
-  fireProgressHook(
-    ctx,
-    PROGRESS_HOOK.SEND_TX_103_03_04,
-    nativeAmount,
-    depositUsd,
-    chain
-  );
+  if (opts?.emitDepositEstimated !== false) {
+    fireProgressHook(
+      ctx,
+      PROGRESS_HOOK.SEND_TX_103_03_04,
+      nativeAmount,
+      depositUsd,
+      chain
+    );
+  }
 
   return nativeAmount;
 }

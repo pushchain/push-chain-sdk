@@ -1159,15 +1159,18 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
       // Verify we got progress events
       expect(events.length).toBeGreaterThan(0);
 
-      // Verify key events were emitted
-      expect(events.some((e) => e.id === 'SEND-TX-101')).toBe(true);
-      expect(events.some((e) => e.id.startsWith('SEND-TX-99'))).toBe(true);
+      // Verify Route 3 pre-broadcast events were emitted. Terminal inbound
+      // events are emitted by tx.wait() below.
+      expect(events.some((e) => e.id === 'SEND-TX-301')).toBe(true);
+      expect(events.some((e) => e.id === 'SEND-TX-303-02')).toBe(true);
+      expect(events.some((e) => e.id === 'SEND-TX-307')).toBe(true);
 
       // Wait for outbound relay and verify external chain details
       const receipt = await tx.wait();
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+      expect(events.some((e) => e.id.startsWith('SEND-TX-399'))).toBe(true);
 
       await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
     }, 600000);
@@ -1256,10 +1259,10 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
       expect(completion.success).toBe(true);
     }, 900000);
 
-    it('should drain SPL from Solana then send SOL to Solana (mixed asset cascade)', async () => {
+    it('should reject unrelayable SPL drain + SOL send SVM cascade payload', async () => {
       if (skipE2E) return;
 
-      console.log('\n=== Test: Cascade — SPL Drain + SOL Send ===');
+      console.log('\n=== Test: Cascade — SPL Drain + SOL Send (payload-size guard) ===');
 
       // Hop 1 (Route 3): Drain SPL USDT from Solana
       const tx1 = await pushClient.universal.prepareTransaction({
@@ -1280,28 +1283,15 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
         value: BigInt(1_000_000), // 0.001 SOL
       });
 
-      const result = await pushClient.universal.executeTransactions([tx1, tx2]);
-
-      console.log(`Initial TX Hash: ${result.initialTxHash}`);
-      console.log(`Hop count: ${result.hopCount}`);
-
-      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(result.hopCount).toBeGreaterThanOrEqual(2);
-
-      const completion = await result.waitForAll({
-        timeout: 900000,
-        progressHook: (event) => {
-          console.log(`[waitForAll] hop ${event.hopIndex} status: ${event.status}`);
-        },
-      });
-
-      expect(completion.success).toBe(true);
+      await expect(
+        pushClient.universal.executeTransactions([tx1, tx2])
+      ).rejects.toThrow(/SVM outbound payload .* exceeding relay-safe limit/);
     }, 900000);
 
-    it('should drain SOL + counter then send SOL to Solana (payload + cascade)', async () => {
+    it('should reject unrelayable SOL drain + counter + SOL send SVM cascade payload', async () => {
       if (skipE2E) return;
 
-      console.log('\n=== Test: Cascade — SOL Drain with Payload + SOL Send ===');
+      console.log('\n=== Test: Cascade — SOL Drain with Payload + SOL Send (payload-size guard) ===');
 
       const pushPayload = encodeFunctionData({
         abi: COUNTER_ABI,
@@ -1325,22 +1315,9 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
         value: BigInt(1_000_000), // 0.001 SOL
       });
 
-      const result = await pushClient.universal.executeTransactions([tx1, tx2]);
-
-      console.log(`Initial TX Hash: ${result.initialTxHash}`);
-      console.log(`Hop count: ${result.hopCount}`);
-
-      expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-      expect(result.hopCount).toBeGreaterThanOrEqual(2);
-
-      const completion = await result.waitForAll({
-        timeout: 900000,
-        progressHook: (event) => {
-          console.log(`[waitForAll] hop ${event.hopIndex} status: ${event.status}`);
-        },
-      });
-
-      expect(completion.success).toBe(true);
+      await expect(
+        pushClient.universal.executeTransactions([tx1, tx2])
+      ).rejects.toThrow(/SVM outbound payload .* exceeding relay-safe limit/);
     }, 900000);
 
     it('should drain SOL from Solana then increment EVM counter (cross-VM cascade)', async () => {

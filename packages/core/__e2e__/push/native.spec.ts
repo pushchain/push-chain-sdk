@@ -381,6 +381,7 @@ describe('UniversalTxReceipt Type Validation', () => {
 describe('EOA → UEA Transfers', () => {
   const SEPOLIA_RPC_E2U = CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0];
   const PUSH_RPC_E2U = CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0];
+  const FRESH_ORIGIN_FUNDING = parseEther('0.003');
 
   const privateKeyE2U = process.env['EVM_PRIVATE_KEY'] as Hex;
   const skipE2E_E2U = !privateKeyE2U;
@@ -423,12 +424,12 @@ describe('EOA → UEA Transfers', () => {
 
     const fundSenderHash = await mainWalletClient.sendTransaction({
       to: senderAccount.address,
-      value: BigInt(1e15),
+      value: FRESH_ORIGIN_FUNDING,
       account: mainWalletClient.account!,
       chain: sepolia,
     });
     await sepoliaPublicClient.waitForTransactionReceipt({ hash: fundSenderHash });
-    console.log(`Sender funded on Sepolia: ${fundSenderHash}`);
+    console.log(`Sender funded on Sepolia (${formatUnits(FRESH_ORIGIN_FUNDING, 18)} ETH): ${fundSenderHash}`);
 
     const senderWalletClient = createWalletClient({
       account: senderAccount,
@@ -465,9 +466,9 @@ describe('EOA → UEA Transfers', () => {
         library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
       }
     );
-    const receiverUEA = await PushChain.utils.account.convertOriginToExecutor(
+    const receiverUEA = await PushChain.utils.account.deriveExecutorAccount(
       receiverSigner.account,
-      { onlyCompute: true }
+      { skipNetworkCheck: false }
     );
     console.log(`Receiver UEA: ${receiverUEA.address} (deployed: ${receiverUEA.deployed})`);
 
@@ -512,12 +513,12 @@ describe('EOA → UEA Transfers', () => {
 
     const fundHash = await mainWalletClient.sendTransaction({
       to: freshAccount.address,
-      value: BigInt(1e15),
+      value: FRESH_ORIGIN_FUNDING,
       account: mainWalletClient.account!,
       chain: sepolia,
     });
     await sepoliaPublicClient.waitForTransactionReceipt({ hash: fundHash });
-    console.log(`Fresh wallet funded on Sepolia: ${fundHash}`);
+    console.log(`Fresh wallet funded on Sepolia (${formatUnits(FRESH_ORIGIN_FUNDING, 18)} ETH): ${fundHash}`);
 
     const freshWalletClient = createWalletClient({
       account: freshAccount,
