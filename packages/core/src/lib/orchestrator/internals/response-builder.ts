@@ -731,7 +731,11 @@ export async function transformToUniversalTxResponse(
       r: tx.r || '0x0',
       s: tx.s || '0x0',
       v: typeof tx.v === 'bigint' ? Number(tx.v) : tx.v || 0,
-      yParity: tx.yParity,
+      // yParity is absent for legacy (type 0x0) transactions — viem does not
+      // include it. Derived txs are temporarily reconstructed as legacy until
+      // the evm v0.4.0 DynamicFeeTx fix is deployed. Default to 0 so the SDK
+      // does not crash on a missing field.
+      yParity: tx.yParity ?? 0,
     };
   } catch {
     // Fallback signature if parsing fails
