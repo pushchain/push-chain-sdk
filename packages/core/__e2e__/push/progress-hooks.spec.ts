@@ -644,8 +644,8 @@ describe('External Chain Polling Progress Hooks (Routes 2 & 3)', () => {
           bnbCtx,
           client.universal.account as `0x${string}`
         );
-        await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
-        await fundBnbCea(bnbCtx, ceaAddress, '0.02');
+        await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
+        await fundBnbCea(bnbCtx, ceaAddress, '0.01');
 
         const tx = await client.universal.sendTransaction({
           from: { chain: PushChain.CONSTANTS.CHAIN.BNB_TESTNET },

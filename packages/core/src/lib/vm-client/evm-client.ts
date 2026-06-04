@@ -32,7 +32,12 @@ export class EvmClient {
   public publicClient: PublicClient;
 
   constructor({ rpcUrls, chain }: ClientOptions) {
-    const transports = rpcUrls.map((rpcUrl) => http(rpcUrl));
+    // retryCount/retryDelay make reads (incl. contract reads + Push status
+    // queries via PushClient) resilient to transient RPC 5xx (e.g. 502s under
+    // load), which otherwise abort a tx mid-flight. viem retries with backoff.
+    const transports = rpcUrls.map((rpcUrl) =>
+      http(rpcUrl, { retryCount: 5, retryDelay: 500 })
+    );
     this.publicClient = createPublicClient({
       chain,
       transport: fallback(transports),

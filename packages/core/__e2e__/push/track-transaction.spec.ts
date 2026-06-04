@@ -781,7 +781,7 @@ describe('Route 1 progress-hook parity (live vs tx.progressHook vs trackTransact
         chain: sepolia,
         transport: http(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0]),
       });
-      await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+      await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
 
       const signer = await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
         chain: CHAIN.ETHEREUM_SEPOLIA,
@@ -844,7 +844,7 @@ describe('Route 1 progress-hook parity (live vs tx.progressHook vs trackTransact
         chain: sepolia,
         transport: http(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0]),
       });
-      await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+      await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
 
       const signer = await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
         chain: CHAIN.ETHEREUM_SEPOLIA,

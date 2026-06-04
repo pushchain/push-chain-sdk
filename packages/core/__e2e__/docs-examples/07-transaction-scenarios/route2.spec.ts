@@ -66,7 +66,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 2 (UOA_TO_CEA)', 
       chain: sepolia,
       transport: http(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0]),
     });
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
 
     const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
       chain: CHAIN.ETHEREUM_SEPOLIA,
@@ -116,7 +116,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 2 (UOA_TO_CEA)', 
       progressHook: (p) => console.log('TX Progress:', p.title || p.id),
     });
 
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
     await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, '1');
     await fundUeaPRC20(
       pushCtx,
@@ -166,7 +166,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 2 (UOA_TO_CEA)', 
     const usdt = PushChain.CONSTANTS.MOVEABLE.TOKEN.BNB_TESTNET.USDT;
     const pUSDTBnbAddress = PushChain.utils.tokens.getPRC20Address(usdt).address;
 
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
     await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, '1');
     await fundUeaPRC20(
       pushCtx,
@@ -217,7 +217,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 2 (UOA_TO_CEA)', 
     const usdt = PushChain.CONSTANTS.MOVEABLE.TOKEN.BNB_TESTNET.USDT;
     const pUSDTBnbAddress = PushChain.utils.tokens.getPRC20Address(usdt).address;
 
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
     await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, '1');
     await fundUeaPRC20(
       pushCtx,
@@ -277,7 +277,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 2 (UOA_TO_CEA)', 
       progressHook: (p) => console.log('TX Progress:', p.title || p.id),
     });
 
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
     await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, '5');
 
     const data = PushChain.utils.helpers.encodeTxData({
@@ -308,7 +308,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 2 (UOA_TO_CEA)', 
       chain: sepolia,
       transport: http(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0]),
     });
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
 
     const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
       chain: CHAIN.ETHEREUM_SEPOLIA,

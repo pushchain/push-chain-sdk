@@ -724,14 +724,29 @@ export async function transformToUniversalTxResponse(
 
   const origin = `${VM_NAMESPACE[vm]}:${chainId}:${originAddress}`;
 
-  // Create signature from transaction r, s, v values
+  // Create signature from transaction r, s, v values.
+  //
+  // Push Chain's derived (module-injected) inbound txs are reported over the EVM
+  // JSON-RPC as **legacy `type 0x0`**, which omits the `yParity` field that viem
+  // only populates for typed (EIP-1559/2930) txs — so `tx.yParity` is `undefined`.
+  // Per the chain team (the hash inconsistencies were fixed chain-side, but
+  // derived txs remain legacy 0x0 by design), the SDK must accept `0x0` and
+  // surface a numeric `yParity`. Derive it from `v`: 0/1 → as-is, 27/28 → v-27,
+  // EIP-155 → (v-35)%2. (For the zeroed-signature derived txs, v=0 → yParity=0.)
   let signature: Signature;
   try {
+    const vNum = typeof tx.v === 'bigint' ? Number(tx.v) : tx.v || 0;
+    let yParity = tx.yParity;
+    if (yParity === undefined) {
+      if (vNum === 0 || vNum === 1) yParity = vNum;
+      else if (vNum === 27 || vNum === 28) yParity = vNum - 27;
+      else yParity = (vNum - 35) % 2;
+    }
     signature = {
       r: tx.r || '0x0',
       s: tx.s || '0x0',
-      v: typeof tx.v === 'bigint' ? Number(tx.v) : tx.v || 0,
-      yParity: tx.yParity,
+      v: vNum,
+      yParity,
     };
   } catch {
     // Fallback signature if parsing fails

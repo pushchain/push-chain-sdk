@@ -49,7 +49,7 @@ export async function createFreshFundedClient(
   // Fund with ETH/native for gas
   const ethTxHash = await mainWalletClient.sendTransaction({
     to: newAccount.address,
-    value: parseEther(opts?.ethAmount ?? '0.001'),
+    value: parseEther(opts?.ethAmount ?? '0.01'),
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     account: mainWalletClient.account!,
     chain: viemChain,

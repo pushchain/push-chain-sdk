@@ -37,18 +37,28 @@ function buildDomainSeparator(
     )
   );
 
+  // NOTE (SVM chainId encoding): the UEA_SVM currently deployed on Donut
+  // abi-encodes `_universalAccountId.chainId` as a RAW string in its
+  // domainSeparator() (pre-EIP-712-fix). We must match that byte-for-byte or the
+  // ed25519 signature is over the wrong digest and `executeUniversalTx` reverts
+  // with `InvalidSVMSignature` (0xa764e90c). The newer UEA_SVM (core-contracts
+  // commits 5d97ff4 "hash SVM domain separator chainId per EIP-712" + 62d47cc
+  // "bind … via EIP-712 salt") keccak-hashes chainId AND adds a `bytes32 salt =
+  // bytes32(block.chainid)`. When Donut is upgraded to that version, change the
+  // SVM branch back to `keccak256(toBytes(chainId))` and append the salt field.
+  // Verified against on-chain getUniversalPayloadHash on UEA 0xad977a75 (Donut).
   return keccak256(
     encodeAbiParameters(
       [
         { name: 'typeHash', type: 'bytes32' },
         { name: 'version', type: 'bytes32' },
-        { name: 'chainId', type: vm === VM.EVM ? 'uint256' : 'bytes32' },
+        { name: 'chainId', type: vm === VM.EVM ? 'uint256' : 'string' },
         { name: 'verifyingContract', type: 'address' },
       ],
       [
         domainTypeHash,
         keccak256(toBytes(version)),
-        vm === VM.EVM ? BigInt(chainId) : keccak256(toBytes(chainId)),
+        vm === VM.EVM ? BigInt(chainId) : chainId,
         verifyingContract,
       ]
     )

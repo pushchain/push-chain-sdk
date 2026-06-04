@@ -96,7 +96,7 @@ describe('docs-examples › 08-multichain-transactions', () => {
       chain: sepolia,
       transport: http(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0]),
     });
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
 
     const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
       chain: CHAIN.ETHEREUM_SEPOLIA,
@@ -153,7 +153,7 @@ describe('docs-examples › 08-multichain-transactions', () => {
       network: PUSH_NETWORK.TESTNET_DONUT,
     });
 
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
     await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, '5');
 
     const calldata = PushChain.utils.helpers.encodeTxData({
@@ -232,8 +232,8 @@ describe('docs-examples › 08-multichain-transactions', () => {
 
     const AMOUNT_IN = PushChain.utils.helpers.parseUnits('0.001', 18);
 
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
-    await fundSepoliaUoa(sepoliaCtx, sepoliaCEA, '0.005');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
+    await fundSepoliaUoa(sepoliaCtx, sepoliaCEA, '0.01');
     await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, '5');
     await fundUeaPRC20(
       pushCtx,
@@ -316,7 +316,7 @@ describe('docs-examples › 08-multichain-transactions', () => {
       network: PUSH_NETWORK.TESTNET_DONUT,
     });
 
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
     await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, '5');
 
     const pushProvider = new ethers.JsonRpcProvider(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]);
@@ -388,7 +388,7 @@ describe('docs-examples › 08-multichain-transactions', () => {
       network: PUSH_NETWORK.TESTNET_DONUT,
     });
 
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
     await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, '5');
 
     const pushProvider = new ethers.JsonRpcProvider(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]);

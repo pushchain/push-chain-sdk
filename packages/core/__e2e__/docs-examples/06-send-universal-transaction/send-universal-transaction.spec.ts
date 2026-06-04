@@ -132,7 +132,7 @@ describe('docs-examples › 06-send-universal-transaction', () => {
       chain: sepolia,
       transport: http(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0]),
     });
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
 
     const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
       chain: CHAIN.ETHEREUM_SEPOLIA,

@@ -352,7 +352,10 @@ describe('6-hop AMM cascade simulation (funded Sepolia CEA)', () => {
     ];
     expect(req.amount).toBe(BigInt(0));
     expect(req.gasLimit).toBeGreaterThan(BigInt(0));
-    expect(req.gasPrice).toBe(BigInt(0));
+    // Root inbound outbound is immediate (no prior inbound segment), so it
+    // stays pinned to the quoted gasPrice. Only outbounds delayed behind an
+    // earlier inbound fall back to gasPrice=0 for live resolution.
+    expect(req.gasPrice).toBe(BigInt(1));
   });
 
   it('does not clamp SVM gas funding below the live pool quote', async () => {

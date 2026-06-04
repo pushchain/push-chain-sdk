@@ -72,7 +72,28 @@ export class PushClient extends EvmClient {
     const rpcUrls = this.pushChainInfo.tendermintRpc;
     let lastError: Error | null = null;
 
-    for (let attempt = 0; attempt < rpcUrls.length; attempt++) {
+    // Cycle the RPC URLs, but also RETRY transient failures (5xx / network /
+    // "HTTP request failed") with backoff — otherwise a single 502 on a
+    // single-endpoint chain (e.g. Donut) aborts a tx mid status-poll. Total
+    // attempts = urls × (RETRIES_PER_URL + 1).
+    const RETRIES_PER_URL = 4;
+    const totalAttempts = rpcUrls.length * (RETRIES_PER_URL + 1);
+
+    const isTransient = (e: Error | null): boolean => {
+      const m = `${e?.message ?? ''}`.toLowerCase();
+      return (
+        /\b(502|503|504|429)\b/.test(m) ||
+        m.includes('http request failed') ||
+        m.includes('server error') ||
+        m.includes('timeout') ||
+        m.includes('timed out') ||
+        m.includes('econnreset') ||
+        m.includes('socket hang up') ||
+        m.includes('fetch failed')
+      );
+    };
+
+    for (let attempt = 0; attempt < totalAttempts; attempt++) {
       const rpcIndex = (this.currentRpcIndex + attempt) % rpcUrls.length;
       const rpcUrl = rpcUrls[rpcIndex];
 
@@ -84,10 +105,16 @@ export class PushClient extends EvmClient {
         return result;
       } catch (error) {
         lastError = error as Error;
-        if (attempt === rpcUrls.length - 1) {
+        if (attempt === totalAttempts - 1) {
           break;
         }
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        // Non-transient errors: move to the next URL quickly. Transient ones:
+        // back off (200ms → 400 → 800 …, capped) so a flaky RPC can recover.
+        const cycle = Math.floor(attempt / rpcUrls.length);
+        const delay = isTransient(lastError)
+          ? Math.min(2000, 200 * 2 ** cycle)
+          : 100;
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
 

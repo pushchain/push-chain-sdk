@@ -60,8 +60,8 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
 
     const ceaAddress = await deriveBnbCea(bnbCtx, client.universal.account as `0x${string}`);
     console.log('CEA on BNB Testnet:', ceaAddress);
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
-    await fundBnbCea(bnbCtx, ceaAddress, '0.02');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
+    await fundBnbCea(bnbCtx, ceaAddress, '0.01');
 
     const data = PushChain.utils.helpers.encodeTxData({
       abi: [...COUNTER_ABI],
@@ -102,8 +102,8 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
     });
 
     const ceaAddress = await deriveBnbCea(bnbCtx, client.universal.account as `0x${string}`);
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
-    await fundBnbCea(bnbCtx, ceaAddress, '0.02');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
+    await fundBnbCea(bnbCtx, ceaAddress, '0.01');
 
     const tx = await client.universal.sendTransaction({
       from: { chain: PushChain.CONSTANTS.CHAIN.BNB_TESTNET },
@@ -141,8 +141,8 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
 
     const ceaAddress = await deriveBnbCea(bnbCtx, client.universal.account as `0x${string}`);
     const usdt = PushChain.CONSTANTS.MOVEABLE.TOKEN.BNB_TESTNET.USDT;
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
-    await fundBnbCeaUsdt(bnbCtx, ceaAddress, '0.02', '0.02', usdt);
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
+    await fundBnbCeaUsdt(bnbCtx, ceaAddress, '0.01', '0.02', usdt);
 
     const tx = await client.universal.sendTransaction({
       from: { chain: PushChain.CONSTANTS.CHAIN.BNB_TESTNET },
@@ -179,8 +179,8 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
 
     const ceaAddress = await deriveBnbCea(bnbCtx, client.universal.account as `0x${string}`);
     const usdt = PushChain.CONSTANTS.MOVEABLE.TOKEN.BNB_TESTNET.USDT;
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
-    await fundBnbCeaUsdt(bnbCtx, ceaAddress, '0.02', '0.02', usdt);
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
+    await fundBnbCeaUsdt(bnbCtx, ceaAddress, '0.01', '0.02', usdt);
 
     const data = PushChain.utils.helpers.encodeTxData({
       abi: [...COUNTER_ABI],
@@ -241,7 +241,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
     ).toBase58();
     console.log('Solana CEA:', solanaCeaBase58);
 
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
     await fundSolanaUoa(solanaCtx, solanaCeaBase58, '0.02');
 
     const data = PushChain.utils.helpers.encodeTxData({
@@ -282,8 +282,8 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
     });
 
     const ceaAddress = await deriveBnbCea(bnbCtx, client.universal.account as `0x${string}`);
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
-    await fundBnbCea(bnbCtx, ceaAddress, '0.02');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
+    await fundBnbCea(bnbCtx, ceaAddress, '0.01');
 
     const incrementData = PushChain.utils.helpers.encodeTxData({
       abi: [...COUNTER_ABI],

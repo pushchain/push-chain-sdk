@@ -100,7 +100,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 1 (UOA_TO_PUSH)',
       chain: sepolia,
       transport: http(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0]),
     });
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
 
     const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
       chain: CHAIN.ETHEREUM_SEPOLIA,
@@ -225,7 +225,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 1 (UOA_TO_PUSH)',
     const usdt = PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.USDT;
     const usdc = PushChain.CONSTANTS.PAYABLE.TOKEN.ETHEREUM_SEPOLIA.USDC;
 
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
     for (const [tok, amt] of [
       [usdt, '0.2'] as const,
       [usdc, '5'] as const,
@@ -275,7 +275,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 1 (UOA_TO_PUSH)',
       chain: sepolia,
       transport: http(CHAIN_INFO[CHAIN.ETHEREUM_SEPOLIA].defaultRPC[0]),
     });
-    await fundSepoliaUoa(sepoliaCtx, account.address, '0.005');
+    await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
 
     const universalSigner = await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
       chain: CHAIN.ETHEREUM_SEPOLIA,
