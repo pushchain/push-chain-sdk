@@ -16,10 +16,12 @@ import { CHAIN, PUSH_NETWORK } from '../../../src/lib/constants/enums';
 import { CHAIN_INFO } from '../../../src/lib/constants/chain';
 import {
   fundSepoliaUoa,
+  fundUeaPC,
   fundBnbCea,
   fundBnbCeaUsdt,
   deriveBnbCea,
   makeSepoliaContext,
+  makePushContext,
   makeBnbContext,
   makeSolanaContext,
   fundSolanaUoa,
@@ -31,7 +33,11 @@ const COUNTER_ABI = [
 ] as const;
 
 const evmKey = process.env['EVM_PRIVATE_KEY'] as Hex | undefined;
+const pushKey = process.env['PUSH_PRIVATE_KEY'] as Hex | undefined;
 const solanaKey = process.env['SOLANA_PRIVATE_KEY'];
+const ROUTE3_UEA_PC_GAS_BUFFER = '250';
+const ROUTE3_BNB_CEA_TARGET = '0.001';
+const ROUTE3_LIVE_TIMEOUT_MS = 900_000;
 
 describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)', () => {
   /**
@@ -39,10 +45,11 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
    * MDX: 07:915-979. BNB CEA → counter.increment() on Push Chain.
    * Fund 0.005 ETH (UOA) + 0.02 BNB (CEA).
    */
-  (evmKey ? it : it.skip)('route3_payload — BNB CEA → counter.increment() on Push Chain', async () => {
+  ((evmKey && pushKey) ? it : it.skip)('route3_payload — BNB CEA → counter.increment() on Push Chain', async () => {
     const sepoliaCtx = makeSepoliaContext(evmKey as Hex);
+    const pushCtx = makePushContext(pushKey as Hex);
     const bnbCtx = makeBnbContext(evmKey as Hex);
-    const account = privateKeyToAccount(generatePrivateKey());
+    const account = privateKeyToAccount(evmKey as Hex);
     const walletClient = createWalletClient({
       account,
       chain: sepolia,
@@ -61,7 +68,8 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
     const ceaAddress = await deriveBnbCea(bnbCtx, client.universal.account as `0x${string}`);
     console.log('CEA on BNB Testnet:', ceaAddress);
     await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
-    await fundBnbCea(bnbCtx, ceaAddress, '0.01');
+    await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, ROUTE3_UEA_PC_GAS_BUFFER);
+    await fundBnbCea(bnbCtx, ceaAddress, ROUTE3_BNB_CEA_TARGET);
 
     const data = PushChain.utils.helpers.encodeTxData({
       abi: [...COUNTER_ABI],
@@ -75,17 +83,18 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
     const receipt = await tx.wait();
     expect(tx.hash).toMatch(/^0x[0-9a-fA-F]{64}$/);
     expect(receipt.status).toBe(1);
-  }, 360_000);
+  }, ROUTE3_LIVE_TIMEOUT_MS);
 
   /**
    * slug: send_transaction_route3_native
    * MDX: 07:993-1048. BNB CEA bridges 0.00005 BNB → Push Chain UEA.
    * Fund 0.005 ETH (UOA) + 0.02 BNB (CEA).
    */
-  (evmKey ? it : it.skip)('route3_native — bridges 0.00005 BNB from BNB CEA → Push Chain UEA', async () => {
+  ((evmKey && pushKey) ? it : it.skip)('route3_native — bridges 0.00005 BNB from BNB CEA → Push Chain UEA', async () => {
     const sepoliaCtx = makeSepoliaContext(evmKey as Hex);
+    const pushCtx = makePushContext(pushKey as Hex);
     const bnbCtx = makeBnbContext(evmKey as Hex);
-    const account = privateKeyToAccount(generatePrivateKey());
+    const account = privateKeyToAccount(evmKey as Hex);
     const walletClient = createWalletClient({
       account,
       chain: sepolia,
@@ -103,7 +112,8 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
 
     const ceaAddress = await deriveBnbCea(bnbCtx, client.universal.account as `0x${string}`);
     await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
-    await fundBnbCea(bnbCtx, ceaAddress, '0.01');
+    await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, ROUTE3_UEA_PC_GAS_BUFFER);
+    await fundBnbCea(bnbCtx, ceaAddress, ROUTE3_BNB_CEA_TARGET);
 
     const tx = await client.universal.sendTransaction({
       from: { chain: PushChain.CONSTANTS.CHAIN.BNB_TESTNET },
@@ -113,17 +123,18 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
     const receipt = await tx.wait();
     expect(tx.hash).toMatch(/^0x[0-9a-fA-F]{64}$/);
     expect(receipt.status).toBe(1);
-  }, 360_000);
+  }, ROUTE3_LIVE_TIMEOUT_MS);
 
   /**
    * slug: send_transaction_route3_funds
    * MDX: 07:1062-1117. BNB CEA bridges 0.01 USDT → Push Chain UEA.
    * Fund 0.005 ETH (UOA) + 0.02 BNB + 0.02 USDT (CEA).
    */
-  (evmKey ? it : it.skip)('route3_funds — bridges 0.01 USDT from BNB CEA → Push Chain UEA', async () => {
+  ((evmKey && pushKey) ? it : it.skip)('route3_funds — bridges 0.01 USDT from BNB CEA → Push Chain UEA', async () => {
     const sepoliaCtx = makeSepoliaContext(evmKey as Hex);
+    const pushCtx = makePushContext(pushKey as Hex);
     const bnbCtx = makeBnbContext(evmKey as Hex);
-    const account = privateKeyToAccount(generatePrivateKey());
+    const account = privateKeyToAccount(evmKey as Hex);
     const walletClient = createWalletClient({
       account,
       chain: sepolia,
@@ -142,7 +153,8 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
     const ceaAddress = await deriveBnbCea(bnbCtx, client.universal.account as `0x${string}`);
     const usdt = PushChain.CONSTANTS.MOVEABLE.TOKEN.BNB_TESTNET.USDT;
     await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
-    await fundBnbCeaUsdt(bnbCtx, ceaAddress, '0.01', '0.02', usdt);
+    await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, ROUTE3_UEA_PC_GAS_BUFFER);
+    await fundBnbCeaUsdt(bnbCtx, ceaAddress, ROUTE3_BNB_CEA_TARGET, '0.02', usdt);
 
     const tx = await client.universal.sendTransaction({
       from: { chain: PushChain.CONSTANTS.CHAIN.BNB_TESTNET },
@@ -152,16 +164,17 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
     const receipt = await tx.wait();
     expect(tx.hash).toMatch(/^0x[0-9a-fA-F]{64}$/);
     expect(receipt.status).toBe(1);
-  }, 360_000);
+  }, ROUTE3_LIVE_TIMEOUT_MS);
 
   /**
    * slug: send_transaction_route3_funds_with_payload
    * MDX: 07:1131-1195. BNB CEA bridges 0.01 USDT and calls counter.increment() on Push Chain.
    */
-  (evmKey ? it : it.skip)('route3_funds_with_payload — bridges 0.01 USDT + calls counter.increment()', async () => {
+  ((evmKey && pushKey) ? it : it.skip)('route3_funds_with_payload — bridges 0.01 USDT + calls counter.increment()', async () => {
     const sepoliaCtx = makeSepoliaContext(evmKey as Hex);
+    const pushCtx = makePushContext(pushKey as Hex);
     const bnbCtx = makeBnbContext(evmKey as Hex);
-    const account = privateKeyToAccount(generatePrivateKey());
+    const account = privateKeyToAccount(evmKey as Hex);
     const walletClient = createWalletClient({
       account,
       chain: sepolia,
@@ -180,7 +193,8 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
     const ceaAddress = await deriveBnbCea(bnbCtx, client.universal.account as `0x${string}`);
     const usdt = PushChain.CONSTANTS.MOVEABLE.TOKEN.BNB_TESTNET.USDT;
     await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
-    await fundBnbCeaUsdt(bnbCtx, ceaAddress, '0.01', '0.02', usdt);
+    await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, ROUTE3_UEA_PC_GAS_BUFFER);
+    await fundBnbCeaUsdt(bnbCtx, ceaAddress, ROUTE3_BNB_CEA_TARGET, '0.02', usdt);
 
     const data = PushChain.utils.helpers.encodeTxData({
       abi: [...COUNTER_ABI],
@@ -195,7 +209,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
     const receipt = await tx.wait();
     expect(tx.hash).toMatch(/^0x[0-9a-fA-F]{64}$/);
     expect(receipt.status).toBe(1);
-  }, 360_000);
+  }, ROUTE3_LIVE_TIMEOUT_MS);
 
   /**
    * slug: send_transaction_route3_solana
@@ -262,10 +276,11 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
    * slug: send_transaction_route3_multicall
    * MDX: 07:1209-1271. BNB CEA → 2× counter.increment() on Push Chain. Fund 0.005 ETH + 0.02 BNB.
    */
-  (evmKey ? it : it.skip)('route3_multicall — 2× counter.increment() on Push Chain via Route 3 multicall', async () => {
+  ((evmKey && pushKey) ? it : it.skip)('route3_multicall — 2× counter.increment() on Push Chain via Route 3 multicall', async () => {
     const sepoliaCtx = makeSepoliaContext(evmKey as Hex);
+    const pushCtx = makePushContext(pushKey as Hex);
     const bnbCtx = makeBnbContext(evmKey as Hex);
-    const account = privateKeyToAccount(generatePrivateKey());
+    const account = privateKeyToAccount(evmKey as Hex);
     const walletClient = createWalletClient({
       account,
       chain: sepolia,
@@ -283,7 +298,8 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
 
     const ceaAddress = await deriveBnbCea(bnbCtx, client.universal.account as `0x${string}`);
     await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
-    await fundBnbCea(bnbCtx, ceaAddress, '0.01');
+    await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, ROUTE3_UEA_PC_GAS_BUFFER);
+    await fundBnbCea(bnbCtx, ceaAddress, ROUTE3_BNB_CEA_TARGET);
 
     const incrementData = PushChain.utils.helpers.encodeTxData({
       abi: [...COUNTER_ABI],
@@ -300,5 +316,5 @@ describe('docs-examples › 07-transaction-scenarios › Route 3 (CEA_TO_PUSH)',
     const receipt = await tx.wait();
     expect(tx.hash).toMatch(/^0x[0-9a-fA-F]{64}$/);
     expect(receipt.status).toBe(1);
-  }, 360_000);
+  }, ROUTE3_LIVE_TIMEOUT_MS);
 });

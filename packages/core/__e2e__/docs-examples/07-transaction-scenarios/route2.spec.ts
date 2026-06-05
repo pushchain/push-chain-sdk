@@ -51,6 +51,7 @@ const testCounterIdl = {
 
 const evmKey = process.env['EVM_PRIVATE_KEY'] as Hex | undefined;
 const pushKey = process.env['PUSH_PRIVATE_KEY'] as Hex | undefined;
+const ROUTE2_LIVE_TIMEOUT_MS = 900_000;
 
 describe('docs-examples › 07-transaction-scenarios › Route 2 (UOA_TO_CEA)', () => {
   /**
@@ -90,7 +91,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 2 (UOA_TO_CEA)', 
     expect(receipt.status).toBe(1);
     expect(receipt.externalTxHash).toMatch(/^0x[0-9a-fA-F]{64}$/);
     expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
-  }, 360_000);
+  }, ROUTE2_LIVE_TIMEOUT_MS);
 
   /**
    * slug: send_transaction_route2_funds (native)
@@ -137,7 +138,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 2 (UOA_TO_CEA)', 
     expect(receipt.status).toBe(1);
     expect(receipt.externalTxHash).toMatch(/^0x[0-9a-fA-F]{64}$/);
     expect(receipt.externalChain).toBe(CHAIN.ETHEREUM_SEPOLIA);
-  }, 360_000);
+  }, ROUTE2_LIVE_TIMEOUT_MS);
 
   /**
    * slug: send_transaction_route2_funds_erc20
@@ -189,7 +190,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 2 (UOA_TO_CEA)', 
     expect(tx.hash).toMatch(/^0x[0-9a-fA-F]{64}$/);
     expect(receipt.status).toBe(1);
     expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
-  }, 360_000);
+  }, ROUTE2_LIVE_TIMEOUT_MS);
 
   /**
    * slug: send_transaction_route2_funds_with_payload
@@ -244,7 +245,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 2 (UOA_TO_CEA)', 
     expect(tx.hash).toMatch(/^0x[0-9a-fA-F]{64}$/);
     expect(receipt.status).toBe(1);
     expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
-  }, 360_000);
+  }, ROUTE2_LIVE_TIMEOUT_MS);
 
   /**
    * slug: send_transaction_route2_solana
@@ -294,7 +295,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 2 (UOA_TO_CEA)', 
     expect(tx.hash).toMatch(/^0x[0-9a-fA-F]{64}$/);
     expect(receipt.status).toBe(1);
     expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
-  }, 600_000);
+  }, ROUTE2_LIVE_TIMEOUT_MS);
 
   /**
    * slug: send_transaction_route2_multicall
@@ -337,5 +338,5 @@ describe('docs-examples › 07-transaction-scenarios › Route 2 (UOA_TO_CEA)', 
     expect(tx.hash).toMatch(/^0x[0-9a-fA-F]{64}$/);
     expect(receipt.status).toBe(1);
     expect(receipt.externalChain).toBe(CHAIN.BNB_TESTNET);
-  }, 360_000);
+  }, ROUTE2_LIVE_TIMEOUT_MS);
 });

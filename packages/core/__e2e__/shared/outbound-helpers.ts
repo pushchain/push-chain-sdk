@@ -271,8 +271,15 @@ const OUTBOUND_TIMEOUT_MS = 180000;
 
 export async function waitForOutboundRelay(
   pushChainTxHash: string,
-  pushNetwork: PUSH_NETWORK
+  pushNetwork: PUSH_NETWORK,
+  options?: {
+    timeoutMs?: number;
+    pollingIntervalMs?: number;
+  }
 ): Promise<{ externalTxHash: string; externalChain: CHAIN; explorerUrl: string }> {
+  const timeoutMs = options?.timeoutMs ?? OUTBOUND_TIMEOUT_MS;
+  const pollingIntervalMs =
+    options?.pollingIntervalMs ?? OUTBOUND_POLL_INTERVAL_MS;
   const pushChainEnum =
     pushNetwork === PUSH_NETWORK.MAINNET ? CHAIN.PUSH_MAINNET : CHAIN.PUSH_TESTNET_DONUT;
   const pushChainId = CHAIN_INFO[pushChainEnum].chainId;
@@ -323,7 +330,7 @@ export async function waitForOutboundRelay(
   const startTime = Date.now();
   let pollCount = 0;
 
-  while (Date.now() - startTime < OUTBOUND_TIMEOUT_MS) {
+  while (Date.now() - startTime < timeoutMs) {
     pollCount++;
     try {
       const utxResponse = await client.getUniversalTxByIdV2(resolvedQueryId);
@@ -347,10 +354,10 @@ export async function waitForOutboundRelay(
       console.log(`[waitForOutboundRelay] Poll #${pollCount} error: ${err}`);
     }
 
-    await new Promise((r) => setTimeout(r, OUTBOUND_POLL_INTERVAL_MS));
+    await new Promise((r) => setTimeout(r, pollingIntervalMs));
   }
 
   throw new Error(
-    `[waitForOutboundRelay] Timeout after ${OUTBOUND_TIMEOUT_MS}ms. Push Chain TX: ${pushChainTxHash}`
+    `[waitForOutboundRelay] Timeout after ${timeoutMs}ms. Push Chain TX: ${pushChainTxHash}`
   );
 }

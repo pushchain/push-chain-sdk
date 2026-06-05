@@ -471,12 +471,17 @@ export class Orchestrator {
     options?: CascadeExecutionOptions
   ): { send: () => Promise<CascadedTxResponse> } {
     const perCallHook = options?.progressHook;
+    const cascadeOptions =
+      options?.enforceGasCheck === true
+        ? { enforceGasCheck: true }
+        : undefined;
     if (!perCallHook) {
       return _createCascadedBuilder(
         this.ctx,
         preparedTxs,
         this._getCascadeCallbacks(),
-        undefined
+        undefined,
+        cascadeOptions
       );
     }
 
@@ -495,7 +500,8 @@ export class Orchestrator {
       this.ctx,
       preparedTxs,
       this._getCascadeCallbacks(),
-      perCallHook
+      perCallHook,
+      cascadeOptions
     );
 
     return {

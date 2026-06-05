@@ -84,6 +84,34 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
     });
   }, 60000);
 
+  async function readPushCounter(): Promise<bigint> {
+    return await pushPublicClient.readContract({
+      address: COUNTER_ADDRESS_PAYABLE,
+      abi: COUNTER_ABI_PAYABLE,
+      functionName: 'countPC',
+    }) as bigint;
+  }
+
+  async function expectPushCounterIncremented(
+    counterBefore: bigint,
+    maxWaitMs = 180000
+  ): Promise<void> {
+    const pollInterval = 10000;
+    const pollStart = Date.now();
+    let counterAfter = counterBefore;
+
+    while (Date.now() - pollStart < maxWaitMs) {
+      await new Promise((r) => setTimeout(r, pollInterval));
+      counterAfter = await readPushCounter();
+      const elapsed = Math.round((Date.now() - pollStart) / 1000);
+      console.log(`Polling counter: ${counterAfter} (elapsed: ${elapsed}s)`);
+      if (counterAfter > counterBefore) break;
+    }
+
+    console.log(`Push Chain Counter AFTER: ${counterAfter}`);
+    expect(counterAfter).toBeGreaterThan(counterBefore);
+  }
+
   // ============================================================================
   // 1. Route Detection (Route 3 SVM)
   // ============================================================================
@@ -1033,11 +1061,19 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
       console.log('\n=== Test: S-4.5 SOL Hybrid Self-Call + Payload ===');
       console.log('SVM gateway auto-drains all CEA PDA balance — no extra SDK logic needed');
 
+      const counterBefore = await readPushCounter();
+      console.log(`Push Chain Counter BEFORE: ${counterBefore}`);
+
+      const pushPayload = encodeFunctionData({
+        abi: COUNTER_ABI,
+        functionName: 'increment',
+      });
+
       const params: UniversalExecuteParams = {
         from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
-        to: ueaAddress,
+        to: COUNTER_ADDRESS_PAYABLE,
         value: BigInt(1_000_000), // 0.001 SOL burn amount
-        data: '0xdeadbeef', // arbitrary Push Chain payload
+        data: pushPayload,
       };
 
       expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
@@ -1056,8 +1092,12 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+      expect(receipt.externalStatus).toBe('success');
+      expect(receipt.externalError).toBeUndefined();
+      expect(receipt.pushInboundTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
 
       await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+      await expectPushCounterIncremented(counterBefore);
     }, 600000);
 
     it('S-4.6: should drain SPL USDT (hybrid) with Push Chain payload', async () => {
@@ -1066,14 +1106,22 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
       console.log('\n=== Test: S-4.6 SPL Hybrid Self-Call + Payload ===');
       console.log('SVM gateway auto-drains all CEA PDA balance — no extra SDK logic needed');
 
+      const counterBefore = await readPushCounter();
+      console.log(`Push Chain Counter BEFORE: ${counterBefore}`);
+
+      const pushPayload = encodeFunctionData({
+        abi: COUNTER_ABI,
+        functionName: 'increment',
+      });
+
       const params: UniversalExecuteParams = {
         from: { chain: CHAIN.SOLANA_DEVNET } as ChainSource,
-        to: ueaAddress,
+        to: COUNTER_ADDRESS_PAYABLE,
         funds: {
           amount: BigInt(8_000), // 0.008 USDT burn amount (6 decimals) — lowered to fit CEA PDA testnet balance
           token: SOL_USDT_TOKEN,
         },
-        data: '0xdeadbeef', // arbitrary Push Chain payload
+        data: pushPayload,
       };
 
       expect(detectRoute(params)).toBe(TransactionRoute.CEA_TO_PUSH);
@@ -1092,8 +1140,12 @@ describe('CEA → UEA: SVM Inbound Transactions (Route 3)', () => {
       expect(receipt.status).toBe(1);
       expect(receipt.externalTxHash).toBeDefined();
       expect(receipt.externalChain).toBe(CHAIN.SOLANA_DEVNET);
+      expect(receipt.externalStatus).toBe('success');
+      expect(receipt.externalError).toBeUndefined();
+      expect(receipt.pushInboundTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
 
       await verifyExternalTransaction(receipt.externalTxHash!, receipt.externalChain!);
+      await expectPushCounterIncremented(counterBefore);
     }, 600000);
   });
 

@@ -325,7 +325,7 @@ describe('composeCascadeDetailed', () => {
     expect(request.gasPrice).toBe(gasPrice);
   });
 
-  it('uses live gas price resolution for inbound outbounds delayed behind another inbound', async () => {
+  it('uses live gas price resolution for Route 3 source-chain outbounds', async () => {
     const bnbGasPrice = BigInt(50_000_000);
     const ethGasPrice = BigInt(75_000_000);
     const bnbHop = makeRoute3Hop(CHAIN.BNB_TESTNET, {
@@ -388,7 +388,7 @@ describe('composeCascadeDetailed', () => {
       data: topOutboundCall!.data,
     });
     const [topRequest] = topDecoded.args as [UniversalOutboundTxRequest];
-    expect(topRequest.gasPrice).toBe(bnbGasPrice);
+    expect(topRequest.gasPrice).toBe(BigInt(0));
 
     const [ceaCalls] = decodeAbiParameters(
       [MULTICALL_TUPLE_TYPE],

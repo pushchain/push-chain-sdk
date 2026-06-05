@@ -22,6 +22,8 @@ import {
   http,
   parseEther,
   parseUnits,
+  formatEther,
+  formatUnits,
   encodeFunctionData,
   defineChain,
   type Hex,
@@ -66,6 +68,48 @@ const ERC20_BALANCE_ABI = [
   },
 ] as const;
 
+const RECEIPT_POLL_MS = 3000;
+const RECEIPT_TIMEOUT_MS = 120000;
+const RECEIPT_NOT_FOUND_RE =
+  /not found|TransactionNotFound|TransactionReceiptNotFound|could not be found|No transaction found/i;
+
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'object' && err !== null) {
+    const withMessages = err as {
+      shortMessage?: unknown;
+      details?: unknown;
+      message?: unknown;
+    };
+    return String(
+      withMessages.shortMessage ?? withMessages.details ?? withMessages.message ?? err
+    );
+  }
+  return String(err);
+}
+
+export async function waitForReceipt(
+  publicClient: PublicClient,
+  hash: Hex,
+  timeoutMs = RECEIPT_TIMEOUT_MS
+): Promise<any> {
+  const startedAt = Date.now();
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      return await publicClient.getTransactionReceipt({ hash });
+    } catch (err) {
+      const msg = getErrorMessage(err);
+      const retryable = RECEIPT_NOT_FOUND_RE.test(msg);
+      if (!retryable || Date.now() - startedAt >= timeoutMs) {
+        throw err;
+      }
+      await new Promise((resolve) => setTimeout(resolve, RECEIPT_POLL_MS));
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Sepolia
 // ---------------------------------------------------------------------------
@@ -102,7 +146,7 @@ export async function fundSepoliaUoa(
     to,
     value: need,
   });
-  const receipt = await ctx.publicClient.waitForTransactionReceipt({ hash });
+  const receipt = await waitForReceipt(ctx.publicClient, hash);
   if (receipt.status !== 'success') {
     throw new Error(`[fund] ${ethAmount} ETH transfer to ${to} reverted (tx: ${hash})`);
   }
@@ -146,7 +190,7 @@ export async function fundSepoliaUoaUsdt(
     to: usdt.address as `0x${string}`,
     data,
   });
-  const receipt = await ctx.publicClient.waitForTransactionReceipt({ hash });
+  const receipt = await waitForReceipt(ctx.publicClient, hash);
   if (receipt.status !== 'success') {
     throw new Error(`[fund] ${usdtAmount} USDT transfer to ${to} reverted (tx: ${hash})`);
   }
@@ -189,7 +233,7 @@ export async function fundUeaPC(
     to: uea,
     value: need,
   });
-  const receipt = await ctx.publicClient.waitForTransactionReceipt({ hash });
+  const receipt = await waitForReceipt(ctx.publicClient, hash);
   if (receipt.status !== 'success') {
     throw new Error(`[fund] ${pcAmount} PC transfer to ${uea} reverted (tx: ${hash})`);
   }
@@ -233,7 +277,7 @@ export async function fundUeaPRC20(
     to: prc20,
     data,
   });
-  const receipt = await ctx.publicClient.waitForTransactionReceipt({ hash });
+  const receipt = await waitForReceipt(ctx.publicClient, hash);
   if (receipt.status !== 'success') {
     throw new Error(`[fund] ${amount} ${label} transfer to ${uea} reverted (tx: ${hash})`);
   }
@@ -263,11 +307,19 @@ export async function fundBnbCea(
   cea: `0x${string}`,
   bnbAmount: string
 ): Promise<void> {
-  const need = parseEther(bnbAmount);
+  const target = parseEther(bnbAmount);
+  const current = await ctx.publicClient.getBalance({ address: cea });
+  if (current >= target) {
+    console.log(
+      `[fund] BNB CEA ${cea} already has ${formatEther(current)} BNB; target ${bnbAmount} BNB`
+    );
+    return;
+  }
+  const need = target - current;
   const have = await ctx.publicClient.getBalance({ address: ctx.master.address });
   if (have < need) {
     throw new Error(
-      `[fund] master BNB Testnet wallet (${ctx.master.address}) has ${have.toString()} wei, needs ${need.toString()} wei (${bnbAmount} BNB) — top up and re-run.`
+      `[fund] master BNB Testnet wallet (${ctx.master.address}) has ${have.toString()} wei, needs ${need.toString()} wei to top ${cea} up to ${bnbAmount} BNB — top up and re-run.`
     );
   }
   const hash = await ctx.walletClient.sendTransaction({
@@ -276,11 +328,11 @@ export async function fundBnbCea(
     to: cea,
     value: need,
   });
-  const receipt = await ctx.publicClient.waitForTransactionReceipt({ hash });
+  const receipt = await waitForReceipt(ctx.publicClient, hash);
   if (receipt.status !== 'success') {
-    throw new Error(`[fund] ${bnbAmount} BNB transfer to ${cea} reverted (tx: ${hash})`);
+    throw new Error(`[fund] ${formatEther(need)} BNB transfer to ${cea} reverted (tx: ${hash})`);
   }
-  console.log(`[fund] ${bnbAmount} BNB → ${cea} on BNB Testnet (${hash})`);
+  console.log(`[fund] ${formatEther(need)} BNB → ${cea} on BNB Testnet (${hash})`);
 }
 
 /** Fund a BNB CEA with both native BNB and ERC-20 USDT (Route 3 funds variants). */
@@ -293,7 +345,20 @@ export async function fundBnbCeaUsdt(
 ): Promise<void> {
   await fundBnbCea(ctx, cea, bnbAmount);
 
-  const needUsdt = parseUnits(usdtAmount, usdt.decimals);
+  const targetUsdt = parseUnits(usdtAmount, usdt.decimals);
+  const currentUsdt = (await ctx.publicClient.readContract({
+    address: usdt.address as `0x${string}`,
+    abi: ERC20_BALANCE_ABI,
+    functionName: 'balanceOf',
+    args: [cea],
+  })) as bigint;
+  if (currentUsdt >= targetUsdt) {
+    console.log(
+      `[fund] BNB CEA ${cea} already has ${formatUnits(currentUsdt, usdt.decimals)} USDT; target ${usdtAmount} USDT`
+    );
+    return;
+  }
+  const needUsdt = targetUsdt - currentUsdt;
   const haveUsdt = (await ctx.publicClient.readContract({
     address: usdt.address as `0x${string}`,
     abi: ERC20_BALANCE_ABI,
@@ -317,11 +382,11 @@ export async function fundBnbCeaUsdt(
     to: usdt.address as `0x${string}`,
     data,
   });
-  const receipt = await ctx.publicClient.waitForTransactionReceipt({ hash });
+  const receipt = await waitForReceipt(ctx.publicClient, hash);
   if (receipt.status !== 'success') {
-    throw new Error(`[fund] ${usdtAmount} USDT transfer to ${cea} reverted (tx: ${hash})`);
+    throw new Error(`[fund] ${formatUnits(needUsdt, usdt.decimals)} USDT transfer to ${cea} reverted (tx: ${hash})`);
   }
-  console.log(`[fund] ${usdtAmount} USDT → ${cea} on BNB Testnet (${hash})`);
+  console.log(`[fund] ${formatUnits(needUsdt, usdt.decimals)} USDT → ${cea} on BNB Testnet (${hash})`);
 }
 
 /**

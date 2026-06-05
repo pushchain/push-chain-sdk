@@ -147,9 +147,7 @@ async function verifyExternalEvmReceipt(
     // viem throws TransactionReceiptNotFoundError when the tx isn't mined
     // yet — treat as 'pending' rather than 'unsupported' so we keep polling.
     const msg = err instanceof Error ? err.message : String(err);
-    if (
-      /not found|TransactionReceiptNotFound|could not be found/i.test(msg)
-    ) {
+    if (/not found|TransactionReceiptNotFound|could not be found/i.test(msg)) {
       return 'pending';
     }
     printLog(
@@ -197,7 +195,10 @@ export async function waitForOutboundTx(
 
   const startTime = Date.now();
 
-  printLog(ctx, `[waitForOutboundTx] Starting | txHash: ${pushChainTxHash} | initialWait: ${initialWaitMs}ms | pollInterval: ${pollingIntervalMs}ms | timeout: ${timeout}ms`);
+  printLog(
+    ctx,
+    `[waitForOutboundTx] Starting | txHash: ${pushChainTxHash} | initialWait: ${initialWaitMs}ms | pollInterval: ${pollingIntervalMs}ms | timeout: ${timeout}ms`
+  );
 
   progressHook?.({ status: 'waiting', elapsed: 0 });
 
@@ -206,20 +207,31 @@ export async function waitForOutboundTx(
   // blocked by the default 20s settle-time. Mirrors the equivalent
   // Math.min(initialWaitMs, timeout) clamp in inbound-tracker.ts.
   const effectiveInitialWaitMs = Math.min(initialWaitMs, timeout);
-  printLog(ctx, `[waitForOutboundTx] Initial wait of ${effectiveInitialWaitMs}ms (configured: ${initialWaitMs}ms, clamped to timeout ${timeout}ms)...`);
+  printLog(
+    ctx,
+    `[waitForOutboundTx] Initial wait of ${effectiveInitialWaitMs}ms (configured: ${initialWaitMs}ms, clamped to timeout ${timeout}ms)...`
+  );
   await new Promise((resolve) => setTimeout(resolve, effectiveInitialWaitMs));
 
   // Fast-exit: if the clamped initial wait already consumed the full budget,
   // skip the poll loop and go straight to the timeout throw below.
   if (Date.now() - startTime >= timeout) {
     const elapsedMs = Date.now() - startTime;
-    printLog(ctx, `[waitForOutboundTx] Timeout reached during initial wait (elapsed: ${elapsedMs}ms / ${timeout}ms)`);
+    printLog(
+      ctx,
+      `[waitForOutboundTx] Timeout reached during initial wait (elapsed: ${elapsedMs}ms / ${timeout}ms)`
+    );
     progressHook?.({ status: 'timeout', elapsed: elapsedMs });
     throw new OutboundTimeoutError(pushChainTxHash, elapsedMs, timeout);
   }
 
   // Start polling
-  printLog(ctx, `[waitForOutboundTx] Initial wait done. Starting polling. Elapsed: ${Date.now() - startTime}ms`);
+  printLog(
+    ctx,
+    `[waitForOutboundTx] Initial wait done. Starting polling. Elapsed: ${
+      Date.now() - startTime
+    }ms`
+  );
   progressHook?.({ status: 'polling', elapsed: Date.now() - startTime });
 
   // Cache the universalSubTxId after first extraction to avoid redundant receipt fetches.
@@ -230,14 +242,27 @@ export async function waitForOutboundTx(
   while (Date.now() - startTime < timeout) {
     pollCount++;
     const pollStart = Date.now();
-    printLog(ctx, `[waitForOutboundTx] Poll #${pollCount} | Elapsed: ${pollStart - startTime}ms / ${timeout}ms`);
+    printLog(
+      ctx,
+      `[waitForOutboundTx] Poll #${pollCount} | Elapsed: ${
+        pollStart - startTime
+      }ms / ${timeout}ms`
+    );
 
     if (!cachedUniversalSubTxId) {
-      cachedUniversalSubTxId = (await extractUniversalSubTxIdFromTx(ctx, pushChainTxHash)) ?? undefined;
+      cachedUniversalSubTxId =
+        (await extractUniversalSubTxIdFromTx(ctx, pushChainTxHash)) ??
+        undefined;
       if (!cachedUniversalSubTxId) {
-        cachedUniversalSubTxId = computeUniversalTxId(ctx.pushNetwork, pushChainTxHash);
+        cachedUniversalSubTxId = computeUniversalTxId(
+          ctx.pushNetwork,
+          pushChainTxHash
+        );
       }
-      printLog(ctx, `[waitForOutboundTx] Extracted & cached universalSubTxId: ${cachedUniversalSubTxId}`);
+      printLog(
+        ctx,
+        `[waitForOutboundTx] Extracted & cached universalSubTxId: ${cachedUniversalSubTxId}`
+      );
     }
 
     // Query with cached ID
@@ -262,11 +287,21 @@ export async function waitForOutboundTx(
         ) ??
         firstOutbound?.observedTx?.txHash ??
         '';
-      printLog(ctx, `[waitForOutboundTx] Poll #${pollCount} | status: ${statusNum} (${statusName}) | outboundTx count: ${outbounds.length} | first txHash: '${firstDisplayTxHash}' | first dest: '${firstOutbound?.destinationChain || ''}'`);
+      printLog(
+        ctx,
+        `[waitForOutboundTx] Poll #${pollCount} | status: ${statusNum} (${statusName}) | outboundTx count: ${
+          outbounds.length
+        } | first txHash: '${firstDisplayTxHash}' | first dest: '${
+          firstOutbound?.destinationChain || ''
+        }'`
+      );
 
       // Check for terminal failure states — fail fast
       if (TERMINAL_FAILURE_STATES.has(statusNum)) {
-        printLog(ctx, `[waitForOutboundTx] Terminal failure state: ${statusName}`);
+        printLog(
+          ctx,
+          `[waitForOutboundTx] Terminal failure state: ${statusName}`
+        );
         progressHook?.({ status: 'failed', elapsed: Date.now() - startTime });
         throw new OutboundFailedError(
           `Outbound transaction failed with status ${statusName}. Push Chain TX: ${pushChainTxHash}.`,
@@ -304,24 +339,41 @@ export async function waitForOutboundTx(
       let matchingOutboundIndex = 0;
       for (const ob of outbounds) {
         // If a destination chain filter is set, skip outbound entries that don't match.
-        if (_expectedDestinationChain && ob.destinationChain !== _expectedDestinationChain) {
-          printLog(ctx, `[waitForOutboundTx] Poll #${pollCount} | outbound chain '${ob.destinationChain}' does not match expected '${_expectedDestinationChain}', skipping`);
+        if (
+          _expectedDestinationChain &&
+          ob.destinationChain !== _expectedDestinationChain
+        ) {
+          printLog(
+            ctx,
+            `[waitForOutboundTx] Poll #${pollCount} | outbound chain '${ob.destinationChain}' does not match expected '${_expectedDestinationChain}', skipping`
+          );
           continue;
         }
 
         const currentOutboundIndex = matchingOutboundIndex;
         matchingOutboundIndex += 1;
-        if (_outboundIndex !== undefined && currentOutboundIndex !== _outboundIndex) {
-          printLog(ctx, `[waitForOutboundTx] Poll #${pollCount} | outbound index ${currentOutboundIndex} for '${ob.destinationChain}' does not match expected index ${_outboundIndex}, skipping`);
+        if (
+          _outboundIndex !== undefined &&
+          currentOutboundIndex !== _outboundIndex
+        ) {
+          printLog(
+            ctx,
+            `[waitForOutboundTx] Poll #${pollCount} | outbound index ${currentOutboundIndex} for '${ob.destinationChain}' does not match expected index ${_outboundIndex}, skipping`
+          );
           continue;
         }
 
         // Fail fast on per-outbound REVERTED status
         if (ob.outboundStatus === OutboundStatus.REVERTED) {
-          printLog(ctx, `[waitForOutboundTx] Outbound to ${ob.destinationChain} REVERTED`);
+          printLog(
+            ctx,
+            `[waitForOutboundTx] Outbound to ${ob.destinationChain} REVERTED`
+          );
           progressHook?.({ status: 'failed', elapsed: Date.now() - startTime });
           throw new OutboundFailedError(
-            `Outbound to ${ob.destinationChain} reverted: ${ob.observedTx?.errorMsg || 'Unknown'}. Push Chain TX: ${pushChainTxHash}.`,
+            `Outbound to ${ob.destinationChain} reverted: ${
+              ob.observedTx?.errorMsg || 'Unknown'
+            }. Push Chain TX: ${pushChainTxHash}.`,
             pushChainTxHash,
             ob.destinationChain,
             ob.observedTx?.txHash
@@ -340,7 +392,8 @@ export async function waitForOutboundTx(
           const chain = chainFromNamespace(ob.destinationChain);
           if (!chain) continue;
 
-          const isCosmosObserved = ob.outboundStatus === OutboundStatus.OBSERVED;
+          const isCosmosObserved =
+            ob.outboundStatus === OutboundStatus.OBSERVED;
           if (!isCosmosObserved) {
             // Tiebreaker: ask the destination-chain RPC directly.
             const verdict = await verifyExternalEvmReceipt(
@@ -351,9 +404,16 @@ export async function waitForOutboundTx(
             if (verdict === 'reverted') {
               printLog(
                 ctx,
-                `[waitForOutboundTx] Source-chain RPC reports REVERTED for ${ob.destinationChain} tx ${ob.observedTx.txHash} (cosmos still ${UniversalTxStatus[statusNum] ?? statusNum})`
+                `[waitForOutboundTx] Source-chain RPC reports REVERTED for ${
+                  ob.destinationChain
+                } tx ${ob.observedTx.txHash} (cosmos still ${
+                  UniversalTxStatus[statusNum] ?? statusNum
+                })`
               );
-              progressHook?.({ status: 'failed', elapsed: Date.now() - startTime });
+              progressHook?.({
+                status: 'failed',
+                elapsed: Date.now() - startTime,
+              });
               throw new OutboundFailedError(
                 `Outbound to ${ob.destinationChain} reverted on source-chain RPC (tx: ${ob.observedTx.txHash}). Push Chain TX: ${pushChainTxHash}.`,
                 pushChainTxHash,
@@ -367,7 +427,11 @@ export async function waitForOutboundTx(
             }
             printLog(
               ctx,
-              `[waitForOutboundTx] Source-chain RPC tiebreaker: ${chain} tx ${ob.observedTx.txHash} succeeded; treating as FOUND despite cosmos status ${UniversalTxStatus[statusNum] ?? statusNum}`
+              `[waitForOutboundTx] Source-chain RPC tiebreaker: ${chain} tx ${
+                ob.observedTx.txHash
+              } succeeded; treating as FOUND despite cosmos status ${
+                UniversalTxStatus[statusNum] ?? statusNum
+              }`
             );
           }
 
@@ -379,11 +443,19 @@ export async function waitForOutboundTx(
               ob.observedTx.txHash;
             let explorerUrl = '';
             if (isSvm) {
-              const cluster = chain === CHAIN.SOLANA_DEVNET ? '?cluster=devnet'
-                : chain === CHAIN.SOLANA_TESTNET ? '?cluster=testnet' : '';
-              explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${displayTxHash}${cluster}` : '';
+              const cluster =
+                chain === CHAIN.SOLANA_DEVNET
+                  ? '?cluster=devnet'
+                  : chain === CHAIN.SOLANA_TESTNET
+                  ? '?cluster=testnet'
+                  : '';
+              explorerUrl = explorerBaseUrl
+                ? `${explorerBaseUrl}/tx/${displayTxHash}${cluster}`
+                : '';
             } else {
-              explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${displayTxHash}` : '';
+              explorerUrl = explorerBaseUrl
+                ? `${explorerBaseUrl}/tx/${displayTxHash}`
+                : '';
             }
 
             // OutboundTxDetails carries the raw `0x`-hex form so internal
@@ -399,8 +471,16 @@ export async function waitForOutboundTx(
               amount: ob.amount,
               assetAddr: ob.externalAssetAddr,
             };
-            printLog(ctx, `[waitForOutboundTx] FOUND on poll #${pollCount} | elapsed: ${Date.now() - startTime}ms | externalTxHash: ${displayTxHash}`);
-            progressHook?.({ status: 'found', elapsed: Date.now() - startTime });
+            printLog(
+              ctx,
+              `[waitForOutboundTx] FOUND on poll #${pollCount} | elapsed: ${
+                Date.now() - startTime
+              }ms | externalTxHash: ${displayTxHash}`
+            );
+            progressHook?.({
+              status: 'found',
+              elapsed: Date.now() - startTime,
+            });
             return details;
           }
         }
@@ -412,17 +492,30 @@ export async function waitForOutboundTx(
       if (error instanceof OutboundFailedError) {
         throw error;
       }
-      printLog(ctx, `[waitForOutboundTx] Poll #${pollCount} ERROR: ${error instanceof Error ? error.message : String(error)}`);
+      printLog(
+        ctx,
+        `[waitForOutboundTx] Poll #${pollCount} ERROR: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
 
-    printLog(ctx, `[waitForOutboundTx] Poll #${pollCount} not ready yet (${Date.now() - pollStart}ms). Waiting ${pollingIntervalMs}ms...`);
+    printLog(
+      ctx,
+      `[waitForOutboundTx] Poll #${pollCount} not ready yet (${
+        Date.now() - pollStart
+      }ms). Waiting ${pollingIntervalMs}ms...`
+    );
 
     // Wait before next poll
     await new Promise((resolve) => setTimeout(resolve, pollingIntervalMs));
   }
 
   const elapsedMs = Date.now() - startTime;
-  printLog(ctx, `[waitForOutboundTx] TIMEOUT after ${pollCount} polls | elapsed: ${elapsedMs}ms`);
+  printLog(
+    ctx,
+    `[waitForOutboundTx] TIMEOUT after ${pollCount} polls | elapsed: ${elapsedMs}ms`
+  );
   progressHook?.({ status: 'timeout', elapsed: elapsedMs });
 
   throw new OutboundTimeoutError(pushChainTxHash, elapsedMs, timeout);
@@ -446,6 +539,7 @@ export async function waitForAllOutboundTxsV2(
     pollingIntervalMs: number;
     timeout: number;
     _resolvedSubTxId?: string;
+    _outboundIndexByHop?: Map<number, number>;
     progressHook?: (event: {
       hopIndex: number;
       route: TransactionRouteType;
@@ -461,23 +555,39 @@ export async function waitForAllOutboundTxsV2(
     timeout,
     progressHook,
     _resolvedSubTxId,
+    _outboundIndexByHop,
   } = options;
   const startTime = Date.now();
 
-  // Build a map: CAIP-2 namespace -> hop(s) for matching outbound entries
-  const chainToHops = new Map<string, CascadeHopInfo[]>();
+  // Build maps for matching outbound entries. When the cascade composer merged
+  // multiple logical hops into one outbound request, `_outboundIndexByHop` maps
+  // those hops to the same outbound ordinal.
+  const chainToHops = new Map<string, Map<number, CascadeHopInfo[]>>();
   for (const hop of outboundHops) {
     const chainInfo = CHAIN_INFO[hop.executionChain];
     if (chainInfo) {
       const namespace = `${VM_NAMESPACE[chainInfo.vm]}:${chainInfo.chainId}`;
-      const existing = chainToHops.get(namespace) || [];
+      const existingByOrdinal = chainToHops.get(namespace) || new Map();
+      const fallbackOrdinal = [...existingByOrdinal.values()].reduce(
+        (count, hopsForOrdinal) => count + hopsForOrdinal.length,
+        0
+      );
+      const outboundOrdinal =
+        _outboundIndexByHop?.get(hop.hopIndex) ?? fallbackOrdinal;
+      const existing = existingByOrdinal.get(outboundOrdinal) || [];
       existing.push(hop);
-      chainToHops.set(namespace, existing);
+      existingByOrdinal.set(outboundOrdinal, existing);
+      chainToHops.set(namespace, existingByOrdinal);
     }
   }
 
   const expectedChains = [...chainToHops.keys()];
-  printLog(ctx, `[waitForAllOutboundTxsV2] Starting | txHash: ${pushChainTxHash} | expectedChains: ${expectedChains.join(', ')} | timeout: ${timeout}ms`);
+  printLog(
+    ctx,
+    `[waitForAllOutboundTxsV2] Starting | txHash: ${pushChainTxHash} | expectedChains: ${expectedChains.join(
+      ', '
+    )} | timeout: ${timeout}ms`
+  );
 
   // Emit initial waiting status for all outbound hops
   for (const hop of outboundHops) {
@@ -517,43 +627,60 @@ export async function waitForAllOutboundTxsV2(
   while (Date.now() - startTime < timeout) {
     pollCount++;
     const elapsed = Date.now() - startTime;
-    printLog(ctx, `[waitForAllOutboundTxsV2] Poll #${pollCount} | Elapsed: ${elapsed}ms / ${timeout}ms`);
+    printLog(
+      ctx,
+      `[waitForAllOutboundTxsV2] Poll #${pollCount} | Elapsed: ${elapsed}ms / ${timeout}ms`
+    );
 
     // Resolve query ID on first poll
     if (!cachedQueryId) {
-      const allSubTxIds = await extractAllUniversalSubTxIds(ctx, pushChainTxHash);
-      const subTxId = allSubTxIds.length > 0 ? allSubTxIds[0] : computeUniversalTxId(ctx.pushNetwork, pushChainTxHash);
+      const allSubTxIds = await extractAllUniversalSubTxIds(
+        ctx,
+        pushChainTxHash
+      );
+      const subTxId =
+        allSubTxIds.length > 0
+          ? allSubTxIds[0]
+          : computeUniversalTxId(ctx.pushNetwork, pushChainTxHash);
       cachedQueryId = subTxId.startsWith('0x') ? subTxId.slice(2) : subTxId;
-      printLog(ctx, `[waitForAllOutboundTxsV2] Resolved queryId: ${cachedQueryId}`);
+      printLog(
+        ctx,
+        `[waitForAllOutboundTxsV2] Resolved queryId: ${cachedQueryId}`
+      );
     }
 
     try {
-      const v2Response = await ctx.pushClient.getUniversalTxByIdV2(cachedQueryId);
+      const v2Response = await ctx.pushClient.getUniversalTxByIdV2(
+        cachedQueryId
+      );
       consecutiveErrors = 0; // Reset on successful RPC call
       const utx = v2Response?.universalTx;
       const statusNum = utx?.universalStatus as number;
       const statusName = UniversalTxStatus[statusNum] ?? statusNum;
 
-      printLog(ctx, `[waitForAllOutboundTxsV2] Poll #${pollCount} | status: ${statusNum} (${statusName}) | outboundTx count: ${utx?.outboundTx?.length ?? 0}`);
+      printLog(
+        ctx,
+        `[waitForAllOutboundTxsV2] Poll #${pollCount} | status: ${statusNum} (${statusName}) | outboundTx count: ${
+          utx?.outboundTx?.length ?? 0
+        }`
+      );
 
       if (utx?.outboundTx?.length) {
         const outboundOrdinalByChain = new Map<string, number>();
         for (const ob of utx.outboundTx) {
           const destChain = ob.destinationChain;
-          const hopsForChain = chainToHops.get(destChain);
-          if (!hopsForChain) continue;
+          const hopsByOrdinal = chainToHops.get(destChain);
+          if (!hopsByOrdinal) continue;
 
           const outboundOrdinal = outboundOrdinalByChain.get(destChain) ?? 0;
           outboundOrdinalByChain.set(destChain, outboundOrdinal + 1);
 
-          const targetHop = hopsForChain[outboundOrdinal];
-          if (
-            !targetHop ||
-            targetHop.status === 'confirmed' ||
-            targetHop.status === 'failed'
-          ) {
-            continue;
-          }
+          const targetHops = hopsByOrdinal.get(outboundOrdinal) || [];
+          const pendingTargetHops = targetHops.filter(
+            (hop) => hop.status !== 'confirmed' && hop.status !== 'failed'
+          );
+          if (pendingTargetHops.length === 0) continue;
+          const primaryTargetHop = pendingTargetHops[0];
 
           const externalTxHash = ob.observedTx?.txHash;
           const hasObservedTxHash =
@@ -568,16 +695,28 @@ export async function waitForAllOutboundTxsV2(
             );
 
           // Fail fast on per-outbound REVERTED or observed destination failure.
-          if (ob.outboundStatus === OutboundStatus.REVERTED || observedFailure) {
-            targetHop.status = 'failed';
-            printLog(ctx, `[waitForAllOutboundTxsV2] Outbound to ${destChain} REVERTED | outboundIndex ${outboundOrdinal} | hop ${targetHop.hopIndex} | error: ${ob.abortReason || ob.observedTx?.errorMsg || 'Unknown'}`);
-            progressHook?.({
-              hopIndex: targetHop.hopIndex,
-              route: targetHop.route,
-              chain: targetHop.executionChain,
-              status: 'failed',
-            });
-            return { success: false, failedAt: targetHop.hopIndex };
+          if (
+            ob.outboundStatus === OutboundStatus.REVERTED ||
+            observedFailure
+          ) {
+            for (const targetHop of pendingTargetHops) {
+              targetHop.status = 'failed';
+              progressHook?.({
+                hopIndex: targetHop.hopIndex,
+                route: targetHop.route,
+                chain: targetHop.executionChain,
+                status: 'failed',
+              });
+            }
+            printLog(
+              ctx,
+              `[waitForAllOutboundTxsV2] Outbound to ${destChain} REVERTED | outboundIndex ${outboundOrdinal} | hops ${pendingTargetHops
+                .map((hop) => hop.hopIndex)
+                .join(', ')} | error: ${
+                ob.abortReason || ob.observedTx?.errorMsg || 'Unknown'
+              }`
+            );
+            return { success: false, failedAt: primaryTargetHop.hopIndex };
           }
 
           // Check for observed tx hash. Cosmos may lag the status transition,
@@ -586,7 +725,8 @@ export async function waitForAllOutboundTxsV2(
             const chain = chainFromNamespace(destChain);
             if (!chain) continue;
 
-            const isCosmosObserved = ob.outboundStatus === OutboundStatus.OBSERVED;
+            const isCosmosObserved =
+              ob.outboundStatus === OutboundStatus.OBSERVED;
             if (!isCosmosObserved) {
               const verdict = await verifyExternalEvmReceipt(
                 ctx,
@@ -594,15 +734,22 @@ export async function waitForAllOutboundTxsV2(
                 externalTxHash
               );
               if (verdict === 'reverted') {
-                targetHop.status = 'failed';
-                printLog(ctx, `[waitForAllOutboundTxsV2] Source-chain RPC reports REVERTED for ${destChain} tx ${externalTxHash} | outboundIndex ${outboundOrdinal} | hop ${targetHop.hopIndex}`);
-                progressHook?.({
-                  hopIndex: targetHop.hopIndex,
-                  route: targetHop.route,
-                  chain: targetHop.executionChain,
-                  status: 'failed',
-                });
-                return { success: false, failedAt: targetHop.hopIndex };
+                for (const targetHop of pendingTargetHops) {
+                  targetHop.status = 'failed';
+                  progressHook?.({
+                    hopIndex: targetHop.hopIndex,
+                    route: targetHop.route,
+                    chain: targetHop.executionChain,
+                    status: 'failed',
+                  });
+                }
+                printLog(
+                  ctx,
+                  `[waitForAllOutboundTxsV2] Source-chain RPC reports REVERTED for ${destChain} tx ${externalTxHash} | outboundIndex ${outboundOrdinal} | hops ${pendingTargetHops
+                    .map((hop) => hop.hopIndex)
+                    .join(', ')}`
+                );
+                return { success: false, failedAt: primaryTargetHop.hopIndex };
               }
               if (verdict !== 'success') {
                 continue;
@@ -623,40 +770,59 @@ export async function waitForAllOutboundTxsV2(
               const explorerBaseUrl = CHAIN_INFO[chain]?.explorerUrl;
               const isSvm = CHAIN_INFO[chain]?.vm === VM.SVM;
               if (isSvm) {
-                const cluster = chain === CHAIN.SOLANA_DEVNET ? '?cluster=devnet'
-                  : chain === CHAIN.SOLANA_TESTNET ? '?cluster=testnet' : '';
-                explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${displayTxHash}${cluster}` : '';
+                const cluster =
+                  chain === CHAIN.SOLANA_DEVNET
+                    ? '?cluster=devnet'
+                    : chain === CHAIN.SOLANA_TESTNET
+                    ? '?cluster=testnet'
+                    : '';
+                explorerUrl = explorerBaseUrl
+                  ? `${explorerBaseUrl}/tx/${displayTxHash}${cluster}`
+                  : '';
               } else {
-                explorerUrl = explorerBaseUrl ? `${explorerBaseUrl}/tx/${displayTxHash}` : '';
+                explorerUrl = explorerBaseUrl
+                  ? `${explorerBaseUrl}/tx/${displayTxHash}`
+                  : '';
               }
             }
 
-            targetHop.status = 'confirmed';
-            targetHop.txHash = displayTxHash;
-            targetHop.outboundDetails = {
-              externalTxHash: displayTxHash,
-              destinationChain: chain || targetHop.executionChain,
-              explorerUrl,
-              recipient: ob.recipient,
-              amount: ob.amount,
-              assetAddr: ob.externalAssetAddr,
-            };
+            for (const targetHop of pendingTargetHops) {
+              targetHop.status = 'confirmed';
+              targetHop.txHash = displayTxHash;
+              targetHop.outboundDetails = {
+                externalTxHash: displayTxHash,
+                destinationChain: chain || targetHop.executionChain,
+                explorerUrl,
+                recipient: ob.recipient,
+                amount: ob.amount,
+                assetAddr: ob.externalAssetAddr,
+              };
 
-            printLog(ctx, `[waitForAllOutboundTxsV2] FOUND outbound for ${destChain} | outboundIndex ${outboundOrdinal} | hop ${targetHop.hopIndex} | externalTxHash: ${displayTxHash}`);
-            progressHook?.({
-              hopIndex: targetHop.hopIndex,
-              route: targetHop.route,
-              chain: targetHop.executionChain,
-              status: 'confirmed',
-              txHash: displayTxHash,
-            });
+              progressHook?.({
+                hopIndex: targetHop.hopIndex,
+                route: targetHop.route,
+                chain: targetHop.executionChain,
+                status: 'confirmed',
+                txHash: displayTxHash,
+              });
+            }
+
+            printLog(
+              ctx,
+              `[waitForAllOutboundTxsV2] FOUND outbound for ${destChain} | outboundIndex ${outboundOrdinal} | hops ${pendingTargetHops
+                .map((hop) => hop.hopIndex)
+                .join(', ')} | externalTxHash: ${displayTxHash}`
+            );
           }
         }
       }
 
       // Check if all hops are now confirmed
       if (outboundHops.every((h) => h.status === 'confirmed')) {
-        printLog(ctx, `[waitForAllOutboundTxsV2] All ${outboundHops.length} hops confirmed via V2`);
+        printLog(
+          ctx,
+          `[waitForAllOutboundTxsV2] All ${outboundHops.length} hops confirmed via V2`
+        );
         return { success: true };
       }
 
@@ -664,7 +830,9 @@ export async function waitForAllOutboundTxsV2(
       // Only auto-confirm if there are NO pending outbound txs (status=1 with empty hash).
       // Pending outbounds are still in flight on the relay — keep polling for their hashes.
       if (statusNum === UniversalTxStatus.PC_EXECUTED_SUCCESS) {
-        const stillUnresolved = outboundHops.filter((h) => h.status !== 'confirmed');
+        const stillUnresolved = outboundHops.filter(
+          (h) => h.status !== 'confirmed'
+        );
         if (stillUnresolved.length > 0) {
           const hasPendingOutbound = utx?.outboundTx?.some(
             (ob) =>
@@ -676,7 +844,10 @@ export async function waitForAllOutboundTxsV2(
             // No pending outbounds — safe to auto-confirm remaining hops
             for (const hop of stillUnresolved) {
               hop.status = 'confirmed';
-              printLog(ctx, `[waitForAllOutboundTxsV2] Auto-confirmed hop ${hop.hopIndex} (${hop.executionChain}) based on PC_EXECUTED_SUCCESS (no pending outbounds)`);
+              printLog(
+                ctx,
+                `[waitForAllOutboundTxsV2] Auto-confirmed hop ${hop.hopIndex} (${hop.executionChain}) based on PC_EXECUTED_SUCCESS (no pending outbounds)`
+              );
               progressHook?.({
                 hopIndex: hop.hopIndex,
                 route: hop.route,
@@ -687,14 +858,25 @@ export async function waitForAllOutboundTxsV2(
             return { success: true };
           }
           // Pending outbound txs still in flight — continue polling
-          printLog(ctx, `[waitForAllOutboundTxsV2] ${stillUnresolved.length} hop(s) unresolved, pending outbound txs in flight — continuing to poll`);
+          printLog(
+            ctx,
+            `[waitForAllOutboundTxsV2] ${stillUnresolved.length} hop(s) unresolved, pending outbound txs in flight — continuing to poll`
+          );
         }
       }
     } catch (error) {
       consecutiveErrors++;
-      printLog(ctx, `[waitForAllOutboundTxsV2] Poll #${pollCount} ERROR (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}): ${error instanceof Error ? error.message : String(error)}`);
+      printLog(
+        ctx,
+        `[waitForAllOutboundTxsV2] Poll #${pollCount} ERROR (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}): ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
       if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-        printLog(ctx, `[waitForAllOutboundTxsV2] Aborting — ${MAX_CONSECUTIVE_ERRORS} consecutive RPC errors`);
+        printLog(
+          ctx,
+          `[waitForAllOutboundTxsV2] Aborting — ${MAX_CONSECUTIVE_ERRORS} consecutive RPC errors`
+        );
         break;
       }
     }
@@ -705,7 +887,10 @@ export async function waitForAllOutboundTxsV2(
   // Timeout: fail any unresolved hops
   const timedOutHops = outboundHops.filter((h) => h.status !== 'confirmed');
   if (timedOutHops.length > 0) {
-    printLog(ctx, `[waitForAllOutboundTxsV2] TIMEOUT after ${pollCount} polls | ${timedOutHops.length} hop(s) unresolved`);
+    printLog(
+      ctx,
+      `[waitForAllOutboundTxsV2] TIMEOUT after ${pollCount} polls | ${timedOutHops.length} hop(s) unresolved`
+    );
     for (const hop of timedOutHops) {
       hop.status = 'failed';
       progressHook?.({

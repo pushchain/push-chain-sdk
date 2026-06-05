@@ -7,14 +7,36 @@
 import '@e2e/shared/setup';
 import { PushChain } from '../../src';
 import { CHAIN, PUSH_NETWORK, VM } from '../../src/lib/constants/enums';
-import { CHAIN_INFO, SYNTHETIC_PUSH_ERC20 } from '../../src/lib/constants/chain';
-import { createPublicClient, http, Hex, parseEther, encodeFunctionData, encodeAbiParameters } from 'viem';
-import type { PreparedUniversalTx } from '../../src/lib/orchestrator/orchestrator.types';
+import {
+  CHAIN_INFO,
+  PUSH_VIEM_CHAINS,
+  SYNTHETIC_PUSH_ERC20,
+} from '../../src/lib/constants/chain';
+import {
+  createPublicClient,
+  createWalletClient,
+  http,
+  Hex,
+  parseEther,
+  formatEther,
+  formatUnits,
+  encodeFunctionData,
+  encodeAbiParameters,
+} from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import type {
+  CascadeExecutionOptions,
+  PreparedUniversalTx,
+} from '../../src/lib/orchestrator/orchestrator.types';
 import type { ProgressEvent } from '../../src/lib/progress-hook/progress-hook.types';
 import { ERC20_EVM } from '../../src/lib/constants/abi/erc20.evm';
 import { CEA_EVM } from '../../src/lib/constants/abi/cea.evm';
 import { UEA_MULTICALL_SELECTOR } from '../../src/lib/constants/selectors';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
+import {
+  queryOutboundGasFees,
+  waitForOutboundRelay,
+} from '@e2e/shared/outbound-helpers';
 import { createEvmPushClient } from '@e2e/shared/evm-client';
 import { toHexData } from '@e2e/shared/svm-outbound-helpers';
 import { PublicKey } from '@solana/web3.js';
@@ -47,6 +69,10 @@ const SVM_GATEWAY_PROGRAM = new PublicKey('CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBup
 
 // StakingExample contract (Push Chain Donut)
 const STAKING_PROXY = '0xd5d727D5eCE07BD5557f50e58DA092FCEDC1bf29' as `0x${string}`;
+const PBNB_TOKEN =
+  SYNTHETIC_PUSH_ERC20[PUSH_NETWORK.TESTNET_DONUT].pBNB;
+const PSOL_TOKEN =
+  SYNTHETIC_PUSH_ERC20[PUSH_NETWORK.TESTNET_DONUT].pSOL;
 const PUSDT_BNB_TOKEN =
   SYNTHETIC_PUSH_ERC20[PUSH_NETWORK.TESTNET_DONUT].USDT_BSC;
 const UNIVERSAL_GATEWAY_BSC = '0x44aFFC61983F4348DdddB886349eb992C061EaC0' as `0x${string}`;
@@ -71,6 +97,12 @@ const STAKING_EXAMPLE_ABI = [
 
 const EVM_TX_HASH_REGEX = /^0x[a-fA-F0-9]{64}$/;
 const SVM_TX_HASH_REGEX = /^(0x[a-fA-F0-9]{128}|[1-9A-HJ-NP-Za-km-z]{86,90})$/;
+const REQUIRED_UEA_PBNB_BALANCE = parseEther('0.005');
+const REQUIRED_UEA_PSOL_BALANCE = BigInt(100_000_000);
+const STAKING_OUTBOUND_GAS_LIMIT = BigInt(1_000_000);
+const OUTBOUND_MSG_VALUE_FLOOR = parseEther('50');
+const LIVE_CASCADE_WAIT_TIMEOUT_MS = 2_400_000;
+const LIVE_CASCADE_TEST_TIMEOUT_MS = 3_600_000;
 
 function expectExternalTxHashForChain(
   txHash: string | undefined,
@@ -100,6 +132,152 @@ describe('Advance Hopping: Cascade API E2E', () => {
   beforeEach(() => {
     collectedProgressEvents.length = 0;
   });
+
+  const executeCascade = (
+    txs: PreparedUniversalTx[],
+    options?: Omit<CascadeExecutionOptions, 'enforceGasCheck'>
+  ) =>
+    pushClient.universal.executeTransactions(txs, {
+      ...options,
+      enforceGasCheck: true,
+    });
+
+  async function readPushTokenBalance(
+    token: `0x${string}`,
+    holder: `0x${string}`
+  ): Promise<bigint> {
+    return (await pushPublicClient.readContract({
+      address: token,
+      abi: ERC20_EVM,
+      functionName: 'balanceOf',
+      args: [holder],
+    })) as bigint;
+  }
+
+  async function transferPushTokenFromFunder(
+    token: `0x${string}`,
+    to: `0x${string}`,
+    amount: bigint
+  ): Promise<void> {
+    const fundingPrivateKey =
+      (process.env['PUSH_PRIVATE_KEY'] as Hex | undefined) || privateKey;
+    if (!fundingPrivateKey) {
+      throw new Error(
+        'Cannot fund Push token balance: PUSH_PRIVATE_KEY or EVM_PRIVATE_KEY is required'
+      );
+    }
+
+    const account = privateKeyToAccount(fundingPrivateKey);
+    const walletClient = createWalletClient({
+      account,
+      chain: PUSH_VIEM_CHAINS[CHAIN.PUSH_TESTNET_DONUT],
+      transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
+    });
+    const hash = await walletClient.sendTransaction({
+      to: token,
+      data: encodeFunctionData({
+        abi: ERC20_EVM,
+        functionName: 'transfer',
+        args: [to, amount],
+      }),
+      value: BigInt(0),
+    });
+    const receipt = await pushPublicClient.waitForTransactionReceipt({ hash });
+    if (receipt.status !== 'success') {
+      throw new Error(`Push token funding transaction reverted: ${hash}`);
+    }
+  }
+
+  async function ensurePushTokenBalance(opts: {
+    label: string;
+    token: `0x${string}`;
+    holder: `0x${string}`;
+    required: bigint;
+    decimals: number;
+    allowUeaFallback?: boolean;
+  }): Promise<void> {
+    const { label, token, holder, required, decimals, allowUeaFallback } = opts;
+    const current = await readPushTokenBalance(token, holder);
+    console.log(
+      `[BalanceGuard] ${label}: ${formatUnits(current, decimals)} / required ${formatUnits(required, decimals)}`
+    );
+    if (current >= required) return;
+
+    const shortfall = required - current;
+    const fundingPrivateKey =
+      (process.env['PUSH_PRIVATE_KEY'] as Hex | undefined) || privateKey;
+    const funder = fundingPrivateKey
+      ? privateKeyToAccount(fundingPrivateKey)
+      : undefined;
+    const funderBalance = funder
+      ? await readPushTokenBalance(token, funder.address as `0x${string}`)
+      : BigInt(0);
+
+    if (funderBalance >= shortfall) {
+      console.log(
+        `[BalanceGuard] Funding ${label} from Push master ${funder!.address}: ${formatUnits(shortfall, decimals)}`
+      );
+      await transferPushTokenFromFunder(token, holder, shortfall);
+    } else if (
+      allowUeaFallback &&
+      holder.toLowerCase() !== ueaAddress.toLowerCase()
+    ) {
+      const ueaBalance = await readPushTokenBalance(token, ueaAddress);
+      if (ueaBalance < shortfall) {
+        throw new Error(
+          `[BalanceGuard] ${label} underfunded. Holder shortfall ${formatUnits(shortfall, decimals)}, master has ${formatUnits(funderBalance, decimals)}, UEA has ${formatUnits(ueaBalance, decimals)}.`
+        );
+      }
+
+      console.log(
+        `[BalanceGuard] Funding ${label} from UEA: ${formatUnits(shortfall, decimals)}`
+      );
+      const tx = await pushClient.universal.sendTransaction({
+        to: token,
+        data: encodeFunctionData({
+          abi: ERC20_EVM,
+          functionName: 'transfer',
+          args: [holder, shortfall],
+        }),
+      });
+      const receipt = await tx.wait();
+      if (receipt.status !== 1) {
+        throw new Error(`UEA token funding transaction failed: ${tx.hash}`);
+      }
+    } else {
+      throw new Error(
+        `[BalanceGuard] ${label} underfunded. Holder shortfall ${formatUnits(shortfall, decimals)}, master has ${formatUnits(funderBalance, decimals)}.`
+      );
+    }
+
+    const updated = await readPushTokenBalance(token, holder);
+    if (updated < required) {
+      throw new Error(
+        `[BalanceGuard] ${label} still underfunded after top-up: ${formatUnits(updated, decimals)} < ${formatUnits(required, decimals)}`
+      );
+    }
+  }
+
+  async function computeOutboundMsgValue(
+    nativeValueForGas: bigint
+  ): Promise<bigint> {
+    const value =
+      nativeValueForGas > OUTBOUND_MSG_VALUE_FLOOR
+        ? nativeValueForGas
+        : OUTBOUND_MSG_VALUE_FLOOR;
+    const ueaBalance = await pushPublicClient.getBalance({
+      address: ueaAddress,
+    });
+    console.log(
+      `[MsgValue] Using ${formatEther(value)} PC for StakingExample outbound gas (UEA balance ${formatEther(ueaBalance)} PC)`
+    );
+    if (ueaBalance < value) {
+      throw new Error(
+        `[MsgValue] UEA native PC balance too low for StakingExample outbound: ${formatEther(ueaBalance)} < ${formatEther(value)}`
+      );
+    }
+    return value;
+  }
 
   beforeAll(async () => {
     if (skipE2E) {
@@ -145,6 +323,21 @@ describe('Advance Hopping: Cascade API E2E', () => {
     }) as [`0x${string}`, boolean];
     stakingCeaAddress = ceaAddr;
     console.log(`StakingExample CEA on BSC: ${stakingCeaAddress}`);
+
+    await ensurePushTokenBalance({
+      label: 'Advance Hopping UEA pBNB burn balance',
+      token: PBNB_TOKEN,
+      holder: ueaAddress,
+      required: REQUIRED_UEA_PBNB_BALANCE,
+      decimals: 18,
+    });
+    await ensurePushTokenBalance({
+      label: 'Advance Hopping UEA pSOL burn balance',
+      token: PSOL_TOKEN,
+      holder: ueaAddress,
+      required: REQUIRED_UEA_PSOL_BALANCE,
+      decimals: 9,
+    });
   });
 
   // ============================================================================
@@ -172,7 +365,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
 
         expect(prepared.route).toBe('UOA_TO_PUSH');
 
-        const response = await pushClient.universal.executeTransactions([prepared]);
+        const response = await executeCascade([prepared]);
         console.log(`[TEST] Route 1 TX Hash: ${response.initialTxHash}`);
 
         expect(response.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
@@ -236,8 +429,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           value: parseEther('0.001'),
         });
 
-        const result = await pushClient.universal
-          .executeTransactions([tx1, tx2, tx3]);
+        const result = await executeCascade([tx1, tx2, tx3]);
 
         console.log(`[TEST] Multi-hop Payload TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -248,7 +440,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
 
         const cascadeEventStream: string[] = [];
         const completion = await result.waitForAll({
-          timeout: 600000,
+          timeout: LIVE_CASCADE_WAIT_TIMEOUT_MS,
           progressHook: (event) => {
             console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
           },
@@ -288,7 +480,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(cascadeEventStream.indexOf('SEND-TX-001')).toBe(0);
         // 999-01 must come last
         expect(cascadeEventStream[cascadeEventStream.length - 1]).toBe('SEND-TX-999-01');
-      }, 900000);
+      }, LIVE_CASCADE_TEST_TIMEOUT_MS);
     });
 
     // ==========================================================================
@@ -348,8 +540,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         });
 
         // Chain all 3 hops and send
-        const result = await pushClient.universal
-          .executeTransactions([tx1, tx2, tx3]);
+        const result = await executeCascade([tx1, tx2, tx3]);
 
         console.log(`[TEST] 3-leg Cascade TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -362,7 +553,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         // Wait for all hops to complete
         const cascadeEventStream: string[] = [];
         const completion = await result.waitForAll({
-          timeout: 600000,
+          timeout: LIVE_CASCADE_WAIT_TIMEOUT_MS,
           progressHook: (event) => {
             console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
           },
@@ -416,7 +607,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(cascadeEventStream).toContain('SEND-TX-999-01');
         expect(cascadeEventStream.indexOf('SEND-TX-001')).toBe(0);
         expect(cascadeEventStream[cascadeEventStream.length - 1]).toBe('SEND-TX-999-01');
-      }, 900000);
+      }, LIVE_CASCADE_TEST_TIMEOUT_MS);
     });
 
     // ==========================================================================
@@ -479,8 +670,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           value: BigInt(10_000_000),
         });
 
-        const result = await pushClient.universal
-          .executeTransactions([tx1, tx2, tx3, tx4]);
+        const result = await executeCascade([tx1, tx2, tx3, tx4]);
 
         console.log(`[TEST] 4-leg TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -490,7 +680,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(result.hops).toHaveLength(4);
 
         const completion = await result.waitForAll({
-          timeout: 900000,
+          timeout: LIVE_CASCADE_WAIT_TIMEOUT_MS,
           progressHook: (event) => {
             console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
           },
@@ -522,7 +712,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         }
         console.log(`Push Chain Counter AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
-      }, 1200000);
+      }, LIVE_CASCADE_TEST_TIMEOUT_MS);
     });
 
     // ==========================================================================
@@ -583,8 +773,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           value: BigInt(10_000_000),
         });
 
-        const result = await pushClient.universal
-          .executeTransactions([tx1, tx2, tx3, tx4]);
+        const result = await executeCascade([tx1, tx2, tx3, tx4]);
 
         console.log(`[TEST] 4-leg Funds TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -594,7 +783,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(result.hops).toHaveLength(4);
 
         const completion = await result.waitForAll({
-          timeout: 900000,
+          timeout: LIVE_CASCADE_WAIT_TIMEOUT_MS,
           progressHook: (event) => {
             console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
           },
@@ -632,7 +821,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         }
         console.log(`Push Chain Counter AFTER: ${counterAfter}`);
         expect(counterAfter).toBeGreaterThan(counterBefore);
-      }, 1200000);
+      }, LIVE_CASCADE_TEST_TIMEOUT_MS);
     });
 
     // ==========================================================================
@@ -680,8 +869,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         });
 
         // Send the merged same-chain hops + Route 3 inbound
-        const result = await pushClient.universal
-          .executeTransactions([tx1, tx2, tx3]);
+        const result = await executeCascade([tx1, tx2, tx3]);
 
         console.log(`[TEST] Merged same-chain hops TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -694,7 +882,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         // Wait for all hops to complete
         const cascadeEventStream: string[] = [];
         const completion = await result.waitForAll({
-          timeout: 300000,
+          timeout: LIVE_CASCADE_WAIT_TIMEOUT_MS,
           progressHook: (event) => {
             console.log(`[TEST:waitForAll] hop ${event.hopIndex} status: ${event.status}`);
           },
@@ -740,7 +928,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(cascadeEventStream).toContain('SEND-TX-001');
         expect(cascadeEventStream).toContain('SEND-TX-002-01');
         expect(cascadeEventStream).toContain('SEND-TX-999-01');
-      }, 600000);
+      }, LIVE_CASCADE_TEST_TIMEOUT_MS);
     });
 
     // ==========================================================================
@@ -802,8 +990,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           value: BigInt(10_000_000),
         });
 
-        const result = await pushClient.universal
-          .executeTransactions([tx1, tx2, tx3]);
+        const result = await executeCascade([tx1, tx2, tx3]);
 
         console.log(`[TEST] Multi-Chain TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -812,7 +999,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(result.hopCount).toBe(3);
 
         const completion = await result.waitForAll({
-          timeout: 600000,
+          timeout: LIVE_CASCADE_WAIT_TIMEOUT_MS,
           progressHook: (event) => {
             console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
           },
@@ -852,7 +1039,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         }
         console.log(`Push Chain Counter AFTER: ${pushCounterAfter}`);
         expect(pushCounterAfter).toBeGreaterThan(pushCounterBefore);
-      }, 900000);
+      }, LIVE_CASCADE_TEST_TIMEOUT_MS);
     });
 
     // ==========================================================================
@@ -928,8 +1115,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           data: pushIncrementPayload,
         });
 
-        const result = await pushClient.universal
-          .executeTransactions([tx1, tx2, tx3, tx4]);
+        const result = await executeCascade([tx1, tx2, tx3, tx4]);
 
         console.log(`[TEST] Full Round-Trip TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -938,7 +1124,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(result.hopCount).toBe(4);
 
         const completion = await result.waitForAll({
-          timeout: 900000,
+          timeout: LIVE_CASCADE_WAIT_TIMEOUT_MS,
           progressHook: (event) => {
             console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
           },
@@ -980,7 +1166,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         }
         console.log(`Push Chain Counter AFTER: ${pushCounterAfter}`);
         expect(pushCounterAfter).toBeGreaterThan(pushCounterBefore);
-      }, 1200000);
+      }, LIVE_CASCADE_TEST_TIMEOUT_MS);
     });
 
     // ==========================================================================
@@ -1022,8 +1208,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           data: pushIncrementPayload,
         });
 
-        const result = await pushClient.universal
-          .executeTransactions([tx1, tx2]);
+        const result = await executeCascade([tx1, tx2]);
 
         console.log(`[TEST] Solana Inbound TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -1032,7 +1217,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         expect(result.hopCount).toBe(2);
 
         const completion = await result.waitForAll({
-          timeout: 600000,
+          timeout: LIVE_CASCADE_WAIT_TIMEOUT_MS,
           progressHook: (event) => {
             console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
           },
@@ -1064,7 +1249,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         }
         console.log(`Push Chain Counter AFTER: ${pushCounterAfter}`);
         expect(pushCounterAfter).toBeGreaterThan(pushCounterBefore);
-      }, 900000);
+      }, LIVE_CASCADE_TEST_TIMEOUT_MS);
     });
 
     // ==========================================================================
@@ -1085,17 +1270,14 @@ describe('Advance Hopping: Cascade API E2E', () => {
         const bridgeAmount = BigInt(10000);
         const sendBackAmount = BigInt(5000);
 
-        // Ensure StakingExample has pUSDT
-        const contractBalance = await pushPublicClient.readContract({
-          address: PUSDT_BNB_TOKEN, abi: ERC20_EVM, functionName: 'balanceOf', args: [STAKING_PROXY],
-        }) as bigint;
-        if (contractBalance < bridgeAmount) {
-          const fundTx = await pushClient.universal.sendTransaction({
-            to: PUSDT_BNB_TOKEN,
-            data: encodeFunctionData({ abi: ERC20_EVM, functionName: 'transfer', args: [STAKING_PROXY, bridgeAmount * BigInt(2)] }),
-          });
-          await fundTx.wait();
-        }
+        await ensurePushTokenBalance({
+          label: 'StakingExample pUSDT bridge balance',
+          token: PUSDT_BNB_TOKEN,
+          holder: STAKING_PROXY,
+          required: bridgeAmount,
+          decimals: 6,
+          allowUeaFallback: true,
+        });
 
         // Read BSC counter BEFORE
         const counterBefore = await bscPublicClient.readContract({
@@ -1152,17 +1334,48 @@ describe('Advance Hopping: Cascade API E2E', () => {
         );
         const outboundPayload = `${UEA_MULTICALL_SELECTOR}${encoded.slice(2)}` as `0x${string}`;
 
+        const fees = await queryOutboundGasFees(
+          pushPublicClient,
+          PUSDT_BNB_TOKEN,
+          STAKING_OUTBOUND_GAS_LIMIT
+        );
+        const msgValue = await computeOutboundMsgValue(fees.nativeValueForGas);
+
         // Send triggerOutbound
         const triggerData = encodeFunctionData({
           abi: STAKING_EXAMPLE_ABI, functionName: 'triggerOutbound',
-          args: [PUSDT_BNB_TOKEN, bridgeAmount, '0x' as `0x${string}`, BigInt(0), outboundPayload, ueaAddress],
+          args: [
+            PUSDT_BNB_TOKEN,
+            bridgeAmount,
+            '0x' as `0x${string}`,
+            STAKING_OUTBOUND_GAS_LIMIT,
+            outboundPayload,
+            ueaAddress,
+          ],
         });
         const tx = await pushClient.universal.sendTransaction({
-          to: STAKING_PROXY, data: triggerData, value: parseEther('50'),
+          to: STAKING_PROXY,
+          data: triggerData,
+          value: msgValue,
         });
         console.log(`triggerOutbound TX: ${tx.hash}`);
         const receipt = await tx.wait();
         expect(receipt.status).toBe(1);
+
+        console.log('Polling for StakingExample outbound relay...');
+        const outbound = await waitForOutboundRelay(
+          tx.hash,
+          PUSH_NETWORK.TESTNET_DONUT,
+          { timeoutMs: LIVE_CASCADE_WAIT_TIMEOUT_MS }
+        );
+        console.log(`External TX Hash: ${outbound.externalTxHash}`);
+        console.log(`External Chain: ${outbound.externalChain}`);
+        console.log(`External Explorer: ${outbound.explorerUrl}`);
+        expect(outbound.externalChain).toBe(CHAIN.BNB_TESTNET);
+        await verifyExternalTransaction(
+          outbound.externalTxHash,
+          outbound.externalChain
+        );
 
         // Verify BSC counter incremented (poll — relay takes variable time)
         console.log('Waiting for BSC counter increment...');
@@ -1194,7 +1407,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         }
         console.log(`Stake AFTER: ${stakeAfter}`);
         expect(stakeAfter).toBeGreaterThan(stakeBefore);
-      }, 600000);
+      }, LIVE_CASCADE_TEST_TIMEOUT_MS);
     });
 
     // ==========================================================================
@@ -1240,14 +1453,13 @@ describe('Advance Hopping: Cascade API E2E', () => {
           data: pushIncrementPayload,
         });
 
-        const result = await pushClient.universal
-          .executeTransactions([tx1, tx2]);
+        const result = await executeCascade([tx1, tx2]);
 
         console.log(`[TEST] TX Hash: ${result.initialTxHash}`);
         expect(result.hopCount).toBe(2);
 
         const completion = await result.waitForAll({
-          timeout: 600000,
+          timeout: LIVE_CASCADE_WAIT_TIMEOUT_MS,
           progressHook: (event) => {
             console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
           },
@@ -1271,7 +1483,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           if (pushCounterAfter > pushCounterBefore) break;
         }
         expect(pushCounterAfter).toBeGreaterThan(pushCounterBefore);
-      }, 900000);
+      }, LIVE_CASCADE_TEST_TIMEOUT_MS);
     });
 
     // ==========================================================================
@@ -1317,14 +1529,13 @@ describe('Advance Hopping: Cascade API E2E', () => {
           data: pushIncrementPayload,
         });
 
-        const result = await pushClient.universal
-          .executeTransactions([tx1, tx2]);
+        const result = await executeCascade([tx1, tx2]);
 
         console.log(`[TEST] TX Hash: ${result.initialTxHash}`);
         expect(result.hopCount).toBe(2);
 
         const completion = await result.waitForAll({
-          timeout: 600000,
+          timeout: LIVE_CASCADE_WAIT_TIMEOUT_MS,
           progressHook: (event) => {
             console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
           },
@@ -1348,7 +1559,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           if (pushCounterAfter > pushCounterBefore) break;
         }
         expect(pushCounterAfter).toBeGreaterThan(pushCounterBefore);
-      }, 900000);
+      }, LIVE_CASCADE_TEST_TIMEOUT_MS);
     });
 
     // ==========================================================================
@@ -1421,14 +1632,13 @@ describe('Advance Hopping: Cascade API E2E', () => {
           data: pushIncrementPayload,
         });
 
-        const result = await pushClient.universal
-          .executeTransactions([tx1, tx2, tx3, tx4]);
+        const result = await executeCascade([tx1, tx2, tx3, tx4]);
 
         console.log(`[TEST] TX Hash: ${result.initialTxHash}`);
         expect(result.hopCount).toBe(4);
 
         const completion = await result.waitForAll({
-          timeout: 900000,
+          timeout: LIVE_CASCADE_WAIT_TIMEOUT_MS,
           progressHook: (event) => {
             console.log(`[TEST:waitForAll] hop ${event.hopIndex} route: ${event.route} status: ${event.status}`);
           },
@@ -1467,7 +1677,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
         }
         console.log(`Push Chain Counter AFTER: ${pushCounterAfter} (delta: ${pushCounterAfter - pushCounterBefore})`);
         expect(pushCounterAfter).toBeGreaterThan(pushCounterBefore);
-      }, 1200000);
+      }, LIVE_CASCADE_TEST_TIMEOUT_MS);
     });
   });
 
@@ -1583,7 +1793,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           value: parseEther('0.001'),
         });
 
-        const resultPromise = pushClient.universal.executeTransactions([tx1]);
+        const resultPromise = executeCascade([tx1]);
         expect(resultPromise).toBeInstanceOf(Promise);
 
         const result = await resultPromise;
@@ -1610,7 +1820,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           value: parseEther('0.0001'),
         });
 
-        const resultPromise = pushClient.universal.executeTransactions([tx1, tx2]);
+        const resultPromise = executeCascade([tx1, tx2]);
         expect(resultPromise).toBeInstanceOf(Promise);
 
         const result = await resultPromise;
@@ -1634,7 +1844,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           value: parseEther('0.001'),
         });
 
-        const result = await pushClient.universal.executeTransactions([tx1]);
+        const result = await executeCascade([tx1]);
 
         console.log(`[TEST] Cascade initial TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -1671,7 +1881,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           gasLimit: BigInt(2000000),
         });
 
-        const result = await pushClient.universal.executeTransactions([tx1]);
+        const result = await executeCascade([tx1]);
 
         console.log(`[TEST] Cascade Route 2 TX Hash: ${result.initialTxHash}`);
         console.log(`[TEST] Hop count: ${result.hopCount}`);
@@ -1728,13 +1938,13 @@ describe('Advance Hopping: Cascade API E2E', () => {
           value: parseEther('0.001'),
         });
 
-        const result = await pushClient.universal.executeTransactions([tx1, tx2]);
+        const result = await executeCascade([tx1, tx2]);
         expect(result.initialTxHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
         expect(result.hopCount).toBe(2);
 
         const hopEvents: Array<{ hopIndex: number; status: string; route?: string }> = [];
         await result.waitForAll({
-          timeout: 600000,
+          timeout: LIVE_CASCADE_WAIT_TIMEOUT_MS,
           progressHook: (event: any) => {
             hopEvents.push({
               hopIndex: event.hopIndex,
@@ -1792,7 +2002,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           );
         }
         expect(nullResponseEvents.length).toBe(0);
-      }, 900000);
+      }, LIVE_CASCADE_TEST_TIMEOUT_MS);
     });
 
     // ==========================================================================
@@ -1809,7 +2019,7 @@ describe('Advance Hopping: Cascade API E2E', () => {
           value: parseEther('0.001'),
         });
 
-        const result = await pushClient.universal.executeTransactions([tx1]);
+        const result = await executeCascade([tx1]);
 
         const completion = await result.waitForAll({
           timeout: 60000,

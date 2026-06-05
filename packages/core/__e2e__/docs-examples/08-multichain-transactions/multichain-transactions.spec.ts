@@ -51,7 +51,25 @@ const COUNTER_ABI = [
 ] as const;
 
 // AMM swap router on Push Chain testnet (Uniswap V3 fork)
-const SWAP_ROUTER_ADDRESS = '0x81b8Bca02580C7d6b636051FDb7baAC436bFb454';
+const SWAP_ROUTER_ADDRESS = '0x5D548bB9E305AAe0d6dc6e6fdc3ab419f6aC0037' as `0x${string}`;
+const QUOTER_V2 = '0x83316275f7C2F79BC4E26f089333e88E89093037';
+const POOL_FEE = 500;
+const QUOTE_SAFETY_BPS = BigInt(7_000);
+const BPS_DENOMINATOR = BigInt(10_000);
+const SWAP_DEADLINE = BigInt(9_999_999_999);
+const WPC_ADDRESS = '0xE17DD2E0509f99E9ee9469Cf6634048Ec5a3ADe9' as `0x${string}`;
+const ERC20_APPROVE_ABI = [
+  {
+    inputs: [
+      { name: 'spender', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    name: 'approve',
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+] as const;
 const SWAP_ROUTER_ABI = [
   {
     inputs: [
@@ -61,6 +79,7 @@ const SWAP_ROUTER_ABI = [
           { internalType: 'address', name: 'tokenOut', type: 'address' },
           { internalType: 'uint24', name: 'fee', type: 'uint24' },
           { internalType: 'address', name: 'recipient', type: 'address' },
+          { internalType: 'uint256', name: 'deadline', type: 'uint256' },
           { internalType: 'uint256', name: 'amountIn', type: 'uint256' },
           { internalType: 'uint256', name: 'amountOutMinimum', type: 'uint256' },
           { internalType: 'uint160', name: 'sqrtPriceLimitX96', type: 'uint160' },
@@ -76,12 +95,40 @@ const SWAP_ROUTER_ABI = [
     type: 'function',
   },
 ] as const;
+const QUOTER_ABI = [
+  {
+    inputs: [
+      {
+        components: [
+          { name: 'tokenIn', type: 'address' },
+          { name: 'tokenOut', type: 'address' },
+          { name: 'amountIn', type: 'uint256' },
+          { name: 'fee', type: 'uint24' },
+          { name: 'sqrtPriceLimitX96', type: 'uint160' },
+        ],
+        name: 'params',
+        type: 'tuple',
+      },
+    ],
+    name: 'quoteExactInputSingle',
+    outputs: [
+      { name: 'amountOut', type: 'uint256' },
+      { name: 'sqrtPriceX96After', type: 'uint160' },
+      { name: 'initializedTicksCrossed', type: 'uint32' },
+      { name: 'gasEstimate', type: 'uint256' },
+    ],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+] as const;
 const pETH_ADDRESS = '0x2971824Db68229D087931155C2b8bB820B275809' as `0x${string}`;
 const pSOL_ADDRESS = '0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed' as `0x${string}`;
 const SEPOLIA_CEA_FACTORY = '0x5E191fbBe22F8866C5e4250557664fCE760e8870' as `0x${string}`;
 
 const evmKey = process.env['EVM_PRIVATE_KEY'] as Hex | undefined;
 const pushKey = process.env['PUSH_PRIVATE_KEY'] as Hex | undefined;
+const AMM_UEA_PC_GAS_BUFFER = '250';
+const AMM_UEA_PETH_BUFFER = '0.02';
 
 describe('docs-examples › 08-multichain-transactions', () => {
   /**
@@ -189,10 +236,10 @@ describe('docs-examples › 08-multichain-transactions', () => {
 
   /**
    * slug: execute_transactions
-   * MDX: 08:334-471. Cross-chain AMM swap — CEA→Push pulls 0.001 ETH, swaps pETH→pSOL, bridges pSOL to Solana.
+   * MDX: 08:334-471. Cross-chain AMM swap — CEA→Push pulls 0.001 ETH, swaps pETH→WPC→pSOL, bridges pSOL to Solana.
    * Fund 0.005 ETH (UOA) + 0.005 ETH (Sepolia CEA) + 1 PC + 0.002 pETH (UEA).
    */
-  ((evmKey && pushKey) ? it : it.skip)('execute_transactions — 3-hop CEA→Push AMM→Solana cascade', async () => {
+  ((evmKey && pushKey) ? it : it.skip)('execute_transactions — CEA→Push AMM→Solana cascade', async () => {
     const sepoliaCtx = makeSepoliaContext(evmKey as Hex);
     const pushCtx = makePushContext(pushKey as Hex);
     const account = privateKeyToAccount(generatePrivateKey());
@@ -234,24 +281,63 @@ describe('docs-examples › 08-multichain-transactions', () => {
 
     await fundSepoliaUoa(sepoliaCtx, account.address, '0.01');
     await fundSepoliaUoa(sepoliaCtx, sepoliaCEA, '0.01');
-    await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, '5');
+    await fundUeaPC(pushCtx, client.universal.account as `0x${string}`, AMM_UEA_PC_GAS_BUFFER);
     await fundUeaPRC20(
       pushCtx,
       client.universal.account as `0x${string}`,
       pETH_ADDRESS,
-      '0.002',
+      AMM_UEA_PETH_BUFFER,
       18,
       'pETH'
     );
 
+    const pushProvider = new ethers.JsonRpcProvider(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]);
+    const quoter = new ethers.Contract(QUOTER_V2, QUOTER_ABI, pushProvider);
+    const wpcQuote = (await quoter['quoteExactInputSingle'].staticCall({
+      tokenIn: pETH_ADDRESS,
+      tokenOut: WPC_ADDRESS,
+      amountIn: AMOUNT_IN,
+      fee: POOL_FEE,
+      sqrtPriceLimitX96: BigInt(0),
+    })) as { amountOut: bigint };
+    const wpcAmount = (wpcQuote.amountOut * QUOTE_SAFETY_BPS) / BPS_DENOMINATOR;
+    const pSolQuote = (await quoter['quoteExactInputSingle'].staticCall({
+      tokenIn: WPC_ADDRESS,
+      tokenOut: pSOL_ADDRESS,
+      amountIn: wpcAmount,
+      fee: POOL_FEE,
+      sqrtPriceLimitX96: BigInt(0),
+    })) as { amountOut: bigint };
+    const pSolAmount = (pSolQuote.amountOut * QUOTE_SAFETY_BPS) / BPS_DENOMINATOR;
+    console.log(`quoted WPC amount: ${wpcQuote.amountOut.toString()}, spending: ${wpcAmount.toString()}`);
+    console.log(`quoted pSOL amount: ${pSolQuote.amountOut.toString()}, bridging: ${pSolAmount.toString()}`);
+
     const hop0 = await client.universal.prepareTransaction({
       from: { chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA },
-      to: account.address,
-      value: BigInt(0),
+      to: client.universal.account,
+      value: PushChain.utils.helpers.parseUnits('5', 18),
       data: '0x',
       funds: { amount: AMOUNT_IN, token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.ETH },
     });
     const hop1 = await client.universal.prepareTransaction({
+      to: pETH_ADDRESS,
+      value: BigInt(0),
+      data: PushChain.utils.helpers.encodeTxData({
+        abi: [...ERC20_APPROVE_ABI],
+        functionName: 'approve',
+        args: [SWAP_ROUTER_ADDRESS, ethers.MaxUint256],
+      }),
+    });
+    const hop2 = await client.universal.prepareTransaction({
+      to: WPC_ADDRESS,
+      value: BigInt(0),
+      data: PushChain.utils.helpers.encodeTxData({
+        abi: [...ERC20_APPROVE_ABI],
+        functionName: 'approve',
+        args: [SWAP_ROUTER_ADDRESS, ethers.MaxUint256],
+      }),
+    });
+    const hop3 = await client.universal.prepareTransaction({
       to: SWAP_ROUTER_ADDRESS,
       value: BigInt(0),
       data: PushChain.utils.helpers.encodeTxData({
@@ -260,10 +346,31 @@ describe('docs-examples › 08-multichain-transactions', () => {
         args: [
           {
             tokenIn: pETH_ADDRESS,
-            tokenOut: pSOL_ADDRESS,
-            fee: 3000,
+            tokenOut: WPC_ADDRESS,
+            fee: POOL_FEE,
             recipient: client.universal.account as `0x${string}`,
+            deadline: SWAP_DEADLINE,
             amountIn: AMOUNT_IN,
+            amountOutMinimum: BigInt(0),
+            sqrtPriceLimitX96: BigInt(0),
+          },
+        ],
+      }),
+    });
+    const hop4 = await client.universal.prepareTransaction({
+      to: SWAP_ROUTER_ADDRESS,
+      value: BigInt(0),
+      data: PushChain.utils.helpers.encodeTxData({
+        abi: [...SWAP_ROUTER_ABI],
+        functionName: 'exactInputSingle',
+        args: [
+          {
+            tokenIn: WPC_ADDRESS,
+            tokenOut: pSOL_ADDRESS,
+            fee: POOL_FEE,
+            recipient: client.universal.account as `0x${string}`,
+            deadline: SWAP_DEADLINE,
+            amountIn: wpcAmount,
             amountOutMinimum: BigInt(0),
             sqrtPriceLimitX96: BigInt(0),
           },
@@ -277,15 +384,15 @@ describe('docs-examples › 08-multichain-transactions', () => {
       chain: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET,
       skipNetworkCheck: true,
     });
-    const hop2 = await client.universal.prepareTransaction({
+    const hop5 = await client.universal.prepareTransaction({
       to: { address: solanaCEA.address, chain: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET },
       value: BigInt(0),
       data: '0x',
-      funds: { amount: AMOUNT_IN, token: PushChain.CONSTANTS.MOVEABLE.TOKEN.PUSH_TESTNET_DONUT.pSol },
+      funds: { amount: pSolAmount, token: PushChain.CONSTANTS.MOVEABLE.TOKEN.PUSH_TESTNET_DONUT.pSol },
     });
 
-    const cascade = await client.universal.executeTransactions([hop0, hop1, hop2]);
-    expect(cascade.hopCount).toBe(3);
+    const cascade = await client.universal.executeTransactions([hop0, hop1, hop2, hop3, hop4, hop5]);
+    expect(cascade.hopCount).toBe(6);
 
     const cascadeResult = await cascade.wait({
       progressHook: (e: any) => console.log(`  [Hop ${e.hopIndex}] ${e.status} on ${e.chain}`),

@@ -881,6 +881,13 @@ export interface CascadeTrackOptions {
 }
 
 export interface CascadeExecutionOptions {
+  /**
+   * Enforce SDK pre-flight gas/balance checks across the whole cascade.
+   * - false/omitted: individual prepared-hop settings decide enforcement
+   * - true: shortfalls throw InsufficientUEABalanceError before broadcast
+   */
+  enforceGasCheck?: boolean;
+
   /** Per-call progress callback. */
   progressHook?: (event: import('../progress-hook/progress-hook.types').ProgressEvent) => void;
 }

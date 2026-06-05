@@ -159,6 +159,23 @@ describe('Orchestrator.createCascadedBuilder — per-call progressHook', () => {
     expect(mockedCreateCascadedBuilder.mock.calls[0][3]).toBe(perCallHook);
   });
 
+  it('passes cascade-level enforceGasCheck to the cascade builder', async () => {
+    const orchestrator = makeOrchestrator(jest.fn());
+
+    mockedCreateCascadedBuilder.mockReturnValue({
+      send: async () => ({ initialTxHash: '0xfake' }),
+    });
+
+    await orchestrator
+      .createCascadedBuilder([fakePreparedTx], { enforceGasCheck: true })
+      .send();
+
+    expect(mockedCreateCascadedBuilder).toHaveBeenCalledTimes(1);
+    expect(mockedCreateCascadedBuilder.mock.calls[0][4]).toEqual({
+      enforceGasCheck: true,
+    });
+  });
+
   it('wraps ctx.progressHook to fan events to BOTH init-time and per-call hooks during send()', async () => {
     const initHook = jest.fn();
     const perCallHook = jest.fn();

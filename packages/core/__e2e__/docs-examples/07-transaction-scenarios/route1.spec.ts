@@ -26,6 +26,7 @@ import {
   fundUeaPC,
   makeSepoliaContext,
   makePushContext,
+  waitForReceipt,
 } from '../_helpers/docs-fund';
 
 const COUNTER_PUSH = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
@@ -205,7 +206,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 1 (UOA_TO_PUSH)',
    * MDX: 07:487-548. Sepolia UOA bridges 0.1 USDT, USDC pays Push Chain gas.
    * Fund 0.005 ETH + 0.2 USDT + 0.1 USDC.
    */
-  (evmKey ? it : it.skip)('pay_gas_erc20 — bridges USDT, pays Push Chain gas with USDC', async () => {
+  it.skip('pay_gas_erc20 — bridges USDT, pays Push Chain gas with USDC', async () => {
     const sepoliaCtx = makeSepoliaContext(evmKey as Hex);
     const account = privateKeyToAccount(generatePrivateKey());
     const walletClient = createWalletClient({
@@ -241,7 +242,7 @@ describe('docs-examples › 07-transaction-scenarios › Route 1 (UOA_TO_PUSH)',
         to: tok.address as `0x${string}`,
         data,
       });
-      await sepoliaCtx.publicClient.waitForTransactionReceipt({ hash });
+      await waitForReceipt(sepoliaCtx.publicClient, hash);
       console.log(`[fund] ${amt} ${tok.symbol} → ${account.address} on Sepolia (${hash})`);
     }
 

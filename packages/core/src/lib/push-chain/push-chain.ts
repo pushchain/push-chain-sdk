@@ -119,6 +119,10 @@ export class PushChain {
      * Accepts an array of PreparedUniversalTx (from prepareTransaction).
      *
      * @param txs - Prepared transactions to execute as a cascade.
+     * @param options.enforceGasCheck - Defaults to false. When true, the
+     *   cascade stops on pre-flight gas/balance shortfall instead of warning
+     *   and proceeding. This applies to every prepared transaction in the
+     *   cascade without having to set the flag on each prepared hop.
      * @param options.progressHook - Optional per-call progress callback.
      *   Additive with the init-time `progressHook` passed to `initialize`:
      *   both hooks receive every `ProgressEvent` emitted during this call
