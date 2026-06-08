@@ -1,4 +1,114 @@
-@pushchain/core@6.0.2 (unreleased)
+@pushchain/core@6.0.16 (2026-06-05)
+
+- Fixed SVM domain-separator chainId encoding to match the pre-EIP-712 UEA_SVM
+  behavior on Donut (raw string encoding), restoring correct SVM signature
+  validation.
+
+- Fixed Route 1 deposit-sizing progress-hook ordering: the `103-03-04` event is
+  now emitted after UEA resolution so it matches the funds-payload path sequence.
+
+- Additional cascade execution test coverage and validation fixes.
+
+---
+
+@pushchain/core@6.0.15 (2026-06-02)
+
+- Internal fixes to response-building logic.
+
+---
+
+@pushchain/core@6.0.14 (2026-06-02)
+
+- `trackTransaction` now resolves the originating source chain correctly even when
+  the tracked hash points to Push Chain, with explicit chain-support checks.
+
+- Added `finalTxHash` to `UniversalTxResponse` — a single hash that resolves across
+  all routes (R1 → Push tx, R2 → external tx, R3 → Push inbound tx).
+
+---
+
+@pushchain/core@6.0.13 (2026-05-26)
+
+- Maintenance release (version bump only; no code changes).
+
+---
+
+@pushchain/core@6.0.12 (2026-05-26)
+
+- Maintenance release (version bump only; no code changes).
+
+---
+
+@pushchain/core@6.0.11 (2026-05-25)
+
+- Added transaction-indexing polling for SVM multihop: the SDK now retries with
+  backoff (1s polling, 30s timeout) before fetching transaction details, fixing
+  failures when querying immediately after confirmation.
+
+---
+
+@pushchain/core@6.0.10 (2026-05-23)
+
+- Added Borsh-encoded SVM-origin inbound relay payload building for Route 3
+  (CEA → Push).
+
+- Improved SVM child-inbound detection using log index for more reliable
+  transaction identification.
+
+---
+
+@pushchain/core@6.0.9 (2026-05-19)
+
+- Added a decoder for the `GasPriceBelowBase` (0x05aab006) error with an
+  actionable hint about gasPrice overrides.
+
+---
+
+@pushchain/core@6.0.8 (2026-05-19)
+
+- Maintenance release (version bump only; no code changes).
+
+---
+
+@pushchain/core@6.0.7 (2026-05-19)
+
+- Fixed corner-case bugs in cascade execution and funds-payload handling for
+  cross-chain transactions.
+
+---
+
+@pushchain/core@6.0.6 (2026-05-18)
+
+- Clarified progress-event message text (no functional changes).
+
+---
+
+@pushchain/core@6.0.5 (2026-05-18)
+
+- Added multihop progress markers: `SEND_TX_199_03` / `SEND_TX_199_99` (Route 1
+  intermediate success) and `SEND_TX_399_99` (Route 3 round-trip completion), with
+  improved cascade event sequencing.
+
+---
+
+@pushchain/core@6.0.4 (2026-05-18)
+
+- Fixed payload-builder detection of executable data vs. value-only transfers,
+  including multicall empty-array handling.
+
+- Fixed progress-hook wiring for funds-only execution paths.
+
+---
+
+@pushchain/core@6.0.3 (2026-05-16)
+
+- Added per-call `progressHook` support: `sendTransaction(params, { progressHook })`
+  is additive with the init-time hook, auto-registers on the returned response for
+  wait-phase progress, and dedupes by reference to avoid double-firing.
+
+---
+
+@pushchain/core@6.0.2 (2026-05-16)
 
 - Token constants now expose the missing `USDT.bsc` chain-suffix accessor,
   while keeping `USDT.bnb` as a deprecated alias for backward compatibility.
