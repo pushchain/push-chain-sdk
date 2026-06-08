@@ -1,3 +1,33 @@
+@pushchain/ui-kit@6.0.16 (2026-06-05)
+
+- fix: show progress events with `ERROR` level as failure toasts.
+- chore: update bundled `@pushchain/core` to pull in the latest core features and fixes.
+
+---
+
+@pushchain/ui-kit@6.0.12 (2026-05-20)
+
+- fix: honor `config.toast.hidden` when rendering wallet progress toasts.
+- fix: return `null` for hidden or missing toast content.
+
+---
+
+@pushchain/ui-kit@6.0.11 (2026-05-20)
+
+- feat: add configurable wallet toast placement through `config.toast.position`.
+- feat: expose toast position constants through `PushUI.CONSTANTS.TOAST.POSITION`.
+- fix: reset expanded toast details when a new progress event arrives.
+- fix: improve long error-message wrapping and toast width on small screens.
+- chore: add direct ui-kit build targets for skip-deps and direct TypeScript builds.
+
+---
+
+@pushchain/ui-kit@6.0.0 (2026-05-14)
+
+- note: major release aligned ui-kit with `@pushchain/core` v6.0.0.
+
+---
+
 @pushchain/ui-kit@5.2.11 (2026-05-12)
 
 - release: bump to 5.2.10
@@ -211,4 +241,3 @@
 - refactor: add changelog
 
 ---
-

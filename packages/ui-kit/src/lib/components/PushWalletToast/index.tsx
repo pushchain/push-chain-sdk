@@ -82,7 +82,7 @@ const PushWalletToast: FC<PushWalletToastProps> = ({
     const progressMessage = progress.message ?? '';
     const isInsufficientFundsError = progressMessage.includes('insufficient funds for gas');
     const isSuccess = SUCCESS_TERMINAL_IDS.includes(progress.id);
-    const isFailure = FAILURE_TERMINAL_IDS.includes(progress.id);
+    const isFailure = FAILURE_TERMINAL_IDS.includes(progress.id) || progress.level === 'ERROR';
     const txHash = (progress.response as { txHash?: string } | null)?.txHash;
 
     return (
