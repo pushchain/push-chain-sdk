@@ -362,7 +362,7 @@ export async function estimateNativeValueForSwap(
           `estimateNativeValueForSwap — exactOutput quoter=${quoterAddress}, ` +
             `wpcNeeded=${exactWpcNeeded}, withBuffer(2.2x)=${result}`
         );
-        return capSwapEstimate(result, accountBalance, GAS_RESERVE);
+        return capSwapEstimate(result, accountBalance, GAS_RESERVE, exactWpcNeeded);
       } catch (quoteErr) {
         printLog(
           ctx,
@@ -424,7 +424,7 @@ export async function estimateNativeValueForSwap(
         `wpcNeeded=${wpcNeeded}, withBuffer(2.2x)=${result}`
     );
 
-    return capSwapEstimate(result, accountBalance, GAS_RESERVE);
+    return capSwapEstimate(result, accountBalance, GAS_RESERVE, wpcNeeded);
   } catch (err) {
     printLog(
       ctx,
@@ -434,18 +434,35 @@ export async function estimateNativeValueForSwap(
   }
 }
 
-function capSwapEstimate(
+/**
+ * Bound the buffered swap estimate by the UEA's affordable PC.
+ *
+ * `result` is the 2.2x-buffered WPC needed for the gas swap; `minNeeded` is the
+ * un-buffered minimum the WPC->gasToken `exactOutput` swap actually consumes.
+ *
+ * Reducing the buffer to fit a tight balance is fine - but ONLY while the
+ * affordable amount (`accountBalance - reserve`) still covers `minNeeded`.
+ * Below that floor the swap cannot complete and reverts on-chain with Uniswap
+ * `STF`. The previous logic returned `accountBalance - reserve` unconditionally,
+ * which (a) under-funded `msg.value` into a doomed swap and (b) made the native
+ * preflight self-satisfying (`balance >= (balance - reserve) + reserve`), so the
+ * shortfall went undetected. When the balance can't cover the floor we now
+ * return the full `result` so the caller's preflight reports the real shortfall
+ * instead of emitting a cryptic STF.
+ */
+export function capSwapEstimate(
   result: bigint,
   accountBalance: bigint,
-  reserve: bigint
+  reserve: bigint,
+  minNeeded: bigint = BigInt(0)
 ): bigint {
   if (accountBalance > result + reserve) {
     return result;
   }
-  if (accountBalance > reserve) {
+  if (accountBalance > reserve && accountBalance - reserve >= minNeeded) {
     return accountBalance - reserve;
   }
-  return result; // let caller decide if balance is too low
+  return result; // balance can't cover the swap floor - surface true need to preflight
 }
 
 function balanceFallback(balance: bigint, divisor: bigint, reserve: bigint): bigint {

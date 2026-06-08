@@ -1,3 +1,17 @@
+@pushchain/core@6.0.17 (unreleased)
+
+- Fixed outbound (UOA_TO_CEA) transactions reverting on-chain with Uniswap `STF`
+  when the UEA held a modest amount of native PC - e.g. pETH -> Ethereum ETH.
+  Destination gas is funded by swapping the UEA's PC into the gas token, and
+  `capSwapEstimate` was sizing `nativeValueForGas` down to `balance - reserve`
+  even when that fell below the swap's actual requirement, so the swap reverted
+  with `STF` while the native pre-flight stayed silent (its check was
+  self-satisfying). The estimator now keeps the full requirement when the
+  affordable amount can't cover the swap floor, so the pre-flight reports the
+  real PC shortfall instead of emitting a cryptic on-chain `STF`.
+
+---
+
 @pushchain/core@6.0.16 (2026-06-05)
 
 - Fixed SVM domain-separator chainId encoding to match the pre-EIP-712 UEA_SVM

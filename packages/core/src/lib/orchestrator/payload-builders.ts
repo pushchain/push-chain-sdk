@@ -409,14 +409,14 @@ export function buildMigrationPayload(): `0x${string}` {
  * Build approval multicalls + sendUniversalTxOutbound call for Push Chain.
  *
  * Extracted from executeUoaToCea to be reusable in cascade composition.
- * Handles two cases:
- * - gasToken === prc20Token: single approval for burnAmount + gasFee
- * - gasToken !== prc20Token: two separate approvals
+ * The PRC-20 approval covers only the burn amount. Destination gas is funded
+ * through native PC msg.value on sendUniversalTxOutbound; UniversalCore swaps
+ * that native value into the route gas token inside swapAndBurnGas.
  *
  * @param opts.prc20Token - PRC-20 token to burn
- * @param opts.gasToken - Gas token for fee payment
+ * @param opts.gasToken - Gas token for fee payment, used by the outbound request
  * @param opts.burnAmount - Amount to burn
- * @param opts.gasFee - Gas fee amount
+ * @param opts.gasFee - Gas fee amount, used only for fallback native value sizing
  * @param opts.gatewayPcAddress - UniversalGatewayPC precompile address
  * @param opts.outboundRequest - The outbound request struct
  * @returns Array of MultiCall operations (approvals + outbound call)
