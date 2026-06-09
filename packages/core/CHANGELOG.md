@@ -1,3 +1,10 @@
+@pushchain/core@6.0.17 (2026-06-09)
+
+- fix: make SVM payload encoding browser-safe
+- fix: prevent underfunded outbound gas swaps
+
+---
+
 @pushchain/core@6.0.17 (unreleased)
 
 - Fixed outbound (UOA_TO_CEA) transactions reverting on-chain with Uniswap `STF`
