@@ -336,15 +336,40 @@ export function encodeUniversalPayload(payload: UniversalPayload): `0x${string}`
 }
 
 export function encodeUniversalPayloadSvm(payload: UniversalPayload): Buffer {
-  const writeU64 = (val: bigint | number | string): Buffer => {
+  const U64_MAX = (BigInt(1) << BigInt(64)) - BigInt(1);
+  const I64_MIN = -(BigInt(1) << BigInt(63));
+  const I64_MAX = (BigInt(1) << BigInt(63)) - BigInt(1);
+
+  const viewFor = (buf: Buffer): DataView =>
+    new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+
+  const assertRange = (
+    field: string,
+    val: bigint,
+    min: bigint,
+    max: bigint
+  ): void => {
+    if (val < min || val > max) {
+      throw new RangeError(
+        `SVM payload field ${field} out of range: ${val.toString()} ` +
+          `(expected ${min.toString()}..${max.toString()})`
+      );
+    }
+  };
+
+  const writeU64 = (field: string, val: bigint | number | string): Buffer => {
+    const n = BigInt(val);
+    assertRange(field, n, BigInt(0), U64_MAX);
     const b = Buffer.alloc(8);
-    b.writeBigUInt64LE(BigInt(val), 0);
+    viewFor(b).setBigUint64(0, n, true);
     return b;
   };
 
-  const writeI64 = (val: bigint | number | string): Buffer => {
+  const writeI64 = (field: string, val: bigint | number | string): Buffer => {
+    const n = BigInt(val);
+    assertRange(field, n, I64_MIN, I64_MAX);
     const b = Buffer.alloc(8);
-    b.writeBigInt64LE(BigInt(val), 0);
+    viewFor(b).setBigInt64(0, n, true);
     return b;
   };
 
@@ -353,7 +378,7 @@ export function encodeUniversalPayloadSvm(payload: UniversalPayload): Buffer {
       ? val
       : Buffer.from(val as Uint8Array | number[]);
     const len = Buffer.alloc(4);
-    len.writeUInt32LE(bytes.length, 0);
+    viewFor(len).setUint32(0, bytes.length, true);
     return Buffer.concat([len, bytes]);
   };
 
@@ -365,7 +390,10 @@ export function encodeUniversalPayloadSvm(payload: UniversalPayload): Buffer {
     return Buffer.from(hex, 'hex');
   })();
 
-  const valueBytes = writeU64(payload.value as unknown as bigint | number | string);
+  const valueBytes = writeU64(
+    'value',
+    payload.value as unknown as bigint | number | string
+  );
 
   const dataBytes = (() => {
     const data = payload.data as `0x${string}`;
@@ -374,11 +402,26 @@ export function encodeUniversalPayloadSvm(payload: UniversalPayload): Buffer {
     return writeVecU8(buf);
   })();
 
-  const gasLimitBytes = writeU64(payload.gasLimit as unknown as bigint | number | string);
-  const maxFeePerGasBytes = writeU64(payload.maxFeePerGas as unknown as bigint | number | string);
-  const maxPriorityFeePerGasBytes = writeU64(payload.maxPriorityFeePerGas as unknown as bigint | number | string);
-  const nonceBytes = writeU64(payload.nonce as unknown as bigint | number | string);
-  const deadlineBytes = writeI64(payload.deadline as unknown as bigint | number | string);
+  const gasLimitBytes = writeU64(
+    'gasLimit',
+    payload.gasLimit as unknown as bigint | number | string
+  );
+  const maxFeePerGasBytes = writeU64(
+    'maxFeePerGas',
+    payload.maxFeePerGas as unknown as bigint | number | string
+  );
+  const maxPriorityFeePerGasBytes = writeU64(
+    'maxPriorityFeePerGas',
+    payload.maxPriorityFeePerGas as unknown as bigint | number | string
+  );
+  const nonceBytes = writeU64(
+    'nonce',
+    payload.nonce as unknown as bigint | number | string
+  );
+  const deadlineBytes = writeI64(
+    'deadline',
+    payload.deadline as unknown as bigint | number | string
+  );
 
   const vTypeVal = (() => {
     const v = payload.vType as any;

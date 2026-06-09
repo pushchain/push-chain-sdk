@@ -715,6 +715,24 @@ describe('encodeUniversalPayloadSvm', () => {
     expect(deadline).toBe(BigInt(9999999999));
   });
 
+  it('does not require Buffer BigInt write methods (browser polyfill compatibility)', () => {
+    const proto = Buffer.prototype as typeof Buffer.prototype & {
+      writeBigUInt64LE?: typeof Buffer.prototype.writeBigUInt64LE;
+      writeBigInt64LE?: typeof Buffer.prototype.writeBigInt64LE;
+    };
+    const writeBigUInt64LE = proto.writeBigUInt64LE;
+    const writeBigInt64LE = proto.writeBigInt64LE;
+
+    try {
+      proto.writeBigUInt64LE = undefined;
+      proto.writeBigInt64LE = undefined;
+      expect(() => encodeUniversalPayloadSvm(makePayload())).not.toThrow();
+    } finally {
+      proto.writeBigUInt64LE = writeBigUInt64LE;
+      proto.writeBigInt64LE = writeBigInt64LE;
+    }
+  });
+
   it('encodes vType as a single byte at the end', () => {
     const payload = makePayload({
       data: '0x',

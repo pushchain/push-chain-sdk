@@ -10,6 +10,11 @@
   affordable amount can't cover the swap floor, so the pre-flight reports the
   real PC shortfall instead of emitting a cryptic on-chain `STF`.
 
+- Fixed SVM payload encoding in browser environments whose `Buffer` polyfill
+  does not implement Node's `writeBigUInt64LE` / `writeBigInt64LE` methods.
+  The encoder now writes u64/i64 fields with `DataView`, preserving the same
+  little-endian wire format without crashing during Solana transaction builds.
+
 ---
 
 @pushchain/core@6.0.16 (2026-06-05)
