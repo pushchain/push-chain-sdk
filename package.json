@@ -42,7 +42,27 @@
     "packages/*"
   ],
   "resolutions": {
-    "viem": "2.27.2"
+    "viem": "2.27.2",
+    "ws@npm:8.17.1": "^8.20.1",
+    "ws@npm:~8.17.1": "^8.20.1",
+    "ws@npm:8.18.1": "^8.20.1",
+    "@remix-run/router@npm:1.23.0": "^1.23.2",
+    "ajv@npm:8.17.1": "^8.18.0",
+    "ajv@npm:~8.12.0": "^8.18.0",
+    "ajv@npm:~8.13.0": "^8.18.0",
+    "axios@npm:1.13.6": "^1.16.0",
+    "handlebars@npm:4.7.8": "^4.7.9",
+    "js-yaml@npm:4.1.0": "^4.1.1",
+    "lodash@npm:4.17.21": "^4.18.0",
+    "lodash@npm:~4.17.15": "^4.18.0",
+    "minimatch@npm:7.4.6": "^7.4.8",
+    "minimatch@npm:9.0.3": "^9.0.7",
+    "minimatch@npm:~3.0.3": "^3.1.4",
+    "on-headers@npm:~1.0.2": "^1.1.0",
+    "postcss@npm:8.4.49": "^8.5.10",
+    "qs@npm:6.13.0": "^6.15.2",
+    "react-router@npm:6.30.0": "^6.30.4",
+    "validator@npm:13.12.0": "^13.15.22"
   },
   "nx": {
     "includedScripts": []

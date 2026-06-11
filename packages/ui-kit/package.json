@@ -47,5 +47,13 @@
   "scripts": {
     "release:stable": "npx nx run ui-kit:nx-release-publish --otp=1",
     "release:alpha": "npx nx run ui-kit:nx-release-alpha-publish --otp=1"
+  },
+  "resolutions": {
+    "axios@npm:1.13.6": "^1.16.0",
+    "ip-address@npm:^10.0.1": "^10.1.1",
+    "uuid@npm:^11.0.0": "^11.1.1",
+    "ws@npm:8.17.1": "^8.20.1",
+    "ws@npm:8.18.3": "^8.20.1",
+    "ws@npm:~8.18.3": "^8.20.1"
   }
 }
