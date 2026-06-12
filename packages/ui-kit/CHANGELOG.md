@@ -1,3 +1,24 @@
+@pushchain/ui-kit@6.0.18 (2026-06-12)
+
+- release: bump to 6.0.17
+- release: bump to 6.0.16
+- release: bump to 6.0.15
+- release: bump to 6.0.14
+- release: bump to 6.0.13
+- release: bump to 6.0.12
+- release: bump to 6.0.11
+- release: bump to 6.0.9
+- release: bump to 6.0.8
+- release: bump to 6.0.6
+- release: bump to 6.0.4
+- release: bump to 6.0.2
+- release: bump to 6.0.1
+- release: bump to 6.0.0
+- release: bump to 5.2.11
+- release: bump to 5.2.10
+
+---
+
 @pushchain/ui-kit@6.0.17 (2026-06-09)
 
 - chore: update bundled `@pushchain/core` to pull in the latest core features and fixes.
