@@ -319,8 +319,8 @@ export function buildOutboundRequest(
   gasLimit: bigint,
   payload: `0x${string}`,
   revertRecipient: `0x${string}`,
-  maxPCForGas: bigint = BigInt(0),
-  gasPrice: bigint = BigInt(0)
+  maxPCForGas = BigInt(0),
+  gasPrice = BigInt(0)
 ): UniversalOutboundTxRequest {
   return {
     recipient,

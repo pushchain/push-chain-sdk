@@ -223,7 +223,7 @@ export async function executeFundsWithPayload(
   }
 
   // Final USD(8) -> native conversion reusing the cached price fetched above.
-  let nativeAmount = usdToNative(depositUsd);
+  const nativeAmount = usdToNative(depositUsd);
 
   fireProgressHook(
     ctx,

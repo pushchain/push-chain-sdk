@@ -26,7 +26,10 @@
               "{projectRoot}/**/*.spec.ts"
             ],
             "ignoredDependencies": [
-              "buffer"
+              "buffer",
+              "dotenv",
+              "ethers",
+              "tweetnacl"
             ]
           }
         ]

@@ -454,7 +454,7 @@ export function capSwapEstimate(
   result: bigint,
   accountBalance: bigint,
   reserve: bigint,
-  minNeeded: bigint = BigInt(0)
+  minNeeded = BigInt(0)
 ): bigint {
   if (accountBalance > result + reserve) {
     return result;

@@ -1,0 +1,71 @@
+name: Publish UI Kit
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump-type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      alpha:
+        description: 'Publish as alpha pre-release?'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      # Trusted publishing (OIDC) requires npm >= 11.5.1
+      - name: Update npm
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          yarn install --immutable
+
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Release and publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/release-automated.sh ui-kit ${{ inputs.bump-type }} ${{ inputs.alpha }}
+
+      - name: Create GitHub Release
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./packages/ui-kit/package.json').version")
+          TAG="ui-kit@$VERSION"
+
+          CHANGELOG_FILE="packages/ui-kit/CHANGELOG.md"
+          if [ -f "$CHANGELOG_FILE" ]; then
+            LATEST_NOTES=$(awk '/^---$/ { exit } { print }' "$CHANGELOG_FILE")
+            gh release create "$TAG" --title "🚀 $TAG" --notes "$LATEST_NOTES" --latest
+          else
+            gh release create "$TAG" --title "🚀 $TAG" --notes "Automated release of $TAG" --latest
+          fi
