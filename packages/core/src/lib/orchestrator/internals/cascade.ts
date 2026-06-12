@@ -1573,7 +1573,7 @@ export async function composeCascadeDetailed(
         } else {
           evmFallbackValue = segGasFee * BigInt(1000000);
         }
-        let nativeValueForGas =
+        const nativeValueForGas =
           svmOverride ??
           evmNativeValueBySegment.get(segment) ??
           perOutboundNativeValue ??

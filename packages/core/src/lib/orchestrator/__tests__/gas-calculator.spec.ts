@@ -9,7 +9,7 @@ const WPC = '0xE17DD2E0509f99E9ee9469Cf6634048Ec5a3ADe9';
 const PSOL = '0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed';
 const FACTORY = '0x81b8Bca02580C7d6b636051FDb7baAC436bFb454';
 
-function makeCtx(amountIn: bigint = BigInt(10)): OrchestratorContext {
+function makeCtx(amountIn = BigInt(10)): OrchestratorContext {
   return {
     printTraces: false,
     pushNetwork: PUSH_NETWORK.TESTNET_DONUT,
