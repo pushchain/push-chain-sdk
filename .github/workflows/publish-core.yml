@@ -19,54 +19,49 @@ on:
 
 permissions:
   contents: write
-  packages: write
-  pull-requests: write
   id-token: write
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
+      # Trusted publishing (OIDC) requires npm >= 11.5.1
+      - name: Update npm
+        run: npm install -g npm@latest
+
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: |
+          corepack enable
+          yarn install --immutable
 
       - name: Configure git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Configure npm for OIDC publish
-        run: |
-          echo "registry=https://registry.npmjs.org/" > .npmrc
-
-      - name: Run automated release
+      - name: Release and publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Use the automated release script
-          bash scripts/release-automated.sh core ${{ inputs.bump-type }} ${{ inputs.alpha }}
+        run: bash scripts/release-automated.sh core ${{ inputs.bump-type }} ${{ inputs.alpha }}
 
       - name: Create GitHub Release
         if: success()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Get the new version and create release
           VERSION=$(node -p "require('./packages/core/package.json').version")
           TAG="core@$VERSION"
 
-          # Extract latest changelog
           CHANGELOG_FILE="packages/core/CHANGELOG.md"
           if [ -f "$CHANGELOG_FILE" ]; then
             LATEST_NOTES=$(awk '/^---$/ { exit } { print }' "$CHANGELOG_FILE")
