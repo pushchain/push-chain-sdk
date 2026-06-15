@@ -21,6 +21,7 @@
 
 @pushchain/ui-kit@6.0.17 (2026-06-09)
 
+- feat: add Phantom mobile browser handoff for Solana wallet connections.
 - chore: update bundled `@pushchain/core` to pull in the latest core features and fixes.
 
 ---
