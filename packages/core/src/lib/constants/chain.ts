@@ -184,6 +184,10 @@ export const CHAIN_INFO: Record<
     lockerContract?: string;
     gatewayVersion?: 'v0' | 'v1'; // v0 = RevertInstructions struct, v1 = revertRecipient address
     defaultRPC: string[];
+    // Full-history (archive) EVM JSON-RPC, used as a fallback when the prune
+    // `defaultRPC` can't serve an older tx (a pruned-history miss). Unset for
+    // chains without a dedicated archive endpoint (fallback becomes a no-op).
+    archiveRPC?: string[];
     confirmations: number; // Confirmations required to mark a tx as finalized
     fastConfirmations: number; // Confirmations for GAS tx types (0, 1) - typically 0 for fast mode
     timeout: number; // Wait timeout in ms for required confirmations : Ideal value = (confirmations + 1)* Avg Chain Block time
@@ -210,6 +214,9 @@ export const CHAIN_INFO: Record<
     chainId: '42101',
     vm: VM.EVM,
     defaultRPC: ['https://evm.donut.rpc.push.org/'],
+    // Archive (full-history) EVM RPC — fallback for tracking older txs the
+    // prune `defaultRPC` has dropped.
+    archiveRPC: ['https://archive.evm.donut.rpc.push.org/'],
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 30000,
@@ -361,6 +368,11 @@ export const PUSH_CHAIN_INFO: Record<
   (typeof CHAIN_INFO)[CHAIN.PUSH_MAINNET] & {
     denom: string;
     tendermintRpc: string[];
+    // Full-history (archive) Tendermint RPC, used as a fallback when the prune
+    // `tendermintRpc` can't serve an older tx (e.g. `tx_search` for a leg
+    // outside the prune window). Unset where there is no archive endpoint
+    // (fallback becomes a no-op).
+    archiveTendermintRpc?: string[];
     prefix: string;
     factoryAddress: `0x${string}`;
     pushDecimals: bigint;
@@ -384,6 +396,9 @@ export const PUSH_CHAIN_INFO: Record<
     ...CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT],
     denom: 'upc',
     tendermintRpc: ['https://donut.rpc.push.org/'],
+    // Archive (full-history) Tendermint RPC — fallback for tracking older txs
+    // whose legs fall outside the prune window.
+    archiveTendermintRpc: ['https://archive.donut.rpc.push.org/'],
     prefix: 'push',
     factoryAddress: '0x00000000000000000000000000000000000000eA',
     pushDecimals: BigInt(1e18),

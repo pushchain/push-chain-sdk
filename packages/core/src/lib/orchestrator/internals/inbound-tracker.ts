@@ -331,9 +331,12 @@ export async function waitForInboundPushTx(
           // chain, treat as terminal-success; if it reverted, treat as
           // terminal-failure. Cosmos-indexer lag stops blocking us here.
           try {
-            const receipt = await ctx.pushClient.publicClient.getTransactionReceipt({
-              hash: pushTxHash as `0x${string}`,
-            });
+            // Archive-fallback variant: a Push-leg receipt outside the prune
+            // window still resolves via the archive node. On chains without an
+            // archive endpoint this behaves as a plain prune-only lookup.
+            const receipt = await ctx.pushClient.getTransactionReceiptWithArchiveFallback(
+              pushTxHash as `0x${string}`
+            );
             if (receipt?.status === 'success') {
               printLog(
                 ctx,
