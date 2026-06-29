@@ -24,9 +24,9 @@ import type {
 } from '../orchestrator.types';
 import type { OrchestratorContext } from './context';
 import { fireProgressHook, printLog } from './context';
-import { decodeRevert } from './error-decoder';
+import { decodeRevert, formatDecodedRevertForUser } from './error-decoder';
 import { PushChainExecutionError } from './errors';
-import { normalizePcInsufficientFundsError } from '../../formatters';
+import { normalizePublicErrorMessage } from '../../formatters';
 
 // ============================================================================
 // PushChainExecutionError
@@ -371,20 +371,21 @@ export async function sendUniversalTx(
     // wiring in `extractPcTxAndTransform` for the post-success `pcTx FAILED`
     // path. Also feeds the structured `decodedError` payload through to the
     // terminal hook (199-02 / 299-02 / 399-02 / 999-02).
-    let augmentedMessage = tx.rawLog ?? '';
+    const rawMessage = tx.rawLog ?? '';
+    let publicMessage = normalizePublicErrorMessage(rawMessage);
     let decodedForPayload:
       | { name?: string; hint?: string; selector?: string; decoded?: string }
       | undefined;
-    const decoded = decodeRevert(augmentedMessage);
+    const decoded = decodeRevert(rawMessage);
     if (decoded?.kind === 'custom') {
-      augmentedMessage = `${augmentedMessage} [${decoded.name}: ${decoded.hint}]`;
+      publicMessage = formatDecodedRevertForUser(decoded);
       decodedForPayload = {
         name: decoded.name,
         hint: decoded.hint,
         selector: decoded.selector,
       };
     } else if (decoded?.kind === 'string') {
-      augmentedMessage = `${augmentedMessage} [Error(string): "${decoded.decoded}"]`;
+      publicMessage = formatDecodedRevertForUser(decoded);
       decodedForPayload = {
         decoded: decoded.decoded,
         selector: decoded.selector,
@@ -402,13 +403,13 @@ export async function sendUniversalTx(
       `Block Height: ${tx.height}, TX Code: ${tx.code} (error)`,
       `Gas Used: ${tx.gasUsed}, Gas Wanted: ${tx.gasWanted}`,
       ...(failedEthTxHashes.length > 0 ? [`Ethereum TX Hash(es): ${failedEthTxHashes.join(', ')}`] : []),
-      `Error: ${augmentedMessage}`,
+      `Error: ${publicMessage}`,
     ].join(' | ');
     printLog(ctx, failureSummary);
 
     // Throw a typed error so the orchestrator's outer catch can lift the
     // structured `decodedError` straight onto the terminal-hook payload.
-    throw new PushChainExecutionError(augmentedMessage, {
+    throw new PushChainExecutionError(publicMessage, {
       decodedError: decodedForPayload,
     });
   }
@@ -483,8 +484,9 @@ export async function extractPcTxAndTransform(
           (pcTx: { status?: string; errorMsg?: string }) =>
             pcTx.status === 'FAILED' && pcTx.errorMsg
         );
-    const failedPcTxErrorMsg = failedPcTx?.errorMsg
-      ? normalizePcInsufficientFundsError(failedPcTx.errorMsg)
+    const rawFailedPcTxErrorMsg = failedPcTx?.errorMsg ?? '';
+    let failedPcTxErrorMsg = rawFailedPcTxErrorMsg
+      ? normalizePublicErrorMessage(rawFailedPcTxErrorMsg)
       : '';
     const errorDetails = failedPcTxErrorMsg ? `: ${failedPcTxErrorMsg}` : '';
     // Decode known revert selectors and ABI-encoded `Error(string)` reverts
@@ -494,16 +496,18 @@ export async function extractPcTxAndTransform(
     let decodedForPayload:
       | { name?: string; hint?: string; selector?: string; decoded?: string }
       | undefined;
-    const decoded = decodeRevert(failedPcTx?.errorMsg ?? '');
+    const decoded = decodeRevert(rawFailedPcTxErrorMsg);
     if (decoded?.kind === 'custom') {
-      hint = ` [${decoded.name}: ${decoded.hint}]`;
+      failedPcTxErrorMsg = formatDecodedRevertForUser(decoded);
+      hint = '';
       decodedForPayload = {
         name: decoded.name,
         hint: decoded.hint,
         selector: decoded.selector,
       };
     } else if (decoded?.kind === 'string') {
-      hint = ` [Error(string): "${decoded.decoded}"]`;
+      failedPcTxErrorMsg = formatDecodedRevertForUser(decoded);
+      hint = '';
       decodedForPayload = {
         decoded: decoded.decoded,
         selector: decoded.selector,
@@ -514,8 +518,11 @@ export async function extractPcTxAndTransform(
         `[error-decoder] unknown selector ${decoded.selector} — consider adding to KNOWN_ERROR_SELECTORS`
       );
     }
+    const decodedErrorDetails = failedPcTxErrorMsg
+      ? `: ${failedPcTxErrorMsg}`
+      : errorDetails;
     const fullMessage =
-      `Push Chain transaction failed for gateway tx: ${gatewayTxHash}${errorDetails}${hint}`;
+      `Push Chain transaction failed for gateway tx: ${gatewayTxHash}${decodedErrorDetails}${hint}`;
     // Live-emit 199-02 before throwing so the terminal failure hook reaches
     // any caller-registered progress stream (parity with reconstructProgressEvents
     // which emits 199-02 on replay).

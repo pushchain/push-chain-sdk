@@ -102,6 +102,18 @@ export type DecodedRevert =
   | DecodedRevertString
   | DecodedRevertUnknown;
 
+export function formatDecodedRevertForUser(decoded: DecodedRevert): string {
+  if (decoded.kind === 'custom') {
+    return `${decoded.name}: ${decoded.hint}`;
+  }
+
+  if (decoded.kind === 'string') {
+    return `Reverted with Error("${decoded.decoded}")`;
+  }
+
+  return `Unknown EVM revert selector ${decoded.selector}`;
+}
+
 /**
  * Extracts the first hex blob after `ret ` from a Cosmos tx error message,
  * pulls the 4-byte selector, and looks it up. Returns `null` when no blob

@@ -44,7 +44,7 @@ import { buildSvmUniversalTxRequest, getSvmProtocolFee } from './svm-helpers';
 import { fetchOriginChainTransactionForProgress } from './helpers';
 import type { ResponseBuilderCallbacks } from './response-builder';
 import { transformToUniversalTxResponse } from './response-builder';
-import { normalizePcInsufficientFundsError } from '../../formatters';
+import { normalizePublicErrorMessage } from '../../formatters';
 
 export async function executeFundsOnly(
   ctx: OrchestratorContext,
@@ -272,8 +272,10 @@ async function executeFundsOnlyEvm(
       isNative ? nativeAmount + bridgeAmount : nativeAmount,
     );
   } catch (err) {
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_04);
-    throw err;
+    const errMsg = normalizePublicErrorMessage(err);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_04, errMsg);
+    ctx._routeTerminalEmitted = true;
+    throw new Error(errMsg);
   }
 
   const originTx = await fetchOriginChainTransactionForProgress(ctx, chain, txHash, txHash);
@@ -299,9 +301,7 @@ async function executeFundsOnlyEvm(
     response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txHash, eventBuffer, 'sendFunds', transformFn);
   } catch (err) {
     if (!(err instanceof PushChainExecutionError)) {
-      const errMsg = normalizePcInsufficientFundsError(
-        err instanceof Error ? err.message : String(err)
-      );
+      const errMsg = normalizePublicErrorMessage(err);
       fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, errMsg);
       throw new PushChainExecutionError(errMsg, { gatewayTxHash: txHash });
     }
@@ -418,9 +418,7 @@ async function executeFundsOnlySvm(
     response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txSignature, eventBuffer, 'sendFunds (SVM)', transformFn);
   } catch (err) {
     if (!(err instanceof PushChainExecutionError)) {
-      const errMsg = normalizePcInsufficientFundsError(
-        err instanceof Error ? err.message : String(err)
-      );
+      const errMsg = normalizePublicErrorMessage(err);
       fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, errMsg);
       throw new PushChainExecutionError(errMsg, { gatewayTxHash: txSignature });
     }

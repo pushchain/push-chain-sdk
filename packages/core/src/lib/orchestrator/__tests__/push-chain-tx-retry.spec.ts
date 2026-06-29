@@ -174,7 +174,7 @@ describe('sendUniversalTx — InvalidEVMSignature retry', () => {
         transformFn,
         resignFn,
       )
-    ).rejects.toThrow(/f4d678b8/);
+    ).rejects.toThrow(/InsufficientBalance/);
 
     expect(broadcast).toHaveBeenCalledTimes(1);
     expect(resignFn).not.toHaveBeenCalled();
@@ -261,7 +261,7 @@ describe('sendUniversalTx — decoder on broadcast-failed path', () => {
   const transformFn = jest.fn().mockResolvedValue({ hash: '0xabc' } as any);
   beforeEach(() => transformFn.mockClear());
 
-  it('attaches [InsufficientBalance: …] hint + decodedError on 0xf4d678b8', async () => {
+  it('throws a compact InsufficientBalance message + decodedError on 0xf4d678b8', async () => {
     const broadcast = jest.fn().mockResolvedValueOnce(OTHER_FAILURE_TX);
     const ctx = makeCtx(broadcast);
     const resignFn = jest.fn();
@@ -285,11 +285,11 @@ describe('sendUniversalTx — decoder on broadcast-failed path', () => {
 
     expect(caught).toBeInstanceOf(PushChainExecutionError);
     const err = caught as PushChainExecutionError;
-    // Original rawLog still embedded in the message (regex compat with pre-existing tests).
-    expect(err.message).toMatch(/0xf4d678b8/);
-    // New: decoder appended the [Name: hint] block.
-    expect(err.message).toMatch(/\[InsufficientBalance:/);
-    // New: structured payload available for terminal-hook consumers.
+    expect(err.message).toMatch(/^InsufficientBalance:/);
+    expect(err.message).toContain('token being moved');
+    expect(err.message).not.toContain('execution reverted');
+    expect(err.message).not.toContain('0xf4d678b8');
+    expect(err.message.length).toBeLessThan(300);
     expect(err.decodedError).toBeDefined();
     expect(err.decodedError?.name).toBe('InsufficientBalance');
     expect(err.decodedError?.selector).toBe('0xf4d678b8');

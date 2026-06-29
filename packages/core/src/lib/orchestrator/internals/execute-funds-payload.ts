@@ -57,7 +57,7 @@ import { sendSVMTxWithFunds } from './svm-bridge';
 import { encodeUniversalPayload } from './signing';
 import type { UniversalPayload } from '../../generated/v1/tx';
 import { quoteExactOutput } from './quote';
-import { normalizePcInsufficientFundsError } from '../../formatters';
+import { normalizePublicErrorMessage } from '../../formatters';
 import { getNativePRC20ForChain } from './helpers';
 
 export async function executeFundsWithPayload(
@@ -309,8 +309,10 @@ export async function executeFundsWithPayload(
       });
     }
   } catch (err) {
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_04);
-    throw err;
+    const errMsg = normalizePublicErrorMessage(err);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_04, errMsg);
+    ctx._routeTerminalEmitted = true;
+    throw new Error(errMsg);
   }
 
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_03);
@@ -358,9 +360,7 @@ export async function executeFundsWithPayload(
     response = await extractPcTxAndTransform(ctx, pushChainUniversalTx, txHash as string, eventBuffer, 'sendTxWithFunds', transformFn);
   } catch (err) {
     if (!(err instanceof PushChainExecutionError)) {
-      const errMsg = normalizePcInsufficientFundsError(
-        err instanceof Error ? err.message : String(err)
-      );
+      const errMsg = normalizePublicErrorMessage(err);
       fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, errMsg);
       throw new PushChainExecutionError(errMsg, { gatewayTxHash: txHash as string });
     }
