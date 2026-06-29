@@ -19,7 +19,10 @@ import {
   PROGRESS_HOOK,
   ProgressEvent,
 } from '../../progress-hook/progress-hook.types';
-import { formatPc, normalizePcInsufficientFundsError } from '../../formatters';
+import {
+  formatPc,
+  normalizePublicErrorMessage,
+} from '../../formatters';
 import { Utils } from '../../utils';
 import { EvmClient } from '../../vm-client/evm-client';
 import type { TxResponse } from '../../vm-client/vm-client.types';
@@ -169,9 +172,7 @@ export async function executeStandardPayload(
     } catch (err) {
       // Push Chain broadcast failed. Wallet rejection surfaces as 104-04;
       // everything else (RPC fail, on-chain revert) as 199-02.
-      const errMsg = normalizePcInsufficientFundsError(
-        err instanceof Error ? err.message : String(err)
-      );
+      const errMsg = normalizePublicErrorMessage(err);
       const { isUserDecline } = classifyDeclineError(errMsg);
       fireProgressHook(
         ctx,
@@ -369,11 +370,10 @@ export async function executeStandardPayload(
       // Wallet decline, contract revert during sign, or RPC failure — the
       // 104-04 builder's classifyDeclineError heuristic picks the right
       // copy (real decline → "Verification Declined"; else "Signature Failed").
-      const errMsg = normalizePcInsufficientFundsError(
-        err instanceof Error ? err.message : String(err)
-      );
+      const errMsg = normalizePublicErrorMessage(err);
       fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_04, errMsg);
-      throw err;
+      ctx._routeTerminalEmitted = true;
+      throw new Error(errMsg);
     }
     verificationData = bytesToHex(signature);
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_03);
@@ -512,9 +512,10 @@ export async function executeStandardPayload(
     } catch (err) {
       // User declined the fee-lock tx submission or the origin-chain RPC
       // rejected it — classifier picks decline vs generic signature failure.
-      const errMsg = err instanceof Error ? err.message : String(err);
+      const errMsg = normalizePublicErrorMessage(err);
       fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_104_04, errMsg);
-      throw err;
+      ctx._routeTerminalEmitted = true;
+      throw new Error(errMsg);
     }
     feeLockTxHash = bytesToHex(feeLockTxHashBytes);
     verificationData = bytesToHex(feeLockTxHashBytes);
@@ -528,7 +529,7 @@ export async function executeStandardPayload(
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_105_01, feeLockTxHashDisplay, originTx);
 
     await waitForLockerFeeConfirmation(ctx, feeLockTxHashBytes);
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_105_02);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_105_02, feeLockTxHashDisplay);
 
     const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_107);
@@ -550,9 +551,7 @@ export async function executeStandardPayload(
       );
     } catch (err) {
       if (!(err instanceof PushChainExecutionError)) {
-        const errMsg = normalizePcInsufficientFundsError(
-          err instanceof Error ? err.message : String(err)
-        );
+        const errMsg = normalizePublicErrorMessage(err);
         fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, errMsg);
         throw new PushChainExecutionError(errMsg, { gatewayTxHash: feeLockTxHash });
       }
@@ -592,9 +591,7 @@ export async function executeStandardPayload(
     // exhaustion). Surface terminal 199-02 before re-throwing so the stream
     // ends with the spec'd error hook. Typed PushChainExecutionError lets
     // callers classify via instanceof without message sniffing.
-    const errMsg = normalizePcInsufficientFundsError(
-      err instanceof Error ? err.message : String(err)
-    );
+    const errMsg = normalizePublicErrorMessage(err);
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, errMsg);
     if (err instanceof PushChainExecutionError) throw err;
     throw new PushChainExecutionError(errMsg);

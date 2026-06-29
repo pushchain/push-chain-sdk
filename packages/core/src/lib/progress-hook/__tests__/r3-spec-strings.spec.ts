@@ -161,16 +161,27 @@ describe('Route 3 spec strings (301–399)', () => {
   });
 
   it('309-01 — Awaiting {Source Chain} Relay', () => {
-    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_309_01](sourceChain);
+    const pushTxHash = '0xpush';
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_309_01](
+      sourceChain,
+      pushTxHash
+    );
     expect(ev.title).toBe(`Awaiting ${chainName} Relay`);
     expect(ev.message).toBe(`Waiting for UGPC to relay to CEA on ${sourceChain}`);
+    expect(ev.response).toMatchObject({ pushTxHash });
     expect(ev.level).toBe('INFO');
   });
 
   it('309-02 — Syncing State with {Source Chain}', () => {
-    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_309_02](sourceChain, 5000);
+    const pushTxHash = '0xpush';
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_309_02](
+      sourceChain,
+      5000,
+      pushTxHash
+    );
     expect(ev.title).toBe(`Syncing State with ${chainName}`);
     expect(ev.message).toBe(`Polling ${sourceChain} for CEA execution`);
+    expect(ev.response).toMatchObject({ pushTxHash });
     expect(ev.level).toBe('INFO');
   });
 
@@ -184,18 +195,29 @@ describe('Route 3 spec strings (301–399)', () => {
   });
 
   it('310-01 — {Source Chain} → Push Chain Inbound Tx Submitted', () => {
-    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_310_01](sourceChain);
+    const pushTxHash = '0xpush';
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_310_01](
+      sourceChain,
+      pushTxHash
+    );
     expect(ev.title).toBe(`${chainName} → Push Chain Inbound Tx Submitted`);
     expect(ev.message).toBe(
       `CEA initiated return — waiting for Push Chain inbound from ${sourceChain}`
     );
+    expect(ev.response).toMatchObject({ pushTxHash });
     expect(ev.level).toBe('INFO');
   });
 
   it('310-02 — Syncing State with Push Chain for Inbound Tx', () => {
-    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_310_02](sourceChain, 5000);
+    const pushTxHash = '0xpush';
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_310_02](
+      sourceChain,
+      5000,
+      pushTxHash
+    );
     expect(ev.title).toBe('Syncing State with Push Chain for Inbound Tx');
     expect(ev.message).toBe(`Polling Push Chain for inbound from ${sourceChain}`);
+    expect(ev.response).toMatchObject({ pushTxHash });
     expect(ev.level).toBe('INFO');
   });
 
@@ -219,10 +241,17 @@ describe('Route 3 spec strings (301–399)', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](
       'inbound execution failed on Push Chain',
       'inbound',
-      sourceChain
+      sourceChain,
+      undefined,
+      '0xroot',
+      '0xinbound'
     );
     expect(ev.title).toBe('Push Chain Inbound Tx Failed');
     expect(ev.message).toBe('inbound execution failed on Push Chain');
+    expect(ev.response).toMatchObject({
+      pushTxHash: '0xroot',
+      txHash: '0xinbound',
+    });
     expect(ev.level).toBe('ERROR');
   });
 
@@ -230,20 +259,32 @@ describe('Route 3 spec strings (301–399)', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](
       'Outbound to eip155:97 reverted on source-chain RPC.',
       'outbound',
-      sourceChain
+      sourceChain,
+      undefined,
+      '0xroot',
+      '0xexternal'
     );
     expect(ev.title).toBe(`${chainName} Tx Failed`);
     expect(ev.message).toBe('Outbound to eip155:97 reverted on source-chain RPC.');
+    expect(ev.response).toMatchObject({
+      pushTxHash: '0xroot',
+      txHash: '0xexternal',
+    });
     expect(ev.level).toBe('ERROR');
   });
 
   it('399-02 [push] — Push Chain Tx Failed', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](
       'Push Chain gateway tx reverted',
-      'push'
+      'push',
+      undefined,
+      undefined,
+      undefined,
+      '0xpush'
     );
     expect(ev.title).toBe('Push Chain Tx Failed');
     expect(ev.message).toBe('Push Chain gateway tx reverted');
+    expect(ev.response).toMatchObject({ txHash: '0xpush' });
     expect(ev.level).toBe('ERROR');
   });
 
@@ -251,10 +292,12 @@ describe('Route 3 spec strings (301–399)', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](
       sourceChain,
       300_000,
-      'inbound'
+      'inbound',
+      '0xroot'
     );
     expect(ev.title).toBe('Push Chain Inbound Tx Timeout');
     expect(ev.message).toBe(`Timed out waiting for inbound from ${sourceChain}`);
+    expect(ev.response).toMatchObject({ pushTxHash: '0xroot' });
     expect(ev.level).toBe('ERROR');
   });
 
@@ -262,10 +305,12 @@ describe('Route 3 spec strings (301–399)', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](
       sourceChain,
       30_000,
-      'outbound'
+      'outbound',
+      '0xroot'
     );
     expect(ev.title).toBe('Push Chain Inbound Tx Timeout');
     expect(ev.message).toBe(`Timed out waiting for ${chainName} relay`);
+    expect(ev.response).toMatchObject({ pushTxHash: '0xroot' });
     expect(ev.level).toBe('ERROR');
   });
 
@@ -273,10 +318,12 @@ describe('Route 3 spec strings (301–399)', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](
       sourceChain,
       60_000,
-      'push'
+      'push',
+      '0xpush'
     );
     expect(ev.title).toBe('Push Chain Inbound Tx Timeout');
     expect(ev.message).toBe('Timed out waiting for Push Chain tx');
+    expect(ev.response).toMatchObject({ pushTxHash: '0xpush' });
     expect(ev.level).toBe('ERROR');
   });
 

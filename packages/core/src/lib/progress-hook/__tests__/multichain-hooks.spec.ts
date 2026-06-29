@@ -61,17 +61,20 @@ describe('multichain (multi-hop) progress hooks', () => {
   });
 
   it('SEND_TX_999_01 emits multichain success', () => {
-    const event = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_01](3);
+    const event = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_01](3, '0xfinal');
     expect(event.id).toBe('SEND-TX-999-01');
     expect(event.level).toBe('SUCCESS');
     expect(event.message).toBe('3-hop transaction confirmed across all chains');
+    expect(event.response).toMatchObject({ txHash: '0xfinal' });
   });
 
   it('SEND_TX_999_02 reports failedAt and error', () => {
     const event = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_02](
       2,
       3,
-      'cea revert'
+      'cea revert',
+      '0xfailed',
+      '0xroot'
     );
     expect(event.id).toBe('SEND-TX-999-02');
     expect(event.level).toBe('ERROR');
@@ -80,11 +83,18 @@ describe('multichain (multi-hop) progress hooks', () => {
       failedAt: 2,
       total: 3,
       error: 'cea revert',
+      txHash: '0xfailed',
+      pushTxHash: '0xroot',
     });
   });
 
   it('SEND_TX_999_03 reports timeout location', () => {
-    const event = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_03](2, 3);
+    const event = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_03](
+      2,
+      3,
+      undefined,
+      '0xroot'
+    );
     expect(event.id).toBe('SEND-TX-999-03');
     expect(event.level).toBe('ERROR');
     expect(event.message).toBe('Multichain timed out at hop 2 of 3');
@@ -92,6 +102,7 @@ describe('multichain (multi-hop) progress hooks', () => {
       failedAt: 2,
       total: 3,
       error: 'multichain timeout',
+      pushTxHash: '0xroot',
     });
   });
 });

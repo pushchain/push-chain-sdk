@@ -304,25 +304,36 @@ const RAW_HOOKS_R1: {
     },
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_106_03]: (required: number) => ({
+  [PROGRESS_HOOK.SEND_TX_106_03]: (
+    required: number,
+    txHash?: string
+  ) => ({
     id: PROGRESS_HOOK.SEND_TX_106_03,
     title: 'Awaiting Confirmations',
     message: `Waiting for ${required} confirmations`,
-    response: { current: 0, required },
+    response: { current: 0, required, ...(txHash ? { txHash } : {}) },
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_106_03_01]: (current: number, required: number) => ({
+  [PROGRESS_HOOK.SEND_TX_106_03_01]: (
+    current: number,
+    required: number,
+    txHash?: string
+  ) => ({
     id: PROGRESS_HOOK.SEND_TX_106_03_01,
     title: `Confirmation ${current}/${required} Received`,
     message: `${current}/${required} confirmations received`,
-    response: { current, required },
+    response: { current, required, ...(txHash ? { txHash } : {}) },
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_106_03_02]: (current: number, required: number) => ({
+  [PROGRESS_HOOK.SEND_TX_106_03_02]: (
+    current: number,
+    required: number,
+    txHash?: string
+  ) => ({
     id: PROGRESS_HOOK.SEND_TX_106_03_02,
     title: `Confirmation ${current}/${required} Received`,
     message: `${current}/${required} confirmations received`,
-    response: { current, required },
+    response: { current, required, ...(txHash ? { txHash } : {}) },
     level: 'SUCCESS',
   }),
   [PROGRESS_HOOK.SEND_TX_106_04]: (txHash?: string) => ({
@@ -378,7 +389,8 @@ const RAW_HOOKS_R1: {
       hint?: string;
       selector?: string;
       decoded?: string;
-    }
+    },
+    txHash?: string
   ) => {
     const normalizedErrMessage = normalizePcInsufficientFundsError(errMessage);
     return {
@@ -387,6 +399,7 @@ const RAW_HOOKS_R1: {
       message: normalizedErrMessage,
       response: {
         error: normalizedErrMessage,
+        ...(txHash ? { txHash } : {}),
         ...(decodedError ? { decodedError } : {}),
       },
       level: 'ERROR',
@@ -592,21 +605,29 @@ const RAW_HOOKS_R2: {
     response: { chain: targetChain },
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_209_01]: (targetChain: string | CHAIN) => ({
+  [PROGRESS_HOOK.SEND_TX_209_01]: (
+    targetChain: string | CHAIN,
+    pushTxHash?: string
+  ) => ({
     id: PROGRESS_HOOK.SEND_TX_209_01,
     title: 'Awaiting Push Chain Relay',
     message: `Waiting for UGPC to relay execution to ${targetChain}`,
-    response: { chain: targetChain },
+    response: { chain: targetChain, ...(pushTxHash ? { pushTxHash } : {}) },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_209_02]: (
     targetChain: string | CHAIN,
-    elapsedMs: number
+    elapsedMs: number,
+    pushTxHash?: string
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_209_02,
     title: `Syncing State with ${friendlyChain(targetChain)}`,
     message: `Polling ${targetChain} for CEA execution`,
-    response: { chain: targetChain, elapsedMs },
+    response: {
+      chain: targetChain,
+      elapsedMs,
+      ...(pushTxHash ? { pushTxHash } : {}),
+    },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_299_01]: (details: OutboundTxDetails) => ({
@@ -624,7 +645,9 @@ const RAW_HOOKS_R2: {
       hint?: string;
       selector?: string;
       decoded?: string;
-    }
+    },
+    pushTxHash?: string,
+    txHash?: string
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_299_02,
     title: `${friendlyChain(targetChain)} Tx Failed`,
@@ -632,18 +655,26 @@ const RAW_HOOKS_R2: {
     response: {
       error: errorMessage,
       chain: targetChain,
+      ...(pushTxHash ? { pushTxHash } : {}),
+      ...(txHash ? { txHash } : {}),
       ...(decodedError ? { decodedError } : {}),
     },
     level: 'ERROR',
   }),
   [PROGRESS_HOOK.SEND_TX_299_03]: (
     targetChain: string | CHAIN,
-    elapsedMs: number
+    elapsedMs: number,
+    pushTxHash?: string
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_299_03,
     title: `Syncing State with ${friendlyChain(targetChain)} Timeout`,
     message: `Timed out waiting for UGPC relay to ${targetChain}`,
-    response: { error: 'relay timeout', chain: targetChain, elapsedMs },
+    response: {
+      error: 'relay timeout',
+      chain: targetChain,
+      elapsedMs,
+      ...(pushTxHash ? { pushTxHash } : {}),
+    },
     level: 'ERROR',
   }),
   [PROGRESS_HOOK.SEND_TX_299_99]: (
@@ -875,21 +906,29 @@ const RAW_HOOKS_R3: {
     response: { chain: sourceChain },
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_309_01]: (sourceChain: string | CHAIN) => ({
+  [PROGRESS_HOOK.SEND_TX_309_01]: (
+    sourceChain: string | CHAIN,
+    pushTxHash?: string
+  ) => ({
     id: PROGRESS_HOOK.SEND_TX_309_01,
     title: `Awaiting ${friendlyChain(sourceChain)} Relay`,
     message: `Waiting for UGPC to relay to CEA on ${sourceChain}`,
-    response: { chain: sourceChain },
+    response: { chain: sourceChain, ...(pushTxHash ? { pushTxHash } : {}) },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_309_02]: (
     sourceChain: string | CHAIN,
-    elapsedMs: number
+    elapsedMs: number,
+    pushTxHash?: string
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_309_02,
     title: `Syncing State with ${friendlyChain(sourceChain)}`,
     message: `Polling ${sourceChain} for CEA execution`,
-    response: { chain: sourceChain, elapsedMs },
+    response: {
+      chain: sourceChain,
+      elapsedMs,
+      ...(pushTxHash ? { pushTxHash } : {}),
+    },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_309_03]: (
@@ -902,21 +941,29 @@ const RAW_HOOKS_R3: {
     response: { chain: sourceChain, txHash },
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_310_01]: (sourceChain: string | CHAIN) => ({
+  [PROGRESS_HOOK.SEND_TX_310_01]: (
+    sourceChain: string | CHAIN,
+    pushTxHash?: string
+  ) => ({
     id: PROGRESS_HOOK.SEND_TX_310_01,
     title: `${friendlyChain(sourceChain)} → Push Chain Inbound Tx Submitted`,
     message: `CEA initiated return — waiting for Push Chain inbound from ${sourceChain}`,
-    response: { chain: sourceChain },
+    response: { chain: sourceChain, ...(pushTxHash ? { pushTxHash } : {}) },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_310_02]: (
     sourceChain: string | CHAIN,
-    elapsedMs: number
+    elapsedMs: number,
+    pushTxHash?: string
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_310_02,
     title: 'Syncing State with Push Chain for Inbound Tx',
     message: `Polling Push Chain for inbound from ${sourceChain}`,
-    response: { chain: sourceChain, elapsedMs },
+    response: {
+      chain: sourceChain,
+      elapsedMs,
+      ...(pushTxHash ? { pushTxHash } : {}),
+    },
     level: 'INFO',
   }),
   [PROGRESS_HOOK.SEND_TX_399_01]: (
@@ -946,7 +993,9 @@ const RAW_HOOKS_R3: {
       hint?: string;
       selector?: string;
       decoded?: string;
-    }
+    },
+    pushTxHash?: string,
+    txHash?: string
   ) => {
     const normalizedErrorMessage =
       phase === 'push'
@@ -965,6 +1014,8 @@ const RAW_HOOKS_R3: {
         error: normalizedErrorMessage,
         phase,
         chain: chain ?? null,
+        ...(pushTxHash ? { pushTxHash } : {}),
+        ...(txHash ? { txHash } : {}),
         ...(decodedError ? { decodedError } : {}),
       },
       level: 'ERROR',
@@ -973,7 +1024,8 @@ const RAW_HOOKS_R3: {
   [PROGRESS_HOOK.SEND_TX_399_03]: (
     sourceChain: string | CHAIN,
     elapsedMs: number,
-    phase: 'outbound' | 'inbound' | 'push' = 'inbound'
+    phase: 'outbound' | 'inbound' | 'push' = 'inbound',
+    pushTxHash?: string
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_399_03,
     title: 'Push Chain Inbound Tx Timeout',
@@ -993,6 +1045,7 @@ const RAW_HOOKS_R3: {
       phase,
       chain: sourceChain,
       elapsedMs,
+      ...(pushTxHash ? { pushTxHash } : {}),
     },
     level: 'ERROR',
   }),
@@ -1178,29 +1231,51 @@ const RAW_HOOKS_MULTICHAIN: {
     response: { quoted, threshold, gasToken, pathTag },
     level: 'INFO',
   }),
-  [PROGRESS_HOOK.SEND_TX_999_01]: (hopCount: number) => ({
+  [PROGRESS_HOOK.SEND_TX_999_01]: (
+    hopCount: number,
+    txHash?: string
+  ) => ({
     id: PROGRESS_HOOK.SEND_TX_999_01,
     title: 'All Multichain Transactions Successful',
     message: `${hopCount}-hop transaction confirmed across all chains`,
-    response: { hopCount },
+    response: { hopCount, ...(txHash ? { txHash } : {}) },
     level: 'SUCCESS',
   }),
   [PROGRESS_HOOK.SEND_TX_999_02]: (
     failedAt: number,
     total: number,
-    errorMessage: string
+    errorMessage: string,
+    txHash?: string,
+    pushTxHash?: string
   ) => ({
     id: PROGRESS_HOOK.SEND_TX_999_02,
     title: 'Multichain Transactions Failed',
     message: `Multichain failed at hop ${failedAt} of ${total}: ${errorMessage}`,
-    response: { failedAt, total, error: errorMessage },
+    response: {
+      failedAt,
+      total,
+      error: errorMessage,
+      ...(txHash ? { txHash } : {}),
+      ...(pushTxHash ? { pushTxHash } : {}),
+    },
     level: 'ERROR',
   }),
-  [PROGRESS_HOOK.SEND_TX_999_03]: (failedAt: number, total: number) => ({
+  [PROGRESS_HOOK.SEND_TX_999_03]: (
+    failedAt: number,
+    total: number,
+    txHash?: string,
+    pushTxHash?: string
+  ) => ({
     id: PROGRESS_HOOK.SEND_TX_999_03,
     title: 'Multichain Transactions Timeout',
     message: `Multichain timed out at hop ${failedAt} of ${total}`,
-    response: { failedAt, total, error: 'multichain timeout' },
+    response: {
+      failedAt,
+      total,
+      error: 'multichain timeout',
+      ...(txHash ? { txHash } : {}),
+      ...(pushTxHash ? { pushTxHash } : {}),
+    },
     level: 'ERROR',
   }),
 };

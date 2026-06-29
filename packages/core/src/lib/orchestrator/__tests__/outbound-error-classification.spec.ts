@@ -72,9 +72,22 @@ describe('Outbound/inbound error classification', () => {
       const hooks = pickWaitHooks(TransactionRoute.UOA_TO_CEA);
       const errMsg = error instanceof Error ? error.message : String(error);
       const isTimeout = error instanceof OutboundTimeoutError;
+      const receiptHash = baseReceipt['hash'];
+      const pushTxHash =
+        typeof receiptHash === 'string'
+          ? receiptHash
+          : error instanceof OutboundTimeoutError ||
+            error instanceof OutboundFailedError
+          ? error.pushChainTxHash
+          : undefined;
+      const externalTxHash =
+        error instanceof OutboundFailedError ? error.externalTxHash : undefined;
       const event = isTimeout
-        ? hooks.timeout(targetChain, maxTimeoutMs)
-        : hooks.failed(targetChain, errMsg);
+        ? hooks.timeout(targetChain, maxTimeoutMs, pushTxHash)
+        : hooks.failed(targetChain, errMsg, {
+            pushTxHash,
+            txHash: externalTxHash,
+          });
       const next = {
         ...baseReceipt,
         externalStatus: isTimeout ? 'timeout' : 'failed',
@@ -90,6 +103,7 @@ describe('Outbound/inbound error classification', () => {
       });
       expect(event.id).toBe(PROGRESS_HOOK.SEND_TX_299_03);
       expect(event.level).toBe('ERROR');
+      expect(event.response).toMatchObject({ pushTxHash: '0xpushtx' });
       expect(receipt.externalStatus).toBe('timeout');
       expect(receipt.externalError).toContain('Timeout');
     });
@@ -104,6 +118,7 @@ describe('Outbound/inbound error classification', () => {
       });
       expect(event.id).toBe(PROGRESS_HOOK.SEND_TX_299_02);
       expect(event.level).toBe('ERROR');
+      expect(event.response).toMatchObject({ pushTxHash: '0xabc' });
       expect((event.response as { error: string }).error).toContain(
         'Outbound transaction failed'
       );
@@ -235,6 +250,55 @@ describe('Outbound/inbound error classification', () => {
     });
   });
 
+  describe('wait hook hash metadata', () => {
+    it('R2 awaiting/polling events carry the root Push tx hash as pushTxHash', () => {
+      const hooks = pickWaitHooks(TransactionRoute.UOA_TO_CEA);
+      const awaiting = hooks.awaiting(CHAIN.ETHEREUM_SEPOLIA, '0xpush');
+      const polling = hooks.polling(CHAIN.ETHEREUM_SEPOLIA, 5000, '0xpush');
+      const timeout = hooks.timeout(CHAIN.ETHEREUM_SEPOLIA, 30_000, '0xpush');
+      const failed = hooks.failed(CHAIN.ETHEREUM_SEPOLIA, 'failed', {
+        pushTxHash: '0xpush',
+        txHash: '0xexternal',
+      });
+
+      expect(awaiting.response).toMatchObject({ pushTxHash: '0xpush' });
+      expect(polling.response).toMatchObject({ pushTxHash: '0xpush' });
+      expect(timeout.response).toMatchObject({ pushTxHash: '0xpush' });
+      expect(failed.response).toMatchObject({
+        pushTxHash: '0xpush',
+        txHash: '0xexternal',
+      });
+    });
+
+    it('R3 wait events carry pushTxHash without replacing txHash successes', () => {
+      const hooks = pickWaitHooks(TransactionRoute.CEA_TO_PUSH);
+      const awaiting = hooks.awaiting(CHAIN.ETHEREUM_SEPOLIA, '0xpush');
+      const polling = hooks.polling(CHAIN.ETHEREUM_SEPOLIA, 5000, '0xpush');
+      const timeout = hooks.timeout(CHAIN.ETHEREUM_SEPOLIA, 30_000, '0xpush');
+      const failed = hooks.failed(CHAIN.ETHEREUM_SEPOLIA, 'failed', {
+        pushTxHash: '0xpush',
+        txHash: '0xexternal',
+      });
+      const success = hooks.success({
+        externalTxHash: '0xexternal',
+        destinationChain: CHAIN.ETHEREUM_SEPOLIA,
+        explorerUrl: '',
+        recipient: '',
+        amount: '0',
+        assetAddr: '',
+      });
+
+      expect(awaiting.response).toMatchObject({ pushTxHash: '0xpush' });
+      expect(polling.response).toMatchObject({ pushTxHash: '0xpush' });
+      expect(timeout.response).toMatchObject({ pushTxHash: '0xpush' });
+      expect(failed.response).toMatchObject({
+        pushTxHash: '0xpush',
+        txHash: '0xexternal',
+      });
+      expect(success.response).toMatchObject({ txHash: '0xexternal' });
+    });
+  });
+
   describe('R3 inbound emit + receipt mutation', () => {
     function classifyInbound(
       error: unknown,
@@ -246,9 +310,17 @@ describe('Outbound/inbound error classification', () => {
       const event = isTimeout
         ? PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](
             'eip155:11155111',
-            maxTimeoutMs
+            maxTimeoutMs,
+            'inbound',
+            '0xroot'
           )
-        : PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](errMsg);
+        : PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](
+            errMsg,
+            'inbound',
+            'eip155:11155111',
+            undefined,
+            '0xroot'
+          );
       const next = {
         ...baseReceipt,
         externalStatus: isTimeout ? 'timeout' : 'failed',
@@ -261,6 +333,7 @@ describe('Outbound/inbound error classification', () => {
       const err = new InboundTimeoutError('0xoutbound', 300_000);
       const { event, receipt } = classifyInbound(err, { status: 1 }, 300_000);
       expect(event.id).toBe(PROGRESS_HOOK.SEND_TX_399_03);
+      expect(event.response).toMatchObject({ pushTxHash: '0xroot' });
       expect(receipt.externalStatus).toBe('timeout');
     });
 
@@ -268,6 +341,7 @@ describe('Outbound/inbound error classification', () => {
       const err = new Error('indexer unavailable');
       const { event, receipt } = classifyInbound(err, { status: 1 }, 300_000);
       expect(event.id).toBe(PROGRESS_HOOK.SEND_TX_399_02);
+      expect(event.response).toMatchObject({ pushTxHash: '0xroot' });
       expect(receipt.externalStatus).toBe('failed');
       expect(receipt.externalError).toBe('indexer unavailable');
     });

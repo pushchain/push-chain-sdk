@@ -9,6 +9,7 @@ import {
 import type { AccountStatus, UniversalTxResponse } from './orchestrator.types';
 import { PROGRESS_HOOK, ProgressEvent } from '../progress-hook/progress-hook.types';
 import { PushClient } from '../push-client/push-client';
+import { normalizePublicErrorMessage } from '../formatters';
 import type { UniversalAccount, UniversalSigner } from '../universal/universal.types';
 import {
   ExecuteParams,
@@ -308,12 +309,7 @@ export class Orchestrator {
           // check throws). Without this, the hook stream ends mid-flight and
           // consumers have no terminal close-out marker.
           if (!isRecursiveInnerCall && !this.ctx._routeTerminalEmitted) {
-            const errMessage =
-              err instanceof Error
-                ? err.message
-                : typeof err === 'string'
-                ? err
-                : 'Unknown error';
+            const errMessage = normalizePublicErrorMessage(err);
             // Lift any structured `decodedError` off the typed error so the
             // formatter's optional payload field gets populated.
             const decodedError =
@@ -378,18 +374,7 @@ export class Orchestrator {
           await _executeStandardPayload(this.ctx, execute, eventBuffer, rcb)
         );
       } catch (err) {
-        const errMessage =
-          err instanceof Error
-            ? err.message
-            : typeof err === 'string'
-            ? err
-            : (() => {
-                try {
-                  return JSON.stringify(err);
-                } catch {
-                  return 'Unknown error';
-                }
-              })();
+        const errMessage = normalizePublicErrorMessage(err);
         // Only the outermost frame emits the terminal error hook, and it picks
         // the route-correct ID. Recursive inner frames just re-throw so the
         // outer catch drives emission — avoids double-firing 199/299/399 events.

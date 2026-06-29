@@ -37,6 +37,35 @@ import { getSvmProtocolFee } from './svm-helpers';
 
 const GATEWAY_ABI = UNIVERSAL_GATEWAY_V1_SEND as unknown as Abi;
 
+const SOURCE_NATIVE_SYMBOL: Partial<Record<CHAIN, string>> = {
+  [CHAIN.ETHEREUM_MAINNET]: 'ETH',
+  [CHAIN.ETHEREUM_SEPOLIA]: 'ETH',
+  [CHAIN.ARBITRUM_SEPOLIA]: 'ETH',
+  [CHAIN.BASE_SEPOLIA]: 'ETH',
+  [CHAIN.BNB_TESTNET]: 'BNB',
+  [CHAIN.SOLANA_MAINNET]: 'SOL',
+  [CHAIN.SOLANA_TESTNET]: 'SOL',
+  [CHAIN.SOLANA_DEVNET]: 'SOL',
+};
+
+function formatSourceNative(chain: CHAIN, amount: bigint): string {
+  const decimals = CHAIN_INFO[chain].vm === VM.SVM ? 9 : 18;
+  const symbol = SOURCE_NATIVE_SYMBOL[chain] ?? 'native token';
+  return `${Utils.helpers.formatUnits(amount, decimals)} ${symbol}`;
+}
+
+function insufficientSourceBalanceMessage(
+  chain: CHAIN,
+  available: bigint,
+  required: bigint
+): string {
+  return (
+    `Insufficient source balance for transaction gas/value: ` +
+    `have ${formatSourceNative(chain, available)}, ` +
+    `need at least ${formatSourceNative(chain, required)}.`
+  );
+}
+
 // ============================================================================
 // Request Conversion (V0 struct → V1 flat format)
 // ============================================================================
@@ -143,6 +172,16 @@ export async function lockFee(
         nativeTokenUsdPrice;
       nativeAmount = nativeAmount + BigInt(1);
 
+      const sourceAddress = ctx.universalSigner.account.address as `0x${string}`;
+      const sourceBalance = await evmClient.publicClient.getBalance({
+        address: sourceAddress,
+      });
+      if (sourceBalance < nativeAmount) {
+        throw new Error(
+          insufficientSourceBalanceMessage(chain, sourceBalance, nativeAmount)
+        );
+      }
+
       const txHash: `0x${string}` = await sendGatewayTxWithFallback(
         ctx,
         evmClient,
@@ -193,13 +232,24 @@ export async function lockFee(
         await getSvmProtocolFee(svmClient, programId);
 
       const gasReq = buildSvmUniversalTxRequestFromReq(req, userPk);
+      const requiredLamports = nativeAmount + protocolFeeLamports;
+      const sourceBalance = await svmClient.getBalance(userPk.toBase58());
+      if (sourceBalance < requiredLamports) {
+        throw new Error(
+          insufficientSourceBalanceMessage(
+            chain,
+            sourceBalance,
+            requiredLamports
+          )
+        );
+      }
 
       try {
         const txHash = await svmClient.writeContract({
           abi: SVM_GATEWAY_IDL,
           address: programId.toBase58(),
           functionName: 'sendUniversalTx',
-          args: [gasReq, nativeAmount + protocolFeeLamports],
+          args: [gasReq, requiredLamports],
           signer: ctx.universalSigner,
           accounts: {
             config: configPda,
