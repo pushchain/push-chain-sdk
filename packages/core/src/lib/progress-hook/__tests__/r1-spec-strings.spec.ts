@@ -113,9 +113,10 @@ describe('Route 1 spec strings (101–199)', () => {
   });
 
   it('105-02 — Gas Funding Confirmed', () => {
-    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_105_02]();
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_105_02](txHash);
     expect(ev.title).toBe('Gas Funding Confirmed');
     expect(ev.message).toBe('Gas funding confirmed on origin chain');
+    expect(ev.response).toMatchObject({ txHash });
     expect(ev.level).toBe('SUCCESS');
   });
 
@@ -141,30 +142,42 @@ describe('Route 1 spec strings (101–199)', () => {
   });
 
   it('106-03 — Awaiting Confirmations', () => {
-    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_106_03](1);
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_106_03](1, txHash);
     expect(ev.title).toBe('Awaiting Confirmations');
     expect(ev.message).toBe('Waiting for 1 confirmations');
+    expect(ev.response).toMatchObject({ txHash });
     expect(ev.level).toBe('INFO');
   });
 
   it('106-03-01 — Confirmation intermediate (INFO)', () => {
-    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_106_03_01](1, 2);
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_106_03_01](
+      1,
+      2,
+      txHash
+    );
     expect(ev.title).toBe('Confirmation 1/2 Received');
     expect(ev.message).toBe('1/2 confirmations received');
+    expect(ev.response).toMatchObject({ txHash });
     expect(ev.level).toBe('INFO');
   });
 
   it('106-03-02 — Confirmation terminal (SUCCESS)', () => {
-    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_106_03_02](2, 2);
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_106_03_02](
+      2,
+      2,
+      txHash
+    );
     expect(ev.title).toBe('Confirmation 2/2 Received');
     expect(ev.message).toBe('2/2 confirmations received');
+    expect(ev.response).toMatchObject({ txHash });
     expect(ev.level).toBe('SUCCESS');
   });
 
   it('106-04 — Funds Confirmed', () => {
-    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_106_04]();
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_106_04](txHash);
     expect(ev.title).toBe('Funds Confirmed');
     expect(ev.message).toBe('Origin chain lock confirmed');
+    expect(ev.response).toMatchObject({ txHash });
     expect(ev.level).toBe('SUCCESS');
   });
 
@@ -200,12 +213,15 @@ describe('Route 1 spec strings (101–199)', () => {
 
   it('199-02 — Push Chain Tx Failed', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_02](
-      'Push Chain transaction failed for gateway tx: 0xabc: ExecutionReverted'
+      'Push Chain transaction failed for gateway tx: 0xabc: ExecutionReverted',
+      undefined,
+      txHash
     );
     expect(ev.title).toBe('Push Chain Tx Failed');
     expect(ev.message).toBe(
       'Push Chain transaction failed for gateway tx: 0xabc: ExecutionReverted'
     );
+    expect(ev.response).toMatchObject({ txHash });
     expect(ev.level).toBe('ERROR');
   });
 

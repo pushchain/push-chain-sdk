@@ -111,18 +111,29 @@ describe('Route 2 spec strings (201–299)', () => {
   });
 
   it('209-01 — Awaiting Push Chain Relay', () => {
-    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_209_01](targetChain);
+    const pushTxHash = '0xpush';
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_209_01](
+      targetChain,
+      pushTxHash
+    );
     expect(ev.title).toBe('Awaiting Push Chain Relay');
     expect(ev.message).toBe(
       `Waiting for UGPC to relay execution to ${targetChain}`
     );
+    expect(ev.response).toMatchObject({ pushTxHash });
     expect(ev.level).toBe('INFO');
   });
 
   it('209-02 — Syncing State with {ChainName}', () => {
-    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_209_02](targetChain, 5000);
+    const pushTxHash = '0xpush';
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_209_02](
+      targetChain,
+      5000,
+      pushTxHash
+    );
     expect(ev.title).toBe(`Syncing State with ${chainName}`);
     expect(ev.message).toBe(`Polling ${targetChain} for CEA execution`);
+    expect(ev.response).toMatchObject({ pushTxHash });
     expect(ev.level).toBe('INFO');
   });
 
@@ -143,18 +154,30 @@ describe('Route 2 spec strings (201–299)', () => {
   it('299-02 — {ChainName} Tx Failed', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_02](
       targetChain,
-      'relay rejected payload'
+      'relay rejected payload',
+      undefined,
+      '0xpush',
+      '0xexternal'
     );
     expect(ev.title).toBe(`${chainName} Tx Failed`);
     // Spec message column is the raw {errorMessage} passthrough.
     expect(ev.message).toBe('relay rejected payload');
+    expect(ev.response).toMatchObject({
+      pushTxHash: '0xpush',
+      txHash: '0xexternal',
+    });
     expect(ev.level).toBe('ERROR');
   });
 
   it('299-03 — Syncing State with {ChainName} Timeout', () => {
-    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_03](targetChain, 60000);
+    const ev = PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_03](
+      targetChain,
+      60000,
+      '0xpush'
+    );
     expect(ev.title).toBe(`Syncing State with ${chainName} Timeout`);
     expect(ev.message).toBe(`Timed out waiting for UGPC relay to ${targetChain}`);
+    expect(ev.response).toMatchObject({ pushTxHash: '0xpush' });
     expect(ev.level).toBe('ERROR');
   });
 

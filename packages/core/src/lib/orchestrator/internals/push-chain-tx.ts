@@ -519,7 +519,13 @@ export async function extractPcTxAndTransform(
     // Live-emit 199-02 before throwing so the terminal failure hook reaches
     // any caller-registered progress stream (parity with reconstructProgressEvents
     // which emits 199-02 on replay).
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_199_02, fullMessage, decodedForPayload);
+    fireProgressHook(
+      ctx,
+      PROGRESS_HOOK.SEND_TX_199_02,
+      fullMessage,
+      decodedForPayload,
+      failedPcTx?.txHash
+    );
     throw new PushChainExecutionError(fullMessage, {
       gatewayTxHash,
       decodedError: decodedForPayload,

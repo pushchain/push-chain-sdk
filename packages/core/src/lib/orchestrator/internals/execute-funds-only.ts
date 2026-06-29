@@ -281,7 +281,7 @@ async function executeFundsOnlyEvm(
 
   await waitForEvmConfirmationsWithCountdown(ctx, evmClient, txHash, CHAIN_INFO[chain].confirmations, CHAIN_INFO[chain].timeout);
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_04);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_04, txHash);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_05);
 
   printLog(ctx, 'sendFunds — querying Push Chain status: ' + JSON.stringify({
@@ -409,7 +409,7 @@ async function executeFundsOnlySvm(
 
   await waitForSvmConfirmationsWithCountdown(ctx, svmClient, txSignature, CHAIN_INFO[chain].confirmations, CHAIN_INFO[chain].timeout);
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_04);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_04, txSignature);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_05);
 
   let response: UniversalTxResponse;

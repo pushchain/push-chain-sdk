@@ -1929,9 +1929,17 @@ export async function composeCascade(
 function txHashFromProgressEvent(event: ProgressEvent): string {
   const response = event.response as {
     txHash?: string;
+    pushTxHash?: string;
+    rootTxHash?: string;
     response?: Array<{ hash?: string }>;
   } | null;
-  return response?.txHash ?? response?.response?.[0]?.hash ?? '';
+  return (
+    response?.txHash ??
+    response?.pushTxHash ??
+    response?.rootTxHash ??
+    response?.response?.[0]?.hash ??
+    ''
+  );
 }
 
 async function withMultihopRootProgressMapping<T>(
@@ -2215,28 +2223,49 @@ export function createCascadedBuilder(
               PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_002_99_99](n, totalHops)
             );
           };
+          const currentFinalTxHash = () =>
+            [...hopInfos]
+              .reverse()
+              .find((hop) => hop.status === 'confirmed' && hop.txHash)
+              ?.txHash ?? response.hash;
           const emitCascadeSuccess = () => {
             if (!isMulti) return;
             emitHopEvent(
-              PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_01](totalHops)
+              PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_01](
+                totalHops,
+                currentFinalTxHash()
+              )
             );
           };
-          const emitCascadeFailed = (failedIdx0: number, errMsg: string) => {
+          const emitCascadeFailed = (
+            failedIdx0: number,
+            errMsg: string,
+            txHash?: string,
+            pushTxHash?: string
+          ) => {
             if (!isMulti) return;
             emitHopEvent(
               PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_02](
                 failedIdx0 + 1,
                 totalHops,
-                errMsg
+                errMsg,
+                txHash,
+                pushTxHash
               )
             );
           };
-          const emitCascadeTimeout = (failedIdx0: number) => {
+          const emitCascadeTimeout = (
+            failedIdx0: number,
+            txHash?: string,
+            pushTxHash?: string
+          ) => {
             if (!isMulti) return;
             emitHopEvent(
               PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_03](
                 failedIdx0 + 1,
-                totalHops
+                totalHops,
+                txHash,
+                pushTxHash
               )
             );
           };
@@ -2276,11 +2305,7 @@ export function createCascadedBuilder(
             success: boolean,
             failedAt?: number
           ): CascadeCompletionResult => {
-            const finalTxHash =
-              [...hopInfos]
-                .reverse()
-                .find((hop) => hop.status === 'confirmed' && hop.txHash)
-                ?.txHash ?? response.hash;
+            const finalTxHash = currentFinalTxHash();
             cascadeResponse.finalTxHash = finalTxHash;
             return {
               success,
@@ -2354,14 +2379,18 @@ export function createCascadedBuilder(
                     elapsed: Date.now() - startTime,
                   });
                   emitHopEvent(
-                    hopHooks.timeout(hop.executionChain, Date.now() - startTime)
+                    hopHooks.timeout(
+                      hop.executionChain,
+                      Date.now() - startTime,
+                      pushTxHash
+                    )
                   );
-                  emitCascadeTimeout(hop.hopIndex);
+                  emitCascadeTimeout(hop.hopIndex, undefined, pushTxHash);
                   return buildCompletionResult(false, hop.hopIndex);
                 }
 
                 emitHopStart(hop.hopIndex);
-                emitHopEvent(hopHooks.awaiting(hop.executionChain));
+                emitHopEvent(hopHooks.awaiting(hop.executionChain, pushTxHash));
 
                 cascadeProgressHook?.({
                   hopIndex: hop.hopIndex,
@@ -2408,7 +2437,11 @@ export function createCascadedBuilder(
                         ) {
                           lastEmittedStatus = 'polling';
                           emitHopEvent(
-                            hopHooks.polling(hop.executionChain, event.elapsed)
+                            hopHooks.polling(
+                              hop.executionChain,
+                              event.elapsed,
+                              pushTxHash
+                            )
                           );
                         }
                       },
@@ -2454,22 +2487,48 @@ export function createCascadedBuilder(
                   const isTimeout = errMsg.startsWith(
                     'Timeout waiting for outbound transaction'
                   );
+                  const failedExternalTxHash = (
+                    err as { externalTxHash?: string }
+                  )?.externalTxHash;
+                  const failedDisplayTxHash =
+                    toExternalTxHashDisplay(
+                      hop.executionChain,
+                      failedExternalTxHash
+                    ) ?? failedExternalTxHash;
                   emitHopEvent(
                     isTimeout
-                      ? hopHooks.timeout(hop.executionChain, remainingTimeout)
-                      : hopHooks.failed(hop.executionChain, errMsg)
+                      ? hopHooks.timeout(
+                          hop.executionChain,
+                          remainingTimeout,
+                          pushTxHash
+                        )
+                      : hopHooks.failed(hop.executionChain, errMsg, {
+                          pushTxHash,
+                          txHash: failedDisplayTxHash,
+                        })
                   );
                   if (isTimeout) {
-                    emitCascadeTimeout(hop.hopIndex);
+                    emitCascadeTimeout(
+                      hop.hopIndex,
+                      failedDisplayTxHash,
+                      pushTxHash
+                    );
                   } else {
-                    emitCascadeFailed(hop.hopIndex, errMsg);
+                    emitCascadeFailed(
+                      hop.hopIndex,
+                      errMsg,
+                      failedDisplayTxHash,
+                      pushTxHash
+                    );
                   }
+                  if (failedDisplayTxHash) hop.txHash = failedDisplayTxHash;
                   hop.status = 'failed';
                   cascadeProgressHook?.({
                     hopIndex: hop.hopIndex,
                     route: hop.route,
                     chain: hop.executionChain,
                     status: 'failed',
+                    txHash: failedDisplayTxHash,
                     elapsed: Date.now() - startTime,
                   });
                   return buildCompletionResult(false, hop.hopIndex);
@@ -2478,7 +2537,10 @@ export function createCascadedBuilder(
                 for (const outHop of outboundHops) {
                   emitHopStart(outHop.hopIndex);
                   emitHopEvent(
-                    pickWaitHooks(outHop.route).awaiting(outHop.executionChain)
+                    pickWaitHooks(outHop.route).awaiting(
+                      outHop.executionChain,
+                      pushTxHash
+                    )
                   );
                 }
 
@@ -2532,7 +2594,8 @@ export function createCascadedBuilder(
                           emitHopEvent(
                             eventHooks.polling(
                               matchedHop?.executionChain ?? event.chain ?? '',
-                              Date.now() - startTime
+                              Date.now() - startTime,
+                              pushTxHash
                             )
                           );
                         }
@@ -2579,10 +2642,19 @@ export function createCascadedBuilder(
                   emitHopEvent(
                     pickWaitHooks(failedHop?.route).failed(
                       failedHop?.executionChain ?? '',
-                      failMsg
+                      failMsg,
+                      {
+                        pushTxHash,
+                        txHash: failedHop?.txHash,
+                      }
                     )
                   );
-                  emitCascadeFailed(failedIdx, failMsg);
+                  emitCascadeFailed(
+                    failedIdx,
+                    failMsg,
+                    failedHop?.txHash,
+                    pushTxHash
+                  );
                   return buildCompletionResult(false, failedIdx);
                 }
 
@@ -2670,10 +2742,11 @@ export function createCascadedBuilder(
                 emitHopEvent(
                   hopHooks.timeout(
                     inboundHop.executionChain,
-                    Date.now() - startTime
+                    Date.now() - startTime,
+                    response.hash
                   )
                 );
-                emitCascadeTimeout(inboundHop.hopIndex);
+                emitCascadeTimeout(inboundHop.hopIndex, undefined, response.hash);
                 return buildCompletionResult(false, inboundHop.hopIndex);
               }
 
@@ -2683,7 +2756,9 @@ export function createCascadedBuilder(
 
               if (!hasTrackedSourceOutbound) {
                 emitHopStart(inboundHop.hopIndex);
-                emitHopEvent(hopHooks.awaiting(inboundHop.executionChain));
+                emitHopEvent(
+                  hopHooks.awaiting(inboundHop.executionChain, response.hash)
+                );
               }
               cascadeProgressHook?.({
                 hopIndex: inboundHop.hopIndex,
@@ -2732,7 +2807,8 @@ export function createCascadedBuilder(
                           emitHopEvent(
                             hopHooks.polling(
                               inboundHop.executionChain,
-                              event.elapsed
+                              event.elapsed,
+                              response.hash
                             )
                           );
                         }
@@ -2745,17 +2821,6 @@ export function createCascadedBuilder(
                 const isTimeout = errMsg.startsWith(
                   'Timeout waiting for outbound transaction'
                 );
-                emitHopEvent(
-                  isTimeout
-                    ? hopHooks.timeout(
-                        inboundHop.executionChain,
-                        remainingTimeout
-                      )
-                    : hopHooks.failed(inboundHop.executionChain, errMsg)
-                );
-                if (isTimeout) emitCascadeTimeout(inboundHop.hopIndex);
-                else emitCascadeFailed(inboundHop.hopIndex, errMsg);
-                inboundHop.status = 'failed';
                 const failedExternalTxHash = (
                   err as { externalTxHash?: string }
                 )?.externalTxHash;
@@ -2764,6 +2829,32 @@ export function createCascadedBuilder(
                     inboundHop.executionChain,
                     failedExternalTxHash
                   ) ?? failedExternalTxHash;
+                emitHopEvent(
+                  isTimeout
+                    ? hopHooks.timeout(
+                        inboundHop.executionChain,
+                        remainingTimeout,
+                        response.hash
+                      )
+                    : hopHooks.failed(inboundHop.executionChain, errMsg, {
+                        pushTxHash: response.hash,
+                        txHash: failedDisplayTxHash,
+                      })
+                );
+                if (isTimeout)
+                  emitCascadeTimeout(
+                    inboundHop.hopIndex,
+                    failedDisplayTxHash,
+                    response.hash
+                  );
+                else
+                  emitCascadeFailed(
+                    inboundHop.hopIndex,
+                    errMsg,
+                    failedDisplayTxHash,
+                    response.hash
+                  );
+                inboundHop.status = 'failed';
                 if (failedDisplayTxHash)
                   inboundHop.txHash = failedDisplayTxHash;
                 cascadeProgressHook?.({
@@ -2790,7 +2881,8 @@ export function createCascadedBuilder(
               emitHopEvent(hopHooks.success(inboundHop.outboundDetails));
               emitHopEvent(
                 PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_310_01](
-                  inboundHop.executionChain
+                  inboundHop.executionChain,
+                  response.hash
                 )
               );
 
@@ -2823,7 +2915,8 @@ export function createCascadedBuilder(
                         emitHopEvent(
                           PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_310_02](
                             inboundHop.executionChain,
-                            event.elapsedMs
+                            event.elapsedMs,
+                            response.hash
                           )
                         );
                       }
@@ -2838,16 +2931,26 @@ export function createCascadedBuilder(
                     ? PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](
                         inboundHop.executionChain,
                         inboundRemainingTimeout,
-                        'inbound'
+                        'inbound',
+                        response.hash
                       )
                     : PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](
                         errMsg,
                         'inbound',
-                        inboundHop.executionChain
+                        inboundHop.executionChain,
+                        undefined,
+                        response.hash
                       )
                 );
-                if (isTimeout) emitCascadeTimeout(inboundHop.hopIndex);
-                else emitCascadeFailed(inboundHop.hopIndex, errMsg);
+                if (isTimeout)
+                  emitCascadeTimeout(inboundHop.hopIndex, undefined, response.hash);
+                else
+                  emitCascadeFailed(
+                    inboundHop.hopIndex,
+                    errMsg,
+                    undefined,
+                    response.hash
+                  );
                 inboundHop.status = 'failed';
                 cascadeProgressHook?.({
                   hopIndex: inboundHop.hopIndex,
@@ -2870,10 +2973,18 @@ export function createCascadedBuilder(
                   PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](
                     failMsg,
                     'inbound',
-                    inboundHop.executionChain
+                    inboundHop.executionChain,
+                    undefined,
+                    response.hash,
+                    childInbound.pushTxHash || undefined
                   )
                 );
-                emitCascadeFailed(inboundHop.hopIndex, failMsg);
+                emitCascadeFailed(
+                  inboundHop.hopIndex,
+                  failMsg,
+                  childInbound.pushTxHash || undefined,
+                  response.hash
+                );
                 cascadeProgressHook?.({
                   hopIndex: inboundHop.hopIndex,
                   route: inboundHop.route,
@@ -2950,11 +3061,12 @@ export function createCascadedBuilder(
             );
             const errMsg = err instanceof Error ? err.message : String(err);
             const failedAt = failedIdx >= 0 ? failedIdx : 0;
+            const failedTxHash = hopInfos[failedAt]?.txHash;
             const isTimeout = errMsg.startsWith('Timeout');
             if (isTimeout) {
-              emitCascadeTimeout(failedAt);
+              emitCascadeTimeout(failedAt, failedTxHash, response.hash);
             } else {
-              emitCascadeFailed(failedAt, errMsg);
+              emitCascadeFailed(failedAt, errMsg, failedTxHash, response.hash);
             }
             return buildCompletionResult(false, failedAt);
           }

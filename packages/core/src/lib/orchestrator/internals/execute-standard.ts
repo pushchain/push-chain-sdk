@@ -528,7 +528,7 @@ export async function executeStandardPayload(
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_105_01, feeLockTxHashDisplay, originTx);
 
     await waitForLockerFeeConfirmation(ctx, feeLockTxHashBytes);
-    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_105_02);
+    fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_105_02, feeLockTxHashDisplay);
 
     const { defaultRPC, lockerContract } = CHAIN_INFO[chain];
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_107);

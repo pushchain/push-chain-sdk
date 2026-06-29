@@ -162,7 +162,13 @@ export function reconstructProgressEvents(
   events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_107]());
 
   if (isFailed) {
-    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_02](errorMsg));
+    events.push(
+      PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_02](
+        errorMsg,
+        undefined,
+        universalTxResponse.hash
+      )
+    );
   } else {
     events.push(
       PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_199_01]([universalTxResponse])
@@ -236,7 +242,14 @@ function reconstructR2(
   events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_207](targetChain));
 
   if (isFailed) {
-    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_02](errorMsg));
+    events.push(
+      PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_02](
+        targetChain,
+        errorMsg,
+        undefined,
+        universalTxResponse.hash
+      )
+    );
   }
 
   return events;
@@ -289,7 +302,14 @@ function reconstructR3(
     // Reconstructed Push-chain-tx failure — phase='push' so the title reads
     // "Push Chain Tx Failed" rather than the inbound copy.
     events.push(
-      PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](errorMsg, 'push')
+      PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](
+        errorMsg,
+        'push',
+        undefined,
+        undefined,
+        undefined,
+        universalTxResponse.hash
+      )
     );
   }
 
@@ -489,20 +509,41 @@ function reconstructMultichain(
     }
   });
 
+  const finalObservedTxHash =
+    [...outbounds].reverse().find((ob) => ob.observedTx?.txHash)?.observedTx
+      ?.txHash ?? universalTxResponse.hash;
+  const failedObservedTxHash =
+    failedAt !== null
+      ? outbounds[failedAt - 1]?.observedTx?.txHash
+      : undefined;
+
   if (failedAt !== null) {
     events.push(
       PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_02](
         failedAt,
         hopCount,
-        failureMsg
+        failureMsg,
+        failedObservedTxHash,
+        universalTxResponse.hash
       )
     );
   } else if (isFailed) {
     events.push(
-      PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_02](hopCount, hopCount, errorMsg)
+      PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_02](
+        hopCount,
+        hopCount,
+        errorMsg,
+        undefined,
+        universalTxResponse.hash
+      )
     );
   } else {
-    events.push(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_01](hopCount));
+    events.push(
+      PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_999_01](
+        hopCount,
+        finalObservedTxHash
+      )
+    );
   }
 
   return events;

@@ -13,12 +13,29 @@ import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import PROGRESS_HOOKS from '../../progress-hook/progress-hook';
 import { TransactionRoute } from '../route-detector';
 
+export type WaitHookMetadata = {
+  pushTxHash?: string;
+  txHash?: string;
+};
+
 export type WaitHookSet = {
-  awaiting: (chain: string) => ProgressEvent;
-  polling: (chain: string, elapsedMs: number) => ProgressEvent;
+  awaiting: (chain: string, pushTxHash?: string) => ProgressEvent;
+  polling: (
+    chain: string,
+    elapsedMs: number,
+    pushTxHash?: string
+  ) => ProgressEvent;
   success: (details: OutboundTxDetails) => ProgressEvent;
-  timeout: (chain: string, elapsedMs: number) => ProgressEvent;
-  failed: (chain: string, errMsg: string) => ProgressEvent;
+  timeout: (
+    chain: string,
+    elapsedMs: number,
+    pushTxHash?: string
+  ) => ProgressEvent;
+  failed: (
+    chain: string,
+    errMsg: string,
+    metadata?: WaitHookMetadata
+  ) => ProgressEvent;
 };
 
 export function pickWaitHooks(
@@ -26,22 +43,42 @@ export function pickWaitHooks(
 ): WaitHookSet {
   if (route === TransactionRoute.UOA_TO_CEA) {
     return {
-      awaiting: (chain) => PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_209_01](chain),
-      polling: (chain, elapsed) =>
-        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_209_02](chain, elapsed),
+      awaiting: (chain, pushTxHash) =>
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_209_01](chain, pushTxHash),
+      polling: (chain, elapsed, pushTxHash) =>
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_209_02](
+          chain,
+          elapsed,
+          pushTxHash
+        ),
       success: (details) =>
         PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_01](details),
-      timeout: (chain, elapsed) =>
-        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_03](chain, elapsed),
-      failed: (chain, msg) =>
-        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_02](chain, msg),
+      timeout: (chain, elapsed, pushTxHash) =>
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_03](
+          chain,
+          elapsed,
+          pushTxHash
+        ),
+      failed: (chain, msg, metadata) =>
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_299_02](
+          chain,
+          msg,
+          undefined,
+          metadata?.pushTxHash,
+          metadata?.txHash
+        ),
     };
   }
   if (route === TransactionRoute.CEA_TO_PUSH) {
     return {
-      awaiting: (chain) => PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_309_01](chain),
-      polling: (chain, elapsed) =>
-        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_309_02](chain, elapsed),
+      awaiting: (chain, pushTxHash) =>
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_309_01](chain, pushTxHash),
+      polling: (chain, elapsed, pushTxHash) =>
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_309_02](
+          chain,
+          elapsed,
+          pushTxHash
+        ),
       // For R3, the outbound-poll "success" is the source-chain CEA executing
       // (309-03 INFO). Terminal 399-01 fires after the inbound-to-Push poll
       // (handled by waitForInboundPushTx in response-builder).
@@ -53,10 +90,22 @@ export function pickWaitHooks(
       // R3 outbound (source-chain CEA) failures share the 399-02/03 IDs with
       // R3 inbound; pass phase='outbound' so the title reflects the source
       // chain instead of "Push Chain Inbound …".
-      timeout: (chain, elapsed) =>
-        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](chain, elapsed, 'outbound'),
-      failed: (chain, msg) =>
-        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](msg, 'outbound', chain),
+      timeout: (chain, elapsed, pushTxHash) =>
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](
+          chain,
+          elapsed,
+          'outbound',
+          pushTxHash
+        ),
+      failed: (chain, msg, metadata) =>
+        PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](
+          msg,
+          'outbound',
+          chain,
+          undefined,
+          metadata?.pushTxHash,
+          metadata?.txHash
+        ),
     };
   }
   // Route 4 (CEA_TO_CEA) has no spec'd ID range yet; cascade hops and

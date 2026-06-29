@@ -340,7 +340,7 @@ export async function executeFundsWithPayload(
     }
   }
 
-  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_04);
+  fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_04, txHash as string);
   fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_106_05);
 
   let response: UniversalTxResponse;

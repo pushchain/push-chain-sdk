@@ -124,6 +124,7 @@ import * as confirmationModule from '../internals/confirmation';
 
 import type { OrchestratorContext } from '../internals/context';
 import type { CHAIN } from '../../constants/enums';
+import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 
 // ============================================================================
 // Helpers — fake context builder
@@ -802,6 +803,12 @@ describe('waitForEvmConfirmationsWithCountdown', () => {
 
     // Should not call waitForTransactionReceipt when confirmations = 0
     expect(mockEvmClient.publicClient.waitForTransactionReceipt).not.toHaveBeenCalled();
+    expect(ctx.progressHook as jest.Mock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: PROGRESS_HOOK.SEND_TX_106_03_02,
+        response: expect.objectContaining({ txHash: '0xabc' }),
+      })
+    );
   });
 
   function makeConfirmCtx(chain: string): OrchestratorContext {
@@ -856,5 +863,11 @@ describe('waitForSvmConfirmationsWithCountdown', () => {
     expect(
       mockSvmClient.connections[0].getSignatureStatuses
     ).not.toHaveBeenCalled();
+    expect(ctx.progressHook as jest.Mock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: PROGRESS_HOOK.SEND_TX_106_03_02,
+        response: expect.objectContaining({ txHash: 'someSig' }),
+      })
+    );
   });
 });

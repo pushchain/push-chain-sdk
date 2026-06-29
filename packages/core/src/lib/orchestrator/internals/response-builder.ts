@@ -859,7 +859,7 @@ export async function transformToUniversalTxResponse(
         };
 
         // Awaiting relay
-        emit(hooks.awaiting(targetChain));
+        emit(hooks.awaiting(targetChain, universalTxResponse.hash));
 
         let lastEmittedStatus: string | undefined;
         const outboundTranslator = (event: {
@@ -868,7 +868,9 @@ export async function transformToUniversalTxResponse(
         }) => {
           if (event.status === 'polling' && lastEmittedStatus !== 'polling') {
             lastEmittedStatus = 'polling';
-            emit(hooks.polling(targetChain, event.elapsed));
+            emit(
+              hooks.polling(targetChain, event.elapsed, universalTxResponse.hash)
+            );
           }
         };
 
@@ -920,7 +922,12 @@ export async function transformToUniversalTxResponse(
             route === TransactionRoute.CEA_TO_PUSH &&
             universalTxResponse._expectsInboundRoundTrip === true
           ) {
-            emit(PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_310_01](targetChain));
+            emit(
+              PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_310_01](
+                targetChain,
+                universalTxResponse.hash
+              )
+            );
 
             let inboundLastEmitted: string | undefined;
             try {
@@ -942,7 +949,8 @@ export async function transformToUniversalTxResponse(
                       emit(
                         PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_310_02](
                           targetChain,
-                          event.elapsedMs
+                          event.elapsedMs,
+                          universalTxResponse.hash
                         )
                       );
                     }
@@ -974,7 +982,10 @@ export async function transformToUniversalTxResponse(
                   PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](
                     failMsg,
                     'inbound',
-                    targetChain
+                    targetChain,
+                    undefined,
+                    universalTxResponse.hash,
+                    inbound.pushTxHash || undefined
                   )
                 );
                 baseReceipt = {
@@ -1002,12 +1013,15 @@ export async function transformToUniversalTxResponse(
                   ? PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_03](
                       targetChain,
                       inboundTimeoutMs,
-                      'inbound'
+                      'inbound',
+                      universalTxResponse.hash
                     )
                   : PROGRESS_HOOKS[PROGRESS_HOOK.SEND_TX_399_02](
                       errMsg,
                       'inbound',
-                      targetChain
+                      targetChain,
+                      undefined,
+                      universalTxResponse.hash
                     )
               );
               callbacks.printLog(
@@ -1018,17 +1032,6 @@ export async function transformToUniversalTxResponse(
         } catch (error) {
           const errMsg = error instanceof Error ? error.message : String(error);
           const isTimeout = error instanceof OutboundTimeoutError;
-          emit(
-            isTimeout
-              ? hooks.timeout(targetChain, outboundTimeoutMs)
-              : hooks.failed(targetChain, errMsg)
-          );
-          // Annotate the receipt so callers can distinguish external-leg
-          // outcomes without sniffing errMsg. Push Chain leg still succeeded
-          // (status stays 1); inspect `externalStatus` / `externalError` for
-          // the external/inbound leg outcome. On a reverted outbound the
-          // observed tx hash is carried by OutboundFailedError — expose it
-          // as externalTxHash so consumers can link to the explorer.
           const failedExternalTxHash =
             error instanceof OutboundFailedError ? error.externalTxHash : undefined;
           // Normalize to chain-native display form for SVM (base58); EVM hex
@@ -1042,6 +1045,24 @@ export async function transformToUniversalTxResponse(
           const failedExternalTxHashDisplay =
             toExternalTxHashDisplay(failedChain, failedExternalTxHash) ??
             failedExternalTxHash;
+          emit(
+            isTimeout
+              ? hooks.timeout(
+                  targetChain,
+                  outboundTimeoutMs,
+                  universalTxResponse.hash
+                )
+              : hooks.failed(targetChain, errMsg, {
+                  pushTxHash: universalTxResponse.hash,
+                  txHash: failedExternalTxHashDisplay,
+                })
+          );
+          // Annotate the receipt so callers can distinguish external-leg
+          // outcomes without sniffing errMsg. Push Chain leg still succeeded
+          // (status stays 1); inspect `externalStatus` / `externalError` for
+          // the external/inbound leg outcome. On a reverted outbound the
+          // observed tx hash is carried by OutboundFailedError — expose it
+          // as externalTxHash so consumers can link to the explorer.
           baseReceipt = {
             ...baseReceipt,
             externalStatus: isTimeout ? 'timeout' : 'failed',

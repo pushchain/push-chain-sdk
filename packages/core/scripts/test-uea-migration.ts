@@ -15,14 +15,15 @@ import { createWalletClient, http, Hex, bytesToHex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { PushChain } from '../src';
 import { PUSH_NETWORK, CHAIN } from '../src/lib/constants/enums';
-import { CHAIN_INFO, VM_NAMESPACE } from '../src/lib/constants/chain';
+import { CHAIN_INFO, VM_NAMESPACE, UEA_MIGRATION } from '../src/lib/constants/chain';
 import { PushClient } from '../src/lib/push-client/push-client';
 
 const originChain = CHAIN.ETHEREUM_SEPOLIA;
 const pushNetwork = PUSH_NETWORK.TESTNET_DONUT;
 
-// UEAMigration contract address (deployed by Nilesh)
-const UEA_MIGRATION_CONTRACT = '0xaFCaC16b882a490FC71ADabA6D7Ac3cae8C6729d';
+// UEAMigration contract address — sourced from the canonical SDK constant
+// so it stays in sync with the address used by the orchestrator/e2e tests.
+const UEA_MIGRATION_CONTRACT = UEA_MIGRATION[pushNetwork];
 
 async function main() {
   const privateKey = process.env['EVM_PRIVATE_KEY'] as Hex;
