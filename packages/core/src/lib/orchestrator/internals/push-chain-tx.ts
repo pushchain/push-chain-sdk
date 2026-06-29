@@ -8,7 +8,11 @@
 import { bs58 } from '../../internal/bs58';
 type Any = { typeUrl: string; value: Uint8Array };
 import { bytesToHex } from 'viem';
-import { CHAIN_INFO, VM_NAMESPACE } from '../../constants/chain';
+import {
+  CHAIN_INFO,
+  VM_NAMESPACE,
+  getBatchExecutorAddress,
+} from '../../constants/chain';
 import { VM } from '../../constants/enums';
 import type { UniversalTx } from '../../generated/uexecutor/v1/types';
 import { PROGRESS_HOOK, ProgressEvent } from '../../progress-hook/progress-hook.types';
@@ -17,6 +21,7 @@ import {
   UniversalPayload,
 } from '../../generated/v1/tx';
 import type { TxResponse } from '../../vm-client/vm-client.types';
+import { EIP7702NotSupportedError } from '../../vm-client/evm-client';
 import type {
   ExecuteParams,
   MultiCall,
@@ -107,6 +112,58 @@ export async function sendPushTx(
   transformFn: TransformToResponseFn
 ): Promise<UniversalTxResponse> {
   if (Array.isArray(execute.data)) {
+    const calls = execute.data as MultiCall[];
+
+    // Preferred path: execute the batch atomically in a single EIP-7702 type-4
+    // transaction. Requires (a) a deployed PushBatchExecutor on this chain and
+    // (b) a wallet that can sign a 7702 authorization. When either is missing we
+    // fall back to the legacy non-atomic per-call loop below.
+    const executor = getBatchExecutorAddress(
+      ctx.universalSigner.account.chain
+    );
+    if (executor && ctx.universalSigner.signAuthorization) {
+      try {
+        printLog(
+          ctx,
+          `sendPushTx — executing ${calls.length} call(s) atomically via EIP-7702 (executor: ${executor})`
+        );
+        const txHash = await ctx.pushClient.sendBatch7702({
+          executor,
+          calls,
+          signer: ctx.universalSigner,
+        });
+        const txResponse = await getIndexedPushTransaction(
+          ctx,
+          txHash,
+          'sendPushTx'
+        );
+        return await transformFn(txResponse, eventBuffer);
+      } catch (err) {
+        // Only fall back when the wallet genuinely can't sign a 7702
+        // authorization. This is raised before any broadcast, so falling back
+        // to sequential execution cannot double-execute. Any other error
+        // (e.g. a real revert) must surface.
+        if (!(err instanceof EIP7702NotSupportedError)) throw err;
+        printLog(
+          ctx,
+          `sendPushTx — wallet cannot sign EIP-7702 authorization; falling back to sequential execution`
+        );
+        // eslint-disable-next-line no-console
+        console.warn(
+          '[push-chain] Wallet cannot produce an EIP-7702 authorization — batch ' +
+            'will execute as separate, non-atomic transactions (if one call reverts, ' +
+            'earlier calls remain committed).'
+        );
+      }
+    } else if (!ctx.universalSigner.signAuthorization) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[push-chain] Signer does not support EIP-7702 — batch will execute as ' +
+          'separate, non-atomic transactions (if one call reverts, earlier calls ' +
+          'remain committed).'
+      );
+    }
+
     const PUSH_CHAIN_GAS_LIMIT = BigInt(500000);
     const MAX_NONCE_RETRIES = 3;
     let nonce = await ctx.pushClient.publicClient.getTransactionCount({
@@ -114,7 +171,6 @@ export async function sendPushTx(
       blockTag: 'pending',
     });
     let lastTxHash: `0x${string}` = '0x';
-    const calls = execute.data as MultiCall[];
     for (let i = 0; i < calls.length; i++) {
       const call = calls[i];
       let txSent = false;

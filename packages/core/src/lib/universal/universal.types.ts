@@ -61,6 +61,37 @@ export interface EthersV6SignerType {
 }
 
 /**
+ * Parameters for signing an EIP-7702 authorization (delegating an EOA's code to
+ * `contractAddress`).
+ */
+export type SignAuthorizationParams = {
+  /** Address of the contract to delegate the EOA's code to. */
+  contractAddress: `0x${string}`;
+  /** Chain id for the delegation. Defaults to the signer's chain. */
+  chainId?: number;
+  /** Authorization nonce. Omit to let the wallet fill it. */
+  nonce?: number;
+  /**
+   * Set `'self'` when the signing EOA also submits the type-4 transaction; the
+   * wallet then bumps the authorization nonce by one. Prefer passing an explicit
+   * `nonce` for deterministic self-execution.
+   */
+  executor?: 'self';
+};
+
+/** A signed EIP-7702 authorization (viem-compatible shape). */
+export type SignedAuthorization = {
+  /** Address of the contract the EOA's code is delegated to. */
+  address: `0x${string}`;
+  chainId: number;
+  nonce: number;
+  r: `0x${string}`;
+  s: `0x${string}`;
+  yParity: number;
+  v?: bigint;
+};
+
+/**
  * A signer capable of signing messages for a specific chain.
  * Used to abstract away signing across multiple VM types.
  */
@@ -104,6 +135,16 @@ export interface UniversalSigner {
    * Used for sending on-chain transactions.
    */
   signAndSendTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
+
+  /**
+   * Signs an EIP-7702 authorization, delegating the EOA's code to
+   * `contractAddress`. Optional — only EVM signers whose underlying wallet
+   * supports EIP-7702 implement it. When absent, callers must fall back to a
+   * non-7702 path (e.g. sequential single calls).
+   */
+  signAuthorization?: (
+    params: SignAuthorizationParams
+  ) => Promise<SignedAuthorization>;
 }
 
 export interface UniversalSignerSkeleton {
@@ -111,6 +152,9 @@ export interface UniversalSignerSkeleton {
   account: UniversalAccount;
   signMessage: (data: Uint8Array) => Promise<Uint8Array>;
   signAndSendTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
+  signAuthorization?: (
+    params: SignAuthorizationParams
+  ) => Promise<SignedAuthorization>;
   signTypedData?: ({
     domain,
     types,

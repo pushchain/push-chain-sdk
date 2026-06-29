@@ -9,6 +9,8 @@ import { TypedDataDomain, TypedData } from '../../constants';
 import {
   EthersV5SignerType,
   EthersV6SignerType,
+  SignAuthorizationParams,
+  SignedAuthorization,
   UniversalAccount,
   UniversalSigner,
   UniversalSignerSkeleton,
@@ -33,10 +35,93 @@ import { bs58 } from '../../internal/bs58';
 /**
  * Converts viem's parsed transaction to an ethers-compatible TransactionRequest.
  * viem uses `gas` while ethers expects `gasLimit`.
+ *
+ * For EIP-7702 (type-4) transactions the `authorizationList` entries also need
+ * reshaping: viem represents the signature inline (`r`/`s`/`yParity`), whereas
+ * ethers expects a nested `signature`. Without this conversion ethers normalises
+ * the entry to a zero signature and the delegation is silently dropped.
  */
-function toEthersTxRequest(viemTx: ReturnType<typeof parseTransaction>): Record<string, unknown> {
-  const { gas, type, ...rest } = viemTx as Record<string, unknown>;
-  return { ...rest, gasLimit: gas };
+function toEthersTxRequest(
+  viemTx: ReturnType<typeof parseTransaction>
+): Record<string, unknown> {
+  const { gas, type, authorizationList, ...rest } = viemTx as Record<
+    string,
+    any
+  >;
+  const out: Record<string, unknown> = { ...rest, gasLimit: gas };
+  if (Array.isArray(authorizationList) && authorizationList.length > 0) {
+    out['type'] = 4;
+    out['authorizationList'] = authorizationList.map((a: any) => ({
+      address: a.address ?? a.contractAddress,
+      chainId: a.chainId,
+      nonce: a.nonce,
+      signature: { r: a.r, s: a.s, yParity: a.yParity },
+    }));
+  }
+  return out;
+}
+
+/**
+ * Builds an EIP-7702 `signAuthorization` for a viem WalletClient, but ONLY when
+ * the underlying account can sign offline (a local account). viem exposes the
+ * `signAuthorization` action on every client — including JSON-RPC accounts that
+ * cannot actually produce one — so we gate on `account.signAuthorization`
+ * (present on local accounts only). Returns `undefined` otherwise so callers
+ * fall back to non-7702 execution.
+ */
+function viemSignAuthorization(
+  wallet: any,
+  address: string
+):
+  | ((params: SignAuthorizationParams) => Promise<SignedAuthorization>)
+  | undefined {
+  const account = wallet?.account;
+  if (!account || typeof account.signAuthorization !== 'function') {
+    return undefined;
+  }
+  return async ({ contractAddress, chainId, nonce, executor }) => {
+    const auth = await wallet.signAuthorization({
+      account: account || (address as `0x${string}`),
+      contractAddress,
+      ...(chainId !== undefined ? { chainId } : {}),
+      ...(nonce !== undefined ? { nonce } : {}),
+      ...(executor ? { executor } : {}),
+    });
+    return auth as SignedAuthorization;
+  };
+}
+
+/**
+ * Builds an EIP-7702 `signAuthorization` for an ethers v6 signer. Presence of
+ * `authorize` is not a reliable capability signal (AbstractSigner's default
+ * throws), so callers MUST also handle a runtime failure and fall back — see
+ * `EIP7702NotSupportedError` in evm-client. Returns `undefined` when the method
+ * is entirely absent (e.g. ethers v5).
+ */
+function ethersSignAuthorization(
+  wallet: any,
+  chain: CHAIN
+):
+  | ((params: SignAuthorizationParams) => Promise<SignedAuthorization>)
+  | undefined {
+  if (typeof wallet?.authorize !== 'function') return undefined;
+  return async ({ contractAddress, chainId, nonce }) => {
+    const cid = chainId ?? Number(chain.split(':')[1]);
+    const auth = await wallet.authorize({
+      address: contractAddress,
+      chainId: cid,
+      nonce: nonce ?? 0,
+    });
+    const sig = auth.signature;
+    return {
+      address: contractAddress,
+      chainId: Number(auth.chainId ?? cid),
+      nonce: Number(auth.nonce ?? nonce ?? 0),
+      r: sig.r as `0x${string}`,
+      s: sig.s as `0x${string}`,
+      yParity: Number(sig.yParity),
+    };
+  };
 }
 
 /**
@@ -91,12 +176,14 @@ export function createUniversalSigner({
   signMessage,
   signAndSendTransaction,
   signTypedData,
+  signAuthorization,
 }: UniversalSigner): UniversalSigner {
   return {
     account,
     signMessage,
     signAndSendTransaction,
     signTypedData,
+    signAuthorization,
   };
 }
 
@@ -125,6 +212,12 @@ export async function toUniversalFromKeypair(
     primaryType: string;
     message: Record<string, any>;
   }) => Promise<Uint8Array>;
+  // Optional: only set for EVM wallets that support EIP-7702 authorization
+  // signing. Left undefined for Solana and wallets without 7702 support, in
+  // which case callers fall back to a non-7702 path.
+  let signAuthorization:
+    | ((params: SignAuthorizationParams) => Promise<SignedAuthorization>)
+    | undefined;
 
   // Check if signer has UID='custom', then we take signMessage, signAndSendTransaction, signTypedData, chain and address from the CustomUniversalSigner.
   // If ViemSigner, convert ViemSigner to UniversalSigner.
@@ -178,6 +271,10 @@ export async function toUniversalFromKeypair(
         return hexToBytes(sigHex as Hex);
       };
 
+      // EIP-7702 authorization signing (ethers v6). Backed by a runtime
+      // fallback in evm-client since `authorize` presence isn't a guarantee.
+      signAuthorization = ethersSignAuthorization(wallet, chain);
+
       break;
     }
 
@@ -211,6 +308,10 @@ export async function toUniversalFromKeypair(
         });
         return hexToBytes(hexSig);
       };
+
+      // EIP-7702 authorization signing — only for local viem accounts that can
+      // sign offline (gated inside the helper); JSON-RPC accounts fall back.
+      signAuthorization = viemSignAuthorization(wallet, address);
       break;
     }
 
@@ -295,6 +396,7 @@ export async function toUniversalFromKeypair(
     signMessage,
     signAndSendTransaction,
     signTypedData,
+    signAuthorization,
   };
   return createUniversalSigner(universalSigner);
 }
@@ -443,6 +545,8 @@ async function generateSkeletonFromEthersV6(
       );
       return hexToBytes(sigHex as Hex);
     },
+
+    signAuthorization: ethersSignAuthorization(signer, chain),
   };
 }
 
@@ -501,5 +605,8 @@ async function generateSkeletonFromViem(
       });
       return hexToBytes(hexSig);
     },
+
+    // Gated on a local account inside the helper (JSON-RPC accounts → undefined).
+    signAuthorization: viemSignAuthorization(signer, address),
   };
 }
