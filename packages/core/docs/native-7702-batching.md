@@ -1,7 +1,9 @@
 # Native EIP-7702 Batching for Push Chain Multicalls
 
-> Status: **live on Push testnet (Donut).** `PushBatchExecutor` is deployed at
-> `0x776d8031b9caA053d04325Bc2CAc47E5cb673776` (chain 42101) and wired into the
+> Status: **live on Push testnet (Donut).** `PushBatchExecutor` — a thin wrapper
+> over OpenZeppelin's **ERC-7821** batch-executor implementation
+> (`draft-ERC7821`) — is deployed at
+> `0x0106BF2F9B02f32203A83a3bDaD79fE8818f3796` (chain 42101) and wired into the
 > SDK; the native-Push multicall path now produces a single atomic type-4 tx.
 > Verified end-to-end (see "Verification status"). Push mainnet isn't live yet,
 > so there's no mainnet deployment.
@@ -129,7 +131,7 @@ client.universal.sendTransaction({ to, data: [call1, call2, call3] })
    ┌─────────────────────────────────────────────────────────────────┐
    │ 1. sign 7702 authorization (EOA key):                            │
    │      { chainId, address: EXECUTOR, nonce: n+1, r, s, yParity }    │
-   │ 2. data = PushBatchExecutor.execute([call1, call2, call3])       │
+   │ 2. data = execute(batchMode, abi.encode([call1,call2,call3]))    │
    │ 3. serialize ONE type-4 (eip7702) tx:                            │
    │      to = EOA (self), nonce = n, authorizationList = [auth]       │
    └─────────────────────────────────────────────────────────────────┘
@@ -137,7 +139,7 @@ client.universal.sendTransaction({ to, data: [call1, call2, call3] })
         ▼
    ┌──────────────────── single transaction (atomic) ─────────────────┐
    │ ① node applies authorization: EOA.code ← 0xef0100 ‖ EXECUTOR      │
-   │ ② tx calls EOA.execute([calls]); msg.sender == address(this)      │
+   │ ② tx calls EOA.execute(mode, executionData); msg.sender==self     │
    │      → executor's self-call check passes (no per-call sig)        │
    │      ├─ call1 ✅  ├─ call2 ❌ revert  → WHOLE TX REVERTS           │
    │      └─ call1 rolled back                                         │
@@ -165,25 +167,33 @@ Two subtleties worth noting:
 
 ### Contract — `push-chain-core-contracts`
 
-**`src/executor/PushBatchExecutor.sol`** (new) — the EIP-7702 delegation target.
+**`src/executor/PushBatchExecutor.sol`** — the EIP-7702 delegation target, a thin
+wrapper over OpenZeppelin's **ERC-7821** minimal batch-executor implementation
+(OZ ships it as `draft-ERC7821`; ERC-7821 is still a draft EIP):
 
-- `execute(Multicall[] calls)` — **self-sponsored** path. Requires
-  `msg.sender == address(this)`, i.e. the EOA submitting its own type-4 tx.
-- `execute(Multicall[] calls, uint256 nonce, bytes signature)` — **sponsored**
-  path. A relayer submits while the EOA authorizes via an EIP-712 signature over
-  `(calls, nonce)`; the stored nonce is checked and bumped (replay-safe).
-- Reuses the existing `Multicall { address to; uint256 value; bytes data }` tuple
-  from `libraries/Types.sol`, so the SDK's call shape is unchanged.
-- Sequential execution, **revert bubbling** (original revert reason is
-  re-thrown), atomic at the tx level.
-- **ERC-7201 namespaced storage** for the nonce and reentrancy lock — required
-  because, under 7702, the contract's code runs in the *EOA's* storage, so a
-  fixed slot could collide with other delegate implementations the EOA might use.
+```solidity
+contract PushBatchExecutor is ERC7821 {
+    string public constant VERSION = "2.0.0";
+    receive() external payable {} // accept plain PC transfers to the delegated EOA
+}
+```
 
-**`test/tests_executor/PushBatchExecutor.t.sol`** (new) — 8 Foundry tests using
-`vm.signAndAttachDelegation` (real 7702 delegation): batch exec, self-call auth,
-value forwarding, sponsored exec + nonce bump, wrong-nonce, replay, foreign-signer
-rejection, and atomic revert + reason bubbling.
+- Authorization is inherited unchanged from `ERC7821`:
+  `_erc7821AuthorizedExecutor` ⇒ `caller == address(this)` — exactly the EIP-7702
+  self-call (the EOA submits its own type-4 tx). No custom auth code.
+- Entry point: `execute(bytes32 mode, bytes executionData)`. Single batch mode
+  only; `executionData = abi.encode(Execution[])`, `Execution = (address target,
+  uint256 value, bytes callData)`.
+- Sequential execution, **revert bubbling**, atomic at the tx level — all from
+  the OZ base. Stateless (no nonce/reentrancy storage needed: the
+  self-call gate already prevents external re-entry).
+- Requires **`@openzeppelin/contracts >= 5.4`** (where ERC-7821 lands); the
+  contracts repo's OZ submodule was bumped 5.3 → 5.4 (full repo still compiles).
+
+**`test/tests_executor/PushBatchExecutor.t.sol`** — 6 Foundry tests using
+`vm.signAndAttachDelegation` (real 7702 delegation): batch exec, self-call auth
+rejection, value forwarding, receiving plain native value while delegated,
+unsupported-mode rejection, and atomic revert + reason bubbling.
 
 ### SDK — `packages/core`
 
@@ -210,16 +220,18 @@ rejection, and atomic revert + reason bubbling.
 **3. `src/lib/constants/chain.ts`** — config + lookup.
 - `PUSH_BATCH_EXECUTOR_ADDRESS: Partial<Record<CHAIN, 0x...>>` — per-chain executor
   addresses. **Testnet Donut is set** to
-  `0x776d8031b9caA053d04325Bc2CAc47E5cb673776`; mainnet is unset (a chain with no
+  `0x0106BF2F9B02f32203A83a3bDaD79fE8818f3796`; mainnet is unset (a chain with no
   entry → `getBatchExecutorAddress()` returns `undefined` → SDK falls back).
 - `getBatchExecutorAddress(chain)` helper.
 
 **4. `src/lib/vm-client/evm-client.ts`** — the type-4 builder.
-- `PUSH_BATCH_EXECUTOR_ABI` and a `BatchCall` type.
-- `sendBatch7702({ executor, calls, signer })`: encodes `execute(calls)`, signs
-  the authorization (`nonce + 1`, self-delegation), serializes a `type: 'eip7702'`
-  transaction with `authorizationList`, and sends it via the existing
-  `signer.signAndSendTransaction`. Inherited by `PushClient extends EvmClient`.
+- `PUSH_BATCH_EXECUTOR_ABI` (ERC-7821 `execute(bytes32 mode, bytes executionData)`),
+  the `ERC7821_BATCH_MODE` constant, and a `BatchCall` type.
+- `sendBatch7702({ executor, calls, signer })`: encodes the ERC-7821 call
+  (`executionData = abi.encode(Execution[])`, batch mode), signs the authorization
+  (`nonce + 1`, self-delegation), serializes a `type: 'eip7702'` transaction with
+  `authorizationList`, and sends it via the existing `signer.signAndSendTransaction`.
+  Inherited by `PushClient extends EvmClient`.
 
 **5. `src/lib/orchestrator/internals/push-chain-tx.ts`** — the branch point.
 - In `sendPushTx`, when `data` is an array: if an executor is configured for the
@@ -272,7 +284,7 @@ value, so large batches don't out-of-gas relative to the old per-call loop.
 
 | Network | Address | Notes |
 | --- | --- | --- |
-| Push Testnet Donut (42101) | `0x776d8031b9caA053d04325Bc2CAc47E5cb673776` | deploy tx `0xbeed6f93…`, block 18373978 |
+| Push Testnet Donut (42101) | `0x0106BF2F9B02f32203A83a3bDaD79fE8818f3796` | OZ ERC-7821 + `receive()`; deploy tx `0xbbe4176a…`, block 18452893 |
 | Push Mainnet | — | mainnet not live yet — nothing to deploy |
 
 Deploy via `push-chain-core-contracts/scripts/executor/deployBatchExecutor.s.sol`
@@ -282,13 +294,14 @@ the address in `PUSH_BATCH_EXECUTOR_ADDRESS`.
 ### Contract source
 
 - **Canonical (compiled/tested/deployed):**
-  `push-chain-core-contracts/src/executor/PushBatchExecutor.sol`
+  `push-chain-core-contracts/src/executor/PushBatchExecutor.sol` — `is ERC7821`
+  (requires OZ ≥ 5.4).
 - **Vendored reference in this SDK (not built):**
-  `packages/core/src/lib/push-chain/helpers/PushBatchExecutor.sol` — a
-  self-contained copy (inlined `Multicall` struct) so the deployed source is
-  visible from the SDK without checking out the contracts repo.
-- **ABI used at runtime:** inlined as `PUSH_BATCH_EXECUTOR_ABI` in
-  `vm-client/evm-client.ts`.
+  `packages/core/src/lib/push-chain/helpers/PushBatchExecutor.sol` — the same
+  OZ ERC-7821 wrapper, so the deployed source is visible from the SDK without
+  checking out the contracts repo.
+- **ABI used at runtime:** `PUSH_BATCH_EXECUTOR_ABI` (ERC-7821
+  `execute(bytes32,bytes)`) in `vm-client/evm-client.ts`.
 
 ## What's not done yet
 
@@ -300,11 +313,13 @@ the address in `PUSH_BATCH_EXECUTOR_ADDRESS`.
 
 ## Verification status
 
-- **Contract:** 8 Foundry tests pass under real 7702 delegation
-  (`test/tests_executor/PushBatchExecutor.t.sol`).
+- **Contract:** 6 Foundry tests pass under real 7702 delegation
+  (`test/tests_executor/PushBatchExecutor.t.sol`); full contracts repo compiles
+  clean under the OZ 5.4 bump.
 - **SDK:** `tsc` clean; signer unit tests (16) pass, including 7702
   capability-gating cases (local account ⇒ capable, JSON-RPC ⇒ fall back).
-- **End-to-end (live testnet):** `__e2e__/scripts/e2e-7702-multicall.ts` — a
-  3-call multicall executed as a **single type-4 tx** (`0x2181e568…`); counter
-  advanced by exactly 3 atomically (1165 → 1168); EOA carries the delegation
-  designator `0xef0100‖executor`.
+- **End-to-end (live testnet, OZ ERC-7821 executor):**
+  `__e2e__/scripts/e2e-7702-multicall.ts` — a 3-call multicall executed as a
+  **single type-4 tx** (`0xcb1124e0…`); counter advanced by exactly 3 atomically
+  (1174 → 1177); EOA carries the delegation designator `0xef0100‖executor`. A
+  plain value transfer to the delegated EOA also succeeds (verifies `receive()`).

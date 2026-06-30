@@ -114,6 +114,17 @@ export async function sendPushTx(
   if (Array.isArray(execute.data)) {
     const calls = execute.data as MultiCall[];
 
+    // Reject a zero `to` BEFORE route selection so behaviour is identical
+    // regardless of signer capability: ERC-7821 (the 7702 path) reinterprets
+    // `target == 0` as the account itself, whereas the legacy loop would send to
+    // the zero address. A zero target is almost always a bug — disallow it.
+    if (calls.some((c) => /^0x0{40}$/i.test(c.to))) {
+      throw new PushChainExecutionError(
+        'A multicall entry has a zero `to` address. Use an explicit target ' +
+          '(the EIP-7702 executor reinterprets a zero target as the account itself).'
+      );
+    }
+
     // Preferred path: execute the batch atomically in a single EIP-7702 type-4
     // transaction. Requires (a) a deployed PushBatchExecutor on this chain and
     // (b) a wallet that can sign a 7702 authorization. When either is missing we

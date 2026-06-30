@@ -12,14 +12,15 @@ the native-Push route.
 - **Before:** 3 calls → 3 txs. If call 2 reverts, call 1 stays committed.
 - **After:** 3 calls → 1 tx. All succeed or all revert.
 
-How: the EOA delegates its code to a `PushBatchExecutor` contract via a type-4
-(`SetCode`) tx and calls `execute(calls)` on itself in the same tx.
+How: the EOA delegates its code to a `PushBatchExecutor` contract (a thin wrapper
+over OpenZeppelin's **ERC-7821** implementation, `draft-ERC7821`) via a type-4 (`SetCode`)
+tx and calls `execute(mode, executionData)` on itself in the same tx.
 
 ## Status: ✅ live on Testnet Donut
 
 | | |
 | --- | --- |
-| Executor | `0x776d8031b9caA053d04325Bc2CAc47E5cb673776` (chain 42101) |
+| Executor | `0x0106BF2F9B02f32203A83a3bDaD79fE8818f3796` (chain 42101, OZ ERC-7821) |
 | Verified | e2e on testnet — 3 calls, 1 type-4 tx, counter +3 atomic |
 | Mainnet | not live yet — nothing to deploy |
 

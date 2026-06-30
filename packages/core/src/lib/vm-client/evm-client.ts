@@ -8,6 +8,7 @@ import {
 import {
   bytesToHex,
   createPublicClient,
+  encodeAbiParameters,
   encodeFunctionData,
   hexToBytes,
   http,
@@ -20,13 +21,35 @@ import {
   TransactionReceipt,
 } from 'viem';
 /**
- * ABI of `PushBatchExecutor.execute((address,uint256,bytes)[])` — the
- * self-sponsored entrypoint invoked by a native Push EOA after it delegates its
- * code to the executor via EIP-7702.
+ * ABI of the ERC-7821 `execute(bytes32 mode, bytes executionData)` entrypoint —
+ * invoked by a native Push EOA on itself after it delegates its code to the
+ * executor (`PushBatchExecutor is ERC7821`) via EIP-7702. ERC-7821's default
+ * authorization (`caller == address(this)`) is exactly that self-call.
  */
 const PUSH_BATCH_EXECUTOR_ABI = parseAbi([
-  'function execute((address to, uint256 value, bytes data)[] calls) payable',
+  'function execute(bytes32 mode, bytes executionData) payable',
 ]);
+
+/**
+ * ERC-7821 single-batch execution mode: callType `0x01` (batch) in the top byte,
+ * default exec type and zero mode-selector — i.e. `0x01` followed by 31 zero
+ * bytes. This is the only mode the executor supports.
+ */
+const ERC7821_BATCH_MODE =
+  '0x0100000000000000000000000000000000000000000000000000000000000000' as const;
+
+/**
+ * ABI tuple for an ERC-7821 / ERC-7579 `Execution`. `executionData` for a batch
+ * is `abi.encode(Execution[])`.
+ */
+const ERC7821_EXECUTION_TUPLE = {
+  type: 'tuple[]',
+  components: [
+    { name: 'target', type: 'address' },
+    { name: 'value', type: 'uint256' },
+    { name: 'callData', type: 'bytes' },
+  ],
+} as const;
 
 /** A single call in a 7702 batch. */
 export type BatchCall = {
@@ -297,13 +320,18 @@ export class EvmClient {
    * Executes a batch of calls atomically from a native EOA using EIP-7702.
    *
    * The EOA signs an authorization delegating its code to `executor`
-   * (`PushBatchExecutor`) and submits a single type-4 transaction calling
-   * `execute(calls)` on itself. Because the authority equals the transaction
-   * sender, the executor's self-call check authorizes the batch — no per-call
-   * signature is needed. All calls succeed or the whole tx reverts.
+   * (`PushBatchExecutor`, an ERC-7821 executor) and submits a single type-4
+   * transaction calling `execute(mode, executionData)` on itself. Because the
+   * authority equals the transaction sender, ERC-7821's self-call check
+   * authorizes the batch — no per-call signature is needed. All calls succeed
+   * or the whole tx reverts.
    *
    * Requires `signer.signAuthorization` (EIP-7702 capable wallet). Callers
    * should check for it and fall back to sequential execution when absent.
+   *
+   * Rejects a zero `to` address: ERC-7579/7821 reinterprets `target == 0` as
+   * `address(this)`, which would silently differ from the sequential fallback
+   * (which sends to the zero address). Disallow it so behaviour is consistent.
    *
    * @returns The transaction hash.
    */
@@ -325,10 +353,28 @@ export class EvmClient {
     }
 
     const account = signer.account.address as `0x${string}`;
+
+    // ERC-7821 maps target == address(0) to address(this); reject it so a batch
+    // can't silently behave differently here vs. the sequential fallback.
+    if (
+      calls.some(
+        (c) => /^0x0{40}$/i.test(c.to) || c.to.toLowerCase() === '0x0'
+      )
+    ) {
+      throw new Error(
+        'sendBatch7702: a call has a zero `to` address, which ERC-7821 reinterprets ' +
+          'as the account itself. Use an explicit target.'
+      );
+    }
+
+    // ERC-7821: execute(mode, executionData) where executionData = abi.encode(Execution[]).
+    const executionData = encodeAbiParameters([ERC7821_EXECUTION_TUPLE], [
+      calls.map((c) => ({ target: c.to, value: c.value, callData: c.data })),
+    ]);
     const data = encodeFunctionData({
       abi: PUSH_BATCH_EXECUTOR_ABI,
       functionName: 'execute',
-      args: [calls.map((c) => ({ to: c.to, value: c.value, data: c.data }))],
+      args: [ERC7821_BATCH_MODE, executionData],
     });
 
     const [feePerGas, chainId, nonce] = await Promise.all([

@@ -189,9 +189,10 @@ export const SYNTHETIC_PUSH_ERC20: Record<
  */
 export const PUSH_BATCH_EXECUTOR_ADDRESS: Partial<Record<CHAIN, `0x${string}`>> =
   {
-    // Deployed 2026-06-22, tx 0xbeed6f93…, block 18373978.
+    // OpenZeppelin ERC-7821 based executor (with payable receive), deployed
+    // 2026-06-22, tx 0xbbe4176a….
     [CHAIN.PUSH_TESTNET_DONUT]:
-      '0x776d8031b9caA053d04325Bc2CAc47E5cb673776',
+      '0x0106BF2F9B02f32203A83a3bDaD79fE8818f3796',
     // [CHAIN.PUSH_MAINNET]: '0x...', // TODO: set after mainnet deploy
   };
 
