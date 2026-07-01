@@ -176,6 +176,33 @@ export const SYNTHETIC_PUSH_ERC20: Record<
  * References -
  * https://namespaces.chainagnostic.org/solana/caip2
  */
+/**
+ * EIP-7702 batch executor (`PushBatchExecutor`) delegation targets, per chain.
+ *
+ * Native Push EOAs delegate their code to this contract (via a type-4 / SetCode
+ * transaction) to execute a `MultiCall[]` batch atomically in a single tx,
+ * replacing the legacy non-atomic per-call loop.
+ *
+ * An entry is absent until the contract is deployed to that chain. When absent,
+ * the SDK falls back to sequential single-call execution. Fill in the address
+ * after deploying `push-chain-core-contracts/src/executor/PushBatchExecutor.sol`.
+ */
+export const PUSH_BATCH_EXECUTOR_ADDRESS: Partial<Record<CHAIN, `0x${string}`>> =
+  {
+    // OpenZeppelin ERC-7821 based executor (with payable receive), deployed
+    // 2026-06-22, tx 0xbbe4176a….
+    [CHAIN.PUSH_TESTNET_DONUT]:
+      '0x0106BF2F9B02f32203A83a3bDaD79fE8818f3796',
+    // [CHAIN.PUSH_MAINNET]: '0x...', // TODO: set after mainnet deploy
+  };
+
+/** Returns the configured 7702 batch-executor address for a chain, if any. */
+export function getBatchExecutorAddress(
+  chain: CHAIN
+): `0x${string}` | undefined {
+  return PUSH_BATCH_EXECUTOR_ADDRESS[chain];
+}
+
 export const CHAIN_INFO: Record<
   CHAIN,
   {

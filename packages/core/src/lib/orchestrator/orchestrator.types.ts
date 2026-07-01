@@ -287,6 +287,13 @@ export interface UniversalTxResponse {
   // 7. Metadata
   type: string; // "99" (was typeHex), now string
   typeVerbose: string; // "universal" (was type), human readable
+  /**
+   * Whether the transaction executed atomically (all-or-nothing).
+   * `true` for a single tx, an EIP-7702 batch, or a UEA `UEA_MULTICALL` batch;
+   * `false` only when a multicall fell back to the non-atomic sequential loop
+   * (separate per-call txs — an earlier call can commit while a later one reverts).
+   */
+  atomic: boolean;
   signature: Signature; // ethers Signature instance
 
   // 8. Raw Universal Fields (if you ever need them)

@@ -8,6 +8,7 @@ import {
 import {
   bytesToHex,
   createPublicClient,
+  encodeAbiParameters,
   encodeFunctionData,
   hexToBytes,
   http,
@@ -19,6 +20,62 @@ import {
   fallback,
   TransactionReceipt,
 } from 'viem';
+/**
+ * ABI of the ERC-7821 `execute(bytes32 mode, bytes executionData)` entrypoint —
+ * invoked by a native Push EOA on itself after it delegates its code to the
+ * executor (`PushBatchExecutor is ERC7821`) via EIP-7702. ERC-7821's default
+ * authorization (`caller == address(this)`) is exactly that self-call.
+ */
+const PUSH_BATCH_EXECUTOR_ABI = parseAbi([
+  'function execute(bytes32 mode, bytes executionData) payable',
+]);
+
+/**
+ * ERC-7821 single-batch execution mode: callType `0x01` (batch) in the top byte,
+ * default exec type and zero mode-selector — i.e. `0x01` followed by 31 zero
+ * bytes. This is the only mode the executor supports.
+ */
+const ERC7821_BATCH_MODE =
+  '0x0100000000000000000000000000000000000000000000000000000000000000' as const;
+
+/**
+ * ABI tuple for an ERC-7821 / ERC-7579 `Execution`. `executionData` for a batch
+ * is `abi.encode(Execution[])`.
+ */
+const ERC7821_EXECUTION_TUPLE = {
+  type: 'tuple[]',
+  components: [
+    { name: 'target', type: 'address' },
+    { name: 'value', type: 'uint256' },
+    { name: 'callData', type: 'bytes' },
+  ],
+} as const;
+
+/** A single call in a 7702 batch. */
+export type BatchCall = {
+  to: `0x${string}`;
+  value: bigint;
+  data: `0x${string}`;
+};
+
+/**
+ * Thrown by {@link EvmClient.sendBatch7702} when the signer cannot actually
+ * produce an EIP-7702 authorization — either the capability is absent, or the
+ * wallet exposes a `signAuthorization`/`authorize` method that throws at call
+ * time (e.g. viem JSON-RPC accounts, ethers' default `AbstractSigner.authorize`).
+ *
+ * It is raised strictly BEFORE any transaction is broadcast, so callers may
+ * safely fall back to a non-7702 path without risk of double execution.
+ */
+export class EIP7702NotSupportedError extends Error {
+  readonly reason?: unknown;
+  constructor(reason?: unknown) {
+    super('Signer cannot produce an EIP-7702 authorization');
+    this.name = 'EIP7702NotSupportedError';
+    this.reason = reason;
+  }
+}
+
 /**
  * EVM client for reading and writing to Ethereum-compatible chains
  *
@@ -256,6 +313,136 @@ export class EvmClient {
       hexToBytes(unsignedTx)
     );
 
+    return bytesToHex(txHashBytes);
+  }
+
+  /**
+   * Executes a batch of calls atomically from a native EOA using EIP-7702.
+   *
+   * The EOA signs an authorization delegating its code to `executor`
+   * (`PushBatchExecutor`, an ERC-7821 executor) and submits a single type-4
+   * transaction calling `execute(mode, executionData)` on itself. Because the
+   * authority equals the transaction sender, ERC-7821's self-call check
+   * authorizes the batch — no per-call signature is needed. All calls succeed
+   * or the whole tx reverts.
+   *
+   * Requires `signer.signAuthorization` (EIP-7702 capable wallet). Callers
+   * should check for it and fall back to sequential execution when absent.
+   *
+   * Rejects a zero `to` address: ERC-7579/7821 reinterprets `target == 0` as
+   * `address(this)`, which would silently differ from the sequential fallback
+   * (which sends to the zero address). Disallow it so behaviour is consistent.
+   *
+   * @returns The transaction hash.
+   */
+  async sendBatch7702({
+    executor,
+    calls,
+    signer,
+  }: {
+    executor: `0x${string}`;
+    calls: BatchCall[];
+    signer: UniversalSigner;
+  }): Promise<Hex> {
+    if (!signer.signAuthorization) {
+      // No capability at all → safe pre-broadcast signal to fall back.
+      throw new EIP7702NotSupportedError();
+    }
+    if (!signer.signAndSendTransaction) {
+      throw new Error('signer.signAndSendTransaction is undefined');
+    }
+
+    const account = signer.account.address as `0x${string}`;
+
+    // ERC-7821 maps target == address(0) to address(this); reject it so a batch
+    // can't silently behave differently here vs. the sequential fallback.
+    if (
+      calls.some(
+        (c) => /^0x0{40}$/i.test(c.to) || c.to.toLowerCase() === '0x0'
+      )
+    ) {
+      throw new Error(
+        'sendBatch7702: a call has a zero `to` address, which ERC-7821 reinterprets ' +
+          'as the account itself. Use an explicit target.'
+      );
+    }
+
+    // ERC-7821: execute(mode, executionData) where executionData = abi.encode(Execution[]).
+    const executionData = encodeAbiParameters([ERC7821_EXECUTION_TUPLE], [
+      calls.map((c) => ({ target: c.to, value: c.value, callData: c.data })),
+    ]);
+    const data = encodeFunctionData({
+      abi: PUSH_BATCH_EXECUTOR_ABI,
+      functionName: 'execute',
+      args: [ERC7821_BATCH_MODE, executionData],
+    });
+
+    const [feePerGas, chainId, nonce] = await Promise.all([
+      this.publicClient.estimateFeesPerGas(),
+      this.publicClient.getChainId(),
+      this.publicClient.getTransactionCount({
+        address: account,
+        blockTag: 'pending',
+      }),
+    ]);
+
+    // EIP-7702 self-execution: the transaction consumes `nonce`, so the
+    // authorization (validated after the sender's nonce is bumped) must carry
+    // `nonce + 1`. This is the only step that can reveal the wallet truly can't
+    // sign a 7702 authorization (presence of the method is not a guarantee), so
+    // a failure here is surfaced as EIP7702NotSupportedError — pre-broadcast,
+    // hence safe for the caller to fall back on.
+    let authorization;
+    try {
+      authorization = await signer.signAuthorization({
+        contractAddress: executor,
+        chainId,
+        nonce: nonce + 1,
+      });
+    } catch (err) {
+      throw new EIP7702NotSupportedError(err);
+    }
+
+    // Estimate gas against the delegated account: override the EOA's code with
+    // the 7702 delegation designator (0xef0100 || executor) so estimation runs
+    // the executor. Fall back to a safe ceiling if the node rejects overrides.
+    let gas: bigint;
+    try {
+      gas = await this.publicClient.estimateGas({
+        account,
+        to: account,
+        data,
+        stateOverride: [
+          {
+            address: account,
+            code: ('0xef0100' + executor.slice(2)) as Hex,
+          },
+        ],
+      });
+      gas = (gas * BigInt(120)) / BigInt(100); // headroom for delegation + auth
+    } catch {
+      // Estimation unavailable (e.g. node rejects state overrides). Scale the
+      // ceiling with the batch size so large batches don't OOG — the legacy
+      // per-call loop budgeted ~500k gas per call; mirror that plus overhead.
+      gas = BigInt(500_000) * BigInt(calls.length) + BigInt(100_000);
+    }
+
+    const unsignedTx = serializeTransaction({
+      chainId,
+      type: 'eip7702',
+      to: account,
+      data,
+      gas,
+      nonce,
+      maxFeePerGas: feePerGas.maxFeePerGas,
+      maxPriorityFeePerGas: feePerGas.maxPriorityFeePerGas,
+      value: BigInt(0),
+      authorizationList: [authorization as never],
+    });
+
+    const txHashBytes = await signer.signAndSendTransaction(
+      hexToBytes(unsignedTx)
+    );
     return bytesToHex(txHashBytes);
   }
 

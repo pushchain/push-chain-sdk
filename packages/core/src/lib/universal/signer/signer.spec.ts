@@ -87,6 +87,48 @@ describe('UniversalSigner utilities', () => {
     });
   });
 
+  describe('toUniversalFromKeypair - EIP-7702 capability gating (viem)', () => {
+    // viem exposes the `signAuthorization` action on EVERY WalletClient, so the
+    // capability must be gated on the *account* (only local accounts can sign
+    // an authorization offline), not on the client method.
+    it('exposes signAuthorization for a local account', async () => {
+      const account = privateKeyToAccount(generatePrivateKey());
+      const client = {
+        account, // local account → has account.signAuthorization
+        getAddresses: jest.fn().mockResolvedValue([account.address]),
+        signMessage: jest.fn().mockResolvedValue('0xabc'),
+        sendTransaction: jest.fn(),
+        signTypedData: jest.fn(),
+        signAuthorization: jest.fn(),
+      } as unknown as WalletClient;
+      const signer = await toUniversalFromKeypair(client, {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+        library: LIBRARY.ETHEREUM_VIEM,
+      });
+      expect(typeof signer.signAuthorization).toBe('function');
+    });
+
+    it('omits signAuthorization for a JSON-RPC account', async () => {
+      const jsonRpcAccount = {
+        address: '0x1111111111111111111111111111111111111111',
+        type: 'json-rpc',
+      };
+      const client = {
+        account: jsonRpcAccount, // no account.signAuthorization → cannot sign offline
+        getAddresses: jest.fn().mockResolvedValue([jsonRpcAccount.address]),
+        signMessage: jest.fn().mockResolvedValue('0xabc'),
+        sendTransaction: jest.fn(),
+        signTypedData: jest.fn(),
+        signAuthorization: jest.fn(), // present on the client, must NOT be trusted
+      } as unknown as WalletClient;
+      const signer = await toUniversalFromKeypair(client, {
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+        library: LIBRARY.ETHEREUM_VIEM,
+      });
+      expect(signer.signAuthorization).toBeUndefined();
+    });
+  });
+
   describe('toUniversalFromKeypair - ethers v6', () => {
     const pk = generatePrivateKey();
     const mockProvider = {
