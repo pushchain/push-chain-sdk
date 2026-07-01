@@ -265,7 +265,11 @@ export async function sendPushTx(
       lastTxHash,
       'sendPushTx'
     );
-    return await transformFn(txResponse, eventBuffer);
+    // Sequential fallback: each call was a separate tx, so the batch is NOT
+    // atomic (an earlier call can be committed while a later one reverts).
+    const resp = await transformFn(txResponse, eventBuffer);
+    resp.atomic = false;
+    return resp;
   }
 
   const txHash = await ctx.pushClient.sendTransaction({

@@ -1131,6 +1131,12 @@ export async function transformToUniversalTxResponse(
     // 7. Metadata
     type,
     typeVerbose,
+    // Atomic by default — a single tx, an EIP-7702 batch, and a UEA multicall
+    // are all all-or-nothing. Only the native sequential fallback loop overrides
+    // this to `false` (see sendPushTx in push-chain-tx.ts). Historical lookups
+    // via trackTransaction also keep the default, since the past execution mode
+    // isn't always recoverable.
+    atomic: true,
     signature,
 
     // 8. Raw Universal Fields

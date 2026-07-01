@@ -280,6 +280,49 @@ value, so large batches don't out-of-gas relative to the old per-call loop.
 
 ---
 
+## The `atomic` field on the response
+
+`UniversalTxResponse` carries an `atomic: boolean` (right after `type` /
+`typeVerbose`) so callers can tell whether a batch ran all-or-nothing:
+
+| Execution path | `atomic` |
+| --- | --- |
+| Single tx | `true` |
+| EIP-7702 batch (native, this feature) | `true` |
+| UEA `UEA_MULTICALL` (bridged / cross-chain / SVM) | `true` |
+| Outbound / funds / fee-lock | `true` |
+| **Native sequential fallback loop** | **`false`** |
+
+Implementation is default-`true` in `transformToUniversalTxResponse`
+(`response-builder.ts`), overridden to `false` only at the sequential-loop return
+in `sendPushTx` (`push-chain-tx.ts`). Use it when atomicity is load-bearing —
+e.g. treat `atomic === false` as "this batch may have partially applied."
+(Historical `trackTransaction` lookups keep the `true` default, since past
+execution mode isn't always recoverable.)
+
+## Gas abstraction
+
+Gas-abstracted (sponsor/relayer-pays) batch execution is **not a native-7702
+feature** — it's provided by the **existing UEA path** and applies to
+**external-origin** flows:
+
+- An **external-origin** user's batch is executed on their **UEA** via a zero-fee
+  Cosmos `MsgExecutePayload` that the node's `uexecutor` module runs
+  (`UEA_MULTICALL`, atomic). Submission is chain-sponsored (Cosmos `feegrant`);
+  the UEA funds EVM gas from its balance / cross-chain fee-lock. This path already
+  reports `atomic: true`.
+- A **native-Push EOA has no UEA**, so it cannot use this path — it executes
+  self-paid via the EIP-7702 batch (or the sequential fallback). There is no
+  `gasless` opt-in for native origins because there is nothing to route them
+  through; true sponsor-pays-gas for a raw EOA would require new infra (a
+  signature-authorized executor + relayer, or node-level type-4 fee sponsorship),
+  which is out of scope.
+
+Net: external-origin callers already get gasless + atomic batching automatically;
+native callers get atomic (7702) but self-paid.
+
+---
+
 ## Deployment
 
 | Network | Address | Notes |

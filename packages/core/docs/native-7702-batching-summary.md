@@ -46,6 +46,21 @@ If the wallet can't sign a 7702 authorization, the SDK falls back to the legacy
 sequential loop (+ `console.warn`). The fallback only triggers **before any tx is
 broadcast**, so it can never double-execute. Real reverts are surfaced, not hidden.
 
+## Knowing which path ran (`atomic`)
+
+The tx response now has an `atomic: boolean` (after `type`/`typeVerbose`): `true`
+for a single tx, a 7702 batch, or a UEA multicall; `false` only for the native
+sequential fallback. Check it when atomicity matters (`atomic === false` ⇒ the
+batch may have partially applied).
+
+## Gas abstraction
+
+Sponsor-pays batch execution is delivered by the **existing UEA path**, not
+native 7702: an **external-origin** user's batch runs on their UEA via a zero-fee
+Cosmos message (chain-sponsored, atomic) — already automatic. A **native-Push
+EOA has no UEA**, so it executes self-paid (7702 or fallback); true sponsor-pays
+for a raw EOA would need new infra (out of scope).
+
 ## Where the code lives
 
 - Contract (canonical): `push-chain-core-contracts/src/executor/PushBatchExecutor.sol`

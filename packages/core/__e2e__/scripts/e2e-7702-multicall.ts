@@ -107,6 +107,8 @@ async function main() {
     data: calls,
   });
   console.log(`tx hash: ${tx.hash}`);
+  console.log(`tx.atomic: ${tx.atomic}`);
+  assert(tx.atomic === true, 'response reports atomic === true for the 7702 batch');
   const receipt = await tx.wait();
   console.log(`receipt status: ${receipt.status}`);
   assert(receipt.status === 1, 'transaction succeeded');
@@ -136,6 +138,38 @@ async function main() {
     (code ?? '').toLowerCase() === expectedDesignator,
     'EOA delegated to PushBatchExecutor (0xef0100 ‖ executor)'
   );
+
+  // --------------------------------------------------------------------
+  // Fallback scenario: a signer WITHOUT 7702 capability must take the
+  // sequential per-call loop and report atomic === false.
+  // --------------------------------------------------------------------
+  console.log('\nForcing the non-7702 sequential fallback...');
+  const fallbackSigner = await PushChain.utils.signer.toUniversalFromKeypair(
+    walletClient,
+    {
+      chain: CHAIN.PUSH_TESTNET_DONUT,
+      library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+    }
+  );
+  // Strip the capability so sendPushTx cannot use EIP-7702.
+  delete (fallbackSigner as { signAuthorization?: unknown }).signAuthorization;
+  assert(
+    fallbackSigner.signAuthorization === undefined,
+    'fallback signer has no signAuthorization'
+  );
+  const fallbackClient = await PushChain.initialize(fallbackSigner, {
+    network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
+  });
+  const fbTx = await fallbackClient.universal.sendTransaction({
+    to: COUNTER_ADDRESS_PAYABLE,
+    data: Array.from({ length: 2 }, () => ({
+      to: COUNTER_ADDRESS_PAYABLE,
+      value: BigInt(0),
+      data: incrementData,
+    })),
+  });
+  console.log(`fallback tx.atomic: ${fbTx.atomic}`);
+  assert(fbTx.atomic === false, 'sequential fallback reports atomic === false');
 
   console.log('\n🎉 e2e 7702 multicall passed');
 }
