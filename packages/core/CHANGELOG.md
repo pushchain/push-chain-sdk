@@ -1,3 +1,11 @@
+@pushchain/core@6.0.19 (2026-07-01)
+
+- feat: use OZ ERC-7821 executor for 7702 batching
+- feat: native EIP-7702 atomic multicall for native-Push EOAs
+- feat: archive-RPC fallback for prune-miss reads in tracking
+
+---
+
 @pushchain/core@6.0.17 (2026-06-09)
 
 - fix: make SVM payload encoding browser-safe
