@@ -1,10 +1,4 @@
-import React, {
-  createContext,
-  FC,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import React, { createContext, FC, useEffect, useRef, useState } from 'react';
 import { PushChain } from '@pushchain/core';
 import {
   PROGRESS_HOOK,
@@ -35,8 +29,17 @@ import { LoginModal } from '../components/LoginModal';
 import { getWalletContext } from './WalletContextMap';
 import { ThemeOverrides } from '../styles/token';
 import { useWaapAuth } from '../providers/waap/useWaapAuth';
-import { waapSignAndSendTransaction, waapSignMessage, waapSignTypedData } from '../providers/waap/waapProvider';
+import {
+  waapSignAndSendTransaction,
+  waapSignMessage,
+  waapSignTypedData,
+} from '../providers/waap/waapProvider';
 import { TypedData, TypedDataDomain } from 'viem';
+import {
+  consumePhantomMobileConnectRequest,
+  hasPhantomMobileConnectRequest,
+  PHANTOM_PROVIDER_NAME,
+} from '../providers/walletProviders/solana/phantomMobile';
 
 export type WalletContextType = {
   universalAccount: UniversalAccount | null;
@@ -52,7 +55,7 @@ export type WalletContextType = {
   handleSignTypedData: (data: ITypedData) => Promise<Uint8Array>;
   handleExternalWalletConnection: (data: {
     chain: ChainType;
-    provider: IWalletProvider["name"];
+    provider: IWalletProvider['name'];
   }) => Promise<void>;
 
   config: PushWalletProviderProps['config'];
@@ -72,12 +75,17 @@ export type WalletContextType = {
 
   isReadOnly: boolean;
   setIsReadOnly: React.Dispatch<React.SetStateAction<boolean>>;
-  requestPushWalletConnection: () => Promise<{ chain: ChainType; provider: IWalletProvider["name"] }>;
+  requestPushWalletConnection: () => Promise<{
+    chain: ChainType;
+    provider: IWalletProvider['name'];
+  }>;
   checkAndShowUpgradeIfNeeded: (pushChainClient: PushChain) => Promise<boolean>;
 
   activeTriggerId: string | undefined;
   setActiveTriggerId: React.Dispatch<React.SetStateAction<string | undefined>>;
-  toggleButtonRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
+  toggleButtonRefs: React.MutableRefObject<
+    Record<string, HTMLDivElement | null>
+  >;
 
   connectionType: 'social' | 'external';
 };
@@ -100,6 +108,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
   const [isWalletMinimised, setMinimiseWallet] = useState(false); // to display/hide minimized wallet modal
 
   const [isIframeLoading, setIframeLoading] = useState(true);
+  const isIframeLoadingRef = useRef(isIframeLoading);
 
   const [isReadOnly, setIsReadOnly] = useState(false);
 
@@ -115,6 +124,8 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     success?: () => void;
     error?: (error: Error) => void;
   } | null>(null);
+
+  const pendingExternalWalletStatusRef = useRef<WalletInfo | null>(null);
 
   const pushChainClientRef = useRef<PushChain | null>(null);
 
@@ -148,8 +159,9 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
 
   const { loginWithWaapSocial } = useWaapAuth();
 
-  const toggleButtonRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
-  
+  const toggleButtonRefs = React.useRef<Record<string, HTMLDivElement | null>>(
+    {}
+  );
 
   const updateModalAppData = (newData: Partial<ModalAppDetails>) => {
     setModalAppData((prevData) => ({
@@ -200,6 +212,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     setWalletVisibility(false);
     setIframeLoading(true);
     setExternalWallet(null);
+    pendingExternalWalletStatusRef.current = null;
     setIsReadOnly(false);
     localStorage.removeItem(`walletInfo_${config?.uid || 'default'}`);
     document.body.style.overflow = '';
@@ -217,6 +230,21 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         console.error('Error sending message to push wallet tab:', error);
       }
     }
+  };
+
+  const sendExternalWalletConnectionStatus = (connectedWallet: WalletInfo) => {
+    if (isIframeLoadingRef.current || !iframeRef?.current?.contentWindow) {
+      pendingExternalWalletStatusRef.current = connectedWallet;
+      return;
+    }
+
+    sendMessageToPushWallet({
+      type: APP_TO_WALLET_ACTION.CONNECTION_STATUS,
+      data: {
+        status: 'successful',
+        ...connectedWallet,
+      },
+    });
   };
 
   // response when the wallet sends logged in action
@@ -244,7 +272,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       `walletInfo_${config?.uid || 'default'}`,
       JSON.stringify({
         account: response.account,
-        uid: config?.uid || 'default'
+        uid: config?.uid || 'default',
       })
     );
   };
@@ -287,19 +315,13 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         `walletInfo_${config?.uid || 'default'}`,
         JSON.stringify({
           wallet: connectedWallet,
-          uid: config?.uid || 'default'
+          uid: config?.uid || 'default',
         })
       );
 
       setExternalWallet(connectedWallet);
 
-      sendMessageToPushWallet({
-        type: APP_TO_WALLET_ACTION.CONNECTION_STATUS,
-        data: {
-          status: 'successful',
-          ...connectedWallet,
-        },
-      });
+      sendExternalWalletConnectionStatus(connectedWallet);
     } catch (error) {
       console.log('Failed to connect to provider', error);
       sendMessageToPushWallet({
@@ -394,7 +416,9 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
 
     console.log(result);
 
-    const w = await PushChain.utils.account.convertExecutorToOriginAccount(result.address as `0x${string}`);
+    const w = await PushChain.utils.account.convertExecutorToOriginAccount(
+      result.address as `0x${string}`
+    );
 
     if (!w.account) return;
 
@@ -414,7 +438,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         account: w.account,
       },
     });
-  }
+  };
 
   const handleSocialSignAndSendMessage = async (message: Uint8Array) => {
     try {
@@ -533,34 +557,38 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     sendMessageToPushWallet({
       type: APP_TO_WALLET_ACTION.RECONNECT_WALLET,
     });
-  
+
     // Wait for a response from the Push Wallet iframe
-    return new Promise<{ chain: ChainType; provider: IWalletProvider["name"] }>((resolve, reject) => {
-      const handleMessage = (event: MessageEvent) => {
-        if (event.data.type === WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS) {
-          window.removeEventListener('message', handleMessage);
-          if (event.data.error) {
-            reject(new Error(event.data.error));
-          } else {
-            resolve(event.data);
+    return new Promise<{ chain: ChainType; provider: IWalletProvider['name'] }>(
+      (resolve, reject) => {
+        const handleMessage = (event: MessageEvent) => {
+          if (event.data.type === WALLET_TO_APP_ACTION.APP_CONNECTION_SUCCESS) {
+            window.removeEventListener('message', handleMessage);
+            if (event.data.error) {
+              reject(new Error(event.data.error));
+            } else {
+              resolve(event.data);
+            }
           }
-        }
-        if (event.data.type === WALLET_TO_APP_ACTION.APP_CONNECTION_CANCELLED) {
+          if (
+            event.data.type === WALLET_TO_APP_ACTION.APP_CONNECTION_CANCELLED
+          ) {
+            window.removeEventListener('message', handleMessage);
+            reject(new Error('Push Wallet connection failed'));
+            setMinimiseWallet(true);
+          }
+        };
+
+        window.addEventListener('message', handleMessage);
+
+        setTimeout(() => {
           window.removeEventListener('message', handleMessage);
-          reject(new Error('Push Wallet connection failed'));
+          reject(new Error('Push Wallet connection timed out'));
           setMinimiseWallet(true);
-        }
-      };
-  
-      window.addEventListener('message', handleMessage);
-  
-      setTimeout(() => {
-        window.removeEventListener('message', handleMessage);
-        reject(new Error('Push Wallet connection timed out'));
-        setMinimiseWallet(true);
-      }, 100000);
-    });
-  }
+        }, 100000);
+      }
+    );
+  };
 
   const checkAndShowUpgradeIfNeeded = async (pushChainClient: PushChain) => {
     setPushChainClient(pushChainClient);
@@ -571,7 +599,11 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
 
     try {
       await pushChainClient.accountStatusReady;
-      if (!pushChainClient.isReadMode && pushChainClient.accountStatus.uea.loaded && pushChainClient.accountStatus.uea.requiresUpgrade) {
+      if (
+        !pushChainClient.isReadMode &&
+        pushChainClient.accountStatus.uea.loaded &&
+        pushChainClient.accountStatus.uea.requiresUpgrade
+      ) {
         setMinimiseWallet(false);
         sendMessageToPushWallet({
           type: APP_TO_WALLET_ACTION.SHOW_UPGRADE_DRAWER,
@@ -595,7 +627,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
           };
         });
       }
-      
+
       return true;
     } catch (error) {
       console.error('Error checking upgrade status:', error);
@@ -605,7 +637,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
 
   const handleUpgradeAccountSuccess = () => {
     setMinimiseWallet(true);
-    
+
     // Resolve any pending upgrade promise
     if (upgradeResolverRef.current?.success) {
       upgradeResolverRef.current.success();
@@ -615,10 +647,12 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
 
   const handleUpgradeAccountError = (error?: any) => {
     setMinimiseWallet(true);
-    
+
     // Reject any pending upgrade promise
     if (upgradeResolverRef.current?.error) {
-      upgradeResolverRef.current.error(error instanceof Error ? error : new Error('Upgrade failed'));
+      upgradeResolverRef.current.error(
+        error instanceof Error ? error : new Error('Upgrade failed')
+      );
       upgradeResolverRef.current = null;
     }
   };
@@ -634,11 +668,11 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         progressHook: (progress: ProgressEvent) => {
           setProgress(progress);
           if (progress.id === PROGRESS_HOOK.UEA_MIG_9901) {
-            setTimeout(() => setProgress(null), 10000)
+            setTimeout(() => setProgress(null), 10000);
           }
-        }
+        },
       });
-      
+
       // Send success response to iframe
       sendMessageToPushWallet({
         type: APP_TO_WALLET_ACTION.UPGRADE_ACCOUNT_RESPONSE,
@@ -646,32 +680,44 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
       });
 
       handleUpgradeAccountSuccess();
-      
     } catch (error) {
       console.error('Error upgrading account:', error);
-      
+
       // Send error response to iframe
       sendMessageToPushWallet({
         type: APP_TO_WALLET_ACTION.UPGRADE_ACCOUNT_RESPONSE,
-        data: { success: false, error: error instanceof Error ? error.message : 'Upgrade failed' },
+        data: {
+          success: false,
+          error: error instanceof Error ? error.message : 'Upgrade failed',
+        },
       });
 
       // Reject the upgrade promise
       if (upgradeResolverRef.current?.error) {
-        upgradeResolverRef.current.error(error instanceof Error ? error : new Error('Upgrade failed'));
+        upgradeResolverRef.current.error(
+          error instanceof Error ? error : new Error('Upgrade failed')
+        );
       }
     }
   };
 
   useEffect(() => {
-    const walletInfo = localStorage.getItem(`walletInfo_${config?.uid || 'default'}`);
+    isIframeLoadingRef.current = isIframeLoading;
+  }, [isIframeLoading]);
+
+  useEffect(() => {
+    if (hasPhantomMobileConnectRequest()) return;
+
+    const walletInfo = localStorage.getItem(
+      `walletInfo_${config?.uid || 'default'}`
+    );
     const walletData = walletInfo ? JSON.parse(walletInfo) : null;
     if (!walletData) return;
     if (walletData.uid !== config?.uid) return;
     if (walletData?.wallet && walletData.wallet?.providerName) {
-      setUniversalAccount(PushChain.utils.account.fromChainAgnostic(
-        walletData.wallet.address
-      ));
+      setUniversalAccount(
+        PushChain.utils.account.fromChainAgnostic(walletData.wallet.address)
+      );
       setExternalWallet(walletData.wallet);
     } else {
       setUniversalAccount(walletData.account);
@@ -681,6 +727,38 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     setWalletVisibility(true);
     setConnectionStatus(ConnectionStatus.CONNECTED);
   }, []);
+
+  useEffect(() => {
+    const requestedChain = consumePhantomMobileConnectRequest();
+    if (!requestedChain) return;
+
+    setWalletVisibility(true);
+    setConnectionStatus(ConnectionStatus.CONNECTING);
+    setIsReadOnly(false);
+
+    handleExternalWalletConnection({
+      chain: requestedChain,
+      provider: PHANTOM_PROVIDER_NAME,
+    }).catch((error) => {
+      console.log('Failed to resume Phantom mobile connection', error);
+      setConnectionStatus(ConnectionStatus.RETRY);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (isIframeLoading || !pendingExternalWalletStatusRef.current) return;
+
+    const connectedWallet = pendingExternalWalletStatusRef.current;
+    pendingExternalWalletStatusRef.current = null;
+
+    sendMessageToPushWallet({
+      type: APP_TO_WALLET_ACTION.CONNECTION_STATUS,
+      data: {
+        status: 'successful',
+        ...connectedWallet,
+      },
+    });
+  }, [isIframeLoading]);
 
   useEffect(() => {
     if (isIframeLoading) return;
@@ -702,7 +780,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         },
       });
     }
-  }, [isIframeLoading, externalWallet])
+  }, [isIframeLoading, externalWallet]);
 
   useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
@@ -813,7 +891,12 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         activeTriggerId={activeTriggerId}
       />
       {progress && (
-        <PushWalletToast progress={progress} setProgress={setProgress} toastPosition={config?.toast?.position} hidden={config?.toast?.hidden} />
+        <PushWalletToast
+          progress={progress}
+          setProgress={setProgress}
+          toastPosition={config?.toast?.position}
+          hidden={config?.toast?.hidden}
+        />
       )}
       {children}
     </WalletContext.Provider>

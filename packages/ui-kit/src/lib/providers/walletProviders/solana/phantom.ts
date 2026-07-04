@@ -2,9 +2,20 @@ import { getAddress } from 'ethers';
 import { BaseWalletProvider } from '../BaseWalletProvider';
 import { ChainType, ITypedData } from '../../../types/wallet.types';
 import { Transaction, VersionedTransaction } from '@solana/web3.js';
-import { bytesToHex, createWalletClient, custom, hexToBytes, parseTransaction } from 'viem';
+import {
+  bytesToHex,
+  createWalletClient,
+  custom,
+  hexToBytes,
+  parseTransaction,
+} from 'viem';
 import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
 import { sepolia } from 'viem/chains';
+import {
+  isMobileDevice,
+  openPhantomMobileBrowser,
+  shouldOpenPhantomMobileBrowser,
+} from './phantomMobile';
 
 declare global {
   interface Window {
@@ -22,7 +33,9 @@ declare global {
           message: Uint8Array,
           encoding: string
         ) => Promise<{ signature: Uint8Array }>;
-        signAndSendTransaction: (txn: Transaction | VersionedTransaction) => Promise<string>;
+        signAndSendTransaction: (
+          txn: Transaction | VersionedTransaction
+        ) => Promise<{ signature: string } | string>;
       };
     };
     ethereum?: any;
@@ -41,7 +54,8 @@ export class PhantomProvider extends BaseWalletProvider {
 
   isInstalled = async (): Promise<boolean> => {
     return (
-      typeof window !== 'undefined' && typeof window.phantom !== 'undefined'
+      typeof window !== 'undefined' &&
+      (typeof window.phantom !== 'undefined' || isMobileDevice())
     );
   };
 
@@ -70,6 +84,11 @@ export class PhantomProvider extends BaseWalletProvider {
 
   private connectSolana = async (): Promise<{ caipAddress: string }> => {
     if (!window.phantom?.solana) {
+      if (shouldOpenPhantomMobileBrowser(ChainType.SOLANA)) {
+        openPhantomMobileBrowser(ChainType.SOLANA);
+        return new Promise<{ caipAddress: string }>(() => undefined);
+      }
+
       throw new Error('Phantom not installed for Solana');
     }
 
@@ -120,12 +139,15 @@ export class PhantomProvider extends BaseWalletProvider {
   };
 
   signMessage = async (message: Uint8Array): Promise<Uint8Array> => {
-    const isInstalled = this.isInstalled();
+    const isInstalled = await this.isInstalled();
     if (!isInstalled) {
       throw new Error('No Phantom wallet installed');
     }
 
-    if (this.connectedChainType === ChainType.SOLANA && window.phantom?.solana) {
+    if (
+      this.connectedChainType === ChainType.SOLANA &&
+      window.phantom?.solana
+    ) {
       try {
         const provider = window.phantom?.solana;
         const signedMessage = await provider.signMessage(message, 'utf8');
@@ -135,7 +157,10 @@ export class PhantomProvider extends BaseWalletProvider {
         console.error('Phantom Solana signing error:', error);
         throw error;
       }
-    } else if (this.connectedChainType === ChainType.ETHEREUM && window.phantom?.ethereum) {
+    } else if (
+      this.connectedChainType === ChainType.ETHEREUM &&
+      window.phantom?.ethereum
+    ) {
       try {
         const provider = window.phantom?.ethereum;
 
@@ -165,12 +190,15 @@ export class PhantomProvider extends BaseWalletProvider {
   };
 
   signAndSendTransaction = async (txn: Uint8Array): Promise<Uint8Array> => {
-    const isInstalled = this.isInstalled();
+    const isInstalled = await this.isInstalled();
     if (!isInstalled) {
       throw new Error('No Phantom wallet installed');
     }
 
-    if (this.connectedChainType === ChainType.SOLANA && window.phantom?.solana) {
+    if (
+      this.connectedChainType === ChainType.SOLANA &&
+      window.phantom?.solana
+    ) {
       try {
         const provider = window.phantom?.solana;
 
@@ -188,13 +216,20 @@ export class PhantomProvider extends BaseWalletProvider {
         const signedTransaction = await provider.signAndSendTransaction(
           transaction
         );
+        const signature =
+          typeof signedTransaction === 'string'
+            ? signedTransaction
+            : signedTransaction.signature;
 
-        return bs58.decode((signedTransaction as any).signature);
+        return bs58.decode(signature);
       } catch (error) {
         console.error('Phantom Solana signing error:', error);
         throw error;
       }
-    } else if (this.connectedChainType === ChainType.ETHEREUM && window.phantom?.ethereum) {
+    } else if (
+      this.connectedChainType === ChainType.ETHEREUM &&
+      window.phantom?.ethereum
+    ) {
       try {
         const provider = window.phantom?.ethereum;
 
@@ -239,19 +274,25 @@ export class PhantomProvider extends BaseWalletProvider {
   };
 
   signTypedData = async (typedData: ITypedData): Promise<Uint8Array> => {
-    const isInstalled = this.isInstalled();
+    const isInstalled = await this.isInstalled();
     if (!isInstalled) {
       throw new Error('No Phantom wallet installed');
     }
 
-    if (this.connectedChainType === ChainType.SOLANA && window.phantom?.solana) {
+    if (
+      this.connectedChainType === ChainType.SOLANA &&
+      window.phantom?.solana
+    ) {
       throw new Error('signTypedData is not implemented for this provider');
-    } else if (this.connectedChainType === ChainType.ETHEREUM && window.phantom?.ethereum) {
+    } else if (
+      this.connectedChainType === ChainType.ETHEREUM &&
+      window.phantom?.ethereum
+    ) {
       try {
         const walletClient = createWalletClient({
           chain: sepolia,
           transport: custom(window.ethereum!),
-        })
+        });
 
         const accounts = await walletClient.request({
           method: 'eth_accounts',
@@ -263,7 +304,7 @@ export class PhantomProvider extends BaseWalletProvider {
 
         const signature = await walletClient.signTypedData({
           account: accounts[0],
-          ...typedData
+          ...typedData,
         });
 
         return hexToBytes(signature);
@@ -274,19 +315,25 @@ export class PhantomProvider extends BaseWalletProvider {
     } else {
       throw new Error('No Phantom wallet connected');
     }
-  }
+  };
 
   disconnect = async (): Promise<void> => {
-    const isInstalled = this.isInstalled();
+    const isInstalled = await this.isInstalled();
     if (!isInstalled) return;
 
-    if (this.connectedChainType === ChainType.SOLANA && window.phantom?.solana) {
+    if (
+      this.connectedChainType === ChainType.SOLANA &&
+      window.phantom?.solana
+    ) {
       const provider = window.phantom?.solana;
       this.connectedChainType = null;
       await provider.disconnect();
     }
 
-    if (this.connectedChainType === ChainType.ETHEREUM && window.phantom?.ethereum) {
+    if (
+      this.connectedChainType === ChainType.ETHEREUM &&
+      window.phantom?.ethereum
+    ) {
       this.connectedChainType = null;
       //TOOD: find how to disconnect ethereum
     }
