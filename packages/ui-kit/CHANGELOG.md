@@ -1,3 +1,10 @@
+@pushchain/ui-kit@6.0.19 (2026-07-06)
+
+- feat: support phantom wallet connection on the mobile devices.
+- chore: update bundled `@pushchain/core` to pull in the latest core features and fixes.
+
+---
+
 @pushchain/ui-kit@6.0.18 (2026-06-12)
 
 - chore: update bundled `@pushchain/core` to pull in the latest core features and fixes.
