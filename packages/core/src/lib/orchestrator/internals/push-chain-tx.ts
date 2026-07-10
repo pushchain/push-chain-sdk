@@ -175,7 +175,6 @@ export async function sendPushTx(
       );
     }
 
-    const PUSH_CHAIN_GAS_LIMIT = BigInt(500000);
     const MAX_NONCE_RETRIES = 3;
     let nonce = await ctx.pushClient.publicClient.getTransactionCount({
       address: ctx.universalSigner.account.address as `0x${string}`,
@@ -197,7 +196,6 @@ export async function sendPushTx(
             value: call.value,
             signer: ctx.universalSigner,
             nonce,
-            gas: PUSH_CHAIN_GAS_LIMIT,
           });
           txSent = true;
         } catch (err: any) {

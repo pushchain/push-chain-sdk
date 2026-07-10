@@ -407,6 +407,9 @@ export function construct(
   options: {
     signMessage: (data: Uint8Array) => Promise<Uint8Array>;
     signAndSendTransaction: (unsignedTx: Uint8Array) => Promise<Uint8Array>;
+    signAuthorization?: (
+      params: SignAuthorizationParams
+    ) => Promise<SignedAuthorization>;
     signTypedData?: ({
       domain,
       types,
@@ -420,14 +423,22 @@ export function construct(
     }) => Promise<Uint8Array>;
   }
 ): UniversalSignerSkeleton {
-  const { signMessage, signAndSendTransaction, signTypedData } = options;
-  if (
-    signTypedData &&
-    (account.chain === CHAIN.SOLANA_MAINNET ||
-      account.chain === CHAIN.SOLANA_TESTNET ||
-      account.chain === CHAIN.SOLANA_DEVNET)
-  ) {
+  const {
+    signMessage,
+    signAndSendTransaction,
+    signTypedData,
+    signAuthorization,
+  } = options;
+  const isSolana =
+    account.chain === CHAIN.SOLANA_MAINNET ||
+    account.chain === CHAIN.SOLANA_TESTNET ||
+    account.chain === CHAIN.SOLANA_DEVNET;
+
+  if (signTypedData && isSolana) {
     throw new Error('Typed data signing is not supported for Solana');
+  }
+  if (signAuthorization && isSolana) {
+    throw new Error('EIP-7702 authorization is not supported for Solana');
   }
 
   return {
@@ -436,6 +447,7 @@ export function construct(
     signMessage,
     signAndSendTransaction,
     signTypedData,
+    signAuthorization,
   };
 }
 

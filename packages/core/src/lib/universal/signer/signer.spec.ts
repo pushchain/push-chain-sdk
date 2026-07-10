@@ -225,6 +225,7 @@ describe('UniversalSigner utilities', () => {
         mockOptions.signAndSendTransaction
       );
       expect(signer.signTypedData).toBeUndefined();
+      expect(signer.signAuthorization).toBeUndefined();
     });
 
     it('should include signTypedData when provided', () => {
@@ -235,6 +236,35 @@ describe('UniversalSigner utilities', () => {
       });
 
       expect(signer.signTypedData).toBe(mockSignTypedData);
+    });
+
+    it('should include signAuthorization when provided', async () => {
+      const signedAuthorization = {
+        address: '0x1111111111111111111111111111111111111111' as const,
+        chainId: 11155111,
+        nonce: 7,
+        r: `0x${'11'.repeat(32)}` as `0x${string}`,
+        s: `0x${'22'.repeat(32)}` as `0x${string}`,
+        yParity: 1,
+      };
+      const mockSignAuthorization = jest
+        .fn()
+        .mockResolvedValue(signedAuthorization);
+      const signer = construct(mockAccount, {
+        ...mockOptions,
+        signAuthorization: mockSignAuthorization,
+      });
+      const params = {
+        contractAddress: '0x2222222222222222222222222222222222222222' as const,
+        chainId: 11155111,
+        nonce: 7,
+      };
+
+      expect(signer.signAuthorization).toBe(mockSignAuthorization);
+      await expect(signer.signAuthorization?.(params)).resolves.toEqual(
+        signedAuthorization
+      );
+      expect(mockSignAuthorization).toHaveBeenCalledWith(params);
     });
 
     it('should throw error when signTypedData is provided for Solana chain', () => {
@@ -269,6 +299,20 @@ describe('UniversalSigner utilities', () => {
       );
       expect(signer.signTypedData).toBeUndefined();
     });
+
+    it('should throw when signAuthorization is provided for a Solana chain', () => {
+      const solanaAccount = {
+        chain: CHAIN.SOLANA_MAINNET,
+        address: 'solana-address',
+      };
+
+      expect(() =>
+        construct(solanaAccount, {
+          ...mockOptions,
+          signAuthorization: jest.fn(),
+        })
+      ).toThrow('EIP-7702 authorization is not supported for Solana');
+    });
   });
 
   describe('construct + toUniversal two-step process', () => {
@@ -300,12 +344,22 @@ describe('UniversalSigner utilities', () => {
       return new Uint8Array([7, 8, 9]); // Return some bytes to simulate typed data signature
     };
 
+    const rawSignAuthorization = jest.fn().mockResolvedValue({
+      address: '0x1111111111111111111111111111111111111111' as const,
+      chainId: 11155111,
+      nonce: 4,
+      r: `0x${'11'.repeat(32)}` as `0x${string}`,
+      s: `0x${'22'.repeat(32)}` as `0x${string}`,
+      yParity: 0,
+    });
+
     it('should create a UniversalSigner through construct + toUniversal', async () => {
       // Step 1: Create a UniversalSignerSkeleton using construct
       const skeleton = construct(mockAccount, {
         signMessage: rawSignMessage,
         signAndSendTransaction: rawSignAndSendTransaction,
         signTypedData: rawSignTypedData,
+        signAuthorization: rawSignAuthorization,
       });
 
       // Verify the skeleton structure
@@ -314,6 +368,7 @@ describe('UniversalSigner utilities', () => {
       expect(skeleton.signMessage).toBe(rawSignMessage);
       expect(skeleton.signAndSendTransaction).toBe(rawSignAndSendTransaction);
       expect(skeleton.signTypedData).toBe(rawSignTypedData);
+      expect(skeleton.signAuthorization).toBe(rawSignAuthorization);
 
       // Step 2: Convert the skeleton to a UniversalSigner using toUniversal
       const universalSigner = await toUniversal(skeleton);
@@ -325,6 +380,7 @@ describe('UniversalSigner utilities', () => {
         rawSignAndSendTransaction
       );
       expect(universalSigner.signTypedData).toBe(rawSignTypedData);
+      expect(universalSigner.signAuthorization).toBe(rawSignAuthorization);
 
       // Test the actual functionality
       const testMessage = new Uint8Array([1, 2, 3]);
@@ -344,6 +400,21 @@ describe('UniversalSigner utilities', () => {
         });
         expect(typedDataSignature).toEqual(new Uint8Array([7, 8, 9]));
       }
+
+      const authorizationParams = {
+        contractAddress: '0x2222222222222222222222222222222222222222' as const,
+        chainId: 11155111,
+        nonce: 4,
+      };
+      await expect(
+        universalSigner.signAuthorization?.(authorizationParams)
+      ).resolves.toEqual(
+        expect.objectContaining({
+          address: '0x1111111111111111111111111111111111111111',
+          nonce: 4,
+        })
+      );
+      expect(rawSignAuthorization).toHaveBeenCalledWith(authorizationParams);
     });
 
     it('should work without signTypedData for Solana chain', async () => {

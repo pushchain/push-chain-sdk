@@ -214,8 +214,9 @@ unsupported-mode rejection, and atomic revert + reason bubbling.
   since `AbstractSigner.authorize`'s default throws.
 - Wired through `createUniversalSigner`, the keypair signer object, AND the
   `toUniversal` skeleton generators (`generateSkeletonFromViem`,
-  `generateSkeletonFromEthersV6`). SVM, ethers v5, and custom-skeleton paths
-  leave it `undefined`.
+  `generateSkeletonFromEthersV6`). Custom skeletons created with `construct()`
+  may also provide the callback; Solana custom signers reject it. SVM and ethers
+  v5 leave it `undefined`.
 
 **3. `src/lib/constants/chain.ts`** — config + lookup.
 - `PUSH_BATCH_EXECUTOR_ADDRESS: Partial<Record<CHAIN, 0x...>>` — per-chain executor
@@ -237,7 +238,9 @@ unsupported-mode rejection, and atomic revert + reason bubbling.
 - In `sendPushTx`, when `data` is an array: if an executor is configured for the
   chain **and** the signer supports `signAuthorization`, route through
   `sendBatch7702` (single atomic tx). Otherwise `console.warn` and fall through to
-  the existing per-call loop (unchanged).
+  the per-call loop. The sequential path preserves explicit nonce management but
+  estimates gas for each operation immediately before sending it instead of
+  forcing the old `500_000` gas limit.
 
 ---
 
@@ -274,9 +277,14 @@ When falling back (or when the wallet has no 7702 capability at all), a
 form and sets `type: 4`; without this ethers normalises them to a zero signature
 and the delegation is silently dropped.
 
-**Gas fallback.** If state-override gas estimation is unavailable, the fallback
-ceiling scales with `calls.length` (`~500k`/call + overhead) rather than a flat
-value, so large batches don't out-of-gas relative to the old per-call loop.
+**Atomic batch gas fallback.** If state-override gas estimation is unavailable,
+the fallback ceiling scales with `calls.length` (`~500k`/call + overhead) rather
+than a flat value.
+
+**Sequential fallback gas.** Each call is estimated against current chain state
+after the previous call confirms. This is required for state-dependent sequences
+such as `approve` followed by `payDirect`, and avoids underfunding operations that
+need more than the former hardcoded 500k limit.
 
 ---
 

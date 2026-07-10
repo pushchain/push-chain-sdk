@@ -4,6 +4,8 @@ export type {
   UniversalSigner,
   UniversalAccount,
   UniversalSignerSkeleton,
+  SignAuthorizationParams,
+  SignedAuthorization,
   DerivedExecutorAccount,
   ResolvedAccount,
   ResolvedControllerAccounts,
