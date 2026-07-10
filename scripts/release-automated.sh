@@ -60,12 +60,12 @@ if [ -f "packages/$SCOPE/README.md" ]; then
   cp "packages/$SCOPE/README.md" "$PACKAGE_DIR/README.md"
 fi
 
-# Step 4: Publish to npm (using automation token, no OTP needed)
+# Step 4: Publish to npm using trusted publishing (OIDC; no token or OTP)
 echo "📦 Publishing $PACKAGE_NAME@$VERSION to NPM..."
 if [[ "$ALPHA" == "true" ]]; then
-  npm publish "$PACKAGE_DIR" --access public --provenance --tag alpha
+  npm publish "$PACKAGE_DIR" --access public --tag alpha
 else
-  npm publish "$PACKAGE_DIR" --access public --provenance
+  npm publish "$PACKAGE_DIR" --access public
 fi
 
 # Step 5: Commit version + changelog
@@ -79,4 +79,4 @@ git push origin HEAD    # ✅ Push the actual commit
 git push origin "$TAG"  # ✅ Push the tag
 
 echo "✅ Automated release complete: $TAG"
-echo "🎉 Package published to NPM: https://www.npmjs.com/package/$PACKAGE_NAME" 
+echo "🎉 Package published to NPM: https://www.npmjs.com/package/$PACKAGE_NAME"
