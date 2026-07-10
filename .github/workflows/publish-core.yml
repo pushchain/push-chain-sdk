@@ -42,6 +42,14 @@ jobs:
           corepack enable
           yarn install --immutable
 
+      # GitHub's cached Node toolchain can omit npm's declared sigstore runtime
+      # dependency. Keep it isolated from the project and expose it to npm.
+      - name: Prepare npm provenance dependency
+        run: |
+          npm install --prefix "$RUNNER_TEMP/npm-provenance-deps" --no-save --ignore-scripts sigstore@4.1.1
+          NODE_PATH="$RUNNER_TEMP/npm-provenance-deps/node_modules" node -e "require('sigstore')"
+          echo "NODE_PATH=$RUNNER_TEMP/npm-provenance-deps/node_modules" >> "$GITHUB_ENV"
+
       - name: Configure git
         run: |
           git config --global user.name "github-actions[bot]"
