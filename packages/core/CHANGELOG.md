@@ -1,3 +1,9 @@
+@pushchain/core@6.0.20 (2026-07-10)
+
+- fix: support custom EIP-7702 signers and dynamic multicall gas
+
+---
+
 @pushchain/core@6.0.19 (2026-07-01)
 
 - feat: use OZ ERC-7821 executor for 7702 batching
