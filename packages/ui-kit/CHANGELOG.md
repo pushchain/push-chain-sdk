@@ -1,3 +1,9 @@
+@pushchain/ui-kit@6.0.20 (2026-07-13)
+
+- feat: support EIP-7702 authorization signing
+
+---
+
 @pushchain/ui-kit@6.0.19 (2026-07-06)
 
 - feat: support phantom wallet connection on the mobile devices.
