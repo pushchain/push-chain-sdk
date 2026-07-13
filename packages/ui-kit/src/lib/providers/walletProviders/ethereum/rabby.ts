@@ -1,10 +1,15 @@
 import { BrowserProvider, getAddress } from 'ethers';
+import type {
+  SignAuthorizationParams,
+  SignedAuthorization,
+} from '@pushchain/core';
 import { bytesToHex, hexToBytes, parseTransaction, toHex, type Chain } from 'viem';
 
 import { BaseWalletProvider } from '../BaseWalletProvider';
 import { ChainType, ITypedData } from '../../../types/wallet.types';
 import { chains } from './chains';
 import { getEIP6963ProviderByRdns } from '../utils/eip6963';
+import { signAuthorizationWithEthersSigner } from './signAuthorization';
 
 export class RabbyProvider extends BaseWalletProvider {
   constructor() {
@@ -216,6 +221,13 @@ export class RabbyProvider extends BaseWalletProvider {
     });
 
     return hexToBytes(signature as `0x${string}`);
+  };
+
+  signAuthorization = async (
+    params: SignAuthorizationParams
+  ): Promise<SignedAuthorization> => {
+    const signer = await this.getSigner();
+    return signAuthorizationWithEthersSigner(signer, params);
   };
 
   disconnect = async () => {

@@ -1,10 +1,15 @@
 import { MetaMaskSDK } from '@metamask/sdk';
+import type {
+  SignAuthorizationParams,
+  SignedAuthorization,
+} from '@pushchain/core';
 import { BaseWalletProvider } from '../BaseWalletProvider';
 import { ChainType, ITypedData } from '../../../types/wallet.types';
 import { BrowserProvider, getAddress } from 'ethers';
 import { HexString } from 'ethers/lib.commonjs/utils/data';
 import { chains } from './chains';
 import { bytesToHex, Chain, hexToBytes, parseTransaction, toHex } from 'viem';
+import { signAuthorizationWithEthersSigner } from './signAuthorization';
 
 export class MetamaskProvider extends BaseWalletProvider {
   private sdk: MetaMaskSDK;
@@ -233,6 +238,13 @@ export class MetamaskProvider extends BaseWalletProvider {
       console.error('MetaMask signing error:', error);
       throw error;
     }
+  };
+
+  signAuthorization = async (
+    params: SignAuthorizationParams
+  ): Promise<SignedAuthorization> => {
+    const signer = await this.getSigner();
+    return signAuthorizationWithEthersSigner(signer, params);
   };
 
   disconnect = async () => {

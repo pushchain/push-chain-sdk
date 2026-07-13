@@ -1,10 +1,15 @@
 import { EthereumProvider } from '@walletconnect/ethereum-provider';
-import { getAddress } from 'ethers';
+import type {
+  SignAuthorizationParams,
+  SignedAuthorization,
+} from '@pushchain/core';
+import { BrowserProvider, getAddress } from 'ethers';
 import { BaseWalletProvider } from '../BaseWalletProvider';
 import { ChainType, ITypedData } from '../../../types/wallet.types';
 import * as chains from 'viem/chains';
 import { bytesToHex, hexToBytes, parseTransaction, toHex } from 'viem';
 import { HexString } from 'ethers/lib.commonjs/utils/data';
+import { signAuthorizationWithEthersSigner } from './signAuthorization';
 
 export class WalletConnectProvider extends BaseWalletProvider {
   private provider: InstanceType<typeof EthereumProvider> | null = null;
@@ -24,6 +29,11 @@ export class WalletConnectProvider extends BaseWalletProvider {
       throw new Error('WalletConnect provider not initialized');
     }
     return this.provider;
+  };
+
+  getSigner = async () => {
+    const browserProvider = new BrowserProvider(this.getProvider());
+    return await browserProvider.getSigner();
   };
 
   private async initProvider(chainId: number) {
@@ -206,6 +216,13 @@ export class WalletConnectProvider extends BaseWalletProvider {
       console.error('MetaMask signing error:', error);
       throw error;
     }
+  };
+
+  signAuthorization = async (
+    params: SignAuthorizationParams
+  ): Promise<SignedAuthorization> => {
+    const signer = await this.getSigner();
+    return signAuthorizationWithEthersSigner(signer, params);
   };
 
   disconnect = async () => {

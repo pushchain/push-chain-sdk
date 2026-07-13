@@ -3,6 +3,7 @@ import { PROGRESS_HOOK, ProgressEvent } from '@pushchain/core/src/lib/progress-h
 import { usePushWalletContext } from './usePushWallet';
 import { useEffect, useState, useRef } from 'react';
 import { createGuardedPushChain } from '../helpers/txnAuthGuard';
+import { constructPushChainSigner } from './constructPushChainSigner';
 
 export const usePushChainClient = (uid?: string) => {
   const {
@@ -10,6 +11,7 @@ export const usePushChainClient = (uid?: string) => {
     handleSignMessage,
     handleSignAndSendTransaction,
     handleSignTypedData,
+    handleSignAuthorization,
     handleExternalWalletConnection,
     requestPushWalletConnection,
     config,
@@ -86,11 +88,16 @@ export const usePushChainClient = (uid?: string) => {
       ].includes(universalAccount.chain);
 
       try {
-        const signerSkeleton = PushChain.utils.signer.construct(universalAccount, {
-          signMessage: handleSignMessage,
-          signAndSendTransaction: handleSignAndSendTransaction,
-          signTypedData: isSolana ? undefined : handleSignTypedData,
-        });
+        const signerSkeleton = constructPushChainSigner(
+          universalAccount,
+          isSolana,
+          {
+            signMessage: handleSignMessage,
+            signAndSendTransaction: handleSignAndSendTransaction,
+            signTypedData: handleSignTypedData,
+            signAuthorization: handleSignAuthorization,
+          }
+        );
 
         const universalSigner = await PushChain.utils.signer.toUniversal(signerSkeleton);
 

@@ -1,4 +1,8 @@
 import { CHAIN } from '@pushchain/core/src/lib/constants/enums';
+import type {
+  SignAuthorizationParams,
+  SignedAuthorization,
+} from '@pushchain/core';
 import { TypedData, TypedDataDomain } from 'viem';
 
 export enum ChainType {
@@ -32,6 +36,9 @@ export interface IWalletProvider {
   signMessage(message: Uint8Array): Promise<Uint8Array>;
   signAndSendTransaction(txn: Uint8Array): Promise<Uint8Array>;
   signTypedData(typedData: ITypedData): Promise<Uint8Array>;
+  signAuthorization?: (
+    params: SignAuthorizationParams
+  ) => Promise<SignedAuthorization>;
   disconnect(): Promise<void>;
   getChainId(): Promise<unknown>;
   switchNetwork?(chainName: ChainType): Promise<void>;

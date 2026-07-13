@@ -1,8 +1,17 @@
 
 import { bytesToHex, Chain, hexToBytes, isHash, parseTransaction, toHex } from "viem";
+import type {
+  SignAuthorizationParams,
+  SignedAuthorization,
+} from '@pushchain/core';
 import { waitForTxHashFromPendingTxId } from "./waapEvents";
 import { chains } from "../walletProviders/ethereum/chains";
 import { ChainType, ITypedData } from "../../../lib/types";
+import {
+  EIP_7702_UNSUPPORTED_ERROR,
+  normalizeSignedAuthorization,
+  signAuthorizationWithEthersSigner,
+} from '../walletProviders/ethereum/signAuthorization';
 
 export const getWaapProvider = () => {
   if (typeof window === 'undefined') return null;
@@ -117,6 +126,30 @@ export const waapSignTypedData = async (
 	});
 
 	return hexToBytes(signature as `0x${string}`);
+};
+
+export const waapSignAuthorization = async (
+  params: SignAuthorizationParams
+): Promise<SignedAuthorization> => {
+  const provider = getWaapProvider() as {
+    authorize?: Parameters<
+      typeof signAuthorizationWithEthersSigner
+    >[0]['authorize'];
+    signAuthorization?: (
+      params: SignAuthorizationParams
+    ) => Promise<Parameters<typeof normalizeSignedAuthorization>[0]>;
+  } | null;
+
+  if (typeof provider?.signAuthorization === 'function') {
+    const authorization = await provider.signAuthorization(params);
+    return normalizeSignedAuthorization(authorization, params);
+  }
+
+  if (typeof provider?.authorize === 'function') {
+    return signAuthorizationWithEthersSigner(provider, params);
+  }
+
+  throw new Error(EIP_7702_UNSUPPORTED_ERROR);
 };
 
 export const waapSignAndSendTransaction = async (

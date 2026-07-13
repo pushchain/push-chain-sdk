@@ -312,18 +312,24 @@ export class SvmClient {
     signer: UniversalSigner;
     extraSigners?: Keypair[];
   }): Promise<string> {
-    const connection = this.connections[this.currentConnectionIndex];
     const feePayer = new PublicKey(signer.account.address);
 
-    // Prefer an ALT-backed v0 transaction to avoid Solana's 1232-byte legacy limit
-    const { value: alt } = await connection.getAddressLookupTable(ALT_ADDRESS);
-    if (!alt) {
-      throw new Error(
-        `Lookup table ${ALT_ADDRESS.toBase58()} not found on chain`
-      );
-    }
+    const { alt, blockhash } = await this.executeWithFallback(
+      async (connection) => {
+        const { value: alt } = await connection.getAddressLookupTable(
+          ALT_ADDRESS
+        );
+        if (!alt) {
+          throw new Error(
+            `Lookup table ${ALT_ADDRESS.toBase58()} not found on chain`
+          );
+        }
 
-    const { blockhash } = await connection.getLatestBlockhash('finalized');
+        const { blockhash } = await connection.getLatestBlockhash('finalized');
+        return { alt, blockhash };
+      },
+      'prepareTransaction'
+    );
 
     const messageV0 = new TransactionMessage({
       payerKey: feePayer,
@@ -400,5 +406,4 @@ export class SvmClient {
       return BigInt(feeResp.value);
     }, 'estimateGas');
   }
-
 }

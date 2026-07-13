@@ -1,5 +1,9 @@
 import React, { createContext, FC, useEffect, useRef, useState } from 'react';
-import { PushChain } from '@pushchain/core';
+import {
+  PushChain,
+  type SignAuthorizationParams,
+  type SignedAuthorization,
+} from '@pushchain/core';
 import {
   PROGRESS_HOOK,
   ProgressEvent,
@@ -31,6 +35,7 @@ import { ThemeOverrides } from '../styles/token';
 import { useWaapAuth } from '../providers/waap/useWaapAuth';
 import {
   waapSignAndSendTransaction,
+  waapSignAuthorization,
   waapSignMessage,
   waapSignTypedData,
 } from '../providers/waap/waapProvider';
@@ -40,6 +45,7 @@ import {
   hasPhantomMobileConnectRequest,
   PHANTOM_PROVIDER_NAME,
 } from '../providers/walletProviders/solana/phantomMobile';
+import { signAuthorizationForWalletConnection } from './walletAuthorization';
 
 export type WalletContextType = {
   universalAccount: UniversalAccount | null;
@@ -53,6 +59,9 @@ export type WalletContextType = {
   handleSignMessage: (data: Uint8Array) => Promise<Uint8Array>;
   handleSignAndSendTransaction: (data: Uint8Array) => Promise<Uint8Array>;
   handleSignTypedData: (data: ITypedData) => Promise<Uint8Array>;
+  handleSignAuthorization?: (
+    params: SignAuthorizationParams
+  ) => Promise<SignedAuthorization>;
   handleExternalWalletConnection: (data: {
     chain: ChainType;
     provider: IWalletProvider['name'];
@@ -534,6 +543,17 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
     return signature;
   };
 
+  const handleSignAuthorization = async (
+    params: SignAuthorizationParams
+  ): Promise<SignedAuthorization> => {
+    return signAuthorizationForWalletConnection(
+      externalWallet,
+      params,
+      walletRegistry,
+      waapSignAuthorization
+    );
+  };
+
   const getAuthWindowConfig = () => {
     // Calculate the screen width and height
     const screenWidth = window.screen.width;
@@ -859,6 +879,7 @@ export const WalletContextProvider: FC<PushWalletProviderProps> = ({
         handleSignMessage,
         handleSignAndSendTransaction,
         handleSignTypedData,
+        handleSignAuthorization,
         progress,
         setProgress,
         isReadOnly,
