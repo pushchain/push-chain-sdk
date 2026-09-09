@@ -105,14 +105,21 @@ recipient that actively rejects loses its budget to the rescuable pool. A pull-b
 
 ## Reference test file
 
-`push-chain-core-contracts/test/fork/ForkReadStateFixVerification.t.sol` — **13 tests, all
-passing** against live Donut. Skips cleanly without the RPC var.
+`ForkReadStateFixVerification.t.sol` — **13 tests, all passing** against live Donut. Skips
+cleanly without the RPC var.
+
+**Not committed to `push-chain-core-contracts` — that repo is owned by the contracts team.**
+The file is shared alongside this document. To run it, drop it into a checkout of
+`feat-read-state` at `test/fork/` (it imports from `src/`):
 
 ```bash
-cd push-chain-core-contracts
+cd push-chain-core-contracts && git checkout feat-read-state
+cp /path/to/ForkReadStateFixVerification.t.sol test/fork/
 export PUSH_CHAIN_TESTNET_RPC_URL=https://evm.donut.rpc.push.org/
 forge test --match-path test/fork/ForkReadStateFixVerification.t.sol -vv
 ```
+
+The contracts team is welcome to adopt it into the repo as a regression suite.
 
 | Test | Asserts |
 |---|---|
@@ -399,6 +406,7 @@ Checked directly; all correct. Unchanged by the fixes.
       missing grant.
 - [ ] **Land the `read-state` upgrade handler on `develop`.** Was on `testnet/donut` and
       the release branch only; not re-checked on 2026-09-09.
-- [ ] **Merge `feat-read-state` to `main`.** Fixes are deployed but the branch is unmerged.
+- [ ] **Merge `feat-read-state` to `main`** *(contracts team)*. Fixes are deployed but the
+      branch is unmerged — `main` still carries C1. Flagged; not ours to do.
 - [ ] **Commit a `UniversalCallback` deploy/upgrade script.** Donut was upgraded manually
       twice now; localnet and fresh-genesis chains still get placeholder bytecode.
