@@ -16,6 +16,9 @@ import { PushClient } from '../../push-client/push-client';
 import { ReadHeightUnavailableError } from '../errors';
 import { preflightRead } from '../preflight';
 import { prepareRead, simulateRead } from '../spec-builder';
+import { trackRead } from '../read-tracker';
+import { ReadNotFoundError } from '../errors';
+import { READ_ERROR_CODE, READ_STATUS, UNIVERSAL_READ_STATUS } from '../read-state.types';
 import { toFunctionSelector } from 'viem';
 
 const READ2_TX = '0x8329b6134cc622fb58a015e54ec11d5bb38b604f8a3d42e62133fc31047ae732';
@@ -154,4 +157,73 @@ describe('read-state integration (Donut, read-only)', () => {
       expect(contract.warnings.join(' ')).toMatch(/not a UEA/);
     }, 60_000);
   });
+});
+
+describe('trackRead (settled reads — deterministic forever)', () => {
+  let client: PushClient;
+  beforeAll(() => {
+    client = new PushClient({
+      rpcUrls: PUSH_CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC,
+      network: PUSH_NETWORK.TESTNET_DONUT,
+    });
+  });
+  const deps = () => ({ pushClient: client, pushNetwork: PUSH_NETWORK.TESTNET_DONUT });
+
+  it('by txHash: the SUCCESS read — delivered, decoded, fees from the live receipts', async () => {
+    const reads = await trackRead(deps(), { txHash: READ2_TX });
+    expect(reads).toHaveLength(1);
+    const r = reads[0];
+    expect(r.requestId).toBe(READ2_ID);
+    expect(r.status).toBe(UNIVERSAL_READ_STATUS.FULFILLED);
+    expect(r.isTerminal).toBe(true);
+    expect(r.callbackDelivered).toBe(true);
+    expect(r.value).toBe(2706196938206701455473n);
+    expect(r.fees.burned).toBe(118_289_000_000_000n);
+    expect(r.fees.refunded).toBe(49_881_711_000_000_000n);
+    expect(r.fees.refundFailed).toBe(false);
+    expect(r.fees.burned! + r.fees.refunded!).toBe(r.fees.callbackBudget);
+    expect(r.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+    await expect(r.wait()).resolves.toBe(r); // terminal: no polling
+  }, 60_000);
+
+  it('by requestId: the ERROR read — FULFILLED, result ERROR, no value', async () => {
+    const r = await trackRead(deps(), { requestId: READ1_ID });
+    expect(r.status).toBe(UNIVERSAL_READ_STATUS.FULFILLED);
+    expect(r.raw?.status).toBe(READ_STATUS.ERROR);
+    expect(r.raw?.errorCode).toBe(READ_ERROR_CODE.INVALID_QUERY);
+    expect(r.value).toBeUndefined();
+    expect(r.callbackDelivered).toBe(true); // the app was told about the error
+  }, 60_000);
+
+  it('the reverting-callback read: FULFILLED but callbackDelivered=false (I4, live)', async () => {
+    const r = await trackRead(deps(), { requestId: '0x9f0466e2a3f7c20e3af1f104df7cdb254e3ff00ba50b646ccb622d648462aabe' });
+    expect(r.status).toBe(UNIVERSAL_READ_STATUS.FULFILLED);
+    expect(r.raw?.status).toBe(READ_STATUS.SUCCESS);
+    expect(r.callbackDelivered).toBe(false);
+    expect(r.value).toBeUndefined();
+    expect(r.fees.burned).toBeGreaterThan(0n);
+  }, 60_000);
+
+  it('the EXPIRED read: refunded = full budget, no receipt needed', async () => {
+    const r = await trackRead(deps(), { requestId: EXPIRED_ID });
+    expect(r.status).toBe(UNIVERSAL_READ_STATUS.EXPIRED);
+    expect(r.fees.refunded).toBe(r.fees.callbackBudget);
+    expect(r.fees.burned).toBeUndefined();
+  }, 60_000);
+
+  it('SVM (lamports) and web2 reads decode by the shape inferred from their envelopes', async () => {
+    const svm = await trackRead(deps(), { requestId: '0x1e9951071a7fa78a288c19804c13b05dd32fd5a687f29646d06fd80831dcb850' });
+    expect(svm.chain).toBe(CHAIN.SOLANA_DEVNET);
+    expect(svm.callbackDelivered).toBe(true);
+    expect(svm.value).toBe(0x2b5786fdn); // lamports, as decoded on 2026-09-09
+    const [web2] = await trackRead(deps(), { txHash: '0xd0c50142b2a566092b2f8e389f3d442b606b04c0e8064e85b05b5bc87fbf9a99' });
+    expect(web2.chain).toBeUndefined();
+    expect(web2.destination.caip2).toBe('web2:https');
+    expect(web2.callbackDelivered).toBe(true);
+    expect(web2.value).toEqual([1n, false]); // $.id, $.completed of the todo endpoint
+  }, 90_000);
+
+  it('unknown reference → ReadNotFoundError after the lookup window', async () => {
+    await expect(trackRead(deps(), { requestId: 1n }, { pollingIntervalMs: 500 })).rejects.toBeInstanceOf(ReadNotFoundError);
+  }, 60_000);
 });

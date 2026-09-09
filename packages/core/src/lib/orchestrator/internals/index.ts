@@ -166,4 +166,4 @@ export { executeFundsWithPayload } from './execute-funds-payload';
 export { executeStandardPayload } from './execute-standard';
 
 // === Read State (cross-chain reads) ===
-export { prepareRead, simulateRead } from './read-state';
+export { prepareRead, simulateRead, trackRead } from './read-state';

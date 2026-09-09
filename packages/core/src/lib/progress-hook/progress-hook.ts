@@ -9,6 +9,7 @@ import { Utils } from '../utils';
 import {
   PROGRESS_HOOK,
   PROGRESS_HOOK_MIG,
+  PROGRESS_HOOK_READ,
   PROGRESS_HOOK_MULTICHAIN,
   PROGRESS_HOOK_R1,
   PROGRESS_HOOK_R2,
@@ -1280,6 +1281,287 @@ const RAW_HOOKS_MULTICHAIN: {
   }),
 };
 
+// ---------------------------------------------------------------------------
+// Read state (cross-chain reads) — READ-TX band.
+// Copy is locked by __tests__/read-tx-spec-strings.spec.ts; change both together.
+// `response` objects carry the machine-readable values (bigints as strings).
+// ---------------------------------------------------------------------------
+const str = (v: bigint | number | undefined): string | undefined =>
+  v === undefined ? undefined : v.toString();
+
+const RAW_HOOKS_READ: {
+  [K in PROGRESS_HOOK_READ]: ProgressEventFunctionWithoutTimestamp;
+} = {
+  [PROGRESS_HOOK.READ_TX_101]: (chain: string, namespace: string, queryType: number) => ({
+    id: PROGRESS_HOOK.READ_TX_101,
+    title: `${friendlyChain(chain)} Read Requested`,
+    message: `Preparing a ${namespace} read (query type ${queryType}) of ${chain}`,
+    response: { chain, namespace, queryType },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.READ_TX_102_01]: (chain: string) => ({
+    id: PROGRESS_HOOK.READ_TX_102_01,
+    title: 'Fetching Destination Height & Fee',
+    message: `Reading the oracle height and protocol fee for ${chain}`,
+    response: { chain, stage: 'preflight' },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.READ_TX_102_02]: (
+    protocolFee: bigint,
+    callbackBudget: bigint,
+    total: bigint,
+    blockNumber: bigint,
+    expiryPushChainHeight: bigint
+  ) => ({
+    id: PROGRESS_HOOK.READ_TX_102_02,
+    title: 'Read Spec Assembled',
+    message: `Pinned at block ${blockNumber}, expires at Push height ${expiryPushChainHeight}; fee ${protocolFee} + budget ${callbackBudget} = ${total} UPC`,
+    response: {
+      protocolFee: str(protocolFee),
+      callbackBudget: str(callbackBudget),
+      total: str(total),
+      blockNumber: str(blockNumber),
+      expiryPushChainHeight: str(expiryPushChainHeight),
+    },
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.READ_TX_102_03]: (chain: string) => ({
+    id: PROGRESS_HOOK.READ_TX_102_03,
+    title: 'Destination Height Unavailable',
+    message: `The oracle has no height for ${chain} — this chain is not readable`,
+    response: { chain },
+    level: 'ERROR',
+  }),
+  [PROGRESS_HOOK.READ_TX_102_04]: (fetchedAt: number, ageMs: number) => ({
+    id: PROGRESS_HOOK.READ_TX_102_04,
+    title: 'Preflight Stale, Refetching',
+    message: `Preflight is ${Math.round(ageMs / 1000)}s old — refetching the Push height`,
+    response: { fetchedAt, ageMs },
+    level: 'WARNING',
+  }),
+  [PROGRESS_HOOK.READ_TX_102_05]: (refundTo: string) => ({
+    id: PROGRESS_HOOK.READ_TX_102_05,
+    title: 'Refund Target Is A Contract',
+    message: `${refundTo} is a contract that is not a UEA — it needs a payable receive() or the unspent budget is forfeited`,
+    response: { refundTo },
+    level: 'WARNING',
+  }),
+  [PROGRESS_HOOK.READ_TX_103_01]: (required: bigint, available: bigint) => {
+    const sufficient = available >= required;
+    const shortfall = sufficient ? BigInt(0) : required - available;
+    return {
+      id: PROGRESS_HOOK.READ_TX_103_01,
+      title: 'Checking Balance Requirements',
+      message: sufficient
+        ? `Balance ${available} UPC covers the ${required} UPC read`
+        : `Balance ${available} UPC is ${shortfall} UPC short of ${required} UPC`,
+      response: {
+        required: str(required),
+        available: str(available),
+        sufficient,
+        shortfall: str(shortfall),
+      },
+      level: sufficient ? 'INFO' : 'WARNING',
+    };
+  },
+  [PROGRESS_HOOK.READ_TX_103_02]: (required: bigint, available: bigint) => ({
+    id: PROGRESS_HOOK.READ_TX_103_02,
+    title: 'Insufficient Balance',
+    message: `Need ${required} UPC, have ${available} UPC`,
+    response: {
+      required: str(required),
+      available: str(available),
+      shortfall: str(required - available),
+    },
+    level: 'ERROR',
+  }),
+  [PROGRESS_HOOK.READ_TX_103_03]: (matchedHeaders: string[]) => ({
+    id: PROGRESS_HOOK.READ_TX_103_03,
+    title: 'Sensitive Header Detected',
+    message: `Headers are written to a public event log forever: ${matchedHeaders.join(', ')}`,
+    response: { matchedHeaders },
+    level: 'WARNING',
+  }),
+  [PROGRESS_HOOK.READ_TX_104_01]: () => ({
+    id: PROGRESS_HOOK.READ_TX_104_01,
+    title: 'Broadcasting Read Request',
+    message: 'Sending the read request to Push Chain',
+    response: { stage: 'broadcasting' },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.READ_TX_104_02]: (txHash: string, requestId: string, logIndex: number) => ({
+    id: PROGRESS_HOOK.READ_TX_104_02,
+    title: 'Request Confirmed, Read Detected',
+    message: `Read ${requestId} requested in ${txHash} (log ${logIndex})`,
+    response: { txHash, requestId, logIndex },
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.READ_TX_105_01]: (requestId: string) => ({
+    id: PROGRESS_HOOK.READ_TX_105_01,
+    title: 'Awaiting Quorum',
+    message: `Validators are observing the destination for ${requestId}`,
+    response: { requestId, status: 'PENDING' },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.READ_TX_105_02]: (requestId: string) => ({
+    id: PROGRESS_HOOK.READ_TX_105_02,
+    title: 'Voting In Progress',
+    message: `Validators are voting on the result of ${requestId}`,
+    response: { requestId, status: 'VOTING' },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.READ_TX_105_03]: (requestId: string, current: bigint, required: bigint) => ({
+    id: PROGRESS_HOOK.READ_TX_105_03,
+    title: 'Awaiting Destination Confirmations',
+    message: `${current} of ${required} confirmations on the destination for ${requestId}`,
+    response: { requestId, current: str(current), required: str(required) },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.READ_TX_105_04]: (requestId: string, pushBlocksRemaining: bigint) => ({
+    id: PROGRESS_HOOK.READ_TX_105_04,
+    title: 'Approaching Expiry',
+    message: `${pushBlocksRemaining} Push blocks until ${requestId} expires`,
+    response: { requestId, pushBlocksRemaining: str(pushBlocksRemaining) },
+    level: 'WARNING',
+  }),
+  [PROGRESS_HOOK.READ_TX_106_01]: (requestId: string, callbackTarget: string) => ({
+    id: PROGRESS_HOOK.READ_TX_106_01,
+    title: 'Quorum Reached, Executing Callback',
+    message: `Delivering the result of ${requestId} to ${callbackTarget}`,
+    response: { requestId, callbackTarget },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.READ_TX_106_02]: (requestId: string) => ({
+    id: PROGRESS_HOOK.READ_TX_106_02,
+    title: 'Callback Delivered',
+    message: `ReadFulfilled emitted for ${requestId}`,
+    response: { requestId },
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.READ_TX_106_03]: (requestId: string, reason?: string) => ({
+    id: PROGRESS_HOOK.READ_TX_106_03,
+    title: 'Callback Reverted',
+    message: `CallbackFailed for ${requestId} — the read is still FULFILLED but your callback did not run`,
+    response: { requestId, reason: reason ?? null },
+    level: 'WARNING',
+  }),
+  [PROGRESS_HOOK.READ_TX_106_04]: (requestId: string, burned: bigint, refunded: bigint) => ({
+    id: PROGRESS_HOOK.READ_TX_106_04,
+    title: 'Callback Gas Settled',
+    message: `Burned ${burned} UPC, refunding ${refunded} UPC for ${requestId}`,
+    response: { requestId, burned: str(burned), refunded: str(refunded) },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.READ_TX_106_05]: (requestId: string, amount: bigint, refundTo: string) => ({
+    id: PROGRESS_HOOK.READ_TX_106_05,
+    title: 'Refund Sent',
+    message: `${amount} UPC pushed to ${refundTo}`,
+    response: { requestId, amount: str(amount), refundTo },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.READ_TX_106_06]: (requestId: string, amount: bigint | undefined, refundTo: string) => ({
+    id: PROGRESS_HOOK.READ_TX_106_06,
+    title: 'Refund Rejected',
+    message: `${refundTo} rejected the refund — it sits in the admin rescue pool`,
+    response: { requestId, amount: str(amount) ?? null, refundTo },
+    level: 'WARNING',
+  }),
+  [PROGRESS_HOOK.READ_TX_199_01]: (
+    requestId: string,
+    value: unknown,
+    resultData: string,
+    callbackDelivered: boolean | undefined
+  ) => ({
+    id: PROGRESS_HOOK.READ_TX_199_01,
+    title: 'Read Fulfilled',
+    message: callbackDelivered
+      ? `Read ${requestId} fulfilled and delivered`
+      : `Read ${requestId} fulfilled — callback not delivered`,
+    response: {
+      requestId,
+      value: typeof value === 'bigint' ? value.toString() : value ?? null,
+      resultData,
+      callbackDelivered: callbackDelivered ?? null,
+    },
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.READ_TX_199_02]: (
+    requestId: string,
+    status: string,
+    errorCode: number | undefined,
+    errorMsg: string,
+    refunded?: bigint
+  ) => ({
+    id: PROGRESS_HOOK.READ_TX_199_02,
+    title: 'Read Failed / Expired / Aborted',
+    message: `Read ${requestId} ended ${status}${errorMsg ? `: ${errorMsg}` : ''}`,
+    response: {
+      requestId,
+      status,
+      errorCode: errorCode ?? null,
+      errorMsg,
+      refunded: str(refunded) ?? null,
+    },
+    level: 'ERROR',
+  }),
+  [PROGRESS_HOOK.READ_TX_199_03]: (requestId: string, lastStatus: string, elapsedMs: number) => ({
+    id: PROGRESS_HOOK.READ_TX_199_03,
+    title: 'Read Timeout',
+    message: `Gave up waiting for ${requestId} after ${Math.round(elapsedMs / 1000)}s (last status ${lastStatus}) — resume with trackRead`,
+    response: { requestId, lastStatus, elapsedMs },
+    level: 'ERROR',
+  }),
+  [PROGRESS_HOOK.READ_TX_199_99]: (requestId: string, txHash: string) => ({
+    id: PROGRESS_HOOK.READ_TX_199_99,
+    title: 'Intermediate Read Step Completed',
+    message: `Read ${requestId} advanced in ${txHash}`,
+    response: { requestId, txHash },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.READ_TX_001]: (count: number, chains: string[]) => ({
+    id: PROGRESS_HOOK.READ_TX_001,
+    title: 'Batch Read Initiated',
+    message: `Preparing ${count} reads across ${chains.join(', ')}`,
+    response: { count, chains },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.READ_TX_002_01]: (n: number, total: number, chain: string) => ({
+    id: PROGRESS_HOOK.READ_TX_002_01,
+    title: `Starting Read #${n}/${total}`,
+    message: `Read ${n} of ${total} targets ${chain}`,
+    response: { n, total, chain },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.READ_TX_002_99_99]: (n: number, total: number, requestId: string) => ({
+    id: PROGRESS_HOOK.READ_TX_002_99_99,
+    title: `Read #${n}/${total} Complete`,
+    message: `Read ${n} of ${total} settled as ${requestId}`,
+    response: { n, total, requestId },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.READ_TX_999_01]: (count: number) => ({
+    id: PROGRESS_HOOK.READ_TX_999_01,
+    title: 'All Reads Fulfilled',
+    message: `All ${count} reads fulfilled`,
+    response: { count },
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.READ_TX_999_02]: (failedAt: number, total: number, error: string) => ({
+    id: PROGRESS_HOOK.READ_TX_999_02,
+    title: 'Batch Reads Failed',
+    message: `Batch failed at read ${failedAt} of ${total}: ${error}`,
+    response: { failedAt, total, error },
+    level: 'ERROR',
+  }),
+  [PROGRESS_HOOK.READ_TX_999_03]: (failedAt: number, total: number) => ({
+    id: PROGRESS_HOOK.READ_TX_999_03,
+    title: 'Batch Reads Timeout',
+    message: `Batch timed out at read ${failedAt} of ${total}`,
+    response: { failedAt, total },
+    level: 'ERROR',
+  }),
+};
+
 // Combine all routes into the master record
 const RAW_HOOKS: {
   [K in PROGRESS_HOOK]: ProgressEventFunctionWithoutTimestamp;
@@ -1289,6 +1571,7 @@ const RAW_HOOKS: {
   ...RAW_HOOKS_R3,
   ...RAW_HOOKS_MULTICHAIN,
   ...RAW_HOOKS_MIG,
+  ...RAW_HOOKS_READ,
 };
 
 // Build final hooks with timestamp injection

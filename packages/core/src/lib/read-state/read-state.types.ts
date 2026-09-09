@@ -256,6 +256,93 @@ export interface ReceiptLike {
 }
 
 // ---------------------------------------------------------------------------
+// Tracking — the shape trackRead / wait / refresh resolve to
+// ---------------------------------------------------------------------------
+
+export type ReadRef = { txHash: Hex } | { requestId: Hex | bigint };
+
+export interface ReadLifecycleOptions {
+  /** Default `expiryBlocks × PUSH_BLOCK_TIME_MS`, capped at READ_TRACK_MAX_TIMEOUT_MS. */
+  timeoutMs?: number;
+  /** Default READ_TRACK_POLL_INTERVAL_MS; floor READ_TRACK_MIN_POLL_INTERVAL_MS. */
+  pollingIntervalMs?: number;
+  /**
+   * How to decode `resultData`. When omitted the tracker infers it from the on-chain
+   * envelope (balances → uint256, storage → bytes32, web2 → its extract list); a
+   * contract call has no ABI on chain and decodes to raw bytes unless given here.
+   */
+  resultShape?: ReadResultShape;
+}
+
+/** Accounting for one read, assembled from the request record and the settlement logs. */
+export interface ReadFees {
+  /** msg.value at request time (`feesDeposited`) */
+  paid: bigint;
+  /** gone at request time, never refunded */
+  protocolFee: bigint;
+  /** escrowed for the callback */
+  callbackBudget: bigint;
+  /** consumed by the callback — `CallbackGasReported` */
+  burned?: bigint;
+  /** pushed back to `refundTo` — `RefundSent` / `RequestExpired` */
+  refunded?: bigint;
+  /** the push was rejected — budget sits in the admin rescue pool */
+  refundFailed?: boolean;
+}
+
+export interface UniversalReadResponse<T = unknown> {
+  // identity
+  requestId: Hex;
+  /** Push tx that carried the request */
+  txHash: Hex;
+  destination: ResolvedDestination;
+  /** The destination as a `CHAIN` member when it is one (never for web2). */
+  chain?: CHAIN;
+
+  // outcome
+  status: UNIVERSAL_READ_STATUS;
+  isTerminal: boolean;
+  /**
+   * FULFILLED only. true = `ReadFulfilled`; false = `CallbackFailed` (your callback
+   * reverted / ran out of gas). FULFILLED does NOT imply delivered — check both.
+   */
+  callbackDelivered?: boolean;
+  /** Revert data from `CallbackFailed`. */
+  callbackFailReason?: Hex;
+  /** Decoded result. Present iff FULFILLED && callbackDelivered && result SUCCESS && decodable. */
+  value?: T;
+  decoded?: DecodedReadResult;
+  /** Why `value` is absent although the read succeeded (shape mismatch). */
+  decodeError?: string;
+  /** Consensus bytes — what ⅔ of validators voted on. `null` before a result exists. */
+  raw: { status: READ_STATUS; resultData: Hex; errorCode: READ_ERROR_CODE } | null;
+  errorMsg: string;
+
+  fees: ReadFees;
+
+  // provenance — the on-chain record
+  request: {
+    spec: ReadSpec;
+    callbackTarget: Address;
+    /** who paid (msg.sender at request) — NOT where refunds go */
+    originalFunder: Address;
+    /** where refunds go */
+    refundTo: Address;
+    callbackGasLimit: bigint;
+    logIndex: number;
+    createdAtHeight: bigint;
+  };
+  /** Push txs the node sent for this read (fulfil, settle, expiry sweep). */
+  pcTx: readonly { txHash: Hex; blockHeight: number; status: string; errorMsg: string }[];
+  explorerUrl: string;
+
+  /** Poll until terminal (or already terminal → resolves at once). Only a timeout throws. */
+  wait(opts?: ReadLifecycleOptions): Promise<UniversalReadResponse<T>>;
+  /** One fresh snapshot, no polling. */
+  refresh(): Promise<UniversalReadResponse<T>>;
+}
+
+// ---------------------------------------------------------------------------
 // Status enums (mirror ucallback.v1 protos; re-exported for the public surface)
 // ---------------------------------------------------------------------------
 

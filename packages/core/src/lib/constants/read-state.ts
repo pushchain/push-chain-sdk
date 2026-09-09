@@ -47,3 +47,19 @@ export const READ_NAMESPACE = {
 } as const;
 
 export type ReadNamespace = (typeof READ_NAMESPACE)[keyof typeof READ_NAMESPACE];
+
+// ---------------------------------------------------------------------------
+// Tracking (trackRead / wait)
+// ---------------------------------------------------------------------------
+
+/** Donut block time, measured over 100 blocks on 2026-09-09 (134 s / 100). Used to size the default wait. */
+export const PUSH_BLOCK_TIME_MS = 1_340;
+
+export const READ_TRACK_POLL_INTERVAL_MS = 2_000;
+export const READ_TRACK_MIN_POLL_INTERVAL_MS = 500;
+
+/** Default `wait()` timeout is `expiryBlocks × PUSH_BLOCK_TIME_MS`, capped here. */
+export const READ_TRACK_MAX_TIMEOUT_MS = 180_000;
+
+/** How long `trackRead` keeps looking for a record the node has not ingested yet. */
+export const READ_TRACK_LOOKUP_TIMEOUT_MS = 30_000;

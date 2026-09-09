@@ -110,3 +110,13 @@ export class ReadTimeoutError extends ReadStateError {
     this.lastStatus = lastStatus;
   }
 }
+
+/** No `UniversalRead` record for the reference — not ingested yet, or the tx made no read. */
+export class ReadNotFoundError extends ReadStateError {
+  constructor(ref: string, ctx: ReadStateErrorContext = {}) {
+    super('READ_NOT_FOUND', `no read record for ${ref}`, {
+      hint: 'A request is indexed once its block is processed; a tx with no ReadRequested log never gets one.',
+      ...ctx,
+    });
+  }
+}

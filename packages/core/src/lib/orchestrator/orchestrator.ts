@@ -42,6 +42,7 @@ import {
   rescueFunds as _rescueFunds,
   prepareRead as _prepareRead,
   simulateRead as _simulateRead,
+  trackRead as _trackRead,
   executeFundsOnly as _executeFundsOnly,
   executeFundsWithPayload as _executeFundsWithPayload,
   executeStandardPayload as _executeStandardPayload,
@@ -50,7 +51,13 @@ import {
   extractUniversalSubTxIdFromTx as _extractUniversalSubTxIdFromTx,
   extractAllUniversalSubTxIds as _extractAllUniversalSubTxIds,
 } from './internals';
-import type { BuildReadSpecParams, PreparedRead, SimulateReadResult } from '../read-state/read-state.types';
+import type {
+  BuildReadSpecParams,
+  PreparedRead,
+  ReadLifecycleOptions,
+  SimulateReadResult,
+  UniversalReadResponse,
+} from '../read-state/read-state.types';
 import type { Address, Hex } from 'viem';
 import { gateFunds } from './internals/pc20/gate';
 
@@ -197,6 +204,16 @@ export class Orchestrator {
     opts: { appContract: Address; callbackSelector: Hex; staleAfterMs?: number }
   ): Promise<SimulateReadResult> {
     return _simulateRead(this.ctx, prepared, opts);
+  }
+
+  /** Resume a read by the Push tx that requested it (array) or by requestId (single). */
+  trackRead(ref: { txHash: Hex }, opts?: ReadLifecycleOptions): Promise<UniversalReadResponse[]>;
+  trackRead(ref: { requestId: Hex | bigint }, opts?: ReadLifecycleOptions): Promise<UniversalReadResponse>;
+  trackRead(
+    ref: { txHash: Hex } | { requestId: Hex | bigint },
+    opts?: ReadLifecycleOptions
+  ): Promise<UniversalReadResponse | UniversalReadResponse[]> {
+    return 'txHash' in ref ? _trackRead(this.ctx, ref, opts) : _trackRead(this.ctx, ref, opts);
   }
 
   /**
