@@ -15,7 +15,8 @@ Companion doc: [`read-state-sdk-spec.md`](./read-state-sdk-spec.md)
 
 # Status as of 2026-09-09
 
-**5 of 6 blockers fixed and live on Donut. 1 blocker untouched and widened. 1 fix half-complete. C6 closed as won't-fix.**
+**5 of 6 defect blockers fixed and live on Donut. 1 blocker untouched and widened. 1 fix half-complete. C6 closed as won't-fix.
+One missing component — the `UniversalReadRegistry` (R1) — is the only thing that blocks the SDK's `read()` / `executeReads()`.**
 
 Verified against: node `v0.0.47` (what Donut's `abci_info` reports; contains all three node
 fixes), contracts redeployed (`UniversalCallback` impl `0x3b34de3c…` → `0xa481f5b0…`,
@@ -34,8 +35,21 @@ fixes), contracts redeployed (`UniversalCallback` impl `0x3b34de3c…` → `0xa4
 | **N2** | `nil` gas → estimator starves callback | Chain | Blocker | ✅ **Fixed** `e28367b6` | Explicit `callbackGasLimit + 50_000`. Measured against the most demanding callback that fits each limit: needed buffer 0 @200k, 21,771 @500k, 15,394 @1M — ≥2× headroom |
 | **N3** | Read votes not gasless | Chain | Blocker (econ) | ✅ **Fixed** `47a25eed` | `MsgVoteReadResult` in `GaslessMsgTypes` |
 | **N4** | No affordability gate; free validator work | Chain | Blocker (econ) | ❌ **Unfixed — widened by C3** | Fee still 0 on every domain incl. `web2:https`; `blockedDomains` empty; `cosmos:foo`, `eip155:999999` and `web2:https` all accepted live for free |
+| **R1** | `UniversalReadRegistry` not built — no shared callback contract for one-shot reads | Contracts | Blocker (SDK feature) | ❌ **Not started** | No registry address on any network; SDK ships `read()` / `executeReads()` as typed stubs that throw `ReadRegistryUnavailableError`. The contract-dev path (`prepareRead` → own `UniversalReadClient` → `trackRead`) is complete and proven by 8 live e2e specs (2026-09-09) |
 
 ## Still open — with the action
+
+**0. R1 — build and deploy the `UniversalReadRegistry`.** Not a defect: a component the v2
+spec depends on that does not exist yet. It is the **only item that blocks an SDK feature**.
+`read(subject, options)` and `executeReads(reads)` need one shared contract that requests on
+behalf of any caller and stores the answer, so an EOA, bot or frontend can read state without
+deploying a callback contract of its own. Everything else in the SDK (spec building, sending,
+tracking, decoding, progress events) is done and live-verified; both methods are typed stubs
+throwing `ReadRegistryUnavailableError` until the registry ships. What the SDK needs from it
+(spec §Q3): `read(ReadSpec spec, uint64 gasLimit) payable` forwarding `msg.value` and setting
+`revertRecipient = msg.sender`; a `latestResult[reader][queryKey]` view; a pinned
+`REGISTRY_CALLBACK_GAS`; and the deployed address per network. Wiring after that is ~1 day
+(implementation plan PR7).
 
 **1. N4 — set a non-zero `readBaseFee` before enabling publicly.** Config only, no code.
 Before the C3 fix, an unconfigured destination had height 0 and was rejected by the guard — an
@@ -402,6 +416,8 @@ Checked directly; all correct. Unchanged by the fixes.
 
 # Before enabling — checklist
 
+- [ ] **Build and deploy `UniversalReadRegistry` (R1).** Blocks `read()` / `executeReads()`
+      in the SDK; the contract-dev path does not depend on it. See "Still open" 0.
 - [ ] **Set `readBaseFee` per supported domain.** Still zero on every Donut pair on
       2026-09-09, including `web2:https`. **This is now the single most important item** —
       see "Still open" 1. Mind **C7** when choosing the key.
