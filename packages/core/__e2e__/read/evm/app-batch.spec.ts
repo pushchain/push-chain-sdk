@@ -40,15 +40,24 @@ async function checkBatch(client: PushChain, atomic: boolean) {
 
 d('read state › custom app batch', () => {
   (pushKey ? it : it.skip)('recovers the committed read after a sequential request failure', async () => {
-    const { client } = await makePushEoaClient(pushKey!, undefined, true);
+    let sendAttempts = 0;
+    // Install before initialize(): the SDK copies the signer callbacks.
+    const { client } = await makePushEoaClient(pushKey!, undefined, true, signer => {
+      const send = signer.signAndSendTransaction.bind(signer);
+      signer.signAndSendTransaction = async tx => {
+        if (++sendAttempts === 2) throw new Error('User rejected request');
+        return send(tx);
+      };
+    });
     const good = await client.universal.prepareRead(subject, {
       chain: CHAIN.ETHEREUM_SEPOLIA,
       expiryBlocks: SLOW_PATH.expiryBlocks,
       callback: { target: FULL_BUDGET_CLIENT, gasLimit: CALLBACK_GAS, request: { abi: READ_CLIENT_ABI, functionName: 'request' } },
     });
-    // Deliberately invalid second call: the app/system contract rejects gasLimit=0.
-    // In the sequential path the first read is already paid for and must be recoverable.
-    const error = await client.universal.executeReads([good, { ...good, callbackGasLimit: 0n }]).catch((e: unknown) => e);
+    // Both requests pass revalidation. The wallet rejects the second send only
+    // after the first transaction has committed in the forced sequential path.
+    const error = await client.universal.executeReads([good, good]).catch((e: unknown) => e);
+    expect(sendAttempts).toBe(2);
     expect(error).toBeInstanceOf(ReadStateError);
     const failure = error as ReadStateError;
     expect(failure.code).toBe('READ_REQUEST_TX_FAILED');

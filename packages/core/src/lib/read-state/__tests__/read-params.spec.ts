@@ -2,7 +2,7 @@ import { PublicKey } from '@solana/web3.js';
 import { CHAIN } from '../../constants/enums';
 import { InvalidReadQueryError } from '../errors';
 import { deriveAssociatedTokenAddress } from '../envelopes/svm';
-import { ERC20_BALANCE_OF_ABI, READ_CHAIN_WEB2, toBuildReadSpecParams, toLifecycleOptions, toReadQuery, type ReadOptions } from '../read-params';
+import { ERC20_BALANCE_OF_ABI, READ_CHAIN_WEB2, toBuildReadSpecParams, toLifecycleOptions, toReadQuery } from '../read-params';
 
 const USER = '0x0A16CBa65FfCAa4C2282b27b027Ab4A2fE46E0Bf' as const;
 const TOKEN = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238' as const;
@@ -47,7 +47,7 @@ describe('read(subject, options) grammar → ReadQuery', () => {
     expect(toReadQuery('https://example.com/todos/1', { chain: READ_CHAIN_WEB2, web2 })).toEqual({ type: 'http', url: 'https://example.com/todos/1', ...web2 });
   });
 
-  const bad: [string, string, ReadOptions][] = [
+  const bad: [string, string, Parameters<typeof toReadQuery>[1]][] = [
     ['two query keys', USER, { chain: CHAIN.ETHEREUM_SEPOLIA, token: TOKEN, storageSlot: 1n }],
     ['functionName without abi', USER, { chain: CHAIN.ETHEREUM_SEPOLIA, functionName: 'x' }],
     ['abi without functionName', USER, { chain: CHAIN.ETHEREUM_SEPOLIA, abi: ABI }],

@@ -204,7 +204,11 @@ export interface BuildReadSpecParams {
   maxFeeBufferBps?: number;
 }
 
-export interface PreparedRead {
+declare const preparedReadValue: unique symbol;
+
+export interface PreparedRead<T = unknown> {
+  /** Type-only result metadata retained through preparation and execution. */
+  readonly [preparedReadValue]?: T;
   /** App request entrypoint retained for read()/executeReads(). */
   callback?: ReadCallback;
   spec: ReadSpec;

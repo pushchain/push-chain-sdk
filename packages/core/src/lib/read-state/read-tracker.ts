@@ -399,7 +399,6 @@ export async function waitForRead(deps: TrackReadDeps, initial: UniversalReadRes
 
 function emitTerminal(emit: ReadHookEmitter, r: UniversalReadResponse): void {
   if (r.status === UNIVERSAL_READ_STATUS.FULFILLED) {
-    emit(PROGRESS_HOOK.READ_TX_106_01, r.requestId, r.request.callbackTarget);
     if (r.callbackDelivered === true) emit(PROGRESS_HOOK.READ_TX_106_02, r.requestId);
     else if (r.callbackDelivered === false) emit(PROGRESS_HOOK.READ_TX_106_03, r.requestId, r.callbackFailReason);
     if (r.fees.burned !== undefined) emit(PROGRESS_HOOK.READ_TX_106_04, r.requestId, r.fees.burned, r.fees.refunded ?? 0n);

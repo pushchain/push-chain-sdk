@@ -17,7 +17,7 @@ import { DEFAULT_EXPIRY_BLOCKS, MIN_CONFIRMATIONS_FLOOR, READ_NAMESPACE } from '
 import { sizeCallbackBudget } from './budget';
 import { resolveDestination } from './destination';
 import { encodeReadQuery } from './envelopes';
-import { InvalidReadQueryError, InvalidReadSpecError } from './errors';
+import { InvalidReadQueryError, InvalidReadSpecError, ReadHeightUnavailableError, ReadStateError } from './errors';
 import { preflightRead, type PreflightDeps } from './preflight';
 import type {
   BuildReadSpecParams,
@@ -29,11 +29,14 @@ import type {
   SimulateReadResult,
 } from './read-state.types';
 import { assertValidReadSpec } from './validate';
+import { PROGRESS_HOOK } from '../progress-hook/progress-hook.types';
+import type { ReadHookEmitter } from './read-tracker';
 
 /** The ReadSpec tuple as the contract declares it — for abi.encode(spec). */
 const READ_SPEC_ABI_PARAM = (getAbiItem({ abi: UNIVERSAL_CALLBACK_EVM, name: 'requestExternalReadSelf' }) as AbiFunction).inputs[0];
 
 export interface PrepareReadDeps extends PreflightDeps {
+  emit?: ReadHookEmitter;
   /** The signer's Push-side account (UEA or EOA). Used when `refundTo` is not given. */
   defaultRefundTo?: Address;
 }
@@ -151,9 +154,24 @@ export function buildReadSpecFromPreflight(
  * pool (verified live). UEAs (UEA_EVM / UEA_SVM) always have one.
  */
 export async function prepareRead(deps: PrepareReadDeps, params: BuildReadSpecParams): Promise<PreparedRead> {
-  const preflight = await preflightRead(deps, params.destination);
+  const emit = deps.emit ?? (() => undefined);
+  const dest = resolveDestination(params.destination);
+  emit(PROGRESS_HOOK.READ_TX_101, dest.caip2, dest.namespace, params.query.type);
+  emit(PROGRESS_HOOK.READ_TX_102_01, dest.caip2);
+  let preflight: ReadPreflight;
+  try {
+    preflight = await preflightRead(deps, params.destination);
+  } catch (error) {
+    if (error instanceof ReadHeightUnavailableError) emit(PROGRESS_HOOK.READ_TX_102_03, dest.caip2);
+    throw error;
+  }
   const prepared = buildReadSpecFromPreflight(preflight, params, { refundTo: deps.defaultRefundTo });
 
+  emit(PROGRESS_HOOK.READ_TX_102_02, prepared.protocolFee, prepared.callbackBudget, prepared.value, prepared.spec.blockNumber, prepared.spec.expiryPushChainHeight);
+  if (params.query.type === 'http') {
+    const matched = Object.keys(params.query.headers ?? {}).filter((name) => /auth|key|token|secret|bearer/i.test(name));
+    if (matched.length) emit(PROGRESS_HOOK.READ_TX_103_03, matched);
+  }
   const refundTo = prepared.spec.revertRecipient;
   const code = await deps.pushClient.publicClient.getCode({ address: refundTo });
   // EIP-7702 delegation designator (0xef0100 + delegate): an EOA that batches via the SDK's
@@ -167,6 +185,7 @@ export async function prepareRead(deps: PrepareReadDeps, params: BuildReadSpecPa
       args: [refundTo],
     });
     if (!isUEA) {
+      emit(PROGRESS_HOOK.READ_TX_102_05, refundTo);
       prepared.warnings.push(
         `refundTo ${refundTo} is a contract that is not a UEA — it must have a payable receive() or the unspent callback budget is forfeited`,
       );
@@ -231,5 +250,36 @@ export async function simulateRead(
       return { ok: false, error: details ? `${err.shortMessage} (${details})` : err.shortMessage };
     }
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** Fresh validation only: never rebuild or mutate the prepared request. */
+export async function revalidateRead(deps: PreflightDeps, prepared: PreparedRead): Promise<void> {
+  const [preflight, block] = await Promise.all([
+    preflightRead(deps, {
+      chainNamespace: prepared.spec.account.chainNamespace,
+      chainId: prepared.spec.account.chainId,
+    }),
+    deps.pushClient.publicClient.getBlock({ blockTag: 'latest' }),
+  ]);
+  // Mirrors node keeper.CallbackCost / CanAffordCallback (x/ucallback/keeper/evm.go).
+  // The module prices declared gas at base fee, without tips or the SDK sizing buffer.
+  const baseFee = block.baseFeePerGas;
+  if (baseFee === null || baseFee === undefined) {
+    throw new ReadStateError('READ_CALLBACK_BASE_FEE_UNAVAILABLE', 'cannot validate callback affordability without the current Push base fee');
+  }
+  try {
+    assertValidReadSpec({ spec: prepared.spec, value: prepared.value, callbackGasLimit: prepared.callbackGasLimit, preflight });
+    if (prepared.value - preflight.protocolFee < prepared.callbackGasLimit * baseFee) {
+      throw new InvalidReadSpecError(['INSUFFICIENT_CALLBACK_BUDGET']);
+    }
+  } catch (error) {
+    if (error instanceof InvalidReadSpecError) {
+      throw new InvalidReadSpecError([...error.violations], {
+        destination: preflight.destination.caip2,
+        hint: 'Prepared read is no longer valid. Call prepareRead again and review its pin, expiry and payment before executing.',
+      });
+    }
+    throw error;
   }
 }

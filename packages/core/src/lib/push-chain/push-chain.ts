@@ -41,6 +41,9 @@ import {
   toBuildReadSpecParams,
   toLifecycleOptions,
   type ReadOptions,
+  type ReadPrepareOptions,
+  type ReadValue,
+  type ValidateReadCall,
   type ReadTrackOptions,
   type ReadExecuteOptions,
 } from '../read-state/read-params';
@@ -167,7 +170,7 @@ export class PushChain {
      * Pass callback.target and callback.request for your app contract. Omitting the
      * target requires the canonical registry, which is not deployed yet.
      */
-    read: (subject: string, options: ReadOptions) => Promise<UniversalReadResponse>;
+    read: <const O extends ReadOptions>(subject: string, options: O & ValidateReadCall<O>) => Promise<UniversalReadResponse<ReadValue<O>>>;
     /**
      * Build a validated `ReadSpec` for `subject` on `options.chain`: preflight (oracle
      * height, protocol fee, gas price), envelope encoding, budget sizing, expiry math.
@@ -181,7 +184,7 @@ export class PushChain {
      *   callback: { target: myReadClient, gasLimit: 200_000n },
      * });
      */
-    prepareRead: (subject: string, options: ReadOptions) => Promise<PreparedRead>;
+    prepareRead: <const O extends ReadPrepareOptions>(subject: string, options: O & ValidateReadCall<O>) => Promise<PreparedRead<ReadValue<O>>>;
     /**
      * eth_call `requestExternalReadSelf` as `appContract` so contract-side validation
      * reverts surface before broadcast, decoded into the contract's custom errors.
@@ -195,7 +198,7 @@ export class PushChain {
      * use separate transactions. Results preserve prepared order and decode shapes.
      * Waits for completion unless waitForCompletion is false. Requires a signer.
      */
-    executeReads: (reads: PreparedRead[], options?: ReadExecuteOptions) => Promise<UniversalReadResponse[]>;
+    executeReads: <const R extends readonly PreparedRead[]>(reads: R, options?: ReadExecuteOptions) => Promise<{ -readonly [K in keyof R]: UniversalReadResponse<R[K] extends PreparedRead<infer T> ? T : unknown> }>;
     /**
      * Resume a read by the Push tx that requested it (array — one tx can carry several)
      * or by requestId (single). Each response has `wait()` / `refresh()`.
@@ -349,27 +352,27 @@ export class PushChain {
         return orchestrator.rescueFunds.bind(orchestrator)(params);
       },
       // Only read()/executeReads() send transactions; prepare/simulate/track remain read-only.
-      read: async (subject: string, options: ReadOptions) => {
+      read: async <const O extends ReadOptions>(subject: string, options: O) => {
         const params = toBuildReadSpecParams(subject, options);
         if (!options.callback?.target) throw new ReadRegistryUnavailableError('read');
         assertRequestEntrypoint(options.callback, 'read'); // before preflight: no RPC for a malformed request
         if (this.isReadMode) throw new Error('Read only mode cannot call read function');
-        const prepared = await orchestrator.prepareRead(params);
+        const prepared = await orchestrator.prepareRead(params, options.progressHook);
         const [response] = await executePreparedReads(orchestrator, [prepared], options);
-        return response;
+        return response as UniversalReadResponse<ReadValue<O>>;
       },
-      prepareRead: (subject: string, options: ReadOptions) => {
-        return orchestrator.prepareRead.bind(orchestrator)(toBuildReadSpecParams(subject, options));
+      prepareRead: <const O extends ReadPrepareOptions>(subject: string, options: O & ValidateReadCall<O>) => {
+        return orchestrator.prepareRead.bind(orchestrator)(toBuildReadSpecParams(subject, options)) as Promise<PreparedRead<ReadValue<O>>>;
       },
       simulateRead: (prepared: PreparedRead, options: { appContract: Address; callbackSelector: Hex; staleAfterMs?: number }) => {
         return orchestrator.simulateRead.bind(orchestrator)(prepared, options);
       },
-      executeReads: async (reads: PreparedRead[], options?: ReadExecuteOptions) => {
+      executeReads: (async (reads: readonly PreparedRead[], options?: ReadExecuteOptions) => {
         if (reads.length === 0) return [];
         reads.forEach((r) => assertRequestEntrypoint(r.callback));
         if (this.isReadMode) throw new Error('Read only mode cannot call executeReads function');
-        return executePreparedReads(orchestrator, reads, options);
-      },
+        return executePreparedReads(orchestrator, [...reads], options);
+      }) as PushChain['universal']['executeReads'],
       trackRead: ((ref: { txHash: Hex } | { requestId: Hex | bigint }, options?: ReadTrackOptions & { progressHook?: (e: ProgressEvent) => void }) => {
         const opts = { ...toLifecycleOptions(options), progressHook: options?.progressHook };
         return 'txHash' in ref

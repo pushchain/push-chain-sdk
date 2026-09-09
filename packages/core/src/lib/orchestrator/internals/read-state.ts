@@ -28,8 +28,8 @@ function depsFrom(ctx: OrchestratorContext): PrepareReadDeps {
   return { pushClient: ctx.pushClient, pushNetwork: ctx.pushNetwork, defaultRefundTo };
 }
 
-export function prepareRead(ctx: OrchestratorContext, params: BuildReadSpecParams): Promise<PreparedRead> {
-  return _prepareRead(depsFrom(ctx), params);
+export function prepareRead(ctx: OrchestratorContext, params: BuildReadSpecParams, progressHook?: (e: ProgressEvent) => void): Promise<PreparedRead> {
+  return _prepareRead({ ...depsFrom(ctx), emit: trackDepsFrom(ctx, progressHook).emit }, params);
 }
 
 export function simulateRead(

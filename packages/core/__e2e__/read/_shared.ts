@@ -11,7 +11,7 @@ import '@e2e/shared/setup';
 import { createPublicClient, createWalletClient, http, toFunctionSelector, type Abi, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
-import { PushChain, toCallData, type PreparedRead, type UniversalReadResponse } from '../../src';
+import { PushChain, toCallData, type PreparedRead, type UniversalReadResponse, type UniversalSigner } from '../../src';
 import { CHAIN, PUSH_NETWORK } from '../../src/lib/constants/enums';
 import { PUSH_CHAIN_DEF } from '../docs-examples/_helpers/docs-fund';
 import { createProgressTracker } from '@e2e/shared/progress-tracker';
@@ -51,7 +51,7 @@ export const evmKey = process.env['EVM_PRIVATE_KEY'] as Hex | undefined;
 export const solanaKey = process.env['SOLANA_PRIVATE_KEY'];
 
 /** A Push-native EOA client — the "app frontend on Push" persona. */
-export async function makePushEoaClient(key: Hex, progressHook?: (e: any) => void, forceSequential = false) {
+export async function makePushEoaClient(key: Hex, progressHook?: (e: any) => void, forceSequential = false, configureSigner?: (signer: UniversalSigner) => void) {
   const account = privateKeyToAccount(key);
   const walletClient = createWalletClient({ account, chain: PUSH_CHAIN_DEF, transport: http(PUSH_CHAIN_DEF.rpcUrls.default.http[0]) });
   const signer = await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
@@ -59,6 +59,7 @@ export async function makePushEoaClient(key: Hex, progressHook?: (e: any) => voi
     library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
   });
   if (forceSequential) signer.signAuthorization = undefined;
+  configureSigner?.(signer);
   const client = await PushChain.initialize(signer, { network: PUSH_NETWORK.TESTNET_DONUT, progressHook });
   return { client, account };
 }

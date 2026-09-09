@@ -1301,7 +1301,7 @@ const str = (v: bigint | number | undefined): string | undefined =>
 const RAW_HOOKS_READ: {
   [K in PROGRESS_HOOK_READ]: ProgressEventFunctionWithoutTimestamp;
 } = {
-  [PROGRESS_HOOK.READ_TX_101]: (chain: string, namespace: string, queryType: number) => ({
+  [PROGRESS_HOOK.READ_TX_101]: (chain: string, namespace: string, queryType: number | string) => ({
     id: PROGRESS_HOOK.READ_TX_101,
     title: `${friendlyChain(chain)} Read Requested`,
     message: `Preparing a ${namespace} read (query type ${queryType}) of ${chain}`,

@@ -9,7 +9,7 @@
  *
  * Query keys are mutually exclusive; the namespace decides which are legal.
  */
-import type { Abi, Address, Hex } from 'viem';
+import type { Abi, Address, Hex, ContractFunctionReturnType, ContractFunctionName, ContractFunctionArgs, ExtractAbiFunctionForArgs } from 'viem';
 import { isAddress } from 'viem';
 import type { CHAIN } from '../constants/enums';
 import { READ_NAMESPACE, WEB2_DESTINATION } from '../constants/read-state';
@@ -34,7 +34,7 @@ export interface ReadWeb2Options {
   timeoutMs?: number;
 }
 
-export interface ReadOptions {
+interface ReadOptionsInput {
   /** Destination. `READ_CHAIN_WEB2` for https. */
   chain: ReadChain;
 
@@ -75,9 +75,52 @@ export interface ReadOptions {
   };
 }
 
-export type ReadTrackOptions = Pick<ReadOptions, 'advanced'> & { resultShape?: ReadResultShape };
-/** Defaults to waiting for all reads. Sequential fallback may produce multiple Push txs. */
-export type ReadExecuteOptions = Pick<ReadOptions, 'advanced' | 'waitForCompletion' | 'progressHook'>;
+type NoQuery = { token?: never; tokenProgram?: never; abi?: never; functionName?: never; args?: never; storageSlot?: never; web2?: never };
+type Query<K extends keyof NoQuery, T> = Omit<NoQuery, K> & T;
+type EvmChain = Extract<CHAIN, `eip155:${string}`>;
+type SvmChain = Extract<CHAIN, `solana:${string}`>;
+export type ReadQueryOptions =
+  | ({ chain: EvmChain | SvmChain } & NoQuery)
+  | ({ chain: EvmChain } & Query<'token', { token: string }>)
+  | ({ chain: SvmChain } & Query<'token' | 'tokenProgram', { token: string; tokenProgram?: 'spl-token' | 'token-2022' }>)
+  | ({ chain: EvmChain } & Query<'abi' | 'functionName' | 'args', { abi: Abi; functionName: string; args?: readonly unknown[] }>)
+  | ({ chain: EvmChain } & Query<'storageSlot', { storageSlot: Hex | bigint }>)
+  | ({ chain: typeof READ_CHAIN_WEB2 } & Query<'web2', { web2: ReadWeb2Options }>);
+
+export type ReadCallbackOptions = {
+  callback?:
+    | { target: Address; gasLimit: bigint; request?: ReadCallback['request'] }
+    | { target?: never; gasLimit?: bigint; request?: never };
+};
+export type ReadPrepareOptions = ReadQueryOptions & ReadCallbackOptions &
+  Pick<ReadOptionsInput, 'blockNumber' | 'minConfirmations' | 'expiryBlocks' | 'maxFee' | 'refundTo'> &
+  { advanced?: never; waitForCompletion?: never; progressHook?: never };
+export type ReadExecuteOptions = Pick<ReadOptionsInput, 'advanced' | 'waitForCompletion' | 'progressHook'>;
+export type ReadOptions = Omit<ReadPrepareOptions, 'advanced' | 'waitForCompletion' | 'progressHook'> & ReadQueryOptions & ReadExecuteOptions;
+export type ReadTrackOptions = { advanced?: Omit<NonNullable<ReadOptionsInput['advanced']>, 'enforceGasCheck'>; resultShape?: ReadResultShape };
+
+type Web2Values = { uint256: bigint; int256: bigint; bool: boolean; bytes: Hex; string: string };
+type Web2Value<E extends Web2Extract> = Web2Values[E['valueType']];
+type ReadFunctionName<A extends Abi, F extends string> = F & ContractFunctionName<A, 'view' | 'pure'>;
+type ReadFunctionArgs<O, A extends Abi, F extends string> =
+  O extends { args: infer Args extends ContractFunctionArgs<A, 'view' | 'pure', ReadFunctionName<A, F>> } ? Args
+    : readonly [] extends ContractFunctionArgs<A, 'view' | 'pure', ReadFunctionName<A, F>> ? readonly []
+      : ContractFunctionArgs<A, 'view' | 'pure', ReadFunctionName<A, F>>;
+type ReadCallValue<A extends Abi, F extends string, Args extends ContractFunctionArgs<A, 'view' | 'pure', ReadFunctionName<A, F>>> =
+  ExtractAbiFunctionForArgs<A, 'view' | 'pure', ReadFunctionName<A, F>, Args> extends infer Selected
+    ? Selected extends Abi[number] & { type: 'function'; outputs: readonly unknown[] }
+      ? Selected['outputs'] extends readonly [unknown]
+        ? readonly [ContractFunctionReturnType<readonly [Selected]>]
+        : ContractFunctionReturnType<readonly [Selected]>
+      : never
+    : never;
+/** Matches the existing decoder: select the overload by args before wrapping its outputs. */
+export type ReadValue<O> = O extends { abi: infer A extends Abi; functionName: infer F extends string }
+  ? number extends A['length'] ? readonly unknown[] : ReadCallValue<A, F, ReadFunctionArgs<O, A, F>>
+  : O extends { web2: { extract: infer E extends readonly Web2Extract[] } }
+    ? { readonly [K in keyof E]: Web2Value<E[K]> }
+    : O extends { storageSlot: unknown } ? Hex
+    : O extends { chain: EvmChain; token: string } ? readonly [bigint] : bigint;
 
 /** Just `balanceOf` — it also types the decoded result as uint256. */
 export const ERC20_BALANCE_OF_ABI = [
@@ -92,13 +135,13 @@ export const ERC20_BALANCE_OF_ABI = [
 
 const QUERY_KEYS = ['token', 'abi', 'storageSlot', 'web2'] as const;
 
-function queryKind(o: ReadOptions): (typeof QUERY_KEYS)[number] | 'native' {
+function queryKind(o: ReadOptionsInput): (typeof QUERY_KEYS)[number] | 'native' {
   const present = QUERY_KEYS.filter((k) => o[k] !== undefined);
   if (present.length > 1) {
     throw new InvalidReadQueryError(`query keys are mutually exclusive, got ${present.join(' + ')}`);
   }
-  if (o.functionName !== undefined && o.abi === undefined) {
-    throw new InvalidReadQueryError('functionName needs abi');
+  if ((o.functionName !== undefined || o.args !== undefined) && o.abi === undefined) {
+    throw new InvalidReadQueryError('functionName and args need abi');
   }
   return present[0] ?? 'native';
 }
@@ -108,7 +151,7 @@ export function toReadDestination(chain: ReadChain): ReadDestination {
 }
 
 /** Build the internal query from the public grammar. Pure. */
-export function toReadQuery(subject: string, o: ReadOptions): ReadQuery {
+export function toReadQuery(subject: string, o: ReadOptionsInput): ReadQuery {
   const dest = resolveDestination(toReadDestination(o.chain));
   const kind = queryKind(o);
   if (o.tokenProgram !== undefined && (dest.namespace !== READ_NAMESPACE.SVM || kind !== 'token' || !['spl-token', 'token-2022'].includes(o.tokenProgram))) {
@@ -154,7 +197,7 @@ export function toReadQuery(subject: string, o: ReadOptions): ReadQuery {
 }
 
 /** Public options → the spec builder's params. Pure; throws `InvalidReadQueryError` on a malformed request. */
-export function toBuildReadSpecParams(subject: string, o: ReadOptions): BuildReadSpecParams {
+export function toBuildReadSpecParams(subject: string, o: ReadOptionsInput): BuildReadSpecParams {
   const gasLimit = o.callback?.gasLimit;
   if (gasLimit === undefined) {
     throw new InvalidReadQueryError('callback.gasLimit is required', {
@@ -181,3 +224,11 @@ export function toLifecycleOptions(o?: ReadTrackOptions): ReadLifecycleOptions {
     resultShape: o?.resultShape,
   };
 }
+
+/** Restrict known ABIs to read functions and their declared argument tuple. */
+export type ValidateReadCall<O> = O extends { abi: infer A extends Abi; functionName: infer F extends string }
+  ? { functionName: ContractFunctionName<A, 'view' | 'pure'> } &
+    (readonly [] extends ContractFunctionArgs<A, 'view' | 'pure', F & ContractFunctionName<A, 'view' | 'pure'>>
+      ? { args?: ContractFunctionArgs<A, 'view' | 'pure', F & ContractFunctionName<A, 'view' | 'pure'>> }
+      : { args: ContractFunctionArgs<A, 'view' | 'pure', F & ContractFunctionName<A, 'view' | 'pure'>> })
+  : unknown;

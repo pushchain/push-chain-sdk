@@ -42,6 +42,29 @@ the contract surface underneath it is corrected to what is actually deployed.
 
 ---
 
+## SDK validation and progress — 2026-09-10
+
+- Public query options enforce exclusive kinds and namespace restrictions. Custom callback
+  targets require `gasLimit`. Known ABIs constrain read functions and argument tuples.
+- `prepareRead` accepts query, pinning, refund, and callback options only. Lifecycle options
+  belong to `read` or `executeReads`; preparation still emits to the initialization hook.
+- Result types flow through `read`, `PreparedRead<T>`, `executeReads`, and response `wait`/`refresh`.
+  Existing runtime shapes are preserved: EVM contract outputs (including ERC-20 balances)
+  and web2 extracts are arrays; native and SPL balances are scalar `bigint` values.
+- Before execution, every prepared item is checked against fresh oracle height, domain status,
+  protocol fee, and Push height. Remaining escrow must cover `callbackGasLimit × current base fee`,
+  matching the node affordability gate; a missing base fee fails validation. The SDK preserves
+  its query, block pin, expiry, and payment.
+  Invalid items reject the entire batch before broadcast; prepare again explicitly. These
+  checks cannot guarantee that conditions remain unchanged until transaction inclusion.
+- Preparation, broadcast, confirmation, observed polling states, and batch outcomes emit progress.
+  Batch success requires successful consensus and callback delivery for every item. No-wait
+  execution emits confirmation without claiming completion. Batch-wide errors use `failedAt: 0`
+  when no individual item is known. Vote counts, confirmation estimates, and in-progress callback
+  execution are not synthesized. Gas checks continue through the transaction hook pass-through.
+
+---
+
 ## Verified live — 2026-09-09
 
 The first three reads ever made on Donut (`_requestNonce` 0 → 3; seven in total by end of day), fired against the deployed

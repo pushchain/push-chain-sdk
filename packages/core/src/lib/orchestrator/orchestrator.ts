@@ -59,6 +59,7 @@ import type {
   UniversalReadResponse,
 } from '../read-state/read-state.types';
 import type { Address, Hex } from 'viem';
+import { revalidateRead as revalidatePreparedRead } from '../read-state/spec-builder';
 import { gateFunds } from './internals/pc20/gate';
 
 type ProgressHook = (progress: ProgressEvent) => void;
@@ -194,8 +195,12 @@ export class Orchestrator {
    * Build a validated cross-chain ReadSpec (preflight + envelope + fee/budget) for the
    * caller to splice into its own contract call. Works in read-only mode.
    */
-  async prepareRead(params: BuildReadSpecParams): Promise<PreparedRead> {
-    return _prepareRead(this.ctx, params);
+  async prepareRead(params: BuildReadSpecParams, progressHook?: ProgressHook): Promise<PreparedRead> {
+    return _prepareRead(this.ctx, params, progressHook);
+  }
+
+  async revalidateRead(prepared: PreparedRead): Promise<void> {
+    return revalidatePreparedRead({ pushClient: this.ctx.pushClient, pushNetwork: this.ctx.pushNetwork }, prepared);
   }
 
   /** eth_call requestExternalReadSelf as the app contract; decodes contract errors. */

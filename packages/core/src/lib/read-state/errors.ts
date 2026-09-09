@@ -71,6 +71,8 @@ export type ReadSpecViolation =
   | 'INSUFFICIENT_FEE'
   | 'EXCESSIVE_FEE'
   | 'ZERO_CALLBACK_BUDGET'
+  /** Node affordability gate: remaining escrow must cover declared gas at current base fee. */
+  | 'INSUFFICIENT_CALLBACK_BUDGET'
   | 'SVM_OWNER_NOT_32_BYTES';
 
 /** A `ReadSpec` that `requestExternalReadSelf` would revert on. */

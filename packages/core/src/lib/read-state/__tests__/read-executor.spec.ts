@@ -33,7 +33,7 @@ function response(p: PreparedRead, index: number): UniversalReadResponse {
     request: { spec: p.spec, callbackTarget: target, callbackGasLimit: p.callbackGasLimit, logIndex: index },
     wait: jest.fn(),
   } as unknown as UniversalReadResponse;
-  (r.wait as jest.Mock).mockResolvedValue({ ...r, status: 3, callbackDelivered: true });
+  (r.wait as jest.Mock).mockResolvedValue({ ...r, status: 3, isTerminal: true, callbackDelivered: true, raw: { status: 1 } });
   return r;
 }
 
@@ -42,7 +42,7 @@ function setup(records: UniversalReadResponse[]) {
   const trackRead = jest.fn().mockImplementation(async (ref) => 'txHash' in ref
     ? records
     : records.find((r) => r.requestId === ref.requestId));
-  return { execute, trackRead, deps: { execute, trackRead } as unknown as ReadExecutorDeps };
+  return { execute, trackRead, deps: { execute, trackRead, revalidateRead: jest.fn().mockResolvedValue(undefined) } as unknown as ReadExecutorDeps };
 }
 
 describe('executeReads app-contract path', () => {
@@ -104,6 +104,7 @@ describe('executeReads app-contract path', () => {
       const deps = {
         execute: (params: ExecuteParams) => executeStandardPayload(ctx, params, [], () => { throw new Error('response construction failed'); }),
         trackRead: jest.fn(),
+        revalidateRead: jest.fn().mockResolvedValue(undefined),
       } as unknown as ReadExecutorDeps;
       const error = await executeReads(deps, [prepared(1n), prepared(2n)]).catch((e) => e);
       expect(error.code).toBe('READ_REQUEST_TX_FAILED');
@@ -203,5 +204,46 @@ describe('executeReads app-contract path', () => {
     expect((await executeReads(setup([r]).deps, [p]))[0].callbackDelivered).toBe(false);
     (r.wait as jest.Mock).mockRejectedValueOnce(new ReadTimeoutError(1, 1000));
     await expect(executeReads(setup([r]).deps, [p])).rejects.toBeInstanceOf(ReadTimeoutError);
+  });
+});
+
+describe('execution validation and observable progress', () => {
+  it('does not broadcast any read when a later prepared request is invalid', async () => {
+    const a = prepared(), b = prepared(1n);
+    const { deps, execute } = setup([]);
+    (deps.revalidateRead as jest.Mock).mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('expired'));
+    await expect(executeReads(deps, [a, b])).rejects.toThrow('expired');
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('deduplicates shared hooks and emits batch success only after completion', async () => {
+    const a = prepared(), b = prepared(1n);
+    const { deps } = setup([response(a, 1), response(b, 2)]);
+    const hook = jest.fn();
+    deps.getProgressHook = () => hook;
+    await executeReads(deps, [a, b], { progressHook: hook });
+    const ids = hook.mock.calls.map(([event]) => event.id);
+    expect(ids.filter(id => id === 'READ-TX-001')).toHaveLength(1);
+    expect(ids.filter(id => id === 'READ-TX-002-99-99')).toHaveLength(2);
+    expect(ids.at(-1)).toBe('READ-TX-999-01');
+  });
+
+  it('emits confirmed events but no completion for no-wait requests', async () => {
+    const a = prepared(), b = prepared(1n);
+    const { deps } = setup([response(a, 1), response(b, 2)]);
+    const hook = jest.fn();
+    await executeReads(deps, [a, b], { progressHook: hook, waitForCompletion: false });
+    const ids = hook.mock.calls.map(([event]) => event.id);
+    expect(ids.filter(id => id === 'READ-TX-104-02')).toHaveLength(2);
+    expect(ids).not.toContain('READ-TX-999-01');
+    expect(ids).not.toContain('READ-TX-002-99-99');
+  });
+
+  it('reports callback failure as batch failure while resolving terminal results', async () => {
+    const a = prepared(), b = prepared(1n), ra = response(a, 1), rb = response(b, 2);
+    (rb.wait as jest.Mock).mockResolvedValue({ ...rb, status: 3, callbackDelivered: false });
+    const hook = jest.fn();
+    await executeReads(setup([ra, rb]).deps, [a, b], { progressHook: hook });
+    expect(hook.mock.calls.at(-1)?.[0]).toMatchObject({ id: 'READ-TX-999-02', response: { failedAt: 2 } });
   });
 });
