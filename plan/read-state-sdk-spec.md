@@ -108,9 +108,9 @@ cannot be known before broadcast. Tracking is **tx-hash-first**; requestIds are 
 
 **Batching is supported** (confirmed by Nilesh, 2026-09-07): multiple `requestExternalReadSelf`
 calls in one tx are ingested as separate requests and presented to validators separately.
-**Chaining is not:** a read requested from inside a callback reverts (`ReentrancyGuardReentrantCall`,
-shared guard) and — even if the guard were relaxed — would be emitted inside the module's fulfil
-call, which does not ingest. `read()` inside `_onReadResult` is out of scope for v1.
+**Chaining is not — by decision (2026-09-09): nested reads are out of scope for v1.** A read
+requested from inside a callback reverts (`ReentrancyGuardReentrantCall`, shared guard) and is
+swallowed into `CallbackFailed`. The SDK does not attempt it and the docs say so.
 
 ---
 
@@ -193,10 +193,12 @@ await client.universal.read(subject, {
   // ══ REFUND — WHERE unspent budget goes. New vs draft: the deployed ReadSpec requires it. ══
 
   refundTo: `0x${string}`,             // ReadSpec.revertRecipient. Non-zero, REQUIRED by contract.
-                                       //   Refunds are PUSHED here. If it is a contract without a
-                                       //   payable receive(), the refund is forfeited to the admin
-                                       //   rescue pool (verified live). default: the sending
-                                       //   account; prepareRead warns if that has code — §Q8
+                                       //   Refunds are PUSHED here. default: the sending account —
+                                       //   safe for UEAs (UEA_EVM/UEA_SVM both have a payable
+                                       //   receive(); verified live on Donut, Q8). A non-UEA
+                                       //   contract without receive() forfeits the refund to the
+                                       //   admin rescue pool (verified live) → prepareRead WARNS
+                                       //   unless UEAFactory.getOriginForUEA says isUEA
 
   // ══ LIFECYCLE — HOW the promise behaves. Mirrors trackTransaction. ══
 
@@ -372,7 +374,7 @@ Event object identical to `sendTransaction`. Inner `SEND-TX-1xx` events pass thr
 | `READ-TX-102-02` | Read Spec Assembled | SUCCESS | `{ protocolFee, callbackBudget, total, blockNumber, expiryPushChainHeight }` |
 | `READ-TX-102-03` | Destination Height Unavailable | ERROR | `{ chain }` |
 | `READ-TX-102-04` | Preflight Stale, Refetching | WARNING | `{ fetchedAt, ageMs }` |
-| `READ-TX-102-05` | Refund Target Is A Contract | WARNING | `{ refundTo }` — may forfeit refund |
+| `READ-TX-102-05` | Refund Target Is A Contract | WARNING | `{ refundTo }` — non-UEA contract; may forfeit refund. Suppressed when `getOriginForUEA(refundTo).isUEA` |
 | `READ-TX-103-01` | Checking Balance Requirements | INFO / WARNING | `{ required, available, sufficient, shortfall }` |
 | `READ-TX-103-02` | Insufficient Balance | ERROR | `{ required, available, shortfall }` |
 | `READ-TX-103-03` | Sensitive Header Detected (web2) | WARNING | `{ matchedHeaders }` |
@@ -510,7 +512,7 @@ failure this prevents. Lands with the SDK PR.
 | Q5 | node ↔ contracts ABI reconciliation | **Resolved — inverted.** The node is correct; the draft's contract pin was stale. Nothing to change on the node. |
 | Q6 | Batching + timeout interplay | **Resolved.** Batching supported contract + core side, separate requests to UV (Nilesh). `advanced.timeout` scales to expiry with a 180s ceiling (Aman). |
 | Q7 | Vote tally queryability | **Deferred.** Needs a new query msg exported (Aman). `105-02-01/-02` events removed until then. |
-| **Q8** | **`refundTo` default for UEA users** | **New.** Default is the sending account. For a UEA that's a contract — confirm `UEA_EVM` has a payable `receive()` so the push lands; otherwise the SDK must default to the owner EOA's Push-side address or require the field. |
+| **Q8** | `refundTo` default for UEA users | **Resolved — default to the sending account.** `UEA_EVM.sol:295` and `UEA_SVM.sol:317` both declare `receive() external payable {}`; the proxy's payable fallback delegates an empty-calldata call through. Verified live: a 1-wei `eth_call` push to a deployed Donut UEA (`0x5C70C864…`) succeeds. `prepareRead` still warns for a contract `refundTo` that is **not** a UEA. |
 | **Q9** | **CEA-originated reads** | **New.** Reads requested by CEA-originated inbounds to a contract recipient (`CallExecuteUniversalTx`) are still not ingested — budget strands. Either fix in `x/uexecutor` or the SDK must refuse `read()` when the signer resolves to a CEA. |
 
 ---

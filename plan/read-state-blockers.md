@@ -15,7 +15,7 @@ Companion doc: [`read-state-sdk-spec.md`](./read-state-sdk-spec.md)
 
 # Status as of 2026-09-09
 
-**5 of 6 blockers fixed and live on Donut. 1 blocker untouched and widened. 1 fix half-complete.**
+**5 of 6 blockers fixed and live on Donut. 1 blocker untouched and widened. 1 fix half-complete. C6 closed as won't-fix.**
 
 Verified against: node `v0.0.47` (what Donut's `abci_info` reports; contains all three node
 fixes), contracts redeployed (`UniversalCallback` impl `0x3b34de3c…` → `0xa481f5b0…`,
@@ -28,7 +28,7 @@ fixes), contracts redeployed (`UniversalCallback` impl `0x3b34de3c…` → `0xa4
 | **C3** | Web2 can never pass the height guard | Contracts | Blocker (web2) | ✅ **Fixed** `c603558` | web2 accepted at `blockNumber=0`; non-zero still rejected |
 | **C4** | `EXECUTED` unrecoverable | Contracts | Latent | ✅ **Fixed** `6fc7a18`+`46b56c1` | Drove request to `EXECUTED`, settled via an address holding **only** `UVCALLBACK_ADMIN_ROLE` — confirms the merged version is deployed, not the pre-merge `DEFAULT_ADMIN_ROLE` one |
 | **C5** | Failed refunds admin-sweepable | Contracts | Latent→active | ⬇️ **Back to Latent** | Still present — rejecting recipient moved 0.2 ETH to the rescuable pool live. But N2 gives refunds a fixed 150k, so `RefundFailed` is no longer routine |
-| **C6** | Callback can't chain a read | Contracts | Latent | ❌ **Unfixed, no decision** | Chained read reverts `0x3ee5aeb5` (`ReentrancyGuardReentrantCall`). Fix needs contract **and** node — see §Still open |
+| **C6** | Callback can't chain a read | Contracts | Latent | 🚫 **Won't fix in v1** (decided 2026-09-09) | Nested reads are out of scope. Chained read reverts `0x3ee5aeb5`; SDK documents it as unsupported |
 | **C7** | `readBaseFee` split-key naming trap | Contracts | Latent | ❌ **Unfixed** | Mapping unchanged at `UniversalCore.sol:115` |
 | **N1** | UEA reads never ingested | Chain | Blocker | ⚠️ **Half-fixed** `d4ef66db` | `CallUEAExecutePayload` now ingests, inside the cacheCtx so it commits with the payload — correct. `CallExecuteUniversalTx` (`evm.go:868`, CEA→contract inbounds) still does not. New test covers UEA path only |
 | **N2** | `nil` gas → estimator starves callback | Chain | Blocker | ✅ **Fixed** `e28367b6` | Explicit `callbackGasLimit + 50_000`. Measured against the most demanding callback that fits each limit: needed buffer 0 @200k, 21,771 @500k, 15,394 @1M — ≥2× headroom |
@@ -52,17 +52,11 @@ CEA-originated inbounds whose recipient is a Push contract. It needs the same
 `IngestReadRequests` hand-off, or a CEA-driven tx that hits a read-requesting app strands
 its budget exactly as N1 did.
 
-**3. C6 — needs a yes/no on nested reads.** Zartaj's question in the thread got no answer.
-If yes, two changes, not one:
-- Contract: a separate reentrancy guard for `requestExternalReadSelf` (option b). Prefer it
-  over removing the guard — the protocol-fee push to VaultPC is an external call.
-- Node: a nested `ReadRequested` is emitted *inside the module's own fulfil call*
-  (`callAsModule → DerivedEVMCallWithData`). The N1 fix added ingest to uexecutor's
-  `CallUEAExecutePayload` only; the ucallback fulfil path has none. Removing the guard alone
-  would let the nested request through the contract and strand its budget.
-
-If no, say so in the docs — read → callback → read is the obvious composition and it fails
-silently today.
+**3. C6 — decided: nested reads are out of scope for v1** (2026-09-09). No contract or node
+change. The SDK spec states `read()` inside a callback is unsupported; a chained request reverts
+with `ReentrancyGuardReentrantCall` and is swallowed into `CallbackFailed`. Revisit only if a
+v2 use case needs it — then it is contract (separate guard) **plus** node (ingest on the
+module's fulfil path), not contract alone.
 
 **4. Status semantics — document them.** From the bool discussion in the thread: the node
 does not need a callback-success signal, and none was added. Correct for the module's
@@ -287,8 +281,8 @@ remove this entirely.
 
 ## C6 — A callback cannot chain a follow-up read · LATENT
 
-**Status (2026-09-09): ❌ Unfixed. No decision made.** See "Still open" item 3 — the fix is
-contract **and** node.
+**Status (2026-09-09): 🚫 Won't fix in v1 — decided.** Nested reads are out of scope. See
+"Still open" item 3.
 
 `requestExternalReadSelf` and `fulfillExternalCallback` share the same `nonReentrant` guard
 (`:107`, `:192`). An app whose `_onReadResult` issues a follow-up `_requestRead` gets
@@ -406,7 +400,5 @@ Checked directly; all correct. Unchanged by the fixes.
       missing grant.
 - [ ] **Land the `read-state` upgrade handler on `develop`.** Was on `testnet/donut` and
       the release branch only; not re-checked on 2026-09-09.
-- [ ] **Merge `feat-read-state` to `main`** *(contracts team)*. Fixes are deployed but the
-      branch is unmerged — `main` still carries C1. Flagged; not ours to do.
 - [ ] **Commit a `UniversalCallback` deploy/upgrade script.** Donut was upgraded manually
       twice now; localnet and fresh-genesis chains still get placeholder bytecode.
