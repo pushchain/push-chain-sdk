@@ -204,7 +204,7 @@ New tree `__e2e__/read/`, using `shared/fresh-wallet.ts`, `evm-client.ts`, `prog
 | `evm/balance-eoa.spec.ts` | `prepareRead` → `sendTransaction` (EOA) to client → `trackRead` → `value` equals `cast balance` at pin | the happy path the SDK way |
 | `evm/balance-uea.spec.ts` | same, but sent **through a UEA** via `universal.sendTransaction` from a Sepolia-origin signer | **N1 fix live** — the flagship path, never yet exercised |
 | `evm/contract-call.spec.ts` | `abi`/`functionName` read of an ERC-20 `balanceOf` on Sepolia; typed `value` | `contractCallFn` + `evmCall` decode |
-| `evm/callback-reverts.spec.ts` | client whose `onUniversalData` reverts | `status FULFILLED`, `callbackDelivered false`, `value undefined`, `README-TX-106-03` emitted (I4) |
+| `evm/callback-reverts.spec.ts` | client whose `onUniversalData` reverts | `status FULFILLED`, `callbackDelivered false`, `value undefined`, `READ-TX-106-03` emitted (I4) |
 | `lifecycle/expiry.spec.ts` | `expiryBlocks: 2n` | `EXPIRED`, `fees.refunded == callbackBudget`, `RequestExpired` parsed |
 | `svm/lamports.spec.ts` | Solana devnet lamport balance; `owner` raw 32 B | SVM envelope + `minSlot` floor |
 | `web2/price.spec.ts` | GET a public JSON endpoint, one `uint256` extract with decimals | web2 envelope reachable post-C3; fee 0 |
