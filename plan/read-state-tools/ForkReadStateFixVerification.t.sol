@@ -75,6 +75,25 @@ contract ChainingReadClient {
     receive() external payable {}
 }
 
+/// @notice App whose callback ALWAYS reverts — for the live "callbackDelivered = false" check.
+///         The read still reaches FULFILLED on the node; the contract emits CallbackFailed.
+contract RevertingReadClient {
+    IUniversalCallback public immutable UC;
+    uint256 public attempts; // never persists — the revert rolls it back; proof is the CallbackFailed event
+
+    constructor(address uc) { UC = IUniversalCallback(uc); }
+
+    function request(ReadSpec memory spec, uint64 gasLimit) external payable returns (uint256) {
+        return UC.requestExternalReadSelf{value: msg.value}(spec, this.onUniversalData.selector, gasLimit);
+    }
+
+    function onUniversalData(uint256, bytes calldata) external {
+        attempts++;
+        revert("app callback reverted on purpose");
+    }
+    receive() external payable {}
+}
+
 /// @notice revertRecipient whose receive() reverts (C5 probe).
 contract RejectingRecipient {
     receive() external payable { revert("no thanks"); }

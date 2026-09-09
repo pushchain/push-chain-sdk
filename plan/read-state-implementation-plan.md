@@ -43,8 +43,9 @@ tests pass.
 | `envelope-vectors.json` — `{name, kind, input, expectedHex}` for every query type | authored in PR1, cross-checked by decoding with the exact tuple shapes from `read_envelope.go` | unit (both encode and decode), **and handed to the chain team** to run through their Go decoders |
 | `universal-read.fixture.b64` — raw `abci_query` value for read `0xf3d62fb9…` | captured from Donut (`node-read.sh` path, keep the base64) | codec unit test — the one regression guard for hand-authored protobuf |
 | `receipts/request.json`, `receipts/fulfil.json`, `receipts/settle.json` | `cast receipt --json` for tx `0x8329b613…`, `0x1d241ed8…`, `0x47eb5d30…` | event parsing unit tests: `ReadRequested`, `ReadFulfilled`, `CallbackGasReported`, `RefundSent` |
-| `receipts/fulfil-callbackfailed.json` | captured when the reverting-callback e2e runs (PR6) | `callbackDelivered=false` path |
-| Deployed clients `0x6ffde03d…`, `0x5F7221d3…`; settled reads `0xeba3eb9e…` (ERROR), `0xf3d62fb9…` (SUCCESS) | already on Donut, never change | integration `trackRead`/`getUniversalRead` — deterministic, no funds |
+| `receipts/fulfil-callbackfailed.json` | `cast receipt --json 0x717295e9…` (revert check, 2026-09-09) | `callbackDelivered=false` path |
+| `block-results/22963638.json` | archive `block_results?height=22963638` | `EXPIRED` handling — the only trace of an expiry (`ethereum_tx` + `tx_log`, `mode: EndBlock`) |
+| Deployed clients `0x6ffde03d…`, `0x5F7221d3…`, reverting `0x15372211…`; settled reads `0xeba3eb9e…` (ERROR), `0xf3d62fb9…` (SUCCESS), `0xdc0a66ba…` (UEA-originated), `0x9f0466e2…` (callback reverted), `0x4a6e27e0…` (EXPIRED), `0x1e995107…` (SVM), `0x3870d2af…` (web2) | already on Donut, never change | integration `trackRead`/`getUniversalRead` — one deterministic fixture per terminal state and destination, no funds |
 
 **Mocking pattern:** the hand-built `OrchestratorContext` from `orchestrator/__tests__/preflight.spec.ts:17-31` — stub only what the function touches, assert on captured `ProgressEvent[]`. `jest.mock` for module boundaries (`push-client`).
 
@@ -167,6 +168,7 @@ src/lib/orchestrator/internals/context.ts     READ-TX ids must NOT be added to R
 **Behaviour to pin**
 
 - Terminal set `FULFILLED | EXPIRED | FAILED | ABORTED`; `wait()` **resolves** on terminal, throws only `ReadTimeoutError` (house convention).
+- **`EXPIRED`: never fetch the `pc_tx` receipt** — EndBlocker expiry has no EVM-indexed tx/receipt/logs (verified 2026-09-09). Set `fees.refunded = request.callback_budget`; optional log-level confirmation via Tendermint `blockResults(expiryHeight)` → `tx_log` with `mode: EndBlock`.
 - Polling `pollingIntervalMs` 2 000 (min 500); `timeout` default `expiryBlocks × blockTime` capped 180 000.
 - `value` present iff `status === FULFILLED && callbackDelivered && result.status === SUCCESS`.
 - Hook emission order 104-02 → 105-01/02 → 106-01..06 → 199-xx; inner `SEND-TX` pass-through preserved.
@@ -205,7 +207,7 @@ New tree `__e2e__/read/`, using `shared/fresh-wallet.ts`, `evm-client.ts`, `prog
 | `evm/balance-uea.spec.ts` | same, but sent **through a UEA** via `universal.sendTransaction` from a Sepolia-origin signer | **N1 fix live** — the flagship path, never yet exercised |
 | `evm/contract-call.spec.ts` | `abi`/`functionName` read of an ERC-20 `balanceOf` on Sepolia; typed `value` | `contractCallFn` + `evmCall` decode |
 | `evm/callback-reverts.spec.ts` | client whose `onUniversalData` reverts | `status FULFILLED`, `callbackDelivered false`, `value undefined`, `READ-TX-106-03` emitted (I4) |
-| `lifecycle/expiry.spec.ts` | `expiryBlocks: 2n` | `EXPIRED`, `fees.refunded == callbackBudget`, `RequestExpired` parsed |
+| `lifecycle/expiry.spec.ts` | `minConfirmations: 500`, `expiryBlocks: 30n` (deterministic — validators hold) | `EXPIRED`, `fees.refunded == callbackBudget`, refund confirmed from `block_results`, no receipt fetch attempted |
 | `svm/lamports.spec.ts` | Solana devnet lamport balance; `owner` raw 32 B | SVM envelope + `minSlot` floor |
 | `web2/price.spec.ts` | GET a public JSON endpoint, one `uint256` extract with decimals | web2 envelope reachable post-C3; fee 0 |
 | `docs-examples/13-read-state/*.spec.ts` | 1:1 mirror of the runnable blocks in the (future) website MDX | docs never drift (house rule in `__e2e__/docs-examples/README.md`) |

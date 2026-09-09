@@ -95,7 +95,16 @@ recipient that actively rejects loses its budget to the rescuable pool. A pull-b
   `0xeba3eb9e…` and `0xf3d62fb9…` from a Push EOA (12 s each), and `0xdc0a66ba…` **through a
   UEA via the SDK** (23 s). Reads 2 and 3 returned the exact Sepolia balance at the pinned
   block. C1, N1 (UEA path), N2 (callback saw ~193.5k of a 200k limit) and N3 all exercised for
-  real. Details in `read-state-sdk-spec.md` § Verified live.
+  real. Then four more (`_requestNonce` → 7): **reverting callback** (`CallbackFailed`, node still
+  `FULFILLED`), **expiry** (`EXPIRED`, full budget refunded), **SVM** and **web2** (both exact
+  matches). Every destination and terminal outcome observed live. Details in
+  `read-state-sdk-spec.md` § Verified live.
+- **Observation for the chain team:** `EndBlocker`-driven expiry produces no EVM-indexed tx,
+  receipt or logs (vote-triggered fulfils do). The trace is only in Cosmos `block_results`
+  (`ethereum_tx` + `tx_log`, `mode: EndBlock`). Not a defect in the read lifecycle — refunds land —
+  but explorers show nothing for an expiry and the SDK must use the node record instead of
+  receipts. If EVM-side indexing of EndBlock derived txs is intended (`DERIVED_TRANSACTIONS.md`),
+  this is a gap.
 
 ## Reference test file
 

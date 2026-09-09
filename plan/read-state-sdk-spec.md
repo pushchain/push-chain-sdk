@@ -44,7 +44,7 @@ the contract surface underneath it is corrected to what is actually deployed.
 
 ## Verified live — 2026-09-09
 
-The first three reads ever made on Donut (`_requestNonce` 0 → 3), fired against the deployed
+The first three reads ever made on Donut (`_requestNonce` 0 → 3; seven in total by end of day), fired against the deployed
 contract with the account in `packages/core/.env`. All settled within **12–23 seconds** of the
 request tx, callback executed, escrow returned to zero, refund landed at `refundTo`.
 
@@ -76,9 +76,30 @@ implementation detail in this spec:
 > `encodeAbiParameters([{ type: 'tuple', components }], [envelope])` and ship the
 > cross-language golden vectors from the test plan.
 
-Still not covered live: SVM and web2 destinations, a reverting callback
-(`callbackDelivered = false`), and expiry. Those are the next four live checks
-(`plan/read-state-tools/`).
+### The remaining four — all passed, 2026-09-09 18:00–18:02 (`_requestNonce` 3 → 7)
+
+Driven by `plan/read-state-tools/live-read-matrix.sh`, one request each from the Push EOA.
+
+| check | requestId | what happened | proves |
+|---|---|---|---|
+| **reverting callback** | `0x9f0466e2…` → client `0x15372211…` | validators `SUCCESS`; fulfil tx `0x717295e9…` emitted **`CallbackFailed`**, no `ReadFulfilled`; client's `attempts()` stayed 0; node status **`FULFILLED`**; contract went on to `SETTLED` | `callbackDelivered = false` is real and `FULFILLED` does not imply delivery (I4) |
+| **expiry** | `0x4a6e27e0…` | `minConfirmations: 500` held validators; `expiryBlocks: 30` won at height 22963638; contract `statusOf = 4`, node `EXPIRED`, `expiry_attempts 1`; escrow → 0 and contract balance → 0, so the full 0.05 PC budget was pushed to `refundTo` | expiry + full-budget refund, and the observability constraint below |
+| **SVM** | `0x1e995107…` | Solana devnet lamport balance of `3nK8X1re…`, `owner` = raw 32-byte pubkey, floor = oracle slot − 200 | `result_data` = `abi.encode(727156477)` — **exact match** with finalized devnet |
+| **web2** | `0x3870d2af…` | GET `jsonplaceholder.typicode.com/todos/1`, extracts `$.id` uint256 + `$.completed` bool, `blockNumber = 0` (heightless branch) | `result_data` = `abi.encode(1, false)` — **exact match**, flat argument list |
+
+Every destination type and every terminal outcome the SDK models has now been observed live.
+
+> **Expiry is invisible to the EVM RPC.** The sweeper runs in the node's `EndBlocker`, so its
+> `expireExternalRead` call has **no fetchable transaction, no receipt, and no `getLogs` entry** —
+> `eth_getTransactionByHash`, `eth_getTransactionReceipt` and `getLogs` for `RequestExpired` /
+> `RefundSent` all return nothing, while every vote-triggered fulfil tx is fully indexed. The
+> evidence exists on the Cosmos side: `block_results?height=<expiry>` carries an `ethereum_tx`
+> event (`ethereumTxHash` = the record's `pc_tx` hash, recipient `0x…C2`, `txData` =
+> `expireExternalRead(requestId)`) and a `tx_log` event with the two contract logs,
+> `mode: EndBlock`. **SDK rule (`trackRead`):** for `EXPIRED`, do not fetch the `pc_tx`
+> receipt; take `fees.refunded = request.callback_budget` (contract logic refunds it in full) and,
+> if log-level confirmation is wanted, read `block_results` via the existing Tendermint client.
+> Explorers will show nothing for an expiry on the EVM side — worth flagging to the chain team.
 
 ---
 
