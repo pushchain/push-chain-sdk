@@ -26,6 +26,13 @@ import {
   QueryGetUniversalTxRequestV2,
   QueryGetUniversalTxResponseV2,
 } from '../generated/uexecutor/v2/query';
+import {
+  QueryReadsByTxRequest,
+  QueryReadsByTxResponse,
+  QueryUniversalReadRequest,
+  QueryUniversalReadResponse,
+  UCALLBACK_QUERY_SERVICE,
+} from '../generated/ucallback/v1';
 import { Secp256k1 } from '@cosmjs/crypto';
 import { Tendermint34Client } from '@cosmjs/tendermint-rpc';
 import { BaseAccount } from 'cosmjs-types/cosmos/auth/v1beta1/auth';
@@ -47,6 +54,12 @@ function pushNetworkToChain(
   )
     return CHAIN.PUSH_TESTNET_DONUT;
   return CHAIN.PUSH_LOCALNET;
+}
+
+/** ABCI code 22 / gRPC NotFound from x/ucallback — "no read request with id …: key not found". */
+function isUcallbackNotFound(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /\(22\)|code = NotFound|key not found/i.test(msg);
 }
 
 export class PushClient extends EvmClient {
@@ -388,6 +401,60 @@ export class PushClient extends EvmClient {
       );
       return QueryGetUniversalTxResponse.decode(responseBytes);
     }, 'getUniversalTxById');
+  }
+
+  /**
+   * Queries x/ucallback for one cross-chain read by its requestId (0x-prefixed uint256 hex).
+   *
+   * Current-state query — an absent `read` is a real "does not exist", so there is
+   * deliberately no archive fallback (see getUniversalTxByIdV2 for the rationale).
+   */
+  public async getUniversalRead(requestId: string): Promise<QueryUniversalReadResponse> {
+    const id = requestId.toLowerCase();
+    return this.executeWithRpcFallback(async (rpcUrl) => {
+      const tmClient = await Tendermint34Client.connect(rpcUrl);
+      const queryClient = new QueryClient(tmClient);
+      const rpc = createProtobufRpcClient(queryClient);
+
+      const request = QueryUniversalReadRequest.fromPartial({ requestId: id });
+      try {
+        const responseBytes = await rpc.request(
+          UCALLBACK_QUERY_SERVICE,
+          'UniversalRead',
+          QueryUniversalReadRequest.encode(request).finish()
+        );
+        return QueryUniversalReadResponse.decode(responseBytes);
+      } catch (err) {
+        // The node answers an unknown id with ABCI code 22 (sdk NotFound), which cosmjs
+        // throws. That is a deterministic miss, not a transport failure — classify it
+        // here so the RPC fallback does not retry it on every endpoint.
+        if (isUcallbackNotFound(err)) return QueryUniversalReadResponse.fromPartial({});
+        throw err;
+      }
+    }, 'getUniversalRead');
+  }
+
+  /**
+   * Queries x/ucallback for every read a Push transaction requested. One tx can emit
+   * several ReadRequested logs; this reassembles that batch. The node keys on the exact
+   * lowercase 0x hash, which is what the SDK's own tx responses carry — verified for
+   * both EOA and UEA-originated requests.
+   */
+  public async getReadsByTx(txHash: string): Promise<QueryReadsByTxResponse> {
+    const hash = txHash.toLowerCase();
+    return this.executeWithRpcFallback(async (rpcUrl) => {
+      const tmClient = await Tendermint34Client.connect(rpcUrl);
+      const queryClient = new QueryClient(tmClient);
+      const rpc = createProtobufRpcClient(queryClient);
+
+      const request = QueryReadsByTxRequest.fromPartial({ txHash: hash });
+      const responseBytes = await rpc.request(
+        UCALLBACK_QUERY_SERVICE,
+        'ReadsByTx',
+        QueryReadsByTxRequest.encode(request).finish()
+      );
+      return QueryReadsByTxResponse.decode(responseBytes);
+    }, 'getReadsByTx');
   }
 
   /**

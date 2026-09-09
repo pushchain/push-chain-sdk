@@ -32,5 +32,6 @@ export default {
     '<rootDir>/src/lib/vm-client/svm-client\\.spec\\.ts$',
     '<rootDir>/src/lib/orchestrator/orchestrator\\.spec\\.ts$',
     '<rootDir>/src/lib/price-fetch/price-fetch\\.spec\\.ts$',
+    '<rootDir>/src/lib/read-state/__integration__/',
   ],
 };

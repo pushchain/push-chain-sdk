@@ -102,6 +102,30 @@ export type DecodedReadResult =
   | { kind: 'web2'; values: readonly unknown[] };
 
 // ---------------------------------------------------------------------------
+// Preflight — the on-chain values a valid ReadSpec depends on
+// ---------------------------------------------------------------------------
+
+export interface ReadPreflight {
+  destination: ResolvedDestination;
+  /** `UniversalCallback.estimateFee(ns, chainId)` — the protocol fee ONLY. 0 on Donut today. */
+  protocolFee: bigint;
+  /**
+   * `UniversalCore.chainHeightByChainNamespace(caip2)` — the oracle-observed height of the
+   * destination and the ceiling for `blockNumber`. Lags the real head. 0 for heightless
+   * namespaces (web2), where `blockNumber` must then be 0.
+   */
+  observedChainHeight: bigint;
+  /** Current Push Chain height, for expiry. */
+  pushBlockNumber: bigint;
+  /** Push gas price used to size the callback budget. */
+  pushGasPrice: bigint;
+  universalCallback: Address;
+  universalCore: Address;
+  /** Date.now() at fetch — pushBlockNumber moves every block; a stale preflight can miss expiry. */
+  fetchedAt: number;
+}
+
+// ---------------------------------------------------------------------------
 // ReadSpec — exactly the deployed Solidity struct (7 fields)
 // ---------------------------------------------------------------------------
 
