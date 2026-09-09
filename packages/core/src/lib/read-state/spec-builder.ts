@@ -15,6 +15,7 @@ import { UEA_FACTORY_ABI } from '../constants/abi/uea-factory';
 import { UEA_FACTORY } from '../constants/chain';
 import { DEFAULT_EXPIRY_BLOCKS, MIN_CONFIRMATIONS_FLOOR, READ_NAMESPACE } from '../constants/read-state';
 import { sizeCallbackBudget } from './budget';
+import { resolveDestination } from './destination';
 import { encodeReadQuery } from './envelopes';
 import { InvalidReadQueryError, InvalidReadSpecError } from './errors';
 import { preflightRead, type PreflightDeps } from './preflight';
@@ -49,7 +50,7 @@ function toTuple(spec: ReadSpec): ReadSpecTuple {
   ] as const;
 }
 
-function encodeSpec(spec: ReadSpec): Hex {
+export function encodeSpec(spec: ReadSpec): Hex {
   return encodeAbiParameters([READ_SPEC_ABI_PARAM], [spec as never]);
 }
 
@@ -63,6 +64,9 @@ export function buildReadSpecFromPreflight(
   defaults: { refundTo?: Address } = {},
 ): PreparedRead {
   const dest = preflight.destination;
+  if (resolveDestination(params.destination).caip2 !== dest.caip2) {
+    throw new InvalidReadQueryError('preflight destination does not match the requested destination');
+  }
   const isWeb2 = dest.namespace === READ_NAMESPACE.WEB2;
   const minConfirmations = params.minConfirmations ?? MIN_CONFIRMATIONS_FLOOR;
 
@@ -126,6 +130,7 @@ export function buildReadSpecFromPreflight(
   assertValidReadSpec({ spec, value, callbackGasLimit: params.callbackGasLimit, preflight });
 
   return {
+    callback: params.callback,
     spec,
     specTuple: toTuple(spec),
     encodedSpec: encodeSpec(spec),

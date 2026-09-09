@@ -4,8 +4,8 @@ import '@e2e/shared/setup';
  *
  * minConfirmations 500 makes validators hold (latest < pin + 500 for ~2 h on Sepolia)
  * while expiryBlocks 30 lets the EndBlocker sweep it in ~40 s. Expiry is not
- * EVM-indexed (no tx, no receipt): the SDK must not try to fetch one and must report
- * the full callback budget as refunded — the contract's rule.
+ * EVM-indexed (no tx, no receipt): the SDK must not try to fetch one; it confirms the
+ * refund from the EndBlock tx_log events in the Cosmos block results instead.
  */
 import { createPublicClient, http } from 'viem';
 import { PushChain } from '../../../src';
@@ -46,7 +46,8 @@ d('read state › expiry', () => {
     expect(done.isTerminal).toBe(true);
     expect(done.callbackDelivered).toBeUndefined();
     expect(done.value).toBeUndefined();
-    expect(done.fees.refunded).toBe(done.fees.callbackBudget);
+    expect(done.fees.refunded).toBe(done.fees.callbackBudget); // RefundSent, confirmed from block_results
+    expect(done.fees.refundFailed).toBe(false);
     expect(done.fees.burned).toBeUndefined();
     expect(done.pcTx).toHaveLength(1); // the sweeper's pseudo-tx — not fetchable, not fetched
 

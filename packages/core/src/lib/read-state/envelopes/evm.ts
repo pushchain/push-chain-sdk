@@ -127,7 +127,7 @@ export function encodeEvmQueryEnvelope(query: EvmReadQuery, options: { blockNumb
           functionName: query.functionName,
           args: query.args as never,
         });
-        resultShape = { kind: 'evmCall', abi: query.abi, functionName: query.functionName };
+        resultShape = { kind: 'evmCall', abi: [item], functionName: query.functionName };
       }
       payload = encodeAbiParameters([{ type: 'address' }, { type: 'bytes' }], [query.target, callData]);
       break;

@@ -32,5 +32,18 @@ done.status === PushChain.CONSTANTS.READ.STATUS.FULFILLED && done.callbackDelive
   `fees` reports paid / burned / refunded.
 - `READ-TX-*` progress events, `PushChain.CONSTANTS.READ`, typed errors, pure helpers
   (`encodeReadQuery`, `decodeReadResult`, `toCallData`, event parsers) exported.
-- `read()` and `executeReads()` are declared and typed but throw
-  `ReadRegistryUnavailableError` until the canonical `UniversalReadRegistry` is deployed.
+- `read()` and `executeReads()` support existing app receivers via
+  `callback: { target, gasLimit, request: { abi, functionName, args? } }`. The default
+  request arguments are `(spec, callbackGasLimit)`. Each call must emit exactly one
+  matching read. Prepared metadata retains the callback target and decoder; batch
+  results preserve input order. Both methods require a signer and wait for terminal
+  reads unless `waitForCompletion: false` is supplied. Wallets without EIP-7702 use
+  sequential transactions; all hashes are retained for tracking. Omitting the target
+  still throws `ReadRegistryUnavailableError` until the shared registry is deployed.
+
+Read-state review fixes: reject mismatched preflight destinations, retain exact ABI
+overloads, bound polling and RPC waits by one deadline, and serialize nested bigint
+progress values. Expired reads confirm the refund from the EndBlock logs in the Cosmos
+block results (recipients can reject payment, so it is never assumed). A non-atomic batch
+that fails midway throws `READ_REQUEST_TX_FAILED` carrying the hashes already mined.
+Solana token reads accept `tokenProgram: 'token-2022'`; the default remains `'spl-token'`.

@@ -12,6 +12,15 @@ const cb = { callback: { gasLimit: 200_000n } };
 const ABI = [{ type: 'function', name: 'totalSupply', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] }] as const;
 
 describe('read(subject, options) grammar → ReadQuery', () => {
+  it('derives Token-2022 ATAs using the selected program', () => {
+    const owner = '11111111111111111111111111111111';
+    const mint = 'So11111111111111111111111111111111111111112';
+    expect(toReadQuery(owner, { chain: CHAIN.SOLANA_DEVNET, token: mint, tokenProgram: 'token-2022' })).toEqual({
+      type: 'splTokenAccount', account: '2sZUUBGq1i6aE47ZoxCaCW89jmYm2EXLPPmNMgMDXHMS',
+    });
+    expect(() => toReadQuery(USER, { chain: CHAIN.ETHEREUM_SEPOLIA, token: TOKEN, tokenProgram: 'token-2022' })).toThrow(InvalidReadQueryError);
+    expect(() => toReadQuery(owner, { chain: CHAIN.SOLANA_DEVNET, tokenProgram: 'token-2022' })).toThrow(InvalidReadQueryError);
+  });
   it('EVM: no query key → native balance of subject', () => {
     expect(toReadQuery(USER, { chain: CHAIN.ETHEREUM_SEPOLIA })).toEqual({ type: 'accountBalance', target: USER });
   });
@@ -61,6 +70,7 @@ describe('toBuildReadSpecParams', () => {
       chain: CHAIN.ETHEREUM_SEPOLIA, ...cb, refundTo: USER, blockNumber: 5n, minConfirmations: 3, expiryBlocks: 10n, maxFee: 7n,
     });
     expect(p).toEqual({
+      callback: cb.callback,
       destination: { chain: CHAIN.ETHEREUM_SEPOLIA },
       query: { type: 'accountBalance', target: USER },
       callbackGasLimit: 200_000n, refundTo: USER, blockNumber: 5n, minConfirmations: 3, expiryBlocks: 10n, maxFee: 7n,

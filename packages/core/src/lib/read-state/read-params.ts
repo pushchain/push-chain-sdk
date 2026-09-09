@@ -14,9 +14,11 @@ import { isAddress } from 'viem';
 import type { CHAIN } from '../constants/enums';
 import { READ_NAMESPACE, WEB2_DESTINATION } from '../constants/read-state';
 import { resolveDestination } from './destination';
-import { deriveAssociatedTokenAddress } from './envelopes/svm';
+import { deriveAssociatedTokenAddress, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from './envelopes/svm';
 import { InvalidReadQueryError } from './errors';
 import type { BuildReadSpecParams, ReadDestination, ReadLifecycleOptions, ReadQuery, ReadResultShape, Web2Extract } from './read-state.types';
+import type { ReadCallback } from './read-state.types';
+import type { ProgressEvent } from '../progress-hook/progress-hook.types';
 
 /** Web2 is not a `CHAIN` member; this is the destination string the node routes on. */
 export const READ_CHAIN_WEB2 = 'web2:https' as const;
@@ -39,6 +41,8 @@ export interface ReadOptions {
   // ── query — which keys are present decides the kind ──
   /** Token balance of `subject`: ERC-20 `balanceOf` on EVM, the SPL ATA on SVM. */
   token?: string;
+  /** Solana token balance only. Defaults to the original SPL Token program. */
+  tokenProgram?: 'spl-token' | 'token-2022';
   /** Typed contract call — encodes the call and decodes the result. */
   abi?: Abi;
   functionName?: string;
@@ -55,12 +59,7 @@ export interface ReadOptions {
   maxFee?: bigint;
 
   // ── callback ──
-  callback?: {
-    /** Your UniversalReadClient contract. The canonical registry (default) is not deployed yet. */
-    target?: Address;
-    /** 1n..1_000_000n. Sizes the callback budget. Required until the registry ships. */
-    gasLimit?: bigint;
-  };
+  callback?: ReadCallback;
 
   // ── refund ──
   /** ReadSpec.revertRecipient. Default: the sending account. */
@@ -68,6 +67,7 @@ export interface ReadOptions {
 
   // ── lifecycle (read / executeReads / trackRead) ──
   waitForCompletion?: boolean;
+  progressHook?: (event: ProgressEvent) => void;
   advanced?: {
     pollingIntervalMs?: number;
     timeout?: number;
@@ -76,6 +76,8 @@ export interface ReadOptions {
 }
 
 export type ReadTrackOptions = Pick<ReadOptions, 'advanced'> & { resultShape?: ReadResultShape };
+/** Defaults to waiting for all reads. Sequential fallback may produce multiple Push txs. */
+export type ReadExecuteOptions = Pick<ReadOptions, 'advanced' | 'waitForCompletion' | 'progressHook'>;
 
 /** Just `balanceOf` — it also types the decoded result as uint256. */
 export const ERC20_BALANCE_OF_ABI = [
@@ -109,6 +111,9 @@ export function toReadDestination(chain: ReadChain): ReadDestination {
 export function toReadQuery(subject: string, o: ReadOptions): ReadQuery {
   const dest = resolveDestination(toReadDestination(o.chain));
   const kind = queryKind(o);
+  if (o.tokenProgram !== undefined && (dest.namespace !== READ_NAMESPACE.SVM || kind !== 'token' || !['spl-token', 'token-2022'].includes(o.tokenProgram))) {
+    throw new InvalidReadQueryError('tokenProgram requires a Solana token balance query and must be spl-token or token-2022');
+  }
 
   if (dest.namespace === READ_NAMESPACE.WEB2) {
     if (kind !== 'web2' || !o.web2) throw new InvalidReadQueryError('a web2 read needs the `web2` option and no other query key');
@@ -142,7 +147,7 @@ export function toReadQuery(subject: string, o: ReadOptions): ReadQuery {
     case 'native':
       return { type: 'lamportBalance', account: subject };
     case 'token':
-      return { type: 'splTokenAccount', account: deriveAssociatedTokenAddress(subject, o.token as string).toBase58() };
+      return { type: 'splTokenAccount', account: deriveAssociatedTokenAddress(subject, o.token as string, o.tokenProgram === 'token-2022' ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID).toBase58() };
     default:
       throw new InvalidReadQueryError(`unsupported query for solana: ${kind} (program reads land with idl support)`);
   }
@@ -157,6 +162,7 @@ export function toBuildReadSpecParams(subject: string, o: ReadOptions): BuildRea
     });
   }
   return {
+    callback: o.callback,
     destination: toReadDestination(o.chain),
     query: toReadQuery(subject, o),
     callbackGasLimit: gasLimit,

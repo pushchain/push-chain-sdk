@@ -9,7 +9,7 @@ import '@e2e/shared/setup';
  */
 import { PushChain } from '../../../src';
 import { CHAIN } from '../../../src/lib/constants/enums';
-import { CALLBACK_GAS, REVERTING_CLIENT, createProgressTracker, makePushEoaClient, pushKey, sendRead, SLOW_PATH } from '../_shared';
+import { CALLBACK_GAS, REVERTING_CLIENT, READ_CLIENT_ABI, createProgressTracker, makePushEoaClient, pushKey, SLOW_PATH } from '../_shared';
 
 const READ = PushChain.CONSTANTS.READ;
 
@@ -20,14 +20,13 @@ d('read state › reverting callback', () => {
 
   it('reports FULFILLED + callbackDelivered=false, value withheld, budget still settled', async () => {
     const { client } = await makePushEoaClient(pushKey!);
-    const prepared = await client.universal.prepareRead('0x000000000000000000000000000000000000dEaD', {
+    const done = await client.universal.read('0x000000000000000000000000000000000000dEaD', {
       chain: CHAIN.ETHEREUM_SEPOLIA,
-      callback: { target: REVERTING_CLIENT, gasLimit: CALLBACK_GAS },
+      callback: { target: REVERTING_CLIENT, gasLimit: CALLBACK_GAS, request: { abi: READ_CLIENT_ABI, functionName: 'request' } },
       expiryBlocks: SLOW_PATH.expiryBlocks,
+      advanced: { timeout: SLOW_PATH.wait.timeoutMs },
+      progressHook: tracker.hook,
     });
-    const { read } = await sendRead(client, prepared, REVERTING_CLIENT);
-
-    const done = await client.universal.trackRead({ requestId: read.requestId }, { progressHook: tracker.hook }).then((r) => r.wait(SLOW_PATH.wait));
     expect(done.status).toBe(READ.STATUS.FULFILLED);
     expect(done.raw?.status).toBe(READ.RESULT_STATUS.SUCCESS); // consensus succeeded
     expect(done.callbackDelivered).toBe(false); // the app never got it

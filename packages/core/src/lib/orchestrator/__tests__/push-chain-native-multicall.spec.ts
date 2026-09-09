@@ -142,9 +142,36 @@ describe('sendPushTx native multicall routing', () => {
       expect(params).not.toHaveProperty('gas');
     }
     expect(response.atomic).toBe(false);
+    expect(response.transactionHashes).toEqual([HASH_1, HASH_2]);
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining('separate, non-atomic transactions')
     );
+  });
+
+  it('a revert in the sequential fallback carries the hashes already mined on the error', async () => {
+    const signer = await toUniversal(
+      construct(
+        {
+          chain: CHAIN.PUSH_TESTNET_DONUT,
+          address: '0x3333333333333333333333333333333333333333',
+        },
+        {
+          signMessage: async (data) => data,
+          signAndSendTransaction: async (data) => data,
+        }
+      )
+    );
+    const { ctx, pushClient } = makeContext(signer);
+    pushClient.publicClient.waitForTransactionReceipt.mockImplementation(({ hash }) =>
+      Promise.resolve({ status: hash === HASH_2 ? 'reverted' : 'success', blockNumber: BigInt(101) })
+    );
+    pushClient.publicClient.call.mockRejectedValue(new Error('execution reverted'));
+
+    const err = await sendPushTx(ctx, execute, [], transformFn).catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toContain('operation 2/2 reverted');
+    expect(err.transactionHashes).toEqual([HASH_1]); // the first call is committed and stays committed
+    expect(transformFn).not.toHaveBeenCalled();
   });
 
   it('falls back when authorization is unsupported before broadcast', async () => {

@@ -159,7 +159,22 @@ export type ReadSpecTuple = readonly [
 // prepareRead
 // ---------------------------------------------------------------------------
 
+export interface ReadRequestEntrypoint {
+  abi: Abi;
+  functionName: string;
+  /** Defaults to (spec, callbackGasLimit). Must request exactly one read with this spec. */
+  args?: (spec: ReadSpecTuple, callbackGasLimit: bigint) => readonly unknown[];
+}
+
+export interface ReadCallback {
+  target?: Address;
+  gasLimit?: bigint;
+  /** Public payable entrypoint on your app contract, not the result callback. */
+  request?: ReadRequestEntrypoint;
+}
+
 export interface BuildReadSpecParams {
+  callback?: ReadCallback;
   destination: ReadDestination;
   query: ReadQuery;
   /** 1n..1_000_000n. Execution bound on YOUR callback; also sizes the budget. */
@@ -190,6 +205,8 @@ export interface BuildReadSpecParams {
 }
 
 export interface PreparedRead {
+  /** App request entrypoint retained for read()/executeReads(). */
+  callback?: ReadCallback;
   spec: ReadSpec;
   /** Positional form for viem calls. */
   specTuple: ReadSpecTuple;
@@ -287,6 +304,7 @@ export interface ReadFees {
   /** consumed by the callback — `CallbackGasReported` */
   burned?: bigint;
   /** pushed back to `refundTo` — `RefundSent` / `RequestExpired` */
+  /** Unknown for EndBlock expiry: EXPIRED does not prove the recipient accepted payment. */
   refunded?: bigint;
   /** the push was rejected — budget sits in the admin rescue pool */
   refundFailed?: boolean;

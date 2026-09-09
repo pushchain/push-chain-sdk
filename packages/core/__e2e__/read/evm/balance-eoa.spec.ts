@@ -6,12 +6,9 @@ import '@e2e/shared/setup';
  * trackRead({ txHash }) → wait() → value === Sepolia balance at the pinned block.
  * Costs: the callback budget (refunded minus burn) + Push gas. ~0.01 PC.
  */
-import { createPublicClient, http } from 'viem';
-import { sepolia } from 'viem/chains';
 import { PushChain } from '../../../src';
 import { CHAIN } from '../../../src/lib/constants/enums';
-import { SEPOLIA_RPC } from '@e2e/shared/constants';
-import { CALLBACK_GAS, CALLBACK_SELECTOR, FULL_BUDGET_CLIENT, createProgressTracker, makePushEoaClient, pushKey, sendRead, SLOW_PATH } from '../_shared';
+import { CALLBACK_GAS, CALLBACK_SELECTOR, FULL_BUDGET_CLIENT, createProgressTracker, makePushEoaClient, pushKey, sendRead, SLOW_PATH, retryTruth, sepoliaTruth } from '../_shared';
 
 const SUBJECT = '0x000000000000000000000000000000000000dEaD' as const;
 const READ = PushChain.CONSTANTS.READ;
@@ -20,7 +17,7 @@ const d = pushKey ? describe : describe.skip;
 
 d('read state › EVM balance from a Push EOA', () => {
   const tracker = createProgressTracker();
-  const sepoliaRpc = createPublicClient({ chain: sepolia, transport: http(SEPOLIA_RPC) });
+  const sepoliaRpc = sepoliaTruth();
 
   it('reads a Sepolia balance end to end and settles the budget', async () => {
     const { client, account } = await makePushEoaClient(pushKey!, tracker.hook);
@@ -51,7 +48,7 @@ d('read state › EVM balance from a Push EOA', () => {
     expect(done.callbackDelivered).toBe(true);
     expect(done.raw?.status).toBe(READ.RESULT_STATUS.SUCCESS);
 
-    const truth = await sepoliaRpc.getBalance({ address: SUBJECT, blockNumber: prepared.spec.blockNumber });
+    const truth = await retryTruth(() => sepoliaRpc.getBalance({ address: SUBJECT, blockNumber: prepared.spec.blockNumber }));
     expect(done.value).toBe(truth);
 
     // settlement: burned + refunded == escrowed budget, refund pushed to the EOA

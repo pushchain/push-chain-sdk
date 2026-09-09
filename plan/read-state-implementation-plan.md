@@ -16,7 +16,7 @@ unblocked today. PR7 waits on the `UniversalReadRegistry`.
 | PR4 `trackRead` + `READ-TX` band | `d4b3ec3` | ✅ | unit 1233 · integration 18/18 |
 | PR5 public surface | `74981dc` | ✅ | unit 1584 · integration 22/22 |
 | PR6 e2e tree + CI `read` group | `148d375` | ✅ | **e2e 8/8 live on Donut** |
-| PR7 `read()` / `executeReads()` | — | ⛔ blocked | needs `UniversalReadRegistry` (contracts) |
+| PR7 `read()` / `executeReads()` | working tree | custom receivers implemented | only the default shared receiver requires `UniversalReadRegistry` |
 
 **v1 definition of done (§5) is met** except the two items that belong to other teams: the
 Go run of `envelope-vectors.json` (hand the file to the chain team) and the website MDX
@@ -24,9 +24,9 @@ Go run of `envelope-vectors.json` (hand the file to the chain team) and the webs
 
 **Deviations from the plan, all deliberate:**
 
-- `read()` / `executeReads()` throw `ReadRegistryUnavailableError` (new class, code
+- Without a custom target, `read()` / `executeReads()` throw `ReadRegistryUnavailableError` (new class, code
   `READ_REGISTRY_UNAVAILABLE`), not `UnsupportedReadDestinationError` — the old name lied.
-  `read()` validates the request first so grammar mistakes fail before the stub does.
+  `read()` validates the request first. Custom app receivers are implemented in PR7.
 - Public grammar follows the v2 spec: `prepareRead(subject, options)` with `chain` /
   `token` / `abi+functionName+args` / `storageSlot` / `web2`, adapted in
   `read-state/read-params.ts`. `callback.gasLimit` is mandatory until the registry pins
@@ -59,7 +59,7 @@ tests pass.
 | I5 | `refundTo` is required by the contract, defaults to the sending account (UEAs have `receive()`), warns for non-UEA contracts. | Rejected refund → forfeited to admin pool. |
 | I6 | Tracking is tx-hash-first; `requestId` recovered from `ReadRequested` logs, filtered on **address and topic0**. | `requestId` is unknowable pre-broadcast; address filter is a security control. |
 | I7 | Codecs for `ucallback.v1` are **hand-authored**. Never run `yarn build:proto`. | The script `rm -r`s hand-authored `generated/uexecutor/{v1/query,v2}`. |
-| I8 | Read methods work in **read-only mode**. No `isReadMode` throw on any `read*` method. | Nothing here signs; a UniversalAccount-only client must work. |
+| I8 | `prepareRead`, `simulateRead`, `trackRead` work in **read-only mode**; `read` / `executeReads` require a signer. | Preparing and observing do not sign; executing app requests does. |
 | I9 | Contract surface = `feat-read-state@f8d1a0c` (7-field spec, 2-arg `estimateFee`). Selectors pinned by test. | The team's draft was pinned to a stale branch. |
 | I10 | We never commit to `push-chain-core-contracts` or `push-chain`. | Repo ownership. |
 
@@ -205,7 +205,7 @@ src/lib/orchestrator/internals/context.ts     READ-TX ids must NOT be added to R
 **Behaviour to pin**
 
 - Terminal set `FULFILLED | EXPIRED | FAILED | ABORTED`; `wait()` **resolves** on terminal, throws only `ReadTimeoutError` (house convention).
-- **`EXPIRED`: never fetch the `pc_tx` receipt** — EndBlocker expiry has no EVM-indexed tx/receipt/logs (verified 2026-09-09). Set `fees.refunded = request.callback_budget`; optional log-level confirmation via Tendermint `blockResults(expiryHeight)` → `tx_log` with `mode: EndBlock`.
+- **`EXPIRED`: never fetch the `pc_tx` receipt** — EndBlocker expiry has no EVM-indexed tx/receipt/logs (verified 2026-09-09). The refund is confirmed from the Cosmos `block_results` at `pcTx[0].blockHeight`: the `tx_log` event with `mode: EndBlock` carries `RequestExpired` + `RefundSent` / `RefundFailed` (`PushClient.getBlockResultEvents`, raw HTTP — cosmjs 0.33 drops `finalize_block_events`). If that lookup fails the refund fields stay undefined; they are never guessed, because a rejecting recipient does not prevent expiry.
 - Polling `pollingIntervalMs` 2 000 (min 500); `timeout` default `expiryBlocks × blockTime` capped 180 000.
 - `value` present iff `status === FULFILLED && callbackDelivered && result.status === SUCCESS`.
 - Hook emission order 104-02 → 105-01/02 → 106-01..06 → 199-xx; inner `SEND-TX` pass-through preserved.
@@ -228,7 +228,8 @@ src/lib/constants/index.ts           CONSTANTS.READ
 .changeset/read-state.md             minor: "feat(core): cross-chain read state — prepareRead/trackRead"
 ```
 
-`read()` and `executeReads()` are wired to internals that throw `UnsupportedReadDestinationError('registry not deployed')` until PR7 — so the surface is complete and typed from day one.
+PR5 originally exposed stubs. PR7 now executes custom app receivers; missing default
+registry targets still throw `ReadRegistryUnavailableError`.
 
 **Unit** — `push-chain.read-state.spec.ts`: all four methods exist on a client built from a **`UniversalAccount`** (read-only mode) and `prepareRead`/`trackRead` execute (mocked); exports snapshot; `CONSTANTS.READ` values.
 
@@ -244,7 +245,7 @@ New tree `__e2e__/read/`, using `shared/fresh-wallet.ts`, `evm-client.ts`, `prog
 | `evm/balance-uea.spec.ts` | same, but sent **through a UEA** via `universal.sendTransaction` from a Sepolia-origin signer | **N1 fix live** — the flagship path, never yet exercised |
 | `evm/contract-call.spec.ts` | `abi`/`functionName` read of an ERC-20 `balanceOf` on Sepolia; typed `value` | `contractCallFn` + `evmCall` decode |
 | `evm/callback-reverts.spec.ts` | client whose `onUniversalData` reverts | `status FULFILLED`, `callbackDelivered false`, `value undefined`, `READ-TX-106-03` emitted (I4) |
-| `lifecycle/expiry.spec.ts` | `minConfirmations: 500`, `expiryBlocks: 30n` (deterministic — validators hold) | `EXPIRED`, `fees.refunded == callbackBudget`, refund confirmed from `block_results`, no receipt fetch attempted |
+| `lifecycle/expiry.spec.ts` | `minConfirmations: 500`, `expiryBlocks: 30n` (deterministic — validators hold) | `EXPIRED`, refund fields unknown without logs; accepting EOA refund checked by balance, no receipt fetch attempted |
 | `svm/lamports.spec.ts` | Solana devnet lamport balance; `owner` raw 32 B | SVM envelope + `minSlot` floor |
 | `web2/price.spec.ts` | GET a public JSON endpoint, one `uint256` extract with decimals | web2 envelope reachable post-C3; fee 0 |
 | `docs-examples/13-read-state/*.spec.ts` | 1:1 mirror of the runnable blocks in the (future) website MDX | docs never drift (house rule in `__e2e__/docs-examples/README.md`) |
@@ -253,9 +254,19 @@ Register the tree in `__e2e__/ci/suite.ts` with a `read` tag and the per-scenari
 
 ---
 
-### PR7 — `read()` one-shot and `executeReads()` batch · **blocked on registry**
+### PR7 — `read()` one-shot and `executeReads()` batch · **custom receivers implemented**
 
-When `UniversalReadRegistry` ships: pin `UNIVERSAL_READ_REGISTRY_ADDRESS` + `REGISTRY_CALLBACK_GAS`, wire `read()` = `prepareRead → executeReads([p]) → wait()`, `executeReads` = one multicall via the existing EIP-7702/UEA batch path (`atomic` flag, sequential fallback). Tests: unit (batch response shape, order preserved, `atomic`), integration (`latestResult[reader][queryKey]` view), e2e (`read()` returns typed value; 3-read batch → 3 ids in log order).
+Custom receivers use `callback.target` plus `callback.request` (ABI/function/optional
+argument mapper). Prepared reads retain these and the decoder. Execution uses existing
+Push/UEA multicalls, retains all hashes on sequential wallet fallback, and matches records
+by spec, callback target and gas limit to preserve input order. `waitForCompletion: false`
+returns resumable snapshots; default waits for terminal outcomes. Read-only clients can
+prepare/simulate/track but cannot send. CEA inbound ingestion remains a chain dependency;
+this implementation uses the existing Push-native/UEA path.
+
+A non-atomic (sequential-fallback) batch that fails midway throws `ReadStateError('READ_REQUEST_TX_FAILED')` carrying the hashes already mined, so the committed reads can be resumed with `trackRead({ txHash })`.
+
+**Remaining, registry-only:** when `UniversalReadRegistry` ships, pin `UNIVERSAL_READ_REGISTRY_ADDRESS` + `REGISTRY_CALLBACK_GAS`, make it the default `callback.target` (so `callback` becomes optional), and expose the `latestResult[reader][queryKey]` view. Tests: unit (default target + gas), integration (`latestResult` view), e2e (`read()` with no `callback`).
 
 ---
 
@@ -281,7 +292,7 @@ refund landed at the UEA. PR3–PR6 can proceed on verified assumptions.
 
 | item | owner | effect on this plan |
 |---|---|---|
-| `UniversalReadRegistry` unbuilt | contracts | PR7 blocked; PR5 ships `read()` as a typed stub |
+| `UniversalReadRegistry` unbuilt | contracts | default receiver blocked; custom app execution is implemented |
 | N1 CEA path not ingested | chain | PR3 refuses `prepareRead` when the signer resolves to a CEA (`isCEA`) — until they say otherwise |
 | N4 fee 0, no affordability gate | chain/ops | none on the SDK; launch gate only |
 | `yarn build:proto` destructive (I7) | us | hand-author; add a CI guard that fails if `generated/ucallback` differs from committed |
@@ -297,4 +308,4 @@ refund landed at the UEA. PR3–PR6 can proceed on verified assumptions.
 - Integration: passes against Donut with no key.
 - E2E: the seven live specs green on Donut, including UEA-originated and reverting-callback.
 - Changeset + `docs-examples/13-read-state` in place; website MDX handed to docs.
-- `read()` / `executeReads()` present as typed stubs with a clear error until PR7.
+- `read()` / `executeReads()` support custom app receivers; default receiver reports the missing registry.

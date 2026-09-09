@@ -1,10 +1,17 @@
-import { decodeAbiParameters, encodeAbiParameters, erc20Abi, keccak256, sliceHex } from 'viem';
+import { decodeAbiParameters, encodeAbiParameters, erc20Abi, keccak256, sliceHex, parseAbi } from 'viem';
+import { decodeReadResult } from '../result-decoder';
 import vectorsFile from './fixtures/envelope-vectors.json';
 import { EVM_QUERY_TYPE, decodeEvmQueryEnvelope, encodeEvmQueryEnvelope, toStorageSlot } from '../envelopes/evm';
 import { InvalidReadQueryError } from '../errors';
 
 const vectors = vectorsFile.vectors.filter((v) => v.namespace === 'eip155');
 const DEAD = '0x000000000000000000000000000000000000dEaD' as const;
+
+it('decodes the overload selected by the encoded arguments', () => {
+  const abi = parseAbi(['function foo(address x) view returns (bool)', 'function foo(uint256 x) view returns (uint256)']);
+  const query = encodeEvmQueryEnvelope({ type: 'contractCall', target: DEAD, abi, functionName: 'foo', args: [42n] }, { blockNumber: 1n });
+  expect(decodeReadResult(encodeAbiParameters([{ type: 'uint256' }], [42n]), query.resultShape)).toEqual({ kind: 'evmCall', values: [42n] });
+});
 
 // The exact tuple shape universalClient/externalchains/evm/read_envelope.go unpacks.
 const GO_SHAPE = [

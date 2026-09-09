@@ -11,7 +11,9 @@
  *  - FULFILLED does not mean delivered: the node sets it even when the app
  *    callback reverted. `callbackDelivered` is the real answer (I4).
  *  - EXPIRED has no EVM-indexed tx / receipt / logs (EndBlocker); never fetch
- *    its `pc_tx`. The full callback budget is refunded — by contract rule.
+ *    its `pc_tx`. The refund is confirmed from the EndBlock `tx_log` events in the
+ *    Cosmos block results instead (RefundSent / RefundFailed); if that lookup fails
+ *    the refund fields stay undefined rather than guessed.
  */
 import { bytesToHex, type Address, type Hex } from 'viem';
 import { PUSH_CHAIN_INFO, UNIVERSAL_CALLBACK_ADDRESSES } from '../constants/chain';
@@ -49,7 +51,7 @@ import { decodeReadResult } from './result-decoder';
 export type ReadHookEmitter = (hookId: string, ...args: unknown[]) => void;
 
 export interface TrackReadDeps {
-  pushClient: Pick<PushClient, 'getUniversalRead' | 'getReadsByTx' | 'getTransactionReceiptWithArchiveFallback'>;
+  pushClient: Pick<PushClient, 'getUniversalRead' | 'getReadsByTx' | 'getTransactionReceiptWithArchiveFallback' | 'getBlockResultEvents'>;
   pushNetwork: PUSH_NETWORK;
   /** Progress events. Wire to `fireProgressHook(ctx, …)` in the orchestrator. */
   emit?: ReadHookEmitter;
@@ -149,8 +151,12 @@ async function buildResponse(deps: TrackReadDeps, record: UniversalRead, opts: R
   // Settlement facts live in the logs of the node's own txs.
   let outcome: FulfilOutcome = {};
   if (status === UNIVERSAL_READ_STATUS.EXPIRED) {
-    // EndBlocker expiry: no receipt exists. The contract refunds the whole budget.
-    fees.refunded = callbackBudget;
+    // EndBlocker expiry: no receipt exists. The contract pushes the full budget to
+    // refundTo, but a rejecting recipient does not prevent EXPIRED — so read the
+    // RefundSent / RefundFailed logs from the block results instead of assuming.
+    outcome = await collectExpiryOutcome(deps, record, requestId);
+    if (outcome.refunded !== undefined) fees.refunded = outcome.refunded;
+    if (outcome.refundFailed !== undefined) fees.refundFailed = outcome.refundFailed;
   } else if (status === UNIVERSAL_READ_STATUS.FULFILLED || status === UNIVERSAL_READ_STATUS.FAILED) {
     outcome = await collectOutcome(deps, record, requestId);
     if (outcome.burned !== undefined) fees.burned = outcome.burned;
@@ -227,6 +233,38 @@ async function collectOutcome(deps: TrackReadDeps, record: UniversalRead, reques
     }
   }
   return merged;
+}
+
+/**
+ * Expiry runs in the EndBlocker, so its UniversalCallback logs exist only as Cosmos
+ * `tx_log` events (`mode: EndBlock`) at the sweeper's block. Each `txLog` attribute is
+ * one JSON log with base64 `data`. Any failure leaves the outcome empty (unknown).
+ */
+async function collectExpiryOutcome(deps: TrackReadDeps, record: UniversalRead, requestId: Hex): Promise<FulfilOutcome> {
+  const height = record.pcTx.find((t) => t.blockHeight > 0)?.blockHeight;
+  if (!height) return {};
+  try {
+    const events = await deps.pushClient.getBlockResultEvents(height);
+    const logs: { address: string; topics: string[]; data: string }[] = [];
+    for (const ev of events) {
+      if (ev.type !== 'tx_log') continue;
+      if (!ev.attributes.some((a) => a.key === 'mode' && a.value === 'EndBlock')) continue;
+      for (const a of ev.attributes) {
+        if (a.key !== 'txLog') continue;
+        const log = JSON.parse(a.value) as { address: string; topics: string[]; data: string };
+        const data = typeof log.data === 'string' && log.data.startsWith('0x') ? log.data : bytesToHex(new Uint8Array(Buffer.from(log.data ?? '', 'base64')));
+        logs.push({ address: log.address, topics: log.topics, data });
+      }
+    }
+    const out = parseFulfilOutcome({ logs }, UNIVERSAL_CALLBACK_ADDRESSES[deps.pushNetwork], requestId);
+    // RequestExpired carries the amount the contract tried to push; only RefundSent /
+    // RefundFailed say whether it landed. Report the amount only when it did.
+    if (out.refundFailed === true) return { refundFailed: true };
+    if (out.refundFailed === false) return { refunded: out.refunded, refundFailed: false };
+    return {};
+  } catch {
+    return {};
+  }
 }
 
 /** Best-effort shape from the on-chain envelope. Contract calls carry no ABI → raw. */
@@ -308,8 +346,35 @@ export async function waitForRead(deps: TrackReadDeps, initial: UniversalReadRes
 
   // Every snapshot taken from here on is built with the wait() options, so a
   // resultShape given to wait() decodes even a record that is already terminal.
-  const reload = () => trackRead(deps, { requestId: initial.requestId }, opts);
-  let current = initial.isTerminal && opts.resultShape !== undefined ? await reload() : initial;
+  let current = initial;
+  const timeout = (): never => {
+    const elapsed = now() - start;
+    emit(PROGRESS_HOOK.READ_TX_199_03, current.requestId, statusName(current.status), elapsed);
+    throw new ReadTimeoutError(current.status, elapsed, { requestId: current.requestId, txHash: current.txHash });
+  };
+  // A single deadline includes RPC/receipt latency. A missing snapshot must not
+  // start trackRead's separate initial-ingestion retry window.
+  const reload = async (): Promise<UniversalReadResponse> => {
+    const remaining = timeoutMs - (now() - start);
+    if (remaining <= 0) return timeout();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        (async () => {
+          const records = await fetchRecords(deps, { requestId: initial.requestId });
+          return records[0] ? buildResponse(deps, records[0], opts) : current;
+        })(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            try { timeout(); } catch (error) { reject(error); }
+          }, remaining);
+        }),
+      ]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
+  };
+  if (initial.isTerminal && opts.resultShape !== undefined) current = await reload();
   let announced: UNIVERSAL_READ_STATUS | undefined;
   for (;;) {
     if (current.isTerminal) {
@@ -322,11 +387,8 @@ export async function waitForRead(deps: TrackReadDeps, initial: UniversalReadRes
       else if (current.status === UNIVERSAL_READ_STATUS.VOTING) emit(PROGRESS_HOOK.READ_TX_105_02, current.requestId);
     }
     const elapsed = now() - start;
-    if (elapsed + interval > timeoutMs) {
-      emit(PROGRESS_HOOK.READ_TX_199_03, current.requestId, statusName(current.status), elapsed);
-      throw new ReadTimeoutError(current.status, elapsed, { requestId: current.requestId, txHash: current.txHash });
-    }
-    await sleep(interval);
+    if (elapsed >= timeoutMs) timeout();
+    await sleep(Math.min(interval, timeoutMs - elapsed));
     current = await reload();
   }
 }

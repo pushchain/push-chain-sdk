@@ -141,6 +141,7 @@ const F = {
   readSvm: '__e2e__/read/svm/lamports.spec.ts',
   readWeb2: '__e2e__/read/web2/json.spec.ts',
   readDocs: '__e2e__/docs-examples/13-read-state/read-state.spec.ts',
+  readBatch: '__e2e__/read/evm/app-batch.spec.ts',
 } as const;
 
 export const SCENARIOS: Scenario[] = [
@@ -650,6 +651,22 @@ export const SCENARIOS: Scenario[] = [
     grep: 'docs-examples › 13-read-state',
     needs: { masterPC: '0.6' },
     note: 'Funds a fresh wallet with 0.5 PC, as the docs prompt will.',
+  },
+  {
+    id: 'read-app-batch-eoa',
+    group: 'read',
+    file: F.readBatch,
+    grep: 'read state › custom app batch Push EOA',
+    needs: { masterPC: '0.2' },
+    note: 'executeReads with three mixed queries from a Push EOA — sequential fallback, order preserved.',
+  },
+  {
+    id: 'read-app-batch-uea',
+    group: 'read',
+    file: F.readBatch,
+    grep: 'read state › custom app batch UEA',
+    needs: { ueaPC: '0.2' },
+    note: 'Same batch through the UEA — one atomic tx.',
   },
 
   // ---------------------------------------------------------------------------

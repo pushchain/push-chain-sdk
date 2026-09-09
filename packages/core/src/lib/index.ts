@@ -123,6 +123,8 @@ export type {
   ReadSpecTuple,
   BuildReadSpecParams,
   PreparedRead,
+  ReadCallback,
+  ReadRequestEntrypoint,
   SimulateReadResult,
   ParsedReadRequest,
   FulfilOutcome,
@@ -132,7 +134,7 @@ export type {
   ReadFees,
   UniversalReadResponse,
 } from './read-state/read-state.types';
-export type { ReadChain, ReadOptions, ReadWeb2Options, ReadTrackOptions } from './read-state/read-params';
+export type { ReadChain, ReadOptions, ReadWeb2Options, ReadTrackOptions, ReadExecuteOptions } from './read-state/read-params';
 export {
   UNIVERSAL_READ_STATUS,
   READ_STATUS,

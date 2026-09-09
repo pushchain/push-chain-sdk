@@ -205,11 +205,14 @@ describe('trackRead (settled reads — deterministic forever)', () => {
     expect(r.fees.burned).toBeGreaterThan(0n);
   }, 60_000);
 
-  it('the EXPIRED read: refunded = full budget, no receipt needed', async () => {
+  it('the EXPIRED read: refund confirmed from the EndBlock logs in block_results, no receipt needed', async () => {
     const r = await trackRead(deps(), { requestId: EXPIRED_ID });
     expect(r.status).toBe(UNIVERSAL_READ_STATUS.EXPIRED);
     expect(r.fees.refunded).toBe(r.fees.callbackBudget);
+    expect(r.fees.refundFailed).toBe(false);
     expect(r.fees.burned).toBeUndefined();
+    const events = await client.getBlockResultEvents(r.pcTx[0].blockHeight);
+    expect(events.some((e) => e.type === 'tx_log' && e.attributes.some((a) => a.key === 'mode' && a.value === 'EndBlock'))).toBe(true);
   }, 60_000);
 
   it('SVM (lamports) and web2 reads decode by the shape inferred from their envelopes', async () => {
@@ -267,9 +270,13 @@ describe('PushChain.universal read-state surface (read-only client, Donut)', () 
     expect(seen[seen.length - 1]).toBe('READ-TX-199-01');
   }, 60_000);
 
-  it('read() / executeReads() are typed stubs until the registry ships', async () => {
+  it('default receiver still requires a registry; custom execution requires a signer', async () => {
     await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { gasLimit: 1n } })).rejects.toBeInstanceOf(ReadRegistryUnavailableError);
     await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA })).rejects.toMatchObject({ code: 'INVALID_READ_QUERY' }); // validation first
     await expect(client.universal.executeReads([])).resolves.toEqual([]);
+    // a malformed entrypoint fails before any preflight or signer check
+    await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: CLIENT, gasLimit: 200_000n } })).rejects.toMatchObject({ code: 'INVALID_READ_QUERY' });
+    const request = { abi: [{ type: 'function', name: 'request', stateMutability: 'payable', inputs: [], outputs: [] }] as const, functionName: 'request' };
+    await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: CLIENT, gasLimit: 200_000n, request } })).rejects.toThrow(/Read only mode/);
   });
 });

@@ -97,8 +97,11 @@ Every destination type and every terminal outcome the SDK models has now been ob
 > event (`ethereumTxHash` = the record's `pc_tx` hash, recipient `0x…C2`, `txData` =
 > `expireExternalRead(requestId)`) and a `tx_log` event with the two contract logs,
 > `mode: EndBlock`. **SDK rule (`trackRead`):** for `EXPIRED`, do not fetch the `pc_tx`
-> receipt; take `fees.refunded = request.callback_budget` (contract logic refunds it in full) and,
-> if log-level confirmation is wanted, read `block_results` via the existing Tendermint client.
+> receipt; read `block_results` at the sweeper's height and take `fees.refunded` /
+> `fees.refundFailed` from the EndBlock `RefundSent` / `RefundFailed` logs. The contract
+> attempts the full refund but a recipient can reject it without preventing expiry, so the
+> amount is reported only when the log confirms it landed; if the lookup fails both fields
+> stay undefined.
 > Explorers will show nothing for an expiry on the EVM side — worth flagging to the chain team.
 
 ---
@@ -113,10 +116,10 @@ Every destination type and every terminal outcome the SDK models has now been ob
    Filter: *can the SDK compute it better than the dev can guess it? → internal. Does a real v1
    persona need it? → keep. Hypothetical persona? → cut.*
 3. **Typed both directions.** `abi` encodes the call AND decodes the result. No raw-calldata form.
-4. **Two personas, one grammar.** Off-chain (bot/backend/frontend) → `read()` one-shot via the
-   canonical `UniversalReadRegistry`. Contract devs → inherit `UniversalReadClient`, frontends
-   call their entrypoint via plain `sendTransaction` (fee quote = `estimateFee` view + SDK budget
-   sizing, exposed through `prepareRead(...).fees`).
+4. **Two personas, one grammar.** Existing app receivers support `read()` / `executeReads()`
+   using `callback.target` and `callback.request`. The canonical registry is needed only
+   for the default shared receiver and on-chain result lookup. Manual `sendTransaction`
+   with `prepareRead(...).fees` remains available.
 
 ---
 
@@ -172,6 +175,7 @@ await client.universal.read(subject, {
                                        //   EVM → contractCall(balanceOf) envelope
                                        //   SVM → SPLTokenAccount envelope, ATA(token, subject)
                                        //         derived by SDK — deterministic, no network
+  tokenProgram?: 'spl-token' | 'token-2022', // SVM token reads only; default 'spl-token'
 
   // — call (EVM now; SVM via `idl` when program reads land) —
   abi: Abi,                            // encodes AND decodes — `value` typed from outputs.
@@ -217,6 +221,11 @@ await client.universal.read(subject, {
     gasLimit: bigint,                  // default REGISTRY_CALLBACK_GAS. MANDATORY if target
                                        //   overridden. 1n..1_000_000n.
                                        //   ⚠ sizes your callbackBudget — see Fees
+    request: {                         // required for custom-contract execution
+      abi: Abi,
+      functionName: string,             // public payable request entrypoint
+      args?: (spec: ReadSpecTuple, gasLimit: bigint) => readonly unknown[],
+    },                                 // default args: [spec, gasLimit]
   },
 
   // ══ REFUND — WHERE unspent budget goes. New vs draft: the deployed ReadSpec requires it. ══
@@ -353,6 +362,35 @@ timeout throws `ReadTimeoutError`, carrying last-seen status.
 ---
 
 ## prepareRead / executeReads / trackRead
+
+Implemented custom-contract example (requires a signing client):
+
+```ts
+const callback = {
+  target: myReadClient,
+  gasLimit: 200_000n,
+  request: { abi: myReadClientAbi, functionName: 'request' },
+};
+const done = await client.universal.read(user, {
+  chain: CHAIN.ETHEREUM_SEPOLIA, callback,
+});
+// For a different entrypoint signature:
+// request.args = (spec, gasLimit) => [spec, gasLimit, myContext];
+const prepared = await client.universal.prepareRead(user, {
+  chain: CHAIN.ETHEREUM_SEPOLIA, callback,
+});
+const [snapshot] = await client.universal.executeReads([prepared], { waitForCompletion: false });
+const result = await snapshot.wait(); // decoder retained automatically
+```
+
+The entrypoint must emit exactly one read with the supplied spec and callback gas limit.
+Batch results are matched back to prepared order; mismatches throw with the Push hash for
+manual recovery. Execution uses an atomic EIP-7702/UEA batch where supported, otherwise
+the existing sequential wallet fallback (earlier requests can remain committed on failure).
+The fallback transaction response retains `transactionHashes` in submission order.
+Sending requires a signer; preparation, simulation and tracking remain read-only.
+The historical registry-only signatures below describe the planned default receiver;
+the implemented `executeReads` returns `UniversalReadResponse[]`.
 
 ```ts
 function prepareRead(
@@ -536,7 +574,7 @@ failure this prevents. Lands with the SDK PR.
 |---|---|---|
 | Q1 | Fee composition / refund on expiry | **Resolved.** Fee = protocol fee (flat, admin-set, `0` today) + SDK-sized callback budget. Expiry refunds the full budget; protocol fee never refunded (Aman). Corrected in §Fees. |
 | Q2 | Keep `advanced.*`? | **Resolved — keep** (Aman: power users + test scenarios). `timeout` default now scales with expiry, capped at 180s. |
-| Q3 | `UniversalReadRegistry` | **Open — blocks `read()` one-shot.** Nilesh/Zaryab to weigh in. Simplified by the deployed contract: the registry sets `spec.revertRecipient = msg.sender` per request, so the "registry is `originalFunder`, must track payer per requestId" problem in the draft **does not exist**. Requirements: EOA-callable `read(spec, gasLimit) payable` forwarding `msg.value`, `latestResult[reader][queryKey]` view, pinned `REGISTRY_CALLBACK_GAS`. |
+| Q3 | `UniversalReadRegistry` | **Open — default receiver only.** Custom-contract one-shot and batch reads work without it. Requires an EOA/UEA-callable request entrypoint, per-reader on-chain result storage, pinned callback gas, and a deployment address. No node or UniversalCallback upgrade required. |
 | Q4 | `CHAIN.WEB2` identifier | **Resolved — `'web2:https'`** (Aman; also added to UV). Exclude from `sendTransaction`'s `to.chain` type + runtime guard. |
 | Q5 | node ↔ contracts ABI reconciliation | **Resolved — inverted.** The node is correct; the draft's contract pin was stale. Nothing to change on the node. |
 | Q6 | Batching + timeout interplay | **Resolved.** Batching supported contract + core side, separate requests to UV (Nilesh). `advanced.timeout` scales to expiry with a 180s ceiling (Aman). |

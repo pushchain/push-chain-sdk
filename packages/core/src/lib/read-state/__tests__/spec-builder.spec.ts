@@ -27,6 +27,11 @@ function pf(over: Partial<ReadPreflight> = {}): ReadPreflight {
 const evmBal = { destination: { chain: CHAIN.ETHEREUM_SEPOLIA }, query: { type: 'accountBalance', target: DEAD } as const, callbackGasLimit: 200_000n };
 
 describe('buildReadSpecFromPreflight — defaults', () => {
+  it('rejects a preflight from another destination', () => {
+    expect(() => buildReadSpecFromPreflight(pf(), {
+      ...evmBal, destination: { chain: CHAIN.ETHEREUM_MAINNET }, refundTo: EOA,
+    })).toThrow(/preflight destination/);
+  });
   it('pins blockNumber at observedChainHeight − minConfirmations and sets expiry from the Push head', () => {
     const p = buildReadSpecFromPreflight(pf(), { ...evmBal, refundTo: EOA });
     expect(p.spec.blockNumber).toBe(11_667_923n);

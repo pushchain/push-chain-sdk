@@ -121,11 +121,11 @@ export class ReadNotFoundError extends ReadStateError {
   }
 }
 
-/** `read()` / `executeReads()` need the canonical UniversalReadRegistry, which is not deployed yet. */
+/** No custom receiver was supplied and the canonical registry is not deployed yet. */
 export class ReadRegistryUnavailableError extends ReadStateError {
   constructor(method: string, ctx: ReadStateErrorContext = {}) {
     super('READ_REGISTRY_UNAVAILABLE', `${method} needs the UniversalReadRegistry, which is not deployed on this network`, {
-      hint: 'Use prepareRead + your own UniversalReadClient entrypoint via sendTransaction, then trackRead({ txHash }).',
+      hint: 'Pass callback.target and callback.request (abi, functionName, optional args) for your app contract.',
       ...ctx,
     });
   }

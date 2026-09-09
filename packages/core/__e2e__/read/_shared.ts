@@ -8,8 +8,9 @@ import '@e2e/shared/setup';
  *   RevertingReadClient   — `onUniversalData` always reverts (proves callbackDelivered=false)
  * Both expose `request(ReadSpec spec, uint64 gasLimit) payable` and forward msg.value.
  */
-import { createWalletClient, http, toFunctionSelector, type Abi, type Hex } from 'viem';
+import { createPublicClient, createWalletClient, http, toFunctionSelector, type Abi, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { sepolia } from 'viem/chains';
 import { PushChain, toCallData, type PreparedRead, type UniversalReadResponse } from '../../src';
 import { CHAIN, PUSH_NETWORK } from '../../src/lib/constants/enums';
 import { PUSH_CHAIN_DEF } from '../docs-examples/_helpers/docs-fund';
@@ -76,3 +77,22 @@ export async function sendRead(client: PushChain, prepared: PreparedRead, target
 }
 
 export { createProgressTracker };
+
+/**
+ * Ground truth on Sepolia at the pinned block. Public RPC backends can lag the
+ * validators' view by a few blocks, so every comparison goes through `retryTruth`
+ * — it retries the independent truth query only; the pin and the read never change.
+ */
+export const SEPOLIA_TRUTH_RPC = 'https://ethereum-sepolia-rpc.publicnode.com';
+export const sepoliaTruth = () => createPublicClient({ chain: sepolia, transport: http(SEPOLIA_TRUTH_RPC) });
+
+export async function retryTruth<T>(query: () => Promise<T>, attempts = 15, delayMs = 2_000): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await query();
+    } catch (error) {
+      if (attempt >= attempts) throw error;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+}

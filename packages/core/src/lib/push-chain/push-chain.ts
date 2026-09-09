@@ -42,8 +42,10 @@ import {
   toLifecycleOptions,
   type ReadOptions,
   type ReadTrackOptions,
+  type ReadExecuteOptions,
 } from '../read-state/read-params';
 import { ReadRegistryUnavailableError } from '../read-state/errors';
+import { assertRequestEntrypoint, executeReads as executePreparedReads } from '../read-state/read-executor';
 
 /**
  * @class PushChain
@@ -162,9 +164,8 @@ export class PushChain {
     rescueFunds: Orchestrator['rescueFunds'];
     /**
      * Cross-chain read state — one-shot. `read ≡ prepareRead → executeReads → wait`.
-     * Needs the canonical UniversalReadRegistry, which is not deployed yet: throws
-     * `ReadRegistryUnavailableError` until it ships. Use `prepareRead` with your own
-     * UniversalReadClient contract in the meantime.
+     * Pass callback.target and callback.request for your app contract. Omitting the
+     * target requires the canonical registry, which is not deployed yet.
      */
     read: (subject: string, options: ReadOptions) => Promise<UniversalReadResponse>;
     /**
@@ -190,10 +191,11 @@ export class PushChain {
       options: { appContract: Address; callbackSelector: Hex; staleAfterMs?: number }
     ) => Promise<SimulateReadResult>;
     /**
-     * Execute prepared reads as one multicall to the UniversalReadRegistry.
-     * Throws `ReadRegistryUnavailableError` until the registry ships.
+     * Execute app request calls as a multicall; wallets without EIP-7702 support
+     * use separate transactions. Results preserve prepared order and decode shapes.
+     * Waits for completion unless waitForCompletion is false. Requires a signer.
      */
-    executeReads: (reads: PreparedRead[], options?: ReadTrackOptions) => Promise<UniversalReadResponse[]>;
+    executeReads: (reads: PreparedRead[], options?: ReadExecuteOptions) => Promise<UniversalReadResponse[]>;
     /**
      * Resume a read by the Push tx that requested it (array — one tx can carry several)
      * or by requestId (single). Each response has `wait()` / `refresh()`.
@@ -346,10 +348,15 @@ export class PushChain {
         }
         return orchestrator.rescueFunds.bind(orchestrator)(params);
       },
-      // Read state. No isReadMode gate: prepare/simulate/track are read-only by nature.
+      // Only read()/executeReads() send transactions; prepare/simulate/track remain read-only.
       read: async (subject: string, options: ReadOptions) => {
-        toBuildReadSpecParams(subject, options); // validate the request before failing on the registry
-        throw new ReadRegistryUnavailableError('read');
+        const params = toBuildReadSpecParams(subject, options);
+        if (!options.callback?.target) throw new ReadRegistryUnavailableError('read');
+        assertRequestEntrypoint(options.callback, 'read'); // before preflight: no RPC for a malformed request
+        if (this.isReadMode) throw new Error('Read only mode cannot call read function');
+        const prepared = await orchestrator.prepareRead(params);
+        const [response] = await executePreparedReads(orchestrator, [prepared], options);
+        return response;
       },
       prepareRead: (subject: string, options: ReadOptions) => {
         return orchestrator.prepareRead.bind(orchestrator)(toBuildReadSpecParams(subject, options));
@@ -357,9 +364,11 @@ export class PushChain {
       simulateRead: (prepared: PreparedRead, options: { appContract: Address; callbackSelector: Hex; staleAfterMs?: number }) => {
         return orchestrator.simulateRead.bind(orchestrator)(prepared, options);
       },
-      executeReads: async (reads: PreparedRead[]) => {
+      executeReads: async (reads: PreparedRead[], options?: ReadExecuteOptions) => {
         if (reads.length === 0) return [];
-        throw new ReadRegistryUnavailableError('executeReads');
+        reads.forEach((r) => assertRequestEntrypoint(r.callback));
+        if (this.isReadMode) throw new Error('Read only mode cannot call executeReads function');
+        return executePreparedReads(orchestrator, reads, options);
       },
       trackRead: ((ref: { txHash: Hex } | { requestId: Hex | bigint }, options?: ReadTrackOptions & { progressHook?: (e: ProgressEvent) => void }) => {
         const opts = { ...toLifecycleOptions(options), progressHook: options?.progressHook };

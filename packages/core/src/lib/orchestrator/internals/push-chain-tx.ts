@@ -181,6 +181,16 @@ export async function sendPushTx(
       blockTag: 'pending',
     });
     let lastTxHash: `0x${string}` = '0x';
+    // Hashes of the calls that were mined successfully, in order. On a later
+    // failure they ride on the thrown error (`err.transactionHashes`) so the caller
+    // can resume whatever those calls committed — the batch is not atomic.
+    const transactionHashes: `0x${string}`[] = [];
+    const failBatch = (err: unknown): never => {
+      if (err && typeof err === 'object') {
+        (err as { transactionHashes?: `0x${string}`[] }).transactionHashes = [...transactionHashes];
+      }
+      throw err;
+    };
     for (let i = 0; i < calls.length; i++) {
       const call = calls[i];
       let txSent = false;
@@ -210,14 +220,14 @@ export async function sendPushTx(
               blockTag: 'pending',
             });
           } else {
-            throw err;
+            failBatch(err);
           }
         }
       }
       if (!txSent) {
-        throw new Error(
+        failBatch(new Error(
           `sendPushTx — multicall operation ${i + 1}/${calls.length} failed after ${MAX_NONCE_RETRIES} nonce retries`
-        );
+        ));
       }
 
       const receipt = await ctx.pushClient.publicClient.waitForTransactionReceipt({
@@ -248,10 +258,11 @@ export async function sendPushTx(
           ctx,
           `sendPushTx — multicall operation ${i + 1}/${calls.length} reverted (to: ${call.to}, txHash: ${lastTxHash}, revertReason: ${revertReason})`
         );
-        throw new Error(
+        failBatch(new Error(
           `sendPushTx — multicall operation ${i + 1}/${calls.length} reverted (to: ${call.to}, txHash: ${lastTxHash}, revertReason: ${revertReason})`
-        );
+        ));
       }
+      transactionHashes.push(lastTxHash);
       printLog(
         ctx,
         `sendPushTx — operation ${i + 1}/${calls.length} confirmed in block ${receipt.blockNumber}`
@@ -267,6 +278,7 @@ export async function sendPushTx(
     // atomic (an earlier call can be committed while a later one reverts).
     const resp = await transformFn(txResponse, eventBuffer);
     resp.atomic = false;
+    resp.transactionHashes = transactionHashes;
     return resp;
   }
 

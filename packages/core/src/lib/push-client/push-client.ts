@@ -435,6 +435,28 @@ export class PushClient extends EvmClient {
   }
 
   /**
+   * Cosmos `block_results` for one height, raw over the Tendermint HTTP RPC. Push Chain
+   * runs CometBFT 0.38 and emits `finalize_block_events`, which the cosmjs 0.33 decoders
+   * still drop (they only read `end_block_events`) — hence the direct call. This is the
+   * only place the EndBlocker's work is visible: read-state expiry runs there and leaves
+   * no EVM-indexed tx or receipt. Attribute values are plain strings.
+   */
+  public async getBlockResultEvents(height: number): Promise<readonly { type: string; attributes: readonly { key: string; value: string }[] }[]> {
+    return this.executeWithRpcFallback(async (rpcUrl) => {
+      const url = `${rpcUrl.replace(/\/+$/, '')}/block_results?height=${height}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP request failed: ${res.status} ${url}`);
+      const body = (await res.json()) as {
+        error?: { message?: string; data?: string };
+        result?: { finalize_block_events?: unknown; end_block_events?: unknown };
+      };
+      if (body.error) throw new Error(`block_results ${height}: ${body.error.data ?? body.error.message ?? 'error'}`);
+      const events = body.result?.finalize_block_events ?? body.result?.end_block_events ?? [];
+      return events as readonly { type: string; attributes: readonly { key: string; value: string }[] }[];
+    }, 'getBlockResultEvents');
+  }
+
+  /**
    * Queries x/ucallback for every read a Push transaction requested. One tx can emit
    * several ReadRequested logs; this reassembles that batch. The node keys on the exact
    * lowercase 0x hash, which is what the SDK's own tx responses carry — verified for

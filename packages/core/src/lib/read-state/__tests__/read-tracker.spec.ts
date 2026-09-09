@@ -13,11 +13,13 @@ import { TransactionRoute } from '../../orchestrator/route-detector';
 import type { OrchestratorContext } from '../../orchestrator/internals/context';
 import { trackRead as trackReadViaCtx } from '../../orchestrator/internals/read-state';
 import { ReadNotFoundError, ReadTimeoutError } from '../errors';
+import { REFUND_FAILED_TOPIC0 } from '../read-events';
 import { defaultWaitTimeoutMs, inferResultShape, toRequestIdHex, trackRead, type TrackReadDeps } from '../read-tracker';
 import { UNIVERSAL_READ_STATUS, READ_STATUS, READ_ERROR_CODE } from '../read-state.types';
 import fulfilSuccess from './fixtures/receipts/fulfil.success-evm.json';
 import settleSuccess from './fixtures/receipts/settle.success-evm.json';
 import fulfilReverted from './fixtures/receipts/fulfil.callback-reverted.json';
+import expiredBlockResults from './fixtures/node/block-results.22963638.expired.json';
 
 const node = (name: string): UniversalRead =>
   QueryUniversalReadResponse.decode(
@@ -36,7 +38,7 @@ const READ2_TX = '0x8329b6134cc622fb58a015e54ec11d5bb38b604f8a3d42e62133fc31047a
 /** A node that answers `getUniversalRead` from a script (last entry repeats) and receipts from the fixture map. */
 function scriptedDeps(script: (UniversalRead | undefined)[], extra: Partial<TrackReadDeps> = {}) {
   let i = 0;
-  const calls = { getUniversalRead: 0, getReadsByTx: 0, receipts: [] as string[] };
+  const calls = { getUniversalRead: 0, getReadsByTx: 0, receipts: [] as string[], blockResults: [] as number[] };
   const deps: TrackReadDeps = {
     pushNetwork: PUSH_NETWORK.TESTNET_DONUT,
     pushClient: {
@@ -55,6 +57,11 @@ function scriptedDeps(script: (UniversalRead | undefined)[], extra: Partial<Trac
         const r = RECEIPTS[hash.toLowerCase()];
         if (!r) throw new Error(`no receipt for ${hash}`);
         return r as never;
+      },
+      getBlockResultEvents: async (height: number) => {
+        calls.blockResults.push(height);
+        if (height !== 22963638) throw new Error(`no block results for ${height}`);
+        return expiredBlockResults.result.finalize_block_events as never;
       },
     } as never,
     ...extra,
@@ -125,16 +132,49 @@ describe('trackRead — terminal records straight from the node', () => {
     expect(calls.receipts).toHaveLength(2); // it still tried both pc_tx
   });
 
-  it('EXPIRED: never fetches the pc_tx receipt; refunded = the full callback budget', async () => {
+  it('EXPIRED: never fetches a receipt; the refund is confirmed from the EndBlock tx_log events', async () => {
     const { deps, calls } = scriptedDeps([node('expired')]);
     const r = await trackRead(deps, { requestId: '0x4a6e27e003a8801f7f5dffff3beb8af6836b9e68a99c94bbb22dc95b180857a9' });
     expect(r.status).toBe(UNIVERSAL_READ_STATUS.EXPIRED);
     expect(r.isTerminal).toBe(true);
     expect(r.callbackDelivered).toBeUndefined();
-    expect(r.fees.refunded).toBe(50_000_000_000_000_000n);
+    expect(r.fees.refunded).toBe(50_000_000_000_000_000n); // RefundSent in block 22963638, mode EndBlock
+    expect(r.fees.refundFailed).toBe(false);
     expect(r.fees.burned).toBeUndefined();
     expect(calls.receipts).toEqual([]);
+    expect(calls.blockResults).toEqual([22963638]);
     expect(r.request.spec.minConfirmations).toBe(500);
+  });
+
+  it('EXPIRED: when the block results are unavailable the refund stays unknown, never guessed', async () => {
+    const { deps, calls } = scriptedDeps([node('expired')]);
+    deps.pushClient.getBlockResultEvents = async () => { throw new Error('pruned'); };
+    const r = await trackRead(deps, { requestId: '0x4a6e27e003a8801f7f5dffff3beb8af6836b9e68a99c94bbb22dc95b180857a9' });
+    expect(r.status).toBe(UNIVERSAL_READ_STATUS.EXPIRED);
+    expect(r.fees.refunded).toBeUndefined();
+    expect(r.fees.refundFailed).toBeUndefined();
+    expect(calls.receipts).toEqual([]);
+  });
+
+  it('EXPIRED: a RefundFailed log reports refundFailed=true and no amount', async () => {
+    const { deps } = scriptedDeps([node('expired')]);
+    const failed = JSON.parse(JSON.stringify(expiredBlockResults.result.finalize_block_events)) as { type: string; attributes: { key: string; value: string }[] }[];
+    for (const ev of failed) {
+      if (ev.type !== 'tx_log') continue;
+      for (const a of ev.attributes) {
+        if (a.key !== 'txLog') continue;
+        const log = JSON.parse(a.value) as { topics: string[] };
+        if (log.topics[0] === '0xfbeaa807aad4fcff31eff41f17142e6dcd1babf57c4730e3a4c706ac608cc057') {
+          // RefundSent → RefundFailed: same indexed layout (requestId, recipient) + amount
+          log.topics[0] = REFUND_FAILED_TOPIC0;
+          a.value = JSON.stringify({ ...JSON.parse(a.value), topics: log.topics });
+        }
+      }
+    }
+    deps.pushClient.getBlockResultEvents = async () => failed as never;
+    const r = await trackRead(deps, { requestId: '0x4a6e27e003a8801f7f5dffff3beb8af6836b9e68a99c94bbb22dc95b180857a9' });
+    expect(r.fees.refundFailed).toBe(true);
+    expect(r.fees.refunded).toBeUndefined();
   });
 
   it('SVM and web2 records infer their result shape from the envelope', async () => {
@@ -203,6 +243,34 @@ describe('wait()', () => {
   const success = node('success-evm');
   const pending = withStatus(success, UniversalReadStatus.UNIVERSAL_READ_STATUS_PENDING);
   const voting = withStatus(success, UniversalReadStatus.UNIVERSAL_READ_STATUS_VOTING);
+
+  it('a missing snapshot respects the shared timeout and retains the last status', async () => {
+    const { deps } = scriptedDeps([pending, undefined]);
+    const first = await trackRead(deps, { requestId: READ2_ID });
+    const rejection = first.wait({ timeoutMs: 1000, pollingIntervalMs: 500 }).catch((e) => e);
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(await rejection).toMatchObject({ lastStatus: UNIVERSAL_READ_STATUS.PENDING });
+    expect((await rejection).message).toContain('1000 ms');
+    expect(await rejection).toBeInstanceOf(ReadTimeoutError);
+  });
+
+  it('a stalled RPC cannot exceed the wait deadline', async () => {
+    const { deps } = scriptedDeps([pending]);
+    const first = await trackRead(deps, { requestId: READ2_ID });
+    deps.pushClient.getUniversalRead = () => new Promise(() => undefined);
+    const rejection = first.wait({ timeoutMs: 1000, pollingIntervalMs: 500 }).catch((e) => e);
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(await rejection).toBeInstanceOf(ReadTimeoutError);
+  });
+
+  it('recovers from a missing snapshot without resetting the deadline', async () => {
+    const { deps } = scriptedDeps([pending, undefined, success]);
+    const first = await trackRead(deps, { requestId: READ2_ID });
+    const done = first.wait({ timeoutMs: 2000, pollingIntervalMs: 500 });
+    await jest.advanceTimersByTimeAsync(1000);
+    expect((await done).value).toBe(2706196938206701455473n);
+    expect(jest.getTimerCount()).toBe(0);
+  });
 
   it('PENDING → VOTING → FULFILLED resolves with the terminal snapshot and hooks in order', async () => {
     const emitted: string[] = [];

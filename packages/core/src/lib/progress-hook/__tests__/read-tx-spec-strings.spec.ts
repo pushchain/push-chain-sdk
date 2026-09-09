@@ -69,6 +69,13 @@ describe('READ-TX spec strings', () => {
     }
   });
 
+  it('serializes nested contract-call and web2 results without mutating them', () => {
+    const value = [42n, { balances: [1n, 2n], active: true }];
+    const event = PROGRESS_HOOKS[PROGRESS_HOOK.READ_TX_199_01](requestId, value, '0x', true);
+    expect(JSON.parse(JSON.stringify(event)).response.value).toEqual(['42', { balances: ['1', '2'], active: true }]);
+    expect(value[0]).toBe(42n);
+  });
+
   it('199-01 with a non-delivered callback says so in the message', () => {
     const ev = PROGRESS_HOOKS[PROGRESS_HOOK.READ_TX_199_01](requestId, undefined, '0x', false);
     expect(ev.message).toMatch(/not delivered/);

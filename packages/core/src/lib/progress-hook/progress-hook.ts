@@ -19,6 +19,15 @@ import {
   OriginChainTx,
 } from './progress-hook.types';
 
+function serializeReadValue(value: unknown): unknown {
+  if (typeof value === 'bigint') return value.toString();
+  if (Array.isArray(value)) return value.map(serializeReadValue);
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, serializeReadValue(item)]));
+  }
+  return value;
+}
+
 // Helper to wrap a hook function with timestamp
 const withTimestamp = (
   fn: ProgressEventFunctionWithoutTimestamp
@@ -1479,7 +1488,7 @@ const RAW_HOOKS_READ: {
       : `Read ${requestId} fulfilled — callback not delivered`,
     response: {
       requestId,
-      value: typeof value === 'bigint' ? value.toString() : value ?? null,
+      value: serializeReadValue(value) ?? null,
       resultData,
       callbackDelivered: callbackDelivered ?? null,
     },
