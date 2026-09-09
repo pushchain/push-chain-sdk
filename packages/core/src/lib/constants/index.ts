@@ -46,3 +46,7 @@ export {
   DEFAULT_OUTBOUND_GAS_LIMIT,
   DEFAULT_CEA_TO_PUSH_GAS_LIMIT,
 } from './selectors';
+
+// Read state (cross-chain reads)
+export { UNIVERSAL_CORE_ADDRESSES, UNIVERSAL_CALLBACK_ADDRESSES } from './chain';
+export * from './read-state';

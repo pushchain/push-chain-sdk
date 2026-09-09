@@ -39,6 +39,30 @@ export const UEA_FACTORY: Record<PUSH_NETWORK, `0x${string}`> = {
 };
 
 /**
+ * UniversalCore — genesis predeploy, identical on every network. The read path
+ * uses it for the destination-height ceiling (`chainHeightByChainNamespace`,
+ * CAIP-2 keyed) and the read protocol fee (`readBaseFeeByChainNamespace`).
+ */
+export const UNIVERSAL_CORE_ADDRESSES: Record<PUSH_NETWORK, `0x${string}`> = {
+  [PUSH_NETWORK.MAINNET]: '0x00000000000000000000000000000000000000C0',
+  [PUSH_NETWORK.TESTNET_DONUT]: '0x00000000000000000000000000000000000000C0',
+  [PUSH_NETWORK.TESTNET]: '0x00000000000000000000000000000000000000C0',
+  [PUSH_NETWORK.LOCALNET]: '0x00000000000000000000000000000000000000C0',
+};
+
+/**
+ * UniversalCallback — the read-request contract, genesis predeploy at 0x…C2.
+ * Apps call `requestExternalReadSelf` on it; the SDK reads `estimateFee`,
+ * `statusOf` and parses its events. Same address on every network.
+ */
+export const UNIVERSAL_CALLBACK_ADDRESSES: Record<PUSH_NETWORK, `0x${string}`> = {
+  [PUSH_NETWORK.MAINNET]: '0x00000000000000000000000000000000000000c2',
+  [PUSH_NETWORK.TESTNET_DONUT]: '0x00000000000000000000000000000000000000c2',
+  [PUSH_NETWORK.TESTNET]: '0x00000000000000000000000000000000000000c2',
+  [PUSH_NETWORK.LOCALNET]: '0x00000000000000000000000000000000000000c2',
+};
+
+/**
  * UEAMigration contract address on Push Chain.
  * Used in MsgMigrateUEA to specify which migration contract to delegatecall.
  */
