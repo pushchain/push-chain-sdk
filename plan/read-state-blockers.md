@@ -420,9 +420,14 @@ Checked directly; all correct. Unchanged by the fixes.
 - [ ] **Set `readBaseFee` per supported domain.** Still zero on every Donut pair on
       2026-09-09, including `web2:https`. **This is now the single most important item** —
       see "Still open" 1. Mind **C7** when choosing the key.
-- [ ] **Issue the new authz grant to every universal validator** for
-      `/ucallback.v1.MsgVoteReadResult`. `grant_verifier.go:133-140` hard-errors on a
-      missing grant.
+- [x] **Donut validator authz grants verified — 2026-09-10.** Both active universal
+      validators (**2/2**) have an unexpired GenericAuthorization for
+      `/ucallback.v1.MsgVoteReadResult`, confirmed through live `AllUniversalValidators`
+      and `GranterGrants` queries. This is no longer an open blocker for current Donut.
+      Verified validators: `pushvaloper12jzrpp4pkucxxvj6hw4dfxsnhcpy6ddty2fl75` and
+      `pushvaloper1vzuw2x3k2ccme70zcgswv8d88kyc07grdpvw3e`.
+      Recheck for future deployments, validator/key changes, and grant expiration;
+      `grant_verifier.go:133-140` still rejects missing required grants.
 - [ ] **Land the `read-state` upgrade handler on `develop`.** Was on `testnet/donut` and
       the release branch only; not re-checked on 2026-09-09.
 - [ ] **Commit a `UniversalCallback` deploy/upgrade script.** Donut was upgraded manually
