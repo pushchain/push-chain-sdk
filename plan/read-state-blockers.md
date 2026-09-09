@@ -103,12 +103,13 @@ recipient that actively rejects loses its budget to the rescuable pool. A pull-b
 cleanly without the RPC var.
 
 **Not committed to `push-chain-core-contracts` — that repo is owned by the contracts team.**
-The file is shared alongside this document. To run it, drop it into a checkout of
+It lives in this repo at `plan/read-state-tools/`, alongside the live-read harness and the
+node-side decoder used for the 2026-09-09 runs. To run it, drop it into a checkout of
 `feat-read-state` at `test/fork/` (it imports from `src/`):
 
 ```bash
 cd push-chain-core-contracts && git checkout feat-read-state
-cp /path/to/ForkReadStateFixVerification.t.sol test/fork/
+cp <push-chain-sdk>/plan/read-state-tools/ForkReadStateFixVerification.t.sol test/fork/
 export PUSH_CHAIN_TESTNET_RPC_URL=https://evm.donut.rpc.push.org/
 forge test --match-path test/fork/ForkReadStateFixVerification.t.sol -vv
 ```
