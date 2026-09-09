@@ -44,17 +44,25 @@ the contract surface underneath it is corrected to what is actually deployed.
 
 ## Verified live — 2026-09-09
 
-The first two reads ever made on Donut (`_requestNonce` 0 → 2), fired against the deployed
-contract with the account in `packages/core/.env`. Both settled **12 seconds** after the
+The first three reads ever made on Donut (`_requestNonce` 0 → 3), fired against the deployed
+contract with the account in `packages/core/.env`. All settled within **12–23 seconds** of the
 request tx, callback executed, escrow returned to zero, refund landed at `refundTo`.
 
-| | read 1 · `0xeba3eb9e…` | read 2 · `0xf3d62fb9…` |
-|---|---|---|
-| query | Sepolia native balance of `0xdead` | same |
-| consensus | `ERROR` / `READ_ERROR_INVALID_QUERY` | `SUCCESS` |
-| `result_data` | empty | `0x…92b406e140cc2c8871` |
-| Sepolia ground truth at pin | — | `2706196938206701455473` wei — **exact match** |
-| settlement | burned 0.000117 PC, refunded 0.049883 PC — sums to the 0.05 PC budget to the wei | same shape |
+| | read 1 · `0xeba3eb9e…` | read 2 · `0xf3d62fb9…` | read 3 · `0xdc0a66ba…` |
+|---|---|---|---|
+| sent by | Push EOA, `cast send` | Push EOA, `cast send` | **through a UEA** — Sepolia-origin signer, SDK `universal.sendTransaction` (Route 1) |
+| query | Sepolia native balance of `0xdead` | same | same |
+| consensus | `ERROR` / `READ_ERROR_INVALID_QUERY` | `SUCCESS` | `SUCCESS` |
+| `result_data` | empty | `0x…92b406e140cc2c8871` | `0x…92b406e140cc2c8871` |
+| Sepolia ground truth at pin | — | `2706196938206701455473` wei — **exact match** | **exact match** at pin 11667924 |
+| `callbackDelivered` | n/a | `ReadFulfilled` | `ReadFulfilled` (fresh; client gained a 2nd sink entry) |
+| settlement | burned 0.000117 PC, refunded 0.049883 PC — sums to the 0.05 PC budget to the wei | same shape | same shape; refund landed at the UEA |
+
+**Read 3 is the one that matters most.** `ReadRequested` was emitted inside the UEA's payload
+execution (`CallUEAExecutePayload`), the path the N1 fix added ingestion to — and
+`x/ucallback` recorded it, voted, fulfilled and settled. It also confirms two SDK assumptions:
+`ReadsByTx` finds the record by **the exact hash `sendTransaction` returns**, so tx-hash-first
+tracking works for UEA-originated reads; and `refundTo = the UEA` received the refund (Q8).
 
 Read 1's error was **my encoding, not the validators'** — and it is the single most important
 implementation detail in this spec:
@@ -68,9 +76,9 @@ implementation detail in this spec:
 > `encodeAbiParameters([{ type: 'tuple', components }], [envelope])` and ship the
 > cross-language golden vectors from the test plan.
 
-What this run does **not** cover: SVM and web2 destinations, a reverting callback
-(`callbackDelivered = false`), expiry, and a read from a UEA-driven transaction (the request
-here came from a plain EOA). Those are the next four live checks.
+Still not covered live: SVM and web2 destinations, a reverting callback
+(`callbackDelivered = false`), and expiry. Those are the next four live checks
+(`plan/read-state-tools/`).
 
 ---
 

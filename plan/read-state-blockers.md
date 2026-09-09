@@ -30,7 +30,7 @@ fixes), contracts redeployed (`UniversalCallback` impl `0x3b34de3c…` → `0xa4
 | **C5** | Failed refunds admin-sweepable | Contracts | Latent→active | ⬇️ **Back to Latent** | Still present — rejecting recipient moved 0.2 ETH to the rescuable pool live. But N2 gives refunds a fixed 150k, so `RefundFailed` is no longer routine |
 | **C6** | Callback can't chain a read | Contracts | Latent | 🚫 **Won't fix in v1** (decided 2026-09-09) | Nested reads are out of scope. Chained read reverts `0x3ee5aeb5`; SDK documents it as unsupported |
 | **C7** | `readBaseFee` split-key naming trap | Contracts | Latent | ❌ **Unfixed** | Mapping unchanged at `UniversalCore.sol:115` |
-| **N1** | UEA reads never ingested | Chain | Blocker | ⚠️ **Half-fixed** `d4ef66db` | `CallUEAExecutePayload` now ingests, inside the cacheCtx so it commits with the payload — correct. `CallExecuteUniversalTx` (`evm.go:868`, CEA→contract inbounds) still does not. New test covers UEA path only |
+| **N1** | UEA reads never ingested | Chain | Blocker | ✅ **UEA path fixed & proven live** `d4ef66db` · ⚠️ CEA path still open | Read `0xdc0a66ba…` sent through UEA `0x5C70C864…` via SDK Route 1: ingested, quorum, fulfilled, settled in 23 s; `ReadsByTx` finds it by the SDK's tx hash. `CallExecuteUniversalTx` (`evm.go:868`, CEA→contract inbounds) still does not ingest |
 | **N2** | `nil` gas → estimator starves callback | Chain | Blocker | ✅ **Fixed** `e28367b6` | Explicit `callbackGasLimit + 50_000`. Measured against the most demanding callback that fits each limit: needed buffer 0 @200k, 21,771 @500k, 15,394 @1M — ≥2× headroom |
 | **N3** | Read votes not gasless | Chain | Blocker (econ) | ✅ **Fixed** `47a25eed` | `MsgVoteReadResult` in `GaslessMsgTypes` |
 | **N4** | No affordability gate; free validator work | Chain | Blocker (econ) | ❌ **Unfixed — widened by C3** | Fee still 0 on every domain incl. `web2:https`; `blockedDomains` empty; `cosmos:foo`, `eip155:999999` and `web2:https` all accepted live for free |
@@ -91,11 +91,11 @@ recipient that actively rejects loses its budget to the rescuable pool. A pull-b
 - Node: fixes on `develop@7024bb4b`, also on `release/v1.1.42-donut` and `testnet/donut`.
   Donut is running the tag that contains them.
 - No stranded funds from the pre-fix window: `totalEscrowed = 0`, contract balance `0`.
-- **Live end-to-end verified 2026-09-09 15:50 UTC+5:30.** Two real reads through the validator
-  set (`0xeba3eb9e…`, `0xf3d62fb9…`): request → ingest → quorum → fulfil → settle → refund in
-  12 s each. Read 2 returned the exact Sepolia balance at the pinned block. C1, N1 (UEA path
-  untested — request came from an EOA), N2 (callback saw ~193.5k of a 200k limit) and N3 all
-  exercised for real. Details in `read-state-sdk-spec.md` § Verified live.
+- **Live end-to-end verified 2026-09-09.** Three real reads through the validator set:
+  `0xeba3eb9e…` and `0xf3d62fb9…` from a Push EOA (12 s each), and `0xdc0a66ba…` **through a
+  UEA via the SDK** (23 s). Reads 2 and 3 returned the exact Sepolia balance at the pinned
+  block. C1, N1 (UEA path), N2 (callback saw ~193.5k of a 200k limit) and N3 all exercised for
+  real. Details in `read-state-sdk-spec.md` § Verified live.
 
 ## Reference test file
 

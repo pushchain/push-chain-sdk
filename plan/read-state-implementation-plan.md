@@ -231,9 +231,10 @@ PR1 ──► PR2 ──► PR3 ──► PR4 ──► PR5 ──► PR6
                                                                                    PR7 (registry)
 ```
 
-Run the UEA-originated live read **first**, with `plan/read-state-tools/live-read-donut.sh`
-modified to send via the SDK. If N1 is broken live, PR4's tracking assumptions still hold, but
-PR6's headline spec would fail and the chain team needs to know before we build on it.
+**Gate cleared 2026-09-09.** The UEA-originated live read ran via
+`plan/read-state-tools/live-read-uea.ts` (SDK Route 1, Sepolia-origin signer): read
+`0xdc0a66ba…` ingested, fulfilled and settled in 23 s, `ReadsByTx` found by the SDK's tx hash,
+refund landed at the UEA. PR3–PR6 can proceed on verified assumptions.
 
 ---
 
