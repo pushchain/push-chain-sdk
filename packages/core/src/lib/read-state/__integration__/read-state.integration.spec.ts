@@ -15,6 +15,8 @@ import { ReadErrorCode, ReadStatus, UniversalReadStatus } from '../../generated/
 import { PushClient } from '../../push-client/push-client';
 import { ReadHeightUnavailableError } from '../errors';
 import { preflightRead } from '../preflight';
+import { prepareRead, simulateRead } from '../spec-builder';
+import { toFunctionSelector } from 'viem';
 
 const READ2_TX = '0x8329b6134cc622fb58a015e54ec11d5bb38b604f8a3d42e62133fc31047ae732';
 const READ2_ID = '0xf3d62fb962c84259e728d184dd2e3199c4d6c39790e20d60f2bacf0c10eca168';
@@ -101,5 +103,55 @@ describe('read-state integration (Donut, read-only)', () => {
     it('an unconfigured chain (Ethereum mainnet) is unreadable', async () => {
       await expect(preflightRead(deps(), { chain: CHAIN.ETHEREUM_MAINNET })).rejects.toBeInstanceOf(ReadHeightUnavailableError);
     });
+  });
+
+  describe('prepareRead + simulateRead (deployed read client as the app contract)', () => {
+    const CLIENT = '0x5F7221d31a01A71662cABEeC2567c55ad03E2fb7' as const;      // FullBudgetReadClient, Donut
+    const EOA = '0x0A16CBa65FfCAa4C2282b27b027Ab4A2fE46E0Bf' as const;
+    const SELECTOR = toFunctionSelector('onUniversalData(uint256,bytes)');
+    const deps = () => ({ pushClient: client, pushNetwork: PUSH_NETWORK.TESTNET_DONUT, defaultRefundTo: EOA });
+
+    it('prepares a Sepolia balance read that the live contract accepts', async () => {
+      const p = await prepareRead(deps(), {
+        destination: { chain: CHAIN.ETHEREUM_SEPOLIA },
+        query: { type: 'accountBalance', target: '0x000000000000000000000000000000000000dEaD' },
+        callbackGasLimit: 200_000n,
+      });
+      expect(p.spec.revertRecipient).toBe(EOA);
+      expect(p.spec.blockNumber).toBe(p.preflight.observedChainHeight - 1n);
+      expect(p.value).toBeGreaterThan(0n);
+      expect(p.warnings).toEqual([]);
+      const sim = await simulateRead(deps(), p, { appContract: CLIENT, callbackSelector: SELECTOR });
+      expect(sim).toEqual({ ok: true });
+    }, 60_000);
+
+    it('a pin above the oracle height is caught client-side, and the contract agrees when forced through', async () => {
+      const pf = await preflightRead(deps(), { chain: CHAIN.ETHEREUM_SEPOLIA });
+      await expect(
+        prepareRead(deps(), {
+          destination: { chain: CHAIN.ETHEREUM_SEPOLIA },
+          query: { type: 'accountBalance', target: '0x000000000000000000000000000000000000dEaD' },
+          callbackGasLimit: 200_000n,
+          blockNumber: pf.observedChainHeight + 1_000n,
+        }),
+      ).rejects.toMatchObject({ code: 'INVALID_READ_SPEC', violations: ['INVALID_BLOCK_NUMBER'] });
+    }, 60_000);
+
+    it('a UEA refundTo does not warn; a plain contract does', async () => {
+      const uea = await prepareRead(deps(), {
+        destination: { chain: CHAIN.ETHEREUM_SEPOLIA },
+        query: { type: 'accountBalance', target: '0x000000000000000000000000000000000000dEaD' },
+        callbackGasLimit: 200_000n,
+        refundTo: '0x5C70C864Cf1aDfB04A0e107fFA248ba3600EAb8D', // deployed UEA
+      });
+      expect(uea.warnings).toEqual([]);
+      const contract = await prepareRead(deps(), {
+        destination: { chain: CHAIN.ETHEREUM_SEPOLIA },
+        query: { type: 'accountBalance', target: '0x000000000000000000000000000000000000dEaD' },
+        callbackGasLimit: 200_000n,
+        refundTo: CLIENT, // has a receive(), but is not a UEA — the SDK cannot know, so it warns
+      });
+      expect(contract.warnings.join(' ')).toMatch(/not a UEA/);
+    }, 60_000);
   });
 });

@@ -156,6 +156,62 @@ export type ReadSpecTuple = readonly [
 ];
 
 // ---------------------------------------------------------------------------
+// prepareRead
+// ---------------------------------------------------------------------------
+
+export interface BuildReadSpecParams {
+  destination: ReadDestination;
+  query: ReadQuery;
+  /** 1n..1_000_000n. Execution bound on YOUR callback; also sizes the budget. */
+  callbackGasLimit: bigint;
+  /**
+   * Where unspent budget is PUSHED (ReadSpec.revertRecipient). Required by the contract.
+   * Default: the sending account (a UEA has a payable receive()). A non-UEA contract
+   * without one forfeits the refund — prepareRead warns.
+   */
+  refundTo?: Address;
+  /** EVM/web2 only: ReadSpec.account.owner. Ignored by validators for EVM; defaults to refundTo. SVM derives it from the query. */
+  owner?: Hex;
+  /** ≥ 1. Default 1. */
+  minConfirmations?: number;
+  /** Pinned destination height. Default observedChainHeight − minConfirmations (≥ 1). Web2: forced to 0. */
+  blockNumber?: bigint;
+  /** Default 300n. */
+  expiryBlocks?: bigint;
+  /** Absolute override for expiryBlocks. */
+  expiryPushChainHeight?: bigint;
+  /** Escrowed on top of the protocol fee. Default sizeCallbackBudget(gasLimit, gasPrice). Must be > 0. */
+  callbackBudget?: bigint;
+  /** Multiplier used by the default budget. */
+  budgetBuffer?: number;
+  /** Cap on msg.value. Default value × (1 + maxFeeBufferBps/10_000). */
+  maxFee?: bigint;
+  maxFeeBufferBps?: number;
+}
+
+export interface PreparedRead {
+  spec: ReadSpec;
+  /** Positional form for viem calls. */
+  specTuple: ReadSpecTuple;
+  /** abi.encode(spec) for hand-assembled calldata. */
+  encodedSpec: Hex;
+  /** msg.value to send: protocolFee + callbackBudget. */
+  value: bigint;
+  protocolFee: bigint;
+  callbackBudget: bigint;
+  callbackGasLimit: bigint;
+  /** Carries the result shape for decoding, and any encoder warnings. */
+  encodedQuery: EncodedReadQuery;
+  preflight: ReadPreflight;
+  /** Advisories: sensitive headers, refundTo is a non-UEA contract, … */
+  warnings: string[];
+}
+
+export type SimulateReadResult =
+  | { ok: true }
+  | { ok: false; error: string; errorName?: string; args?: readonly unknown[] };
+
+// ---------------------------------------------------------------------------
 // Events
 // ---------------------------------------------------------------------------
 

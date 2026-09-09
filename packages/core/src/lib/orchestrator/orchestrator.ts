@@ -40,6 +40,8 @@ import {
   createCascadedBuilder as _createCascadedBuilder,
   type CascadeCallbacks,
   rescueFunds as _rescueFunds,
+  prepareRead as _prepareRead,
+  simulateRead as _simulateRead,
   executeFundsOnly as _executeFundsOnly,
   executeFundsWithPayload as _executeFundsWithPayload,
   executeStandardPayload as _executeStandardPayload,
@@ -48,6 +50,8 @@ import {
   extractUniversalSubTxIdFromTx as _extractUniversalSubTxIdFromTx,
   extractAllUniversalSubTxIds as _extractAllUniversalSubTxIds,
 } from './internals';
+import type { BuildReadSpecParams, PreparedRead, SimulateReadResult } from '../read-state/read-state.types';
+import type { Address, Hex } from 'viem';
 import { gateFunds } from './internals/pc20/gate';
 
 type ProgressHook = (progress: ProgressEvent) => void;
@@ -177,6 +181,22 @@ export class Orchestrator {
    */
   async migrateCEA(chain: CHAIN): Promise<UniversalTxResponse> {
     return _migrateCEA(this.ctx, chain, this.execute.bind(this));
+  }
+
+  /**
+   * Build a validated cross-chain ReadSpec (preflight + envelope + fee/budget) for the
+   * caller to splice into its own contract call. Works in read-only mode.
+   */
+  async prepareRead(params: BuildReadSpecParams): Promise<PreparedRead> {
+    return _prepareRead(this.ctx, params);
+  }
+
+  /** eth_call requestExternalReadSelf as the app contract; decodes contract errors. */
+  async simulateRead(
+    prepared: PreparedRead,
+    opts: { appContract: Address; callbackSelector: Hex; staleAfterMs?: number }
+  ): Promise<SimulateReadResult> {
+    return _simulateRead(this.ctx, prepared, opts);
   }
 
   /**
