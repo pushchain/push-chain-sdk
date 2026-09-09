@@ -6,6 +6,43 @@
 Seven PRs on one branch, each independently reviewable and green. Groups 1–3 (PR1–PR6) are
 unblocked today. PR7 waits on the `UniversalReadRegistry`.
 
+## Status — 2026-09-09 (end of day)
+
+| PR | commit | state | gates at commit |
+|---|---|---|---|
+| PR1 foundation | `af7d8df` | ✅ | unit |
+| PR2 chain client | `f115427` | ✅ | unit · integration 12/12 |
+| PR3 `prepareRead` | `74b15e1` | ✅ | unit 113 · integration 12/12 |
+| PR4 `trackRead` + `READ-TX` band | `d4b3ec3` | ✅ | unit 1233 · integration 18/18 |
+| PR5 public surface | `74981dc` | ✅ | unit 1584 · integration 22/22 |
+| PR6 e2e tree + CI `read` group | `148d375` | ✅ | **e2e 8/8 live on Donut** |
+| PR7 `read()` / `executeReads()` | — | ⛔ blocked | needs `UniversalReadRegistry` (contracts) |
+
+**v1 definition of done (§5) is met** except the two items that belong to other teams: the
+Go run of `envelope-vectors.json` (hand the file to the chain team) and the website MDX
+(`docs-examples/13-read-state` mirrors the changeset snippet until the page exists).
+
+**Deviations from the plan, all deliberate:**
+
+- `read()` / `executeReads()` throw `ReadRegistryUnavailableError` (new class, code
+  `READ_REGISTRY_UNAVAILABLE`), not `UnsupportedReadDestinationError` — the old name lied.
+  `read()` validates the request first so grammar mistakes fail before the stub does.
+- Public grammar follows the v2 spec: `prepareRead(subject, options)` with `chain` /
+  `token` / `abi+functionName+args` / `storageSlot` / `web2`, adapted in
+  `read-state/read-params.ts`. `callback.gasLimit` is mandatory until the registry pins
+  `REGISTRY_CALLBACK_GAS`. Web2 is `READ_CHAIN_WEB2` / `CONSTANTS.READ.WEB2 = 'web2:https'`,
+  not a `CHAIN` member — so the §4 "exclude from `sendTransaction`" item is satisfied by the
+  type system with no runtime guard.
+- The N1 "refuse `prepareRead` for a CEA signer" guard was **not** added: `prepareRead` never
+  signs, and a CEA-origin request is a `sendTransaction` concern. Tracked in the blockers doc.
+- The CI guard for `generated/ucallback` drift was not added; I7 is enforced by
+  `ucallback-codec.spec.ts` against the real Donut bytes instead.
+- `wait()` default timeout = request lifetime × 1.34 s/block (measured), capped 180 s.
+  The e2e tree found validator latency swinging 10 s..7 min in one afternoon, so the
+  fulfil-path specs use `expiryBlocks: 900n` and a 560 s wait (`SLOW_PATH`).
+- Bug found by e2e and fixed in PR6: options given to `wait()` (`resultShape`, polling,
+  timeout) were not applied to the snapshots it built.
+
 ---
 
 ## 0. Invariants every PR is held to
