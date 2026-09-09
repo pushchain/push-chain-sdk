@@ -32,6 +32,7 @@ export const GROUPS = [
   'pc20',
   'push',
   'cross-chain',
+  'read',
   'known-fail',
 ] as const;
 
@@ -131,6 +132,15 @@ const F = {
   freshWallet: '__e2e__/cross-chain/fresh-wallet.spec.ts',
   pethBridge: '__e2e__/cross-chain/peth-bridge.spec.ts',
   cascade: '__e2e__/cross-chain/cascade-amm.spec.ts',
+
+  readEoa: '__e2e__/read/evm/balance-eoa.spec.ts',
+  readUea: '__e2e__/read/evm/balance-uea.spec.ts',
+  readCall: '__e2e__/read/evm/contract-call.spec.ts',
+  readRevert: '__e2e__/read/evm/callback-reverts.spec.ts',
+  readExpiry: '__e2e__/read/lifecycle/expiry.spec.ts',
+  readSvm: '__e2e__/read/svm/lamports.spec.ts',
+  readWeb2: '__e2e__/read/web2/json.spec.ts',
+  readDocs: '__e2e__/docs-examples/13-read-state/read-state.spec.ts',
 } as const;
 
 export const SCENARIOS: Scenario[] = [
@@ -572,6 +582,74 @@ export const SCENARIOS: Scenario[] = [
     needs: { sepoliaEth: '0.05', ueaPC: '5', ueaPETH: '0.002' },
     env: { RUN_LIVE_SIX_HOP_CASCADE: '1' },
     note: 'Flagship: ~20 min, and the one scenario spanning both target chains.',
+  },
+
+  // ---------------------------------------------------------------------------
+  // read — cross-chain read state. Each scenario escrows a callback budget
+  // (~0.01 PC at Donut gas prices; refunded minus the burn) and pays Push gas from the
+  // Push master, except the UEA-originated read which pays from the EVM master's UEA.
+  // The specs share two pre-deployed UniversalReadClient contracts and deploy nothing.
+  // ---------------------------------------------------------------------------
+  {
+    id: 'read-evm-balance-eoa',
+    group: 'read',
+    file: F.readEoa,
+    grep: 'read state › EVM balance from a Push EOA',
+    needs: { masterPC: '0.1' },
+    note: 'prepareRead → simulateRead → sendTransaction → trackRead → value == Sepolia balance at pin.',
+  },
+  {
+    id: 'read-evm-balance-uea',
+    group: 'read',
+    file: F.readUea,
+    grep: 'read state › EVM balance requested through a UEA',
+    needs: { ueaPC: '0.1' },
+    note: 'The N1 path: ReadRequested emitted inside the UEA execute. Refund lands in the UEA.',
+  },
+  {
+    id: 'read-evm-contract-call',
+    group: 'read',
+    file: F.readCall,
+    grep: 'read state › EVM typed contract call',
+    needs: { masterPC: '0.1' },
+  },
+  {
+    id: 'read-evm-callback-reverts',
+    group: 'read',
+    file: F.readRevert,
+    grep: 'read state › reverting callback',
+    needs: { masterPC: '0.1' },
+    note: 'I4: FULFILLED with callbackDelivered=false, READ-TX-106-03.',
+  },
+  {
+    id: 'read-expiry',
+    group: 'read',
+    file: F.readExpiry,
+    grep: 'read state › expiry',
+    needs: { masterPC: '0.1' },
+    note: 'minConfirmations 500 + expiryBlocks 30 forces EXPIRED in ~40 s; full budget refunded.',
+  },
+  {
+    id: 'read-svm-lamports',
+    group: 'read',
+    file: F.readSvm,
+    grep: 'read state › SVM lamports',
+    needs: { masterPC: '0.1' },
+  },
+  {
+    id: 'read-web2-json',
+    group: 'read',
+    file: F.readWeb2,
+    grep: 'read state › web2 JSON',
+    needs: { masterPC: '0.1' },
+  },
+  {
+    id: 'read-docs-example',
+    group: 'read',
+    file: F.readDocs,
+    grep: 'docs-examples › 13-read-state',
+    needs: { masterPC: '0.6' },
+    note: 'Funds a fresh wallet with 0.5 PC, as the docs prompt will.',
   },
 
   // ---------------------------------------------------------------------------

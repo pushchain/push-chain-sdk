@@ -306,7 +306,10 @@ export async function waitForRead(deps: TrackReadDeps, initial: UniversalReadRes
 
   emit(PROGRESS_HOOK.READ_TX_104_02, initial.txHash, initial.requestId, initial.request.logIndex);
 
-  let current = initial;
+  // Every snapshot taken from here on is built with the wait() options, so a
+  // resultShape given to wait() decodes even a record that is already terminal.
+  const reload = () => trackRead(deps, { requestId: initial.requestId }, opts);
+  let current = initial.isTerminal && opts.resultShape !== undefined ? await reload() : initial;
   let announced: UNIVERSAL_READ_STATUS | undefined;
   for (;;) {
     if (current.isTerminal) {
@@ -324,7 +327,7 @@ export async function waitForRead(deps: TrackReadDeps, initial: UniversalReadRes
       throw new ReadTimeoutError(current.status, elapsed, { requestId: current.requestId, txHash: current.txHash });
     }
     await sleep(interval);
-    current = await current.refresh();
+    current = await reload();
   }
 }
 

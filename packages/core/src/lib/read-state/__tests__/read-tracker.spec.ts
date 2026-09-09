@@ -227,6 +227,18 @@ describe('wait()', () => {
     ]);
   });
 
+  it('wait({ resultShape }) re-decodes even an already-terminal record (the ABI is not on chain)', async () => {
+    const { deps } = scriptedDeps([success]);
+    const r = await trackRead(deps, { requestId: READ2_ID });
+    expect(r.decoded?.kind).toBe('uint256');
+    const raw = await r.wait({ resultShape: { kind: 'raw' } });
+    expect(raw.decoded).toEqual({ kind: 'raw', value: '0x000000000000000000000000000000000000000000000092b406e140cc2c8871' });
+    const { deps: polled } = scriptedDeps([pending, success]);
+    const p = (await trackRead(polled, { requestId: READ2_ID })).wait({ pollingIntervalMs: 1000, resultShape: { kind: 'bytes32' } });
+    await jest.advanceTimersByTimeAsync(1000);
+    expect((await p).decoded?.kind).toBe('bytes32');
+  });
+
   it('already terminal: resolves at once without polling', async () => {
     const { deps, calls } = scriptedDeps([success]);
     const r = await trackRead(deps, { requestId: READ2_ID });
