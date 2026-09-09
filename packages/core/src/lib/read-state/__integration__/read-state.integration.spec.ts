@@ -17,7 +17,8 @@ import { ReadHeightUnavailableError } from '../errors';
 import { preflightRead } from '../preflight';
 import { prepareRead, simulateRead } from '../spec-builder';
 import { trackRead } from '../read-tracker';
-import { ReadNotFoundError } from '../errors';
+import { ReadNotFoundError, ReadRegistryUnavailableError } from '../errors';
+import { PushChain } from '../../push-chain/push-chain';
 import { READ_ERROR_CODE, READ_STATUS, UNIVERSAL_READ_STATUS } from '../read-state.types';
 import { toFunctionSelector } from 'viem';
 
@@ -226,4 +227,49 @@ describe('trackRead (settled reads — deterministic forever)', () => {
   it('unknown reference → ReadNotFoundError after the lookup window', async () => {
     await expect(trackRead(deps(), { requestId: 1n }, { pollingIntervalMs: 500 })).rejects.toBeInstanceOf(ReadNotFoundError);
   }, 60_000);
+});
+
+describe('PushChain.universal read-state surface (read-only client, Donut)', () => {
+  const EOA = '0x0A16CBa65FfCAa4C2282b27b027Ab4A2fE46E0Bf' as const;
+  const CLIENT = '0x5F7221d31a01A71662cABEeC2567c55ad03E2fb7' as const;
+  let client: PushChain;
+  beforeAll(async () => {
+    client = await PushChain.initialize({ address: EOA, chain: CHAIN.PUSH_TESTNET_DONUT }, { network: PUSH_NETWORK.TESTNET_DONUT });
+  });
+
+  it('prepareRead(subject, options) works in read-only mode and defaults refundTo to the account', async () => {
+    const p = await client.universal.prepareRead(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: CLIENT, gasLimit: 200_000n } });
+    expect(p.spec.revertRecipient).toBe(EOA);
+    expect(p.fees.total).toBe(p.value);
+    expect(p.encodedQuery.resultShape).toEqual({ kind: 'uint256' });
+    const sim = await client.universal.simulateRead(p, { appContract: CLIENT, callbackSelector: toFunctionSelector('onUniversalData(uint256,bytes)') });
+    expect(sim).toEqual({ ok: true });
+  }, 60_000);
+
+  it('token / call / web2 grammars prepare', async () => {
+    const usdc = await client.universal.prepareRead(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, token: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', callback: { gasLimit: 200_000n } });
+    expect(usdc.encodedQuery.resultShape).toMatchObject({ kind: 'evmCall', functionName: 'balanceOf' });
+    const web2 = await client.universal.prepareRead('https://jsonplaceholder.typicode.com/todos/1', {
+      chain: PushChain.CONSTANTS.READ.WEB2,
+      web2: { extract: [{ path: '$.id', valueType: 'uint256' }, { path: '$.completed', valueType: 'bool' }] },
+      callback: { gasLimit: 200_000n },
+    });
+    expect(web2.spec.blockNumber).toBe(0n);
+    expect(web2.spec.account.chainNamespace).toBe('web2');
+  }, 60_000);
+
+  it('trackRead through the client, with a per-call progressHook', async () => {
+    const seen: string[] = [];
+    const [r] = await client.universal.trackRead({ txHash: READ2_TX }, { progressHook: (e) => seen.push(e.id) });
+    expect(r.callbackDelivered).toBe(true);
+    await r.wait();
+    expect(seen[0]).toBe('READ-TX-104-02');
+    expect(seen[seen.length - 1]).toBe('READ-TX-199-01');
+  }, 60_000);
+
+  it('read() / executeReads() are typed stubs until the registry ships', async () => {
+    await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { gasLimit: 1n } })).rejects.toBeInstanceOf(ReadRegistryUnavailableError);
+    await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA })).rejects.toMatchObject({ code: 'INVALID_READ_QUERY' }); // validation first
+    await expect(client.universal.executeReads([])).resolves.toEqual([]);
+  });
 });

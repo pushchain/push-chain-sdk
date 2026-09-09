@@ -199,6 +199,8 @@ export interface PreparedRead {
   value: bigint;
   protocolFee: bigint;
   callbackBudget: bigint;
+  /** The same three numbers, grouped: `total` === `value`. */
+  fees: { protocolFee: bigint; callbackBudget: bigint; total: bigint };
   callbackGasLimit: bigint;
   /** Carries the result shape for decoding, and any encoder warnings. */
   encodedQuery: EncodedReadQuery;

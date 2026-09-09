@@ -43,6 +43,7 @@ import {
   prepareRead as _prepareRead,
   simulateRead as _simulateRead,
   trackRead as _trackRead,
+  type TrackReadOptions,
   executeFundsOnly as _executeFundsOnly,
   executeFundsWithPayload as _executeFundsWithPayload,
   executeStandardPayload as _executeStandardPayload,
@@ -54,7 +55,6 @@ import {
 import type {
   BuildReadSpecParams,
   PreparedRead,
-  ReadLifecycleOptions,
   SimulateReadResult,
   UniversalReadResponse,
 } from '../read-state/read-state.types';
@@ -207,11 +207,11 @@ export class Orchestrator {
   }
 
   /** Resume a read by the Push tx that requested it (array) or by requestId (single). */
-  trackRead(ref: { txHash: Hex }, opts?: ReadLifecycleOptions): Promise<UniversalReadResponse[]>;
-  trackRead(ref: { requestId: Hex | bigint }, opts?: ReadLifecycleOptions): Promise<UniversalReadResponse>;
+  trackRead(ref: { txHash: Hex }, opts?: TrackReadOptions): Promise<UniversalReadResponse[]>;
+  trackRead(ref: { requestId: Hex | bigint }, opts?: TrackReadOptions): Promise<UniversalReadResponse>;
   trackRead(
     ref: { txHash: Hex } | { requestId: Hex | bigint },
-    opts?: ReadLifecycleOptions
+    opts?: TrackReadOptions
   ): Promise<UniversalReadResponse | UniversalReadResponse[]> {
     return 'txHash' in ref ? _trackRead(this.ctx, ref, opts) : _trackRead(this.ctx, ref, opts);
   }

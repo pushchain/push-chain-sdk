@@ -132,6 +132,7 @@ export function buildReadSpecFromPreflight(
     value,
     protocolFee: preflight.protocolFee,
     callbackBudget,
+    fees: { protocolFee: preflight.protocolFee, callbackBudget, total: value },
     callbackGasLimit: params.callbackGasLimit,
     encodedQuery,
     preflight,

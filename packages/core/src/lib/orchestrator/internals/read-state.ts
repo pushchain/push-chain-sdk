@@ -12,6 +12,8 @@ import type {
   SimulateReadResult,
   UniversalReadResponse,
 } from '../../read-state/read-state.types';
+import PROGRESS_HOOKS from '../../progress-hook/progress-hook';
+import type { ProgressEvent } from '../../progress-hook/progress-hook.types';
 import { fireProgressHook, type OrchestratorContext } from './context';
 import { computeUEAOffchain } from './uea-manager';
 
@@ -38,21 +40,32 @@ export function simulateRead(
   return _simulateRead(depsFrom(ctx), prepared, opts);
 }
 
-function trackDepsFrom(ctx: OrchestratorContext): TrackReadDeps {
+export type TrackReadOptions = ReadLifecycleOptions & {
+  /** Per-call hook, additive with the init-time one (deduped by reference). */
+  progressHook?: (e: ProgressEvent) => void;
+};
+
+function trackDepsFrom(ctx: OrchestratorContext, perCall?: (e: ProgressEvent) => void): TrackReadDeps {
+  const extra = perCall && perCall !== ctx.progressHook ? perCall : undefined;
   return {
     pushClient: ctx.pushClient,
     pushNetwork: ctx.pushNetwork,
     // READ-TX ids are a separate band: fireProgressHook never suppresses them (context.ts R1 set).
-    emit: (hookId, ...args) => fireProgressHook(ctx, hookId, ...args),
+    emit: (hookId, ...args) => {
+      fireProgressHook(ctx, hookId, ...args);
+      if (extra) extra(PROGRESS_HOOKS[hookId](...args));
+    },
   };
 }
 
-export function trackRead(ctx: OrchestratorContext, ref: { txHash: Hex }, opts?: ReadLifecycleOptions): Promise<UniversalReadResponse[]>;
-export function trackRead(ctx: OrchestratorContext, ref: { requestId: Hex | bigint }, opts?: ReadLifecycleOptions): Promise<UniversalReadResponse>;
+export function trackRead(ctx: OrchestratorContext, ref: { txHash: Hex }, opts?: TrackReadOptions): Promise<UniversalReadResponse[]>;
+export function trackRead(ctx: OrchestratorContext, ref: { requestId: Hex | bigint }, opts?: TrackReadOptions): Promise<UniversalReadResponse>;
 export function trackRead(
   ctx: OrchestratorContext,
   ref: { txHash: Hex } | { requestId: Hex | bigint },
-  opts?: ReadLifecycleOptions,
+  opts: TrackReadOptions = {},
 ): Promise<UniversalReadResponse | UniversalReadResponse[]> {
-  return 'txHash' in ref ? _trackRead(trackDepsFrom(ctx), ref, opts) : _trackRead(trackDepsFrom(ctx), ref, opts);
+  const { progressHook, ...lifecycle } = opts;
+  const deps = trackDepsFrom(ctx, progressHook);
+  return 'txHash' in ref ? _trackRead(deps, ref, lifecycle) : _trackRead(deps, ref, lifecycle);
 }
