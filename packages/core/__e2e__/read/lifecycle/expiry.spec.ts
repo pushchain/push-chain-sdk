@@ -41,6 +41,10 @@ d('read state › expiry', () => {
     expect(read.status === READ.STATUS.PENDING || read.status === READ.STATUS.VOTING).toBe(true);
 
     const tracked = await client.universal.trackRead({ requestId: read.requestId }, { advanced: { timeout: 170_000, pollingIntervalMs: 3_000 }, progressHook: tracker.hook });
+    // Client timeout must not cancel or corrupt the on-chain request. The same
+    // handle can refresh and resume all the way to its eventual expiry/refund.
+    await expect(tracked.wait({ timeoutMs: 500, pollingIntervalMs: 500 })).rejects.toMatchObject({ code: 'READ_TIMEOUT', requestId: read.requestId });
+    expect((await tracked.refresh()).requestId).toBe(read.requestId);
     const done = await tracked.wait();
     expect(done.status).toBe(READ.STATUS.EXPIRED);
     expect(done.isTerminal).toBe(true);

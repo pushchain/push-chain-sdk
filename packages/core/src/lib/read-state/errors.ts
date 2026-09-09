@@ -13,6 +13,10 @@ export type ReadStateErrorContext = {
   requestId?: string;
   /** Push tx hash, when relevant. */
   txHash?: string;
+  /** Successfully mined requests from a partial non-atomic batch. */
+  transactionHashes?: `0x${string}`[];
+  /** Broadcast transaction whose receipt could not be confirmed. Check before retrying. */
+  pendingTransactionHash?: `0x${string}`;
   /** Short, actionable remediation. */
   hint?: string;
 };
@@ -23,6 +27,8 @@ export class ReadStateError extends Error {
   readonly destination?: string;
   readonly requestId?: string;
   readonly txHash?: string;
+  readonly transactionHashes?: `0x${string}`[];
+  readonly pendingTransactionHash?: `0x${string}`;
   readonly hint?: string;
 
   constructor(code: string, message: string, ctx: ReadStateErrorContext = {}) {
@@ -37,6 +43,8 @@ export class ReadStateError extends Error {
     this.destination = ctx.destination;
     this.requestId = ctx.requestId;
     this.txHash = ctx.txHash;
+    this.transactionHashes = ctx.transactionHashes ? [...ctx.transactionHashes] : undefined;
+    this.pendingTransactionHash = ctx.pendingTransactionHash;
     this.hint = ctx.hint;
     Object.setPrototypeOf(this, new.target.prototype);
   }

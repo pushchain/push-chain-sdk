@@ -241,30 +241,34 @@ async function collectOutcome(deps: TrackReadDeps, record: UniversalRead, reques
  * one JSON log with base64 `data`. Any failure leaves the outcome empty (unknown).
  */
 async function collectExpiryOutcome(deps: TrackReadDeps, record: UniversalRead, requestId: Hex): Promise<FulfilOutcome> {
-  const height = record.pcTx.find((t) => t.blockHeight > 0)?.blockHeight;
-  if (!height) return {};
-  try {
-    const events = await deps.pushClient.getBlockResultEvents(height);
-    const logs: { address: string; topics: string[]; data: string }[] = [];
-    for (const ev of events) {
-      if (ev.type !== 'tx_log') continue;
-      if (!ev.attributes.some((a) => a.key === 'mode' && a.value === 'EndBlock')) continue;
-      for (const a of ev.attributes) {
-        if (a.key !== 'txLog') continue;
-        const log = JSON.parse(a.value) as { address: string; topics: string[]; data: string };
-        const data = typeof log.data === 'string' && log.data.startsWith('0x') ? log.data : bytesToHex(new Uint8Array(Buffer.from(log.data ?? '', 'base64')));
-        logs.push({ address: log.address, topics: log.topics, data });
+  const heights = [...new Set(record.pcTx.map((t) => t.blockHeight).filter((h) => h > 0))].sort((a, b) => b - a);
+  for (const height of heights) {
+    try {
+      const events = await deps.pushClient.getBlockResultEvents(height);
+      const logs: { address: string; topics: string[]; data: string }[] = [];
+      for (const ev of events) {
+        if (ev.type !== 'tx_log') continue;
+        if (!ev.attributes.some((a) => a.key === 'mode' && a.value === 'EndBlock')) continue;
+        for (const a of ev.attributes) {
+          if (a.key !== 'txLog') continue;
+          try {
+            const log = JSON.parse(a.value) as { address: string; topics: string[]; data: string };
+            if (typeof log.address !== 'string' || !Array.isArray(log.topics) || !log.topics.every((t) => typeof t === 'string')) continue;
+            const data = typeof log.data === 'string' && log.data.startsWith('0x') ? log.data : bytesToHex(new Uint8Array(Buffer.from(log.data ?? '', 'base64')));
+            logs.push({ address: log.address, topics: log.topics, data });
+          } catch { /* An unrelated malformed log must not hide this request's refund. */ }
+        }
       }
+      const out = parseFulfilOutcome({ logs }, UNIVERSAL_CALLBACK_ADDRESSES[deps.pushNetwork], requestId);
+      // RequestExpired carries the amount the contract tried to push; only RefundSent /
+      // RefundFailed say whether it landed. Report the amount only when it did.
+      if (out.refundFailed === true) return { refundFailed: true };
+      if (out.refundFailed === false) return { refunded: out.refunded, refundFailed: false };
+    } catch {
+      // One unavailable attempt must not hide matching logs at another height.
     }
-    const out = parseFulfilOutcome({ logs }, UNIVERSAL_CALLBACK_ADDRESSES[deps.pushNetwork], requestId);
-    // RequestExpired carries the amount the contract tried to push; only RefundSent /
-    // RefundFailed say whether it landed. Report the amount only when it did.
-    if (out.refundFailed === true) return { refundFailed: true };
-    if (out.refundFailed === false) return { refunded: out.refunded, refundFailed: false };
-    return {};
-  } catch {
-    return {};
   }
+  return {};
 }
 
 /** Best-effort shape from the on-chain envelope. Contract calls carry no ABI → raw. */

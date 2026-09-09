@@ -1,6 +1,8 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { bytesToHex } from 'viem';
+import { BinaryWriter } from '@bufbuild/protobuf/wire';
+import { ReadRequest } from '../../generated/ucallback/v1';
 import {
   QueryReadsByTxRequest,
   QueryReadsByTxResponse,
@@ -17,6 +19,16 @@ const fixture = (name: string) =>
 
 /** Real abci_query responses captured from Donut on 2026-09-09 — the regression guard for the hand-authored codec. */
 describe('ucallback.v1 codecs against real Donut responses', () => {
+  it('skips future unknown fields while preserving known record bytes', () => {
+    const bytes = fixture('universal-read.success-evm.b64');
+    const future = new BinaryWriter().uint32((99 << 3) | 2).string('future field').finish();
+    expect(QueryUniversalReadResponse.decode(new Uint8Array([...bytes, ...future]))).toEqual(QueryUniversalReadResponse.decode(bytes));
+  });
+
+  it('rejects uint64 heights that cannot be represented safely instead of rounding', () => {
+    const bytes = new BinaryWriter().uint32(56).uint64(9007199254740993n).finish();
+    expect(() => ReadRequest.decode(bytes)).toThrow(/MAX_SAFE_INTEGER/);
+  });
   it('SUCCESS EVM read 0xf3d62fb9… — every field', () => {
     const { read } = QueryUniversalReadResponse.decode(fixture('universal-read.success-evm.b64'));
     expect(read).toBeDefined();

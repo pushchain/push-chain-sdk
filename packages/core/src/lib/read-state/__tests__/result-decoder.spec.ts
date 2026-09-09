@@ -5,6 +5,20 @@ import { decodeReadResult } from '../result-decoder';
 const U256 = (n: bigint) => encodeAbiParameters([{ type: 'uint256' }], [n]);
 
 describe('decodeReadResult', () => {
+  it('decodes signed and dynamic Web2 values in extract order without rescaling', () => {
+    const data = encodeAbiParameters([{ type: 'int256' }, { type: 'string' }, { type: 'bytes' }], [-12345n, 'price Δ', '0x1234']);
+    expect(decodeReadResult(data, { kind: 'web2', extract: [
+      { path: '$.price', valueType: 'int256', decimals: 2 },
+      { path: '$.name', valueType: 'string' },
+      { path: '$.data', valueType: 'bytes' },
+    ] })).toEqual({ kind: 'web2', values: [-12345n, 'price Δ', '0x1234'] });
+  });
+
+  it('keeps a single dynamic array output nested within the output list', () => {
+    const abi = parseAbi(['function balances() view returns (uint256[])']);
+    const data = encodeAbiParameters([{ type: 'uint256[]' }], [[1n, 2n ** 200n]]);
+    expect(decodeReadResult(data, { kind: 'evmCall', abi, functionName: 'balances' })).toEqual({ kind: 'evmCall', values: [[1n, 2n ** 200n]] });
+  });
   it('uint256 — EVM balance / SVM lamports / SPL amount (real Donut bytes)', () => {
     // read 0xf3d62fb9…: Sepolia balance of 0xdead
     const evm = decodeReadResult('0x000000000000000000000000000000000000000000000092b406e140cc2c8871', { kind: 'uint256' });

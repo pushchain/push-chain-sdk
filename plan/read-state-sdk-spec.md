@@ -388,6 +388,11 @@ Batch results are matched back to prepared order; mismatches throw with the Push
 manual recovery. Execution uses an atomic EIP-7702/UEA batch where supported, otherwise
 the existing sequential wallet fallback (earlier requests can remain committed on failure).
 The fallback transaction response retains `transactionHashes` in submission order.
+If a sequential batch fails, the `READ_REQUEST_TX_FAILED` error retains confirmed
+`transactionHashes` and, when receipt confirmation failed, `pendingTransactionHash`.
+Resume confirmed reads by hash and check the pending transaction receipt before
+retrying; broadcast does not mean mined. Expiry confirmation scans distinct attempt
+heights newest first, skipping unavailable blocks and ignoring unrelated malformed logs.
 Sending requires a signer; preparation, simulation and tracking remain read-only.
 The historical registry-only signatures below describe the planned default receiver;
 the implemented `executeReads` returns `UniversalReadResponse[]`.

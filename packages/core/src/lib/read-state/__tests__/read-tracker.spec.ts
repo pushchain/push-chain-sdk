@@ -156,6 +156,64 @@ describe('trackRead — terminal records straight from the node', () => {
     expect(calls.receipts).toEqual([]);
   });
 
+  it.each(['empty', 'unavailable'])('EXPIRED: scans unique attempt heights newest first when newer logs are %s', async (missing) => {
+    const record = node('expired');
+    const attempt = record.pcTx[0];
+    record.pcTx = [
+      { ...attempt, blockHeight: 22963637, status: 'FAILED' },
+      attempt,
+      { ...attempt, blockHeight: 22963639, status: 'FAILED' },
+      { ...attempt, blockHeight: 22963639, status: 'FAILED' },
+    ];
+    const { deps } = scriptedDeps([record]);
+    const queried: number[] = [];
+    deps.pushClient.getBlockResultEvents = async (height) => {
+      queried.push(height);
+      if (height === 22963638) return expiredBlockResults.result.finalize_block_events as never;
+      if (missing === 'unavailable') throw new Error('pruned');
+      return [];
+    };
+    const r = await trackRead(deps, { requestId: record.id as Hex });
+    expect(queried).toEqual([22963639, 22963638]);
+    expect(r.fees.refunded).toBe(r.fees.callbackBudget);
+    expect(r.fees.refundFailed).toBe(false);
+  });
+
+  it('EXPIRED: ignores unrelated malformed logs without hiding valid refund logs', async () => {
+    const record = node('expired');
+    const { deps } = scriptedDeps([record]);
+    deps.pushClient.getBlockResultEvents = async () => [
+      { type: 'tx_log', attributes: [{ key: 'mode', value: 'EndBlock' }, { key: 'txLog', value: 'not JSON' }] },
+      ...expiredBlockResults.result.finalize_block_events,
+    ] as never;
+    const r = await trackRead(deps, { requestId: record.id as Hex });
+    expect(r.fees.refundFailed).toBe(false);
+    expect(r.fees.refunded).toBe(r.fees.callbackBudget);
+  });
+
+  it.each(['wrong-mode', 'wrong-address', 'wrong-request', 'expiry-only'])('EXPIRED: does not confirm refunds from %s logs', async (variant) => {
+    const record = node('expired');
+    const { deps } = scriptedDeps([record]);
+    const events = JSON.parse(JSON.stringify(expiredBlockResults.result.finalize_block_events)) as { type: string; attributes: { key: string; value: string }[] }[];
+    for (const event of events) {
+      if (event.type !== 'tx_log') continue;
+      if (variant === 'wrong-mode') event.attributes = event.attributes.filter((a) => a.key !== 'mode');
+      event.attributes = event.attributes.filter((a) => {
+        if (a.key !== 'txLog') return true;
+        const log = JSON.parse(a.value);
+        if (variant === 'wrong-address') log.address = '0x1111111111111111111111111111111111111111';
+        if (variant === 'wrong-request') log.topics[1] = `0x${'ff'.repeat(32)}`;
+        if (variant === 'expiry-only' && log.topics[0] === '0xfbeaa807aad4fcff31eff41f17142e6dcd1babf57c4730e3a4c706ac608cc057') return false;
+        a.value = JSON.stringify(log);
+        return true;
+      });
+    }
+    deps.pushClient.getBlockResultEvents = async () => events;
+    const r = await trackRead(deps, { requestId: record.id as Hex });
+    expect(r.fees.refunded).toBeUndefined();
+    expect(r.fees.refundFailed).toBeUndefined();
+  });
+
   it('EXPIRED: a RefundFailed log reports refundFailed=true and no amount', async () => {
     const { deps } = scriptedDeps([node('expired')]);
     const failed = JSON.parse(JSON.stringify(expiredBlockResults.result.finalize_block_events)) as { type: string; attributes: { key: string; value: string }[] }[];

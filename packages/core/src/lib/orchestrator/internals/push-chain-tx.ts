@@ -30,7 +30,7 @@ import type {
 import type { OrchestratorContext } from './context';
 import { fireProgressHook, printLog } from './context';
 import { decodeRevert, formatDecodedRevertForUser } from './error-decoder';
-import { PushChainExecutionError } from './errors';
+import { PushChainExecutionError, PushChainBatchExecutionError } from './errors';
 import { normalizePublicErrorMessage } from '../../formatters';
 
 // ============================================================================
@@ -185,101 +185,107 @@ export async function sendPushTx(
     // failure they ride on the thrown error (`err.transactionHashes`) so the caller
     // can resume whatever those calls committed — the batch is not atomic.
     const transactionHashes: `0x${string}`[] = [];
-    const failBatch = (err: unknown): never => {
-      if (err && typeof err === 'object') {
-        (err as { transactionHashes?: `0x${string}`[] }).transactionHashes = [...transactionHashes];
-      }
-      throw err;
-    };
-    for (let i = 0; i < calls.length; i++) {
-      const call = calls[i];
-      let txSent = false;
-      for (let retry = 0; retry < MAX_NONCE_RETRIES && !txSent; retry++) {
-        try {
-          printLog(
-            ctx,
-            `sendPushTx — executing multicall operation ${i + 1}/${calls.length} to: ${call.to} (nonce: ${nonce})`
-          );
-          lastTxHash = await ctx.pushClient.sendTransaction({
-            to: call.to as `0x${string}`,
-            data: (call.data || '0x') as `0x${string}`,
-            value: call.value,
-            signer: ctx.universalSigner,
-            nonce,
-          });
-          txSent = true;
-        } catch (err: any) {
-          const msg = err?.message || err?.details || '';
-          if (msg.includes('invalid nonce') || msg.includes('invalid sequence')) {
+    let pendingTransactionHash: `0x${string}` | undefined;
+    try {
+      for (let i = 0; i < calls.length; i++) {
+        const call = calls[i];
+        let txSent = false;
+        for (let retry = 0; retry < MAX_NONCE_RETRIES && !txSent; retry++) {
+          try {
             printLog(
               ctx,
-              `sendPushTx — nonce mismatch on operation ${i + 1}/${calls.length} (retry ${retry + 1}/${MAX_NONCE_RETRIES}), re-fetching nonce`
+              `sendPushTx — executing multicall operation ${i + 1}/${calls.length} to: ${call.to} (nonce: ${nonce})`
             );
-            nonce = await ctx.pushClient.publicClient.getTransactionCount({
-              address: ctx.universalSigner.account.address as `0x${string}`,
-              blockTag: 'pending',
+            lastTxHash = await ctx.pushClient.sendTransaction({
+              to: call.to as `0x${string}`,
+              data: (call.data || '0x') as `0x${string}`,
+              value: call.value,
+              signer: ctx.universalSigner,
+              nonce,
             });
-          } else {
-            failBatch(err);
+            txSent = true;
+            pendingTransactionHash = lastTxHash;
+          } catch (err: any) {
+            const msg = err?.message || err?.details || '';
+            if (msg.includes('invalid nonce') || msg.includes('invalid sequence')) {
+              printLog(
+                ctx,
+                `sendPushTx — nonce mismatch on operation ${i + 1}/${calls.length} (retry ${retry + 1}/${MAX_NONCE_RETRIES}), re-fetching nonce`
+              );
+              nonce = await ctx.pushClient.publicClient.getTransactionCount({
+                address: ctx.universalSigner.account.address as `0x${string}`,
+                blockTag: 'pending',
+              });
+            } else {
+              throw err;
+            }
           }
         }
-      }
-      if (!txSent) {
-        failBatch(new Error(
-          `sendPushTx — multicall operation ${i + 1}/${calls.length} failed after ${MAX_NONCE_RETRIES} nonce retries`
-        ));
-      }
+        if (!txSent) {
+          throw new Error(
+            `sendPushTx — multicall operation ${i + 1}/${calls.length} failed after ${MAX_NONCE_RETRIES} nonce retries`
+          );
+        }
 
-      const receipt = await ctx.pushClient.publicClient.waitForTransactionReceipt({
-        hash: lastTxHash,
-      });
-      if (receipt.status === 'reverted') {
-        // Simulate the failed call to extract the revert reason
-        let revertReason = 'unknown';
-        try {
-          await ctx.pushClient.publicClient.call({
-            to: call.to as `0x${string}`,
-            data: (call.data || '0x') as `0x${string}`,
-            value: call.value,
-            account: ctx.universalSigner.account.address as `0x${string}`,
-            blockNumber: receipt.blockNumber,
-          });
-        } catch (simErr: any) {
-          // viem decodes common revert reasons into shortMessage
-          revertReason =
-            simErr?.shortMessage || simErr?.cause?.reason || simErr?.cause?.message || simErr?.message || String(simErr);
-          // Also log the raw revert data if available
-          const revertData = simErr?.cause?.data || simErr?.data;
-          if (revertData) {
-            revertReason += ` [data: ${revertData}]`;
+        const receipt = await ctx.pushClient.publicClient.waitForTransactionReceipt({
+          hash: lastTxHash,
+        });
+        if (receipt.status === 'reverted') {
+          pendingTransactionHash = undefined;
+          // Simulate the failed call to extract the revert reason
+          let revertReason = 'unknown';
+          try {
+            await ctx.pushClient.publicClient.call({
+              to: call.to as `0x${string}`,
+              data: (call.data || '0x') as `0x${string}`,
+              value: call.value,
+              account: ctx.universalSigner.account.address as `0x${string}`,
+              blockNumber: receipt.blockNumber,
+            });
+          } catch (simErr: any) {
+            // viem decodes common revert reasons into shortMessage
+            revertReason =
+              simErr?.shortMessage || simErr?.cause?.reason || simErr?.cause?.message || simErr?.message || String(simErr);
+            // Also log the raw revert data if available
+            const revertData = simErr?.cause?.data || simErr?.data;
+            if (revertData) {
+              revertReason += ` [data: ${revertData}]`;
+            }
           }
+          printLog(
+            ctx,
+            `sendPushTx — multicall operation ${i + 1}/${calls.length} reverted (to: ${call.to}, txHash: ${lastTxHash}, revertReason: ${revertReason})`
+          );
+          throw new Error(
+            `sendPushTx — multicall operation ${i + 1}/${calls.length} reverted (to: ${call.to}, txHash: ${lastTxHash}, revertReason: ${revertReason})`
+          );
         }
+        transactionHashes.push(lastTxHash);
+        pendingTransactionHash = undefined;
         printLog(
           ctx,
-          `sendPushTx — multicall operation ${i + 1}/${calls.length} reverted (to: ${call.to}, txHash: ${lastTxHash}, revertReason: ${revertReason})`
+          `sendPushTx — operation ${i + 1}/${calls.length} confirmed in block ${receipt.blockNumber}`
         );
-        failBatch(new Error(
-          `sendPushTx — multicall operation ${i + 1}/${calls.length} reverted (to: ${call.to}, txHash: ${lastTxHash}, revertReason: ${revertReason})`
-        ));
+        nonce++;
       }
-      transactionHashes.push(lastTxHash);
-      printLog(
+      const txResponse = await getIndexedPushTransaction(
         ctx,
-        `sendPushTx — operation ${i + 1}/${calls.length} confirmed in block ${receipt.blockNumber}`
+        lastTxHash,
+        'sendPushTx'
       );
-      nonce++;
+      // Sequential fallback: each call was a separate tx, so the batch is NOT
+      // atomic (an earlier call can be committed while a later one reverts).
+      const resp = await transformFn(txResponse, eventBuffer);
+      resp.atomic = false;
+      resp.transactionHashes = transactionHashes;
+      return resp;
+    } catch (error) {
+      // Preserve recovery data across receipt waits, nonce refresh, indexing and
+      // response construction, not only errors raised by sendTransaction().
+      throw new PushChainBatchExecutionError(
+        normalizePublicErrorMessage(error), transactionHashes, pendingTransactionHash,
+      );
     }
-    const txResponse = await getIndexedPushTransaction(
-      ctx,
-      lastTxHash,
-      'sendPushTx'
-    );
-    // Sequential fallback: each call was a separate tx, so the batch is NOT
-    // atomic (an earlier call can be committed while a later one reverts).
-    const resp = await transformFn(txResponse, eventBuffer);
-    resp.atomic = false;
-    resp.transactionHashes = transactionHashes;
-    return resp;
   }
 
   const txHash = await ctx.pushClient.sendTransaction({

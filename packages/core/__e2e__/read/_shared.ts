@@ -51,13 +51,14 @@ export const evmKey = process.env['EVM_PRIVATE_KEY'] as Hex | undefined;
 export const solanaKey = process.env['SOLANA_PRIVATE_KEY'];
 
 /** A Push-native EOA client — the "app frontend on Push" persona. */
-export async function makePushEoaClient(key: Hex, progressHook?: (e: any) => void) {
+export async function makePushEoaClient(key: Hex, progressHook?: (e: any) => void, forceSequential = false) {
   const account = privateKeyToAccount(key);
   const walletClient = createWalletClient({ account, chain: PUSH_CHAIN_DEF, transport: http(PUSH_CHAIN_DEF.rpcUrls.default.http[0]) });
   const signer = await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
     chain: CHAIN.PUSH_TESTNET_DONUT,
     library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
   });
+  if (forceSequential) signer.signAuthorization = undefined;
   const client = await PushChain.initialize(signer, { network: PUSH_NETWORK.TESTNET_DONUT, progressHook });
   return { client, account };
 }

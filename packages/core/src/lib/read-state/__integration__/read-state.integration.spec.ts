@@ -279,4 +279,17 @@ describe('PushChain.universal read-state surface (read-only client, Donut)', () 
     const request = { abi: [{ type: 'function', name: 'request', stateMutability: 'payable', inputs: [], outputs: [] }] as const, functionName: 'request' };
     await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: CLIENT, gasLimit: 200_000n, request } })).rejects.toThrow(/Read only mode/);
   });
+
+  it('executeReads rejects a valid prepared call on a read-only client', async () => {
+    const request = { abi: [{ type: 'function', name: 'request', stateMutability: 'payable', inputs: [], outputs: [] }] as const, functionName: 'request', args: () => [] };
+    const prepared = await client.universal.prepareRead(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: CLIENT, gasLimit: 200_000n, request } });
+    expect(prepared.callback?.target).toBe(CLIENT);
+    await expect(client.universal.executeReads([prepared])).rejects.toThrow(/Read only mode/);
+  }, 60_000);
+
+  it('simulateRead returns the deployed custom error for an invalid pinned height', async () => {
+    const prepared = await client.universal.prepareRead(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { gasLimit: 200_000n } });
+    const invalid = { ...prepared, spec: { ...prepared.spec, blockNumber: prepared.preflight.observedChainHeight + 1_000_000n } };
+    expect(await client.universal.simulateRead(invalid, { appContract: CLIENT, callbackSelector: toFunctionSelector('onUniversalData(uint256,bytes)') })).toMatchObject({ ok: false, errorName: 'InvalidBlockNumber' });
+  }, 60_000);
 });

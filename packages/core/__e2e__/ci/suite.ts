@@ -142,6 +142,8 @@ const F = {
   readWeb2: '__e2e__/read/web2/json.spec.ts',
   readDocs: '__e2e__/docs-examples/13-read-state/read-state.spec.ts',
   readBatch: '__e2e__/read/evm/app-batch.spec.ts',
+  readApi: '__e2e__/read/evm/api-coverage.spec.ts',
+  readSvmRaw: '__e2e__/read/svm/raw-account.spec.ts',
 } as const;
 
 export const SCENARIOS: Scenario[] = [
@@ -667,6 +669,24 @@ export const SCENARIOS: Scenario[] = [
     grep: 'read state › custom app batch UEA',
     needs: { ueaPC: '0.2' },
     note: 'Same batch through the UEA — one atomic tx.',
+  },
+  {
+    id: 'read-app-batch-recovery', group: 'read', file: F.readBatch,
+    grep: 'read state › custom app batch recovers the committed read',
+    needs: { masterPC: '0.1' },
+    note: 'Force sequential wallet execution; recover the first read after the second request fails.',
+  },
+  {
+    id: 'read-api-token', group: 'read', file: F.readApi,
+    grep: 'read state › public API coverage ERC20 shorthand', needs: { masterPC: '0.1' },
+  },
+  {
+    id: 'read-api-mixed-outcomes', group: 'read', file: F.readApi,
+    grep: 'read state › public API coverage mixed consensus outcomes', needs: { masterPC: '0.3' },
+  },
+  {
+    id: 'read-svm-raw', group: 'read', file: F.readSvmRaw,
+    grep: 'read state › SVM raw account', needs: { masterPC: '0.1' },
   },
 
   // ---------------------------------------------------------------------------

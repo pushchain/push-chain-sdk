@@ -50,12 +50,21 @@ export async function executeReads(
     // A non-atomic batch can fail after earlier calls were mined: those reads exist,
     // their budgets are escrowed, and only these hashes lead back to them.
     const committed = committedHashes(err);
-    if (committed.length === 0) throw err;
+    const pending = (err as { pendingTransactionHash?: Hex } | null)?.pendingTransactionHash;
+    if (committed.length === 0 && !pending) throw err;
     const reason = err instanceof Error ? err.message : String(err);
     throw new ReadStateError(
       'READ_REQUEST_TX_FAILED',
       `read request batch failed after ${committed.length} of ${calls.length} calls were mined: ${reason}`,
-      { txHash: committed[committed.length - 1], hint: `Resume the committed reads with trackRead({ txHash }) for: ${committed.join(', ')}` },
+      {
+        txHash: committed[committed.length - 1] ?? pending,
+        transactionHashes: committed,
+        pendingTransactionHash: pending,
+        hint: [
+          committed.length ? `Resume the committed reads with trackRead({ txHash }) for: ${committed.join(', ')}` : '',
+          pending ? `Check the receipt of broadcast transaction ${pending} before retrying; its outcome is unknown` : '',
+        ].filter(Boolean).join('; '),
+      },
     );
   }
   const receipt = await tx.wait();
