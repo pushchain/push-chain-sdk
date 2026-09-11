@@ -50,6 +50,8 @@ it is an ordinary application contract, not a node or system-contract upgrade. W
 `REGISTRY_CALLBACK_GAS`; and the deployed address per network. Wiring after that is ~1 day
 (implementation plan PR7).
 
+Smart-contract implementation handoff: [`universal-read-registry-contract-handoff.md`](./universal-read-registry-contract-handoff.md).
+
 **1. N4 — set a non-zero `readBaseFee` before enabling publicly.** Config only, no code.
 Before the C3 fix, an unconfigured destination had height 0 and was rejected by the guard — an
 accidental allow-list. The heightless branch now accepts any unknown destination at

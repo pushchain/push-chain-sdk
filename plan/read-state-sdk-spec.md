@@ -424,7 +424,7 @@ The screenshot does not show the author, date, or beginning of this comment; the
 
 # Discrepancies from the OG spec and rationale
 
-This section records where the deployed contract or the current SDK differs from the original proposal above. The OG spec is intentionally preserved as the design baseline; this section is the operational source of truth for the current implementation.
+This section records only the remaining places where the deployed contract or current SDK differs from the original proposal. Resolved SDK-local parity items are removed. The OG spec is intentionally preserved as the design baseline; this section is the operational source of truth for the current implementation.
 
 ## 1. Ground-truth contract changed after the OG branch
 
@@ -532,45 +532,23 @@ const result = await client.universal.read(user, {
 
 The public TypeScript options still permit an omitted callback because that is the intended registry-era API. Until the registry exists, runtime validation is intentionally stricter than the future-facing type shape. This mismatch should be removed when the registry lands or tightened if the team no longer wants forward-compatible types.
 
-## 5. `executeReads` return shape
+## 5. Batch recovery metadata
 
-**Resolved locally.** The SDK now returns the OG `BatchReadResponse` wrapper with an order-preserving typed `reads` tuple, `txHash`, `count`, `atomic`, and batch-level `wait()`:
-
-```ts
-const batch = await client.universal.executeReads([a, b]);
-const [first, second] = batch.reads;
-const terminal = await batch.wait();
-```
-
-The wrapper adds optional `transactionHashes` beyond the OG shape. A sequential-wallet fallback can produce multiple Push transactions, so one `txHash` is not sufficient recovery metadata when `atomic === false`. Result generics remain correlated with each `PreparedRead`, and each item retains its own `wait()` and `refresh()`.
+The SDK adds optional `transactionHashes` beyond the OG `BatchReadResponse` because a sequential-wallet fallback can produce multiple Push transactions and one `txHash` is not sufficient recovery metadata when `atomic === false`.
 
 For partial sequential failure, `READ_REQUEST_TX_FAILED` carries confirmed `transactionHashes` and, when receipt confirmation is uncertain, `pendingTransactionHash`. Confirmed requests can be resumed individually with `trackRead({ txHash })`.
 
-## 6. Web2 identifier
+## 6. Query and result-shape differences
 
-**Resolved locally.** The read API now accepts the OG spelling:
+- EVM token balance uses the ordinary `contractCall(balanceOf)` envelope; there is no separate deployed `ERC20Balance` query type.
+- SVM token reads add `tokenProgram?: 'spl-token' | 'token-2022'`, defaulting to the original SPL Token program. ATA derivation remains deterministic and offline.
+- Web2 results remain arrays in extraction order, including a single extraction.
 
-```ts
-CHAIN.WEB2
-```
+The public response adds `destination`, `callbackDelivered`, `callbackFailReason`, `decoded`, `decodeError`, `pcTx`, callback accounting, `request.callbackGasLimit`, and `request.createdAtHeight` beyond the OG shape.
 
-It resolves to `'web2:https'`. `CHAIN.WEB2` is exposed as a read-only namespace value without widening the blockchain enum type, and transaction routing has an explicit runtime guard. This provides the requested syntax without making Web2 a valid `sendTransaction` destination. `PushChain.CONSTANTS.READ.WEB2` resolves to the same value.
+`PreparedRead` adds `specTuple`, `encodedSpec`, `encodedQuery`, `callbackGasLimit`, warnings, and detailed preflight data for custom entrypoints, exact ABI matching, decoding, and pre-broadcast revalidation.
 
-## 7. Query and result-shape differences
-
-- EVM token balance is implemented as the ordinary `contractCall(balanceOf)` envelope; there is no separate deployed `ERC20Balance` query type.
-- SVM token reads accept `tokenProgram?: 'spl-token' | 'token-2022'`, defaulting to the original SPL Token program. ATA derivation remains deterministic and offline.
-- **Resolved locally:** EVM contract calls now use viem semantics. One ABI output is a scalar; multiple outputs remain a tuple. For example, `balanceOf` produces `bigint`.
-- Web2 results are also arrays in extract order, even for one extract.
-- Native EVM balance, SVM lamports, and SPL token amount remain scalar `bigint` values; storage reads return a bytes32 hex value.
-
-The public response also contains fields absent from the OG: `destination`, `callbackDelivered`, `callbackFailReason`, `decoded`, `decodeError`, `pcTx`, callback accounting, `request.callbackGasLimit`, and `request.createdAtHeight`. **The OG requirement that `chain` be present is now implemented**, including `CHAIN.WEB2`.
-
-The implemented `PreparedRead` now exposes the OG `chain` and `resultShape` fields directly. It additionally contains `specTuple`, `encodedSpec`, `encodedQuery`, `callbackGasLimit`, warnings, and detailed preflight data for custom entrypoints, exact ABI matching, decoding, and pre-broadcast revalidation.
-
-SVM and Web2 no longer expose `blockNumber` or `minConfirmations` in public read options. The SDK selects their finalized or heightless references internally while still populating the fields required by the deployed `ReadSpec`.
-
-## 8. Envelope encoding correction
+## 7. Envelope encoding correction
 
 Every `ReadSpec.query` must be `abi.encode` of one tuple because the validator decodes one tuple argument. Encoding each envelope field as a separate ABI parameter creates a different layout. The EVM `AccountBalance` payload must itself contain `abi.encode(address)` rather than a raw 20-byte address.
 
@@ -582,7 +560,7 @@ encodeAbiParameters([{ type: 'tuple', components }], [envelope])
 
 This rule is covered by cross-language golden vectors. A malformed envelope does not necessarily revert at request time; validators can instead reach quorum on `INVALID_QUERY`, consuming the protocol fee. That is why the SDK owns this encoding rather than exposing it as a user option.
 
-## 9. Progress-event differences
+## 8. Progress-event differences
 
 The OG vote-count events `READ-TX-105-02-01` and `READ-TX-105-02-02` are not emitted. Mid-ballot tallies are not exposed by the node query API, and synthesizing them would be inaccurate.
 
@@ -596,27 +574,23 @@ Settlement progress is split into observable stages:
 | `READ-TX-106-05` | Refund sent (`RefundSent`) |
 | `READ-TX-106-06` | Refund rejected (`RefundFailed`) |
 
-The SDK locally aligned the truthful OG payload fields: `READ-TX-102-02` uses `totalValue`, `READ-TX-103-01` reports `enforceGasCheck`, and batch timeouts include `error: 'read timeout'`. The balance event is emitted before broadcast when the funding balance is available; enforced shortfalls stop execution before any request is sent.
-
-## 10. Timeout behavior
+## 9. Timeout behavior
 
 `advanced.*` was retained for power users and test scenarios. The default client polling timeout is no longer always 180 seconds. It is derived from the remaining request lifetime using the measured Push block time, with a 180-second ceiling and a 500-millisecond minimum. A client timeout still does not cancel the on-chain request; callers can resume it through `trackRead`.
 
-## 11. Expiry observability
+## 10. Expiry observability
 
 Expiry is performed by the node's EndBlocker. The resulting `expireExternalRead` execution has no ordinary, fetchable EVM transaction receipt and does not appear through `eth_getLogs`. The SDK therefore checks Cosmos `block_results` at the recorded expiry-attempt heights and parses `RequestExpired`, `RefundSent`, and `RefundFailed` from EndBlock events.
 
 Because a refund recipient can reject the push without preventing expiry, `EXPIRED` alone does not prove that the refund landed. `fees.refunded` and `fees.refundFailed` remain undefined when the EndBlock evidence cannot be recovered.
 
-## 12. Batching, chaining, UEA, and CEA decisions
+## 11. Unsupported flows and refund safety
 
-- Multiple read requests in one transaction are supported end-to-end and are ingested as independent validator requests.
-- Reads are parallel fan-out, not dependent hops.
 - Nested reads initiated inside a callback are not supported for v1. The shared reentrancy guard rejects them, and the outer fulfil path records the rejection as `CallbackFailed`.
 - `refundTo` defaults to the sending Push account. This is safe for EVM and SVM UEAs because both accept native Push payments; it was also verified on Donut. The SDK warns when the target is a contract that cannot be identified as a UEA.
 - CEA-originated reads remain an open chain-side issue: reads created through `CallExecuteUniversalTx` are not ingested, which can strand the callback budget. The node path must be fixed or the SDK must reject that signer route.
 
-## 13. Current constants, errors, and public surface
+## 12. Additional constants and errors
 
 Additional constants used by the implementation include:
 
@@ -629,8 +603,6 @@ Additional constants used by the implementation include:
 | `READ_TRACK_MIN_POLL_INTERVAL_MS` | `500` | Internal floor |
 | `READ_TRACK_MAX_TIMEOUT_MS` | `180_000` | Internal ceiling |
 
-The public `client.universal` read-state surface now contains the OG four methods only. The lower-level `simulateRead` implementation remains internal for contract validation and integration coverage.
-
 The implementation adds three public error classes that the OG list did not anticipate:
 
 - `InvalidReadQueryError` rejects malformed public query grammar before building a `ReadSpec`.
@@ -639,7 +611,7 @@ The implementation adds three public error classes that the OG list did not anti
 
 Execution can also surface stable `ReadStateError` codes such as `READ_REQUEST_TX_FAILED` and `READ_REQUEST_MISMATCH`. These preserve transaction hashes needed to recover reads from a partially successful sequential fallback; reducing every execution failure to the OG's generic `PushChainExecutionError` would lose that recovery context.
 
-## 14. Verification evidence
+## 13. Verification evidence
 
 Live Donut verification covered EVM, SVM, and Web2 reads, plus success, validator error, callback failure, expiry, EOA-originated requests, and UEA-originated requests. Observed reads settled in roughly 12–23 seconds during the verification run.
 
@@ -652,7 +624,7 @@ Key observations:
 - An expired request returned the full callback budget while retaining the protocol fee.
 - A UEA-originated request was discoverable by the exact transaction hash returned by `sendTransaction`, validating tx-hash-first recovery.
 
-## 15. Remaining work
+## 14. Remaining work
 
 1. Build and deploy the canonical `UniversalReadRegistry`, then pin `UNIVERSAL_READ_REGISTRY_ADDRESS` and `REGISTRY_CALLBACK_GAS`.
 2. Reconcile the future-facing callback option types with the stricter pre-registry runtime requirement.
