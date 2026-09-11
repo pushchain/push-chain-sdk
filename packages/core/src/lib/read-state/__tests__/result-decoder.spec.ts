@@ -14,10 +14,10 @@ describe('decodeReadResult', () => {
     ] })).toEqual({ kind: 'web2', values: [-12345n, 'price Δ', '0x1234'] });
   });
 
-  it('keeps a single dynamic array output nested within the output list', () => {
+  it('uses viem semantics for a single dynamic array output', () => {
     const abi = parseAbi(['function balances() view returns (uint256[])']);
     const data = encodeAbiParameters([{ type: 'uint256[]' }], [[1n, 2n ** 200n]]);
-    expect(decodeReadResult(data, { kind: 'evmCall', abi, functionName: 'balances' })).toEqual({ kind: 'evmCall', values: [[1n, 2n ** 200n]] });
+    expect(decodeReadResult(data, { kind: 'evmCall', abi, functionName: 'balances' })).toEqual({ kind: 'evmCall', value: [1n, 2n ** 200n] });
   });
   it('uint256 — EVM balance / SVM lamports / SPL amount (real Donut bytes)', () => {
     // read 0xf3d62fb9…: Sepolia balance of 0xdead
@@ -39,15 +39,15 @@ describe('decodeReadResult', () => {
     expect(decodeReadResult('0x', { kind: 'raw' })).toEqual({ kind: 'raw', value: '0x' });
   });
 
-  it('evmCall — single output unwrapped into an array; multiple outputs kept in order', () => {
+  it('evmCall — viem unwraps one output and preserves multiple outputs as a tuple', () => {
     const single = decodeReadResult(U256(42n), { kind: 'evmCall', abi: erc20Abi, functionName: 'balanceOf' });
-    expect(single).toEqual({ kind: 'evmCall', values: [42n] });
+    expect(single).toEqual({ kind: 'evmCall', value: 42n });
 
     const abi = parseAbi(['function getUserAccountData(address) view returns (uint256 collateral, uint256 debt, bool ok)']);
     const data = encodeAbiParameters([{ type: 'uint256' }, { type: 'uint256' }, { type: 'bool' }], [1n, 2n, true]);
     expect(decodeReadResult(data, { kind: 'evmCall', abi, functionName: 'getUserAccountData' })).toEqual({
       kind: 'evmCall',
-      values: [1n, 2n, true],
+      value: [1n, 2n, true],
     });
   });
 

@@ -2,13 +2,13 @@ import '@e2e/shared/setup';
 /**
  * E2E · read state · EVM native balance, requested by a Push-native EOA.
  *
- * prepareRead → simulateRead → sendTransaction(to: FullBudgetReadClient) →
+ * prepareRead → sendTransaction(to: FullBudgetReadClient) →
  * trackRead({ txHash }) → wait() → value === Sepolia balance at the pinned block.
  * Costs: the callback budget (refunded minus burn) + Push gas. ~0.01 PC.
  */
 import { PushChain } from '../../../src';
 import { CHAIN } from '../../../src/lib/constants/enums';
-import { CALLBACK_GAS, CALLBACK_SELECTOR, FULL_BUDGET_CLIENT, createProgressTracker, makePushEoaClient, pushKey, sendRead, SLOW_PATH, retryTruth, sepoliaTruth } from '../_shared';
+import { CALLBACK_GAS, FULL_BUDGET_CLIENT, createProgressTracker, makePushEoaClient, pushKey, sendRead, SLOW_PATH, retryTruth, sepoliaTruth } from '../_shared';
 
 const SUBJECT = '0x000000000000000000000000000000000000dEaD' as const;
 const READ = PushChain.CONSTANTS.READ;
@@ -31,9 +31,6 @@ d('read state › EVM balance from a Push EOA', () => {
     expect(prepared.spec.blockNumber).toBe(prepared.preflight.observedChainHeight - 1n);
     expect(prepared.fees.total).toBe(prepared.value);
     expect(prepared.warnings).toEqual([]);
-
-    const sim = await client.universal.simulateRead(prepared, { appContract: FULL_BUDGET_CLIENT, callbackSelector: CALLBACK_SELECTOR });
-    expect(sim).toEqual({ ok: true });
 
     const { txHash, read } = await sendRead(client, prepared, FULL_BUDGET_CLIENT);
     expect(read.txHash).toBe(txHash);

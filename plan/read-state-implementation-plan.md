@@ -30,7 +30,7 @@ Go run of `envelope-vectors.json` (hand the file to the chain team) and the webs
 - Public grammar follows the v2 spec: `prepareRead(subject, options)` with `chain` /
   `token` / `abi+functionName+args` / `storageSlot` / `web2`, adapted in
   `read-state/read-params.ts`. `callback.gasLimit` is mandatory until the registry pins
-  `REGISTRY_CALLBACK_GAS`. Web2 is `READ_CHAIN_WEB2` / `CONSTANTS.READ.WEB2 = 'web2:https'`,
+  `REGISTRY_CALLBACK_GAS`. Web2 is `CHAIN.WEB2` / `CONSTANTS.READ.WEB2 = 'web2:https'`,
   not a `CHAIN` member — so the §4 "exclude from `sendTransaction`" item is satisfied by the
   type system with no runtime guard.
 - The N1 "refuse `prepareRead` for a CEA signer" guard was **not** added: `prepareRead` never
@@ -59,7 +59,7 @@ tests pass.
 | I5 | `refundTo` is required by the contract, defaults to the sending account (UEAs have `receive()`), warns for non-UEA contracts. | Rejected refund → forfeited to admin pool. |
 | I6 | Tracking is tx-hash-first; `requestId` recovered from `ReadRequested` logs, filtered on **address and topic0**. | `requestId` is unknowable pre-broadcast; address filter is a security control. |
 | I7 | Codecs for `ucallback.v1` are **hand-authored**. Never run `yarn build:proto`. | The script `rm -r`s hand-authored `generated/uexecutor/{v1/query,v2}`. |
-| I8 | `prepareRead`, `simulateRead`, `trackRead` work in **read-only mode**; `read` / `executeReads` require a signer. | Preparing and observing do not sign; executing app requests does. |
+| I8 | `prepareRead` and `trackRead` work in **read-only mode**; `read` / `executeReads` require a signer. The low-level `simulateRead` helper remains internal. | Preparing and observing do not sign; executing app requests does. |
 | I9 | Contract surface = `feat-read-state@f8d1a0c` (7-field spec, 2-arg `estimateFee`). Selectors pinned by test. | The team's draft was pinned to a stale branch. |
 | I10 | We never commit to `push-chain-core-contracts` or `push-chain`. | Repo ownership. |
 

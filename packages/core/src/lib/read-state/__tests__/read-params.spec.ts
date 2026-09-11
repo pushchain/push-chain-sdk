@@ -2,7 +2,7 @@ import { PublicKey } from '@solana/web3.js';
 import { CHAIN } from '../../constants/enums';
 import { InvalidReadQueryError } from '../errors';
 import { deriveAssociatedTokenAddress } from '../envelopes/svm';
-import { ERC20_BALANCE_OF_ABI, READ_CHAIN_WEB2, toBuildReadSpecParams, toLifecycleOptions, toReadQuery } from '../read-params';
+import { ERC20_BALANCE_OF_ABI, toBuildReadSpecParams, toLifecycleOptions, toReadQuery } from '../read-params';
 
 const USER = '0x0A16CBa65FfCAa4C2282b27b027Ab4A2fE46E0Bf' as const;
 const TOKEN = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238' as const;
@@ -44,7 +44,7 @@ describe('read(subject, options) grammar → ReadQuery', () => {
   });
   it('web2: subject is the URL, options.web2 becomes the http query', () => {
     const web2 = { extract: [{ path: '$.id', valueType: 'uint256' as const }], headers: { accept: 'application/json' } };
-    expect(toReadQuery('https://example.com/todos/1', { chain: READ_CHAIN_WEB2, web2 })).toEqual({ type: 'http', url: 'https://example.com/todos/1', ...web2 });
+    expect(toReadQuery('https://example.com/todos/1', { chain: CHAIN.WEB2, web2 })).toEqual({ type: 'http', url: 'https://example.com/todos/1', ...web2 });
   });
 
   const bad: [string, string, Parameters<typeof toReadQuery>[1]][] = [
@@ -52,8 +52,8 @@ describe('read(subject, options) grammar → ReadQuery', () => {
     ['functionName without abi', USER, { chain: CHAIN.ETHEREUM_SEPOLIA, functionName: 'x' }],
     ['abi without functionName', USER, { chain: CHAIN.ETHEREUM_SEPOLIA, abi: ABI }],
     ['web2 key on a blockchain', USER, { chain: CHAIN.ETHEREUM_SEPOLIA, web2: { extract: [] } }],
-    ['web2 chain without web2 key', 'https://x', { chain: READ_CHAIN_WEB2 }],
-    ['web2 subject not https', 'http://x', { chain: READ_CHAIN_WEB2, web2: { extract: [] } }],
+    ['web2 chain without web2 key', 'https://x', { chain: CHAIN.WEB2 }],
+    ['web2 subject not https', 'http://x', { chain: CHAIN.WEB2, web2: { extract: [] } }],
     ['EVM subject not an address', 'bob', { chain: CHAIN.ETHEREUM_SEPOLIA }],
     ['EVM token not an address', USER, { chain: CHAIN.ETHEREUM_SEPOLIA, token: 'usdc' }],
     ['SVM storageSlot', SOL_OWNER, { chain: CHAIN.SOLANA_DEVNET, storageSlot: 1n }],
@@ -75,11 +75,21 @@ describe('toBuildReadSpecParams', () => {
       query: { type: 'accountBalance', target: USER },
       callbackGasLimit: 200_000n, refundTo: USER, blockNumber: 5n, minConfirmations: 3, expiryBlocks: 10n, maxFee: 7n,
     });
-    expect(toBuildReadSpecParams('https://x/y', { chain: READ_CHAIN_WEB2, web2: { extract: [{ path: '$', valueType: 'string' }] }, ...cb }).destination)
+    expect(toBuildReadSpecParams('https://x/y', { chain: CHAIN.WEB2, web2: { extract: [{ path: '$', valueType: 'string' }] }, ...cb }).destination)
       .toEqual({ chainNamespace: 'web2', chainId: 'https' });
   });
   it('callback.gasLimit is required while the registry is unbuilt', () => {
     expect(() => toBuildReadSpecParams(USER, { chain: CHAIN.ETHEREUM_SEPOLIA })).toThrow(/callback.gasLimit is required/);
+  });
+  it('keeps SVM and web2 pinning internal', () => {
+    expect(() => toBuildReadSpecParams(SOL_OWNER, { chain: CHAIN.SOLANA_DEVNET, blockNumber: 1n, ...cb }))
+      .toThrow(/do not expose blockNumber or minConfirmations/);
+    expect(() => toBuildReadSpecParams('https://x/y', {
+      chain: CHAIN.WEB2,
+      web2: { extract: [{ path: '$', valueType: 'string' }] },
+      minConfirmations: 1,
+      ...cb,
+    })).toThrow(/do not expose blockNumber or minConfirmations/);
   });
   it('lifecycle options map advanced.* to the tracker', () => {
     expect(toLifecycleOptions({ advanced: { pollingIntervalMs: 700, timeout: 9000 }, resultShape: { kind: 'raw' } }))

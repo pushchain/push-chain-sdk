@@ -221,7 +221,7 @@ describe('trackRead (settled reads — deterministic forever)', () => {
     expect(svm.callbackDelivered).toBe(true);
     expect(svm.value).toBe(0x2b5786fdn); // lamports, as decoded on 2026-09-09
     const [web2] = await trackRead(deps(), { txHash: '0xd0c50142b2a566092b2f8e389f3d442b606b04c0e8064e85b05b5bc87fbf9a99' });
-    expect(web2.chain).toBeUndefined();
+    expect(web2.chain).toBe(CHAIN.WEB2);
     expect(web2.destination.caip2).toBe('web2:https');
     expect(web2.callbackDelivered).toBe(true);
     expect(web2.value).toEqual([1n, false]); // $.id, $.completed of the todo endpoint
@@ -245,8 +245,6 @@ describe('PushChain.universal read-state surface (read-only client, Donut)', () 
     expect(p.spec.revertRecipient).toBe(EOA);
     expect(p.fees.total).toBe(p.value);
     expect(p.encodedQuery.resultShape).toEqual({ kind: 'uint256' });
-    const sim = await client.universal.simulateRead(p, { appContract: CLIENT, callbackSelector: toFunctionSelector('onUniversalData(uint256,bytes)') });
-    expect(sim).toEqual({ ok: true });
   }, 60_000);
 
   it('token / call / web2 grammars prepare', async () => {
@@ -273,7 +271,7 @@ describe('PushChain.universal read-state surface (read-only client, Donut)', () 
   it('default receiver still requires a registry; custom execution requires a signer', async () => {
     await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { gasLimit: 1n } })).rejects.toBeInstanceOf(ReadRegistryUnavailableError);
     await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA })).rejects.toMatchObject({ code: 'INVALID_READ_QUERY' }); // validation first
-    await expect(client.universal.executeReads([])).resolves.toEqual([]);
+    await expect((client.universal.executeReads as unknown as (reads: []) => Promise<unknown>)([])).rejects.toThrow(/at least one prepared read/);
     // a malformed entrypoint fails before any preflight or signer check
     await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: CLIENT, gasLimit: 200_000n } })).rejects.toMatchObject({ code: 'INVALID_READ_QUERY' });
     const request = { abi: [{ type: 'function', name: 'request', stateMutability: 'payable', inputs: [], outputs: [] }] as const, functionName: 'request' };
@@ -287,9 +285,4 @@ describe('PushChain.universal read-state surface (read-only client, Donut)', () 
     await expect(client.universal.executeReads([prepared])).rejects.toThrow(/Read only mode/);
   }, 60_000);
 
-  it('simulateRead returns the deployed custom error for an invalid pinned height', async () => {
-    const prepared = await client.universal.prepareRead(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { gasLimit: 200_000n } });
-    const invalid = { ...prepared, spec: { ...prepared.spec, blockNumber: prepared.preflight.observedChainHeight + 1_000_000n } };
-    expect(await client.universal.simulateRead(invalid, { appContract: CLIENT, callbackSelector: toFunctionSelector('onUniversalData(uint256,bytes)') })).toMatchObject({ ok: false, errorName: 'InvalidBlockNumber' });
-  }, 60_000);
 });

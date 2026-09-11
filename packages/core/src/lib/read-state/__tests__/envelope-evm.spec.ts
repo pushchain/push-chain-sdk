@@ -10,7 +10,7 @@ const DEAD = '0x000000000000000000000000000000000000dEaD' as const;
 it('decodes the overload selected by the encoded arguments', () => {
   const abi = parseAbi(['function foo(address x) view returns (bool)', 'function foo(uint256 x) view returns (uint256)']);
   const query = encodeEvmQueryEnvelope({ type: 'contractCall', target: DEAD, abi, functionName: 'foo', args: [42n] }, { blockNumber: 1n });
-  expect(decodeReadResult(encodeAbiParameters([{ type: 'uint256' }], [42n]), query.resultShape)).toEqual({ kind: 'evmCall', values: [42n] });
+  expect(decodeReadResult(encodeAbiParameters([{ type: 'uint256' }], [42n]), query.resultShape)).toEqual({ kind: 'evmCall', value: 42n });
 });
 
 // The exact tuple shape universalClient/externalchains/evm/read_envelope.go unpacks.

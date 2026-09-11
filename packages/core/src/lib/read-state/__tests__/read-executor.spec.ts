@@ -48,7 +48,7 @@ function setup(records: UniversalReadResponse[]) {
 describe('executeReads app-contract path', () => {
   it('empty batches perform no execution or tracking', async () => {
     const { deps, execute, trackRead } = setup([]);
-    expect(await executeReads(deps, [])).toEqual([]);
+    await expect(executeReads(deps, [])).rejects.toThrow(/at least one prepared read/);
     expect(execute).not.toHaveBeenCalled();
     expect(trackRead).not.toHaveBeenCalled();
   });
@@ -57,7 +57,8 @@ describe('executeReads app-contract path', () => {
     const p = prepared(), a = response(p, 1), b = response(p, 2);
     const { deps } = setup([b, a]);
     const result = await executeReads(deps, [p, p]);
-    expect(result.map((r) => r.requestId)).toEqual([a.requestId, b.requestId]);
+    expect(result.reads.map((r) => r.requestId)).toEqual([a.requestId, b.requestId]);
+    expect(result).toMatchObject({ txHash: hash, count: 2, atomic: true });
   });
 
   it.each(['callbackTarget', 'callbackGasLimit'])('rejects a matching spec with a different %s', async (field) => {
@@ -127,30 +128,36 @@ describe('executeReads app-contract path', () => {
     const ra = response(a, 1), rb = response(b, 2);
     const { deps, execute, trackRead } = setup([rb, ra]); // node order is request-ID order
     const result = await executeReads(deps, [a, b], { advanced: { enforceGasCheck: true } });
-    expect(result.map((r) => r.requestId)).toEqual([ra.requestId, rb.requestId]);
+    expect(result.reads.map((r) => r.requestId)).toEqual([ra.requestId, rb.requestId]);
     const calls = execute.mock.calls[0][0].data;
     expect(calls.map((c: { value: bigint }) => c.value)).toEqual([a.value, b.value]);
     expect(decodeFunctionData({ abi, data: calls[0].data }).functionName).toBe('request');
     expect(execute.mock.calls[0][1].enforceGasCheck).toBe(true);
-    expect(trackRead).toHaveBeenCalledWith({ requestId: ra.requestId }, expect.objectContaining({ resultShape: a.encodedQuery.resultShape }));
+    expect(trackRead).toHaveBeenCalledWith({ requestId: ra.requestId }, expect.objectContaining({ resultShape: a.resultShape }));
     expect(ra.wait).toHaveBeenCalledTimes(1);
   });
 
   it('waitForCompletion=false returns resumable snapshots without polling', async () => {
     const p = prepared(), r = response(p, 1);
     const { deps, execute } = setup([r]);
-    expect(await executeReads(deps, [p], { waitForCompletion: false })).toEqual([r]);
+    const batch = await executeReads(deps, [p], { waitForCompletion: false });
+    expect(batch.reads).toEqual([r]);
+    expect(batch).toMatchObject({ txHash: hash, count: 1, atomic: true });
     expect(execute.mock.calls[0][0].to).toBe(target);
     expect(typeof execute.mock.calls[0][0].data).toBe('string');
     expect(r.wait).not.toHaveBeenCalled();
+    expect(await batch.wait()).toEqual([expect.objectContaining({ requestId: r.requestId, isTerminal: true })]);
+    expect(r.wait).toHaveBeenCalledTimes(1);
   });
 
   it('collects every hash after sequential wallet fallback', async () => {
     const a = prepared(1n), b = prepared(2n), ra = response(a, 1), rb = response(b, 2);
     const { deps, execute, trackRead } = setup([ra, rb]);
-    execute.mockResolvedValue({ hash: secondHash, transactionHashes: [hash, secondHash], wait: async () => ({ status: 1 }) });
+    execute.mockResolvedValue({ hash: secondHash, atomic: false, transactionHashes: [hash, secondHash], wait: async () => ({ status: 1 }) });
     trackRead.mockImplementation(async (ref) => 'txHash' in ref ? (ref.txHash === hash ? [ra] : [rb]) : [ra, rb].find((r) => r.requestId === ref.requestId));
-    expect((await executeReads(deps, [a, b])).map((r) => r.requestId)).toEqual([ra.requestId, rb.requestId]);
+    const batch = await executeReads(deps, [a, b]);
+    expect(batch.reads.map((r) => r.requestId)).toEqual([ra.requestId, rb.requestId]);
+    expect(batch).toMatchObject({ txHash: secondHash, atomic: false, transactionHashes: [hash, secondHash] });
     expect(trackRead).toHaveBeenCalledWith({ txHash: hash }, expect.anything());
     expect(trackRead).toHaveBeenCalledWith({ txHash: secondHash }, expect.anything());
   });
@@ -201,13 +208,27 @@ describe('executeReads app-contract path', () => {
   it('preserves callback failure responses and propagates read timeouts', async () => {
     const p = prepared(), r = response(p, 1);
     (r.wait as jest.Mock).mockResolvedValueOnce({ ...r, status: 3, callbackDelivered: false });
-    expect((await executeReads(setup([r]).deps, [p]))[0].callbackDelivered).toBe(false);
+    expect((await executeReads(setup([r]).deps, [p])).reads[0].callbackDelivered).toBe(false);
     (r.wait as jest.Mock).mockRejectedValueOnce(new ReadTimeoutError(1, 1000));
     await expect(executeReads(setup([r]).deps, [p])).rejects.toBeInstanceOf(ReadTimeoutError);
   });
 });
 
 describe('execution validation and observable progress', () => {
+  it('emits the OG balance event and enforces the read-value check when requested', async () => {
+    const p = prepared();
+    const { deps, execute } = setup([response(p, 1)]);
+    const hook = jest.fn();
+    deps.getReadBalance = jest.fn().mockResolvedValue(p.value - 1n);
+    await expect(executeReads(deps, [p], { progressHook: hook, advanced: { enforceGasCheck: true } }))
+      .rejects.toMatchObject({ code: 'INSUFFICIENT_READ_BALANCE' });
+    expect(hook.mock.calls.map(([event]) => event)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'READ-TX-103-01', response: expect.objectContaining({ enforceGasCheck: true, sufficient: false }) }),
+      expect.objectContaining({ id: 'READ-TX-103-02' }),
+    ]));
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it('does not broadcast any read when a later prepared request is invalid', async () => {
     const a = prepared(), b = prepared(1n);
     const { deps, execute } = setup([]);
@@ -232,11 +253,15 @@ describe('execution validation and observable progress', () => {
     const a = prepared(), b = prepared(1n);
     const { deps } = setup([response(a, 1), response(b, 2)]);
     const hook = jest.fn();
-    await executeReads(deps, [a, b], { progressHook: hook, waitForCompletion: false });
-    const ids = hook.mock.calls.map(([event]) => event.id);
+    const batch = await executeReads(deps, [a, b], { progressHook: hook, waitForCompletion: false });
+    let ids = hook.mock.calls.map(([event]) => event.id);
     expect(ids.filter(id => id === 'READ-TX-104-02')).toHaveLength(2);
     expect(ids).not.toContain('READ-TX-999-01');
     expect(ids).not.toContain('READ-TX-002-99-99');
+    await batch.wait();
+    ids = hook.mock.calls.map(([event]) => event.id);
+    expect(ids.filter(id => id === 'READ-TX-002-99-99')).toHaveLength(2);
+    expect(ids.at(-1)).toBe('READ-TX-999-01');
   });
 
   it('reports callback failure as batch failure while resolving terminal results', async () => {

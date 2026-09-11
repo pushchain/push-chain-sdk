@@ -8,10 +8,10 @@ import type { ReadNamespace } from '../constants/read-state';
 
 /**
  * Where a read goes. `CHAIN` enum values are CAIP-2 and split cleanly; the
- * explicit form is the escape hatch and the only way to address web2
- * (`WEB2_DESTINATION`).
+ * explicit form is the low-level escape hatch; the public API uses `CHAIN.WEB2`.
  */
-export type ReadDestination = { chain: CHAIN } | { chainNamespace: string; chainId: string };
+export type ReadChain = CHAIN | typeof CHAIN.WEB2;
+export type ReadDestination = { chain: ReadChain } | { chainNamespace: string; chainId: string };
 
 export type ResolvedDestination = {
   chainNamespace: string;
@@ -98,7 +98,7 @@ export type DecodedReadResult =
   | { kind: 'uint256'; value: bigint }
   | { kind: 'bytes32'; value: Hex }
   | { kind: 'raw'; value: Hex }
-  | { kind: 'evmCall'; values: readonly unknown[] }
+  | { kind: 'evmCall'; value: unknown }
   | { kind: 'web2'; values: readonly unknown[] };
 
 // ---------------------------------------------------------------------------
@@ -211,6 +211,8 @@ export interface PreparedRead<T = unknown> {
   readonly [preparedReadValue]?: T;
   /** App request entrypoint retained for read()/executeReads(). */
   callback?: ReadCallback;
+  /** Public destination identifier used to prepare this read. */
+  chain: ReadChain;
   spec: ReadSpec;
   /** Positional form for viem calls. */
   specTuple: ReadSpecTuple;
@@ -225,6 +227,8 @@ export interface PreparedRead<T = unknown> {
   callbackGasLimit: bigint;
   /** Carries the result shape for decoding, and any encoder warnings. */
   encodedQuery: EncodedReadQuery;
+  /** Public decoder description retained through execution. */
+  resultShape: ReadResultShape;
   preflight: ReadPreflight;
   /** Advisories: sensitive headers, refundTo is a non-UEA contract, … */
   warnings: string[];
@@ -320,8 +324,8 @@ export interface UniversalReadResponse<T = unknown> {
   /** Push tx that carried the request */
   txHash: Hex;
   destination: ResolvedDestination;
-  /** The destination as a `CHAIN` member when it is one (never for web2). */
-  chain?: CHAIN;
+  /** Required read destination, including `CHAIN.WEB2`. */
+  chain: ReadChain;
 
   // outcome
   status: UNIVERSAL_READ_STATUS;
@@ -364,6 +368,23 @@ export interface UniversalReadResponse<T = unknown> {
   wait(opts?: ReadLifecycleOptions): Promise<UniversalReadResponse<T>>;
   /** One fresh snapshot, no polling. */
   refresh(): Promise<UniversalReadResponse<T>>;
+}
+
+export type ReadResponseTuple<R extends readonly PreparedRead[]> = {
+  -readonly [K in keyof R]: UniversalReadResponse<R[K] extends PreparedRead<infer T> ? T : unknown>;
+};
+
+/** One execution containing one or more independently settled read requests. */
+export interface BatchReadResponse<R extends readonly PreparedRead[] = readonly PreparedRead[]> {
+  /** Primary Push transaction hash. For sequential fallback, see `transactionHashes`. */
+  txHash: Hex;
+  /** All request transactions in submission order when execution was non-atomic. */
+  transactionHashes?: readonly Hex[];
+  reads: ReadResponseTuple<R>;
+  count: number;
+  atomic: boolean;
+  /** Wait until every read is terminal. Terminal failures resolve; only timeout throws. */
+  wait(opts?: Omit<ReadLifecycleOptions, 'resultShape'>): Promise<ReadResponseTuple<R>>;
 }
 
 // ---------------------------------------------------------------------------

@@ -40,12 +40,12 @@ d('read state › EVM typed contract call', () => {
     });
     expect(prepared.encodedQuery.resultShape).toMatchObject({ kind: 'evmCall', functionName: 'totalSupply' });
 
-    const [done] = await client.universal.executeReads([prepared], { advanced: { timeout: SLOW_PATH.wait.timeoutMs, pollingIntervalMs: SLOW_PATH.wait.pollingIntervalMs } });
+    const { reads: [done] } = await client.universal.executeReads([prepared], { advanced: { timeout: SLOW_PATH.wait.timeoutMs, pollingIntervalMs: SLOW_PATH.wait.pollingIntervalMs } });
     expect(done.status).toBe(READ.STATUS.FULFILLED);
     expect(done.callbackDelivered).toBe(true);
 
     const truth = await retryTruth(() => sepoliaRpc.readContract({ address: TOKEN, abi: ABI, functionName: 'totalSupply', args: [], blockNumber: prepared.spec.blockNumber }));
-    expect(done.decoded).toEqual({ kind: 'evmCall', values: [truth] });
-    expect(done.value).toEqual([truth]);
+    expect(done.decoded).toEqual({ kind: 'evmCall', value: truth });
+    expect(done.value).toBe(truth);
   }, SLOW_PATH.jestTimeoutMs);
 });

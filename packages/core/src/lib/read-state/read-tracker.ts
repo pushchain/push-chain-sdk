@@ -188,7 +188,7 @@ async function buildResponse(deps: TrackReadDeps, record: UniversalRead, opts: R
     requestId,
     txHash,
     destination,
-    chain: chainFromCaip2(destination.caip2),
+    chain: chainFromCaip2(destination.caip2) ?? (destination.caip2 as UniversalReadResponse['chain']),
     status,
     isTerminal,
     callbackDelivered,
@@ -301,7 +301,8 @@ export function inferResultShape(namespace: string, query: Hex): ReadResultShape
   }
 }
 
-function chainFromCaip2(caip2: string): CHAIN | undefined {
+function chainFromCaip2(caip2: string): CHAIN | typeof CHAIN.WEB2 | undefined {
+  if (caip2 === CHAIN.WEB2) return CHAIN.WEB2;
   return (Object.values(CHAIN) as string[]).includes(caip2) ? (caip2 as CHAIN) : undefined;
 }
 

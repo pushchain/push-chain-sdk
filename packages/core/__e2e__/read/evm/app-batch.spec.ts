@@ -18,16 +18,17 @@ async function checkBatch(client: PushChain, atomic: boolean) {
     client.universal.prepareRead(token, { ...common, storageSlot: 0n }),
     client.universal.prepareRead(token, { ...common, abi: tokenAbi, functionName: 'totalSupply' }),
   ]);
-  const snapshots = await client.universal.executeReads(prepared, { waitForCompletion: false });
-  expect(snapshots).toHaveLength(3);
-  const result = await Promise.all(snapshots.map((r) => r.wait(SLOW_PATH.wait)));
+  const batch = await client.universal.executeReads(prepared, { waitForCompletion: false });
+  expect(batch).toMatchObject({ count: 3, atomic });
+  expect(batch.reads).toHaveLength(3);
+  const result = await batch.wait(SLOW_PATH.wait);
   const rpc = sepoliaTruth();
   const truth = await retryTruth(() => Promise.all([
     rpc.getBalance({ address: subject, blockNumber: prepared[0].spec.blockNumber }),
     rpc.getStorageAt({ address: token, slot: `0x${'0'.repeat(64)}`, blockNumber: prepared[1].spec.blockNumber }),
     rpc.readContract({ address: token, abi: tokenAbi, functionName: 'totalSupply', blockNumber: prepared[2].spec.blockNumber }),
   ]));
-  expect(result.map((r) => r.value)).toEqual([truth[0], truth[1], [truth[2]]]);
+  expect(result.map((r) => r.value)).toEqual([truth[0], truth[1], truth[2]]);
   expect(new Set(result.map((r) => r.requestId)).size).toBe(3);
   if (atomic) expect(new Set(result.map((r) => r.txHash)).size).toBe(1);
   for (const r of result) {

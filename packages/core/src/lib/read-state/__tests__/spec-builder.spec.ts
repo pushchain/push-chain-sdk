@@ -47,6 +47,8 @@ describe('buildReadSpecFromPreflight — defaults', () => {
 
   it('value = protocolFee + sized budget; maxFee = value by default, or value × (1 + bps)', () => {
     const p = buildReadSpecFromPreflight(pf({ protocolFee: 1_000n }), { ...evmBal, refundTo: EOA });
+    expect(p.chain).toBe(CHAIN.ETHEREUM_SEPOLIA);
+    expect(p.resultShape).toBe(p.encodedQuery.resultShape);
     expect(p.callbackBudget).toBe(200_000n * 1_000_000_000n * BigInt(CALLBACK_BUDGET_BUFFER));
     expect(p.value).toBe(1_000n + p.callbackBudget);
     expect(p.spec.maxFee).toBe(p.value);

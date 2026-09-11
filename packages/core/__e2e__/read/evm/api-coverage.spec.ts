@@ -21,7 +21,7 @@ d('read state › public API coverage', () => {
     expect(refreshed.requestId).toBe(snapshot.requestId);
     const done = await refreshed.wait(SLOW_PATH.wait);
     const balance = await retryTruth(() => sepoliaTruth().readContract({ address: token, abi: erc20Abi, functionName: 'balanceOf', args: [subject], blockNumber: done.request.spec.blockNumber }));
-    expect(done.value).toEqual([balance]);
+    expect(done.value).toBe(balance);
     expect(done.callbackDelivered).toBe(true);
     expect(events.filter((id) => id === 'READ-TX-199-01')).toHaveLength(1);
   }, SLOW_PATH.jestTimeoutMs);
@@ -38,7 +38,7 @@ d('read state › public API coverage', () => {
       callback, expiryBlocks: SLOW_PATH.expiryBlocks, chain: READ.WEB2,
       web2: { extract: [{ path: '$.missingReadStateTestField', valueType: 'uint256' }] },
     });
-    const results = await client.universal.executeReads([balance, reverted, missingWeb2, balance], {
+    const { reads: results } = await client.universal.executeReads([balance, reverted, missingWeb2, balance], {
       advanced: { timeout: SLOW_PATH.wait.timeoutMs, pollingIntervalMs: SLOW_PATH.wait.pollingIntervalMs },
     });
     expect(new Set(results.map((r) => r.requestId)).size).toBe(4);

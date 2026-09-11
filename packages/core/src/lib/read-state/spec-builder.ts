@@ -23,6 +23,7 @@ import type {
   BuildReadSpecParams,
   EncodedReadQuery,
   PreparedRead,
+  ReadChain,
   ReadPreflight,
   ReadSpec,
   ReadSpecTuple,
@@ -134,6 +135,7 @@ export function buildReadSpecFromPreflight(
 
   return {
     callback: params.callback,
+    chain: dest.caip2 as ReadChain,
     spec,
     specTuple: toTuple(spec),
     encodedSpec: encodeSpec(spec),
@@ -143,6 +145,7 @@ export function buildReadSpecFromPreflight(
     fees: { protocolFee: preflight.protocolFee, callbackBudget, total: value },
     callbackGasLimit: params.callbackGasLimit,
     encodedQuery,
+    resultShape: encodedQuery.resultShape,
     preflight,
     warnings: [...encodedQuery.warnings],
   };

@@ -18,8 +18,8 @@ import { UNIVERSAL_READ_STATUS, READ_STATUS, READ_ERROR_CODE } from '../read-sta
 
 /** `PushChain.CONSTANTS.READ` — cross-chain read state. Values verified against the deployed UniversalCallback. */
 export const READ_CONSTANTS = {
-  /** Web2 is not a CHAIN member; pass this as `chain` to read an https endpoint. */
-  WEB2: 'web2:https',
+  /** Read-only Web2 destination. Equivalent to `CHAIN.WEB2`. */
+  WEB2: CHAIN.WEB2,
   NAMESPACE: READ_NAMESPACE,
   MAX_CALLBACK_GAS_LIMIT,
   MIN_CONFIRMATIONS_FLOOR,

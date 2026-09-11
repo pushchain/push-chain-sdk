@@ -35,8 +35,8 @@ import type {
   CascadeExecutionOptions,
   TransactionExecutionOptions,
 } from '../orchestrator/orchestrator.types';
-import type { Address, Hex } from 'viem';
-import type { PreparedRead, SimulateReadResult, UniversalReadResponse } from '../read-state/read-state.types';
+import type { Hex } from 'viem';
+import type { BatchReadResponse, PreparedRead, UniversalReadResponse } from '../read-state/read-state.types';
 import {
   toBuildReadSpecParams,
   toLifecycleOptions,
@@ -186,19 +186,12 @@ export class PushChain {
      */
     prepareRead: <const O extends ReadPrepareOptions>(subject: string, options: O & ValidateReadCall<O>) => Promise<PreparedRead<ReadValue<O>>>;
     /**
-     * eth_call `requestExternalReadSelf` as `appContract` so contract-side validation
-     * reverts surface before broadcast, decoded into the contract's custom errors.
-     */
-    simulateRead: (
-      prepared: PreparedRead,
-      options: { appContract: Address; callbackSelector: Hex; staleAfterMs?: number }
-    ) => Promise<SimulateReadResult>;
-    /**
      * Execute app request calls as a multicall; wallets without EIP-7702 support
-     * use separate transactions. Results preserve prepared order and decode shapes.
-     * Waits for completion unless waitForCompletion is false. Requires a signer.
+     * use separate transactions. Returns a typed BatchReadResponse containing
+     * transaction metadata and results in prepared order. Waits for completion
+     * unless waitForCompletion is false. Requires a signer.
      */
-    executeReads: <const R extends readonly PreparedRead[]>(reads: R, options?: ReadExecuteOptions) => Promise<{ -readonly [K in keyof R]: UniversalReadResponse<R[K] extends PreparedRead<infer T> ? T : unknown> }>;
+    executeReads: <const R extends readonly PreparedRead[]>(reads: R, options?: ReadExecuteOptions) => Promise<BatchReadResponse<R>>;
     /**
      * Resume a read by the Push tx that requested it (array — one tx can carry several)
      * or by requestId (single). Each response has `wait()` / `refresh()`.
@@ -358,20 +351,16 @@ export class PushChain {
         assertRequestEntrypoint(options.callback, 'read'); // before preflight: no RPC for a malformed request
         if (this.isReadMode) throw new Error('Read only mode cannot call read function');
         const prepared = await orchestrator.prepareRead(params, options.progressHook);
-        const [response] = await executePreparedReads(orchestrator, [prepared], options);
+        const { reads: [response] } = await executePreparedReads(orchestrator, [prepared] as const, options);
         return response as UniversalReadResponse<ReadValue<O>>;
       },
       prepareRead: <const O extends ReadPrepareOptions>(subject: string, options: O & ValidateReadCall<O>) => {
         return orchestrator.prepareRead.bind(orchestrator)(toBuildReadSpecParams(subject, options)) as Promise<PreparedRead<ReadValue<O>>>;
       },
-      simulateRead: (prepared: PreparedRead, options: { appContract: Address; callbackSelector: Hex; staleAfterMs?: number }) => {
-        return orchestrator.simulateRead.bind(orchestrator)(prepared, options);
-      },
       executeReads: (async (reads: readonly PreparedRead[], options?: ReadExecuteOptions) => {
-        if (reads.length === 0) return [];
         reads.forEach((r) => assertRequestEntrypoint(r.callback));
         if (this.isReadMode) throw new Error('Read only mode cannot call executeReads function');
-        return executePreparedReads(orchestrator, [...reads], options);
+        return executePreparedReads(orchestrator, reads, options);
       }) as PushChain['universal']['executeReads'],
       trackRead: ((ref: { txHash: Hex } | { requestId: Hex | bigint }, options?: ReadTrackOptions & { progressHook?: (e: ProgressEvent) => void }) => {
         const opts = { ...toLifecycleOptions(options), progressHook: options?.progressHook };

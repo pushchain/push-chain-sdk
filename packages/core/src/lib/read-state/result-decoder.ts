@@ -45,9 +45,7 @@ export function decodeReadResult(resultData: Hex, shape: ReadResultShape): Decod
         const item = getAbiItem({ abi: shape.abi, name: shape.functionName }) as AbiFunction | undefined;
         if (!item) throw new ReadDecodeError(`function not found in abi: ${shape.functionName}`);
         const decoded = decodeFunctionResult({ abi: shape.abi, functionName: shape.functionName, data: resultData });
-        // viem unwraps a single output; normalise to an array so callers index uniformly.
-        const values = item.outputs.length === 1 ? [decoded] : (decoded as readonly unknown[]);
-        return { kind: 'evmCall', values };
+        return { kind: 'evmCall', value: decoded };
       }
       case 'web2': {
         if (shape.extract.length === 0) throw new ReadDecodeError('web2 shape has no extracts');

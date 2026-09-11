@@ -5,7 +5,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import type { Hex } from 'viem';
-import { PUSH_NETWORK } from '../../constants/enums';
+import { CHAIN, PUSH_NETWORK } from '../../constants/enums';
 import { READ_TRACK_MAX_TIMEOUT_MS, READ_TRACK_POLL_INTERVAL_MS } from '../../constants/read-state';
 import { QueryUniversalReadResponse, UniversalReadStatus, type UniversalRead } from '../../generated/ucallback/v1';
 import { PROGRESS_HOOK, type ProgressEvent } from '../../progress-hook/progress-hook.types';
@@ -243,7 +243,7 @@ describe('trackRead — terminal records straight from the node', () => {
     expect(svm.request.spec.account.owner.length).toBe(66); // 32 bytes
     expect(inferResultShape('solana', svm.request.spec.query)).toEqual({ kind: 'uint256' });
     const web2 = await trackRead(scriptedDeps([node('web2')]).deps, { requestId: node('web2').id as Hex });
-    expect(web2.chain).toBeUndefined();
+    expect(web2.chain).toBe(CHAIN.WEB2);
     expect(web2.destination.caip2).toBe('web2:https');
     expect(inferResultShape('web2', web2.request.spec.query)).toEqual({
       kind: 'web2',

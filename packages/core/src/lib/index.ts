@@ -1,4 +1,5 @@
 import { PushChain } from './push-chain/push-chain';
+export { CHAIN } from './constants/enums';
 export type { ConversionQuote } from './constants/tokens';
 export type {
   UniversalSigner,
@@ -107,6 +108,7 @@ export {
 
 // Read state (cross-chain reads)
 export type {
+  ReadChain,
   ReadDestination,
   ResolvedDestination,
   ReadQuery,
@@ -133,8 +135,10 @@ export type {
   ReadLifecycleOptions,
   ReadFees,
   UniversalReadResponse,
+  ReadResponseTuple,
+  BatchReadResponse,
 } from './read-state/read-state.types';
-export type { ReadChain, ReadOptions, ReadPrepareOptions, ReadQueryOptions, ReadCallbackOptions, ReadValue, ValidateReadCall, ReadWeb2Options, ReadTrackOptions, ReadExecuteOptions } from './read-state/read-params';
+export type { ReadOptions, ReadPrepareOptions, ReadQueryOptions, ReadCallbackOptions, ReadValue, ValidateReadCall, ReadWeb2Options, ReadTrackOptions, ReadExecuteOptions } from './read-state/read-params';
 export {
   UNIVERSAL_READ_STATUS,
   READ_STATUS,
@@ -166,7 +170,6 @@ export {
   sizeCallbackBudget,
   inferResultShape,
   toRequestIdHex,
-  READ_CHAIN_WEB2,
   toReadQuery,
 } from './read-state';
 export { UNIVERSAL_CALLBACK_EVM } from './constants/abi/universalCallback.evm';

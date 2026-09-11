@@ -1,8 +1,7 @@
 import { parseAbi } from 'viem';
-import type { PushChain, ReadOptions, ReadPrepareOptions, ReadQueryOptions, ReadCallbackOptions, ReadValue, ValidateReadCall } from '../../../index';
+import type { ChainTarget, PushChain, ReadOptions, ReadPrepareOptions, ReadQueryOptions, ReadCallbackOptions, ReadValue, ValidateReadCall } from '../../../index';
 import { CHAIN } from '../../constants/enums';
-import { READ_CHAIN_WEB2 } from '../read-params';
-import type { UniversalReadResponse } from '../read-state.types';
+import type { BatchReadResponse, PreparedRead, UniversalReadResponse } from '../read-state.types';
 
 const address = '0x1111111111111111111111111111111111111111';
 const abi = [
@@ -16,10 +15,14 @@ async function checkTypes(client: PushChain) {
   const mixed: ReadOptions = { chain: CHAIN.ETHEREUM_SEPOLIA, token: address, storageSlot: 0n };
   // @ts-expect-error storage is EVM only
   const svm: ReadOptions = { chain: CHAIN.SOLANA_DEVNET, storageSlot: 0n };
+  // @ts-expect-error Solana chooses its finalized slot internally
+  const svmPin: ReadOptions = { chain: CHAIN.SOLANA_DEVNET, blockNumber: 1n };
   // @ts-expect-error web2 chain requires extraction options
-  const web: ReadOptions = { chain: READ_CHAIN_WEB2 };
+  const web: ReadOptions = { chain: CHAIN.WEB2 };
   // @ts-expect-error web2 queries cannot target an EVM chain
   const wrongWeb: ReadOptions = { chain: CHAIN.ETHEREUM_SEPOLIA, web2: { extract: [] } };
+  // @ts-expect-error Web2 is a read-only destination, not a transaction chain
+  const web2Transaction: ChainTarget = { address, chain: CHAIN.WEB2 };
   // @ts-expect-error custom callbacks require gas
   const callback: ReadOptions = { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: address } };
   // @ts-expect-error preparation has no lifecycle settings
@@ -33,12 +36,13 @@ async function checkTypes(client: PushChain) {
   // @ts-expect-error wrong argument type
   client.universal.read(address, { chain: CHAIN.ETHEREUM_SEPOLIA, abi, functionName: 'balanceOf', args: [123] });
   const native: UniversalReadResponse<bigint> = await client.universal.read(address, { chain: CHAIN.ETHEREUM_SEPOLIA });
-  const call: UniversalReadResponse<readonly [bigint]> = await client.universal.read(address, { chain: CHAIN.ETHEREUM_SEPOLIA, abi, functionName: 'balanceOf', args: [address] });
-  const webResult: UniversalReadResponse<readonly [bigint, boolean]> = await client.universal.read('https://example.com', { chain: READ_CHAIN_WEB2, web2: { extract: [{ path: '$.price', valueType: 'uint256' }, { path: '$.ok', valueType: 'bool' }] } });
+  const token: UniversalReadResponse<bigint> = await client.universal.read(address, { chain: CHAIN.ETHEREUM_SEPOLIA, token: address });
+  const call: UniversalReadResponse<bigint> = await client.universal.read(address, { chain: CHAIN.ETHEREUM_SEPOLIA, abi, functionName: 'balanceOf', args: [address] });
+  const webResult: UniversalReadResponse<readonly [bigint, boolean]> = await client.universal.read('https://example.com', { chain: CHAIN.WEB2, web2: { extract: [{ path: '$.price', valueType: 'uint256' }, { path: '$.ok', valueType: 'bool' }] } });
   const prepared = await client.universal.prepareRead(address, { chain: CHAIN.ETHEREUM_SEPOLIA });
-  const batch: [UniversalReadResponse<bigint>] = await client.universal.executeReads([prepared]);
+  const batch: BatchReadResponse<readonly [PreparedRead<bigint>]> = await client.universal.executeReads([prepared]);
   const resumed: UniversalReadResponse<bigint> = await native.wait();
-  void [mixed, svm, web, wrongWeb, callback, lifecycle, args, native, call, webResult, batch, resumed];
+  void [mixed, svm, svmPin, web, wrongWeb, web2Transaction, callback, lifecycle, args, native, token, call, webResult, batch, resumed];
 }
 
 test('public read type contracts compile', () => { expect(typeof checkTypes).toBe('function'); });
@@ -55,13 +59,13 @@ async function checkOverloads(client: PushChain) {
   const single = await client.universal.read(address, { chain: CHAIN.ETHEREUM_SEPOLIA, abi: overloaded, functionName: 'foo', args: [address] });
   const multi = await client.universal.read(address, { chain: CHAIN.ETHEREUM_SEPOLIA, abi: overloaded, functionName: 'foo', args: [1n] });
   // Exact equality rejects never (which assignment-only tests incorrectly accept).
-  const singleType: Assert<Equal<ResultValue<typeof single>, readonly [bigint]>> = true;
+  const singleType: Assert<Equal<ResultValue<typeof single>, bigint>> = true;
   const multiType: Assert<Equal<ResultValue<typeof multi>, readonly [bigint, boolean]>> = true;
   const prepared = await client.universal.prepareRead(address, { chain: CHAIN.ETHEREUM_SEPOLIA, abi: overloaded, functionName: 'foo', args: [address] });
-  const [result] = await client.universal.executeReads([prepared]);
-  const batchType: Assert<Equal<ResultValue<typeof result>, readonly [bigint]>> = true;
+  const { reads: [result] } = await client.universal.executeReads([prepared]);
+  const batchType: Assert<Equal<ResultValue<typeof result>, bigint>> = true;
   const resumed = await result.wait();
-  const waitType: Assert<Equal<ResultValue<typeof resumed>, readonly [bigint]>> = true;
+  const waitType: Assert<Equal<ResultValue<typeof resumed>, bigint>> = true;
   void [singleType, multiType, batchType, waitType];
 }
 // Imports resolve from the same package entrypoint consumers use.

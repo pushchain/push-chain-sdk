@@ -1,14 +1,14 @@
 import { isAddress, type Hex } from 'viem';
 import type { Orchestrator } from '../orchestrator/orchestrator';
 import { InvalidReadQueryError, ReadRegistryUnavailableError, ReadStateError, ReadTimeoutError } from './errors';
-import type { PreparedRead, ReadCallback, ReadRequestEntrypoint, UniversalReadResponse } from './read-state.types';
+import type { BatchReadResponse, PreparedRead, ReadCallback, ReadRequestEntrypoint, ReadResponseTuple, UniversalReadResponse } from './read-state.types';
 import { toLifecycleOptions, type ReadExecuteOptions } from './read-params';
 import { encodeSpec, toCallData } from './spec-builder';
 import PROGRESS_HOOKS from '../progress-hook/progress-hook';
 import { PROGRESS_HOOK } from '../progress-hook/progress-hook.types';
 import { READ_STATUS, UNIVERSAL_READ_STATUS } from './read-state.types';
 
-export type ReadExecutorDeps = Pick<Orchestrator, 'execute' | 'trackRead' | 'revalidateRead'> & Partial<Pick<Orchestrator, 'getProgressHook'>>;
+export type ReadExecutorDeps = Pick<Orchestrator, 'execute' | 'trackRead' | 'revalidateRead'> & Partial<Pick<Orchestrator, 'getProgressHook' | 'getReadBalance'>>;
 
 /**
  * The custom-receiver contract of `read()` / `executeReads()`: a non-zero target and the
@@ -36,12 +36,12 @@ function committedHashes(err: unknown): Hex[] {
   return Array.isArray(hashes) ? (hashes as Hex[]) : [];
 }
 
-export async function executeReads(
+export async function executeReads<const R extends readonly PreparedRead[]>(
   deps: ReadExecutorDeps,
-  reads: PreparedRead[],
+  reads: R,
   options: ReadExecuteOptions = {},
-): Promise<UniversalReadResponse[]> {
-  if (reads.length === 0) return [];
+): Promise<BatchReadResponse<R>> {
+  if (reads.length === 0) throw new InvalidReadQueryError('executeReads requires at least one prepared read');
   const hooks = new Set([deps.getProgressHook?.(), options.progressHook]);
   const emit = (id: PROGRESS_HOOK, ...args: unknown[]) => {
     for (const hook of hooks) if (hook) hook(PROGRESS_HOOKS[id](...args));
@@ -58,6 +58,23 @@ export async function executeReads(
       await deps.revalidateRead(prepared);
     }
     failedAt = 0;
+    if (deps.getReadBalance) {
+      const required = reads.reduce((sum, read) => sum + read.value, 0n);
+      const enforceGasCheck = options.advanced?.enforceGasCheck ?? false;
+      let available: bigint | undefined;
+      try {
+        available = await deps.getReadBalance();
+      } catch (error) {
+        if (enforceGasCheck) throw error;
+      }
+      if (available !== undefined) {
+        emit(PROGRESS_HOOK.READ_TX_103_01, required, available, enforceGasCheck);
+        if (available < required && enforceGasCheck) {
+          emit(PROGRESS_HOOK.READ_TX_103_02, required, available);
+          throw new ReadStateError('INSUFFICIENT_READ_BALANCE', `read requests need ${required} UPC but the funding account has ${available} UPC`);
+        }
+      }
+    }
     emit(PROGRESS_HOOK.READ_TX_104_01);
     let tx: Awaited<ReturnType<ReadExecutorDeps['execute']>>;
     try {
@@ -104,28 +121,71 @@ export async function executeReads(
       return remaining.splice(index, 1)[0];
     });
     if (remaining.length) throw new ReadStateError('READ_REQUEST_MISMATCH', `app emitted unexpected extra reads; resume using the Push transaction hashes: ${hashes.join(', ')}`, { txHash: tx.hash });
+    const completedReadIds = new Set<string>();
+    const emitReadComplete = (terminal: UniversalReadResponse, i: number) => {
+      if (!batch || completedReadIds.has(terminal.requestId)) return;
+      completedReadIds.add(terminal.requestId);
+      emit(PROGRESS_HOOK.READ_TX_002_99_99, i + 1, reads.length, terminal.requestId);
+    };
     const results = await Promise.all(ordered.map(async (record, i) => {
       try {
-        const opts = { ...lifecycle, resultShape: reads[i].encodedQuery.resultShape };
+        const opts = { ...lifecycle, resultShape: reads[i].resultShape };
         const response = await deps.trackRead({ requestId: record.requestId }, opts);
         if (options.waitForCompletion === false) {
           emit(PROGRESS_HOOK.READ_TX_104_02, response.txHash, response.requestId, response.request.logIndex);
           return response;
         }
         const terminal = await response.wait();
-        if (batch) emit(PROGRESS_HOOK.READ_TX_002_99_99, i + 1, reads.length, terminal.requestId);
+        emitReadComplete(terminal, i);
         return terminal;
       } catch (error) {
         if (failedAt === 0) failedAt = i + 1;
         throw error;
       }
     }));
-    if (batch && options.waitForCompletion !== false) {
-      const failed = results.findIndex(r => r.status !== UNIVERSAL_READ_STATUS.FULFILLED || r.callbackDelivered !== true || r.raw?.status !== READ_STATUS.SUCCESS);
-      if (failed < 0) emit(PROGRESS_HOOK.READ_TX_999_01, results.length);
-      else emit(PROGRESS_HOOK.READ_TX_999_02, failed + 1, results.length, results[failed].errorMsg || 'Read or callback did not succeed');
+    let emittedTerminalBatch = false;
+    const emitBatchOutcome = (terminal: readonly UniversalReadResponse[]) => {
+      if (!batch || emittedTerminalBatch) return;
+      emittedTerminalBatch = true;
+      const failed = terminal.findIndex(r => r.status !== UNIVERSAL_READ_STATUS.FULFILLED || r.callbackDelivered !== true || r.raw?.status !== READ_STATUS.SUCCESS);
+      if (failed < 0) emit(PROGRESS_HOOK.READ_TX_999_01, terminal.length);
+      else emit(PROGRESS_HOOK.READ_TX_999_02, failed + 1, terminal.length, terminal[failed].errorMsg || 'Read or callback did not succeed');
+    };
+    if (options.waitForCompletion !== false) {
+      emitBatchOutcome(results);
     }
-    return results;
+    const typedReads = results as ReadResponseTuple<R>;
+    const response: BatchReadResponse<R> = {
+      txHash: tx.hash as Hex,
+      ...(tx.transactionHashes ? { transactionHashes: [...tx.transactionHashes] as Hex[] } : {}),
+      reads: typedReads,
+      count: typedReads.length,
+      atomic: tx.atomic ?? hashes.length === 1,
+      wait: async (waitOpts) => {
+        let waitFailedAt = 0;
+        try {
+          const terminal = await Promise.all(typedReads.map(async (read, i) => {
+            try {
+              const done = await read.wait(waitOpts);
+              emitReadComplete(done, i);
+              return done;
+            } catch (error) {
+              if (waitFailedAt === 0) waitFailedAt = i + 1;
+              throw error;
+            }
+          })) as ReadResponseTuple<R>;
+          emitBatchOutcome(terminal);
+          return terminal;
+        } catch (error) {
+          if (batch) {
+            if (error instanceof ReadTimeoutError) emit(PROGRESS_HOOK.READ_TX_999_03, waitFailedAt, reads.length);
+            else emit(PROGRESS_HOOK.READ_TX_999_02, waitFailedAt, reads.length, error instanceof Error ? error.message : String(error));
+          }
+          throw error;
+        }
+      },
+    };
+    return response;
   } catch (error) {
     if (batch) {
       if (error instanceof ReadTimeoutError) emit(PROGRESS_HOOK.READ_TX_999_03, failedAt, reads.length);

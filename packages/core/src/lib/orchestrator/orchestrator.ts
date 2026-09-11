@@ -203,6 +203,11 @@ export class Orchestrator {
     return revalidatePreparedRead({ pushClient: this.ctx.pushClient, pushNetwork: this.ctx.pushNetwork }, prepared);
   }
 
+  /** Current native Push balance of the account that will fund read requests. */
+  async getReadBalance(): Promise<bigint> {
+    return this.ctx.pushClient.getBalance(this.computeUEAOffchain());
+  }
+
   /** eth_call requestExternalReadSelf as the app contract; decodes contract errors. */
   async simulateRead(
     prepared: PreparedRead,

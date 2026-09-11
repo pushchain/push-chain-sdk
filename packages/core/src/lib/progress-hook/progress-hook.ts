@@ -1328,7 +1328,7 @@ const RAW_HOOKS_READ: {
     response: {
       protocolFee: str(protocolFee),
       callbackBudget: str(callbackBudget),
-      total: str(total),
+      totalValue: str(total),
       blockNumber: str(blockNumber),
       expiryPushChainHeight: str(expiryPushChainHeight),
     },
@@ -1355,7 +1355,7 @@ const RAW_HOOKS_READ: {
     response: { refundTo },
     level: 'WARNING',
   }),
-  [PROGRESS_HOOK.READ_TX_103_01]: (required: bigint, available: bigint) => {
+  [PROGRESS_HOOK.READ_TX_103_01]: (required: bigint, available: bigint, enforceGasCheck = false) => {
     const sufficient = available >= required;
     const shortfall = sufficient ? BigInt(0) : required - available;
     return {
@@ -1369,6 +1369,7 @@ const RAW_HOOKS_READ: {
         available: str(available),
         sufficient,
         shortfall: str(shortfall),
+        enforceGasCheck,
       },
       level: sufficient ? 'INFO' : 'WARNING',
     };
@@ -1566,7 +1567,7 @@ const RAW_HOOKS_READ: {
     id: PROGRESS_HOOK.READ_TX_999_03,
     title: 'Batch Reads Timeout',
     message: `Batch timed out at read ${failedAt} of ${total}`,
-    response: { failedAt, total },
+    response: { failedAt, total, error: 'read timeout' },
     level: 'ERROR',
   }),
 };

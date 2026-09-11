@@ -12,7 +12,9 @@ describe('read-state public surface', () => {
     ]) {
       expect(typeof (core as Record<string, unknown>)[fn]).toBe('function');
     }
-    expect(core.READ_CHAIN_WEB2).toBe('web2:https');
+    expect(core.CHAIN.WEB2).toBe('web2:https');
+    expect(PushChain.CONSTANTS.CHAIN.WEB2).toBe('web2:https');
+    expect(Object.values(PushChain.CONSTANTS.CHAIN)).not.toContain('web2:https');
     expect(core.UNIVERSAL_READ_STATUS.FULFILLED).toBe(3);
     expect(core.READ_STATUS.ERROR).toBe(2);
     expect(core.READ_ERROR_CODE.INVALID_QUERY).toBe(1);

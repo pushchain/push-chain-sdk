@@ -26,7 +26,6 @@ done.status === PushChain.CONSTANTS.READ.STATUS.FULFILLED && done.callbackDelive
 - `prepareRead` — preflight (oracle height, protocol fee, gas price), envelope encoding for
   EVM / SVM / web2, callback budget sizing, expiry math, every contract precondition
   checked client-side (`InvalidReadSpecError.violations`).
-- `simulateRead` — eth_call the request as your contract; decodes contract errors.
 - `trackRead` / `wait()` / `refresh()` — node record + settlement logs; `callbackDelivered`
   distinguishes a delivered result from a reverted callback (both are `FULFILLED`);
   `fees` reports paid / burned / refunded.
@@ -35,11 +34,17 @@ done.status === PushChain.CONSTANTS.READ.STATUS.FULFILLED && done.callbackDelive
 - `read()` and `executeReads()` support existing app receivers via
   `callback: { target, gasLimit, request: { abi, functionName, args? } }`. The default
   request arguments are `(spec, callbackGasLimit)`. Each call must emit exactly one
-  matching read. Prepared metadata retains the callback target and decoder; batch
-  results preserve input order. Both methods require a signer and wait for terminal
+  matching read. Prepared metadata retains the callback target and decoder;
+  `executeReads()` returns a typed `BatchReadResponse` with `txHash`, `reads`, `count`,
+  `atomic`, and `wait()`. Results preserve input order. Both methods require a signer and wait for terminal
   reads unless `waitForCompletion: false` is supplied. Wallets without EIP-7702 use
   sequential transactions; all hashes are retained for tracking. Omitting the target
   still throws `ReadRegistryUnavailableError` until the shared registry is deployed.
+
+The public grammar uses `CHAIN.WEB2` for https reads while keeping Web2 out of transaction
+chain types. SVM and Web2 pinning is selected internally rather than exposed as
+`blockNumber` / `minConfirmations`. EVM ABI results follow viem semantics: a single output
+is unwrapped and multiple outputs remain tuples. Web2 extraction results remain ordered arrays.
 
 Read-state review fixes: reject mismatched preflight destinations, retain exact ABI
 overloads, bound polling and RPC waits by one deadline, and serialize nested bigint

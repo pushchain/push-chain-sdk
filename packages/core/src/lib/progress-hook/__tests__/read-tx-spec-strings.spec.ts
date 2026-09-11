@@ -17,12 +17,12 @@ type ProgressLevel = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
 const rows: Row[] = [
   [PROGRESS_HOOK.READ_TX_101, [chain, 'eip155', 0], 'Ethereum Sepolia Read Requested', 'INFO', { chain, namespace: 'eip155', queryType: 0 }],
   [PROGRESS_HOOK.READ_TX_102_01, [chain], 'Fetching Destination Height & Fee', 'INFO', { chain, stage: 'preflight' }],
-  [PROGRESS_HOOK.READ_TX_102_02, [0n, 5n, 5n, 100n, 200n], 'Read Spec Assembled', 'SUCCESS', { protocolFee: '0', callbackBudget: '5', total: '5', blockNumber: '100', expiryPushChainHeight: '200' }],
+  [PROGRESS_HOOK.READ_TX_102_02, [0n, 5n, 5n, 100n, 200n], 'Read Spec Assembled', 'SUCCESS', { protocolFee: '0', callbackBudget: '5', totalValue: '5', blockNumber: '100', expiryPushChainHeight: '200' }],
   [PROGRESS_HOOK.READ_TX_102_03, [chain], 'Destination Height Unavailable', 'ERROR', { chain }],
   [PROGRESS_HOOK.READ_TX_102_04, [1000, 61_000], 'Preflight Stale, Refetching', 'WARNING', { fetchedAt: 1000, ageMs: 61_000 }],
   [PROGRESS_HOOK.READ_TX_102_05, [addr], 'Refund Target Is A Contract', 'WARNING', { refundTo: addr }],
-  [PROGRESS_HOOK.READ_TX_103_01, [10n, 20n], 'Checking Balance Requirements', 'INFO', { required: '10', available: '20', sufficient: true, shortfall: '0' }],
-  [PROGRESS_HOOK.READ_TX_103_01, [20n, 10n], 'Checking Balance Requirements', 'WARNING', { required: '20', available: '10', sufficient: false, shortfall: '10' }],
+  [PROGRESS_HOOK.READ_TX_103_01, [10n, 20n], 'Checking Balance Requirements', 'INFO', { required: '10', available: '20', sufficient: true, shortfall: '0', enforceGasCheck: false }],
+  [PROGRESS_HOOK.READ_TX_103_01, [20n, 10n, true], 'Checking Balance Requirements', 'WARNING', { required: '20', available: '10', sufficient: false, shortfall: '10', enforceGasCheck: true }],
   [PROGRESS_HOOK.READ_TX_103_02, [20n, 10n], 'Insufficient Balance', 'ERROR', { required: '20', available: '10', shortfall: '10' }],
   [PROGRESS_HOOK.READ_TX_103_03, [['authorization']], 'Sensitive Header Detected', 'WARNING', { matchedHeaders: ['authorization'] }],
   [PROGRESS_HOOK.READ_TX_104_01, [], 'Broadcasting Read Request', 'INFO', { stage: 'broadcasting' }],
@@ -46,7 +46,7 @@ const rows: Row[] = [
   [PROGRESS_HOOK.READ_TX_002_99_99, [1, 2, requestId], 'Read #1/2 Complete', 'INFO', { n: 1, total: 2, requestId }],
   [PROGRESS_HOOK.READ_TX_999_01, [2], 'All Reads Fulfilled', 'SUCCESS', { count: 2 }],
   [PROGRESS_HOOK.READ_TX_999_02, [2, 3, 'boom'], 'Batch Reads Failed', 'ERROR', { failedAt: 2, total: 3, error: 'boom' }],
-  [PROGRESS_HOOK.READ_TX_999_03, [2, 3], 'Batch Reads Timeout', 'ERROR', { failedAt: 2, total: 3 }],
+  [PROGRESS_HOOK.READ_TX_999_03, [2, 3], 'Batch Reads Timeout', 'ERROR', { failedAt: 2, total: 3, error: 'read timeout' }],
 ];
 
 describe('READ-TX spec strings', () => {
