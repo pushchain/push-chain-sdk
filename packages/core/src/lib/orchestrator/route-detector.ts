@@ -237,6 +237,10 @@ export function validateRouteParams(
   params: UniversalExecuteParams,
   context?: { clientChain?: CHAIN }
 ): void {
+  const toChain = isChainTarget(params.to) ? String(params.to.chain) : undefined;
+  if (String(params.from?.chain ?? '') === CHAIN.WEB2 || toChain === CHAIN.WEB2) {
+    throw new RouteValidationError('CHAIN.WEB2 is a read-only destination and cannot be used with transaction APIs');
+  }
   const route = detectRoute(params);
 
   // Validate from.chain is supported external chain (Routes 3, 4)

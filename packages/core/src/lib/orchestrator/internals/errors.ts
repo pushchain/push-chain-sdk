@@ -54,6 +54,19 @@ export class PushChainExecutionError extends Error {
   }
 }
 
+/** Recovery metadata for a non-atomic Push batch. A pending hash is broadcast but unconfirmed. */
+export class PushChainBatchExecutionError extends PushChainExecutionError {
+  readonly transactionHashes: `0x${string}`[];
+  readonly pendingTransactionHash?: `0x${string}`;
+
+  constructor(message: string, transactionHashes: `0x${string}`[], pendingTransactionHash?: `0x${string}`) {
+    super(message);
+    this.name = 'PushChainBatchExecutionError';
+    this.transactionHashes = [...transactionHashes];
+    this.pendingTransactionHash = pendingTransactionHash;
+  }
+}
+
 export type PreflightPathTag =
   | 'R2_EVM'
   | 'R2_SVM'

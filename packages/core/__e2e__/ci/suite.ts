@@ -32,6 +32,7 @@ export const GROUPS = [
   'pc20',
   'push',
   'cross-chain',
+  'read',
   'known-fail',
 ] as const;
 
@@ -131,6 +132,18 @@ const F = {
   freshWallet: '__e2e__/cross-chain/fresh-wallet.spec.ts',
   pethBridge: '__e2e__/cross-chain/peth-bridge.spec.ts',
   cascade: '__e2e__/cross-chain/cascade-amm.spec.ts',
+
+  readEoa: '__e2e__/read/evm/balance-eoa.spec.ts',
+  readUea: '__e2e__/read/evm/balance-uea.spec.ts',
+  readCall: '__e2e__/read/evm/contract-call.spec.ts',
+  readRevert: '__e2e__/read/evm/callback-reverts.spec.ts',
+  readExpiry: '__e2e__/read/lifecycle/expiry.spec.ts',
+  readSvm: '__e2e__/read/svm/lamports.spec.ts',
+  readWeb2: '__e2e__/read/web2/json.spec.ts',
+  readDocs: '__e2e__/docs-examples/13-read-state/read-state.spec.ts',
+  readBatch: '__e2e__/read/evm/app-batch.spec.ts',
+  readApi: '__e2e__/read/evm/api-coverage.spec.ts',
+  readSvmRaw: '__e2e__/read/svm/raw-account.spec.ts',
 } as const;
 
 export const SCENARIOS: Scenario[] = [
@@ -572,6 +585,108 @@ export const SCENARIOS: Scenario[] = [
     needs: { sepoliaEth: '0.05', ueaPC: '5', ueaPETH: '0.002' },
     env: { RUN_LIVE_SIX_HOP_CASCADE: '1' },
     note: 'Flagship: ~20 min, and the one scenario spanning both target chains.',
+  },
+
+  // ---------------------------------------------------------------------------
+  // read — cross-chain read state. Each scenario escrows a callback budget
+  // (~0.01 PC at Donut gas prices; refunded minus the burn) and pays Push gas from the
+  // Push master, except the UEA-originated read which pays from the EVM master's UEA.
+  // The specs share two pre-deployed UniversalReadClient contracts and deploy nothing.
+  // ---------------------------------------------------------------------------
+  {
+    id: 'read-evm-balance-eoa',
+    group: 'read',
+    file: F.readEoa,
+    grep: 'read state › EVM balance from a Push EOA',
+    needs: { masterPC: '0.1' },
+    note: 'prepareRead → simulateRead → sendTransaction → trackRead → value == Sepolia balance at pin.',
+  },
+  {
+    id: 'read-evm-balance-uea',
+    group: 'read',
+    file: F.readUea,
+    grep: 'read state › EVM balance requested through a UEA',
+    needs: { ueaPC: '0.1' },
+    note: 'The N1 path: ReadRequested emitted inside the UEA execute. Refund lands in the UEA.',
+  },
+  {
+    id: 'read-evm-contract-call',
+    group: 'read',
+    file: F.readCall,
+    grep: 'read state › EVM typed contract call',
+    needs: { masterPC: '0.1' },
+  },
+  {
+    id: 'read-evm-callback-reverts',
+    group: 'read',
+    file: F.readRevert,
+    grep: 'read state › reverting callback',
+    needs: { masterPC: '0.1' },
+    note: 'I4: FULFILLED with callbackDelivered=false, READ-TX-106-03.',
+  },
+  {
+    id: 'read-expiry',
+    group: 'read',
+    file: F.readExpiry,
+    grep: 'read state › expiry',
+    needs: { masterPC: '0.1' },
+    note: 'minConfirmations 500 + expiryBlocks 30 forces EXPIRED in ~40 s; full budget refunded.',
+  },
+  {
+    id: 'read-svm-lamports',
+    group: 'read',
+    file: F.readSvm,
+    grep: 'read state › SVM lamports',
+    needs: { masterPC: '0.1' },
+  },
+  {
+    id: 'read-web2-json',
+    group: 'read',
+    file: F.readWeb2,
+    grep: 'read state › web2 JSON',
+    needs: { masterPC: '0.1' },
+  },
+  {
+    id: 'read-docs-example',
+    group: 'read',
+    file: F.readDocs,
+    grep: 'docs-examples › 13-read-state',
+    needs: { masterPC: '0.6' },
+    note: 'Funds a fresh wallet with 0.5 PC, as the docs prompt will.',
+  },
+  {
+    id: 'read-app-batch-eoa',
+    group: 'read',
+    file: F.readBatch,
+    grep: 'read state › custom app batch Push EOA',
+    needs: { masterPC: '0.2' },
+    note: 'executeReads with three mixed queries from a Push EOA — sequential fallback, order preserved.',
+  },
+  {
+    id: 'read-app-batch-uea',
+    group: 'read',
+    file: F.readBatch,
+    grep: 'read state › custom app batch UEA',
+    needs: { ueaPC: '0.2' },
+    note: 'Same batch through the UEA — one atomic tx.',
+  },
+  {
+    id: 'read-app-batch-recovery', group: 'read', file: F.readBatch,
+    grep: 'read state › custom app batch recovers the committed read',
+    needs: { masterPC: '0.1' },
+    note: 'Force sequential wallet execution; recover the first read after the second request fails.',
+  },
+  {
+    id: 'read-api-token', group: 'read', file: F.readApi,
+    grep: 'read state › public API coverage ERC20 shorthand', needs: { masterPC: '0.1' },
+  },
+  {
+    id: 'read-api-mixed-outcomes', group: 'read', file: F.readApi,
+    grep: 'read state › public API coverage mixed consensus outcomes', needs: { masterPC: '0.3' },
+  },
+  {
+    id: 'read-svm-raw', group: 'read', file: F.readSvmRaw,
+    grep: 'read state › SVM raw account', needs: { masterPC: '0.1' },
   },
 
   // ---------------------------------------------------------------------------

@@ -34,6 +34,18 @@ export enum CHAIN {
 }
 
 /**
+ * Read-only destination exposed with the OG `CHAIN.WEB2` spelling without
+ * widening the blockchain enum type accepted by transaction APIs.
+ */
+// eslint-disable-next-line @typescript-eslint/no-namespace -- declaration merging keeps Web2 out of the transaction enum union
+export namespace CHAIN {
+  export const WEB2 = 'web2:https' as const;
+}
+// Namespace properties are normally enumerable after TypeScript emits them.
+// Keep blockchain enumeration (`Object.values(CHAIN)`) blockchain-only.
+Object.defineProperty(CHAIN, 'WEB2', { value: CHAIN.WEB2, enumerable: false });
+
+/**
  * Represents the virtual machine or execution environment for a chain.
  */
 export enum VM {

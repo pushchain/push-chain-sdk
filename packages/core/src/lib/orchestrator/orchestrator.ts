@@ -40,6 +40,10 @@ import {
   createCascadedBuilder as _createCascadedBuilder,
   type CascadeCallbacks,
   rescueFunds as _rescueFunds,
+  prepareRead as _prepareRead,
+  simulateRead as _simulateRead,
+  trackRead as _trackRead,
+  type TrackReadOptions,
   executeFundsOnly as _executeFundsOnly,
   executeFundsWithPayload as _executeFundsWithPayload,
   executeStandardPayload as _executeStandardPayload,
@@ -48,6 +52,14 @@ import {
   extractUniversalSubTxIdFromTx as _extractUniversalSubTxIdFromTx,
   extractAllUniversalSubTxIds as _extractAllUniversalSubTxIds,
 } from './internals';
+import type {
+  BuildReadSpecParams,
+  PreparedRead,
+  SimulateReadResult,
+  UniversalReadResponse,
+} from '../read-state/read-state.types';
+import type { Address, Hex } from 'viem';
+import { revalidateRead as revalidatePreparedRead } from '../read-state/spec-builder';
 import { gateFunds } from './internals/pc20/gate';
 
 type ProgressHook = (progress: ProgressEvent) => void;
@@ -177,6 +189,41 @@ export class Orchestrator {
    */
   async migrateCEA(chain: CHAIN): Promise<UniversalTxResponse> {
     return _migrateCEA(this.ctx, chain, this.execute.bind(this));
+  }
+
+  /**
+   * Build a validated cross-chain ReadSpec (preflight + envelope + fee/budget) for the
+   * caller to splice into its own contract call. Works in read-only mode.
+   */
+  async prepareRead(params: BuildReadSpecParams, progressHook?: ProgressHook): Promise<PreparedRead> {
+    return _prepareRead(this.ctx, params, progressHook);
+  }
+
+  async revalidateRead(prepared: PreparedRead): Promise<void> {
+    return revalidatePreparedRead({ pushClient: this.ctx.pushClient, pushNetwork: this.ctx.pushNetwork }, prepared);
+  }
+
+  /** Current native Push balance of the account that will fund read requests. */
+  async getReadBalance(): Promise<bigint> {
+    return this.ctx.pushClient.getBalance(this.computeUEAOffchain());
+  }
+
+  /** eth_call requestExternalReadSelf as the app contract; decodes contract errors. */
+  async simulateRead(
+    prepared: PreparedRead,
+    opts: { appContract: Address; callbackSelector: Hex; staleAfterMs?: number }
+  ): Promise<SimulateReadResult> {
+    return _simulateRead(this.ctx, prepared, opts);
+  }
+
+  /** Resume a read by the Push tx that requested it (array) or by requestId (single). */
+  trackRead(ref: { txHash: Hex }, opts?: TrackReadOptions): Promise<UniversalReadResponse[]>;
+  trackRead(ref: { requestId: Hex | bigint }, opts?: TrackReadOptions): Promise<UniversalReadResponse>;
+  trackRead(
+    ref: { txHash: Hex } | { requestId: Hex | bigint },
+    opts?: TrackReadOptions
+  ): Promise<UniversalReadResponse | UniversalReadResponse[]> {
+    return 'txHash' in ref ? _trackRead(this.ctx, ref, opts) : _trackRead(this.ctx, ref, opts);
   }
 
   /**

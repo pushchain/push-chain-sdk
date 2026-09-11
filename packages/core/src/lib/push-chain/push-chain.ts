@@ -35,6 +35,20 @@ import type {
   CascadeExecutionOptions,
   TransactionExecutionOptions,
 } from '../orchestrator/orchestrator.types';
+import type { Hex } from 'viem';
+import type { BatchReadResponse, PreparedRead, UniversalReadResponse } from '../read-state/read-state.types';
+import {
+  toBuildReadSpecParams,
+  toLifecycleOptions,
+  type ReadOptions,
+  type ReadPrepareOptions,
+  type ReadValue,
+  type ValidateReadCall,
+  type ReadTrackOptions,
+  type ReadExecuteOptions,
+} from '../read-state/read-params';
+import { ReadRegistryUnavailableError } from '../read-state/errors';
+import { assertRequestEntrypoint, executeReads as executePreparedReads } from '../read-state/read-executor';
 
 /**
  * @class PushChain
@@ -151,6 +165,42 @@ export class PushChain {
      * This triggers a manual revert via TSS to release those funds.
      */
     rescueFunds: Orchestrator['rescueFunds'];
+    /**
+     * Cross-chain read state — one-shot. `read ≡ prepareRead → executeReads → wait`.
+     * Pass callback.target and callback.request for your app contract. Omitting the
+     * target requires the canonical registry, which is not deployed yet.
+     */
+    read: <const O extends ReadOptions>(subject: string, options: O & ValidateReadCall<O>) => Promise<UniversalReadResponse<ReadValue<O>>>;
+    /**
+     * Build a validated `ReadSpec` for `subject` on `options.chain`: preflight (oracle
+     * height, protocol fee, gas price), envelope encoding, budget sizing, expiry math.
+     * Works in read-only mode. Splice `prepared.spec` / `prepared.value` into your
+     * contract's entrypoint (`toCallData`), send it with `sendTransaction`, then
+     * `trackRead({ txHash })`.
+     *
+     * @example
+     * const prepared = await client.universal.prepareRead(user, {
+     *   chain: CHAIN.ETHEREUM_SEPOLIA,
+     *   callback: { target: myReadClient, gasLimit: 200_000n },
+     * });
+     */
+    prepareRead: <const O extends ReadPrepareOptions>(subject: string, options: O & ValidateReadCall<O>) => Promise<PreparedRead<ReadValue<O>>>;
+    /**
+     * Execute app request calls as a multicall; wallets without EIP-7702 support
+     * use separate transactions. Returns a typed BatchReadResponse containing
+     * transaction metadata and results in prepared order. Waits for completion
+     * unless waitForCompletion is false. Requires a signer.
+     */
+    executeReads: <const R extends readonly PreparedRead[]>(reads: R, options?: ReadExecuteOptions) => Promise<BatchReadResponse<R>>;
+    /**
+     * Resume a read by the Push tx that requested it (array — one tx can carry several)
+     * or by requestId (single). Each response has `wait()` / `refresh()`.
+     * Works in read-only mode.
+     */
+    trackRead: {
+      (ref: { txHash: Hex }, options?: ReadTrackOptions & { progressHook?: (e: ProgressEvent) => void }): Promise<UniversalReadResponse[]>;
+      (ref: { requestId: Hex | bigint }, options?: ReadTrackOptions & { progressHook?: (e: ProgressEvent) => void }): Promise<UniversalReadResponse>;
+    };
     /**
      * Signs an arbitrary message
      */
@@ -294,6 +344,30 @@ export class PushChain {
         }
         return orchestrator.rescueFunds.bind(orchestrator)(params);
       },
+      // Only read()/executeReads() send transactions; prepare/simulate/track remain read-only.
+      read: async <const O extends ReadOptions>(subject: string, options: O) => {
+        const params = toBuildReadSpecParams(subject, options);
+        if (!options.callback?.target) throw new ReadRegistryUnavailableError('read');
+        assertRequestEntrypoint(options.callback, 'read'); // before preflight: no RPC for a malformed request
+        if (this.isReadMode) throw new Error('Read only mode cannot call read function');
+        const prepared = await orchestrator.prepareRead(params, options.progressHook);
+        const { reads: [response] } = await executePreparedReads(orchestrator, [prepared] as const, options);
+        return response as UniversalReadResponse<ReadValue<O>>;
+      },
+      prepareRead: <const O extends ReadPrepareOptions>(subject: string, options: O & ValidateReadCall<O>) => {
+        return orchestrator.prepareRead.bind(orchestrator)(toBuildReadSpecParams(subject, options)) as Promise<PreparedRead<ReadValue<O>>>;
+      },
+      executeReads: (async (reads: readonly PreparedRead[], options?: ReadExecuteOptions) => {
+        reads.forEach((r) => assertRequestEntrypoint(r.callback));
+        if (this.isReadMode) throw new Error('Read only mode cannot call executeReads function');
+        return executePreparedReads(orchestrator, reads, options);
+      }) as PushChain['universal']['executeReads'],
+      trackRead: ((ref: { txHash: Hex } | { requestId: Hex | bigint }, options?: ReadTrackOptions & { progressHook?: (e: ProgressEvent) => void }) => {
+        const opts = { ...toLifecycleOptions(options), progressHook: options?.progressHook };
+        return 'txHash' in ref
+          ? orchestrator.trackRead.bind(orchestrator)(ref, opts)
+          : orchestrator.trackRead.bind(orchestrator)(ref, opts);
+      }) as PushChain['universal']['trackRead'],
       signMessage: async (data: Uint8Array) => {
         if (this.isReadMode) {
           throw new Error('Read only mode cannot call signMessage function');
