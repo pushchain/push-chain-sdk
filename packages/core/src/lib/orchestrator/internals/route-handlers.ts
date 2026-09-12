@@ -1222,8 +1222,17 @@ export async function executeUoaToCeaSvm(
     burnAmount > BigInt(0)
       ? (params.funds as { token?: MoveableToken } | undefined)?.token
       : undefined;
+  const destinationFundsToken = svmFundsToken
+    ? resolveR2DestinationFundsToken(
+        svmFundsToken,
+        targetChain,
+        ctx.pushNetwork
+      )
+    : undefined;
   const splMintBase58 =
-    svmFundsToken?.mechanism === 'approve' ? svmFundsToken.address : undefined;
+    destinationFundsToken?.mechanism === 'approve'
+      ? destinationFundsToken.address
+      : undefined;
 
   if (prc20Token !== (ZERO_ADDRESS as `0x${string}`)) {
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_202_01, targetChain);

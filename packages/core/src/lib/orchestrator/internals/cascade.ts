@@ -369,9 +369,16 @@ export async function buildHopDescriptor(
           burnAmount > BigInt(0)
             ? (params.funds as { token?: MoveableToken } | undefined)?.token
             : undefined;
+        const destinationFundsToken = svmFundsToken
+          ? resolveR2DestinationFundsToken(
+              svmFundsToken,
+              targetChain,
+              ctx.pushNetwork
+            )
+          : undefined;
         const splMintBase58 =
-          svmFundsToken?.mechanism === 'approve'
-            ? svmFundsToken.address
+          destinationFundsToken?.mechanism === 'approve'
+            ? destinationFundsToken.address
             : undefined;
         let effectiveGasLimit = gasLimit;
 

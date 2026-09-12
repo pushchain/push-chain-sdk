@@ -7,7 +7,12 @@ import {
   PublicClient,
   TransactionReceipt,
 } from 'viem';
-import { MsgDeployUEA, MsgExecutePayload, MsgMintPC, MsgMigrateUEA } from '../generated/v1/tx';
+import {
+  MsgDeployUEA,
+  MsgExecutePayload,
+  MsgMintPC,
+  MsgMigrateUEA,
+} from '../generated/v1/tx';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 import { SignDoc, TxBody, TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 import { makeAuthInfoBytes, makeSignDoc } from '@cosmjs/proto-signing';
@@ -19,6 +24,8 @@ import {
   createProtobufRpcClient,
 } from '@cosmjs/stargate';
 import {
+  QueryParamsRequest,
+  QueryParamsResponse,
   QueryGetUniversalTxRequest,
   QueryGetUniversalTxResponse,
 } from '../generated/uexecutor/v1/query';
@@ -34,7 +41,11 @@ import { toBech32 } from '@cosmjs/encoding';
 import { EvmClient } from '../vm-client/evm-client';
 import { PushClientOptions } from './push-client.types';
 import { TxResponse } from '../vm-client/vm-client.types';
-import { CHAIN_INFO, getPushViemChain, PUSH_CHAIN_INFO } from '../constants/chain';
+import {
+  CHAIN_INFO,
+  getPushViemChain,
+  PUSH_CHAIN_INFO,
+} from '../constants/chain';
 import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 
 function pushNetworkToChain(
@@ -50,13 +61,21 @@ function pushNetworkToChain(
 }
 
 export class PushClient extends EvmClient {
-  /** Gas limit for Cosmos transactions on Push Chain */
-  private static readonly COSMOS_GAS_LIMIT = 100000000000;
+  /** Conservative SDK ceiling and fallback for gasless Cosmos transactions. */
+  private static readonly DEFAULT_COSMOS_GAS_LIMIT = 100_000_000;
+  private static readonly GASLESS_GAS_LIMIT_CACHE_TTL_MS = 60_000;
+  private static readonly MSG_EXECUTE_PAYLOAD_TYPE_URL =
+    '/uexecutor.v1.MsgExecutePayload';
 
   public pushChainInfo;
   private readonly ephemeralKey;
   private readonly ephemeralAccount;
   private currentRpcIndex = 0;
+  private gaslessGasLimitCache?: {
+    chainId: string;
+    gasLimit: number;
+    expiresAt: number;
+  };
 
   /**
    * Archive (full-history) endpoints. History-sensitive reads fall back from
@@ -303,6 +322,11 @@ export class PushClient extends EvmClient {
         tmClient,
         setupAuthExtension
       );
+      const cosmosGasLimit = await this.resolveCosmosGasLimit(
+        txBody,
+        queryClient,
+        chainId
+      );
       let baseAccount: BaseAccount | null = null;
       try {
         const accountResp = await queryClient.auth.account(sender);
@@ -311,7 +335,10 @@ export class PushClient extends EvmClient {
         // Account may not exist on-chain yet; default to sequence=0 / accountNumber=0
         const msg = err instanceof Error ? err.message : String(err);
         if (!msg.includes('NotFound') && !msg.includes('not found')) {
-          console.warn(`[PushClient:signCosmosTx] Account lookup failed for ${sender}:`, err);
+          console.warn(
+            `[PushClient:signCosmosTx] Account lookup failed for ${sender}:`,
+            err
+          );
         }
       }
 
@@ -338,7 +365,7 @@ export class PushClient extends EvmClient {
           },
         ],
         [],
-        PushClient.COSMOS_GAS_LIMIT,
+        cosmosGasLimit,
         undefined,
         undefined
       );
@@ -360,6 +387,57 @@ export class PushClient extends EvmClient {
         signatures: [hexToBytes(signature)],
       });
     }, 'signCosmosTx');
+  }
+
+  private async resolveCosmosGasLimit(
+    txBody: TxBody,
+    queryClient: QueryClient,
+    chainId: string
+  ): Promise<number> {
+    const isGaslessExecutePayload =
+      txBody.messages.length > 0 &&
+      txBody.messages.every(
+        ({ typeUrl }) => typeUrl === PushClient.MSG_EXECUTE_PAYLOAD_TYPE_URL
+      );
+    if (!isGaslessExecutePayload) {
+      return PushClient.DEFAULT_COSMOS_GAS_LIMIT;
+    }
+
+    const cached = this.gaslessGasLimitCache;
+    if (cached?.chainId === chainId && cached.expiresAt > Date.now()) {
+      return cached.gasLimit;
+    }
+
+    try {
+      const rpc = createProtobufRpcClient(queryClient);
+      const request = QueryParamsRequest.fromPartial({});
+      const responseBytes = await rpc.request(
+        'uexecutor.v1.Query',
+        'Params',
+        QueryParamsRequest.encode(request).finish()
+      );
+      const response = QueryParamsResponse.decode(responseBytes);
+      const onChainMaximum = response.params?.maxGaslessTxGas ?? BigInt(0);
+      if (onChainMaximum > BigInt(0)) {
+        const selected =
+          onChainMaximum < BigInt(PushClient.DEFAULT_COSMOS_GAS_LIMIT)
+            ? onChainMaximum
+            : BigInt(PushClient.DEFAULT_COSMOS_GAS_LIMIT);
+        const gasLimit = Number(selected);
+        if (Number.isSafeInteger(gasLimit) && gasLimit > 0) {
+          this.gaslessGasLimitCache = {
+            chainId,
+            gasLimit,
+            expiresAt: Date.now() + PushClient.GASLESS_GAS_LIMIT_CACHE_TTL_MS,
+          };
+          return gasLimit;
+        }
+      }
+    } catch {
+      // Older/unavailable query endpoints fall back to the current safe cap.
+    }
+
+    return PushClient.DEFAULT_COSMOS_GAS_LIMIT;
   }
 
   async broadcastCosmosTx(txRaw: TxRaw): Promise<DeliverTxResponse> {
@@ -415,7 +493,10 @@ export class PushClient extends EvmClient {
     // pruned-history miss. Only fall back to archive on a hard error (all prune
     // attempts failed); never on an empty result (would double-load on polls).
     try {
-      return await this.executeWithRpcFallback(operation, 'getUniversalTxByIdV2');
+      return await this.executeWithRpcFallback(
+        operation,
+        'getUniversalTxByIdV2'
+      );
     } catch (error) {
       if (this.archiveTendermintRpc.length === 0) throw error;
       return this.executeWithRpcFallback(
@@ -488,7 +569,11 @@ export class PushClient extends EvmClient {
     // History-sensitive (tx_search). The op throws on an empty result, so the
     // pruned-history miss surfaces as a thrown error — `isEmpty` stays false and
     // the wrapper retries archive via its caught-error path.
-    return this.executeWithArchiveFallback(operation, 'getCosmosTx', () => false);
+    return this.executeWithArchiveFallback(
+      operation,
+      'getCosmosTx',
+      () => false
+    );
   }
 
   /**
@@ -506,7 +591,10 @@ export class PushClient extends EvmClient {
       const archiveClient = this.archivePublicClient as PublicClient;
       const tx = await archiveClient.getTransaction({ hash: txHash });
       const wait = async (confirmations = 1): Promise<TransactionReceipt> =>
-        archiveClient.waitForTransactionReceipt({ hash: txHash, confirmations });
+        archiveClient.waitForTransactionReceipt({
+          hash: txHash,
+          confirmations,
+        });
       return { ...tx, wait };
     }
   }

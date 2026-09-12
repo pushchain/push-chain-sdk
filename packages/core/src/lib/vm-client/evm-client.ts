@@ -272,18 +272,37 @@ export class EvmClient {
     nonce?: number;
     gas?: bigint;
   }): Promise<Hex> {
+    const resolveGas = async (): Promise<bigint> => {
+      if (explicitGas) return explicitGas;
+
+      const estimate = () =>
+        this.publicClient.estimateGas({
+          account: signer.account.address as `0x${string}`,
+          to,
+          data,
+          value,
+        });
+
+      if (data !== '0x') return estimate();
+
+      // A plain native transfer to a code-free EOA always costs 21k. Empty
+      // calldata is not sufficient to identify that case, though: contracts
+      // and EIP-7702 delegated accounts still execute code and need estimation.
+      // If the code lookup is unavailable, prefer estimation over submitting
+      // a transaction that can deterministically run out of gas.
+      try {
+        const targetCode = await this.publicClient.getCode({ address: to });
+        if (!targetCode || targetCode === '0x') return BigInt(21000);
+      } catch {
+        // Fall through to estimateGas.
+      }
+
+      return estimate();
+    };
+
     // Estimate gas and fees first (can run in parallel)
     const [gas, feePerGas, chainId] = await Promise.all([
-      explicitGas
-        ? Promise.resolve(explicitGas)
-        : data === '0x'
-          ? Promise.resolve(BigInt(21000))
-          : this.publicClient.estimateGas({
-              account: signer.account.address as `0x${string}`,
-              to,
-              data,
-              value,
-            }),
+      resolveGas(),
       this.publicClient.estimateFeesPerGas(),
       this.publicClient.getChainId(),
     ]);
