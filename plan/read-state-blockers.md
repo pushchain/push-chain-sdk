@@ -13,10 +13,9 @@ Companion doc: [`read-state-sdk-spec.md`](./read-state-sdk-spec.md)
 
 ---
 
-# Status as of 2026-09-10 (SDK) · chain/contracts verified 2026-09-09
+# Status as of 2026-09-15
 
-**5 of 6 defect blockers fixed and live on Donut. 1 blocker untouched and widened. 1 fix half-complete. C6 closed as won't-fix.
-The missing `UniversalReadRegistry` (R1) blocks the default shared receiver and on-chain result lookup. Custom-contract `read()` / `executeReads()` are SDK work and now implemented.**
+**R1 is fixed and funded E2E verified on Donut. N1's UEA path is fixed and its CEA path is in progress. N4 is explicitly deferred for now; its economic risk remains documented. C6 is closed as won't-fix for v1.**
 
 Verified against: node `v0.0.47` (what Donut's `abci_info` reports; contains all three node
 fixes), contracts redeployed (`UniversalCallback` impl `0x3b34de3c…` → `0xa481f5b0…`,
@@ -31,37 +30,32 @@ fixes), contracts redeployed (`UniversalCallback` impl `0x3b34de3c…` → `0xa4
 | **C5** | Failed refunds admin-sweepable | Contracts | Latent→active | ⬇️ **Back to Latent** | Still present — rejecting recipient moved 0.2 ETH to the rescuable pool live. But N2 gives refunds a fixed 150k, so `RefundFailed` is no longer routine |
 | **C6** | Callback can't chain a read | Contracts | Latent | 🚫 **Won't fix in v1** (decided 2026-09-09) | Nested reads are out of scope. Chained read reverts `0x3ee5aeb5`; SDK documents it as unsupported |
 | **C7** | `readBaseFee` split-key naming trap | Contracts | Latent | ❌ **Unfixed** | Mapping unchanged at `UniversalCore.sol:115` |
-| **N1** | UEA reads never ingested | Chain | Blocker | ✅ **UEA path fixed & proven live** `d4ef66db` · ⚠️ CEA path still open | Read `0xdc0a66ba…` sent through UEA `0x5C70C864…` via SDK Route 1: ingested, quorum, fulfilled, settled in 23 s; `ReadsByTx` finds it by the SDK's tx hash. `CallExecuteUniversalTx` (`evm.go:868`, CEA→contract inbounds) still does not ingest |
+| **N1** | UEA reads never ingested | Chain | Blocker | ✅ **UEA path fixed & proven live** `d4ef66db` · 🔄 **CEA path in progress** | Read `0xdc0a66ba…` sent through UEA `0x5C70C864…` via SDK Route 1: ingested, quorum, fulfilled, settled in 23 s; `ReadsByTx` finds it by the SDK's tx hash. `CallExecuteUniversalTx` ingestion is being implemented |
 | **N2** | `nil` gas → estimator starves callback | Chain | Blocker | ✅ **Fixed** `e28367b6` | Explicit `callbackGasLimit + 50_000`. Measured against the most demanding callback that fits each limit: needed buffer 0 @200k, 21,771 @500k, 15,394 @1M — ≥2× headroom |
 | **N3** | Read votes not gasless | Chain | Blocker (econ) | ✅ **Fixed** `47a25eed` | `MsgVoteReadResult` in `GaslessMsgTypes` |
-| **N4** | No affordability gate; free validator work | Chain | Blocker (econ) | ❌ **Unfixed — widened by C3** | Fee still 0 on every domain incl. `web2:https`; `blockedDomains` empty; `cosmos:foo`, `eip155:999999` and `web2:https` all accepted live for free |
-| **R1** | `UniversalReadRegistry` not built — no default shared receiver | Contracts | Default-receiver blocker | ❌ **Not started** | Custom app receivers work with `callback.target` and `callback.request`. Only omitted targets require the registry. No node or UniversalCallback upgrade is needed to deploy this application contract. |
+| **N4** | No affordability gate; free validator work | Chain | Blocker (econ) | ⏸ **Deferred for now — 2026-09-15** | Fee remains 0 on every domain incl. `web2:https`; the team has accepted deferring this launch control for now |
+| **R1** | Canonical registry | Contracts / SDK | Default-receiver blocker | ✅ **Fixed on Donut** | Proxy `0x91b09DAd1774bAfDE679F9ebB5F9046AE2b928C8`; 500,000 default callback gas; funded E2E passed |
 
 ## Still open — with the action
 
-**0. R1 — build and deploy the `UniversalReadRegistry`.** Not a defect: a component the v2
-spec's default-receiver path depends on. `read()` and `executeReads()` already support an
-existing app receiver using `callback: { target, gasLimit, request: { abi, functionName, args? } }`.
-Each entrypoint must emit exactly one request with the supplied spec and gas limit.
-The registry supplies a shared receiver and on-chain result storage across caller types;
-it is an ordinary application contract, not a node or system-contract upgrade. What the SDK needs from it
-(spec §Q3): `read(ReadSpec spec, uint64 gasLimit) payable` forwarding `msg.value` and setting
-`revertRecipient = msg.sender`; a `latestResult[reader][queryKey]` view; a pinned
-`REGISTRY_CALLBACK_GAS`; and the deployed address per network. Wiring after that is ~1 day
-(implementation plan PR7).
+**0. R1 — fixed on Donut.** Deployment and SDK wiring are complete on Donut.
+The entrypoint is `read(ReadSpec spec, bytes32 queryKey, uint64 callbackGasLimit)`.
+The SDK supplies a logical query key and defaults gas to 500,000. The registry preserves
+non-zero refund recipients. The funded request → quorum → stored result → settlement test
+passed on 2026-09-15. See [registry integration](./read-state-registry-integration.md).
 
 Smart-contract implementation handoff: [`universal-read-registry-contract-handoff.md`](./universal-read-registry-contract-handoff.md).
 
-**1. N4 — set a non-zero `readBaseFee` before enabling publicly.** Config only, no code.
+**1. N4 — deferred for now (decision 2026-09-15).** The proposed mitigation is still to set a non-zero `readBaseFee`; it is configuration, not code.
 Before the C3 fix, an unconfigured destination had height 0 and was rejected by the guard — an
 accidental allow-list. The heightless branch now accepts any unknown destination at
 `blockNumber=0`. For a nonsense chain that is cheap (validators resolve no handler, vote an
 error). For `web2:https` it is the first time the "every validator fetches an attacker-chosen
 URL for the cost of one tx" vector is *reachable*. N3 removed the per-vote gas cost, which
-narrows it, but the external work and unbounded on-chain state remain. Affordability gate in
-`AllPendingReadRequests` can follow; the fee cannot wait.
+narrows it, but the external work and unbounded on-chain state remain. An affordability gate in
+`AllPendingReadRequests` and a non-zero fee remain follow-up work when N4 is resumed.
 
-**2. N1 CEA path — decide if in scope.** `CallExecuteUniversalTx` is used by both
+**2. N1 CEA path — in progress.** `CallExecuteUniversalTx` is used by both
 `execute_inbound_funds_and_payload.go:244` and `execute_inbound_gas_and_payload.go:239` for
 CEA-originated inbounds whose recipient is a Push contract. It needs the same
 `IngestReadRequests` hand-off, or a CEA-driven tx that hits a read-requesting app strands
@@ -417,11 +411,9 @@ Checked directly; all correct. Unchanged by the fixes.
 
 # Before enabling — checklist
 
-- [ ] **Build and deploy `UniversalReadRegistry` (R1).** Blocks the default receiver only
-      in the SDK; the contract-dev path does not depend on it. See "Still open" 0.
-- [ ] **Set `readBaseFee` per supported domain.** Still zero on every Donut pair on
-      2026-09-09, including `web2:https`. **This is now the single most important item** —
-      see "Still open" 1. Mind **C7** when choosing the key.
+- [x] **Canonical registry E2E verified (R1) — 2026-09-15.** Two reads with different pins shared one logical key; per-request/latest storage and settlement matched.
+- [x] **N4 deferral recorded — 2026-09-15.** `readBaseFee` remains zero and the economic
+      risk is accepted for now. Revisit the fee and affordability gate before broader rollout.
 - [x] **Donut validator authz grants verified — 2026-09-10.** Both active universal
       validators (**2/2**) have an unexpired GenericAuthorization for
       `/ucallback.v1.MsgVoteReadResult`, confirmed through live `AllUniversalValidators`

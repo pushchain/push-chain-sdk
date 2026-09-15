@@ -7,7 +7,10 @@
  * Fixtures are the reads made on 2026-09-09; they are settled forever, so every
  * assertion here is deterministic.
  */
-import { bytesToHex } from 'viem';
+import { bytesToHex, createPublicClient, http, decodeAbiParameters } from 'viem';
+import { UNIVERSAL_READ_REGISTRY_EVM } from '../../constants/abi/universalReadRegistry.evm';
+import { getReadRegistryAddress, getRegistryReadResult, getLatestRegistryReadResult } from '../registry';
+import { getReadQueryKey } from '../read-params';
 import { PUSH_CHAIN_INFO } from '../../constants/chain';
 import { CHAIN, PUSH_NETWORK } from '../../constants/enums';
 import { WEB2_DESTINATION } from '../../constants/read-state';
@@ -15,9 +18,9 @@ import { ReadErrorCode, ReadStatus, UniversalReadStatus } from '../../generated/
 import { PushClient } from '../../push-client/push-client';
 import { ReadHeightUnavailableError } from '../errors';
 import { preflightRead } from '../preflight';
-import { prepareRead, simulateRead } from '../spec-builder';
+import { prepareRead, simulateRead, toCallData } from '../spec-builder';
 import { trackRead } from '../read-tracker';
-import { ReadNotFoundError, ReadRegistryUnavailableError } from '../errors';
+import { ReadNotFoundError } from '../errors';
 import { PushChain } from '../../push-chain/push-chain';
 import { READ_ERROR_CODE, READ_STATUS, UNIVERSAL_READ_STATUS } from '../read-state.types';
 import { toFunctionSelector } from 'viem';
@@ -27,6 +30,43 @@ const READ2_ID = '0xf3d62fb962c84259e728d184dd2e3199c4d6c39790e20d60f2bacf0c10ec
 const READ1_ID = '0xeba3eb9efad8c867bd19a66d925b5febae02efb5151faaf20d9fa8ea799c0d71';
 const READ3_TX = '0x0293d57e606d6fec8ce6364cad82a0c74b517aaaf294107b5a6e43fcc25e7ee9'; // UEA-originated
 const EXPIRED_ID = '0x4a6e27e003a8801f7f5dffff3beb8af6836b9e68a99c94bbb22dc95b180857a9';
+
+describe('Registry deployment (Donut, read-only)', () => {
+  it('prepares a callback-free SDK read and simulates the payable registry entrypoint without broadcasting', async () => {
+    const reader = '0x1111111111111111111111111111111111111111';
+    const sdk = await PushChain.initialize({ address: reader, chain: CHAIN.PUSH_TESTNET_DONUT }, { network: PUSH_NETWORK.TESTNET_DONUT });
+    const prepared = await sdk.universal.prepareRead(reader, { chain: CHAIN.ETHEREUM_SEPOLIA });
+    expect(prepared.callback?.target).toBe(getReadRegistryAddress(PUSH_NETWORK.TESTNET_DONUT));
+    expect(prepared.callbackGasLimit).toBe(500_000n);
+    expect(prepared.queryKey).toBe(getReadQueryKey(reader, { chain: CHAIN.ETHEREUM_SEPOLIA }));
+    const rpc = createPublicClient({ transport: http('https://evm.donut.rpc.push.org') });
+    const simulation = await rpc.call({
+      to: getReadRegistryAddress(PUSH_NETWORK.TESTNET_DONUT),
+      ...toCallData(prepared, prepared.callback!.request!), account: reader,
+      stateOverride: [{ address: reader, balance: 10n ** 21n }],
+    });
+    const [requestId] = decodeAbiParameters([{ type: 'uint256' }], simulation.data!);
+    expect(requestId).toBeGreaterThan(0n);
+    expect(await getRegistryReadResult(rpc, PUSH_NETWORK.TESTNET_DONUT, requestId))
+      .toEqual({ requestId: 0n, resultData: '0x', updatedAtBlock: 0n });
+  });
+
+  it('uses a deployed proxy wired to UniversalCallback and decodes empty lookup results', async () => {
+    const rpc = createPublicClient({ transport: http('https://evm.donut.rpc.push.org') });
+    const address = getReadRegistryAddress(PUSH_NETWORK.TESTNET_DONUT);
+    expect(await rpc.getChainId()).toBe(42101);
+    expect((await rpc.getCode({ address }))?.length).toBeGreaterThan(2);
+    const implementation = await rpc.getStorageAt({ address, slot: '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc' });
+    expect(BigInt(implementation ?? '0x0')).toBeGreaterThan(0n);
+    expect((await rpc.readContract({ address, abi: UNIVERSAL_READ_REGISTRY_EVM, functionName: 'universalCallback' })).toLowerCase())
+      .toBe('0x00000000000000000000000000000000000000c2');
+    expect(await getRegistryReadResult(rpc, PUSH_NETWORK.TESTNET_DONUT, 0n))
+      .toEqual({ requestId: 0n, resultData: '0x', updatedAtBlock: 0n });
+    const reader = '0x0000000000000000000000000000000000000000';
+    expect(await getLatestRegistryReadResult(rpc, PUSH_NETWORK.TESTNET_DONUT, reader, getReadQueryKey(reader, { chain: CHAIN.ETHEREUM_SEPOLIA })))
+      .toEqual({ requestId: 0n, resultData: '0x', updatedAtBlock: 0n });
+  });
+});
 
 describe('read-state integration (Donut, read-only)', () => {
   let client: PushClient;
@@ -268,10 +308,9 @@ describe('PushChain.universal read-state surface (read-only client, Donut)', () 
     expect(seen[seen.length - 1]).toBe('READ-TX-199-01');
   }, 60_000);
 
-  it('default receiver still requires a registry; custom execution requires a signer', async () => {
-    await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { gasLimit: 1n } })).rejects.toBeInstanceOf(ReadRegistryUnavailableError);
-    await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA })).rejects.toMatchObject({ code: 'INVALID_READ_QUERY' }); // validation first
-    await expect((client.universal.executeReads as unknown as (reads: []) => Promise<unknown>)([])).rejects.toThrow(/at least one prepared read/);
+  it('registry and custom execution both require a signer', async () => {
+    await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { gasLimit: 1n } })).rejects.toThrow(/Read only mode/);
+    await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA })).rejects.toThrow(/Read only mode/);
     // a malformed entrypoint fails before any preflight or signer check
     await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: CLIENT, gasLimit: 200_000n } })).rejects.toMatchObject({ code: 'INVALID_READ_QUERY' });
     const request = { abi: [{ type: 'function', name: 'request', stateMutability: 'payable', inputs: [], outputs: [] }] as const, functionName: 'request' };

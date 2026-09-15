@@ -70,7 +70,7 @@ describe('toBuildReadSpecParams', () => {
       chain: CHAIN.ETHEREUM_SEPOLIA, ...cb, refundTo: USER, blockNumber: 5n, minConfirmations: 3, expiryBlocks: 10n, maxFee: 7n,
     });
     expect(p).toEqual({
-      callback: cb.callback,
+      callback: expect.objectContaining({ gasLimit: cb.callback.gasLimit, target: expect.any(String), request: expect.any(Object) }),
       destination: { chain: CHAIN.ETHEREUM_SEPOLIA },
       query: { type: 'accountBalance', target: USER },
       callbackGasLimit: 200_000n, refundTo: USER, blockNumber: 5n, minConfirmations: 3, expiryBlocks: 10n, maxFee: 7n,
@@ -78,8 +78,9 @@ describe('toBuildReadSpecParams', () => {
     expect(toBuildReadSpecParams('https://x/y', { chain: CHAIN.WEB2, web2: { extract: [{ path: '$', valueType: 'string' }] }, ...cb }).destination)
       .toEqual({ chainNamespace: 'web2', chainId: 'https' });
   });
-  it('callback.gasLimit is required while the registry is unbuilt', () => {
-    expect(() => toBuildReadSpecParams(USER, { chain: CHAIN.ETHEREUM_SEPOLIA })).toThrow(/callback.gasLimit is required/);
+  it('defaults registry gas but requires explicit gas for a custom target', () => {
+    expect(toBuildReadSpecParams(USER, { chain: CHAIN.ETHEREUM_SEPOLIA }).callbackGasLimit).toBe(500_000n);
+    expect(() => toBuildReadSpecParams(USER, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: USER } })).toThrow(/callback.gasLimit is required/);
   });
   it('keeps SVM and web2 pinning internal', () => {
     expect(() => toBuildReadSpecParams(SOL_OWNER, { chain: CHAIN.SOLANA_DEVNET, blockNumber: 1n, ...cb }))

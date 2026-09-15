@@ -10,7 +10,7 @@
  * silently find zero logs. Pinned by `read-state/__tests__/abi-selectors.spec.ts`.
  */
 
-const READ_SPEC_COMPONENTS = [
+export const READ_SPEC_COMPONENTS = [
   {
     name: 'account',
     type: 'tuple',

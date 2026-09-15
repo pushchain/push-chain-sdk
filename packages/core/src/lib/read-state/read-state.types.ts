@@ -207,6 +207,8 @@ export interface BuildReadSpecParams {
 declare const preparedReadValue: unique symbol;
 
 export interface PreparedRead<T = unknown> {
+  /** SDK logical query identity, independent of pinning and payment. */
+  queryKey: Hex;
   /** Type-only result metadata retained through preparation and execution. */
   readonly [preparedReadValue]?: T;
   /** App request entrypoint retained for read()/executeReads(). */

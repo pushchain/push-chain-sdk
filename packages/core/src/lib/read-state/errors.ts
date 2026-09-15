@@ -131,7 +131,7 @@ export class ReadNotFoundError extends ReadStateError {
   }
 }
 
-/** No custom receiver was supplied and the canonical registry is not deployed yet. */
+/** No custom receiver was supplied and this network has no configured registry. */
 export class ReadRegistryUnavailableError extends ReadStateError {
   constructor(method: string, ctx: ReadStateErrorContext = {}) {
     super('READ_REGISTRY_UNAVAILABLE', `${method} needs the UniversalReadRegistry, which is not deployed on this network`, {

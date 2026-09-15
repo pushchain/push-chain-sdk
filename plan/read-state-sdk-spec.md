@@ -504,16 +504,16 @@ response.raw?.status === READ_STATUS.SUCCESS
 
 `value` is populated only when these conditions hold and decoding succeeds.
 
-## 4. Registry-dependent defaults are not available yet
+## 4. Registry deployment and network availability
 
-The OG presents `read(subject, { chain })` as a complete one-shot flow with default callback target and gas limit. The canonical `UniversalReadRegistry` has not been built or deployed, so the SDK cannot safely supply those defaults.
+Donut now supports the OG `read(subject, { chain })` shorthand through registry proxy `0x91b09DAd1774bAfDE679F9ebB5F9046AE2b928C8`. Default callback gas is `500_000n`, overridable up to `1_000_000n`. Other network settings still require a custom receiver until a registry deployment is verified there.
 
 Current behavior:
 
-- `prepareRead` requires `callback.gasLimit` because it is needed to size the callback budget.
-- `read` and `executeReads` require `callback.target` plus `callback.request`, which describes the public payable entrypoint on the application's `UniversalReadClient` contract.
-- Omitting the custom receiver produces `ReadRegistryUnavailableError`.
-- A canonical registry can later restore the OG shorthand without changing the query grammar or tracking model.
+- Omitted targets select the configured network's registry and `read(spec, queryKey, callbackGasLimit)` entrypoint.
+- Custom targets still require explicit gas and, for execution, a request ABI/function.
+- Networks without a pinned deployment produce `ReadRegistryUnavailableError` for the default path.
+- The SDK computes a stable logical key exposed by `PreparedRead.queryKey` and `getReadQueryKey`; the contract accepts it as a caller-supplied label.
 
 Example of the currently executable path:
 
@@ -530,7 +530,7 @@ const result = await client.universal.read(user, {
 });
 ```
 
-The public TypeScript options still permit an omitted callback because that is the intended registry-era API. Until the registry exists, runtime validation is intentionally stricter than the future-facing type shape. This mismatch should be removed when the registry lands or tightened if the team no longer wants forward-compatible types.
+See [`read-state-registry-integration.md`](./read-state-registry-integration.md) for the exact key algorithm, storage lookup helpers, refund behavior and validation scope. The registry preserves explicit non-zero refund recipients. Callback failures require a new paid request; 500,000 gas is not a guarantee for arbitrary result sizes.
 
 ## 5. Batch recovery metadata
 
@@ -607,7 +607,7 @@ The implementation adds three public error classes that the OG list did not anti
 
 - `InvalidReadQueryError` rejects malformed public query grammar before building a `ReadSpec`.
 - `ReadNotFoundError` distinguishes an unknown or not-yet-ingested tracking reference from a polling timeout.
-- `ReadRegistryUnavailableError` explains why the shorthand one-shot path cannot run before the canonical registry is deployed.
+- `ReadRegistryUnavailableError` identifies a network without a configured registry.
 
 Execution can also surface stable `ReadStateError` codes such as `READ_REQUEST_TX_FAILED` and `READ_REQUEST_MISMATCH`. These preserve transaction hashes needed to recover reads from a partially successful sequential fallback; reducing every execution failure to the OG's generic `PushChainExecutionError` would lose that recovery context.
 
@@ -626,7 +626,6 @@ Key observations:
 
 ## 14. Remaining work
 
-1. Build and deploy the canonical `UniversalReadRegistry`, then pin `UNIVERSAL_READ_REGISTRY_ADDRESS` and `REGISTRY_CALLBACK_GAS`.
-2. Reconcile the future-facing callback option types with the stricter pre-registry runtime requirement.
-3. Fix CEA-originated read ingestion or add an explicit SDK route guard.
-4. Add the contract/node/SDK drift-check script so the ABI, selectors, constants, event tuple, registry address, and public surface cannot silently diverge again.
+1. Verify registry deployments before enabling defaults on additional networks.
+2. Complete the in-progress CEA-originated read ingestion fix, or add an explicit SDK route guard if it does not land.
+3. Add the contract/node/SDK drift-check script so the ABI, selectors, constants, event tuple, registry address, and public surface cannot silently diverge again.

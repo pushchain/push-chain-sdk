@@ -38,8 +38,14 @@ done.status === PushChain.CONSTANTS.READ.STATUS.FULFILLED && done.callbackDelive
   `executeReads()` returns a typed `BatchReadResponse` with `txHash`, `reads`, `count`,
   `atomic`, and `wait()`. Results preserve input order. Both methods require a signer and wait for terminal
   reads unless `waitForCompletion: false` is supplied. Wallets without EIP-7702 use
-  sequential transactions; all hashes are retained for tracking. Omitting the target
-  still throws `ReadRegistryUnavailableError` until the shared registry is deployed.
+  sequential transactions; all hashes are retained for tracking. On Donut, omitting
+  the target uses the canonical registry at `0x91b09DAd1774bAfDE679F9ebB5F9046AE2b928C8`,
+  with 500,000 callback gas by default. Other networks require a custom receiver.
+
+Registry calls include a stable SDK query key that excludes block/slot, payment and expiry.
+`PreparedRead.queryKey` and `getReadQueryKey` expose it for `latestResult` lookups.
+`getRegistryReadResult` and `getLatestRegistryReadResult` read raw registry storage using
+a viem client; use tracking to verify consensus status, delivery and settlement.
 
 The public grammar uses `CHAIN.WEB2` for https reads while keeping Web2 out of transaction
 chain types. SVM and Web2 pinning is selected internally rather than exposed as

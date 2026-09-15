@@ -9,6 +9,14 @@
 /** Hard upper bound on the gas an app callback may declare — `ReadTypes.sol:50`. */
 export const MAX_CALLBACK_GAS_LIMIT = 1_000_000n;
 
+/** Registry default; large results may need an explicit override up to the maximum. */
+export const REGISTRY_CALLBACK_GAS = 500_000n;
+
+/** Verified proxy on Donut. Other networks intentionally have no default receiver. */
+export const UNIVERSAL_READ_REGISTRY_ADDRESS = {
+  TESTNET_DONUT: '0x91b09DAd1774bAfDE679F9ebB5F9046AE2b928C8',
+} as const;
+
 /** Contract rejects anything below this — `ReadTypes.sol:43`. */
 export const MIN_CONFIRMATIONS_FLOOR = 1;
 

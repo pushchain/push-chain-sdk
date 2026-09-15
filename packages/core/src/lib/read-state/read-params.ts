@@ -11,7 +11,8 @@
  */
 import type { Abi, Address, Hex, ContractFunctionReturnType, ContractFunctionName, ContractFunctionArgs, ExtractAbiFunctionForArgs } from 'viem';
 import { isAddress } from 'viem';
-import { CHAIN } from '../constants/enums';
+import { CHAIN, PUSH_NETWORK } from '../constants/enums';
+import { computeReadQueryKey, resolveReadCallback } from './registry';
 import { READ_NAMESPACE, WEB2_DESTINATION } from '../constants/read-state';
 import { resolveDestination } from './destination';
 import { deriveAssociatedTokenAddress, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from './envelopes/svm';
@@ -207,29 +208,30 @@ export function toReadQuery(subject: string, o: ReadOptionsInput): ReadQuery {
 }
 
 /** Public options → the spec builder's params. Pure; throws `InvalidReadQueryError` on a malformed request. */
-export function toBuildReadSpecParams(subject: string, o: ReadOptionsInput): BuildReadSpecParams {
+export function toBuildReadSpecParams(subject: string, o: ReadOptionsInput, network: PUSH_NETWORK = PUSH_NETWORK.TESTNET_DONUT): BuildReadSpecParams {
   const destination = toReadDestination(o.chain);
   const namespace = resolveDestination(destination).namespace;
   if (namespace !== READ_NAMESPACE.EVM && (o.blockNumber !== undefined || o.minConfirmations !== undefined)) {
     throw new InvalidReadQueryError(`${namespace} reads do not expose blockNumber or minConfirmations; the SDK selects the read reference internally`);
   }
-  const gasLimit = o.callback?.gasLimit;
-  if (gasLimit === undefined) {
-    throw new InvalidReadQueryError('callback.gasLimit is required', {
-      hint: 'The canonical UniversalReadRegistry is not deployed yet, so every read targets your own UniversalReadClient: pass callback: { target, gasLimit }.',
-    });
-  }
+  const query = toReadQuery(subject, o);
+  const callback = resolveReadCallback(o.callback, network, computeReadQueryKey(destination, query));
   return {
-    callback: o.callback,
+    callback,
     destination,
-    query: toReadQuery(subject, o),
-    callbackGasLimit: gasLimit,
+    query,
+    callbackGasLimit: callback.gasLimit,
     refundTo: o.refundTo,
     minConfirmations: o.minConfirmations,
     blockNumber: o.blockNumber,
     expiryBlocks: o.expiryBlocks,
     maxFee: o.maxFee,
   };
+}
+
+/** Offline logical query key for the registry's latestResult lookup. */
+export function getReadQueryKey<const O extends ReadQueryOptions>(subject: string, options: O & ValidateReadCall<O>): Hex {
+  return computeReadQueryKey(toReadDestination(options.chain), toReadQuery(subject, options));
 }
 
 export function toLifecycleOptions(o?: ReadTrackOptions): ReadLifecycleOptions {

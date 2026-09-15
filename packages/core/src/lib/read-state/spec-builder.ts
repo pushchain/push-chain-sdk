@@ -15,6 +15,7 @@ import { UEA_FACTORY_ABI } from '../constants/abi/uea-factory';
 import { UEA_FACTORY } from '../constants/chain';
 import { DEFAULT_EXPIRY_BLOCKS, MIN_CONFIRMATIONS_FLOOR, READ_NAMESPACE } from '../constants/read-state';
 import { sizeCallbackBudget } from './budget';
+import { computeReadQueryKey } from './registry';
 import { resolveDestination } from './destination';
 import { encodeReadQuery } from './envelopes';
 import { InvalidReadQueryError, InvalidReadSpecError, ReadHeightUnavailableError, ReadStateError } from './errors';
@@ -135,6 +136,7 @@ export function buildReadSpecFromPreflight(
 
   return {
     callback: params.callback,
+    queryKey: computeReadQueryKey(params.destination, params.query),
     chain: dest.caip2 as ReadChain,
     spec,
     specTuple: toTuple(spec),

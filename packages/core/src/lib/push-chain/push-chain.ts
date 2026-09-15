@@ -47,7 +47,6 @@ import {
   type ReadTrackOptions,
   type ReadExecuteOptions,
 } from '../read-state/read-params';
-import { ReadRegistryUnavailableError } from '../read-state/errors';
 import { assertRequestEntrypoint, executeReads as executePreparedReads } from '../read-state/read-executor';
 
 /**
@@ -167,8 +166,8 @@ export class PushChain {
     rescueFunds: Orchestrator['rescueFunds'];
     /**
      * Cross-chain read state — one-shot. `read ≡ prepareRead → executeReads → wait`.
-     * Pass callback.target and callback.request for your app contract. Omitting the
-     * target requires the canonical registry, which is not deployed yet.
+     * Defaults to the canonical registry on Donut. Pass callback.target and
+     * callback.request for your own application receiver.
      */
     read: <const O extends ReadOptions>(subject: string, options: O & ValidateReadCall<O>) => Promise<UniversalReadResponse<ReadValue<O>>>;
     /**
@@ -346,16 +345,15 @@ export class PushChain {
       },
       // Only read()/executeReads() send transactions; prepare/simulate/track remain read-only.
       read: async <const O extends ReadOptions>(subject: string, options: O) => {
-        const params = toBuildReadSpecParams(subject, options);
-        if (!options.callback?.target) throw new ReadRegistryUnavailableError('read');
-        assertRequestEntrypoint(options.callback, 'read'); // before preflight: no RPC for a malformed request
+        const params = toBuildReadSpecParams(subject, options, orchestrator.getNetwork());
+        assertRequestEntrypoint(params.callback, 'read');
         if (this.isReadMode) throw new Error('Read only mode cannot call read function');
         const prepared = await orchestrator.prepareRead(params, options.progressHook);
         const { reads: [response] } = await executePreparedReads(orchestrator, [prepared] as const, options);
         return response as UniversalReadResponse<ReadValue<O>>;
       },
       prepareRead: <const O extends ReadPrepareOptions>(subject: string, options: O & ValidateReadCall<O>) => {
-        return orchestrator.prepareRead.bind(orchestrator)(toBuildReadSpecParams(subject, options)) as Promise<PreparedRead<ReadValue<O>>>;
+        return orchestrator.prepareRead.bind(orchestrator)(toBuildReadSpecParams(subject, options, orchestrator.getNetwork())) as Promise<PreparedRead<ReadValue<O>>>;
       },
       executeReads: (async (reads: readonly PreparedRead[], options?: ReadExecuteOptions) => {
         reads.forEach((r) => assertRequestEntrypoint(r.callback));

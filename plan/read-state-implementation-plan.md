@@ -4,7 +4,7 @@
 **Date:** 2026-09-09
 
 Seven PRs on one branch, each independently reviewable and green. Groups 1–3 (PR1–PR6) are
-unblocked today. PR7 waits on the `UniversalReadRegistry`.
+unblocked today. Registry update (2026-09-15): PR7 defaults are wired to the deployed Donut registry and funded E2E verification passed.
 
 ## Status — 2026-09-09 (end of day)
 
@@ -16,7 +16,7 @@ unblocked today. PR7 waits on the `UniversalReadRegistry`.
 | PR4 `trackRead` + `READ-TX` band | `d4b3ec3` | ✅ | unit 1233 · integration 18/18 |
 | PR5 public surface | `74981dc` | ✅ | unit 1584 · integration 22/22 |
 | PR6 e2e tree + CI `read` group | `148d375` | ✅ | **e2e 8/8 live on Donut** |
-| PR7 `read()` / `executeReads()` | working tree | custom receivers implemented | only the default shared receiver requires `UniversalReadRegistry` |
+| PR7 `read()` / `executeReads()` | working tree | custom and Donut registry receivers implemented | funded registry E2E passed |
 
 **v1 definition of done (§5) is met** except the two items that belong to other teams: the
 Go run of `envelope-vectors.json` (hand the file to the chain team) and the website MDX
@@ -24,13 +24,11 @@ Go run of `envelope-vectors.json` (hand the file to the chain team) and the webs
 
 **Deviations from the plan, all deliberate:**
 
-- Without a custom target, `read()` / `executeReads()` throw `ReadRegistryUnavailableError` (new class, code
-  `READ_REGISTRY_UNAVAILABLE`), not `UnsupportedReadDestinationError` — the old name lied.
-  `read()` validates the request first. Custom app receivers are implemented in PR7.
+- Without a custom target, Donut uses the pinned registry. Other networks throw `ReadRegistryUnavailableError` until a deployment is verified there. Custom app receivers remain supported.
 - Public grammar follows the v2 spec: `prepareRead(subject, options)` with `chain` /
   `token` / `abi+functionName+args` / `storageSlot` / `web2`, adapted in
-  `read-state/read-params.ts`. `callback.gasLimit` is mandatory until the registry pins
-  `REGISTRY_CALLBACK_GAS`. Web2 is `CHAIN.WEB2` / `CONSTANTS.READ.WEB2 = 'web2:https'`,
+  `read-state/read-params.ts`. Custom callback gas is mandatory; registry gas defaults to
+  `REGISTRY_CALLBACK_GAS = 500_000n`. Web2 is `CHAIN.WEB2` / `CONSTANTS.READ.WEB2 = 'web2:https'`,
   not a `CHAIN` member — so the §4 "exclude from `sendTransaction`" item is satisfied by the
   type system with no runtime guard.
 - The N1 "refuse `prepareRead` for a CEA signer" guard was **not** added: `prepareRead` never
@@ -228,8 +226,7 @@ src/lib/constants/index.ts           CONSTANTS.READ
 .changeset/read-state.md             minor: "feat(core): cross-chain read state — prepareRead/trackRead"
 ```
 
-PR5 originally exposed stubs. PR7 now executes custom app receivers; missing default
-registry targets still throw `ReadRegistryUnavailableError`.
+PR5 originally exposed stubs. PR7 now executes custom receivers and the deployed Donut registry.
 
 **Unit** — `push-chain.read-state.spec.ts`: all four methods exist on a client built from a **`UniversalAccount`** (read-only mode) and `prepareRead`/`trackRead` execute (mocked); exports snapshot; `CONSTANTS.READ` values.
 
@@ -266,7 +263,7 @@ this implementation uses the existing Push-native/UEA path.
 
 A non-atomic (sequential-fallback) batch that fails midway throws `ReadStateError('READ_REQUEST_TX_FAILED')` carrying the hashes already mined, so the committed reads can be resumed with `trackRead({ txHash })`.
 
-**Remaining, registry-only:** when `UniversalReadRegistry` ships, pin `UNIVERSAL_READ_REGISTRY_ADDRESS` + `REGISTRY_CALLBACK_GAS`, make it the default `callback.target` (so `callback` becomes optional), and expose the `latestResult[reader][queryKey]` view. Tests: unit (default target + gas), integration (`latestResult` view), e2e (`read()` with no `callback`).
+**Registry update — 2026-09-15:** address, ABI, 500,000-gas default, stable query keys and raw storage helpers are implemented. The funded two-read E2E passed. See [registry integration](./read-state-registry-integration.md).
 
 ---
 
@@ -292,9 +289,9 @@ refund landed at the UEA. PR3–PR6 can proceed on verified assumptions.
 
 | item | owner | effect on this plan |
 |---|---|---|
-| `UniversalReadRegistry` unbuilt | contracts | default receiver blocked; custom app execution is implemented |
-| N1 CEA path not ingested | chain | PR3 refuses `prepareRead` when the signer resolves to a CEA (`isCEA`) — until they say otherwise |
-| N4 fee 0, no affordability gate | chain/ops | none on the SDK; launch gate only |
+| Registry on Donut | SDK / QA | integrated and funded E2E verified; other networks require deployment verification |
+| N1 CEA path not ingested | chain | fix in progress; an SDK route guard remains the fallback if it does not land |
+| N4 fee 0, no affordability gate | chain/ops | deferred by decision on 2026-09-15; risk remains documented |
 | `yarn build:proto` destructive (I7) | us | hand-author; add a CI guard that fails if `generated/ucallback` differs from committed |
 | Q9 web2 `CHAIN.WEB2 = 'web2:https'` | us | exclude from `sendTransaction`'s `to.chain` type + runtime guard (PR5) |
 | Progress-hook suppression set | us | READ-TX band must be left out of `R1_SUPPRESSED_IN_NON_R1` or events vanish under R2/R3 |
@@ -308,4 +305,4 @@ refund landed at the UEA. PR3–PR6 can proceed on verified assumptions.
 - Integration: passes against Donut with no key.
 - E2E: the seven live specs green on Donut, including UEA-originated and reverting-callback.
 - Changeset + `docs-examples/13-read-state` in place; website MDX handed to docs.
-- `read()` / `executeReads()` support custom app receivers; default receiver reports the missing registry.
+- `read()` / `executeReads()` support custom app receivers and the default Donut registry.

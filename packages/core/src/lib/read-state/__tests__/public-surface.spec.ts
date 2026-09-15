@@ -7,6 +7,7 @@ describe('read-state public surface', () => {
     for (const fn of [
       'resolveDestination', 'encodeReadQuery', 'decodeReadResult', 'parseReadRequestsFromReceipt', 'parseFulfilOutcome',
       'buildReadSpecFromPreflight', 'validateReadSpec', 'toCallData', 'sizeCallbackBudget', 'inferResultShape', 'toRequestIdHex', 'toReadQuery',
+      'getReadQueryKey', 'computeReadQueryKey', 'getReadRegistryAddress', 'getRegistryReadResult', 'getLatestRegistryReadResult',
       'ReadStateError', 'InvalidReadQueryError', 'InvalidReadSpecError', 'ReadHeightUnavailableError', 'UnsupportedReadDestinationError',
       'ReadDecodeError', 'ReadTimeoutError', 'ReadNotFoundError', 'ReadRegistryUnavailableError',
     ]) {
@@ -20,6 +21,7 @@ describe('read-state public surface', () => {
     expect(core.READ_ERROR_CODE.INVALID_QUERY).toBe(1);
     expect(core.TERMINAL_READ_STATUSES.has(core.UNIVERSAL_READ_STATUS.EXPIRED)).toBe(true);
     expect(Array.isArray(core.UNIVERSAL_CALLBACK_EVM)).toBe(true);
+    expect(Array.isArray(core.UNIVERSAL_READ_REGISTRY_EVM)).toBe(true);
   });
 
   it('PushChain.CONSTANTS.READ pins the contract-derived values', () => {
@@ -29,6 +31,8 @@ describe('read-state public surface', () => {
     expect(R.MIN_CONFIRMATIONS_FLOOR).toBe(1);
     expect(R.DEFAULT_EXPIRY_BLOCKS).toBe(300n);
     expect(R.CALLBACK_BUDGET_BUFFER).toBe(3);
+    expect(R.REGISTRY_CALLBACK_GAS).toBe(500_000n);
+    expect(R.UNIVERSAL_READ_REGISTRY_ADDRESS.TESTNET_DONUT).toBe('0x91b09DAd1774bAfDE679F9ebB5F9046AE2b928C8');
     expect(R.WEB2_MAX_EXTRACT_ENTRIES).toBe(16);
     expect(R.WEB2_DEFAULT_TIMEOUT_MS).toBe(5_000);
     expect(R.NAMESPACE).toEqual({ EVM: 'eip155', SVM: 'solana', WEB2: 'web2' });

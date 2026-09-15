@@ -134,6 +134,7 @@ const F = {
   cascade: '__e2e__/cross-chain/cascade-amm.spec.ts',
 
   readEoa: '__e2e__/read/evm/balance-eoa.spec.ts',
+  readRegistry: '__e2e__/read/evm/registry.spec.ts',
   readUea: '__e2e__/read/evm/balance-uea.spec.ts',
   readCall: '__e2e__/read/evm/contract-call.spec.ts',
   readRevert: '__e2e__/read/evm/callback-reverts.spec.ts',
@@ -600,6 +601,11 @@ export const SCENARIOS: Scenario[] = [
     grep: 'read state › EVM balance from a Push EOA',
     needs: { masterPC: '0.1' },
     note: 'prepareRead → simulateRead → sendTransaction → trackRead → value == Sepolia balance at pin.',
+  },
+  {
+    id: 'read-canonical-registry', group: 'read', file: F.readRegistry,
+    grep: 'read state › canonical registry', needs: { masterPC: '0.2' },
+    note: 'Callback-free read plus a second pin: verifies per-request storage, stable-key latestResult and settlement.',
   },
   {
     id: 'read-evm-balance-uea',

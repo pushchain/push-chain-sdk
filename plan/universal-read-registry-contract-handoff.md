@@ -1,5 +1,7 @@
 # UniversalReadRegistry — Smart Contract Handoff
 
+**Deployment update — 2026-09-15:** Donut proxy `0x91b09DAd1774bAfDE679F9ebB5F9046AE2b928C8` is deployed and wired into the SDK. The final entrypoint is `read(spec, queryKey, callbackGasLimit)`; the SDK computes the key and defaults callback gas to 500,000. Explicit non-zero refund recipients are preserved. The funded two-read E2E passed. The proposal below is retained as historical design context; [registry integration](./read-state-registry-integration.md) describes the implemented behavior and validation.
+
 **Audience:** smart-contract developer · **Owner:** contracts team · **SDK package:** `@pushchain/core`
 
 Related documents:

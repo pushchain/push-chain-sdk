@@ -59,7 +59,7 @@ The SDK:
 
 ### Your `UniversalReadClient` contract
 
-The canonical shared registry is not deployed yet, so executable reads currently need an application contract based on `UniversalReadClient`.
+On Donut, the SDK defaults to the deployed shared registry when you omit `callback`. An application can instead supply its own `UniversalReadClient` to execute custom callback logic. See [registry integration](./read-state-registry-integration.md) for shorthand examples and stored-result lookups.
 
 The contract has two responsibilities:
 
@@ -867,13 +867,7 @@ Always inspect the response status.
 
 ## 19. Current limitations
 
-The major remaining limitation is the missing canonical `UniversalReadRegistry`.
-
-Until it is deployed:
-
-- the minimal `read(subject, { chain })` shorthand is unavailable;
-- executable reads need a custom `UniversalReadClient`; and
-- `callback.target`, `callback.gasLimit`, and `callback.request` are needed for `read()` and `executeReads()`.
+The registry shorthand is available on Donut. Other networks need a verified registry deployment before their defaults can be enabled. Custom application receivers continue to require explicit callback configuration. Registry gas defaults to 500,000; large results may require a new request with more gas, up to 1,000,000.
 
 Other external limitations:
 
