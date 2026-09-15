@@ -1,6 +1,6 @@
 # Read State — SDK Implementation Plan
 
-**Branch:** `feature/readstate` · **Package:** `@pushchain/core` · **Spec:** [`read-state-sdk-spec.md`](./read-state-sdk-spec.md) · **Blockers:** [`read-state-blockers.md`](./read-state-blockers.md) · **Tools:** [`read-state-tools/`](./read-state-tools/)
+**Branch:** `feature/readstate` · **Package:** `@pushchain/core` · **Spec:** [`read-state-sdk-spec.md`](./read-state-sdk-spec.md) · **Blockers:** [`read-state-blockers.md`](./read-state-blockers.md) · **Tools:** [`packages/core/__e2e__/read/tools/`](../packages/core/__e2e__/read/tools/)
 **Date:** 2026-09-09
 
 Seven PRs on one branch, each independently reviewable and green. Groups 1–3 (PR1–PR6) are
@@ -31,8 +31,8 @@ Go run of `envelope-vectors.json` (hand the file to the chain team) and the webs
   `REGISTRY_CALLBACK_GAS = 500_000n`. Web2 is `CHAIN.WEB2` / `CONSTANTS.READ.WEB2 = 'web2:https'`,
   not a `CHAIN` member — so the §4 "exclude from `sendTransaction`" item is satisfied by the
   type system with no runtime guard.
-- The N1 "refuse `prepareRead` for a CEA signer" guard was **not** added: `prepareRead` never
-  signs, and a CEA-origin request is a `sendTransaction` concern. Tracked in the blockers doc.
+- No N1 CEA route guard was added. Node `v0.0.49` now ingests reads emitted inside
+  `CallExecuteUniversalTx`; the full CEA round trip was verified live on 2026-09-15.
 - The CI guard for `generated/ucallback` drift was not added; I7 is enforced by
   `ucallback-codec.spec.ts` against the real Donut bytes instead.
 - `wait()` default timeout = request lifetime × 1.34 s/block (measured), capped 180 s.
@@ -258,8 +258,8 @@ argument mapper). Prepared reads retain these and the decoder. Execution uses ex
 Push/UEA multicalls, retains all hashes on sequential wallet fallback, and matches records
 by spec, callback target and gas limit to preserve input order. `waitForCompletion: false`
 returns resumable snapshots; default waits for terminal outcomes. Read-only clients can
-prepare/simulate/track but cannot send. CEA inbound ingestion remains a chain dependency;
-this implementation uses the existing Push-native/UEA path.
+prepare/simulate/track but cannot send. Push-native, UEA, and CEA-originated contract paths
+are supported by the deployed node.
 
 A non-atomic (sequential-fallback) batch that fails midway throws `ReadStateError('READ_REQUEST_TX_FAILED')` carrying the hashes already mined, so the committed reads can be resumed with `trackRead({ txHash })`.
 
@@ -279,7 +279,7 @@ PR1 ──► PR2 ──► PR3 ──► PR4 ──► PR5 ──► PR6
 ```
 
 **Gate cleared 2026-09-09.** The UEA-originated live read ran via
-`plan/read-state-tools/live-read-uea.ts` (SDK Route 1, Sepolia-origin signer): read
+`packages/core/__e2e__/read/tools/live-read-uea.ts` (SDK Route 1, Sepolia-origin signer): read
 `0xdc0a66ba…` ingested, fulfilled and settled in 23 s, `ReadsByTx` found by the SDK's tx hash,
 refund landed at the UEA. PR3–PR6 can proceed on verified assumptions.
 
@@ -290,7 +290,7 @@ refund landed at the UEA. PR3–PR6 can proceed on verified assumptions.
 | item | owner | effect on this plan |
 |---|---|---|
 | Registry on Donut | SDK / QA | integrated and funded E2E verified; other networks require deployment verification |
-| N1 CEA path not ingested | chain | fix in progress; an SDK route guard remains the fallback if it does not land |
+| N1 CEA path | chain | fixed in node `cfe8952c`, deployed via the `cea-read-ingest` upgrade, and verified live on Donut 2026-09-15 |
 | N4 fee 0, no affordability gate | chain/ops | deferred by decision on 2026-09-15; risk remains documented |
 | `yarn build:proto` destructive (I7) | us | hand-author; add a CI guard that fails if `generated/ucallback` differs from committed |
 | Q9 web2 `CHAIN.WEB2 = 'web2:https'` | us | exclude from `sendTransaction`'s `to.chain` type + runtime guard (PR5) |

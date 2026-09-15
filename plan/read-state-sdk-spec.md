@@ -588,7 +588,6 @@ Because a refund recipient can reject the push without preventing expiry, `EXPIR
 
 - Nested reads initiated inside a callback are not supported for v1. The shared reentrancy guard rejects them, and the outer fulfil path records the rejection as `CallbackFailed`.
 - `refundTo` defaults to the sending Push account. This is safe for EVM and SVM UEAs because both accept native Push payments; it was also verified on Donut. The SDK warns when the target is a contract that cannot be identified as a UEA.
-- CEA-originated reads remain an open chain-side issue: reads created through `CallExecuteUniversalTx` are not ingested, which can strand the callback budget. The node path must be fixed or the SDK must reject that signer route.
 
 ## 12. Additional constants and errors
 
@@ -613,7 +612,7 @@ Execution can also surface stable `ReadStateError` codes such as `READ_REQUEST_T
 
 ## 13. Verification evidence
 
-Live Donut verification covered EVM, SVM, and Web2 reads, plus success, validator error, callback failure, expiry, EOA-originated requests, and UEA-originated requests. Observed reads settled in roughly 12–23 seconds during the verification run.
+Live Donut verification covered EVM, SVM, and Web2 reads, plus success, validator error, callback failure, expiry, EOA-originated requests, UEA-originated requests, and the contract CEA round trip.
 
 Key observations:
 
@@ -623,9 +622,9 @@ Key observations:
 - A reverting callback produced node status `FULFILLED` with `callbackDelivered = false`.
 - An expired request returned the full callback budget while retaining the protocol fee.
 - A UEA-originated request was discoverable by the exact transaction hash returned by `sendTransaction`, validating tx-hash-first recovery.
+- A Push contract created its initially undeployed Sepolia CEA, received a CEA-originated inbound, and requested a read inside `executeUniversalTx`. Node `v0.0.49` indexed request `0x57e2562a…` under inbound Push tx `0x38098563…`; it reached `FULFILLED`, the registry stored the result, and settlement succeeded.
 
 ## 14. Remaining work
 
 1. Verify registry deployments before enabling defaults on additional networks.
-2. Complete the in-progress CEA-originated read ingestion fix, or add an explicit SDK route guard if it does not land.
-3. Add the contract/node/SDK drift-check script so the ABI, selectors, constants, event tuple, registry address, and public surface cannot silently diverge again.
+2. Add the contract/node/SDK drift-check script so the ABI, selectors, constants, event tuple, registry address, and public surface cannot silently diverge again.

@@ -863,7 +863,6 @@ Always inspect the response status.
 - Handle `ReadTimeoutError` as resumable.
 - Preserve every `transactionHashes` value from non-atomic batch errors.
 - Do not initiate nested reads from inside a callback.
-- Avoid CEA-originated reads until chain-side ingestion is fixed.
 
 ## 19. Current limitations
 
@@ -873,7 +872,6 @@ Other external limitations:
 
 - No median Web2 aggregation.
 - No queryable mid-ballot vote counts.
-- CEA-originated read ingestion remains unresolved.
 - The deployed fee and refund ABI cannot be changed locally by the SDK.
 
 ## 20. Recommended integration sequence

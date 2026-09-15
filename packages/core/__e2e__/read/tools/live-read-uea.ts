@@ -1,5 +1,5 @@
 /**
- * live-read-uea.ts — the UEA-ORIGINATED live read.
+ * Manual E2E — the UEA-ORIGINATED live read.
  *
  * Sends the read request THROUGH a Universal Executor Account via the SDK's own Route 1
  * (Sepolia-origin signer → UniversalPayload → MsgExecutePayload → UEA executes the call).
@@ -7,14 +7,14 @@
  * fix (push-chain d4ef66db) added ingestion to. If x/ucallback records it and it settles,
  * N1 works live.
  *
- *   cd packages/core && npx ts-node --transpile-only ../../plan/read-state-tools/live-read-uea.ts
+ *   cd packages/core && npx ts-node --transpile-only __e2e__/read/tools/live-read-uea.ts
  *
  * Needs packages/core/.env: EVM_PRIVATE_KEY (Sepolia-origin owner with a deployed UEA on Donut).
  * Costs ~0.05 PC budget from the UEA (refunded minus burn) + Push gas.
  */
 import path from 'path';
 import { config as dotenv } from 'dotenv';
-dotenv({ path: path.resolve(__dirname, '../../packages/core/.env') });
+dotenv({ path: path.resolve(__dirname, '../../../.env') });
 
 import {
   createWalletClient, createPublicClient, http, encodeAbiParameters, encodeFunctionData,
@@ -22,7 +22,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
-import { PushChain } from '../../packages/core/src';
+import { PushChain } from '../../../src';
 
 const DONUT_RPC = 'https://evm.donut.rpc.push.org/';
 const UC = '0x00000000000000000000000000000000000000c2' as const;
@@ -119,6 +119,6 @@ async function main() {
   }
   console.log('escrowed now        :', (await donut.readContract({ address: UC, abi: ucAbi, functionName: 'totalEscrowed' })).toString());
   console.log('UEA balance after   :', (Number(await donut.getBalance({ address: uea })) / 1e18).toFixed(4), 'PC');
-  console.log(`\nnode check:  plan/read-state-tools/node-read.sh tx ${tx.hash}\n             plan/read-state-tools/node-read.sh id ${requestId}`);
+  console.log(`\nnode check:  __e2e__/read/tools/node-read.sh tx ${tx.hash}\n             __e2e__/read/tools/node-read.sh id ${requestId}`);
 }
 main().catch(e => { console.error('FAILED:', e?.message ?? e); process.exit(1); });

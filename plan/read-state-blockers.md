@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | **Original findings** | 2026-09-08 — 11 defects, 6 blockers |
-| **Verification update** | 2026-09-09 — team fixes re-verified against redeployed Donut |
+| **Verification update** | 2026-09-15 — N1 CEA path verified through the live Donut/Sepolia round trip |
 
 Companion doc: [`read-state-sdk-spec.md`](./read-state-sdk-spec.md)
 
@@ -15,10 +15,11 @@ Companion doc: [`read-state-sdk-spec.md`](./read-state-sdk-spec.md)
 
 # Status as of 2026-09-15
 
-**R1 is fixed and funded E2E verified on Donut. N1's UEA path is fixed and its CEA path is in progress. N4 is explicitly deferred for now; its economic risk remains documented. C6 is closed as won't-fix for v1.**
+**R1 and N1 are fixed and funded E2E verified on Donut. N4 is explicitly deferred for now; its economic risk remains documented. C6 is closed as won't-fix for v1.**
 
-Verified against: node `v0.0.47` (what Donut's `abci_info` reports; contains all three node
-fixes), contracts redeployed (`UniversalCallback` impl `0x3b34de3c…` → `0xa481f5b0…`,
+Verified against: node `v0.0.49` (what Donut's `abci_info` reports; includes the
+`cea-read-ingest` upgrade applied at height `23217721`), contracts redeployed
+(`UniversalCallback` impl `0x3b34de3c…` → `0xa481f5b0…`,
 `UniversalCore` impl also changed).
 
 | # | Defect | Owner | Before | Now | Verified by |
@@ -30,7 +31,7 @@ fixes), contracts redeployed (`UniversalCallback` impl `0x3b34de3c…` → `0xa4
 | **C5** | Failed refunds admin-sweepable | Contracts | Latent→active | ⬇️ **Back to Latent** | Still present — rejecting recipient moved 0.2 ETH to the rescuable pool live. But N2 gives refunds a fixed 150k, so `RefundFailed` is no longer routine |
 | **C6** | Callback can't chain a read | Contracts | Latent | 🚫 **Won't fix in v1** (decided 2026-09-09) | Nested reads are out of scope. Chained read reverts `0x3ee5aeb5`; SDK documents it as unsupported |
 | **C7** | `readBaseFee` split-key naming trap | Contracts | Latent | ❌ **Unfixed** | Mapping unchanged at `UniversalCore.sol:115` |
-| **N1** | UEA reads never ingested | Chain | Blocker | ✅ **UEA path fixed & proven live** `d4ef66db` · 🔄 **CEA path in progress** | Read `0xdc0a66ba…` sent through UEA `0x5C70C864…` via SDK Route 1: ingested, quorum, fulfilled, settled in 23 s; `ReadsByTx` finds it by the SDK's tx hash. `CallExecuteUniversalTx` ingestion is being implemented |
+| **N1** | Reads emitted inside derived account execution were never ingested | Chain | Blocker | ✅ **Fixed for UEA and CEA paths** `d4ef66db` + `cfe8952c` | UEA Route 1 and the full contract → Sepolia CEA → contract Route 3 were both proven live. CEA request `0x57e2562a…` was indexed under Push tx `0x38098563…`, fulfilled, stored by the registry, and settled |
 | **N2** | `nil` gas → estimator starves callback | Chain | Blocker | ✅ **Fixed** `e28367b6` | Explicit `callbackGasLimit + 50_000`. Measured against the most demanding callback that fits each limit: needed buffer 0 @200k, 21,771 @500k, 15,394 @1M — ≥2× headroom |
 | **N3** | Read votes not gasless | Chain | Blocker (econ) | ✅ **Fixed** `47a25eed` | `MsgVoteReadResult` in `GaslessMsgTypes` |
 | **N4** | No affordability gate; free validator work | Chain | Blocker (econ) | ⏸ **Deferred for now — 2026-09-15** | Fee remains 0 on every domain incl. `web2:https`; the team has accepted deferring this launch control for now |
@@ -55,19 +56,13 @@ URL for the cost of one tx" vector is *reachable*. N3 removed the per-vote gas c
 narrows it, but the external work and unbounded on-chain state remain. An affordability gate in
 `AllPendingReadRequests` and a non-zero fee remain follow-up work when N4 is resumed.
 
-**2. N1 CEA path — in progress.** `CallExecuteUniversalTx` is used by both
-`execute_inbound_funds_and_payload.go:244` and `execute_inbound_gas_and_payload.go:239` for
-CEA-originated inbounds whose recipient is a Push contract. It needs the same
-`IngestReadRequests` hand-off, or a CEA-driven tx that hits a read-requesting app strands
-its budget exactly as N1 did.
-
-**3. C6 — decided: nested reads are out of scope for v1** (2026-09-09). No contract or node
+**2. C6 — decided: nested reads are out of scope for v1** (2026-09-09). No contract or node
 change. The SDK spec states `read()` inside a callback is unsupported; a chained request reverts
 with `ReentrancyGuardReentrantCall` and is swallowed into `CallbackFailed`. Revisit only if a
 v2 use case needs it — then it is contract (separate guard) **plus** node (ingest on the
 module's fulfil path), not contract alone.
 
-**4. Status semantics — document them.** From the bool discussion in the thread: the node
+**3. Status semantics — document them.** From the bool discussion in the thread: the node
 does not need a callback-success signal, and none was added. Correct for the module's
 lifecycle. But `ballot_hooks.go:143-146` sets `FULFILLED` whenever the outer call returns
 cleanly — including when the app's callback reverted and `CallbackFailed` was swallowed.
@@ -76,10 +71,10 @@ delivered.** The only signal is the `CallbackFailed` log in the fulfil tx (`pcTx
 Consumers — SDK, explorer, app ops — must parse it. The API reference's definition of
 `FAILED` was wrong on this point and has been corrected.
 
-**5. C7 — rename or re-key.** Low urgency, but it is the trap that silently reintroduces N4
+**4. C7 — rename or re-key.** Low urgency, but it is the trap that silently reintroduces N4
 when someone sets the fee following house convention.
 
-**6. C5 — design choice, now genuinely latent.** With refunds on a fixed 150k, only a
+**5. C5 — design choice, now genuinely latent.** With refunds on a fixed 150k, only a
 recipient that actively rejects loses its budget to the rescuable pool. A pull-based
 `withdrawRefund` still removes the leak entirely; not a blocker.
 
@@ -93,12 +88,16 @@ recipient that actively rejects loses its budget to the rescuable pool. A pull-b
   cap (`:290`), and the module gives `reportCallbackGas` a fixed 150k, so a gas-burning
   `receive()` can leave the outer with too little to emit `RefundFailed`. Admin retry covers
   it — admin passes any gas — so it is a manual-ops case, not fund loss.
+- **N1 CEA ingestion** — fixed by node PR #373 (`cfe8952c`):
+  `CallExecuteUniversalTx` hands its EVM receipt to `IngestReadRequests` in the same cached
+  context. PR #375 (`ca3b8d4e`) registered the `cea-read-ingest` upgrade, applied on Donut at
+  height `23217721`. Both integration regressions and the live cross-chain run pass.
 
 ## Deployment state
 
 - Contracts: fixes on `feat-read-state@f8d1a0c`, deployed to Donut. **Not merged to `main`.**
-- Node: fixes on `develop@7024bb4b`, also on `release/v1.1.42-donut` and `testnet/donut`.
-  Donut is running the tag that contains them.
+- Node: Donut runs `v0.0.49`; it descends from the N1 CEA fix `cfe8952c`, and the
+  `cea-read-ingest` upgrade is applied.
 - No stranded funds from the pre-fix window: `totalEscrowed = 0`, contract balance `0`.
 - **Live end-to-end verified 2026-09-09.** Three real reads through the validator set:
   `0xeba3eb9e…` and `0xf3d62fb9…` from a Push EOA (12 s each), and `0xdc0a66ba…` **through a
@@ -108,6 +107,13 @@ recipient that actively rejects loses its budget to the rescuable pool. A pull-b
   `FULFILLED`), **expiry** (`EXPIRED`, full budget refunded), **SVM** and **web2** (both exact
   matches). Every destination and terminal outcome observed live. Details in
   `read-state-sdk-spec.md` § Verified live.
+- **CEA path live end-to-end verified 2026-09-15.** Probe receiver
+  `0x650306a2…` triggered its initially undeployed Sepolia CEA (`0x97c67Bc4…`). Push outbound
+  tx `0x446e9a4e…` relayed as Sepolia tx `0x321c5452…`; the CEA returned to the receiver, which
+  called the canonical registry. Read `0x57e2562a…` was indexed under inbound Push tx
+  `0x38098563…`, reached `FULFILLED`, was stored by the registry (`hasResult = true`, reader =
+  receiver), and produced successful fulfilment and settlement txs `0xd24cef9a…` and
+  `0x7983b26c…`.
 - **Observation for the chain team:** `EndBlocker`-driven expiry produces no EVM-indexed tx,
   receipt or logs (vote-triggered fulfils do). The trace is only in Cosmos `block_results`
   (`ethereum_tx` + `tx_log`, `mode: EndBlock`). Not a defect in the read lifecycle — refunds land —
@@ -121,13 +127,13 @@ recipient that actively rejects loses its budget to the rescuable pool. A pull-b
 cleanly without the RPC var.
 
 **Not committed to `push-chain-core-contracts` — that repo is owned by the contracts team.**
-It lives in this repo at `plan/read-state-tools/`, alongside the live-read harness and the
+It lives in this repo at `packages/core/__e2e__/read/tools/`, alongside the live-read harness and the
 node-side decoder used for the 2026-09-09 runs. To run it, drop it into a checkout of
 `feat-read-state` at `test/fork/` (it imports from `src/`):
 
 ```bash
 cd push-chain-core-contracts && git checkout feat-read-state
-cp <push-chain-sdk>/plan/read-state-tools/ForkReadStateFixVerification.t.sol test/fork/
+cp <push-chain-sdk>/packages/core/__e2e__/read/tools/ForkReadStateFixVerification.t.sol test/fork/
 export PUSH_CHAIN_TESTNET_RPC_URL=https://evm.donut.rpc.push.org/
 forge test --match-path test/fork/ForkReadStateFixVerification.t.sol -vv
 ```
@@ -323,14 +329,19 @@ the lookup returns **0**, and reads become free with no revert — silently armi
 
 Repo: `push-chain`, branch `develop`.
 
-## N1 — Reads from a Universal Account are never ingested · BLOCKER
+## N1 — Reads from a Universal Account were never ingested · RESOLVED
 
-**Status (2026-09-09): ⚠️ Half-fixed in `d4ef66db`, deployed.** The UEA path is correct:
+**Status (2026-09-15): ✅ Fixed for UEA and CEA execution paths.** The UEA fix is
+`d4ef66db`. Node PR #373 (`cfe8952c`) added the same receipt ingestion after
+`CallExecuteUniversalTx`; PR #375 (`ca3b8d4e`) registered its upgrade, which Donut applied
+at height `23217721`. The full CEA round trip is verified live (request `0x57e2562a…`,
+inbound Push tx `0x38098563…`, registry result stored and settled).
+
+The UEA path:
 `CallUEAExecutePayload` calls `IngestReadRequests` on its response, inside the cacheCtx that
 `execute_payload.go` commits only on success — so ingest persists exactly when the payload
-does. **The CEA→contract inbound path (`CallExecuteUniversalTx`, `evm.go:868`) was not
-covered** and still strands budgets. No recovery path was added for reads stranded before
-the fix; moot on Donut (`totalEscrowed = 0`) but a gap elsewhere.
+does. The CEA→contract inbound path now applies the equivalent hand-off inside its cached
+transaction boundary.
 
 `IngestReadRequests` was driven **only** by `EVMHooks.PostTxProcessing`
 (`x/ucallback/keeper/evm_hooks.go:32-49`). Traced:

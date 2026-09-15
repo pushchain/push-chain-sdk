@@ -3,7 +3,7 @@ import '@e2e/shared/setup';
  * Shared pieces for the read-state e2e tree.
  *
  * Nothing here deploys. The specs call two tiny UniversalReadClient contracts
- * deployed on Donut on 2026-09-09 from plan/read-state-tools/ForkReadStateFixVerification.t.sol:
+ * deployed on Donut on 2026-09-09 from ./tools/ForkReadStateFixVerification.t.sol:
  *   FullBudgetReadClient  — stores the callback outcome; `completed()` flips on delivery
  *   RevertingReadClient   — `onUniversalData` always reverts (proves callbackDelivered=false)
  * Both expose `request(ReadSpec spec, uint64 gasLimit) payable` and forward msg.value.

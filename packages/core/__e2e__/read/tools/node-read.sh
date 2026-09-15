@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# node-read.sh tx <0xhash> | id <0xrequestId>
+# Read-state E2E diagnostic: node-read.sh tx <0xhash> | id <0xrequestId>
 # Queries x/ucallback over ABCI and decodes UniversalRead records (raw protobuf walk).
 set -euo pipefail
 TM=https://donut.rpc.push.org

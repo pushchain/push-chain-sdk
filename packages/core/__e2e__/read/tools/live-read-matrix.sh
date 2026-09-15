@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# live-read-matrix.sh [revert|expiry|svm|web2|all] — the remaining live checks on Donut.
+# Manual E2E matrix [revert|expiry|svm|web2|all] — remaining live checks on Donut.
 #   revert : app callback reverts → node FULFILLED but CallbackFailed (callbackDelivered=false)
 #   expiry : minConfirmations=500 holds validators; expiry=head+30 wins → EXPIRED, full budget refund
 #   svm    : Solana devnet lamport balance of the .env solana key (owner = raw 32-byte pubkey)

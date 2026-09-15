@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# live-read-donut.sh — fire ONE real cross-chain read on Push Donut and watch it through
+# Manual E2E: fire ONE real cross-chain read on Push Donut and watch it through
 # the validator ballot to settlement. Read-only except: deploys a tiny client contract and
 # sends one request tx carrying a small callback budget.
 #
@@ -7,7 +7,7 @@
 #   export CONTRACTS_REPO=/path/to/push-chain-core-contracts   # optional; feat-read-state checkout
 #   ./live-read-donut.sh
 #
-# First real reads on Donut were made with this on 2026-09-09 (see ../read-state-sdk-spec.md).
+# First real reads on Donut were made with this on 2026-09-09 (see the plan SDK spec).
 set -euo pipefail
 R=https://evm.donut.rpc.push.org/
 UC=0x00000000000000000000000000000000000000c2
