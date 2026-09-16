@@ -5,6 +5,7 @@
 import { PublicKey } from '@solana/web3.js';
 import { bytesToHex, hexToBytes, stringToBytes, zeroAddress } from 'viem';
 import SVM_GATEWAY_IDL from '../../constants/abi/universalGatewayV0.json';
+import { getSvmEventCpiPayloads } from '../../universal-tx-detector/svm-events';
 import type { UniversalTxRequest } from '../orchestrator.types';
 
 // ============================================================================
@@ -187,6 +188,29 @@ export function getSvmGatewayLogIndexFromTx(
   txResp: any,
   preferPC20 = false
 ): number {
+  const cpiPayloads = getSvmEventCpiPayloads(txResp, SVM_GATEWAY_IDL.address);
+  if (cpiPayloads.length > 0) {
+    let lastMatchIndex = -1;
+    let pc20MatchIndex = -1;
+    let matchCount = 0;
+
+    for (const { base64Data, eventIndex } of cpiPayloads) {
+      const decoded = new Uint8Array(Buffer.from(base64Data, 'base64'));
+      const discriminatorHex = bytesToHex(decoded.slice(0, 8)).slice(2);
+      if (discriminatorHex !== SVM_GATEWAY_EVENT_DISCRIMINATOR) continue;
+
+      matchCount++;
+      lastMatchIndex = eventIndex;
+      if (preferPC20 && pc20MatchIndex === -1 && isPC20EventBody(decoded)) {
+        pc20MatchIndex = eventIndex;
+      }
+      if (!preferPC20 && matchCount === 2) return eventIndex;
+    }
+
+    if (preferPC20 && pc20MatchIndex !== -1) return pc20MatchIndex;
+    if (lastMatchIndex !== -1) return lastMatchIndex;
+  }
+
   const logs: string[] = (txResp?.meta?.logMessages || []) as string[];
   if (!Array.isArray(logs) || logs.length === 0) return 0;
 

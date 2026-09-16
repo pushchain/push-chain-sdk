@@ -57,3 +57,5 @@ e2e-logs/
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 /packages/core/outbound-test-logs
+/graphify-out
+/packages/core/__e2e__/graphify-out

@@ -6,6 +6,10 @@ import {
   MsgExecutePayload,
   VerificationType,
 } from '../generated/v1/tx';
+import { AuthInfo } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
+import { QueryClient } from '@cosmjs/stargate';
+import { Tendermint34Client } from '@cosmjs/tendermint-rpc';
+import { QueryParamsResponse } from '../generated/uexecutor/v1/query';
 import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 
 describe('PushClient', () => {
@@ -85,6 +89,116 @@ describe('PushClient', () => {
   });
 
   describe('PushClient Msg & Cosmos Tx Tests', () => {
+    const mockCosmosSigning = (maxGaslessTxGas: bigint | Error): jest.Mock => {
+      jest.spyOn(Tendermint34Client, 'connect').mockResolvedValue({
+        status: jest.fn().mockResolvedValue({
+          nodeInfo: { network: 'push_42101-1' },
+        }),
+      } as never);
+      const queryAbci = jest.fn();
+      if (maxGaslessTxGas instanceof Error) {
+        queryAbci.mockRejectedValue(maxGaslessTxGas);
+      } else {
+        queryAbci.mockResolvedValue({
+          value: QueryParamsResponse.encode({
+            params: { someValue: true, maxGaslessTxGas },
+          }).finish(),
+        });
+      }
+      jest.spyOn(QueryClient, 'withExtensions').mockReturnValue({
+        queryAbci,
+        auth: {
+          account: jest.fn().mockRejectedValue(new Error('NotFound')),
+        },
+      } as never);
+      return queryAbci;
+    };
+
+    const createGaslessTxBody = () =>
+      client.createCosmosTxBody([
+        client.createMsgExecutePayload(MSG_EXECUTE_PAYLOAD),
+      ]);
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('decodes the live Donut Params protobuf wire shape', () => {
+      const response = QueryParamsResponse.decode(
+        Uint8Array.from([10, 7, 16, 1, 24, 128, 194, 215, 47])
+      );
+
+      expect(response.params).toEqual({
+        someValue: true,
+        maxGaslessTxGas: BigInt(100_000_000),
+      });
+    });
+
+    it('signs gasless Cosmos transactions at the on-chain gas cap', async () => {
+      const queryAbci = mockCosmosSigning(BigInt(100_000_000));
+
+      const txRaw = await client.signCosmosTx(await createGaslessTxBody());
+      const authInfo = AuthInfo.decode(txRaw.authInfoBytes);
+
+      expect(authInfo.fee?.gasLimit).toBe(BigInt(100_000_000));
+      expect(queryAbci).toHaveBeenCalledWith(
+        '/uexecutor.v1.Query/Params',
+        expect.any(Uint8Array),
+        undefined
+      );
+    });
+
+    it('clamps gasless Cosmos transactions to a lower governance cap', async () => {
+      mockCosmosSigning(BigInt(30_000_000));
+
+      const txRaw = await client.signCosmosTx(await createGaslessTxBody());
+      expect(AuthInfo.decode(txRaw.authInfoBytes).fee?.gasLimit).toBe(
+        BigInt(30_000_000)
+      );
+    });
+
+    it('does not increase the SDK ceiling when governance raises the cap', async () => {
+      mockCosmosSigning(BigInt(400_000_000));
+
+      const txRaw = await client.signCosmosTx(await createGaslessTxBody());
+      expect(AuthInfo.decode(txRaw.authInfoBytes).fee?.gasLimit).toBe(
+        BigInt(100_000_000)
+      );
+    });
+
+    it('falls back to the safe SDK ceiling when the params query fails', async () => {
+      mockCosmosSigning(new Error('params unavailable'));
+
+      const txRaw = await client.signCosmosTx(await createGaslessTxBody());
+      expect(AuthInfo.decode(txRaw.authInfoBytes).fee?.gasLimit).toBe(
+        BigInt(100_000_000)
+      );
+    });
+
+    it('caches the gasless cap for subsequent signatures', async () => {
+      const queryAbci = mockCosmosSigning(BigInt(30_000_000));
+      const txBody = await createGaslessTxBody();
+
+      await client.signCosmosTx(txBody);
+      await client.signCosmosTx(txBody);
+
+      expect(queryAbci).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not query gasless params for a non-gasless Cosmos message', async () => {
+      const queryAbci = mockCosmosSigning(BigInt(30_000_000));
+
+      const txBody = await client.createCosmosTxBody([
+        client.createMsgDeployUEA(MSG_DEPLOY_UEA),
+      ]);
+      const txRaw = await client.signCosmosTx(txBody);
+
+      expect(AuthInfo.decode(txRaw.authInfoBytes).fee?.gasLimit).toBe(
+        BigInt(100_000_000)
+      );
+      expect(queryAbci).not.toHaveBeenCalled();
+    });
+
     it('creates MsgDeployUEA', () => {
       const msg = client.createMsgDeployUEA(MSG_DEPLOY_UEA);
       expect(msg.typeUrl).toBe('/uexecutor.v1.MsgDeployUEA');

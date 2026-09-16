@@ -22,6 +22,12 @@ const execute: ExecuteParams = {
   data: calls,
 };
 
+const directExecute: ExecuteParams = {
+  to: TOKEN,
+  value: BigInt(1),
+  data: '0x',
+};
+
 function makeContext(signer: OrchestratorContext['universalSigner']) {
   const waitForTransactionReceipt = jest.fn().mockImplementation(({ hash }) =>
     Promise.resolve({
@@ -171,5 +177,59 @@ describe('sendPushTx native multicall routing', () => {
     expect(pushClient.sendBatch7702).toHaveBeenCalledTimes(1);
     expect(pushClient.sendTransaction).toHaveBeenCalledTimes(2);
     expect(response.atomic).toBe(false);
+  });
+
+  it('transforms a direct Push transaction only after its receipt succeeds', async () => {
+    const signer = await toUniversal(
+      construct(
+        {
+          chain: CHAIN.PUSH_TESTNET_DONUT,
+          address: '0x3333333333333333333333333333333333333333',
+        },
+        {
+          signMessage: async (data) => data,
+          signAndSendTransaction: async (data) => data,
+        }
+      )
+    );
+    const { ctx, pushClient } = makeContext(signer);
+
+    const response = await sendPushTx(ctx, directExecute, [], transformFn);
+
+    expect(
+      pushClient.publicClient.waitForTransactionReceipt
+    ).toHaveBeenCalledWith({
+      hash: HASH_1,
+    });
+    expect(pushClient.getTransaction).toHaveBeenCalledWith(HASH_1);
+    expect(transformFn).toHaveBeenCalledTimes(1);
+    expect(response).toEqual(expect.objectContaining({ hash: HASH_1 }));
+  });
+
+  it('rejects a reverted direct Push receipt before indexing or transforming it', async () => {
+    const signer = await toUniversal(
+      construct(
+        {
+          chain: CHAIN.PUSH_TESTNET_DONUT,
+          address: '0x3333333333333333333333333333333333333333',
+        },
+        {
+          signMessage: async (data) => data,
+          signAndSendTransaction: async (data) => data,
+        }
+      )
+    );
+    const { ctx, pushClient } = makeContext(signer);
+    pushClient.publicClient.waitForTransactionReceipt.mockResolvedValueOnce({
+      status: 'reverted',
+      blockNumber: BigInt(103),
+    });
+
+    await expect(
+      sendPushTx(ctx, directExecute, [], transformFn)
+    ).rejects.toThrow(`Push Chain transaction ${HASH_1} reverted`);
+
+    expect(pushClient.getTransaction).not.toHaveBeenCalled();
+    expect(transformFn).not.toHaveBeenCalled();
   });
 });

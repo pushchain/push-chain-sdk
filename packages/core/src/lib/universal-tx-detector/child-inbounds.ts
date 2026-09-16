@@ -7,7 +7,9 @@
  * See push-chain/x/uexecutor/types/keys.go:49-53 (GetInboundUniversalTxKey).
  *
  * For SVM sources, `<txHash>` is the 0x-prefixed hex encoding of the 64-byte
- * Solana signature and `<logIndex>` is the event's index in `meta.logMessages`.
+ * Solana signature and `<logIndex>` is the gateway-event ordinal. Current
+ * gateways derive it from authenticated `emit_cpi` inner instructions;
+ * legacy log-emitting gateways used the `meta.logMessages` index.
  *
  * For Push-initiated outbounds (pcTx entries) the formula drops the log index:
  *   utxId = sha256(`<pcChainCaip>:<pcTxHash>`)
@@ -46,10 +48,7 @@ const OUTBOUND_STATUS_NAMES: Record<number, string> = {
   3: 'REVERTED',
 };
 
-const INBOUND_EVENT_NAMES = new Set([
-  'UniversalTx',
-  'RevertUniversalTx',
-]);
+const INBOUND_EVENT_NAMES = new Set(['UniversalTx', 'RevertUniversalTx']);
 
 const HEX_64_BYTE_RE = /^(?:0x)?[0-9a-fA-F]{128}$/;
 
@@ -189,18 +188,18 @@ export async function resolveChildInboundsFromLogs(
       const pcTxHashes = (utx.pcTx ?? [])
         .map((p) => p?.txHash)
         .filter((h): h is string => Boolean(h));
-      const outboundHashes: PushChainOutboundSummary[] = (utx.outboundTx ?? []).map(
-        (ob) => ({
-          subTxId: ob.id ?? '',
-          status:
-            OUTBOUND_STATUS_NAMES[ob.outboundStatus as number] ??
-            `UNKNOWN(${ob.outboundStatus})`,
-          destinationChain: ob.destinationChain ?? '',
-          externalTxHash: ob.observedTx?.txHash || undefined,
-          amount: ob.amount,
-          recipient: ob.recipient,
-        })
-      );
+      const outboundHashes: PushChainOutboundSummary[] = (
+        utx.outboundTx ?? []
+      ).map((ob) => ({
+        subTxId: ob.id ?? '',
+        status:
+          OUTBOUND_STATUS_NAMES[ob.outboundStatus as number] ??
+          `UNKNOWN(${ob.outboundStatus})`,
+        destinationChain: ob.destinationChain ?? '',
+        externalTxHash: ob.observedTx?.txHash || undefined,
+        amount: ob.amount,
+        recipient: ob.recipient,
+      }));
       out.push({
         universalTxId: utxIdHex,
         sourceLogIndex: log.logIndex,

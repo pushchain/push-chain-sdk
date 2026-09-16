@@ -1,12 +1,107 @@
 /**
  * SVM-side universal-tx event metadata.
  *
- * Anchor programs emit events as base64-encoded `Program data:` log lines
- * prefixed with an 8-byte discriminator. The map below covers the four SVM
- * gateway events that have EVM parity (source: universalGatewayV0.json
- * events section). The discriminator bytes come from the IDL and are
- * converted to lowercase hex for matching.
+ * Current Anchor programs emit events through `emit_cpi!`: an inner
+ * instruction whose data is EVENT_IX_TAG || event discriminator || Borsh
+ * body. Older deployments emitted the discriminator + body as a base64
+ * `Program data:` log line. Helpers in this module support both transports.
  */
+
+import { PublicKey } from '@solana/web3.js';
+import { bs58 } from '../internal/bs58';
+
+export const SVM_EVENT_IX_TAG = Uint8Array.from([
+  0xe4, 0x45, 0xa5, 0x2e, 0x51, 0xcb, 0x9a, 0x1d,
+]);
+
+export interface SvmGatewayEventPayload {
+  /** Base64 discriminator + Borsh body accepted by BorshEventCoder. */
+  base64Data: string;
+  /** Gateway-event ordinal used by the Push keeper as log_index. */
+  eventIndex: number;
+}
+
+/**
+ * Extract authenticated gateway events from Anchor `emit_cpi!` inner
+ * instructions. Only self-CPIs whose program id equals `gatewayAddress` are
+ * accepted; matching a discriminator alone is not proof of the emitter.
+ */
+export function getSvmEventCpiPayloads(
+  txResp: any,
+  gatewayAddress: string
+): SvmGatewayEventPayload[] {
+  const groups = txResp?.meta?.innerInstructions;
+  if (!Array.isArray(groups) || groups.length === 0) return [];
+
+  let gateway: PublicKey;
+  try {
+    gateway = new PublicKey(gatewayAddress);
+  } catch {
+    return [];
+  }
+
+  const message = txResp?.transaction?.message;
+  const loadedAddresses = txResp?.meta?.loadedAddresses;
+  const accountKeyAt = (index: number): PublicKey | undefined => {
+    try {
+      if (typeof message?.getAccountKeys === 'function') {
+        return message
+          .getAccountKeys({
+            accountKeysFromLookups: loadedAddresses,
+          })
+          .get(index);
+      }
+
+      const keys = [
+        ...(message?.accountKeys ?? message?.staticAccountKeys ?? []),
+        ...(loadedAddresses?.writable ?? []),
+        ...(loadedAddresses?.readonly ?? loadedAddresses?.readOnly ?? []),
+      ];
+      const key = keys[index];
+      return key instanceof PublicKey
+        ? key
+        : key
+        ? new PublicKey(key)
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const payloads: SvmGatewayEventPayload[] = [];
+  for (const group of groups) {
+    for (const instruction of group?.instructions ?? []) {
+      const programId = accountKeyAt(Number(instruction?.programIdIndex));
+      if (
+        !programId?.equals(gateway) ||
+        typeof instruction?.data !== 'string'
+      ) {
+        continue;
+      }
+
+      let raw: Uint8Array;
+      try {
+        raw = bs58.decode(instruction.data);
+      } catch {
+        continue;
+      }
+      if (
+        raw.length < SVM_EVENT_IX_TAG.length + 8 ||
+        !SVM_EVENT_IX_TAG.every((byte, i) => raw[i] === byte)
+      ) {
+        continue;
+      }
+
+      payloads.push({
+        base64Data: Buffer.from(raw.subarray(SVM_EVENT_IX_TAG.length)).toString(
+          'base64'
+        ),
+        eventIndex: payloads.length,
+      });
+    }
+  }
+  return payloads;
+}
 
 const toHex = (bytes: number[]): string =>
   bytes.map((b) => b.toString(16).padStart(2, '0')).join('');

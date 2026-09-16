@@ -1,22 +1,25 @@
 /**
  * detectUniversalTxSvm — SVM counterpart to the EVM detector.
  *
- * Fetches the tx via Solana RPC, walks `meta.logMessages`, decodes each
- * `Program data:` entry with Anchor's BorshEventCoder against the gateway
- * IDL, normalizes field names to match classify.ts's EVM-derived shape,
- * and hands the result to the same classifier used by the EVM branch.
+ * Fetches the tx via Solana RPC and decodes gateway events with Anchor's
+ * BorshEventCoder. Current gateways use authenticated `emit_cpi!` inner
+ * instructions; legacy `Program data:` log events remain as a fallback.
  *
  * Behavior deliberately mirrors detector.ts: same UniversalTxDetection
  * return, same universalTxId derivation strategy (primary-log fallback
  * via deriveChildUniversalTxId on source-chain inbounds).
  *
  * The Push keeper stores SVM inbound ids using the 0x-prefixed hex encoding
- * of the 64-byte Solana signature and the index of the Anchor event inside
- * `meta.logMessages`: `${caip}:${hexSig}:${logMessageIndex}`.
+ * of the 64-byte Solana signature and the gateway-event ordinal:
+ * `${caip}:${hexSig}:${eventIndex}`.
  */
 import { BorshEventCoder } from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
-import type { Connection, TransactionResponse, VersionedTransactionResponse } from '@solana/web3.js';
+import type {
+  Connection,
+  TransactionResponse,
+  VersionedTransactionResponse,
+} from '@solana/web3.js';
 import { bytesToHex, hexToBytes, sha256, toBytes } from 'viem';
 import { bs58 } from '../internal/bs58';
 
@@ -30,6 +33,7 @@ import {
   SVM_EVENT_FIELD_ALIASES,
   SVM_FIELD_RENAMES,
   discriminatorHex,
+  getSvmEventCpiPayloads,
 } from './svm-events';
 import type {
   DetectUniversalTxOptions,
@@ -119,16 +123,25 @@ export async function detectUniversalTxSvm(
   const eventCoder = new BorshEventCoder(SVM_GATEWAY_IDL as never);
   const matchingLogs: MatchingLog[] = [];
 
-  // Walk logMessages for `Program data:` entries. Each matched event keeps
-  // the actual Solana log-message index because that is the value validators
-  // submit as the inbound log_index and the keeper uses for the UTX key.
-  for (let logIndex = 0; logIndex < logMessages.length; logIndex++) {
-    const rawLog = logMessages[logIndex];
-    if (typeof rawLog !== 'string') continue;
-    const prefix = 'Program data: ';
-    if (!rawLog.startsWith(prefix)) continue;
-    const base64Data = rawLog.slice(prefix.length).trim();
+  const cpiPayloads = getSvmEventCpiPayloads(tx, emitterBase58);
+  const eventPayloads =
+    cpiPayloads.length > 0
+      ? cpiPayloads.map(({ base64Data, eventIndex }) => ({
+          base64Data,
+          logIndex: eventIndex,
+        }))
+      : logMessages.flatMap((rawLog, logIndex) => {
+          const prefix = 'Program data: ';
+          return typeof rawLog === 'string' && rawLog.startsWith(prefix)
+            ? [{ base64Data: rawLog.slice(prefix.length).trim(), logIndex }]
+            : [];
+        });
 
+  if (cpiPayloads.length > 0) {
+    notes.push('svm: decoded gateway events from emit_cpi inner instructions');
+  }
+
+  for (const { base64Data, logIndex } of eventPayloads) {
     // Fast discriminator check — skip non-universal events without running
     // the full Borsh decode.
     let bytes: Uint8Array;
@@ -149,12 +162,16 @@ export async function detectUniversalTxSvm(
       decoded = eventCoder.decode(base64Data);
     } catch (e) {
       notes.push(
-        `svm: borsh decode threw for ${eventName}: ${e instanceof Error ? e.message : String(e)}`
+        `svm: borsh decode threw for ${eventName}: ${
+          e instanceof Error ? e.message : String(e)
+        }`
       );
       continue;
     }
     if (!decoded || decoded.name !== eventName) {
-      notes.push(`svm: discriminator matched ${eventName} but borsh decode failed`);
+      notes.push(
+        `svm: discriminator matched ${eventName} but borsh decode failed`
+      );
       continue;
     }
 
@@ -178,7 +195,7 @@ export async function detectUniversalTxSvm(
   const decoded = { ...classified.decoded };
 
   // Inbound fallback for universalTxId: same formula the EVM branch uses,
-  // with the canonical 0x-hex Solana signature and log-message index.
+  // with the canonical 0x-hex Solana signature and gateway-event index.
   if (!decoded.universalTxId) {
     const caip: string = chain;
     if (
@@ -320,12 +337,18 @@ function coerceArgValue(
   }
 
   // BN from anchor — has toString().
-  if (value && typeof value === 'object' && typeof (value as { toString: () => string }).toString === 'function') {
+  if (
+    value &&
+    typeof value === 'object' &&
+    typeof (value as { toString: () => string }).toString === 'function'
+  ) {
     const proto = Object.getPrototypeOf(value);
     const ctorName = proto?.constructor?.name;
     if (ctorName === 'BN') {
       try {
-        return BigInt((value as { toString: (r?: number) => string }).toString(10));
+        return BigInt(
+          (value as { toString: (r?: number) => string }).toString(10)
+        );
       } catch {
         return undefined;
       }
@@ -334,7 +357,12 @@ function coerceArgValue(
 
   // Anchor enum → { [variantName]: {} }. tx_type must be surfaced as a
   // numeric index to match classify.ts's setTxType expectations.
-  if (renamedKey === 'txType' && value && typeof value === 'object' && !Array.isArray(value)) {
+  if (
+    renamedKey === 'txType' &&
+    value &&
+    typeof value === 'object' &&
+    !Array.isArray(value)
+  ) {
     return extractTxTypeIndex(value as Record<string, unknown>);
   }
 

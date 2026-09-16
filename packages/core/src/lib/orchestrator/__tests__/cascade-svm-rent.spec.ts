@@ -144,6 +144,38 @@ describe('cascade buildHopDescriptor — SVM CEA-ATA rent bump wire-in', () => {
     );
   });
 
+  it('resolves Push-side pSOL to native SOL before estimating cascade rent', async () => {
+    getAccountInfoSpy = jest.spyOn(web3.Connection.prototype, 'getAccountInfo');
+
+    const params: UniversalExecuteParams = {
+      to: { address: TEST_SOL_TARGET, chain: CHAIN.SOLANA_DEVNET },
+      funds: {
+        amount: BigInt(1_000_000),
+        token: MOVEABLE_TOKEN_CONSTANTS.PUSH_TESTNET_DONUT.pSol,
+      },
+    };
+
+    await buildHopDescriptor(
+      makeCtx(),
+      params,
+      TransactionRoute.UOA_TO_CEA,
+      UEA
+    );
+
+    // pSOL is an ERC-20 on Push but settles as native SOL. Its hex PRC-20
+    // address must never be parsed as a base58 SPL mint or incur ATA rent.
+    expect(getAccountInfoSpy).not.toHaveBeenCalled();
+    expect(queryGasSpy).toHaveBeenCalledTimes(2);
+    const [, , bumpedGasLimit] = queryGasSpy.mock.calls[1];
+    const baseBudget =
+      SVM_SIGNATURE_FEE_LAMPORTS +
+      SVM_EXECUTED_SUB_TX_RENT_FALLBACK +
+      SVM_FINALIZE_COMPUTE_BUFFER_LAMPORTS;
+    expect(bumpedGasLimit).toBe(
+      gasLimitForSvmGasFeeBudget(baseBudget, BigInt(1000))
+    );
+  });
+
   it('uses only the base finalize budget when ATA already exists', async () => {
     jest
       .spyOn(web3.Connection.prototype, 'getAccountInfo')
