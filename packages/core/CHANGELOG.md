@@ -1,3 +1,67 @@
+@pushchain/core (unreleased)
+
+Changes merged on 2026-09-16: [#265](https://github.com/pushchain/push-chain-sdk/pull/265), [#266](https://github.com/pushchain/push-chain-sdk/pull/266).
+
+### Added
+
+- Added Universal Read through `client.universal.read()`, `prepareRead()`,
+  `executeReads()`, and `trackRead()`. Supports EVM native/token balances, typed
+  contract calls and storage slots; Solana native/token balances, including
+  Token-2022; and HTTPS JSON extraction through `CHAIN.WEB2`.
+- Integrated the canonical UniversalReadRegistry on Donut. Reads use it by default
+  with 500,000 callback gas, configurable up to 1,000,000. Custom application
+  receivers use `callback: { target, gasLimit, abi, functionName, args? }`.
+  Other networks require an explicitly configured application receiver.
+- Added typed read results, resumable tracking by transaction hash or request ID,
+  ordered batch results, and `READ-TX-*` progress events. Read responses report
+  callback delivery/failure separately from consensus status, plus protocol fees,
+  callback budget, gas burned and observed refunds.
+- Added live read-state E2E coverage for EVM, Solana, Web2, registry storage,
+  UEA/CEA execution, batching, callback reverts, expiry and recovery, plus an
+  offline compatibility-check command: `node scripts/check-read-state-drift.mjs`.
+
+### Improved
+
+- Validate read query options and ABI argument/result types, including overloaded
+  functions. Revalidate prepared reads against current chain state before sending
+  without changing their query, block pin, expiry or payment.
+- Calculate default read polling timeouts from remaining Push blocks plus a
+  10-second observation margin, capped at 180 seconds and recalculated on resume.
+  Explicit timeouts take precedence; a client timeout does not cancel the request.
+- Preserve mined transaction hashes and any pending transaction hash when a
+  sequential batch fails, so callers can recover completed calls and check an
+  uncertain broadcast before resubmitting. Read-batch mismatches also retain all
+  transaction hashes.
+
+### Fixed
+
+- Confirm expired-read refunds from Cosmos EndBlock events across execution-attempt
+  heights. Missing blocks or unrelated malformed logs no longer hide valid refund
+  evidence; unknown refund amounts are not assumed to have been paid.
+- Respect the on-chain gasless transaction gas limit for `MsgExecutePayload`,
+  bounded by the SDK's 100-million-gas ceiling, with a cached query and fallback
+  when chain parameters are unavailable.
+- Estimate gas for empty-calldata native transfers to contracts and EIP-7702
+  delegated accounts instead of assuming 21,000 gas. Explicit gas overrides remain
+  supported.
+- Surface reverted Push transaction receipts as execution failures.
+- Decode Solana gateway events from Anchor `emit_cpi!` inner instructions while
+  retaining support for older log events. Use the gateway event index consistently
+  for transaction detection, PC20 tracking and child inbounds, and update the
+  bundled gateway IDL.
+- Resolve the destination SPL mint before calculating Solana account rent for
+  outbound transfers and cascades.
+
+### Read State notes
+
+- `FULFILLED` alone does not prove a usable result: check `raw.status` and
+  `callbackDelivered`. Terminal read failures resolve as statuses; validation,
+  transaction, RPC and timeout errors can still reject.
+- Registry query-key and storage-lookup helpers are internal. Prepared reads retain
+  `queryKey`; direct storage lookups use the exported registry ABI.
+
+---
+
 @pushchain/core@6.0.23 (2026-09-01)
 
 - docs: changelog entry for the EVM PC20 burn routing fix
