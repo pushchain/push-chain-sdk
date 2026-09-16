@@ -164,3 +164,6 @@ export { rescueFunds } from './rescue';
 export { executeFundsOnly } from './execute-funds-only';
 export { executeFundsWithPayload } from './execute-funds-payload';
 export { executeStandardPayload } from './execute-standard';
+
+// === Read State (cross-chain reads) ===
+export { prepareRead, simulateRead, trackRead, type TrackReadOptions } from './read-state';

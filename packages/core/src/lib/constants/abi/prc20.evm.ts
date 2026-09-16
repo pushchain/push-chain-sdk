@@ -214,4 +214,24 @@ export const UNIVERSAL_CORE_EVM = [
   { type: 'error', name: 'TransferFailed', inputs: [] },
   { type: 'error', name: 'EmptyString', inputs: [] },
   { type: 'error', name: 'NonDigitCharacter', inputs: [] },
+  // ---- read state (verified against UniversalCore @ 0x…C0 on Donut, 2026-09-09) ----
+  {
+    type: 'function',
+    name: 'chainHeightByChainNamespace',
+    // NOTE: despite the parameter name, the oracle keys this by the FULL CAIP-2 id
+    // ("eip155:11155111"), not the bare namespace. The SDK always passes CAIP-2.
+    inputs: [{ name: 'chainNamespace', type: 'string', internalType: 'string' }],
+    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'readBaseFeeByChainNamespace',
+    inputs: [
+      { name: 'chainNamespace', type: 'string', internalType: 'string' },
+      { name: 'chainId', type: 'string', internalType: 'string' },
+    ],
+    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
+    stateMutability: 'view',
+  },
 ] as const;

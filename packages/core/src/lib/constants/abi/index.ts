@@ -26,3 +26,6 @@ export {
 // SDK 5.2 gas abstraction (Case C overflow bridging)
 export { WPC_EVM } from './wpc.evm';
 export { UNIV3_SWAP_ROUTER_EVM } from './uniswap-v3-router.evm';
+
+// Read state (cross-chain reads)
+export { UNIVERSAL_CALLBACK_EVM } from './universalCallback.evm';

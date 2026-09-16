@@ -440,6 +440,8 @@ export interface UniversalTxResponse {
    * (separate per-call txs — an earlier call can commit while a later one reverts).
    */
   atomic: boolean;
+  /** All Push hashes in submission order when a batch uses sequential fallback. */
+  transactionHashes?: `0x${string}`[];
   signature: Signature; // ethers Signature instance
 
   // 8. Raw Universal Fields (if you ever need them)

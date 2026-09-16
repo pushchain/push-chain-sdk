@@ -192,6 +192,16 @@ describe('route-detector', () => {
       };
       expect(() => validateRouteParams(params)).toThrow(RouteValidationError);
     });
+
+    it('rejects CHAIN.WEB2 at the transaction runtime boundary', () => {
+      const params = {
+        to: {
+          address: '0x1234567890123456789012345678901234567890',
+          chain: CHAIN.WEB2,
+        },
+      } as unknown as UniversalExecuteParams;
+      expect(() => validateRouteParams(params)).toThrow(/read-only destination/);
+    });
   });
 
   describe('C-5: Enhanced unsupported token validation', () => {

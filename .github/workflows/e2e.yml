@@ -23,6 +23,7 @@ on:
           - pc20
           - push
           - cross-chain
+          - read
           - known-fail
       dry_run:
         description: 'Pre-flight only — report balances, fund nothing, run no tests'
