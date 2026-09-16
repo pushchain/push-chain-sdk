@@ -69,10 +69,16 @@ async function getIndexedPushTransaction(
   while (true) {
     try {
       if (!receiptWaited) {
-        await ctx.pushClient.publicClient.waitForTransactionReceipt({
-          hash: txHash,
-        });
+        const receipt =
+          await ctx.pushClient.publicClient.waitForTransactionReceipt({
+            hash: txHash,
+          });
         receiptWaited = true;
+        if (receipt.status === 'reverted') {
+          throw new PushChainExecutionError(
+            `${label} — Push Chain transaction ${txHash} reverted`
+          );
+        }
       }
       return await ctx.pushClient.getTransaction(txHash);
     } catch (err: any) {

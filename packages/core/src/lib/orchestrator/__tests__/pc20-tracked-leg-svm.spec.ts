@@ -12,6 +12,10 @@
  * the Borsh offsets used by the selector are pinned against production bytes
  * rather than a hand-rolled fixture.
  */
+import { PublicKey } from '@solana/web3.js';
+import SVM_GATEWAY_IDL from '../../constants/abi/universalGatewayV0.json';
+import { bs58 } from '../../internal/bs58';
+import { SVM_EVENT_IX_TAG } from '../../universal-tx-detector/svm-events';
 import { getSvmGatewayLogIndexFromTx } from '../internals/svm-helpers';
 
 /** Real PC20 burn event — payload is exactly the 4-byte `PC20` selector. */
@@ -42,6 +46,30 @@ const txWith = (events: string[]) => ({
   },
 });
 
+const txWithEventCpi = (events: string[]) => {
+  const gateway = new PublicKey(SVM_GATEWAY_IDL.address);
+  return {
+    transaction: { message: { accountKeys: [gateway] } },
+    meta: {
+      innerInstructions: [
+        {
+          index: 0,
+          instructions: events.map((event) => ({
+            programIdIndex: 0,
+            accounts: [],
+            data: bs58.encode(
+              Buffer.concat([
+                Buffer.from(SVM_EVENT_IX_TAG),
+                Buffer.from(event, 'base64'),
+              ])
+            ),
+          })),
+        },
+      ],
+    },
+  };
+};
+
 describe('PC20 tracked leg selection (SVM)', () => {
   const fundsLeg = emptyPayloadEventB64();
 
@@ -70,5 +98,15 @@ describe('PC20 tracked leg selection (SVM)', () => {
     const tx = txWith([PC20_EVENT_B64]);
     expect(getSvmGatewayLogIndexFromTx(tx)).toBe(2);
     expect(getSvmGatewayLogIndexFromTx(tx, true)).toBe(2);
+  });
+
+  it('uses emit_cpi gateway-event ordinals and preserves PC20 selection', () => {
+    const tx = txWithEventCpi([fundsLeg, PC20_EVENT_B64]);
+    expect(getSvmGatewayLogIndexFromTx(tx)).toBe(1);
+    expect(getSvmGatewayLogIndexFromTx(tx, true)).toBe(1);
+
+    const pc20First = txWithEventCpi([PC20_EVENT_B64, fundsLeg]);
+    expect(getSvmGatewayLogIndexFromTx(pc20First)).toBe(1);
+    expect(getSvmGatewayLogIndexFromTx(pc20First, true)).toBe(0);
   });
 });

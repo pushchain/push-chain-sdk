@@ -14,9 +14,11 @@ import { PublicKey, type Connection } from '@solana/web3.js';
 import { bytesToHex } from 'viem';
 
 import { CHAIN } from '../../constants/enums';
+import { CHAIN_INFO } from '../../constants/chain';
 import { bs58 } from '../../internal/bs58';
 import { deriveChildUniversalTxId } from '../child-inbounds';
 import { detectUniversalTxSvm } from '../detector-svm';
+import { SVM_EVENT_IX_TAG } from '../svm-events';
 
 const SOLANA_SIG_BASE58 =
   'KQkJoXd3xFtauANM1pSASWLc5oeF13Jmd5wpnrx6JRH6JtePFdmXkSd618YjpgRNs5CAAHRrdEHfXnab7AcEQsc';
@@ -50,7 +52,7 @@ describe('detectUniversalTxSvm log index handling', () => {
     });
   });
 
-  it('uses the Solana logMessages index, not the matched-event ordinal', async () => {
+  it('uses the legacy Solana logMessages index for pre-emit_cpi transactions', async () => {
     const connection = {
       getTransaction: jest.fn(async () => ({
         meta: {
@@ -72,11 +74,7 @@ describe('detectUniversalTxSvm log index handling', () => {
     );
 
     const hexSig = bytesToHex(bs58.decode(SOLANA_SIG_BASE58));
-    const expectedId = deriveChildUniversalTxId(
-      CHAIN.SOLANA_DEVNET,
-      hexSig,
-      2
-    );
+    const expectedId = deriveChildUniversalTxId(CHAIN.SOLANA_DEVNET, hexSig, 2);
 
     expect(out.kind).toBe('INBOUND_FROM_CEA');
     expect(out.matchingLogs).toHaveLength(1);
@@ -85,5 +83,50 @@ describe('detectUniversalTxSvm log index handling', () => {
     expect(
       out.notes.some((n) => n.includes(`${CHAIN.SOLANA_DEVNET}:<hexSig>:2`))
     ).toBe(true);
+  });
+
+  it('decodes emit_cpi inner instructions and uses the gateway-event ordinal', async () => {
+    const gateway = new PublicKey(
+      CHAIN_INFO[CHAIN.SOLANA_DEVNET].lockerContract!
+    );
+    const innerData = bs58.encode(
+      Buffer.concat([
+        Buffer.from(SVM_EVENT_IX_TAG),
+        Buffer.from(UNIVERSAL_TX_EVENT_BASE64, 'base64'),
+      ])
+    );
+    const connection = {
+      getTransaction: jest.fn(async () => ({
+        transaction: { message: { accountKeys: [gateway] } },
+        meta: {
+          err: null,
+          logMessages: ['Program log: no forgeable event data'],
+          innerInstructions: [
+            {
+              index: 0,
+              instructions: [
+                { programIdIndex: 0, accounts: [], data: innerData },
+              ],
+            },
+          ],
+        },
+      })),
+    } as unknown as Connection;
+
+    const out = await detectUniversalTxSvm(
+      SOLANA_SIG_BASE58,
+      CHAIN.SOLANA_DEVNET,
+      { connection }
+    );
+
+    const hexSig = bytesToHex(bs58.decode(SOLANA_SIG_BASE58));
+    expect(out.kind).toBe('INBOUND_FROM_CEA');
+    expect(out.matchingLogs[0].logIndex).toBe(0);
+    expect(out.decoded.universalTxId).toBe(
+      deriveChildUniversalTxId(CHAIN.SOLANA_DEVNET, hexSig, 0)
+    );
+    expect(out.notes).toContain(
+      'svm: decoded gateway events from emit_cpi inner instructions'
+    );
   });
 });
