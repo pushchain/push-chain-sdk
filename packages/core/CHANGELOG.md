@@ -1,3 +1,23 @@
+@pushchain/core@6.0.25 (2026-09-16)
+
+- docs: document read-state and transaction fixes
+- feat: align read-state API with v3 review
+- test: consolidate read-state e2e harnesses
+- feat: integrate universal read registry
+- fix: harden gasless and cross-chain transaction handling
+- feat: align read-state API with v2 spec
+- fix: validate prepared reads and infer typed results
+- fix: preserve read-state recovery and expand test coverage
+- feat: read-state PR7 — custom-receiver read() / executeReads(), review fixes
+- feat: read-state PR6 — live e2e tree, CI `read` group, wait() option fix
+- feat: read-state PR5 — public universal surface, CONSTANTS.READ, exports
+- feat: read-state PR4 — trackRead, wait/refresh, READ-TX progress band
+- feat: prepareRead — validated ReadSpec builder, refundTo default, simulate
+- feat: read-state chain client — ucallback queries, preflight, budget sizing
+- feat: read-state foundation — envelopes, decoders, ucallback codecs, ABIs, constants
+
+---
+
 @pushchain/core (unreleased)
 
 Changes merged on 2026-09-16: [#265](https://github.com/pushchain/push-chain-sdk/pull/265), [#266](https://github.com/pushchain/push-chain-sdk/pull/266).
