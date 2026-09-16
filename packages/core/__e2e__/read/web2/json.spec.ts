@@ -32,7 +32,7 @@ d('read state › web2 JSON', () => {
     const done = await read.wait(SLOW_PATH.wait);
     expect(done.status).toBe(READ.STATUS.FULFILLED);
     expect(done.callbackDelivered).toBe(true);
-    expect(done.chain).toBeUndefined();
+    expect(done.chain).toBe(READ.WEB2);
     expect(done.destination.caip2).toBe('web2:https');
     expect(done.value).toEqual([1n, false]);
   }, SLOW_PATH.jestTimeoutMs);

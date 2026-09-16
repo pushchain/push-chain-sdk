@@ -11,6 +11,15 @@ const abi = [
 
 // Compiled by ts-jest; never executed or connected to a network.
 async function checkTypes(client: PushChain) {
+  client.universal.read(address, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { gasLimit: 750_000n } });
+  client.universal.prepareRead(address, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: address, gasLimit: 200_000n } });
+  client.universal.read(address, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: address, gasLimit: 200_000n, abi, functionName: 'request', args: (spec, gas) => [spec, gas] } });
+  // @ts-expect-error execution requires the custom request entrypoint
+  const missingEntrypoint: ReadOptions = { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: address, gasLimit: 200_000n } };
+  // @ts-expect-error registry entrypoint is internal
+  const registryAbi: ReadOptions = { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { abi, functionName: 'request' } };
+  // @ts-expect-error removed callback.request shape
+  const legacy: ReadPrepareOptions = { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: address, gasLimit: 200_000n, request: { abi, functionName: 'request' } } };
   // @ts-expect-error mutually exclusive query kinds
   const mixed: ReadOptions = { chain: CHAIN.ETHEREUM_SEPOLIA, token: address, storageSlot: 0n };
   // @ts-expect-error storage is EVM only

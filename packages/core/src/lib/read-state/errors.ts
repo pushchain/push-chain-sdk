@@ -135,7 +135,7 @@ export class ReadNotFoundError extends ReadStateError {
 export class ReadRegistryUnavailableError extends ReadStateError {
   constructor(method: string, ctx: ReadStateErrorContext = {}) {
     super('READ_REGISTRY_UNAVAILABLE', `${method} needs the UniversalReadRegistry, which is not deployed on this network`, {
-      hint: 'Pass callback.target and callback.request (abi, functionName, optional args) for your app contract.',
+      hint: 'Pass callback.target, gasLimit, abi and functionName (plus optional args) for your app contract.',
       ...ctx,
     });
   }

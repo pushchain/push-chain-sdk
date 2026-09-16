@@ -35,7 +35,7 @@ d('read state › EVM typed contract call', () => {
       abi: ABI,
       functionName: 'totalSupply',
       args: [],
-      callback: { target: FULL_BUDGET_CLIENT, gasLimit: CALLBACK_GAS, request: { abi: READ_CLIENT_ABI, functionName: 'request' } },
+      callback: { target: FULL_BUDGET_CLIENT, gasLimit: CALLBACK_GAS, abi: READ_CLIENT_ABI, functionName: 'request' },
       expiryBlocks: SLOW_PATH.expiryBlocks,
     });
     expect(prepared.encodedQuery.resultShape).toMatchObject({ kind: 'evmCall', functionName: 'totalSupply' });

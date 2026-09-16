@@ -126,7 +126,6 @@ export type {
   BuildReadSpecParams,
   PreparedRead,
   ReadCallback,
-  ReadRequestEntrypoint,
   SimulateReadResult,
   ParsedReadRequest,
   FulfilOutcome,
@@ -170,11 +169,6 @@ export {
   sizeCallbackBudget,
   inferResultShape,
   toRequestIdHex,
-  getReadQueryKey,
-  computeReadQueryKey,
-  getReadRegistryAddress,
-  getRegistryReadResult,
-  getLatestRegistryReadResult,
   toReadQuery,
 } from './read-state';
 export { UNIVERSAL_CALLBACK_EVM } from './constants/abi/universalCallback.evm';

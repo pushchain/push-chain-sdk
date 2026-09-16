@@ -3,11 +3,15 @@ import * as core from '../../index';
 import { PushChain } from '../../index';
 
 describe('read-state public surface', () => {
+  it('keeps registry helpers out of the public package exports', () => {
+    for (const name of ['getReadQueryKey', 'computeReadQueryKey', 'getReadRegistryAddress', 'getRegistryReadResult', 'getLatestRegistryReadResult']) {
+      expect(name in core).toBe(false);
+    }
+  });
   it('exports the pure helpers, errors and enums', () => {
     for (const fn of [
       'resolveDestination', 'encodeReadQuery', 'decodeReadResult', 'parseReadRequestsFromReceipt', 'parseFulfilOutcome',
       'buildReadSpecFromPreflight', 'validateReadSpec', 'toCallData', 'sizeCallbackBudget', 'inferResultShape', 'toRequestIdHex', 'toReadQuery',
-      'getReadQueryKey', 'computeReadQueryKey', 'getReadRegistryAddress', 'getRegistryReadResult', 'getLatestRegistryReadResult',
       'ReadStateError', 'InvalidReadQueryError', 'InvalidReadSpecError', 'ReadHeightUnavailableError', 'UnsupportedReadDestinationError',
       'ReadDecodeError', 'ReadTimeoutError', 'ReadNotFoundError', 'ReadRegistryUnavailableError',
     ]) {

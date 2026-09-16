@@ -23,7 +23,7 @@ function prepared(slot = 0n) {
     destination: { chain: CHAIN.ETHEREUM_SEPOLIA },
     query: { type: 'storageSlot', target, slot }, refundTo: target,
     callbackGasLimit: 200_000n,
-    callback: { target, request: { abi, functionName: 'request' } },
+    callback: { target, abi, functionName: 'request' },
   });
 }
 
@@ -46,6 +46,14 @@ function setup(records: UniversalReadResponse[]) {
 }
 
 describe('executeReads app-contract path', () => {
+  it.each(['missing', 'extra'])('retains all sequential hashes for a %s request mismatch', async (kind) => {
+    const p = prepared();
+    const a = response(p, 1), b = response(p, 2);
+    const { deps, execute, trackRead } = setup([]);
+    execute.mockResolvedValue({ hash: secondHash, transactionHashes: [hash, secondHash], atomic: false, wait: async () => ({ status: 1 }) });
+    trackRead.mockImplementation(async (ref) => ref.txHash === hash ? [a] : kind === 'extra' ? [b, response(p, 3)] : []);
+    await expect(executeReads(deps, [p, p])).rejects.toMatchObject({ code: 'READ_REQUEST_MISMATCH', txHash: secondHash, transactionHashes: [hash, secondHash] });
+  });
   it('empty batches perform no execution or tracking', async () => {
     const { deps, execute, trackRead } = setup([]);
     await expect(executeReads(deps, [])).rejects.toThrow(/at least one prepared read/);
@@ -117,7 +125,7 @@ describe('executeReads app-contract path', () => {
   it('supports explicit request argument mapping', async () => {
     const p = prepared();
     const reversedAbi = [{ ...abi[0], inputs: [abi[0].inputs[1], abi[0].inputs[0]] }] as const;
-    p.callback = { target, request: { abi: reversedAbi, functionName: 'request', args: (spec, gas) => [gas, spec] } };
+    p.callback = { target, abi: reversedAbi, functionName: 'request', args: (spec, gas) => [gas, spec] };
     const { deps, execute } = setup([response(p, 1)]);
     await executeReads(deps, [p]);
     const decoded = decodeFunctionData({ abi: reversedAbi, data: execute.mock.calls[0][0].data });
@@ -164,7 +172,7 @@ describe('executeReads app-contract path', () => {
 
   it('validates the entire batch before broadcasting', async () => {
     const { deps, execute } = setup([]);
-    await expect(executeReads(deps, [prepared(), { ...prepared(), callback: { target } }])).rejects.toThrow(/callback.request/);
+    await expect(executeReads(deps, [prepared(), { ...prepared(), callback: { target } }])).rejects.toThrow(/abi and functionName/);
     expect(execute).not.toHaveBeenCalled();
     await expect(executeReads(deps, [{ ...prepared(), callback: undefined }])).rejects.toMatchObject({ code: 'READ_REGISTRY_UNAVAILABLE' });
   });
@@ -193,9 +201,9 @@ describe('executeReads app-contract path', () => {
   it('assertRequestEntrypoint rejects a malformed entrypoint without any network', () => {
     expect(() => assertRequestEntrypoint(undefined, 'read')).toThrow(/read needs the UniversalReadRegistry/);
     expect(() => assertRequestEntrypoint({ target: '0x0000000000000000000000000000000000000000' })).toThrow(/non-zero/);
-    expect(() => assertRequestEntrypoint({ target })).toThrow(/callback.request/);
-    expect(() => assertRequestEntrypoint({ target, request: { abi, functionName: '' } })).toThrow(/abi and functionName/);
-    expect(assertRequestEntrypoint({ target, request: { abi, functionName: 'request' } }).target).toBe(target);
+    expect(() => assertRequestEntrypoint({ target })).toThrow(/abi and functionName/);
+    expect(() => assertRequestEntrypoint({ target, abi, functionName: '' })).toThrow(/abi and functionName/);
+    expect(assertRequestEntrypoint({ target, abi, functionName: 'request' }).target).toBe(target);
   });
 
   it('does not track a reverted request transaction', async () => {

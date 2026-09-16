@@ -26,15 +26,18 @@ export function getReadRegistryAddress(network: PUSH_NETWORK): Address {
 }
 
 export function resolveReadCallback(callback: ReadCallback | undefined, network: PUSH_NETWORK, queryKey: Hex): ReadCallback & { gasLimit: bigint } {
+  if (callback && 'request' in callback) throw new InvalidReadQueryError('callback.request was removed; use callback.abi, functionName and args');
   if (callback?.target !== undefined) {
     if (callback.gasLimit === undefined) throw new InvalidReadQueryError('callback.gasLimit is required for a custom target');
     return { ...callback, gasLimit: callback.gasLimit };
   }
-  if (callback?.request !== undefined) throw new InvalidReadQueryError('callback.request requires callback.target');
+  if (callback?.abi !== undefined || callback?.functionName !== undefined || callback?.args !== undefined) {
+    throw new InvalidReadQueryError('callback abi, functionName and args require callback.target');
+  }
   return {
     target: getReadRegistryAddress(network),
     gasLimit: callback?.gasLimit ?? REGISTRY_CALLBACK_GAS,
-    request: { abi: UNIVERSAL_READ_REGISTRY_EVM, functionName: 'read', args: (spec, gas) => [spec, queryKey, gas] },
+    abi: UNIVERSAL_READ_REGISTRY_EVM, functionName: 'read', args: (spec, gas) => [spec, queryKey, gas],
   };
 }
 

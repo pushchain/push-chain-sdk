@@ -32,7 +32,7 @@ done.status === PushChain.CONSTANTS.READ.STATUS.FULFILLED && done.callbackDelive
 - `READ-TX-*` progress events, `PushChain.CONSTANTS.READ`, typed errors, pure helpers
   (`encodeReadQuery`, `decodeReadResult`, `toCallData`, event parsers) exported.
 - `read()` and `executeReads()` support existing app receivers via
-  `callback: { target, gasLimit, request: { abi, functionName, args? } }`. The default
+  `callback: { target, gasLimit, abi, functionName, args? }`. The default
   request arguments are `(spec, callbackGasLimit)`. Each call must emit exactly one
   matching read. Prepared metadata retains the callback target and decoder;
   `executeReads()` returns a typed `BatchReadResponse` with `txHash`, `reads`, `count`,
@@ -43,9 +43,12 @@ done.status === PushChain.CONSTANTS.READ.STATUS.FULFILLED && done.callbackDelive
   with 500,000 callback gas by default. Other networks require a custom receiver.
 
 Registry calls include a stable SDK query key that excludes block/slot, payment and expiry.
-`PreparedRead.queryKey` and `getReadQueryKey` expose it for `latestResult` lookups.
-`getRegistryReadResult` and `getLatestRegistryReadResult` read raw registry storage using
-a viem client; use tracking to verify consensus status, delivery and settlement.
+`PreparedRead.queryKey` retains it as request metadata. Registry key/lookup helpers are
+package-internal; direct storage queries use the exported contract ABI with viem.
+Use tracking to verify consensus status, delivery and settlement.
+
+Default polling uses remaining Push blocks at each wait/resume × 1,340 ms plus a
+10-second observation margin, capped at 180 seconds. Explicit timeouts take precedence.
 
 The public grammar uses `CHAIN.WEB2` for https reads while keeping Web2 out of transaction
 chain types. SVM and Web2 pinning is selected internally rather than exposed as

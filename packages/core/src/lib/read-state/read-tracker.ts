@@ -51,7 +51,9 @@ import { decodeReadResult } from './result-decoder';
 export type ReadHookEmitter = (hookId: string, ...args: unknown[]) => void;
 
 export interface TrackReadDeps {
-  pushClient: Pick<PushClient, 'getUniversalRead' | 'getReadsByTx' | 'getTransactionReceiptWithArchiveFallback' | 'getBlockResultEvents'>;
+  pushClient: Pick<PushClient, 'getUniversalRead' | 'getReadsByTx' | 'getTransactionReceiptWithArchiveFallback' | 'getBlockResultEvents'> & {
+    publicClient: Pick<PushClient['publicClient'], 'getBlockNumber'>;
+  };
   pushNetwork: PUSH_NETWORK;
   /** Progress events. Wire to `fireProgressHook(ctx, …)` in the orchestrator. */
   emit?: ReadHookEmitter;
@@ -330,10 +332,13 @@ export function statusName(status: number): string {
   return STATUS_NAME[status] ?? `UNKNOWN(${status})`;
 }
 
-/** Default: the request's own lifetime in wall-clock, capped. */
-export function defaultWaitTimeoutMs(createdAtHeight: bigint, expiryPushChainHeight: bigint): number {
-  const blocks = expiryPushChainHeight > createdAtHeight ? Number(expiryPushChainHeight - createdAtHeight) : 0;
-  return Math.min(READ_TRACK_MAX_TIMEOUT_MS, Math.max(READ_TRACK_MIN_POLL_INTERVAL_MS, blocks * PUSH_BLOCK_TIME_MS));
+/** Observation allowance after estimated expiry; not a guarantee of node settlement. */
+const READ_TIMEOUT_MARGIN_MS = 10_000;
+
+/** Default: remaining Push blocks plus observation margin, capped at 180 seconds. */
+export function defaultWaitTimeoutMs(currentPushHeight: bigint, expiryPushChainHeight: bigint): number {
+  const blocks = expiryPushChainHeight > currentPushHeight ? Number(expiryPushChainHeight - currentPushHeight) : 0;
+  return Math.min(READ_TRACK_MAX_TIMEOUT_MS, blocks * PUSH_BLOCK_TIME_MS + READ_TIMEOUT_MARGIN_MS);
 }
 
 /**
@@ -344,8 +349,29 @@ export async function waitForRead(deps: TrackReadDeps, initial: UniversalReadRes
   const now = deps.now ?? Date.now;
   const emit: ReadHookEmitter = deps.emit ?? (() => undefined);
   const interval = pollInterval(opts);
-  const timeoutMs = opts.timeoutMs ?? defaultWaitTimeoutMs(initial.request.createdAtHeight, initial.request.spec.expiryPushChainHeight);
   const start = now();
+  let timeoutMs = opts.timeoutMs ?? READ_TRACK_MAX_TIMEOUT_MS;
+
+  // Resolve a fresh head for each wait/resume, only when a default is needed.
+  // Bound this RPC too: a stalled height lookup must not hang the promise forever.
+  if (opts.timeoutMs === undefined && !initial.isTerminal) {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const height = await Promise.race([
+        deps.pushClient.publicClient.getBlockNumber({ cacheTime: 0 }),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            const elapsed = now() - start;
+            emit(PROGRESS_HOOK.READ_TX_199_03, initial.requestId, statusName(initial.status), elapsed);
+            reject(new ReadTimeoutError(initial.status, elapsed, { requestId: initial.requestId, txHash: initial.txHash }));
+          }, READ_TRACK_MAX_TIMEOUT_MS);
+        }),
+      ]);
+      timeoutMs = Math.min(READ_TRACK_MAX_TIMEOUT_MS, now() - start + defaultWaitTimeoutMs(height, initial.request.spec.expiryPushChainHeight));
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
+  }
 
   emit(PROGRESS_HOOK.READ_TX_104_02, initial.txHash, initial.requestId, initial.request.logIndex);
 

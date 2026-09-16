@@ -35,7 +35,7 @@ Go run of `envelope-vectors.json` (hand the file to the chain team) and the webs
   `CallExecuteUniversalTx`; the full CEA round trip was verified live on 2026-09-15.
 - The CI guard for `generated/ucallback` drift was not added; I7 is enforced by
   `ucallback-codec.spec.ts` against the real Donut bytes instead.
-- `wait()` default timeout = request lifetime × 1.34 s/block (measured), capped 180 s.
+- `wait()` default timeout = remaining Push blocks × 1.34 s/block + 10 s observation margin, capped 180 s; refreshed on resume (decision 2026-09-16).
   The e2e tree found validator latency swinging 10 s..7 min in one afternoon, so the
   fulfil-path specs use `expiryBlocks: 900n` and a 560 s wait (`SLOW_PATH`).
 - Bug found by e2e and fixed in PR6: options given to `wait()` (`resultShape`, polling,
@@ -204,7 +204,7 @@ src/lib/orchestrator/internals/context.ts     READ-TX ids must NOT be added to R
 
 - Terminal set `FULFILLED | EXPIRED | FAILED | ABORTED`; `wait()` **resolves** on terminal, throws only `ReadTimeoutError` (house convention).
 - **`EXPIRED`: never fetch the `pc_tx` receipt** — EndBlocker expiry has no EVM-indexed tx/receipt/logs (verified 2026-09-09). The refund is confirmed from the Cosmos `block_results` at `pcTx[0].blockHeight`: the `tx_log` event with `mode: EndBlock` carries `RequestExpired` + `RefundSent` / `RefundFailed` (`PushClient.getBlockResultEvents`, raw HTTP — cosmjs 0.33 drops `finalize_block_events`). If that lookup fails the refund fields stay undefined; they are never guessed, because a rejecting recipient does not prevent expiry.
-- Polling `pollingIntervalMs` 2 000 (min 500); `timeout` default `expiryBlocks × blockTime` capped 180 000.
+- Polling `pollingIntervalMs` 2 000 (min 500); default timeout uses fresh remaining Push blocks × block time + 10 seconds, capped at 180,000 ms. Explicit overrides take precedence.
 - `value` present iff `status === FULFILLED && callbackDelivered && result.status === SUCCESS`.
 - Hook emission order 104-02 → 105-01/02 → 106-01..06 → 199-xx; inner `SEND-TX` pass-through preserved.
 
@@ -253,8 +253,8 @@ Register the tree in `__e2e__/ci/suite.ts` with a `read` tag and the per-scenari
 
 ### PR7 — `read()` one-shot and `executeReads()` batch · **custom receivers implemented**
 
-Custom receivers use `callback.target` plus `callback.request` (ABI/function/optional
-argument mapper). Prepared reads retain these and the decoder. Execution uses existing
+Custom receivers use `callback.target` plus `callback.abi`, `functionName`, and an optional
+`args` mapper. Prepared reads retain these and the decoder. Execution uses existing
 Push/UEA multicalls, retains all hashes on sequential wallet fallback, and matches records
 by spec, callback target and gas limit to preserve input order. `waitForCompletion: false`
 returns resumable snapshots; default waits for terminal outcomes. Read-only clients can

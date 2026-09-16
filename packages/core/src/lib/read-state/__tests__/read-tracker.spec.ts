@@ -42,6 +42,7 @@ function scriptedDeps(script: (UniversalRead | undefined)[], extra: Partial<Trac
   const deps: TrackReadDeps = {
     pushNetwork: PUSH_NETWORK.TESTNET_DONUT,
     pushClient: {
+      publicClient: { getBlockNumber: jest.fn().mockResolvedValue(1n) },
       getUniversalRead: async () => {
         calls.getUniversalRead++;
         const read = script[Math.min(i++, script.length - 1)];
@@ -302,6 +303,54 @@ describe('wait()', () => {
   const pending = withStatus(success, UniversalReadStatus.UNIVERSAL_READ_STATUS_PENDING);
   const voting = withStatus(success, UniversalReadStatus.UNIVERSAL_READ_STATUS_VOTING);
 
+  it('recomputes remaining lifetime on each wait and keeps the expiry observation margin', async () => {
+    const { deps } = scriptedDeps([pending]);
+    const first = await trackRead(deps, { requestId: READ2_ID });
+    const head = deps.pushClient.publicClient.getBlockNumber as jest.Mock;
+    head.mockResolvedValueOnce(first.request.spec.expiryPushChainHeight - 2n)
+      .mockResolvedValueOnce(first.request.spec.expiryPushChainHeight + 1n);
+    const a = first.wait({ pollingIntervalMs: 500 }).catch(e => e);
+    await jest.advanceTimersByTimeAsync(12_679);
+    expect(jest.getTimerCount()).toBeGreaterThan(0);
+    await jest.advanceTimersByTimeAsync(1);
+    expect(await a).toBeInstanceOf(ReadTimeoutError);
+    const b = first.wait({ pollingIntervalMs: 500 }).catch(e => e);
+    await jest.advanceTimersByTimeAsync(10_000);
+    expect(await b).toBeInstanceOf(ReadTimeoutError);
+    expect(head).toHaveBeenCalledTimes(2);
+    expect(head).toHaveBeenCalledWith({ cacheTime: 0 });
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('explicit timeouts bypass the head lookup, including values above the default ceiling', async () => {
+    const { deps } = scriptedDeps([pending, success]);
+    const first = await trackRead(deps, { requestId: READ2_ID });
+    const waiting = first.wait({ timeoutMs: 600_000 });
+    await jest.advanceTimersByTimeAsync(2_000);
+    const result = await waiting;
+    expect(result.isTerminal).toBe(true);
+    expect(deps.pushClient.publicClient.getBlockNumber).not.toHaveBeenCalled();
+  });
+
+  it('terminal snapshots need no head lookup', async () => {
+    const { deps } = scriptedDeps([success]);
+    expect((await (await trackRead(deps, { requestId: READ2_ID })).wait()).isTerminal).toBe(true);
+    expect(deps.pushClient.publicClient.getBlockNumber).not.toHaveBeenCalled();
+  });
+
+  it('bounds stalled height lookups and propagates failed lookups', async () => {
+    const { deps } = scriptedDeps([pending]);
+    const first = await trackRead(deps, { requestId: READ2_ID });
+    const head = deps.pushClient.publicClient.getBlockNumber as jest.Mock;
+    head.mockImplementationOnce(() => new Promise(() => undefined));
+    const stalled = first.wait().catch(e => e);
+    await jest.advanceTimersByTimeAsync(180_000);
+    expect(await stalled).toBeInstanceOf(ReadTimeoutError);
+    head.mockRejectedValueOnce(new Error('height unavailable'));
+    await expect(first.wait()).rejects.toThrow('height unavailable');
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
   it('a missing snapshot respects the shared timeout and retains the last status', async () => {
     const { deps } = scriptedDeps([pending, undefined]);
     const first = await trackRead(deps, { requestId: READ2_ID });
@@ -412,10 +461,11 @@ describe('wait()', () => {
     expect(events[events.length - 1][2]).toBe('VOTING');
   });
 
-  it('default timeout is the request lifetime in wall-clock, capped', () => {
-    expect(defaultWaitTimeoutMs(100n, 110n)).toBe(10 * 1340);
+  it('default timeout is remaining blocks plus 10 seconds, capped', () => {
+    expect(defaultWaitTimeoutMs(100n, 110n)).toBe(10 * 1340 + 10_000);
     expect(defaultWaitTimeoutMs(22957752n, 22958748n)).toBe(READ_TRACK_MAX_TIMEOUT_MS);
-    expect(defaultWaitTimeoutMs(10n, 10n)).toBeGreaterThan(0);
+    expect(defaultWaitTimeoutMs(10n, 10n)).toBe(10_000);
+    expect(defaultWaitTimeoutMs(11n, 10n)).toBe(10_000);
   });
 
   it('polling interval floors at 500 ms', async () => {
@@ -444,6 +494,7 @@ describe('through the orchestrator: READ-TX hooks are not R1-suppressed', () => 
     let i = 0;
     const ctx = {
       pushClient: {
+        publicClient: { getBlockNumber: async () => 1n },
         getUniversalRead: async () => ({ read: script[Math.min(i++, 1)] }),
         getReadsByTx: async () => ({ reads: [] }),
         getTransactionReceiptWithArchiveFallback: async (h: Hex) => RECEIPTS[h.toLowerCase()],

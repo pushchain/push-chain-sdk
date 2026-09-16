@@ -66,7 +66,7 @@ The contract has two responsibilities:
 1. Expose a public payable entrypoint that creates the read.
 2. Receive the final result callback from `UniversalCallback`.
 
-The SDK's `callback.request` describes the first function, not the result callback.
+The SDK's `callback.abi`, `functionName`, and `args` describe the request entrypoint. `callback.gasLimit` bounds the later result callback.
 
 ### `UniversalCallback`
 
@@ -260,10 +260,8 @@ A currently executable callback configuration looks like:
 const callback = {
   target: myReadClientAddress,
   gasLimit: 200_000n,
-  request: {
-    abi: myReadClientAbi,
-    functionName: 'request',
-  },
+  abi: myReadClientAbi,
+  functionName: 'request',
 };
 ```
 
@@ -279,15 +277,9 @@ For an entrypoint with extra arguments:
 const callback = {
   target: myReadClientAddress,
   gasLimit: 200_000n,
-  request: {
-    abi: myReadClientAbi,
-    functionName: 'requestWithContext',
-    args: (spec, gasLimit) => [
-      spec,
-      gasLimit,
-      applicationContext,
-    ],
-  },
+  abi: myReadClientAbi,
+  functionName: 'requestWithContext',
+  args: (spec, gasLimit) => [spec, gasLimit, applicationContext],
 };
 ```
 
@@ -748,7 +740,7 @@ How long the Push Chain request remains alive. The default is `300n` Push blocks
 
 ### Client polling timeout
 
-How long this SDK caller waits. The default scales with the remaining expiry and is capped at `180_000` milliseconds.
+How long this SDK caller waits. Each default `wait()` fetches the current Push height and uses `min(180_000, max(0, expiryHeight - currentHeight) × 1_340 + 10_000)` milliseconds. The 10-second margin allows time to observe expiry; it does not guarantee settlement. Already-expired pending records get that margin. Explicit timeouts override the default, including values above 180 seconds. A failed height lookup rejects; a stalled lookup is bounded by the default 180-second ceiling.
 
 A client timeout does not cancel the on-chain request. Resume it later with `trackRead`.
 

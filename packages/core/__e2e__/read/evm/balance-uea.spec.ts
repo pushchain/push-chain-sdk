@@ -38,7 +38,7 @@ d('read state › EVM balance requested through a UEA', () => {
       chain: CHAIN.ETHEREUM_SEPOLIA,
       blockNumber: prepared.spec.blockNumber,
       expiryBlocks: SLOW_PATH.expiryBlocks,
-      callback: { target: FULL_BUDGET_CLIENT, gasLimit: CALLBACK_GAS, request: { abi: READ_CLIENT_ABI, functionName: 'request' } },
+      callback: { target: FULL_BUDGET_CLIENT, gasLimit: CALLBACK_GAS, abi: READ_CLIENT_ABI, functionName: 'request' },
       waitForCompletion: false,
     });
     expect(read.request.originalFunder.toLowerCase()).toBe(FULL_BUDGET_CLIENT.toLowerCase());

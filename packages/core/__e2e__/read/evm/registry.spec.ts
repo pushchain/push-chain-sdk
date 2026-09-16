@@ -1,6 +1,9 @@
 import '@e2e/shared/setup';
 import { createPublicClient, http } from 'viem';
-import { CHAIN, PushChain, getReadQueryKey, getRegistryReadResult, getLatestRegistryReadResult } from '../../../src';
+import { CHAIN, PushChain } from '../../../src';
+// Internal helpers are used here to verify registry storage, not as public SDK APIs.
+import { getReadQueryKey } from '../../../src/lib/read-state/read-params';
+import { getRegistryReadResult, getLatestRegistryReadResult } from '../../../src/lib/read-state/registry';
 import { PUSH_NETWORK } from '../../../src/lib/constants/enums';
 import { makePushEoaClient, pushKey, SLOW_PATH } from '../_shared';
 

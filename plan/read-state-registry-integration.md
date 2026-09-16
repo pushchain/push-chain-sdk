@@ -14,7 +14,7 @@ Other network settings have no pinned registry. They require a custom receiver o
 ## Request and lookup
 
 ```ts
-import { CHAIN, PushChain, getReadQueryKey, getLatestRegistryReadResult } from '@pushchain/core';
+import { CHAIN, PushChain, UNIVERSAL_READ_REGISTRY_EVM } from '@pushchain/core';
 
 // client is an initialized signing PushChain client connected to Donut.
 const result = await client.universal.read(holder, {
@@ -30,18 +30,17 @@ const batch = await client.universal.executeReads([prepared], { waitForCompletio
 const [done] = await batch.wait();
 
 // This lookup is raw on-chain storage. donutPublicClient is a viem PublicClient.
-const queryKey = getReadQueryKey(holder, { chain: CHAIN.ETHEREUM_SEPOLIA });
-const stored = await getLatestRegistryReadResult(
-  donutPublicClient,
-  PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
-  client.universal.account,
-  queryKey,
-);
+const stored = await donutPublicClient.readContract({
+  address: PushChain.CONSTANTS.READ.UNIVERSAL_READ_REGISTRY_ADDRESS.TESTNET_DONUT,
+  abi: UNIVERSAL_READ_REGISTRY_EVM,
+  functionName: 'latestResult',
+  args: [client.universal.account, prepared.queryKey],
+});
 ```
 
-`getRegistryReadResult(publicClient, network, requestId)` retrieves a specific stored result. Both lookup helpers return `{ requestId, resultData, updatedAtBlock }`. For an absent entry the contract returns zero-valued fields. The exported `UNIVERSAL_READ_REGISTRY_EVM` ABI also supports direct viem calls.
+Registry key and lookup helpers are package-internal (V3 decision, 2026-09-16). For a specific stored result, use the same direct viem call with `functionName: 'resultByRequestId'` and `args: [BigInt(requestId)]`. Both contract views return `{ requestId, resultData, updatedAtBlock }`; absent entries contain zero-valued fields.
 
-These helpers supplement the four `client.universal` methods. Registry storage is not a replacement for `trackRead`: storage alone does not report validator error codes, callback failures, settlement, or expiry. Verify consensus success and callback delivery through the tracked response before consuming a value.
+The four `client.universal` methods are the public read workflow. Registry storage alone does not report validator error codes, callback failures, settlement, or expiry. Verify consensus success and callback delivery through the tracked response before consuming a value.
 
 ## Exact query-key algorithm (v1)
 
@@ -65,7 +64,7 @@ It excludes live block/slot references, confirmations, expiry, payment, callback
 
 Pinned example: Sepolia native balance of `0x1111111111111111111111111111111111111111` has key `0x962adcb6ecfd641636346646039316499a1990d5a6ab83b5169379d2d86c33e6`.
 
-`PreparedRead.queryKey` and `getReadQueryKey(subject, queryOptions)` expose the same identifier. The registry receives the non-zero SDK key rather than using its zero-key fallback, which hashes height-bearing query bytes.
+`PreparedRead.queryKey` retains the internally computed identifier. The registry receives the non-zero SDK key rather than using its zero-key fallback, which hashes height-bearing query bytes.
 
 Keys are caller-supplied labels, not authenticated query commitments. A direct contract caller can use the same key for unrelated queries in their own reader namespace. Consumers relying on another reader's result must verify the associated request and its provenance. Latest ordering follows request submission order, not callback arrival order or greatest source-chain height.
 

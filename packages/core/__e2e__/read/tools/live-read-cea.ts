@@ -24,6 +24,7 @@ import { PushChain } from '../../../src';
 import { CHAIN, PUSH_NETWORK } from '../../../src/lib/constants/enums';
 import { CHAIN_INFO } from '../../../src/lib/constants/chain';
 import { CEA_EVM } from '../../../src/lib/constants/abi/cea.evm';
+import { UNIVERSAL_READ_REGISTRY_EVM } from '../../../src/lib/constants/abi/universalReadRegistry.evm';
 import { UEA_MULTICALL_SELECTOR } from '../../../src/lib/constants/selectors';
 import { getCEAAddress } from '../../../src/lib/orchestrator/cea-utils';
 import { getActiveStakingFixtures } from '../../shared/chain-fixtures';
@@ -244,6 +245,9 @@ async function main() {
       },
     ],
   });
+  const previousRequestId = await publicClient.readContract({
+    address: RECEIVER, abi: receiverAbi, functionName: 'lastRequestId',
+  });
   const triggerHash = await wallet.sendTransaction({
     to: RECEIVER,
     data: triggerData,
@@ -271,11 +275,11 @@ async function main() {
       abi: receiverAbi,
       functionName: 'lastRequestId',
     });
-    if (requestId !== 0n) break;
+    if (requestId !== 0n && requestId !== previousRequestId) break;
     console.log('waiting for CEA inbound on Push...');
     await new Promise((resolve) => setTimeout(resolve, 10_000));
   }
-  if (requestId === 0n)
+  if (requestId === 0n || requestId === previousRequestId)
     throw new Error(
       'CEA inbound arrived without creating a read (or did not arrive before timeout)'
     );
@@ -307,9 +311,20 @@ async function main() {
     'value:',
     done.value?.toString()
   );
-  if (done.status !== PushChain.CONSTANTS.READ.STATUS.FULFILLED) {
+  if (done.status !== PushChain.CONSTANTS.READ.STATUS.FULFILLED || done.callbackDelivered !== true || done.raw?.status !== PushChain.CONSTANTS.READ.RESULT_STATUS.SUCCESS) {
     throw new Error(`read did not fulfil: ${done.status} ${done.errorMsg}`);
   }
+  if (done.request.spec.blockNumber !== prepared.spec.blockNumber || done.request.spec.query !== prepared.spec.query) {
+    throw new Error('receiver read does not match this run');
+  }
+  const stored = await publicClient.readContract({
+    address: PushChain.CONSTANTS.READ.UNIVERSAL_READ_REGISTRY_ADDRESS.TESTNET_DONUT,
+    abi: UNIVERSAL_READ_REGISTRY_EVM, functionName: 'resultByRequestId', args: [requestId],
+  });
+  if (stored.requestId !== requestId || stored.resultData !== done.raw.resultData) {
+    throw new Error('registry storage does not match the fulfilled request');
+  }
+  console.log('PASS: fresh CEA request, successful consensus, callback delivered, registry result verified');
 }
 
 main().catch((error) => {

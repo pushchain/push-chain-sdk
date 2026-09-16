@@ -70,7 +70,7 @@ describe('toBuildReadSpecParams', () => {
       chain: CHAIN.ETHEREUM_SEPOLIA, ...cb, refundTo: USER, blockNumber: 5n, minConfirmations: 3, expiryBlocks: 10n, maxFee: 7n,
     });
     expect(p).toEqual({
-      callback: expect.objectContaining({ gasLimit: cb.callback.gasLimit, target: expect.any(String), request: expect.any(Object) }),
+      callback: expect.objectContaining({ gasLimit: cb.callback.gasLimit, target: expect.any(String), abi: expect.any(Array), functionName: 'read' }),
       destination: { chain: CHAIN.ETHEREUM_SEPOLIA },
       query: { type: 'accountBalance', target: USER },
       callbackGasLimit: 200_000n, refundTo: USER, blockNumber: 5n, minConfirmations: 3, expiryBlocks: 10n, maxFee: 7n,

@@ -22,7 +22,7 @@ d('read state › reverting callback', () => {
     const { client } = await makePushEoaClient(pushKey!);
     const done = await client.universal.read('0x000000000000000000000000000000000000dEaD', {
       chain: CHAIN.ETHEREUM_SEPOLIA,
-      callback: { target: REVERTING_CLIENT, gasLimit: CALLBACK_GAS, request: { abi: READ_CLIENT_ABI, functionName: 'request' } },
+      callback: { target: REVERTING_CLIENT, gasLimit: CALLBACK_GAS, abi: READ_CLIENT_ABI, functionName: 'request' },
       expiryBlocks: SLOW_PATH.expiryBlocks,
       advanced: { timeout: SLOW_PATH.wait.timeoutMs },
       progressHook: tracker.hook,

@@ -6,7 +6,7 @@ import { getReadQueryKey, toBuildReadSpecParams } from '../read-params';
 import { getReadRegistryAddress, getRegistryReadResult, getLatestRegistryReadResult } from '../registry';
 import { buildReadSpecFromPreflight, toCallData } from '../spec-builder';
 import { resolveDestination } from '../destination';
-import { executeReads, type ReadExecutorDeps } from '../read-executor';
+import { assertRequestEntrypoint, executeReads, type ReadExecutorDeps } from '../read-executor';
 import type { ReadPreflight } from '../read-state.types';
 
 const user = '0x1111111111111111111111111111111111111111';
@@ -24,9 +24,13 @@ function prepare(over: Partial<Parameters<typeof toBuildReadSpecParams>[1]> = {}
 }
 
 describe('canonical registry integration', () => {
+  it('rejects entrypoint fields without a custom target and rejects the removed nesting', () => {
+    expect(() => prepare({ callback: { abi, functionName: 'request' } })).toThrow(/require callback.target/);
+    expect(() => prepare({ callback: { request: { abi, functionName: 'request' } } as never })).toThrow(/was removed/);
+  });
   it('encodes the deployed three-argument entrypoint with default gas, key and unchanged refund', () => {
     const p = prepare();
-    const call = toCallData(p, p.callback!.request!);
+    const call = toCallData(p, assertRequestEntrypoint(p.callback));
     const decoded = decodeFunctionData({ abi: UNIVERSAL_READ_REGISTRY_EVM, data: call.data });
     expect(decoded.functionName).toBe('read');
     expect(decoded.args).toEqual([p.spec, p.queryKey, REGISTRY_CALLBACK_GAS]);
@@ -76,7 +80,7 @@ describe('canonical registry integration', () => {
   it('does not assume this deployment exists on other networks; custom receivers still work', () => {
     for (const network of [PUSH_NETWORK.MAINNET, PUSH_NETWORK.TESTNET, PUSH_NETWORK.LOCALNET]) {
       expect(() => toBuildReadSpecParams(user, { chain }, network)).toThrow(/not deployed on this network/);
-      const callback = { target: token, gasLimit: 200_000n, request: { abi, functionName: 'request' } } as const;
+      const callback = { target: token, gasLimit: 200_000n, abi, functionName: 'request' } as const;
       expect(toBuildReadSpecParams(user, { chain, callback }, network).callback).toEqual(callback);
     }
   });

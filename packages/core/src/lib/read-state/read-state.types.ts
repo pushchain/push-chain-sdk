@@ -159,18 +159,15 @@ export type ReadSpecTuple = readonly [
 // prepareRead
 // ---------------------------------------------------------------------------
 
-export interface ReadRequestEntrypoint {
-  abi: Abi;
-  functionName: string;
-  /** Defaults to (spec, callbackGasLimit). Must request exactly one read with this spec. */
-  args?: (spec: ReadSpecTuple, callbackGasLimit: bigint) => readonly unknown[];
-}
-
 export interface ReadCallback {
   target?: Address;
+  /** Gas for the result callback, not the request entrypoint. */
   gasLimit?: bigint;
-  /** Public payable entrypoint on your app contract, not the result callback. */
-  request?: ReadRequestEntrypoint;
+  /** Public payable request entrypoint on the application contract. */
+  abi?: Abi;
+  functionName?: string;
+  /** Defaults to (spec, callbackGasLimit). Must request exactly one read with this spec. */
+  args?: (spec: ReadSpecTuple, callbackGasLimit: bigint) => readonly unknown[];
 }
 
 export interface BuildReadSpecParams {

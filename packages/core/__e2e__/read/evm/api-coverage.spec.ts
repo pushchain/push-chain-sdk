@@ -7,7 +7,7 @@ import { CALLBACK_GAS, FULL_BUDGET_CLIENT, READ_CLIENT_ABI, makePushEoaClient, p
 const d = pushKey ? describe : describe.skip;
 const subject = '0x000000000000000000000000000000000000dEaD';
 const token = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
-const callback = { target: FULL_BUDGET_CLIENT, gasLimit: CALLBACK_GAS, request: { abi: READ_CLIENT_ABI, functionName: 'request' } };
+const callback = { target: FULL_BUDGET_CLIENT, gasLimit: CALLBACK_GAS, abi: READ_CLIENT_ABI, functionName: 'request' };
 const base = { chain: CHAIN.ETHEREUM_SEPOLIA, callback, expiryBlocks: SLOW_PATH.expiryBlocks } as const;
 const READ = PushChain.CONSTANTS.READ;
 

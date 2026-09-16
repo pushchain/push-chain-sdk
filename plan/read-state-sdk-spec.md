@@ -1,5 +1,229 @@
 # Read State API Reference
 
+---
+
+# Other Resources
+
+[Read State Response Doc](https://app.notion.com/p/Read-State-Response-Doc-3db188aea7f48047ac9becc04a1d57a1?pvs=21)
+
+# Universal Read — SDK API Reference (v3)
+
+**Status:** Iteration on v2 (kept intact below) · **Reviewed against:** [push-chain-sdk PR #265](https://github.com/pushchain/push-chain-sdk/pull/265) @ `24f0a6d`, `push-chain-core-contracts` branches `core-testnet` / `feat-read-state` / `128-provide-a-universalregistry-contract` · **Node record:** [Read State Response Doc](https://app.notion.com/p/Read-State-Response-Doc-3db188aea7f48047ac9becc04a1d57a1?pvs=21)
+
+This section lists only what changes relative to v2. Anything not mentioned stands as written in v2.
+
+---
+
+## What changed vs v2
+
+| # | Change | Why |
+| --- | --- | --- |
+| 1 | **`refundTo` restored** in PINNING (= `ReadSpec.revertRecipient`) | v2's "removed from contract" claim came from the stale `read-state-fixes-v1` branch. All current branches carry `revertRecipient`. **Correction on our side.** |
+| 2 | **Fee model corrected**: `paid` → `protocolFee` (spent, never refunded) + `callbackBudget` (escrowed) → `burned` (`CallbackGasReported`) + `refunded` (`RefundSent`) | Live contract + Aman: "On expiry we do refund the feesDeposited. Protocol fee is never refunded irrespective of success or failure." |
+| 3 | **`callbackDelivered` / `callbackFailReason` on the response** | `FULFILLED` = fulfil tx landed, NOT that your callback ran. Most important addition; v2 lacked it. |
+| 4 | **Registry is real and integrated** — `callback` fully optional; defaults to `UNIVERSAL_READ_REGISTRY_ADDRESS`  • `REGISTRY_CALLBACK_GAS`; SDK computes `queryKey` offline | Branch 128: `read(spec, queryKey, callbackGasLimit)`, `latestResult`, `resultByRequestId`. Closes §Q3. |
+| 5 | **`callback` flattened** — `{ target, abi, functionName, args, gasLimit }`, same vocabulary as viem `writeContract` / `encodeTxData`. Replaces the PR's nested `callback.request` | No new nouns. Neither ethers nor viem names this concept; they never nest it. |
+| 6 | **Registry helpers are private** (`getReadQueryKey`, `getRegistryReadResult`, `getLatestRegistryReadResult` — internal to `registry.ts`, not exported) | Devs never touch registry storage. Surface later under `PushChain.utils.read.*` only if a real need appears (additive). |
+| 7 | `tokenProgram: 'spl-token' \ | 'token-2022'` — SVM token reads only |
+| 8 | **`token` on EVM = `balanceOf` contract call**, not an `ERC20Balance` envelope | Node does not ship that query type. |
+| 9 | **`trackRead` gains `resultShape?`** | Typed decode on resume-by-hash — the ABI is not on-chain. |
+| 10 | **`BatchReadResponse.transactionHashes[]`** | Sequential (non-atomic) fallback. |
+| 11 | **Response gains `decodeError`, `pcTx[]`, `destination`, `request.refundTo`, `request.createdAtHeight`** | All sourced from the node record. |
+| 12 | **`advanced.timeout` default becomes** `min(expiryBlocks × pushBlockTime + margin, 180s ceiling)` instead of flat 180s | Aman: "timeout should be increased to expiryTime till a ceil value." Needs a Push block-time constant. → **Shoaib** |
+| 13 | **Extra progress events**: `READ-TX-102-05` (refundTo is a non-UEA contract without `receive()`), `106-04 / 106-05 / 106-06` (callback gas reported / refund sent / refund failed) | Settlement stages now observable. |
+| 14 | **Vote-tally events `105-02-01/-02` parked** (not in PR) | Aman: feasible but "a new msg needs to be exported" by the node. Additive later. |
+| 15 | **Solana pinning**: `blockNumber` / `minConfirmations` are compile errors on SVM | Aman: "For solana this field is not available — query is always done on finalizedSlot." Doc must say it. |
+| 16 | **Web2 quorum callout** required on `web2.extract` | Aman: votes finalize only on identical extracted bytes; volatile APIs may never reach quorum in v1; `decimals` truncation is the stabilizer; median aggregation is v2. |
+| 17 | **`payGasWith` cut** (never implemented) | Not needed here. |
+| 18 | **v2's node-ABI "drift" claim retracted** | The node was right; the branch I compared against was stale. |
+
+---
+
+## read(subject, options) — v3
+
+```tsx
+await client.universal.read(subject, {
+
+  // ══ QUERY — WHAT is read. subject = the thing you're asking about:
+  //    holder (balances) | contract (calls, state) | https URL (web2)
+
+  chain: CHAIN,                        // required. type ReadChain = EvmChain | SvmChain | CHAIN.WEB2
+                                       //   CHAIN.WEB2 = 'web2:https' (confirmed, also added to UV)
+
+  // — balance (EVM + SVM) —
+                                       // no query keys → native balance of `subject` (ETH / lamports)
+  token: string,                       // token balance of `subject`:
+                                       //   EVM → balanceOf contract call
+                                       //   SVM → SPLTokenAccount envelope, ATA(token, subject)
+                                       //         derived by SDK — deterministic, no network
+  tokenProgram: 'spl-token' | 'token-2022', // SVM token reads only. default 'spl-token'
+
+  // — call (EVM now; SVM via `idl` when program reads land) —
+  abi: Abi,                            // encodes AND decodes — `value` typed from outputs
+  functionName: string,                //   view/pure only — enforced at COMPILE time
+  args: readonly unknown[],            //   typed against abi at compile time. No raw callData form
+
+  // — state (EVM) —
+  storageSlot: `0x${string}` | bigint, // storage LOCATION (which cell), bytes32-normalized.
+                                       //   Read at `blockNumber`. (SVM raw bytes: future `layout`)
+
+  // — web2 (subject = https URL) —
+  web2: {
+    extract: [{                        // required; 1–16 entries, defines result order.
+      path: string,                    //   ⚠ QUORUM: validators vote on IDENTICAL extracted bytes.
+      valueType: 'uint256' | 'int256' | 'bool' | 'string' | 'bytes',  //   Volatile APIs may never
+      decimals?: number,               //   finalize in v1 — use `decimals` truncation to stabilize.
+    }],                                //   Median aggregation is v2.
+    method?: 'GET' | 'POST',           // default 'GET'
+    headers?: Record<string, string>,  // default {} — ⚠ PUBLIC event log, forever
+    body?: string | Uint8Array,        // POST only; rejected on GET
+    timeoutMs?: number,                // default 5_000; validator-clamped
+  },                                   // TS: chain WEB2 ⇔ web2 key present
+
+  // ══ PINNING — HOW/WHEN. All optional, filled from internal preflight.
+  //    Maps 1:1 to implemented ReadSpec (core-contracts: core-testnet / feat-read-state / 128). ══
+
+  blockNumber: bigint,                 // EVM only (SVM/web2 → compile error; Solana always reads at
+                                       //   finalizedSlot). default observedChainHeight − minConfirmations
+  minConfirmations: number,            // EVM only. default 1
+  expiryBlocks: bigint,                // default 300n Push blocks → EXPIRED, feesDeposited − protocolFee
+                                       //   refunded to refundTo
+  maxFee: bigint,                      // hard cap on the ONE upfront payment (protocolFee +
+                                       //   callbackBudget). default: preflight quote + internal buffer
+  refundTo: `0x${string}`,             // = ReadSpec.revertRecipient. Where unspent callbackBudget is
+                                       //   PUSHED. default: your Push account. READ-TX-102-05 warns
+                                       //   if it's a non-UEA contract without receive()
+
+  // ══ CALLBACK — WHERE it lands, and the call that triggers it. Same vocabulary
+  //    as viem writeContract / encodeTxData — no new nouns. ══
+
+  callback: {
+    target: `0x${string}`,             // default canonical UniversalReadRegistry.
+                                       //   Override → your UniversalReadClient
+    abi: Abi,                          // ┐ the payable call on `target` that requests the read.
+    functionName: string,              // │ Omit for the registry (SDK knows its `read`).
+    args: (spec, gasLimit) => unknown[], // ┘ mapper, not array — the SDK owns `spec`.
+                                       //   default (spec, gas) => [spec, gas]
+    gasLimit: bigint,                  // execution bound on the RESULT callback.
+                                       //   default REGISTRY_CALLBACK_GAS; MANDATORY with custom
+                                       //   target. 1n..1_000_000n. ⚠ priced into your fee
+  },                                   // TS: target set ⇒ abi + functionName + gasLimit required;
+                                       //     target absent ⇒ none allowed
+
+  // ══ LIFECYCLE — HOW the promise behaves. Mirrors trackTransaction. ══
+
+  progressHook: (e: ProgressEvent) => void,   // READ-TX-1xx + inner SEND-TX pass-through
+  waitForCompletion: boolean,          // default true. false → returns after request confirm;
+                                       //   resume via .wait() / trackRead
+  advanced: {                          // kept (team: useful for power users + testing)
+    pollingIntervalMs: number,         // default 2_000 (min 500)
+    timeout: number,                   // default min(expiryBlocks × pushBlockTime + margin, 180_000)
+    enforceGasCheck: boolean,          // default false: WARN + proceed · true: throw pre-broadcast
+  },
+});
+```
+
+## Response — v3 deltas
+
+```tsx
+type UniversalReadResponse<T> = {
+  …as v2, plus:
+  callbackDelivered?: boolean;         // FULFILLED ≠ delivered. false → CallbackFailed
+  callbackFailReason?: `0x${string}`;  // revert data from CallbackFailed
+  decodeError?: string;                // why `value` is absent though the read succeeded
+  fees: {
+    paid: bigint;                      // msg.value (feesDeposited)
+    protocolFee: bigint;               // spent at request time, never refunded
+    callbackBudget: bigint;            // escrowed
+    burned?: bigint;                   // CallbackGasReported
+    refunded?: bigint;                 // RefundSent; on EXPIRED = paid − protocolFee
+    refundFailed?: boolean;            // push rejected → admin rescue pool
+  };
+  request: { …, refundTo, createdAtHeight };
+  pcTx: { txHash, blockHeight, status, errorMsg }[];   // fulfil / settle / expiry txs
+  destination: ResolvedDestination;
+};
+
+type BatchReadResponse = { …, transactionHashes?: Hex[] };   // sequential-fallback hashes
+trackRead(ref, { …, resultShape? })                          // typed decode on resume-by-hash
+
+// Failure shapes (same object, different fields lit):
+// read errored at source:  FULFILLED, callbackDelivered true,  value undefined, raw.status ERROR
+// your callback reverted:  FULFILLED, callbackDelivered FALSE, callbackFailReason, raw.status SUCCESS
+// no quorum in time:       EXPIRED, raw null, fees.refunded = paid − protocolFee
+// client gave up:          throws ReadTimeoutError { lastStatus } — the only throw
+```
+
+**Multiple requests in one tx (the "receipt" question):** `txHash` is the batch receipt; `requestId` + `logIndex` is the per-read receipt. `executeReads` sorts `ReadRequested` logs by `logIndex`, maps them onto the prepared array in order (`reads[i]` ≡ `prepared[i]`), and throws `READ_REQUEST_MISMATCH` (carrying the tx hashes for `trackRead` resume) if the app emitted unexpected extra reads. No separate job/receipt id needed.
+
+---
+
+## Questions — status after team review
+
+**Closed:** Q1 fee/refund (protocol fee never refunded; expiry refunds `feesDeposited − protocolFee`) · Q2 `advanced.*` (keep) · Q3 registry (branch 128) · Q4 `CHAIN.WEB2 = 'web2:https'` (SDK still owes the `sendTransaction` exclusion guard) · Q5 drift (retracted) · Q6 batching (Nilesh: supported contract + core side, settles separately) · Solana pinning (finalizedSlot) · web2 quorum (doc callout).
+
+**Parked (additive later):** Q7 vote-tally events — pending a new node query msg.
+
+**Action:** timeout default formula → Shoaib.
+
+**Remaining — node response doc only, not SDK:**
+
+1. `callback_delivered` + settlement accounting (`callback_gas_used`, `refunded`, `refund_failed`) on the gRPC record.
+2. Status definitions (`FAILED` vs `FULFILLED`+`CallbackFailed`, `ABORTED`, `expiry_attempts`, `error_msg`) + three-vocabulary mapping (contract `RequestStatus` ↔ module lifecycle ↔ observation).
+
+## PR #265 — merge conditions
+
+1. Flatten `callback` (delete `ReadRequestEntrypoint` / `callback.request`; lift `abi`/`functionName`/`args` into `ReadCallback`; `resolveReadCallback` builds the registry call internally).
+2. Make the three registry helpers private.
+3. **CI gate** — 162 unit tests exist, no workflow runs them on PR; e2e is manual dispatch. Hard condition.
+4. Minor: `read-state.types.ts` (436) / `read-tracker.ts` (412) over 400 lines; `plan/` docs living in the SDK repo.
+
+---
+
+## SDK feedback on the V3 review — 2026-09-16
+
+**Status:** SDK changes and decisions 1.B / 2.A implemented locally on 2026-09-16. Shoaib excluded CI changes. The imported V3 proposal and V2 baseline above/below are preserved as historical review material; this implementation update takes precedence.
+
+### Implementation update
+
+- Custom callbacks now use `{ target, gasLimit, abi, functionName, args? }`. The nested `request` field and exported `ReadRequestEntrypoint` type are removed. Runtime validation rejects the removed field.
+- `callback: { gasLimit }` remains supported for the default registry. A targetless callback cannot override the internal request ABI/function/arguments.
+- `prepareRead()` still accepts a custom target and gas limit without an entrypoint. `read()` requires its ABI/function at compile time; `executeReads()` validates every prepared entrypoint before broadcasting.
+- Batch mismatch errors include structured `transactionHashes`, including every hash in a sequential fallback.
+- The proposed PR workflow was removed at Shoaib's request. No CI or merge-rule changes are included.
+- `node scripts/check-read-state-drift.mjs` runs the reviewed contract selector/struct/event pins, node record and query-envelope fixtures, public API types, constants, registry address/default gas and stable query-key regressions. This is an offline snapshot gate; new upstream releases and deployments still need explicit verification.
+- Registry key/address/lookup helpers are package-internal. Default waits use fresh remaining Push lifetime plus 10 seconds, capped at 180 seconds; explicit timeouts take precedence. Terminal snapshots need no height query. A stalled height lookup is bounded by the 180-second ceiling; lookup latency counts toward that ceiling and lookup failures reject.
+
+### Recommended changes
+
+1. **Flatten the custom callback configuration.** Agreed: lift `abi`, `functionName`, and the optional argument mapper out of `callback.request`. Since Read State is unreleased, remove the nested form without a compatibility alias. Clearly say that these fields describe the **request entrypoint**, while `gasLimit` controls execution of the **result callback**. Those are different contract calls despite sharing this options bag.
+2. **Keep a registry gas override.** Amend “target absent ⇒ none allowed” to allow `callback: { gasLimit: 750_000n }`. The contract team's agreed behavior is a 500,000 default with user increases up to 1,000,000 for larger results. Requiring a custom target/ABI merely to increase registry gas would remove that useful shorthand. Without a target, disallow only `abi`, `functionName`, and `args`.
+3. **Separate preparation from execution requirements.** `read()` and executable prepared reads need an app request ABI/function. However, the existing contract-first flow also uses `prepareRead()` with a target/gas limit and then inserts the spec into an independently constructed `sendTransaction`. Preserve that preparation use case or explicitly decide to remove it; applying the strict V3 callback type everywhere would break it.
+4. **Registry helpers — decision 1.B.** Keep helpers package-internal. Contract storage remains accessible through direct viem calls; stable query-key calculation remains internal and prepared requests retain their key.
+5. **PR CI — excluded by Shoaib.** Local type, unit and drift checks remain available; no new workflow or merge-rule changes.
+6. **Timeout — decision 2.A.** Fetch the current Push height on each default wait/resume; use remaining blocks × 1,340 ms + 10,000 ms, capped at 180,000 ms. Clamp remaining blocks at zero. The margin is an observation allowance, not a protocol guarantee. Explicit user timeouts override this.
+7. **Treat file size and planning-doc placement as maintenance work.** Current files are 438 and 412 lines. Split by responsibility when helpful, rather than treating 400 lines as a correctness boundary. Moving planning docs requires a destination decision; it is separate from the requested API corrections.
+
+### Corrections needed in the review text
+
+- **Refund warning:** `READ-TX-102-05` warns for a contract that is not recognized as a UEA (with delegated EOAs exempted). It does not detect that `receive()` is absent. Even a payable receiver can reject a transfer. Describe this as “ensure the recipient accepts native Push refunds.”
+- **Response provenance:** `callbackDelivered`, failure bytes, and settlement amounts are derived from contract events, including EndBlock events for expiry; `decodeError` is computed locally. They are not all sourced from the node record. The requested gRPC additions would improve observability, but the SDK already derives these facts where evidence is available.
+- **Error semantics:** terminal lifecycle failures resolve as statuses, but “timeout is the only throw” is too broad. Invalid input, request broadcast/revert, missing records, RPC failures, and batch mismatches can also reject. Also, `trackRead()` returns a snapshot; call `.wait()` to wait for terminal status.
+- **Batch matching:** the SDK sorts each transaction's records by log index, then matches spec + callback target + callback gas against each input; it does not blindly zip sorted logs with inputs. Mismatch errors now include structured `transactionHashes` as well as the primary `txHash`.
+- **Web2 transaction exclusion:** the current namespace constant keeps `CHAIN.WEB2` outside the transaction `CHAIN` enum type. Compile-time exclusion is already present. Any runtime guard for JavaScript/untyped callers is a separate validation requirement, not an unimplemented type exclusion.
+- **Web2 truncation:** lowering precision may help nearby values encode identically, but it cannot guarantee quorum; values can still straddle a truncation boundary. Describe median aggregation as deferred/planned, not a committed v2 release.
+- **Resume typing:** `resultShape` enables correct runtime decoding; it does not by itself establish compile-time ABI inference for the return type of `trackRead`.
+- **Table row 7:** the exported Markdown splits the `tokenProgram` union across table cells. The intended option is `'spl-token' | 'token-2022'`, for SVM token reads only.
+
+### Already aligned with V3
+
+The SDK already implements the seven-field spec with `refundTo`, separate protocol fee/callback budget accounting, callback delivery/failure fields, the deployed Donut registry, EVM token reads through `balanceOf`, SVM token-program selection, resume result shapes, sequential transaction hashes, EVM-only public pinning, Web2 quorum documentation, and settlement progress events. Vote-tally events remain deferred. N1's CEA ingestion fix was verified live on 2026-09-15.
+
+**Resolved:** helper visibility and timeout policy. Callback flattening, offline drift checks and structured batch-mismatch recovery are implemented. CI is excluded. Any future planning-document relocation still requires a destination decision.
+
+---
+
+
 # Universal Read — SDK API Reference (v2)
 
 **Status:** Draft for team review · **Package:** `@pushchain/core` · **Ground truth:** `push-chain-core-contracts@read-state-fixes-v1` · **Prior draft:** moved to Initial Research (linked at bottom)
@@ -513,7 +737,7 @@ Current behavior:
 - Omitted targets select the configured network's registry and `read(spec, queryKey, callbackGasLimit)` entrypoint.
 - Custom targets still require explicit gas and, for execution, a request ABI/function.
 - Networks without a pinned deployment produce `ReadRegistryUnavailableError` for the default path.
-- The SDK computes a stable logical key exposed by `PreparedRead.queryKey` and `getReadQueryKey`; the contract accepts it as a caller-supplied label.
+- The SDK computes a stable logical key retained in `PreparedRead.queryKey`; key and storage lookup helpers are internal. The contract accepts it as a caller-supplied label.
 
 Example of the currently executable path:
 
@@ -521,7 +745,8 @@ Example of the currently executable path:
 const callback = {
   target: myReadClient,
   gasLimit: 200_000n,
-  request: { abi: myReadClientAbi, functionName: 'request' },
+  abi: myReadClientAbi,
+  functionName: 'request',
 };
 
 const result = await client.universal.read(user, {
@@ -576,7 +801,7 @@ Settlement progress is split into observable stages:
 
 ## 9. Timeout behavior
 
-`advanced.*` was retained for power users and test scenarios. The default client polling timeout is no longer always 180 seconds. It is derived from the remaining request lifetime using the measured Push block time, with a 180-second ceiling and a 500-millisecond minimum. A client timeout still does not cancel the on-chain request; callers can resume it through `trackRead`.
+`advanced.*` was retained for power users and test scenarios. Each default wait/resume fetches the current Push height and uses `min(180_000, max(0, expiryPushChainHeight - currentPushHeight) × 1_340 + 10_000)` ms. Already-expired pending records get 10 seconds to observe the terminal update. Explicit timeouts take precedence. A client timeout does not cancel the request; resume through `trackRead`.
 
 ## 10. Expiry observability
 
@@ -627,4 +852,4 @@ Key observations:
 ## 14. Remaining work
 
 1. Verify registry deployments before enabling defaults on additional networks.
-2. Add the contract/node/SDK drift-check script so the ABI, selectors, constants, event tuple, registry address, and public surface cannot silently diverge again.
+2. Re-verify upstream releases/deployments before updating compatibility pins. The offline `scripts/check-read-state-drift.mjs` checks reviewed ABI/event pins, node record/envelope fixtures, constants, registry configuration and public types. It does not automatically detect external repository or deployment changes. CI is excluded by decision.

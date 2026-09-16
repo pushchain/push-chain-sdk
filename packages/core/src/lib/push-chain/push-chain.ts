@@ -166,8 +166,8 @@ export class PushChain {
     rescueFunds: Orchestrator['rescueFunds'];
     /**
      * Cross-chain read state — one-shot. `read ≡ prepareRead → executeReads → wait`.
-     * Defaults to the canonical registry on Donut. Pass callback.target and
-     * callback.request for your own application receiver.
+     * Defaults to the canonical registry on Donut. For your own application receiver,
+     * pass callback.target, gasLimit, abi and functionName, plus an optional args mapper.
      */
     read: <const O extends ReadOptions>(subject: string, options: O & ValidateReadCall<O>) => Promise<UniversalReadResponse<ReadValue<O>>>;
     /**

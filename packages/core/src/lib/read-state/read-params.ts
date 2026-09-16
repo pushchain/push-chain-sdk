@@ -91,8 +91,8 @@ export type ReadQueryOptions =
 
 export type ReadCallbackOptions = {
   callback?:
-    | { target: Address; gasLimit: bigint; request?: ReadCallback['request'] }
-    | { target?: never; gasLimit?: bigint; request?: never };
+    | ({ target: Address; gasLimit: bigint } & Pick<ReadCallback, 'abi' | 'functionName' | 'args'>)
+    | { target?: never; gasLimit?: bigint; abi?: never; functionName?: never; args?: never };
 };
 type SharedPrepareOptions = ReadCallbackOptions &
   Pick<ReadOptionsInput, 'expiryBlocks' | 'maxFee' | 'refundTo'> &
@@ -109,7 +109,11 @@ export type ReadExecuteOptions = Pick<ReadOptionsInput, 'advanced' | 'waitForCom
 type WithExecutionOptions<T> = T extends unknown
   ? Omit<T, 'advanced' | 'waitForCompletion' | 'progressHook'> & ReadExecuteOptions
   : never;
-export type ReadOptions = WithExecutionOptions<ReadPrepareOptions>;
+export type ReadOptions = WithExecutionOptions<ReadPrepareOptions> & {
+  callback?:
+    | (Required<Pick<ReadCallback, 'target' | 'gasLimit' | 'abi' | 'functionName'>> & Pick<ReadCallback, 'args'>)
+    | { target?: never; gasLimit?: bigint; abi?: never; functionName?: never; args?: never };
+};
 export type ReadTrackOptions = { advanced?: Omit<NonNullable<ReadOptionsInput['advanced']>, 'enforceGasCheck'>; resultShape?: ReadResultShape };
 
 type Web2Values = { uint256: bigint; int256: bigint; bool: boolean; bytes: Hex; string: string };

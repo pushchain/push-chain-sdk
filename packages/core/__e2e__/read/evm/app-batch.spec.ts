@@ -11,7 +11,7 @@ const token: Address = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
 const tokenAbi = [{ type: 'function', name: 'totalSupply', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] }] as const;
 
 async function checkBatch(client: PushChain, atomic: boolean) {
-  const callback = { target: FULL_BUDGET_CLIENT, gasLimit: CALLBACK_GAS, request: { abi: READ_CLIENT_ABI, functionName: 'request' } };
+  const callback = { target: FULL_BUDGET_CLIENT, gasLimit: CALLBACK_GAS, abi: READ_CLIENT_ABI, functionName: 'request' };
   const common = { chain: CHAIN.ETHEREUM_SEPOLIA, callback, expiryBlocks: SLOW_PATH.expiryBlocks } as const;
   const prepared = await Promise.all([
     client.universal.prepareRead(subject, common),
@@ -53,7 +53,7 @@ d('read state › custom app batch', () => {
     const good = await client.universal.prepareRead(subject, {
       chain: CHAIN.ETHEREUM_SEPOLIA,
       expiryBlocks: SLOW_PATH.expiryBlocks,
-      callback: { target: FULL_BUDGET_CLIENT, gasLimit: CALLBACK_GAS, request: { abi: READ_CLIENT_ABI, functionName: 'request' } },
+      callback: { target: FULL_BUDGET_CLIENT, gasLimit: CALLBACK_GAS, abi: READ_CLIENT_ABI, functionName: 'request' },
     });
     // Both requests pass revalidation. The wallet rejects the second send only
     // after the first transaction has committed in the forced sequential path.
@@ -72,7 +72,8 @@ d('read state › custom app batch', () => {
   }, SLOW_PATH.jestTimeoutMs);
 
   (pushKey ? it : it.skip)('Push EOA preserves mixed-query order and decode shapes', async () => {
-    const { client } = await makePushEoaClient(pushKey!);
+    // This scenario promises sequential fallback regardless of wallet EIP-7702 support.
+    const { client } = await makePushEoaClient(pushKey!, undefined, true);
     await checkBatch(client, false);
   }, SLOW_PATH.jestTimeoutMs);
 
