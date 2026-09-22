@@ -199,18 +199,19 @@ const result = await client.universal.read(ownerPublicKey, {
 result.value; // bigint
 ```
 
-The SDK derives the associated token account locally. Token-2022 is also supported:
+The SDK queries the mint through the destination RPC to detect SPL Token or Token-2022, then derives the associated token account. No token-program option is needed:
 
 ```ts
 {
   chain: CHAIN.SOLANA_DEVNET,
   token: mintPublicKey,
-  tokenProgram: 'token-2022',
   callback,
 }
 ```
 
 Solana does not expose `blockNumber` or `minConfirmations` as public options. The SDK selects the finalized slot reference internally.
+
+To decode an Anchor account, use `read(accountAddress, { chain: CHAIN.SOLANA_DEVNET, idl, accountName: 'counter' })`. This requests existing account bytes, not instruction execution. IDL accounts use their exact IDL names and discriminators; decoded values use Anchor types such as BN and PublicKey. When resuming, supply `resultShape: { kind: 'svmAccount', idl, accountName: 'counter' }`. The node does not store the IDL or attest that the account belongs to the IDL's program; verify ownership separately when your application needs it.
 
 ### Web2 JSON extraction
 

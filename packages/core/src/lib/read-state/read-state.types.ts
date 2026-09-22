@@ -1,4 +1,5 @@
 import type { Abi, Address, Hex } from 'viem';
+import type { Idl } from '@coral-xyz/anchor';
 import type { CHAIN } from '../constants/enums';
 import type { ReadNamespace } from '../constants/read-state';
 
@@ -42,7 +43,7 @@ export type EvmReadQuery =
 export type SvmReadQuery =
   | { type: 'lamportBalance'; account: string | Uint8Array }
   | { type: 'splTokenAccount'; account: string | Uint8Array }
-  | { type: 'rawAccountData'; account: string | Uint8Array };
+  | { type: 'rawAccountData'; account: string | Uint8Array; idl?: Idl; accountName?: string };
 
 export type Web2ValueType = 'uint256' | 'int256' | 'bool' | 'string' | 'bytes';
 
@@ -74,6 +75,7 @@ export type ReadQuery = EvmReadQuery | SvmReadQuery | Web2ReadQuery;
 // ---------------------------------------------------------------------------
 
 export type ReadResultShape =
+  | { kind: 'svmAccount'; idl: Idl; accountName: string }
   | { kind: 'uint256' }
   | { kind: 'bytes32' }
   | { kind: 'raw' }
@@ -95,6 +97,7 @@ export interface EncodedReadQuery {
 }
 
 export type DecodedReadResult =
+  | { kind: 'svmAccount'; value: unknown }
   | { kind: 'uint256'; value: bigint }
   | { kind: 'bytes32'; value: Hex }
   | { kind: 'raw'; value: Hex }

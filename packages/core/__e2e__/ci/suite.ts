@@ -142,9 +142,11 @@ const F = {
   readSvm: '__e2e__/read/svm/lamports.spec.ts',
   readWeb2: '__e2e__/read/web2/json.spec.ts',
   readDocs: '__e2e__/docs-examples/13-read-state/read-state.spec.ts',
+  readPlaygrounds: '__e2e__/docs-examples/13-read-state/playgrounds.spec.ts',
   readBatch: '__e2e__/read/evm/app-batch.spec.ts',
   readApi: '__e2e__/read/evm/api-coverage.spec.ts',
   readSvmRaw: '__e2e__/read/svm/raw-account.spec.ts',
+  readSvmIdl: '__e2e__/read/svm/account-idl.spec.ts',
 } as const;
 
 export const SCENARIOS: Scenario[] = [
@@ -656,9 +658,22 @@ export const SCENARIOS: Scenario[] = [
     id: 'read-docs-example',
     group: 'read',
     file: F.readDocs,
-    grep: 'docs-examples › 13-read-state',
+    grep: 'docs-examples › 13-read-state read_state_prepare_track',
     needs: { masterPC: '0.6' },
     note: 'Funds a fresh wallet with 0.5 PC, as the docs prompt will.',
+  },
+  {
+    id: 'read-docs-registry', group: 'read', file: F.readPlaygrounds,
+    grep: 'docs-examples › 13-read-state playgrounds universal_read_registry', needs: { masterPC: '0.1' },
+  },
+  {
+    id: 'read-docs-batch', group: 'read', file: F.readPlaygrounds,
+    grep: 'docs-examples › 13-read-state playgrounds universal_read_batch', needs: { masterPC: '0.1' },
+  },
+  {
+    id: 'read-docs-resume', group: 'read', file: F.readPlaygrounds,
+    grep: 'docs-examples › 13-read-state playgrounds universal_read_resume', needs: { masterPC: '0.1' },
+    note: 'Read-only resume; seeds a request if the registry example was not selected.',
   },
   {
     id: 'read-app-batch-eoa',
@@ -689,6 +704,16 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'read-api-mixed-outcomes', group: 'read', file: F.readApi,
     grep: 'read state › public API coverage mixed consensus outcomes', needs: { masterPC: '0.3' },
+  },
+  {
+    id: 'read-svm-token-auto', group: 'read', file: F.readSvmIdl,
+    grep: 'read state › Solana automatic token and IDL account reads detects the mint program',
+    needs: { masterPC: '0.1' },
+  },
+  {
+    id: 'read-svm-idl', group: 'read', file: F.readSvmIdl,
+    grep: 'read state › Solana automatic token and IDL account reads decodes a real Anchor account',
+    needs: { masterPC: '0.1' },
   },
   {
     id: 'read-svm-raw', group: 'read', file: F.readSvmRaw,

@@ -15,6 +15,8 @@ Companion doc: [`read-state-sdk-spec.md`](./read-state-sdk-spec.md)
 
 # Status as of 2026-09-15
 
+**Registry update — 2026-09-22:** the SDK default now points to `0x00000000000000000000000000000000000000b2`. Historical E2E evidence below refers to the previous registry deployment.
+
 **R1 and N1 are fixed and funded E2E verified on Donut. N4 is explicitly deferred for now; its economic risk remains documented. C6 is closed as won't-fix for v1.**
 
 Verified against: node `v0.0.49` (what Donut's `abci_info` reports; includes the

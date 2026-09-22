@@ -60,6 +60,7 @@ const specComponents = [
 ] as const;
 
 const receiverAbi = [
+  { type: 'function', name: 'REGISTRY', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
   {
     type: 'function',
     name: 'triggerOutbound',
@@ -127,6 +128,10 @@ async function main() {
   );
   if (!fixture) throw new Error('Sepolia fixture is not active');
   const cea = await getCEAAddress(RECEIVER, CHAIN.ETHEREUM_SEPOLIA);
+  const receiverRegistry = await publicClient.readContract({ address: RECEIVER, abi: receiverAbi, functionName: 'REGISTRY' });
+  if (receiverRegistry.toLowerCase() !== PushChain.CONSTANTS.READ.UNIVERSAL_READ_REGISTRY_ADDRESS.TESTNET_DONUT.toLowerCase()) {
+    throw new Error('CEA receiver uses the previous registry. Redeploy CEAReadStateReceiver.sol and set CEA_READ_RECEIVER before running.');
+  }
   console.log('receiver:', RECEIVER);
   console.log('receiver CEA:', cea.cea, 'deployed before:', cea.isDeployed);
   console.log(

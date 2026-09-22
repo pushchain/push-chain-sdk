@@ -66,7 +66,7 @@ describe('canonical registry integration', () => {
     const mint = 'So11111111111111111111111111111111111111112';
     const chain = CHAIN.SOLANA_DEVNET;
     expect(getReadQueryKey(owner, { chain })).not.toBe(getReadQueryKey(mint, { chain }));
-    expect(getReadQueryKey(owner, { chain, token: mint })).not.toBe(getReadQueryKey(owner, { chain, token: mint, tokenProgram: 'token-2022' }));
+    expect(() => getReadQueryKey(owner, { chain, token: mint })).toThrow(/mint-owner resolution/);
   });
 
   it('canonicalizes Web2 headers and excludes timeout while retaining extraction identity', () => {

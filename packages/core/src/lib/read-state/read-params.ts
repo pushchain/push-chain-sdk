@@ -11,11 +11,14 @@
  */
 import type { Abi, Address, Hex, ContractFunctionReturnType, ContractFunctionName, ContractFunctionArgs, ExtractAbiFunctionForArgs } from 'viem';
 import { isAddress } from 'viem';
+import type { Idl, IdlAccounts } from '@coral-xyz/anchor';
+import { PublicKey } from '@solana/web3.js';
+import { accountCoder, detectTokenProgram } from './svm-account';
 import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 import { computeReadQueryKey, resolveReadCallback } from './registry';
 import { READ_NAMESPACE, WEB2_DESTINATION } from '../constants/read-state';
 import { resolveDestination } from './destination';
-import { deriveAssociatedTokenAddress, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from './envelopes/svm';
+import { deriveAssociatedTokenAddress } from './envelopes/svm';
 import { InvalidReadQueryError } from './errors';
 import type { BuildReadSpecParams, ReadChain, ReadDestination, ReadLifecycleOptions, ReadQuery, ReadResultShape, Web2Extract } from './read-state.types';
 import type { ReadCallback } from './read-state.types';
@@ -42,8 +45,9 @@ interface ReadOptionsInput {
   // ── query — which keys are present decides the kind ──
   /** Token balance of `subject`: ERC-20 `balanceOf` on EVM, the SPL ATA on SVM. */
   token?: string;
-  /** Solana token balance only. Defaults to the original SPL Token program. */
-  tokenProgram?: 'spl-token' | 'token-2022';
+  /** Anchor account layout; does not execute a Solana instruction. */
+  idl?: Idl;
+  accountName?: string;
   /** Typed contract call — encodes the call and decodes the result. */
   abi?: Abi;
   functionName?: string;
@@ -76,7 +80,7 @@ interface ReadOptionsInput {
   };
 }
 
-type NoQuery = { token?: never; tokenProgram?: never; abi?: never; functionName?: never; args?: never; storageSlot?: never; web2?: never };
+type NoQuery = { token?: never; tokenProgram?: never; idl?: never; accountName?: never; abi?: never; functionName?: never; args?: never; storageSlot?: never; web2?: never };
 type Query<K extends keyof NoQuery, T> = Omit<NoQuery, K> & T;
 type EvmChain = Extract<CHAIN, `eip155:${string}`>;
 type SvmChain = Extract<CHAIN, `solana:${string}`>;
@@ -84,7 +88,8 @@ export type ReadQueryOptions =
   | ({ chain: EvmChain } & NoQuery)
   | ({ chain: SvmChain } & NoQuery)
   | ({ chain: EvmChain } & Query<'token', { token: string }>)
-  | ({ chain: SvmChain } & Query<'token' | 'tokenProgram', { token: string; tokenProgram?: 'spl-token' | 'token-2022' }>)
+  | ({ chain: SvmChain } & Query<'token', { token: string }>)
+  | ({ chain: SvmChain } & Query<'idl' | 'accountName', { idl: Idl; accountName: string }>)
   | ({ chain: EvmChain } & Query<'abi' | 'functionName' | 'args', { abi: Abi; functionName: string; args?: readonly unknown[] }>)
   | ({ chain: EvmChain } & Query<'storageSlot', { storageSlot: Hex | bigint }>)
   | ({ chain: typeof CHAIN.WEB2 } & Query<'web2', { web2: ReadWeb2Options }>);
@@ -135,7 +140,9 @@ export type ReadValue<O> = O extends { abi: infer A extends Abi; functionName: i
   : O extends { web2: { extract: infer E extends readonly Web2Extract[] } }
     ? { readonly [K in keyof E]: Web2Value<E[K]> }
     : O extends { storageSlot: unknown } ? Hex
-    : bigint;
+    : O extends { idl: infer I extends Idl; accountName: infer N extends string }
+      ? N extends keyof IdlAccounts<I> ? IdlAccounts<I>[N] : unknown
+      : bigint;
 
 /** Just `balanceOf` — it also types the decoded result as uint256. */
 export const ERC20_BALANCE_OF_ABI = [
@@ -148,9 +155,11 @@ export const ERC20_BALANCE_OF_ABI = [
   },
 ] as const satisfies Abi;
 
-const QUERY_KEYS = ['token', 'abi', 'storageSlot', 'web2'] as const;
+const QUERY_KEYS = ['token', 'abi', 'idl', 'storageSlot', 'web2'] as const;
 
 function queryKind(o: ReadOptionsInput): (typeof QUERY_KEYS)[number] | 'native' {
+  if ('tokenProgram' in o) throw new InvalidReadQueryError('tokenProgram is detected from the mint; remove options.tokenProgram');
+  if (o.accountName !== undefined && o.idl === undefined) throw new InvalidReadQueryError('accountName requires idl');
   const present = QUERY_KEYS.filter((k) => o[k] !== undefined);
   if (present.length > 1) {
     throw new InvalidReadQueryError(`query keys are mutually exclusive, got ${present.join(' + ')}`);
@@ -166,12 +175,9 @@ export function toReadDestination(chain: ReadChain): ReadDestination {
 }
 
 /** Build the internal query from the public grammar. Pure. */
-export function toReadQuery(subject: string, o: ReadOptionsInput): ReadQuery {
+export function toReadQuery(subject: string, o: ReadOptionsInput, resolvedTokenProgram?: PublicKey): ReadQuery {
   const dest = resolveDestination(toReadDestination(o.chain));
   const kind = queryKind(o);
-  if (o.tokenProgram !== undefined && (dest.namespace !== READ_NAMESPACE.SVM || kind !== 'token' || !['spl-token', 'token-2022'].includes(o.tokenProgram))) {
-    throw new InvalidReadQueryError('tokenProgram requires a Solana token balance query and must be spl-token or token-2022');
-  }
 
   if (dest.namespace === READ_NAMESPACE.WEB2) {
     if (kind !== 'web2' || !o.web2) throw new InvalidReadQueryError('a web2 read needs the `web2` option and no other query key');
@@ -200,25 +206,29 @@ export function toReadQuery(subject: string, o: ReadOptionsInput): ReadQuery {
     }
   }
 
-  // SVM: the account rides in ReadSpec.account.owner; the ATA is derived here, no network.
+  // SVM: token-program ownership has already been resolved by the async public path.
   switch (kind) {
     case 'native':
       return { type: 'lamportBalance', account: subject };
     case 'token':
-      return { type: 'splTokenAccount', account: deriveAssociatedTokenAddress(subject, o.token as string, o.tokenProgram === 'token-2022' ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID).toBase58() };
+      if (!resolvedTokenProgram) throw new InvalidReadQueryError('Solana token reads need mint-owner resolution; use universal.prepareRead or universal.read');
+      return { type: 'splTokenAccount', account: deriveAssociatedTokenAddress(subject, o.token as string, resolvedTokenProgram).toBase58() };
+    case 'idl':
+      accountCoder(o.idl!, o.accountName!);
+      return { type: 'rawAccountData', account: subject, idl: o.idl!, accountName: o.accountName! };
     default:
-      throw new InvalidReadQueryError(`unsupported query for solana: ${kind} (program reads land with idl support)`);
+      throw new InvalidReadQueryError(`unsupported query for solana: ${kind}; use idl and accountName for account-state decoding`);
   }
 }
 
 /** Public options → the spec builder's params. Pure; throws `InvalidReadQueryError` on a malformed request. */
-export function toBuildReadSpecParams(subject: string, o: ReadOptionsInput, network: PUSH_NETWORK = PUSH_NETWORK.TESTNET_DONUT): BuildReadSpecParams {
+export function toBuildReadSpecParams(subject: string, o: ReadOptionsInput, network: PUSH_NETWORK = PUSH_NETWORK.TESTNET_DONUT, resolvedTokenProgram?: PublicKey): BuildReadSpecParams {
   const destination = toReadDestination(o.chain);
   const namespace = resolveDestination(destination).namespace;
   if (namespace !== READ_NAMESPACE.EVM && (o.blockNumber !== undefined || o.minConfirmations !== undefined)) {
     throw new InvalidReadQueryError(`${namespace} reads do not expose blockNumber or minConfirmations; the SDK selects the read reference internally`);
   }
-  const query = toReadQuery(subject, o);
+  const query = toReadQuery(subject, o, resolvedTokenProgram);
   const callback = resolveReadCallback(o.callback, network, computeReadQueryKey(destination, query));
   return {
     callback,
@@ -233,7 +243,19 @@ export function toBuildReadSpecParams(subject: string, o: ReadOptionsInput, netw
   };
 }
 
-/** Offline logical query key for the registry's latestResult lookup. */
+/** Resolve Solana mint ownership before the otherwise-pure options conversion. */
+export async function resolveReadSpecParams(subject: string, o: ReadOptionsInput, network: PUSH_NETWORK, rpcUrls: Partial<Record<CHAIN, string[]>>): Promise<BuildReadSpecParams> {
+  const kind = queryKind(o);
+  const namespace = resolveDestination(toReadDestination(o.chain)).namespace;
+  if (namespace === READ_NAMESPACE.SVM && kind === 'token') {
+    new PublicKey(subject);
+    const program = await detectTokenProgram(o.token!, o.chain as CHAIN, rpcUrls[o.chain as CHAIN]);
+    return toBuildReadSpecParams(subject, o, network, program);
+  }
+  return toBuildReadSpecParams(subject, o, network);
+}
+
+/** Internal offline key helper. Solana token callers must use PreparedRead.queryKey after mint resolution. */
 export function getReadQueryKey<const O extends ReadQueryOptions>(subject: string, options: O & ValidateReadCall<O>): Hex {
   return computeReadQueryKey(toReadDestination(options.chain), toReadQuery(subject, options));
 }
@@ -252,4 +274,6 @@ export type ValidateReadCall<O> = O extends { abi: infer A extends Abi; function
     (readonly [] extends ContractFunctionArgs<A, 'view' | 'pure', F & ContractFunctionName<A, 'view' | 'pure'>>
       ? { args?: ContractFunctionArgs<A, 'view' | 'pure', F & ContractFunctionName<A, 'view' | 'pure'>> }
       : { args: ContractFunctionArgs<A, 'view' | 'pure', F & ContractFunctionName<A, 'view' | 'pure'>> })
-  : unknown;
+  : O extends { idl: infer I extends Idl; accountName: string }
+    ? { accountName: NonNullable<I['accounts']>[number]['name'] }
+    : unknown;

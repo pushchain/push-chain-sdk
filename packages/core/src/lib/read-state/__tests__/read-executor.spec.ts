@@ -131,6 +131,16 @@ describe('executeReads app-contract path', () => {
     const decoded = decodeFunctionData({ abi: reversedAbi, data: execute.mock.calls[0][0].data });
     expect(decoded.args?.[0]).toBe(p.callbackGasLimit);
   });
+
+  it('passes an IDL result shape through batch execution and waiting', async () => {
+    const p = prepared();
+    p.resultShape = { kind: 'svmAccount', idl: { address: target, metadata: { name: 'test', version: '1', spec: '0.1.0' }, instructions: [] }, accountName: 'counter' };
+    const r = response(p, 1);
+    const { deps, trackRead } = setup([r]);
+    await executeReads(deps, [p]);
+    expect(trackRead).toHaveBeenCalledWith({ requestId: r.requestId }, expect.objectContaining({ resultShape: p.resultShape }));
+    expect(r.wait).toHaveBeenCalled();
+  });
   it('encodes the app entrypoint, forwards escrow and preserves each decode shape and input order', async () => {
     const a = prepared(1n), b = prepared(2n);
     const ra = response(a, 1), rb = response(b, 2);

@@ -4,6 +4,7 @@ import { bytesToHex, decodeAbiParameters, encodeAbiParameters, type Hex } from '
 import { READ_NAMESPACE } from '../../constants/read-state';
 import { InvalidReadQueryError } from '../errors';
 import type { EncodedReadQuery, ReadResultShape, SvmReadQuery } from '../read-state.types';
+import { accountCoder } from '../svm-account';
 
 /** `universalClient/externalchains/svm/read_envelope.go` — solanaQueryType. */
 export const SVM_QUERY_TYPE = {
@@ -88,7 +89,10 @@ export function encodeSvmQueryEnvelope(query: SvmReadQuery, options: { minSlot?:
       break;
     case 'rawAccountData':
       queryType = SVM_QUERY_TYPE.RAW_ACCOUNT_DATA;
-      resultShape = { kind: 'raw' };
+      if (query.idl !== undefined || query.accountName !== undefined) {
+        accountCoder(query.idl!, query.accountName!);
+        resultShape = { kind: 'svmAccount', idl: query.idl!, accountName: query.accountName! };
+      } else resultShape = { kind: 'raw' };
       break;
     default:
       throw new InvalidReadQueryError(`unknown SVM query type: ${(query as { type: string }).type}`);

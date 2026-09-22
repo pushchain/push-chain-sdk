@@ -39,7 +39,7 @@ done.status === PushChain.CONSTANTS.READ.STATUS.FULFILLED && done.callbackDelive
   `atomic`, and `wait()`. Results preserve input order. Both methods require a signer and wait for terminal
   reads unless `waitForCompletion: false` is supplied. Wallets without EIP-7702 use
   sequential transactions; all hashes are retained for tracking. On Donut, omitting
-  the target uses the canonical registry at `0x91b09DAd1774bAfDE679F9ebB5F9046AE2b928C8`,
+  the target uses the canonical registry at `0x00000000000000000000000000000000000000b2`,
   with 500,000 callback gas by default. Other networks require a custom receiver.
 
 Registry calls include a stable SDK query key that excludes block/slot, payment and expiry.

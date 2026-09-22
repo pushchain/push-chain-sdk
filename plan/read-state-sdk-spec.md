@@ -1,5 +1,11 @@
 # Read State API Reference
 
+## Solana API update — 2026-09-22 (supersedes tokenProgram and deferred account-IDL notes below)
+
+`tokenProgram` is removed. Solana token preparation selects the RPC from `chain` (including configured overrides), reads the initialized mint's owner, and derives the ATA for SPL Token or Token-2022. Missing/invalid mints and RPC failures are surfaced before broadcast; no program is guessed.
+
+`read(accountAddress, { chain: CHAIN.SOLANA_DEVNET, idl, accountName })` uses the existing raw-account query and decodes the result with Anchor's account coder, validating its discriminator. ABI and IDL options are exclusive. Account reads do not accept instruction `functionName`/`args`. Decoded integers/public keys retain Anchor types; dynamic IDLs may yield an unknown TypeScript result. Preparation/batching carry the result shape; resuming requires `resultShape: { kind: 'svmAccount', idl, accountName }`. The query proves account bytes, not IDL program ownership. No contract/node changes are needed.
+
 ---
 
 # Other Resources
@@ -730,7 +736,7 @@ response.raw?.status === READ_STATUS.SUCCESS
 
 ## 4. Registry deployment and network availability
 
-Donut now supports the OG `read(subject, { chain })` shorthand through registry proxy `0x91b09DAd1774bAfDE679F9ebB5F9046AE2b928C8`. Default callback gas is `500_000n`, overridable up to `1_000_000n`. Other network settings still require a custom receiver until a registry deployment is verified there.
+Donut now supports the OG `read(subject, { chain })` shorthand through registry proxy `0x00000000000000000000000000000000000000b2`. Default callback gas is `500_000n`, overridable up to `1_000_000n`. Other network settings still require a custom receiver until a registry deployment is verified there.
 
 Current behavior:
 

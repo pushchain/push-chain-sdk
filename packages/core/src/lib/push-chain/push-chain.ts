@@ -38,7 +38,7 @@ import type {
 import type { Hex } from 'viem';
 import type { BatchReadResponse, PreparedRead, UniversalReadResponse } from '../read-state/read-state.types';
 import {
-  toBuildReadSpecParams,
+  resolveReadSpecParams,
   toLifecycleOptions,
   type ReadOptions,
   type ReadPrepareOptions,
@@ -345,15 +345,16 @@ export class PushChain {
       },
       // Only read()/executeReads() send transactions; prepare/simulate/track remain read-only.
       read: async <const O extends ReadOptions>(subject: string, options: O) => {
-        const params = toBuildReadSpecParams(subject, options, orchestrator.getNetwork());
+        const params = await resolveReadSpecParams(subject, options, orchestrator.getNetwork(), orchestrator.getRpcUrls());
         assertRequestEntrypoint(params.callback, 'read');
         if (this.isReadMode) throw new Error('Read only mode cannot call read function');
         const prepared = await orchestrator.prepareRead(params, options.progressHook);
         const { reads: [response] } = await executePreparedReads(orchestrator, [prepared] as const, options);
         return response as UniversalReadResponse<ReadValue<O>>;
       },
-      prepareRead: <const O extends ReadPrepareOptions>(subject: string, options: O & ValidateReadCall<O>) => {
-        return orchestrator.prepareRead.bind(orchestrator)(toBuildReadSpecParams(subject, options, orchestrator.getNetwork())) as Promise<PreparedRead<ReadValue<O>>>;
+      prepareRead: async <const O extends ReadPrepareOptions>(subject: string, options: O & ValidateReadCall<O>) => {
+        const params = await resolveReadSpecParams(subject, options, orchestrator.getNetwork(), orchestrator.getRpcUrls());
+        return orchestrator.prepareRead(params) as Promise<PreparedRead<ReadValue<O>>>;
       },
       executeReads: (async (reads: readonly PreparedRead[], options?: ReadExecuteOptions) => {
         reads.forEach((r) => assertRequestEntrypoint(r.callback));

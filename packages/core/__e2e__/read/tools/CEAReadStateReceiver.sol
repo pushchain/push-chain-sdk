@@ -45,7 +45,7 @@ contract CEAReadStateReceiver {
     address public immutable owner;
     IUniversalGatewayPC public constant UGPC = IUniversalGatewayPC(0x00000000000000000000000000000000000000C1);
     IUniversalReadRegistry public constant REGISTRY =
-        IUniversalReadRegistry(0x91b09DAd1774bAfDE679F9ebB5F9046AE2b928C8);
+        IUniversalReadRegistry(0x00000000000000000000000000000000000000b2);
 
     uint256 public lastRequestId;
     bytes32 public lastInboundTxId;

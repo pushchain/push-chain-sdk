@@ -42,7 +42,7 @@ describe('Registry deployment (Donut, read-only)', () => {
     const rpc = createPublicClient({ transport: http('https://evm.donut.rpc.push.org') });
     const simulation = await rpc.call({
       to: getReadRegistryAddress(PUSH_NETWORK.TESTNET_DONUT),
-      ...toCallData(prepared, prepared.callback!.request!), account: reader,
+      ...toCallData(prepared, { abi: prepared.callback!.abi!, functionName: prepared.callback!.functionName!, args: prepared.callback!.args }), account: reader,
       stateOverride: [{ address: reader, balance: 10n ** 21n }],
     });
     const [requestId] = decodeAbiParameters([{ type: 'uint256' }], simulation.data!);
@@ -312,9 +312,10 @@ describe('PushChain.universal read-state surface (read-only client, Donut)', () 
     await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { gasLimit: 1n } })).rejects.toThrow(/Read only mode/);
     await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA })).rejects.toThrow(/Read only mode/);
     // a malformed entrypoint fails before any preflight or signer check
+    // @ts-expect-error intentionally invalid: custom request ABI/function missing
     await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: CLIENT, gasLimit: 200_000n } })).rejects.toMatchObject({ code: 'INVALID_READ_QUERY' });
     const request = { abi: [{ type: 'function', name: 'request', stateMutability: 'payable', inputs: [], outputs: [] }] as const, functionName: 'request' };
-    await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: CLIENT, gasLimit: 200_000n, request } })).rejects.toThrow(/Read only mode/);
+    await expect(client.universal.read(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: CLIENT, gasLimit: 200_000n, ...request } })).rejects.toThrow(/Read only mode/);
   });
 
   it('executeReads rejects a valid prepared call on a read-only client', async () => {

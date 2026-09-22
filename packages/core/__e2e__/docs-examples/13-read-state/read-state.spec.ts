@@ -2,8 +2,8 @@ import '@e2e/shared/setup';
 /**
  * Mirrors the runnable example in the read-state SDK spec (plan/read-state-sdk-spec.md,
  * "prepareRead / executeReads / trackRead" — the contract-dev flow) and the
- * .changeset/read-state.md snippet. When the website MDX page (13-Read-State.mdx)
- * lands, cite its slug + line range here and keep the block byte-for-byte.
+ * .changeset/read-state.md snippet. The website Universal Read playgrounds are
+ * mirrored byte-for-byte in fixtures/ and exercised in playgrounds.spec.ts.
  */
 import { createWalletClient, http, type Hex } from 'viem';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';

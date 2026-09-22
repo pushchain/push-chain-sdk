@@ -3,8 +3,9 @@
 The SDK defaults to the deployed `UniversalReadRegistry` when `callback.target` is omitted.
 
 - Network: `PUSH_NETWORK.TESTNET_DONUT` only (chain ID 42101).
-- Proxy: `0x91b09DAd1774bAfDE679F9ebB5F9046AE2b928C8`.
-- Implementation observed at block 23216497: `0x67ff18c8972b088670656d448881a026314d900f`.
+- Proxy: `0x00000000000000000000000000000000000000b2` (updated 2026-09-22).
+- Implementation verified via ERC-1967 storage: `0x793ecbbe9bcf2824105575a6fc6cbe19d5653e9a`.
+- Historical deployment verified on 2026-09-15: `0x91b09DAd1774bAfDE679F9ebB5F9046AE2b928C8`; its stored results do not migrate automatically.
 - Callback predeploy: `0x00000000000000000000000000000000000000c2`.
 - Entrypoint: `read(ReadSpec spec, bytes32 queryKey, uint64 callbackGasLimit)`.
 - Default gas: `500_000n`; override through `callback.gasLimit`, maximum `1_000_000n`.

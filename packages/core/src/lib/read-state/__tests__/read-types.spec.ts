@@ -11,6 +11,18 @@ const abi = [
 
 // Compiled by ts-jest; never executed or connected to a network.
 async function checkTypes(client: PushChain) {
+  // @ts-expect-error token program is inferred from the mint
+  const removed: ReadOptions = { chain: CHAIN.SOLANA_DEVNET, token: address, tokenProgram: 'token-2022' };
+  const accountIdl = { address, metadata: { name: 'counter', version: '1', spec: '0.1.0' }, instructions: [], accounts: [{ name: 'counter', discriminator: [1,2,3,4,5,6,7,8] }], types: [{ name: 'counter', type: { kind: 'struct', fields: [{ name: 'count', type: 'u64' }] } }] } satisfies import('@coral-xyz/anchor').Idl;
+  const decodedAccount = await client.universal.read(address, { chain: CHAIN.SOLANA_DEVNET, idl: accountIdl, accountName: 'counter' });
+  // A dynamic IDL yields an unknown result rather than incorrectly promising bigint.
+  const decodedValue: unknown = decodedAccount.value;
+  // @ts-expect-error IDL is Solana-only
+  const wrongNamespace: ReadOptions = { chain: CHAIN.ETHEREUM_SEPOLIA, idl: accountIdl, accountName: 'counter' };
+  // @ts-expect-error accountName is required
+  const missingAccount: ReadOptions = { chain: CHAIN.SOLANA_DEVNET, idl: accountIdl };
+  // @ts-expect-error IDL account reads do not execute instructions
+  const instruction: ReadOptions = { chain: CHAIN.SOLANA_DEVNET, idl: accountIdl, accountName: 'counter', functionName: 'read' };
   client.universal.read(address, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { gasLimit: 750_000n } });
   client.universal.prepareRead(address, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: address, gasLimit: 200_000n } });
   client.universal.read(address, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: address, gasLimit: 200_000n, abi, functionName: 'request', args: (spec, gas) => [spec, gas] } });

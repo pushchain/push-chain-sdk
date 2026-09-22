@@ -1,5 +1,7 @@
 import { decodeAbiParameters, decodeFunctionResult, getAbiItem, isHex, size, type AbiFunction, type Hex } from 'viem';
 import { ReadDecodeError } from './errors';
+import { Buffer } from 'buffer';
+import { accountCoder } from './svm-account';
 import type { DecodedReadResult, ReadResultShape, Web2ValueType } from './read-state.types';
 
 const WEB2_ABI_TYPE: Record<Web2ValueType, string> = {
@@ -29,6 +31,8 @@ export function decodeReadResult(resultData: Hex, shape: ReadResultShape): Decod
 
   try {
     switch (shape.kind) {
+      case 'svmAccount':
+        return { kind: 'svmAccount', value: accountCoder(shape.idl, shape.accountName).decode(shape.accountName, Buffer.from(resultData.slice(2), 'hex')) };
       case 'uint256': {
         if (len !== 32) throw new ReadDecodeError(`expected 32 bytes for uint256, got ${len}`);
         const [value] = decodeAbiParameters([{ type: 'uint256' }], resultData);

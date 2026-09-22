@@ -3,6 +3,7 @@
  * Fake timers: no test here waits on the clock.
  */
 import { readFileSync } from 'fs';
+import { BorshAccountsCoder, BN, type Idl } from '@coral-xyz/anchor';
 import { join } from 'path';
 import type { Hex } from 'viem';
 import { CHAIN, PUSH_NETWORK } from '../../constants/enums';
@@ -262,6 +263,21 @@ describe('trackRead — terminal records straight from the node', () => {
     const bad = await trackRead(deps, { requestId: READ2_ID }, { resultShape: { kind: 'web2', extract: [{ path: '$', valueType: 'string' }] } });
     expect(bad.value).toBeUndefined();
     expect(bad.decodeError).toMatch(/./);
+  });
+
+  it('retains IDL decoding across request lookup, wait and refresh; bad layouts report decodeError', async () => {
+    const idl: Idl = { address: '11111111111111111111111111111111', metadata: { name: 'counter', version: '1', spec: '0.1.0' }, instructions: [], accounts: [{ name: 'counter', discriminator: [1,2,3,4,5,6,7,8] }], types: [{ name: 'counter', type: { kind: 'struct', fields: [{ name: 'count', type: 'u64' }] } }] };
+    const record = node('success-evm');
+    record.result!.resultData = await new BorshAccountsCoder(idl).encode('counter', { count: new BN(42) });
+    const { deps } = scriptedDeps([record]);
+    const resultShape = { kind: 'svmAccount', idl, accountName: 'counter' } as const;
+    const read = await trackRead(deps, { requestId: READ2_ID }, { resultShape });
+    for (const response of [read, await read.wait(), await read.refresh()]) {
+      expect((response.value as { count: BN }).count.toString()).toBe('42');
+      expect(response.decodeError).toBeUndefined();
+    }
+    record.result!.resultData = new Uint8Array([0]);
+    expect((await read.refresh()).decodeError).toMatch(/discriminator/);
   });
 
   it('by txHash resolves to an array; requestId accepts bigint', async () => {

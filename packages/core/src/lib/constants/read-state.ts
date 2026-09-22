@@ -14,7 +14,7 @@ export const REGISTRY_CALLBACK_GAS = 500_000n;
 
 /** Verified proxy on Donut. Other networks intentionally have no default receiver. */
 export const UNIVERSAL_READ_REGISTRY_ADDRESS = {
-  TESTNET_DONUT: '0x91b09DAd1774bAfDE679F9ebB5F9046AE2b928C8',
+  TESTNET_DONUT: '0x00000000000000000000000000000000000000b2',
 } as const;
 
 /** Contract rejects anything below this — `ReadTypes.sol:43`. */

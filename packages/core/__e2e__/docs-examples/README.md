@@ -3,7 +3,12 @@
 These tests are **1:1 mirrors** of the runnable code blocks in the website docs at
 `push-chain-website/docs/chain/03-build/06-Send-Universal-Transaction.mdx`,
 `07-Universal-Transaction-Scenarios.mdx`, `08-Send-Multichain-Transactions.mdx`,
-and `12-Utility-Functions.mdx`.
+`12-Utility-Functions.mdx`, and `13a-Universal-Read.mdx`.
+
+Universal Read playgrounds are mirrored as exact source fixtures in
+`13-read-state/fixtures/` and executed by `13-read-state/playgrounds.spec.ts`.
+Run `node scripts/check-read-state-doc-examples.mjs` from the SDK root to compare
+them with the sibling website checkout (or pass the MDX path explicitly).
 
 ## Intent
 

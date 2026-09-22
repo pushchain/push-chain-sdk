@@ -1,7 +1,7 @@
 import { PublicKey } from '@solana/web3.js';
 import { CHAIN } from '../../constants/enums';
 import { InvalidReadQueryError } from '../errors';
-import { deriveAssociatedTokenAddress } from '../envelopes/svm';
+import { deriveAssociatedTokenAddress, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '../envelopes/svm';
 import { ERC20_BALANCE_OF_ABI, toBuildReadSpecParams, toLifecycleOptions, toReadQuery } from '../read-params';
 
 const USER = '0x0A16CBa65FfCAa4C2282b27b027Ab4A2fE46E0Bf' as const;
@@ -15,11 +15,11 @@ describe('read(subject, options) grammar → ReadQuery', () => {
   it('derives Token-2022 ATAs using the selected program', () => {
     const owner = '11111111111111111111111111111111';
     const mint = 'So11111111111111111111111111111111111111112';
-    expect(toReadQuery(owner, { chain: CHAIN.SOLANA_DEVNET, token: mint, tokenProgram: 'token-2022' })).toEqual({
+    expect(toReadQuery(owner, { chain: CHAIN.SOLANA_DEVNET, token: mint }, TOKEN_2022_PROGRAM_ID)).toEqual({
       type: 'splTokenAccount', account: '2sZUUBGq1i6aE47ZoxCaCW89jmYm2EXLPPmNMgMDXHMS',
     });
-    expect(() => toReadQuery(USER, { chain: CHAIN.ETHEREUM_SEPOLIA, token: TOKEN, tokenProgram: 'token-2022' })).toThrow(InvalidReadQueryError);
-    expect(() => toReadQuery(owner, { chain: CHAIN.SOLANA_DEVNET, tokenProgram: 'token-2022' })).toThrow(InvalidReadQueryError);
+    expect(() => toReadQuery(USER, { chain: CHAIN.ETHEREUM_SEPOLIA, token: TOKEN, tokenProgram: 'token-2022' } as never)).toThrow(InvalidReadQueryError);
+    expect(() => toReadQuery(owner, { chain: CHAIN.SOLANA_DEVNET, token: mint })).toThrow(/mint-owner resolution/);
   });
   it('EVM: no query key → native balance of subject', () => {
     expect(toReadQuery(USER, { chain: CHAIN.ETHEREUM_SEPOLIA })).toEqual({ type: 'accountBalance', target: USER });
@@ -39,7 +39,7 @@ describe('read(subject, options) grammar → ReadQuery', () => {
   });
   it('SVM: native → lamports of subject; token → the ATA derived offline', () => {
     expect(toReadQuery(SOL_OWNER, { chain: CHAIN.SOLANA_DEVNET })).toEqual({ type: 'lamportBalance', account: SOL_OWNER });
-    const q = toReadQuery(SOL_OWNER, { chain: CHAIN.SOLANA_DEVNET, token: SOL_MINT });
+    const q = toReadQuery(SOL_OWNER, { chain: CHAIN.SOLANA_DEVNET, token: SOL_MINT }, TOKEN_PROGRAM_ID);
     expect(q).toEqual({ type: 'splTokenAccount', account: deriveAssociatedTokenAddress(new PublicKey(SOL_OWNER), new PublicKey(SOL_MINT)).toBase58() });
   });
   it('web2: subject is the URL, options.web2 becomes the http query', () => {
