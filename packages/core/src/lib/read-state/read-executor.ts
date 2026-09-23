@@ -7,6 +7,7 @@ import { encodeSpec, toCallData } from './spec-builder';
 import PROGRESS_HOOKS from '../progress-hook/progress-hook';
 import { PROGRESS_HOOK } from '../progress-hook/progress-hook.types';
 import { READ_STATUS, UNIVERSAL_READ_STATUS } from './read-state.types';
+import { READ_PREFLIGHT_STALE_MS } from '../constants/read-state';
 
 export type ReadExecutorDeps = Pick<Orchestrator, 'execute' | 'trackRead' | 'revalidateRead'> & Partial<Pick<Orchestrator, 'getProgressHook' | 'getReadBalance'>>;
 
@@ -55,6 +56,8 @@ export async function executeReads<const R extends readonly PreparedRead[]>(
     for (const [i, prepared] of reads.entries()) {
       failedAt = i + 1;
       if (batch) emit(PROGRESS_HOOK.READ_TX_002_01, i + 1, reads.length, prepared.preflight.destination.caip2);
+      const ageMs = Date.now() - prepared.preflight.fetchedAt;
+      if (ageMs > READ_PREFLIGHT_STALE_MS) emit(PROGRESS_HOOK.READ_TX_102_04, prepared.preflight.fetchedAt, ageMs);
       await deps.revalidateRead(prepared);
     }
     failedAt = 0;

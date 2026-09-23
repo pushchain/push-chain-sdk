@@ -3,17 +3,20 @@
  *
  *   read(user,     { chain })                          native balance (ETH / lamports)
  *   read(user,     { chain, token })                   token balance (ERC-20 / SPL via ATA)
- *   read(contract, { chain, abi, functionName, args }) typed call — abi encodes AND decodes
+ *   read(contract, { chain, abi, functionName, args }) typed call — abi encodes AND decodes (any mutability; eth_call simulation)
+ *   read(account,  { chain, idl, functionName? })      Anchor account, layout picked by discriminator
+ *   read(program,  { chain, idl, functionName, args }) Anchor PDA — args are its IDL-declared seeds
  *   read(contract, { chain, storageSlot })             storage word
  *   read(url,      { chain: CHAIN.WEB2, web2 })        web2
  *
  * Query keys are mutually exclusive; the namespace decides which are legal.
  */
-import type { Abi, Address, Hex, ContractFunctionReturnType, ContractFunctionName, ContractFunctionArgs, ExtractAbiFunctionForArgs } from 'viem';
+import type { Abi, AbiStateMutability, Address, Hex, ContractFunctionReturnType, ContractFunctionName, ContractFunctionArgs, ExtractAbiFunctionForArgs } from 'viem';
 import { isAddress } from 'viem';
 import type { Idl, IdlAccounts } from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
-import { accountCoder, detectTokenProgram } from './svm-account';
+import { detectTokenProgram, resolveAccountName, validateIdl } from './svm-account';
+import { deriveIdlPda, isProgramSubject } from './svm-pda';
 import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 import { computeReadQueryKey, resolveReadCallback } from './registry';
 import { READ_NAMESPACE, WEB2_DESTINATION } from '../constants/read-state';
@@ -45,12 +48,23 @@ interface ReadOptionsInput {
   // ── query — which keys are present decides the kind ──
   /** Token balance of `subject`: ERC-20 `balanceOf` on EVM, the SPL ATA on SVM. */
   token?: string;
-  /** Anchor account layout; does not execute a Solana instruction. */
+  /**
+   * Anchor IDL — the Solana counterpart of `abi`. The subject account is decoded
+   * with the layout whose discriminator matches its data. Reads never execute an
+   * instruction.
+   */
   idl?: Idl;
-  accountName?: string;
   /** Typed contract call — encodes the call and decodes the result. */
   abi?: Abi;
+  /**
+   * With `abi`: the function to call (required). With `idl`: the account layout
+   * (optional — inferred from the discriminator; snake_case or camelCase).
+   */
   functionName?: string;
+  /**
+   * With `abi`: positional call args. With `idl` and the program id as subject:
+   * the PDA's non-constant seeds, in IDL order.
+   */
   args?: readonly unknown[];
   /** EVM storage word. */
   storageSlot?: Hex | bigint;
@@ -89,14 +103,14 @@ export type ReadQueryOptions =
   | ({ chain: SvmChain } & NoQuery)
   | ({ chain: EvmChain } & Query<'token', { token: string }>)
   | ({ chain: SvmChain } & Query<'token', { token: string }>)
-  | ({ chain: SvmChain } & Query<'idl' | 'accountName', { idl: Idl; accountName: string }>)
+  | ({ chain: SvmChain } & Query<'idl' | 'functionName' | 'args', { idl: Idl; functionName?: string; args?: readonly unknown[] }>)
   | ({ chain: EvmChain } & Query<'abi' | 'functionName' | 'args', { abi: Abi; functionName: string; args?: readonly unknown[] }>)
   | ({ chain: EvmChain } & Query<'storageSlot', { storageSlot: Hex | bigint }>)
   | ({ chain: typeof CHAIN.WEB2 } & Query<'web2', { web2: ReadWeb2Options }>);
 
 export type ReadCallbackOptions = {
   callback?:
-    | ({ target: Address; gasLimit: bigint } & Pick<ReadCallback, 'abi' | 'functionName' | 'args'>)
+    | ({ target: Address; gasLimit?: bigint } & Pick<ReadCallback, 'abi' | 'functionName' | 'args'>)
     | { target?: never; gasLimit?: bigint; abi?: never; functionName?: never; args?: never };
 };
 type SharedPrepareOptions = ReadCallbackOptions &
@@ -116,33 +130,44 @@ type WithExecutionOptions<T> = T extends unknown
   : never;
 export type ReadOptions = WithExecutionOptions<ReadPrepareOptions> & {
   callback?:
-    | (Required<Pick<ReadCallback, 'target' | 'gasLimit' | 'abi' | 'functionName'>> & Pick<ReadCallback, 'args'>)
+    | (Required<Pick<ReadCallback, 'target' | 'abi' | 'functionName'>> & Pick<ReadCallback, 'gasLimit' | 'args'>)
     | { target?: never; gasLimit?: bigint; abi?: never; functionName?: never; args?: never };
 };
 export type ReadTrackOptions = { advanced?: Omit<NonNullable<ReadOptionsInput['advanced']>, 'enforceGasCheck'>; resultShape?: ReadResultShape };
 
 type Web2Values = { uint256: bigint; int256: bigint; bool: boolean; bytes: Hex; string: string };
 type Web2Value<E extends Web2Extract> = Web2Values[E['valueType']];
-type ReadFunctionName<A extends Abi, F extends string> = F & ContractFunctionName<A, 'view' | 'pure'>;
+type ReadFunctionName<A extends Abi, F extends string> = F & ContractFunctionName<A, AbiStateMutability>;
 type ReadFunctionArgs<O, A extends Abi, F extends string> =
-  O extends { args: infer Args extends ContractFunctionArgs<A, 'view' | 'pure', ReadFunctionName<A, F>> } ? Args
-    : readonly [] extends ContractFunctionArgs<A, 'view' | 'pure', ReadFunctionName<A, F>> ? readonly []
-      : ContractFunctionArgs<A, 'view' | 'pure', ReadFunctionName<A, F>>;
-type ReadCallValue<A extends Abi, F extends string, Args extends ContractFunctionArgs<A, 'view' | 'pure', ReadFunctionName<A, F>>> =
-  ExtractAbiFunctionForArgs<A, 'view' | 'pure', ReadFunctionName<A, F>, Args> extends infer Selected
+  O extends { args: infer Args extends ContractFunctionArgs<A, AbiStateMutability, ReadFunctionName<A, F>> } ? Args
+    : readonly [] extends ContractFunctionArgs<A, AbiStateMutability, ReadFunctionName<A, F>> ? readonly []
+      : ContractFunctionArgs<A, AbiStateMutability, ReadFunctionName<A, F>>;
+type ReadCallValue<A extends Abi, F extends string, Args extends ContractFunctionArgs<A, AbiStateMutability, ReadFunctionName<A, F>>> =
+  ExtractAbiFunctionForArgs<A, AbiStateMutability, ReadFunctionName<A, F>, Args> extends infer Selected
     ? Selected extends Abi[number] & { type: 'function'; outputs: readonly unknown[] }
       ? ContractFunctionReturnType<readonly [Selected]>
       : never
     : never;
 /** Matches the existing decoder: select the overload by args before wrapping its outputs. */
 export type ReadValue<O> = O extends { abi: infer A extends Abi; functionName: infer F extends string }
-  ? number extends A['length'] ? readonly unknown[] : ReadCallValue<A, F, ReadFunctionArgs<O, A, F>>
+  // A non-literal ABI: viem returns one output bare and several as an array, so the shape is unknown.
+  ? number extends A['length'] ? unknown : ReadCallValue<A, F, ReadFunctionArgs<O, A, F>>
   : O extends { web2: { extract: infer E extends readonly Web2Extract[] } }
     ? { readonly [K in keyof E]: Web2Value<E[K]> }
     : O extends { storageSlot: unknown } ? Hex
-    : O extends { idl: infer I extends Idl; accountName: infer N extends string }
-      ? N extends keyof IdlAccounts<I> ? IdlAccounts<I>[N] : unknown
+    : O extends { idl: infer I extends Idl }
+      ? IdlReadValue<I, O extends { functionName: infer N extends string } ? N : undefined>
       : bigint;
+
+/** snake_case / camelCase / PascalCase spellings compare equal (mirrors `idlNameKey`). */
+type IdlNameKey<S extends string> = Lowercase<S extends `${infer H}_${infer T}` ? `${H}${IdlNameKey<T>}` : S>;
+type IdlAccountName<I extends Idl> = Extract<keyof IdlAccounts<I>, string>;
+type MatchAccount<I extends Idl, N extends string> = { [K in IdlAccountName<I>]: IdlNameKey<K> extends IdlNameKey<N> ? K : never }[IdlAccountName<I>];
+/** A literal IDL types the account; a dynamic one (names typed `string`) yields `unknown`. */
+type IdlReadValue<I extends Idl, N extends string | undefined> =
+  string extends IdlAccountName<I> ? unknown
+    : N extends string ? IdlAccounts<I>[MatchAccount<I, N>]
+      : IdlAccounts<I>[IdlAccountName<I>];
 
 /** Just `balanceOf` — it also types the decoded result as uint256. */
 export const ERC20_BALANCE_OF_ABI = [
@@ -159,13 +184,13 @@ const QUERY_KEYS = ['token', 'abi', 'idl', 'storageSlot', 'web2'] as const;
 
 function queryKind(o: ReadOptionsInput): (typeof QUERY_KEYS)[number] | 'native' {
   if ('tokenProgram' in o) throw new InvalidReadQueryError('tokenProgram is detected from the mint; remove options.tokenProgram');
-  if (o.accountName !== undefined && o.idl === undefined) throw new InvalidReadQueryError('accountName requires idl');
+  if ('accountName' in o) throw new InvalidReadQueryError('accountName was removed; pass the account layout as functionName (optional — inferred from the discriminator)');
   const present = QUERY_KEYS.filter((k) => o[k] !== undefined);
   if (present.length > 1) {
     throw new InvalidReadQueryError(`query keys are mutually exclusive, got ${present.join(' + ')}`);
   }
-  if ((o.functionName !== undefined || o.args !== undefined) && o.abi === undefined) {
-    throw new InvalidReadQueryError('functionName and args need abi');
+  if ((o.functionName !== undefined || o.args !== undefined) && o.abi === undefined && o.idl === undefined) {
+    throw new InvalidReadQueryError('functionName and args need abi or idl');
   }
   return present[0] ?? 'native';
 }
@@ -214,11 +239,28 @@ export function toReadQuery(subject: string, o: ReadOptionsInput, resolvedTokenP
       if (!resolvedTokenProgram) throw new InvalidReadQueryError('Solana token reads need mint-owner resolution; use universal.prepareRead or universal.read');
       return { type: 'splTokenAccount', account: deriveAssociatedTokenAddress(subject, o.token as string, resolvedTokenProgram).toBase58() };
     case 'idl':
-      accountCoder(o.idl!, o.accountName!);
-      return { type: 'rawAccountData', account: subject, idl: o.idl!, accountName: o.accountName! };
+      return toIdlAccountQuery(subject, o);
     default:
-      throw new InvalidReadQueryError(`unsupported query for solana: ${kind}; use idl and accountName for account-state decoding`);
+      throw new InvalidReadQueryError(`unsupported query for solana: ${kind}; use idl for account-state decoding`);
   }
+}
+
+/**
+ * `idl` → a raw account read that decodes with the IDL. The subject is the account,
+ * or the program id when `args` are the seeds of the `functionName` PDA.
+ */
+function toIdlAccountQuery(subject: string, o: ReadOptionsInput): ReadQuery {
+  const idl = o.idl!;
+  validateIdl(idl);
+  const accountName = o.functionName === undefined ? undefined : resolveAccountName(idl, o.functionName);
+  if (isProgramSubject(idl, subject)) {
+    if (!o.functionName) throw new InvalidReadQueryError('the subject is the program id: pass functionName (the account layout) and args (its PDA seeds) to derive the account');
+    const pda = deriveIdlPda(idl, o.functionName, o.args ?? []);
+    return { type: 'rawAccountData', account: pda.toBase58(), idl, accountName };
+  }
+  if (o.args !== undefined) throw new InvalidReadQueryError('with idl, args are PDA seeds and need the program id as the subject');
+  try { new PublicKey(subject); } catch { throw new InvalidReadQueryError(`Solana subject must be a base58 pubkey, got ${subject}`); }
+  return { type: 'rawAccountData', account: subject, idl, accountName };
 }
 
 /** Public options → the spec builder's params. Pure; throws `InvalidReadQueryError` on a malformed request. */
@@ -268,12 +310,16 @@ export function toLifecycleOptions(o?: ReadTrackOptions): ReadLifecycleOptions {
   };
 }
 
-/** Restrict known ABIs to read functions and their declared argument tuple. */
+/**
+ * Restrict known ABIs to declared functions and their argument tuple. Every mutability
+ * is allowed: the read is an eth_call simulation, so state-changing functions only return data.
+ */
 export type ValidateReadCall<O> = O extends { abi: infer A extends Abi; functionName: infer F extends string }
-  ? { functionName: ContractFunctionName<A, 'view' | 'pure'> } &
-    (readonly [] extends ContractFunctionArgs<A, 'view' | 'pure', F & ContractFunctionName<A, 'view' | 'pure'>>
-      ? { args?: ContractFunctionArgs<A, 'view' | 'pure', F & ContractFunctionName<A, 'view' | 'pure'>> }
-      : { args: ContractFunctionArgs<A, 'view' | 'pure', F & ContractFunctionName<A, 'view' | 'pure'>> })
-  : O extends { idl: infer I extends Idl; accountName: string }
-    ? { accountName: NonNullable<I['accounts']>[number]['name'] }
+  ? { functionName: ContractFunctionName<A, AbiStateMutability> } &
+    (readonly [] extends ContractFunctionArgs<A, AbiStateMutability, F & ContractFunctionName<A, AbiStateMutability>>
+      ? { args?: ContractFunctionArgs<A, AbiStateMutability, F & ContractFunctionName<A, AbiStateMutability>> }
+      : { args: ContractFunctionArgs<A, AbiStateMutability, F & ContractFunctionName<A, AbiStateMutability>> })
+  : O extends { idl: infer I extends Idl; functionName: infer N extends string }
+    ? string extends IdlAccountName<I> ? unknown
+      : [MatchAccount<I, N>] extends [never] ? { functionName: IdlAccountName<I> } : unknown
     : unknown;

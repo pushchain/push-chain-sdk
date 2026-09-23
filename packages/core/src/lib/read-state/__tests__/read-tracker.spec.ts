@@ -15,8 +15,8 @@ import type { OrchestratorContext } from '../../orchestrator/internals/context';
 import { trackRead as trackReadViaCtx } from '../../orchestrator/internals/read-state';
 import { ReadNotFoundError, ReadTimeoutError } from '../errors';
 import { REFUND_FAILED_TOPIC0 } from '../read-events';
-import { defaultWaitTimeoutMs, inferResultShape, toRequestIdHex, trackRead, type TrackReadDeps } from '../read-tracker';
-import { UNIVERSAL_READ_STATUS, READ_STATUS, READ_ERROR_CODE } from '../read-state.types';
+import { defaultWaitTimeoutMs, deriveReadOutcome, inferResultShape, toRequestIdHex, trackRead, type TrackReadDeps } from '../read-tracker';
+import { UNIVERSAL_READ_STATUS, READ_STATUS, READ_ERROR_CODE, READ_OUTCOME } from '../read-state.types';
 import fulfilSuccess from './fixtures/receipts/fulfil.success-evm.json';
 import settleSuccess from './fixtures/receipts/settle.success-evm.json';
 import fulfilReverted from './fixtures/receipts/fulfil.callback-reverted.json';
@@ -84,6 +84,7 @@ describe('trackRead — terminal records straight from the node', () => {
     expect(r.txHash).toBe(READ2_TX);
     expect(r.status).toBe(UNIVERSAL_READ_STATUS.FULFILLED);
     expect(r.isTerminal).toBe(true);
+    expect(r.outcome).toBe(READ_OUTCOME.SUCCESS);
     expect(r.callbackDelivered).toBe(true);
     expect(r.value).toBe(2706196938206701455473n);
     expect(r.decoded).toEqual({ kind: 'uint256', value: 2706196938206701455473n });
@@ -110,7 +111,7 @@ describe('trackRead — terminal records straight from the node', () => {
     expect(r.request.callbackGasLimit).toBe(200000n);
     expect(r.request.logIndex).toBe(1);
     expect(r.pcTx).toHaveLength(2);
-    expect(r.explorerUrl).toBe(`https://explorer.donut.push.org/tx/${READ2_TX}`);
+    expect(r.explorerUrl).toBe(`https://donut.push.network/tx/${READ2_TX}`);
     expect(calls.receipts).toHaveLength(2); // fulfil + settle, exactly once each
   });
 
@@ -120,6 +121,7 @@ describe('trackRead — terminal records straight from the node', () => {
     expect(r.status).toBe(UNIVERSAL_READ_STATUS.FULFILLED);
     expect(r.raw?.status).toBe(READ_STATUS.SUCCESS); // consensus succeeded…
     expect(r.callbackDelivered).toBe(false); // …but the app never received it
+    expect(r.outcome).toBe(READ_OUTCOME.CALLBACK_FAILED);
     expect(r.callbackFailReason).toBeDefined();
     expect(r.value).toBeUndefined();
     expect(r.decoded).toBeUndefined();
@@ -132,6 +134,7 @@ describe('trackRead — terminal records straight from the node', () => {
     expect(r.value).toBeUndefined();
     expect(r.callbackDelivered).toBeUndefined(); // receipts for this read are not in the fixture set
     expect(calls.receipts).toHaveLength(2); // it still tried both pc_tx
+    expect(r.outcome).toBe(READ_OUTCOME.SOURCE_ERROR); // even without the receipts
   });
 
   it('EXPIRED: never fetches a receipt; the refund is confirmed from the EndBlock tx_log events', async () => {
@@ -298,12 +301,39 @@ describe('trackRead — terminal records straight from the node', () => {
 
 describe('trackRead — lookup retry', () => {
   it('retries a not-yet-ingested record, then throws ReadNotFoundError', async () => {
-    const { deps, calls } = scriptedDeps([undefined]);
+    const emitted: [string, unknown[]][] = [];
+    const { deps, calls } = scriptedDeps([undefined], { emit: (id, ...args) => emitted.push([id, args]) });
     const p = trackRead(deps, { requestId: READ2_ID }, { pollingIntervalMs: 1000 });
     const rejection = expect(p).rejects.toBeInstanceOf(ReadNotFoundError);
     await jest.advanceTimersByTimeAsync(31_000);
     await rejection;
     expect(calls.getUniversalRead).toBeGreaterThan(20);
+    expect(emitted.map(([id]) => id)).toEqual([PROGRESS_HOOK.READ_TX_104_03, PROGRESS_HOOK.READ_TX_104_05]);
+    expect(emitted[0][1]).toEqual([{ requestId: READ2_ID }]);
+    expect(emitted[1][1][0]).toEqual({ requestId: READ2_ID });
+    expect(emitted[1][1][1]).toBeGreaterThanOrEqual(29_000);
+  });
+
+  it('a terminal record answers in one lookup, announcing the lookup and the find', async () => {
+    const emitted: [string, unknown[]][] = [];
+    const { deps, calls } = scriptedDeps([node('success-evm')], { emit: (id, ...args) => emitted.push([id, args]) });
+    const r = await trackRead(deps, { requestId: READ2_ID });
+    expect(calls.getUniversalRead).toBe(1);
+    expect(r.isTerminal).toBe(true);
+    expect(emitted).toEqual([
+      [PROGRESS_HOOK.READ_TX_104_03, [{ requestId: READ2_ID }]],
+      [PROGRESS_HOOK.READ_TX_104_04, [READ2_ID, 'FULFILLED']],
+    ]);
+  });
+
+  it('a txHash lookup announces the tx and every record found', async () => {
+    const emitted: [string, unknown[]][] = [];
+    const { deps } = scriptedDeps([node('success-evm')], { emit: (id, ...args) => emitted.push([id, args]) });
+    await trackRead(deps, { txHash: READ2_TX });
+    expect(emitted).toEqual([
+      [PROGRESS_HOOK.READ_TX_104_03, [{ txHash: READ2_TX }]],
+      [PROGRESS_HOOK.READ_TX_104_04, [READ2_ID, 'FULFILLED']],
+    ]);
   });
 
   it('finds a record that appears on the second poll', async () => {
@@ -338,14 +368,37 @@ describe('wait()', () => {
     expect(jest.getTimerCount()).toBe(0);
   });
 
-  it('explicit timeouts bypass the head lookup, including values above the default ceiling', async () => {
+  it('explicit timeouts never wait on the head lookup, including values above the default ceiling', async () => {
     const { deps } = scriptedDeps([pending, success]);
+    // A stalled head RPC only disables the expiry warning; it must not delay or fail the wait.
+    (deps.pushClient.publicClient.getBlockNumber as jest.Mock).mockReturnValue(new Promise(() => undefined));
     const first = await trackRead(deps, { requestId: READ2_ID });
     const waiting = first.wait({ timeoutMs: 600_000 });
     await jest.advanceTimersByTimeAsync(2_000);
     const result = await waiting;
     expect(result.isTerminal).toBe(true);
-    expect(deps.pushClient.publicClient.getBlockNumber).not.toHaveBeenCalled();
+  });
+
+  it('announces READ-TX-105-04 once when the request is near expiry, from one head lookup', async () => {
+    const events: unknown[][] = [];
+    const { deps } = scriptedDeps([pending, pending, success], { emit: (id, ...args) => events.push([id, ...args]) });
+    const expiry = success.request!.expiryBlockHeight;
+    (deps.pushClient.publicClient.getBlockNumber as jest.Mock).mockResolvedValue(BigInt(expiry) - 10n);
+    const p = (await trackRead(deps, { requestId: READ2_ID })).wait({ pollingIntervalMs: 1000 });
+    await jest.advanceTimersByTimeAsync(2000);
+    await p;
+    const warnings = events.filter(([id]) => id === PROGRESS_HOOK.READ_TX_105_04);
+    expect(warnings).toEqual([[PROGRESS_HOOK.READ_TX_105_04, READ2_ID, 10n]]);
+    expect(deps.pushClient.publicClient.getBlockNumber).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not warn while expiry is far away', async () => {
+    const events: string[] = [];
+    const { deps } = scriptedDeps([pending, success], { emit: (id) => events.push(id) });
+    const p = (await trackRead(deps, { requestId: READ2_ID })).wait({ pollingIntervalMs: 1000 });
+    await jest.advanceTimersByTimeAsync(1000);
+    await p;
+    expect(events).not.toContain(PROGRESS_HOOK.READ_TX_105_04);
   });
 
   it('terminal snapshots need no head lookup', async () => {
@@ -407,6 +460,8 @@ describe('wait()', () => {
     expect(done.status).toBe(UNIVERSAL_READ_STATUS.FULFILLED);
     expect(done.value).toBe(2706196938206701455473n);
     expect(emitted).toEqual([
+      PROGRESS_HOOK.READ_TX_104_03,
+      PROGRESS_HOOK.READ_TX_104_04,
       PROGRESS_HOOK.READ_TX_104_02,
       PROGRESS_HOOK.READ_TX_105_01,
       PROGRESS_HOOK.READ_TX_105_02,
@@ -443,7 +498,37 @@ describe('wait()', () => {
     await (await trackRead(deps, { requestId: node('callback-reverted').id as Hex })).wait();
     expect(emitted).toContain(PROGRESS_HOOK.READ_TX_106_03);
     expect(emitted).not.toContain(PROGRESS_HOOK.READ_TX_106_02);
+    // A reverted callback did not work: it ends on 199-02, never on the SUCCESS-level 199-01.
+    expect(emitted).not.toContain(PROGRESS_HOOK.READ_TX_199_01);
+    expect(emitted[emitted.length - 1]).toBe(PROGRESS_HOOK.READ_TX_199_02);
+  });
+
+  it('199-02 names the outcome of a FULFILLED read that did not work', async () => {
+    const events: unknown[][] = [];
+    const { deps } = scriptedDeps([node('callback-reverted')], { emit: (id, ...args) => events.push([id, ...args]) });
+    await (await trackRead(deps, { requestId: node('callback-reverted').id as Hex })).wait();
+    const last = events[events.length - 1];
+    expect(last[0]).toBe(PROGRESS_HOOK.READ_TX_199_02);
+    expect(last[2]).toBe('CALLBACK_FAILED');
+  });
+
+  it('a successful read ends on 199-01 and exposes requestIdUint', async () => {
+    const emitted: string[] = [];
+    const { deps } = scriptedDeps([node('success-evm')], { emit: (id) => emitted.push(id) });
+    const done = await (await trackRead(deps, { requestId: READ2_ID })).wait();
     expect(emitted[emitted.length - 1]).toBe(PROGRESS_HOOK.READ_TX_199_01);
+    expect(emitted).not.toContain(PROGRESS_HOOK.READ_TX_199_02);
+    expect(done.requestIdUint).toBe(BigInt(READ2_ID));
+  });
+
+  it('an expired read announces its confirmed refund before 199-02', async () => {
+    const events: unknown[][] = [];
+    const { deps } = scriptedDeps([node('expired')], { emit: (id, ...args) => events.push([id, ...args]) });
+    const done = await (await trackRead(deps, { requestId: node('expired').id as Hex })).wait();
+    expect(done.fees.refunded).toBeDefined();
+    const ids = events.map(([id]) => id);
+    expect(ids.slice(-2)).toEqual([PROGRESS_HOOK.READ_TX_106_05, PROGRESS_HOOK.READ_TX_199_02]);
+    expect(events[ids.indexOf(PROGRESS_HOOK.READ_TX_106_05)]).toEqual([PROGRESS_HOOK.READ_TX_106_05, done.requestId, done.fees.refunded, done.request.refundTo]);
   });
 
   it.each([
@@ -524,7 +609,7 @@ describe('through the orchestrator: READ-TX hooks are not R1-suppressed', () => 
     await jest.advanceTimersByTimeAsync(1000);
     await p;
     const ids = events.map((e) => e.id);
-    expect(ids[0]).toBe('READ-TX-104-02');
+    expect(ids.slice(0, 3)).toEqual(['READ-TX-104-03', 'READ-TX-104-04', 'READ-TX-104-02']);
     expect(ids).toContain('READ-TX-105-01');
     expect(ids[ids.length - 1]).toBe('READ-TX-199-01');
     // payloads are structured, bigints stringified
@@ -532,5 +617,25 @@ describe('through the orchestrator: READ-TX hooks are not R1-suppressed', () => 
     expect(fulfilled.level).toBe('SUCCESS');
     expect(fulfilled.response).toMatchObject({ requestId: READ2_ID, value: '2706196938206701455473', callbackDelivered: true });
     expect(typeof fulfilled.timestamp).toBe('string');
+  });
+});
+
+describe('deriveReadOutcome — one field that means "it worked"', () => {
+  const S = UNIVERSAL_READ_STATUS;
+  it.each([
+    ['PENDING', S.PENDING, undefined, undefined, undefined, READ_OUTCOME.PENDING],
+    ['VOTING', S.VOTING, undefined, undefined, undefined, READ_OUTCOME.PENDING],
+    ['EXPIRED', S.EXPIRED, undefined, undefined, undefined, READ_OUTCOME.EXPIRED],
+    ['FAILED', S.FAILED, undefined, undefined, undefined, READ_OUTCOME.FAILED],
+    ['ABORTED', S.ABORTED, undefined, undefined, undefined, READ_OUTCOME.ABORTED],
+    ['source error beats callback failure', S.FULFILLED, READ_STATUS.ERROR, false, undefined, READ_OUTCOME.SOURCE_ERROR],
+    ['source error, delivered', S.FULFILLED, READ_STATUS.ERROR, true, undefined, READ_OUTCOME.SOURCE_ERROR],
+    ['callback reverted', S.FULFILLED, READ_STATUS.SUCCESS, false, undefined, READ_OUTCOME.CALLBACK_FAILED],
+    ['receipt unavailable', S.FULFILLED, READ_STATUS.SUCCESS, undefined, undefined, READ_OUTCOME.UNKNOWN],
+    ['decode failed', S.FULFILLED, READ_STATUS.SUCCESS, true, 'bad shape', READ_OUTCOME.DECODE_FAILED],
+    ['success', S.FULFILLED, READ_STATUS.SUCCESS, true, undefined, READ_OUTCOME.SUCCESS],
+    ['no result on a FULFILLED record', S.FULFILLED, undefined, true, undefined, READ_OUTCOME.UNKNOWN],
+  ] as const)('%s', (_label, status, raw, delivered, decodeError, want) => {
+    expect(deriveReadOutcome(status, raw, delivered, decodeError)).toBe(want);
   });
 });

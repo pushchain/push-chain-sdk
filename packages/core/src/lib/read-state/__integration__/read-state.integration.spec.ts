@@ -304,7 +304,8 @@ describe('PushChain.universal read-state surface (read-only client, Donut)', () 
     const [r] = await client.universal.trackRead({ txHash: READ2_TX }, { progressHook: (e) => seen.push(e.id) });
     expect(r.callbackDelivered).toBe(true);
     await r.wait();
-    expect(seen[0]).toBe('READ-TX-104-02');
+    expect(seen.slice(0, 2)).toEqual(['READ-TX-104-03', 'READ-TX-104-04']); // lookup announced
+    expect(seen).toContain('READ-TX-104-02');
     expect(seen[seen.length - 1]).toBe('READ-TX-199-01');
   }, 60_000);
 
@@ -320,7 +321,7 @@ describe('PushChain.universal read-state surface (read-only client, Donut)', () 
 
   it('executeReads rejects a valid prepared call on a read-only client', async () => {
     const request = { abi: [{ type: 'function', name: 'request', stateMutability: 'payable', inputs: [], outputs: [] }] as const, functionName: 'request', args: () => [] };
-    const prepared = await client.universal.prepareRead(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: CLIENT, gasLimit: 200_000n, request } });
+    const prepared = await client.universal.prepareRead(EOA, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: CLIENT, gasLimit: 200_000n, ...request } });
     expect(prepared.callback?.target).toBe(CLIENT);
     await expect(client.universal.executeReads([prepared])).rejects.toThrow(/Read only mode/);
   }, 60_000);

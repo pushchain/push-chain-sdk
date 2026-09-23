@@ -119,3 +119,51 @@ describe('PushClient archive fallback — getCosmosTx', () => {
     expect(urls.some(isArchiveUrl)).toBe(false);
   });
 });
+
+describe('PushClient archive fallback — getTransactionReceiptWithArchiveFallback', () => {
+  const hash = `0x${'11'.repeat(32)}` as const;
+
+  it('builds the prune probe without transport retries', () => {
+    const probe = (donutClient() as any).pruneProbeClient;
+    expect(probe).toBeDefined();
+    for (const t of probe.transport.transports) expect(t.config.retryCount).toBe(0);
+  });
+
+  it('races the no-retry prune probe against the archive: a pruned receipt costs one archive round trip', async () => {
+    const client = donutClient() as any;
+    const probe = jest.fn(() => new Promise((_, reject) => setTimeout(() => reject(new Error('Requested resource not available.')), 50)));
+    const shared = jest.fn();
+    client.pruneProbeClient = { getTransactionReceipt: probe };
+    client.publicClient = { getTransactionReceipt: shared };
+    const archive = jest.fn().mockResolvedValue({ transactionHash: hash, status: 'success' });
+    client.archivePublicClient = { getTransactionReceipt: archive };
+    const r = await client.getTransactionReceiptWithArchiveFallback(hash);
+    expect(r.transactionHash).toBe(hash);
+    expect(probe).toHaveBeenCalledTimes(1);
+    expect(archive).toHaveBeenCalledWith({ hash });
+    expect(shared).not.toHaveBeenCalled(); // the retrying client is never used for this
+  });
+
+  it('a fresh receipt the archive has not indexed yet comes from the prune node', async () => {
+    const client = donutClient() as any;
+    client.pruneProbeClient = { getTransactionReceipt: jest.fn(() => new Promise((r) => setTimeout(() => r({ transactionHash: hash, from: 'prune' }), 20))) };
+    client.archivePublicClient = { getTransactionReceipt: jest.fn().mockRejectedValue(new Error('receipt not found')) };
+    expect((await client.getTransactionReceiptWithArchiveFallback(hash)).from).toBe('prune');
+  });
+
+  it('rejects with the prune error when neither has it', async () => {
+    const client = donutClient() as any;
+    client.archivePublicClient = { getTransactionReceipt: jest.fn().mockRejectedValue(new Error('archive miss')) };
+    client.pruneProbeClient = { getTransactionReceipt: jest.fn(() => new Promise((_, reject) => setTimeout(() => reject(new Error('prune miss')), 20))) };
+    await expect(client.getTransactionReceiptWithArchiveFallback(hash)).rejects.toThrow('prune miss');
+  });
+
+  it('without an archive endpoint it is the plain shared-client call (retries intact)', async () => {
+    const client = localnetClient() as any;
+    expect(client.pruneProbeClient).toBeUndefined();
+    const getTransactionReceipt = jest.fn().mockResolvedValue({ transactionHash: hash });
+    client.publicClient = { getTransactionReceipt };
+    await client.getTransactionReceiptWithArchiveFallback(hash);
+    expect(getTransactionReceipt).toHaveBeenCalledWith({ hash });
+  });
+});

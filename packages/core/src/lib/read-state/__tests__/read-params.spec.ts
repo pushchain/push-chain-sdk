@@ -78,9 +78,10 @@ describe('toBuildReadSpecParams', () => {
     expect(toBuildReadSpecParams('https://x/y', { chain: CHAIN.WEB2, web2: { extract: [{ path: '$', valueType: 'string' }] }, ...cb }).destination)
       .toEqual({ chainNamespace: 'web2', chainId: 'https' });
   });
-  it('defaults registry gas but requires explicit gas for a custom target', () => {
+  it('defaults callback gas to 500_000n for the registry and custom targets; an explicit value wins', () => {
     expect(toBuildReadSpecParams(USER, { chain: CHAIN.ETHEREUM_SEPOLIA }).callbackGasLimit).toBe(500_000n);
-    expect(() => toBuildReadSpecParams(USER, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: USER } })).toThrow(/callback.gasLimit is required/);
+    expect(toBuildReadSpecParams(USER, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: USER } }).callbackGasLimit).toBe(500_000n);
+    expect(toBuildReadSpecParams(USER, { chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: USER, gasLimit: 123_000n } }).callbackGasLimit).toBe(123_000n);
   });
   it('keeps SVM and web2 pinning internal', () => {
     expect(() => toBuildReadSpecParams(SOL_OWNER, { chain: CHAIN.SOLANA_DEVNET, blockNumber: 1n, ...cb }))

@@ -147,6 +147,8 @@ const F = {
   readApi: '__e2e__/read/evm/api-coverage.spec.ts',
   readSvmRaw: '__e2e__/read/svm/raw-account.spec.ts',
   readSvmIdl: '__e2e__/read/svm/account-idl.spec.ts',
+  readMutability: '__e2e__/read/evm/any-mutability.spec.ts',
+  readTrackLookup: '__e2e__/read/lifecycle/track-lookup.spec.ts',
 } as const;
 
 export const SCENARIOS: Scenario[] = [
@@ -160,6 +162,14 @@ export const SCENARIOS: Scenario[] = [
     file: F.acEth,
     grep: 'should compute UEA for EVM origin account',
     needs: {},
+  },
+  {
+    id: 'smoke-read-track-lookup',
+    group: 'smoke',
+    file: F.readTrackLookup,
+    grep: 'read state › trackRead lookup',
+    needs: {},
+    note: 'Read-only: an old terminal read resolves in <5 s via archive receipts, with lookup events.',
   },
   {
     id: 'smoke-cea-derive-evm',
@@ -714,6 +724,11 @@ export const SCENARIOS: Scenario[] = [
     id: 'read-svm-idl', group: 'read', file: F.readSvmIdl,
     grep: 'read state › Solana automatic token and IDL account reads decodes a real Anchor account',
     needs: { masterPC: '0.1' },
+  },
+  {
+    id: 'read-evm-any-mutability', group: 'read', file: F.readMutability,
+    grep: 'read state › EVM nonpayable and payable functions', needs: { masterPC: '0.1' },
+    note: 'QuoterV2 (nonpayable) + Multicall3.aggregate (payable) simulated at the pinned block.',
   },
   {
     id: 'read-svm-raw', group: 'read', file: F.readSvmRaw,

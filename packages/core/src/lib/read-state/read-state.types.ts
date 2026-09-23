@@ -43,7 +43,7 @@ export type EvmReadQuery =
 export type SvmReadQuery =
   | { type: 'lamportBalance'; account: string | Uint8Array }
   | { type: 'splTokenAccount'; account: string | Uint8Array }
-  | { type: 'rawAccountData'; account: string | Uint8Array; idl?: Idl; accountName?: string };
+  | { type: 'rawAccountData'; account: string | Uint8Array; idl?: Idl; /** Omitted → layout inferred from the discriminator. */ accountName?: string };
 
 export type Web2ValueType = 'uint256' | 'int256' | 'bool' | 'string' | 'bytes';
 
@@ -75,7 +75,7 @@ export type ReadQuery = EvmReadQuery | SvmReadQuery | Web2ReadQuery;
 // ---------------------------------------------------------------------------
 
 export type ReadResultShape =
-  | { kind: 'svmAccount'; idl: Idl; accountName: string }
+  | { kind: 'svmAccount'; idl: Idl; /** Omitted → layout inferred from the discriminator. */ accountName?: string }
   | { kind: 'uint256' }
   | { kind: 'bytes32' }
   | { kind: 'raw' }
@@ -97,7 +97,7 @@ export interface EncodedReadQuery {
 }
 
 export type DecodedReadResult =
-  | { kind: 'svmAccount'; value: unknown }
+  | { kind: 'svmAccount'; value: unknown; /** The IDL layout the data decoded as. */ accountName: string }
   | { kind: 'uint256'; value: bigint }
   | { kind: 'bytes32'; value: Hex }
   | { kind: 'raw'; value: Hex }
@@ -323,6 +323,8 @@ export interface ReadFees {
 export interface UniversalReadResponse<T = unknown> {
   // identity
   requestId: Hex;
+  /** `requestId` as the `uint256` contracts key results by (e.g. registry `resultByRequestId`). */
+  requestIdUint: bigint;
   /** Push tx that carried the request */
   txHash: Hex;
   destination: ResolvedDestination;
@@ -330,6 +332,13 @@ export interface UniversalReadResponse<T = unknown> {
   chain: ReadChain;
 
   // outcome
+  /**
+   * The one field that answers "did it work": `SUCCESS` means the source read
+   * succeeded, your callback ran, and `value` is set (when a shape is known).
+   * Derived by the SDK from `status`, `raw.status`, `callbackDelivered` and
+   * `decodeError`, which stay available for debugging.
+   */
+  outcome: READ_OUTCOME;
   status: UNIVERSAL_READ_STATUS;
   isTerminal: boolean;
   /**
@@ -419,6 +428,28 @@ export enum READ_ERROR_CODE {
   NOT_FOUND = 4,
   INVALID_RESULT = 5,
   REJECTED = 6,
+}
+
+/**
+ * SDK-derived single outcome. FULFILLED on the node only means the fulfil tx
+ * landed; this separates the ways a FULFILLED read can still not have worked.
+ */
+export enum READ_OUTCOME {
+  /** Not terminal yet. */
+  PENDING = 'PENDING',
+  /** Source SUCCESS, callback delivered, result decoded (or no shape to decode with). */
+  SUCCESS = 'SUCCESS',
+  /** FULFILLED, but the destination returned an error (`raw.errorCode`). */
+  SOURCE_ERROR = 'SOURCE_ERROR',
+  /** FULFILLED, but the receiver callback reverted or ran out of gas (`callbackFailReason`). */
+  CALLBACK_FAILED = 'CALLBACK_FAILED',
+  /** Delivered, but `resultData` did not match the expected shape (`decodeError`). */
+  DECODE_FAILED = 'DECODE_FAILED',
+  EXPIRED = 'EXPIRED',
+  FAILED = 'FAILED',
+  ABORTED = 'ABORTED',
+  /** FULFILLED, but the fulfil receipt was unavailable, so delivery cannot be confirmed. */
+  UNKNOWN = 'UNKNOWN',
 }
 
 /** On-chain lifecycle (`RequestStatus` in ReadTypes.sol). */

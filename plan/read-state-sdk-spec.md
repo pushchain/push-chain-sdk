@@ -1,3 +1,12 @@
+## Docs parity update — 2026-09-23 (supersedes the 2026-09-22 Solana note and the view/pure rule below)
+
+- **`idl` replaces `idl` + `accountName`.** `read(account, { chain, idl })` decodes with the layout whose discriminator prefixes the account data. `functionName` optionally names the layout (snake/camel/Pascal all resolve to the IDL spelling) and types `value`. `read(programId, { chain, idl, functionName, args })` derives the PDA from the seed template Anchor records on the instruction accounts named like `functionName`; `args` fill the non-constant seeds in order, encoded by the IDL-declared type (pubkey: base58 / 0x-hex / PublicKey; integers: LE of the declared width; string: utf8; bytes). Conflicting templates, struct-field seed paths, and non-constant `pda.program` are rejected rather than guessed. Passing `accountName` throws. Resume with `resultShape: { kind: 'svmAccount', idl }`.
+- **EVM calls: any mutability.** `functionName` accepts `nonpayable`/`payable` functions; the runtime view/pure guard in `envelopes/evm.ts` is gone. Validators `eth_call` at the pinned block; verified live with QuoterV2 (nonpayable) and Multicall3.aggregate (payable).
+- **`outcome`.** SDK-derived `READ_OUTCOME`: non-terminal → `PENDING`; `EXPIRED`/`FAILED`/`ABORTED` pass through; FULFILLED → `SOURCE_ERROR` (raw.status ≠ SUCCESS, checked first) → `CALLBACK_FAILED` (callbackDelivered false) → `UNKNOWN` (delivery unconfirmed) → `DECODE_FAILED` → `SUCCESS`. Protocol ask (not ours): `CALLBACK_FAILED` / `SOURCE_ERROR` terminal statuses in `ReadTypes.sol`, after which `outcome` maps 1:1.
+- **Terminal events follow `outcome`.** `READ-TX-199-01` only for `SUCCESS`; any other FULFILLED outcome ends on `READ-TX-199-02` with `status` = the outcome name. `106-05/06` refund events also fire for EXPIRED. `105-04` fires once in `wait()` at ≤ 30 Push blocks left (head fetched once, then estimated from block time). `102-04` fires in `executeReads` for a read prepared > 60 s earlier. `105-03`, `106-01`, `199-99` remain defined but unemitted: the node exposes no confirmation count, and VOTING → FULFILLED is one step.
+- **Response:** `requestIdUint: bigint`; `explorerUrl` on `donut.push.network`. **Callback gas** defaults to `500_000n` for custom targets as well.
+- **trackRead lookup events** `READ-TX-104-03/04/05` (table below). The 19 s lookup was receipt fetching (prune RPC −32002 retried ~8 s per receipt, two receipts in series), not polling.
+
 # Read State API Reference
 
 ## Solana API update — 2026-09-22 (supersedes tokenProgram and deferred account-IDL notes below)
@@ -66,7 +75,7 @@ await client.universal.read(subject, {
 
   // — call (EVM now; SVM via `idl` when program reads land) —
   abi: Abi,                            // encodes AND decodes — `value` typed from outputs
-  functionName: string,                //   view/pure only — enforced at COMPILE time
+  functionName: string,                //   any mutability (eth_call simulation); args typed at COMPILE time
   args: readonly unknown[],            //   typed against abi at compile time. No raw callData form
 
   // — state (EVM) —
@@ -293,7 +302,7 @@ await client.universal.read(subject, {
 
   // — call (EVM now; SVM via `idl` when program reads land) —
   abi: Abi,                            // encodes AND decodes — `value` typed from outputs.
-  functionName: string,                //   view/pure only; same { abi|idl, functionName, args }
+  functionName: string,                //   any mutability; same { abi|idl, functionName, args }
   args: readonly unknown[],            //   grammar as encodeTxData. No raw callData form —
                                        //   decode needs the ABI anyway; additive later if asked
 
@@ -473,6 +482,9 @@ Event object identical to `sendTransaction`: `{ id, title, message, level: INFO|
 | `READ-TX-103-03` | Sensitive Header Detected (web2) | WARNING | `{ matchedHeaders }` |
 | `READ-TX-104-01` | Broadcasting Read Request | INFO | `{ stage: 'broadcasting' }` |
 | `READ-TX-104-02` | Request Confirmed, Read Detected | SUCCESS | `{ txHash, requestId, logIndex }` |
+| `READ-TX-104-03` | Looking Up Request | INFO | `{ requestId }` or `{ txHash }` |
+| `READ-TX-104-04` | Request Found | SUCCESS | `{ requestId, status }` (one per record) |
+| `READ-TX-104-05` | Request Not Found | ERROR | `{ requestId \| txHash, elapsedMs }` |
 | `READ-TX-105-01` | Awaiting Quorum | INFO | `{ requestId, status: 'PENDING' }` |
 | `READ-TX-105-02` | Voting In Progress | INFO | `{ requestId, status: 'VOTING' }` |
 | `READ-TX-105-02-01` | Vote `<current>`/`<required>` Received | INFO | `{ requestId, current, required }` — needs §Q7 |

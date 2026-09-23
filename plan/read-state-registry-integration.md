@@ -80,3 +80,19 @@ The 500,000-gas default is a starting point, not a guarantee for arbitrary resul
 Unit tests cover default request encoding, logical-key stability and separation, custom receivers, gas overrides, network isolation, batching, and raw lookup helpers. Read-only Donut checks verify proxy configuration, lookup ABI behavior, and successful simulation of the SDK-prepared payable request using a temporary balance override.
 
 The funded `read-canonical-registry` scenario passed on 2026-09-15 in 38.2 seconds. It submitted two reads at different EVM pins, both under query key `0xcb0d77c5a19c5babd4378c67e17fc3b47e1e4941e92a8d966cb1fa8006c2957f`. Requests `0x7441d60d…` (tx `0xd91e16e3…`) and `0x4b8ab3bb…` (tx `0x858d2db6…`) both fulfilled and delivered; per-request registry bytes matched node consensus bytes, `latestResult` selected the second request, explicit/default refund routing was correct, and callback budget burn plus refund equalled the deposited budget.
+
+## Durable docs read on 0x…b2 — 2026-09-23
+
+Submitted for the website Contract Helpers playgrounds (`_requestRead` / `_onReadResult`), which read
+`PushChain.CONSTANTS.READ.UNIVERSAL_READ_REGISTRY_ADDRESS.TESTNET_DONUT`. The earlier docs request
+`0x9d27…67f3` lives only on the previous registry `0x91b0…28C8` (`hasResult` is false on `0x…b2`).
+
+| | |
+|---|---|
+| Query | USDC `totalSupply()` on Ethereum Sepolia, target `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238` (same query as before, so the 6-decimal decode is unchanged) |
+| requestId | `0x9dd18b4139fe335e1848022503aabb699f319be395df5109c4e48754ea3d5bbe` |
+| Push tx | `0xe56ca590ba08fd2d09d04e478b16933f215f0c64e435c0e8be0b9d85116fe369` |
+| Sepolia pin | block `11763025` |
+| Stored at Push block | `23493111` |
+| resultData | `0x…9514afefa28aa2aa` = 10742404454944514730 (10,742,404,454,944.514730 USDC) |
+| Verified | `hasResult(id) == true` on `0x…b2`; stored bytes equal the read's `raw.resultData`; `outcome == SUCCESS` |

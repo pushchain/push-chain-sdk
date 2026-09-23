@@ -61,5 +61,9 @@ d('read state › expiry', () => {
 
     const ids = tracker.getIds();
     expect(ids[ids.length - 1]).toBe('READ-TX-199-02');
+    // The confirmed expiry refund is announced too, right before the terminal event.
+    if (done.fees.refunded !== undefined) expect(ids[ids.length - 2]).toBe('READ-TX-106-05');
+    // The request expired while wait() was polling, so the approaching-expiry warning fired (once per wait()).
+    expect(ids.filter((id) => id === 'READ-TX-105-04').length).toBeGreaterThanOrEqual(1);
   }, 300_000);
 });

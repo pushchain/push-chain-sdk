@@ -117,11 +117,8 @@ export function encodeEvmQueryEnvelope(query: EvmReadQuery, options: { blockNumb
         if (!item || item.type !== 'function') {
           throw new InvalidReadQueryError(`function not found in abi: ${query.functionName}`);
         }
-        if (item.stateMutability !== 'view' && item.stateMutability !== 'pure') {
-          throw new InvalidReadQueryError(
-            `${query.functionName} is ${item.stateMutability}; reads must target view/pure functions`,
-          );
-        }
+        // Any mutability: validators run the call as an eth_call simulation at the
+        // pinned block, so nonpayable/payable functions return data and never execute.
         callData = encodeFunctionData({
           abi: query.abi,
           functionName: query.functionName,

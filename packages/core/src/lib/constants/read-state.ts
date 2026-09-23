@@ -9,7 +9,7 @@
 /** Hard upper bound on the gas an app callback may declare — `ReadTypes.sol:50`. */
 export const MAX_CALLBACK_GAS_LIMIT = 1_000_000n;
 
-/** Registry default; large results may need an explicit override up to the maximum. */
+/** Default callback gas (registry and custom targets); large results may need an explicit override up to the maximum. */
 export const REGISTRY_CALLBACK_GAS = 500_000n;
 
 /** Verified proxy on Donut. Other networks intentionally have no default receiver. */
@@ -68,6 +68,12 @@ export const READ_TRACK_MIN_POLL_INTERVAL_MS = 500;
 
 /** Default `wait()` timeout is `expiryBlocks × PUSH_BLOCK_TIME_MS`, capped here. */
 export const READ_TRACK_MAX_TIMEOUT_MS = 180_000;
+
+/** A prepared read older than this is announced stale (READ-TX-102-04) and revalidated against fresh preflight. */
+export const READ_PREFLIGHT_STALE_MS = 60_000;
+
+/** `wait()` announces READ-TX-105-04 once this few Push blocks (~40 s) remain before expiry. */
+export const READ_EXPIRY_WARNING_BLOCKS = 30n;
 
 /** How long `trackRead` keeps looking for a record the node has not ingested yet. */
 export const READ_TRACK_LOOKUP_TIMEOUT_MS = 30_000;

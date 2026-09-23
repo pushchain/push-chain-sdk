@@ -4,7 +4,7 @@ import { bytesToHex, decodeAbiParameters, encodeAbiParameters, type Hex } from '
 import { READ_NAMESPACE } from '../../constants/read-state';
 import { InvalidReadQueryError } from '../errors';
 import type { EncodedReadQuery, ReadResultShape, SvmReadQuery } from '../read-state.types';
-import { accountCoder } from '../svm-account';
+import { resolveAccountName, validateIdl } from '../svm-account';
 
 /** `universalClient/externalchains/svm/read_envelope.go` — solanaQueryType. */
 export const SVM_QUERY_TYPE = {
@@ -89,9 +89,12 @@ export function encodeSvmQueryEnvelope(query: SvmReadQuery, options: { minSlot?:
       break;
     case 'rawAccountData':
       queryType = SVM_QUERY_TYPE.RAW_ACCOUNT_DATA;
-      if (query.idl !== undefined || query.accountName !== undefined) {
-        accountCoder(query.idl!, query.accountName!);
-        resultShape = { kind: 'svmAccount', idl: query.idl!, accountName: query.accountName! };
+      if (query.idl !== undefined) {
+        validateIdl(query.idl);
+        const accountName = query.accountName === undefined ? undefined : resolveAccountName(query.idl, query.accountName);
+        resultShape = accountName === undefined ? { kind: 'svmAccount', idl: query.idl } : { kind: 'svmAccount', idl: query.idl, accountName };
+      } else if (query.accountName !== undefined) {
+        throw new InvalidReadQueryError('accountName needs idl');
       } else resultShape = { kind: 'raw' };
       break;
     default:
