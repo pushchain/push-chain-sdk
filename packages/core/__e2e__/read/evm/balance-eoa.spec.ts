@@ -31,6 +31,11 @@ d('read state › EVM balance from a Push EOA', () => {
     expect(prepared.spec.blockNumber).toBe(prepared.preflight.observedChainHeight - 1n);
     expect(prepared.fees.total).toBe(prepared.value);
     expect(prepared.warnings).toEqual([]);
+    // Callback gas is optional for a custom target and defaults to the registry's 500_000n.
+    const defaulted = await client.universal.prepareRead(SUBJECT, {
+      chain: CHAIN.ETHEREUM_SEPOLIA, callback: { target: FULL_BUDGET_CLIENT }, expiryBlocks: SLOW_PATH.expiryBlocks,
+    });
+    expect(defaulted.callbackGasLimit).toBe(READ.REGISTRY_CALLBACK_GAS);
 
     const { txHash, read } = await sendRead(client, prepared, FULL_BUDGET_CLIENT);
     expect(read.txHash).toBe(txHash);

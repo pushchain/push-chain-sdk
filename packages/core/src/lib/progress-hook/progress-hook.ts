@@ -1406,6 +1406,27 @@ const RAW_HOOKS_READ: {
     response: { txHash, requestId, logIndex },
     level: 'SUCCESS',
   }),
+  [PROGRESS_HOOK.READ_TX_104_03]: (ref: { requestId: string } | { txHash: string }) => ({
+    id: PROGRESS_HOOK.READ_TX_104_03,
+    title: 'Looking Up Request',
+    message: `Looking up ${'requestId' in ref ? `read ${ref.requestId}` : `reads in ${ref.txHash}`} on Push Chain`,
+    response: { ...ref },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.READ_TX_104_04]: (requestId: string, status: string) => ({
+    id: PROGRESS_HOOK.READ_TX_104_04,
+    title: 'Request Found',
+    message: `Read ${requestId} found (status ${status})`,
+    response: { requestId, status },
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.READ_TX_104_05]: (ref: { requestId: string } | { txHash: string }, elapsedMs: number) => ({
+    id: PROGRESS_HOOK.READ_TX_104_05,
+    title: 'Request Not Found',
+    message: `No read found for ${'requestId' in ref ? ref.requestId : ref.txHash} after ${Math.round(elapsedMs / 1000)}s`,
+    response: { ...ref, elapsedMs },
+    level: 'ERROR',
+  }),
   [PROGRESS_HOOK.READ_TX_105_01]: (requestId: string) => ({
     id: PROGRESS_HOOK.READ_TX_105_01,
     title: 'Awaiting Quorum',

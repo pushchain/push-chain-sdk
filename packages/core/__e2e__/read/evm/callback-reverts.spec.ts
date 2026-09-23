@@ -38,6 +38,12 @@ d('read state › reverting callback', () => {
     const ids = tracker.getIds();
     expect(ids).toContain('READ-TX-106-03');
     expect(ids).not.toContain('READ-TX-106-02');
-    expect(ids[ids.length - 1]).toBe('READ-TX-199-01');
+    // It did not work, so it ends on 199-02 named by its outcome, never on the SUCCESS-level 199-01.
+    expect(done.outcome).toBe(READ.OUTCOME.CALLBACK_FAILED);
+    expect(ids).not.toContain('READ-TX-199-01');
+    expect(ids[ids.length - 1]).toBe('READ-TX-199-02');
+    expect(tracker.events.at(-1)?.event.response).toMatchObject({ requestId: done.requestId, status: 'CALLBACK_FAILED' });
+    expect(done.requestIdUint).toBe(BigInt(done.requestId));
+    expect(done.explorerUrl).toBe(`https://donut.push.network/tx/${done.txHash}`);
   }, SLOW_PATH.jestTimeoutMs);
 });

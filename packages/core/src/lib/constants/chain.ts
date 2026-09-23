@@ -271,7 +271,7 @@ export const CHAIN_INFO: Record<
     confirmations: 1,
     fastConfirmations: 0,
     timeout: 30000,
-    explorerUrl: 'https://explorer.donut.push.org',
+    explorerUrl: 'https://donut.push.network',
     // Push Chain AMM - Uniswap V3
     // Source: https://push.org/agents/contract-addresses.json
     dex: {

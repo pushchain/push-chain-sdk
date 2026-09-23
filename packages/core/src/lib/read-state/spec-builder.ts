@@ -13,7 +13,7 @@ import {
 import { UNIVERSAL_CALLBACK_EVM } from '../constants/abi/universalCallback.evm';
 import { UEA_FACTORY_ABI } from '../constants/abi/uea-factory';
 import { UEA_FACTORY } from '../constants/chain';
-import { DEFAULT_EXPIRY_BLOCKS, MIN_CONFIRMATIONS_FLOOR, READ_NAMESPACE } from '../constants/read-state';
+import { DEFAULT_EXPIRY_BLOCKS, MIN_CONFIRMATIONS_FLOOR, READ_NAMESPACE, READ_PREFLIGHT_STALE_MS } from '../constants/read-state';
 import { sizeCallbackBudget } from './budget';
 import { computeReadQueryKey } from './registry';
 import { resolveDestination } from './destination';
@@ -226,7 +226,7 @@ export async function simulateRead(
   opts: { appContract: Address; callbackSelector: Hex; staleAfterMs?: number },
 ): Promise<SimulateReadResult> {
   const age = Date.now() - prepared.preflight.fetchedAt;
-  if (age > (opts.staleAfterMs ?? 60_000)) {
+  if (age > (opts.staleAfterMs ?? READ_PREFLIGHT_STALE_MS)) {
     prepared.warnings.push(`preflight is ${Math.round(age / 1000)} s old — pushBlockNumber moves every block; rebuild before sending`);
   }
   try {

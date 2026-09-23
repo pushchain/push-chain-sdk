@@ -142,6 +142,7 @@ export {
   UNIVERSAL_READ_STATUS,
   READ_STATUS,
   READ_ERROR_CODE,
+  READ_OUTCOME,
   CONTRACT_REQUEST_STATUS,
   TERMINAL_READ_STATUSES,
 } from './read-state/read-state.types';

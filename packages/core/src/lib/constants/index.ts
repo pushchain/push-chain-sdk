@@ -16,7 +16,7 @@ import {
   WEB2_DEFAULT_TIMEOUT_MS,
   WEB2_MAX_EXTRACT_ENTRIES,
 } from './read-state';
-import { UNIVERSAL_READ_STATUS, READ_STATUS, READ_ERROR_CODE } from '../read-state/read-state.types';
+import { UNIVERSAL_READ_STATUS, READ_STATUS, READ_ERROR_CODE, READ_OUTCOME } from '../read-state/read-state.types';
 
 /** `PushChain.CONSTANTS.READ` — cross-chain read state. Values verified against the deployed UniversalCallback. */
 export const READ_CONSTANTS = {
@@ -36,6 +36,7 @@ export const READ_CONSTANTS = {
   STATUS: UNIVERSAL_READ_STATUS,
   RESULT_STATUS: READ_STATUS,
   ERROR_CODE: READ_ERROR_CODE,
+  OUTCOME: READ_OUTCOME,
 } as const;
 export type {
   MoveableToken,

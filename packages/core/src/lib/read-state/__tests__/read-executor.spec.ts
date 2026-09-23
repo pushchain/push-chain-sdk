@@ -54,6 +54,21 @@ describe('executeReads app-contract path', () => {
     trackRead.mockImplementation(async (ref) => ref.txHash === hash ? [a] : kind === 'extra' ? [b, response(p, 3)] : []);
     await expect(executeReads(deps, [p, p])).rejects.toMatchObject({ code: 'READ_REQUEST_MISMATCH', txHash: secondHash, transactionHashes: [hash, secondHash] });
   });
+  it('announces a stale prepared read (READ-TX-102-04) before revalidating it', async () => {
+    const p = prepared(), r = response(p, 1);
+    p.preflight.fetchedAt = Date.now() - 61_000;
+    const ids: string[] = [];
+    const { deps } = setup([r]);
+    await executeReads(deps, [p], { progressHook: (e) => ids.push(e.id) });
+    expect(ids).toContain('READ-TX-102-04');
+    expect(deps.revalidateRead).toHaveBeenCalledWith(p);
+  });
+  it('a fresh prepared read is not announced stale', async () => {
+    const p = prepared(), r = response(p, 1);
+    const ids: string[] = [];
+    await executeReads(setup([r]).deps, [p], { progressHook: (e) => ids.push(e.id) });
+    expect(ids).not.toContain('READ-TX-102-04');
+  });
   it('empty batches perform no execution or tracking', async () => {
     const { deps, execute, trackRead } = setup([]);
     await expect(executeReads(deps, [])).rejects.toThrow(/at least one prepared read/);

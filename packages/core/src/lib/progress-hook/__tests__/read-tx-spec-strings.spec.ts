@@ -27,6 +27,10 @@ const rows: Row[] = [
   [PROGRESS_HOOK.READ_TX_103_03, [['authorization']], 'Sensitive Header Detected', 'WARNING', { matchedHeaders: ['authorization'] }],
   [PROGRESS_HOOK.READ_TX_104_01, [], 'Broadcasting Read Request', 'INFO', { stage: 'broadcasting' }],
   [PROGRESS_HOOK.READ_TX_104_02, [txHash, requestId, 1], 'Request Confirmed, Read Detected', 'SUCCESS', { txHash, requestId, logIndex: 1 }],
+  [PROGRESS_HOOK.READ_TX_104_03, [{ requestId }], 'Looking Up Request', 'INFO', { requestId }],
+  [PROGRESS_HOOK.READ_TX_104_03, [{ txHash }], 'Looking Up Request', 'INFO', { txHash }],
+  [PROGRESS_HOOK.READ_TX_104_04, [requestId, 'FULFILLED'], 'Request Found', 'SUCCESS', { requestId, status: 'FULFILLED' }],
+  [PROGRESS_HOOK.READ_TX_104_05, [{ requestId }, 30_000], 'Request Not Found', 'ERROR', { requestId, elapsedMs: 30_000 }],
   [PROGRESS_HOOK.READ_TX_105_01, [requestId], 'Awaiting Quorum', 'INFO', { requestId, status: 'PENDING' }],
   [PROGRESS_HOOK.READ_TX_105_02, [requestId], 'Voting In Progress', 'INFO', { requestId, status: 'VOTING' }],
   [PROGRESS_HOOK.READ_TX_105_03, [requestId, 1n, 3n], 'Awaiting Destination Confirmations', 'INFO', { requestId, current: '1', required: '3' }],
@@ -62,7 +66,7 @@ describe('READ-TX spec strings', () => {
 
   it('every READ_TX id in the enum has a hook, and none leaks a bigint into response', () => {
     const ids = Object.values(PROGRESS_HOOK).filter((v) => v.startsWith('READ-TX-'));
-    expect(ids).toHaveLength(31);
+    expect(ids).toHaveLength(34);
     for (const id of ids) expect(typeof PROGRESS_HOOKS[id]).toBe('function');
     for (const [id, args] of rows) {
       expect(JSON.stringify(PROGRESS_HOOKS[id](...args).response)).toBeDefined(); // throws on bigint

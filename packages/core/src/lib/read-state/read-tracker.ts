@@ -20,6 +20,7 @@ import { PUSH_CHAIN_INFO, UNIVERSAL_CALLBACK_ADDRESSES } from '../constants/chai
 import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 import {
   PUSH_BLOCK_TIME_MS,
+  READ_EXPIRY_WARNING_BLOCKS,
   READ_NAMESPACE,
   READ_TRACK_LOOKUP_TIMEOUT_MS,
   READ_TRACK_MAX_TIMEOUT_MS,
@@ -34,6 +35,7 @@ import { decodeEvmQueryEnvelope, decodeSvmQueryEnvelope, decodeWeb2QueryEnvelope
 import { ReadDecodeError, ReadNotFoundError, ReadStateError, ReadTimeoutError } from './errors';
 import { parseFulfilOutcome } from './read-events';
 import {
+  READ_OUTCOME,
   READ_STATUS,
   TERMINAL_READ_STATUSES,
   UNIVERSAL_READ_STATUS,
@@ -102,14 +104,21 @@ async function fetchRecords(deps: TrackReadDeps, ref: ReadRef): Promise<Universa
 /** A request is indexed when its block is processed — briefly retry a miss. */
 async function lookupWithRetry(deps: TrackReadDeps, ref: ReadRef, opts: ReadLifecycleOptions): Promise<UniversalRead[]> {
   const now = deps.now ?? Date.now;
+  const emit: ReadHookEmitter = deps.emit ?? (() => undefined);
   const interval = pollInterval(opts);
   const start = now();
+  const hookRef = 'txHash' in ref ? { txHash: ref.txHash } : { requestId: toRequestIdHex(ref.requestId) };
+  emit(PROGRESS_HOOK.READ_TX_104_03, hookRef);
   for (;;) {
     const records = await fetchRecords(deps, ref);
-    if (records.length > 0) return records;
+    if (records.length > 0) {
+      for (const r of records) emit(PROGRESS_HOOK.READ_TX_104_04, toRequestIdHex(r.id as Hex), statusName(r.status as number));
+      return records;
+    }
     if (now() - start + interval > READ_TRACK_LOOKUP_TIMEOUT_MS) break;
     await sleep(interval);
   }
+  emit(PROGRESS_HOOK.READ_TX_104_05, hookRef, now() - start);
   const label = 'txHash' in ref ? ref.txHash : toRequestIdHex(ref.requestId);
   throw new ReadNotFoundError(label, 'txHash' in ref ? { txHash: ref.txHash } : { requestId: label });
 }
@@ -187,6 +196,8 @@ async function buildResponse(deps: TrackReadDeps, record: UniversalRead, opts: R
 
   const txHash = req.requestedTxHash.toLowerCase() as Hex;
   const response: UniversalReadResponse = {
+    requestIdUint: BigInt(requestId),
+    outcome: deriveReadOutcome(status, raw?.status, callbackDelivered, decodeError),
     requestId,
     txHash,
     destination,
@@ -218,20 +229,49 @@ async function buildResponse(deps: TrackReadDeps, record: UniversalRead, opts: R
   return response;
 }
 
+/**
+ * One answer to "did it work". Order matters: a source error is delivered to the
+ * callback as an ERROR result, so it is reported before any callback outcome.
+ */
+export function deriveReadOutcome(
+  status: UNIVERSAL_READ_STATUS,
+  rawStatus: READ_STATUS | undefined,
+  callbackDelivered: boolean | undefined,
+  decodeError: string | undefined,
+): READ_OUTCOME {
+  switch (status) {
+    case UNIVERSAL_READ_STATUS.EXPIRED: return READ_OUTCOME.EXPIRED;
+    case UNIVERSAL_READ_STATUS.FAILED: return READ_OUTCOME.FAILED;
+    case UNIVERSAL_READ_STATUS.ABORTED: return READ_OUTCOME.ABORTED;
+    case UNIVERSAL_READ_STATUS.FULFILLED:
+      if (rawStatus !== undefined && rawStatus !== READ_STATUS.SUCCESS) return READ_OUTCOME.SOURCE_ERROR;
+      if (callbackDelivered === false) return READ_OUTCOME.CALLBACK_FAILED;
+      if (callbackDelivered !== true) return READ_OUTCOME.UNKNOWN;
+      if (decodeError !== undefined) return READ_OUTCOME.DECODE_FAILED;
+      return rawStatus === READ_STATUS.SUCCESS ? READ_OUTCOME.SUCCESS : READ_OUTCOME.UNKNOWN;
+    default:
+      return READ_OUTCOME.PENDING;
+  }
+}
+
 /** Parse every pc_tx receipt (fulfil, settle) into one merged outcome. Missing receipts are skipped. */
 async function collectOutcome(deps: TrackReadDeps, record: UniversalRead, requestId: Hex): Promise<FulfilOutcome> {
   const uc = UNIVERSAL_CALLBACK_ADDRESSES[deps.pushNetwork];
   const merged: FulfilOutcome = {};
-  for (const t of record.pcTx) {
-    if (!t.txHash) continue;
+  // Fetch in parallel, merge in pc_tx order (settle facts overwrite fulfil facts as before).
+  const outcomes = await Promise.all(record.pcTx.map(async (t) => {
+    if (!t.txHash) return undefined;
     try {
       const receipt = await deps.pushClient.getTransactionReceiptWithArchiveFallback(t.txHash as Hex);
-      const o = parseFulfilOutcome(receipt, uc, requestId);
-      for (const [k, v] of Object.entries(o)) {
-        if (v !== undefined) (merged as Record<string, unknown>)[k] = v;
-      }
+      return parseFulfilOutcome(receipt, uc, requestId);
     } catch {
-      // pruned or not yet available — leave those fields undefined rather than guess
+      return undefined; // pruned or not yet available — leave those fields undefined rather than guess
+    }
+  }));
+  for (const o of outcomes) {
+    if (!o) continue;
+    for (const [k, v] of Object.entries(o)) {
+      if (v !== undefined) (merged as Record<string, unknown>)[k] = v;
     }
   }
   return merged;
@@ -310,7 +350,7 @@ function chainFromCaip2(caip2: string): CHAIN | typeof CHAIN.WEB2 | undefined {
 
 function explorerTxUrl(network: PUSH_NETWORK, txHash: Hex): string {
   const chain = network === PUSH_NETWORK.MAINNET ? CHAIN.PUSH_MAINNET : network === PUSH_NETWORK.LOCALNET ? CHAIN.PUSH_LOCALNET : CHAIN.PUSH_TESTNET_DONUT;
-  const base = PUSH_CHAIN_INFO[chain].explorerUrl ?? 'https://explorer.donut.push.org';
+  const base = PUSH_CHAIN_INFO[chain].explorerUrl ?? 'https://donut.push.network';
   return `${base}/tx/${txHash}`;
 }
 
@@ -351,6 +391,8 @@ export async function waitForRead(deps: TrackReadDeps, initial: UniversalReadRes
   const interval = pollInterval(opts);
   const start = now();
   let timeoutMs = opts.timeoutMs ?? READ_TRACK_MAX_TIMEOUT_MS;
+  // Push head at a known time; later heights are estimated from the block time (no extra RPC per poll).
+  let head: { height: bigint; at: number } | undefined;
 
   // Resolve a fresh head for each wait/resume, only when a default is needed.
   // Bound this RPC too: a stalled height lookup must not hang the promise forever.
@@ -367,11 +409,26 @@ export async function waitForRead(deps: TrackReadDeps, initial: UniversalReadRes
           }, READ_TRACK_MAX_TIMEOUT_MS);
         }),
       ]);
+      head = { height, at: now() };
       timeoutMs = Math.min(READ_TRACK_MAX_TIMEOUT_MS, now() - start + defaultWaitTimeoutMs(height, initial.request.spec.expiryPushChainHeight));
     } finally {
       if (timer !== undefined) clearTimeout(timer);
     }
+  } else if (!initial.isTerminal) {
+    // Explicit timeout: the head only feeds the expiry warning, so never block on it.
+    deps.pushClient.publicClient.getBlockNumber({ cacheTime: 0 })
+      .then((height) => { head = { height, at: now() }; })
+      .catch(() => undefined);
   }
+  let expiryWarned = false;
+  const warnNearExpiry = (r: UniversalReadResponse) => {
+    if (expiryWarned || !head) return;
+    const estimated = head.height + BigInt(Math.floor((now() - head.at) / PUSH_BLOCK_TIME_MS));
+    const left = r.request.spec.expiryPushChainHeight - estimated;
+    if (left > READ_EXPIRY_WARNING_BLOCKS) return;
+    expiryWarned = true;
+    emit(PROGRESS_HOOK.READ_TX_105_04, r.requestId, left > 0n ? left : 0n);
+  };
 
   emit(PROGRESS_HOOK.READ_TX_104_02, initial.txHash, initial.requestId, initial.request.logIndex);
 
@@ -417,6 +474,7 @@ export async function waitForRead(deps: TrackReadDeps, initial: UniversalReadRes
       if (current.status === UNIVERSAL_READ_STATUS.PENDING) emit(PROGRESS_HOOK.READ_TX_105_01, current.requestId);
       else if (current.status === UNIVERSAL_READ_STATUS.VOTING) emit(PROGRESS_HOOK.READ_TX_105_02, current.requestId);
     }
+    warnNearExpiry(current);
     const elapsed = now() - start;
     if (elapsed >= timeoutMs) timeout();
     await sleep(Math.min(interval, timeoutMs - elapsed));
@@ -429,10 +487,17 @@ function emitTerminal(emit: ReadHookEmitter, r: UniversalReadResponse): void {
     if (r.callbackDelivered === true) emit(PROGRESS_HOOK.READ_TX_106_02, r.requestId);
     else if (r.callbackDelivered === false) emit(PROGRESS_HOOK.READ_TX_106_03, r.requestId, r.callbackFailReason);
     if (r.fees.burned !== undefined) emit(PROGRESS_HOOK.READ_TX_106_04, r.requestId, r.fees.burned, r.fees.refunded ?? 0n);
-    if (r.fees.refundFailed === true) emit(PROGRESS_HOOK.READ_TX_106_06, r.requestId, r.fees.refunded, r.request.refundTo);
-    else if (r.fees.refunded !== undefined) emit(PROGRESS_HOOK.READ_TX_106_05, r.requestId, r.fees.refunded, r.request.refundTo);
+  }
+  // Refund facts exist for FULFILLED/FAILED (settle logs) and EXPIRED (EndBlock logs).
+  if (r.fees.refundFailed === true) emit(PROGRESS_HOOK.READ_TX_106_06, r.requestId, r.fees.refunded, r.request.refundTo);
+  else if (r.fees.refunded !== undefined) emit(PROGRESS_HOOK.READ_TX_106_05, r.requestId, r.fees.refunded, r.request.refundTo);
+  // 199-01 means it worked. A FULFILLED read that did not (source error, callback
+  // failure, undecodable, unconfirmed delivery) ends on 199-02 named by its outcome.
+  if (r.outcome === READ_OUTCOME.SUCCESS) {
     emit(PROGRESS_HOOK.READ_TX_199_01, r.requestId, r.value, r.raw?.resultData ?? '0x', r.callbackDelivered);
     return;
   }
-  emit(PROGRESS_HOOK.READ_TX_199_02, r.requestId, statusName(r.status), r.raw?.errorCode, r.errorMsg, r.fees.refunded);
+  const ended = r.status === UNIVERSAL_READ_STATUS.FULFILLED ? r.outcome : statusName(r.status);
+  const detail = r.errorMsg || r.decodeError || '';
+  emit(PROGRESS_HOOK.READ_TX_199_02, r.requestId, ended, r.raw?.errorCode, detail, r.fees.refunded);
 }

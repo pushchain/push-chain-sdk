@@ -74,13 +74,22 @@ describe('EVM query envelope', () => {
     expect(callData.slice(0, 10)).toBe('0x70a08231'); // balanceOf(address)
   });
 
-  it('rejects a non-view function', () => {
-    expect(() =>
-      encodeEvmQueryEnvelope(
-        { type: 'contractCall', target: DEAD, abi: erc20Abi, functionName: 'transfer', args: [DEAD, 1n] },
-        { blockNumber: 1n },
-      ),
-    ).toThrow(InvalidReadQueryError);
+  it('encodes nonpayable and payable functions — validators simulate them with eth_call', () => {
+    const transfer = encodeEvmQueryEnvelope(
+      { type: 'contractCall', target: DEAD, abi: erc20Abi, functionName: 'transfer', args: [DEAD, 1n] },
+      { blockNumber: 1n },
+    );
+    expect(decodeEvmQueryEnvelope(transfer.encoded).payload).toContain('a9059cbb'); // transfer selector in the calldata
+    expect(transfer.resultShape).toMatchObject({ kind: 'evmCall', functionName: 'transfer' });
+    expect(decodeReadResult(encodeAbiParameters([{ type: 'bool' }], [true]), transfer.resultShape)).toEqual({ kind: 'evmCall', value: true });
+
+    const payableAbi = parseAbi(['function aggregate((address target, bytes callData)[] calls) payable returns (uint256 blockNumber, bytes[] returnData)']);
+    const aggregate = encodeEvmQueryEnvelope(
+      { type: 'contractCall', target: DEAD, abi: payableAbi, functionName: 'aggregate', args: [[{ target: DEAD, callData: '0x18160ddd' }]] },
+      { blockNumber: 1n },
+    );
+    const ret = encodeAbiParameters([{ type: 'uint256' }, { type: 'bytes[]' }], [7n, ['0x01']]);
+    expect(decodeReadResult(ret, aggregate.resultShape)).toEqual({ kind: 'evmCall', value: [7n, ['0x01']] });
   });
 
   it('rejects an unknown function and a bad target', () => {
