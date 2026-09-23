@@ -1,7 +1,13 @@
-// customPropGTagEvent=universal_read_registry
+// customPropHighlightRegexStart=universal.read
+// customPropHighlightRegexEnd=\);
+// customPropGTagEvent=universal_read_evm_balance
 import { PushChain } from '@pushchain/core';
 import { ethers } from 'ethers';
 import * as readline from 'node:readline/promises';
+
+// vitalik.eth on Ethereum Sepolia, the public ENS address.
+// https://sepolia.etherscan.io/address/0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045
+const HOLDER = '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045';
 
 async function main() {
   const provider = new ethers.JsonRpcProvider('https://evm.donut.rpc.push.org/');
@@ -15,19 +21,22 @@ async function main() {
       network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
     });
 
-    const pending = await pushChainClient.universal.read('0x000000000000000000000000000000000000dEaD', {
+    console.log('Submitting the read request to Push Chain...');
+    const pending = await pushChainClient.universal.read(HOLDER, {
       chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
       waitForCompletion: false,
+      progressHook: (progress) => console.log(progress.id + ': ' + progress.title),
     });
     console.log('Save requestId:', pending.requestId);
     console.log('Save txHash:', pending.txHash);
+
+    console.log('Waiting for validators to reach quorum and deliver the callback (usually under a minute)...');
     const done = await pending.wait();
-    const READ = PushChain.CONSTANTS.READ;
-    if (done.status !== READ.STATUS.FULFILLED || done.raw?.status !== READ.RESULT_STATUS.SUCCESS || done.callbackDelivered !== true || done.decodeError) {
-      throw new Error('No usable result: ' + JSON.stringify({ status: done.status, raw: done.raw, delivered: done.callbackDelivered, decodeError: done.decodeError }));
+    if (done.outcome !== PushChain.CONSTANTS.READ.OUTCOME.SUCCESS) {
+      console.log('Read did not succeed:', done.outcome, done.raw?.errorCode ?? '', done.callbackFailReason ?? '', done.decodeError ?? '');
+      return;
     }
-    console.log('Value:', JSON.stringify(done.value, (_, value) => typeof value === 'bigint' ? value.toString() : value));
-    console.log('Callback delivered:', done.callbackDelivered);
+    console.log('Value:', ethers.formatEther(done.value), 'ETH');
   } finally {
     rl.close();
     provider.destroy();

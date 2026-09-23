@@ -1,7 +1,17 @@
+// customPropHighlightRegexStart=universal.executeReads
+// customPropHighlightRegexEnd=\);
 // customPropGTagEvent=universal_read_batch
 import { PushChain } from '@pushchain/core';
 import { ethers } from 'ethers';
 import * as readline from 'node:readline/promises';
+
+// vitalik.eth on Ethereum Sepolia, the public ENS address.
+// https://sepolia.etherscan.io/address/0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045
+const HOLDER = '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045';
+
+// Push gateway vault PDA on Solana Devnet, derived with the seed 'vault' from the Solana Universal Gateway in the Smart Contract Address Book.
+// https://explorer.solana.com/address/89q1AUFb7YREHtjc1aYaPywovPq6tb3GYNPyDUJ3rshi?cluster=devnet
+const VAULT_PDA = '89q1AUFb7YREHtjc1aYaPywovPq6tb3GYNPyDUJ3rshi';
 
 async function main() {
   const provider = new ethers.JsonRpcProvider('https://evm.donut.rpc.push.org/');
@@ -15,35 +25,32 @@ async function main() {
       network: PushChain.CONSTANTS.PUSH_NETWORK.TESTNET_DONUT,
     });
 
-    const first = await pushChainClient.universal.prepareRead('0x000000000000000000000000000000000000dEaD', {
+    console.log('Preparing two reads and quoting their fees...');
+    const ethBalance = await pushChainClient.universal.prepareRead(HOLDER, {
       chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
     });
-    const second = await pushChainClient.universal.prepareRead('https://jsonplaceholder.typicode.com/todos/1', {
-      chain: PushChain.CONSTANTS.CHAIN.WEB2,
-      web2: { extract: [{ path: '$.id', valueType: 'uint256' }, { path: '$.completed', valueType: 'bool' }] },
-    });
-    const tokenAbi = [{ type: 'function', name: 'totalSupply', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] }];
-    const third = await pushChainClient.universal.prepareRead('0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', {
-      chain: PushChain.CONSTANTS.CHAIN.ETHEREUM_SEPOLIA,
-      abi: tokenAbi,
-      functionName: 'totalSupply',
-    });
-    const fourth = await pushChainClient.universal.prepareRead('11111111111111111111111111111111', {
+    const solBalance = await pushChainClient.universal.prepareRead(VAULT_PDA, {
       chain: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET,
     });
-    const batch = await pushChainClient.universal.executeReads([first, second, third, fourth], { waitForCompletion: false });
+    console.log('Total fee:', ethers.formatEther(ethBalance.fees.total + solBalance.fees.total), 'PC');
+
+    console.log('Submitting both reads to Push Chain...');
+    const batch = await pushChainClient.universal.executeReads([ethBalance, solBalance], {
+      waitForCompletion: false,
+      progressHook: (progress) => console.log(progress.id + ': ' + progress.title),
+    });
     console.log('Submission is atomic:', batch.atomic);
     console.log('Save request IDs:', batch.reads.map(read => read.requestId).join(', '));
     console.log('Save transaction hashes:', (batch.transactionHashes || [batch.txHash]).join(', '));
-    const results = await batch.wait();
-    for (const done of results) {
-      const READ = PushChain.CONSTANTS.READ;
-      if (done.status !== READ.STATUS.FULFILLED || done.raw?.status !== READ.RESULT_STATUS.SUCCESS || done.callbackDelivered !== true || done.decodeError) {
-        throw new Error('No usable result: ' + JSON.stringify({ status: done.status, raw: done.raw, delivered: done.callbackDelivered, decodeError: done.decodeError }));
-      }
-      console.log('Value:', JSON.stringify(done.value, (_, value) => typeof value === 'bigint' ? value.toString() : value));
-      console.log('Callback delivered:', done.callbackDelivered);
+
+    console.log('Waiting for validators to reach quorum and deliver both callbacks (usually under a minute)...');
+    const [eth, sol] = await batch.wait();
+    // outcome is the success signal; value is set only when it is SUCCESS
+    for (const read of [eth, sol]) {
+      if (read.outcome !== PushChain.CONSTANTS.READ.OUTCOME.SUCCESS) throw new Error('Read ' + read.requestId + ' ended ' + read.outcome);
     }
+    console.log('Value:', ethers.formatEther(eth.value), 'ETH');
+    console.log('Value:', ethers.formatUnits(sol.value, 9), 'SOL');
   } finally {
     rl.close();
     provider.destroy();

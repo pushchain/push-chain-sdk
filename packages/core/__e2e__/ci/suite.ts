@@ -673,8 +673,8 @@ export const SCENARIOS: Scenario[] = [
     note: 'Funds a fresh wallet with 0.5 PC, as the docs prompt will.',
   },
   {
-    id: 'read-docs-registry', group: 'read', file: F.readPlaygrounds,
-    grep: 'docs-examples › 13-read-state playgrounds universal_read_registry', needs: { masterPC: '0.1' },
+    id: 'read-docs-evm-balance', group: 'read', file: F.readPlaygrounds,
+    grep: 'docs-examples › 13-read-state playgrounds universal_read_evm_balance', needs: { masterPC: '0.1' },
   },
   {
     id: 'read-docs-batch', group: 'read', file: F.readPlaygrounds,
@@ -683,7 +683,7 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'read-docs-resume', group: 'read', file: F.readPlaygrounds,
     grep: 'docs-examples › 13-read-state playgrounds universal_read_resume', needs: { masterPC: '0.1' },
-    note: 'Read-only resume; seeds a request if the registry example was not selected.',
+    note: 'Read-only resume (own request ID, predefined request ID, tx hash); seeds a request if the balance example was not selected.',
   },
   {
     id: 'read-app-batch-eoa',
