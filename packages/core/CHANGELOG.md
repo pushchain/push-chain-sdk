@@ -1,3 +1,60 @@
+@pushchain/core (unreleased)
+
+Changes on `feature/readstate-docs-parity` since 6.0.25, aligning Universal Read with the
+push-chain-website docs (PR #1244).
+
+### Breaking
+
+- Solana token reads detect SPL Token vs Token-2022 from the mint's owner. The
+  `tokenProgram` option is removed and now throws.
+- The Donut Universal Read Registry default is
+  `0x00000000000000000000000000000000000000b2`. Results stored on the previous
+  registry stay there; tracking by request ID still works.
+- `READ-TX-199-01` (level SUCCESS) now fires only when `outcome` is `SUCCESS`. A
+  FULFILLED read that did not work (source error, callback failure, undecodable
+  result, unconfirmed delivery) ends on `READ-TX-199-02`, whose `status` is the
+  outcome name.
+
+### Added
+
+- Solana account reads with `idl`, the counterpart of `abi`. The account layout is
+  picked by its 8-byte discriminator; the optional `functionName` names the layout
+  (snake, camel or Pascal case) and types `value`. With the program id as the
+  subject, `functionName` plus positional `args` derive the PDA from the seeds the
+  IDL declares. `accountName` is not supported and throws with a hint.
+- EVM contract-call reads accept any ABI function, including `nonpayable` and
+  `payable`. Validators run the call as an `eth_call` simulation at the pinned
+  block, so it returns data and never executes.
+- `response.outcome` (`PushChain.CONSTANTS.READ.OUTCOME`): one answer to "did it
+  work" — `SUCCESS`, `SOURCE_ERROR`, `CALLBACK_FAILED`, `DECODE_FAILED`,
+  `EXPIRED`, `FAILED`, `ABORTED`, `PENDING`, or `UNKNOWN` (delivery unconfirmed).
+- `response.requestIdUint`: the request ID as the `uint256` contracts key results by.
+- Progress events: `READ-TX-104-03` Looking Up Request, `104-04` Request Found,
+  `104-05` Request Not Found (lookup timeout), `105-04` Approaching Expiry (once per
+  `wait()`, at 30 or fewer Push blocks left) and `102-04` Preflight Stale (a read
+  prepared more than 60 s before `executeReads`).
+
+### Improved
+
+- `trackRead` on a settled read returns in about 1 s instead of about 19 s on
+  Donut. Fulfil and settle receipts are fetched in parallel, and Push receipts
+  are requested from the prune RPC and the archive at the same time.
+- `callback.gasLimit` is optional for custom targets and defaults to `500_000n`,
+  like the registry. Unused callback budget is refunded.
+- Refund events `READ-TX-106-05/06` also fire for expired reads.
+- `value` is typed `unknown` for ABIs not declared `as const`; a single-output
+  function decodes to the bare value, not an array.
+
+### Fixed
+
+- `explorerUrl` and Donut's viem `blockExplorers` pointed at
+  `explorer.donut.push.org`, which does not resolve. They now use
+  `https://donut.push.network`.
+- Refunds of expired reads older than the prune window came back `undefined`.
+  Cosmos block results now fall back to the archive RPC.
+
+---
+
 @pushchain/core@6.0.25 (2026-09-16)
 
 - docs: document read-state and transaction fixes
