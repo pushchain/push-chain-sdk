@@ -1,3 +1,12 @@
+@pushchain/core@6.0.26 (2026-09-23)
+
+- docs: changelog for read-state docs parity
+- feat: align read-state API with the Universal Read docs
+- fix: race prune and archive for Push receipts and block results
+- feat: add Solana account reads and update read registry
+
+---
+
 @pushchain/core (unreleased)
 
 Changes on `feature/readstate-docs-parity` since 6.0.25, aligning Universal Read with the
