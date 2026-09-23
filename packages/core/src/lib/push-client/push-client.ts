@@ -98,6 +98,13 @@ export class PushClient extends EvmClient {
    */
   private readonly archiveTendermintRpc: string[];
   private readonly archivePublicClient?: PublicClient;
+  /**
+   * Prune endpoints with transport retries off, raced against the archive. A
+   * receipt miss on the prune node answers -32002 "Requested resource not
+   * available" after ~8 s (measured on Donut 2026-09-23), and the shared
+   * client's `http({ retryCount: 5 })` would retry that on top.
+   */
+  private readonly pruneProbeClient?: PublicClient;
 
   constructor(clientOptions: PushClientOptions) {
     const pushChainKey = pushNetworkToChain(clientOptions.network);
@@ -121,6 +128,12 @@ export class PushClient extends EvmClient {
           archiveEvmUrls.map((url) =>
             http(url, { retryCount: 5, retryDelay: 500 })
           )
+        ),
+      });
+      this.pruneProbeClient = createPublicClient({
+        chain,
+        transport: fallback(
+          clientOptions.rpcUrls.map((url) => http(url, { retryCount: 0 }))
         ),
       });
     }
@@ -520,18 +533,22 @@ export class PushClient extends EvmClient {
    * no EVM-indexed tx or receipt. Attribute values are plain strings.
    */
   public async getBlockResultEvents(height: number): Promise<readonly { type: string; attributes: readonly { key: string; value: string }[] }[]> {
-    return this.executeWithRpcFallback(async (rpcUrl) => {
+    // Prune nodes drop old heights ("height N is not available"); the archive keeps them.
+    return this.executeWithArchiveFallback(async (rpcUrl) => {
       const url = `${rpcUrl.replace(/\/+$/, '')}/block_results?height=${height}`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP request failed: ${res.status} ${url}`);
-      const body = (await res.json()) as {
+      type Body = {
         error?: { message?: string; data?: string };
         result?: { finalize_block_events?: unknown; end_block_events?: unknown };
       };
-      if (body.error) throw new Error(`block_results ${height}: ${body.error.data ?? body.error.message ?? 'error'}`);
+      // CometBFT answers a pruned height with HTTP 500 plus a JSON-RPC error. Surface that
+      // error so it reads as a definite miss (→ archive), not a transient HTTP failure to retry.
+      const body = (await res.json().catch(() => undefined)) as Body | undefined;
+      if (body?.error) throw new Error(`block_results ${height}: ${body.error.data ?? body.error.message ?? 'error'}`);
+      if (!res.ok || !body) throw new Error(`HTTP request failed: ${res.status} ${url}`);
       const events = body.result?.finalize_block_events ?? body.result?.end_block_events ?? [];
       return events as readonly { type: string; attributes: readonly { key: string; value: string }[] }[];
-    }, 'getBlockResultEvents');
+    }, 'getBlockResultEvents', () => false);
   }
 
   /**
@@ -696,13 +713,27 @@ export class PushClient extends EvmClient {
   public async getTransactionReceiptWithArchiveFallback(
     txHash: `0x${string}`
   ): Promise<TransactionReceipt> {
-    try {
-      return await this.publicClient.getTransactionReceipt({ hash: txHash });
-    } catch (error) {
-      if (!this.hasArchiveEvm) throw error;
-      return (this.archivePublicClient as PublicClient).getTransactionReceipt({
-        hash: txHash,
+    if (!this.hasArchiveEvm || !this.pruneProbeClient) {
+      return this.publicClient.getTransactionReceipt({ hash: txHash });
+    }
+    // Race prune and archive; the first receipt wins. A pruned receipt costs one
+    // archive round trip, a fresh one the prune round trip (if the archive lags).
+    const prune = this.pruneProbeClient.getTransactionReceipt({ hash: txHash });
+    const archive = (this.archivePublicClient as PublicClient).getTransactionReceipt({
+      hash: txHash,
+    });
+    return firstFulfilled([archive, prune]);
+  }
+}
+
+/** First promise to resolve; if all reject, the last rejection. */
+function firstFulfilled<T>(promises: Promise<T>[]): Promise<T> {
+  return new Promise((resolve, reject) => {
+    let pending = promises.length;
+    for (const p of promises) {
+      p.then(resolve, (error) => {
+        if (--pending === 0) reject(error);
       });
     }
-  }
+  });
 }

@@ -33,4 +33,16 @@ describe('EndBlock RPC transport', () => {
     fetchMock.mockImplementation(async () => new Response(JSON.stringify({ error: { message: 'Internal error', data: 'height pruned' } })));
     await expect(client.getBlockResultEvents(42)).rejects.toThrow('height pruned');
   });
+
+  it('a height the prune node dropped (HTTP 500 + JSON-RPC error) is served by the archive, without transient backoff', async () => {
+    fetchMock.mockImplementation(async (url: string) => String(url).includes('archive')
+      ? new Response(JSON.stringify({ result: { finalize_block_events: events } }))
+      : new Response(JSON.stringify({ jsonrpc: '2.0', error: { code: -32603, message: 'Internal error', data: 'height 42 is not available, lowest height is 100' } }), { status: 500 }));
+    const started = Date.now();
+    expect(await client.getBlockResultEvents(42)).toEqual(events);
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls.filter((u) => u.includes('archive'))).toHaveLength(1);
+    // Read as a definite miss (100 ms between prune attempts), not an HTTP failure with 200→1600 ms backoff.
+    expect(Date.now() - started).toBeLessThan(1_500);
+  });
 });
