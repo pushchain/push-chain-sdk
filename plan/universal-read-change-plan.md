@@ -19,4 +19,6 @@ The SDK release unblocks the docs merge; the contracts/node asks are independent
 | # | Ask | Owner | Why |
 | --- | --- | --- | --- |
 | 1 | Add terminal statuses `CALLBACK_FAILED` and `SOURCE_ERROR` to `RequestStatus` in `ReadTypes.sol` and the node's `UniversalReadStatus` | Contracts + node | Today `FULFILLED` also covers a reverted callback and a source error. The SDK derives `outcome` meanwhile and will map 1:1 onto the new statuses. |
-| 2 | Decide the protocol read fee | Contracts + node | `estimateFee` returns 0 on every Donut source, so contract-built requests only fail by an underfunded callback budget. The docs need the final fee model. |
+| 2 | Merge or tag `feat-read-state` in push-chain-core-contracts | Contracts | Docs link to `blob/feat-read-state/...`; the SDK pins `f8d1a0c` in a comment. Both move to the merged commit after. |
+| 3 | Publish the `UniversalReadRegistry` source | Contracts | The deployed `0x…b2` source isn't in any repo we have; `requestOrderOf` / `readerOf` semantics were confirmed only by live calls. |
+| 4 | Decide the protocol read fee | Contracts + node | `estimateFee` returns 0 on every Donut source, so contract-built requests only fail by an underfunded callback budget. The docs need the final fee model. |
