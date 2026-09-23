@@ -439,3 +439,15 @@ Checked directly; all correct. Unchanged by the fixes.
       the release branch only; not re-checked on 2026-09-09.
 - [ ] **Commit a `UniversalCallback` deploy/upgrade script.** Donut was upgraded manually
       twice now; localnet and fresh-genesis chains still get placeholder bytecode.
+- [ ] **Terminal statuses `CALLBACK_FAILED` / `SOURCE_ERROR` (Universal Read docs item 5a) — asked 2026-09-23.**
+      `FULFILLED` currently means only "fulfil tx landed": it covers a reverted/out-of-gas
+      callback (`CallbackFailed`) and a source `ERROR` result. Ask: add both to
+      `RequestStatus` in `ReadTypes.sol` + the node's `UniversalReadStatus`, so FULFILLED means
+      "callback ran with a SUCCESS source result". Until then the SDK derives
+      `response.outcome` (`READ_OUTCOME`); it will map 1:1 onto the new statuses.
+- [ ] **Prune EVM RPC answers a receipt miss after ~8.3 s — found 2026-09-23 (infra).**
+      `eth_getTransactionReceipt` on `https://evm.donut.rpc.push.org/` returns -32002
+      "Requested resource not available" after ~8.3 s, even for a random hash (curl, twice).
+      The archive answers the same pruned receipt in ~0.4 s. The SDK now races prune and archive, so
+      read tracking no longer waits on it (trackRead 19.4 s → ~1 s), but every other client that
+      checks a pruned or not-yet-indexed receipt against the public RPC still pays 8 s.

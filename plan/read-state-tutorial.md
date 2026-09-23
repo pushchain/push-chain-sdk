@@ -211,7 +211,7 @@ The SDK queries the mint through the destination RPC to detect SPL Token or Toke
 
 Solana does not expose `blockNumber` or `minConfirmations` as public options. The SDK selects the finalized slot reference internally.
 
-To decode an Anchor account, use `read(accountAddress, { chain: CHAIN.SOLANA_DEVNET, idl, accountName: 'counter' })`. This requests existing account bytes, not instruction execution. IDL accounts use their exact IDL names and discriminators; decoded values use Anchor types such as BN and PublicKey. When resuming, supply `resultShape: { kind: 'svmAccount', idl, accountName: 'counter' }`. The node does not store the IDL or attest that the account belongs to the IDL's program; verify ownership separately when your application needs it.
+To decode an Anchor account, use `read(accountAddress, { chain: CHAIN.SOLANA_DEVNET, idl })`. The layout is picked by the account's 8-byte discriminator; pass `functionName: 'counter'` (any case style) to pin it and type `value`. To read a PDA, pass the program id as the subject with `functionName` and its seeds as `args`: `read(programId, { chain, idl, functionName: 'stake', args: [authority] })`. This requests existing account bytes, not instruction execution. Decoded values use Anchor types such as BN and PublicKey. When resuming, supply `resultShape: { kind: 'svmAccount', idl }`. The node does not store the IDL or attest that the account belongs to the IDL's program; verify ownership separately when your application needs it.
 
 ### Web2 JSON extraction
 
@@ -630,13 +630,11 @@ response.callbackDelivered
 A read can also be `FULFILLED` while the application callback reverted. Successful value delivery therefore requires:
 
 ```ts
-const successful =
-  response.status === UNIVERSAL_READ_STATUS.FULFILLED &&
-  response.raw?.status === READ_STATUS.SUCCESS &&
-  response.callbackDelivered === true;
+const successful = response.outcome === READ_OUTCOME.SUCCESS;
+// equivalent to: FULFILLED && raw.status === SUCCESS && callbackDelivered === true && no decodeError
 ```
 
-Only then should the application trust `response.value`.
+Only then should the application trust `response.value`. Otherwise `outcome` names what went wrong: `SOURCE_ERROR`, `CALLBACK_FAILED`, `DECODE_FAILED`, `EXPIRED`, `FAILED`, `ABORTED`, or `UNKNOWN` (delivery unconfirmed).
 
 ## 12. Response anatomy
 
@@ -647,6 +645,7 @@ type UniversalReadResponse<T> = {
   chain: ReadChain;
   destination: ResolvedDestination;
 
+  outcome: READ_OUTCOME;
   status: UNIVERSAL_READ_STATUS;
   isTerminal: boolean;
 
