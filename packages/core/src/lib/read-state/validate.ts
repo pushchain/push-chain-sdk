@@ -83,6 +83,12 @@ export function assertValidReadSpec(input: ValidateReadSpecInput): void {
   }
 }
 
+/**
+ * A `bytes` value is a whole number of bytes, so an odd number of hex digits
+ * is not one. Rejecting it here keeps `size()` (which rounds up) from
+ * reporting a 63-digit string as 32 bytes and letting an unencodable value
+ * through to `encodeAbiParameters`.
+ */
 function isHexLike(x: unknown): x is Hex {
-  return typeof x === 'string' && /^0x[0-9a-fA-F]*$/.test(x);
+  return typeof x === 'string' && /^0x([0-9a-fA-F]{2})*$/.test(x);
 }
