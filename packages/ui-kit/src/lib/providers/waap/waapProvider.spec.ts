@@ -26,9 +26,10 @@ const sentTypedData = () => {
 };
 
 describe('waapSignTypedData', () => {
-  it('serializes bigint uint256 fields in a UniversalPayload', async () => {
-    // Mirrors the `universalPayload` built in Core's payload-builder, which
-    // leaves every uint256 field as a bigint.
+  it('keeps the EIP712Domain separator and a resolvable type entry', async () => {
+    // Mirrors the UniversalPayload Core signs on the non-fee-locking path, with
+    // the uint256 fields already stringified by the orchestrator's
+    // bigintReplacer before they reach the signer.
     const typedData = {
       domain: {
         version: '0.1.0',
@@ -39,6 +40,7 @@ describe('waapSignTypedData', () => {
         UniversalPayload: [
           { name: 'to', type: 'address' },
           { name: 'value', type: 'uint256' },
+          { name: 'data', type: 'bytes' },
           { name: 'gasLimit', type: 'uint256' },
           { name: 'maxFeePerGas', type: 'uint256' },
           { name: 'maxPriorityFeePerGas', type: 'uint256' },
@@ -50,14 +52,14 @@ describe('waapSignTypedData', () => {
       primaryType: 'UniversalPayload',
       message: {
         to: '0x0000000000000000000000000000000000000000',
-        value: BigInt('1000000000000000000'),
+        value: '1000000000000000000',
         data: '0x',
-        gasLimit: BigInt(10000000),
-        maxFeePerGas: BigInt('10000000000'),
-        maxPriorityFeePerGas: BigInt(0),
-        nonce: BigInt(0),
-        deadline: BigInt('9999999999'),
-        vType: 0,
+        gasLimit: '10000000',
+        maxFeePerGas: '10000000000',
+        maxPriorityFeePerGas: '0',
+        nonce: '0',
+        deadline: '9999999999',
+        vType: 1,
       },
     } as unknown as ITypedData;
 
@@ -66,9 +68,8 @@ describe('waapSignTypedData', () => {
     );
 
     const sent = sentTypedData();
-    expect(sent.message.value).toBe('1000000000000000000');
-    expect(sent.message.deadline).toBe('9999999999');
-    expect(sent.types.UniversalPayload).toBeDefined();
+    expect(sent.types.UniversalPayload).toHaveLength(9);
+    expect(sent.types[sent.primaryType]).toBeDefined();
     expect(sent.types.EIP712Domain).toBeDefined();
   });
 

@@ -2,18 +2,14 @@
 '@pushchain/ui-kit': patch
 ---
 
-Fix WaaP (embedded Push Wallet) EIP-712 signing.
+Fix WaaP (embedded Push Wallet) EIP-712 signing of migration payloads.
 
-`waapSignTypedData` could not sign either payload Core sends to it:
+`waapSignTypedData` rewrote `typedData.types` to always contain a
+`UniversalPayload` key. When Core's `signMigrationPayload` is the caller,
+`primaryType` is `MigrationPayload` and `types.UniversalPayload` is undefined,
+so the outgoing request carried `primaryType: 'MigrationPayload'` with no
+matching entry in `types`, which the wallet cannot resolve. Any UEA upgrade
+signed through the embedded wallet failed.
 
-- `UniversalPayload` carries its uint256 fields (`value`, `gasLimit`,
-  `maxFeePerGas`, `maxPriorityFeePerGas`, `nonce`, `deadline`) as `bigint`, and
-  the adapter passed the object straight to `JSON.stringify`, which throws
-  `TypeError: Do not know how to serialize a BigInt`. Every universal
-  transaction signed through the embedded wallet failed.
-- The `types` rewrite hardcoded `UniversalPayload`, so when `primaryType` was
-  `MigrationPayload` (Core's `signMigrationPayload`) the outgoing request
-  carried `primaryType: 'MigrationPayload'` with no matching entry in `types`,
-  which no wallet can resolve.
-
-Both now match the injected-wallet adapters, which already handled them.
+The rewrite now follows `primaryType`, matching the MetaMask, Rabby and Zerion
+adapters, which already handle both payloads.
