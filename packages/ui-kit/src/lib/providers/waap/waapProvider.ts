@@ -117,12 +117,24 @@ export const waapSignTypedData = async (
 			{ name: "chainId", type: "uint256" },
 			{ name: "verifyingContract", type: "address" },
 		],
-		UniversalPayload: typedData.types["UniversalPayload"],
+		...(typedData.primaryType === 'MigrationPayload'
+			? { MigrationPayload: typedData.types['MigrationPayload'] }
+			: { UniversalPayload: typedData.types['UniversalPayload'] }),
 	};
+
+	// `UniversalPayload` carries uint256 fields (value, gasLimit, fees, nonce,
+	// deadline) as bigint, and `JSON.stringify` throws
+	// "Do not know how to serialize a BigInt" on those. Mirrors the replacer the
+	// MetaMask/Rabby/WalletConnect adapters already use.
+	const safeTypedData = JSON.parse(
+		JSON.stringify(typedData, (_key, value) =>
+			typeof value === "bigint" ? value.toString() : value
+		)
+	);
 
 	const signature = await provider.request({
 		method: "eth_signTypedData_v4",
-		params: [accounts[0], JSON.stringify(typedData)],
+		params: [accounts[0], JSON.stringify(safeTypedData)],
 	});
 
 	return hexToBytes(signature as `0x${string}`);
