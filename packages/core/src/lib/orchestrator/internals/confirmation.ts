@@ -89,6 +89,11 @@ export async function waitForEvmConfirmationsWithCountdown(
     const remaining = Number(targetBlock - currentBlock);
     const completed = Math.max(1, confirmations - remaining + 1);
 
+    // `completed` drives progress reporting only. The wait itself ends at the
+    // `currentBlock >= targetBlock` gate above: it previously also returned
+    // from here as soon as `completed` reached `confirmations`, which is one
+    // poll early (`remaining` is still > 0 at that point), so the caller was
+    // released with a block outstanding.
     if (completed > lastEmitted) {
       fireProgressHook(
         ctx,
@@ -100,7 +105,6 @@ export async function waitForEvmConfirmationsWithCountdown(
         txHash
       );
       lastEmitted = completed;
-      if (completed >= confirmations) return;
     }
 
     if (Date.now() - start > timeoutMs) {
