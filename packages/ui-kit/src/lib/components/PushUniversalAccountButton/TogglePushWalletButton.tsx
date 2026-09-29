@@ -41,24 +41,30 @@ const TogglePushWalletButton: React.FC<TogglePushWalletButtonProps> = ({
 
   const maskedAddress = centerMaskString(address);
 
+  // Apps often render several buttons with the same className (e.g. a header
+  // button plus one in an off-canvas mobile drawer). Key each instance
+  // separately so a later mount can't overwrite another button's ref.
+  const instanceId = React.useId();
+  const triggerId = `${className}:${instanceId}`;
+
   const handleClick = () => {
-    setActiveTriggerId(className);
+    setActiveTriggerId(triggerId);
     setMinimiseWallet(!isWalletMinimised);
   };
 
   const setTriggerRef = React.useCallback(
     (node: HTMLDivElement | null) => {
       if (node) {
-        toggleButtonRefs.current[className] = node;
+        toggleButtonRefs.current[triggerId] = node;
       } else {
-        delete toggleButtonRefs.current[className];
+        delete toggleButtonRefs.current[triggerId];
       }
     },
-    [className]
+    [triggerId]
   );
 
   useEffect(() => {
-    setActiveTriggerId(className);
+    setActiveTriggerId(triggerId);
   }, []);
 
   return (

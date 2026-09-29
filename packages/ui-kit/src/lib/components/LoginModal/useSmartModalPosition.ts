@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePushWalletContext } from '../../hooks/usePushWallet';
 import { PushUI } from '../../constants';
+import { resolveModalTrigger } from './modalTrigger';
 
 type Position = { top: number; left: number };
 
@@ -18,9 +19,8 @@ export function useSmartModalPosition(
 
   useEffect(() => {
     const calculatePosition = () => {
-      if (!triggerId || !triggerRefs.current[triggerId]) return;
-
-      const triggerRef = triggerRefs.current[triggerId];
+      const triggerRef = resolveModalTrigger(triggerId, triggerRefs.current);
+      if (!triggerRef) return;
 
       if (config.modal?.connectedLayout === PushUI.CONSTANTS.CONNECTED.LAYOUT.FULL) {
         setPosition({ top: 0, left: 0 });
@@ -83,11 +83,12 @@ export function useSmartModalPosition(
     calculatePosition();
     window.addEventListener('resize', scheduleCalculatePosition);
 
-    const triggerEl = triggerId ? triggerRefs.current[triggerId] : null;
     let resizeObserver: ResizeObserver | undefined;
-    if (triggerEl && typeof ResizeObserver !== 'undefined') {
+    if (typeof ResizeObserver !== 'undefined') {
       resizeObserver = new ResizeObserver(scheduleCalculatePosition);
-      resizeObserver.observe(triggerEl);
+      Object.values(triggerRefs.current).forEach((el) => {
+        if (el) resizeObserver?.observe(el);
+      });
     }
 
     return () => {
