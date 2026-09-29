@@ -99,29 +99,47 @@ export class MetamaskProvider extends BaseWalletProvider {
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: hexNetworkId }],
       });
-    } catch (err) {
+    } catch (err: any) {
       // If the error code is 4902, the network needs to be added
-      if ((err as any).code === 4902) {
-        try {
-          await provider.request({
-            method: 'wallet_addEthereumChain',
-            params: [
-              {
-                chainId: hexNetworkId,
-                chainName: network.name,
-                rpcUrls: network.rpcUrls.default.http,
-                nativeCurrency: network.nativeCurrency,
-                blockExplorerUrls: network.blockExplorers?.default.url,
-              },
-            ],
-          });
-        } catch (addError) {
-          console.error('Error adding network:', addError);
-          throw addError;
-        }
-      } else {
+      const msg = String(err?.message ?? '');
+      const needAdd =
+        err?.code === 4902 ||
+        err?.code === -32603 ||
+        msg.includes('Unrecognized chain ID');
+
+      if (!needAdd) {
         console.error('Error switching network:', err);
         throw err;
+      }
+
+      try {
+        await provider.request({
+          method: 'wallet_addEthereumChain',
+          params: [
+            {
+              chainId: hexNetworkId,
+              chainName: network.name,
+              rpcUrls: network.rpcUrls.default.http,
+              nativeCurrency: network.nativeCurrency,
+              // EIP-3085 declares blockExplorerUrls as string[]; a bare string
+              // is rejected by the wallet, so the add never lands.
+              blockExplorerUrls: network.blockExplorers?.default?.url
+                ? [network.blockExplorers.default.url]
+                : [],
+            },
+          ],
+        });
+
+        // Adding a chain does not switch to it (EIP-3085). Without this second
+        // switch the wallet stays on the old chain and the next transaction is
+        // sent to the wrong network.
+        await provider.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: hexNetworkId }],
+        });
+      } catch (addError) {
+        console.error('Error adding network:', addError);
+        throw addError;
       }
     }
   };
