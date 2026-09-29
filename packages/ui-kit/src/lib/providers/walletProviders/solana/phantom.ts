@@ -291,7 +291,7 @@ export class PhantomProvider extends BaseWalletProvider {
       try {
         const walletClient = createWalletClient({
           chain: sepolia,
-          transport: custom(window.ethereum!),
+          transport: custom(window.phantom.ethereum),
         });
 
         const accounts = await walletClient.request({
