@@ -1,9 +1,14 @@
+import { isHex, size, type Hex } from 'viem';
 import { resolveDestination } from '../destination';
 import { InvalidReadSpecError, type ReadSpecViolation } from '../errors';
 import type { ReadPreflight, ReadSpec } from '../read-state.types';
 import { assertValidReadSpec, validateReadSpec } from '../validate';
 
 const OK_OWNER = '0x000000000000000000000000000000000000dead' as const;
+/** 32 bytes, well-formed. */
+const EVEN_OWNER = `0x${'a'.repeat(64)}` as Hex;
+/** 63 hex digits: odd, so not a byte string, but `size()` rounds it up to 32. */
+const ODD_OWNER = `0x${'a'.repeat(63)}` as Hex;
 const PF: ReadPreflight = {
   destination: resolveDestination({ chainNamespace: 'eip155', chainId: '11155111' }),
   protocolFee: 1_000n,
@@ -49,7 +54,21 @@ describe('validateReadSpec — one row per contract revert', () => {
     ['UniversalCallback.sol:137 value above maxFee', { value: 10_001n }, 'EXCESSIVE_FEE'],
     ['node CanAffordCallback: value == fee leaves zero budget', { value: 1_000n }, 'ZERO_CALLBACK_BUDGET'],
     ['svm/read_executor.go:29 owner not 32 bytes on solana', (b) => ({ ...b, preflight: { ...PF, destination: resolveDestination({ chainNamespace: 'solana', chainId: 'x' }) }, spec: { ...b.spec, account: { chainNamespace: 'solana', chainId: 'x', owner: OK_OWNER } } }), 'SVM_OWNER_NOT_32_BYTES'],
+    ['odd-length owner hex is not a byte string', (b) => ({ ...b, spec: { ...b.spec, account: { ...b.spec.account, owner: ODD_OWNER } } }), 'INVALID_ACCOUNT_ID'],
+    ['odd-length query hex is not a byte string', (b) => ({ ...b, spec: { ...b.spec, query: '0x1' } }), 'EMPTY_QUERY'],
   ];
+
+  it('odd-length hex is rejected, even-length hex is untouched', () => {
+    // A `bytes` field is only encodable when it holds whole bytes. `size()`
+    // rounds up and viem's own `isHex` only checks the character class, so
+    // neither one catches it: a 63-digit owner used to read as 32 bytes, pass
+    // the SVM length rule, and then encode to an odd-length hex string.
+    expect(size(ODD_OWNER)).toBe(32);
+    expect(isHex(ODD_OWNER)).toBe(true);
+
+    expect(validateReadSpec({ ...base, spec: { ...base.spec, account: { ...base.spec.account, owner: EVEN_OWNER } } })).toEqual({ ok: true });
+    expect(validateReadSpec({ ...base, spec: { ...base.spec, query: '0x1234' } })).toEqual({ ok: true });
+  });
 
   it.each(rows)('%s → %s', (_name, mutate, expected) => {
     const input = typeof mutate === 'function' ? mutate(base) : { ...base, ...mutate };
