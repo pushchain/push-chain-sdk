@@ -16,7 +16,7 @@ import { CHAIN_INFO } from '../../constants/chain';
 import { PriceFetch } from '../../price-fetch/price-fetch';
 import type { OrchestratorContext } from './context';
 import { printLog } from './context';
-import { getPcUsdPrice, usdToPc } from './pc-usd-oracle';
+import { getPcUsdPrice, usdToPc, __ORIGIN_TO_STABLE } from './pc-usd-oracle';
 
 // ============================================================================
 // Thresholds (USD, 8 decimals)
@@ -66,13 +66,18 @@ export async function sizeOutboundGas(
   const { gasFee, originChain, destinationChain } = input;
 
   // 1) Price gasFee in USD (8 decimals). gasFee is denominated in the
-  //    destination native (pETH = ETH value, pSOL = SOL value). The price
-  //    feed lives on the *origin* side (origin gateway's Chainlink/Pyth),
-  //    but we reuse the same feed via PriceFetch — the asset being priced
-  //    is ETH or SOL, not the route.
+  //    destination native (pETH = ETH, pBNB = BNB, pSOL = SOL), so the price
+  //    feed must be the *destination's* feed. PriceFetch keys its feeds by
+  //    chain (USDT_ETH / USDT_BSC / USDT_SOL), not by VM: pricing every EVM
+  //    destination off ETH misprices BNB, whose feed is a separate key.
+  //    Mainnet chains have no configured feed, so they fall back to their
+  //    testnet counterpart's VM as before.
   const destVm = CHAIN_INFO[destinationChain].vm;
-  const priceSourceChain =
-    destVm === VM.SVM ? CHAIN.SOLANA_DEVNET : CHAIN.ETHEREUM_SEPOLIA;
+  const priceSourceChain = __ORIGIN_TO_STABLE[destinationChain]
+    ? destinationChain
+    : destVm === VM.SVM
+      ? CHAIN.SOLANA_DEVNET
+      : CHAIN.ETHEREUM_SEPOLIA;
   const destDecimals = destVm === VM.SVM ? 9 : 18;
 
   let destUsdPrice: bigint;
@@ -245,8 +250,13 @@ export async function computeGasUsd(
   destinationChain: CHAIN
 ): Promise<bigint> {
   const destVm = CHAIN_INFO[destinationChain].vm;
-  const priceSourceChain =
-    destVm === VM.SVM ? CHAIN.SOLANA_DEVNET : CHAIN.ETHEREUM_SEPOLIA;
+  // Same destination-chain feed selection as sizeOutboundGas: price the
+  // destination native off its own feed, not off the EVM default.
+  const priceSourceChain = __ORIGIN_TO_STABLE[destinationChain]
+    ? destinationChain
+    : destVm === VM.SVM
+      ? CHAIN.SOLANA_DEVNET
+      : CHAIN.ETHEREUM_SEPOLIA;
   const destDecimals = destVm === VM.SVM ? 9 : 18;
   const destUsdPrice = await new PriceFetch(ctx.rpcUrls).getPrice(
     priceSourceChain
