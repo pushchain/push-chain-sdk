@@ -30,7 +30,7 @@ async function waitForEvmReceipt(
   evmClient: EvmClient,
   txHash: `0x${string}`,
   timeoutMs: number
-): Promise<{ blockNumber: bigint }> {
+): Promise<{ blockNumber: bigint; status: 'success' | 'reverted' }> {
   const start = Date.now();
 
   // eslint-disable-next-line no-constant-condition
@@ -210,6 +210,15 @@ export async function waitForLockerFeeConfirmation(
       const evmClient = getOriginEvmClient(ctx);
       const txHash = bytesToHex(txHashBytes);
       const receipt = await waitForEvmReceipt(evmClient, txHash, timeout);
+      // A reverted receipt is a failure, not a fast confirmation. The SVM
+      // branch below throws on `status.err`; without the matching check here
+      // a reverted fee-lock resolved as success, fired SEND-TX-105-02, and
+      // then spent the full 15-attempt cosmos retry budget in
+      // `queryUniversalTxStatusFromGatewayTx` looking for a universalTx that
+      // can never exist, surfacing a timeout instead of the revert.
+      if (receipt.status === 'reverted') {
+        throw new Error(`Fee-lock tx ${txHash} reverted on chain`);
+      }
       if (fastConfirmations <= 1) return;
       const targetBlock = receipt.blockNumber + BigInt(fastConfirmations);
       const start = Date.now();
