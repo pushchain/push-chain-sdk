@@ -30,7 +30,7 @@ async function waitForEvmReceipt(
   evmClient: EvmClient,
   txHash: `0x${string}`,
   timeoutMs: number
-): Promise<{ blockNumber: bigint }> {
+): Promise<{ blockNumber: bigint; status?: 'success' | 'reverted' }> {
   const start = Date.now();
 
   // eslint-disable-next-line no-constant-condition
@@ -66,6 +66,16 @@ export async function waitForEvmConfirmationsWithCountdown(
   const start = Date.now();
 
   const receipt = await waitForEvmReceipt(evmClient, txHash, timeoutMs);
+  // A mined receipt is not a successful one. The origin funds-lock (gateway
+  // sendUniversalTx) reverts for ordinary reasons such as a stale allowance or
+  // a relayer race, and the receipt is then available immediately, so the
+  // not-found retry loop exits normally and the depth loop below would report
+  // success. Reject here instead: the caller has to stop before it fires the
+  // funds-bridge confirmation hooks and starts polling Push for a universalTx
+  // that can never exist. The SVM sibling already throws on status.err.
+  if (receipt.status === 'reverted') {
+    throw new Error(`Transaction ${txHash} reverted on the origin chain`);
+  }
   const targetBlock = receipt.blockNumber + BigInt(confirmations);
   let lastEmitted = 0;
 
