@@ -784,6 +784,70 @@ describe('waitForLockerFeeConfirmation', () => {
 // confirmation — waitForEvmConfirmationsWithCountdown edge cases
 // ============================================================================
 describe('waitForEvmConfirmationsWithCountdown', () => {
+  /**
+   * The origin-chain funds-bridge tx (gateway `sendUniversalTx`) can mine and
+   * still revert. The receipt is then available, so the "not found" retry loop
+   * exits normally and the depth loop happily waits out its confirmations.
+   * Without a status check the caller is told the funds lock succeeded, fires
+   * 106-03-02/106-04, and then polls Push for a universalTx that can never
+   * exist. The SVM sibling already throws on `status.err`; this is the same
+   * check for the EVM arm.
+   */
+  it('should reject a reverted origin transaction instead of confirming it', async () => {
+    const ctx = makeConfirmCtx('eip155:42101');
+    const mockEvmClient = {
+      publicClient: {
+        getTransactionReceipt: jest.fn().mockResolvedValue({
+          blockNumber: 100n,
+          status: 'reverted',
+        }),
+        getBlockNumber: jest.fn().mockResolvedValue(102n),
+      },
+    } as any;
+
+    await expect(
+      confirmationModule.waitForEvmConfirmationsWithCountdown(
+        ctx,
+        mockEvmClient,
+        '0xdead' as `0x${string}`,
+        2,
+        30000
+      )
+    ).rejects.toThrow(/revert/i);
+
+    // A revert is terminal, so no confirmation-complete hook may be emitted.
+    expect(ctx.progressHook as jest.Mock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ id: PROGRESS_HOOK.SEND_TX_106_03_02 })
+    );
+  });
+
+  it('should still confirm a successful transaction at the requested depth', async () => {
+    const ctx = makeConfirmCtx('eip155:42101');
+    const mockEvmClient = {
+      publicClient: {
+        getTransactionReceipt: jest.fn().mockResolvedValue({
+          blockNumber: 100n,
+          status: 'success',
+        }),
+        // Head advances to exactly the target: the gate, not the display
+        // counter, is what must decide.
+        getBlockNumber: jest.fn().mockResolvedValue(102n),
+      },
+    } as any;
+
+    await confirmationModule.waitForEvmConfirmationsWithCountdown(
+      ctx,
+      mockEvmClient,
+      '0xbeef' as `0x${string}`,
+      2,
+      30000
+    );
+
+    expect(ctx.progressHook as jest.Mock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: PROGRESS_HOOK.SEND_TX_106_03_02 })
+    );
+  });
+
   it('should return immediately when confirmations <= 0', async () => {
     const ctx = makeConfirmCtx('eip155:42101');
     const mockEvmClient = {
