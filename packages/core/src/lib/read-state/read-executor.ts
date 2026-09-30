@@ -6,7 +6,8 @@ import { toLifecycleOptions, type ReadExecuteOptions } from './read-params';
 import { encodeSpec, toCallData } from './spec-builder';
 import PROGRESS_HOOKS from '../progress-hook/progress-hook';
 import { PROGRESS_HOOK } from '../progress-hook/progress-hook.types';
-import { READ_STATUS, UNIVERSAL_READ_STATUS } from './read-state.types';
+import { READ_OUTCOME } from './read-state.types';
+import { deriveReadOutcome } from './read-tracker';
 import { READ_PREFLIGHT_STALE_MS } from '../constants/read-state';
 
 export type ReadExecutorDeps = Pick<Orchestrator, 'execute' | 'trackRead' | 'revalidateRead'> & Partial<Pick<Orchestrator, 'getProgressHook' | 'getReadBalance'>>;
@@ -150,7 +151,18 @@ export async function executeReads<const R extends readonly PreparedRead[]>(
     const emitBatchOutcome = (terminal: readonly UniversalReadResponse[]) => {
       if (!batch || emittedTerminalBatch) return;
       emittedTerminalBatch = true;
-      const failed = terminal.findIndex(r => r.status !== UNIVERSAL_READ_STATUS.FULFILLED || r.callbackDelivered !== true || r.raw?.status !== READ_STATUS.SUCCESS);
+      // Same classifier emitTerminal() applies per read, so a batch summary can
+      // never contradict the per-read outcome it summarises (e.g. a DECODE_FAILED
+      // read is FULFILLED with a delivered callback and result.status SUCCESS).
+      const failed = terminal.findIndex(
+        (r) =>
+          deriveReadOutcome(
+            r.status,
+            r.raw?.status,
+            r.callbackDelivered,
+            r.decodeError,
+          ) !== READ_OUTCOME.SUCCESS,
+      );
       if (failed < 0) emit(PROGRESS_HOOK.READ_TX_999_01, terminal.length);
       else emit(PROGRESS_HOOK.READ_TX_999_02, failed + 1, terminal.length, terminal[failed].errorMsg || 'Read or callback did not succeed');
     };

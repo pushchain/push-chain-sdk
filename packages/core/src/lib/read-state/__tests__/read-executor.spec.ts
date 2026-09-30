@@ -304,4 +304,17 @@ describe('execution validation and observable progress', () => {
     await executeReads(setup([ra, rb]).deps, [a, b], { progressHook: hook });
     expect(hook.mock.calls.at(-1)?.[0]).toMatchObject({ id: 'READ-TX-999-02', response: { failedAt: 2 } });
   });
+
+  it('reports an undecodable read as batch failure, not batch success', async () => {
+    const a = prepared(), b = prepared(1n), ra = response(a, 1), rb = response(b, 2);
+    // FULFILLED with a delivered callback and result.status SUCCESS, so the
+    // read itself ends DECODE_FAILED rather than SUCCESS.
+    (rb.wait as jest.Mock).mockResolvedValue({
+      ...rb, status: 3, isTerminal: true, callbackDelivered: true,
+      raw: { status: 1 }, decodeError: 'expected 32 bytes for uint256, got 20',
+    });
+    const hook = jest.fn();
+    await executeReads(setup([ra, rb]).deps, [a, b], { progressHook: hook });
+    expect(hook.mock.calls.at(-1)?.[0]).toMatchObject({ id: 'READ-TX-999-02', response: { failedAt: 2 } });
+  });
 });
