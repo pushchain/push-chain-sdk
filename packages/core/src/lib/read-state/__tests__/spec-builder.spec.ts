@@ -216,3 +216,51 @@ describe('simulateRead', () => {
     expect(() => toCallData(prepared, { abi: erc20Abi, functionName: 'request' })).toThrow();
   });
 });
+
+describe('prepareRead — the READ-TX-103-03 sensitive-header hook', () => {
+  function deps(emit?: (id: string, ...args: unknown[]) => void): PrepareReadDeps {
+    // web2 is heightless: its oracle height is 0 and the spec must pin blockNumber = 0.
+    const reads: Record<string, unknown> = { chainHeightByChainNamespace: 0n, estimateFee: 0n, blockedDomains: false };
+    return {
+      pushNetwork: PUSH_NETWORK.TESTNET_DONUT,
+      defaultRefundTo: EOA,
+      emit,
+      pushClient: {
+        readContract: jest.fn(async (p: { functionName: string }) => reads[p.functionName]) as never,
+        getGasPrice: jest.fn(async () => 1_000_000_000n),
+        publicClient: {
+          getBlockNumber: jest.fn(async () => 22_963_000n),
+          getCode: jest.fn(async () => undefined),
+        } as never,
+      },
+    };
+  }
+  function web2(headers: Record<string, string>) {
+    return {
+      destination: WEB2_DESTINATION,
+      query: { type: 'http' as const, url: 'https://example.com/a', extract: [{ path: '$.a', valueType: 'uint256' as const }], headers },
+      callbackGasLimit: 200_000n,
+    };
+  }
+
+  it.each([['Cookie'], ['session'], ['Set-Cookie'], ['X-Session-Id']])(
+    'emits 103-03 for %s, which the envelope writer already flags as sensitive',
+    async (name) => {
+      const seen: string[][] = [];
+      await prepareRead(deps((id, matched) => { if (id === 'READ-TX-103-03') seen.push(matched as string[]); }), web2({ [name]: 'v' }));
+      expect(seen.flat()).toContain(name);
+    },
+  );
+
+  it('emits 103-03 for Authorization and X-Api-Key (the already-working cases)', async () => {
+    const seen: string[][] = [];
+    await prepareRead(deps((id, matched) => { if (id === 'READ-TX-103-03') seen.push(matched as string[]); }), web2({ Authorization: 'Bearer x', 'X-Api-Key': 'k' }));
+    expect(seen.flat().sort()).toEqual(['Authorization', 'X-Api-Key']);
+  });
+
+  it('does not emit 103-03 for a non-sensitive header', async () => {
+    const seen: string[][] = [];
+    await prepareRead(deps((id, matched) => { if (id === 'READ-TX-103-03') seen.push(matched as string[]); }), web2({ Accept: 'application/json' }));
+    expect(seen.flat()).toEqual([]);
+  });
+});

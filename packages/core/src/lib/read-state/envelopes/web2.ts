@@ -43,7 +43,9 @@ const WEB2_ENVELOPE_ABI = [
   },
 ] as const;
 
-const SENSITIVE_HEADER = /auth|key|token|secret|bearer|cookie|session/i;
+/** Header names whose values are written to a public event log forever. Exported so the
+ *  READ-TX-103-03 hook and the envelope warning cannot drift apart. */
+export const SENSITIVE_HEADER = /auth|key|token|secret|bearer|cookie|session/i;
 const NUMERIC: ReadonlySet<Web2ValueType> = new Set(['uint256', 'int256']);
 
 /**
