@@ -11,8 +11,8 @@ const KNOWN: ReadonlySet<string> = new Set(Object.values(READ_NAMESPACE));
  * - `UniversalCore.chainHeightByChainNamespace` is keyed by the JOINED `caip2`.
  * - The node routes on `chainNamespace + ":" + chainId`.
  *
- * Passing the joined form as the namespace would produce `eip155:1:1` on the node,
- * so it is rejected here.
+ * Passing the joined form as EITHER half would produce `eip155:1:1` on the node,
+ * so a colon is rejected in both.
  */
 export function resolveDestination(dest: ReadDestination): ResolvedDestination {
   let chainNamespace: string;
@@ -34,6 +34,12 @@ export function resolveDestination(dest: ReadDestination): ResolvedDestination {
   if (chainNamespace.includes(':')) {
     throw new UnsupportedReadDestinationError(
       `chainNamespace must be the bare namespace, not CAIP-2: ${chainNamespace}`,
+      { hint: 'Pass { chainNamespace: "eip155", chainId: "1" } or { chain: CHAIN.X }.' },
+    );
+  }
+  if (chainId.includes(':')) {
+    throw new UnsupportedReadDestinationError(
+      `chainId must be the bare chain id, not CAIP-2: ${chainId}`,
       { hint: 'Pass { chainNamespace: "eip155", chainId: "1" } or { chain: CHAIN.X }.' },
     );
   }
