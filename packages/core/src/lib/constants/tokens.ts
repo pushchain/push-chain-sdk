@@ -284,7 +284,10 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     },
     DAI: {
       symbol: 'DAI',
-      decimals: 18,
+      // The devnet mint is a 6-decimal SPL mint (82-byte Mint account, decimals
+      // at byte 44), NOT Ethereum mainnet DAI's 18. Its Push synthetic
+      // DAI.sol (0x5861…2A8) reports decimals() == 6 to match.
+      decimals: 6,
       address: 'G2ZLaRhpohW23KTEX3fBjZXtNTFFwemqCaWWnWVTj4TB',
       mechanism: 'approve',
     },
@@ -338,7 +341,7 @@ function buildPushChainMoveableTokenList(): PushChainMoveableToken[] {
     mk('USDC', 6, s.USDC_SOL, CHAIN.SOLANA_DEVNET),
     mk('WETH', 18, s.WETH_ETH, CHAIN.ETHEREUM_SEPOLIA),
     mk('stETH', 18, s.stETH_ETH, CHAIN.ETHEREUM_SEPOLIA),
-    mk('DAI', 18, s.DAI_SOL, CHAIN.SOLANA_DEVNET),
+    mk('DAI', 6, s.DAI_SOL, CHAIN.SOLANA_DEVNET),
   ];
 }
 
@@ -523,7 +526,7 @@ function buildPushChainMoveableTokenAccessor(): PushChainMoveableTokenAccessor {
     pSol: mk('pSOL', 9, s.pSOL, CHAIN.SOLANA_DEVNET),
     pWeth: mk('WETH', 18, s.WETH_ETH, CHAIN.ETHEREUM_SEPOLIA),
     pStEth: mk('stETH', 18, s.stETH_ETH, CHAIN.ETHEREUM_SEPOLIA),
-    pDai: mk('DAI', 18, s.DAI_SOL, CHAIN.SOLANA_DEVNET),
+    pDai: mk('DAI', 6, s.DAI_SOL, CHAIN.SOLANA_DEVNET),
     USDT: {
       eth: mk('USDT', 6, s.USDT_ETH, CHAIN.ETHEREUM_SEPOLIA),
       arb: mk('USDT', 6, s.USDT_ARB, CHAIN.ARBITRUM_SEPOLIA),

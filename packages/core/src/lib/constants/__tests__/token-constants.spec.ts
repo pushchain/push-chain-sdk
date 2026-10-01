@@ -4,7 +4,11 @@
  */
 import { CHAIN } from '../enums';
 import { SYNTHETIC_PUSH_ERC20 } from '../chain';
-import { MOVEABLE_TOKEN_CONSTANTS, PAYABLE_TOKEN_CONSTANTS } from '../tokens';
+import {
+  MOVEABLE_TOKENS,
+  MOVEABLE_TOKEN_CONSTANTS,
+  PAYABLE_TOKEN_CONSTANTS,
+} from '../tokens';
 import type { PushChainMoveableToken } from '../tokens';
 
 describe('MOVEABLE_TOKEN_CONSTANTS (C-2: external chain tokens)', () => {
@@ -361,5 +365,42 @@ describe('PAYABLE_TOKEN_CONSTANTS (C-4: payable tokens)', () => {
       expect(PAYABLE_TOKEN_CONSTANTS.ETHEREUM_MAINNET.ETH.mechanism).toBe('native');
       expect(PAYABLE_TOKEN_CONSTANTS.ETHEREUM_MAINNET.USDT.symbol).toBe('USDT');
     });
+  });
+});
+
+describe('DAI.sol decimals match the deployed contracts', () => {
+  const pushTokens = MOVEABLE_TOKEN_CONSTANTS.PUSH_TESTNET_DONUT;
+  const synth = SYNTHETIC_PUSH_ERC20['TESTNET_DONUT'];
+
+  // Both verified on-chain 2026-10-02:
+  //   Solana devnet mint G2ZLaRhpohW23KTEX3fBjZXtNTFFwemqCaWWnWVTj4TB — 82-byte
+  //   SPL Mint, decimals byte 44 = 6, isInitialized byte 45 = 1.
+  //   Push PRC-20 0x5861f56A556c990358cc9cccd8B5baa3767982A8 (symbol "DAI.sol")
+  //   — decimals() == 6.
+  // 18 is Ethereum DAI's value; the devnet deployment is a 6-decimal SPL mint.
+  it('SOLANA_DEVNET DAI is 6 decimals, not 18', () => {
+    expect(MOVEABLE_TOKEN_CONSTANTS.SOLANA_DEVNET.DAI.decimals).toBe(6);
+  });
+
+  it('the Push-side DAI.sol synthetic is 6 decimals, not 18', () => {
+    expect(pushTokens.pDai.decimals).toBe(6);
+    expect(pushTokens.pDai.sourceChain).toBe(CHAIN.SOLANA_DEVNET);
+    expect(pushTokens.pDai.prc20Address).toBe(synth.DAI_SOL);
+  });
+
+  it('agrees across the origin mint and its Push synthetic', () => {
+    const origin = MOVEABLE_TOKENS[CHAIN.SOLANA_DEVNET]!.find(
+      (t) => t.symbol === 'DAI'
+    )!;
+    const synthetic = MOVEABLE_TOKENS[CHAIN.PUSH_TESTNET_DONUT]!.find(
+      (t) => t.symbol === 'DAI'
+    )!;
+    expect(origin.decimals).toBe(synthetic.decimals);
+    expect(synthetic.decimals).toBe(6);
+  });
+
+  it('leaves the 18-decimal rows alone', () => {
+    expect(pushTokens.pEth.decimals).toBe(18);
+    expect(MOVEABLE_TOKEN_CONSTANTS.ETHEREUM_SEPOLIA.WETH.decimals).toBe(18);
   });
 });
