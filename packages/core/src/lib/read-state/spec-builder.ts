@@ -17,7 +17,7 @@ import { DEFAULT_EXPIRY_BLOCKS, MIN_CONFIRMATIONS_FLOOR, READ_NAMESPACE, READ_PR
 import { sizeCallbackBudget } from './budget';
 import { computeReadQueryKey } from './registry';
 import { resolveDestination } from './destination';
-import { encodeReadQuery } from './envelopes';
+import { encodeReadQuery, SENSITIVE_HEADER } from './envelopes';
 import { InvalidReadQueryError, InvalidReadSpecError, ReadHeightUnavailableError, ReadStateError } from './errors';
 import { preflightRead, type PreflightDeps } from './preflight';
 import type {
@@ -174,7 +174,7 @@ export async function prepareRead(deps: PrepareReadDeps, params: BuildReadSpecPa
 
   emit(PROGRESS_HOOK.READ_TX_102_02, prepared.protocolFee, prepared.callbackBudget, prepared.value, prepared.spec.blockNumber, prepared.spec.expiryPushChainHeight);
   if (params.query.type === 'http') {
-    const matched = Object.keys(params.query.headers ?? {}).filter((name) => /auth|key|token|secret|bearer/i.test(name));
+    const matched = Object.keys(params.query.headers ?? {}).filter((name) => SENSITIVE_HEADER.test(name));
     if (matched.length) emit(PROGRESS_HOOK.READ_TX_103_03, matched);
   }
   const refundTo = prepared.spec.revertRecipient;
