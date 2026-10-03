@@ -26,6 +26,8 @@ import {
   READ_TRACK_MAX_TIMEOUT_MS,
   READ_TRACK_MIN_POLL_INTERVAL_MS,
   READ_TRACK_POLL_INTERVAL_MS,
+  WEB2_READ_CHAIN,
+  isWeb2ReadChain,
 } from '../constants/read-state';
 import type { UniversalRead } from '../generated/ucallback/v1';
 import { PROGRESS_HOOK } from '../progress-hook/progress-hook.types';
@@ -343,8 +345,8 @@ export function inferResultShape(namespace: string, query: Hex): ReadResultShape
   }
 }
 
-function chainFromCaip2(caip2: string): CHAIN | typeof CHAIN.WEB2 | undefined {
-  if (caip2 === CHAIN.WEB2) return CHAIN.WEB2;
+function chainFromCaip2(caip2: string): CHAIN | typeof WEB2_READ_CHAIN | undefined {
+  if (isWeb2ReadChain(caip2)) return WEB2_READ_CHAIN;
   return (Object.values(CHAIN) as string[]).includes(caip2) ? (caip2 as CHAIN) : undefined;
 }
 

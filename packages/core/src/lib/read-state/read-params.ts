@@ -19,11 +19,11 @@ import { detectTokenProgram, resolveAccountName, validateIdl } from './svm-accou
 import { deriveIdlPda, isProgramSubject } from './svm-pda';
 import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 import { computeReadQueryKey, resolveReadCallback } from './registry';
-import { READ_NAMESPACE, WEB2_DESTINATION } from '../constants/read-state';
+import { isWeb2ReadChain, READ_NAMESPACE, WEB2_DESTINATION } from '../constants/read-state';
 import { resolveDestination } from './destination';
 import { deriveAssociatedTokenAddress } from './envelopes/svm';
 import { InvalidReadQueryError } from './errors';
-import type { BuildReadSpecParams, ReadChain, ReadDestination, ReadLifecycleOptions, ReadQuery, ReadResultShape, Web2Extract } from './read-state.types';
+import type { BuildReadSpecParams, ReadChain, ReadDestination, ReadLifecycleOptions, ReadQuery, ReadResultShape, Web2Extract, Web2ReadChain } from './read-state.types';
 import type { ReadCallback } from './read-state.types';
 import type { ProgressEvent } from '../progress-hook/progress-hook.types';
 
@@ -106,7 +106,7 @@ export type ReadQueryOptions =
   | ({ chain: SvmChain } & Query<'idl' | 'functionName' | 'args', { idl: Idl; functionName?: string; args?: readonly unknown[] }>)
   | ({ chain: EvmChain } & Query<'abi' | 'functionName' | 'args', { abi: Abi; functionName: string; args?: readonly unknown[] }>)
   | ({ chain: EvmChain } & Query<'storageSlot', { storageSlot: Hex | bigint }>)
-  | ({ chain: typeof CHAIN.WEB2 } & Query<'web2', { web2: ReadWeb2Options }>);
+  | ({ chain: Web2ReadChain } & Query<'web2', { web2: ReadWeb2Options }>);
 
 export type ReadCallbackOptions = {
   callback?:
@@ -122,7 +122,7 @@ type FinalizedDestinationOptions = { blockNumber?: never; minConfirmations?: nev
 /** EVM reads expose pinning; SVM and Web2 choose their finalized/heightless references internally. */
 export type ReadPrepareOptions = SharedPrepareOptions & (
   | (Extract<ReadQueryOptions, { chain: EvmChain }> & EvmPinningOptions)
-  | (Extract<ReadQueryOptions, { chain: SvmChain | typeof CHAIN.WEB2 }> & FinalizedDestinationOptions)
+  | (Extract<ReadQueryOptions, { chain: SvmChain | Web2ReadChain }> & FinalizedDestinationOptions)
 );
 export type ReadExecuteOptions = Pick<ReadOptionsInput, 'advanced' | 'waitForCompletion' | 'progressHook'>;
 type WithExecutionOptions<T> = T extends unknown
@@ -196,7 +196,8 @@ function queryKind(o: ReadOptionsInput): (typeof QUERY_KEYS)[number] | 'native' 
 }
 
 export function toReadDestination(chain: ReadChain): ReadDestination {
-  return chain === CHAIN.WEB2 ? WEB2_DESTINATION : { chain };
+  // Both public spellings normalize to the unchanged wire identity web2:https.
+  return isWeb2ReadChain(chain) ? WEB2_DESTINATION : { chain };
 }
 
 /** Build the internal query from the public grammar. Pure. */
@@ -209,7 +210,7 @@ export function toReadQuery(subject: string, o: ReadOptionsInput, resolvedTokenP
     if (!/^https:\/\//i.test(subject)) throw new InvalidReadQueryError('web2 subject must be an https:// URL');
     return { type: 'http', url: subject, ...o.web2 };
   }
-  if (kind === 'web2') throw new InvalidReadQueryError('`web2` is only valid with chain CHAIN.WEB2');
+  if (kind === 'web2') throw new InvalidReadQueryError('`web2` is only valid with chain READ.CHAIN.WEB2');
 
   if (dest.namespace === READ_NAMESPACE.EVM) {
     if (!isAddress(subject)) throw new InvalidReadQueryError(`EVM subject must be an address, got ${subject}`);

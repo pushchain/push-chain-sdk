@@ -15,14 +15,27 @@ import {
   READ_NAMESPACE,
   WEB2_DEFAULT_TIMEOUT_MS,
   WEB2_MAX_EXTRACT_ENTRIES,
+  WEB2_READ_CHAIN,
 } from './read-state';
 import { UNIVERSAL_READ_STATUS, READ_STATUS, READ_ERROR_CODE, READ_OUTCOME } from '../read-state/read-state.types';
 import { AGENTIC } from '../agentic/constants';
 
+/**
+ * `PushChain.CONSTANTS.READ.CHAIN` — every read source: all of `CHAIN` (same
+ * string values) plus the enumerable Web2 source. A superset of CHAIN, so
+ * `read({ chain: CHAIN.X })` keeps compiling.
+ */
+export const READ_CHAIN = Object.freeze({
+  ...CHAIN,
+  WEB2: WEB2_READ_CHAIN,
+}) as Readonly<{ [K in keyof typeof CHAIN]: (typeof CHAIN)[K] }> & { readonly WEB2: typeof WEB2_READ_CHAIN };
+
 /** `PushChain.CONSTANTS.READ` — cross-chain read state. Values verified against the deployed UniversalCallback. */
 export const READ_CONSTANTS = {
-  /** Read-only Web2 destination. Equivalent to `CHAIN.WEB2`. */
-  WEB2: CHAIN.WEB2,
+  /** Every read source, enumerable (spec page 5 §4). */
+  CHAIN: READ_CHAIN,
+  /** @deprecated Use `READ.CHAIN.WEB2`. Same value (`'web2'`). */
+  WEB2: WEB2_READ_CHAIN,
   NAMESPACE: READ_NAMESPACE,
   MAX_CALLBACK_GAS_LIMIT,
   MIN_CONFIRMATIONS_FLOOR,
