@@ -180,3 +180,12 @@ Also from this pass:
 - The E2E positive outbound uses the explicit call-array form and independently checks the wallet CEA's Sepolia balance. Caller/event correlation for the executing CEA is still to be added before a funded run.
 
 Counts after the fixes: unit **1,899 passed, 12 skipped** (110 suites passed, 1 skipped; agentic 139); local harness **34 passed in 4 suites**. Library/spec typecheck and build pass. Lint has no errors in changed code (7 pre-existing errors elsewhere). E2E manifests are unchanged (agw 21, all 76).
+
+
+## Outbound response follow-up
+
+F1 from the follow-up review is fixed. Live and replayed outbound response `to/data/value` now describe the first encoded destination call, with the full ordered list in `agentic.destinationCalls`. This avoids guessing whether a token transfer was explicit or generated from funds. Wrapped raw metadata and signer origin are preserved.
+
+R6 now has regular tests through the real response-builder/wait closure with mocked RPC/polling, covering owner and agent doors, successful and reverted roots, and init/per-call terminal-hook counts. Live Cosmos/TSS/destination acceptance remains pending.
+
+Validation: 1,908 unit tests and 34 local-contract tests pass; library/spec typechecks and build pass. Lint retains seven errors in unchanged files. See [resolution and coverage](implementation-review/outbound-response-resolution.md). Product sign-off on raw-offset types and deployment gates are unchanged.

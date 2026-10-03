@@ -1,4 +1,4 @@
-import { decodeAbiParameters, decodeFunctionData, getAddress, maxUint256, type Address, type Hex } from 'viem';
+import { decodeAbiParameters, decodeFunctionData, encodeFunctionData, getAddress, maxUint256, type Address, type Hex } from 'viem';
 import { CHAIN, PUSH_NETWORK } from '../../constants/enums';
 import { UNIVERSAL_GATEWAY_PC, ERC20_EVM } from '../../constants/abi';
 import { PushChainExecutionError } from '../../orchestrator/internals/errors';
@@ -236,7 +236,8 @@ describe('EVM outbound composition from the wallet', () => {
       revertRecipient: s.w.address,
     });
     expect((args[0] as { payload: Hex }).payload.startsWith('0x2cc2842d')).toBe(true);
-    expect(tx).toMatchObject({ from: s.w.address, to: ADDR.target, route: 'UOA_TO_CEA', chain: CHAIN.ETHEREUM_SEPOLIA });
+    expect(tx).toMatchObject({ from: s.w.address, to: token, data: encodeFunctionData({ abi: ERC20_EVM, functionName: 'transfer', args: [ADDR.target, BigInt(100)] }), route: 'UOA_TO_CEA', chain: CHAIN.ETHEREUM_SEPOLIA });
+    expect(tx.agentic?.destinationCalls).toHaveLength(2);
     expect(tx.agentic?.destinationAccount).toBe(getAddress('0x000000000000000000000000000000000000cea1'));
   });
 
@@ -342,7 +343,9 @@ describe('EVM outbound composition from the wallet', () => {
     expect(calls).toHaveLength(1);
     expect(getAddress(calls[0].to)).toBe(getAddress(usdc.address));
     expect(decodeFunctionData({ abi: ERC20_EVM, data: calls[0].data }).args).toEqual([recipient, BigInt(100)]);
-    expect(tx.to).toBe(recipient);
+    expect(tx.to).toBe(getAddress(usdc.address));
+    expect(tx.data).toBe(calls[0].data);
+    expect(tx.agentic?.destinationCalls).toEqual(calls.map((c) => ({ ...c, to: getAddress(c.to) })));
   });
 
   it('a value-only outbound burns the native PRC20 for that value and forwards it to the recipient', async () => {

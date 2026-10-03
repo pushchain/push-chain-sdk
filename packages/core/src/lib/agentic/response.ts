@@ -58,6 +58,7 @@ export function adaptAgenticResponse(
     ...(meta.rulesId ? { rulesId: meta.rulesId } : {}),
     ...(meta.chainNamespace ? { chainNamespace: meta.chainNamespace } : {}),
     ...(meta.destinationAccount ? { destinationAccount: meta.destinationAccount } : {}),
+    ...(meta.destinationCalls ? { destinationCalls: meta.destinationCalls.map((call) => ({ ...call })) } : {}),
     rawTo,
     rawData,
   };
@@ -105,7 +106,8 @@ export async function adaptTrackedResponse(
       door,
       rulesId,
       chainNamespace: chain,
-      logical: logicalOutboundCall(out.calls, wallet),
+      logical: outboundResponseCall(out.calls, { to: outbound.target, data: outbound.data, value: outbound.value }),
+      ...(out.calls.length > 0 ? { destinationCalls: out.calls } : {}),
       route: 'UOA_TO_CEA',
       chain: (chain as CHAIN | undefined) ?? resp.chain,
     });
@@ -122,24 +124,19 @@ export async function adaptTrackedResponse(
   });
 }
 
-const ERC20_TRANSFER = '0xa9059cbb';
-
 /**
- * The requested destination call, recovered from the payload the wallet's CEA
- * runs: the last call (a prepended token transfer precedes the user's call);
- * for a transfer-only payload, the transfer's recipient.
+ * Canonical outbound summary for both send and replay: the first actual
+ * destination call. The complete ordered calls live in agentic.destinationCalls.
+ * Identical calldata can come from explicit calls or generated transfers, so
+ * never infer the original input shape from a selector. For an unrecognized
+ * historical payload, retain the actual gateway call instead of inventing one.
  */
-function logicalOutboundCall(
-  calls: { to: Address; value: bigint; data: Hex }[],
-  wallet: Address
-): { to: string; data: string; value: bigint } {
-  const last = calls[calls.length - 1];
-  if (!last) return { to: wallet, data: '0x', value: BigInt(0) };
-  if (calls.length === 1 && last.data.toLowerCase().startsWith(ERC20_TRANSFER) && last.data.length === 2 + 8 + 128) {
-    const [recipient] = decodeAbiParameters([{ type: 'address' }, { type: 'uint256' }], `0x${last.data.slice(10)}`);
-    return { to: getAddress(recipient), data: '0x', value: BigInt(0) };
-  }
-  return { to: last.to, data: last.data, value: last.value };
+export function outboundResponseCall(
+  calls: readonly { to: Address; value: bigint; data: Hex }[],
+  fallback: LogicalCall
+): LogicalCall {
+  const first = calls[0];
+  return first ? { to: first.to, data: first.data, value: first.value } : fallback;
 }
 
 function decodeOutbound(data: Hex): {

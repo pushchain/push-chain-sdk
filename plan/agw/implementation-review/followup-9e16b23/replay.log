@@ -1,0 +1,32 @@
+FAIL plan/agw/implementation-review/followup-9e16b23/replay.spec.ts (9.298 s)
+  ✓ R6 recognized outbound triggers real response-builder wait after an early Push-only route (8 ms)
+  ✕ F1 replay of an explicitly supplied ERC20 transfer retains the token target and calldata (5 ms)
+
+  ● F1 replay of an explicitly supplied ERC20 transfer retains the token target and calldata
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 2
+    + Received  + 2
+
+      Object {
+    -   "data": "0xa9059cbb00000000000000000000000000000000000000000000000000000000000000b9000000000000000000000000000000000000000000000000000000000000000a",
+    -   "to": "0x0000000000000000000000000000000000007a76",
+    +   "data": "0x",
+    +   "to": "0x00000000000000000000000000000000000000b9",
+      }
+
+      59 |   const response = fakeResponse({ to: w.address, data: e704d5b.encodeExecute([out.gatewayCall]) });
+      60 |   await adaptTrackedResponse(rt, response);
+    > 61 |   expect(response).toMatchObject({ to: ADDR.target, data });
+         |                    ^
+      62 | });
+      63 |
+
+      at Object.<anonymous> (plan/agw/implementation-review/followup-9e16b23/replay.spec.ts:61:20)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 passed, 2 total
+Snapshots:   0 total
+Time:        9.419 s
+Ran all test suites.

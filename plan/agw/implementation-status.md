@@ -50,3 +50,8 @@ No product decision was assumed approved. No Notion refresh or answers were foun
 ## Gap register cross-reference
 
 Implementation evidence exists for G03 (explicit-context IDs, receipt IDs), G08 (checkpoint/label reads), G13/G15 (creation strategy and partial recovery), G14 (wallet-level replacement), G16 (Web2), G17 (read-only and reinitialize), G18 (eligibility and uncached selection) and G20 (dedicated composer and response identity). None is closed: each closure criterion also requires review and, where stated, a verified deployment or live acceptance.
+
+
+## Outbound response follow-up
+
+F1 is resolved with a shared canonical first-call summary and complete `agentic.destinationCalls` metadata on send/replay. R6 wait-path regressions are now in the regular unit suite. Current validation: 1,908 unit tests, 34 local-contract tests, both typechecks and build pass. No live acceptance was performed. See [resolution](implementation-review/outbound-response-resolution.md).

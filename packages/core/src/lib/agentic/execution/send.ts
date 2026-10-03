@@ -20,11 +20,11 @@ import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import { assertCanSign, emitAgentic, wrapSendError } from '../management/common';
 import { selectRuleForSend } from '../reads/rules';
 import { Snapshot } from '../reads/snapshot';
-import { adaptAgenticResponse } from '../response';
+import { adaptAgenticResponse, outboundResponseCall } from '../response';
 import type { AgenticRuntime } from '../runtime';
 import type { AgenticHex, AgenticProgressHook } from '../agentic.types';
 import { guardAgenticSendParams } from './guards';
-import { composeOutbound } from './outbound';
+import { composeOutbound, type DestinationCall } from './outbound';
 
 const MODE_UNIVERSAL = 0;
 const VM_EVM = 0;
@@ -134,6 +134,7 @@ export async function agenticSend(
   let logical: { to: string; data: string; value: bigint };
   let meta: { route?: 'UOA_TO_CEA'; destinationAccount?: Address } = {};
   let outboundChain: CHAIN | undefined;
+  let destinationCalls: DestinationCall[] | undefined;
 
   if (actx.door === 'agent') {
     requireCapability(gen.capabilities, AgenticCapability.AGENT_EXECUTE);
@@ -235,12 +236,10 @@ export async function agenticSend(
     } else {
       wrappedData = gen.contracts.encodeExecute([out.gatewayCall]);
     }
-    // The requested target; the encoded destination calls always name it.
-    logical = {
-      to: getAddress((p.to as { address: string }).address),
-      data: typeof p.data === 'string' ? p.data : '0x',
-      value: p.value ?? BigInt(0),
-    };
+    destinationCalls = out.destinationCalls;
+    logical = outboundResponseCall(destinationCalls, {
+      to: out.gatewayCall.target, data: out.gatewayCall.data, value: out.gatewayCall.value,
+    });
   }
 
   await enforceSignerGas(runtime, signerFields(p).gasLimit);
@@ -271,6 +270,7 @@ export async function agenticSend(
     rulesId,
     chainNamespace: outboundChain ?? destination,
     destinationAccount: meta.destinationAccount as AgenticHex | undefined,
+    destinationCalls,
     logical,
     route: meta.route,
     chain: outboundChain,
@@ -278,4 +278,3 @@ export async function agenticSend(
   emitAgentic(runtime, hook, PROGRESS_HOOK.AGENTIC_TX_199_01, 'sendTransaction', resp.hash);
   return resp;
 }
-

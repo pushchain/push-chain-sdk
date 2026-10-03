@@ -190,6 +190,13 @@ export interface AgenticTxMetadata {
   chainNamespace?: string;
   /** The wallet's destination account (CEA) for an outbound. */
   destinationAccount?: AgenticAddress;
+  /**
+   * Ordered calls encoded for the destination CEA. Outbound response
+   * to/data/value summarize the first call, including an SDK-generated token
+   * transfer. Replay uses the same representation; it cannot recover which
+   * calls were supplied explicitly versus generated from funds.
+   */
+  destinationCalls?: readonly { to: AgenticAddress; data: AgenticHex; value: bigint }[];
   /** Account the signer's transaction actually called (the wallet). */
   rawTo: string;
   /** Calldata the signer's transaction actually carried. */

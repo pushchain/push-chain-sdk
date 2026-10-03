@@ -1,3 +1,4 @@
 # Preserve native exports and raw tool output, including original whitespace.
 notion/** -whitespace
 research/validation-e704d5b/*.log -whitespace
+implementation-review/**/*.log -whitespace
