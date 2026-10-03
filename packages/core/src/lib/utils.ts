@@ -31,6 +31,7 @@ import {
 import { PC20WrapperNotRegisteredError } from './orchestrator/internals/pc20/errors';
 import { getPushChainForNetwork } from './orchestrator/internals/helpers';
 import { Buffer } from 'buffer';
+import { agenticUtils } from './agentic/utils';
 import type { Idl } from '@coral-xyz/anchor';
 import {
   encodeAnchorIxData,
@@ -1041,6 +1042,13 @@ export class Utils {
       };
     },
   };
+
+  /**
+   * Agentic wallet (AGW) pure helpers: rulesId, actionId, configId,
+   * deriveWallet, encodeRules, decodeRules, compileCard. Generation context is
+   * explicit (provisional signatures, A04); no RPC is performed.
+   */
+  static agentic = agenticUtils;
 
   /**
    * Internal: resolves a CHAIN enum from either a CHAIN value or a PushChain client instance.

@@ -17,6 +17,7 @@ import {
   WEB2_MAX_EXTRACT_ENTRIES,
 } from './read-state';
 import { UNIVERSAL_READ_STATUS, READ_STATUS, READ_ERROR_CODE, READ_OUTCOME } from '../read-state/read-state.types';
+import { AGENTIC } from '../agentic/constants';
 
 /** `PushChain.CONSTANTS.READ` — cross-chain read state. Values verified against the deployed UniversalCallback. */
 export const READ_CONSTANTS = {
@@ -57,6 +58,8 @@ export const CONSTANTS = {
   MOVEABLE: { TOKEN: MOVEABLE_TOKEN_CONSTANTS },
   PAYABLE: { TOKEN: PAYABLE_TOKEN_CONSTANTS },
   READ: READ_CONSTANTS,
+  /** Agentic wallet deployments by Push network. Empty until a verified deployment exists (A07). */
+  AGENTIC,
 };
 
 export type { TypedDataDomain, TypedData };

@@ -43,14 +43,17 @@ export class PushChainExecutionError extends Error {
   readonly code = 'PUSH_CHAIN_EXECUTION_FAILED' as const;
   readonly gatewayTxHash?: string;
   readonly decodedError?: DecodedErrorPayload;
+  /** Underlying transport/RPC error, kept so raw revert data is not lost. */
+  override readonly cause?: unknown;
   constructor(
     message: string,
-    opts: { gatewayTxHash?: string; decodedError?: DecodedErrorPayload } = {}
+    opts: { gatewayTxHash?: string; decodedError?: DecodedErrorPayload; cause?: unknown } = {}
   ) {
     super(normalizePublicErrorMessage(message));
     this.name = 'PushChainExecutionError';
     this.gatewayTxHash = opts.gatewayTxHash;
     this.decodedError = opts.decodedError;
+    if (opts.cause !== undefined) this.cause = opts.cause;
   }
 }
 

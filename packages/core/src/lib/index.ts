@@ -175,4 +175,46 @@ export {
 export { UNIVERSAL_CALLBACK_EVM } from './constants/abi/universalCallback.evm';
 export { UNIVERSAL_READ_REGISTRY_EVM } from './constants/abi/universalReadRegistry.evm';
 
+// Structured execution errors (base class of AgenticRevertError)
+export {
+  PushChainExecutionError,
+  PushChainBatchExecutionError,
+} from './orchestrator/internals/errors';
+export type { DecodedErrorPayload } from './orchestrator/internals/errors';
+
+// Agentic wallet (AGW)
+export type { PushChainInitializeOptions } from './push-chain/push-chain';
+export {
+  AGENTIC_ERROR_CODE,
+  AgenticError,
+  AgenticRevertError,
+} from './agentic';
+export type {
+  AgenticAddress,
+  AgenticDoor,
+  AgenticErrorCode,
+  AgenticHex,
+  AgenticNamespace,
+  AgenticNetworkConstants,
+  AgenticProgressHook,
+  AgenticTxMetadata,
+  AgenticWallet,
+  AllowedCall,
+  AssetCap,
+  Checkpoint,
+  CheckpointKind,
+  CreateOptions,
+  CreateResult,
+  ForeignChainNamespace,
+  NativeRule,
+  Rule,
+  RulesEncodeContext,
+  RulesRecord,
+  Selector,
+  Spent,
+  UniversalRule,
+  WalletInfo,
+  WalletSummary,
+} from './agentic';
+
 export { PushChain };

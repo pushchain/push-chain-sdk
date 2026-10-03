@@ -184,7 +184,7 @@ export async function executeStandardPayload(
       // outer orchestrator catch doesn't emit a second 199-02 on top.
       ctx._routeTerminalEmitted = true;
       if (!isUserDecline && !(err instanceof PushChainExecutionError)) {
-        throw new PushChainExecutionError(errMsg);
+        throw new PushChainExecutionError(errMsg, { cause: err });
       }
       throw err;
     }
