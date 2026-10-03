@@ -33,11 +33,23 @@ export interface NativeRule {
   maxValueTotal?: bigint;
   /** Default 0 (unlimited calls until expiry) — provisional, A03. */
   maxCalls?: number;
-  /** `arg` is the argument index in the selector signature. */
-  pins?: { arg: number; expected: AgenticHex | AgenticAddress | bigint }[];
+  pins?: ArgPin[];
   /** `maxTotal` default uint256 max (unlimited total) — provisional, A03. */
-  amount?: { arg: number; maxPerCall: bigint; maxTotal?: bigint };
+  amount?: AmountLimit;
 }
+
+/**
+ * Where a pin or amount sits in the calldata. `arg` is the argument index in
+ * the selector signature (requires the signature form of `selector`).
+ * `offset` is the raw calldata byte offset, selector included — the form the
+ * contracts store; decoded rules (rules.get/list, decodeRules) always use it
+ * because stored terms carry no ABI. SDK extension of the page-5 shape.
+ */
+export type ArgPin =
+  | { arg: number; expected: AgenticHex | AgenticAddress | bigint }
+  | { offset: number; expected: AgenticHex };
+
+export type AmountLimit = ({ arg: number } | { offset: number }) & { maxPerCall: bigint; maxTotal?: bigint };
 
 export interface AssetCap {
   /** The destination chain's token (MOVEABLE constant) or native marker. */

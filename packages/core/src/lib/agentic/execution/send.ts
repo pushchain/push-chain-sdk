@@ -9,6 +9,7 @@ import type {
   UniversalTxResponse,
 } from '../../orchestrator/orchestrator.types';
 import { isChainTarget } from '../../orchestrator/route-detector';
+import { getPushChainForNetwork, isPushChain } from '../../orchestrator/internals/helpers';
 import { AgenticCapability, requireCapability } from '../capabilities';
 import type { AgenticExecutionContext } from '../context';
 import type { Call, UniversalConfigReadE704d5b } from '../contracts/e704d5b';
@@ -23,7 +24,7 @@ import { adaptAgenticResponse } from '../response';
 import type { AgenticRuntime } from '../runtime';
 import type { AgenticHex, AgenticProgressHook } from '../agentic.types';
 import { guardAgenticSendParams } from './guards';
-import { composeOutbound, ownerOutboundCalls } from './outbound';
+import { composeOutbound } from './outbound';
 
 const MODE_UNIVERSAL = 0;
 const VM_EVM = 0;
@@ -67,6 +68,26 @@ async function enforceSignerGas(runtime: AgenticRuntime, gasLimit: bigint | unde
   }
 }
 
+/**
+ * A ChainTarget naming the connected Push chain is a native send, exactly like
+ * a bare address (core's route detector treats it the same way). A ChainTarget
+ * naming a different Push network is refused rather than routed outbound.
+ */
+function normalizePushDestination(p: UniversalExecuteParams, runtime: AgenticRuntime): UniversalExecuteParams {
+  if (!isChainTarget(p.to)) return p;
+  const chain = p.to.chain;
+  if (chain === getPushChainForNetwork(runtime.network)) {
+    return { ...p, to: getAddress(p.to.address) };
+  }
+  if (isPushChain(chain)) {
+    throw new AgenticError(
+      AGENTIC_ERROR_CODE.INVALID_RULE,
+      `destination ${chain} is a Push chain other than the connected network (${runtime.network})`
+    );
+  }
+  return p;
+}
+
 function toCalls(params: UniversalExecuteParams): Call[] {
   if (Array.isArray(params.data)) {
     return params.data.map((c) => ({ target: getAddress(c.to), value: c.value ?? BigInt(0), data: c.data }));
@@ -93,7 +114,7 @@ export async function agenticSend(
 ): Promise<UniversalTxResponse> {
   assertCanSign(runtime, 'sendTransaction');
   guardAgenticSendParams(params);
-  const p = params as UniversalExecuteParams;
+  const p = normalizePushDestination(params as UniversalExecuteParams, runtime);
   const hook: AgenticProgressHook | undefined = options?.progressHook ?? p.progressHook;
   const gen = actx.generation;
   const wallet = actx.wallet;
@@ -159,10 +180,7 @@ export async function agenticSend(
       maxPCPerCall = cfg.maxPCPerCall;
       expectedCEA = getAddress(cfg.expectedCEA);
     }
-    const out = await composeOutbound(runtime, gen, wallet, p, {
-      ruleAsset,
-      requireCalls: actx.door === 'agent',
-    });
+    const out = await composeOutbound(runtime, gen, wallet, p, { ruleAsset, door: actx.door });
     outboundChain = out.chain;
     meta = { route: 'UOA_TO_CEA', destinationAccount: out.destinationAccount };
     const [walletPc, tokenBalance, allowance] = await Promise.all([
@@ -188,6 +206,17 @@ export async function agenticSend(
         `wallet ${wallet} holds ${tokenBalance} of ${out.token}; this outbound burns ${out.amount}`
       );
     }
+    // Both doors only consume an allowance the owner set separately; the SDK
+    // never writes one (a write from a stale read could restore revoked authority).
+    if (out.amount > allowance) {
+      throw new AgenticError(
+        AGENTIC_ERROR_CODE.GATEWAY_ALLOWANCE_INSUFFICIENT,
+        `the gateway may pull ${allowance} of ${out.token} from the wallet; this outbound needs ${out.amount}`,
+        {
+          hint: 'Set a bounded allowance first with an owner-door send: approve(gateway, cap) on the token (approve(gateway, 0) removes it).',
+        }
+      );
+    }
     if (actx.door === 'agent') {
       if (expectedCEA && expectedCEA !== out.destinationAccount) {
         throw new AgenticError(
@@ -202,23 +231,16 @@ export async function agenticSend(
           `this outbound needs ${out.value} PC wei but the rule caps the wallet's PC per call at ${maxPCPerCall}`
         );
       }
-      if (out.amount > allowance) {
-        throw new AgenticError(
-          AGENTIC_ERROR_CODE.GATEWAY_ALLOWANCE_INSUFFICIENT,
-          `the gateway may pull ${allowance} of ${out.token} from the wallet; this outbound needs ${out.amount}`,
-          {
-            hint: 'The owner sets a bounded allowance with an owner-door send: approve(gateway, cap) on the token. The agent path never approves.',
-          }
-        );
-      }
       wrappedData = gen.contracts.encodeExecuteAsAgent(rulesId as Hex, out.gatewayCall);
     } else {
-      wrappedData = gen.contracts.encodeExecute(ownerOutboundCalls(gen, out, allowance));
+      wrappedData = gen.contracts.encodeExecute([out.gatewayCall]);
     }
-    const first = out.destinationCalls[0];
-    logical = first
-      ? { to: first.to, data: first.data, value: first.value }
-      : { to: (p.to as { address: string }).address, data: '0x', value: BigInt(0) };
+    // The requested target; the encoded destination calls always name it.
+    logical = {
+      to: getAddress((p.to as { address: string }).address),
+      data: typeof p.data === 'string' ? p.data : '0x',
+      value: p.value ?? BigInt(0),
+    };
   }
 
   await enforceSignerGas(runtime, signerFields(p).gasLimit);

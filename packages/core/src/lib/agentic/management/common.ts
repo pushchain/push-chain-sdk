@@ -79,8 +79,23 @@ export async function confirmedLogs(
   runtime: AgenticRuntime,
   tx: UniversalTxResponse
 ): Promise<{ logs: Log[]; hashes: Hex[] }> {
-  const receipt = await tx.wait();
   const hashes = (tx.transactionHashes ?? [tx.hash as Hex]) as Hex[];
+  const unavailable = (cause: unknown) =>
+    new AgenticError(
+      AGENTIC_ERROR_CODE.RECEIPT_UNAVAILABLE,
+      `submitted ${tx.hash} but could not read its receipt: ${cause instanceof Error ? cause.message : String(cause)}`,
+      {
+        hint: 'The transaction may still land. Check these hashes before retrying.',
+        details: { txHash: tx.hash, transactionHashes: hashes },
+        cause,
+      }
+    );
+  let receipt;
+  try {
+    receipt = await tx.wait();
+  } catch (cause) {
+    throw unavailable(cause);
+  }
   if (hashes.length === 1) {
     if (receipt.status !== 1) {
       throw new AgenticRevertError(`Push transaction ${tx.hash} reverted`, {
@@ -91,7 +106,12 @@ export async function confirmedLogs(
   }
   const logs: Log[] = [];
   for (const hash of hashes) {
-    const r = await runtime.reader.getTransactionReceipt({ hash });
+    let r;
+    try {
+      r = await runtime.reader.getTransactionReceipt({ hash });
+    } catch (cause) {
+      throw unavailable(cause);
+    }
     if (r.status !== 'success') {
       throw new AgenticRevertError(`Push transaction ${hash} reverted`, { transactionHashes: hashes });
     }

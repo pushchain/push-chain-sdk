@@ -1,11 +1,11 @@
-import { decodeFunctionData, type Hex, type Log } from 'viem';
+import { decodeFunctionData, encodeErrorResult, type Hex, type Log, type TransactionReceipt } from 'viem';
 import { PUSH_NETWORK } from '../../constants/enums';
 import { PushChainBatchExecutionError } from '../../orchestrator/internals/errors';
 import type { MultiCall } from '../../orchestrator/orchestrator.types';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import { AgenticCapability } from '../capabilities';
 import { currentGeneration, resetAgenticGenerations } from '../deployments';
-import { AGW_ABI, UNIVERSAL_RULES_POLICY_ABI } from '../contracts/abi/e704d5b';
+import { AGW_ABI, AGW_FACTORY_ABI, UNIVERSAL_RULES_POLICY_ABI } from '../contracts/abi/e704d5b';
 import { e704d5b } from '../contracts/e704d5b';
 import { deriveWallet, rulesId as computeRulesId } from '../codec/ids';
 import { AGENTIC_ERROR_CODE } from '../errors';
@@ -117,27 +117,90 @@ describe('agentic.create', () => {
     });
   });
 
-  it('a sequential failure after deployment is CREATE_PARTIAL with hashes and granted IDs, never a redeploy', async () => {
+  const receipt = (logs: Log[], status: 'success' | 'reverted' = 'success') =>
+    ({ status, logs } as unknown as TransactionReceipt);
+
+  it('a sequential failure after deployment is CREATE_PARTIAL; what committed comes from this call’s receipts', async () => {
     const fake = new FakeChain();
+    const h1 = `0x${'01'.repeat(32)}` as Hex;
+    const h2 = `0x${'02'.repeat(32)}` as Hex;
+    fake.receipts.set(h1, receipt([log(ADDR.factory, e704d5b.events.walletDeployed, { owner: ADDR.owner, index: BigInt(0), wallet: nextWallet }, { label: 'ops' }, BigInt(101))]));
+    fake.receipts.set(h2, receipt([granted(nextWallet, ids[0])]));
     const rt = mockRuntime(fake, {
       signer: ADDR.owner,
       execute: (async () => {
-        // Deployment and the first grant committed before the failure.
-        fake.addWallet(ADDR.owner, 'ops', [fake.nativeRule(ADDR.agent, ids[0])]);
-        throw new PushChainBatchExecutionError('grant 2 reverted', [`0x${'01'.repeat(32)}`, `0x${'02'.repeat(32)}`], `0x${'03'.repeat(32)}`);
+        throw new PushChainBatchExecutionError('grant 2 reverted', [h1, h2]);
       }) as never,
     });
     const err = await createWallet(rt, 'ops', { rules: [rule(), rule(ADDR.other)] }).catch((e) => e);
     expect(err.code).toBe(AGENTIC_ERROR_CODE.CREATE_PARTIAL);
-    expect(err.details).toMatchObject({
-      wallet: nextWallet,
-      walletDeployed: true,
-      grantedRulesIds: [ids[0]],
-      confirmedHashes: [`0x${'01'.repeat(32)}`, `0x${'02'.repeat(32)}`],
-      pendingHash: `0x${'03'.repeat(32)}`,
-    });
+    expect(err.details).toMatchObject({ wallet: nextWallet, walletDeployed: true, grantedRulesIds: [ids[0]], confirmedHashes: [h1, h2] });
     expect(err.hint).toMatch(/rules\.add/);
     expect(rt.events.at(-1)?.id).toBe(PROGRESS_HOOK.AGENTIC_TX_199_02);
+  });
+
+  it('a pending hash keeps an unconfirmed deployment unknown', async () => {
+    const fake = new FakeChain();
+    const rt = mockRuntime(fake, {
+      signer: ADDR.owner,
+      execute: (async () => {
+        throw new PushChainBatchExecutionError('timed out', [], `0x${'03'.repeat(32)}`);
+      }) as never,
+    });
+    const err = await createWallet(rt, 'ops', { rules: [rule()] }).catch((e) => e);
+    expect(err.details).toMatchObject({ walletDeployed: 'unknown', pendingHash: `0x${'03'.repeat(32)}` });
+    expect(err.hint).toMatch(/Do not retry/);
+  });
+
+  it('failed recovery reads report unknown state, never "not deployed"', async () => {
+    const fake = new FakeChain();
+    const rt = mockRuntime(fake, {
+      signer: ADDR.owner,
+      execute: (async () => {
+        fake.addWallet(ADDR.owner, 'committed');
+        throw new PushChainBatchExecutionError('grant failed', [`0x${'11'.repeat(32)}`]);
+      }) as never,
+    });
+    const err = await createWallet(rt, 'review', { rules: [rule()] }).catch((e) => e);
+    expect(err.code).toBe('CREATE_PARTIAL');
+    expect(err.details.walletDeployed).toBe('unknown');
+    expect(err.details.recoveryError).toBeTruthy();
+    expect(err.hint).toMatch(/Do not retry/);
+  });
+
+  it('a receipt that cannot be read after submission keeps the hash and reports unknown state', async () => {
+    const fake = new FakeChain();
+    const rt = mockRuntime(fake, {
+      signer: ADDR.owner,
+      execute: (async () => {
+        const r = fakeResponse({ hash: `0x${'44'.repeat(32)}` });
+        r.wait = async () => {
+          throw new Error('rpc down');
+        };
+        return r;
+      }) as never,
+    });
+    const err = await createWallet(rt, 'x', { rules: [] }).catch((e) => e);
+    expect(err.code).toBe(AGENTIC_ERROR_CODE.CREATE_PARTIAL);
+    expect(err.details).toMatchObject({ walletDeployed: 'unknown', submitted: { txHash: `0x${'44'.repeat(32)}` } });
+  });
+
+  it('the deploy is index-bound: a raced slot reverts and is reported as INDEX_RACE with nothing committed', async () => {
+    const fake = new FakeChain();
+    const raceData = encodeErrorResult({ abi: AGW_FACTORY_ABI, errorName: 'IndexMismatch', args: [BigInt(1), BigInt(0)] });
+    const rt = mockRuntime(fake, {
+      signer: ADDR.owner,
+      execute: (async (p: { data: MultiCall[] }) => {
+        const deploy = decodeFunctionData({ abi: AGW_FACTORY_ABI, data: p.data[0].data });
+        expect(deploy.functionName).toBe('deployWalletWithSig');
+        expect((deploy.args[0] as { index: bigint; wallet: string }).index).toBe(BigInt(0));
+        expect((deploy.args[0] as { wallet: string }).wallet).toBe(nextWallet);
+        throw new Error(`Execution reverted with reason: custom error ${raceData.slice(0, 10)}: ${raceData.slice(10)}.`);
+      }) as never,
+    });
+    const err = await createWallet(rt, 'x', { rules: [rule()] }).catch((e) => e);
+    expect(err.code).toBe(AGENTIC_ERROR_CODE.INDEX_RACE);
+    expect(err.details).toMatchObject({ committed: false });
   });
 
   it('a slot that is already deployed is refused before signing', async () => {

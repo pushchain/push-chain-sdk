@@ -104,9 +104,13 @@ d('agw universal evm', () => {
     const countBefore = (await sep.readContract({ address: counter, abi: COUNTER_ABI, functionName: 'count' })) as bigint;
     const balBefore = await f.push.readContract({ address: token, abi: erc20Abi, functionName: 'balanceOf', args: [wallet] });
     const agent = await f.agent(wallet);
+    const ceaBefore = await sep.getBalance({ address: cea });
+    // Explicit call array: the bridged ETH lands in the wallet's CEA and the
+    // allow-listed call runs as given (a single `data` would forward the value
+    // to the non-payable counter, as Route 2 does for ordinary accounts).
     const tx = await agent.universal.sendTransaction({
       to: { address: counter, chain: SEPOLIA },
-      data: INCREMENT,
+      data: [{ to: counter, value: BigInt(0), data: INCREMENT }],
       funds: { amount: AMOUNT, token: MOVEABLE_TOKEN_CONSTANTS.ETHEREUM_SEPOLIA.ETH },
     });
     expect(tx).toMatchObject({ from: wallet, route: 'UOA_TO_CEA' });
@@ -119,6 +123,8 @@ d('agw universal evm', () => {
     expect(await f.push.readContract({ address: token, abi: erc20Abi, functionName: 'balanceOf', args: [wallet] })).toBe(balBefore - AMOUNT);
     expect(await f.push.readContract({ address: token, abi: erc20Abi, functionName: 'allowance', args: [wallet, f.manifest.addresses.gateway] })).toBe(AMOUNT);
     expect((await sep.readContract({ address: counter, abi: COUNTER_ABI, functionName: 'count' })) as bigint).toBeGreaterThan(countBefore);
+    // Independent destination check: the wallet's own CEA received the bridged amount.
+    expect(await sep.getBalance({ address: cea })).toBe(ceaBefore + AMOUNT);
     const replay = await f.owner.universal.trackTransaction(tx.hash);
     expect(replay.from).toBe(wallet);
     expect(replay.agentic).toMatchObject({ door: 'agent', rulesId });

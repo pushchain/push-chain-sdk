@@ -113,6 +113,40 @@ export const e704d5b = {
   encodeDeployWallet(label: string): Hex {
     return encodeFunctionData({ abi: AGW_FACTORY_ABI, functionName: 'deployWallet', args: [label] });
   },
+  /**
+   * Index-bound deployment for an owner calling the factory itself.
+   * deployWalletWithSig skips signature checks when msg.sender == intent.owner
+   * but still reverts IndexMismatch / IntentWalletMismatch unless the owner's
+   * next slot is exactly `index` and predicts to `wallet`. A concurrent
+   * creation therefore makes this call revert instead of deploying another
+   * slot while later calls in the batch target the predicted address.
+   */
+  encodeDeployWalletAt(owner: Address, index: bigint, wallet: Address, label: string): Hex {
+    const zero32 = `0x${'00'.repeat(32)}` as Hex;
+    const zeroAddress = '0x0000000000000000000000000000000000000000' as Address;
+    return encodeFunctionData({
+      abi: AGW_FACTORY_ABI,
+      functionName: 'deployWalletWithSig',
+      args: [
+        {
+          owner,
+          wallet,
+          executor: zeroAddress,
+          index,
+          sessionHash: zero32,
+          mode: zero32,
+          execCalldataHash: zero32,
+          nonceKey: BigInt(0),
+          nonceSeq: BigInt(0),
+          grantNonce: BigInt(0),
+          deadline: 0,
+          signerChainId: BigInt(0),
+        },
+        '0x',
+        label,
+      ],
+    });
+  },
   encodeGrantRules(session: SessionWire): Hex {
     return encodeFunctionData({
       abi: AGW_ABI,

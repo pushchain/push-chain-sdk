@@ -91,9 +91,40 @@ describe('native rule codec', () => {
     const back = decodeNativeTerms(env.body);
     expect(back).toEqual({ ...terms, validUntil: terms.validUntil });
     const rule = nativeTermsToRule(back, v.rule.agent, `0x${'00'.repeat(32)}`);
-    expect(rule.pins?.[0].arg).toBe(0);
-    expect(rule.amount).toEqual({ arg: 1, maxPerCall: BigInt(10), maxTotal: BigInt(100) });
+    // Stored terms carry offsets, not an ABI: decoded rules report the raw offset form.
+    expect(rule.pins).toEqual([{ offset: 4, expected: terms.pins[0].expected.toLowerCase() }]);
+    expect(rule.amount).toEqual({ offset: 36, maxPerCall: BigInt(10), maxTotal: BigInt(100) });
     expect(rule.ref).toBeUndefined();
+    // …and the decoded rule re-encodes to identical terms with only its 4-byte selector.
+    expect(nativeRuleToTerms(rule, { nowSeconds: NOW }).terms).toEqual(terms);
+  });
+
+  it('decoding never invents argument indexes: a static array before a pin stays a raw offset', () => {
+    const input: NativeRule = { agent, target, selector: 'deposit(uint256[2],address)', validUntil: NOW + 10, pins: [{ arg: 1, expected: agent }] };
+    const { terms } = nativeRuleToTerms(input, { nowSeconds: NOW });
+    expect(terms.pins[0].offset).toBe(4 + 64);
+    const decoded = nativeTermsToRule(terms, agent, `0x${'00'.repeat(32)}`);
+    expect(decoded.pins).toEqual([{ offset: 68, expected: terms.pins[0].expected }]);
+    expect(nativeRuleToTerms(decoded, { nowSeconds: NOW }).terms).toEqual(terms);
+  });
+
+  it('a decoded address pin re-encodes in argument form once the signature is restored', () => {
+    const input: NativeRule = { agent, target, selector: 'deposit(address,uint256)', validUntil: NOW + 10, pins: [{ arg: 0, expected: agent }] };
+    const { terms } = nativeRuleToTerms(input, { nowSeconds: NOW });
+    const word = terms.pins[0].expected;
+    expect(nativeRuleToTerms({ ...input, pins: [{ arg: 0, expected: word }] }, { nowSeconds: NOW }).terms).toEqual(terms);
+    expect(() =>
+      nativeRuleToTerms({ ...input, pins: [{ arg: 0, expected: `0x${'ff'.repeat(32)}` }] }, { nowSeconds: NOW })
+    ).toThrow(/does not encode/);
+  });
+
+  it('offset-form pins must be exact words at a valid offset', () => {
+    const base: NativeRule = { agent, target, selector: '0xd09de08a', validUntil: NOW + 10 };
+    expect(() => nativeRuleToTerms({ ...base, pins: [{ offset: 3, expected: `0x${'00'.repeat(32)}` }] }, { nowSeconds: NOW })).toThrow(/offset/);
+    expect(() => nativeRuleToTerms({ ...base, pins: [{ offset: 4, expected: '0x01' }] }, { nowSeconds: NOW })).toThrow(/32-byte/);
+    expect(nativeRuleToTerms({ ...base, pins: [{ offset: 36, expected: `0x${'00'.repeat(31)}01` }] }, { nowSeconds: NOW }).terms.pins).toEqual([
+      { offset: 36, expected: `0x${'00'.repeat(31)}01` },
+    ]);
   });
 
   it('applies the single provisional A03 defaults table for omitted limits', () => {

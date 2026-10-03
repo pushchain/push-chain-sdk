@@ -3,13 +3,14 @@ import {
   encodeAbiParameters,
   getAddress,
   isAddress,
+  isHex,
   type AbiParameter,
   type Address,
   type Hex,
 } from 'viem';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import type { AgenticHex, NativeRule } from '../agentic.types';
-import { argumentOffset, encodeArgWord, offsetToHeadWord } from './abi-layout';
+import { argumentOffset, encodeArgWord, rawOffset } from './abi-layout';
 import { AGENTIC_DEFAULTS, UINT256_MAX, withDefault } from './defaults';
 import { APPROVAL_SELECTORS } from './policy';
 import { parseSelector, VALUE_ONLY_SELECTOR, type ParsedSelector } from './selectors';
@@ -116,6 +117,12 @@ export function nativeRuleToTerms(
   }
 
   const pins = pinsIn.map((p, i) => {
+    if ('offset' in p) {
+      if (typeof p.expected !== 'string' || !isHex(p.expected) || p.expected.length !== 66) {
+        throw invalid(`pins[${i}].expected must be the exact 32-byte calldata word in offset form`);
+      }
+      return { offset: rawOffset(p.offset, `pins[${i}]`), expected: p.expected.toLowerCase() as Hex };
+    }
     const offset = argumentOffset(parsed.inputs, p.arg, `pins[${i}]`);
     const param = (parsed.inputs as readonly AbiParameter[])[p.arg];
     return { offset, expected: encodeArgWord(param, p.expected, `pins[${i}]`) };
@@ -125,8 +132,9 @@ export function nativeRuleToTerms(
 
   const spenderArg = APPROVAL_SPENDER_ARG[parsed.selector];
   if (spenderArg !== undefined) {
-    const pinnedSpender =
-      spenderArg !== null && pinsIn.some((p) => p.arg === spenderArg);
+    // Every argument of these approval functions before the spender is one
+    // static word, so the spender's calldata offset is exact.
+    const pinnedSpender = spenderArg !== null && offsets.has(4 + 32 * spenderArg);
     if (!pinnedSpender) {
       throw new AgenticError(
         AGENTIC_ERROR_CODE.INVALID_RULE,
@@ -146,10 +154,15 @@ export function nativeRuleToTerms(
     maxTotal: BigInt(0),
   };
   if (rule.amount) {
-    const offset = argumentOffset(parsed.inputs, rule.amount.arg, 'amount');
-    const param = (parsed.inputs as readonly AbiParameter[])[rule.amount.arg];
-    if (!/^uint\d*$/.test(param.type)) {
-      throw invalid(`amount argument must be an unsigned integer, got ${param.type}`);
+    let offset: number;
+    if ('offset' in rule.amount) {
+      offset = rawOffset(rule.amount.offset, 'amount');
+    } else {
+      offset = argumentOffset(parsed.inputs, rule.amount.arg, 'amount');
+      const param = (parsed.inputs as readonly AbiParameter[])[rule.amount.arg];
+      if (!/^uint\d*$/.test(param.type)) {
+        throw invalid(`amount argument must be an unsigned integer, got ${param.type}`);
+      }
     }
     if (offsets.has(offset)) throw invalid('amount argument is also pinned');
     assertUint(rule.amount.maxPerCall, 256, 'amount.maxPerCall');
@@ -193,10 +206,10 @@ export function decodeNativeTerms(body: Hex): NativeTermsWire {
 }
 
 /**
- * Wire terms back to the public NativeRule shape. Argument positions are
- * reported as 32-byte head-word indexes ((offset - 4) / 32), which equal the
- * argument index whenever every preceding argument is one head word. The
- * stored terms do not carry the signature, so `selector` is the 4-byte hex.
+ * Wire terms back to the public NativeRule shape. Stored terms carry calldata
+ * offsets and exact words but no ABI, so pins and amount are returned in the
+ * raw `offset` form (never a guessed argument index) and `selector` is the
+ * 4-byte hex. The result re-encodes to the same terms.
  */
 export function nativeTermsToRule(terms: NativeTermsWire, agent: Address, ref: AgenticHex): NativeRule {
   const rule: NativeRule = {
@@ -214,13 +227,13 @@ export function nativeTermsToRule(terms: NativeTermsWire, agent: Address, ref: A
   if (!/^0x0{64}$/i.test(ref)) rule.ref = ref;
   if (terms.pins.length > 0) {
     rule.pins = terms.pins.map((p) => ({
-      arg: offsetToHeadWord(Number(p.offset)),
-      expected: p.expected as AgenticHex,
+      offset: Number(p.offset),
+      expected: p.expected.toLowerCase() as AgenticHex,
     }));
   }
   if (terms.amount.enabled) {
     rule.amount = {
-      arg: offsetToHeadWord(Number(terms.amount.offset)),
+      offset: Number(terms.amount.offset),
       maxPerCall: terms.amount.maxPerCall,
       maxTotal: terms.amount.maxTotal,
     };

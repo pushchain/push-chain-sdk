@@ -61,6 +61,12 @@ describe('response identity', () => {
     const data = e704d5b.encodeExecuteAsAgent(ruleId(4), { target: ADDR.gateway, value: BigInt(5), data: gatewayCall });
     const tracked = await adaptTrackedResponse({ reader: fake, network: PUSH_NETWORK.TESTNET_DONUT }, fakeResponse({ to: w.address, data }));
     expect(tracked).toMatchObject({ from: w.address, to: ADDR.target, data: '0xd09de08a', route: 'UOA_TO_CEA' });
+    // A Push-only route inferred from an incomplete Cosmos record is replaced.
+    const early = await adaptTrackedResponse(
+      { reader: fake, network: PUSH_NETWORK.TESTNET_DONUT },
+      fakeResponse({ to: w.address, data, route: 'UOA_TO_PUSH' })
+    );
+    expect(early.route).toBe('UOA_TO_CEA');
   });
 
   it('replay: anything not provably an AGW call is left untouched', async () => {

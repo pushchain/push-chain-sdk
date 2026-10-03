@@ -1,4 +1,4 @@
-import { getAddress, type Address, type Hex } from 'viem';
+import { getAddress, type Address, type Hex, type Log } from 'viem';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import type { MultiCall } from '../../orchestrator/orchestrator.types';
 import { PushChainBatchExecutionError } from '../../orchestrator/internals/errors';
@@ -96,7 +96,8 @@ export async function createWallet(
     computeRulesId({ validator: gen.addresses.sessionValidator, agent: p.agent, grantNonce: BigInt(i) })
   );
   const calls: MultiCall[] = [
-    { to: gen.addresses.factory, value: BigInt(0), data: gen.contracts.encodeDeployWallet(label) },
+    // Index-bound: reverts (nothing committed) if another creation took this slot.
+    { to: gen.addresses.factory, value: BigInt(0), data: gen.contracts.encodeDeployWalletAt(owner, index, wallet, label) },
     ...prepared.map((p) => ({
       to: wallet,
       value: BigInt(0),
@@ -111,7 +112,7 @@ export async function createWallet(
   try {
     tx = await sendOwnerCalls(runtime, calls, hook);
   } catch (err) {
-    const wrapped = await partialCreateError(runtime, gen, wallet, Number(index), err);
+    const wrapped = await createFailure(runtime, gen, wallet, Number(index), err);
     emitFailure(runtime, hook, wrapped);
     throw wrapped;
   }
@@ -120,7 +121,7 @@ export async function createWallet(
   try {
     ({ logs } = await confirmedLogs(runtime, tx));
   } catch (err) {
-    const wrapped = await partialCreateError(runtime, gen, wallet, Number(index), err);
+    const wrapped = await createFailure(runtime, gen, wallet, Number(index), err);
     emitFailure(runtime, hook, wrapped);
     throw wrapped;
   }
@@ -156,7 +157,15 @@ function sameIds(a: readonly Hex[], b: readonly Hex[]): boolean {
   return a.length === b.length && a.every((x, i) => x.toLowerCase() === b[i].toLowerCase());
 }
 
-async function partialCreateError(
+const RACE_ERRORS = new Set(['IndexMismatch', 'IntentWalletMismatch']);
+
+/**
+ * Turn a create failure into an exact report. What committed is derived from
+ * THIS operation's own receipts, never from a later state read; when those
+ * receipts cannot be fetched the outcome is reported as unknown so callers do
+ * not retry a creation that may have landed.
+ */
+async function createFailure(
   runtime: AgenticRuntime,
   gen: ReturnType<typeof currentGeneration>,
   wallet: Address,
@@ -165,42 +174,66 @@ async function partialCreateError(
 ): Promise<unknown> {
   const wrapped = wrapSendError(err);
   const batch = err instanceof PushChainBatchExecutionError ? err : undefined;
-  const hashes = (batch?.transactionHashes ??
-    (wrapped as { transactionHashes?: Hex[] }).transactionHashes ??
-    []) as Hex[];
-  if (hashes.length === 0) return wrapped;
-  // Something committed. Re-read chain state rather than trusting the error.
-  let walletDeployed = false;
-  let grantedRulesIds: Hex[] = [];
-  try {
-    walletDeployed = !!(await runtime.reader.getCode({ address: wallet }))?.slice(2);
-    if (walletDeployed) {
-      const snap = await Snapshot.at(runtime.reader);
-      grantedRulesIds = [
-        ...(await snap.read<readonly Hex[]>(gen.addresses.sessionEngine, gen.contracts.abis.engine, 'getPermissionIDs', [
-          wallet,
-        ])),
-      ];
-    }
-  } catch {
-    // keep what we know; the hashes below are authoritative for retry decisions
+  const confirmed = (batch?.transactionHashes ?? []) as Hex[];
+  const pending = batch?.pendingTransactionHash;
+  const receiptUnavailable =
+    wrapped instanceof AgenticError && wrapped.code === AGENTIC_ERROR_CODE.RECEIPT_UNAVAILABLE;
+
+  // The index-bound deploy reverted: another creation took the slot first and
+  // nothing from this call committed.
+  const decodedName = (wrapped as { decodedError?: { name?: string } }).decodedError?.name;
+  if (confirmed.length === 0 && !pending && decodedName && RACE_ERRORS.has(decodedName)) {
+    return new AgenticError(
+      AGENTIC_ERROR_CODE.INDEX_RACE,
+      `wallet slot ${index} (${wallet}) was taken by a concurrent creation; nothing was committed`,
+      { hint: 'Retry agentic.create; it re-reads the next slot.', details: { wallet, index, committed: false }, cause: wrapped }
+    );
   }
-  // A reverted atomic transaction committed nothing: report the revert itself.
-  if (!batch && !walletDeployed) return wrapped;
+  if (confirmed.length === 0 && !pending && !receiptUnavailable) {
+    // Nothing was confirmed (pre-broadcast failure or a reverted atomic batch).
+    return wrapped;
+  }
+
+  let walletDeployed: boolean | 'unknown' = 'unknown';
+  let grantedRulesIds: Hex[] | undefined;
+  let recoveryError: string | undefined;
+  if (!receiptUnavailable) {
+    try {
+      const logs: Log[] = [];
+      for (const hash of confirmed) {
+        const r = await runtime.reader.getTransactionReceipt({ hash });
+        if (r.status === 'success') logs.push(...(r.logs as Log[]));
+      }
+      const deployed = gen.contracts
+        .parseWalletDeployed(logs, gen.addresses.factory)
+        .some((d) => d.wallet === wallet);
+      grantedRulesIds = gen.contracts.parseRulesGranted(logs, wallet).map((g) => g.rulesId);
+      // A pending hash may itself be the deployment; only a confirmed deploy is certain.
+      walletDeployed = deployed ? true : pending ? 'unknown' : false;
+    } catch (e) {
+      recoveryError = e instanceof Error ? e.message : String(e);
+    }
+  }
+  const hint =
+    walletDeployed === true
+      ? `Wallet ${wallet} is deployed. Do not call create again; once any pending hash settles, finish with client.agentic.wallet('${wallet}').rules.add(<remaining rules>).`
+      : walletDeployed === false
+        ? 'No wallet was deployed by this call; it is safe to retry.'
+        : 'The outcome is unknown. Do not retry create until the listed hashes are reconciled (client.agentic.list() shows deployed wallets).';
   return new AgenticError(
     AGENTIC_ERROR_CODE.CREATE_PARTIAL,
     `agentic.create did not complete: ${(wrapped as Error)?.message ?? String(err)}`,
     {
-      hint: walletDeployed
-        ? `Wallet ${wallet} is deployed. Do not call create again; finish with client.agentic.wallet('${wallet}').rules.add(<remaining rules>).`
-        : 'No wallet was deployed. Check the pending hash (if any) before retrying.',
+      hint,
       details: {
         wallet,
         index,
         walletDeployed,
         grantedRulesIds,
-        confirmedHashes: hashes,
-        pendingHash: batch?.pendingTransactionHash,
+        confirmedHashes: confirmed,
+        pendingHash: pending,
+        ...(receiptUnavailable ? { submitted: (wrapped as AgenticError).details } : {}),
+        ...(recoveryError ? { recoveryError } : {}),
       },
       cause: wrapped,
     }

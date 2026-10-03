@@ -84,7 +84,9 @@ export function decodeAgwErrorData(data: Hex): DecodedErrorPayload | undefined {
       // try the next ABI
     }
   }
-  return undefined;
+  // Arguments lost (e.g. a node rendered them as text): name the error by its selector.
+  const name = ERROR_NAMES.get(selector);
+  return name ? { name, selector, hint: 'Error arguments were not available.' } : undefined;
 }
 
 export function decodeAgenticRevert(err: unknown): DecodedErrorPayload | undefined {

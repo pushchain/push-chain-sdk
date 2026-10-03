@@ -1,4 +1,5 @@
 import {
+  decodeAbiParameters,
   encodeAbiParameters,
   isAddress,
   isHex,
@@ -97,12 +98,22 @@ export function encodeArgWord(
   what: string
 ): AgenticHex {
   try {
-    if (param.type === 'address') {
+    const isWord = typeof expected === 'string' && isHex(expected) && expected.length === 66;
+    if (param.type === 'address' && !isWord) {
       if (typeof expected !== 'string' || !isAddress(expected, { strict: false })) {
         throw new Error('expected an address');
       }
-    } else if (param.type.startsWith('bytes')) {
+    } else if (param.type.startsWith('bytes') && !isWord) {
       if (typeof expected !== 'string' || !isHex(expected)) throw new Error('expected hex');
+    }
+    // An already-encoded 32-byte word (as decoded rules return) is accepted
+    // when it is a canonical encoding of this argument type.
+    if (typeof expected === 'string' && isHex(expected) && expected.length === 66 && param.type !== 'bytes32') {
+      const [value] = decodeAbiParameters([param], expected as AgenticHex);
+      if (encodeAbiParameters([param], [value]).toLowerCase() !== expected.toLowerCase()) {
+        throw new Error('word is not a canonical encoding');
+      }
+      return expected.toLowerCase() as AgenticHex;
     }
     return encodeAbiParameters([param], [expected]) as AgenticHex;
   } catch (cause) {
@@ -115,15 +126,12 @@ export function encodeArgWord(
   }
 }
 
-/** Head-word index for a decoded absolute offset. Exact only for all-single-word heads. */
-export function offsetToHeadWord(offset: number): number {
-  if (offset < 4 || (offset - 4) % 32 !== 0) {
-    throw new AgenticError(
-      AGENTIC_ERROR_CODE.RULE_READ_FAILED,
-      `stored argument offset ${offset} is not word-aligned after the selector`
-    );
+/** Validate a raw calldata offset given directly (offset form). */
+export function rawOffset(offset: number, what: string): number {
+  if (!Number.isInteger(offset) || offset < 4 || offset + 32 > UINT16_MAX) {
+    throw invalid(`${what} offset ${offset} must be an integer in [4, ${UINT16_MAX - 32}] (selector included)`);
   }
-  return (offset - 4) / 32;
+  return offset;
 }
 
 function invalid(message: string, cause?: unknown): AgenticError {

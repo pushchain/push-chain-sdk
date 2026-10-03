@@ -1,4 +1,4 @@
-import { decodeFunctionData, getAddress, type Address, type Hex } from 'viem';
+import { decodeAbiParameters, decodeFunctionData, getAddress, maxUint256, type Address, type Hex } from 'viem';
 import { CHAIN, PUSH_NETWORK } from '../../constants/enums';
 import { UNIVERSAL_GATEWAY_PC, ERC20_EVM } from '../../constants/abi';
 import { PushChainExecutionError } from '../../orchestrator/internals/errors';
@@ -102,6 +102,30 @@ describe('guards fail before the signer is ever invoked', () => {
     });
     await agenticSend(firstUse, ctx, { to: ADDR.target, data });
     expect(firstUse.executeMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('explicit Push destinations', () => {
+  it('a ChainTarget on the connected Push chain is a native send, same as a bare address', async () => {
+    const { rt, ctx } = setup('agent');
+    const tx = await agenticSend(rt, ctx, { to: { address: ADDR.target, chain: CHAIN.PUSH_TESTNET_DONUT }, data });
+    expect(e704d5b.decodeWalletCall(rt.executeMock.mock.calls[0][0].data)).toMatchObject({ kind: 'executeAsAgent', rulesId: ruleId(1) });
+    expect(tx.route).not.toBe('UOA_TO_CEA');
+    expect(tx.to).toBe(ADDR.target);
+  });
+
+  it('the owner door treats it the same way', async () => {
+    const { rt, ctx } = setup('owner');
+    await agenticSend(rt, ctx, { to: { address: ADDR.target, chain: CHAIN.PUSH_TESTNET }, data });
+    expect(e704d5b.decodeWalletCall(rt.executeMock.mock.calls[0][0].data)).toMatchObject({ kind: 'execute', calls: [{ target: ADDR.target }] });
+  });
+
+  it('another Push network is refused, not routed outbound', async () => {
+    const { rt, ctx } = setup('owner');
+    await expect(agenticSend(rt, ctx, { to: { address: ADDR.target, chain: CHAIN.PUSH_MAINNET }, data })).rejects.toThrow(
+      /other than the connected network/
+    );
+    expect(rt.executeMock).not.toHaveBeenCalled();
   });
 });
 
@@ -268,7 +292,7 @@ describe('EVM outbound composition from the wallet', () => {
     ).rejects.toMatchObject({ details: { capability: AgenticCapability.UNIVERSAL_SVM_RULES } });
   });
 
-  it('owner door preserves any standing agent allowance: approve(current + amount) then the outbound, atomically', async () => {
+  it('owner door never writes an allowance: it sends only the outbound and consumes the existing allowance', async () => {
     const s = universalSetup();
     s.ctx.door = 'owner';
     s.ctx.signerPushAccount = ADDR.owner;
@@ -276,9 +300,84 @@ describe('EVM outbound composition from the wallet', () => {
     await agenticSend(rt, s.ctx, send(BigInt(100)));
     const outer = e704d5b.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as { kind: string; calls: { target: Address; data: Hex }[] };
     expect(outer.kind).toBe('execute');
-    expect(outer.calls.map((c) => c.target)).toEqual([token, ADDR.gateway]);
-    const approve = decodeFunctionData({ abi: ERC20_EVM, data: outer.calls[0].data });
-    expect(approve.args).toEqual([ADDR.gateway, BigInt(600)]);
+    expect(outer.calls.map((c) => c.target)).toEqual([ADDR.gateway]);
+  });
+
+  it('owner door with too small an allowance fails before signing (no implicit approval)', async () => {
+    const s = universalSetup();
+    s.ctx.door = 'owner';
+    s.ctx.signerPushAccount = ADDR.owner;
+    s.fake.balances.set(`allowance:${token.toLowerCase()}`, BigInt(10));
+    const rt = mockRuntime(s.fake, { signer: ADDR.owner, resolvePrc20: () => token });
+    await expect(agenticSend(rt, s.ctx, send(BigInt(100)))).rejects.toMatchObject({
+      code: AGENTIC_ERROR_CODE.GATEWAY_ALLOWANCE_INSUFFICIENT,
+    });
+    expect(rt.executeMock).not.toHaveBeenCalled();
+  });
+
+  it('an existing unlimited allowance is consumed as-is', async () => {
+    const s = universalSetup();
+    s.ctx.door = 'owner';
+    s.ctx.signerPushAccount = ADDR.owner;
+    s.fake.balances.set(`allowance:${token.toLowerCase()}`, maxUint256);
+    const rt = mockRuntime(s.fake, { signer: ADDR.owner, resolvePrc20: () => token });
+    await expect(agenticSend(rt, s.ctx, send(BigInt(100)))).resolves.toBeDefined();
+  });
+
+  it('a transfer-only ERC-20 outbound instructs a transfer to the requested recipient', async () => {
+    const s = universalSetup();
+    s.ctx.door = 'owner';
+    s.ctx.signerPushAccount = ADDR.owner;
+    const rt = mockRuntime(s.fake, { signer: ADDR.owner, resolvePrc20: () => token });
+    const recipient = getAddress('0x00000000000000000000000000000000000ab0b0');
+    const usdc = { symbol: 'USDC', decimals: 6, address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', mechanism: 'approve' as const };
+    const tx = await agenticSend(rt, s.ctx, { to: { address: recipient, chain: CHAIN.ETHEREUM_SEPOLIA }, funds: { amount: BigInt(100), token: usdc } });
+    const outer = e704d5b.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as { calls: { data: Hex }[] };
+    const { args } = decodeFunctionData({ abi: UNIVERSAL_GATEWAY_PC, data: outer.calls[0].data });
+    const payload = (args[0] as { payload: Hex }).payload;
+    const [calls] = decodeAbiParameters(
+      [{ type: 'tuple[]', components: [{ name: 'to', type: 'address' }, { name: 'value', type: 'uint256' }, { name: 'data', type: 'bytes' }] }],
+      `0x${payload.slice(10)}`
+    );
+    expect(calls).toHaveLength(1);
+    expect(getAddress(calls[0].to)).toBe(getAddress(usdc.address));
+    expect(decodeFunctionData({ abi: ERC20_EVM, data: calls[0].data }).args).toEqual([recipient, BigInt(100)]);
+    expect(tx.to).toBe(recipient);
+  });
+
+  it('a value-only outbound burns the native PRC20 for that value and forwards it to the recipient', async () => {
+    const s = universalSetup();
+    s.ctx.door = 'owner';
+    s.ctx.signerPushAccount = ADDR.owner;
+    const native = getAddress('0x0000000000000000000000000000000000000e7e');
+    s.fake.balances.set(`balanceOf:${native.toLowerCase()}`, BigInt(1000));
+    s.fake.balances.set(`allowance:${native.toLowerCase()}`, BigInt(1000));
+    const rt = mockRuntime(s.fake, { signer: ADDR.owner, resolvePrc20: () => native });
+    await agenticSend(rt, s.ctx, { to: { address: ADDR.other, chain: CHAIN.ETHEREUM_SEPOLIA }, value: BigInt(7) });
+    const outer = e704d5b.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as { calls: { data: Hex }[] };
+    const req = decodeFunctionData({ abi: UNIVERSAL_GATEWAY_PC, data: outer.calls[0].data }).args[0] as { amount: bigint; payload: Hex };
+    expect(req.amount).toBe(BigInt(7));
+    expect(req.payload.toLowerCase()).toContain(ADDR.other.slice(2).toLowerCase());
+  });
+
+  it('an outbound with no destination call (parking in the CEA) is refused before signing', async () => {
+    const s = universalSetup();
+    s.ctx.door = 'owner';
+    s.ctx.signerPushAccount = ADDR.owner;
+    const cea = getAddress('0x000000000000000000000000000000000000cea1');
+    const rt = mockRuntime(s.fake, { signer: ADDR.owner, resolvePrc20: () => token, resolveCEA: async () => ({ cea, isDeployed: true }) });
+    await expect(
+      agenticSend(rt, s.ctx, { to: { address: cea, chain: CHAIN.ETHEREUM_SEPOLIA }, value: BigInt(1) })
+    ).rejects.toThrow(/no destination call/);
+    expect(rt.executeMock).not.toHaveBeenCalled();
+  });
+
+  it('an agent value-only destination call is refused before signing (the policy admits only allow-listed calls)', async () => {
+    const s = universalSetup();
+    const rt = mockRuntime(s.fake, { signer: ADDR.agent, resolvePrc20: () => token });
+    await expect(
+      agenticSend(rt, s.ctx, { to: { address: ADDR.other, chain: CHAIN.ETHEREUM_SEPOLIA }, funds: { amount: BigInt(1), token: { symbol: 'X', decimals: 6, address: token, mechanism: 'native' } } })
+    ).rejects.toThrow(/no function selector/);
   });
 
   it('more than 10 destination calls are refused', async () => {

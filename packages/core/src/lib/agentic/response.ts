@@ -97,17 +97,17 @@ export async function adaptTrackedResponse(
   if (outbound) {
     const out = decodeOutbound(outbound.data);
     const chain = await tokenChain(runtime, out.token);
-    const first = out.calls[0];
+    // The decoded wallet call is authoritative: core may have inferred a
+    // Push-only route from an incomplete Cosmos record, which would stop
+    // wait() from polling the destination leg.
     return adaptAgenticResponse(resp, {
       wallet,
       door,
       rulesId,
       chainNamespace: chain,
-      logical: first
-        ? { to: first.to, data: first.data, value: first.value }
-        : { to: wallet, data: '0x', value: BigInt(0) },
-      route: resp.route ?? 'UOA_TO_CEA',
-      chain: resp.chain ?? (chain as CHAIN | undefined),
+      logical: logicalOutboundCall(out.calls, wallet),
+      route: 'UOA_TO_CEA',
+      chain: (chain as CHAIN | undefined) ?? resp.chain,
     });
   }
   const single = calls.length === 1 ? calls[0] : undefined;
@@ -120,6 +120,26 @@ export async function adaptTrackedResponse(
       ? { to: single.target, data: single.data, value: single.value }
       : { to: wallet, data: resp.data, value: BigInt(0) },
   });
+}
+
+const ERC20_TRANSFER = '0xa9059cbb';
+
+/**
+ * The requested destination call, recovered from the payload the wallet's CEA
+ * runs: the last call (a prepended token transfer precedes the user's call);
+ * for a transfer-only payload, the transfer's recipient.
+ */
+function logicalOutboundCall(
+  calls: { to: Address; value: bigint; data: Hex }[],
+  wallet: Address
+): { to: string; data: string; value: bigint } {
+  const last = calls[calls.length - 1];
+  if (!last) return { to: wallet, data: '0x', value: BigInt(0) };
+  if (calls.length === 1 && last.data.toLowerCase().startsWith(ERC20_TRANSFER) && last.data.length === 2 + 8 + 128) {
+    const [recipient] = decodeAbiParameters([{ type: 'address' }, { type: 'uint256' }], `0x${last.data.slice(10)}`);
+    return { to: getAddress(recipient), data: '0x', value: BigInt(0) };
+  }
+  return { to: last.to, data: last.data, value: last.value };
 }
 
 function decodeOutbound(data: Hex): {

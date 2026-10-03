@@ -158,7 +158,7 @@ describe('PushChain.utils.agentic (pure)', () => {
     const [bytes] = u.encodeRules([rule], { pushChainNamespace: PUSH_NS, validator: ADDR.validator, rulesPolicy: ADDR.policy, nowSeconds: NOW });
     const back = u.decodeRules(bytes, { pushChainNamespace: PUSH_NS });
     expect(back).toMatchObject({ agent: ADDR.agent, target: ADDR.target, maxCalls: 4, validUntil: NOW + 100 });
-    expect((back as NativeRule).pins?.[0].arg).toBe(0);
+    expect((back as NativeRule).pins).toEqual([{ offset: 4, expected: `0x${'0'.repeat(24)}${ADDR.other.slice(2).toLowerCase()}` }]);
   });
 
   it('decodeRules of a foreign-chain envelope is capability-gated', () => {

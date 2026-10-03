@@ -129,8 +129,8 @@ describe('AGW advanced paths against real e704d5b contracts', () => {
     it('the decoded native terms carry the pins and caps as stored', async () => {
       const { rules } = await owner.agentic.wallet(wallet).rules.list();
       expect(rules[0].rule).toMatchObject({
-        pins: [{ arg: 0, expected: `0x${'0'.repeat(24)}${beneficiary.slice(2).toLowerCase()}` }],
-        amount: { arg: 1, maxPerCall: BigInt(10), maxTotal: BigInt(15) },
+        pins: [{ offset: 4, expected: `0x${'0'.repeat(24)}${beneficiary.slice(2).toLowerCase()}` }],
+        amount: { offset: 36, maxPerCall: BigInt(10), maxTotal: BigInt(15) },
         maxValuePerCall: BigInt(1000),
       });
     });
@@ -308,10 +308,12 @@ describe('AGW advanced paths against real e704d5b contracts', () => {
       ownerAgw = await h.client(0, { agenticWallet: wallet });
     });
 
+    // Explicit call array: the funds land in the wallet's CEA and the listed
+    // call runs as given (a single `data` would also prepend transfer(target)).
     const send = (amount: bigint) =>
       agenticSend(runtime, ctx, {
         to: { address: destTarget, chain: SEPOLIA },
-        data: '0xd09de08a',
+        data: [{ to: destTarget, value: BigInt(0), data: '0xd09de08a' }],
         funds: { amount, token: { symbol: 'USDC', decimals: 6, address: token, mechanism: 'approve' } },
       });
 
