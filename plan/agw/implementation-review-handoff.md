@@ -113,11 +113,11 @@ Committed vectors are contract-computed (`getPermissionId`, `predictWallet`, a r
 
 **Mocks (unit).** Chain reads (`__tests__/fake-chain.ts`, an in-memory model of the views) and the signer transport (`mock-runtime.ts`). These test SDK logic only: selection, error mapping, call shapes, ordering, consistency checks and pre-signature guards.
 
-**Live.** None. No transaction was broadcast to any testnet.
+**Live.** None. No transaction was broadcast to any testnet. No compatible deployment has been verified or registered; that is evidence of unavailable support, not proof that none exists anywhere.
 
 ## Blockers and placeholders
 
-- **A07 — no verified compatible deployment.** Every AGW call on a real network fails with `GENERATION_UNSUPPORTED`. The E2E group fails its gate, and preflight refuses to fund. To onboard:
+- **A07 — no compatible deployment has been verified or registered.** Every AGW call on a real network fails with `GENERATION_UNSUPPORTED`. The E2E group fails its gate, and preflight refuses to fund. To onboard:
   1. Write a manifest per `__e2e__/agw/_manifest.ts`.
   2. Add a verified entry to `VERIFIED_DEPLOYMENTS` in `deployments.ts`, and populate `CONSTANTS.AGENTIC` from it.
   3. Pass `AGW_DEPLOYMENT_MANIFEST` in `.github/workflows/e2e.yml`. It is not wired there yet.
@@ -132,14 +132,14 @@ Committed vectors are contract-computed (`getPermissionId`, `predictWallet`, a r
 ## Areas most needing review
 
 1. **`CHAIN.WEB2` / `READ.WEB2` value change** from `'web2:https'` to `'web2'`. Spec alias semantics require it, and comparisons against the constants still work. Code comparing against the old literal would break.
-2. **Owner-door outbound approval.** It approves `currentAllowance + amount`, then sends, in one owner batch. A standing agent allowance is preserved. The agent path never approves.
+2. **No SDK allowance writes.** Neither door approves the gateway; both consume an allowance the owner set with an ordinary owner-door send, and fail with `GATEWAY_ALLOWANCE_INSUFFICIENT` before signing otherwise (review R4).
 3. **Checkpoint semantics of batched writes.**
    - Multi-ID revoke and multi-rule add use one owner `execute` batch, for atomicity and one signature.
    - This adds one OWNER_ACTION tick per call on top of RULES_REVOKED / RULES_GRANTED.
    - Single-ID revoke and single-rule add stay direct (one tick).
    - `create` uses the signer's batch, which is sequential on a 7702-less Push EOA, reported as `CREATE_PARTIAL`.
 4. **`create` index race.** It is detected after the fact (`INDEX_RACE`). Concurrent creates by the same owner can land grants on the raced wallet, and the error details say so.
-5. **Decoded native pins/amount report `arg` as a head-word index** (`(offset - 4) / 32`). This is exact only when every preceding argument is one head word. The stored terms carry no signature.
+5. **Decoded native pins/amount use the raw `{ offset, expected }` form.** Stored terms carry no ABI, so decoding never invents an argument index; the encoder accepts that form, so decoded rules re-encode exactly. This extends the page-5 `NativeRule` type and needs product sign-off (review R5).
 6. **Agent gas guard.**
    - It mirrors R1's fee-lock condition, using R1's default 1e7 gas estimate when no `gasLimit` is given.
    - Formula: `balance < (gasLimit ?? 1e7) * gasPrice`.
@@ -159,3 +159,24 @@ AGW_LOCAL_DIR=$OUT node node_modules/jest/bin/jest.js --config packages/core/jes
 ```
 
 `prepare.sh` reads the AGW repo with `git archive`/`ls-tree` only, and never touches its working tree. The harness uses anvil's public development keys and broadcasts only to the local anvil it spawns.
+
+## Review response (2026-10-03)
+
+The independent review in [implementation-review/review.md](implementation-review/review.md) reported seven issues against `3008497`. All seven were confirmed and fixed. Its two real-contract races pass unmodified against the fix (R1), or with the throw expected (R4); both are ported into `__agw-local__/agw-local-races.spec.ts`. Its SDK-boundary regressions are ported into the unit suites, adapted where the fix changed the API (`ownerOutboundCalls` removed, composer options, offset-form pins).
+
+| Finding | Resolution | Evidence |
+| --- | --- | --- |
+| R1 create race grants on the wrong wallet | The deploy call is `deployWalletWithSig(intent{owner, index, wallet}, 0x, label)` sent by the owner itself: no signature, but the factory reverts `IndexMismatch`/`IntentWalletMismatch` if the slot moved, so a batch that would grant on a raced address reverts first. Mapped to `INDEX_RACE` with `committed: false` | Real contracts (sequential path): no permissions on either wallet, retry succeeds. Unit: deploy call shape, race mapping. Atomic 7702/UEA paths rely on the same contract check; not locally exercised |
+| R4 owner outbound restores revoked allowance; uint256.max overflow | Removed the read-modify-write approval. Both doors only consume an existing allowance | Real contracts: an allowance revoked after the read stays 0 and the pull reverts `LowAllowance`. Unit: no approve call, insufficient allowance refused, unlimited allowance accepted |
+| R2 explicit Push ChainTarget routed outbound | A ChainTarget on the connected Push chain is normalized to the native path. Another Push network is refused | Unit: agent and owner, `PUSH_TESTNET_DONUT`/`PUSH_TESTNET` alias, `PUSH_MAINNET` refusal |
+| R3 transfer-only outbound drops the recipient | Destination calls are built as core Route 2 builds them: ERC-20 `transfer(target)`, native value to the target, explicit arrays as given, and the burn sized from `value` when there are no funds. A request with no destination call (CEA parking) is refused, and the agent door refuses selector-less destination calls before signing | Unit: ERC-20 transfer payload names the recipient; value-only burn and forward; parking refused. Recipient-balance acceptance still needs a live run |
+| R5 decoded pins misrepresented | Decoder returns `{ offset, expected }`. Encoder accepts it, plus canonical 32-byte words in argument form | Unit: static-array round trip, address-pin re-encode, offset validation; harness decode assertion updated |
+| R6 replay keeps a Push-only route | A decoded AGW outbound sets `UOA_TO_CEA` and its chain authoritatively | Unit at the adapter boundary. The delayed-Cosmos path through response-builder/`wait()` is not exercised (needs a live or deeper mocked run) |
+| R7 recovery reports unknown as not deployed | Committed state is derived from this call's own receipts. `walletDeployed` is `true`, `false` or `'unknown'` (pending hash or failed recovery reads, with `recoveryError`). A post-submit receipt failure keeps the hash (`RECEIPT_UNAVAILABLE`, surfaced inside `CREATE_PARTIAL`) | Unit: receipts-derived recovery, pending hash, failed recovery read, lost receipt |
+
+Also from this pass:
+- Revert decoding now names an error by selector when its arguments were lost in a node's text rendering. That is how the R1 `IndexMismatch` is recognized on the sequential path.
+- An omitted `funds.token` on an outbound means the destination's native token, as in Route 2.
+- The E2E positive outbound uses the explicit call-array form and independently checks the wallet CEA's Sepolia balance. Caller/event correlation for the executing CEA is still to be added before a funded run.
+
+Counts after the fixes: unit **1,899 passed, 12 skipped** (110 suites passed, 1 skipped; agentic 139); local harness **34 passed in 4 suites**. Library/spec typecheck and build pass. Lint has no errors in changed code (7 pre-existing errors elsewhere). E2E manifests are unchanged (agw 21, all 76).

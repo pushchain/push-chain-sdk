@@ -1,6 +1,6 @@
 # AGW SDK implementation status
 
-October 3, 2026. Branch `feat/agw-sdk-impl` (base `feat/agw-sdk-planning@349635b`). This matrix records what the code does today against the [implementation plan](implementation-plan.md). "Implemented" excludes placeholders; a capability-gated method that throws `CAPABILITY_UNAVAILABLE` is listed as blocked, not implemented. Details, commands and review hotspots are in the [review handoff](implementation-review-handoff.md).
+October 3, 2026, updated after the implementation review (R1–R7 fixed; see the [handoff](implementation-review-handoff.md#review-response-2026-10-03)). Branch `feat/agw-sdk-impl` (base `feat/agw-sdk-planning@349635b`). This matrix records what the code does today against the [implementation plan](implementation-plan.md). "Implemented" excludes placeholders; a capability-gated method that throws `CAPABILITY_UNAVAILABLE` is listed as blocked, not implemented. Details, commands and review hotspots are in the [review handoff](implementation-review-handoff.md).
 
 ## Evidence levels
 
@@ -8,7 +8,7 @@ October 3, 2026. Branch `feat/agw-sdk-impl` (base `feat/agw-sdk-planning@349635b
 | --- | --- |
 | Unit | Mock-boundary jest suites under `packages/core/src/lib/agentic/__tests__` and `read-state/__tests__/web2-compat.spec.ts`; no network |
 | Local | Real pinned e704d5b contracts on anvil through the SDK (`packages/core/__agw-local__`); stub gateway only; Push-EOA signers only |
-| Live | Testnet transactions against a verified deployment. **None has occurred** — no compatible deployment exists (A07) and no live run was authorized |
+| Live | Testnet transactions against a verified deployment. **None has occurred** — no compatible deployment has been verified or registered (A07) and no live run was authorized |
 
 ## Per-step matrix
 
@@ -20,11 +20,11 @@ October 3, 2026. Branch `feat/agw-sdk-impl` (base `feat/agw-sdk-planning@349635b
 | 4 | Generation registry and adapter | Implemented for e704d5b; registry ships empty | ✓ | ✓ wiring verified | Blocked (A07) | Verified manifest; OwnerIntent signing not implemented (no transport needs it) |
 | 5 | Wallet and checkpoint reads | Implemented: derive, list, info, owner, checkpoints, active rules | ✓ | ✓ | Blocked (A07) | Revoked history (A06), `setLabel` (A07) gated |
 | 6 | Rule normalization and codecs | Native implemented and vector-verified; universal validated then gated | ✓ | ✓ contract vectors | — | A05 multi-asset wire/vectors; A01/A03 confirmation |
-| 7 | Create, add, revoke | Implemented (native rules) | ✓ | ✓ sequential create incl. partial recovery; atomic multi-rule add | Blocked (A07) | 7702/UEA create batch paths unit-only |
+| 7 | Create, add, revoke | Implemented (native rules); index-bound deploy | ✓ | ✓ sequential create incl. partial recovery and the concurrent-creation race; atomic multi-rule add | Blocked (A07) | 7702/UEA create batch paths unit-only |
 | 8 | Atomic rules.update | Implemented for native rules | ✓ | ✓ five ticks, stale-spend rollback | Blocked (A07) | A05 per-token assertion for universal rules |
 | 9 | Owner execution and allowance setup | Implemented | ✓ | ✓ owner batches, approve/remove via owner door | Blocked (A07) | Production gateway pull/burn |
 | 10 | Agent rule selection and native sends | Implemented | ✓ | ✓ maxCalls, pins, amount, expiry, A02 | Blocked (A07) | A02 confirmation |
-| 11 | EVM universal sends and gas | Composer implemented for the e704d5b single-asset generation; signer gas guard implemented | ✓ | ✓ passes every URP gate with stub gateway | Blocked (A07) | A05 token resolution for assets[]; node/TSS/destination acceptance |
+| 11 | EVM universal sends and gas | Composer implemented for the e704d5b single-asset generation (Route-2-equivalent destination calls, no SDK allowance writes); signer gas guard implemented | ✓ | ✓ passes every URP gate with stub gateway; revoked-allowance race | Blocked (A07) | A05 token resolution for assets[]; node/TSS/destination acceptance |
 | 12 | SVM destination support | Not implemented; gated | ✓ gating | — | — | A05/A07, Harsh H4.4, obligations 19–23 |
 | 13 | Responses, tracking, hooks, reads | Implemented | ✓ | ✓ live send/receipt identity | Blocked (A07) | Replay and outbound wait need a live run |
 | 14 | Deployment onboarding and acceptance | E2E authored and gated; not run | — | — | Blocked (A07) | Verified manifest + authorized budget |
