@@ -1,6 +1,6 @@
 # AGW SDK planning
 
-This package contains the current SDK plan, source snapshots, open decisions and contract validation evidence. Production implementation has not started. Question drafts are unsent.
+This package contains the current SDK plan, source snapshots, open decisions and contract validation evidence. Implementation of the unblocked steps is on branch `feat/agw-sdk-impl`; see [implementation status](implementation-status.md) and the [review handoff](implementation-review-handoff.md). No live AGW transaction has been sent: no compatible deployment exists (A07). Question drafts are unsent.
 
 The target API is [Notion page 5](notion/5-sdk-agw.md), exported October 3, 2026 at 13:23 IST. The tested contract baseline is pushAgenticWallet_v3@e704d5b: sender-authorized execution and checkpoints exist in source, while the new multi-asset format, grant reference, editable label and envelope version still require matching artifacts and deployment verification.
 
@@ -13,6 +13,9 @@ The target API is [Notion page 5](notion/5-sdk-agw.md), exported October 3, 2026
 | [Gap register](gaps.md) | Current G01–G24 findings and closure criteria |
 | [SDK owned review](sdk-owned-review.md) | Internal decisions, existing-code evidence and 183 passing unit tests |
 | [Implementation plan](implementation-plan.md) | Complete 17-step roadmap, module layout, assumptions, API coverage and PR sequence |
+| [Implementation agent prompt](implementation-agent-prompt.md) | Handoff instructions, unit/E2E requirements and existing runner conventions |
+| [Implementation status](implementation-status.md) | Per-step matrix (unit / local real-contract / live) and A01–A08 status |
+| [Implementation review handoff](implementation-review-handoff.md) | Revisions, changed modules, commands and counts, real-vs-mock evidence, review hotspots |
 | [Interactive tutorial](agw-tutorial.html) | Account, rule, funding and execution diagrams; open in a browser |
 | [Integrator obligations](contract-integrator-obligations.md) | Contract-delegated SDK/product requirements |
 | [External blockers](external-blockers.md) | Seven remaining decision/dependency areas after local closure |
