@@ -64,6 +64,7 @@ import {
   deriveAtaPubkey,
 } from '../../src/lib/orchestrator/internals/svm-rent';
 import { scenariosFor, aggregateNeeds, type Asset } from './suite';
+import { loadAgwManifest, verifyAgwManifest } from '../agw/_manifest';
 
 // ---------------------------------------------------------------------------
 // tunables
@@ -326,6 +327,21 @@ function renderTable(rows: Row[]): void {
     chain: pushChainDef,
     transport: fallback(pushRpcs.map((u) => http(u))),
   }) as PublicClient;
+
+  // -- AGW gate ------------------------------------------------------------
+  // The agw group needs a verified compatible AGW deployment (plan/agw A07).
+  // Check it read-only BEFORE any balance work so nothing is ever funded for
+  // a run that cannot exercise a real deployment.
+  if (scenarios.some((s) => s.group === 'agw')) {
+    try {
+      await verifyAgwManifest(push, loadAgwManifest());
+      console.log('AGW deployment manifest verified on-chain.');
+    } catch (err) {
+      console.error(`\n${(err as Error).message}`);
+      console.error('No transactions were sent.');
+      process.exit(1);
+    }
+  }
   const pushWallet = createWalletClient({
     account: pushAcc,
     chain: pushChainDef,

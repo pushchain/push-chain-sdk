@@ -6,8 +6,10 @@
  *   npx ts-node --transpile-only __e2e__/ci/run.ts [options]
  *
  *   --group <name>   One of: all (default), smoke, evm-r1, evm-r2, evm-r3,
- *                    svm-r1, svm-r2r3, pc20, push, cross-chain, known-fail
- *                    (`all` excludes known-fail — ask for it by name)
+ *                    svm-r1, svm-r2r3, pc20, push, cross-chain, read,
+ *                    known-fail, agw
+ *                    (`all` excludes known-fail and agw — ask for them by name;
+ *                    agw needs AGW_DEPLOYMENT_MANIFEST, see __e2e__/agw/_manifest.ts)
  *   --list           Print the selection and the jest argv, run nothing
  *   --verify         Check every `grep` against the real spec titles and exit
  *                    non-zero if any fragment matches 0 or >1 tests in its file

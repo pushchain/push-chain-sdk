@@ -34,6 +34,7 @@ export const GROUPS = [
   'cross-chain',
   'read',
   'known-fail',
+  'agw',
 ] as const;
 
 export type Group = (typeof GROUPS)[number];
@@ -149,6 +150,13 @@ const F = {
   readSvmIdl: '__e2e__/read/svm/account-idl.spec.ts',
   readMutability: '__e2e__/read/evm/any-mutability.spec.ts',
   readTrackLookup: '__e2e__/read/lifecycle/track-lookup.spec.ts',
+  agwCreate: '__e2e__/agw/create.spec.ts',
+  agwFunding: '__e2e__/agw/funding-allowance.spec.ts',
+  agwNative: '__e2e__/agw/native-exec.spec.ts',
+  agwLifecycle: '__e2e__/agw/lifecycle.spec.ts',
+  agwUniversal: '__e2e__/agw/universal-evm.spec.ts',
+  agwIdentity: '__e2e__/agw/identity-gas.spec.ts',
+  agwResponses: '__e2e__/agw/responses-hooks.spec.ts',
 } as const;
 
 export const SCENARIOS: Scenario[] = [
@@ -753,15 +761,193 @@ export const SCENARIOS: Scenario[] = [
       '(balance - reserve, the pre-fix behaviour) where the test expects the full ' +
       '~20.9 PC requirement. Real regression in the Route 2 dead-zone gas sizer.',
   },
+
+  // -------------------------------------------------------------------------
+  // agw — agentic wallets. EXCLUDED from `all`: every spec's beforeAll fails
+  // its prerequisite gate until a verified compatible AGW deployment manifest
+  // (AGW_DEPLOYMENT_MANIFEST) exists — plan/agw assumption A07. Preflight
+  // refuses to fund the group without it. Budgets are per run: the Push master
+  // (owner) pays setup gas, wallet PC and the bounded fresh-agent funding;
+  // the EVM master's UEA pays external-agent gas; pETH funds the outbound.
+  // -------------------------------------------------------------------------
+  {
+    id: 'agw-create-bare',
+    group: 'agw',
+    file: F.agwCreate,
+    grep: 'agw create 1\\. bare wallet',
+    needs: { masterPC: '2' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-create-rules',
+    group: 'agw',
+    file: F.agwCreate,
+    grep: 'agw create 2\\. wallet with a native rule',
+    needs: { masterPC: '2' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-funding-pc',
+    group: 'agw',
+    file: F.agwFunding,
+    grep: 'agw funding 1\\. wallet PC',
+    needs: { masterPC: '1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-funding-allowance',
+    group: 'agw',
+    file: F.agwFunding,
+    grep: 'agw funding 2\\. owner sets and removes',
+    needs: { masterPC: '1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-native-agent',
+    group: 'agw',
+    file: F.agwNative,
+    grep: 'agw native 1\\. agent door',
+    needs: { masterPC: '2' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-native-owner',
+    group: 'agw',
+    file: F.agwNative,
+    grep: 'agw native 2\\. owner door',
+    needs: { masterPC: '0.5' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-native-over-cap',
+    group: 'agw',
+    file: F.agwNative,
+    grep: 'agw native 3\\. over-cap',
+    needs: { masterPC: '0.5' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-native-stranger',
+    group: 'agw',
+    file: F.agwNative,
+    grep: 'agw native 4\\. an unrelated signer',
+    needs: { masterPC: '0.1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-native-revoked',
+    group: 'agw',
+    file: F.agwNative,
+    grep: 'agw native 5\\. after revocation',
+    needs: { masterPC: '0.5' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-native-expired',
+    group: 'agw',
+    file: F.agwNative,
+    grep: 'agw native 6\\. an expired rule',
+    needs: { masterPC: '1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-lifecycle-add',
+    group: 'agw',
+    file: F.agwLifecycle,
+    grep: 'agw lifecycle 1\\. rules\\.add',
+    needs: { masterPC: '2' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-lifecycle-update',
+    group: 'agw',
+    file: F.agwLifecycle,
+    grep: 'agw lifecycle 2\\. rules\\.update',
+    needs: { masterPC: '1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-lifecycle-checkpoints',
+    group: 'agw',
+    file: F.agwLifecycle,
+    grep: 'agw lifecycle 3\\. checkpoint history',
+    needs: { masterPC: '0.1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-lifecycle-revoke-all',
+    group: 'agw',
+    file: F.agwLifecycle,
+    grep: 'agw lifecycle 4\\. revoke',
+    needs: { masterPC: '0.5' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-universal-outbound',
+    group: 'agw',
+    file: F.agwUniversal,
+    grep: 'agw universal evm 1\\. positive-amount outbound',
+    needs: { masterPC: '25', masterPETH: '0.00001' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-universal-dest-revert',
+    group: 'agw',
+    file: F.agwUniversal,
+    grep: 'agw universal evm 2\\. destination revert',
+    needs: { masterPC: '5' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-identity-evm',
+    group: 'agw',
+    file: F.agwIdentity,
+    grep: 'agw identity 1\\. an EVM key on Sepolia',
+    needs: { masterPC: '1', ueaPC: '1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-identity-first-use',
+    group: 'agw',
+    file: F.agwIdentity,
+    grep: 'agw identity 2\\. first use',
+    needs: { masterPC: '1', sepoliaEth: '0.003' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-identity-solana',
+    group: 'agw',
+    file: F.agwIdentity,
+    grep: 'agw identity 3\\. a Solana-origin key',
+    needs: { masterPC: '1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-responses-hooks',
+    group: 'agw',
+    file: F.agwResponses,
+    grep: 'agw responses 1\\. init and per-call hooks',
+    needs: { masterPC: '1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-responses-replay',
+    group: 'agw',
+    file: F.agwResponses,
+    grep: 'agw responses 2\\. live and replayed',
+    needs: { masterPC: '0.5' },
+    env: { AGW_E2E: '1' },
+  },
 ];
 
 /**
  * Scenarios for a group. `all` means "everything that should pass" — it deliberately
- * excludes `known-fail`, which has to be asked for by name.
+ * excludes `known-fail` and `agw`, which have to be asked for by name.
  */
 export function scenariosFor(group: string | undefined): Scenario[] {
   if (!group || group === 'all') {
-    return SCENARIOS.filter((s) => s.group !== 'known-fail');
+    // `agw` is opt-in until a verified AGW deployment exists (plan/agw A07).
+    return SCENARIOS.filter((s) => s.group !== 'known-fail' && s.group !== 'agw');
   }
   if (!(GROUPS as readonly string[]).includes(group)) {
     throw new Error(
