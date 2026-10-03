@@ -1,0 +1,13 @@
+No files changed, compilation skipped
+
+Ran 7 tests for test/review/IndependentReviewHead.t.sol:IndependentReviewHeadTest
+[PASS] test_ReviewHead_DuplicateAgentChainGrants_BothLive() (gas: 2603134)
+[PASS] test_ReviewHead_InterveningAgentSpend_BlocksReplacement() (gas: 1504772)
+[PASS] test_ReviewHead_NativeReplace_ThreeCounterAssertion() (gas: 1995229)
+[PASS] test_ReviewHead_Replace_NewIdUsable_OldIdDead() (gas: 2480632)
+[PASS] test_ReviewHead_Revoke_ErasesAgentKeepsTerms() (gas: 756042)
+[PASS] test_ReviewHead_RulesId_NotGloballyUnique_ChainNotAnInput() (gas: 2251300)
+[PASS] test_ReviewHead_UrpInitFailure_RollsBackRevokeAndNonce() (gas: 1664308)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 3.32ms (6.35ms CPU time)
+
+Ran 1 test suite in 3.77ms (3.32ms CPU time): 7 tests passed, 0 failed, 0 skipped (7 total tests)
