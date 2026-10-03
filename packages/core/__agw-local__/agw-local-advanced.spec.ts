@@ -225,6 +225,25 @@ describe('AGW advanced paths against real e704d5b contracts', () => {
       const { rules } = await owner.agentic.wallet(wallet).rules.list();
       expect(rules).toHaveLength(2);
     });
+
+    it('rules.add with several rules is one atomic owner batch: OWNER_ACTION + RULES_GRANTED per rule', async () => {
+      const created = await owner.agentic.create('multi-add', { rules: [] });
+      const before = await h.publicClient.readContract({
+        address: created.wallet,
+        abi: parseAbi(['function checkpointCount() view returns (uint64)']),
+        functionName: 'checkpointCount',
+      });
+      const added = await owner.agentic.wallet(created.wallet).rules.add([
+        { agent: agentAddr, target: h.addresses.target, selector: 'increment()', validUntil: (await chainNow(h)) + 3600 },
+        { agent: h.wallets[3].account!.address, target: h.addresses.target, selector: 'increment()', validUntil: (await chainNow(h)) + 3600 },
+      ]);
+      expect(added.rulesIds).toHaveLength(2);
+      expect(added.tx.atomic).toBe(true);
+      const { checkpoints } = await owner.agentic.wallet(created.wallet).checkpoints({ sinceBlock: added.tx.blockNumber });
+      expect(BigInt(checkpoints.length)).toBe(BigInt(4));
+      expect(checkpoints.map((c) => c.kind)).toEqual(['OWNER_ACTION', 'RULES_GRANTED', 'OWNER_ACTION', 'RULES_GRANTED']);
+      expect(before).toBe(BigInt(0));
+    });
   });
 
   describe('agent EVM outbound (historical single-asset terms, stub gateway)', () => {

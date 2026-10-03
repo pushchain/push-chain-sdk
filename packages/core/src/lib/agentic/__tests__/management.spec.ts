@@ -171,6 +171,25 @@ describe('rules.add / rules.revoke', () => {
     expect((await addRules(rt, gen(), w.address, [rule(ADDR.other)])).rulesIds).toEqual([expected]);
   });
 
+  it('add: several rules are one atomic owner execute batch (one signature on any signer)', async () => {
+    const fake = new FakeChain();
+    const w = fake.addWallet(ADDR.owner, 'w');
+    const ids = [ADDR.agent, ADDR.other].map((agent, i) =>
+      computeRulesId({ validator: ADDR.validator, agent, grantNonce: BigInt(i) })
+    );
+    const rt = mockRuntime(fake, {
+      signer: ADDR.owner,
+      execute: (async () => withLogs([granted(w.address, ids[0]), granted(w.address, ids[1])])) as never,
+    });
+    const exec = jest.spyOn(rt, 'execute');
+    expect((await addRules(rt, gen(), w.address, [rule(), rule(ADDR.other)])).rulesIds).toEqual(ids);
+    const sent = exec.mock.calls[0][0] as { to: string; data: Hex };
+    expect(Array.isArray(sent.data)).toBe(false);
+    const outer = e704d5b.decodeWalletCall(sent.data) as { kind: string; calls: { target: string; data: Hex }[] };
+    expect(outer.kind).toBe('execute');
+    expect(outer.calls.map((c) => decodeFunctionData({ abi: AGW_ABI, data: c.data }).functionName)).toEqual(['grantRules', 'grantRules']);
+  });
+
   it('revoke: bare and empty are refused; unknown IDs fail before signing; several IDs are one atomic owner execute', async () => {
     const fake = new FakeChain();
     const w = fake.addWallet(ADDR.owner, 'w', [fake.nativeRule(ADDR.agent, ruleId(1)), fake.nativeRule(ADDR.other, ruleId(2))]);

@@ -93,11 +93,21 @@ export async function addRules(
   const predicted = prepared.map((p, i) =>
     computeRulesId({ validator: gen.addresses.sessionValidator, agent: p.agent, grantNonce: nonce + BigInt(i) })
   );
-  const calls: MultiCall[] = prepared.map((p) => ({
-    to: wallet,
-    value: BigInt(0),
-    data: gen.contracts.encodeGrantRules(p.session),
-  }));
+  // One rule: a direct owner grant (one RULES_GRANTED tick). Several: one
+  // owner `execute` batch of self-calls, so the grants are atomic and need a
+  // single signature on every signer type (each grant then also ticks one
+  // OWNER_ACTION before its RULES_GRANTED).
+  const grants = prepared.map((p) => gen.contracts.encodeGrantRules(p.session));
+  const calls: MultiCall[] =
+    grants.length === 1
+      ? [{ to: wallet, value: BigInt(0), data: grants[0] }]
+      : [
+          {
+            to: wallet,
+            value: BigInt(0),
+            data: gen.contracts.encodeExecute(grants.map((data) => ({ target: wallet, value: BigInt(0), data }))),
+          },
+        ];
   return finish(runtime, hook, 'rules.add', async () => {
     const tx = await sendOwnerCalls(runtime, calls, hook);
     const { logs } = await confirmedLogs(runtime, tx);
