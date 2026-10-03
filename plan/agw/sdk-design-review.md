@@ -71,7 +71,7 @@ Do not pass an AGW outbound directly into the current signer-based Route 2 imple
 
 ## Compatibility and capability handling
 
-Preserve existing clients that initialize without `agenticWallet`. Specify read-only and `reinitialize` behavior before changing the option types (G17). Do not accidentally let a read-only identity reach a signing path.
+Preserve existing clients that initialize without `agenticWallet`. Use the lifecycle choices in the [SDK owned review](sdk-owned-review.md): explicit wallet selection on each `reinitialize`, fresh role/capability checks, and read-only write guards (G17). Do not accidentally let a read-only identity reach a signing path.
 
 Add `READ.CHAIN` as required by the spec. Normalize the existing `'web2:https'` input during the compatibility window while exposing the new `'web2'` constant (G16). Review the existing `READ.WEB2` alias as part of that migration.
 
@@ -104,3 +104,7 @@ Standalone AGW can be reviewed and delivered independently. Full marketplace/job
 Use owner wallet batching for atomic updates. Stored checkpoints are implemented at e704d5b; grant job refs, label mutation and envelope version remain pending. Universal assets[]/maxGasPerCall require a new matched wire ABI. Public Spent remains scalar in the new snapshot; agree per-token returns and expected-total assertions. Empty-assets routing and native-marker resolution need fixtures.
 
 Derive expectedCEA from AGW and destination context, commit it in universal terms, expose it in previews and monitor drift. Apply all [integrator obligations](contract-integrator-obligations.md). [Validation evidence](research/validation-e704d5b/README.md) verifies the pinned single-asset source; it does not establish multi-asset or live deployment support.
+
+Implementation details settled by local review are recorded in the [SDK owned review](sdk-owned-review.md). Existing machinery passed 183 unit tests; new AGW behavior still requires implementation-specific coverage. Include transaction-creating universal reads in the execution-context audit, while keeping management reads non-signing.
+
+Follow-up: keep NativeRule single-action as specified; reject ambiguous enabled-rule candidates with DUPLICATE_RULE and a hint. Bounded gateway approvals use the existing owner execute path, demonstrated by four local pull/burn-fixture tests. Remaining external decisions are in [external blockers](external-blockers.md).

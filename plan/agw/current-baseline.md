@@ -29,7 +29,7 @@ AGW remote branches were checked through GitHub API on October 3: nomenclature-c
 | Historical rules | Revoke removes agent config and enabled actions, while URP terms persist | Event agent attribution or nested-call reconstruction needed if revoked rules are returned |
 | expectedCEA | Required universal wire term, derived from AGW plus destination context and committed at grant | SDK must derive it, show it in previews, include it in encodeRules context, and monitor derivation drift |
 | Binder | Never present in reviewed code; live Notion page checked October 3 says dropped for v1 | No binder/setBinder implementation required unless a new explicit product decision reverses this |
-| Funding approval | Push gateway requires allowance for PRC20 pulls | Explicit owner setup approval, bounded recovery/update semantics, real pulling/burning test |
+| Funding approval | Push gateway requires allowance for PRC20 pulls | Existing owner execute mechanism validated in four local fixture tests; implement setup/replenishment and verify production pull/burn/settlement |
 | Destination approvals | Page 5 example permits an unpinned spender; current marketplace rejects approve/increaseAllowance | Product policy and owner-controlled approvals; selector filtering alone is not a general guarantee against malicious/custom approval methods |
 | Gateway shape | Eight fields in current branch and observed live dispatcher; main's six fields are older | Ask only whether a future removal is actually planned |
 | Agent outbound composer | Existing Route 2 request cannot be used unchanged | Empty recipient, AGW revert recipient, nonzero maxPCForGas, policy-compatible multicall and AGW PC accounting |
@@ -73,3 +73,5 @@ Page 5 is still authoritative: create deploys/grants only, funding is separate, 
 Define per-asset Spent and replacement assertion semantics, empty-asset routing, destination-token/native-marker resolution and the proposed bytes32 expectedCEA encoding. The prior universal defaults/maxAmountTotal naming cannot simply carry forward. Proposed AssetCap.maxTotal zero means unlimited; native defaults remain a separate question.
 
 See [successful refresh report](research/notion-refresh-2026-10-03.md). All earlier download failures remain historical evidence; download permission was sufficient for this run.
+
+The follow-up [external blocker register](external-blockers.md) records what still needs team input after SDK-owned closure. Remote refs were rechecked unchanged; the Notion snapshot date above is unchanged.

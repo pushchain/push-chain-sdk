@@ -11,9 +11,11 @@ The target API is [Notion page 5](notion/5-sdk-agw.md), exported October 3, 2026
 | [Current baseline](current-baseline.md) | Source revisions, capabilities and remaining differences |
 | [SDK design review](sdk-design-review.md) | Proposed internal architecture and execution flows |
 | [Gap register](gaps.md) | Current G01–G24 findings and closure criteria |
-| [Implementation plan](implementation-plan.md) | Work order and acceptance gates |
+| [SDK owned review](sdk-owned-review.md) | Internal decisions, existing-code evidence and 183 passing unit tests |
+| [Implementation plan](implementation-plan.md) | Complete 17-step roadmap, module layout, assumptions, API coverage and PR sequence |
 | [Interactive tutorial](agw-tutorial.html) | Account, rule, funding and execution diagrams; open in a browser |
 | [Integrator obligations](contract-integrator-obligations.md) | Contract-delegated SDK/product requirements |
+| [External blockers](external-blockers.md) | Seven remaining decision/dependency areas after local closure |
 | [Questions for Harsh](questions-harsh.md) | Product decisions and recommendations |
 | [Questions for Zaryab](questions-zaryab.md) | Contract surface, funding and deployment questions |
 | [Review summary](review-summary.md) | Consequential independent-review corrections |
