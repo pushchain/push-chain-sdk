@@ -12,7 +12,6 @@ import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import type { AgenticHex, NativeRule } from '../agentic.types';
 import { argumentOffset, encodeArgWord, rawOffset } from './abi-layout';
 import { AGENTIC_DEFAULTS, UINT256_MAX, withDefault } from './defaults';
-import { APPROVAL_SELECTORS } from './policy';
 import { parseSelector, VALUE_ONLY_SELECTOR, type ParsedSelector } from './selectors';
 
 /** URP native limits at e704d5b (Types.sol MAX_PINS, AGW MAX_NATIVE_ACTIONS). */
@@ -60,19 +59,6 @@ export const NATIVE_TERMS_PARAM: AbiParameter = {
       ],
     },
   ],
-};
-
-/**
- * Spender argument index of known approval functions. Obligation 16 / A01:
- * a native rule may allow one only when that argument is pinned.
- */
-const APPROVAL_SPENDER_ARG: Readonly<Record<string, number | null>> = {
-  '0x095ea7b3': 0,
-  '0x39509351': 0,
-  '0xa22cb465': 0,
-  '0xd505accf': 1,
-  '0x87517c45': 1,
-  '0x2b67b570': null, // Permit2 permit: spender is inside a tuple — never representable
 };
 
 function invalid(message: string, details?: Record<string, unknown>): AgenticError {
@@ -129,23 +115,6 @@ export function nativeRuleToTerms(
   });
   const offsets = new Set(pins.map((p) => p.offset));
   if (offsets.size !== pins.length) throw invalid('two pins address the same argument');
-
-  const spenderArg = APPROVAL_SPENDER_ARG[parsed.selector];
-  if (spenderArg !== undefined) {
-    // Every argument of these approval functions before the spender is one
-    // static word, so the spender's calldata offset is exact.
-    const pinnedSpender = spenderArg !== null && offsets.has(4 + 32 * spenderArg);
-    if (!pinnedSpender) {
-      throw new AgenticError(
-        AGENTIC_ERROR_CODE.INVALID_RULE,
-        `${APPROVAL_SELECTORS[parsed.selector]} needs its spender argument pinned`,
-        {
-          hint: 'Pin the spender, or set approvals from the owner door. Provisional policy A01 / obligation 16.',
-          details: { assumption: 'A01' },
-        }
-      );
-    }
-  }
 
   let amount: NativeTermsWire['amount'] = {
     enabled: false,

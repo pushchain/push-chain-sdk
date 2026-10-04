@@ -1,8 +1,10 @@
 # AGW SDK planning
 
-This package contains the current SDK plan, source snapshots, open decisions and contract validation evidence. Implementation of the unblocked steps is on branch `feat/agw-sdk-impl`; see [implementation status](implementation-status.md) and the [review handoff](implementation-review-handoff.md). No live AGW transaction has been sent: no compatible deployment exists (A07). Question drafts are unsent.
+This package contains the current SDK plan, source snapshots, open decisions and contract validation evidence. Implementation of the unblocked steps is on branch `feat/agw-sdk-impl`; see [implementation status](implementation-status.md) and the [review handoff](implementation-review-handoff.md). No live AGW transaction has been sent; no compatible deployment has been verified or registered. Harsh has replied; remaining follow-ups are in the updated question docs.
 
 The target API is [Notion page 5](notion/5-sdk-agw.md), exported October 3, 2026 at 13:23 IST. The tested contract baseline is pushAgenticWallet_v3@e704d5b: sender-authorized execution and checkpoints exist in source, while the new multi-asset format, grant reference, editable label and envelope version still require matching artifacts and deployment verification.
+
+Latest direction: [Harsh product decisions, October 4](product-decisions-2026-10-04.md). Page 5 was downloaded again and its body is unchanged after link normalization. These newer product replies supersede the older provisional recommendations; the clear scope changes are now implemented. H3 defaults and raw-offset API clarification remain pending.
 
 ## Start here
 
@@ -18,7 +20,7 @@ The target API is [Notion page 5](notion/5-sdk-agw.md), exported October 3, 2026
 | [Implementation review handoff](implementation-review-handoff.md) | Revisions, changed modules, commands and counts, real-vs-mock evidence, review hotspots |
 | [Interactive tutorial](agw-tutorial.html) | Account, rule, funding and execution diagrams; open in a browser |
 | [Integrator obligations](contract-integrator-obligations.md) | Contract-delegated SDK/product requirements |
-| [External blockers](external-blockers.md) | Seven remaining decision/dependency areas after local closure |
+| [External blockers](external-blockers.md) | Remaining defaults/type clarification and contract/deployment dependencies |
 | [Questions for Harsh](questions-harsh.md) | Product decisions and recommendations |
 | [Questions for Zaryab](questions-zaryab.md) | Contract surface, funding and deployment questions |
 | [Review summary](review-summary.md) | Consequential independent-review corrections |

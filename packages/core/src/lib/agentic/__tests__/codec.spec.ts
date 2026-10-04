@@ -176,9 +176,9 @@ describe('native rule codec', () => {
     );
   });
 
-  it('approval functions need their spender pinned (A01 / obligation 16)', () => {
+  it('approval policy is external while caller-supplied pins remain ABI-validated', () => {
     const base = { agent, target, validUntil: NOW + 10 };
-    expect(() => nativeRuleToTerms({ ...base, selector: 'approve(address,uint256)' }, { nowSeconds: NOW })).toThrow(/spender/);
+    expect(() => nativeRuleToTerms({ ...base, selector: 'approve(address,uint256)' }, { nowSeconds: NOW })).not.toThrow();
     expect(() =>
       nativeRuleToTerms(
         { ...base, selector: 'approve(address,uint256)', pins: [{ arg: 0, expected: agent }] },
@@ -190,7 +190,7 @@ describe('native rule codec', () => {
         { ...base, selector: 'permit(address,address,uint256,uint256,uint8,bytes32,bytes32)', pins: [{ arg: 0, expected: agent }] },
         { nowSeconds: NOW }
       )
-    ).toThrow(/spender/);
+    ).not.toThrow();
   });
 });
 

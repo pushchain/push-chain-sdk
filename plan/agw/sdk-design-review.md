@@ -1,5 +1,7 @@
 # AGW SDK design review
 
+> October 4 update: [Harsh’s replies](product-decisions-2026-10-04.md) supersede earlier provisional approval/default/helper/history/compiler recommendations below. Use [remaining dependencies](external-blockers.md) for current blockers. The clear scope changes and sender-preserving native batching are now implemented; H3 defaults remain unchanged pending clarification. See [alignment evidence](research/product-alignment-2026-10-04/README.md).
+
 The proposed design adds AGW management and execution to `@pushchain/core` through the API in [page 5](notion/5-sdk-agw.md). It keeps the existing signer and transaction machinery, while introducing a separate wallet execution context. The public API is the agreed target; this review proposes internal boundaries and identifies the evidence needed to implement them correctly.
 
 Review status: proposed architecture, pending [gap resolutions](gaps.md) and matching multi-asset artifacts/deployment. This document does not claim that the new contract methods are deployed.

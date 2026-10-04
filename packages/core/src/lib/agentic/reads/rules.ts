@@ -8,7 +8,7 @@ import { nativeTermsToRule } from '../codec/native';
 import { chainHash } from '../codec/rules';
 import { AGENTIC_ERROR_CODE, AgenticError, capabilityUnavailable } from '../errors';
 import type { AgenticHex, RulesRecord } from '../agentic.types';
-import { Snapshot, scanLogs } from './snapshot';
+import { Snapshot } from './snapshot';
 
 const ZERO_REF = `0x${'00'.repeat(32)}` as AgenticHex;
 const MODE_UNIVERSAL = 0;
@@ -175,12 +175,7 @@ export async function decodeActiveRule(
     validUntil: Number(cfg.validUntil),
     ref: ZERO_REF,
     rule: nativeTermsToRule(cfg, rule.agent, ZERO_REF),
-    spent: {
-      kind: 'native',
-      valueSpent: cfg.valueSpent,
-      amountSpent: cfg.amountSpent,
-      callsUsed: Number(cfg.callsUsed),
-    },
+
   };
 }
 
@@ -220,8 +215,8 @@ export async function listRules(
 }
 
 /**
- * rules.get: an enabled rule decodes; a revoked rule needs the history
- * capability (A06); an ID that was never granted is RULE_NOT_FOUND.
+ * rules.get returns enabled records only. Unknown/revoked IDs are deliberately
+ * indistinguishable without historical reconstruction, which is outside v1.
  */
 export async function getRule(
   snap: Snapshot,
@@ -241,20 +236,8 @@ export async function getRule(
     const active = await readActiveRule(snap, gen, wallet, rulesId);
     return decodeActiveRule(snap, gen, wallet, active, pushChainNamespace);
   }
-  const revoked = await scanLogs(
-    snap.reader,
-    { address: wallet, event: gen.contracts.events.rulesRevoked, args: { rulesId } },
-    gen.startBlock,
-    snap.blockNumber
+  throw new AgenticError(
+    AGENTIC_ERROR_CODE.RULE_NOT_FOUND,
+    `rule ${rulesId} is not enabled on ${wallet} (unknown or revoked; v1 has no rule history)`
   );
-  if (gen.contracts.parseRulesRevoked(revoked, wallet).length > 0) {
-    // No generation implements history reconstruction yet; a revoked rule is
-    // reported as such rather than as an empty or missing record.
-    const err = capabilityUnavailable(
-      AgenticCapability.RULE_HISTORY,
-      `rule ${rulesId} was revoked; ${CAPABILITY_DEPENDENCY[AgenticCapability.RULE_HISTORY]}`
-    );
-    throw new AgenticError(err.code, err.message, { details: { rulesId, revoked: true } });
-  }
-  throw new AgenticError(AGENTIC_ERROR_CODE.RULE_NOT_FOUND, `rule ${rulesId} was never granted on ${wallet}`);
 }

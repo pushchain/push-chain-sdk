@@ -12,9 +12,8 @@ import { pushChainNamespaceFor } from './chain';
 import type { AgenticHex, Rule, Selector } from './agentic.types';
 
 /**
- * Generation context for the pure helpers. PROVISIONAL public shape (A04,
- * Harsh H4.1): the spec's helper signatures omit the validator / factory /
- * implementation inputs the results depend on, so they are explicit here.
+ * Internal generation context. Harsh H4.1 (October 4): deployment inputs
+ * are implementation details, not public helper parameters.
  */
 export interface RulesEncodeContext {
   /** Connected Push network, or an explicit 'eip155:<id>' native chain. */
@@ -33,8 +32,8 @@ function nativeNamespace(ctx: { network?: PUSH_NETWORK; pushChainNamespace?: str
   return pushChainNamespaceFor(ctx.network ?? PUSH_NETWORK.TESTNET_DONUT);
 }
 
-/** PushChain.utils.agentic — pure; no RPC. */
-export const agenticUtils = {
+/** Internal codecs and identities — not exported from the package entry point. */
+export const internalAgenticUtils = {
   /** The ID a grant with this grantNonce produces. Chain is not part of the hash. */
   rulesId(agent: Address, grantNonce: bigint | number, ctx: { validator: Address }): AgenticHex {
     return rulesIdRaw({
@@ -104,11 +103,11 @@ export const agenticUtils = {
     return nativeTermsToRule(decodeNativeTerms(body), agent, `0x${'00'.repeat(32)}`);
   },
 
-  /** Canonical card compiler — not available until the shared schema exists (A08). */
-  compileCard(_card: unknown, _userInput: unknown, _ctx: unknown): never {
-    throw capabilityUnavailable(
-      AgenticCapability.COMPILE_CARD,
-      CAPABILITY_DEPENDENCY[AgenticCapability.COMPILE_CARD]
-    );
-  },
+};
+
+/** Public helpers requiring no contract deployment context. */
+export const agenticUtils = {
+  actionId: internalAgenticUtils.actionId,
+  configId: internalAgenticUtils.configId,
+  decodeRules: internalAgenticUtils.decodeRules,
 };

@@ -7,6 +7,7 @@ import { ADDR, FakeChain, PUSH_NS } from './fake-chain';
 
 export interface MockRuntime extends AgenticRuntime {
   executeMock: jest.Mock;
+  atomicMock: jest.Mock;
   events: ProgressEvent[];
   perCallEvents: ProgressEvent[];
   fake: FakeChain;
@@ -63,6 +64,7 @@ export function mockRuntime(
   const executeMock = jest.fn(async (params: { to: string; data?: Hex }) =>
     fakeResponse({ to: params.to, data: (params.data as string) ?? '0x' })
   );
+  const atomicMock = jest.fn(async (params: { to: string }) => fakeResponse({ to: params.to }));
   const signer = over.signer ?? ADDR.agent;
   const rt: MockRuntime = {
     network: PUSH_NETWORK.TESTNET_DONUT,
@@ -73,6 +75,7 @@ export function mockRuntime(
     signerOrigin: () => ({ chain: CHAIN.PUSH_TESTNET_DONUT, address: signer }),
     signerIsPushNative: () => true,
     execute: executeMock as unknown as AgenticRuntime['execute'],
+    executeAtomicBatch: atomicMock as unknown as AgenticRuntime['executeAtomicBatch'],
     emit: (event, perCall) => {
       events.push(event);
       if (perCall) {
@@ -89,6 +92,7 @@ export function mockRuntime(
     nowSeconds: () => 1_700_000_000,
     ...over,
     executeMock,
+    atomicMock,
     events,
     perCallEvents,
     fake,

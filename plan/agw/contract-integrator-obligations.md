@@ -19,7 +19,7 @@ Source: [AGW design chapter 10 at 0f279ca](https://github.com/pushchain/push-age
 | 13 | Provide data for monitoring committed CEA versus current derivation; define the operational owner. |
 | 14 | Show derived destination accounts during creation. Derivation is deployment-specific. |
 | 15 | Show wallet PC funding and per-action ceiling; repeated zero-amount actions can spend the PC budget without consuming token spend. Any action-count estimate must state its assumptions. |
-| 16 | Generate native argument pins and reject known approval functions with unpinned spenders. |
+| 16 | Generate caller-requested native pins from ABI. Per Harsh H1 (October 4), approval screening and mandatory spender policy belong to UI/marketplace, not SDK rejection. |
 | 17 | Preserve exact asset-reported chain strings; use connected Push chain identity for native rules. |
 | 18 | Preview native actions, pins, value/amount/call limits; explain that any successful call consumes call count. |
 | 19 | Compile SVM rules from the program interface, preserve interface hash, pin all relevant accounts/data, and reject unrepresentable layouts; revalidate after upgrades. |

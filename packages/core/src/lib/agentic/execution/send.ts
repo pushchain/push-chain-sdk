@@ -4,6 +4,7 @@ import { ERC20_EVM } from '../../constants/abi';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import type {
   ExecuteParams,
+  MultiCall,
   TransactionExecutionOptions,
   UniversalExecuteParams,
   UniversalTxResponse,
@@ -15,7 +16,6 @@ import type { AgenticExecutionContext } from '../context';
 import type { Call, UniversalConfigReadE704d5b } from '../contracts/e704d5b';
 import { SEND_OUTBOUND_SELECTOR } from '../contracts/e704d5b';
 import { actionId, configId } from '../codec/ids';
-import { assertSingleAgentCall } from '../codec/policy';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import { assertCanSign, emitAgentic, wrapSendError } from '../management/common';
 import { selectRuleForSend } from '../reads/rules';
@@ -130,6 +130,8 @@ export async function agenticSend(
   }
 
   let wrappedData: Hex;
+  let agentBatch: MultiCall[] | undefined;
+  let nativeCalls: Call[] | undefined;
   let rulesId: AgenticHex | undefined;
   let logical: { to: string; data: string; value: bigint };
   let meta: { route?: 'UOA_TO_CEA'; destinationAccount?: Address } = {};
@@ -144,19 +146,25 @@ export async function agenticSend(
 
   if (!outbound) {
     const calls = toCalls(p);
+    if (calls.length === 0) throw new AgenticError(AGENTIC_ERROR_CODE.INVALID_RULE, 'an empty call array cannot execute');
     if (actx.door === 'owner') {
       wrappedData = gen.contracts.encodeExecute(calls);
     } else {
-      assertSingleAgentCall(calls.length);
       const snap = await Snapshot.at(runtime.reader);
       const rule = await selectRuleForSend(snap, gen, wallet, actx.signerPushAccount, destination);
       rulesId = rule.rulesId as AgenticHex;
       wrappedData = gen.contracts.encodeExecuteAsAgent(rule.rulesId, calls[0]);
+      if (calls.length > 1) {
+        agentBatch = calls.map((call) => ({ to: wallet, value: BigInt(0), data: gen.contracts.encodeExecuteAsAgent(rule.rulesId, call) }));
+        nativeCalls = calls;
+      }
     }
     logical =
       calls.length === 1
         ? { to: calls[0].target, data: calls[0].data, value: calls[0].value }
-        : { to: wallet, data: wrappedData, value: BigInt(0) };
+        : agentBatch
+          ? { to: calls[0].target, data: calls[0].data, value: calls[0].value }
+          : { to: wallet, data: wrappedData, value: BigInt(0) };
   } else {
     let ruleAsset: Address | undefined;
     let maxPCPerCall: bigint | undefined;
@@ -247,10 +255,10 @@ export async function agenticSend(
 
   let resp: UniversalTxResponse;
   try {
-    resp = await runtime.execute(
-      { ...signerFields(p), to: wallet, value: BigInt(0), data: wrappedData },
-      hook ? { ...options, progressHook: hook } : options
-    );
+    const sendOptions = hook ? { ...options, progressHook: hook } : options;
+    resp = agentBatch
+      ? await runtime.executeAtomicBatch({ ...signerFields(p), to: wallet, value: BigInt(0), data: agentBatch }, sendOptions)
+      : await runtime.execute({ ...signerFields(p), to: wallet, value: BigInt(0), data: wrappedData }, sendOptions);
   } catch (err) {
     const wrapped = wrapSendError(err) as { code?: string; message?: string; decodedError?: unknown };
     emitAgentic(
@@ -271,6 +279,7 @@ export async function agenticSend(
     chainNamespace: outboundChain ?? destination,
     destinationAccount: meta.destinationAccount as AgenticHex | undefined,
     destinationCalls,
+    ...(nativeCalls ? { nativeCalls: nativeCalls.map((c) => ({ to: c.target, data: c.data, value: c.value })) } : {}),
     logical,
     route: meta.route,
     chain: outboundChain,

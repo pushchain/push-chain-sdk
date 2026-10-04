@@ -82,15 +82,6 @@ export interface UniversalRule {
 
 export type Rule = NativeRule | UniversalRule;
 
-/**
- * Spend counters for a rule. PROVISIONAL (A05, Harsh H4.2): the universal
- * scalar `amountSpent` cannot represent multi-asset rules; the per-token
- * shape is pending.
- */
-export type Spent =
-  | { kind: 'universal'; amountSpent: bigint }
-  | { kind: 'native'; valueSpent: bigint; amountSpent: bigint; callsUsed: number };
-
 export interface RulesRecord {
   rulesId: AgenticHex;
   enabled: boolean;
@@ -99,7 +90,6 @@ export interface RulesRecord {
   validUntil: number;
   ref: AgenticHex;
   rule: Rule;
-  spent: Spent;
 }
 
 export interface CreateOptions {
@@ -152,7 +142,9 @@ export interface AgenticWallet {
   ): Promise<UniversalTxResponse>;
   checkpoints(opts?: { sinceBlock?: bigint }): Promise<{ checkpoints: Checkpoint[] }>;
   rules: {
+    /** Enabled rules only; expired-but-enabled rules remain visible. No public spend counters. */
     list(): Promise<{ rules: RulesRecord[] }>;
+    /** Unknown and revoked IDs both return RULE_NOT_FOUND; v1 has no historical records. */
     get(rulesId: AgenticHex): Promise<RulesRecord>;
     add(
       rules: Rule[],
@@ -197,7 +189,9 @@ export interface AgenticTxMetadata {
    * calls were supplied explicitly versus generated from funds.
    */
   destinationCalls?: readonly { to: AgenticAddress; data: AgenticHex; value: bigint }[];
-  /** Account the signer's transaction actually called (the wallet). */
+  /** Ordered actions in a native agent batch; to/data/value summarize its first action. */
+  nativeCalls?: readonly { to: AgenticAddress; data: AgenticHex; value: bigint }[];
+  /** Account the signer's transaction actually called (wallet or outer sender account). */
   rawTo: string;
   /** Calldata the signer's transaction actually carried. */
   rawData: string;

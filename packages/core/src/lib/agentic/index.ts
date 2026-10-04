@@ -17,7 +17,6 @@ export type {
   Rule,
   RulesRecord,
   Selector,
-  Spent,
   UniversalRule,
   WalletInfo,
   WalletSummary,
@@ -27,4 +26,3 @@ export type { AgenticErrorCode } from './errors';
 export { AGENTIC } from './constants';
 export type { AgenticNetworkConstants } from './constants';
 export { agenticUtils } from './utils';
-export type { RulesEncodeContext } from './utils';

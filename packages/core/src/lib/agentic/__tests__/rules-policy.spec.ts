@@ -4,7 +4,7 @@ import { prepareRules } from '../codec/rules';
 import { validateUniversalRuleShape } from '../codec/universal';
 import { E704D5B_CAPABILITIES } from '../deployments';
 import { AGENTIC_ERROR_CODE } from '../errors';
-import { agenticUtils } from '../utils';
+import { internalAgenticUtils } from '../utils';
 import type { NativeRule, UniversalRule } from '../agentic.types';
 import { ADDR, PUSH_NS, SEPOLIA_NS } from './fake-chain';
 
@@ -119,13 +119,10 @@ describe('universal rules — validated, then capability-gated (A01, A05)', () =
     ).toThrow(/duplicates/);
   });
 
-  it('A01: approval selectors are refused in agent universal rules', () => {
-    expect(() =>
-      validateUniversalRuleShape(universal({ allowedCalls: [{ target: ADDR.target, selector: 'approve(address,uint256)' }] }), NOW)
-    ).toThrow(expect.objectContaining({ details: expect.objectContaining({ assumption: 'A01' }) }));
-    expect(() =>
-      validateUniversalRuleShape(universal({ allowedCalls: [{ target: ADDR.target, selector: '0x39509351' }] }), NOW)
-    ).toThrow(/increaseAllowance/);
+  it('approval policy belongs to UI/marketplace; structurally valid approval calls are accepted', () => {
+    for (const selector of ['approve(address,uint256)', 'increaseAllowance(address,uint256)'] as const) {
+      expect(() => validateUniversalRuleShape(universal({ allowedCalls: [{ target: ADDR.target, selector }] }), NOW)).not.toThrow();
+    }
   });
 
   it('a beneficiary must be an address argument of a known signature', () => {
@@ -150,8 +147,8 @@ describe('universal rules — validated, then capability-gated (A01, A05)', () =
   });
 });
 
-describe('PushChain.utils.agentic (pure)', () => {
-  const u = agenticUtils;
+describe('internal generation codecs (pure)', () => {
+  const u = internalAgenticUtils;
 
   it('encodeRules → decodeRules round-trips a native rule', () => {
     const rule = native({ selector: 'deposit(address,uint256)', pins: [{ arg: 0, expected: ADDR.other }], maxCalls: 4 });
@@ -172,9 +169,4 @@ describe('PushChain.utils.agentic (pure)', () => {
     expect(u.actionId(ADDR.target, 'increment()')).toBe(u.actionId(ADDR.target, '0xd09de08a'));
   });
 
-  it('compileCard is explicitly unavailable (A08)', () => {
-    expect(() => u.compileCard({}, {}, {})).toThrow(
-      expect.objectContaining({ details: expect.objectContaining({ capability: AgenticCapability.COMPILE_CARD }) })
-    );
-  });
 });

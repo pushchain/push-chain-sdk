@@ -54,18 +54,27 @@ describe('guards fail before the signer is ever invoked', () => {
     expect(rt.executeMock).not.toHaveBeenCalled();
   });
 
-  it('agent native arrays are refused (A02)', async () => {
+  it.each([true, false])('agent native arrays require an atomic sender-preserving transport (Push EOA=%s)', async (native) => {
     const { rt, ctx } = setup('agent');
-    await expect(
-      agenticSend(rt, ctx, {
-        to: ADDR.target,
-        data: [
-          { to: ADDR.target, value: BigInt(0), data },
-          { to: ADDR.target, value: BigInt(0), data },
-        ],
-      })
-    ).rejects.toMatchObject({ code: AGENTIC_ERROR_CODE.NOT_ALLOWED_IN_AGENTIC_MODE });
+    rt.signerIsPushNative = () => native;
+    const calls = [{ to: ADDR.target, value: BigInt(0), data }, { to: ADDR.target, value: BigInt(1), data }];
+    const tx = await agenticSend(rt, ctx, { to: ADDR.target, data: calls });
     expect(rt.executeMock).not.toHaveBeenCalled();
+    expect(rt.atomicMock).toHaveBeenCalledTimes(1);
+    const batch = rt.atomicMock.mock.calls[0][0].data as { to: Address; value: bigint; data: Hex }[];
+    expect(batch.map((c) => c.to)).toEqual([ctx.wallet, ctx.wallet]);
+    expect(batch.map((c) => e704d5b.decodeWalletCall(c.data))).toEqual(calls.map((c) => ({
+      kind: 'executeAsAgent', rulesId: ruleId(1), mode: `0x${'00'.repeat(32)}`,
+      calls: [{ target: c.to, value: c.value, data: c.data }],
+    })));
+    expect(tx.agentic?.nativeCalls).toEqual(calls);
+  });
+
+  it('empty native arrays fail before any transport is called', async () => {
+    const { rt, ctx } = setup('agent');
+    await expect(agenticSend(rt, ctx, { to: ADDR.target, data: [] })).rejects.toMatchObject({ code: AGENTIC_ERROR_CODE.INVALID_RULE });
+    expect(rt.executeMock).not.toHaveBeenCalled();
+    expect(rt.atomicMock).not.toHaveBeenCalled();
   });
 
   it('NO_RULES_FOR_CHAIN and DUPLICATE_RULE are pre-signature', async () => {

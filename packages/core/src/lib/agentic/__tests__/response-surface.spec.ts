@@ -116,10 +116,14 @@ describe('public surface', () => {
 
   it('PushChain.utils.agentic is the pure helper set', () => {
     expect(Object.keys(Utils.agentic).sort()).toEqual(
-      ['actionId', 'compileCard', 'configId', 'decodeRules', 'deriveWallet', 'encodeRules', 'rulesId'].sort()
+      ['actionId', 'configId', 'decodeRules'].sort()
     );
-    expect(
-      Utils.agentic.deriveWallet(ADDR.owner, 0, { factory: ADDR.factory, walletImplementation: ADDR.impl })
-    ).toBe(getAddress(Utils.agentic.deriveWallet(ADDR.owner, BigInt(0), { factory: ADDR.factory, walletImplementation: ADDR.impl })));
+    // @ts-expect-error generation context helpers are not public
+    expect(Utils.agentic.rulesId).toBeUndefined();
+    // @ts-expect-error the marketplace compiler is outside AGW
+    expect(Utils.agentic.compileCard).toBeUndefined();
+    for (const name of ['rulesId', 'deriveWallet', 'encodeRules', 'compileCard']) {
+      expect(Utils.agentic).not.toHaveProperty(name);
+    }
   });
 });

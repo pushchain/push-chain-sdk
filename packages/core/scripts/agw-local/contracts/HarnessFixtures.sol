@@ -163,3 +163,19 @@ contract HarnessTarget {
         received += msg.value;
     }
 }
+
+/// @notice Test-only ERC-7821-shaped executor for real Anvil EIP-7702 transactions.
+///         Models self-call authorization and atomic CALL dispatch, not the deployed OZ artifact.
+contract HarnessAtomicExecutor {
+    struct Execution { address target; uint256 value; bytes callData; }
+    function execute(bytes32 mode, bytes calldata data) external payable {
+        require(msg.sender == address(this), "self call only");
+        require(mode == bytes32(uint256(1) << 248), "batch/default only");
+        Execution[] memory calls = abi.decode(data, (Execution[]));
+        for (uint256 i; i < calls.length; ++i) {
+            (bool ok, bytes memory ret) = calls[i].target.call{value: calls[i].value}(calls[i].callData);
+            if (!ok) assembly { revert(add(ret, 32), mload(ret)) }
+        }
+    }
+    receive() external payable {}
+}

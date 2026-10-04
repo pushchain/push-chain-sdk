@@ -3,7 +3,6 @@ import { AgenticCapability, requireCapability } from '../capabilities';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import type { UniversalRule } from '../agentic.types';
 import { argumentOffset } from './abi-layout';
-import { assertNotApprovalSelector } from './policy';
 import { parseSelector } from './selectors';
 
 /** Proposed multi-asset limits (page 1 §4c) and the pinned allow-list limit. */
@@ -15,7 +14,7 @@ const CAIP2 = /^(eip155:[0-9]+|solana:[1-9A-HJ-NP-Za-km-z]{32,44})$/;
 /**
  * Structural validation of a TARGET UniversalRule that does not depend on the
  * unresolved wire format: chain id shape, call allow-list, selector/beneficiary
- * positions and the A01 approval policy. Runs before the capability gate so
+ * positions. Approval policy is left to UI/marketplace (Harsh H1). Runs before the capability gate so
  * callers get precise input errors.
  */
 export function validateUniversalRuleShape(rule: UniversalRule, nowSeconds: number): void {
@@ -45,7 +44,6 @@ export function validateUniversalRuleShape(rule: UniversalRule, nowSeconds: numb
     }
     const parsed = parseSelector(call.selector);
     if (parsed.valueOnly) throw invalid(`allowedCalls[${i}] cannot be value-only`);
-    assertNotApprovalSelector(parsed.selector, `allowedCalls[${i}]`);
     if (call.beneficiary !== undefined) {
       argumentOffset(parsed.inputs, call.beneficiary, `allowedCalls[${i}].beneficiary`);
       const t = (parsed.inputs ?? [])[call.beneficiary]?.type;

@@ -33,10 +33,7 @@ export enum AgenticCapability {
   GRANT_REF = 'grantRef',
   /** Editable wallet label (setLabel / LabelSet). A07. */
   SET_LABEL = 'setLabel',
-  /** Revoked-rule history in rules.list/get. A06. */
-  RULE_HISTORY = 'ruleHistory',
-  /** Canonical card compiler. A08. */
-  COMPILE_CARD = 'compileCard',
+
 }
 
 /** Why each target capability is unavailable when a generation lacks it. */
@@ -60,10 +57,7 @@ export const CAPABILITY_DEPENDENCY: Record<AgenticCapability, string> = {
     'the selected generation has no grant reference parameter/event (A07)',
   [AgenticCapability.SET_LABEL]:
     'the selected generation has no editable label (A07; labels are deploy-time only)',
-  [AgenticCapability.RULE_HISTORY]:
-    'revoked-rule history scope and reliable metadata are unresolved (A06)',
-  [AgenticCapability.COMPILE_CARD]:
-    'canonical card schema, encoding and shared vectors are not agreed (A08)',
+
 };
 
 export function hasCapability(

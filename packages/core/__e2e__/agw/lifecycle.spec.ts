@@ -1,3 +1,4 @@
+import { readNativeCounters } from '@e2e/shared/agw-state';
 /**
  * Scenarios 5 and 6 — add / update / revoke lifecycle and checkpoint counts.
  * A replacement is five checkpoint ticks; allowance pulls are not ticks.
@@ -46,15 +47,15 @@ d('agw lifecycle', () => {
   it('2. rules.update: old ID disabled, new ID usable with reset counters, five checkpoint ticks', async () => {
     const agent = await f.agent(wallet);
     await (await agent.universal.sendTransaction({ to: sink, value: BigInt(10) })).wait();
-    const spentBefore = (await f.owner.agentic.wallet(wallet).rules.get(original)).spent;
+    const spentBefore = await readNativeCounters(f.push, f.manifest.addresses, wallet, original);
     expect(spentBefore).toMatchObject({ kind: 'native', valueSpent: BigInt(10), callsUsed: 1 });
     const before = await count();
     const res = await f.owner.agentic.wallet(wallet).rules.update({ rules: [{ rulesId: original, rule: rule(BigInt(2000)) }] });
     expect(await count()).toBe(before + BigInt(5));
     const replacement = res.rules[0].rulesId;
     expect(res.rules[0].replaced).toBe(original);
-    expect((await f.owner.agentic.wallet(wallet).rules.get(replacement)).spent).toMatchObject({ valueSpent: BigInt(0), callsUsed: 0 });
-    await expect(f.owner.agentic.wallet(wallet).rules.get(original)).rejects.toMatchObject({ code: AGENTIC_ERROR_CODE.CAPABILITY_UNAVAILABLE });
+    expect(await readNativeCounters(f.push, f.manifest.addresses, wallet, replacement)).toMatchObject({ valueSpent: BigInt(0), callsUsed: 0 });
+    await expect(f.owner.agentic.wallet(wallet).rules.get(original)).rejects.toMatchObject({ code: AGENTIC_ERROR_CODE.RULE_NOT_FOUND });
     const tx = await agent.universal.sendTransaction({ to: sink, value: BigInt(1500) });
     expect(tx.agentic?.rulesId).toBe(replacement);
     f.evidence('rules-update', { wallet, original, replacement, tx: res.tx.hash, checkpointDelta: 5 });

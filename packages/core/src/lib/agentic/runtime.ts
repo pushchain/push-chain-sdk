@@ -1,6 +1,8 @@
 import { getAddress, type Address } from 'viem';
 import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 import type { MoveableToken } from '../constants/tokens';
+import { AtomicBatchUnavailableError } from '../orchestrator/internals/errors';
+import { capabilityUnavailable } from './errors';
 import type { Orchestrator } from '../orchestrator/orchestrator';
 import type {
   ExecuteParams,
@@ -41,6 +43,8 @@ export interface AgenticRuntime {
     params: ExecuteParams | UniversalExecuteParams,
     options?: TransactionExecutionOptions
   ): Promise<UniversalTxResponse>;
+  /** Sender-preserving UEA/7702 transport; native sequential fallback is forbidden. */
+  executeAtomicBatch(params: ExecuteParams, options?: TransactionExecutionOptions): Promise<UniversalTxResponse>;
   /** Emit to the init-time hook and, if different, the per-call hook. */
   emit(event: ProgressEvent, perCallHook?: AgenticProgressHook): void;
   /** Whether the signer's own UEA is deployed (always true for a Push EOA). */
@@ -72,6 +76,16 @@ export function createAgenticRuntime(orchestrator: Orchestrator, isReadOnly: boo
     signerOrigin: () => orchestrator.getUOA(),
     signerIsPushNative: () => isPushChain(ctx.universalSigner.account.chain),
     execute: (params, options) => orchestrator.execute(params, options),
+    executeAtomicBatch: async (params, options) => {
+      try {
+        return await orchestrator.executeAtomicBatch(params, options);
+      } catch (error) {
+        if (error instanceof AtomicBatchUnavailableError) {
+          throw capabilityUnavailable('atomicNativeAgentBatch', error.message);
+        }
+        throw error;
+      }
+    },
     emit: (event, perCallHook) => {
       const base = orchestrator.getProgressHook();
       base?.(event);

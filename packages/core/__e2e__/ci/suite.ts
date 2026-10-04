@@ -803,6 +803,16 @@ export const SCENARIOS: Scenario[] = [
     env: { AGW_E2E: '1' },
   },
   {
+    id: 'agw-native-batch', group: 'agw', file: '__e2e__/agw/native-batch.spec.ts',
+    grep: 'agw native batch 1\\. sender-preserving atomic',
+    needs: { masterPC: '2' }, env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-native-batch-rollback', group: 'agw', file: '__e2e__/agw/native-batch.spec.ts',
+    grep: 'agw native batch 2\\. a later policy failure',
+    needs: { masterPC: '2' }, env: { AGW_E2E: '1' },
+  },
+  {
     id: 'agw-native-agent',
     group: 'agw',
     file: F.agwNative,

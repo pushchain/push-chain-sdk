@@ -1,5 +1,7 @@
 # AGW contract and SDK gap register
 
+> October 4 update: [Harsh’s replies](product-decisions-2026-10-04.md) supersede earlier provisional approval/default/helper/history/compiler recommendations below. Use [remaining dependencies](external-blockers.md) for current blockers. The clear scope changes and sender-preserving native batching are now implemented; H3 defaults remain unchanged pending clarification. See [alignment evidence](research/product-alignment-2026-10-04/README.md).
+
 Current source: pushAgenticWallet_v3@e704d5b; target API: October 3 Notion export. [Baseline](current-baseline.md), [review summary](review-summary.md) and [integrator obligations](contract-integrator-obligations.md) provide context. The IDs track remaining integration work, not 24 missing contract features.
 
 P0 blocks safe integration or agreed authorization/accounting semantics. P1 affects correctness, compatibility or downstream delivery. P2 covers optional capability or documentation. D3 and checkpoints are implemented in source; live generation verification is outstanding.

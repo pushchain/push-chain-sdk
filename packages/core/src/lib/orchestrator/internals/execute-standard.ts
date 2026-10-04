@@ -136,7 +136,8 @@ export async function executeStandardPayload(
   ctx: OrchestratorContext,
   execute: ExecuteParams,
   eventBuffer: ProgressEvent[],
-  getResponseCallbacks: () => ResponseBuilderCallbacks
+  getResponseCallbacks: () => ResponseBuilderCallbacks,
+  policy?: { requireAtomicBatch: boolean }
 ): Promise<UniversalTxResponse> {
   const transformFn = (tx: TxResponse, buf: ProgressEvent[] = []) =>
     transformToUniversalTxResponse(ctx, tx, buf, getResponseCallbacks());
@@ -169,7 +170,7 @@ export async function executeStandardPayload(
     fireProgressHook(ctx, PROGRESS_HOOK.SEND_TX_107);
     let tx: UniversalTxResponse;
     try {
-      tx = await sendPushTx(ctx, execute, eventBuffer, transformFn);
+      tx = await sendPushTx(ctx, execute, eventBuffer, transformFn, policy?.requireAtomicBatch);
     } catch (err) {
       // Push Chain broadcast failed. Wallet rejection surfaces as 104-04;
       // everything else (RPC fail, on-chain revert) as 199-02.

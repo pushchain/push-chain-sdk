@@ -1,3 +1,4 @@
+import { readNativeCounters } from '../__e2e__/shared/agw-state';
 /**
  * Real-contract checks for the harder AGW paths (pinned e704d5b on anvil).
  * The universal-outbound block drives the SDK's composer with a runtime whose
@@ -117,7 +118,8 @@ describe('AGW advanced paths against real e704d5b contracts', () => {
       expect(err).toBeInstanceOf(AgenticRevertError);
       expect(err.decodedError?.name).toBe("PolicyCheckReverted(ArgPinMismatch)");
       const rec = await owner.agentic.wallet(wallet).rules.list();
-      expect(rec.rules[0].spent).toMatchObject({ amountSpent: BigInt(5), callsUsed: 1 });
+      expect(rec.rules[0]).not.toHaveProperty('spent');
+      expect(await readNativeCounters(h.publicClient, h.generation.addresses, wallet, rec.rules[0].rulesId)).toMatchObject({ amountSpent: BigInt(5), callsUsed: 1 });
     });
 
     it('per-call and lifetime amount caps are enforced on-chain', async () => {

@@ -1,5 +1,7 @@
 # Current validated AGW baseline
 
+> October 4 update: [Harsh’s replies](product-decisions-2026-10-04.md) supersede earlier provisional approval/default/helper/history/compiler recommendations below. Use [remaining dependencies](external-blockers.md) for current blockers. The clear scope changes and sender-preserving native batching are now implemented; H3 defaults remain unchanged pending clarification. See [alignment evidence](research/product-alignment-2026-10-04/README.md).
+
 Updated October 3, 2026 after reviewing checkpoint commit 6b7dbf4 and current head e704d5b. This page supersedes earlier recommendations; consequential corrections are retained in the [review summary](review-summary.md). The SDK Notion page remains the target API; conflicts below are recorded for resolution, not silently resolved in favor of code.
 
 ## Pinned sources

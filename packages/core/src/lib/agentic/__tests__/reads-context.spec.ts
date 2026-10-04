@@ -141,7 +141,7 @@ describe('rules.list / rules.get', () => {
   afterEach(() => resetAgenticGenerations());
   const gen = () => currentGeneration(PUSH_NETWORK.TESTNET_DONUT);
 
-  it('decodes native records with spend', async () => {
+  it('decodes active native records without exposing internal spend', async () => {
     const w = fake.addWallet(ADDR.owner, 'w', [
       fake.nativeRule(ADDR.agent, ruleId(1), { callsUsed: 3, valueSpent: BigInt(5), maxCalls: 9 }),
     ]);
@@ -152,10 +152,15 @@ describe('rules.list / rules.get', () => {
         enabled: true,
         chainNamespace: PUSH_NS,
         agent: ADDR.agent,
-        spent: { kind: 'native', valueSpent: BigInt(5), amountSpent: BigInt(0), callsUsed: 3 },
         rule: expect.objectContaining({ maxCalls: 9, selector: '0xd09de08a' }),
       }),
     ]);
+  });
+
+  it('public records contain no spent field', async () => {
+    const w = fake.addWallet(ADDR.owner, 'w', [fake.nativeRule(ADDR.agent, ruleId(1))]);
+    const record = await getRule(await Snapshot.at(fake), gen(), w.address, ruleId(1), PUSH_NS);
+    expect(record).not.toHaveProperty('spent');
   });
 
   it('a universal rule cannot be decoded into the public type yet (A05) — the list fails, it is not truncated', async () => {
@@ -168,7 +173,7 @@ describe('rules.list / rules.get', () => {
     });
   });
 
-  it('get: unknown → RULE_NOT_FOUND; revoked → history capability (A06), not an empty record', async () => {
+  it('unknown and revoked IDs both return RULE_NOT_FOUND without history reconstruction', async () => {
     const w = fake.addWallet(ADDR.owner, 'w');
     const snap = await Snapshot.at(fake);
     await expect(getRule(snap, gen(), w.address, ruleId(9), PUSH_NS)).rejects.toMatchObject({
@@ -176,8 +181,7 @@ describe('rules.list / rules.get', () => {
     });
     fake.extraLogs.push(log(w.address, e704d5b.events.rulesRevoked, { rulesId: ruleId(9) }, {}, BigInt(50)));
     await expect(getRule(snap, gen(), w.address, ruleId(9), PUSH_NS)).rejects.toMatchObject({
-      code: AGENTIC_ERROR_CODE.CAPABILITY_UNAVAILABLE,
-      details: { rulesId: ruleId(9), revoked: true },
+      code: AGENTIC_ERROR_CODE.RULE_NOT_FOUND,
     });
   });
 });

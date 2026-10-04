@@ -189,3 +189,12 @@ F1 from the follow-up review is fixed. Live and replayed outbound response `to/d
 R6 now has regular tests through the real response-builder/wait closure with mocked RPC/polling, covering owner and agent doors, successful and reverted roots, and init/per-call terminal-hook counts. Live Cosmos/TSS/destination acceptance remains pending.
 
 Validation: 1,908 unit tests and 34 local-contract tests pass; library/spec typechecks and build pass. Lint retains seven errors in unchanged files. See [resolution and coverage](implementation-review/outbound-response-resolution.md). Product sign-off on raw-offset types and deployment gates are unchanged.
+
+
+## Harsh scope alignment October 4
+
+The clear product replies are now implemented. No SDK approval-selector or mandatory-spender policy remains; caller-requested pins are still encoded/validated. RulesRecord no longer exposes spent; update assertions still read internal counters. Active-only reads return RULE_NOT_FOUND for unknown/revoked IDs. Public generation-context helpers and compileCard are removed; the remaining public utils are actionId/configId/decodeRules, and client.agentic.derive remains available.
+
+Native agent arrays wrap each action in a single-call executeAsAgent and use an internal atomic-only orchestrator path. UEA uses existing multicall; Push EOA requires a deployed 7702 executor and usable authorization. Lack of capability or authorization never falls back to separate calls. Replay recognizes verified UEA/delegated-EOA batches and exposes the ordered actions in agentic.nativeCalls. A local real-type-4 test with actual AGW/engine/policy and a fixture ERC-7821 executor proves sender preservation, cumulative limits and full rollback. Live native batch scenarios are registered but not run.
+
+H3 defaults remain byte-for-byte unchanged. Raw-offset API approval and final multi-asset/SVM/deployment artifacts remain pending. [Evidence](research/product-alignment-2026-10-04/README.md).

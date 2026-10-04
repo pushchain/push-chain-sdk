@@ -57,6 +57,14 @@ export class PushChainExecutionError extends Error {
   }
 }
 
+/** @internal A caller required an atomic native batch; sequential fallback is forbidden. */
+export class AtomicBatchUnavailableError extends PushChainExecutionError {
+  constructor(message: string, cause?: unknown) {
+    super(message, { cause });
+    this.name = 'AtomicBatchUnavailableError';
+  }
+}
+
 /** Recovery metadata for a non-atomic Push batch. A pending hash is broadcast but unconfirmed. */
 export class PushChainBatchExecutionError extends PushChainExecutionError {
   readonly transactionHashes: `0x${string}`[];

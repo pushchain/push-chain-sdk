@@ -2,13 +2,12 @@
 
 We need the artifacts and compatibility details below to finish the AGW SDK against the intended contract generation. Please reply by item ID with the source/ABI/vector link when available, or the remaining work and expected delivery. Product choices that affect these requests are linked to Harsh's document.
 
-**Status:** open review draft. Z1/Z3 concern standalone AGW. Z5 concerns the shared card compiler. IDs retain their earlier numbering for cross-references.
+**Status:** updated October 4 after [Harsh’s replies](product-decisions-2026-10-04.md). Only Z1/Z3 remain for standalone AGW. Public multi-asset spend, revoked history and compileCard are no longer requested as standalone v1 features; internal accounting still matters.
 
 | Item | Requested deliverable | What it enables |
 | --- | --- | --- |
 | [Z1](#z1) | Matching terms, accounting/assertion ABI and metadata surface | Final rule encoding, reads and safe replacement |
 | [Z3](#z3) | Verified deployment and capability manifest | Generation onboarding and live acceptance |
-| [Z5](#z5) | Canonical card encoding and shared vectors | SDK/hook-compatible `compileCard` |
 
 ## Source baseline
 
@@ -54,7 +53,7 @@ If the code is still pending, please identify the agreed target definitions and 
 - Token ordering/completeness rules for the expected snapshot.
 - A vector/test where intervening spend makes the entire replacement revert.
 
-The SDK will implement the wrapper and atomic batch. Harsh's [H4.2](questions-harsh.md#h4-2) settles the public returned `Spent` shape.
+The SDK will implement the wrapper and atomic batch. Harsh has said per-token spend need not be public, but the SDK still needs these internal reads and assertions for safe replacement. Please align omitted/explicit-zero wire semantics with the final H3 defaults.
 
 **Evidence:** [current expected-spend assertion](https://github.com/pushchain/push-agentic-wallets/blob/e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9/src/policies/UniversalRulesPolicy.sol#L1409); [proposed assertion change, section 4c](notion/1-agw-contract-changes.md).
 
@@ -68,9 +67,8 @@ The SDK will implement the wrapper and atomic batch. Harsh's [H4.2](questions-ha
 | --- | --- |
 | Grant reference | `ref` parameter/event shape; include it in the owner signature digest when a signed grant is used |
 | Editable labels | Whether proposed `setLabel`/label storage ships with this generation, with its ABI/event behavior |
-| Revoked-rule history | If Harsh requires it, provide reliable historical agent/action attribution for supported grant paths; a grant-event improvement is one possible solution |
 
-Historical scope depends on [Harsh H4.3](questions-harsh.md#h4-3). Please distinguish committed features from proposals still awaiting agreement.
+Harsh deferred revoked-rule history for v1; no additional historical metadata is requested solely for that feature. Please distinguish committed ref/label features from proposals.
 
 **Evidence:** [target SDK lifecycle](notion/5-sdk-agw.md); [pinned grant signatures](https://github.com/pushchain/push-agentic-wallets/blob/e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9/src/AGW.sol#L483); [pinned grant event emission](https://github.com/pushchain/push-agentic-wallets/blob/e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9/src/AGW.sol#L636).
 
@@ -93,24 +91,7 @@ Existing wallet clones cannot acquire the target wallet ABI. We will use the man
 
 **If deployment is pending:** provide the intended feature scope and remaining delivery work. Clarification settles the plan; live acceptance remains pending until deployment exists.
 
-SVM public-rule scope also needs [Harsh H4.4](questions-harsh.md#h4-4). [Historical Donut addresses](notion/agw-address-book-donut-2026-09-04.md) are retained as historical evidence, not assumed to support this target.
-
-<a id="z5"></a>
-
-## Z5 Card encoding and shared compiler vectors
-
-**Issue.** The SDK's `compileCard` must produce terms that the marketplace/hook validates using the same schema and rules.
-
-**Please provide or identify:**
-
-- Canonical versioned card encoding/hash and the contract revision that consumes it.
-- Contract-side compilation/verification rules, including provider identity, chain, expiry and rule binding.
-- Shared valid/invalid input vectors for the SDK and hook.
-- Missing binding support, if product requires a broader scope than the current one-rule job binding.
-
-[Harsh H5](questions-harsh.md#h5) requests the public schema and single-chain/multi-chain scope. This dependency blocks `compileCard` completion, while basic AGW execution can proceed independently.
-
-**Evidence:** [SDK helper target](notion/5-sdk-agw.md); [current terms verifier](https://github.com/pushchain/push-chain-core-contracts/blob/cb69e0ba101bef1bb4440e54b2c45396be3e92ce/src/agentic-commerce-8183/UniversalMarketplaceTerms.sol#L32); [current job/rule binding](https://github.com/pushchain/push-chain-core-contracts/blob/cb69e0ba101bef1bb4440e54b2c45396be3e92ce/src/agentic-commerce-8183/UniversalMarketplace.sol#L301).
+Harsh referred SVM work to you. Please include its supported input constraints and matching artifacts when ready. [Historical Donut addresses](notion/agw-address-book-donut-2026-09-04.md) are retained as historical evidence, not assumed to support this target.
 
 ## Supporting documents
 

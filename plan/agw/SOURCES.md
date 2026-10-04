@@ -2,6 +2,8 @@
 
 Latest complete Notion export: October 3, 2026 at 13:23 IST. All 12 pages were imported; pages 1 and 5 changed. Page 5 defines the target public SDK API. Native exports omit comment threads.
 
+Focused October 4 recheck: page 5 was downloaded again; its body matches the saved snapshot after normalizing links. [Comparison evidence](research/notion-check-2026-10-04/comparison.json). This was not a full refresh and does not replace the full-import manifest. Harsh’s newer replies are recorded separately in [product decisions](product-decisions-2026-10-04.md).
+
 ## Notion inventory
 
 | Document | Source | Local snapshot | Authority |

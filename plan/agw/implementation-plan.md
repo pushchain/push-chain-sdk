@@ -1,6 +1,8 @@
 # Complete AGW SDK implementation plan
 
-This is the step-by-step plan for the complete AGW surface in Notion page 5 inside `@pushchain/core`. It covers management, rules, execution, responses, helpers, compatibility, documentation and release validation. Marketplace, job and evaluator clients are separate projects; their shared `compileCard` dependency is included here. No production implementation has started.
+> October 4 update: [Harsh’s replies](product-decisions-2026-10-04.md) supersede earlier provisional approval/default/helper/history/compiler recommendations below. Use [remaining dependencies](external-blockers.md) for current blockers. The clear scope changes and sender-preserving native batching are now implemented; H3 defaults remain unchanged pending clarification. See [alignment evidence](research/product-alignment-2026-10-04/README.md).
+
+This is the step-by-step plan for the complete AGW surface in Notion page 5 inside `@pushchain/core`. It covers management, rules, execution, responses, helpers, compatibility, documentation and release validation. Marketplace, job and evaluator clients are separate projects; `compileCard` is deferred to their later delivery and is not exposed by standalone AGW. Settled implementation is recorded in [implementation status](implementation-status.md); remaining contract capabilities stay gated.
 
 Target: [SDK spec](notion/5-sdk-agw.md), exported October 3, 2026 at 13:23 IST. Tested contract source: AGW `e704d5b`. SDK production baseline: `167fdc6`. See [current baseline](current-baseline.md), [SDK design](sdk-design-review.md), [SDK-owned decisions](sdk-owned-review.md) and [external blockers](external-blockers.md). Remote refs were rechecked unchanged; subsequent Notion edits remain unverified.
 
@@ -27,7 +29,7 @@ Implementation and verification are listed separately so development progress ca
 | 13 | Responses, tracking, progress and transaction-creating reads | Partial | 3, 9–12; final wire adapters |
 | 14 | Deployment onboarding and full acceptance | Waiting for matching deployment | 4–13; A07 |
 | 15 | Web2 compatibility | Start now; independent | Existing read-state modules |
-| 16 | Card compiler and ecosystem boundary | Waiting for canonical card schema | 6; G09/G10 downstream decisions |
+| 16 | Card compiler and ecosystem boundary | Outside standalone AGW v1 | Future marketplace track |
 | 17 | Documentation, examples and release | Draft now, finish after acceptance | 1–16 or explicit accepted feature scope |
 
 Do not interpret this table as an equal-effort percentage. Steps 6, 11–14 carry substantially more integration risk than namespace and export work.
@@ -38,22 +40,22 @@ These are working assumptions for development, not accepted product changes. Rep
 
 | ID | Working assumption or placeholder | Confirmation | Replacement point |
 | --- | --- | --- | --- |
-| A01 | Known approval-granting selectors are rejected in universal agent rules. Owners use existing owner-mode sendTransaction for bounded approvals. Filtering is not a complete target-safety boundary. | Harsh H1 / E01 | Rule validation and examples |
-| A02 | NativeRule remains one action; native agent arrays fail before signing. Owner batches and bounded EVM destination multicalls remain supported. | Harsh H2 / E02 | Native dispatch validation |
-| A03 | Omitted universal asset maxTotal maps to proposed zero-unlimited; native value caps and allowed-call maxValue default to zero; native amount.maxTotal defaults to uint256 maximum; maxCalls defaults to zero-unlimited. | Harsh H3 / E03 | One defaults module, never scattered fallbacks |
-| A04 | Pure rulesId and deriveWallet helpers accept explicit validator/factory/implementation context. Signer-bound methods resolve it internally. | Harsh H4.1 / E04 | Public helper signatures; internal context already explicit |
-| A05 | Universal Spent is per token. Replacement compares caller-supplied expected totals for all old-rule assets atomically. Multi-asset wire format, empty-assets routing and EVM expectedCEA width are unresolved. | Harsh H4.2, SVM scope clarification, and Zaryab Z1 / E05 | Multi-asset codec/read/assertion adapter |
-| A06 | Active-rule reads can be implemented first internally. Public list/get historical scope stays provisional; do not silently return only active rules if full history is promised. | Harsh H4.3 / E06 | History adapter and RulesRecord completeness |
+| A01 | Approval policy is UI/marketplace-owned; SDK retains structural validation without selector deny-lists or mandatory spender policy | Harsh H1 resolved October 4; implemented | Native/universal validation |
+| A02 | Multiple native actions use a sender-preserving UEA/7702 outer batch of single agent-door calls; never sequential fallback | Harsh H2 direction; implemented and locally validated | Atomic transport and batch response adapters |
+| A03 | Exact revised default table remains open; existing defaults are unchanged until H3 is clarified | Harsh H3 / E03 | One defaults module |
+| A04 | Generation-dependent IDs, derivation and encoding context remain internal; client.agentic.derive remains public | Harsh H4.1 resolved; implemented | Public utility exports and internal codecs |
+| A05 | Spend is internal, not a public result. Final per-token wire/read/assertion ABI, empty-assets routing and CEA width remain unresolved | Harsh H4.2 scope resolved; Zaryab Z1 delivery pending | Internal accounting and codec adapter |
+| A06 | V1 lists enabled rules only; unknown/revoked get returns RULE_NOT_FOUND. No historical record reconstruction | Harsh H4.3 deferred; implemented | Public read model |
 | A07 | A verified new deployment supplies the matching grant ref/envelope/metadata ABI, addresses and start blocks. Historical Donut remains a distinct generation. | Zaryab Z1/Z3 / E07 | Deployment manifest and capability adapter |
-| A08 | compileCard consumes a versioned canonical card shared with the marketplace hook. No canonical bytes are invented locally. | Harsh H5 and Zaryab Z5; downstream G09/G10 | Card compiler module |
+| A08 | No compileCard in standalone AGW; canonical cards belong to later marketplace work | Harsh H5: outside AGW v1 | No public compiler stub/export |
 
 ### What closes each assumption
 
-- A01–A04: explicit product decisions and agreed API/default wording from Harsh settle the design. SDK implementation and tests follow.
+- A01/A02/A04: clear product scope is implemented. A03 defaults still need exact agreed wording.
 - A05: Harsh agrees the public representation; Zaryab supplies matching terms, read/assertion ABIs and vectors. Clarification alone does not supply missing contract code.
-- A06: Harsh defines history scope. If full history is required, reliable metadata/artifacts must also be available before that implementation dependency closes.
+- A06: revoked history is outside v1; active-only reads and explicit RULE_NOT_FOUND behavior are implemented.
 - A07: Zaryab identifies the selected feature scope and delivers the actual compatible deployment manifest/artifacts. A planned address or deployment date does not close it; we verify deployment and integration.
-- A08: Harsh H5 and Zaryab Z5 align the shared card schema/encoding and vectors. This is a downstream compiler dependency, separate from the standalone execution foundation.
+- A08: closed for standalone AGW by deferring compileCard to the marketplace track.
 
 Record design decisions and artifact/deployment readiness separately. All eight have an explicit question owner, but answers alone do not mean all eight are implemented or verified.
 
@@ -100,8 +102,8 @@ Done when: implementation has a pinned target and unresolved features cannot be 
 
 Implementation:
 
-1. Add `client.agentic`, the management handle, `PushChain.utils.agentic` and AGENTIC constants through the existing exports.
-2. Model create results, wallet summaries, checkpoint records, rules, spend, errors and progress. Separate internal wire terms from the public Rule input.
+1. Add client.agentic, the management handle, AGENTIC constants and public actionId/configId/decodeRules utilities. Keep generation-dependent utilities internal; no AGW compileCard.
+2. Model create results, wallet summaries, checkpoint records, public rules without spend, internal counters, errors and progress. Separate internal wire terms from the public Rule input.
 3. Add `agenticWallet` to the shared initialize/reinitialize option path without changing ordinary-client defaults.
 4. Add AgenticError and AgenticRevertError using core's structured failure model. Preserve cause/decoded error data and batch-recovery hashes; expose the base execution error if required for public instanceof checks.
 5. Isolate A04/A05/A06 in small interfaces. A registered method with no implementation throws a clear unsupported-capability error; the final public error names are documented before release.
@@ -150,7 +152,7 @@ Implementation:
 3. Implement wallet(address), owner and info with snapshot-consistent reads. Reconstruct current deployment label from the event when required by the selected generation.
 4. Implement checkpoints from bounded/paginated logs, ordered by block/transaction/log index. Preserve seq, kind, ref, blockNumber and txHash. Account for reorgs and sinceBlock inclusion.
 5. Implement active rules.get/list internals using enabled IDs followed by agent/action/policy reads at one block. Distinguish unknown, revoked, expired and zero-valued configurations.
-6. Add historical records only through the A06-approved mechanism. A failed metadata reconstruction is not an empty rule list. Do not claim info/rule lookup is one RPC request if it requires dependent reads.
+6. V1 has no historical records: list returns enabled rules and get rejects unknown/revoked IDs. Do not claim info/rule lookup is one RPC request if it requires dependent reads.
 7. Add setLabel only for a matching supported capability. Respect the chosen cosmetic/checkpoint semantics from the final contract.
 
 Verification: empty owner, next slot, index races, multiple wallets/generations, paginated logs, same-block changes, unknown IDs, revoked-history limits and RPC failures.
@@ -166,7 +168,7 @@ Implementation:
 3. Derive expectedCEA from AGW and destination deployment, not from the agent. Supply it to the encoder and preview data; document and detect derivation drift. Separate asynchronous registry/RPC resolution from pure encodeRules/decodeRules helpers: pure helpers receive pre-resolved token, ABI and deployment context and perform no hidden network calls.
 4. Derive selectors, actionId/configId and rulesId against contract vectors. Wallet-scope record keys. Use explicit validator context internally; receipt-assigned IDs remain authoritative.
 5. Generate native argument pins and beneficiary positions from ABI layout. Static tuples can occupy multiple words; dynamic arguments require layout-aware handling. Reject unsupported layouts or a bare selector with insufficient ABI context for required pins.
-6. Implement native terms with explicit values first. Centralize provisional A03 omission defaults and A01 approval validation behind one policy boundary.
+6. Implement native terms with explicit values first. Centralize provisional A03 defaults; approval policy is external to the SDK.
 7. Add a versioned universal multi-asset codec only after A05 artifacts arrive. Keep encode/decode inverse behavior and validation for 0–8 assets, per-token limits and call lists.
 8. Define empty-assets call routing, expectedCEA byte width, zero/unlimited semantics and envelope-version behavior from fixtures. Do not guess these to make a test pass.
 
@@ -227,7 +229,7 @@ Implementation:
 2. Zero candidates: NO_RULES_FOR_CHAIN before signing. Multiple candidates: DUPLICATE_RULE with a clear hint. Do not choose the first result.
 3. Encode executeAsAgent with the selected ID and exact native single call. Leave expiry, allowance, amount and policy execution to contracts; do not build a second authorization engine in the SDK.
 4. Reuse the signer transport so a foreign key calls from its own UEA. Reject any from route override before transport selection.
-5. Apply A02 at the native-array boundary. Keep one-action public rules even if contract internals support more actions.
+5. For native arrays, encode one single-call executeAsAgent per item and use only an atomic sender-preserving UEA/7702 transport. A missing/deferred 7702 authorization must never trigger sequential fallback. Keep the one-action public rule; each action remains subject to that rule.
 
 Verification: revoked/expired rules, ambiguous direct grants, changed grants after lookup, native value/data calls, foreign-key identity and policy revert decoding. A rule can change after lookup; the contract remains authoritative.
 
@@ -305,18 +307,9 @@ Verification: both literal spellings, enum iteration, compile-time read/transact
 
 Done when: new public syntax works without breaking the existing read wire protocol.
 
-## Step 16 Implement compileCard when its schema is settled
+## Step 16 Deferred marketplace integration
 
-Implementation:
-
-1. Obtain canonical card schema/version, signing/encoding rules and shared compiler vectors from marketplace/hook work.
-2. Compile user input into public Rule[] through the same normalization and codec preparation as direct grants.
-3. Preserve provider Push identity, exact marketplace expiry and supported chain/rule cardinality. Do not invent a multi-rule job binding over the current one-ID hook.
-4. Keep market/job/evaluation namespaces outside this AGW implementation. Their independent delivery is not implied by exporting compileCard.
-
-Verification: shared SDK/hook vectors, mismatched provider/chain/expiry, card tampering, unsupported multi-chain binding and compatibility across schema versions.
-
-Done when: compileCard produces the same authorized terms the corresponding hook validates. Otherwise retain an explicit development placeholder and a release scope dependency.
+Harsh H5 removes compileCard from standalone AGW. Do not expose a public stub or block AGW release on card schema decisions. Canonical schema/encoding and SDK/hook vectors remain future marketplace work, with a separate scope and acceptance plan.
 
 ## Step 17 Finish examples, obligations and release
 
@@ -345,9 +338,9 @@ Done when: the package can be used from its published exports as documented, sup
 | initialize/reinitialize with agenticWallet | 3–4 |
 | owner/agent sendTransaction | 9–12 |
 | response.wait, trackTransaction, errors/hooks | 13 |
-| utils.agentic rulesId/actionId/configId/deriveWallet | 4, 6; A04 |
-| utils.agentic encodeRules/decodeRules | 6, 12 |
-| utils.agentic.compileCard | 16 |
+| Public utils.agentic actionId/configId/decodeRules; internal generation IDs/derivation/encoding | 4, 6 |
+| Internal encoding and public native decoding | 6, 12 |
+| compileCard | Outside standalone AGW; future marketplace |
 | AGENTIC constants and READ.CHAIN | 2, 4, 15 |
 | forbidden methods, gas behavior and transaction-creating reads | 3, 10–13 |
 
