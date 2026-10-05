@@ -275,13 +275,19 @@ export class EvmClient {
     const resolveGas = async (): Promise<bigint> => {
       if (explicitGas) return explicitGas;
 
-      const estimate = () =>
-        this.publicClient.estimateGas({
+      const estimate = async () => {
+        const estimatedGas = await this.publicClient.estimateGas({
           account: signer.account.address as `0x${string}`,
           to,
           data,
           value,
         });
+        // Leave headroom for nested calls and state changes before inclusion,
+        // as on the EIP-7702 batch path. Donut can return an estimate that
+        // reverts inside an AGW -> gateway -> token call even at the same state.
+        // This is the Push execution limit, separate from destination gas.
+        return (estimatedGas * BigInt(120) + BigInt(99)) / BigInt(100);
+      };
 
       if (data !== '0x') return estimate();
 
