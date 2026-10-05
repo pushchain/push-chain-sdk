@@ -21,7 +21,7 @@ export enum AgenticCapability {
   ASSERT_SPENT_NATIVE = 'assertSpentNative',
   /** checkpointCount + Checkpointed events. */
   CHECKPOINTS = 'checkpoints',
-  /** Agent-door EVM outbound composition against this generation's single-asset terms. */
+  /** Agent-door EVM outbound composition against v4 per-token caps. */
   UNIVERSAL_EVM_OUTBOUND = 'universalEvmOutbound',
   /** Target UniversalRule (assets[] / maxGasPerCall) encode/decode. A05/A07. */
   UNIVERSAL_EVM_RULES = 'universalEvmRules',
@@ -33,31 +33,36 @@ export enum AgenticCapability {
   GRANT_REF = 'grantRef',
   /** Editable wallet label (setLabel / LabelSet). A07. */
   SET_LABEL = 'setLabel',
-
 }
 
 /** Why each target capability is unavailable when a generation lacks it. */
 export const CAPABILITY_DEPENDENCY: Record<AgenticCapability, string> = {
-  [AgenticCapability.WALLET_READS]: 'no verified AGW deployment for this network (A07)',
-  [AgenticCapability.ACTIVE_RULE_READS]: 'no verified AGW deployment for this network (A07)',
-  [AgenticCapability.OWNER_EXECUTE]: 'no verified AGW deployment for this network (A07)',
-  [AgenticCapability.AGENT_EXECUTE]: 'no verified AGW deployment for this network (A07)',
-  [AgenticCapability.NATIVE_RULES]: 'no verified AGW deployment for this network (A07)',
-  [AgenticCapability.ASSERT_SPENT_NATIVE]: 'no verified AGW deployment for this network (A07)',
-  [AgenticCapability.CHECKPOINTS]: 'no verified AGW deployment for this network (A07)',
+  [AgenticCapability.WALLET_READS]:
+    'no verified AGW deployment for this network (A07)',
+  [AgenticCapability.ACTIVE_RULE_READS]:
+    'no verified AGW deployment for this network (A07)',
+  [AgenticCapability.OWNER_EXECUTE]:
+    'no verified AGW deployment for this network (A07)',
+  [AgenticCapability.AGENT_EXECUTE]:
+    'no verified AGW deployment for this network (A07)',
+  [AgenticCapability.NATIVE_RULES]:
+    'no verified AGW deployment for this network (A07)',
+  [AgenticCapability.ASSERT_SPENT_NATIVE]:
+    'no verified AGW deployment for this network (A07)',
+  [AgenticCapability.CHECKPOINTS]:
+    'no verified AGW deployment for this network (A07)',
   [AgenticCapability.UNIVERSAL_EVM_OUTBOUND]:
     'the selected generation has no verified multi-asset outbound token resolution (A05/A07)',
   [AgenticCapability.UNIVERSAL_EVM_RULES]:
-    'the assets[]/maxGasPerCall wire format has no matching contract artifacts or vectors (A05/A07)',
+    'EVM universal rules are unavailable for the selected SDK configuration',
   [AgenticCapability.ASSERT_SPENT_UNIVERSAL_MULTI]:
-    'per-token expected-spend assertion ABI is not delivered (A05)',
+    'universal expected-spend assertions are unavailable for this configuration',
   [AgenticCapability.UNIVERSAL_SVM_RULES]:
-    'SVM destination rule shape and capability are unconfirmed (A05/A07, H4.4)',
+    'SVM wire types are delivered; public SDK mapping/composition remains pending (H4.4)',
   [AgenticCapability.GRANT_REF]:
     'the selected generation has no grant reference parameter/event (A07)',
   [AgenticCapability.SET_LABEL]:
     'the selected generation has no editable label (A07; labels are deploy-time only)',
-
 };
 
 export function hasCapability(

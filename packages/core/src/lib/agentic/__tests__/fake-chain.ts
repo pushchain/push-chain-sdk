@@ -18,11 +18,15 @@ import {
   type TransactionReceipt,
 } from 'viem';
 import { PUSH_NETWORK } from '../../constants/enums';
-import { e704d5b } from '../contracts/e704d5b';
+import { v4 } from '../contracts/v4';
 import type { ChainReader } from '../contracts/reader';
 import { actionId, configId, deriveWallet } from '../codec/ids';
-import { registerAgenticGeneration, resetAgenticGenerations, type AgenticGeneration } from '../deployments';
-import type { NativeConfigRead } from '../contracts/e704d5b';
+import {
+  registerAgenticGeneration,
+  resetAgenticGenerations,
+  type AgenticGeneration,
+} from '../deployments';
+import type { NativeConfigRead } from '../contracts/v4';
 
 export const ADDR = {
   factory: getAddress('0x00000000000000000000000000000000000fac70'),
@@ -48,9 +52,14 @@ export interface FakeRule {
   actionIds: Hex[];
   native?: Partial<NativeConfigRead>;
   universal?: {
-    asset: Address;
+    assets: readonly {
+      token: Address;
+      maxPerCall?: bigint;
+      maxTotal?: bigint;
+      spent?: bigint;
+    }[];
     expectedCEA: Address;
-    maxPCPerCall: bigint;
+    maxGasPerCall: bigint;
   };
 }
 
@@ -66,6 +75,8 @@ export interface FakeWallet {
 }
 
 export class FakeChain implements ChainReader {
+  policyVersion = '3.1.0';
+  sourceTokens = new Map<string, string>();
   block = BigInt(100);
   wallets = new Map<string, FakeWallet>();
   walletCounts = new Map<string, bigint>();
@@ -80,17 +91,40 @@ export class FakeChain implements ChainReader {
 
   addWallet(owner: Address, label: string, rules: FakeRule[] = []): FakeWallet {
     const index = this.walletCounts.get(owner.toLowerCase()) ?? BigInt(0);
-    const address = deriveWallet({ factory: ADDR.factory, walletImplementation: ADDR.impl, owner, index });
-    const w: FakeWallet = { address, owner, index, label, rules, checkpointCount: BigInt(0), grantNonce: BigInt(rules.length) };
+    const address = deriveWallet({
+      factory: ADDR.factory,
+      walletImplementation: ADDR.impl,
+      owner,
+      index,
+    });
+    const w: FakeWallet = {
+      address,
+      owner,
+      index,
+      label,
+      rules,
+      checkpointCount: BigInt(0),
+      grantNonce: BigInt(rules.length),
+    };
     this.wallets.set(address.toLowerCase(), w);
     this.walletCounts.set(owner.toLowerCase(), index + BigInt(1));
     this.extraLogs.push(
-      log(ADDR.factory, e704d5b.events.walletDeployed, { owner, index, wallet: address }, { label }, BigInt(10))
+      log(
+        ADDR.factory,
+        v4.events.walletDeployed,
+        { owner, index, wallet: address },
+        { label },
+        BigInt(10)
+      )
     );
     return w;
   }
 
-  nativeRule(agent: Address, rulesId: Hex, extra: Partial<NativeConfigRead> = {}): FakeRule {
+  nativeRule(
+    agent: Address,
+    rulesId: Hex,
+    extra: Partial<NativeConfigRead> = {}
+  ): FakeRule {
     return {
       rulesId,
       agent,
@@ -101,7 +135,9 @@ export class FakeChain implements ChainReader {
     };
   }
 
-  async readContract(args: Parameters<ChainReader['readContract']>[0]): Promise<unknown> {
+  async readContract(
+    args: Parameters<ChainReader['readContract']>[0]
+  ): Promise<unknown> {
     const fn = args.functionName;
     this.calls.push({ functionName: fn, blockNumber: args.blockNumber });
     if (this.failOn.has(fn)) throw new Error(`rpc failure: ${fn}`);
@@ -109,6 +145,8 @@ export class FakeChain implements ChainReader {
     const at = args.address.toLowerCase();
     const wallet = this.wallets.get(at);
     switch (fn) {
+      case 'version':
+        return this.policyVersion;
       // factory
       case 'walletImplementation':
         return ADDR.impl;
@@ -120,7 +158,12 @@ export class FakeChain implements ChainReader {
         if (index > count) throw new Error('IndexOutOfRange');
         const addr = this.predictOverride
           ? this.predictOverride(owner, index)
-          : deriveWallet({ factory: ADDR.factory, walletImplementation: ADDR.impl, owner, index });
+          : deriveWallet({
+              factory: ADDR.factory,
+              walletImplementation: ADDR.impl,
+              owner,
+              index,
+            });
         return [addr, index < count] as const;
       }
       case 'isWallet':
@@ -154,7 +197,9 @@ export class FakeChain implements ChainReader {
       }
       // engine
       case 'getPermissionIDs':
-        return (this.wallets.get(String(a[0]).toLowerCase())?.rules ?? []).map((r) => r.rulesId);
+        return (this.wallets.get(String(a[0]).toLowerCase())?.rules ?? []).map(
+          (r) => r.rulesId
+        );
       case 'isPermissionEnabled': {
         const w = this.wallets.get(String(a[1]).toLowerCase());
         return !!w?.rules.some((r) => r.rulesId === a[0]);
@@ -166,8 +211,19 @@ export class FakeChain implements ChainReader {
       // policy
       case 'getMode': {
         const found = this.findConfig(a[0] as Hex, a[1] as Address);
-        if (!found) return { initialized: false, mode: 0, vm: 0, chainHash: `0x${'00'.repeat(32)}` };
-        return { initialized: true, mode: found.rule.mode, vm: 0, chainHash: keccak256(toBytes(found.rule.chain)) };
+        if (!found)
+          return {
+            initialized: false,
+            mode: 0,
+            vm: 0,
+            chainHash: `0x${'00'.repeat(32)}`,
+          };
+        return {
+          initialized: true,
+          mode: found.rule.mode,
+          vm: 0,
+          chainHash: keccak256(toBytes(found.rule.chain)),
+        };
       }
       case 'getNativeConfig': {
         const found = this.findConfig(a[0] as Hex, a[1] as Address);
@@ -180,7 +236,12 @@ export class FakeChain implements ChainReader {
           maxValuePerCall: BigInt(0),
           maxValueTotal: BigInt(0),
           valueSpent: BigInt(0),
-          amount: { enabled: false, offset: 0, maxPerCall: BigInt(0), maxTotal: BigInt(0) },
+          amount: {
+            enabled: false,
+            offset: 0,
+            maxPerCall: BigInt(0),
+            maxTotal: BigInt(0),
+          },
           amountSpent: BigInt(0),
           maxCalls: 0,
           callsUsed: 0,
@@ -194,16 +255,33 @@ export class FakeChain implements ChainReader {
         return {
           initialized: !!found,
           validUntil: 2_000_000_000,
-          destChainHash: found ? keccak256(toBytes(found.rule.chain)) : `0x${'00'.repeat(32)}`,
-          expectedCEA: u?.expectedCEA ?? '0x0000000000000000000000000000000000000000',
-          asset: u?.asset ?? '0x0000000000000000000000000000000000000000',
-          maxAmountPerCall: BigInt(0),
-          maxAmountTotal: BigInt(0),
-          maxPCPerCall: u?.maxPCPerCall ?? BigInt(0),
-          spent: BigInt(0),
-          allowedCalls: [],
+          expectedCEA: u?.expectedCEA ?? ADDR.other,
+          assets: (u?.assets ?? [{ token: ADDR.target }]).map((a) => ({
+            maxPerCall: BigInt(1000),
+            maxTotal: BigInt(10000),
+            spent: BigInt(0),
+            ...a,
+          })),
+          maxGasPerCall: u?.maxGasPerCall ?? BigInt(0),
+          allowedCalls: [
+            {
+              target: ADDR.target,
+              selector: '0xd09de08a',
+              beneficiaryOffset: 0,
+              hasBeneficiary: false,
+              maxValue: BigInt(0),
+            },
+          ],
         };
       }
+      case 'SOURCE_CHAIN_NAMESPACE':
+        return SEPOLIA_NS;
+      case 'SOURCE_TOKEN_ADDRESS':
+        return (
+          this.sourceTokens.get(args.address.toLowerCase()) ?? args.address
+        );
+      case 'gasTokenPRC20ByChainNamespace':
+        return getAddress('0x0000000000000000000000000000000000007070');
       case 'balanceOf':
       case 'allowance':
         return this.balances.get(`${fn}:${at}`) ?? BigInt(0);
@@ -217,14 +295,16 @@ export class FakeChain implements ChainReader {
     if (!w) return undefined;
     for (const rule of w.rules) {
       for (const action of rule.actionIds) {
-        if (configId(w.address, rule.rulesId, action) === id) return { rule, action };
+        if (configId(w.address, rule.rulesId, action) === id)
+          return { rule, action };
       }
     }
     return undefined;
   }
 
   async getBlockNumber(): Promise<bigint> {
-    if (this.failOn.has('getBlockNumber')) throw new Error('rpc failure: getBlockNumber');
+    if (this.failOn.has('getBlockNumber'))
+      throw new Error('rpc failure: getBlockNumber');
     return this.block;
   }
 
@@ -246,7 +326,9 @@ export class FakeChain implements ChainReader {
     );
   }
 
-  async getTransactionReceipt(args: { hash: Hex }): Promise<TransactionReceipt> {
+  async getTransactionReceipt(args: {
+    hash: Hex;
+  }): Promise<TransactionReceipt> {
     const r = this.receipts.get(args.hash);
     if (!r) throw new Error(`no receipt ${args.hash}`);
     return r;
@@ -263,12 +345,19 @@ export function log(
   txHash: Hex = `0x${'ab'.repeat(32)}`,
   transactionIndex = 0
 ): Log {
-  const topics = encodeEventTopics({ abi: [event], eventName: event.name, args: indexed } as never);
+  const topics = encodeEventTopics({
+    abi: [event],
+    eventName: event.name,
+    args: indexed,
+  } as never);
   const nonIndexed = event.inputs.filter((i) => !('indexed' in i && i.indexed));
   return {
     address,
     topics: topics as [Hex, ...Hex[]],
-    data: encodeAbiParameters(nonIndexed, nonIndexed.map((i) => data[i.name as string]) as never),
+    data: encodeAbiParameters(
+      nonIndexed,
+      nonIndexed.map((i) => data[i.name as string]) as never
+    ),
     blockNumber,
     transactionHash: txHash,
     transactionIndex,
@@ -278,10 +367,16 @@ export function log(
   } as Log;
 }
 
-export function checkpointLog(wallet: Address, seq: number, kind: number, block: bigint, txIndex = 0): Log {
+export function checkpointLog(
+  wallet: Address,
+  seq: number,
+  kind: number,
+  block: bigint,
+  txIndex = 0
+): Log {
   return log(
     wallet,
-    e704d5b.events.checkpointed,
+    v4.events.checkpointed,
     { seq: BigInt(seq) },
     { kind, ref: `0x${'11'.repeat(32)}`, blockNumber: block },
     block,
@@ -290,11 +385,13 @@ export function checkpointLog(wallet: Address, seq: number, kind: number, block:
   );
 }
 
-export function registerFakeGeneration(network: PUSH_NETWORK = PUSH_NETWORK.TESTNET_DONUT): AgenticGeneration {
+export function registerFakeGeneration(
+  network: PUSH_NETWORK = PUSH_NETWORK.TESTNET_DONUT
+): AgenticGeneration {
   resetAgenticGenerations();
   return registerAgenticGeneration({
-    id: 'e704d5b',
-    sourceCommit: 'e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9',
+    id: 'v4',
+    sourceCommit: 'e8db74815cfbbf5389593805e464fe8d85f7f735',
     network,
     advertised: false,
     addresses: {

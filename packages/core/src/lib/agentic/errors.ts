@@ -11,7 +11,7 @@ import {
 export const AGENTIC_ERROR_CODE = {
   // create / rule validation (spec 3.f)
   AGENT_IS_OWNER: 'AGENT_IS_OWNER',
-  DUPLICATE_RULE: 'DUPLICATE_RULE',
+  AMBIGUOUS_RULE: 'AMBIGUOUS_RULE',
   TARGET_NOT_ON_RULE_CHAIN: 'TARGET_NOT_ON_RULE_CHAIN',
   ASSET_CHAIN_MISMATCH: 'ASSET_CHAIN_MISMATCH',
   // initialize with agenticWallet (spec 3.f)

@@ -49,13 +49,16 @@ export type ArgPin =
   | { arg: number; expected: AgenticHex | AgenticAddress | bigint }
   | { offset: number; expected: AgenticHex };
 
-export type AmountLimit = ({ arg: number } | { offset: number }) & { maxPerCall: bigint; maxTotal?: bigint };
+export type AmountLimit = ({ arg: number } | { offset: number }) & {
+  maxPerCall: bigint;
+  maxTotal?: bigint;
+};
 
 export interface AssetCap {
   /** The destination chain's token (MOVEABLE constant) or native marker. */
   token: MoveableToken | AgenticAddress;
   maxPerCall: bigint;
-  /** Omitted = 0 = unlimited in the proposed multi-asset ABI — provisional, A03/A05. */
+  /** Omitted = uint256 maximum (unlimited). Explicit zero forbids movement. */
   maxTotal?: bigint;
 }
 
@@ -64,6 +67,8 @@ export interface AllowedCall {
   selector: Selector;
   /** Argument index whose address must be the wallet's destination account. */
   beneficiary?: number;
+  /** Exact stored calldata offset for lossless decoded rules; mutually exclusive with beneficiary. Public form pending H4.5. */
+  beneficiaryOffset?: number;
   /** Default 0 — provisional, A03. */
   maxValue?: bigint;
 }
@@ -140,7 +145,9 @@ export interface AgenticWallet {
     label: string,
     opts?: { progressHook?: AgenticProgressHook }
   ): Promise<UniversalTxResponse>;
-  checkpoints(opts?: { sinceBlock?: bigint }): Promise<{ checkpoints: Checkpoint[] }>;
+  checkpoints(opts?: {
+    sinceBlock?: bigint;
+  }): Promise<{ checkpoints: Checkpoint[] }>;
   rules: {
     /** Enabled rules only; expired-but-enabled rules remain visible. No public spend counters. */
     list(): Promise<{ rules: RulesRecord[] }>;
@@ -153,17 +160,25 @@ export interface AgenticWallet {
     update(params: {
       rules: { rulesId: AgenticHex; rule: Rule }[];
       progressHook?: AgenticProgressHook;
-    }): Promise<{ rules: { rulesId: AgenticHex; replaced: AgenticHex }[]; tx: UniversalTxResponse }>;
+    }): Promise<{
+      rules: { rulesId: AgenticHex; replaced: AgenticHex }[];
+      tx: UniversalTxResponse;
+    }>;
     revoke(
       rulesIds: AgenticHex[],
       opts?: { progressHook?: AgenticProgressHook }
     ): Promise<UniversalTxResponse>;
-    revoke(params: { all: true; progressHook?: AgenticProgressHook }): Promise<UniversalTxResponse>;
+    revoke(params: {
+      all: true;
+      progressHook?: AgenticProgressHook;
+    }): Promise<UniversalTxResponse>;
   };
 }
 
 export interface AgenticNamespace {
-  derive(opts?: { index?: number }): Promise<{ address: AgenticAddress; index: number; deployed: boolean }>;
+  derive(opts?: {
+    index?: number;
+  }): Promise<{ address: AgenticAddress; index: number; deployed: boolean }>;
   create(label: string, options: CreateOptions): Promise<CreateResult>;
   list(): Promise<{ wallets: WalletSummary[] }>;
   wallet(address: AgenticAddress): AgenticWallet;
@@ -188,9 +203,17 @@ export interface AgenticTxMetadata {
    * transfer. Replay uses the same representation; it cannot recover which
    * calls were supplied explicitly versus generated from funds.
    */
-  destinationCalls?: readonly { to: AgenticAddress; data: AgenticHex; value: bigint }[];
+  destinationCalls?: readonly {
+    to: AgenticAddress;
+    data: AgenticHex;
+    value: bigint;
+  }[];
   /** Ordered actions in a native agent batch; to/data/value summarize its first action. */
-  nativeCalls?: readonly { to: AgenticAddress; data: AgenticHex; value: bigint }[];
+  nativeCalls?: readonly {
+    to: AgenticAddress;
+    data: AgenticHex;
+    value: bigint;
+  }[];
   /** Account the signer's transaction actually called (wallet or outer sender account). */
   rawTo: string;
   /** Calldata the signer's transaction actually carried. */

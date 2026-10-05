@@ -10,6 +10,13 @@ pragma solidity 0.8.26;
 ///         SOURCE_CHAIN_NAMESPACE view URP interrogates at universal grant.
 contract HarnessPRC20 {
     string public SOURCE_CHAIN_NAMESPACE;
+    function SOURCE_TOKEN_ADDRESS() external view returns (string memory) {
+        bytes memory chars = "0123456789abcdef";
+        bytes memory out = new bytes(42); out[0] = "0"; out[1] = "x";
+        uint160 v = uint160(address(this));
+        for (uint256 i; i < 40; ++i) out[41-i] = chars[(v >> (4*i)) & 15];
+        return string(out);
+    }
     uint8 public immutable decimals;
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
@@ -71,6 +78,8 @@ contract HarnessPRC20 {
 contract HarnessUniversalCore {
     uint256 public gasFee = 1e15;
     uint256 public protocolFee = 1e14;
+    mapping(string => address) public gasTokenPRC20ByChainNamespace;
+    function setGasToken(string calldata chain, address token) external { gasTokenPRC20ByChainNamespace[chain] = token; }
 
     function getOutboundTxGasAndFees(address prc20, uint256 gasLimit)
         external

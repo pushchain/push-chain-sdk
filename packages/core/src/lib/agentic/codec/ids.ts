@@ -12,7 +12,7 @@ import {
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 
 /**
- * Pure identity helpers mirroring the pinned AGW generation (e704d5b):
+ * Pure identity helpers mirroring the pinned AGW generation (v4):
  *   smartsessions IdLib.toActionId / toConfigId / toPermissionId and
  *   AGWFactory._predict (OZ Clones immutable-args CREATE2).
  * Every input that changes the result is explicit — validator, factory and
@@ -26,7 +26,9 @@ export function actionId(target: Address, selector: Hex): Hex {
 
 /** keccak256(abi.encodePacked(wallet, keccak256(abi.encodePacked(rulesId, actionId)))). */
 export function configId(wallet: Address, rulesId: Hex, action: Hex): Hex {
-  const inner = keccak256(encodePacked(['bytes32', 'bytes32'], [rulesId, action]));
+  const inner = keccak256(
+    encodePacked(['bytes32', 'bytes32'], [rulesId, action])
+  );
   return keccak256(encodePacked(['address', 'bytes32'], [wallet, inner]));
 }
 
@@ -46,12 +48,19 @@ export function rulesId(ctx: {
   grantNonce: bigint;
 }): Hex {
   if (ctx.grantNonce < BigInt(0) || ctx.grantNonce >= BigInt(2) ** BigInt(64)) {
-    throw new AgenticError(AGENTIC_ERROR_CODE.INVALID_RULE, 'grantNonce must fit uint64');
+    throw new AgenticError(
+      AGENTIC_ERROR_CODE.INVALID_RULE,
+      'grantNonce must fit uint64'
+    );
   }
   return keccak256(
     encodeAbiParameters(
       [{ type: 'address' }, { type: 'bytes' }, { type: 'bytes32' }],
-      [ctx.validator, agentConfig(ctx.agent), numberToHex(ctx.grantNonce, { size: 32 })]
+      [
+        ctx.validator,
+        agentConfig(ctx.agent),
+        numberToHex(ctx.grantNonce, { size: 32 }),
+      ]
     )
   );
 }
@@ -71,10 +80,16 @@ export function deriveWallet(ctx: {
 }): Address {
   const index = BigInt(ctx.index);
   if (index < BigInt(0) || index > UINT96_MAX) {
-    throw new AgenticError(AGENTIC_ERROR_CODE.INVALID_RULE, 'wallet index must fit uint96');
+    throw new AgenticError(
+      AGENTIC_ERROR_CODE.INVALID_RULE,
+      'wallet index must fit uint96'
+    );
   }
   const salt = keccak256(
-    encodeAbiParameters([{ type: 'address' }, { type: 'uint96' }], [ctx.owner, index])
+    encodeAbiParameters(
+      [{ type: 'address' }, { type: 'uint96' }],
+      [ctx.owner, index]
+    )
   );
   const args = encodePacked(['address', 'address'], [ctx.owner, ctx.factory]);
   const argsLength = (args.length - 2) / 2;

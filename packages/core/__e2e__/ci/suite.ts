@@ -623,8 +623,11 @@ export const SCENARIOS: Scenario[] = [
     note: 'prepareRead → simulateRead → sendTransaction → trackRead → value == Sepolia balance at pin.',
   },
   {
-    id: 'read-canonical-registry', group: 'read', file: F.readRegistry,
-    grep: 'read state › canonical registry', needs: { masterPC: '0.2' },
+    id: 'read-canonical-registry',
+    group: 'read',
+    file: F.readRegistry,
+    grep: 'read state › canonical registry',
+    needs: { masterPC: '0.2' },
     note: 'Callback-free read plus a second pin: verifies per-request storage, stable-key latestResult and settlement.',
   },
   {
@@ -681,16 +684,25 @@ export const SCENARIOS: Scenario[] = [
     note: 'Funds a fresh wallet with 0.5 PC, as the docs prompt will.',
   },
   {
-    id: 'read-docs-evm-balance', group: 'read', file: F.readPlaygrounds,
-    grep: 'docs-examples › 13-read-state playgrounds universal_read_evm_balance', needs: { masterPC: '0.1' },
+    id: 'read-docs-evm-balance',
+    group: 'read',
+    file: F.readPlaygrounds,
+    grep: 'docs-examples › 13-read-state playgrounds universal_read_evm_balance',
+    needs: { masterPC: '0.1' },
   },
   {
-    id: 'read-docs-batch', group: 'read', file: F.readPlaygrounds,
-    grep: 'docs-examples › 13-read-state playgrounds universal_read_batch', needs: { masterPC: '0.1' },
+    id: 'read-docs-batch',
+    group: 'read',
+    file: F.readPlaygrounds,
+    grep: 'docs-examples › 13-read-state playgrounds universal_read_batch',
+    needs: { masterPC: '0.1' },
   },
   {
-    id: 'read-docs-resume', group: 'read', file: F.readPlaygrounds,
-    grep: 'docs-examples › 13-read-state playgrounds universal_read_resume', needs: { masterPC: '0.1' },
+    id: 'read-docs-resume',
+    group: 'read',
+    file: F.readPlaygrounds,
+    grep: 'docs-examples › 13-read-state playgrounds universal_read_resume',
+    needs: { masterPC: '0.1' },
     note: 'Read-only resume (own request ID, predefined request ID, tx hash); seeds a request if the balance example was not selected.',
   },
   {
@@ -710,37 +722,55 @@ export const SCENARIOS: Scenario[] = [
     note: 'Same batch through the UEA — one atomic tx.',
   },
   {
-    id: 'read-app-batch-recovery', group: 'read', file: F.readBatch,
+    id: 'read-app-batch-recovery',
+    group: 'read',
+    file: F.readBatch,
     grep: 'read state › custom app batch recovers the committed read',
     needs: { masterPC: '0.1' },
     note: 'Force sequential wallet execution; recover the first read after the second request fails.',
   },
   {
-    id: 'read-api-token', group: 'read', file: F.readApi,
-    grep: 'read state › public API coverage ERC20 shorthand', needs: { masterPC: '0.1' },
+    id: 'read-api-token',
+    group: 'read',
+    file: F.readApi,
+    grep: 'read state › public API coverage ERC20 shorthand',
+    needs: { masterPC: '0.1' },
   },
   {
-    id: 'read-api-mixed-outcomes', group: 'read', file: F.readApi,
-    grep: 'read state › public API coverage mixed consensus outcomes', needs: { masterPC: '0.3' },
+    id: 'read-api-mixed-outcomes',
+    group: 'read',
+    file: F.readApi,
+    grep: 'read state › public API coverage mixed consensus outcomes',
+    needs: { masterPC: '0.3' },
   },
   {
-    id: 'read-svm-token-auto', group: 'read', file: F.readSvmIdl,
+    id: 'read-svm-token-auto',
+    group: 'read',
+    file: F.readSvmIdl,
     grep: 'read state › Solana automatic token and IDL account reads detects the mint program',
     needs: { masterPC: '0.1' },
   },
   {
-    id: 'read-svm-idl', group: 'read', file: F.readSvmIdl,
+    id: 'read-svm-idl',
+    group: 'read',
+    file: F.readSvmIdl,
     grep: 'read state › Solana automatic token and IDL account reads decodes a real Anchor account',
     needs: { masterPC: '0.1' },
   },
   {
-    id: 'read-evm-any-mutability', group: 'read', file: F.readMutability,
-    grep: 'read state › EVM nonpayable and payable functions', needs: { masterPC: '0.1' },
+    id: 'read-evm-any-mutability',
+    group: 'read',
+    file: F.readMutability,
+    grep: 'read state › EVM nonpayable and payable functions',
+    needs: { masterPC: '0.1' },
     note: 'QuoterV2 (nonpayable) + Multicall3.aggregate (payable) simulated at the pinned block.',
   },
   {
-    id: 'read-svm-raw', group: 'read', file: F.readSvmRaw,
-    grep: 'read state › SVM raw account', needs: { masterPC: '0.1' },
+    id: 'read-svm-raw',
+    group: 'read',
+    file: F.readSvmRaw,
+    grep: 'read state › SVM raw account',
+    needs: { masterPC: '0.1' },
   },
 
   // ---------------------------------------------------------------------------
@@ -803,14 +833,20 @@ export const SCENARIOS: Scenario[] = [
     env: { AGW_E2E: '1' },
   },
   {
-    id: 'agw-native-batch', group: 'agw', file: '__e2e__/agw/native-batch.spec.ts',
+    id: 'agw-native-batch',
+    group: 'agw',
+    file: '__e2e__/agw/native-batch.spec.ts',
     grep: 'agw native batch 1\\. sender-preserving atomic',
-    needs: { masterPC: '2' }, env: { AGW_E2E: '1' },
+    needs: { masterPC: '2' },
+    env: { AGW_E2E: '1' },
   },
   {
-    id: 'agw-native-batch-rollback', group: 'agw', file: '__e2e__/agw/native-batch.spec.ts',
+    id: 'agw-native-batch-rollback',
+    group: 'agw',
+    file: '__e2e__/agw/native-batch.spec.ts',
     grep: 'agw native batch 2\\. a later policy failure',
-    needs: { masterPC: '2' }, env: { AGW_E2E: '1' },
+    needs: { masterPC: '2' },
+    env: { AGW_E2E: '1' },
   },
   {
     id: 'agw-native-agent',
@@ -901,6 +937,22 @@ export const SCENARIOS: Scenario[] = [
     env: { AGW_E2E: '1' },
   },
   {
+    id: 'agw-v4-multi-asset',
+    group: 'agw',
+    file: '__e2e__/agw/v4-multiasset.spec.ts',
+    grep: 'agw v4 multi-asset 1\\. public create',
+    needs: { masterPC: '2' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-v4-call-only',
+    group: 'agw',
+    file: '__e2e__/agw/v4-multiasset.spec.ts',
+    grep: 'agw v4 multi-asset 2\\. empty user assets',
+    needs: { masterPC: '25' },
+    env: { AGW_E2E: '1' },
+  },
+  {
     id: 'agw-universal-dest-revert',
     group: 'agw',
     file: F.agwUniversal,
@@ -956,8 +1008,10 @@ export const SCENARIOS: Scenario[] = [
  */
 export function scenariosFor(group: string | undefined): Scenario[] {
   if (!group || group === 'all') {
-    // `agw` is opt-in until a verified AGW deployment exists (plan/agw A07).
-    return SCENARIOS.filter((s) => s.group !== 'known-fail' && s.group !== 'agw');
+    // AGW stays opt-in: scenarios create/fund fresh wallets and consume testnet funds.
+    return SCENARIOS.filter(
+      (s) => s.group !== 'known-fail' && s.group !== 'agw'
+    );
   }
   if (!(GROUPS as readonly string[]).includes(group)) {
     throw new Error(
@@ -973,7 +1027,10 @@ export function aggregateNeeds(
 ): Partial<Record<Asset, number>> {
   const total: Partial<Record<Asset, number>> = {};
   for (const s of scenarios) {
-    for (const [asset, amount] of Object.entries(s.needs) as [Asset, string][]) {
+    for (const [asset, amount] of Object.entries(s.needs) as [
+      Asset,
+      string
+    ][]) {
       total[asset] = (total[asset] ?? 0) + Number(amount);
     }
   }

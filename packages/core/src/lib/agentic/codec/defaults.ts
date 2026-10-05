@@ -11,21 +11,37 @@ export const UINT256_MAX = BigInt(2) ** BigInt(256) - BigInt(1);
 export interface DefaultRow {
   value: bigint;
   meaning: string;
-  source: 'A03';
+  source: 'A03' | 'v4';
 }
 
 export const AGENTIC_DEFAULTS = {
   native: {
-    maxValuePerCall: { value: BigInt(0), meaning: 'no native value transfer', source: 'A03' },
-    maxValueTotal: { value: BigInt(0), meaning: 'no native value transfer', source: 'A03' },
-    amountMaxTotal: { value: UINT256_MAX, meaning: 'unlimited metered total', source: 'A03' },
-    maxCalls: { value: BigInt(0), meaning: 'unlimited calls until expiry', source: 'A03' },
+    maxValuePerCall: {
+      value: BigInt(0),
+      meaning: 'no native value transfer',
+      source: 'A03',
+    },
+    maxValueTotal: {
+      value: BigInt(0),
+      meaning: 'no native value transfer',
+      source: 'A03',
+    },
+    amountMaxTotal: {
+      value: UINT256_MAX,
+      meaning: 'unlimited metered total',
+      source: 'A03',
+    },
+    maxCalls: {
+      value: BigInt(0),
+      meaning: 'unlimited calls until expiry',
+      source: 'A03',
+    },
   },
   universal: {
     assetMaxTotal: {
-      value: BigInt(0),
-      meaning: 'unlimited total in the proposed multi-asset ABI',
-      source: 'A03',
+      value: UINT256_MAX,
+      meaning: 'unlimited total; explicit zero forbids movement',
+      source: 'v4',
     },
     allowedCallMaxValue: {
       value: BigInt(0),
@@ -35,6 +51,9 @@ export const AGENTIC_DEFAULTS = {
   },
 } as const satisfies Record<string, Record<string, DefaultRow>>;
 
-export function withDefault(value: bigint | undefined, row: DefaultRow): bigint {
+export function withDefault(
+  value: bigint | undefined,
+  row: DefaultRow
+): bigint {
   return value === undefined ? row.value : value;
 }

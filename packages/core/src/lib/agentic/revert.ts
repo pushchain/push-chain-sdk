@@ -11,7 +11,7 @@ import {
   AGW_FACTORY_ABI,
   SMART_SESSION_ABI,
   UNIVERSAL_RULES_POLICY_ABI,
-} from './contracts/abi/e704d5b';
+} from './contracts/abi/v4';
 
 /** URP reverts reached through the engine are truncated to this wrapper. */
 export const POLICY_CHECK_REVERTED_SELECTOR = '0xf4270752';
@@ -29,8 +29,15 @@ const ERROR_NAMES: ReadonlyMap<string, string> = new Map(
     abi
       .filter((item) => item.type === 'error')
       .map((item) => {
-        const err = item as { type: 'error'; name: string; inputs: readonly { type: string }[] };
-        return [toFunctionSelector(formatAbiItem(err as never)).toLowerCase(), err.name] as const;
+        const err = item as {
+          type: 'error';
+          name: string;
+          inputs: readonly { type: string }[];
+        };
+        return [
+          toFunctionSelector(formatAbiItem(err as never)).toLowerCase(),
+          err.name,
+        ] as const;
       })
   )
 );
@@ -42,15 +49,29 @@ const CUSTOM_ERROR_TEXT = /custom error (0x[0-9a-fA-F]{8}):?\s*([0-9a-fA-F]*)/g;
 function revertDataCandidates(err: unknown, depth = 0): Hex[] {
   if (!err || depth > 6) return [];
   const out: Hex[] = [];
-  const e = err as { data?: unknown; cause?: unknown; message?: unknown; details?: unknown };
-  if (typeof e.data === 'string' && /^0x[0-9a-fA-F]{8,}$/.test(e.data)) out.push(e.data as Hex);
-  if (e.data && typeof e.data === 'object' && typeof (e.data as { data?: unknown }).data === 'string') {
+  const e = err as {
+    data?: unknown;
+    raw?: unknown;
+    cause?: unknown;
+    message?: unknown;
+    details?: unknown;
+  };
+  if (typeof e.raw === 'string' && /^0x[0-9a-fA-F]{8,}$/.test(e.raw))
+    out.push(e.raw as Hex);
+  if (typeof e.data === 'string' && /^0x[0-9a-fA-F]{8,}$/.test(e.data))
+    out.push(e.data as Hex);
+  if (
+    e.data &&
+    typeof e.data === 'object' &&
+    typeof (e.data as { data?: unknown }).data === 'string'
+  ) {
     out.push((e.data as { data: Hex }).data);
   }
   for (const text of [e.message, e.details]) {
     if (typeof text !== 'string') continue;
     // viem renders unknown custom errors as "custom error 0x<selector>: <args hex>".
-    for (const m of text.matchAll(CUSTOM_ERROR_TEXT)) out.push(`${m[1]}${m[2] ?? ''}` as Hex);
+    for (const m of text.matchAll(CUSTOM_ERROR_TEXT))
+      out.push(`${m[1]}${m[2] ?? ''}` as Hex);
     out.push(...((text.match(HEX_DATA) ?? []) as Hex[]));
   }
   out.push(...revertDataCandidates(e.cause, depth + 1));
@@ -66,7 +87,9 @@ export function decodeAgwErrorData(data: Hex): DecodedErrorPayload | undefined {
     const word = `0x${data.slice(10, 74)}` as Hex;
     const innerName = ERROR_NAMES.get(word.slice(0, 10).toLowerCase());
     return {
-      name: innerName ? `PolicyCheckReverted(${innerName})` : 'PolicyCheckReverted',
+      name: innerName
+        ? `PolicyCheckReverted(${innerName})`
+        : 'PolicyCheckReverted',
       selector,
       decoded: word,
       hint: 'URP rejected the action (truncated through the session engine). The inner selector names the gate; arguments are truncated to 28 bytes.',
@@ -86,10 +109,14 @@ export function decodeAgwErrorData(data: Hex): DecodedErrorPayload | undefined {
   }
   // Arguments lost (e.g. a node rendered them as text): name the error by its selector.
   const name = ERROR_NAMES.get(selector);
-  return name ? { name, selector, hint: 'Error arguments were not available.' } : undefined;
+  return name
+    ? { name, selector, hint: 'Error arguments were not available.' }
+    : undefined;
 }
 
-export function decodeAgenticRevert(err: unknown): DecodedErrorPayload | undefined {
+export function decodeAgenticRevert(
+  err: unknown
+): DecodedErrorPayload | undefined {
   for (const data of revertDataCandidates(err)) {
     const decoded = decodeAgwErrorData(data);
     if (decoded) return decoded;
@@ -98,5 +125,7 @@ export function decodeAgenticRevert(err: unknown): DecodedErrorPayload | undefin
 }
 
 function stringifyArgs(args: readonly unknown[]): string {
-  return JSON.stringify(args, (_k, v) => (typeof v === 'bigint' ? v.toString() : v));
+  return JSON.stringify(args, (_k, v) =>
+    typeof v === 'bigint' ? v.toString() : v
+  );
 }

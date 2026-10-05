@@ -1,12 +1,23 @@
 import { readNativeCounters } from '../__e2e__/shared/agw-state';
 /**
- * Real-contract checks of the AGW SDK against the pinned e704d5b contracts on a
+ * Real-contract checks of the AGW SDK against the pinned v4 contracts on a
  * local anvil chain (see harness.ts for scope and limits). Every assertion
  * about authorization, atomicity, counters and checkpoints is decided by the
  * real contracts; the only stubbed component is the gateway.
  */
-import { encodeFunctionData, getAddress, parseAbi, type Address, type Hex } from 'viem';
-import { AgenticError, AgenticRevertError, CHAIN, type PushChain } from '../src';
+import {
+  encodeFunctionData,
+  getAddress,
+  parseAbi,
+  type Address,
+  type Hex,
+} from 'viem';
+import {
+  AgenticError,
+  AgenticRevertError,
+  CHAIN,
+  type PushChain,
+} from '../src';
 import { AGENTIC_ERROR_CODE } from '../src/lib/agentic/errors';
 import { startHarness, type Harness } from './harness';
 
@@ -24,7 +35,7 @@ const WALLET_ABI = parseAbi([
 
 const inAnHour = () => Math.floor(Date.now() / 1000) + 3600;
 
-describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
+describe('AGW SDK against real v4 contracts (local anvil)', () => {
   let h: Harness;
   let owner: PushChain;
   let ownerAddr: Address;
@@ -41,9 +52,17 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
   });
 
   const counter = () =>
-    h.publicClient.readContract({ address: h.addresses.target, abi: TARGET_ABI, functionName: 'counter' });
+    h.publicClient.readContract({
+      address: h.addresses.target,
+      abi: TARGET_ABI,
+      functionName: 'counter',
+    });
   const checkpointCount = (wallet: Address) =>
-    h.publicClient.readContract({ address: wallet, abi: WALLET_ABI, functionName: 'checkpointCount' });
+    h.publicClient.readContract({
+      address: wallet,
+      abi: WALLET_ABI,
+      functionName: 'checkpointCount',
+    });
 
   it('derive() predicts slot 0 from the signer identity and matches the factory', async () => {
     const d = await owner.agentic.derive();
@@ -66,7 +85,13 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
     expect(created.rulesIds).toEqual([]);
     expect(await h.publicClient.getBalance({ address: bare })).toBe(BigInt(0));
     const info = await owner.agentic.wallet(bare).info();
-    expect(info).toMatchObject({ label: 'scratch', index: 0, owner: ownerAddr, deployed: true, rulesCount: 0 });
+    expect(info).toMatchObject({
+      label: 'scratch',
+      index: 0,
+      owner: ownerAddr,
+      deployed: true,
+      rulesCount: 0,
+    });
   });
 
   let wallet: Address;
@@ -74,7 +99,13 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
   it('create with a native rule returns the receipt-confirmed ID; grant order and IDs match the contract', async () => {
     const created = await owner.agentic.create('ops', {
       rules: [
-        { agent: agentAddr, target: h.addresses.target, selector: 'increment()', validUntil: inAnHour(), maxCalls: 2 },
+        {
+          agent: agentAddr,
+          target: h.addresses.target,
+          selector: 'increment()',
+          validUntil: inAnHour(),
+          maxCalls: 2,
+        },
       ],
     });
     wallet = created.wallet;
@@ -94,7 +125,9 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
 
   it('list() returns both deployed wallets plus the next undeployed slot', async () => {
     const { wallets } = await owner.agentic.list();
-    expect(wallets.map((w) => [w.index, w.label, w.deployed, w.rulesCount])).toEqual([
+    expect(
+      wallets.map((w) => [w.index, w.label, w.deployed, w.rulesCount])
+    ).toEqual([
       [0, 'scratch', true, 0],
       [1, 'ops', true, 1],
       [2, '', false, 0],
@@ -104,9 +137,20 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
   it('rules.get / rules.list decode active terms without exposing internal spend', async () => {
     const rec = await owner.agentic.wallet(wallet).rules.get(rule1);
     expect(rec.agent).toBe(agentAddr);
-    expect(rec.rule).toMatchObject({ target: h.addresses.target, maxCalls: 2, maxValuePerCall: BigInt(0) });
+    expect(rec.rule).toMatchObject({
+      target: h.addresses.target,
+      maxCalls: 2,
+      maxValuePerCall: BigInt(0),
+    });
     expect(rec).not.toHaveProperty('spent');
-    expect(await readNativeCounters(h.publicClient, h.generation.addresses, wallet, rule1)).toEqual({ valueSpent: BigInt(0), amountSpent: BigInt(0), callsUsed: 0 });
+    expect(
+      await readNativeCounters(
+        h.publicClient,
+        h.generation.addresses,
+        wallet,
+        rule1
+      )
+    ).toEqual({ valueSpent: BigInt(0), amountSpent: BigInt(0), callsUsed: 0 });
     const { rules } = await owner.agentic.wallet(wallet).rules.list();
     expect(rules.map((r) => r.rulesId)).toEqual([rule1]);
   });
@@ -115,7 +159,9 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
   it('agent client: universal.account is the wallet, origin stays the signer, sends go through executeAsAgent', async () => {
     agent = await h.client(1, { agenticWallet: wallet });
     expect(agent.universal.account).toBe(wallet);
-    expect(agent.universal.origin.address.toLowerCase()).toBe(agentAddr.toLowerCase());
+    expect(agent.universal.origin.address.toLowerCase()).toBe(
+      agentAddr.toLowerCase()
+    );
     const before = await counter();
     const tx = await agent.universal.sendTransaction({
       to: h.addresses.target,
@@ -136,21 +182,36 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
     await (
       await agent.universal.sendTransaction({
         to: h.addresses.target,
-        data: encodeFunctionData({ abi: TARGET_ABI, functionName: 'increment' }),
+        data: encodeFunctionData({
+          abi: TARGET_ABI,
+          functionName: 'increment',
+        }),
       })
     ).wait();
     expect(await checkpointCount(wallet)).toBe(cpBefore);
     const rec = await owner.agentic.wallet(wallet).rules.get(rule1);
     expect(rec).not.toHaveProperty('spent');
-    expect(await readNativeCounters(h.publicClient, h.generation.addresses, wallet, rule1)).toMatchObject({ callsUsed: 2 });
+    expect(
+      await readNativeCounters(
+        h.publicClient,
+        h.generation.addresses,
+        wallet,
+        rule1
+      )
+    ).toMatchObject({ callsUsed: 2 });
     const err = await agent.universal
       .sendTransaction({
         to: h.addresses.target,
-        data: encodeFunctionData({ abi: TARGET_ABI, functionName: 'increment' }),
+        data: encodeFunctionData({
+          abi: TARGET_ABI,
+          functionName: 'increment',
+        }),
       })
       .catch((e) => e);
     expect(err).toBeInstanceOf(AgenticRevertError);
-    expect(err.decodedError?.name).toBe('PolicyCheckReverted(CallLimitReached)');
+    expect(err.decodedError?.name).toBe(
+      'PolicyCheckReverted(CallLimitReached)'
+    );
   });
 
   it('a stranger cannot initialize against the wallet', async () => {
@@ -162,7 +223,10 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
   it('owner client goes through execute and ticks one OWNER_ACTION checkpoint per call', async () => {
     const ownerAgw = await h.client(0, { agenticWallet: wallet });
     const before = await checkpointCount(wallet);
-    const data = encodeFunctionData({ abi: TARGET_ABI, functionName: 'increment' });
+    const data = encodeFunctionData({
+      abi: TARGET_ABI,
+      functionName: 'increment',
+    });
     const tx = await ownerAgw.universal.sendTransaction({
       to: h.addresses.target,
       data: [
@@ -173,12 +237,20 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
     await tx.wait();
     expect(await checkpointCount(wallet)).toBe(before + BigInt(2));
     expect(tx.agentic?.door).toBe('owner');
-    const { checkpoints } = await owner.agentic.wallet(wallet).checkpoints({ sinceBlock: tx.blockNumber });
-    expect(checkpoints.map((c) => c.kind)).toEqual(['OWNER_ACTION', 'OWNER_ACTION']);
+    const { checkpoints } = await owner.agentic
+      .wallet(wallet)
+      .checkpoints({ sinceBlock: tx.blockNumber });
+    expect(checkpoints.map((c) => c.kind)).toEqual([
+      'OWNER_ACTION',
+      'OWNER_ACTION',
+    ]);
   });
 
   it('native agent arrays require an available atomic executor instead of sequential fallback', async () => {
-    const data = encodeFunctionData({ abi: TARGET_ABI, functionName: 'increment' });
+    const data = encodeFunctionData({
+      abi: TARGET_ABI,
+      functionName: 'increment',
+    });
     await expect(
       agent.universal.sendTransaction({
         to: h.addresses.target,
@@ -187,7 +259,9 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
           { to: h.addresses.target, value: BigInt(0), data },
         ],
       })
-    ).rejects.toMatchObject({ code: AGENTIC_ERROR_CODE.CAPABILITY_UNAVAILABLE });
+    ).rejects.toMatchObject({
+      code: AGENTIC_ERROR_CODE.CAPABILITY_UNAVAILABLE,
+    });
   });
 
   let rule2: Hex;
@@ -197,14 +271,22 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
       rules: [
         {
           rulesId: rule1,
-          rule: { agent: agentAddr, target: h.addresses.target, selector: 'increment()', validUntil: inAnHour(), maxCalls: 1 },
+          rule: {
+            agent: agentAddr,
+            target: h.addresses.target,
+            selector: 'increment()',
+            validUntil: inAnHour(),
+            maxCalls: 1,
+          },
         },
       ],
     });
     rule2 = res.rules[0].rulesId;
     expect(res.rules[0].replaced).toBe(rule1);
     expect(await checkpointCount(wallet)).toBe(before + BigInt(5));
-    const { checkpoints } = await owner.agentic.wallet(wallet).checkpoints({ sinceBlock: res.tx.blockNumber });
+    const { checkpoints } = await owner.agentic
+      .wallet(wallet)
+      .checkpoints({ sinceBlock: res.tx.blockNumber });
     expect(checkpoints.map((c) => c.kind)).toEqual([
       'OWNER_ACTION',
       'OWNER_ACTION',
@@ -214,8 +296,17 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
     ]);
     const rec = await owner.agentic.wallet(wallet).rules.get(rule2);
     expect(rec).not.toHaveProperty('spent');
-    expect(await readNativeCounters(h.publicClient, h.generation.addresses, wallet, rule2)).toMatchObject({ callsUsed: 0 });
-    await expect(owner.agentic.wallet(wallet).rules.get(rule1)).rejects.toMatchObject({
+    expect(
+      await readNativeCounters(
+        h.publicClient,
+        h.generation.addresses,
+        wallet,
+        rule2
+      )
+    ).toMatchObject({ callsUsed: 0 });
+    await expect(
+      owner.agentic.wallet(wallet).rules.get(rule1)
+    ).rejects.toMatchObject({
       code: AGENTIC_ERROR_CODE.RULE_NOT_FOUND,
     });
     const tx = await agent.universal.sendTransaction({
@@ -227,7 +318,9 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
 
   it('full checkpoint history is contiguous and matches checkpointCount()', async () => {
     const { checkpoints } = await owner.agentic.wallet(wallet).checkpoints();
-    expect(checkpoints.map((c) => c.seq)).toEqual(checkpoints.map((_, i) => i + 1));
+    expect(checkpoints.map((c) => c.seq)).toEqual(
+      checkpoints.map((_, i) => i + 1)
+    );
     expect(BigInt(checkpoints.length)).toBe(await checkpointCount(wallet));
     expect(checkpoints[0].kind).toBe('RULES_GRANTED');
   });
@@ -236,16 +329,23 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
     await expect(
       owner.agentic.wallet(wallet).rules.revoke(undefined as unknown as Hex[])
     ).rejects.toMatchObject({ code: AGENTIC_ERROR_CODE.REVOKE_NEEDS_TARGET });
-    await expect(owner.agentic.wallet(wallet).rules.revoke([])).rejects.toMatchObject({
+    await expect(
+      owner.agentic.wallet(wallet).rules.revoke([])
+    ).rejects.toMatchObject({
       code: AGENTIC_ERROR_CODE.REVOKE_NEEDS_TARGET,
     });
-    await (await owner.agentic.wallet(wallet).rules.revoke({ all: true })).wait();
+    await (
+      await owner.agentic.wallet(wallet).rules.revoke({ all: true })
+    ).wait();
     const { rules } = await owner.agentic.wallet(wallet).rules.list();
     expect(rules).toEqual([]);
     await expect(
       agent.universal.sendTransaction({
         to: h.addresses.target,
-        data: encodeFunctionData({ abi: TARGET_ABI, functionName: 'increment' }),
+        data: encodeFunctionData({
+          abi: TARGET_ABI,
+          functionName: 'increment',
+        }),
       })
     ).rejects.toMatchObject({ code: AGENTIC_ERROR_CODE.NO_RULES_FOR_CHAIN });
   });
@@ -254,7 +354,12 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
     const stranger = await h.client(2);
     await expect(
       stranger.agentic.wallet(wallet).rules.add([
-        { agent: agentAddr, target: h.addresses.target, selector: 'increment()', validUntil: inAnHour() },
+        {
+          agent: agentAddr,
+          target: h.addresses.target,
+          selector: 'increment()',
+          validUntil: inAnHour(),
+        },
       ])
     ).rejects.toMatchObject({ code: AGENTIC_ERROR_CODE.NOT_WALLET_OWNER });
   });
@@ -265,7 +370,12 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
     expect((await ro.agentic.wallet(wallet).owner()).owner).toBe(ownerAddr);
     await expect(
       ro.agentic.wallet(wallet).rules.add([
-        { agent: agentAddr, target: h.addresses.target, selector: 'increment()', validUntil: inAnHour() },
+        {
+          agent: agentAddr,
+          target: h.addresses.target,
+          selector: 'increment()',
+          validUntil: inAnHour(),
+        },
       ])
     ).rejects.toMatchObject({ code: AGENTIC_ERROR_CODE.READ_ONLY });
     expect(() =>
@@ -289,16 +399,30 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
   it('signer-level and cascade entry points are closed in agentic mode', async () => {
     const ownerAgw = await h.client(0, { agenticWallet: wallet });
     const code = AGENTIC_ERROR_CODE.NOT_ALLOWED_IN_AGENTIC_MODE;
-    expect(() => ownerAgw.universal.prepareTransaction({ to: h.addresses.target, data: '0x' })).toThrow(
-      expect.objectContaining({ code })
-    );
-    await expect(ownerAgw.universal.executeTransactions([])).rejects.toMatchObject({ code });
-    expect(() => ownerAgw.universal.migrateCEA(CHAIN.ETHEREUM_SEPOLIA)).toThrow(expect.objectContaining({ code }));
     expect(() =>
-      ownerAgw.universal.rescueFunds({ universalTxId: `0x${'00'.repeat(32)}`, prc20: h.addresses.target })
+      ownerAgw.universal.prepareTransaction({
+        to: h.addresses.target,
+        data: '0x',
+      })
     ).toThrow(expect.objectContaining({ code }));
     await expect(
-      ownerAgw.universal.sendTransaction({ to: h.addresses.target, data: '0x', payGasWith: {} })
+      ownerAgw.universal.executeTransactions([])
+    ).rejects.toMatchObject({ code });
+    expect(() => ownerAgw.universal.migrateCEA(CHAIN.ETHEREUM_SEPOLIA)).toThrow(
+      expect.objectContaining({ code })
+    );
+    expect(() =>
+      ownerAgw.universal.rescueFunds({
+        universalTxId: `0x${'00'.repeat(32)}`,
+        prc20: h.addresses.target,
+      })
+    ).toThrow(expect.objectContaining({ code }));
+    await expect(
+      ownerAgw.universal.sendTransaction({
+        to: h.addresses.target,
+        data: '0x',
+        payGasWith: {},
+      })
     ).rejects.toMatchObject({ code });
     await expect(
       ownerAgw.universal.sendTransaction({
@@ -316,6 +440,8 @@ describe('AGW SDK against real e704d5b contracts (local anvil)', () => {
   });
 
   it('errors from the agentic surface are typed', () => {
-    expect(new AgenticError(AGENTIC_ERROR_CODE.DUPLICATE_RULE, 'x')).toBeInstanceOf(Error);
+    expect(
+      new AgenticError(AGENTIC_ERROR_CODE.AMBIGUOUS_RULE, 'x')
+    ).toBeInstanceOf(Error);
   });
 });

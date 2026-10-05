@@ -1,12 +1,32 @@
-import { getAddress, type Address, type Hex } from 'viem';
+import {
+  getAddress,
+  isAddress,
+  zeroAddress,
+  type Address,
+  type Hex,
+} from 'viem';
 import { CHAIN } from '../../constants/enums';
-import { AgenticCapability, CAPABILITY_DEPENDENCY, requireCapability } from '../capabilities';
+import {
+  AgenticCapability,
+  CAPABILITY_DEPENDENCY,
+  requireCapability,
+} from '../capabilities';
 import type { AgenticGeneration } from '../deployments';
-import type { NativeConfigRead, ModeRead } from '../contracts/e704d5b';
+import type {
+  NativeConfigRead,
+  ModeRead,
+  UniversalConfigRead,
+} from '../contracts/v4';
 import { configId } from '../codec/ids';
 import { nativeTermsToRule } from '../codec/native';
+import { universalTermsToRule } from '../codec/universal';
+import { readOriginToken } from '../contracts/prc20-metadata';
 import { chainHash } from '../codec/rules';
-import { AGENTIC_ERROR_CODE, AgenticError, capabilityUnavailable } from '../errors';
+import {
+  AGENTIC_ERROR_CODE,
+  AgenticError,
+  capabilityUnavailable,
+} from '../errors';
 import type { AgenticHex, RulesRecord } from '../agentic.types';
 import { Snapshot } from './snapshot';
 
@@ -47,10 +67,12 @@ async function readActiveRule(
 ): Promise<ActiveRule> {
   const [agent, actionIds] = await Promise.all([
     snap.read<Address>(wallet, gen.contracts.abis.wallet, 'agentOf', [rulesId]),
-    snap.read<readonly Hex[]>(gen.addresses.sessionEngine, gen.contracts.abis.engine, 'getEnabledActions', [
-      wallet,
-      rulesId,
-    ]),
+    snap.read<readonly Hex[]>(
+      gen.addresses.sessionEngine,
+      gen.contracts.abis.engine,
+      'getEnabledActions',
+      [wallet, rulesId]
+    ),
   ]);
   if (actionIds.length === 0) {
     throw new AgenticError(
@@ -60,14 +82,23 @@ async function readActiveRule(
   }
   const modes = await Promise.all(
     actionIds.map((a) =>
-      snap.read<ModeRead>(gen.addresses.rulesPolicy, gen.contracts.abis.policy, 'getMode', [
-        configId(wallet, rulesId, a),
-        wallet,
-      ])
+      snap.read<ModeRead>(
+        gen.addresses.rulesPolicy,
+        gen.contracts.abis.policy,
+        'getMode',
+        [configId(wallet, rulesId, a), wallet]
+      )
     )
   );
   const first = modes[0];
-  if (!modes.every((m) => m.initialized && m.chainHash === first.chainHash && m.mode === first.mode)) {
+  if (
+    !modes.every(
+      (m) =>
+        m.initialized &&
+        m.chainHash === first.chainHash &&
+        m.mode === first.mode
+    )
+  ) {
     throw new AgenticError(
       AGENTIC_ERROR_CODE.INCONSISTENT_READ,
       `rule ${rulesId} has uninitialized or mixed-chain policy configs`
@@ -84,7 +115,10 @@ async function readActiveRule(
 }
 
 /** Map a stored chain hash back to its CAIP-2 string from known chains. */
-export function chainFromHash(hash: Hex, pushChainNamespace: string): string | undefined {
+export function chainFromHash(
+  hash: Hex,
+  pushChainNamespace: string
+): string | undefined {
   const known = [pushChainNamespace, ...Object.values(CHAIN)];
   return known.find((c) => chainHash(c) === hash);
 }
@@ -110,15 +144,22 @@ export async function selectRuleForSend(
     throw new AgenticError(
       AGENTIC_ERROR_CODE.NO_RULES_FOR_CHAIN,
       `no enabled rule on ${wallet} names ${agent} for ${destinationChain}`,
-      { details: { wallet, agent, destinationChain, blockNumber: snap.blockNumber } }
+      {
+        details: {
+          wallet,
+          agent,
+          destinationChain,
+          blockNumber: snap.blockNumber,
+        },
+      }
     );
   }
   if (matches.length > 1) {
     throw new AgenticError(
-      AGENTIC_ERROR_CODE.DUPLICATE_RULE,
+      AGENTIC_ERROR_CODE.AMBIGUOUS_RULE,
       `${matches.length} enabled rules on ${wallet} name ${agent} for ${destinationChain}`,
       {
-        hint: 'The SDK will not pick one arbitrarily. Ask the owner to revoke all but one (rules.revoke) and retry.',
+        hint: 'Multi-rule selection is pending H6. Candidate IDs are listed in details.rulesIds; the SDK will not pick one arbitrarily.',
         details: { rulesIds: matches.map((m) => m.rulesId) },
       }
     );
@@ -135,13 +176,63 @@ export async function decodeActiveRule(
   pushChainNamespace: string
 ): Promise<RulesRecord> {
   if (rule.mode === MODE_UNIVERSAL) {
-    throw capabilityUnavailable(
-      AgenticCapability.UNIVERSAL_EVM_RULES,
-      `rule ${rule.rulesId} is a universal rule; ${CAPABILITY_DEPENDENCY[AgenticCapability.UNIVERSAL_EVM_RULES]}`
+    if (rule.vm !== 0)
+      throw capabilityUnavailable(
+        AgenticCapability.UNIVERSAL_SVM_RULES,
+        'SVM public rule mapping is not settled (H4.4)'
+      );
+    requireCapability(gen.capabilities, AgenticCapability.UNIVERSAL_EVM_RULES);
+    const chain = chainFromHash(rule.chainHash, pushChainNamespace);
+    if (!chain || !chain.startsWith('eip155:'))
+      throw new AgenticError(
+        AGENTIC_ERROR_CODE.RULE_READ_FAILED,
+        'unknown EVM rule chain'
+      );
+    const cfg = await snap.read<UniversalConfigRead>(
+      gen.addresses.rulesPolicy,
+      gen.contracts.abis.policy,
+      'getConfig',
+      [configId(wallet, rule.rulesId, rule.actionIds[0]), wallet]
     );
+    if (!cfg.initialized)
+      throw new AgenticError(
+        AGENTIC_ERROR_CODE.INCONSISTENT_READ,
+        'uninitialized universal rule'
+      );
+    if (
+      !cfg.assets.length ||
+      cfg.assets.length > 8 ||
+      !cfg.allowedCalls.length ||
+      cfg.allowedCalls.length > 32 ||
+      cfg.expectedCEA === zeroAddress
+    )
+      throw new AgenticError(
+        AGENTIC_ERROR_CODE.INCONSISTENT_READ,
+        'invalid stored universal rule shape'
+      );
+    const tokens = await Promise.all(
+      cfg.assets.map((a) => readOriginToken(snap, a.token, chain))
+    );
+    return {
+      rulesId: rule.rulesId,
+      enabled: true,
+      chainNamespace: chain,
+      agent: rule.agent,
+      validUntil: Number(cfg.validUntil),
+      ref: ZERO_REF,
+      rule: universalTermsToRule(
+        cfg,
+        rule.agent,
+        chain as `eip155:${string}`,
+        tokens
+      ),
+    };
   }
   if (rule.mode !== MODE_NATIVE) {
-    throw new AgenticError(AGENTIC_ERROR_CODE.RULE_READ_FAILED, `rule ${rule.rulesId} has unknown mode ${rule.mode}`);
+    throw new AgenticError(
+      AGENTIC_ERROR_CODE.RULE_READ_FAILED,
+      `rule ${rule.rulesId} has unknown mode ${rule.mode}`
+    );
   }
   if (rule.actionIds.length !== 1) {
     throw new AgenticError(
@@ -175,7 +266,6 @@ export async function decodeActiveRule(
     validUntil: Number(cfg.validUntil),
     ref: ZERO_REF,
     rule: nativeTermsToRule(cfg, rule.agent, ZERO_REF),
-
   };
 }
 
@@ -184,9 +274,15 @@ export async function readNativeSpend(
   snap: Snapshot,
   gen: AgenticGeneration,
   wallet: Address,
-  rule: ActiveRule
-): Promise<{ configId: Hex; valueSpent: bigint; amountSpent: bigint; callsUsed: number }> {
-  const id = configId(wallet, rule.rulesId, rule.actionIds[0]);
+  rule: ActiveRule,
+  action: Hex = rule.actionIds[0]
+): Promise<{
+  configId: Hex;
+  valueSpent: bigint;
+  amountSpent: bigint;
+  callsUsed: number;
+}> {
+  const id = configId(wallet, rule.rulesId, action);
   const cfg = await snap.read<NativeConfigRead>(
     gen.addresses.rulesPolicy,
     gen.contracts.abis.policy,
@@ -201,6 +297,26 @@ export async function readNativeSpend(
   };
 }
 
+export async function readUniversalSpend(
+  snap: Snapshot,
+  gen: AgenticGeneration,
+  wallet: Address,
+  rule: ActiveRule
+): Promise<{ configId: Hex; expectedSpent: bigint[] }> {
+  const id = configId(wallet, rule.rulesId, rule.actionIds[0]);
+  const fn = rule.vm === 1 ? 'getSvmConfig' : 'getConfig';
+  const cfg = await snap.read<{
+    initialized: boolean;
+    assets: readonly { spent: bigint }[];
+  }>(gen.addresses.rulesPolicy, gen.contracts.abis.policy, fn, [id, wallet]);
+  if (!cfg.initialized)
+    throw new AgenticError(
+      AGENTIC_ERROR_CODE.INCONSISTENT_READ,
+      'uninitialized universal spend config'
+    );
+  return { configId: id, expectedSpent: cfg.assets.map((a) => a.spent) };
+}
+
 export async function listRules(
   snap: Snapshot,
   gen: AgenticGeneration,
@@ -210,7 +326,10 @@ export async function listRules(
   requireCapability(gen.capabilities, AgenticCapability.ACTIVE_RULE_READS);
   const active = await readActiveRules(snap, gen, wallet);
   const records: RulesRecord[] = [];
-  for (const r of active) records.push(await decodeActiveRule(snap, gen, wallet, r, pushChainNamespace));
+  for (const r of active)
+    records.push(
+      await decodeActiveRule(snap, gen, wallet, r, pushChainNamespace)
+    );
   return records;
 }
 

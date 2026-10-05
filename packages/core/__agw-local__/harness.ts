@@ -2,7 +2,7 @@
  * Local AGW contract harness — REVIEW ONLY.
  *
  * Starts anvil as a stand-in Push LOCALNET (chainId 9000, the SDK's
- * CHAIN_INFO[PUSH_LOCALNET].chainId), deploys the REAL pinned e704d5b
+ * CHAIN_INFO[PUSH_LOCALNET].chainId), deploys the REAL pinned v4
  * contracts (SmartSession, AgentValidator, UniversalRulesPolicy behind a
  * TransparentUpgradeableProxy, AGW implementation, AGWFactory behind an
  * ERC1967Proxy) from an isolated build prepared by
@@ -41,8 +41,12 @@ import {
 } from '../src/lib/agentic/deployments';
 
 export const CHAIN_ID = 9000;
-export const GATEWAY_PRECOMPILE = getAddress('0x00000000000000000000000000000000000000c1');
-export const EXECUTOR_MODULE = getAddress('0x00000000000000000000000000000000000000e1');
+export const GATEWAY_PRECOMPILE = getAddress(
+  '0x00000000000000000000000000000000000000c1'
+);
+export const EXECUTOR_MODULE = getAddress(
+  '0x00000000000000000000000000000000000000e1'
+);
 export const ACCOUNT_ID = 'push.agw.1.0.0';
 
 /** Anvil's well-known development keys (public test material, not secrets). */
@@ -64,8 +68,14 @@ export function buildDir(): string {
   return dir;
 }
 
-function artifact(dir: string, file: string, name: string): { abi: Abi; bytecode: Hex } {
-  const json = JSON.parse(readFileSync(join(dir, 'out', file, `${name}.json`), 'utf8'));
+function artifact(
+  dir: string,
+  file: string,
+  name: string
+): { abi: Abi; bytecode: Hex } {
+  const json = JSON.parse(
+    readFileSync(join(dir, 'out', file, `${name}.json`), 'utf8')
+  );
   return { abi: json.abi as Abi, bytecode: json.bytecode.object as Hex };
 }
 
@@ -85,10 +95,28 @@ export interface Harness {
     gateway: Address;
     target: Address;
   };
-  deploy(walletIndex: number, name: string, file: string, args?: readonly unknown[]): Promise<Address>;
-  write(walletIndex: number, to: Address, abi: Abi, functionName: string, args: readonly unknown[], value?: bigint): Promise<Hex>;
-  client(walletIndex: number, opts?: { agenticWallet?: Address; progressHook?: (e: unknown) => void }): Promise<PushChain>;
-  readOnlyClient(walletIndex: number, opts?: { agenticWallet?: Address }): Promise<PushChain>;
+  deploy(
+    walletIndex: number,
+    name: string,
+    file: string,
+    args?: readonly unknown[]
+  ): Promise<Address>;
+  write(
+    walletIndex: number,
+    to: Address,
+    abi: Abi,
+    functionName: string,
+    args: readonly unknown[],
+    value?: bigint
+  ): Promise<Hex>;
+  client(
+    walletIndex: number,
+    opts?: { agenticWallet?: Address; progressHook?: (e: unknown) => void }
+  ): Promise<PushChain>;
+  readOnlyClient(
+    walletIndex: number,
+    opts?: { agenticWallet?: Address }
+  ): Promise<PushChain>;
   stop(): Promise<void>;
   dir: string;
 }
@@ -108,13 +136,19 @@ async function waitForRpc(url: string, timeoutMs = 20_000): Promise<void> {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] }),
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'eth_chainId',
+          params: [],
+        }),
       });
       if (res.ok) return;
     } catch {
       // not yet listening
     }
-    if (Date.now() - start > timeoutMs) throw new Error(`anvil did not start at ${url}`);
+    if (Date.now() - start > timeoutMs)
+      throw new Error(`anvil did not start at ${url}`);
     await new Promise((r) => setTimeout(r, 200));
   }
 }
@@ -124,7 +158,15 @@ export async function startHarness(port = 18545): Promise<Harness> {
   const rpcUrl = `http://127.0.0.1:${port}`;
   const anvil = spawn(
     'anvil',
-    ['--port', String(port), '--chain-id', String(CHAIN_ID), '--hardfork', 'prague', '--silent'],
+    [
+      '--port',
+      String(port),
+      '--chain-id',
+      String(CHAIN_ID),
+      '--hardfork',
+      'prague',
+      '--silent',
+    ],
     { stdio: 'ignore' }
   );
   try {
@@ -135,15 +177,31 @@ export async function startHarness(port = 18545): Promise<Harness> {
   }
 }
 
-async function deployHarness(dir: string, rpcUrl: string, anvil: ChildProcess): Promise<Harness> {
+async function deployHarness(
+  dir: string,
+  rpcUrl: string,
+  anvil: ChildProcess
+): Promise<Harness> {
   await waitForRpc(rpcUrl);
   const chain = localChain(rpcUrl);
-  const publicClient = createPublicClient({ chain, transport: http(rpcUrl) }) as PublicClient;
+  const publicClient = createPublicClient({
+    chain,
+    transport: http(rpcUrl),
+  }) as PublicClient;
   const wallets = DEV_KEYS.map((k) =>
-    createWalletClient({ account: privateKeyToAccount(k), chain, transport: http(rpcUrl) })
+    createWalletClient({
+      account: privateKeyToAccount(k),
+      chain,
+      transport: http(rpcUrl),
+    })
   );
 
-  const deploy = async (walletIndex: number, name: string, file: string, args: readonly unknown[] = []) => {
+  const deploy = async (
+    walletIndex: number,
+    name: string,
+    file: string,
+    args: readonly unknown[] = []
+  ) => {
     const art = artifact(dir, file, name);
     const hash = await wallets[walletIndex].deployContract({
       abi: art.abi,
@@ -172,26 +230,80 @@ async function deployHarness(dir: string, rpcUrl: string, anvil: ChildProcess): 
       chain,
     });
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
-    if (receipt.status !== 'success') throw new Error(`${functionName} reverted`);
+    if (receipt.status !== 'success')
+      throw new Error(`${functionName} reverted`);
     return hash;
   };
 
   const admin = wallets[0].account!.address;
   const engine = await deploy(0, 'SmartSession', 'SmartSession.sol');
   const validator = await deploy(0, 'AgentValidator', 'AgentValidator.sol');
-  const urpLogic = await deploy(0, 'UniversalRulesPolicy', 'UniversalRulesPolicy.sol');
-  const urpAbi = artifact(dir, 'UniversalRulesPolicy.sol', 'UniversalRulesPolicy').abi;
-  const rulesPolicy = await deploy(0, 'TransparentUpgradeableProxy', 'TransparentUpgradeableProxy.sol', [
-    urpLogic,
-    admin,
-    encodeFunctionData({
-      abi: urpAbi,
-      functionName: 'initialize',
-      args: [GATEWAY_PRECOMPILE, EXECUTOR_MODULE, engine],
-    }),
-  ]);
-  const universalCore = await deploy(0, 'HarnessUniversalCore', 'HarnessFixtures.sol');
-  const gatewayImpl = await deploy(0, 'HarnessGatewayPC', 'HarnessFixtures.sol', [universalCore]);
+  const urpLogic = await deploy(
+    0,
+    'UniversalRulesPolicy',
+    'UniversalRulesPolicy.sol'
+  );
+  const urpAbi = artifact(
+    dir,
+    'UniversalRulesPolicy.sol',
+    'UniversalRulesPolicy'
+  ).abi;
+  const rulesPolicy = await deploy(
+    0,
+    'TransparentUpgradeableProxy',
+    'TransparentUpgradeableProxy.sol',
+    [
+      urpLogic,
+      admin,
+      encodeFunctionData({
+        abi: urpAbi,
+        functionName: 'initialize',
+        args: [GATEWAY_PRECOMPILE, EXECUTOR_MODULE, engine],
+      }),
+    ]
+  );
+  const coreLogic = await deploy(
+    0,
+    'HarnessUniversalCore',
+    'HarnessFixtures.sol'
+  );
+  const universalCore = getAddress(
+    '0x00000000000000000000000000000000000000c0'
+  );
+  await publicClient.request({
+    method: 'anvil_setCode' as never,
+    params: [
+      universalCore,
+      await publicClient.getCode({ address: coreLogic }),
+    ] as never,
+  });
+  // The stub's storage initializers are not installed by etching code.
+  await publicClient.request({
+    method: 'anvil_setStorageAt' as never,
+    params: [
+      universalCore,
+      `0x${'00'.repeat(32)}`,
+      `0x${BigInt(10 ** 15)
+        .toString(16)
+        .padStart(64, '0')}`,
+    ] as never,
+  });
+  await publicClient.request({
+    method: 'anvil_setStorageAt' as never,
+    params: [
+      universalCore,
+      `0x${'00'.repeat(31)}01`,
+      `0x${BigInt(10 ** 14)
+        .toString(16)
+        .padStart(64, '0')}`,
+    ] as never,
+  });
+  const gatewayImpl = await deploy(
+    0,
+    'HarnessGatewayPC',
+    'HarnessFixtures.sol',
+    [universalCore]
+  );
   const gatewayCode = await publicClient.getCode({ address: gatewayImpl });
   await publicClient.request({
     method: 'anvil_setCode' as never,
@@ -207,14 +319,18 @@ async function deployHarness(dir: string, rpcUrl: string, anvil: ChildProcess): 
   const factoryAbi = artifact(dir, 'AGWFactory.sol', 'AGWFactory').abi;
   const factory = await deploy(0, 'ERC1967Proxy', 'ERC1967Proxy.sol', [
     factoryLogic,
-    encodeFunctionData({ abi: factoryAbi, functionName: 'initialize', args: [admin, walletImplementation] }),
+    encodeFunctionData({
+      abi: factoryAbi,
+      functionName: 'initialize',
+      args: [admin, walletImplementation],
+    }),
   ]);
   const target = await deploy(0, 'HarnessTarget', 'HarnessFixtures.sol');
 
   resetAgenticGenerations();
   const generation = registerAgenticGeneration({
-    id: 'e704d5b',
-    sourceCommit: 'e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9',
+    id: 'v4',
+    sourceCommit: 'e8db74815cfbbf5389593805e464fe8d85f7f735',
     network: PUSH_NETWORK.LOCALNET,
     advertised: false,
     addresses: {
@@ -243,12 +359,20 @@ async function deployHarness(dir: string, rpcUrl: string, anvil: ChildProcess): 
       network: PUSH_NETWORK.LOCALNET,
       rpcUrls: { [CHAIN.PUSH_LOCALNET]: [rpcUrl] },
       ...(opts.agenticWallet ? { agenticWallet: opts.agenticWallet } : {}),
-      ...(opts.progressHook ? { progressHook: opts.progressHook as never } : {}),
+      ...(opts.progressHook
+        ? { progressHook: opts.progressHook as never }
+        : {}),
     });
 
-  const readOnlyClient = async (walletIndex: number, opts: { agenticWallet?: Address } = {}) =>
+  const readOnlyClient = async (
+    walletIndex: number,
+    opts: { agenticWallet?: Address } = {}
+  ) =>
     PushChain.initialize(
-      { address: wallets[walletIndex].account!.address, chain: CHAIN.PUSH_LOCALNET },
+      {
+        address: wallets[walletIndex].account!.address,
+        chain: CHAIN.PUSH_LOCALNET,
+      },
       {
         network: PUSH_NETWORK.LOCALNET,
         rpcUrls: { [CHAIN.PUSH_LOCALNET]: [rpcUrl] },

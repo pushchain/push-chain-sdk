@@ -10,14 +10,21 @@ import type {
   UniversalTxResponse,
 } from '../../orchestrator/orchestrator.types';
 import { isChainTarget } from '../../orchestrator/route-detector';
-import { getPushChainForNetwork, isPushChain } from '../../orchestrator/internals/helpers';
+import {
+  getPushChainForNetwork,
+  isPushChain,
+} from '../../orchestrator/internals/helpers';
 import { AgenticCapability, requireCapability } from '../capabilities';
 import type { AgenticExecutionContext } from '../context';
-import type { Call, UniversalConfigReadE704d5b } from '../contracts/e704d5b';
-import { SEND_OUTBOUND_SELECTOR } from '../contracts/e704d5b';
+import type { Call, UniversalConfigRead } from '../contracts/v4';
+import { SEND_OUTBOUND_SELECTOR } from '../contracts/v4';
 import { actionId, configId } from '../codec/ids';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
-import { assertCanSign, emitAgentic, wrapSendError } from '../management/common';
+import {
+  assertCanSign,
+  emitAgentic,
+  wrapSendError,
+} from '../management/common';
 import { selectRuleForSend } from '../reads/rules';
 import { Snapshot } from '../reads/snapshot';
 import { adaptAgenticResponse, outboundResponseCall } from '../response';
@@ -34,9 +41,11 @@ const DEFAULT_GAS_ESTIMATE = BigInt(1e7);
 /** Signer-level fields that legitimately carry over to the wrapped Push tx. */
 function signerFields(p: UniversalExecuteParams): Partial<ExecuteParams> {
   const out: Partial<ExecuteParams> = {};
-  if (p.gasLimit !== undefined && !isChainTarget(p.to)) out.gasLimit = p.gasLimit;
+  if (p.gasLimit !== undefined && !isChainTarget(p.to))
+    out.gasLimit = p.gasLimit;
   if (p.maxFeePerGas !== undefined) out.maxFeePerGas = p.maxFeePerGas;
-  if (p.maxPriorityFeePerGas !== undefined) out.maxPriorityFeePerGas = p.maxPriorityFeePerGas;
+  if (p.maxPriorityFeePerGas !== undefined)
+    out.maxPriorityFeePerGas = p.maxPriorityFeePerGas;
   if (p.nonce !== undefined) out.nonce = p.nonce;
   if (p.deadline !== undefined) out.deadline = p.deadline;
   if (p.feeLockTxHash !== undefined) out.feeLockTxHash = p.feeLockTxHash;
@@ -50,18 +59,23 @@ function signerFields(p: UniversalExecuteParams): Partial<ExecuteParams> {
  * Mirrors R1's fee-lock condition so an underfunded UEA fails loudly here
  * instead of silently locking origin funds on every action.
  */
-async function enforceSignerGas(runtime: AgenticRuntime, gasLimit: bigint | undefined): Promise<void> {
+async function enforceSignerGas(
+  runtime: AgenticRuntime,
+  gasLimit: bigint | undefined
+): Promise<void> {
   if (runtime.signerIsPushNative()) return;
   if (!(await runtime.signerAccountDeployed())) return;
-  const [gasPrice, balance] = await Promise.all([runtime.getGasPrice(), runtime.signerBalance()]);
+  const [gasPrice, balance] = await Promise.all([
+    runtime.getGasPrice(),
+    runtime.signerBalance(),
+  ]);
   const required = (gasLimit ?? DEFAULT_GAS_ESTIMATE) * gasPrice;
   if (balance < required) {
     throw new AgenticError(
       AGENTIC_ERROR_CODE.AGENT_GAS_INSUFFICIENT,
       `the signer's UEA ${runtime.signerPushAccount()} holds ${balance} PC wei but needs ~${required} for Push gas`,
       {
-        hint:
-          "The wallet's PC pays outbound fees, not the signer's gas. Top up the signer's UEA (PushChain.utils.account.deriveExecutorAccount) from a client without agenticWallet.",
+        hint: "The wallet's PC pays outbound fees, not the signer's gas. Top up the signer's UEA (PushChain.utils.account.deriveExecutorAccount) from a client without agenticWallet.",
         details: { required, balance },
       }
     );
@@ -73,7 +87,10 @@ async function enforceSignerGas(runtime: AgenticRuntime, gasLimit: bigint | unde
  * a bare address (core's route detector treats it the same way). A ChainTarget
  * naming a different Push network is refused rather than routed outbound.
  */
-function normalizePushDestination(p: UniversalExecuteParams, runtime: AgenticRuntime): UniversalExecuteParams {
+function normalizePushDestination(
+  p: UniversalExecuteParams,
+  runtime: AgenticRuntime
+): UniversalExecuteParams {
   if (!isChainTarget(p.to)) return p;
   const chain = p.to.chain;
   if (chain === getPushChainForNetwork(runtime.network)) {
@@ -90,7 +107,11 @@ function normalizePushDestination(p: UniversalExecuteParams, runtime: AgenticRun
 
 function toCalls(params: UniversalExecuteParams): Call[] {
   if (Array.isArray(params.data)) {
-    return params.data.map((c) => ({ target: getAddress(c.to), value: c.value ?? BigInt(0), data: c.data }));
+    return params.data.map((c) => ({
+      target: getAddress(c.to),
+      value: c.value ?? BigInt(0),
+      data: c.data,
+    }));
   }
   return [
     {
@@ -115,17 +136,22 @@ export async function agenticSend(
   assertCanSign(runtime, 'sendTransaction');
   guardAgenticSendParams(params);
   const p = normalizePushDestination(params as UniversalExecuteParams, runtime);
-  const hook: AgenticProgressHook | undefined = options?.progressHook ?? p.progressHook;
+  const hook: AgenticProgressHook | undefined =
+    options?.progressHook ?? p.progressHook;
   const gen = actx.generation;
   const wallet = actx.wallet;
   const outbound = isChainTarget(p.to);
-  const destination = outbound ? (p.to as { chain: string }).chain : runtime.pushChainNamespace;
+  const destination = outbound
+    ? (p.to as { chain: string }).chain
+    : runtime.pushChainNamespace;
 
   if (!outbound && p.funds) {
     throw new AgenticError(
       AGENTIC_ERROR_CODE.NOT_ALLOWED_IN_AGENTIC_MODE,
-      '`funds` on a Push-chain send would bridge from the signer; it does not move the wallet\'s tokens',
-      { hint: "Transfer the wallet's PRC20 with a token transfer call in `data`." }
+      "`funds` on a Push-chain send would bridge from the signer; it does not move the wallet's tokens",
+      {
+        hint: "Transfer the wallet's PRC20 with a token transfer call in `data`.",
+      }
     );
   }
 
@@ -146,16 +172,30 @@ export async function agenticSend(
 
   if (!outbound) {
     const calls = toCalls(p);
-    if (calls.length === 0) throw new AgenticError(AGENTIC_ERROR_CODE.INVALID_RULE, 'an empty call array cannot execute');
+    if (calls.length === 0)
+      throw new AgenticError(
+        AGENTIC_ERROR_CODE.INVALID_RULE,
+        'an empty call array cannot execute'
+      );
     if (actx.door === 'owner') {
       wrappedData = gen.contracts.encodeExecute(calls);
     } else {
       const snap = await Snapshot.at(runtime.reader);
-      const rule = await selectRuleForSend(snap, gen, wallet, actx.signerPushAccount, destination);
+      const rule = await selectRuleForSend(
+        snap,
+        gen,
+        wallet,
+        actx.signerPushAccount,
+        destination
+      );
       rulesId = rule.rulesId as AgenticHex;
       wrappedData = gen.contracts.encodeExecuteAsAgent(rule.rulesId, calls[0]);
       if (calls.length > 1) {
-        agentBatch = calls.map((call) => ({ to: wallet, value: BigInt(0), data: gen.contracts.encodeExecuteAsAgent(rule.rulesId, call) }));
+        agentBatch = calls.map((call) => ({
+          to: wallet,
+          value: BigInt(0),
+          data: gen.contracts.encodeExecuteAsAgent(rule.rulesId, call),
+        }));
         nativeCalls = calls;
       }
     }
@@ -163,15 +203,21 @@ export async function agenticSend(
       calls.length === 1
         ? { to: calls[0].target, data: calls[0].data, value: calls[0].value }
         : agentBatch
-          ? { to: calls[0].target, data: calls[0].data, value: calls[0].value }
-          : { to: wallet, data: wrappedData, value: BigInt(0) };
+        ? { to: calls[0].target, data: calls[0].data, value: calls[0].value }
+        : { to: wallet, data: wrappedData, value: BigInt(0) };
   } else {
-    let ruleAsset: Address | undefined;
-    let maxPCPerCall: bigint | undefined;
+    let ruleAssets: readonly Address[] | undefined;
+    let maxGasPerCall: bigint | undefined;
     let expectedCEA: Address | undefined;
     const snap = await Snapshot.at(runtime.reader);
     if (actx.door === 'agent') {
-      const rule = await selectRuleForSend(snap, gen, wallet, actx.signerPushAccount, destination);
+      const rule = await selectRuleForSend(
+        snap,
+        gen,
+        wallet,
+        actx.signerPushAccount,
+        destination
+      );
       if (rule.mode !== MODE_UNIVERSAL || rule.vm !== VM_EVM) {
         throw new AgenticError(
           AGENTIC_ERROR_CODE.INVALID_RULE,
@@ -179,28 +225,48 @@ export async function agenticSend(
         );
       }
       rulesId = rule.rulesId as AgenticHex;
-      const cfg = await snap.read<UniversalConfigReadE704d5b>(
+      const cfg = await snap.read<UniversalConfigRead>(
         gen.addresses.rulesPolicy,
         gen.contracts.abis.policy,
         'getConfig',
-        [configId(wallet, rule.rulesId, actionId(gen.addresses.gateway, SEND_OUTBOUND_SELECTOR)), wallet]
+        [
+          configId(
+            wallet,
+            rule.rulesId,
+            actionId(gen.addresses.gateway, SEND_OUTBOUND_SELECTOR)
+          ),
+          wallet,
+        ]
       );
-      ruleAsset = getAddress(cfg.asset);
-      maxPCPerCall = cfg.maxPCPerCall;
+      ruleAssets = cfg.assets.map((a) => getAddress(a.token));
+      maxGasPerCall = cfg.maxGasPerCall;
       expectedCEA = getAddress(cfg.expectedCEA);
     }
-    const out = await composeOutbound(runtime, gen, wallet, p, { ruleAsset, door: actx.door });
+    const out = await composeOutbound(runtime, gen, wallet, p, {
+      ruleAssets,
+      door: actx.door,
+    });
     outboundChain = out.chain;
     meta = { route: 'UOA_TO_CEA', destinationAccount: out.destinationAccount };
     const [walletPc, tokenBalance, allowance] = await Promise.all([
-      runtime.reader.getBalance({ address: wallet, blockNumber: snap.blockNumber }),
+      runtime.reader.getBalance({
+        address: wallet,
+        blockNumber: snap.blockNumber,
+      }),
       out.amount > BigInt(0)
-        ? snap.read<bigint>(out.token, ERC20_EVM as unknown as readonly unknown[], 'balanceOf', [wallet])
+        ? snap.read<bigint>(
+            out.token,
+            ERC20_EVM as unknown as readonly unknown[],
+            'balanceOf',
+            [wallet]
+          )
         : Promise.resolve(BigInt(0)),
-      snap.read<bigint>(out.token, ERC20_EVM as unknown as readonly unknown[], 'allowance', [
-        wallet,
-        gen.addresses.gateway,
-      ]),
+      snap.read<bigint>(
+        out.token,
+        ERC20_EVM as unknown as readonly unknown[],
+        'allowance',
+        [wallet, gen.addresses.gateway]
+      ),
     ]);
     if (walletPc < out.value) {
       throw new AgenticError(
@@ -231,36 +297,70 @@ export async function agenticSend(
         throw new AgenticError(
           AGENTIC_ERROR_CODE.INCONSISTENT_READ,
           `rule ${rulesId} committed destination account ${expectedCEA}, but the wallet's account on ${out.chain} now derives to ${out.destinationAccount}`,
-          { hint: 'Destination-account derivation drift (obligation 13). The owner must regrant the rule.' }
+          {
+            hint: 'Destination-account derivation drift (obligation 13). The owner must regrant the rule.',
+          }
         );
       }
-      if (maxPCPerCall !== undefined && out.value > maxPCPerCall) {
+      if (maxGasPerCall !== undefined && out.value > maxGasPerCall) {
         throw new AgenticError(
           AGENTIC_ERROR_CODE.RULE_LIMIT_EXCEEDED,
-          `this outbound needs ${out.value} PC wei but the rule caps the wallet's PC per call at ${maxPCPerCall}`
+          `this outbound needs ${out.value} PC wei but the rule caps the wallet's PC per call at ${maxGasPerCall}`
         );
       }
-      wrappedData = gen.contracts.encodeExecuteAsAgent(rulesId as Hex, out.gatewayCall);
+      wrappedData = gen.contracts.encodeExecuteAsAgent(
+        rulesId as Hex,
+        out.gatewayCall
+      );
     } else {
       wrappedData = gen.contracts.encodeExecute([out.gatewayCall]);
     }
     destinationCalls = out.destinationCalls;
     logical = outboundResponseCall(destinationCalls, {
-      to: out.gatewayCall.target, data: out.gatewayCall.data, value: out.gatewayCall.value,
+      to: out.gatewayCall.target,
+      data: out.gatewayCall.data,
+      value: out.gatewayCall.value,
     });
   }
 
   await enforceSignerGas(runtime, signerFields(p).gasLimit);
-  emitAgentic(runtime, hook, PROGRESS_HOOK.AGENTIC_TX_107, rulesId, outboundChain ?? destination, actx.door);
+  emitAgentic(
+    runtime,
+    hook,
+    PROGRESS_HOOK.AGENTIC_TX_107,
+    rulesId,
+    outboundChain ?? destination,
+    actx.door
+  );
 
   let resp: UniversalTxResponse;
   try {
     const sendOptions = hook ? { ...options, progressHook: hook } : options;
     resp = agentBatch
-      ? await runtime.executeAtomicBatch({ ...signerFields(p), to: wallet, value: BigInt(0), data: agentBatch }, sendOptions)
-      : await runtime.execute({ ...signerFields(p), to: wallet, value: BigInt(0), data: wrappedData }, sendOptions);
+      ? await runtime.executeAtomicBatch(
+          {
+            ...signerFields(p),
+            to: wallet,
+            value: BigInt(0),
+            data: agentBatch,
+          },
+          sendOptions
+        )
+      : await runtime.execute(
+          {
+            ...signerFields(p),
+            to: wallet,
+            value: BigInt(0),
+            data: wrappedData,
+          },
+          sendOptions
+        );
   } catch (err) {
-    const wrapped = wrapSendError(err) as { code?: string; message?: string; decodedError?: unknown };
+    const wrapped = wrapSendError(err) as {
+      code?: string;
+      message?: string;
+      decodedError?: unknown;
+    };
     emitAgentic(
       runtime,
       hook,
@@ -279,11 +379,25 @@ export async function agenticSend(
     chainNamespace: outboundChain ?? destination,
     destinationAccount: meta.destinationAccount as AgenticHex | undefined,
     destinationCalls,
-    ...(nativeCalls ? { nativeCalls: nativeCalls.map((c) => ({ to: c.target, data: c.data, value: c.value })) } : {}),
+    ...(nativeCalls
+      ? {
+          nativeCalls: nativeCalls.map((c) => ({
+            to: c.target,
+            data: c.data,
+            value: c.value,
+          })),
+        }
+      : {}),
     logical,
     route: meta.route,
     chain: outboundChain,
   });
-  emitAgentic(runtime, hook, PROGRESS_HOOK.AGENTIC_TX_199_01, 'sendTransaction', resp.hash);
+  emitAgentic(
+    runtime,
+    hook,
+    PROGRESS_HOOK.AGENTIC_TX_199_01,
+    'sendTransaction',
+    resp.hash
+  );
   return resp;
 }

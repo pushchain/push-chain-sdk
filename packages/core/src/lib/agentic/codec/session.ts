@@ -6,13 +6,13 @@ import {
   type Address,
   type Hex,
 } from 'viem';
-import { AGW_ABI } from '../contracts/abi/e704d5b';
+import { AGW_ABI } from '../contracts/abi/v4';
 import { agentConfig } from './ids';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 
 /**
  * The smartsessions `Session` a grant carries (DataTypes.sol:56-86, pinned
- * e704d5b). The wallet overwrites `salt` with its grant nonce, so the value
+ * v4). The wallet overwrites `salt` with its grant nonce, so the value
  * sent is irrelevant; it is always zero here.
  */
 export interface SessionWire {
@@ -21,7 +21,10 @@ export interface SessionWire {
   salt: Hex;
   userOpPolicies: readonly { policy: Address; initData: Hex }[];
   erc7739Policies: {
-    allowedERC7739Content: readonly { appDomainSeparator: Hex; contentNames: readonly string[] }[];
+    allowedERC7739Content: readonly {
+      appDomainSeparator: Hex;
+      contentNames: readonly string[];
+    }[];
     erc1271Policies: readonly { policy: Address; initData: Hex }[];
   };
   actions: readonly {
@@ -39,22 +42,36 @@ export const SESSION_PARAM: AbiParameter = getAbiItem({
 
 const ZERO_SALT = `0x${'00'.repeat(32)}` as Hex;
 
-/** URP envelope: abi.encode(string chainNamespace, bytes body). */
+export const ENVELOPE_VERSION = 1;
+
+/** V4 URP envelope: abi.encode(uint16(1), string chainNamespace, bytes body). */
 export function encodeEnvelope(chainNamespace: string, body: Hex): Hex {
-  return encodeAbiParameters([{ type: 'string' }, { type: 'bytes' }], [chainNamespace, body]);
+  return encodeAbiParameters(
+    [{ type: 'uint16' }, { type: 'string' }, { type: 'bytes' }],
+    [ENVELOPE_VERSION, chainNamespace, body]
+  );
 }
 
-export function decodeEnvelope(initData: Hex): { chainNamespace: string; body: Hex } {
+export function decodeEnvelope(initData: Hex): {
+  chainNamespace: string;
+  body: Hex;
+} {
   try {
-    const [chainNamespace, body] = decodeAbiParameters(
-      [{ type: 'string' }, { type: 'bytes' }],
+    const [version, chainNamespace, body] = decodeAbiParameters(
+      [{ type: 'uint16' }, { type: 'string' }, { type: 'bytes' }],
       initData
     );
+    if (version !== ENVELOPE_VERSION)
+      throw new Error(`unsupported rules envelope version ${version}`);
     return { chainNamespace, body };
   } catch (cause) {
-    throw new AgenticError(AGENTIC_ERROR_CODE.RULE_READ_FAILED, 'malformed URP envelope', {
-      cause,
-    });
+    throw new AgenticError(
+      AGENTIC_ERROR_CODE.RULE_READ_FAILED,
+      'malformed URP envelope',
+      {
+        cause,
+      }
+    );
   }
 }
 
@@ -88,8 +105,12 @@ export function decodeSession(bytes: Hex): SessionWire {
     const [session] = decodeAbiParameters([SESSION_PARAM], bytes);
     return session as unknown as SessionWire;
   } catch (cause) {
-    throw new AgenticError(AGENTIC_ERROR_CODE.RULE_READ_FAILED, 'malformed Session encoding', {
-      cause,
-    });
+    throw new AgenticError(
+      AGENTIC_ERROR_CODE.RULE_READ_FAILED,
+      'malformed Session encoding',
+      {
+        cause,
+      }
+    );
   }
 }

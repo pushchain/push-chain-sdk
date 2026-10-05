@@ -3,7 +3,7 @@
  * below is computed BY THE PINNED CONTRACTS (pure engine/factory views, or
  * state read back after a real grant), never by the SDK under test.
  *
- *   AGW_WRITE_VECTORS=1 → (re)write src/lib/agentic/__fixtures__/e704d5b-vectors.json
+ *   AGW_WRITE_VECTORS=1 → (re)write src/lib/agentic/__fixtures__/v4-vectors.json
  *   otherwise           → assert the committed file still matches the contracts
  */
 import { execSync } from 'node:child_process';
@@ -12,16 +12,34 @@ import { join } from 'node:path';
 import { getAddress, numberToHex, type Address, type Hex } from 'viem';
 import { buildSession } from '../src/lib/agentic/codec/session';
 import { agentConfig } from '../src/lib/agentic/codec/ids';
-import { encodeNativeTerms, nativeRuleToTerms } from '../src/lib/agentic/codec/native';
-import { encodeEnvelope, encodeSession } from '../src/lib/agentic/codec/session';
+import {
+  encodeNativeTerms,
+  nativeRuleToTerms,
+} from '../src/lib/agentic/codec/native';
+import {
+  encodeEnvelope,
+  encodeSession,
+} from '../src/lib/agentic/codec/session';
 import type { NativeRule } from '../src/lib/agentic/agentic.types';
 import { startHarness, type Harness } from './harness';
 
-const FIXTURE = join(__dirname, '..', 'src', 'lib', 'agentic', '__fixtures__', 'e704d5b-vectors.json');
+const FIXTURE = join(
+  __dirname,
+  '..',
+  'src',
+  'lib',
+  'agentic',
+  '__fixtures__',
+  'v4-vectors.json'
+);
 const bigintJson = (v: unknown) =>
-  JSON.stringify(v, (_k, x) => (typeof x === 'bigint' ? { $bigint: x.toString() } : x), 2);
+  JSON.stringify(
+    v,
+    (_k, x) => (typeof x === 'bigint' ? { $bigint: x.toString() } : x),
+    2
+  );
 
-describe('contract-generated AGW vectors (e704d5b)', () => {
+describe('contract-generated AGW vectors (v4)', () => {
   let h: Harness;
   beforeAll(async () => {
     h = await startHarness(18548);
@@ -43,9 +61,19 @@ describe('contract-generated AGW vectors (e704d5b)', () => {
     // rulesId: SmartSession.getPermissionId is pure over (validator, initData, salt).
     const rulesId = [];
     for (const agent of agents) {
-      for (const grantNonce of [BigInt(0), BigInt(1), BigInt(7), BigInt(2) ** BigInt(63)]) {
+      for (const grantNonce of [
+        BigInt(0),
+        BigInt(1),
+        BigInt(7),
+        BigInt(2) ** BigInt(63),
+      ]) {
         const session = {
-          ...buildSession({ validator, agent, rulesPolicy: h.addresses.rulesPolicy, actions: [] }),
+          ...buildSession({
+            validator,
+            agent,
+            rulesPolicy: h.addresses.rulesPolicy,
+            actions: [],
+          }),
           salt: numberToHex(grantNonce, { size: 32 }),
         };
         const expected = (await pc.readContract({
@@ -54,13 +82,22 @@ describe('contract-generated AGW vectors (e704d5b)', () => {
           functionName: 'getPermissionId',
           args: [session as never],
         })) as Hex;
-        rulesId.push({ validator, agent, grantNonce, agentConfig: agentConfig(agent), expected });
+        rulesId.push({
+          validator,
+          agent,
+          grantNonce,
+          agentConfig: agentConfig(agent),
+          expected,
+        });
       }
     }
 
     // deriveWallet: factory.predictWallet for fresh owners (index 0) and a used owner (0..next).
     const deriveWallet = [];
-    const owners: Address[] = [h.wallets[3].account!.address, getAddress('0x1111111111111111111111111111111111111111')];
+    const owners: Address[] = [
+      h.wallets[3].account!.address,
+      getAddress('0x1111111111111111111111111111111111111111'),
+    ];
     for (const owner of owners) {
       const [expected] = (await pc.readContract({
         address: h.addresses.factory,
@@ -105,7 +142,13 @@ describe('contract-generated AGW vectors (e704d5b)', () => {
       validator,
       agent: rule.agent,
       rulesPolicy: h.addresses.rulesPolicy,
-      actions: [{ target: terms.target, selector: terms.selector, initData: encodeEnvelope(nativeChain, encodeNativeTerms(terms)) }],
+      actions: [
+        {
+          target: terms.target,
+          selector: terms.selector,
+          initData: encodeEnvelope(nativeChain, encodeNativeTerms(terms)),
+        },
+      ],
     });
     // configId is recovered by searching what the policy accepts: the stored config is only
     // initialized under the correct key, so a successful read proves the derivation.
@@ -116,7 +159,13 @@ describe('contract-generated AGW vectors (e704d5b)', () => {
       abi: gen.contracts.abis.policy,
       functionName: 'getNativeConfig',
       args: [cid, wallet],
-    })) as { initialized: boolean; target: Address; selector: Hex; pins: readonly { offset: number; expected: Hex }[]; amount: { offset: number } };
+    })) as {
+      initialized: boolean;
+      target: Address;
+      selector: Hex;
+      pins: readonly { offset: number; expected: Hex }[];
+      amount: { offset: number };
+    };
     const native = {
       rule,
       nativeChain,
@@ -127,7 +176,10 @@ describe('contract-generated AGW vectors (e704d5b)', () => {
       configInitialized: stored.initialized,
       storedTarget: stored.target,
       storedSelector: stored.selector,
-      storedPins: stored.pins.map((p) => ({ offset: Number(p.offset), expected: p.expected })),
+      storedPins: stored.pins.map((p) => ({
+        offset: Number(p.offset),
+        expected: p.expected,
+      })),
       storedAmountOffset: Number(stored.amount.offset),
       encodedSession: encodeSession(session),
     };
@@ -136,7 +188,9 @@ describe('contract-generated AGW vectors (e704d5b)', () => {
       provenance: {
         agwCommit: h.generation.sourceCommit,
         generatedBy: 'packages/core/__agw-local__/vectors.spec.ts',
-        toolchain: safe(() => execSync('forge --version').toString().split('\n')[0]),
+        toolchain: safe(
+          () => execSync('forge --version').toString().split('\n')[0]
+        ),
         chainId: await pc.getChainId(),
         note: 'Addresses are deterministic for a fresh anvil + the harness deploy order.',
       },

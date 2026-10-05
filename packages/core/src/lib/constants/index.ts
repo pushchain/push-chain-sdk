@@ -71,7 +71,7 @@ export const CONSTANTS = {
   MOVEABLE: { TOKEN: MOVEABLE_TOKEN_CONSTANTS },
   PAYABLE: { TOKEN: PAYABLE_TOKEN_CONSTANTS },
   READ: READ_CONSTANTS,
-  /** Agentic wallet deployments by Push network. Empty until a verified deployment exists (A07). */
+  /** Checked v4 agentic wallet deployments by Push network (Donut only). */
   AGENTIC,
 };
 

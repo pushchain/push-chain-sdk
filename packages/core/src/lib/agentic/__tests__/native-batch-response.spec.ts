@@ -3,7 +3,7 @@ import { CHAIN, PUSH_NETWORK } from '../../constants/enums';
 import { PUSH_BATCH_EXECUTOR_ADDRESS } from '../../constants/chain';
 import { convertExecutorToOrigin } from '../../universal/account/account';
 import { adaptTrackedResponse } from '../response';
-import { e704d5b, UEA_MULTICALL_PREFIX } from '../contracts/e704d5b';
+import { v4, UEA_MULTICALL_PREFIX } from '../contracts/v4';
 import { resetAgenticGenerations } from '../deployments';
 import { ADDR, FakeChain, registerFakeGeneration, ruleId } from './fake-chain';
 import { fakeResponse, mockRuntime } from './mock-runtime';
@@ -27,7 +27,7 @@ function fixture() {
   const outer = actions.map((c) => ({
     target: wallet.address,
     value: BigInt(0),
-    data: e704d5b.encodeExecuteAsAgent(ruleId(1), c),
+    data: v4.encodeExecuteAsAgent(ruleId(1), c),
   }));
   const runtime = mockRuntime(fake);
   return { fake, wallet, actions, outer, runtime };
@@ -47,7 +47,7 @@ it('recognizes a verified 7702 self-call and retains every native agent action',
     fakeResponse({
       from: ADDR.agent,
       to: ADDR.agent,
-      data: e704d5b.encodeExecute(outer),
+      data: v4.encodeExecute(outer),
     })
   );
   expect(result).toMatchObject({
@@ -112,7 +112,7 @@ it('does not label an arbitrary forwarding contract as a trusted sender batch', 
   const response = fakeResponse({
     from: ADDR.agent,
     to: ADDR.other,
-    data: e704d5b.encodeExecute(outer),
+    data: v4.encodeExecute(outer),
   });
   expect(await adaptTrackedResponse(runtime, response)).toBe(response);
   expect(response.agentic).toBeUndefined();

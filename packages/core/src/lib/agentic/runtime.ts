@@ -15,10 +15,16 @@ import { getCEAAddress } from '../orchestrator/cea-utils';
 import type { OrchestratorContext } from '../orchestrator/internals/context';
 import { computeUEAOffchain } from '../orchestrator/internals/uea-manager';
 import { queryOutboundGasFee } from '../orchestrator/internals/gas-calculator';
-import { getNativePRC20ForChain, isPushChain } from '../orchestrator/internals/helpers';
+import {
+  getNativePRC20ForChain,
+  isPushChain,
+} from '../orchestrator/internals/helpers';
 import { pushChainNamespaceFor } from './chain';
-import { Utils } from '../utils';
-import { chainReaderFromPublicClient, type ChainReader } from './contracts/reader';
+import { getPRC20Address } from '../universal/prc20-address';
+import {
+  chainReaderFromPublicClient,
+  type ChainReader,
+} from './contracts/reader';
 import type { AgenticProgressHook } from './agentic.types';
 
 /**
@@ -44,7 +50,10 @@ export interface AgenticRuntime {
     options?: TransactionExecutionOptions
   ): Promise<UniversalTxResponse>;
   /** Sender-preserving UEA/7702 transport; native sequential fallback is forbidden. */
-  executeAtomicBatch(params: ExecuteParams, options?: TransactionExecutionOptions): Promise<UniversalTxResponse>;
+  executeAtomicBatch(
+    params: ExecuteParams,
+    options?: TransactionExecutionOptions
+  ): Promise<UniversalTxResponse>;
   /** Emit to the init-time hook and, if different, the per-call hook. */
   emit(event: ProgressEvent, perCallHook?: AgenticProgressHook): void;
   /** Whether the signer's own UEA is deployed (always true for a Push EOA). */
@@ -55,14 +64,27 @@ export interface AgenticRuntime {
     prc20: Address,
     gasLimit: bigint,
     chain: CHAIN
-  ): Promise<{ protocolFee: bigint; nativeValueForGas: bigint; gasLimitUsed: bigint }>;
-  resolveCEA(account: Address, chain: CHAIN): Promise<{ cea: Address; isDeployed: boolean }>;
-  resolvePrc20(token: MoveableToken | undefined, chain: CHAIN): Address;
+  ): Promise<{
+    protocolFee: bigint;
+    nativeValueForGas: bigint;
+    gasLimitUsed: bigint;
+  }>;
+  resolveCEA(
+    account: Address,
+    chain: CHAIN
+  ): Promise<{ cea: Address; isDeployed: boolean }>;
+  resolvePrc20(
+    token: MoveableToken | Address | undefined,
+    chain: CHAIN
+  ): Address;
   nowSeconds(): number;
 }
 
 /** Build the runtime over an orchestrator (the orchestrator IS the internal ctx). */
-export function createAgenticRuntime(orchestrator: Orchestrator, isReadOnly: boolean): AgenticRuntime {
+export function createAgenticRuntime(
+  orchestrator: Orchestrator,
+  isReadOnly: boolean
+): AgenticRuntime {
   const ctx = orchestrator as unknown as OrchestratorContext;
   const network = orchestrator.getNetwork();
   return {
@@ -107,13 +129,20 @@ export function createAgenticRuntime(orchestrator: Orchestrator, isReadOnly: boo
       };
     },
     resolveCEA: async (account, chain) => {
-      const r = await getCEAAddress(account, chain, orchestrator.getRpcUrls()[chain]?.[0]);
+      const r = await getCEAAddress(
+        account,
+        chain,
+        orchestrator.getRpcUrls()[chain]?.[0]
+      );
       return { cea: getAddress(r.cea), isDeployed: r.isDeployed };
     },
     resolvePrc20: (token, chain) =>
       getAddress(
         token
-          ? Utils.tokens.getPRC20Address(token).address
+          ? getPRC20Address(
+              typeof token === 'string' ? { chain, address: token } : token,
+              { network }
+            ).address
           : getNativePRC20ForChain(chain, network)
       ),
     nowSeconds: () => Math.floor(Date.now() / 1000),

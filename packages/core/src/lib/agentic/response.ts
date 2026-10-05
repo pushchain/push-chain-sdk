@@ -15,10 +15,19 @@ import type {
   TransactionRouteType,
   UniversalTxResponse,
 } from '../orchestrator/orchestrator.types';
-import { e704d5b, SEND_OUTBOUND_SELECTOR, UEA_MULTICALL_PREFIX, type Call } from './contracts/e704d5b';
+import {
+  v4,
+  SEND_OUTBOUND_SELECTOR,
+  UEA_MULTICALL_PREFIX,
+  type Call,
+} from './contracts/v4';
 import { generationsFor, resolveWalletGeneration } from './deployments';
 import type { AgenticRuntime } from './runtime';
-import type { AgenticAddress, AgenticHex, AgenticTxMetadata } from './agentic.types';
+import type {
+  AgenticAddress,
+  AgenticHex,
+  AgenticTxMetadata,
+} from './agentic.types';
 
 export interface LogicalCall {
   to: string;
@@ -45,7 +54,13 @@ export function adaptAgenticResponse(
   const rawTo = resp.to;
   const rawData = resp.data;
   if (!resp.raw) {
-    resp.raw = { from: resp.from, to: resp.to, nonce: resp.nonce, data: resp.data, value: resp.value };
+    resp.raw = {
+      from: resp.from,
+      to: resp.to,
+      nonce: resp.nonce,
+      data: resp.data,
+      value: resp.value,
+    };
   }
   resp.from = getAddress(meta.wallet);
   resp.to = meta.logical.to;
@@ -61,9 +76,15 @@ export function adaptAgenticResponse(
     door: meta.door,
     ...(meta.rulesId ? { rulesId: meta.rulesId } : {}),
     ...(meta.chainNamespace ? { chainNamespace: meta.chainNamespace } : {}),
-    ...(meta.destinationAccount ? { destinationAccount: meta.destinationAccount } : {}),
-    ...(meta.destinationCalls ? { destinationCalls: meta.destinationCalls.map((call) => ({ ...call })) } : {}),
-    ...(meta.nativeCalls ? { nativeCalls: meta.nativeCalls.map((call) => ({ ...call })) } : {}),
+    ...(meta.destinationAccount
+      ? { destinationAccount: meta.destinationAccount }
+      : {}),
+    ...(meta.destinationCalls
+      ? { destinationCalls: meta.destinationCalls.map((call) => ({ ...call })) }
+      : {}),
+    ...(meta.nativeCalls
+      ? { nativeCalls: meta.nativeCalls.map((call) => ({ ...call })) }
+      : {}),
     rawTo,
     rawData,
   };
@@ -82,8 +103,12 @@ export async function adaptTrackedResponse(
   if (resp.agentic || generationsFor(runtime.network).length === 0) return resp;
   const batch = await adaptNativeAgentBatch(runtime, resp);
   if (batch) return batch;
-  const decoded = e704d5b.decodeWalletCall(resp.data as Hex);
-  if (!decoded || (decoded.kind !== 'execute' && decoded.kind !== 'executeAsAgent')) return resp;
+  const decoded = v4.decodeWalletCall(resp.data as Hex);
+  if (
+    !decoded ||
+    (decoded.kind !== 'execute' && decoded.kind !== 'executeAsAgent')
+  )
+    return resp;
   let wallet: Address;
   try {
     wallet = getAddress(resp.to);
@@ -92,15 +117,24 @@ export async function adaptTrackedResponse(
   }
   let gen;
   try {
-    gen = await resolveWalletGeneration(runtime.reader, runtime.network, wallet);
+    gen = await resolveWalletGeneration(
+      runtime.reader,
+      runtime.network,
+      wallet
+    );
   } catch {
     return resp;
   }
   const door = decoded.kind === 'execute' ? 'owner' : 'agent';
-  const rulesId = decoded.kind === 'executeAsAgent' ? (decoded.rulesId as AgenticHex) : undefined;
+  const rulesId =
+    decoded.kind === 'executeAsAgent'
+      ? (decoded.rulesId as AgenticHex)
+      : undefined;
   const calls = decoded.calls;
   const outbound = calls.find(
-    (c) => getAddress(c.target) === gen.addresses.gateway && c.data.toLowerCase().startsWith(SEND_OUTBOUND_SELECTOR)
+    (c) =>
+      getAddress(c.target) === gen.addresses.gateway &&
+      c.data.toLowerCase().startsWith(SEND_OUTBOUND_SELECTOR)
   );
   if (outbound) {
     const out = decodeOutbound(outbound.data);
@@ -113,7 +147,11 @@ export async function adaptTrackedResponse(
       door,
       rulesId,
       chainNamespace: chain,
-      logical: outboundResponseCall(out.calls, { to: outbound.target, data: outbound.data, value: outbound.value }),
+      logical: outboundResponseCall(out.calls, {
+        to: outbound.target,
+        data: outbound.data,
+        value: outbound.value,
+      }),
       ...(out.calls.length > 0 ? { destinationCalls: out.calls } : {}),
       route: 'UOA_TO_CEA',
       chain: (chain as CHAIN | undefined) ?? resp.chain,
@@ -140,44 +178,84 @@ async function adaptNativeAgentBatch(
   const isUea = resp.data.toLowerCase().startsWith(UEA_MULTICALL_PREFIX);
   try {
     if (isUea) {
-      const [entries] = decodeAbiParameters([
-        { type: 'tuple[]', components: [{ name: 'to', type: 'address' }, { name: 'value', type: 'uint256' }, { name: 'data', type: 'bytes' }] },
-      ], `0x${resp.data.slice(10)}`);
-      outer = entries.map((c) => ({ target: getAddress(c.to), value: c.value, data: c.data }));
+      const [entries] = decodeAbiParameters(
+        [
+          {
+            type: 'tuple[]',
+            components: [
+              { name: 'to', type: 'address' },
+              { name: 'value', type: 'uint256' },
+              { name: 'data', type: 'bytes' },
+            ],
+          },
+        ],
+        `0x${resp.data.slice(10)}`
+      );
+      outer = entries.map((c) => ({
+        target: getAddress(c.to),
+        value: c.value,
+        data: c.data,
+      }));
     } else {
-      const batch = e704d5b.decodeWalletCall(resp.data as Hex);
-      if (batch?.kind !== 'execute' || batch.mode !== `0x01${'00'.repeat(31)}`) return;
+      const batch = v4.decodeWalletCall(resp.data as Hex);
+      if (batch?.kind !== 'execute' || batch.mode !== `0x01${'00'.repeat(31)}`)
+        return;
       outer = batch.calls;
     }
-    if (outer.length < 2 || outer.some((c) => c.value !== BigInt(0) || c.target !== outer[0].target)) return;
-    const inner = outer.map((c) => e704d5b.decodeWalletCall(c.data));
+    if (
+      outer.length < 2 ||
+      outer.some((c) => c.value !== BigInt(0) || c.target !== outer[0].target)
+    )
+      return;
+    const inner = outer.map((c) => v4.decodeWalletCall(c.data));
     const first = inner[0];
     if (first?.kind !== 'executeAsAgent' || first.calls.length !== 1) return;
     const nativeCalls: { to: Address; value: bigint; data: Hex }[] = [];
     for (const c of inner) {
-      if (c?.kind !== 'executeAsAgent' || c.calls.length !== 1 || c.rulesId !== first.rulesId || c.mode !== `0x${'00'.repeat(32)}`) return;
+      if (
+        c?.kind !== 'executeAsAgent' ||
+        c.calls.length !== 1 ||
+        c.rulesId !== first.rulesId ||
+        c.mode !== `0x${'00'.repeat(32)}`
+      )
+        return;
       const call = c.calls[0];
       nativeCalls.push({ to: call.target, value: call.value, data: call.data });
     }
     const senderAccount = getAddress(resp.from);
     if (isUea) {
       if (getAddress(resp.raw?.to ?? resp.to) !== senderAccount) return;
-      const origin = await convertExecutorToOrigin(senderAccount, { _internal: true });
+      const origin = await convertExecutorToOrigin(senderAccount, {
+        _internal: true,
+      });
       if (!origin.exists) return;
     } else {
       if (getAddress(resp.to) !== senderAccount) return;
-      const executor = getBatchExecutorAddress(getPushChainForNetwork(runtime.network));
+      const executor = getBatchExecutorAddress(
+        getPushChainForNetwork(runtime.network)
+      );
       if (!executor) return;
-      const code = await runtime.reader.getCode({ address: senderAccount, blockNumber: resp.blockNumber });
-      if (code?.toLowerCase() !== `0xef0100${executor.slice(2).toLowerCase()}`) return;
+      const code = await runtime.reader.getCode({
+        address: senderAccount,
+        blockNumber: resp.blockNumber,
+      });
+      if (code?.toLowerCase() !== `0xef0100${executor.slice(2).toLowerCase()}`)
+        return;
     }
     const wallet = outer[0].target;
-    const gen = await resolveWalletGeneration(runtime.reader, runtime.network, wallet);
+    const gen = await resolveWalletGeneration(
+      runtime.reader,
+      runtime.network,
+      wallet
+    );
     // This recognizer is only for native arrays; keep mixed/outbound batches raw.
     if (nativeCalls.some((c) => c.to === gen.addresses.gateway)) return;
     return adaptAgenticResponse(resp, {
-      wallet, door: 'agent', rulesId: first.rulesId as AgenticHex,
-      chainNamespace: pushChainNamespaceFor(runtime.network), nativeCalls,
+      wallet,
+      door: 'agent',
+      rulesId: first.rulesId as AgenticHex,
+      chainNamespace: pushChainNamespaceFor(runtime.network),
+      nativeCalls,
       logical: { ...nativeCalls[0] },
     });
   } catch {
@@ -198,7 +276,9 @@ export function outboundResponseCall(
   fallback: LogicalCall
 ): LogicalCall {
   const first = calls[0];
-  return first ? { to: first.to, data: first.data, value: first.value } : fallback;
+  return first
+    ? { to: first.to, data: first.data, value: first.value }
+    : fallback;
 }
 
 function decodeOutbound(data: Hex): {
@@ -223,7 +303,11 @@ function decodeOutbound(data: Hex): {
         ],
         `0x${req.payload.slice(10)}`
       );
-      calls = decodedCalls.map((c) => ({ to: getAddress(c.to), value: c.value, data: c.data }));
+      calls = decodedCalls.map((c) => ({
+        to: getAddress(c.to),
+        value: c.value,
+        data: c.data,
+      }));
     } catch {
       calls = [];
     }
