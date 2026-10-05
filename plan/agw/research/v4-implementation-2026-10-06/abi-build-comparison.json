@@ -1,0 +1,36 @@
+{
+  "source": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+  "comparison": "All ABI entries including constructors/errors/events/inputs/outputs/internalTypes; top-level ABI array ordering ignored.",
+  "contracts": [
+    {
+      "contract": "wallet",
+      "explorer_entries": 76,
+      "built_entries": 76,
+      "canonical_entry_sets_match": true
+    },
+    {
+      "contract": "factory",
+      "explorer_entries": 78,
+      "built_entries": 78,
+      "canonical_entry_sets_match": true
+    },
+    {
+      "contract": "policy",
+      "explorer_entries": 118,
+      "built_entries": 118,
+      "canonical_entry_sets_match": true
+    },
+    {
+      "contract": "validator",
+      "explorer_entries": 9,
+      "built_entries": 9,
+      "canonical_entry_sets_match": true
+    },
+    {
+      "contract": "engine",
+      "explorer_entries": 78,
+      "built_entries": 78,
+      "canonical_entry_sets_match": true
+    }
+  ]
+}

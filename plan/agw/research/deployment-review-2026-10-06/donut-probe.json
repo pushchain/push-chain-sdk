@@ -1,0 +1,157 @@
+{
+  "checked_at": "2026-10-05T18:33:27.508124+00:00",
+  "rpc": "https://evm.donut.rpc.push.org/",
+  "chain_id": 42101,
+  "block": 23931055,
+  "block_hash": "0x53bae3cfa28570dc06361ef91e33aa9a885e0d01284cf749d4fd5c018d72c83c",
+  "block_timestamp": 1791225195,
+  "code": {
+    "factory": {
+      "address": "0xaF88D0FD947afAe7bBb8F34e8417DCfc165e1aaF",
+      "bytes": 141,
+      "sha256": "c621e945a17be2361dfc247326991d732ede3e25c8ecd8b48ee2025c10ca17eb"
+    },
+    "factoryLogic": {
+      "address": "0xe138Dc6EfC10233BE1e6c8aF1Caf8cABe599cfC2",
+      "bytes": 9992,
+      "sha256": "69cc6b0cfae87debb1da55ba152f0129a8f24e80a740199ab29277811b106ecf"
+    },
+    "walletImplementation": {
+      "address": "0x96D69ec7e6cDdaD414e656B5c9DCA24587DF713c",
+      "bytes": 16564,
+      "sha256": "b26d74bdac5c936e25c694394be9b17bc350325d62ba103d262882b0605a0be1"
+    },
+    "policy": {
+      "address": "0x603E7f0aF6e1aAFf46DDfb28b1e99364f8BC59af",
+      "bytes": 830,
+      "sha256": "039e9bca120a30980a0131552966575b30349654f23746f309fe98adfd2308ae"
+    },
+    "policyImplementation": {
+      "address": "0xA2391eee4C9EA1B32AEB3A460B77296EA709F02F",
+      "bytes": 24326,
+      "sha256": "1694277b24a023615b3693730ea0581e7a6fc209f533e65416d5075ef927df76"
+    },
+    "proxyAdmin": {
+      "address": "0x0b7a31ec85117892aEA90AA5cB6514e2F97c2295",
+      "bytes": 926,
+      "sha256": "3feda633be447e268d618b40cbfcd9dfe9346ebadec981f4f3efea0fbc07cd35"
+    },
+    "validator": {
+      "address": "0x068EE2388475A98EE1f5a434C58bFF3444fffFe6",
+      "bytes": 806,
+      "sha256": "7a8e45814fd8a0a6c9b9e115d797da078718f9f6358fa576e1e218ffd93db59e"
+    },
+    "engine": {
+      "address": "0x165A5E6782f39D30B38c7D97e1303e4CB2aD102a",
+      "bytes": 22581,
+      "sha256": "c4b9fc7b045d9f33953079a91fcb7ae883dd858d9cde827a9cc3df6043bc2d0b"
+    },
+    "gateway": {
+      "address": "0x00000000000000000000000000000000000000C1",
+      "bytes": 1551,
+      "sha256": "3e78a5778be1383f2612556becde8019c22388d7157574c90fb40e1060d450ca"
+    },
+    "core": {
+      "address": "0x00000000000000000000000000000000000000C0",
+      "bytes": 1551,
+      "sha256": "2036ba987ed029f1bc576d020ba11582934583c7eaaa7c00aefc2e0d53053486"
+    },
+    "executor": {
+      "address": "0x14191Ea54B4c176fCf86f51b0FAc7CB1E71Df7d7",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "slots": {
+    "factory": {
+      "implementation": "0x000000000000000000000000e138dc6efc10233be1e6c8af1caf8cabe599cfc2"
+    },
+    "policy": {
+      "implementation": "0x000000000000000000000000a2391eee4c9ea1b32aeb3a460b77296ea709f02f",
+      "admin": "0x0000000000000000000000000b7a31ec85117892aea90aa5cb6514e2f97c2295"
+    },
+    "gateway": {
+      "implementation": "0x0000000000000000000000001e412939780f2b834dc42c7ac58d9f99888da659"
+    }
+  },
+  "reads": [
+    {
+      "contract": "factory",
+      "signature": "walletImplementation()(address)",
+      "exit_code": 0,
+      "output": "0x96D69ec7e6cDdaD414e656B5c9DCA24587DF713c",
+      "error": ""
+    },
+    {
+      "contract": "factory",
+      "signature": "paused()(bool)",
+      "exit_code": 0,
+      "output": "false",
+      "error": ""
+    },
+    {
+      "contract": "policy",
+      "signature": "version()(string)",
+      "exit_code": 0,
+      "output": "\"3.1.0\"",
+      "error": ""
+    },
+    {
+      "contract": "policy",
+      "signature": "pushChainHash()(bytes32)",
+      "exit_code": 0,
+      "output": "0x3d6bc1f1d3fb03065860265a8e93840b586e57075d956cd41b4319d040be87f9",
+      "error": ""
+    },
+    {
+      "contract": "policy",
+      "signature": "UNIVERSAL_GATEWAY_PC()(address)",
+      "exit_code": 0,
+      "output": "0x00000000000000000000000000000000000000C1",
+      "error": ""
+    },
+    {
+      "contract": "policy",
+      "signature": "UNIVERSAL_EXECUTOR_MODULE()(address)",
+      "exit_code": 0,
+      "output": "0x14191Ea54B4c176fCf86f51b0FAc7CB1E71Df7d7",
+      "error": ""
+    },
+    {
+      "contract": "walletImplementation",
+      "signature": "accountId()(string)",
+      "exit_code": 0,
+      "output": "\"push.agw.1.0.0\"",
+      "error": ""
+    },
+    {
+      "contract": "walletImplementation",
+      "signature": "SESSION_ENGINE()(address)",
+      "exit_code": 0,
+      "output": "0x165A5E6782f39D30B38c7D97e1303e4CB2aD102a",
+      "error": ""
+    },
+    {
+      "contract": "walletImplementation",
+      "signature": "RULES_POLICY()(address)",
+      "exit_code": 0,
+      "output": "0x603E7f0aF6e1aAFf46DDfb28b1e99364f8BC59af",
+      "error": ""
+    },
+    {
+      "contract": "walletImplementation",
+      "signature": "SESSION_VALIDATOR()(address)",
+      "exit_code": 0,
+      "output": "0x068EE2388475A98EE1f5a434C58bFF3444fffFe6",
+      "error": ""
+    },
+    {
+      "contract": "walletImplementation",
+      "signature": "UNIVERSAL_GATEWAY_PC()(address)",
+      "exit_code": 0,
+      "output": "0x00000000000000000000000000000000000000C1",
+      "error": ""
+    }
+  ],
+  "limits": "Code sizes, proxy slots and selected views only; no complete bytecode/source equivalence or transaction execution proof."
+}

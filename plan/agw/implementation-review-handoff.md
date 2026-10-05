@@ -1,5 +1,11 @@
 # AGW SDK implementation — review handoff
 
+> Latest acceptance: [October 6 funded tests and fixes](research/live-acceptance-2026-10-06/README.md). Network restrictions are resolved; all 53 Anvil cases and the unfiltered unit suite pass. All 25 registered AGW scenarios have passing selected-run coverage; public SVM destination integration and scope decisions remain. Changes are on feat/agw-sdk-v4. Everything below the current banners describes historical implementation/review evidence.
+
+> Current implementation: [v4-only native/EVM migration and validation](research/v4-implementation-2026-10-06/README.md) supersede earlier missing-adapter/empty-registry statements below. Legacy runtime/test artifacts are removed. SVM mapping, H3/H4.5/H6, ref/label scope and funded acceptance remain.
+
+> October 6 update: [v4 deployment/wire review](research/deployment-review-2026-10-06/README.md) supersedes the deployment/artifact absence recorded below. Those definitions are supplied, but this implementation/review evidence still concerns e704d5b; v4 SDK migration and harness acceptance remain. No live transaction was sent.
+
 October 3, 2026. For the reviewing agent. The per-step status is in [implementation-status.md](implementation-status.md).
 
 ## Revisions

@@ -1,8 +1,12 @@
 # AGW source links and refresh procedure
 
+October 6 contract refresh: fetched deploy-agw@10a24f101e2e6e0a9b76517b29f5cdb1aa967796; address book/owner guide report deployed source e8db74815cfbbf5389593805e464fe8d85f7f735, with no src difference between those commits. [GitHub snapshots/hashes, verified ABIs, Donut read-only evidence and SDK review](research/deployment-review-2026-10-06/README.md). This does not replace the Notion full-export manifest or imply SDK v4 support is already registered.
+
 Latest complete Notion export: October 3, 2026 at 13:23 IST. All 12 pages were imported; pages 1 and 5 changed. Page 5 defines the target public SDK API. Native exports omit comment threads.
 
 Focused October 4 recheck: page 5 was downloaded again; its body matches the saved snapshot after normalizing links. [Comparison evidence](research/notion-check-2026-10-04/comparison.json). This was not a full refresh and does not replace the full-import manifest. Harsh’s newer replies are recorded separately in [product decisions](product-decisions-2026-10-04.md).
+
+Focused October 5 comment review: live All discussions on pages 5 and 1, plus the overview’s visible page state, were inspected through Chrome. [Comment evidence and SDK impact](research/notion-comments-2026-10-05.md). Harsh’s new multiple-rules direction needs same-agent scope/send-selection clarification; token-independence wording needs a final definition. This was not a body export or contract refresh. Comments are recorded separately; snapshot hashes/pull timestamps remain unchanged.
 
 ## Notion inventory
 
@@ -25,7 +29,9 @@ The [manifest](source-manifest.json) stores stable page IDs, pull times and hash
 
 ## Contract sources
 
-- [AGW e704d5b](https://github.com/pushchain/push-agentic-wallets/tree/e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9), branch pushAgenticWallet_v3. nomenclature-changes was merged and deleted.
+- **Current deployment source:** [AGW e8db748](https://github.com/pushchain/push-agentic-wallets/tree/e8db74815cfbbf5389593805e464fe8d85f7f735).
+- **Current documentation:** [owner SDK guide](https://github.com/pushchain/push-agentic-wallets/blob/10a24f101e2e6e0a9b76517b29f5cdb1aa967796/docs/5_SDK_Owner_Integration.md), [v4 Donut address book](https://github.com/pushchain/push-agentic-wallets/blob/10a24f101e2e6e0a9b76517b29f5cdb1aa967796/docs/addresses/donut.md). Refreshable branch links: [guide](https://github.com/pushchain/push-agentic-wallets/blob/deploy-agw/docs/5_SDK_Owner_Integration.md), [addresses](https://github.com/pushchain/push-agentic-wallets/blob/deploy-agw/docs/addresses/donut.md).
+- **Earlier SDK fixture source:** [AGW e704d5b](https://github.com/pushchain/push-agentic-wallets/tree/e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9); nomenclature-changes was merged and deleted.
 - [AGW design](https://github.com/pushchain/push-agentic-wallets/blob/e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9/docs/1_AGW.md) and [policy design](https://github.com/pushchain/push-agentic-wallets/blob/e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9/docs/2_UniversalRulesPolicy.md).
 - [Core marketplace cb69e0b](https://github.com/pushchain/push-chain-core-contracts/tree/cb69e0ba101bef1bb4440e54b2c45396be3e92ce).
 - [Gateway eight-field baseline bcbf7df](https://github.com/pushchain/push-chain-gateway-contracts/tree/bcbf7df42e8e6dd11088a43bcc0b056a54ea0a18).
@@ -40,6 +46,8 @@ Source revisions describe inspected code, not a guarantee of current remote head
 3. Match pages by stable ID; retain raw exports, previous changed snapshots, diffs and manifest history.
 4. Review changed requirements and update affected plans/questions; do not declare source features deployed without evidence.
 5. Re-fetch contract refs and record exact SHAs before sharing.
+
+Also review **All discussions**, including resolved threads, on relevant live pages. Record author, displayed date/age, attached block and interpretation separately from exported bodies. A body-only comparison cannot establish that product decisions are unchanged.
 
 ```sh
 python3 plan/agw/scripts/import-notion-exports.py overview.zip legacy-sdk.zip address-book.zip flow.zip --dry-run

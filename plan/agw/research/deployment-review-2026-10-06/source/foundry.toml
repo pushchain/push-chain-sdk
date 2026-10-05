@@ -1,0 +1,88 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+ffi = true
+ast = true
+build_info = true
+extra_output = ["storageLayout"]
+
+solc = "0.8.26"
+optimizer = true
+# 833 matches the setting smartsessions is built and audited at upstream. At a
+# higher setting SmartSession compiles to ~28.7 KB — over the EIP-170 limit and
+# undeployable. Bytecode equivalence with the audited artifact is worth more than
+# our gas profile. Do not raise this without re-checking `forge build --sizes`.
+optimizer_runs = 833
+auto_detect_solc = false
+# cancun is REQUIRED: URP's _slice helper uses MCOPY. Lowering this breaks the
+# build at deploy time rather than at compile time.
+evm_version = "cancun"
+via_ir = true
+
+# Coverage scope: src/ excluding interfaces and libraries of pure types.
+no_match_coverage = "(src/interfaces/|test/|script/|lib/)"
+
+# `out/` is READ-ONLY and is required, not a convenience: the statelessness invariant
+# (validator PRD §4, factory PRD T-01(a)) is asserted against the build artifact's
+# storageLayout, because Solidity offers no runtime way to prove "declares no storage" —
+# a vm.load slot read is equally satisfied by a contract that declares variables and never
+# writes them, i.e. a test that cannot fail.
+fs_permissions = [
+    { access = "read-write", path = "deployments/" },
+    { access = "read", path = "out/" },
+    # The Demo Ledger (demo/state/ledger.json). The demo scripts are separate processes with no
+    # shared memory, so the ledger is the only way state survives from one act to the next — it is
+    # what makes a failed step recoverable rather than fatal.
+    { access = "read-write", path = "demo/state/" },
+    # READ-ONLY: the core repo's own build artifacts, which the UniversalMarketplace E2E deploys with
+    # vm.deployCode so it runs exactly the bytecode that ships (test_E2E_13 pins it).
+    { access = "read", path = "lib/push-chain-core-contracts/out/" },
+    # READ-ONLY: core's sources, so test_E2E_13 can prove each artifact was built from the source on disk.
+    { access = "read", path = "lib/push-chain-core-contracts/src/" },
+]
+
+# ─── The core contracts the UniversalMarketplace E2E deploys (test/integration/24_marketplaceE2E.t.sol) ───
+#
+# E2E must run the bytecode that SHIPS: core compiles shanghai / 99 999 runs against OZ 5.3, this repo
+# cancun / 833 against OZ 5.7. So this repo does NOT recompile core: the E2E deploys the core repo's own
+# build artifacts with vm.deployCode("lib/push-chain-core-contracts/out/…json"). Build core first.
+#
+# Why not compilation_restrictions + context remappings (the first design): forge's source graph ignores
+# context remappings when it assembles a restricted compilation unit, so core's OZ imports resolved to
+# this repo's OZ 5.7 and pulled Bytes.sol (MCOPY) into the shanghai job — solc 7755. Measured on 1.5.1.
+#
+# Only core INTERFACES are compiled here (via the push-core/ remapping), and those carry no settings
+# that matter.
+#
+# TEMPORARY, while lib/push-chain-core-contracts is a symlink to the sibling checkout (the core changes are
+# not committed yet, so there is no commit to pin a submodule to). Remove once it is a real submodule.
+allow_paths = ["../push-chain-core-contracts"]
+
+# The demo's own tests (StakeDummy, and the AgentSigning equivalence proof). A SEPARATE PROFILE,
+# not a change to the default `test` path: the v3 suite is the contracts' specification and must
+# stay exactly what `forge test` runs. Demo tests are run with `FOUNDRY_PROFILE=demo forge test`,
+# which the justfile wraps. Everything else is inherited from [profile.default].
+[profile.demo]
+test = "demo/test"
+
+[fmt]
+line_length = 120
+tab_width = 4
+bracket_spacing = true
+
+[fuzz]
+runs = 1024
+max_test_rejects = 65536
+seed = '0x1'
+
+[invariant]
+runs = 256
+depth = 64
+fail_on_revert = false
+
+[profile.ci.fuzz]
+runs = 4096
+
+[rpc_endpoints]
+push_donut = "${PUSH_DONUT_RPC_URL}"

@@ -1,63 +1,49 @@
 # AGW SDK implementation status
 
-> October 4 product update: [new decisions](product-decisions-2026-10-04.md) are applied to the clear scope items. Public spend/generation context/compiler exposure is removed, history is active-only, and native arrays use an atomic outer batch. H3 defaults remain unchanged; raw-offset types still need clarification.
+> Latest: [funded acceptance and fixes](research/live-acceptance-2026-10-06/README.md). Full permissions are restored: 1,947 unfiltered unit tests, all 53 Anvil cases, build and four typechecks pass. All 25 registered AGW scenarios pass across selected live runs, including UEA identities, native 7702 batches, lifecycle and Sepolia success/failure. Public SVM destinations remain gated.
 
-October 3, 2026, updated after the implementation review (R1–R7 fixed; see the [handoff](implementation-review-handoff.md#review-response-2026-10-03)). Branch `feat/agw-sdk-impl` (base `feat/agw-sdk-planning@349635b`). This matrix records what the code does today against the [implementation plan](implementation-plan.md). "Implemented" excludes placeholders; a capability-gated method that throws `CAPABILITY_UNAVAILABLE` is listed as blocked, not implemented. Details, commands and review hotspots are in the [review handoff](implementation-review-handoff.md).
+Updated October 6, 2026. Branch feat/agw-sdk-v4; runtime commits a66ff7d and b68bab7. The native/EVM migration uses deployed source e8db748. Runtime/test e704d5b adapters, ABIs and fixtures were removed at Shoaib's request; historical review documents are evidence only. [Full handoff, commands and validation](research/v4-implementation-2026-10-06/README.md).
 
-## Evidence levels
+## Validation
 
-| Level | Meaning |
+| Level | Current evidence |
 | --- | --- |
-| Unit | Mock-boundary jest suites under `packages/core/src/lib/agentic/__tests__` and `read-state/__tests__/web2-compat.spec.ts`; no network |
-| Local | Real pinned e704d5b contracts on anvil through the SDK (`packages/core/__agw-local__`); stub gateway only; Push-EOA signers only |
-| Live | Testnet transactions against a verified deployment. **None has occurred** — no compatible deployment has been verified or registered (A07) and no live run was authorized |
+| Unit | 1,947 passed, 0 failed; 12 skipped; 113 suites passed, 1 skipped |
+| Local actual contracts | 53 passed, 0 failed; 7 suites against e8db748 on Anvil |
+| ABI reproduction | All 5 explorer ABI entry sets match the isolated build, ignoring array order |
+| Build/typechecks | Build and lib/spec/local/AGW-E2E typechecks pass |
+| Lint | 7 pre-existing errors in unchanged files; no new errors |
+| E2E selection | AGW: 25 scenarios/9 files/25 tests; default all unchanged at 76/40/81 |
+| Funded live | All 25 registered scenarios have passing selected-run coverage; 0 outstanding native/EVM scenario failures |
+
+Local gateway/core/token/executor and CEA lookup are fixtures. Actual AGW/factory/engine/validator/URP enforce the rules; native type-4 tests use real transactions. This does not prove production gateway, Cosmos/TSS, UEA or destination execution.
 
 ## Per-step matrix
 
-| Step | Deliverable | Status | Unit | Local | Live | Remaining dependency |
-| --- | --- | --- | --- | --- | --- | --- |
-| 1 | Source and capability contract | Implemented | ✓ | ✓ rebuilt ABIs identical to evidence | — | Refresh pins when answers land |
-| 2 | Namespace, types, exports, errors | Implemented; remaining raw-offset/API metadata provisional | ✓ | ✓ | — | Raw-offset type decision; final contract metadata |
-| 3 | Signer/wallet context and lifecycle | Implemented | ✓ | ✓ owner, agent, stranger, read-only, reinitialize, guards | Blocked (A07) | UEA owner/agent paths only unit-tested (no UEA on anvil) |
-| 4 | Generation registry and adapter | Implemented for e704d5b; registry ships empty | ✓ | ✓ wiring verified | Blocked (A07) | Verified manifest; OwnerIntent signing not implemented (no transport needs it) |
-| 5 | Wallet and checkpoint reads | Implemented: derive, list, info, owner, checkpoints, active rules | ✓ | ✓ | Blocked (A07) | History deferred; setLabel (A07) gated |
-| 6 | Rule normalization and codecs | Native implemented and vector-verified; universal validated then gated | ✓ | ✓ contract vectors | — | A05 multi-asset wire/vectors; H3 defaults |
-| 7 | Create, add, revoke | Implemented (native rules); index-bound deploy | ✓ | ✓ sequential create incl. partial recovery and the concurrent-creation race; atomic multi-rule add | Blocked (A07) | 7702/UEA create batch paths unit-only |
-| 8 | Atomic rules.update | Implemented for native rules | ✓ | ✓ five ticks, stale-spend rollback | Blocked (A07) | A05 per-token assertion for universal rules |
-| 9 | Owner execution and allowance setup | Implemented | ✓ | ✓ owner batches, approve/remove via owner door | Blocked (A07) | Production gateway pull/burn |
-| 10 | Agent rule selection and native sends | Implemented | ✓ | ✓ maxCalls, pins, amount, expiry, atomic 7702 batches | Blocked (A07) | Live UEA/7702 acceptance |
-| 11 | EVM universal sends and gas | Composer implemented for the e704d5b single-asset generation (Route-2-equivalent destination calls, no SDK allowance writes); signer gas guard implemented | ✓ | ✓ passes every URP gate with stub gateway; revoked-allowance race | Blocked (A07) | A05 token resolution for assets[]; node/TSS/destination acceptance |
-| 12 | SVM destination support | Not implemented; gated | ✓ gating | — | — | A05/A07, Harsh H4.4, obligations 19–23 |
-| 13 | Responses, tracking, hooks, reads | Implemented | ✓ | ✓ live send/receipt identity | Blocked (A07) | Native batch replay and outbound wait covered locally; live settlement pending |
-| 14 | Deployment onboarding and acceptance | E2E authored and gated; not run | — | — | Blocked (A07) | Verified manifest + authorized budget |
-| 15 | Web2 compatibility | Implemented | ✓ | — | Not rerun | Review of CHAIN.WEB2 value change |
-| 16 | compileCard | Outside standalone AGW; stub removed | ✓ absent public export | — | — | Future marketplace work |
-| 17 | Documentation, examples, release | Planning docs only | — | — | — | Accepted feature scope |
-
-## Assumptions A01–A08
-
-| ID | Design status | Artifact status | What the code does now |
+| Step | Deliverable | Current status | Remaining work |
 | --- | --- | --- | --- |
-| A01 | Resolved by Harsh H1 | n/a | SDK approval rejection removed; structural validation retained |
-| A02 | Product wants batching | Local type-4 proof, fixture executor | Sender-preserving atomic UEA/7702 path; native fallback prohibited |
-| A03 | Provisional (Harsh H3) | n/a | `codec/defaults.ts` is the only defaults table, tagged A03 |
-| A04 | Internal generation details | n/a | rulesId/deriveWallet/encodeRules and RulesEncodeContext are not public; client.agentic.derive remains |
-| A05 | Public spend not required | Final multi-asset artifacts missing | Public spent removed; internal reads/assertions retained; final universal wire stays gated |
-| A06 | History deferred from v1 | Not required for v1 | list is enabled-only; unknown/revoked get returns RULE_NOT_FOUND |
-| A07 | Contract surface pending (Z1); deployment notice already coordinated | **No verified deployment** | Registry and `CONSTANTS.AGENTIC` empty; every AGW call fails `GENERATION_UNSUPPORTED`; `ref` and `setLabel` gated |
-| A08 | Outside standalone AGW | Future marketplace dependency | Public compileCard stub and capability removed |
+| 1 | Source/capability contract | V4 deployed source/ABIs pinned and reproduced | Refresh for future releases |
+| 2 | Namespace/types/errors | Implemented; AMBIGUOUS_RULE replaces duplicate-authoring rejection | H4.5 public raw-offset boundary |
+| 3 | Signer/wallet context | Owner/agent/read-only/identity guards retained | Release review; UEA identity cases pass |
+| 4 | Registry/adapter | Donut v4 registered; unsupported networks fail | Release review; no legacy fallback |
+| 5 | Wallet/checkpoint/rule reads | Native and EVM reads implemented; source tokens/beneficiary offsets reconstructed | Metadata scope; SVM reads/public mapping |
+| 6 | Normalization/codecs | Native/EVM envelope 1, ordered caps, hard-zero/max total, empty-list routing | Native H3 defaults; SVM public mapping |
+| 7 | Create/add/revoke | Index-bound create, partial recovery, atomic writes; same-agent multiples allowed | Release review; deployed create/identity/batching paths verified |
+| 8 | Atomic update | Native per-action and universal all-token assertions before revoke/grant | Public SVM wrapper |
+| 9 | Owner/allowance | Owner path unrestricted; explicit separate allowance retained | Release review; production allowance/token debit and delivery verified |
+| 10 | Native agent sends | Sender-preserving atomic batches retained | H6 selection for multiple matching rules |
+| 11 | EVM outbound | V4 asset membership, maxGasPerCall, wallet CEA/refunds, signer gas and responses | Release review; Sepolia success/failure and UEA cases verified |
+| 12 | SVM destinations | Source wire types delivered; SDK capability remains gated | Internal codec/accounts/payload/builder delivered; public mapping/dispatch and cluster acceptance |
+| 13 | Responses/progress/errors | V4 ABIs and prior canonical replay/wait fixes retained | Deliberate delayed-indexing acceptance remains unit-tested; funded destination and replay proof pass |
+| 14 | E2E | 25 opt-in scenarios registered; public universal setup and new two-token/call-only cases | Completed native/EVM live coverage; public SVM acceptance after integration |
+| 15 | Web2 | Prior implementation retained and included in full unit run | Release documentation/acceptance |
+| 16 | compileCard | Outside standalone AGW; absent public export | Future marketplace scope |
+| 17 | Documentation/release | Current status/gaps/handoff updated | Product scope decisions and funded acceptance |
 
-Harsh replies and the focused October 4 page-5 recheck are recorded in product-decisions-2026-10-04.md. The clear decisions above are implemented; defaults are still pending.
+## Open product/contract choices
 
-## Gap register cross-reference
+A01 approval policy, A04 internal generation details, A06 history deferral and A08 compiler scope remain settled. A02 native batching is implemented locally. A05 wire/accounting is delivered and implemented for EVM. A07 deployment/registry is supplied; grant ref and editable label remain absent and capability-gated.
 
-Implementation evidence exists for G03 (explicit-context IDs, receipt IDs), G08 (checkpoint/label reads), G13/G15 (creation strategy and partial recovery), G14 (wallet-level replacement), G16 (Web2), G17 (read-only and reinitialize), G18 (eligibility and uncached selection) and G20 (dedicated composer and response identity). None is closed: each closure criterion also requires review and, where stated, a verified deployment or live acceptance.
+H3 is narrowed to native omission defaults/public maxValueTotal and token wording; universal total semantics are implemented. H4.5 covers native pins/amount and the exact EVM beneficiaryOffset read/write form. H6 remains send selection, not management capacity. [Harsh draft](questions-harsh.md); [Zaryab metadata/SVM fixture draft](questions-zaryab.md).
 
-
-## Outbound response follow-up
-
-F1 is resolved with a shared canonical first-call summary and complete `agentic.destinationCalls` metadata on send/replay. R6 wait-path regressions are now in the regular unit suite. Current validation: 1,908 unit tests, 34 local-contract tests, both typechecks and build pass. No live acceptance was performed. See [resolution](implementation-review/outbound-response-resolution.md).
-
-Current alignment verification is recorded in [product alignment evidence](research/product-alignment-2026-10-04/README.md). Existing older counts below/above describe their named revisions.
-
-Deployment coordination October 5: fixed addresses are supplied and Zaryab will notify Shoaib when deployment is complete. Z3 is removed from the open questions. SDK compatibility verification and live acceptance remain required afterward; the registry is unchanged.
+No public spent/history/compiler feature is reopened. Rule updates reset counters as agreed. Ordinary inflows do not restore spent; creditRevert remains a platform dependency.

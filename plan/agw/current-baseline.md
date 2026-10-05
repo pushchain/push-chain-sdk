@@ -1,86 +1,73 @@
 # Current validated AGW baseline
 
-> October 4 update: [Harsh’s replies](product-decisions-2026-10-04.md) supersede earlier provisional approval/default/helper/history/compiler recommendations below. Use [remaining dependencies](external-blockers.md) for current blockers. The clear scope changes and sender-preserving native batching are now implemented; H3 defaults remain unchanged pending clarification. See [alignment evidence](research/product-alignment-2026-10-04/README.md).
+Updated October 6, 2026 after the v4 deployment notice, source/ABI inspection and read-only Donut probe. **The v4 deployment and native/EVM SDK adapter/codecs are now integrated locally. All 25 registered AGW live scenarios have passing selected-run coverage.** [Full review and evidence](research/deployment-review-2026-10-06/README.md).
 
-Updated October 3, 2026 after reviewing checkpoint commit 6b7dbf4 and current head e704d5b. This page supersedes earlier recommendations; consequential corrections are retained in the [review summary](review-summary.md). The SDK Notion page remains the target API; conflicts below are recorded for resolution, not silently resolved in favor of code.
+The public SDK target remains Notion page 5, qualified by Harsh's later replies/comments. The new owner guide establishes deployed wire behavior; mismatches in public ref/labels/defaults/selection remain explicit. [Prior October 3–5 baseline](research/deployment-review-2026-10-06/previous-current-baseline.md) is retained as historical evidence.
 
 ## Pinned sources
 
-| Repository | Current inspected branch and commit |
+| Source | Revision and role |
 | --- | --- |
-| AGW | `pushAgenticWallet_v3@e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9` |
-| Core | `universalMarketplace_v1@cb69e0ba101bef1bb4440e54b2c45396be3e92ce` |
-| Gateway | Eight-field `pc20-3rd-iteration@bcbf7df42e8e6dd11088a43bcc0b056a54ea0a18`; six-field older `main@d02070d` |
-| SDK | `167fdc6243ecfe5d97735a6124662c7d2084d126` |
-| Notion | October 03, 2026 at 13:23 IST full export; page 1 and page 5 changed, 10 pages unchanged |
+| AGW deployment source | e8db74815cfbbf5389593805e464fe8d85f7f735, reported by address book/owner guide |
+| AGW documentation | deploy-agw@10a24f101e2e6e0a9b76517b29f5cdb1aa967796; src identical to e8db748 |
+| SDK contract adapter | V4 only (e8db748); Donut registry populated; old runtime/test generation removed |
+| Core marketplace | Prior pin cb69e0ba101bef1bb4440e54b2c45396be3e92ce; not freshly fetched |
+| Gateway source | Prior eight-field pin bcbf7df42e8e6dd11088a43bcc0b056a54ea0a18; live implementation slot checked |
+| Notion | Last full export October 3 at 13:23 IST; focused October 4 body comparison and October 5 comment review; no new export here |
 
-AGW remote branches were checked through GitHub API on October 3: nomenclature-changes was deleted after merging and pushAgenticWallet_v3 points to e704d5b. Core remains pinned at cb69e0b from the existing evidence; no fresh core fetch was performed in this pass. The head adapter keeps the SmartSession source unchanged. It replaces cryptographic session-key validation with a sender-checking adapter. The wallet binds the sender before calling the engine and constructs `USE || rulesId || msg.sender` itself. Engine account binding and disabled alternate paths are essential invariants. **No engine fork is recommended.**
+[Saved GitHub sources and hashes](research/deployment-review-2026-10-06/source-manifest.json) are separate from the Notion manifest. [Verified ABIs](research/deployment-review-2026-10-06/abis/) came from the explorer. This review did not locally rebuild runtime bytecode or rerun the full contract/SDK suites.
 
-## Compatibility status
+## Donut v4 deployment
 
-| Surface | Current status | Remaining work |
+Chain 42101, RPC https://evm.donut.rpc.push.org/, pinned block **23931055**. [Probe](research/deployment-review-2026-10-06/donut-probe.json).
+
+| Component | Address |
+| --- | --- |
+| Factory proxy | 0xaF88D0FD947afAe7bBb8F34e8417DCfc165e1aaF |
+| URP proxy | 0x603E7f0aF6e1aAFf46DDfb28b1e99364f8BC59af |
+| Wallet implementation | 0x96D69ec7e6cDdaD414e656B5c9DCA24587DF713c |
+| AgentValidator | 0x068EE2388475A98EE1f5a434C58bFF3444fffFe6 |
+| SmartSession | 0x165A5E6782f39D30B38c7D97e1303e4CB2aD102a |
+| Gateway | 0x00000000000000000000000000000000000000C1 |
+
+Code sizes, factory/policy implementation slots, policy admin and wallet/policy wiring match the new book. Factory is unpaused; URP version is 3.1.0; pushChainHash matches eip155:42101. Wallet accountId remains push.agw.1.0.0 and is insufficient to distinguish envelope generations. Address book reports deployment blocks 23923806–23923810; release manifest should preserve deployment/log provenance.
+
+The earlier supplied historical addresses are superseded for new v4 integrations. Wallet clones remain generation-specific and do not migrate; prediction is stable within its factory context, not globally across factories.
+
+## Compatibility and remaining work
+
+| Surface | Deployed definition | SDK status/action |
 | --- | --- | --- |
-| `executeAsAgent`, `agentOf`, authorization event | Implemented in AGW source | Verify selected new deployment and preserve adapter invariants; G02 source dependency satisfied |
-| Agent config | Exact `abi.encode(address agent)` | SDK codec and generation-specific validator context |
-| Rule ID | `keccak256(abi.encode(validator, abi.encode(agent), bytes32(grantNonce)))` | Page 5 helper signature/constants need alignment. Chain is not hashed; key records by wallet plus rule ID |
-| Owner batching | Documented design; local tests support atomic replacement | SDK implementation and final-generation regression tests; no need to ask whether batching is intended |
-| Agent arrays | Wallet dispatch remains single/default. EVM destination multicall supports 1–10 calls | Define native arrays separately; supporting multiple native actions in a rule is a public type choice, not the same as atomic multi-call dispatch |
-| Duplicate agent-chain rules | Accepted by contract with independent IDs/budgets | SDK preflight rejection and explicit ambiguity error are proposed; hard on-chain uniqueness is not assumed necessary |
-| Checkpoints | Implemented in source at 6b7dbf4, included in e704d5b; count and last-block views plus Checkpointed event | Compare snapshot counts, account for per-call and lifecycle ticks, and verify selected new deployment |
-| Grant job ref, labels, envelope version | Still absent | Agree next-generation surface and spec consequences |
-| Historical rules | Revoke removes agent config and enabled actions, while URP terms persist | Event agent attribution or nested-call reconstruction needed if revoked rules are returned |
-| expectedCEA | Required universal wire term, derived from AGW plus destination context and committed at grant | SDK must derive it, show it in previews, include it in encodeRules context, and monitor derivation drift |
-| Binder | Never present in reviewed code; live Notion page checked October 3 says dropped for v1 | No binder/setBinder implementation required unless a new explicit product decision reverses this |
-| Funding approval | Push gateway requires allowance for PRC20 pulls | Existing owner execute mechanism validated in four local fixture tests; implement setup/replenishment and verify production pull/burn/settlement |
-| Destination approvals | Page 5 example permits an unpinned spender; current marketplace rejects approve/increaseAllowance | Product policy and owner-controlled approvals; selector filtering alone is not a general guarantee against malicious/custom approval methods |
-| Gateway shape | Eight fields in current branch and observed live dispatcher; main's six fields are older | Ask only whether a future removal is actually planned |
-| Agent outbound composer | Existing Route 2 request cannot be used unchanged | Empty recipient, AGW revert recipient, nonzero maxPCForGas, policy-compatible multicall and AGW PC accounting |
-| Outbound tracking | Existing tracker uses tx hash/events/UTX ID | Reuse provisionally; verify live wrapped outbound. Response `from` and progress route integration still need adaptation |
-| Marketplace expiry | Core terms require exact equality with job expiry | Reconcile Notion's <= and >= statements; equality applies to this marketplace compile path, not every standalone AGW rule |
-| SVM destination | Source and policy tests available | Typed SDK representation, obligations 19–23, deployment capability; do not claim an agreed deferral |
-| Generation detection | Wallet clones immutable; factory implementation frozen by intended design | New generation/address context, supported factory registry, version identification and migration disclosures |
+| Owner/agent doors | execute and sender-gated executeAsAgent; unchanged SmartSession | Preserve model, adapt/test selected generation; no engine fork |
+| Session/IDs | abi.encode(agent), salt overwritten by grantNonce; rulesId wallet-scoped | Existing identity logic retained, new validator context |
+| All policy envelopes | uint16 version=1, chainNamespace, body | Envelope 1 implemented; old envelope rejected by actual contracts |
+| Universal EVM | 1–8 ordered AssetCaps, maxGasPerCall, address expectedCEA | Implemented, including source-chain/token identity validation and v4 reads |
+| No-movement rules | One destination gas PRC20 cap at 0/0 when user assets empty | Implemented; actual-contract call-only case passes |
+| Total ceilings | maxUint256 unlimited, zero hard zero | Universal max default/explicit zero implemented; native omission choices partly open |
+| Internal replacement guard | assertSpent(configId,wallet,uint256[]) compares all totals in asset order | SDK implemented; second-token intervening spend rolls back replacement |
+| Native terms | Same body layout, one config per action; envelope changed | V4 native tests pass; ABI offset validation retained |
+| Multiple rules | Several same-agent/same-chain grants supported | Management permits multiplicity; ambiguous sends fail; H6 selection remains |
+| Checkpoints | Stored count/last block, three event kinds, per-owner-call/lifecycle ticks | Earlier read/update design retained; v4 acceptance pending |
+| Grant ref / label | Grant has no ref; label is deployment event only; no setLabel | Explicit capability gates; Z1.3 asks v1 scope/delivery |
+| SVM | Full multi-asset terms/program/account/data pins supplied | Public mapping, PDA/ATA/registry resolution, payload and acceptance remain |
+| Gateway request | Eight-field live implementation, selector 0x77b86bec | Dedicated context, listed-token choice and maxGasPerCall implemented |
+| Allowance | Consume separate owner-established allowance | Keep existing race-safe behavior; Live allowance/token debit passes; remaining identity coverage explicit |
+| Refund spend credit | creditRevert gains token; executor still does not call it | Known Push-core dependency; ordinary returns do not lower spent |
+| Tracking/events | Metered/revert events include token | ABIs/imports updated; live call-only, positive-amount and external-failure tracking pass |
 
-## Chain observations
+The ABI comparison found matching factory/wallet/engine function/event/error signatures and return shapes, but changed policy getters, assertions, credit and events. Same wallet ABI does not imply same semantics: its envelope decoder changed. [Comparison](research/deployment-review-2026-10-06/abi-comparison.json).
 
-Historical read-only probes on October 2 at Donut block **23818643** confirmed the documented factory still points to `0xD7FEF338572f96edBeF89E720f1F0fF1284ec79C`, that implementation reports `push.agentwallet.1.0.0`, and the documented URP reports `1.0.0`. Gateway implementation `0x1e412939780f2b834dc42c7ac58d9f99888da659` contains the eight-field PUSH4 selector and not the six-field selector. See [probe](research/donut-probe-2026-10-02.json).
+## Focused verification
 
-These observations validate the named historical deployment, not a global claim that nobody has deployed head elsewhere. No matching new-generation deployment manifest is available. A PUSH4 scan supports dispatch identification but is not complete ABI verification.
+Four checks passed: version-1 envelope round-trip/old first-word incompatibility; synthetic ordered two-asset tuple round-trip; live v4 getConfig decode with old-ABI rejection; array assertion encoding. [Results and limits](research/deployment-review-2026-10-06/wire-checks.json). This is not a rule-grant, stale-spend transaction or funded E2E proof.
 
-## SDK-owned decisions
+The unrestricted run passes 1,947 unit and 53 actual-contract tests. All five explorer ABI sets match the isolated build. Donut is registered and all 25 registered native/EVM/identity cases have passing coverage. [Current acceptance evidence](research/live-acceptance-2026-10-06/README.md).
 
-Implement existing namespace structure, signer reuse, receipt identity adaptation, typed failure metadata, Web2 compatibility, generation guards and internal read reconstruction in the SDK. Document the chosen list/read-only/reinitialize behavior in an SDK decision record. Product consultation is needed only when that choice changes an explicit public promise or introduces a new public parameter.
+## Remaining decisions and acceptance
 
-Do not silently change per-send lookup to filter expired rules: page 5 says lookup selects enabled agent/chain rules and leaves policy checks on-chain. Any expiry precheck is a behavior change to document. A JSON-RPC batch is not necessarily one logical read: IDs must be enumerated before their agent/config reads can be constructed. Avoid promising a single round trip without an index or contract view.
+- Harsh: native omission defaults/public maxValueTotal, raw-offset authoring/read model, multi-rule send selection. [Open draft](questions-harsh.md).
+- Zaryab: ref/label v1 scope and representative SVM integration fixtures. Wire/accounting/deployment delivery requests are removed. [Open draft](questions-zaryab.md).
+- SDK: native/EVM migration is implemented and locally validated. Public SVM mapping/composition and release scope decisions remain. No legacy runtime adapter is retained.
+- Live: registered native/EVM/UEA/7702 and Sepolia success/failure scenarios pass, including independent CEA execution attribution. Public SVM destination acceptance remains after integration. Authorized testnet transactions are recorded in the live report.
 
-Retries for stale spend must be bounded and must not repeat wallet signatures without user-visible control. Revoking first is an available alternative with different atomicity and permission-interruption semantics, not a transparent retry.
-
-## Next live acceptance test
-
-After a compatible deployment and authorized test funding are available, send a positive-amount EVM agent outbound with owner-established gateway allowance, empty recipient, AGW refund recipient and a policy-compliant multicall. Verify real burn, node/TSS handling, destination execution, receipt identity and unchanged hash-based tracking. No such transaction has been broadcast by this review.
-
-## Checkpoint revision and current source freshness
-
-The no-persistent-storage invariant was deliberately revised: owner execution may touch the single packed checkpoint slot, while remaining independent of engine/policy health. `check-execute` now pins the B2 checkpoint revision. A grant starts one tick; every owner call ticks before dispatch; each revoked ID ticks once; successful grants tick once. `executeWithSig` has the same per-call behavior. Failed transactions unwind the ticks; agent execution does not tick.
-
-For assert/revoke/grant inside one owner batch, the delta is five: OWNER_ACTION(assert), OWNER_ACTION(revoke), RULES_REVOKED, OWNER_ACTION(grant), RULES_GRANTED. Checkpoint ref is a call hash or rulesId; it is not the missing job/card ref parameter on grant.
-
-The new accepted limit 34 states that pre-existing allowances can be pulled without a wallet call/checkpoint. Checkpoints detect owner-door activity, not every possible balance change. The evaluator must define how allowance-driven changes affect its verdict. A baseline count and correct funding-call ordering are required; a sinceBlock filter alone cannot detect all same-block changes.
-
-Fresh Notion page 1 was inspected on October 3 and still says binder was dropped for v1. The complete export succeeded. All 12 saved page bodies now reflect the October 3 export. Pages 1 and 5 changed; see the refresh report. Binder is recorded as dropped in the source index and review summary.
-
-## Latest SDK target after successful refresh
-
-Page 5 is still authoritative: create deploys/grants only, funding is separate, UniversalRule uses assets[] and maxGasPerCall, and AGENTIC-TX-103 is removed. New page 1 section 4c proposes per-token accounting and 0–8 assets. The tested e704d5b ABI does not implement that new wire format; retain its single-asset fixtures as historical baseline, not the future codec.
-
-Define per-asset Spent and replacement assertion semantics, empty-asset routing, destination-token/native-marker resolution and the proposed bytes32 expectedCEA encoding. The prior universal defaults/maxAmountTotal naming cannot simply carry forward. Proposed AssetCap.maxTotal zero means unlimited; native defaults remain a separate question.
-
-See [successful refresh report](research/notion-refresh-2026-10-03.md). All earlier download failures remain historical evidence; download permission was sufficient for this run.
-
-The follow-up [external blocker register](external-blockers.md) records what still needs team input after SDK-owned closure. Remote refs were rechecked unchanged; the Notion snapshot date above is unchanged.
-
-
-## Deployment coordination October 5
-
-Shoaib supplied the fixed deployment-address table and will receive Zaryab’s completion notice. The table exactly matches the [saved AGW address book](notion/agw-address-book-donut-2026-09-04.md): factory proxy `0xF1A131571f89fD06890576e6cD0154114ACBBc8b`, wallet implementation `0x959ED7f6943bdd56B3a359BAE0115fef4aa07e17`, UCEP `0x79F07D379BdC26468E48025a61bC955909522c1D`, PushSessionValidator `0x5A59a5Ac94d5190553821307F98e4673BF3c4a1D`, and engine `0x7540f9a59693d51CFB4A3727141eAE4836F96749`. Remaining dependencies/admin addresses are preserved in that source snapshot.
-
-The deployment question is removed from the team handoff. These are known address inputs, not a newly verified target-generation manifest: the table uses the earlier PushAgentWallet/UCEP/PushSessionValidator naming and sizes. Once Zaryab reports completion, verify factory wiring, deployed wallet/policy ABI, source revision and event start blocks against the intended release. No RPC probe or SDK registry change occurred in this documentation pass.
+Checkpoint count semantics remain per action, not per transaction: assert/revoke/grant adds five ticks; failed transactions unwind ticks; agent calls do not tick. Pre-existing allowances may change balances without checkpoints. Preserve internal spend assertions even though public spent records are removed.

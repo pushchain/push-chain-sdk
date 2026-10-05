@@ -1,37 +1,45 @@
 # Remaining external dependencies for AGW
 
-Updated October 4, 2026 from [Harsh’s supplied replies](product-decisions-2026-10-04.md). The earlier count of seven standalone decision areas is historical. Several product decisions are now settled; implementing them is SDK work, not a reason to keep asking the same questions.
+Updated October 6, 2026 after the [v4 deployment and owner-guide review](research/deployment-review-2026-10-06/README.md). Contract wire/accounting definitions and deployment addresses are supplied; distinguish remaining decisions from SDK implementation and live acceptance.
 
-## Still needs external information or delivery
+## Remaining team input
 
-| Area | Owner | Remaining dependency |
+| Area | Owner | Remaining answer |
 | --- | --- | --- |
-| Exact defaults and revised fields | Harsh H3 | Final omission/explicit-zero table and the referenced maxValueTotal change; fresh page-5 body still matches the older snapshot |
-| Native decoded-rule representation | Harsh H4.5 | Decide whether raw offsets are public read/write inputs or an internal/separate decoded representation |
-| Universal accounting and encoding | Zaryab Z1 | Final multi-asset terms, internal per-token reads, expected-spend assertion ABI/vectors, empty-assets routing and envelope/CEA representation |
-| Contract metadata and destination capabilities | Zaryab Z1 | Ref/label scope and matching SVM artifacts |
-| Deployment readiness | Agreed coordination; SDK verifies after completion notice | Fixed addresses are known; Zaryab will notify Shoaib. This is a release dependency, not an open deployment question |
+| Native optional-input defaults/public fields | Harsh H3 | Native value omission defaults, referenced public maxValueTotal change, confirmation of remaining omission rows and token-independence wording |
+| Native decoded-rule representation | Harsh H4.5 | Public raw-offset read/write authoring versus separate decoded/internal form |
+| Multiple-rule execution | Harsh H6 | Explicit caller rule selection versus a defined automatic strategy, including arrays/overlapping rules; same-agent capacity is supplied |
+| Metadata scope | Zaryab Z1.3 with Harsh | Whether absent grant ref/editable label will be delivered or explicitly deferred from v1 |
+| Representative SVM integration fixture | Zaryab Z1.4, where available | Cluster gateway/registry and protected-account derivation inputs, valid envelope/outbound example and expected failure cases |
 
-Hiding public spend does not remove internal spend assertions. Deferring public history does not remove the need to distinguish enabled, expired and revoked permissions for execution.
+The owner guide retains assets[] on the rule, with each listed token usable by every allowed call. Harsh's token-independence comment is not treated as permission to remove token limits. SVM wire types are supplied; the remaining fixture request does not reopen struct delivery.
 
-## Resolved scope and SDK alignment work
+## Delivered — now SDK work
 
-- Approval selector policy belongs to UI/marketplace. Remove the SDK's blanket policy rejection; retain structural validation and contract checks.
-- Generation machinery stays internal; adjust public helper exposure instead of requiring public factory/validator parameters.
-- Public multi-asset spend is unnecessary; align read records while retaining internal accounting.
-- Revoked-rule history is deferred from v1.
-- compileCard is outside standalone AGW. Its shared marketplace schema is no longer an AGW release blocker.
-- Native arrays are desired. Our earlier claim that the single-call AGW door requires a contract batching change was too broad. Sender-preserving UEA/7702 outer batches can contain multiple single agent-door calls. Implement and validate that path; never silently label sequential fallback atomic.
-- Gateway allowance setup already uses separate owner transactions. Creation index binding, atomic updates and response replay have local implementation/review evidence.
+- V4 factory/URP addresses and implementation/engine/validator wiring: checked read-only on Donut block 23931055. The new book supersedes the earlier historical address table for new integrations.
+- Multi-asset EVM/SVM wire layouts, envelope version 1, address EVM expectedCEA and per-asset spend reads/assertions: delivered and verified ABIs saved.
+- Universal total encoding: maxUint256 means no total limit; explicit zero permits no movement. Empty user assets need one destination gas PRC20 routing cap at 0/0, not an empty wire array.
+- Multiple same-agent/same-chain rules: contract guide explicitly permits them; product accepts multiplicity. Choosing the rule for a send remains H6.
+- Separate owner allowance, immutable-wallet generations, internal accounting and sender-preserving native batching: preserve the existing design while migrating to v4.
 
-The clear product decisions are now implemented: approval-policy rejection and obsolete public exports are removed, reads are active-only, and native arrays require atomic transport. H3 defaults were deliberately not changed. [Implementation status](implementation-status.md) distinguishes current code from the new direction.
+Native/EVM v4 migration is now implemented: adapter/registry, envelopes, multi-asset reads/codecs, ordered assertions, outbound token choice and ABI integration. The actual-contract harness is ported; runtime/test legacy artifacts were removed. [Current evidence](research/v4-implementation-2026-10-06/README.md). SVM SDK mapping/composition and live acceptance remain.
 
-## Freshness and delivery gates
+## Previously settled scope
 
-SDK page 5 was downloaded October 4 and matches the saved body after link normalization; other registered pages were not refreshed. [Evidence](research/notion-check-2026-10-04/comparison.json). AGW remote head remains e704d5b. No compatible deployment was verified in this pass.
+Approval screening belongs to UI/marketplace; structural/ABI validation remains in the SDK. Generation details and spend stay internal, public revoked history is deferred, and compileCard remains outside standalone AGW. Native arrays use atomic sender-preserving UEA/7702 batching, with explicit failure when unavailable. No request for those answered choices is reopened.
 
-Continue SDK work against explicit adapters and assumptions. A compatible manifest, internal multi-asset artifacts and authorized live acceptance remain necessary before enabling the final release. The source snapshots remain unedited evidence; the product decision record captures the newer scope direction.
+## Platform and release gates
 
-## Deployment coordination October 5
+creditRevert still depends on Push-core executor integration; the source explicitly says failures are not yet credited. Ordinary money returning does not lower spent. No-code at the module account is not by itself evidence of a defect.
 
-The deployment request was removed from Zaryab’s question document at Shoaib’s direction. The supplied fixed-address table matches the [saved address book](notion/agw-address-book-donut-2026-09-04.md). Keep it as known address input; after the completion notice, the SDK team verifies deployed code/wiring, matched ABI and event start blocks, then prepares the registry/E2E configuration. No registry entry was enabled by this documentation update.
+All 25 registered AGW live scenarios have passing bounded selected-run coverage, including UEA/7702 identities/batching, lifecycle, allowance, response hooks/replay and Sepolia outbound success/failure. This resolves the outstanding native/EVM acceptance tasks; public Solana destinations still need integration and live coverage. External product/scope decisions above remain separate. [Current evidence](research/live-acceptance-2026-10-06/README.md).
+
+## Freshness
+
+AGW deployment source e8db748; documentation head deploy-agw@10a24f1, with identical src. Explorer-verified ABIs and a pinned RPC probe are saved in the [review bundle](research/deployment-review-2026-10-06/README.md). No local runtime rebuild or full suite was run in this pass. Core/gateway source pins were not refreshed.
+
+Notion's last full export remains October 3, with focused October 4 body and October 5 comment checks. The GitHub guide is a separate deployed-wire source, not a silent replacement for the target public SDK API.
+
+## SVM foundation and current execution environment
+
+[SVM internals](research/svm-internals-2026-10-06/README.md) are implemented and tested offline; public mapping/dispatch remains pending. Shoaib authorized .env-backed funding for tests. The current sandbox blocks Donut DNS and Anvil's localhost RPC, so keys are not loaded and no funds are sent. Networking availability is an execution blocker, not a missing product answer.

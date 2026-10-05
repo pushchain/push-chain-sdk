@@ -1,0 +1,23 @@
+{
+  "extends": "../../../../packages/core/tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "types": [
+      "jest",
+      "node"
+    ],
+    "baseUrl": "../../../..",
+    "paths": {
+      "@e2e/shared/*": [
+        "packages/core/__e2e__/shared/*"
+      ]
+    },
+    "typeRoots": [
+      "../../../../node_modules/@types"
+    ]
+  },
+  "include": [
+    "../../../../packages/core/__e2e__/agw/**/*.ts"
+  ],
+  "references": []
+}

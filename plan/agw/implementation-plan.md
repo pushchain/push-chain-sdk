@@ -1,10 +1,16 @@
 # Complete AGW SDK implementation plan
 
+Updated October 6, 2026. The v4-only native/EVM implementation uses deployed source e8db748 and the Donut manifest. Old runtime/test adapters and single-asset codecs are removed. The unfiltered unit suite passes 1,947 tests; all 53 actual-contract Anvil cases pass; build and four typechecks pass. All 25 registered AGW live scenarios pass across selected runs; remaining work is public SVM integration and release scope decisions. [Current acceptance and remaining coverage](research/live-acceptance-2026-10-06/README.md).
+
+SVM internal terms/accounts/payload/builder are implemented and validated. Public SVM mapping/dispatch remains gated. Remaining decisions are H3 native defaults, H4.5 raw-offset public shape, H6 send selection and ref/label v1 scope. Earlier plan recommendations below are qualified by those accepted decisions and the current implementation status.
+
+> October 5 comment update: [live review](research/notion-comments-2026-10-05.md) adds [H6](questions-harsh.md#h6) for same-agent multiple-rule scope and send selection. Any one-rule-per-agent/chain or DUPLICATE_RULE recommendation below describes the earlier implementation baseline and is provisional. Once clarified, revise steps 6–8 and 10–12 plus their tests together. Do not choose the first rule arbitrarily. Token-independence wording is included in H3/Z1.1; defaults remain unresolved.
+
 > October 4 update: [Harsh’s replies](product-decisions-2026-10-04.md) supersede earlier provisional approval/default/helper/history/compiler recommendations below. Use [remaining dependencies](external-blockers.md) for current blockers. The clear scope changes and sender-preserving native batching are now implemented; H3 defaults remain unchanged pending clarification. See [alignment evidence](research/product-alignment-2026-10-04/README.md).
 
 This is the step-by-step plan for the complete AGW surface in Notion page 5 inside `@pushchain/core`. It covers management, rules, execution, responses, helpers, compatibility, documentation and release validation. Marketplace, job and evaluator clients are separate projects; `compileCard` is deferred to their later delivery and is not exposed by standalone AGW. Settled implementation is recorded in [implementation status](implementation-status.md); remaining contract capabilities stay gated.
 
-Target: [SDK spec](notion/5-sdk-agw.md), exported October 3, 2026 at 13:23 IST. Tested contract source: AGW `e704d5b`. SDK production baseline: `167fdc6`. See [current baseline](current-baseline.md), [SDK design](sdk-design-review.md), [SDK-owned decisions](sdk-owned-review.md) and [external blockers](external-blockers.md). Remote refs were rechecked unchanged; subsequent Notion edits remain unverified.
+Target: [SDK spec](notion/5-sdk-agw.md), exported October 3, 2026 at 13:23 IST. Tested contract source: AGW v4 `e8db748`. SDK production baseline: `167fdc6`. See [current baseline](current-baseline.md), [SDK design](sdk-design-review.md), [SDK-owned decisions](sdk-owned-review.md) and [external blockers](external-blockers.md). The October 6 deployment/owner guide and October 5 comment review qualify the older Notion snapshot; a newer full Notion export is not claimed.
 
 ## How to execute this plan
 
@@ -44,17 +50,17 @@ These are working assumptions for development, not accepted product changes. Rep
 | A02 | Multiple native actions use a sender-preserving UEA/7702 outer batch of single agent-door calls; never sequential fallback | Harsh H2 direction; implemented and locally validated | Atomic transport and batch response adapters |
 | A03 | Exact revised default table remains open; existing defaults are unchanged until H3 is clarified | Harsh H3 / E03 | One defaults module |
 | A04 | Generation-dependent IDs, derivation and encoding context remain internal; client.agentic.derive remains public | Harsh H4.1 resolved; implemented | Public utility exports and internal codecs |
-| A05 | Spend is internal, not a public result. Final per-token wire/read/assertion ABI, empty-assets routing and CEA width remain unresolved | Harsh H4.2 scope resolved; Zaryab Z1 delivery pending | Internal accounting and codec adapter |
+| A05 | Spend stays internal. V4 supplies ordered per-token wire/read/assertion ABI, address EVM CEA and zero-cap gas-token routing for empty user assets | Native/EVM v4 integration and live outbound tests pass; public SVM pending | V4 accounting/codec/outbound adapter |
 | A06 | V1 lists enabled rules only; unknown/revoked get returns RULE_NOT_FOUND. No historical record reconstruction | Harsh H4.3 deferred; implemented | Public read model |
-| A07 | A verified new deployment supplies the matching grant ref/envelope/metadata ABI, addresses and start blocks. Historical Donut remains a distinct generation. | Zaryab Z1 for contract surface; agreed deployment notice, then SDK verification | Deployment manifest and capability adapter |
+| A07 | New v4 addresses/wiring/ABIs are supplied and checked; V4 adapter/manifest are implemented and verified. Envelope is version 1; grant ref/setLabel remain absent | Deployment delivered October 6; Z1.3 metadata scope remains | Deployment manifest, v4 migration and capability gates |
 | A08 | No compileCard in standalone AGW; canonical cards belong to later marketplace work | Harsh H5: outside AGW v1 | No public compiler stub/export |
 
 ### What closes each assumption
 
 - A01/A02/A04: clear product scope is implemented. A03 defaults still need exact agreed wording.
-- A05: Harsh agrees the public representation; Zaryab supplies matching terms, read/assertion ABIs and vectors. Clarification alone does not supply missing contract code.
+- A05: delivered v4 definitions unblock SDK codec/read/assertion work. Preserve internal accounting, correct zero semantics and prove all-asset replacement rollback.
 - A06: revoked history is outside v1; active-only reads and explicit RULE_NOT_FOUND behavior are implemented.
-- A07: Zaryab identifies the selected contract surface and notifies Shoaib when deployment is complete. Fixed addresses are already available. The SDK then builds/verifies its deployment manifest, registry and integration evidence; no additional address request is needed.
+- A07: deployment notice received; new addresses supersede the historical table. The v4 manifest/registry and native/EVM integration are verified; track remaining acceptance in the live report. Ref/label remain a scope/delivery question; no new address request is needed.
 - A08: closed for standalone AGW by deferring compileCard to the marketplace track.
 
 Record design decisions and artifact/deployment readiness separately. All eight have an explicit question owner, but answers alone do not mean all eight are implemented or verified.
@@ -62,7 +68,7 @@ Record design decisions and artifact/deployment readiness separately. All eight 
 Placeholder implementation rules:
 
 - Use explicit internal capabilities and typed failures. A missing codec or unsupported generation must fail before signature/broadcast; never return empty success records, zero addresses, fabricated IDs or dummy transactions.
-- Keep pinned e704d5b single-asset artifacts as review fixtures. They must not silently encode the public assets[] target by choosing the first asset or splitting it into unrelated rules.
+- Keep historical source snapshots only as planning evidence. Runtime and tests use v4 artifacts; assets[] must never become an arbitrary first asset or unrelated split rules.
 - Keep provisional wire types internal. Do not publish `any`, guessed envelope versions, guessed deployment addresses or fixed ABI tuples as the final SDK contract.
 - Do not implement both sides of a product choice speculatively. Isolate the boundary and implement the selected behavior after confirmation.
 - `setLabel`, full historical reads, SVM destination encoding and compileCard may be explicitly unsupported in development builds while their dependencies are incomplete. A complete release must implement the promised surface or record an approved scope change.

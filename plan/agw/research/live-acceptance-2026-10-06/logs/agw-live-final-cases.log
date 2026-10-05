@@ -1,0 +1,182 @@
+PASS core-e2e packages/core/__e2e__/agw/lifecycle.spec.ts (93.065 s)
+PASS core-e2e packages/core/__e2e__/agw/identity-gas.spec.ts (159.091 s)
+  ● Console
+
+    console.log
+      [4.80s] AGENTIC-TX-107: Rule Resolved
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [4.81s] SEND-TX-101: Origin Chain Detected
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [4.82s] SEND-TX-102-01: Estimating Gas
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [5.17s] SEND-TX-103-01: Resolving Universal Execution Account
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [5.49s] SEND-TX-103-02: Universal Execution Account Resolved
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [5.49s] SEND-TX-103-03-04: Prepaid Deposit Estimated
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [7.80s] SEND-TX-104-01: Awaiting Transaction
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [9.70s] SEND-TX-105-01: Gas Funding In Progress
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [26.48s] SEND-TX-105-02: Gas Funding Confirmed
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [26.48s] SEND-TX-107: Broadcasting to Push Chain
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [39.43s] SEND-TX-199-01: Push Chain Tx Success
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [39.43s] AGENTIC-TX-199-01: Agentic Operation Done
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [41.82s] AGENTIC-TX-107: Rule Resolved
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [1.38s] AGENTIC-TX-107: Rule Resolved
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [41.82s] SEND-TX-101: Origin Chain Detected
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [1.38s] SEND-TX-101: Origin Chain Detected
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [41.82s] SEND-TX-102-01: Estimating Gas
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [1.38s] SEND-TX-102-01: Estimating Gas
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [42.15s] SEND-TX-103-01: Resolving Universal Execution Account
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [1.70s] SEND-TX-103-01: Resolving Universal Execution Account
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [42.80s] SEND-TX-103-02: Universal Execution Account Resolved
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [2.35s] SEND-TX-103-02: Universal Execution Account Resolved
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [42.80s] SEND-TX-103-03-04: Prepaid Deposit Estimated
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [2.35s] SEND-TX-103-03-04: Prepaid Deposit Estimated
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [43.43s] SEND-TX-104-02: Awaiting Signature
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [2.99s] SEND-TX-104-02: Awaiting Signature
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [43.43s] SEND-TX-104-03: Verification Success
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [2.99s] SEND-TX-104-03: Verification Success
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [43.43s] SEND-TX-107: Broadcasting to Push Chain
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [2.99s] SEND-TX-107: Broadcasting to Push Chain
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [51.01s] SEND-TX-199-01: Push Chain Tx Success
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [10.57s] SEND-TX-199-01: Push Chain Tx Success
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [51.01s] AGENTIC-TX-199-01: Agentic Operation Done
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [10.57s] AGENTIC-TX-199-01: Agentic Operation Done
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+PASS core-e2e packages/core/__e2e__/agw/native-exec.spec.ts (113.845 s)
+
+Test Suites: 3 passed, 3 total
+Tests:       4 skipped, 9 passed, 13 total
+Snapshots:   0 total
+Time:        366.042 s
+Ran all test suites within paths "packages/core/__e2e__/agw/lifecycle.spec.ts", "packages/core/__e2e__/agw/native-exec.spec.ts", "packages/core/__e2e__/agw/identity-gas.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

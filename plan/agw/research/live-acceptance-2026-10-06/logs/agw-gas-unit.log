@@ -1,0 +1,8 @@
+PASS core packages/core/src/lib/agentic/__tests__/send.spec.ts (5.439 s)
+PASS core packages/core/src/lib/vm-client/evm-client.dynamic-gas.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       36 passed, 36 total
+Snapshots:   0 total
+Time:        5.713 s
+Ran all test suites within paths "packages/core/src/lib/vm-client/evm-client.dynamic-gas.spec.ts", "packages/core/src/lib/vm-client/evm-client.spec.ts", "packages/core/src/lib/agentic/__tests__/send.spec.ts".

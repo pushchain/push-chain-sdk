@@ -1,5 +1,9 @@
 # Harsh product replies and SDK impact
 
+October 6 follow-up: [v4 owner guide/deployment review](research/deployment-review-2026-10-06/README.md) supplies universal hard-zero/maxUint256 semantics, wire/read/assertion layouts, SVM structs and same-agent multiplicity. These are no longer missing contract definitions. Native SDK omission defaults/public fields, raw-offset authoring and send selection remain product choices; see the narrowed question drafts.
+
+October 5 follow-up: [live Notion comments](research/notion-comments-2026-10-05.md) add multiple-rules direction and ambiguous token-independence wording. See [H6](questions-harsh.md#h6) for same-agent scope/send selection and H3 for final token/limit definitions. The October 4 decisions below remain recorded evidence; uniqueness is now provisional and defaults/raw offsets remain unresolved.
+
 Recorded October 4, 2026 from the screenshot supplied by Shoaib. The message is attributed to Harsh Rajat and displays 1:35 AM; no Slack permalink or explicit message timezone was supplied. These replies supersede the earlier recommendations where clear. This file records decisions and interpretation; no SDK source changes were made in this pass.
 
 ## Source check

@@ -1,84 +1,47 @@
-# AGW SDK open contract requests for Zaryab
+# AGW SDK remaining contract follow-ups for Zaryab
 
-We need the artifacts and compatibility details below to finish the AGW SDK against the intended contract generation. Please reply by item ID with the source/ABI/vector link when available, or the remaining work and expected delivery. Product choices that affect these requests are linked to Harsh's document.
+Updated October 6, 2026 after the new Donut deployment and owner integration guide. Thank you: the multi-asset terms, versioned envelope, EVM CEA width, internal per-token reads/assertion ABI and SVM wire definitions are supplied. We have checked code/wiring read-only and saved the verified ABIs. Those delivery questions have been removed.
 
-**Status:** updated October 4 after [Harsh’s replies](product-decisions-2026-10-04.md). Only Z1 remains as an active contract question for standalone AGW. Public multi-asset spend, revoked history and compileCard are no longer requested as standalone v1 features; internal accounting still matters.
+Only the following items remain in Z1. Please reply by sub-item with the agreed scope or fixture link. Deployment/address coordination is complete; adapter integration and funded acceptance are SDK work.
 
-| Item | Requested deliverable | What it enables |
-| --- | --- | --- |
-| [Z1](#z1) | Matching terms, accounting/assertion ABI and metadata surface | Final rule encoding, reads and safe replacement |
+| Item | Remaining answer |
+| --- | --- |
+| [Z1.3](#z1-3) | Ref/label scope for this release |
+| [Z1.4](#z1-4) | Representative SVM integration fixtures/registry inputs where available |
 
 ## Source baseline
 
-- **Target:** [saved contract change set](notion/1-agw-contract-changes.md), especially section 4c; [live Notion page](https://app.notion.com/p/pushprotocol/1-AGW-Contract-Changes-nomenclature-standard-change-set-3e9188aea7f4813aa31fc95ceb4e684d).
-- **SDK:** [saved page 5](notion/5-sdk-agw.md); [live Notion page](https://app.notion.com/p/pushprotocol/5-SDK-AGW-3e9188aea7f481cf8e8de324956549b9). Both snapshots were exported October 3, 2026 at 13:23 IST; later page edits are not covered.
-- **Reviewed code:** [AGW e704d5b](https://github.com/pushchain/push-agentic-wallets/blob/e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9/src/AGW.sol), core `cb69e0b`, gateway `bcbf7df`. Remote refs were rechecked October 3 and were unchanged. This does not verify a new live deployment. [Full source inventory](SOURCES.md).
+- [Owner integration guide](https://github.com/pushchain/push-agentic-wallets/blob/10a24f101e2e6e0a9b76517b29f5cdb1aa967796/docs/5_SDK_Owner_Integration.md).
+- [V4 address book](https://github.com/pushchain/push-agentic-wallets/blob/10a24f101e2e6e0a9b76517b29f5cdb1aa967796/docs/addresses/donut.md).
+- Reported deployed source e8db748; documentation head deploy-agw@10a24f1 has identical src. Donut probe block 23931055: factory/wallet/policy wiring matches, URP 3.1.0. [Evidence and remaining SDK work](research/deployment-review-2026-10-06/README.md).
+- Target public API remains [page 5](notion/5-sdk-agw.md), qualified by Harsh's later replies/comments. New owner guide describes deployed wire behavior; it does not settle every public API/scope question. Notion was not re-exported in this pass.
 
 <a id="z1"></a>
 
-## Z1 Source and ABI for the target generation
-
-<a id="z1-1"></a>
-
-### Z1.1 Universal rule encoding
-
-**Current mismatch.** The proposal introduces multi-asset rules; tested `e704d5b` still has single-asset terms. The SDK needs an exact supported encoding before it can finalize the codec.
-
-**Please provide the implementation revision, ABI and vectors covering:**
-
-| Area | Detail needed |
-| --- | --- |
-| Assets and counters | `assets[]`, per-token counters, duplicate assets and zero/unlimited conventions |
-| Call-only rules | Routing and token fields when `assets[]` is empty and no tokens move |
-| Gas cap | Final `maxGasPerCall` field/layout |
-| Destination account | EVM `expectedCEA` type/width and encoding |
-| Envelope | Version field, accepted version and body layout |
-
-If the code is still pending, please identify the agreed target definitions and remaining implementation work. A proposal alone cannot establish the final wire ABI.
-
-**Evidence:** [proposed section 4c](notion/1-agw-contract-changes.md); [pinned UniversalTerms](https://github.com/pushchain/push-agentic-wallets/blob/e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9/src/libraries/Types.sol#L217).
-
-<a id="z1-2"></a>
-
-### Z1.2 Per-token reads and safe replacement
-
-**Issue.** Replacement must reject a stale spend snapshot. An `assertSpent` function that only returns current totals does not protect a later revoke/grant from an agent spending after the SDK prepared the transaction.
-
-**Requested behavior:** compare caller-supplied expected totals for all old-rule assets and revert if any differs, inside the same owner transaction as revoke and grant.
-
-**Please provide:**
-
-- Per-token spend-read and expected-spend assertion signatures.
-- Token ordering/completeness rules for the expected snapshot.
-- A vector/test where intervening spend makes the entire replacement revert.
-
-The SDK will implement the wrapper and atomic batch. Harsh has said per-token spend need not be public, but the SDK still needs these internal reads and assertions for safe replacement. Please align omitted/explicit-zero wire semantics with the final H3 defaults.
-
-**Evidence:** [current expected-spend assertion](https://github.com/pushchain/push-agentic-wallets/blob/e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9/src/policies/UniversalRulesPolicy.sol#L1409); [proposed assertion change, section 4c](notion/1-agw-contract-changes.md).
+## Z1 Remaining surface and integration details
 
 <a id="z1-3"></a>
 
-### Z1.3 Reference and label surface
+### Z1.3 Ref and editable labels: delivery or v1 scope change?
 
-**Please confirm the selected generation's surface:**
+The new generation still exposes grantRules(Session) without ref, and RulesGranted carries no job reference. Label is emitted by WalletDeployed only; setLabel and label storage are absent. The target SDK still promises rule ref and w.setLabel.
 
-| Feature | Open detail |
-| --- | --- |
-| Grant reference | `ref` parameter/event shape; include it in the owner signature digest when a signed grant is used |
-| Editable labels | Whether proposed `setLabel`/label storage ships with this generation, with its ABI/event behavior |
-
-Harsh deferred revoked-rule history for v1; no additional historical metadata is requested solely for that feature. Please distinguish committed ref/label features from proposals.
-
-**Evidence:** [target SDK lifecycle](notion/5-sdk-agw.md); [pinned grant signatures](https://github.com/pushchain/push-agentic-wallets/blob/e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9/src/AGW.sol#L483); [pinned grant event emission](https://github.com/pushchain/push-agentic-wallets/blob/e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9/src/AGW.sol#L636).
+Please confirm whether those are follow-up contract changes for this release or should be explicitly deferred from v1 with Harsh. If they are coming, provide the selected parameter/event shape when ready, including signature binding for ref on signed grants. We will keep unsupported capabilities explicit until the public scope and delivered ABI agree.
 
 <a id="z1-4"></a>
 
-### Z1.4 SVM contract surface
+### Z1.4 SVM example to validate the SDK mapping
 
-Harsh referred SVM destination work to you. Please identify its supported rule constraints and matching terms/payload ABI or fixtures when ready, including program/discriminator and account/data checks. We need these to implement the SDK representation; Solana-origin signers through UEA are a separate capability.
+SvmTerms/program/account/data-pin definitions are supplied; we are not asking for those structs again. If available, please share one representative Donut-to-Solana fixture covering:
 
-Deployment coordination is already agreed: the addresses are known, and you will notify Shoaib when deployment is complete. There is no additional deployment/address request in this document. Compatibility checks and live acceptance remain SDK release work.
+- Cluster CAIP-2 value and gateway program/registry source.
+- Destination CEA and protected token/output accounts, with their derivation inputs.
+- A valid encoded envelope and outbound payload for one allowed instruction; expected account/data-pin matches and corresponding failure cases.
 
-## Supporting documents
+We will implement SDK resolution/composition. This fixture helps verify that our PDA/ATA coverage and payload encoding match the contract/parser and actual cluster configuration. The owner guide explicitly excludes agent outbound composition; source-level SVM support alone does not prove a live destination route.
 
-[Implementation plan](implementation-plan.md) · [External dependencies](external-blockers.md) · [Current baseline](current-baseline.md) · [Harsh's open decisions](questions-harsh.md)
+## Product choices kept separate
+
+[Harsh's draft](questions-harsh.md) retains native omission defaults/public fields, raw-offset authoring and multi-rule send selection. The new guide confirms that multiple rules may exist for the same agent and chain; it does not choose a sendTransaction selection API. No public multi-asset spend, revoked-history or compileCard request is reopened.
+
+[Implementation plan](implementation-plan.md) · [External dependencies](external-blockers.md) · [Current baseline](current-baseline.md)
