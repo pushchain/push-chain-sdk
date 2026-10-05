@@ -14,6 +14,8 @@ import {
   erc20Abi,
   fallback,
   http,
+  parseAbi,
+  parseEventLogs,
   parseEther,
   type Address,
   type Hex,
@@ -153,6 +155,26 @@ d('agw universal evm', () => {
     expect(receipt.from).toBe(wallet);
     expect(receipt.externalTxHash).toBeTruthy();
     await verifyExternalTransaction(receipt.externalTxHash as string, SEPOLIA);
+    const destinationReceipt = await sep.getTransactionReceipt({
+      hash: receipt.externalTxHash as Hex,
+    });
+    // Attribute the call to this wallet's CEA, independently of a shared
+    // counter increase. The event is emitted by CEA for each executed step.
+    const executed = parseEventLogs({
+      abi: parseAbi([
+        'event UniversalTxExecuted(bytes32 indexed subTxId, bytes32 indexed universalTxId, address indexed originCaller, address target, bytes data)',
+      ]),
+      logs: destinationReceipt.logs,
+    });
+    expect(
+      executed.some(
+        (event) =>
+          event.address.toLowerCase() === cea.toLowerCase() &&
+          event.args.originCaller.toLowerCase() === wallet.toLowerCase() &&
+          event.args.target.toLowerCase() === counter.toLowerCase() &&
+          event.args.data === INCREMENT
+      )
+    ).toBe(true);
     expect(
       await f.push.readContract({
         address: token,
