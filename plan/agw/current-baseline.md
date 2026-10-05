@@ -77,3 +77,10 @@ Define per-asset Spent and replacement assertion semantics, empty-asset routing,
 See [successful refresh report](research/notion-refresh-2026-10-03.md). All earlier download failures remain historical evidence; download permission was sufficient for this run.
 
 The follow-up [external blocker register](external-blockers.md) records what still needs team input after SDK-owned closure. Remote refs were rechecked unchanged; the Notion snapshot date above is unchanged.
+
+
+## Deployment coordination October 5
+
+Shoaib supplied the fixed deployment-address table and will receive Zaryab’s completion notice. The table exactly matches the [saved AGW address book](notion/agw-address-book-donut-2026-09-04.md): factory proxy `0xF1A131571f89fD06890576e6cD0154114ACBBc8b`, wallet implementation `0x959ED7f6943bdd56B3a359BAE0115fef4aa07e17`, UCEP `0x79F07D379BdC26468E48025a61bC955909522c1D`, PushSessionValidator `0x5A59a5Ac94d5190553821307F98e4673BF3c4a1D`, and engine `0x7540f9a59693d51CFB4A3727141eAE4836F96749`. Remaining dependencies/admin addresses are preserved in that source snapshot.
+
+The deployment question is removed from the team handoff. These are known address inputs, not a newly verified target-generation manifest: the table uses the earlier PushAgentWallet/UCEP/PushSessionValidator naming and sizes. Once Zaryab reports completion, verify factory wiring, deployed wallet/policy ABI, source revision and event start blocks against the intended release. No RPC probe or SDK registry change occurred in this documentation pass.

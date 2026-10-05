@@ -13,7 +13,7 @@ Source baseline: AGW `pushAgenticWallet_v3@e704d5b`, core marketplace `cb69e0b`,
 | Exact limit/default table and the referenced maxValueTotal change | [Harsh H3](questions-harsh.md#h3) | G19 |
 | Public raw-offset read/write representation | [Harsh H4.5](questions-harsh.md#h4-5) | G25 |
 | Final multi-asset encoding, internal per-token reads and expected-spend assertions | [Zaryab Z1](questions-zaryab.md#z1) | G23, G24 |
-| Target ref/label/envelope scope, SVM artifacts and compatible deployment | [Zaryab Z1/Z3](questions-zaryab.md#z3) | G01, G02, G08, G22 |
+| Target ref/label/envelope scope and SVM artifacts | [Zaryab Z1](questions-zaryab.md#z1) | G08, G22 |
 
 Approval screening, public generation context, public spend shape, revoked-history reconstruction and compileCard are no longer unresolved standalone product questions. Native agent batching is implemented through a sender-preserving outer transport; it does not require a new batch-mode AGW agent entry point.
 
@@ -23,7 +23,7 @@ P0 blocks agreed authorization/accounting or safe final integration. P1 affects 
 
 | ID | Priority | Status | Current finding or resolution | Remaining action |
 | --- | --- | --- | --- | --- |
-| G01 | P1 | Open deployment dependency | Reviewed source is e704d5b; build/source tests are available. SDK deployment registry remains empty. | Obtain and verify the selected generation’s manifest, wiring, source artifacts, capabilities and start blocks before live acceptance. |
+| G01 | P1 | Open deployment dependency | Reviewed source is e704d5b; build/source tests are available. SDK deployment registry remains empty pending compatibility verification; fixed addresses have been supplied. | Await the agreed completion notice from Zaryab; then verify the known fixed addresses, code/wiring, matched artifacts and event start blocks. Deployment is a release dependency, not an open question. |
 | G02 | P0 | Source implemented; deployment pending | D3 executeAsAgent/agentOf and sender adapter exist; SmartSession is unchanged. SDK uses this model. | Verify the selected deployment and retain sender-binding/alternate-path coverage; do not reopen the withdrawn engine-fork proposal. |
 | G03 | P1 | SDK question resolved and implemented | Validator/nonce ID calculation and generation-specific derivation are internal. Public generation-context helpers were removed per Harsh H4.1. IDs remain wallet-scoped and receipt-confirmed. | Revalidate vectors for the final generation under G01/G23; no public context-signature approval is needed. |
 | G04 | P1 | ABI history corrected; release note | Six-field main is older; inspected current gateway and historical Donut dispatcher use eight fields. A hypothetical future field removal is not a present SDK blocker. | Encode the selected manifest’s gateway ABI and track any actual migration with that deployment. |
@@ -64,3 +64,5 @@ Local batch proof uses actual AGW/factory/engine/policy and real Anvil EIP-7702 
 - Internal spend assertions remain required even when public spend records are removed.
 - H3 defaults and raw-offset representation remain open. Keep current defaults until the former is explicitly clarified.
 - Harsh’s replies have been received. The linked question documents now contain remaining follow-ups; no outbound team messages were sent by this agent.
+
+Deployment coordination update October 5: the address request is retired. The supplied table matches the saved historical address book; its verification marks are source-reported, not new SDK compatibility checks. Zaryab will notify Shoaib when the intended deployment is complete. The SDK performs its registry and live-acceptance checks afterward.

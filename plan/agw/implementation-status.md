@@ -44,7 +44,7 @@ October 3, 2026, updated after the implementation review (R1–R7 fixed; see the
 | A04 | Internal generation details | n/a | rulesId/deriveWallet/encodeRules and RulesEncodeContext are not public; client.agentic.derive remains |
 | A05 | Public spend not required | Final multi-asset artifacts missing | Public spent removed; internal reads/assertions retained; final universal wire stays gated |
 | A06 | History deferred from v1 | Not required for v1 | list is enabled-only; unknown/revoked get returns RULE_NOT_FOUND |
-| A07 | Open (Zaryab Z1/Z3) | **No verified deployment** | Registry and `CONSTANTS.AGENTIC` empty; every AGW call fails `GENERATION_UNSUPPORTED`; `ref` and `setLabel` gated |
+| A07 | Contract surface pending (Z1); deployment notice already coordinated | **No verified deployment** | Registry and `CONSTANTS.AGENTIC` empty; every AGW call fails `GENERATION_UNSUPPORTED`; `ref` and `setLabel` gated |
 | A08 | Outside standalone AGW | Future marketplace dependency | Public compileCard stub and capability removed |
 
 Harsh replies and the focused October 4 page-5 recheck are recorded in product-decisions-2026-10-04.md. The clear decisions above are implemented; defaults are still pending.
@@ -59,3 +59,5 @@ Implementation evidence exists for G03 (explicit-context IDs, receipt IDs), G08 
 F1 is resolved with a shared canonical first-call summary and complete `agentic.destinationCalls` metadata on send/replay. R6 wait-path regressions are now in the regular unit suite. Current validation: 1,908 unit tests, 34 local-contract tests, both typechecks and build pass. No live acceptance was performed. See [resolution](implementation-review/outbound-response-resolution.md).
 
 Current alignment verification is recorded in [product alignment evidence](research/product-alignment-2026-10-04/README.md). Existing older counts below/above describe their named revisions.
+
+Deployment coordination October 5: fixed addresses are supplied and Zaryab will notify Shoaib when deployment is complete. Z3 is removed from the open questions. SDK compatibility verification and live acceptance remain required afterward; the registry is unchanged.

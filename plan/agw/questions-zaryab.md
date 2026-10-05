@@ -2,12 +2,11 @@
 
 We need the artifacts and compatibility details below to finish the AGW SDK against the intended contract generation. Please reply by item ID with the source/ABI/vector link when available, or the remaining work and expected delivery. Product choices that affect these requests are linked to Harsh's document.
 
-**Status:** updated October 4 after [Harsh’s replies](product-decisions-2026-10-04.md). Only Z1/Z3 remain for standalone AGW. Public multi-asset spend, revoked history and compileCard are no longer requested as standalone v1 features; internal accounting still matters.
+**Status:** updated October 4 after [Harsh’s replies](product-decisions-2026-10-04.md). Only Z1 remains as an active contract question for standalone AGW. Public multi-asset spend, revoked history and compileCard are no longer requested as standalone v1 features; internal accounting still matters.
 
 | Item | Requested deliverable | What it enables |
 | --- | --- | --- |
 | [Z1](#z1) | Matching terms, accounting/assertion ABI and metadata surface | Final rule encoding, reads and safe replacement |
-| [Z3](#z3) | Verified deployment and capability manifest | Generation onboarding and live acceptance |
 
 ## Source baseline
 
@@ -59,7 +58,7 @@ The SDK will implement the wrapper and atomic batch. Harsh has said per-token sp
 
 <a id="z1-3"></a>
 
-### Z1.3 References, labels and historical metadata
+### Z1.3 Reference and label surface
 
 **Please confirm the selected generation's surface:**
 
@@ -72,26 +71,13 @@ Harsh deferred revoked-rule history for v1; no additional historical metadata is
 
 **Evidence:** [target SDK lifecycle](notion/5-sdk-agw.md); [pinned grant signatures](https://github.com/pushchain/push-agentic-wallets/blob/e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9/src/AGW.sol#L483); [pinned grant event emission](https://github.com/pushchain/push-agentic-wallets/blob/e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9/src/AGW.sol#L636).
 
-<a id="z3"></a>
+<a id="z1-4"></a>
 
-## Z3 Deployment and capability manifest
+### Z1.4 SVM contract surface
 
-**Please provide the following for the selected release deployment:**
+Harsh referred SVM destination work to you. Please identify its supported rule constraints and matching terms/payload ABI or fixtures when ready, including program/discriminator and account/data checks. We need these to implement the SDK representation; Solana-origin signers through UEA are a separate capability.
 
-| Manifest field | Required information |
-| --- | --- |
-| Network and addresses | Factory, wallet implementation, validator, engine and policy addresses |
-| Source and ABI | Exact revisions/build artifacts, proxy implementations where applicable and wiring |
-| Start blocks | Deployment/event start blocks for bounded discovery and reconstruction |
-| Reused components | Whether engine/policy instances are shared with previous generations and their compatibility |
-| Gateway | Matched gateway implementation/request ABI and any planned coordinated migration |
-| Destination support | Supported EVM/SVM capabilities; matching SVM terms/payload fixtures if enabled |
-
-Existing wallet clones cannot acquire the target wallet ABI. We will use the manifest to build a generation registry, verify deployed wiring and run live acceptance. These addresses must correspond to the intended release generation.
-
-**If deployment is pending:** provide the intended feature scope and remaining delivery work. Clarification settles the plan; live acceptance remains pending until deployment exists.
-
-Harsh referred SVM work to you. Please include its supported input constraints and matching artifacts when ready. [Historical Donut addresses](notion/agw-address-book-donut-2026-09-04.md) are retained as historical evidence, not assumed to support this target.
+Deployment coordination is already agreed: the addresses are known, and you will notify Shoaib when deployment is complete. There is no additional deployment/address request in this document. Compatibility checks and live acceptance remain SDK release work.
 
 ## Supporting documents
 

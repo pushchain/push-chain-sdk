@@ -46,7 +46,7 @@ These are working assumptions for development, not accepted product changes. Rep
 | A04 | Generation-dependent IDs, derivation and encoding context remain internal; client.agentic.derive remains public | Harsh H4.1 resolved; implemented | Public utility exports and internal codecs |
 | A05 | Spend is internal, not a public result. Final per-token wire/read/assertion ABI, empty-assets routing and CEA width remain unresolved | Harsh H4.2 scope resolved; Zaryab Z1 delivery pending | Internal accounting and codec adapter |
 | A06 | V1 lists enabled rules only; unknown/revoked get returns RULE_NOT_FOUND. No historical record reconstruction | Harsh H4.3 deferred; implemented | Public read model |
-| A07 | A verified new deployment supplies the matching grant ref/envelope/metadata ABI, addresses and start blocks. Historical Donut remains a distinct generation. | Zaryab Z1/Z3 / E07 | Deployment manifest and capability adapter |
+| A07 | A verified new deployment supplies the matching grant ref/envelope/metadata ABI, addresses and start blocks. Historical Donut remains a distinct generation. | Zaryab Z1 for contract surface; agreed deployment notice, then SDK verification | Deployment manifest and capability adapter |
 | A08 | No compileCard in standalone AGW; canonical cards belong to later marketplace work | Harsh H5: outside AGW v1 | No public compiler stub/export |
 
 ### What closes each assumption
@@ -54,7 +54,7 @@ These are working assumptions for development, not accepted product changes. Rep
 - A01/A02/A04: clear product scope is implemented. A03 defaults still need exact agreed wording.
 - A05: Harsh agrees the public representation; Zaryab supplies matching terms, read/assertion ABIs and vectors. Clarification alone does not supply missing contract code.
 - A06: revoked history is outside v1; active-only reads and explicit RULE_NOT_FOUND behavior are implemented.
-- A07: Zaryab identifies the selected feature scope and delivers the actual compatible deployment manifest/artifacts. A planned address or deployment date does not close it; we verify deployment and integration.
+- A07: Zaryab identifies the selected contract surface and notifies Shoaib when deployment is complete. Fixed addresses are already available. The SDK then builds/verifies its deployment manifest, registry and integration evidence; no additional address request is needed.
 - A08: closed for standalone AGW by deferring compileCard to the marketplace track.
 
 Record design decisions and artifact/deployment readiness separately. All eight have an explicit question owner, but answers alone do not mean all eight are implemented or verified.

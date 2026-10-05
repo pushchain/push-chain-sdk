@@ -9,7 +9,8 @@ Updated October 4, 2026 from [Harsh’s supplied replies](product-decisions-2026
 | Exact defaults and revised fields | Harsh H3 | Final omission/explicit-zero table and the referenced maxValueTotal change; fresh page-5 body still matches the older snapshot |
 | Native decoded-rule representation | Harsh H4.5 | Decide whether raw offsets are public read/write inputs or an internal/separate decoded representation |
 | Universal accounting and encoding | Zaryab Z1 | Final multi-asset terms, internal per-token reads, expected-spend assertion ABI/vectors, empty-assets routing and envelope/CEA representation |
-| Target generation and destination capabilities | Zaryab Z1/Z3 | Ref/label scope, SVM artifacts and a verified compatible deployment manifest for live acceptance |
+| Contract metadata and destination capabilities | Zaryab Z1 | Ref/label scope and matching SVM artifacts |
+| Deployment readiness | Agreed coordination; SDK verifies after completion notice | Fixed addresses are known; Zaryab will notify Shoaib. This is a release dependency, not an open deployment question |
 
 Hiding public spend does not remove internal spend assertions. Deferring public history does not remove the need to distinguish enabled, expired and revoked permissions for execution.
 
@@ -30,3 +31,7 @@ The clear product decisions are now implemented: approval-policy rejection and o
 SDK page 5 was downloaded October 4 and matches the saved body after link normalization; other registered pages were not refreshed. [Evidence](research/notion-check-2026-10-04/comparison.json). AGW remote head remains e704d5b. No compatible deployment was verified in this pass.
 
 Continue SDK work against explicit adapters and assumptions. A compatible manifest, internal multi-asset artifacts and authorized live acceptance remain necessary before enabling the final release. The source snapshots remain unedited evidence; the product decision record captures the newer scope direction.
+
+## Deployment coordination October 5
+
+The deployment request was removed from Zaryab’s question document at Shoaib’s direction. The supplied fixed-address table matches the [saved address book](notion/agw-address-book-donut-2026-09-04.md). Keep it as known address input; after the completion notice, the SDK team verifies deployed code/wiring, matched ABI and event start blocks, then prepares the registry/E2E configuration. No registry entry was enabled by this documentation update.
