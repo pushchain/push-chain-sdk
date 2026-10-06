@@ -1,73 +1,52 @@
-# Remaining AGW product follow-ups for Harsh
+# AGW SDK — questions for Harsh
 
-Rechecked October 6, 2026 against all twelve saved Notion pages, your replies, live pages 1/5 and their All discussions, freshly fetched contract branches, the owner guide and SDK code. [Evidence and dispositions](research/question-source-recheck-2026-10-06/README.md). Accepted decisions remain in [product decisions](product-decisions-2026-10-04.md). No questions have been sent.
-
-| Item | Answer needed |
-| --- | --- |
-| [H3](#h3) | Native PC omission defaults and the intended token model |
-| [H4.4](#h4-4) | Public Solana rule representation, jointly with Zaryab |
-| [H4.5](#h4-5) | Public raw-offset authoring versus separate decoded records |
-| [H6](#h6) | Choosing a rule for a send when several match |
-
-[Concrete API proposals](public-api-proposals.md) provide input/decoded-type and rule-selection examples for review. The internal [live Solana wire validation](research/live-svm-wire-2026-10-06/README.md) now proves positive delivery and replay; public SVM remains gated.
-
-## Source check
-
-The live [SDK page](https://app.notion.com/p/pushprotocol/5-SDK-AGW-3e9188aea7f481cf8e8de324956549b9) still has optional native maxValueTotal, argument-index inputs and the older unique-rule lookup wording. Its visible active/resolved discussions supply no further answer to the questions below. This was a live inspection, not a new Markdown export; the last full export remains October 3.
-
-The freshly fetched [owner guide](https://github.com/pushchain/push-agentic-wallets/blob/10a24f101e2e6e0a9b76517b29f5cdb1aa967796/docs/5_SDK_Owner_Integration.md) is unchanged. It supplies universal total encoding, same-agent multiplicity and SVM wire definitions. Those delivery questions are closed. Your later scope replies continue to take precedence over older page-body helper/spend/compiler entries.
+Updated October 6, 2026. Please reply by question ID. These are the remaining product/API decisions.
 
 <a id="h3"></a>
 
-## H3 Native PC defaults and token model
+## H3. Native defaults and token model
 
-The delivered contracts distinguish hard zero from uint256 maximum, keep maxValueTotal, use maxCalls=0 for unlimited calls and destination maxValue=0 for non-payable calls. We will apply the guide's universal no-total-limit encoding and preserve explicit zeros.
+**1. Should omitted native PC limits mean unlimited?**
 
-**Decision needed:** should omitted native maxValuePerCall and maxValueTotal both encode uint256 maximum? Your earlier reply was tentative for the former and referred to a change to the latter. The current live NativeRule still includes maxValueTotal, so we retain that field unless you specify a replacement.
-
-| Optional input | Proposed omission behavior | Current SDK |
+| Field | Proposed default | Current SDK |
 | --- | --- | --- |
-| Native maxValuePerCall | uint256 maximum | 0, provisional |
-| Native maxValueTotal | uint256 maximum | 0, provisional |
+| `maxValuePerCall` | `maxUint256` (unlimited) | `0`, provisional |
+| `maxValueTotal` | `maxUint256` (unlimited) | `0`, provisional |
 
-Explicit zero stays zero. We are not asking again what the on-chain sentinels mean. The other implemented conventions are native amount.maxTotal=uint256 maximum, maxCalls=0 and destination allowedCalls[].maxValue=0; these are context, not additional wire-format questions.
+Explicit `0` would still forbid value movement. We retain `maxValueTotal`, which is still in the SDK spec.
 
-Your [token-independence comment](https://app.notion.com/p/pushprotocol/5-SDK-AGW-3e9188aea7f481cf8e8de324956549b9#af9c3fac35d94f2585cb27310271c1d8) needs one scope clarification: the delivered guide keeps assets[] on the rule and allows each listed token with every allowed call. Is that the intended SDK model, or does your comment request a different public model?
+**2. Does your “tokens independent” comment mean the current `assets[]` model should stay?**
+
+The delivered model has independent limits per token; each listed token can be used with every allowed call. If you intended a different SDK input model, please provide one example.
 
 <a id="h4-4"></a>
 
-## H4.4 Public Solana rules — jointly with Zaryab
+## H4.4. Public Solana rules — with Zaryab
 
-Your earlier reply assigned SVM work to Zaryab. The SVM contract rulebook and its wire types are now delivered; our internal reads, metadata/IDL resolution, lifecycle and outbound backend are implemented. We are not asking for contract structs again.
+**Should public Solana rules use IDL-based authoring, or explicit raw constraints?**
 
-**Decision needed:** agree how those constraints appear in public Rule inputs and rules.get/list results. The current live AllowedCall is EVM-shaped: address target, function selector and beneficiary argument index. It does not represent Solana programs, instruction discriminators, account pins or instruction-data pins.
+Our proposal is a Solana-specific `Rule` with instruction/account/field inputs compiled from an IDL. The SDK derives the gateway, wallet CEA and protected token accounts internally. Decoded records preserve the exact stored constraints.
 
-**SDK proposal for review:** add a Solana-specific Rule variant selected by its solana: chainNamespace, keep asset caps/expiry/gas fields, and compile IDL instruction/account/field inputs into program/account/data constraints. Gateway, wallet CEA and protected token-account derivation stay internal. Confirm that model, or approve explicit constraints as a public authoring alternative. The decoded result must preserve stored constraints without inventing an IDL. [Types and examples](public-api-proposals.md#h44-solana-rule-inputs-and-decoded-records).
-
-This is a public SDK design agreement, not missing contract support. We have supplied our own verified gateway/program/account/payload fixture, successful live wire execution and later terminal-rejection replay, so no external fixture is needed to unblock this design review. Retry timing has an optional [operational follow-up](research/live-svm-wire-2026-10-06/platform-followup.md).
+The alternative is to let callers author explicit program, account-pin and data-pin constraints. Please agree on the input/read model together. [Proposed types and examples](public-api-proposals.md#h44-solana-rule-inputs-and-decoded-records).
 
 <a id="h4-5"></a>
 
-## H4.5 Decoded rules and raw offsets
+## H4.5. Argument indexes versus raw offsets
 
-This question was added during implementation review and was not covered by your earlier replies. The historical SDK document already used raw offsets; current page 5 instead uses argument indexes. Stored native rules contain byte offsets without the ABI needed to recover indexes. Returning a guessed arg index was incorrect for arrays/tuples.
+**May callers use both ABI argument indexes and raw byte offsets, or should authoring and decoded records have separate types?**
 
-The current fix returns native pins as `{ offset, expected }` and amount limits with `{ offset, maxPerCall, maxTotal }`. V4 EVM allowed-call reads also return exact beneficiaryOffset because stored selectors do not include the ABI needed to recover beneficiary argument indexes. It also accepts these raw forms when granting/updating so decoded rules can round-trip without loss.
+This covers native pins/amount limits and EVM `beneficiaryOffset`. Contracts store offsets without an ABI, so reads cannot reliably recover argument indexes.
 
-Please confirm whether this raw form should be public and accepted for new authoring, or whether decoded wire records should be separate from the ABI-based `{ arg, ... }` input. Accepting arbitrary raw offsets is a different public validation boundary from generating them from ABI information. We will keep internal accounting/codec needs separate from the reduced public spend/helper surface.
-
-**References:** [follow-up review](implementation-review/followup-9e16b23/review.md), [current public types](../../packages/core/src/lib/agentic/agentic.types.ts), [integrator obligations](contract-integrator-obligations.md).
+**Recommendation:** keep the tested dual input form and exact raw-offset reads. If public authoring must be ABI-only, we will separate decoded records. [Options and examples](public-api-proposals.md#h45-nativeevm-raw-authoring-and-decoding).
 
 <a id="h6"></a>
 
-## H6 Multiple rules and choosing a rule for a send
+## H6. Selecting among multiple rules
 
-Your new [create-example comment](https://app.notion.com/p/pushprotocol/5-SDK-AGW-3e9188aea7f481cf8e8de324956549b9#f9712c13f75c4398aef2dbf7628450b2) says multiple rules per chain are accepted. We already support different agents sharing a chain. The page body still says one per agent and chain; the v4 SDK now permits multiple during create/add/update.
+**Can we add explicit per-send rule selection, or do you want an automatic strategy?**
 
-The new owner guide explicitly permits multiple rules for the **same agent and chain**, so the capacity question is answered. How should sendTransaction select rulesId: an explicit caller choice, or a defined automatic selection rule? Please include native arrays whose calls need different rules and cross-chain calls with overlapping permissions.
+**Proposal:** optional `rulesId` for one action/outbound; ordered `rulesIds` for a native batch using different rules. An EVM destination call array uses one rule for the entire outbound.
 
-Lifecycle validation is already aligned with multiple rules. The SDK reports AMBIGUOUS_RULE with candidate IDs before signing; choosing the first rule would make grants, budgets and expiry determine execution accidentally. An explicit selector would add to the public API, so we will not introduce it without agreement.
+Today, multiple matching rules produce `AMBIGUOUS_RULE` before signing. If you prefer automatic selection, please define how overlapping rules are chosen. [Proposed options and examples](public-api-proposals.md#h6-rule-selection-for-sends).
 
-## Supporting context
-
-Native array implementation is validated locally and on Donut through sender-preserving UEA/7702 batching. Universal/SVM wire definitions and deployment are supplied; all 25 registered native/EVM live scenarios have passing coverage. Internal Solana delivery/replay and later terminal-rejection classification are verified; its initial ten-minute timeout is retained as evidence. Public SVM mapping/acceptance remains. [Zaryab's draft](questions-zaryab.md) asks only about metadata release scope and links this joint API review. compileCard and revoked history remain outside standalone AGW v1.
+[SDK spec](https://app.notion.com/p/pushprotocol/5-SDK-AGW-3e9188aea7f481cf8e8de324956549b9) · [Questions for Zaryab](questions-zaryab.md)
