@@ -1,6 +1,6 @@
 # AGW SDK implementation status
 
-> Latest: [funded acceptance and fixes](research/live-acceptance-2026-10-06/README.md). Full permissions are restored: 1,975 unfiltered unit tests, all 68 Anvil cases, build and four typechecks pass. All 25 registered AGW scenarios pass across selected live runs, including UEA identities, native 7702 batches, lifecycle and Sepolia success/failure. Public SVM destinations remain gated.
+> Latest: [funded acceptance and fixes](research/live-acceptance-2026-10-06/README.md). Full permissions are restored: 1,975 unfiltered unit tests, all 75 Anvil cases, build and four typechecks pass. All 25 registered AGW scenarios pass across selected live runs, including UEA identities, native 7702 batches, lifecycle and Sepolia success/failure. Public SVM destinations remain gated.
 
 Updated October 6, 2026. Branch feat/agw-sdk-v4; runtime commits a66ff7d and b68bab7. The native/EVM migration uses deployed source e8db748. Runtime/test e704d5b adapters, ABIs and fixtures were removed at Shoaib's request; historical review documents are evidence only. [Full handoff, commands and validation](research/v4-implementation-2026-10-06/README.md).
 
@@ -9,8 +9,9 @@ Updated October 6, 2026. Branch feat/agw-sdk-v4; runtime commits a66ff7d and b68
 | Level | Current evidence |
 | --- | --- |
 | Unit | 1,975 passed, 0 failed; 12 skipped; 115 suites passed, 1 skipped |
-| Local actual contracts | 68 passed, 0 failed; 9 suites against e8db748 on Anvil |
+| Local actual contracts | 75 passed, 0 failed; 10 suites against e8db748 on Anvil |
 | ABI reproduction | All 5 explorer ABI entry sets match the isolated build, ignoring array order |
+| Runtime matrix | Node 20.19.2 and 24.14.0 pass full units, local contracts and package/API checks |
 | Build/typechecks | Build and lib/spec/local/AGW-E2E typechecks pass |
 | Lint | 7 pre-existing errors in unchanged files; no new errors |
 | E2E selection | AGW: 25 scenarios/9 files/25 tests; default all unchanged at 76/40/81 |

@@ -55,6 +55,7 @@
     "agw:verify": "node scripts/agw-verify.js",
     "agw:check:package": "node scripts/check-agw-package.js",
     "agw:check:api": "node scripts/check-agw-api.js",
+    "agw:check:runtimes": "node scripts/check-agw-runtimes.js",
     "e2e:list": "ts-node --transpile-only __e2e__/ci/run.ts --list",
     "e2e:verify": "ts-node --transpile-only __e2e__/ci/run.ts --verify",
     "e2e:preflight": "ts-node --transpile-only __e2e__/ci/preflight.ts",

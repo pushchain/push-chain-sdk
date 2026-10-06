@@ -1,6 +1,12 @@
 /** Internal SVM lifecycle/execution on actual v4 contracts; no Solana/TSS simulation. */
 import { PublicKey } from '@solana/web3.js';
-import { encodeFunctionData, parseAbi, type Address, type Hex } from 'viem';
+import {
+  encodeFunctionData,
+  encodeErrorResult,
+  parseAbi,
+  type Address,
+  type Hex,
+} from 'viem';
 import { CHAIN, type PushChain } from '../src';
 import type { AgenticRuntime } from '../src/lib/agentic/runtime';
 import { Snapshot } from '../src/lib/agentic/reads/snapshot';
@@ -384,6 +390,160 @@ describe('internal prepared SVM backend on v4', () => {
       });
     } finally {
       rt(owner).execute = execute;
+    }
+  });
+  it.each(['allowance', 'balance', 'revocation'])(
+    'on-chain %s change after preflight refuses submission without metering',
+    async (kind) => {
+      const s = await setup(),
+        runtime = rt(s.agent),
+        original = runtime.execute;
+      const before = await cfg(s.wallet, s.id);
+      const nonce = await h.publicClient.getTransactionCount({
+        address: h.wallets[1].account!.address,
+        blockTag: 'pending',
+      });
+      let ticks: bigint | undefined;
+      runtime.execute = async (params, options) => {
+        if (kind === 'revocation')
+          await (
+            await owner.agentic.wallet(s.wallet).rules.revoke([s.id])
+          ).wait();
+        else
+          await h.write(0, s.wallet, v4.abis.wallet, 'execute', [
+            key('00'),
+            v4.packSingle({
+              target: tokens[2],
+              value: BigInt(0),
+              data: encodeFunctionData({
+                abi: parseAbi([
+                  'function approve(address,uint256) returns(bool)',
+                  'function transfer(address,uint256) returns(bool)',
+                ]),
+                functionName: kind === 'allowance' ? 'approve' : 'transfer',
+                args: [
+                  kind === 'allowance'
+                    ? h.addresses.gateway
+                    : h.wallets[0].account!.address,
+                  kind === 'allowance' ? BigInt(0) : BigInt(100),
+                ],
+              }),
+            }),
+          ]);
+        ticks = await h.publicClient.readContract({
+          address: s.wallet,
+          abi: v4.abis.wallet,
+          functionName: 'checkpointCount',
+        });
+        return original(params, options);
+      };
+      try {
+        const error = await sendSvmAgentWire(
+          runtime,
+          h.generation,
+          s.request(),
+          metadata
+        ).catch((e) => e);
+        expect(error.name).toBe('AgenticRevertError');
+        if (kind === 'revocation')
+          expect(error.decodedError?.name).toBe('CallerIsNotAgent');
+        else {
+          const name = kind === 'allowance' ? 'LowAllowance' : 'LowBalance';
+          const data = encodeErrorResult({
+            abi: parseAbi([`error ${name}()`]),
+            errorName: name,
+          });
+          expect(error.message).toContain(data);
+        }
+        const stored = await h.publicClient.readContract({
+          address: h.addresses.rulesPolicy,
+          abi: v4.abis.policy,
+          functionName: 'getSvmConfig',
+          args: [before.configId, s.wallet],
+        });
+        expect(stored.assets.map((a) => a.spent)).toEqual([
+          BigInt(0),
+          BigInt(0),
+          BigInt(0),
+        ]);
+        expect(
+          await h.publicClient.getTransactionCount({
+            address: h.wallets[1].account!.address,
+            blockTag: 'pending',
+          })
+        ).toBe(nonce);
+        expect(
+          await h.publicClient.readContract({
+            address: s.wallet,
+            abi: v4.abis.wallet,
+            functionName: 'checkpointCount',
+          })
+        ).toBe(ticks);
+      } finally {
+        runtime.execute = original;
+      }
+    }
+  );
+  it('an RPC outage during rule reads fails before execute or signing', async () => {
+    const s = await setup(),
+      runtime = rt(s.agent),
+      reader = runtime.reader,
+      read = reader.readContract.bind(reader);
+    const execute = jest.spyOn(runtime, 'execute');
+    const failedReader = {
+      ...reader,
+      readContract: async (args: Parameters<typeof read>[0]) => {
+        if (args.functionName === 'getSvmConfig')
+          throw new Error('fixture RPC outage');
+        return read(args);
+      },
+    };
+    const failed = { ...runtime, reader: failedReader };
+    await expect(
+      sendSvmAgentWire(failed, h.generation, s.request(), metadata)
+    ).rejects.toMatchObject({ code: 'RULE_READ_FAILED' });
+    expect(execute).not.toHaveBeenCalled();
+    expect(
+      (await cfg(s.wallet, s.id)).config.assets.map((a) => a.spent)
+    ).toEqual([BigInt(0), BigInt(0), BigInt(0)]);
+  });
+  it('receipt failure after a mined grant retains the hash and does not retry', async () => {
+    const s = await setup(),
+      runtime = rt(owner),
+      original = runtime.execute;
+    let hash: Hex | undefined,
+      submissions = 0;
+    runtime.execute = async (params, options) => {
+      submissions++;
+      const tx = await original(params, options);
+      hash = tx.hash as Hex;
+      await h.publicClient.waitForTransactionReceipt({ hash });
+      tx.wait = async () => {
+        throw new Error('fixture receipt outage');
+      };
+      return tx;
+    };
+    try {
+      await expect(
+        grantSvmWire(runtime, h.generation, s.wallet, s.input)
+      ).rejects.toMatchObject({
+        code: 'RECEIPT_UNAVAILABLE',
+        details: { txHash: expect.any(String) },
+      });
+      expect(submissions).toBe(1);
+      expect(hash).toBeDefined();
+      expect(
+        await h.publicClient.readContract({
+          address: s.wallet,
+          abi: v4.abis.wallet,
+          functionName: 'grantNonce',
+        })
+      ).toBe(BigInt(2));
+      expect(
+        (await h.publicClient.getTransactionReceipt({ hash: hash! })).status
+      ).toBe('success');
+    } finally {
+      runtime.execute = original;
     }
   });
 });

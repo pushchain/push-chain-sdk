@@ -1,5 +1,7 @@
 # AGW SDK implementation — review handoff
 
+> Latest: [selected hardening and exact live-E2E status](research/sdk-hardening-2026-10-06/README.md). Node 20/24 pass 1,975 units and 75 local cases; the seeded differential corpus has zero mismatches. No new SDK API, hosted CI, release or funded-run change in this batch.
+
 > Latest: [nine SDK-owned tasks completed](research/sdk-independent-completion-2026-10-06/README.md), including internal SVM integration and shared confirmation. 1,975 units and 68 actual-contract tests pass. Public SVM and pending product choices remain gated; automated API comparison is saved.
 
 > Latest SDK-owned follow-up: [six delayed-index contract cases, checked consumer examples and package documentation](research/sdk-independent-followup-2026-10-06/README.md). All 59 local actual-contract cases pass; the prior 25 live scenarios remain passing evidence. Public SDK APIs and pending decisions are unchanged by this follow-up.

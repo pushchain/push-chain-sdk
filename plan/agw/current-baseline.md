@@ -61,7 +61,7 @@ The ABI comparison found matching factory/wallet/engine function/event/error sig
 
 Four checks passed: version-1 envelope round-trip/old first-word incompatibility; synthetic ordered two-asset tuple round-trip; live v4 getConfig decode with old-ABI rejection; array assertion encoding. [Results and limits](research/deployment-review-2026-10-06/wire-checks.json). This is not a rule-grant, stale-spend transaction or funded E2E proof.
 
-The unrestricted run passes 1,975 unit and 68 actual-contract tests. All five explorer ABI sets match the isolated build. Donut is registered and all 25 registered native/EVM/identity cases have passing coverage. [Current acceptance evidence](research/live-acceptance-2026-10-06/README.md).
+The unrestricted run passes 1,975 unit and 75 actual-contract tests. All five explorer ABI sets match the isolated build. Donut is registered and all 25 registered native/EVM/identity cases have passing coverage. [Current acceptance evidence](research/live-acceptance-2026-10-06/README.md).
 
 ## Remaining decisions and acceptance
 
