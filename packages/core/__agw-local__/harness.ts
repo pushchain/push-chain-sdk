@@ -172,9 +172,32 @@ export async function startHarness(port = 18545): Promise<Harness> {
   try {
     return await deployHarness(dir, rpcUrl, anvil);
   } catch (err) {
-    anvil.kill('SIGTERM');
+    await stopAnvil(anvil);
     throw err;
   }
+}
+
+/** Wait for the child to release its port; never leave cleanup to Jest exit. */
+async function stopAnvil(child: ChildProcess): Promise<void> {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  await new Promise<void>((resolve, reject) => {
+    const killTimer = setTimeout(() => child.kill('SIGKILL'), 2000);
+    const deadline = setTimeout(() => {
+      cleanup();
+      reject(new Error('Anvil did not exit after SIGTERM/SIGKILL'));
+    }, 5000);
+    const cleanup = () => {
+      clearTimeout(killTimer);
+      clearTimeout(deadline);
+      child.off('exit', exited);
+    };
+    const exited = () => {
+      cleanup();
+      resolve();
+    };
+    child.once('exit', exited);
+    child.kill('SIGTERM');
+  });
 }
 
 async function deployHarness(
@@ -195,6 +218,7 @@ async function deployHarness(
       transport: http(rpcUrl),
     })
   );
+  const clients = new Set<PushChain>();
 
   const deploy = async (
     walletIndex: number,
@@ -354,8 +378,8 @@ async function deployHarness(
   const client = async (
     walletIndex: number,
     opts: { agenticWallet?: Address; progressHook?: (e: unknown) => void } = {}
-  ) =>
-    PushChain.initialize(await signerFor(walletIndex), {
+  ) => {
+    const c = await PushChain.initialize(await signerFor(walletIndex), {
       network: PUSH_NETWORK.LOCALNET,
       rpcUrls: { [CHAIN.PUSH_LOCALNET]: [rpcUrl] },
       ...(opts.agenticWallet ? { agenticWallet: opts.agenticWallet } : {}),
@@ -363,12 +387,15 @@ async function deployHarness(
         ? { progressHook: opts.progressHook as never }
         : {}),
     });
+    clients.add(c);
+    return c;
+  };
 
   const readOnlyClient = async (
     walletIndex: number,
     opts: { agenticWallet?: Address } = {}
-  ) =>
-    PushChain.initialize(
+  ) => {
+    const c = await PushChain.initialize(
       {
         address: wallets[walletIndex].account!.address,
         chain: CHAIN.PUSH_LOCALNET,
@@ -379,6 +406,9 @@ async function deployHarness(
         ...(opts.agenticWallet ? { agenticWallet: opts.agenticWallet } : {}),
       }
     );
+    clients.add(c);
+    return c;
+  };
 
   return {
     rpcUrl,
@@ -402,8 +432,9 @@ async function deployHarness(
     readOnlyClient,
     dir,
     stop: async () => {
+      await Promise.allSettled([...clients].map((c) => c.accountStatusReady));
       resetAgenticGenerations();
-      anvil.kill('SIGTERM');
+      await stopAnvil(anvil);
     },
   };
 }

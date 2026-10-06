@@ -24,6 +24,8 @@
             "ignoredFiles": [
               "{projectRoot}/eslint.config.{js,cjs,mjs}",
               "{projectRoot}/scripts/check-agw-docs.js",
+              "{projectRoot}/scripts/check-agw-package.js",
+              "{projectRoot}/scripts/check-agw-api.js",
               "{projectRoot}/**/*.spec.ts"
             ],
             "ignoredDependencies": [

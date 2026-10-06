@@ -1,0 +1,15 @@
+PASS core-agw-local packages/core/__agw-local__/svm-backend.spec.ts (9.995 s)
+PASS core-agw-local packages/core/__agw-local__/v4-multiasset.spec.ts
+PASS core-agw-local packages/core/__agw-local__/agw-local-advanced.spec.ts
+PASS core-agw-local packages/core/__agw-local__/delayed-index.spec.ts
+PASS core-agw-local packages/core/__agw-local__/agw-local.spec.ts
+PASS core-agw-local packages/core/__agw-local__/agw-local-races.spec.ts
+PASS core-agw-local packages/core/__agw-local__/svm-internals.spec.ts
+PASS core-agw-local packages/core/__agw-local__/agw-local-batch.spec.ts
+PASS core-agw-local packages/core/__agw-local__/vectors.spec.ts
+
+Test Suites: 9 passed, 9 total
+Tests:       68 passed, 68 total
+Snapshots:   0 total
+Time:        25.23 s, estimated 28 s
+Ran all test suites.

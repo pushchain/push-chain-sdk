@@ -10,7 +10,14 @@ pragma solidity 0.8.26;
 ///         SOURCE_CHAIN_NAMESPACE view URP interrogates at universal grant.
 contract HarnessPRC20 {
     string public SOURCE_CHAIN_NAMESPACE;
+    string private _sourceOverride;
+    bool private _hasSourceOverride;
+    function setSourceChainNamespace(string calldata chain) external { SOURCE_CHAIN_NAMESPACE = chain; }
+    function setSourceTokenAddress(string calldata source) external {
+        _sourceOverride = source; _hasSourceOverride = true;
+    }
     function SOURCE_TOKEN_ADDRESS() external view returns (string memory) {
+        if (_hasSourceOverride) return _sourceOverride;
         bytes memory chars = "0123456789abcdef";
         bytes memory out = new bytes(42); out[0] = "0"; out[1] = "x";
         uint160 v = uint160(address(this));

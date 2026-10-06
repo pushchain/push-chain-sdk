@@ -1,5 +1,7 @@
 # AGW SDK implementation — review handoff
 
+> Latest: [nine SDK-owned tasks completed](research/sdk-independent-completion-2026-10-06/README.md), including internal SVM integration and shared confirmation. 1,975 units and 68 actual-contract tests pass. Public SVM and pending product choices remain gated; automated API comparison is saved.
+
 > Latest SDK-owned follow-up: [six delayed-index contract cases, checked consumer examples and package documentation](research/sdk-independent-followup-2026-10-06/README.md). All 59 local actual-contract cases pass; the prior 25 live scenarios remain passing evidence. Public SDK APIs and pending decisions are unchanged by this follow-up.
 
 > Latest acceptance: [October 6 funded tests and fixes](research/live-acceptance-2026-10-06/README.md). Network restrictions are resolved; all 53 Anvil cases and the unfiltered unit suite pass. All 25 registered AGW scenarios have passing selected-run coverage; public SVM destination integration and scope decisions remain. Changes are on feat/agw-sdk-v4. Everything below the current banners describes historical implementation/review evidence.

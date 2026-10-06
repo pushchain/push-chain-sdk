@@ -10,6 +10,7 @@ export default {
   displayName: 'core-agw-local',
   preset: '../../jest.preset.js',
   testEnvironment: 'node',
+  setupFilesAfterEnv: ['<rootDir>/__agw-local__/setup.ts'],
   transform: {
     '^.+\\.[tj]s$': [
       'ts-jest',

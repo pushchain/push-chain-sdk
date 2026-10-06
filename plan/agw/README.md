@@ -2,13 +2,15 @@
 
 This package contains the SDK implementation plan, source snapshots, open decisions and validation evidence. Current work is on feat/agw-sdk-v4. Runtime commits are a66ff7d (v4/SVM foundations) and b68bab7 (gas headroom); current validation is linked below. Native/EVM support now uses the checked Donut v4 deployment; old runtime adapters/ABIs/fixtures were removed. All 25 registered AGW scenarios have passing bounded live coverage, including native/UEA identities and Sepolia outbound success/failure.
 
-Latest: [live acceptance and fixes](research/live-acceptance-2026-10-06/README.md), following the [v4 migration](research/v4-implementation-2026-10-06/README.md). The unrestricted full core unit run passes 1,947 tests; the actual-contract harness passes 59. Build and four typechecks pass. Native defaults/raw-offset API/multi-rule selection decisions, absent ref/labels, public SVM integration and release scope remain explicit.
+Latest: [live acceptance and fixes](research/live-acceptance-2026-10-06/README.md), following the [v4 migration](research/v4-implementation-2026-10-06/README.md). The unrestricted full core unit run passes 1,975 tests; the actual-contract harness passes 68. Build and four typechecks pass. Native defaults/raw-offset API/multi-rule selection decisions, absent ref/labels, public SVM integration and release scope remain explicit.
 
 The public target remains [Notion page 5](notion/5-sdk-agw.md), qualified by [Harsh's replies](product-decisions-2026-10-04.md) and [live comments](research/notion-comments-2026-10-05.md). The [v4 deployment/owner-guide review](research/deployment-review-2026-10-06/README.md) records the supplied deployed wire definitions. Historical adapter-absence statements in that review describe the pre-migration inspection, not current implementation.
 
 Latest SVM work: [internal codec/account/payload foundation](research/svm-internals-2026-10-06/README.md) now passes 23 unit and 10 in-process actual-contract checks. Public mapping/dispatch remains gated. Network permissions are restored. All seven SVM Anvil tests now pass and the unfiltered core unit suite passes, including the four previously network-blocked titles. Public Solana execution remains untested.
 
 Latest SDK-owned work: [delayed-index contract acceptance and checked consumer guide](research/sdk-independent-followup-2026-10-06/README.md). No public API decision was changed by this follow-up.
+
+Latest: [all nine SDK-owned items completed](research/sdk-independent-completion-2026-10-06/README.md). Internal SVM integration, Solana confirmation, CI and package/API checks are complete; public SVM remains gated.
 
 ## Start here
 

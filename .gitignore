@@ -59,3 +59,5 @@ e2e-logs/
 /packages/core/outbound-test-logs
 /packages/core/__e2e__/graphify-out
 /graphify-out
+.agw-validation/
+.ci-contracts/

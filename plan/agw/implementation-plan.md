@@ -1,6 +1,6 @@
 # Complete AGW SDK implementation plan
 
-Updated October 6, 2026. The v4-only native/EVM implementation uses deployed source e8db748 and the Donut manifest. Old runtime/test adapters and single-asset codecs are removed. The unfiltered unit suite passes 1,947 tests; all 59 actual-contract Anvil cases pass; build and four typechecks pass. All 25 registered AGW live scenarios pass across selected runs; remaining work is public SVM integration and release scope decisions. [Current acceptance and remaining coverage](research/live-acceptance-2026-10-06/README.md).
+Updated October 6, 2026. The v4-only native/EVM implementation uses deployed source e8db748 and the Donut manifest. Old runtime/test adapters and single-asset codecs are removed. The unfiltered unit suite passes 1,975 tests; all 68 actual-contract Anvil cases pass; build and four typechecks pass. All 25 registered AGW live scenarios pass across selected runs; remaining work is public SVM integration and release scope decisions. [Current acceptance and remaining coverage](research/live-acceptance-2026-10-06/README.md).
 
 SVM internal terms/accounts/payload/builder are implemented and validated. Public SVM mapping/dispatch remains gated. Remaining decisions are H3 native defaults, H4.5 raw-offset public shape, H6 send selection and ref/label v1 scope. Earlier plan recommendations below are qualified by those accepted decisions and the current implementation status.
 

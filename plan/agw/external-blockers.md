@@ -47,3 +47,5 @@ Notion's last full export remains October 3, with focused October 4 body and Oct
 ## SDK-owned follow-up completed
 
 The [independent SDK follow-up](research/sdk-independent-followup-2026-10-06/README.md) closes deliberate delayed-index replay/wait coverage using real local transactions/receipts and controlled indexer responses. The consumer AGW guide and public-export example checker are supplied. Neither change chooses unresolved defaults, raw-offset authoring or a multiple-rule selection API.
+
+The [nine-item completion report](research/sdk-independent-completion-2026-10-06/README.md) records the finished internal SVM integration and automated checks. These are no longer missing SDK backend components; public adapters/capability enablement and live destination acceptance remain after the external decisions.
