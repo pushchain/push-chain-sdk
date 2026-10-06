@@ -1,6 +1,6 @@
 # Current validated AGW baseline
 
-Updated October 6, 2026 after the v4 deployment notice, source/ABI inspection, read-only Donut probe and extended E2E run. **The v4 deployment and native/EVM SDK adapter/codecs are integrated locally. The 25 standard AGW scenarios and 14 new opt-in extended scenarios have passing live coverage.** [Extended E2E evidence](research/extended-e2e-2026-10-06/README.md); [full deployment review](research/deployment-review-2026-10-06/README.md).
+Updated October 6, 2026 after the v4 deployment notice, source/ABI inspection, read-only Donut probe and extended E2E run. **The v4 deployment and native/EVM SDK adapter/codecs are integrated locally. The 25 previously registered AGW scenarios and 14 added management/policy scenarios are all part of the opt-in `agw` group and have passing selected-run live coverage.** [Extended E2E evidence](research/extended-e2e-2026-10-06/README.md); [full deployment review](research/deployment-review-2026-10-06/README.md).
 
 The public SDK target remains Notion page 5, qualified by Harsh's later replies/comments. The new owner guide establishes deployed wire behavior; mismatches in public ref/labels/defaults/selection remain explicit. [Prior October 3–5 baseline](research/deployment-review-2026-10-06/previous-current-baseline.md) is retained as historical evidence.
 
@@ -61,7 +61,7 @@ The ABI comparison found matching factory/wallet/engine function/event/error sig
 
 Four checks passed: version-1 envelope round-trip/old first-word incompatibility; synthetic ordered two-asset tuple round-trip; live v4 getConfig decode with old-ABI rejection; array assertion encoding. [Results and limits](research/deployment-review-2026-10-06/wire-checks.json). This is not a rule-grant, stale-spend transaction or funded E2E proof.
 
-The unrestricted run passes 1,982 unit and 75 actual-contract tests. All five explorer ABI sets match the isolated build. Donut is registered and all 25 standard AGW native/EVM/identity cases plus 14 extended management/native-policy cases have passing live coverage. The extended suite remains opt-in; default `all` remains 76 scenarios. [Extended E2E evidence](research/extended-e2e-2026-10-06/README.md); [prior acceptance evidence](research/live-acceptance-2026-10-06/README.md).
+The unrestricted run passes 1,982 unit and 75 actual-contract tests. All five explorer ABI sets match the isolated build. Donut is registered and all 39 AGW native/EVM/identity/management/policy cases have passing selected-run live coverage. The `agw` group remains opt-in; default `all` remains 76 scenarios. [Extended E2E evidence](research/extended-e2e-2026-10-06/README.md); [prior acceptance evidence](research/live-acceptance-2026-10-06/README.md).
 
 ## Remaining decisions and acceptance
 

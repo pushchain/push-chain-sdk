@@ -1,6 +1,6 @@
 /**
- * THE single home for omitted-limit defaults. PROVISIONAL — assumption A03
- * (Harsh H3, plan/agw/questions-harsh.md). Nothing else in the SDK may invent
+ * THE single home for omitted-limit defaults. Native defaults remain
+ * provisional pending product confirmation. Nothing else in the SDK may invent
  * a fallback for these fields; change a row here once the decision lands.
  *
  * Explicit zero always stays zero. In the native policy a zero value/amount

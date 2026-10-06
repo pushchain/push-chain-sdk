@@ -1,5 +1,5 @@
 /**
- * Race regressions from the implementation review (plan/agw/implementation-review),
+ * Race regressions found during independent SDK review,
  * against the real pinned v4 contracts on local anvil.
  *  R1 — a concurrent creation must never let this create() grant on a wallet it
  *       did not deploy (the deploy is index-bound through deployWalletWithSig).

@@ -2,7 +2,7 @@
 
 This package contains the SDK implementation plan, source snapshots, open decisions and validation evidence. Current work is on feat/agw-sdk-v4. Runtime commits are a66ff7d (v4/SVM foundations) and b68bab7 (gas headroom); current validation is linked below. Native/EVM support now uses the checked Donut v4 deployment; old runtime adapters/ABIs/fixtures were removed. All 25 registered AGW scenarios have passing bounded live coverage, including native/UEA identities and Sepolia outbound success/failure.
 
-Latest E2E expansion: [extended AGW live coverage](research/extended-e2e-2026-10-06/README.md) adds 14 opt-in funded scenarios. All 14 pass; the wallet-index race caught and fixed an SDK error-classification gap. The default E2E selection remains unchanged.
+Latest E2E expansion: [extended AGW live coverage](research/extended-e2e-2026-10-06/README.md) adds 14 funded scenarios to the existing opt-in `agw` group. All 14 pass; the wallet-index race caught and fixed an SDK error-classification gap. The default E2E selection remains unchanged.
 
 Latest: [live acceptance and fixes](research/live-acceptance-2026-10-06/README.md), following the [v4 migration](research/v4-implementation-2026-10-06/README.md). The unrestricted full core unit run passes 1,982 tests; the actual-contract harness passes 75. Build and four typechecks pass. Native defaults/raw-offset API/multi-rule selection decisions, absent ref/labels, public SVM integration and release scope remain explicit.
 

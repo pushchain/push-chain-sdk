@@ -3,8 +3,8 @@ import { capabilityUnavailable } from './errors';
 /**
  * Internal capability flags for an AGW contract generation. A method whose
  * capability is absent fails before any signature. Each unresolved target
- * feature names the plan assumption (A01–A08, plan/agw/implementation-plan.md)
- * or artifact that must close before it can be advertised.
+ * feature identifies the contract or product capability that must be verified
+ * before it can be advertised.
  */
 export enum AgenticCapability {
   /** Factory derive/list/deploy and wallet owner/info reads. */

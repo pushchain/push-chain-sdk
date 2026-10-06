@@ -333,7 +333,7 @@ function renderTable(rows: Row[]): void {
   }) as PublicClient;
 
   // -- AGW gate ------------------------------------------------------------
-  // The agw group needs a verified compatible AGW deployment (plan/agw A07).
+  // Every AGW group needs a verified compatible AGW deployment.
   // Check it read-only BEFORE any balance work so nothing is ever funded for
   // a run that cannot exercise a real deployment.
   if (scenarios.some((s) => s.group.startsWith('agw'))) {

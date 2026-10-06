@@ -1,8 +1,8 @@
 /**
  * Public AGW types — AGW SDK page section 3 (Notion export 2026-10-03 13:23 IST).
  *
- * Provisional items are tagged with the plan assumption that must close before
- * they are final (plan/agw/implementation-plan.md, A01–A08).
+ * Provisional public choices are documented on the affected properties and
+ * remain subject to product and contract confirmation.
  */
 import type { MoveableToken } from '../constants/tokens';
 import type { UniversalTxResponse } from '../orchestrator/orchestrator.types';

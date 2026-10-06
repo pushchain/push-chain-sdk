@@ -35,7 +35,6 @@ export const GROUPS = [
   'read',
   'known-fail',
   'agw',
-  'agw-extended',
   'agw-svm-wire',
   'agw-svm-replay',
 ] as const;
@@ -161,8 +160,8 @@ const F = {
   agwUniversal: '__e2e__/agw/universal-evm.spec.ts',
   agwIdentity: '__e2e__/agw/identity-gas.spec.ts',
   agwResponses: '__e2e__/agw/responses-hooks.spec.ts',
-  agwExtendedManagement: '__e2e__/agw-extended/management.spec.ts',
-  agwExtendedNative: '__e2e__/agw-extended/native-policy.spec.ts',
+  agwExtendedManagement: '__e2e__/agw/management-extended.spec.ts',
+  agwExtendedNative: '__e2e__/agw/native-policy-extended.spec.ts',
 } as const;
 
 export const SCENARIOS: Scenario[] = [
@@ -835,7 +834,7 @@ export const SCENARIOS: Scenario[] = [
   // -------------------------------------------------------------------------
   // agw — agentic wallets. EXCLUDED from `all`: every spec's beforeAll fails
   // its prerequisite gate until a verified compatible AGW deployment manifest
-  // (AGW_DEPLOYMENT_MANIFEST) exists — plan/agw assumption A07. Preflight
+  // (AGW_DEPLOYMENT_MANIFEST) exists. Preflight
   // refuses to fund the group without it. Budgets are per run: the Push master
   // (owner) pays setup gas, wallet PC and the bounded fresh-agent funding;
   // the EVM master's UEA pays external-agent gas; pETH funds the outbound.
@@ -1051,25 +1050,25 @@ export const SCENARIOS: Scenario[] = [
     ['index-race', '6\\. index race', '1'],
   ].map(([slug, grep, pc]) => ({
     id: `agw-extended-${slug}`,
-    group: 'agw-extended' as const,
+    group: 'agw' as const,
     file: F.agwExtendedManagement,
     grep: `agw extended management ${grep}`,
     needs: { masterPC: pc },
-    env: { AGW_EXTENDED_E2E: '1' },
+    env: { AGW_E2E: '1' },
   })),
   ...Array.from({ length: 8 }, (_, i) => ({
     id: `agw-extended-native-policy-${i + 1}`,
-    group: 'agw-extended' as const,
+    group: 'agw' as const,
     file: F.agwExtendedNative,
     grep: `agw extended native policy ${i + 1}\\.`,
     needs: { masterPC: '0.25', masterPETH: '0.000000000001' },
-    env: { AGW_EXTENDED_E2E: '1' },
+    env: { AGW_E2E: '1' },
   })),
 ];
 
 /**
  * Scenarios for a group. `all` means "everything that should pass" — it deliberately
- * excludes `known-fail`, `agw` and `agw-svm-wire`, which must be requested by name.
+ * excludes `known-fail` and every AGW group, which must be requested by name.
  */
 export function scenariosFor(group: string | undefined): Scenario[] {
   if (!group || group === 'all') {

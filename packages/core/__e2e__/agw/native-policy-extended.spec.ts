@@ -4,9 +4,9 @@ import { encodeFunctionData, erc20Abi, type Address } from 'viem';
 import { getNativePRC20ForChain } from '../../src/lib/orchestrator/internals/helpers';
 import { readNativeCounters } from '../shared/agw-state';
 import { CHAIN } from '../../src/lib/constants/enums';
-import { setupAgw, inSeconds, type AgwFixture } from '../agw/_fixture';
+import { setupAgw, inSeconds, type AgwFixture } from './_fixture';
 
-const d = process.env['AGW_EXTENDED_E2E'] === '1' ? describe : describe.skip;
+const d = process.env['AGW_E2E'] === '1' ? describe : describe.skip;
 const chain = PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT;
 
 d('agw extended native policy', () => {

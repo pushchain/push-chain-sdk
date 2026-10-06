@@ -2,10 +2,10 @@ import { PushChain } from '../../src';
 import { getAddress, type Address } from 'viem';
 import type { AgenticRuntime } from '../../src/lib/agentic/runtime';
 import { v4 } from '../../src/lib/agentic/contracts/v4';
-import { setupAgw, inSeconds, type AgwFixture } from '../agw/_fixture';
+import { setupAgw, inSeconds, type AgwFixture } from './_fixture';
 import { readNativeCounters } from '../shared/agw-state';
 
-const d = process.env['AGW_EXTENDED_E2E'] === '1' ? describe : describe.skip;
+const d = process.env['AGW_E2E'] === '1' ? describe : describe.skip;
 const runtime = (client: PushChain) =>
   (client as unknown as { agenticRuntime: AgenticRuntime }).agenticRuntime;
 
