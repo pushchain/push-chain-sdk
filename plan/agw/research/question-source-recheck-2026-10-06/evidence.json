@@ -1,0 +1,125 @@
+{
+  "checked_at_utc": "2026-10-06T06:59:51.261182+00:00",
+  "sdk_baseline": "9e9d842415c87f088df15b13782027ffbfc1e085",
+  "contract_repository": "https://github.com/pushchain/push-agentic-wallets",
+  "branch_heads": [
+    {
+      "branch": "demo-v1",
+      "sha": "94e0ad21f5dcf353bc792b3fbf5ae31f63949483",
+      "committed_at": "2026-09-18T06:35:12+05:30",
+      "subject": "deployed contracts"
+    },
+    {
+      "branch": "demo-v1-backup",
+      "sha": "b3f53297bb38176b72611e0b58487f20a68f6912",
+      "committed_at": "2026-09-08T08:42:10+05:30",
+      "subject": "demo-cross-chain-workflow"
+    },
+    {
+      "branch": "deploy-agw",
+      "sha": "10a24f101e2e6e0a9b76517b29f5cdb1aa967796",
+      "committed_at": "2026-10-05T19:29:43+05:30",
+      "subject": "sdk-doc"
+    },
+    {
+      "branch": "main",
+      "sha": "9ddd95402b9a2dbf494f6ebfdb477e9a0fb1408a",
+      "committed_at": "2026-09-04T10:23:32+05:30",
+      "subject": "Merge pull request #3 from pushchain/pushAgenticWallet_v3"
+    },
+    {
+      "branch": "pushAgenticWallet_v1",
+      "sha": "7dc20e4f3087810be107294350c97e723cb64e8d",
+      "committed_at": "2026-08-07T12:59:33+05:30",
+      "subject": "Merge pull request #1 from pushchain/v0-review-fixes"
+    },
+    {
+      "branch": "pushAgenticWallet_v2",
+      "sha": "83d568cc484b28f86113a5dd954d06a7ac540232",
+      "committed_at": "2026-08-07T18:54:06+05:30",
+      "subject": "docs and claude.md"
+    },
+    {
+      "branch": "pushAgenticWallet_v3",
+      "sha": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+      "committed_at": "2026-10-05T18:38:15+05:30",
+      "subject": "Merge pull request #16 from pushchain/multi-asset-grantRule"
+    },
+    {
+      "branch": "urp-fixes",
+      "sha": "eb5961721017475042d5199687cb46f4733fe3a8",
+      "committed_at": "2026-09-14T11:34:20+05:30",
+      "subject": "added docs"
+    }
+  ],
+  "deployed_source": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+  "documentation_source": "10a24f101e2e6e0a9b76517b29f5cdb1aa967796",
+  "src_identical": true,
+  "verified_files": [
+    {
+      "path": "docs/5_SDK_Owner_Integration.md",
+      "sha256": "a77c3cdc4dbbb791ed1c9df6bdaa9e01b85f221fb7173bfa7e73f89f9eeb4175",
+      "matches_saved_snapshot": true
+    },
+    {
+      "path": "docs/addresses/donut.md",
+      "sha256": "aaab188fbc2bf52afc4aaf2f99ec02c99a34dd5ba006e1f55f7c922f85c6ad3c",
+      "matches_saved_snapshot": true
+    },
+    {
+      "path": "docs/1_AGW.md",
+      "sha256": "6b111652c2ce78b3e227b0838fc3ed2f32b6f0f7eb10146f2352730e327abe45",
+      "matches_saved_snapshot": true
+    },
+    {
+      "path": "docs/2_UniversalRulesPolicy.md",
+      "sha256": "3a5d943dda72396b46d38ef72ea6b7c456368bfd8fee11334675457d4dc42b1b",
+      "matches_saved_snapshot": true
+    },
+    {
+      "path": "src/interfaces/IAGW.sol",
+      "sha256": "72ba3f081c5ad454fdee29aa313216f47d3a1759afccde0ad2360e3af03cf1bb",
+      "matches_saved_snapshot": true
+    },
+    {
+      "path": "src/AGW.sol",
+      "sha256": "9d3fa4c96e7ed0fa74e155aa11c96ffaa0d80fe9a45683ba433a8ba49d30e821",
+      "matches_saved_snapshot": true
+    },
+    {
+      "path": "src/libraries/Types.sol",
+      "sha256": "37ff942bd22e03e3868282381a030423773f16988f4463433e8068cf04ccb552",
+      "matches_saved_snapshot": true
+    }
+  ],
+  "notion": {
+    "full_export_refreshed": false,
+    "last_full_export": "2026-10-03T07:53:10.278902+00:00",
+    "saved_pages_reviewed": [
+      "notion/overview.md",
+      "notion/1-agw-contract-changes.md",
+      "notion/2-universal-marketplace.md",
+      "notion/3-8183-job-kernel-and-hook.md",
+      "notion/4-universal-evaluation.md",
+      "notion/5-sdk-agw.md",
+      "notion/6-sdk-universal-marketplace.md",
+      "notion/7-sdk-8183-job.md",
+      "notion/8-sdk-universal-evaluation.md",
+      "notion/legacy-agw-sdk-v1.md",
+      "notion/agw-address-book-donut-2026-09-04.md",
+      "notion/agentic-wallet-flow-2026-09-07.md"
+    ],
+    "live_pages_inspected": [
+      "3e9188aea7f481cf8e8de324956549b9",
+      "3e9188aea7f4813aa31fc95ceb4e684d"
+    ],
+    "discussion_scope": "All discussions including resolved threads; no new substantive replies visible"
+  },
+  "limits": {
+    "new_live_probe": false,
+    "funded_transactions": false,
+    "tests_rerun": false,
+    "sibling_repositories_fetched": false,
+    "production_code_changed": false
+  }
+}

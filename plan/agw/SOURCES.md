@@ -8,6 +8,8 @@ Focused October 4 recheck: page 5 was downloaded again; its body matches the sav
 
 Focused October 5 comment review: live All discussions on pages 5 and 1, plus the overview’s visible page state, were inspected through Chrome. [Comment evidence and SDK impact](research/notion-comments-2026-10-05.md). Harsh’s new multiple-rules direction needs same-agent scope/send-selection clarification; token-independence wording needs a final definition. This was not a body export or contract refresh. Comments are recorded separately; snapshot hashes/pull timestamps remain unchanged.
 
+October 6 pre-sharing source recheck: all twelve saved Notion sources and relevant contract/SDK/sibling documents were searched; live pages 1/5 and All discussions were inspected again. All eight AGW remote branch heads were fetched; deploy-agw remains 10a24f1 and pushAgenticWallet_v3 remains e8db748. [Evidence and narrowed questions](research/question-source-recheck-2026-10-06/README.md). Same-agent capacity is now supplied; send selection remains open. Public Solana representation needs joint review, while a representative fixture is optional. No full Notion export, sibling fetch, new live deployment probe or snapshot hash change is claimed by this pass.
+
 ## Notion inventory
 
 | Document | Source | Local snapshot | Authority |

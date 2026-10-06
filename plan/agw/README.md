@@ -14,6 +14,8 @@ Latest: [all nine SDK-owned items completed](research/sdk-independent-completion
 
 Latest validation: [selected differential/race/API/runtime hardening](research/sdk-hardening-2026-10-06/README.md). Both Node 20/24 pass; existing live E2E receipts are independently rechecked.
 
+Before sharing: [October 6 question source recheck](research/question-source-recheck-2026-10-06/README.md) confirms unchanged contract heads and re-inspects live pages 1/5 and All discussions. Drafts now ask only remaining public/release decisions; the Solana fixture is explicitly optional, and internal wire-level validation can proceed independently.
+
 ## Start here
 
 | Document | Purpose |
@@ -31,7 +33,7 @@ Latest validation: [selected differential/race/API/runtime hardening](research/s
 | [Integrator obligations](contract-integrator-obligations.md) | Contract-delegated SDK/product requirements |
 | [External blockers](external-blockers.md) | Remaining defaults/type clarification and contract/deployment dependencies |
 | [Questions for Harsh](questions-harsh.md) | Product decisions and recommendations |
-| [Questions for Zaryab](questions-zaryab.md) | Ref/label v1 scope and representative SVM integration fixtures |
+| [Questions for Zaryab](questions-zaryab.md) | Ref/label v1 scope, joint Solana review and optional integration fixture |
 | [Review summary](review-summary.md) | Consequential independent-review corrections |
 
 ## Sources and evidence

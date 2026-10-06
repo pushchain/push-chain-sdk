@@ -1,40 +1,54 @@
 # Remaining AGW product follow-ups for Harsh
 
-Updated October 6, 2026 after your replies, [live Notion comment review](research/notion-comments-2026-10-05.md) and the [v4 owner guide/deployment review](research/deployment-review-2026-10-06/README.md). Accepted decisions and implementation impact are recorded in [product decisions](product-decisions-2026-10-04.md); this document contains only remaining questions.
+Rechecked October 6, 2026 against all twelve saved Notion pages, your replies, live pages 1/5 and their All discussions, freshly fetched contract branches, the owner guide and SDK code. [Evidence and dispositions](research/question-source-recheck-2026-10-06/README.md). Accepted decisions remain in [product decisions](product-decisions-2026-10-04.md). No questions have been sent.
 
 | Item | Answer needed |
 | --- | --- |
-| [H3](#h3) | Remaining native omission defaults/public maxValueTotal and token wording |
-| [H4.5](#h4-5) | Raw-offset representation introduced by the SDK review fix |
+| [H3](#h3) | Native PC omission defaults and the intended token model |
+| [H4.4](#h4-4) | Public Solana rule representation, jointly with Zaryab |
+| [H4.5](#h4-5) | Public raw-offset authoring versus separate decoded records |
 | [H6](#h6) | Choosing a rule for a send when several match |
 
 ## Source check
 
-We downloaded [page 5](https://app.notion.com/p/pushprotocol/5-SDK-AGW-3e9188aea7f481cf8e8de324956549b9) again on October 4. Its exported body still matches our October 3 snapshot after link normalization, including maxValueTotal and the old public helper/Spent/compileCard entries. [Comparison evidence](research/notion-check-2026-10-04/comparison.json). We will apply your newer scope directions rather than repeat those answered questions.
+The live [SDK page](https://app.notion.com/p/pushprotocol/5-SDK-AGW-3e9188aea7f481cf8e8de324956549b9) still has optional native maxValueTotal, argument-index inputs and the older unique-rule lookup wording. Its visible active/resolved discussions supply no further answer to the questions below. This was a live inspection, not a new Markdown export; the last full export remains October 3.
 
-On October 5 we read live discussions, including resolved threads. Your new multiple-rules comment is captured under H6. The token-independence comment is included in H3 below. Neither comment provides the missing default table or answers H4.5.
-
-The October 6 owner guide now settles universal total encoding: omitted/no-limit maxTotal uses uint256 maximum, explicit zero forbids movement. It supplies the versioned multi-asset wire layout and confirms same-agent multiplicity. These are no longer questions below. It does not determine every public SDK omission default or the rule-selection API.
+The freshly fetched [owner guide](https://github.com/pushchain/push-agentic-wallets/blob/10a24f101e2e6e0a9b76517b29f5cdb1aa967796/docs/5_SDK_Owner_Integration.md) is unchanged. It supplies universal total encoding, same-agent multiplicity and SVM wire definitions. Those delivery questions are closed. Your later scope replies continue to take precedence over older page-body helper/spend/compiler entries.
 
 <a id="h3"></a>
 
-## H3 Remaining native defaults and public fields
+## H3 Native PC defaults and token model
 
 The delivered contracts distinguish hard zero from uint256 maximum, keep maxValueTotal, use maxCalls=0 for unlimited calls and destination maxValue=0 for non-payable calls. We will apply the guide's universal no-total-limit encoding and preserve explicit zeros.
 
-Please confirm the remaining public SDK choices:
+**Decision needed:** should omitted native maxValuePerCall and maxValueTotal both encode uint256 maximum? Your earlier reply was tentative for the former and referred to a change to the latter. The current live NativeRule still includes maxValueTotal, so we retain that field unless you specify a replacement.
 
-- Should omitted native maxValuePerCall and maxValueTotal both mean uint256 maximum? Your earlier reply was tentative for the former and said the latter had changed.
-- Is maxValueTotal retained in the public NativeRule, or replaced/removed? The new owner guide still includes it on the wire.
-- May we use native amount.maxTotal=uint256 maximum, maxCalls=0 and destination allowedCalls[].maxValue=0 as the omission defaults? The wire meanings are clear; this confirms the public optional-input behavior.
+| Optional input | Proposed omission behavior | Current SDK |
+| --- | --- | --- |
+| Native maxValuePerCall | uint256 maximum | 0, provisional |
+| Native maxValueTotal | uint256 maximum | 0, provisional |
+
+Explicit zero stays zero. We are not asking again what the on-chain sentinels mean. The other implemented conventions are native amount.maxTotal=uint256 maximum, maxCalls=0 and destination allowedCalls[].maxValue=0; these are context, not additional wire-format questions.
 
 Your [token-independence comment](https://app.notion.com/p/pushprotocol/5-SDK-AGW-3e9188aea7f481cf8e8de324956549b9#af9c3fac35d94f2585cb27310271c1d8) needs one scope clarification: the delivered guide keeps assets[] on the rule and allows each listed token with every allowed call. Is that the intended SDK model, or does your comment request a different public model?
+
+<a id="h4-4"></a>
+
+## H4.4 Public Solana rules — jointly with Zaryab
+
+Your earlier reply assigned SVM work to Zaryab. The SVM contract rulebook and its wire types are now delivered; our internal reads, metadata/IDL resolution, lifecycle and outbound backend are implemented. We are not asking for contract structs again.
+
+**Decision needed:** agree how those constraints appear in public Rule inputs and rules.get/list results. The current live AllowedCall is EVM-shaped: address target, function selector and beneficiary argument index. It does not represent Solana programs, instruction discriminators, account pins or instruction-data pins.
+
+**SDK proposal for review:** add a Solana-specific Rule variant selected by its solana: chainNamespace, keep asset caps/expiry/gas fields, and expose program/instruction constraints with account/data pins. Gateway, wallet CEA and protected token-account derivation stay internal. Confirm whether callers may provide explicit constraints in this variant, or whether public authoring must use higher-level IDL/account/field inputs that the SDK compiles. The decoded result must preserve the stored constraints without inventing an IDL.
+
+This is a public SDK design agreement, not missing contract support. We can validate internal wire-level delivery independently. A representative fixture is optional supporting input in [Z1.4](questions-zaryab.md#z1-4).
 
 <a id="h4-5"></a>
 
 ## H4.5 Decoded rules and raw offsets
 
-This was added during implementation review and was not part of the earlier question set. Stored native rules contain calldata byte offsets, but do not contain the ABI needed to recover argument indexes. Returning a guessed arg index was incorrect for arrays/tuples.
+This question was added during implementation review and was not covered by your earlier replies. The historical SDK document already used raw offsets; current page 5 instead uses argument indexes. Stored native rules contain byte offsets without the ABI needed to recover indexes. Returning a guessed arg index was incorrect for arrays/tuples.
 
 The current fix returns native pins as `{ offset, expected }` and amount limits with `{ offset, maxPerCall, maxTotal }`. V4 EVM allowed-call reads also return exact beneficiaryOffset because stored selectors do not include the ABI needed to recover beneficiary argument indexes. It also accepts these raw forms when granting/updating so decoded rules can round-trip without loss.
 
@@ -54,4 +68,4 @@ Lifecycle validation is already aligned with multiple rules. The SDK reports AMB
 
 ## Supporting context
 
-Native array implementation is now validated locally and on Donut: use sender-preserving outer UEA/7702 batching of single executeAsAgent calls, and handle unsupported atomic transports explicitly. Universal/SVM wire definitions and the deployment are supplied; Native/EVM adapter/codec work and all 25 registered live scenarios pass; public SVM destination mapping and acceptance remain. [Zaryab's draft](questions-zaryab.md) now asks only about missing metadata scope and representative SVM integration fixtures. compileCard and revoked history remain outside standalone AGW v1.
+Native array implementation is validated locally and on Donut through sender-preserving UEA/7702 batching. Universal/SVM wire definitions and deployment are supplied; all 25 registered native/EVM live scenarios have passing coverage. Public SVM mapping and live destination acceptance remain. [Zaryab's draft](questions-zaryab.md) asks about metadata release scope and labels its SVM fixture request optional. compileCard and revoked history remain outside standalone AGW v1.

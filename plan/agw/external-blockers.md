@@ -1,16 +1,18 @@
 # Remaining external dependencies for AGW
 
-Updated October 6, 2026 after the [v4 deployment and owner-guide review](research/deployment-review-2026-10-06/README.md). Contract wire/accounting definitions and deployment addresses are supplied; distinguish remaining decisions from SDK implementation and live acceptance.
+Rechecked October 6, 2026 against live Notion pages 1/5 and All discussions, all saved sources, freshly fetched contract refs and SDK code. [Question dispositions and evidence](research/question-source-recheck-2026-10-06/README.md). Contract wire/accounting definitions and deployment addresses are supplied; distinguish remaining decisions from SDK implementation and live acceptance.
 
 ## Remaining team input
 
 | Area | Owner | Remaining answer |
 | --- | --- | --- |
-| Native optional-input defaults/public fields | Harsh H3 | Native value omission defaults, referenced public maxValueTotal change, confirmation of remaining omission rows and token-independence wording |
-| Native decoded-rule representation | Harsh H4.5 | Public raw-offset read/write authoring versus separate decoded/internal form |
+| Native PC optional-input defaults/token intent | Harsh H3 | Exact omitted maxValuePerCall/maxValueTotal behavior and whether token-independence requests a public-model change; current target retains maxValueTotal |
+| Public Solana representation | Harsh H4.4 with Zaryab | Solana-specific authoring/read shape, explicit program/account/data constraints versus higher-level IDL inputs; wire structs are supplied |
+| Decoded-rule representation | Harsh H4.5 | Public native/EVM raw-offset authoring versus separate decoded records |
 | Multiple-rule execution | Harsh H6 | Explicit caller rule selection versus a defined automatic strategy, including arrays/overlapping rules; same-agent capacity is supplied |
 | Metadata scope | Zaryab Z1.3 with Harsh | Whether absent grant ref/editable label will be delivered or explicitly deferred from v1 |
-| Representative SVM integration fixture | Zaryab Z1.4, where available | Cluster gateway/registry and protected-account derivation inputs, valid envelope/outbound example and expected failure cases |
+
+Zaryab Z1.4 is an **optional fixture request**, not a hard dependency. The SDK already has a candidate devnet gateway and counter-program IDL. We can verify their current deployment/compatibility read-only and prepare a bounded wire-level test ourselves. A known-good team fixture would improve independent comparison; this review does not claim those candidate inputs have passed live AGW delivery.
 
 The owner guide retains assets[] on the rule, with each listed token usable by every allowed call. Harsh's token-independence comment is not treated as permission to remove token limits. SVM wire types are supplied; the remaining fixture request does not reopen struct delivery.
 
@@ -22,7 +24,7 @@ The owner guide retains assets[] on the rule, with each listed token usable by e
 - Multiple same-agent/same-chain rules: contract guide explicitly permits them; product accepts multiplicity. Choosing the rule for a send remains H6.
 - Separate owner allowance, immutable-wallet generations, internal accounting and sender-preserving native batching: preserve the existing design while migrating to v4.
 
-Native/EVM v4 migration is now implemented: adapter/registry, envelopes, multi-asset reads/codecs, ordered assertions, outbound token choice and ABI integration. The actual-contract harness is ported; runtime/test legacy artifacts were removed. [Current evidence](research/v4-implementation-2026-10-06/README.md). SVM SDK mapping/composition and live acceptance remain.
+Native/EVM v4 migration and the internal SVM read/context/instruction/lifecycle/execution backend are implemented. The actual-contract harness is ported; runtime/test legacy artifacts were removed. [Backend evidence](research/sdk-independent-completion-2026-10-06/README.md). Public SVM adapters/presentation and live destination acceptance remain SDK work after agreeing the public model; internal wire-level validation can proceed independently.
 
 ## Previously settled scope
 
@@ -36,9 +38,9 @@ All 25 registered AGW live scenarios have passing bounded selected-run coverage,
 
 ## Freshness
 
-AGW deployment source e8db748; documentation head deploy-agw@10a24f1, with identical src. Explorer-verified ABIs and a pinned RPC probe are saved in the [review bundle](research/deployment-review-2026-10-06/README.md). The native/EVM migration was rebuilt and validated: 1,947 unit tests, 25 distinct registered live scenarios and the expanded actual-contract suite pass. See the current validation report. Core/gateway source pins were not refreshed.
+Fresh fetch confirms AGW source e8db748 and documentation head deploy-agw@10a24f1, with identical src. Explorer-verified ABIs and the earlier pinned RPC probe are saved in the [review bundle](research/deployment-review-2026-10-06/README.md); no new deployment probe in this question pass. Current evidence is 1,975 unit tests, 75 actual-contract tests and 25 registered live scenarios with passing selected-run coverage. [Validation](research/sdk-hardening-2026-10-06/README.md). Core/gateway source pins were not refreshed.
 
-Notion's last full export remains October 3, with focused October 4 body and October 5 comment checks. The GitHub guide is a separate deployed-wire source, not a silent replacement for the target public SDK API.
+Notion's last full export remains October 3, with October 4 body comparison, October 5 comments and a fresh October 6 live inspection of pages 1/5 and All discussions. The GitHub guide supplies deployed wire behavior; the target public API remains qualified by Harsh's replies.
 
 ## SVM foundation and current execution environment
 

@@ -13,7 +13,7 @@ The public SDK target remains Notion page 5, qualified by Harsh's later replies/
 | SDK contract adapter | V4 only (e8db748); Donut registry populated; old runtime/test generation removed |
 | Core marketplace | Prior pin cb69e0ba101bef1bb4440e54b2c45396be3e92ce; not freshly fetched |
 | Gateway source | Prior eight-field pin bcbf7df42e8e6dd11088a43bcc0b056a54ea0a18; live implementation slot checked |
-| Notion | Last full export October 3 at 13:23 IST; focused October 4 body comparison and October 5 comment review; no new export here |
+| Notion | Last full export October 3 at 13:23 IST; October 4 body comparison, October 5 comments, October 6 live pages 1/5 and All discussions inspection; no new export |
 
 [Saved GitHub sources and hashes](research/deployment-review-2026-10-06/source-manifest.json) are separate from the Notion manifest. [Verified ABIs](research/deployment-review-2026-10-06/abis/) came from the explorer. This review did not locally rebuild runtime bytecode or rerun the full contract/SDK suites.
 
@@ -47,9 +47,9 @@ The earlier supplied historical addresses are superseded for new v4 integrations
 | Internal replacement guard | assertSpent(configId,wallet,uint256[]) compares all totals in asset order | SDK implemented; second-token intervening spend rolls back replacement |
 | Native terms | Same body layout, one config per action; envelope changed | V4 native tests pass; ABI offset validation retained |
 | Multiple rules | Several same-agent/same-chain grants supported | Management permits multiplicity; ambiguous sends fail; H6 selection remains |
-| Checkpoints | Stored count/last block, three event kinds, per-owner-call/lifecycle ticks | Earlier read/update design retained; v4 acceptance pending |
+| Checkpoints | Stored count/last block, three event kinds, per-owner-call/lifecycle ticks | Local and registered live native/EVM lifecycle acceptance pass |
 | Grant ref / label | Grant has no ref; label is deployment event only; no setLabel | Explicit capability gates; Z1.3 asks v1 scope/delivery |
-| SVM | Full multi-asset terms/program/account/data pins supplied | Public mapping, PDA/ATA/registry resolution, payload and acceptance remain |
+| SVM | Full multi-asset terms/program/account/data pins supplied | Internal reads, PDA/ATA/metadata/IDL resolution, lifecycle and outbound backend complete; public mapping/dispatch and live destination acceptance remain |
 | Gateway request | Eight-field live implementation, selector 0x77b86bec | Dedicated context, listed-token choice and maxGasPerCall implemented |
 | Allowance | Consume separate owner-established allowance | Keep existing race-safe behavior; Live allowance/token debit passes; remaining identity coverage explicit |
 | Refund spend credit | creditRevert gains token; executor still does not call it | Known Push-core dependency; ordinary returns do not lower spent |
@@ -65,9 +65,11 @@ The unrestricted run passes 1,975 unit and 75 actual-contract tests. All five ex
 
 ## Remaining decisions and acceptance
 
-- Harsh: native omission defaults/public maxValueTotal, raw-offset authoring/read model, multi-rule send selection. [Open draft](questions-harsh.md).
-- Zaryab: ref/label v1 scope and representative SVM integration fixtures. Wire/accounting/deployment delivery requests are removed. [Open draft](questions-zaryab.md).
+- Harsh: native PC omission defaults/token intent, raw-offset authoring/read model, multi-rule send selection and joint public Solana representation. Current target retains maxValueTotal. [Open draft](questions-harsh.md).
+- Zaryab: ref/label v1 scope, joint Solana SDK review and optional representative SVM fixture. Wire/accounting/deployment delivery requests are removed. [Open draft](questions-zaryab.md).
 - SDK: native/EVM migration is implemented and locally validated. Public SVM mapping/composition and release scope decisions remain. No legacy runtime adapter is retained.
 - Live: registered native/EVM/UEA/7702 and Sepolia success/failure scenarios pass, including independent CEA execution attribution. Public SVM destination acceptance remains after integration. Authorized testnet transactions are recorded in the live report.
 
 Checkpoint count semantics remain per action, not per transaction: assert/revoke/grant adds five ticks; failed transactions unwind ticks; agent calls do not tick. Pre-existing allowances may change balances without checkpoints. Preserve internal spend assertions even though public spent records are removed.
+
+The [question source recheck](research/question-source-recheck-2026-10-06/README.md) freshly confirms unchanged deploy-agw/pushAgenticWallet_v3 heads. It records answered definitions separately from remaining public decisions and SDK-owned fixture validation; it does not claim a fresh live bytecode probe.
