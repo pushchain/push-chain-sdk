@@ -28,7 +28,7 @@ Local gateway/core/token/executor and CEA lookup are fixtures. Actual AGW/factor
 | 3 | Signer/wallet context | Owner/agent/read-only/identity guards retained | Release review; UEA identity cases pass |
 | 4 | Registry/adapter | Donut v4 registered; unsupported networks fail | Release review; no legacy fallback |
 | 5 | Wallet/checkpoint/rule reads | Native and EVM reads implemented; source tokens/beneficiary offsets reconstructed | Metadata scope; public SVM mapping (internal reads complete) |
-| 6 | Normalization/codecs | Native/EVM envelope 1, ordered caps, hard-zero/max total, empty-list routing | Native H3 defaults; SVM public mapping |
+| 6 | Normalization/codecs | Native/EVM envelope 1, ordered caps, hard-zero/max total, empty-list routing | H3 token wording; SVM public mapping |
 | 7 | Create/add/revoke | Index-bound create, partial recovery, atomic writes; same-agent multiples allowed | Release review; deployed create/identity/batching paths verified |
 | 8 | Atomic update | Native per-action and universal all-token assertions before revoke/grant | Public SVM authoring wrapper (internal lifecycle complete) |
 | 9 | Owner/allowance | Owner path unrestricted; explicit separate allowance retained | Release review; production allowance/token debit and delivery verified |
@@ -45,6 +45,6 @@ Local gateway/core/token/executor and CEA lookup are fixtures. Actual AGW/factor
 
 A01 approval policy, A04 internal generation details, A06 history deferral and A08 compiler scope remain settled. A02 native batching is implemented locally. A05 wire/accounting is delivered and implemented for EVM. A07 deployment/registry is supplied; grant ref and editable label remain absent and capability-gated.
 
-H3 is narrowed to native PC omission defaults/token wording; current target retains maxValueTotal. H4.4 is joint public SVM representation, with [concrete proposals](public-api-proposals.md) ready. H4.5 covers raw-offset representation, and H6 send selection. [Harsh draft](questions-harsh.md); [Zaryab metadata draft](questions-zaryab.md). The fixture request is closed with [our live wire evidence](research/live-svm-wire-2026-10-06/README.md), including later terminal rejection after the initial timeout.
+Harsh’s October 6 reply prefers zero native PC omission defaults, matching the SDK, and invites Zaryab’s input. H3 token wording still needs an example-based clarification; current target retains maxValueTotal. Harsh redirected H4.4 public SVM representation to Zaryab, with [concrete proposals](public-api-proposals.md) ready. H4.5 covers raw-offset representation, and H6 send selection. [Harsh draft](questions-harsh.md); [Zaryab metadata draft](questions-zaryab.md). The fixture request is closed with [our live wire evidence](research/live-svm-wire-2026-10-06/README.md), including later terminal rejection after the initial timeout.
 
 No public spent/history/compiler feature is reopened. Rule updates reset counters as agreed. Ordinary inflows do not restore spent; creditRevert remains a platform dependency.
