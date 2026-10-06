@@ -51,6 +51,7 @@
   },
   "scripts": {
     "build:proto": "scripts/protoc-generate.sh",
+    "docs:check:agw": "node scripts/check-agw-docs.js",
     "e2e:list": "ts-node --transpile-only __e2e__/ci/run.ts --list",
     "e2e:verify": "ts-node --transpile-only __e2e__/ci/run.ts --verify",
     "e2e:preflight": "ts-node --transpile-only __e2e__/ci/preflight.ts",
@@ -67,6 +68,7 @@
     "src/**/*.d.ts",
     "src/**/*.json",
     "README.md",
+    "AGW.md",
     "CHANGELOG.md"
   ],
   "devDependencies": {

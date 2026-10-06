@@ -36,10 +36,14 @@ All 25 registered AGW live scenarios have passing bounded selected-run coverage,
 
 ## Freshness
 
-AGW deployment source e8db748; documentation head deploy-agw@10a24f1, with identical src. Explorer-verified ABIs and a pinned RPC probe are saved in the [review bundle](research/deployment-review-2026-10-06/README.md). No local runtime rebuild or full suite was run in this pass. Core/gateway source pins were not refreshed.
+AGW deployment source e8db748; documentation head deploy-agw@10a24f1, with identical src. Explorer-verified ABIs and a pinned RPC probe are saved in the [review bundle](research/deployment-review-2026-10-06/README.md). The native/EVM migration was rebuilt and validated: 1,947 unit tests, 25 distinct registered live scenarios and the expanded actual-contract suite pass. See the current validation report. Core/gateway source pins were not refreshed.
 
 Notion's last full export remains October 3, with focused October 4 body and October 5 comment checks. The GitHub guide is a separate deployed-wire source, not a silent replacement for the target public SDK API.
 
 ## SVM foundation and current execution environment
 
-[SVM internals](research/svm-internals-2026-10-06/README.md) are implemented and tested offline; public mapping/dispatch remains pending. Shoaib authorized .env-backed funding for tests. The current sandbox blocks Donut DNS and Anvil's localhost RPC, so keys are not loaded and no funds are sent. Networking availability is an execution blocker, not a missing product answer.
+[SVM internals](research/svm-internals-2026-10-06/README.md) are implemented and tested, including all seven Anvil cases. Full permissions and RPC access are restored. Authorized bounded Donut tests have completed; networking and test funding are no longer blockers. Public SVM destination mapping/dispatch and live Solana acceptance remain separate work.
+
+## SDK-owned follow-up completed
+
+The [independent SDK follow-up](research/sdk-independent-followup-2026-10-06/README.md) closes deliberate delayed-index replay/wait coverage using real local transactions/receipts and controlled indexer responses. The consumer AGW guide and public-export example checker are supplied. Neither change chooses unresolved defaults, raw-offset authoring or a multiple-rule selection API.

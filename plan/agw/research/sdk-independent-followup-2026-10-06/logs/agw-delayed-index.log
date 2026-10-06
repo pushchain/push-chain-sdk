@@ -1,0 +1,17 @@
+PASS core-agw-local packages/core/__agw-local__/delayed-index.spec.ts
+  AGW replay with delayed Cosmos indexing
+    ✓ owner door: real Push receipt then delayed external success (48 ms)
+    ✓ agent door: real Push receipt then delayed external success (43 ms)
+    ✓ owner door: real Push receipt then delayed external failed (36 ms)
+    ✓ agent door: real Push receipt then delayed external failed (38 ms)
+    ✓ owner door: real Push receipt then delayed external timeout (130 ms)
+    ✓ agent door: real Push receipt then delayed external timeout (137 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       6 passed, 6 total
+Snapshots:   0 total
+Time:        3.644 s
+Ran all test suites within paths "packages/core/__agw-local__/delayed-index.spec.ts".
+Jest did not exit one second after the test run has completed.
+
+'This usually means that there are asynchronous operations that weren't stopped in your tests. Consider running Jest with `--detectOpenHandles` to troubleshoot this issue.

@@ -8,6 +8,8 @@ Push Chain is a true universal L1 that is 100% EVM compatible. It allows develop
 
 ## Documentation
 
+For AGW v4 in this branch, see the [agentic wallet integration guide](AGW.md) for creation, rules, funding, execution and recovery.
+
 For full documentation, API references, and guides, visit:  
 👉 [Push Chain Developer Docs](https://push.org/docs)
 

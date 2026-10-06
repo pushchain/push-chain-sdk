@@ -1,14 +1,12 @@
 # AGW SDK design review
 
-> Current implementation: [v4-only native/EVM migration and validation](research/v4-implementation-2026-10-06/README.md) supersede earlier missing-adapter/empty-registry statements below. Legacy runtime/test artifacts are removed. SVM mapping, H3/H4.5/H6, ref/label scope and funded acceptance remain.
-
-> October 6: [v4 wire definitions and deployment are delivered](research/deployment-review-2026-10-06/README.md). Artifact/deployment absence below describes the earlier baseline. Migrate the adapter/envelope/universal reads/outbound before registry enablement; same-agent multiplicity is supported, send selection is H6, and grant ref/setLabel remain absent. Earlier one-rule uniqueness recommendations are provisional/stale.
+Current implementation: v4-only native/EVM support is implemented and all 25 registered live scenarios have passing coverage. Old runtime/test adapters are removed. [Latest independent SDK follow-up](research/sdk-independent-followup-2026-10-06/README.md) adds actual-contract delayed-index replay/wait tests and the consumer guide. Remaining decisions are H3/H4.5/H6, ref/label scope and public SVM destination integration. Older architecture recommendations below are historical where they conflict with these accepted changes.
 
 > October 4 update: [Harsh’s replies](product-decisions-2026-10-04.md) supersede earlier provisional approval/default/helper/history/compiler recommendations below. Use [remaining dependencies](external-blockers.md) for current blockers. The clear scope changes and sender-preserving native batching are now implemented; H3 defaults remain unchanged pending clarification. See [alignment evidence](research/product-alignment-2026-10-04/README.md).
 
 The proposed design adds AGW management and execution to `@pushchain/core` through the API in [page 5](notion/5-sdk-agw.md). It keeps the existing signer and transaction machinery, while introducing a separate wallet execution context. The public API is the agreed target; this review proposes internal boundaries and identifies the evidence needed to implement them correctly.
 
-Review status: proposed architecture, pending [gap resolutions](gaps.md) and matching multi-asset artifacts/deployment. This document does not claim that the new contract methods are deployed.
+Review status: the native/EVM architecture is implemented against checked deployed v4 contracts. [Current gaps](gaps.md) identify remaining scope/API decisions and public SVM work. The detailed proposals below retain their original review context.
 
 ## Core design
 
