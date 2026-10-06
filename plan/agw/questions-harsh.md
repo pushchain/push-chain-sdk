@@ -9,6 +9,8 @@ Rechecked October 6, 2026 against all twelve saved Notion pages, your replies, l
 | [H4.5](#h4-5) | Public raw-offset authoring versus separate decoded records |
 | [H6](#h6) | Choosing a rule for a send when several match |
 
+[Concrete API proposals](public-api-proposals.md) provide input/decoded-type and rule-selection examples for review. The internal [live Solana wire validation](research/live-svm-wire-2026-10-06/README.md) now proves positive delivery and replay; public SVM remains gated.
+
 ## Source check
 
 The live [SDK page](https://app.notion.com/p/pushprotocol/5-SDK-AGW-3e9188aea7f481cf8e8de324956549b9) still has optional native maxValueTotal, argument-index inputs and the older unique-rule lookup wording. Its visible active/resolved discussions supply no further answer to the questions below. This was a live inspection, not a new Markdown export; the last full export remains October 3.
@@ -40,9 +42,9 @@ Your earlier reply assigned SVM work to Zaryab. The SVM contract rulebook and it
 
 **Decision needed:** agree how those constraints appear in public Rule inputs and rules.get/list results. The current live AllowedCall is EVM-shaped: address target, function selector and beneficiary argument index. It does not represent Solana programs, instruction discriminators, account pins or instruction-data pins.
 
-**SDK proposal for review:** add a Solana-specific Rule variant selected by its solana: chainNamespace, keep asset caps/expiry/gas fields, and expose program/instruction constraints with account/data pins. Gateway, wallet CEA and protected token-account derivation stay internal. Confirm whether callers may provide explicit constraints in this variant, or whether public authoring must use higher-level IDL/account/field inputs that the SDK compiles. The decoded result must preserve the stored constraints without inventing an IDL.
+**SDK proposal for review:** add a Solana-specific Rule variant selected by its solana: chainNamespace, keep asset caps/expiry/gas fields, and compile IDL instruction/account/field inputs into program/account/data constraints. Gateway, wallet CEA and protected token-account derivation stay internal. Confirm that model, or approve explicit constraints as a public authoring alternative. The decoded result must preserve stored constraints without inventing an IDL. [Types and examples](public-api-proposals.md#h44-solana-rule-inputs-and-decoded-records).
 
-This is a public SDK design agreement, not missing contract support. We can validate internal wire-level delivery independently. A representative fixture is optional supporting input in [Z1.4](questions-zaryab.md#z1-4).
+This is a public SDK design agreement, not missing contract support. We have supplied our own verified gateway/program/account/payload fixture, successful live wire execution and later terminal-rejection replay, so no external fixture is needed to unblock this design review. Retry timing has an optional [operational follow-up](research/live-svm-wire-2026-10-06/platform-followup.md).
 
 <a id="h4-5"></a>
 
@@ -68,4 +70,4 @@ Lifecycle validation is already aligned with multiple rules. The SDK reports AMB
 
 ## Supporting context
 
-Native array implementation is validated locally and on Donut through sender-preserving UEA/7702 batching. Universal/SVM wire definitions and deployment are supplied; all 25 registered native/EVM live scenarios have passing coverage. Public SVM mapping and live destination acceptance remain. [Zaryab's draft](questions-zaryab.md) asks about metadata release scope and labels its SVM fixture request optional. compileCard and revoked history remain outside standalone AGW v1.
+Native array implementation is validated locally and on Donut through sender-preserving UEA/7702 batching. Universal/SVM wire definitions and deployment are supplied; all 25 registered native/EVM live scenarios have passing coverage. Internal Solana delivery/replay and later terminal-rejection classification are verified; its initial ten-minute timeout is retained as evidence. Public SVM mapping/acceptance remains. [Zaryab's draft](questions-zaryab.md) asks only about metadata release scope and links this joint API review. compileCard and revoked history remain outside standalone AGW v1.

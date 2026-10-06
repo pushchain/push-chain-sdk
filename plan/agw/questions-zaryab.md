@@ -2,12 +2,11 @@
 
 Rechecked October 6, 2026 against all saved Notion sources, live pages 1/5 and their All discussions, freshly fetched contract branches, the owner guide and SDK code. [Evidence and dispositions](research/question-source-recheck-2026-10-06/README.md). Multi-asset terms, envelope, EVM CEA width, accounting ABI, SVM wire definitions and deployment are supplied; those questions are closed. No questions have been sent.
 
-Only Z1.3 needs a contract release-scope answer. Z1.4 is optional supporting evidence, not a requirement to start our wire-level testing. The public Solana SDK representation needs joint review under [Harsh H4.4](questions-harsh.md#h4-4). Deployment/address coordination is complete; adapter integration and funded acceptance are SDK work.
+Only Z1.3 needs a contract release-scope answer. We supplied and live-validated our own SVM fixture, so Z1.4 is removed. The public Solana SDK representation needs joint review under [Harsh H4.4](questions-harsh.md#h4-4); [concrete proposals](public-api-proposals.md) are ready. Deployment/address coordination is complete.
 
 | Item | Remaining answer |
 | --- | --- |
 | [Z1.3](#z1-3) | Ref/label scope for this release |
-| [Z1.4](#z1-4) | Optional representative SVM integration fixture |
 
 ## Source baseline
 
@@ -29,20 +28,10 @@ The generation still exposes grantRules(Session) without ref, and RulesGranted c
 
 **Decision needed:** are rule ref and editable labels included in this release, or explicitly deferred from v1 with Harsh? If included, confirm that the existing page-1 proposal is still the target and announce the compatible source/ABI when ready. Signed grants must bind the ref as part of their authorized contents. We will keep absent capabilities explicit until the agreed scope and delivered ABI match. Checkpoint event ref is a rulesId/action hash; it is not the missing job ref.
 
-<a id="z1-4"></a>
-
-### Z1.4 Optional SVM example to validate the SDK mapping
-
-SvmTerms/program/account/data-pin definitions and PDA/ATA responsibilities are supplied. Our internal SDK backend is implemented and actual-contract tests pass. We are not asking for those definitions again. If available, please share a known-good Donut-to-Solana fixture covering:
-
-- Cluster CAIP-2 value and gateway program/registry source.
-- Destination CEA and protected token/output accounts, with their derivation inputs.
-- A valid encoded envelope and outbound payload for one allowed instruction; expected account/data-pin matches and corresponding failure cases.
-
-The SDK already contains a Solana-devnet gateway setting and a counter-program IDL, so we can perform read-only preflight and build a bounded wire-level test ourselves. Their current deployment/compatibility still needs verification. Your fixture would provide a useful independent comparison, not unblock missing backend work. Contract SVM tests use synthetic keys and do not prove live destination settlement.
-
 ## Product choices kept separate
 
 [Harsh's draft](questions-harsh.md) retains native PC defaults/token wording, raw-offset authoring, multi-rule send selection and the joint public-Solana representation decision. The new guide confirms same-agent/same-chain multiplicity; it does not choose a send selection API. No public spend, revoked-history or compileCard request is reopened.
+
+The [Solana wire evidence](research/live-svm-wire-2026-10-06/README.md) proves positive delivery/replay and later terminal-rejection classification. Its initial ten-minute timeout is retained; retry timing is an optional [operational follow-up](research/live-svm-wire-2026-10-06/platform-followup.md), separate from the contract scope question above.
 
 [Implementation plan](implementation-plan.md) · [External dependencies](external-blockers.md) · [Current baseline](current-baseline.md)

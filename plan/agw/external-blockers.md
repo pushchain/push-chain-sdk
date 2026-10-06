@@ -12,7 +12,7 @@ Rechecked October 6, 2026 against live Notion pages 1/5 and All discussions, all
 | Multiple-rule execution | Harsh H6 | Explicit caller rule selection versus a defined automatic strategy, including arrays/overlapping rules; same-agent capacity is supplied |
 | Metadata scope | Zaryab Z1.3 with Harsh | Whether absent grant ref/editable label will be delivered or explicitly deferred from v1 |
 
-Zaryab Z1.4 is an **optional fixture request**, not a hard dependency. The SDK already has a candidate devnet gateway and counter-program IDL. We can verify their current deployment/compatibility read-only and prepare a bounded wire-level test ourselves. A known-good team fixture would improve independent comparison; this review does not claim those candidate inputs have passed live AGW delivery.
+Zaryab Z1.4 is now **closed with SDK-owned evidence**: the configured devnet gateway and counter IDL were checked against actual deployed accounts, and internal AGW delivery/receipt/replay passed. [Live Solana wire report](research/live-svm-wire-2026-10-06/README.md). No external fixture is needed for that baseline. [Concrete public API proposals](public-api-proposals.md) are ready for H4.4/H4.5/H6 review.
 
 The owner guide retains assets[] on the rule, with each listed token usable by every allowed call. Harsh's token-independence comment is not treated as permission to remove token limits. SVM wire types are supplied; the remaining fixture request does not reopen struct delivery.
 
@@ -36,9 +36,11 @@ creditRevert still depends on Push-core executor integration; the source explici
 
 All 25 registered AGW live scenarios have passing bounded selected-run coverage, including UEA/7702 identities/batching, lifecycle, allowance, response hooks/replay and Sepolia outbound success/failure. This resolves the outstanding native/EVM acceptance tasks; public Solana destinations still need integration and live coverage. External product/scope decisions above remain separate. [Current evidence](research/live-acceptance-2026-10-06/README.md).
 
+**SVM negative acceptance:** the initial ten-minute wait returned timeout while the outbound was pending. The same request subsequently became REVERTED, and read-only SDK replay returned failed with Push status 1. Terminal classification is now supplied/verified; no new hard delivery blocker is inferred. Retry/terminalization timing and richer program-error reporting are optional [operational follow-ups](research/live-svm-wire-2026-10-06/platform-followup.md). Returned funds still do not lower the rule's spend, consistent with the separate creditRevert dependency.
+
 ## Freshness
 
-Fresh fetch confirms AGW source e8db748 and documentation head deploy-agw@10a24f1, with identical src. Explorer-verified ABIs and the earlier pinned RPC probe are saved in the [review bundle](research/deployment-review-2026-10-06/README.md); no new deployment probe in this question pass. Current evidence is 1,975 unit tests, 75 actual-contract tests and 25 registered live scenarios with passing selected-run coverage. [Validation](research/sdk-hardening-2026-10-06/README.md). Core/gateway source pins were not refreshed.
+Fresh fetch confirms AGW source e8db748 and documentation head deploy-agw@10a24f1, with identical src. The earlier verified ABIs/probe remain in the [review bundle](research/deployment-review-2026-10-06/README.md); subsequent [wire preflight and acceptance](research/live-svm-wire-2026-10-06/README.md) recheck live wiring and both networks. Full units now pass 1,981; prior unchanged local-contract evidence is 75 passes, and native/EVM live coverage is 25 scenarios. New Solana wire/replay outcomes are recorded separately, including the initial timeout and later terminal failure. Core/gateway source pins were not refreshed.
 
 Notion's last full export remains October 3, with October 4 body comparison, October 5 comments and a fresh October 6 live inspection of pages 1/5 and All discussions. The GitHub guide supplies deployed wire behavior; the target public API remains qualified by Harsh's replies.
 

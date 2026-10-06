@@ -2,7 +2,7 @@
 
 This package contains the SDK implementation plan, source snapshots, open decisions and validation evidence. Current work is on feat/agw-sdk-v4. Runtime commits are a66ff7d (v4/SVM foundations) and b68bab7 (gas headroom); current validation is linked below. Native/EVM support now uses the checked Donut v4 deployment; old runtime adapters/ABIs/fixtures were removed. All 25 registered AGW scenarios have passing bounded live coverage, including native/UEA identities and Sepolia outbound success/failure.
 
-Latest: [live acceptance and fixes](research/live-acceptance-2026-10-06/README.md), following the [v4 migration](research/v4-implementation-2026-10-06/README.md). The unrestricted full core unit run passes 1,975 tests; the actual-contract harness passes 75. Build and four typechecks pass. Native defaults/raw-offset API/multi-rule selection decisions, absent ref/labels, public SVM integration and release scope remain explicit.
+Latest: [live acceptance and fixes](research/live-acceptance-2026-10-06/README.md), following the [v4 migration](research/v4-implementation-2026-10-06/README.md). The unrestricted full core unit run passes 1,981 tests; the actual-contract harness passes 75. Build and four typechecks pass. Native defaults/raw-offset API/multi-rule selection decisions, absent ref/labels, public SVM integration and release scope remain explicit.
 
 The public target remains [Notion page 5](notion/5-sdk-agw.md), qualified by [Harsh's replies](product-decisions-2026-10-04.md) and [live comments](research/notion-comments-2026-10-05.md). The [v4 deployment/owner-guide review](research/deployment-review-2026-10-06/README.md) records the supplied deployed wire definitions. Historical adapter-absence statements in that review describe the pre-migration inspection, not current implementation.
 
@@ -15,6 +15,8 @@ Latest: [all nine SDK-owned items completed](research/sdk-independent-completion
 Latest validation: [selected differential/race/API/runtime hardening](research/sdk-hardening-2026-10-06/README.md). Both Node 20/24 pass; existing live E2E receipts are independently rechecked.
 
 Before sharing: [October 6 question source recheck](research/question-source-recheck-2026-10-06/README.md) confirms unchanged contract heads and re-inspects live pages 1/5 and All discussions. Drafts now ask only remaining public/release decisions; the Solana fixture is explicitly optional, and internal wire-level validation can proceed independently.
+
+Latest independent work: [live internal Solana wire validation](research/live-svm-wire-2026-10-06/README.md) verifies actual CEA transfer/CPI, receipts/replay and policy refusals. The initial funded run is 2 passed / 1 ten-minute timeout; that request later reached REVERTED and read-only replay verified failed. Public SVM stays gated. [Concrete API proposals](public-api-proposals.md) are ready; Zaryab's fixture request is closed.
 
 ## Start here
 
@@ -33,7 +35,8 @@ Before sharing: [October 6 question source recheck](research/question-source-rec
 | [Integrator obligations](contract-integrator-obligations.md) | Contract-delegated SDK/product requirements |
 | [External blockers](external-blockers.md) | Remaining defaults/type clarification and contract/deployment dependencies |
 | [Questions for Harsh](questions-harsh.md) | Product decisions and recommendations |
-| [Questions for Zaryab](questions-zaryab.md) | Ref/label v1 scope, joint Solana review and optional integration fixture |
+| [Questions for Zaryab](questions-zaryab.md) | Ref/label v1 scope and joint Solana review; fixture request closed |
+| [Public API proposals](public-api-proposals.md) | Concrete Solana input/read and raw-offset/selection choices for review |
 | [Review summary](review-summary.md) | Consequential independent-review corrections |
 
 ## Sources and evidence

@@ -7,8 +7,8 @@
  *
  *   --group <name>   One of: all (default), smoke, evm-r1, evm-r2, evm-r3,
  *                    svm-r1, svm-r2r3, pc20, push, cross-chain, read,
- *                    known-fail, agw
- *                    (`all` excludes known-fail and agw — ask for them by name;
+ *                    known-fail, agw, agw-svm-wire, agw-svm-replay
+ *                    (`all` excludes known-fail and AGW groups — ask by name;
  *                    agw uses the checked Donut v4 manifest by default, see __e2e__/agw/_manifest.ts)
  *   --list           Print the selection and the jest argv, run nothing
  *   --verify         Check every `grep` against the real spec titles and exit

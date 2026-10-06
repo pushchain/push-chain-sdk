@@ -35,6 +35,8 @@ export const GROUPS = [
   'read',
   'known-fail',
   'agw',
+  'agw-svm-wire',
+  'agw-svm-replay',
 ] as const;
 
 export type Group = (typeof GROUPS)[number];
@@ -70,6 +72,7 @@ export type Asset =
   // Push master (PUSH_PRIVATE_KEY) on Push Donut — Push-native origin specs
   | 'masterPC'
   | 'masterPETH'
+  | 'masterPSOL'
   // The EVM master's UEA on Push Donut — Routes 2/3 on both VMs, and PC20
   | 'ueaPC'
   | 'ueaPETH'
@@ -160,6 +163,40 @@ const F = {
 } as const;
 
 export const SCENARIOS: Scenario[] = [
+  {
+    id: 'agw-svm-replay-positive', group: 'agw-svm-replay', file: '__e2e__/agw-svm-wire/replay.spec.ts',
+    grep: 'agw svm recorded replay 1\\. positive replay', needs: {}, env: { AGW_SVM_WIRE_REPLAY_E2E: '1' },
+  },
+  {
+    id: 'agw-svm-replay-rejected', group: 'agw-svm-replay', file: '__e2e__/agw-svm-wire/replay.spec.ts',
+    grep: 'agw svm recorded replay 2\\. later terminal rejection', needs: {}, env: { AGW_SVM_WIRE_REPLAY_E2E: '1' },
+  },
+  {
+    id: 'agw-svm-replay-policy', group: 'agw-svm-replay', file: '__e2e__/agw-svm-wire/replay.spec.ts',
+    grep: 'agw svm recorded replay 3\\. pinned live policy', needs: {}, env: { AGW_SVM_WIRE_REPLAY_E2E: '1' },
+  },
+  {
+    id: 'agw-svm-wire-positive', group: 'agw-svm-wire',
+    file: '__e2e__/agw-svm-wire/outbound.spec.ts',
+    grep: 'agw svm wire 1\\. positive outbound',
+    needs: { masterPC: '45', masterPSOL: '0.00002' },
+    env: { AGW_SVM_WIRE_E2E: '1' },
+    note: 'Internal prepared-wire backend; public SVM capability remains gated.',
+  },
+  {
+    id: 'agw-svm-wire-refusals', group: 'agw-svm-wire',
+    file: '__e2e__/agw-svm-wire/outbound.spec.ts',
+    grep: 'agw svm wire 2\\. substituted account',
+    needs: { masterPC: '45', masterPSOL: '0.00002' },
+    env: { AGW_SVM_WIRE_E2E: '1' },
+  },
+  {
+    id: 'agw-svm-wire-failure', group: 'agw-svm-wire',
+    file: '__e2e__/agw-svm-wire/outbound.spec.ts',
+    grep: 'agw svm wire 3\\. destination program failure',
+    needs: { masterPC: '45', masterPSOL: '0.00002' },
+    env: { AGW_SVM_WIRE_E2E: '1' },
+  },
   // ---------------------------------------------------------------------------
   // smoke — read-only. No transactions, no funds. Runs first so a broken build or
   // a dead RPC fails in ~3 min instead of 90.
@@ -1004,13 +1041,13 @@ export const SCENARIOS: Scenario[] = [
 
 /**
  * Scenarios for a group. `all` means "everything that should pass" — it deliberately
- * excludes `known-fail` and `agw`, which have to be asked for by name.
+ * excludes `known-fail`, `agw` and `agw-svm-wire`, which must be requested by name.
  */
 export function scenariosFor(group: string | undefined): Scenario[] {
   if (!group || group === 'all') {
     // AGW stays opt-in: scenarios create/fund fresh wallets and consume testnet funds.
     return SCENARIOS.filter(
-      (s) => s.group !== 'known-fail' && s.group !== 'agw'
+      (s) => s.group !== 'known-fail' && !s.group.startsWith('agw')
     );
   }
   if (!(GROUPS as readonly string[]).includes(group)) {

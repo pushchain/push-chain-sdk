@@ -286,6 +286,10 @@ function renderTable(rows: Row[]): void {
 (async () => {
   const scenarios = scenariosFor(group);
   const raw = aggregateNeeds(scenarios);
+  if (group === 'agw-svm-replay') {
+    console.log('Recorded SVM replay is read-only: no keys, signing or funding needed.');
+    return;
+  }
 
   /** Summed need for an asset, with headroom and reserve, as a decimal string. */
   const target = (a: Asset): number => {
@@ -332,7 +336,7 @@ function renderTable(rows: Row[]): void {
   // The agw group needs a verified compatible AGW deployment (plan/agw A07).
   // Check it read-only BEFORE any balance work so nothing is ever funded for
   // a run that cannot exercise a real deployment.
-  if (scenarios.some((s) => s.group === 'agw')) {
+  if (scenarios.some((s) => s.group === 'agw' || s.group === 'agw-svm-wire')) {
     try {
       await verifyAgwManifest(push, loadAgwManifest());
       console.log('AGW deployment manifest verified on-chain.');
@@ -341,6 +345,11 @@ function renderTable(rows: Row[]): void {
       console.error('No transactions were sent.');
       process.exit(1);
     }
+  }
+  if (scenarios.some((s) => s.group === 'agw-svm-wire')) {
+    const { inspectSvmWirePrograms, svmWireConnection } = await import('../shared/agw-svm-preflight');
+    await inspectSvmWirePrograms(svmWireConnection(solRpc));
+    console.log('Solana wire fixture verified read-only before funding.');
   }
   const pushWallet = createWalletClient({
     account: pushAcc,
@@ -474,7 +483,7 @@ function renderTable(rows: Row[]): void {
     { scope: 'Push master (Donut)', asset: 'PC', need: units(target('masterPC'), 18) + deficit('ueaPC'), have: mPC, decimals: 18, tier: 'master' },
     { scope: 'Push master (Donut)', asset: 'pETH', need: units(target('masterPETH'), dPeth) + deficit('ueaPETH'), have: mPeth, decimals: dPeth, tier: 'master' },
     { scope: 'Push master (Donut)', asset: 'pUSDT.eth', need: deficit('ueaUsdtEth'), have: mUsdtEth, decimals: dUsdtEth, tier: 'master' },
-    { scope: 'Push master (Donut)', asset: 'pSOL', need: deficit('ueaPSOL'), have: mPsol, decimals: dPsol, tier: 'master' },
+    { scope: 'Push master (Donut)', asset: 'pSOL', need: units(target('masterPSOL'), dPsol) + deficit('ueaPSOL'), have: mPsol, decimals: dPsol, tier: 'master' },
     { scope: 'Push master (Donut)', asset: 'pUSDT.sol', need: deficit('ueaUsdtSol'), have: mUsdtSol, decimals: dUsdtSol, tier: 'master' },
     { scope: 'Push master (Donut)', asset: 'PC20', need: deficit('ueaPC20'), have: mPc20, decimals: dPc20, tier: 'master' },
     { scope: 'Solana master (Devnet)', asset: 'SOL', need: units(target('solanaSOL'), 9) + deficit('ceaSvmSOL'), have: solBal, decimals: 9, tier: 'master' },

@@ -10,6 +10,8 @@ Focused October 5 comment review: live All discussions on pages 5 and 1, plus th
 
 October 6 pre-sharing source recheck: all twelve saved Notion sources and relevant contract/SDK/sibling documents were searched; live pages 1/5 and All discussions were inspected again. All eight AGW remote branch heads were fetched; deploy-agw remains 10a24f1 and pushAgenticWallet_v3 remains e8db748. [Evidence and narrowed questions](research/question-source-recheck-2026-10-06/README.md). Same-agent capacity is now supplied; send selection remains open. Public Solana representation needs joint review, while a representative fixture is optional. No full Notion export, sibling fetch, new live deployment probe or snapshot hash change is claimed by this pass.
 
+Subsequent October 6 [live SVM wire validation](research/live-svm-wire-2026-10-06/README.md) re-verifies Donut wiring and devnet programs/configuration, records ProgramData fingerprints and proves actual wallet CEA delivery/replay. It closes the external fixture request. The rejected request first returned SDK timeout, later became REVERTED, and read-only replay confirmed failed with returned assets but unchanged policy spend. Public API agreement remains separate. No additional Notion export or contract-source change occurred.
+
 ## Notion inventory
 
 | Document | Source | Local snapshot | Authority |

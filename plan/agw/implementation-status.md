@@ -1,6 +1,6 @@
 # AGW SDK implementation status
 
-> Latest: [funded acceptance and fixes](research/live-acceptance-2026-10-06/README.md). Full permissions are restored: 1,975 unfiltered unit tests, all 75 Anvil cases, build and four typechecks pass. All 25 registered AGW scenarios pass across selected live runs, including UEA identities, native 7702 batches, lifecycle and Sepolia success/failure. Public SVM destinations remain gated.
+> Latest: [funded acceptance and fixes](research/live-acceptance-2026-10-06/README.md). Full permissions are restored: 1,981 unfiltered unit tests, all 75 Anvil cases, build and four typechecks pass. All 25 registered AGW scenarios pass across selected live runs, including UEA identities, native 7702 batches, lifecycle and Sepolia success/failure. Public SVM destinations remain gated.
 
 Updated October 6, 2026. Branch feat/agw-sdk-v4; runtime commits a66ff7d and b68bab7. The native/EVM migration uses deployed source e8db748. Runtime/test e704d5b adapters, ABIs and fixtures were removed at Shoaib's request; historical review documents are evidence only. [Full handoff, commands and validation](research/v4-implementation-2026-10-06/README.md).
 
@@ -8,7 +8,7 @@ Updated October 6, 2026. Branch feat/agw-sdk-v4; runtime commits a66ff7d and b68
 
 | Level | Current evidence |
 | --- | --- |
-| Unit | 1,975 passed, 0 failed; 12 skipped; 115 suites passed, 1 skipped |
+| Unit | 1,981 passed, 0 failed; 12 skipped; 115 suites passed, 1 skipped |
 | Local actual contracts | 75 passed, 0 failed; 10 suites against e8db748 on Anvil |
 | ABI reproduction | All 5 explorer ABI entry sets match the isolated build, ignoring array order |
 | Runtime matrix | Node 20.19.2 and 24.14.0 pass full units, local contracts and package/API checks |
@@ -34,7 +34,7 @@ Local gateway/core/token/executor and CEA lookup are fixtures. Actual AGW/factor
 | 9 | Owner/allowance | Owner path unrestricted; explicit separate allowance retained | Release review; production allowance/token debit and delivery verified |
 | 10 | Native agent sends | Sender-preserving atomic batches retained | H6 selection for multiple matching rules |
 | 11 | EVM outbound | V4 asset membership, maxGasPerCall, wallet CEA/refunds, signer gas and responses | Release review; Sepolia success/failure and UEA cases verified |
-| 12 | SVM destinations | Source wire types delivered; SDK capability remains gated | Internal reads/context/IDL/wire lifecycle/execution complete; public mapping/display/dispatch enablement and live cluster acceptance |
+| 12 | SVM destinations | Internal live positive delivery and later terminal-rejection replay verified; public capability gated | Public mapping/display/dispatch agreement, adapters and public acceptance; rejection retry timing is documented separately |
 | 13 | Responses/progress/errors | V4 ABIs and prior canonical replay/wait fixes retained | Delayed-index replay/polling tested with real contracts/receipts; no remaining SDK-owned response gap |
 | 14 | E2E | 25 opt-in scenarios registered; public universal setup and new two-token/call-only cases | Completed native/EVM live coverage; public SVM acceptance after integration |
 | 15 | Web2 | Prior implementation retained and included in full unit run | Consumer migration notes supplied; existing Web2 unit acceptance passes |
@@ -45,6 +45,6 @@ Local gateway/core/token/executor and CEA lookup are fixtures. Actual AGW/factor
 
 A01 approval policy, A04 internal generation details, A06 history deferral and A08 compiler scope remain settled. A02 native batching is implemented locally. A05 wire/accounting is delivered and implemented for EVM. A07 deployment/registry is supplied; grant ref and editable label remain absent and capability-gated.
 
-H3 is narrowed to native omission defaults/public maxValueTotal and token wording; universal total semantics are implemented. H4.5 covers native pins/amount and the exact EVM beneficiaryOffset read/write form. H6 remains send selection, not management capacity. [Harsh draft](questions-harsh.md); [Zaryab metadata/SVM fixture draft](questions-zaryab.md).
+H3 is narrowed to native PC omission defaults/token wording; current target retains maxValueTotal. H4.4 is joint public SVM representation, with [concrete proposals](public-api-proposals.md) ready. H4.5 covers raw-offset representation, and H6 send selection. [Harsh draft](questions-harsh.md); [Zaryab metadata draft](questions-zaryab.md). The fixture request is closed with [our live wire evidence](research/live-svm-wire-2026-10-06/README.md), including later terminal rejection after the initial timeout.
 
 No public spent/history/compiler feature is reopened. Rule updates reset counters as agreed. Ordinary inflows do not restore spent; creditRevert remains a platform dependency.

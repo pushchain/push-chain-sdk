@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-06T07:36:52.702Z",
+  "sourceHash": "0x50a96ff863722ced3464e3e8e5e451621903396c9bc83fcc010756dc1aee73b8",
+  "chainId": 42101,
+  "block": "23949837",
+  "observations": [
+    {
+      "kind": "account-pin",
+      "reverted": true,
+      "decoded": {
+        "name": "PolicyCheckReverted(SvmAccountPinMismatch)",
+        "selector": "0xf4270752",
+        "decoded": "0xff3dafe500000000000000000000000000000000000000000000000000000000",
+        "hint": "URP rejected the action (truncated through the session engine). The inner selector names the gate; arguments are truncated to 28 bytes."
+      }
+    },
+    {
+      "kind": "instruction-data-pin",
+      "reverted": true,
+      "decoded": {
+        "name": "PolicyCheckReverted(SvmDataCeilingExceeded)",
+        "selector": "0xf4270752",
+        "decoded": "0x94de1ef800000000000000000000000000000000000000000000000000000000",
+        "hint": "URP rejected the action (truncated through the session engine). The inner selector names the gate; arguments are truncated to 28 bytes."
+      }
+    }
+  ],
+  "transactionsSent": 0
+}

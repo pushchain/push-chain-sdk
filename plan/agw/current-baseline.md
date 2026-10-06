@@ -49,7 +49,7 @@ The earlier supplied historical addresses are superseded for new v4 integrations
 | Multiple rules | Several same-agent/same-chain grants supported | Management permits multiplicity; ambiguous sends fail; H6 selection remains |
 | Checkpoints | Stored count/last block, three event kinds, per-owner-call/lifecycle ticks | Local and registered live native/EVM lifecycle acceptance pass |
 | Grant ref / label | Grant has no ref; label is deployment event only; no setLabel | Explicit capability gates; Z1.3 asks v1 scope/delivery |
-| SVM | Full multi-asset terms/program/account/data pins supplied | Internal reads, PDA/ATA/metadata/IDL resolution, lifecycle and outbound backend complete; public mapping/dispatch and live destination acceptance remain |
+| SVM | Full multi-asset terms/program/account/data pins supplied | Internal live CEA transfer/CPI, replay and policy refusals pass. Initial rejection timed out, then REVERTED/failed replay was verified. Public mapping/dispatch remains gated. |
 | Gateway request | Eight-field live implementation, selector 0x77b86bec | Dedicated context, listed-token choice and maxGasPerCall implemented |
 | Allowance | Consume separate owner-established allowance | Keep existing race-safe behavior; Live allowance/token debit passes; remaining identity coverage explicit |
 | Refund spend credit | creditRevert gains token; executor still does not call it | Known Push-core dependency; ordinary returns do not lower spent |
@@ -61,14 +61,14 @@ The ABI comparison found matching factory/wallet/engine function/event/error sig
 
 Four checks passed: version-1 envelope round-trip/old first-word incompatibility; synthetic ordered two-asset tuple round-trip; live v4 getConfig decode with old-ABI rejection; array assertion encoding. [Results and limits](research/deployment-review-2026-10-06/wire-checks.json). This is not a rule-grant, stale-spend transaction or funded E2E proof.
 
-The unrestricted run passes 1,975 unit and 75 actual-contract tests. All five explorer ABI sets match the isolated build. Donut is registered and all 25 registered native/EVM/identity cases have passing coverage. [Current acceptance evidence](research/live-acceptance-2026-10-06/README.md).
+The unrestricted run passes 1,981 unit and 75 actual-contract tests. All five explorer ABI sets match the isolated build. Donut is registered and all 25 registered native/EVM/identity cases have passing coverage. [Current acceptance evidence](research/live-acceptance-2026-10-06/README.md).
 
 ## Remaining decisions and acceptance
 
 - Harsh: native PC omission defaults/token intent, raw-offset authoring/read model, multi-rule send selection and joint public Solana representation. Current target retains maxValueTotal. [Open draft](questions-harsh.md).
-- Zaryab: ref/label v1 scope, joint Solana SDK review and optional representative SVM fixture. Wire/accounting/deployment delivery requests are removed. [Open draft](questions-zaryab.md).
+- Zaryab: ref/label v1 scope and joint Solana SDK review. Z1.4 fixture is closed with our own verified live example. [Open draft](questions-zaryab.md).
 - SDK: native/EVM migration is implemented and locally validated. Public SVM mapping/composition and release scope decisions remain. No legacy runtime adapter is retained.
-- Live: registered native/EVM/UEA/7702 and Sepolia success/failure scenarios pass, including independent CEA execution attribution. Public SVM destination acceptance remains after integration. Authorized testnet transactions are recorded in the live report.
+- Live: registered native/EVM/UEA/7702 and Sepolia success/failure scenarios pass. Internal Solana delivery, policy refusals and replay pass; later terminal rejection is verified through read-only replay after the initial ten-minute timeout. Public SVM destination acceptance remains after integration. [Wire evidence and limits](research/live-svm-wire-2026-10-06/README.md).
 
 Checkpoint count semantics remain per action, not per transaction: assert/revoke/grant adds five ticks; failed transactions unwind ticks; agent calls do not tick. Pre-existing allowances may change balances without checkpoints. Preserve internal spend assertions even though public spent records are removed.
 
