@@ -10,7 +10,7 @@ import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import type { AgenticRuntime } from '../runtime';
 import type { CreateOptions, CreateResult } from '../agentic.types';
 import { Snapshot } from '../reads/snapshot';
-import { walletCount } from '../reads/wallets';
+import { walletCount, walletInfo } from '../reads/wallets';
 import {
   assertCanSign,
   confirmedLogs,
@@ -142,6 +142,8 @@ export async function createWallet(
       gen,
       wallet,
       Number(index),
+      owner,
+      label,
       err
     );
     emitFailure(runtime, hook, wrapped);
@@ -157,6 +159,8 @@ export async function createWallet(
       gen,
       wallet,
       Number(index),
+      owner,
+      label,
       err
     );
     emitFailure(runtime, hook, wrapped);
@@ -239,6 +243,8 @@ async function createFailure(
   gen: ReturnType<typeof currentGeneration>,
   wallet: Address,
   index: number,
+  owner: Address,
+  label: string,
   err: unknown
 ): Promise<unknown> {
   const wrapped = wrapSendError(err);
@@ -270,6 +276,49 @@ async function createFailure(
     );
   }
   if (confirmed.length === 0 && !pending && !receiptUnavailable) {
+    // Some send paths flatten the factory revert to a generic execution
+    // error, losing the IndexMismatch selector. If the owner's next index has
+    // moved and immutable deployment metadata proves another label owns the
+    // predicted slot, this call could not have deployed or granted.
+    try {
+      const next = await walletCount(
+        await Snapshot.at(runtime.reader),
+        gen,
+        owner
+      );
+      if (next > BigInt(index)) {
+        const competing = await walletInfo(runtime.reader, gen, wallet);
+        if (
+          competing.deployed &&
+          competing.index === index &&
+          getAddress(competing.owner) === owner &&
+          competing.label !== label
+        ) {
+          return new AgenticError(
+            AGENTIC_ERROR_CODE.INDEX_RACE,
+            'wallet slot ' + index + ' was consumed by a concurrent deployment',
+            {
+              hint:
+                'Slot ' +
+                index +
+                ' belongs to "' +
+                competing.label +
+                '". No wallet or rules from this create call were committed; retry agentic.create to use the next slot.',
+              details: {
+                wallet,
+                index,
+                committed: false,
+                competingLabel: competing.label,
+              },
+              cause: wrapped,
+            }
+          );
+        }
+      }
+    } catch {
+      // If the owner counter/event cannot be reconciled, preserve the original
+      // error; never infer that a retry is safe from an incomplete read.
+    }
     // Nothing was confirmed (pre-broadcast failure or a reverted atomic batch).
     return wrapped;
   }

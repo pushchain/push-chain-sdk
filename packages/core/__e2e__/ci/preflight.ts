@@ -336,7 +336,7 @@ function renderTable(rows: Row[]): void {
   // The agw group needs a verified compatible AGW deployment (plan/agw A07).
   // Check it read-only BEFORE any balance work so nothing is ever funded for
   // a run that cannot exercise a real deployment.
-  if (scenarios.some((s) => s.group === 'agw' || s.group === 'agw-svm-wire')) {
+  if (scenarios.some((s) => s.group.startsWith('agw'))) {
     try {
       await verifyAgwManifest(push, loadAgwManifest());
       console.log('AGW deployment manifest verified on-chain.');

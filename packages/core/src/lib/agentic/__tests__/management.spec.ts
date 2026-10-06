@@ -9,7 +9,6 @@ import { PUSH_NETWORK } from '../../constants/enums';
 import { PushChainBatchExecutionError } from '../../orchestrator/internals/errors';
 import type { MultiCall } from '../../orchestrator/orchestrator.types';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
-import { AgenticCapability } from '../capabilities';
 import { currentGeneration, resetAgenticGenerations } from '../deployments';
 import {
   AGW_ABI,
@@ -355,6 +354,29 @@ describe('agentic.create', () => {
     );
     expect(err.code).toBe(AGENTIC_ERROR_CODE.INDEX_RACE);
     expect(err.details).toMatchObject({ committed: false });
+  });
+
+  it('a generic send error is still identified as a race when the fresh slot label proves another create won', async () => {
+    const fake = new FakeChain();
+    const rt = mockRuntime(fake, {
+      signer: ADDR.owner,
+      execute: (async () => {
+        fake.addWallet(ADDR.owner, 'competing-create');
+        throw new Error('opaque sender failure');
+      }) as never,
+    });
+    const err = await createWallet(rt, 'this-create', {
+      rules: [rule()],
+    }).catch((e) => e);
+    expect(err).toMatchObject({
+      code: AGENTIC_ERROR_CODE.INDEX_RACE,
+      details: {
+        wallet: nextWallet,
+        index: 0,
+        committed: false,
+        competingLabel: 'competing-create',
+      },
+    });
   });
 
   it('a slot that is already deployed is refused before signing', async () => {

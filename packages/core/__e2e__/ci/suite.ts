@@ -35,6 +35,7 @@ export const GROUPS = [
   'read',
   'known-fail',
   'agw',
+  'agw-extended',
   'agw-svm-wire',
   'agw-svm-replay',
 ] as const;
@@ -160,6 +161,8 @@ const F = {
   agwUniversal: '__e2e__/agw/universal-evm.spec.ts',
   agwIdentity: '__e2e__/agw/identity-gas.spec.ts',
   agwResponses: '__e2e__/agw/responses-hooks.spec.ts',
+  agwExtendedManagement: '__e2e__/agw-extended/management.spec.ts',
+  agwExtendedNative: '__e2e__/agw-extended/native-policy.spec.ts',
 } as const;
 
 export const SCENARIOS: Scenario[] = [
@@ -1037,6 +1040,31 @@ export const SCENARIOS: Scenario[] = [
     needs: { masterPC: '0.5' },
     env: { AGW_E2E: '1' },
   },
+
+  // Extended AGW tests are opt-in and use bounded per-scenario testnet budgets.
+  ...[
+    ['prefunding', '1\\. prefunding', '11'],
+    ['ambiguous-rules', '2\\. same-agent multiplicity', '11'],
+    ['batched-lifecycle', '3\\. multi-rule add', '0.5'],
+    ['invalid-revoke', '4\\. invalid revoke', '0.5'],
+    ['stale-update', '5\\. intervening agent spend', '11'],
+    ['index-race', '6\\. index race', '1'],
+  ].map(([slug, grep, pc]) => ({
+    id: `agw-extended-${slug}`,
+    group: 'agw-extended' as const,
+    file: F.agwExtendedManagement,
+    grep: `agw extended management ${grep}`,
+    needs: { masterPC: pc },
+    env: { AGW_EXTENDED_E2E: '1' },
+  })),
+  ...Array.from({ length: 8 }, (_, i) => ({
+    id: `agw-extended-native-policy-${i + 1}`,
+    group: 'agw-extended' as const,
+    file: F.agwExtendedNative,
+    grep: `agw extended native policy ${i + 1}\\.`,
+    needs: { masterPC: '0.25', masterPETH: '0.000000000001' },
+    env: { AGW_EXTENDED_E2E: '1' },
+  })),
 ];
 
 /**

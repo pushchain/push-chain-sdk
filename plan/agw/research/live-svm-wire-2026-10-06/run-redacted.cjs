@@ -10,10 +10,12 @@ const secrets = [...new Set(Object.entries(env)
   .flatMap(([, value]) => [value, ...(value.startsWith('0x') ? [value.slice(2)] : [])]))]
   .sort((a, b) => b.length - a.length);
 const redact = (text) => secrets.reduce((result, secret) => result.split(secret).join('[REDACTED]'), text);
-const name = process.argv[2] ?? 'live.log';
+const group = process.argv[2] ?? 'agw-svm-wire';
+const name = process.argv[3] ?? `${group}.log`;
+if (!['agw-svm-wire', 'agw-extended'].includes(group)) throw new Error('Unsupported funded AGW test group');
 if (!/^[a-z0-9-]+\.log$/.test(name)) throw new Error('Use a simple log filename');
 const child = spawn(process.execPath, ['../../node_modules/ts-node/dist/bin.js', '--transpile-only',
-  '__e2e__/ci/run.ts', '--group', 'agw-svm-wire'], {
+  '__e2e__/ci/run.ts', '--group', group], {
   cwd: path.join(root, 'packages/core'), env, stdio: ['ignore', 'pipe', 'pipe'],
 });
 let log = '';
