@@ -1,5 +1,5 @@
-/** Explicit limits only: these cases do not choose pending omission defaults or raw-input policy. */
-import { PushChain, AgenticRevertError } from '../../src';
+/** Native policy limits, confirmed zero defaults and lossless raw-offset reuse. */
+import { PushChain, AgenticRevertError, type NativeRule } from '../../src';
 import { encodeFunctionData, erc20Abi, type Address } from 'viem';
 import { getNativePRC20ForChain } from '../../src/lib/orchestrator/internals/helpers';
 import { readNativeCounters } from '../shared/agw-state';
@@ -25,15 +25,17 @@ d('agw extended native policy', () => {
   async function fixture(
     balance = BigInt(50),
     maxCalls = 2,
-    total = BigInt(15)
+    total = BigInt(15),
+    omitPc = false
   ) {
     const rule = {
       agent: f.agentAddress,
       target: token,
       selector: 'transfer(address,uint256)' as const,
       validUntil: inSeconds(3600),
-      maxValuePerCall: BigInt(0),
-      maxValueTotal: BigInt(0),
+      ...(omitPc
+        ? {}
+        : { maxValuePerCall: BigInt(0), maxValueTotal: BigInt(0) }),
       maxCalls,
       pins: [{ arg: 0, expected: f.ownerAddress }],
       amount: { arg: 1, maxPerCall: BigInt(10), maxTotal: total },
@@ -206,5 +208,70 @@ d('agw extended native policy', () => {
         args: [s.wallet, f.agentAddress],
       })
     ).toBe(before);
+  });
+  it('9. omitted PC limits forbid value while still allowing a token transfer', async () => {
+    const s = await fixture(BigInt(5), 3, BigInt(15), true);
+    await f.fundPC(s.wallet, BigInt(10));
+    const record = await f.owner.agentic
+      .wallet(s.wallet)
+      .rules.get(s.rulesIds[0]);
+    expect(record.rule).toMatchObject({
+      maxValuePerCall: BigInt(0),
+      maxValueTotal: BigInt(0),
+    });
+    await refused(s, () => s.send(BigInt(1), f.ownerAddress, BigInt(1)), 'ValueExceedsCap');
+    const sent = await s.send(BigInt(1));
+    expect((await sent.wait()).status).toBe(1);
+    expect(await s.counters()).toMatchObject({
+      valueSpent: BigInt(0),
+      amountSpent: BigInt(1),
+    });
+    f.evidence('zero-pc-defaults', { wallet: s.wallet, txHash: sent.hash });
+  });
+  it('10. decoded raw-offset rules can be granted again without fabricated ref metadata', async () => {
+    const s = await fixture(BigInt(0));
+    const original = await f.owner.agentic
+      .wallet(s.wallet)
+      .rules.get(s.rulesIds[0]);
+    expect(original).not.toHaveProperty('ref');
+    const made = await f.owner.agentic.create('raw-offset-reuse', {
+      rules: [original.rule as NativeRule],
+    });
+    const reread = await f.owner.agentic
+      .wallet(made.wallet)
+      .rules.get(made.rulesIds[0]);
+    expect(reread.rule).toEqual(original.rule);
+    expect(reread).not.toHaveProperty('ref');
+    f.evidence('raw-offset-reuse', {
+      wallet: made.wallet,
+      txHash: made.tx.hash,
+    });
+  });
+  it('11. removed ref and conflicting argument-offset inputs fail before signing', async () => {
+    const nonce = await f.push.getTransactionCount({ address: f.ownerAddress });
+    const rule = {
+      agent: f.agentAddress,
+      target: token,
+      selector: 'transfer(address,uint256)',
+      validUntil: inSeconds(3600),
+    };
+    await expect(
+      f.owner.agentic.create('invalid-ref', {
+        rules: [{ ...rule, ref: `0x${'11'.repeat(32)}` } as never],
+      })
+    ).rejects.toMatchObject({ code: 'INVALID_RULE' });
+    await expect(
+      f.owner.agentic.create('invalid-pin', {
+        rules: [
+          {
+            ...rule,
+            pins: [{ arg: 0, offset: 4, expected: `0x${'00'.repeat(32)}` }],
+          } as never,
+        ],
+      })
+    ).rejects.toMatchObject({ code: 'INVALID_RULE' });
+    expect(await f.push.getTransactionCount({ address: f.ownerAddress })).toBe(
+      nonce
+    );
   });
 });

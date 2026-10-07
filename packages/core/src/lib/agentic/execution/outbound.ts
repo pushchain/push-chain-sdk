@@ -143,7 +143,7 @@ export async function composeOutbound(
   if (info.vm !== VM.EVM) {
     throw capabilityUnavailable(
       AgenticCapability.UNIVERSAL_SVM_RULES,
-      'SVM destinations are not enabled for agentic wallets (A05/A07, H4.4)'
+      'This composer accepts EVM destinations; use the Solana instruction route'
     );
   }
   const funds = params.funds;

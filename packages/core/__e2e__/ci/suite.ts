@@ -1040,6 +1040,12 @@ export const SCENARIOS: Scenario[] = [
     env: { AGW_E2E: '1' },
   },
 
+  ...Array.from({ length: 4 }, (_, i) => ({
+    id: `agw-public-svm-${i + 1}`, group: 'agw' as const,
+    file: '__e2e__/agw/svm-public.spec.ts', grep: `agw public svm ${i + 1}\\.`,
+    needs: { masterPC: '25', masterPSOL: '0.00001' }, env: { AGW_E2E: '1' },
+  })),
+
   // Extended AGW tests are opt-in and use bounded per-scenario testnet budgets.
   ...[
     ['prefunding', '1\\. prefunding', '11'],
@@ -1056,7 +1062,7 @@ export const SCENARIOS: Scenario[] = [
     needs: { masterPC: pc },
     env: { AGW_E2E: '1' },
   })),
-  ...Array.from({ length: 8 }, (_, i) => ({
+  ...Array.from({ length: 11 }, (_, i) => ({
     id: `agw-extended-native-policy-${i + 1}`,
     group: 'agw' as const,
     file: F.agwExtendedNative,

@@ -1,3 +1,5 @@
+import { decodeSvmTerms, validateSvmTerms } from './codec/svm-terms';
+import { svmKey } from './codec/svm-accounts';
 import { getAddress, isHex, zeroAddress, type Address, type Hex } from 'viem';
 import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 import { MOVEABLE_TOKENS } from '../constants/tokens';
@@ -22,7 +24,12 @@ import {
 import { pushChainNamespaceFor } from './chain';
 import { decodeUniversalTerms } from './codec/universal-terms';
 import { universalTermsToRule } from './codec/universal';
-import type { AgenticHex, Rule, Selector } from './agentic.types';
+import type {
+  AgenticHex,
+  Rule,
+  Selector,
+  DecodedSolanaRule,
+} from './agentic.types';
 import type { UniversalRule } from './agentic.types';
 import type { ResolvedUniversalRule } from './codec/universal';
 
@@ -115,7 +122,7 @@ export const internalAgenticUtils = {
   decodeRules(
     bytes: Hex,
     ctx: { network?: PUSH_NETWORK; pushChainNamespace?: string } = {}
-  ): Rule {
+  ): Rule | DecodedSolanaRule {
     if (!isHex(bytes))
       throw new AgenticError(
         AGENTIC_ERROR_CODE.INVALID_RULE,
@@ -138,10 +145,51 @@ export const internalAgenticUtils = {
       session.actions[0].actionPolicies[0].initData
     );
     if (chainNamespace !== nativeNamespace(ctx)) {
+      if (chainNamespace.startsWith('solana:')) {
+        const terms = decodeSvmTerms(body);
+        validateSvmTerms(terms, -1);
+        const assets = terms.assets.map((a) => {
+          const chain = chainNamespace as CHAIN;
+          const token = (MOVEABLE_TOKENS[chain] ?? []).find((candidate) => {
+            try {
+              return (
+                getAddress(
+                  getPRC20Address(
+                    { chain, address: candidate.address },
+                    { network: ctx.network ?? PUSH_NETWORK.TESTNET_DONUT }
+                  ).address
+                ) === getAddress(a.token)
+              );
+            } catch {
+              return false;
+            }
+          });
+          if (!token)
+            throw new AgenticError(
+              AGENTIC_ERROR_CODE.RULE_READ_FAILED,
+              'SVM source token is absent from the static registry; use wallet.rules.get()'
+            );
+          return {
+            token:
+              token.mechanism === 'native'
+                ? zeroAddress
+                : svmKey(token.address),
+            maxPerCall: a.maxPerCall,
+            maxTotal: a.maxTotal,
+          };
+        });
+        return {
+          ...terms,
+          format: 'decoded',
+          agent,
+          chainNamespace: chainNamespace as `solana:${string}`,
+          assets,
+        };
+      }
       if (!chainNamespace.startsWith('eip155:'))
         throw capabilityUnavailable(
           AgenticCapability.UNIVERSAL_SVM_RULES,
-          'SVM public decoding is pending'
+          'unsupported universal chain namespace'
         );
       let terms;
       try {
@@ -189,11 +237,7 @@ export const internalAgenticUtils = {
         tokens
       );
     }
-    return nativeTermsToRule(
-      decodeNativeTerms(body),
-      agent,
-      `0x${'00'.repeat(32)}`
-    );
+    return nativeTermsToRule(decodeNativeTerms(body), agent);
   },
 };
 

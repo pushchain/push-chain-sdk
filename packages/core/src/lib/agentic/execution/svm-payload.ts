@@ -1,4 +1,4 @@
-/** Internal parser/validator for the deployed S12–S18 grammar. Public SVM sends remain gated. */
+/** Parser/validator for the deployed S12–S18 instruction grammar. */
 import { bytesToHex, hexToBytes, type Hex } from 'viem';
 import { encodeSvmExecutePayload } from '../../orchestrator/payload-builders';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';

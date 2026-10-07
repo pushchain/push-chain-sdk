@@ -51,6 +51,7 @@ export const V4_CAPABILITIES: ReadonlySet<AgenticCapability> = new Set([
   AgenticCapability.CHECKPOINTS,
   AgenticCapability.UNIVERSAL_EVM_OUTBOUND,
   AgenticCapability.UNIVERSAL_EVM_RULES,
+  AgenticCapability.UNIVERSAL_SVM_RULES,
   AgenticCapability.ASSERT_SPENT_UNIVERSAL_MULTI,
 ]);
 

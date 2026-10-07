@@ -1,5 +1,7 @@
 # AGW public API proposals for team review
 
+**October 7 disposition:** named-IDL Solana authoring and dual native/EVM raw-offset/index inputs were approved and implemented (supported fixed layouts documented in the consumer guide). H6’s caller-selector proposal is not being implemented. The clarified decision retains AMBIGUOUS_RULE and relies on existing contract enforcement/error mapping; no automatic-selection contract change is requested. The sketches below preserve the proposal history; use current exported types and `packages/core/AGW.md` for implementation.
+
 October 6, 2026. These are proposals for H4.4/H4.5/H6, not implemented public contracts. Native/EVM methods remain as implemented; public Solana capability stays gated. The [source recheck](research/question-source-recheck-2026-10-06/README.md) separates supplied wire definitions from these remaining SDK choices.
 
 ## H4.4 Solana rule inputs and decoded records

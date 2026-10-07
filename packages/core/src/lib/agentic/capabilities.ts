@@ -27,10 +27,8 @@ export enum AgenticCapability {
   UNIVERSAL_EVM_RULES = 'universalEvmRules',
   /** Per-token expected-spend assertion for universal replacement. A05. */
   ASSERT_SPENT_UNIVERSAL_MULTI = 'assertSpentUniversalMulti',
-  /** SVM destination rulebook through the public Rule type. A05/A07, Harsh H4.4. */
+  /** Named-IDL Solana authoring, exact decoded reads and instruction execution. */
   UNIVERSAL_SVM_RULES = 'universalSvmRules',
-  /** Grant reference emitted in RulesGranted. A07. */
-  GRANT_REF = 'grantRef',
   /** Editable wallet label (setLabel / LabelSet). A07. */
   SET_LABEL = 'setLabel',
 }
@@ -58,9 +56,7 @@ export const CAPABILITY_DEPENDENCY: Record<AgenticCapability, string> = {
   [AgenticCapability.ASSERT_SPENT_UNIVERSAL_MULTI]:
     'universal expected-spend assertions are unavailable for this configuration',
   [AgenticCapability.UNIVERSAL_SVM_RULES]:
-    'SVM wire types are delivered; public SDK mapping/composition remains pending (H4.4)',
-  [AgenticCapability.GRANT_REF]:
-    'the selected generation has no grant reference parameter/event (A07)',
+    'SVM rules are unavailable for this generation',
   [AgenticCapability.SET_LABEL]:
     'the selected generation has no editable label (A07; labels are deploy-time only)',
 };

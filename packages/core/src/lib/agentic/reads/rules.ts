@@ -1,6 +1,8 @@
+import { readSvmConfig } from './svm';
+import { PRC20_SOURCE_ABI, readGasPrc20 } from '../contracts/prc20-metadata';
+import { svmKey } from '../codec/svm-accounts';
 import {
   getAddress,
-  isAddress,
   zeroAddress,
   type Address,
   type Hex,
@@ -8,7 +10,6 @@ import {
 import { CHAIN } from '../../constants/enums';
 import {
   AgenticCapability,
-  CAPABILITY_DEPENDENCY,
   requireCapability,
 } from '../capabilities';
 import type { AgenticGeneration } from '../deployments';
@@ -25,12 +26,10 @@ import { chainHash } from '../codec/rules';
 import {
   AGENTIC_ERROR_CODE,
   AgenticError,
-  capabilityUnavailable,
 } from '../errors';
 import type { AgenticHex, RulesRecord } from '../agentic.types';
 import { Snapshot } from './snapshot';
 
-const ZERO_REF = `0x${'00'.repeat(32)}` as AgenticHex;
 const MODE_UNIVERSAL = 0;
 const MODE_NATIVE = 1;
 
@@ -159,7 +158,7 @@ export async function selectRuleForSend(
       AGENTIC_ERROR_CODE.AMBIGUOUS_RULE,
       `${matches.length} enabled rules on ${wallet} name ${agent} for ${destinationChain}`,
       {
-        hint: 'Multi-rule selection is pending H6. Candidate IDs are listed in details.rulesIds; the SDK will not pick one arbitrarily.',
+        hint: 'Multiple enabled rules match this agent and chain. Inspect details.rulesIds and ask the owner to resolve the overlap; no transaction was submitted.',
         details: { rulesIds: matches.map((m) => m.rulesId) },
       }
     );
@@ -176,10 +175,62 @@ export async function decodeActiveRule(
   pushChainNamespace: string
 ): Promise<RulesRecord> {
   if (rule.mode === MODE_UNIVERSAL) {
+    if (rule.vm === 1) {
+      requireCapability(
+        gen.capabilities,
+        AgenticCapability.UNIVERSAL_SVM_RULES
+      );
+      const stored = await readSvmConfig(
+        snap,
+        gen,
+        wallet,
+        rule,
+        pushChainNamespace
+      );
+      const cfg = stored.config;
+      const gas = await readGasPrc20(snap, stored.chainNamespace);
+      const assets = await Promise.all(
+        cfg.assets.map(async (a) => ({
+          token:
+            getAddress(a.token) === gas
+              ? zeroAddress
+              : svmKey(
+                  await snap.read<string>(
+                    a.token,
+                    PRC20_SOURCE_ABI,
+                    'SOURCE_TOKEN_ADDRESS'
+                  )
+                ),
+          maxPerCall: a.maxPerCall,
+          maxTotal: a.maxTotal,
+        }))
+      );
+      return {
+        rulesId: rule.rulesId,
+        enabled: true,
+        agent: rule.agent,
+        chainNamespace: stored.chainNamespace,
+        validUntil: Number(cfg.validUntil),
+        rule: {
+          format: 'decoded',
+          agent: rule.agent,
+          chainNamespace: stored.chainNamespace,
+          validUntil: Number(cfg.validUntil),
+          expectedCEA: cfg.expectedCEA,
+          gatewayProgram: cfg.gatewayProgram,
+          maxGasPerCall: cfg.maxGasPerCall,
+          assets,
+          ceaAccounts: cfg.ceaAccounts,
+          programs: cfg.programs,
+          pins: cfg.pins,
+          dataPins: cfg.dataPins,
+        },
+      };
+    }
     if (rule.vm !== 0)
-      throw capabilityUnavailable(
-        AgenticCapability.UNIVERSAL_SVM_RULES,
-        'SVM public rule mapping is not settled (H4.4)'
+      throw new AgenticError(
+        AGENTIC_ERROR_CODE.RULE_READ_FAILED,
+        'unknown universal VM'
       );
     requireCapability(gen.capabilities, AgenticCapability.UNIVERSAL_EVM_RULES);
     const chain = chainFromHash(rule.chainHash, pushChainNamespace);
@@ -219,7 +270,6 @@ export async function decodeActiveRule(
       chainNamespace: chain,
       agent: rule.agent,
       validUntil: Number(cfg.validUntil),
-      ref: ZERO_REF,
       rule: universalTermsToRule(
         cfg,
         rule.agent,
@@ -264,8 +314,7 @@ export async function decodeActiveRule(
     chainNamespace: pushChainNamespace,
     agent: rule.agent,
     validUntil: Number(cfg.validUntil),
-    ref: ZERO_REF,
-    rule: nativeTermsToRule(cfg, rule.agent, ZERO_REF),
+    rule: nativeTermsToRule(cfg, rule.agent),
   };
 }
 

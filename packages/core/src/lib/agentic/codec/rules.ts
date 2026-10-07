@@ -8,7 +8,12 @@ import {
 } from 'viem';
 import { AgenticCapability, requireCapability } from '../capabilities';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
-import type { NativeRule, Rule, UniversalRule } from '../agentic.types';
+import type {
+  NativeRule,
+  Rule,
+  UniversalRule,
+  SolanaRule,
+} from '../agentic.types';
 import {
   encodeNativeTerms,
   nativeRuleToTerms,
@@ -16,15 +21,28 @@ import {
 } from './native';
 import { buildSession, encodeEnvelope, type SessionWire } from './session';
 import { encodeUniversalRule, type ResolvedUniversalRule } from './universal';
+import { encodeSvmTerms, type SvmTermsWire } from './svm-terms';
+import { SEND_OUTBOUND_SELECTOR } from '../contracts/v4';
 import type { UniversalTermsWire } from './universal-terms';
 
+export function isSolanaRule(rule: Rule): rule is SolanaRule {
+  return (
+    typeof (rule as SolanaRule).chainNamespace === 'string' &&
+    (rule as SolanaRule).chainNamespace.startsWith('solana:')
+  );
+}
+
 export function isUniversalRule(rule: Rule): rule is UniversalRule {
-  return (rule as UniversalRule).chainNamespace !== undefined;
+  return (
+    (rule as UniversalRule).chainNamespace !== undefined && !isSolanaRule(rule)
+  );
 }
 
 /** CAIP-2 chain a rule governs: omitted = the connected Push chain. */
 export function ruleChain(rule: Rule, pushChainNamespace: string): string {
-  return isUniversalRule(rule) ? rule.chainNamespace : pushChainNamespace;
+  return (
+    (rule as UniversalRule | SolanaRule).chainNamespace ?? pushChainNamespace
+  );
 }
 
 export function chainHash(chainNamespace: string): Hex {
@@ -40,6 +58,7 @@ export interface RuleEncodeContext {
   nowSeconds: number;
   gateway?: Address;
   universal?: ReadonlyMap<UniversalRule, ResolvedUniversalRule>;
+  svm?: ReadonlyMap<SolanaRule, SvmTermsWire>;
   /**
    * Addresses a native rule may never target (AGW _requireGrantableTarget /
    * URP NativeTargetIsGateway): wallet, engine, policy, validator, factory,
@@ -56,6 +75,7 @@ export interface PreparedRule {
   /** Native terms when the rule is native (used for previews and assertions). */
   nativeTerms?: NativeTermsWire;
   universalTerms?: UniversalTermsWire;
+  svmTerms?: SvmTermsWire;
 }
 
 /** Validate before signing. V4 permits several grants for the same agent/chain. */
@@ -105,10 +125,46 @@ export function prepareRules(
         `rules[${i}] names the connected Push chain; omit chainNamespace for a native rule`
       );
     }
-    if (rule.ref !== undefined) {
-      requireCapability(ctx.capabilities, AgenticCapability.GRANT_REF);
+    if ('ref' in rule) {
+      throw new AgenticError(
+        AGENTIC_ERROR_CODE.INVALID_RULE,
+        'Rule ref is not supported; remove it from the input'
+      );
     }
 
+    if (isSolanaRule(rule)) {
+      requireCapability(
+        ctx.capabilities,
+        AgenticCapability.UNIVERSAL_SVM_RULES
+      );
+      const terms = ctx.svm?.get(rule);
+      if (!terms || !ctx.gateway)
+        throw new AgenticError(
+          AGENTIC_ERROR_CODE.INVALID_RULE,
+          'SVM rules require resolved wallet context and named IDL inputs'
+        );
+      return {
+        rule,
+        agent,
+        chainNamespace,
+        svmTerms: terms,
+        session: buildSession({
+          validator: ctx.validator,
+          rulesPolicy: ctx.rulesPolicy,
+          agent,
+          actions: [
+            {
+              target: ctx.gateway,
+              selector: SEND_OUTBOUND_SELECTOR,
+              initData: encodeEnvelope(
+                chainNamespace,
+                encodeSvmTerms(terms, ctx.nowSeconds)
+              ),
+            },
+          ],
+        }),
+      };
+    }
     if (isUniversalRule(rule)) {
       return encodeUniversalRule(rule, ctx);
     }

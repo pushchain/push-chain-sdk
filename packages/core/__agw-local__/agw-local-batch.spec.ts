@@ -10,6 +10,7 @@ import {
 import { AgenticRevertError, CHAIN, type PushChain } from '../src';
 import { PUSH_BATCH_EXECUTOR_ADDRESS } from '../src/lib/constants/chain';
 import { startHarness, type Harness } from './harness';
+import { EvmClient } from '../src/lib/vm-client/evm-client';
 import { readNativeCounters } from '../__e2e__/shared/agw-state';
 
 const ABI = parseAbi([
@@ -97,9 +98,29 @@ it('failure of a later native action rolls back the earlier call and its counter
   const nonceBefore = await h.publicClient.getTransactionCount({
     address: h.wallets[1].account!.address,
   });
-  await expect(
-    agent.universal.sendTransaction({ to: h.addresses.target, data: calls() })
-  ).rejects.toBeInstanceOf(AgenticRevertError);
+  // Normal estimation now refuses this invalid batch before broadcast. For
+  // this separate rollback proof, override only the test estimate so the real
+  // signed type-4 transaction reaches the real contracts and reverts there.
+  const original = EvmClient.prototype.sendBatch7702;
+  const send = jest
+    .spyOn(EvmClient.prototype, 'sendBatch7702')
+    .mockImplementation(async function (this: EvmClient, params) {
+      const estimate = jest
+        .spyOn(this.publicClient, 'estimateGas')
+        .mockResolvedValue(BigInt(2_000_000));
+      try {
+        return await original.call(this, params);
+      } finally {
+        estimate.mockRestore();
+      }
+    });
+  try {
+    await expect(
+      agent.universal.sendTransaction({ to: h.addresses.target, data: calls() })
+    ).rejects.toBeInstanceOf(AgenticRevertError);
+  } finally {
+    send.mockRestore();
+  }
   // Prove this was a mined transaction failure, not an early SDK rejection.
   expect(
     await h.publicClient.getTransactionCount({
@@ -115,4 +136,19 @@ it('failure of a later native action rolls back the earlier call and its counter
       rulesIds[0]
     )
   ).toMatchObject({ callsUsed: 0 });
+});
+
+it('normal estimation refuses an invalid native batch before broadcasting', async () => {
+  const { agent } = await walletFor(1);
+  const nonce = await h.publicClient.getTransactionCount({
+    address: h.wallets[1].account!.address,
+  });
+  await expect(
+    agent.universal.sendTransaction({ to: h.addresses.target, data: calls() })
+  ).rejects.toBeInstanceOf(AgenticRevertError);
+  expect(
+    await h.publicClient.getTransactionCount({
+      address: h.wallets[1].account!.address,
+    })
+  ).toBe(nonce);
 });

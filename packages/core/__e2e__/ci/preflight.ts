@@ -346,7 +346,7 @@ function renderTable(rows: Row[]): void {
       process.exit(1);
     }
   }
-  if (scenarios.some((s) => s.group === 'agw-svm-wire')) {
+  if (scenarios.some((s) => s.group === 'agw-svm-wire' || s.file === '__e2e__/agw/svm-public.spec.ts')) {
     const { inspectSvmWirePrograms, svmWireConnection } = await import('../shared/agw-svm-preflight');
     await inspectSvmWirePrograms(svmWireConnection(solRpc));
     console.log('Solana wire fixture verified read-only before funding.');

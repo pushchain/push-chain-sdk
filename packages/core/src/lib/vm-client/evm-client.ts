@@ -428,29 +428,35 @@ export class EvmClient {
       throw new EIP7702NotSupportedError(err);
     }
 
-    // Estimate gas against the delegated account: override the EOA's code with
-    // the 7702 delegation designator (0xef0100 || executor) so estimation runs
-    // the executor. Fall back to a safe ceiling if the node rejects overrides.
+    // Prefer authorization-aware estimation of the actual type-4 transaction.
+    // Some RPCs reject that format or state overrides. An ordinary estimate is
+    // valid only if the account is already delegated to this exact executor.
+    // Never guess a per-call ceiling: contract deployment/grants vary in cost.
+    const delegation = ('0xef0100' + executor.slice(2)) as Hex;
     let gas: bigint;
     try {
       gas = await this.publicClient.estimateGas({
         account,
         to: account,
         data,
-        stateOverride: [
-          {
-            address: account,
-            code: ('0xef0100' + executor.slice(2)) as Hex,
-          },
-        ],
+        authorizationList: [authorization as never],
       });
-      gas = (gas * BigInt(120)) / BigInt(100); // headroom for delegation + auth
     } catch {
-      // Estimation unavailable (e.g. node rejects state overrides). Scale the
-      // ceiling with the batch size so large batches don't OOG — the legacy
-      // per-call loop budgeted ~500k gas per call; mirror that plus overhead.
-      gas = BigInt(500_000) * BigInt(calls.length) + BigInt(100_000);
+      const code = await this.publicClient.getCode({ address: account });
+      if (code?.toLowerCase() === delegation.toLowerCase()) {
+        gas = await this.publicClient.estimateGas({ account, to: account, data });
+      } else {
+        gas = await this.publicClient.estimateGas({
+          account,
+          to: account,
+          data,
+          stateOverride: [{ address: account, code: delegation }],
+        });
+      }
     }
+    // The fallback estimates omit authorization processing (25k intrinsic).
+    // Include it conservatively on every path, plus 20% execution headroom.
+    gas = (gas * BigInt(120) + BigInt(99)) / BigInt(100) + BigInt(25_000);
 
     const unsignedTx = serializeTransaction({
       chainId,

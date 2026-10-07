@@ -57,3 +57,21 @@ Existing implementation at a852777 still contains provisional approval/default r
 ## Implementation follow-through
 
 The subsequent alignment implements the clear decisions: generation-dependent helpers and spend counters are internal, active-only v1 reads use RULE_NOT_FOUND for unknown/revoked IDs, compileCard is removed, approval policy is external, and native agent arrays use sender-preserving atomic UEA/7702 transport. H3 defaults and the raw-offset public-type question remain unchanged/pending. See [validation and limits](research/product-alignment-2026-10-04/README.md). The earlier a852777 statements above record the pre-alignment state.
+
+## October 7 follow-up — user-relayed team answers
+
+This update supersedes the earlier pending status for these decisions. It records reported decisions, not completed implementation.
+
+- Omitted native `maxValuePerCall` and `maxValueTotal` remain `0`: no native PC value allowance. Existing SDK behavior matches.
+- Keep the current `assets[]` model and independent token budgets.
+- Public Solana authoring will use named inputs from an IDL. The public adapter and its acceptance tests still need implementation; stored reads must preserve exact constraints because the contract does not store the IDL.
+- Rule `ref` is removed from scope. Remove its public input/capability stub during SDK alignment.
+- `setLabel` will be fixed by Zaryab. Keep it gated until the contract surface and deployment are verified.
+- Contract validation is authoritative; SDK error mapping should expose refusals. Freshly fetched `deploy-agw@10a24f1` still requires an explicit `rulesId` in `executeAsAgent` (`src/AGW.sol:823`). It checks the agent, validates that selected rule, then dispatches (`828–834`). It does not choose among rules. The later clarification retains AMBIGUOUS_RULE for multiple candidates. Reverted action/state does not imply a mined transaction costs no gas.
+- No new answer was supplied for H4.5 (native/EVM argument-index versus raw-offset public types).
+
+## October 7 final decisions and implementation
+
+Shoaib approved dual native/EVM argument-index/raw-offset authoring with exact decoded reads. The assistant initially misinterpreted the contract-validation reply as a request for automatic rule selection; Shoaib corrected that interpretation. H6 retains AMBIGUOUS_RULE for multiple candidates, with existing contract validation and SDK error mapping. No automatic-selection interface/deployment is required.
+
+SDK alignment now removes public rule `ref` inputs/records/capability, rejects stale ref inputs, preserves checkpoint `ref`, and implements named-IDL Solana authoring through public create/add/update/read/send paths. Supported fixed layouts fail explicitly on unsupported dynamic/optional/nested schemas. The public guide documents scope. `setLabel` remains gated pending contract delivery. Existing rule selection and contract enforcement remain in place.

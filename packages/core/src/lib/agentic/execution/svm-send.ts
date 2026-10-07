@@ -1,4 +1,4 @@
-/** Prepared-wire agent execution. Public SVM entry points remain disabled. */
+/** Prepared-wire agent execution used by the public Solana route. */
 import { getAddress, erc20Abi, type Address, type Hex } from 'viem';
 import { CHAIN } from '../../constants/enums';
 import type { AgenticGeneration } from '../deployments';
@@ -169,7 +169,7 @@ export async function sendSvmAgentWire(
       data: prepared.data,
     });
     // Return the ordinary signer response and explicit wire context internally.
-    // Public display/Rule mapping is deliberately not invented here.
+    // The public wrapper applies the response presentation.
     return { tx, context: prepared.stored, instruction: prepared.instruction };
   } catch (error) {
     throw wrapSendError(error);

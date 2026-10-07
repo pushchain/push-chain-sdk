@@ -22,7 +22,7 @@ import {
 } from '../codec/session';
 import { parseSelector, VALUE_ONLY_SELECTOR } from '../codec/selectors';
 import { argumentOffset, headSize } from '../codec/abi-layout';
-import { AGENTIC_DEFAULTS, UINT256_MAX } from '../codec/defaults';
+import { UINT256_MAX } from '../codec/defaults';
 import { v4 } from '../contracts/v4';
 import { AGW_ABI } from '../contracts/abi/v4';
 import { AGENTIC_ERROR_CODE } from '../errors';
@@ -139,7 +139,7 @@ describe('native rule codec', () => {
     expect(env.chainNamespace).toBe(v.nativeChain);
     const back = decodeNativeTerms(env.body);
     expect(back).toEqual({ ...terms, validUntil: terms.validUntil });
-    const rule = nativeTermsToRule(back, v.rule.agent, `0x${'00'.repeat(32)}`);
+    const rule = nativeTermsToRule(back, v.rule.agent);
     // Stored terms carry offsets, not an ABI: decoded rules report the raw offset form.
     expect(rule.pins).toEqual([
       { offset: 4, expected: terms.pins[0].expected.toLowerCase() },
@@ -149,7 +149,7 @@ describe('native rule codec', () => {
       maxPerCall: BigInt(10),
       maxTotal: BigInt(100),
     });
-    expect(rule.ref).toBeUndefined();
+    expect(rule).not.toHaveProperty('ref');
     // …and the decoded rule re-encodes to identical terms with only its 4-byte selector.
     expect(nativeRuleToTerms(rule, { nowSeconds: NOW }).terms).toEqual(terms);
   });
@@ -164,7 +164,7 @@ describe('native rule codec', () => {
     };
     const { terms } = nativeRuleToTerms(input, { nowSeconds: NOW });
     expect(terms.pins[0].offset).toBe(4 + 64);
-    const decoded = nativeTermsToRule(terms, agent, `0x${'00'.repeat(32)}`);
+    const decoded = nativeTermsToRule(terms, agent);
     expect(decoded.pins).toEqual([
       { offset: 68, expected: terms.pins[0].expected },
     ]);
@@ -224,7 +224,7 @@ describe('native rule codec', () => {
     ).toEqual([{ offset: 36, expected: `0x${'00'.repeat(31)}01` }]);
   });
 
-  it('applies the single provisional A03 defaults table for omitted limits', () => {
+  it('applies confirmed zero PC defaults and independent token/call defaults', () => {
     const { terms } = nativeRuleToTerms(
       {
         agent,
@@ -236,11 +236,17 @@ describe('native rule codec', () => {
       { nowSeconds: NOW }
     );
     expect(terms.maxValuePerCall).toBe(
-      AGENTIC_DEFAULTS.native.maxValuePerCall.value
+      BigInt(0)
     );
     expect(terms.maxValueTotal).toBe(BigInt(0));
     expect(terms.maxCalls).toBe(0);
     expect(terms.amount.maxTotal).toBe(UINT256_MAX);
+  });
+
+  it('rejects ambiguous arg-plus-offset authoring for both pins and amount', () => {
+    const rule = { agent, target, selector: 'transfer(address,uint256)' as const, validUntil: NOW + 10 };
+    expect(() => nativeRuleToTerms({ ...rule, pins: [{ arg: 0, offset: 4, expected: `0x${'00'.repeat(32)}` } as never] }, { nowSeconds: NOW })).toThrow('mutually exclusive');
+    expect(() => nativeRuleToTerms({ ...rule, amount: { arg: 1, offset: 36, maxPerCall: BigInt(1) } as never }, { nowSeconds: NOW })).toThrow('mutually exclusive');
   });
 
   it('keeps an explicit zero as zero', () => {

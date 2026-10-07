@@ -16,7 +16,7 @@ import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
  *   smartsessions IdLib.toActionId / toConfigId / toPermissionId and
  *   AGWFactory._predict (OZ Clones immutable-args CREATE2).
  * Every input that changes the result is explicit — validator, factory and
- * implementation are generation context (provisional public signature A04).
+ * implementation are internal generation context.
  */
 
 /** keccak256(abi.encodePacked(address target, bytes4 selector)). */

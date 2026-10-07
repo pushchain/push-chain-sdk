@@ -1,9 +1,11 @@
 /**
  * Public AGW types — AGW SDK page section 3 (Notion export 2026-10-03 13:23 IST).
  *
- * Provisional public choices are documented on the affected properties and
- * remain subject to product and contract confirmation.
+ * Named-IDL Solana inputs and native/EVM raw offsets follow the October 7
+ * decisions. Contract-dependent label editing remains capability-gated.
  */
+import type { Idl } from '@coral-xyz/anchor';
+import type { SvmTermsWire } from './codec/svm-terms';
 import type { MoveableToken } from '../constants/tokens';
 import type { UniversalTxResponse } from '../orchestrator/orchestrator.types';
 import type { ProgressEvent } from '../progress-hook/progress-hook.types';
@@ -19,22 +21,20 @@ export type Selector = AgenticHex | `${string}(${string})`;
 export interface NativeRule {
   /** Push address: an EOA, or the UEA of an external key. Never the owner. */
   agent: AgenticAddress;
-  /** Emitted in RulesGranted when the generation supports it (A07). */
-  ref?: AgenticHex;
   /** Omitted = the connected Push chain. */
   chainNamespace?: never;
   target: AgenticAddress;
   selector: Selector | 'value-only';
   /** Unix seconds. */
   validUntil: number;
-  /** Default 0 (no native value) — provisional, A03. */
+  /** Default 0: no native PC value allowance. */
   maxValuePerCall?: bigint;
-  /** Default 0 (no native value) — provisional, A03. */
+  /** Default 0: no native PC value allowance. */
   maxValueTotal?: bigint;
-  /** Default 0 (unlimited calls until expiry) — provisional, A03. */
+  /** Default 0 (unlimited calls until expiry). */
   maxCalls?: number;
   pins?: ArgPin[];
-  /** `maxTotal` default uint256 max (unlimited total) — provisional, A03. */
+  /** `maxTotal` default uint256 max (unlimited total). */
   amount?: AmountLimit;
 }
 
@@ -43,13 +43,20 @@ export interface NativeRule {
  * the selector signature (requires the signature form of `selector`).
  * `offset` is the raw calldata byte offset, selector included — the form the
  * contracts store; decoded rules (rules.get/list, decodeRules) always use it
- * because stored terms carry no ABI. SDK extension of the page-5 shape.
+ * because stored terms carry no ABI. Advanced input form; ABI argument indexes are preferred for authoring.
  */
 export type ArgPin =
-  | { arg: number; expected: AgenticHex | AgenticAddress | bigint }
-  | { offset: number; expected: AgenticHex };
+  | {
+      arg: number;
+      offset?: never;
+      expected: AgenticHex | AgenticAddress | bigint;
+    }
+  | { offset: number; arg?: never; expected: AgenticHex };
 
-export type AmountLimit = ({ arg: number } | { offset: number }) & {
+export type AmountLimit = (
+  | { arg: number; offset?: never }
+  | { offset: number; arg?: never }
+) & {
   maxPerCall: bigint;
   maxTotal?: bigint;
 };
@@ -67,16 +74,15 @@ export interface AllowedCall {
   selector: Selector;
   /** Argument index whose address must be the wallet's destination account. */
   beneficiary?: number;
-  /** Exact stored calldata offset for lossless decoded rules; mutually exclusive with beneficiary. Public form pending H4.5. */
+  /** Exact stored calldata offset for lossless decoded rules; mutually exclusive with beneficiary. Approved advanced input form. */
   beneficiaryOffset?: number;
-  /** Default 0 — provisional, A03. */
+  /** Default 0. */
   maxValue?: bigint;
 }
 
 export interface UniversalRule {
   agent: AgenticAddress;
-  ref?: AgenticHex;
-  chainNamespace: ForeignChainNamespace;
+  chainNamespace: `eip155:${string}`;
   assets: AssetCap[];
   /** PC (wei) per outbound for the destination leg. */
   maxGasPerCall: bigint;
@@ -85,7 +91,50 @@ export interface UniversalRule {
   allowedCalls: AllowedCall[];
 }
 
-export type Rule = NativeRule | UniversalRule;
+/** An address may be base58 or a 32-byte hex Solana public key. */
+export type SvmAccountRef =
+  | { kind: 'walletCEA' }
+  | { kind: 'walletATA'; token: string }
+  | { kind: 'address'; address: string };
+export type SvmFieldConstraint =
+  | { name: string; equals: AgenticHex | bigint | boolean }
+  | { name: string; min: bigint }
+  | { name: string; max: bigint }
+  | {
+      numerator: string;
+      denominator: string;
+      minRatio: { num: bigint; den: bigint };
+    };
+export interface SvmInstructionRule {
+  program: string;
+  instruction: { idl: Idl; name: string };
+  /** Top-level account names from a supported Anchor IDL; optional/nested accounts are rejected. */
+  accounts: { name: string; expected: SvmAccountRef }[];
+  /** Fixed-width fields only; unsupported/variable layouts fail before signing. */
+  fields?: SvmFieldConstraint[];
+}
+export interface SolanaRule {
+  agent: AgenticAddress;
+  chainNamespace: `solana:${string}`;
+  validUntil: number;
+  assets: {
+    token: MoveableToken | string;
+    maxPerCall: bigint;
+    maxTotal?: bigint;
+  }[];
+  maxGasPerCall: bigint;
+  /** Additional output mints whose wallet ATAs must be protected. */
+  outputTokens?: string[];
+  allowedInstructions: SvmInstructionRule[];
+}
+/** Stored constraints contain no IDL; supply a named SolanaRule when replacing. */
+export interface DecodedSolanaRule extends Omit<SvmTermsWire, 'assets'> {
+  format: 'decoded';
+  agent: AgenticAddress;
+  chainNamespace: `solana:${string}`;
+  assets: { token: string; maxPerCall: bigint; maxTotal: bigint }[];
+}
+export type Rule = NativeRule | UniversalRule | SolanaRule;
 
 export interface RulesRecord {
   rulesId: AgenticHex;
@@ -93,8 +142,7 @@ export interface RulesRecord {
   chainNamespace: string;
   agent: AgenticAddress;
   validUntil: number;
-  ref: AgenticHex;
-  rule: Rule;
+  rule: Rule | DecodedSolanaRule;
 }
 
 export interface CreateOptions {
@@ -140,7 +188,7 @@ export interface AgenticWallet {
   address: AgenticAddress;
   info(): Promise<WalletInfo>;
   owner(): Promise<{ owner: AgenticAddress }>;
-  /** PROPOSED (page 1 item 10); capability-gated, A07. */
+  /** Pending contract delivery; unavailable on the currently registered deployment. */
   setLabel(
     label: string,
     opts?: { progressHook?: AgenticProgressHook }
@@ -208,6 +256,12 @@ export interface AgenticTxMetadata {
     data: AgenticHex;
     value: bigint;
   }[];
+  /** SVM instruction executed by the wallet's destination CEA. */
+  destinationInstruction?: {
+    program: AgenticHex;
+    data: AgenticHex;
+    accounts: readonly { pubkey: AgenticHex; isWritable: boolean }[];
+  };
   /** Ordered actions in a native agent batch; to/data/value summarize its first action. */
   nativeCalls?: readonly {
     to: AgenticAddress;

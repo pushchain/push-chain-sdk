@@ -1,4 +1,4 @@
-/** Internal lossless SVM state. Public Rule mapping stays capability-gated. */
+/** Internal lossless SVM state shared by public reads and execution. */
 import type { Address, Hex } from 'viem';
 import type { AgenticGeneration } from '../deployments';
 import type { SvmConfigRead } from '../contracts/v4';

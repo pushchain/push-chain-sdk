@@ -1,8 +1,8 @@
 # Current validated AGW baseline
 
-Updated October 6, 2026 after the v4 deployment notice, source/ABI inspection, read-only Donut probe and extended E2E run. **The v4 deployment and native/EVM SDK adapter/codecs are integrated locally. The 25 previously registered AGW scenarios and 14 added management/policy scenarios are all part of the opt-in `agw` group and have passing selected-run live coverage.** [Extended E2E evidence](research/extended-e2e-2026-10-06/README.md); [full deployment review](research/deployment-review-2026-10-06/README.md).
+Updated October 7, 2026 after confirmed product decisions, fresh contract refs, and public Solana/native acceptance. **The v4 deployment and native/EVM SDK adapter/codecs are integrated locally. The opt-in `agw` group now includes 46 scenarios with selected-run live coverage: 39 previous cases and seven decision-alignment cases.** [Extended E2E evidence](research/extended-e2e-2026-10-06/README.md); [full deployment review](research/deployment-review-2026-10-06/README.md).
 
-The public SDK target remains Notion page 5, qualified by Harsh's later replies/comments. The new owner guide establishes deployed wire behavior; mismatches in public ref/labels/defaults/selection remain explicit. [Prior October 3–5 baseline](research/deployment-review-2026-10-06/previous-current-baseline.md) is retained as historical evidence.
+The public SDK target remains Notion page 5, qualified by Harsh's later replies/comments. The new owner guide establishes deployed wire behavior; the October 7 decisions remove rule ref, confirm defaults and existing ambiguity handling, and leave editable labels pending contract delivery. [Prior October 3–5 baseline](research/deployment-review-2026-10-06/previous-current-baseline.md) is retained as historical evidence.
 
 ## Pinned sources
 
@@ -43,13 +43,13 @@ The earlier supplied historical addresses are superseded for new v4 integrations
 | All policy envelopes | uint16 version=1, chainNamespace, body | Envelope 1 implemented; old envelope rejected by actual contracts |
 | Universal EVM | 1–8 ordered AssetCaps, maxGasPerCall, address expectedCEA | Implemented, including source-chain/token identity validation and v4 reads |
 | No-movement rules | One destination gas PRC20 cap at 0/0 when user assets empty | Implemented; actual-contract call-only case passes |
-| Total ceilings | maxUint256 unlimited, zero hard zero | Universal max default/explicit zero implemented; native omission choices partly open |
+| Total ceilings | maxUint256 unlimited, zero hard zero | Universal max default/explicit zero and confirmed zero native PC defaults implemented |
 | Internal replacement guard | assertSpent(configId,wallet,uint256[]) compares all totals in asset order | SDK implemented; second-token intervening spend rolls back replacement |
 | Native terms | Same body layout, one config per action; envelope changed | V4 native tests pass; ABI offset validation retained |
-| Multiple rules | Several same-agent/same-chain grants supported | Management permits multiplicity; ambiguous sends fail; H6 selection remains |
+| Multiple rules | Several same-agent/same-chain grants supported | Management permits multiplicity; ambiguous sends are refused by the SDK, and the contract enforces the supplied rule |
 | Checkpoints | Stored count/last block, three event kinds, per-owner-call/lifecycle ticks | Local and registered live native/EVM lifecycle acceptance pass |
-| Grant ref / label | Grant has no ref; label is deployment event only; no setLabel | Explicit capability gates; Z1.3 asks v1 scope/delivery |
-| SVM | Full multi-asset terms/program/account/data pins supplied | Internal live CEA transfer/CPI, replay and policy refusals pass. Initial rejection timed out, then REVERTED/failed replay was verified. Public mapping/dispatch remains gated. |
+| Grant ref / label | Grant has no ref; label is deployment event only; no setLabel | Rule ref removed from SDK scope; editable labels await contract delivery |
+| SVM | Full multi-asset terms/program/account/data pins supplied | Public named-IDL grants/reads/replacement/sends/revoke pass live, including destination CEA transfer and replay; unsupported IDL layouts are rejected explicitly. Prior internal rejection/terminal replay evidence remains valid. |
 | Gateway request | Eight-field live implementation, selector 0x77b86bec | Dedicated context, listed-token choice and maxGasPerCall implemented |
 | Allowance | Consume separate owner-established allowance | Keep existing race-safe behavior; Live allowance/token debit passes; remaining identity coverage explicit |
 | Refund spend credit | creditRevert gains token; executor still does not call it | Known Push-core dependency; ordinary returns do not lower spent |
@@ -61,15 +61,16 @@ The ABI comparison found matching factory/wallet/engine function/event/error sig
 
 Four checks passed: version-1 envelope round-trip/old first-word incompatibility; synthetic ordered two-asset tuple round-trip; live v4 getConfig decode with old-ABI rejection; array assertion encoding. [Results and limits](research/deployment-review-2026-10-06/wire-checks.json). This is not a rule-grant, stale-spend transaction or funded E2E proof.
 
-The unrestricted run passes 1,982 unit and 75 actual-contract tests. All five explorer ABI sets match the isolated build. Donut is registered and all 39 AGW native/EVM/identity/management/policy cases have passing selected-run live coverage. The `agw` group remains opt-in; default `all` remains 76 scenarios. [Extended E2E evidence](research/extended-e2e-2026-10-06/README.md); [prior acceptance evidence](research/live-acceptance-2026-10-06/README.md).
+See [implementation status](implementation-status.md) for the final unit and actual-contract counts. All five explorer ABI sets match the isolated build. Donut is registered and all 46 AGW native/EVM/identity/management/policy/public-Solana cases have passing selected-run live coverage. The `agw` group remains opt-in; default `all` remains 76 scenarios. [Extended E2E evidence](research/extended-e2e-2026-10-06/README.md); [prior acceptance evidence](research/live-acceptance-2026-10-06/README.md).
 
-## Remaining decisions and acceptance
+## Remaining delivery and acceptance
 
-- Harsh: native PC omission defaults/token intent, raw-offset authoring/read model, multi-rule send selection and joint public Solana representation. Current target retains maxValueTotal. [Open draft](questions-harsh.md).
-- Zaryab: ref/label v1 scope and joint Solana SDK review. Z1.4 fixture is closed with our own verified live example. [Open draft](questions-zaryab.md).
-- SDK: native/EVM migration is implemented and locally validated. Public SVM mapping/composition and release scope decisions remain. No legacy runtime adapter is retained.
-- Live: registered native/EVM/UEA/7702 and Sepolia success/failure scenarios pass. Internal Solana delivery, policy refusals and replay pass; later terminal rejection is verified through read-only replay after the initial ten-minute timeout. Public SVM destination acceptance remains after integration. [Wire evidence and limits](research/live-svm-wire-2026-10-06/README.md).
+Product choices are settled: zero native PC defaults, current token budgets, named IDL Solana authoring, dual native/EVM argument-index/raw-offset inputs, and removal of rule ref. The implementation and seven new selected live cases cover these choices.
+
+Zaryab delivery is still needed for editable labels. The existing contract already enforces the supplied rule and rejects unauthorized actions. Keep AMBIGUOUS_RULE for multiple candidates; no automatic-selection interface or caller-facing selector is required. [Delivery items](questions-zaryab.md).
+
+Public Solana acceptance now passes. Source-authoring supports fixed Anchor layouts, one instruction per send, and configured devnet. See the [consumer guide](../../packages/core/AGW.md) for exact limits. The destination failure/retry and creditRevert platform limitations remain as recorded in the historical wire report.
 
 Checkpoint count semantics remain per action, not per transaction: assert/revoke/grant adds five ticks; failed transactions unwind ticks; agent calls do not tick. Pre-existing allowances may change balances without checkpoints. Preserve internal spend assertions even though public spent records are removed.
 
-The [question source recheck](research/question-source-recheck-2026-10-06/README.md) freshly confirms unchanged deploy-agw/pushAgenticWallet_v3 heads. It records answered definitions separately from remaining public decisions and SDK-owned fixture validation; it does not claim a fresh live bytecode probe.
+The historical [October 6 source recheck](research/question-source-recheck-2026-10-06/README.md) records unchanged contract heads; the October 7 fetch confirmed the same refs. It records answered definitions separately from remaining public decisions and SDK-owned fixture validation; it does not claim a fresh live bytecode probe.

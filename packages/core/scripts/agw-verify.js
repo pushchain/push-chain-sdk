@@ -28,7 +28,7 @@ run('units', node, [
   '--config',
   'packages/core/jest.config.ts',
   '--runInBand',
-  '--testPathPattern=agentic|outbound-(confirmation-gate|svm-confirmation)|svm-idl',
+  '--testPathPattern=agentic|outbound-(confirmation-gate|svm-confirmation)|svm-idl|evm-client.batch-gas',
 ]);
 for (const kind of ['lib', 'spec', 'agw-local'])
   run(`types-${kind}`, node, [

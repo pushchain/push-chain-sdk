@@ -1,6 +1,6 @@
 # Agentic wallets on Push Chain
 
-This guide describes AGW v4 in this SDK branch. Donut is the configured deployment. Native Push and EVM destination rules are supported; public Solana destination rules are not enabled yet. Solana-origin signers can already act through their Push UEA.
+This guide describes AGW v4 in this SDK branch. Donut is the configured deployment. Native Push, EVM destination rules and named-IDL Solana devnet rules are supported. Solana-origin signers can already act through their Push UEA.
 
 An AGW holds assets. Its owner grants or revokes rules and can execute unrestricted owner calls. An agent executes through its own Push identity, and each agent call must pass the granted policy. A Push-native key's identity is its EOA; an external key's identity is its Push UEA for that origin chain.
 
@@ -24,6 +24,7 @@ import {
   AgenticError,
   type NativeRule,
   type UniversalRule,
+  type SolanaRule,
 } from '@pushchain/core';
 import {
   createWalletClient,
@@ -257,14 +258,65 @@ A successful Push receipt does not mean destination success. Check `externalStat
 | `INDEX_RACE` | This create committed nothing; derive/retry the next slot. |
 | `CREATE_PARTIAL` | Inspect `details.walletDeployed`, `grantedRulesIds`, `confirmedHashes` and `pendingHash`. Reconcile unknown/pending outcomes. If deployed, finish missing grants with `rules.add`; do not create a replacement wallet blindly. |
 | `NO_RULES_FOR_CHAIN` | Grant a suitable enabled rule before the agent sends. |
-| `AMBIGUOUS_RULE` | Inspect candidate IDs in `details.rulesIds`. The SDK does not pick or revoke a rule arbitrarily; the public selection API is still being agreed. |
+| `AMBIGUOUS_RULE` | Multiple enabled rules match the agent and chain. No transaction is submitted. Inspect `details.rulesIds` and have the owner resolve the overlap; the SDK does not pick or revoke a rule arbitrarily. |
 | `GATEWAY_ALLOWANCE_INSUFFICIENT` | The owner must explicitly establish a sufficient allowance. |
 | `CAPABILITY_UNAVAILABLE` / `GENERATION_UNSUPPORTED` | Inspect the capability/deployment details; no compatible operation was submitted. |
 
 Ordinary returned funds do not lower policy spend. `creditRevert` still needs platform executor support. Revoking rules stops agent authorization but does not remove ERC20 allowances; the owner manages those separately.
 
+## Solana rules using named IDL inputs
+
+Use `SolanaRule` with an Anchor IDL, instruction name, named account restrictions and field constraints. Addresses accept base58 or 32-byte hex. `walletCEA` and `walletATA` references are derived from the AGW and configured cluster; declare output mints in `outputTokens` when their wallet ATAs also need protection.
+
+```ts
+import type { Idl } from '@coral-xyz/anchor';
+
+async function createSolanaWallet(
+  owner: PushChain, agent: Address, program: string,
+  idl: Idl, recipient: string, counter: string,
+) {
+  const rule: SolanaRule = {
+    agent,
+    chainNamespace: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET,
+    validUntil: Math.floor(Date.now() / 1000) + 3600,
+    assets: [{ token: '0x0000000000000000000000000000000000000000', maxPerCall: BigInt(10_000), maxTotal: BigInt(20_000) }],
+    maxGasPerCall: parseEther('20'),
+    allowedInstructions: [{
+      program,
+      instruction: { idl, name: 'receive_sol' },
+      accounts: [
+        { name: 'counter', expected: { kind: 'address', address: counter } },
+        { name: 'recipient', expected: { kind: 'address', address: recipient } },
+        { name: 'cea_authority', expected: { kind: 'walletCEA' } },
+        { name: 'system_program', expected: { kind: 'address', address: '11111111111111111111111111111111' } },
+      ],
+      fields: [{ name: 'amount', max: BigInt(10_000) }],
+    }],
+  };
+  return owner.agentic.create('solana-wallet', { rules: [rule] });
+}
+
+async function sendSolanaInstruction(agent: PushChain, program: string, idl: Idl) {
+  const data = PushChain.utils.helpers.encodeTxData({
+    abi: idl, functionName: 'receive_sol', args: [BigInt(10_000)],
+  });
+  return agent.universal.sendTransaction({
+    to: { address: program, chain: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET },
+    data, value: BigInt(10_000),
+  });
+}
+```
+
+These examples assume the supplied IDL describes `receive_sol` with those accounts and a `u64` amount. The send resolver needs matching account addresses/PDA definitions in its IDL. Fund the wallet and set a separate bounded gateway allowance before sending. Native SOL amounts are lamports; the wallet burns its corresponding PRC20. `assets: []` creates a zero-amount gas-token routing cap.
+
+Supported rule layouts have an eight-byte discriminator, top-level non-optional accounts, and fixed-width primitive/fixed-array arguments. Field comparisons support exact bytes (at most 32 bytes), unsigned integer min/max (up to `u64`), and same-width unsigned ratio floors. Variable-length or nested/defined argument layouts and optional/nested accounts are rejected before signing. An IDL describes encoding; it does not prove what the program does with those accounts.
+
+Public SVM sends support one instruction encoded with `encodeTxData` (which registers the IDL), or data matching an already registered IDL. Arrays and funds-only sends are rejected. Reads return `DecodedSolanaRule` with `format: 'decoded'` and exact stored program/account/data constraints. They cannot reconstruct an IDL; use a named `SolanaRule` input to add or replace it. Native/EVM decoded rules remain reusable in raw-offset form.
+
+Responses expose `agentic.destinationInstruction` and the wallet’s destination CEA. Check `externalStatus` and replay the same transaction hash after a timeout.
+
 ## Current API boundaries
 
-Grant `ref` and editable `setLabel` are unavailable on this deployed generation. Public Solana destination mapping/dispatch remains gated. Revoked history, public spend records, public generation context and `compileCard` are outside standalone v1. Native omission defaults, raw-offset authoring and multiple-rule send selection remain open; the examples use explicit native limits and one matching rule.
+Rule `ref` is removed from public inputs and records; supplying it is rejected. Checkpoint `ref` is a separate existing event field and is preserved. Editable `setLabel` awaits a verified contract interface/deployment. Contract permission enforcement is already present: unauthorized actions under the supplied rule are rejected, and the SDK maps the errors. Revoked history, public spend records, public generation context and `compileCard` are outside standalone v1. Omitted native PC value limits are zero. Native argument-index and raw-offset inputs are both supported; decoded native/EVM rules preserve exact offsets.
 
 Use `PushChain.CONSTANTS.READ.CHAIN.WEB2` for Web2 reads. Its value is `web2`; the old literal `web2:https` is still accepted and normalizes to the same wire identity. Literal comparisons against the older spelling need updating. Web2 is a read source, not a transaction destination.

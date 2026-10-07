@@ -11,7 +11,6 @@ import { CHAIN, PUSH_NETWORK } from '../../constants/enums';
 import { UNIVERSAL_GATEWAY_PC, ERC20_EVM } from '../../constants/abi';
 import { PushChainExecutionError } from '../../orchestrator/internals/errors';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
-import { AgenticCapability } from '../capabilities';
 import type { AgenticExecutionContext } from '../context';
 import { currentGeneration, resetAgenticGenerations } from '../deployments';
 import { v4 } from '../contracts/v4';
@@ -478,7 +477,7 @@ describe('EVM outbound composition from the wallet', () => {
     );
   });
 
-  it('SVM destinations are capability-gated', async () => {
+  it('SVM destinations reject EVM-width program addresses', async () => {
     const s = universalSetup();
     const rt = mockRuntime(s.fake, { signer: ADDR.agent });
     await expect(
@@ -488,7 +487,7 @@ describe('EVM outbound composition from the wallet', () => {
         { to: { address: ADDR.target, chain: CHAIN.SOLANA_DEVNET }, data }
       )
     ).rejects.toMatchObject({
-      details: { capability: AgenticCapability.UNIVERSAL_SVM_RULES },
+      code: AGENTIC_ERROR_CODE.INVALID_RULE,
     });
   });
 

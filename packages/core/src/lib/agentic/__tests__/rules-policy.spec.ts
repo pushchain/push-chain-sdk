@@ -4,7 +4,6 @@ import { MOVEABLE_TOKEN_CONSTANTS } from '../../constants/tokens';
 import { getPRC20Address } from '../../universal/prc20-address';
 import { encodeUniversalTerms } from '../codec/universal-terms';
 import { buildSession, encodeEnvelope, encodeSession } from '../codec/session';
-import { AgenticCapability } from '../capabilities';
 import { prepareRules } from '../codec/rules';
 import { validateUniversalRuleShape } from '../codec/universal';
 import { V4_CAPABILITIES } from '../deployments';
@@ -104,17 +103,9 @@ describe('prepareRules — spec 1.b checks before any signature', () => {
     ]);
   });
 
-  it('a ref is refused (never silently dropped) without the grant-ref capability (A07)', () => {
-    expect(() =>
-      prepareRules([native({ ref: `0x${'99'.repeat(32)}` })], ctx)
-    ).toThrow(
-      expect.objectContaining({
-        code: AGENTIC_ERROR_CODE.CAPABILITY_UNAVAILABLE,
-        details: expect.objectContaining({
-          capability: AgenticCapability.GRANT_REF,
-        }),
-      })
-    );
+  it('removed ref inputs fail explicitly instead of being silently dropped', () => {
+    expect(() => prepareRules([{ ...native(), ref: `0x${'99'.repeat(32)}` } as never], ctx))
+      .toThrow(expect.objectContaining({ code: AGENTIC_ERROR_CODE.INVALID_RULE }));
   });
 
   it('refuses infrastructure targets the contracts would reject', () => {
@@ -227,7 +218,7 @@ describe('universal rules — validated, then capability-gated (A01, A05)', () =
     ).toThrow(/signature/);
   });
 
-  it('requires resolved wallet/token context; SVM mapping stays explicitly gated', () => {
+  it('requires resolved wallet/token context and named SVM IDL inputs', () => {
     expect(() => prepareRules([universal()], ctx)).toThrow(
       expect.objectContaining({
         code: AGENTIC_ERROR_CODE.INVALID_RULE,
@@ -237,16 +228,14 @@ describe('universal rules — validated, then capability-gated (A01, A05)', () =
       prepareRules(
         [
           universal({
-            chainNamespace: 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
+            chainNamespace: 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1' as never,
           }),
         ],
         ctx
       )
     ).toThrow(
       expect.objectContaining({
-        details: expect.objectContaining({
-          capability: AgenticCapability.UNIVERSAL_SVM_RULES,
-        }),
+        code: AGENTIC_ERROR_CODE.INVALID_RULE,
       })
     );
   });

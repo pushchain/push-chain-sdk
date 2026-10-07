@@ -25,6 +25,9 @@ import {
   chainReaderFromPublicClient,
   type ChainReader,
 } from './contracts/reader';
+import type { SvmMetadataProvider } from './management/svm-context';
+import { createSvmMetadataProvider } from './management/svm-metadata';
+import { CHAIN_INFO } from '../constants/chain';
 import type { AgenticProgressHook } from './agentic.types';
 
 /**
@@ -39,6 +42,7 @@ export interface AgenticRuntime {
   readonly pushChainNamespace: string;
   readonly reader: ChainReader;
   readonly isReadOnly: boolean;
+  readonly svmMetadata?: SvmMetadataProvider;
   /** Connected signer's Push identity: its EOA, or its UEA for its actual origin chain. */
   signerPushAccount(): Address;
   /** Connected signer's origin account (universal.origin). */
@@ -74,7 +78,7 @@ export interface AgenticRuntime {
     chain: CHAIN
   ): Promise<{ cea: Address; isDeployed: boolean }>;
   resolvePrc20(
-    token: MoveableToken | Address | undefined,
+    token: MoveableToken | string | undefined,
     chain: CHAIN
   ): Address;
   nowSeconds(): number;
@@ -94,6 +98,14 @@ export function createAgenticRuntime(
       return chainReaderFromPublicClient(ctx.pushClient.publicClient);
     },
     isReadOnly,
+    svmMetadata: createSvmMetadataProvider({
+      [CHAIN.SOLANA_DEVNET]: {
+        gatewayProgram: CHAIN_INFO[CHAIN.SOLANA_DEVNET].lockerContract ?? '',
+        rpcUrls:
+          orchestrator.getRpcUrls()[CHAIN.SOLANA_DEVNET] ??
+          CHAIN_INFO[CHAIN.SOLANA_DEVNET].defaultRPC,
+      },
+    }),
     signerPushAccount: () => getAddress(computeUEAOffchain(ctx)),
     signerOrigin: () => orchestrator.getUOA(),
     signerIsPushNative: () => isPushChain(ctx.universalSigner.account.chain),

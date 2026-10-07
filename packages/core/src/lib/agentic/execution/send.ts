@@ -1,3 +1,4 @@
+import { sendPublicSvm } from './svm-public';
 import { getAddress, type Address, type Hex } from 'viem';
 import type { CHAIN } from '../../constants/enums';
 import { ERC20_EVM } from '../../constants/abi';
@@ -153,6 +154,11 @@ export async function agenticSend(
         hint: "Transfer the wallet's PRC20 with a token transfer call in `data`.",
       }
     );
+  }
+
+  if (outbound && destination.startsWith('solana:')) {
+    await enforceSignerGas(runtime, undefined);
+    return sendPublicSvm(runtime, actx, p, options);
   }
 
   let wrappedData: Hex;

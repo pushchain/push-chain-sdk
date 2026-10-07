@@ -1,3 +1,7 @@
+import { parseAgwSvmPayload } from './execution/svm-payload';
+import { deriveAgwSvmCea } from './codec/svm-accounts';
+import { CHAIN_INFO } from '../constants/chain';
+import { bytesToHex } from 'viem';
 import {
   decodeAbiParameters,
   decodeFunctionData,
@@ -82,6 +86,9 @@ export function adaptAgenticResponse(
     ...(meta.destinationCalls
       ? { destinationCalls: meta.destinationCalls.map((call) => ({ ...call })) }
       : {}),
+    ...(meta.destinationInstruction
+      ? { destinationInstruction: meta.destinationInstruction }
+      : {}),
     ...(meta.nativeCalls
       ? { nativeCalls: meta.nativeCalls.map((call) => ({ ...call })) }
       : {}),
@@ -139,6 +146,40 @@ export async function adaptTrackedResponse(
   if (outbound) {
     const out = decodeOutbound(outbound.data);
     const chain = await tokenChain(runtime, out.token);
+    if (chain?.startsWith('solana:')) {
+      try {
+        const instruction = parseAgwSvmPayload(out.payload);
+        const destinationInstruction = {
+          program: instruction.program,
+          accounts: instruction.accounts.map(({ pubkey, isWritable }) => ({
+            pubkey,
+            isWritable,
+          })),
+          data: bytesToHex(instruction.instructionData),
+        };
+        return adaptAgenticResponse(resp, {
+          wallet,
+          door,
+          rulesId,
+          chainNamespace: chain,
+          chain: chain as CHAIN,
+          route: 'UOA_TO_CEA',
+          destinationInstruction,
+          destinationAccount: deriveAgwSvmCea(
+            wallet,
+            CHAIN_INFO[chain as CHAIN].lockerContract ?? ''
+          ).address,
+          logical: {
+            to: instruction.program,
+            data: destinationInstruction.data,
+            value: BigInt(0),
+          },
+        });
+      } catch {
+        // Historical owner calls may use another payload format. Preserve the
+        // actual gateway call below instead of inventing instruction metadata.
+      }
+    }
     // The decoded wallet call is authoritative: core may have inferred a
     // Push-only route from an incomplete Cosmos record, which would stop
     // wait() from polling the destination leg.
@@ -282,6 +323,7 @@ export function outboundResponseCall(
 }
 
 function decodeOutbound(data: Hex): {
+  payload: Hex;
   token: Address;
   calls: { to: Address; value: bigint; data: Hex }[];
 } {
@@ -312,7 +354,7 @@ function decodeOutbound(data: Hex): {
       calls = [];
     }
   }
-  return { token: getAddress(req.token), calls };
+  return { token: getAddress(req.token), payload: req.payload, calls };
 }
 
 async function tokenChain(

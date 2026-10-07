@@ -1,8 +1,10 @@
+import { preparePublicSvmRule } from './svm-public';
+import type { SvmTermsWire } from '../codec/svm-terms';
 import { getAddress, zeroAddress, type Address } from 'viem';
 import { CHAIN, VM } from '../../constants/enums';
 import { CHAIN_INFO } from '../../constants/chain';
 import { AGENTIC_DEFAULTS, withDefault } from '../codec/defaults';
-import { isUniversalRule, prepareRules } from '../codec/rules';
+import { isUniversalRule, isSolanaRule, prepareRules } from '../codec/rules';
 import {
   validateUniversalRuleShape,
   type ResolvedUniversalRule,
@@ -14,7 +16,7 @@ import {
 } from '../deployments';
 import { AgenticCapability, requireCapability } from '../capabilities';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
-import type { Rule, UniversalRule } from '../agentic.types';
+import type { Rule, UniversalRule, SolanaRule } from '../agentic.types';
 import type { AgenticRuntime } from '../runtime';
 import { Snapshot } from '../reads/snapshot';
 
@@ -34,8 +36,17 @@ export async function prepareWalletRules(
   snap: Snapshot
 ) {
   if (rules.length) await verifyPolicyVersion(runtime.reader, gen);
+  const svm = new Map<SolanaRule, SvmTermsWire>();
   const universal = new Map<UniversalRule, ResolvedUniversalRule>();
   for (const rule of rules) {
+    if (rule && isSolanaRule(rule)) {
+      requireCapability(
+        gen.capabilities,
+        AgenticCapability.UNIVERSAL_SVM_RULES
+      );
+      svm.set(rule, await preparePublicSvmRule(runtime, snap, wallet, rule));
+      continue;
+    }
     if (!isUniversalRule(rule)) continue;
     if (rule.chainNamespace.startsWith('solana:'))
       requireCapability(
@@ -128,5 +139,6 @@ export async function prepareWalletRules(
     nowSeconds: runtime.nowSeconds(),
     forbiddenTargets: forbiddenTargets(gen, wallet),
     universal,
+    svm,
   });
 }

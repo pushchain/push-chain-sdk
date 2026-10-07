@@ -414,7 +414,7 @@ function sameIds(a: readonly Hex[], b: readonly Hex[]): boolean {
   );
 }
 
-/** w.setLabel — PROPOSED; no generation implements an editable label (A07). */
+/** w.setLabel — approved, awaiting a verified contract interface/deployment. */
 export async function setLabel(
   _runtime: AgenticRuntime,
   gen: AgenticGeneration,

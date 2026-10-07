@@ -199,7 +199,7 @@ describe('internal prepared SVM backend on v4', () => {
     });
     return { wallet, id: grant.rulesId, input, agent, request };
   }
-  it('reads all source assets/counters/pins losslessly while public SVM remains gated', async () => {
+  it('reads all source assets/counters/pins losslessly through public SVM reads', async () => {
     const s = await setup(),
       stored = await cfg(s.wallet, s.id);
     expect(stored.config.assets.map((a) => a.token)).toEqual(tokens);
@@ -212,7 +212,7 @@ describe('internal prepared SVM backend on v4', () => {
     expect(stored.chainNamespace).toBe(CHAIN.SOLANA_DEVNET);
     await expect(
       owner.agentic.wallet(s.wallet).rules.get(s.id)
-    ).rejects.toMatchObject({ code: 'CAPABILITY_UNAVAILABLE' });
+    ).resolves.toMatchObject({ rule: { format: 'decoded', pins: s.input.terms.pins } });
   });
   it('runs context, IDL, quote, allowance, wrapping and real token pull/burn as the agent', async () => {
     const s = await setup();

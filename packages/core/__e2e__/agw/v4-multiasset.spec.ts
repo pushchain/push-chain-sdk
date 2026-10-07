@@ -1,4 +1,5 @@
 /** Opt-in funded Donut acceptance. Nothing in this file runs in unit/local validation. */
+import type { UniversalRule } from '../../src';
 import { parseEther } from 'viem';
 import { CHAIN } from '../../src/lib/constants/enums';
 import { MOVEABLE_TOKEN_CONSTANTS } from '../../src/lib/constants/tokens';
@@ -24,7 +25,7 @@ d('agw v4 multi-asset', () => {
   });
   afterAll(() => f?.teardown());
   it('1. public create reads and replaces an ordered two-token rule', async () => {
-    const rule = {
+    const rule: UniversalRule = {
       agent: f.agentAddress,
       chainNamespace: chain,
       validUntil: inSeconds(3600),

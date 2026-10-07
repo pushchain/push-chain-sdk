@@ -129,7 +129,9 @@ export function nativeRuleToTerms(
   }
 
   const pins = pinsIn.map((p, i) => {
-    if ('offset' in p) {
+    if (p.arg !== undefined && p.offset !== undefined)
+      throw invalid('pin arg and offset are mutually exclusive');
+    if (p.offset !== undefined) {
       if (
         typeof p.expected !== 'string' ||
         !isHex(p.expected) ||
@@ -144,6 +146,7 @@ export function nativeRuleToTerms(
         expected: p.expected.toLowerCase() as Hex,
       };
     }
+    if (typeof p.arg !== 'number') throw invalid('pin requires arg or offset');
     const offset = argumentOffset(parsed.inputs, p.arg, `pins[${i}]`);
     const param = (parsed.inputs as readonly AbiParameter[])[p.arg];
     return { offset, expected: encodeArgWord(param, p.expected, `pins[${i}]`) };
@@ -160,9 +163,13 @@ export function nativeRuleToTerms(
   };
   if (rule.amount) {
     let offset: number;
-    if ('offset' in rule.amount) {
+    if (rule.amount.arg !== undefined && rule.amount.offset !== undefined)
+      throw invalid('amount arg and offset are mutually exclusive');
+    if (rule.amount.offset !== undefined) {
       offset = rawOffset(rule.amount.offset, 'amount');
     } else {
+      if (typeof rule.amount.arg !== 'number')
+        throw invalid('amount requires arg or offset');
       offset = argumentOffset(parsed.inputs, rule.amount.arg, 'amount');
       const param = (parsed.inputs as readonly AbiParameter[])[rule.amount.arg];
       if (!/^uint\d*$/.test(param.type)) {
@@ -236,8 +243,7 @@ export function decodeNativeTerms(body: Hex): NativeTermsWire {
  */
 export function nativeTermsToRule(
   terms: NativeTermsWire,
-  agent: Address,
-  ref: AgenticHex
+  agent: Address
 ): NativeRule {
   const rule: NativeRule = {
     agent: getAddress(agent),
@@ -251,7 +257,6 @@ export function nativeTermsToRule(
     maxValueTotal: terms.maxValueTotal,
     maxCalls: Number(terms.maxCalls),
   };
-  if (!/^0x0{64}$/i.test(ref)) rule.ref = ref;
   if (terms.pins.length > 0) {
     rule.pins = terms.pins.map((p) => ({
       offset: Number(p.offset),
