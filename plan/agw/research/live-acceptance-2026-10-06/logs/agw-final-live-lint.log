@@ -1,0 +1,9 @@
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw/identity-gas.spec.ts
+  112:16  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw/universal-evm.spec.ts
+  29:10  warning  'v4' is defined but never used  @typescript-eslint/no-unused-vars
+  43:17  warning  Forbidden non-null assertion    @typescript-eslint/no-non-null-assertion
+
+✖ 3 problems (0 errors, 3 warnings)

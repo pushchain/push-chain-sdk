@@ -1,0 +1,18 @@
+{
+  "checked_at": "2026-10-04T01:41:32.593330+00:00",
+  "page_id": "3e9188aea7f481cf8e8de324956549b9",
+  "url": "https://app.notion.com/p/pushprotocol/5-SDK-AGW-3e9188aea7f481cf8e8de324956549b9",
+  "scope": "Only SDK page 5; other 11 registered pages not refreshed",
+  "method": "Browser native Markdown/CSV export; compare after normalizing known page-1 links",
+  "observed_last_edited_label": "Last edited by Harsh Rajat Oct 2, 2026, 8:39 PM",
+  "archive": "sdk-page-export.zip",
+  "export_entry": "Private & Shared/5 SDK AGW 3e9188aea7f481cf8e8de324956549b9.md",
+  "archive_sha256": "05829135e9174668e11a00ca3ac8700ce958f154001103a8a2c9f3c1a1050034",
+  "raw_export_sha256": "3fe718ac5610ffd00e6b9e5a35e0e4b96c6e7fc6d52c901c040813b6cb82cb89",
+  "normalized_sha256": "e407ee77cdf874db7ef4697f84e9945ff3a12a2f2e07e8a7f90bd24e93ea32f1",
+  "saved_snapshot_sha256": "e407ee77cdf874db7ef4697f84e9945ff3a12a2f2e07e8a7f90bd24e93ea32f1",
+  "normalized_links": 5,
+  "body_changed": false,
+  "comments": "Native export omits comment threads; this does not certify unchanged comments.",
+  "agw_remote_head": "e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9"
+}

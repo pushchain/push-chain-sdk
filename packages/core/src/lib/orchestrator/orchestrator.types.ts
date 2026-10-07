@@ -471,6 +471,15 @@ export interface UniversalTxResponse {
   /** Transaction route (UOA_TO_PUSH, UOA_TO_CEA, CEA_TO_PUSH, CEA_TO_CEA) */
   route?: TransactionRouteType;
 
+  /**
+   * Agentic wallet (AGW) context, present when the transaction executed
+   * through an AGW. `from` is then the wallet and `origin` stays the signer;
+   * `agentic.rawTo` / `rawData` hold the wrapped call the signer sent.
+   * Outbound to/data/value summarize the first encoded destination call;
+   * `agentic.destinationCalls` retains the complete ordered call list.
+   */
+  agentic?: import('../agentic/agentic.types').AgenticTxMetadata;
+
   // 12. Internal flags
   /**
    * @internal True when this response was produced by `trackTransaction` and

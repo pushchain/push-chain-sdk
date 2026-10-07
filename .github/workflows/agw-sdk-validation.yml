@@ -1,0 +1,45 @@
+name: AGW SDK validation (unfunded)
+on:
+  pull_request:
+    paths: ['packages/core/**', 'tsconfig.base.json', 'yarn.lock', '.github/workflows/agw-sdk-validation.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: agw-validation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NX_DAEMON: 'false'
+      AGW_REPO: ${{ github.workspace }}/.ci-contracts
+      AGW_LOCAL_DIR: ${{ runner.temp }}/agw-v4-build
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          repository: pushchain/push-agentic-wallets
+          ref: e8db74815cfbbf5389593805e464fe8d85f7f735
+          path: .ci-contracts
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.18.0'
+          package-manager-cache: false
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.5.1
+      - run: corepack enable
+      - run: yarn install --immutable
+      - name: Unit, contracts, types, docs and package checks
+        run: node packages/core/scripts/agw-verify.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agw-unfunded-validation
+          path: .agw-validation/
+          if-no-files-found: ignore

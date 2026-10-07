@@ -1,0 +1,11 @@
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw/svm-spl-transfer.spec.ts
+  171:51  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  177:49  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw/v5-multiasset.spec.ts
+   35:17  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  274:39  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  333:28  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+✖ 5 problems (0 errors, 5 warnings)

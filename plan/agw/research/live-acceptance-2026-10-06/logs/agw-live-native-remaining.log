@@ -1,0 +1,34 @@
+FAIL core-e2e packages/core/__e2e__/agw/lifecycle.spec.ts (69.275 s)
+  ● agw lifecycle › 2. rules.update: old ID disabled, new ID usable with reset counters, five checkpoint ticks
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 1
+    + Received  + 0
+
+      Object {
+        "callsUsed": 1,
+    -   "kind": "native",
+        "valueSpent": 10n,
+      }
+
+      73 |       original
+      74 |     );
+    > 75 |     expect(spentBefore).toMatchObject({
+         |                         ^
+      76 |       kind: 'native',
+      77 |       valueSpent: BigInt(10),
+      78 |       callsUsed: 1,
+
+      at Object.<anonymous> (__e2e__/agw/lifecycle.spec.ts:75:25)
+
+PASS core-e2e packages/core/__e2e__/agw/native-batch.spec.ts (85.028 s)
+PASS core-e2e packages/core/__e2e__/agw/responses-hooks.spec.ts (68.355 s)
+PASS core-e2e packages/core/__e2e__/agw/funding-allowance.spec.ts (49.494 s)
+
+Test Suites: 1 failed, 3 passed, 4 total
+Tests:       1 failed, 9 passed, 10 total
+Snapshots:   0 total
+Time:        272.19 s
+Ran all test suites within paths "packages/core/__e2e__/agw/native-batch.spec.ts", "packages/core/__e2e__/agw/lifecycle.spec.ts", "packages/core/__e2e__/agw/funding-allowance.spec.ts", "packages/core/__e2e__/agw/responses-hooks.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

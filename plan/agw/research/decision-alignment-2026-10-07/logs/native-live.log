@@ -1,0 +1,20 @@
+PASS core-e2e __e2e__/agw/native-policy-extended.spec.ts (95.792 s)
+  agw extended native policy
+    ✓ 9. omitted PC limits forbid value while still allowing a token transfer (50635 ms)
+    ✓ 10. decoded raw-offset rules can be granted again without fabricated ref metadata (24480 ms)
+    ✓ 11. removed ref and conflicting argument-offset inputs fail before signing (4191 ms)
+    ○ skipped 1. pinned recipient and metered amount decode losslessly and transfer through explicit Push chain
+    ○ skipped 2. wrong recipient pin is refused with unchanged token balance and counters
+    ○ skipped 3. per-call amount cap refuses cap plus one
+    ○ skipped 4. cumulative amount accepts the exact total and refuses the next unit
+    ○ skipped 5. call count accepts the exact count and refuses a zero-amount extra call
+    ○ skipped 6. explicit zero total forbids positive amount but permits a metered zero call
+    ○ skipped 7. failed token callee leaves all policy counters unchanged
+    ○ skipped 8. an ungranted selector is refused without changing balances or allowance
+
+Test Suites: 1 passed, 1 total
+Tests:       8 skipped, 3 passed, 11 total
+Snapshots:   0 total
+Time:        95.811 s
+Ran all test suites within paths "__e2e__/agw/native-policy-extended.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

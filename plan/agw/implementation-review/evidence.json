@@ -1,0 +1,97 @@
+{
+  "reviewed_commit": "3008497b2492a6be78300011d4572076414505bf",
+  "base": "349635b2254823488603b37f4b44c4f5c929feb9",
+  "date": "2026-10-03",
+  "commands": [
+    {
+      "command": "node node_modules/jest/bin/jest.js --config packages/core/jest.config.ts --runInBand",
+      "result": "1883 passed; 12 skipped"
+    },
+    {
+      "command": "packages/core/scripts/agw-local/prepare.sh; then AGW_LOCAL_DIR=<prepared-dir> node node_modules/jest/bin/jest.js --config packages/core/jest.agw-local.config.ts --runInBand --forceExit",
+      "result": "32 passed; local Anvil only"
+    },
+    {
+      "command": "node node_modules/typescript/bin/tsc -p packages/core/tsconfig.lib.json --noEmit",
+      "result": "passed"
+    },
+    {
+      "command": "node node_modules/typescript/bin/tsc -p packages/core/tsconfig.spec.json --noEmit",
+      "result": "passed"
+    },
+    {
+      "command": "yarn nx run core:build --skip-nx-cache",
+      "result": "passed"
+    },
+    {
+      "command": "yarn nx run core:lint --skip-nx-cache",
+      "result": "7 errors in unchanged files"
+    },
+    {
+      "command": "cd packages/core; node ../../node_modules/ts-node/dist/bin.js --transpile-only __e2e__/ci/run.ts --verify --group agw; repeat --group all",
+      "result": "21 and 76 scenarios respectively; manifest checks passed"
+    },
+    {
+      "command": "node node_modules/jest/bin/jest.js --config plan/agw/implementation-review/reviewer.config.cjs --runInBand --runTestsByPath plan/agw/implementation-review/regressions.spec.ts",
+      "result": "7 expected regression failures"
+    },
+    {
+      "command": "AGW_LOCAL_DIR=<prepared-dir> node node_modules/jest/bin/jest.js --config plan/agw/implementation-review/reviewer.config.cjs --runInBand --runTestsByPath plan/agw/implementation-review/local-races.spec.ts --forceExit",
+      "result": "2 expected regression failures; local Anvil only"
+    }
+  ],
+  "lint_errors": [
+    {
+      "file": "packages/core/__e2e__/docs-examples/13-read-state/fixtures/universal_read_batch.js",
+      "diagnostic": "4:1  error  Projects should use relative imports to import from other files within the same project. Use \"./path/to/file\" instead of import from \"@pushchain/core\"  @nx/enforce-module-boundaries",
+      "changed_in_implementation": false
+    },
+    {
+      "file": "packages/core/__e2e__/docs-examples/13-read-state/fixtures/universal_read_evm_balance.js",
+      "diagnostic": "4:1  error  Projects should use relative imports to import from other files within the same project. Use \"./path/to/file\" instead of import from \"@pushchain/core\"  @nx/enforce-module-boundaries",
+      "changed_in_implementation": false
+    },
+    {
+      "file": "packages/core/__e2e__/docs-examples/13-read-state/fixtures/universal_read_resume.js",
+      "diagnostic": "4:1  error  Projects should use relative imports to import from other files within the same project. Use \"./path/to/file\" instead of import from \"@pushchain/core\"  @nx/enforce-module-boundaries",
+      "changed_in_implementation": false
+    },
+    {
+      "file": "packages/core/__e2e__/docs-examples/13-read-state/playgrounds.spec.ts",
+      "diagnostic": "20:63  error    Unexpected empty async function  @typescript-eslint/no-empty-function",
+      "changed_in_implementation": false
+    },
+    {
+      "file": "packages/core/src/lib/orchestrator/internals/pc20/__tests__/svm.spec.ts",
+      "diagnostic": "286:28  error  Require statement not part of import statement  @typescript-eslint/no-var-requires",
+      "changed_in_implementation": false
+    },
+    {
+      "file": "packages/core/src/lib/orchestrator/internals/pc20/tracking.ts",
+      "diagnostic": "128:40  error  Require statement not part of import statement  @typescript-eslint/no-var-requires",
+      "changed_in_implementation": false
+    },
+    {
+      "file": "packages/core/src/lib/orchestrator/internals/pc20/tracking.ts",
+      "diagnostic": "131:28  error  Require statement not part of import statement  @typescript-eslint/no-var-requires",
+      "changed_in_implementation": false
+    }
+  ],
+  "limits": "No production source changed; no live-network broadcasts; local gateway/fee/CEA fixtures do not prove settlement.",
+  "sha256": {
+    "build.log": "ad1d0eb1a71fcdcf4169d571fbc3ba2e140eb6cc576d9c06de45499e65d97a78",
+    "e2e-agw-manifest.log": "547b3068ab4276f9c4e0bbacdff3e6e635a5e812c86ee18dcdc235cf3dca6052",
+    "e2e-all-manifest.log": "3d1649d660267693725f167772c8cfc6b0c51a385e1043d203efe1459798f6ff",
+    "lint.log": "f6ff5a01078bc1c97bb3157e0a2e31a48d2670191ee9e78bbbddbf0fbcd8bba0",
+    "local-races.log": "bdf2ff4ca17d9c6301359990a8259e19fe45bb4d155fa72194b031c23ab76edf",
+    "local-races.spec.ts": "19620c71a8c2c8699634ba080f19b673aabb87437858517a2fae1b662adabdb1",
+    "local-suite.log": "d4d40e9780a070949ab3a04e60ed8f8f43fc2839b831ca520d182994c61c0b71",
+    "regressions.log": "ffc8e1161c60177eac2c71843c68f4e5473d7585563923431d44753755d434a5",
+    "regressions.spec.ts": "41a4dd650950d647b7c5c4dbbb2074078283346ad0468743da6cf742c1b2f432",
+    "review.md": "a592ed63be12b556606fbf3fcf682175a7099020b5ef5f32e719190a34e649d2",
+    "reviewer.config.cjs": "77cf419682ced6b430f89997f2664622f14b1ba32488a284c3ce39c7b30195be",
+    "types-lib.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "types-spec.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "unit-suite.log": "f157b97943506508225f66bb858f822208c248d5d5b22d7391046f50eee8ee78"
+  }
+}

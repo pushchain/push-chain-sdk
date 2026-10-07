@@ -1,0 +1,53 @@
+{
+  "push": {
+    "chainId": 42101,
+    "block": "23949601",
+    "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+    "token": "0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed",
+    "quote": [
+      "0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed",
+      "960000",
+      "0",
+      "1000",
+      "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+      "960"
+    ]
+  },
+  "solana": {
+    "checkedAt": "2026-10-06T07:14:03.580Z",
+    "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+    "slot": 508014048,
+    "programDataSlot": 508014048,
+    "programs": [
+      {
+        "address": "CFVSincHYbETh2k7w6u1ENEkjbSLtveRCEBupKidw2VS",
+        "programData": "DqeV1giGX9UPbTCsUaqau4ZaTqmjxKeRa4TQdbLiUCYC",
+        "lastUpgradeSlot": "496655369",
+        "dataLength": 724997,
+        "dataSha256": "2633943f479debc6bf0cba19861f90dfd01a09ecba206b2ce941c97281b8a95d"
+      },
+      {
+        "address": "8yNqjrMnFiFbVTVQcKij8tNWWTMdFkrDf9abCGgc2sgx",
+        "programData": "GQmC7eueNLqazwr7U9fR3s4VwbXUtNf1HL6UCXuSWvaN",
+        "lastUpgradeSlot": "447956626",
+        "dataLength": 279709,
+        "dataSha256": "6887b9299b53bcaede79facbe9d9a53c9a0ba78e2c109322caef070b57637f95"
+      }
+    ],
+    "gatewayConfig": {
+      "address": "2urirovTZSgpEAEFyf2dMWjMTqfkgg1J3piTBeSEwV5P",
+      "paused": false,
+      "dataSha256": "1f7595b955ae35e2ea577db04d3e73f30d7284d9536910065e0fc7b078b6ae33"
+    },
+    "counter": {
+      "address": "6Kg1NF5RRytjGwR6USttBLEYJrqwm65xtJzdPbbFwJKg",
+      "value": "201889018",
+      "authority": "BesWssuCiGE3EqeGRFamuouvAxJDUCdWH6NPHpAFPMBa",
+      "dataSha256": "4b1725035d45f06567ffe10489d847db80caeb03a2fa853a018cac309879e224"
+    },
+    "counterIdlSha256": "493678d103afab762cc1668d02c641226125166ba8b4d7df46b67fec52b3a9ca",
+    "gatewayIdlSha256": "62d7792d04c657e1224f7c64d13b68e2f49dd39fdd6da0088deca0c32a5fb042"
+  },
+  "transactionsSent": 0
+}

@@ -1,0 +1,2 @@
+./script/check-execute.sh
+check-execute: OK — execute() is byte-identical to its pinned text (the B2 checkpoint revision)

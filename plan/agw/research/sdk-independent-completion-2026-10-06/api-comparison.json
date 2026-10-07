@@ -1,0 +1,1360 @@
+{
+  "baseline": "b1597b91a25dbf7f691f589b4e1e154add604315",
+  "head": "7356346dad53cf8031a0e06732050576a1d05d77",
+  "compiledMatchesSource": true,
+  "initializeSignatureChanged": false,
+  "addedExports": [],
+  "removedExports": [],
+  "changedAgwTypes": [
+    "AGENTIC_ERROR_CODE",
+    "AllowedCall"
+  ],
+  "agwConstantsChanged": true,
+  "before": {
+    "exports": [
+      "AGENTIC_ERROR_CODE",
+      "AccountRole",
+      "AccountStatus",
+      "AccountType",
+      "AgenticAddress",
+      "AgenticDoor",
+      "AgenticError",
+      "AgenticErrorCode",
+      "AgenticHex",
+      "AgenticNamespace",
+      "AgenticNetworkConstants",
+      "AgenticProgressHook",
+      "AgenticRevertError",
+      "AgenticTxMetadata",
+      "AgenticWallet",
+      "AllowedCall",
+      "AssetCap",
+      "BatchReadResponse",
+      "BuildReadSpecParams",
+      "CHAIN",
+      "CONTRACT_REQUEST_STATUS",
+      "CascadeCompletionResult",
+      "CascadeHopInfo",
+      "CascadeProgressEvent",
+      "CascadeTrackOptions",
+      "CascadedTxResponse",
+      "ChainSource",
+      "ChainTarget",
+      "Checkpoint",
+      "CheckpointKind",
+      "ConversionQuote",
+      "CreateOptions",
+      "CreateResult",
+      "DEFAULT_MAX_PC_FOR_GAS_BUFFER_BPS",
+      "DecodedErrorPayload",
+      "DecodedReadResult",
+      "DerivedExecutorAccount",
+      "EncodedReadQuery",
+      "EvmReadQuery",
+      "ForeignChainNamespace",
+      "FulfilOutcome",
+      "FundsToken",
+      "InsufficientPC20BalanceError",
+      "InvalidPC20AddressError",
+      "InvalidPC20MetadataError",
+      "InvalidReadQueryError",
+      "InvalidReadSpecError",
+      "MAX_PC_FOR_GAS_BUFFER_BPS_LIMIT",
+      "MaxPCForGasCapFromNativeValueInput",
+      "MaxPCForGasCapInput",
+      "MaxPCForGasCapQuote",
+      "MultiChainTxResponse",
+      "NativeRule",
+      "OutboundTxDetails",
+      "PC20AddressResult",
+      "PC20AmbiguousAddressError",
+      "PC20Error",
+      "PC20ExpectedButPRC20Error",
+      "PC20ExportRevertedError",
+      "PC20FactoryMismatchError",
+      "PC20RegistryEntry",
+      "PC20RegistryMismatchError",
+      "PC20TokenChainMismatchError",
+      "PC20TokenReference",
+      "PC20UnknownChainNamespaceError",
+      "PC20UnsafeEmptyPayloadError",
+      "PC20WrapperNotRegisteredError",
+      "PC20WrapperPredictionUnavailableError",
+      "ParsedReadRequest",
+      "PreparedRead",
+      "PreparedUniversalTx",
+      "PushChain",
+      "PushChainBatchExecutionError",
+      "PushChainExecutionError",
+      "PushChainInitializeOptions",
+      "READ_ERROR_CODE",
+      "READ_OUTCOME",
+      "READ_STATUS",
+      "ReadCallback",
+      "ReadCallbackOptions",
+      "ReadChain",
+      "ReadDecodeError",
+      "ReadDestination",
+      "ReadExecuteOptions",
+      "ReadFees",
+      "ReadHeightUnavailableError",
+      "ReadLifecycleOptions",
+      "ReadNotFoundError",
+      "ReadOptions",
+      "ReadPreflight",
+      "ReadPrepareOptions",
+      "ReadQuery",
+      "ReadQueryOptions",
+      "ReadRef",
+      "ReadRegistryUnavailableError",
+      "ReadResponseTuple",
+      "ReadResultShape",
+      "ReadSpec",
+      "ReadSpecTuple",
+      "ReadSpecViolation",
+      "ReadStateError",
+      "ReadTimeoutError",
+      "ReadTrackOptions",
+      "ReadValue",
+      "ReadWeb2Options",
+      "ReceiptLike",
+      "RescueFundsParams",
+      "ResolvedAccount",
+      "ResolvedControllerAccounts",
+      "ResolvedDestination",
+      "Rule",
+      "RulesRecord",
+      "Selector",
+      "SignAuthorizationParams",
+      "SignedAuthorization",
+      "SimulateReadResult",
+      "SvmExecutePayloadFields",
+      "SvmGatewayAccountMeta",
+      "SvmReadQuery",
+      "TERMINAL_READ_STATUSES",
+      "TransactionRoute",
+      "TransactionRouteType",
+      "UEAStatus",
+      "UNIVERSAL_CALLBACK_EVM",
+      "UNIVERSAL_READ_REGISTRY_EVM",
+      "UNIVERSAL_READ_STATUS",
+      "UniversalAccount",
+      "UniversalExecuteParams",
+      "UniversalOutboundTxRequest",
+      "UniversalReadResponse",
+      "UniversalRule",
+      "UniversalSigner",
+      "UniversalSignerSkeleton",
+      "UniversalTo",
+      "UnsupportedPC20DestinationError",
+      "UnsupportedReadDestinationError",
+      "ValidateReadCall",
+      "WaitForOutboundOptions",
+      "WalletInfo",
+      "WalletSummary",
+      "Web2Extract",
+      "Web2ReadQuery",
+      "Web2ValueType",
+      "buildErc20WithdrawalMulticall",
+      "buildMigrationPayload",
+      "buildReadSpecFromPreflight",
+      "chainSupportsCEA",
+      "chainSupportsOutbound",
+      "decodeReadResult",
+      "detectRoute",
+      "encodeReadQuery",
+      "encodeSvmExecutePayload",
+      "getAllCEAAddresses",
+      "getCEAAddress",
+      "getCEAFactoryAddress",
+      "getPushAccountForCEA",
+      "inferResultShape",
+      "isCEA",
+      "isChainTarget",
+      "isPC20Reference",
+      "isSvmChain",
+      "isValidSolanaHexAddress",
+      "parseFulfilOutcome",
+      "parseReadRequestsFromReceipt",
+      "parseUEAVersion",
+      "quoteMaxPCForGasCap",
+      "quoteMaxPCForGasCapFromNativeValue",
+      "resolveDestination",
+      "sizeCallbackBudget",
+      "toCallData",
+      "toReadQuery",
+      "toRequestIdHex",
+      "validateReadSpec"
+    ],
+    "agw": {
+      "AgenticNamespace": {
+        "type": "import(\"sdk/src/lib/index\").AgenticNamespace",
+        "members": {
+          "create": {
+            "optional": false,
+            "type": "(label: string, options: import(\"sdk/src/lib/index\").CreateOptions) => Promise<import(\"sdk/src/lib/index\").CreateResult>"
+          },
+          "derive": {
+            "optional": false,
+            "type": "(opts?: { index?: number; }) => Promise<{ address: import(\"sdk/src/lib/index\").AgenticAddress; index: number; deployed: boolean; }>"
+          },
+          "list": {
+            "optional": false,
+            "type": "() => Promise<{ wallets: import(\"sdk/src/lib/index\").WalletSummary[]; }>"
+          },
+          "wallet": {
+            "optional": false,
+            "type": "(address: import(\"sdk/src/lib/index\").AgenticAddress) => import(\"sdk/src/lib/index\").AgenticWallet"
+          }
+        }
+      },
+      "AgenticWallet": {
+        "type": "import(\"sdk/src/lib/index\").AgenticWallet",
+        "members": {
+          "address": {
+            "optional": false,
+            "type": "`0x${string}`"
+          },
+          "checkpoints": {
+            "optional": false,
+            "type": "(opts?: { sinceBlock?: bigint; }) => Promise<{ checkpoints: import(\"sdk/src/lib/index\").Checkpoint[]; }>"
+          },
+          "info": {
+            "optional": false,
+            "type": "() => Promise<import(\"sdk/src/lib/index\").WalletInfo>"
+          },
+          "owner": {
+            "optional": false,
+            "type": "() => Promise<{ owner: import(\"sdk/src/lib/index\").AgenticAddress; }>"
+          },
+          "rules": {
+            "optional": false,
+            "type": "{ list(): Promise<{ rules: import(\"sdk/src/lib/index\").RulesRecord[]; }>; get(rulesId: import(\"sdk/src/lib/index\").AgenticHex): Promise<import(\"sdk/src/lib/index\").RulesRecord>; add(rules: import(\"sdk/src/lib/index\").Rule[], opts?: { progressHook?: import(\"sdk/src/lib/index\").AgenticProgressHook; }): Promise<{ rulesIds: import(\"sdk/src/lib/index\").AgenticHex[]; tx: import(\"sdk/src/lib/orchestrator/orchestrator.types\").UniversalTxResponse; }>; update(params: { rules: { rulesId: import(\"sdk/src/lib/index\").AgenticHex; rule: import(\"sdk/src/lib/index\").Rule; }[]; progressHook?: import(\"sdk/src/lib/index\").AgenticProgressHook; }): Promise<{ rules: { rulesId: import(\"sdk/src/lib/index\").AgenticHex; replaced: import(\"sdk/src/lib/index\").AgenticHex; }[]; tx: import(\"sdk/src/lib/orchestrator/orchestrator.types\").UniversalTxResponse; }>; revoke(rulesIds: import(\"sdk/src/lib/index\").AgenticHex[], opts?: { progressHook?: import(\"sdk/src/lib/index\").AgenticProgressHook; }): Promise<import(\"sdk/src/lib/orchestrator/orchestrator.types\").UniversalTxResponse>; revoke(params: { all: true; progressHook?: import(\"sdk/src/lib/index\").AgenticProgressHook; }): Promise<import(\"sdk/src/lib/orchestrator/orchestrator.types\").UniversalTxResponse>; }"
+          },
+          "setLabel": {
+            "optional": false,
+            "type": "(label: string, opts?: { progressHook?: import(\"sdk/src/lib/index\").AgenticProgressHook; }) => Promise<import(\"sdk/src/lib/orchestrator/orchestrator.types\").UniversalTxResponse>"
+          }
+        }
+      },
+      "AgenticError": {
+        "type": "import(\"sdk/src/lib/index\").AgenticError",
+        "members": {
+          "cause": {
+            "optional": true,
+            "type": "unknown"
+          },
+          "code": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").AgenticErrorCode"
+          },
+          "details": {
+            "optional": true,
+            "type": "Readonly<Record<string, unknown>> | undefined"
+          },
+          "hint": {
+            "optional": true,
+            "type": "string | undefined"
+          },
+          "message": {
+            "optional": false,
+            "type": "string"
+          },
+          "name": {
+            "optional": false,
+            "type": "string"
+          },
+          "stack": {
+            "optional": true,
+            "type": "string | undefined"
+          }
+        }
+      },
+      "AgenticRevertError": {
+        "type": "import(\"sdk/src/lib/index\").AgenticRevertError",
+        "members": {
+          "agenticCode": {
+            "optional": true,
+            "type": "string | undefined"
+          },
+          "cause": {
+            "optional": true,
+            "type": "unknown"
+          },
+          "code": {
+            "optional": false,
+            "type": "\"PUSH_CHAIN_EXECUTION_FAILED\""
+          },
+          "decodedError": {
+            "optional": true,
+            "type": "import(\"sdk/src/lib/index\").DecodedErrorPayload | undefined"
+          },
+          "gatewayTxHash": {
+            "optional": true,
+            "type": "string | undefined"
+          },
+          "message": {
+            "optional": false,
+            "type": "string"
+          },
+          "name": {
+            "optional": false,
+            "type": "string"
+          },
+          "pendingTransactionHash": {
+            "optional": true,
+            "type": "`0x${string}` | undefined"
+          },
+          "stack": {
+            "optional": true,
+            "type": "string | undefined"
+          },
+          "transactionHashes": {
+            "optional": true,
+            "type": "`0x${string}`[] | undefined"
+          }
+        }
+      },
+      "AGENTIC_ERROR_CODE": {
+        "type": "{ readonly AGENT_IS_OWNER: \"AGENT_IS_OWNER\"; readonly DUPLICATE_RULE: \"DUPLICATE_RULE\"; readonly TARGET_NOT_ON_RULE_CHAIN: \"TARGET_NOT_ON_RULE_CHAIN\"; readonly ASSET_CHAIN_MISMATCH: \"ASSET_CHAIN_MISMATCH\"; readonly NOT_OWNER_OR_AGENT: \"NOT_OWNER_OR_AGENT\"; readonly WALLET_NOT_DEPLOYED: \"WALLET_NOT_DEPLOYED\"; readonly NOT_AGENTIC_WALLET: \"NOT_AGENTIC_WALLET\"; readonly REVOKE_NEEDS_TARGET: \"REVOKE_NEEDS_TARGET\"; readonly NO_RULES_FOR_CHAIN: \"NO_RULES_FOR_CHAIN\"; readonly FROM_NOT_ALLOWED: \"FROM_NOT_ALLOWED\"; readonly NOT_ALLOWED_IN_AGENTIC_MODE: \"NOT_ALLOWED_IN_AGENTIC_MODE\"; readonly INVALID_RULE: \"INVALID_RULE\"; readonly CAPABILITY_UNAVAILABLE: \"CAPABILITY_UNAVAILABLE\"; readonly GENERATION_UNSUPPORTED: \"GENERATION_UNSUPPORTED\"; readonly READ_ONLY: \"READ_ONLY\"; readonly NOT_WALLET_OWNER: \"NOT_WALLET_OWNER\"; readonly RULE_NOT_FOUND: \"RULE_NOT_FOUND\"; readonly RULE_READ_FAILED: \"RULE_READ_FAILED\"; readonly INCONSISTENT_READ: \"INCONSISTENT_READ\"; readonly INDEX_RACE: \"INDEX_RACE\"; readonly CREATE_PARTIAL: \"CREATE_PARTIAL\"; readonly RECEIPT_MISMATCH: \"RECEIPT_MISMATCH\"; readonly RECEIPT_UNAVAILABLE: \"RECEIPT_UNAVAILABLE\"; readonly AGENT_GAS_INSUFFICIENT: \"AGENT_GAS_INSUFFICIENT\"; readonly WALLET_BALANCE_INSUFFICIENT: \"WALLET_BALANCE_INSUFFICIENT\"; readonly GATEWAY_ALLOWANCE_INSUFFICIENT: \"GATEWAY_ALLOWANCE_INSUFFICIENT\"; readonly RULE_LIMIT_EXCEEDED: \"RULE_LIMIT_EXCEEDED\"; }",
+        "members": {
+          "AGENT_GAS_INSUFFICIENT": {
+            "optional": false,
+            "type": "\"AGENT_GAS_INSUFFICIENT\""
+          },
+          "AGENT_IS_OWNER": {
+            "optional": false,
+            "type": "\"AGENT_IS_OWNER\""
+          },
+          "ASSET_CHAIN_MISMATCH": {
+            "optional": false,
+            "type": "\"ASSET_CHAIN_MISMATCH\""
+          },
+          "CAPABILITY_UNAVAILABLE": {
+            "optional": false,
+            "type": "\"CAPABILITY_UNAVAILABLE\""
+          },
+          "CREATE_PARTIAL": {
+            "optional": false,
+            "type": "\"CREATE_PARTIAL\""
+          },
+          "DUPLICATE_RULE": {
+            "optional": false,
+            "type": "\"DUPLICATE_RULE\""
+          },
+          "FROM_NOT_ALLOWED": {
+            "optional": false,
+            "type": "\"FROM_NOT_ALLOWED\""
+          },
+          "GATEWAY_ALLOWANCE_INSUFFICIENT": {
+            "optional": false,
+            "type": "\"GATEWAY_ALLOWANCE_INSUFFICIENT\""
+          },
+          "GENERATION_UNSUPPORTED": {
+            "optional": false,
+            "type": "\"GENERATION_UNSUPPORTED\""
+          },
+          "INCONSISTENT_READ": {
+            "optional": false,
+            "type": "\"INCONSISTENT_READ\""
+          },
+          "INDEX_RACE": {
+            "optional": false,
+            "type": "\"INDEX_RACE\""
+          },
+          "INVALID_RULE": {
+            "optional": false,
+            "type": "\"INVALID_RULE\""
+          },
+          "NO_RULES_FOR_CHAIN": {
+            "optional": false,
+            "type": "\"NO_RULES_FOR_CHAIN\""
+          },
+          "NOT_AGENTIC_WALLET": {
+            "optional": false,
+            "type": "\"NOT_AGENTIC_WALLET\""
+          },
+          "NOT_ALLOWED_IN_AGENTIC_MODE": {
+            "optional": false,
+            "type": "\"NOT_ALLOWED_IN_AGENTIC_MODE\""
+          },
+          "NOT_OWNER_OR_AGENT": {
+            "optional": false,
+            "type": "\"NOT_OWNER_OR_AGENT\""
+          },
+          "NOT_WALLET_OWNER": {
+            "optional": false,
+            "type": "\"NOT_WALLET_OWNER\""
+          },
+          "READ_ONLY": {
+            "optional": false,
+            "type": "\"READ_ONLY\""
+          },
+          "RECEIPT_MISMATCH": {
+            "optional": false,
+            "type": "\"RECEIPT_MISMATCH\""
+          },
+          "RECEIPT_UNAVAILABLE": {
+            "optional": false,
+            "type": "\"RECEIPT_UNAVAILABLE\""
+          },
+          "REVOKE_NEEDS_TARGET": {
+            "optional": false,
+            "type": "\"REVOKE_NEEDS_TARGET\""
+          },
+          "RULE_LIMIT_EXCEEDED": {
+            "optional": false,
+            "type": "\"RULE_LIMIT_EXCEEDED\""
+          },
+          "RULE_NOT_FOUND": {
+            "optional": false,
+            "type": "\"RULE_NOT_FOUND\""
+          },
+          "RULE_READ_FAILED": {
+            "optional": false,
+            "type": "\"RULE_READ_FAILED\""
+          },
+          "TARGET_NOT_ON_RULE_CHAIN": {
+            "optional": false,
+            "type": "\"TARGET_NOT_ON_RULE_CHAIN\""
+          },
+          "WALLET_BALANCE_INSUFFICIENT": {
+            "optional": false,
+            "type": "\"WALLET_BALANCE_INSUFFICIENT\""
+          },
+          "WALLET_NOT_DEPLOYED": {
+            "optional": false,
+            "type": "\"WALLET_NOT_DEPLOYED\""
+          }
+        }
+      },
+      "NativeRule": {
+        "type": "import(\"sdk/src/lib/index\").NativeRule",
+        "members": {
+          "agent": {
+            "optional": false,
+            "type": "`0x${string}`"
+          },
+          "amount": {
+            "optional": true,
+            "type": "import(\"sdk/src/lib/agentic/agentic.types\").AmountLimit | undefined"
+          },
+          "chainNamespace": {
+            "optional": true,
+            "type": "undefined"
+          },
+          "maxCalls": {
+            "optional": true,
+            "type": "number | undefined"
+          },
+          "maxValuePerCall": {
+            "optional": true,
+            "type": "bigint | undefined"
+          },
+          "maxValueTotal": {
+            "optional": true,
+            "type": "bigint | undefined"
+          },
+          "pins": {
+            "optional": true,
+            "type": "import(\"sdk/src/lib/agentic/agentic.types\").ArgPin[] | undefined"
+          },
+          "ref": {
+            "optional": true,
+            "type": "`0x${string}` | undefined"
+          },
+          "selector": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").Selector | \"value-only\""
+          },
+          "target": {
+            "optional": false,
+            "type": "`0x${string}`"
+          },
+          "validUntil": {
+            "optional": false,
+            "type": "number"
+          }
+        }
+      },
+      "AssetCap": {
+        "type": "import(\"sdk/src/lib/index\").AssetCap",
+        "members": {
+          "maxPerCall": {
+            "optional": false,
+            "type": "bigint"
+          },
+          "maxTotal": {
+            "optional": true,
+            "type": "bigint | undefined"
+          },
+          "token": {
+            "optional": false,
+            "type": "`0x${string}` | import(\"sdk/src/lib/constants/tokens\").MoveableToken"
+          }
+        }
+      },
+      "AllowedCall": {
+        "type": "import(\"sdk/src/lib/index\").AllowedCall",
+        "members": {
+          "beneficiary": {
+            "optional": true,
+            "type": "number | undefined"
+          },
+          "maxValue": {
+            "optional": true,
+            "type": "bigint | undefined"
+          },
+          "selector": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").Selector"
+          },
+          "target": {
+            "optional": false,
+            "type": "`0x${string}`"
+          }
+        }
+      },
+      "UniversalRule": {
+        "type": "import(\"sdk/src/lib/index\").UniversalRule",
+        "members": {
+          "agent": {
+            "optional": false,
+            "type": "`0x${string}`"
+          },
+          "allowedCalls": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").AllowedCall[]"
+          },
+          "assets": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").AssetCap[]"
+          },
+          "chainNamespace": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").ForeignChainNamespace"
+          },
+          "maxGasPerCall": {
+            "optional": false,
+            "type": "bigint"
+          },
+          "ref": {
+            "optional": true,
+            "type": "`0x${string}` | undefined"
+          },
+          "validUntil": {
+            "optional": false,
+            "type": "number"
+          }
+        }
+      },
+      "RulesRecord": {
+        "type": "import(\"sdk/src/lib/index\").RulesRecord",
+        "members": {
+          "agent": {
+            "optional": false,
+            "type": "`0x${string}`"
+          },
+          "chainNamespace": {
+            "optional": false,
+            "type": "string"
+          },
+          "enabled": {
+            "optional": false,
+            "type": "boolean"
+          },
+          "ref": {
+            "optional": false,
+            "type": "`0x${string}`"
+          },
+          "rule": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").Rule"
+          },
+          "rulesId": {
+            "optional": false,
+            "type": "`0x${string}`"
+          },
+          "validUntil": {
+            "optional": false,
+            "type": "number"
+          }
+        }
+      },
+      "CreateOptions": {
+        "type": "import(\"sdk/src/lib/index\").CreateOptions",
+        "members": {
+          "progressHook": {
+            "optional": true,
+            "type": "import(\"sdk/src/lib/index\").AgenticProgressHook | undefined"
+          },
+          "rules": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").Rule[]"
+          }
+        }
+      },
+      "CreateResult": {
+        "type": "import(\"sdk/src/lib/index\").CreateResult",
+        "members": {
+          "index": {
+            "optional": false,
+            "type": "number"
+          },
+          "rulesIds": {
+            "optional": false,
+            "type": "`0x${string}`[]"
+          },
+          "tx": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/orchestrator/orchestrator.types\").UniversalTxResponse"
+          },
+          "wallet": {
+            "optional": false,
+            "type": "`0x${string}`"
+          }
+        }
+      },
+      "AgenticTxMetadata": {
+        "type": "import(\"sdk/src/lib/index\").AgenticTxMetadata",
+        "members": {
+          "chainNamespace": {
+            "optional": true,
+            "type": "string | undefined"
+          },
+          "destinationAccount": {
+            "optional": true,
+            "type": "`0x${string}` | undefined"
+          },
+          "destinationCalls": {
+            "optional": true,
+            "type": "readonly { to: import(\"sdk/src/lib/index\").AgenticAddress; data: import(\"sdk/src/lib/index\").AgenticHex; value: bigint; }[] | undefined"
+          },
+          "door": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").AgenticDoor"
+          },
+          "nativeCalls": {
+            "optional": true,
+            "type": "readonly { to: import(\"sdk/src/lib/index\").AgenticAddress; data: import(\"sdk/src/lib/index\").AgenticHex; value: bigint; }[] | undefined"
+          },
+          "rawData": {
+            "optional": false,
+            "type": "string"
+          },
+          "rawTo": {
+            "optional": false,
+            "type": "string"
+          },
+          "rulesId": {
+            "optional": true,
+            "type": "`0x${string}` | undefined"
+          },
+          "wallet": {
+            "optional": false,
+            "type": "`0x${string}`"
+          }
+        }
+      }
+    },
+    "initialize": "(universalSigner: import(\"sdk/src/lib/index\").UniversalSigner | import(\"sdk/src/lib/index\").UniversalAccount, options?: import(\"sdk/src/lib/index\").PushChainInitializeOptions) => Promise<import(\"sdk/src/lib/index\").PushChain>",
+    "agwConstants": {
+      "ENVELOPE_VERSION": {
+        "optional": true,
+        "type": "number | undefined"
+      },
+      "FACTORY": {
+        "optional": false,
+        "type": "`0x${string}`"
+      },
+      "MAX_ALLOWED_CALLS": {
+        "optional": false,
+        "type": "number"
+      },
+      "MAX_PINS": {
+        "optional": false,
+        "type": "number"
+      },
+      "RULES_POLICY": {
+        "optional": false,
+        "type": "`0x${string}`"
+      }
+    }
+  },
+  "after": {
+    "exports": [
+      "AGENTIC_ERROR_CODE",
+      "AccountRole",
+      "AccountStatus",
+      "AccountType",
+      "AgenticAddress",
+      "AgenticDoor",
+      "AgenticError",
+      "AgenticErrorCode",
+      "AgenticHex",
+      "AgenticNamespace",
+      "AgenticNetworkConstants",
+      "AgenticProgressHook",
+      "AgenticRevertError",
+      "AgenticTxMetadata",
+      "AgenticWallet",
+      "AllowedCall",
+      "AssetCap",
+      "BatchReadResponse",
+      "BuildReadSpecParams",
+      "CHAIN",
+      "CONTRACT_REQUEST_STATUS",
+      "CascadeCompletionResult",
+      "CascadeHopInfo",
+      "CascadeProgressEvent",
+      "CascadeTrackOptions",
+      "CascadedTxResponse",
+      "ChainSource",
+      "ChainTarget",
+      "Checkpoint",
+      "CheckpointKind",
+      "ConversionQuote",
+      "CreateOptions",
+      "CreateResult",
+      "DEFAULT_MAX_PC_FOR_GAS_BUFFER_BPS",
+      "DecodedErrorPayload",
+      "DecodedReadResult",
+      "DerivedExecutorAccount",
+      "EncodedReadQuery",
+      "EvmReadQuery",
+      "ForeignChainNamespace",
+      "FulfilOutcome",
+      "FundsToken",
+      "InsufficientPC20BalanceError",
+      "InvalidPC20AddressError",
+      "InvalidPC20MetadataError",
+      "InvalidReadQueryError",
+      "InvalidReadSpecError",
+      "MAX_PC_FOR_GAS_BUFFER_BPS_LIMIT",
+      "MaxPCForGasCapFromNativeValueInput",
+      "MaxPCForGasCapInput",
+      "MaxPCForGasCapQuote",
+      "MultiChainTxResponse",
+      "NativeRule",
+      "OutboundTxDetails",
+      "PC20AddressResult",
+      "PC20AmbiguousAddressError",
+      "PC20Error",
+      "PC20ExpectedButPRC20Error",
+      "PC20ExportRevertedError",
+      "PC20FactoryMismatchError",
+      "PC20RegistryEntry",
+      "PC20RegistryMismatchError",
+      "PC20TokenChainMismatchError",
+      "PC20TokenReference",
+      "PC20UnknownChainNamespaceError",
+      "PC20UnsafeEmptyPayloadError",
+      "PC20WrapperNotRegisteredError",
+      "PC20WrapperPredictionUnavailableError",
+      "ParsedReadRequest",
+      "PreparedRead",
+      "PreparedUniversalTx",
+      "PushChain",
+      "PushChainBatchExecutionError",
+      "PushChainExecutionError",
+      "PushChainInitializeOptions",
+      "READ_ERROR_CODE",
+      "READ_OUTCOME",
+      "READ_STATUS",
+      "ReadCallback",
+      "ReadCallbackOptions",
+      "ReadChain",
+      "ReadDecodeError",
+      "ReadDestination",
+      "ReadExecuteOptions",
+      "ReadFees",
+      "ReadHeightUnavailableError",
+      "ReadLifecycleOptions",
+      "ReadNotFoundError",
+      "ReadOptions",
+      "ReadPreflight",
+      "ReadPrepareOptions",
+      "ReadQuery",
+      "ReadQueryOptions",
+      "ReadRef",
+      "ReadRegistryUnavailableError",
+      "ReadResponseTuple",
+      "ReadResultShape",
+      "ReadSpec",
+      "ReadSpecTuple",
+      "ReadSpecViolation",
+      "ReadStateError",
+      "ReadTimeoutError",
+      "ReadTrackOptions",
+      "ReadValue",
+      "ReadWeb2Options",
+      "ReceiptLike",
+      "RescueFundsParams",
+      "ResolvedAccount",
+      "ResolvedControllerAccounts",
+      "ResolvedDestination",
+      "Rule",
+      "RulesRecord",
+      "Selector",
+      "SignAuthorizationParams",
+      "SignedAuthorization",
+      "SimulateReadResult",
+      "SvmExecutePayloadFields",
+      "SvmGatewayAccountMeta",
+      "SvmReadQuery",
+      "TERMINAL_READ_STATUSES",
+      "TransactionRoute",
+      "TransactionRouteType",
+      "UEAStatus",
+      "UNIVERSAL_CALLBACK_EVM",
+      "UNIVERSAL_READ_REGISTRY_EVM",
+      "UNIVERSAL_READ_STATUS",
+      "UniversalAccount",
+      "UniversalExecuteParams",
+      "UniversalOutboundTxRequest",
+      "UniversalReadResponse",
+      "UniversalRule",
+      "UniversalSigner",
+      "UniversalSignerSkeleton",
+      "UniversalTo",
+      "UnsupportedPC20DestinationError",
+      "UnsupportedReadDestinationError",
+      "ValidateReadCall",
+      "WaitForOutboundOptions",
+      "WalletInfo",
+      "WalletSummary",
+      "Web2Extract",
+      "Web2ReadQuery",
+      "Web2ValueType",
+      "buildErc20WithdrawalMulticall",
+      "buildMigrationPayload",
+      "buildReadSpecFromPreflight",
+      "chainSupportsCEA",
+      "chainSupportsOutbound",
+      "decodeReadResult",
+      "detectRoute",
+      "encodeReadQuery",
+      "encodeSvmExecutePayload",
+      "getAllCEAAddresses",
+      "getCEAAddress",
+      "getCEAFactoryAddress",
+      "getPushAccountForCEA",
+      "inferResultShape",
+      "isCEA",
+      "isChainTarget",
+      "isPC20Reference",
+      "isSvmChain",
+      "isValidSolanaHexAddress",
+      "parseFulfilOutcome",
+      "parseReadRequestsFromReceipt",
+      "parseUEAVersion",
+      "quoteMaxPCForGasCap",
+      "quoteMaxPCForGasCapFromNativeValue",
+      "resolveDestination",
+      "sizeCallbackBudget",
+      "toCallData",
+      "toReadQuery",
+      "toRequestIdHex",
+      "validateReadSpec"
+    ],
+    "agw": {
+      "AgenticNamespace": {
+        "type": "import(\"sdk/src/lib/index\").AgenticNamespace",
+        "members": {
+          "create": {
+            "optional": false,
+            "type": "(label: string, options: import(\"sdk/src/lib/index\").CreateOptions) => Promise<import(\"sdk/src/lib/index\").CreateResult>"
+          },
+          "derive": {
+            "optional": false,
+            "type": "(opts?: { index?: number; }) => Promise<{ address: import(\"sdk/src/lib/index\").AgenticAddress; index: number; deployed: boolean; }>"
+          },
+          "list": {
+            "optional": false,
+            "type": "() => Promise<{ wallets: import(\"sdk/src/lib/index\").WalletSummary[]; }>"
+          },
+          "wallet": {
+            "optional": false,
+            "type": "(address: import(\"sdk/src/lib/index\").AgenticAddress) => import(\"sdk/src/lib/index\").AgenticWallet"
+          }
+        }
+      },
+      "AgenticWallet": {
+        "type": "import(\"sdk/src/lib/index\").AgenticWallet",
+        "members": {
+          "address": {
+            "optional": false,
+            "type": "`0x${string}`"
+          },
+          "checkpoints": {
+            "optional": false,
+            "type": "(opts?: { sinceBlock?: bigint; }) => Promise<{ checkpoints: import(\"sdk/src/lib/index\").Checkpoint[]; }>"
+          },
+          "info": {
+            "optional": false,
+            "type": "() => Promise<import(\"sdk/src/lib/index\").WalletInfo>"
+          },
+          "owner": {
+            "optional": false,
+            "type": "() => Promise<{ owner: import(\"sdk/src/lib/index\").AgenticAddress; }>"
+          },
+          "rules": {
+            "optional": false,
+            "type": "{ list(): Promise<{ rules: import(\"sdk/src/lib/index\").RulesRecord[]; }>; get(rulesId: import(\"sdk/src/lib/index\").AgenticHex): Promise<import(\"sdk/src/lib/index\").RulesRecord>; add(rules: import(\"sdk/src/lib/index\").Rule[], opts?: { progressHook?: import(\"sdk/src/lib/index\").AgenticProgressHook; }): Promise<{ rulesIds: import(\"sdk/src/lib/index\").AgenticHex[]; tx: import(\"sdk/src/lib/orchestrator/orchestrator.types\").UniversalTxResponse; }>; update(params: { rules: { rulesId: import(\"sdk/src/lib/index\").AgenticHex; rule: import(\"sdk/src/lib/index\").Rule; }[]; progressHook?: import(\"sdk/src/lib/index\").AgenticProgressHook; }): Promise<{ rules: { rulesId: import(\"sdk/src/lib/index\").AgenticHex; replaced: import(\"sdk/src/lib/index\").AgenticHex; }[]; tx: import(\"sdk/src/lib/orchestrator/orchestrator.types\").UniversalTxResponse; }>; revoke(rulesIds: import(\"sdk/src/lib/index\").AgenticHex[], opts?: { progressHook?: import(\"sdk/src/lib/index\").AgenticProgressHook; }): Promise<import(\"sdk/src/lib/orchestrator/orchestrator.types\").UniversalTxResponse>; revoke(params: { all: true; progressHook?: import(\"sdk/src/lib/index\").AgenticProgressHook; }): Promise<import(\"sdk/src/lib/orchestrator/orchestrator.types\").UniversalTxResponse>; }"
+          },
+          "setLabel": {
+            "optional": false,
+            "type": "(label: string, opts?: { progressHook?: import(\"sdk/src/lib/index\").AgenticProgressHook; }) => Promise<import(\"sdk/src/lib/orchestrator/orchestrator.types\").UniversalTxResponse>"
+          }
+        }
+      },
+      "AgenticError": {
+        "type": "import(\"sdk/src/lib/index\").AgenticError",
+        "members": {
+          "cause": {
+            "optional": true,
+            "type": "unknown"
+          },
+          "code": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").AgenticErrorCode"
+          },
+          "details": {
+            "optional": true,
+            "type": "Readonly<Record<string, unknown>> | undefined"
+          },
+          "hint": {
+            "optional": true,
+            "type": "string | undefined"
+          },
+          "message": {
+            "optional": false,
+            "type": "string"
+          },
+          "name": {
+            "optional": false,
+            "type": "string"
+          },
+          "stack": {
+            "optional": true,
+            "type": "string | undefined"
+          }
+        }
+      },
+      "AgenticRevertError": {
+        "type": "import(\"sdk/src/lib/index\").AgenticRevertError",
+        "members": {
+          "agenticCode": {
+            "optional": true,
+            "type": "string | undefined"
+          },
+          "cause": {
+            "optional": true,
+            "type": "unknown"
+          },
+          "code": {
+            "optional": false,
+            "type": "\"PUSH_CHAIN_EXECUTION_FAILED\""
+          },
+          "decodedError": {
+            "optional": true,
+            "type": "import(\"sdk/src/lib/index\").DecodedErrorPayload | undefined"
+          },
+          "gatewayTxHash": {
+            "optional": true,
+            "type": "string | undefined"
+          },
+          "message": {
+            "optional": false,
+            "type": "string"
+          },
+          "name": {
+            "optional": false,
+            "type": "string"
+          },
+          "pendingTransactionHash": {
+            "optional": true,
+            "type": "`0x${string}` | undefined"
+          },
+          "stack": {
+            "optional": true,
+            "type": "string | undefined"
+          },
+          "transactionHashes": {
+            "optional": true,
+            "type": "`0x${string}`[] | undefined"
+          }
+        }
+      },
+      "AGENTIC_ERROR_CODE": {
+        "type": "{ readonly AGENT_IS_OWNER: \"AGENT_IS_OWNER\"; readonly AMBIGUOUS_RULE: \"AMBIGUOUS_RULE\"; readonly TARGET_NOT_ON_RULE_CHAIN: \"TARGET_NOT_ON_RULE_CHAIN\"; readonly ASSET_CHAIN_MISMATCH: \"ASSET_CHAIN_MISMATCH\"; readonly NOT_OWNER_OR_AGENT: \"NOT_OWNER_OR_AGENT\"; readonly WALLET_NOT_DEPLOYED: \"WALLET_NOT_DEPLOYED\"; readonly NOT_AGENTIC_WALLET: \"NOT_AGENTIC_WALLET\"; readonly REVOKE_NEEDS_TARGET: \"REVOKE_NEEDS_TARGET\"; readonly NO_RULES_FOR_CHAIN: \"NO_RULES_FOR_CHAIN\"; readonly FROM_NOT_ALLOWED: \"FROM_NOT_ALLOWED\"; readonly NOT_ALLOWED_IN_AGENTIC_MODE: \"NOT_ALLOWED_IN_AGENTIC_MODE\"; readonly INVALID_RULE: \"INVALID_RULE\"; readonly CAPABILITY_UNAVAILABLE: \"CAPABILITY_UNAVAILABLE\"; readonly GENERATION_UNSUPPORTED: \"GENERATION_UNSUPPORTED\"; readonly READ_ONLY: \"READ_ONLY\"; readonly NOT_WALLET_OWNER: \"NOT_WALLET_OWNER\"; readonly RULE_NOT_FOUND: \"RULE_NOT_FOUND\"; readonly RULE_READ_FAILED: \"RULE_READ_FAILED\"; readonly INCONSISTENT_READ: \"INCONSISTENT_READ\"; readonly INDEX_RACE: \"INDEX_RACE\"; readonly CREATE_PARTIAL: \"CREATE_PARTIAL\"; readonly RECEIPT_MISMATCH: \"RECEIPT_MISMATCH\"; readonly RECEIPT_UNAVAILABLE: \"RECEIPT_UNAVAILABLE\"; readonly AGENT_GAS_INSUFFICIENT: \"AGENT_GAS_INSUFFICIENT\"; readonly WALLET_BALANCE_INSUFFICIENT: \"WALLET_BALANCE_INSUFFICIENT\"; readonly GATEWAY_ALLOWANCE_INSUFFICIENT: \"GATEWAY_ALLOWANCE_INSUFFICIENT\"; readonly RULE_LIMIT_EXCEEDED: \"RULE_LIMIT_EXCEEDED\"; }",
+        "members": {
+          "AGENT_GAS_INSUFFICIENT": {
+            "optional": false,
+            "type": "\"AGENT_GAS_INSUFFICIENT\""
+          },
+          "AGENT_IS_OWNER": {
+            "optional": false,
+            "type": "\"AGENT_IS_OWNER\""
+          },
+          "AMBIGUOUS_RULE": {
+            "optional": false,
+            "type": "\"AMBIGUOUS_RULE\""
+          },
+          "ASSET_CHAIN_MISMATCH": {
+            "optional": false,
+            "type": "\"ASSET_CHAIN_MISMATCH\""
+          },
+          "CAPABILITY_UNAVAILABLE": {
+            "optional": false,
+            "type": "\"CAPABILITY_UNAVAILABLE\""
+          },
+          "CREATE_PARTIAL": {
+            "optional": false,
+            "type": "\"CREATE_PARTIAL\""
+          },
+          "FROM_NOT_ALLOWED": {
+            "optional": false,
+            "type": "\"FROM_NOT_ALLOWED\""
+          },
+          "GATEWAY_ALLOWANCE_INSUFFICIENT": {
+            "optional": false,
+            "type": "\"GATEWAY_ALLOWANCE_INSUFFICIENT\""
+          },
+          "GENERATION_UNSUPPORTED": {
+            "optional": false,
+            "type": "\"GENERATION_UNSUPPORTED\""
+          },
+          "INCONSISTENT_READ": {
+            "optional": false,
+            "type": "\"INCONSISTENT_READ\""
+          },
+          "INDEX_RACE": {
+            "optional": false,
+            "type": "\"INDEX_RACE\""
+          },
+          "INVALID_RULE": {
+            "optional": false,
+            "type": "\"INVALID_RULE\""
+          },
+          "NO_RULES_FOR_CHAIN": {
+            "optional": false,
+            "type": "\"NO_RULES_FOR_CHAIN\""
+          },
+          "NOT_AGENTIC_WALLET": {
+            "optional": false,
+            "type": "\"NOT_AGENTIC_WALLET\""
+          },
+          "NOT_ALLOWED_IN_AGENTIC_MODE": {
+            "optional": false,
+            "type": "\"NOT_ALLOWED_IN_AGENTIC_MODE\""
+          },
+          "NOT_OWNER_OR_AGENT": {
+            "optional": false,
+            "type": "\"NOT_OWNER_OR_AGENT\""
+          },
+          "NOT_WALLET_OWNER": {
+            "optional": false,
+            "type": "\"NOT_WALLET_OWNER\""
+          },
+          "READ_ONLY": {
+            "optional": false,
+            "type": "\"READ_ONLY\""
+          },
+          "RECEIPT_MISMATCH": {
+            "optional": false,
+            "type": "\"RECEIPT_MISMATCH\""
+          },
+          "RECEIPT_UNAVAILABLE": {
+            "optional": false,
+            "type": "\"RECEIPT_UNAVAILABLE\""
+          },
+          "REVOKE_NEEDS_TARGET": {
+            "optional": false,
+            "type": "\"REVOKE_NEEDS_TARGET\""
+          },
+          "RULE_LIMIT_EXCEEDED": {
+            "optional": false,
+            "type": "\"RULE_LIMIT_EXCEEDED\""
+          },
+          "RULE_NOT_FOUND": {
+            "optional": false,
+            "type": "\"RULE_NOT_FOUND\""
+          },
+          "RULE_READ_FAILED": {
+            "optional": false,
+            "type": "\"RULE_READ_FAILED\""
+          },
+          "TARGET_NOT_ON_RULE_CHAIN": {
+            "optional": false,
+            "type": "\"TARGET_NOT_ON_RULE_CHAIN\""
+          },
+          "WALLET_BALANCE_INSUFFICIENT": {
+            "optional": false,
+            "type": "\"WALLET_BALANCE_INSUFFICIENT\""
+          },
+          "WALLET_NOT_DEPLOYED": {
+            "optional": false,
+            "type": "\"WALLET_NOT_DEPLOYED\""
+          }
+        }
+      },
+      "NativeRule": {
+        "type": "import(\"sdk/src/lib/index\").NativeRule",
+        "members": {
+          "agent": {
+            "optional": false,
+            "type": "`0x${string}`"
+          },
+          "amount": {
+            "optional": true,
+            "type": "import(\"sdk/src/lib/agentic/agentic.types\").AmountLimit | undefined"
+          },
+          "chainNamespace": {
+            "optional": true,
+            "type": "undefined"
+          },
+          "maxCalls": {
+            "optional": true,
+            "type": "number | undefined"
+          },
+          "maxValuePerCall": {
+            "optional": true,
+            "type": "bigint | undefined"
+          },
+          "maxValueTotal": {
+            "optional": true,
+            "type": "bigint | undefined"
+          },
+          "pins": {
+            "optional": true,
+            "type": "import(\"sdk/src/lib/agentic/agentic.types\").ArgPin[] | undefined"
+          },
+          "ref": {
+            "optional": true,
+            "type": "`0x${string}` | undefined"
+          },
+          "selector": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").Selector | \"value-only\""
+          },
+          "target": {
+            "optional": false,
+            "type": "`0x${string}`"
+          },
+          "validUntil": {
+            "optional": false,
+            "type": "number"
+          }
+        }
+      },
+      "AssetCap": {
+        "type": "import(\"sdk/src/lib/index\").AssetCap",
+        "members": {
+          "maxPerCall": {
+            "optional": false,
+            "type": "bigint"
+          },
+          "maxTotal": {
+            "optional": true,
+            "type": "bigint | undefined"
+          },
+          "token": {
+            "optional": false,
+            "type": "`0x${string}` | import(\"sdk/src/lib/constants/tokens\").MoveableToken"
+          }
+        }
+      },
+      "AllowedCall": {
+        "type": "import(\"sdk/src/lib/index\").AllowedCall",
+        "members": {
+          "beneficiary": {
+            "optional": true,
+            "type": "number | undefined"
+          },
+          "beneficiaryOffset": {
+            "optional": true,
+            "type": "number | undefined"
+          },
+          "maxValue": {
+            "optional": true,
+            "type": "bigint | undefined"
+          },
+          "selector": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").Selector"
+          },
+          "target": {
+            "optional": false,
+            "type": "`0x${string}`"
+          }
+        }
+      },
+      "UniversalRule": {
+        "type": "import(\"sdk/src/lib/index\").UniversalRule",
+        "members": {
+          "agent": {
+            "optional": false,
+            "type": "`0x${string}`"
+          },
+          "allowedCalls": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").AllowedCall[]"
+          },
+          "assets": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").AssetCap[]"
+          },
+          "chainNamespace": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").ForeignChainNamespace"
+          },
+          "maxGasPerCall": {
+            "optional": false,
+            "type": "bigint"
+          },
+          "ref": {
+            "optional": true,
+            "type": "`0x${string}` | undefined"
+          },
+          "validUntil": {
+            "optional": false,
+            "type": "number"
+          }
+        }
+      },
+      "RulesRecord": {
+        "type": "import(\"sdk/src/lib/index\").RulesRecord",
+        "members": {
+          "agent": {
+            "optional": false,
+            "type": "`0x${string}`"
+          },
+          "chainNamespace": {
+            "optional": false,
+            "type": "string"
+          },
+          "enabled": {
+            "optional": false,
+            "type": "boolean"
+          },
+          "ref": {
+            "optional": false,
+            "type": "`0x${string}`"
+          },
+          "rule": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").Rule"
+          },
+          "rulesId": {
+            "optional": false,
+            "type": "`0x${string}`"
+          },
+          "validUntil": {
+            "optional": false,
+            "type": "number"
+          }
+        }
+      },
+      "CreateOptions": {
+        "type": "import(\"sdk/src/lib/index\").CreateOptions",
+        "members": {
+          "progressHook": {
+            "optional": true,
+            "type": "import(\"sdk/src/lib/index\").AgenticProgressHook | undefined"
+          },
+          "rules": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").Rule[]"
+          }
+        }
+      },
+      "CreateResult": {
+        "type": "import(\"sdk/src/lib/index\").CreateResult",
+        "members": {
+          "index": {
+            "optional": false,
+            "type": "number"
+          },
+          "rulesIds": {
+            "optional": false,
+            "type": "`0x${string}`[]"
+          },
+          "tx": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/orchestrator/orchestrator.types\").UniversalTxResponse"
+          },
+          "wallet": {
+            "optional": false,
+            "type": "`0x${string}`"
+          }
+        }
+      },
+      "AgenticTxMetadata": {
+        "type": "import(\"sdk/src/lib/index\").AgenticTxMetadata",
+        "members": {
+          "chainNamespace": {
+            "optional": true,
+            "type": "string | undefined"
+          },
+          "destinationAccount": {
+            "optional": true,
+            "type": "`0x${string}` | undefined"
+          },
+          "destinationCalls": {
+            "optional": true,
+            "type": "readonly { to: import(\"sdk/src/lib/index\").AgenticAddress; data: import(\"sdk/src/lib/index\").AgenticHex; value: bigint; }[] | undefined"
+          },
+          "door": {
+            "optional": false,
+            "type": "import(\"sdk/src/lib/index\").AgenticDoor"
+          },
+          "nativeCalls": {
+            "optional": true,
+            "type": "readonly { to: import(\"sdk/src/lib/index\").AgenticAddress; data: import(\"sdk/src/lib/index\").AgenticHex; value: bigint; }[] | undefined"
+          },
+          "rawData": {
+            "optional": false,
+            "type": "string"
+          },
+          "rawTo": {
+            "optional": false,
+            "type": "string"
+          },
+          "rulesId": {
+            "optional": true,
+            "type": "`0x${string}` | undefined"
+          },
+          "wallet": {
+            "optional": false,
+            "type": "`0x${string}`"
+          }
+        }
+      }
+    },
+    "initialize": "(universalSigner: import(\"sdk/src/lib/index\").UniversalSigner | import(\"sdk/src/lib/index\").UniversalAccount, options?: import(\"sdk/src/lib/index\").PushChainInitializeOptions) => Promise<import(\"sdk/src/lib/index\").PushChain>",
+    "agwConstants": {
+      "ENVELOPE_VERSION": {
+        "optional": false,
+        "type": "number"
+      },
+      "FACTORY": {
+        "optional": false,
+        "type": "`0x${string}`"
+      },
+      "MAX_ALLOWED_CALLS": {
+        "optional": false,
+        "type": "number"
+      },
+      "MAX_PINS": {
+        "optional": false,
+        "type": "number"
+      },
+      "RULES_POLICY": {
+        "optional": false,
+        "type": "`0x${string}`"
+      }
+    }
+  },
+  "scope": "Root exports, AGW types, initialize and agentic constants. Behavioral/default/deployment changes need the written session review."
+}

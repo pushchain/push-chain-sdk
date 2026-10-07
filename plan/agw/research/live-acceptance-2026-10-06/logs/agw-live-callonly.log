@@ -1,0 +1,26 @@
+  console.log
+    [ExternalTxVerifier] Verifying EVM tx on eip155:11155111: 0xadb89cd9cfb70fd33b9eaa2e05b109b0a9a26d3fb9221e8dc28cd8cf8d4f27fe
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+  console.log
+    [ExternalTxVerifier] EVM tx 0xadb89cd9cfb70fd33b9eaa2e05b109b0a9a26d3fb9221e8dc28cd8cf8d4f27fe on eip155:11155111: status=0x1
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+  console.log
+    [ExternalTxVerifier] EVM tx CONFIRMED SUCCESS on eip155:11155111
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+PASS core-e2e packages/core/__e2e__/agw/v4-multiasset.spec.ts (102.469 s)
+  agw v4 multi-asset
+    ✓ 2. empty user assets routes a call-only outbound with zero token spend (89508 ms)
+    ○ skipped 1. public create reads and replaces an ordered two-token rule
+
+Test Suites: 1 passed, 1 total
+Tests:       1 skipped, 1 passed, 2 total
+Snapshots:   0 total
+Time:        102.497 s
+Ran all test suites within paths "packages/core/__e2e__/agw/v4-multiasset.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

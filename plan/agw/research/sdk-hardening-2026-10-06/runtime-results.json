@@ -1,0 +1,21 @@
+{
+  "results": [
+    {
+      "version": "v20.19.2",
+      "major": 20,
+      "platform": "darwin",
+      "arch": "arm64",
+      "passed": true
+    },
+    {
+      "version": "v24.14.0",
+      "major": 24,
+      "platform": "darwin",
+      "arch": "arm64",
+      "passed": true
+    }
+  ],
+  "hostedCi": false,
+  "published": false,
+  "fundedE2Es": false
+}

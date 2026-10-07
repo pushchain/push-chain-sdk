@@ -1,0 +1,30 @@
+{
+  "wallet": {
+    "added": [
+      "function:initializeAccount(string)",
+      "function:label()",
+      "function:setLabel(string)",
+      "event:LabelSet(string)",
+      "error:LabelTooLong(uint256)"
+    ],
+    "removed": [
+      "function:initializeAccount()"
+    ]
+  },
+  "factory": {
+    "added": [],
+    "removed": []
+  },
+  "engine": {
+    "added": [],
+    "removed": []
+  },
+  "policy": {
+    "added": [],
+    "removed": []
+  },
+  "validator": {
+    "added": [],
+    "removed": []
+  }
+}

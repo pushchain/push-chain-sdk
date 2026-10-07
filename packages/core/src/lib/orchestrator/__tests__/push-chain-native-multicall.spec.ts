@@ -1,5 +1,6 @@
 import { CHAIN, PUSH_NETWORK } from '../../constants/enums';
 import { construct, toUniversal } from '../../universal/signer/signer';
+import { AtomicBatchUnavailableError } from '../internals/errors';
 import { EIP7702NotSupportedError } from '../../vm-client/evm-client';
 import type { OrchestratorContext } from '../internals/context';
 import { sendPushTx } from '../internals/push-chain-tx';
@@ -51,6 +52,7 @@ function makeContext(signer: OrchestratorContext['universalSigner']) {
       getTransactionCount: jest.fn().mockResolvedValue(41),
       waitForTransactionReceipt,
       call: jest.fn(),
+      getCode: jest.fn().mockResolvedValue('0x6000'),
     },
   };
 
@@ -258,5 +260,47 @@ describe('sendPushTx native multicall routing', () => {
 
     expect(pushClient.getTransaction).not.toHaveBeenCalled();
     expect(transformFn).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('atomic-only native batches (AGW sender-preserving arrays)', () => {
+  async function context(supportsAuthorization = true) {
+    const signer = await toUniversal(construct(
+      { chain: CHAIN.PUSH_TESTNET_DONUT, address: '0x3333333333333333333333333333333333333333' },
+      { signMessage: async (data) => data, signAndSendTransaction: async (data) => data,
+        ...(supportsAuthorization ? { signAuthorization: jest.fn() } : {}) }
+    ));
+    return makeContext(signer);
+  }
+
+  it('rejects missing signer capability without sending any sequential call', async () => {
+    const { ctx, pushClient } = await context(false);
+    await expect(sendPushTx(ctx, execute, [], transformFn, true)).rejects.toBeInstanceOf(AtomicBatchUnavailableError);
+    expect(pushClient.sendTransaction).not.toHaveBeenCalled();
+    expect(pushClient.sendBatch7702).not.toHaveBeenCalled();
+  });
+
+  it('refuses a missing executor before authorization or broadcast', async () => {
+    const { ctx, pushClient } = await context();
+    pushClient.publicClient.getCode.mockResolvedValue('0x');
+    await expect(sendPushTx(ctx, execute, [], transformFn, true)).rejects.toBeInstanceOf(AtomicBatchUnavailableError);
+    expect(pushClient.sendTransaction).not.toHaveBeenCalled();
+    expect(pushClient.sendBatch7702).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back when authorization is exposed but unsupported at runtime', async () => {
+    const { ctx, pushClient } = await context();
+    pushClient.sendBatch7702.mockRejectedValueOnce(new EIP7702NotSupportedError());
+    await expect(sendPushTx(ctx, execute, [], transformFn, true)).rejects.toBeInstanceOf(AtomicBatchUnavailableError);
+    expect(pushClient.sendTransaction).not.toHaveBeenCalled();
+    expect(pushClient.sendBatch7702).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses the atomic transport when signer and executor are available', async () => {
+    const { ctx, pushClient } = await context();
+    await sendPushTx(ctx, execute, [], transformFn, true);
+    expect(pushClient.sendBatch7702).toHaveBeenCalledTimes(1);
+    expect(pushClient.sendTransaction).not.toHaveBeenCalled();
   });
 });

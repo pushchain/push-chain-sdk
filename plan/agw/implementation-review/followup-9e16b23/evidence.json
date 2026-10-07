@@ -1,0 +1,50 @@
+{
+  "reviewed_commit": "9e16b23a76816176dca20793d74df5a5548a497e",
+  "fix_commit": "880e7ae",
+  "original_review_commit": "3008497",
+  "commands": [
+    {
+      "command": "node node_modules/jest/bin/jest.js --config packages/core/jest.config.ts --runInBand",
+      "result": "1899 passed, 12 skipped"
+    },
+    {
+      "command": "AGW_LOCAL_DIR=<prepared-e704d5b-build> node node_modules/jest/bin/jest.js --config packages/core/jest.agw-local.config.ts --runInBand --forceExit",
+      "result": "34 passed; local Anvil only"
+    },
+    {
+      "command": "node node_modules/typescript/bin/tsc -p packages/core/tsconfig.lib.json --noEmit",
+      "result": "passed"
+    },
+    {
+      "command": "node node_modules/typescript/bin/tsc -p packages/core/tsconfig.spec.json --noEmit",
+      "result": "passed"
+    },
+    {
+      "command": "yarn nx run core:build --skip-nx-cache",
+      "result": "passed"
+    },
+    {
+      "command": "cd packages/core; node ../../node_modules/ts-node/dist/bin.js --transpile-only __e2e__/ci/run.ts --verify --group agw; repeat for --group all",
+      "result": "21 and 76 scenarios; consistent"
+    },
+    {
+      "command": "node node_modules/jest/bin/jest.js --config plan/agw/implementation-review/followup-9e16b23/reviewer.config.cjs --runInBand",
+      "result": "1 passed R6 wait path; 1 failed F1 replay metadata"
+    }
+  ],
+  "live_broadcasts": false,
+  "lint_rerun": false,
+  "sha256": {
+    "build.log": "09bf04fbbfdd931522cc613563d0b50228db346468e6b12d8bd3b0d8f0e83a39",
+    "e2e-agw.log": "547b3068ab4276f9c4e0bbacdff3e6e635a5e812c86ee18dcdc235cf3dca6052",
+    "e2e-all.log": "3d1649d660267693725f167772c8cfc6b0c51a385e1043d203efe1459798f6ff",
+    "local.log": "6943d541bc5a51a35088cc21e7b73a1421f649c4f7b499fa6f03f95300c77e4a",
+    "replay.log": "d529a83860759ef19a53219b174266295b1d1cf32a266de68c048d2be039a09e",
+    "replay.spec.ts": "a183d9cc10d66c088fa9831a581505e6d229bcbb7fe7496b9017b2fd05c82541",
+    "review.md": "7eda3e6aa95e6121bd21f41afd13045b5ee1a20b045f30f3e793ac7c78398d17",
+    "reviewer.config.cjs": "54ec14331588c36c0bd18582eb5be52a5d34f96d18474a9a54f67a9168ff0324",
+    "types-lib.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "types-spec.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "unit.log": "62e8f81038a8dd45bb0a681de215281e44c1901dc1c120894bc7ba6f8985dfbf"
+  }
+}

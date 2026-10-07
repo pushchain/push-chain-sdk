@@ -1,0 +1,31 @@
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw-svm-wire/outbound.spec.ts
+  114:38  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  126:56  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  127:48  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  127:48  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  128:28  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  129:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  129:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  133:30  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  146:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  170:50  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  170:50  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw-svm-wire/replay.spec.ts
+  33:40  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  44:40  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  47:83  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  49:51  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  54:82  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/shared/agw-svm-preflight.ts
+  12:33  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  17:34  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/svm-wire-fixture.spec.ts
+  41:50  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  46:45  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  50:45  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+✖ 21 problems (0 errors, 21 warnings)
