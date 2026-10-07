@@ -1,4 +1,4 @@
-import { READ_NAMESPACE, type ReadNamespace } from '../constants/read-state';
+import { READ_NAMESPACE, WEB2_DESTINATION, WEB2_READ_CHAIN, type ReadNamespace } from '../constants/read-state';
 import { UnsupportedReadDestinationError } from './errors';
 import type { ReadDestination, ResolvedDestination } from './read-state.types';
 
@@ -17,7 +17,11 @@ const KNOWN: ReadonlySet<string> = new Set(Object.values(READ_NAMESPACE));
 export function resolveDestination(dest: ReadDestination): ResolvedDestination {
   let chainNamespace: string;
   let chainId: string;
-  if ('chain' in dest) {
+  if ('chain' in dest && dest.chain === WEB2_READ_CHAIN) {
+    // The public 'web2' spelling has no ':'; its wire identity is web2:https.
+    chainNamespace = WEB2_DESTINATION.chainNamespace;
+    chainId = WEB2_DESTINATION.chainId;
+  } else if ('chain' in dest) {
     const idx = dest.chain.indexOf(':');
     if (idx <= 0) {
       throw new UnsupportedReadDestinationError(`chain is not CAIP-2: ${dest.chain}`);
