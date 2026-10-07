@@ -1,18 +1,16 @@
 # AGW contract and SDK gap register
 
-**October 7 alignment:** all product choices are settled. Named-IDL Solana integration and removal of rule `ref` are implemented; raw-offset inputs remain supported. Editable labels await Zaryab’s interface/deployment. Contract validation already exists; retain the SDK ambiguity guard. [Current delivery items](questions-zaryab.md).
+**October 7 alignment:** all product choices are settled. Named-IDL Solana integration and removal of rule `ref` are implemented; raw-offset inputs remain supported. Editable labels are delivered and implemented against v5. Contract validation already exists; retain the SDK ambiguity guard. [Current delivery items](questions-zaryab.md).
 
-Updated October 7, 2026 following the clarified contract-enforcement decision, the [v4 deployment/owner-guide review](research/deployment-review-2026-10-06/README.md), [Harsh’s replies](product-decisions-2026-10-04.md), v4 implementation on feat/agw-sdk-v4, and [live Notion comments](research/notion-comments-2026-10-05.md). This register distinguishes unresolved dependencies, implemented SDK work, deferred scope and historical corrections. G01–G26 are tracking IDs, not a count of open defects.
+Updated October 7, 2026 following the clarified contract-enforcement decision, the [v4 deployment/owner-guide review](research/deployment-review-2026-10-06/README.md), [Harsh’s replies](product-decisions-2026-10-04.md), v4 implementation on feat/agw-sdk-v4, and [live Notion comments](research/notion-comments-2026-10-05.md). This register distinguishes unresolved dependencies, implemented SDK work, deferred scope and historical corrections. G01–G30 are tracking IDs, not a count of open defects.
 
-Evidence: [current baseline](current-baseline.md), [implementation status](implementation-status.md), [product alignment validation](research/product-alignment-2026-10-04/README.md), and [extended live E2Es](research/extended-e2e-2026-10-06/README.md). The final validation counts are in [implementation status](implementation-status.md). The opt-in AGW group now registers 46 cases; seven new cases passed on Donut/devnet. Default `all` remains unchanged.
+Evidence: [current baseline](current-baseline.md), [implementation status](implementation-status.md), [product alignment validation](research/product-alignment-2026-10-04/README.md), and [extended live E2Es](research/extended-e2e-2026-10-06/README.md). The final validation counts are in [implementation status](implementation-status.md). The opt-in AGW group now registers 58 cases; seven new cases passed on Donut/devnet. Default `all` remains unchanged.
 
-Current contract baseline: reported deployed source `e8db748`, documentation head `deploy-agw@10a24f1` (src unchanged between them). Donut v4 addresses/code/wiring and URP 3.1.0 were checked at block 23931055; verified ABIs were saved. The SDK now uses v4 only, registers Donut and has a ported actual-contract harness. [Implementation evidence](research/v4-implementation-2026-10-06/README.md). Core marketplace cb69e0b and gateway bcbf7df remain prior source pins; they were not freshly fetched. Notion bodies were not refreshed in this pass.
+Current contract baseline: deployed source `2e61e13`, documentation head `deploy-agw@bd230d2`. Donut v5 code, wiring and the unchanged URP 3.1.0 were checked at block 23991912. The SDK uses v5 only; labels are read on-chain and owner renames are implemented. [Verification](research/deployment-review-2026-10-07-v5/README.md); [SDK migration](research/v5-implementation-2026-10-07/README.md). Core marketplace `9479aef` is a docs-only advance over `cb69e0b`; gateway `bcbf7df` is unchanged. All 12 Notion bodies were refreshed earlier on October 7; that export predates this label delivery.
 
 ## Remaining standalone external dependencies
 
-| Dependency | Owner | Related IDs |
-| --- | --- | --- |
-| Editable labels: contract ABI/deployment | [Zaryab](questions-zaryab.md#z1-3) | G08 |
+None for the implemented standalone SDK surface. G08 is closed by the delivered v5 labels and SDK integration. Refund spend credit and retry/terminalization timing remain separate downstream dependencies.
 
 The [October 6 source recheck](research/question-source-recheck-2026-10-06/README.md) narrowed the questions. Subsequent [live wire validation](research/live-svm-wire-2026-10-06/README.md) supplies our own Solana fixture and successful delivery/replay, closing Z1.4. The rejected outbound initially timed out, then reached REVERTED and read-only replay classified it failed. [Concrete API proposals](public-api-proposals.md) are ready; retry/terminalization timing is an operational follow-up.
 
@@ -33,7 +31,7 @@ P0 blocks agreed authorization/accounting or safe final integration. P1 affects 
 | G05 | P1 | Downstream marketplace alignment | Core cb69e0b requires rule/job expiry equality; supporting Notion pages have conflicting inequalities. | Align the marketplace/compiler track. Do not impose job equality on every standalone AGW rule. |
 | G06 | P2 | Closed for v1 | Binder was never in the reviewed code and is dropped for v1. | No binder implementation or binder-dependent lifecycle requirement in standalone AGW. Preserve historical snapshots as evidence. |
 | G07 | P1 | Known platform dependency | creditRevert depends on Push-core executor work. Until delivered, a far-side failure can leave spend inflated. | Track platform delivery and document/test the limitation. This is not an unanswered AGW redesign question. |
-| G08 | P1 | Label delivery pending; ref removed | Public rule ref has been removed; checkpoint refs remain. Editable labels are approved but absent from the inspected ABI. | Verify Zaryab’s label interface/deployment before enabling. |
+| G08 | P1 | Closed: v5 labels implemented; ref removed | Stored labels, empty reset and a 64 UTF-8 byte cap are delivered; SDK reads and owner writes are implemented. Checkpoint refs remain. | Unit/local and selected live v5 acceptance are recorded in the migration report. |
 | G09 | P1 | Deferred from standalone AGW | Canonical card schema/encoding remains a marketplace issue. Harsh H5 removes compileCard from standalone AGW; its public stub was removed. | Resume schema/compiler vectors under the future marketplace scope, not as an AGW release blocker. |
 | G10 | P1 | Downstream marketplace scope | Current marketplace binds one EVM chain and one rulesId; broader card binding remains unresolved downstream. | Align future marketplace/job cardinality. Standalone AGW does not invent multi-rule job bindings. |
 | G11 | P1 | Downstream job dependency | Payment-token selection differs between the target job SDK and the one-token-per-deployment kernel. | Align selected K-12/deployment design in the job track. |
@@ -52,6 +50,20 @@ P0 blocks agreed authorization/accounting or safe final integration. P1 affects 
 | G24 | P1 | Internal per-token update verified locally and live | Reads/stores every expected counter in asset order; array assertion catches intervening second-token spend. Public spent stays absent. | Live EVM two-asset and public SVM replacement pass. |
 | G25 | P1 | SDK choice approved and implemented | Native/EVM authoring accepts argument indexes or raw offsets; reads preserve exact values. Conflicting forms are rejected. | Decoded native rule re-grant E2E passes. |
 | G26 | P1 | Closed: existing selection behavior retained | The SDK refuses multiple matching candidates with AMBIGUOUS_RULE. The contract validates the supplied rule and rejects unauthorized actions; errors are mapped. | Maintain ambiguity and rejection coverage. No selection ABI change is required. |
+
+The [October 7 full source refresh](research/source-refresh-2026-10-07/README.md) identified two SDK-owned alignment follow-ups. Both are now implemented and validated; see the [fix report](research/sdk-alignment-fixes-2026-10-07/README.md). They add no contract-delivery questions.
+
+| ID | Priority | Status | Finding | Action |
+| --- | --- | --- | --- | --- |
+| G27 | P1 | Closed: contract-derived policy errors | Production SVM sends build requests without evaluating granted policy. The contract/simulation enforces expiry, amounts and account/data constraints; refusals use AgenticRevertError and decodedError. EVM local PC-cap/asset-membership rejection was removed. | Maintain real-contract/live error-type and no-state-change coverage. Structural/context/funding guards remain SDK errors. |
+| G28 | P2 | Closed: owner funds-only route | Owners can send SOL/SPL funds without an instruction/IDL, with separate allowance/balance guards, wallet-specific finalize/rent quote and destinationTransfer metadata. Agents still require an instruction. | SOL and SPL delivery, wallet debit, allowance consumption and replay pass live on v5. |
+
+The [expanded v5 acceptance](research/extended-v5-e2e-2026-10-07/README.md) added five scenarios and found these additional integration details:
+
+| ID | Priority | Status | Finding | Action |
+| --- | --- | --- | --- | --- |
+| G29 | P1 | SDK caller workaround verified; default gas remains upstream | The Core/relayer default of 500k destination gas failed fresh Sepolia CEA finalization; the identical call estimated ~1.3m. Positive cases with explicit 2m gas passed. | Keep the explicit destination budget in examples/tests. Core/gateway should revisit its fresh-CEA default; no new AGW interface is needed. One explicit-budget run also timed out before a later fresh-fixture pass; latency is not a confirmed SDK defect. |
+| G30 | P1 | Closed: SVM source-mint resolution | The SPL precompile's mint getter returns a zero word, incompatible with string decoding. SDK metadata/quote/authoring/reads now resolve known mappings from the existing chain-specific registry and reject unknown mappings. Hex mint inputs normalize to base58 for PRC20 lookup. | Regression units, actual-contract suites and the funded SPL transfer/replay pass. No mint or token-program address is guessed. |
 
 ## Validation and release boundaries
 

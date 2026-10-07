@@ -4,7 +4,7 @@
  * it is missing so a selected run cannot pass vacuously.
  */
 import { getAddress, type Address } from 'viem';
-import { v4 } from '../../src/lib/agentic/contracts/v4';
+import { v5 } from '../../src/lib/agentic/contracts/v5';
 import {
   AGW_E2E_ENABLED,
   inSeconds,
@@ -27,7 +27,7 @@ d('agw create', () => {
     expect(created.wallet).toBe(before.address);
     expect(created.index).toBe(before.index);
     expect(created.rulesIds).toEqual([]);
-    const factoryAbi = v4.abis.factory;
+    const factoryAbi = v5.abis.factory;
     const [ownerOf, indexOf, balance] = await Promise.all([
       f.push.readContract({
         address: f.manifest.addresses.factory,

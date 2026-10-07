@@ -1,6 +1,6 @@
 import { readNativeCounters } from '../__e2e__/shared/agw-state';
 /**
- * Real-contract checks for the harder AGW paths (pinned v4 on anvil).
+ * Real-contract checks for the harder AGW paths (pinned v5 on anvil).
  * The universal-outbound block drives the SDK's composer with a runtime whose
  * CEA and fee quote are local stand-ins (no destination chain or price feeds
  * exist here); URP still decides every gate on the composed request.
@@ -74,7 +74,7 @@ const fund = (h: Harness, to: Address, value: bigint) =>
     chain: h.wallets[4].chain,
   });
 
-describe('AGW advanced paths against real v4 contracts', () => {
+describe('AGW advanced paths against real v5 contracts', () => {
   let h: Harness;
   let owner: PushChain;
   let agentAddr: Address;
@@ -356,7 +356,7 @@ describe('AGW advanced paths against real v4 contracts', () => {
     });
   });
 
-  describe('agent EVM outbound (v4 multi-asset terms, stub gateway)', () => {
+  describe('agent EVM outbound (v5 multi-asset terms, stub gateway)', () => {
     const SEPOLIA = CHAIN.ETHEREUM_SEPOLIA;
     const CEA = getAddress('0x000000000000000000000000000000000000cea1');
     const destTarget = getAddress('0x00000000000000000000000000000000000d0d0d');
@@ -378,7 +378,7 @@ describe('AGW advanced paths against real v4 contracts', () => {
       await h.publicClient.waitForTransactionReceipt({
         hash: await fund(h, wallet, BigInt(10) ** BigInt(17)),
       });
-      // Fixture setup (raw owner call): grant a v4 multi-asset universal rule.
+      // Fixture setup (raw owner call): grant a v5 multi-asset universal rule.
       const terms = encodeUniversalTerms({
         validUntil: (await chainNow(h)) + 3600,
         expectedCEA: CEA,

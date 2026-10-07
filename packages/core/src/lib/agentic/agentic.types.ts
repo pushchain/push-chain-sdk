@@ -188,7 +188,7 @@ export interface AgenticWallet {
   address: AgenticAddress;
   info(): Promise<WalletInfo>;
   owner(): Promise<{ owner: AgenticAddress }>;
-  /** Pending contract delivery; unavailable on the currently registered deployment. */
+  /** Owner-only rename, at most 64 UTF-8 bytes. Empty resets the default label. */
   setLabel(
     label: string,
     opts?: { progressHook?: AgenticProgressHook }
@@ -261,6 +261,12 @@ export interface AgenticTxMetadata {
     program: AgenticHex;
     data: AgenticHex;
     accounts: readonly { pubkey: AgenticHex; isWritable: boolean }[];
+  };
+  /** Funds-only Solana transfer. token is the burned PRC20 on Push. */
+  destinationTransfer?: {
+    recipient: AgenticHex;
+    token: AgenticAddress;
+    amount: bigint;
   };
   /** Ordered actions in a native agent batch; to/data/value summarize its first action. */
   nativeCalls?: readonly {

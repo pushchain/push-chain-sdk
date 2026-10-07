@@ -17,8 +17,8 @@ import {
 } from '../../orchestrator/internals/helpers';
 import { AgenticCapability, requireCapability } from '../capabilities';
 import type { AgenticExecutionContext } from '../context';
-import type { Call, UniversalConfigRead } from '../contracts/v4';
-import { SEND_OUTBOUND_SELECTOR } from '../contracts/v4';
+import type { Call, UniversalConfigRead } from '../contracts/v5';
+import { SEND_OUTBOUND_SELECTOR } from '../contracts/v5';
 import { actionId, configId } from '../codec/ids';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import {
@@ -213,7 +213,6 @@ export async function agenticSend(
         : { to: wallet, data: wrappedData, value: BigInt(0) };
   } else {
     let ruleAssets: readonly Address[] | undefined;
-    let maxGasPerCall: bigint | undefined;
     let expectedCEA: Address | undefined;
     const snap = await Snapshot.at(runtime.reader);
     if (actx.door === 'agent') {
@@ -245,7 +244,6 @@ export async function agenticSend(
         ]
       );
       ruleAssets = cfg.assets.map((a) => getAddress(a.token));
-      maxGasPerCall = cfg.maxGasPerCall;
       expectedCEA = getAddress(cfg.expectedCEA);
     }
     const out = await composeOutbound(runtime, gen, wallet, p, {
@@ -306,12 +304,6 @@ export async function agenticSend(
           {
             hint: 'Destination-account derivation drift (obligation 13). The owner must regrant the rule.',
           }
-        );
-      }
-      if (maxGasPerCall !== undefined && out.value > maxGasPerCall) {
-        throw new AgenticError(
-          AGENTIC_ERROR_CODE.RULE_LIMIT_EXCEEDED,
-          `this outbound needs ${out.value} PC wei but the rule caps the wallet's PC per call at ${maxGasPerCall}`
         );
       }
       wrappedData = gen.contracts.encodeExecuteAsAgent(

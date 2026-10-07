@@ -13,7 +13,7 @@ import { PushChainExecutionError } from '../../orchestrator/internals/errors';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import type { AgenticExecutionContext } from '../context';
 import { currentGeneration, resetAgenticGenerations } from '../deployments';
-import { v4 } from '../contracts/v4';
+import { v5 } from '../contracts/v5';
 import { actionId } from '../codec/ids';
 import { AGENTIC_ERROR_CODE, AgenticRevertError } from '../errors';
 import { agenticSend } from '../execution/send';
@@ -111,7 +111,7 @@ describe('guards fail before the signer is ever invoked', () => {
         data: Hex;
       }[];
       expect(batch.map((c) => c.to)).toEqual([ctx.wallet, ctx.wallet]);
-      expect(batch.map((c) => v4.decodeWalletCall(c.data))).toEqual(
+      expect(batch.map((c) => v5.decodeWalletCall(c.data))).toEqual(
         calls.map((c) => ({
           kind: 'executeAsAgent',
           rulesId: ruleId(1),
@@ -186,7 +186,7 @@ describe('explicit Push destinations', () => {
       data,
     });
     expect(
-      v4.decodeWalletCall(rt.executeMock.mock.calls[0][0].data)
+      v5.decodeWalletCall(rt.executeMock.mock.calls[0][0].data)
     ).toMatchObject({ kind: 'executeAsAgent', rulesId: ruleId(1) });
     expect(tx.route).not.toBe('UOA_TO_CEA');
     expect(tx.to).toBe(ADDR.target);
@@ -199,7 +199,7 @@ describe('explicit Push destinations', () => {
       data,
     });
     expect(
-      v4.decodeWalletCall(rt.executeMock.mock.calls[0][0].data)
+      v5.decodeWalletCall(rt.executeMock.mock.calls[0][0].data)
     ).toMatchObject({ kind: 'execute', calls: [{ target: ADDR.target }] });
   });
 
@@ -228,7 +228,7 @@ describe('native wrapping and logical identity', () => {
     const sent = rt.executeMock.mock.calls[0][0];
     expect(sent.to).toBe(w.address);
     expect(sent.value).toBe(BigInt(0));
-    expect(v4.decodeWalletCall(sent.data)).toEqual({
+    expect(v5.decodeWalletCall(sent.data)).toEqual({
       kind: 'executeAsAgent',
       rulesId: ruleId(1),
       mode: `0x${'00'.repeat(32)}`,
@@ -267,7 +267,7 @@ describe('native wrapping and logical identity', () => {
         { to: ADDR.other, value: BigInt(1), data: '0x' },
       ],
     });
-    const decoded = v4.decodeWalletCall(rt.executeMock.mock.calls[0][0].data);
+    const decoded = v5.decodeWalletCall(rt.executeMock.mock.calls[0][0].data);
     expect(decoded).toMatchObject({
       kind: 'execute',
       mode: `0x01${'00'.repeat(31)}`,
@@ -366,7 +366,7 @@ describe('EVM outbound composition from the wallet', () => {
       s.w.address,
       CHAIN.ETHEREUM_SEPOLIA
     );
-    const outer = v4.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as {
+    const outer = v5.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as {
       kind: string;
       rulesId: Hex;
       calls: { target: Address; value: bigint; data: Hex }[];
@@ -421,7 +421,7 @@ describe('EVM outbound composition from the wallet', () => {
     expect(rt.executeMock).not.toHaveBeenCalled();
   });
 
-  it('wallet PC below protocol fee + gas cap, or over the rule PC cap, fails before signing', async () => {
+  it('wallet funding is checked locally; rule PC limits are enforced by the contract', async () => {
     const s = universalSetup();
     s.fake.balances.set(`pc:${s.w.address.toLowerCase()}`, BigInt(10));
     const rt = mockRuntime(s.fake, {
@@ -441,9 +441,9 @@ describe('EVM outbound composition from the wallet', () => {
         gasLimitUsed: BigInt(1),
       }),
     });
-    await expect(agenticSend(pricey, s2.ctx, send())).rejects.toMatchObject({
-      code: AGENTIC_ERROR_CODE.RULE_LIMIT_EXCEEDED,
-    });
+    const response = await agenticSend(pricey, s2.ctx, send());
+    expect(pricey.executeMock).toHaveBeenCalledTimes(1);
+    expect(response.agentic?.rulesId).toBe(ruleId(5));
   });
 
   it('a committed destination account that no longer matches derivation is drift, not a send', async () => {
@@ -500,7 +500,7 @@ describe('EVM outbound composition from the wallet', () => {
       resolvePrc20: () => token,
     });
     await agenticSend(rt, s.ctx, send(BigInt(100)));
-    const outer = v4.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as {
+    const outer = v5.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as {
       kind: string;
       calls: { target: Address; data: Hex }[];
     };
@@ -558,7 +558,7 @@ describe('EVM outbound composition from the wallet', () => {
       to: { address: recipient, chain: CHAIN.ETHEREUM_SEPOLIA },
       funds: { amount: BigInt(100), token: usdc },
     });
-    const outer = v4.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as {
+    const outer = v5.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as {
       calls: { data: Hex }[];
     };
     const { args } = decodeFunctionData({
@@ -606,7 +606,7 @@ describe('EVM outbound composition from the wallet', () => {
       to: { address: ADDR.other, chain: CHAIN.ETHEREUM_SEPOLIA },
       value: BigInt(7),
     });
-    const outer = v4.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as {
+    const outer = v5.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as {
       calls: { data: Hex }[];
     };
     const req = decodeFunctionData({

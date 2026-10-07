@@ -18,8 +18,8 @@ import { isPC20Reference } from '../../orchestrator/orchestrator.types';
 import { resolveR2DestinationFundsToken } from '../../orchestrator/internals/route-handlers';
 import { AgenticCapability, requireCapability } from '../capabilities';
 import type { AgenticGeneration } from '../deployments';
-import type { Call } from '../contracts/v4';
-import { UEA_MULTICALL_PREFIX } from '../contracts/v4';
+import type { Call } from '../contracts/v5';
+import { UEA_MULTICALL_PREFIX } from '../contracts/v5';
 import {
   AGENTIC_ERROR_CODE,
   AgenticError,
@@ -27,7 +27,7 @@ import {
 } from '../errors';
 import type { AgenticRuntime } from '../runtime';
 
-/** URP MAX_ACTIONS_PER_REQUEST at v4. */
+/** URP MAX_ACTIONS_PER_REQUEST at v5. */
 export const MAX_DESTINATION_CALLS = 10;
 
 const MULTICALL_TUPLE = [
@@ -186,16 +186,6 @@ export async function composeOutbound(
   } else {
     token = runtime.resolvePrc20(undefined, chain);
   }
-  if (
-    opts.ruleAssets &&
-    !opts.ruleAssets.some((a) => getAddress(a) === token)
-  ) {
-    throw new AgenticError(
-      AGENTIC_ERROR_CODE.RULE_LIMIT_EXCEEDED,
-      `the selected rule does not list asset ${token}`
-    );
-  }
-
   const resolved = await runtime.resolveCEA(wallet, chain);
   const cea = getAddress(resolved.cea);
   const calls = destinationCalls(params, { cea, fundsToken });

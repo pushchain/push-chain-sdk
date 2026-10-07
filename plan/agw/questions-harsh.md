@@ -22,4 +22,4 @@ Keep both ABI argument-index and raw-offset inputs, with exact offsets on reads.
 
 The intended behavior is that the existing contract rejects unauthorized functions/actions under the supplied rule, and the SDK maps those errors. This does not request automatic rule selection or a new contract interface. The SDK retains `AMBIGUOUS_RULE` when multiple enabled rules match the agent and chain, without submitting a transaction. No caller-facing rule selector is being added.
 
-Rule `ref` is removed from scope; editable labels remain pending contract delivery. [Zaryab delivery items](questions-zaryab.md).
+Rule `ref` is removed from scope; editable labels are delivered and implemented against v5. [Zaryab delivery items](questions-zaryab.md).

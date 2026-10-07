@@ -415,18 +415,19 @@ function renderTable(rows: Row[]): void {
       return BigInt(r?.value.amount ?? '0');
     });
 
-  const [dUsdtSep, dPeth, dUsdtEth, dPsol, dUsdtSol] = await Promise.all([
+  const [dUsdtSep, dPeth, dUsdtEth, dPsol, dUsdtSol, dUsdcEth] = await Promise.all([
     decimalsOf(usdtSepolia, sep),
     decimalsOf(s.pETH, push),
     decimalsOf(s.USDT_ETH, push),
     decimalsOf(s.pSOL, push),
     decimalsOf(s.USDT_SOL, push),
+    decimalsOf(s.USDC_ETH, push),
   ]);
   const dPc20 = pc20Push ? await decimalsOf(pc20Push, push) : 18;
 
   const [
     sepEth, sepUsdt,
-    mPC, mPeth, mUsdtEth, mPsol, mUsdtSol, mPc20,
+    mPC, mPeth, mUsdtEth, mPsol, mUsdtSol, mUsdcEth, mPc20,
     uPC, uPeth, uUsdtEth, uPsol, uUsdtSol, uPc20,
     solBal, solUsdt, ceaSol, ceaUsdt,
   ] = await Promise.all([
@@ -438,6 +439,7 @@ function renderTable(rows: Row[]): void {
     erc20(s.USDT_ETH, pushAcc.address, push),
     erc20(s.pSOL, pushAcc.address, push),
     erc20(s.USDT_SOL, pushAcc.address, push),
+    erc20(s.USDC_ETH, pushAcc.address, push),
     pc20Push ? erc20(pc20Push, pushAcc.address, push) : Promise.resolve(BigInt(0)),
 
     retry(() => push.getBalance({ address: uea })),
@@ -484,7 +486,8 @@ function renderTable(rows: Row[]): void {
     { scope: 'Push master (Donut)', asset: 'pETH', need: units(target('masterPETH'), dPeth) + deficit('ueaPETH'), have: mPeth, decimals: dPeth, tier: 'master' },
     { scope: 'Push master (Donut)', asset: 'pUSDT.eth', need: deficit('ueaUsdtEth'), have: mUsdtEth, decimals: dUsdtEth, tier: 'master' },
     { scope: 'Push master (Donut)', asset: 'pSOL', need: units(target('masterPSOL'), dPsol) + deficit('ueaPSOL'), have: mPsol, decimals: dPsol, tier: 'master' },
-    { scope: 'Push master (Donut)', asset: 'pUSDT.sol', need: deficit('ueaUsdtSol'), have: mUsdtSol, decimals: dUsdtSol, tier: 'master' },
+    { scope: 'Push master (Donut)', asset: 'pUSDT.sol', need: units(target('masterUsdtSol'), dUsdtSol) + deficit('ueaUsdtSol'), have: mUsdtSol, decimals: dUsdtSol, tier: 'master' },
+    { scope: 'Push master (Donut)', asset: 'pUSDC.eth', need: units(target('masterUsdcEth'), dUsdcEth), have: mUsdcEth, decimals: dUsdcEth, tier: 'master' },
     { scope: 'Push master (Donut)', asset: 'PC20', need: deficit('ueaPC20'), have: mPc20, decimals: dPc20, tier: 'master' },
     { scope: 'Solana master (Devnet)', asset: 'SOL', need: units(target('solanaSOL'), 9) + deficit('ceaSvmSOL'), have: solBal, decimals: 9, tier: 'master' },
     { scope: 'Solana master (Devnet)', asset: 'USDT', need: units(target('solanaUsdt'), 6) + deficit('ceaSvmUsdt'), have: solUsdt, decimals: 6, tier: 'master' },

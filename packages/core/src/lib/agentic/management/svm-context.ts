@@ -1,13 +1,12 @@
 /** Internal resolved context; no public Rule schema or cluster assumptions. */
-import {
-  getAddress,
-  parseAbi,
-  zeroAddress,
-  type Address,
-  type Hex,
-} from 'viem';
+import { getAddress, type Address, type Hex } from 'viem';
+import { PUSH_NETWORK } from '../../constants/enums';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
-import { PRC20_SOURCE_ABI, readGasPrc20 } from '../contracts/prc20-metadata';
+import {
+  PRC20_SOURCE_ABI,
+  readGasPrc20,
+  readSvmSourceToken,
+} from '../contracts/prc20-metadata';
 import {
   svmKey,
   resolveAgwSvmRuleContext,
@@ -29,16 +28,14 @@ export interface SvmMetadataProvider {
   ): Promise<{ mint: string; tokenProgram: string }>;
 }
 
-const NATIVE_SOURCE = parseAbi([
-  'function SOURCE_TOKEN_ADDRESS() view returns (address)',
-]);
 const ZERO_KEY = `0x${'00'.repeat(32)}` as Hex;
 
 export async function resolveSvmAssets(
   snap: Snapshot,
   chain: `solana:${string}`,
   caps: readonly AssetCapWire[],
-  metadata: SvmMetadataProvider
+  metadata: SvmMetadataProvider,
+  network: PUSH_NETWORK = PUSH_NETWORK.TESTNET_DONUT
 ): Promise<ResolvedSvmAsset[]> {
   const gas = await readGasPrc20(snap, chain);
   const out: ResolvedSvmAsset[] = [];
@@ -54,27 +51,8 @@ export async function resolveSvmAssets(
         AGENTIC_ERROR_CODE.ASSET_CHAIN_MISMATCH,
         `PRC20 ${token} belongs to ${namespace}, not ${chain}`
       );
-    let source: string;
-    try {
-      source = await snap.read<string>(
-        token,
-        PRC20_SOURCE_ABI,
-        'SOURCE_TOKEN_ADDRESS'
-      );
-    } catch (cause) {
-      if (token !== gas) throw cause;
-      const native = await snap.read<Address>(
-        token,
-        NATIVE_SOURCE,
-        'SOURCE_TOKEN_ADDRESS'
-      );
-      if (getAddress(native) !== zeroAddress) throw cause;
-      source = '';
-    }
-    const native =
-      source === '' ||
-      source.toLowerCase() === zeroAddress ||
-      source.toLowerCase() === ZERO_KEY;
+    const source = await readSvmSourceToken(snap, token, chain, network);
+    const native = source === ZERO_KEY;
     if (native) {
       if (token !== gas)
         throw new AgenticError(
@@ -102,7 +80,8 @@ export async function resolveSvmContext(
   chain: `solana:${string}`,
   caps: readonly AssetCapWire[],
   metadata: SvmMetadataProvider,
-  outputs: readonly SvmTokenAccountInput[] = []
+  outputs: readonly SvmTokenAccountInput[] = [],
+  network: PUSH_NETWORK = PUSH_NETWORK.TESTNET_DONUT
 ) {
   const gateway = await metadata.gateway(chain);
   if (gateway.chainNamespace !== chain)
@@ -110,7 +89,7 @@ export async function resolveSvmContext(
       AGENTIC_ERROR_CODE.INVALID_RULE,
       'gateway registry cluster mismatch'
     );
-  const assets = await resolveSvmAssets(snap, chain, caps, metadata);
+  const assets = await resolveSvmAssets(snap, chain, caps, metadata, network);
   const resolvedOutputs = [];
   for (const output of outputs) {
     const key = svmKey(output.mint);

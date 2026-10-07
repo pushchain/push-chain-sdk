@@ -48,6 +48,9 @@ const pushChainFor = (network: PUSH_NETWORK) =>
  */
 export async function setupAgw(): Promise<AgwFixture> {
   const manifest = loadAgwManifest();
+  if (manifest.network !== PUSH_NETWORK.TESTNET_DONUT) {
+    throw new AgwPrerequisiteError('live AGW fixtures require Donut');
+  }
   const pushKey = process.env['PUSH_PRIVATE_KEY'] as Hex | undefined;
   if (!pushKey) throw new AgwPrerequisiteError('PUSH_PRIVATE_KEY is not set');
   const chain = pushChainFor(manifest.network);

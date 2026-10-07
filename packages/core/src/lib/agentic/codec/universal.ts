@@ -7,7 +7,7 @@ import { argumentOffset, rawOffset } from './abi-layout';
 import { parseSelector } from './selectors';
 import { AGENTIC_DEFAULTS, UINT256_MAX, withDefault } from './defaults';
 import { buildSession, encodeEnvelope } from './session';
-import { SEND_OUTBOUND_SELECTOR } from '../contracts/v4';
+import { SEND_OUTBOUND_SELECTOR } from '../contracts/v5';
 import {
   encodeUniversalTerms,
   type AssetCapWire,

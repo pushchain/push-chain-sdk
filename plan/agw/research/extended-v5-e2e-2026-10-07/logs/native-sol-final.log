@@ -1,0 +1,14 @@
+PASS core-e2e packages/core/__e2e__/agw/svm-public.spec.ts (337.85 s)
+  agw public svm
+    ✓ 1. named IDL grant reads exact constraints and replaces atomically (24961 ms)
+    ✓ 2. public send confirms actual CEA transfer and preserves replay identity (95840 ms)
+    ✓ 3. contract simulation maps account and data refusals without state changes (22467 ms)
+    ✓ 4. public revoke removes the Solana rule and subsequent sends are refused (14659 ms)
+    ✓ 5. owner funds-only transfer reaches the recipient and replays with the same amount (111114 ms)
+    ✓ 6. agents still require an instruction and owner allowance failures do not sign (11055 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       6 passed, 6 total
+Snapshots:   0 total
+Time:        337.879 s
+Ran all test suites within paths "packages/core/__e2e__/agw/svm-public.spec.ts".

@@ -18,16 +18,16 @@ import {
   ruleId,
 } from './fake-chain';
 import { mockRuntime } from './mock-runtime';
-import { v4 } from '../contracts/v4';
+import { v5 } from '../contracts/v5';
 import { readOriginToken } from '../contracts/prc20-metadata';
 
 describe('generation registry', () => {
   afterEach(() => resetAgenticGenerations());
 
-  it('ships Donut v4 only; other networks are unsupported', () => {
+  it('ships Donut v5 only; other networks are unsupported', () => {
     resetAgenticGenerations();
     expect(currentGeneration(PUSH_NETWORK.TESTNET_DONUT)).toMatchObject({
-      id: 'v4',
+      id: 'v5',
       advertised: true,
     });
     for (const n of Object.values(PUSH_NETWORK).filter(
@@ -61,7 +61,7 @@ describe('Donut log-range limit', () => {
     const getLogs = jest.spyOn(fake, 'getLogs');
     await scanLogs(
       fake,
-      { address: ADDR.factory, event: v4.events.walletDeployed },
+      { address: ADDR.factory, event: v5.events.walletDeployed },
       BigInt(10),
       BigInt(2010)
     );
@@ -388,7 +388,7 @@ describe('rules.list / rules.get', () => {
     fake.extraLogs.push(
       log(
         w.address,
-        v4.events.rulesRevoked,
+        v5.events.rulesRevoked,
         { rulesId: ruleId(9) },
         {},
         BigInt(50)
@@ -446,7 +446,7 @@ describe('wallet reads', () => {
       wallets.map((w) => [w.index, w.label, w.deployed, w.rulesCount])
     ).toEqual([
       [0, 'first', true, 1],
-      [1, '', true, 0],
+      [1, 'AGW 2', true, 0],
       [2, '', false, 0],
     ]);
   });
@@ -462,12 +462,15 @@ describe('wallet reads', () => {
     ]);
   });
 
-  it('a missing deployment event is an inconsistency, not an empty label', async () => {
-    const w = fake.addWallet(ADDR.owner, 'x');
+  it('reads current labels without depending on deployment logs', async () => {
+    const w = fake.addWallet(ADDR.owner, 'original');
+    w.label = 'renamed';
     fake.extraLogs = [];
-    await expect(walletInfo(fake, gen(), w.address)).rejects.toMatchObject({
-      code: AGENTIC_ERROR_CODE.INCONSISTENT_READ,
-    });
+    expect(await walletInfo(fake, gen(), w.address)).toMatchObject({ label: 'renamed' });
+    expect((await listForOwner(fake, gen(), ADDR.owner))[0].label).toBe('renamed');
+    expect(fake.calls.filter((c) => c.functionName === 'label')).toHaveLength(2);
+    w.label = '';
+    expect(await walletInfo(fake, gen(), w.address)).toMatchObject({ label: 'AGW 1' });
   });
 
   it('info of the signer’s next slot describes it as undeployed; other undeployed addresses are refused', async () => {

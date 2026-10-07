@@ -17,7 +17,7 @@ import {
 import { encodeSvmTerms, type SvmTermsWire } from '../codec/svm-terms';
 import { buildSession, encodeEnvelope } from '../codec/session';
 import { rulesId as predictRulesId } from '../codec/ids';
-import { SEND_OUTBOUND_SELECTOR } from '../contracts/v4';
+import { SEND_OUTBOUND_SELECTOR } from '../contracts/v5';
 import { deriveAgwSvmCea } from '../codec/svm-accounts';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import { PRC20_SOURCE_ABI } from '../contracts/prc20-metadata';

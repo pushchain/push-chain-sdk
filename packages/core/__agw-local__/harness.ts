@@ -2,7 +2,7 @@
  * Local AGW contract harness — REVIEW ONLY.
  *
  * Starts anvil as a stand-in Push LOCALNET (chainId 9000, the SDK's
- * CHAIN_INFO[PUSH_LOCALNET].chainId), deploys the REAL pinned v4
+ * CHAIN_INFO[PUSH_LOCALNET].chainId), deploys the REAL pinned v5
  * contracts (SmartSession, AgentValidator, UniversalRulesPolicy behind a
  * TransparentUpgradeableProxy, AGW implementation, AGWFactory behind an
  * ERC1967Proxy) from an isolated build prepared by
@@ -353,8 +353,8 @@ async function deployHarness(
 
   resetAgenticGenerations();
   const generation = registerAgenticGeneration({
-    id: 'v4',
-    sourceCommit: 'e8db74815cfbbf5389593805e464fe8d85f7f735',
+    id: 'v5',
+    sourceCommit: '2e61e133e641b4e0e1ddbdc9306b0903b60e4dbb',
     network: PUSH_NETWORK.LOCALNET,
     advertised: false,
     addresses: {

@@ -10,8 +10,8 @@ import { PUSH_NETWORK } from '../../constants/enums';
 import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
 import { PushChainExecutionError } from '../../orchestrator/internals/errors';
 import { Utils } from '../../utils';
-import { AGW_ABI } from '../contracts/abi/v4';
-import { v4 } from '../contracts/v4';
+import { AGW_ABI } from '../contracts/abi/v5';
+import { v5 } from '../contracts/v5';
 import { resetAgenticGenerations } from '../deployments';
 import { AgenticRevertError } from '../errors';
 import { adaptAgenticResponse, adaptTrackedResponse } from '../response';
@@ -58,7 +58,7 @@ describe('response identity', () => {
     registerFakeGeneration();
     const fake = new FakeChain();
     const w = fake.addWallet(ADDR.owner, 'w');
-    const data = v4.encodeExecuteAsAgent(ruleId(4), {
+    const data = v5.encodeExecuteAsAgent(ruleId(4), {
       target: ADDR.target,
       value: BigInt(0),
       data: '0xd09de08a',
@@ -120,7 +120,7 @@ describe('response identity', () => {
         },
       ],
     });
-    const data = v4.encodeExecuteAsAgent(ruleId(4), {
+    const data = v5.encodeExecuteAsAgent(ruleId(4), {
       target: ADDR.gateway,
       value: BigInt(5),
       data: gatewayCall,
@@ -155,7 +155,7 @@ describe('response identity', () => {
     registerFakeGeneration();
     const spoof = fakeResponse({
       to: ADDR.target,
-      data: v4.encodeExecute([
+      data: v5.encodeExecute([
         { target: ADDR.other, value: BigInt(0), data: '0x' },
       ]),
     });
@@ -225,9 +225,9 @@ describe('public surface', () => {
     expect(new AgenticRevertError('x', { cause: 'c' }).cause).toBe('c');
   });
 
-  it('CONSTANTS.AGENTIC carries the checked Donut v4 proxies', () => {
+  it('CONSTANTS.AGENTIC carries the checked Donut v5 proxies', () => {
     expect(CONSTANTS.AGENTIC.TESTNET_DONUT).toMatchObject({
-      FACTORY: '0xaF88D0FD947afAe7bBb8F34e8417DCfc165e1aaF',
+      FACTORY: '0x8137F96A50EBF41d904e3678c84c391a0D1BCcc5',
       RULES_POLICY: '0x603E7f0aF6e1aAFf46DDfb28b1e99364f8BC59af',
       ENVELOPE_VERSION: 1,
     });

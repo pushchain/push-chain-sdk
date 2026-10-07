@@ -1,0 +1,43 @@
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/svm-public.spec.ts
+   78:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  117:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  159:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  160:11  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  161:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  184:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  213:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  247:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  248:11  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  249:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  277:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  278:11  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  279:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  302:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  395:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  448:16  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  462:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  474:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  504:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw-svm-wire/outbound.spec.ts
+  114:38  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  126:56  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  127:48  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  127:48  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  128:28  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  129:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  129:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  133:30  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  146:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  170:50  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  170:50  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw/svm-public.spec.ts
+  138:21  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  139:25  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  224:7   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  297:7   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  297:7   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+✖ 35 problems (0 errors, 35 warnings)

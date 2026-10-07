@@ -18,7 +18,7 @@ import {
   type TransactionReceipt,
 } from 'viem';
 import { PUSH_NETWORK } from '../../constants/enums';
-import { v4 } from '../contracts/v4';
+import { v5 } from '../contracts/v5';
 import type { ChainReader } from '../contracts/reader';
 import { actionId, configId, deriveWallet } from '../codec/ids';
 import {
@@ -26,7 +26,7 @@ import {
   resetAgenticGenerations,
   type AgenticGeneration,
 } from '../deployments';
-import type { NativeConfigRead } from '../contracts/v4';
+import type { NativeConfigRead } from '../contracts/v5';
 
 export const ADDR = {
   factory: getAddress('0x00000000000000000000000000000000000fac70'),
@@ -111,7 +111,7 @@ export class FakeChain implements ChainReader {
     this.extraLogs.push(
       log(
         ADDR.factory,
-        v4.events.walletDeployed,
+        v5.events.walletDeployed,
         { owner, index, wallet: address },
         { label },
         BigInt(10)
@@ -174,6 +174,9 @@ export class FakeChain implements ChainReader {
       case 'factory':
         if (!wallet) throw new Error('no factory()');
         return ADDR.factory;
+      case 'label':
+        if (!wallet) throw new Error('not a wallet');
+        return wallet.label || `AGW ${wallet.index + BigInt(1)}`;
       case 'owner':
         if (!wallet) throw new Error('not a wallet');
         return wallet.owner;
@@ -376,7 +379,7 @@ export function checkpointLog(
 ): Log {
   return log(
     wallet,
-    v4.events.checkpointed,
+    v5.events.checkpointed,
     { seq: BigInt(seq) },
     { kind, ref: `0x${'11'.repeat(32)}`, blockNumber: block },
     block,
@@ -390,8 +393,8 @@ export function registerFakeGeneration(
 ): AgenticGeneration {
   resetAgenticGenerations();
   return registerAgenticGeneration({
-    id: 'v4',
-    sourceCommit: 'e8db74815cfbbf5389593805e464fe8d85f7f735',
+    id: 'v5',
+    sourceCommit: '2e61e133e641b4e0e1ddbdc9306b0903b60e4dbb',
     network,
     advertised: false,
     addresses: {

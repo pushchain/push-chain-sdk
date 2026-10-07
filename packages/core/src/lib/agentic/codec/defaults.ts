@@ -11,7 +11,7 @@ export const UINT256_MAX = BigInt(2) ** BigInt(256) - BigInt(1);
 export interface DefaultRow {
   value: bigint;
   meaning: string;
-  source: 'product' | 'v4';
+  source: 'product' | 'v5';
 }
 
 export const AGENTIC_DEFAULTS = {
@@ -41,7 +41,7 @@ export const AGENTIC_DEFAULTS = {
     assetMaxTotal: {
       value: UINT256_MAX,
       meaning: 'unlimited total; explicit zero forbids movement',
-      source: 'v4',
+      source: 'v5',
     },
     allowedCallMaxValue: {
       value: BigInt(0),

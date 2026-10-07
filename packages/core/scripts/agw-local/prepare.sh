@@ -5,7 +5,7 @@
 #   AGW_REPO   path to a push-agentic-wallets clone (default: ../../../../push-agentic-wallets
 #              relative to this script). Only `git archive` / `git ls-tree` are run against it,
 #              so the clone's working tree, branches and index are never touched.
-#   AGW_PIN    commit to extract (default: the reviewed v4).
+#   AGW_PIN    commit to extract (default: the reviewed v5).
 #   OUT        destination directory (default: $TMPDIR/push-agw-local-<pin>).
 #
 # The script extracts the pinned tree, fetches each git submodule at the exact
@@ -15,7 +15,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AGW_REPO="${AGW_REPO:-$HERE/../../../../../push-agentic-wallets}"
-AGW_PIN="${AGW_PIN:-e8db74815cfbbf5389593805e464fe8d85f7f735}"
+AGW_PIN="${AGW_PIN:-2e61e133e641b4e0e1ddbdc9306b0903b60e4dbb}"
 OUT="${OUT:-${TMPDIR:-/tmp}/push-agw-local-${AGW_PIN:0:7}}"
 
 command -v forge >/dev/null || { echo "forge not found (install Foundry)" >&2; exit 1; }

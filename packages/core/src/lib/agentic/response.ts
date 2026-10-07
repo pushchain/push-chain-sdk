@@ -1,3 +1,5 @@
+import { Snapshot } from './reads/snapshot';
+import { readGasPrc20 } from './contracts/prc20-metadata';
 import { parseAgwSvmPayload } from './execution/svm-payload';
 import { deriveAgwSvmCea } from './codec/svm-accounts';
 import { CHAIN_INFO } from '../constants/chain';
@@ -20,11 +22,11 @@ import type {
   UniversalTxResponse,
 } from '../orchestrator/orchestrator.types';
 import {
-  v4,
+  v5,
   SEND_OUTBOUND_SELECTOR,
   UEA_MULTICALL_PREFIX,
   type Call,
-} from './contracts/v4';
+} from './contracts/v5';
 import { generationsFor, resolveWalletGeneration } from './deployments';
 import type { AgenticRuntime } from './runtime';
 import type {
@@ -89,6 +91,9 @@ export function adaptAgenticResponse(
     ...(meta.destinationInstruction
       ? { destinationInstruction: meta.destinationInstruction }
       : {}),
+    ...(meta.destinationTransfer
+      ? { destinationTransfer: { ...meta.destinationTransfer } }
+      : {}),
     ...(meta.nativeCalls
       ? { nativeCalls: meta.nativeCalls.map((call) => ({ ...call })) }
       : {}),
@@ -110,7 +115,7 @@ export async function adaptTrackedResponse(
   if (resp.agentic || generationsFor(runtime.network).length === 0) return resp;
   const batch = await adaptNativeAgentBatch(runtime, resp);
   if (batch) return batch;
-  const decoded = v4.decodeWalletCall(resp.data as Hex);
+  const decoded = v5.decodeWalletCall(resp.data as Hex);
   if (
     !decoded ||
     (decoded.kind !== 'execute' && decoded.kind !== 'executeAsAgent')
@@ -147,6 +152,39 @@ export async function adaptTrackedResponse(
     const out = decodeOutbound(outbound.data);
     const chain = await tokenChain(runtime, out.token);
     if (chain?.startsWith('solana:')) {
+      if (
+        door === 'owner' &&
+        out.payload === '0x' &&
+        out.amount > BigInt(0) &&
+        /^0x[0-9a-fA-F]{64}$/.test(out.recipient)
+      ) {
+        try {
+          const gas = await readGasPrc20(
+            new Snapshot(runtime.reader, resp.blockNumber),
+            chain
+          );
+          return adaptAgenticResponse(resp, {
+            wallet,
+            door,
+            chainNamespace: chain,
+            chain: chain as CHAIN,
+            route: 'UOA_TO_CEA',
+            destinationTransfer: {
+              recipient: out.recipient,
+              token: out.token,
+              amount: out.amount,
+            },
+            logical: {
+              to: out.recipient,
+              data: '0x',
+              value: getAddress(gas) === out.token ? out.amount : BigInt(0),
+            },
+          });
+        } catch {
+          // Preserve the actual gateway summary when historical token metadata
+          // cannot be read; destination polling below still uses the known chain.
+        }
+      }
       try {
         const instruction = parseAgwSvmPayload(out.payload);
         const destinationInstruction = {
@@ -238,7 +276,7 @@ async function adaptNativeAgentBatch(
         data: c.data,
       }));
     } else {
-      const batch = v4.decodeWalletCall(resp.data as Hex);
+      const batch = v5.decodeWalletCall(resp.data as Hex);
       if (batch?.kind !== 'execute' || batch.mode !== `0x01${'00'.repeat(31)}`)
         return;
       outer = batch.calls;
@@ -248,7 +286,7 @@ async function adaptNativeAgentBatch(
       outer.some((c) => c.value !== BigInt(0) || c.target !== outer[0].target)
     )
       return;
-    const inner = outer.map((c) => v4.decodeWalletCall(c.data));
+    const inner = outer.map((c) => v5.decodeWalletCall(c.data));
     const first = inner[0];
     if (first?.kind !== 'executeAsAgent' || first.calls.length !== 1) return;
     const nativeCalls: { to: Address; value: bigint; data: Hex }[] = [];
@@ -324,11 +362,18 @@ export function outboundResponseCall(
 
 function decodeOutbound(data: Hex): {
   payload: Hex;
+  recipient: Hex;
+  amount: bigint;
   token: Address;
   calls: { to: Address; value: bigint; data: Hex }[];
 } {
   const { args } = decodeFunctionData({ abi: UNIVERSAL_GATEWAY_PC, data });
-  const req = args?.[0] as { token: Address; payload: Hex };
+  const req = args?.[0] as {
+    token: Address;
+    payload: Hex;
+    recipient: Hex;
+    amount: bigint;
+  };
   let calls: { to: Address; value: bigint; data: Hex }[] = [];
   if (req.payload.toLowerCase().startsWith(UEA_MULTICALL_PREFIX)) {
     try {
@@ -354,7 +399,13 @@ function decodeOutbound(data: Hex): {
       calls = [];
     }
   }
-  return { token: getAddress(req.token), payload: req.payload, calls };
+  return {
+    token: getAddress(req.token),
+    payload: req.payload,
+    recipient: req.recipient,
+    amount: req.amount,
+    calls,
+  };
 }
 
 async function tokenChain(

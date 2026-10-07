@@ -1,32 +1,20 @@
 import { readSvmConfig } from './svm';
-import { PRC20_SOURCE_ABI, readGasPrc20 } from '../contracts/prc20-metadata';
-import { svmKey } from '../codec/svm-accounts';
-import {
-  getAddress,
-  zeroAddress,
-  type Address,
-  type Hex,
-} from 'viem';
+import { readGasPrc20, readSvmSourceToken } from '../contracts/prc20-metadata';
+import { getAddress, zeroAddress, type Address, type Hex } from 'viem';
 import { CHAIN } from '../../constants/enums';
-import {
-  AgenticCapability,
-  requireCapability,
-} from '../capabilities';
+import { AgenticCapability, requireCapability } from '../capabilities';
 import type { AgenticGeneration } from '../deployments';
 import type {
   NativeConfigRead,
   ModeRead,
   UniversalConfigRead,
-} from '../contracts/v4';
+} from '../contracts/v5';
 import { configId } from '../codec/ids';
 import { nativeTermsToRule } from '../codec/native';
 import { universalTermsToRule } from '../codec/universal';
 import { readOriginToken } from '../contracts/prc20-metadata';
 import { chainHash } from '../codec/rules';
-import {
-  AGENTIC_ERROR_CODE,
-  AgenticError,
-} from '../errors';
+import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import type { AgenticHex, RulesRecord } from '../agentic.types';
 import { Snapshot } from './snapshot';
 
@@ -194,12 +182,11 @@ export async function decodeActiveRule(
           token:
             getAddress(a.token) === gas
               ? zeroAddress
-              : svmKey(
-                  await snap.read<string>(
-                    a.token,
-                    PRC20_SOURCE_ABI,
-                    'SOURCE_TOKEN_ADDRESS'
-                  )
+              : await readSvmSourceToken(
+                  snap,
+                  a.token,
+                  stored.chainNamespace,
+                  gen.network
                 ),
           maxPerCall: a.maxPerCall,
           maxTotal: a.maxTotal,

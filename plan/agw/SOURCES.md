@@ -1,8 +1,12 @@
 # AGW source links and refresh procedure
 
+**Latest refresh — October 7, 2026:** all 12 Notion pages downloaded/imported (1 changed, 11 unchanged), current discussions inspected where exposed, and all three contract repositories fetched. AGW/gateway code is unchanged; core marketplace head `9479aef` adds docs only over `cb69e0b`. Donut code/wiring and Solana program fingerprints match prior probes. [Refresh report, evidence and SDK alignment findings](research/source-refresh-2026-10-07/README.md).
+
+The dated entries below preserve earlier observations and decisions; use the October 7 report and current decision documents for present status.
+
 October 6 contract refresh: fetched deploy-agw@10a24f101e2e6e0a9b76517b29f5cdb1aa967796; address book/owner guide report deployed source e8db74815cfbbf5389593805e464fe8d85f7f735, with no src difference between those commits. [GitHub snapshots/hashes, verified ABIs, Donut read-only evidence and SDK review](research/deployment-review-2026-10-06/README.md). This does not replace the Notion full-export manifest or imply SDK v4 support is already registered.
 
-Latest complete Notion export: October 3, 2026 at 13:23 IST. All 12 pages were imported; pages 1 and 5 changed. Page 5 defines the target public SDK API. Native exports omit comment threads.
+Latest complete Notion export: October 7, 2026 at 15:57 IST. All 12 pages were imported; only page 5 changed (create-example ref removed). Page 5 defines the target public SDK API. Native exports omit comment threads.
 
 Focused October 4 recheck: page 5 was downloaded again; its body matches the saved snapshot after normalizing links. [Comparison evidence](research/notion-check-2026-10-04/comparison.json). This was not a full refresh and does not replace the full-import manifest. Harsh’s newer replies are recorded separately in [product decisions](product-decisions-2026-10-04.md).
 
@@ -33,8 +37,8 @@ The [manifest](source-manifest.json) stores stable page IDs, pull times and hash
 
 ## Contract sources
 
-- **Current deployment source:** [AGW e8db748](https://github.com/pushchain/push-agentic-wallets/tree/e8db74815cfbbf5389593805e464fe8d85f7f735).
-- **Current documentation:** [owner SDK guide](https://github.com/pushchain/push-agentic-wallets/blob/10a24f101e2e6e0a9b76517b29f5cdb1aa967796/docs/5_SDK_Owner_Integration.md), [v4 Donut address book](https://github.com/pushchain/push-agentic-wallets/blob/10a24f101e2e6e0a9b76517b29f5cdb1aa967796/docs/addresses/donut.md). Refreshable branch links: [guide](https://github.com/pushchain/push-agentic-wallets/blob/deploy-agw/docs/5_SDK_Owner_Integration.md), [addresses](https://github.com/pushchain/push-agentic-wallets/blob/deploy-agw/docs/addresses/donut.md).
+- **Current deployment source:** [AGW 2e61e13](https://github.com/pushchain/push-agentic-wallets/tree/2e61e133e641b4e0e1ddbdc9306b0903b60e4dbb).
+- **Current documentation:** [owner SDK guide](https://github.com/pushchain/push-agentic-wallets/blob/bd230d20dbf778d9994b1f1082f79b1a8829a10f/docs/5_SDK_Owner_Integration.md), [v5 Donut address book](https://github.com/pushchain/push-agentic-wallets/blob/bd230d20dbf778d9994b1f1082f79b1a8829a10f/docs/addresses/donut.md). Refreshable branch links: [guide](https://github.com/pushchain/push-agentic-wallets/blob/deploy-agw/docs/5_SDK_Owner_Integration.md), [addresses](https://github.com/pushchain/push-agentic-wallets/blob/deploy-agw/docs/addresses/donut.md).
 - **Earlier SDK fixture source:** [AGW e704d5b](https://github.com/pushchain/push-agentic-wallets/tree/e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9); nomenclature-changes was merged and deleted.
 - [AGW design](https://github.com/pushchain/push-agentic-wallets/blob/e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9/docs/1_AGW.md) and [policy design](https://github.com/pushchain/push-agentic-wallets/blob/e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9/docs/2_UniversalRulesPolicy.md).
 - [Core marketplace cb69e0b](https://github.com/pushchain/push-chain-core-contracts/tree/cb69e0ba101bef1bb4440e54b2c45396be3e92ce).
@@ -61,3 +65,5 @@ python3 plan/agw/scripts/import-notion-exports.py overview.zip legacy-sdk.zip ad
 Use actual ZIP paths. The script does not download or authenticate to Notion. It rejects conflicting inputs or locally edited snapshots, requires all registered pages unless --partial is explicitly used, and reports unexpected page IDs. Last-edited observations are not inferred from download time. No scheduled refresh is configured.
 
 The historical SDK refers to AGW-SDK-v1-agent.md, 05-universal-marketplace-startjob.md and SDK_HELPER.md. Their source URLs/files were not included in its export; those original unresolved references remain as written.
+
+October 7 v5 deployment: label contract dependency delivered. [New source snapshots and live read-only check](research/deployment-review-2026-10-07-v5/README.md); [SDK implementation and test evidence](research/v5-implementation-2026-10-07/README.md). Earlier dated deployment statements above are historical.

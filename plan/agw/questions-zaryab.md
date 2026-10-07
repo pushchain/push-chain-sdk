@@ -1,16 +1,12 @@
-# AGW SDK — remaining contract delivery items
+# AGW SDK — contract delivery status
 
-Updated October 7, 2026. Product direction is settled; the SDK needs the label interface to finish integration. Freshly fetched `deploy-agw@10a24f1` and `pushAgenticWallet_v3@e8db748` still lack an editable-label interface.
+Updated October 7, 2026 after the v5 deployment. **No remaining standalone AGW contract question needs an answer from Zaryab.**
 
 <a id="z1"></a>
 <a id="z1-3"></a>
-## Editable wallet labels
-
-`setLabel` will be fixed by Zaryab. Please share the implemented function/event ABI and compatible deployment so the SDK can enable owner-only label updates and verify subsequent reads. The current contracts expose only a deployment label.
+The label interface and compatible deployment are delivered in `deploy-agw@bd230d2` (deployed source `2e61e13`). The SDK now uses the new factory, reads stored labels and implements owner-only `setLabel` with empty reset and the 64-byte limit. [Deployment verification](research/deployment-review-2026-10-07-v5/README.md) · [SDK migration and acceptance](research/v5-implementation-2026-10-07/README.md).
 
 <a id="h4-4"></a>
-## Settled scope
+Named-IDL Solana authoring, removal of rule `ref`, zero native PC defaults and the existing token model remain settled. Native/EVM inputs accept argument indexes or raw offsets. The SDK retains AMBIGUOUS_RULE; the contract validates the supplied rule. No automatic-selection interface change is requested.
 
-Named IDL inputs are approved for public Solana authoring. Rule `ref` is removed. Zero native PC defaults and the existing token model are retained. Native/EVM inputs accept argument indexes or raw offsets, and reads preserve exact offsets. Existing contract validation rejects unauthorized actions and the SDK maps errors. AMBIGUOUS_RULE remains for multiple candidates; no automatic-selection contract change is requested.
-
-[Inspected contract source](https://github.com/pushchain/push-agentic-wallets/blob/10a24f101e2e6e0a9b76517b29f5cdb1aa967796/src/AGW.sol#L823) · [Consumer SDK guide](../../packages/core/AGW.md).
+Push-core spend credit and bridge retry timing remain separate downstream follow-ups. They do not block the label integration.

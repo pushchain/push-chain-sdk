@@ -1,0 +1,82 @@
+{
+  "fetched_at": "2026-10-07T10:26:01.543177+00:00",
+  "sdk_commit": "898eda17911133faa155899ac8e1276a589c4564",
+  "repositories": [
+    {
+      "repository": "push-agentic-wallets",
+      "ref": "origin/deploy-agw",
+      "commit": "10a24f101e2e6e0a9b76517b29f5cdb1aa967796",
+      "previous_pin": "10a24f101e2e6e0a9b76517b29f5cdb1aa967796",
+      "diff_stat": "",
+      "source_changed": false,
+      "remote_refs": [
+        "origin 9ddd95402b9a2dbf494f6ebfdb477e9a0fb1408a",
+        "origin/demo-v1 94e0ad21f5dcf353bc792b3fbf5ae31f63949483",
+        "origin/demo-v1-backup b3f53297bb38176b72611e0b58487f20a68f6912",
+        "origin/deploy-agw 10a24f101e2e6e0a9b76517b29f5cdb1aa967796",
+        "origin/main 9ddd95402b9a2dbf494f6ebfdb477e9a0fb1408a",
+        "origin/pushAgenticWallet_v1 7dc20e4f3087810be107294350c97e723cb64e8d",
+        "origin/pushAgenticWallet_v2 83d568cc484b28f86113a5dd954d06a7ac540232",
+        "origin/pushAgenticWallet_v3 e8db74815cfbbf5389593805e464fe8d85f7f735",
+        "origin/urp-fixes eb5961721017475042d5199687cb46f4733fe3a8"
+      ]
+    },
+    {
+      "repository": "push-chain-core-contracts",
+      "ref": "origin/universalMarketplace_v1",
+      "commit": "9479aeff5291bb06fa306f7efa98be9c45324cb0",
+      "previous_pin": "cb69e0ba101bef1bb4440e54b2c45396be3e92ce",
+      "diff_stat": " docs/universalmarketplace/README.md    | 645 +++++++++++++++++++++++++++++++++\n docs/universalmarketplace/criteria.md  | 324 +++++++++++++++++\n docs/universalmarketplace/reference.md | 426 ++++++++++++++++++++++\n 3 files changed, 1395 insertions(+)\n",
+      "source_changed": false,
+      "remote_refs": [
+        "origin/8183-v1 01439d1eea61b03d9bf478cc238fce3423081b46",
+        "origin b2f22241681c6587a1c130e638949856dfcbd33f",
+        "origin/audit-main 15b70544feba1586f488a90e38650bf33ea3c634",
+        "origin/audit-main-e2e 72052a449588e6be387e0bfa60395ecc1cebba6c",
+        "origin/audit-main-fixes 281acf7c28f824926e6a2f9443f3bfd9babcbeb1",
+        "origin/audit-main-test 0e22d52de7e7e710e099303e35937e393d1bf656",
+        "origin/core-testnet 2edec979eefd0dee1baad1571e1f5457a9d05190",
+        "origin/deployment-v2 bf5de2ba88002fd9ce7ac56c1e21974a80907825",
+        "origin/e2e-push-node 49bbd35c9eb9bd602f6d9eff57ee2056327981ec",
+        "origin/feat-cea-as-origin 7d1144a45632d68fc8c295276df9e365eea640ed",
+        "origin/feat-read-state b5f5fbfd62d914d2a42b082f6043c75dd2ad3587",
+        "origin/main b2f22241681c6587a1c130e638949856dfcbd33f",
+        "origin/node-e2e 71e88ab335a4fc24586806049f287ac6e62ddfd1",
+        "origin/pc20-3rd-iteration c4f9c51f463a74ba84ad4a28dc467bf100486b0c",
+        "origin/read-state-fixes-v1 833ae81702e7a8933b71b770c5e837445023136d",
+        "origin/temp/e2e-test 205970d6cf13b32b777c9f2f486083e3108015c7",
+        "origin/temp/outbound-local-creation 80104f4f4ace8643467feedd02c939cba81d553c",
+        "origin/universalMarketplace_v1 9479aeff5291bb06fa306f7efa98be9c45324cb0"
+      ]
+    },
+    {
+      "repository": "push-chain-gateway-contracts",
+      "ref": "origin/pc20-3rd-iteration",
+      "commit": "bcbf7df42e8e6dd11088a43bcc0b056a54ea0a18",
+      "previous_pin": "bcbf7df42e8e6dd11088a43bcc0b056a54ea0a18",
+      "diff_stat": "",
+      "source_changed": false,
+      "remote_refs": [
+        "origin/121_pc20_feature d68d5ab2078c4cce070f2d0d5976b6f7a8e816ac",
+        "origin/14-add-multichain-support 1550cd9af457f4cd443256aff386a7e4bcb0659a",
+        "origin d02070dc11aeb3a081d5d6363aa0d75d63eb7c1c",
+        "origin/audit-main d40c1b9dccd01dbb6f38d1797bf90580aec554c3",
+        "origin/audit-main-e2e 483ee4c8a36c0a9f208b34bc55a6385bef7ccf9d",
+        "origin/audit-main-fixes 6062f9f80445fa1261aa602b891c0a0af26ff7bf",
+        "origin/deployment-main 8962a8168c05fd2cae7bc028bb9cff3eb004d5d5",
+        "origin/docs/examples 8dfbfff32daafe7a746c22f1e14df11be0e0dfd2",
+        "origin/e2e-push-node 47fbab3e608d799a188fdea7987832f8a1fbffdc",
+        "origin/gateway-testnet b205770f2c65df090eb282fd2f3b4234d30faa1f",
+        "origin/main d02070dc11aeb3a081d5d6363aa0d75d63eb7c1c",
+        "origin/optimized-gateway-testnet-pc20 1c1ea609629366fe3a9c4e478e8c921f0ea8405a",
+        "origin/pc20-3rd-iteration bcbf7df42e8e6dd11088a43bcc0b056a54ea0a18",
+        "origin/pc20-token-implementation 60fdcd012b997227a6105aa151df493231d8186d",
+        "origin/pc20Metadata_removal 5655a10a61a2f063ebc4766ac745f844856afe46",
+        "origin/rate-limit-outbound 9cab39905209915b3c38c4618f71bf001b9fe106",
+        "origin/svm-hacken-proof-fixes 9f49df8c28a0234054155007f0797486bbb01a11",
+        "origin/svm-outbound-flow 76bcba1610e1b52484c6cc03c74ec0ff32ed0a0e",
+        "origin/temp/outbound-local-creation eb78f1a0c9e39d09d829cd9f8c2560da68109377"
+      ]
+    }
+  ]
+}

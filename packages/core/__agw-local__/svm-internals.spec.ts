@@ -1,4 +1,4 @@
-/** Actual v4 SVM URP checks on Anvil. No Solana execution/TSS is simulated. */
+/** Actual v5 SVM URP checks on Anvil. No Solana execution/TSS is simulated. */
 import { encodeFunctionData, parseAbi, type Address, type Hex } from 'viem';
 import { CHAIN } from '../src/lib/constants/enums';
 import { buildSession, encodeEnvelope } from '../src/lib/agentic/codec/session';
@@ -12,7 +12,7 @@ import {
 import { deriveAgwSvmValueAccounts } from '../src/lib/agentic/codec/svm-accounts';
 import { encodeAgwSvmPayload } from '../src/lib/agentic/execution/svm-payload';
 import { composeAgwSvmAction } from '../src/lib/agentic/execution/svm-outbound';
-import { v4, type SvmConfigRead } from '../src/lib/agentic/contracts/v4';
+import { v5, type SvmConfigRead } from '../src/lib/agentic/contracts/v5';
 import { startHarness, type Harness } from './harness';
 
 const key = (b: string) => `0x${b.repeat(32)}` as Hex;
@@ -25,7 +25,7 @@ const TOKEN = parseAbi([
 ]);
 const UINT256_MAX = BigInt(2) ** BigInt(256) - BigInt(1);
 
-describe('internal SVM codec/payloads against actual v4 contracts', () => {
+describe('internal SVM codec/payloads against actual v5 contracts', () => {
   let h: Harness, token: Address;
   beforeAll(async () => {
     h = await startHarness(18552);
@@ -92,23 +92,23 @@ describe('internal SVM codec/payloads against actual v4 contracts', () => {
         },
       ],
     });
-    await h.write(0, wallet, v4.abis.wallet, 'grantRules', [session]);
+    await h.write(0, wallet, v5.abis.wallet, 'grantRules', [session]);
     const [id] = await h.publicClient.readContract({
       address: h.addresses.engine,
-      abi: v4.abis.engine,
+      abi: v5.abis.engine,
       functionName: 'getPermissionIDs',
       args: [wallet],
     });
     const [action] = await h.publicClient.readContract({
       address: h.addresses.engine,
-      abi: v4.abis.engine,
+      abi: v5.abis.engine,
       functionName: 'getEnabledActions',
       args: [wallet, id],
     });
     const cid = configId(wallet, id, action);
     const cfg = (await h.publicClient.readContract({
       address: h.addresses.rulesPolicy,
-      abi: v4.abis.policy,
+      abi: v5.abis.policy,
       functionName: 'getSvmConfig',
       args: [cid, wallet],
     })) as SvmConfigRead;
@@ -121,9 +121,9 @@ describe('internal SVM codec/payloads against actual v4 contracts', () => {
       }),
     });
     await h.write(0, token, TOKEN, 'mint', [wallet, BigInt(100)]);
-    await h.write(0, wallet, v4.abis.wallet, 'execute', [
+    await h.write(0, wallet, v5.abis.wallet, 'execute', [
       key('00'),
-      v4.packSingle({
+      v5.packSingle({
         target: token,
         value: BigInt(0),
         data: encodeFunctionData({
@@ -175,12 +175,12 @@ describe('internal SVM codec/payloads against actual v4 contracts', () => {
       });
       return h.publicClient.simulateContract({
         address: wallet,
-        abi: v4.abis.wallet,
+        abi: v5.abis.wallet,
         functionName: 'executeAsAgent',
         args: [
           id,
           key('00'),
-          v4.packSingle({
+          v5.packSingle({
             target: h.addresses.gateway,
             value: call.value,
             data,
@@ -242,14 +242,14 @@ describe('internal SVM codec/payloads against actual v4 contracts', () => {
   });
   it('the internal composed call passes actual S1–S18 and meters its token', async () => {
     const { wallet, id, cid, call } = await setup();
-    await h.write(1, wallet, v4.abis.wallet, 'executeAsAgent', [
+    await h.write(1, wallet, v5.abis.wallet, 'executeAsAgent', [
       id,
       key('00'),
-      v4.packSingle(call),
+      v5.packSingle(call),
     ]);
     const cfg = await h.publicClient.readContract({
       address: h.addresses.rulesPolicy,
-      abi: v4.abis.policy,
+      abi: v5.abis.policy,
       functionName: 'getSvmConfig',
       args: [cid, wallet],
     });
@@ -319,7 +319,7 @@ describe('internal SVM codec/payloads against actual v4 contracts', () => {
     );
     const cfg = await h.publicClient.readContract({
       address: h.addresses.rulesPolicy,
-      abi: v4.abis.policy,
+      abi: v5.abis.policy,
       functionName: 'getSvmConfig',
       args: [s.cid, s.wallet],
     });

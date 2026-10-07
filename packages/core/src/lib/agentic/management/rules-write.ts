@@ -8,6 +8,7 @@ import { AgenticCapability, requireCapability } from '../capabilities';
 import { type AgenticGeneration } from '../deployments';
 import { rulesId as computeRulesId } from '../codec/ids';
 import { prepareWalletRules } from './prepare';
+import { assertLabel } from './label';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import type { AgenticRuntime } from '../runtime';
 import type { AgenticHex, AgenticProgressHook, Rule } from '../agentic.types';
@@ -414,22 +415,37 @@ function sameIds(a: readonly Hex[], b: readonly Hex[]): boolean {
   );
 }
 
-/** w.setLabel — approved, awaiting a verified contract interface/deployment. */
+/** Owner rename through the owner door; empty resets the default label. */
 export async function setLabel(
-  _runtime: AgenticRuntime,
+  runtime: AgenticRuntime,
   gen: AgenticGeneration,
-  _wallet: Address,
-  label: string
-): Promise<never> {
-  if (typeof label !== 'string') {
-    throw new AgenticError(
-      AGENTIC_ERROR_CODE.INVALID_RULE,
-      'label must be a string'
-    );
-  }
+  wallet: Address,
+  label: string,
+  hook?: AgenticProgressHook
+): Promise<UniversalTxResponse> {
+  assertLabel(label);
+  assertCanSign(runtime, 'setLabel');
   requireCapability(gen.capabilities, AgenticCapability.SET_LABEL);
-  throw new AgenticError(
-    AGENTIC_ERROR_CODE.CAPABILITY_UNAVAILABLE,
-    'setLabel has no adapter implementation'
-  );
+  return finish(runtime, hook, 'setLabel', async () => {
+    await assertOwner(runtime, gen, wallet, await Snapshot.at(runtime.reader));
+    const tx = await sendOwnerCalls(
+      runtime,
+      [
+        {
+          to: wallet,
+          value: BigInt(0),
+          data: gen.contracts.encodeExecute([
+            {
+              target: wallet,
+              value: BigInt(0),
+              data: gen.contracts.encodeSetLabel(label),
+            },
+          ]),
+        },
+      ],
+      hook
+    );
+    await confirmedLogs(runtime, tx);
+    return { tx };
+  }).then(({ tx }) => tx);
 }

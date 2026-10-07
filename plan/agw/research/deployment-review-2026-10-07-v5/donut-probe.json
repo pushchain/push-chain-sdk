@@ -1,0 +1,167 @@
+{
+  "checked_at": "2026-10-07T12:11:18.493Z",
+  "rpc": "https://evm.donut.rpc.push.org/",
+  "chain_id": 42101,
+  "block": "23991912",
+  "block_hash": "0x7ca084b733e457669ec0d87d4e67ca833014d64550d8d9a631fb398dd95bfc4f",
+  "code": {
+    "factory": {
+      "address": "0x8137F96A50EBF41d904e3678c84c391a0D1BCcc5",
+      "bytes": 141,
+      "sha256": "c621e945a17be2361dfc247326991d732ede3e25c8ecd8b48ee2025c10ca17eb",
+      "unchanged": true
+    },
+    "gateway": {
+      "address": "0x00000000000000000000000000000000000000C1",
+      "bytes": 1551,
+      "sha256": "3e78a5778be1383f2612556becde8019c22388d7157574c90fb40e1060d450ca",
+      "unchanged": true
+    },
+    "proxyAdmin": {
+      "address": "0x0b7a31ec85117892aEA90AA5cB6514e2F97c2295",
+      "bytes": 926,
+      "sha256": "3feda633be447e268d618b40cbfcd9dfe9346ebadec981f4f3efea0fbc07cd35",
+      "unchanged": true
+    },
+    "executor": {
+      "address": "0x14191Ea54B4c176fCf86f51b0FAc7CB1E71Df7d7",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unchanged": true
+    },
+    "validator": {
+      "address": "0x068EE2388475A98EE1f5a434C58bFF3444fffFe6",
+      "bytes": 806,
+      "sha256": "7a8e45814fd8a0a6c9b9e115d797da078718f9f6358fa576e1e218ffd93db59e",
+      "unchanged": true
+    },
+    "policy": {
+      "address": "0x603E7f0aF6e1aAFf46DDfb28b1e99364f8BC59af",
+      "bytes": 830,
+      "sha256": "039e9bca120a30980a0131552966575b30349654f23746f309fe98adfd2308ae",
+      "unchanged": true
+    },
+    "core": {
+      "address": "0x00000000000000000000000000000000000000C0",
+      "bytes": 1551,
+      "sha256": "2036ba987ed029f1bc576d020ba11582934583c7eaaa7c00aefc2e0d53053486",
+      "unchanged": true
+    },
+    "factoryLogic": {
+      "address": "0xe549d3D4e85cB16F687448D7acA21D9d13A7cD0f",
+      "bytes": 10013,
+      "sha256": "674c57210c4c0889e01491aedb5133e54f3e78c6450dcadf3c7d1aec54d1e50c",
+      "unchanged": false
+    },
+    "walletImplementation": {
+      "address": "0x4D459Da499C14548aa16c46c57fD92880A88EBb4",
+      "bytes": 17584,
+      "sha256": "3354d9c2c4f97574748850910625a89793874b6b6a86682f3b131ec20a9df35e",
+      "unchanged": false
+    },
+    "engine": {
+      "address": "0x165A5E6782f39D30B38c7D97e1303e4CB2aD102a",
+      "bytes": 22581,
+      "sha256": "c4b9fc7b045d9f33953079a91fcb7ae883dd858d9cde827a9cc3df6043bc2d0b",
+      "unchanged": true
+    },
+    "policyImplementation": {
+      "address": "0xA2391eee4C9EA1B32AEB3A460B77296EA709F02F",
+      "bytes": 24326,
+      "sha256": "1694277b24a023615b3693730ea0581e7a6fc209f533e65416d5075ef927df76",
+      "unchanged": true
+    }
+  },
+  "slots": {
+    "factory": {
+      "implementation": {
+        "value": "0x000000000000000000000000e549d3d4e85cb16f687448d7aca21d9d13a7cd0f",
+        "unchanged": false
+      }
+    },
+    "policy": {
+      "implementation": {
+        "value": "0x000000000000000000000000a2391eee4c9ea1b32aeb3a460b77296ea709f02f",
+        "unchanged": true
+      },
+      "admin": {
+        "value": "0x0000000000000000000000000b7a31ec85117892aea90aa5cb6514e2f97c2295",
+        "unchanged": true
+      }
+    },
+    "gateway": {
+      "implementation": {
+        "value": "0x0000000000000000000000001e412939780f2b834dc42c7ac58d9f99888da659",
+        "unchanged": true
+      }
+    }
+  },
+  "reads": [
+    {
+      "contract": "factory",
+      "signature": "walletImplementation()(address)",
+      "value": "0x4D459Da499C14548aa16c46c57fD92880A88EBb4",
+      "unchanged": false
+    },
+    {
+      "contract": "factory",
+      "signature": "paused()(bool)",
+      "value": "false",
+      "unchanged": true
+    },
+    {
+      "contract": "policy",
+      "signature": "version()(string)",
+      "value": "3.1.0",
+      "unchanged": true
+    },
+    {
+      "contract": "policy",
+      "signature": "pushChainHash()(bytes32)",
+      "value": "0x3d6bc1f1d3fb03065860265a8e93840b586e57075d956cd41b4319d040be87f9",
+      "unchanged": true
+    },
+    {
+      "contract": "policy",
+      "signature": "UNIVERSAL_GATEWAY_PC()(address)",
+      "value": "0x00000000000000000000000000000000000000C1",
+      "unchanged": true
+    },
+    {
+      "contract": "policy",
+      "signature": "UNIVERSAL_EXECUTOR_MODULE()(address)",
+      "value": "0x14191Ea54B4c176fCf86f51b0FAc7CB1E71Df7d7",
+      "unchanged": true
+    },
+    {
+      "contract": "walletImplementation",
+      "signature": "accountId()(string)",
+      "value": "push.agw.1.0.0",
+      "unchanged": true
+    },
+    {
+      "contract": "walletImplementation",
+      "signature": "SESSION_ENGINE()(address)",
+      "value": "0x165A5E6782f39D30B38c7D97e1303e4CB2aD102a",
+      "unchanged": true
+    },
+    {
+      "contract": "walletImplementation",
+      "signature": "RULES_POLICY()(address)",
+      "value": "0x603E7f0aF6e1aAFf46DDfb28b1e99364f8BC59af",
+      "unchanged": true
+    },
+    {
+      "contract": "walletImplementation",
+      "signature": "SESSION_VALIDATOR()(address)",
+      "value": "0x068EE2388475A98EE1f5a434C58bFF3444fffFe6",
+      "unchanged": true
+    },
+    {
+      "contract": "walletImplementation",
+      "signature": "UNIVERSAL_GATEWAY_PC()(address)",
+      "value": "0x00000000000000000000000000000000000000C1",
+      "unchanged": true
+    }
+  ]
+}

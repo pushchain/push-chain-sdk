@@ -3,7 +3,7 @@ import { PushChain } from '../../src';
 import { createPublicClient, http, type Hex } from 'viem';
 import { CHAIN_INFO, getPushViemChain } from '../../src/lib/constants/chain';
 import { CHAIN, PUSH_NETWORK } from '../../src/lib/constants/enums';
-import { v4 } from '../../src/lib/agentic/contracts/v4';
+import { v5 } from '../../src/lib/agentic/contracts/v5';
 import { chainReaderFromPublicClient } from '../../src/lib/agentic/contracts/reader';
 import { resolveWalletGeneration } from '../../src/lib/agentic/deployments';
 import { Snapshot } from '../../src/lib/agentic/reads/snapshot';
@@ -18,11 +18,11 @@ const EXTERNAL = 'kGUaPUfASg9Poo93aMsztHJjUk27MKuRJBfDZK1WP3FFSaXSYcoPcxjUMFyDxa
 d('agw svm recorded replay', () => {
   const push = createPublicClient({ chain: getPushViemChain(CHAIN.PUSH_TESTNET_DONUT), transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]) });
   let source: Awaited<ReturnType<typeof push.getTransaction>>;
-  let decoded: Extract<NonNullable<ReturnType<typeof v4.decodeWalletCall>>, { kind: 'executeAsAgent' }>;
+  let decoded: Extract<NonNullable<ReturnType<typeof v5.decodeWalletCall>>, { kind: 'executeAsAgent' }>;
   let client: PushChain;
   beforeAll(async () => {
     source = await push.getTransaction({ hash: POSITIVE });
-    const call = v4.decodeWalletCall(source.input);
+    const call = v5.decodeWalletCall(source.input);
     if (!source.to || call?.kind !== 'executeAsAgent') throw new Error('Recorded fixture is not an AGW agent call');
     decoded = call;
     client = await PushChain.initialize({ chain: PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT, address: source.from }, { network: PUSH_NETWORK.TESTNET_DONUT });

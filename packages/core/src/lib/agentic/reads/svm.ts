@@ -1,10 +1,10 @@
 /** Internal lossless SVM state shared by public reads and execution. */
 import type { Address, Hex } from 'viem';
 import type { AgenticGeneration } from '../deployments';
-import type { SvmConfigRead } from '../contracts/v4';
+import type { SvmConfigRead } from '../contracts/v5';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import { actionId, configId } from '../codec/ids';
-import { SEND_OUTBOUND_SELECTOR } from '../contracts/v4';
+import { SEND_OUTBOUND_SELECTOR } from '../contracts/v5';
 import { validateSvmTerms } from '../codec/svm-terms';
 import { chainFromHash, readActiveRules, type ActiveRule } from './rules';
 import type { Snapshot } from './snapshot';

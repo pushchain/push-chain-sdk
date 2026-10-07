@@ -1,4 +1,4 @@
-/** Internal v4 SVM wire representation; not a proposed public Rule API. */
+/** Internal v5 SVM wire representation; not a proposed public Rule API. */
 import {
   decodeAbiParameters,
   encodeAbiParameters,

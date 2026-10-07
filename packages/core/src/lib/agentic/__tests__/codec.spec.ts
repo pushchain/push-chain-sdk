@@ -1,5 +1,5 @@
 import { decodeFunctionData, getAddress, type Address, type Hex } from 'viem';
-import vectorsJson from '../__fixtures__/v4-vectors.json';
+import vectorsJson from '../__fixtures__/v5-vectors.json';
 import {
   actionId,
   agentConfig,
@@ -23,8 +23,8 @@ import {
 import { parseSelector, VALUE_ONLY_SELECTOR } from '../codec/selectors';
 import { argumentOffset, headSize } from '../codec/abi-layout';
 import { UINT256_MAX } from '../codec/defaults';
-import { v4 } from '../contracts/v4';
-import { AGW_ABI } from '../contracts/abi/v4';
+import { v5 } from '../contracts/v5';
+import { AGW_ABI } from '../contracts/abi/v5';
 import { AGENTIC_ERROR_CODE } from '../errors';
 import type { NativeRule } from '../agentic.types';
 
@@ -69,7 +69,7 @@ const NOW = 1_700_000_000;
 const target = getAddress('0x0000000000000000000000000000000000007a76');
 const agent = getAddress('0x00000000000000000000000000000000000000a9');
 
-describe('IDs against contract-generated vectors (v4)', () => {
+describe('IDs against contract-generated vectors (v5)', () => {
   it.each(vectors.rulesId)(
     'rulesId(agent, nonce) = engine.getPermissionId — nonce $grantNonce',
     (v) => {
@@ -403,12 +403,12 @@ describe('wallet call encoders decode back to the same calls', () => {
   const call = { target, value: BigInt(7), data: '0xd09de08a' as Hex };
 
   it('execute single uses packed ERC-7579 calldata', () => {
-    const data = v4.encodeExecute([call]);
+    const data = v5.encodeExecute([call]);
     const { functionName, args } = decodeFunctionData({ abi: AGW_ABI, data });
     expect(functionName).toBe('execute');
     expect(args[0]).toBe(`0x${'00'.repeat(32)}`);
     expect((args[1] as Hex).length).toBe(2 + 2 * (20 + 32 + 4));
-    expect(v4.decodeWalletCall(data)).toEqual({
+    expect(v5.decodeWalletCall(data)).toEqual({
       kind: 'execute',
       mode: args[0],
       calls: [call],
@@ -416,8 +416,8 @@ describe('wallet call encoders decode back to the same calls', () => {
   });
 
   it('execute batch uses abi.encode(Execution[])', () => {
-    const data = v4.encodeExecute([call, { ...call, value: BigInt(0) }]);
-    const decoded = v4.decodeWalletCall(data);
+    const data = v5.encodeExecute([call, { ...call, value: BigInt(0) }]);
+    const decoded = v5.decodeWalletCall(data);
     expect(decoded).toMatchObject({
       kind: 'execute',
       mode: `0x01${'00'.repeat(31)}`,
@@ -430,7 +430,7 @@ describe('wallet call encoders decode back to the same calls', () => {
 
   it('executeAsAgent carries the rule ID and one packed call', () => {
     const id = `0x${'42'.repeat(32)}` as Hex;
-    expect(v4.decodeWalletCall(v4.encodeExecuteAsAgent(id, call))).toEqual({
+    expect(v5.decodeWalletCall(v5.encodeExecuteAsAgent(id, call))).toEqual({
       kind: 'executeAsAgent',
       rulesId: id,
       mode: `0x${'00'.repeat(32)}`,
@@ -439,6 +439,6 @@ describe('wallet call encoders decode back to the same calls', () => {
   });
 
   it('unknown calldata is not mistaken for a wallet call', () => {
-    expect(v4.decodeWalletCall('0xdeadbeef')).toBeNull();
+    expect(v5.decodeWalletCall('0xdeadbeef')).toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 /** Bypass SDK validation to verify the deployed URP refuses the same mutations. eth_call only. */
 import { decodeFunctionData, encodeFunctionData, type Address, type Hex, type PublicClient } from 'viem';
 import { UNIVERSAL_GATEWAY_PC } from '../../src/lib/constants/abi';
-import { v4, type Call } from '../../src/lib/agentic/contracts/v4';
+import { v5, type Call } from '../../src/lib/agentic/contracts/v5';
 import { parseAgwSvmPayload, encodeAgwSvmPayload } from '../../src/lib/agentic/execution/svm-payload';
 import { decodeAgenticRevert } from '../../src/lib/agentic/revert';
 
@@ -22,7 +22,7 @@ export async function probeSvmWirePolicies(push: PublicClient, input: {
       view.setBigUint64(8, view.getBigUint64(8, true) + BigInt(1), true);
     }
     const altered = { ...request, payload: encodeAgwSvmPayload(parsed.program, accounts, data) };
-    const packet = v4.encodeExecuteAsAgent(input.rulesId, { ...input.call,
+    const packet = v5.encodeExecuteAsAgent(input.rulesId, { ...input.call,
       data: encodeFunctionData({ abi: UNIVERSAL_GATEWAY_PC, functionName: 'sendUniversalTxOutbound', args: [altered] }) });
     let decoded;
     try { await push.call({ account: input.from, to: input.wallet, data: packet, blockNumber: input.blockNumber }); }

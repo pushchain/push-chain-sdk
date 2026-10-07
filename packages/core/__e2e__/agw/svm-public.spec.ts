@@ -19,6 +19,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { CHAIN, PUSH_NETWORK } from '../../src/lib/constants/enums';
 import { CHAIN_INFO, getPushViemChain } from '../../src/lib/constants/chain';
 import counterIdl from '../../src/lib/orchestrator/svm-idl/__fixtures__/test_counter.idl.json';
+import { v5 } from '../../src/lib/agentic/contracts/v5';
 import { setupAgw, evmClient, inSeconds, type AgwFixture } from './_fixture';
 import { loadAgwManifest, verifyAgwManifest } from './_manifest';
 import {
@@ -31,7 +32,7 @@ import {
 
 const d = process.env['AGW_E2E'] === '1' ? describe : describe.skip;
 const amount = BigInt(10_000),
-  pc = parseEther('21');
+  pc = parseEther('41');
 d('agw public svm', () => {
   let f: AgwFixture,
     wallet: Address,
@@ -129,7 +130,8 @@ d('agw public svm', () => {
         abi: erc20Abi,
         functionName: 'balanceOf',
         args: [ownerAddress],
-      })) < amount
+      })) <
+        amount * BigInt(2) + BigInt(1)
     )
       throw new Error('Insufficient bounded fixture funds');
     idl = JSON.parse(JSON.stringify(counterIdl)) as Idl;
@@ -153,7 +155,7 @@ d('agw public svm', () => {
         data: encodeFunctionData({
           abi: erc20Abi,
           functionName: 'transfer',
-          args: [wallet, amount],
+          args: [wallet, amount * BigInt(2)],
         }),
       })
     ).wait();
@@ -169,7 +171,7 @@ d('agw public svm', () => {
         data: encodeFunctionData({
           abi: erc20Abi,
           functionName: 'approve',
-          args: [manifest.addresses.gateway, amount],
+          args: [manifest.addresses.gateway, amount * BigInt(2)],
         }),
       })
     ).wait();
@@ -251,7 +253,44 @@ d('agw public svm', () => {
       instruction: tx.agentic?.destinationInstruction,
     });
   }, 900_000);
-  it('3. substituted named accounts and excessive instruction amounts fail before signing', async () => {
+  it('3. contract simulation maps account and data refusals without state changes', async () => {
+    const config = PushChain.utils.agentic.configId(
+      wallet,
+      id,
+      PushChain.utils.agentic.actionId(
+        f.manifest.addresses.gateway,
+        '0x77b86bec'
+      )
+    );
+    const state = async () => {
+      const [tokens, pcBalance, checkpoints, cfg] = await Promise.all([
+        f.push.readContract({
+          address: token,
+          abi: erc20Abi,
+          functionName: 'balanceOf',
+          args: [wallet],
+        }),
+        f.push.getBalance({ address: wallet }),
+        f.push.readContract({
+          address: wallet,
+          abi: v5.abis.wallet,
+          functionName: 'checkpointCount',
+        }),
+        f.push.readContract({
+          address: f.manifest.addresses.rulesPolicy,
+          abi: v5.abis.policy,
+          functionName: 'getSvmConfig',
+          args: [config, wallet],
+        }),
+      ]);
+      return {
+        tokens,
+        pcBalance,
+        checkpoints,
+        spent: cfg.assets.map((a) => a.spent),
+      };
+    };
+    const before = await state();
     const nonce = await f.push.getTransactionCount({ address: f.agentAddress });
     const wrong = JSON.parse(JSON.stringify(idl)) as Idl;
     Object.assign(
@@ -263,18 +302,33 @@ d('agw public svm', () => {
     await expect(
       agent.universal.sendTransaction({
         to: { chain: SVM_WIRE_CHAIN, address: SVM_WIRE_PROGRAM },
+        gasLimit: BigInt(0),
         data: data(BigInt(1), wrong),
       })
-    ).rejects.toThrow('SvmAccountPinMismatch');
+    ).rejects.toMatchObject({
+      name: 'AgenticRevertError',
+      decodedError: { name: 'PolicyCheckReverted(SvmAccountPinMismatch)' },
+    });
     await expect(
       agent.universal.sendTransaction({
         to: { chain: SVM_WIRE_CHAIN, address: SVM_WIRE_PROGRAM },
+        gasLimit: BigInt(0),
         data: data(amount + BigInt(1)),
       })
-    ).rejects.toThrow('SvmDataCeilingExceeded');
+    ).rejects.toMatchObject({
+      name: 'AgenticRevertError',
+      decodedError: { name: 'PolicyCheckReverted(SvmDataCeilingExceeded)' },
+    });
     expect(await f.push.getTransactionCount({ address: f.agentAddress })).toBe(
       nonce
     );
+    expect(await state()).toEqual(before);
+    f.evidence('public-svm-contract-refusals', {
+      wallet,
+      id,
+      agentNonce: nonce,
+      state: before,
+    });
   });
   it('4. public revoke removes the Solana rule and subsequent sends are refused', async () => {
     const handle = f.owner.agentic.wallet(wallet);
@@ -286,5 +340,106 @@ d('agw public svm', () => {
         data: data(),
       })
     ).rejects.toMatchObject({ code: 'NO_RULES_FOR_CHAIN' });
+  });
+  it('5. owner funds-only transfer reaches the recipient and replays with the same amount', async () => {
+    const ownerKey = process.env['PUSH_PRIVATE_KEY'] as Hex;
+    const sender = await evmClient(
+      ownerKey,
+      CHAIN.PUSH_TESTNET_DONUT,
+      f.manifest.network,
+      wallet
+    );
+    const before = await sol.getBalance(recipient);
+    const balance = await f.push.readContract({
+      address: token,
+      abi: erc20Abi,
+      functionName: 'balanceOf',
+      args: [wallet],
+    });
+    const tx = await sender.universal.sendTransaction({
+      to: { chain: SVM_WIRE_CHAIN, address: recipient.toBase58() },
+      value: amount,
+      gasLimit: BigInt(0),
+    });
+    f.evidence('public-svm-owner-transfer-submitted', {
+      wallet,
+      hash: tx.hash,
+    });
+    expect(tx.agentic?.door).toBe('owner');
+    expect(tx.agentic?.rulesId).toBeUndefined();
+    expect(tx.agentic?.destinationInstruction).toBeUndefined();
+    expect(tx.agentic?.destinationTransfer).toMatchObject({ token, amount });
+    const receipt = await tx.wait({ outboundTimeoutMs: 600_000 });
+    expect(receipt.externalStatus).toBe('success');
+    expect(receipt.from).toBe(wallet);
+    expect(await sol.getBalance(recipient)).toBe(before + Number(amount));
+    expect(
+      await f.push.readContract({
+        address: token,
+        abi: erc20Abi,
+        functionName: 'balanceOf',
+        args: [wallet],
+      })
+    ).toBe(balance - amount);
+    const replay = await f.owner.universal.trackTransaction(tx.hash);
+    expect(replay.to).toBe(tx.to);
+    expect(replay.data).toBe('0x');
+    expect(replay.value).toBe(amount);
+    expect(replay.agentic?.destinationTransfer).toEqual(
+      tx.agentic?.destinationTransfer
+    );
+    expect(
+      (await replay.wait({ outboundTimeoutMs: 600_000 })).externalTxHash
+    ).toBe(receipt.externalTxHash);
+    f.evidence('public-svm-owner-transfer-delivered', {
+      wallet,
+      hash: tx.hash,
+      destinationHash: receipt.externalTxHash,
+      recipient: recipient.toBase58(),
+      amount,
+    });
+  }, 900_000);
+  it('6. agents still require an instruction and owner allowance failures do not sign', async () => {
+    const agentNonce = await f.push.getTransactionCount({
+      address: f.agentAddress,
+    });
+    await expect(
+      agent.universal.sendTransaction({
+        to: { chain: SVM_WIRE_CHAIN, address: recipient.toBase58() },
+        value: amount,
+      })
+    ).rejects.toMatchObject({ code: 'INVALID_RULE' });
+    expect(await f.push.getTransactionCount({ address: f.agentAddress })).toBe(
+      agentNonce
+    );
+    // Both funded sends have consumed the bounded allowance. Funding only the
+    // token lets this case isolate the separate allowance guard.
+    await (
+      await f.owner.universal.sendTransaction({
+        to: token,
+        data: encodeFunctionData({
+          abi: erc20Abi,
+          functionName: 'transfer',
+          args: [wallet, BigInt(1)],
+        }),
+      })
+    ).wait();
+    const sender = await evmClient(
+      process.env['PUSH_PRIVATE_KEY'] as Hex,
+      CHAIN.PUSH_TESTNET_DONUT,
+      f.manifest.network,
+      wallet
+    );
+    const nonce = await f.push.getTransactionCount({ address: f.ownerAddress });
+    await expect(
+      sender.universal.sendTransaction({
+        to: { chain: SVM_WIRE_CHAIN, address: recipient.toBase58() },
+        value: BigInt(1),
+        gasLimit: BigInt(0),
+      })
+    ).rejects.toMatchObject({ code: 'GATEWAY_ALLOWANCE_INSUFFICIENT' });
+    expect(await f.push.getTransactionCount({ address: f.ownerAddress })).toBe(
+      nonce
+    );
   });
 });

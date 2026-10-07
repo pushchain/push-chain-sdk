@@ -6,10 +6,11 @@ import { AgenticCapability, requireCapability } from '../capabilities';
 import { currentGeneration, verifyFactoryWiring } from '../deployments';
 import { deriveWallet, rulesId as computeRulesId } from '../codec/ids';
 import { prepareWalletRules } from './prepare';
+import { assertLabel } from './label';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import type { AgenticRuntime } from '../runtime';
 import type { CreateOptions, CreateResult } from '../agentic.types';
-import { Snapshot } from '../reads/snapshot';
+import { Snapshot, scanLogs } from '../reads/snapshot';
 import { walletCount, walletInfo } from '../reads/wallets';
 import {
   assertCanSign,
@@ -38,12 +39,7 @@ export async function createWallet(
   options: CreateOptions
 ): Promise<CreateResult> {
   const hook = options?.progressHook;
-  if (typeof label !== 'string') {
-    throw new AgenticError(
-      AGENTIC_ERROR_CODE.INVALID_RULE,
-      'label must be a string'
-    );
-  }
+  assertLabel(label);
   if (!options || !Array.isArray(options.rules)) {
     throw new AgenticError(
       AGENTIC_ERROR_CODE.INVALID_RULE,
@@ -281,18 +277,32 @@ async function createFailure(
     // moved and immutable deployment metadata proves another label owns the
     // predicted slot, this call could not have deployed or granted.
     try {
-      const next = await walletCount(
-        await Snapshot.at(runtime.reader),
-        gen,
-        owner
-      );
+      const snap = await Snapshot.at(runtime.reader);
+      const next = await walletCount(snap, gen, owner);
       if (next > BigInt(index)) {
         const competing = await walletInfo(runtime.reader, gen, wallet);
+        // label() is mutable in v5: only the immutable deploy event proves
+        // which creation occupied this slot. A later rename proves nothing.
+        const logs = await scanLogs(
+          runtime.reader,
+          {
+            address: gen.addresses.factory,
+            event: gen.contracts.events.walletDeployed,
+            args: { wallet },
+          },
+          gen.startBlock,
+          snap.blockNumber
+        );
+        const deployed = gen.contracts
+          .parseWalletDeployed(logs, gen.addresses.factory)
+          .find((entry) => entry.wallet === wallet);
+        const competingLabel = deployed?.label;
         if (
           competing.deployed &&
           competing.index === index &&
           getAddress(competing.owner) === owner &&
-          competing.label !== label
+          competingLabel !== undefined &&
+          competingLabel !== label
         ) {
           return new AgenticError(
             AGENTIC_ERROR_CODE.INDEX_RACE,
@@ -302,13 +312,13 @@ async function createFailure(
                 'Slot ' +
                 index +
                 ' belongs to "' +
-                competing.label +
+                competingLabel +
                 '". No wallet or rules from this create call were committed; retry agentic.create to use the next slot.',
               details: {
                 wallet,
                 index,
                 committed: false,
-                competingLabel: competing.label,
+                competingLabel,
               },
               cause: wrapped,
             }

@@ -73,6 +73,8 @@ export type Asset =
   | 'masterPC'
   | 'masterPETH'
   | 'masterPSOL'
+  | 'masterUsdcEth'
+  | 'masterUsdtSol'
   // The EVM master's UEA on Push Donut — Routes 2/3 on both VMs, and PC20
   | 'ueaPC'
   | 'ueaPETH'
@@ -976,18 +978,18 @@ export const SCENARIOS: Scenario[] = [
     env: { AGW_E2E: '1' },
   },
   {
-    id: 'agw-v4-multi-asset',
+    id: 'agw-v5-multi-asset',
     group: 'agw',
-    file: '__e2e__/agw/v4-multiasset.spec.ts',
-    grep: 'agw v4 multi-asset 1\\. public create',
+    file: '__e2e__/agw/v5-multiasset.spec.ts',
+    grep: 'agw v5 multi-asset 1\\. public create',
     needs: { masterPC: '2' },
     env: { AGW_E2E: '1' },
   },
   {
-    id: 'agw-v4-call-only',
+    id: 'agw-v5-call-only',
     group: 'agw',
-    file: '__e2e__/agw/v4-multiasset.spec.ts',
-    grep: 'agw v4 multi-asset 2\\. empty user assets',
+    file: '__e2e__/agw/v5-multiasset.spec.ts',
+    grep: 'agw v5 multi-asset 2\\. empty user assets',
     needs: { masterPC: '25' },
     env: { AGW_E2E: '1' },
   },
@@ -1040,11 +1042,31 @@ export const SCENARIOS: Scenario[] = [
     env: { AGW_E2E: '1' },
   },
 
-  ...Array.from({ length: 4 }, (_, i) => ({
+  ...Array.from({ length: 6 }, (_, i) => ({
     id: `agw-public-svm-${i + 1}`, group: 'agw' as const,
     file: '__e2e__/agw/svm-public.spec.ts', grep: `agw public svm ${i + 1}\\.`,
-    needs: { masterPC: '25', masterPSOL: '0.00001' }, env: { AGW_E2E: '1' },
+    needs: { masterPC: '45', masterPSOL: '0.000020001' }, env: { AGW_E2E: '1' },
   })),
+
+  ...Array.from({ length: 8 }, (_, i) => ({
+    id: `agw-labels-${i + 1}`, group: 'agw' as const,
+    file: '__e2e__/agw/labels.spec.ts', grep: `agw labels ${i + 1}\\.`,
+    needs: i === 4 ? { masterPC: '4', sepoliaEth: '0.003' } : i === 5 ? { masterPC: '4', solanaSOL: '0.003' } : { masterPC: '1' },
+    env: { AGW_E2E: '1' },
+  })),
+
+  {
+    id: 'agw-v5-independent-token-budgets', group: 'agw',
+    file: '__e2e__/agw/v5-multiasset.spec.ts', grep: 'agw v5 multi-asset 3\\.',
+    needs: { masterPC: '45', masterPETH: '0.000001000000000001', masterUsdcEth: '0.000011' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-owner-spl-transfer', group: 'agw',
+    file: '__e2e__/agw/svm-spl-transfer.spec.ts', grep: 'agw svm spl transfer 1\\.',
+    needs: { masterPC: '23', masterUsdtSol: '0.001' },
+    env: { AGW_E2E: '1' },
+  },
 
   // Extended AGW tests are opt-in and use bounded per-scenario testnet budgets.
   ...[

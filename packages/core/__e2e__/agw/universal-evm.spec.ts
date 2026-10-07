@@ -2,7 +2,7 @@
  * Scenarios 7 and 8 — positive-amount EVM universal execution from the
  * wallet, and destination failure classification.
  *
- * Rules are created through the public v4 UniversalRule SDK path. Destination
+ * Rules are created through the public v5 UniversalRule SDK path. Destination
  * receipt/replay checks remain opt-in funded live tests.
  *
  * creditRevert accounting is inert on the current executor (gap G07): a
@@ -26,7 +26,7 @@ import { CHAIN_INFO } from '../../src/lib/constants/chain';
 import { MOVEABLE_TOKEN_CONSTANTS } from '../../src/lib/constants/tokens';
 import { getCEAAddress } from '../../src/lib/orchestrator/cea-utils';
 import { getNativePRC20ForChain } from '../../src/lib/orchestrator/internals/helpers';
-import { v4 } from '../../src/lib/agentic/contracts/v4';
+import { v5 } from '../../src/lib/agentic/contracts/v5';
 import { EVM_CHAIN_FIXTURES } from '@e2e/shared/chain-fixtures';
 import { COUNTER_ABI } from '@e2e/shared/outbound-helpers';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
@@ -45,6 +45,10 @@ const counter = EVM_CHAIN_FIXTURES.find((x) => x.chain === SEPOLIA)!.contracts
 const INCREMENT = '0xd09de08a' as Hex;
 const MISSING = '0xdeadbeef' as Hex; // not implemented by the counter → destination revert
 const AMOUNT = BigInt(10) ** BigInt(12); // 0.000001 pETH
+// Fresh CEA finalization currently needs ~1.3m gas on Sepolia; the core
+// default of 500k was independently shown to revert. Keep a bounded explicit
+// destination budget and preserve that default-budget evidence separately.
+const DESTINATION_GAS = BigInt(2_000_000);
 const MAX_PC = parseEther(process.env['AGW_E2E_MAX_PC_PER_CALL'] ?? '20');
 
 d('agw universal evm', () => {
@@ -134,11 +138,12 @@ d('agw universal evm', () => {
     const agent = await f.agent(wallet);
     const ceaBefore = await sep.getBalance({ address: cea });
     // Explicit call array: the bridged ETH lands in the wallet's CEA and the
-    // allow-listed call runs as given (a single `data` would forward the value
-    // to the non-payable counter, as Route 2 does for ordinary accounts).
+    // allow-listed call runs with zero value. A single `data` follows ordinary
+    // Route 2 semantics and forwards the bridged value to the target.
     const tx = await agent.universal.sendTransaction({
       to: { address: counter, chain: SEPOLIA },
       data: [{ to: counter, value: BigInt(0), data: INCREMENT }],
+      gasLimit: DESTINATION_GAS,
       funds: {
         amount: AMOUNT,
         token: MOVEABLE_TOKEN_CONSTANTS.ETHEREUM_SEPOLIA.ETH,
@@ -150,9 +155,16 @@ d('agw universal evm', () => {
       rulesId,
       destinationAccount: cea,
     });
+    f.evidence('v5-evm-outbound-submitted', {
+      wallet,
+      cea,
+      pushTx: tx.hash,
+      destinationGasLimit: DESTINATION_GAS,
+    });
     const receipt = await tx.wait({ outboundTimeoutMs: 600_000 });
     expect(receipt.status).toBe(1);
     expect(receipt.from).toBe(wallet);
+    expect(receipt.externalStatus).toBe('success');
     expect(receipt.externalTxHash).toBeTruthy();
     await verifyExternalTransaction(receipt.externalTxHash as string, SEPOLIA);
     const destinationReceipt = await sep.getTransactionReceipt({
@@ -218,6 +230,7 @@ d('agw universal evm', () => {
     const tx = await agent.universal.sendTransaction({
       to: { address: counter, chain: SEPOLIA },
       data: MISSING,
+      gasLimit: DESTINATION_GAS,
     });
     const receipt = await tx.wait({ outboundTimeoutMs: 600_000 });
     expect(receipt.status).toBe(1);

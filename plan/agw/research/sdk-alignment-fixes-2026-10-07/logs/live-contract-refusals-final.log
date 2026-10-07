@@ -1,0 +1,15 @@
+PASS core-e2e __e2e__/agw/svm-public.spec.ts (120.743 s)
+  agw public svm
+    ✓ 3. contract simulation maps account and data refusals without state changes (22204 ms)
+    ○ skipped 1. named IDL grant reads exact constraints and replaces atomically
+    ○ skipped 2. public send confirms actual CEA transfer and preserves replay identity
+    ○ skipped 4. public revoke removes the Solana rule and subsequent sends are refused
+    ○ skipped 5. owner funds-only transfer reaches the recipient and replays with the same amount
+    ○ skipped 6. agents still require an instruction and owner allowance failures do not sign
+
+Test Suites: 1 passed, 1 total
+Tests:       5 skipped, 1 passed, 6 total
+Snapshots:   0 total
+Time:        120.764 s
+Ran all test suites within paths "__e2e__/agw/svm-public.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

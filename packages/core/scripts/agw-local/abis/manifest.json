@@ -1,12 +1,12 @@
 {
   "sourceRepository": "https://github.com/pushchain/push-agentic-wallets",
-  "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
-  "deployedAbiEvidence": "AGW v4 Donut deployment; copied from the October 6 planning evidence snapshot",
+  "sourceCommit": "2e61e133e641b4e0e1ddbdc9306b0903b60e4dbb",
+  "deployedAbiEvidence": "Donut v5 source compiled in an isolated tree; deployment wiring checked at block 23991912; URP/engine/validator reused from v4",
   "files": {
-    "engine.json": "32e7f3e48db6719306c436a0c81d80a2c5bcb3283b208ae043c460d483bc0180",
-    "factory.json": "c58ac31b81a64b4ab5b89c5aef3f6d01a405607395af71b5466d55fe9c1d5b99",
-    "policy.json": "b40e2a91eaa9c09cbe214621259fb7d12def00d12c756e2fd659eff4e26277c0",
-    "validator.json": "d2555b2f54d56ed24268af650b19ad10f2d34906b2e0c4ff78dd6de54ba34cc2",
-    "wallet.json": "ba68ef8f86e7154df29c4bb3ec9b90ae0d8a5193cad6e34772276475a2846ebe"
+    "wallet.json": "6a145964d6c43eaa6223dc8f3d59a540ac0c2f447f25c3a99007eea25de9c695",
+    "factory.json": "b65f66a1556d2a9ddf9aabe9f595c685c2aada436772892f5a40fb1eec846397",
+    "policy.json": "c7e3cd5c7f8e47be217c77ebebde4c090903cea7db63024838e434eb6f1fd77b",
+    "engine.json": "6e5d9cea4dbed01f06af913c1e093743b86b7432195f4a4bf90fb94b282c51b2",
+    "validator.json": "a4570ddc373241580de8742cbb3d9f2c837094c65bfd1cdd52243ca0c38196fd"
   }
 }

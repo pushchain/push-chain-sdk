@@ -4,7 +4,7 @@ import type { ChainReader } from '../contracts/reader';
 import { deriveWallet } from '../codec/ids';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import type { WalletInfo, WalletSummary } from '../agentic.types';
-import { Snapshot, scanLogs } from './snapshot';
+import { Snapshot } from './snapshot';
 
 /** Factory-predicted address for (owner, index), cross-checked against the pure mirror. */
 async function predict(
@@ -36,9 +36,18 @@ async function predict(
   return { address: getAddress(address), deployed };
 }
 
-export async function walletCount(snap: Snapshot, gen: AgenticGeneration, owner: Address): Promise<bigint> {
+export async function walletCount(
+  snap: Snapshot,
+  gen: AgenticGeneration,
+  owner: Address
+): Promise<bigint> {
   return BigInt(
-    await snap.read<bigint>(gen.addresses.factory, gen.contracts.abis.factory, 'walletCount', [owner])
+    await snap.read<bigint>(
+      gen.addresses.factory,
+      gen.contracts.abis.factory,
+      'walletCount',
+      [owner]
+    )
   );
 }
 
@@ -54,7 +63,10 @@ export async function deriveForOwner(
   let target = next;
   if (index !== undefined) {
     if (!Number.isInteger(index) || index < 0) {
-      throw new AgenticError(AGENTIC_ERROR_CODE.INVALID_RULE, 'index must be a non-negative integer');
+      throw new AgenticError(
+        AGENTIC_ERROR_CODE.INVALID_RULE,
+        'index must be a non-negative integer'
+      );
     }
     target = BigInt(index);
     if (target > next) {
@@ -68,27 +80,11 @@ export async function deriveForOwner(
   return { address: p.address, index: Number(target), deployed: p.deployed };
 }
 
-/** Deploy-time labels for the owner's wallets from WalletDeployed events. */
-async function labelsFor(
-  reader: ChainReader,
-  gen: AgenticGeneration,
+export async function rulesCount(
   snap: Snapshot,
-  filter: { owner?: Address; wallet?: Address }
-): Promise<Map<string, string>> {
-  const logs = await scanLogs(
-    reader,
-    { address: gen.addresses.factory, event: gen.contracts.events.walletDeployed, args: filter },
-    gen.startBlock,
-    snap.blockNumber
-  );
-  const map = new Map<string, string>();
-  for (const ev of gen.contracts.parseWalletDeployed(logs, gen.addresses.factory)) {
-    map.set(ev.wallet.toLowerCase(), ev.label);
-  }
-  return map;
-}
-
-export async function rulesCount(snap: Snapshot, gen: AgenticGeneration, wallet: Address): Promise<number> {
+  gen: AgenticGeneration,
+  wallet: Address
+): Promise<number> {
   const ids = await snap.read<readonly `0x${string}`[]>(
     gen.addresses.sessionEngine,
     gen.contracts.abis.engine,
@@ -109,7 +105,6 @@ export async function listForOwner(
 ): Promise<WalletSummary[]> {
   const snap = await Snapshot.at(reader);
   const count = await walletCount(snap, gen, owner);
-  const labels = count > BigInt(0) ? await labelsFor(reader, gen, snap, { owner }) : new Map();
   const out: WalletSummary[] = [];
   for (let i = BigInt(0); i <= count; i++) {
     const p = await predict(snap, gen, owner, i);
@@ -120,17 +115,13 @@ export async function listForOwner(
         `factory reports slot ${i} deployed=${p.deployed} but walletCount is ${count}`
       );
     }
-    const label = deployed ? labels.get(p.address.toLowerCase()) : '';
-    if (deployed && label === undefined) {
-      throw new AgenticError(
-        AGENTIC_ERROR_CODE.INCONSISTENT_READ,
-        `no WalletDeployed event found for ${p.address} since block ${gen.startBlock}`
-      );
-    }
+    const label = deployed
+      ? await snap.read<string>(p.address, gen.contracts.abis.wallet, 'label')
+      : '';
     out.push({
       address: p.address,
       index: Number(i),
-      label: label ?? '',
+      label,
       deployed,
       rulesCount: deployed ? await rulesCount(snap, gen, p.address) : 0,
     });
@@ -139,9 +130,15 @@ export async function listForOwner(
 }
 
 /** w.owner(): the owner as the wallet stores it. */
-export async function walletOwner(reader: ChainReader, gen: AgenticGeneration, wallet: Address): Promise<Address> {
+export async function walletOwner(
+  reader: ChainReader,
+  gen: AgenticGeneration,
+  wallet: Address
+): Promise<Address> {
   const snap = await Snapshot.at(reader);
-  return getAddress(await snap.read<Address>(wallet, gen.contracts.abis.wallet, 'owner'));
+  return getAddress(
+    await snap.read<Address>(wallet, gen.contracts.abis.wallet, 'owner')
+  );
 }
 
 /**
@@ -178,16 +175,18 @@ export async function walletInfo(
   }
   const [owner, index] = await Promise.all([
     snap.read<Address>(wallet, gen.contracts.abis.wallet, 'owner'),
-    snap.read<bigint>(gen.addresses.factory, gen.contracts.abis.factory, 'indexOf', [wallet]),
+    snap.read<bigint>(
+      gen.addresses.factory,
+      gen.contracts.abis.factory,
+      'indexOf',
+      [wallet]
+    ),
   ]);
-  const labels = await labelsFor(reader, gen, snap, { wallet });
-  const label = labels.get(wallet.toLowerCase());
-  if (label === undefined) {
-    throw new AgenticError(
-      AGENTIC_ERROR_CODE.INCONSISTENT_READ,
-      `no WalletDeployed event found for ${wallet} since block ${gen.startBlock}`
-    );
-  }
+  const label = await snap.read<string>(
+    wallet,
+    gen.contracts.abis.wallet,
+    'label'
+  );
   return {
     address: getAddress(wallet),
     label,

@@ -21,7 +21,7 @@ export enum AgenticCapability {
   ASSERT_SPENT_NATIVE = 'assertSpentNative',
   /** checkpointCount + Checkpointed events. */
   CHECKPOINTS = 'checkpoints',
-  /** Agent-door EVM outbound composition against v4 per-token caps. */
+  /** Agent-door EVM outbound composition against v5 per-token caps. */
   UNIVERSAL_EVM_OUTBOUND = 'universalEvmOutbound',
   /** Target UniversalRule (assets[] / maxGasPerCall) encode/decode. A05/A07. */
   UNIVERSAL_EVM_RULES = 'universalEvmRules',

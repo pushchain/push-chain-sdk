@@ -99,7 +99,6 @@ const created = await client.agentic.create(label, { options })
 const created = await client.agentic.create('aave-optimiser', {    // wallet with one cross-chain rule
   rules: [{                                                      // one entry per chain per agent
     agent: '0xAgentOnPush',                                      // a Push address: the agent's EOA, or its UEA if the key lives on another chain. Never the owner
-    ref: jobRef,                                                 // emitted in RulesGranted, not interpreted
     chainNamespace: CHAIN.ETHEREUM_SEPOLIA,                      // foreign chain => universal rulebook
     assets: [
       { token: MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.USDC, maxPerCall: parseUnits('100', 6), maxTotal: parseUnits('1000', 6) },

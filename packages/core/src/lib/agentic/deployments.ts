@@ -1,14 +1,14 @@
 import { getAddress, type Address } from 'viem';
 import { PUSH_NETWORK } from '../constants/enums';
 import { AgenticCapability } from './capabilities';
-import { v4, type AgwContracts } from './contracts/v4';
+import { v5, type AgwContracts } from './contracts/v5';
 import type { ChainReader } from './contracts/reader';
 import { AGENTIC_ERROR_CODE, AgenticError } from './errors';
 import {
-  DONUT_V4_ADDRESSES,
-  DONUT_V4_START_BLOCK,
-  V4_SOURCE_COMMIT,
-} from './contracts/donut-v4';
+  DONUT_V5_ADDRESSES,
+  DONUT_V5_START_BLOCK,
+  V5_SOURCE_COMMIT,
+} from './contracts/donut-v5';
 
 /**
  * A verified AGW contract generation on one Push network. The registry is the
@@ -17,7 +17,7 @@ import {
  * are NOT registered because they do not implement this ABI.
  */
 export interface AgenticGeneration {
-  /** Stable identifier, e.g. 'v4'. */
+  /** Stable identifier, e.g. 'v5'. */
   id: string;
   /** Contract source commit the ABI was generated from. */
   sourceCommit: string;
@@ -40,8 +40,8 @@ export interface AgenticGeneration {
   contracts: AgwContracts;
 }
 
-/** Capabilities the v4 ABI actually implements. Target-only features are absent. */
-export const V4_CAPABILITIES: ReadonlySet<AgenticCapability> = new Set([
+/** Capabilities the v5 ABI actually implements. Target-only features are absent. */
+export const V5_CAPABILITIES: ReadonlySet<AgenticCapability> = new Set([
   AgenticCapability.WALLET_READS,
   AgenticCapability.ACTIVE_RULE_READS,
   AgenticCapability.OWNER_EXECUTE,
@@ -53,22 +53,23 @@ export const V4_CAPABILITIES: ReadonlySet<AgenticCapability> = new Set([
   AgenticCapability.UNIVERSAL_EVM_RULES,
   AgenticCapability.UNIVERSAL_SVM_RULES,
   AgenticCapability.ASSERT_SPENT_UNIVERSAL_MULTI,
+  AgenticCapability.SET_LABEL,
 ]);
 
 /**
- * V4 only. Unsupported networks fail before signing; no legacy adapter fallback.
+ * V5 only. Unsupported networks fail before signing; no legacy adapter fallback.
  */
 const VERIFIED_DEPLOYMENTS: readonly AgenticGeneration[] = [
   {
-    id: 'v4',
-    sourceCommit: V4_SOURCE_COMMIT,
+    id: 'v5',
+    sourceCommit: V5_SOURCE_COMMIT,
     network: PUSH_NETWORK.TESTNET_DONUT,
     advertised: true,
-    addresses: DONUT_V4_ADDRESSES,
-    startBlock: DONUT_V4_START_BLOCK,
+    addresses: DONUT_V5_ADDRESSES,
+    startBlock: DONUT_V5_START_BLOCK,
     accountId: 'push.agw.1.0.0',
-    capabilities: V4_CAPABILITIES,
-    contracts: v4,
+    capabilities: V5_CAPABILITIES,
+    contracts: v5,
   },
 ];
 
@@ -84,7 +85,7 @@ export function registerAgenticGeneration(
     capabilities?: ReadonlySet<AgenticCapability>;
   }
 ): AgenticGeneration {
-  if (input.id !== v4.id || input.sourceCommit !== V4_SOURCE_COMMIT) {
+  if (input.id !== v5.id || input.sourceCommit !== V5_SOURCE_COMMIT) {
     throw new AgenticError(
       AGENTIC_ERROR_CODE.GENERATION_UNSUPPORTED,
       `no contract adapter for generation "${input.id}"`
@@ -100,8 +101,8 @@ export function registerAgenticGeneration(
       sessionValidator: getAddress(input.addresses.sessionValidator),
       gateway: getAddress(input.addresses.gateway),
     },
-    capabilities: input.capabilities ?? V4_CAPABILITIES,
-    contracts: v4,
+    capabilities: input.capabilities ?? V5_CAPABILITIES,
+    contracts: v5,
   };
   const existing = registry.findIndex(
     (g) =>
@@ -113,7 +114,7 @@ export function registerAgenticGeneration(
   return gen;
 }
 
-/** @internal Test/harness cleanup. Restores the checked Donut v4 registry. */
+/** @internal Test/harness cleanup. Restores the checked Donut v5 registry. */
 export function resetAgenticGenerations(): void {
   registry.splice(0, registry.length, ...VERIFIED_DEPLOYMENTS);
   verifiedWiring.clear();
@@ -132,7 +133,7 @@ export async function verifyPolicyVersion(
   if (version !== '3.1.0')
     throw new AgenticError(
       AGENTIC_ERROR_CODE.GENERATION_UNSUPPORTED,
-      `URP version ${String(version)} is not supported by the v4 adapter`
+      `URP version ${String(version)} is not supported by the v5 adapter`
     );
 }
 
@@ -151,7 +152,7 @@ export function currentGeneration(network: PUSH_NETWORK): AgenticGeneration {
       AGENTIC_ERROR_CODE.GENERATION_UNSUPPORTED,
       `no verified AGW deployment is registered for ${network}`,
       {
-        hint: 'AGW v4 is configured on Donut only; this Push network has no registered v4 deployment.',
+        hint: 'AGW v5 is configured on Donut only; this Push network has no registered v5 deployment.',
         details: { network, assumption: 'A07' },
       }
     );
@@ -232,7 +233,7 @@ export async function resolveWalletGeneration(
     factory = getAddress(
       (await reader.readContract({
         address: wallet,
-        abi: v4.abis.wallet,
+        abi: v5.abis.wallet,
         functionName: 'factory',
       })) as Address
     );

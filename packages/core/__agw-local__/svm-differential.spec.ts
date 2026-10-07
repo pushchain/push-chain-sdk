@@ -16,7 +16,7 @@ import {
   encodeAgwSvmPayload,
   validateAgwSvmPayload,
 } from '../src/lib/agentic/execution/svm-payload';
-import { v4 } from '../src/lib/agentic/contracts/v4';
+import { v5 } from '../src/lib/agentic/contracts/v5';
 import { deriveAgwSvmValueAccounts } from '../src/lib/agentic/codec/svm-accounts';
 import { decodeAgenticRevert } from '../src/lib/agentic/revert';
 import { startHarness, type Harness } from './harness';
@@ -208,7 +208,7 @@ describe('seeded SVM differential validation', () => {
       try {
         await h.publicClient.call({
           to: wallet,
-          data: v4.encodeGrantRules(session(c.terms)),
+          data: v5.encodeGrantRules(session(c.terms)),
           account: h.wallets[0].account!.address,
         });
       } catch (e) {
@@ -251,10 +251,10 @@ describe('seeded SVM differential validation', () => {
         den: BigInt(0),
       },
     ];
-    await h.write(0, wallet, v4.abis.wallet, 'grantRules', [session(t)]);
+    await h.write(0, wallet, v5.abis.wallet, 'grantRules', [session(t)]);
     const [id] = await h.publicClient.readContract({
       address: h.addresses.engine,
-      abi: v4.abis.engine,
+      abi: v5.abis.engine,
       functionName: 'getPermissionIDs',
       args: [wallet],
     });
@@ -267,9 +267,9 @@ describe('seeded SVM differential validation', () => {
       }),
     });
     await h.write(0, token, TOKEN, 'mint', [wallet, BigInt(100)]);
-    await h.write(0, wallet, v4.abis.wallet, 'execute', [
+    await h.write(0, wallet, v5.abis.wallet, 'execute', [
       key('00'),
-      v4.packSingle({
+      v5.packSingle({
         target: token,
         value: BigInt(0),
         data: encodeFunctionData({
@@ -370,12 +370,12 @@ describe('seeded SVM differential validation', () => {
       try {
         await h.publicClient.simulateContract({
           address: wallet,
-          abi: v4.abis.wallet,
+          abi: v5.abis.wallet,
           functionName: 'executeAsAgent',
           args: [
             id,
             key('00'),
-            v4.packSingle({
+            v5.packSingle({
               target: h.addresses.gateway,
               value: BigInt(11) * BigInt(10) ** BigInt(14),
               data,

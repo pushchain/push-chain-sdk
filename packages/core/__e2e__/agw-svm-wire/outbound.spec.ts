@@ -1,4 +1,4 @@
-/** Internal wire acceptance only. Public Solana Rule/send capability stays disabled. */
+/** Internal wire acceptance alongside public Solana coverage. Policy refusals come from URP simulation. */
 import '@e2e/shared/setup';
 import { PushChain } from '../../src';
 import { Keypair, PublicKey, type ParsedTransactionWithMeta } from '@solana/web3.js';
@@ -18,7 +18,7 @@ import { sendSvmAgentWire, prepareSvmAgentExecution, type PreparedSvmRequest } f
 import { SvmDataPinMode, type SvmTermsWire } from '../../src/lib/agentic/codec/svm-terms';
 import { svmKey } from '../../src/lib/agentic/codec/svm-accounts';
 import { adaptTrackedResponse } from '../../src/lib/agentic/response';
-import { v4 } from '../../src/lib/agentic/contracts/v4';
+import { v5 } from '../../src/lib/agentic/contracts/v5';
 import { setupAgw, evmClient, inSeconds, type AgwFixture } from '../agw/_fixture';
 import { loadAgwManifest, verifyAgwManifest } from '../agw/_manifest';
 import { inspectSvmWirePrograms, svmWireConnection, SVM_WIRE_CHAIN, SVM_WIRE_GATEWAY, SVM_WIRE_PROGRAM, SVM_WIRE_COUNTER, decodeWireCounter } from '../shared/agw-svm-preflight';
@@ -112,7 +112,7 @@ d('agw svm wire', () => {
 
   it('1. positive outbound: actual CEA transfer and counter execution, receipt and replay', async () => {
     const before = decodeWireCounter((await sol.getAccountInfo(SVM_WIRE_COUNTER))!.data).value;
-    const count = await f.push.readContract({ address: wallet, abi: v4.abis.wallet, functionName: 'checkpointCount' });
+    const count = await f.push.readContract({ address: wallet, abi: v5.abis.wallet, functionName: 'checkpointCount' });
     const { tx } = await sendSvmAgentWire(rt(agent), gen, request(), metadata);
     f.evidence('svm-wire-positive-submitted', { wallet, rulesId, hash: tx.hash });
     // Existing verified-wallet replay adaptation enables normal outbound wait;
@@ -132,7 +132,7 @@ d('agw svm wire', () => {
     ))).toBe(true);
     expect(decodeWireCounter((await sol.getAccountInfo(SVM_WIRE_COUNTER))!.data).value).toBeGreaterThanOrEqual(before + AMOUNT);
     expect((await stored()).config.assets[0].spent).toBe(AMOUNT);
-    expect(await f.push.readContract({ address: wallet, abi: v4.abis.wallet, functionName: 'checkpointCount' })).toBe(count);
+    expect(await f.push.readContract({ address: wallet, abi: v5.abis.wallet, functionName: 'checkpointCount' })).toBe(count);
     const replay = await f.owner.universal.trackTransaction(tx.hash);
     expect(replay.from).toBe(wallet); expect(replay.route).toBe('UOA_TO_CEA');
     expect(replay.agentic).toMatchObject({ door: 'agent', rulesId });
@@ -145,8 +145,8 @@ d('agw svm wire', () => {
     const base = request();
     const wrong = [...base.accounts!]; wrong[2] = { ...wrong[2], pubkey: svmKey(recipient.toBase58()) };
     const nonce = await f.push.getTransactionCount({ address: f.agentAddress });
-    await expect(prepareSvmAgentExecution(rt(agent), gen, { ...base, accounts: wrong }, metadata)).rejects.toThrow();
-    await expect(prepareSvmAgentExecution(rt(agent), gen, { ...base, instructionData: ixData(RECEIVE, AMOUNT + BigInt(1)) }, metadata)).rejects.toThrow();
+    await expect(sendSvmAgentWire(rt(agent), gen, { ...base, accounts: wrong }, metadata)).rejects.toMatchObject({ name: 'AgenticRevertError', decodedError: { name: 'PolicyCheckReverted(SvmAccountPinMismatch)' } });
+    await expect(sendSvmAgentWire(rt(agent), gen, { ...base, instructionData: ixData(RECEIVE, AMOUNT + BigInt(1)) }, metadata)).rejects.toMatchObject({ name: 'AgenticRevertError', decodedError: { name: 'PolicyCheckReverted(SvmDataCeilingExceeded)' } });
     const prepared = await prepareSvmAgentExecution(rt(agent), gen, base, metadata);
     const policy = await probeSvmWirePolicies(f.push, { from: f.agentAddress, wallet, rulesId, call: prepared.call, blockNumber: await f.push.getBlockNumber() });
     expect(await f.push.getTransactionCount({ address: f.agentAddress })).toBe(nonce);

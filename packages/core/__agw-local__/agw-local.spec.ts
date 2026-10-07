@@ -1,6 +1,6 @@
 import { readNativeCounters } from '../__e2e__/shared/agw-state';
 /**
- * Real-contract checks of the AGW SDK against the pinned v4 contracts on a
+ * Real-contract checks of the AGW SDK against the pinned v5 contracts on a
  * local anvil chain (see harness.ts for scope and limits). Every assertion
  * about authorization, atomicity, counters and checkpoints is decided by the
  * real contracts; the only stubbed component is the gateway.
@@ -35,7 +35,7 @@ const WALLET_ABI = parseAbi([
 
 const inAnHour = () => Math.floor(Date.now() / 1000) + 3600;
 
-describe('AGW SDK against real v4 contracts (local anvil)', () => {
+describe('AGW SDK against real v5 contracts (local anvil)', () => {
   let h: Harness;
   let owner: PushChain;
   let ownerAddr: Address;

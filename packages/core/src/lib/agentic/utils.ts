@@ -5,7 +5,7 @@ import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 import { MOVEABLE_TOKENS } from '../constants/tokens';
 import { getPRC20Address } from '../universal/prc20-address';
 import { AgenticCapability } from './capabilities';
-import { V4_CAPABILITIES } from './deployments';
+import { V5_CAPABILITIES } from './deployments';
 import {
   actionId as actionIdRaw,
   configId as configIdRaw,
@@ -113,7 +113,7 @@ export const internalAgenticUtils = {
       rulesPolicy: getAddress(ctx.rulesPolicy),
       gateway: ctx.gateway,
       universal: ctx.universal,
-      capabilities: V4_CAPABILITIES,
+      capabilities: V5_CAPABILITIES,
       nowSeconds: ctx.nowSeconds ?? Math.floor(Date.now() / 1000),
     }).map((p) => encodeSession(p.session) as AgenticHex);
   },

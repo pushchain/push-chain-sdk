@@ -1,3 +1,4 @@
+import { quoteSvmRequest } from './svm-quote';
 /** Prepared-wire agent execution used by the public Solana route. */
 import { getAddress, erc20Abi, type Address, type Hex } from 'viem';
 import { CHAIN } from '../../constants/enums';
@@ -10,8 +11,8 @@ import {
   resolveSvmContext,
   type SvmMetadataProvider,
 } from '../management/svm-context';
-import { composeAgwSvmAction } from './svm-outbound';
-import { prepareAgwSvmInstruction } from './svm-instruction';
+import { buildAgwSvmAction } from './svm-outbound';
+import { resolveAgwSvmInstruction } from './svm-instruction';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import { verifySvmWallet } from '../management/svm';
 import type { SvmPayloadAccount } from './svm-payload';
@@ -73,7 +74,7 @@ export async function prepareSvmAgentExecution(
       AGENTIC_ERROR_CODE.INVALID_RULE,
       'stored SVM context does not cover the wallet and every asset'
     );
-  const instruction = prepareAgwSvmInstruction(
+  const instruction = resolveAgwSvmInstruction(
     {
       wallet: input.wallet,
       chain,
@@ -83,24 +84,24 @@ export async function prepareSvmAgentExecution(
     },
     stored.config
   );
-  const quote = await runtime.quoteOutbound(
+  const quote = await quoteSvmRequest(
+    runtime,
+    snap,
+    input.wallet,
     getAddress(input.token),
+    chain,
     input.gasLimit,
-    chain
+    input.amount
   );
-  const call = composeAgwSvmAction(
-    {
-      ...input,
-      gateway: gen.addresses.gateway,
-      recipient: instruction.recipient,
-      payload: instruction.payload,
-      gasLimit: quote.gasLimitUsed,
-      protocolFee: quote.protocolFee,
-      maxPCForGas: quote.nativeValueForGas,
-    },
-    stored.config,
-    runtime.nowSeconds()
-  );
+  const call = buildAgwSvmAction({
+    ...input,
+    gateway: gen.addresses.gateway,
+    recipient: instruction.recipient,
+    payload: instruction.payload,
+    gasLimit: quote.gasLimitUsed,
+    protocolFee: quote.protocolFee,
+    maxPCForGas: quote.nativeValueForGas,
+  });
   const walletPc = await runtime.reader.getBalance({
     address: input.wallet,
     blockNumber: snap.blockNumber,

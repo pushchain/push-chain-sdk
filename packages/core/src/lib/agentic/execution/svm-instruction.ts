@@ -9,8 +9,8 @@ import {
 } from './svm-payload';
 import type { Address } from 'viem';
 
-/** Existing IDL encoding, with the wallet's authority and strict policy checks. */
-export function prepareAgwSvmInstruction(
+/** Resolve IDL accounts with the wallet authority; granted permissions are checked by URP. */
+export function resolveAgwSvmInstruction(
   input: {
     wallet: Address;
     chain: CHAIN;
@@ -27,7 +27,6 @@ export function prepareAgwSvmInstruction(
       input.accounts,
       input.instructionData
     );
-    validateAgwSvmPayload(terms, program, payload);
     return {
       recipient: program,
       payload,
@@ -49,11 +48,20 @@ export function prepareAgwSvmInstruction(
     resolved.accounts,
     resolved.ixData
   );
-  validateAgwSvmPayload(terms, program, payload);
   return {
     recipient: program,
     payload,
     accounts: resolved.accounts,
     instructionData: resolved.ixData,
   };
+}
+
+/** Diagnostic-only local policy preview. Sends use the resolver and contract enforcement. */
+export function prepareAgwSvmInstruction(
+  input: Parameters<typeof resolveAgwSvmInstruction>[0],
+  terms: SvmTermsWire
+) {
+  const resolved = resolveAgwSvmInstruction(input, terms);
+  validateAgwSvmPayload(terms, resolved.recipient, resolved.payload);
+  return resolved;
 }

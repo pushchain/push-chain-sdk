@@ -5,7 +5,7 @@ import { readNativeCounters } from '@e2e/shared/agw-state';
  * The stale-spend race (intervening agent spend) is verified against the
  * real contracts in the local harness; it cannot be timed reliably live.
  */
-import { v4 } from '../../src/lib/agentic/contracts/v4';
+import { v5 } from '../../src/lib/agentic/contracts/v5';
 import { getAddress, parseEther, type Address, type Hex } from 'viem';
 import { AGENTIC_ERROR_CODE } from '../../src/lib/agentic/errors';
 import {
@@ -33,7 +33,7 @@ d('agw lifecycle', () => {
   const count = () =>
     f.push.readContract({
       address: wallet,
-      abi: v4.abis.wallet,
+      abi: v5.abis.wallet,
       functionName: 'checkpointCount',
     }) as Promise<bigint>;
 

@@ -1,6 +1,6 @@
 # Agentic wallets on Push Chain
 
-This guide describes AGW v4 in this SDK branch. Donut is the configured deployment. Native Push, EVM destination rules and named-IDL Solana devnet rules are supported. Solana-origin signers can already act through their Push UEA.
+This guide describes AGW v5 in this SDK branch. Donut is the configured deployment. Native Push, EVM destination rules and named-IDL Solana devnet rules are supported. Solana-origin signers can already act through their Push UEA.
 
 An AGW holds assets. Its owner grants or revokes rules and can execute unrestricted owner calls. An agent executes through its own Push identity, and each agent call must pass the granted policy. A Push-native key's identity is its EOA; an external key's identity is its Push UEA for that origin chain.
 
@@ -153,6 +153,24 @@ Replacement asserts the old spend, revokes and grants in one owner transaction. 
 
 `rules.list()` returns enabled rules, including enabled rules whose expiry has passed. Expiry is enforced on execution. Revoked-history reconstruction is outside v1. Rule IDs are wallet-scoped; do not treat an ID alone as a globally unique permission.
 
+## Wallet labels
+
+Donut uses the v5 factory `0x8137F96A50EBF41d904e3678c84c391a0D1BCcc5`. Wallet labels are stored on-chain; `info()` and `list()` read the current value. An empty deployment label defaults to `AGW <owner wallet index + 1>`.
+
+```ts
+async function renameWallet(owner: PushChain, wallet: Address) {
+  const handle = owner.agentic.wallet(wallet);
+  const renamed = await handle.setLabel('Trading');
+  const info = await handle.info();
+  const reset = await handle.setLabel('');
+  return { renamed, info, reset };
+}
+```
+
+Create and rename labels accept at most **64 UTF-8 bytes**, including spaces; 16 four-byte emoji fit. Empty rename resets the default. The SDK renames through the owner door for EOA and UEA owners, emits progress through the supplied hook and records one owner-action checkpoint. The contract's direct `setLabel` call itself records no checkpoint. Agent and read-only clients cannot rename.
+
+New wallets use v5 only. Existing v4 wallets do not acquire label functions and are unsupported by this SDK adapter. Wallet predictions and EIP-712 intent domains use the new factory; do not reuse old predicted addresses or signatures. On relayed signed deployment, the contract does not include the cosmetic label in `OwnerIntent`; the owner can correct it afterward.
+
 ## Grant an EVM destination rule
 
 The destination token identifies an asset on that destination chain. The SDK resolves the mapped PRC20 held by the AGW. Limits use the token's smallest units; `maxGasPerCall` uses PC wei. A rule may list several assets, but each outbound request moves one listed token.
@@ -220,11 +238,12 @@ async function sendToSepolia(agent: PushChain, counter: Address, amount: bigint)
     to: { address: counter, chain: SEPOLIA },
     data: [{ to: counter, value: BigInt(0), data: '0xd09de08a' }],
     funds: { amount, token: ETH },
+    gasLimit: BigInt(2_000_000), // includes fresh CEA finalization in this example
   });
 }
 ```
 
-The 20/21-PC values are example budgets, not fee estimates. Fees and gas are quoted for the current request. Approval safety is the application's responsibility; the SDK validates structure and contract limits rather than deciding whether a grant is appropriate.
+The current core default of 500,000 destination gas was insufficient for fresh Sepolia CEA finalization in our live test (~1.3 million estimated). The example supplies a bounded two-million-gas limit; choose a budget appropriate for your destination calls. The 20/21-PC values are example budgets, not fee estimates. Fees and gas are quoted for the current request. Approval safety is the application's responsibility; the SDK validates structure and contract limits rather than deciding whether a grant is appropriate.
 
 ## Wait, replay and recover
 
@@ -311,12 +330,37 @@ These examples assume the supplied IDL describes `receive_sol` with those accoun
 
 Supported rule layouts have an eight-byte discriminator, top-level non-optional accounts, and fixed-width primitive/fixed-array arguments. Field comparisons support exact bytes (at most 32 bytes), unsigned integer min/max (up to `u64`), and same-width unsigned ratio floors. Variable-length or nested/defined argument layouts and optional/nested accounts are rejected before signing. An IDL describes encoding; it does not prove what the program does with those accounts.
 
-Public SVM sends support one instruction encoded with `encodeTxData` (which registers the IDL), or data matching an already registered IDL. Arrays and funds-only sends are rejected. Reads return `DecodedSolanaRule` with `format: 'decoded'` and exact stored program/account/data constraints. They cannot reconstruct an IDL; use a named `SolanaRule` input to add or replace it. Native/EVM decoded rules remain reusable in raw-offset form.
+Agent SVM sends require one instruction encoded with `encodeTxData` (which registers the IDL), or data matching an already registered IDL. Instruction arrays remain unsupported. Owners can also send funds without any IDL or instruction:
+
+```ts
+async function transferSolanaFunds(ownerWallet: PushChain, recipient: string) {
+  return ownerWallet.universal.sendTransaction({
+    to: { address: recipient, chain: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET },
+    value: BigInt(10_000), // native SOL, in lamports
+  });
+}
+
+async function transferSolanaUsdt(ownerWallet: PushChain, recipient: string) {
+  return ownerWallet.universal.sendTransaction({
+    to: { address: recipient, chain: PushChain.CONSTANTS.CHAIN.SOLANA_DEVNET },
+    funds: {
+      token: PushChain.CONSTANTS.MOVEABLE.TOKEN.SOLANA_DEVNET.USDT,
+      amount: BigInt(1), // 0.000001 USDT at six decimals
+    },
+  });
+}
+```
+
+`ownerWallet` is initialized with the owner signer and `agenticWallet`. As with instruction sends, fund the wallet with PC/PRC20 and establish a separate bounded gateway allowance. Transfers use an empty payload and the requested recipient; the SDK applies core’s Solana finalization/rent budget using the wallet identity. Send either `value` for SOL or `funds` for a token, not both. A zero-amount funds-only send is rejected.
+
+Funds-only responses expose `agentic.destinationTransfer` with the recipient, burned Push PRC20 token, and amount. They have no `destinationInstruction`; replay uses the same representation. Native SOL transfers show their amount in `value`, while SPL transfers carry the amount in transfer metadata and show zero native value.
+
+Structural/context/funding failures are SDK `AgenticError`s. Granted permissions, expiry and spend limits are enforced by the contract. Refusals obtained during contract simulation or execution are mapped to `AgenticRevertError` with `decodedError`; simulation failure does not broadcast a transaction. Reads return `DecodedSolanaRule` with `format: 'decoded'` and exact stored program/account/data constraints. They cannot reconstruct an IDL; use a named `SolanaRule` input to add or replace it. Native/EVM decoded rules remain reusable in raw-offset form.
 
 Responses expose `agentic.destinationInstruction` and the wallet’s destination CEA. Check `externalStatus` and replay the same transaction hash after a timeout.
 
 ## Current API boundaries
 
-Rule `ref` is removed from public inputs and records; supplying it is rejected. Checkpoint `ref` is a separate existing event field and is preserved. Editable `setLabel` awaits a verified contract interface/deployment. Contract permission enforcement is already present: unauthorized actions under the supplied rule are rejected, and the SDK maps the errors. Revoked history, public spend records, public generation context and `compileCard` are outside standalone v1. Omitted native PC value limits are zero. Native argument-index and raw-offset inputs are both supported; decoded native/EVM rules preserve exact offsets.
+Rule `ref` is removed from public inputs and records; supplying it is rejected. Checkpoint `ref` is a separate existing event field and is preserved. Editable labels are implemented against the checked v5 deployment. Contract permission enforcement is already present: unauthorized actions under the supplied rule are rejected, and the SDK maps the errors. Revoked history, public spend records, public generation context and `compileCard` are outside standalone v1. Omitted native PC value limits are zero. Native argument-index and raw-offset inputs are both supported; decoded native/EVM rules preserve exact offsets.
 
 Use `PushChain.CONSTANTS.READ.CHAIN.WEB2` for Web2 reads. Its value is `web2`; the old literal `web2:https` is still accepted and normalizes to the same wire identity. Literal comparisons against the older spelling need updating. Web2 is a read source, not a transaction destination.

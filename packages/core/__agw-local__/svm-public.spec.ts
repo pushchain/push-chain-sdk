@@ -8,9 +8,9 @@ import {
   type Address,
   type Hex,
 } from 'viem';
-import { CHAIN, PushChain, type SolanaRule } from '../src';
+import { CHAIN, PushChain, AgenticRevertError, type SolanaRule } from '../src';
 import type { AgenticRuntime } from '../src/lib/agentic/runtime';
-import { v4 } from '../src/lib/agentic/contracts/v4';
+import { v5 } from '../src/lib/agentic/contracts/v5';
 import { clearRegistry } from '../src/lib/orchestrator/svm-idl/registry';
 import { startHarness, type Harness } from './harness';
 const program = new PublicKey(Buffer.alloc(32, 51)).toBase58();
@@ -35,7 +35,7 @@ const TOKEN = parseAbi([
 const CORE = parseAbi(['function setGasToken(string,address)']);
 const rt = (c: PushChain) =>
   (c as unknown as { agenticRuntime: AgenticRuntime }).agenticRuntime;
-describe('public Solana IDL rules on actual v4', () => {
+describe('public Solana IDL rules on actual v5', () => {
   let h: Harness, owner: PushChain, token: Address;
   beforeAll(async () => {
     h = await startHarness(18561);
@@ -119,9 +119,9 @@ describe('public Solana IDL rules on actual v4', () => {
       }),
     });
     await h.write(0, token, TOKEN, 'mint', [made.wallet, BigInt(20)]);
-    await h.write(0, made.wallet, v4.abis.wallet, 'execute', [
+    await h.write(0, made.wallet, v5.abis.wallet, 'execute', [
       `0x${'00'.repeat(32)}`,
-      v4.packSingle({
+      v5.packSingle({
         target: token,
         value: BigInt(0),
         data: encodeFunctionData({
@@ -170,7 +170,10 @@ describe('public Solana IDL rules on actual v4', () => {
         data: data(BigInt(6)),
         value: BigInt(5),
       })
-    ).rejects.toThrow('SvmDataCeilingExceeded');
+    ).rejects.toMatchObject({
+      name: 'AgenticRevertError',
+      decodedError: { name: 'PolicyCheckReverted(SvmDataCeilingExceeded)' },
+    });
   });
   it('owner sends use the wallet CEA without requiring an agent rule', async () => {
     const made = await owner.agentic.create('svm-owner', { rules: [] });
@@ -198,6 +201,133 @@ describe('public Solana IDL rules on actual v4', () => {
       (await h.publicClient.getTransactionReceipt({ hash: tx.hash as Hex }))
         .status
     ).toBe('success');
+  });
+  it('owner funds-only sends use an empty payload and preserve transfer metadata in replay', async () => {
+    const made = await owner.agentic.create('svm-owner-transfer', {
+      rules: [],
+    });
+    await h.publicClient.waitForTransactionReceipt({
+      hash: await h.wallets[4].sendTransaction({
+        to: made.wallet,
+        value: BigInt(10) ** BigInt(18),
+        account: h.wallets[4].account!,
+        chain: h.wallets[4].chain,
+      }),
+    });
+    await h.write(0, token, TOKEN, 'mint', [made.wallet, BigInt(10)]);
+    await h.write(0, made.wallet, v5.abis.wallet, 'execute', [
+      `0x${'00'.repeat(32)}`,
+      v5.packSingle({
+        target: token,
+        value: BigInt(0),
+        data: encodeFunctionData({
+          abi: TOKEN,
+          functionName: 'approve',
+          args: [h.addresses.gateway, BigInt(10)],
+        }),
+      }),
+    ]);
+    const sender = await h.client(0, { agenticWallet: made.wallet });
+    configure(sender);
+    clearRegistry(); // A simple transfer needs no program IDL.
+    const tx = await sender.universal.sendTransaction({
+      to: { chain: CHAIN.SOLANA_DEVNET, address: program },
+      value: BigInt(5),
+    });
+    expect(tx.to).toBe('0x' + Buffer.alloc(32, 51).toString('hex'));
+    expect(tx.value).toBe(BigInt(5));
+    expect(tx.agentic?.destinationInstruction).toBeUndefined();
+    expect(tx.agentic?.destinationTransfer).toMatchObject({
+      token,
+      amount: BigInt(5),
+    });
+    const raw: typeof tx = {
+      ...tx,
+      agentic: undefined,
+      from: tx.raw!.from,
+      to: tx.raw!.to,
+      data: tx.raw!.data,
+      route: 'UOA_TO_PUSH',
+    };
+    const { adaptTrackedResponse } = await import(
+      '../src/lib/agentic/response'
+    );
+    await adaptTrackedResponse(rt(sender), raw);
+    expect(raw.to).toBe(tx.to);
+    expect(raw.data).toBe('0x');
+    expect(raw.value).toBe(BigInt(5));
+    expect(raw.agentic?.destinationTransfer).toEqual(
+      tx.agentic?.destinationTransfer
+    );
+    expect(raw.route).toBe('UOA_TO_CEA');
+    const baseReader = rt(sender).reader;
+    const unavailable = {
+      ...baseReader,
+      readContract: async (
+        params: Parameters<typeof baseReader.readContract>[0]
+      ) => {
+        if (params.functionName === 'gasTokenPRC20ByChainNamespace')
+          throw new Error('historical metadata unavailable');
+        return baseReader.readContract(params);
+      },
+    };
+    const fallback: typeof tx = {
+      ...tx,
+      agentic: undefined,
+      from: tx.raw!.from,
+      to: tx.raw!.to,
+      data: tx.raw!.data,
+      route: 'UOA_TO_PUSH',
+    };
+    await adaptTrackedResponse(
+      { network: rt(sender).network, reader: unavailable },
+      fallback
+    );
+    expect(fallback.route).toBe('UOA_TO_CEA');
+    expect(fallback.agentic?.destinationTransfer).toBeUndefined();
+
+    expect(
+      (await h.publicClient.getTransactionReceipt({ hash: tx.hash as Hex }))
+        .status
+    ).toBe('success');
+  });
+  it('actual policy refusals return mapped contract errors and preserve counters', async () => {
+    const made = await owner.agentic.create('svm-policy-errors', {
+      rules: [rule()],
+    });
+    await h.publicClient.waitForTransactionReceipt({
+      hash: await h.wallets[4].sendTransaction({
+        to: made.wallet,
+        value: BigInt(10) ** BigInt(18),
+        account: h.wallets[4].account!,
+        chain: h.wallets[4].chain,
+      }),
+    });
+    const agent = await h.client(1, { agenticWallet: made.wallet });
+    configure(agent);
+    const handle = owner.agentic.wallet(made.wallet),
+      before = await handle.rules.get(made.rulesIds[0]);
+    const error = await agent.universal
+      .sendTransaction({
+        to: { chain: CHAIN.SOLANA_DEVNET, address: program },
+        data: PushChain.utils.helpers.encodeTxData({
+          abi: idl,
+          functionName: 'deposit',
+          args: [BigInt(6)],
+        }),
+      })
+      .catch((e) => e);
+    expect(error).toBeInstanceOf(AgenticRevertError);
+    expect(error.decodedError.name).toBe(
+      'PolicyCheckReverted(SvmDataCeilingExceeded)'
+    );
+    expect(await handle.rules.get(made.rulesIds[0])).toEqual(before);
+    await expect(
+      agent.universal.sendTransaction({
+        to: { chain: CHAIN.SOLANA_DEVNET, address: program },
+        value: BigInt(1),
+      })
+    ).rejects.toMatchObject({ code: 'INVALID_RULE' });
   });
   it('SPL and output mints derive protected wallet ATAs through public grants', async () => {
     const mint = new PublicKey(Buffer.alloc(32, 68)).toBase58();
@@ -258,6 +388,60 @@ describe('public Solana IDL rules on actual v4', () => {
     expect(read.rule.assets[0].maxTotal).toBe(
       BigInt(2) ** BigInt(256) - BigInt(1)
     );
+    await h.publicClient.waitForTransactionReceipt({
+      hash: await h.wallets[4].sendTransaction({
+        to: made.wallet,
+        value: BigInt(10) ** BigInt(18),
+        account: h.wallets[4].account!,
+        chain: h.wallets[4].chain,
+      }),
+    });
+    await h.write(0, spl, TOKEN, 'mint', [made.wallet, BigInt(10)]);
+    await h.write(0, made.wallet, v5.abis.wallet, 'execute', [
+      `0x${'00'.repeat(32)}`,
+      v5.packSingle({
+        target: spl,
+        value: BigInt(0),
+        data: encodeFunctionData({
+          abi: TOKEN,
+          functionName: 'approve',
+          args: [h.addresses.gateway, BigInt(10)],
+        }),
+      }),
+    ]);
+    const sender = await h.client(0, { agenticWallet: made.wallet });
+    Object.assign(rt(sender), {
+      svmMetadata: rt(source).svmMetadata,
+      resolvePrc20: rt(source).resolvePrc20,
+      quoteOutbound: rt(source).quoteOutbound,
+    });
+    const quote = jest.spyOn(rt(sender), 'quoteOutbound');
+    const tx = await sender.universal.sendTransaction({
+      to: { chain: CHAIN.SOLANA_DEVNET, address: program },
+      funds: {
+        token: {
+          address: mint,
+          symbol: 'MOCK',
+          decimals: 6,
+          mechanism: 'approve',
+        },
+        amount: BigInt(5),
+      },
+    });
+    expect(tx.value).toBe(BigInt(0));
+    expect(tx.agentic?.destinationTransfer).toMatchObject({
+      token: spl,
+      amount: BigInt(5),
+    });
+    expect(quote.mock.calls[0][3]).toMatchObject({
+      wallet: made.wallet,
+      splMintBase58: mint,
+      burnAmount: BigInt(5),
+    });
+    expect(
+      (await h.publicClient.getTransactionReceipt({ hash: tx.hash as Hex }))
+        .status
+    ).toBe('success');
   });
   it('invalid named input and removed ref never submit a transaction', async () => {
     const before = await h.publicClient.getTransactionCount({
@@ -278,5 +462,67 @@ describe('public Solana IDL rules on actual v4', () => {
         address: h.wallets[0].account!.address,
       })
     ).toBe(before);
+  });
+  it('the contract rejects an outbound above its PC cap through the same error mapper', async () => {
+    const input = rule();
+    input.maxGasPerCall = BigInt(1);
+    const made = await owner.agentic.create('svm-pc-cap', { rules: [input] });
+    await h.publicClient.waitForTransactionReceipt({
+      hash: await h.wallets[4].sendTransaction({
+        to: made.wallet,
+        value: BigInt(10) ** BigInt(18),
+        account: h.wallets[4].account!,
+        chain: h.wallets[4].chain,
+      }),
+    });
+    const agent = await h.client(1, { agenticWallet: made.wallet });
+    configure(agent);
+    const error = await agent.universal
+      .sendTransaction({
+        to: { chain: CHAIN.SOLANA_DEVNET, address: program },
+        data: PushChain.utils.helpers.encodeTxData({
+          abi: idl,
+          functionName: 'deposit',
+          args: [BigInt(0)],
+        }),
+      })
+      .catch((e) => e);
+    expect(error).toBeInstanceOf(AgenticRevertError);
+    expect(error.decodedError.name).toBe(
+      'PolicyCheckReverted(PCValueExceedsCap)'
+    );
+  });
+  it('expired SVM permissions are refused by the actual contract rather than a local policy check', async () => {
+    const input = rule();
+    input.validUntil =
+      Number((await h.publicClient.getBlock()).timestamp) + 120;
+    const made = await owner.agentic.create('svm-expired', { rules: [input] });
+    await h.publicClient.waitForTransactionReceipt({
+      hash: await h.wallets[4].sendTransaction({
+        to: made.wallet,
+        value: BigInt(10) ** BigInt(18),
+        account: h.wallets[4].account!,
+        chain: h.wallets[4].chain,
+      }),
+    });
+    const agent = await h.client(1, { agenticWallet: made.wallet });
+    configure(agent);
+    await h.publicClient.request({
+      method: 'evm_setNextBlockTimestamp' as never,
+      params: [input.validUntil + 1] as never,
+    });
+    await h.publicClient.request({ method: 'evm_mine' as never });
+    const error = await agent.universal
+      .sendTransaction({
+        to: { chain: CHAIN.SOLANA_DEVNET, address: program },
+        data: PushChain.utils.helpers.encodeTxData({
+          abi: idl,
+          functionName: 'deposit',
+          args: [BigInt(0)],
+        }),
+      })
+      .catch((e) => e);
+    expect(error).toBeInstanceOf(AgenticRevertError);
+    expect(error.decodedError.name).toBe('PolicyCheckReverted(RulesExpired)');
   });
 });

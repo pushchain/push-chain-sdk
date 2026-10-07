@@ -1,4 +1,5 @@
-import { getAddress, zeroAddress } from 'viem';
+import { PublicKey } from '@solana/web3.js';
+import { getAddress, hexToBytes, zeroAddress } from 'viem';
 import type { Address, Hex } from 'viem';
 import { CHAIN, VM } from '../../constants/enums';
 import { CHAIN_INFO } from '../../constants/chain';
@@ -61,9 +62,13 @@ export async function preparePublicSvmRule(
       /^0x0{64}$/.test(source) ||
       source === '11111111111111111111111111111111';
     const key = native ? undefined : svmKey(source);
+    const sourceToken =
+      typeof asset.token === 'string' && key
+        ? new PublicKey(hexToBytes(key)).toBase58()
+        : asset.token;
     const token = native
       ? await readGasPrc20(snap, chain)
-      : runtime.resolvePrc20(asset.token, chain);
+      : runtime.resolvePrc20(sourceToken, chain);
     if (caps.some((c) => c.token === getAddress(token)))
       throw svmInvalid('duplicate SVM asset');
     caps.push({
@@ -82,7 +87,8 @@ export async function preparePublicSvmRule(
     rule.chainNamespace,
     caps,
     metadata,
-    outputs
+    outputs,
+    runtime.network
   );
   // Validate the PRC20 actually represents the requested source mint, not merely its chain.
   const { resolveSvmAssets } = await import('./svm-context');
@@ -90,7 +96,8 @@ export async function preparePublicSvmRule(
     snap,
     rule.chainNamespace,
     caps,
-    metadata
+    metadata,
+    runtime.network
   );
   resolved.forEach((a, i) => {
     if (

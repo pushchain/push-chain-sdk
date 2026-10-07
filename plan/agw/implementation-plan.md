@@ -1,4 +1,8 @@
-# Complete AGW SDK implementation plan
+# AGW SDK implementation plan
+
+**Current implementation, October 7:** runtime and contract harness use v5 source `2e61e13`. Public named-IDL SVM, owner funds-only sends and contract error mapping are implemented. Stored wallet labels and `setLabel` are now implemented. Ref, compileCard and historical reads remain outside standalone v1. See [current status](implementation-status.md) and [v5 acceptance](research/v5-implementation-2026-10-07/README.md); older dated steps and validation counts below describe the original handoff.
+
+## Original handoff — October 6 (historical)
 
 Updated October 6, 2026. The v4-only native/EVM implementation uses deployed source e8db748 and the Donut manifest. Old runtime/test adapters and single-asset codecs are removed. The unfiltered unit suite passes 1,981 tests; all 75 actual-contract Anvil cases pass; build and four typechecks pass. All 25 registered AGW live scenarios pass across selected runs; remaining work is public SVM integration and release scope decisions. [Current acceptance and remaining coverage](research/live-acceptance-2026-10-06/README.md).
 

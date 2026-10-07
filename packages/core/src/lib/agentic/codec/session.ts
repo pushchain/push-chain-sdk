@@ -6,13 +6,13 @@ import {
   type Address,
   type Hex,
 } from 'viem';
-import { AGW_ABI } from '../contracts/abi/v4';
+import { AGW_ABI } from '../contracts/abi/v5';
 import { agentConfig } from './ids';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 
 /**
  * The smartsessions `Session` a grant carries (DataTypes.sol:56-86, pinned
- * v4). The wallet overwrites `salt` with its grant nonce, so the value
+ * v5). The wallet overwrites `salt` with its grant nonce, so the value
  * sent is irrelevant; it is always zero here.
  */
 export interface SessionWire {
@@ -44,7 +44,7 @@ const ZERO_SALT = `0x${'00'.repeat(32)}` as Hex;
 
 export const ENVELOPE_VERSION = 1;
 
-/** V4 URP envelope: abi.encode(uint16(1), string chainNamespace, bytes body). */
+/** V5 URP envelope: abi.encode(uint16(1), string chainNamespace, bytes body). */
 export function encodeEnvelope(chainNamespace: string, body: Hex): Hex {
   return encodeAbiParameters(
     [{ type: 'uint16' }, { type: 'string' }, { type: 'bytes' }],

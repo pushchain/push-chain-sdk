@@ -9,7 +9,7 @@
  *                    svm-r1, svm-r2r3, pc20, push, cross-chain, read,
  *                    known-fail, agw, agw-svm-wire, agw-svm-replay
  *                    (`all` excludes known-fail and AGW groups — ask by name;
- *                    agw uses the checked Donut v4 manifest by default, see __e2e__/agw/_manifest.ts)
+ *                    agw uses the checked Donut v5 manifest by default, see __e2e__/agw/_manifest.ts)
  *   --list           Print the selection and the jest argv, run nothing
  *   --verify         Check every `grep` against the real spec titles and exit
  *                    non-zero if any fragment matches 0 or >1 tests in its file

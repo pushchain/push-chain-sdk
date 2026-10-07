@@ -1,4 +1,4 @@
-/** Real v4 execution/receipts; only origin mapping and Cosmos indexing are fixtures. */
+/** Real v5 execution/receipts; only origin mapping and Cosmos indexing are fixtures. */
 import { getAddress, parseAbi, type Address, type Hex } from 'viem';
 import { CHAIN, type PushChain } from '../src';
 import * as account from '../src/lib/universal/account/account';

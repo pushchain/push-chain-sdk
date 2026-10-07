@@ -1,16 +1,7 @@
-import { PRC20_SOURCE_ABI } from '../contracts/prc20-metadata';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import { emitAgentic } from '../management/common';
-import {
-  bytesToHex,
-  hexToBytes,
-  encodeFunctionData,
-  erc20Abi,
-  getAddress,
-  type Hex,
-} from 'viem';
+import { bytesToHex, hexToBytes, erc20Abi, getAddress, type Hex } from 'viem';
 import type { CHAIN } from '../../constants/enums';
-import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
 import {
   isPC20Reference,
   type UniversalExecuteParams,
@@ -31,6 +22,9 @@ import { svmInvalid, UINT64_MAX } from '../codec/svm-terms';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import { prepareSvmAgentExecution } from './svm-send';
 import { encodeAgwSvmPayload } from './svm-payload';
+import { quoteSvmRequest } from './svm-quote';
+import { buildAgwSvmAction } from './svm-outbound';
+import type { AgenticTxMetadata } from '../agentic.types';
 import { adaptAgenticResponse } from '../response';
 
 /** Public single-instruction route; the contract enforces the supplied rule. */
@@ -50,15 +44,17 @@ export async function sendPublicSvm(
       : AgenticCapability.OWNER_EXECUTE
   );
   const to = p.to as { address: string; chain: CHAIN };
-  const program = svmKey(to.address);
+  const target = svmKey(to.address);
+  if (Array.isArray(p.data))
+    throw svmInvalid('Solana AGW sends do not support instruction arrays');
+  const hasInstruction = p.data !== undefined && p.data !== '0x';
   if (
-    Array.isArray(p.data) ||
-    typeof p.data !== 'string' ||
-    !/^0x(?:[0-9a-fA-F]{2})+$/.test(p.data)
+    hasInstruction &&
+    (typeof p.data !== 'string' || !/^0x(?:[0-9a-fA-F]{2})+$/.test(p.data))
   )
-    throw svmInvalid(
-      'Solana AGW sends require one encoded instruction; arrays and funds-only sends are unsupported'
-    );
+    throw svmInvalid('invalid Solana instruction bytes');
+  if (!hasInstruction && actx.door === 'agent')
+    throw svmInvalid('Solana agent sends require an encoded instruction');
   if (p.funds && isPC20Reference(p.funds.token))
     throw svmInvalid('PC20 SVM outbound is not supported');
   if (p.funds && (p.value ?? BigInt(0)) !== BigInt(0))
@@ -66,9 +62,22 @@ export async function sendPublicSvm(
   const amount = p.funds?.amount ?? p.value ?? BigInt(0);
   if (typeof amount !== 'bigint' || amount < BigInt(0) || amount > UINT64_MAX)
     throw svmInvalid('Solana outbound amount must fit uint64');
+  if (!hasInstruction && amount === BigInt(0))
+    throw svmInvalid('a funds-only send requires a positive amount');
   const metadata = svmMetadata(runtime),
     snap = await Snapshot.at(runtime.reader);
-  let rulesId: Hex | undefined, data: Hex, instruction, cea: Hex;
+  let rulesId: Hex | undefined,
+    data: Hex,
+    instruction:
+      | {
+          recipient: Hex;
+          instructionData: Uint8Array;
+          accounts: readonly { pubkey: Hex; isWritable: boolean }[];
+        }
+      | undefined,
+    cea: Hex;
+  let destinationTransfer: AgenticTxMetadata['destinationTransfer'];
+  let transferValue = BigInt(0);
   const gasLimit = p.gasLimit ?? BigInt(1_000_000);
   if (actx.door === 'agent') {
     const active = await selectRuleForSend(
@@ -101,8 +110,8 @@ export async function sendPublicSvm(
         token,
         amount,
         gasLimit,
-        program,
-        instructionData: hexToBytes(p.data),
+        program: target,
+        instructionData: hexToBytes(p.data as Hex),
       },
       metadata
     );
@@ -113,33 +122,40 @@ export async function sendPublicSvm(
   } else {
     const gateway = await metadata.gateway(to.chain as `solana:${string}`);
     cea = deriveAgwSvmCea(wallet, gateway.program).address;
-    const resolved = resolveSvmCallForCea(
-      {
-        programAddress: program,
-        data: hexToBytes(p.data),
-        senderUea: wallet,
-        targetChain: to.chain,
-      },
-      cea
-    );
-    instruction = {
-      recipient: resolved.targetProgram,
-      instructionData: resolved.ixData,
-      accounts: resolved.accounts,
-    };
+    const resolved = hasInstruction
+      ? resolveSvmCallForCea(
+          {
+            programAddress: target,
+            data: hexToBytes(p.data as Hex),
+            senderUea: wallet,
+            targetChain: to.chain,
+          },
+          cea
+        )
+      : undefined;
+    if (resolved)
+      instruction = {
+        recipient: resolved.targetProgram,
+        instructionData: resolved.ixData,
+        accounts: resolved.accounts,
+      };
     const token = runtime.resolvePrc20(
       p.funds?.token as MoveableToken | undefined,
       to.chain
     );
-    if (
-      (await snap.read<string>(
-        token,
-        PRC20_SOURCE_ABI,
-        'SOURCE_CHAIN_NAMESPACE'
-      )) !== to.chain
-    )
-      throw svmInvalid('outbound asset belongs to another chain');
-    const quote = await runtime.quoteOutbound(token, gasLimit, to.chain);
+    const quote = await quoteSvmRequest(
+      runtime,
+      snap,
+      wallet,
+      token,
+      to.chain,
+      gasLimit,
+      amount
+    );
+    if (!hasInstruction) {
+      destinationTransfer = { recipient: target, token, amount };
+      transferValue = quote.isNative ? amount : BigInt(0);
+    }
     const [pc, balance, allowance] = await Promise.all([
       runtime.reader.getBalance({
         address: wallet,
@@ -162,32 +178,24 @@ export async function sendPublicSvm(
         AGENTIC_ERROR_CODE.GATEWAY_ALLOWANCE_INSUFFICIENT,
         'set the wallet gateway allowance separately'
       );
-    data = gen.contracts.encodeExecute([
-      {
-        target: gen.addresses.gateway,
-        value,
-        data: encodeFunctionData({
-          abi: UNIVERSAL_GATEWAY_PC,
-          functionName: 'sendUniversalTxOutbound',
-          args: [
-            {
-              token,
-              amount,
-              recipient: resolved.targetProgram,
-              payload: encodeAgwSvmPayload(
-                resolved.targetProgram,
-                resolved.accounts,
-                resolved.ixData
-              ),
-              gasLimit: quote.gasLimitUsed,
-              gasPrice: BigInt(0),
-              maxPCForGas: quote.nativeValueForGas,
-              revertRecipient: wallet,
-            },
-          ],
-        }),
-      },
-    ]);
+    const call = buildAgwSvmAction({
+      wallet,
+      gateway: gen.addresses.gateway,
+      token,
+      amount,
+      recipient: target,
+      payload: resolved
+        ? encodeAgwSvmPayload(
+            resolved.targetProgram,
+            resolved.accounts,
+            resolved.ixData
+          )
+        : '0x',
+      gasLimit: quote.gasLimitUsed,
+      protocolFee: quote.protocolFee,
+      maxPCForGas: quote.nativeValueForGas,
+    });
+    data = gen.contracts.encodeExecute([call]);
   }
   const hook = options?.progressHook ?? p.progressHook;
   emitAgentic(
@@ -241,17 +249,23 @@ export async function sendPublicSvm(
     chainNamespace: to.chain,
     chain: to.chain,
     route: 'UOA_TO_CEA',
-    destinationAccount: cea,
-    destinationInstruction: {
-      program: instruction.recipient,
-      data: bytesToHex(instruction.instructionData),
-      accounts: instruction.accounts,
-    },
-    logical: {
-      to: instruction.recipient,
-      data: bytesToHex(instruction.instructionData),
-      value: BigInt(0),
-    },
+    ...(instruction
+      ? {
+          destinationAccount: cea,
+          destinationInstruction: {
+            program: instruction.recipient,
+            data: bytesToHex(instruction.instructionData),
+            accounts: instruction.accounts,
+          },
+        }
+      : { destinationTransfer }),
+    logical: instruction
+      ? {
+          to: instruction.recipient,
+          data: bytesToHex(instruction.instructionData),
+          value: BigInt(0),
+        }
+      : { to: target, data: '0x', value: transferValue },
   });
   emitAgentic(
     runtime,

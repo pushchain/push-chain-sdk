@@ -3,7 +3,7 @@
  * below is computed BY THE PINNED CONTRACTS (pure engine/factory views, or
  * state read back after a real grant), never by the SDK under test.
  *
- *   AGW_WRITE_VECTORS=1 → (re)write src/lib/agentic/__fixtures__/v4-vectors.json
+ *   AGW_WRITE_VECTORS=1 → (re)write src/lib/agentic/__fixtures__/v5-vectors.json
  *   otherwise           → assert the committed file still matches the contracts
  */
 import { execSync } from 'node:child_process';
@@ -30,7 +30,7 @@ const FIXTURE = join(
   'lib',
   'agentic',
   '__fixtures__',
-  'v4-vectors.json'
+  'v5-vectors.json'
 );
 const bigintJson = (v: unknown) =>
   JSON.stringify(
@@ -39,7 +39,7 @@ const bigintJson = (v: unknown) =>
     2
   );
 
-describe('contract-generated AGW vectors (v4)', () => {
+describe('contract-generated AGW vectors (v5)', () => {
   let h: Harness;
   beforeAll(async () => {
     h = await startHarness(18548);

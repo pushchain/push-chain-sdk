@@ -14,6 +14,7 @@ import type { ProgressEvent } from '../progress-hook/progress-hook.types';
 import { getCEAAddress } from '../orchestrator/cea-utils';
 import type { OrchestratorContext } from '../orchestrator/internals/context';
 import { computeUEAOffchain } from '../orchestrator/internals/uea-manager';
+import { ensureSvmFinalizeGasBudgetQuote } from '../orchestrator/internals/svm-rent';
 import { queryOutboundGasFee } from '../orchestrator/internals/gas-calculator';
 import {
   getNativePRC20ForChain,
@@ -67,7 +68,8 @@ export interface AgenticRuntime {
   quoteOutbound(
     prc20: Address,
     gasLimit: bigint,
-    chain: CHAIN
+    chain: CHAIN,
+    svm?: { wallet: Address; splMintBase58?: string; burnAmount: bigint }
   ): Promise<{
     protocolFee: bigint;
     nativeValueForGas: bigint;
@@ -132,8 +134,20 @@ export function createAgenticRuntime(
     },
     signerBalance: () => ctx.pushClient.getBalance(computeUEAOffchain(ctx)),
     getGasPrice: () => ctx.pushClient.getGasPrice(),
-    quoteOutbound: async (prc20, gasLimit, chain) => {
-      const q = await queryOutboundGasFee(ctx, prc20, gasLimit, chain);
+    quoteOutbound: async (prc20, gasLimit, chain, svm) => {
+      let q = await queryOutboundGasFee(ctx, prc20, gasLimit, chain);
+      if (svm) {
+        q = await ensureSvmFinalizeGasBudgetQuote({
+          ctx,
+          ueaAddress: svm.wallet,
+          targetChain: chain,
+          prc20Token: prc20,
+          quote: q,
+          splMintBase58: svm.splMintBase58,
+          burnAmount: svm.burnAmount,
+          pathTag: 'AGW_SVM',
+        });
+      }
       return {
         protocolFee: q.protocolFee,
         nativeValueForGas: q.nativeValueForGas,

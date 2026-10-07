@@ -6,7 +6,7 @@ import { encodeUniversalTerms } from '../codec/universal-terms';
 import { buildSession, encodeEnvelope, encodeSession } from '../codec/session';
 import { prepareRules } from '../codec/rules';
 import { validateUniversalRuleShape } from '../codec/universal';
-import { V4_CAPABILITIES } from '../deployments';
+import { V5_CAPABILITIES } from '../deployments';
 import { AGENTIC_ERROR_CODE } from '../errors';
 import { internalAgenticUtils } from '../utils';
 import type { NativeRule, UniversalRule } from '../agentic.types';
@@ -18,7 +18,7 @@ const ctx = {
   pushChainNamespace: PUSH_NS,
   validator: ADDR.validator,
   rulesPolicy: ADDR.policy,
-  capabilities: V4_CAPABILITIES,
+  capabilities: V5_CAPABILITIES,
   nowSeconds: NOW,
   forbiddenTargets: [
     ADDR.factory,
@@ -285,7 +285,7 @@ describe('internal generation codecs (pure)', () => {
     );
   });
 
-  it('pure decoding resolves known v4 assets and preserves the exact beneficiary offset', () => {
+  it('pure decoding resolves known v5 assets and preserves the exact beneficiary offset', () => {
     const inputToken = MOVEABLE_TOKEN_CONSTANTS.ETHEREUM_SEPOLIA.USDC;
     const prc20 = getPRC20Address(inputToken, {
       network: PUSH_NETWORK.TESTNET_DONUT,

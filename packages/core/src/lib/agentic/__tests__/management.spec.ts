@@ -14,8 +14,8 @@ import {
   AGW_ABI,
   AGW_FACTORY_ABI,
   UNIVERSAL_RULES_POLICY_ABI,
-} from '../contracts/abi/v4';
-import { v4 } from '../contracts/v4';
+} from '../contracts/abi/v5';
+import { v5 } from '../contracts/v5';
 import { deriveWallet, rulesId as computeRulesId } from '../codec/ids';
 import { AGENTIC_ERROR_CODE } from '../errors';
 import { createWallet } from '../management/create';
@@ -41,13 +41,13 @@ const rule = (agent = ADDR.agent): NativeRule => ({
 const granted = (wallet: `0x${string}`, id: Hex, block = BigInt(101)) =>
   log(
     wallet,
-    v4.events.rulesGranted,
+    v5.events.rulesGranted,
     { rulesId: id, chainHash: `0x${'00'.repeat(32)}` },
     { mode: 1, chainNamespace: PUSH_NS },
     block
   );
 const revoked = (wallet: `0x${string}`, id: Hex) =>
-  log(wallet, v4.events.rulesRevoked, { rulesId: id }, {}, BigInt(101));
+  log(wallet, v5.events.rulesRevoked, { rulesId: id }, {}, BigInt(101));
 
 function withLogs(logs: Log[], over = {}) {
   const r = fakeResponse(over);
@@ -82,7 +82,7 @@ describe('agentic.create', () => {
         withLogs([
           log(
             ADDR.factory,
-            v4.events.walletDeployed,
+            v5.events.walletDeployed,
             { owner: ADDR.owner, index: BigInt(0), wallet: nextWallet },
             { label: 'ops' },
             BigInt(101)
@@ -127,7 +127,7 @@ describe('agentic.create', () => {
         return withLogs([
           log(
             ADDR.factory,
-            v4.events.walletDeployed,
+            v5.events.walletDeployed,
             { owner: ADDR.owner, index: BigInt(0), wallet: nextWallet },
             { label: '' },
             BigInt(101)
@@ -184,7 +184,7 @@ describe('agentic.create', () => {
         withLogs([
           log(
             ADDR.factory,
-            v4.events.walletDeployed,
+            v5.events.walletDeployed,
             { owner: ADDR.owner, index: BigInt(1), wallet: elsewhere },
             { label: '' },
             BigInt(101)
@@ -204,7 +204,7 @@ describe('agentic.create', () => {
         withLogs([
           log(
             ADDR.factory,
-            v4.events.walletDeployed,
+            v5.events.walletDeployed,
             { owner: ADDR.owner, index: BigInt(0), wallet: nextWallet },
             { label: '' },
             BigInt(101)
@@ -232,7 +232,7 @@ describe('agentic.create', () => {
       receipt([
         log(
           ADDR.factory,
-          v4.events.walletDeployed,
+          v5.events.walletDeployed,
           { owner: ADDR.owner, index: BigInt(0), wallet: nextWallet },
           { label: 'ops' },
           BigInt(101)
@@ -361,7 +361,8 @@ describe('agentic.create', () => {
     const rt = mockRuntime(fake, {
       signer: ADDR.owner,
       execute: (async () => {
-        fake.addWallet(ADDR.owner, 'competing-create');
+        const winner = fake.addWallet(ADDR.owner, 'competing-create');
+        winner.label = 'this-create'; // mutable view cannot erase the deploy evidence
         throw new Error('opaque sender failure');
       }) as never,
     });
@@ -377,6 +378,20 @@ describe('agentic.create', () => {
         competingLabel: 'competing-create',
       },
     });
+  });
+
+  it('a later rename alone does not establish a competing creation', async () => {
+    const fake = new FakeChain();
+    const failure = new Error('opaque sender failure');
+    const rt = mockRuntime(fake, {
+      signer: ADDR.owner,
+      execute: (async () => {
+        const w = fake.addWallet(ADDR.owner, 'this-create');
+        w.label = 'renamed-after-deploy';
+        throw failure;
+      }) as never,
+    });
+    await expect(createWallet(rt, 'this-create', { rules: [rule()] })).rejects.toBe(failure);
   });
 
   it('a slot that is already deployed is refused before signing', async () => {
@@ -453,7 +468,7 @@ describe('rules.add / rules.revoke', () => {
     ).toEqual(ids);
     const sent = exec.mock.calls[0][0] as { to: string; data: Hex };
     expect(Array.isArray(sent.data)).toBe(false);
-    const outer = v4.decodeWalletCall(sent.data) as {
+    const outer = v5.decodeWalletCall(sent.data) as {
       kind: string;
       calls: { target: string; data: Hex }[];
     };
@@ -494,7 +509,7 @@ describe('rules.add / rules.revoke', () => {
     await revokeRules(rt, gen(), w.address, [ruleId(1), ruleId(2)]);
     const sent = exec.mock.calls[0][0] as { to: string; data: Hex };
     expect(sent.to).toBe(w.address);
-    const decoded = v4.decodeWalletCall(sent.data) as {
+    const decoded = v5.decodeWalletCall(sent.data) as {
       kind: string;
       calls: { target: string; data: Hex }[];
     };
@@ -548,7 +563,7 @@ describe('rules.update — one owner batch: assert → revoke → grant', () => 
     expect(exec).toHaveBeenCalledTimes(1);
     const sent = exec.mock.calls[0][0] as { to: string; data: Hex };
     expect(Array.isArray(sent.data)).toBe(false); // never a sequential multi-tx batch
-    const outer = v4.decodeWalletCall(sent.data) as {
+    const outer = v5.decodeWalletCall(sent.data) as {
       kind: string;
       mode: Hex;
       calls: { target: string; data: Hex }[];
@@ -614,7 +629,7 @@ describe('rules.update — one owner batch: assert → revoke → grant', () => 
       rules: [{ rulesId: ruleId(1), rule: rule() }],
     });
     const data = (exec.mock.calls[0][0] as { data: Hex }).data;
-    const outer = v4.decodeWalletCall(data) as { calls: { data: Hex }[] };
+    const outer = v5.decodeWalletCall(data) as { calls: { data: Hex }[] };
     const assertion = decodeFunctionData({
       abi: UNIVERSAL_RULES_POLICY_ABI,
       data: outer.calls[0].data,

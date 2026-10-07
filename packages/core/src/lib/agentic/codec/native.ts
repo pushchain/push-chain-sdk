@@ -18,12 +18,12 @@ import {
   type ParsedSelector,
 } from './selectors';
 
-/** URP native limits at v4 (Types.sol MAX_PINS, AGW MAX_NATIVE_ACTIONS). */
+/** URP native limits at v5 (Types.sol MAX_PINS, AGW MAX_NATIVE_ACTIONS). */
 export const MAX_PINS = 8;
 const UINT32_MAX = 2 ** 32 - 1;
 const UINT48_MAX = 2 ** 48 - 1;
 
-/** NativeTerms (Types.sol:354-363 at v4). */
+/** NativeTerms (Types.sol:354-363 at v5). */
 export interface NativeTermsWire {
   validUntil: number;
   target: Address;

@@ -1,6 +1,6 @@
 /**
  * Race regressions found during independent SDK review,
- * against the real pinned v4 contracts on local anvil.
+ * against the real pinned v5 contracts on local anvil.
  *  R1 — a concurrent creation must never let this create() grant on a wallet it
  *       did not deploy (the deploy is index-bound through deployWalletWithSig).
  *  R4 — an owner outbound must never restore an allowance revoked after the
@@ -9,7 +9,7 @@
 import { encodeFunctionData, parseAbi, type Address } from 'viem';
 import { AgenticRevertError, CHAIN, type PushChain } from '../src';
 import type { AgenticRuntime } from '../src/lib/agentic/runtime';
-import { v4 } from '../src/lib/agentic/contracts/v4';
+import { v5 } from '../src/lib/agentic/contracts/v5';
 import { AGENTIC_ERROR_CODE } from '../src/lib/agentic/errors';
 import { startHarness, type Harness } from './harness';
 
@@ -21,7 +21,7 @@ const TOKEN = parseAbi([
 const internalsOf = (c: PushChain) =>
   (c as unknown as { agenticRuntime: AgenticRuntime }).agenticRuntime;
 
-describe('AGW race regressions (real v4 contracts)', () => {
+describe('AGW race regressions (real v5 contracts)', () => {
   let h: Harness;
   let owner: PushChain;
   beforeAll(async () => {
@@ -125,7 +125,7 @@ describe('AGW race regressions (real v4 contracts)', () => {
     const execute = rt.execute;
     rt.execute = async (params, options) => {
       rt.execute = execute;
-      const revoke = v4.encodeExecute([
+      const revoke = v5.encodeExecute([
         {
           target: token,
           value: BigInt(0),

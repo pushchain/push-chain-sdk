@@ -1,6 +1,6 @@
 /** Independent contract-state assertions for AGW tests; never part of the public SDK. */
 import type { Address, Hex, PublicClient } from 'viem';
-import { v4 } from '../../src/lib/agentic/contracts/v4';
+import { v5 } from '../../src/lib/agentic/contracts/v5';
 import { configId } from '../../src/lib/agentic/codec/ids';
 
 export async function readNativeCounters(
@@ -11,7 +11,7 @@ export async function readNativeCounters(
 ) {
   const actions = await client.readContract({
     address: addresses.sessionEngine,
-    abi: v4.abis.engine,
+    abi: v5.abis.engine,
     functionName: 'getEnabledActions',
     args: [wallet, rulesId],
   });
@@ -19,7 +19,7 @@ export async function readNativeCounters(
     throw new Error('Native counter fixture expects one action');
   const cfg = await client.readContract({
     address: addresses.rulesPolicy,
-    abi: v4.abis.policy,
+    abi: v5.abis.policy,
     functionName: 'getNativeConfig',
     args: [configId(wallet, rulesId, actions[0]), wallet],
   });
