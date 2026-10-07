@@ -6,8 +6,10 @@
  *   npx ts-node --transpile-only __e2e__/ci/run.ts [options]
  *
  *   --group <name>   One of: all (default), smoke, evm-r1, evm-r2, evm-r3,
- *                    svm-r1, svm-r2r3, pc20, push, cross-chain, known-fail
- *                    (`all` excludes known-fail — ask for it by name)
+ *                    svm-r1, svm-r2r3, pc20, push, cross-chain, read,
+ *                    known-fail, agw, agw-svm-wire, agw-svm-replay
+ *                    (`all` excludes known-fail and AGW groups — ask by name;
+ *                    agw uses the checked Donut v5 manifest by default, see __e2e__/agw/_manifest.ts)
  *   --list           Print the selection and the jest argv, run nothing
  *   --verify         Check every `grep` against the real spec titles and exit
  *                    non-zero if any fragment matches 0 or >1 tests in its file
@@ -55,7 +57,8 @@ function classify(prefix: string): 'describe' | 'it' | null {
   if (/\?[\s\S]*\b(it|test)\b[\s\S]*\)$/.test(p)) return 'it';
   const m = p.match(/([A-Za-z_$][\w$]*)(?:\.(skip|only|failing|concurrent))?$/);
   if (!m) return null;
-  if (/^(describe|d|dWrapper|xdescribe|fdescribe)$/.test(m[1])) return 'describe';
+  if (/^(describe|d|dWrapper|xdescribe|fdescribe)$/.test(m[1]))
+    return 'describe';
   if (/^(it|test|xit|fit|itWrapper|itIf)$/.test(m[1])) return 'it';
   return null;
 }
@@ -83,7 +86,13 @@ function titlesOf(specPath: string): string[] {
     const depth = depthAt[at];
     while (stack.length && stack[stack.length - 1].depth >= depth) stack.pop();
     if (kind === 'describe') stack.push({ title: m[2], depth });
-    else titles.push(stack.map((s) => s.title).concat(m[2]).join(' '));
+    else
+      titles.push(
+        stack
+          .map((s) => s.title)
+          .concat(m[2])
+          .join(' ')
+      );
   }
   return titles;
 }
@@ -158,13 +167,17 @@ if (has('verify')) {
       bad++;
     } else {
       for (const h of hits) seen.set(h, (seen.get(h) ?? []).concat(s.id));
-      console.log(`✓ ${s.id.padEnd(32)} ${hits.length} test${hits.length > 1 ? 's' : ''}`);
+      console.log(
+        `✓ ${s.id.padEnd(32)} ${hits.length} test${hits.length > 1 ? 's' : ''}`
+      );
     }
   }
 
   const dupes = [...seen.entries()].filter(([, ids]) => ids.length > 1);
   for (const [title, ids] of dupes) {
-    console.error(`✗ overlapping fragments — "${title}" claimed by ${ids.join(', ')}`);
+    console.error(
+      `✗ overlapping fragments — "${title}" claimed by ${ids.join(', ')}`
+    );
     bad++;
   }
 
@@ -193,7 +206,9 @@ if (has('verify')) {
     `\n${selected.length} scenarios, ${files.length} spec files, ${seen.size} distinct tests.`
   );
   if (bad) {
-    console.error(`\n${bad} problem(s). The manifest has drifted from the specs.`);
+    console.error(
+      `\n${bad} problem(s). The manifest has drifted from the specs.`
+    );
     process.exit(1);
   }
   console.log('Manifest is consistent with the specs.');
@@ -202,7 +217,8 @@ if (has('verify')) {
 
 if (has('list')) {
   const byGroup = new Map<string, Scenario[]>();
-  for (const s of selected) byGroup.set(s.group, (byGroup.get(s.group) ?? []).concat(s));
+  for (const s of selected)
+    byGroup.set(s.group, (byGroup.get(s.group) ?? []).concat(s));
   for (const g of GROUPS) {
     const rows = byGroup.get(g);
     if (!rows) continue;
@@ -214,8 +230,14 @@ if (has('list')) {
       console.log(`  ${s.id.padEnd(32)} ${cost || '(free)'}`);
     }
   }
-  console.log(`\n${selected.length} scenarios across ${files.length} spec files.`);
-  console.log(`\nnpx ${jestArgs.map((a) => (/[\s|()]/.test(a) ? JSON.stringify(a) : a)).join(' ')}`);
+  console.log(
+    `\n${selected.length} scenarios across ${files.length} spec files.`
+  );
+  console.log(
+    `\nnpx ${jestArgs
+      .map((a) => (/[\s|()]/.test(a) ? JSON.stringify(a) : a))
+      .join(' ')}`
+  );
   process.exit(0);
 }
 
@@ -225,7 +247,9 @@ if (has('list')) {
 
 fs.mkdirSync(LOG_DIR, { recursive: true });
 
-console.log(`Running ${selected.length} scenarios (group: ${group}) across ${files.length} spec files.\n`);
+console.log(
+  `Running ${selected.length} scenarios (group: ${group}) across ${files.length} spec files.\n`
+);
 
 const result = spawnSync('npx', jestArgs, {
   cwd: CORE_ROOT,
@@ -277,7 +301,9 @@ function writeSummary(): void {
   const skipped = all.length - passed - failed;
 
   // Skipped rows are the tests jest loaded but `-t` filtered out — noise here.
-  const shown = all.filter((a) => a.status !== 'pending' && a.status !== 'skipped');
+  const shown = all.filter(
+    (a) => a.status !== 'pending' && a.status !== 'skipped'
+  );
 
   const lines = [
     `## E2E — group \`${group}\``,

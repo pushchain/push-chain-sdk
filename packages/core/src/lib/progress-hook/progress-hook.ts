@@ -8,6 +8,7 @@ import { formatPc, normalizePcInsufficientFundsError } from '../formatters';
 import { Utils } from '../utils';
 import {
   PROGRESS_HOOK,
+  PROGRESS_HOOK_AGENTIC,
   PROGRESS_HOOK_MIG,
   PROGRESS_HOOK_READ,
   PROGRESS_HOOK_MULTICHAIN,
@@ -1593,6 +1594,79 @@ const RAW_HOOKS_READ: {
   }),
 };
 
+// =============================================================================
+// Agentic wallet (AGW) — AGENTIC-TX (spec 3.f, PROPOSED). No AGENTIC-TX-103.
+// =============================================================================
+
+type AgenticDecodedError = { name?: string; hint?: string; selector?: string; decoded?: string };
+
+const RAW_HOOKS_AGENTIC: {
+  [K in PROGRESS_HOOK_AGENTIC]: ProgressEventFunctionWithoutTimestamp;
+} = {
+  [PROGRESS_HOOK.AGENTIC_TX_101]: (address: string, index: number, deployed: boolean) => ({
+    id: PROGRESS_HOOK.AGENTIC_TX_101,
+    title: 'Agentic Wallet Derived',
+    message: `Wallet ${address} at index ${index} (${deployed ? 'deployed' : 'not deployed'}).`,
+    response: { address, index, deployed },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.AGENTIC_TX_102]: (address: string, strategy: string) => ({
+    id: PROGRESS_HOOK.AGENTIC_TX_102,
+    title: 'Deploy Step Added',
+    message: `Deploying agentic wallet ${address} (${strategy}).`,
+    response: { address, strategy },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.AGENTIC_TX_104]: (rulesIds: string[]) => ({
+    id: PROGRESS_HOOK.AGENTIC_TX_104,
+    title: 'Rules Granted',
+    message: `Granted ${rulesIds.length} rule${rulesIds.length === 1 ? '' : 's'}.`,
+    response: { rulesIds },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.AGENTIC_TX_105]: (target: { rulesIds: string[] } | { all: true }) => ({
+    id: PROGRESS_HOOK.AGENTIC_TX_105,
+    title: 'Rules Revoked',
+    message:
+      'all' in target
+        ? 'Revoked every rule on the wallet.'
+        : `Revoked ${target.rulesIds.length} rule${target.rulesIds.length === 1 ? '' : 's'}.`,
+    response: target,
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.AGENTIC_TX_106]: (label: string) => ({
+    id: PROGRESS_HOOK.AGENTIC_TX_106,
+    title: 'Label Set',
+    message: `Wallet label set to "${label}".`,
+    response: { label },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.AGENTIC_TX_107]: (rulesId: string | undefined, chainNamespace: string, door: 'owner' | 'agent') => ({
+    id: PROGRESS_HOOK.AGENTIC_TX_107,
+    title: 'Rule Resolved',
+    message:
+      door === 'owner'
+        ? `Owner door on ${chainNamespace}; no rule applies.`
+        : `Agent door on ${chainNamespace} under rule ${rulesId}.`,
+    response: { rulesId: rulesId ?? null, chainNamespace, door },
+    level: 'INFO',
+  }),
+  [PROGRESS_HOOK.AGENTIC_TX_199_01]: (operation: string, txHash?: string) => ({
+    id: PROGRESS_HOOK.AGENTIC_TX_199_01,
+    title: 'Agentic Operation Done',
+    message: `${operation} completed.`,
+    response: { operation, txHash: txHash ?? null },
+    level: 'SUCCESS',
+  }),
+  [PROGRESS_HOOK.AGENTIC_TX_199_02]: (operation: string, code: string, message: string, decodedError?: AgenticDecodedError) => ({
+    id: PROGRESS_HOOK.AGENTIC_TX_199_02,
+    title: 'Agentic Operation Failed',
+    message: `${operation} failed: ${message}`,
+    response: { operation, code, decodedError: decodedError ?? null },
+    level: 'ERROR',
+  }),
+};
+
 // Combine all routes into the master record
 const RAW_HOOKS: {
   [K in PROGRESS_HOOK]: ProgressEventFunctionWithoutTimestamp;
@@ -1603,6 +1677,7 @@ const RAW_HOOKS: {
   ...RAW_HOOKS_MULTICHAIN,
   ...RAW_HOOKS_MIG,
   ...RAW_HOOKS_READ,
+  ...RAW_HOOKS_AGENTIC,
 };
 
 // Build final hooks with timestamp injection

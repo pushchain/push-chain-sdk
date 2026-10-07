@@ -34,6 +34,9 @@ export const GROUPS = [
   'cross-chain',
   'read',
   'known-fail',
+  'agw',
+  'agw-svm-wire',
+  'agw-svm-replay',
 ] as const;
 
 export type Group = (typeof GROUPS)[number];
@@ -69,6 +72,9 @@ export type Asset =
   // Push master (PUSH_PRIVATE_KEY) on Push Donut — Push-native origin specs
   | 'masterPC'
   | 'masterPETH'
+  | 'masterPSOL'
+  | 'masterUsdcEth'
+  | 'masterUsdtSol'
   // The EVM master's UEA on Push Donut — Routes 2/3 on both VMs, and PC20
   | 'ueaPC'
   | 'ueaPETH'
@@ -149,9 +155,52 @@ const F = {
   readSvmIdl: '__e2e__/read/svm/account-idl.spec.ts',
   readMutability: '__e2e__/read/evm/any-mutability.spec.ts',
   readTrackLookup: '__e2e__/read/lifecycle/track-lookup.spec.ts',
+  agwCreate: '__e2e__/agw/create.spec.ts',
+  agwFunding: '__e2e__/agw/funding-allowance.spec.ts',
+  agwNative: '__e2e__/agw/native-exec.spec.ts',
+  agwLifecycle: '__e2e__/agw/lifecycle.spec.ts',
+  agwUniversal: '__e2e__/agw/universal-evm.spec.ts',
+  agwIdentity: '__e2e__/agw/identity-gas.spec.ts',
+  agwResponses: '__e2e__/agw/responses-hooks.spec.ts',
+  agwExtendedManagement: '__e2e__/agw/management-extended.spec.ts',
+  agwExtendedNative: '__e2e__/agw/native-policy-extended.spec.ts',
 } as const;
 
 export const SCENARIOS: Scenario[] = [
+  {
+    id: 'agw-svm-replay-positive', group: 'agw-svm-replay', file: '__e2e__/agw-svm-wire/replay.spec.ts',
+    grep: 'agw svm recorded replay 1\\. positive replay', needs: {}, env: { AGW_SVM_WIRE_REPLAY_E2E: '1' },
+  },
+  {
+    id: 'agw-svm-replay-rejected', group: 'agw-svm-replay', file: '__e2e__/agw-svm-wire/replay.spec.ts',
+    grep: 'agw svm recorded replay 2\\. later terminal rejection', needs: {}, env: { AGW_SVM_WIRE_REPLAY_E2E: '1' },
+  },
+  {
+    id: 'agw-svm-replay-policy', group: 'agw-svm-replay', file: '__e2e__/agw-svm-wire/replay.spec.ts',
+    grep: 'agw svm recorded replay 3\\. pinned live policy', needs: {}, env: { AGW_SVM_WIRE_REPLAY_E2E: '1' },
+  },
+  {
+    id: 'agw-svm-wire-positive', group: 'agw-svm-wire',
+    file: '__e2e__/agw-svm-wire/outbound.spec.ts',
+    grep: 'agw svm wire 1\\. positive outbound',
+    needs: { masterPC: '45', masterPSOL: '0.00002' },
+    env: { AGW_SVM_WIRE_E2E: '1' },
+    note: 'Internal prepared-wire backend; public SVM capability remains gated.',
+  },
+  {
+    id: 'agw-svm-wire-refusals', group: 'agw-svm-wire',
+    file: '__e2e__/agw-svm-wire/outbound.spec.ts',
+    grep: 'agw svm wire 2\\. substituted account',
+    needs: { masterPC: '45', masterPSOL: '0.00002' },
+    env: { AGW_SVM_WIRE_E2E: '1' },
+  },
+  {
+    id: 'agw-svm-wire-failure', group: 'agw-svm-wire',
+    file: '__e2e__/agw-svm-wire/outbound.spec.ts',
+    grep: 'agw svm wire 3\\. destination program failure',
+    needs: { masterPC: '45', masterPSOL: '0.00002' },
+    env: { AGW_SVM_WIRE_E2E: '1' },
+  },
   // ---------------------------------------------------------------------------
   // smoke — read-only. No transactions, no funds. Runs first so a broken build or
   // a dead RPC fails in ~3 min instead of 90.
@@ -615,8 +664,11 @@ export const SCENARIOS: Scenario[] = [
     note: 'prepareRead → simulateRead → sendTransaction → trackRead → value == Sepolia balance at pin.',
   },
   {
-    id: 'read-canonical-registry', group: 'read', file: F.readRegistry,
-    grep: 'read state › canonical registry', needs: { masterPC: '0.2' },
+    id: 'read-canonical-registry',
+    group: 'read',
+    file: F.readRegistry,
+    grep: 'read state › canonical registry',
+    needs: { masterPC: '0.2' },
     note: 'Callback-free read plus a second pin: verifies per-request storage, stable-key latestResult and settlement.',
   },
   {
@@ -673,16 +725,25 @@ export const SCENARIOS: Scenario[] = [
     note: 'Funds a fresh wallet with 0.5 PC, as the docs prompt will.',
   },
   {
-    id: 'read-docs-evm-balance', group: 'read', file: F.readPlaygrounds,
-    grep: 'docs-examples › 13-read-state playgrounds universal_read_evm_balance', needs: { masterPC: '0.1' },
+    id: 'read-docs-evm-balance',
+    group: 'read',
+    file: F.readPlaygrounds,
+    grep: 'docs-examples › 13-read-state playgrounds universal_read_evm_balance',
+    needs: { masterPC: '0.1' },
   },
   {
-    id: 'read-docs-batch', group: 'read', file: F.readPlaygrounds,
-    grep: 'docs-examples › 13-read-state playgrounds universal_read_batch', needs: { masterPC: '0.1' },
+    id: 'read-docs-batch',
+    group: 'read',
+    file: F.readPlaygrounds,
+    grep: 'docs-examples › 13-read-state playgrounds universal_read_batch',
+    needs: { masterPC: '0.1' },
   },
   {
-    id: 'read-docs-resume', group: 'read', file: F.readPlaygrounds,
-    grep: 'docs-examples › 13-read-state playgrounds universal_read_resume', needs: { masterPC: '0.1' },
+    id: 'read-docs-resume',
+    group: 'read',
+    file: F.readPlaygrounds,
+    grep: 'docs-examples › 13-read-state playgrounds universal_read_resume',
+    needs: { masterPC: '0.1' },
     note: 'Read-only resume (own request ID, predefined request ID, tx hash); seeds a request if the balance example was not selected.',
   },
   {
@@ -702,37 +763,55 @@ export const SCENARIOS: Scenario[] = [
     note: 'Same batch through the UEA — one atomic tx.',
   },
   {
-    id: 'read-app-batch-recovery', group: 'read', file: F.readBatch,
+    id: 'read-app-batch-recovery',
+    group: 'read',
+    file: F.readBatch,
     grep: 'read state › custom app batch recovers the committed read',
     needs: { masterPC: '0.1' },
     note: 'Force sequential wallet execution; recover the first read after the second request fails.',
   },
   {
-    id: 'read-api-token', group: 'read', file: F.readApi,
-    grep: 'read state › public API coverage ERC20 shorthand', needs: { masterPC: '0.1' },
+    id: 'read-api-token',
+    group: 'read',
+    file: F.readApi,
+    grep: 'read state › public API coverage ERC20 shorthand',
+    needs: { masterPC: '0.1' },
   },
   {
-    id: 'read-api-mixed-outcomes', group: 'read', file: F.readApi,
-    grep: 'read state › public API coverage mixed consensus outcomes', needs: { masterPC: '0.3' },
+    id: 'read-api-mixed-outcomes',
+    group: 'read',
+    file: F.readApi,
+    grep: 'read state › public API coverage mixed consensus outcomes',
+    needs: { masterPC: '0.3' },
   },
   {
-    id: 'read-svm-token-auto', group: 'read', file: F.readSvmIdl,
+    id: 'read-svm-token-auto',
+    group: 'read',
+    file: F.readSvmIdl,
     grep: 'read state › Solana automatic token and IDL account reads detects the mint program',
     needs: { masterPC: '0.1' },
   },
   {
-    id: 'read-svm-idl', group: 'read', file: F.readSvmIdl,
+    id: 'read-svm-idl',
+    group: 'read',
+    file: F.readSvmIdl,
     grep: 'read state › Solana automatic token and IDL account reads decodes a real Anchor account',
     needs: { masterPC: '0.1' },
   },
   {
-    id: 'read-evm-any-mutability', group: 'read', file: F.readMutability,
-    grep: 'read state › EVM nonpayable and payable functions', needs: { masterPC: '0.1' },
+    id: 'read-evm-any-mutability',
+    group: 'read',
+    file: F.readMutability,
+    grep: 'read state › EVM nonpayable and payable functions',
+    needs: { masterPC: '0.1' },
     note: 'QuoterV2 (nonpayable) + Multicall3.aggregate (payable) simulated at the pinned block.',
   },
   {
-    id: 'read-svm-raw', group: 'read', file: F.readSvmRaw,
-    grep: 'read state › SVM raw account', needs: { masterPC: '0.1' },
+    id: 'read-svm-raw',
+    group: 'read',
+    file: F.readSvmRaw,
+    grep: 'read state › SVM raw account',
+    needs: { masterPC: '0.1' },
   },
 
   // ---------------------------------------------------------------------------
@@ -753,15 +832,278 @@ export const SCENARIOS: Scenario[] = [
       '(balance - reserve, the pre-fix behaviour) where the test expects the full ' +
       '~20.9 PC requirement. Real regression in the Route 2 dead-zone gas sizer.',
   },
+
+  // -------------------------------------------------------------------------
+  // agw — agentic wallets. EXCLUDED from `all`: every spec's beforeAll fails
+  // its prerequisite gate until a verified compatible AGW deployment manifest
+  // (AGW_DEPLOYMENT_MANIFEST) exists. Preflight
+  // refuses to fund the group without it. Budgets are per run: the Push master
+  // (owner) pays setup gas, wallet PC and the bounded fresh-agent funding;
+  // the EVM master's UEA pays external-agent gas; pETH funds the outbound.
+  // -------------------------------------------------------------------------
+  {
+    id: 'agw-create-bare',
+    group: 'agw',
+    file: F.agwCreate,
+    grep: 'agw create 1\\. bare wallet',
+    needs: { masterPC: '2' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-create-rules',
+    group: 'agw',
+    file: F.agwCreate,
+    grep: 'agw create 2\\. wallet with a native rule',
+    needs: { masterPC: '2' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-funding-pc',
+    group: 'agw',
+    file: F.agwFunding,
+    grep: 'agw funding 1\\. wallet PC',
+    needs: { masterPC: '1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-funding-allowance',
+    group: 'agw',
+    file: F.agwFunding,
+    grep: 'agw funding 2\\. owner sets and removes',
+    needs: { masterPC: '1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-native-batch',
+    group: 'agw',
+    file: '__e2e__/agw/native-batch.spec.ts',
+    grep: 'agw native batch 1\\. sender-preserving atomic',
+    needs: { masterPC: '2' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-native-batch-rollback',
+    group: 'agw',
+    file: '__e2e__/agw/native-batch.spec.ts',
+    grep: 'agw native batch 2\\. a later policy failure',
+    needs: { masterPC: '2' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-native-agent',
+    group: 'agw',
+    file: F.agwNative,
+    grep: 'agw native 1\\. agent door',
+    needs: { masterPC: '2' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-native-owner',
+    group: 'agw',
+    file: F.agwNative,
+    grep: 'agw native 2\\. owner door',
+    needs: { masterPC: '0.5' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-native-over-cap',
+    group: 'agw',
+    file: F.agwNative,
+    grep: 'agw native 3\\. over-cap',
+    needs: { masterPC: '0.5' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-native-stranger',
+    group: 'agw',
+    file: F.agwNative,
+    grep: 'agw native 4\\. an unrelated signer',
+    needs: { masterPC: '0.1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-native-revoked',
+    group: 'agw',
+    file: F.agwNative,
+    grep: 'agw native 5\\. after revocation',
+    needs: { masterPC: '0.5' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-native-expired',
+    group: 'agw',
+    file: F.agwNative,
+    grep: 'agw native 6\\. an expired rule',
+    needs: { masterPC: '1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-lifecycle-add',
+    group: 'agw',
+    file: F.agwLifecycle,
+    grep: 'agw lifecycle 1\\. rules\\.add',
+    needs: { masterPC: '2' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-lifecycle-update',
+    group: 'agw',
+    file: F.agwLifecycle,
+    grep: 'agw lifecycle 2\\. rules\\.update',
+    needs: { masterPC: '1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-lifecycle-checkpoints',
+    group: 'agw',
+    file: F.agwLifecycle,
+    grep: 'agw lifecycle 3\\. checkpoint history',
+    needs: { masterPC: '0.1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-lifecycle-revoke-all',
+    group: 'agw',
+    file: F.agwLifecycle,
+    grep: 'agw lifecycle 4\\. revoke',
+    needs: { masterPC: '0.5' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-universal-outbound',
+    group: 'agw',
+    file: F.agwUniversal,
+    grep: 'agw universal evm 1\\. positive-amount outbound',
+    needs: { masterPC: '25', masterPETH: '0.00001' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-v5-multi-asset',
+    group: 'agw',
+    file: '__e2e__/agw/v5-multiasset.spec.ts',
+    grep: 'agw v5 multi-asset 1\\. public create',
+    needs: { masterPC: '2' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-v5-call-only',
+    group: 'agw',
+    file: '__e2e__/agw/v5-multiasset.spec.ts',
+    grep: 'agw v5 multi-asset 2\\. empty user assets',
+    needs: { masterPC: '25' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-universal-dest-revert',
+    group: 'agw',
+    file: F.agwUniversal,
+    grep: 'agw universal evm 2\\. destination revert',
+    needs: { masterPC: '5' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-identity-evm',
+    group: 'agw',
+    file: F.agwIdentity,
+    grep: 'agw identity 1\\. an EVM key on Sepolia',
+    needs: { masterPC: '1', ueaPC: '1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-identity-first-use',
+    group: 'agw',
+    file: F.agwIdentity,
+    grep: 'agw identity 2\\. first use',
+    needs: { masterPC: '1', sepoliaEth: '0.003' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-identity-solana',
+    group: 'agw',
+    file: F.agwIdentity,
+    grep: 'agw identity 3\\. a Solana-origin key',
+    needs: { masterPC: '1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-responses-hooks',
+    group: 'agw',
+    file: F.agwResponses,
+    grep: 'agw responses 1\\. init and per-call hooks',
+    needs: { masterPC: '1' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-responses-replay',
+    group: 'agw',
+    file: F.agwResponses,
+    grep: 'agw responses 2\\. live and replayed',
+    needs: { masterPC: '0.5' },
+    env: { AGW_E2E: '1' },
+  },
+
+  ...Array.from({ length: 6 }, (_, i) => ({
+    id: `agw-public-svm-${i + 1}`, group: 'agw' as const,
+    file: '__e2e__/agw/svm-public.spec.ts', grep: `agw public svm ${i + 1}\\.`,
+    needs: { masterPC: '45', masterPSOL: '0.000020001' }, env: { AGW_E2E: '1' },
+  })),
+
+  ...Array.from({ length: 8 }, (_, i) => ({
+    id: `agw-labels-${i + 1}`, group: 'agw' as const,
+    file: '__e2e__/agw/labels.spec.ts', grep: `agw labels ${i + 1}\\.`,
+    needs: i === 4 ? { masterPC: '4', sepoliaEth: '0.003' } : i === 5 ? { masterPC: '4', solanaSOL: '0.003' } : { masterPC: '1' },
+    env: { AGW_E2E: '1' },
+  })),
+
+  {
+    id: 'agw-v5-independent-token-budgets', group: 'agw',
+    file: '__e2e__/agw/v5-multiasset.spec.ts', grep: 'agw v5 multi-asset 3\\.',
+    needs: { masterPC: '45', masterPETH: '0.000001000000000001', masterUsdcEth: '0.000011' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-owner-spl-transfer', group: 'agw',
+    file: '__e2e__/agw/svm-spl-transfer.spec.ts', grep: 'agw svm spl transfer 1\\.',
+    needs: { masterPC: '23', masterUsdtSol: '0.001' },
+    env: { AGW_E2E: '1' },
+  },
+
+  // Extended AGW tests are opt-in and use bounded per-scenario testnet budgets.
+  ...[
+    ['prefunding', '1\\. prefunding', '11'],
+    ['ambiguous-rules', '2\\. same-agent multiplicity', '11'],
+    ['batched-lifecycle', '3\\. multi-rule add', '0.5'],
+    ['invalid-revoke', '4\\. invalid revoke', '0.5'],
+    ['stale-update', '5\\. intervening agent spend', '11'],
+    ['index-race', '6\\. index race', '1'],
+  ].map(([slug, grep, pc]) => ({
+    id: `agw-extended-${slug}`,
+    group: 'agw' as const,
+    file: F.agwExtendedManagement,
+    grep: `agw extended management ${grep}`,
+    needs: { masterPC: pc },
+    env: { AGW_E2E: '1' },
+  })),
+  ...Array.from({ length: 11 }, (_, i) => ({
+    id: `agw-extended-native-policy-${i + 1}`,
+    group: 'agw' as const,
+    file: F.agwExtendedNative,
+    grep: `agw extended native policy ${i + 1}\\.`,
+    needs: { masterPC: '0.25', masterPETH: '0.000000000001' },
+    env: { AGW_E2E: '1' },
+  })),
 ];
 
 /**
  * Scenarios for a group. `all` means "everything that should pass" — it deliberately
- * excludes `known-fail`, which has to be asked for by name.
+ * excludes `known-fail` and every AGW group, which must be requested by name.
  */
 export function scenariosFor(group: string | undefined): Scenario[] {
   if (!group || group === 'all') {
-    return SCENARIOS.filter((s) => s.group !== 'known-fail');
+    // AGW stays opt-in: scenarios create/fund fresh wallets and consume testnet funds.
+    return SCENARIOS.filter(
+      (s) => s.group !== 'known-fail' && !s.group.startsWith('agw')
+    );
   }
   if (!(GROUPS as readonly string[]).includes(group)) {
     throw new Error(
@@ -777,7 +1119,10 @@ export function aggregateNeeds(
 ): Partial<Record<Asset, number>> {
   const total: Partial<Record<Asset, number>> = {};
   for (const s of scenarios) {
-    for (const [asset, amount] of Object.entries(s.needs) as [Asset, string][]) {
+    for (const [asset, amount] of Object.entries(s.needs) as [
+      Asset,
+      string
+    ][]) {
       total[asset] = (total[asset] ?? 0) + Number(amount);
     }
   }

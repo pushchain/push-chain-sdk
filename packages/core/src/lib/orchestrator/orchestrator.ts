@@ -248,6 +248,25 @@ export class Orchestrator {
     params: ExecuteParams | UniversalExecuteParams,
     options?: TransactionExecutionOptions
   ): Promise<UniversalTxResponse> {
+    return this.executeWithPolicy(params, options, false);
+  }
+
+  /** @internal Sender-preserving batch. Never uses the native sequential fallback. */
+  async executeAtomicBatch(
+    params: ExecuteParams,
+    options?: TransactionExecutionOptions
+  ): Promise<UniversalTxResponse> {
+    if (typeof params.to !== 'string' || !Array.isArray(params.data) || params.data.length < 2 || params.funds) {
+      throw new Error('executeAtomicBatch requires multiple Push calls and no signer funds');
+    }
+    return this.executeWithPolicy(params, options, true);
+  }
+
+  private async executeWithPolicy(
+    params: ExecuteParams | UniversalExecuteParams,
+    options: TransactionExecutionOptions | undefined,
+    requireAtomicBatch: boolean
+  ): Promise<UniversalTxResponse> {
     const inlineProgressHook = params.progressHook;
     if (options || inlineProgressHook) {
       params = {
@@ -449,7 +468,9 @@ export class Orchestrator {
           );
         }
         return attachPerCallHookForWait(
-          await _executeStandardPayload(this.ctx, execute, eventBuffer, rcb)
+          await (requireAtomicBatch
+            ? _executeStandardPayload(this.ctx, execute, eventBuffer, rcb, { requireAtomicBatch: true })
+            : _executeStandardPayload(this.ctx, execute, eventBuffer, rcb))
         );
       } catch (err) {
         const errMessage = normalizePublicErrorMessage(err);

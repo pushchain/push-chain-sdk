@@ -42,6 +42,19 @@ export const WEB2_MAX_TIMEOUT_MS = 15_000;
  * Web2 is not a blockchain and is not a `CHAIN` enum member. Reads target it via
  * an explicit destination; the node routes on namespace `web2`, id `https`.
  */
+/** Public Web2 read source (`READ.CHAIN.WEB2`). */
+export const WEB2_READ_CHAIN = 'web2' as const;
+/**
+ * Legacy public spelling, and the unchanged CAIP-2 wire identity validators
+ * route on. Still accepted as read input.
+ */
+export const LEGACY_WEB2_READ_CHAIN = 'web2:https' as const;
+
+/** True for either public Web2 spelling. */
+export function isWeb2ReadChain(chain: unknown): chain is typeof WEB2_READ_CHAIN | typeof LEGACY_WEB2_READ_CHAIN {
+  return chain === WEB2_READ_CHAIN || chain === LEGACY_WEB2_READ_CHAIN;
+}
+
 export const WEB2_DESTINATION = {
   chainNamespace: 'web2',
   chainId: 'https',

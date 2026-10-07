@@ -17,9 +17,10 @@ describe('read-state public surface', () => {
     ]) {
       expect(typeof (core as Record<string, unknown>)[fn]).toBe('function');
     }
-    expect(core.CHAIN.WEB2).toBe('web2:https');
-    expect(PushChain.CONSTANTS.CHAIN.WEB2).toBe('web2:https');
-    expect(Object.values(PushChain.CONSTANTS.CHAIN)).not.toContain('web2:https');
+    // CHAIN.WEB2 is the deprecated alias of READ.CHAIN.WEB2 (AGW SDK page §4).
+    expect(core.CHAIN.WEB2).toBe('web2');
+    expect(PushChain.CONSTANTS.CHAIN.WEB2).toBe(PushChain.CONSTANTS.READ.CHAIN.WEB2);
+    expect(Object.values(PushChain.CONSTANTS.CHAIN)).not.toContain('web2');
     expect(core.UNIVERSAL_READ_STATUS.FULFILLED).toBe(3);
     expect(core.READ_STATUS.ERROR).toBe(2);
     expect(core.READ_ERROR_CODE.INVALID_QUERY).toBe(1);
@@ -30,7 +31,8 @@ describe('read-state public surface', () => {
 
   it('PushChain.CONSTANTS.READ pins the contract-derived values', () => {
     const R = PushChain.CONSTANTS.READ;
-    expect(R.WEB2).toBe('web2:https');
+    expect(R.WEB2).toBe('web2');
+    expect(R.CHAIN.WEB2).toBe('web2');
     expect(R.MAX_CALLBACK_GAS_LIMIT).toBe(1_000_000n);
     expect(R.MIN_CONFIRMATIONS_FLOOR).toBe(1);
     expect(R.DEFAULT_EXPIRY_BLOCKS).toBe(300n);

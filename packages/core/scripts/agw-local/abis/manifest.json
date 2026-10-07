@@ -1,0 +1,12 @@
+{
+  "sourceRepository": "https://github.com/pushchain/push-agentic-wallets",
+  "sourceCommit": "2e61e133e641b4e0e1ddbdc9306b0903b60e4dbb",
+  "deployedAbiEvidence": "Donut v5 source compiled in an isolated tree; deployment wiring checked at block 23991912; URP/engine/validator reused from v4",
+  "files": {
+    "wallet.json": "6a145964d6c43eaa6223dc8f3d59a540ac0c2f447f25c3a99007eea25de9c695",
+    "factory.json": "b65f66a1556d2a9ddf9aabe9f595c685c2aada436772892f5a40fb1eec846397",
+    "policy.json": "c7e3cd5c7f8e47be217c77ebebde4c090903cea7db63024838e434eb6f1fd77b",
+    "engine.json": "6e5d9cea4dbed01f06af913c1e093743b86b7432195f4a4bf90fb94b282c51b2",
+    "validator.json": "a4570ddc373241580de8742cbb3d9f2c837094c65bfd1cdd52243ca0c38196fd"
+  }
+}
