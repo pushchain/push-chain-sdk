@@ -1,8 +1,5 @@
-/**
- * Public AGW types — AGW SDK page section 3 (Notion export 2026-10-03 13:23 IST).
- *
- * Named-IDL Solana inputs and native/EVM raw offsets follow the October 7
- * decisions. Contract-dependent label editing remains capability-gated.
+/** Public section-6 rules and internal adapters for the deployed v5 wire format.
+ * Source snapshot: October 12, 2026. Internal normalized types are not package exports.
  */
 import type { Idl } from '@coral-xyz/anchor';
 import type { SvmTermsWire } from './codec/svm-terms';
@@ -18,15 +15,10 @@ export type AgenticProgressHook = (event: ProgressEvent) => void;
 /** '0x617ba037' or 'supply(address,uint256,address,uint16)'. */
 export type Selector = AgenticHex | `${string}(${string})`;
 
-export interface NativeRule {
-  /** Push address: an EOA, or the UEA of an external key. Never the owner. */
-  agent: AgenticAddress;
-  /** Omitted = the connected Push chain. */
-  chainNamespace?: never;
+/** One Push function a native rule allows, with its own limits and counters. */
+export interface NativeAction {
   target: AgenticAddress;
   selector: Selector | 'value-only';
-  /** Unix seconds. */
-  validUntil: number;
   /** Default 0: no native PC value allowance. */
   maxValuePerCall?: bigint;
   /** Default 0: no native PC value allowance. */
@@ -36,7 +28,47 @@ export interface NativeRule {
   pins?: ArgPin[];
   /** `maxTotal` default uint256 max (unlimited total). */
   amount?: AmountLimit;
+  /**
+   * Overrides the rule's `validUntil` for this action. Decoded rules set it
+   * only when stored actions expire at different times.
+   */
+  validUntil?: number;
 }
+
+interface NativeRuleCommon {
+  /** Push address: an EOA, or the UEA of an external key. Never the owner. */
+  agent: AgenticAddress;
+  /** Omitted = the connected Push chain. */
+  chainNamespace?: never;
+  /** Unix seconds. */
+  validUntil: number;
+}
+
+/** A native rule allowing one function (shorthand for a one-entry `actions`). */
+export interface NativeSingleRule
+  extends NativeRuleCommon,
+    Omit<NativeAction, 'validUntil'> {
+  actions?: never;
+}
+
+/**
+ * A native rule allowing 1..8 functions under ONE rule ID. Each action keeps
+ * its own limits and counters on-chain; (target, selector) pairs must be
+ * unique. One rule per agent on Push keeps send-time selection unambiguous.
+ * Internal normalized representation; public callers use Rule.allowedCalls.
+ */
+export interface NativeMultiRule extends NativeRuleCommon {
+  actions: NativeAction[];
+  target?: never;
+  selector?: never;
+  maxValuePerCall?: never;
+  maxValueTotal?: never;
+  maxCalls?: never;
+  pins?: never;
+  amount?: never;
+}
+
+export type NativeRule = NativeSingleRule | NativeMultiRule;
 
 /**
  * Where a pin or amount sits in the calldata. `arg` is the argument index in
@@ -65,7 +97,7 @@ export interface AssetCap {
   /** The destination chain's token (MOVEABLE constant) or native marker. */
   token: MoveableToken | AgenticAddress;
   maxPerCall: bigint;
-  /** Omitted = uint256 maximum (unlimited). Explicit zero forbids movement. */
+  /** Omitted = zero. Explicit zero forbids movement. */
   maxTotal?: bigint;
 }
 
@@ -106,6 +138,8 @@ export type SvmFieldConstraint =
       minRatio: { num: bigint; den: bigint };
     };
 export interface SvmInstructionRule {
+  /** Internal wire override: 0 means no exact account-count constraint. */
+  maxAccounts?: number;
   program: string;
   instruction: { idl: Idl; name: string };
   /** Top-level account names from a supported Anchor IDL; optional/nested accounts are rejected. */
@@ -127,26 +161,92 @@ export interface SolanaRule {
   outputTokens?: string[];
   allowedInstructions: SvmInstructionRule[];
 }
-/** Stored constraints contain no IDL; supply a named SolanaRule when replacing. */
+/** Lossless stored Solana layout, accepted by update without an invented IDL. */
 export interface DecodedSolanaRule extends Omit<SvmTermsWire, 'assets'> {
   format: 'decoded';
   agent: AgenticAddress;
   chainNamespace: `solana:${string}`;
   assets: { token: string; maxPerCall: bigint; maxTotal: bigint }[];
 }
-export type Rule = NativeRule | UniversalRule | SolanaRule;
+export type InternalRule = NativeRule | UniversalRule | SolanaRule;
 
-export interface RulesRecord {
+export interface InternalRulesRecord {
   rulesId: AgenticHex;
   enabled: boolean;
   chainNamespace: string;
   agent: AgenticAddress;
   validUntil: number;
-  rule: Rule | DecodedSolanaRule;
+  rule: InternalRule | DecodedSolanaRule;
+}
+
+/** Current SDK section 6 public rule shape; contract wire types above are internal. */
+export type WalletMarker = 'agentic:wallet';
+export type Pin =
+  | {
+      arg: number;
+      expected: AgenticHex | AgenticAddress | bigint | WalletMarker;
+      max?: never;
+      account?: never;
+    }
+  | { arg: number; max: bigint; expected?: never; account?: never }
+  | {
+      account: number;
+      expected: string | WalletMarker;
+      token?: MoveableToken | string;
+      arg?: never;
+      max?: never;
+    };
+export interface RuleCall {
+  target: string;
+  selector: Selector | 'value-only';
+  pins?: Pin[];
+  maxValue?: bigint;
+  app?: string;
+  label?: string;
+}
+export interface RuleAsset {
+  token: MoveableToken | string;
+  maxPerCall: bigint;
+  maxTotal?: bigint;
+}
+export interface Rule {
+  agent: AgenticAddress;
+  chainNamespace?: ForeignChainNamespace;
+  validUntil: number;
+  assets?: RuleAsset[];
+  maxGasPerCall?: bigint;
+  allowedCalls: RuleCall[];
+}
+export type RuleInput = Rule | DecodedSolanaRule;
+export type Spent =
+  | {
+      kind: 'native';
+      valueSpent: bigint;
+      amountSpent: bigint;
+      callsUsed: number;
+    }
+  | {
+      kind: 'native';
+      actions: {
+        target: AgenticAddress;
+        selector: Selector | 'value-only';
+        valueSpent: bigint;
+        amountSpent: bigint;
+        callsUsed: number;
+      }[];
+    }
+  | { kind: 'universal'; assets: { token: string; spent: bigint }[] };
+export interface RulesRecord extends Omit<InternalRulesRecord, 'rule'> {
+  rule: RuleInput;
+  spent: Spent;
+}
+export interface InternalCreateOptions {
+  rules: InternalRule[];
+  progressHook?: AgenticProgressHook;
 }
 
 export interface CreateOptions {
-  rules: Rule[];
+  rules: RuleInput[];
   progressHook?: AgenticProgressHook;
 }
 
@@ -197,26 +297,26 @@ export interface AgenticWallet {
     sinceBlock?: bigint;
   }): Promise<{ checkpoints: Checkpoint[] }>;
   rules: {
-    /** Enabled rules only; expired-but-enabled rules remain visible. No public spend counters. */
+    /** Enabled rules only; expired-but-enabled rules remain visible. Includes policy spend counters. */
     list(): Promise<{ rules: RulesRecord[] }>;
     /** Unknown and revoked IDs both return RULE_NOT_FOUND; v1 has no historical records. */
     get(rulesId: AgenticHex): Promise<RulesRecord>;
     add(
-      rules: Rule[],
+      rules: RuleInput[],
       opts?: { progressHook?: AgenticProgressHook }
     ): Promise<{ rulesIds: AgenticHex[]; tx: UniversalTxResponse }>;
     update(params: {
-      rules: { rulesId: AgenticHex; rule: Rule }[];
+      rules: { rulesId: AgenticHex; rule: RuleInput }[];
       progressHook?: AgenticProgressHook;
     }): Promise<{
       rules: { rulesId: AgenticHex; replaced: AgenticHex }[];
       tx: UniversalTxResponse;
     }>;
-    revoke(
+    delete(
       rulesIds: AgenticHex[],
       opts?: { progressHook?: AgenticProgressHook }
     ): Promise<UniversalTxResponse>;
-    revoke(params: {
+    delete(params: {
       all: true;
       progressHook?: AgenticProgressHook;
     }): Promise<UniversalTxResponse>;

@@ -62,3 +62,4 @@ e2e-logs/
 .agw-validation/
 .ci-contracts/
 .agw-runtime-validation/
+/plan/agw/research/native-multi-action-e2e-2026-10-12/logs

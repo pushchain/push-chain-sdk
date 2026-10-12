@@ -1,3 +1,4 @@
+import { publicRules } from './public-rule';
 import { AgenticCapability, requireCapability } from './capabilities';
 import { currentGeneration } from './deployments';
 import { createWallet } from './management/create';
@@ -23,23 +24,48 @@ import type {
 export class AgenticNamespaceImpl implements AgenticNamespace {
   constructor(private readonly runtime: AgenticRuntime) {}
 
-  async derive(opts?: { index?: number }): Promise<{ address: AgenticAddress; index: number; deployed: boolean }> {
+  async derive(opts?: {
+    index?: number;
+  }): Promise<{ address: AgenticAddress; index: number; deployed: boolean }> {
     const gen = currentGeneration(this.runtime.network);
     requireCapability(gen.capabilities, AgenticCapability.WALLET_READS);
     const owner = this.runtime.signerPushAccount();
-    const r = await deriveForOwner(this.runtime.reader, gen, owner, opts?.index);
-    emitAgentic(this.runtime, undefined, PROGRESS_HOOK.AGENTIC_TX_101, r.address, r.index, r.deployed);
-    return { address: r.address as AgenticAddress, index: r.index, deployed: r.deployed };
+    const r = await deriveForOwner(
+      this.runtime.reader,
+      gen,
+      owner,
+      opts?.index
+    );
+    emitAgentic(
+      this.runtime,
+      undefined,
+      PROGRESS_HOOK.AGENTIC_TX_101,
+      r.address,
+      r.index,
+      r.deployed
+    );
+    return {
+      address: r.address as AgenticAddress,
+      index: r.index,
+      deployed: r.deployed,
+    };
   }
 
-  create(label: string, options: CreateOptions): Promise<CreateResult> {
-    return createWallet(this.runtime, label, options);
+  async create(label: string, options: CreateOptions): Promise<CreateResult> {
+    return createWallet(this.runtime, label, {
+      ...options,
+      rules: publicRules(options?.rules),
+    });
   }
 
   async list(): Promise<{ wallets: WalletSummary[] }> {
     const gen = currentGeneration(this.runtime.network);
     requireCapability(gen.capabilities, AgenticCapability.WALLET_READS);
-    const wallets = await listForOwner(this.runtime.reader, gen, this.runtime.signerPushAccount());
+    const wallets = await listForOwner(
+      this.runtime.reader,
+      gen,
+      this.runtime.signerPushAccount()
+    );
     return { wallets };
   }
 

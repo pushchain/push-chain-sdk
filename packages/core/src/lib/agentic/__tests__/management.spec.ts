@@ -165,7 +165,7 @@ describe('agentic.create', () => {
     await expect(
       createWallet(rt, 'version', { rules: [rule()] })
     ).rejects.toMatchObject({
-      code: AGENTIC_ERROR_CODE.GENERATION_UNSUPPORTED,
+      code: AGENTIC_ERROR_CODE.CAPABILITY_UNAVAILABLE,
     });
     expect(rt.executeMock).not.toHaveBeenCalled();
   });
@@ -391,7 +391,9 @@ describe('agentic.create', () => {
         throw failure;
       }) as never,
     });
-    await expect(createWallet(rt, 'this-create', { rules: [rule()] })).rejects.toBe(failure);
+    await expect(
+      createWallet(rt, 'this-create', { rules: [rule()] })
+    ).rejects.toBe(failure);
   });
 
   it('a slot that is already deployed is refused before signing', async () => {
@@ -414,10 +416,10 @@ describe('agentic.create', () => {
   });
 });
 
-describe('rules.add / rules.revoke', () => {
+describe('rules.add / rules.delete', () => {
   const gen = () => currentGeneration(PUSH_NETWORK.TESTNET_DONUT);
 
-  it('add: owner-only, same-agent grants allowed, IDs from the grant nonce', async () => {
+  it('add: owner-only, duplicate agent/chain refused before signing', async () => {
     const fake = new FakeChain();
     const w = fake.addWallet(ADDR.owner, 'w', [
       fake.nativeRule(ADDR.agent, ruleId(1)),
@@ -438,9 +440,10 @@ describe('rules.add / rules.revoke', () => {
       signer: ADDR.owner,
       execute: (async () => withLogs([granted(w.address, expected)])) as never,
     });
-    expect(
-      (await addRules(rt, gen(), w.address, [rule(ADDR.agent)])).rulesIds
-    ).toEqual([expected]);
+    await expect(
+      addRules(rt, gen(), w.address, [rule(ADDR.agent)])
+    ).rejects.toMatchObject({ code: AGENTIC_ERROR_CODE.DUPLICATE_RULE });
+    expect(rt.executeMock).not.toHaveBeenCalled();
   });
 
   it('add: several rules are one atomic owner execute batch (one signature on any signer)', async () => {
@@ -499,7 +502,7 @@ describe('rules.add / rules.revoke', () => {
       await expect(
         revokeRules(rt, gen(), w.address, bad as never)
       ).rejects.toMatchObject({
-        code: AGENTIC_ERROR_CODE.REVOKE_NEEDS_TARGET,
+        code: AGENTIC_ERROR_CODE.DELETE_NEEDS_TARGET,
       });
     }
     await expect(

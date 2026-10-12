@@ -1,6 +1,7 @@
-/** Public named-IDL lifecycle and destination delivery on Donut/Solana devnet. */
+import { actionId, configId } from '../../src/lib/agentic/codec/ids';
+/** Public numeric-pin lifecycle and destination delivery on Donut/Solana devnet. */
 import '@e2e/shared/setup';
-import { PushChain, type SolanaRule } from '../../src';
+import { PushChain, type Rule } from '../../src';
 import type { Idl } from '@coral-xyz/anchor';
 import { PublicKey, Keypair } from '@solana/web3.js';
 import bs58 from 'bs58';
@@ -43,35 +44,23 @@ d('agw public svm', () => {
     cea: PublicKey,
     idl: Idl;
   const sol = svmWireConnection();
-  const rule = (): SolanaRule => ({
+  const rule = (): Rule => ({
     agent: f.agentAddress,
     chainNamespace: SVM_WIRE_CHAIN,
     validUntil: inSeconds(3600),
     assets: [{ token: zeroAddress, maxPerCall: amount, maxTotal: amount }],
     maxGasPerCall: parseEther('20'),
-    allowedInstructions: [
+    allowedCalls: [
       {
-        program: SVM_WIRE_PROGRAM,
-        instruction: { idl, name: 'receive_sol' },
-        accounts: [
-          {
-            name: 'counter',
-            expected: { kind: 'address', address: SVM_WIRE_COUNTER.toBase58() },
-          },
-          {
-            name: 'recipient',
-            expected: { kind: 'address', address: recipient.toBase58() },
-          },
-          { name: 'cea_authority', expected: { kind: 'walletCEA' } },
-          {
-            name: 'system_program',
-            expected: {
-              kind: 'address',
-              address: PublicKey.default.toBase58(),
-            },
-          },
+        target: SVM_WIRE_PROGRAM,
+        selector: 'receive_sol(u64)',
+        pins: [
+          { account: 0, expected: SVM_WIRE_COUNTER.toBase58() },
+          { account: 1, expected: recipient.toBase58() },
+          { account: 2, expected: PushChain.CONSTANTS.AGENTIC.WALLET },
+          { account: 3, expected: PublicKey.default.toBase58() },
+          { arg: 0, max: amount },
         ],
-        fields: [{ name: 'amount', max: amount }],
       },
     ],
   });
@@ -185,7 +174,7 @@ d('agw public svm', () => {
     });
   }, 900_000);
   afterAll(() => f?.teardown());
-  it('1. named IDL grant reads exact constraints and replaces atomically', async () => {
+  it('1. numeric-pin grant reads exact raw constraints and replaces atomically', async () => {
     const handle = f.owner.agentic.wallet(wallet),
       record = await handle.rules.get(id);
     expect(record).not.toHaveProperty('ref');
@@ -195,7 +184,12 @@ d('agw public svm', () => {
     });
     const count = (await handle.checkpoints()).checkpoints.length;
     const updated = await handle.rules.update({
-      rules: [{ rulesId: id, rule: rule() }],
+      rules: [
+        {
+          rulesId: id,
+          rule: { ...record.rule, validUntil: record.validUntil + 60 },
+        },
+      ],
     });
     const previous = id;
     id = updated.rules[0].rulesId;
@@ -254,13 +248,10 @@ d('agw public svm', () => {
     });
   }, 900_000);
   it('3. contract simulation maps account and data refusals without state changes', async () => {
-    const config = PushChain.utils.agentic.configId(
+    const config = configId(
       wallet,
       id,
-      PushChain.utils.agentic.actionId(
-        f.manifest.addresses.gateway,
-        '0x77b86bec'
-      )
+      actionId(f.manifest.addresses.gateway, '0x77b86bec')
     );
     const state = async () => {
       const [tokens, pcBalance, checkpoints, cfg] = await Promise.all([
@@ -332,7 +323,7 @@ d('agw public svm', () => {
   });
   it('4. public revoke removes the Solana rule and subsequent sends are refused', async () => {
     const handle = f.owner.agentic.wallet(wallet);
-    await (await handle.rules.revoke([id])).wait();
+    await (await handle.rules.delete([id])).wait();
     expect((await handle.rules.list()).rules).toHaveLength(0);
     await expect(
       agent.universal.sendTransaction({

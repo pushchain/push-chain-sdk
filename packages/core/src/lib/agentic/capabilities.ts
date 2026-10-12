@@ -27,7 +27,7 @@ export enum AgenticCapability {
   UNIVERSAL_EVM_RULES = 'universalEvmRules',
   /** Per-token expected-spend assertion for universal replacement. A05. */
   ASSERT_SPENT_UNIVERSAL_MULTI = 'assertSpentUniversalMulti',
-  /** Named-IDL Solana authoring, exact decoded reads and instruction execution. */
+  /** Numeric-pin Solana authoring, exact decoded reads and instruction execution. */
   UNIVERSAL_SVM_RULES = 'universalSvmRules',
   /** Editable wallet label (setLabel / LabelSet). A07. */
   SET_LABEL = 'setLabel',

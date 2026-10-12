@@ -9,7 +9,11 @@ import { validateUniversalRuleShape } from '../codec/universal';
 import { V5_CAPABILITIES } from '../deployments';
 import { AGENTIC_ERROR_CODE } from '../errors';
 import { internalAgenticUtils } from '../utils';
-import type { NativeRule, UniversalRule } from '../agentic.types';
+import type {
+  NativeRule,
+  NativeSingleRule,
+  UniversalRule,
+} from '../agentic.types';
 import { ADDR, PUSH_NS, SEPOLIA_NS } from './fake-chain';
 
 const NOW = 1_700_000_000;
@@ -28,7 +32,7 @@ const ctx = {
     ADDR.gateway,
   ],
 };
-const native = (over: Partial<NativeRule> = {}): NativeRule => ({
+const native = (over: Partial<NativeSingleRule> = {}): NativeSingleRule => ({
   agent: ADDR.agent,
   target: ADDR.target,
   selector: 'increment()',
@@ -70,7 +74,7 @@ describe('prepareRules — spec 1.b checks before any signature', () => {
     );
     expect(prepared).toHaveLength(2);
     expect(prepared.map((p) => p.agent)).toEqual([ADDR.agent, ADDR.agent]);
-    expect(prepared.map((p) => p.nativeTerms?.target)).toEqual([
+    expect(prepared.map((p) => p.nativeTerms?.[0].target)).toEqual([
       ADDR.target,
       ADDR.other,
     ]);
@@ -104,8 +108,11 @@ describe('prepareRules — spec 1.b checks before any signature', () => {
   });
 
   it('removed ref inputs fail explicitly instead of being silently dropped', () => {
-    expect(() => prepareRules([{ ...native(), ref: `0x${'99'.repeat(32)}` } as never], ctx))
-      .toThrow(expect.objectContaining({ code: AGENTIC_ERROR_CODE.INVALID_RULE }));
+    expect(() =>
+      prepareRules([{ ...native(), ref: `0x${'99'.repeat(32)}` } as never], ctx)
+    ).toThrow(
+      expect.objectContaining({ code: AGENTIC_ERROR_CODE.INVALID_RULE })
+    );
   });
 
   it('refuses infrastructure targets the contracts would reject', () => {

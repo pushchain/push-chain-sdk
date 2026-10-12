@@ -39,9 +39,9 @@ export const AGENTIC_DEFAULTS = {
   },
   universal: {
     assetMaxTotal: {
-      value: UINT256_MAX,
-      meaning: 'unlimited total; explicit zero forbids movement',
-      source: 'v5',
+      value: BigInt(0),
+      meaning: 'omitted or zero forbids token movement',
+      source: 'product',
     },
     allowedCallMaxValue: {
       value: BigInt(0),

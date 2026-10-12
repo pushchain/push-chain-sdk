@@ -1,23 +1,11 @@
-import { PUSH_NETWORK } from '../constants/enums';
-import { DONUT_V5_ADDRESSES } from './contracts/donut-v5';
-
-/** Checked Donut v5 proxies. Unsupported networks are absent. */
-export interface AgenticNetworkConstants {
-  FACTORY: `0x${string}`;
-  RULES_POLICY: `0x${string}`;
-  MAX_PINS: number;
-  MAX_ALLOWED_CALLS: number;
-  ENVELOPE_VERSION: number;
-}
-
-export const AGENTIC: Readonly<
-  Partial<Record<PUSH_NETWORK, AgenticNetworkConstants>>
-> = Object.freeze({
-  [PUSH_NETWORK.TESTNET_DONUT]: Object.freeze({
-    FACTORY: DONUT_V5_ADDRESSES.factory,
-    RULES_POLICY: DONUT_V5_ADDRESSES.rulesPolicy,
-    MAX_PINS: 8,
-    MAX_ALLOWED_CALLS: 32,
-    ENVELOPE_VERSION: 1,
+/** Public section-7 discovery constants; deployment wiring stays internal. */
+export const AGENTIC = Object.freeze({
+  WALLET: 'agentic:wallet' as const,
+  PRESETS: Object.freeze({
+    CATEGORY: Object.freeze({
+      DEXES: 'DEXES' as const,
+      LENDING: 'LENDING' as const,
+      PREDICTION: 'PREDICTION' as const,
+    }),
   }),
 });

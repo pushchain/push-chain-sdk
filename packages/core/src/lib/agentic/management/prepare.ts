@@ -1,3 +1,4 @@
+import { isPublicRule, normalizePublicRule } from '../public-rule';
 import { preparePublicSvmRule } from './svm-public';
 import type { SvmTermsWire } from '../codec/svm-terms';
 import { getAddress, zeroAddress, type Address } from 'viem';
@@ -16,7 +17,7 @@ import {
 } from '../deployments';
 import { AgenticCapability, requireCapability } from '../capabilities';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
-import type { Rule, UniversalRule, SolanaRule } from '../agentic.types';
+import type { InternalRule, UniversalRule, SolanaRule } from '../agentic.types';
 import type { AgenticRuntime } from '../runtime';
 import { Snapshot } from '../reads/snapshot';
 
@@ -32,9 +33,14 @@ export async function prepareWalletRules(
   gen: AgenticGeneration,
   owner: Address,
   wallet: Address,
-  rules: readonly Rule[],
+  inputs: readonly InternalRule[],
   snap: Snapshot
 ) {
+  const rules = await Promise.all(
+    inputs.map((rule) =>
+      isPublicRule(rule) ? normalizePublicRule(rule, wallet, runtime) : rule
+    )
+  );
   if (rules.length) await verifyPolicyVersion(runtime.reader, gen);
   const svm = new Map<SolanaRule, SvmTermsWire>();
   const universal = new Map<UniversalRule, ResolvedUniversalRule>();

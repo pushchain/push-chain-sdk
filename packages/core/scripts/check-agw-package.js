@@ -13,10 +13,7 @@ async function main() {
     esm = await import(pathToFileURL(entry).href);
   assert.equal(typeof cjs.PushChain.initialize, 'function');
   assert.equal(esm.PushChain, cjs.PushChain);
-  assert.equal(
-    cjs.PushChain.CONSTANTS.AGENTIC.TESTNET_DONUT.ENVELOPE_VERSION,
-    1
-  );
+  assert.equal(cjs.PushChain.CONSTANTS.AGENTIC.WALLET, 'agentic:wallet');
   assert.equal(typeof cjs.AgenticError, 'function');
   const [pack] = JSON.parse(
     execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {

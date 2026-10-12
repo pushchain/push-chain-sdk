@@ -9,7 +9,12 @@ import {
   type Hex,
 } from 'viem';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
-import type { AgenticHex, NativeRule } from '../agentic.types';
+import type {
+  AgenticHex,
+  NativeAction,
+  NativeRule,
+  NativeSingleRule,
+} from '../agentic.types';
 import { argumentOffset, encodeArgWord, rawOffset } from './abi-layout';
 import { AGENTIC_DEFAULTS, UINT256_MAX, withDefault } from './defaults';
 import {
@@ -20,6 +25,7 @@ import {
 
 /** URP native limits at v5 (Types.sol MAX_PINS, AGW MAX_NATIVE_ACTIONS). */
 export const MAX_PINS = 8;
+export const MAX_NATIVE_ACTIONS = 8;
 const UINT32_MAX = 2 ** 32 - 1;
 const UINT48_MAX = 2 ** 48 - 1;
 
@@ -94,9 +100,134 @@ export interface NativeEncodeContext {
   nowSeconds: number;
 }
 
-/** Normalize and validate a public NativeRule into wire terms. Pure. */
+const SINGLE_ACTION_FIELDS = [
+  'target',
+  'selector',
+  'maxValuePerCall',
+  'maxValueTotal',
+  'maxCalls',
+  'pins',
+  'amount',
+] as const;
+
+/**
+ * The actions a native rule allows: the single-action shorthand, or the
+ * explicit `actions` list (1..8). Each carries its effective `validUntil`.
+ */
+export function nativeActionsOf(
+  rule: NativeRule
+): (NativeAction & { validUntil: number })[] {
+  if (
+    !Number.isInteger(rule.validUntil) ||
+    rule.validUntil < 1 ||
+    rule.validUntil > UINT48_MAX
+  ) {
+    throw invalid(
+      'rule validUntil must be a positive unix timestamp in seconds (uint48)'
+    );
+  }
+  if (rule.actions !== undefined) {
+    if (
+      !Array.isArray(rule.actions) ||
+      rule.actions.length < 1 ||
+      rule.actions.length > MAX_NATIVE_ACTIONS
+    ) {
+      throw invalid(
+        `actions must contain 1..${MAX_NATIVE_ACTIONS} entries (the AGW native action limit)`
+      );
+    }
+    const mixed = SINGLE_ACTION_FIELDS.filter(
+      (f) => (rule as unknown as Record<string, unknown>)[f] !== undefined
+    );
+    if (mixed.length > 0) {
+      throw invalid(
+        `actions cannot be combined with top-level ${mixed.join(
+          ', '
+        )}; put them inside each action`
+      );
+    }
+    return rule.actions.map((a, i) => {
+      if (!a || typeof a !== 'object' || Array.isArray(a)) {
+        throw invalid(`actions[${i}] must be an action object`, { action: i });
+      }
+      return { ...a, validUntil: a.validUntil ?? rule.validUntil };
+    });
+  }
+  const single = rule as NativeSingleRule;
+  return [
+    {
+      target: single.target,
+      selector: single.selector,
+      maxValuePerCall: single.maxValuePerCall,
+      maxValueTotal: single.maxValueTotal,
+      maxCalls: single.maxCalls,
+      pins: single.pins,
+      amount: single.amount,
+      validUntil: single.validUntil,
+    },
+  ];
+}
+
+/**
+ * Normalize and validate every action of a native rule into wire terms, in
+ * input order. (target, selector) pairs must be unique — the wallet refuses
+ * duplicates (DuplicateAction) because they share one action ID. Pure.
+ */
+export function nativeRuleToActionTerms(
+  rule: NativeRule,
+  ctx: NativeEncodeContext
+): { terms: NativeTermsWire; parsed: ParsedSelector }[] {
+  if (rule.validUntil <= ctx.nowSeconds) {
+    throw invalid(
+      'rule validUntil must be a future unix timestamp in seconds (uint48)'
+    );
+  }
+  const actions = nativeActionsOf(rule);
+  const multi = rule.actions !== undefined;
+  const out = actions.map((action, i) => {
+    try {
+      return nativeActionToTerms(action, ctx);
+    } catch (err) {
+      if (multi && err instanceof AgenticError) {
+        throw new AgenticError(err.code, `actions[${i}]: ${err.message}`, {
+          hint: err.hint,
+          details: { ...(err.details ?? {}), action: i },
+          cause: err,
+        });
+      }
+      throw err;
+    }
+  });
+  const seen = new Map<string, number>();
+  out.forEach(({ terms }, i) => {
+    const key = `${terms.target.toLowerCase()}:${terms.selector}`;
+    const first = seen.get(key);
+    if (first !== undefined) {
+      throw invalid(
+        `actions[${i}] repeats the target and selector of actions[${first}]`,
+        { action: i }
+      );
+    }
+    seen.set(key, i);
+  });
+  return out;
+}
+
+/** Single-action convenience; multi-action rules use nativeRuleToActionTerms. */
 export function nativeRuleToTerms(
   rule: NativeRule,
+  ctx: NativeEncodeContext
+): { terms: NativeTermsWire; parsed: ParsedSelector } {
+  const all = nativeRuleToActionTerms(rule, ctx);
+  if (all.length !== 1) {
+    throw invalid('nativeRuleToTerms takes a single-action rule');
+  }
+  return all[0];
+}
+
+/** Normalize and validate one native action into wire terms. Pure. */
+export function nativeActionToTerms(
+  rule: NativeAction & { validUntil: number },
   ctx: NativeEncodeContext
 ): { terms: NativeTermsWire; parsed: ParsedSelector } {
   if (
@@ -244,8 +375,8 @@ export function decodeNativeTerms(body: Hex): NativeTermsWire {
 export function nativeTermsToRule(
   terms: NativeTermsWire,
   agent: Address
-): NativeRule {
-  const rule: NativeRule = {
+): NativeSingleRule {
+  const rule: NativeSingleRule = {
     agent: getAddress(agent),
     target: getAddress(terms.target),
     selector:
@@ -271,6 +402,37 @@ export function nativeTermsToRule(
     };
   }
   return rule;
+}
+
+/**
+ * Stored action terms back to a public NativeRule: the single-action
+ * shorthand for one action, otherwise `actions` in stored order. The rule's
+ * `validUntil` is the earliest action expiry; an action expiring later keeps
+ * its own `validUntil`, so the result re-encodes to identical terms.
+ */
+export function nativeActionTermsToRule(
+  termsList: readonly NativeTermsWire[],
+  agent: Address
+): NativeRule {
+  if (termsList.length === 0) {
+    throw new AgenticError(
+      AGENTIC_ERROR_CODE.RULE_READ_FAILED,
+      'a native rule needs at least one action'
+    );
+  }
+  if (termsList.length === 1) return nativeTermsToRule(termsList[0], agent);
+  const decoded = termsList.map((t) => nativeTermsToRule(t, agent));
+  const validUntil = Math.min(...decoded.map((d) => d.validUntil));
+  return {
+    agent: getAddress(agent),
+    validUntil,
+    actions: decoded.map(
+      ({ agent: _agent, validUntil: actionValidUntil, ...action }) =>
+        actionValidUntil === validUntil
+          ? action
+          : { ...action, validUntil: actionValidUntil }
+    ),
+  };
 }
 
 export function isUnlimited(value: bigint): boolean {

@@ -1,3 +1,4 @@
+import { publicRules } from './public-rule';
 import { getAddress, type Address } from 'viem';
 import { AgenticCapability, requireCapability } from './capabilities';
 import { resolveWalletGeneration, type AgenticGeneration } from './deployments';
@@ -55,12 +56,36 @@ export class AgenticWalletHandle implements AgenticWallet {
           this.runtime,
           await this.gen(),
           this.address,
-          rules,
+          publicRules(rules),
           opts?.progressHook
         ),
-      update: async (params) =>
-        updateRules(this.runtime, await this.gen(), this.address, params),
-      revoke: (async (
+      update: async (params) => {
+        if (
+          !params ||
+          !Array.isArray(params.rules) ||
+          params.rules.length === 0 ||
+          params.rules.some(
+            (p) =>
+              !p ||
+              typeof p.rulesId !== 'string' ||
+              !/^0x[0-9a-fA-F]{64}$/.test(p.rulesId)
+          )
+        ) {
+          throw new AgenticError(
+            AGENTIC_ERROR_CODE.INVALID_RULE,
+            'rules.update needs { rulesId, rule } pairs with 32-byte rule IDs'
+          );
+        }
+        const rules = params.rules.map((p) => ({
+          ...p,
+          rule: publicRules([p.rule])[0],
+        }));
+        return updateRules(this.runtime, await this.gen(), this.address, {
+          ...params,
+          rules,
+        });
+      },
+      delete: (async (
         target:
           | AgenticHex[]
           | { all: true; progressHook?: AgenticProgressHook },
@@ -75,7 +100,7 @@ export class AgenticWalletHandle implements AgenticWallet {
           target,
           opts?.progressHook
         );
-      }) as AgenticWallet['rules']['revoke'],
+      }) as AgenticWallet['rules']['delete'],
     };
   }
 

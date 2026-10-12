@@ -87,7 +87,7 @@ export function registerAgenticGeneration(
 ): AgenticGeneration {
   if (input.id !== v5.id || input.sourceCommit !== V5_SOURCE_COMMIT) {
     throw new AgenticError(
-      AGENTIC_ERROR_CODE.GENERATION_UNSUPPORTED,
+      AGENTIC_ERROR_CODE.CAPABILITY_UNAVAILABLE,
       `no contract adapter for generation "${input.id}"`
     );
   }
@@ -132,7 +132,7 @@ export async function verifyPolicyVersion(
   });
   if (version !== '3.1.0')
     throw new AgenticError(
-      AGENTIC_ERROR_CODE.GENERATION_UNSUPPORTED,
+      AGENTIC_ERROR_CODE.CAPABILITY_UNAVAILABLE,
       `URP version ${String(version)} is not supported by the v5 adapter`
     );
 }
@@ -149,7 +149,7 @@ export function currentGeneration(network: PUSH_NETWORK): AgenticGeneration {
   const gen = gens[gens.length - 1];
   if (!gen) {
     throw new AgenticError(
-      AGENTIC_ERROR_CODE.GENERATION_UNSUPPORTED,
+      AGENTIC_ERROR_CODE.CAPABILITY_UNAVAILABLE,
       `no verified AGW deployment is registered for ${network}`,
       {
         hint: 'AGW v5 is configured on Donut only; this Push network has no registered v5 deployment.',
@@ -194,7 +194,7 @@ export function verifyFactoryWiring(
       })) as Address;
       if (getAddress(impl) !== gen.addresses.walletImplementation) {
         throw new AgenticError(
-          AGENTIC_ERROR_CODE.GENERATION_UNSUPPORTED,
+          AGENTIC_ERROR_CODE.CAPABILITY_UNAVAILABLE,
           `factory ${gen.addresses.factory} points at implementation ${impl}, not the registered ${gen.addresses.walletImplementation}`
         );
       }
@@ -216,7 +216,7 @@ export async function resolveWalletGeneration(
   wallet: Address
 ): Promise<AgenticGeneration> {
   const gens = generationsFor(network);
-  if (gens.length === 0) currentGeneration(network); // throws GENERATION_UNSUPPORTED (A07)
+  if (gens.length === 0) currentGeneration(network); // throws CAPABILITY_UNAVAILABLE (A07)
 
   const code = await reader.getCode({ address: wallet });
   if (!code || code === '0x') {
@@ -247,7 +247,7 @@ export async function resolveWalletGeneration(
   const gen = gens.find((g) => g.addresses.factory === factory);
   if (!gen) {
     throw new AgenticError(
-      AGENTIC_ERROR_CODE.GENERATION_UNSUPPORTED,
+      AGENTIC_ERROR_CODE.CAPABILITY_UNAVAILABLE,
       `${wallet} was created by factory ${factory}, which is not a verified AGW generation on ${network}`,
       { details: { factory, assumption: 'A07' } }
     );
@@ -289,7 +289,7 @@ export async function resolveWalletGeneration(
     accountId !== gen.accountId;
   if (mismatch) {
     throw new AgenticError(
-      AGENTIC_ERROR_CODE.GENERATION_UNSUPPORTED,
+      AGENTIC_ERROR_CODE.CAPABILITY_UNAVAILABLE,
       `${wallet} wiring does not match registered generation ${gen.id}`,
       { details: { engine, policy, validator, gateway, accountId } }
     );

@@ -27,6 +27,9 @@ import {
 } from '../errors';
 import type { AgenticRuntime } from '../runtime';
 
+/** Includes first-use CEA deployment; explicit caller gas always takes precedence. */
+const FIRST_USE_EVM_GAS_LIMIT = BigInt(2_000_000);
+
 /** URP MAX_ACTIONS_PER_REQUEST at v5. */
 export const MAX_DESTINATION_CALLS = 10;
 
@@ -219,7 +222,8 @@ export async function composeOutbound(
 
   const quote = await runtime.quoteOutbound(
     token,
-    params.gasLimit ?? BigInt(0),
+    params.gasLimit ??
+      (resolved.isDeployed ? BigInt(0) : FIRST_USE_EVM_GAS_LIMIT),
     chain
   );
   if (quote.nativeValueForGas <= BigInt(0)) {

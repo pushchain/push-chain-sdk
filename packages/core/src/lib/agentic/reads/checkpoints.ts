@@ -1,4 +1,4 @@
-import type { Address } from 'viem';
+import type { Address, Log } from 'viem';
 import { AgenticCapability, requireCapability } from '../capabilities';
 import type { AgenticGeneration } from '../deployments';
 import type { ChainReader } from '../contracts/reader';
@@ -25,15 +25,37 @@ export async function readCheckpoints(
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const snap = await Snapshot.at(reader);
     const count = BigInt(
-      await snap.read<bigint>(wallet, gen.contracts.abis.wallet, 'checkpointCount')
+      await snap.read<bigint>(
+        wallet,
+        gen.contracts.abis.wallet,
+        'checkpointCount'
+      )
     );
-    const from = sinceBlock !== undefined && sinceBlock > gen.startBlock ? sinceBlock : gen.startBlock;
-    const logs = await scanLogs(
-      reader,
-      { address: wallet, event: gen.contracts.events.checkpointed },
-      from,
-      snap.blockNumber
-    );
+    const from =
+      sinceBlock !== undefined && sinceBlock > gen.startBlock
+        ? sinceBlock
+        : gen.startBlock;
+    const filter = {
+      address: wallet,
+      event: gen.contracts.events.checkpointed,
+    };
+    let logs: Log[];
+    try {
+      logs = await scanLogs(reader, filter, from, snap.blockNumber);
+    } catch (cause) {
+      const retained = lowestRetainedHeight(cause);
+      // A fresh wallet may have its entire history after the RPC retention
+      // floor. Never treat truncation as success: the FULL sequence/count
+      // validation below must still prove every checkpoint is present.
+      if (
+        sinceBlock !== undefined ||
+        retained === undefined ||
+        retained <= from ||
+        retained > snap.blockNumber
+      )
+        throw cause;
+      logs = await scanLogs(reader, filter, retained, snap.blockNumber);
+    }
     const decoded = gen.contracts
       .parseCheckpointed(logs, wallet)
       .sort((a, b) =>
@@ -42,10 +64,14 @@ export async function readCheckpoints(
             ? -1
             : 1
           : a.transactionIndex !== b.transactionIndex
-            ? a.transactionIndex - b.transactionIndex
-            : a.logIndex - b.logIndex
+          ? a.transactionIndex - b.transactionIndex
+          : a.logIndex - b.logIndex
       );
-    const problem = validateSequence(decoded.map((c) => c.seq), count, sinceBlock === undefined || from === gen.startBlock);
+    const problem = validateSequence(
+      decoded.map((c) => c.seq),
+      count,
+      sinceBlock === undefined || from === gen.startBlock
+    );
     if (!problem) {
       return {
         count,
@@ -59,27 +85,65 @@ export async function readCheckpoints(
         })),
       };
     }
-    lastError = new AgenticError(AGENTIC_ERROR_CODE.INCONSISTENT_READ, problem, {
-      details: { wallet, count, blockNumber: snap.blockNumber },
-    });
+    lastError = new AgenticError(
+      AGENTIC_ERROR_CODE.INCONSISTENT_READ,
+      problem,
+      {
+        details: { wallet, count, blockNumber: snap.blockNumber },
+      }
+    );
   }
   throw lastError as AgenticError;
 }
 
 /** Sequence must be contiguous, end at `count`, and start at 1 for a full scan. */
-export function validateSequence(seqs: number[], count: bigint, fullRange: boolean): string | null {
+export function validateSequence(
+  seqs: number[],
+  count: bigint,
+  fullRange: boolean
+): string | null {
   for (let i = 1; i < seqs.length; i++) {
-    if (seqs[i] !== seqs[i - 1] + 1) return `checkpoint sequence gap between ${seqs[i - 1]} and ${seqs[i]}`;
+    if (seqs[i] !== seqs[i - 1] + 1)
+      return `checkpoint sequence gap between ${seqs[i - 1]} and ${seqs[i]}`;
   }
   if (fullRange) {
     if (BigInt(seqs.length) !== count) {
       return `found ${seqs.length} Checkpointed events but checkpointCount() is ${count}`;
     }
-    if (seqs.length > 0 && seqs[0] !== 1) return `first checkpoint seq is ${seqs[0]}, expected 1`;
+    if (seqs.length > 0 && seqs[0] !== 1)
+      return `first checkpoint seq is ${seqs[0]}, expected 1`;
     return null;
   }
   if (seqs.length > 0 && BigInt(seqs[seqs.length - 1]) !== count) {
-    return `last checkpoint seq ${seqs[seqs.length - 1]} does not match checkpointCount() ${count}`;
+    return `last checkpoint seq ${
+      seqs[seqs.length - 1]
+    } does not match checkpointCount() ${count}`;
   }
   return null;
+}
+
+/** Recognize Donut/CometBFT's explicit pruning error, not arbitrary RPC failures. */
+function lowestRetainedHeight(error: unknown): bigint | undefined {
+  const visited = new Set<unknown>();
+  for (
+    let depth = 0;
+    depth < 8 && error && typeof error === 'object' && !visited.has(error);
+    depth++
+  ) {
+    visited.add(error);
+    const value = error as {
+      message?: unknown;
+      details?: unknown;
+      cause?: unknown;
+    };
+    for (const text of [value.message, value.details]) {
+      if (typeof text !== 'string') continue;
+      const match = /height \d+ is not available, lowest height is (\d+)/.exec(
+        text
+      );
+      if (match) return BigInt(match[1]);
+    }
+    error = value.cause;
+  }
+  return undefined;
 }

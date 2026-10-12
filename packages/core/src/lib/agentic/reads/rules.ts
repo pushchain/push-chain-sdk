@@ -10,8 +10,10 @@ import type {
   UniversalConfigRead,
 } from '../contracts/v5';
 import { configId } from '../codec/ids';
-import { nativeTermsToRule } from '../codec/native';
-import { universalTermsToRule } from '../codec/universal';
+import { nativeActionTermsToRule } from '../codec/native';
+import { UINT256_MAX } from '../codec/defaults';
+import { WALLET } from '../public-rule';
+import { capabilityUnavailable } from '../errors';
 import { readOriginToken } from '../contracts/prc20-metadata';
 import { chainHash } from '../codec/rules';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
@@ -198,6 +200,13 @@ export async function decodeActiveRule(
         agent: rule.agent,
         chainNamespace: stored.chainNamespace,
         validUntil: Number(cfg.validUntil),
+        spent: {
+          kind: 'universal',
+          assets: assets.map((a, i) => ({
+            token: a.token,
+            spent: cfg.assets[i].spent,
+          })),
+        },
         rule: {
           format: 'decoded',
           agent: rule.agent,
@@ -257,12 +266,32 @@ export async function decodeActiveRule(
       chainNamespace: chain,
       agent: rule.agent,
       validUntil: Number(cfg.validUntil),
-      rule: universalTermsToRule(
-        cfg,
-        rule.agent,
-        chain as `eip155:${string}`,
-        tokens
-      ),
+      spent: {
+        kind: 'universal',
+        assets: tokens.map((token, i) => ({
+          token,
+          spent: cfg.assets[i].spent,
+        })),
+      },
+      rule: {
+        agent: rule.agent,
+        chainNamespace: chain as `eip155:${string}`,
+        validUntil: Number(cfg.validUntil),
+        maxGasPerCall: cfg.maxGasPerCall,
+        assets: cfg.assets.map((a, i) => ({
+          token: tokens[i],
+          maxPerCall: a.maxPerCall,
+          maxTotal: a.maxTotal,
+        })),
+        allowedCalls: cfg.allowedCalls.map((c) => ({
+          target: c.target,
+          selector: c.selector,
+          maxValue: c.maxValue,
+          pins: c.hasBeneficiary
+            ? [{ arg: storedArg(c.beneficiaryOffset), expected: WALLET }]
+            : [],
+        })),
+      },
     };
   }
   if (rule.mode !== MODE_NATIVE) {
@@ -271,24 +300,64 @@ export async function decodeActiveRule(
       `rule ${rule.rulesId} has unknown mode ${rule.mode}`
     );
   }
-  if (rule.actionIds.length !== 1) {
-    throw new AgenticError(
-      AGENTIC_ERROR_CODE.RULE_READ_FAILED,
-      `rule ${rule.rulesId} has ${rule.actionIds.length} native actions; the public NativeRule is single-action (A02)`
-    );
-  }
-  const cfg = await snap.read<NativeConfigRead>(
-    gen.addresses.rulesPolicy,
-    gen.contracts.abis.policy,
-    'getNativeConfig',
-    [configId(wallet, rule.rulesId, rule.actionIds[0]), wallet]
+  // One stored config per action, read at the same block, in engine order.
+  const configs = await Promise.all(
+    rule.actionIds.map((action) =>
+      snap.read<NativeConfigRead>(
+        gen.addresses.rulesPolicy,
+        gen.contracts.abis.policy,
+        'getNativeConfig',
+        [configId(wallet, rule.rulesId, action), wallet]
+      )
+    )
   );
-  if (!cfg.initialized) {
+  if (configs.some((c) => !c.initialized)) {
     throw new AgenticError(
       AGENTIC_ERROR_CODE.INCONSISTENT_READ,
       `native config for ${rule.rulesId} is not initialized`
     );
   }
+  const decoded = nativeActionTermsToRule(configs, rule.agent);
+  if (
+    configs.some(
+      (c) =>
+        c.maxValueTotal !== UINT256_MAX ||
+        Number(c.maxCalls) !== 0 ||
+        (c.amount.enabled && c.amount.maxTotal !== UINT256_MAX) ||
+        Number(c.validUntil) !== decoded.validUntil
+    )
+  ) {
+    throw capabilityUnavailable(
+      'nativeRuleRead',
+      'stored lifetime limits or differing action expiries cannot be represented by section-6 rules without losing constraints'
+    );
+  }
+  const allowedCalls = configs.map((c) => ({
+    target: getAddress(c.target),
+    selector:
+      c.selector === '0xffffffff' ? ('value-only' as const) : c.selector,
+    maxValue: c.maxValuePerCall,
+    pins: [
+      ...c.pins.map((p) => ({
+        arg: storedArg(p.offset),
+        expected:
+          p.expected.toLowerCase() ===
+          `0x${wallet.slice(2).toLowerCase().padStart(64, '0')}`
+            ? WALLET
+            : p.expected,
+      })),
+      ...(c.amount.enabled
+        ? [{ arg: storedArg(c.amount.offset), max: c.amount.maxPerCall }]
+        : []),
+    ],
+  }));
+  const counters = configs.map((c, i) => ({
+    target: allowedCalls[i].target,
+    selector: allowedCalls[i].selector,
+    valueSpent: c.valueSpent,
+    amountSpent: c.amountSpent,
+    callsUsed: Number(c.callsUsed),
+  }));
   if (rule.agent === getAddress(`0x${'00'.repeat(20)}`)) {
     throw new AgenticError(
       AGENTIC_ERROR_CODE.INCONSISTENT_READ,
@@ -300,8 +369,17 @@ export async function decodeActiveRule(
     enabled: true,
     chainNamespace: pushChainNamespace,
     agent: rule.agent,
-    validUntil: Number(cfg.validUntil),
-    rule: nativeTermsToRule(cfg, rule.agent),
+    validUntil: decoded.validUntil,
+    rule: { agent: rule.agent, validUntil: decoded.validUntil, allowedCalls },
+    spent:
+      counters.length === 1
+        ? {
+            kind: 'native',
+            valueSpent: counters[0].valueSpent,
+            amountSpent: counters[0].amountSpent,
+            callsUsed: counters[0].callsUsed,
+          }
+        : { kind: 'native', actions: counters },
   };
 }
 
@@ -395,4 +473,14 @@ export async function getRule(
     AGENTIC_ERROR_CODE.RULE_NOT_FOUND,
     `rule ${rulesId} is not enabled on ${wallet} (unknown or revoked; v1 has no rule history)`
   );
+}
+
+/** With a raw selector, arg denotes its ABI head-word position. */
+function storedArg(offset: number): number {
+  if (offset < 4 || (offset - 4) % 32 !== 0)
+    throw capabilityUnavailable(
+      'argumentLayout',
+      'stored pin is not aligned to an ABI argument word'
+    );
+  return (offset - 4) / 32;
 }

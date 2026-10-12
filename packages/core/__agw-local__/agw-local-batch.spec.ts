@@ -12,7 +12,6 @@ import { PUSH_BATCH_EXECUTOR_ADDRESS } from '../src/lib/constants/chain';
 import { startHarness, type Harness } from './harness';
 import { EvmClient } from '../src/lib/vm-client/evm-client';
 import { readNativeCounters } from '../__e2e__/shared/agw-state';
-
 const ABI = parseAbi([
   'function increment()',
   'function counter() view returns(uint256)',
@@ -20,7 +19,6 @@ const ABI = parseAbi([
 let h: Harness;
 let owner: PushChain;
 let previous: Address | undefined;
-
 beforeAll(async () => {
   h = await startHarness(18552);
   previous = PUSH_BATCH_EXECUTOR_ADDRESS[CHAIN.PUSH_LOCALNET];
@@ -37,16 +35,18 @@ afterAll(async () => {
   else delete PUSH_BATCH_EXECUTOR_ADDRESS[CHAIN.PUSH_LOCALNET];
   await h?.stop();
 });
-
-async function walletFor(maxCalls: number) {
+async function walletFor(_maxCalls: number) {
   const result = await owner.agentic.create('native-batch', {
     rules: [
       {
         agent: h.wallets[1].account!.address,
-        target: h.addresses.target,
-        selector: 'increment()',
         validUntil: Number((await h.publicClient.getBlock()).timestamp) + 3600,
-        maxCalls,
+        allowedCalls: [
+          {
+            target: h.addresses.target,
+            selector: 'increment()',
+          },
+        ],
       },
     ],
   });
@@ -65,7 +65,6 @@ const counter = () =>
     abi: ABI,
     functionName: 'counter',
   });
-
 it('atomic native agent array preserves the agent sender and meters both actions', async () => {
   const { wallet, rulesIds, agent } = await walletFor(3);
   const before = await counter();
@@ -91,7 +90,6 @@ it('atomic native agent array preserves the agent sender and meters both actions
   expect(getAddress(raw.from)).toBe(h.wallets[1].account!.address);
   expect(getAddress(raw.to as Address)).toBe(h.wallets[1].account!.address);
 });
-
 it('failure of a later native action rolls back the earlier call and its counters', async () => {
   const { wallet, rulesIds, agent } = await walletFor(1);
   const before = await counter();
@@ -107,7 +105,7 @@ it('failure of a later native action rolls back the earlier call and its counter
     .mockImplementation(async function (this: EvmClient, params) {
       const estimate = jest
         .spyOn(this.publicClient, 'estimateGas')
-        .mockResolvedValue(BigInt(2_000_000));
+        .mockResolvedValue(BigInt(2000000));
       try {
         return await original.call(this, params);
       } finally {
@@ -116,7 +114,10 @@ it('failure of a later native action rolls back the earlier call and its counter
     });
   try {
     await expect(
-      agent.universal.sendTransaction({ to: h.addresses.target, data: calls() })
+      agent.universal.sendTransaction({
+        to: h.addresses.target,
+        data: [calls()[0], { ...calls()[1], data: '0xffffffff' }],
+      })
     ).rejects.toBeInstanceOf(AgenticRevertError);
   } finally {
     send.mockRestore();
@@ -137,14 +138,16 @@ it('failure of a later native action rolls back the earlier call and its counter
     )
   ).toMatchObject({ callsUsed: 0 });
 });
-
 it('normal estimation refuses an invalid native batch before broadcasting', async () => {
   const { agent } = await walletFor(1);
   const nonce = await h.publicClient.getTransactionCount({
     address: h.wallets[1].account!.address,
   });
   await expect(
-    agent.universal.sendTransaction({ to: h.addresses.target, data: calls() })
+    agent.universal.sendTransaction({
+      to: h.addresses.target,
+      data: [calls()[0], { ...calls()[1], data: '0xffffffff' }],
+    })
   ).rejects.toBeInstanceOf(AgenticRevertError);
   expect(
     await h.publicClient.getTransactionCount({

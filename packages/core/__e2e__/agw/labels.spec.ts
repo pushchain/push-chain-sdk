@@ -24,13 +24,12 @@ import {
   setupAgw,
   type AgwFixture,
 } from './_fixture';
-
 const d = AGW_E2E_ENABLED ? describe : describe.skip;
 d('agw labels', () => {
   let f: AgwFixture;
   beforeAll(async () => {
     f = await setupAgw();
-  }, 300_000);
+  }, 300000);
   afterAll(() => f?.teardown());
   const count = (address: Address) =>
     f.push.readContract({
@@ -38,7 +37,6 @@ d('agw labels', () => {
       abi: v5.abis.wallet,
       functionName: 'checkpointCount',
     });
-
   it('1. default and custom deployment labels are stored and listed', async () => {
     const empty = await f.owner.agentic.create('', { rules: [] });
     const custom = await f.owner.agentic.create('e2e-v5-custom', { rules: [] });
@@ -65,14 +63,13 @@ d('agw labels', () => {
       `AGW ${empty.index + 1}`
     );
     expect(await count(empty.wallet)).toBe(BigInt(0));
-    expect(await count(custom.wallet)).toBe(BigInt(1));
+    expect(await count(custom.wallet)).toBe(BigInt(0));
     f.evidence('v5-label-default-custom', {
       wallets: [empty.wallet, custom.wallet],
       indices: [empty.index, custom.index],
       hashes: [empty.tx.hash, custom.tx.hash, renamed.hash],
     });
   });
-
   it('2. owner rename and empty reset update info/list, emit LabelSet and tick the owner door', async () => {
     const made = await f.owner.agentic.create('before', { rules: [] });
     const w = f.owner.agentic.wallet(made.wallet),
@@ -100,13 +97,13 @@ d('agw labels', () => {
         (x) => x.address === made.wallet
       )?.label
     ).toBe('after');
-    expect(await count(made.wallet)).toBe(before + BigInt(1));
+    expect(await count(made.wallet)).toBe(before);
     expect(hook).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'AGENTIC-TX-199-01' })
     );
     const reset = await w.setLabel('');
     expect((await w.info()).label).toBe(`AGW ${made.index + 1}`);
-    expect(await count(made.wallet)).toBe(before + BigInt(2));
+    expect(await count(made.wallet)).toBe(before);
     f.evidence('v5-label-rename-reset', {
       wallet: made.wallet,
       hashes: [tx.hash, reset.hash],
@@ -114,7 +111,6 @@ d('agw labels', () => {
       checkpointsAfter: await count(made.wallet),
     });
   });
-
   it('3. UTF-8 byte boundaries are accepted or rejected without changing wallet state', async () => {
     const made = await f.owner.agentic.create('🙂'.repeat(16), { rules: [] });
     const w = f.owner.agentic.wallet(made.wallet);
@@ -147,15 +143,18 @@ d('agw labels', () => {
       unchangedNextSlot: next.index,
     });
   });
-
   it('4. an agent cannot rename through either the SDK or the contract', async () => {
     const made = await f.owner.agentic.create('owner-only', {
       rules: [
         {
           agent: f.agentAddress,
-          target: f.ownerAddress,
-          selector: 'value-only',
           validUntil: inSeconds(3600),
+          allowedCalls: [
+            {
+              target: f.ownerAddress,
+              selector: 'value-only',
+            },
+          ],
         },
       ],
     });
@@ -207,7 +206,6 @@ d('agw labels', () => {
       checkpoints: before,
     });
   });
-
   it('5. an external EVM owner creates and renames through its UEA', async () => {
     const key = process.env['EVM_PRIVATE_KEY'] as Hex;
     if (!key) throw new Error('EVM_PRIVATE_KEY is required');
@@ -241,7 +239,7 @@ d('agw labels', () => {
     ).toBe('e2e-uea-after');
     const reset = await w.setLabel('');
     expect((await w.info()).label).toBe(`AGW ${made.index + 1}`);
-    expect(await count(made.wallet)).toBe(before + BigInt(2));
+    expect(await count(made.wallet)).toBe(before);
     f.evidence('v5-label-uea-owner', {
       wallet: made.wallet,
       owner: uea,
@@ -291,7 +289,7 @@ d('agw labels', () => {
     ).toBe('Solana owner');
     const reset = await w.setLabel('');
     expect((await w.info()).label).toBe(`AGW ${made.index + 1}`);
-    expect(await count(made.wallet)).toBe(before + BigInt(2));
+    expect(await count(made.wallet)).toBe(before);
     f.evidence('v5-label-solana-owner', {
       wallet: made.wallet,
       owner: uea,
@@ -299,19 +297,20 @@ d('agw labels', () => {
       checkpointsBefore: before,
       checkpointsAfter: await count(made.wallet),
     });
-  }, 600_000);
-
-  it('7. renaming an active wallet preserves rules, spend and remaining agent budget', async () => {
+  }, 600000);
+  it('7. renaming an active wallet preserves rules, spend and per-call agent cap', async () => {
     const made = await f.owner.agentic.create('active-before', {
       rules: [
         {
           agent: f.agentAddress,
-          target: f.ownerAddress,
-          selector: 'value-only',
           validUntil: inSeconds(3600),
-          maxValuePerCall: BigInt(1),
-          maxValueTotal: BigInt(2),
-          maxCalls: 3,
+          allowedCalls: [
+            {
+              target: f.ownerAddress,
+              selector: 'value-only',
+              maxValue: BigInt(1),
+            },
+          ],
         },
       ],
     });
@@ -354,7 +353,7 @@ d('agw labels', () => {
         functionName: 'grantNonce',
       })
     ).toBe(nonceBefore);
-    expect(await count(made.wallet)).toBe(checkpointsBefore + BigInt(1));
+    expect(await count(made.wallet)).toBe(checkpointsBefore);
     const second = await agent.universal.sendTransaction({
       to: f.ownerAddress,
       value: BigInt(1),
@@ -372,9 +371,9 @@ d('agw labels', () => {
       address: f.agentAddress,
     });
     await expect(
-      agent.universal.sendTransaction({ to: f.ownerAddress, value: BigInt(1) })
+      agent.universal.sendTransaction({ to: f.ownerAddress, value: BigInt(2) })
     ).rejects.toMatchObject({
-      decodedError: { name: 'PolicyCheckReverted(TotalValueExceeded)' },
+      decodedError: { name: 'PolicyCheckReverted(ValueExceedsCap)' },
     });
     expect(await f.push.getTransactionCount({ address: f.agentAddress })).toBe(
       agentNonce
@@ -387,7 +386,7 @@ d('agw labels', () => {
         made.rulesIds[0]
       )
     ).toEqual(spendAfter);
-    expect(await count(made.wallet)).toBe(checkpointsBefore + BigInt(1));
+    expect(await count(made.wallet)).toBe(checkpointsBefore);
     f.evidence('v5-label-active-rule', {
       wallet: made.wallet,
       rulesId: made.rulesIds[0],
@@ -397,7 +396,6 @@ d('agw labels', () => {
       grantNonce: nonceBefore,
     });
   });
-
   it('8. a failed owner batch rolls back the earlier rename and all checkpoints', async () => {
     const made = await f.owner.agentic.create('batch-before', { rules: [] });
     const w = f.owner.agentic.wallet(made.wallet),
@@ -435,7 +433,7 @@ d('agw labels', () => {
     const hash = await client.sendTransaction({
       chain: client.chain,
       to: made.wallet,
-      gas: BigInt(400_000),
+      gas: BigInt(400000),
       data: v5.encodeExecute(
         calls.map((call) => ({
           target: call.to,

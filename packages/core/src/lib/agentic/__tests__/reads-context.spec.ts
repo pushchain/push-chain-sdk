@@ -35,7 +35,7 @@ describe('generation registry', () => {
     )) {
       expect(() => currentGeneration(n)).toThrow(
         expect.objectContaining({
-          code: AGENTIC_ERROR_CODE.GENERATION_UNSUPPORTED,
+          code: AGENTIC_ERROR_CODE.CAPABILITY_UNAVAILABLE,
         })
       );
     }
@@ -50,7 +50,7 @@ describe('generation registry', () => {
         ADDR.target
       )
     ).rejects.toMatchObject({
-      code: AGENTIC_ERROR_CODE.GENERATION_UNSUPPORTED,
+      code: AGENTIC_ERROR_CODE.CAPABILITY_UNAVAILABLE,
     });
   });
 });
@@ -164,7 +164,7 @@ describe('initialize with agenticWallet — door resolution', () => {
         w.address
       )
     ).rejects.toMatchObject({
-      code: AGENTIC_ERROR_CODE.GENERATION_UNSUPPORTED,
+      code: AGENTIC_ERROR_CODE.CAPABILITY_UNAVAILABLE,
     });
   });
 });
@@ -293,12 +293,12 @@ describe('rules.list / rules.get', () => {
   afterEach(() => resetAgenticGenerations());
   const gen = () => currentGeneration(PUSH_NETWORK.TESTNET_DONUT);
 
-  it('decodes active native records without exposing internal spend', async () => {
+  it('decodes active native records with spend', async () => {
     const w = fake.addWallet(ADDR.owner, 'w', [
       fake.nativeRule(ADDR.agent, ruleId(1), {
         callsUsed: 3,
         valueSpent: BigInt(5),
-        maxCalls: 9,
+        maxCalls: 0,
       }),
     ]);
     const rules = await listRules(
@@ -313,12 +313,15 @@ describe('rules.list / rules.get', () => {
         enabled: true,
         chainNamespace: PUSH_NS,
         agent: ADDR.agent,
-        rule: expect.objectContaining({ maxCalls: 9, selector: '0xd09de08a' }),
+        rule: expect.objectContaining({
+          allowedCalls: [expect.objectContaining({ selector: '0xd09de08a' })],
+        }),
+        spent: expect.objectContaining({ valueSpent: BigInt(5) }),
       }),
     ]);
   });
 
-  it('public records contain no spent field', async () => {
+  it('public records contain native spend', async () => {
     const w = fake.addWallet(ADDR.owner, 'w', [
       fake.nativeRule(ADDR.agent, ruleId(1)),
     ]);
@@ -329,7 +332,12 @@ describe('rules.list / rules.get', () => {
       ruleId(1),
       PUSH_NS
     );
-    expect(record).not.toHaveProperty('spent');
+    expect(record.spent).toMatchObject({
+      kind: 'native',
+      valueSpent: BigInt(0),
+      amountSpent: BigInt(0),
+      callsUsed: 0,
+    });
   });
 
   it('lists native and universal rules without truncating', async () => {
@@ -466,11 +474,19 @@ describe('wallet reads', () => {
     const w = fake.addWallet(ADDR.owner, 'original');
     w.label = 'renamed';
     fake.extraLogs = [];
-    expect(await walletInfo(fake, gen(), w.address)).toMatchObject({ label: 'renamed' });
-    expect((await listForOwner(fake, gen(), ADDR.owner))[0].label).toBe('renamed');
-    expect(fake.calls.filter((c) => c.functionName === 'label')).toHaveLength(2);
+    expect(await walletInfo(fake, gen(), w.address)).toMatchObject({
+      label: 'renamed',
+    });
+    expect((await listForOwner(fake, gen(), ADDR.owner))[0].label).toBe(
+      'renamed'
+    );
+    expect(fake.calls.filter((c) => c.functionName === 'label')).toHaveLength(
+      2
+    );
     w.label = '';
-    expect(await walletInfo(fake, gen(), w.address)).toMatchObject({ label: 'AGW 1' });
+    expect(await walletInfo(fake, gen(), w.address)).toMatchObject({
+      label: 'AGW 1',
+    });
   });
 
   it('info of the signer’s next slot describes it as undeployed; other undeployed addresses are refused', async () => {
@@ -534,6 +550,46 @@ describe('checkpoints', () => {
         code: AGENTIC_ERROR_CODE.INCONSISTENT_READ,
       }
     );
+  });
+
+  it('uses retained logs only when a complete sequence proves no checkpoint was pruned', async () => {
+    const w = fake.addWallet(ADDR.owner, 'fresh');
+    w.checkpointCount = BigInt(2);
+    fake.checkpointLogs = [
+      checkpointLog(w.address, 1, 1, BigInt(60)),
+      checkpointLog(w.address, 2, 2, BigInt(70)),
+    ];
+    const original = fake.getLogs.bind(fake);
+    jest.spyOn(fake, 'getLogs').mockImplementation(async (args) => {
+      if (args.fromBlock < BigInt(50))
+        throw new Error('height 10 is not available, lowest height is 50');
+      return original(args);
+    });
+    const result = await readCheckpoints(fake, gen(), w.address);
+    expect(result.checkpoints.map((c) => c.seq)).toEqual([1, 2]);
+    fake.checkpointLogs = [checkpointLog(w.address, 2, 2, BigInt(70))];
+    await expect(readCheckpoints(fake, gen(), w.address)).rejects.toMatchObject(
+      { code: AGENTIC_ERROR_CODE.INCONSISTENT_READ }
+    );
+  });
+
+  it('does not skip arbitrary RPC errors or a pruned explicit sinceBlock range', async () => {
+    const w = fake.addWallet(ADDR.owner, 'history');
+    w.checkpointCount = BigInt(1);
+    const logs = jest
+      .spyOn(fake, 'getLogs')
+      .mockRejectedValue(new Error('temporary RPC failure'));
+    await expect(readCheckpoints(fake, gen(), w.address)).rejects.toMatchObject(
+      { code: AGENTIC_ERROR_CODE.RULE_READ_FAILED }
+    );
+    expect(logs).toHaveBeenCalledTimes(1);
+    logs.mockRejectedValue(
+      new Error('height 10 is not available, lowest height is 50')
+    );
+    await expect(
+      readCheckpoints(fake, gen(), w.address, BigInt(20))
+    ).rejects.toMatchObject({ code: AGENTIC_ERROR_CODE.RULE_READ_FAILED });
+    expect(logs).toHaveBeenCalledTimes(2);
   });
 
   it('validateSequence checks contiguity and the count', () => {

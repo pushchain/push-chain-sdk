@@ -25,7 +25,7 @@ export function composeAgwSvmAction(
   nowSeconds: number
 ): Call {
   function fail(name: string): never {
-    throw new AgenticError(AGENTIC_ERROR_CODE.RULE_LIMIT_EXCEEDED, name, {
+    throw new AgenticError(AGENTIC_ERROR_CODE.INVALID_RULE, name, {
       details: { contractError: name },
     });
   }

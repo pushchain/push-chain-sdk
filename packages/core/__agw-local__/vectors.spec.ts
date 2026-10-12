@@ -1,3 +1,4 @@
+import type { AgenticRuntime } from '../src/lib/agentic/runtime';
 /**
  * Contract-generated vectors for the pure AGW codecs. Every `expected` value
  * below is computed BY THE PINNED CONTRACTS (pure engine/factory views, or
@@ -127,7 +128,14 @@ describe('contract-generated AGW vectors (v5)', () => {
       maxValueTotal: BigInt(50),
       maxCalls: 3,
     };
-    const created = await owner.agentic.create('vectors', { rules: [rule] });
+    const { createWallet } = await import(
+      '../src/lib/agentic/management/create'
+    );
+    const created = await createWallet(
+      (owner as unknown as { agenticRuntime: AgenticRuntime }).agenticRuntime,
+      'vectors',
+      { rules: [rule] }
+    );
     const wallet = created.wallet;
     const rid = created.rulesIds[0];
     const [actionId] = (await pc.readContract({
