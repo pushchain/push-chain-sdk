@@ -1,25 +1,15 @@
-# AGW SDK — product decisions confirmed
+# AGW SDK — remaining preset catalog decisions
 
-Updated October 7, 2026 from Shoaib’s relayed team answers and SDK-owned decision approval. There are no remaining product questions in this document.
+Updated October 12, 2026 after the user authorized the section-7 framework. Local draft; nothing sent.
 
-<a id="h3"></a>
-## 1–2. Defaults and token model
+## Catalog to provide later
 
-Omitted native `maxValuePerCall` and `maxValueTotal` are `0`: no native PC value allowance. Retain the current `assets[]` model and independent per-token budgets. The SDK matches these decisions.
+Which verified apps, functions, deployed addresses and chains should ship for `DEXES` and `LENDING`? The framework is implemented, but all categories currently have empty `chains` lists. UI callers should hide them.
 
-<a id="h4-4"></a>
-## 3. Solana rules
+The contract/SDK review of those entries must settle tuple-field positions and how multiple apps can safely receive approvals for the same token. The framework rejects ambiguous approval combinations instead of generating unrestricted approvals. General EVM pins also need the pending policy deployment.
 
-Use named inputs from an IDL. The SDK now exposes `SolanaRule`, compiles supported Anchor layouts, derives wallet accounts, and returns exact decoded constraints. Unsupported layouts fail explicitly. See the [consumer guide](../../packages/core/AGW.md#solana-rules-using-named-idl-inputs).
+## Decisions already made — no repeated question
 
-<a id="h4-5"></a>
-## 4. Native/EVM argument restrictions
+The user chose zero defaults for either omitted preset asset cap and deferred the catalog. Omitting agent or expiry returns a typed `PresetRuleTemplate`; providing both yields `Rule[]`. Per-action native spend and raw decoded Solana get→update were already approved. The new preset namespace contains only `list/get`; encoding and ID helpers remain internal.
 
-Keep both ABI argument-index and raw-offset inputs, with exact offsets on reads. Shoaib approved this SDK-owned choice. Inputs that specify both forms are rejected; normal examples should prefer argument indexes.
-
-<a id="h6"></a>
-## 5. Contract validation and SDK errors — clarified
-
-The intended behavior is that the existing contract rejects unauthorized functions/actions under the supplied rule, and the SDK maps those errors. This does not request automatic rule selection or a new contract interface. The SDK retains `AMBIGUOUS_RULE` when multiple enabled rules match the agent and chain, without submitting a transaction. No caller-facing rule selector is being added.
-
-Rule `ref` is removed from scope; editable labels are delivered and implemented against v5. [Zaryab delivery items](questions-zaryab.md).
+[Implementation and acceptance](section7-presets.md).

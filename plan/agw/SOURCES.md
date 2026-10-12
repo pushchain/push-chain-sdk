@@ -1,6 +1,8 @@
 # AGW source links and refresh procedure
 
-**Latest refresh — October 7, 2026:** all 12 Notion pages downloaded/imported (1 changed, 11 unchanged), current discussions inspected where exposed, and all three contract repositories fetched. AGW/gateway code is unchanged; core marketplace head `9479aef` adds docs only over `cb69e0b`. Donut code/wiring and Solana program fingerprints match prior probes. [Refresh report, evidence and SDK alignment findings](research/source-refresh-2026-10-07/README.md).
+**Latest focused refresh — October 12, 2026:** pages 1 and 5 re-exported with section 6 feedback and SDK section 7 presets. [Change list and deployment boundary](section6-action-items.md). Other ten pages retain their October 7 snapshots; this was not a contract deployment verification.
+
+**Latest full refresh — October 7, 2026:** all 12 Notion pages downloaded/imported (1 changed, 11 unchanged), current discussions inspected where exposed, and all three contract repositories fetched. AGW/gateway code is unchanged; core marketplace head `9479aef` adds docs only over `cb69e0b`. Donut code/wiring and Solana program fingerprints match prior probes. [Refresh report, evidence and SDK alignment findings](research/source-refresh-2026-10-07/README.md).
 
 The dated entries below preserve earlier observations and decisions; use the October 7 report and current decision documents for present status.
 

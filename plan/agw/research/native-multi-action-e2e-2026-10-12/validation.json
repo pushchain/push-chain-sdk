@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-12",
+  "branch": "feat/agw-sdk-v4",
+  "base_head": "7115c59474af6304905ad3e4466732b0530dc791",
+  "source": "2e61e133e641b4e0e1ddbdc9306b0903b60e4dbb",
+  "unit": {
+    "passed": 2034,
+    "skipped": 12,
+    "failed": 0
+  },
+  "actual_contracts": {
+    "passed": 97,
+    "failed": 0
+  },
+  "live": {
+    "passed": 10,
+    "failed": 0,
+    "single_invocation": true
+  },
+  "agw_scenarios": 68,
+  "default_scenarios": 76,
+  "committed": false,
+  "pushed": false,
+  "evidence_rows": 16,
+  "test_sha256": "7e04e470bf8642eab41fabe943f387ae0d592f1139328c713289bdac39eb420f"
+}

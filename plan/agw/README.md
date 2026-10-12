@@ -1,5 +1,7 @@
 # AGW SDK planning
 
+**Current — October 12:** [downloaded sections 6/7, changes and deployment dependencies](section6-action-items.md). SDK-only migration and the [preset framework](section7-presets.md) are implemented locally; [open items](pending-items.md) supersede older decision summaries below. Notion pages 1/5 were refreshed; other ten snapshots retain October 7 timestamps. The new contract feedback is not deployed.
+
 This package contains planning, source snapshots and review evidence for `feat/agw-sdk-v4`. Current runtime uses Donut v5 source `2e61e13`; legacy runtime adapters have been removed.
 
 **October 7:** product decisions are settled. Public named-IDL Solana lifecycle/sends/reads/replay are implemented, rule `ref` is removed, zero native PC defaults are confirmed, and native/EVM raw-offset authoring is approved. Seven additional E2Es passed on Donut/devnet, bringing the opt-in AGW group to 46 scenarios at that checkpoint; the subsequent fixes extend it to 48 scenarios with selected-run live coverage. The final local/unit/build results are in [implementation status](implementation-status.md).
@@ -25,6 +27,7 @@ Latest source check: [full October 7 Notion/contract refresh](research/source-re
 | [Implementation review handoff](implementation-review-handoff.md) | Revisions, changed modules, commands and counts, real-vs-mock evidence, review hotspots |
 | [Interactive tutorial](agw-tutorial.html) | Account, rule, funding and execution diagrams; open in a browser |
 | [Integrator obligations](contract-integrator-obligations.md) | Contract-delegated SDK/product requirements |
+| [Pending items](pending-items.md) | Open items with owners, including the multi-action native rule decision |
 | [External blockers](external-blockers.md) | Remaining defaults/type clarification and contract/deployment dependencies |
 | [Questions for Harsh](questions-harsh.md) | Product decisions and recommendations |
 | [Questions for Zaryab](questions-zaryab.md) | Ref/label v1 scope and joint Solana review; fixture request closed |
@@ -43,3 +46,5 @@ Older planning revisions, duplicated exports, superseded validation runs and the
 Before sharing questions, refresh remote refs and Notion again, record exact revisions and remove questions answered by newer evidence. No team messages or contract deployments have been sent by this work. Authorized, bounded testnet transactions are recorded in the live acceptance evidence.
 
 Latest coverage: [five added v5 E2Es and metadata fix](research/extended-v5-e2e-2026-10-07/README.md). All five new scenarios have live passing evidence. The AGW group registers 58 cases; default `all` is unchanged. Fresh Sepolia CEA delivery currently uses an explicit destination-gas budget in tests/examples; the upstream default remains a follow-up.
+
+**October 12 native multi-action acceptance:** 10/10 new live cases passed; 68 AGW cases are registered. Full units: 2,034 passed; actual-contract harness: 97 passed. Input validation and checkpoint documentation fixes are local on `feat/agw-sdk-v4`, following the user’s v5 merge. [Evidence](research/native-multi-action-e2e-2026-10-12/README.md) · [Remaining items](pending-items.md). No commit or push was made for this work.

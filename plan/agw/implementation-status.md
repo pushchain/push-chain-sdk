@@ -1,5 +1,18 @@
 # AGW SDK implementation status
 
+**Current — October 12 sections 6/7:** SDK-only feedback and the preset framework are implemented locally. [Section 6 work list](section6-action-items.md) · [Preset scope/decisions](section7-presets.md) · [Open items](pending-items.md).
+
+- Full unit run: **2,075 passed, 0 failed, 12 skipped**. An earlier 100ms timing-test failure passed both on retry and in this final full run.
+- Section-6 real-contract coverage: all 97 cases pass across the suite and focused correction run. Presets add one fixture integration; its complete 11-case multi-asset suite passes.
+- Live section-6 coverage: **65/68 passed initially, then all 3 corrected cases passed**. All 68 cases have passing coverage; this is not one clean full invocation. No app-preset live claim is made with an empty approved catalog.
+- Build, library/spec/local typechecks, guide examples, compiled package imports/declarations and source-versus-built API comparison pass. New preset code has no lint errors.
+- Preset categories are enumerable; production chains remain empty pending catalog approval. Missing preset caps default to zero per the user. Templates omit identity/expiry until supplied. No encoder/ID utilities were re-exposed.
+- SDK changes are grouped in commit `6bd8ad50`; planning is tracked separately on v4 and excluded from the v5 sync. New contract feedback remains undeployed; automatic approvals, atomic factory create and general EVM pins remain gated.
+
+The dated entries below describe earlier checkpoints and are superseded where they conflict with the current summary.
+
+**October 12:** ten native multi-action live E2Es passed in one Donut invocation; malformed-action/required-expiry guards and the N + 4 checkpoint description are fixed. [Acceptance and evidence](research/native-multi-action-e2e-2026-10-12/README.md). Work remains local on `feat/agw-sdk-v4`; public multi-action shape still awaits product sign-off.
+
 **Latest v5 integration:** the new factory, source/artifacts, stored label reads and owner-only rename/reset are integrated. [V5 validation](research/v5-implementation-2026-10-07/README.md) distinguishes current tests from earlier v4 evidence.
 
 **Fresh alignment review:** [October 7 source refresh](research/source-refresh-2026-10-07/README.md) confirms stable deployed code and identified SDK follow-ups G27 (policy-preflight/error parity) and G28 (Solana owner funds-only support). Both are now fixed; [follow-up validation](research/sdk-alignment-fixes-2026-10-07/README.md) records contract-derived errors and actual SOL transfer/replay.
@@ -10,12 +23,12 @@
 
 | Level | Current evidence |
 | --- | --- |
-| Unit | 2,014 passed, 0 failed; 12 skipped |
-| Actual contracts | 90 passed, 0 failed across 12 Anvil suites |
+| Unit | 2,034 passed, 0 failed; 12 skipped (includes 20 multi-action native tests) |
+| Actual contracts | 97 passed, 0 failed across 13 Anvil suites (includes 7 multi-action native tests) |
 | New funded tests | Expanded v5 labels, native/lifecycle, EVM, SOL and SPL cases pass across selected runs; [new report](research/extended-v5-e2e-2026-10-07/README.md) records individual runs and the gas-default issue |
 | Build/typechecks | Build and lib/spec/local/AGW-E2E checks pass |
 | Consumer checks | Package imports, compiled declarations, API comparison and guide examples pass |
-| E2E selection | AGW: 58 scenarios/14 files/58 tests; default all remains 76/40/81 |
+| E2E selection | AGW: 68 scenarios/15 files/68 tests; default all remains 76/40/81 |
 
 These are selected live runs. Latest expansion verified 20 distinct labels/EVM/multi-asset/SOL/SPL scenarios across selected runs; earlier v5 native/lifecycle evidence adds ten distinct cases. This is not a full 58-case invocation. Older v4 evidence includes 39 prior cases plus seven additions. See the linked report for the initial 7702 gas failure and verified fix, public API changes, IDL-layout limits and test evidence.
 
@@ -42,6 +55,8 @@ These are selected live runs. Latest expansion verified 20 distinct labels/EVM/m
 | 17 | Documentation/release | Current status/gaps/handoff updated | Label delivery and release review |
 
 ## Remaining dependencies
+
+Open items, owners and the multi-action native rule decision: [pending items](pending-items.md).
 
 Product choices are settled. Rule ref is removed; zero native PC defaults and the current token model are retained; dual native/EVM raw/index inputs are approved; named IDL Solana authoring is implemented. Contract validation is authoritative; AMBIGUOUS_RULE remains the SDK response to multiple candidates. No selection interface change is required.
 

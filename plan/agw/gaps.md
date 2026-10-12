@@ -1,5 +1,17 @@
 # AGW contract and SDK gap register
 
+**Current override — October 12:** new sections 6/7 supersede the October 7 decisions below. [Feedback work list](section6-action-items.md); [only remaining items](pending-items.md). Unified allowedCalls, zero caps, spend reads, numeric Solana authoring/raw decoded updates, duplicate creation checks and direct label calls are implemented locally. Live acceptance of this changed API is in progress.
+
+| ID | Status | Current dependency |
+| --- | --- | --- |
+| G31 | Contract deployment pending | Exact per-outbound approval on both doors (§6.1); retain allowance guard until deployed |
+| G32 | Contract deployment pending | Atomic createWallet and initial grants (§6.2); retain receipt-based partial recovery/index protection |
+| G33 | Contract deployment pending | General EVM destination EQ/MAX pins (§6.3); one WALLET pin remains supported |
+| G34 | Spec/policy mismatch | Public ceiling 32 calls versus deployed native ceiling 8 |
+| G35 | Product/data open | Preset app catalog, missing caps and compound argument indexing (§7) |
+
+Native multi-action spend entries and Solana decoded raw form were approved by the user on October 12. Default first-use EVM gas is now an SDK change, not a core/gateway blocker. G07 revert credit remains downstream. The following dated register is historical where it conflicts with this override.
+
 **October 7 alignment:** all product choices are settled. Named-IDL Solana integration and removal of rule `ref` are implemented; raw-offset inputs remain supported. Editable labels are delivered and implemented against v5. Contract validation already exists; retain the SDK ambiguity guard. [Current delivery items](questions-zaryab.md).
 
 Updated October 7, 2026 following the clarified contract-enforcement decision, the [v4 deployment/owner-guide review](research/deployment-review-2026-10-06/README.md), [Harsh’s replies](product-decisions-2026-10-04.md), v4 implementation on feat/agw-sdk-v4, and [live Notion comments](research/notion-comments-2026-10-05.md). This register distinguishes unresolved dependencies, implemented SDK work, deferred scope and historical corrections. G01–G30 are tracking IDs, not a count of open defects.
