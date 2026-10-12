@@ -15,7 +15,7 @@ jobs:
     env:
       NX_DAEMON: 'false'
       AGW_REPO: ${{ github.workspace }}/.ci-contracts
-      AGW_LOCAL_DIR: ${{ runner.temp }}/agw-v4-build
+      AGW_LOCAL_DIR: ${{ runner.temp }}/agw-v5-build
     steps:
       - uses: actions/checkout@v5
         with:
@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           repository: pushchain/push-agentic-wallets
-          ref: e8db74815cfbbf5389593805e464fe8d85f7f735
+          ref: 2e61e133e641b4e0e1ddbdc9306b0903b60e4dbb
           path: .ci-contracts
           persist-credentials: false
       - uses: actions/setup-node@v6
