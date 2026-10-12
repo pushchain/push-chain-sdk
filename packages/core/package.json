@@ -1,6 +1,6 @@
 {
   "name": "@pushchain/core",
-  "version": "6.0.26",
+  "version": "6.0.27-alpha.0",
   "homepage": "https://push.org",
   "keywords": [
     "pushchain",

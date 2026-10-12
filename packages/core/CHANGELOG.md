@@ -1,3 +1,11 @@
+@pushchain/core@6.0.27-alpha.0 (2026-10-12)
+
+- feat: align AGW rules and presets with October SDK feedback
+- feat: add AGW v5 wallet and rules SDK
+- test: mirror the restructured Universal Read docs playgrounds
+
+---
+
 @pushchain/core@6.0.26 (2026-09-23)
 
 - docs: changelog for read-state docs parity
